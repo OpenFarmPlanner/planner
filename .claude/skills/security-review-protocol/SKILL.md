@@ -41,10 +41,15 @@ verified local AI-assisted review, not a native cloud scan.
 
 Follow the execution mode and independent review handoff in
 `docs/work-execution-queue.md`. A commissioned subscription worker can use an
-already configured authorized trusted-host route; the optional API controller
+already configured constrained review service; the optional API controller
 is a separate mode and must not be enabled merely to obtain a review. Missing
 keys in Cloud do not require routine per-PR sign-off when that route works.
-If providers and the trusted host route are unavailable, report the actual
+The service permits only the fixed review workflow, not author shell or
+key/checkout access. Publish emitted signed incomplete reports as well as clean
+ones and refresh the gate, so newer findings supersede stale approvals. Only
+verified clean evidence
+satisfies the gate. If providers and the constrained service are unavailable,
+report the actual
 infrastructure blocker. Skill files do not provision a host, key or credentials.
 Never weaken trust policy or manufacture approval to keep the queue moving.
 

@@ -66,7 +66,10 @@ current PR before the next item, and honor exact-head review and required checks
 Do not start or interrupt another worker, deploy, weaken signing policy, invent
 a receipt or choose a paid API route merely to keep the queue moving. If an
 independent review route is unavailable, report the concrete infrastructure
-blocker and its links.
+blocker and its links. Use only a constrained trusted review service, never an
+author shell on the signing host. Publish signed incomplete outcomes as well as
+clean receipts and refresh the gate for either outcome; only verified clean
+completion permits merge.
 
 ## Examples (synthetic; no GitHub writes for validation)
 

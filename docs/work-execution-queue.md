@@ -53,31 +53,66 @@ an inherited triage artifact belongs to an earlier run attempt. Keep triage and
 completion evidence bound to the same attempt; do not weaken the verifier.
 
 If Cloud providers cannot finish, use the existing trusted subscription launcher
-via an already configured authorized host route. Prerequisites: the host is
-reachable, its installed checkout/launcher matches the immutable PR base, its
-Codex subscription and GitHub authentication work, and the existing protected
-signing key is outside reviewer filesystem grants. Run on that trusted host
-from that checkout, substituting the real PR/CI IDs and a fresh output path:
+through a preconfigured constrained review service. The Cloud authoring identity
+must have no general shell, file-transfer, forwarding or filesystem access on the
+signing host, and no read access to its key or write access to its trusted
+checkout. Mode 0600 alone does not protect a key from a shell running as its owner.
+Use a forced-command SSH identity or equivalent automation endpoint accepting
+only a validated PR number and invoking the fixed installed review workflow.
+The service must choose its checkout, launcher, fresh output path and CI run;
+author-provided commands, paths, environment and reviewer configuration are not
+accepted. These constraints must already be installed and verified by the trusted
+operator; the repository skill does not provision them.
+
+Prerequisites: the constrained endpoint is reachable, the installed checkout and
+launcher match the immutable PR base, its subscription and GitHub authentication
+work, and the existing signing key remains outside author/reviewer grants. A
+configured forced-command invocation can take this form, with host/account values
+from the approved configuration, never guesses:
+
+```bash
+ssh -T queue-review@review-host review 123
+```
+
+The following are **trusted operator/service commands only**, not commands the
+Cloud author may run in a remote shell. Substitute real PR/CI IDs and a fresh
+output path on that protected host:
 
 ```bash
 node scripts/ci/run_codex_review.cjs 123 /tmp/queue-review-123
 gh pr comment 123 --body-file /tmp/queue-review-123/signed-report.md
+```
+
+Publish every emitted signed report, both clean and `incomplete`. The launcher
+signs incomplete findings/validation outcomes deliberately: newer signed incomplete
+receipts supersede earlier clean evidence even for the same head. If execution
+fails before a signed receipt is emitted, leave the gate blocked and report the
+failure; do not invent a receipt or reuse a previous output file. Refresh the
+security gate for both clean and incomplete receipts. For a blocked CI run:
+
+```bash
 gh run rerun 456 --failed
 ```
 
-Cloud may invoke these commands over the configured authorized SSH/automation
-route; host and checkout values come from that configuration, never guesses.
-No signing key or credential is copied into the authoring checkout. The launcher
-starts a fresh independent reviewer, validates exact head/base/scope and signs
-only a clean completed result. Publish the resulting receipt, refresh blocked
-CI and continue without another approval when the gate validates it. Findings,
+If CI was previously green, the trusted service re-runs its
+`security-review-completion` job (and dependent quality job), using the actual
+job ID, so an older green check is not left as the current result:
+
+```bash
+gh run rerun 456 --job 789
+```
+
+Only verified clean evidence and passing required checks permit merge and
+continuation without another approval.
+
+No signing key or credential is copied into the authoring checkout. Findings,
 stale scope or failed execution return to the worker for correction and review.
 See [the signed-review procedure](security-automation.md#verified-local-codex-completion-without-per-pr-approval)
 for execution and trust requirements; unsigned reports still require its explicit
-human contingency. This skill does not install a host or signer. If no authorized
-host route/key or provider allowance is available, leave the merge blocked and
-report the actual missing infrastructure and PR/run links. Do not manufacture
-approval or describe the advisory queue marker as a review/execution service.
+human contingency. If the constrained service, key or provider allowance is
+unavailable, leave the merge blocked and report the missing infrastructure and
+PR/run links. An existing generic SSH login is not an authorized substitute.
+Do not manufacture approval or describe the advisory marker as a review service.
 
 ## Cloud worker
 

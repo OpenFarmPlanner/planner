@@ -41,7 +41,7 @@ and open screenshots with the available image viewer.
 | UI, public-page and mutation checks | Node/npm dependencies; Playwright and a browser for rendered checks. Mutation runs use a disposable worktree and its own dependency setup. |
 | QA | A configured synthetic test backend/frontend and browser, per `qa-strategy.md`; no separate `run` skill is required. |
 | Release/deploy | An authorized ops checkout and deployment access. The ops repository is an execution prerequisite, never a discovery dependency. Queue work alone does not authorize production deployment. |
-| Independent signed review | A configured trusted host, base-matching installed launcher, subscription CLI, protected existing signing key and GitHub access, per `security-automation.md`. The key is not made available to Cloud by these links. |
+| Independent signed review | A configured constrained review service (no author shell/key/checkout access), base-matching launcher, subscription CLI, protected signing key and GitHub access, per `security-automation.md`. The key is not made available to Cloud by these links. |
 
 ## Validation without live writes
 
