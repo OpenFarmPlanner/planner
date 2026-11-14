@@ -66,6 +66,11 @@ review is documented in a PR comment with the reviewed commit SHA, unfixed
 findings are tracked as `security` issues, and durable decisions go in
 [Security decisions](#security-decisions) below. The former
 [`security-review-log.md`](./security-review-log.md) is frozen history.
+For sensitive, unfixed findings, the
+[private handoff](../CLAUDE.md#private-security-findings) takes precedence over
+public reporting: the owner receives the full report privately, while public
+tracking uses only a safe redacted summary and private report ID. Pending
+handoff or tracking remains explicit and does not waive review gates.
 Conversely, an ordinary UI-only change normally needs no
 additional backend-specific manual security procedure beyond the automated
 required checks.

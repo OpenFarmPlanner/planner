@@ -73,6 +73,13 @@ For each open `security` issue in scope that the code now fixes:
 
 ## 4. Report (never a log file on the branch)
 
+The [private security handoff](../../../CLAUDE.md#private-security-findings)
+overrides the public reporting steps below for sensitive, unfixed findings.
+Notify the owner in the commissioned private chat and deliver the full report
+there; public tracking carries only a safe redacted summary and private report
+ID. Missing safe tracking or delivery stays explicitly unfiled/pending, and
+withheld details never turn a finding into a clean review or waive merge gates.
+
 - **PR review**: one PR comment with the reviewed SHA, the scope (changed
   files) and the result, "No issues" included. Findings as inline comments,
   otherwise `path:line` in that comment.

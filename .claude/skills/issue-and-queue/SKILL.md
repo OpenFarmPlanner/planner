@@ -1,6 +1,6 @@
 ---
 name: issue-and-queue
-description: Create or update GitHub issues from agreed decisions, queue existing issues, or reorder the OpenFarmPlanner work queue when the user requests it. Use for create-only, reuse-existing, queue-only, top or numbered-position requests. Discussion alone does not authorize issue creation or implementation.
+description: Create or update GitHub issues from agreed decisions or reproducible pre-existing bugs found during authorized implementation or QA; queue existing issues or reorder the OpenFarmPlanner work queue when requested. Use for create-only, reuse-existing, queue-only, top or numbered-position requests. Discussion alone does not authorize issue creation or implementation.
 ---
 
 # Issues and work queue
@@ -21,8 +21,12 @@ reader cannot verify the author/editor or permission. Metadata-only GitHub
 reads for state, ordering and parent verification remain appropriate.
 
 Distinguish creating/updating an issue from
-queueing/reordering one. Do only the requested issue/queue operations, with the
-standing maintenance exception in section 4: acceptance cleanup, completed-item
+queueing/reordering one. The standing discovered-bug rule in `CLAUDE.md` also
+authorizes filing reproducible pre-existing defects found during an authorized
+implementation or QA task; apply section 3 below without routine confirmation.
+This authorizes neither unrelated implementation nor queue insertion.
+Otherwise do only the requested issue/queue operations, with the standing
+maintenance exception in section 4: acceptance cleanup, completed-item
 test hints and explicit implementation-PR gates also apply to create-only
 requests that inspect the queue. An explicit user instruction not to edit the
 queue overrides that exception. Read the standing
@@ -48,6 +52,37 @@ Choose an appropriate existing `Epic: ...` parent and existing priority label.
 Declare `Parent epic: #N`; verify that existing parent-link automation establishes
 the native parent, without replacing an unrelated parent. Keep one issue per
 coherent change; creating an issue does not authorize implementing it.
+
+### Bugs discovered during implementation or QA
+
+Keep defects introduced by the current change, or required to make its changed
+flow work, in the same PR under the existing scope rules. For a reproducible
+pre-existing defect outside that scope, apply section 2's open/closed issue and
+related-PR search first. Reuse the relevant issue and add new reproduction
+evidence rather than creating a duplicate. Inspect a closed issue's fix and
+outcome before describing a distinct regression; do not reopen it without
+authorization.
+
+If no issue tracks a defect that still reproduces, create an English follow-up
+with the environment, reproduction steps, expected and actual behavior, user
+impact and available evidence. Assign the appropriate existing epic and P0–P3
+priority as above. Apply `needs-decision` only when a concrete product or design
+decision is needed to proceed, and write that question in the issue. A defect
+being outside the current scope does not itself require that label.
+
+Link the reused or new issue in the originating PR or task report. If GitHub
+write access is unavailable, preserve those reproduction details in the report
+and explicitly mark the follow-up **unfiled**; never claim it was created.
+For private security findings, the
+[private handoff](../../../CLAUDE.md#private-security-findings) overrides public
+filing/reporting steps: notify the owner in the commissioned private chat,
+deliver the full report privately and use redacted public tracking only when
+safe. Preserve pending/unfiled status when a handoff or safe issue cannot be
+completed. Follow the [security review procedure](../security-review-protocol/SKILL.md)
+without copying sensitive details into public issues or reports.
+
+File the follow-up without routine confirmation, but add it to #1058 only on
+explicit owner instruction. Filing does not commission its implementation.
 
 ## 4. Apply the smallest queue edit
 
@@ -120,3 +155,6 @@ completion permits merge.
 | Put #123 at position 2 | Remove its old row, insert at position 2, and preserve the first entry. |
 | An issue or PR already covers the same work | Reuse/link it; avoid duplicate issues and duplicate queue rows. |
 | Someone edits the queue after the first read | Fetch again, apply the requested delta to the new body, write and verify. |
+| Validation finds a defect introduced by the current change | Fix it in the same PR and verify the correction; do not defer it as unrelated work. |
+| Validation reproduces the pre-existing topbar overlap tracked by #930 | Reuse #930 and add new evidence; link it in the originating PR/report without adding it to the queue. |
+| Validation finds an untracked pre-existing defect needing a product decision | After open/closed issue and PR deduplication, file the reproduction, impact, epic, priority and concrete question; use `needs-decision`, link it and leave it out of the queue unless the owner requests insertion. |
