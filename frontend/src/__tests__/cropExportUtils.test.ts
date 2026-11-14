@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { buildAllCropsExport, buildSingleCropExport, buildSingleCropFilename, slugifyFilenamePart, toPortableCrop } from '../crops/exportUtils';
 import type { Crop } from '../api/types';
+import { buildCompanionItemsByCrop } from '../crops/companions';
+import { parseCropImportJson } from '../crops/importUtils';
 
 describe('crop export mapping', () => {
   const crop: Crop = {
@@ -85,5 +87,24 @@ describe('crop export mapping', () => {
       type: 'crops',
       crops: [expect.objectContaining({ supplierName: 'Bingenheimer', variety: 'Roma' })],
     });
+  });
+
+  it('round-trips all companion note languages and explicit empty versions through JSON', () => {
+    const general = { ...crop, variety: '' };
+    const notes = { de: 'Quelle', en: 'Source', fr: 'Source FR', es: '' };
+    const companions = buildCompanionItemsByCrop([general], [{
+      crop: general.id!, companion_crop: null, companion_family: null,
+      companion_text: 'Salat', kind: 'good', reason: 'other', note: 'Source FR',
+      note_language_code: 'fr', notes,
+    }], key => key);
+    for (const exported of [
+      buildSingleCropExport(general, undefined, companions),
+      buildAllCropsExport([general], undefined, companions),
+    ]) {
+      const imported = parseCropImportJson(JSON.stringify(exported));
+      expect(imported.entries[0].good_companions).toEqual([
+        { name: 'Salat', reason: 'other', note: 'Source FR', notes },
+      ]);
+    }
   });
 });

@@ -34,8 +34,21 @@ positions skipped while parsing.
 ## Apply phases
 
 `POST /crops/import/apply/` keeps the legacy unphased behavior. The crops page
-uses the following `phase` values with the existing confirmation and note
-language/replacement options:
+uses the following `phase` values with the existing update confirmation. It
+captures the current UI language when reading a file and uses that language
+through preview and apply, even if the UI language changes afterward. CSV,
+XLSX and ODS nonempty neighbour notes update only that language; empty or
+missing notes preserve existing text. There is no language selector,
+replacement checkbox or replacement hint in the import dialog. JSON retains
+all explicit note-language maps and their existing merge/explicit-empty
+semantics; it is not restricted to the captured UI language.
+
+The browser no longer sends `replace_companion_notes`. The backend retains
+this deprecated option for old open tabs and external integrations; remove it
+only once those clients no longer send it. New imports use the non-destructive
+default for scalar notes.
+
+Phases:
 
 1. `crops`: general crops first, then varieties, without companion fields.
    Crop writes return one `results` receipt per item: `created`, `updated`,

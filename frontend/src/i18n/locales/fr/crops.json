@@ -1743,10 +1743,8 @@
     "noteLanguage": "Langue des notes de voisinage",
     "languageHelp": {
       "edit": "Vous modifiez uniquement les notes dans cette langue. Les autres versions sont conservées.",
-      "import": "Les notes du tableau sont importées uniquement dans cette langue. Par défaut, une note vide conserve le texte existant. JSON conserve toutes les versions linguistiques.",
       "export": "Seules les notes dans cette langue sont exportées. Le format JSON contient toutes les versions linguistiques."
     },
-    "replaceImportedNotes": "Remplacer les notes des voisins indiqués dans cette langue, y compris par des notes vides",
     "cellHelp": "Un groupe par ligne : Tomate ; Concombre | Protection contre les ravageurs. Les noms seuls sont acceptés. Les guillemets et séquences d’échappement exportés préservent les séparateurs et retours à la ligne des notes. Les anciens commentaires avec tiret ne sont liés que si les noms sont reconnus sans ambiguïté."
   },
   "timingWindows": {

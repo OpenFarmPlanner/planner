@@ -191,7 +191,6 @@ export const cropAPI = {
     items: Record<string, unknown>[];
     confirm_updates: boolean;
     companion_note_language?: string;
-    replace_companion_notes?: boolean;
     phase?: 'crops' | 'companions' | 'finalize';
     expected_project_id?: number;
   }) => http.post<CropImportApplyResult>('/crops/import/apply/', data),

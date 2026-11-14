@@ -11,6 +11,7 @@ const api = vi.hoisted(() => ({
 }));
 const spreadsheet = vi.hoisted(() => ({ parse: vi.fn(), exportToSpreadsheet: vi.fn() }));
 const json = vi.hoisted(() => ({ downloadJson: vi.fn(), readFileAsText: vi.fn(), analyze: vi.fn() }));
+const language = vi.hoisted(() => ({ resolvedLanguage: 'de' }));
 
 vi.mock('../api/api', () => ({
   cropAPI: {
@@ -24,7 +25,7 @@ vi.mock('../api/api', () => ({
 vi.mock('../crops/plantFamilies', () => ({
   usePlantFamilies: () => ({ getName: (key: string) => key }),
 }));
-vi.mock('../i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('../i18n', () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: language }) }));
 vi.mock('../crops/spreadsheetImport', () => ({ parseSpreadsheetFile: spreadsheet.parse }));
 vi.mock('../crops/spreadsheetExport', () => ({
   exportCropsToSpreadsheet: spreadsheet.exportToSpreadsheet,
@@ -63,6 +64,7 @@ function setup(selectedCrop: Crop | null = CROP) {
 describe('useCropImportExport', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    language.resolvedLanguage = 'de';
     window.localStorage.clear();
     window.localStorage.setItem('activeProjectId', '42');
     api.importPreview.mockImplementation(async (items) => ({ data: { results: items.map((item: Record<string, unknown>, index: number) => ({ index, status: 'create', import_data: item, normalized_identity: { name: String(item.name).toLowerCase(), variety: null } })) } }));
@@ -88,11 +90,47 @@ describe('useCropImportExport', () => {
       status: 'duplicate', row_number: 12, duplicate_of_row_number: 5,
     });
     await act(async () => { await view.result.current.handleImportStart(); });
-    expect(api.importApply).toHaveBeenCalledWith({ phase: 'crops', items: [entries[0]], confirm_updates: false, companion_note_language: 'de', replace_companion_notes: false, expected_project_id: 42 });
+    expect(api.importApply).toHaveBeenCalledWith({ phase: 'crops', items: [entries[0]], confirm_updates: false, companion_note_language: 'de', expected_project_id: 42 });
     expect(view.showSnackbar).toHaveBeenCalledWith('import.created, import.duplicatesSkipped', 'success');
   });
 
   describe('choosing a file', () => {
+    it.each([
+      ['csv', 'fr-CA', 'fr'], ['xlsx', 'es-ES', 'es'], ['ods', 'en-GB', 'en'],
+    ])('imports %s notes in the current UI language and keeps it through apply', async (extension, uiLanguage, expected) => {
+      const entries = [{ name: 'Tomate', good_companions: [{ name: 'Salat', note: 'Source' }] }];
+      spreadsheet.parse.mockResolvedValue({ entries, rowNumbers: [2], skippedRows: 0, warnings: [] });
+      const view = setup();
+      act(() => { view.result.current.handleImportFileTrigger(); });
+      language.resolvedLanguage = uiLanguage;
+      view.rerender();
+      await act(async () => { await view.result.current.handleImportFileSelected(file(`c.${extension}`)); });
+      expect(api.importPreview.mock.calls[0][1]).toBe(expected);
+      language.resolvedLanguage = 'de';
+      view.rerender();
+      await act(async () => { await view.result.current.handleImportStart(); });
+      for (const [body] of api.importApply.mock.calls) {
+        expect(body.companion_note_language).toBe(expected);
+        expect(body).not.toHaveProperty('replace_companion_notes');
+      }
+      expect(api.importApply).toHaveBeenCalledWith(expect.objectContaining({
+        phase: 'companions', items: [{ crop_id: 1, good_companions: entries[0].good_companions }],
+      }));
+    });
+
+    it('preserves every explicit JSON note language independently of the UI language', async () => {
+      language.resolvedLanguage = 'es';
+      const companions = [{ name: 'Salat', notes: { de: 'Quelle', en: 'Source', fr: 'Source FR', es: '' } }];
+      json.analyze.mockReturnValue({ status: 'ready', validEntries: [{ name: 'Tomate', good_companions: companions }], rowNumbers: [1], originalCount: 1, invalidEntries: [] });
+      const view = setup();
+      await act(async () => { await view.result.current.handleImportFileSelected(file('c.json')); });
+      expect(api.importPreview.mock.calls[0][0][0].good_companions).toEqual(companions);
+      await act(async () => { await view.result.current.handleImportStart(); });
+      expect(api.importApply).toHaveBeenCalledWith(expect.objectContaining({
+        phase: 'companions', items: [{ crop_id: 1, good_companions: companions }],
+      }));
+    });
+
     it('requires a project binding before reading or previewing a file', async () => {
       window.localStorage.removeItem('activeProjectId');
       const view = setup();
@@ -321,7 +359,7 @@ describe('useCropImportExport', () => {
       expect(api.importApply).toHaveBeenCalledWith({
         items: [{ name: 'Tomate' }], phase: 'crops',
         confirm_updates: true,
-        companion_note_language: 'de', replace_companion_notes: false,
+        companion_note_language: 'de',
         expected_project_id: 42,
       });
     });

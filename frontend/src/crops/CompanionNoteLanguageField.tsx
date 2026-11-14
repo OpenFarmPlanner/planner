@@ -4,7 +4,7 @@ import { SUPPORTED_LANGUAGES } from '../i18n/languages';
 
 export function CompanionNoteLanguageField({ value, onChange, disabled, mode = 'edit' }: {
   value: string; onChange: (language: string) => void; disabled?: boolean;
-  mode?: 'edit' | 'import' | 'export';
+  mode?: 'edit' | 'export';
 }) {
   const { t } = useTranslation('crops');
   return <TextField select size="small" fullWidth label={t('companions.noteLanguage')}

@@ -167,7 +167,7 @@ export type BatchedImportResult = CropImportApplyResult & {
 
 export async function applyCropImportBatches(
   payload: ImportRow[], preview: ImportPreviewResult[],
-  options: { confirm_updates: boolean; companion_note_language: string; replace_companion_notes: boolean; expected_project_id?: number },
+  options: { confirm_updates: boolean; companion_note_language: string; expected_project_id?: number },
   progress: ProgressCallback,
 ): Promise<BatchedImportResult> {
   const outcomes: ImportOutcome[] = payload.map((_, index) => ({ index, status: 'not_sent' }));

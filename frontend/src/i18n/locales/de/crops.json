@@ -1698,10 +1698,8 @@
     "noteLanguage": "Sprache der Nachbarnotizen",
     "languageHelp": {
       "edit": "Du bearbeitest nur Notizen in dieser Sprache. Andere Sprachversionen bleiben erhalten.",
-      "import": "Tabellennotizen werden nur in dieser Sprache importiert. Leere Notizen bleiben standardmäßig unverändert. JSON erhält vollständige Sprachversionen.",
       "export": "Exportiert werden nur Notizen in dieser Sprache. JSON enthält alle Sprachversionen."
     },
-    "replaceImportedNotes": "Notizen der genannten Nachbarn in dieser Sprache ersetzen, auch durch leere Notizen",
     "cellHelp": "Eine Gruppe pro Zeile: Tomate; Gurke | Schutz vor Schädlingen. Ohne Notiz genügen Namen. Exportierte Anführungszeichen und Escape-Sequenzen erhalten Trennzeichen und Zeilenumbrüche in Notizen. Alte Gedankenstrich-Kommentare werden nur bei eindeutiger Namensauflösung zugeordnet."
   },
   "timingWindows": {

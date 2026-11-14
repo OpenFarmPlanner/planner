@@ -205,9 +205,10 @@ cover divergent stored/display names explicitly.
 ## Spreadsheet and JSON import/export
 
 The export writes two columns, "Gute Nachbarn" and "Schlechte Nachbarn", on
-Kultur rows only. Import and spreadsheet export each expose an explicit note
-language, initially the UI language. Ordinary CSV/XLSX/ODS cells carry the
-notes; JSON is optional and preserves the entire `notes` language map.
+Kultur rows only. Spreadsheet export exposes an explicit note language,
+initially the UI language. Import automatically uses the UI language captured
+when reading the file. Ordinary CSV/XLSX/ODS cells carry the notes; JSON is
+optional and preserves the entire `notes` language map.
 
 The canonical cell grammar is **one group per line**, comma/semicolon-separated
 names and an optional note following the spaced delimiter ` | `:
@@ -248,11 +249,11 @@ input is rejected rather than truncated.
 
 **Merge and replacement.** Import adds relations without deleting others.
 Existing structured reasons are retained on re-import. Nonempty notes update
-only the chosen language; absent/empty notes preserve existing values. The
-explicit replacement checkbox allows an empty note to clear that language for
-a listed neighbor. Other languages, the opposite side of a shared pair and
-existing reason categories stay intact. Conflicting good/bad assignments keep
-the existing kind and are reported. An explicit JSON `notes` map merges only
+only the current UI language captured when reading the file; absent/empty
+spreadsheet notes preserve existing values. The import dialog has no language
+selector or replacement checkbox. Other languages, the opposite side of a
+shared pair and existing reason categories stay intact. Conflicting good/bad
+assignments keep the existing kind and are reported. An explicit JSON `notes` map merges only
 its supplied language keys, with `""` clearing that version; omitted keys are
 preserved. A derived `note` alongside a full map is not copied into another
 language.
