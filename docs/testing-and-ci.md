@@ -409,6 +409,23 @@ twice per pipeline and `quality` took as long as the job it duplicated.
 If you add a backend gate, put it in `backend-tests` if it needs the test
 run, and in `quality.sh` if it only needs the source.
 
+Ruff and Madge run through `scripts/ci/quality_findings.cjs`. Exit code 1
+means findings, not a successful clean scan. The comparator accepts only
+the exact legacy findings in the reviewed
+[`quality-baseline.json`](../scripts/ci/quality-baseline.json); new Ruff
+diagnostics and new directed import cycles fail. Malformed/missing reports,
+inconsistent exit codes, execution errors and unsupported versions fail as
+inconclusive. Raw JSON, stderr, versions, exit status, timing and the
+baseline comparison are retained under both `reports/latest/` and the
+timestamped archive, included in CI's existing `quality-reports` artifact.
+See [the baseline report](quality-baseline.md) for the pinned evidence,
+allowance rationales, scanner limits and deliberate update procedure.
+
+The quality job also runs `node --test tests/test_quality_findings.cjs`:
+temporary fixtures exercise real Ruff violations and Madge cycles through
+the gate, plus corrupt reports, missing binaries and version/exit failures.
+It does not rerun repository-wide scans or backend tests in another job.
+
 The job's *frontend* install was the other half of the same story. It was
 the last CI consumer of `frontend/node_modules` with no wholesale cache,
 and it installed with `npm install --force` rather than the `npm ci`

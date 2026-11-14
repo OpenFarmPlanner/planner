@@ -422,3 +422,7 @@ Run the shared quality script before opening a PR:
 ```
 
 This script executes the backend and frontend lint/test gates used in CI.
+Ruff and Madge reject new findings and scanner failures while reporting the
+explicit legacy baseline. Reports are saved under `reports/latest/`; see
+[`docs/quality-baseline.md`](docs/quality-baseline.md) for the baseline and
+the reviewed update procedure.

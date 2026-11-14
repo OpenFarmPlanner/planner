@@ -59,7 +59,7 @@ run_tool() {
 # Backend reports
 if [[ -d "$ROOT_DIR/backend" ]]; then
   if command -v pdm >/dev/null 2>&1; then
-    run_tool "Backend Ruff" "backend-ruff.txt" "0,1" bash -lc "cd \"$ROOT_DIR/backend\" && pdm run ruff check ."
+    run_tool "Backend Ruff" "backend-ruff.txt" "0" node "$ROOT_DIR/scripts/ci/quality_findings.cjs" ruff "$ARCHIVE_DIR"
     run_tool "Backend Radon CC" "backend-radon-cc.txt" "0" bash -lc "cd \"$ROOT_DIR/backend\" && pdm run radon cc farm -s -a"
 
     if [[ "${SKIP_BACKEND_TESTS:-0}" == "1" ]]; then
@@ -115,7 +115,7 @@ if [[ -d "$ROOT_DIR/frontend" ]]; then
     run_tool "Frontend ESLint" "frontend-eslint.txt" "0" npm --prefix "$ROOT_DIR/frontend" run lint -- --max-warnings=-1
 
     if [[ -x "$ROOT_DIR/frontend/node_modules/.bin/madge" ]]; then
-      run_tool "Frontend Madge Circular" "frontend-madge-circular.txt" "0,1" "$ROOT_DIR/frontend/node_modules/.bin/madge" --circular --extensions ts,tsx "$ROOT_DIR/frontend/src"
+      run_tool "Frontend Madge Circular" "frontend-madge-circular.txt" "0" node "$ROOT_DIR/scripts/ci/quality_findings.cjs" madge "$ARCHIVE_DIR"
     else
       {
         echo "# Frontend Madge Circular"
@@ -142,13 +142,20 @@ if [[ -d "$ROOT_DIR/frontend" ]]; then
   fi
 fi
 
+# Keep machine-readable scanner evidence alongside the existing text reports.
+for evidence in "$ARCHIVE_DIR"/*.json "$ARCHIVE_DIR"/*.version.txt "$ARCHIVE_DIR"/*.stderr.txt; do
+  if [[ -f "$evidence" ]]; then
+    copy_latest "$(basename "$evidence")"
+  fi
+done
+
 echo
 echo "Quality reports generated:"
 echo "- Latest:   $LATEST_DIR"
 echo "- Archived: $ARCHIVE_DIR"
 
 if [[ $fatal -ne 0 ]]; then
-  echo "Quality run completed with setup/tooling errors."
+  echo "Quality run completed with new findings or setup/tooling errors."
   exit 2
 fi
 
