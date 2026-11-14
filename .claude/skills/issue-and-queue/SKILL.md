@@ -15,7 +15,11 @@ Report missing access rather than claiming a write or reconciliation succeeded.
 
 Fetch live queue [#1058](https://github.com/OpenFarmPlanner/planner/issues/1058),
 including its execution mode. Distinguish creating/updating an issue from
-queueing/reordering one. Do only the requested operations. Read the standing
+queueing/reordering one. Do only the requested issue/queue operations, with the
+standing maintenance exception in section 4: acceptance cleanup, completed-item
+test hints and explicit implementation-PR gates also apply to create-only
+requests that inspect the queue. An explicit user instruction not to edit the
+queue overrides that exception. Read the standing
 worker authorization in `CLAUDE.md`: a commissioned worker continues through
 implementation, independent review, fixes and merge when gates pass, without
 routine maintainer confirmation. Creating or queueing an item alone commissions
@@ -53,11 +57,19 @@ remove checked rows only after verifying closure/merge and absence of an open
 implementation PR. Checked open work stays in the queue. Acceptance never
 replaces required implementation or review gates.
 
+Before skipping a closed issue, check its implementation PRs. If one is open or
+closed without merging, retain the issue and insert an explicit unchecked
+`PR #N` gate immediately before it. The current selectors skip closed issues
+without discovering linked PRs; retaining the issue alone does not gate them.
+
 After implementation, add a concise manual test instruction to the completed
 queue row: where, action, expected result and any required test data/environment.
 Backfill missing instructions on completed rows from their merged implementation.
 Use the same-line `<br>**Manual test:** ...` format documented there, preserve
 checkbox state and keep the instruction with its row when moving/removing it.
+Interactive agents perform these writes. The optional API controller does not
+yet implement this maintenance; keep it disabled for this workflow until a
+separate reviewed controller change supports it.
 
 Re-fetch immediately before writing. If the body changed, reapply the requested
 delta to that latest body; do not write an earlier reconstructed copy. GitHub
@@ -89,7 +101,7 @@ completion permits merge.
 | Request | Result |
 |---|---|
 | Discuss a possible change | Discuss only; create nothing. |
-| Create an issue from the agreement, without queueing | Search first; create/reuse the issue and parent; leave #1058 unchanged. |
+| Create an issue from the agreement, without queueing | Search first; create/reuse the issue and parent; do not queue it. Apply only the standing maintenance exception to #1058 unless the user forbids queue edits. |
 | Update existing issue #123 | Update #123; retain its queue position. |
 | Queue #123, no position | Append if absent; retain its position if already queued. |
 | Put #123 at the top | Move its sole row to position 1; preserve every other row and gate. |

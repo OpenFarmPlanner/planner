@@ -32,7 +32,11 @@ neither creation nor implementation. When queueing is requested without a
 position, append an absent item; keep an existing item at its current position.
 Explicit positions refer to displayed rows under Ordered work items, including
 completed rows and PR gates, unless the user specifies eligible items instead.
-Do not change unrelated rows or prose. Re-fetch before writing and verify live
+Do not change unrelated rows or prose. The standing maintenance below is an
+explicit exception for queue inspections, including create-only issue requests:
+acceptance cleanup, missing completed-item test hints and implementation-PR
+gates. An explicit user instruction not to edit the queue takes precedence.
+Re-fetch before writing and verify live
 order afterward; issue-body writes do not offer atomic compare-and-swap through
 these clients, so report unreconciled concurrent edits instead of overwriting.
 
@@ -68,12 +72,27 @@ merging. Never infer acceptance from closure, merge, passing tests or AI review,
 and never check boxes automatically. A failed manual test leaves the box
 unchecked; record the necessary follow-up work explicitly.
 
+Before skipping a closed issue, inspect its implementation PRs. For any open
+implementation PR or PR closed without merging, retain the issue and insert an
+explicit unchecked `- [ ] PR #N` gate immediately before it (reuse an existing
+gate instead of duplicating it). Both current automated selectors skip closed
+issues without discovering linked PRs, so retaining the issue alone cannot
+preserve this gate. Resolve the PR before continuing with later work.
+
 For cleanup, re-fetch the queue immediately before writing, recheck the status
 and checked state of each candidate against that latest body, and remove only
 eligible rows. Preserve all other rows, their relative order and surrounding
 prose, then verify the live result. This standing cleanup authorization applies
 to agents following these instructions; the marker workflow only reconciles
 labels and does not remove rows.
+
+Interactive commissioned agents perform this maintenance directly. The optional
+API controller currently neither retains manual-test instructions in its author
+output nor writes them after merging, and it does not perform the cleanup or
+linked-PR discovery above. It is not an implementation of these maintenance
+rules. Keep that route disabled for this workflow until a separate reviewed
+controller change supports them; the existing subscription chat is the current
+execution route. This documentation change does not enable or modify it.
 
 ## Subscription execution and independent review handoff
 
