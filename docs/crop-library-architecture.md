@@ -435,7 +435,10 @@ The public Crop Library follows an open-data model:
   atomic project/source locks protect the import; the server also rejects a
   stale unlinked variety match. Repeated clicks are ignored while pending.
   Search, filters and the open browser survive success, and the entry becomes
-  linked and up to date. No project values are published. Unlinking retains the
+  linked and up to date. If the subsequent status refresh fails, the imported
+  culture, selection and search stay visible; retrying the refresh does not
+  repeat the import, including when a retry also fails. No project values are
+  published. Unlinking retains the
   culture, while explicit copy APIs retain their existing behavior.
 - **Reproducible local import acceptance data.** The guarded
   `seed_library_import_acceptance` management command supports

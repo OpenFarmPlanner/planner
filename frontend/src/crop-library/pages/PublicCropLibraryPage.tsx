@@ -850,10 +850,12 @@ export default function PublicCropLibraryPage() {
     }, 0);
   }, [crops.length, loadStatus, selectedCropId]);
 
-  const loadCrops = useCallback(async (): Promise<void> => {
+  const loadCrops = useCallback(async (
+    { preserveExisting = false }: { preserveExisting?: boolean } = {},
+  ): Promise<void> => {
     const requestId = cropListRequestIdRef.current + 1;
     cropListRequestIdRef.current = requestId;
-    setLoadStatus('loading');
+    setLoadStatus(preserveExisting ? 'success' : 'loading');
     setLoadError('');
     try {
       const response = await publicCropAPI.listAll();
@@ -863,10 +865,11 @@ export default function PublicCropLibraryPage() {
         try {
           const selectedCropResponse = await publicCropAPI.get(currentSelectedCropId);
           results = [selectedCropResponse.data, ...results];
-        } catch {
+        } catch (error) {
           if (requestId !== cropListRequestIdRef.current) {
             return;
           }
+          if (preserveExisting) throw error;
           updateSelectedCropId(null);
         }
       }
@@ -880,9 +883,13 @@ export default function PublicCropLibraryPage() {
         return;
       }
       setLoadError(t('library.loadError'));
-      setCrops([]);
-      updateSelectedCropId(null);
-      setLoadStatus('error');
+      if (preserveExisting) {
+        setLoadStatus('success');
+      } else {
+        setCrops([]);
+        updateSelectedCropId(null);
+        setLoadStatus('error');
+      }
     }
   }, [t, updateSelectedCropId]);
 
@@ -999,7 +1006,7 @@ export default function PublicCropLibraryPage() {
       }
       const importedCrop = response.data.crop;
       markProjectImport(publicCropId, importedCrop);
-      if (newEntry) await loadCrops();
+      if (newEntry) await loadCrops({ preserveExisting: true });
       if (mode === 'update') {
         showGlobalSnackbar({ message: t('library.importUpdatedForced', { name }), severity: 'success' });
       } else if (mode === 'new') {
@@ -1561,9 +1568,9 @@ export default function PublicCropLibraryPage() {
       <Box sx={{ width: '100%' }}>
         <Stack spacing={2}>
           <GuestDemoNotice messageKey="cropLibraryNotice" />
-          {loadError ? <Alert severity="error" sx={loadRetryAlertSx} action={<LoadRetryButton disabled={isCropLoading} onClick={() => { void loadCrops(); }} />}>{loadError}</Alert> : null}
+          {loadError ? <Alert severity="error" sx={loadRetryAlertSx} action={<LoadRetryButton disabled={isCropLoading} onClick={() => { void loadCrops({ preserveExisting: crops.length > 0 }); }} />}>{loadError}</Alert> : null}
 
-          {!loadError ? <Box
+          {(!loadError || crops.length > 0) ? <Box
             ref={libraryAreaRef}
             sx={{
               display: 'flex',
@@ -2332,7 +2339,7 @@ export default function PublicCropLibraryPage() {
           crops={filteredLibraryCrops}
         loading={isCropLoading}
         error={loadStatus === 'error' ? loadError : ''}
-        onRetry={() => { void loadCrops(); }}
+        onRetry={() => { void loadCrops({ preserveExisting: crops.length > 0 }); }}
         selectedCropId={selectedCropId}
         selectedSpeciesViewKey={selectedSpeciesViewKey}
         listRef={cropListRef}

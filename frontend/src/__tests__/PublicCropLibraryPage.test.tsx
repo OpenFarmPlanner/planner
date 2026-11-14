@@ -2229,6 +2229,45 @@ describe('PublicCropLibraryPage', () => {
       expect(publicCropApiMocks.importPreview).toHaveBeenCalledTimes(1);
     });
 
+    it('retains the imported crop and search when its status refresh and first retry fail', async () => {
+      const updated = publicCrops.map(crop => ({ ...crop, project_import_status: {
+        crop_id: 99, is_up_to_date: true, is_modified_from_source: false,
+      } }));
+      publicCropApiMocks.list.mockReset().mockResolvedValue(paginated(updated))
+        .mockResolvedValueOnce(paginated(publicCrops))
+        .mockRejectedValueOnce(new Error('Refresh offline'))
+        .mockResolvedValueOnce(paginated([publicCrops[1]]));
+      publicCropApiMocks.get.mockRejectedValueOnce(new Error('Detail refresh offline'));
+      publicCropApiMocks.importToProject.mockResolvedValue({ data: {
+        crop: { id: 99, name: 'Tomate', variety: 'Roma', source_public_crop: 1,
+          source_public_version: 1, is_modified_from_source: false, public_update_available: false },
+        operation: 'created',
+      } });
+      const user = userEvent.setup();
+      renderPage();
+      const search = await screen.findByLabelText('Öffentliche Kulturen durchsuchen');
+      await user.type(search, 'Tomate');
+      await importViaButton(user);
+      const error = 'Die Kulturbibliothek konnte nicht geladen werden.';
+      await screen.findByText(error);
+      const assertRetained = () => {
+        expect(search).toHaveValue('Tomate');
+        expect(within(screen.getByTestId('public-crop-detail-header'))
+          .getByRole('button', { name: 'Bereits verknüpft' })).toBeDisabled();
+        expect(screen.getByRole('option', { name: 'Tomate (Roma)' })).toBeInTheDocument();
+        expect(publicCropApiMocks.importToProject).toHaveBeenCalledTimes(1);
+      };
+      assertRetained();
+      await user.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+      await waitFor(() => expect(publicCropApiMocks.list).toHaveBeenCalledTimes(3));
+      await screen.findByText(error);
+      assertRetained();
+      await user.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+      await waitFor(() => expect(screen.queryByText(error)).not.toBeInTheDocument());
+      expect(publicCropApiMocks.list).toHaveBeenCalledTimes(4);
+      assertRetained();
+    });
+
     it('shows a non-blocking info toast when re-importing an unchanged crop', async () => {
       const user = userEvent.setup();
       const snackbarSpy = vi.fn<(event: Event) => void>();
