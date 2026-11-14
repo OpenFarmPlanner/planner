@@ -3,9 +3,8 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import { i18nReady } from './i18n/config'
 import App from './App.tsx'
-import { ThemeProvider } from '@mui/material/styles'
+import LocalizedThemeProvider from './i18n/LocalizedThemeProvider'
 import { CssBaseline } from '@mui/material'
-import theme from './theme'
 import { CommandProvider } from './commands/CommandProvider'
 import { AuthProvider } from './auth/AuthContext'
 import { FocusManagerProvider } from './focus/FocusManager'
@@ -29,7 +28,7 @@ function renderApp() {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <PrerenderLanguageVisibilityGate>
-        <ThemeProvider theme={theme}>
+        <LocalizedThemeProvider>
           <CssBaseline />
           <AuthProvider>
             <LanguageSynchronizer />
@@ -39,7 +38,7 @@ function renderApp() {
               </CommandProvider>
             </FocusManagerProvider>
           </AuthProvider>
-        </ThemeProvider>
+        </LocalizedThemeProvider>
       </PrerenderLanguageVisibilityGate>
     </StrictMode>,
   )

@@ -81,20 +81,20 @@ class TimingWindowParseError(ValueError):
 def _month_words() -> dict[str, int]:
     names: dict[int, tuple[str, ...]] = {
         1: ('januar', 'jänner', 'jaenner', 'jän', 'jan', 'january', 'janvier', 'janv', 'enero',
-            'ene'),
+            'ene', 'gennaio', 'gen'),
         2: ('februar', 'feber', 'feb', 'february', 'février', 'fevrier', 'févr', 'fevr', 'fév',
-            'fev', 'febrero'),
+            'fev', 'febrero', 'febbraio'),
         3: ('märz', 'maerz', 'mär', 'mrz', 'march', 'mar', 'mars', 'marzo'),
-        4: ('april', 'apr', 'avril', 'avr', 'abril', 'abr'),
-        5: ('mai', 'may', 'mayo'),
-        6: ('juni', 'jun', 'june', 'juin', 'junio'),
-        7: ('juli', 'jul', 'july', 'juillet', 'juil', 'julio'),
+        4: ('april', 'apr', 'avril', 'avr', 'abril', 'abr', 'aprile'),
+        5: ('mai', 'may', 'mayo', 'maggio', 'mag'),
+        6: ('juni', 'jun', 'june', 'juin', 'junio', 'giugno', 'giu'),
+        7: ('juli', 'jul', 'july', 'juillet', 'juil', 'julio', 'luglio', 'lug'),
         8: ('august', 'aug', 'août', 'aout', 'agosto', 'ago'),
-        9: ('september', 'sept', 'sep', 'septembre', 'septiembre', 'setiembre', 'set'),
-        10: ('oktober', 'okt', 'october', 'oct', 'octobre', 'octubre'),
+        9: ('september', 'sept', 'sep', 'septembre', 'septiembre', 'setiembre', 'set', 'settembre'),
+        10: ('oktober', 'okt', 'october', 'oct', 'octobre', 'octubre', 'ottobre', 'ott'),
         11: ('november', 'nov', 'novembre', 'noviembre'),
         12: ('dezember', 'dez', 'december', 'dec', 'décembre', 'decembre', 'déc', 'diciembre',
-             'dic'),
+             'dic', 'dicembre'),
     }
     return {word: month for month, words in names.items() for word in words}
 
@@ -104,16 +104,20 @@ MONTH_WORDS = _month_words()
 DECADE_WORDS: dict[str, str] = {
     **dict.fromkeys(
         ('anfang', 'early', 'beginning', 'start', 'début', 'debut', 'principios', 'principio',
-         'inicios', 'inicio', 'comienzos'),
+         'inicios', 'inicio', 'comienzos', 'inizio'),
         DECADE_EARLY,
     ),
-    **dict.fromkeys(('mitte', 'mid', 'middle', 'mi', 'mediados', 'mitad'), DECADE_MID),
-    **dict.fromkeys(('ende', 'late', 'end', 'fin', 'finales', 'final', 'fines'), DECADE_LATE),
+    **dict.fromkeys(
+        ('mitte', 'mid', 'middle', 'mi', 'mediados', 'mitad', 'metà', 'meta'), DECADE_MID,
+    ),
+    **dict.fromkeys(
+        ('ende', 'late', 'end', 'fin', 'finales', 'final', 'fines', 'fine'), DECADE_LATE,
+    ),
 }
 
 WEEK_WORDS = frozenset({
     'kw', 'kalenderwoche', 'woche', 'wochen', 'cw', 'wk', 'week', 'weeks', 'w',
-    'semaine', 'semaines', 'sem', 's', 'semana', 'semanas',
+    'semaine', 'semaines', 'sem', 's', 'semana', 'semanas', 'settimana', 'settimane', 'sett',
 })
 
 SEPARATOR_WORDS = frozenset({
@@ -122,11 +126,12 @@ SEPARATOR_WORDS = frozenset({
 
 # "from": a filler before a start, but alone it leaves the window open.
 FROM_WORDS = frozenset({
-    'von', 'vom', 'ab', 'from', 'since', 'starting', 'du', 'dès', 'depuis', 'desde',
+    'von', 'vom', 'ab', 'from', 'since', 'starting', 'du', 'dès', 'depuis', 'desde', 'da', 'dal',
 })
 
 FILLER_WORDS = frozenset({
-    'de', 'del', 'of', 'the', 'in', 'im', 'en', 'le', 'la', 'el', 'des', 'calendar', 'kalender',
+    'de', 'del', 'of', 'the', 'in', 'im', 'en', 'le', 'la', 'el', 'di',
+    'des', 'calendar', 'kalender',
 })
 
 _NUMERIC_DATE = re.compile(
@@ -136,7 +141,7 @@ _NUMERIC_DATE = re.compile(
 )
 # Between two windows, like ";". Whole words only; "o." needs its dot, since a
 # bare letter is too easy to misread.
-_WINDOW_SEPARATOR = re.compile(r'[;\n\r]+|\s+(?:oder|or|ou)\s+|\s+o\.\s*', re.IGNORECASE)
+_WINDOW_SEPARATOR = re.compile(r'[;\n\r]+|\s+(?:oder|or|ou|oppure)\s+|\s+o\.\s*', re.IGNORECASE)
 _ORDINAL = re.compile(r'^\d+(?:er|e|st|nd|rd|th|º|ª)$')
 _DASHES = str.maketrans({'–': '-', '—': '-', '‑': '-', '−': '-', '’': "'"})
 

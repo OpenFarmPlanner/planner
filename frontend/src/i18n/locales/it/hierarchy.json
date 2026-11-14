@@ -1,0 +1,247 @@
+{
+  "title": "Superfici coltivate",
+  "addField": "Appezzamento",
+  "addBed": "Aiuola",
+  "addBedToField": "Aggiungi aiuola a questo appezzamento",
+  "createPlantingPlan": "Aggiungi serie",
+  "columns": {
+    "name": "Nome",
+    "location": "Sito",
+    "field": "Appezzamento",
+    "bed": "Aiuola",
+    "area": "Superficie (m²)",
+    "notes": "Note",
+    "length": "Lunghezza (m)",
+    "width": "Larghezza (m)"
+  },
+  "errors": {
+    "load": "Impossibile caricare i dati",
+    "save": "Impossibile salvare",
+    "delete": "Impossibile eliminare",
+    "createField": "Impossibile creare l'appezzamento",
+    "deleteField": "Impossibile eliminare l'appezzamento",
+    "saveBed": "Impossibile salvare l'aiuola",
+    "deleteBed": "Impossibile eliminare l'aiuola"
+  },
+  "validation": {
+    "nameRequired": "Il nome è obbligatorio",
+    "bedAreaExceedsField": "La somma delle superfici delle aiuole ({{sum}} m²) supera la superficie dell'appezzamento ({{max}} m²). Modifica le superfici.",
+    "areaMustBePositive": "La superficie deve essere maggiore di 0.",
+    "areaTooLarge": "La superficie inserita è troppo grande. Inserisci un valore più piccolo.",
+    "lengthNonNegative": "La lunghezza deve essere maggiore o uguale a 0.",
+    "widthNonNegative": "La larghezza deve essere maggiore o uguale a 0.",
+    "lengthNotANumber": "La lunghezza deve essere un numero valido.",
+    "widthNotANumber": "La larghezza deve essere un numero valido.",
+    "duplicateFieldName": "In questo sito esiste già un appezzamento con questo nome.",
+    "duplicateBedName": "In questo appezzamento esiste già un'aiuola con questo nome."
+  },
+  "confirmDelete": "Vuoi davvero eliminare questa voce?",
+  "footer": {
+    "singleLocation": "Espandi gli appezzamenti per aggiungere aiuole",
+    "multipleLocations": "Espandi siti e appezzamenti per aggiungere nuovi appezzamenti e aiuole"
+  },
+  "tooltips": {
+    "expand": "Espandi voce",
+    "collapse": "Comprimi voce",
+    "addField": "Aggiungi appezzamento",
+    "calculatedArea": "La superficie viene calcolata automaticamente da lunghezza × larghezza e non può essere modificata direttamente."
+  },
+  "messages": {
+    "createLocationFirst": "Crea prima un sito.",
+    "singleLocationHint": "Sito: {{name}}",
+    "invalidLocationSelection": "Seleziona un sito valido.",
+    "noBedsHintTitle": "Non ci sono ancora aiuole.",
+    "noBedsHintBeforeIcon": "Aggiungi aiuole usando l'icona",
+    "noBedsHintAfterIcon": "sul rispettivo appezzamento. Compare al passaggio del puntatore.",
+    "noBedsHintMobile": "Tieni premuto l'appezzamento e seleziona «Aggiungi aiuola».",
+    "missingDimensionsHint": "Lunghezza e larghezza sono importanti per il calcolo delle superfici, il fabbisogno di sementi e la pianificazione colturale.",
+    "missingDimensionsHintOptional": "Puoi aggiungere i valori in seguito.",
+    "missingDimensionsCellTooltip": "Questo valore è necessario per calcolare la superficie e per tutta la pianificazione basata su di essa.",
+    "createLocationError": "Impossibile creare il sito.",
+    "locationCreated": "Sito creato.",
+    "unsavedMissingName": "Riga non salvata perché manca il nome.",
+    "unsavedInvalidRowsNavigationWarning": "C'è una riga non salvata senza nome. Verrà persa se lasci la pagina.",
+    "unsavedRowEditNavigationWarning": "È in corso la modifica di una riga. Le modifiche verranno perse se lasci la pagina.",
+    "locationDeleted": "Sito eliminato",
+    "fieldDeleted": "Appezzamento eliminato",
+    "bedDeleted": "Aiuola eliminata",
+    "locationAndBedsDeleted": "Sito e {{count}} aiuole eliminati",
+    "fieldAndBedsDeleted": "Appezzamento e {{count}} aiuole eliminati",
+    "locationsNowVisible": "I siti vengono ora mostrati perché ne esiste più di uno."
+  },
+  "prompts": {
+    "newFieldName": "Nome del nuovo appezzamento:",
+    "selectLocationForField": "Inserisci l'ID del sito per il nuovo appezzamento:\n{{options}}"
+  },
+  "actions": {
+    "addField": "Aggiungi appezzamento",
+    "addBed": "Aggiungi aiuola",
+    "addShortcutHint": "Ins",
+    "createLocation": "Aggiungi sito",
+    "addAdditionalLocation": "Più luoghi? Aggiungi un altro sito",
+    "undo": "Annulla operazione",
+    "addFieldDropdown": "Aggiungi appezzamento",
+    "duplicateBed": "Duplica aiuola",
+    "duplicateShortcutHint": "Ctrl+D",
+    "duplicateShortcutHintMac": "⌘D",
+    "bulkCreateBeds": "Aggiungi più aiuole",
+    "duplicateField": "Duplica appezzamento"
+  },
+  "dialogs": {
+    "addField": {
+      "title": "Aggiungi appezzamento",
+      "nameLabel": "Nome dell'appezzamento",
+      "submit": "Aggiungi"
+    },
+    "addAdditionalLocation": {
+      "title": "Aggiungi un altro sito",
+      "description": "I siti ti aiutano a gestire separatamente le superfici in luoghi diversi. Se il progetto ha un solo luogo, non devi configurare altro.",
+      "nameLabel": "Nome del sito",
+      "submit": "Crea sito"
+    },
+    "unsavedRow": {
+      "title": "Riga non salvata",
+      "message": "Il nome è obbligatorio. Non è possibile salvare questa riga senza un nome.",
+      "continueEditing": "Continua a modificare",
+      "discard": "Scarta"
+    },
+    "bulkCreateBeds": {
+      "title": "Aggiungi più aiuole a {{field}}",
+      "dimensionsSection": "Dimensioni",
+      "orientation": "Orientamento delle aiuole",
+      "orientationLength": "Aiuole lungo la lunghezza",
+      "orientationWidth": "Aiuole lungo la larghezza",
+      "length": "Lunghezza (m)",
+      "width": "Larghezza (m)",
+      "pathWidth": "Passaggio (m)",
+      "pathHelper": "Spazio tra le aiuole",
+      "countSection": "Numero",
+      "count": "Numero di aiuole",
+      "suggestion_one": "Con un passaggio di {{path}} m, {{count}} aiuola entra in {{side}} m.",
+      "suggestion_other": "Con un passaggio di {{path}} m, {{count}} aiuole entrano in {{side}} m.",
+      "suggestionRemaining_one": "Con un passaggio di {{path}} m, entra ancora {{count}} aiuola in {{side}} m ({{existing}}).",
+      "suggestionRemaining_other": "Con un passaggio di {{path}} m, entrano ancora {{count}} aiuole in {{side}} m ({{existing}}).",
+      "existingBeds_one": "compresa {{count}} aiuola esistente",
+      "existingBeds_other": "comprese {{count}} aiuole esistenti",
+      "noSpaceLeft": "In base alle dimensioni dell'appezzamento, non c'è più spazio.",
+      "applySuggestion_one": "Usa {{count}}",
+      "applySuggestion_other": "Usa {{count}}",
+      "namingSection": "Nomi",
+      "firstName": "Nome della prima aiuola",
+      "defaultFirstName": "Aiuola 1",
+      "previewSection": "Anteprima",
+      "previewEmpty": "Inserisci il numero e il nome per vedere qui i nomi delle nuove aiuole.",
+      "previewList": "Nomi delle nuove aiuole",
+      "summary_one": "{{count}} aiuola, {{area}} m² ciascuna, {{total}} m² in totale",
+      "summary_other": "{{count}} aiuole, {{area}} m² ciascuna, {{total}} m² in totale",
+      "areaWarning": "Insieme alle aiuole esistenti ({{existingArea}} m²), le nuove aiuole ({{newArea}} m²) superano la superficie dell'appezzamento ({{fieldArea}} m²). Puoi comunque aggiungerle.",
+      "namesTaken_one": "Questo nome è già usato nell'appezzamento: {{names}}",
+      "namesTaken_other": "Questi nomi sono già usati nell'appezzamento: {{names}}",
+      "positiveNumber": "Deve essere maggiore di 0.",
+      "nonNegativeNumber": "Non può essere negativo.",
+      "wholeNumber": "Inserisci un numero intero di almeno {{min}}.",
+      "tooMany": "Al massimo {{max}} aiuole alla volta.",
+      "saveError": "Impossibile aggiungere le aiuole. Nessuna aiuola è stata salvata.",
+      "submit": "Aggiungi aiuole",
+      "submitCount_one": "Aggiungi {{count}} aiuola",
+      "submitCount_other": "Aggiungi {{count}} aiuole",
+      "created_one": "{{count}} aiuola aggiunta.",
+      "created_other": "{{count}} aiuole aggiunte.",
+      "suggestion_many": "Con un passaggio di {{path}} m, {{count}} aiuole entrano in {{side}} m.",
+      "suggestionRemaining_many": "Con un passaggio di {{path}} m, entrano ancora {{count}} aiuole in {{side}} m ({{existing}}).",
+      "existingBeds_many": "comprese {{count}} aiuole esistenti",
+      "applySuggestion_many": "Usa {{count}}",
+      "summary_many": "{{count}} aiuole, {{area}} m² ciascuna, {{total}} m² in totale",
+      "namesTaken_many": "Questi nomi sono già usati nell'appezzamento: {{names}}",
+      "submitCount_many": "Aggiungi {{count}} aiuole",
+      "created_many": "{{count}} aiuole aggiunte."
+    },
+    "duplicateField": {
+      "title": "Duplica appezzamento",
+      "name": "Nome del nuovo appezzamento",
+      "copyBeds": "Copia aiuole ({{total}})",
+      "replaceSearch": "Sostituisci nei nomi delle aiuole",
+      "replaceWith": "con",
+      "searchNotFound": "Non trovato in alcun nome di aiuola.",
+      "previewSection": "Anteprima",
+      "previewField": "Nuovo appezzamento {{name}}",
+      "previewDimensions": "{{length}} × {{width}} m",
+      "previewBeds_one": "{{count}} aiuola: {{names}}",
+      "previewBeds_other": "{{count}} aiuole: {{names}}",
+      "nameTaken": "In questo sito esiste già un appezzamento con questo nome.",
+      "bedNamesConflict_one": "Dopo la sostituzione, più aiuole avrebbero questo nome: {{names}}",
+      "bedNamesConflict_other": "Dopo la sostituzione, più aiuole condividerebbero uno di questi nomi: {{names}}",
+      "invalidBedNames_one": "Dopo la sostituzione, questo nome di aiuola sarebbe vuoto o troppo lungo: {{names}}",
+      "invalidBedNames_other": "Dopo la sostituzione, questi nomi di aiuola sarebbero vuoti o troppo lunghi: {{names}}",
+      "bedNamesBlocked": "La sostituzione produce nomi di aiuole vuoti o duplicati.",
+      "submit": "Duplica",
+      "saveError": "Impossibile duplicare l'appezzamento. Non è stato salvato nulla.",
+      "created": "Appezzamento «{{name}}» aggiunto",
+      "createdWithBeds_one": "Appezzamento «{{name}}» aggiunto con {{count}} aiuola",
+      "createdWithBeds_other": "Appezzamento «{{name}}» aggiunto con {{count}} aiuole",
+      "previewBeds_many": "{{count}} aiuole: {{names}}",
+      "bedNamesConflict_many": "Dopo la sostituzione, più aiuole condividerebbero uno di questi nomi: {{names}}",
+      "invalidBedNames_many": "Dopo la sostituzione, questi nomi di aiuola sarebbero vuoti o troppo lunghi: {{names}}",
+      "createdWithBeds_many": "Appezzamento «{{name}}» aggiunto con {{count}} aiuole"
+    }
+  },
+  "emptyAreas": {
+    "title": "Nessuna superficie coltivata ancora presente",
+    "description": "Il sito principale non è ancora disponibile per questo progetto. In seguito potrai inserirvi appezzamenti e aiuole.",
+    "missingLocationTitle": "Sito mancante",
+    "missingLocationDescription": "Il sito principale non è ancora disponibile per questo progetto.",
+    "missingFieldTitle": "Appezzamento mancante",
+    "missingFieldSingleLocationDescription": "Crea un appezzamento per iniziare.",
+    "additionalLocationHint": "Se gestisci superfici in più luoghi, puoi anche",
+    "additionalLocationLink": "creare altri siti",
+    "missingFieldMultipleLocationsBeforeIcon": "Aggiungi un appezzamento al sito desiderato usando l'icona",
+    "missingFieldMultipleLocationsAfterIcon": "o il menu contestuale.",
+    "actions": {
+      "createLocation": "Aggiungi sito",
+      "createField": "Aggiungi appezzamento",
+      "createBed": "Aggiungi aiuola"
+    }
+  },
+  "confirm": {
+    "deleteFieldWithBeds": "Vuoi davvero eliminare questo appezzamento? Verranno eliminate anche tutte le aiuole associate.",
+    "deleteBed": "Vuoi davvero eliminare questa aiuola?"
+  },
+  "commands": {
+    "create": "Crea nuovo",
+    "delete": "Elimina (Alt+Maiusc+D)",
+    "keywords": {
+      "create": "nuovo, superfici coltivate, crea",
+      "edit": "modifica",
+      "delete": "elimina"
+    }
+  },
+  "mobile": {
+    "expand": "Espandi: {{name}}",
+    "collapse": "Comprimi: {{name}}",
+    "hasNotes": "Nota presente",
+    "secondary": {
+      "field_zero": "Nessun appezzamento",
+      "field_one": "{{count}} appezzamento",
+      "field_other": "{{count}} appezzamenti",
+      "dimensions": "{{type}} · {{length}} × {{width}} m · {{area}} m²",
+      "noDimensions": "{{type}} · senza dimensioni",
+      "field_many": "{{count}} appezzamenti"
+    },
+    "sheet": {
+      "topLevel": "Livello superiore",
+      "editTitle": "Modifica {{type}}",
+      "createTitle": "Aggiungi {{type}}",
+      "locationNoDimensions": "I siti non hanno dimensioni proprie.",
+      "calculatedArea": "Superficie (calcolata)",
+      "discardTitle": "Scartare le modifiche?",
+      "discardMessage": "Ci sono modifiche non salvate. Vuoi scartarle o continuare a modificare?",
+      "discardKeep": "Continua a modificare",
+      "discardConfirm": "Scarta"
+    },
+    "typeLabel": {
+      "location": "Sito",
+      "field": "Appezzamento",
+      "bed": "Aiuola"
+    }
+  }
+}

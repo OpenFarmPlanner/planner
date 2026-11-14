@@ -224,7 +224,7 @@ describe('PublicLibraryModerationPage', () => {
     expect(approveButton).toBeDisabled();
     await user.hover(approveButton.parentElement as HTMLElement);
     expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'Bitte zuerst in jeder Sprache einen Namen eingeben.',
+      'Bitte zuerst in jeder erforderlichen Sprache einen Namen eingeben.',
     );
 
     await user.type(nameField('Englisch'), 'Tree spinach');

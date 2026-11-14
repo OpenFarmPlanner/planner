@@ -1,0 +1,22 @@
+{
+  "title": "Aiuole",
+  "columns": {
+    "name": "Nome",
+    "field": "Appezzamento",
+    "area": "Superficie (m²)",
+    "notes": "Note"
+  },
+  "errors": {
+    "load": "Impossibile caricare le aiuole",
+    "save": "Impossibile salvare l'aiuola",
+    "delete": "Impossibile eliminare l'aiuola",
+    "loadFields": "Impossibile caricare gli appezzamenti"
+  },
+  "validation": {
+    "nameRequired": "Il nome è obbligatorio",
+    "fieldRequired": "L'appezzamento è obbligatorio"
+  },
+  "confirmDelete": "Vuoi davvero eliminare questa aiuola?",
+  "addButton": "Aggiungi aiuola",
+  "selectField": "Seleziona appezzamento"
+}

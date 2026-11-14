@@ -10,7 +10,7 @@
  * language.
  *
  * Translation keys are grouped into namespaces by functional area; every
- * locale bundle (de, en, fr, es) must define the same keys, with each
+ * locale bundle (de, en, fr, es, it) must define the same keys, with each
  * language's own plural forms (enforced by
  * `src/__tests__/i18nKeyParity.test.ts`).
  */
@@ -50,6 +50,7 @@ const LANGUAGE_BUNDLES: Record<SupportedLanguage, () => Promise<{ default: Langu
   en: () => import('./locales/en/index'),
   fr: () => import('./locales/fr/index'),
   es: () => import('./locales/es/index'),
+  it: () => import('./locales/it/index'),
 };
 
 const bundleRequests = new Map<string, Promise<LanguageBundle>>();

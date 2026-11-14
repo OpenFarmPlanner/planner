@@ -816,13 +816,11 @@ function GanttChartPage() {
             <Typography
               component="h1"
               className="rmg-title"
-              noWrap
               sx={{
                 flex: '0 1 auto',
                 minWidth: 0,
                 overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
+                whiteSpace: 'normal',
               }}
             >
               {title}

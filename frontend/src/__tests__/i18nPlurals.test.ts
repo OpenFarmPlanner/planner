@@ -25,6 +25,7 @@ describe('Intl plural categories', () => {
     expect(categories('en')).toEqual(['other', 'one', 'other', 'other']);
     expect(categories('fr')).toEqual(['one', 'one', 'other', 'many']);
     expect(categories('es')).toEqual(['other', 'one', 'other', 'many']);
+    expect(categories('it-IT')).toEqual(['other', 'one', 'other', 'many']);
   });
 });
 
@@ -34,11 +35,12 @@ describe('plural texts', () => {
     ['en', ['0 planting plans', '1 planting plan', '2 planting plans', '1000000 planting plans']],
     ['fr', ['0 série', '1 série', '2 séries', '1000000 séries']],
     ['es', ['0 series', '1 serie', '2 series', '1000000 series']],
+    ['it', ['0 serie', '1 serie', '2 serie', '1000000 serie']],
   ])('renders search.count in %s for 0, 1, 2 and 1000000', (language, expected) => {
     expect(COUNTS.map((count) => render(language, 'search.count', count))).toEqual(expected);
   });
 
-  it.each(['fr', 'es'])('never falls back to another language for large counts in %s', (language) => {
+  it.each(['fr', 'es', 'it'])('never falls back to another language for large counts in %s', (language) => {
     const fallback = render('en', 'search.count', 1_000_000);
     expect(render(language, 'search.count', 1_000_000)).not.toBe(fallback);
   });

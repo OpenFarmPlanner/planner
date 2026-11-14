@@ -24,10 +24,10 @@ project templates) must fall back explicitly; see docs/i18n.md.
 from __future__ import annotations
 
 # Ordered by preference for the "any other translation" fallback step.
-SUPPORTED_LANGUAGE_CODES: tuple[str, ...] = ('en', 'de', 'fr', 'es')
+SUPPORTED_LANGUAGE_CODES: tuple[str, ...] = ('en', 'de', 'fr', 'es', 'it')
 
 # Public crop species become shared lookup data once approved, so a species
-# needs a common name in every UI language before it is published. Keep this
+# needs a common name in each required language before publication. Keep this
 # list explicit so adding a UI language does not silently make every old
 # proposal unapprovable until its translations are backfilled.
 REQUIRED_PUBLIC_CROP_SPECIES_LANGUAGE_CODES: tuple[str, ...] = ('de', 'en', 'fr', 'es')
@@ -43,6 +43,7 @@ UI_LANGUAGE_CHOICES = [
     ('en', 'English'),
     ('fr', 'Français'),
     ('es', 'Español'),
+    ('it', 'Italiano'),
 ]
 UI_LANGUAGE_VALUES = frozenset({UI_LANGUAGE_AUTO, *SUPPORTED_LANGUAGE_CODES})
 
@@ -52,7 +53,7 @@ def normalize_language_tag(value: str | None) -> str:
 
     ``de-AT``/``de_DE``/``DE`` all become ``de``; ``en-GB`` becomes ``en``;
     ``fr-CA`` becomes ``fr``; ``es-419``/``es-MX`` become ``es``. Unsupported
-    tags (``it``) and nonsense become ``''`` so callers can decide the
+    tags (``ja``) and nonsense become ``''`` so callers can decide the
     fallback.
     """
     normalized = (value or '').strip().lower().replace('_', '-')
@@ -70,7 +71,7 @@ def resolve_language_tag(value: str | None, *, default: str = DEFAULT_LANGUAGE_C
 def parse_accept_language(header: str | None) -> str:
     """First supported language in an ``Accept-Language`` header, or ''.
 
-    Quality values are honoured, so ``it;q=0.9, de;q=0.8`` resolves to ``de``
+    Quality values are honoured, so ``ja;q=0.9, de;q=0.8`` resolves to ``de``
     rather than to the header's first (unsupported) entry.
     """
     if not header:

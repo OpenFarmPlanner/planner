@@ -1,0 +1,289 @@
+{
+  "showTooltip": "Mostra guida",
+  "title": "Guida",
+  "globalTitle": "Panoramica: come funziona OpenFarmPlanner",
+  "heading": "Come funziona OpenFarmPlanner",
+  "intro": "OpenFarmPlanner comprende diverse pagine che lavorano insieme:",
+  "sections": [
+    {
+      "title": "Panoramica",
+      "points": [
+        "Vedi a colpo d'occhio le attività imminenti di semina, trapianto, vivaio e raccolta."
+      ]
+    },
+    {
+      "title": "Superfici coltivate",
+      "points": [
+        "Crea qui appezzamenti e aiuole. Aggiungi altri siti quando ne hai bisogno."
+      ]
+    },
+    {
+      "title": "Colture",
+      "points": [
+        "Inserisci qui i dati delle tue colture oppure attingi alla biblioteca delle colture."
+      ]
+    },
+    {
+      "title": "Piano colturale",
+      "points": [
+        "Pianifica quale coltura coltivare in quale aiuola e quando."
+      ]
+    },
+    {
+      "title": "Calendario",
+      "points": [
+        "Consulta qui la sequenza temporale delle tue serie."
+      ]
+    },
+    {
+      "title": "Rese",
+      "points": [
+        "Vedi le quantità di raccolto previste dalle tue serie."
+      ]
+    },
+    {
+      "title": "Fabbisogno di sementi",
+      "points": [
+        "Vedi quante sementi servono per le tue serie."
+      ]
+    },
+    {
+      "title": "Piantine",
+      "points": [
+        "Vedi quante piantine devi ordinare per i trapianti con piantine acquistate."
+      ]
+    },
+    {
+      "title": "Fornitori",
+      "points": [
+        "Registra qui i fornitori per collegarli alle colture."
+      ]
+    },
+    {
+      "title": "Stagioni",
+      "points": [
+        "Le serie appartengono sempre a una stagione. Usa il selettore delle stagioni per cambiare la stagione attiva o crearne una nuova."
+      ]
+    }
+  ],
+  "workflowTitle": "Flusso di lavoro",
+  "workflow": "Superfici coltivate → Colture → Piano colturale → Calendario colturale → Fabbisogno di sementi e piantine",
+  "pages": {
+    "dashboard": {
+      "title": "Guida: panoramica",
+      "intro": "La lista di configurazione ti guida attraverso appezzamenti, aiuole, colture e serie. La panoramica delle attività mostra le attività salvate della stagione attiva negli stati Da fare, In corso e Completate. Filtra per periodo, coltura, appezzamento o assegnatario. Gli indicatori contano le attività non completate. Sugli schermi grandi puoi trascinare le schede (sui dispositivi touch dopo una breve pressione prolungata); coltura e appezzamento nella scheda rimandano ai rispettivi dettagli; il menu della scheda consente anche di cambiare stato da tastiera. Gli schermi piccoli mostrano un elenco compatto."
+    },
+    "locations": {
+      "title": "Guida: siti",
+      "intro": "Gestisci qui i siti del tuo progetto. Costituiscono il livello più alto della struttura delle superfici coltivate.",
+      "sections": [
+        {
+          "title": "Come usarlo",
+          "points": [
+            "Crea siti e aggiungi coordinate, indirizzo, tipo di terreno o note.",
+            "Modifica i siti esistenti dalle azioni dell'elenco."
+          ]
+        },
+        {
+          "title": "Collegamenti con le altre pagine",
+          "points": [
+            "Nella pagina delle superfici coltivate aggiungi appezzamenti e aiuole per ogni sito.",
+            "Le attività derivano dalle serie."
+          ]
+        }
+      ],
+      "symbolsTitle": "Icone e comandi",
+      "symbols": {
+        "add": "Aggiungi un nuovo sito",
+        "edit": "Modifica sito",
+        "delete": "Elimina sito"
+      }
+    },
+    "fields": {
+      "title": "Guida: appezzamenti",
+      "intro": "Gestisci qui gli appezzamenti di un sito. Un appezzamento raggruppa più aiuole.",
+      "sections": [
+        {
+          "title": "Come usarlo",
+          "points": [
+            "Usa «Nuovo» per creare un appezzamento.",
+            "Fai doppio clic su una cella, premi Invio o inizia a digitare per modificare una voce. Sui dispositivi touch basta un tocco."
+          ]
+        }
+      ]
+    },
+    "beds": {
+      "title": "Guida: aiuole",
+      "intro": "Gestisci qui le aiuole. Ogni aiuola appartiene a un appezzamento e può poi essere usata nelle serie.",
+      "sections": [
+        {
+          "title": "Come usarlo",
+          "points": [
+            "Usa «Nuovo» per creare un'aiuola.",
+            "Fai doppio clic su una cella, premi Invio o inizia a digitare per modificare una voce. Sui dispositivi touch basta un tocco."
+          ]
+        },
+        {
+          "title": "Collegamenti con le altre pagine",
+          "points": [
+            "Nelle serie assegni le colture a specifiche aiuole."
+          ]
+        }
+      ]
+    },
+    "areas": {
+      "title": "Guida: superfici coltivate - vista elenco",
+      "intro": "Gestisci qui la struttura delle superfici della tua azienda, dai siti agli appezzamenti fino alle singole aiuole.\n\nAggiungi siti, appezzamenti e aiuole con {{addIcon}}, che compare passando il puntatore su un elemento.\n\nPuoi modificare le voci direttamente nella tabella. {{createPlanIcon}} su un'aiuola crea subito una serie per essa. Altre azioni, come rinominare o eliminare, sono nel menu contestuale del clic destro.\n\nNel menu contestuale di un appezzamento, «Aggiungi più aiuole» crea in una volta aiuole delle stesse dimensioni, mentre «Duplica appezzamento» copia l'appezzamento insieme alle sue aiuole.",
+      "symbolsTitle": "Icone e comandi",
+      "symbols": {
+        "expandToggle": "Espandi o comprimi sezione",
+        "add": "Crea un nuovo elemento",
+        "delete": "Elimina elemento",
+        "createPlan": "Crea una serie per questa aiuola",
+        "dimensions": "Imposta l'orientamento di lunghezza e larghezza per la vista grafica"
+      }
+    },
+    "crops": {
+      "title": "Guida: colture",
+      "intro": "Gestisci qui le colture e le loro proprietà principali. Questi dati vengono usati nelle serie, nel calendario e nel fabbisogno di sementi.",
+      "sections": [
+        {
+          "title": "Come usarlo",
+          "points": [
+            "Seleziona una coltura per visualizzarne o modificarne i dettagli oppure creare serie.",
+            "Aggiungi varietà a una coltura. I valori non inseriti per una varietà vengono ereditati dalla coltura.",
+            "{{moreIcon}} apre altre azioni come versioni, esportazione o eliminazione della coltura selezionata.",
+            "Usa «Importa/Esporta» per scambiare colture tramite foglio di calcolo. Puoi scaricare un modello nella finestra di importazione.",
+            "Condividi le tue colture con «Condividi nella biblioteca» nella coltura oppure con l'icona accanto alla coltura nell'elenco. Nella biblioteca trovi le colture di altre persone e puoi importarle nel tuo progetto."
+          ]
+        },
+        {
+          "title": "Collegamenti con le altre pagine",
+          "points": [
+            "Nelle serie assegni le colture a specifiche aiuole e periodi.",
+            "La famiglia botanica e l'intervallo di rotazione in «Proprietà della rotazione colturale» vengono usati per verificare la rotazione nelle serie.",
+            "Calendario colturale, fabbisogno di sementi e fabbisogno di piantine usano questi dati per pianificare tempi e quantità."
+          ]
+        }
+      ],
+      "symbolsTitle": "Icone e comandi",
+      "symbols": {
+        "add": "Aggiungi una coltura o varietà",
+        "createPlan": "Crea una serie per questa coltura",
+        "edit": "Modifica dati della coltura",
+        "more": "Apri altre azioni",
+        "libraryNotLinked": "Non ancora nella biblioteca delle colture: fai clic per condividere",
+        "libraryUpToDate": "Corrisponde alla versione attuale nella biblioteca delle colture",
+        "libraryPull": "Versione più recente nella biblioteca: esamina e applica le modifiche",
+        "libraryPush": "La tua coltura differisce dalla biblioteca: condividi i valori o conservali localmente",
+        "libraryPending": "Le tue modifiche alla biblioteca sono in attesa di approvazione",
+        "pinned": "Valore fissato localmente: non viene sovrascritto dagli aggiornamenti della biblioteca"
+      }
+    },
+    "cropLibrary": {
+      "title": "Guida: biblioteca delle colture",
+      "intro": "La biblioteca contiene colture pubblicate dalla comunità e utilizzabili in più progetti.",
+      "sections": [
+        {
+          "title": "Collaborazione",
+          "points": [
+            "Gli utenti connessi possono modificare insieme le colture pubbliche.",
+            "Ogni modifica viene salvata come versione con data e autore.",
+            "Puoi ripristinare le versioni precedenti senza eliminare la cronologia.",
+            "In «Discussioni» puoi parlare con altri di una voce."
+          ]
+        },
+        {
+          "title": "Uso delle colture",
+          "points": [
+            "Importa le colture utili come copia nel progetto attuale.",
+            "Quando una coltura importata cambia nella biblioteca, lo vedi nella tua coltura e decidi quali valori applicare.",
+            "Puoi fissare localmente i tuoi valori. Non verranno sovrascritti dagli aggiornamenti della biblioteca."
+          ]
+        }
+      ]
+    },
+    "plantingPlans": {
+      "title": "Guida: piano colturale",
+      "intro": "Pianifica quale coltura coltivare in quale aiuola e quando.\n\nPuoi creare e modificare le voci direttamente nella tabella. Sono mostrate le serie della stagione attiva. Usa il campo di ricerca e «Filtra» per trovare rapidamente le voci; fai clic destro per duplicare una serie.\n\nData di semina e data di trapianto sono collegate: modificandone una, l'altra segue. Se acquisti piantine, scegli il tipo di coltivazione «Trapianto di piantine acquistate». Appariranno nel fabbisogno di piantine invece che in quello di sementi.\n\nQuando assegni un'aiuola, viene verificata la rotazione colturale. Se la stessa famiglia botanica torna troppo presto nell'aiuola, compare un avviso. «Mostra aiuole adatte» elenca le aiuole libere nel periodo e compatibili con la rotazione colturale.",
+      "symbolsTitle": "Icone e comandi",
+      "symbols": {
+        "add": "Crea una nuova serie",
+        "mobileAdd": "Crea rapidamente una voce da telefono",
+        "notes": "Apri note e allegati di una voce",
+        "edit": "Modifica i valori direttamente nella tabella"
+      }
+    },
+    "calendar": {
+      "title": "Guida: calendario colturale",
+      "intro": "Il calendario colturale mostra la sequenza temporale delle serie. Ti aiuta a individuare occupazione, fasi in vivaio, periodi di raccolta e possibili sovrapposizioni.\n\nPassa il puntatore sulle voci per ulteriori dettagli.\n\nCon «Sposta periodo» trascini una serie a sinistra o a destra. Tutte le fasi della serie si spostano insieme.",
+      "symbolsTitle": "Icone e comandi",
+      "symbols": {
+        "tabs": "Passa dalla vista di occupazione a quella del vivaio e viceversa",
+        "tooltip": "Mostra ulteriori dettagli"
+      }
+    },
+    "seedDemand": {
+      "title": "Guida: fabbisogno di sementi",
+      "intro": "Qui vedi quante sementi servono per le serie della stagione attiva: per la semina diretta e per i trapianti di piantine autoprodotte. La quantità dipende dalla dose di semina della coltura e dalla superficie pianificata.\n\nI trapianti di piantine acquistate non sono inclusi qui: li trovi nel fabbisogno di piantine. Le date di semina sono mostrate nella vista vivaio del calendario colturale.",
+      "symbolsTitle": "Icone e comandi",
+      "symbols": {
+        "supplierSelect": "Imposta il fornitore per coltura",
+        "packageInfo": "Esamina le combinazioni consigliate di confezioni"
+      }
+    },
+    "youngPlantDemand": {
+      "title": "Guida: fabbisogno di piantine",
+      "intro": "Qui vedi quante piantine devi ordinare per i trapianti con piantine acquistate della stagione attiva, raggruppate per coltura, varietà e settimana di trapianto. I trapianti di piantine autoprodotte richiedono invece sementi: consulta il fabbisogno di sementi.\n\nIl numero deriva dalla superficie della serie e dalle distanze sulla fila e tra le file della coltura. La riserva per le perdite viene arrotondata per eccesso a piante intere.",
+      "symbolsTitle": "Simboli e comandi",
+      "symbols": {
+        "expand": "Mostra o nascondi le serie sottostanti"
+      }
+    },
+    "suppliers": {
+      "title": "Guida: fornitori",
+      "intro": "Gestisci qui i fornitori di sementi e le informazioni sulle confezioni.",
+      "symbolsTitle": "Icone e comandi",
+      "symbols": {
+        "add": "Aggiungi fornitore",
+        "edit": "Modifica dati del fornitore",
+        "delete": "Rimuovi fornitore"
+      }
+    },
+    "graphical": {
+      "title": "Guida: superfici coltivate - vista grafica",
+      "intro": "Vedi qui siti, appezzamenti e aiuole disposti nello spazio. La vista grafica ti aiuta a esaminare e modificare visivamente la struttura delle superfici.",
+      "sections": [
+        {
+          "title": "Come usarlo",
+          "points": [
+            "Fai clic su un'aiuola o un appezzamento per mostrarne i dettagli.",
+            "Sposta gli elementi in modalità «Modifica».",
+            "Trascina uno spazio vuoto per spostare la vista.",
+            "Usa lo zoom con la rotellina del mouse o un gesto di pizzicamento."
+          ]
+        },
+        {
+          "title": "Collegamenti con le altre pagine",
+          "points": [
+            "La vista grafica mostra le stesse superfici della vista elenco."
+          ]
+        }
+      ],
+      "symbolsTitle": "Icone e comandi",
+      "symbols": {
+        "panArrows": "Sposta la vista in alto, a sinistra, a destra o in basso",
+        "zoomIn": "Ingrandisci",
+        "zoomOut": "Riduci",
+        "fit": "Adatta l'intera vista",
+        "fullscreen": "Mostra a schermo intero",
+        "editToggle": "Modifica disposizione: trascina per spostare e disporre aiuole e appezzamenti di un sito"
+      }
+    },
+    "yieldOverview": {
+      "title": "Guida: panoramica delle rese",
+      "intro": "La panoramica delle rese è una previsione: distribuisce il raccolto previsto delle serie della stagione attiva sui rispettivi periodi di raccolta. Si basa sulla superficie o sul numero di piante pianificati e sulla resa prevista della coltura per m² o per pianta. Le raccolte effettive non vengono registrate.\n\nLimita la vista a una coltura o passa da settimane a mesi in «Visualizzazione». Passa il puntatore su una barra per vedere periodo, coltura e quantità del raccolto.",
+      "points": []
+    }
+  }
+}

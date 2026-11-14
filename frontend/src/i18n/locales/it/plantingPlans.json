@@ -1,0 +1,403 @@
+{
+  "title": "Piano colturale",
+  "columns": {
+    "crop": "Coltura (varietà)",
+    "location": "Sito",
+    "field": "Appezzamento",
+    "bed": "Aiuola",
+    "fieldBed": "Appezzamento{{separator}}Aiuola",
+    "sowingDate": "Data di semina",
+    "plantingDate": "Data di trapianto",
+    "harvestDate": "Data di raccolta",
+    "harvestStartDate": "Inizio della raccolta",
+    "harvestEndDate": "Fine della raccolta",
+    "areaM2": "Superficie (m²)",
+    "plantsCount": "Piante (≈)",
+    "notes": "Note",
+    "cultivationType": "Tipo di coltivazione"
+  },
+  "labels": {
+    "coupled": "collegati"
+  },
+  "actions": {
+    "useAvailableArea": "Usa superficie rimanente",
+    "useBedArea": "Usa superficie dell'aiuola",
+    "copyPlantingPlan": "Copia serie",
+    "createPlantingPlan": "Crea serie"
+  },
+  "feedback": {
+    "areaAutoFilled": "Superficie rimanente disponibile applicata automaticamente: {{area}}"
+  },
+  "dateEditor": {
+    "openCalendar": "Apri calendario"
+  },
+  "areaValidation": {
+    "maxAreaApplied": "Superficie massima disponibile applicata: {{area}}",
+    "remainingLimitTitle": "La superficie indicata supera quella rimanente disponibile in questa aiuola.",
+    "noRemainingTitle": "Non c'è superficie libera per questa aiuola nel periodo selezionato.",
+    "bedLimitTitle": "La superficie indicata supera le dimensioni di questa aiuola.",
+    "availableArea": "Superficie rimanente disponibile: {{area}}",
+    "bedArea": "Superficie dell'aiuola: {{area}}",
+    "occupiedArea": "Già occupata: {{area}}",
+    "requestedArea": "Richiesta: {{area}}",
+    "acceptedArea": "Applicata: {{area}}",
+    "applyRemainingArea": "Usa superficie rimanente",
+    "applyBedArea": "Usa superficie dell'aiuola",
+    "successionLimit_one": "Superficie dell'aiuola superata. Una coltura successiva può seguire {{crop}} non prima di {{count}} giorno dall'inizio della raccolta ({{date}}).",
+    "successionLimit_other": "Superficie dell'aiuola superata. Una coltura successiva può seguire {{crop}} non prima di {{count}} giorni dall'inizio della raccolta ({{date}}).",
+    "successionLimit_many": "Superficie dell'aiuola superata. Una coltura successiva può seguire {{crop}} non prima di {{count}} giorni dall'inizio della raccolta ({{date}})."
+  },
+  "placeholders": {
+    "selectCrop": "Seleziona coltura",
+    "selectCultivationType": "Seleziona tipo di coltivazione",
+    "selectArea": "Seleziona superficie coltivata",
+    "plantsCount": "Inserisci quantità",
+    "maxKeyword": "max"
+  },
+  "tooltips": {
+    "coupledFields": "Superficie utilizzata: collegata al numero di piante. Le modifiche aggiornano automaticamente l'altro valore.",
+    "areaAutoMax": "Lascia vuoto o inserisci «max» per usare automaticamente la superficie rimanente massima disponibile.",
+    "areaInputTitle": "Superficie occupata da questa serie",
+    "areaInputDescription": "La superficie dell'aiuola occupata da questa serie. Le modifiche alla superficie o al numero di piante aggiornano automaticamente l'altro valore. Lascia vuoto o inserisci «max» per usare la superficie rimanente massima disponibile.",
+    "plantsFromSpacing": "Numero di piante: collegato alla superficie utilizzata. Le modifiche aggiornano automaticamente l'altro valore.",
+    "calculatedHarvestStartDate": "Calcolato automaticamente dalla data di trapianto e dalla durata della coltura.",
+    "calculatedHarvestEndDate": "Calcolato automaticamente dall'inizio della raccolta e dalla durata della raccolta della coltura.",
+    "missingGrowthDuration": "Impossibile calcolare: questa coltura non ha una durata di crescita.",
+    "missingHarvestDuration": "Impossibile calcolare: questa coltura non ha una durata di raccolta.",
+    "missingGrowthAndHarvestDuration": "Impossibile calcolare: questa coltura non ha né una durata di crescita né una durata di raccolta.",
+    "sowingDateTitle": "Data di semina",
+    "sowingDateDescription": "Collegata alla data di trapianto: data di trapianto meno la durata in vivaio della coltura. Le modifiche aggiornano automaticamente l'altro valore. Coincide con la data di trapianto per la semina diretta.",
+    "plantingDateTitle": "Data di trapianto",
+    "plantingDateDescription": "Collegata alla data di semina. Per la semina diretta coincide con la data di semina. Deve rientrare nella stagione.",
+    "missingPropagationDuration": "Impossibile calcolare: per questa coltura non è impostata una durata in vivaio.",
+    "noOwnPropagation": "Nessun vivaio proprio: le piantine vengono acquistate."
+  },
+  "hints": {
+    "plantingDateSeasonRange": "Entro la stagione: {{start}} – {{end}}"
+  },
+  "errors": {
+    "load": "Impossibile caricare le serie",
+    "save": "Impossibile salvare la serie",
+    "delete": "Impossibile eliminare la serie",
+    "editCropSpacing": "Modifica coltura"
+  },
+  "messages": {
+    "deleted": "Serie eliminata",
+    "plantingPlanCopied": "Serie copiata."
+  },
+  "validation": {
+    "plantingDateRequired": "La data di trapianto è obbligatoria",
+    "cropRequired": "La coltura è obbligatoria",
+    "bedRequired": "L'aiuola è obbligatoria",
+    "cultivationTypeRequired": "Il tipo di coltivazione è obbligatorio",
+    "plantingDateOutsideSeason": "La data di trapianto deve rientrare nella stagione ({{start}} – {{end}}).",
+    "requiredFields": "Compila i seguenti campi obbligatori: {{fields}}",
+    "cropOrBedRequired": "La coltura o l'aiuola è obbligatoria",
+    "areaExceedsRemaining": "La superficie indicata supera quella rimanente disponibile in questa aiuola.",
+    "areaExceedsBedArea": "La superficie indicata supera le dimensioni di questa aiuola.",
+    "bedArea": "Superficie dell'aiuola",
+    "alreadyAllocated": "Occupata",
+    "requestedArea": "Richiesta",
+    "availableArea": "Superficie rimanente disponibile",
+    "noAvailableArea": "Non c'è più superficie libera per questa aiuola nel periodo selezionato."
+  },
+  "confirmDelete": "Vuoi davvero eliminare questa serie?",
+  "addButton": "Aggiungi serie",
+  "cultivationTypes": {
+    "directSowing": "Semina diretta",
+    "preCultivation": "Trapianto",
+    "purchasedTransplant": "Piantine acquistate"
+  },
+  "cultivationTypesLong": {
+    "directSowing": "Semina diretta",
+    "preCultivation": "Trapianto di piantine autoprodotte",
+    "purchasedTransplant": "Trapianto di piantine acquistate"
+  },
+  "areaAssignment": {
+    "title": "Cambia superficie coltivata",
+    "editButton": "Modifica superficie coltivata",
+    "hierarchyHint": "Il sito filtra gli appezzamenti; l'appezzamento filtra le aiuole.",
+    "emptyStateTitle": "Nessuna superficie coltivata disponibile",
+    "emptyStateDescription": "Crea prima appezzamenti e aiuole per assegnare una superficie a una serie.",
+    "emptyStateAction": "Vai a Superfici coltivate",
+    "apply": "Applica",
+    "cancel": "Annulla",
+    "selectLocationFirst": "Seleziona prima un sito.",
+    "noFieldsForLocation": "Nessun appezzamento disponibile per questo sito.",
+    "selectFieldFirst": "Seleziona prima un appezzamento.",
+    "noBedsForField": "Nessuna aiuola disponibile per questo appezzamento.",
+    "selectBedFirst": "Seleziona prima un'aiuola."
+  },
+  "mobile": {
+    "showDetails": "Mostra dettagli",
+    "hideDetails": "Nascondi dettagli",
+    "fabLabel": "Aggiungi serie",
+    "fabAria": "Aggiungi serie",
+    "emptyTitle": "Nessuna serie ancora presente",
+    "emptyDescription": "Crea la tua prima serie per gestire in modo chiaro da telefono coltura, tipo di coltivazione e periodi.",
+    "emptyCta": "Aggiungi serie",
+    "createTitle": "Aggiungi serie",
+    "editTitle": "Modifica serie",
+    "editAria": "Modifica serie",
+    "actionsAria": "Azioni per la serie {{plan}}",
+    "notesPhotos": "Foto",
+    "notesPhotosAria": "Apri note e foto"
+  },
+  "emptyStates": {
+    "createBlockedTooltip": "Le aiuole si aggiungono all'interno degli appezzamenti nella pagina Superfici coltivate.",
+    "states": {
+      "fields": {
+        "title": "Non puoi ancora aggiungere una serie.",
+        "description": "Apri Superfici coltivate e aggiungi un appezzamento al sito appropriato."
+      },
+      "beds": {
+        "title": "Non hai ancora creato aiuole.",
+        "description": "Le aiuole sono la base delle serie. Apri Superfici coltivate e aggiungi un'aiuola da un appezzamento."
+      },
+      "crops": {
+        "title": "Non hai ancora creato colture.",
+        "description": "Le colture sono necessarie per creare le serie."
+      },
+      "seasons": {
+        "title": "Nessuna stagione ancora creata",
+        "description": "Crea una stagione prima di aggiungere serie."
+      },
+      "plans": {
+        "title": "Non hai ancora creato una serie.",
+        "description": "Crea ora la tua prima serie."
+      }
+    },
+    "actions": {
+      "createField": "Aggiungi appezzamento",
+      "createAreas": "Vai a Superfici coltivate",
+      "openCropLibrary": "Apri biblioteca delle colture",
+      "addCrop": "Aggiungi coltura",
+      "createSeason": "Crea stagione"
+    }
+  },
+  "commands": {
+    "edit": "Modifica serie (Alt+E)",
+    "delete": "Elimina serie (Canc)",
+    "keywords": {
+      "edit": "serie, modifica",
+      "delete": "serie, elimina",
+      "search": "serie, cerca, trova, filtra"
+    },
+    "focusSearch": "Attiva ricerca serie (/)"
+  },
+  "loadingPlans": "Caricamento delle serie…",
+  "search": {
+    "placeholderDesktop": "Cerca serie",
+    "placeholderMobile": "Cerca",
+    "ariaLabel": "Cerca serie",
+    "clear": "Cancella ricerca",
+    "shortcutHintAria": "Premi / per attivare la ricerca",
+    "filterButton": "Filtra",
+    "filterButtonActiveAria_one": "Filtri, {{count}} filtro attivo",
+    "filterButtonActiveAria_other": "Filtri, {{count}} filtri attivi",
+    "columnsButton": "Colonne",
+    "panelTitle": "Filtra",
+    "sheetTitle": "Filtra e ordina",
+    "fields": {
+      "sort": "Ordina per",
+      "location": "Sito",
+      "field": "Appezzamento",
+      "cultivationType": "Tipo di coltivazione",
+      "crop": "Coltura",
+      "plantingDate": "Periodo colturale",
+      "harvestStartDate": "Inizio della raccolta",
+      "harvestEndDate": "Fine della raccolta",
+      "rotation": "Rotazione colturale",
+      "occupancy": "Occupazione dell'aiuola",
+      "timing": "Periodi"
+    },
+    "monthFrom": "Da",
+    "monthTo": "A",
+    "monthRangeSeparator": "a",
+    "fieldHint": "Suggerimento: scegli prima un sito per vedere solo i suoi appezzamenti.",
+    "sortOptions": {
+      "plantingDateAsc": "Data di trapianto crescente",
+      "plantingDateDesc": "Data di trapianto decrescente",
+      "cropAsc": "Coltura, dalla A alla Z",
+      "harvestStartAsc": "Inizio della raccolta crescente"
+    },
+    "count_one": "{{count}} serie",
+    "count_other": "{{count}} serie",
+    "filteredCountDesktop": "{{shown}} di {{total}} serie",
+    "filteredCountMobile": "{{shown}} di {{total}}",
+    "reset": "Reimposta",
+    "matches_one": "{{count}} risultato",
+    "matches_other": "{{count}} risultati",
+    "showResults_one": "Mostra {{count}} serie",
+    "showResults_other": "Mostra {{count}} serie",
+    "chip": "{{filter}}: {{values}}",
+    "chipDateLabels": {
+      "plantingDate": "Data di trapianto",
+      "harvestStartDate": "Inizio della raccolta",
+      "harvestEndDate": "Fine della raccolta"
+    },
+    "chipMonthRange": {
+      "range": "{{filter}}: da {{from}} a {{to}}",
+      "from": "{{filter}}: da {{from}}",
+      "to": "{{filter}}: fino a {{to}}"
+    },
+    "removeChip": "Rimuovi filtro {{filter}}",
+    "resetAll": "Reimposta tutto",
+    "activeFiltersAria": "Filtri attivi",
+    "synonymHint": "Sinonimo: {{name}}",
+    "notesMatchAria": "Corrispondenza nelle note",
+    "empty": {
+      "titleWithQuery": "Nessuna serie trovata per «{{query}}»",
+      "title": "Nessuna serie trovata",
+      "hintWithFilters_one": "Senza i filtri attivi ci sarebbe {{count}} risultato.",
+      "hintWithFilters_other": "Senza i filtri attivi ci sarebbero {{count}} risultati.",
+      "hint": "Controlla l'ortografia o cerca una coltura, varietà o aiuola.",
+      "clearSearch": "Cancella ricerca",
+      "resetFilters": "Reimposta filtri",
+      "hintWithFilters_many": "Senza i filtri attivi ci sarebbero {{count}} risultati."
+    },
+    "rotationOptions": {
+      "conflict": "Conflitto",
+      "accepted": "Accettato",
+      "info": "Non verificabile"
+    },
+    "occupancyOptions": {
+      "harvestOverlap": "Sovrapposizione delle raccolte"
+    },
+    "timingOptions": {
+      "outsideWindow": "Fuori dai periodi"
+    },
+    "filterButtonActiveAria_many": "Filtri, {{count}} filtri attivi",
+    "count_many": "{{count}} serie",
+    "matches_many": "{{count}} risultati",
+    "showResults_many": "Mostra {{count}} serie"
+  },
+  "rotation": {
+    "iconAria": {
+      "conflict": "Conflitto di rotazione colturale, cambia superficie coltivata",
+      "info": "Rotazione colturale non verificabile, cambia superficie coltivata"
+    },
+    "status": {
+      "conflict": "Conflitto",
+      "accepted": "Conflitto accettato",
+      "hint": "Suggerimento",
+      "info": "Impossibile verificare",
+      "ok": "Compatibile"
+    },
+    "checking": "Verifica della rotazione colturale…",
+    "checkError": "Non è stato possibile verificare la rotazione colturale al momento. Puoi comunque salvare.",
+    "conflict": {
+      "title": "Rotazione colturale: {{family}} troppo presto in questa aiuola",
+      "textCrop_one": "{{previousCulture}} ({{family}}) è stata coltivata in {{bed}} nel {{year}}. {{culture}} ha un intervallo di rotazione di {{count}} anno, quindi il primo anno possibile è il {{earliestYear}}.",
+      "textCrop_other": "{{previousCulture}} ({{family}}) è stata coltivata in {{bed}} nel {{year}}. {{culture}} ha un intervallo di rotazione di {{count}} anni, quindi il primo anno possibile è il {{earliestYear}}.",
+      "textFamily_one": "{{previousCulture}} ({{family}}) è stata coltivata in {{bed}} nel {{year}}. {{family}} ha un intervallo di rotazione predefinito di {{count}} anno, quindi il primo anno possibile è il {{earliestYear}}.",
+      "textFamily_other": "{{previousCulture}} ({{family}}) è stata coltivata in {{bed}} nel {{year}}. {{family}} ha un intervallo di rotazione predefinito di {{count}} anni, quindi il primo anno possibile è il {{earliestYear}}.",
+      "showSuggestions": "Mostra aiuole adatte",
+      "showBedHistory": "Visualizza cronologia di {{bed}}",
+      "hideBedHistory": "Nascondi cronologia di {{bed}}",
+      "changeBreak": "Cambia intervallo di rotazione di {{culture}}",
+      "setBreak": "Imposta intervallo di rotazione per {{culture}}",
+      "acceptLabel": "Pianifica così intenzionalmente (accetta il conflitto)",
+      "saveNote": "Puoi comunque salvare. I conflitti accettati restano contrassegnati nella tabella.",
+      "textCrop_many": "{{previousCulture}} ({{family}}) è stata coltivata in {{bed}} nel {{year}}. {{culture}} ha un intervallo di rotazione di {{count}} anni, quindi il primo anno possibile è il {{earliestYear}}.",
+      "textFamily_many": "{{previousCulture}} ({{family}}) è stata coltivata in {{bed}} nel {{year}}. {{family}} ha un intervallo di rotazione predefinito di {{count}} anni, quindi il primo anno possibile è il {{earliestYear}}."
+    },
+    "accepted": {
+      "title": "{{family}} troppo presto, accettato intenzionalmente",
+      "text": "{{previousCulture}} nel {{year}} in questa aiuola. Accettato da {{user}} il {{date}}.",
+      "textWithoutUser": "{{previousCulture}} nel {{year}} in questa aiuola. Accettato il {{date}}.",
+      "revoke": "Revoca accettazione"
+    },
+    "hint": {
+      "title": "Coltura molto esigente dopo coltura molto esigente",
+      "text": "{{previousCulture}} è stata coltivata qui nel {{year}}. Prevedi compost sufficiente o un sovescio intermedio."
+    },
+    "info": {
+      "title": "Impossibile verificare la rotazione colturale",
+      "noFamily": "{{culture}} non ha una famiglia botanica. Senza famiglia non possiamo verificare l'intervallo di rotazione.",
+      "addFamily": "Aggiungi una famiglia a {{culture}}",
+      "noBreak": "Né {{family}} né {{culture}} ha un intervallo di rotazione. Senza intervallo non possiamo verificare la rotazione colturale.",
+      "incomplete": "Scegli coltura, aiuola e data di trapianto per verificare la rotazione colturale.",
+      "missingData": {
+        "heading": "Impossibile verificare la rotazione colturale:",
+        "noFamily": "Non è impostata una famiglia botanica per {{crop}}.",
+        "noBreak": "Non è impostato un intervallo di rotazione per {{crop}}.",
+        "previousNoFamily": "Non è impostata una famiglia botanica per la coltura precedente {{crop}} ({{year}}).",
+        "closing": "Puoi aggiungere le informazioni mancanti nella biblioteca delle colture."
+      }
+    },
+    "ok": {
+      "text": "Rotazione colturale compatibile: {{reason}}",
+      "reasons": {
+        "lastFamily": "ultima {{family}} nel {{year}}, coltura precedente {{previousCulture}}.",
+        "lastFamilyWithoutPrevious": "ultima {{family}} nel {{year}}.",
+        "noFamilyOnBed": "nessuna {{family}} registrata in questa aiuola.",
+        "noHistory": "nessuna serie precedente registrata in questa aiuola."
+      }
+    },
+    "bedHistory": {
+      "title": "Cronologia di {{bed}}",
+      "empty": "Non è registrata alcuna cronologia colturale per questa aiuola.",
+      "entry": "{{years}}: {{culture}}",
+      "entryWithFamily": "{{years}}: {{culture}} ({{family}})"
+    },
+    "suggestions": {
+      "title": "Aiuole adatte a {{culture}}",
+      "periodTitle": "Aiuole compatibili, libere dal {{start}} al {{end}}",
+      "subtitle": "Ordinate per intervallo di rotazione, successione nutritiva e anni trascorsi dall'ultima coltura della stessa famiglia. Solo aiuole con superficie libera sufficiente nel periodo.",
+      "categories": {
+        "good": "Ben compatibile",
+        "fits": "Compatibile",
+        "hint": "Suggerimento",
+        "no_data": "Nessun dato",
+        "conflict": "Conflitto"
+      },
+      "apply": "Applica",
+      "applyAria": "Usa {{bed}}",
+      "current": "attualmente selezionata",
+      "showAll": "Mostra tutte le {{count}} aiuole",
+      "showAllMatching": "Mostra tutte le {{count}} aiuole compatibili",
+      "showLess": "Mostra meno aiuole",
+      "empty": "Nessuna aiuola è libera alla data di trapianto. Verifica la data o aggiungi un'altra aiuola.",
+      "emptyMatching": "Nessuna aiuola ha superficie libera sufficiente senza conflitti di rotazione in questo periodo. Verifica data e superficie o aggiungi un'altra aiuola.",
+      "loading": "Verifica delle aiuole…",
+      "error": "Impossibile caricare i suggerimenti di aiuole.",
+      "needsInput": "Scegli una coltura e una data di trapianto per vedere le aiuole adatte.",
+      "show": "Mostra aiuole adatte",
+      "hide": "Nascondi suggerimenti",
+      "reasons": {
+        "neverOnBed": "Nessuna {{family}} registrata",
+        "neverOnBedWithPrevious": "Nessuna {{family}} registrata, coltura precedente {{previousCulture}}",
+        "lastFamily": "Ultima {{family}} nel {{year}}",
+        "soilImproverBefore": "La coltura precedente {{previousCulture}} lascia azoto per {{culture}}.",
+        "hint": "{{previousCulture}} è stata coltivata qui nel {{year}}, anch'essa molto esigente.",
+        "noHistory": "Nessuna serie precedente registrata",
+        "noFamily": "{{culture}} non ha una famiglia botanica.",
+        "noBreak": "{{family}} non ha un intervallo di rotazione.",
+        "conflict": "{{previousCulture}} ({{family}}) è stata coltivata qui nel {{year}}, nuovamente possibile non prima del {{earliestYear}}."
+      }
+    },
+    "capacity": {
+      "partial": "{{free}} di {{total}} m² liberi in questo periodo",
+      "insufficient": "Solo {{free}} m² liberi in questo periodo ({{blockingCulture}} fino al {{date}}), necessari {{needed}} m²",
+      "insufficientWithoutBlocker": "Solo {{free}} m² liberi in questo periodo, necessari {{needed}} m²"
+    }
+  },
+  "harvestOverlap": {
+    "predecessor": "{{crop}} seguirà in questa aiuola dal {{date}}. La raccolta deve essere terminata entro quella data.",
+    "successor": "Inizia prima della fine prevista della raccolta di {{crop}} ({{date}}).",
+    "iconAria": "Sovrapposizione delle raccolte"
+  },
+  "timingWindow": {
+    "direct_sowing": "La data di semina non rientra nei periodi di semina diretta ({{windows}}).",
+    "pre_cultivation": "La data di semina non rientra nei periodi di semina in vivaio ({{windows}}).",
+    "planting": "La data di trapianto non rientra nei periodi di trapianto ({{windows}}).",
+    "iconAria": "Data fuori dai periodi"
+  },
+  "germination": {
+    "cold_period_required": "Il seme richiede un periodo di freddo.",
+    "propagation_shorter_than_germination": "La durata in vivaio è inferiore al tempo di germinazione.",
+    "emergence": "Emergenza prevista tra {{from}} e {{to}}",
+    "hints": "Suggerimenti per la germinazione"
+  }
+}

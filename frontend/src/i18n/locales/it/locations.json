@@ -1,0 +1,58 @@
+{
+  "title": "Siti",
+  "errors": {
+    "load": "Impossibile caricare i siti",
+    "save": "Impossibile salvare il sito",
+    "delete": "Impossibile eliminare il sito"
+  },
+  "validation": {
+    "nameRequired": "Il nome è obbligatorio",
+    "latitudeRange": "La latitudine deve essere compresa tra -90 e 90.",
+    "longitudeRange": "La longitudine deve essere compresa tra -180 e 180.",
+    "coordinateFormat": "Inserisci le coordinate nel formato «latitudine, longitudine»."
+  },
+  "confirmDelete": "Vuoi davvero eliminare questo sito?",
+  "addButton": "Aggiungi sito",
+  "editTitle": "Modifica sito",
+  "emptyState": {
+    "title": "Nessun sito ancora presente.",
+    "description": "I siti ti aiutano a organizzare le superfici coltivate, ad esempio diversi orti o appezzamenti."
+  },
+  "openInGoogleMaps": "Apri in Google Maps",
+  "upcomingTasks": "Attività imminenti",
+  "noUpcomingTasks": "Nessuna attività imminente",
+  "taskTitles": {
+    "sowing": "Semina",
+    "planting": "Trapianto",
+    "propagationStart": "Avvio del vivaio",
+    "harvestStart": "Inizio della raccolta"
+  },
+  "columns": {
+    "coordinates": "Coordinate",
+    "latitude": "Latitudine",
+    "longitude": "Longitudine",
+    "address": "Indirizzo",
+    "description": "Descrizione",
+    "soilType": "Tipo di terreno",
+    "exposure": "Esposizione"
+  },
+  "helpers": {
+    "optionalField": "Facoltativo",
+    "coordinatesExample": "Esempio: 46.6473, 13.8688"
+  },
+  "soilType": {
+    "sand": "Sabbioso",
+    "loam": "Franco",
+    "clay": "Argilloso"
+  },
+  "exposure": {
+    "north": "Nord",
+    "south": "Sud",
+    "east": "Est",
+    "west": "Ovest",
+    "flat": "Pianeggiante"
+  },
+  "placeholders": {
+    "coordinates": "es. 46.6473, 13.8688"
+  }
+}

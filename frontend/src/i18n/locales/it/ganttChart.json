@@ -1,0 +1,215 @@
+{
+  "title": "Calendario colturale",
+  "zoomIn": "Ingrandisci",
+  "zoomOut": "Riduci",
+  "viewModes": {
+    "month": "Vista mensile",
+    "week": "Vista settimanale"
+  },
+  "months": {
+    "jan": "gennaio",
+    "feb": "febbraio",
+    "mar": "marzo",
+    "apr": "aprile",
+    "may": "mag",
+    "jun": "giugno",
+    "jul": "luglio",
+    "aug": "agosto",
+    "sep": "settembre",
+    "oct": "ottobre",
+    "nov": "novembre",
+    "dec": "dicembre"
+  },
+  "weekShort": "sett.",
+  "field": "Appezzamento",
+  "bed": "Aiuola",
+  "area": "Superficie",
+  "year": "Anno",
+  "today": "Oggi",
+  "previousYear": "Anno precedente",
+  "nextYear": "Anno successivo",
+  "loading": "Caricamento…",
+  "errors": {
+    "load": "Impossibile caricare i dati",
+    "updatePlan": "Impossibile aggiornare la serie",
+    "render": "Impossibile caricare la vista del calendario."
+  },
+  "tooltip": {
+    "crop": "Coltura",
+    "plantingDate": "Data di trapianto",
+    "harvestDate": "Data di raccolta",
+    "firstHarvest": "Prima raccolta",
+    "lastHarvest": "Ultima raccolta",
+    "areaUsage": "Superficie",
+    "propagationStart": "Avvio del vivaio",
+    "transplantDate": "Trapianto",
+    "propagationDuration": "Durata in vivaio",
+    "bed": "Aiuola",
+    "location": "Sito",
+    "plantsCount": "Numero di piante",
+    "totalPlantsCount": "Piante totali",
+    "plantingPlanCount": "Numero di serie",
+    "involvedLocations": "Siti coinvolti",
+    "seedRequirement": "Fabbisogno di sementi",
+    "notes": "Nota",
+    "phase": {
+      "growth": "Fase di crescita",
+      "harvest": "Fase di raccolta"
+    },
+    "actualHarvestEnd": "La raccolta termina al più tardi"
+  },
+  "noData": "Nessuna serie disponibile",
+  "modeLabel": "Modalità",
+  "modeAriaLabel": "Seleziona modalità",
+  "modeViewOption": "Visualizza",
+  "moveModeOption": "Sposta periodo",
+  "moveModeActiveOption": "Spostamento del periodo attivo",
+  "moveModeCommandActivate": "Attiva spostamento del periodo",
+  "moveModeCommandDeactivate": "Disattiva spostamento del periodo",
+  "modeViewTooltip": "Modalità visualizzazione: consulta il calendario e naviga. Nessuna modifica tramite trascinamento.",
+  "moveModeTooltipDescription": "Attiva la modalità spostamento per spostare i periodi colturali tramite trascinamento.",
+  "moveModeActiveTooltipDescription": "Trascina un periodo a sinistra o a destra per spostare nel tempo l'intera serie.",
+  "viewMode": "Modalità visualizzazione",
+  "viewSelectorAriaLabel": "Seleziona vista calendario",
+  "chartLocaleText": {
+    "titleOccupancy": "Piano degli appezzamenti",
+    "titleSeedlings": "Pianificazione del vivaio",
+    "resources": "Superfici",
+    "resourcesSeedlings": "Colture",
+    "today": "Oggi",
+    "actions": "Azioni",
+    "adjustProgress": "Trascina per modificare l'avanzamento",
+    "viewModes": {
+      "minute": "Minuto",
+      "hour": "Ora",
+      "day": "Giorno",
+      "week": "Settimana",
+      "month": "Mese",
+      "quarter": "Trimestre",
+      "year": "Anno"
+    }
+  },
+  "days": "giorni",
+  "yieldDistributionTitle": "Distribuzione delle rese",
+  "noYieldData": "Nessuna resa prevista disponibile per quest'anno.",
+  "modes": {
+    "occupancy": "Occupazione degli appezzamenti",
+    "seedlings": "Vivaio"
+  },
+  "modesShort": {
+    "occupancy": "Occupazione",
+    "seedlings": "Vivaio"
+  },
+  "modeTooltips": {
+    "occupancy": "Mostra l'occupazione delle aiuole durante l'anno. I periodi visualizzati sono calcolati dalle serie e dalle tempistiche specifiche delle colture (es. semina, trapianto e raccolta).",
+    "seedlings": "Mostra la fase in vivaio delle colture prima del trapianto. I periodi visualizzati sono calcolati dalle serie e dai dati sulla durata in vivaio specifica delle colture."
+  },
+  "shortcuts": {
+    "today": "Vai al periodo attuale",
+    "previousPeriod": "Periodo precedente del calendario",
+    "nextPeriod": "Periodo successivo del calendario",
+    "previousLargePeriod": "Indietro di un intervallo ampio",
+    "nextLargePeriod": "Avanti di un intervallo ampio",
+    "dayView": "Mostra vista giornaliera",
+    "weekView": "Mostra vista settimanale",
+    "monthView": "Mostra vista mensile",
+    "quarterView": "Mostra vista trimestrale",
+    "yearView": "Mostra vista annuale",
+    "showOccupancy": "Mostra occupazione degli appezzamenti",
+    "showSeedlings": "Mostra vivaio",
+    "focusSearch": "Attiva ricerca (/)"
+  },
+  "modeDescriptions": {
+    "occupancy": "Occupazione di appezzamenti e aiuole durante l'anno. Questa vista consente anche di spostare le serie esistenti.",
+    "seedlings": "Periodi in vivaio per coltura. Questa vista è di sola lettura e mostra solo i vivai pertinenti all'anno attuale."
+  },
+  "seedlings": {
+    "emptyState": "Nessun periodo in vivaio disponibile per quest'anno.",
+    "plantsUnit": "piante"
+  },
+  "requirements": {
+    "field": {
+      "label": "Appezzamento",
+      "missing": "Appezzamento mancante",
+      "done": "Appezzamento disponibile"
+    },
+    "crop": {
+      "label": "Coltura",
+      "missing": "Coltura mancante",
+      "done": "Coltura disponibile"
+    },
+    "bed": {
+      "label": "Aiuola",
+      "missing": "Aiuola mancante",
+      "done": "Aiuola disponibile"
+    },
+    "plan": {
+      "label": "Serie",
+      "missing": "Serie mancante",
+      "done": "Serie disponibile"
+    }
+  },
+  "emptyStates": {
+    "requirementsTitle": "Pianificazione colturale non ancora possibile",
+    "requirementsDescription": "Apri Superfici coltivate e aggiungi un appezzamento al sito appropriato. Potrai poi inserire aiuole, colture e serie.",
+    "states": {
+      "crops": {
+        "title": "Nessuna coltura ancora presente",
+        "description": "Crea ora la tua prima coltura o importane una dalla biblioteca delle colture. Potrai poi creare le serie."
+      },
+      "plans": {
+        "title": "Nessuna serie ancora presente",
+        "description": "Non sono ancora state create serie per le superfici coltivate esistenti. Crea una serie per mostrare colture e date nel calendario colturale."
+      }
+    },
+    "actions": {
+      "createCrop": "Aggiungi coltura",
+      "createField": "Aggiungi appezzamento",
+      "createAreas": "Vai a Superfici coltivate",
+      "createPlan": "Aggiungi serie"
+    }
+  },
+  "sidebar": {
+    "resizeHandle": "Allarga o restringi la barra laterale"
+  },
+  "structureSummary": {
+    "fields_one": "{{count}} appezzamento",
+    "fields_other": "{{count}} appezzamenti",
+    "beds_one": "{{count}} aiuola",
+    "beds_other": "{{count}} aiuole",
+    "occupiedBeds_one": "{{count}} occupata",
+    "occupiedBeds_other": "{{count}} occupate",
+    "fields_many": "{{count}} appezzamenti",
+    "beds_many": "{{count}} aiuole",
+    "occupiedBeds_many": "{{count}} occupate"
+  },
+  "treeFilters": {
+    "searchPlaceholder": "Cerca per coltura, aiuola, appezzamento o sito…",
+    "searchPlaceholderSeedlings": "Cerca per coltura…",
+    "allLocations": "Tutti i siti",
+    "allFields": "Tutti gli appezzamenti",
+    "onlyOccupiedBeds": "Solo aiuole occupate",
+    "filterButton": "Filtra",
+    "filterButtonWithCount": "Filtri ({{count}})",
+    "locationLabel": "Sito",
+    "fieldLabel": "Appezzamento",
+    "resetFilters": "Reimposta filtri",
+    "clearSearch": "Cancella ricerca"
+  },
+  "contextMenu": {
+    "openPlan": "Apri serie",
+    "openCrop": "Apri coltura",
+    "openBed": "Apri aiuola",
+    "openField": "Apri appezzamento",
+    "openLocation": "Apri sito",
+    "editBed": "Modifica aiuola",
+    "editField": "Modifica appezzamento",
+    "editLocation": "Modifica sito",
+    "addPlan": "Aggiungi serie",
+    "confirmDeletePlan": "Eliminare davvero questa serie?"
+  },
+  "taskNames": {
+    "harvest": "{{crop}} (raccolta)",
+    "unknownCrop": "Coltura {{id}}"
+  }
+}

@@ -37,6 +37,8 @@ describe('preferredPublicPagePath', () => {
     expect(preferredPublicPagePath('/fr/mentions-legales', 'es')).toBe('/es/aviso-legal');
     expect(preferredPublicPagePath('/es/terminos', 'fr')).toBe('/fr/conditions-utilisation');
     expect(preferredPublicPagePath('/es', 'de')).toBe('/');
+    expect(preferredPublicPagePath('/ueber', 'it')).toBe('/it/chi-siamo');
+    expect(preferredPublicPagePath('/it/termini', 'en')).toBe('/en/terms');
   });
 
   it('stays put on a page already in that language or off public pages', () => {
@@ -55,7 +57,7 @@ describe('isCrawlerUserAgent', () => {
 
 describe('redirectToPreferredLanguageVersion', () => {
   it('sends a browser in an unsupported language from a German page to the English version', () => {
-    const replace = stubBrowser('/ueber', ['it-IT', 'pt-BR']);
+    const replace = stubBrowser('/ueber', ['ja-JP', 'pt-BR']);
     expect(redirectToPreferredLanguageVersion()).toBe(true);
     expect(replace).toHaveBeenCalledWith('/en/about?ref=x#top');
   });

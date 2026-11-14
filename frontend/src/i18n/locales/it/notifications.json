@@ -1,0 +1,39 @@
+{
+  "bell": {
+    "ariaLabel": "Notifiche",
+    "unreadAriaLabel": "Notifiche ({{unread}} non lette)",
+    "title": "Notifiche",
+    "loadError": "Impossibile caricare le notifiche.",
+    "noUnread": "Nessuna nuova notifica",
+    "showAll": "Mostra tutte le notifiche"
+  },
+  "history": {
+    "title": "Tutte le notifiche",
+    "back": "Indietro",
+    "unreadSubtitle": "{{unread}} non lette",
+    "emptyTitle": "Nessuna notifica ancora presente",
+    "emptyDescription": "Le decisioni sulle tue proposte e gli avvisi dalla biblioteca delle colture compaiono qui appena c'è qualcosa da comunicare.",
+    "pageAriaLabel": "Pagina {{page}}",
+    "nextPageAriaLabel": "Pagina successiva",
+    "previousPageAriaLabel": "Pagina precedente"
+  },
+  "markAllRead": {
+    "label": "Segna tutte come lette",
+    "nothingUnread": "Nessuna notifica non letta",
+    "error": "Impossibile segnare le notifiche come lette."
+  },
+  "messages": {
+    "crop_species_proposal_accepted": "La tua proposta per la specie coltivata «{{name}}» è stata accettata.",
+    "crop_species_proposal_rejected": "La tua proposta per la specie coltivata «{{name}}» è stata rifiutata.",
+    "crop_species_proposal_submitted": "La nuova proposta di specie coltivata «{{name}}» è in attesa di esame.",
+    "moderator_request_submitted": "{{name}} ha richiesto l'accesso come moderatore della biblioteca delle colture.",
+    "public_crop_removed": "La tua coltura pubblicata «{{name}}» è stata rimossa dalla biblioteca delle colture perché la specie coltivata «{{species_name}}» è stata rifiutata.",
+    "public_crop_species_relink_cancelled": "La correzione della specie coltivata da «{{name}}» a «{{species_name}}» non è stata applicata. Verifica di nuovo la voce.",
+    "crop_species_reassigned": "La specie coltivata di «{{crop_name}}» è stata corretta da «{{old_name}}» a «{{new_name}}». Valori ereditati modificati: {{changes}}.",
+    "public_crop_change_proposal_submitted": "Un contributo a «{{name}}» è in attesa di esame.",
+    "public_crop_change_proposal_reviewed_approved": "Il tuo contributo a «{{name}}» è stato approvato.",
+    "public_crop_change_proposal_reviewed_rejected": "Il tuo contributo a «{{name}}» è stato rifiutato.",
+    "public_crop_change_proposal_reviewed": "Il tuo contributo a «{{name}}» è stato esaminato.",
+    "public_crop_trade_name_reported": "Il nome commerciale «{{name}}» della varietà «{{variety}}» è stato segnalato."
+  }
+}

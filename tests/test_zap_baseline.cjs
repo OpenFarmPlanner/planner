@@ -9,8 +9,8 @@ function fixture() {
   return {
     status: { stage: 'scan', exit: 2, image: IMAGE, target: TARGET },
     coverage: { target: TARGET, passive_remaining: 0,
-      public_pages: { '/': 'de', '/en': 'en', '/fr': 'fr', '/es': 'es' }, requests: [
-      ...['/', '/en', '/fr', '/es', '/api/schema/', '/__zap_fixture__/']
+      public_pages: { '/': 'de', '/en': 'en', '/fr': 'fr', '/es': 'es', '/it': 'it' }, requests: [
+      ...['/', '/en', '/fr', '/es', '/it', '/api/schema/', '/__zap_fixture__/']
         .map(route => ({ method: 'GET', path: route, status: 200 })),
       { method: 'GET', path: '/api/crops/', status: 401 },
     ] },
@@ -50,6 +50,9 @@ for (const change of [
   f => { f.status.exit = 0; },
   f => { f.status.target = 'https://example.org/'; },
   f => { delete f.coverage.public_pages['/en']; },
+  f => { f.coverage.requests = f.coverage.requests.filter(row => row.path !== '/it'); },
+  f => { delete f.coverage.public_pages['/it']; },
+  f => { f.coverage.public_pages['/it'] = 'en'; },
   f => { f.coverage.public_pages['/fr'] = 'de'; },
   f => { delete f.coverage.public_pages; },
 ]) {
@@ -81,7 +84,7 @@ test('unanswered optional crawler records are explicit coverage gaps, never comp
   const f = fixture();
   f.coverage.requests.push({ method: 'GET', path: '/unanswered', status: 0 });
   const result = evaluate(f);
-  assert.equal(result.requestCount, 7);
+  assert.equal(result.requestCount, 8);
   assert.deepEqual(result.coverageGaps, ['/unanswered']);
   f.coverage.requests[0].status = 0;
   assert.throws(() => evaluate(f), /Required anonymous route/);

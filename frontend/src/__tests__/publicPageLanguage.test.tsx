@@ -146,6 +146,7 @@ describe('public page language', () => {
       'en=https://openfarmplanner.org/en/about',
       'fr=https://openfarmplanner.org/fr/a-propos',
       'es=https://openfarmplanner.org/es/acerca-de',
+      'it=https://openfarmplanner.org/it/chi-siamo',
       'x-default=https://openfarmplanner.org/ueber',
     ]);
     expect(document.title).toBe('About OpenFarmPlanner');

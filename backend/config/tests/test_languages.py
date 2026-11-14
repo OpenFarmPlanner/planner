@@ -4,6 +4,7 @@ from django.test import SimpleTestCase
 
 from config.languages import (
     DEFAULT_LANGUAGE_CODE,
+    REQUIRED_PUBLIC_CROP_SPECIES_LANGUAGE_CODES,
     SUPPORTED_LANGUAGE_CODES,
     UI_LANGUAGE_AUTO,
     build_fallback_chain,
@@ -33,14 +34,21 @@ class NormalizeLanguageTagTest(SimpleTestCase):
             self.assertEqual(normalize_language_tag(tag), 'es', tag)
 
     def test_supported_codes_are_ordered_english_german_french_spanish(self):
-        self.assertEqual(SUPPORTED_LANGUAGE_CODES, ('en', 'de', 'fr', 'es'))
+        self.assertEqual(SUPPORTED_LANGUAGE_CODES, ('en', 'de', 'fr', 'es', 'it'))
+
+    def test_italian_regional_tags_normalize_to_it(self):
+        for tag in ('it', 'it-IT', 'it-CH', 'IT_it'):
+            self.assertEqual(normalize_language_tag(tag), 'it', tag)
+
+    def test_adding_italian_does_not_expand_required_species_names(self):
+        self.assertEqual(REQUIRED_PUBLIC_CROP_SPECIES_LANGUAGE_CODES, ('de', 'en', 'fr', 'es'))
 
     def test_unsupported_tags_return_empty(self):
-        for tag in ('it', 'it-IT', 'pt-BR', 'zh-Hans', 'xx', '', '   ', None):
+        for tag in ('ja', 'ja-JP', 'pt-BR', 'zh-Hans', 'xx', '', '   ', None):
             self.assertEqual(normalize_language_tag(tag), '', repr(tag))
 
     def test_resolve_language_tag_never_returns_empty(self):
-        self.assertEqual(resolve_language_tag('it'), DEFAULT_LANGUAGE_CODE)
+        self.assertEqual(resolve_language_tag('ja'), DEFAULT_LANGUAGE_CODE)
         self.assertEqual(resolve_language_tag('fr-CA'), 'fr')
         self.assertEqual(resolve_language_tag(None), DEFAULT_LANGUAGE_CODE)
         self.assertEqual(resolve_language_tag('de-AT'), 'de')
@@ -52,9 +60,9 @@ class AcceptLanguageTest(SimpleTestCase):
         self.assertEqual(parse_accept_language('en-GB,en;q=0.9'), 'en')
 
     def test_honours_quality_values_over_position(self):
-        # Italian is unsupported and German outranks English, so German wins
+        # Japanese is unsupported and German outranks English, so German wins
         # even though English appears first among the supported entries.
-        self.assertEqual(parse_accept_language('it;q=1.0, en;q=0.5, de;q=0.9'), 'de')
+        self.assertEqual(parse_accept_language('ja;q=1.0, en;q=0.5, de;q=0.9'), 'de')
 
     def test_resolves_french_and_spanish(self):
         self.assertEqual(parse_accept_language('fr-FR,fr;q=0.9,en;q=0.8'), 'fr')
@@ -63,7 +71,7 @@ class AcceptLanguageTest(SimpleTestCase):
     def test_returns_empty_for_missing_or_unsupported_headers(self):
         self.assertEqual(parse_accept_language(''), '')
         self.assertEqual(parse_accept_language(None), '')
-        self.assertEqual(parse_accept_language('pt-BR,it;q=0.8'), '')
+        self.assertEqual(parse_accept_language('pt-BR,ja;q=0.8'), '')
 
 
 class UiLanguagePreferenceTest(SimpleTestCase):
@@ -73,20 +81,20 @@ class UiLanguagePreferenceTest(SimpleTestCase):
             self.assertEqual(normalize_ui_language_preference(code.upper()), code)
 
     def test_rejects_unsupported_values(self):
-        for value in ('it', 'de-AT', 'fr-CA', '', None, 'nonsense'):
+        for value in ('ja', 'de-AT', 'fr-CA', '', None, 'nonsense'):
             with self.assertRaises(ValueError, msg=repr(value)):
                 normalize_ui_language_preference(value)
 
 
 class FallbackChainTest(SimpleTestCase):
     def test_requested_language_comes_first_then_english_then_the_rest(self):
-        self.assertEqual(build_fallback_chain('de'), ('de', 'en', 'fr', 'es'))
-        self.assertEqual(build_fallback_chain('en'), ('en', 'de', 'fr', 'es'))
-        self.assertEqual(build_fallback_chain('fr'), ('fr', 'en', 'de', 'es'))
-        self.assertEqual(build_fallback_chain('es-419'), ('es', 'en', 'de', 'fr'))
+        self.assertEqual(build_fallback_chain('de'), ('de', 'en', 'fr', 'es', 'it'))
+        self.assertEqual(build_fallback_chain('en'), ('en', 'de', 'fr', 'es', 'it'))
+        self.assertEqual(build_fallback_chain('fr'), ('fr', 'en', 'de', 'es', 'it'))
+        self.assertEqual(build_fallback_chain('es-419'), ('es', 'en', 'de', 'fr', 'it'))
 
     def test_unsupported_request_falls_back_to_english_first(self):
-        self.assertEqual(build_fallback_chain('it')[0], DEFAULT_LANGUAGE_CODE)
+        self.assertEqual(build_fallback_chain('ja')[0], DEFAULT_LANGUAGE_CODE)
 
 
 class ResolveTranslationTest(SimpleTestCase):

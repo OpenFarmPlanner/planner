@@ -3,13 +3,14 @@ import { reloadPage, shouldAutomaticallyReloadForChunkError } from '../runtime/c
 /**
  * Shown when neither the visitor's language nor English could be downloaded
  * (`i18nReady` rejected). With no translations available this one message is
- * deliberately inline, in all four UI languages, instead of in a locale file.
+ * deliberately inline, in all supported UI languages, instead of in a locale file.
  */
 const MESSAGE_LINES = [
   'OpenFarmPlanner konnte nicht geladen werden. Prüfe deine Verbindung und lade die Seite neu.',
   'OpenFarmPlanner could not be loaded. Check your connection and reload the page.',
   "OpenFarmPlanner n'a pas pu être chargé. Vérifiez votre connexion et rechargez la page.",
   'No se pudo cargar OpenFarmPlanner. Comprueba tu conexión y vuelve a cargar la página.',
+  'Impossibile caricare OpenFarmPlanner. Verifica la connessione e ricarica la pagina.',
 ];
 
 export function handleTranslationLoadFailure(error: unknown): void {

@@ -1,0 +1,30 @@
+{
+  "dialog": {
+    "title": "Invia feedback",
+    "subtitle": "Leggiamo personalmente ogni messaggio: grazie per aiutarci a sviluppare OpenFarmPlanner.",
+    "categoryLabel": "Categoria (facoltativa)",
+    "categoryAriaLabel": "Categoria del feedback",
+    "categories": {
+      "bug": "Errore",
+      "idea": "Idea",
+      "question": "Domanda",
+      "other": "Altro"
+    },
+    "messageLabel": "Messaggio",
+    "messagePlaceholder": "Che cosa vorresti dirci?",
+    "messageRequiredTooltip": "Inserisci un messaggio",
+    "context": "Inviati automaticamente: progetto «{{project}}», vista «{{route}}», informazioni sul browser.",
+    "contextNoProject": "nessun progetto",
+    "contactConsent": "Consenti di contattarti per domande di approfondimento",
+    "contactConsentHint": "Ci fa piacere parlare anche di persona: apprezziamo lo scambio di idee con le aziende agricole.",
+    "contactEmail": "{{email}} (dal tuo account)",
+    "cancel": "Annulla",
+    "submit": "Invia",
+    "error": "Impossibile inviare il feedback. Riprova."
+  },
+  "success": {
+    "title": "Grazie per il tuo feedback!",
+    "text": "Il tuo messaggio è arrivato. Se ci hai consentito di ricontattarti, ti risponderemo direttamente.",
+    "close": "Chiudi"
+  }
+}

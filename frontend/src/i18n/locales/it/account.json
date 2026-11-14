@@ -1,0 +1,214 @@
+{
+  "title": "Impostazioni account",
+  "email": "E-mail",
+  "displayName": "Nome visualizzato",
+  "sections": {
+    "profile": "Profilo",
+    "publicProfile": "Biblioteca delle colture",
+    "security": "Accesso e sicurezza",
+    "privacy": "Privacy ed esportazione dati",
+    "language": "Lingua",
+    "apiAccess": "Accesso API",
+    "deleteAccount": "Elimina account"
+  },
+  "dataExport": {
+    "description": "Scarica una copia strutturata dei dati del tuo account, dei progetti e della biblioteca delle colture come file JSON.",
+    "downloadButton": "Scarica i miei dati",
+    "success": "Esportazione dei dati creata."
+  },
+  "publicProfile": {
+    "description": "Questo nome appartiene al tuo account e viene mostrato come autore su ogni coltura che hai pubblicato o pubblicherai nella biblioteca delle colture.",
+    "publicDisplayName": "Nome nelle pubblicazioni",
+    "noPublicDisplayName": "Anonimo",
+    "helperText": "Senza un nome, le tue pubblicazioni appaiono anonime. Se imposti un nome in seguito, comparirà automaticamente come autore su tutte le colture già pubblicate. Se lo rimuovi, torneranno anonime. Il nome deve essere univoco e non già usato da un'altra persona.",
+    "actions": {
+      "setPublicDisplayName": "Imposta nome",
+      "editPublicDisplayName": "Cambia nome"
+    },
+    "transparencyHint": "Mostrato pubblicamente come autore dei tuoi contributi alla biblioteca delle colture, compresi quelli precedenti."
+  },
+  "moderatorRequest": {
+    "title": "Aiuta come moderatore",
+    "description": "Aiuta a esaminare le proposte di nuove specie coltivate e a mantenere coerente la biblioteca delle colture.",
+    "loading": "Caricamento dello stato…",
+    "alreadyModerator": "Hai già i diritti di moderazione per la biblioteca delle colture.",
+    "pending": "La tua richiesta è in esame.",
+    "rejectedHint": "Puoi inviare una nuova richiesta se vuoi ancora contribuire.",
+    "motivationLabel": "Perché vorresti fare da moderatore?",
+    "submit": "Invia richiesta",
+    "sending": "Invio…",
+    "success": "La tua richiesta è stata inviata."
+  },
+  "actions": {
+    "saveProfile": "Salva profilo",
+    "requestEmailChange": "Richiedi cambio e-mail",
+    "changePassword": "Cambia password",
+    "editDisplayName": "Cambia nome visualizzato",
+    "save": "Salva",
+    "sendConfirmationLink": "Invia link di conferma",
+    "savePassword": "Salva password"
+  },
+  "security": {
+    "changeEmailTitle": "Cambia indirizzo e-mail",
+    "credentials": "Credenziali",
+    "newEmail": "Nuovo indirizzo e-mail",
+    "changePasswordTitle": "Cambia password",
+    "newPassword": "Nuova password",
+    "repeatNewPassword": "Ripeti nuova password",
+    "noPasswordHint": "Questo account accede con Google o Microsoft e non ha una password. Puoi impostarne una con «Password dimenticata» nella pagina di accesso."
+  },
+  "loginMethods": {
+    "title": "Metodi di accesso",
+    "description": "Questi metodi di accesso sono collegati al tuo account.",
+    "emailPasswordActive": "E-mail e password · Attivo",
+    "connect": "Collega {{provider}}",
+    "connected": "Metodo di accesso collegato.",
+    "connectedSince": "{{provider}} · collegato dal {{date}}",
+    "connectedSinceWithEmail": "{{provider}} · {{email}} · collegato dal {{date}}"
+  },
+  "deleteDescription": "Se elimini l'account, viene disattivato immediatamente e anonimizzato dopo 14 giorni. I progetti senza altri membri vengono poi eliminati insieme ai relativi dati; le voci pubblicate nella biblioteca delle colture rimangono.",
+  "restoreDescription": "Puoi annullare l'eliminazione entro questo periodo.",
+  "deleteButton": "Elimina account…",
+  "dialogTitle": "Programma eliminazione account",
+  "dialogWarning": "Conferma con la password attuale e il testo «{{phrase}}». L'account verrà disattivato e anonimizzato dopo 14 giorni. I progetti senza altri membri verranno poi eliminati.",
+  "dialogWarningWithoutPassword": "Conferma con il testo «{{phrase}}». L'account viene disattivato e anonimizzato dopo 14 giorni. I progetti senza altri membri vengono poi eliminati.",
+  "currentPassword": "Password attuale",
+  "deletePhrase": "ELIMINA",
+  "deletePhraseLabel": "Testo di conferma",
+  "deletePhraseHelper": "Inserisci esattamente «{{phrase}}» per confermare.",
+  "cancel": "Annulla",
+  "confirmDelete": "Programma eliminazione account",
+  "deletionScheduled": "L'eliminazione del tuo account è stata programmata. Verrà anonimizzato il {{date}}.",
+  "noDisplayName": "—",
+  "errors": {
+    "generic": "Impossibile eseguire l'azione.",
+    "delete": "Impossibile programmare l'eliminazione."
+  },
+  "unsavedChangesWarning": "Ci sono modifiche non salvate. Verranno perse se lasci la pagina.",
+  "emailConfirm": {
+    "title": "Conferma cambio e-mail",
+    "loading": "Verifica della conferma…",
+    "invalid": "Il link di conferma non è valido o è scaduto."
+  },
+  "developer": {
+    "title": "Sviluppatore",
+    "hintsDescription": "Reimposta i suggerimenti di sviluppo locali o mostra di nuovo la guida al primo progetto. I progetti e i dati dell'account non vengono eliminati.",
+    "hintsResetDone": "Suggerimenti reimpostati.",
+    "resetHintsAction": "Reimposta suggerimenti",
+    "showOnboardingAction": "Mostra di nuovo la guida iniziale"
+  },
+  "language": {
+    "description": "La lingua dell'interfaccia appartiene al tuo account, non a un progetto. Altri membri dello stesso progetto possono usare OpenFarmPlanner contemporaneamente in un'altra lingua. I contenuti che inserisci, come nomi di progetti, siti e aiuole, non vengono mai tradotti."
+  },
+  "apiTokens": {
+    "title": "Token API per strumenti esterni",
+    "description": "Ogni token vale solo per un progetto e non può mai modificare membri, inviti o impostazioni dell'account.",
+    "docsLink": "Apri documentazione API",
+    "loading": "Caricamento dei token…",
+    "empty": "Non hai ancora creato token API.",
+    "noProjects": "Devi essere membro di un progetto prima di poter creare un token API.",
+    "revoked": "Il token «{{name}}» è stato revocato e non funziona più.",
+    "inactiveToggle": "Mostra token scaduti e revocati ({{count}})",
+    "status": {
+      "active": "Attivo",
+      "expired": "Scaduto",
+      "revoked": "Revocato"
+    },
+    "scopes": {
+      "read": "Lettura",
+      "write": "Lettura e scrittura",
+      "delete": "Lettura, scrittura ed eliminazione"
+    },
+    "scopeHelp": {
+      "read": "Può leggere i dati del progetto. Non può modificare nulla.",
+      "write": "Può leggere i dati del progetto e creare o aggiornare colture. Non può eliminare.",
+      "delete": "Può anche eliminare e ripristinare colture. Membri del progetto, inviti, impostazioni dell'account e altre aree amministrative restano inaccessibili."
+    },
+    "columns": {
+      "name": "Nome",
+      "scope": "Permessi",
+      "project": "Progetto",
+      "created": "Creato",
+      "expires": "Scadenza",
+      "lastUsed": "Ultimo utilizzo",
+      "action": "Azione"
+    },
+    "meta": {
+      "project": "Progetto",
+      "prefix": "Token",
+      "created": "Creato",
+      "expires": "Scadenza",
+      "lastUsed": "Ultimo utilizzo",
+      "never": "senza scadenza",
+      "neverUsed": "mai"
+    },
+    "actions": {
+      "create": "Crea token",
+      "revoke": "Revoca"
+    },
+    "form": {
+      "name": "Nome",
+      "project": "Progetto",
+      "projectHelper": "Il token potrà accedere solo a questo progetto. Questa impostazione non potrà essere modificata.",
+      "scope": "Permessi",
+      "expiresAt": "Data di scadenza (facoltativa)",
+      "expiresAtHelper": "Lascia vuoto per un token senza scadenza. Al massimo un anno da oggi."
+    },
+    "created": {
+      "title": "Il tuo nuovo token API",
+      "warning": "Copia il token ora. Viene mostrato solo questa volta e non potrà essere recuperato.",
+      "description": "Conserva il token come una password, ad esempio nell'archivio dei segreti del tuo agente. Non inserirlo mai in un repository. Se lo perdi, revocalo qui e creane uno nuovo.",
+      "tokenLabel": "Token",
+      "usageHint": "Usalo come intestazione HTTP: Authorization: Bearer <token>",
+      "confirm": "Ho conservato il token"
+    }
+  },
+  "cropLibraryToken": {
+    "title": "Token API della biblioteca delle colture",
+    "description": "Solo per superutenti: questo token agisce sull'intera piattaforma e può scrivere specie coltivate ufficiali, sinonimi e nomi regionali. Non è legato a un progetto ed è separato dai token API qui sopra.",
+    "docsLink": "Apri documentazione",
+    "loading": "Caricamento del token…",
+    "empty": "Non è ancora stato creato alcun token della biblioteca delle colture.",
+    "revoked": "Il token «{{name}}» è stato revocato e non funziona più.",
+    "inactiveToggle": "Mostra token scaduti e revocati ({{count}})",
+    "scopes": {
+      "read": "Lettura",
+      "write": "Lettura e scrittura"
+    },
+    "scopeHelp": {
+      "read": "Può leggere le specie coltivate ufficiali, comprese le proposte in attesa.",
+      "write": "Può anche proporre e modificare specie coltivate (compresi sinonimi e nomi regionali). Approvazione, rifiuto ed eliminazione restano bloccati."
+    },
+    "columns": {
+      "name": "Nome",
+      "scope": "Diritti",
+      "created": "Creato",
+      "expires": "Scadenza",
+      "lastUsed": "Ultimo utilizzo",
+      "action": "Azione"
+    },
+    "meta": {
+      "prefix": "Token",
+      "never": "nessuna data di scadenza",
+      "neverUsed": "mai"
+    },
+    "actions": {
+      "create": "Crea token",
+      "revoke": "Revoca"
+    },
+    "form": {
+      "name": "Nome",
+      "scope": "Diritti",
+      "expiresAt": "Data di scadenza (facoltativa)",
+      "expiresAtHelper": "Lascia vuoto per un token senza data di scadenza. Al massimo un anno nel futuro."
+    },
+    "created": {
+      "title": "Il tuo nuovo token della biblioteca delle colture",
+      "warning": "Copia il token ora. Viene mostrato solo questa volta e non potrà essere recuperato.",
+      "description": "Conserva il token come una password. Non inserirlo mai in un repository. Se lo perdi, revocalo qui e creane uno nuovo.",
+      "tokenLabel": "Token",
+      "usageHint": "Usalo come intestazione HTTP: Authorization: Bearer <token>",
+      "confirm": "Ho conservato il token"
+    }
+  }
+}

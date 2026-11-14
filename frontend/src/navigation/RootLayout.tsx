@@ -934,7 +934,7 @@ function RootLayout() {
             display: 'inline-flex',
             alignItems: 'center',
             gap: 0.5,
-            minWidth: 0,
+            minWidth: isCalendarPage && !isDesktopUp ? 'min-content' : 0,
             width: 'max-content',
             maxWidth: { xs: 240, sm: 280, md: 400, lg: 480 },
             // From 1024px the topbar has room for the longest title plus the
@@ -949,13 +949,13 @@ function RootLayout() {
                 <Typography
                   component="h1"
                   variant="subtitle1"
-                  noWrap
+                  noWrap={!isCalendarPage}
                   sx={{
-                    minWidth: 0,
+                    minWidth: isCalendarPage ? 'min-content' : 0,
                     maxWidth: { xs: 180, sm: 220 },
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
+                    whiteSpace: isCalendarPage ? 'normal' : 'nowrap',
                     fontSize: { xs: '0.98rem', sm: '1.02rem' },
                     fontWeight: 600,
                     lineHeight: 1.2,

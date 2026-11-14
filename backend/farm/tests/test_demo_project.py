@@ -741,7 +741,7 @@ class DemoRequestLanguageTests(TestCase):
         self.factory = RequestFactory()
 
     def test_falls_back_to_german_where_the_api_falls_back_to_english(self) -> None:
-        request = self.factory.get('/', HTTP_ACCEPT_LANGUAGE='it')
+        request = self.factory.get('/', HTTP_ACCEPT_LANGUAGE='ja')
 
         self.assertEqual(resolve_demo_request_language(request), 'de')
         self.assertEqual(resolve_request_language(request), 'en')
@@ -751,8 +751,9 @@ class DemoRequestLanguageTests(TestCase):
             with self.subTest(language=language):
                 request = self.factory.get('/', HTTP_ACCEPT_LANGUAGE=language)
                 self.assertEqual(resolve_request_language(request), language)
-                self.assertEqual(resolve_demo_request_language(request), language)
-                self.assertEqual(resolve_demo_language(language), language)
+                expected = 'en' if language == 'it' else language
+                self.assertEqual(resolve_demo_request_language(request), expected)
+                self.assertEqual(resolve_demo_language(language), expected)
                 self.assertTrue(is_demo_project_description(get_demo_project_description(language)))
                 self.assertTrue(is_demo_project_description(
                     get_demo_project_description(language, screenshot=True),

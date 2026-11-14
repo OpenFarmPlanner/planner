@@ -1,0 +1,494 @@
+{
+  "landing": {
+    "title": "OpenFarmPlanner",
+    "heroImageAlt": "Aiuole orticole davanti a un pendio montano boscoso",
+    "subtitle": "Pianificazione colturale open source per l'orticoltura.",
+    "description": "Progettato appositamente per aziende orticole, agricoltura sostenuta dalla comunità e altre aziende che coltivano molte colture diverse.",
+    "statusLine": "Gratuito, con l'obiettivo di finanziarsi tramite donazioni volontarie.",
+    "actions": {
+      "openApp": "Accedi",
+      "register": "Registrati",
+      "installApp": "Installa app",
+      "demo": "Guarda la demo",
+      "demoWithoutRegistration": "Guarda la demo senza registrarti",
+      "demoShort": "Demo",
+      "startingDemo": "Avvio della demo…",
+      "demoStartError": "Impossibile avviare la demo. Riprova.",
+      "demoRateLimited": "La demo è stata avviata di recente. Riprova più tardi.",
+      "demoRateLimitedWithTime": "La demo è stata avviata di recente. Riprova {{time}}.",
+      "demoNetworkError": "La demo non è attualmente raggiungibile. Verifica la connessione Internet e riprova più tardi.",
+      "demoServerError": "Impossibile avviare la demo a causa di un errore del server. Riprova più tardi.",
+      "demoUnexpectedResponse": "Impossibile avviare la demo perché la risposta del server era inattesa. Riprova.",
+      "demoAvailableIn": "Demo nuovamente disponibile tra {{time}}"
+    },
+    "installManual": {
+      "title": "Installa OpenFarmPlanner come app",
+      "firefoxAndroid": "Tocca il menu (⋮) in alto a destra e scegli «Installa» o «Aggiungi alla schermata Home».",
+      "ios": "Tocca l'icona Condividi e scegli «Aggiungi alla schermata Home». In Chrome o Firefox su iPhone, l'icona Condividi si trova nella barra degli indirizzi o nel menu.",
+      "dismiss": "Ho capito"
+    },
+    "retryTime": {
+      "lessThanMinute": "tra meno di un minuto",
+      "minutes_one": "tra circa {{count}} minuto",
+      "minutes_other": "tra circa {{count}} minuti",
+      "hours_one": "tra circa {{count}} ora",
+      "hours_other": "tra circa {{count}} ore",
+      "hoursAndMinutes": "tra circa {{hours}} ore e {{minutes}} minuti",
+      "compact": {
+        "lessThanMinute": "< 1 min",
+        "minutes_one": "{{count}} min",
+        "minutes_other": "{{count}} min",
+        "hours_one": "{{count}} h",
+        "hours_other": "{{count}} h",
+        "hoursAndMinutes": "{{hours}} h {{minutes}} min",
+        "minutes_many": "{{count}} min",
+        "hours_many": "{{count}} h"
+      },
+      "minutes_many": "tra circa {{count}} minuti",
+      "hours_many": "tra circa {{count}} ore"
+    }
+  },
+  "demoPage": {
+    "title": "Prova la demo",
+    "subtitle": "Prova subito OpenFarmPlanner con un progetto di esempio temporaneo.",
+    "description": "Puoi condividere direttamente questo link. Un ambiente dimostrativo viene creato solo quando avvii attivamente la demo.",
+    "startAction": "Avvia la demo ora",
+    "backToLanding": "Torna alla pagina iniziale",
+    "safetyNote": "La demo non richiede registrazione. Le modifiche vengono eliminate automaticamente e non sono destinate a dati di produzione reali."
+  },
+  "github": {
+    "url": "https://github.com/OpenFarmPlanner/openfarmplanner"
+  },
+  "topbar": {
+    "brandAriaLabel": "Torna in alto",
+    "navAriaLabel": "Navigazione principale",
+    "menuAriaLabel": "Apri menu",
+    "signIn": "Accedi",
+    "nav": {
+      "features": "Funzioni",
+      "cropLibrary": "Biblioteca delle colture",
+      "openSource": "Open source",
+      "about": "Il progetto"
+    }
+  },
+  "features": {
+    "eyebrow": "Che cosa rende diverso OpenFarmPlanner",
+    "title": "Modifica come in un foglio di calcolo. Ma tutto è collegato.",
+    "description": "Inserisci appezzamenti, colture e serie direttamente nelle tabelle, senza moduli né cambi di pagina. Poiché tutto risiede nello stesso database, calendario, fabbisogno di sementi e panoramica delle rese si ricalcolano immediatamente.",
+    "points": {
+      "typing": "Modifica i valori nella tabella e passa da una cella all'altra con la tastiera",
+      "oneSource": "Aggiorna in un punto e il dato è attuale ovunque: basta riconciliare elenchi separati",
+      "validation": "Gli errori risaltano subito, ad esempio quando un'aiuola è sovraoccupata"
+    },
+    "illustration": {
+      "ariaLabel": "Tabella di esempio delle serie del progetto dimostrativo con coltura, appezzamento e aiuola, data di semina, data di trapianto e superficie. La riga del cetriolo mostra come la modifica della data di trapianto sposta automaticamente anche quella di semina. Sotto, due viste collegate, calendario colturale e rese, che si ricalcolano automaticamente.",
+      "rows": {
+        "lettuce": {
+          "crop": "Lattuga (Lollo Bionda)",
+          "field": "Aiuole precoci a nord",
+          "bed": "Lattuga 2"
+        },
+        "tomato": {
+          "crop": "Pomodoro (Roma)",
+          "field": "Tunnel a sud",
+          "bed": "Fila pomodori 1"
+        },
+        "cucumber": {
+          "crop": "Cetriolo (Arola)",
+          "field": "Tunnel a sud",
+          "bed": "Fila cetrioli"
+        }
+      },
+      "linkedCaption": "Le viste collegate si ricalcolano automaticamente",
+      "cards": {
+        "calendar": {
+          "title": "Calendario colturale",
+          "detail": "Fila cetrioli dalla settimana 19"
+        },
+        "yield": {
+          "title": "Rese",
+          "detail": "Si sposta anche l'inizio della raccolta"
+        }
+      }
+    }
+  },
+  "cropLibrary": {
+    "eyebrow": "Biblioteca delle colture",
+    "title": "Dati colturali che crescono con la comunità.",
+    "description": "Acquisisci distanze, durata della coltura e rese dalla biblioteca aperta invece di partire da zero. Quello che aggiungi dalla tua esperienza puoi condividerlo con un clic. Così ogni azienda migliora la biblioteca.",
+    "illustration": {
+      "ariaLabel": "Diagramma del flusso bidirezionale dei dati colturali tra progetto e biblioteca: condividere una coltura, condividere un miglioramento, importare una coltura e acquisire un aggiornamento.",
+      "libraryTitle": "Biblioteca delle colture",
+      "librarySubtitle": "Curata insieme da molte aziende",
+      "arrows": {
+        "share": "Condividi una coltura",
+        "shareUpdate": "Condividi un miglioramento",
+        "import": "Importa una coltura",
+        "pullUpdate": "Acquisisci un aggiornamento"
+      },
+      "yourCropsTitle": "Le tue colture"
+    }
+  },
+  "seasonFeatures": {
+    "title": "Tutto per la tua stagione",
+    "items": {
+      "calendar": {
+        "title": "Calendario colturale",
+        "description": "Vedi a colpo d'occhio quale coltura occupa quale aiuola e quando, e individua presto le sovrapposizioni."
+      },
+      "rolloverSeason": {
+        "title": "Passa alla stagione successiva",
+        "description": "Trasferisci in un passaggio le serie collaudate nella nuova stagione e modifica solo ciò che cambia."
+      },
+      "seedDemand": {
+        "title": "Calcola fabbisogno di sementi",
+        "description": "Quantità e formati adatti delle confezioni derivano da serie, dati colturali e fornitori."
+      },
+      "yieldDistribution": {
+        "title": "Distribuzione delle rese",
+        "description": "Le quantità di raccolto previste per settimana e coltura rivelano vuoti e picchi prima che si verifichino."
+      },
+      "fieldMap": {
+        "title": "Vista grafica degli appezzamenti",
+        "description": "Disponi le aiuole nei tuoi appezzamenti come si trovano realmente sul terreno."
+      },
+      "collaboration": {
+        "title": "Pianifica insieme",
+        "description": "Invita il tuo gruppo di coltivazione e lavora sullo stesso piano aggiornato."
+      },
+      "history": {
+        "title": "Cronologia delle versioni e cestino",
+        "description": "Ogni modifica è tracciabile e puoi ripristinare gli stati precedenti."
+      },
+      "importExport": {
+        "title": "Importazione ed esportazione",
+        "description": "Importa i dati colturali dai fogli di calcolo e portali di nuovo con te quando vuoi."
+      },
+      "installApp": {
+        "title": "Installa come app",
+        "description": "Funziona nel browser e si può installare su telefono o tablet come un'app."
+      }
+    }
+  },
+  "openSource": {
+    "eyebrow": "Open source",
+    "title": "I tuoi dati appartengono a te.",
+    "description": "OpenFarmPlanner è software libero con licenza AGPL. Nessuna pubblicità né rivendita dei dati aziendali.",
+    "sourceButton": "Codice sorgente su GitHub",
+    "boxes": {
+      "agpl": {
+        "title": "AGPL-3.0",
+        "description": "Codice sorgente aperto, consultabile da tutti."
+      },
+      "gdpr": {
+        "title": "GDPR",
+        "description": "Ospitato in Germania, con raccolta minima di dati."
+      },
+      "api": {
+        "title": "API documentata",
+        "description": "Con un tuo token di accesso per script, automazioni e agenti IA."
+      },
+      "practice": {
+        "title": "Dalla pratica",
+        "description": "Sviluppato insieme a un'azienda di agricoltura sostenuta dalla comunità (GeLaWi) in Carinzia."
+      }
+    }
+  },
+  "closing": {
+    "title": "Provalo in un'azienda di esempio.",
+    "startDemo": "Avvia demo",
+    "aboutLink": "Scopri di più su OpenFarmPlanner e su chi c'è dietro"
+  },
+  "about": {
+    "eyebrow": "Il progetto",
+    "title": "Come è nato OpenFarmPlanner",
+    "intro1": "Tempo fa il nostro orticoltore di <zwiebelzopf>GeLaWi Zwiebelzopf</zwiebelzopf> mi ha chiesto di dare un'occhiata a un software di pianificazione colturale. Né quello né i molti altri che ho provato in seguito mi hanno convinto. Spesso dovevo leggere prima il manuale solo per capire come funzionasse qualcosa, e inserire e modificare i dati era faticoso.",
+    "intro2": "Da ingegnere elettrotecnico e studente di informatica, nel dicembre 2025 ho quindi iniziato a costruirne uno mio. OpenFarmPlanner si basa su tabelle modificabili come un foglio di calcolo e su un'interfaccia comprensibile senza manuale.",
+    "photoCaption": "Lo sviluppatore si rilassa seminando fagioli presso GeLaWi Zwiebelzopf.",
+    "photoAlt": "Martin sdraiato in un campo ride mentre semina fagioli",
+    "openSection": {
+      "title": "Aperto e collaborativo",
+      "text": "OpenFarmPlanner è open source per diversi motivi. Il codice sorgente rimane disponibile nel tempo e può essere portato avanti anche senza di me. Chiunque può verificare come vengono gestiti i dati. Richieste di funzioni ed errori possono essere discussi apertamente, e chi vuole può contribuire direttamente a migliorarlo. Infine, è semplicemente coerente con l'idea dell'agricoltura sostenuta dalla comunità: sostenere qualcosa insieme e condividerlo."
+    },
+    "freeSection": {
+      "title": "Gratuito, finanziato da donazioni",
+      "text": "OpenFarmPlanner è gratuito. Sviluppo e hosting dovrebbero essere finanziati da donazioni volontarie. Un modo per donare sarà disponibile prossimamente."
+    },
+    "contributeSection": {
+      "title": "Partecipa",
+      "text": "Il modo più semplice per contribuire è condividere i dati colturali nella biblioteca. Ogni coltura condivisa evita ricerche ad altre aziende e migliora la biblioteca. Feedback, idee o aiuto nello sviluppo sono sempre benvenuti:"
+    },
+    "closing": {
+      "name": "Martin Stipsitz, Villach"
+    }
+  },
+  "footer": {
+    "imprint": "Note legali",
+    "privacy": "Informativa sulla privacy",
+    "terms": "Condizioni d'uso",
+    "apiDocs": "API per sviluppatori",
+    "contactLabel": "Contatto: {{email}}",
+    "contactEmail": "info@openfarmplanner.org"
+  },
+  "legal": {
+    "imprint": {
+      "title": "Note legali",
+      "sections": {
+        "provider": {
+          "title": "Informazioni ai sensi del § 5 ECG (legge austriaca sul commercio elettronico)",
+          "content": "Martin Stipsitz\nBurgenlandstraße 44A / 9\n9500 Villach\nAustria"
+        },
+        "contact": {
+          "title": "Contatto",
+          "content": "E-mail: info@openfarmplanner.org"
+        },
+        "responsiblePerson": {
+          "title": "Responsabile dei contenuti",
+          "content": "Martin Stipsitz\nBurgenlandstraße 44A / 9\n9500 Villach\nAustria"
+        },
+        "mediaDisclosure": {
+          "title": "Informazioni ai sensi del § 25 MedienG (legge austriaca sui media)",
+          "content": "Titolare del mezzo di comunicazione: Martin Stipsitz\nOggetto dell'attività: sviluppo e gestione dell'applicazione web open source OpenFarmPlanner per la pianificazione colturale nell'orticoltura\nLuogo di residenza: Villach, Austria"
+        }
+      }
+    },
+    "privacy": {
+      "title": "Informativa sulla privacy",
+      "version": "Aggiornamento: 29 settembre 2026",
+      "sections": {
+        "controller": {
+          "title": "Titolare del trattamento",
+          "content": "Titolare del trattamento dei dati su questo sito ai sensi del Regolamento generale sulla protezione dei dati (GDPR):\n\nMartin Stipsitz\nBurgenlandstraße 44A / 9\n9500 Villach\nAustria\n\nE-mail: info@openfarmplanner.org"
+        },
+        "generalNotice": {
+          "title": "Informazioni generali",
+          "content": "Trattiamo i suoi dati personali in modo riservato e in conformità alle leggi applicabili sulla protezione dei dati e alla presente informativa sulla privacy. Questa informativa integra le condizioni d'uso di OpenFarmPlanner. Per le questioni relative al trattamento dei dati personali, fa fede esclusivamente la presente informativa.\n\nPuò visitare la pagina iniziale di OpenFarmPlanner senza fornire dati personali. Non appena crea un account utente e utilizza l'applicazione, trattiamo i dati descritti nelle sezioni seguenti. Per ogni attività di trattamento fa fede la base giuridica indicata nella relativa sezione ai sensi dell'Art. 6(1) GDPR."
+        },
+        "hosting": {
+          "title": "Hosting",
+          "content": "L'applicazione è ospitata dal seguente fornitore, che agisce come nostro responsabile del trattamento:\n\nUberspace GmbH\nKaiserstraße 15\n55116 Mainz\nGermania\n\nQuando si accede all'applicazione, il server web tratta dati tecnici di accesso:",
+          "bullets": {
+            "ipAddress": "indirizzo IP abbreviato (per IPv4 vengono memorizzati solo i primi 16 bit, per IPv6 solo i primi 32 bit)",
+            "requestTime": "Data e ora della richiesta",
+            "requestedResource": "pagina o risorsa richiesta",
+            "browser": "Tipo e versione del browser",
+            "operatingSystem": "Sistema operativo",
+            "referrerUrl": "URL di provenienza, se trasmesso"
+          },
+          "legalBasis": "I file di log del server web vengono eliminati automaticamente dopo 7 giorni. Trattiamo inoltre log tecnici dell'applicazione (ad esempio log degli errori di Django o Gunicorn). Contengono principalmente informazioni tecniche come messaggi di errore, marche temporali e richieste interessate; in singoli casi di errore relativi alla gestione di account, accessi o inviti, possono contenere anche l'indirizzo e-mail, il nome utente o un ID utente interno interessati. I log vengono utilizzati esclusivamente per risolvere problemi e garantire il funzionamento sicuro e stabile dell'applicazione.\n\nBase giuridica: Art. 6(1)(f) GDPR (legittimo interesse al funzionamento sicuro e stabile dell'applicazione; cfr. considerando 49 GDPR sulla sicurezza delle reti e dell'informazione)."
+        },
+        "cloudflare": {
+          "title": "Cloudflare (DNS, CDN e sicurezza)",
+          "content": "Utilizziamo il seguente fornitore per la risoluzione del nostro nome di dominio (DNS), come rete di distribuzione dei contenuti (CDN) e per funzioni di sicurezza come la protezione dagli attacchi DDoS:\n\nCloudflare, Inc.\n101 Townsend St.\nSan Francisco, CA 94107\nUSA\n\nQuando Cloudflare è configurato come reverse proxy davanti al nostro server presso Uberspace, le richieste all'applicazione passano prima dai server di Cloudflare. Cloudflare tratta quindi il suo indirizzo IP e dati tecnici di connessione (ad esempio ora della richiesta, risorsa richiesta e informazioni su browser e dispositivo) per garantire disponibilità, prestazioni e sicurezza del sito e bloccare le richieste malevole.",
+          "legalBasis": "Base giuridica: Art. 6(1)(f) GDPR (legittimo interesse al funzionamento sicuro e disponibile della piattaforma). Cloudflare, Inc. ha sede negli USA; il trasferimento si basa sulle clausole contrattuali standard dell'UE (si veda la sezione «Trasferimenti verso paesi terzi»). Per ulteriori informazioni, consulti l'informativa sulla privacy di Cloudflare (https://www.cloudflare.com/privacypolicy/)."
+        },
+        "registration": {
+          "title": "Registrazione e account utente",
+          "content": "Per utilizzare OpenFarmPlanner può creare un account utente con indirizzo e-mail e password oppure, in alternativa, tramite il suo account Google (si veda la sezione «Accesso con Google»). Durante la registrazione con indirizzo e-mail e password possono essere trattati i seguenti dati:",
+          "bullets": {
+            "emailAddress": "Indirizzo e-mail (visibile agli altri membri dello stesso progetto nell'elenco dei membri; mai reso pubblico)",
+            "nameOptional": "Nome visualizzato (facoltativo)",
+            "encryptedPassword": "Password (memorizzata con hashing sicuro: non leggibile da noi in chiaro)"
+          },
+          "legalBasis": "Base giuridica: Art. 6(1)(b) GDPR (esecuzione del contratto d'uso mediante la fornitura di un account utente)."
+        },
+        "turnstile": {
+          "title": "Protezione dai bot durante la registrazione (Cloudflare Turnstile)",
+          "content": "Per prevenire abusi e registrazioni automatizzate in massa, nel modulo di registrazione utilizziamo Cloudflare Turnstile, un servizio di Cloudflare, Inc. (si veda la sezione «Cloudflare»). Turnstile utilizza una verifica basata sul comportamento, solitamente invisibile all'utente, per determinare se la registrazione è effettuata da una persona o da un programma automatico (bot); non richiede i tradizionali rompicapi con immagini. A tale scopo, durante la registrazione vengono trasmessi a Cloudflare segnali tecnici del dispositivo e del comportamento del suo browser, che vengono valutati da Cloudflare.\n\nTurnstile viene utilizzato esclusivamente per proteggere dagli abusi automatizzati, non per tracciamento, analisi o marketing. Essendo una misura di sicurezza tecnicamente necessaria, non richiede un consenso separato.",
+          "legalBasis": "Base giuridica: Art. 6(1)(f) GDPR (legittimo interesse a proteggere piattaforma e utenti dagli abusi automatizzati). Poiché anche Turnstile è gestito da Cloudflare, Inc., con sede negli USA, il trasferimento si basa sulle clausole contrattuali standard dell'UE (si veda la sezione «Trasferimenti verso paesi terzi»). Per ulteriori informazioni, consulti l'informativa sulla privacy di Cloudflare (https://www.cloudflare.com/privacypolicy/). Questa base giuridica copre il trattamento dei dati trasmessi in quanto tale; l'eventuale necessità di un consenso separato per il relativo accesso alla memoria tecnica del browser (ad esempio un token di breve durata impostato da Turnstile) è disciplinata dal § 165(3) della legge austriaca sulle telecomunicazioni (TKG), che recepisce la direttiva ePrivacy. Turnstile rientra nell'eccezione per le misure tecnicamente necessarie, poiché serve esclusivamente alla verifica di sicurezza richiesta con l'invio del modulo."
+        },
+        "socialLogin": {
+          "title": "Accesso con Google",
+          "content": "Oltre alla registrazione con indirizzo e-mail e password, può registrarsi e accedere a OpenFarmPlanner con il suo account Google (Google Sign-In). Facendo clic su «Accedi con Google», viene reindirizzato a Google; dopo l'accesso riuscito con Google, viene reindirizzato a OpenFarmPlanner.",
+          "bullets": {
+            "receivedData": "Da Google riceviamo il suo indirizzo e-mail, nome e cognome, un identificatore stabile dell'account Google e, se trasmessi da Google, un URL dell'immagine del profilo e la lingua impostata nel suo account Google.",
+            "storedData": "Solo l'indirizzo e-mail e il nome vengono copiati nel suo account OpenFarmPlanner. Memorizziamo inoltre la risposta completa di accesso di Google (compresi identificatore dell'account Google, URL dell'immagine del profilo e lingua, ove trasmessi) in un record tecnico separato per la gestione degli accessi, così da riconoscerla negli accessi successivi con Google.",
+            "purpose": "Questi dati vengono utilizzati esclusivamente per creare l'account e accedere. OpenFarmPlanner non chiama API di Google dopo l'accesso e non memorizza token di accesso Google.",
+            "disconnect": "Può scollegare il suo account Google in qualsiasi momento nelle impostazioni account, alla voce «Metodi di accesso», purché abbia un altro modo per accedere (una password o un altro fornitore collegato)."
+          },
+          "legalBasis": "Base giuridica: Art. 6(1)(b) GDPR (esecuzione del contratto d'uso mediante la fornitura di un metodo di accesso alternativo). Per il trasferimento a Google, si veda la sezione «Trasferimenti verso paesi terzi»."
+        },
+        "projectData": {
+          "title": "Dati dei progetti e dell'applicazione",
+          "content": "All'interno dei suoi progetti trattiamo i dati relativi al progetto inseriti da Lei e dagli altri membri. Comprendono in particolare dati anagrafici del progetto (ad esempio nome, appartenenze e siti), dati operativi di pianificazione e gestione per le funzioni utilizzate (ad esempio relativi ad appezzamenti, colture, pianificazione colturale o attività) e informazioni aggiuntive come note, file caricati e cronologia delle modifiche, incluso il nome visualizzato della persona che ha effettuato la modifica. Questi dati sono generalmente visibili solo a Lei e agli altri membri del rispettivo progetto.",
+          "legalBasis": "Base giuridica: Art. 6(1)(b) GDPR (esecuzione del contratto d'uso: fornitura delle funzioni di pianificazione)."
+        },
+        "publicLibrary": {
+          "title": "Biblioteca pubblica delle colture",
+          "content": "Può pubblicare personalmente singole schede colturali (ad esempio informazioni di coltivazione su una varietà di ortaggio) da un progetto privato in una biblioteca pubblica delle colture. La biblioteca è concepita come base di conoscenza costruita in collaborazione e mantenuta nel tempo. Gli altri utenti possono visualizzare le voci pubblicate, importarle nei propri progetti e, in futuro, riutilizzarle tramite funzioni come cronologie delle versioni, modifica collaborativa, commenti, valutazioni, API pubbliche o esportazioni di dati. La pubblicazione è volontaria e non è necessaria per utilizzare OpenFarmPlanner. I diritti d'uso concessi al pubblico e a OpenFarmPlanner sono disciplinati dalle condizioni d'uso, in particolare dalla sezione «Licenza aperta per i dati colturali pubblicati».",
+          "bullets": {
+            "publicContent": "Vengono pubblicati solo i dati agricoli di coltivazione (ad esempio nome, varietà, durata della coltura e della raccolta, distanze tra le piante, quantità di sementi). Le note del progetto privato e le informazioni interne al progetto, come i fornitori di sementi, non vengono pubblicate.",
+            "attribution": "L'autore di una voce pubblicata viene mostrato con il nome pubblico visualizzato che può scegliere liberamente nelle impostazioni account. Il nome appartiene al suo account, non alla singola voce: quando lo imposta per la prima volta o lo cambia, compare automaticamente come autore su tutte le colture già pubblicate; se lo rimuove, le voci tornano anonime. I nomi precedenti non vengono conservati nelle singole voci. Se non ha impostato un nome pubblico, la pubblicazione è anonima, senza alcun nome. Il nome visualizzato deve essere univoco; al momento dell'impostazione una verifica tecnica controlla se è già usato da un altro account. Nome utente e indirizzo e-mail non fanno mai parte di una voce pubblica; l'indirizzo e-mail è usato solo per gestire l'account e per comunicare con Lei (si veda la sezione «Comunicazioni e-mail»).",
+            "noReview": "La pubblicazione avviene immediatamente e direttamente da parte sua; al momento non effettuiamo un esame o un'approvazione dei contenuti.",
+            "persistence": "Una voce pubblicata rimane generalmente parte permanente della biblioteca pubblica, anche se in seguito modifica o elimina la coltura originale nel progetto privato.",
+            "removal": "La rimozione non è prevista come normale funzione utente. Viene presa in considerazione solo in casi eccezionali, come violazioni di legge, dati personali nella scheda pubblicata, spam, abuso evidente o decisione di moderazione.",
+            "futureOutlook": "A lungo termine, la biblioteca delle colture è destinata a svilupparsi in modo collaborativo. In futuro i riscontri sulle voci dovrebbero avvenire tramite funzioni interne all'applicazione, come commenti, valutazioni, cronologie delle versioni, API pubbliche o esportazioni di dati, non attraverso i recapiti personali degli altri utenti."
+          },
+          "legalBasis": "Base giuridica: Art. 6(1)(b) GDPR, nella misura in cui rendiamo disponibile il suo contributo nella biblioteca pubblica delle colture sulla base delle condizioni d'uso e del suo esplicito atto di pubblicazione. Nella misura in cui i contributi pubblicati contengono ancora riferimenti personali, ad esempio tramite il nome pubblico visualizzato, e li conserviamo permanentemente per l'integrità e la tracciabilità della base di conoscenza collaborativa, ci basiamo anche sull'Art. 6(1)(f) GDPR. Il nostro legittimo interesse consiste nel creare e mantenere una banca dati colturale aperta e affidabile. I dati colturali puramente fattuali o anonimizzati non rientrano nel GDPR."
+        },
+        "emailCommunication": {
+          "title": "Comunicazioni e-mail",
+          "content": "Utilizziamo il suo indirizzo e-mail per:",
+          "bullets": {
+            "registration": "Registrazione",
+            "accountActivation": "Attivazione dell'account",
+            "passwordReset": "Reimpostazione della password",
+            "projectInvitations": "Inviti ai progetti",
+            "systemNotifications": "altre comunicazioni relative al suo account utente, come notifiche di sistema"
+          },
+          "legalBasis": "Base giuridica: Art. 6(1)(b) GDPR (esecuzione del contratto d'uso)."
+        },
+        "cookies": {
+          "title": "Cookie",
+          "content": "OpenFarmPlanner utilizza solo cookie tecnicamente necessari. Non vengono utilizzati cookie di analisi, tracciamento o marketing. I cookie servono solo a consentire l'uso autenticato dell'applicazione e a proteggere tecnicamente le richieste. La durata concreta di conservazione dipende dalla configurazione delle sessioni e della sicurezza del server; i cookie di sessione vengono eliminati al più tardi alla scadenza o quando li elimina nel browser.",
+          "bullets": {
+            "sessionCookies": "Cookie di sessione per mantenere l'accesso (base giuridica: Art. 6(1)(b) GDPR - senza questo cookie non è possibile fornire l'uso autenticato dell'applicazione)",
+            "securityCookies": "Cookie di sicurezza per proteggere dalla falsificazione delle richieste tra siti, o CSRF (base giuridica: Art. 6(1)(f) GDPR, legittimo interesse alla sicurezza dell'applicazione, cfr. considerando 49 GDPR)"
+          }
+        },
+        "localStorage": {
+          "title": "Memoria locale (Local Storage/Session Storage)",
+          "content": "Oltre ai cookie, l'applicazione memorizza singole impostazioni tecniche nella memoria locale del suo browser (Local Storage/Session Storage). Comprendono in particolare l'ultimo progetto aperto, opzioni di visualizzazione, stati della barra laterale e delle tabelle, ordinamento e filtri, suggerimenti già mostrati e reindirizzamenti o token per inviti ai progetti conservati temporaneamente. Questi dati non lasciano il suo dispositivo, non sono visibili a noi e non contengono credenziali di accesso. I dati del Local Storage rimangono nel browser finché non vengono sostituiti dall'applicazione, reimpostati da Lei nell'applicazione o eliminati tramite le funzioni del browser; i dati del Session Storage vengono solitamente eliminati alla chiusura della scheda. Poiché non trattiamo questi dati sui nostri sistemi, non si tratta di un nostro trattamento di dati personali ai sensi dell'Art. 4(2) GDPR; non è quindi applicabile una base giuridica separata."
+        },
+        "dataSharing": {
+          "title": "Comunicazione dei dati",
+          "content": "Oltre alla collaborazione con il fornitore di hosting come responsabile del trattamento (si veda la sezione Hosting), comunichiamo i suoi dati personali solo se:\n\n- è necessario per l'invio tecnico di e-mail relative all'account o agli inviti ai progetti; l'invio utilizza l'infrastruttura di posta gestita da Uberspace,\n- accede o si registra con il suo account Google; in tal caso Google riceve i dati tecnici necessari per l'accesso (si vedano le sezioni «Accesso con Google» e «Trasferimenti verso paesi terzi»),\n- accede all'applicazione o utilizza il modulo di registrazione; in tal caso Cloudflare tratta i dati tecnici necessari per distribuzione, sicurezza e protezione dai bot (si vedano le sezioni «Cloudflare», «Protezione dai bot durante la registrazione» e «Trasferimenti verso paesi terzi»),\n- pubblica attivamente una coltura nella biblioteca pubblica, scegliendo così la visibilità per tutti gli utenti autenticati, incluso il suo nome pubblico se impostato (si veda la sezione Biblioteca pubblica delle colture), oppure\n- siamo obbligati dalla legge, ad esempio nei confronti delle autorità."
+        },
+        "thirdCountryTransfers": {
+          "title": "Trasferimenti verso paesi terzi",
+          "content": "Se accede o si registra con il suo account Google (si veda la sezione «Accesso con Google»), i dati personali vengono trasferiti a Google LLC, con sede negli USA. Per quanto attualmente a nostra conoscenza, Google LLC è certificata nell'ambito dell'EU-U.S. Data Privacy Framework (DPF). La Commissione europea ha stabilito che ai dati trasferiti alle aziende certificate si applica un livello adeguato di protezione (decisione di adeguatezza ai sensi dell'Art. 45 GDPR del 10 luglio 2023). Può verificare personalmente lo stato attuale della certificazione in qualsiasi momento nell'elenco ufficiale dei partecipanti al DPF (https://www.dataprivacyframework.gov/list).\n\nQuando si accede all'applicazione tramite Cloudflare e durante la verifica anti-bot con Cloudflare Turnstile alla registrazione (si vedano le sezioni «Cloudflare» e «Protezione dai bot durante la registrazione»), i dati personali, in particolare l'indirizzo IP, vengono trasferiti a Cloudflare, Inc., con sede negli USA. Il trasferimento si basa sulle clausole contrattuali standard adottate dalla Commissione europea (Art. 46(2)(c) GDPR).\n\nPer il resto, secondo la valutazione attuale, i dati personali non vengono trasferiti a destinatari al di fuori dell'Unione europea o dello Spazio economico europeo. L'accesso con account Microsoft è predisposto nel codice sorgente di OpenFarmPlanner ma non è attualmente attivato; entrerà a far parte della presente informativa solo dopo l'attivazione."
+        },
+        "mandatoryProvision": {
+          "title": "Fornitura dei dati personali",
+          "content": "La fornitura di dati personali non è richiesta per legge né per contratto se visita solo la pagina iniziale pubblica. Per la registrazione e l'uso dell'applicazione sono necessari indirizzo e-mail, password e cookie tecnicamente necessari; senza questi dati non possiamo fornire un account utente né consentire l'accesso. Fornisce volontariamente i dati dei progetti e dell'applicazione quando desidera utilizzare le relative funzioni; senza tali informazioni, le corrispondenti funzioni di pianificazione non possono essere usate o possono esserlo solo in modo limitato. La pubblicazione nella biblioteca pubblica delle colture è volontaria e non è richiesta per utilizzare il resto dell'applicazione."
+        },
+        "storageDuration": {
+          "title": "Durata di conservazione",
+          "content": "I dati dell'account vengono conservati finché esiste l'account utente. Gli account non attivati vengono eliminati dopo la scadenza del periodo di attivazione; i link di attivazione sono attualmente validi per 7 giorni. I link di reimpostazione della password sono attualmente validi per 3 giorni; i link di modifica dell'e-mail per 24 ore. Gli inviti ai progetti sono attualmente validi per 14 giorni; trascorso tale periodo, il record dell'invito esiste ancora ma non può più essere accettato. Se utilizza la demo senza autenticazione («Prova la demo»), i dati creati durante quella sessione vengono eliminati automaticamente entro 8 ore dal suo avvio.\n\nSe richiede l'eliminazione dell'account, questo viene prima contrassegnato per l'eliminazione per 14 giorni; durante tale periodo può annullarla. Dopo tale periodo anonimizziamo l'account (rimuovendo indirizzo e-mail e nome visualizzato, disattivando l'account e rimuovendo un eventuale accesso Google collegato) e rimuoviamo le appartenenze ai progetti, salvo obblighi legali o altri motivi prevalenti.\n\nI progetti rimangono finché esiste almeno un membro. Se un progetto non ha più membri dopo l'eliminazione dell'account, eliminiamo il progetto inclusi i suoi dati specifici. Le voci pubblicate nella biblioteca pubblica delle colture non sono interessate e rimangono parte della base di conoscenza pubblica (si vedano le sezioni Dati dei progetti e dell'applicazione e Biblioteca pubblica delle colture). I file di log del server del fornitore di hosting vengono eliminati dopo 7 giorni; Uberspace memorizza gli indirizzi IP in forma abbreviata. Eliminiamo automaticamente i nostri log di manutenzione programmata (cron job) entro 14 giorni dalla creazione. Gli errori propri dell'applicazione (Django/Gunicorn) non vengono conservati in file di log gestiti da noi; vengono acquisiti dalla gestione dei processi del fornitore di hosting, la cui configurazione tecnica determina la durata di conservazione. Attualmente non sussistono ulteriori obblighi legali di conservazione dei dati trattati, poiché OpenFarmPlanner non tratta dati rilevanti per fatturazione o fiscalità."
+        },
+        "rights": {
+          "title": "I suoi diritti",
+          "content": "In qualità di interessato, ai sensi del GDPR ha i seguenti diritti:",
+          "bullets": {
+            "access": "Accesso ai dati conservati che la riguardano (Art. 15 GDPR)",
+            "rectification": "Rettifica dei dati inesatti (Art. 16 GDPR)",
+            "deletion": "Cancellazione dei suoi dati (Art. 17 GDPR)",
+            "restriction": "Limitazione del trattamento (Art. 18 GDPR)",
+            "portability": "Portabilità dei dati (Art. 20 GDPR)",
+            "objection": "Opposizione al trattamento basato sul legittimo interesse (Art. 21 GDPR)",
+            "consentWithdrawal": "Revoca del consenso prestato, con effetto per il futuro, senza pregiudicare la liceità del trattamento effettuato fino a quel momento (Art. 7(3) GDPR)"
+          },
+          "contact": "Può correggere i dati dell'account, esportare i suoi dati e richiedere l'eliminazione dell'account direttamente nelle impostazioni account. Per i casi eccezionali non coperti da queste funzioni autonome, il titolare del trattamento resta raggiungibile all'indirizzo info@openfarmplanner.org."
+        },
+        "complaint": {
+          "title": "Diritto di proporre reclamo",
+          "content": "Oltre ai diritti sopra elencati, ha il diritto di proporre reclamo a un'autorità di controllo per la protezione dei dati se ritiene che il trattamento dei suoi dati personali violi il GDPR (Art. 77 GDPR). Può in particolare rivolgersi all'autorità del luogo di residenza abituale, del luogo di lavoro o del luogo della presunta violazione.\n\nPer OpenFarmPlanner, l'autorità di controllo competente in Austria è l'Autorità austriaca per la protezione dei dati:\n\nAutorità austriaca per la protezione dei dati\nBarichgasse 40-42\n1030 Vienna\nhttps://www.dsb.gv.at"
+        },
+        "changes": {
+          "title": "Modifiche alla presente informativa sulla privacy",
+          "content": "Aggiorniamo questa informativa quando il trattamento dei dati personali cambia a causa di nuove funzioni o requisiti legali modificati. Si applica la versione pubblicata nell'applicazione. La data dell'ultima modifica è indicata alla fine dell'informativa. Informiamo gli utenti attivi delle modifiche sostanziali in modo appropriato, ad esempio via e-mail o con un avviso nell'applicazione."
+        },
+        "languageVersions": {
+          "title": "Versioni linguistiche",
+          "content": "Il presente documento è fornito in tedesco, inglese, francese, spagnolo e italiano. In caso di discrepanze o ambiguità tra le versioni linguistiche, prevale la versione inglese."
+        }
+      }
+    },
+    "terms": {
+      "title": "Condizioni d'uso",
+      "print": "Stampa / Salva come PDF",
+      "version": "Aggiornamento: 17 luglio 2026",
+      "sections": {
+        "provider": {
+          "title": "Fornitore e contatti",
+          "content": "Il fornitore dell'applicazione disponibile su openfarmplanner.org è:\n\nMartin Stipsitz\nBurgenlandstraße 44A / 9\n9500 Villach\nAustria\n\nE-mail: info@openfarmplanner.org\n\nAttualmente non è presente una partita IVA."
+        },
+        "scope": {
+          "title": "Ambito di applicazione e uso della piattaforma",
+          "content": "Le presenti Condizioni d'uso si applicano all'utilizzo di OpenFarmPlanner, un'applicazione web per la pianificazione delle coltivazioni agricole e orticole. Registrando un account utente o utilizzando l'applicazione, accetta le presenti Condizioni d'uso.\n\nOpenFarmPlanner è destinato sia a privati sia ad aziende agricole e orticole che desiderano organizzare digitalmente la pianificazione colturale. Le informazioni sul trattamento dei dati personali sono disponibili nell'Informativa sulla privacy."
+        },
+        "serviceAndCosts": {
+          "title": "Prestazioni offerte",
+          "content": "OpenFarmPlanner fornisce funzioni digitali di pianificazione come applicazione web ospitata."
+        },
+        "accounts": {
+          "title": "Account utente",
+          "content": "Per utilizzare l'applicazione è necessario un account utente. È tenuto a fornire informazioni veritiere durante la registrazione e a mantenere riservata la password.\n\nÈ responsabile di tutte le attività effettuate tramite il suo account. Ci informi immediatamente all'indirizzo info@openfarmplanner.org se sospetta che qualcuno abbia ottenuto accesso non autorizzato al suo account. L'account utente è personale e non trasferibile."
+        },
+        "userContent": {
+          "title": "I suoi contenuti in OpenFarmPlanner",
+          "content": "Nei suoi progetti può creare dati propri, come dati di siti, appezzamenti e colture, piani colturali, attività, note e foto. È responsabile dell'accuratezza, completezza e liceità di tali contenuti.\n\nNon carichi contenuti per i quali non dispone dei diritti necessari, come foto di terzi protette dal diritto d'autore."
+        },
+        "publicLibrary": {
+          "title": "Biblioteca pubblica delle colture",
+          "content": "Può pubblicare volontariamente singole schede colturali da un progetto privato nella biblioteca pubblica delle colture. La biblioteca è concepita come base di conoscenza costruita in collaborazione e mantenuta nel tempo per dati colturali agricoli e orticoli. Le voci pubblicate sono visibili agli altri utenti, possono essere importate nei loro progetti e, a lungo termine, riutilizzate tramite funzioni come cronologie delle versioni, modifica collaborativa, commenti, valutazioni, API pubbliche o esportazioni di dati.\n\nPubblicando, conferma che le informazioni pubblicate sono accurate per quanto a sua conoscenza, non contengono dati personali di terzi e che è autorizzato a pubblicarle permanentemente con la licenza aperta indicata nelle presenti condizioni d'uso."
+        },
+        "contributionLicense": {
+          "title": "Licenza aperta per i dati colturali pubblicati",
+          "content": "Quando pubblica una scheda colturale nella biblioteca pubblica delle colture, concede i dati colturali pubblicati con licenza Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0). La licenza consente in particolare a terzi di riprodurre, distribuire, modificare e combinare i dati pubblicati con altri dati, nonché di utilizzarli commercialmente, purché rispettino i termini della licenza. Tali termini comprendono in particolare un'attribuzione adeguata, l'indicazione della licenza e la condivisione delle versioni modificate alle stesse condizioni o a condizioni compatibili.\n\nUna volta validamente concessa, la licenza è irrevocabile secondo i suoi termini. OpenFarmPlanner può conservare e mostrare permanentemente i dati colturali pubblicati, includerli nelle funzioni di ricerca e importazione, renderli disponibili in esportazioni pubbliche o API, elaborarli tecnicamente e svilupparli ulteriormente nell'ambito della biblioteca collaborativa delle colture."
+        },
+        "prohibitedContent": {
+          "title": "Contenuti e comportamenti vietati",
+          "content": "Nell'utilizzo di OpenFarmPlanner, in particolare quando pubblica contenuti nella biblioteca pubblica delle colture, non è consentito",
+          "bullets": {
+            "illegalContent": "pubblicare contenuti illeciti, ingannevoli o lesivi dei diritti di terzi (ad esempio diritto d'autore o diritti della personalità),",
+            "malware": "distribuire software dannoso o aggirare le misure di sicurezza dell'applicazione,",
+            "abuse": "abusare dell'applicazione in modo automatizzato, ad esempio tramite registrazioni in massa o spam,",
+            "misrepresentation": "fingersi un'altra persona o pubblicare consapevolmente informazioni false."
+          }
+        },
+        "copyright": {
+          "title": "Diritto d'autore",
+          "content": "Il software OpenFarmPlanner è protetto dal diritto d'autore ed è distribuito con la licenza indicata nella sezione «Software open source». I contenuti che inserisce, come dati colturali o note, rimangono di sua proprietà.\n\nSe ritiene che una voce pubblicata nella biblioteca pubblica delle colture violi il suo diritto d'autore o altri diritti, contatti info@openfarmplanner.org. Esaminiamo le segnalazioni fondate (si veda la sezione «Rimozione dei contenuti»)."
+        },
+        "contentRemoval": {
+          "title": "Rimozione dei contenuti",
+          "content": "Le voci pubblicate nella biblioteca delle colture sono generalmente destinate a rimanere permanentemente e non vengono rimosse su richiesta come normale funzione utente. Ci riserviamo tuttavia il diritto di rimuovere, bloccare o anonimizzare in tutto o in parte i contenuti pubblicati, oppure di correggerli in futuro tramite funzioni di moderazione o versionamento, qualora sussistano indizi concreti di una violazione delle presenti condizioni d'uso o della legge applicabile. Ciò vale in particolare per violazioni di legge, dati personali nelle schede pubblicate, spam, abuso evidente, informazioni ingannevoli o una decisione di moderazione.\n\nPuò segnalare in qualsiasi momento contenuti sospettati di essere illeciti o problematici a info@openfarmplanner.org. Non siamo tenuti a una sorveglianza generale e preventiva dei contenuti pubblicati."
+        },
+        "accountSuspension": {
+          "title": "Sospensione degli account utente",
+          "content": "In caso di violazione grave o ripetuta delle presenti Condizioni d'uso, possiamo limitare temporaneamente l'accesso al suo account o sospenderlo. Procediamo in modo proporzionato, considerando la gravità della violazione e se si tratta di un episodio isolato o ripetuto.\n\nIn caso di sospensione, la informeremo del motivo ove possibile. Può contattare info@openfarmplanner.org in qualsiasi momento al riguardo."
+        },
+        "liability": {
+          "title": "Responsabilità",
+          "content": "OpenFarmPlanner è sviluppato e gestito con grande cura. Non possiamo tuttavia garantire in ogni momento una disponibilità priva di errori o interruzioni, ad esempio durante manutenzione, problemi tecnici o eventi al di fuori del nostro controllo.\n\nLa biblioteca pubblica delle colture contiene contenuti creati dagli utenti stessi. La responsabilità della loro accuratezza è degli utenti che li pubblicano, non di OpenFarmPlanner (si veda la sezione «I suoi contenuti in OpenFarmPlanner»).\n\nLe informazioni agricole e orticole di OpenFarmPlanner, come periodi di crescita e raccolta, distanze tra le piante o quantità di sementi, servono solo a supportare la sua pianificazione colturale e non sostituiscono una consulenza professionale.\n\nLa nostra responsabilità per danni derivanti da violazioni lievemente colpose degli obblighi è limitata. Rimangono impregiudicate la responsabilità per dolo e colpa grave, nonché per danni derivanti da lesioni alla vita, all'integrità fisica o alla salute, e le altre norme imperative di legge sulla responsabilità."
+        },
+        "openSource": {
+          "title": "Software open source",
+          "content": "Il codice sorgente di OpenFarmPlanner è pubblicato come software open source con licenza GNU Affero General Public License Version 3 (AGPLv3) e può essere consultato, riutilizzato e modificato nel repository GitHub di OpenFarmPlanner (https://github.com/OpenFarmPlanner/planner). La licenza disciplina solo i diritti sul software stesso e, come è consueto per il software open source, esclude qualsiasi garanzia sul software.\n\nÈ distinto l'utilizzo dell'applicazione ospitata su openfarmplanner.org, disciplinato dalle presenti Condizioni d'uso."
+        },
+        "futureFeatures": {
+          "title": "Ulteriore sviluppo della piattaforma",
+          "content": "OpenFarmPlanner viene sviluppato continuamente. A lungo termine, la biblioteca pubblica delle colture è destinata a supportare funzioni come cronologie delle versioni, modifica collaborativa, commenti, valutazioni, API pubbliche ed esportazioni di dati. Le presenti Condizioni d'uso si applicano per analogia a queste future funzioni relative ai dati colturali pubblicati e ai contenuti forniti dagli utenti. In caso di nuove funzioni sostanziali di questo tipo, aggiorneremo se necessario le presenti Condizioni d'uso (si veda la sezione «Modifiche alle presenti Condizioni d'uso»)."
+        },
+        "changes": {
+          "title": "Modifiche alle presenti Condizioni d'uso",
+          "content": "Aggiorniamo le presenti Condizioni d'uso se cambiano le funzioni offerte o il quadro giuridico. Fa fede la versione pubblicata nell'applicazione al momento dell'utilizzo; la data dell'ultima modifica si trova alla fine di questa pagina. In caso di modifiche sostanziali, informeremo gli utenti attivi in modo appropriato, ad esempio via e-mail o con un avviso nell'applicazione."
+        },
+        "languageVersions": {
+          "title": "Versioni linguistiche",
+          "content": "Il presente documento è fornito in tedesco, inglese, francese, spagnolo e italiano. In caso di discrepanze o ambiguità tra le versioni linguistiche, prevale la versione inglese."
+        }
+      }
+    }
+  },
+  "seo": {
+    "titles": {
+      "landing": "OpenFarmPlanner – pianificazione colturale per l'orticoltura",
+      "about": "Informazioni su OpenFarmPlanner",
+      "demo": "Prova la demo – OpenFarmPlanner",
+      "imprint": "Note legali – OpenFarmPlanner",
+      "privacy": "Informativa sulla privacy – OpenFarmPlanner",
+      "terms": "Condizioni d'uso – OpenFarmPlanner",
+      "login": "Accedi – OpenFarmPlanner",
+      "register": "Registrati – OpenFarmPlanner"
+    },
+    "descriptions": {
+      "landing": "OpenFarmPlanner: pianificazione colturale open source per l'orticoltura. Modifica appezzamenti, colture e serie direttamente nelle tabelle, con una biblioteca aperta delle colture.",
+      "about": "Come e perché è nato OpenFarmPlanner: l'approccio open source, il finanziamento tramite donazioni e come partecipare.",
+      "imprint": "Note legali di OpenFarmPlanner: identificazione del fornitore, contatti e responsabile ai sensi del § 5 ECG (legge austriaca sul commercio elettronico).",
+      "privacy": "Informativa sulla privacy di OpenFarmPlanner: informazioni su hosting, registrazione, dati dei progetti, cookie e diritti previsti dal GDPR.",
+      "terms": "Condizioni d'uso di OpenFarmPlanner: regole su account, contenuti, biblioteca pubblica delle colture e responsabilità."
+    }
+  }
+}

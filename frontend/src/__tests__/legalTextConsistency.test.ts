@@ -1,10 +1,10 @@
 /**
  * The legal texts (imprint, privacy policy, terms) exist in German, English,
- * French and Spanish and must say the same in every language. Wording is
+ * French, Spanish and Italian and must say the same in every language. Wording is
  * reviewed by people; this test guards what can be checked mechanically:
  * every paragraph cites the same articles and sections (in one uniform
  * notation, e.g. "Art. 6(1)(f)", "§ 165(3)"), and names the same numbers,
- * deadlines, URLs and email addresses in all four languages.
+ * deadlines, URLs and email addresses in all supported languages.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -13,6 +13,7 @@ import homeDE from '../i18n/locales/de/home.json';
 import homeEN from '../i18n/locales/en/home.json';
 import homeES from '../i18n/locales/es/home.json';
 import homeFR from '../i18n/locales/fr/home.json';
+import homeIT from '../i18n/locales/it/home.json';
 
 type Tree = { [key: string]: string | Tree };
 
@@ -36,6 +37,7 @@ const LEGAL = {
   en: flatten(homeEN.legal as Tree),
   fr: flatten(homeFR.legal as Tree),
   es: flatten(homeES.legal as Tree),
+  it: flatten(homeIT.legal as Tree),
 };
 
 const citations = (text: string): string[] =>
@@ -45,11 +47,11 @@ const links = (text: string): string[] =>
   [...text.matchAll(/https?:\/\/[^\s)]+|[\w.+-]+@[\w.-]+\.\w+/g)].map((m) => m[0]).sort();
 
 describe('legal texts say the same in every language', () => {
-  it.each(['fr', 'es', 'de'] as const)('%s has every English paragraph and no extra one', (language) => {
+  it.each(['fr', 'es', 'de', 'it'] as const)('%s has every English paragraph and no extra one', (language) => {
     expect([...LEGAL[language].keys()].sort()).toEqual([...LEGAL.en.keys()].sort());
   });
 
-  it.each(['de', 'fr', 'es'] as const)('%s cites the same articles, numbers and links as English', (language) => {
+  it.each(['de', 'fr', 'es', 'it'] as const)('%s cites the same articles, numbers and links as English', (language) => {
     for (const [key, english] of LEGAL.en) {
       const text = LEGAL[language].get(key) ?? '';
       expect(citations(text), `citations in ${language}:${key}`).toEqual(citations(english));

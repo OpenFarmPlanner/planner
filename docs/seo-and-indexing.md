@@ -8,17 +8,17 @@ produced by the **frontend build**.
 
 ## What is indexable
 
-Every public page exists in German, English, French and Spanish. German is
+Every public page exists in German, English, French, Spanish and Italian. German is
 the default language and lives at the root without a prefix; every other
 language lives under its own prefix with slugs in that language:
 
-| Page             | German (`x-default`)   | English            | French                      | Spanish           |
-| ---------------- | ---------------------- | ------------------ | --------------------------- | ----------------- |
-| Landing page     | `/`                    | `/en`              | `/fr`                       | `/es`             |
-| About            | `/ueber`               | `/en/about`        | `/fr/a-propos`              | `/es/acerca-de`   |
-| Imprint (legal)  | `/impressum`           | `/en/legal-notice` | `/fr/mentions-legales`      | `/es/aviso-legal` |
-| Privacy (legal)  | `/datenschutz`         | `/en/privacy`      | `/fr/confidentialite`       | `/es/privacidad`  |
-| Terms (legal)    | `/nutzungsbedingungen` | `/en/terms`        | `/fr/conditions-utilisation` | `/es/terminos`   |
+| Page             | German (`x-default`)   | English            | French                      | Spanish           | Italian |
+| ---------------- | ---------------------- | ------------------ | --------------------------- | ----------------- | --- |
+| Landing page     | `/`                    | `/en`              | `/fr`                       | `/es`             | `/it` |
+| About            | `/ueber`               | `/en/about`        | `/fr/a-propos`              | `/es/acerca-de`   | `/it/chi-siamo` |
+| Imprint (legal)  | `/impressum`           | `/en/legal-notice` | `/fr/mentions-legales`      | `/es/aviso-legal` | `/it/note-legali` |
+| Privacy (legal)  | `/datenschutz`         | `/en/privacy`      | `/fr/confidentialite`       | `/es/privacidad`  | `/it/privacy` |
+| Terms (legal)    | `/nutzungsbedingungen` | `/en/terms`        | `/fr/conditions-utilisation` | `/es/terminos`   | `/it/termini` |
 
 Slugs are plain ASCII (no accents), lowercase, hyphen-separated.
 
@@ -41,7 +41,7 @@ registering it as public).
 
 [`frontend/src/seo/seoConfig.ts`](../frontend/src/seo/seoConfig.ts) is the
 single source of truth. `SEO_LANGUAGES` lists the published languages in
-hreflang order (`de`, `en`, `fr`, `es`); `PUBLIC_PAGES` lists every public
+hreflang order (`de`, `en`, `fr`, `es`, `it`); `PUBLIC_PAGES` lists every public
 page with its path per language, sitemap `changefreq`/`priority`, and the `home`-namespace
 i18n keys of its `<title>` and meta description (`seo.titles.*`,
 `seo.descriptions.*` — the texts live in the locale bundles like every other
@@ -70,7 +70,7 @@ else is derived from it, so no public path is listed anywhere else:
 - Every public page has exactly one self-referencing canonical: the URL it is
   served at with 200 (`buildCanonicalUrl`).
 - Every public page carries the same reciprocal hreflang set: `de`, `en`,
-  `fr`, `es` and `x-default` (pointing at the German version) — in the prerendered `<head>`,
+  `fr`, `es`, `it` and `x-default` (pointing at the German version) — in the prerendered `<head>`,
   at runtime, and as `xhtml:link` alternates on every sitemap `<url>`.
 - **Every URL renders its own language** — `/ueber` is always German,
   `/en/about` always English, `/fr/a-propos` always French and
@@ -80,7 +80,7 @@ else is derived from it, so no public path is listed anywhere else:
   first load of a public page, a visitor whose language differs from the
   page's is sent to the counterpart URL with `location.replace` (query and
   hash kept): their stored choice from the switcher if any, otherwise the
-  browser language — German, French and Spanish browsers (any regional
+  browser language — German, French, Spanish and Italian browsers (any regional
   variant, e.g. `fr-CA`, `es-419`, `es-MX`) get their language, every other
   language gets English.
   The `index.html` preboot does this before first paint on prerendered pages
@@ -327,7 +327,7 @@ above:
 ## Environment variables
 
 | Variable               | Default                         | Effect                                                                                                    |
-| ---------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| ---------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------- | --- |
 | `VITE_PUBLIC_SITE_URL` | `https://openfarmplanner.org`   | Canonical origin used for canonical/OG URLs, the `robots.txt` `Sitemap:` line and sitemap `<loc>` values. |
 | `VITE_SEO_INDEXABLE`   | `true`                          | `false`/`0`/`no`/`off` → `robots.txt` becomes `Disallow: /` and a `noindex` meta is emitted.               |
 

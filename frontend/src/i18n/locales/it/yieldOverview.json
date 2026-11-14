@@ -1,0 +1,38 @@
+{
+  "loading": "Caricamento…",
+  "errors": {
+    "load": "Impossibile caricare la panoramica delle rese."
+  },
+  "filters": {
+    "crop": "Coltura",
+    "allCrops": "Tutte le colture",
+    "period": "Visualizzazione",
+    "week": "Settimana",
+    "month": "Mese"
+  },
+  "chart": {
+    "title": "Distribuzione delle rese",
+    "subtitle": "Previsione dalle serie della stagione attiva: superficie o numero di piante pianificati moltiplicati per la resa prevista della coltura.",
+    "tooltip": "{{period}} · {{crop}}: {{yield}} kg",
+    "tooltipPeriod": "Periodo",
+    "tooltipYield": "Resa prevista",
+    "yearBoundary": "Cambio d'anno: {{year1}} → {{year2}}"
+  },
+  "legend": {
+    "showAll": "Mostra tutte le {{count}} colture",
+    "showMore": "Mostra altre {{count}}",
+    "expand": "Mostra altro",
+    "collapse": "Riduci alle prime {{count}}"
+  },
+  "contextMenu": {
+    "openCrop": "Apri coltura"
+  },
+  "empty": {
+    "noPlansTitle": "Nessuna previsione delle rese ancora disponibile",
+    "description": "Le previsioni delle rese sono disponibili quando esistono serie con periodi di raccolta.",
+    "createPlanAction": "Aggiungi serie",
+    "noYieldTitle": "Nessuna resa prevista in questa stagione",
+    "noYieldDescription": "Non ci sono dati di raccolta per la stagione attiva. Verifica di aver inserito le rese previste delle colture.",
+    "openPlansAction": "Apri piano colturale"
+  }
+}
