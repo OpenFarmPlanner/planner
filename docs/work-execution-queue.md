@@ -28,7 +28,13 @@ authorized small, bounded API costs on 2026-11-13 and requested cloud-only opera
 
 Follow the shared [issue-and-queue skill](../.claude/skills/issue-and-queue/SKILL.md)
 for creating/updating issues or editing this queue. Discussion alone authorizes
-neither creation nor implementation. When queueing is requested without a
+neither creation nor implementation. The standing
+[discovered-bug rule](../CLAUDE.md#reproducible-bugs-found-during-implementation-or-qa)
+authorizes filing reproducible pre-existing defects found during an authorized
+implementation or QA task, after deduplication and with a link from the
+originating PR/report. It does not authorize implementing that follow-up or
+adding it to this queue; insertion requires explicit owner instruction.
+When queueing is requested without a
 position, append an absent item; keep an existing item at its current position.
 Explicit positions refer to displayed rows under Ordered work items, including
 completed rows and PR gates, unless the user specifies eligible items instead.

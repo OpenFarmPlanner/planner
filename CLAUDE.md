@@ -48,6 +48,29 @@
     the old spelling has to keep working. Mark each shim deprecated and say what
     has to be gone before it can be removed.
 
+### Reproducible bugs found during implementation or QA
+
+This standing rule applies to Codex and Claude during an authorized task.
+Fix defects introduced by the change, and defects that must be fixed for the
+changed flow to work, in the same PR under the scope rules above.
+
+For a reproducible pre-existing defect outside that scope, follow the shared
+[issue-and-queue procedure](.claude/skills/issue-and-queue/SKILL.md): search open
+and closed issues and related PRs, reuse the relevant issue and add new evidence.
+If the defect still reproduces and no issue tracks it, create an English
+follow-up with environment and reproduction steps, expected and actual behavior,
+user impact, available evidence, an appropriate existing epic and P0–P3 priority.
+Use `needs-decision` only for a concrete product or design decision, and state
+the open question. Link the issue in the originating PR or task report.
+
+Filing these follow-ups is authorized without routine confirmation; implementing
+them or adding them to #1058 requires the corresponding owner instruction.
+If GitHub writes are unavailable, preserve the reproduction details in the
+report and explicitly mark the follow-up **unfiled**. Preserve the existing
+handling of private security findings; do not copy their sensitive details into
+public follow-ups or reports. See the
+[security review procedure](.claude/skills/security-review-protocol/SKILL.md).
+
 ## Workflow: Before Making a Non-Trivial Change
 
 A pre-flight checklist. Each point is a pointer — the full rule lives in
