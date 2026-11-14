@@ -98,8 +98,8 @@ erDiagram
 ```
 
 - `Location` → `Field` → `Bed` is a strict three-level physical hierarchy
-  ("Standort" → "Parzelle" → "Beet" in the UI). Only *area* (`area_sqm`) is
-  stored for fields/beds today, no polygon geometry — see
+  ("Standort" → "Parzelle" → "Beet" in the UI). Fields/beds store area (`area_sqm`) and optional length/width
+  (`length_m`, `width_m`), without polygon geometry — see
   [`archive/FIELD_BED_AREA_IMPLEMENTATION.md`](./archive/FIELD_BED_AREA_IMPLEMENTATION.md)
   for the historical rationale and the intended future geometry extension
   path.
@@ -108,7 +108,20 @@ erDiagram
   separate rows from `Bed`/`Field` themselves, not embedded fields. A field
   without a `FieldLayout` (e.g. just added in the list view) is drawn next to
   the location's positioned fields (`placeFieldRects`); only when none has a
-  position do all fields use the default stacked arrangement.
+  position do fields use compact schematic rows fitted to the viewport.
+  Stored positions and world sizes are preserved; dimensions determine aspect
+  ratio, while area-only records use approximate rectangles, not georeferencing.
+  Beds remain visible in the overview. Their single-line labels follow the
+  longer edge (vertical for tall beds), use an ellipsis within the bed and hide
+  only when there is insufficient screen space; clicking opens the full details.
+  Task indicators and quick actions are separate work (#975).
+  For local acceptance, `seed_graphical_layout_acceptance --username USER
+  --database-name LOCAL_DATABASE` previews an isolated project with three plots
+  and long bed names (from `backend/` via `pdm run python manage.py`). After
+  verifying the local target, use `DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1`
+  for preview and repeat with `--apply` to create it. The command reuses the
+  local fixture safeguards from `seed_library_import_acceptance`, preserves an
+  existing fixture and manual edits, and never resets accounts or other projects.
   Inside a field, beds can only be placed in its usable area
   (`getFieldUsableArea` in `graphicalFieldsGeometry.ts`): a border and the
   label strip at the top stay free. The view paints that margin light grey

@@ -8,6 +8,7 @@ import {
   fitContentToStage,
   getContentBoundsFromRects,
   getVisibleElements,
+  getBedLabelLayout,
   panViewport,
   shouldShowBedLabel,
   shouldShowFieldLabel,
@@ -22,8 +23,8 @@ import {
 describe('graphicalViewport helpers', () => {
   it('derives visible elements from zoom level', () => {
     expect(getVisibleElements(ZOOM_LEVEL_OVERVIEW - 0.1)).toEqual({
-      showBeds: false,
-      showBedLabels: false,
+      showBeds: true,
+      showBedLabels: true,
       showDetailedBedLabels: false,
     });
     expect(getVisibleElements(ZOOM_LEVEL_MEDIUM)).toEqual({
@@ -191,5 +192,34 @@ describe('graphicalViewport helpers', () => {
     const initial = { x: 0, y: 0, scale: 1 };
     const zoomed = zoomAroundPoint(initial, 0.05, { x: 100, y: 100 });
     expect(zoomed.scale).toBe(GRAPHICAL_MANUAL_MIN_SCALE);
+  });
+});
+
+
+describe('bed label orientation', () => {
+  it.each([0.1, 0.5, 1, 3])('keeps labels inside either orientation at zoom %s', scale => {
+    for (const size of [{ width: 300, height: 2000 }, { width: 2000, height: 300 }]) {
+      const label = getBedLabelLayout(size, scale)!;
+      expect(label).not.toBeNull();
+      expect(label.rotation).toBe(size.height > size.width ? -90 : 0);
+      const x = label.x * scale;
+      const y = label.y * scale;
+      const bounds = label.rotation === -90
+        ? { x, y: y - label.width, width: label.height, height: label.width }
+        : { x, y, width: label.width, height: label.height };
+      expect(bounds.x).toBeGreaterThanOrEqual(0);
+      expect(bounds.y).toBeGreaterThanOrEqual(0);
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(size.width * scale);
+      expect(bounds.y + bounds.height).toBeLessThanOrEqual(size.height * scale);
+    }
+  });
+  it('requires enough screen space for a line and finite positive zoom', () => {
+    expect(getBedLabelLayout({ width: 100, height: 12 }, 1)).toBeNull();
+    expect(getBedLabelLayout({ width: 12, height: 100 }, 1)).toBeNull();
+    expect(getBedLabelLayout({ width: 14, height: 80 }, 1)?.rotation).toBe(-90);
+    expect(getBedLabelLayout({ width: 80, height: 14 }, 1)?.rotation).toBe(0);
+    for (const scale of [0, -1, NaN, Infinity]) {
+      expect(getBedLabelLayout({ width: 100, height: 100 }, scale)).toBeNull();
+    }
   });
 });

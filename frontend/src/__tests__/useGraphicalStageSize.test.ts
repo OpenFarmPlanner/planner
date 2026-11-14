@@ -57,6 +57,44 @@ describe('useGraphicalStageSize', () => {
     expect(result.current.stageWidth).toBe(320);
   });
 
+  it('measures the inner location canvas rather than the wider page container', () => {
+    const { result } = renderHook(() => useGraphicalStageSize());
+    result.current.containerRef.current = canvasNode(640, 480);
+    result.current.locationCanvasRefs.current[7] = canvasNode(540, 400);
+    act(() => { window.dispatchEvent(new Event('resize')); });
+    expect(result.current.stageWidth).toBe(532);
+  });
+
+  it('remeasures container reflow without a window resize and disconnects the observer', () => {
+    let notify: () => void = () => {};
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: () => void) { notify = callback; }
+      observe = observe;
+      disconnect = disconnect;
+    });
+    try {
+      const container = canvasNode(640, 480);
+      const canvas = canvasNode(540, 400);
+      const { result, unmount } = renderHook(() => {
+        const state = useGraphicalStageSize();
+        state.containerRef.current = container;
+        state.locationCanvasRefs.current[7] = canvas;
+        return state;
+      });
+      expect(observe).toHaveBeenCalledWith(container);
+      expect(observe).toHaveBeenCalledWith(canvas);
+      Object.defineProperty(canvas, 'clientWidth', { value: 360 });
+      act(() => notify());
+      expect(result.current.stageWidth).toBe(352);
+      unmount();
+      expect(disconnect).toHaveBeenCalledOnce();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('clamps the height between the configured bounds', () => {
     setViewport(1200, 400);
     const { result: shortViewport } = renderHook(() => useGraphicalStageSize());

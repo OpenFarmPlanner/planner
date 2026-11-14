@@ -20,7 +20,7 @@ export const BED_LABEL_MIN_SCALE = Math.min(1, GRAPHICAL_MAX_SCALE);
 export const BED_LABEL_MIN_SCREEN_WIDTH = 76;
 export const BED_LABEL_MIN_SCREEN_HEIGHT = 26;
 export const BED_LABEL_ABSOLUTE_MIN_SCREEN_WIDTH = 22;
-export const BED_LABEL_ABSOLUTE_MIN_SCREEN_HEIGHT = 14;
+export const BED_LABEL_ABSOLUTE_MIN_SCREEN_HEIGHT = 13;
 
 export interface ViewportState {
   scale: number;
@@ -115,14 +115,6 @@ export function clampScale(
 }
 
 export function getVisibleElements(scale: number): VisibilityState {
-  if (scale < ZOOM_LEVEL_OVERVIEW) {
-    return {
-      showBeds: false,
-      showBedLabels: false,
-      showDetailedBedLabels: false,
-    };
-  }
-
   if (scale < ZOOM_LEVEL_DETAIL) {
     return {
       showBeds: true,
@@ -152,9 +144,28 @@ export function shouldShowBedLabel(size: RectSize, scale: number): boolean {
   const screenWidth = size.width * scale;
   const screenHeight = size.height * scale;
   return (
-    screenWidth >= BED_LABEL_ABSOLUTE_MIN_SCREEN_WIDTH &&
-    screenHeight >= BED_LABEL_ABSOLUTE_MIN_SCREEN_HEIGHT
+    Math.max(screenWidth, screenHeight) >= BED_LABEL_ABSOLUTE_MIN_SCREEN_WIDTH &&
+    Math.min(screenWidth, screenHeight) >= BED_LABEL_ABSOLUTE_MIN_SCREEN_HEIGHT
   );
+}
+
+/** A single screen-sized line inside the bed, following its longer edge. */
+export function getBedLabelLayout(size: RectSize, scale: number) {
+  if (!Number.isFinite(scale) || scale <= 0 || !shouldShowBedLabel(size, scale)) return null;
+  const width = size.width * scale;
+  const height = size.height * scale;
+  const vertical = height > width;
+  const compact = Math.max(width, height) < 80 || Math.min(width, height) < 30;
+  const fontSize = compact ? 11 : 12;
+  return {
+    x: (vertical ? (width - fontSize) / 2 : 4) / scale,
+    y: (vertical ? height - 4 : (height - fontSize) / 2) / scale,
+    width: Math.max(width, height) - 8,
+    height: fontSize,
+    fontSize,
+    rotation: vertical ? -90 : 0,
+    compact,
+  };
 }
 
 export function fitBoundsToStage(
