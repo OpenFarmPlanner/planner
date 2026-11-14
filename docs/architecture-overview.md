@@ -153,6 +153,10 @@ docs/                  # This documentation
   pattern is deliberate: all state and handlers stay in the page; the
   extracted components only render props. Stateful-hook extraction from
   these pages is avoided because it breaks React Compiler analysis.
+  Pure calculations can also live in focused modules: `crops/cropFormDraft.ts`
+  owns form draft construction while `CropForm` keeps every hook, handler and
+  rendered element. The [frontend hotspot audit](frontend-hotspots.md)
+  records measured coupling, the selected boundary and deferred extractions.
 - **API layer** (`frontend/src/api/`): `httpClient.ts` is the one shared
   axios instance; a single request interceptor attaches `X-Project-Id`
   (read fresh from `localStorage` per request) and `X-CSRFToken`.
