@@ -129,6 +129,31 @@ describe('createPublicCropLibraryCommandSpecs', () => {
       expect(commandById({ importing: true }, 'publicCropLibrary.import')?.isEnabled?.()).toBe(false);
     });
 
+    it.each([
+      ['de', 'Im Projekt aktualisieren'],
+      ['en', 'Update in project'],
+      ['fr', 'Mettre à jour dans le projet'],
+      ['es', 'Actualizar en el proyecto'],
+    ])('labels an outdated linked crop as an update in %s', (language, label) => {
+      const command = commandById({
+        t: i18n.getFixedT(language) as TFunction,
+        selectedCrop: { ...CROP, project_import_status: {
+          crop_id: 42, is_up_to_date: false, is_modified_from_source: false,
+        } },
+      }, 'publicCropLibrary.import');
+      expect(command?.label).toBe(label);
+      expect(command?.isEnabled?.()).toBe(true);
+      expect(command?.keys).toEqual({ alt: true, key: 'i' });
+    });
+
+    it('keeps an up-to-date linked crop unavailable with its linked label', () => {
+      const command = commandById({ selectedCrop: { ...CROP, project_import_status: {
+        crop_id: 42, is_up_to_date: true, is_modified_from_source: false,
+      } } }, 'publicCropLibrary.import');
+      expect(command?.label).toBe('Bereits verknüpft');
+      expect(command?.isEnabled?.()).toBe(false);
+    });
+
     it('triggers the import', () => {
       const options = buildOptions();
 
