@@ -46,6 +46,11 @@ repository administrator should verify that these settings remain enabled:
 - branch protection or rulesets requiring the security checks used by the
   repository.
 
+Main protection applies to administrators too. Automatic releases prepare a
+checked version PR; they no longer require a direct-main-push exception. The
+publisher uses a short-lived token without admin privileges. See
+[protected releases](releases.md) for the credential split and cutover checks.
+
 GitHub secret scanning is the primary automated secret detector. Do not put
 real credentials in CI variables used only to validate configuration; the
 Django deployment check deliberately uses an obvious, non-production value.
@@ -428,6 +433,21 @@ prerequisite for closing it, outside this bounded input/fixture change.
 Local fixtures require explicit opt-in, exact database target confirmation and
 transactional isolated projects. Loopback checks do not establish that a local
 port is not forwarding production; the local executor must verify that boundary.
+
+### 2026-11-14 — Replace release main pushes with checked version PRs
+
+The owner authorized replacing direct semantic-release main pushes with a
+version PR, checked automatic squash merge and publication at that exact merge
+commit. This resolves the release dependency described above: enable admin
+enforcement during rollout once the new version PR path is operating, without
+changing required checks, review policy or auto-merge. The old exception is no
+longer needed by the release flow. The publisher receives only an ephemeral
+contents-write/checks-read/PR-read token; the PAT is confined to trusted main
+verification reads and release-branch/PR preparation. Its remaining repository
+administration powers are not claimed revoked. Workflow outputs come only from
+the trusted main verification job, never PR artifacts. Publication revalidates
+the candidate and latest app-bound checks, refuses tag conflicts and does not
+write main. See `docs/releases.md` for rollout and recovery.
 
 ### 2026-11-05 — Verify forwarding chains before using client IPs (#880)
 

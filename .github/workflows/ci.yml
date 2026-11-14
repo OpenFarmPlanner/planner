@@ -294,6 +294,11 @@ jobs:
           node --test tests/test_codex_security_request.cjs tests/test_security_review_completion.cjs tests/test_signed_codex_review.cjs
           node --test tests/test_codex_queue.cjs tests/test_work_queue_worker.cjs tests/test_cloud_work_queue.cjs
 
+      - name: Test protected release preparation and publication
+        run: |
+          python3 -m pip install python-semantic-release==10.5.3
+          python3 -m unittest discover -s tests -p test_release_pr.py
+
       - name: Enforce security review completion
         if: github.event_name == 'pull_request' && needs.security-review-completion.result != 'success'
         run: |
