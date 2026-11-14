@@ -1,0 +1,82 @@
+name: ZAP passive baseline
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zap-baseline-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  baseline:
+    name: ZAP passive baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Setup Python for gateway contract tests
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install Chrome for production prerender
+        timeout-minutes: 15
+        working-directory: frontend
+        env:
+          PLAYWRIGHT_DOWNLOAD_HOST: https://cdn.playwright.dev
+        run: |
+          "$GITHUB_WORKSPACE/scripts/ci/install-playwright-chrome.sh"
+
+      - name: Test passive-scan contracts
+        run: |
+          node --test tests/test_zap_baseline.cjs
+          python -m unittest discover -s tests -p test_zap_target.py
+
+      - name: Build production frontend
+        run: npm run build
+        working-directory: frontend
+
+      - name: Build disposable target
+        timeout-minutes: 8
+        run: docker build -f scripts/ci/zap/Dockerfile -t ofp-zap-target:ci .
+
+      - name: Run isolated passive scan
+        timeout-minutes: 10
+        run: node scripts/ci/zap/run.cjs
+
+      - name: Verify real scanner failure handling
+        timeout-minutes: 5
+        run: node scripts/ci/zap/verify-failures.cjs
+
+      - name: Classify findings and verify completion
+        if: always()
+        run: node scripts/ci/zap/assess.cjs
+
+      - name: Upload scan outcomes and reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: zap-passive-baseline
+          path: reports/zap/
+          if-no-files-found: error
+          retention-days: 7

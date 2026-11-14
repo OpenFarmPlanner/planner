@@ -819,6 +819,47 @@ Not issues, but emulation limits that show up in the `mobile-firefox`
 captures: native number spinners on integer fields and desktop scrollbars
 (Firefox has no mobile emulation, see above).
 
+## ZAP passive CI instance
+
+The separate `zap-security.yml` PR/manual job builds the production frontend
+with prerender, installs locked backend dependencies in
+`scripts/ci/zap/Dockerfile`, and scans a disposable unprivileged local instance.
+It reuses the E2E build/Daphne architecture without reusing an existing server
+or test database. The runtime has no external network, published ports,
+production credentials, real email or test authentication endpoints.
+
+From the repository root, with Docker, Node 22 and frontend dependencies/browser
+installed:
+
+```bash
+cd frontend && npm run build && cd ..
+node --test tests/test_zap_baseline.cjs
+python -m unittest discover -s tests -p test_zap_target.py
+docker build -f scripts/ci/zap/Dockerfile -t ofp-zap-target:ci .
+node scripts/ci/zap/run.cjs
+node scripts/ci/zap/verify-failures.cjs
+node scripts/ci/zap/assess.cjs
+```
+
+The runner destroys its own named containers in `finally`; no host service or
+database is reused. It clears only its generated `reports/zap/` directory at
+startup. Target readiness is bounded to 90 seconds, scanner execution to eight
+minutes, negative controls to three minutes each and the CI job to 20 minutes.
+The always-run classifier and artifact steps preserve HTML/JSON outcomes after
+failures where the runner remains available. An inaccessible target, unfinished
+passive queue or missing coverage fixture fails; ordinary initial warnings are
+annotated and advisory. Inspect `result.json` and the raw reports rather than
+interpreting a green job as a clean security assessment.
+
+Cloud environments with an injected package-network CA may need a **local-only**
+BuildKit certificate secret during dependency installation. Keep TLS verification
+enabled and the certificate out of the committed image/runtime; normal GitHub
+runners need no such override. No production configuration change is required.
+
+See [the ZAP security documentation](security-automation.md#zap-passive-baseline-1071)
+for exact isolation, version/digest maintenance, initial rule classifications,
+coverage gaps, report retention and future active/authenticated exclusions.
+
 ## Adding tests
 
 - Keep new frontend files under `src/**/*.{test,spec}.{ts,tsx}` — that is
