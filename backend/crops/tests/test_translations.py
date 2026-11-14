@@ -19,13 +19,11 @@ User = get_user_model()
 
 
 def create_tomato_species() -> CropSpecies:
-    """The seeded "Tomate / Tomato" species, with both translations present.
-
-    The seed + backfill migrations already create it, so this reuses that row
-    rather than inserting a parallel species — which is exactly the thing the
-    whole feature exists to prevent.
-    """
-    species = CropSpecies.objects.get(name_normalized='tomate')
+    """Reuse the migrated species or create the fixture after a database flush."""
+    species, _ = CropSpecies.objects.get_or_create(
+        name_normalized='tomate',
+        defaults={'name': 'Tomate', 'status': CropSpecies.STATUS_PUBLISHED},
+    )
     for language_code, common_name in (('de', 'Tomate'), ('en', 'Tomato')):
         CropSpeciesTranslation.objects.update_or_create(
             species=species,
@@ -45,6 +43,15 @@ class CropSpeciesTranslationModelTest(DRFAPITestCase):
             {'de': 'Tomate', 'en': 'Tomato'},
         )
 
+    def test_matching_fixture_does_not_require_migrated_seed_rows(self):
+        CropSpecies.objects.filter(name_normalized='tomate').delete()
+
+        species = create_tomato_species()
+
+        self.assertEqual(species.name_normalized, 'tomate')
+        self.assertEqual(species.status, CropSpecies.STATUS_PUBLISHED)
+        self.assertEqual(species.translations_by_language(), {'de': 'Tomate', 'en': 'Tomato'})
+
     def test_a_language_may_appear_only_once_per_species(self):
         species = create_tomato_species()
 
@@ -56,7 +63,10 @@ class CropSpeciesTranslationModelTest(DRFAPITestCase):
 
     def test_the_same_language_may_be_reused_across_species(self):
         create_tomato_species()
-        carrot = CropSpecies.objects.get(name_normalized='karotte')
+        carrot, _ = CropSpecies.objects.get_or_create(
+            name_normalized='karotte',
+            defaults={'name': 'Karotte', 'status': CropSpecies.STATUS_PUBLISHED},
+        )
         CropSpeciesTranslation.objects.update_or_create(
             species=carrot, language_code='de', defaults={'common_name': 'Karotte'},
         )
