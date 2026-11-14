@@ -9,6 +9,9 @@ export default defineConfig({
   expect: {
     timeout: 10_000,
   },
+  reporter: process.env.CI || process.env.E2E_TIMINGS === '1'
+    ? [['dot'], ['../scripts/ci/playwright_timings.cjs', { outputFile: 'test-results/e2e-timings.json' }]]
+    : [['list']],
   use: {
     baseURL: e2eBaseURL,
     // The app resolves its UI language from the browser (see docs/i18n.md), and

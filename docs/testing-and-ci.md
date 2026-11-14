@@ -459,6 +459,59 @@ The suite is additionally scenario-scoped: every spec passes a
 memberships, invitations and users. No spec depends on another spec having
 run, which is why splitting them at any file boundary is safe.
 
+### November 2026 baseline and measurement (#1108)
+
+The suite now has **303 tests in two Chromium projects**. The November 14
+[PR #1107 run](https://github.com/OpenFarmPlanner/planner/actions/runs/43582327477)
+and [release #1109 run](https://github.com/OpenFarmPlanner/planner/actions/runs/43583467079)
+exercise the same frontend and E2E sources (the latter changes version files).
+All three shards passed in both runs. Times below are seconds; runner queue
+means run creation to job start, and the test step includes service startup.
+
+| Run | Shard | Queue | Job | Production build | Test step |
+| --- | --- | ---: | ---: | ---: | ---: |
+| #1107 | 1 | 14 | 793 | 50 | 724 |
+| #1107 | 2 | 10 | 574 | 40 | 494 |
+| #1107 | 3 | 9 | 606 | 51 | 528 |
+| #1109 | 1 | 36 | 761 | 49 | 688 |
+| #1109 | 2 | 34 | 586 | 44 | 517 |
+| #1109 | 3 | 2 | 525 | 45 | 453 |
+
+The E2E critical paths including queue were **13:27 and 13:17**; aggregate
+E2E runner time was **32.88 and 31.20 minutes**, excluding queue. Both used
+warm npm and `node_modules` caches, skipped `npm ci`, and found Chrome on the
+runner. The test counts were 102 / 100 / 101. Similar counts conceal the
+persistent runtime imbalance: shard 1 dominates while setup and production
+build take roughly a minute per runner. Sharing builds would save less than
+balancing the long test block and would introduce an artifact dependency.
+
+For the #1107 head, frontend test jobs finished in 2:01 / 2:17 / 2:49,
+SQLite backend tests in 6:56 and PostgreSQL tests in 1:15. The standalone
+production build finished in 0:58, and the six cross-browser jobs in
+2:59–3:42. All required tests finished at 10:02:31 UTC, **13:27 after the
+09:49:04 run creation**, with production-build shard 1 last. E2E therefore
+sets the feedback time; improving the already shorter frontend/backend jobs
+would not shorten that path. Aggregate runner time across the nine PR
+workflows is 83.42 minutes (including review/gate waiting jobs;
+excluding queue and the later advisory queue-marker run).
+
+CI now keeps `e2e-timings-shard-N` JSON artifacts for seven days and emits
+`E2E_TIMING_RUN`, `E2E_TIMING_SELECTED`, `E2E_TIMING_TEST` and
+`E2E_TIMING_FILE` JSON records in successful as well as failing job logs.
+These record the complete selected-test manifest, attempts/retries, file and
+test durations, and fixture API action durations. Nested fixture steps count
+once in the aggregate. Compare manifests and outcomes as well as durations;
+retain the same production build, browser projects, serial worker and separate
+VM/database per shard. Service startup is the interval before Playwright's
+`Running ... tests` line; fixture time is part of test execution, not additional
+wall time. For local profiling, set `E2E_TIMINGS=1`; reports go to
+`frontend/test-results/e2e-timings.json`.
+
+### Earlier sharding and setup measurements (historical)
+
+The following measurements predate the November 303-test suite; their test
+counts and timings describe the earlier suite rather than today's baseline.
+
 Verify a shard-count change with `npx playwright test --list --shard=N/<count>`
 — it needs no browser and no backend, and the shards must add up to the
 unsharded total: 88 tests in 28 files, currently split 33 / 26 / 29.

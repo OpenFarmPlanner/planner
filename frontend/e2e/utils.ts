@@ -1,4 +1,4 @@
-import { expect, type APIRequestContext, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
 // Must default to the same BACKEND_PORT used to configure the backend webServer in
 // playwright.config.ts, or fixture setup silently hits whatever else happens to be
@@ -27,12 +27,14 @@ export const MAIN_ROUTES = [
 ] as const;
 
 async function invokeE2EAction(request: APIRequestContext, action: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const response = await request.post(e2eApiBase, {
-    headers: { 'X-E2E-Token': e2eToken },
-    data: { action, ...payload },
+  return test.step(`Fixture: ${action}`, async () => {
+    const response = await request.post(e2eApiBase, {
+      headers: { 'X-E2E-Token': e2eToken },
+      data: { action, ...payload },
+    });
+    expect(response.ok()).toBeTruthy();
+    return (await response.json()) as Record<string, unknown>;
   });
-  expect(response.ok()).toBeTruthy();
-  return (await response.json()) as Record<string, unknown>;
 }
 
 export async function setupUserWithoutProjects(
