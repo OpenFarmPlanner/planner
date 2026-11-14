@@ -177,15 +177,27 @@ export function CropDetail({
     if (!element) {
       return undefined;
     }
-    const BOTTOM_MARGIN_PX = 16;
     const updateMaxHeight = () => {
-      const top = element.getBoundingClientRect().top;
-      setDetailAreaMaxHeight(Math.max(0, window.innerHeight - top - BOTTOM_MARGIN_PX));
+      const top = element.getBoundingClientRect().top + window.scrollY;
+      // The page wrapper's margin and main's padding both follow the panes.
+      // A fixed bottom allowance misses those spaces and overflows the document.
+      let bottomSpacing = 0;
+      for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+        const style = window.getComputedStyle(ancestor);
+        bottomSpacing += [style.marginBottom, style.paddingBottom, style.borderBottomWidth]
+          .reduce((total, value) => total + (Number.parseFloat(value) || 0), 0);
+        if (ancestor.tagName === 'MAIN') break;
+      }
+      // In very short windows keep the selector and a few rows usable; the
+      // document may scroll there instead of crushing or clipping the controls.
+      setDetailAreaMaxHeight(Math.max(280, window.innerHeight - top - bottomSpacing));
     };
     updateMaxHeight();
     window.addEventListener('resize', updateMaxHeight);
     const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateMaxHeight) : undefined;
-    resizeObserver?.observe(document.body);
+    for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+      resizeObserver?.observe(ancestor);
+    }
     return () => {
       window.removeEventListener('resize', updateMaxHeight);
       resizeObserver?.disconnect();
