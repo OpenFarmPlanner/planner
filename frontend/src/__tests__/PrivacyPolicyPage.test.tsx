@@ -169,7 +169,7 @@ describe('PrivacyPolicyPage', () => {
 
     expect(screen.getByRole('heading', { name: /Sprachfassungen/ })).toBeInTheDocument();
     expect(
-      screen.getByText(/in deutscher, englischer, französischer, spanischer und italienischer Sprache bereitgestellt/),
+      screen.getByText(/in deutscher, englischer, französischer, spanischer, italienischer und portugiesischer Sprache bereitgestellt/),
     ).toBeInTheDocument();
     expect(screen.getByText(/ist die englische Fassung maßgeblich/)).toBeInTheDocument();
   });

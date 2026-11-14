@@ -32,7 +32,7 @@ from farm.tests.api_base import ProjectApiTestCase
 
 FIXTURE_PATH = Path(__file__).resolve().parents[3] / 'tests' / 'fixtures' / 'timing_windows.json'
 FIXTURE = json.loads(FIXTURE_PATH.read_text(encoding='utf-8'))
-LANGUAGES = ('de', 'en', 'fr', 'es', 'it')
+LANGUAGES = ('de', 'en', 'fr', 'es', 'it', 'pt')
 CROPS_URL = '/openfarmplanner/api/crops/'
 
 

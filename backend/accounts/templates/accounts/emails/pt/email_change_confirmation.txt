@@ -1,0 +1,11 @@
+{% autoescape off %}Olá,
+
+confirme a alteração do endereço de e-mail para:
+{{ new_email }}
+
+Para o fazer, clique na seguinte ligação:
+
+{{ confirmation_link }}
+
+Se não pediu esta alteração, pode ignorar este e-mail.
+{% endautoescape %}

@@ -1,0 +1,17 @@
+{% autoescape off %}Olá,
+
+acabou de criar uma conta no OpenFarmPlanner.
+
+Confirme o registo através da seguinte ligação:
+
+{{ activation_link }}
+
+O OpenFarmPlanner é uma aplicação Web de código aberto para planear a horticultura.
+
+Se não criou uma conta, pode ignorar este e-mail.
+
+Contacto:
+{{ contact_email }}
+
+{{ project_website }}
+{% endautoescape %}

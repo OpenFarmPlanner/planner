@@ -1,0 +1,39 @@
+{
+  "bell": {
+    "ariaLabel": "Notificações",
+    "unreadAriaLabel": "Notificações ({{unread}} por ler)",
+    "title": "Notificações",
+    "loadError": "Não foi possível carregar as notificações.",
+    "noUnread": "Sem novas notificações",
+    "showAll": "Mostrar todas as notificações"
+  },
+  "history": {
+    "title": "Todas as notificações",
+    "back": "Voltar",
+    "unreadSubtitle": "{{unread}} por ler",
+    "emptyTitle": "Ainda não existem notificações",
+    "emptyDescription": "As decisões sobre as propostas e os avisos da biblioteca de culturas aparecem aqui assim que houver novidades.",
+    "pageAriaLabel": "Página {{page}}",
+    "nextPageAriaLabel": "Página seguinte",
+    "previousPageAriaLabel": "Página anterior"
+  },
+  "markAllRead": {
+    "label": "Marcar todas como lidas",
+    "nothingUnread": "Sem notificações por ler",
+    "error": "Não foi possível marcar as notificações como lidas."
+  },
+  "messages": {
+    "crop_species_proposal_accepted": "A proposta para a espécie cultivada «{{name}}» foi aceite.",
+    "crop_species_proposal_rejected": "A proposta para a espécie cultivada «{{name}}» foi rejeitada.",
+    "crop_species_proposal_submitted": "A nova proposta de espécie cultivada «{{name}}» aguarda análise.",
+    "moderator_request_submitted": "{{name}} pediu acesso de moderação à biblioteca de culturas.",
+    "public_crop_removed": "A cultura publicada «{{name}}» foi removida da biblioteca porque a espécie cultivada «{{species_name}}» foi rejeitada.",
+    "public_crop_species_relink_cancelled": "A correção da espécie cultivada de «{{name}}» para «{{species_name}}» não foi aplicada. Verifique o registo novamente.",
+    "crop_species_reassigned": "A espécie cultivada de «{{crop_name}}» foi corrigida de «{{old_name}}» para «{{new_name}}». Valores herdados que mudaram: {{changes}}.",
+    "public_crop_change_proposal_submitted": "Uma contribuição para «{{name}}» aguarda análise.",
+    "public_crop_change_proposal_reviewed_approved": "A contribuição para «{{name}}» foi aprovada.",
+    "public_crop_change_proposal_reviewed_rejected": "A contribuição para «{{name}}» foi rejeitada.",
+    "public_crop_change_proposal_reviewed": "A contribuição para «{{name}}» foi analisada.",
+    "public_crop_trade_name_reported": "O nome comercial «{{name}}» da variedade «{{variety}}» foi denunciado."
+  }
+}

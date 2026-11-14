@@ -12,6 +12,7 @@ import homeEN from '../i18n/locales/en/home.json' with { type: 'json' };
 import homeES from '../i18n/locales/es/home.json' with { type: 'json' };
 import homeFR from '../i18n/locales/fr/home.json' with { type: 'json' };
 import homeIT from '../i18n/locales/it/home.json' with { type: 'json' };
+import homePT from '../i18n/locales/pt/home.json' with { type: 'json' };
 import type { PublicPage, SeoLanguage } from './seoConfig.ts';
 
 const HOME_BUNDLES: Readonly<Record<SeoLanguage, unknown>> = {
@@ -20,6 +21,7 @@ const HOME_BUNDLES: Readonly<Record<SeoLanguage, unknown>> = {
   fr: homeFR,
   es: homeES,
   it: homeIT,
+  pt: homePT,
 };
 
 function lookupKey(bundle: unknown, key: string): string | null {

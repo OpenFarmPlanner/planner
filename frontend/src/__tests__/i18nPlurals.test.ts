@@ -26,6 +26,15 @@ describe('Intl plural categories', () => {
     expect(categories('fr')).toEqual(['one', 'one', 'other', 'many']);
     expect(categories('es')).toEqual(['other', 'one', 'other', 'many']);
     expect(categories('it-IT')).toEqual(['other', 'one', 'other', 'many']);
+    expect(categories('pt-PT')).toEqual(['other', 'one', 'other', 'many']);
+  });
+
+  it('uses pt-PT rules for the pt bundle, including zero and fractional counts', () => {
+    const rule = i18n.services.pluralResolver.getRule('pt') as Intl.PluralRules;
+    expect(rule.resolvedOptions().locale).toBe('pt-PT');
+    expect([0, 0.5, 1, 2, 1_000_000].map(count => rule.select(count)))
+      .toEqual(['other', 'other', 'one', 'other', 'many']);
+    expect(new Intl.PluralRules('pt').select(0)).toBe('one');
   });
 });
 
@@ -36,11 +45,12 @@ describe('plural texts', () => {
     ['fr', ['0 série', '1 série', '2 séries', '1000000 séries']],
     ['es', ['0 series', '1 serie', '2 series', '1000000 series']],
     ['it', ['0 serie', '1 serie', '2 serie', '1000000 serie']],
+    ['pt', ['0 séries', '1 série', '2 séries', '1000000 séries']],
   ])('renders search.count in %s for 0, 1, 2 and 1000000', (language, expected) => {
     expect(COUNTS.map((count) => render(language, 'search.count', count))).toEqual(expected);
   });
 
-  it.each(['fr', 'es', 'it'])('never falls back to another language for large counts in %s', (language) => {
+  it.each(['fr', 'es', 'it', 'pt'])('never falls back to another language for large counts in %s', (language) => {
     const fallback = render('en', 'search.count', 1_000_000);
     expect(render(language, 'search.count', 1_000_000)).not.toBe(fallback);
   });

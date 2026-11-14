@@ -1,0 +1,457 @@
+{
+  "home": "Início",
+  "dashboard": "Visão geral",
+  "locations": "Explorações",
+  "fieldsAndBeds": "Áreas de cultivo",
+  "crops": "Culturas",
+  "cropLibrary": "Biblioteca de culturas",
+  "suppliers": "Fornecedores",
+  "plantingPlans": "Plano de cultivo",
+  "ganttChart": "Calendário de cultivo",
+  "yieldOverview": "Visão geral dos rendimentos",
+  "seedDemand": "Necessidades de sementes",
+  "youngPlantDemand": "Necessidades de plantas de viveiro",
+  "short": {
+    "dashboard": "Visão geral",
+    "fieldsAndBeds": "Áreas",
+    "crops": "Culturas",
+    "cropLibrary": "Biblioteca",
+    "plantingPlans": "Plano de cultivo",
+    "ganttChart": "Calendário",
+    "yieldOverview": "Rendimentos",
+    "seedDemand": "Sementes",
+    "youngPlantDemand": "Plantas",
+    "suppliers": "Fornecedores"
+  },
+  "graphicalFields": "Vista gráfica",
+  "accountSettings": "Definições da conta",
+  "publicLibraryModeration": "Moderar biblioteca de culturas",
+  "appVersionLabel": "Versão",
+  "disabledNoProjectTooltip": "Crie primeiro um projeto.",
+  "project": {
+    "settings": "Definições do projeto",
+    "selection": "Seleção de projeto",
+    "members": "Gerir membros",
+    "create": "Novo projeto",
+    "switch": "Mudar de projeto"
+  },
+  "projectSwitcher": {
+    "ariaLabel": "Mudar projeto ativo",
+    "noProject": "Sem projeto",
+    "zeroProjects": "Não tem acesso a nenhum projeto neste momento.",
+    "newProjectPlaceholder": "Novo projeto (em breve)",
+    "switchError": "Não foi possível mudar de projeto.",
+    "newProjectAction": "Novo projeto",
+    "openProjectAction": "Abrir",
+    "activeProject": "Projeto ativo",
+    "projects": "Projetos",
+    "createDialogTitle": "Criar projeto",
+    "createNameLabel": "Nome do projeto",
+    "createCancel": "Cancelar",
+    "createSubmit": "Criar projeto",
+    "createError": "Não foi possível criar o projeto.",
+    "loadDemoProject": "Carregar projeto de demonstração",
+    "trash": "Reciclagem ({{count}})"
+  },
+  "connectionStatus": {
+    "online": "Online: ligado",
+    "offline": "Offline: sem ligação. Não é possível guardar alterações."
+  },
+  "seasonSwitcher": {
+    "ariaLabel": "Mudar época ativa",
+    "sectionTitle": "Épocas",
+    "planCount_one": "{{count}} série",
+    "planCount_other": "{{count}} séries",
+    "loadError": "Não foi possível carregar as épocas.",
+    "deleted": "Época «{{label}}» eliminada",
+    "undo": "Anular",
+    "settingsLink": "Alterar padrão de épocas nas definições do projeto",
+    "menu": {
+      "openAria": "Abrir ações da época",
+      "copyDataFrom": "Copiar dados de…",
+      "rename": "Mudar nome",
+      "editPeriod": "Editar período",
+      "delete": "Eliminar"
+    },
+    "periodEditDialog": {
+      "title": "Editar período",
+      "startLabel": "Data de início",
+      "endLabel": "Data de fim",
+      "currentPeriod": "Período atual: {{period}}",
+      "endBeforeStart": "A data de fim tem de ser posterior à data de início.",
+      "save": "Guardar",
+      "error": "Não foi possível alterar o período.",
+      "unknownCrop": "Cultura desconhecida",
+      "plantingConflictIntro": "Estas séries têm uma data de transplantação fora do novo período. Ajuste-as ou mova-as antes de alterar o período:",
+      "plantingConflictItem": "{{crop}} – data de transplantação {{date}}",
+      "overlapConflictIntro": "O novo período sobrepõe-se a outra época:",
+      "overlapConflictItem": "Época {{label}}: {{period}}"
+    },
+    "suggestion": {
+      "title": "Criar época {{label}}",
+      "confirmTitle": "Criar época {{label}}?",
+      "copyCheckbox": "Copiar dados da época {{label}}",
+      "copyDescription": "As áreas de cultivo, os canteiros e as atribuições de rotação de culturas serão copiados para a nova época.",
+      "create": "Criar",
+      "createError": "Não foi possível criar a época.",
+      "outOfRangeError_one": "Não é possível criar a época de {{period}} porque uma série existente está fora desse período: {{examples}}. Ajuste o padrão de épocas nas definições do projeto e volte a criar a época.",
+      "outOfRangeError_other": "Não é possível criar a época de {{period}} porque {{count}} séries existentes estão fora desse período: {{examples}}. Ajuste o padrão de épocas nas definições do projeto e volte a criar a época.",
+      "outOfRangeFallbackExamples": "séries existentes",
+      "patternHint": {
+        "prefix": "O período não é adequado? É possível ajustar o padrão de épocas nas",
+        "link": "definições do projeto",
+        "suffix": ". A alteração aplica-se às épocas futuras."
+      },
+      "gap": {
+        "intro": {
+          "gap": "Existe um intervalo entre a última época «{{label}}» e a nova época ({{period}}). Escolha como proceder:",
+          "overlap": "A nova época sobrepõe-se à última época «{{label}}» ({{period}}). Escolha como proceder:"
+        },
+        "chooseLabel": "Como deve começar a nova época?",
+        "adopt": {
+          "gap": "Manter o intervalo (época calculada exatamente pelo padrão)",
+          "overlap": "Manter a sobreposição (época calculada exatamente pelo padrão)"
+        },
+        "transition": "Criar uma época de transição (liga-se à última época sem intervalo)",
+        "transitionTwoSeasons": "Serão criadas duas épocas: a época de transição {{transitionPeriod}} e {{followupLabel}} ({{followupPeriod}}).",
+        "manual": "Definir a data de início manualmente",
+        "manualCaption": "A época preenche o intervalo a partir da data escolhida e prolonga-se até ao fim do período regular seguinte do padrão.",
+        "manualStartLabel": "Data de início",
+        "manualPeriod": "Período: {{period}}",
+        "residualClosed": {
+          "gap": "O intervalo fica totalmente preenchido.",
+          "overlap": "A sobreposição é totalmente evitada."
+        },
+        "residualRemains": {
+          "gap": "Permanece um intervalo: {{period}}.",
+          "overlap": "Permanece uma sobreposição: {{period}}."
+        },
+        "copyPreviewAll": "Serão copiadas todas as {{total}} séries de {{label}}.",
+        "copyPreviewPartial": "Serão copiadas {{copied}} de {{total}} séries de {{label}}. As {{skipped}} que ficam fora do período não serão copiadas.",
+        "copyPreviewFollowup": "Época seguinte {{label}}: serão copiadas {{copied}} de {{total}} séries."
+      },
+      "createDisabledTooltip": "Selecione primeiro uma opção para a transição entre épocas.",
+      "outOfRangeError_many": "Não é possível criar a época de {{period}} porque {{count}} séries existentes estão fora desse período: {{examples}}. Ajuste o padrão de épocas nas definições do projeto e volte a criar a época."
+    },
+    "renameDialog": {
+      "title": "Mudar nome da época",
+      "label": "Nome",
+      "helper": "Deixar vazio para utilizar o nome calculado «{{computed}}».",
+      "save": "Guardar"
+    },
+    "copyDialog": {
+      "title": "Copiar dados",
+      "sourceLabel": "Origem",
+      "warning_one": "A época {{target}} já contém 1 série. A cópia adiciona as séries da época {{source}}. As séries existentes em {{target}} não são alteradas nem substituídas.",
+      "warning_other": "A época {{target}} já contém {{count}} séries. A cópia adiciona as séries da época {{source}}. As séries existentes em {{target}} não são alteradas nem substituídas.",
+      "summary_one": "→ Será adicionada 1 série da época {{source}} à época {{target}} (total final: {{total}}).",
+      "summary_other": "→ Serão adicionadas {{count}} séries da época {{source}} à época {{target}} (total final: {{total}}).",
+      "confirm": "Copiar",
+      "error": "Não foi possível copiar os dados.",
+      "confirmDisabledTooltip": "Selecione primeiro uma época de origem.",
+      "rotation": {
+        "checking": "A verificar a rotação de culturas na época de destino…",
+        "checkError": "Não foi possível verificar a rotação de culturas. Continua a ser possível copiar.",
+        "summary_one": "Será copiada 1 série da época {{source}} para os mesmos canteiros.",
+        "summary_other": "Serão copiadas {{count}} séries da época {{source}} para os mesmos canteiros.",
+        "warningConflicts": "{{conflicts}} violam a rotação de culturas porque a mesma família voltaria ao mesmo canteiro no ano seguinte.",
+        "warningConflictsAndHints": "{{conflicts}} violam a rotação de culturas porque a mesma família voltaria ao mesmo canteiro no ano seguinte. Mais {{hints}} têm uma sugestão sobre a sequência de necessidades nutritivas.",
+        "hintsOnly": "{{hints}} têm uma sugestão sobre a sequência de necessidades nutritivas.",
+        "showAll": "Mostrar todos os {{conflicts}} conflitos",
+        "showAllItems": "Mostrar todos os {{count}} registos",
+        "showLess": "Mostrar menos",
+        "item": "{{culture}} · {{bed}}",
+        "reasonConflict": "Última {{family}} em {{year}}; o primeiro ano possível é {{earliestYear}}",
+        "reasonHint": "Cultura muito exigente após {{previousCulture}} ({{year}})",
+        "modeLabel": "Como proceder com os {{conflicts}} conflitos?",
+        "modes": {
+          "without_bed": {
+            "label": "Copiar sem canteiro",
+            "description": "As {{conflicts}} séries são criadas sem canteiro atribuído. Depois é possível escolher o canteiro com sugestões."
+          },
+          "keep": {
+            "label": "Copiar para os mesmos canteiros mesmo assim",
+            "description": "Os conflitos continuam assinalados na tabela."
+          },
+          "skip": {
+            "label": "Não copiar",
+            "description": "Apenas são copiadas as {{ok}} séries sem conflitos."
+          }
+        },
+        "summary_many": "Serão copiadas {{count}} séries da época {{source}} para os mesmos canteiros."
+      },
+      "warning_many": "A época {{target}} já contém {{count}} séries. A cópia adiciona as séries da época {{source}}. As séries existentes em {{target}} não são alteradas nem substituídas.",
+      "summary_many": "→ Serão adicionadas {{count}} séries da época {{source}} à época {{target}} (total final: {{total}})."
+    },
+    "planCount_many": "{{count}} séries"
+  },
+  "seasonSetup": {
+    "title": "Configurar planeamento de épocas",
+    "description_one": "Antes de trabalhar com épocas, definiremos o padrão de épocas e atribuiremos a 1 série existente deste projeto a uma época.",
+    "description_other": "Antes de trabalhar com épocas, definiremos o padrão de épocas e atribuiremos as {{count}} séries existentes deste projeto a uma época.",
+    "startLabel": "A época começa em",
+    "infoBox": "Nenhum dado será alterado ou eliminado. Todas as séries existentes serão apenas atribuídas à época «{{label}}». É possível ajustar o padrão e a atribuição mais tarde.",
+    "summary_one": "→ A 1 série existente será atribuída à época «{{label}}» ({{period}}).",
+    "summary_other": "→ Todas as {{count}} séries existentes serão atribuídas à época «{{label}}» ({{period}}).",
+    "submit": "Configurar",
+    "error": "A configuração falhou.",
+    "description_many": "Antes de trabalhar com épocas, definiremos o padrão de épocas e atribuiremos as {{count}} séries existentes deste projeto a uma época.",
+    "summary_many": "→ Todas as {{count}} séries existentes serão atribuídas à época «{{label}}» ({{period}})."
+  },
+  "seasonPattern": {
+    "title": "Padrão de épocas",
+    "dayLabel": "Dia",
+    "monthLabel": "Mês",
+    "helper": "Cada época tem exatamente 12 meses a partir desta data.",
+    "previewTitle": "Pré-visualização das épocas calculadas",
+    "previewColumnLabel": "Ano",
+    "previewColumnPeriod": "Período",
+    "current": "(atual)",
+    "previewReferenceHint": "(última época existente)",
+    "previewHint": "(pré-visualização)",
+    "transition": {
+      "gapLabel": "Intervalo",
+      "overlapLabel": "Sobreposição",
+      "rowHint": "Opções selecionáveis durante a criação"
+    },
+    "changeNotice": "A alteração afeta apenas as épocas criadas a partir de agora. As épocas existentes permanecem inalteradas.",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "saveAriaLabel": "Guardar padrão de épocas",
+    "saveSuccess": "Padrão de épocas guardado.",
+    "saveError": "Não foi possível guardar o padrão de épocas.",
+    "months": {
+      "january": "janeiro",
+      "february": "fevereiro",
+      "march": "março",
+      "april": "abril",
+      "may": "mai",
+      "june": "junho",
+      "july": "julho",
+      "august": "agosto",
+      "september": "setembro",
+      "october": "outubro",
+      "november": "novembro",
+      "december": "dezembro"
+    }
+  },
+  "projectRoles": {
+    "admin": "Administrador",
+    "member": "Membro"
+  },
+  "globalMenu": {
+    "notifications": "Notificações",
+    "projectActions": "Ações do projeto",
+    "app": "Aplicação",
+    "shortcuts": "Atalhos de teclado",
+    "pageHelp": "Ajuda desta página",
+    "pageHelpUnavailable": "Não existe ajuda específica para esta página.",
+    "appHelp": "Ajuda da aplicação",
+    "feedback": "Enviar comentários",
+    "account": "Conta",
+    "closeSidebar": "Fechar barra lateral",
+    "openSidebar": "Abrir barra lateral",
+    "collapseSidebar": "Recolher barra lateral",
+    "expandSidebar": "Expandir barra lateral",
+    "dashboardLink": "Ir para a visão geral",
+    "openMobileMenu": "Abrir menu",
+    "moreActions": "Mais"
+  },
+  "pageHelp": {
+    "dashboard": "Ajuda da visão geral",
+    "locations": "Ajuda das explorações",
+    "areas": "Ajuda das áreas de cultivo",
+    "crops": "Ajuda das culturas",
+    "cropLibrary": "Ajuda da biblioteca de culturas",
+    "plantingPlans": "Ajuda do plano de cultivo",
+    "calendar": "Ajuda do calendário de cultivo",
+    "yieldOverview": "Ajuda da visão geral dos rendimentos",
+    "seedDemand": "Ajuda das necessidades de sementes",
+    "youngPlantDemand": "Ajuda das necessidades de plantas de viveiro",
+    "suppliers": "Ajuda dos fornecedores",
+    "openAria": "Abrir {{label}}"
+  },
+  "cropActions": {
+    "openLibrary": "Importar da biblioteca",
+    "library": "Importar da biblioteca",
+    "libraryShort": "Importar",
+    "openImportExport": "Abrir importação/exportação",
+    "importExport": "Importar/Exportar",
+    "openCropActions": "Abrir ações de cultura",
+    "actions": "Ações"
+  },
+  "projectTrash": {
+    "title": "Reciclagem",
+    "empty": "A reciclagem está vazia.",
+    "retentionNotice": "Os projetos eliminados são eliminados definitivamente de forma automática após 30 dias.",
+    "loadError": "Não foi possível carregar os projetos eliminados.",
+    "deletedDays_zero": "eliminado hoje",
+    "deletedDays_one": "eliminado há {{count}} dia",
+    "deletedDays_other": "eliminado há {{count}} dias",
+    "deletedUnknown": "Data de eliminação desconhecida",
+    "restore": "Restaurar",
+    "restoreSuccess": "O projeto foi restaurado",
+    "restoreError": "Não foi possível restaurar o projeto.",
+    "permanentDelete": "Eliminar definitivamente",
+    "permanentConfirm": "Eliminar definitivamente o projeto {{name}}? Esta ação não pode ser anulada.",
+    "permanentSuccess": "O projeto foi eliminado definitivamente.",
+    "permanentError": "Não foi possível eliminar definitivamente o projeto.",
+    "deletedDays_many": "eliminado há {{count}} dias"
+  },
+  "commandGroups": {
+    "project": "Projeto",
+    "account": "Conta",
+    "navigation": "Navegação",
+    "help": "Ajuda"
+  },
+  "commandPalette": {
+    "label": "Pesquisa de ações (Alt+K)",
+    "placeholder": "Pesquisar ação ou executar diretamente",
+    "emptyTitle": "Não foram encontradas ações correspondentes.",
+    "emptyDescription": "Tente outro termo de pesquisa ou verifique se existem mais ações disponíveis no contexto atual.",
+    "shortcutsTitle": "Atalhos de teclado",
+    "createNew": "Criar novo...",
+    "createNewShortcut": "Criar novo",
+    "contextualShortcutsTitle": "Atalhos de teclado contextuais (Alt+K)",
+    "contextualShortcutsDescription": "Os atalhos são seguros para o navegador e não substituem os atalhos habituais.",
+    "primaryShortcutTitle": "Pesquisa de ações",
+    "primaryShortcutDescription": "Mostrar comandos e atalhos de teclado específicos da página",
+    "universalShortcutsTitle": "Navegação básica",
+    "universalShortcuts": {
+      "nextRegion": "Região de foco seguinte",
+      "previousRegion": "Região de foco anterior",
+      "withinRegion": "Navegar dentro da região",
+      "closeDialog": "Fechar diálogo ou menu"
+    },
+    "currentRegionShortcutsTitle": "Região de foco atual",
+    "allPageShortcutsTitle": "Atalhos específicos da página",
+    "allPageShortcuts": {
+      "crops": {
+        "title": "Culturas",
+        "create": "Adicionar cultura",
+        "search": "Focar pesquisa de culturas",
+        "edit": "Editar cultura",
+        "delete": "Eliminar cultura",
+        "exportCurrent": "Exportar cultura selecionada",
+        "exportAll": "Exportar todas as culturas",
+        "import": "Importar culturas",
+        "createPlan": "Criar série a partir de cultura",
+        "previous": "Selecionar cultura anterior",
+        "next": "Selecionar cultura seguinte"
+      },
+      "publicCropLibrary": {
+        "title": "Biblioteca",
+        "search": "Pesquisar biblioteca de culturas",
+        "edit": "Editar cultura pública",
+        "import": "Importar cultura",
+        "previous": "Selecionar cultura anterior",
+        "next": "Selecionar cultura seguinte"
+      },
+      "areas": {
+        "title": "Áreas de cultivo",
+        "create": "Criar área de cultivo",
+        "focusTable": "Focar tabela",
+        "createFromSelection": "Adicionar elemento subordinado à seleção",
+        "delete": "Eliminar área de cultivo selecionada",
+        "showList": "Mostrar vista de lista",
+        "showGraphical": "Mostrar vista gráfica",
+        "toggleGraphicalEdit": "Alternar edição gráfica"
+      },
+      "plans": {
+        "title": "Plano de cultivo",
+        "create": "Adicionar série",
+        "edit": "Editar série",
+        "delete": "Eliminar série",
+        "search": "Focar pesquisa de séries"
+      },
+      "calendar": {
+        "title": "Calendário",
+        "today": "Ir para o período atual",
+        "previousPeriod": "Período anterior",
+        "nextPeriod": "Período seguinte",
+        "previousLargePeriod": "Período alargado anterior",
+        "nextLargePeriod": "Período alargado seguinte",
+        "dayView": "Vista diária",
+        "weekView": "Vista semanal",
+        "monthView": "Vista mensal",
+        "quarterView": "Vista trimestral",
+        "yearView": "Vista anual",
+        "search": "Focar pesquisa do calendário",
+        "showOccupancy": "Mostrar ocupação das parcelas",
+        "showSeedlings": "Mostrar viveiro",
+        "toggleEdit": "Alternar movimento de períodos"
+      },
+      "locations": {
+        "title": "Explorações",
+        "create": "Adicionar exploração"
+      },
+      "suppliers": {
+        "title": "Fornecedores",
+        "create": "Adicionar fornecedor"
+      }
+    },
+    "versionHistoryTitle": "Histórico de versões",
+    "versionHistoryEmpty": "Ainda não existem alterações registadas.",
+    "restoreVersion": "Mudar para esta versão",
+    "contextTitles": {
+      "global": "Global",
+      "crops": "Culturas",
+      "publicCropLibrary": "Biblioteca",
+      "locations": "Explorações",
+      "areas": "Áreas de cultivo",
+      "plans": "Plano de cultivo",
+      "calendar": "Calendário",
+      "seedDemand": "Sementes",
+      "youngPlantDemand": "Plantas"
+    },
+    "shortcutSections": {
+      "navigation": "Navegação",
+      "viewsLayout": "Vistas e disposição",
+      "dialogsHelp": "Diálogos e ajuda"
+    },
+    "commands": {
+      "nextPage": "Página seguinte",
+      "previousPage": "Página anterior",
+      "openProjectSettings": "Abrir definições do projeto",
+      "createProject": "Novo projeto",
+      "switchProjectPrefix": "Mudar de projeto",
+      "openAccountSettings": "Abrir definições da conta",
+      "openVersionHistory": "Abrir histórico de versões",
+      "toggleSidebar": "Alternar barra lateral",
+      "openPageHelp": "Abrir ajuda da página",
+      "leaveDemo": "Sair da demonstração",
+      "logout": "Terminar sessão",
+      "openShortcutsHelp": "Mostrar atalhos de teclado",
+      "closeDialog": "Fechar diálogo",
+      "calendarToday": "Ir para o período atual",
+      "calendarPreviousPeriod": "Período anterior do calendário",
+      "calendarNextPeriod": "Período seguinte do calendário",
+      "calendarDayView": "Vista diária",
+      "calendarWeekView": "Vista semanal",
+      "calendarMonthView": "Vista mensal",
+      "calendarQuarterView": "Vista trimestral",
+      "calendarYearView": "Vista anual",
+      "calendarOccupancy": "Mostrar ocupação das parcelas",
+      "calendarSeedlings": "Mostrar viveiro",
+      "calendarToggleMove": "Alternar movimento de períodos"
+    },
+    "feedback": {
+      "versionHistoryLoadError": "Não foi possível carregar o histórico de versões.",
+      "versionRestored": "Versão restaurada.",
+      "versionRestoredWithBackup": "Versão restaurada. A versão anterior foi guardada automaticamente.",
+      "versionRestoreError": "Não foi possível restaurar a versão do projeto.",
+      "leaveDemoError": "Não foi possível sair da demonstração. Tente novamente.",
+      "logoutError": "Não foi possível terminar sessão. Tente novamente."
+    },
+    "shortcutHint": "Sugestão: premir Alt+K para abrir a paleta de comandos.",
+    "historyBy": "Por {{actor}}",
+    "unknownUser": "Utilizador desconhecido"
+  },
+  "language": {
+    "label": "Idioma"
+  },
+  "backToProject": {
+    "named": "Voltar a {{project}}",
+    "overview": "Voltar à visão geral"
+  }
+}

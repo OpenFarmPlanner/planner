@@ -24,7 +24,7 @@ project templates) must fall back explicitly; see docs/i18n.md.
 from __future__ import annotations
 
 # Ordered by preference for the "any other translation" fallback step.
-SUPPORTED_LANGUAGE_CODES: tuple[str, ...] = ('en', 'de', 'fr', 'es', 'it')
+SUPPORTED_LANGUAGE_CODES: tuple[str, ...] = ('en', 'de', 'fr', 'es', 'it', 'pt')
 
 # Public crop species become shared lookup data once approved, so a species
 # needs a common name in each required language before publication. Keep this
@@ -44,6 +44,7 @@ UI_LANGUAGE_CHOICES = [
     ('fr', 'Français'),
     ('es', 'Español'),
     ('it', 'Italiano'),
+    ('pt', 'Português'),
 ]
 UI_LANGUAGE_VALUES = frozenset({UI_LANGUAGE_AUTO, *SUPPORTED_LANGUAGE_CODES})
 

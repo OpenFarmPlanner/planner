@@ -1,0 +1,214 @@
+{
+  "title": "Definições da conta",
+  "email": "E-mail",
+  "displayName": "Nome de apresentação",
+  "sections": {
+    "profile": "Perfil",
+    "publicProfile": "Biblioteca de culturas",
+    "security": "Início de sessão e segurança",
+    "privacy": "Privacidade e exportação de dados",
+    "language": "Idioma",
+    "apiAccess": "Acesso à API",
+    "deleteAccount": "Eliminar conta"
+  },
+  "dataExport": {
+    "description": "Transfira uma cópia estruturada dos dados da conta, dos projetos e da biblioteca de culturas num ficheiro JSON.",
+    "downloadButton": "Transferir os meus dados",
+    "success": "A exportação dos dados foi criada."
+  },
+  "publicProfile": {
+    "description": "Este nome pertence à conta e é apresentado como autor em todas as culturas já publicadas ou que venham a ser publicadas na biblioteca de culturas.",
+    "publicDisplayName": "Nome nas publicações",
+    "noPublicDisplayName": "Anónimo",
+    "helperText": "Sem nome, as publicações aparecem como anónimas. Se definir um nome mais tarde, este passa automaticamente a aparecer como autor em todas as culturas já publicadas. Se o remover, essas culturas voltam a aparecer como anónimas. O nome tem de ser único e não estar a ser utilizado por outra pessoa.",
+    "actions": {
+      "setPublicDisplayName": "Definir nome",
+      "editPublicDisplayName": "Alterar nome"
+    },
+    "transparencyHint": "Apresentado publicamente como autor das contribuições para a biblioteca de culturas, incluindo as anteriores."
+  },
+  "moderatorRequest": {
+    "title": "Ajudar na moderação",
+    "description": "Ajude a avaliar propostas de novas espécies cultivadas e a manter a coerência da biblioteca de culturas.",
+    "loading": "A carregar estado…",
+    "alreadyModerator": "Já tem permissões de moderação na biblioteca de culturas.",
+    "pending": "O pedido está em análise.",
+    "rejectedHint": "É possível enviar um novo pedido se ainda pretender ajudar.",
+    "motivationLabel": "Por que motivo pretende ajudar na moderação?",
+    "submit": "Enviar pedido",
+    "sending": "A enviar…",
+    "success": "O pedido foi enviado."
+  },
+  "actions": {
+    "saveProfile": "Guardar perfil",
+    "requestEmailChange": "Pedir alteração de e-mail",
+    "changePassword": "Alterar palavra-passe",
+    "editDisplayName": "Alterar nome de apresentação",
+    "save": "Guardar",
+    "sendConfirmationLink": "Enviar ligação de confirmação",
+    "savePassword": "Guardar palavra-passe"
+  },
+  "security": {
+    "changeEmailTitle": "Alterar endereço de e-mail",
+    "credentials": "Credenciais",
+    "newEmail": "Novo endereço de e-mail",
+    "changePasswordTitle": "Alterar palavra-passe",
+    "newPassword": "Nova palavra-passe",
+    "repeatNewPassword": "Repetir nova palavra-passe",
+    "noPasswordHint": "Esta conta inicia sessão com o Google ou a Microsoft e não tem palavra-passe. É possível definir uma através de «Esqueceu-se da palavra-passe?» na página de início de sessão."
+  },
+  "loginMethods": {
+    "title": "Métodos de início de sessão",
+    "description": "Estes métodos de início de sessão estão associados à conta.",
+    "emailPasswordActive": "E-mail e palavra-passe · Ativo",
+    "connect": "Associar {{provider}}",
+    "connected": "O método de início de sessão foi associado.",
+    "connectedSince": "{{provider}} · associado desde {{date}}",
+    "connectedSinceWithEmail": "{{provider}} · {{email}} · associado desde {{date}}"
+  },
+  "deleteDescription": "Ao eliminar a conta, esta é desativada imediatamente e anonimizada após 14 dias. Os projetos sem membros restantes são então eliminados, incluindo os dados do projeto. Os registos publicados na biblioteca de culturas são mantidos.",
+  "restoreDescription": "É possível anular a eliminação durante este período.",
+  "deleteButton": "Eliminar conta…",
+  "dialogTitle": "Agendar eliminação da conta",
+  "dialogWarning": "Confirme com a palavra-passe atual e o texto «{{phrase}}». A conta será desativada e anonimizada após 14 dias. Os projetos sem membros restantes serão então eliminados.",
+  "dialogWarningWithoutPassword": "Confirme com o texto «{{phrase}}». A conta será desativada e anonimizada após 14 dias. Os projetos sem membros restantes serão então eliminados.",
+  "currentPassword": "Palavra-passe atual",
+  "deletePhrase": "ELIMINAR",
+  "deletePhraseLabel": "Texto de confirmação",
+  "deletePhraseHelper": "Introduza exatamente «{{phrase}}» para confirmar.",
+  "cancel": "Cancelar",
+  "confirmDelete": "Agendar eliminação da conta",
+  "deletionScheduled": "A eliminação da conta foi agendada. Será anonimizada em {{date}}.",
+  "noDisplayName": "—",
+  "errors": {
+    "generic": "Não foi possível executar a ação.",
+    "delete": "Não foi possível agendar a eliminação."
+  },
+  "unsavedChangesWarning": "Existem alterações não guardadas. Serão perdidas ao sair da página.",
+  "emailConfirm": {
+    "title": "Confirmar alteração de e-mail",
+    "loading": "A verificar confirmação…",
+    "invalid": "A ligação de confirmação é inválida ou expirou."
+  },
+  "developer": {
+    "title": "Programação",
+    "hintsDescription": "Repor sugestões de desenvolvimento locais ou voltar a mostrar a apresentação do primeiro projeto. Esta ação não elimina projetos nem dados da conta.",
+    "hintsResetDone": "Sugestões repostas.",
+    "resetHintsAction": "Repor sugestões",
+    "showOnboardingAction": "Mostrar apresentação novamente"
+  },
+  "language": {
+    "description": "O idioma da interface pertence à conta, não a um projeto. Outros membros do mesmo projeto podem utilizar o OpenFarmPlanner noutro idioma ao mesmo tempo. Os conteúdos introduzidos, como nomes de projetos, explorações e canteiros, nunca são traduzidos."
+  },
+  "apiTokens": {
+    "title": "Tokens de API para ferramentas externas",
+    "description": "Cada token aplica-se a um único projeto e nunca pode alterar membros, convites ou definições da conta.",
+    "docsLink": "Abrir documentação da API",
+    "loading": "A carregar tokens…",
+    "empty": "Ainda não foram criados tokens de API.",
+    "noProjects": "É necessário ser membro de um projeto para criar um token de API.",
+    "revoked": "O token «{{name}}» foi revogado e deixou de funcionar.",
+    "inactiveToggle": "Mostrar tokens expirados e revogados ({{count}})",
+    "status": {
+      "active": "Ativo",
+      "expired": "Expirado",
+      "revoked": "Revogado"
+    },
+    "scopes": {
+      "read": "Leitura",
+      "write": "Leitura e escrita",
+      "delete": "Leitura, escrita e eliminação"
+    },
+    "scopeHelp": {
+      "read": "Permite ler os dados do projeto. Não permite alterações.",
+      "write": "Permite ler os dados do projeto e criar ou atualizar culturas. Não permite eliminar.",
+      "delete": "Permite também eliminar e restaurar culturas. Os membros do projeto, convites, definições da conta e outras áreas administrativas continuam bloqueados."
+    },
+    "columns": {
+      "name": "Nome",
+      "scope": "Permissões",
+      "project": "Projeto",
+      "created": "Criado",
+      "expires": "Expira",
+      "lastUsed": "Última utilização",
+      "action": "Ação"
+    },
+    "meta": {
+      "project": "Projeto",
+      "prefix": "Token",
+      "created": "Criado",
+      "expires": "Expira",
+      "lastUsed": "Última utilização",
+      "never": "sem prazo de validade",
+      "neverUsed": "nunca"
+    },
+    "actions": {
+      "create": "Criar token",
+      "revoke": "Revogar"
+    },
+    "form": {
+      "name": "Nome",
+      "project": "Projeto",
+      "projectHelper": "O token apenas pode aceder a este projeto. Não é possível alterar esta definição mais tarde.",
+      "scope": "Permissões",
+      "expiresAt": "Data de validade (opcional)",
+      "expiresAtHelper": "Deixar vazio para um token sem prazo de validade. No máximo, um ano no futuro."
+    },
+    "created": {
+      "title": "Novo token de API",
+      "warning": "Copie o token agora. É apresentado uma única vez e não pode ser recuperado posteriormente.",
+      "description": "Guarde o token como uma palavra-passe, por exemplo no armazenamento de segredos do agente. Nunca o inclua num repositório. Se o perder, revogue-o aqui e crie um novo.",
+      "tokenLabel": "Token",
+      "usageHint": "Utilizar como cabeçalho HTTP: Authorization: Bearer <token>",
+      "confirm": "Já guardei o token"
+    }
+  },
+  "cropLibraryToken": {
+    "title": "Token da API da biblioteca de culturas",
+    "description": "Apenas para superutilizadores: este token atua em toda a plataforma e permite escrever espécies cultivadas oficiais, sinónimos e nomes regionais. Não está associado a um projeto e é independente dos tokens de API acima.",
+    "docsLink": "Abrir documentação",
+    "loading": "A carregar token…",
+    "empty": "Ainda não foi criado um token da biblioteca de culturas.",
+    "revoked": "O token «{{name}}» foi revogado e deixou de funcionar.",
+    "inactiveToggle": "Mostrar tokens expirados e revogados ({{count}})",
+    "scopes": {
+      "read": "Leitura",
+      "write": "Leitura e escrita"
+    },
+    "scopeHelp": {
+      "read": "Permite ler espécies cultivadas oficiais, incluindo propostas pendentes.",
+      "write": "Permite também propor e editar espécies cultivadas, incluindo sinónimos e nomes regionais. A aprovação, rejeição e eliminação continuam bloqueadas."
+    },
+    "columns": {
+      "name": "Nome",
+      "scope": "Permissões",
+      "created": "Criado",
+      "expires": "Expira",
+      "lastUsed": "Última utilização",
+      "action": "Ação"
+    },
+    "meta": {
+      "prefix": "Token",
+      "never": "sem data de validade",
+      "neverUsed": "nunca"
+    },
+    "actions": {
+      "create": "Criar token",
+      "revoke": "Revogar"
+    },
+    "form": {
+      "name": "Nome",
+      "scope": "Permissões",
+      "expiresAt": "Data de validade (opcional)",
+      "expiresAtHelper": "Deixar vazio para um token sem data de validade. No máximo, um ano no futuro."
+    },
+    "created": {
+      "title": "Novo token da biblioteca de culturas",
+      "warning": "Copie o token agora. É apresentado uma única vez e não pode ser recuperado posteriormente.",
+      "description": "Guarde o token como uma palavra-passe. Nunca o inclua num repositório. Se o perder, revogue-o aqui e crie um novo.",
+      "tokenLabel": "Token",
+      "usageHint": "Utilizar como cabeçalho HTTP: Authorization: Bearer <token>",
+      "confirm": "Já guardei o token"
+    }
+  }
+}

@@ -21,6 +21,7 @@ export const SUPPORTED_LANGUAGES = [
   { code: 'fr', label: 'Français' },
   { code: 'es', label: 'Español' },
   { code: 'it', label: 'Italiano' },
+  { code: 'pt', label: 'Português' },
 ] as const;
 
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number]['code'];

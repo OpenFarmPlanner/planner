@@ -1,0 +1,51 @@
+{
+  "title": "Fornecedores",
+  "create": "Adicionar fornecedor",
+  "edit": "Editar fornecedor",
+  "name": "Nome",
+  "homepage": "Sítio Web",
+  "allowedDomains": "Domínios permitidos",
+  "active": "Ativo",
+  "actions": "Ações",
+  "save": "Guardar",
+  "cancel": "Cancelar",
+  "addDomain": "Adicionar domínio",
+  "add": "Adicionar",
+  "saveError": "Não foi possível guardar o fornecedor.",
+  "loadError": "Não foi possível carregar os fornecedores.",
+  "yes": "Sim",
+  "no": "Não",
+  "editAction": "Editar",
+  "deleteAction": "Eliminar",
+  "deleteError": "Não foi possível eliminar o fornecedor.",
+  "restoreDeleteError": "Não foi possível restaurar o fornecedor.",
+  "messages": {
+    "deleted": "Fornecedor eliminado.",
+    "deletedWithUnlinkedCrops_one": "Fornecedor eliminado. A ligação ao fornecedor foi removida de {{count}} cultura.",
+    "deletedWithUnlinkedCrops_other": "Fornecedor eliminado. A ligação ao fornecedor foi removida de {{count}} culturas.",
+    "deletedWithUnlinkedCrops_many": "Fornecedor eliminado. A ligação ao fornecedor foi removida de {{count}} culturas."
+  },
+  "deleteUsageDialog": {
+    "title": "O fornecedor ainda está a ser utilizado",
+    "summary_one": "Este fornecedor ainda é utilizado por {{count}} cultura.",
+    "summary_other": "Este fornecedor ainda é utilizado por {{count}} culturas.",
+    "cropUsage_one": "{{count}} cultura utiliza diretamente este fornecedor.",
+    "cropUsage_other": "{{count}} culturas utilizam diretamente este fornecedor.",
+    "supplierDataUsage": "{{cropCount}} culturas têm dados de sementes ou de fornecedor com {{rowCount}} registos.",
+    "seedDemandUsage_one": "{{count}} cultura utiliza este fornecedor no planeamento das necessidades de sementes.",
+    "seedDemandUsage_other": "{{count}} culturas utilizam este fornecedor no planeamento das necessidades de sementes.",
+    "unlinkExplanation": "As culturas não são eliminadas. Apenas a relação com o fornecedor é removida antes da eliminação do fornecedor.",
+    "openAffectedCrops": "Ir para as culturas afetadas",
+    "unlinkAndDelete": "Eliminar fornecedor",
+    "summary_many": "Este fornecedor ainda é utilizado por {{count}} culturas.",
+    "cropUsage_many": "{{count}} culturas utilizam diretamente este fornecedor.",
+    "seedDemandUsage_many": "{{count}} culturas utilizam este fornecedor no planeamento das necessidades de sementes."
+  },
+  "invalidDomain": "Domínio inválido: {{domain}}. Os domínios têm de ser nomes de anfitrião válidos sem protocolo nem caminho (por exemplo example.com).",
+  "domainValidationError": "Alguns domínios são inválidos. Corrija os dados introduzidos.",
+  "invalidUrl": "Introduza um URL válido (por exemplo https://example.com).",
+  "emptyState": {
+    "title": "Ainda não existem fornecedores",
+    "description": "Os fornecedores ajudam no planeamento das necessidades de sementes e na comparação de embalagens. Também é possível começar sem fornecedores."
+  }
+}

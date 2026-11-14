@@ -369,6 +369,20 @@ class CropSpeciesApiTest(DRFAPITestCase):
         self.assertEqual(species.translations_by_language()['it'], 'Pastinaca')
         self.assertEqual(species.localized_name('it'), ('Pastinaca', 'it'))
 
+    def test_accepts_optional_portuguese_names_and_synonyms_with_a_proposal(self):
+        response = self.client.post(
+            '/openfarmplanner/api/crop-species/',
+            {'name': 'Portuguese translation fixture', 'translations': [{
+                'language_code': 'pt', 'common_name': 'Nome português de exemplo',
+                'synonyms': ['Sinónimo português de exemplo'],
+            }]},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        species = CropSpecies.objects.get(pk=response.data['id'])
+        self.assertEqual(species.translations_by_language()['pt'], 'Nome português de exemplo')
+        self.assertEqual(species.localized_name('pt'), ('Nome português de exemplo', 'pt'))
+
     def test_rejects_an_unsupported_translation_language(self):
         response = self.client.post(
             '/openfarmplanner/api/crop-species/',

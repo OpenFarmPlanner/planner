@@ -7,7 +7,7 @@
  *
  * Plural keys are the one exception: i18next resolves `<key>_<category>`
  * through `Intl.PluralRules`, and the categories differ per language
- * (German/English: one, other; French/Spanish: one, many, other). A plural
+ * (German/English: one, other; French/Spanish/Italian/Portuguese: one, many, other). A plural
  * key is therefore compared by its base name, and each language must define
  * every category its own plural rules can select.
  */

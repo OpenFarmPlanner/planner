@@ -368,6 +368,7 @@ class ProjectsApiTests(APITestCase):
             'fr': 'Site principal',
             'es': 'Ubicación principal',
             'it': 'Sito principale',
+            'pt': 'Exploração principal',
         }
         for language, expected_name in expected_names.items():
             with self.subTest(language=language):

@@ -1,0 +1,76 @@
+{
+  "title": "Parcelas",
+  "columns": {
+    "name": "Nome",
+    "location": "Exploração",
+    "area": "Área (m²)",
+    "notes": "Notas"
+  },
+  "errors": {
+    "load": "Erro ao carregar parcelas",
+    "save": "Erro ao guardar parcela",
+    "delete": "Erro ao eliminar parcela",
+    "loadLocations": "Erro ao carregar explorações"
+  },
+  "validation": {
+    "nameRequired": "O nome é obrigatório",
+    "locationRequired": "A exploração é obrigatória"
+  },
+  "confirmDelete": "Pretende eliminar esta parcela?",
+  "addButton": "Adicionar parcela",
+  "createNew": "Criar parcela",
+  "cancel": "Cancelar",
+  "submit": "Criar",
+  "selectLocation": "Selecionar exploração",
+  "representation": {
+    "label": "Representação",
+    "ariaLabel": "Selecionar representação",
+    "table": "Lista",
+    "graphical": "Gráfico"
+  },
+  "graphical": {
+    "title": "Vista gráfica das parcelas",
+    "viewMode": "Modo",
+    "modeAriaLabel": "Selecionar modo",
+    "viewModeOption": "Visualização",
+    "editModeOption": "Editar",
+    "editMode": "Modo de edição",
+    "modeHelpAria": "Mostrar ajuda do modo",
+    "modeHelpTooltip": "Navegar, ampliar e consultar detalhes. As parcelas e os canteiros apenas podem ser movidos ou editados no modo de edição. Atalho: Alt+E",
+    "viewModeDescription": "Navegar, ampliar e consultar detalhes. As parcelas e os canteiros apenas podem ser movidos ou editados no modo de edição.",
+    "editModeDescription": "Mover parcelas e canteiros e ajustar a disposição.",
+    "editModeBanner": "Modo de edição ativo: é possível mover parcelas e canteiros.",
+    "locationEditModeBanner": "Edição gráfica ativa: é possível mover as parcelas e os canteiros desta exploração.",
+    "editModeShortcut": "Atalho: Alt+E",
+    "locationEditModeAction": "Editar gráfico",
+    "locationEditModeActive": "Edição gráfica ativa",
+    "enableLocationEditMode": "Editar gráfico",
+    "disableLocationEditMode": "Terminar edição gráfica da exploração «{{name}}»",
+    "zoomIn": "Ampliar",
+    "zoomOut": "Reduzir",
+    "panUp": "Deslocar para cima",
+    "panDown": "Deslocar para baixo",
+    "panLeft": "Deslocar para a esquerda",
+    "panRight": "Deslocar para a direita",
+    "fitToView": "Enquadrar tudo",
+    "enterFullscreen": "Entrar em ecrã inteiro",
+    "exitFullscreen": "Sair do ecrã inteiro",
+    "zoomLevel": "Ampliação: {{value}}×",
+    "locationTitle": "Exploração: {{name}}",
+    "details": {
+      "field": "Detalhes da parcela",
+      "bed": "Detalhes do canteiro"
+    },
+    "location": "Exploração",
+    "parentField": "Parcela",
+    "area": "Área"
+  },
+  "commands": {
+    "showList": "Mostrar vista de lista",
+    "showGraphical": "Mostrar vista gráfica",
+    "keywords": {
+      "showList": "lista, tabela, áreas de cultivo",
+      "showGraphical": "gráfico, vista gráfica, áreas de cultivo"
+    }
+  }
+}

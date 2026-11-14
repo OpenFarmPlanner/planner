@@ -1,0 +1,15 @@
+{% autoescape off %}Olá,
+
+{{ invited_by }} enviou um convite para o OpenFarmPlanner.
+
+Projeto: {{ project_name }}
+Função: {{ role_label }}
+
+Abra a seguinte ligação para aceitar o convite:
+{{ invite_link }}
+
+Se ainda não tem uma conta OpenFarmPlanner, registe-se primeiro com o mesmo endereço de e-mail.
+
+Com os melhores cumprimentos,
+OpenFarmPlanner
+{% endautoescape %}

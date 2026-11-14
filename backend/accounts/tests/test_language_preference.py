@@ -40,12 +40,12 @@ class AccountLanguageApiTest(DRFAPITestCase):
         self.assertEqual(UserProjectSettings.objects.get(user=self.user).ui_language, 'auto')
 
     def test_accepts_every_supported_code(self):
-        for code in ('auto', 'de', 'en', 'fr', 'es', 'it'):
+        for code in ('auto', 'de', 'en', 'fr', 'es', 'it', 'pt'):
             response = self.client.put(LANGUAGE_URL, {'ui_language': code}, format='json')
             self.assertEqual(response.status_code, status.HTTP_200_OK, code)
 
     def test_switching_between_every_language_is_persisted_each_time(self):
-        for code in ('de', 'en', 'fr', 'es', 'it', 'de'):
+        for code in ('de', 'en', 'fr', 'es', 'it', 'pt', 'de'):
             response = self.client.put(LANGUAGE_URL, {'ui_language': code}, format='json')
 
             self.assertEqual(response.status_code, status.HTTP_200_OK, code)

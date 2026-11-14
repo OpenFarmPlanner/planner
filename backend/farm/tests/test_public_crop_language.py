@@ -698,6 +698,19 @@ class PublicCropTranslationTest(ProjectApiTestCase):
             {'de': 'Robuste Freilandsorte.', 'en': 'Robust outdoor variety.'},
         )
 
+    def test_additional_ui_languages_can_store_descriptions_without_replacing_the_original(self):
+        sync_original_language_translation(self.public_crop)
+        descriptions = {'it': 'Descrizione italiana di esempio.', 'pt': 'Descrição de exemplo.'}
+        replace_public_crop_translations(
+            public_crop=self.public_crop, user=self.user, descriptions=descriptions,
+        )
+        self.assertEqual(
+            self.public_crop.descriptions_by_language(),
+            {'de': 'Robuste Freilandsorte.', **descriptions},
+        )
+        for language, text in descriptions.items():
+            self.assertEqual(self.public_crop.localized_description(language), (text, language))
+
     def test_editing_the_original_language_keeps_notes_in_step(self):
         sync_original_language_translation(self.public_crop)
 
@@ -870,5 +883,6 @@ class LanguageCodeNormalizationTest(ProjectApiTestCase):
         self.assertEqual(normalize_language_code('fr'), 'fr')
         self.assertEqual(normalize_language_code('es-419'), 'es')
         self.assertEqual(normalize_language_code('it-IT'), 'it')
+        self.assertEqual(normalize_language_code('pt-BR'), 'pt')
         self.assertEqual(normalize_language_code('ja'), '')
         self.assertEqual(normalize_language_code(None), '')

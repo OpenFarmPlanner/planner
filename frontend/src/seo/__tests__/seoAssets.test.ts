@@ -58,7 +58,7 @@ describe('buildSitemapXml', () => {
     expect(sitemap).toContain('</urlset>');
   });
 
-  it('contains every public page in all five languages, slashless', () => {
+  it('contains every public page in all six languages, slashless', () => {
     const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
     expect(locs).toEqual([
       `${SITE}/`,
@@ -66,31 +66,36 @@ describe('buildSitemapXml', () => {
       `${SITE}/fr`,
       `${SITE}/es`,
       `${SITE}/it`,
+      `${SITE}/pt`,
       `${SITE}/ueber`,
       `${SITE}/en/about`,
       `${SITE}/fr/a-propos`,
       `${SITE}/es/acerca-de`,
       `${SITE}/it/chi-siamo`,
+      `${SITE}/pt/sobre`,
       `${SITE}/impressum`,
       `${SITE}/en/legal-notice`,
       `${SITE}/fr/mentions-legales`,
       `${SITE}/es/aviso-legal`,
       `${SITE}/it/note-legali`,
+      `${SITE}/pt/aviso-legal`,
       `${SITE}/datenschutz`,
       `${SITE}/en/privacy`,
       `${SITE}/fr/confidentialite`,
       `${SITE}/es/privacidad`,
       `${SITE}/it/privacy`,
+      `${SITE}/pt/privacidade`,
       `${SITE}/nutzungsbedingungen`,
       `${SITE}/en/terms`,
       `${SITE}/fr/conditions-utilisation`,
       `${SITE}/es/terminos`,
       `${SITE}/it/termini`,
+      `${SITE}/pt/termos`,
     ]);
     expect(locs).toHaveLength(PUBLIC_PAGE_VARIANTS.length);
   });
 
-  it('lists de, en, fr, es, it and x-default alternates on every url entry', () => {
+  it('lists de, en, fr, es, it, pt and x-default alternates on every url entry', () => {
     const blocks = sitemap.match(/<url>[\s\S]*?<\/url>/g) ?? [];
     expect(blocks).toHaveLength(PUBLIC_PAGE_VARIANTS.length);
     const about = blocks.find((block) => block.includes(`<loc>${SITE}/en/about</loc>`))!;
@@ -108,7 +113,7 @@ describe('buildSitemapXml', () => {
         const block = blocks.find((candidate) => candidate.includes(`<loc>${buildCanonicalUrl(SITE, path)}</loc>`))!;
         return [...block.matchAll(/<xhtml:link [^>]+>/g)].map((m) => m[0]).sort();
       });
-      expect(alternateSets[0]).toHaveLength(6);
+      expect(alternateSets[0]).toHaveLength(7);
       for (const set of alternateSets) {
         expect(set).toEqual(alternateSets[0]);
       }

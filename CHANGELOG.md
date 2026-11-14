@@ -8,6 +8,10 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
 
 ### Features
 
+- Add European Portuguese UI, public/legal pages, emails and crop-library
+  translation support, with explicit pt-PT formatting and plural rules.
+  Preserve legal consent versions, stored project content and required species names.
+
 - Add Italian UI, public/legal pages, emails and crop-library translation support;
   preserve legal consent versions and existing crop-name approval requirements.
 

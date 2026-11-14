@@ -81,20 +81,22 @@ class TimingWindowParseError(ValueError):
 def _month_words() -> dict[str, int]:
     names: dict[int, tuple[str, ...]] = {
         1: ('januar', 'jänner', 'jaenner', 'jän', 'jan', 'january', 'janvier', 'janv', 'enero',
-            'ene', 'gennaio', 'gen'),
+            'ene', 'gennaio', 'gen', 'janeiro'),
         2: ('februar', 'feber', 'feb', 'february', 'février', 'fevrier', 'févr', 'fevr', 'fév',
-            'fev', 'febrero', 'febbraio'),
-        3: ('märz', 'maerz', 'mär', 'mrz', 'march', 'mar', 'mars', 'marzo'),
+            'fev', 'febrero', 'febbraio', 'fevereiro'),
+        3: ('märz', 'maerz', 'mär', 'mrz', 'march', 'mar', 'mars', 'marzo', 'março', 'marco'),
         4: ('april', 'apr', 'avril', 'avr', 'abril', 'abr', 'aprile'),
-        5: ('mai', 'may', 'mayo', 'maggio', 'mag'),
-        6: ('juni', 'jun', 'june', 'juin', 'junio', 'giugno', 'giu'),
-        7: ('juli', 'jul', 'july', 'juillet', 'juil', 'julio', 'luglio', 'lug'),
+        5: ('mai', 'may', 'mayo', 'maggio', 'mag', 'maio'),
+        6: ('juni', 'jun', 'june', 'juin', 'junio', 'giugno', 'giu', 'junho'),
+        7: ('juli', 'jul', 'july', 'juillet', 'juil', 'julio', 'luglio', 'lug', 'julho'),
         8: ('august', 'aug', 'août', 'aout', 'agosto', 'ago'),
-        9: ('september', 'sept', 'sep', 'septembre', 'septiembre', 'setiembre', 'set', 'settembre'),
-        10: ('oktober', 'okt', 'october', 'oct', 'octobre', 'octubre', 'ottobre', 'ott'),
-        11: ('november', 'nov', 'novembre', 'noviembre'),
+        9: ('september', 'sept', 'sep', 'septembre', 'septiembre', 'setiembre',
+            'set', 'settembre', 'setembro'),
+        10: ('oktober', 'okt', 'october', 'oct', 'octobre', 'octubre',
+             'ottobre', 'ott', 'outubro', 'out'),
+        11: ('november', 'nov', 'novembre', 'noviembre', 'novembro'),
         12: ('dezember', 'dez', 'december', 'dec', 'décembre', 'decembre', 'déc', 'diciembre',
-             'dic', 'dicembre'),
+             'dic', 'dicembre', 'dezembro'),
     }
     return {word: month for month, words in names.items() for word in words}
 
@@ -104,14 +106,15 @@ MONTH_WORDS = _month_words()
 DECADE_WORDS: dict[str, str] = {
     **dict.fromkeys(
         ('anfang', 'early', 'beginning', 'start', 'début', 'debut', 'principios', 'principio',
-         'inicios', 'inicio', 'comienzos', 'inizio'),
+         'inicios', 'inicio', 'comienzos', 'inizio', 'início'),
         DECADE_EARLY,
     ),
     **dict.fromkeys(
-        ('mitte', 'mid', 'middle', 'mi', 'mediados', 'mitad', 'metà', 'meta'), DECADE_MID,
+        ('mitte', 'mid', 'middle', 'mi', 'mediados', 'mitad', 'metà', 'meta', 'meados'),
+        DECADE_MID,
     ),
     **dict.fromkeys(
-        ('ende', 'late', 'end', 'fin', 'finales', 'final', 'fines', 'fine'), DECADE_LATE,
+        ('ende', 'late', 'end', 'fin', 'finales', 'final', 'fines', 'fine', 'fim'), DECADE_LATE,
     ),
 }
 
@@ -122,6 +125,7 @@ WEEK_WORDS = frozenset({
 
 SEPARATOR_WORDS = frozenset({
     '-', 'bis', 'to', 'till', 'until', 'through', 'thru', 'à', 'au', 'a', 'hasta', 'al',
+    'até', 'ate',
 })
 
 # "from": a filler before a start, but alone it leaves the window open.

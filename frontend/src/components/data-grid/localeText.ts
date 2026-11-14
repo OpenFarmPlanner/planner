@@ -1,5 +1,5 @@
 import type { GridLocaleText } from '@mui/x-data-grid';
-import { deDE, enUS, esES, frFR, itIT } from '@mui/x-data-grid/locales';
+import { deDE, enUS, esES, frFR, itIT, ptPT } from '@mui/x-data-grid/locales';
 import i18n from 'i18next';
 
 import { FALLBACK_LANGUAGE, normalizeLanguageTag, type SupportedLanguage } from '../../i18n/languages';
@@ -10,6 +10,7 @@ const MUI_GRID_LOCALES = {
   fr: frFR.components.MuiDataGrid.defaultProps.localeText as GridLocaleText,
   es: esES.components.MuiDataGrid.defaultProps.localeText as GridLocaleText,
   it: itIT.components.MuiDataGrid.defaultProps.localeText as GridLocaleText,
+  pt: ptPT.components.MuiDataGrid.defaultProps.localeText as GridLocaleText,
 } as const satisfies Record<SupportedLanguage, GridLocaleText>;
 
 /**
