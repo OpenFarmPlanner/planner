@@ -424,6 +424,8 @@ The public Crop Library follows an open-data model:
   roll back together. Private defaults, canceled sharing intent and copy-only
   choices never become implicit publication. The normalized resulting values
   and public version form the baseline, including compatibility-derived fields.
+  A final crop revision records this completed baseline after normalization and
+  any public edit, so restoring the link restores its resolved status and pins.
   See [the initial-link matrix](./crop-library-state-matrix.md#linking-an-existing-culture).
 - **Reproducible local import acceptance data.** The guarded
   `seed_library_import_acceptance` management command supports

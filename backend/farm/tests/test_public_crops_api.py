@@ -5792,6 +5792,37 @@ class PublicCropFieldSyncApiTest(DRFAPITestCase):
             {**data, **overrides}, format='json',
         )
 
+    def test_initial_link_history_restores_the_final_resolved_baseline(self):
+        self.kultur.harvest_duration_days = 27
+        self.kultur.save()
+        response = self._initial_resolution()
+        self.assertEqual(response.status_code, 200, response.data)
+        self.kultur.refresh_from_db()
+        self.entry.refresh_from_db()
+        linked_revision = EntityRevision.objects.filter(
+            project=self.project, entity_type='crop', object_id=self.kultur.pk,
+        ).latest('id')
+        self.assertEqual(linked_revision.snapshot['source_public_version'], self.entry.version)
+        self.assertFalse(linked_revision.snapshot['is_modified_from_source'])
+        self.assertEqual(linked_revision.snapshot['library_pinned_fields'], ['notes'])
+        self.assertIn('source_public_version', linked_revision.changed_fields)
+        unlinked = self.client.post(
+            f'/openfarmplanner/api/crops/{self.kultur.pk}/unlink-public-crop/', {}, format='json',
+        )
+        self.assertEqual(unlinked.status_code, 200, unlinked.data)
+        restored = self.client.post(
+            f'/openfarmplanner/api/crops/{self.kultur.pk}/restore/',
+            {'history_id': linked_revision.pk}, format='json',
+        )
+        self.assertEqual(restored.status_code, 200, restored.data)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.source_public_version, self.entry.version)
+        self.assertFalse(self.kultur.is_modified_from_source)
+        self.assertFalse(restored.data['public_update_available'])
+        self.assertEqual(self.kultur.library_pinned_fields, ['notes'])
+        self.assertEqual(self.kultur.growth_duration_days, 40)
+        self.assertEqual(self.kultur.harvest_duration_days, 27)
+
     def test_initial_link_resolves_pull_explicit_share_and_private_pin_together(self):
         self.kultur.harvest_duration_days = 27
         self.kultur.save()

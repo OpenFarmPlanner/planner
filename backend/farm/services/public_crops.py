@@ -1868,16 +1868,24 @@ def sync_crop_with_public_entry(
                     allow_variety_rename='variety' in pushable,
                 )
         is_modified = bool(_public_crop_sync_changes(crop, locked))
-        Crop.objects.filter(pk=crop.pk).update(
-            source_public_crop=locked,
-            source_public_version=locked.version,
-            is_modified_from_source=is_modified,
-            rejected_public_version=None,
-        )
         crop.source_public_crop = locked
         crop.source_public_version = locked.version
         crop.is_modified_from_source = is_modified
         crop.rejected_public_version = None
+        if initial_link:
+            # Normalization precedes publication; history must also capture the
+            # resulting version and divergence state as the completed link.
+            crop.save(update_fields=[
+                'source_public_crop', 'source_public_version', 'is_modified_from_source',
+                'rejected_public_version', 'updated_at',
+            ])
+        else:
+            Crop.objects.filter(pk=crop.pk).update(
+                source_public_crop=locked,
+                source_public_version=locked.version,
+                is_modified_from_source=is_modified,
+                rejected_public_version=None,
+            )
     return PublicCropSyncResult(
         crop=crop,
         public_crop=locked,
