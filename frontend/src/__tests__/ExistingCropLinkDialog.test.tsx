@@ -150,4 +150,29 @@ describe('ExistingCropLinkDialog', () => {
     expect(link).not.toHaveBeenCalled();
   });
 
+  it('retains untouched pin decisions when editing another field in copy mode', async () => {
+    preview.mockResolvedValue({ data: {
+      public_version: 4, crop_updated_at: '2026-11-14T12:00:00Z', changes: [
+        { field: 'growth_duration_days', local_value: 90, public_value: 80, pushable: true, pinnable: true },
+        { field: 'notes', local_value: 'Private notes', public_value: 'Library notes', pushable: true, pinnable: true },
+        { field: 'harvest_duration_days', local_value: 20, public_value: 15, pushable: true, pinnable: true },
+      ],
+    } });
+    setup();
+    await waitFor(() => expect(button()).toBeEnabled());
+    fireEvent.click(screen.getByRole('radio', { name: t('library.importDecision.link') }));
+    for (const field of ['growth_duration_days', 'notes']) {
+      fireEvent.click(screen.getByTestId(`public-crop-sync-row-${field}`).querySelector('input[value="local"]')!);
+    }
+    fireEvent.click(screen.getByRole('radio', { name: t('library.importDecision.copy') }));
+    fireEvent.click(screen.getByTestId('public-crop-sync-row-harvest_duration_days').querySelector('input[value="mine"]')!);
+    fireEvent.click(screen.getByRole('radio', { name: t('library.importDecision.link') }));
+    for (const field of ['growth_duration_days', 'notes']) {
+      expect(screen.getByTestId(`public-crop-sync-row-${field}`).querySelector('input[value="local"]')).toBeChecked();
+    }
+    expect(screen.getByTestId('public-crop-sync-row-harvest_duration_days').querySelector('input[value="mine"]')).toBeChecked();
+    fireEvent.click(button('link'));
+    await waitFor(() => expect(link).toHaveBeenCalledWith(1, 77, [], 4, '2026-11-14T12:00:00Z', ['growth_duration_days', 'notes']));
+  });
+
 });

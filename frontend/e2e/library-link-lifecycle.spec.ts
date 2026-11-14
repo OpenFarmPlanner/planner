@@ -174,7 +174,7 @@ for (const entryPoint of ['publish', 'import', 'copy'] as const) {
     await loginWithDeterministicProject(page, request, `library-target-${entryPoint}-${Date.now()}`, { loginAsAdmin: true });
     const local = await apiRequest<CropRow>(page, 'POST', '/crops/', {
       name: species.name, variety: '', crop_species: species.id,
-      growth_duration_days: 90, harvest_duration_days: 20, notes: 'Private synthetic note',
+      growth_duration_days: 90, harvest_duration_days: entryPoint === 'copy' ? 30 : 20, notes: 'Private synthetic note',
     });
     const varieties: CropRow[] = [];
     for (let index = 0; index < 12; index++) varieties.push(await apiRequest<CropRow>(page, 'POST', '/crops/', {
@@ -213,17 +213,22 @@ for (const entryPoint of ['publish', 'import', 'copy'] as const) {
     await localChoice.press('Space');
     await expect(localChoice).toBeChecked();
     if (entryPoint === 'copy') {
-      const growth = page.getByTestId('public-crop-sync-row-growth_duration_days');
-      const keepGrowth = growth.getByRole('radio', { name: labels.library.linkExisting.keepLocal, exact: true });
-      await keepGrowth.focus();
-      await keepGrowth.press('Space');
+      const choose = async (field: string, label: string) => {
+        const option = page.getByTestId(`public-crop-sync-row-${field}`).getByRole('radio', { name: label, exact: true });
+        await option.focus();
+        await option.press('Space');
+        return option;
+      };
       await page.getByRole('radio', { name: labels.library.importDecision.link, exact: true }).click();
-      await expect(keepGrowth).toBeChecked();
+      const pinGrowth = await choose('growth_duration_days', labels.library.sync.chooseLocal);
+      const pinNotes = await choose('notes', labels.library.sync.chooseLocal);
       await page.getByRole('radio', { name: labels.library.importDecision.copy, exact: true }).click();
-      await expect(keepGrowth).toBeChecked();
-      const takeGrowth = growth.getByRole('radio', { name: labels.library.linkExisting.takeLibrary, exact: true });
-      await takeGrowth.focus();
-      await takeGrowth.press('Space');
+      await choose('harvest_duration_days', labels.library.linkExisting.keepLocal);
+      await page.getByRole('radio', { name: labels.library.importDecision.link, exact: true }).click();
+      await expect(pinGrowth).toBeChecked();
+      await expect(pinNotes).toBeChecked();
+      await page.getByRole('radio', { name: labels.library.importDecision.copy, exact: true }).click();
+      await choose('growth_duration_days', labels.library.linkExisting.takeLibrary);
     }
     for (const viewport of [{ width: 375, height: 800 }, { width: 768, height: 900 },
       { width: 1024, height: 900 }, { width: 1440, height: 900 }, { width: 800, height: 375 }]) {
@@ -239,11 +244,12 @@ for (const entryPoint of ['publish', 'import', 'copy'] as const) {
     }
     await confirm.click();
     await expect(confirm).not.toBeVisible();
-    const linked = await apiRequest<{ id: number; source_public_crop: number; growth_duration_days: number; notes: string; library_pinned_fields: string[] }>(page, 'GET', `/crops/${local.id}/`);
+    const linked = await apiRequest<{ id: number; source_public_crop: number | null; growth_duration_days: number; harvest_duration_days: number; notes: string; library_pinned_fields: string[] }>(page, 'GET', `/crops/${local.id}/`);
     expect(linked.id).toBe(local.id);
     expect(linked.source_public_crop).toBe(entryPoint === 'copy' ? null : published.public_crop.id);
     expect(linked.notes).toBe('Private synthetic note');
     expect(linked.growth_duration_days).toBe(80);
+    expect(linked.harvest_duration_days).toBe(entryPoint === 'copy' ? 30 : 20);
     if (entryPoint === 'copy') expect(linked.library_pinned_fields).toEqual([]);
     else expect(linked.library_pinned_fields).toContain('notes');
     const savedRows = await apiRequest<{ results: (CropRow & { crop_species: number; source_public_crop: number | null })[] }>(page, 'GET', '/crops/?page_size=500');

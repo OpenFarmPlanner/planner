@@ -6,6 +6,7 @@ import { PublicCropSyncPanel } from './PublicCropSyncPanel';
 import { usePublicCropSyncPreview } from './usePublicCropSyncPreview';
 import { getPublicCropTitle } from '../crop-library/publicCropDisplay';
 import { extractApiErrorCode } from '../api/errors';
+import type { PublicCropSyncChoices } from './publicCropSync';
 
 export type CropLinkCandidate = Pick<Crop, 'id' | 'name' | 'variety' | 'source_public_crop'> & { species_match?: boolean };
 
@@ -35,6 +36,17 @@ export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLink
       if (choices[field] === 'local') choices[field] = 'mine';
     }
   }
+  const updateChoices = (next: PublicCropSyncChoices) => {
+    if (mode === 'link') {
+      preview.setChoices(next);
+      return;
+    }
+    const updated = { ...preview.choices };
+    for (const [field, choice] of Object.entries(next)) {
+      if (choice !== choices[field]) updated[field] = choice;
+    }
+    preview.setChoices(updated);
+  };
   const hasSelectable = candidates.some(candidate => !candidate.source_public_crop);
   const ready = target === 'new' ? canCreate && hasProject : Boolean(targetId && preview.preview);
   const confirm = async () => {
@@ -85,7 +97,7 @@ export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLink
           </RadioGroup>
           <Alert severity="info">{t(mode === 'copy' ? 'library.importDecision.copyHelp' : 'library.importDecision.linkHelp')}</Alert>
           {targetId ? <PublicCropSyncPanel changes={preview.preview?.changes.map(change => ({ ...change, pushable: true })) ?? null}
-            choices={choices} onChoicesChange={preview.setChoices} requiresModeration={false}
+            choices={choices} onChoicesChange={updateChoices} requiresModeration={false}
             keepMineLocally allowLocal={mode === 'link'} disabled={submitting} loadError={preview.loadError} /> : null}
           {target === 'new' && !hasProject ? <Alert severity="warning">{t('library.importDecision.projectChanged')}</Alert> : null}
           {failed ? <Alert severity="error">{t(`library.importDecision.${failed}`)}</Alert> : null}
