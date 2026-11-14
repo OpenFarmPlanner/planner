@@ -15,19 +15,21 @@ const isExportFormat = (value: string | null): value is CropExportFormat => (
   value !== null && (EXPORT_FORMATS as readonly string[]).includes(value)
 );
 
-export function readStoredExportFormat(): CropExportFormat {
+export function readStoredExportFormat(unavailableFallback = DEFAULT_EXPORT_FORMAT): CropExportFormat {
   try {
     const stored = window.localStorage.getItem(EXPORT_FORMAT_STORAGE_KEY);
     return isExportFormat(stored) ? stored : DEFAULT_EXPORT_FORMAT;
   } catch {
-    return DEFAULT_EXPORT_FORMAT;
+    return unavailableFallback;
   }
 }
 
-export function storeExportFormat(format: CropExportFormat): void {
+export function storeExportFormat(format: CropExportFormat): boolean {
   try {
     window.localStorage.setItem(EXPORT_FORMAT_STORAGE_KEY, format);
+    return true;
   } catch {
-    // Storage may be unavailable (private mode); the choice then only lives for this visit.
+    // Let the caller retain the successful choice for this visit.
+    return false;
   }
 }

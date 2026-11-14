@@ -209,7 +209,9 @@ Kultur rows only. The export dialog offers scope and format; spreadsheets use
 the active UI language captured when export starts, even if it changes while
 data is loading. The browser remembers only the last successfully exported
 format, defaults to ODS for missing/invalid preferences, and restores the saved
-format after cancellation or failure independently of scope. Import automatically
+format after cancellation or failure independently of scope. If browser storage
+is unavailable, the successful choice lasts while the crop page stays open
+but cannot persist across a reload. Import automatically
 uses the UI language captured when reading the file. Ordinary CSV/XLSX/ODS cells carry the notes; JSON is
 optional and preserves the entire `notes` language map.
 

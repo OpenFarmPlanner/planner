@@ -10,7 +10,7 @@ import {
   RadioGroup,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   readStoredExportFormat,
   storeExportFormat,
@@ -45,6 +45,7 @@ export function CropsExportDialog({
   const [scope, setScope] = useState<ExportScope>(initialScope);
   const [format, setFormat] = useState<ExportFormat>(readStoredExportFormat);
   const [exporting, setExporting] = useState(false);
+  const successfulFormat = useRef({ format, persisted: true });
 
   useEffect(() => {
     if (open) {
@@ -53,14 +54,17 @@ export function CropsExportDialog({
   }, [open, initialScope]);
 
   useEffect(() => {
-    if (open) setFormat(readStoredExportFormat());
+    if (open) {
+      const last = successfulFormat.current;
+      setFormat(last.persisted ? readStoredExportFormat(last.format) : last.format);
+    }
   }, [open]);
 
   const handleExport = async () => {
     setExporting(true);
     try {
       if (!await onExport(scope, format)) return;
-      storeExportFormat(format);
+      successfulFormat.current = { format, persisted: storeExportFormat(format) };
       onClose();
     } finally {
       setExporting(false);

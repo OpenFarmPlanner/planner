@@ -228,6 +228,32 @@ describe('CropsExportDialog', () => {
       expect(radio('OpenDocument Tabelle (.ods)')).toBeChecked();
     });
 
+    it.each(['unavailable', 'unwritable', 'unreadable'] as const)('retains only successful choices when storage is %s', async (failure) => {
+      const user = userEvent.setup();
+      window.localStorage.setItem('ofp.crops.exportFormat', 'xlsx');
+      const view = renderDialog();
+      const write = failure !== 'unreadable'
+        ? vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Unavailable'); }) : null;
+      const read = failure !== 'unwritable'
+        ? vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('Unavailable'); }) : null;
+      try {
+        await user.click(radio('CSV (.csv)'));
+        await user.click(submitButton());
+        view.rerenderWith({ open: false });
+        view.rerenderWith({ open: true });
+        expect(radio('CSV (.csv)')).toBeChecked();
+        await user.click(radio('JSON (.json)'));
+        await user.click(cancelButton());
+        view.rerenderWith({ open: false });
+        view.rerenderWith({ open: true });
+        expect(radio('CSV (.csv)')).toBeChecked();
+        view.unmount();
+      } finally {
+        read?.mockRestore();
+        write?.mockRestore();
+      }
+    });
+
     it('closes once the export resolves', async () => {
       const user = userEvent.setup();
       const { onClose } = renderDialog();
