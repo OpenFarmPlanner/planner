@@ -47,7 +47,7 @@ describe('TermsOfServicePage', () => {
     expect(screen.queryByText(/Preisen, Versandkosten, Zahlungsmitteln/)).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Sprachfassungen/ })).toBeInTheDocument();
     expect(
-      screen.getByText(/in deutscher, englischer, französischer und spanischer Sprache bereitgestellt/),
+      screen.getByText(/in deutscher, englischer, französischer, spanischer und italienischer Sprache bereitgestellt/),
     ).toBeInTheDocument();
     expect(screen.getByText(/ist die englische Fassung maßgeblich/)).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /Vertragssprache/ })).not.toBeInTheDocument();

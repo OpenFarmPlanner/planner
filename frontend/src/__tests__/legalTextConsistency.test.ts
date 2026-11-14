@@ -1,10 +1,10 @@
 /**
  * The legal texts (imprint, privacy policy, terms) exist in German, English,
- * French and Spanish and must say the same in every language. Wording is
+ * French, Spanish and Italian and must say the same in every language. Wording is
  * reviewed by people; this test guards what can be checked mechanically:
  * every paragraph cites the same articles and sections (in one uniform
  * notation, e.g. "Art. 6(1)(f)", "§ 165(3)"), and names the same numbers,
- * deadlines, URLs and email addresses in all four languages.
+ * deadlines, URLs and email addresses in all supported languages.
  */
 
 import { describe, expect, it } from 'vitest';

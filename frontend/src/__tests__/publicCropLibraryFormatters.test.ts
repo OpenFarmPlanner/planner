@@ -412,15 +412,16 @@ describe('getPublicCropOriginalLanguageCode', () => {
 
   it('discards a language the app does not support, rather than carrying it', () => {
     // normalizeLanguageTag only accepts the codes in SUPPORTED_LANGUAGES, so a
-    // crop marked as Italian falls straight through to the next candidate.
+    // crop marked as Japanese falls straight through to the next candidate.
     expect(getPublicCropOriginalLanguageCode(
-      crop({ original_language_code: 'it', description_language_code: 'en' } as never), 'de',
+      crop({ original_language_code: 'ja', description_language_code: 'en' } as never), 'de',
     )).toBe('en');
   });
 
-  it('keeps a French or Spanish original language', () => {
+  it('keeps a French, Spanish or Italian original language', () => {
     expect(getPublicCropOriginalLanguageCode(crop({ original_language_code: 'fr' } as never), 'de')).toBe('fr');
     expect(getPublicCropOriginalLanguageCode(crop({ original_language_code: 'es-419' } as never), 'de')).toBe('es');
+    expect(getPublicCropOriginalLanguageCode(crop({ original_language_code: 'it-IT' } as never), 'de')).toBe('it');
   });
 
   it('normalizes a regional tag down to its base language', () => {

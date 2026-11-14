@@ -43,16 +43,23 @@ class ScanHookTests(unittest.TestCase):
         self.assertNotIn('do-not-copy', serialized)
 
     def test_http_200_spa_fallback_is_not_prerendered_page_coverage(self):
-        for body, expected in [
-            ('<html lang="de"><body>SPA shell</body></html>', {}),
-            ('<html lang="en" data-ofp-page-language="en" data-ofp-page-path="/en">'
+        for route, body, expected in [
+            ('/en', '<html lang="de"><body>SPA shell</body></html>', {}),
+            ('/en', '<html lang="en" data-ofp-page-language="en" data-ofp-page-path="/en">'
              '<body>English prerender</body></html>', {'/en': 'en'}),
+            ('/it', '<html lang="en" data-ofp-page-language="en" data-ofp-page-path="/it">'
+             '<body>Wrong language</body></html>', {}),
+            ('/it', '<html lang="it" data-ofp-page-language="it" data-ofp-page-path="/it">'
+             '<body>Italian prerender</body></html>', {'/it': 'it'}),
         ]:
             with self.subTest(body=body), tempfile.TemporaryDirectory() as directory:
-                zap = SimpleNamespace(core=SimpleNamespace(messages=lambda body=body, **_kwargs: [{
-                    'requestHeader': 'GET http://127.0.0.1:4173/en HTTP/1.1\r\n',
-                    'responseHeader': 'HTTP/1.1 200 OK\r\n', 'responseBody': body,
-                }]), pscan=SimpleNamespace(records_to_scan='0'))
+                zap = SimpleNamespace(
+                    core=SimpleNamespace(messages=lambda body=body, route=route, **_kwargs: [{
+                        'requestHeader': f'GET http://127.0.0.1:4173{route} HTTP/1.1\r\n',
+                        'responseHeader': 'HTTP/1.1 200 OK\r\n', 'responseBody': body,
+                    }]),
+                    pscan=SimpleNamespace(records_to_scan='0'),
+                )
                 output = Path(directory) / 'coverage.json'
                 with patch.object(hooks, 'Path', return_value=output):
                     hooks.zap_pre_shutdown(zap)

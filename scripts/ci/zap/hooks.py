@@ -6,8 +6,8 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 TARGET = 'http://127.0.0.1:4173/'
-SEEDS = ['/', '/en', '/fr', '/es', '/api/schema/', '/api/crops/', '/__zap_fixture__/']
-PUBLIC_PAGES = {'/': 'de', '/en': 'en', '/fr': 'fr', '/es': 'es'}
+SEEDS = ['/', '/en', '/fr', '/es', '/it', '/api/schema/', '/api/crops/', '/__zap_fixture__/']
+PUBLIC_PAGES = {'/': 'de', '/en': 'en', '/fr': 'fr', '/es': 'es', '/it': 'it'}
 
 
 class PageLanguageParser(HTMLParser):
