@@ -669,7 +669,7 @@ describe('Crops action area', () => {
     });
     expect(screen.getByTestId('selected-crop-id')).toHaveTextContent('42');
     expect(screen.getByTestId('crop-row-42')).toHaveTextContent('Salat');
-    expect(screen.getByText('Bibliothekswerte übernommen.')).toBeInTheDocument();
+    expect(await screen.findByText('„Salat (Maikönig)“ wurde in dieses Projekt importiert.')).toBeInTheDocument();
   });
 
   it('keeps the import dialog open and shows the existing error when a library import fails', async () => {
