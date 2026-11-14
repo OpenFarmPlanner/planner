@@ -53,6 +53,12 @@ remove checked rows only after verifying closure/merge and absence of an open
 implementation PR. Checked open work stays in the queue. Acceptance never
 replaces required implementation or review gates.
 
+After implementation, add a concise manual test instruction to the completed
+queue row: where, action, expected result and any required test data/environment.
+Backfill missing instructions on completed rows from their merged implementation.
+Use the same-line `<br>**Manual test:** ...` format documented there, preserve
+checkbox state and keep the instruction with its row when moving/removing it.
+
 Re-fetch immediately before writing. If the body changed, reapply the requested
 delta to that latest body; do not write an earlier reconstructed copy. GitHub
 issue-body writes do not provide an atomic compare-and-swap through these tools:

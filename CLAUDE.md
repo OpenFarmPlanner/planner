@@ -446,7 +446,9 @@ build a throwaway local integration branch; never a shared branch:
   acceptance. Agents never check them. On queue inspection, remove only checked
   completed rows under the cleanup rules in `docs/work-execution-queue.md`;
   retain unchecked completed rows for the owner's testing without blocking the
-  next eligible implementation item.
+  next eligible implementation item. Add a brief manual test instruction to each
+  completed queue entry (where, action, expected result and required test setup),
+  following the format in `docs/work-execution-queue.md`.
 - The owner authorizes the commissioned queue worker to implement ordered
   issues, obtain independent AI review, fix findings, merge after required checks
   and verified review pass, and continue without routine maintainer confirmation.

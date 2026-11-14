@@ -43,6 +43,24 @@ manual testing. They do not prevent the worker from moving to the next eligible
 item. A checked box means the owner has personally tested and accepted the work;
 it does not waive implementation, independent review or merge requirements.
 
+After implementation, the agent adds a short **Manual test:** instruction to
+each completed queue entry, based on the delivered behavior: where to open it,
+what to do and what result to expect. Include any required test project/data
+and the actual environment or release where available; do not imply that merged
+work is already deployed. For workflow-only work, describe the concrete document
+or workflow result the owner can inspect instead of inventing an app test.
+On queue inspection, backfill missing instructions for completed entries from
+their merged implementation. Open items do not imply a testable implementation.
+
+Keep the instruction on the same physical Markdown line as its checkbox row,
+separated by `<br>**Manual test:** ...`, so it renders below the item while the
+existing queue parsers still see exactly one row. Move or remove this instruction
+together with its item and preserve the owner's checkbox state. For example:
+
+```markdown
+- [ ] #123 — Import existing cultures<br>**Manual test:** In the test project, import Tomato into the existing culture without linking; selected values change, the culture stays unlinked and no duplicate appears.
+```
+
 On each agent queue inspection, remove checked rows only after verifying that
 the issue is closed or the PR is merged, and that no open implementation PR
 still gates the item. Keep checked open issues, open PRs and PRs closed without
