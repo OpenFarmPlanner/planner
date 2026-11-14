@@ -1029,10 +1029,8 @@ export default function PublicCropLibraryPage() {
       setImportingId(selectedCrop.id);
       try {
         const response = await publicCropAPI.importPreview(selectedCrop.id);
-        if (response.data.candidates.length) {
-          setLinkImport({ publicCrop: selectedCrop, candidates: response.data.candidates });
-          return;
-        }
+        setLinkImport({ publicCrop: selectedCrop, candidates: response.data.candidates });
+        return;
       } catch {
         showGlobalSnackbar({ message: t('library.importError'), severity: 'error' });
         return;
@@ -2433,16 +2431,12 @@ export default function PublicCropLibraryPage() {
       </Dialog>
       {linkImport ? <ExistingCropLinkDialog key={linkImport.publicCrop.id} publicCrop={linkImport.publicCrop}
         candidates={linkImport.candidates}
-        onImportAsNew={() => {
-          const entry = linkImport.publicCrop;
-          setLinkImport(null);
-          void performImport(entry.id, getCropTitle(entry, t, language), 'new');
-        }} onClose={() => setLinkImport(null)} onLinked={() => {
+        onClose={() => setLinkImport(null)} onLinked={() => {
           setLinkImport(null);
           // Reload authoritative status after preserving the existing project row.
           savedCropsRef.current.delete(linkImport.publicCrop.id);
           void loadCrops();
-          showGlobalSnackbar({ message: t('library.linkExisting.success'), severity: 'success' });
+          showGlobalSnackbar({ message: t('library.importDecision.success'), severity: 'success' });
         }} /> : null}
       <ImportConflictDialog
         open={importConflict !== null}

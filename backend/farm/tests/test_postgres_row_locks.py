@@ -53,7 +53,8 @@ class PlanTaskSynchronizationLockTest(TaskTimingFixture):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_concurrent_general_library_imports_create_one_project_row():
+@pytest.mark.parametrize('establish_link', [True, False])
+def test_concurrent_general_library_imports_create_one_project_row(establish_link):
     """The project lock serializes identity checks even before a crop exists."""
     from concurrent.futures import ThreadPoolExecutor
     from threading import Barrier
@@ -62,7 +63,7 @@ def test_concurrent_general_library_imports_create_one_project_row():
 
     from crops.models import CropSpecies
     from farm.models import Crop, Project, PublicCrop
-    from farm.services.public_crops import import_public_crop_into_project
+    from farm.services.public_crops import CropLinkConflictError, import_public_crop_into_project
     from farm.tests.api_base import User
 
     if connection.vendor != 'postgresql':
@@ -80,14 +81,25 @@ def test_concurrent_general_library_imports_create_one_project_row():
             local_project = Project.objects.get(pk=project.pk)
             public_crop = PublicCrop.objects.get(pk=entry.pk)
             barrier.wait(timeout=10)
-            return import_public_crop_into_project(public_crop=public_crop, project=local_project)[0].pk
+            try:
+                return import_public_crop_into_project(
+                    public_crop=public_crop, project=local_project,
+                    establish_link=establish_link, base_version=entry.version,
+                )[0].pk
+            except CropLinkConflictError:
+                if establish_link:
+                    raise
+                return None
         finally:
             close_old_connections()
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         futures = [executor.submit(import_once) for _ in range(2)]
         ids = [future.result(timeout=30) for future in futures]
-    assert ids[0] == ids[1]
+    if establish_link:
+        assert ids[0] == ids[1]
+    else:
+        assert ids.count(None) == 1
     assert Crop.objects.filter(project=project, crop_species=species, variety='').count() == 1
 
 
@@ -164,3 +176,56 @@ def test_companion_write_cannot_interleave_with_a_link_confirmation():
         with ThreadPoolExecutor(max_workers=1) as executor:
             assert executor.submit(change_companions).result(timeout=15) == 409
     assert not CropCompanion.objects.filter(project=project).exists()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_one_time_copies_only_accept_one_preview_confirmation():
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    from django.db import close_old_connections, connection
+
+    from farm.models import Crop, Project, PublicCrop
+    from farm.services.public_crops import (
+        CropLinkConflictError,
+        link_project_crop_to_public_reference,
+    )
+    from farm.tests.api_base import User
+
+    if connection.vendor != 'postgresql':
+        pytest.skip('PostgreSQL row-lock regression')
+    user = User.objects.create_user(username='concurrent-library-copy')
+    project = Project.objects.create(name='Concurrent copy', slug='concurrent-library-copy')
+    crop = Crop.objects.create(project=project, name='Copy crop', growth_duration_days=90)
+    entry = PublicCrop.objects.create(name=crop.name, status='published', created_by=user,
+                                     growth_duration_days=110)
+    expected = crop.updated_at.isoformat()
+    barrier = Barrier(2)
+
+    def copy_once():
+        close_old_connections()
+        try:
+            local = Crop.objects.get(pk=crop.pk)
+            public = PublicCrop.objects.get(pk=entry.pk)
+            barrier.wait(timeout=10)
+            try:
+                link_project_crop_to_public_reference(
+                    crop=local, public_crop=public, pull_fields=['growth_duration_days'],
+                    base_version=entry.version, expected_updated_at=expected, establish_link=False,
+                )
+                return 'copied'
+            except CropLinkConflictError:
+                return 'stale'
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(lambda _: copy_once(), range(2)))
+    assert sorted(results) == ['copied', 'stale']
+    crop.refresh_from_db()
+    assert crop.growth_duration_days == 110
+    assert crop.source_public_crop_id is None
+    assert crop.derived_from_public_crop_id == entry.pk
+    entry.refresh_from_db()
+    assert entry.growth_duration_days == 110
+    assert entry.version == 1

@@ -198,6 +198,11 @@ export const cropAPI = {
     http.get<PublishPublicCropPreview>(`/crops/${id}/publish-public/preview/`, { params }),
   publishPublic: (id: number, data: { accepted_public_library_terms: boolean; crop_species_id?: number | null; original_language_code?: string; publish_as_general?: boolean }) =>
     http.post<PublishPublicCropResponse>(`/crops/${id}/publish-public/`, data),
+  copyPublicCrop: (id: number, publicCropId: number, fields: string[], baseVersion: number, cropUpdatedAt?: string) =>
+    http.post<Crop>(`/crops/${id}/copy-public-crop/`, {
+      public_crop_id: publicCropId, pull_fields: fields, base_version: baseVersion,
+      expected_updated_at: cropUpdatedAt,
+    }),
   // `pullFields` (link confirmation) take the entry's values in the same
   // transaction as the link; omitted, no local value changes.
   linkPublicCrop: (id: number, publicCropId: number, pullFields?: string[], baseVersion?: number, cropUpdatedAt?: string, pinFields?: string[]) =>
@@ -316,10 +321,11 @@ export const publicCropAPI = {
   importToProject: (
     id: number,
     mode?: 'update' | 'new',
-    options: { unpinFields?: string[]; pinFields?: string[]; baseVersion?: number } = {},
+    options: { unpinFields?: string[]; pinFields?: string[]; baseVersion?: number; linkToLibrary?: boolean } = {},
   ) =>
     http.post<ImportPublicCropResponse>(`/public-crops/${id}/import/`, {
       ...(mode ? { mode } : {}),
+      ...(options.linkToLibrary !== undefined ? { link_to_library: options.linkToLibrary } : {}),
       ...(options.unpinFields?.length ? { unpin_fields: options.unpinFields } : {}),
       ...(options.pinFields?.length ? { pin_fields: options.pinFields } : {}),
       ...(options.baseVersion !== undefined ? { base_version: options.baseVersion } : {}),

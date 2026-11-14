@@ -1217,6 +1217,7 @@ def link_project_crop_to_public_reference(
     base_version: int | None = None,
     expected_updated_at: str | None = None,
     pin_fields: Sequence[str] = (),
+    establish_link: bool = True,
 ) -> Crop:
     """Link a private crop to a published public crop without publishing a duplicate.
 
@@ -1232,6 +1233,10 @@ def link_project_crop_to_public_reference(
     always the entry's current version, so a remaining difference reads as a
     local change to contribute. Linking and pulling happen in one transaction.
 
+    ``establish_link=False`` copies only the confirmed fields and preserves
+    provenance without creating a sync link, baseline or pins. It requires
+    both preview versions and refuses an already linked target.
+
     Without a decision (``None``, the per-Sorte "existing variety" link and
     older clients) no public value is copied — linking must never silently
     change local data. If the crop's own values then diverge from the entry,
@@ -1239,6 +1244,11 @@ def link_project_crop_to_public_reference(
     :func:`has_pending_public_crop_update` still offers the pull ("Kultur
     aktualisieren") flow.
     """
+    if not establish_link and (
+        pull_fields is None or type(base_version) is not int
+        or not expected_updated_at or pin_fields
+    ):
+        raise CropLinkConflictError('invalid_copy_confirmation')
     if pull_fields is not None:
         _validate_sync_fields(crop, public_crop, pull_fields)
     with transaction.atomic():
@@ -1269,6 +1279,24 @@ def link_project_crop_to_public_reference(
             tracked_fields = tracked_fields - {'variety'} - VARIETY_ONLY_COPY_FIELDS
 
         crop.crop_species = public_crop.crop_species
+        if not establish_link:
+            crop.library_pinned_fields = []
+            _pull_public_crop_fields(crop=crop, public_crop=public_crop, fields=pull_fields or ())
+            if crop.derived_from_public_crop_id is None:
+                crop.derived_from_public_crop = public_crop
+            crop.source_public_version = None
+            crop.rejected_public_version = None
+            crop.is_modified_from_source = (
+                crop.is_modified_from_source
+                or crop.derived_from_public_crop_id != public_crop.pk
+                or bool(_public_crop_sync_changes(crop, public_crop))
+            )
+            errors = crop_specific_property_errors(crop)
+            if errors:
+                raise ApiValidationError(errors)
+            crop.save()
+            sync_crop_species_across_crop_group(crop)
+            return crop
         if set(pin_fields) & set(pull_fields or ()):
             raise PublicCropSyncFieldsError(sorted(set(pin_fields) & set(pull_fields or ())))
         validate_library_pinned_fields(crop, pin_fields, is_linked=True)
@@ -3273,8 +3301,14 @@ def _unique_project_crop_name(*, name: str, variety: str, project: Project) -> s
     return candidate_name
 
 
-def _create_crop_from_public(*, public_crop: PublicCrop, project: Project, unique_name: bool = False) -> Crop:
+def _create_crop_from_public(
+    *, public_crop: PublicCrop, project: Project, unique_name: bool = False,
+    establish_link: bool = True,
+) -> Crop:
     payload = build_project_crop_payload(public_crop)
+    if not establish_link:
+        payload['source_public_crop'] = None
+        payload['source_public_version'] = None
     if unique_name:
         payload['name'] = _unique_project_crop_name(
             name=payload['name'],
@@ -3297,7 +3331,9 @@ def _create_crop_from_public(*, public_crop: PublicCrop, project: Project, uniqu
     return crop
 
 
-def _ensure_local_general_crop(*, public_crop: PublicCrop, project: Project) -> None:
+def _ensure_local_general_crop(
+    *, public_crop: PublicCrop, project: Project, establish_link: bool = True,
+) -> None:
     """Companion to importing a variety: also import the species' general entry if missing.
 
     Importing a variety-specific public crop directly (rather than via the
@@ -3334,7 +3370,9 @@ def _ensure_local_general_crop(*, public_crop: PublicCrop, project: Project) -> 
     ).exists()
     if name_taken:
         return
-    _create_crop_from_public(public_crop=general_public, project=project)
+    _create_crop_from_public(
+        public_crop=general_public, project=project, establish_link=establish_link,
+    )
 
 
 @transaction.atomic
@@ -3810,6 +3848,7 @@ def import_public_crop_into_project(
     unpin_fields: Sequence[str] = (),
     pin_fields: Sequence[str] = (),
     base_version: int | None = None,
+    establish_link: bool = True,
 ) -> tuple[Crop, str]:
     """Import a public crop into a project, or resolve a re-import.
 
@@ -3834,6 +3873,11 @@ def import_public_crop_into_project(
     refused with :class:`PublicCropEditConflictError` when the entry moved on,
     so a decision is never applied to values the user has not seen.
 
+    ``establish_link=False`` requires a current ``base_version`` and an
+    explicit new-copy decision when candidates exist. It keeps provenance
+    without subscribing the new crop or its implicit general crop to updates.
+    Already linked crops keep the existing update/conflict/pin workflow.
+
     Returns (crop, operation) where operation is one of
     'created' | 'unchanged' | 'updated'.
     """
@@ -3841,8 +3885,17 @@ def import_public_crop_into_project(
     public_crop = PublicCrop.objects.select_for_update().get(pk=public_crop.pk)
     if public_crop.status != PublicCrop.STATUS_PUBLISHED:
         raise CropLinkConflictError()
+    _validate_base_version(public_crop, base_version)
     candidates = public_crop_import_candidates(public_crop=public_crop, project=project)
     linked = Crop.objects.filter(project=project, source_public_crop=public_crop)
+    if not establish_link:
+        if (
+            type(base_version) is not int or mode == 'update' or linked.exists()
+            or pin_fields or unpin_fields
+        ):
+            raise CropLinkConflictError('invalid_copy_confirmation')
+        if candidates and mode != 'new':
+            raise CropLinkConflictError('existing_crop_requires_link')
     species_matches = [
         crop for crop in candidates
         if public_crop.crop_species_id and crop.crop_species_id == public_crop.crop_species_id
@@ -3850,12 +3903,18 @@ def import_public_crop_into_project(
     if not public_crop.variety_normalized and len(species_matches) > 1:
         raise CropLinkConflictError('duplicate_general_crop')
     if not public_crop.variety_normalized and (
-        (mode == 'new' and species_matches) or (mode != 'new' and candidates and not linked.exists())
+        (mode == 'new' and species_matches)
+        or (mode != 'new' and candidates and not linked.exists())
     ):
         raise CropLinkConflictError('existing_crop_requires_link')
     if mode == 'new':
-        crop = _create_crop_from_public(public_crop=public_crop, project=project, unique_name=True)
-        _ensure_local_general_crop(public_crop=public_crop, project=project)
+        crop = _create_crop_from_public(
+            public_crop=public_crop, project=project, unique_name=True,
+            establish_link=establish_link,
+        )
+        _ensure_local_general_crop(
+            public_crop=public_crop, project=project, establish_link=establish_link,
+        )
         return crop, 'created'
 
     # Duplicates can already exist from before this check existed; picking the
@@ -3873,8 +3932,11 @@ def import_public_crop_into_project(
             public_crop=public_crop,
             project=project,
             unique_name=not public_crop.variety_normalized,
+            establish_link=establish_link,
         )
-        _ensure_local_general_crop(public_crop=public_crop, project=project)
+        _ensure_local_general_crop(
+            public_crop=public_crop, project=project, establish_link=establish_link,
+        )
         return crop, 'created'
 
     if mode == 'update':

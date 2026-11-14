@@ -1590,6 +1590,19 @@
       "ambiguousDelete": "This group contains multiple general crops. Deletion is blocked to prevent unexpected loss of the group. The records need an unambiguous identity first.",
       "intro": "Link {{name}} to an existing library entry or publish your own crop.",
       "keepLocalDescription": "Keep now, compare again later"
+    },
+    "importDecision": {
+      "title": "Import values from the crop library",
+      "existing": "A matching crop already exists in this project. Choose which crop to enrich and which values to import.",
+      "newCrop": "No matching crop exists for this entry yet. The values will be imported as a new crop.",
+      "alreadyLinked": "Already linked crops keep their links. Close this dialog and use the existing update action if needed.",
+      "mode": "Import method",
+      "copy": "Import values once",
+      "link": "Import values and link",
+      "copyHelp": "The selected library values are copied once, without a synchronization link. Your private values and varieties are not published.",
+      "linkHelp": "The selected values are copied and the crop is linked. Future library changes will be offered for review. Your private values and varieties are not published.",
+      "failed": "The values could not be imported. Check the target and comparison again. For a new crop, close this dialog and reload the library.",
+      "success": "Library values imported."
     }
   },
   "commands": {

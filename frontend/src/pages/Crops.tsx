@@ -883,12 +883,7 @@ function Crops() {
       />
 
       {importLink ? <ExistingCropLinkDialog publicCrop={importLink.publicCrop} candidates={importLink.candidates}
-        onClose={() => setImportLink(null)} onLinked={(crop) => void handleImportLinkSuccess(crop)}
-        onImportAsNew={() => {
-          const entry = importLink.publicCrop;
-          setImportLink(null);
-          void handleImportPublicCrop(entry, 'new');
-        }} /> : null}
+        onClose={() => setImportLink(null)} onLinked={(crop) => void handleImportLinkSuccess(crop)} /> : null}
       <ConfirmationDialog
         open={Boolean(deleteDialogCrop)}
         fullWidth

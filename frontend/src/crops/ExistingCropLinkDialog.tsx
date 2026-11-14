@@ -1,62 +1,89 @@
-import { useState } from 'react';
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField } from '@mui/material';
-import { cropAPI, type Crop, type PublicCrop } from '../api/api';
+import { useRef, useState } from 'react';
+import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Radio, RadioGroup, Stack, TextField, Typography } from '@mui/material';
+import { cropAPI, publicCropAPI, type Crop, type PublicCrop } from '../api/api';
 import { useTranslation } from '../i18n';
 import { PublicCropSyncPanel } from './PublicCropSyncPanel';
 import { usePublicCropSyncPreview } from './usePublicCropSyncPreview';
+import { getPublicCropTitle } from '../crop-library/publicCropDisplay';
 
 export type CropLinkCandidate = Pick<Crop, 'id' | 'name' | 'variety' | 'source_public_crop'> & { species_match?: boolean };
 
-export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLinked, onImportAsNew }: {
+export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLinked }: {
   publicCrop: PublicCrop;
   candidates: CropLinkCandidate[];
   onClose: () => void;
   onLinked: (crop: Crop) => void;
-  onImportAsNew?: () => void;
 }) {
-  const { t } = useTranslation(['crops', 'common']);
-  const [targetId, setTargetId] = useState<number | undefined>();
+  const { t, i18n } = useTranslation(['crops', 'common']);
+  const canCreate = Boolean(publicCrop.variety?.trim() || !candidates.some(candidate => candidate.species_match));
+  const onlyCandidate = candidates.length === 1 && candidates[0].species_match && !candidates[0].source_public_crop
+    ? candidates[0].id : undefined;
+  const [target, setTarget] = useState<number | 'new' | undefined>(candidates.length ? onlyCandidate : 'new');
+  const [mode, setMode] = useState<'copy' | 'link'>('copy');
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [failed, setFailed] = useState(false);
-  const preview = usePublicCropSyncPreview(targetId, publicCrop.id, Boolean(targetId), true);
+  const targetId = typeof target === 'number' ? target : undefined;
+  const preview = usePublicCropSyncPreview(targetId, publicCrop.id, Boolean(targetId), mode === 'link');
+  const hasSelectable = candidates.some(candidate => !candidate.source_public_crop);
+  const ready = target === 'new' ? canCreate : Boolean(targetId && preview.preview);
   const confirm = async () => {
-    if (!targetId || !preview.preview) return;
+    if (!ready || submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
     setFailed(false);
     try {
-      const fields = preview.preview.changes.filter((change) => preview.choices[change.field] !== 'mine' && preview.choices[change.field] !== 'local').map((change) => change.field);
-      const response = await cropAPI.linkPublicCrop(targetId, publicCrop.id, fields, preview.preview.public_version, preview.preview.crop_updated_at, preview.selection.pinFields);
-      onLinked(response.data);
+      if (target === 'new') {
+        const response = await publicCropAPI.importToProject(publicCrop.id, candidates.length ? 'new' : undefined, {
+          linkToLibrary: mode === 'link', baseVersion: publicCrop.version,
+        });
+        onLinked(response.data.crop);
+      } else if (targetId && preview.preview) {
+        const fields = preview.preview.changes.filter(change => preview.choices[change.field] !== 'mine'
+          && preview.choices[change.field] !== 'local').map(change => change.field);
+        const response = mode === 'copy'
+          ? await cropAPI.copyPublicCrop(targetId, publicCrop.id, fields, preview.preview.public_version, preview.preview.crop_updated_at)
+          : await cropAPI.linkPublicCrop(targetId, publicCrop.id, fields, preview.preview.public_version, preview.preview.crop_updated_at, preview.selection.pinFields);
+        onLinked(response.data);
+      }
     } catch {
       setFailed(true);
       preview.reload();
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
   return (
     <Dialog open maxWidth="sm" fullWidth onClose={submitting ? undefined : onClose}>
-      <DialogTitle>{t('library.linkExisting.importTitle')}</DialogTitle>
+      <DialogTitle>{t('library.importDecision.title')}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
-          <Alert severity="info">{t('library.linkExisting.inheritance')}</Alert>
-          <TextField select fullWidth label={t('library.linkExisting.localTarget')} value={targetId ?? ''}
-            disabled={submitting} onChange={(event) => { setTargetId(Number(event.target.value)); setFailed(false); }}>
-            {candidates.map((crop) => <MenuItem key={crop.id} value={crop.id} disabled={Boolean(crop.source_public_crop)}>
+          <Typography variant="subtitle2">{getPublicCropTitle(publicCrop, i18n.resolvedLanguage ?? i18n.language, t('library.translation.missingName'))}</Typography>
+          <Typography variant="body2">{t(candidates.length ? 'library.importDecision.existing' : 'library.importDecision.newCrop')}</Typography>
+          {candidates.length ? <TextField select fullWidth label={t('library.linkExisting.localTarget')} value={target ?? ''}
+            disabled={submitting} onChange={event => { setTarget(event.target.value === 'new' ? 'new' : Number(event.target.value)); setFailed(false); }}>
+            {candidates.map(crop => <MenuItem key={crop.id} value={crop.id} disabled={Boolean(crop.source_public_crop)}>
               {crop.name}{crop.variety ? ` · ${crop.variety}` : ''}{crop.source_public_crop ? ` · ${t('library.linkExisting.alreadyLinked')}` : ''}
             </MenuItem>)}
-          </TextField>
-          {targetId ? <PublicCropSyncPanel changes={preview.preview?.changes.map((change) => ({ ...change, pushable: true })) ?? null}
+            {canCreate ? <MenuItem value="new">{t('library.importConflictDialog.importAsNew')}</MenuItem> : null}
+          </TextField> : null}
+          {candidates.length && !hasSelectable ? <Alert severity="info">{t('library.importDecision.alreadyLinked')}</Alert> : null}
+          <RadioGroup value={mode} aria-label={t('library.importDecision.mode')} onChange={event => setMode(event.target.value as 'copy' | 'link')}>
+            <FormControlLabel disabled={submitting} value="copy" control={<Radio />} label={t('library.importDecision.copy')} />
+            <FormControlLabel disabled={submitting} value="link" control={<Radio />} label={t('library.importDecision.link')} />
+          </RadioGroup>
+          <Alert severity="info">{t(mode === 'copy' ? 'library.importDecision.copyHelp' : 'library.importDecision.linkHelp')}</Alert>
+          {targetId ? <PublicCropSyncPanel changes={preview.preview?.changes.map(change => ({ ...change, pushable: true })) ?? null}
             choices={preview.choices} onChoicesChange={preview.setChoices} requiresModeration={false}
-            keepMineLocally allowLocal disabled={submitting} loadError={preview.loadError} /> : null}
-          {failed ? <Alert severity="error">{t('library.linkExisting.failed')}</Alert> : null}
+            keepMineLocally allowLocal={mode === 'link'} disabled={submitting} loadError={preview.loadError} /> : null}
+          {failed ? <Alert severity="error">{t('library.importDecision.failed')}</Alert> : null}
         </Stack>
       </DialogContent>
       <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
         <Button disabled={submitting} onClick={onClose}>{t('common:actions.cancel')}</Button>
-        {onImportAsNew && (publicCrop.variety?.trim() || !candidates.some((candidate) => candidate.species_match)) ? <Button disabled={submitting} onClick={onImportAsNew}>{t('library.importConflictDialog.importAsNew')}</Button> : null}
-        <Button variant="contained" disabled={submitting || !targetId || !preview.preview} onClick={() => void confirm()}>
-          {t('library.linkExisting.confirm')}
+        <Button variant="contained" disabled={submitting || !ready} onClick={() => void confirm()}>
+          {t(mode === 'copy' ? 'library.importDecision.copy' : 'library.importDecision.link')}
         </Button>
       </DialogActions>
     </Dialog>

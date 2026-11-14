@@ -1571,6 +1571,216 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertIsNone(general.source_public_crop_id)
         self.assertEqual(general.growth_duration_days, 90)
 
+    def _copy_library_values(self, crop, entry, fields=None, **overrides):
+        return self.client.post(
+            f'/openfarmplanner/api/crops/{crop.pk}/copy-public-crop/', {
+                'public_crop_id': entry.pk, 'base_version': entry.version,
+                'expected_updated_at': crop.updated_at.isoformat(),
+                'pull_fields': fields if fields is not None else ['growth_duration_days'],
+                **overrides,
+            }, format='json',
+        )
+
+    def test_one_time_copy_preserves_twelve_varieties_plans_and_private_values(self):
+        from datetime import date
+
+        from farm.models import PlantingPlan
+
+        species = CropSpecies.objects.create(name='One-time Tomato')
+        general = Crop.objects.create(
+            project=self.project, name=species.name, crop_species=species,
+            growth_duration_days=90, notes='Private notes',
+        )
+        varieties = [Crop.objects.create(
+            project=self.project, name=general.name, crop_species=species,
+            variety=f'Variety {index}', growth_duration_days=40 if index == 0 else None,
+        ) for index in range(12)]
+        plans = [PlantingPlan.objects.create(
+            project=self.project, crop=variety, planting_date=date(2026, 4, 1),
+        ) for variety in varieties]
+        entry = PublicCrop.objects.create(
+            name=species.name, crop_species=species, status='published', created_by=self.user,
+            growth_duration_days=110, notes='Library notes',
+        )
+        response = self._copy_library_values(general, entry)
+        self.assertEqual(response.status_code, 200, response.data)
+        general.refresh_from_db()
+        self.assertEqual(general.growth_duration_days, 110)
+        self.assertEqual(general.notes, 'Private notes')
+        self.assertIsNone(general.source_public_crop_id)
+        self.assertIsNone(general.source_public_version)
+        self.assertIsNone(general.rejected_public_version)
+        self.assertEqual(general.library_pinned_fields, [])
+        self.assertEqual(general.derived_from_public_crop_id, entry.pk)
+        self.assertTrue(general.is_modified_from_source)
+        self.assertEqual(
+            Crop.objects.filter(project=self.project, crop_species=species).count(), 13,
+        )
+        self.assertEqual(list(PlantingPlan.objects.filter(pk__in=[p.pk for p in plans])
+                              .order_by('pk').values_list('crop_id', flat=True)),
+                         [v.pk for v in varieties])
+        for index, variety in enumerate(varieties):
+            variety.refresh_from_db()
+            self.assertIsNone(variety.source_public_crop_id)
+            self.assertEqual(variety.growth_duration_days, 40 if index == 0 else None)
+        entry.refresh_from_db()
+        self.assertEqual((entry.version, entry.notes), (1, 'Library notes'))
+        self.assertFalse(PublicCropChangeProposal.objects.filter(public_crop=entry).exists())
+        revision = EntityRevision.objects.filter(
+            project=self.project, entity_type='crop', object_id=general.pk,
+        ).latest('id')
+        self.assertIsNone(revision.snapshot['source_public_crop_id'])
+        self.assertEqual(revision.snapshot['derived_from_public_crop_id'], entry.pk)
+        PublicCrop.objects.filter(pk=entry.pk).update(version=2, growth_duration_days=120)
+        general.refresh_from_db()
+        self.assertFalse(has_pending_public_crop_update(general))
+        self.assertFalse(self.client.get(f'/openfarmplanner/api/crops/{general.pk}/')
+                         .data['public_update_available'])
+
+    def test_one_time_copy_requires_fresh_confirmation_and_rejects_pins(self):
+        crop = Crop.objects.create(
+            project=self.project, name='Confirmed copy', growth_duration_days=90,
+        )
+        entry = PublicCrop.objects.create(name=crop.name, status='published', created_by=self.user,
+                                         growth_duration_days=110)
+        for overrides in (
+            {'expected_updated_at': 'stale'}, {'base_version': 0}, {'base_version': None},
+            {'expected_updated_at': None}, {'pin_fields': ['notes']},
+            {'pull_fields': ['source_public_crop']},
+        ):
+            with self.subTest(overrides=overrides):
+                result = self._copy_library_values(crop, entry, **overrides)
+                self.assertIn(result.status_code, (400, 409), result.data)
+                crop.refresh_from_db()
+                self.assertEqual(crop.growth_duration_days, 90)
+                self.assertIsNone(crop.derived_from_public_crop_id)
+        result = self._copy_library_values(crop, entry)
+        self.assertEqual(result.status_code, 200, result.data)
+        repeated = self._copy_library_values(crop, entry)
+        self.assertEqual(repeated.status_code, 409, repeated.data)
+
+    def test_one_time_copy_never_removes_or_replaces_an_existing_link(self):
+        entry = PublicCrop.objects.create(
+            name='Existing link', status='published', created_by=self.user,
+                                         growth_duration_days=110)
+        crop = Crop.objects.create(project=self.project, name=entry.name, source_public_crop=entry,
+                                   source_public_version=1, growth_duration_days=90)
+        other = PublicCrop.objects.create(
+            name='Another entry', status='published', created_by=self.user,
+        )
+        for source in (entry, other):
+            response = self._copy_library_values(crop, source)
+            self.assertEqual(response.status_code, 409, response.data)
+            crop.refresh_from_db()
+            self.assertEqual(crop.source_public_crop_id, entry.pk)
+            self.assertEqual(crop.growth_duration_days, 90)
+        response = self.client.post(f'/openfarmplanner/api/public-crops/{entry.pk}/import/', {
+            'link_to_library': False, 'base_version': entry.version,
+        }, format='json')
+        self.assertEqual(response.status_code, 409, response.data)
+
+    def test_new_one_time_import_keeps_provenance_without_subscription(self):
+        species = CropSpecies.objects.create(name='New one-time species')
+        entry = PublicCrop.objects.create(name=species.name, crop_species=species,
+                                         status='published', created_by=self.user,
+                                         growth_duration_days=110)
+        url = f'/openfarmplanner/api/public-crops/{entry.pk}/import/'
+        response = self.client.post(
+            url, {'link_to_library': False, 'base_version': 1}, format='json',
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        crop = Crop.objects.get(pk=response.data['crop']['id'])
+        self.assertEqual(crop.derived_from_public_crop_id, entry.pk)
+        self.assertIsNone(crop.source_public_crop_id)
+        self.assertIsNone(crop.source_public_version)
+        self.assertEqual(crop.library_pinned_fields, [])
+        PublicCrop.objects.filter(pk=entry.pk).update(version=2, growth_duration_days=120)
+        crop.refresh_from_db()
+        self.assertFalse(has_pending_public_crop_update(crop))
+        repeated = self.client.post(
+            url, {'link_to_library': False, 'base_version': 2}, format='json',
+        )
+        self.assertEqual(repeated.status_code, 409, repeated.data)
+        self.assertEqual(
+            Crop.objects.filter(project=self.project, crop_species=species).count(), 1,
+        )
+
+    def test_one_time_variety_import_does_not_link_its_implicit_general(self):
+        species = CropSpecies.objects.create(name='New one-time variety species')
+        PublicCrop.objects.create(name=species.name, crop_species=species,
+                                  status='published', created_by=self.user)
+        entry = PublicCrop.objects.create(name=species.name, crop_species=species, variety='Roma',
+                                         status='published', created_by=self.user)
+        response = self.client.post(f'/openfarmplanner/api/public-crops/{entry.pk}/import/', {
+            'link_to_library': False, 'base_version': 1,
+        }, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        rows = Crop.objects.filter(project=self.project, crop_species=species)
+        self.assertEqual(rows.count(), 2)
+        self.assertFalse(rows.filter(source_public_crop__isnull=False).exists())
+        self.assertFalse(rows.filter(derived_from_public_crop__isnull=True).exists())
+
+    def test_one_time_copy_keeps_duplicate_guard_and_rolls_back_invalid_values(self):
+        from unittest.mock import patch
+
+        species = CropSpecies.objects.create(name='Guarded copy species')
+        existing = Crop.objects.create(
+            project=self.project, name=species.name, crop_species=species,
+        )
+        target = Crop.objects.create(project=self.project, name='Unclassified target')
+        entry = PublicCrop.objects.create(name=species.name, crop_species=species,
+                                         status='published', created_by=self.user)
+        response = self._copy_library_values(target, entry)
+        self.assertEqual(response.status_code, 409, response.data)
+        target.refresh_from_db()
+        self.assertIsNone(target.crop_species_id)
+        with patch('farm.services.public_crops.crop_specific_property_errors',
+                   return_value={'specific_properties': 'Invalid property combination.'}):
+            response = self._copy_library_values(existing, entry, fields=[])
+        self.assertEqual(response.status_code, 400, response.data)
+        existing.refresh_from_db()
+        self.assertIsNone(existing.derived_from_public_crop_id)
+        self.assertIsNone(existing.source_public_crop_id)
+
+
+    def test_one_time_copy_is_project_scoped_and_unavailable_to_tokens(self):
+        from farm.models import ProjectApiToken
+
+        other = Project.objects.create(name='Foreign copy', slug='foreign-copy')
+        target = Crop.objects.create(project=other, name='Private foreign crop')
+        entry = PublicCrop.objects.create(
+            name='Copy source', status='published', created_by=self.user,
+        )
+        self.assertEqual(self._copy_library_values(target, entry, fields=[]).status_code, 404)
+        _token, raw_token = ProjectApiToken.create_token(
+            user=self.user, project=self.project, name='Copy token', scope='delete',
+        )
+        client = APIClient()
+        response = client.post(f'/openfarmplanner/api/crops/{self.crop.pk}/copy-public-crop/', {
+            'public_crop_id': entry.pk, 'pull_fields': [], 'base_version': entry.version,
+            'expected_updated_at': self.crop.updated_at.isoformat(),
+        }, format='json', HTTP_AUTHORIZATION=f'Bearer {raw_token}')
+        self.assertEqual(response.status_code, 403, response.data)
+        self.crop.refresh_from_db()
+        self.assertIsNone(self.crop.derived_from_public_crop_id)
+
+    def test_one_time_new_import_refuses_stale_or_invalid_confirmation(self):
+        entry = PublicCrop.objects.create(
+            name='Fresh new source', status='published', created_by=self.user, version=2,
+        )
+        before = Crop.objects.filter(project=self.project).count()
+        for data in (
+            {'link_to_library': False}, {'link_to_library': False, 'base_version': 1},
+            {'link_to_library': True, 'base_version': 1},
+            {'link_to_library': 'false', 'base_version': 2},
+        ):
+            with self.subTest(data=data):
+                result = self.client.post(
+                    f'/openfarmplanner/api/public-crops/{entry.pk}/import/', data, format='json',
+                )
+                self.assertIn(result.status_code, (400, 409), result.data)
+                self.assertEqual(Crop.objects.filter(project=self.project).count(), before)
+
     def test_general_import_requires_explicit_link_and_preserves_twelve_varieties(self):
         species = CropSpecies.objects.create(name='Synthetic Tomato')
         general = Crop.objects.create(project=self.project, name=species.name, crop_species=species,

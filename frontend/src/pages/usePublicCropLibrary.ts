@@ -91,10 +91,8 @@ export function usePublicCropLibrary({
       setPublicLibraryImportingId(publicCrop.id);
       if (!mode && !publicCrop.project_import_status) {
         const preview = await publicCropAPI.importPreview(publicCrop.id);
-        if (preview.data.candidates.length) {
-          setImportLink({ publicCrop, candidates: preview.data.candidates });
-          return;
-        }
+        setImportLink({ publicCrop, candidates: preview.data.candidates });
+        return;
       }
       const response = await publicCropAPI.importToProject(publicCrop.id, mode);
       const importedCrop = response.data.crop;
@@ -419,7 +417,7 @@ export function usePublicCropLibrary({
       setImportLink(null);
       await onImportSuccess(crop);
       await fetchPublicCrops();
-      showSnackbar(t('library.linkExisting.success'), 'success');
+      showSnackbar(t('library.importDecision.success'), 'success');
     },
     publicLibraryOpen,
     setPublicLibraryOpen,

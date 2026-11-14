@@ -765,6 +765,19 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         and the entry's current version becomes the baseline. The remaining
         differences remain local; linking does not publish them.
         """
+        return self._apply_public_reference(request, establish_link=True)
+
+    @action(detail=True, methods=['post'], url_path='copy-public-crop')
+    def copy_public_crop(self, request: Request, pk: str | None = None) -> Response:
+        """Copy confirmed library fields without starting synchronization."""
+        if not isinstance(request.data, dict):
+            return api_error_response(
+                code='invalid_public_crop_confirmation', detail='Request body must be an object.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        return self._apply_public_reference(request, establish_link=False)
+
+    def _apply_public_reference(self, request: Request, *, establish_link: bool) -> Response:
         crop = self.get_object()
         public_crop_id = request.data.get('public_crop_id')
         try:
@@ -798,6 +811,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 base_version=base_version,
                 expected_updated_at=request.data.get('expected_updated_at'),
                 pin_fields=pin_fields,
+                establish_link=establish_link,
             )
         except CropLinkConflictError as error:
             return api_error_response(code=error.code, detail=str(error), status_code=409)

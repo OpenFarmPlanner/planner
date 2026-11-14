@@ -905,3 +905,27 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             response = self.client.get('/openfarmplanner/api/history/project/')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(sum(1 for entry in response.data if entry.get('is_batch')), ROW_COUNT)
+
+    def test_one_time_library_provenance_list_query_count(self):
+        """Unlinked provenance resolves notes and status in bulk, without update subscriptions."""
+        for count in (3, 7):
+            for index in range(count):
+                entry = PublicCrop.objects.create(
+                    name=f'Copied {count}-{index}', status='published', created_by=self.user,
+                    original_language_code='en', notes='Library notes',
+                )
+                Crop.objects.create(
+                    project=self.project, name=entry.name, notes=entry.notes,
+                    derived_from_public_crop=entry,
+                )
+            self.assert_list_query_count(
+                '/openfarmplanner/api/crops/', 16,
+                expected_rows=Crop.objects.filter(project=self.project).count(),
+            )
+            response = self.client.get('/openfarmplanner/api/crops/')
+            copied = [row for row in response.data['results'] if row['derived_from_public_crop']]
+            self.assertGreaterEqual(len(copied), count)
+            for row in copied:
+                if row['source_public_crop'] is None:
+                    self.assertFalse(row['public_update_available'])
+                    self.assertEqual(row['description_language_code'], 'en')

@@ -680,6 +680,12 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             return blocked
         request.active_project = get_active_project_or_400(request)
         mode = request.data.get('mode') or 'auto'
+        establish_link = request.data.get('link_to_library', True)
+        if type(establish_link) is not bool:
+            return api_error_response(
+                code='invalid_link_to_library', detail='link_to_library must be a boolean.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
         field_lists: dict[str, list[str]] = {}
         for key in ('unpin_fields', 'pin_fields'):
             value = request.data.get(key, [])
@@ -706,6 +712,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                 unpin_fields=field_lists['unpin_fields'],
                 pin_fields=field_lists['pin_fields'],
                 base_version=base_version,
+                establish_link=establish_link,
             )
         except PublicCropEditConflictError as error:
             return self._edit_conflict_response(error)
