@@ -1590,6 +1590,20 @@
       "ambiguousDelete": "Diese Gruppe enthält mehrere allgemeine Kulturen. Um einen unerwarteten Gruppenverlust zu verhindern, ist das Löschen gesperrt. Die Daten müssen zuerst eindeutig zugeordnet werden.",
       "intro": "Verknüpfe {{name}} mit einem bestehenden Bibliothekseintrag oder veröffentliche eine eigene Kultur.",
       "keepLocalDescription": "Jetzt behalten, später erneut vergleichen"
+    },
+    "importDecision": {
+      "title": "Werte aus der Kulturbibliothek übernehmen",
+      "existing": "Eine passende Kultur ist bereits im Projekt vorhanden. Wähle, welche Kultur du ergänzen und welche Werte du übernehmen möchtest.",
+      "newCrop": "Für diesen Eintrag ist noch keine passende Kultur vorhanden. Die Werte werden als neue Kultur übernommen.",
+      "alreadyLinked": "Bereits verknüpfte Kulturen behalten ihre Verknüpfung. Schließe diesen Dialog und nutze bei Bedarf die bestehende Aktualisieren-Aktion.",
+      "mode": "Art der Übernahme",
+      "copy": "Einmalig Werte übernehmen",
+      "link": "Werte übernehmen und verknüpfen",
+      "copyHelp": "Die ausgewählten Bibliothekswerte werden einmalig übernommen. Es entsteht keine Synchronisationsverknüpfung. Eigene Werte und Sorten werden nicht veröffentlicht.",
+      "linkHelp": "Die ausgewählten Werte werden übernommen und die Kultur wird verknüpft. Spätere Bibliotheksänderungen werden zur Prüfung angeboten. Eigene Werte und Sorten werden nicht veröffentlicht.",
+      "failed": "Die Werte konnten nicht übernommen werden. Prüfe Ziel und Vergleich erneut. Bei einem neuen Eintrag schließe den Dialog und lade die Bibliothek neu.",
+      "success": "Bibliothekswerte übernommen.",
+      "projectChanged": "Das aktive Projekt hat sich geändert. Schließe den Dialog und starte den Import im gewünschten Projekt neu."
     }
   },
   "commands": {

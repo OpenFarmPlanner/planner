@@ -293,6 +293,7 @@ describe('PublicCropLibraryPage', () => {
     authMocks.user.is_guest_demo = false;
     mockDesktopViewport();
     window.localStorage.clear();
+    window.localStorage.setItem('activeProjectId', '42');
     window.history.replaceState({ page: 'crop-library-test' }, '', '/app/crop-library?cropId=1');
     publicCropApiMocks.list.mockResolvedValue(paginated(publicCrops));
     publicCropApiMocks.discussionTopics.mockResolvedValue({ data: [] });
@@ -2153,13 +2154,19 @@ describe('PublicCropLibraryPage', () => {
   }, 30000);
 
   describe('re-import handling', () => {
+    beforeEach(() => {
+      publicCropApiMocks.list.mockResolvedValue(paginated(publicCrops.map((crop, index) => index ? crop : {
+        ...crop, project_import_status: { crop_id: 42, is_up_to_date: false, is_modified_from_source: true },
+      })));
+    });
     async function importViaButton(user: ReturnType<typeof userEvent.setup>): Promise<void> {
       await user.click(await screen.findByRole('option', { name: 'Tomate (Roma)' }));
       const cropDetailHeader = screen.getByTestId('public-crop-detail-header');
-      await user.click(within(cropDetailHeader).getByRole('button', { name: 'In Projekt importieren' }));
+      await user.click(within(cropDetailHeader).getByRole('button', { name: /In Projekt importieren|Im Projekt aktualisieren/ }));
     }
 
     it('imports a crop for the first time', async () => {
+      publicCropApiMocks.list.mockResolvedValue(paginated(publicCrops));
       const user = userEvent.setup();
       const snackbarSpy = vi.fn<(event: Event) => void>();
       window.addEventListener(GLOBAL_SNACKBAR_EVENT, snackbarSpy);
@@ -2169,11 +2176,13 @@ describe('PublicCropLibraryPage', () => {
       renderPage();
 
       await importViaButton(user);
+      const decision = await screen.findByRole('dialog', { name: 'Werte aus der Kulturbibliothek übernehmen' });
+      await user.click(within(decision).getByRole('button', { name: 'Einmalig Werte übernehmen' }));
 
-      await waitFor(() => expect(publicCropApiMocks.importToProject).toHaveBeenCalledWith(1, undefined));
+      await waitFor(() => expect(publicCropApiMocks.importToProject).toHaveBeenCalledWith(1, undefined, { linkToLibrary: false, baseVersion: publicCrops[0].version, expectedProjectId: 42 }));
       await waitFor(() => expect(snackbarSpy).toHaveBeenCalled());
       const event = snackbarSpy.mock.calls[0]?.[0] as CustomEvent<GlobalSnackbarDetail>;
-      expect(event.detail.message).toBe('„Tomate (Roma)“ wurde in dieses Projekt importiert.');
+      expect(event.detail.message).toBe('Bibliothekswerte übernommen.');
       expect(event.detail.severity).toBe('success');
       window.removeEventListener(GLOBAL_SNACKBAR_EVENT, snackbarSpy);
     });
@@ -2328,7 +2337,10 @@ describe('PublicCropLibraryPage', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Öffentliche Kultur bearbeiten' })).not.toBeInTheDocument());
 
     await user.keyboard('{Alt>}i{/Alt}');
-    await waitFor(() => expect(publicCropApiMocks.importToProject).toHaveBeenCalledWith(1, undefined));
+    const decision = await screen.findByRole('dialog', { name: 'Werte aus der Kulturbibliothek übernehmen' });
+    expect(publicCropApiMocks.importToProject).not.toHaveBeenCalled();
+    await user.click(within(decision).getByRole('button', { name: 'Einmalig Werte übernehmen' }));
+    await waitFor(() => expect(publicCropApiMocks.importToProject).toHaveBeenCalledWith(1, undefined, { linkToLibrary: false, baseVersion: publicCrops[0].version, expectedProjectId: 42 }));
   }, 30000);
 
   describe('species groups without a general entry are not greyed out', () => {
@@ -2417,6 +2429,7 @@ describe('PublicCropLibraryPage', () => {
     });
 
     it('switches the button to "Im Projekt aktualisieren" right after a first-time import succeeds', async () => {
+      publicCropApiMocks.list.mockResolvedValueOnce(paginated(publicCrops)).mockResolvedValue(paginated(publicCrops.map((crop, index) => index ? crop : { ...crop, project_import_status: { crop_id: 99, is_up_to_date: false, is_modified_from_source: true } })));
       publicCropApiMocks.importToProject.mockResolvedValue({
         data: {
           crop: { id: 99, name: 'Tomate', variety: 'Roma', crop_display_name: 'Tomate (Roma)', is_modified_from_source: false },
@@ -2430,6 +2443,9 @@ describe('PublicCropLibraryPage', () => {
       const cropDetailHeader = screen.getByTestId('public-crop-detail-header');
       await user.click(within(cropDetailHeader).getByRole('button', { name: 'In Projekt importieren' }));
 
+      const decision = await screen.findByRole('dialog', { name: 'Werte aus der Kulturbibliothek übernehmen' });
+      await user.click(within(decision).getByRole('radio', { name: 'Werte übernehmen und verknüpfen' }));
+      await user.click(within(decision).getByRole('button', { name: 'Werte übernehmen und verknüpfen' }));
       expect(await within(cropDetailHeader).findByRole('button', { name: 'Im Projekt aktualisieren' })).toBeInTheDocument();
     });
 

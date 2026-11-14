@@ -2299,15 +2299,48 @@ examples rather than silently leaving blank columns.
 The existing status icon opens the publish/link wizard. Existing public entries
 are offered inside that dialog. Library imports first call `import-preview` for
 project-scoped candidates: stable species identity first, followed by unclassified
-crops matching a localized name, synonym or regional name. Every target requires
-explicit selection; names never link automatically. Already-linked targets cannot
+crops matching a localized name, synonym or regional name. A single stable, unlinked match is shown as the selected target; confirmation
+is still explicit. Multiple and name-only matches require target selection;
+names never link automatically. Already-linked targets cannot
 be claimed by a different entry.
 
-Both entry points reuse `PublicCropSyncPanel` with pull-only choices: take the
-library value or keep the local value. Confirmation calls `link-public-crop`
-without publishing local fields or varieties or requesting contribution consent.
-IDs, planning references, project-only values, variety overrides and variety
-links remain intact. Later library updates still require review.
+Both entry points reuse `PublicCropSyncPanel` without publishing private fields
+or varieties or requesting contribution consent. IDs, planning references,
+project-only values, variety overrides and existing variety links remain intact.
+The publish/link wizard establishes a link as before. The library import dialog
+explains the existing-crop decision and offers two explicit methods:
+
+- **Import values once** (default): compare library/local values, then
+  `POST /crops/<id>/copy-public-crop/` applies only `pull_fields`. Both the
+  library `base_version` and crop `expected_updated_at` are required. The
+  shared link service's `establish_link=False` path keeps the target unlinked,
+  with no update baseline, rejected-version marker or pins. Provenance
+  `derived_from_public_crop` is set only when missing, retaining earlier
+  lineage. A remaining local difference marks the copy as modified for
+  description provenance; it never creates a pending library update.
+- **Import values and link**: uses the existing `link-public-crop` endpoint,
+  including its local-only/pin choices and future explicit-update behavior.
+
+The decision dialog also covers no-match imports. It creates a new crop through
+`public-crops/<id>/import/`, with `link_to_library` and `base_version`. False
+creates an imported crop with provenance but no sync link or baseline, including
+an implicit general crop when importing a new variety. The new-crop confirmation also carries the project ID captured when opening
+the dialog; a cross-tab project switch is rejected before writing. Omitted
+flags preserve legacy linked imports. A version supplied for a new import is checked too.
+One-time import cannot silently remove or replace an existing link; already
+linked candidates are disabled with an explanation and a route back to the
+existing re-import/update action. No matching selectable candidate and no safe
+new-copy path leaves confirmation disabled. Name-only suggestions may be
+rejected by explicitly choosing a new copy; stable general matches never allow
+this duplicate-creation escape hatch. Cancellation is read-only.
+
+The library page reloads authoritative project-import status after either
+method. A one-time copy continues to offer import, rather than pretending to
+have an update subscription. Linked re-imports keep their prior update,
+conflict and pin semantics. Both copy paths retain the project/entry lock and
+identity guards. Concurrent or repeated confirmations cannot duplicate a
+general crop or overwrite a stale existing target. The new crop-side copy
+endpoint, like linking, is unavailable to project API tokens.
 
 Import/link serialize on the project row before locking the entry. A general
 import with an existing candidate returns 409 `existing_crop_requires_link`.

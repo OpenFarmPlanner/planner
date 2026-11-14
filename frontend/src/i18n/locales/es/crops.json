@@ -1631,6 +1631,20 @@
       "ambiguousDelete": "Este grupo contiene varios cultivos generales. La eliminación está bloqueada para evitar la pérdida inesperada del grupo. Primero es necesario identificar los registros sin ambigüedad.",
       "intro": "Vincula {{name}} con una entrada existente de la biblioteca o publica tu propio cultivo.",
       "keepLocalDescription": "Conservar ahora y comparar más adelante"
+    },
+    "importDecision": {
+      "title": "Importar valores de la biblioteca de cultivos",
+      "existing": "Ya existe un cultivo coincidente en este proyecto. Elige qué cultivo completar y qué valores importar.",
+      "newCrop": "Todavía no existe un cultivo coincidente para esta entrada. Los valores se importarán como un cultivo nuevo.",
+      "alreadyLinked": "Los cultivos ya vinculados conservan sus vínculos. Cierra este diálogo y utiliza la acción de actualización existente si la necesitas.",
+      "mode": "Método de importación",
+      "copy": "Importar valores una sola vez",
+      "link": "Importar valores y vincular",
+      "copyHelp": "Los valores seleccionados se copian una sola vez, sin vínculo de sincronización. Tus valores privados y variedades no se publican.",
+      "linkHelp": "Los valores seleccionados se copian y el cultivo se vincula. Los cambios futuros de la biblioteca se ofrecerán para su revisión. Tus valores privados y variedades no se publican.",
+      "failed": "No se pudieron importar los valores. Vuelve a comprobar el destino y la comparación. Para un cultivo nuevo, cierra este diálogo y recarga la biblioteca.",
+      "success": "Valores de la biblioteca importados.",
+      "projectChanged": "El proyecto activo ha cambiado. Cierra este diálogo y reinicia la importación en el proyecto deseado."
     }
   },
   "commands": {

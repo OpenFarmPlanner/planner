@@ -153,8 +153,8 @@ test('correcting the crop species to one that already has the variety shows the 
   await expect(dialog).toBeVisible();
 });
 
-for (const entryPoint of ['publish', 'import'] as const) {
-  test(`existing culture links through ${entryPoint} without replacing IDs or publishing local notes`, async ({ page, request }, testInfo) => {
+for (const entryPoint of ['publish', 'import', 'copy'] as const) {
+  test(`existing culture imports through ${entryPoint} without replacing IDs or publishing local notes`, async ({ page, request }, testInfo) => {
     await loginWithDeterministicProject(page, request, `library-existing-${entryPoint}-${Date.now()}`, { loginAsAdmin: true, libraryModerator: true });
     const species = await apiRequest<CropSpecies>(page, 'POST', '/crop-species/', { name: `Synthetic Tomato ${entryPoint} ${Date.now()}` });
     await apiRequest(page, 'POST', `/crop-species/${species.id}/approve/`, {
@@ -174,11 +174,14 @@ for (const entryPoint of ['publish', 'import'] as const) {
     await loginWithDeterministicProject(page, request, `library-target-${entryPoint}-${Date.now()}`, { loginAsAdmin: true });
     const local = await apiRequest<CropRow>(page, 'POST', '/crops/', {
       name: species.name, variety: '', crop_species: species.id,
-      growth_duration_days: 90, harvest_duration_days: 20, notes: 'Private synthetic note',
+      growth_duration_days: 90, harvest_duration_days: entryPoint === 'copy' ? 30 : 20, notes: 'Private synthetic note',
     });
-    const variety = await apiRequest<CropRow>(page, 'POST', '/crops/', {
-      name: species.name, variety: 'Synthetic Roma', crop_species: species.id,
-    });
+    const varieties: CropRow[] = [];
+    for (let index = 0; index < 12; index++) varieties.push(await apiRequest<CropRow>(page, 'POST', '/crops/', {
+      name: species.name, variety: `Synthetic Roma ${index}`, crop_species: species.id,
+      growth_duration_days: index === 0 ? 40 : null,
+    }));
+    const variety = varieties[0];
     const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', { name: 'Synthetic farm' });
     const field = await apiRequest<{ id: number }>(page, 'POST', '/fields/', { name: 'Synthetic field', location: location.id });
     const bed = await apiRequest<{ id: number }>(page, 'POST', '/beds/', { name: 'Synthetic bed', field: field.id, area_sqm: 20 });
@@ -187,14 +190,15 @@ for (const entryPoint of ['publish', 'import'] as const) {
       season: season.id, crop: variety.id, bed: bed.id, planting_date: '2026-03-01',
       cultivation_type: 'direct_sowing',
     });
-    const labels = entryPoint === 'import' ? frenchCrops : germanCrops;
-    if (entryPoint === 'import') {
+    const labels = entryPoint !== 'publish' ? frenchCrops : germanCrops;
+    if (entryPoint !== 'publish') {
       await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'fr' });
       await page.evaluate(() => localStorage.setItem('ui.language', 'fr'));
       await page.goto(`/app/crop-library?cropId=${published.public_crop.id}`);
       await page.getByRole('button', { name: labels.library.importButton }).first().click();
       await page.getByRole('combobox', { name: labels.library.linkExisting.localTarget }).click();
       await page.getByRole('option', { name: species.name, exact: true }).click();
+      if (entryPoint === 'import') await page.getByRole('radio', { name: labels.library.importDecision.link, exact: true }).click();
     } else {
       await page.goto(`/app/crops?cropId=${local.id}`);
       await page.getByTestId('crop-detail-publish-action').click();
@@ -202,12 +206,30 @@ for (const entryPoint of ['publish', 'import'] as const) {
       await page.getByRole('option', { name: species.name, exact: true }).click();
       await page.getByRole('button', { name: 'Mit vorhandenem Eintrag verknüpfen', exact: true }).click();
     }
-    const confirm = page.getByRole('button', { name: labels.library.linkExisting.confirm });
+    const confirm = page.getByRole('button', { name: entryPoint === 'publish' ? labels.library.linkExisting.confirm : entryPoint === 'copy' ? labels.library.importDecision.copy : labels.library.importDecision.link });
     await expect(confirm).toBeEnabled();
-    const localChoice = page.getByTestId('public-crop-sync-row-notes').getByRole('radio', { name: labels.library.sync.chooseLocal });
+    const localChoice = page.getByTestId('public-crop-sync-row-notes').getByRole('radio', { name: entryPoint === 'copy' ? labels.library.linkExisting.keepLocal : labels.library.sync.chooseLocal });
     await localChoice.focus();
     await localChoice.press('Space');
     await expect(localChoice).toBeChecked();
+    if (entryPoint === 'copy') {
+      const choose = async (field: string, label: string) => {
+        const option = page.getByTestId(`public-crop-sync-row-${field}`).getByRole('radio', { name: label, exact: true });
+        await option.focus();
+        await option.press('Space');
+        return option;
+      };
+      await page.getByRole('radio', { name: labels.library.importDecision.link, exact: true }).click();
+      const pinGrowth = await choose('growth_duration_days', labels.library.sync.chooseLocal);
+      const pinNotes = await choose('notes', labels.library.sync.chooseLocal);
+      await page.getByRole('radio', { name: labels.library.importDecision.copy, exact: true }).click();
+      await choose('harvest_duration_days', labels.library.linkExisting.keepLocal);
+      await page.getByRole('radio', { name: labels.library.importDecision.link, exact: true }).click();
+      await expect(pinGrowth).toBeChecked();
+      await expect(pinNotes).toBeChecked();
+      await page.getByRole('radio', { name: labels.library.importDecision.copy, exact: true }).click();
+      await choose('growth_duration_days', labels.library.linkExisting.takeLibrary);
+    }
     for (const viewport of [{ width: 375, height: 800 }, { width: 768, height: 900 },
       { width: 1024, height: 900 }, { width: 1440, height: 900 }, { width: 800, height: 375 }]) {
       await page.setViewportSize(viewport);
@@ -215,21 +237,93 @@ for (const entryPoint of ['publish', 'import'] as const) {
       const bounds = await dialog.boundingBox();
       expect(bounds?.x).toBeGreaterThanOrEqual(0);
       expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(viewport.width);
-      const localOption = page.getByTestId('public-crop-sync-row-notes').locator('[data-choice="local"]');
+      const localOption = page.getByTestId('public-crop-sync-row-notes').locator(entryPoint === 'copy' ? '[data-choice="mine"]' : '[data-choice="local"]');
       await localOption.scrollIntoViewIfNeeded();
       await expect(localOption).toBeInViewport();
       await page.screenshot({ path: testInfo.outputPath(`${entryPoint}-${viewport.width}.png`) });
     }
     await confirm.click();
     await expect(confirm).not.toBeVisible();
-    const linked = await apiRequest<{ id: number; source_public_crop: number; notes: string; library_pinned_fields: string[] }>(page, 'GET', `/crops/${local.id}/`);
+    const linked = await apiRequest<{ id: number; source_public_crop: number | null; growth_duration_days: number; harvest_duration_days: number; notes: string; library_pinned_fields: string[] }>(page, 'GET', `/crops/${local.id}/`);
     expect(linked.id).toBe(local.id);
-    expect(linked.source_public_crop).toBe(published.public_crop.id);
+    expect(linked.source_public_crop).toBe(entryPoint === 'copy' ? null : published.public_crop.id);
     expect(linked.notes).toBe('Private synthetic note');
-    expect(linked.library_pinned_fields).toContain('notes');
+    expect(linked.growth_duration_days).toBe(80);
+    expect(linked.harvest_duration_days).toBe(entryPoint === 'copy' ? 30 : 20);
+    if (entryPoint === 'copy') expect(linked.library_pinned_fields).toEqual([]);
+    else expect(linked.library_pinned_fields).toContain('notes');
+    const savedRows = await apiRequest<{ results: (CropRow & { crop_species: number; source_public_crop: number | null })[] }>(page, 'GET', '/crops/?page_size=500');
+    const group = savedRows.results.filter(crop => crop.crop_species === species.id);
+    expect(group).toHaveLength(13);
+    expect(group.filter(crop => crop.variety).map(crop => crop.id).sort()).toEqual(varieties.map(crop => crop.id).sort());
+    expect(group.filter(crop => crop.variety).every(crop => crop.source_public_crop === null)).toBe(true);
     const preservedPlan = await apiRequest<{ crop: number }>(page, 'GET', `/planting-plans/${plan.id}/`);
     expect(preservedPlan.crop).toBe(variety.id);
     const entry = await apiRequest<{ notes: string }>(page, 'GET', `/public-crops/${published.public_crop.id}/`);
     expect(entry.notes).not.toContain('Private synthetic note');
   });
 }
+
+for (const mode of ['copy', 'link'] as const) {
+  test(`new library crop offers explicit ${mode} and cancellation is read-only`, async ({ page, request }, testInfo) => {
+    await loginWithDeterministicProject(page, request, `library-new-source-${mode}-${Date.now()}`, { loginAsAdmin: true, libraryModerator: true });
+    const [species] = await listSpecies(page, 1);
+    const source = await publishVariety(page, species, `New explicit ${mode} ${Date.now()}`);
+    await apiRequest(page, 'POST', '/auth/logout/', {});
+    await loginWithDeterministicProject(page, request, `library-new-target-${mode}-${Date.now()}`, { loginAsAdmin: true });
+    const before = await apiRequest<{ count: number }>(page, 'GET', '/crops/');
+    await page.setViewportSize({ width: mode === 'copy' ? 375 : 1440, height: mode === 'copy' ? 800 : 900 });
+    await page.goto(`/app/crop-library?cropId=${source.publicCropId}`);
+    const importButton = page.getByRole('button', { name: germanCrops.library.importButton, exact: true }).first();
+    await importButton.click();
+    let decision = page.getByRole('dialog', { name: germanCrops.library.importDecision.title });
+    await expect(decision.getByText(germanCrops.library.importDecision.newCrop)).toBeVisible();
+    await expect(decision.getByRole('combobox')).toHaveCount(0);
+    await decision.press('Escape');
+    await expect(decision).toBeHidden();
+    expect((await apiRequest<{ count: number }>(page, 'GET', '/crops/')).count).toBe(before.count);
+    await importButton.click();
+    decision = page.getByRole('dialog', { name: germanCrops.library.importDecision.title });
+    if (mode === 'link') await decision.getByRole('radio', { name: germanCrops.library.importDecision.link }).click();
+    const confirm = decision.getByRole('button', { name: germanCrops.library.importDecision[mode], exact: true });
+    await expect(confirm).toBeEnabled();
+    await expect(decision.getByRole('checkbox')).toHaveCount(0);
+    await expect(decision.locator('..')).toHaveCSS('opacity', '1');
+    await page.screenshot({ path: testInfo.outputPath(`new-${mode}.png`), animations: 'disabled' });
+    await confirm.focus();
+    await confirm.press('Enter');
+    await expect(decision).toBeHidden();
+    const after = await apiRequest<{ results: { crop_species: number; source_public_crop: number | null; derived_from_public_crop: number | null }[] }>(page, 'GET', '/crops/?page_size=500');
+    const group = after.results.filter(crop => crop.crop_species === species.id);
+    expect(group).toHaveLength(2);
+    expect(group.every(crop => Boolean(crop.source_public_crop) === (mode === 'link'))).toBe(true);
+    expect(group.every(crop => crop.derived_from_public_crop !== null)).toBe(true);
+  });
+}
+
+test('a project change during confirmation rejects a pending new library import', async ({ page, request }) => {
+  await loginWithDeterministicProject(page, request, `library-guard-source-${Date.now()}`, { loginAsAdmin: true, libraryModerator: true });
+  const [species] = await listSpecies(page, 1);
+  const source = await publishVariety(page, species, `Project guard ${Date.now()}`);
+  await apiRequest(page, 'POST', '/auth/logout/', {});
+  await loginWithDeterministicProject(page, request, `library-guard-target-${Date.now()}`, { loginAsAdmin: true });
+  const intendedProject = await page.evaluate(() => localStorage.getItem('activeProjectId'));
+  const other = await apiRequest<{ id: number }>(page, 'POST', '/projects/', { name: 'Other guarded project' });
+  await apiRequest(page, 'POST', '/projects-switch/', { project_id: Number(intendedProject) });
+  const before = await apiRequest<{ count: number }>(page, 'GET', '/crops/');
+  await page.goto(`/app/crop-library?cropId=${source.publicCropId}`);
+  await page.getByRole('button', { name: germanCrops.library.importButton, exact: true }).first().click();
+  const decision = page.getByRole('dialog', { name: germanCrops.library.importDecision.title });
+  const confirm = decision.getByRole('button', { name: germanCrops.library.importDecision.copy, exact: true });
+  await expect(confirm).toBeEnabled();
+  // Simulate the request header changing after the dialog captured its project.
+  await page.route(`**/public-crops/${source.publicCropId}/import/`, route => route.continue({
+    headers: { ...route.request().headers(), 'x-project-id': String(other.id) },
+  }));
+  await confirm.click();
+  await expect(decision.getByText(germanCrops.library.importDecision.projectChanged)).toBeVisible();
+  const otherCrops = await page.request.get('/api/crops/', { headers: { 'X-Project-Id': String(other.id) } });
+  expect(otherCrops.ok()).toBe(true);
+  expect((await otherCrops.json()).count).toBe(0);
+  expect((await apiRequest<{ count: number }>(page, 'GET', '/crops/')).count).toBe(before.count);
+});

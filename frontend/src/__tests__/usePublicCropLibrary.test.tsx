@@ -234,7 +234,7 @@ describe('usePublicCropLibrary import', () => {
     expect(result.current.publicLibraryOpen).toBe(true);
 
     await act(async () => {
-      await result.current.handleImportPublicCrop({ id: 42, name: 'Tomate', variety: '' } as never);
+      await result.current.handleImportPublicCrop({ id: 42, name: 'Tomate', variety: '', project_import_status: { crop_id: 1 } } as never);
     });
 
     expect(importToProjectMock).toHaveBeenCalledWith(42, undefined);
@@ -250,5 +250,15 @@ it('offers existing import targets without mutating the project before confirmat
     await result.current.handleImportPublicCrop({ id: 77, name: 'Tomate', variety: '' } as never);
   });
   expect(result.current.importLink?.candidates[0].id).toBe(9);
+  expect(importToProjectMock).not.toHaveBeenCalled();
+});
+
+
+it('offers an explicit import method even when creating a new crop', async () => {
+  importPreviewMock.mockResolvedValueOnce({ data: { candidates: [] } });
+  importToProjectMock.mockClear();
+  const { result } = renderLibraryHook(vi.fn());
+  await act(async () => { await result.current.handleImportPublicCrop({ id: 88, name: 'Bean' } as never); });
+  expect(result.current.importLink).toMatchObject({ publicCrop: { id: 88 }, candidates: [] });
   expect(importToProjectMock).not.toHaveBeenCalled();
 });

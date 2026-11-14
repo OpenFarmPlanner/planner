@@ -38,7 +38,7 @@ tool, not part of the CI suite). Behaviour itself is described in
 | Dimension | Values |
 |---|---|
 | Private crop kind | general Kultur · Sorte with own values · Sorte inheriting from its Kultur |
-| Link kind | not linked · own published entry (`origin_type` stays manual) · imported foreign entry · linked through "Mit diesem Eintrag verknüpfen" (foreign or own) |
+| Link kind | one-time import (provenance only, no sync) · not linked · own published entry (`origin_type` stays manual) · imported foreign entry · linked through "Mit diesem Eintrag verknüpfen" (foreign or own) |
 | Entry state | published · withdrawn · removed · restored · reverted to an older version · species relinked (with/without variety change) · species rejected · parked relink request |
 | Version state | aligned · linked without baseline · library ahead · library ahead but rejected · local changes · local and library changed · local changes after a rejection |
 | Local pins (`library_pinned_fields`) | none · pinned and otherwise aligned · pinned, library ahead in another field · pinned, library changed only the pinned field · pinned plus a local change elsewhere · pinned Sorte inheriting from a pinned Kultur |
@@ -136,7 +136,12 @@ Rules that cut across cells:
 | Case | Expected result |
 |---|---|
 | Unlinked crop, existing public entry | Select entry in publish wizard; compare fields; link without publishing local fields or varieties |
-| General import, existing project species | Select target and compare; direct import/new returns 409 rather than creating a second general row |
+| General import, existing project species | Explain match, compare, explicitly choose one-time copy or link; direct import/new returns 409 rather than creating a second general row |
+| One-time import into unlinked existing crop | Apply selected fields in place; retain/set provenance; no sync link, baseline or pins; later library changes produce no update action |
+| No matching project crop | Explicit copy/link decision; one-time new imports and implicit general parents retain provenance without synchronization |
+| Single stable unlinked candidate | Display selected target clearly; no write until explicit confirmation |
+| Name-only or multiple candidates | Require explicit target selection; name-only suggestions permit explicit new-copy choice |
+| All candidates already linked | Preserve links; explain existing update path; never replace or remove a link through one-time copy |
 | Unclassified crop matches a translated name/synonym | Suggest target; require explicit confirmation |
 | Already-linked target | Retain re-import conflict/update behavior; reject another initial link |
 | Multiple candidates | No preselected target; reject links retaining duplicate general rows of one species |

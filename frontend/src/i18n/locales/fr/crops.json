@@ -1631,6 +1631,20 @@
       "ambiguousDelete": "Ce groupe contient plusieurs cultures générales. La suppression est bloquée pour éviter la perte inattendue du groupe. Les fiches doivent d’abord être identifiées sans ambiguïté.",
       "intro": "Associez {{name}} à une fiche existante du catalogue ou publiez votre propre culture.",
       "keepLocalDescription": "Conserver maintenant, comparer à nouveau plus tard"
+    },
+    "importDecision": {
+      "title": "Importer des valeurs de la bibliothèque de cultures",
+      "existing": "Une culture correspondante existe déjà dans ce projet. Choisissez la culture à enrichir et les valeurs à importer.",
+      "newCrop": "Aucune culture correspondante n’existe encore pour cette entrée. Les valeurs seront importées dans une nouvelle culture.",
+      "alreadyLinked": "Les cultures déjà liées conservent leur lien. Fermez ce dialogue et utilisez l’action de mise à jour existante si nécessaire.",
+      "mode": "Méthode d’import",
+      "copy": "Importer les valeurs une seule fois",
+      "link": "Importer les valeurs et créer un lien",
+      "copyHelp": "Les valeurs sélectionnées sont copiées une seule fois, sans lien de synchronisation. Vos valeurs privées et vos variétés ne sont pas publiées.",
+      "linkHelp": "Les valeurs sélectionnées sont copiées et la culture est liée. Les futures modifications de la bibliothèque seront proposées pour vérification. Vos valeurs privées et vos variétés ne sont pas publiées.",
+      "failed": "Les valeurs n’ont pas pu être importées. Vérifiez à nouveau la cible et la comparaison. Pour une nouvelle culture, fermez ce dialogue et rechargez la bibliothèque.",
+      "success": "Valeurs de la bibliothèque importées.",
+      "projectChanged": "Le projet actif a changé. Fermez ce dialogue et recommencez l’import dans le projet souhaité."
     }
   },
   "commands": {

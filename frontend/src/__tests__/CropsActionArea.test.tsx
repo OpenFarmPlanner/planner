@@ -232,6 +232,7 @@ const waitForDeleteDialogToClose = async (): Promise<void> => {
 describe('Crops action area', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.setItem('activeProjectId', '42');
     detailLoadingHistory.length = 0;
     authUser.public_library_terms_accepted = false;
     authUser.is_staff = false;
@@ -658,7 +659,9 @@ describe('Crops action area', () => {
     fireEvent.click(within(dialog).getByRole('option', { name: 'Salat' }));
     fireEvent.click(within(dialog).getByRole('button', { name: 'In Projekt importieren' }));
 
-    await waitFor(() => expect(publicCropImportToProjectMock).toHaveBeenCalledWith(77, undefined));
+    const decision = await screen.findByRole('dialog', { name: 'Werte aus der Kulturbibliothek übernehmen' });
+    fireEvent.click(within(decision).getByRole('button', { name: 'Einmalig Werte übernehmen' }));
+    await waitFor(() => expect(publicCropImportToProjectMock).toHaveBeenCalledWith(77, undefined, { linkToLibrary: false, baseVersion: 1, expectedProjectId: 42 }));
     // Deliberately stays open so several crops can be imported from the
     // library in one sitting instead of reopening it each time - see
     // usePublicCropLibrary.ts's handleImportPublicCrop.
@@ -667,7 +670,7 @@ describe('Crops action area', () => {
     });
     expect(screen.getByTestId('selected-crop-id')).toHaveTextContent('42');
     expect(screen.getByTestId('crop-row-42')).toHaveTextContent('Salat');
-    expect(screen.getByText('„Salat (Maikönig)“ wurde in dieses Projekt importiert.')).toBeInTheDocument();
+    expect(screen.getByText('Bibliothekswerte übernommen.')).toBeInTheDocument();
   });
 
   it('keeps the import dialog open and shows the existing error when a library import fails', async () => {
@@ -689,9 +692,12 @@ describe('Crops action area', () => {
     fireEvent.click(within(dialog).getByRole('option', { name: 'Salat' }));
     fireEvent.click(within(dialog).getByRole('button', { name: 'In Projekt importieren' }));
 
-    await waitFor(() => expect(publicCropImportToProjectMock).toHaveBeenCalledWith(77, undefined));
-    expect(await within(dialog).findByText('Die öffentliche Kultur konnte nicht importiert werden.')).toBeInTheDocument();
-    expect(screen.getByRole('dialog', { name: 'Aus Kulturbibliothek importieren' })).toBeInTheDocument();
+    const decision = await screen.findByRole('dialog', { name: 'Werte aus der Kulturbibliothek übernehmen' });
+    fireEvent.click(within(decision).getByRole('button', { name: 'Einmalig Werte übernehmen' }));
+    await waitFor(() => expect(publicCropImportToProjectMock).toHaveBeenCalledWith(77, undefined, { linkToLibrary: false, baseVersion: 1, expectedProjectId: 42 }));
+    expect(await within(decision).findByText(/Die Werte konnten nicht übernommen werden/)).toBeInTheDocument();
+    fireEvent.click(within(decision).getByRole('button', { name: 'Abbrechen' }));
+    expect(await screen.findByRole('dialog', { name: 'Aus Kulturbibliothek importieren' })).toBeInTheDocument();
   });
 
   // The dynamic label per library-link state is covered by cropLibraryAction.test.ts;
