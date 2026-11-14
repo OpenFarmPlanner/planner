@@ -1643,7 +1643,8 @@
       "copyHelp": "Los valores seleccionados se copian una sola vez, sin vínculo de sincronización. Tus valores privados y variedades no se publican.",
       "linkHelp": "Los valores seleccionados se copian y el cultivo se vincula. Los cambios futuros de la biblioteca se ofrecerán para su revisión. Tus valores privados y variedades no se publican.",
       "failed": "No se pudieron importar los valores. Vuelve a comprobar el destino y la comparación. Para un cultivo nuevo, cierra este diálogo y recarga la biblioteca.",
-      "success": "Valores de la biblioteca importados."
+      "success": "Valores de la biblioteca importados.",
+      "projectChanged": "El proyecto activo ha cambiado. Cierra este diálogo y reinicia la importación en el proyecto deseado."
     }
   },
   "commands": {

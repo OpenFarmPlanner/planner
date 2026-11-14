@@ -293,6 +293,7 @@ describe('PublicCropLibraryPage', () => {
     authMocks.user.is_guest_demo = false;
     mockDesktopViewport();
     window.localStorage.clear();
+    window.localStorage.setItem('activeProjectId', '42');
     window.history.replaceState({ page: 'crop-library-test' }, '', '/app/crop-library?cropId=1');
     publicCropApiMocks.list.mockResolvedValue(paginated(publicCrops));
     publicCropApiMocks.discussionTopics.mockResolvedValue({ data: [] });
@@ -2178,7 +2179,7 @@ describe('PublicCropLibraryPage', () => {
       const decision = await screen.findByRole('dialog', { name: 'Werte aus der Kulturbibliothek übernehmen' });
       await user.click(within(decision).getByRole('button', { name: 'Einmalig Werte übernehmen' }));
 
-      await waitFor(() => expect(publicCropApiMocks.importToProject).toHaveBeenCalledWith(1, undefined, { linkToLibrary: false, baseVersion: publicCrops[0].version }));
+      await waitFor(() => expect(publicCropApiMocks.importToProject).toHaveBeenCalledWith(1, undefined, { linkToLibrary: false, baseVersion: publicCrops[0].version, expectedProjectId: 42 }));
       await waitFor(() => expect(snackbarSpy).toHaveBeenCalled());
       const event = snackbarSpy.mock.calls[0]?.[0] as CustomEvent<GlobalSnackbarDetail>;
       expect(event.detail.message).toBe('Bibliothekswerte übernommen.');
@@ -2339,7 +2340,7 @@ describe('PublicCropLibraryPage', () => {
     const decision = await screen.findByRole('dialog', { name: 'Werte aus der Kulturbibliothek übernehmen' });
     expect(publicCropApiMocks.importToProject).not.toHaveBeenCalled();
     await user.click(within(decision).getByRole('button', { name: 'Einmalig Werte übernehmen' }));
-    await waitFor(() => expect(publicCropApiMocks.importToProject).toHaveBeenCalledWith(1, undefined, { linkToLibrary: false, baseVersion: publicCrops[0].version }));
+    await waitFor(() => expect(publicCropApiMocks.importToProject).toHaveBeenCalledWith(1, undefined, { linkToLibrary: false, baseVersion: publicCrops[0].version, expectedProjectId: 42 }));
   }, 30000);
 
   describe('species groups without a general entry are not greyed out', () => {

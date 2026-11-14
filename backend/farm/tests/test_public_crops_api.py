@@ -1781,6 +1781,22 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
                 self.assertIn(result.status_code, (400, 409), result.data)
                 self.assertEqual(Crop.objects.filter(project=self.project).count(), before)
 
+    def test_one_time_new_import_rejects_a_project_switch_before_writing(self):
+        entry = PublicCrop.objects.create(
+            name='Project-bound source', status='published', created_by=self.user,
+        )
+        other = Project.objects.create(name='Other import project', slug='other-library-copy')
+        ProjectMembership.objects.create(project=other, user=self.user, role='admin')
+        self.client.defaults['HTTP_X_PROJECT_ID'] = str(other.pk)
+        result = self.client.post(f'/openfarmplanner/api/public-crops/{entry.pk}/import/', {
+            'link_to_library': False, 'base_version': entry.version,
+            'expected_project_id': self.project.pk,
+        }, format='json')
+        self.assertEqual(result.status_code, 409, result.data)
+        self.assertEqual(result.data['code'], 'public_crop_import_project_changed')
+        self.assertFalse(Crop.objects.filter(project=other).exists())
+        self.assertFalse(Crop.objects.filter(project=self.project, name=entry.name).exists())
+
     def test_general_import_requires_explicit_link_and_preserves_twelve_varieties(self):
         species = CropSpecies.objects.create(name='Synthetic Tomato')
         general = Crop.objects.create(project=self.project, name=species.name, crop_species=species,

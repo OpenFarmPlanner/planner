@@ -3839,6 +3839,18 @@ def _pinned_public_crop_changes(
     return changes
 
 
+def _validate_import_link_choice(
+    *, establish_link: bool, has_link: bool, has_candidates: bool, mode: str,
+    base_version: int | None, pin_fields: Sequence[str], unpin_fields: Sequence[str],
+) -> None:
+    if establish_link:
+        return
+    if type(base_version) is not int or mode == 'update' or has_link or pin_fields or unpin_fields:
+        raise CropLinkConflictError('invalid_copy_confirmation')
+    if has_candidates and mode != 'new':
+        raise CropLinkConflictError('existing_crop_requires_link')
+
+
 @transaction.atomic
 def import_public_crop_into_project(
     *,
@@ -3888,14 +3900,11 @@ def import_public_crop_into_project(
     _validate_base_version(public_crop, base_version)
     candidates = public_crop_import_candidates(public_crop=public_crop, project=project)
     linked = Crop.objects.filter(project=project, source_public_crop=public_crop)
-    if not establish_link:
-        if (
-            type(base_version) is not int or mode == 'update' or linked.exists()
-            or pin_fields or unpin_fields
-        ):
-            raise CropLinkConflictError('invalid_copy_confirmation')
-        if candidates and mode != 'new':
-            raise CropLinkConflictError('existing_crop_requires_link')
+    _validate_import_link_choice(
+        establish_link=establish_link, has_link=not establish_link and linked.exists(),
+        has_candidates=bool(candidates), mode=mode, base_version=base_version,
+        pin_fields=pin_fields, unpin_fields=unpin_fields,
+    )
     species_matches = [
         crop for crop in candidates
         if public_crop.crop_species_id and crop.crop_species_id == public_crop.crop_species_id

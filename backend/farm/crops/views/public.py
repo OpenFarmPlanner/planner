@@ -673,19 +673,34 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             for crop in candidates
         ]})
 
+    @staticmethod
+    def _import_confirmation_error(request: Request) -> Response | None:
+        expected_project = request.data.get('expected_project_id')
+        if expected_project is not None and (
+            type(expected_project) is not int or expected_project != request.active_project.pk
+        ):
+            return api_error_response(
+                code='public_crop_import_project_changed',
+                detail='The active project changed. Preview this import again.',
+                status_code=status.HTTP_409_CONFLICT,
+            )
+        if type(request.data.get('link_to_library', True)) is not bool:
+            return api_error_response(
+                code='invalid_link_to_library', detail='link_to_library must be a boolean.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        return None
+
     @action(detail=True, methods=['post'], url_path='import')
     def import_to_project(self, request, pk=None):
         public_crop = self.get_object()
         if (blocked := self._crop_species_pending_forbidden(public_crop)) is not None:
             return blocked
         request.active_project = get_active_project_or_400(request)
+        if (project_error := self._import_confirmation_error(request)) is not None:
+            return project_error
         mode = request.data.get('mode') or 'auto'
         establish_link = request.data.get('link_to_library', True)
-        if type(establish_link) is not bool:
-            return api_error_response(
-                code='invalid_link_to_library', detail='link_to_library must be a boolean.',
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
         field_lists: dict[str, list[str]] = {}
         for key in ('unpin_fields', 'pin_fields'):
             value = request.data.get(key, [])

@@ -5,6 +5,7 @@ import { useTranslation } from '../i18n';
 import { PublicCropSyncPanel } from './PublicCropSyncPanel';
 import { usePublicCropSyncPreview } from './usePublicCropSyncPreview';
 import { getPublicCropTitle } from '../crop-library/publicCropDisplay';
+import { extractApiErrorCode } from '../api/errors';
 
 export type CropLinkCandidate = Pick<Crop, 'id' | 'name' | 'variety' | 'source_public_crop'> & { species_match?: boolean };
 
@@ -22,20 +23,22 @@ export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLink
   const [mode, setMode] = useState<'copy' | 'link'>('copy');
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
-  const [failed, setFailed] = useState(false);
+  const [projectId] = useState(() => Number(window.localStorage.getItem('activeProjectId')));
+  const hasProject = Number.isInteger(projectId) && projectId > 0;
+  const [failed, setFailed] = useState<'failed' | 'projectChanged' | null>(null);
   const targetId = typeof target === 'number' ? target : undefined;
   const preview = usePublicCropSyncPreview(targetId, publicCrop.id, Boolean(targetId), mode === 'link');
   const hasSelectable = candidates.some(candidate => !candidate.source_public_crop);
-  const ready = target === 'new' ? canCreate : Boolean(targetId && preview.preview);
+  const ready = target === 'new' ? canCreate && hasProject : Boolean(targetId && preview.preview);
   const confirm = async () => {
     if (!ready || submittingRef.current) return;
     submittingRef.current = true;
     setSubmitting(true);
-    setFailed(false);
+    setFailed(null);
     try {
       if (target === 'new') {
         const response = await publicCropAPI.importToProject(publicCrop.id, candidates.length ? 'new' : undefined, {
-          linkToLibrary: mode === 'link', baseVersion: publicCrop.version,
+          linkToLibrary: mode === 'link', baseVersion: publicCrop.version, expectedProjectId: projectId,
         });
         onLinked(response.data.crop);
       } else if (targetId && preview.preview) {
@@ -46,8 +49,8 @@ export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLink
           : await cropAPI.linkPublicCrop(targetId, publicCrop.id, fields, preview.preview.public_version, preview.preview.crop_updated_at, preview.selection.pinFields);
         onLinked(response.data);
       }
-    } catch {
-      setFailed(true);
+    } catch (error) {
+      setFailed(extractApiErrorCode(error) === 'public_crop_import_project_changed' ? 'projectChanged' : 'failed');
       preview.reload();
     } finally {
       submittingRef.current = false;
@@ -62,7 +65,7 @@ export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLink
           <Typography variant="subtitle2">{getPublicCropTitle(publicCrop, i18n.resolvedLanguage ?? i18n.language, t('library.translation.missingName'))}</Typography>
           <Typography variant="body2">{t(candidates.length ? 'library.importDecision.existing' : 'library.importDecision.newCrop')}</Typography>
           {candidates.length ? <TextField select fullWidth label={t('library.linkExisting.localTarget')} value={target ?? ''}
-            disabled={submitting} onChange={event => { setTarget(event.target.value === 'new' ? 'new' : Number(event.target.value)); setFailed(false); }}>
+            disabled={submitting} onChange={event => { setTarget(event.target.value === 'new' ? 'new' : Number(event.target.value)); setFailed(null); }}>
             {candidates.map(crop => <MenuItem key={crop.id} value={crop.id} disabled={Boolean(crop.source_public_crop)}>
               {crop.name}{crop.variety ? ` · ${crop.variety}` : ''}{crop.source_public_crop ? ` · ${t('library.linkExisting.alreadyLinked')}` : ''}
             </MenuItem>)}
@@ -77,7 +80,8 @@ export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLink
           {targetId ? <PublicCropSyncPanel changes={preview.preview?.changes.map(change => ({ ...change, pushable: true })) ?? null}
             choices={preview.choices} onChoicesChange={preview.setChoices} requiresModeration={false}
             keepMineLocally allowLocal={mode === 'link'} disabled={submitting} loadError={preview.loadError} /> : null}
-          {failed ? <Alert severity="error">{t('library.importDecision.failed')}</Alert> : null}
+          {target === 'new' && !hasProject ? <Alert severity="warning">{t('library.importDecision.projectChanged')}</Alert> : null}
+          {failed ? <Alert severity="error">{t(`library.importDecision.${failed}`)}</Alert> : null}
         </Stack>
       </DialogContent>
       <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>

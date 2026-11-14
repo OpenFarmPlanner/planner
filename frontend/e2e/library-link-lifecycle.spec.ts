@@ -280,3 +280,30 @@ for (const mode of ['copy', 'link'] as const) {
     expect(group.every(crop => crop.derived_from_public_crop !== null)).toBe(true);
   });
 }
+
+test('a project change during confirmation rejects a pending new library import', async ({ page, request }) => {
+  await loginWithDeterministicProject(page, request, `library-guard-source-${Date.now()}`, { loginAsAdmin: true, libraryModerator: true });
+  const [species] = await listSpecies(page, 1);
+  const source = await publishVariety(page, species, `Project guard ${Date.now()}`);
+  await apiRequest(page, 'POST', '/auth/logout/', {});
+  await loginWithDeterministicProject(page, request, `library-guard-target-${Date.now()}`, { loginAsAdmin: true });
+  const intendedProject = await page.evaluate(() => localStorage.getItem('activeProjectId'));
+  const other = await apiRequest<{ id: number }>(page, 'POST', '/projects/', { name: 'Other guarded project' });
+  await apiRequest(page, 'POST', '/projects-switch/', { project_id: Number(intendedProject) });
+  const before = await apiRequest<{ count: number }>(page, 'GET', '/crops/');
+  await page.goto(`/app/crop-library?cropId=${source.publicCropId}`);
+  await page.getByRole('button', { name: germanCrops.library.importButton, exact: true }).first().click();
+  const decision = page.getByRole('dialog', { name: germanCrops.library.importDecision.title });
+  const confirm = decision.getByRole('button', { name: germanCrops.library.importDecision.copy, exact: true });
+  await expect(confirm).toBeEnabled();
+  // Simulate the request header changing after the dialog captured its project.
+  await page.route(`**/public-crops/${source.publicCropId}/import/`, route => route.continue({
+    headers: { ...route.request().headers(), 'x-project-id': String(other.id) },
+  }));
+  await confirm.click();
+  await expect(decision.getByText(germanCrops.library.importDecision.projectChanged)).toBeVisible();
+  const otherCrops = await page.request.get('/api/crops/', { headers: { 'X-Project-Id': String(other.id) } });
+  expect(otherCrops.ok()).toBe(true);
+  expect((await otherCrops.json()).count).toBe(0);
+  expect((await apiRequest<{ count: number }>(page, 'GET', '/crops/')).count).toBe(before.count);
+});

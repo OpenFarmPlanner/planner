@@ -232,6 +232,7 @@ const waitForDeleteDialogToClose = async (): Promise<void> => {
 describe('Crops action area', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.setItem('activeProjectId', '42');
     detailLoadingHistory.length = 0;
     authUser.public_library_terms_accepted = false;
     authUser.is_staff = false;
@@ -660,7 +661,7 @@ describe('Crops action area', () => {
 
     const decision = await screen.findByRole('dialog', { name: 'Werte aus der Kulturbibliothek übernehmen' });
     fireEvent.click(within(decision).getByRole('button', { name: 'Einmalig Werte übernehmen' }));
-    await waitFor(() => expect(publicCropImportToProjectMock).toHaveBeenCalledWith(77, undefined, { linkToLibrary: false, baseVersion: 1 }));
+    await waitFor(() => expect(publicCropImportToProjectMock).toHaveBeenCalledWith(77, undefined, { linkToLibrary: false, baseVersion: 1, expectedProjectId: 42 }));
     // Deliberately stays open so several crops can be imported from the
     // library in one sitting instead of reopening it each time - see
     // usePublicCropLibrary.ts's handleImportPublicCrop.
@@ -693,7 +694,7 @@ describe('Crops action area', () => {
 
     const decision = await screen.findByRole('dialog', { name: 'Werte aus der Kulturbibliothek übernehmen' });
     fireEvent.click(within(decision).getByRole('button', { name: 'Einmalig Werte übernehmen' }));
-    await waitFor(() => expect(publicCropImportToProjectMock).toHaveBeenCalledWith(77, undefined, { linkToLibrary: false, baseVersion: 1 }));
+    await waitFor(() => expect(publicCropImportToProjectMock).toHaveBeenCalledWith(77, undefined, { linkToLibrary: false, baseVersion: 1, expectedProjectId: 42 }));
     expect(await within(decision).findByText(/Die Werte konnten nicht übernommen werden/)).toBeInTheDocument();
     fireEvent.click(within(decision).getByRole('button', { name: 'Abbrechen' }));
     expect(await screen.findByRole('dialog', { name: 'Aus Kulturbibliothek importieren' })).toBeInTheDocument();

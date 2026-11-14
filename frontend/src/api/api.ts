@@ -321,11 +321,12 @@ export const publicCropAPI = {
   importToProject: (
     id: number,
     mode?: 'update' | 'new',
-    options: { unpinFields?: string[]; pinFields?: string[]; baseVersion?: number; linkToLibrary?: boolean } = {},
+    options: { unpinFields?: string[]; pinFields?: string[]; baseVersion?: number; linkToLibrary?: boolean; expectedProjectId?: number } = {},
   ) =>
     http.post<ImportPublicCropResponse>(`/public-crops/${id}/import/`, {
       ...(mode ? { mode } : {}),
       ...(options.linkToLibrary !== undefined ? { link_to_library: options.linkToLibrary } : {}),
+      ...(options.expectedProjectId !== undefined ? { expected_project_id: options.expectedProjectId } : {}),
       ...(options.unpinFields?.length ? { unpin_fields: options.unpinFields } : {}),
       ...(options.pinFields?.length ? { pin_fields: options.pinFields } : {}),
       ...(options.baseVersion !== undefined ? { base_version: options.baseVersion } : {}),

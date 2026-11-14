@@ -1643,7 +1643,8 @@
       "copyHelp": "Les valeurs sélectionnées sont copiées une seule fois, sans lien de synchronisation. Tes valeurs privées et tes variétés ne sont pas publiées.",
       "linkHelp": "Les valeurs sélectionnées sont copiées et la culture est liée. Les futures modifications de la bibliothèque seront proposées pour vérification. Tes valeurs privées et tes variétés ne sont pas publiées.",
       "failed": "Les valeurs n’ont pas pu être importées. Vérifie à nouveau la cible et la comparaison. Pour une nouvelle culture, ferme ce dialogue et recharge la bibliothèque.",
-      "success": "Valeurs de la bibliothèque importées."
+      "success": "Valeurs de la bibliothèque importées.",
+      "projectChanged": "Le projet actif a changé. Ferme ce dialogue et recommence l’import dans le projet souhaité."
     }
   },
   "commands": {

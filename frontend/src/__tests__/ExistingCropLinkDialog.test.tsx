@@ -27,6 +27,7 @@ function setup(candidates = [candidate]) {
 describe('ExistingCropLinkDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.setItem('activeProjectId', '42');
     preview.mockResolvedValue({ data: { public_version: 4, crop_updated_at: '2026-11-14T12:00:00Z', changes: [
       { field: 'growth_duration_days', local_value: 90, public_value: 80, pushable: true },
       { field: 'notes', local_value: 'Private notes', public_value: '', pushable: true, pinnable: true },
@@ -86,7 +87,7 @@ describe('ExistingCropLinkDialog', () => {
     expect(screen.getByText(t('library.importDecision.newCrop'))).toBeVisible();
     if (mode === 'link') fireEvent.click(screen.getByRole('radio', { name: t('library.importDecision.link') }));
     fireEvent.click(button(mode));
-    await waitFor(() => expect(importNew).toHaveBeenCalledWith(77, undefined, { linkToLibrary: mode === 'link', baseVersion: 4 }));
+    await waitFor(() => expect(importNew).toHaveBeenCalledWith(77, undefined, { linkToLibrary: mode === 'link', baseVersion: 4, expectedProjectId: 42 }));
     expect(onLinked).toHaveBeenCalledWith({ id: 3, name: 'Tomato' });
     expect(copy).not.toHaveBeenCalled();
   });
@@ -117,4 +118,16 @@ describe('ExistingCropLinkDialog', () => {
     expect(copy).not.toHaveBeenCalled();
     expect(importNew).not.toHaveBeenCalled();
   });
+  it('binds a new import to the project shown when opening the decision', async () => {
+    importNew.mockRejectedValueOnce({ isAxiosError: true, response: { data: { code: 'public_crop_import_project_changed' } } });
+    const { onLinked } = setup([]);
+    window.localStorage.setItem('activeProjectId', '84');
+    fireEvent.click(button());
+    await waitFor(() => expect(importNew).toHaveBeenCalledWith(77, undefined, {
+      linkToLibrary: false, baseVersion: 4, expectedProjectId: 42,
+    }));
+    expect(await screen.findByText(t('library.importDecision.projectChanged'))).toBeVisible();
+    expect(onLinked).not.toHaveBeenCalled();
+  });
+
 });

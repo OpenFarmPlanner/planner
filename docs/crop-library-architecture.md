@@ -2324,8 +2324,9 @@ explains the existing-crop decision and offers two explicit methods:
 The decision dialog also covers no-match imports. It creates a new crop through
 `public-crops/<id>/import/`, with `link_to_library` and `base_version`. False
 creates an imported crop with provenance but no sync link or baseline, including
-an implicit general crop when importing a new variety. Omitted flags preserve
-legacy linked imports. A version supplied for a new import is checked too.
+an implicit general crop when importing a new variety. The new-crop confirmation also carries the project ID captured when opening
+the dialog; a cross-tab project switch is rejected before writing. Omitted
+flags preserve legacy linked imports. A version supplied for a new import is checked too.
 One-time import cannot silently remove or replace an existing link; already
 linked candidates are disabled with an explanation and a route back to the
 existing re-import/update action. No matching selectable candidate and no safe
