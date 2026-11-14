@@ -1,9 +1,11 @@
 import importlib.util
+import json
 import tempfile
 import threading
 import unittest
 from http.server import ThreadingHTTPServer
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -12,6 +14,33 @@ SOURCE = Path(__file__).resolve().parents[1] / 'scripts/ci/zap/target.py'
 spec = importlib.util.spec_from_file_location('zap_target', SOURCE)
 target = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(target)
+hook_spec = importlib.util.spec_from_file_location('zap_hooks', SOURCE.with_name('hooks.py'))
+hooks = importlib.util.module_from_spec(hook_spec)
+hook_spec.loader.exec_module(hooks)
+
+
+class ScanHookTests(unittest.TestCase):
+    def test_empty_response_header_is_a_gap_and_only_response_metadata_is_recorded(self):
+        messages = [{
+            'requestHeader': f'GET http://127.0.0.1:4173/probe-{index} HTTP/1.1\r\n'
+            'X-Debug: do-not-copy\r\n',
+            'responseHeader': header,
+        } for index, header in enumerate([
+            '', 'HTTP/1.1 0\r\n', 'HTTP/1.1 200 OK\r\n', 'HTTP/1.1 403 Forbidden\r\n',
+        ])]
+        zap = SimpleNamespace(
+            core=SimpleNamespace(messages=lambda **_kwargs: messages),
+            pscan=SimpleNamespace(records_to_scan='0'),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'coverage.json'
+            with patch.object(hooks, 'Path', return_value=output):
+                hooks.zap_pre_shutdown(zap)
+            serialized = output.read_text()
+            report = json.loads(serialized)
+        self.assertEqual([row['status'] for row in report['requests']], [0, 0, 200, 403])
+        self.assertEqual(report['passive_remaining'], 0)
+        self.assertNotIn('do-not-copy', serialized)
 
 
 class ScanTargetTests(unittest.TestCase):
