@@ -23,6 +23,10 @@ function assess(status, coverage, report, policy) {
     requireValid(coverage.requests.some(row => row.path === route && codes.includes(row.status)),
       `Required anonymous route was not observed: ${route}`);
   }
+  for (const [route, language] of [['/', 'de'], ['/en', 'en'], ['/fr', 'fr'], ['/es', 'es']]) {
+    requireValid(coverage.public_pages?.[route] === language,
+      `Prerendered page content was not observed: ${route}`);
+  }
   requireValid(policy?.schema === 1 && policy.mode === 'advisory-rollout'
     && policy.rules && !Array.isArray(policy.rules) && typeof policy.rules === 'object',
   'Unsupported annotation policy.');
@@ -58,6 +62,7 @@ function assess(status, coverage, report, policy) {
   requireValid(status.exit === (site.alerts.length ? 2 : 0), 'Exit code disagrees with the report.');
   return { status: 'completed-with-findings', target: TARGET, image: IMAGE,
     requestCount: coverage.requests.filter(row => row.status !== 0).length,
+    publicPages: coverage.public_pages,
     coverageGaps: coverage.requests.filter(row => row.status === 0).map(row => row.path), findings };
 }
 

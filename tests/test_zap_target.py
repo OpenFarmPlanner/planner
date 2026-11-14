@@ -42,6 +42,22 @@ class ScanHookTests(unittest.TestCase):
         self.assertEqual(report['passive_remaining'], 0)
         self.assertNotIn('do-not-copy', serialized)
 
+    def test_http_200_spa_fallback_is_not_prerendered_page_coverage(self):
+        for body, expected in [
+            ('<html lang="de"><body>SPA shell</body></html>', {}),
+            ('<html lang="en" data-ofp-page-language="en" data-ofp-page-path="/en">'
+             '<body>English prerender</body></html>', {'/en': 'en'}),
+        ]:
+            with self.subTest(body=body), tempfile.TemporaryDirectory() as directory:
+                zap = SimpleNamespace(core=SimpleNamespace(messages=lambda body=body, **_kwargs: [{
+                    'requestHeader': 'GET http://127.0.0.1:4173/en HTTP/1.1\r\n',
+                    'responseHeader': 'HTTP/1.1 200 OK\r\n', 'responseBody': body,
+                }]), pscan=SimpleNamespace(records_to_scan='0'))
+                output = Path(directory) / 'coverage.json'
+                with patch.object(hooks, 'Path', return_value=output):
+                    hooks.zap_pre_shutdown(zap)
+                self.assertEqual(json.loads(output.read_text())['public_pages'], expected)
+
 
 class ScanTargetTests(unittest.TestCase):
     def setUp(self):
@@ -88,10 +104,13 @@ class ScanTargetTests(unittest.TestCase):
         (self.dist / 'assets').mkdir()
         (self.dist / 'assets' / 'example.js').write_text('public asset')
         (self.dist / 'en').mkdir()
-        (self.dist / 'en' / 'index.html').write_text('English prerender')
+        (self.dist / 'en.html').write_text('English prerender')
+        (self.dist / 'en' / 'about.html').write_text('English about prerender')
+        (self.dist / 'ueber.html').write_text('German about prerender')
         for route, content in [
             ('/assets/example.js?cache=1', b'public asset'),
-            ('/en', b'English prerender'), ('/en/', b'English prerender'),
+            ('/en', b'English prerender'), ('/en/about', b'English about prerender'),
+            ('/ueber', b'German about prerender'),
         ]:
             with self.subTest(route=route), urlopen(self.origin + route) as response:
                 self.assertEqual(response.read(), content)
@@ -106,6 +125,9 @@ class ScanTargetTests(unittest.TestCase):
                 with self.assertRaises(HTTPError) as raised:
                     urlopen(request)
                 self.assertEqual(raised.exception.code, expected)
+                if expected == 404:
+                    self.assertEqual(raised.exception.headers['Content-Type'], 'application/json')
+                    self.assertIn(b'Endpoint excluded', raised.exception.read())
             backend.assert_not_called()
 
     def test_api_probe_is_anonymous_and_preserves_denial(self):

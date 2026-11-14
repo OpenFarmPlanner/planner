@@ -8,7 +8,8 @@ const { IMAGE, TARGET } = require('../scripts/ci/zap/run.cjs');
 function fixture() {
   return {
     status: { stage: 'scan', exit: 2, image: IMAGE, target: TARGET },
-    coverage: { target: TARGET, passive_remaining: 0, requests: [
+    coverage: { target: TARGET, passive_remaining: 0,
+      public_pages: { '/': 'de', '/en': 'en', '/fr': 'fr', '/es': 'es' }, requests: [
       ...['/', '/en', '/fr', '/es', '/api/schema/', '/__zap_fixture__/']
         .map(route => ({ method: 'GET', path: route, status: 200 })),
       { method: 'GET', path: '/api/crops/', status: 401 },
@@ -48,6 +49,9 @@ for (const change of [
   f => { f.report.site[0].alerts = []; },
   f => { f.status.exit = 0; },
   f => { f.status.target = 'https://example.org/'; },
+  f => { delete f.coverage.public_pages['/en']; },
+  f => { f.coverage.public_pages['/fr'] = 'de'; },
+  f => { delete f.coverage.public_pages; },
 ]) {
   test(`invalid or incomplete scan is rejected (${change.toString()})`, () => {
     const f = fixture(); change(f);

@@ -3,8 +3,8 @@
 import os
 import subprocess
 import sys
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from http.client import HTTPConnection
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
@@ -25,6 +25,9 @@ class ScanTarget(SimpleHTTPRequestHandler):
                     directory = route.removesuffix('/index.html')
                     self.routes[directory or '/'] = route
                     self.routes[directory + '/'] = route
+                elif candidate.suffix == '.html' and candidate.name != 'app-shell.html':
+                    # Production prerender uses en.html and en/about.html.
+                    self.routes[route.removesuffix('.html')] = route
         super().__init__(*args, directory=str(DIST), **kwargs)
 
     def log_message(self, _format, *args):
@@ -58,7 +61,15 @@ class ScanTarget(SimpleHTTPRequestHandler):
                 connection.close()
             return
         if parsed.path.startswith('/api/'):
-            self.send_error(404)
+            content = b'{"detail":"Endpoint excluded from the passive scan."}'
+            self.send_response(404)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(content)))
+            self.send_header('X-Content-Type-Options', 'nosniff')
+            self.send_header('Cache-Control', 'no-store')
+            self.end_headers()
+            if not head:
+                self.wfile.write(content)
             return
         if parsed.path == '/__zap_fixture__/':
             # Deliberately omit nosniff on this harmless script: rule 10021 must

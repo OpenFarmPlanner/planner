@@ -58,26 +58,34 @@ The official `ghcr.io/zaproxy/zaproxy:2.17.0` image is pinned to the Linux amd64
 digest recorded in `scripts/ci/zap/run.cjs`. Its classic `zap-baseline.py` runs
 with `-silent` (no addon updates), no active/Ajax scan, form processing and
 POST submission disabled, one minute of spidering and a five-minute passive
-wait. The hook seeds the public landing pages, `/api/schema/`, an anonymous
+wait. The target maps flat prerender files (`en.html`, `en/about.html`) to their
+canonical slashless routes. The hook seeds the public landing pages,
+`/api/schema/`, an anonymous
 `/api/crops/` denial probe and a harmless JavaScript fixture. The CI static
 gateway proxies only those two API paths, without forwarding authentication;
-other API routes and non-GET/HEAD methods are not proxied.
+other API routes and non-GET/HEAD methods are not proxied. Excluded API paths
+receive a CI-generated JSON denial rather than an HTML page that could be
+mistaken for application content.
 
 ### Completion, reports and rollout policy
 
 `assess.cjs` requires the pinned version, expected origin, ordinary scanner
-exit, empty passive queue, actual successful required public responses, an
+exit, empty passive queue, actual successful required public responses, the
+matching fixed page-path and language markers in each landing page's HTML, an
 anonymous 401/403 crop response, and a real rule-10021 finding on the fixture's
 deliberately missing `nosniff` header. Stale reports are deleted before each run.
-Exit 0 or 2 alone proves nothing. Startup failure, missing/malformed reports,
+Exit 0 or 2, or HTTP 200 from an SPA fallback, proves nothing. Startup failure,
+missing/malformed reports,
 wrong origin, missing required response or missing fixture detection produces
 **inconclusive** and fails the job. Real isolated unreachable-target and
 failed-before-startup invocations test that path on every run.
 
 On all outcomes where the runner can still execute upload steps, the seven-day
 `zap-passive-baseline` artifact contains `result.json` and `summary.html`.
-Completed scans also provide raw `report.json` / `report.html`, sanitized
-method/path/status-only `coverage.json`, exit/image metadata and scanner logs.
+Completed scans also provide raw `report.json` / `report.html`, `coverage.json`
+with only method/path/status and verified public-page language metadata,
+exit/image metadata and scanner logs. Response bodies and headers are not
+copied into the coverage artifact.
 Negative controls have separate HTML/JSON outcomes and logs under `negative/`.
 Missing raw ZAP reports on a startup/crash outcome are explicitly inconclusive,
 never fabricated clean reports. No authenticated traffic or sensitive test
@@ -89,8 +97,9 @@ unmatched evidence are marked `needs-triage`. Classifications annotate evidence,
 not exceptions to other checks. A future policy blocking verified regressions
 needs an agreed, reliable baseline; this PR establishes no such blanket policy.
 
-The manifest-server local 2.17.0 scan observed 58 responses and zero remaining passive
-records. It also recorded eight optional crawler nodes with response status 0;
+The local 2.17.0 scan observed 71 responses, verified all four landing-page
+language/path markers and had zero remaining passive records. It also recorded
+11 optional crawler nodes with response status 0;
 `coverageGaps` lists these rather than counting them as successful requests.
 Required seeds must still respond. The report contains five warning rules and
 two informational rules, with bounded representative instances:
