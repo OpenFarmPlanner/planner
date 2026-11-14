@@ -405,6 +405,30 @@ comment. Add an entry with the date, the decision, the reason and the
 PR or issue that made it. Reviewers must not re-report an accepted risk or
 deliberate exception listed here.
 
+### 2026-11-14 — Owner-authorized agent inputs and local fixture handoff
+
+The owner requested task-input filtering while retaining automatic sequential
+merges. Task authorization is bound to GitHub user ID `159707412` / `stipsitzm`,
+including the last editor and current write permission. Outside implementation
+comments are excluded by `agent_task_context.cjs`; interactive clients must use
+that reader from trusted main. This is enforced in the optional controller but
+remains an instruction for general-purpose interactive clients. Reviewer evidence
+is untrusted context; signed receipts and scanner provenance retain independent
+verification. No signing keys, verifier policy or review exemptions are changed.
+
+Queue #1058 was locked to external comments. Enforcing classic branch protection
+for admins was inspected and deferred: `release.yml` currently uses `RELEASE_PAT`
+to push semantic-release version commits directly to main. Enabling enforcement
+without first moving those commits through checked release PRs would break the
+existing release pipeline. The original setting remains; required CI/review and
+automatic merging remain enabled. This residual admin/token bypass risk is not
+claimed fixed. Refactoring releases and separating automation credentials is a
+prerequisite for closing it, outside this bounded input/fixture change.
+
+Local fixtures require explicit opt-in, exact database target confirmation and
+transactional isolated projects. Loopback checks do not establish that a local
+port is not forwarding production; the local executor must verify that boundary.
+
 ### 2026-11-05 — Verify forwarding chains before using client IPs (#880)
 
 The operator selected chain validation for Cloudflare → Uberspace → Django.
