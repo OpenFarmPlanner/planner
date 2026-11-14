@@ -64,7 +64,7 @@ export type InteractionMode = "view" | "edit";
 export const VIEWPORT_PADDING = 24;
 export const VIEWPORT_CONTROL_SAFE_AREA_RIGHT = 120;
 export const MOBILE_VIEWPORT_PADDING = 12;
-export const MOBILE_VIEWPORT_CONTROL_SAFE_AREA_RIGHT = 8;
+export const MOBILE_VIEWPORT_CONTROL_SAFE_AREA_RIGHT = 56;
 export const FIELD_INNER_OFFSET_X = 10;
 export const FIELD_LABEL_HEIGHT = 24;
 export const FIELD_INNER_OFFSET_Y = FIELD_INNER_OFFSET_X + FIELD_LABEL_HEIGHT;
@@ -107,13 +107,14 @@ export const FIELD_WORLD_MIN_HEIGHT = 220;
 export const FIELD_WORLD_SCALE_FACTOR = 12;
 
 export const getFitViewportPadding = (stageWidth: number): ViewportPadding => ({
-  top: stageWidth < 600 ? MOBILE_VIEWPORT_PADDING : VIEWPORT_PADDING,
+  // Leave the top-left zoom readout clear of field names in fit-to-view.
+  top: 48,
   right:
     (stageWidth < 600 ? MOBILE_VIEWPORT_PADDING : VIEWPORT_PADDING) +
     (stageWidth < 600
       ? MOBILE_VIEWPORT_CONTROL_SAFE_AREA_RIGHT
       : VIEWPORT_CONTROL_SAFE_AREA_RIGHT),
-  bottom: stageWidth < 600 ? MOBILE_VIEWPORT_PADDING : VIEWPORT_PADDING,
+  bottom: 48,
   left: stageWidth < 600 ? MOBILE_VIEWPORT_PADDING : VIEWPORT_PADDING,
 });
 export const snapToNeighbors = (

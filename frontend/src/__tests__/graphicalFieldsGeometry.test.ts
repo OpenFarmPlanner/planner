@@ -26,18 +26,18 @@ const snap = (
 describe('getFitViewportPadding', () => {
   it('uses the desktop padding and control safe area on a wide stage', () => {
     expect(getFitViewportPadding(1440)).toEqual({
-      top: VIEWPORT_PADDING,
+      top: 48,
       right: VIEWPORT_PADDING + VIEWPORT_CONTROL_SAFE_AREA_RIGHT,
-      bottom: VIEWPORT_PADDING,
+      bottom: 48,
       left: VIEWPORT_PADDING,
     });
   });
 
   it('switches to the tighter mobile padding below 600px', () => {
     expect(getFitViewportPadding(375)).toEqual({
-      top: MOBILE_VIEWPORT_PADDING,
+      top: 48,
       right: MOBILE_VIEWPORT_PADDING + MOBILE_VIEWPORT_CONTROL_SAFE_AREA_RIGHT,
-      bottom: MOBILE_VIEWPORT_PADDING,
+      bottom: 48,
       left: MOBILE_VIEWPORT_PADDING,
     });
   });

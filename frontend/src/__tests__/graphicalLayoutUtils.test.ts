@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { areaToRectSize, clampInsideParent, findFreePlacementPosition, getBedRectSize, getBedRectSizeWithinField, getBedScaleFromField, getFieldRectSize, initialAutoLayout, placeFieldRects, rectsOverlap, FIELD_PLACEMENT_SPACING, type Rect } from '../pages/graphicalLayoutUtils';
+import { arrangeFieldRects, areaToRectSize, clampInsideParent, findFreePlacementPosition, getBedRectSize, getBedRectSizeWithinField, getBedScaleFromField, getFieldRectSize, initialAutoLayout, placeFieldRects, rectsOverlap, FIELD_PLACEMENT_SPACING, type Rect } from '../pages/graphicalLayoutUtils';
 
 describe('graphicalLayoutUtils', () => {
   it('returns deterministic area size', () => {
@@ -225,5 +225,36 @@ describe('graphicalLayoutUtils', () => {
       expect(Math.max(...rects.map((rect) => rect.x + rect.width))).toBeLessThan(3000);
       expect(Math.max(...rects.map((rect) => rect.y + rect.height))).toBeLessThan(3000);
     });
+  });
+});
+
+
+describe('compact schematic field arrangement', () => {
+  const sizes = [{ width: 180, height: 360 }, { width: 432, height: 180 }, { width: 144, height: 144 }];
+  it.each([0.6, 1, 2.5])('packs mixed proportions without overlaps at aspect %s', aspect => {
+    const original = structuredClone(sizes);
+    const result = arrangeFieldRects(sizes, aspect);
+    expect(result).toEqual(arrangeFieldRects(sizes, aspect));
+    expect(sizes).toEqual(original);
+    const rects = sizes.map((size, index) => ({ ...size, ...result.positions[index] }));
+    for (const [index, rect] of rects.entries()) {
+      expect(rect.x).toBeGreaterThanOrEqual(0);
+      expect(rect.y).toBeGreaterThanOrEqual(0);
+      expect(rect.x + rect.width).toBeLessThanOrEqual(result.width);
+      expect(rect.y + rect.height).toBeLessThanOrEqual(result.height);
+      for (const other of rects.slice(index + 1)) {
+        expect(rectsOverlap(rect, other, FIELD_PLACEMENT_SPACING)).toBe(false);
+      }
+    }
+  });
+  it('uses more of a wide viewport than the old vertical stack', () => {
+    const result = arrangeFieldRects(sizes, 2.5);
+    const oldHeight = sizes.reduce((sum, size) => sum + size.height, 0) + 2 * FIELD_PLACEMENT_SPACING;
+    expect(Math.max(result.width / 2.5, result.height)).toBeLessThan(oldHeight);
+  });
+  it('handles empty locations, single fields and invalid aspect', () => {
+    expect(arrangeFieldRects([], 2)).toEqual({ positions: [], width: 0, height: 0 });
+    expect(arrangeFieldRects([sizes[0]], 2)).toEqual({ positions: [{ x: 0, y: 0 }], ...sizes[0] });
+    expect(arrangeFieldRects(sizes, NaN)).toEqual(arrangeFieldRects(sizes, 1));
   });
 });

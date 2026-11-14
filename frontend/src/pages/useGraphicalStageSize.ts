@@ -47,8 +47,12 @@ export function useGraphicalStageSize(): GraphicalStageSize {
         fullscreenLocationId !== null
           ? locationCanvasRefs.current[fullscreenLocationId]
           : null;
+      const locationCanvas = Object.values(locationCanvasRefs.current).find(
+        node => (node?.clientWidth ?? 0) > 0,
+      );
       const containerWidth =
         fullscreenContainer?.clientWidth ??
+        locationCanvas?.clientWidth ??
         containerRef.current?.clientWidth ??
         window.innerWidth;
       setStageWidth(Math.max(MIN_STAGE_WIDTH, Math.round(containerWidth - STAGE_INSET)));
@@ -67,8 +71,16 @@ export function useGraphicalStageSize(): GraphicalStageSize {
     };
 
     handleResize();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(handleResize);
+    if (containerRef.current) observer?.observe(containerRef.current);
+    for (const node of Object.values(locationCanvasRefs.current)) {
+      if (node) observer?.observe(node);
+    }
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', handleResize);
+    };
   }, [fullscreenLocationId]);
 
   useEffect(() => {

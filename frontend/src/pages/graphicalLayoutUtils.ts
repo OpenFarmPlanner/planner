@@ -289,11 +289,48 @@ export interface PlacedFieldRect extends Rect {
 /** Gap kept between a field without a saved position and the placed fields. */
 export const FIELD_PLACEMENT_SPACING = 24;
 
+/** Compact schematic rows for fields without a saved arrangement. */
+export function arrangeFieldRects(
+  sizes: RectSize[],
+  aspectRatio: number,
+  gap = FIELD_PLACEMENT_SPACING,
+): { positions: Position[]; width: number; height: number } {
+  if (sizes.length === 0) return { positions: [], width: 0, height: 0 };
+  const aspect = Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 1;
+  const maxWidth = Math.max(...sizes.map(size => size.width));
+  const totalWidth = sizes.reduce((sum, size) => sum + size.width, 0) + gap * (sizes.length - 1);
+  const idealWidth = Math.sqrt(sizes.reduce((sum, size) => sum + (size.width + gap) * (size.height + gap), 0) * aspect);
+  const pack = (rowWidth: number) => {
+    let x = 0;
+    let y = 0;
+    let rowHeight = 0;
+    let width = 0;
+    const positions = sizes.map(size => {
+      if (x > 0 && x + size.width > rowWidth) {
+        x = 0;
+        y += rowHeight + gap;
+        rowHeight = 0;
+      }
+      const position = { x, y };
+      width = Math.max(width, x + size.width);
+      x += size.width + gap;
+      rowHeight = Math.max(rowHeight, size.height);
+      return position;
+    });
+    return { positions, width, height: y + rowHeight };
+  };
+  const candidates = [maxWidth, totalWidth, ...[0.6, 0.8, 1, 1.2, 1.6, 2].map(factor => Math.max(maxWidth, idealWidth * factor))];
+  return candidates.map(pack).sort((a, b) =>
+    Math.max(a.width / aspect, a.height) - Math.max(b.width / aspect, b.height)
+    || a.width * a.height - b.width * b.height,
+  )[0];
+}
+
 /**
  * Positions a location's fields: saved positions win; a field without one
  * (e.g. just added in the list view) is placed next to the fields that already
  * have a position, at the nearest free spot right of them. Only when no field
- * has a saved position does every field keep its default stacked position.
+ * has a saved position does every field keep its default compact position.
  *
  * Placing a new field at its default instead would put it in the middle of the
  * large workspace, far from saved positions near the origin, and fitting the

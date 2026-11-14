@@ -44,6 +44,7 @@ import {
   DEFAULT_PLACEMENT_SPACING,
   getBedRectSizeWithinField,
   getFieldRectSize,
+  arrangeFieldRects,
   placeFieldRects,
   initialAutoLayout,
   type Rect as PlacementRect,
@@ -55,7 +56,7 @@ import {
   getContentBoundsFromRects,
   getVisibleElements,
   panViewport,
-  shouldShowBedLabel,
+  getBedLabelLayout,
   shouldShowFieldLabel,
   getFieldLabelScreenWidth,
   FIELD_LABEL_SCREEN_PADDING,
@@ -360,31 +361,31 @@ export default function GraphicalFields({
         height: size.height,
       };
     });
-    const totalFieldsHeight =
-      sizedFields.reduce((sum, entry) => sum + entry.height, 0) +
-      Math.max(0, sizedFields.length - 1) * LOCATION_FIELD_GAP;
-    let fieldY = Math.max(
-      LOCATION_LAYOUT_PADDING,
-      Math.round(WORKSPACE_MIN_HEIGHT / 2 - totalFieldsHeight / 2),
+    const fitPadding = getFitViewportPadding(stageWidth);
+    const arrangement = arrangeFieldRects(
+      sizedFields,
+      Math.max(1, stageWidth - fitPadding.left - fitPadding.right) /
+        Math.max(1, stageHeight - fitPadding.top - fitPadding.bottom),
+      LOCATION_FIELD_GAP,
     );
-
-    const defaultFieldRects = sizedFields.map((entry) => {
-      const y = fieldY;
-      fieldY += entry.height + LOCATION_FIELD_GAP;
-      return {
-        ...entry,
-        defaultX: Math.max(
-          LOCATION_LAYOUT_PADDING,
-          Math.round(WORKSPACE_MIN_WIDTH / 2 - entry.width / 2),
-        ),
-        defaultY: y,
-      };
-    });
+    const originX = Math.max(
+      LOCATION_LAYOUT_PADDING,
+      Math.round(WORKSPACE_MIN_WIDTH / 2 - arrangement.width / 2),
+    );
+    const originY = Math.max(
+      LOCATION_LAYOUT_PADDING,
+      Math.round(WORKSPACE_MIN_HEIGHT / 2 - arrangement.height / 2),
+    );
+    const defaultFieldRects = sizedFields.map((entry, index) => ({
+      ...entry,
+      defaultX: originX + arrangement.positions[index].x,
+      defaultY: originY + arrangement.positions[index].y,
+    }));
 
     const contentHeight = Math.max(
       WORKSPACE_MIN_HEIGHT,
       DEFAULT_STAGE_HEIGHT,
-      fieldY + 20,
+      originY + arrangement.height + LOCATION_LAYOUT_PADDING,
     );
     const contentWidth = Math.max(
       WORKSPACE_MIN_WIDTH,
@@ -1602,57 +1603,43 @@ export default function GraphicalFields({
                                         locationId,
                                       )}
                                     />
-                                    {visibility.showBedLabels &&
-                                    shouldShowBedLabel(
-                                      {
-                                        width: bedVm.width,
-                                        height: bedVm.height,
-                                      },
-                                      viewport.scale,
-                                    ) ? (
-                                      (() => {
-                                        const bedScreenWidth =
-                                          bedVm.width * viewport.scale;
-                                        const bedScreenHeight =
-                                          bedVm.height * viewport.scale;
-                                        const shouldUseCompactLabel =
-                                          bedScreenWidth < 80 ||
-                                          bedScreenHeight < 30;
-                                        const labelText =
-                                          visibility.showDetailedBedLabels &&
-                                          !shouldUseCompactLabel
-                                            ? `${bedVm.name} (${bedVm.area || "-"} m²)`
-                                            : bedVm.name;
-                                        return (
-                                          <Text
-                                            x={
-                                              currentFieldRect.x +
-                                              FIELD_INNER_OFFSET_X +
-                                              4 +
-                                              bedVm.x
-                                            }
-                                            y={
-                                              currentFieldRect.y +
-                                              FIELD_INNER_OFFSET_Y +
-                                              4 +
-                                              bedVm.y
-                                            }
-                                            text={labelText}
-                                            fontSize={
-                                              shouldUseCompactLabel ? 11 : 12
-                                            }
-                                            width={Math.max(
-                                              1,
-                                              bedScreenWidth - 4,
-                                            )}
-                                            wrap="word"
-                                            listening={false}
-                                            scaleX={1 / viewport.scale}
-                                            scaleY={1 / viewport.scale}
-                                          />
-                                        );
-                                      })()
-                                    ) : null}
+                                    {(() => {
+                                      const label = getBedLabelLayout(bedVm, viewport.scale);
+                                      if (!visibility.showBedLabels || !label) return null;
+                                      const labelText =
+                                        visibility.showDetailedBedLabels &&
+                                        !label.compact
+                                          ? `${bedVm.name} (${bedVm.area || "-"} m²)`
+                                          : bedVm.name;
+                                      return (
+                                        <Text
+                                          x={
+                                            currentFieldRect.x +
+                                            FIELD_INNER_OFFSET_X +
+                                            label.x +
+                                            bedVm.x
+                                          }
+                                          y={
+                                            currentFieldRect.y +
+                                            FIELD_INNER_OFFSET_Y +
+                                            label.y +
+                                            bedVm.y
+                                          }
+                                          text={labelText}
+                                          fontSize={label.fontSize}
+                                          width={label.width}
+                                          height={label.height}
+                                          rotation={label.rotation}
+                                          lineHeight={1}
+                                          wrap="none"
+                                          ellipsis
+                                          data-testid={`bed-label-${bedVm.id}`}
+                                          listening={false}
+                                          scaleX={1 / viewport.scale}
+                                          scaleY={1 / viewport.scale}
+                                        />
+                                      );
+                                      })()}
                                   </Group>
                                 ))
                               : null}
