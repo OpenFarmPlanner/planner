@@ -10,12 +10,12 @@ concurrency:
 
 jobs:
   e2e:
-    # Split across two runners with `playwright test --shard`. Each runner is a
-    # fresh VM that starts its own Django backend against its own SQLite file
+    # Balance whole files across three runners using measured E2E durations.
+    # Each runner is a fresh VM that starts its own Django backend against its own SQLite file
     # (see the webServer block in playwright.config.ts), so the shards share no
     # database and no fixture users - the isolation the suite needs comes from
     # the split itself, and `workers: 1` still holds inside a shard.
-    # Keep `--shard=N/<count>` in step with the matrix.
+    # Keep the runner script's INDEX/TOTAL in step with the matrix.
     name: e2e (shard ${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -78,6 +78,9 @@ jobs:
           PLAYWRIGHT_DOWNLOAD_HOST: https://cdn.playwright.dev
         run: "$GITHUB_WORKSPACE/scripts/ci/install-playwright-chrome.sh"
 
+      - name: Test E2E timing and partition tools
+        run: node --test tests/test_playwright_timings.cjs tests/test_e2e_sharding.cjs
+
       - name: Build frontend (production build)
         run: npm run build
         working-directory: frontend
@@ -85,8 +88,16 @@ jobs:
           VITE_WS_BASE_URL: ws://127.0.0.1:8000
 
       - name: Run E2E tests against the production build
-        run: npx playwright test --shard=${{ matrix.shard }}/3
-        working-directory: frontend
+        run: node scripts/ci/run_e2e_shard.cjs ${{ matrix.shard }}/3
+
+      - name: Upload E2E timings
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-timings-shard-${{ matrix.shard }}
+          path: frontend/test-results/e2e-timings.json
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Upload Playwright report
         if: failure()

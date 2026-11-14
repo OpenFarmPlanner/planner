@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import ConsentGate from '../auth/ConsentGate';
+import { tooltipOf } from './helpers/disabledActionTooltip';
 
 const acceptConsentMock = vi.fn(async () => undefined);
 const logoutMock = vi.fn(async () => undefined);
@@ -183,8 +184,9 @@ describe('ConsentGate', () => {
     expect(acceptingButton).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Abmelden' })).toBeDisabled();
 
-    await user.hover(acceptingButton.parentElement as HTMLElement);
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Aktion wird gerade verarbeitet.');
+    // Move away after the click so hovering enters the newly disabled wrapper.
+    await user.pointer({ target: document.body });
+    expect(await tooltipOf(user, acceptingButton)).toHaveTextContent('Aktion wird gerade verarbeitet.');
   });
 
   it('shows an error message when accepting fails', async () => {
