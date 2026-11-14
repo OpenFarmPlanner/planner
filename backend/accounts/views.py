@@ -20,9 +20,14 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from config.languages import UI_LANGUAGE_AUTO, normalize_language_tag, resolve_email_language
+from config.languages import (
+    UI_LANGUAGE_AUTO,
+    normalize_language_tag,
+    resolve_email_language,
+    resolve_request_language,
+)
 from config.responses import api_error_response
-from farm.services.demo_project import resolve_demo_request_language
+from farm.services.demo_project import DEMO_LANGUAGE_DEFAULT
 
 from .activation_resend import activation_sender_address, register_resend_attempt
 from .consent import record_acceptance
@@ -290,7 +295,9 @@ class GuestDemoStartView(APIView):
             logout(request)
         if existing_guest_demo is not None:
             delete_guest_demo_session(existing_guest_demo)
-        demo_session = create_guest_demo_session(language_code=resolve_demo_request_language(request))
+        demo_session = create_guest_demo_session(
+            language_code=resolve_request_language(request, default=DEMO_LANGUAGE_DEFAULT),
+        )
         login(request, demo_session.user)
         request.session['guest_demo_session_id'] = demo_session.id
         return Response(UserSerializer(demo_session.user).data, status=status.HTTP_201_CREATED)

@@ -119,6 +119,33 @@ class GuestDemoApiTests(TestCase):
                 self.assertTrue(response.data['memberships'][0]['is_demo_project'])
                 self.assertEqual(response.data['ui_language'], language)
 
+    def test_start_preserves_ui_language_when_demo_content_falls_back(self) -> None:
+        for query, header, expected in (
+            ('pt', 'de', 'pt'),
+            ('', 'pt-BR,pt;q=0.9', 'pt'),
+            ('it', 'en', 'it'),
+            ('', 'it-CH,it;q=0.9', 'it'),
+        ):
+            with self.subTest(query=query, header=header):
+                client = APIClient()
+                response = client.post(
+                    f'/openfarmplanner/api/auth/guest-demo/start/?language={query}',
+                    {}, format='json', HTTP_ACCEPT_LANGUAGE=header,
+                )
+                self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+                self.assertEqual(response.data['ui_language'], expected)
+                project = Project.objects.get(id=response.data['resolved_project_id'])
+                self.assertEqual(project.name, DEMO_PROJECT_NAME_EN)
+                self.assertTrue(Crop.objects.filter(project=project, name='Carrot').exists())
+                self.assertEqual(
+                    client.get('/openfarmplanner/api/auth/me/').data['ui_language'], expected,
+                )
+
+    def test_guest_demo_service_normalizes_ui_independently_of_content(self) -> None:
+        session = create_guest_demo_session(language_code='pt-BR')
+        self.assertEqual(session.user.project_settings.ui_language, 'pt')
+        self.assertEqual(session.project.name, DEMO_PROJECT_NAME_EN)
+
     def test_each_start_receives_its_own_workspace(self) -> None:
         first = self.client.post(
             '/openfarmplanner/api/auth/guest-demo/start/',

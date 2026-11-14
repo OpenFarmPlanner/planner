@@ -155,3 +155,31 @@ test('stays on the demo project instead of bouncing back to login after a few se
   await expect(page).toHaveURL(/\/app\/fields-beds/);
   await expect(page.getByRole('heading', { name: 'Anbauflächen' })).toBeVisible();
 });
+
+for (const language of [
+  { code: 'pt', browser: 'pt-BR', start: 'Ver demonstração sem registo', heading: 'Áreas de cultivo' },
+  { code: 'it', browser: 'it-IT', start: 'Guarda la demo senza registrarti', heading: 'Superfici coltivate' },
+]) {
+  test.describe(`${language.code} demo with English content fallback`, () => {
+    test.use({ locale: language.browser });
+    for (const width of [375, 1440]) {
+      test(`keeps the UI language after the landing CTA and reload at ${width}px`, async ({ page }, testInfo) => {
+        await page.setViewportSize({ width, height: width === 375 ? 800 : 900 });
+        await page.goto(`/${language.code}`);
+        await page.getByRole('button', { name: language.start, exact: true }).click();
+        await expect(page).toHaveURL(/\/app\/fields-beds/);
+        await expect(page.locator('html')).toHaveAttribute('lang', language.code);
+        await expect(page.getByRole('banner').getByRole('heading', { level: 1 })).toHaveText(language.heading);
+        const account = await apiRequest<{ ui_language: string; memberships: { project_name: string }[] }>(page, 'GET', '/auth/me/');
+        expect(account.ui_language).toBe(language.code);
+        expect(account.memberships[0].project_name).toBe('Sunny Acre CSA');
+        await page.reload();
+        await waitForPageStable(page);
+        await expect(page.locator('html')).toHaveAttribute('lang', language.code);
+        await expect(page.getByRole('banner').getByRole('heading', { level: 1 })).toHaveText(language.heading);
+        await expect(page.getByText('Creekside Field', { exact: true }).first()).toBeVisible();
+        await page.screenshot({ path: testInfo.outputPath(`locale-${language.code}-guest-demo-${width}.png`), animations: 'disabled' });
+      });
+    }
+  });
+}

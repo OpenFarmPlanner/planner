@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 
+from config.languages import normalize_language_tag
 from farm.models import Project, ProjectMembership
 from farm.services.demo_project import (
+    DEMO_LANGUAGE_DEFAULT,
     demo_project_used_filter,
     get_demo_project_description,
     get_demo_project_name,
@@ -26,7 +29,8 @@ GUEST_DEMO_RETENTION = timedelta(hours=8)
 def create_guest_demo_session(*, language_code: str | None = None) -> GuestDemoSession:
     """Create an isolated, short-lived guest workspace from the demo template."""
     suffix = get_random_string(16).lower()
-    language = resolve_demo_language(language_code)
+    ui_language = normalize_language_tag(language_code) or DEMO_LANGUAGE_DEFAULT
+    language = resolve_demo_language(ui_language)
     project_name = get_demo_project_name(language)
     project_description = get_demo_project_description(language)
     with transaction.atomic():
@@ -43,7 +47,9 @@ def create_guest_demo_session(*, language_code: str | None = None) -> GuestDemoS
             description=project_description,
         )
         ProjectMembership.objects.create(user=user, project=project, role=ProjectMembership.ROLE_ADMIN)
-        UserProjectSettings.objects.create(user=user, default_project=project, last_project=project, ui_language=language)
+        UserProjectSettings.objects.create(
+            user=user, default_project=project, last_project=project, ui_language=ui_language,
+        )
         populate_demo_project(project, owner=user, language_code=language)
         _increment_usage_counter(timezone.localdate(), 'started')
         return GuestDemoSession.objects.create(
