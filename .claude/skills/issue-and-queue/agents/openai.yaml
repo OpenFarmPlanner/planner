@@ -1,0 +1,4 @@
+interface:
+  display_name: "Issues and work queue"
+  short_description: "Capture agreed issues and maintain queue order"
+  default_prompt: "Use $issue-and-queue to capture this agreed change as an issue and update the work queue as requested."

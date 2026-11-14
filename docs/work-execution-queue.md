@@ -22,7 +22,67 @@ routine maintainer confirmation. Labels alone never start another agent. This
 excludes production deploys and unreviewed signing trust-policy changes. The owner
 authorized small, bounded API costs on 2026-11-13 and requested cloud-only operation.
 
+## Issue capture and queue edits
+
+Follow the shared [issue-and-queue skill](../.claude/skills/issue-and-queue/SKILL.md)
+for creating/updating issues or editing this queue. Discussion alone authorizes
+neither creation nor implementation. When queueing is requested without a
+position, append an absent item; keep an existing item at its current position.
+Explicit positions refer to displayed rows under Ordered work items, including
+completed rows and PR gates, unless the user specifies eligible items instead.
+Do not change unrelated rows or prose. Re-fetch before writing and verify live
+order afterward; issue-body writes do not offer atomic compare-and-swap through
+these clients, so report unreconciled concurrent edits instead of overwriting.
+
+## Subscription execution and independent review handoff
+
+Read the live #1058 execution mode before selecting a worker route. When it
+selects the existing Codex Cloud chat with its subscription, continue in that
+commissioned session and leave the optional API controller disabled. Queueing
+alone starts no worker; do not start a second worker or interrupt another one.
+Claim `queue:active` before coding, finish the current PR and independent review,
+merge after required checks pass, then continue automatically. Standing queue
+authorization covers that sequence without routine per-PR confirmation, not
+production deployment or selecting metered APIs.
+
+Use the configured independent PR review workflow first. Inspect exact-head
+completion evidence and fix findings; a delivered native review request, ordinary
+code-review summary or reaction is not security completion. After a provider
+allowance becomes available, a full review retry including Triage is needed when
+an inherited triage artifact belongs to an earlier run attempt. Keep triage and
+completion evidence bound to the same attempt; do not weaken the verifier.
+
+If Cloud providers cannot finish, use the existing trusted subscription launcher
+via an already configured authorized host route. Prerequisites: the host is
+reachable, its installed checkout/launcher matches the immutable PR base, its
+Codex subscription and GitHub authentication work, and the existing protected
+signing key is outside reviewer filesystem grants. Run on that trusted host
+from that checkout, substituting the real PR/CI IDs and a fresh output path:
+
+```bash
+node scripts/ci/run_codex_review.cjs 123 /tmp/queue-review-123
+gh pr comment 123 --body-file /tmp/queue-review-123/signed-report.md
+gh run rerun 456 --failed
+```
+
+Cloud may invoke these commands over the configured authorized SSH/automation
+route; host and checkout values come from that configuration, never guesses.
+No signing key or credential is copied into the authoring checkout. The launcher
+starts a fresh independent reviewer, validates exact head/base/scope and signs
+only a clean completed result. Publish the resulting receipt, refresh blocked
+CI and continue without another approval when the gate validates it. Findings,
+stale scope or failed execution return to the worker for correction and review.
+See [the signed-review procedure](security-automation.md#verified-local-codex-completion-without-per-pr-approval)
+for execution and trust requirements; unsigned reports still require its explicit
+human contingency. This skill does not install a host or signer. If no authorized
+host route/key or provider allowance is available, leave the merge blocked and
+report the actual missing infrastructure and PR/run links. Do not manufacture
+approval or describe the advisory queue marker as a review/execution service.
+
 ## Cloud worker
+
+This is the optional API-backed mode. Start it only when the live queue selects
+and authorizes that mode; subscription execution does not enable it.
 
 `.github/workflows/cloud-work-queue.yml` runs on GitHub-hosted Ubuntu, every ten
 minutes or by manual dispatch. It always checks out trusted `main`, never a PR

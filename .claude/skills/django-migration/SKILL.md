@@ -29,8 +29,11 @@ pdm run python manage.py makemigrations --check --dry-run   # must print "No cha
 pdm run migrate
 ```
 
-Django needs `backend/.env`; a fresh worktree has none, so copy it from the
-main checkout first (otherwise: `SECRET_KEY must be set explicitly`).
+Configure the intended database and required Django settings explicitly; a fresh
+worktree does not inherit an ignored `backend/.env`. Use authorized environment
+configuration for real migrations and disposable test settings per
+`docs/testing-and-ci.md` for synthetic verification. Do not assume a sibling
+checkout or its credentials are present in Cloud.
 
 Give a generated migration a descriptive name (`--name add_crop_tags`) instead
 of `auto_<timestamp>`. One model change, one migration; do not squash or edit

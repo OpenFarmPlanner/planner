@@ -190,6 +190,8 @@ table of what is and isn't implemented.
 
 ## Process / QA
 
+- [`agent-skills.md`](./agent-skills.md) — canonical shared skills, Codex/Claude
+  discovery, execution prerequisites and checkout validation.
 - [`work-execution-queue.md`](./work-execution-queue.md) — agent-independent
   issue/PR ordering, advisory markers, native epic links and AI cost controls.
 - [`testing-and-ci.md`](./testing-and-ci.md) — how the frontend, backend and
