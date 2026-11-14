@@ -2,33 +2,99 @@ name: Release
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch: {}
 
 permissions:
-  contents: write
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: protected-release-main
+  cancel-in-progress: false
 
 jobs:
-  release:
+  verify:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-
+    timeout-minutes: 15
+    outputs:
+      candidate: ${{ steps.verify.outputs.candidate }}
+      checkout: ${{ steps.verify.outputs.checkout }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
         with:
+          ref: main
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_PAT }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-
-      - name: Install Python Semantic Release
-        run: pip install python-semantic-release==10.5.3
-
-      - name: Run semantic release
+      # Reading protection settings requires the existing PAT; this job never writes.
+      - name: Verify the merged release and capture its live protection policy
+        id: verify
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT }}
-        run: semantic-release version --push --vcs-release
+        run: python scripts/ci/release_pr.py verify
+
+  publish:
+    needs: verify
+    if: github.ref == 'refs/heads/main' && needs.verify.outputs.candidate != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: read
+      checks: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.verify.outputs.checkout }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install pinned release tooling
+        run: python -m pip install python-semantic-release==10.5.3
+      - name: Publish the verified release merge without writing main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OFP_RELEASE_CANDIDATE: ${{ needs.verify.outputs.candidate }}
+        run: python scripts/ci/release_pr.py publish
+
+  prepare:
+    if: >-
+      always() && github.ref == 'refs/heads/main' &&
+      needs.verify.result == 'success' &&
+      (needs.publish.result == 'success' || needs.publish.result == 'skipped')
+    needs: [verify, publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install pinned release tooling
+        run: python -m pip install python-semantic-release==10.5.3
+      # PAT-authored PRs start normal CI without a manual workflow approval.
+      # Main protection applies to this credential too; only the reserved
+      # automation/release branch is pushed, with an explicit lease.
+      - name: Prepare or update the version PR and enable checked auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+        run: python scripts/ci/release_pr.py prepare

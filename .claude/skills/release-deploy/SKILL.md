@@ -14,10 +14,14 @@ alone does not authorize production deployment.
 
 ## 1. Find the release tag
 
-Merges to `main` are released automatically: `.github/workflows/release.yml`
-runs python-semantic-release, driven by Conventional Commits and the
-`release:major|minor|patch` label (`auto-release-label.yml`), and pushes a
-`vX.Y.Z` tag.
+Merges to `main` prepare a version PR through `.github/workflows/release.yml`.
+It uses the existing Conventional Commit calculation, stamps version files on
+`automation/release`, and enables squash auto-merge behind normal CI/review.
+After that PR merges, the workflow tags its exact merge SHA and publishes release
+notes. Never push version commits directly to main, move a release tag or use
+an admin bypass. Read [`docs/releases.md`](../../../docs/releases.md) for the
+credential split, protection settings and retry behavior. Use the skill-creator
+guidance when changing this procedure.
 
 ```bash
 cd planner
@@ -26,8 +30,9 @@ git checkout main && git pull --ff-only
 git describe --tags --exact-match HEAD    # must print the intended vX.Y.Z
 ```
 
-- `fatal: no tag exactly matches` right after a merge usually means the local
-  checkout lags behind: pull again before suspecting the workflow.
+- `fatal: no tag exactly matches` after an app merge can mean its version PR
+  is still passing CI. Check that PR and the Release workflow, then fetch again.
+  If main has advanced beyond the release, check out the actual release tag.
 - If a merge should have produced a tag but did not, inspect and fix
   `release.yml` (Actions run log); do not bypass the tag check.
 - Manual release preparation only: `make bump-version TYPE={feat|fix|breaking}`.

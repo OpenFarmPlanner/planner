@@ -431,11 +431,15 @@ build a throwaway local integration branch; never a shared branch:
   `make bump-version TYPE={feat|fix|breaking}`. This updates the central
   backend version via `scripts/bump_version.py`; do not edit version files by
   hand when the script applies.
-- The normal GitHub release flow is driven by Conventional Commits,
-  `release:*` labels, and `.github/workflows/release.yml`, which creates tags
-  using the `v{version}` format configured in `pyproject.toml`. If a merge to
-  `main` should have produced a release tag but did not, inspect and fix the
-  release workflow before production deploy instead of bypassing the tag check.
+- The normal GitHub release flow uses `.github/workflows/release.yml` and
+  `scripts/ci/release_pr.py`: calculate the Conventional Commit version with
+  semantic release, open/update `automation/release`, wait for normal CI/review
+  and squash auto-merge, then tag that exact merge SHA as `v{version}` and
+  publish release notes. Never push version commits directly to main or use
+  `--admin`. Main protection must apply to admins too; automatic merging stays
+  enabled. An app merge may remain untagged while its version PR is pending.
+  See `docs/releases.md` for credentials, rollout and recovery. Fix release
+  failures through that workflow, not by bypassing checks or moving tags.
 - Use `--allow-untagged` for production only when the user explicitly asks for
   an emergency untagged deploy and the final summary calls out the exact commit
   that was deployed.

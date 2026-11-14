@@ -190,6 +190,8 @@ table of what is and isn't implemented.
 
 ## Process / QA
 
+- [`releases.md`](./releases.md) — protected version PRs, automatic merge,
+  exact-commit tags, release credentials and recovery without bypassing main.
 - [`agent-skills.md`](./agent-skills.md) — canonical shared skills, Codex/Claude
   discovery, execution prerequisites and checkout validation.
 - [`work-execution-queue.md`](./work-execution-queue.md) — agent-independent
