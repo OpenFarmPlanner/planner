@@ -978,7 +978,9 @@
       "emptyLibraryDescription": "Die Kulturbibliothek lebt von den Beiträgen der Community. Sobald passende Projektkulturen veröffentlicht werden, können sie hier von allen genutzt und weiterentwickelt werden.",
       "noResultsTitle": "Keine passende öffentliche Kultur gefunden"
     },
-    "importButton": "In Projekt importieren",
+    "importButton": "Importieren und verknüpfen",
+    "importProjectChanged": "Das aktive Projekt hat sich geändert. Starte den Import im gewünschten Projekt neu.",
+    "importMatchChanged": "Die passenden Kulturen im Projekt haben sich geändert. Starte den Import erneut, um Ziel und Werte zu prüfen.",
     "importUpdateButton": "Im Projekt aktualisieren",
     "importUpToDateTooltip": "Bereits aktuell – keine Änderungen vorhanden",
     "importing": "Importiere…",
@@ -1430,7 +1432,7 @@
     "commands": {
       "focusSearch": "Kulturbibliothek durchsuchen (/)",
       "edit": "Öffentliche Kultur bearbeiten (Alt+E)",
-      "import": "Kultur ins Projekt übernehmen (Alt+I)",
+      "import": "Importieren und verknüpfen (Alt+I)",
       "previous": "Vorherige Kultur (Alt+Shift+←)",
       "next": "Nächste Kultur (Alt+Shift+→)",
       "keywords": {

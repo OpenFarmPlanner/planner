@@ -3914,7 +3914,8 @@ def import_public_crop_into_project(
       from this same public crop. None found -> create. Found and
       unmodified -> sync if the library version changed, or no-op if already
       identical. Found and locally modified -> raise
-      PublicCropImportConfirmationRequiredError instead of guessing.
+      PublicCropImportConfirmationRequiredError instead of guessing. A matching
+      unlinked crop requires an explicit link/copy decision instead of a duplicate.
     - 'update': overwrite the existing linked crop with the current
       library version regardless of local changes (the confirmed "yes,
       overwrite" choice from the conflict dialog).
@@ -3956,8 +3957,8 @@ def import_public_crop_into_project(
     ]
     if not public_crop.variety_normalized and len(species_matches) > 1:
         raise CropLinkConflictError('duplicate_general_crop')
-    if not public_crop.variety_normalized and (
-        (mode == 'new' and species_matches)
+    if (
+        (not public_crop.variety_normalized and mode == 'new' and species_matches)
         or (mode != 'new' and candidates and not linked.exists())
     ):
         raise CropLinkConflictError('existing_crop_requires_link')

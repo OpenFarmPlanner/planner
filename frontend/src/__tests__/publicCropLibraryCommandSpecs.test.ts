@@ -67,7 +67,7 @@ describe('createPublicCropLibraryCommandSpecs', () => {
     const byId = new Map(specsFor().map((command) => [command.id, command]));
 
     expect(byId.get('publicCropLibrary.focusSearch')?.label).toBe('Kulturbibliothek durchsuchen (/)');
-    expect(byId.get('publicCropLibrary.import')?.label).toBe('Kultur ins Projekt übernehmen (Alt+I)');
+    expect(byId.get('publicCropLibrary.import')?.label).toBe('Importieren und verknüpfen (Alt+I)');
   });
 
   it('indexes both the localized and the English search aliases', () => {

@@ -71,6 +71,36 @@ class LocalLibraryImportSeedTests(TestCase):
             list(Project.objects.values_list("pk", flat=True)), self.project_ids_before
         )
 
+    def test_normal_sqlite_concurrency_options_allow_safe_local_fixture_creation(self):
+        public_count = PublicCrop.objects.count()
+        options = {
+            'timeout': 20,
+            'transaction_mode': 'IMMEDIATE',
+            'init_command': 'PRAGMA journal_mode=WAL;PRAGMA synchronous=NORMAL;',
+        }
+        with patch.dict(connection.settings_dict, {'OPTIONS': options}):
+            self.seed(apply=True, include_direct_import=True)
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before) + 3)
+        self.assertEqual(Crop.objects.count(), 26)
+        self.assertEqual(PublicCrop.objects.count(), public_count)
+
+    def test_nonstandard_sqlite_and_postgres_options_remain_refused(self):
+        for options in [
+            {'init_command': 'SELECT 1;'},
+            {'uri': True},
+            {'transaction_mode': 'DEFERRED'},
+            {'timeout': 20, 'service': 'alternate'},
+        ]:
+            with patch.dict(connection.settings_dict, {'OPTIONS': options}):
+                with self.assertRaises(CommandError):
+                    self.seed(apply=True, include_direct_import=True)
+        with patch.dict(connection.settings_dict, {
+            'ENGINE': 'django.db.backends.postgresql', 'HOST': '127.0.0.1',
+            'OPTIONS': {'timeout': 20},
+        }), self.assertRaises(CommandError):
+            self.seed(apply=True, include_direct_import=True)
+        self.assertEqual(list(Project.objects.values_list('pk', flat=True)), self.project_ids_before)
+
     def test_pending_migrations_and_missing_prerequisites_do_not_create_partial_data(self):
         with patch(
             "farm.management.commands.seed_library_import_acceptance.MigrationExecutor"
@@ -152,3 +182,45 @@ class LocalLibraryImportSeedTests(TestCase):
         self.assertEqual(list(Crop.objects.values_list('pk', 'updated_at')), before)
         self.entry.refresh_from_db()
         self.assertEqual(self.entry.harvest_duration_days, 31)
+
+    def test_optional_direct_import_project_is_empty_and_repeat_preserves_an_import(self):
+        self.seed(include_direct_import=True)
+        preview = self.arguments['stdout'].getvalue()
+        self.assertIn('3 projects', preview)
+        self.assertIn('one empty direct-import project', preview)
+        self.assertEqual(Crop.objects.count(), 0)
+        self.seed(apply=True, include_direct_import=True)
+        direct = Project.objects.get(
+            slug=f'local-library-import-{self.user.pk}-{self.entry.pk}-direct',
+        )
+        control = Project.objects.get(
+            slug=f'local-library-import-{self.user.pk}-{self.entry.pk}-link',
+        )
+        self.assertFalse(Crop.objects.filter(project=direct).exists())
+        self.assertFalse(PlantingPlan.objects.filter(project=direct).exists())
+        self.assertEqual(Crop.objects.filter(project=control).count(), 13)
+        self.assertEqual(Crop.objects.count(), 26)
+        imported = Crop.objects.create(
+            project=direct, name=self.entry.name, crop_species=self.species,
+            derived_from_public_crop=self.entry, notes='Manually imported and unlinked',
+        )
+        before = list(Crop.objects.values_list('pk', 'updated_at'))
+        public_count = PublicCrop.objects.count()
+        self.seed(apply=True, include_direct_import=True)
+        self.assertEqual(list(Crop.objects.values_list('pk', 'updated_at')), before)
+        imported.refresh_from_db()
+        self.assertEqual(imported.notes, 'Manually imported and unlinked')
+        self.assertIsNone(imported.source_public_crop_id)
+        self.assertEqual(PublicCrop.objects.count(), public_count)
+
+    def test_direct_project_collision_rolls_back_new_populated_projects(self):
+        occupied = Project.objects.create(
+            slug=f'local-library-import-{self.user.pk}-{self.entry.pk}-direct',
+            name='Unrelated direct project',
+        )
+        with self.assertRaisesMessage(CommandError, 'occupied'):
+            self.seed(apply=True, include_direct_import=True, include_resolution=True)
+        self.assertEqual(set(Project.objects.values_list('pk', flat=True)),
+                         set(self.project_ids_before + [occupied.pk]))
+        self.assertEqual(Crop.objects.count(), 0)
+        self.assertEqual(PlantingPlan.objects.count(), 0)

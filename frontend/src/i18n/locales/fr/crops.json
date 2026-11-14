@@ -1002,7 +1002,9 @@
       "emptyLibraryDescription": "La bibliothèque de cultures vit des contributions de la communauté. Dès que des cultures de projet adaptées sont publiées, chacun peut les utiliser et les améliorer ici.",
       "noResultsTitle": "Aucune culture publique correspondante trouvée"
     },
-    "importButton": "Importer dans le projet",
+    "importButton": "Importer et lier",
+    "importProjectChanged": "Le projet actif a changé. Relancez l’importation dans le projet souhaité.",
+    "importMatchChanged": "Les cultures correspondantes de ce projet ont changé. Relancez l’importation pour vérifier la cible et les valeurs.",
     "importUpdateButton": "Mettre à jour dans le projet",
     "importUpToDateTooltip": "Déjà à jour – aucune modification disponible",
     "importing": "Import…",
@@ -1465,7 +1467,7 @@
     "commands": {
       "focusSearch": "Rechercher dans la bibliothèque de cultures (/)",
       "edit": "Modifier la culture publique (Alt+E)",
-      "import": "Importer la culture dans le projet (Alt+I)",
+      "import": "Importer et lier (Alt+I)",
       "previous": "Culture précédente (Alt+Maj+←)",
       "next": "Culture suivante (Alt+Maj+→)",
       "keywords": {

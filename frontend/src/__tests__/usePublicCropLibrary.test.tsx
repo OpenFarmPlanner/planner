@@ -66,7 +66,12 @@ const renderLibraryHook = (showSnackbar: ReturnType<typeof vi.fn>) => renderHook
   { wrapper },
 );
 
-beforeEach(() => { listAllMock.mockReset().mockResolvedValue({ results: [] }); });
+beforeEach(() => {
+  listAllMock.mockReset().mockResolvedValue({ results: [] });
+  importPreviewMock.mockReset().mockResolvedValue({ data: { candidates: [] } });
+  importToProjectMock.mockReset();
+  window.localStorage.setItem('activeProjectId', '42');
+});
 
 describe('usePublicCropLibrary co-publishing Sorten', () => {
   beforeEach(() => {
@@ -259,13 +264,103 @@ it('offers existing import targets without mutating the project before confirmat
 });
 
 
-it('offers an explicit import method even when creating a new crop', async () => {
+it('imports a new crop directly with a link and keeps the browser search', async () => {
+  const entry = { id: 88, name: 'Carrot', variety: '', version: 4 };
+  const crop = { id: 99, name: 'Carrot', source_public_crop: 88, source_public_version: 4,
+    is_modified_from_source: false, public_update_available: false };
   importPreviewMock.mockResolvedValueOnce({ data: { candidates: [] } });
   importToProjectMock.mockClear();
+  importToProjectMock.mockResolvedValueOnce({ data: { crop, operation: 'created' } });
+  publishPublicMock.mockClear();
+  publicSyncMock.mockClear();
+  linkPublicCropMock.mockClear();
+  listAllMock.mockResolvedValueOnce({ results: [entry] });
   const { result } = renderLibraryHook(vi.fn());
-  await act(async () => { await result.current.handleImportPublicCrop({ id: 88, name: 'Bean' } as never); });
-  expect(result.current.importLink).toMatchObject({ publicCrop: { id: 88 }, candidates: [] });
+  await act(async () => { await result.current.fetchPublicCrops('Carr'); });
+  listAllMock.mockResolvedValue({ results: [{ ...entry, project_import_status: {
+    crop_id: 99, is_up_to_date: true, is_modified_from_source: false,
+  } }] });
+  act(() => { result.current.setPublicLibraryOpen(true); });
+  await act(async () => { await result.current.handleImportPublicCrop(entry as never); });
+  expect(importToProjectMock).toHaveBeenCalledExactlyOnceWith(88, undefined, {
+    linkToLibrary: true, baseVersion: 4, expectedProjectId: 42,
+  });
+  expect(result.current.importLink).toBeNull();
+  expect(result.current.publicLibraryOpen).toBe(true);
+  expect(result.current.publicCrops[0].project_import_status?.is_up_to_date).toBe(true);
+  expect(listAllMock).toHaveBeenLastCalledWith({ q: 'Carr' });
+  expect(publishPublicMock).not.toHaveBeenCalled();
+  expect(publicSyncMock).not.toHaveBeenCalled();
+  expect(linkPublicCropMock).not.toHaveBeenCalled();
+});
+
+it('ignores repeated import calls while the match preview is pending', async () => {
+  let resolvePreview!: (value: { data: { candidates: [] } }) => void;
+  importPreviewMock.mockImplementationOnce(() => new Promise(resolve => { resolvePreview = resolve; }));
+  importToProjectMock.mockResolvedValue({ data: { operation: 'created', crop: {
+    id: 99, name: 'Carrot', source_public_crop: 88, source_public_version: 4,
+  } } });
+  const { result } = renderLibraryHook(vi.fn());
+  const entry = { id: 88, name: 'Carrot', version: 4 };
+  let first!: Promise<void>;
+  let repeated!: Promise<void>;
+  act(() => {
+    first = result.current.handleImportPublicCrop(entry as never);
+    repeated = result.current.handleImportPublicCrop(entry as never);
+  });
+  expect(importPreviewMock).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    resolvePreview({ data: { candidates: [] } });
+    await Promise.all([first, repeated]);
+  });
+  expect(importToProjectMock).toHaveBeenCalledTimes(1);
+  expect(result.current.publicLibraryImportingId).toBeNull();
+});
+
+it('does not import into a project selected while its match preview was pending', async () => {
+  let resolvePreview!: (value: { data: { candidates: [] } }) => void;
+  importPreviewMock.mockImplementationOnce(() => new Promise(resolve => { resolvePreview = resolve; }));
+  const { result } = renderLibraryHook(vi.fn());
+  let importing!: Promise<void>;
+  act(() => { importing = result.current.handleImportPublicCrop({ id: 88, name: 'Carrot', version: 4 } as never); });
+  window.localStorage.setItem('activeProjectId', '43');
+  await act(async () => {
+    resolvePreview({ data: { candidates: [] } });
+    await importing;
+  });
   expect(importToProjectMock).not.toHaveBeenCalled();
+  expect(result.current.publicLibraryError).toContain('Projekt hat sich geändert');
+  expect(result.current.importLink).toBeNull();
+});
+
+it('releases a failed direct import for retry and compares a newly matching crop', async () => {
+  importToProjectMock.mockRejectedValueOnce({
+    isAxiosError: true, response: { status: 409, data: { code: 'existing_crop_requires_link' } },
+  });
+  const { result } = renderLibraryHook(vi.fn());
+  const entry = { id: 88, name: 'Carrot', version: 4 };
+  await act(async () => { await result.current.handleImportPublicCrop(entry as never); });
+  expect(result.current.publicLibraryError).toContain('passenden Kulturen');
+  expect(result.current.publicLibraryImportingId).toBeNull();
+  importPreviewMock.mockResolvedValueOnce({ data: { candidates: [
+    { id: 99, name: 'Carrot', variety: '', species_match: true, source_public_crop: null },
+  ] } });
+  await act(async () => { await result.current.handleImportPublicCrop(entry as never); });
+  expect(importToProjectMock).toHaveBeenCalledTimes(1);
+  expect(result.current.importLink?.candidates[0].id).toBe(99);
+  expect(result.current.publicLibraryError).toBeNull();
+});
+
+it('does not mark a failed direct request as linked', async () => {
+  const entry = { id: 88, name: 'Carrot', version: 4 };
+  listAllMock.mockResolvedValue({ results: [entry] });
+  importToProjectMock.mockRejectedValueOnce(new Error('Network request failed'));
+  const { result } = renderLibraryHook(vi.fn());
+  await act(async () => { await result.current.fetchPublicCrops('Carr'); });
+  await act(async () => { await result.current.handleImportPublicCrop(entry as never); });
+  expect(result.current.publicCrops[0].project_import_status).toBeUndefined();
+  expect(result.current.publicLibraryError).toBeTruthy();
+  expect(result.current.publicLibraryImportingId).toBeNull();
 });
 
 it('keeps the browser and search while a stale pre-link response cannot replace the linked row', async () => {

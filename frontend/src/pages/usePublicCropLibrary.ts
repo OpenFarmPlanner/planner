@@ -51,6 +51,7 @@ export function usePublicCropLibrary({
   const [publicLibraryInitialQuery, setPublicLibraryInitialQuery] = useState('');
   const [publishingCropId, setPublishingCropId] = useState<number | null>(null);
   const libraryRequestId = useRef(0);
+  const importInFlight = useRef(false);
   const librarySearch = useRef<{ query: string; exactMatch?: { name: string; variety?: string } }>({ query: '' });
 
   const fetchPublicCrops = useCallback(async (
@@ -92,18 +93,53 @@ export function usePublicCropLibrary({
     await fetchPublicCrops('', { name: match.name, variety: match.variety });
   }, [fetchPublicCrops, onClearForm]);
 
+  const markProjectImport = useCallback((publicCropId: number, crop: Crop) => {
+    ++libraryRequestId.current;
+    setPublicLibraryLoading(false);
+    setPublicCrops(current => current.map(entry => entry.id === publicCropId
+      ? withProjectImportStatus(entry, crop) : entry));
+  }, []);
+
   const handleImportPublicCrop = async (publicCrop: PublicCrop, mode?: 'new') => {
+    if (importInFlight.current) return;
+    importInFlight.current = true;
     const name = getPublicCropTitle(publicCrop, language, t('library.translation.missingName'));
+    const initialImport = !mode && !publicCrop.project_import_status;
+    let expectedProjectId = 0;
     try {
       setPublicLibraryImportingId(publicCrop.id);
-      if (!mode && !publicCrop.project_import_status) {
+      setPublicLibraryError(null);
+      if (initialImport) {
+        expectedProjectId = Number(window.localStorage.getItem('activeProjectId'));
+        if (!Number.isInteger(expectedProjectId) || expectedProjectId <= 0) {
+          setPublicLibraryError(t('library.importProjectChanged'));
+          return;
+        }
         const preview = await publicCropAPI.importPreview(publicCrop.id);
-        setImportLink({ publicCrop, candidates: preview.data.candidates });
+        if (Number(window.localStorage.getItem('activeProjectId')) !== expectedProjectId) {
+          setPublicLibraryError(t('library.importProjectChanged'));
+          return;
+        }
+        if (preview.data.candidates.length) {
+          setImportLink({ publicCrop, candidates: preview.data.candidates });
+          return;
+        }
+      }
+      const response = initialImport
+        ? await publicCropAPI.importToProject(publicCrop.id, undefined, {
+          linkToLibrary: true, baseVersion: publicCrop.version, expectedProjectId,
+        })
+        : await publicCropAPI.importToProject(publicCrop.id, mode);
+      if (initialImport && Number(window.localStorage.getItem('activeProjectId')) !== expectedProjectId) {
+        setPublicLibraryError(t('library.importProjectChanged'));
         return;
       }
-      const response = await publicCropAPI.importToProject(publicCrop.id, mode);
       const importedCrop = response.data.crop;
+      markProjectImport(publicCrop.id, importedCrop);
       await onImportSuccess(importedCrop);
+      if (initialImport) {
+        await fetchPublicCrops(librarySearch.current.query, librarySearch.current.exactMatch);
+      }
       // Deliberately doesn't close the dialog (unlike a plain "select and
       // done" flow) — staying open lets the user import several crops from
       // the library in one sitting instead of reopening it each time. A
@@ -118,6 +154,16 @@ export function usePublicCropLibrary({
         showSnackbar(t('library.importSuccess', { name }), 'success');
       }
     } catch (error) {
+      const code = extractApiErrorCode(error);
+      if (code === 'public_crop_import_project_changed') {
+        setPublicLibraryError(t('library.importProjectChanged'));
+        return;
+      }
+      if (initialImport) {
+        setPublicLibraryError(t((code === 'existing_crop_requires_link' || code === 'duplicate_general_crop')
+          ? 'library.importMatchChanged' : 'library.importError'));
+        return;
+      }
       // This search-and-import flow doesn't offer the update/import-as-new
       // choice the Public Crop Library page's conflict dialog does — a 409
       // here just means "already imported with local changes", so point the
@@ -129,6 +175,7 @@ export function usePublicCropLibrary({
       console.error('Error importing public crop:', error);
       setPublicLibraryError(extractApiErrorMessage(error, t, t('library.importError')));
     } finally {
+      importInFlight.current = false;
       setPublicLibraryImportingId(null);
     }
   };
@@ -422,10 +469,7 @@ export function usePublicCropLibrary({
     setImportLink,
     handleImportLinkSuccess: async (crop: Crop) => {
       if (importLink) {
-        ++libraryRequestId.current;
-        setPublicLibraryLoading(false);
-        setPublicCrops(current => current.map(entry => entry.id === importLink.publicCrop.id
-          ? withProjectImportStatus(entry, crop) : entry));
+        markProjectImport(importLink.publicCrop.id, crop);
       }
       setImportLink(null);
       await onImportSuccess(crop);

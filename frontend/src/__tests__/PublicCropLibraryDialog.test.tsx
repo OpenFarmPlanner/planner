@@ -96,7 +96,7 @@ describe('PublicCropLibraryDialog', () => {
     mockMobileViewport();
     view.rerender(<MemoryRouter><PublicCropLibraryDialog {...props} /></MemoryRouter>);
     await waitFor(() => expect(screen.getByRole('textbox')).toHaveValue('Tomate'));
-    expect(screen.getByRole('button', { name: 'In Projekt importieren' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Importieren und verknüpfen' })).toBeEnabled();
     await user.click(screen.getByRole('button', { name: i18n.t('filters.openAdvanced', { ns: 'crops' }) }));
     expect(screen.getByLabelText(i18n.t('filters.growthDaysMin', { ns: 'crops' }))).toHaveValue(1);
   });
@@ -281,7 +281,7 @@ describe('PublicCropLibraryDialog', () => {
       },
     );
 
-    const importButton = await screen.findByRole('button', { name: 'In Projekt importieren' });
+    const importButton = await screen.findByRole('button', { name: 'Importieren und verknüpfen' });
     expect(importButton).toBeDisabled();
     await user.hover(importButton.parentElement as HTMLElement);
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Wähle zuerst einen Eintrag aus.');
@@ -306,10 +306,10 @@ describe('PublicCropLibraryDialog', () => {
 
     expect(await screen.findByRole('dialog', { name: 'Aus Kulturbibliothek importieren' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Kulturbibliothek öffnen' })).toHaveAttribute('href', '/app/crop-library');
-    expect(screen.getByRole('button', { name: 'In Projekt importieren' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Importieren und verknüpfen' })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('option', { name: 'Tomate' }));
-    fireEvent.click(screen.getByRole('button', { name: 'In Projekt importieren' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Importieren und verknüpfen' }));
 
     expect(onImport).toHaveBeenCalledWith(crop);
   });
@@ -464,7 +464,7 @@ describe('PublicCropLibraryDialog', () => {
       expect(screen.getByRole('option', { name: 'Tomate (Roma)' })).toHaveFocus();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'In Projekt importieren' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Importieren und verknüpfen' }));
     expect(onImport).toHaveBeenCalledWith(crop);
   });
 
