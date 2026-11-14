@@ -1002,7 +1002,9 @@
       "emptyLibraryDescription": "La biblioteca de cultivos vive de las contribuciones de la comunidad. En cuanto se publiquen cultivos de proyecto adecuados, todo el mundo podrá usarlos y mejorarlos aquí.",
       "noResultsTitle": "No se ha encontrado ningún cultivo público coincidente"
     },
-    "importButton": "Importar al proyecto",
+    "importButton": "Importar y vincular",
+    "importProjectChanged": "El proyecto activo ha cambiado. Reinicia la importación en el proyecto deseado.",
+    "importMatchChanged": "Los cultivos coincidentes de este proyecto han cambiado. Vuelve a importar para revisar el destino y los valores.",
     "importUpdateButton": "Actualizar en el proyecto",
     "importUpToDateTooltip": "Ya está actualizado: no hay cambios disponibles",
     "importing": "Importando…",
@@ -1465,7 +1467,7 @@
     "commands": {
       "focusSearch": "Buscar en la biblioteca de cultivos (/)",
       "edit": "Editar cultivo público (Alt+E)",
-      "import": "Importar cultivo al proyecto (Alt+I)",
+      "import": "Importar y vincular (Alt+I)",
       "previous": "Cultivo anterior (Alt+Mayús+←)",
       "next": "Cultivo siguiente (Alt+Mayús+→)",
       "keywords": {

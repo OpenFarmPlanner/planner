@@ -458,7 +458,7 @@ export function PublicCropLibraryDialog({
         <DisabledActionTooltip
           title={!selectedCrop
             ? t('disabledReasons.selectEntry')
-            : importingId === selectedCrop.id
+            : importingId !== null
               ? t('common:disabledReasons.busy')
               : selectedCrop.project_import_status?.is_up_to_date
                 ? t('library.importUpToDateTooltip') : ''}
@@ -466,7 +466,7 @@ export function PublicCropLibraryDialog({
           <Button
             variant="contained"
             onClick={() => selectedCrop && onImport(selectedCrop)}
-            disabled={!selectedCrop || importingId === selectedCrop?.id || Boolean(selectedCrop.project_import_status?.is_up_to_date)}
+            disabled={!selectedCrop || importingId !== null || Boolean(selectedCrop.project_import_status?.is_up_to_date)}
           >
             {importingId === selectedCrop?.id ? t('library.importing')
               : selectedCrop?.project_import_status?.is_up_to_date ? t('library.linkExisting.alreadyLinked')

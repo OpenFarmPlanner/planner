@@ -21,6 +21,7 @@ from corsheaders.defaults import default_headers
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
+from config.sqlite_options import SQLITE_CONCURRENCY_OPTIONS
 from config.version import VERSION as APP_VERSION
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -372,14 +373,7 @@ if db_engine == 'sqlite':
             # writers queue on the busy timeout instead of failing mid-request.
             # Reproduced locally with concurrent logins + parallel GETs; see the
             # e2e "database is locked" flake history (git log around this block).
-            'OPTIONS': {
-                'timeout': 20,
-                'transaction_mode': 'IMMEDIATE',
-                'init_command': (
-                    'PRAGMA journal_mode=WAL;'
-                    'PRAGMA synchronous=NORMAL;'
-                ),
-            },
+            'OPTIONS': dict(SQLITE_CONCURRENCY_OPTIONS),
         }
     }
 else:

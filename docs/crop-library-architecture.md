@@ -427,6 +427,21 @@ The public Crop Library follows an open-data model:
   A final crop revision records this completed baseline after normalization and
   any public edit, so restoring the link restores its resolved status and pins.
   See [the initial-link matrix](./crop-library-state-matrix.md#linking-an-existing-culture).
+- **Direct new linked imports.** Both library surfaces preview matches before
+  importing. With no match, their explicitly labeled Import and link action
+  creates the linked culture in one operation, without a method dialog or
+  separate confirmation. Existing matches keep the comparison and copy/link
+  choice. The displayed public version, captured active-project ID and existing
+  atomic project/source locks protect the import; the server also rejects a
+  stale unlinked variety match. Repeated clicks are ignored while pending.
+  Search, filters and the open browser survive success, and the entry becomes
+  linked and up to date. If the subsequent status refresh fails, the imported
+  culture, selection and search stay visible; retrying the refresh does not
+  repeat the import, including when a retry also fails. Definitive removal or
+  access loss instead accepts the refreshed catalog and clears the unavailable
+  library selection; the imported project culture is retained. No project values are
+  published. Unlinking retains the
+  culture, while explicit copy APIs retain their existing behavior.
 - **Reproducible local import acceptance data.** The guarded
   `seed_library_import_acceptance` management command supports
   `--include-resolution` to add a third isolated project alongside the existing
@@ -441,6 +456,15 @@ The public Crop Library follows an open-data model:
   `--public-crop-id`, `--database-name` matching the actual local database and
   `--include-resolution`; review the target before adding `--apply`. Cloud
   validation uses isolated data and does not prepare the user's localhost.
+  Add `--include-direct-import` for an extra empty project and use a published
+  general Carrot entry to verify one-click import, the active link and unlink
+  without deletion. The existing link project is the matching-Carrot control,
+  where the comparison still opens. Preview before applying with the actual
+  local user, entry ID and database name; this option can be combined with
+  `--include-resolution`. Repeated runs keep prior manual imports and edits,
+  so they do not reset an already used direct-import project to empty. The guard
+  accepts the application’s fixed SQLite concurrency options; other connection
+  options and PostgreSQL routing overrides remain unsupported.
 - **Pulling never breaks live inheritance.** `_pull_public_crop_fields()` (used
   by the link's and the sync's pull) writes a raw value only when the entry's
   value differs from the crop's *effective* one. A Sorte that inherits a field

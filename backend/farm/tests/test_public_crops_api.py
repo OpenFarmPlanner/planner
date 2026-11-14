@@ -1637,6 +1637,89 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertFalse(self.client.get(f'/openfarmplanner/api/crops/{general.pk}/')
                          .data['public_update_available'])
 
+    def test_auto_import_refuses_a_variety_match_created_after_preview(self):
+        entry = PublicCrop.objects.create(
+            name='Carrot', variety='Direct import variety', crop_species=self.species,
+            status='published', created_by=self.user, growth_duration_days=45,
+        )
+        url = f'/openfarmplanner/api/public-crops/{entry.pk}/'
+        self.assertEqual(self.client.get(url + 'import-preview/').data['candidates'], [])
+        local = Crop.objects.create(
+            project=self.project, name='Carrot', variety=entry.variety,
+            crop_species=self.species, growth_duration_days=91, notes='Private local value',
+        )
+        before_count = Crop.objects.filter(project=self.project).count()
+        response = self.client.post(url + 'import/', {
+            'link_to_library': True, 'base_version': entry.version,
+            'expected_project_id': self.project.pk,
+        }, format='json')
+        self.assertEqual(response.status_code, 409, response.data)
+        self.assertEqual(response.data['code'], 'existing_crop_requires_link')
+        self.assertEqual(Crop.objects.filter(project=self.project).count(), before_count)
+        local.refresh_from_db()
+        self.assertIsNone(local.source_public_crop_id)
+        self.assertEqual((local.growth_duration_days, local.notes), (91, 'Private local value'))
+        entry.refresh_from_db()
+        self.assertEqual((entry.growth_duration_days, entry.version), (45, 1))
+        self.assertFalse(PublicCropChangeProposal.objects.filter(public_crop=entry).exists())
+
+    def test_direct_linked_import_is_idempotent_and_unlink_keeps_the_crop(self):
+        author = User.objects.create_user(username='direct-library-author', is_active=True)
+        species = CropSpecies.objects.create(name='Direct Carrot')
+        entry = PublicCrop.objects.create(
+            name='Direct Carrot', crop_species=species, status='published',
+            created_by=author, growth_duration_days=45, notes='Shared library text',
+        )
+        public_count = PublicCrop.objects.count()
+        consent_count = DocumentConsent.objects.count()
+        url = f'/openfarmplanner/api/public-crops/{entry.pk}/import/'
+        payload = {'link_to_library': True, 'base_version': entry.version,
+                   'expected_project_id': self.project.pk}
+        first = self.client.post(url, payload, format='json')
+        self.assertEqual(first.status_code, 201, first.data)
+        crop_id = first.data['crop']['id']
+        self.assertEqual(first.data['crop']['source_public_crop'], entry.pk)
+        self.assertFalse(first.data['crop']['public_update_available'])
+        self.assertFalse(first.data['crop']['is_modified_from_source'])
+        repeated = self.client.post(url, payload, format='json')
+        self.assertEqual(repeated.status_code, 200, repeated.data)
+        self.assertEqual(repeated.data['crop']['id'], crop_id)
+        self.assertEqual(repeated.data['operation'], 'unchanged')
+        self.assertEqual(Crop.objects.filter(project=self.project, crop_species=species).count(), 1)
+        unlinked = self.client.post(
+            f'/openfarmplanner/api/crops/{crop_id}/unlink-public-crop/', {}, format='json',
+        )
+        self.assertEqual(unlinked.status_code, 200, unlinked.data)
+        crop = Crop.objects.get(pk=crop_id)
+        self.assertIsNone(crop.source_public_crop_id)
+        self.assertEqual(crop.derived_from_public_crop_id, entry.pk)
+        self.assertEqual((crop.growth_duration_days, crop.notes), (45, 'Shared library text'))
+        entry.refresh_from_db()
+        self.assertEqual((entry.version, entry.notes), (1, 'Shared library text'))
+        self.assertEqual(PublicCrop.objects.count(), public_count)
+        self.assertEqual(DocumentConsent.objects.count(), consent_count)
+        self.assertFalse(PublicCropChangeProposal.objects.filter(public_crop=entry).exists())
+
+    def test_failed_direct_import_rolls_back_creation(self):
+        from unittest.mock import patch
+        from rest_framework.exceptions import ValidationError
+
+        entry = PublicCrop.objects.create(
+            name='Atomic direct import', status='published', growth_duration_days=45,
+        )
+        before = (Crop.objects.count(), EntityRevision.objects.count(), PublicCrop.objects.count())
+        with patch('farm.services.public_crops._ensure_local_general_crop',
+                   side_effect=ValidationError('Synthetic import validation failure')):
+            response = self.client.post(
+                f'/openfarmplanner/api/public-crops/{entry.pk}/import/',
+                {'link_to_library': True, 'base_version': entry.version,
+                 'expected_project_id': self.project.pk}, format='json',
+            )
+        self.assertEqual(response.status_code, 400, response.data)
+        self.assertEqual(
+            (Crop.objects.count(), EntityRevision.objects.count(), PublicCrop.objects.count()), before,
+        )
+
     def test_one_time_copy_requires_fresh_confirmation_and_rejects_pins(self):
         crop = Crop.objects.create(
             project=self.project, name='Confirmed copy', growth_duration_days=90,

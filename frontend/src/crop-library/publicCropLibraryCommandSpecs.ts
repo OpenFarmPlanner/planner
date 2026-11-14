@@ -51,7 +51,10 @@ export function createPublicCropLibraryCommandSpecs({
     },
     {
       id: 'publicCropLibrary.import',
-      label: t('crops:library.commands.import'),
+      label: selectedCrop?.project_import_status?.is_up_to_date
+        ? t('crops:library.linkExisting.alreadyLinked')
+        : t(selectedCrop?.project_import_status
+          ? 'crops:library.importUpdateButton' : 'crops:library.commands.import'),
       group: 'navigation',
       keywords: keywordList(t, 'crops:library.commands.keywords.import'),
       shortcutHint: 'Alt+I',

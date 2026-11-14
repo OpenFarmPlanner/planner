@@ -12,6 +12,7 @@ from django.core.management.base import BaseCommand, CommandError, CommandParser
 from django.db import connection, transaction
 from django.db.migrations.executor import MigrationExecutor
 
+from config.sqlite_options import SQLITE_CONCURRENCY_OPTIONS
 from farm.models import (
     Crop,
     PlantingPlan,
@@ -41,6 +42,10 @@ class Command(BaseCommand):
             "--include-resolution", action="store_true",
             help="Also prepare a third project for explicit share, pull and private-pin decisions.",
         )
+        parser.add_argument(
+            "--include-direct-import", action="store_true",
+            help="Also prepare an empty project for a one-click linked library import.",
+        )
 
     def validate_database(self, confirmed_name: str) -> tuple[str, str, str]:
         database = connection.settings_dict
@@ -69,8 +74,19 @@ class Command(BaseCommand):
                 "Fixtures require local SQLite or loopback PostgreSQL; "
                 "remote/socket targets are refused."
             )
-        if database.get("OPTIONS"):
-            raise CommandError("Database connection options are not supported for local fixtures.")
+        connection_options = database.get("OPTIONS") or {}
+        if connection_options and (
+            engine != "django.db.backends.sqlite3"
+            or not isinstance(connection_options, dict)
+            or any(
+                key not in SQLITE_CONCURRENCY_OPTIONS
+                or value != SQLITE_CONCURRENCY_OPTIONS[key]
+                for key, value in connection_options.items()
+            )
+        ):
+            raise CommandError(
+                "Only standard SQLite concurrency options are supported for local fixtures."
+            )
         if any(os.getenv(key) for key in ('PGHOSTADDR', 'PGSERVICE', 'PGSERVICEFILE')):
             raise CommandError('PostgreSQL routing environment overrides are not supported.')
         if confirmed_name != name:
@@ -107,11 +123,20 @@ class Command(BaseCommand):
         modes = (
             ("once", "link", "resolve") if options.get("include_resolution") else ("once", "link")
         )
+        if options.get("include_direct_import"):
+            modes += ("direct",)
         if not options["apply"]:
-            self.stdout.write(
-                f"Preview only: {len(modes)} projects, each with one general culture, "
-                "12 varieties and 12 plans. No changes made."
-            )
+            if options.get("include_direct_import"):
+                self.stdout.write(
+                    f"Preview only: {len(modes)} projects: {len(modes) - 1} with one "
+                    "general culture, 12 varieties and 12 plans each, plus one empty "
+                    "direct-import project. No changes made."
+                )
+            else:
+                self.stdout.write(
+                    f"Preview only: {len(modes)} projects, each with one general culture, "
+                    "12 varieties and 12 plans. No changes made."
+                )
             return
         with transaction.atomic():
             for mode in modes:
@@ -149,6 +174,11 @@ class Command(BaseCommand):
                     end_date=date(year, 12, 31),
                     created_by=user,
                 )
+                if mode == "direct":
+                    self.stdout.write(
+                        f"Created empty project {project.pk}: {project.name}; no matching culture."
+                    )
+                    continue
                 general = Crop.objects.create(
                     project=project,
                     name=entry.name,
@@ -189,4 +219,11 @@ class Command(BaseCommand):
                 "the local harvest duration, and keep notes local only. Use an established "
                 "local session account; this command changes no contribution permissions "
                 "and does not edit the library entry."
+            )
+        if options.get("include_direct_import"):
+            self.stdout.write(
+                "In the direct project, import the selected entry once and verify its link. "
+                "Unlink it and verify the culture remains. In the link project, verify "
+                "the existing-culture comparison still opens. Repeated seeding preserves "
+                "these manual decisions."
             )

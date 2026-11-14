@@ -177,6 +177,28 @@ class E2ECrossBrowserDatasetTest(TestCase):
         )
         return Project.objects.get(slug=self.scenario)
 
+    def test_setup_retains_taxonomy_links_after_seed_rows_are_restored(self) -> None:
+        from conftest import ensure_seeded_crop_species, snapshot_seeded_crop_species
+
+        snapshot = snapshot_seeded_crop_species()
+        CropSpecies.objects.all().delete()
+        ensure_seeded_crop_species(snapshot)
+        restored_count = CropSpecies.objects.count()
+        ensure_seeded_crop_species(snapshot)
+        self.assertEqual(CropSpecies.objects.count(), restored_count)
+
+        project = self._setup()
+        tomato = Crop.objects.get(project=project, name='Tomate', variety='')
+        self.assertIsNotNone(tomato.crop_species_id)
+        service = RotationService(project.id, language_code='de')
+        statuses = {
+            service.check_plan(plan).status for plan in
+            PlantingPlan.objects.filter(project=project, planting_date__year=2026)
+        }
+        self.assertEqual(
+            statuses, {STATUS_OK, STATUS_CONFLICT, STATUS_ACCEPTED, STATUS_HINT, STATUS_INFO},
+        )
+
     def test_setup_does_not_use_the_demo_seeding(self) -> None:
         with patch('farm.e2e_views.populate_demo_project') as populate_demo:
             project = self._setup()

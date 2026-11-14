@@ -138,7 +138,7 @@ Rules that cut across cells:
 | Unlinked crop, existing public entry | Select entry in publish wizard; compare fields; link without publishing local fields or varieties |
 | General import, existing project species | Explain match, compare, explicitly choose one-time copy or link; direct import/new returns 409 rather than creating a second general row |
 | One-time import into unlinked existing crop | Apply selected fields in place; retain/set provenance; no sync link, baseline or pins; later library changes produce no update action |
-| No matching project crop | Explicit copy/link decision; one-time new imports and implicit general parents retain provenance without synchronization |
+| No matching project crop | One click on Import and link creates a linked crop from library values, without another dialog; an implicit general parent is linked only when newly created |
 | Single stable unlinked candidate | Display selected target clearly; no write until explicit confirmation |
 | Name-only or multiple candidates | Require explicit target selection; name-only suggestions permit explicit new-copy choice |
 | All candidates already linked | Preserve links; explain existing update path; never replace or remove a link through one-time copy |
@@ -170,6 +170,18 @@ The browser stays open with its search and filters, shows the linked row and
 disables an up-to-date import. Resizing an open comparison also preserves the
 browser search, filters and selected entry. Later unpinned changes still enable the existing
 update workflow.
+
+For a new culture, the page and picker action explicitly say **Import and link**
+before the click. They preview matches in the captured active project and import
+directly only when none exist, with the displayed library version and expected
+project ID. Repeated clicks share one pending operation. The server rechecks
+general and variety matches under its existing project/source locks; a newly
+matching unlinked row requires comparison rather than creating a duplicate.
+Failures roll back crop creation and its related writes. The linked result is
+shown immediately, with the browser's search and filters retained. Unlinking
+through the existing action keeps the culture and its imported values.
+Explicit one-time copy APIs and existing-culture comparison choices remain
+available; a direct new import never publishes project values.
 
 The publish wizard's separate initial-link confirmation retains its private
 middle-column behavior. Older link clients that omit sharing fields also publish

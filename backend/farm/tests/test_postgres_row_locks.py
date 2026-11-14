@@ -54,7 +54,8 @@ class PlanTaskSynchronizationLockTest(TaskTimingFixture):
 
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize('establish_link', [True, False])
-def test_concurrent_general_library_imports_create_one_project_row(establish_link):
+@pytest.mark.parametrize('variety', ['', 'Concurrent synthetic variety'])
+def test_concurrent_library_imports_create_one_project_row(establish_link, variety):
     """The project lock serializes identity checks even before a crop exists."""
     from concurrent.futures import ThreadPoolExecutor
     from threading import Barrier
@@ -71,7 +72,7 @@ def test_concurrent_general_library_imports_create_one_project_row(establish_lin
     user = User.objects.create_user(username='concurrent-library-user')
     project = Project.objects.create(name='Concurrent library import', slug='concurrent-library')
     species = CropSpecies.objects.create(name='Concurrent synthetic Tomato')
-    entry = PublicCrop.objects.create(name=species.name, crop_species=species, variety='',
+    entry = PublicCrop.objects.create(name=species.name, crop_species=species, variety=variety,
                                      status='published', created_by=user)
     barrier = Barrier(2)
 
@@ -100,7 +101,7 @@ def test_concurrent_general_library_imports_create_one_project_row(establish_lin
         assert ids[0] == ids[1]
     else:
         assert ids.count(None) == 1
-    assert Crop.objects.filter(project=project, crop_species=species, variety='').count() == 1
+    assert Crop.objects.filter(project=project, crop_species=species, variety=variety).count() == 1
 
 
 @pytest.mark.django_db(transaction=True)

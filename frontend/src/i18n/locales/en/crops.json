@@ -978,7 +978,9 @@
       "emptyLibraryDescription": "The crop library lives from community contributions. Once suitable project crops are published, everyone can use and improve them here.",
       "noResultsTitle": "No matching public crop found"
     },
-    "importButton": "Import into project",
+    "importButton": "Import and link",
+    "importProjectChanged": "The active project has changed. Restart the import in the intended project.",
+    "importMatchChanged": "Matching crops in this project have changed. Import again to review the target and values.",
     "importUpdateButton": "Update in project",
     "importUpToDateTooltip": "Already up to date – no changes available",
     "importing": "Importing…",
@@ -1430,7 +1432,7 @@
     "commands": {
       "focusSearch": "Search the crop library (/)",
       "edit": "Edit public crop (Alt+E)",
-      "import": "Import crop into project (Alt+I)",
+      "import": "Import and link (Alt+I)",
       "previous": "Previous crop (Alt+Shift+←)",
       "next": "Next crop (Alt+Shift+→)",
       "keywords": {

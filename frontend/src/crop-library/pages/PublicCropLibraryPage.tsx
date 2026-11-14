@@ -68,6 +68,7 @@ import { useTranslation } from '../../i18n';
 import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
 import { getLanguageDisplayName, normalizeLanguageTag } from '../../i18n/languages';
 import { showGlobalSnackbar } from '../../utils/globalSnackbar';
+import { extractApiErrorCode } from '../../api/errors';
 import { LocalizedMarkdownNotes } from '../components/LocalizedMarkdownNotes';
 import { buildCropHierarchy, findSpeciesCrop, getCropSpeciesKey, type CropHierarchyItemKind } from '../../crops/cropHierarchy';
 import { filterCropGroupsForSearch } from '../../crops/cropGroupSearch';
@@ -196,6 +197,7 @@ export default function PublicCropLibraryPage() {
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [importingId, setImportingId] = useState<number | null>(null);
+  const importInFlight = useRef(false);
   const [linkImport, setLinkImport] = useState<{ publicCrop: PublicCrop; candidates: CropLinkCandidate[] } | null>(null);
   const [importConflict, setImportConflict] = useState<{
     publicCropId: number;
@@ -848,10 +850,12 @@ export default function PublicCropLibraryPage() {
     }, 0);
   }, [crops.length, loadStatus, selectedCropId]);
 
-  const loadCrops = useCallback(async (): Promise<void> => {
+  const loadCrops = useCallback(async (
+    { preserveExisting = false }: { preserveExisting?: boolean } = {},
+  ): Promise<void> => {
     const requestId = cropListRequestIdRef.current + 1;
     cropListRequestIdRef.current = requestId;
-    setLoadStatus('loading');
+    setLoadStatus(preserveExisting ? 'success' : 'loading');
     setLoadError('');
     try {
       const response = await publicCropAPI.listAll();
@@ -861,10 +865,13 @@ export default function PublicCropLibraryPage() {
         try {
           const selectedCropResponse = await publicCropAPI.get(currentSelectedCropId);
           results = [selectedCropResponse.data, ...results];
-        } catch {
+        } catch (error) {
           if (requestId !== cropListRequestIdRef.current) {
             return;
           }
+          const entryUnavailable = axios.isAxiosError(error)
+            && [403, 404, 410].includes(error.response?.status ?? 0);
+          if (preserveExisting && !entryUnavailable) throw error;
           updateSelectedCropId(null);
         }
       }
@@ -878,9 +885,13 @@ export default function PublicCropLibraryPage() {
         return;
       }
       setLoadError(t('library.loadError'));
-      setCrops([]);
-      updateSelectedCropId(null);
-      setLoadStatus('error');
+      if (preserveExisting) {
+        setLoadStatus('success');
+      } else {
+        setCrops([]);
+        updateSelectedCropId(null);
+        setLoadStatus('error');
+      }
     }
   }, [t, updateSelectedCropId]);
 
@@ -963,12 +974,41 @@ export default function PublicCropLibraryPage() {
     publicCropId: number,
     name: string,
     mode?: 'update' | 'new',
+    newEntry?: PublicCrop,
   ): Promise<void> => {
+    if (importInFlight.current) return;
+    importInFlight.current = true;
     setImportingId(publicCropId);
+    let expectedProjectId = 0;
     try {
-      const response = await publicCropAPI.importToProject(publicCropId, mode);
+      if (newEntry) {
+        expectedProjectId = Number(window.localStorage.getItem('activeProjectId'));
+        if (!Number.isInteger(expectedProjectId) || expectedProjectId <= 0) {
+          showGlobalSnackbar({ message: t('library.importProjectChanged'), severity: 'error' });
+          return;
+        }
+        const preview = await publicCropAPI.importPreview(publicCropId);
+        if (Number(window.localStorage.getItem('activeProjectId')) !== expectedProjectId) {
+          showGlobalSnackbar({ message: t('library.importProjectChanged'), severity: 'error' });
+          return;
+        }
+        if (preview.data.candidates.length) {
+          setLinkImport({ publicCrop: newEntry, candidates: preview.data.candidates });
+          return;
+        }
+      }
+      const response = newEntry
+        ? await publicCropAPI.importToProject(publicCropId, undefined, {
+          linkToLibrary: true, baseVersion: newEntry.version, expectedProjectId,
+        })
+        : await publicCropAPI.importToProject(publicCropId, mode);
+      if (newEntry && Number(window.localStorage.getItem('activeProjectId')) !== expectedProjectId) {
+        showGlobalSnackbar({ message: t('library.importProjectChanged'), severity: 'error' });
+        return;
+      }
       const importedCrop = response.data.crop;
       markProjectImport(publicCropId, importedCrop);
+      if (newEntry) await loadCrops({ preserveExisting: true });
       if (mode === 'update') {
         showGlobalSnackbar({ message: t('library.importUpdatedForced', { name }), severity: 'success' });
       } else if (mode === 'new') {
@@ -987,6 +1027,15 @@ export default function PublicCropLibraryPage() {
       }
       setImportConflict(null);
     } catch (error) {
+      const code = extractApiErrorCode(error);
+      if (code === 'public_crop_import_project_changed') {
+        showGlobalSnackbar({ message: t('library.importProjectChanged'), severity: 'error' });
+        return;
+      }
+      if (newEntry && (code === 'existing_crop_requires_link' || code === 'duplicate_general_crop')) {
+        showGlobalSnackbar({ message: t('library.importMatchChanged'), severity: 'error' });
+        return;
+      }
       if (axios.isAxiosError(error) && error.response?.status === 409) {
         const conflict = error.response.data as ImportPublicCropConfirmationRequiredError | undefined;
         if (conflict?.code === 'import_requires_confirmation') {
@@ -1003,28 +1052,17 @@ export default function PublicCropLibraryPage() {
       }
       showGlobalSnackbar({ message: t('library.importError'), severity: 'error' });
     } finally {
+      importInFlight.current = false;
       setImportingId(null);
     }
-  }, [markProjectImport, t]);
+  }, [loadCrops, markProjectImport, t]);
 
   const handleImport = useCallback(async (): Promise<void> => {
     if (!selectedCrop) {
       return;
     }
-    if (!selectedCrop.project_import_status) {
-      setImportingId(selectedCrop.id);
-      try {
-        const response = await publicCropAPI.importPreview(selectedCrop.id);
-        setLinkImport({ publicCrop: selectedCrop, candidates: response.data.candidates });
-        return;
-      } catch {
-        showGlobalSnackbar({ message: t('library.importError'), severity: 'error' });
-        return;
-      } finally {
-        setImportingId(null);
-      }
-    }
-    await performImport(selectedCrop.id, getCropTitle(selectedCrop, t, language));
+    await performImport(selectedCrop.id, getCropTitle(selectedCrop, t, language),
+      undefined, selectedCrop.project_import_status ? undefined : selectedCrop);
   }, [language, performImport, selectedCrop, t]);
 
   const closeImportConflictDialog = useCallback((): void => {
@@ -1532,9 +1570,9 @@ export default function PublicCropLibraryPage() {
       <Box sx={{ width: '100%' }}>
         <Stack spacing={2}>
           <GuestDemoNotice messageKey="cropLibraryNotice" />
-          {loadError ? <Alert severity="error" sx={loadRetryAlertSx} action={<LoadRetryButton disabled={isCropLoading} onClick={() => { void loadCrops(); }} />}>{loadError}</Alert> : null}
+          {loadError ? <Alert severity="error" sx={loadRetryAlertSx} action={<LoadRetryButton disabled={isCropLoading} onClick={() => { void loadCrops({ preserveExisting: crops.length > 0 }); }} />}>{loadError}</Alert> : null}
 
-          {!loadError ? <Box
+          {(!loadError || crops.length > 0) ? <Box
             ref={libraryAreaRef}
             sx={{
               display: 'flex',
@@ -2303,7 +2341,7 @@ export default function PublicCropLibraryPage() {
           crops={filteredLibraryCrops}
         loading={isCropLoading}
         error={loadStatus === 'error' ? loadError : ''}
-        onRetry={() => { void loadCrops(); }}
+        onRetry={() => { void loadCrops({ preserveExisting: crops.length > 0 }); }}
         selectedCropId={selectedCropId}
         selectedSpeciesViewKey={selectedSpeciesViewKey}
         listRef={cropListRef}

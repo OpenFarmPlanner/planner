@@ -196,17 +196,23 @@ unusable, for example because branch coverage is switched on before Python
 3.14, coverage falls back to the default core with a warning instead of
 failing.
 
-Switching to `loadscope` changed which tests share a worker, and the
-coverage report moved by eight lines: `find_demo_crop_species()`'s
-fallback in `farm/services/demo_project.py` only runs when the seeded crop
-species are missing. They go missing when an earlier `transaction=True`
-test on the same worker flushes the database, since the flush also removes
-the data migrations' seed rows. That order dependence predates this change:
-a test must not rely on the seeded catalogue being either present or
-absent. The plant-family list is the exception, because crops reference it by
-foreign key: `backend/conftest.py` re-seeds it before every test class when a
-flush removed it, and a transactional test that needs it between its own
-tests calls `ensure_seeded_plant_families()` itself (see
+Switching to `loadscope` changed which tests share a worker. A transaction
+or migration test flushes its database, including the data migrations' crop
+species and translations; later classes previously depended on which worker
+received them. This caused missing-species failures in translation tests and
+missing rotation statuses in the cross-browser dataset tests.
+
+`backend/conftest.py` snapshots species and translations from each worker's
+initially migrated test database, then restores that snapshot before a later
+class only if a flush removed all species. It does not read a second seed file
+or replace an existing catalogue. Tests that need an absent catalogue must
+clear it explicitly in their own setup. Restoration is covered by rebuilding
+the cross-browser dataset after deleting the taxonomy and checking its species
+links and rotation statuses.
+
+The plant-family list is also restored before a class when a flush removed it.
+A transactional test that needs it between its own tests still calls
+`ensure_seeded_plant_families()` itself (see
 `test_migrations_crop_family_plant_family_reference.py`).
 
 The backend job installs GNU gettext with `scripts/ci/install-gettext.sh`.
