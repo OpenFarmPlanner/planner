@@ -6,6 +6,24 @@ Two read views show one crop: the read mode of the crops page
 form (`CropForm.tsx`), the dedicated project companion editor and the
 library's edit dialog.
 
+## Split-view scrolling
+
+From `md` up, the project crop list and detail card scroll independently inside
+the available viewport height. `CropDetail` measures its document position and
+the trailing margins, padding and borders through `<main>`; the page wrapper's
+bottom margin and the shell's responsive bottom padding both count. Ancestor
+resize observation updates the measurement when the header or layout reflows.
+Document scroll is excluded from the position so returning from a scrolled
+mobile view does not enlarge the desktop panes.
+
+Very short desktop windows retain a 280px minimum usable pane height and allow
+document scrolling rather than clipping the search/actions. Phones and compact
+phone landscape keep their existing document-scrolling detail layout. Cards use
+`overflow-y: auto`, so a short detail has no scrollbar when its contents fit.
+`e2e/scrollbar-layout.spec.ts` verifies document overflow, independent pane
+scrolling with classic scrollbars, short windows, text scaling and the CSS
+viewport corresponding to 200% zoom.
+
 ## Section order
 
 The crop form is the canonical order, and both read views follow it with the
