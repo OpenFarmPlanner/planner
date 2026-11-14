@@ -2415,6 +2415,7 @@ describe('PublicCropLibraryPage', () => {
       const user = userEvent.setup();
       renderPage();
 
+      await user.click(await screen.findByRole('option', { name: 'Tomate' }));
       await user.click(await screen.findByRole('option', { name: 'Tomate (Roma)' }));
       const cropDetailHeader = screen.getByTestId('public-crop-detail-header');
       await screen.findByRole('heading', { level: 2, name: 'Tomate' });
@@ -2428,17 +2429,18 @@ describe('PublicCropLibraryPage', () => {
       expect(within(cropDetailHeader).queryByRole('button', { name: 'Im Projekt aktualisieren' })).not.toBeInTheDocument();
     });
 
-    it('switches the button to "Im Projekt aktualisieren" right after a first-time import succeeds', async () => {
-      publicCropApiMocks.list.mockResolvedValueOnce(paginated(publicCrops)).mockResolvedValue(paginated(publicCrops.map((crop, index) => index ? crop : { ...crop, project_import_status: { crop_id: 99, is_up_to_date: false, is_modified_from_source: true } })));
+    it('shows a neutral linked state immediately after a first-time link succeeds', async () => {
+      publicCropApiMocks.list.mockResolvedValueOnce(paginated(publicCrops)).mockResolvedValue(paginated(publicCrops.map((crop, index) => index ? crop : { ...crop, project_import_status: { crop_id: 99, is_up_to_date: true, is_modified_from_source: false } })));
       publicCropApiMocks.importToProject.mockResolvedValue({
         data: {
-          crop: { id: 99, name: 'Tomate', variety: 'Roma', crop_display_name: 'Tomate (Roma)', is_modified_from_source: false },
+          crop: { id: 99, name: 'Tomate', variety: 'Roma', crop_display_name: 'Tomate (Roma)', source_public_crop: publicCrops[0].id, source_public_version: publicCrops[0].version, is_modified_from_source: false, public_update_available: false },
           operation: 'created',
         },
       });
       const user = userEvent.setup();
       renderPage();
 
+      await user.click(await screen.findByRole('option', { name: 'Tomate' }));
       await user.click(await screen.findByRole('option', { name: 'Tomate (Roma)' }));
       const cropDetailHeader = screen.getByTestId('public-crop-detail-header');
       await user.click(within(cropDetailHeader).getByRole('button', { name: 'In Projekt importieren' }));
@@ -2446,7 +2448,7 @@ describe('PublicCropLibraryPage', () => {
       const decision = await screen.findByRole('dialog', { name: 'Werte aus der Kulturbibliothek übernehmen' });
       await user.click(within(decision).getByRole('radio', { name: 'Werte übernehmen und verknüpfen' }));
       await user.click(within(decision).getByRole('button', { name: 'Werte übernehmen und verknüpfen' }));
-      expect(await within(cropDetailHeader).findByRole('button', { name: 'Im Projekt aktualisieren' })).toBeInTheDocument();
+      expect(await within(cropDetailHeader).findByRole('button', { name: 'Bereits verknüpft' })).toBeDisabled();
     });
 
     it('disables the update button and explains why when the project copy already matches the library', async () => {
@@ -2460,9 +2462,10 @@ describe('PublicCropLibraryPage', () => {
       const user = userEvent.setup();
       renderPage();
 
+      await user.click(await screen.findByRole('option', { name: 'Tomate' }));
       await user.click(await screen.findByRole('option', { name: 'Tomate (Roma)' }));
       const cropDetailHeader = screen.getByTestId('public-crop-detail-header');
-      const updateButton = within(cropDetailHeader).getByRole('button', { name: 'Im Projekt aktualisieren' });
+      const updateButton = within(cropDetailHeader).getByRole('button', { name: 'Bereits verknüpft' });
       expect(updateButton).toBeDisabled();
 
       await user.hover(updateButton.parentElement as HTMLElement);
@@ -2490,9 +2493,10 @@ describe('PublicCropLibraryPage', () => {
       const user = userEvent.setup();
       renderPage();
 
+      await user.click(await screen.findByRole('option', { name: 'Tomate' }));
       await user.click(await screen.findByRole('option', { name: 'Tomate (Roma)' }));
       const cropDetailHeader = screen.getByTestId('public-crop-detail-header');
-      expect(within(cropDetailHeader).getByRole('button', { name: 'Im Projekt aktualisieren' })).toBeDisabled();
+      expect(within(cropDetailHeader).getByRole('button', { name: 'Bereits verknüpft' })).toBeDisabled();
 
       await user.click(within(cropDetailHeader).getByRole('button', { name: 'Bearbeiten' }));
       const editDialog = await screen.findByRole('dialog', { name: 'Öffentliche Kultur bearbeiten' });

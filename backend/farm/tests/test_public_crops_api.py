@@ -5778,6 +5778,304 @@ class PublicCropFieldSyncApiTest(DRFAPITestCase):
         self.assertFalse(response.data['public_update_available'])
         self.assertIsNone(response.data['public_publish_blocked_reason'])
 
+    def _initial_resolution(self, **overrides):
+        data = {
+            'public_crop_id': self.entry.pk,
+            'base_version': self.entry.version,
+            'expected_updated_at': self.kultur.updated_at.isoformat(),
+            'pull_fields': ['growth_duration_days'],
+            'push_fields': ['harvest_duration_days'],
+            'pin_fields': ['notes'],
+        }
+        return self.client.post(
+            f'/openfarmplanner/api/crops/{self.kultur.pk}/link-public-crop/',
+            {**data, **overrides}, format='json',
+        )
+
+    def test_initial_link_resolves_pull_explicit_share_and_private_pin_together(self):
+        self.kultur.harvest_duration_days = 27
+        self.kultur.save()
+        response = self._initial_resolution()
+        self.assertEqual(response.status_code, 200, response.data)
+        self.kultur.refresh_from_db()
+        self.entry.refresh_from_db()
+        self.assertEqual(self.kultur.growth_duration_days, 40)
+        self.assertEqual(self.entry.harvest_duration_days, 27)
+        self.assertEqual(self.entry.notes, 'Public notes')
+        self.assertEqual(self.kultur.notes, 'My notes')
+        self.assertEqual(self.kultur.library_pinned_fields, ['notes'])
+        self.assertEqual(self.kultur.source_public_crop_id, self.entry.pk)
+        self.assertEqual(self.kultur.source_public_version, self.entry.version)
+        self.assertFalse(self.kultur.is_modified_from_source)
+        self.assertFalse(response.data['public_update_available'])
+        self.assertEqual(response.data['public_publish_blocked_reason'], 'no_local_changes')
+        self.assertFalse(PublicCropChangeProposal.objects.filter(public_crop=self.entry).exists())
+
+    def test_initial_share_requires_consent_and_keeps_both_rows_unchanged_on_failure(self):
+        DocumentConsent.objects.filter(user=self.user).delete()
+        original_version = self.entry.version
+        response = self._initial_resolution()
+        self.assertEqual(response.status_code, 400, response.data)
+        self.assertEqual(response.data['code'], 'public_library_terms_required')
+        self.kultur.refresh_from_db()
+        self.entry.refresh_from_db()
+        self.assertIsNone(self.kultur.source_public_crop_id)
+        self.assertEqual(self.kultur.growth_duration_days, 55)
+        self.assertEqual(self.kultur.library_pinned_fields, [])
+        self.assertEqual(self.entry.version, original_version)
+
+    def test_initial_share_rejects_stale_local_snapshot_before_publishing(self):
+        response = self._initial_resolution(expected_updated_at='2000-01-01T00:00:00Z')
+        self.assertEqual(response.status_code, 409, response.data)
+        self.kultur.refresh_from_db()
+        self.entry.refresh_from_db()
+        self.assertIsNone(self.kultur.source_public_crop_id)
+        self.assertEqual(self.entry.harvest_duration_days, 20)
+
+    def test_initial_share_records_explicit_consent_and_rejects_moderated_contributors(self):
+        DocumentConsent.objects.filter(user=self.user).delete()
+        response = self._initial_resolution(accepted_public_library_terms=True)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertTrue(DocumentConsent.objects.filter(
+            user=self.user, document=DocumentConsent.DOCUMENT_PUBLIC_LIBRARY,
+        ).exists())
+        restricted = User.objects.create_user(username='restricted-link', password='testpass')
+        ProjectMembership.objects.create(user=restricted, project=self.project, role='admin')
+        self.client.force_authenticate(user=restricted)
+        # A separate unlinked target ensures permission, rather than its prior
+        # link, is what refuses the attempted publication.
+        self.kultur = Crop.objects.create(
+            project=self.project, name='Restricted test', notes='Private',
+        )
+        response = self._initial_resolution(accepted_public_library_terms=True)
+        self.assertEqual(response.status_code, 403, response.data)
+        self.assertEqual(response.data['code'], 'public_library_direct_edit_required')
+        self.kultur.refresh_from_db()
+        self.assertIsNone(self.kultur.source_public_crop_id)
+        self.assertFalse(PublicCropChangeProposal.objects.filter(public_crop=self.entry).exists())
+
+    def test_initial_share_and_consent_roll_back_if_the_final_consent_write_fails(self):
+        from unittest import mock
+
+        DocumentConsent.objects.filter(user=self.user).delete()
+        self.kultur.harvest_duration_days = 27
+        self.kultur.save()
+        original_version = self.entry.version
+        with mock.patch(
+            'farm.crops.views.crops.record_acceptance', side_effect=RuntimeError('rollback'),
+        ):
+            with self.assertRaises(RuntimeError):
+                self._initial_resolution(accepted_public_library_terms=True)
+        self.kultur.refresh_from_db()
+        self.entry.refresh_from_db()
+        self.assertIsNone(self.kultur.source_public_crop_id)
+        self.assertEqual(self.kultur.growth_duration_days, 55)
+        self.assertEqual(self.kultur.library_pinned_fields, [])
+        self.assertEqual(self.entry.harvest_duration_days, 20)
+        self.assertEqual(self.entry.version, original_version)
+        self.assertFalse(PublicCropRevision.objects.filter(public_crop=self.entry).exists())
+
+    def test_initial_share_rejects_missing_confirmations_and_invalid_selections(self):
+        cases = [
+            ({'base_version': None}, 409),
+            ({'expected_updated_at': None}, 409),
+            ({'base_version': self.entry.version + 1}, 409),
+            ({'push_fields': ['notes']}, 400),  # Overlaps its private pin.
+            ({'push_fields': ['display_color']}, 400),
+            ({'push_fields': ['expected_yield']}, 400),  # Empty local value.
+            ({'push_fields': 'notes'}, 400),
+        ]
+        for overrides, expected_status in cases:
+            with self.subTest(overrides=overrides):
+                response = self._initial_resolution(**overrides)
+                self.assertEqual(response.status_code, expected_status, response.data)
+                self.kultur.refresh_from_db()
+                self.entry.refresh_from_db()
+                self.assertIsNone(self.kultur.source_public_crop_id)
+                self.assertEqual(self.kultur.growth_duration_days, 55)
+                self.assertEqual(self.entry.harvest_duration_days, 20)
+
+    def test_initial_resolution_preserves_twelve_varieties_plans_and_live_inheritance(self):
+        from farm.models import PlantingPlan
+        from farm.services.crop_inheritance import resolve_crop_field
+
+        varieties = [Crop.objects.create(
+            project=self.project, name=self.entry.name, crop_species=self.species,
+            variety=f'Resolution variety {index}', growth_duration_days=105 if index == 0 else None,
+        ) for index in range(12)]
+        plans = [PlantingPlan.objects.create(
+            project=self.project, crop=variety, planting_date=datetime(2026, 5, 15).date(),
+        ) for variety in varieties]
+        self.kultur.harvest_duration_days = 27
+        self.kultur.save()
+        response = self._initial_resolution()
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(Crop.objects.filter(project=self.project).count(), 13)
+        self.assertEqual(list(PlantingPlan.objects.filter(pk__in=[p.pk for p in plans])
+                              .order_by('pk').values_list('crop_id', flat=True)),
+                         [variety.pk for variety in varieties])
+        for index, variety in enumerate(varieties):
+            variety = Crop.objects.get(pk=variety.pk)
+            self.assertEqual(variety.growth_duration_days, 105 if index == 0 else None)
+            self.assertEqual(
+                resolve_crop_field(variety, 'growth_duration_days'), 105 if index == 0 else 40,
+            )
+        self.kultur.refresh_from_db()
+        self.kultur.harvest_duration_days = 28
+        self.kultur.save()
+        self.assertTrue(self.kultur.is_modified_from_source)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.harvest_duration_days, 27)
+
+    def test_initial_germination_pins_ignore_only_their_compatibility_projection(self):
+        self.entry.germination_temperature_requirement = 'cold_stratification'
+        self.entry.germination_light_requirement = 'light'
+        self.entry.save()
+        for index, field in enumerate((
+            'germination_temperature_requirement', 'germination_light_requirement',
+            'germination_types',
+        )):
+            with self.subTest(field=field):
+                project = Project.objects.create(
+                    name=f'Pin compatibility {index}', slug=f'pin-{index}',
+                )
+                ProjectMembership.objects.create(user=self.user, project=project, role='admin')
+                self.client.defaults['HTTP_X_PROJECT_ID'] = str(project.pk)
+                self.kultur = Crop.objects.create(
+                    project=project, name=self.entry.name, growth_duration_days=40,
+                    harvest_duration_days=20, notes='Public notes',
+                    germination_temperature_requirement='cold_stratification',
+                    germination_light_requirement='light',
+                )
+                response = self._initial_resolution(
+                    pull_fields=[], push_fields=[], pin_fields=[field],
+                )
+                self.assertEqual(response.status_code, 200, response.data)
+                self.kultur.refresh_from_db()
+                self.assertFalse(self.kultur.is_modified_from_source)
+                replacement = {
+                    'germination_temperature_requirement': 'frost_treatment',
+                    'germination_light_requirement': 'dark',
+                    'germination_types': ['frost', 'dark'],
+                }[field]
+                setattr(self.kultur, field, replacement)
+                self.kultur.save()
+                self.kultur.refresh_from_db()
+                self.assertFalse(self.kultur.is_modified_from_source)
+                self.assertFalse(has_pending_public_crop_update(self.kultur, self.entry))
+                if field == 'germination_temperature_requirement':
+                    self.kultur.germination_light_requirement = 'dark'
+                elif field == 'germination_light_requirement':
+                    self.kultur.germination_temperature_requirement = 'frost_treatment'
+                else:
+                    self.kultur.growth_duration_days = 41
+                self.kultur.save()
+                self.kultur.refresh_from_db()
+                self.assertTrue(self.kultur.is_modified_from_source)
+
+    def _different_germination_requirements(self):
+        self.entry.germination_temperature_requirement = 'cold_stratification'
+        self.entry.germination_light_requirement = 'light'
+        self.entry.save()
+        self.kultur.germination_temperature_requirement = 'frost_treatment'
+        self.kultur.germination_light_requirement = 'dark'
+        self.kultur.save()
+
+    def test_initial_canonical_pin_survives_pulling_the_compatibility_list(self):
+        self._different_germination_requirements()
+        preview = self.client.get(
+            f'/openfarmplanner/api/crops/{self.kultur.pk}/public-sync/',
+            {'public_crop_id': self.entry.pk},
+        )
+        fields = [change['field'] for change in preview.data['changes']
+                  if change['field'] != 'germination_temperature_requirement']
+        fields.append('germination_types')
+        response = self._initial_resolution(
+            pull_fields=fields, push_fields=[], pin_fields=['germination_temperature_requirement'],
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.germination_temperature_requirement, 'frost_treatment')
+        self.assertEqual(self.kultur.germination_light_requirement, 'light')
+        self.assertEqual(self.kultur.library_pinned_fields, ['germination_temperature_requirement'])
+        self.assertFalse(self.kultur.is_modified_from_source)
+
+    def test_initial_sharing_cannot_overlap_a_pin_through_compatibility_fields(self):
+        self._different_germination_requirements()
+        for pins, shares in [
+            (['germination_temperature_requirement'], ['germination_types']),
+            (['germination_types'], ['germination_temperature_requirement']),
+        ]:
+            with self.subTest(pins=pins):
+                response = self._initial_resolution(
+                    pull_fields=[], push_fields=shares, pin_fields=pins,
+                )
+                self.assertEqual(response.status_code, 400, response.data)
+                self.kultur.refresh_from_db()
+                self.entry.refresh_from_db()
+                self.assertIsNone(self.kultur.source_public_crop_id)
+                self.assertEqual(
+                    self.entry.germination_temperature_requirement, 'cold_stratification',
+                )
+
+    def test_preview_uses_independent_germination_axes_for_unambiguous_legacy_values(self):
+        self._different_germination_requirements()
+        response = self.client.get(
+            f'/openfarmplanner/api/crops/{self.kultur.pk}/public-sync/',
+            {'public_crop_id': self.entry.pk},
+        )
+        fields = {change['field'] for change in response.data['changes']}
+        self.assertNotIn('germination_types', fields)
+        self.assertTrue({
+            'germination_temperature_requirement', 'germination_light_requirement',
+        }.issubset(fields))
+        response = self._initial_resolution(
+            pull_fields=['growth_duration_days'], push_fields=['germination_light_requirement'],
+            pin_fields=['notes', 'germination_temperature_requirement'],
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.kultur.refresh_from_db()
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.germination_temperature_requirement, 'cold_stratification')
+        self.assertEqual(self.entry.germination_light_requirement, 'dark')
+        self.assertEqual(self.kultur.germination_temperature_requirement, 'frost_treatment')
+        self.assertFalse(self.kultur.is_modified_from_source)
+        PublicCrop.objects.filter(pk=self.entry.pk).update(
+            germination_temperature_requirement='', germination_types=['cold', 'frost', 'dark'],
+        )
+        response = self.client.get(
+            f'/openfarmplanner/api/crops/{self.kultur.pk}/public-sync/',
+            {'public_crop_id': self.entry.pk},
+        )
+        legacy = next(change for change in response.data['changes']
+                      if change['field'] == 'germination_types')
+        self.assertFalse(legacy['pinned'])  # One private axis does not pin the other one.
+
+    def test_initial_shares_cannot_be_changed_by_pulling_an_overlapping_legacy_projection(self):
+        self._different_germination_requirements()
+        response = self._initial_resolution(
+            pull_fields=['germination_types'], push_fields=['germination_temperature_requirement'],
+            pin_fields=[],
+        )
+        self.assertEqual(response.status_code, 400, response.data)
+        self.kultur.refresh_from_db()
+        self.entry.refresh_from_db()
+        self.assertIsNone(self.kultur.source_public_crop_id)
+        self.assertEqual(self.entry.germination_temperature_requirement, 'cold_stratification')
+
+    def test_copy_only_import_rejects_explicit_shares(self):
+        response = self.client.post(
+            f'/openfarmplanner/api/crops/{self.kultur.pk}/copy-public-crop/',
+            {'public_crop_id': self.entry.pk, 'base_version': self.entry.version,
+             'expected_updated_at': self.kultur.updated_at.isoformat(),
+             'pull_fields': ['growth_duration_days'], 'push_fields': ['harvest_duration_days']},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 400, response.data)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.growth_duration_days, 55)
+        self.assertIsNone(self.kultur.source_public_crop_id)
+
     def test_link_rejects_fields_outside_the_compared_set(self):
         response = self._link(self.kultur, ['display_color'])
 
@@ -6662,7 +6960,8 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
             'stratification_temperature_min_c', 'stratification_temperature_max_c',
         ]
         changes = self._sync_preview(self.kultur)
-        self.assertTrue(set(fields).issubset(changes))
+        self.assertTrue((set(fields) - {'germination_types'}).issubset(changes))
+        self.assertNotIn('germination_types', changes)
         response = self._sync(self.kultur, pull_fields=fields)
         self.assertEqual(response.status_code, 200, response.data)
         self.kultur.refresh_from_db()

@@ -77,7 +77,7 @@ function Crops() {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { blockInGuestDemo } = useGuestDemoGuard();
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
   const setTopbarContextActions = outletContext?.setTopbarContextActions;
@@ -882,6 +882,7 @@ function Crops() {
       />
 
       {importLink ? <ExistingCropLinkDialog publicCrop={importLink.publicCrop} candidates={importLink.candidates}
+        termsAlreadyAccepted={Boolean(user?.public_library_terms_accepted)} onTermsAccepted={refreshUser}
         onClose={() => setImportLink(null)} onLinked={(crop) => void handleImportLinkSuccess(crop)} /> : null}
       <ConfirmationDialog
         open={Boolean(deleteDialogCrop)}

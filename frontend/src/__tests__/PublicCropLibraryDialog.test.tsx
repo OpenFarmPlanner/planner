@@ -82,6 +82,34 @@ function renderDialog(props: Parameters<typeof PublicCropLibraryDialog>[0]): Ret
 }
 
 describe('PublicCropLibraryDialog', () => {
+  it('preserves search and the selected entry when a comparison crosses a responsive breakpoint', async () => {
+    mockDesktopViewport();
+    const props = { open: true, loading: false, error: null, crops: [crop], importingId: null,
+      onClose: vi.fn(), onSearch: vi.fn(), onImport: vi.fn() };
+    const view = renderDialog(props);
+    const user = userEvent.setup();
+    await user.type(screen.getByRole('textbox'), 'Tomate');
+    await user.click(screen.getByRole('button', { name: i18n.t('filters.openAdvanced', { ns: 'crops' }) }));
+    await user.type(screen.getByLabelText(i18n.t('filters.growthDaysMin', { ns: 'crops' })), '1');
+    await user.keyboard('{Escape}');
+    await user.click(await screen.findByRole('option', { name: 'Tomate (Roma)' }));
+    mockMobileViewport();
+    view.rerender(<MemoryRouter><PublicCropLibraryDialog {...props} /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByRole('textbox')).toHaveValue('Tomate'));
+    expect(screen.getByRole('button', { name: 'In Projekt importieren' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: i18n.t('filters.openAdvanced', { ns: 'crops' }) }));
+    expect(screen.getByLabelText(i18n.t('filters.growthDaysMin', { ns: 'crops' }))).toHaveValue(1);
+  });
+  it('shows a neutral linked action and prevents redundant import of an up-to-date row', async () => {
+    const onImport = vi.fn();
+    renderDialog({ open: true, loading: false, error: null, importingId: null,
+      crops: [{ ...crop, project_import_status: {
+        crop_id: 9, crop_name: 'Tomate (Roma)', is_modified_from_source: false, is_up_to_date: true,
+      } }], initialSelectedId: crop.id, onClose: vi.fn(), onSearch: vi.fn(), onImport });
+    const linked = await screen.findByRole('button', { name: 'Bereits verknüpft' });
+    expect(linked).toBeDisabled();
+    expect(onImport).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     mockMobileViewport();
     window.sessionStorage.clear();

@@ -491,11 +491,13 @@ def get_library_pinned_fields(crop: Crop) -> set[str]:
     return {field for field in raw if isinstance(field, str)}
 
 
-def _effective_library_pins(crop: Crop) -> set[str]:
-    """Keep a canonical pin from leaking through its deprecated projection."""
+def effective_library_pinned_fields(
+    crop: Crop, *, fields: Sequence[str] | None = None,
+) -> set[str]:
+    """Stored or proposed pins, including their deprecated compatibility projection."""
     from farm.germination import REQUIREMENT_LEGACY_VALUES
 
-    pinned = get_library_pinned_fields(crop)
+    pinned = get_library_pinned_fields(crop) if fields is None else set(fields)
     result = set(pinned)
     if 'germination_types' in pinned:
         result.update(REQUIREMENT_LEGACY_VALUES)
@@ -966,7 +968,9 @@ def build_public_crop_payload(
         general = source_crop or get_general_crop(crop)
         payload['specific_properties'] = (
             copy.deepcopy(general.specific_properties)
-            if general and 'specific_properties' not in _effective_library_pins(general) else {}
+            if general and (
+                'specific_properties' not in effective_library_pinned_fields(general)
+            ) else {}
         )
     if public_variety is not None:
         payload['variety'] = public_variety
@@ -1005,7 +1009,7 @@ def build_public_crop_payload(
     # values, so it keeps its own — untouched from _copy_fields above.
     # Locally pinned values are never shared: a create falls back to the
     # entry's default, an update keeps the entry's value.
-    for field in _effective_library_pins(crop):
+    for field in effective_library_pinned_fields(crop):
         payload.pop(field, None)
     return payload
 
@@ -1218,8 +1222,11 @@ def link_project_crop_to_public_reference(
     expected_updated_at: str | None = None,
     pin_fields: Sequence[str] = (),
     establish_link: bool = True,
+    push_fields: Sequence[str] = (),
+    user: User | None = None,
+    companion_note_language: str | None = None,
 ) -> Crop:
-    """Link a private crop to a published public crop without publishing a duplicate.
+    """Resolve a private crop's explicit initial decisions and establish its link.
 
     This is a one-time baseline comparison (crop-as-linked vs. public
     source), not the same check as ``Crop._flag_source_divergence``, which
@@ -1227,11 +1234,11 @@ def link_project_crop_to_public_reference(
     detect edits made after an import. There is no "previous row" yet here.
 
     ``pull_fields`` is the user's per-field decision from the link
-    confirmation: those fields take the entry's values (see
-    :func:`_pull_public_crop_fields`), every other difference is the user's own
-    value, which stays local. With a decision the baseline is
-    always the entry's current version, so a remaining difference reads as a
-    local change to contribute. Linking and pulling happen in one transaction.
+    confirmation: those fields take the entry's values. Explicit ``push_fields``
+    publish only their selected values, and ``pin_fields`` retain private values
+    against future synchronization. Unnamed differences remain local changes.
+    The baseline is the resulting public version. All decisions, revisions and
+    the link are committed together using the ordinary field-by-field sync.
 
     ``establish_link=False`` copies only the confirmed fields and preserves
     provenance without creating a sync link, baseline or pins. It requires
@@ -1244,6 +1251,11 @@ def link_project_crop_to_public_reference(
     :func:`has_pending_public_crop_update` still offers the pull ("Kultur
     aktualisieren") flow.
     """
+    if push_fields and (
+        not establish_link or pull_fields is None or type(base_version) is not int
+        or not expected_updated_at
+    ):
+        raise CropLinkConflictError('invalid_link_confirmation')
     if not establish_link and (
         pull_fields is None or type(base_version) is not int
         or not expected_updated_at or pin_fields
@@ -1297,12 +1309,20 @@ def link_project_crop_to_public_reference(
             crop.save()
             sync_crop_species_across_crop_group(crop)
             return crop
-        if set(pin_fields) & set(pull_fields or ()):
-            raise PublicCropSyncFieldsError(sorted(set(pin_fields) & set(pull_fields or ())))
+        if pull_fields is not None:
+            # Explicit initial decisions use the same validation, normalization,
+            # direct-edit and baseline rules as a later field-by-field sync.
+            crop.origin_type = Crop.ORIGIN_IMPORTED
+            result = sync_crop_with_public_entry(
+                crop=crop, public_crop=public_crop, user=user,
+                pull_fields=pull_fields, push_fields=push_fields, pin_fields=pin_fields,
+                base_version=base_version, initial_link=True,
+                companion_note_language=companion_note_language,
+            )
+            sync_crop_species_across_crop_group(result.crop)
+            return result.crop
         validate_library_pinned_fields(crop, pin_fields, is_linked=True)
         crop.library_pinned_fields = sorted(set(pin_fields))
-        if pull_fields is not None:
-            _pull_public_crop_fields(crop=crop, public_crop=public_crop, fields=pull_fields)
         is_modified = any(
             getattr(crop, field) != source_payload.get(_PAYLOAD_FIELD_BY_ATTNAME.get(field, field))
             for field in tracked_fields
@@ -1312,11 +1332,7 @@ def link_project_crop_to_public_reference(
         # species-invariant-field exclusions has_pending_public_crop_update() will
         # see later (public_crop_field_changes reads crop.crop_species_id).
         remaining_changes = public_crop_field_changes(crop, public_crop)
-        if pull_fields is not None:
-            crop.source_public_version = public_crop.version
-            is_modified = bool(_public_crop_sync_changes(crop, public_crop))
-        else:
-            crop.source_public_version = None if remaining_changes else public_crop.version
+        crop.source_public_version = None if remaining_changes else public_crop.version
         crop.origin_type = Crop.ORIGIN_IMPORTED
         errors = crop_specific_property_errors(crop)
         if errors:
@@ -1638,14 +1654,25 @@ def build_public_crop_sync_preview(
     without a local value can only take the library's value: it is neither
     ``pushable`` nor ``pinnable`` (reason ``empty``).
     """
+    from farm.germination import REQUIREMENT_LEGACY_VALUES
+
     pushable = public_crop_pushable_sync_fields(
         crop=crop, public_crop=public_crop, user=user, require_moderation=require_moderation,
     )
-    pinned = _effective_library_pins(crop)
+    pinned = effective_library_pinned_fields(crop)
+    explicit_pins = get_library_pinned_fields(crop)
     preview = []
     for field, local_value, public_value in _public_crop_sync_changes(
         crop, public_crop, include_pinned=True,
     ):
+        if field == 'germination_types' and not any(
+            sum(kind in (value or []) for kind in axis.values()) > 1
+            for value in (local_value, public_value)
+            for axis in REQUIREMENT_LEGACY_VALUES.values()
+        ):
+            # Canonical axes already express this decision independently.
+            # Preserve ambiguous historical flags as a reviewable difference.
+            continue
         pin_blocked_reason = library_pin_blocked_reason(
             _sync_comparison_crop(crop, public_crop), field, local_value,
         )
@@ -1660,7 +1687,7 @@ def build_public_crop_sync_preview(
             public_value=_json_safe(public_value),
             pushable=push_blocked_reason is None,
             push_blocked_reason=push_blocked_reason,
-            pinned=field in pinned,
+            pinned=field in pinned and (field != 'germination_types' or field in explicit_pins),
             pinnable=pin_blocked_reason is None,
             pin_blocked_reason=pin_blocked_reason,
         ))
@@ -1679,7 +1706,7 @@ def _pull_public_crop_fields(
     """
     remote = _copy_fields(public_crop)
     effective = _resolved_copy_fields(crop)
-    pinned = _effective_library_pins(crop)
+    pinned = effective_library_pinned_fields(crop)
     written = [
         field for field in fields
         if field != COMPANIONS_FIELD and field not in pinned and effective[field] != remote[field]
@@ -1734,6 +1761,7 @@ def sync_crop_with_public_entry(
     origin_api: bool = False,
     origin_declared_agent: bool = False,
     companion_note_language: str | None = None,
+    initial_link: bool = False,
 ) -> PublicCropSyncResult:
     """Resolve every difference between a linked crop and its entry in one step.
 
@@ -1748,8 +1776,11 @@ def sync_crop_with_public_entry(
     fields the decision does not name stay pinned. Nothing to push creates no
     public version. Afterwards the crop's baseline is the entry's resulting
     version; a pin change is saved through :meth:`Crop.save`, so it shows in
-    the project history.
+    the project history. ``initial_link`` also saves the caller's new link,
+    species and origin metadata when there are no pulls or changed pins.
     """
+    from farm.germination import REQUIREMENT_LEGACY_VALUES
+
     # Pins first, so a field that may never be kept locally on this crop is
     # rejected with the pin code even where the sync does not compare it.
     not_pinnable = set(pin_fields) - set(library_pinnable_fields(crop))
@@ -1761,6 +1792,11 @@ def sync_crop_with_public_entry(
     overlap = sorted(
         (set(pull_fields) & set(push_fields))
         | (set(pin_fields) & (set(pull_fields) | set(push_fields)))
+        | (effective_library_pinned_fields(crop, fields=pin_fields) & set(push_fields))
+        | (set(push_fields) & set(REQUIREMENT_LEGACY_VALUES)
+           if 'germination_types' in pull_fields else set())
+        | (set(pull_fields) & set(REQUIREMENT_LEGACY_VALUES)
+           if 'germination_types' in push_fields else set())
     )
     if overlap:
         raise PublicCropSyncFieldsError(overlap)
@@ -1772,14 +1808,15 @@ def sync_crop_with_public_entry(
         raise PublicCropSyncFieldsError(empty_pushes, code='public_crop_sync_field_empty')
     previous_pins = get_library_pinned_fields(crop)
     next_pins = (previous_pins - set(pull_fields) - set(push_fields)) | set(pin_fields)
-    # A legacy decision names the whole pair. A new single-axis decision
-    # releases that part of an old whole-list pin and retains the other value.
-    from farm.germination import REQUIREMENT_LEGACY_VALUES
-
+    # Explicit new pins win over compatibility pulls. A single-axis decision
+    # can release that part of a previous whole-list pin, retaining the other.
     decided = set(pull_fields) | set(push_fields)
     if 'germination_types' in decided:
-        next_pins.difference_update(REQUIREMENT_LEGACY_VALUES)
-    if 'germination_types' in previous_pins and decided.intersection(REQUIREMENT_LEGACY_VALUES):
+        next_pins.difference_update(set(REQUIREMENT_LEGACY_VALUES) - set(pin_fields))
+    if (
+        'germination_types' in previous_pins and 'germination_types' not in pin_fields
+        and decided.intersection(REQUIREMENT_LEGACY_VALUES)
+    ):
         next_pins.discard('germination_types')
         next_pins.update(
             field for field in REQUIREMENT_LEGACY_VALUES
@@ -1807,7 +1844,7 @@ def sync_crop_with_public_entry(
         crop.source_public_crop = locked
         if pull_fields:
             _pull_public_crop_fields(crop=crop, public_crop=locked, fields=pull_fields)
-        if pull_fields or pins_changed:
+        if pull_fields or pins_changed or initial_link:
             errors = crop_specific_property_errors(crop)
             if errors:
                 raise ApiValidationError(errors)
@@ -3400,7 +3437,7 @@ def _apply_public_crop_update(
     remaining_pins = (pinned - set(unpin_fields)) | set(pin_fields)
     crop.library_pinned_fields = sorted(remaining_pins)
     payload = build_project_crop_payload(public_crop)
-    for field in _effective_library_pins(crop):
+    for field in effective_library_pinned_fields(crop):
         payload.pop(field, None)
     # `display_color` is a project-local choice — kept out of the update diff
     # (see `_compared_public_update_fields`), so a pull must not silently
@@ -3497,7 +3534,7 @@ def _compared_public_update_fields(crop: Crop, *, include_pinned: bool = False) 
     if (crop.variety or '').strip() and crop.crop_species_id:
         excluded |= set(PUBLIC_SPECIES_INVARIANT_FIELDS)
     if not include_pinned:
-        excluded |= _effective_library_pins(crop)
+        excluded |= effective_library_pinned_fields(crop)
     fields = [*CROP_COPY_FIELDS, COMPANIONS_FIELD] if is_kultur(crop) else CROP_COPY_FIELDS
     return [field for field in fields if field not in excluded]
 
@@ -3664,7 +3701,7 @@ def resolve_public_publish_block(
             return 'no_local_changes'
         return None
 
-    pinned = _effective_library_pins(crop)
+    pinned = effective_library_pinned_fields(crop)
     local = _comparable_copy_fields(_resolved_copy_fields(crop, index))
     remote = _comparable_copy_fields(_copy_fields(owned_public_crop))
     if all(local[field] == remote[field] for field in local if field not in pinned):

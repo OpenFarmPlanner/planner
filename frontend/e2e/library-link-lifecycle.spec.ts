@@ -1,5 +1,6 @@
 import germanCrops from '../src/i18n/locales/de/crops.json' with { type: 'json' };
 import frenchCrops from '../src/i18n/locales/fr/crops.json' with { type: 'json' };
+import frenchNavigation from '../src/i18n/locales/fr/navigation.json' with { type: 'json' };
 import { expect, test, type Page } from '@playwright/test';
 import { apiRequest, loginWithDeterministicProject } from './utils';
 
@@ -153,8 +154,9 @@ test('correcting the crop species to one that already has the variety shows the 
   await expect(dialog).toBeVisible();
 });
 
-for (const entryPoint of ['publish', 'import', 'copy'] as const) {
+for (const entryPoint of ['publish', 'import', 'copy', 'resolve', 'resolve-browser'] as const) {
   test(`existing culture imports through ${entryPoint} without replacing IDs or publishing local notes`, async ({ page, request }, testInfo) => {
+    const resolvesDifferences = entryPoint === 'resolve' || entryPoint === 'resolve-browser';
     await loginWithDeterministicProject(page, request, `library-existing-${entryPoint}-${Date.now()}`, { loginAsAdmin: true, libraryModerator: true });
     const species = await apiRequest<CropSpecies>(page, 'POST', '/crop-species/', { name: `Synthetic Tomato ${entryPoint} ${Date.now()}` });
     await apiRequest(page, 'POST', `/crop-species/${species.id}/approve/`, {
@@ -163,6 +165,7 @@ for (const entryPoint of ['publish', 'import', 'copy'] as const) {
     const source = await apiRequest<CropRow>(page, 'POST', '/crops/', {
       name: species.name, variety: '', crop_species: species.id,
       growth_duration_days: 80, harvest_duration_days: 20,
+      ...(resolvesDifferences ? { germination_temperature_requirement: 'cold_stratification', germination_light_requirement: 'light' } : {}),
     });
     const published = await apiRequest<PublishResponse>(page, 'POST', `/crops/${source.id}/publish-public/`, {
       accepted_public_library_terms: true, crop_species_id: species.id, publish_as_general: true,
@@ -174,7 +177,8 @@ for (const entryPoint of ['publish', 'import', 'copy'] as const) {
     await loginWithDeterministicProject(page, request, `library-target-${entryPoint}-${Date.now()}`, { loginAsAdmin: true });
     const local = await apiRequest<CropRow>(page, 'POST', '/crops/', {
       name: species.name, variety: '', crop_species: species.id,
-      growth_duration_days: 90, harvest_duration_days: entryPoint === 'copy' ? 30 : 20, notes: 'Private synthetic note',
+      growth_duration_days: 90, harvest_duration_days: entryPoint === 'copy' || resolvesDifferences ? 30 : 20, notes: 'Private synthetic note',
+      ...(resolvesDifferences ? { germination_temperature_requirement: 'frost_treatment', germination_light_requirement: 'dark' } : {}),
     });
     const varieties: CropRow[] = [];
     for (let index = 0; index < 12; index++) varieties.push(await apiRequest<CropRow>(page, 'POST', '/crops/', {
@@ -190,15 +194,34 @@ for (const entryPoint of ['publish', 'import', 'copy'] as const) {
       season: season.id, crop: variety.id, bed: bed.id, planting_date: '2026-03-01',
       cultivation_type: 'direct_sowing',
     });
+    // The fixture switches accounts; old background requests correctly lose access.
+    // Track the import flow after the new account and project have settled.
+    await page.waitForLoadState('networkidle');
+    const failures = trackFailedApiCalls(page);
     const labels = entryPoint !== 'publish' ? frenchCrops : germanCrops;
     if (entryPoint !== 'publish') {
       await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'fr' });
       await page.evaluate(() => localStorage.setItem('ui.language', 'fr'));
-      await page.goto(`/app/crop-library?cropId=${published.public_crop.id}`);
-      await page.getByRole('button', { name: labels.library.importButton }).first().click();
+      if (entryPoint === 'resolve-browser') {
+        await page.goto(`/app/crops?cropId=${local.id}`);
+        await page.getByRole('button', { name: frenchNavigation.cropActions.openImportExport, exact: true }).click();
+        await page.getByRole('menuitem', { name: labels.library.openButton, exact: true }).click();
+        const browser = page.getByRole('dialog', { name: labels.library.dialogTitle, exact: true });
+        await browser.getByRole('textbox').fill(species.name);
+        await browser.getByRole('button', { name: labels.filters.openAdvanced, exact: true }).click();
+        await page.getByLabel(labels.filters.growthDaysMin, { exact: true }).fill('1');
+        await page.keyboard.press('Escape');
+        await browser.getByRole('option', { name: species.name, exact: true }).click();
+        await browser.getByRole('button', { name: labels.library.importButton, exact: true }).click();
+      } else {
+        await page.goto(`/app/crop-library?cropId=${published.public_crop.id}`);
+        if (resolvesDifferences) await page.getByRole('textbox').first().fill(species.name);
+        await page.getByRole('button', { name: labels.library.importButton }).first().click();
+      }
       await page.getByRole('combobox', { name: labels.library.linkExisting.localTarget }).click();
       await page.getByRole('option', { name: species.name, exact: true }).click();
-      if (entryPoint === 'import') await page.getByRole('radio', { name: labels.library.importDecision.link, exact: true }).click();
+      if (entryPoint === 'copy') await page.getByRole('radio', { name: labels.library.importDecision.copy, exact: true }).click();
+      else await expect(page.getByRole('radio', { name: labels.library.importDecision.link, exact: true })).toBeChecked();
     } else {
       await page.goto(`/app/crops?cropId=${local.id}`);
       await page.getByTestId('crop-detail-publish-action').click();
@@ -230,6 +253,22 @@ for (const entryPoint of ['publish', 'import', 'copy'] as const) {
       await page.getByRole('radio', { name: labels.library.importDecision.copy, exact: true }).click();
       await choose('growth_duration_days', labels.library.linkExisting.takeLibrary);
     }
+    if (resolvesDifferences) {
+      await expect(page.getByTestId('public-crop-sync-row-germination_types')).toHaveCount(0);
+      await expect(page.getByTestId('public-crop-sync-row-germination_temperature_requirement')).toContainText(labels.germination.fields.germination_temperature_requirement);
+      await expect(page.getByTestId('public-crop-sync-row-germination_light_requirement')).toContainText(labels.germination.fields.germination_light_requirement);
+      const privateRequirement = page.getByTestId('public-crop-sync-row-germination_temperature_requirement').getByRole('radio', { name: labels.library.sync.chooseLocal, exact: true });
+      await privateRequirement.focus();
+      await privateRequirement.press('Space');
+      await expect(privateRequirement).toBeChecked();
+      const share = page.getByTestId('public-crop-sync-row-harvest_duration_days').getByRole('radio', { name: labels.library.sync.chooseMine, exact: true });
+      await share.focus();
+      await share.press('Space');
+      await expect(share).toBeChecked();
+      await expect(confirm).toBeDisabled();
+      await page.getByRole('checkbox', { name: labels.library.publishConfirm.acceptLicense, exact: true }).check();
+      await expect(confirm).toBeEnabled();
+    }
     for (const viewport of [{ width: 375, height: 800 }, { width: 768, height: 900 },
       { width: 1024, height: 900 }, { width: 1440, height: 900 }, { width: 800, height: 375 }]) {
       await page.setViewportSize(viewport);
@@ -242,16 +281,55 @@ for (const entryPoint of ['publish', 'import', 'copy'] as const) {
       await expect(localOption).toBeInViewport();
       await page.screenshot({ path: testInfo.outputPath(`${entryPoint}-${viewport.width}.png`) });
     }
+    if (resolvesDifferences) {
+      for (const viewport of [{ width: 375, height: 800 }, { width: 800, height: 375 }]) {
+        await page.setViewportSize(viewport);
+        await page.getByTestId('public-crop-sync-row-germination_temperature_requirement').scrollIntoViewIfNeeded();
+        await page.screenshot({ path: testInfo.outputPath(`${entryPoint}-germination-${viewport.width}.png`) });
+      }
+    }
     await confirm.click();
     await expect(confirm).not.toBeVisible();
-    const linked = await apiRequest<{ id: number; source_public_crop: number | null; growth_duration_days: number; harvest_duration_days: number; notes: string; library_pinned_fields: string[] }>(page, 'GET', `/crops/${local.id}/`);
+    if (resolvesDifferences) {
+      await expect(page.getByRole('button', { name: labels.library.linkExisting.alreadyLinked, exact: true })).toBeDisabled();
+      await page.setViewportSize({ width: 1440, height: 900 });
+      if (entryPoint === 'resolve-browser') {
+        const browser = page.getByRole('dialog', { name: labels.library.dialogTitle, exact: true });
+        await expect(browser).toBeVisible();
+        await expect(browser.getByRole('textbox')).toHaveValue(species.name);
+        await browser.getByRole('button', { name: labels.filters.openAdvanced, exact: true }).click();
+        await expect(page.getByLabel(labels.filters.growthDaysMin, { exact: true })).toHaveValue('1');
+        await page.keyboard.press('Escape');
+        await browser.getByRole('option', { name: species.name, exact: true }).click();
+      } else {
+        await expect(page.getByRole('textbox').first()).toHaveValue(species.name);
+        await page.getByRole('option', { name: species.name, exact: true }).click();
+      }
+      await expect(page.getByRole('button', { name: labels.library.linkExisting.alreadyLinked, exact: true })).toBeDisabled();
+      for (const viewport of [{ width: 375, height: 800 }, { width: 768, height: 900 },
+        { width: 1024, height: 900 }, { width: 1440, height: 900 }, { width: 800, height: 375 }]) {
+        await page.setViewportSize(viewport);
+        await expect(page.getByRole('button', { name: labels.library.linkExisting.alreadyLinked, exact: true })).toBeDisabled();
+        await page.screenshot({ path: testInfo.outputPath(`${entryPoint}-linked-${viewport.width}.png`) });
+      }
+      await page.goto(`/app/crops?cropId=${local.id}`);
+      await expect(page.getByTestId('crop-detail-library-status')).toContainText(labels.library.publicUpdate.markerUpToDateLabel);
+      await page.reload();
+      await expect(page.getByTestId('crop-detail-library-status')).toContainText(labels.library.publicUpdate.markerUpToDateLabel);
+    }
+    const linked = await apiRequest<{ id: number; source_public_crop: number | null; growth_duration_days: number; harvest_duration_days: number; notes: string; library_pinned_fields: string[]; germination_temperature_requirement: string; germination_light_requirement: string }>(page, 'GET', `/crops/${local.id}/`);
     expect(linked.id).toBe(local.id);
     expect(linked.source_public_crop).toBe(entryPoint === 'copy' ? null : published.public_crop.id);
     expect(linked.notes).toBe('Private synthetic note');
     expect(linked.growth_duration_days).toBe(80);
-    expect(linked.harvest_duration_days).toBe(entryPoint === 'copy' ? 30 : 20);
+    expect(linked.harvest_duration_days).toBe(entryPoint === 'copy' || resolvesDifferences ? 30 : 20);
     if (entryPoint === 'copy') expect(linked.library_pinned_fields).toEqual([]);
     else expect(linked.library_pinned_fields).toContain('notes');
+    if (resolvesDifferences) {
+      expect(linked.library_pinned_fields).toContain('germination_temperature_requirement');
+      expect(linked.germination_temperature_requirement).toBe('frost_treatment');
+      expect(linked.germination_light_requirement).toBe('light');
+    }
     const savedRows = await apiRequest<{ results: (CropRow & { crop_species: number; source_public_crop: number | null })[] }>(page, 'GET', '/crops/?page_size=500');
     const group = savedRows.results.filter(crop => crop.crop_species === species.id);
     expect(group).toHaveLength(13);
@@ -259,8 +337,17 @@ for (const entryPoint of ['publish', 'import', 'copy'] as const) {
     expect(group.filter(crop => crop.variety).every(crop => crop.source_public_crop === null)).toBe(true);
     const preservedPlan = await apiRequest<{ crop: number }>(page, 'GET', `/planting-plans/${plan.id}/`);
     expect(preservedPlan.crop).toBe(variety.id);
-    const entry = await apiRequest<{ notes: string }>(page, 'GET', `/public-crops/${published.public_crop.id}/`);
+    const entry = await apiRequest<{ notes: string; harvest_duration_days: number; germination_temperature_requirement: string; project_import_status: { is_up_to_date: boolean } }>(page, 'GET', `/public-crops/${published.public_crop.id}/`);
     expect(entry.notes).not.toContain('Private synthetic note');
+    expect(entry.harvest_duration_days).toBe(resolvesDifferences ? 30 : 20);
+    if (resolvesDifferences) {
+      expect(entry.germination_temperature_requirement).toBe('cold_stratification');
+      expect(entry.project_import_status.is_up_to_date).toBe(true);
+      await apiRequest(page, 'PATCH', `/crops/${local.id}/`, { growth_duration_days: 81 });
+      await page.reload();
+      await expect(page.getByTestId('crop-detail-publish-action')).toBeVisible();
+    }
+    expect(failures).toEqual([]);
   });
 }
 

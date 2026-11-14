@@ -1,5 +1,5 @@
 import type { CropLinkCandidate } from '../crops/ExistingCropLinkDialog';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import axios from 'axios';
 import { cropAPI, publicCropAPI } from '../api/api';
@@ -14,6 +14,7 @@ import { getPublicCropTitle } from '../crop-library/publicCropDisplay';
 import { publishSelectedVarieties, type PublishVarietySelection } from '../crops/publishVarieties';
 import { describePublishChecksFailure, extractPublishChecks } from '../crops/publishChecks';
 import { describeLibraryPinError } from '../crops/libraryFieldPin';
+import { withProjectImportStatus } from '../crop-library/publicCropListMerge';
 
 interface UsePublicCropLibraryConfig {
   shouldShowProjectRequiredState: boolean;
@@ -49,11 +50,15 @@ export function usePublicCropLibrary({
   const [publicLibraryInitialSelectedId, setPublicLibraryInitialSelectedId] = useState<number | null>(null);
   const [publicLibraryInitialQuery, setPublicLibraryInitialQuery] = useState('');
   const [publishingCropId, setPublishingCropId] = useState<number | null>(null);
+  const libraryRequestId = useRef(0);
+  const librarySearch = useRef<{ query: string; exactMatch?: { name: string; variety?: string } }>({ query: '' });
 
   const fetchPublicCrops = useCallback(async (
     query = '',
     exactMatch?: { name: string; variety?: string },
   ) => {
+    const requestId = ++libraryRequestId.current;
+    librarySearch.current = { query, exactMatch };
     try {
       setPublicLibraryLoading(true);
       setPublicLibraryError(null);
@@ -61,12 +66,14 @@ export function usePublicCropLibrary({
         ? { name: exactMatch.name, variety: exactMatch.variety || '' }
         : query ? { q: query } : undefined;
       const { results } = await publicCropAPI.listAll(params);
+      if (requestId !== libraryRequestId.current) return;
       setPublicCrops(dedupePublicCrops(results));
     } catch (error) {
+      if (requestId !== libraryRequestId.current) return;
       console.error('Error fetching public crops:', error);
       setPublicLibraryError(t('library.loadError'));
     } finally {
-      setPublicLibraryLoading(false);
+      if (requestId === libraryRequestId.current) setPublicLibraryLoading(false);
     }
   }, [t]);
 
@@ -414,9 +421,15 @@ export function usePublicCropLibrary({
     importLink,
     setImportLink,
     handleImportLinkSuccess: async (crop: Crop) => {
+      if (importLink) {
+        ++libraryRequestId.current;
+        setPublicLibraryLoading(false);
+        setPublicCrops(current => current.map(entry => entry.id === importLink.publicCrop.id
+          ? withProjectImportStatus(entry, crop) : entry));
+      }
       setImportLink(null);
       await onImportSuccess(crop);
-      await fetchPublicCrops();
+      await fetchPublicCrops(librarySearch.current.query, librarySearch.current.exactMatch);
       showSnackbar(t('library.importDecision.success'), 'success');
     },
     publicLibraryOpen,

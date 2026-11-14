@@ -37,6 +37,10 @@ class Command(BaseCommand):
         parser.add_argument(
             "--apply", action="store_true", help="Write fixtures; otherwise only preview."
         )
+        parser.add_argument(
+            "--include-resolution", action="store_true",
+            help="Also prepare a third project for explicit share, pull and private-pin decisions.",
+        )
 
     def validate_database(self, confirmed_name: str) -> tuple[str, str, str]:
         database = connection.settings_dict
@@ -100,14 +104,17 @@ class Command(BaseCommand):
             f'Target: {engine}, host={host or "local file"}, database={name}; '
             f"user={user.username}; entry={entry.pk}."
         )
+        modes = (
+            ("once", "link", "resolve") if options.get("include_resolution") else ("once", "link")
+        )
         if not options["apply"]:
             self.stdout.write(
-                "Preview only: two projects, each with one general culture, "
+                f"Preview only: {len(modes)} projects, each with one general culture, "
                 "12 varieties and 12 plans. No changes made."
             )
             return
         with transaction.atomic():
-            for mode in ("once", "link"):
+            for mode in modes:
                 slug = f"local-library-import-{user.pk}-{entry.pk}-{mode}"
                 project, created = Project.objects.get_or_create(
                     slug=slug,
@@ -147,6 +154,8 @@ class Command(BaseCommand):
                     name=entry.name,
                     crop_species=entry.crop_species,
                     growth_duration_days=(entry.growth_duration_days or 80) + 10,
+                    harvest_duration_days=(entry.harvest_duration_days or 20) + 7
+                    if mode == "resolve" else None,
                     notes="Private acceptance-test notes: keep this value.",
                     cultivation_types=["pre_cultivation"],
                 )
@@ -174,3 +183,10 @@ class Command(BaseCommand):
             "Fixtures ready. Import selected library values once in the first project "
             "and link in the second; preserve IDs, notes, variety overrides and plans."
         )
+        if options.get("include_resolution"):
+            self.stdout.write(
+                "In the resolve project, take the library growth duration, explicitly share "
+                "the local harvest duration, and keep notes local only. Use an established "
+                "local session account; this command changes no contribution permissions "
+                "and does not edit the library entry."
+            )

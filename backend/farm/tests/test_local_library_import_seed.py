@@ -129,3 +129,26 @@ class LocalLibraryImportSeedTests(TestCase):
         )
         self.assertEqual(Crop.objects.count(), 0)
         self.assertEqual(PlantingPlan.objects.count(), 0)
+
+    def test_optional_resolution_project_is_previewed_and_preserves_later_manual_decisions(self):
+        self.seed(include_resolution=True)
+        self.assertIn('3 projects', self.arguments['stdout'].getvalue())
+        self.assertEqual(Crop.objects.count(), 0)
+        self.seed(apply=True, include_resolution=True)
+        self.assertEqual(Crop.objects.count(), 39)
+        self.assertEqual(PlantingPlan.objects.count(), 36)
+        project = Project.objects.get(
+            slug=f'local-library-import-{self.user.pk}-{self.entry.pk}-resolve',
+        )
+        general = Crop.objects.get(project=project, variety='')
+        self.assertEqual(general.harvest_duration_days, 27)
+        self.assertEqual(general.growth_duration_days, 88)
+        general.notes = 'Manually retained private notes'
+        general.save()
+        self.entry.harvest_duration_days = 31
+        self.entry.save()
+        before = list(Crop.objects.values_list('pk', 'updated_at'))
+        self.seed(apply=True, include_resolution=True)
+        self.assertEqual(list(Crop.objects.values_list('pk', 'updated_at')), before)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.harvest_duration_days, 31)

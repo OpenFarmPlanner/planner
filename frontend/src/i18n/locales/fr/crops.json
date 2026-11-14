@@ -1633,6 +1633,8 @@
       "keepLocalDescription": "Conserver maintenant, comparer à nouveau plus tard"
     },
     "importDecision": {
+      "selectTarget": "Sélectionnez une culture existante et attendez le chargement de la comparaison.",
+      "shareUnavailable": "Votre compte ne permet pas de partager directement des valeurs à cette étape. Vous pouvez reprendre les valeurs de la bibliothèque ou conserver les vôtres uniquement en local.",
       "title": "Importer des valeurs de la bibliothèque de cultures",
       "existing": "Une culture correspondante existe déjà dans ce projet. Choisissez la culture à enrichir et les valeurs à importer.",
       "newCrop": "Aucune culture correspondante n’existe encore pour cette entrée. Les valeurs seront importées dans une nouvelle culture.",
@@ -1641,7 +1643,7 @@
       "copy": "Importer les valeurs une seule fois",
       "link": "Importer les valeurs et créer un lien",
       "copyHelp": "Les valeurs sélectionnées sont copiées une seule fois, sans lien de synchronisation. Vos valeurs privées et vos variétés ne sont pas publiées.",
-      "linkHelp": "Les valeurs sélectionnées sont copiées et la culture est liée. Les futures modifications de la bibliothèque seront proposées pour vérification. Vos valeurs privées et vos variétés ne sont pas publiées.",
+      "linkHelp": "Pour chaque valeur, choisissez de reprendre celle de la bibliothèque, de partager explicitement la vôtre ou de la conserver uniquement en local. Seules les valeurs explicitement sélectionnées pour le partage deviennent publiques. Les modifications ultérieures de la bibliothèque vous seront proposées pour vérification.",
       "failed": "Les valeurs n’ont pas pu être importées. Vérifiez à nouveau la cible et la comparaison. Pour une nouvelle culture, fermez ce dialogue et rechargez la bibliothèque.",
       "success": "Valeurs de la bibliothèque importées.",
       "projectChanged": "Le projet actif a changé. Fermez ce dialogue et recommencez l’import dans le projet souhaité."

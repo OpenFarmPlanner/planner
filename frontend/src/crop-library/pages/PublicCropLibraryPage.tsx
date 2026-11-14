@@ -88,7 +88,7 @@ import {
   getPublicCropDescription,
   getPublicCropName,
 } from '../publicCropDisplay';
-import { applySavedCrops } from '../publicCropListMerge';
+import { applySavedCrops, withProjectImportStatus } from '../publicCropListMerge';
 import { MultilingualTextFieldSection } from '../components/MultilingualTextFieldSection';
 import { AppTooltip } from '../../components/AppTooltip';
 import { CropSeedDetails, type CropSeedRateRow, type ValueSource } from '../../crops/CropSeedDetails';
@@ -159,7 +159,7 @@ const PUBLIC_TIMING_FIELDS = [
 ] as const;
 
 export default function PublicCropLibraryPage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { isGuestDemo, restrictionMessage, blockInGuestDemo } = useGuestDemoGuard();
   const { t, i18n } = useTranslation('crops');
   const plantFamilies = usePlantFamilies();
@@ -948,6 +948,17 @@ export default function PublicCropLibraryPage() {
     event.preventDefault();
   };
 
+  const markProjectImport = useCallback((publicCropId: number, importedCrop: Crop) => {
+    // Discard pre-import responses and show the resolved link immediately.
+    cropListRequestIdRef.current += 1;
+    setCrops(current => current.map(crop => {
+      if (crop.id !== publicCropId) return crop;
+      const updated = withProjectImportStatus(crop, importedCrop);
+      savedCropsRef.current.set(crop.id, updated);
+      return updated;
+    }));
+  }, []);
+
   const performImport = useCallback(async (
     publicCropId: number,
     name: string,
@@ -957,32 +968,7 @@ export default function PublicCropLibraryPage() {
     try {
       const response = await publicCropAPI.importToProject(publicCropId, mode);
       const importedCrop = response.data.crop;
-      // Bump the request id and record the merged row in savedCropsRef, the
-      // same guards upsertCropInList uses below: without them, a crop
-      // list request already in flight (or one the search debounce fires right
-      // after) can land after this and overwrite project_import_status with
-      // its pre-import snapshot, which reads as the import/update button
-      // flickering back to its old label.
-      cropListRequestIdRef.current += 1;
-      setCrops((current) => current.map((crop) => {
-        if (crop.id !== publicCropId) {
-          return crop;
-        }
-        const updated = {
-          ...crop,
-          project_import_status: {
-            crop_id: importedCrop.id as number,
-            crop_name: importedCrop.crop_display_name || importedCrop.name,
-            is_modified_from_source: Boolean(importedCrop.is_modified_from_source),
-            // The copy that just landed carries the library's current values,
-            // so the update action disables itself without waiting for a
-            // refetch of the row.
-            is_up_to_date: !importedCrop.is_modified_from_source,
-          },
-        };
-        savedCropsRef.current.set(crop.id, updated);
-        return updated;
-      }));
+      markProjectImport(publicCropId, importedCrop);
       if (mode === 'update') {
         showGlobalSnackbar({ message: t('library.importUpdatedForced', { name }), severity: 'success' });
       } else if (mode === 'new') {
@@ -1019,7 +1005,7 @@ export default function PublicCropLibraryPage() {
     } finally {
       setImportingId(null);
     }
-  }, [t]);
+  }, [markProjectImport, t]);
 
   const handleImport = useCallback(async (): Promise<void> => {
     if (!selectedCrop) {
@@ -1507,6 +1493,8 @@ export default function PublicCropLibraryPage() {
         {
           label: importingId
             ? t('library.importing')
+            : isSelectedCropUpToDate
+              ? t('library.linkExisting.alreadyLinked')
             : selectedCrop.project_import_status
               ? t('library.importUpdateButton')
               : t('library.importButton'),
@@ -2430,11 +2418,11 @@ export default function PublicCropLibraryPage() {
         </DialogActions>
       </Dialog>
       {linkImport ? <ExistingCropLinkDialog key={linkImport.publicCrop.id} publicCrop={linkImport.publicCrop}
-        candidates={linkImport.candidates}
-        onClose={() => setLinkImport(null)} onLinked={() => {
+        candidates={linkImport.candidates} termsAlreadyAccepted={Boolean(user?.public_library_terms_accepted)} onTermsAccepted={refreshUser}
+        onClose={() => setLinkImport(null)} onLinked={(importedCrop) => {
+          markProjectImport(linkImport.publicCrop.id, importedCrop);
           setLinkImport(null);
           // Reload authoritative status after preserving the existing project row.
-          savedCropsRef.current.delete(linkImport.publicCrop.id);
           void loadCrops();
           showGlobalSnackbar({ message: t('library.importDecision.success'), severity: 'success' });
         }} /> : null}

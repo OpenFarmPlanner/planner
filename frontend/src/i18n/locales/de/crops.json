@@ -1592,6 +1592,8 @@
       "keepLocalDescription": "Jetzt behalten, später erneut vergleichen"
     },
     "importDecision": {
+      "selectTarget": "Wähle eine vorhandene Kultur und warte, bis der Vergleich geladen ist.",
+      "shareUnavailable": "Mit deinem Konto kannst du in diesem Schritt keine Werte direkt teilen. Du kannst Bibliothekswerte übernehmen oder eigene Werte nur lokal behalten.",
       "title": "Werte aus der Kulturbibliothek übernehmen",
       "existing": "Eine passende Kultur ist bereits im Projekt vorhanden. Wähle, welche Kultur du ergänzen und welche Werte du übernehmen möchtest.",
       "newCrop": "Für diesen Eintrag ist noch keine passende Kultur vorhanden. Die Werte werden als neue Kultur übernommen.",
@@ -1600,7 +1602,7 @@
       "copy": "Einmalig Werte übernehmen",
       "link": "Werte übernehmen und verknüpfen",
       "copyHelp": "Die ausgewählten Bibliothekswerte werden einmalig übernommen. Es entsteht keine Synchronisationsverknüpfung. Eigene Werte und Sorten werden nicht veröffentlicht.",
-      "linkHelp": "Die ausgewählten Werte werden übernommen und die Kultur wird verknüpft. Spätere Bibliotheksänderungen werden zur Prüfung angeboten. Eigene Werte und Sorten werden nicht veröffentlicht.",
+      "linkHelp": "Wähle je Wert: aus der Bibliothek übernehmen, ausdrücklich in der Bibliothek teilen oder nur lokal behalten. Nur ausdrücklich zum Teilen ausgewählte Werte werden öffentlich. Spätere Bibliotheksänderungen werden zur Prüfung angeboten.",
       "failed": "Die Werte konnten nicht übernommen werden. Prüfe Ziel und Vergleich erneut. Bei einem neuen Eintrag schließe den Dialog und lade die Bibliothek neu.",
       "success": "Bibliothekswerte übernommen.",
       "projectChanged": "Das aktive Projekt hat sich geändert. Schließe den Dialog und starte den Import im gewünschten Projekt neu."
