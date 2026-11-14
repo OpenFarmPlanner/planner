@@ -2229,7 +2229,7 @@ describe('PublicCropLibraryPage', () => {
       expect(publicCropApiMocks.importPreview).toHaveBeenCalledTimes(1);
     });
 
-    it('retains the imported crop and search when its status refresh and first retry fail', async () => {
+    it.each([undefined, 503])('retains the imported crop and search when its status refresh and first retry fail (%s)', async (status) => {
       const updated = publicCrops.map(crop => ({ ...crop, project_import_status: {
         crop_id: 99, is_up_to_date: true, is_modified_from_source: false,
       } }));
@@ -2237,7 +2237,8 @@ describe('PublicCropLibraryPage', () => {
         .mockResolvedValueOnce(paginated(publicCrops))
         .mockRejectedValueOnce(new Error('Refresh offline'))
         .mockResolvedValueOnce(paginated([publicCrops[1]]));
-      publicCropApiMocks.get.mockRejectedValueOnce(new Error('Detail refresh offline'));
+      publicCropApiMocks.get.mockRejectedValueOnce(status
+        ? { isAxiosError: true, response: { status } } : new Error('Detail refresh offline'));
       publicCropApiMocks.importToProject.mockResolvedValue({ data: {
         crop: { id: 99, name: 'Tomate', variety: 'Roma', source_public_crop: 1,
           source_public_version: 1, is_modified_from_source: false, public_update_available: false },
@@ -2266,6 +2267,25 @@ describe('PublicCropLibraryPage', () => {
       await waitFor(() => expect(screen.queryByText(error)).not.toBeInTheDocument());
       expect(publicCropApiMocks.list).toHaveBeenCalledTimes(4);
       assertRetained();
+    });
+
+    it.each([403, 404, 410])('accepts the refreshed list when the selected entry becomes unavailable (%i)', async (status) => {
+      publicCropApiMocks.list.mockResolvedValue(paginated([publicCrops[1]]))
+        .mockResolvedValueOnce(paginated(publicCrops));
+      publicCropApiMocks.get.mockRejectedValueOnce({ isAxiosError: true, response: { status } });
+      publicCropApiMocks.importToProject.mockResolvedValue({ data: {
+        crop: { id: 99, name: 'Tomate', variety: 'Roma', source_public_crop: 1,
+          source_public_version: 1, is_modified_from_source: false, public_update_available: false },
+        operation: 'created',
+      } });
+      const user = userEvent.setup();
+      renderPage();
+      await importViaButton(user);
+      await waitFor(() => expect(publicCropApiMocks.get).toHaveBeenCalledWith(1));
+      await waitFor(() => expect(screen.queryByRole('option', { name: 'Tomate (Roma)' })).not.toBeInTheDocument());
+      expect(screen.getByRole('option', { name: 'Salat' })).toBeInTheDocument();
+      expect(screen.queryByText('Die Kulturbibliothek konnte nicht geladen werden.')).not.toBeInTheDocument();
+      expect(publicCropApiMocks.importToProject).toHaveBeenCalledTimes(1);
     });
 
     it('shows a non-blocking info toast when re-importing an unchanged crop', async () => {

@@ -437,7 +437,9 @@ The public Crop Library follows an open-data model:
   Search, filters and the open browser survive success, and the entry becomes
   linked and up to date. If the subsequent status refresh fails, the imported
   culture, selection and search stay visible; retrying the refresh does not
-  repeat the import, including when a retry also fails. No project values are
+  repeat the import, including when a retry also fails. Definitive removal or
+  access loss instead accepts the refreshed catalog and clears the unavailable
+  library selection; the imported project culture is retained. No project values are
   published. Unlinking retains the
   culture, while explicit copy APIs retain their existing behavior.
 - **Reproducible local import acceptance data.** The guarded

@@ -869,7 +869,9 @@ export default function PublicCropLibraryPage() {
           if (requestId !== cropListRequestIdRef.current) {
             return;
           }
-          if (preserveExisting) throw error;
+          const entryUnavailable = axios.isAxiosError(error)
+            && [403, 404, 410].includes(error.response?.status ?? 0);
+          if (preserveExisting && !entryUnavailable) throw error;
           updateSelectedCropId(null);
         }
       }
