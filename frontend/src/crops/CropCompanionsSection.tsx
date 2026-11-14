@@ -10,6 +10,7 @@ import { CompanionKindColumns, type CompanionListItem } from './CompanionKindCol
 import {
   companionReasonLabelKey,
   findKulturId,
+  getCompanionNote,
   isCompanionInformationText,
   relationPartner,
   relationsOfKultur,
@@ -59,7 +60,7 @@ export function CropCompanionsSection({ crop, crops, onCropSelect, onEdit }: Cro
       key: relation.id ?? `${relation.kind}-${label}`,
       kind: relation.kind,
       label,
-      detail: [reason, relation.notes ? relation.notes[language] ?? '' : relation.note].filter(Boolean).join(': '),
+      detail: [reason, getCompanionNote(relation, language)].filter(Boolean).join(': '),
       informational: partner.type === 'text' && isCompanionInformationText(partner.text),
       onSelect: partnerCrop && onCropSelect ? () => onCropSelect(partnerCrop) : undefined,
     };

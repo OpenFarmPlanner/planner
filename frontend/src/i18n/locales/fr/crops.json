@@ -1756,8 +1756,7 @@
     "publishSkipped_other": "{{count}} voisins restent dans le projet : ce sont du texte libre ou des cultures sans espèce cultivée.",
     "noteLanguage": "Langue des notes de voisinage",
     "languageHelp": {
-      "edit": "Vous modifiez uniquement les notes dans cette langue. Les autres versions sont conservées.",
-      "export": "Seules les notes dans cette langue sont exportées. Le format JSON contient toutes les versions linguistiques."
+      "edit": "Vous modifiez uniquement les notes dans cette langue. Les autres versions sont conservées."
     },
     "cellHelp": "Un groupe par ligne : Tomate ; Concombre | Protection contre les ravageurs. Les noms seuls sont acceptés. Les guillemets et séquences d’échappement exportés préservent les séparateurs et retours à la ligne des notes. Les anciens commentaires avec tiret ne sont liés que si les noms sont reconnus sans ambiguïté."
   },

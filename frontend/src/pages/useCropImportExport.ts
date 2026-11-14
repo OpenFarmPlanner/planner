@@ -43,7 +43,6 @@ export function useCropImportExport({
   const { t, i18n } = useTranslation(['crops', 'common']);
   const currentLanguage = normalizeLanguageTag(i18n?.resolvedLanguage ?? i18n?.language) ?? 'de';
   const importLanguageRef = useRef(currentLanguage);
-  const [exportNoteLanguage, setExportNoteLanguage] = useState<string>(currentLanguage);
   const plantFamilies = usePlantFamilies();
 
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -223,10 +222,9 @@ export function useCropImportExport({
   }, [prepareImportPreview]);
 
   const handleOpenExportDialog = useCallback((initialScope: ExportScope = 'all') => {
-    setExportNoteLanguage(currentLanguage);
     setExportDialogInitialScope(initialScope);
     setExportDialogOpen(true);
-  }, [currentLanguage]);
+  }, []);
 
   // Called by the command palette (expects separate current/all handlers)
   const handleExportCurrentCrop = useCallback(() => handleOpenExportDialog('current'), [handleOpenExportDialog]);
@@ -245,7 +243,9 @@ export function useCropImportExport({
     return { allCrops, companionsByCrop: buildCompanionItemsByCrop(allCrops, relations, plantFamilies.getName) };
   }, [plantFamilies.getName]);
 
-  const handleExport = useCallback(async (scope: ExportScope, format: ExportFormat) => {
+  const handleExport = useCallback(async (scope: ExportScope, format: ExportFormat): Promise<boolean> => {
+    const exportLanguage = normalizeLanguageTag(i18n?.resolvedLanguage ?? i18n?.language) ?? 'de';
+    const exportT = i18n?.getFixedT ? i18n.getFixedT(exportLanguage, 'crops') : t;
     try {
       const { allCrops, companionsByCrop } = await loadCompanionsByCrop();
       const exportsSingleCrop = scope === 'current' && selectedCrop;
@@ -262,14 +262,16 @@ export function useCropImportExport({
       } else {
         const cropsToExport: Crop[] = exportsSingleCrop ? [selectedCrop] : allCrops;
         const filename = buildSpreadsheetFilename(format, scope === 'current' ? 'single' : 'all', selectedCrop ?? undefined);
-        exportCropsToSpreadsheet(cropsToExport, format, filename, i18n?.getFixedT ? i18n.getFixedT(exportNoteLanguage, 'crops') : t, companionsByCrop, exportNoteLanguage);
+        exportCropsToSpreadsheet(cropsToExport, format, filename, exportT, companionsByCrop, exportLanguage);
       }
       showSnackbar(t('export.success'), 'success');
+      return true;
     } catch (error) {
       console.error('Error exporting crops:', error);
       showSnackbar(t('messages.fetchError'), 'error');
+      return false;
     }
-  }, [loadCompanionsByCrop, selectedCrop, showSnackbar, t, i18n, exportNoteLanguage]);
+  }, [loadCompanionsByCrop, selectedCrop, showSnackbar, t, i18n]);
 
   const handleImportStart = async () => {
     if (!hasImportableEntries || applyingRef.current || attemptedRef.current) return;
@@ -351,7 +353,6 @@ export function useCropImportExport({
   return {
     importDialogOpen,
     importStartDialogOpen,
-    exportNoteLanguage, setExportNoteLanguage,
     exportDialogOpen,
     exportDialogInitialScope,
     confirmUpdates,

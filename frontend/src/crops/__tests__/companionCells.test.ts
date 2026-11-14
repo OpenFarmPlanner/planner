@@ -32,6 +32,25 @@ describe('localized companion cells', () => {
     expect(item.notes).toEqual({ de: 'Quelle', fr: 'Source' });
   });
 
+  it.each(['csv', 'xlsx', 'ods'] as const)('matches detail fallback for legacy notes without a map in %s', async (format) => {
+    await i18n.changeLanguage('fr');
+    const items: CompanionImportItem[] = [
+      { name: 'Legacy neighbor', reason: 'other', note: 'Legacy source' },
+      { name: 'Missing translation', reason: 'other', note: 'Quelle', notes: { de: 'Quelle' } },
+      { name: 'Explicit empty', reason: 'other', note: 'Old source', notes: { fr: '' } },
+      { name: 'No notes', reason: 'other', note: '' },
+    ];
+    const original = structuredClone(items);
+    const rows = buildSheetData([{ id: 1, name: 'Gurke' } as Crop], i18n.getFixedT('fr', 'crops'),
+      new Map([[1, { good: items, bad: [] }]]), 'fr');
+    const data = buildSpreadsheetFile(rows, format);
+    const imported = await parseSpreadsheetFile(new File([data as BlobPart], `notes.${format}`));
+    expect(imported.entries[0]?.good_companions).toEqual(items.map(({ name }, index) => ({
+      name, reason: 'other', note: index === 0 ? 'Legacy source' : '',
+    })));
+    expect(items).toEqual(original);
+  });
+
   it('keeps edits in a different note language dirty after switching the selected language', () => {
     const original: CompanionFormRow = {
       key: 'row', kind: 'good', reason: 'other', target: { type: 'text', text: 'Tomate', label: 'Tomate' },

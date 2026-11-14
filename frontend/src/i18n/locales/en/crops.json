@@ -1711,8 +1711,7 @@
     "publishSkipped_other": "{{count}} neighbors stay in the project: they are free text or crops without a crop species.",
     "noteLanguage": "Companion note language",
     "languageHelp": {
-      "edit": "You are editing only notes in this language. Other language versions are preserved.",
-      "export": "Only notes in this language are exported. JSON includes every language version."
+      "edit": "You are editing only notes in this language. Other language versions are preserved."
     },
     "cellHelp": "One group per line: Tomato; Cucumber | Pest control. Names alone are valid. Exported quotes and escape sequences preserve delimiters and line breaks in notes. Legacy dash comments are linked only when names resolve unambiguously."
   },

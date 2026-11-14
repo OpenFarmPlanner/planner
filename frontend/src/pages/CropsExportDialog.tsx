@@ -10,13 +10,12 @@ import {
   RadioGroup,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   readStoredExportFormat,
   storeExportFormat,
   type CropExportFormat,
 } from '../crops/exportFormatPreference';
-import { CompanionNoteLanguageField } from '../crops/CompanionNoteLanguageField';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 
 type ExportScope = 'current' | 'all';
@@ -31,10 +30,8 @@ type CropsExportDialogProps = {
   // a single crop's own kebab menu -> 'current'), but stays changeable.
   initialScope?: ExportScope;
   onClose: () => void;
-  onExport: (scope: ExportScope, format: ExportFormat) => Promise<void>;
+  onExport: (scope: ExportScope, format: ExportFormat) => Promise<boolean>;
   t: Translator;
-  noteLanguage?: string;
-  onNoteLanguageChange?: (language: string) => void;
 };
 
 export function CropsExportDialog({
@@ -44,11 +41,11 @@ export function CropsExportDialog({
   onClose,
   onExport,
   t,
-  noteLanguage = 'de', onNoteLanguageChange,
 }: CropsExportDialogProps) {
   const [scope, setScope] = useState<ExportScope>(initialScope);
   const [format, setFormat] = useState<ExportFormat>(readStoredExportFormat);
   const [exporting, setExporting] = useState(false);
+  const successfulFormat = useRef({ format, persisted: true });
 
   useEffect(() => {
     if (open) {
@@ -56,11 +53,18 @@ export function CropsExportDialog({
     }
   }, [open, initialScope]);
 
+  useEffect(() => {
+    if (open) {
+      const last = successfulFormat.current;
+      setFormat(last.persisted ? readStoredExportFormat(last.format) : last.format);
+    }
+  }, [open]);
+
   const handleExport = async () => {
     setExporting(true);
     try {
-      await onExport(scope, format);
-      storeExportFormat(format);
+      if (!await onExport(scope, format)) return;
+      successfulFormat.current = { format, persisted: storeExportFormat(format) };
       onClose();
     } finally {
       setExporting(false);
@@ -72,8 +76,6 @@ export function CropsExportDialog({
       <DialogTitle>{t('export.dialogTitle')}</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 0.5 }}>
-          {onNoteLanguageChange && format !== 'json' ? <CompanionNoteLanguageField value={noteLanguage}
-            onChange={onNoteLanguageChange} disabled={exporting} mode="export" /> : null}
           <Box>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>
               {t('export.scopeLabel')}
