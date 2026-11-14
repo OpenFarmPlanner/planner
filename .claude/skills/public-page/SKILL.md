@@ -16,8 +16,8 @@ work, not a second copy of the rules.
    language, sitemap `changefreq`/`priority`, `titleKey`/`descriptionKey`.
    Map its id in `PUBLIC_PAGE_ELEMENTS` (`frontend/src/App.tsx`).
 2. **Translate**: `seo.titles.*`, `seo.descriptions.*` and the page content
-   in de, en, fr, es, it; follow the `ui-text-i18n` skill. Legal pages: the
-   prevailing-language clause lives in the terms text only.
+   in de, en, fr, es, it, pt; follow the `ui-text-i18n` skill. Legal pages: the
+   prevailing-language clauses live in the terms and privacy policy texts.
 3. **Link** only through `usePublicPagePath(id)`; never hardcode a public
    path, canonical, hreflang or sitemap entry.
 4. **App-only routes** never become public pages: add their prefixes (and the

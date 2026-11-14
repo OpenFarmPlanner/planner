@@ -314,11 +314,11 @@ or changing a public page:
 2. Provide all supported translations, German first, through the locale files
    (`seo.titles.*`, `seo.descriptions.*` and the page content); the page is
    prerendered fully translated per language. Legal pages: the clause on
-   which language version prevails lives in the terms text itself; don't
+   which language version prevails lives in the terms and privacy policy texts; don't
    contradict it on the page.
 3. URLs are slashless (`/ueber`, never `/ueber/`) on the apex host
    (`openfarmplanner.org`, never `www`). The canonical is the URL served with
-   200; hreflang carries `de`, `en`, `fr`, `es`, `it` and `x-default` (German).
+   200; hreflang carries `de`, `en`, `fr`, `es`, `it`, `pt` and `x-default` (German).
 4. Never hardcode a public path, canonical, hreflang or sitemap entry; link
    with `usePublicPagePath(id)`.
 5. Every URL renders its own language. Visitors (never crawlers) landing on
