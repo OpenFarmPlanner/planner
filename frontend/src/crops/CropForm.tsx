@@ -1,3 +1,4 @@
+import { buildInitialFormData, buildDraftFromPublicCrop, getPublicCropDraftName, emptyInheritableValue } from './cropFormDraft';
 import { SpecificPropertiesSection } from './sections/SpecificPropertiesSection';
 /**
  * Crop Form component for creating and editing crops.
@@ -55,7 +56,6 @@ import { ConfirmationDialog } from '../components/feedback/ConfirmationDialog';
 import { AppTooltip } from '../components/AppTooltip';
 import { hasEffectiveCropFormChanges } from './cropFormChangeDetection';
 import { validateCrop } from './validation';
-import { normalizeSeedRateUnit } from './enumNormalization';
 import { buildCropIdentityKey, normalizeCropIdentityValue } from './cropIdentity';
 import { TypeaheadSelect as Select } from '../components/inputs/TypeaheadSelect';
 import { LocalizedDecimalField } from '../components/inputs/LocalizedDecimalField';
@@ -73,7 +73,6 @@ import { collectProjectTags } from './cropTags';
 import { useCompanionFormRows } from './useCompanionFormRows';
 import type { CompanionFormRow } from './companions';
 import { hasSupplierDataRowMissingSupplier, hasSupplierInformation } from './supplierDataRows';
-import { stripCitationMarkers } from '../components/data-grid/markdown';
 import { SupplierFormDialog } from '../components/suppliers/SupplierFormDialog';
 import { findSpeciesCrop } from './cropHierarchy';
 import {
@@ -82,7 +81,6 @@ import {
 } from './publicCropNameSuggestions';
 import { usePublicCropSuggestions } from './usePublicCropSuggestions';
 import {
-  buildDisplayedTimingWindows,
   buildInheritedTimingWindows,
   buildInheritedValueBaseline,
   getVarietyOwnTimingWindowSource,
@@ -91,7 +89,6 @@ import {
   stripValuesMatchingBaseline,
 } from './varietyValueSource';
 import { varietySpecificFieldHighlightSx, type GetVarietyFieldHighlightSx } from './varietyValueAccent';
-import { metersToCentimeters, metersToRoundedCentimeters } from '../utils/measurementConversion';
 import { VarietyValueLegend } from './VarietyValueLegend';
 import { describeLibraryPinError, libraryPinnedFieldsForSave } from './libraryFieldPin';
 import { getCropDisplayName } from './cropDisplay';
@@ -201,69 +198,6 @@ const cropFormLayoutSx = {
 // Vertical rhythm of the supplier data section (MUI spacing unit = 8px -> 14px).
 const SUPPLIER_SECTION_GAP = 1.75;
 
-// Empty crop template
-const EMPTY_CROP: Partial<Crop> = {
-  name: '',
-  variety: '',
-  timing_windows: [],
-  crop_family: null,
-  seed_type: '',
-  nutrient_demand: '',
-  cultivation_type: 'pre_cultivation',
-  cultivation_types: ['pre_cultivation'],
-  notes: '',
-  growth_duration_days: undefined,
-  harvest_duration_days: undefined,
-  propagation_duration_days: undefined,
-  germination_temperature_optimal_min_c: null,
-  germination_temperature_optimal_max_c: null,
-  germination_temperature_min_c: null,
-  germination_days_min: null,
-  germination_days_max: null,
-  germination_temperature_requirement: '',
-  germination_light_requirement: '',
-  stratification_days_min: null,
-  stratification_days_max: null,
-  stratification_temperature_min_c: null,
-  stratification_temperature_max_c: null,
-  germination_types: [],
-  germination_pretreatment: '',
-  specific_properties: {},
-  specific_property_profile: '',
-  pests_diseases: '',
-  light_requirement: '',
-  water_requirement: '',
-  life_cycle: '',
-  winter_hardiness: '',
-  expected_yield: undefined,
-  distance_within_row_cm: undefined,
-  row_spacing_cm: undefined,
-  sowing_depth_cm: undefined,
-  sowing_depth_max_cm: undefined,
-  display_color: '',
-  sowing_calculation_safety_percent: 0,
-  sowing_calculation_safety_percent_direct: undefined,
-  sowing_calculation_safety_percent_pre_cultivation: undefined,
-  thousand_kernel_weight_g: undefined,
-  seeding_requirement: undefined,
-  seeding_requirement_type: '',
-  seed_rate_value: null,
-  seed_rate_unit: null,
-  seed_rate_by_cultivation: null,
-  seed_rate_direct_value: null,
-  seed_rate_direct_unit: null,
-  seed_rate_pre_cultivation_value: null,
-  seed_rate_pre_cultivation_unit: null,
-  seed_packages: [],
-};
-
-// The value that makes a Sorte inherit `field` again. List fields without an
-// EMPTY_CROP entry (e.g. tags) must stay lists: the API rejects '' for them.
-function emptyInheritableValue(field: keyof Crop, inheritedValue: unknown): unknown {
-  if (field in EMPTY_CROP) return EMPTY_CROP[field];
-  return Array.isArray(inheritedValue) ? [] : '';
-}
-
 // Neutral info right after a library entry was picked in this dialog. The
 // theme's info Alert is green, as is the variety highlight that marks a
 // Sorte's own values, so this one stays neutral grey.
@@ -318,141 +252,10 @@ interface LibraryLinkConflict {
 
 const DUPLICATE_CHECK_DEBOUNCE_MS = 400;
 
-const getPublicCropDraftName = (publicCrop: PublicCrop): string => (
-  publicCrop.display_name || publicCrop.crop_species_name || publicCrop.name
-);
-
 // The species-level ("no variety") entry a Kultur links to.
 const findGeneralLibraryEntry = (entries: PublicCrop[]): PublicCrop | undefined => entries.find((item) => (
   !(item.variety || '').trim() && !isLikelyTestPublicCropEntry(item)
 ));
-
-const buildDraftFromPublicCrop = (publicCrop: PublicCrop): Partial<Crop> => ({
-  name: getPublicCropDraftName(publicCrop),
-  variety: publicCrop.variety ?? '',
-  notes: publicCrop.notes ?? '',
-  crop_species: publicCrop.crop_species ?? null,
-  source_public_crop: publicCrop.id,
-  source_public_version: publicCrop.version,
-  origin_type: 'imported',
-  is_modified_from_source: false,
-  crop_family: publicCrop.crop_family ?? null,
-  seed_type: publicCrop.seed_type ?? '',
-  nutrient_demand: publicCrop.nutrient_demand ?? '',
-  cultivation_type: publicCrop.cultivation_type || 'pre_cultivation',
-  cultivation_types: publicCrop.cultivation_types?.length ? publicCrop.cultivation_types : ['pre_cultivation'],
-  growth_duration_days: publicCrop.growth_duration_days ?? undefined,
-  harvest_duration_days: publicCrop.harvest_duration_days ?? undefined,
-  propagation_duration_days: publicCrop.propagation_duration_days ?? undefined,
-  germination_temperature_optimal_min_c: publicCrop.germination_temperature_optimal_min_c ?? undefined,
-  germination_temperature_optimal_max_c: publicCrop.germination_temperature_optimal_max_c ?? undefined,
-  germination_temperature_min_c: publicCrop.germination_temperature_min_c ?? undefined,
-  germination_days_min: publicCrop.germination_days_min ?? undefined,
-  germination_days_max: publicCrop.germination_days_max ?? undefined,
-  germination_temperature_requirement: publicCrop.germination_temperature_requirement ?? '',
-  germination_light_requirement: publicCrop.germination_light_requirement ?? '',
-  stratification_days_min: publicCrop.stratification_days_min ?? null,
-  stratification_days_max: publicCrop.stratification_days_max ?? null,
-  stratification_temperature_min_c: publicCrop.stratification_temperature_min_c ?? null,
-  stratification_temperature_max_c: publicCrop.stratification_temperature_max_c ?? null,
-  germination_types: publicCrop.germination_types ?? [],
-  germination_pretreatment: publicCrop.germination_pretreatment ?? '',
-  specific_properties: { ...(publicCrop.specific_properties ?? {}) },
-  specific_property_profile: publicCrop.specific_property_profile ?? '',
-  pests_diseases: publicCrop.pests_diseases ?? '',
-  light_requirement: publicCrop.light_requirement ?? '',
-  water_requirement: publicCrop.water_requirement ?? '',
-  life_cycle: publicCrop.life_cycle ?? '',
-  winter_hardiness: publicCrop.winter_hardiness ?? '',
-  harvest_method: publicCrop.harvest_method ?? '',
-  expected_yield: publicCrop.expected_yield ?? undefined,
-  distance_within_row_cm: metersToRoundedCentimeters(publicCrop.distance_within_row_m),
-  row_spacing_cm: metersToRoundedCentimeters(publicCrop.row_spacing_m),
-  // The only spacing field that takes decimals; rounding it would make a
-  // freshly linked crop differ from its entry.
-  sowing_depth_cm: metersToCentimeters(publicCrop.sowing_depth_m),
-  sowing_depth_max_cm: metersToCentimeters(publicCrop.sowing_depth_max_m),
-  seed_rate_value: publicCrop.seed_rate_value ?? null,
-  seed_rate_unit: publicCrop.seed_rate_unit ?? null,
-  seed_rate_by_cultivation: publicCrop.seed_rate_by_cultivation ?? null,
-  seed_rate_direct_value: publicCrop.seed_rate_direct_value ?? null,
-  seed_rate_direct_unit: publicCrop.seed_rate_direct_unit ?? null,
-  seed_rate_pre_cultivation_value: publicCrop.seed_rate_pre_cultivation_value ?? null,
-  seed_rate_pre_cultivation_unit: publicCrop.seed_rate_pre_cultivation_unit ?? null,
-  thousand_kernel_weight_g: publicCrop.thousand_kernel_weight_g ?? undefined,
-  seeding_requirement: publicCrop.seeding_requirement ?? undefined,
-  seeding_requirement_type: publicCrop.seeding_requirement_type ?? '',
-  display_color: publicCrop.display_color ?? '',
-  seed_packages: publicCrop.seed_packages ?? [],
-});
-
-const buildInitialFormData = (crop?: Crop, initialDraft?: Partial<Crop>): Partial<Crop> => {
-  if (!crop) {
-    return initialDraft ? { ...EMPTY_CROP, ...initialDraft } : EMPTY_CROP;
-  }
-
-  // A Sorte only stores the values it actually overrides. Every other field
-  // shows the value the backend resolved from its general Kultur, so the form
-  // displays what the Sorte effectively is instead of a row of empty inputs.
-  // The merged-in values carry no override styling (they equal the Kultur's
-  // own values, see getVarietyOwnValueSource) and are stripped again on save.
-  // Timing windows follow the same rule per kind (see buildDisplayedTimingWindows).
-  const displayedCrop: Crop = {
-    ...crop,
-    ...buildInheritedValueBaseline(crop),
-    timing_windows: buildDisplayedTimingWindows(crop),
-  };
-
-  const normalizedSpacingValues: Partial<Crop> = {
-    distance_within_row_cm:
-      typeof displayedCrop.distance_within_row_cm === 'number'
-        ? Math.round(displayedCrop.distance_within_row_cm)
-        : displayedCrop.distance_within_row_cm,
-    row_spacing_cm:
-      typeof displayedCrop.row_spacing_cm === 'number'
-        ? Math.round(displayedCrop.row_spacing_cm)
-        : displayedCrop.row_spacing_cm,
-  };
-
-  const normalizedSeedRateUnits: Partial<Crop> = {
-    seed_rate_unit: normalizeSeedRateUnit(displayedCrop.seed_rate_unit),
-    seed_rate_direct_unit: normalizeSeedRateUnit(displayedCrop.seed_rate_direct_unit),
-    seed_rate_pre_cultivation_unit: normalizeSeedRateUnit(displayedCrop.seed_rate_pre_cultivation_unit),
-  };
-
-  const normalizedNotes = displayedCrop.notes
-    ? stripCitationMarkers(displayedCrop.notes)
-    : displayedCrop.notes;
-
-  // `crop.name` is free text and never cascades a later crop_species rename
-  // (see crop_display.py) — `crop_display_name` is the field that already
-  // resolves to the species' current name, and it falls back to `crop.name`
-  // itself when there is no linked species, so preferring it here can only
-  // correct a stale value, never lose one.
-  const normalizedName = getCropDisplayName(displayedCrop);
-
-  if (displayedCrop.supplier || !displayedCrop.seed_supplier) {
-    return {
-      ...displayedCrop,
-      ...normalizedSpacingValues,
-      ...normalizedSeedRateUnits,
-      notes: normalizedNotes,
-      name: normalizedName,
-    };
-  }
-
-  return {
-    ...displayedCrop,
-    ...normalizedSpacingValues,
-    ...normalizedSeedRateUnits,
-    notes: normalizedNotes,
-    name: normalizedName,
-    supplier: {
-      name: displayedCrop.seed_supplier,
-      allowed_domains: [],
-    },
-  };
-};
 
 /**
  * Renders the CropForm as a modal dialog. The dialog can only be closed via Save or Cancel.
