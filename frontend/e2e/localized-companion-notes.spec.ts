@@ -5,6 +5,7 @@ import de from '../src/i18n/locales/de/crops.json' with { type: 'json' };
 import deCommon from '../src/i18n/locales/de/common.json' with { type: 'json' };
 import fr from '../src/i18n/locales/fr/crops.json' with { type: 'json' };
 import frCommon from '../src/i18n/locales/fr/common.json' with { type: 'json' };
+import frNavigation from '../src/i18n/locales/fr/navigation.json' with { type: 'json' };
 import es from '../src/i18n/locales/es/crops.json' with { type: 'json' };
 import esCommon from '../src/i18n/locales/es/common.json' with { type: 'json' };
 
@@ -131,37 +132,51 @@ test('library note editing preserves other languages and missing versions stay h
 });
 
 for (const viewport of [{ width: 375, height: 800 }, { width: 800, height: 375 }, { width: 1440, height: 900 }]) {
-  test(`spreadsheet import and export expose an explicit note language at ${viewport.width}`, async ({ page, request }, testInfo) => {
+  test(`spreadsheet import uses the UI language and export keeps explicit language selection at ${viewport.width}`, async ({ page, request }, testInfo) => {
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 1440, height: 900 });
     await loginWithDeterministicProject(page, request, 'companion-notes-exchange', { loginAsAdmin: true });
     await apiRequest<Crop>(page, 'POST', '/crops/', { name: 'Tomate' });
+    await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'fr' });
+    await page.evaluate(() => {
+      localStorage.setItem('ui.language', 'fr');
+      localStorage.setItem('ui.language.pendingChoice', 'fr');
+    });
     await page.goto('/app/crops');
-    await expect(page.getByRole('heading', { name: 'Kulturen', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: fr.title, exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Tomate', exact: true })).toBeVisible();
     await page.waitForLoadState('networkidle');
-    await page.getByRole('button', { name: 'Import/Export öffnen', exact: true }).click();
-    await page.getByRole('menuitem', { name: /Aus Datei importieren/ }).click();
-    let dialog = page.getByRole('dialog', { name: 'Kulturen importieren' });
+    await page.getByRole('button', { name: frNavigation.cropActions.openImportExport, exact: true }).click();
+    await page.getByRole('menuitem', { name: fr.import.menuLabel, exact: true }).click();
+    let dialog = page.getByRole('dialog', { name: fr.import.selectFileTitle });
     await expect(dialog).toBeVisible();
     await page.setViewportSize(viewport);
-    await chooseLanguage(page, 'Sprache der Nachbarnotizen', 'Français');
+    await expect(dialog.getByRole('combobox')).toHaveCount(0);
+    await expect(dialog.getByRole('checkbox')).toHaveCount(0);
     expect(await dialog.evaluate((element) => element.scrollWidth > element.clientWidth + 1)).toBe(false);
     await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('import-note-language.png') });
     await dialog.locator('input[type=file]').setInputFiles({
       name: 'notes.csv', mimeType: 'text/csv', buffer: Buffer.from('Name,Gute Nachbarn\nGurke,"Tomate | Source FR 2025"\n'),
     });
     dialog = page.getByRole('dialog');
-    await expect(dialog.getByRole('button', { name: 'Import starten', exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: fr.import.start, exact: true })).toBeVisible();
     const [applied] = await Promise.all([
       page.waitForResponse((response) => response.request().method() === 'POST' && response.url().includes('/crops/import/apply/')),
-      dialog.getByRole('button', { name: 'Import starten', exact: true }).click(),
+      dialog.getByRole('button', { name: fr.import.start, exact: true }).click(),
     ]);
     expect(applied.ok()).toBe(true);
     expect(applied.request().postDataJSON().companion_note_language).toBe('fr');
+    expect(applied.request().postDataJSON()).not.toHaveProperty('replace_companion_notes');
+    await expect(dialog).toBeHidden();
     const relations = await apiRequest<Relation[]>(page, 'GET', '/crop-companions/');
     expect(relations[0].notes).toEqual({ fr: 'Source FR 2025' });
-    await expect(dialog).toBeHidden();
+    await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'de' });
+    await page.evaluate(() => {
+      localStorage.setItem('ui.language', 'de');
+      localStorage.setItem('ui.language.pendingChoice', 'de');
+    });
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'de');
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.getByRole('button', { name: 'Import/Export öffnen', exact: true }).click();
     await page.getByRole('menuitem', { name: /Alle Kulturen exportieren/ }).click();
