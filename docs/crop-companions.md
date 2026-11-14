@@ -205,9 +205,12 @@ cover divergent stored/display names explicitly.
 ## Spreadsheet and JSON import/export
 
 The export writes two columns, "Gute Nachbarn" and "Schlechte Nachbarn", on
-Kultur rows only. Spreadsheet export exposes an explicit note language,
-initially the UI language. Import automatically uses the UI language captured
-when reading the file. Ordinary CSV/XLSX/ODS cells carry the notes; JSON is
+Kultur rows only. The export dialog offers scope and format; spreadsheets use
+the active UI language captured when export starts, even if it changes while
+data is loading. The browser remembers only the last successfully exported
+format, defaults to ODS for missing/invalid preferences, and restores the saved
+format after cancellation or failure independently of scope. Import automatically
+uses the UI language captured when reading the file. Ordinary CSV/XLSX/ODS cells carry the notes; JSON is
 optional and preserves the entire `notes` language map.
 
 The canonical cell grammar is **one group per line**, comma/semicolon-separated
@@ -222,7 +225,12 @@ Sellerie
 A group note applies to every name on that line. A plain list is still valid.
 Separators inside parentheses do not split a name; unspaced hyphens, as in
 `Pak-Choi`, never split names. Export groups neighbors sharing the selected
-language's note and writes neighbors without a note as names only.
+language's note and writes neighbors without a note as names only. Language
+maps are authoritative: a missing or explicitly empty selected version does
+not fall back to another map language. As in project details, older records
+without a language map fall back to their scalar note. Re-importing such a
+fallback note assigns it to the UI language captured at file selection; JSON
+preserves all stored language versions without resolving them for the UI.
 
 **Reserved characters and line breaks.** Export quotes names/notes containing
 commas, semicolons, pipes, quotes, backslashes or line breaks, or surrounding

@@ -17,14 +17,14 @@ interface RenderOptions {
   open?: boolean;
   hasCurrentCrop?: boolean;
   initialScope?: ExportScope;
-  onExport?: (scope: ExportScope, format: ExportFormat) => Promise<void>;
+  onExport?: (scope: ExportScope, format: ExportFormat) => Promise<boolean>;
 }
 
 const renderDialog = ({
   open = true,
   hasCurrentCrop = true,
   initialScope,
-  onExport = vi.fn(async () => {}),
+  onExport = vi.fn(async () => true),
 }: RenderOptions = {}) => {
   const onClose = vi.fn();
   const props = { open, hasCurrentCrop, initialScope, onClose, onExport, t };
@@ -38,20 +38,6 @@ const radio = (name: string): HTMLElement => screen.getByRole('radio', { name })
 const submitButton = (): HTMLElement => screen.getByRole('button', { name: 'Exportieren' });
 const cancelButton = (): HTMLElement => screen.getByRole('button', { name: 'Abbrechen' });
 
-/**
- * The crops page's export dialog. It owns three pieces of state -- scope,
- * format and an in-flight flag -- and hands the chosen pair to a caller-supplied
- * `onExport`. The hook behind that callback has its own tests in
- * `useCropImportExport.test.ts`; what is covered here is the dialog's own
- * decisions: which scope it starts on, that it only resets the scope, what it
- * disables while an export runs, and that it closes once the export resolves.
- *
- * A mutation battery leaves two breaks standing, both because the code is
- * redundant rather than untested: the `useState(initialScope)` seed, which the
- * reset effect overwrites before the first paint, and the effect's own
- * `if (open)`, which only avoids a state write while the dialog is unmounted.
- * Neither is observable from outside, and neither is worth changing.
- */
 describe('CropsExportDialog', () => {
   beforeEach(() => {
     window.localStorage.removeItem('ofp.crops.exportFormat');
@@ -63,6 +49,8 @@ describe('CropsExportDialog', () => {
       expect(screen.getByText('Kulturen exportieren')).toBeInTheDocument();
       expect(screen.getByText('Umfang')).toBeInTheDocument();
       expect(screen.getByText('Format')).toBeInTheDocument();
+      expect(screen.getAllByRole('radio')).toHaveLength(6);
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     });
 
     it('closes on Escape without exporting', async () => {
@@ -126,14 +114,26 @@ describe('CropsExportDialog', () => {
       expect(radio('Alle Kulturen')).toBeChecked();
     });
 
-    it('keeps the format the user picked last time', async () => {
+    it('restores the successful format after canceling an unsaved selection', async () => {
       const user = userEvent.setup();
-      const { rerenderWith } = renderDialog();
+      window.localStorage.setItem('ofp.crops.exportFormat', 'xlsx');
+      const { rerenderWith, onExport } = renderDialog();
       await user.click(radio('CSV (.csv)'));
+      await user.click(cancelButton());
       rerenderWith({ open: false });
       rerenderWith({ open: true });
-      expect(radio('CSV (.csv)')).toBeChecked();
-      expect(radio('Excel (.xlsx)')).not.toBeChecked();
+      expect(radio('Excel (.xlsx)')).toBeChecked();
+      expect(window.localStorage.getItem('ofp.crops.exportFormat')).toBe('xlsx');
+      expect(onExport).not.toHaveBeenCalled();
+    });
+
+    it('reads the latest saved preference when reopening without changing scope defaults', () => {
+      const { rerenderWith } = renderDialog({ initialScope: 'current' });
+      rerenderWith({ open: false });
+      window.localStorage.setItem('ofp.crops.exportFormat', 'json');
+      rerenderWith({ open: true });
+      expect(radio('JSON (.json)')).toBeChecked();
+      expect(radio('Aktuelle Kultur')).toBeChecked();
     });
 
     it('picks up a scope the caller changed while the dialog was closed', () => {
@@ -235,6 +235,21 @@ describe('CropsExportDialog', () => {
       expect(onClose).toHaveBeenCalledTimes(1);
     });
 
+    it('keeps the dialog and successful preference after a failed export, then allows retry', async () => {
+      const user = userEvent.setup();
+      window.localStorage.setItem('ofp.crops.exportFormat', 'xlsx');
+      const onExport = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+      const { onClose } = renderDialog({ onExport });
+      await user.click(radio('CSV (.csv)'));
+      await user.click(submitButton());
+      expect(onClose).not.toHaveBeenCalled();
+      expect(window.localStorage.getItem('ofp.crops.exportFormat')).toBe('xlsx');
+      expect(submitButton()).toBeEnabled();
+      await user.click(submitButton());
+      expect(window.localStorage.getItem('ofp.crops.exportFormat')).toBe('csv');
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
     it('blocks the current-crop scope without a crop, and says why', async () => {
       const user = userEvent.setup();
       const { onExport } = renderDialog({ hasCurrentCrop: false, initialScope: 'current' });
@@ -266,9 +281,9 @@ describe('CropsExportDialog', () => {
      * in its idle state before anything could be read off it.
      */
     const pendingExport = () => {
-      let resolve = (): void => {};
-      const onExport = vi.fn(() => new Promise<void>((res) => { resolve = res; }));
-      return { onExport, resolve: () => resolve() };
+      let resolve: (success: boolean) => void = () => {};
+      const onExport = vi.fn(() => new Promise<boolean>((res) => { resolve = res; }));
+      return { onExport, resolve: () => resolve(true) };
     };
 
     it('disables both actions', async () => {
@@ -305,15 +320,6 @@ describe('CropsExportDialog', () => {
       await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     });
 
-    /**
-     * The real parent unmounts the dialog in its `onClose`, so this is only
-     * observable because the harness leaves `open` true -- but it is what pins
-     * the `finally` that clears the in-flight flag. The rejecting path cannot be
-     * pinned the same way: the click handler is `() => void handleExport()`, so
-     * a rejection escapes as an unhandled promise rejection and fails the run.
-     * That is the repo-wide `void asyncFn()` click pattern, not this dialog's,
-     * and changing it belongs in its own change.
-     */
     it('re-enables the actions once the export resolves', async () => {
       const user = userEvent.setup();
       const { onExport, resolve } = pendingExport();

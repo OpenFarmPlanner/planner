@@ -454,6 +454,30 @@ describe('useCropImportExport', () => {
   });
 
   describe('exporting', () => {
+    it.each(['ods', 'xlsx', 'csv'] as const)('uses the UI language at export time for %s', async (format) => {
+      const view = setup();
+      act(() => { view.result.current.handleOpenExportDialog(); });
+      language.resolvedLanguage = 'fr-CA';
+      view.rerender();
+      await act(async () => { await view.result.current.handleExport('all', format); });
+      expect(spreadsheet.exportToSpreadsheet).toHaveBeenCalledWith(
+        [CROP], format, 'crops.xlsx', expect.any(Function), expect.any(Map), 'fr',
+      );
+    });
+
+    it('captures the export language before loading data', async () => {
+      let resolve!: (value: { results: Crop[] }) => void;
+      api.listAll.mockImplementationOnce(() => new Promise(res => { resolve = res; }));
+      language.resolvedLanguage = 'es';
+      const view = setup();
+      let exportRequest!: Promise<boolean>;
+      act(() => { exportRequest = view.result.current.handleExport('all', 'ods'); });
+      language.resolvedLanguage = 'de';
+      view.rerender();
+      await act(async () => { resolve({ results: [CROP] }); await exportRequest; });
+      expect(spreadsheet.exportToSpreadsheet.mock.calls[0][5]).toBe('es');
+    });
+
     it('exports only the selected crop as JSON, loading the list for its neighbours\' names', async () => {
       const view = setup();
 
@@ -494,9 +518,11 @@ describe('useCropImportExport', () => {
       api.listAll.mockRejectedValue(new Error('boom'));
       const view = setup();
 
-      await act(async () => { await view.result.current.handleExport('all', 'json'); });
+      let success: boolean | undefined;
+      await act(async () => { success = await view.result.current.handleExport('all', 'json'); });
 
       expect(view.showSnackbar).toHaveBeenCalledWith(expect.any(String), 'error');
+      expect(success).toBe(false);
     });
   });
 

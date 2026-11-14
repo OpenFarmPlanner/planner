@@ -257,7 +257,6 @@ function Crops() {
     progressLabel,
     handleExportCurrentCrop,
     handleExportAllCrops,
-    exportNoteLanguage, setExportNoteLanguage,
     handleOpenExportDialog,
     handleExport,
     handleImportStart,
@@ -978,7 +977,6 @@ function Crops() {
         initialScope={exportDialogInitialScope}
         onClose={() => setExportDialogOpen(false)}
         onExport={handleExport}
-        noteLanguage={exportNoteLanguage} onNoteLanguageChange={setExportNoteLanguage}
         t={t}
       />
 

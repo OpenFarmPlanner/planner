@@ -109,7 +109,7 @@ export const buildCompanionItemsByCrop = (
   return itemsByCrop;
 };
 
-export { formatCompanionCell, parseCompanionCell } from './companionCells';
+export { formatCompanionCell, getCompanionNote, parseCompanionCell } from './companionCells';
 
 // --- Crop form ----------------------------------------------------------------
 

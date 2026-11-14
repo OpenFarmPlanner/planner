@@ -40,13 +40,18 @@ function encode(value: string): string {
     ? JSON.stringify(value) : value;
 }
 
+/** Language maps are authoritative; older records fall back to their scalar note. */
+export function getCompanionNote(item: Pick<CompanionImportItem, 'note' | 'notes'>, language: string): string {
+  const selectedLanguage = normalizeLanguageTag(language);
+  return item.notes ? (selectedLanguage ? item.notes[selectedLanguage] ?? '' : '') : item.note;
+}
+
 /** One group per line; quoted JSON strings escape reserved delimiters and line breaks. */
 export function formatCompanionCell(items: readonly CompanionImportItem[], language = 'de'): string | null {
   if (!items.length) return null;
-  const selectedLanguage = normalizeLanguageTag(language);
   const groups = new Map<string, string[]>();
   for (const item of items) {
-    const note = item.notes ? (selectedLanguage ? item.notes[selectedLanguage] ?? '' : '') : language === 'de' ? item.note : '';
+    const note = getCompanionNote(item, language);
     groups.set(note, [...(groups.get(note) ?? []), encode(item.name)]);
   }
   return [...groups].map(([note, names]) => `${names.join('; ')}${note ? ` | ${encode(note)}` : ''}`).join('\n');

@@ -1711,8 +1711,7 @@
     "publishSkipped_other": "{{count}} Nachbarn bleiben im Projekt: Sie sind freier Text oder Kulturen ohne Kulturart.",
     "noteLanguage": "Sprache der Nachbarnotizen",
     "languageHelp": {
-      "edit": "Du bearbeitest nur Notizen in dieser Sprache. Andere Sprachversionen bleiben erhalten.",
-      "export": "Exportiert werden nur Notizen in dieser Sprache. JSON enthält alle Sprachversionen."
+      "edit": "Du bearbeitest nur Notizen in dieser Sprache. Andere Sprachversionen bleiben erhalten."
     },
     "cellHelp": "Eine Gruppe pro Zeile: Tomate; Gurke | Schutz vor Schädlingen. Ohne Notiz genügen Namen. Exportierte Anführungszeichen und Escape-Sequenzen erhalten Trennzeichen und Zeilenumbrüche in Notizen. Alte Gedankenstrich-Kommentare werden nur bei eindeutiger Namensauflösung zugeordnet."
   },

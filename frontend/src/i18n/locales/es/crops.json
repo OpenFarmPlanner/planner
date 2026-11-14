@@ -1756,8 +1756,7 @@
     "publishSkipped_other": "{{count}} vecinos se quedan en el proyecto: son texto libre o cultivos sin especie de cultivo.",
     "noteLanguage": "Idioma de las notas de asociación",
     "languageHelp": {
-      "edit": "Solo editas las notas en este idioma. Las demás versiones se conservan.",
-      "export": "Solo se exportan las notas en este idioma. JSON incluye todas las versiones lingüísticas."
+      "edit": "Solo editas las notas en este idioma. Las demás versiones se conservan."
     },
     "cellHelp": "Un grupo por línea: Tomate; Pepino | Control de plagas. También se admiten solo nombres. Las comillas y secuencias de escape exportadas conservan los separadores y saltos de línea de las notas. Los comentarios antiguos con guion solo se vinculan cuando los nombres se reconocen sin ambigüedad."
   },
