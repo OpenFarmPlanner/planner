@@ -104,7 +104,7 @@ for (const language of languages) {
     await expect.poll(() => new URL(page.url()).pathname).toBe(language.publicPaths[1]);
     expect(new URL(page.url()).search).toBe('?ref=localization');
     for (const path of language.publicPaths) {
-      await page.goto(path);
+      await page.goto(path, { waitUntil: 'networkidle' });
       await page.evaluate(() => document.fonts.ready);
       await expect(page.locator('html')).toHaveAttribute('lang', language.code);
       await expect(page.locator('h1')).toHaveCount(1);
@@ -180,7 +180,8 @@ test('existing legal clauses fit on phones after adding Portuguese', async ({ br
     const context = await browser.newContext({ locale: language.code, viewport: { width: 375, height: 800 } });
     const page = await context.newPage();
     for (const path of language.paths) {
-      await page.goto(path);
+      // The prerendered paragraph is replaced when the React app takes over.
+      await page.goto(path, { waitUntil: 'networkidle' });
       const clause = page.getByText(language.clause, { exact: false });
       await clause.scrollIntoViewIfNeeded();
       await page.evaluate(() => document.fonts.ready);
