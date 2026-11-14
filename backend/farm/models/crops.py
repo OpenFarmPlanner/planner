@@ -965,7 +965,9 @@ class Crop(TimestampedModel):
             or previous.get('derived_from_public_crop_id')
         ):
             return
-        pinned = {crop_field_attname(field) for field in self.library_pinned_fields or []}
+        from farm.services.public_crops import effective_library_pinned_fields
+
+        pinned = {crop_field_attname(field) for field in effective_library_pinned_fields(self)}
         tracked = self._SOURCE_DIVERGENCE_TRACKED_FIELDS - pinned
         if any(previous.get(field) != getattr(self, field) for field in tracked):
             self.is_modified_from_source = True

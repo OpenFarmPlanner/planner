@@ -413,6 +413,34 @@ The public Crop Library follows an open-data model:
   (`public_crop_pushable_sync_fields`; `update_public_crop_directly` takes
   `allow_variety_rename` for the publisher). The endpoint is session-only, like
   `link-public-crop` (not in `CropViewSet.api_token_actions`).
+- **Resolving an initial import link.** The import browser uses the existing
+  field sync for explicit take/share/pin choices when linking an existing crop.
+  `link-public-crop` accepts optional `push_fields` only alongside an explicit
+  `pull_fields` decision, `base_version` and `expected_updated_at`. The same
+  project, entry and crop locks protect the entire change. Direct contribution
+  permissions and current library terms apply; a contributor who requires
+  moderation cannot share through this initial-link action and may still pull
+  or pin. No proposal is created here. Consent and all data/revision writes
+  roll back together. Private defaults, canceled sharing intent and copy-only
+  choices never become implicit publication. The normalized resulting values
+  and public version form the baseline, including compatibility-derived fields.
+  A final crop revision records this completed baseline after normalization and
+  any public edit, so restoring the link restores its resolved status and pins.
+  See [the initial-link matrix](./crop-library-state-matrix.md#linking-an-existing-culture).
+- **Reproducible local import acceptance data.** The guarded
+  `seed_library_import_acceptance` management command supports
+  `--include-resolution` to add a third isolated project alongside the existing
+  once/link cases. Each has one culture, twelve varieties and twelve plans;
+  the resolution case provides a local harvest duration to explicitly share,
+  a library growth duration to take and private notes to pin. Use an established
+  local session account and a disposable local library entry. The command
+  changes no contribution permissions, consent or library values, and repeated
+  applies preserve existing fixtures and manual edits. Follow the existing
+  [local test-data handoff](./work-execution-queue.md#local-test-data-handoff):
+  preview with `DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1`, `--username`,
+  `--public-crop-id`, `--database-name` matching the actual local database and
+  `--include-resolution`; review the target before adding `--apply`. Cloud
+  validation uses isolated data and does not prepare the user's localhost.
 - **Pulling never breaks live inheritance.** `_pull_public_crop_fields()` (used
   by the link's and the sync's pull) writes a raw value only when the entry's
   value differs from the crop's *effective* one. A Sorte that inherits a field
@@ -2376,11 +2404,21 @@ operations are rejected. Delete preview exposes the full affected IDs, planning
 count and `ambiguous_general_group`; the UI explains the block and disables
 confirmation. No production repair is performed.
 
-Initial linking also offers **Nur lokal** using the same pin rules as an existing
-link's sync. The ordinary local choice keeps the current value for this decision;
+Initial linking offers **Nur lokal** using the same pin rules as an existing
+link's sync. The explicit sharing column updates only selected library fields;
 the third choice persists `library_pinned_fields`, excludes that field from later
 library pulls/pushes and can be released explicitly through the existing sync UI.
-`link-public-crop` validates `pin_fields` and applies the link, selected pulls and
-pins in one transaction. Identity fields, empty values and species-invariant
-variety fields retain their existing restrictions. Neither local choice publishes
-anything or requires contribution consent.
+`link-public-crop` validates all decisions and applies them with the link and
+normalized final baseline in one transaction. Identity fields, empty values and
+species-invariant variety fields retain their existing restrictions. Taking
+library values or pinning private ones requires no contribution consent; explicit
+sharing uses the ordinary direct-edit permissions and current contribution terms.
+Copy-only choices remain private when switching back to linking.
+
+Germination comparisons show temperature and light requirements independently.
+Their deprecated `germination_types` projection is omitted when both lists are
+unambiguous; historical conflicting flags remain reviewable. A canonical pin
+also protects its legacy projection, without pinning the other canonical axis.
+Explicit new pins survive compatibility pulls. Opposite pull/share decisions
+through overlapping legacy and canonical fields are rejected atomically, so
+normalization cannot overwrite a confirmed share or leak a private pinned value.

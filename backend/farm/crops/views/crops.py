@@ -758,12 +758,11 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='link-public-crop')
     def link_public_crop(self, request: Request, pk: str | None = None) -> Response:
-        """Link the crop to a published entry, optionally pulling chosen fields.
+        """Link with explicit pull/share/pin decisions in a single transaction.
 
-        `pull_fields` (optional) lists the differing fields that take the
-        entry's value; they are applied in the same transaction as the link,
-        and the entry's current version becomes the baseline. The remaining
-        differences remain local; linking does not publish them.
+        Only explicit `push_fields` publish values, under the same direct-edit
+        permission and contribution consent rules as ordinary library sync.
+        Omitted decisions preserve legacy private linking behavior.
         """
         return self._apply_public_reference(request, establish_link=True)
 
@@ -778,6 +777,11 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         return self._apply_public_reference(request, establish_link=False)
 
     def _apply_public_reference(self, request: Request, *, establish_link: bool) -> Response:
+        if not isinstance(request.data, dict):
+            return api_error_response(
+                code='invalid_public_crop_confirmation', detail='Request body must be an object.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
         crop = self.get_object()
         public_crop_id = request.data.get('public_crop_id')
         try:
@@ -799,20 +803,42 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 return _invalid_sync_fields_response()
 
         pin_fields = _request_field_list(request.data.get('pin_fields', []))
-        if pin_fields is None:
+        push_fields = _request_field_list(request.data.get('push_fields', []))
+        if pin_fields is None or push_fields is None or (push_fields and not establish_link):
             return _invalid_sync_fields_response()
         public_crop = get_object_or_404(
             PublicCrop.objects.filter(status=PublicCrop.STATUS_PUBLISHED),
             pk=public_crop_id,
         )
-        try:
-            linked = link_project_crop_to_public_reference(
-                crop=crop, public_crop=public_crop, pull_fields=pull_fields,
-                base_version=base_version,
-                expected_updated_at=request.data.get('expected_updated_at'),
-                pin_fields=pin_fields,
-                establish_link=establish_link,
+        has_library_consent = not push_fields or has_accepted_current(
+            request.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY,
+        )
+        if push_fields:
+            if is_active_guest_demo_user(request.user):
+                return guest_demo_forbidden_response()
+            if requires_moderation_queue(request):
+                return api_error_response(
+                    code='public_library_direct_edit_required',
+                    detail='This account cannot share values directly while establishing a link.',
+                    status_code=status.HTTP_403_FORBIDDEN,
+                )
+            error = self._public_sync_push_precondition_error(
+                request, public_crop, has_library_consent=has_library_consent, moderated=False,
             )
+            if error is not None:
+                return error
+        try:
+            with transaction.atomic():
+                linked = link_project_crop_to_public_reference(
+                    crop=crop, public_crop=public_crop, pull_fields=pull_fields,
+                    base_version=base_version,
+                    expected_updated_at=request.data.get('expected_updated_at'),
+                    pin_fields=pin_fields, push_fields=push_fields,
+                    establish_link=establish_link, user=request.user,
+                    companion_note_language=note_language({'request': request}),
+                )
+                if not has_library_consent:
+                    record_acceptance(request.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY)
         except CropLinkConflictError as error:
             return api_error_response(code=error.code, detail=str(error), status_code=409)
         except PublicCropEditConflictError as error:
@@ -821,6 +847,8 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             return self._public_sync_error_response(error)
         except PublicCropSyncFieldsError as error:
             return _invalid_sync_fields_response(error.fields, code=error.code)
+        except (PublicCropPermissionError, PublicCropIdentityConflictError) as error:
+            return self._public_sync_error_response(error)
         serializer = self.get_serializer(linked)
         return Response(serializer.data)
 

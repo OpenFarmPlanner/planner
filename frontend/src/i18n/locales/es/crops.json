@@ -1633,6 +1633,8 @@
       "keepLocalDescription": "Conservar ahora y comparar más adelante"
     },
     "importDecision": {
+      "selectTarget": "Selecciona un cultivo existente y espera a que se cargue la comparación.",
+      "shareUnavailable": "Tu cuenta no puede compartir valores directamente en este paso. Puedes tomar los valores de la biblioteca o conservar los tuyos solo localmente.",
       "title": "Importar valores de la biblioteca de cultivos",
       "existing": "Ya existe un cultivo coincidente en este proyecto. Elige qué cultivo completar y qué valores importar.",
       "newCrop": "Todavía no existe un cultivo coincidente para esta entrada. Los valores se importarán como un cultivo nuevo.",
@@ -1641,7 +1643,7 @@
       "copy": "Importar valores una sola vez",
       "link": "Importar valores y vincular",
       "copyHelp": "Los valores seleccionados se copian una sola vez, sin vínculo de sincronización. Tus valores privados y variedades no se publican.",
-      "linkHelp": "Los valores seleccionados se copian y el cultivo se vincula. Los cambios futuros de la biblioteca se ofrecerán para su revisión. Tus valores privados y variedades no se publican.",
+      "linkHelp": "Para cada valor, elige si quieres tomarlo de la biblioteca, compartir expresamente el tuyo o conservarlo solo localmente. Solo se hacen públicos los valores seleccionados expresamente para compartir. Los cambios posteriores de la biblioteca se ofrecerán para su revisión.",
       "failed": "No se pudieron importar los valores. Vuelve a comprobar el destino y la comparación. Para un cultivo nuevo, cierra este diálogo y recarga la biblioteca.",
       "success": "Valores de la biblioteca importados.",
       "projectChanged": "El proyecto activo ha cambiado. Cierra este diálogo y reinicia la importación en el proyecto deseado."

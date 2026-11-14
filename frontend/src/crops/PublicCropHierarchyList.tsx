@@ -182,7 +182,7 @@ export function PublicCropHierarchyList({
               : crop ? getPublicCropTitle(crop, language, t('library.translation.missingName')) : undefined}
             primary={node.label}
             isPrimaryEmphasized={node.kind === 'species'}
-            secondary={undefined}
+            secondary={crop?.project_import_status ? t('library.linkExisting.alreadyLinked') : undefined}
             varietyCount={node.kind === 'species' ? node.varietyCount : undefined}
             showZeroVarietyCount={node.kind === 'species' && Boolean(normalizedSearchQuery)}
             highlightQuery={normalizedSearchQuery}

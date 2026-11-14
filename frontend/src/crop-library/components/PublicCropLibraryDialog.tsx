@@ -178,14 +178,14 @@ export function PublicCropLibraryDialog({
         setIsSpeciesView(false);
         setFilters(EMPTY_PUBLIC_CROP_FILTERS);
         setFilterAnchorEl(null);
-        setMobileStep(initialSelectedId && useMobileFilterLayout ? 'detail' : 'list');
+        setMobileStep(initialSelectedId ? 'detail' : 'list');
       });
       return () => {
         cancelled = true;
       };
     }
     return undefined;
-  }, [initialQuery, initialSelectedId, open, useMobileFilterLayout]);
+  }, [initialQuery, initialSelectedId, open]);
 
   useEffect(() => {
     if (!open) {
@@ -244,10 +244,8 @@ export function PublicCropLibraryDialog({
   const selectCropFromList = useCallback((crop: PublicCrop, kind: 'species' | 'variety'): void => {
     setSelectedId(crop.id);
     setIsSpeciesView(kind === 'species');
-    if (useMobileFilterLayout) {
-      setMobileStep('detail');
-    }
-  }, [useMobileFilterLayout]);
+    setMobileStep('detail');
+  }, []);
 
   const hasLibraryEntries = crops.length > 0;
   const listEmptyTitle = hasLibraryEntries ? t('library.emptyState.noResultsTitle') : t('library.emptyState.emptyLibraryTitle');
@@ -462,14 +460,17 @@ export function PublicCropLibraryDialog({
             ? t('disabledReasons.selectEntry')
             : importingId === selectedCrop.id
               ? t('common:disabledReasons.busy')
-              : ''}
+              : selectedCrop.project_import_status?.is_up_to_date
+                ? t('library.importUpToDateTooltip') : ''}
         >
           <Button
             variant="contained"
             onClick={() => selectedCrop && onImport(selectedCrop)}
-            disabled={!selectedCrop || importingId === selectedCrop?.id}
+            disabled={!selectedCrop || importingId === selectedCrop?.id || Boolean(selectedCrop.project_import_status?.is_up_to_date)}
           >
-            {importingId === selectedCrop?.id ? t('library.importing') : t('library.importButton')}
+            {importingId === selectedCrop?.id ? t('library.importing')
+              : selectedCrop?.project_import_status?.is_up_to_date ? t('library.linkExisting.alreadyLinked')
+                : selectedCrop?.project_import_status ? t('library.importUpdateButton') : t('library.importButton')}
           </Button>
         </DisabledActionTooltip>
       </DialogActions>

@@ -154,8 +154,25 @@ Synthetic regressions cover a general Tomato and twelve varieties, explicit
 linking, repeated import, project-scoped alias suggestions, stale versions, and
 legacy duplicate rename/deletion rollback.
 
-Both initial-link entry points offer the existing three-way comparison: library
-value, keep local for this decision, or **Nur lokal** (persistently pinned).
-Initial linking never pushes the middle column into the library. Invalid pins or
-overlap between `pull_fields` and `pin_fields` reject the complete request; valid
-pins survive later library updates until explicitly released.
+The import browser selects **Import values and link** first for a matched
+existing culture. Its comparison offers library values, explicitly shared project
+values, and **Nur lokal** (persistently pinned). Default private values and choices
+carried over from one-time import remain private; switching modes expires earlier
+sharing intent. The comparison lists what will become public and requires the
+current contribution consent. Only an account allowed to edit directly can share
+here; other accounts can pull or pin without creating a moderation proposal.
+
+Pulls, explicit shares, pins, the link and consent are atomic under the same
+version and local snapshot guards. The final normalized values establish the
+resulting public-version baseline. Germination pins exclude their compatibility
+projection from divergence tracking, while the other unpinned axis still counts.
+The browser stays open with its search and filters, shows the linked row and
+disables an up-to-date import. Resizing an open comparison also preserves the
+browser search, filters and selected entry. Later unpinned changes still enable the existing
+update workflow.
+
+The publish wizard's separate initial-link confirmation retains its private
+middle-column behavior. Older link clients that omit sharing fields also publish
+nothing. Copy-only import never publishes or creates pins. Invalid selections,
+empty shares and overlapping pull/share/pin fields reject the complete request;
+valid pins survive later library updates until explicitly released.

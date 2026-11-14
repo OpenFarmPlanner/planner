@@ -1,4 +1,18 @@
-import type { PublicCrop, PublicCropDiscussionTopic } from '../api/types';
+import type { Crop, PublicCrop, PublicCropDiscussionTopic } from '../api/types';
+
+/** Reflect a completed import immediately while its authoritative list reloads. */
+export function withProjectImportStatus(entry: PublicCrop, crop: Crop): PublicCrop {
+  return {
+    ...entry,
+    version: Math.max(entry.version, crop.source_public_version ?? 0),
+    project_import_status: crop.source_public_crop === entry.id ? {
+      crop_id: crop.id as number,
+      crop_name: crop.crop_display_name || crop.name,
+      is_modified_from_source: Boolean(crop.is_modified_from_source),
+      is_up_to_date: !crop.is_modified_from_source && !crop.public_update_available,
+    } : null,
+  };
+}
 
 /**
  * Keeps locally saved crops from being rolled back by a list response that

@@ -21,6 +21,8 @@ import {
   getHarvestMethodLabel,
   getNutrientDemandLabel,
   getPublicCropFieldLabel,
+  getPublicCropComparisonFieldLabel,
+  getPublicCropFormUnitFieldLabel,
   getPublicCropOriginalLanguageCode,
   getPublicCropTabIndex,
   getRevisionValueLabel,
@@ -463,6 +465,16 @@ describe('buildPublicCropDescriptionDrafts', () => {
 });
 
 describe('getPublicCropFieldLabel', () => {
+  it.each(['de', 'en', 'fr', 'es'])('uses existing germination labels in every comparison in %s', language => {
+    const translate = i18n.getFixedT(language, 'crops') as TFunction;
+    for (const field of ['germination_temperature_requirement', 'germination_light_requirement', 'germination_types', 'stratification_days_min']) {
+      const expected = translate(`germination.fields.${field}`);
+      expect(expected).not.toContain('germination.fields.');
+      expect(getPublicCropComparisonFieldLabel(field, translate)).toBe(expected);
+      expect(getPublicCropFormUnitFieldLabel(field, translate)).toBe(expected);
+    }
+  });
+
   it('localizes the fields it knows', () => {
     expect(getPublicCropFieldLabel('name', t)).toBe('Kulturart');
     expect(getPublicCropFieldLabel('variety', t)).toBe('Sorte');

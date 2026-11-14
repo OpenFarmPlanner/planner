@@ -334,6 +334,9 @@ const normalizeComparisonValue = (value: unknown): unknown => {
 
 /** Label for one changed public-crop field, shared by every diff surface. */
 export function getPublicCropComparisonFieldLabel(field: string, t: TFunction): string {
+  if (field.startsWith('germination_') || field.startsWith('stratification_')) {
+    return getPublicCropFieldLabel(field, t);
+  }
   return t(`library.publishWizard.comparison.fields.${field}`);
 }
 
