@@ -6,8 +6,10 @@ checkbox rows under **Ordered work items** to reorder work. Priority labels
 indicate urgency, not order. Keep the queue issue open.
 
 Use `- [ ] #123` for an implementation issue and `- [ ] PR #456` for a review
-and merge gate. Completed checkboxes are advisory: live GitHub state decides
-whether work remains. Open PR entries must be resolved before later work;
+and merge gate. Checkboxes record the owner's personal manual testing and
+acceptance, not implementation completion. Only the owner checks them; agents
+must never check a box on the owner's behalf. Live GitHub state decides
+whether implementation work remains. Open PR entries must be resolved before later work;
 merged PRs are skipped. A PR closed without merging stops reconciliation until
 a maintainer resolves or removes that entry. Missing entries, wrong types,
 duplicates and malformed rows also fail before labels change.
@@ -30,9 +32,67 @@ neither creation nor implementation. When queueing is requested without a
 position, append an absent item; keep an existing item at its current position.
 Explicit positions refer to displayed rows under Ordered work items, including
 completed rows and PR gates, unless the user specifies eligible items instead.
-Do not change unrelated rows or prose. Re-fetch before writing and verify live
+Do not change unrelated rows or prose. The standing maintenance below is an
+explicit exception for queue inspections, including create-only issue requests:
+acceptance cleanup, missing completed-item test hints and implementation-PR
+gates. An explicit user instruction not to edit the queue takes precedence.
+Re-fetch before writing and verify live
 order afterward; issue-body writes do not offer atomic compare-and-swap through
 these clients, so report unreconciled concurrent edits instead of overwriting.
+
+### Personal acceptance and queue cleanup
+
+Keep closed issues and merged PRs with unchecked boxes visible for the owner's
+manual testing. They do not prevent the worker from moving to the next eligible
+item. A checked box means the owner has personally tested and accepted the work;
+it does not waive implementation, independent review or merge requirements.
+
+After implementation, the agent adds a short **Manual test:** instruction to
+each completed queue entry, based on the delivered behavior: where to open it,
+what to do and what result to expect. Include any required test project/data
+and the actual environment or release where available; do not imply that merged
+work is already deployed. For workflow-only work, describe the concrete document
+or workflow result the owner can inspect instead of inventing an app test.
+On queue inspection, backfill missing instructions for completed entries from
+their merged implementation. Open items do not imply a testable implementation.
+
+Keep the instruction on the same physical Markdown line as its checkbox row,
+separated by `<br>**Manual test:** ...`, so it renders below the item while the
+existing queue parsers still see exactly one row. Move or remove this instruction
+together with its item and preserve the owner's checkbox state. For example:
+
+```markdown
+- [ ] #123 — Import existing cultures<br>**Manual test:** In the test project, import Tomato into the existing culture without linking; selected values change, the culture stays unlinked and no duplicate appears.
+```
+
+On each agent queue inspection, remove checked rows only after verifying that
+the issue is closed or the PR is merged, and that no open implementation PR
+still gates the item. Keep checked open issues, open PRs and PRs closed without
+merging. Never infer acceptance from closure, merge, passing tests or AI review,
+and never check boxes automatically. A failed manual test leaves the box
+unchecked; record the necessary follow-up work explicitly.
+
+Before skipping a closed issue, inspect its implementation PRs. For any open
+implementation PR or PR closed without merging, retain the issue and insert an
+explicit unchecked `- [ ] PR #N` gate immediately before it (reuse an existing
+gate instead of duplicating it). Both current automated selectors skip closed
+issues without discovering linked PRs, so retaining the issue alone cannot
+preserve this gate. Resolve the PR before continuing with later work.
+
+For cleanup, re-fetch the queue immediately before writing, recheck the status
+and checked state of each candidate against that latest body, and remove only
+eligible rows. Preserve all other rows, their relative order and surrounding
+prose, then verify the live result. This standing cleanup authorization applies
+to agents following these instructions; the marker workflow only reconciles
+labels and does not remove rows.
+
+Interactive commissioned agents perform this maintenance directly. The optional
+API controller currently neither retains manual-test instructions in its author
+output nor writes them after merging, and it does not perform the cleanup or
+linked-PR discovery above. It is not an implementation of these maintenance
+rules. Keep that route disabled for this workflow until a separate reviewed
+controller change supports them; the existing subscription chat is the current
+execution route. This documentation change does not enable or modify it.
 
 ## Subscription execution and independent review handoff
 
