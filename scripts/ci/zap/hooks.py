@@ -25,7 +25,9 @@ def zap_pre_shutdown(zap):
             raise ValueError('Unexpected scan origin.')
         if method not in {'GET', 'HEAD'}:
             raise ValueError('Unexpected request method.')
-        status = int(message['responseHeader'].splitlines()[0].split(' ')[1])
+        response_lines = message['responseHeader'].splitlines()
+        # A request without a response (timeout, connection error) is a coverage gap.
+        status = int(response_lines[0].split(' ')[1]) if response_lines else 0
         requests.append({'method': method, 'path': parsed.path, 'status': status})
     coverage = {
         'target': TARGET,
