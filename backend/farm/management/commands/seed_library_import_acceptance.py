@@ -67,6 +67,8 @@ class Command(BaseCommand):
             )
         if database.get("OPTIONS"):
             raise CommandError("Database connection options are not supported for local fixtures.")
+        if any(os.getenv(key) for key in ('PGHOSTADDR', 'PGSERVICE', 'PGSERVICEFILE')):
+            raise CommandError('PostgreSQL routing environment overrides are not supported.')
         if confirmed_name != name:
             raise CommandError("The confirmed database name does not match the configured target.")
         executor = MigrationExecutor(connection)

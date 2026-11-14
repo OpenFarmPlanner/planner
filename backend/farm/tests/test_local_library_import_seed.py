@@ -85,6 +85,14 @@ class LocalLibraryImportSeedTests(TestCase):
             list(Project.objects.values_list("pk", flat=True)), self.project_ids_before
         )
 
+    def test_postgres_environment_cannot_redirect_an_apparently_local_target(self):
+        for key in ('PGHOSTADDR', 'PGSERVICE', 'PGSERVICEFILE'):
+            with patch.dict('os.environ', {key: 'remote-target'}), self.assertRaises(CommandError):
+                self.seed(apply=True)
+        self.assertEqual(
+            list(Project.objects.values_list('pk', flat=True)), self.project_ids_before
+        )
+
     def test_fixture_is_complete_and_repeated_run_preserves_manual_changes(self):
         self.seed(apply=True)
         self.assertEqual(Project.objects.count(), len(self.project_ids_before) + 2)
