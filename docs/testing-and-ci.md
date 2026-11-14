@@ -461,7 +461,7 @@ run, which is why splitting them at any file boundary is safe.
 
 ### November 2026 baseline and measurement (#1108)
 
-The suite now has **303 tests in two Chromium projects**. The November 14
+The suite now has **303 tests in 57 files and two Chromium projects**. The November 14
 [PR #1107 run](https://github.com/OpenFarmPlanner/planner/actions/runs/43582327477)
 and [release #1109 run](https://github.com/OpenFarmPlanner/planner/actions/runs/43583467079)
 exercise the same frontend and E2E sources (the latter changes version files).
@@ -491,7 +491,11 @@ production build finished in 0:58, and the six cross-browser jobs in
 2:59–3:42. All required tests finished at 10:02:31 UTC, **13:27 after the
 09:49:04 run creation**, with production-build shard 1 last. E2E therefore
 sets the feedback time; improving the already shorter frontend/backend jobs
-would not shorten that path. Aggregate runner time across the nine PR
+would not shorten that path. The backend test step accounts for 373 of its
+416 seconds; the slowest frontend test step accounts for 152 of its
+169 seconds. Their setup is already a small fraction, so additional dependency
+caches would not address either test-execution cost or the PR critical path.
+Aggregate runner time across the nine PR
 workflows is 83.42 minutes (including review/gate waiting jobs;
 excluding queue and the later advisory queue-marker run).
 
@@ -504,8 +508,59 @@ once in the aggregate. Compare manifests and outcomes as well as durations;
 retain the same production build, browser projects, serial worker and separate
 VM/database per shard. Service startup is the interval before Playwright's
 `Running ... tests` line; fixture time is part of test execution, not additional
-wall time. For local profiling, set `E2E_TIMINGS=1`; reports go to
+wall time. The #1107 service/startup interval was 22–28 seconds per shard,
+from test-step start to the `Running` line. For local profiling, set `E2E_TIMINGS=1`; reports go to
 `frontend/test-results/e2e-timings.json`.
+
+The measurement-only [draft #1111 baseline](https://github.com/OpenFarmPlanner/planner/actions/runs/43587034955)
+ran the same 303 tests with zero Playwright retries: test steps were
+**600 / 489 / 433 seconds**, job times **661 / 547 / 505 seconds**, and queue
+**7 / 7 / 2 seconds**. Builds took 42 / 38 / 43 seconds with warm dependency
+caches. E2E finished **11:08** after workflow creation and consumed **28.55
+runner-minutes**. This draft also exposed a failing consent-tooltip test;
+its pointer transition was corrected before the optimization was published.
+The baseline E2E timings are complete passing measurements, not a claim that
+that draft's whole CI passed.
+
+File-level measurements explain the imbalance: `crop-import-batches` took
+73.7s, `localized-companion-notes` 72.9s, `planting-plans-continuous-scroll`
+69.2s, `library-link-lifecycle` 69.0s and `planting-plans-search` 68.2s.
+Together, test execution was 1,449.995 seconds, of which fixture actions were
+131.835 seconds (**9.1%**). Whole-file balancing addresses the larger uneven
+execution block without changing authentication or fixture semantics. A fast
+password hasher or shared login state is therefore deferred. The measured
+file weights predict about 483 seconds per partition before startup and
+worker overhead; actual CI results, including required-test finish time and
+runner totals, are linked in [PR #1111](https://github.com/OpenFarmPlanner/planner/pull/1111).
+Runner variance is visible between the historical and instrumented baselines;
+compare cache conditions and retries, not estimates alone.
+
+### Duration-aware file partitions
+
+`.github/workflows/e2e.yml` keeps the same three required job names and calls
+`node scripts/ci/run_e2e_shard.cjs INDEX/3` from the repository root. The runner
+first discovers all tests with Playwright's normal configuration and JSON list
+reporter, then assigns whole files longest-first to the currently lightest
+partition. `scripts/ci/e2e_timings.json` records the measured source run, file
+durations and test counts. A changed file's estimate scales with its current
+test count; new files use the measured average cost per test. Deleted files
+are ignored. Stale timing estimates can affect balance, but cannot omit tests.
+
+The runner passes anchored, escaped file filters as argument arrays to the
+same Playwright CLI. It keeps both Chromium projects, including the separate
+scrollbar project, and the configured serial execution inside each file.
+There is no shared server/database, extra worker, skipped test, reduced build
+or shorter assertion timeout. `E2E_PARTITION` log records show the assignment;
+timing reports identify the logical partition separately from Playwright's
+native count-based `shard` configuration. Unit tests cover partition coverage,
+new/changed files, project variants, literal filters and fail-closed inputs.
+
+To refresh the profile, combine `E2E_TIMING_FILE` durations and counts from
+all three successful, retry-free jobs of one comparable run. Use the selected
+manifest to confirm every test appears exactly once before replacing weights;
+record that run and head in `source`. Do not mix failed/retried attempts into
+scheduling weights. Compare actual slowest-shard and total runner time after
+refreshing; estimates are scheduling hints rather than performance guarantees.
 
 ### Earlier sharding and setup measurements (historical)
 

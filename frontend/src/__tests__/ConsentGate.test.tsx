@@ -184,8 +184,8 @@ describe('ConsentGate', () => {
     expect(acceptingButton).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Abmelden' })).toBeDisabled();
 
-    // The click already left the pointer here before the busy tooltip was enabled.
-    await user.unhover(acceptingButton.parentElement as HTMLElement);
+    // Move away after the click so hovering enters the newly disabled wrapper.
+    await user.pointer({ target: document.body });
     expect(await tooltipOf(user, acceptingButton)).toHaveTextContent('Aktion wird gerade verarbeitet.');
   });
 

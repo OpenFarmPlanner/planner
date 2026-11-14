@@ -14,6 +14,7 @@ class PlaywrightTimings {
     this.root = path.dirname(config.configFile);
     this.workers = config.workers;
     this.shard = config.shard;
+    this.partition = process.env.E2E_PARTITION || null;
     this.selected = suite.allTests().map(test => this.describe(test));
   }
 
@@ -70,6 +71,7 @@ class PlaywrightTimings {
       duration_ms: result.duration,
       workers: this.workers,
       shard: this.shard,
+      partition: this.partition,
       selected: this.selected,
       tests: this.tests,
       files: [...files.values()].sort((a, b) => b.duration_ms - a.duration_ms || a.file.localeCompare(b.file)),
@@ -82,7 +84,7 @@ class PlaywrightTimings {
     console.log('\nE2E_TIMING_RUN ' + JSON.stringify({
       schema: report.schema, status: report.status, started_at: report.started_at,
       duration_ms: report.duration_ms, workers: report.workers, shard: report.shard,
-      selected_count: report.selected.length, retries: report.retries,
+      partition: report.partition, selected_count: report.selected.length, retries: report.retries,
     }));
     for (const selected of report.selected) console.log('E2E_TIMING_SELECTED ' + JSON.stringify(selected));
     for (const test of report.tests) console.log('E2E_TIMING_TEST ' + JSON.stringify(test));
