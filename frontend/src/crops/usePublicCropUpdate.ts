@@ -14,7 +14,7 @@ import { cropAPI, publicCropAPI } from '../api/api';
 import type { Crop, CropPublicUpdate } from '../api/types';
 import { showGlobalSnackbar } from '../utils/globalSnackbar';
 import { extractApiErrorCode } from '../api/errors';
-import { readCropLibrarySyncFlags } from './cropLibraryAction';
+import { readCropLibrarySyncFlags, type CropLibrarySyncFlags } from './cropLibraryAction';
 import { describeLibraryPinError } from './libraryFieldPin';
 import { getCropDisplayName } from './cropDisplay';
 
@@ -23,17 +23,9 @@ export interface PublicCropUpdateDecision {
   pinFields?: string[];
 }
 
-export interface PublicCropUpdateController {
+export interface PublicCropUpdateController extends CropLibrarySyncFlags {
   /** The loaded diff while the dialog is open, `null` while it is closed. */
   update: CropPublicUpdate | null;
-  /** An undecided library update exists — the notice should be shown. */
-  hasOpenUpdate: boolean;
-  /**
-   * The pending library version was explicitly declined. The decision is
-   * stored per public version, so this clears itself once the entry changes
-   * again (see `Crop.rejected_public_version` on the backend).
-   */
-  isRejected: boolean;
   isLoading: boolean;
   isApplying: boolean;
   isRejecting: boolean;

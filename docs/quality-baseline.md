@@ -54,6 +54,13 @@ crops/cropLibraryAction.ts -> crops/usePublicCropUpdate.ts -> crops/cropLibraryA
 Its existing hook/action coupling belongs to the focused crop-library audit
 #1117; #1116 records it without performing that refactor.
 
+The subsequent #1117 boundary refactor retires this cycle: the pure action
+module owns the two-boolean status contract, and the React controller extends
+it without a reverse type import. It also fixes the touched bridge import
+block. The current baseline therefore contains **1,604 Ruff findings**
+(33 I001 occurrences) and **zero cycles**; the table above remains the pinned
+initial evidence. No new allowance was introduced during that pruning.
+
 The issue's historical successful CI runs #43588107346 and #43583411084
 demonstrate the old exit-code acceptance. Their archived scanner reports
 could not be downloaded through this Cloud environment's permitted hosts.

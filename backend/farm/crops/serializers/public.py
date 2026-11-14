@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 from rest_framework import serializers
 
+from accounts.public_identity import get_public_user_label as get_public_user_label
 from config.languages import (
     DEFAULT_LANGUAGE_CODE,
     SUPPORTED_LANGUAGE_CODES,
@@ -148,15 +149,6 @@ class PublicCropCompanionSerializer(serializers.Serializer):
         family = value.get('family')
         value['family'] = getattr(family, 'pk', family)
         return value
-
-
-def get_public_user_label(user: Any) -> str:
-    if user is None:
-        return ''
-    public_profile = getattr(user, 'public_profile', None)
-    if public_profile and public_profile.public_display_name:
-        return public_profile.public_display_name
-    return ''
 
 
 class PublicCropSerializer(serializers.ModelSerializer):

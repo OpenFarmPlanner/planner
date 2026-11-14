@@ -10,12 +10,12 @@ entries. See docs/crop-library-architecture.md.
 from collections.abc import Iterable
 from typing import Any
 
+from accounts.public_identity import get_public_user_label
 from farm.models import PublicCropDiscussionComment, PublicCropDiscussionTopic
 
 
 def has_public_name(user: Any) -> bool:
-    public_profile = getattr(user, 'public_profile', None) if user is not None else None
-    return bool(public_profile and public_profile.public_display_name)
+    return bool(get_public_user_label(user))
 
 
 def number_anonymous_authors(authors_in_order: Iterable[Any]) -> dict[int, int]:

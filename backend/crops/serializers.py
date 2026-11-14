@@ -11,6 +11,7 @@ from django.db.models import Q
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from accounts.public_identity import get_public_user_label
 from config.languages import (
     DEFAULT_LANGUAGE_CODE,
     SUPPORTED_LANGUAGE_CODES,
@@ -18,7 +19,6 @@ from config.languages import (
     resolve_request_language,
 )
 from farm.companion_notes import localize_companions, note_language
-from farm.crops.serializers.public import get_public_user_label
 from farm.models import PublicCrop
 
 from . import services
