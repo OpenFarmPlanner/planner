@@ -121,7 +121,7 @@ test.describe('public page prerendering', () => {
   });
 
   test('a browser in an unsupported language is sent from a German page to its English version before first paint', async ({ browser }) => {
-    const context = await browser.newContext({ locale: 'it-IT' });
+    const context = await browser.newContext({ locale: 'ja-JP' });
     const page = await context.newPage();
 
     const response = await page.goto('/ueber?ref=newsletter');
@@ -135,6 +135,7 @@ test.describe('public page prerendering', () => {
   for (const { locale, from, to, lang, heading } of [
     { locale: 'fr-CA', from: '/ueber', to: /\/fr\/a-propos$/, lang: 'fr', heading: 'Comment OpenFarmPlanner est né' },
     { locale: 'es-419', from: '/en/about', to: /\/es\/acerca-de$/, lang: 'es', heading: 'Cómo nació OpenFarmPlanner' },
+    { locale: 'it-IT', from: '/ueber', to: /\/it\/chi-siamo$/, lang: 'it', heading: 'Come è nato OpenFarmPlanner' },
   ]) {
     test(`a ${locale} browser is sent to the ${lang} version before first paint`, async ({ browser }) => {
       const context = await browser.newContext({ locale });

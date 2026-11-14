@@ -14,12 +14,15 @@ DEFAULT_LOCATION_NAMES: dict[str, str] = {
     'en': 'Main location',
     'fr': 'Site principal',
     'es': 'Ubicación principal',
+    'it': 'Sito principale',
 }
 
 
 def default_location_name(language_code: str | None) -> str:
     """Return the default location name for a language (English fallback)."""
-    return DEFAULT_LOCATION_NAMES[resolve_language_tag(language_code)]
+    return DEFAULT_LOCATION_NAMES.get(
+        resolve_language_tag(language_code), DEFAULT_LOCATION_NAMES['en'],
+    )
 
 
 def default_location_name_for_request(request: Request) -> str:

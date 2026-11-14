@@ -228,7 +228,7 @@ class CropSpeciesApiTest(DRFAPITestCase):
         self.assertEqual(payload['display_language_code'], 'fr')
 
     def test_an_unsupported_language_parameter_falls_back_instead_of_failing(self):
-        response = self.client.get('/openfarmplanner/api/crop-species/', {'language': 'it'})
+        response = self.client.get('/openfarmplanner/api/crop-species/', {'language': 'ja'})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -353,12 +353,28 @@ class CropSpeciesApiTest(DRFAPITestCase):
             {'de': 'Pastinake', 'en': 'Parsnip', 'fr': 'Panais', 'es': 'Chirivía'},
         )
 
+    def test_accepts_italian_names_and_synonyms_with_a_proposal(self):
+        response = self.client.post(
+            '/openfarmplanner/api/crop-species/',
+            {'name': 'Italian translation fixture', 'translations': [
+                {
+                    'language_code': 'it', 'common_name': 'Pastinaca',
+                    'synonyms': ['Pastinaca comune'],
+                },
+            ]},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        species = CropSpecies.objects.get(pk=response.data['id'])
+        self.assertEqual(species.translations_by_language()['it'], 'Pastinaca')
+        self.assertEqual(species.localized_name('it'), ('Pastinaca', 'it'))
+
     def test_rejects_an_unsupported_translation_language(self):
         response = self.client.post(
             '/openfarmplanner/api/crop-species/',
             {
                 'name': 'Testart Unbekannte Sprache',
-                'translations': [{'language_code': 'it', 'common_name': 'Pastinaca'}],
+                'translations': [{'language_code': 'ja', 'common_name': 'Pastinaca'}],
             },
             format='json',
         )
@@ -585,19 +601,22 @@ class CropApiLocalizationTest(DRFAPITestCase):
     def test_translations_endpoint_accepts_french_and_spanish(self):
         response = self.client.put(
             f'/openfarmplanner/api/public-crops/{self.crop.id}/translations/',
-            {'translations': {'fr': 'Variété robuste.', 'es': 'Variedad robusta.'}},
+            {'translations': {
+                'fr': 'Variété robuste.', 'es': 'Variedad robusta.', 'it': 'Varietà robusta.',
+            }},
             format='json',
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['translations']['fr'], 'Variété robuste.')
         self.assertEqual(response.data['translations']['es'], 'Variedad robusta.')
+        self.assertEqual(response.data['translations']['it'], 'Varietà robusta.')
         self.assertEqual(response.data['translations']['de'], 'Robuste Freilandsorte.')
 
     def test_translations_endpoint_rejects_an_unsupported_language(self):
         response = self.client.put(
             f'/openfarmplanner/api/public-crops/{self.crop.id}/translations/',
-            {'translations': {'it': 'Varietà robusta.'}},
+            {'translations': {'ja': 'Test description.'}},
             format='json',
         )
 

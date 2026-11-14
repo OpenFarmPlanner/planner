@@ -56,8 +56,15 @@ describe('normalizeLanguageTag', () => {
     }
   });
 
+  it('normalizes Italian tags and detects Italian browsers', () => {
+    for (const tag of ['it', 'it-IT', 'it-CH', 'IT_it']) expect(normalizeLanguageTag(tag)).toBe('it');
+    expect(detectBrowserLanguage(navigatorWith(['it-IT']))).toBe('it');
+    expect(normalizeLanguagePreference('it')).toBe('it');
+    expect(getLanguageLabel('it')).toBe('Italiano');
+  });
+
   it('returns null for unsupported and empty tags', () => {
-    for (const tag of ['it', 'it-IT', 'pt-BR', 'zh-Hans', 'xx', '', '   ', null, undefined]) {
+    for (const tag of ['ja', 'ja-JP', 'pt-BR', 'zh-Hans', 'xx', '', '   ', null, undefined]) {
       expect(normalizeLanguageTag(tag)).toBeNull();
     }
   });
@@ -79,12 +86,12 @@ describe('detectBrowserLanguage', () => {
   });
 
   it('falls back to English for unsupported browser languages', () => {
-    expect(detectBrowserLanguage(navigatorWith(['it-IT', 'pt-BR']))).toBe(FALLBACK_LANGUAGE);
+    expect(detectBrowserLanguage(navigatorWith(['ja-JP', 'pt-BR']))).toBe(FALLBACK_LANGUAGE);
     expect(detectBrowserLanguage(navigatorWith([]))).toBe(FALLBACK_LANGUAGE);
   });
 
   it('picks the first supported entry rather than the first entry', () => {
-    expect(detectBrowserLanguage(navigatorWith(['it-IT', 'de-CH', 'en-US']))).toBe('de');
+    expect(detectBrowserLanguage(navigatorWith(['ja-JP', 'de-CH', 'en-US']))).toBe('de');
   });
 });
 
@@ -116,7 +123,7 @@ describe('stored preference', () => {
   });
 
   it('ignores an unsupported stored value instead of trusting it', () => {
-    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'it');
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'ja');
     expect(readStoredLanguagePreference()).toBeNull();
   });
 
@@ -141,7 +148,7 @@ describe('normalizeLanguagePreference', () => {
   });
 
   it('treats anything else as auto rather than throwing', () => {
-    expect(normalizeLanguagePreference('it')).toBe(AUTO_LANGUAGE);
+    expect(normalizeLanguagePreference('ja')).toBe(AUTO_LANGUAGE);
     expect(normalizeLanguagePreference(undefined)).toBe(AUTO_LANGUAGE);
   });
 });

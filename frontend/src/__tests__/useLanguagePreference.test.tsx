@@ -68,8 +68,8 @@ beforeEach(() => {
   updateUiLanguageMock.mockResolvedValue({ ui_language: 'de' });
   // A browser that asks for no supported language, so every test that does
   // not set one explicitly falls through to the English default.
-  vi.spyOn(window.navigator, 'languages', 'get').mockReturnValue(['it-IT']);
-  vi.spyOn(window.navigator, 'language', 'get').mockReturnValue('it-IT');
+  vi.spyOn(window.navigator, 'languages', 'get').mockReturnValue(['ja-JP']);
+  vi.spyOn(window.navigator, 'language', 'get').mockReturnValue('ja-JP');
 });
 
 afterEach(() => {

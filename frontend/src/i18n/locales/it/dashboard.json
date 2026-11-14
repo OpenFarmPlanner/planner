@@ -1,0 +1,105 @@
+{
+  "title": "Panoramica",
+  "errors": {
+    "load": "Impossibile caricare i dati della panoramica"
+  },
+  "emptyState": {
+    "title": "Inizia la tua pianificazione colturale",
+    "description": "Apri Superfici coltivate e aggiungi un appezzamento. Potrai poi inserire colture e serie.",
+    "shortDescription": "Aggiungi un appezzamento nella pagina Superfici coltivate.",
+    "action": "Aggiungi appezzamento"
+  },
+  "tasks": {
+    "title": "Attività imminenti",
+    "empty": "Nessuna attività imminente",
+    "emptyTitle": "Nessuna attività imminente",
+    "emptyDescription": "Al momento non ci sono attività imminenti per questo progetto."
+  },
+  "checklist": {
+    "title": "Avvio del progetto",
+    "intro": "OpenFarmPlanner ti aiuta a organizzare la pianificazione di superfici, colture e cicli colturali. Inizia con il tuo primo appezzamento.",
+    "field": "Aggiungi appezzamento",
+    "bed": "Aggiungi aiuola",
+    "crop": "Aggiungi coltura",
+    "plan": "Aggiungi serie"
+  },
+  "board": {
+    "title": "Attività",
+    "status": {
+      "pending": "Da fare",
+      "in_progress": "In corso",
+      "completed": "Completate"
+    },
+    "origin": {
+      "manual": "Manuale",
+      "automatic": "Automatica",
+      "template": "Modello"
+    },
+    "metrics": {
+      "overdue": "Scadute",
+      "today": "Oggi",
+      "week": "Questa settimana"
+    },
+    "filters": {
+      "title": "Filtra attività",
+      "period": "Periodo",
+      "crop": "Coltura",
+      "field": "Appezzamento",
+      "person": "Assegnatario",
+      "from": "Da",
+      "to": "A"
+    },
+    "period": {
+      "all": "Tutte le date",
+      "overdue": "Scadute",
+      "today": "Oggi",
+      "week": "Questa settimana",
+      "custom": "Periodo personalizzato"
+    },
+    "all": "Tutte",
+    "unassigned": "Non assegnate",
+    "noDate": "Senza scadenza",
+    "dateOverride": "Data modificata manualmente",
+    "changeStatus": "Cambia stato: {{title}}",
+    "dragInstructions": "Trascina la scheda dell'attività in un'altra colonna. Puoi anche cambiarne lo stato da tastiera usando il menu dello stato.",
+    "dragStarted": "Spostamento di {{title}}.",
+    "dragOver": "Destinazione: {{status}}.",
+    "dragEnded": "{{title}} spostata in {{status}}.",
+    "dragCancelled": "Spostamento annullato.",
+    "resetFilters": "Reimposta filtri",
+    "invalidRange": "La data di fine deve essere successiva alla data di inizio.",
+    "noMatches": "Nessuna attività corrisponde a questi filtri. Reimposta i filtri per vedere tutte le attività.",
+    "empty": "Nessuna attività ancora presente in questa stagione. Tieni traccia qui dei lavori imminenti.",
+    "emptyColumn": "Nessuna attività",
+    "showMore": "Mostra altre attività",
+    "saveError": "Impossibile salvare lo stato. La modifica è stata annullata. Riprova.",
+    "dragHint": {
+      "desktop": "Trascina le schede delle attività in un'altra colonna; sui dispositivi touch, tieni prima premuta una scheda. Puoi anche cambiare lo stato dal menu dell'attività.",
+      "mobile": "Cambia lo stato di un'attività dal suo menu. Sugli schermi più grandi puoi anche trascinare le attività.",
+      "saveError": "Impossibile nascondere definitivamente questo suggerimento. Riprova."
+    }
+  },
+  "form": {
+    "add": "Aggiungi attività",
+    "edit": "Modifica attività",
+    "delete": "Elimina attività",
+    "createSeason": "Crea stagione",
+    "title": "Titolo",
+    "description": "Descrizione",
+    "date": "Scadenza",
+    "status": "Stato",
+    "origin": "Origine",
+    "plan": "Serie (facoltativa)",
+    "none": "Nessun collegamento",
+    "saveError": "Impossibile salvare l'attività. Verifica i dati inseriti e riprova.",
+    "deleteConfirm": "Eliminare definitivamente «{{title}}»?",
+    "deleteError": "Impossibile eliminare l'attività. Riprova."
+  },
+  "events": {
+    "propagation_start": "Avvio del vivaio",
+    "sowing": "Semina diretta",
+    "planting": "Trapianto",
+    "harvest_start": "Avvia raccolta",
+    "harvest_end": "Termina raccolta"
+  }
+}

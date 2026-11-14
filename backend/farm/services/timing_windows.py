@@ -301,6 +301,10 @@ _MONTH_NAMES: dict[str, tuple[str, ...]] = {
         'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
         'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
     ),
+    'it': (
+        'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
+        'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre',
+    ),
     'es': (
         'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
         'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
@@ -342,6 +346,14 @@ _TEXT_FORMS: dict[str, _TextForms] = {
         range='{start} à {end}',
         week='semaine {week}',
         week_range='semaines {start} à {end}',
+    ),
+    'it': _TextForms(
+        decade_month={
+            DECADE_EARLY: 'inizio {month}', DECADE_MID: 'metà {month}', DECADE_LATE: 'fine {month}',
+        },
+        range='{start} a {end}',
+        week='settimana {week}',
+        week_range='settimana {start} a {end}',
     ),
     'es': _TextForms(
         decade_month={

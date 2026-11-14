@@ -40,12 +40,12 @@ class AccountLanguageApiTest(DRFAPITestCase):
         self.assertEqual(UserProjectSettings.objects.get(user=self.user).ui_language, 'auto')
 
     def test_accepts_every_supported_code(self):
-        for code in ('auto', 'de', 'en', 'fr', 'es'):
+        for code in ('auto', 'de', 'en', 'fr', 'es', 'it'):
             response = self.client.put(LANGUAGE_URL, {'ui_language': code}, format='json')
             self.assertEqual(response.status_code, status.HTTP_200_OK, code)
 
     def test_switching_between_every_language_is_persisted_each_time(self):
-        for code in ('de', 'en', 'fr', 'es', 'de'):
+        for code in ('de', 'en', 'fr', 'es', 'it', 'de'):
             response = self.client.put(LANGUAGE_URL, {'ui_language': code}, format='json')
 
             self.assertEqual(response.status_code, status.HTTP_200_OK, code)
@@ -53,13 +53,13 @@ class AccountLanguageApiTest(DRFAPITestCase):
             self.assertEqual(self.client.get(ME_URL).data['ui_language'], code)
 
     def test_rejects_unsupported_language_codes(self):
-        for code in ('it', 'de-AT', 'nonsense', ''):
+        for code in ('ja', 'de-AT', 'nonsense', ''):
             response = self.client.put(LANGUAGE_URL, {'ui_language': code}, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, code)
 
     def test_an_unsupported_value_leaves_the_stored_preference_untouched(self):
         self.client.put(LANGUAGE_URL, {'ui_language': 'de'}, format='json')
-        self.client.put(LANGUAGE_URL, {'ui_language': 'it'}, format='json')
+        self.client.put(LANGUAGE_URL, {'ui_language': 'ja'}, format='json')
 
         self.assertEqual(UserProjectSettings.objects.get(user=self.user).ui_language, 'de')
 

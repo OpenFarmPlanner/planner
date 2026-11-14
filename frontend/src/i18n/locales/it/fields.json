@@ -1,0 +1,76 @@
+{
+  "title": "Appezzamenti",
+  "columns": {
+    "name": "Nome",
+    "location": "Sito",
+    "area": "Superficie (m²)",
+    "notes": "Note"
+  },
+  "errors": {
+    "load": "Errore nel caricamento degli appezzamenti",
+    "save": "Errore nel salvataggio dell'appezzamento",
+    "delete": "Errore nell'eliminazione dell'appezzamento",
+    "loadLocations": "Errore nel caricamento dei siti"
+  },
+  "validation": {
+    "nameRequired": "Il nome è obbligatorio",
+    "locationRequired": "Il sito è obbligatorio"
+  },
+  "confirmDelete": "Vuoi davvero eliminare questo appezzamento?",
+  "addButton": "Aggiungi nuovo appezzamento",
+  "createNew": "Crea nuovo appezzamento",
+  "cancel": "Annulla",
+  "submit": "Crea",
+  "selectLocation": "Seleziona sito",
+  "representation": {
+    "label": "Rappresentazione",
+    "ariaLabel": "Seleziona rappresentazione",
+    "table": "Elenco",
+    "graphical": "Grafica"
+  },
+  "graphical": {
+    "title": "Vista grafica degli appezzamenti",
+    "viewMode": "Modalità",
+    "modeAriaLabel": "Seleziona modalità",
+    "viewModeOption": "Visualizza",
+    "editModeOption": "Modifica",
+    "editMode": "Modalità modifica",
+    "modeHelpAria": "Mostra la guida alle modalità",
+    "modeHelpTooltip": "Naviga, usa lo zoom e consulta i dettagli. Puoi spostare o modificare appezzamenti e aiuole solo in modalità modifica. Scorciatoia: Alt+E",
+    "viewModeDescription": "Naviga, usa lo zoom e consulta i dettagli. Puoi spostare o modificare appezzamenti e aiuole solo in modalità modifica.",
+    "editModeDescription": "Sposta appezzamenti e aiuole e modifica la disposizione.",
+    "editModeBanner": "Modalità modifica attiva: ora puoi spostare appezzamenti e aiuole.",
+    "locationEditModeBanner": "Modifica grafica attiva: puoi spostare appezzamenti e aiuole in questo sito.",
+    "editModeShortcut": "Scorciatoia: Alt+E",
+    "locationEditModeAction": "Modifica grafica",
+    "locationEditModeActive": "Modifica grafica attiva",
+    "enableLocationEditMode": "Modifica grafica",
+    "disableLocationEditMode": "Termina la modifica grafica del sito «{{name}}»",
+    "zoomIn": "Ingrandisci",
+    "zoomOut": "Riduci",
+    "panUp": "Sposta in alto",
+    "panDown": "Sposta in basso",
+    "panLeft": "Sposta a sinistra",
+    "panRight": "Sposta a destra",
+    "fitToView": "Adatta tutto",
+    "enterFullscreen": "Apri a schermo intero",
+    "exitFullscreen": "Esci dallo schermo intero",
+    "zoomLevel": "Zoom: {{value}}×",
+    "locationTitle": "Sito: {{name}}",
+    "details": {
+      "field": "Dettagli dell'appezzamento",
+      "bed": "Dettagli dell'aiuola"
+    },
+    "location": "Sito",
+    "parentField": "Appezzamento",
+    "area": "Superficie"
+  },
+  "commands": {
+    "showList": "Mostra vista elenco",
+    "showGraphical": "Mostra vista grafica",
+    "keywords": {
+      "showList": "elenco, tabella, superfici coltivate",
+      "showGraphical": "grafica, grafico, superfici coltivate"
+    }
+  }
+}

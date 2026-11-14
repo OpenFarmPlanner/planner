@@ -1,3 +1,4 @@
+import type { SupportedLanguage } from '../i18n/languages';
 import type { SpecificProperties } from '../crops/specificProperties';
 export type GerminationTemperatureRequirement = '' | 'none' | 'cold_stratification' | 'frost_treatment';
 export type GerminationLightRequirement = '' | 'none' | 'light' | 'dark';
@@ -923,7 +924,7 @@ export interface PublicCropCompanion {
   kind: CompanionKind;
   reason: CompanionReason;
   note: string;
-  notes?: Partial<Record<'de' | 'en' | 'fr' | 'es', string>>;
+  notes?: Partial<Record<SupportedLanguage, string>>;
   note_language_code?: string;
 }
 
@@ -1263,7 +1264,7 @@ export interface CropCompanion {
   kind: CompanionKind;
   reason: CompanionReason;
   note: string;
-  notes?: Partial<Record<'de' | 'en' | 'fr' | 'es', string>>;
+  notes?: Partial<Record<SupportedLanguage, string>>;
   note_language_code?: string;
 }
 
@@ -1314,7 +1315,7 @@ export interface CompanionImportItem {
   name: string;
   reason: CompanionReason;
   note: string;
-  notes?: Partial<Record<'de' | 'en' | 'fr' | 'es', string>>;
+  notes?: Partial<Record<SupportedLanguage, string>>;
   note_language_code?: string;
   legacy?: boolean;
 }

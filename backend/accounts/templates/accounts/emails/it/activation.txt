@@ -1,0 +1,17 @@
+{% autoescape off %}Ciao,
+
+hai appena creato un account su OpenFarmPlanner.
+
+Conferma la registrazione usando questo link:
+
+{{ activation_link }}
+
+OpenFarmPlanner è un'applicazione web open source per pianificare l'orticoltura.
+
+Se non hai creato un account, puoi ignorare questa e-mail.
+
+Contatto:
+{{ contact_email }}
+
+{{ project_website }}
+{% endautoescape %}

@@ -1,0 +1,276 @@
+{
+  "appName": "OpenFarmPlanner",
+  "actions": {
+    "add": "Aggiungi",
+    "edit": "Modifica",
+    "duplicate": "Duplica",
+    "delete": "Elimina",
+    "undo": "Annulla operazione",
+    "copyRow": "Copia riga",
+    "copyTable": "Copia tabella",
+    "save": "Salva",
+    "saveRow": "Salva riga",
+    "cancelRowEdit": "Annulla modifica",
+    "deleteRow": "Elimina riga",
+    "cancel": "Annulla",
+    "reset": "Reimposta",
+    "search": "Cerca",
+    "close": "Chiudi",
+    "actions": "Azioni",
+    "moreOptions": "Altre opzioni",
+    "moreActions": "Altre azioni"
+  },
+  "messages": {
+    "loading": "Caricamento…",
+    "noData": "Nessun dato",
+    "error": "Errore",
+    "success": "Operazione riuscita",
+    "rowCopied": "Riga copiata.",
+    "tableCopied": "Tabella copiata.",
+    "copyError": "Impossibile copiare i dati.",
+    "contextMenuTableHint": "Suggerimento: fai clic destro su una riga per altre azioni.",
+    "contextMenuTableHintTouch": "Suggerimento: tieni premuta una riga per altre azioni.",
+    "contextMenuHintKeyboard": "In alternativa: tasto del menu contestuale o Maiusc+F10.",
+    "tableEditHint": "Fai doppio clic, premi Invio o inizia a digitare per modificare",
+    "tableEditHintDismiss": "Nascondi suggerimento",
+    "confirmation": "Conferma",
+    "rowChanged": "Modificato",
+    "unsavedChanges": "La tabella contiene modifiche non salvate. Un clic fuori dalla riga le salva. Vuoi davvero continuare?",
+    "validationErrors": "Ci sono errori di convalida da correggere prima di continuare. Correggi gli errori o annulla la modifica (tasto Esc).",
+    "noRows": "Nessuna voce",
+    "noResults": "Nessuna voce corrispondente"
+  },
+  "fields": {
+    "name": "Nome",
+    "address": "Indirizzo",
+    "notes": "Note",
+    "description": "Descrizione",
+    "project": "Progetto"
+  },
+  "columns": {
+    "project": "Progetto"
+  },
+  "hierarchyLevelToggle": {
+    "expandTooltip": "Mostra un altro livello della gerarchia",
+    "collapseTooltip": "Nascondi un livello della gerarchia"
+  },
+  "project": "Progetto",
+  "setupActions": {
+    "createField": "Aggiungi appezzamento",
+    "createBed": "Aggiungi aiuola",
+    "openAreas": "Apri superfici coltivate",
+    "openCropLibrary": "Apri biblioteca delle colture",
+    "createCrop": "Aggiungi coltura",
+    "createPlan": "Aggiungi serie"
+  },
+  "notes": {
+    "empty": "Nessuna nota",
+    "editEmpty": "Aggiungi nota",
+    "editWithContent": "Modifica nota",
+    "compactNoteAndImages": "Nota e immagini disponibili",
+    "compactNote": "Nota disponibile",
+    "compactImages": "Immagini disponibili",
+    "compactEmpty": "Nessuna nota o immagine disponibile",
+    "attachmentsCount_one": "{{count}} foto nelle note",
+    "attachmentsCount_other": "{{count}} foto nelle note",
+    "attachmentsCount_many": "{{count}} foto nelle note"
+  },
+  "notesPreview": {
+    "heading": "Nota",
+    "empty": "Nessuna nota disponibile",
+    "openNote": "Apri nota",
+    "loadingImages": "Caricamento delle immagini…",
+    "imagesLoadError": "Impossibile caricare le immagini.",
+    "openImageAria": "Apri foto",
+    "moreImagesAria": "Apri altre {{count}} foto"
+  },
+  "notesDrawer": {
+    "takePhoto": "Scatta foto",
+    "selectFromGallery": "Scegli dalla galleria",
+    "uploading": "Caricamento…",
+    "attachmentAlt": "Allegato",
+    "markdownPlaceholder": "Note in Markdown…",
+    "imageDialogTitle": "Foto",
+    "attachmentPreviewAlt": "Anteprima dell'allegato",
+    "cropDialogTitle": "Ritaglia immagine",
+    "cropInstructions": "Disegna, sposta e ridimensiona l'area da ritagliare. L'area esterna è oscurata.",
+    "cropSourceAlt": "Immagine originale",
+    "backendUnavailable": "L'elaborazione delle immagini non è attualmente disponibile sul server. Installa Pillow e riavvia il backend.",
+    "uploadFailed": "Caricamento non riuscito. Riprova.",
+    "camera": {
+      "title": "Scatta foto",
+      "capture": "Scatta",
+      "noSignal": "Non arriva alcuna immagine dalla fotocamera. Potrebbe essere in uso da un'altra app o non disponibile in questo ambiente.",
+      "useFilePicker": "Scegli invece un file"
+    },
+    "tabs": {
+      "edit": "Modifica",
+      "preview": "Anteprima"
+    },
+    "unsavedDialog": {
+      "title": "Note non salvate",
+      "message": "Le note contengono modifiche non salvate. Vuoi continuare a modificare o scartarle?",
+      "continueEditing": "Continua a modificare",
+      "discardAndClose": "Scarta"
+    },
+    "markdownToolbar": {
+      "bold": "Grassetto",
+      "boldTooltip": "Grassetto (Ctrl+B)",
+      "italic": "Corsivo",
+      "italicTooltip": "Corsivo (Ctrl+I)",
+      "code": "Codice",
+      "heading": "Titolo",
+      "bulletList": "Elenco puntato",
+      "numberedList": "Elenco numerato",
+      "link": "Inserisci collegamento",
+      "quote": "Citazione",
+      "ariaLabel": "Barra di formattazione"
+    },
+    "defaults": {
+      "bold": "testo in grassetto",
+      "italic": "testo in corsivo",
+      "heading": "Titolo",
+      "listItem": "Voce dell'elenco",
+      "linkText": "Testo del collegamento",
+      "quote": "Citazione"
+    }
+  },
+  "errors": {
+    "generic": "Si è verificato un errore imprevisto. Riprova.",
+    "sessionExpired": "La sessione è scaduta. Accedi di nuovo.",
+    "noPublicCrops": "Nessuna coltura pubblica trovata.",
+    "bedNotFound": "Aiuola non trovata.",
+    "fileTooLarge": "Il file è troppo grande (massimo 10 MB).",
+    "invalidImage": "Il file caricato non è un'immagine valida.",
+    "supplierDataDuplicate": "Questo fornitore ha già dati per questa coltura.",
+    "supplierDataMissingSupplier": "Seleziona un fornitore o rimuovi i dati del fornitore.",
+    "supplierSpecificTkgUnsupported": "Il peso di mille semi specifico del fornitore non è più supportato.",
+    "supplierProjectMismatch": "Il fornitore non appartiene al progetto attivo.",
+    "selectedSupplierProjectMismatch": "Il fornitore di sementi selezionato non appartiene al progetto attivo.",
+    "cropProjectMismatch": "La coltura non appartiene al progetto attivo."
+  },
+  "validation": {
+    "required": "Questo campo è obbligatorio.",
+    "invalidEmail": "Inserisci un indirizzo e-mail valido.",
+    "minLength": "Sono richiesti almeno {{count}} caratteri.",
+    "invalidNumberExample": "Inserisci un numero valido, es. 3,9",
+    "areaInputPositive": "Il valore deve essere maggiore di 0.",
+    "areaInputPlantsCropRequired": "Seleziona una coltura per calcolare la superficie dal numero di piante.",
+    "areaInputPlantsSpacingMissing": "Manca la distanza sulla fila o tra le file per questa coltura, quindi non possiamo calcolare la superficie dal numero di piante.",
+    "bedAreaExceeded": "La superficie inserita supera quella massima disponibile in questa aiuola.",
+    "availableArea": "Superficie rimanente disponibile"
+  },
+  "projectRequired": {
+    "noProjectsTitle": "Non hai ancora un progetto.",
+    "noProjectsDescription": "Crea prima un progetto per gestire siti, superfici coltivate, serie e calendari.",
+    "noProjectsSelectionDescription": "Crea il tuo primo progetto per iniziare a pianificare.",
+    "noActiveProjectTitle": "Nessun progetto attualmente selezionato.",
+    "noActiveProjectDescription": "Seleziona un progetto per gestire siti, superfici coltivate, serie e calendari.",
+    "createProjectAction": "Crea primo progetto",
+    "createFirstProjectAction": "Crea primo progetto",
+    "selectProjectAction": "Seleziona progetto"
+  },
+  "projectOnboarding": {
+    "pageTitle": "Avvia il tuo primo progetto",
+    "pageDescription": "Scegli se iniziare con un progetto vuoto o esplorare prima OpenFarmPlanner con dati di esempio realistici.",
+    "emptyTitle": "Inizia con un progetto vuoto",
+    "emptyDescription": "Crea il tuo progetto e aggiungi siti, colture e serie passo dopo passo.",
+    "emptyAction": "Crea progetto vuoto",
+    "demoTitle": "Prova un progetto dimostrativo",
+    "demoDescription": "Inizia con un progetto colturale già preparato ed esplora subito le funzioni principali con dati di esempio realistici.",
+    "demoAction": "Crea progetto dimostrativo",
+    "demoCreating": "Creazione del progetto dimostrativo…",
+    "demoCreatedHint": "Questo progetto contiene dati di esempio. Puoi modificare liberamente tutto o eliminare il progetto in qualsiasi momento.",
+    "demoCreateError": "Impossibile creare il progetto dimostrativo. Riprova."
+  },
+  "guestDemo": {
+    "restricted": "Non disponibile nella demo. Crea un account gratuito per usare questa funzione.",
+    "cropLibraryNotice": "Stai usando la demo: puoi consultare la biblioteca pubblica delle colture e importare colture nel tuo progetto dimostrativo. Per modificare o tradurre voci, ripristinare versioni precedenti e scrivere nelle discussioni serve un account gratuito.",
+    "cropLibraryEdit": "Non puoi modificare la biblioteca pubblica delle colture nella demo.",
+    "cropLibraryDiscussion": "Nella demo puoi leggere le discussioni, ma non scrivere messaggi.",
+    "publishCrop": "Nella demo non puoi pubblicare colture nella biblioteca pubblica né inviarle modifiche. Puoi comunque applicare gli aggiornamenti della biblioteca.",
+    "unlinkPublicCrop": "Nella demo non puoi rimuovere il collegamento alla biblioteca pubblica delle colture.",
+    "accountSettingsNotice": "Stai usando la demo senza account: profilo, indirizzo e-mail, password, richieste di moderazione, esportazione dei dati ed eliminazione dell'account non sono disponibili. I dati della demo vengono eliminati automaticamente entro 8 ore.",
+    "createProject": "Non puoi creare altri progetti nella demo.",
+    "inviteMembers": "Non puoi invitare persone nel progetto nella demo.",
+    "noteAttachments": "Non puoi caricare foto nelle note nella demo."
+  },
+  "runtime": {
+    "applicationUpdatedFallback": "Impossibile aggiornare automaticamente l'applicazione. Ricarica la pagina.",
+    "routeErrorFallback": "Impossibile ripristinare automaticamente la pagina. Ricarica la pagina.",
+    "serverUnavailable": "Il server non è raggiungibile al momento. Riprova tra poco.",
+    "reloadAction": "Ricarica pagina",
+    "retryAction": "Riprova"
+  },
+  "language": {
+    "label": "Lingua",
+    "auto": "Automatica (lingua del browser)",
+    "switcherLabel": "Cambia lingua, attuale: {{language}}"
+  },
+  "errorFieldLabels": {
+    "area_input_value": "Superficie",
+    "area_input_unit": "Inserimento superficie",
+    "area_usage_sqm": "Superficie (m²)",
+    "area_sqm": "Superficie (m²)",
+    "planting_date": "Data di trapianto",
+    "harvest_date": "Inizio della raccolta",
+    "harvest_end_date": "Fine della raccolta",
+    "quantity": "Piante",
+    "cultivation_type": "Tipo di coltivazione",
+    "crop": "Coltura",
+    "bed": "Aiuola",
+    "field": "Appezzamento",
+    "location": "Sito",
+    "non_field_errors": "Errore"
+  },
+  "dateFormatPlaceholder": "GG.MM.AAAA",
+  "disabledReasons": {
+    "busy": "L'azione è attualmente in elaborazione.",
+    "noChanges": "Non ci sono modifiche non salvate.",
+    "invalidDateRange": "Inserisci prima un intervallo di date valido.",
+    "requiredFields": "Compila tutti i campi obbligatori.",
+    "selectFile": "Seleziona prima un file.",
+    "cameraNotReady": "La fotocamera non è ancora pronta.",
+    "copyRowUnavailable": "Non ci sono dati copiabili per questa riga.",
+    "copyTableUnavailable": "La tabella non contiene righe copiabili."
+  },
+  "units": {
+    "squareMeters": "m²",
+    "kilograms": "kg"
+  },
+  "requirements": {
+    "satisfied": "{{label}} disponibile",
+    "missing": "{{label}} mancante"
+  },
+  "months": {
+    "jan": "gennaio",
+    "feb": "febbraio",
+    "mar": "marzo",
+    "apr": "aprile",
+    "may": "maggio",
+    "jun": "giugno",
+    "jul": "luglio",
+    "aug": "agosto",
+    "sep": "settembre",
+    "oct": "ottobre",
+    "nov": "novembre",
+    "dec": "dicembre"
+  },
+  "monthsShort": {
+    "jan": "gen",
+    "feb": "feb",
+    "mar": "mar",
+    "apr": "apr",
+    "may": "mag",
+    "jun": "giu",
+    "jul": "lug",
+    "aug": "ago",
+    "sep": "set",
+    "oct": "ott",
+    "nov": "nov",
+    "dec": "dic"
+  },
+  "settingsNavigation": {
+    "label": "Sezioni"
+  }
+}

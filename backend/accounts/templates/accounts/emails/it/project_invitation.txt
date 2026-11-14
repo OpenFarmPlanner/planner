@@ -1,0 +1,15 @@
+{% autoescape off %}Ciao,
+
+{{ invited_by }} ti ha invitato su OpenFarmPlanner.
+
+Progetto: {{ project_name }}
+Ruolo: {{ role_label }}
+
+Apri questo link per accettare l'invito:
+{{ invite_link }}
+
+Se non hai ancora un account OpenFarmPlanner, registrati prima con lo stesso indirizzo e-mail.
+
+Un saluto
+OpenFarmPlanner
+{% endautoescape %}

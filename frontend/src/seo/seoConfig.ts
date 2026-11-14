@@ -77,7 +77,7 @@ export type ChangeFrequency =
   | 'never';
 
 /** Languages every public page is published in, in hreflang order. */
-export const SEO_LANGUAGES = ['de', 'en', 'fr', 'es'] as const;
+export const SEO_LANGUAGES = ['de', 'en', 'fr', 'es', 'it'] as const;
 export type SeoLanguage = (typeof SEO_LANGUAGES)[number];
 
 /**
@@ -92,6 +92,7 @@ export const OG_LOCALES: Readonly<Record<SeoLanguage, string>> = {
   en: 'en_US',
   fr: 'fr_FR',
   es: 'es_ES',
+  it: 'it_IT',
 };
 
 export type PublicPageId = 'home' | 'about' | 'imprint' | 'privacy' | 'terms';
@@ -134,7 +135,7 @@ export interface PublicPage {
 export const PUBLIC_PAGES: readonly PublicPage[] = [
   {
     id: 'home',
-    paths: { de: '/', en: '/en', fr: '/fr', es: '/es' },
+    paths: { de: '/', en: '/en', fr: '/fr', es: '/es', it: '/it' },
     changefreq: 'weekly',
     priority: 1.0,
     titleKey: 'seo.titles.landing',
@@ -142,7 +143,7 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
   },
   {
     id: 'about',
-    paths: { de: '/ueber', en: '/en/about', fr: '/fr/a-propos', es: '/es/acerca-de' },
+    paths: { de: '/ueber', en: '/en/about', fr: '/fr/a-propos', es: '/es/acerca-de', it: '/it/chi-siamo' },
     changefreq: 'monthly',
     priority: 0.5,
     titleKey: 'seo.titles.about',
@@ -150,7 +151,7 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
   },
   {
     id: 'imprint',
-    paths: { de: '/impressum', en: '/en/legal-notice', fr: '/fr/mentions-legales', es: '/es/aviso-legal' },
+    paths: { de: '/impressum', en: '/en/legal-notice', fr: '/fr/mentions-legales', es: '/es/aviso-legal', it: '/it/note-legali' },
     changefreq: 'yearly',
     priority: 0.3,
     titleKey: 'seo.titles.imprint',
@@ -158,7 +159,7 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
   },
   {
     id: 'privacy',
-    paths: { de: '/datenschutz', en: '/en/privacy', fr: '/fr/confidentialite', es: '/es/privacidad' },
+    paths: { de: '/datenschutz', en: '/en/privacy', fr: '/fr/confidentialite', es: '/es/privacidad', it: '/it/privacy' },
     changefreq: 'yearly',
     priority: 0.3,
     titleKey: 'seo.titles.privacy',
@@ -166,7 +167,7 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
   },
   {
     id: 'terms',
-    paths: { de: '/nutzungsbedingungen', en: '/en/terms', fr: '/fr/conditions-utilisation', es: '/es/terminos' },
+    paths: { de: '/nutzungsbedingungen', en: '/en/terms', fr: '/fr/conditions-utilisation', es: '/es/terminos', it: '/it/termini' },
     changefreq: 'yearly',
     priority: 0.3,
     titleKey: 'seo.titles.terms',
@@ -209,7 +210,7 @@ export function toSeoLanguage(language: string | null | undefined): SeoLanguage 
 }
 
 export interface HreflangAlternate {
-  /** A language code (`de`, `en`, `fr`, `es`) or `x-default`. */
+  /** A supported SEO language code or `x-default`. */
   hreflang: string;
   href: string;
 }

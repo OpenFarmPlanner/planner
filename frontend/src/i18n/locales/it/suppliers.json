@@ -1,0 +1,51 @@
+{
+  "title": "Fornitori",
+  "create": "Aggiungi fornitore",
+  "edit": "Modifica fornitore",
+  "name": "Nome",
+  "homepage": "Sito web",
+  "allowedDomains": "Domini consentiti",
+  "active": "Attivo",
+  "actions": "Azioni",
+  "save": "Salva",
+  "cancel": "Annulla",
+  "addDomain": "Aggiungi dominio",
+  "add": "Aggiungi",
+  "saveError": "Impossibile salvare il fornitore.",
+  "loadError": "Impossibile caricare i fornitori.",
+  "yes": "Sì",
+  "no": "No",
+  "editAction": "Modifica",
+  "deleteAction": "Elimina",
+  "deleteError": "Impossibile eliminare il fornitore.",
+  "restoreDeleteError": "Impossibile ripristinare il fornitore.",
+  "messages": {
+    "deleted": "Fornitore eliminato.",
+    "deletedWithUnlinkedCrops_one": "Fornitore eliminato. Il collegamento al fornitore è stato rimosso da {{count}} coltura.",
+    "deletedWithUnlinkedCrops_other": "Fornitore eliminato. Il collegamento al fornitore è stato rimosso da {{count}} colture.",
+    "deletedWithUnlinkedCrops_many": "Fornitore eliminato. Il collegamento al fornitore è stato rimosso da {{count}} colture."
+  },
+  "deleteUsageDialog": {
+    "title": "Fornitore ancora in uso",
+    "summary_one": "Questo fornitore è ancora utilizzato da {{count}} coltura.",
+    "summary_other": "Questo fornitore è ancora utilizzato da {{count}} colture.",
+    "cropUsage_one": "{{count}} coltura utilizza direttamente questo fornitore.",
+    "cropUsage_other": "{{count}} colture utilizzano direttamente questo fornitore.",
+    "supplierDataUsage": "{{cropCount}} colture hanno dati sulle sementi o sul fornitore con {{rowCount}} voci.",
+    "seedDemandUsage_one": "{{count}} coltura utilizza questo fornitore nella pianificazione del fabbisogno di sementi.",
+    "seedDemandUsage_other": "{{count}} colture utilizzano questo fornitore nella pianificazione del fabbisogno di sementi.",
+    "unlinkExplanation": "Le colture non vengono eliminate. Viene rimosso solo il loro collegamento al fornitore prima di eliminare quest'ultimo.",
+    "openAffectedCrops": "Vai alle colture interessate",
+    "unlinkAndDelete": "Elimina fornitore",
+    "summary_many": "Questo fornitore è ancora utilizzato da {{count}} colture.",
+    "cropUsage_many": "{{count}} colture utilizzano direttamente questo fornitore.",
+    "seedDemandUsage_many": "{{count}} colture utilizzano questo fornitore nella pianificazione del fabbisogno di sementi."
+  },
+  "invalidDomain": "Dominio non valido: {{domain}}. I domini devono essere nomi host validi senza schema o percorso (es. example.com).",
+  "domainValidationError": "Alcuni domini non sono validi. Correggi i dati inseriti.",
+  "invalidUrl": "Inserisci un URL valido (es. https://example.com).",
+  "emptyState": {
+    "title": "Nessun fornitore ancora presente",
+    "description": "I fornitori ti aiutano nella pianificazione del fabbisogno di sementi e nel confronto delle confezioni. Puoi iniziare anche senza fornitori."
+  }
+}

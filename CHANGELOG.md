@@ -8,6 +8,9 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
 
 ### Features
 
+- Add Italian UI, public/legal pages, emails and crop-library translation support;
+  preserve legal consent versions and existing crop-name approval requirements.
+
 - Crops: the crop and variety form is calmer and easier to scan. Kultur and
   Sorte share one section order: general information, crop rotation, timing
   (cultivation type, then Anzuchtdauer, Wachstumszeit and Erntezeit in one

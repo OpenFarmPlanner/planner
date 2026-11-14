@@ -1,0 +1,457 @@
+{
+  "home": "Pagina iniziale",
+  "dashboard": "Panoramica",
+  "locations": "Siti",
+  "fieldsAndBeds": "Superfici coltivate",
+  "crops": "Colture",
+  "cropLibrary": "Biblioteca delle colture",
+  "suppliers": "Fornitori",
+  "plantingPlans": "Piano colturale",
+  "ganttChart": "Calendario colturale",
+  "yieldOverview": "Panoramica delle rese",
+  "seedDemand": "Fabbisogno di sementi",
+  "youngPlantDemand": "Fabbisogno di piantine",
+  "short": {
+    "dashboard": "Panoramica",
+    "fieldsAndBeds": "Superfici",
+    "crops": "Colture",
+    "cropLibrary": "Biblioteca",
+    "plantingPlans": "Piano colturale",
+    "ganttChart": "Calendario",
+    "yieldOverview": "Rese",
+    "seedDemand": "Sementi",
+    "youngPlantDemand": "Piantine",
+    "suppliers": "Fornitori"
+  },
+  "graphicalFields": "Vista grafica",
+  "accountSettings": "Impostazioni account",
+  "publicLibraryModeration": "Modera biblioteca delle colture",
+  "appVersionLabel": "Versione",
+  "disabledNoProjectTooltip": "Crea prima un progetto.",
+  "project": {
+    "settings": "Impostazioni progetto",
+    "selection": "Selezione progetto",
+    "members": "Gestisci membri",
+    "create": "Nuovo progetto",
+    "switch": "Cambia progetto"
+  },
+  "projectSwitcher": {
+    "ariaLabel": "Cambia progetto attivo",
+    "noProject": "Nessun progetto",
+    "zeroProjects": "Al momento non hai accesso ad alcun progetto.",
+    "newProjectPlaceholder": "Nuovo progetto (prossimamente)",
+    "switchError": "Impossibile cambiare progetto.",
+    "newProjectAction": "Nuovo progetto",
+    "openProjectAction": "Apri",
+    "activeProject": "Progetto attivo",
+    "projects": "Progetti",
+    "createDialogTitle": "Crea progetto",
+    "createNameLabel": "Nome del progetto",
+    "createCancel": "Annulla",
+    "createSubmit": "Crea progetto",
+    "createError": "Impossibile creare il progetto.",
+    "loadDemoProject": "Carica progetto dimostrativo",
+    "trash": "Cestino ({{count}})"
+  },
+  "connectionStatus": {
+    "online": "Online – connesso",
+    "offline": "Offline – nessuna connessione. Le modifiche non possono essere salvate."
+  },
+  "seasonSwitcher": {
+    "ariaLabel": "Cambia stagione attiva",
+    "sectionTitle": "Stagioni",
+    "planCount_one": "{{count}} serie",
+    "planCount_other": "{{count}} serie",
+    "loadError": "Impossibile caricare le stagioni.",
+    "deleted": "Stagione «{{label}}» eliminata",
+    "undo": "Annulla operazione",
+    "settingsLink": "Cambia modello di stagione nelle impostazioni progetto",
+    "menu": {
+      "openAria": "Apri azioni stagione",
+      "copyDataFrom": "Copia dati da…",
+      "rename": "Rinomina",
+      "editPeriod": "Modifica periodo",
+      "delete": "Elimina"
+    },
+    "periodEditDialog": {
+      "title": "Modifica periodo",
+      "startLabel": "Data di inizio",
+      "endLabel": "Data di fine",
+      "currentPeriod": "Periodo attuale: {{period}}",
+      "endBeforeStart": "La data di fine deve essere successiva alla data di inizio.",
+      "save": "Salva",
+      "error": "Impossibile modificare il periodo.",
+      "unknownCrop": "Coltura sconosciuta",
+      "plantingConflictIntro": "Queste serie hanno una data di trapianto fuori dal nuovo periodo. Modificale o spostale prima di cambiare il periodo:",
+      "plantingConflictItem": "{{crop}} – data di trapianto {{date}}",
+      "overlapConflictIntro": "Il nuovo periodo si sovrappone a un'altra stagione:",
+      "overlapConflictItem": "Stagione {{label}}: {{period}}"
+    },
+    "suggestion": {
+      "title": "Crea stagione {{label}}",
+      "confirmTitle": "Creare la stagione {{label}}?",
+      "copyCheckbox": "Copia dati dalla stagione {{label}}",
+      "copyDescription": "Superfici coltivate, aiuole e assegnazioni di rotazione colturale verranno copiate nella nuova stagione.",
+      "create": "Crea",
+      "createError": "Impossibile creare la stagione.",
+      "outOfRangeError_one": "Impossibile creare la stagione per {{period}}: una serie esistente non rientra nel periodo: {{examples}}. Modifica il modello di stagione nelle impostazioni progetto, poi crea di nuovo la stagione.",
+      "outOfRangeError_other": "Impossibile creare la stagione per {{period}}: {{count}} serie esistenti non rientrano nel periodo: {{examples}}. Modifica il modello di stagione nelle impostazioni progetto, poi crea di nuovo la stagione.",
+      "outOfRangeFallbackExamples": "serie esistenti",
+      "patternHint": {
+        "prefix": "Il periodo non va bene? Puoi modificare il modello di stagione nelle",
+        "link": "impostazioni progetto",
+        "suffix": "— la modifica si applica poi alle stagioni future."
+      },
+      "gap": {
+        "intro": {
+          "gap": "C'è un intervallo vuoto tra l'ultima stagione «{{label}}» e la nuova ({{period}}). Scegli come procedere:",
+          "overlap": "La nuova stagione si sovrappone all'ultima stagione «{{label}}» ({{period}}). Scegli come procedere:"
+        },
+        "chooseLabel": "Come deve iniziare la nuova stagione?",
+        "adopt": {
+          "gap": "Mantieni l'intervallo vuoto (stagione esattamente come calcolata dal modello)",
+          "overlap": "Mantieni la sovrapposizione (stagione esattamente come calcolata dal modello)"
+        },
+        "transition": "Crea una stagione di transizione (si collega senza interruzioni all'ultima stagione)",
+        "transitionTwoSeasons": "Verranno create due stagioni: stagione di transizione {{transitionPeriod}} e {{followupLabel}} ({{followupPeriod}}).",
+        "manual": "Imposta manualmente la data di inizio",
+        "manualCaption": "La stagione chiude l'intervallo vuoto dalla data scelta e continua fino alla fine del periodo regolare successivo del modello.",
+        "manualStartLabel": "Data di inizio",
+        "manualPeriod": "Periodo: {{period}}",
+        "residualClosed": {
+          "gap": "L'intervallo vuoto viene chiuso completamente.",
+          "overlap": "La sovrapposizione viene evitata completamente."
+        },
+        "residualRemains": {
+          "gap": "Rimane un intervallo vuoto: {{period}}.",
+          "overlap": "Rimane una sovrapposizione: {{period}}."
+        },
+        "copyPreviewAll": "Verranno copiate tutte le {{total}} serie da {{label}}.",
+        "copyPreviewPartial": "Verranno copiate {{copied}} di {{total}} serie da {{label}}; {{skipped}} non rientrano nel periodo e non verranno copiate.",
+        "copyPreviewFollowup": "Stagione successiva {{label}}: verranno copiate {{copied}} di {{total}} serie."
+      },
+      "createDisabledTooltip": "Seleziona prima un'opzione per la transizione tra stagioni.",
+      "outOfRangeError_many": "Impossibile creare la stagione per {{period}}: {{count}} serie esistenti non rientrano nel periodo: {{examples}}. Modifica il modello di stagione nelle impostazioni progetto, poi crea di nuovo la stagione."
+    },
+    "renameDialog": {
+      "title": "Rinomina stagione",
+      "label": "Nome",
+      "helper": "Lascia vuoto per usare il nome calcolato «{{computed}}».",
+      "save": "Salva"
+    },
+    "copyDialog": {
+      "title": "Copia dati",
+      "sourceLabel": "Origine",
+      "warning_one": "La stagione {{target}} contiene già 1 serie. La copia aggiungerà le serie della stagione {{source}}; le serie esistenti in {{target}} non verranno modificate né sostituite.",
+      "warning_other": "La stagione {{target}} contiene già {{count}} serie. La copia aggiungerà le serie della stagione {{source}}; le serie esistenti in {{target}} non verranno modificate né sostituite.",
+      "summary_one": "→ 1 serie dalla stagione {{source}} verrà aggiunta alla stagione {{target}} (totale successivo: {{total}}).",
+      "summary_other": "→ {{count}} serie dalla stagione {{source}} verranno aggiunte alla stagione {{target}} (totale successivo: {{total}}).",
+      "confirm": "Copia",
+      "error": "Impossibile copiare i dati.",
+      "confirmDisabledTooltip": "Seleziona prima una stagione di origine.",
+      "rotation": {
+        "checking": "Verifica della rotazione colturale nella stagione di destinazione…",
+        "checkError": "Impossibile verificare la rotazione colturale. Puoi comunque copiare.",
+        "summary_one": "1 serie dalla stagione {{source}} verrà copiata nelle stesse aiuole.",
+        "summary_other": "{{count}} serie dalla stagione {{source}} verranno copiate nelle stesse aiuole.",
+        "warningConflicts": "{{conflicts}} di queste non rispettano la rotazione colturale perché la stessa famiglia tornerebbe sulla stessa aiuola l'anno successivo.",
+        "warningConflictsAndHints": "{{conflicts}} di queste non rispettano la rotazione colturale perché la stessa famiglia tornerebbe sulla stessa aiuola l'anno successivo. Altre {{hints}} hanno un suggerimento sulla successione nutritiva.",
+        "hintsOnly": "{{hints}} di queste hanno un suggerimento sulla successione nutritiva.",
+        "showAll": "Mostra tutti i {{conflicts}} conflitti",
+        "showAllItems": "Mostra tutte le {{count}} voci",
+        "showLess": "Mostra meno",
+        "item": "{{culture}} · {{bed}}",
+        "reasonConflict": "Ultima {{family}} nel {{year}}, nuovamente possibile non prima del {{earliestYear}}",
+        "reasonHint": "Coltura molto esigente dopo {{previousCulture}} ({{year}})",
+        "modeLabel": "Come gestire i {{conflicts}} conflitti?",
+        "modes": {
+          "without_bed": {
+            "label": "Copia senza aiuola",
+            "description": "Le {{conflicts}} serie vengono create senza assegnazione; sceglierai l'aiuola in seguito con i suggerimenti."
+          },
+          "keep": {
+            "label": "Copia comunque nelle stesse aiuole",
+            "description": "I conflitti restano contrassegnati nella tabella."
+          },
+          "skip": {
+            "label": "Non copiare",
+            "description": "Vengono copiate solo le {{ok}} serie senza conflitti."
+          }
+        },
+        "summary_many": "{{count}} serie dalla stagione {{source}} verranno copiate nelle stesse aiuole."
+      },
+      "warning_many": "La stagione {{target}} contiene già {{count}} serie. La copia aggiungerà le serie della stagione {{source}}; le serie esistenti in {{target}} non verranno modificate né sostituite.",
+      "summary_many": "→ {{count}} serie dalla stagione {{source}} verranno aggiunte alla stagione {{target}} (totale successivo: {{total}})."
+    },
+    "planCount_many": "{{count}} serie"
+  },
+  "seasonSetup": {
+    "title": "Configura pianificazione delle stagioni",
+    "description_one": "Prima di lavorare con le stagioni, imposteremo il modello di stagione e assegneremo a una stagione l'unica serie esistente di questo progetto.",
+    "description_other": "Prima di lavorare con le stagioni, imposteremo il modello di stagione e assegneremo a una stagione le {{count}} serie esistenti di questo progetto.",
+    "startLabel": "La stagione inizia il",
+    "infoBox": "Nessun dato verrà modificato o eliminato: tutte le serie esistenti verranno semplicemente assegnate alla stagione «{{label}}». Potrai modificare modello e assegnazione in qualsiasi momento.",
+    "summary_one": "→ L'unica serie esistente verrà assegnata alla stagione «{{label}}» ({{period}}).",
+    "summary_other": "→ Tutte le {{count}} serie esistenti verranno assegnate alla stagione «{{label}}» ({{period}}).",
+    "submit": "Configura",
+    "error": "Configurazione non riuscita.",
+    "description_many": "Prima di lavorare con le stagioni, imposteremo il modello di stagione e assegneremo a una stagione le {{count}} serie esistenti di questo progetto.",
+    "summary_many": "→ Tutte le {{count}} serie esistenti verranno assegnate alla stagione «{{label}}» ({{period}})."
+  },
+  "seasonPattern": {
+    "title": "Modello di stagione",
+    "dayLabel": "Giorno",
+    "monthLabel": "Mese",
+    "helper": "Ogni stagione dura esattamente 12 mesi a partire da questa data.",
+    "previewTitle": "Anteprima delle stagioni calcolate",
+    "previewColumnLabel": "Anno",
+    "previewColumnPeriod": "Periodo",
+    "current": "(attuale)",
+    "previewReferenceHint": "(ultima stagione esistente)",
+    "previewHint": "(anteprima)",
+    "transition": {
+      "gapLabel": "Intervallo vuoto",
+      "overlapLabel": "Sovrapposizione",
+      "rowHint": "Opzioni selezionabili alla creazione"
+    },
+    "changeNotice": "La modifica riguarda solo le stagioni create d'ora in poi; quelle esistenti rimangono invariate.",
+    "cancel": "Annulla",
+    "save": "Salva",
+    "saveAriaLabel": "Salva modello di stagione",
+    "saveSuccess": "Modello di stagione salvato.",
+    "saveError": "Impossibile salvare il modello di stagione.",
+    "months": {
+      "january": "gennaio",
+      "february": "febbraio",
+      "march": "marzo",
+      "april": "aprile",
+      "may": "mag",
+      "june": "giugno",
+      "july": "luglio",
+      "august": "agosto",
+      "september": "settembre",
+      "october": "ottobre",
+      "november": "novembre",
+      "december": "dicembre"
+    }
+  },
+  "projectRoles": {
+    "admin": "Amministratore",
+    "member": "Membro"
+  },
+  "globalMenu": {
+    "notifications": "Notifiche",
+    "projectActions": "Azioni progetto",
+    "app": "App",
+    "shortcuts": "Scorciatoie da tastiera",
+    "pageHelp": "Guida per questa pagina",
+    "pageHelpUnavailable": "Non è disponibile una guida specifica per questa pagina.",
+    "appHelp": "Guida dell'app",
+    "feedback": "Invia feedback",
+    "account": "Account",
+    "closeSidebar": "Chiudi barra laterale",
+    "openSidebar": "Apri barra laterale",
+    "collapseSidebar": "Comprimi barra laterale",
+    "expandSidebar": "Espandi barra laterale",
+    "dashboardLink": "Vai alla panoramica",
+    "openMobileMenu": "Apri menu",
+    "moreActions": "Altro"
+  },
+  "pageHelp": {
+    "dashboard": "Guida della panoramica",
+    "locations": "Guida dei siti",
+    "areas": "Guida delle superfici coltivate",
+    "crops": "Guida delle colture",
+    "cropLibrary": "Guida della biblioteca delle colture",
+    "plantingPlans": "Guida del piano colturale",
+    "calendar": "Guida del calendario colturale",
+    "yieldOverview": "Guida della panoramica delle rese",
+    "seedDemand": "Guida del fabbisogno di sementi",
+    "youngPlantDemand": "Guida del fabbisogno di piantine",
+    "suppliers": "Guida dei fornitori",
+    "openAria": "Apri {{label}}"
+  },
+  "cropActions": {
+    "openLibrary": "Importa dalla biblioteca",
+    "library": "Importa dalla biblioteca",
+    "libraryShort": "Importa",
+    "openImportExport": "Apri importazione/esportazione",
+    "importExport": "Importa/Esporta",
+    "openCropActions": "Apri azioni coltura",
+    "actions": "Azioni"
+  },
+  "projectTrash": {
+    "title": "Cestino",
+    "empty": "Il cestino è vuoto.",
+    "retentionNotice": "I progetti eliminati vengono eliminati definitivamente in automatico dopo 30 giorni.",
+    "loadError": "Impossibile caricare i progetti eliminati.",
+    "deletedDays_zero": "eliminato oggi",
+    "deletedDays_one": "eliminato {{count}} giorno fa",
+    "deletedDays_other": "eliminato {{count}} giorni fa",
+    "deletedUnknown": "Data di eliminazione sconosciuta",
+    "restore": "Ripristina",
+    "restoreSuccess": "Progetto ripristinato",
+    "restoreError": "Impossibile ripristinare il progetto.",
+    "permanentDelete": "Elimina definitivamente",
+    "permanentConfirm": "Eliminare definitivamente il progetto {{name}}? Questa azione è irreversibile.",
+    "permanentSuccess": "Progetto eliminato definitivamente.",
+    "permanentError": "Impossibile eliminare definitivamente il progetto.",
+    "deletedDays_many": "eliminato {{count}} giorni fa"
+  },
+  "commandGroups": {
+    "project": "Progetto",
+    "account": "Account",
+    "navigation": "Navigazione",
+    "help": "Guida"
+  },
+  "commandPalette": {
+    "label": "Ricerca azioni (Alt+K)",
+    "placeholder": "Cerca un'azione o eseguila direttamente",
+    "emptyTitle": "Nessuna azione corrispondente trovata.",
+    "emptyDescription": "Prova un altro termine di ricerca o verifica se nel contesto attuale sono disponibili altre azioni.",
+    "shortcutsTitle": "Scorciatoie da tastiera",
+    "createNew": "Crea nuovo…",
+    "createNewShortcut": "Crea nuovo",
+    "contextualShortcutsTitle": "Scorciatoie contestuali (Alt+K)",
+    "contextualShortcutsDescription": "Le scorciatoie sono compatibili con il browser e non sostituiscono quelle comuni del browser.",
+    "primaryShortcutTitle": "Ricerca azioni",
+    "primaryShortcutDescription": "Mostra comandi e scorciatoie specifici della pagina",
+    "universalShortcutsTitle": "Navigazione di base",
+    "universalShortcuts": {
+      "nextRegion": "Area di focus successiva",
+      "previousRegion": "Area di focus precedente",
+      "withinRegion": "Naviga nell'area",
+      "closeDialog": "Chiudi finestra o menu"
+    },
+    "currentRegionShortcutsTitle": "Area di focus attuale",
+    "allPageShortcutsTitle": "Scorciatoie specifiche della pagina",
+    "allPageShortcuts": {
+      "crops": {
+        "title": "Colture",
+        "create": "Aggiungi coltura",
+        "search": "Attiva ricerca colture",
+        "edit": "Modifica coltura",
+        "delete": "Elimina coltura",
+        "exportCurrent": "Esportazione della coltura selezionata",
+        "exportAll": "Esporta tutte le colture",
+        "import": "Importa colture",
+        "createPlan": "Crea serie dalla coltura",
+        "previous": "Seleziona coltura precedente",
+        "next": "Seleziona coltura successiva"
+      },
+      "publicCropLibrary": {
+        "title": "Biblioteca delle colture",
+        "search": "Cerca nella biblioteca delle colture",
+        "edit": "Modifica coltura pubblica",
+        "import": "Importa coltura",
+        "previous": "Seleziona coltura precedente",
+        "next": "Seleziona coltura successiva"
+      },
+      "areas": {
+        "title": "Superfici coltivate",
+        "create": "Crea superficie coltivata",
+        "focusTable": "Attiva tabella",
+        "createFromSelection": "Aggiungi elemento figlio alla selezione",
+        "delete": "Elimina superficie coltivata selezionata",
+        "showList": "Mostra vista elenco",
+        "showGraphical": "Mostra vista grafica",
+        "toggleGraphicalEdit": "Attiva/disattiva modifica grafica"
+      },
+      "plans": {
+        "title": "Piano colturale",
+        "create": "Aggiungi serie",
+        "edit": "Modifica serie",
+        "delete": "Elimina serie",
+        "search": "Attiva ricerca serie"
+      },
+      "calendar": {
+        "title": "Calendario",
+        "today": "Vai al periodo attuale",
+        "previousPeriod": "Periodo precedente",
+        "nextPeriod": "Periodo successivo",
+        "previousLargePeriod": "Intervallo ampio precedente",
+        "nextLargePeriod": "Intervallo ampio successivo",
+        "dayView": "Vista giornaliera",
+        "weekView": "Vista settimanale",
+        "monthView": "Vista mensile",
+        "quarterView": "Vista trimestrale",
+        "yearView": "Vista annuale",
+        "search": "Attiva ricerca calendario",
+        "showOccupancy": "Mostra occupazione degli appezzamenti",
+        "showSeedlings": "Mostra piantine",
+        "toggleEdit": "Attiva/disattiva spostamento periodi"
+      },
+      "locations": {
+        "title": "Siti",
+        "create": "Aggiungi sito"
+      },
+      "suppliers": {
+        "title": "Fornitori",
+        "create": "Aggiungi fornitore"
+      }
+    },
+    "versionHistoryTitle": "Cronologia delle versioni",
+    "versionHistoryEmpty": "Nessuna modifica ancora registrata.",
+    "restoreVersion": "Passa a questa versione",
+    "contextTitles": {
+      "global": "Globale",
+      "crops": "Colture",
+      "publicCropLibrary": "Biblioteca delle colture",
+      "locations": "Siti",
+      "areas": "Superfici coltivate",
+      "plans": "Piano colturale",
+      "calendar": "Calendario",
+      "seedDemand": "Fabbisogno di sementi",
+      "youngPlantDemand": "Piantine"
+    },
+    "shortcutSections": {
+      "navigation": "Navigazione",
+      "viewsLayout": "Viste e disposizione",
+      "dialogsHelp": "Finestre e guida"
+    },
+    "commands": {
+      "nextPage": "Pagina successiva",
+      "previousPage": "Pagina precedente",
+      "openProjectSettings": "Apri impostazioni progetto",
+      "createProject": "Nuovo progetto",
+      "switchProjectPrefix": "Cambia progetto",
+      "openAccountSettings": "Apri impostazioni account",
+      "openVersionHistory": "Apri cronologia delle versioni",
+      "toggleSidebar": "Apri/chiudi barra laterale",
+      "openPageHelp": "Apri guida della pagina",
+      "leaveDemo": "Esci dalla demo",
+      "logout": "Esci",
+      "openShortcutsHelp": "Mostra scorciatoie da tastiera",
+      "closeDialog": "Chiudi finestra",
+      "calendarToday": "Vai al periodo attuale",
+      "calendarPreviousPeriod": "Periodo precedente del calendario",
+      "calendarNextPeriod": "Periodo successivo del calendario",
+      "calendarDayView": "Vista giornaliera",
+      "calendarWeekView": "Vista settimanale",
+      "calendarMonthView": "Vista mensile",
+      "calendarQuarterView": "Vista trimestrale",
+      "calendarYearView": "Vista annuale",
+      "calendarOccupancy": "Mostra occupazione degli appezzamenti",
+      "calendarSeedlings": "Mostra piantine",
+      "calendarToggleMove": "Attiva/disattiva spostamento periodi"
+    },
+    "feedback": {
+      "versionHistoryLoadError": "Impossibile caricare la cronologia delle versioni.",
+      "versionRestored": "Versione ripristinata.",
+      "versionRestoredWithBackup": "Versione ripristinata. La versione precedente è stata salvata automaticamente.",
+      "versionRestoreError": "Impossibile ripristinare la versione del progetto.",
+      "leaveDemoError": "Impossibile uscire dalla demo. Riprova.",
+      "logoutError": "Uscita non riuscita. Riprova."
+    },
+    "shortcutHint": "Suggerimento: premi Alt+K per la tavolozza dei comandi.",
+    "historyBy": "Di {{actor}}",
+    "unknownUser": "Utente sconosciuto"
+  },
+  "language": {
+    "label": "Lingua"
+  },
+  "backToProject": {
+    "named": "Torna a {{project}}",
+    "overview": "Torna alla panoramica"
+  }
+}
