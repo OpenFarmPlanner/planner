@@ -6,8 +6,9 @@ description: Perform a security review of this repository the way Claude and Cod
 # Security review (shared with Codex)
 
 The protocol is binding and lives in `CLAUDE.md` ("Security Review Protocol");
-this skill is the order of work. The built-in `/security-review` command only
-reviews a diff; it does not do the bookkeeping below.
+this skill is the order of work. Where a client provides a built-in
+`/security-review` command, it does not replace the bookkeeping below. Prefer connected GitHub tools; use the `gh`
+examples only with an available authenticated CLI.
 
 ## 1. Prior state
 
@@ -28,7 +29,7 @@ ls docs/security-review-*.md
 ## 2. Review
 
 If Claude's allowance is exhausted or cloud review is unavailable, follow
-`docs/security-automation.md` ("Local review when Claude has no allowance"):
+`docs/security-automation.md` ("Verified local Codex completion without per-PR approval"):
 run `node scripts/ci/run_codex_review.cjs PR_NUMBER /tmp/review-PR_NUMBER`
 from a trusted checkout matching the PR base. It starts a fresh independent
 Codex session and signs validated execution evidence outside the reviewer's
@@ -38,12 +39,19 @@ ask for per-PR human approval. Findings, missing coverage, failed execution,
 expired signatures or mismatched head/base/scope remain blocked. This is a
 verified local AI-assisted review, not a native cloud scan.
 
-The owner-authorized cloud worker in
-`docs/work-execution-queue.md` automates this handoff for queue PRs, including
-Cloud-authored PRs. An unavailable key in Cloud is not a routine request for
-maintainer sign-off: open the linked PR and let the cloud workflow review it. Report missing cloud credentials, failed
-execution or exhausted spending limits as the actual infrastructure blocker. Never weaken trust
-policy or manufacture an approval to keep the queue moving.
+Follow the execution mode and independent review handoff in
+`docs/work-execution-queue.md`. A commissioned subscription worker can use an
+already configured constrained review service; the optional API controller
+is a separate mode and must not be enabled merely to obtain a review. Missing
+keys in Cloud do not require routine per-PR sign-off when that route works.
+The service permits only the fixed review workflow, not author shell or
+key/checkout access. Publish emitted signed incomplete reports as well as clean
+ones and refresh the gate, so newer findings supersede stale approvals. Only
+verified clean evidence
+satisfies the gate. If providers and the constrained service are unavailable,
+report the actual
+infrastructure blocker. Skill files do not provision a host, key or credentials.
+Never weaken trust policy or manufacture approval to keep the queue moving.
 
 If the trusted launcher is unavailable or no model budget remains, prepare a
 bundle with `scripts/ci/local_security_review.py` for an independent human.
@@ -73,5 +81,6 @@ For each open `security` issue in scope that the code now fixes:
   "Security decisions" in `docs/security-automation.md`.
 - **Full sweep**: narrative in a new `docs/security-review-YYYY-MM-DD.md`.
 
-Posting comments and issues is outward-facing: show the user the text first
-unless they asked you to post it.
+For a commissioned queue PR, publishing findings and completion evidence is
+covered by the standing authorization in `CLAUDE.md`; do not ask for routine
+per-PR confirmation. Otherwise post only within the user-authorized scope.

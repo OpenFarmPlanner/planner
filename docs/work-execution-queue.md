@@ -22,7 +22,102 @@ routine maintainer confirmation. Labels alone never start another agent. This
 excludes production deploys and unreviewed signing trust-policy changes. The owner
 authorized small, bounded API costs on 2026-11-13 and requested cloud-only operation.
 
+## Issue capture and queue edits
+
+Follow the shared [issue-and-queue skill](../.claude/skills/issue-and-queue/SKILL.md)
+for creating/updating issues or editing this queue. Discussion alone authorizes
+neither creation nor implementation. When queueing is requested without a
+position, append an absent item; keep an existing item at its current position.
+Explicit positions refer to displayed rows under Ordered work items, including
+completed rows and PR gates, unless the user specifies eligible items instead.
+Do not change unrelated rows or prose. Re-fetch before writing and verify live
+order afterward; issue-body writes do not offer atomic compare-and-swap through
+these clients, so report unreconciled concurrent edits instead of overwriting.
+
+## Subscription execution and independent review handoff
+
+Read the live #1058 execution mode before selecting a worker route. When it
+selects the existing Codex Cloud chat with its subscription, continue in that
+commissioned session and leave the optional API controller disabled. Queueing
+alone starts no worker; do not start a second worker or interrupt another one.
+Claim `queue:active` before coding, finish the current PR and independent review,
+merge after required checks pass, then continue automatically. Standing queue
+authorization covers that sequence without routine per-PR confirmation, not
+production deployment or selecting metered APIs.
+
+Use the configured independent PR review workflow first. Inspect exact-head
+completion evidence and fix findings; a delivered native review request, ordinary
+code-review summary or reaction is not security completion. After a provider
+allowance becomes available, a full review retry including Triage is needed when
+an inherited triage artifact belongs to an earlier run attempt. Keep triage and
+completion evidence bound to the same attempt; do not weaken the verifier.
+
+If Cloud providers cannot finish, use the existing trusted subscription launcher
+through a preconfigured constrained review service. The Cloud authoring identity
+must have no general shell, file-transfer, forwarding or filesystem access on the
+signing host, and no read access to its key or write access to its trusted
+checkout. Mode 0600 alone does not protect a key from a shell running as its owner.
+Use a forced-command SSH identity or equivalent automation endpoint accepting
+only a validated PR number and invoking the fixed installed review workflow.
+The service must choose its checkout, launcher, fresh output path and CI run;
+author-provided commands, paths, environment and reviewer configuration are not
+accepted. These constraints must already be installed and verified by the trusted
+operator; the repository skill does not provision them.
+
+Prerequisites: the constrained endpoint is reachable, the installed checkout and
+launcher match the immutable PR base, its subscription and GitHub authentication
+work, and the existing signing key remains outside author/reviewer grants. A
+configured forced-command invocation can take this form, with host/account values
+from the approved configuration, never guesses:
+
+```bash
+ssh -T queue-review@review-host review 123
+```
+
+The following are **trusted operator/service commands only**, not commands the
+Cloud author may run in a remote shell. Substitute real PR/CI IDs and a fresh
+output path on that protected host:
+
+```bash
+node scripts/ci/run_codex_review.cjs 123 /tmp/queue-review-123
+gh pr comment 123 --body-file /tmp/queue-review-123/signed-report.md
+```
+
+Publish every emitted signed report, both clean and `incomplete`. The launcher
+signs incomplete findings/validation outcomes deliberately: newer signed incomplete
+receipts supersede earlier clean evidence even for the same head. If execution
+fails before a signed receipt is emitted, leave the gate blocked and report the
+failure; do not invent a receipt or reuse a previous output file. Refresh the
+security gate for both clean and incomplete receipts. For a blocked CI run:
+
+```bash
+gh run rerun 456 --failed
+```
+
+If CI was previously green, the trusted service re-runs its
+`security-review-completion` job (and dependent quality job), using the actual
+job ID, so an older green check is not left as the current result:
+
+```bash
+gh run rerun 456 --job 789
+```
+
+Only verified clean evidence and passing required checks permit merge and
+continuation without another approval.
+
+No signing key or credential is copied into the authoring checkout. Findings,
+stale scope or failed execution return to the worker for correction and review.
+See [the signed-review procedure](security-automation.md#verified-local-codex-completion-without-per-pr-approval)
+for execution and trust requirements; unsigned reports still require its explicit
+human contingency. If the constrained service, key or provider allowance is
+unavailable, leave the merge blocked and report the missing infrastructure and
+PR/run links. An existing generic SSH login is not an authorized substitute.
+Do not manufacture approval or describe the advisory marker as a review service.
+
 ## Cloud worker
+
+This is the optional API-backed mode. Start it only when the live queue selects
+and authorizes that mode; subscription execution does not enable it.
 
 `.github/workflows/cloud-work-queue.yml` runs on GitHub-hosted Ubuntu, every ten
 minutes or by manual dispatch. It always checks out trusted `main`, never a PR

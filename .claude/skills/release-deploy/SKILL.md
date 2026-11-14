@@ -7,7 +7,10 @@ description: Release a version of OpenFarmPlanner and deploy it to staging and t
 
 Binding rules: `CLAUDE.md` ("Release and Production Deploy Workflow").
 Deploy scripts live in the sibling `ops` repo; its `README.md` describes every
-step and override. Read it before using an override flag.
+step and override. Read it before using an override flag. Skill discovery does
+not require ops, but deployment requires that authorized checkout and host
+access. These are not automatically supplied in Codex Cloud. Queue authorization
+alone does not authorize production deployment.
 
 ## 1. Find the release tag
 

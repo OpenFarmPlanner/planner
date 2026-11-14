@@ -68,9 +68,11 @@ exactly one section below; don't restate rules here.
 
 Recurring procedures (migration, release/deploy, public page, UI text in four
 languages, QA sweep, security review, visual review, test-coverage campaign)
-are skills under `.claude/skills/`; they apply the rules below step by step and
-never replace them. A rule changes here or in `docs/`, then the skill that
-applies it.
+are canonical skills under `.claude/skills/`, shared with Codex through relative
+directory symlinks in `.agents/skills/`; they apply the rules below step by step
+and never replace them. Discovery and environment requirements are documented in
+[`docs/agent-skills.md`](docs/agent-skills.md). A rule changes here or in `docs/`,
+then the skill that applies it.
 
 ## Testing Rules
 - Write or update appropriate tests for functional changes.
@@ -443,8 +445,10 @@ build a throwaway local integration branch; never a shared branch:
 - The owner authorizes the commissioned queue worker to implement ordered
   issues, obtain independent AI review, fix findings, merge after required checks
   and verified review pass, and continue without routine maintainer confirmation.
-  Use the subscription host worker in `docs/work-execution-queue.md` for automatic
-  review handoff and continuation. Cloud/manual implementers claim `queue:active`
+  Read the live queue execution mode first and follow the review handoff in
+  `docs/work-execution-queue.md`. Use the existing commissioned subscription
+  session when that mode is selected; do not start the optional API worker.
+  Cloud/manual implementers claim `queue:active`
   before coding and open a PR with `Fixes #<issue>`. Queue insertion alone does
   not launch another agent. Production deployment, signing-policy changes and
   paid AI APIs are outside this authorization.
@@ -569,8 +573,13 @@ content patterns live, commented, in the triage step's `env` block.
 
 ## Cloud work queue
 
+The live execution mode in #1058 takes precedence over historical worker setup.
+The shared `.claude/skills/issue-and-queue/SKILL.md` procedure covers issue and
+queue edits; insertion alone starts no worker. Subscription execution continues
+in the commissioned session and does not enable the optional API controller.
+
 The owner requested cloud-only queue execution and authorized small bounded API
-costs on 2026-11-13. The trusted main-branch GitHub workflow
+costs on 2026-11-13. In that optional API mode, the trusted main-branch workflow
 `.github/workflows/cloud-work-queue.yml` controls independent implementation,
 review and merge without routine human approval. Its proxy enforces $1/run,
 $2/day and $10/month model-token reservations. No laptop daemon is required.

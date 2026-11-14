@@ -33,7 +33,7 @@ screenshots are visual-review artifacts, never pixel-comparison gates.
 
 ## 3. Inspect
 
-Open every screenshot (Read tool) and check: overlap, clipped or truncated
+Open every screenshot with the available image viewer and check: overlap, clipped or truncated
 text, hidden or displaced actions, misalignment, touch targets on mobile,
 unintended reflow of unrelated elements. Passing functional checks do not prove
 the layout is right. Check the longest language (fr/es) where text grew.

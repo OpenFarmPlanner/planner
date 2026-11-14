@@ -21,8 +21,9 @@ Rules: `CLAUDE.md` ("QA / Exploratory Testing") and `docs/qa-strategy.md`
 
 ## 2. Run
 
-- Start the app (the `run` skill, or the running dev servers if the user has
-  them up; do not restart theirs).
+- Start the synthetic app using `docs/qa-strategy.md`, or use the running dev
+  servers when appropriate; do not restart user servers. A separate `run` skill
+  is not required.
 - Write a throwaway Playwright script in the scratchpad, not in
   `frontend/e2e/`. Set up users and a project through
   `POST /api/__e2e__/invite-flow/` (action `setup`, header from
