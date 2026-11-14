@@ -42,9 +42,8 @@ export function useCropImportExport({
 }: UseCropImportExportConfig) {
   const { t, i18n } = useTranslation(['crops', 'common']);
   const currentLanguage = normalizeLanguageTag(i18n?.resolvedLanguage ?? i18n?.language) ?? 'de';
-  const [importNoteLanguage, setImportNoteLanguage] = useState<string>(currentLanguage);
+  const importLanguageRef = useRef(currentLanguage);
   const [exportNoteLanguage, setExportNoteLanguage] = useState<string>(currentLanguage);
-  const [replaceCompanionNotes, setReplaceCompanionNotes] = useState(false);
   const plantFamilies = usePlantFamilies();
 
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -82,12 +81,11 @@ export function useCropImportExport({
     if (applyingRef.current || importPreparingRef.current) return;
     resetImportState();
     setImportProgress(null);
-    setImportNoteLanguage(currentLanguage);
-    setReplaceCompanionNotes(false);
     setImportStartDialogOpen(true);
-  }, [resetImportState, currentLanguage]);
+  }, [resetImportState]);
 
   const prepareImportPreview = useCallback(async (file: File) => {
+    importLanguageRef.current = currentLanguage;
     resetImportState();
     setConfirmUpdates(false);
     attemptedRef.current = false;
@@ -116,7 +114,7 @@ export function useCropImportExport({
 
         setImportUploading();
         try {
-          const results = await previewCropImportBatches(entries, importNoteLanguage, setImportProgress, importProjectRef.current);
+          const results = await previewCropImportBatches(entries, importLanguageRef.current, setImportProgress, importProjectRef.current);
           const invalidEntries: string[] = [];
           if (skippedRows > 0) invalidEntries.push(t('import.skippedRows', { count: skippedRows }));
           warnings.forEach((w) => invalidEntries.push(w));
@@ -174,7 +172,7 @@ export function useCropImportExport({
 
         setImportUploading();
         try {
-          const results = await previewCropImportBatches(importAnalysis.validEntries, importNoteLanguage, setImportProgress, importProjectRef.current);
+          const results = await previewCropImportBatches(importAnalysis.validEntries, importLanguageRef.current, setImportProgress, importProjectRef.current);
           const companionWarning = buildCompanionPreviewWarning(results, t);
           setPreviewReadyState({
             previewCount: importAnalysis.originalCount,
@@ -209,7 +207,7 @@ export function useCropImportExport({
 
     setImportErrorState({ error: t('import.errors.unsupportedFormat') });
     setImportDialogOpen(true);
-  }, [resetImportState, t, setImportErrorState, setImportUploading, setPreviewReadyState, importNoteLanguage, previewError]);
+  }, [resetImportState, t, setImportErrorState, setImportUploading, setPreviewReadyState, currentLanguage, previewError]);
 
   const handleImportFileSelected = useCallback(async (file: File) => {
     if (importPreparingRef.current || applyingRef.current) return;
@@ -281,8 +279,7 @@ export function useCropImportExport({
     try {
       const result = await applyCropImportBatches(importState.payload, importState.previewResults, {
         confirm_updates: confirmUpdates,
-        companion_note_language: importNoteLanguage,
-        replace_companion_notes: replaceCompanionNotes,
+        companion_note_language: importLanguageRef.current,
         ...(importProjectRef.current !== undefined ? { expected_project_id: importProjectRef.current } : {}),
       }, setImportProgress);
       const { created_count, updated_count, skipped_count, duplicate_count, errors, companions } = result;
@@ -354,8 +351,7 @@ export function useCropImportExport({
   return {
     importDialogOpen,
     importStartDialogOpen,
-    importNoteLanguage, setImportNoteLanguage, exportNoteLanguage, setExportNoteLanguage,
-    replaceCompanionNotes, setReplaceCompanionNotes,
+    exportNoteLanguage, setExportNoteLanguage,
     exportDialogOpen,
     exportDialogInitialScope,
     confirmUpdates,

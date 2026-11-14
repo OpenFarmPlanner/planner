@@ -1698,10 +1698,8 @@
     "noteLanguage": "Companion note language",
     "languageHelp": {
       "edit": "You are editing only notes in this language. Other language versions are preserved.",
-      "import": "Spreadsheet notes are imported only into this language. Empty notes preserve existing text by default. JSON retains complete language versions.",
       "export": "Only notes in this language are exported. JSON includes every language version."
     },
-    "replaceImportedNotes": "Replace notes of the listed neighbors in this language, including empty notes",
     "cellHelp": "One group per line: Tomato; Cucumber | Pest control. Names alone are valid. Exported quotes and escape sequences preserve delimiters and line breaks in notes. Legacy dash comments are linked only when names resolve unambiguously."
   },
   "timingWindows": {

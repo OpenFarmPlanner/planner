@@ -2,8 +2,6 @@ import {
   Box,
   Button,
   CircularProgress,
-  Checkbox,
-  FormControlLabel,
   Dialog,
   DialogActions,
   DialogContent,
@@ -12,7 +10,6 @@ import {
 } from '@mui/material';
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import { useRef, useState } from 'react';
-import { CompanionNoteLanguageField } from '../crops/CompanionNoteLanguageField';
 import { CropImportFormatHelp } from './CropImportFormatHelp';
 
 type Translator = (key: string, options?: Record<string, unknown>) => string;
@@ -24,10 +21,6 @@ type CropsImportStartDialogProps = {
   /** The chosen file is being read and previewed; no other file is accepted meanwhile. */
   preparing?: boolean;
   progressLabel?: string;
-  noteLanguage?: string;
-  onNoteLanguageChange?: (language: string) => void;
-  replaceNotes?: boolean;
-  onReplaceNotesChange?: (replace: boolean) => void;
   t: Translator;
 };
 
@@ -37,7 +30,6 @@ export function CropsImportStartDialog({
   onFileSelected,
   preparing = false,
   progressLabel,
-  noteLanguage = 'de', onNoteLanguageChange, replaceNotes = false, onReplaceNotesChange,
   t,
 }: CropsImportStartDialogProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -61,11 +53,6 @@ export function CropsImportStartDialog({
       <DialogTitle>{t('import.selectFileTitle')}</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 0.5 }}>
-          {onNoteLanguageChange ? <CompanionNoteLanguageField value={noteLanguage}
-            onChange={onNoteLanguageChange} disabled={preparing} mode="import" /> : null}
-          {onReplaceNotesChange ? <FormControlLabel control={<Checkbox checked={replaceNotes}
-            onChange={(event) => onReplaceNotesChange(event.target.checked)} disabled={preparing} />}
-            label={t('companions.replaceImportedNotes')} /> : null}
           <Box
             aria-busy={preparing}
             onDragOver={(e) => { e.preventDefault(); if (!preparing) setDragOver(true); }}

@@ -36,10 +36,13 @@ for (const [language, { text, navigation }] of Object.entries(languages)) {
       await page.getByRole('menuitem', { name: text.import.menuLabel, exact: true }).click();
       const start = page.getByRole('dialog', { name: text.import.selectFileTitle, exact: true });
       await expect(start).toBeVisible();
+      await expect(start.getByRole('combobox')).toHaveCount(0);
+      await expect(start.getByRole('checkbox')).toHaveCount(0);
       const viewport = language === 'fr' || language === 'es' || language === 'de' && format === 'ods'
         ? { width: 375, height: 800 } : language === 'en' && format === 'ods'
           ? { width: 800, height: 375 } : { width: 1440, height: 900 };
       await page.setViewportSize(viewport);
+      await page.screenshot({ path: testInfo.outputPath(`import-start-${language}-${format}.png`), animations: 'disabled' });
       const button = start.getByRole('button', { name: format === 'ods' ? text.import.help.templateButton : text.import.help.templateButtonXlsx, exact: true });
       await button.scrollIntoViewIfNeeded();
       const [download] = await Promise.all([page.waitForEvent('download'), button.click()]);
@@ -85,6 +88,12 @@ for (const [language, { text, navigation }] of Object.entries(languages)) {
       expect((await applied.json()).errors).toEqual([]);
       await expect(dialog).toBeHidden();
       const saved = await apiRequest<Crop>(page, 'GET', `/crops/${existing.id}/`);
+      const companions = await apiRequest<{ note: string; notes: Record<string, string> }[]>(
+        page, 'GET', `/crop-companions/?language=${language}`,
+      );
+      const noted = companions.filter(item => Object.values(item.notes).some(Boolean));
+      expect(noted.length).toBeGreaterThan(0);
+      for (const item of noted) expect(Object.keys(item.notes)).toEqual([language]);
       expect(saved.growth_duration_days).toBe(75);
       expect(saved.notes).toContain(text.import.template.sampleNote);
       const crops = await apiRequest<{ results: Crop[]; count: number }>(page, 'GET', '/crops/');

@@ -64,6 +64,14 @@ const spreadsheet = (name = 'kulturen.xlsx'): File =>
 describe('CropsImportStartDialog', () => {
   beforeEach(() => vi.mocked(downloadCropImportTemplate).mockReset());
   describe('what it shows', () => {
+    it('offers file selection without language or replacement controls or hints', () => {
+      renderDialog();
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+      expect(screen.queryByText(/Sprache der Nachbarnotizen|Tabellennotizen werden|Notizen der genannten Nachbarn/)).not.toBeInTheDocument();
+      expect(selectButton()).toBeInTheDocument();
+    });
+
     it('marks template rows as examples and documents the canonical timing header', () => {
       renderDialog();
       expect(screen.getByText('Ersetze oder lösche die drei Beispielzeilen vor dem Import deiner Daten.')).toBeInTheDocument();

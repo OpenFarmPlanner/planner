@@ -1743,10 +1743,8 @@
     "noteLanguage": "Idioma de las notas de asociación",
     "languageHelp": {
       "edit": "Solo editas las notas en este idioma. Las demás versiones se conservan.",
-      "import": "Las notas de la tabla se importan solo en este idioma. Por defecto, una nota vacía conserva el texto existente. JSON conserva todas las versiones lingüísticas.",
       "export": "Solo se exportan las notas en este idioma. JSON incluye todas las versiones lingüísticas."
     },
-    "replaceImportedNotes": "Sustituir las notas de los vecinos indicados en este idioma, incluso por notas vacías",
     "cellHelp": "Un grupo por línea: Tomate; Pepino | Control de plagas. También se admiten solo nombres. Las comillas y secuencias de escape exportadas conservan los separadores y saltos de línea de las notas. Los comentarios antiguos con guion solo se vinculan cuando los nombres se reconocen sin ambigüedad."
   },
   "timingWindows": {

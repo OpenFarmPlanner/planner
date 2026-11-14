@@ -8,7 +8,7 @@ import type { ImportPreviewResult } from '../pages/cropsPageUtils';
 vi.mock('../api/api', () => ({ cropAPI: { importPreview: vi.fn(), importApply: vi.fn() } }));
 const previewAPI = vi.mocked(cropAPI.importPreview);
 const applyAPI = vi.mocked(cropAPI.importApply);
-const options = { confirm_updates: false, companion_note_language: 'fr', replace_companion_notes: true };
+const options = { confirm_updates: false, companion_note_language: 'fr' };
 const progress = vi.fn();
 type Row = Record<string, unknown>;
 const rows = (count: number): Row[] => Array.from({ length: count }, (_, index) => ({ name: `Crop ${index}` }));

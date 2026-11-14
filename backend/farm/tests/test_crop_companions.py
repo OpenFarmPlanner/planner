@@ -741,6 +741,53 @@ class LocalizedCompanionNotesTests(CompanionLibraryTestCase):
             self.assertEqual(relation.notes, {'de': 'Quelle', 'fr': expected})
             self.assertEqual(relation.reason, 'shared_pests_diseases')
 
+    def test_import_defaults_update_only_nonempty_notes_in_the_selected_language(self) -> None:
+        relation = self.relate(self.tomato, self.potato)
+        original = {'de': 'Quelle', 'en': 'Source', 'fr': 'Ancienne source', 'es': 'Fuente'}
+        for phase in (None, 'companions'):
+            for language in ('fr', 'es'):
+                with self.subTest(phase=phase, language=language):
+                    relation.notes = dict(original)
+                    relation.save()
+                    identity = (
+                        {'crop_id': self.tomato.pk} if phase else {'name': self.tomato.name}
+                    )
+                    for patch in ({'note': 'Updated source'}, {'note': ''}, {}, {'note': None}):
+                        payload = {
+                            'items': [{
+                                **identity,
+                                'bad_companions': [{'name': self.potato.name, **patch}],
+                            }],
+                            'confirm_updates': True,
+                            'companion_note_language': language,
+                            **({'phase': phase} if phase else {}),
+                        }
+                        response = self.client.post(APPLY_URL, payload, format='json')
+                        self.assertEqual(response.status_code, 200, response.data)
+                        self.assertEqual(response.data['errors'], [])
+                        relation.refresh_from_db()
+                        self.assertEqual(
+                            relation.notes, {**original, language: 'Updated source'}
+                        )
+
+    def test_import_defaults_preserve_json_map_merge_and_explicit_empty(self) -> None:
+        relation = self.relate(self.tomato, self.potato)
+        relation.notes = {'de': 'Quelle', 'en': 'Old source', 'es': 'Fuente'}
+        relation.save()
+        response = self.client.post(APPLY_URL, {
+            'phase': 'companions', 'companion_note_language': 'es',
+            'items': [{'crop_id': self.tomato.pk, 'bad_companions': [{
+                'name': self.potato.name, 'note': 'Derived display value',
+                'notes': {'en': 'New source', 'fr': 'Source FR', 'es': ''},
+            }]}],
+        }, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['errors'], [])
+        relation.refresh_from_db()
+        self.assertEqual(
+            relation.notes, {'de': 'Quelle', 'en': 'New source', 'fr': 'Source FR', 'es': ''}
+        )
+
     def test_legacy_group_resolution_is_exact_and_ambiguous_input_stays_text(self) -> None:
         row = {'name': 'Gurke', 'good_companions': [{'name': 'Tomate, Kartoffel – Quelle 2025', 'legacy': True}]}
         response = self.client.post(PREVIEW_URL, [row], format='json')
