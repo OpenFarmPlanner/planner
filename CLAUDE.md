@@ -67,8 +67,9 @@ Filing these follow-ups is authorized without routine confirmation; implementing
 them or adding them to #1058 requires the corresponding owner instruction.
 If GitHub writes are unavailable, preserve the reproduction details in the
 report and explicitly mark the follow-up **unfiled**. Preserve the existing
-handling of private security findings; do not copy their sensitive details into
-public follow-ups or reports. See the
+handling of private security findings; the
+[private handoff](#private-security-findings) overrides public filing/reporting
+steps. Do not copy their sensitive details into public follow-ups or reports. See the
 [security review procedure](.claude/skills/security-review-protocol/SKILL.md).
 
 ## Workflow: Before Making a Non-Trivial Change
@@ -548,6 +549,29 @@ review of a boundary, or the security part of a larger change:
 4. Report the result as described above. A review with no findings still
    states that, with the reviewed SHA: "nothing found here, at this commit, by
    this tool" is exactly what the other tool needs.
+
+### Private security findings
+
+For a sensitive, unfixed vulnerability, this private handoff takes precedence
+over the public issue, PR-comment and committed-report steps above and in the
+shared skills. Keep the full reproduction and evidence in an owner-accessible
+private report outside version control, identified by a stable report ID and
+the reviewed commit/scope. Notify the owner in the current commissioned private
+chat and deliver the private report there; do not upload it to public GitHub
+comments, attachments, artifacts or the PR branch.
+
+When safe, reuse or create a redacted `security` tracking issue and link that
+issue in the originating PR/report. Include only a non-sensitive summary,
+status and private report ID; keep exploit steps and sensitive evidence in the
+private report. If no safe public summary or confirmed private handoff channel
+is available, retain the private report and mark GitHub tracking or delivery
+**unfiled/pending** rather than claiming either succeeded. Public status may
+state only that a private finding awaits handoff.
+
+A withheld finding remains a finding. Do not alter signed receipts, claim a
+clean review or bypass a merge gate to hide it. If a required public review
+artifact would expose confidential details, keep the gate blocked and notify
+the owner privately; the existing review/signing requirements still apply.
 
 ## Automated Claude PR Review
 `.github/workflows/claude-pr.yml` runs on `opened`, `synchronize`,

@@ -73,9 +73,13 @@ being outside the current scope does not itself require that label.
 Link the reused or new issue in the originating PR or task report. If GitHub
 write access is unavailable, preserve those reproduction details in the report
 and explicitly mark the follow-up **unfiled**; never claim it was created.
-Preserve the existing handling of private security findings and follow the
-[security review procedure](../security-review-protocol/SKILL.md), without
-copying their sensitive details into public issues or reports.
+For private security findings, the
+[private handoff](../../../CLAUDE.md#private-security-findings) overrides public
+filing/reporting steps: notify the owner in the commissioned private chat,
+deliver the full report privately and use redacted public tracking only when
+safe. Preserve pending/unfiled status when a handoff or safe issue cannot be
+completed. Follow the [security review procedure](../security-review-protocol/SKILL.md)
+without copying sensitive details into public issues or reports.
 
 File the follow-up without routine confirmation, but add it to #1058 only on
 explicit owner instruction. Filing does not commission its implementation.
