@@ -6,7 +6,7 @@ import sys
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from http.client import HTTPConnection
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 DIST = Path('/app/frontend/dist')
 SAFE_API_PATHS = {'/api/schema/', '/api/crops/'}
@@ -14,6 +14,17 @@ SAFE_API_PATHS = {'/api/schema/', '/api/crops/'}
 
 class ScanTarget(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
+        # Request text selects a trusted manifest value; it never becomes a
+        # filesystem path. Symlinks are not part of the public build manifest.
+        self.routes = {}
+        for candidate in DIST.rglob('*'):
+            if candidate.is_file() and not candidate.is_symlink():
+                route = '/' + candidate.relative_to(DIST).as_posix()
+                self.routes[route] = route
+                if candidate.name == 'index.html':
+                    directory = route.removesuffix('/index.html')
+                    self.routes[directory or '/'] = route
+                    self.routes[directory + '/'] = route
         super().__init__(*args, directory=str(DIST), **kwargs)
 
     def log_message(self, _format, *args):
@@ -60,9 +71,7 @@ class ScanTarget(SimpleHTTPRequestHandler):
             if not head:
                 self.wfile.write(content)
             return
-        file_path = DIST / parsed.path.lstrip('/')
-        if not file_path.exists():
-            self.path = '/app-shell.html'
+        self.path = self.routes.get(unquote(parsed.path), '/app-shell.html')
         if head:
             super().do_HEAD()
         else:

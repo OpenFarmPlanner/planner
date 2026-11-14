@@ -89,8 +89,8 @@ unmatched evidence are marked `needs-triage`. Classifications annotate evidence,
 not exceptions to other checks. A future policy blocking verified regressions
 needs an agreed, reliable baseline; this PR establishes no such blanket policy.
 
-The initial local 2.17.0 scan observed 86 responses and zero remaining passive
-records. It also recorded 11 optional crawler nodes with response status 0;
+The manifest-server local 2.17.0 scan observed 58 responses and zero remaining passive
+records. It also recorded eight optional crawler nodes with response status 0;
 `coverageGaps` lists these rather than counting them as successful requests.
 Required seeds must still respond. The report contains five warning rules and
 two informational rules, with bounded representative instances:

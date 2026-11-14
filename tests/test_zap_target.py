@@ -17,7 +17,8 @@ spec.loader.exec_module(target)
 class ScanTargetTests(unittest.TestCase):
     def setUp(self):
         self.files = tempfile.TemporaryDirectory()
-        self.dist = Path(self.files.name)
+        self.dist = Path(self.files.name) / 'dist'
+        self.dist.mkdir()
         (self.dist / 'index.html').write_text('production prerender')
         (self.dist / 'app-shell.html').write_text('production SPA shell')
         self.directory = patch.object(target, 'DIST', self.dist)
@@ -45,6 +46,26 @@ class ScanTargetTests(unittest.TestCase):
             self.assertEqual(response.status, 200)
             self.assertIsNone(response.getheader('X-Content-Type-Options'))
             self.assertIn(b'synthetic ZAP', response.read())
+
+    def test_request_paths_and_symlinks_cannot_expose_files_outside_the_build(self):
+        private = Path(self.files.name) / 'private.txt'
+        private.write_text('must never be served')
+        (self.dist / 'link.txt').symlink_to(private)
+        for route in ['/../private.txt', '/%2e%2e/private.txt', '/link.txt']:
+            with self.subTest(route=route), urlopen(self.origin + route) as response:
+                self.assertEqual(response.read(), b'production SPA shell')
+
+    def test_static_asset_and_prerender_routes_use_the_build_manifest(self):
+        (self.dist / 'assets').mkdir()
+        (self.dist / 'assets' / 'example.js').write_text('public asset')
+        (self.dist / 'en').mkdir()
+        (self.dist / 'en' / 'index.html').write_text('English prerender')
+        for route, content in [
+            ('/assets/example.js?cache=1', b'public asset'),
+            ('/en', b'English prerender'), ('/en/', b'English prerender'),
+        ]:
+            with self.subTest(route=route), urlopen(self.origin + route) as response:
+                self.assertEqual(response.read(), content)
 
     def test_post_and_unlisted_api_routes_never_reach_django(self):
         with patch.object(target, 'HTTPConnection') as backend:
