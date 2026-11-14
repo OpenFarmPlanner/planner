@@ -75,15 +75,10 @@ test('public crop library supports quick import, direct edit, versions, discussi
     await importDialog.getByLabel('Öffentliche Kulturen durchsuchen').fill(publicCrop.variety);
     await expect(importDialog.getByRole('option', { name: new RegExp(publicCrop.variety) })).toBeVisible();
     await importDialog.getByRole('option', { name: new RegExp(publicCrop.variety) }).click();
-    await expect(page.getByRole('button', { name: 'In Projekt importieren' })).toBeEnabled();
-    await page.getByRole('button', { name: 'In Projekt importieren' }).click();
-    // The crop was published from this project, so it is already linked to the
-    // public entry and identical to it: the quick import reports "unchanged"
-    // rather than creating a second copy.
-    await expect(page.getByText(/ist bereits identisch/i)).toBeVisible();
-
-    // The dialog now stays open after a successful import (so multiple
-    // crops can be imported in one sitting) instead of closing itself.
+    // Publishing already linked this identical project copy. The neutral linked
+    // state disables a redundant import while preserving the browser context.
+    await expect(importDialog.getByRole('button', { name: 'Bereits verknüpft', exact: true })).toBeDisabled();
+    await expect(importDialog.getByLabel('Öffentliche Kulturen durchsuchen')).toHaveValue(publicCrop.variety);
     await expect(importDialog).toBeVisible();
     await importDialog.getByRole('link', { name: 'Kulturbibliothek öffnen' }).click();
     await expect(page).toHaveURL(/\/app\/crop-library/);
@@ -117,7 +112,7 @@ test('public crop library supports quick import, direct edit, versions, discussi
     // The project copy is still identical to the entry it was published from,
     // so there is nothing to pull: the action is disabled and says why instead
     // of reporting the no-op after a click.
-    const updateInProjectButton = page.getByRole('button', { name: 'Im Projekt aktualisieren' });
+    const updateInProjectButton = page.getByRole('button', { name: 'Bereits verknüpft', exact: true });
     await expect(updateInProjectButton).toBeDisabled();
     await updateInProjectButton.hover({ force: true });
     await expect(page.getByText('Bereits aktuell – keine Änderungen vorhanden')).toBeVisible();
