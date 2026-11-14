@@ -89,6 +89,7 @@ class CropDeletePreviewSerializer(serializers.Serializer):
     planning_data_count = serializers.IntegerField()
     deletes_general_crop = serializers.BooleanField()
     group_without_general = serializers.BooleanField()
+    ambiguous_general_group = serializers.BooleanField()
 
 
 class PublishPublicRequestSerializer(serializers.Serializer):

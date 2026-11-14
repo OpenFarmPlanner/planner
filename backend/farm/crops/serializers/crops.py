@@ -68,10 +68,12 @@ from farm.services.crop_inheritance import (
     find_general_crop,
     get_general_crop,
     is_unset_crop_value,
+    lock_crop_project,
     promote_species_invariant_values,
     resolve_effective_rotation_break_years,
     resolve_effective_timing_windows,
     resolve_plants_per_m2,
+    validate_general_crop_identity,
 )
 from farm.services.crop_tags import canonical_tags
 from farm.services.public_crops import (
@@ -1043,6 +1045,8 @@ class CropSerializer(serializers.ModelSerializer):
     ) -> Crop:
         """Create the crop, its implicit general Kultur and its library link atomically."""
         with transaction.atomic():
+            lock_crop_project(validated_data['project'].pk)
+            validate_general_crop_identity(Crop(**validated_data))
             crop = super().create(validated_data)
             promote_fields = self._promotable_species_invariant_fields
             crop._auto_general_crop = ensure_general_crop_for_variety(
@@ -1067,6 +1071,19 @@ class CropSerializer(serializers.ModelSerializer):
         previous_identity = (instance.name_normalized, instance.variety_normalized)
         try:
             with transaction.atomic():
+                lock_crop_project(instance.project_id)
+                instance.refresh_from_db()
+                previous_identity = (instance.name_normalized, instance.variety_normalized)
+                identity_fields = {'name', 'variety', 'crop_species', 'deleted_at'}
+                if identity_fields.intersection(validated_data):
+                    prospective = copy.copy(instance)
+                    for field in identity_fields.intersection(validated_data):
+                        setattr(prospective, field, validated_data[field])
+                    if any(
+                        getattr(prospective, field) != getattr(instance, field)
+                        for field in ('name', 'variety', 'crop_species_id', 'deleted_at')
+                    ):
+                        validate_general_crop_identity(prospective)
                 crop = super().update(instance, validated_data)
                 promote_species_invariant_values(
                     crop,

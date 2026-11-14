@@ -355,7 +355,7 @@ describe('CropForm library autocomplete (real BasicInfoSection)', () => {
       expect(screen.queryByText('form.publicCropLinkedHint')).not.toBeInTheDocument();
 
       // The link flow's preselection takes the library value; keep our own.
-      fireEvent.click(within(dialog).getByRole('radio', { name: 'library.sync.chooseMine' }));
+      fireEvent.click(within(dialog).getByRole('radio', { name: 'library.linkExisting.keepLocal' }));
       fireEvent.click(within(dialog).getByRole('button', { name: 'form.publicCropLinkConfirm' }));
 
       await screen.findByText('form.publicCropLinkedHint');

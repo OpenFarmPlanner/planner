@@ -35,6 +35,8 @@ export function usePublicCropSyncPreview(
   const [choices, setChoices] = useState<PublicCropSyncChoices>({});
   const [loadError, setLoadError] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
+  const requestKey = `${cropId}:${publicCropId}:${reloadToken}`;
+  const [loadedKey, setLoadedKey] = useState('');
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -48,6 +50,7 @@ export function usePublicCropSyncPreview(
       .then((response) => {
         if (cancelled) return;
         setPreview(response.data);
+        setLoadedKey(requestKey);
         setChoices(buildDefaultSyncChoices(response.data.changes, { allowLocal }));
       })
       .catch(() => {
@@ -56,12 +59,12 @@ export function usePublicCropSyncPreview(
     return () => {
       cancelled = true;
     };
-  }, [allowLocal, cropId, enabled, publicCropId, reloadToken, t]);
+  }, [allowLocal, cropId, enabled, publicCropId, reloadToken, requestKey, t]);
 
   const reload = useCallback(() => setReloadToken((token) => token + 1), []);
 
   return {
-    preview,
+    preview: enabled && loadedKey === requestKey ? preview : null,
     choices,
     setChoices,
     selection: splitSyncChoices(preview?.changes ?? [], choices, { allowLocal }),

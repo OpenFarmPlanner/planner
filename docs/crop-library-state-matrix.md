@@ -130,3 +130,27 @@ Rules that cut across cells:
    published; no crop-side control reaches it any more.
 2. **API-token push into a removed entry** follows the same 409 as a session
    push; the token surface itself was not changed.
+
+### Linking an existing culture
+
+| Case | Expected result |
+|---|---|
+| Unlinked crop, existing public entry | Select entry in publish wizard; compare fields; link without publishing local fields or varieties |
+| General import, existing project species | Select target and compare; direct import/new returns 409 rather than creating a second general row |
+| Unclassified crop matches a translated name/synonym | Suggest target; require explicit confirmation |
+| Already-linked target | Retain re-import conflict/update behavior; reject another initial link |
+| Multiple candidates | No preselected target; reject links retaining duplicate general rows of one species |
+| Entry/local row changed after preview | Refuse stale confirmation; reload comparison; no partial mutation |
+| General identity writers | CRUD, implicit general creation, species assignment and restore serialize on the project row and reject a conflicting active general identity. Busy projects return 409 rather than waiting in reverse library/project lock order. Legacy duplicates remain readable; no canonical row is selected. |
+| Restore after replacement | Undelete and historical restore reject a conflicting general identity atomically, leaving deleted rows and their varieties unchanged. |
+| Legacy duplicate generals | Display as general entries; reject rename/delete; expose full delete scope and block confirmation |
+
+Synthetic regressions cover a general Tomato and twelve varieties, explicit
+linking, repeated import, project-scoped alias suggestions, stale versions, and
+legacy duplicate rename/deletion rollback.
+
+Both initial-link entry points offer the existing three-way comparison: library
+value, keep local for this decision, or **Nur lokal** (persistently pinned).
+Initial linking never pushes the middle column into the library. Invalid pins or
+overlap between `pull_fields` and `pin_fields` reject the complete request; valid
+pins survive later library updates until explicitly released.

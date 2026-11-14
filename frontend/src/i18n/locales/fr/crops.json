@@ -1074,7 +1074,7 @@
     "publishing": "Publication…",
     "libraryAction": {
       "publish": "Partager dans la bibliothèque",
-      "publishTooltip": "Publier cette culture pour la première fois dans la bibliothèque de cultures partagée.",
+      "publishTooltip": "Associer au catalogue des cultures ou publier votre propre culture.",
       "pullUpdate": "Mettre à jour la culture",
       "pullUpdateTooltip": "La bibliothèque contient une version plus récente. Examinez les modifications et appliquez-les à la culture de votre projet.",
       "pushUpdate": "Mettre à jour la bibliothèque",
@@ -1280,7 +1280,7 @@
       "confirmButton": "Publier"
     },
     "publishWizard": {
-      "title": "Publier la culture",
+      "title": "Associer ou publier une culture",
       "intro": "Choisissez d'abord l'espèce cultivée publique correspondante. Votre variété est publiée sous celle-ci ; si l'espèce n'a pas encore de fiche générale, celle-ci est créée automatiquement à partir de vos valeurs actuelles.",
       "introGeneral": "Choisissez l'espèce cultivée publique correspondante. Seules ses données générales sont publiées, pas de variété.",
       "introGeneralWithVarieties": "Les données générales de cette espèce cultivée sont publiées. Les variétés sélectionnées sont publiées en même temps.",
@@ -1615,6 +1615,22 @@
         "library_unpin_field_not_pinned": "Cette valeur n’est pas épinglée localement. Veuillez recharger la mise à jour.",
         "library_pin_field_not_local_change": "Seules les valeurs que vous avez modifiées localement depuis la dernière synchronisation peuvent être gardées en local ici."
       }
+    },
+    "linkExisting": {
+      "title": "Associer à une fiche existante",
+      "importTitle": "Compléter et associer une culture existante",
+      "localTarget": "Culture existante du projet",
+      "publicTarget": "Fiche du catalogue des cultures",
+      "confirm": "Associer et appliquer les valeurs choisies",
+      "inheritance": "Les variétés héritent des valeurs générales. Les valeurs locales et les variétés ne sont pas publiées ; leurs valeurs propres sont conservées. Les changements ultérieurs du catalogue sont proposés pour vérification.",
+      "alreadyLinked": "Déjà associée",
+      "failed": "Impossible d’enregistrer l’association. Vérifiez à nouveau la cible et les valeurs.",
+      "success": "Culture associée.",
+      "takeLibrary": "Utiliser la valeur du catalogue",
+      "keepLocal": "Conserver la valeur locale",
+      "ambiguousDelete": "Ce groupe contient plusieurs cultures générales. La suppression est bloquée pour éviter la perte inattendue du groupe. Les fiches doivent d’abord être identifiées sans ambiguïté.",
+      "intro": "Associez {{name}} à une fiche existante du catalogue ou publiez votre propre culture.",
+      "keepLocalDescription": "Conserver maintenant, comparer à nouveau plus tard"
     }
   },
   "commands": {

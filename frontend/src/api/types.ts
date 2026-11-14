@@ -568,6 +568,7 @@ export type PublicCropSyncPushBlockedReason = 'identity' | 'empty';
 export type PublicCropSyncPinBlockedReason = 'identity' | 'species_invariant' | 'empty';
 
 export interface CropPublicSyncPreview {
+  crop_updated_at?: string;
   public_crop_id: number;
   public_version: number;
   /** The user's library contributions go to the moderation queue. */
@@ -794,6 +795,7 @@ export interface CropDeletePreview {
   planning_data_count: number;
   deletes_general_crop: boolean;
   group_without_general: boolean;
+  ambiguous_general_group?: boolean;
 }
 
 export interface PublicCropMatchResponse {
@@ -819,6 +821,7 @@ export interface ImportPublicCropResponse {
 }
 
 export interface ImportPublicCropConfirmationRequiredError {
+  can_import_as_new?: boolean;
   code: 'import_requires_confirmation';
   detail: string;
   existing_crop_id: number;

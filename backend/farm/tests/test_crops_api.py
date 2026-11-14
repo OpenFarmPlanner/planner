@@ -117,6 +117,87 @@ class CropApiTest(ProjectApiTestCase):
         self.assertIn('display_color', response.data)
         self.assertTrue(response.data['display_color'].startswith('#'))
 
+    def test_legacy_duplicate_general_group_cannot_rename_or_delete(self):
+        species = CropSpecies.objects.create(name='Legacy synthetic tomato')
+        first = Crop.objects.create(project=self.project, name='Legacy tomato', crop_species=species)
+        second = Crop.objects.create(project=self.project, name='Legacy tomato (2)', crop_species=species)
+        varieties = [Crop.objects.create(project=self.project, name=first.name, crop_species=species,
+                                        variety=f'Legacy variety {index}') for index in range(12)]
+        plan = PlantingPlan.objects.create(project=self.project, crop=varieties[0], bed=self.bed,
+                                          planting_date=date(2026, 3, 1))
+        response = self.client.patch(f'/openfarmplanner/api/crops/{first.pk}/',
+                                     {'name': 'Renamed tomato'}, format='json')
+        self.assertEqual(response.status_code, 409)
+        first.refresh_from_db()
+        self.assertEqual(first.name, 'Legacy tomato')
+        preview = self.client.get(f'/openfarmplanner/api/crops/{second.pk}/delete-preview/')
+        self.assertEqual(set(preview.data['crop_ids']), {first.pk, second.pk, *[v.pk for v in varieties]})
+        self.assertEqual(preview.data['planning_data_count'], 1)
+        response = self.client.delete(f'/openfarmplanner/api/crops/{second.pk}/')
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(Crop.objects.filter(crop_species=species, project=self.project).count(), 14)
+        plan.refresh_from_db()
+        self.assertEqual(plan.crop_id, varieties[0].pk)
+
+    def test_general_species_identity_cannot_be_duplicated_by_crud(self):
+        species = CropSpecies.objects.create(name='Identity guard species')
+        general = Crop.objects.create(
+            project=self.project, name='Existing identity', crop_species=species,
+        )
+        response = self.client.post('/openfarmplanner/api/crops/', {
+            'name': 'Another label', 'crop_species': species.pk,
+        }, format='json')
+        self.assertEqual(response.status_code, 409, response.data)
+        unclassified = Crop.objects.create(project=self.project, name='Unclassified identity')
+        response = self.client.patch(f'/openfarmplanner/api/crops/{unclassified.pk}/', {
+            'crop_species': species.pk,
+        }, format='json')
+        self.assertEqual(response.status_code, 409, response.data)
+        unclassified.refresh_from_db()
+        self.assertIsNone(unclassified.crop_species_id)
+        remaining = Crop.objects.get(project=self.project, crop_species=species)
+        self.assertEqual(remaining.pk, general.pk)
+
+    def test_undelete_rejects_conflicting_general_without_partial_restoration(self):
+        species = CropSpecies.objects.create(name='Restore guard species')
+        general = Crop.objects.create(
+            project=self.project, name='Old general', crop_species=species,
+        )
+        variety = Crop.objects.create(
+            project=self.project, name=general.name, crop_species=species, variety='Old variety',
+        )
+        deleted = self.client.delete(f'/openfarmplanner/api/crops/{general.pk}/')
+        self.assertEqual(deleted.status_code, 204)
+        replacement = Crop.objects.create(
+            project=self.project, name='Replacement', crop_species=species,
+        )
+        response = self.client.post(f'/openfarmplanner/api/crops/{general.pk}/undelete/')
+        self.assertEqual(response.status_code, 409, response.data)
+        for row in (general, variety):
+            row.refresh_from_db()
+            self.assertIsNotNone(row.deleted_at)
+        self.assertEqual(list(Crop.objects.filter(crop_species=species)), [replacement])
+
+    def test_revision_restore_rejects_conflicting_general(self):
+        species = CropSpecies.objects.create(name='Revision guard species')
+        general = Crop.objects.create(
+            project=self.project, name='Historical general', crop_species=species,
+        )
+        revision = EntityRevision.objects.filter(
+            entity_type='crop', object_id=general.pk,
+        ).latest('id')
+        self.client.delete(f'/openfarmplanner/api/crops/{general.pk}/')
+        replacement = Crop.objects.create(
+            project=self.project, name='Current general', crop_species=species,
+        )
+        response = self.client.post(f'/openfarmplanner/api/crops/{general.pk}/restore/', {
+            'history_id': revision.pk,
+        }, format='json')
+        self.assertEqual(response.status_code, 409, response.data)
+        general.refresh_from_db()
+        self.assertIsNotNone(general.deleted_at)
+        self.assertEqual(list(Crop.objects.filter(crop_species=species)), [replacement])
+
     def test_delete_preview_reports_cascaded_varieties_and_planning_data(self):
         species = CropSpecies.objects.create(name='Daucus carota')
         general = Crop.objects.create(name='Karotte', variety='', project=self.project, crop_species=species)

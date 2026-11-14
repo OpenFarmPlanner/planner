@@ -87,9 +87,11 @@ interface CropsPublishingWizardDialogProps {
     publicCropId: number;
     /** The entry version the per-field choice was made against. */
     baseVersion: number;
+    cropUpdatedAt?: string;
     /** Fields that take the entry's value, applied together with the link. */
     pullFields: string[];
-    /** Fields whose local value is pushed into the entry after linking. */
+    pinFields?: string[];
+    /** Legacy payload field; initial linking always sends an empty list. */
     pushFields: string[];
     varieties?: PublishVarietySelection[];
   }) => Promise<boolean>;
@@ -272,16 +274,15 @@ export function CropsPublishingWizardDialog({
     crop?.id,
     isSyncFlow ? linkedPublicCropId : selectedPublicCrop?.id,
     open && (isSyncFlow || (showLinkConfirmation && Boolean(selectedPublicCrop))),
-    isSyncFlow,
+    true,
   );
 
   useEffect(() => {
     // A crop-level publish has no variety field of its own, but its Sorten
     // still need the species' public entries to spot name conflicts.
     if (isSyncFlow) return undefined;
-    if (isCropLevelPublish && publishableVarieties.length === 0) return undefined;
     if (!open) return undefined;
-    const searchTerm = selectedSpecies?.name.trim() || '';
+    const searchTerm = selectedSpecies?.name.trim() || crop?.name.trim() || '';
     if (!searchTerm) {
       queueMicrotask(() => setPublicCropOptions([]));
       return undefined;
@@ -291,13 +292,16 @@ export function CropsPublishingWizardDialog({
     queueMicrotask(() => {
       setVarietyLookupSettled(false);
       setVarietyLookupFailed(false);
+      setPublicCropOptions([]);
     });
 
     let cancelled = false;
     const abortController = new AbortController();
     const timeoutId = window.setTimeout(() => {
       setPublicCropLoading(true);
-      publicCropAPI.list({ q: searchTerm }, abortController.signal)
+      publicCropAPI.list(selectedSpecies || crop?.crop_species
+        ? { crop_species: selectedSpecies?.id ?? crop?.crop_species ?? undefined, page_size: 200 }
+        : { q: searchTerm, page_size: 200 }, abortController.signal)
         .then((response) => {
           if (cancelled) return;
           const filtered = response.data.results.filter((entry) => (
@@ -335,7 +339,7 @@ export function CropsPublishingWizardDialog({
       window.clearTimeout(timeoutId);
       abortController.abort();
     };
-  }, [crop?.variety, isSyncFlow, isCropLevelPublish, open, publishableVarieties.length, selectedSpecies]);
+  }, [crop?.name, crop?.crop_species, crop?.variety, isSyncFlow, open, selectedSpecies]);
 
   const missingRequiredFields = validationResult?.missing_required_fields ?? EMPTY_REQUIRED_FIELDS;
   const duplicates = validationResult?.duplicates ?? EMPTY_DUPLICATES;
@@ -500,29 +504,21 @@ export function CropsPublishingWizardDialog({
 
   const handleConfirmLink = useCallback(async () => {
     if (!crop?.id || !selectedPublicCrop || !syncPreview.preview) return;
-    // Linking needs no license acceptance, but a Sorte published along with
-    // it does — without it the backend rejects every one of them with
-    // `public_library_terms_required` — and so does pushing own values.
-    const publishesNewVarieties = selectedVarieties.some((variety) => !variety.publicCropId);
-    const needsLicense = (publishesNewVarieties || syncSelection.pushFields.length > 0)
-      && !termsAlreadyAccepted;
-    if (needsLicense && (!showLicenseConfirmation || !acceptedLicense)) {
-      setShowLicenseConfirmation(true);
-      return;
-    }
     setLinkConfirmError('');
     setLinkConfirmSubmitting(true);
     const cropSpeciesIdForRefresh = selectedPublicCrop.crop_species ?? selectedSpecies?.id;
     try {
       const success = await onLinkPublicCrop({
-        acceptedPublicLibraryTerms: needsLicense && acceptedLicense,
+        acceptedPublicLibraryTerms: false,
         cropSpeciesId: selectedPublicCrop.crop_species ?? undefined,
         originalLanguageCode,
         publicCropId: selectedPublicCrop.id,
         baseVersion: syncPreview.preview.public_version,
-        pullFields: syncSelection.pullFields,
-        pushFields: syncSelection.pushFields,
-        varieties: selectedVarieties,
+        cropUpdatedAt: syncPreview.preview.crop_updated_at,
+        pullFields: syncPreview.preview.changes.filter((change) => syncPreview.choices[change.field] !== 'mine' && syncPreview.choices[change.field] !== 'local').map((change) => change.field),
+        pushFields: [],
+        pinFields: syncPreview.selection.pinFields,
+        varieties: [],
       });
       if (!success) {
         // The candidate may have been withdrawn between preview and confirm —
@@ -537,20 +533,8 @@ export function CropsPublishingWizardDialog({
     } finally {
       setLinkConfirmSubmitting(false);
     }
-  }, [
-    acceptedLicense,
-    crop,
-    onLinkPublicCrop,
-    originalLanguageCode,
-    runPublishPreview,
-    selectedPublicCrop,
-    selectedSpecies,
-    selectedVarieties,
-    showLicenseConfirmation,
-    syncPreview.preview,
-    syncSelection,
-    termsAlreadyAccepted,
-  ]);
+  }, [crop, onLinkPublicCrop, originalLanguageCode, runPublishPreview,
+    selectedPublicCrop, selectedSpecies, syncPreview.preview, syncPreview.choices, syncPreview.selection.pinFields]);
 
   const handleConfirmSync = useCallback(async () => {
     if (!crop?.id || !linkedPublicCropId || !syncPreview.preview) return;
@@ -590,22 +574,7 @@ export function CropsPublishingWizardDialog({
   const handlePublish = useCallback(async () => {
     if (!crop?.id) return;
     if (selectedPublicCrop) {
-      // Linking needs no license acceptance, but a Sorte published along with
-      // it does — without it the backend rejects every one of them with
-      // `public_library_terms_required`.
-      const publishesNewVarieties = selectedVarieties.some((variety) => !variety.publicCropId);
-      const needsLicense = publishesNewVarieties && !termsAlreadyAccepted;
-      if (needsLicense && (!showLicenseConfirmation || !acceptedLicense)) {
-        setShowLicenseConfirmation(true);
-        return;
-      }
-      onPublish({
-        acceptedPublicLibraryTerms: needsLicense && acceptedLicense,
-        cropSpeciesId: selectedPublicCrop.crop_species ?? undefined,
-        originalLanguageCode,
-        publicCropId: selectedPublicCrop.id,
-        varieties: selectedVarieties,
-      });
+      setShowLinkConfirmation(true);
       return;
     }
     // The species proposal is submitted here rather than when the dropdown
@@ -666,13 +635,14 @@ export function CropsPublishingWizardDialog({
 
   const syncPanel = (
     <PublicCropSyncPanel
-      changes={syncPreview.preview?.changes ?? null}
+      changes={syncPreview.preview?.changes.map((change) => isSyncFlow ? change : { ...change, pushable: true }) ?? null}
       choices={syncPreview.choices}
       onChoicesChange={syncPreview.setChoices}
       requiresModeration={Boolean(syncPreview.preview?.requires_moderation)}
       loadError={syncPreview.loadError}
       disabled={linkConfirmSubmitting || syncSubmitting || publishing}
-      allowLocal={isSyncFlow}
+      allowLocal
+      keepMineLocally={!isSyncFlow}
     />
   );
 
@@ -745,8 +715,8 @@ export function CropsPublishingWizardDialog({
 
   if (showLinkConfirmation && selectedPublicCrop) {
     return (
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-        <DialogTitle>{t('library.publishWizard.title')}</DialogTitle>
+      <Dialog open={open} onClose={linkConfirmSubmitting ? undefined : onClose} maxWidth="sm" fullWidth>
+        <DialogTitle>{t('library.linkExisting.title')}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2.25} sx={{ pt: 0.5 }}>
             <Box>
@@ -763,17 +733,15 @@ export function CropsPublishingWizardDialog({
 
             {syncPanel}
 
-            <Alert severity="info">{t('library.publishWizard.linkConfirm.relinkable')}</Alert>
+            <Alert severity="info">{t('library.linkExisting.inheritance')}</Alert>
 
-            {varietySelectionBox}
 
             {linkConfirmError ? <Alert severity="error">{linkConfirmError}</Alert> : null}
 
-            {licenseBox}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2, flexWrap: 'wrap', gap: 1 }}>
-          <Button onClick={handleCancelLinkConfirmation} variant="outlined">
+          <Button onClick={handleCancelLinkConfirmation} variant="outlined" disabled={linkConfirmSubmitting}>
             {t('library.publishWizard.linkConfirm.back')}
           </Button>
           <Button
@@ -788,9 +756,7 @@ export function CropsPublishingWizardDialog({
           >
             {linkConfirmSubmitting || publishing
               ? t('library.publishing')
-              : selectedVarieties.length > 0
-                ? t('library.publishWizard.linkConfirm.submitWithVarieties')
-                : t('library.publishWizard.linkConfirm.submit')}
+              : t('library.linkExisting.confirm')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -848,9 +814,7 @@ export function CropsPublishingWizardDialog({
           <Typography variant="body2" color="text.secondary">
             {t(
               isCropLevelPublish
-                ? (showVarietySelection
-                  ? 'library.publishWizard.introGeneralWithVarieties'
-                  : 'library.publishWizard.introGeneral')
+                ? 'library.linkExisting.intro'
                 : 'library.publishWizard.intro',
               { name: crop?.name ?? '' },
             )}
@@ -876,7 +840,22 @@ export function CropsPublishingWizardDialog({
 
             {varietySelectionBox}
 
-            {isCropLevelPublish ? null : (
+            {isCropLevelPublish ? (
+              <Stack spacing={1}>
+                <Autocomplete
+                  options={publicCropOptions.filter((entry) => !entry.variety?.trim())}
+                  value={selectedPublicCrop}
+                  loading={publicCropLoading}
+                  getOptionLabel={getPublicCropOptionLabel}
+                  isOptionEqualToValue={(option, value) => option.id === value.id}
+                  onChange={(_, value) => setSelectedPublicCrop(value)}
+                  renderInput={(params) => <TextField {...params} label={t('library.linkExisting.publicTarget')} />}
+                />
+                <Button variant="outlined" disabled={!selectedPublicCrop} onClick={() => setShowLinkConfirmation(true)}>
+                  {t('library.linkExisting.title')}
+                </Button>
+              </Stack>
+            ) : (
               <Autocomplete
                 options={existingVarietyOptions}
                 value={selectedPublicCrop}

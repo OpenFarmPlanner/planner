@@ -2229,10 +2229,10 @@ own action:
   relink runs the same `sync_crop_species_across_crop_group()` publishing uses,
   extended with the previous species id so the group's rows move off the old
   species with it instead of splitting the owner's Kultur in two. Because
-  inheritance is live and resolved per `(project, crop_species)`, that move can
-  land the group on a general Kultur the project already keeps for the
-  corrected species (`get_general_crop()` breaks the tie by the lowest primary
-  key), silently changing what its Sorten inherit. The effective values are
+  inheritance is live and resolved per `(project, crop_species)`, moving a
+  variety alone can change which existing general Kultur supplies its values.
+  A move that would introduce a second general Kultur for the target species
+  is rejected atomically with 409; no row is selected as canonical or merged. The effective values are
   therefore snapshotted before the move and compared after it; every member of
   the project is notified per affected crop when they really differ
   (`crop_species_reassigned`, see [notifications.md](./notifications.md)).
@@ -2293,3 +2293,61 @@ Tests require a nonempty example for every current column (including registry
 columns), localized collision-free headers, identical ODS/XLSX logical data,
 and accepted imports in all four languages, so schema growth exposes missing
 examples rather than silently leaving blank columns.
+
+## Explicit linking from publish and import
+
+The existing status icon opens the publish/link wizard. Existing public entries
+are offered inside that dialog. Library imports first call `import-preview` for
+project-scoped candidates: stable species identity first, followed by unclassified
+crops matching a localized name, synonym or regional name. Every target requires
+explicit selection; names never link automatically. Already-linked targets cannot
+be claimed by a different entry.
+
+Both entry points reuse `PublicCropSyncPanel` with pull-only choices: take the
+library value or keep the local value. Confirmation calls `link-public-crop`
+without publishing local fields or varieties or requesting contribution consent.
+IDs, planning references, project-only values, variety overrides and variety
+links remain intact. Later library updates still require review.
+
+Import/link serialize on the project row before locking the entry. A general
+import with an existing candidate returns 409 `existing_crop_requires_link`.
+A stable general-crop species match also blocks `mode=new`; a name-only suggestion permits
+an explicit new-copy choice when the user rejects the suggested identity. Linked re-import retains its existing update/conflict flow.
+Current link clients send the preview's library `base_version` and local
+`expected_updated_at`; stale confirmation is rejected before any field changes.
+Companion writes advance the timestamps of both related general crops, including
+unlinked candidates, and share the project lock with linking. A neighbour edit
+after the preview therefore invalidates confirmation before relations are replaced.
+Project-wide history recovery also advances crop timestamps, including crops whose
+shared relations changed without their own snapshot being restored.
+Older clients may omit these optional preconditions.
+
+Ordinary crop CRUD, implicit general creation, library species changes and
+history/undelete restores share the project lock and validate prospective general
+identities. These writers use a non-waiting project lock and return 409 when busy,
+so callers already holding a library lock cannot deadlock with an import holding
+the project lock. A conflicting restore rolls back the entire operation, including
+varieties, history and media state. Project-wide history recovery retains its
+established skip for a hard-deleted ghost snapshot whose general-crop name is
+already occupied; no second row is inserted. Existing legacy rows remain representable;
+no data migration chooses a canonical general crop. Project-wide restore preserves
+unchanged legacy general identities while validating the complete final crop
+set before writing. Valid species/name exchanges are restored together; temporary
+normalized names inside the transaction avoid transient unique-name collisions.
+New ambiguity is rejected, including conflicts with retained untracked rows. Variety re-import as a new
+copy remains supported and reuses the existing general crop.
+
+Legacy duplicate general rows are not merged or repaired. Extra general rows
+render as general entries rather than varieties. Ambiguous group rename/delete
+operations are rejected. Delete preview exposes the full affected IDs, planning
+count and `ambiguous_general_group`; the UI explains the block and disables
+confirmation. No production repair is performed.
+
+Initial linking also offers **Nur lokal** using the same pin rules as an existing
+link's sync. The ordinary local choice keeps the current value for this decision;
+the third choice persists `library_pinned_fields`, excludes that field from later
+library pulls/pushes and can be released explicitly through the existing sync UI.
+`link-public-crop` validates `pin_fields` and applies the link, selected pulls and
+pins in one transaction. Identity fields, empty values and species-invariant
+variety fields retain their existing restrictions. Neither local choice publishes
+anything or requires contribution consent.

@@ -1074,7 +1074,7 @@
     "publishing": "Publicando…",
     "libraryAction": {
       "publish": "Compartir en la biblioteca",
-      "publishTooltip": "Publicar este cultivo por primera vez en la biblioteca de cultivos compartida.",
+      "publishTooltip": "Vincular con la biblioteca de cultivos o publicar tu propio cultivo.",
       "pullUpdate": "Actualizar cultivo",
       "pullUpdateTooltip": "La biblioteca tiene una versión más reciente. Revisa los cambios y aplícalos al cultivo de tu proyecto.",
       "pushUpdate": "Actualizar la biblioteca",
@@ -1280,7 +1280,7 @@
       "confirmButton": "Publicar"
     },
     "publishWizard": {
-      "title": "Publicar cultivo",
+      "title": "Vincular o publicar un cultivo",
       "intro": "Elige primero la especie de cultivo pública correspondiente. Tu variedad se publica dentro de ella; si la especie todavía no tiene una ficha general, se crea automáticamente a partir de tus valores actuales.",
       "introGeneral": "Elige la especie de cultivo pública correspondiente. Solo se publican sus datos generales, no una variedad.",
       "introGeneralWithVarieties": "Se publican los datos generales de esta especie de cultivo. Las variedades seleccionadas se publican también.",
@@ -1615,6 +1615,22 @@
         "library_unpin_field_not_pinned": "Este valor no está fijado localmente. Vuelve a cargar la actualización.",
         "library_pin_field_not_local_change": "Aquí solo se pueden mantener en local los valores que cambiaste localmente desde la última sincronización."
       }
+    },
+    "linkExisting": {
+      "title": "Vincular con una entrada existente",
+      "importTitle": "Completar y vincular un cultivo existente",
+      "localTarget": "Cultivo existente del proyecto",
+      "publicTarget": "Entrada de la biblioteca de cultivos",
+      "confirm": "Vincular y aplicar los valores elegidos",
+      "inheritance": "Las variedades heredan los valores generales. Los valores locales y las variedades no se publican; se conservan sus valores propios. Los cambios posteriores de la biblioteca se ofrecen para su revisión.",
+      "alreadyLinked": "Ya vinculado",
+      "failed": "No se ha podido guardar el vínculo. Revisa el destino y los valores de nuevo.",
+      "success": "Cultivo vinculado.",
+      "takeLibrary": "Usar el valor de la biblioteca",
+      "keepLocal": "Conservar el valor local",
+      "ambiguousDelete": "Este grupo contiene varios cultivos generales. La eliminación está bloqueada para evitar la pérdida inesperada del grupo. Primero es necesario identificar los registros sin ambigüedad.",
+      "intro": "Vincula {{name}} con una entrada existente de la biblioteca o publica tu propio cultivo.",
+      "keepLocalDescription": "Conservar ahora y comparar más adelante"
     }
   },
   "commands": {

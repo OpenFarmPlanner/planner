@@ -1,3 +1,4 @@
+import { ExistingCropLinkDialog, type CropLinkCandidate } from '../../crops/ExistingCropLinkDialog';
 import { SpecificPropertiesDetails } from '../../crops/SpecificPropertiesDetails';
 import { hasSpecificPropertyValues } from '../../crops/specificProperties';
 import { loadRetryAlertSx } from '../../components/loadRetryStyles';
@@ -195,10 +196,12 @@ export default function PublicCropLibraryPage() {
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [importingId, setImportingId] = useState<number | null>(null);
+  const [linkImport, setLinkImport] = useState<{ publicCrop: PublicCrop; candidates: CropLinkCandidate[] } | null>(null);
   const [importConflict, setImportConflict] = useState<{
     publicCropId: number;
     name: string;
     varietyChange: { from: string; to: string } | null;
+    allowNew: boolean;
   } | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [translationDialogOpen, setTranslationDialogOpen] = useState(false);
@@ -1004,6 +1007,7 @@ export default function PublicCropLibraryPage() {
           setImportConflict({
             publicCropId,
             name,
+            allowNew: conflict.can_import_as_new !== false,
             varietyChange: conflict.variety_changed
               ? { from: conflict.existing_variety ?? '', to: conflict.public_variety ?? '' }
               : null,
@@ -1020,6 +1024,21 @@ export default function PublicCropLibraryPage() {
   const handleImport = useCallback(async (): Promise<void> => {
     if (!selectedCrop) {
       return;
+    }
+    if (!selectedCrop.project_import_status) {
+      setImportingId(selectedCrop.id);
+      try {
+        const response = await publicCropAPI.importPreview(selectedCrop.id);
+        if (response.data.candidates.length) {
+          setLinkImport({ publicCrop: selectedCrop, candidates: response.data.candidates });
+          return;
+        }
+      } catch {
+        showGlobalSnackbar({ message: t('library.importError'), severity: 'error' });
+        return;
+      } finally {
+        setImportingId(null);
+      }
     }
     await performImport(selectedCrop.id, getCropTitle(selectedCrop, t, language));
   }, [language, performImport, selectedCrop, t]);
@@ -2412,6 +2431,19 @@ export default function PublicCropLibraryPage() {
           </DisabledActionTooltip>
         </DialogActions>
       </Dialog>
+      {linkImport ? <ExistingCropLinkDialog key={linkImport.publicCrop.id} publicCrop={linkImport.publicCrop}
+        candidates={linkImport.candidates}
+        onImportAsNew={() => {
+          const entry = linkImport.publicCrop;
+          setLinkImport(null);
+          void performImport(entry.id, getCropTitle(entry, t, language), 'new');
+        }} onClose={() => setLinkImport(null)} onLinked={() => {
+          setLinkImport(null);
+          // Reload authoritative status after preserving the existing project row.
+          savedCropsRef.current.delete(linkImport.publicCrop.id);
+          void loadCrops();
+          showGlobalSnackbar({ message: t('library.linkExisting.success'), severity: 'success' });
+        }} /> : null}
       <ImportConflictDialog
         open={importConflict !== null}
         cropName={importConflict?.name ?? ''}
@@ -2420,6 +2452,7 @@ export default function PublicCropLibraryPage() {
         onCancel={closeImportConflictDialog}
         onUpdate={handleImportConflictUpdate}
         onImportAsNew={handleImportConflictNew}
+        allowImportAsNew={importConflict?.allowNew}
         varietyChange={importConflict?.varietyChange ?? null}
       />
     </PageContainer>

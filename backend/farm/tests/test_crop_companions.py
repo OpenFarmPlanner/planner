@@ -191,6 +191,18 @@ class CompanionPlanningCheckTests(CropCompanionTestCase):
 
 
 class CompanionImportTests(CropCompanionTestCase):
+    def test_adding_an_imported_pair_invalidates_both_comparison_timestamps(self):
+        from farm.services.crop_companions import apply_import_companions
+
+        before = {crop.pk: crop.updated_at for crop in (self.tomato, self.cabbage)}
+        report = apply_import_companions(self.project.pk, [(self.tomato, {
+            'good_companions': [{'name': self.cabbage.name, 'reason': 'other'}],
+        })])
+        self.assertEqual(report.created, 1)
+        for crop in (self.tomato, self.cabbage):
+            crop.refresh_from_db()
+            self.assertNotEqual(crop.updated_at, before[crop.pk])
+
     def test_placeholder_only_neighbours_are_ignored_in_preview_and_apply(self) -> None:
         placeholders = ['#', '-', '?', '...', '—', '_', '/', '(?)', '※', '✓', '# ? – /']
         items = [{'name': f' {name} ', 'note': 'Wurzelraum'} for name in placeholders]
@@ -594,6 +606,19 @@ class FreeTextLinkingTests(CropCompanionTestCase):
 
     def text(self, owner: Crop, text: str, kind: str = CropCompanion.KIND_GOOD) -> CropCompanion:
         return CropCompanion.objects.create(project=self.project, crop=owner, companion_text=text, kind=kind)
+
+    def test_linking_a_later_owner_to_an_earlier_crop_invalidates_both_previews(self):
+        from farm.services.crop_companions import link_free_text_companions
+
+        entry = self.text(self.cabbage, self.tomato.name)
+        before = {crop.pk: crop.updated_at for crop in (self.cabbage, self.tomato)}
+        link_free_text_companions(self.project.pk, [self.tomato.name])
+        entry.refresh_from_db()
+        self.assertEqual(entry.crop_id, self.tomato.pk)
+        self.assertEqual(entry.companion_crop_id, self.cabbage.pk)
+        for crop in (self.cabbage, self.tomato):
+            crop.refresh_from_db()
+            self.assertNotEqual(crop.updated_at, before[crop.pk])
 
     def test_creating_a_kultur_links_free_text_with_its_name(self):
         entry = self.text(self.tomato, 'salbei ', kind='good')
