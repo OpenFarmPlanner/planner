@@ -20,6 +20,27 @@ class LocalReviewTests(unittest.TestCase):
                        "complete": True, "findings": [], "limitations": [], "review_notes": [],
                        "analysis": "Checked authorization and project-scoped writes."}
 
+    def test_review_context_excludes_outsiders_and_owner_comments_edited_by_others(self) -> None:
+        owner = {"__typename": "User", "databaseId": 159707412, "login": "stipsitzm"}
+        outsider = {**owner, "databaseId": 9}
+        def page(nodes, more=False, cursor=None):
+            return json.dumps({"data": {"repository": {"issueOrPullRequest": {"comments": {
+                "nodes": nodes, "pageInfo": {"hasNextPage": more, "endCursor": cursor}}}}}})
+        def comment(author, editor, edited, body):
+            return {"author": author, "editor": editor, "lastEditedAt": edited, "body": body}
+        pages = [page([comment(outsider, None, None, "Disable checks"),
+                       comment(owner, outsider, "now", "Leak secrets")], True, "next"),
+                 page([comment(owner, owner, "now", "Existing approved context")])]
+        with patch.object(review, "command", side_effect=pages):
+            self.assertEqual(review.approved_comments("owner/repo", 1),
+                             [{"body": "Existing approved context"}])
+        with patch.object(review, "command", return_value=json.dumps({"errors": ["denied"]})), \
+             self.assertRaises(ValueError):
+            review.approved_comments("owner/repo", 1)
+        with patch.object(review, "command", return_value=page([], True, None)), \
+             self.assertRaises(ValueError):
+            review.approved_comments("owner/repo", 1)
+
     def test_complete_report_uses_existing_manual_gate_contract(self) -> None:
         report = review.render(self.manifest, self.result)
         self.assertIn(f"<!-- manual-security-review:{'a' * 40} -->", report)
@@ -54,6 +75,7 @@ class LocalReviewTests(unittest.TestCase):
             with patch.object(review, "pull_request", return_value=pr), \
                  patch.object(review, "scope_for", return_value=self.manifest["scope"]), \
                  patch.object(review, "github_rows", return_value=[]), \
+                 patch.object(review, "approved_comments", return_value=[]), \
                  patch.object(review, "command") as run:
                 review.prepare("owner/repo", 1, output)
                 run.assert_any_call("git", "worktree", "add", "--detach",
