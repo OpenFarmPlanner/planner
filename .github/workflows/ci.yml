@@ -287,6 +287,9 @@ jobs:
           SKIP_BACKEND_TESTS: '1'
         run: make quality
 
+      - name: Test quality finding and scanner failure handling
+        run: node --test tests/test_quality_findings.cjs
+
       - name: Test security review completion policy
         run: |
           python3 -m unittest discover -s tests -p test_claude_review_fallback.py
