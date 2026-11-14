@@ -1,0 +1,403 @@
+{
+  "title": "Plano de cultivo",
+  "columns": {
+    "crop": "Cultura (variedade)",
+    "location": "Exploração",
+    "field": "Parcela",
+    "bed": "Canteiro",
+    "fieldBed": "Parcela{{separator}}Canteiro",
+    "sowingDate": "Data de sementeira",
+    "plantingDate": "Data de transplantação",
+    "harvestDate": "Data de colheita",
+    "harvestStartDate": "Início da colheita",
+    "harvestEndDate": "Fim da colheita",
+    "areaM2": "Área (m²)",
+    "plantsCount": "Plantas (≈)",
+    "notes": "Notas",
+    "cultivationType": "Tipo de cultivo"
+  },
+  "labels": {
+    "coupled": "associados"
+  },
+  "actions": {
+    "useAvailableArea": "Utilizar área restante",
+    "useBedArea": "Utilizar área do canteiro",
+    "copyPlantingPlan": "Copiar série",
+    "createPlantingPlan": "Criar série"
+  },
+  "feedback": {
+    "areaAutoFilled": "Área restante disponível aplicada automaticamente: {{area}}"
+  },
+  "dateEditor": {
+    "openCalendar": "Abrir calendário"
+  },
+  "areaValidation": {
+    "maxAreaApplied": "Área máxima disponível aplicada: {{area}}",
+    "remainingLimitTitle": "A área indicada excede a área restante disponível neste canteiro.",
+    "noRemainingTitle": "Não existe área livre neste canteiro durante o período selecionado.",
+    "bedLimitTitle": "A área indicada excede a dimensão deste canteiro.",
+    "availableArea": "Área restante disponível: {{area}}",
+    "bedArea": "Área do canteiro: {{area}}",
+    "occupiedArea": "Já ocupada: {{area}}",
+    "requestedArea": "Pedida: {{area}}",
+    "acceptedArea": "Aplicada: {{area}}",
+    "applyRemainingArea": "Utilizar área restante",
+    "applyBedArea": "Utilizar área do canteiro",
+    "successionLimit_one": "Área do canteiro excedida. Uma cultura seguinte apenas pode suceder a {{crop}}, no mínimo, {{count}} dia após o início da colheita ({{date}}).",
+    "successionLimit_other": "Área do canteiro excedida. Uma cultura seguinte apenas pode suceder a {{crop}}, no mínimo, {{count}} dias após o início da colheita ({{date}}).",
+    "successionLimit_many": "Área do canteiro excedida. Uma cultura seguinte apenas pode suceder a {{crop}}, no mínimo, {{count}} dias após o início da colheita ({{date}})."
+  },
+  "placeholders": {
+    "selectCrop": "Selecionar cultura",
+    "selectCultivationType": "Selecionar tipo de cultivo",
+    "selectArea": "Selecionar área de cultivo",
+    "plantsCount": "Introduzir quantidade",
+    "maxKeyword": "máx."
+  },
+  "tooltips": {
+    "coupledFields": "Área utilizada: associada ao número de plantas. As alterações atualizam automaticamente o outro valor.",
+    "areaAutoMax": "Um valor vazio ou «máx.» utiliza automaticamente a área restante máxima disponível.",
+    "areaInputTitle": "Área ocupada por esta série",
+    "areaInputDescription": "A área do canteiro ocupada por esta série. As alterações à área ou ao número de plantas atualizam automaticamente o outro valor. Um valor vazio ou «máx.» utiliza a área restante máxima disponível.",
+    "plantsFromSpacing": "Número de plantas: associado à área utilizada. As alterações atualizam automaticamente o outro valor.",
+    "calculatedHarvestStartDate": "Calculado automaticamente a partir da data de transplantação e da duração da cultura da cultura.",
+    "calculatedHarvestEndDate": "Calculado automaticamente a partir do início e da duração da colheita da cultura.",
+    "missingGrowthDuration": "Não é possível calcular porque esta cultura não tem duração de crescimento definida.",
+    "missingHarvestDuration": "Não é possível calcular porque esta cultura não tem duração de colheita definida.",
+    "missingGrowthAndHarvestDuration": "Não é possível calcular porque esta cultura não tem duração de crescimento nem de colheita definida.",
+    "sowingDateTitle": "Data de sementeira",
+    "sowingDateDescription": "Associada à data de transplantação: data de transplantação menos a duração em viveiro da cultura. As alterações atualizam automaticamente o outro valor. Igual à data de transplantação na sementeira direta.",
+    "plantingDateTitle": "Data de transplantação",
+    "plantingDateDescription": "Associada à data de sementeira. Na sementeira direta, também corresponde à data de sementeira. Tem de estar dentro da época.",
+    "missingPropagationDuration": "Não é possível calcular porque esta cultura não tem duração de viveiro definida.",
+    "noOwnPropagation": "Sem viveiro próprio: as plantas são compradas."
+  },
+  "hints": {
+    "plantingDateSeasonRange": "Dentro da época: {{start}} – {{end}}"
+  },
+  "errors": {
+    "load": "Não foi possível carregar as séries",
+    "save": "Não foi possível guardar a série",
+    "delete": "Não foi possível eliminar a série",
+    "editCropSpacing": "Editar cultura"
+  },
+  "messages": {
+    "deleted": "Série eliminada",
+    "plantingPlanCopied": "Série copiada."
+  },
+  "validation": {
+    "plantingDateRequired": "A data de transplantação é obrigatória",
+    "cropRequired": "A cultura é obrigatória",
+    "bedRequired": "O canteiro é obrigatório",
+    "cultivationTypeRequired": "O tipo de cultivo é obrigatório",
+    "plantingDateOutsideSeason": "A data de transplantação tem de estar dentro da época ({{start}} – {{end}}).",
+    "requiredFields": "É necessário preencher os seguintes campos obrigatórios: {{fields}}",
+    "cropOrBedRequired": "A cultura ou o canteiro é obrigatório",
+    "areaExceedsRemaining": "A área indicada excede a área restante disponível neste canteiro.",
+    "areaExceedsBedArea": "A área indicada excede a dimensão deste canteiro.",
+    "bedArea": "Área do canteiro",
+    "alreadyAllocated": "Ocupada",
+    "requestedArea": "Pedida",
+    "availableArea": "Área restante disponível",
+    "noAvailableArea": "Já não existe área livre neste canteiro durante o período selecionado."
+  },
+  "confirmDelete": "Pretende eliminar esta série?",
+  "addButton": "Adicionar série",
+  "cultivationTypes": {
+    "directSowing": "Sementeira direta",
+    "preCultivation": "Transplantação",
+    "purchasedTransplant": "Compradas"
+  },
+  "cultivationTypesLong": {
+    "directSowing": "Sementeira direta",
+    "preCultivation": "Transplantação (viveiro próprio)",
+    "purchasedTransplant": "Transplantação com plantas compradas"
+  },
+  "areaAssignment": {
+    "title": "Alterar área de cultivo",
+    "editButton": "Editar área de cultivo",
+    "hierarchyHint": "A exploração filtra as parcelas; a parcela filtra os canteiros.",
+    "emptyStateTitle": "Sem áreas de cultivo disponíveis",
+    "emptyStateDescription": "Crie primeiro parcelas e canteiros antes de atribuir uma área a uma série.",
+    "emptyStateAction": "Ir para Parcelas e canteiros",
+    "apply": "Aplicar",
+    "cancel": "Cancelar",
+    "selectLocationFirst": "Selecione primeiro uma exploração.",
+    "noFieldsForLocation": "Não existem parcelas disponíveis nesta exploração.",
+    "selectFieldFirst": "Selecione primeiro uma parcela.",
+    "noBedsForField": "Não existem canteiros disponíveis nesta parcela.",
+    "selectBedFirst": "Selecione primeiro um canteiro."
+  },
+  "mobile": {
+    "showDetails": "Mostrar detalhes",
+    "hideDetails": "Ocultar detalhes",
+    "fabLabel": "Adicionar série",
+    "fabAria": "Adicionar série",
+    "emptyTitle": "Ainda não existem séries",
+    "emptyDescription": "Crie a primeira série para gerir claramente a cultura, o tipo de cultivo e os períodos num dispositivo móvel.",
+    "emptyCta": "Adicionar série",
+    "createTitle": "Adicionar série",
+    "editTitle": "Editar série",
+    "editAria": "Editar série",
+    "actionsAria": "Ações para a série {{plan}}",
+    "notesPhotos": "Fotografias",
+    "notesPhotosAria": "Abrir notas e fotografias"
+  },
+  "emptyStates": {
+    "createBlockedTooltip": "Os canteiros são adicionados dentro das parcelas na página Parcelas e canteiros.",
+    "states": {
+      "fields": {
+        "title": "Ainda não é possível adicionar uma série.",
+        "description": "Abra Parcelas e canteiros e adicione uma parcela à exploração adequada."
+      },
+      "beds": {
+        "title": "Ainda não foram criados canteiros.",
+        "description": "Os canteiros são a base das séries. Abra Parcelas e canteiros e adicione um canteiro através de uma parcela."
+      },
+      "crops": {
+        "title": "Ainda não foram criadas culturas.",
+        "description": "São necessárias culturas para criar séries."
+      },
+      "seasons": {
+        "title": "Ainda não foi criada uma época",
+        "description": "Crie uma época antes de adicionar séries."
+      },
+      "plans": {
+        "title": "Ainda não foi criada nenhuma série.",
+        "description": "Crie agora a primeira série."
+      }
+    },
+    "actions": {
+      "createField": "Adicionar parcela",
+      "createAreas": "Ir para Parcelas e canteiros",
+      "openCropLibrary": "Abrir biblioteca de culturas",
+      "addCrop": "Adicionar cultura",
+      "createSeason": "Criar época"
+    }
+  },
+  "commands": {
+    "edit": "Editar série (Alt+E)",
+    "delete": "Eliminar série (Del)",
+    "keywords": {
+      "edit": "série, editar",
+      "delete": "série, eliminar",
+      "search": "série, pesquisar, encontrar, filtrar"
+    },
+    "focusSearch": "Focar pesquisa de séries (/)"
+  },
+  "loadingPlans": "A carregar séries…",
+  "search": {
+    "placeholderDesktop": "Pesquisar séries",
+    "placeholderMobile": "Pesquisar",
+    "ariaLabel": "Pesquisar séries",
+    "clear": "Limpar pesquisa",
+    "shortcutHintAria": "Premir / para focar a pesquisa",
+    "filterButton": "Filtrar",
+    "filterButtonActiveAria_one": "Filtrar, {{count}} filtro ativo",
+    "filterButtonActiveAria_other": "Filtrar, {{count}} filtros ativos",
+    "columnsButton": "Colunas",
+    "panelTitle": "Filtrar",
+    "sheetTitle": "Filtrar e ordenar",
+    "fields": {
+      "sort": "Ordenar por",
+      "location": "Exploração",
+      "field": "Parcela",
+      "cultivationType": "Tipo de cultivo",
+      "crop": "Cultura",
+      "plantingDate": "Período de cultivo",
+      "harvestStartDate": "Início da colheita",
+      "harvestEndDate": "Fim da colheita",
+      "rotation": "Rotação de culturas",
+      "occupancy": "Ocupação do canteiro",
+      "timing": "Períodos"
+    },
+    "monthFrom": "De",
+    "monthTo": "Até",
+    "monthRangeSeparator": "até",
+    "fieldHint": "Sugestão: escolher primeiro uma exploração para ver apenas as respetivas parcelas.",
+    "sortOptions": {
+      "plantingDateAsc": "Data de transplantação, crescente",
+      "plantingDateDesc": "Data de transplantação, decrescente",
+      "cropAsc": "Cultura, de A a Z",
+      "harvestStartAsc": "Início da colheita, crescente"
+    },
+    "count_one": "{{count}} série",
+    "count_other": "{{count}} séries",
+    "filteredCountDesktop": "{{shown}} de {{total}} séries",
+    "filteredCountMobile": "{{shown}} de {{total}}",
+    "reset": "Repor",
+    "matches_one": "{{count}} resultado",
+    "matches_other": "{{count}} resultados",
+    "showResults_one": "Mostrar {{count}} série",
+    "showResults_other": "Mostrar {{count}} séries",
+    "chip": "{{filter}}: {{values}}",
+    "chipDateLabels": {
+      "plantingDate": "Data de transplantação",
+      "harvestStartDate": "Início da colheita",
+      "harvestEndDate": "Fim da colheita"
+    },
+    "chipMonthRange": {
+      "range": "{{filter}}: de {{from}} a {{to}}",
+      "from": "{{filter}}: a partir de {{from}}",
+      "to": "{{filter}}: até {{to}}"
+    },
+    "removeChip": "Remover filtro {{filter}}",
+    "resetAll": "Repor tudo",
+    "activeFiltersAria": "Filtros ativos",
+    "synonymHint": "Sinónimo: {{name}}",
+    "notesMatchAria": "Correspondência nas notas",
+    "empty": {
+      "titleWithQuery": "Não foram encontradas séries para «{{query}}»",
+      "title": "Não foram encontradas séries",
+      "hintWithFilters_one": "Sem os filtros ativos existiria {{count}} resultado.",
+      "hintWithFilters_other": "Sem os filtros ativos existiriam {{count}} resultados.",
+      "hint": "Verifique a ortografia ou pesquise uma cultura, variedade ou canteiro.",
+      "clearSearch": "Limpar pesquisa",
+      "resetFilters": "Repor filtros",
+      "hintWithFilters_many": "Sem os filtros ativos existiriam {{count}} resultados."
+    },
+    "rotationOptions": {
+      "conflict": "Conflito",
+      "accepted": "Aceite",
+      "info": "Não verificável"
+    },
+    "occupancyOptions": {
+      "harvestOverlap": "Sobreposição de colheitas"
+    },
+    "timingOptions": {
+      "outsideWindow": "Fora dos períodos"
+    },
+    "filterButtonActiveAria_many": "Filtrar, {{count}} filtros ativos",
+    "count_many": "{{count}} séries",
+    "matches_many": "{{count}} resultados",
+    "showResults_many": "Mostrar {{count}} séries"
+  },
+  "rotation": {
+    "iconAria": {
+      "conflict": "Conflito de rotação de culturas, alterar área de cultivo",
+      "info": "Rotação de culturas não verificável, alterar área de cultivo"
+    },
+    "status": {
+      "conflict": "Conflito",
+      "accepted": "Conflito aceite",
+      "hint": "Sugestão",
+      "info": "Não é possível verificar",
+      "ok": "Adequado"
+    },
+    "checking": "A verificar rotação de culturas…",
+    "checkError": "Não foi possível verificar a rotação de culturas neste momento. Continua a ser possível guardar.",
+    "conflict": {
+      "title": "Rotação de culturas: {{family}} demasiado cedo neste canteiro",
+      "textCrop_one": "{{previousCulture}} ({{family}}) cresceu em {{bed}} em {{year}}. {{culture}} tem um intervalo de rotação de {{count}} ano, pelo que o primeiro ano possível é {{earliestYear}}.",
+      "textCrop_other": "{{previousCulture}} ({{family}}) cresceu em {{bed}} em {{year}}. {{culture}} tem um intervalo de rotação de {{count}} anos, pelo que o primeiro ano possível é {{earliestYear}}.",
+      "textFamily_one": "{{previousCulture}} ({{family}}) cresceu em {{bed}} em {{year}}. {{family}} tem um intervalo de rotação predefinido de {{count}} ano, pelo que o primeiro ano possível é {{earliestYear}}.",
+      "textFamily_other": "{{previousCulture}} ({{family}}) cresceu em {{bed}} em {{year}}. {{family}} tem um intervalo de rotação predefinido de {{count}} anos, pelo que o primeiro ano possível é {{earliestYear}}.",
+      "showSuggestions": "Mostrar canteiros adequados",
+      "showBedHistory": "Ver histórico de {{bed}}",
+      "hideBedHistory": "Ocultar histórico de {{bed}}",
+      "changeBreak": "Alterar intervalo de rotação de {{culture}}",
+      "setBreak": "Definir intervalo de rotação de {{culture}}",
+      "acceptLabel": "Planear assim intencionalmente (aceitar o conflito)",
+      "saveNote": "Continua a ser possível guardar. Os conflitos aceites permanecem assinalados na tabela.",
+      "textCrop_many": "{{previousCulture}} ({{family}}) cresceu em {{bed}} em {{year}}. {{culture}} tem um intervalo de rotação de {{count}} anos, pelo que o primeiro ano possível é {{earliestYear}}.",
+      "textFamily_many": "{{previousCulture}} ({{family}}) cresceu em {{bed}} em {{year}}. {{family}} tem um intervalo de rotação predefinido de {{count}} anos, pelo que o primeiro ano possível é {{earliestYear}}."
+    },
+    "accepted": {
+      "title": "{{family}} demasiado cedo, aceite intencionalmente",
+      "text": "{{previousCulture}} em {{year}} neste canteiro. Aceite por {{user}} em {{date}}.",
+      "textWithoutUser": "{{previousCulture}} em {{year}} neste canteiro. Aceite em {{date}}.",
+      "revoke": "Retirar aceitação"
+    },
+    "hint": {
+      "title": "Cultura muito exigente após cultura muito exigente",
+      "text": "{{previousCulture}} cresceu aqui em {{year}}. Preveja composto suficiente ou uma adubação verde intermédia."
+    },
+    "info": {
+      "title": "Não é possível verificar a rotação de culturas",
+      "noFamily": "{{culture}} não tem família botânica definida. Sem família não é possível verificar um intervalo de rotação.",
+      "addFamily": "Adicionar família a {{culture}}",
+      "noBreak": "Nem {{family}} nem {{culture}} têm intervalo de rotação definido. Sem intervalo não é possível verificar a rotação de culturas.",
+      "incomplete": "Escolha uma cultura, um canteiro e uma data de transplantação para verificar a rotação de culturas.",
+      "missingData": {
+        "heading": "Não é possível verificar a rotação de culturas:",
+        "noFamily": "Não está definida uma família botânica para {{crop}}.",
+        "noBreak": "Não está definido um intervalo de rotação para {{crop}}.",
+        "previousNoFamily": "Não está definida uma família botânica para a cultura anterior {{crop}} ({{year}}).",
+        "closing": "É possível adicionar as informações em falta na biblioteca de culturas."
+      }
+    },
+    "ok": {
+      "text": "Rotação de culturas adequada: {{reason}}",
+      "reasons": {
+        "lastFamily": "última {{family}} em {{year}}, cultura anterior {{previousCulture}}.",
+        "lastFamilyWithoutPrevious": "última {{family}} em {{year}}.",
+        "noFamilyOnBed": "sem {{family}} registada neste canteiro.",
+        "noHistory": "sem séries anteriores registadas neste canteiro."
+      }
+    },
+    "bedHistory": {
+      "title": "Histórico de {{bed}}",
+      "empty": "Não existe histórico de cultivo registado neste canteiro.",
+      "entry": "{{years}}: {{culture}}",
+      "entryWithFamily": "{{years}}: {{culture}} ({{family}})"
+    },
+    "suggestions": {
+      "title": "Canteiros adequados para {{culture}}",
+      "periodTitle": "Canteiros correspondentes, livres de {{start}} a {{end}}",
+      "subtitle": "Ordenados pelo intervalo de rotação, sequência de necessidades nutritivas e anos desde a mesma família. Apenas canteiros com área livre suficiente no período.",
+      "categories": {
+        "good": "Bem adequado",
+        "fits": "Adequado",
+        "hint": "Sugestão",
+        "no_data": "Sem dados",
+        "conflict": "Conflito"
+      },
+      "apply": "Aplicar",
+      "applyAria": "Aplicar {{bed}}",
+      "current": "atualmente selecionado",
+      "showAll": "Mostrar todos os {{count}} canteiros",
+      "showAllMatching": "Mostrar todos os {{count}} canteiros correspondentes",
+      "showLess": "Mostrar menos canteiros",
+      "empty": "Nenhum canteiro está livre na data de transplantação. Verifique a data ou adicione outro canteiro.",
+      "emptyMatching": "Nenhum canteiro tem área livre suficiente sem conflito de rotação de culturas neste período. Verifique a data de transplantação e a área ou adicione outro canteiro.",
+      "loading": "A verificar canteiros…",
+      "error": "Não foi possível carregar as sugestões de canteiros.",
+      "needsInput": "Escolha uma cultura e uma data de transplantação para ver canteiros adequados.",
+      "show": "Mostrar canteiros adequados",
+      "hide": "Ocultar sugestões",
+      "reasons": {
+        "neverOnBed": "Sem {{family}} registada",
+        "neverOnBedWithPrevious": "Sem {{family}} registada, cultura anterior {{previousCulture}}",
+        "lastFamily": "Última {{family}} em {{year}}",
+        "soilImproverBefore": "A cultura anterior {{previousCulture}} deixa azoto para {{culture}}.",
+        "hint": "{{previousCulture}} cresceu aqui em {{year}}, sendo também muito exigente em nutrientes.",
+        "noHistory": "Sem séries anteriores registadas",
+        "noFamily": "{{culture}} não tem família botânica.",
+        "noBreak": "{{family}} não tem intervalo de rotação.",
+        "conflict": "{{previousCulture}} ({{family}}) cresceu aqui em {{year}}; o primeiro ano possível é {{earliestYear}}."
+      }
+    },
+    "capacity": {
+      "partial": "{{free}} de {{total}} m² livres neste período",
+      "insufficient": "Apenas {{free}} m² livres neste período ({{blockingCulture}} até {{date}}); são necessários {{needed}} m²",
+      "insufficientWithoutBlocker": "Apenas {{free}} m² livres neste período; são necessários {{needed}} m²"
+    }
+  },
+  "harvestOverlap": {
+    "predecessor": "{{crop}} ocupa este canteiro a partir de {{date}}. A colheita tem de estar concluída nessa data.",
+    "successor": "Começa antes do fim de colheita planeado de {{crop}} ({{date}}).",
+    "iconAria": "Sobreposição de colheitas"
+  },
+  "timingWindow": {
+    "direct_sowing": "A data de sementeira está fora dos períodos de sementeira direta ({{windows}}).",
+    "pre_cultivation": "A data de sementeira está fora dos períodos de sementeira em viveiro ({{windows}}).",
+    "planting": "A data de transplantação está fora dos períodos de transplantação ({{windows}}).",
+    "iconAria": "Data fora dos períodos"
+  },
+  "germination": {
+    "cold_period_required": "A semente necessita de um período de frio.",
+    "propagation_shorter_than_germination": "A duração em viveiro é inferior ao tempo de germinação.",
+    "emergence": "Emergência esperada por volta de {{from}}–{{to}}",
+    "hints": "Sugestões de germinação"
+  }
+}

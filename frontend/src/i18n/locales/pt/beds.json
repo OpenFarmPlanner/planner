@@ -1,0 +1,22 @@
+{
+  "title": "Canteiros",
+  "columns": {
+    "name": "Nome",
+    "field": "Parcela",
+    "area": "Área (m²)",
+    "notes": "Notas"
+  },
+  "errors": {
+    "load": "Não foi possível carregar os canteiros",
+    "save": "Não foi possível guardar o canteiro",
+    "delete": "Não foi possível eliminar o canteiro",
+    "loadFields": "Não foi possível carregar as parcelas"
+  },
+  "validation": {
+    "nameRequired": "O nome é obrigatório",
+    "fieldRequired": "A parcela é obrigatória"
+  },
+  "confirmDelete": "Pretende eliminar este canteiro?",
+  "addButton": "Adicionar canteiro",
+  "selectField": "Selecionar parcela"
+}

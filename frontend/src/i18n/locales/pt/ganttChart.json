@@ -1,0 +1,215 @@
+{
+  "title": "Calendário de cultivo",
+  "zoomIn": "Ampliar",
+  "zoomOut": "Reduzir",
+  "viewModes": {
+    "month": "Vista mensal",
+    "week": "Vista semanal"
+  },
+  "months": {
+    "jan": "janeiro",
+    "feb": "fevereiro",
+    "mar": "março",
+    "apr": "abril",
+    "may": "mai",
+    "jun": "junho",
+    "jul": "julho",
+    "aug": "agosto",
+    "sep": "setembro",
+    "oct": "outubro",
+    "nov": "novembro",
+    "dec": "dezembro"
+  },
+  "weekShort": "sem.",
+  "field": "Parcela",
+  "bed": "Canteiro",
+  "area": "Área",
+  "year": "Ano",
+  "today": "Hoje",
+  "previousYear": "Ano anterior",
+  "nextYear": "Ano seguinte",
+  "loading": "A carregar...",
+  "errors": {
+    "load": "Não foi possível carregar os dados",
+    "updatePlan": "Não foi possível atualizar a série",
+    "render": "Não foi possível carregar a vista do calendário."
+  },
+  "tooltip": {
+    "crop": "Cultura",
+    "plantingDate": "Data de transplantação",
+    "harvestDate": "Data de colheita",
+    "firstHarvest": "Primeira colheita",
+    "lastHarvest": "Última colheita",
+    "areaUsage": "Área",
+    "propagationStart": "Início do viveiro",
+    "transplantDate": "Transplantação",
+    "propagationDuration": "Duração em viveiro",
+    "bed": "Canteiro",
+    "location": "Exploração",
+    "plantsCount": "Número de plantas",
+    "totalPlantsCount": "Total de plantas",
+    "plantingPlanCount": "Número de séries",
+    "involvedLocations": "Explorações envolvidas",
+    "seedRequirement": "Necessidades de sementes",
+    "notes": "Nota",
+    "phase": {
+      "growth": "Fase de crescimento",
+      "harvest": "Fase de colheita"
+    },
+    "actualHarvestEnd": "Fim de colheita mais tardio"
+  },
+  "noData": "Sem séries disponíveis",
+  "modeLabel": "Modo",
+  "modeAriaLabel": "Selecionar modo",
+  "modeViewOption": "Visualização",
+  "moveModeOption": "Mover período",
+  "moveModeActiveOption": "Mover período ativo",
+  "moveModeCommandActivate": "Ativar movimento de períodos",
+  "moveModeCommandDeactivate": "Desativar movimento de períodos",
+  "modeViewTooltip": "Modo de visualização: consultar e navegar no calendário. Sem alterações por arrastar e largar.",
+  "moveModeTooltipDescription": "Ative o modo de movimento para deslocar períodos de cultivo por arrastar e largar.",
+  "moveModeActiveTooltipDescription": "Arraste um período para a esquerda ou para a direita para deslocar toda a série no tempo.",
+  "viewMode": "Modo de visualização",
+  "viewSelectorAriaLabel": "Selecionar vista do calendário",
+  "chartLocaleText": {
+    "titleOccupancy": "Plano das parcelas",
+    "titleSeedlings": "Plano de viveiro",
+    "resources": "Áreas",
+    "resourcesSeedlings": "Culturas",
+    "today": "Hoje",
+    "actions": "Ações",
+    "adjustProgress": "Arrastar para ajustar o progresso",
+    "viewModes": {
+      "minute": "Minuto",
+      "hour": "Hora",
+      "day": "Dia",
+      "week": "Semana",
+      "month": "Mês",
+      "quarter": "Trimestre",
+      "year": "Ano"
+    }
+  },
+  "days": "dias",
+  "yieldDistributionTitle": "Distribuição dos rendimentos",
+  "noYieldData": "Não existem rendimentos esperados para este ano.",
+  "modes": {
+    "occupancy": "Ocupação das parcelas",
+    "seedlings": "Viveiro"
+  },
+  "modesShort": {
+    "occupancy": "Ocupação",
+    "seedlings": "Viveiro"
+  },
+  "modeTooltips": {
+    "occupancy": "Mostra a ocupação dos canteiros ao longo do ano. Os períodos apresentados são calculados a partir das séries e das durações específicas de cada cultura, por exemplo sementeira, transplantação e colheita.",
+    "seedlings": "Mostra a fase de viveiro das culturas antes da transplantação. Os períodos apresentados são calculados a partir das séries e da duração em viveiro de cada cultura."
+  },
+  "shortcuts": {
+    "today": "Ir para o período atual",
+    "previousPeriod": "Período anterior do calendário",
+    "nextPeriod": "Período seguinte do calendário",
+    "previousLargePeriod": "Recuar um período alargado",
+    "nextLargePeriod": "Avançar um período alargado",
+    "dayView": "Mostrar vista diária",
+    "weekView": "Mostrar vista semanal",
+    "monthView": "Mostrar vista mensal",
+    "quarterView": "Mostrar vista trimestral",
+    "yearView": "Mostrar vista anual",
+    "showOccupancy": "Mostrar ocupação das parcelas",
+    "showSeedlings": "Mostrar viveiro",
+    "focusSearch": "Focar pesquisa (/)"
+  },
+  "modeDescriptions": {
+    "occupancy": "Ocupação de parcelas e canteiros ao longo do ano. Esta vista continua a permitir mover séries existentes.",
+    "seedlings": "Períodos de viveiro por cultura. Esta vista é apenas de leitura e mostra apenas os viveiros relevantes no ano atual."
+  },
+  "seedlings": {
+    "emptyState": "Não existem períodos de viveiro para este ano.",
+    "plantsUnit": "plantas"
+  },
+  "requirements": {
+    "field": {
+      "label": "Parcela",
+      "missing": "Parcela em falta",
+      "done": "Parcela disponível"
+    },
+    "crop": {
+      "label": "Cultura",
+      "missing": "Cultura em falta",
+      "done": "Cultura disponível"
+    },
+    "bed": {
+      "label": "Canteiro",
+      "missing": "Canteiro em falta",
+      "done": "Canteiro disponível"
+    },
+    "plan": {
+      "label": "Série",
+      "missing": "Série em falta",
+      "done": "Série disponível"
+    }
+  },
+  "emptyStates": {
+    "requirementsTitle": "Ainda não é possível planear culturas",
+    "requirementsDescription": "Abra Parcelas e canteiros e adicione uma parcela à exploração adequada. Depois será possível registar canteiros, culturas e séries.",
+    "states": {
+      "crops": {
+        "title": "Ainda não existem culturas",
+        "description": "Crie a primeira cultura ou importe uma da biblioteca de culturas. Depois será possível criar séries."
+      },
+      "plans": {
+        "title": "Ainda não existem séries",
+        "description": "Ainda não foram criadas séries para as áreas de cultivo existentes. Crie uma série para mostrar culturas e datas no calendário de cultivo."
+      }
+    },
+    "actions": {
+      "createCrop": "Adicionar cultura",
+      "createField": "Adicionar parcela",
+      "createAreas": "Ir para Parcelas e canteiros",
+      "createPlan": "Adicionar série"
+    }
+  },
+  "sidebar": {
+    "resizeHandle": "Alargar ou estreitar a barra lateral"
+  },
+  "structureSummary": {
+    "fields_one": "{{count}} parcela",
+    "fields_other": "{{count}} parcelas",
+    "beds_one": "{{count}} canteiro",
+    "beds_other": "{{count}} canteiros",
+    "occupiedBeds_one": "{{count}} ocupado",
+    "occupiedBeds_other": "{{count}} ocupados",
+    "fields_many": "{{count}} parcelas",
+    "beds_many": "{{count}} canteiros",
+    "occupiedBeds_many": "{{count}} ocupados"
+  },
+  "treeFilters": {
+    "searchPlaceholder": "Pesquisar por cultura, canteiro, parcela ou exploração…",
+    "searchPlaceholderSeedlings": "Pesquisar por cultura…",
+    "allLocations": "Todas as explorações",
+    "allFields": "Todas as parcelas",
+    "onlyOccupiedBeds": "Apenas canteiros ocupados",
+    "filterButton": "Filtrar",
+    "filterButtonWithCount": "Filtros ({{count}})",
+    "locationLabel": "Exploração",
+    "fieldLabel": "Parcela",
+    "resetFilters": "Repor filtros",
+    "clearSearch": "Limpar pesquisa"
+  },
+  "contextMenu": {
+    "openPlan": "Abrir série",
+    "openCrop": "Abrir cultura",
+    "openBed": "Abrir canteiro",
+    "openField": "Abrir parcela",
+    "openLocation": "Abrir exploração",
+    "editBed": "Editar canteiro",
+    "editField": "Editar parcela",
+    "editLocation": "Editar exploração",
+    "addPlan": "Adicionar série",
+    "confirmDeletePlan": "Pretende eliminar esta série?"
+  },
+  "taskNames": {
+    "harvest": "{{crop}} (colheita)",
+    "unknownCrop": "Cultura {{id}}"
+  }
+}

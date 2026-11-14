@@ -19,8 +19,8 @@ missing, add it here in the same change.
   agriculture, regional plant-health bulletins, Junta de Andalucía, FAO
   AGROVOC).
 
-Italian is introduced first in #949; PT and NL columns record the agreed
-terminology for the following language PRs, not shipped-language availability.
+Italian and European Portuguese ship in #949; the NL column records the agreed
+terminology for the remaining Dutch PR, not shipped-language availability.
 Canonical variants: it-IT, pt-PT (Acordo Ortográfico), nl-NL. Portuguese uses
 *sementeira, utilizador, ficheiro, ecrã*; browser pt-BR selects the pt-PT bundle,
 never a mixed regional bundle. Formatting and plurals must use pt-PT explicitly.

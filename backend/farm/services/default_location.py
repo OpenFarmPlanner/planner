@@ -15,6 +15,7 @@ DEFAULT_LOCATION_NAMES: dict[str, str] = {
     'fr': 'Site principal',
     'es': 'Ubicación principal',
     'it': 'Sito principale',
+    'pt': 'Exploração principal',
 }
 
 

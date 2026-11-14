@@ -99,12 +99,12 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Upload Italian localization review screenshots
+      - name: Upload localization review screenshots
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: italian-localization-shard-${{ matrix.shard }}
-          path: frontend/test-results/**/italian-*.png
+          name: localization-review-shard-${{ matrix.shard }}
+          path: frontend/test-results/**/locale-*.png
           if-no-files-found: ignore
           retention-days: 7
 

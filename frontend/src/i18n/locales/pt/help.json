@@ -1,0 +1,289 @@
+{
+  "showTooltip": "Mostrar ajuda",
+  "title": "Ajuda",
+  "globalTitle": "Visão geral: como funciona o OpenFarmPlanner",
+  "heading": "Como funciona o OpenFarmPlanner",
+  "intro": "O OpenFarmPlanner é composto por várias páginas que funcionam em conjunto:",
+  "sections": [
+    {
+      "title": "Visão geral",
+      "points": [
+        "Veja de imediato as próximas tarefas de sementeira, transplantação, viveiro e colheita."
+      ]
+    },
+    {
+      "title": "Áreas de cultivo",
+      "points": [
+        "Crie aqui parcelas e canteiros. Adicione explorações quando necessário."
+      ]
+    },
+    {
+      "title": "Culturas",
+      "points": [
+        "Introduza aqui os dados das culturas ou utilize a biblioteca de culturas."
+      ]
+    },
+    {
+      "title": "Plano de cultivo",
+      "points": [
+        "Planeie qual a cultura cultivada em cada canteiro e em que momento."
+      ]
+    },
+    {
+      "title": "Calendário",
+      "points": [
+        "Veja aqui a cronologia das séries."
+      ]
+    },
+    {
+      "title": "Rendimentos",
+      "points": [
+        "Veja as quantidades de colheita esperadas das séries."
+      ]
+    },
+    {
+      "title": "Sementes",
+      "points": [
+        "Veja a quantidade de sementes necessária para as séries."
+      ]
+    },
+    {
+      "title": "Plantas",
+      "points": [
+        "Veja quantas plantas de viveiro é necessário encomendar para as transplantações com plantas compradas."
+      ]
+    },
+    {
+      "title": "Fornecedores",
+      "points": [
+        "Registe aqui os fornecedores para os poder associar às culturas."
+      ]
+    },
+    {
+      "title": "Épocas",
+      "points": [
+        "As séries pertencem sempre a uma época. Utilize o seletor de épocas para mudar a época ativa ou criar uma nova."
+      ]
+    }
+  ],
+  "workflowTitle": "Fluxo de trabalho",
+  "workflow": "Áreas de cultivo → Culturas → Plano de cultivo → Calendário de cultivo → Necessidades de sementes e plantas de viveiro",
+  "pages": {
+    "dashboard": {
+      "title": "Ajuda: visão geral",
+      "intro": "A lista de configuração orienta a criação de parcelas, canteiros, culturas e séries. A visão geral das tarefas mostra as tarefas guardadas da época ativa em Por fazer, Em curso e Concluídas. Filtre por período, cultura, parcela ou responsável. Os indicadores contam as tarefas por concluir. Em ecrãs grandes, arraste cartões; nos dispositivos táteis, mantenha-os primeiro premidos brevemente. A cultura e a parcela de um cartão ligam aos respetivos detalhes. O menu do cartão também permite alterar o estado com o teclado. Os ecrãs pequenos mostram uma lista compacta."
+    },
+    "locations": {
+      "title": "Ajuda: explorações",
+      "intro": "Gira aqui as explorações do projeto. Constituem o nível superior da estrutura das áreas de cultivo.",
+      "sections": [
+        {
+          "title": "Como utilizar",
+          "points": [
+            "Crie explorações e adicione coordenadas, morada, tipo de solo ou notas.",
+            "Edite as explorações existentes através das ações da lista."
+          ]
+        },
+        {
+          "title": "Ligação a outras páginas",
+          "points": [
+            "Na página de áreas de cultivo, adicione parcelas e canteiros a cada exploração.",
+            "As tarefas são derivadas das séries."
+          ]
+        }
+      ],
+      "symbolsTitle": "Ícones e controlos",
+      "symbols": {
+        "add": "Adicionar exploração",
+        "edit": "Editar exploração",
+        "delete": "Eliminar exploração"
+      }
+    },
+    "fields": {
+      "title": "Ajuda: parcelas",
+      "intro": "Gira aqui as parcelas de uma exploração. Uma parcela agrupa vários canteiros.",
+      "sections": [
+        {
+          "title": "Como utilizar",
+          "points": [
+            "Utilize «Novo» para criar uma parcela.",
+            "Faça duplo clique numa célula, prima Enter ou comece a escrever para editar um registo. Nos dispositivos táteis, basta um toque."
+          ]
+        }
+      ]
+    },
+    "beds": {
+      "title": "Ajuda: canteiros",
+      "intro": "Gira aqui os canteiros. Cada canteiro pertence a uma parcela e pode ser utilizado nas séries.",
+      "sections": [
+        {
+          "title": "Como utilizar",
+          "points": [
+            "Utilize «Novo» para criar um canteiro.",
+            "Faça duplo clique numa célula, prima Enter ou comece a escrever para editar um registo. Nos dispositivos táteis, basta um toque."
+          ]
+        },
+        {
+          "title": "Ligação a outras páginas",
+          "points": [
+            "Nas séries, atribua culturas a canteiros específicos."
+          ]
+        }
+      ]
+    },
+    "areas": {
+      "title": "Ajuda: áreas de cultivo – vista de lista",
+      "intro": "Gira aqui a estrutura das áreas da exploração, desde as explorações às parcelas e aos canteiros individuais.\n\nAs novas explorações, parcelas e canteiros são adicionados através de {{addIcon}}, que aparece ao passar o rato sobre um elemento.\n\nOs registos podem ser editados diretamente na tabela. O ícone {{createPlanIcon}} num canteiro cria imediatamente uma série para esse canteiro. Outras ações, como mudar o nome ou eliminar, encontram-se no menu de contexto do botão direito do rato.\n\nNo menu de contexto de uma parcela, «Adicionar vários canteiros» cria canteiros do mesmo tamanho de uma só vez e «Duplicar parcela» copia a parcela com os respetivos canteiros.",
+      "symbolsTitle": "Ícones e controlos",
+      "symbols": {
+        "expandToggle": "Expandir ou recolher secção",
+        "add": "Criar elemento",
+        "delete": "Eliminar elemento",
+        "createPlan": "Criar série para este canteiro",
+        "dimensions": "Definir a orientação do comprimento e da largura na vista gráfica"
+      }
+    },
+    "crops": {
+      "title": "Ajuda: culturas",
+      "intro": "Gira aqui as culturas e as respetivas propriedades principais. Estes dados são utilizados nas séries, no calendário e nas necessidades de sementes.",
+      "sections": [
+        {
+          "title": "Como utilizar",
+          "points": [
+            "Selecione uma cultura para consultar ou editar detalhes ou criar séries.",
+            "Adicione variedades a uma cultura. Os valores não introduzidos numa variedade são obtidos da cultura.",
+            "O ícone {{moreIcon}} abre mais ações, como versões, exportação ou eliminação da cultura selecionada.",
+            "Utilize «Importar/Exportar» para trocar culturas através de folhas de cálculo. É possível transferir um modelo no diálogo de importação.",
+            "Partilhe culturas através de «Partilhar na biblioteca» na cultura ou do ícone ao lado da cultura na lista. Na biblioteca encontram-se culturas de outras pessoas que podem ser importadas para o projeto."
+          ]
+        },
+        {
+          "title": "Ligação a outras páginas",
+          "points": [
+            "Nas séries, atribua culturas a canteiros e períodos específicos.",
+            "A família botânica e o intervalo de rotação em «Propriedades da rotação de culturas» são utilizados na verificação da rotação de culturas nas séries.",
+            "O calendário de cultivo, as necessidades de sementes e as necessidades de plantas de viveiro utilizam estes dados no planeamento de períodos e quantidades."
+          ]
+        }
+      ],
+      "symbolsTitle": "Ícones e controlos",
+      "symbols": {
+        "add": "Adicionar cultura ou variedade",
+        "createPlan": "Criar série para esta cultura",
+        "edit": "Editar dados da cultura",
+        "more": "Abrir mais ações",
+        "libraryNotLinked": "Ainda não está na biblioteca de culturas: clicar para partilhar",
+        "libraryUpToDate": "Corresponde à versão atual da biblioteca de culturas",
+        "libraryPull": "Versão mais recente na biblioteca de culturas: rever e aplicar alterações",
+        "libraryPush": "A cultura difere da biblioteca: partilhar os valores ou mantê-los localmente",
+        "libraryPending": "As alterações à biblioteca de culturas aguardam aprovação",
+        "pinned": "Valor fixado localmente: não é substituído por atualizações da biblioteca de culturas"
+      }
+    },
+    "cropLibrary": {
+      "title": "Ajuda: biblioteca de culturas",
+      "intro": "A biblioteca contém culturas publicadas pela comunidade que podem ser utilizadas em vários projetos.",
+      "sections": [
+        {
+          "title": "Colaboração",
+          "points": [
+            "Os utilizadores com sessão iniciada podem editar culturas públicas em conjunto.",
+            "Cada alteração é guardada como versão com data e autor.",
+            "É possível restaurar versões anteriores sem eliminar o histórico de versões.",
+            "Em «Discussões» é possível conversar com outras pessoas sobre um registo."
+          ]
+        },
+        {
+          "title": "Utilizar culturas",
+          "points": [
+            "Importe culturas úteis como cópia para o projeto atual.",
+            "Quando uma cultura importada é alterada na biblioteca, a alteração é apresentada na cultura do projeto e é possível decidir quais os valores a aplicar.",
+            "É possível fixar valores próprios localmente. Estes deixam de ser substituídos por atualizações da biblioteca de culturas."
+          ]
+        }
+      ]
+    },
+    "plantingPlans": {
+      "title": "Ajuda: plano de cultivo",
+      "intro": "Planeie qual a cultura cultivada em cada canteiro e em que momento.\n\nÉ possível criar e editar registos diretamente na tabela. São apresentadas as séries da época ativa. Utilize o campo de pesquisa e «Filtrar» para encontrar registos rapidamente e clique com o botão direito para duplicar uma série.\n\nAs datas de sementeira e transplantação estão associadas: ao alterar uma, a outra acompanha a alteração. Se comprar plantas de viveiro, escolha o tipo de cultivo «Transplantação com plantas compradas». Estas aparecem nas necessidades de plantas de viveiro em vez das necessidades de sementes.\n\nAo atribuir um canteiro, é verificada a rotação de culturas. Se a mesma família regressar demasiado cedo ao canteiro, aparece um aviso. «Mostrar canteiros adequados» lista canteiros livres no período e compatíveis com a rotação de culturas.",
+      "symbolsTitle": "Ícones e controlos",
+      "symbols": {
+        "add": "Criar série",
+        "mobileAdd": "Criar rapidamente um registo num dispositivo móvel",
+        "notes": "Abrir notas e anexos de um registo",
+        "edit": "Alterar valores diretamente na tabela"
+      }
+    },
+    "calendar": {
+      "title": "Ajuda: calendário de cultivo",
+      "intro": "O calendário de cultivo mostra a cronologia das séries. Ajuda a identificar a ocupação, as fases de viveiro, os períodos de colheita e possíveis sobreposições.\n\nPasse o rato sobre os registos para ver mais detalhes.\n\nCom «Mover período», arraste uma série para a esquerda ou para a direita. Todas as fases da série se movem em conjunto.",
+      "symbolsTitle": "Ícones e controlos",
+      "symbols": {
+        "tabs": "Alternar entre vistas de ocupação e de viveiro",
+        "tooltip": "Mostrar detalhes adicionais"
+      }
+    },
+    "seedDemand": {
+      "title": "Ajuda: necessidades de sementes",
+      "intro": "Veja aqui a quantidade de sementes necessária para as séries da época ativa, para sementeira direta e transplantações de viveiro próprio. A quantidade é calculada a partir da dose de sementeira da cultura e da área planeada.\n\nAs transplantações com plantas compradas não são incluídas aqui, mas nas necessidades de plantas de viveiro. A altura de semear é apresentada na vista de viveiro do calendário de cultivo.",
+      "symbolsTitle": "Ícones e controlos",
+      "symbols": {
+        "supplierSelect": "Definir fornecedor por cultura",
+        "packageInfo": "Rever combinações de embalagens recomendadas"
+      }
+    },
+    "youngPlantDemand": {
+      "title": "Ajuda: necessidades de plantas de viveiro",
+      "intro": "Veja aqui quantas plantas é necessário encomendar para as transplantações com plantas compradas da época ativa, agrupadas por cultura, variedade e semana de transplantação. As transplantações de viveiro próprio necessitam de sementes; consulte as necessidades de sementes.\n\nO número é calculado a partir da área da série e do espaçamento na linha e entre linhas da cultura. A reserva para perdas é arredondada por excesso a plantas inteiras.",
+      "symbolsTitle": "Símbolos e controlos",
+      "symbols": {
+        "expand": "Mostrar ou ocultar as séries de origem"
+      }
+    },
+    "suppliers": {
+      "title": "Ajuda: fornecedores",
+      "intro": "Gira aqui os fornecedores de sementes e as informações das respetivas embalagens.",
+      "symbolsTitle": "Ícones e controlos",
+      "symbols": {
+        "add": "Adicionar fornecedor",
+        "edit": "Editar dados do fornecedor",
+        "delete": "Remover fornecedor"
+      }
+    },
+    "graphical": {
+      "title": "Ajuda: áreas de cultivo – vista gráfica",
+      "intro": "Veja aqui a disposição espacial das explorações, parcelas e canteiros. A vista gráfica permite rever e ajustar visualmente a estrutura das áreas.",
+      "sections": [
+        {
+          "title": "Como utilizar",
+          "points": [
+            "Clique num canteiro ou parcela para mostrar os detalhes.",
+            "Mova os elementos no modo «Editar».",
+            "Arraste uma zona vazia para deslocar a vista.",
+            "Amplie com a roda do rato ou um gesto de pinça."
+          ]
+        },
+        {
+          "title": "Ligação a outras páginas",
+          "points": [
+            "A vista gráfica apresenta as mesmas áreas que a vista de lista."
+          ]
+        }
+      ],
+      "symbolsTitle": "Ícones e controlos",
+      "symbols": {
+        "panArrows": "Deslocar a vista para cima, para a esquerda, para a direita ou para baixo",
+        "zoomIn": "Ampliar",
+        "zoomOut": "Reduzir",
+        "fit": "Enquadrar toda a vista",
+        "fullscreen": "Mostrar em ecrã inteiro",
+        "editToggle": "Editar disposição: arrastar e largar para mover e organizar os canteiros e parcelas de uma exploração"
+      }
+    },
+    "yieldOverview": {
+      "title": "Ajuda: visão geral dos rendimentos",
+      "intro": "A visão geral dos rendimentos é uma previsão: distribui a colheita esperada das séries da época ativa pelos respetivos períodos de colheita. Baseia-se na área planeada ou no número de plantas e no rendimento esperado da cultura por m² ou por planta. As colheitas reais não são registadas.\n\nRestrinja a vista a uma cultura ou alterne entre semanas e meses em «Visualização». Passe o rato sobre uma barra para ver o período, a cultura e a quantidade de colheita.",
+      "points": []
+    }
+  }
+}

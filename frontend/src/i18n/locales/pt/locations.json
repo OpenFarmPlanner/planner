@@ -1,0 +1,58 @@
+{
+  "title": "Explorações",
+  "errors": {
+    "load": "Não foi possível carregar as explorações",
+    "save": "Não foi possível guardar a exploração",
+    "delete": "Não foi possível eliminar a exploração"
+  },
+  "validation": {
+    "nameRequired": "O nome é obrigatório",
+    "latitudeRange": "A latitude tem de estar entre -90 e 90.",
+    "longitudeRange": "A longitude tem de estar entre -180 e 180.",
+    "coordinateFormat": "Introduza as coordenadas no formato «latitude, longitude»."
+  },
+  "confirmDelete": "Pretende eliminar esta exploração?",
+  "addButton": "Adicionar exploração",
+  "editTitle": "Editar exploração",
+  "emptyState": {
+    "title": "Ainda não existem explorações.",
+    "description": "As explorações ajudam a organizar as áreas de cultivo, por exemplo em diferentes hortas ou terrenos."
+  },
+  "openInGoogleMaps": "Abrir no Google Maps",
+  "upcomingTasks": "Próximas tarefas",
+  "noUpcomingTasks": "Sem próximas tarefas",
+  "taskTitles": {
+    "sowing": "Sementeira",
+    "planting": "Transplantação",
+    "propagationStart": "Iniciar viveiro",
+    "harvestStart": "Início da colheita"
+  },
+  "columns": {
+    "coordinates": "Coordenadas",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "address": "Morada",
+    "description": "Descrição",
+    "soilType": "Tipo de solo",
+    "exposure": "Exposição"
+  },
+  "helpers": {
+    "optionalField": "Opcional",
+    "coordinatesExample": "Exemplo: 46.6473, 13.8688"
+  },
+  "soilType": {
+    "sand": "Areia",
+    "loam": "Franco",
+    "clay": "Argila"
+  },
+  "exposure": {
+    "north": "Norte",
+    "south": "Sul",
+    "east": "Este",
+    "west": "Oeste",
+    "flat": "Plano"
+  },
+  "placeholders": {
+    "coordinates": "por exemplo 46.6473, 13.8688"
+  }
+}

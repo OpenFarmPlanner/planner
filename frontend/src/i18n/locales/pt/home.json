@@ -1,0 +1,494 @@
+{
+  "landing": {
+    "title": "OpenFarmPlanner",
+    "heroImageAlt": "Canteiros de hortícolas em frente a uma encosta arborizada",
+    "subtitle": "Planeamento de culturas de código aberto para horticultura.",
+    "description": "Concebido especificamente para explorações hortícolas, agricultura apoiada pela comunidade e outras explorações com uma grande diversidade de culturas.",
+    "statusLine": "Utilização gratuita, com financiamento previsto através de donativos voluntários.",
+    "actions": {
+      "openApp": "Iniciar sessão",
+      "register": "Registar",
+      "installApp": "Instalar aplicação",
+      "demo": "Ver demonstração",
+      "demoWithoutRegistration": "Ver demonstração sem registo",
+      "demoShort": "Demonstração",
+      "startingDemo": "A iniciar demonstração...",
+      "demoStartError": "Não foi possível iniciar a demonstração. Tente novamente.",
+      "demoRateLimited": "A demonstração foi iniciada recentemente. Tente novamente mais tarde.",
+      "demoRateLimitedWithTime": "A demonstração foi iniciada recentemente. Tente novamente {{time}}.",
+      "demoNetworkError": "A demonstração não está acessível neste momento. Verifique a ligação à Internet e tente novamente mais tarde.",
+      "demoServerError": "Não foi possível iniciar a demonstração devido a um erro do servidor. Tente novamente mais tarde.",
+      "demoUnexpectedResponse": "Não foi possível iniciar a demonstração porque a resposta do servidor foi inesperada. Tente novamente.",
+      "demoAvailableIn": "Demonstração novamente disponível dentro de {{time}}"
+    },
+    "installManual": {
+      "title": "Instalar o OpenFarmPlanner como aplicação",
+      "firefoxAndroid": "Toque no menu (⋮) no canto superior direito e escolha «Instalar» ou «Adicionar ao ecrã principal».",
+      "ios": "Toque no ícone Partilhar e escolha «Adicionar ao ecrã principal». No Chrome ou Firefox para iPhone, o ícone Partilhar encontra-se na barra de endereço ou no menu.",
+      "dismiss": "Compreendido"
+    },
+    "retryTime": {
+      "lessThanMinute": "em menos de um minuto",
+      "minutes_one": "dentro de cerca de {{count}} minuto",
+      "minutes_other": "dentro de cerca de {{count}} minutos",
+      "hours_one": "dentro de cerca de {{count}} hora",
+      "hours_other": "dentro de cerca de {{count}} horas",
+      "hoursAndMinutes": "dentro de cerca de {{hours}} horas e {{minutes}} minutos",
+      "compact": {
+        "lessThanMinute": "< 1 min",
+        "minutes_one": "{{count}} min",
+        "minutes_other": "{{count}} min",
+        "hours_one": "{{count}} h",
+        "hours_other": "{{count}} h",
+        "hoursAndMinutes": "{{hours}} h {{minutes}} min",
+        "minutes_many": "{{count}} min",
+        "hours_many": "{{count}} h"
+      },
+      "minutes_many": "dentro de cerca de {{count}} minutos",
+      "hours_many": "dentro de cerca de {{count}} horas"
+    }
+  },
+  "demoPage": {
+    "title": "Experimentar a demonstração",
+    "subtitle": "Experimente o OpenFarmPlanner imediatamente com um projeto de exemplo temporário.",
+    "description": "Esta ligação pode ser partilhada diretamente. Só é criado um espaço de demonstração quando a demonstração é iniciada ativamente.",
+    "startAction": "Iniciar demonstração agora",
+    "backToLanding": "Voltar ao início",
+    "safetyNote": "A demonstração não requer registo. As alterações são eliminadas automaticamente e não se destinam a dados reais de produção."
+  },
+  "github": {
+    "url": "https://github.com/OpenFarmPlanner/openfarmplanner"
+  },
+  "topbar": {
+    "brandAriaLabel": "Voltar ao topo",
+    "navAriaLabel": "Navegação principal",
+    "menuAriaLabel": "Abrir menu",
+    "signIn": "Iniciar sessão",
+    "nav": {
+      "features": "Funcionalidades",
+      "cropLibrary": "Biblioteca",
+      "openSource": "Código aberto",
+      "about": "Sobre o projeto"
+    }
+  },
+  "features": {
+    "eyebrow": "O que distingue o OpenFarmPlanner",
+    "title": "Editar como numa folha de cálculo. Com tudo ligado.",
+    "description": "Introduza parcelas, culturas e séries diretamente em tabelas, sem formulários nem mudanças de página. Como todos os dados estão na mesma base de dados, o calendário, as necessidades de sementes e a visão geral dos rendimentos são recalculados imediatamente.",
+    "points": {
+      "typing": "Edite valores diretamente na tabela e passe de célula em célula com o teclado",
+      "oneSource": "Atualize num local e os dados ficam atuais em todo o lado, sem conciliar listas separadas",
+      "validation": "Os erros tornam-se imediatamente visíveis, por exemplo quando um canteiro está sobreocupado"
+    },
+    "illustration": {
+      "ariaLabel": "Tabela de exemplo do plano de cultivo do projeto de demonstração com cultura, parcela e canteiro, data de sementeira, data de transplantação e área. A linha do pepino mostra como a alteração da data de transplantação desloca automaticamente a data de sementeira. Por baixo, duas vistas ligadas, calendário de cultivo e rendimentos, também são recalculadas automaticamente.",
+      "rows": {
+        "lettuce": {
+          "crop": "Alface (Lollo Bionda)",
+          "field": "Canteiros precoces a norte",
+          "bed": "Alface 2"
+        },
+        "tomato": {
+          "crop": "Tomate (Roma)",
+          "field": "Túnel a sul",
+          "bed": "Linha de tomate 1"
+        },
+        "cucumber": {
+          "crop": "Pepino (Arola)",
+          "field": "Túnel a sul",
+          "bed": "Linha de pepino"
+        }
+      },
+      "linkedCaption": "As vistas ligadas são recalculadas automaticamente",
+      "cards": {
+        "calendar": {
+          "title": "Calendário de cultivo",
+          "detail": "Linha de pepino a partir da semana 19"
+        },
+        "yield": {
+          "title": "Rendimentos",
+          "detail": "O início da colheita acompanha a alteração"
+        }
+      }
+    }
+  },
+  "cropLibrary": {
+    "eyebrow": "Biblioteca",
+    "title": "Dados de cultivo que crescem com a comunidade.",
+    "description": "Obtenha distâncias, durações da cultura e rendimentos da biblioteca aberta em vez de começar do zero. É possível partilhar com um clique o que acrescenta da própria experiência. A biblioteca melhora com cada exploração.",
+    "illustration": {
+      "ariaLabel": "Diagrama do fluxo de dados de cultivo em ambos os sentidos entre um projeto e a biblioteca: partilhar cultura, partilhar melhoria, importar cultura e obter atualização.",
+      "libraryTitle": "Biblioteca",
+      "librarySubtitle": "Mantida em conjunto por muitas explorações",
+      "arrows": {
+        "share": "Partilhar cultura",
+        "shareUpdate": "Partilhar melhoria",
+        "import": "Importar cultura",
+        "pullUpdate": "Obter atualização"
+      },
+      "yourCropsTitle": "As culturas do projeto"
+    }
+  },
+  "seasonFeatures": {
+    "title": "Tudo para a época",
+    "items": {
+      "calendar": {
+        "title": "Calendário de cultivo",
+        "description": "Veja de imediato qual a cultura que ocupa cada canteiro e quando e identifique sobreposições antecipadamente."
+      },
+      "rolloverSeason": {
+        "title": "Passar à época seguinte",
+        "description": "Transfira séries comprovadas para a nova época num único passo e ajuste apenas o que mudar."
+      },
+      "seedDemand": {
+        "title": "Calcular necessidades de sementes",
+        "description": "As quantidades e os tamanhos de embalagem adequados são calculados a partir das séries, dos dados das culturas e dos fornecedores."
+      },
+      "yieldDistribution": {
+        "title": "Distribuição dos rendimentos",
+        "description": "As quantidades de colheita esperadas por semana e cultura revelam faltas e picos antes de acontecerem."
+      },
+      "fieldMap": {
+        "title": "Vista gráfica das parcelas",
+        "description": "Organize os canteiros nas parcelas de acordo com a disposição real no terreno."
+      },
+      "collaboration": {
+        "title": "Planear em conjunto",
+        "description": "Convide a equipa de cultivo e trabalhem no mesmo plano atualizado."
+      },
+      "history": {
+        "title": "Histórico de versões e reciclagem",
+        "description": "Todas as alterações são rastreáveis e é possível restaurar estados anteriores."
+      },
+      "importExport": {
+        "title": "Importação e exportação",
+        "description": "Importe dados de culturas a partir de folhas de cálculo e volte a exportá-los a qualquer momento."
+      },
+      "installApp": {
+        "title": "Instalar como aplicação",
+        "description": "Funciona no navegador e pode ser instalado no telemóvel ou tablet como aplicação."
+      }
+    }
+  },
+  "openSource": {
+    "eyebrow": "Código aberto",
+    "title": "Os dados pertencem-lhe.",
+    "description": "O OpenFarmPlanner é software livre sob a AGPL. Sem publicidade nem revenda dos dados das explorações.",
+    "sourceButton": "Código-fonte no GitHub",
+    "boxes": {
+      "agpl": {
+        "title": "AGPL-3.0",
+        "description": "Código-fonte aberto, disponível para análise pública."
+      },
+      "gdpr": {
+        "title": "RGPD",
+        "description": "Alojado na Alemanha, com minimização de dados."
+      },
+      "api": {
+        "title": "API documentada",
+        "description": "Com token de acesso próprio para scripts, automatização e agentes de IA."
+      },
+      "practice": {
+        "title": "Da prática",
+        "description": "Desenvolvido em conjunto com uma exploração de agricultura apoiada pela comunidade (GeLaWi) na Caríntia."
+      }
+    }
+  },
+  "closing": {
+    "title": "Experimentar numa exploração de exemplo.",
+    "startDemo": "Iniciar demonstração",
+    "aboutLink": "Mais sobre o OpenFarmPlanner e quem está por detrás do projeto"
+  },
+  "about": {
+    "eyebrow": "Sobre o projeto",
+    "title": "Como surgiu o OpenFarmPlanner",
+    "intro1": "Há algum tempo, o nosso agricultor da <zwiebelzopf>GeLaWi Zwiebelzopf</zwiebelzopf> pediu-me para analisar um programa de planeamento de culturas. Nem esse nem os muitos outros que experimentei depois me convenceram. Frequentemente tinha de ler o manual para perceber como algo funcionava e introduzir ou alterar dados era trabalhoso.",
+    "intro2": "Por isso, como engenheiro eletrotécnico e estudante de informática, comecei a desenvolver o meu próprio programa em dezembro de 2025. O OpenFarmPlanner baseia-se em tabelas editáveis como uma folha de cálculo e numa interface compreensível sem manual.",
+    "photoCaption": "O programador descontraído a semear feijão na GeLaWi Zwiebelzopf.",
+    "photoAlt": "Martin deitado no campo, a rir enquanto semeia feijão",
+    "openSection": {
+      "title": "Aberto e colaborativo",
+      "text": "O OpenFarmPlanner é de código aberto por vários motivos. O código-fonte permanece disponível e pode continuar a ser desenvolvido mesmo sem mim. Qualquer pessoa pode verificar como os dados são tratados. As sugestões de funcionalidades e os erros podem ser discutidos abertamente e quem quiser pode contribuir diretamente com melhorias. Por fim, corresponde à ideia da agricultura apoiada pela comunidade: assumir algo em conjunto e partilhá-lo."
+    },
+    "freeSection": {
+      "title": "Gratuito, financiado por donativos",
+      "text": "O OpenFarmPlanner é de utilização gratuita. O desenvolvimento e o alojamento deverão ser financiados por donativos voluntários. Uma forma de fazer donativos estará disponível em breve."
+    },
+    "contributeSection": {
+      "title": "Participar",
+      "text": "A forma mais simples de contribuir é partilhar dados de culturas na biblioteca. Cada cultura partilhada poupa trabalho de pesquisa a outras explorações e melhora a biblioteca. Comentários, ideias ou ajuda no desenvolvimento são sempre bem-vindos:"
+    },
+    "closing": {
+      "name": "Martin Stipsitz, Villach"
+    }
+  },
+  "footer": {
+    "imprint": "Aviso legal",
+    "privacy": "Política de privacidade",
+    "terms": "Termos de utilização",
+    "apiDocs": "API para programadores",
+    "contactLabel": "Contacto: {{email}}",
+    "contactEmail": "info@openfarmplanner.org"
+  },
+  "legal": {
+    "imprint": {
+      "title": "Aviso legal",
+      "sections": {
+        "provider": {
+          "title": "Informações nos termos do § 5 ECG (lei austríaca do comércio eletrónico)",
+          "content": "Martin Stipsitz\nBurgenlandstraße 44A / 9\n9500 Villach\nÁustria"
+        },
+        "contact": {
+          "title": "Contacto",
+          "content": "E-mail: info@openfarmplanner.org"
+        },
+        "responsiblePerson": {
+          "title": "Responsável pelo conteúdo",
+          "content": "Martin Stipsitz\nBurgenlandstraße 44A / 9\n9500 Villach\nÁustria"
+        },
+        "mediaDisclosure": {
+          "title": "Informações nos termos do § 25 MedienG (lei austríaca dos meios de comunicação social)",
+          "content": "Titular do meio de comunicação: Martin Stipsitz\nObjeto da atividade: desenvolvimento e exploração da aplicação Web de código aberto OpenFarmPlanner para planeamento de culturas em horticultura\nLocal de residência: Villach, Áustria"
+        }
+      }
+    },
+    "privacy": {
+      "title": "Política de privacidade",
+      "version": "Atualização: 29 de setembro de 2026",
+      "sections": {
+        "controller": {
+          "title": "Responsável pelo tratamento",
+          "content": "Responsável pelo tratamento dos dados neste sítio Web, na aceção do Regulamento Geral sobre a Proteção de Dados (RGPD):\n\nMartin Stipsitz\nBurgenlandstraße 44A / 9\n9500 Villach\nÁustria\n\nE-mail: info@openfarmplanner.org"
+        },
+        "generalNotice": {
+          "title": "Informações gerais",
+          "content": "Tratamos os dados pessoais do Utilizador de forma confidencial e em conformidade com a legislação de proteção de dados aplicável e com a presente política de privacidade. Esta política complementa os termos de utilização do OpenFarmPlanner. Para questões relativas ao tratamento de dados pessoais, a presente política de privacidade é a única aplicável.\n\nO Utilizador pode visitar a página inicial do OpenFarmPlanner sem fornecer dados pessoais. Assim que criar uma conta de utilizador e utilizar a aplicação, tratamos os dados descritos nas secções seguintes. Para cada atividade de tratamento, aplica-se o fundamento jurídico aí indicado nos termos do Art. 6(1) RGPD."
+        },
+        "hosting": {
+          "title": "Alojamento",
+          "content": "Esta aplicação é alojada pelo seguinte prestador, que atua como nosso subcontratante:\n\nUberspace GmbH\nKaiserstraße 15\n55116 Mainz\nAlemanha\n\nAo aceder à aplicação, o servidor Web trata dados técnicos de acesso:",
+          "bullets": {
+            "ipAddress": "Endereço IP abreviado (para IPv4 apenas são guardados os primeiros 16 bits; para IPv6, os primeiros 32 bits)",
+            "requestTime": "Data e hora do pedido",
+            "requestedResource": "Página ou recurso solicitado",
+            "browser": "Tipo e versão do navegador",
+            "operatingSystem": "Sistema operativo",
+            "referrerUrl": "URL de referência, se transmitido"
+          },
+          "legalBasis": "Os ficheiros de registo do servidor Web são eliminados automaticamente após 7 dias. Além disso, tratamos registos técnicos da aplicação, por exemplo registos de erros do Django ou Gunicorn. Estes contêm principalmente informações técnicas, como mensagens de erro, marcas temporais e pedidos afetados; em casos de erro individuais relacionados com a gestão de contas, início de sessão ou convites, podem também conter o endereço de e-mail, o nome de utilizador ou um ID de utilizador interno afetado. Os registos são utilizados exclusivamente para diagnóstico de problemas e para o funcionamento seguro e estável da aplicação.\n\nFundamento jurídico: Art. 6(1)(f) RGPD (interesse legítimo no funcionamento seguro e estável da aplicação; ver considerando 49 RGPD sobre segurança das redes e da informação)."
+        },
+        "cloudflare": {
+          "title": "Cloudflare (DNS, CDN e segurança)",
+          "content": "Utilizamos o seguinte prestador para resolver o nome de domínio (DNS), como rede de distribuição de conteúdos (CDN) e para funções de segurança, como proteção contra ataques DDoS:\n\nCloudflare, Inc.\n101 Townsend St.\nSan Francisco, CA 94107\nEUA\n\nQuando a Cloudflare está configurada como proxy inverso à frente do nosso servidor na Uberspace, os pedidos à aplicação passam primeiro pelos servidores da Cloudflare. Nesse processo, a Cloudflare trata o endereço IP e dados técnicos de ligação do Utilizador, por exemplo a hora do pedido, o recurso solicitado e informações sobre o navegador e o dispositivo, para garantir a disponibilidade, o desempenho e a segurança do sítio Web e bloquear pedidos maliciosos.",
+          "legalBasis": "Fundamento jurídico: Art. 6(1)(f) RGPD (interesse legítimo no funcionamento seguro e disponível da plataforma). A Cloudflare, Inc. tem sede nos EUA; a transferência baseia-se nas cláusulas contratuais-tipo da UE (ver a secção «Transferências para países terceiros»). Para mais informações, consulte a política de privacidade da Cloudflare (https://www.cloudflare.com/privacypolicy/)."
+        },
+        "registration": {
+          "title": "Registo e conta de utilizador",
+          "content": "Para utilizar o OpenFarmPlanner, o Utilizador pode criar uma conta com endereço de e-mail e palavra-passe ou, em alternativa, através da conta Google (ver a secção «Início de sessão com o Google»). Ao registar-se com endereço de e-mail e palavra-passe, podem ser tratados os seguintes dados:",
+          "bullets": {
+            "emailAddress": "Endereço de e-mail (visível aos outros membros do mesmo projeto na lista de membros; nunca publicado publicamente)",
+            "nameOptional": "Nome de apresentação (opcional)",
+            "encryptedPassword": "Palavra-passe (guardada de forma segura como hash; não nos é visível em texto simples)"
+          },
+          "legalBasis": "Fundamento jurídico: Art. 6(1)(b) RGPD (execução do contrato de utilização através da disponibilização de uma conta de utilizador)."
+        },
+        "turnstile": {
+          "title": "Proteção contra bots no registo (Cloudflare Turnstile)",
+          "content": "Para evitar abusos e registos em massa automatizados, utilizamos no formulário de registo o Cloudflare Turnstile, um serviço da Cloudflare, Inc. (ver a secção «Cloudflare»). O Turnstile utiliza uma verificação baseada no comportamento, normalmente invisível ao Utilizador, para determinar se o registo é efetuado por uma pessoa ou por um programa automatizado (bot); não são necessários os desafios tradicionais com imagens. Para esse efeito, são transmitidos à Cloudflare sinais técnicos do dispositivo e do comportamento do navegador do Utilizador, que são aí avaliados durante o registo.\n\nO Turnstile é utilizado exclusivamente para proteção contra abusos automatizados e não para rastreio, análise ou marketing. Sendo uma medida de segurança tecnicamente necessária, não é necessário um consentimento separado.",
+          "legalBasis": "Fundamento jurídico: Art. 6(1)(f) RGPD (interesse legítimo em proteger a plataforma e os seus utilizadores contra abusos automatizados). Como o Turnstile também é operado pela Cloudflare, Inc., com sede nos EUA, a transferência baseia-se nas cláusulas contratuais-tipo da UE (ver a secção «Transferências para países terceiros»). Para mais informações, consulte a política de privacidade da Cloudflare (https://www.cloudflare.com/privacypolicy/). Este fundamento jurídico abrange o tratamento dos dados transmitidos em si; a necessidade de consentimento separado para o acesso técnico associado ao armazenamento no navegador, por exemplo um token de curta duração definido pelo Turnstile, rege-se pelo § 165(3) da lei austríaca das telecomunicações (TKG), que transpõe a Diretiva ePrivacy. O Turnstile está abrangido pela exceção para medidas tecnicamente necessárias aí prevista, uma vez que serve exclusivamente a verificação de segurança solicitada pelo Utilizador ao enviar o formulário."
+        },
+        "socialLogin": {
+          "title": "Início de sessão com o Google",
+          "content": "Além do registo com endereço de e-mail e palavra-passe, o Utilizador pode registar-se e iniciar sessão no OpenFarmPlanner com a conta Google (Google Sign-In). Ao clicar em «Iniciar sessão com o Google», é redirecionado para o Google; após iniciar sessão com sucesso no Google, é redirecionado novamente para o OpenFarmPlanner.",
+          "bullets": {
+            "receivedData": "Recebemos do Google o endereço de e-mail, o nome próprio e apelido, um identificador estável da conta Google e, se transmitidos pelo Google, um URL da fotografia de perfil e a definição de idioma guardada no Google.",
+            "storedData": "Apenas o endereço de e-mail e o nome próprio são copiados para a conta OpenFarmPlanner. Guardamos também a resposta completa de início de sessão do Google, incluindo o identificador da conta Google, o URL da fotografia de perfil e a definição de idioma, quando transmitidos, num registo técnico separado utilizado para a gestão do início de sessão, para reconhecer o Utilizador em futuros inícios de sessão com o Google.",
+            "purpose": "Estes dados são utilizados exclusivamente para criar a conta e iniciar sessão. O OpenFarmPlanner não chama APIs do Google após o início de sessão nem guarda tokens de acesso do Google.",
+            "disconnect": "O Utilizador pode desligar a conta Google a qualquer momento nas definições da conta, em «Métodos de início de sessão», desde que disponha de outra forma de iniciar sessão, como palavra-passe ou outro fornecedor associado."
+          },
+          "legalBasis": "Fundamento jurídico: Art. 6(1)(b) RGPD (execução do contrato de utilização através da disponibilização de um método alternativo de início de sessão). Para a transferência para o Google, consulte a secção «Transferências para países terceiros»."
+        },
+        "projectData": {
+          "title": "Dados dos projetos e da aplicação",
+          "content": "Nos projetos, tratamos os dados relacionados com o projeto introduzidos pelo Utilizador e pelos restantes membros. Incluem-se, em particular, dados de base do projeto, por exemplo nome do projeto, membros e explorações, dados de planeamento operacional e gestão das funcionalidades utilizadas, por exemplo relativos a parcelas, culturas, planeamento de cultivo ou tarefas, e informações complementares, como notas, ficheiros enviados e histórico de alterações, incluindo o nome de apresentação da pessoa que efetuou a alteração. Em regra, estes dados apenas são visíveis ao Utilizador e aos restantes membros do respetivo projeto.",
+          "legalBasis": "Fundamento jurídico: Art. 6(1)(b) RGPD (execução do contrato de utilização: disponibilização das funções de planeamento)."
+        },
+        "publicLibrary": {
+          "title": "Biblioteca pública de culturas",
+          "content": "O Utilizador pode publicar por iniciativa própria registos individuais de culturas, por exemplo informações de cultivo de uma variedade hortícola, de um projeto privado numa biblioteca pública de culturas. Esta biblioteca destina-se a ser uma base de conhecimentos construída em colaboração e mantida permanentemente. Os registos publicados podem ser consultados por outros utilizadores, importados para os respetivos projetos e, no futuro, reutilizados através de funcionalidades como históricos de versões, edição colaborativa, comentários, avaliações, APIs públicas ou exportações de dados. A publicação é voluntária e não é necessária para utilizar o OpenFarmPlanner. Os direitos de utilização que o Utilizador concede ao público e ao OpenFarmPlanner ao publicar regem-se pelos termos de utilização, em particular pela secção «Licença aberta para dados de cultivo publicados».",
+          "bullets": {
+            "publicContent": "Apenas são publicados os dados agrícolas de cultivo da cultura, por exemplo nome, variedade, duração da cultura e da colheita, distâncias de plantação e quantidade de sementes. As notas do projeto privado e as informações internas do projeto, como fornecedores de sementes, não são publicadas.",
+            "attribution": "O autor de um registo publicado é apresentado através do nome público de apresentação que o Utilizador pode escolher livremente nas definições da conta. Este nome pertence à conta, não ao registo individual: ao defini-lo pela primeira vez ou alterá-lo, passa automaticamente a aparecer como autor em todas as culturas já publicadas; se o remover, esses registos voltam a ser apresentados anonimamente. Os nomes anteriores não são guardados nos registos individuais. Se não estiver definido um nome público de apresentação, a publicação é anónima, sem qualquer nome. O nome de apresentação tem de ser único; ao defini-lo, uma verificação técnica confirma se já é utilizado por outra conta. O nome de utilizador e o endereço de e-mail nunca fazem parte de um registo público; o endereço de e-mail é utilizado apenas para gerir a conta e para a nossa comunicação com o Utilizador (ver a secção «Comunicação por e-mail»).",
+            "noReview": "A publicação é efetuada imediata e diretamente pelo Utilizador; atualmente não efetuamos análise nem aprovação do conteúdo.",
+            "persistence": "Em regra, um registo publicado permanece permanentemente na biblioteca pública, mesmo que o Utilizador altere ou elimine posteriormente a cultura original no projeto privado.",
+            "removal": "A remoção não está prevista como funcionalidade normal do utilizador. Apenas é considerada em casos excecionais, como violações da lei, dados pessoais no registo publicado, spam, abuso evidente ou decisão de moderação.",
+            "futureOutlook": "A longo prazo, a biblioteca de culturas destina-se a ser desenvolvida em colaboração. No futuro, os comentários sobre os registos deverão ser enviados através de funcionalidades da aplicação, como comentários, avaliações, históricos de versões, APIs públicas ou exportações de dados, e não através dos contactos pessoais de outros utilizadores."
+          },
+          "legalBasis": "Fundamento jurídico: Art. 6(1)(b) RGPD, na medida em que disponibilizamos a contribuição do Utilizador na biblioteca pública com base nos termos de utilização e no seu ato explícito de publicação. Na medida em que as contribuições publicadas ainda contenham referências pessoais, por exemplo através do nome público de apresentação, e as conservemos permanentemente para assegurar a integridade e a rastreabilidade da base de conhecimentos colaborativa, baseamo-nos adicionalmente no Art. 6(1)(f) RGPD. O nosso interesse legítimo consiste em construir e manter uma base de dados de culturas aberta e fiável. Os dados de cultivo puramente factuais ou anonimizados não são abrangidos pelo RGPD."
+        },
+        "emailCommunication": {
+          "title": "Comunicação por e-mail",
+          "content": "Utilizamos o endereço de e-mail do Utilizador para:",
+          "bullets": {
+            "registration": "Registo",
+            "accountActivation": "Ativação da conta",
+            "passwordReset": "Reposição da palavra-passe",
+            "projectInvitations": "Convites para projetos",
+            "systemNotifications": "Outras comunicações relacionadas com a conta de utilizador, como notificações do sistema"
+          },
+          "legalBasis": "Fundamento jurídico: Art. 6(1)(b) RGPD (execução do contrato de utilização)."
+        },
+        "cookies": {
+          "title": "Cookies",
+          "content": "O OpenFarmPlanner utiliza apenas cookies tecnicamente necessários. Não são utilizados cookies de análise, rastreio ou marketing. Os cookies servem apenas para permitir a utilização autenticada da aplicação e proteger tecnicamente os pedidos. O prazo concreto de conservação depende da configuração de sessão e segurança do servidor; os cookies de sessão são eliminados, no máximo, quando expiram ou quando o Utilizador os elimina no navegador.",
+          "bullets": {
+            "sessionCookies": "Cookie de sessão para manter a sessão iniciada (fundamento jurídico: Art. 6(1)(b) RGPD; sem este cookie, não é possível disponibilizar a utilização autenticada da aplicação)",
+            "securityCookies": "Cookie de segurança para proteção contra falsificação de pedidos entre sítios, ou CSRF (fundamento jurídico: Art. 6(1)(f) RGPD, interesse legítimo na segurança da aplicação; ver considerando 49 RGPD)"
+          }
+        },
+        "localStorage": {
+          "title": "Armazenamento local (Local Storage/Session Storage)",
+          "content": "Além dos cookies, a aplicação guarda definições técnicas individuais no armazenamento local do navegador do Utilizador (Local Storage/Session Storage). Incluem-se, em particular, o último projeto aberto, opções de visualização, estados da barra lateral e das tabelas, ordenação e filtros, sugestões já apresentadas e redirecionamentos ou tokens de convites para projetos guardados temporariamente. Estes dados não saem do dispositivo, não nos são visíveis e não contêm credenciais de início de sessão. Os dados de Local Storage permanecem no navegador até serem substituídos pela aplicação, repostos pelo Utilizador na aplicação ou eliminados através das funções do navegador; os dados de Session Storage são normalmente eliminados ao fechar o separador do navegador. Como não tratamos estes dados nos nossos sistemas, não se trata de tratamento de dados pessoais por nós na aceção do Art. 4(2) RGPD; por conseguinte, não se aplica um fundamento jurídico separado."
+        },
+        "dataSharing": {
+          "title": "Comunicação de dados",
+          "content": "Além da cooperação com o nosso prestador de alojamento como subcontratante (ver a secção Alojamento), apenas comunicamos os dados pessoais do Utilizador se:\n\n- tal for necessário para a entrega técnica de e-mails relacionados com a conta ou com convites para projetos; a entrega de e-mails utiliza a infraestrutura de correio da Uberspace,\n- o Utilizador iniciar sessão ou se registar com a conta Google; nesse caso, o Google recebe os dados técnicos necessários ao início de sessão (ver as secções «Início de sessão com o Google» e «Transferências para países terceiros»),\n- o Utilizador aceder à aplicação ou utilizar o formulário de registo; nesse caso, a Cloudflare trata os dados técnicos necessários à distribuição, segurança e proteção contra bots (ver as secções «Cloudflare», «Proteção contra bots no registo» e «Transferências para países terceiros»),\n- o Utilizador publicar ativamente uma cultura na biblioteca pública e optar assim pela visibilidade para todos os utilizadores autenticados, incluindo o nome público de apresentação, se estiver definido (ver a secção Biblioteca pública de culturas), ou\n- estivermos legalmente obrigados a fazê-lo, por exemplo perante autoridades."
+        },
+        "thirdCountryTransfers": {
+          "title": "Transferências para países terceiros",
+          "content": "Se o Utilizador iniciar sessão ou se registar com a conta Google (ver a secção «Início de sessão com o Google»), são transferidos dados pessoais para a Google LLC, com sede nos EUA. Tanto quanto é do nosso conhecimento atual, a Google LLC está certificada ao abrigo do Quadro de Privacidade de Dados UE-EUA (DPF). A Comissão Europeia determinou que se aplica um nível adequado de proteção de dados às transferências para empresas certificadas (decisão de adequação nos termos do Art. 45 RGPD de 10 de julho de 2023). O Utilizador pode verificar o estado atual da certificação a qualquer momento na lista oficial de participantes do DPF (https://www.dataprivacyframework.gov/list).\n\nQuando a aplicação é acedida através da Cloudflare e durante a verificação de bots com o Cloudflare Turnstile no registo (ver as secções «Cloudflare» e «Proteção contra bots no registo»), são transferidos dados pessoais, em particular o endereço IP, para a Cloudflare, Inc., com sede nos EUA. Esta transferência baseia-se nas cláusulas contratuais-tipo adotadas pela Comissão Europeia (Art. 46(2)(c) RGPD).\n\nAlém disso, segundo a avaliação atual, não são transferidos dados pessoais para destinatários fora da União Europeia ou do Espaço Económico Europeu. O início de sessão com uma conta Microsoft está preparado no código-fonte do OpenFarmPlanner, mas não está atualmente ativado; apenas fará parte desta política de privacidade quando for ativado."
+        },
+        "mandatoryProvision": {
+          "title": "Fornecimento de dados pessoais",
+          "content": "O fornecimento de dados pessoais não é exigido por lei nem por contrato se o Utilizador apenas visitar a página inicial pública. Para o registo e utilização da aplicação são necessários o endereço de e-mail, a palavra-passe e os cookies tecnicamente necessários; sem estes dados não podemos disponibilizar uma conta de utilizador nem permitir o início de sessão. O Utilizador fornece voluntariamente os dados dos projetos e da aplicação quando pretende utilizar as funcionalidades correspondentes; sem estas informações, as funções de planeamento em causa não podem ser utilizadas ou apenas podem sê-lo de forma limitada. A publicação na biblioteca pública de culturas é voluntária e não é necessária para utilizar o resto da aplicação."
+        },
+        "storageDuration": {
+          "title": "Prazo de conservação",
+          "content": "Os dados da conta são conservados enquanto a conta de utilizador existir. As contas que não forem ativadas são eliminadas após o fim do período de ativação; as ligações de ativação são atualmente válidas durante 7 dias. As ligações de reposição da palavra-passe são atualmente válidas durante 3 dias; as ligações de alteração de e-mail, durante 24 horas. Os convites para projetos são atualmente válidos durante 14 dias; após esse período, o registo do convite continua a existir, mas já não pode ser aceite. Se o Utilizador utilizar a demonstração sem autenticação («Experimentar demonstração»), os dados criados nessa sessão são eliminados automaticamente, no máximo, 8 horas após o seu início.\n\nSe o Utilizador pedir a eliminação da conta, esta é primeiro marcada para eliminação durante 14 dias; nesse período, é possível anular a eliminação. Após esse prazo, anonimizamos a conta, removendo o endereço de e-mail e o nome de apresentação, desativando a conta e desligando um início de sessão Google associado, e removemos as participações nos projetos, salvo se obrigações legais ou outros motivos imperiosos o impedirem.\n\nOs projetos são mantidos enquanto existir pelo menos um membro. Se um projeto ficar sem membros após a eliminação da conta, eliminamos o projeto, incluindo os dados específicos do projeto. Os registos publicados na biblioteca pública de culturas não são afetados e permanecem na base de conhecimentos pública (ver as secções Dados dos projetos e da aplicação e Biblioteca pública de culturas). Os ficheiros de registo do servidor do prestador de alojamento são eliminados após 7 dias; os endereços IP são guardados de forma abreviada pela Uberspace. Eliminamos automaticamente os nossos registos de manutenção agendada (tarefas cron), no máximo, 14 dias após a criação. As mensagens de erro da própria aplicação (Django/Gunicorn) não são guardadas em ficheiros de registo geridos por nós; são captadas pela gestão de processos do prestador de alojamento, cuja configuração técnica determina o prazo de conservação. Atualmente não existem outras obrigações legais de conservação dos dados que tratamos, uma vez que o OpenFarmPlanner não trata dados relevantes para faturação ou fiscalidade."
+        },
+        "rights": {
+          "title": "Direitos do Utilizador",
+          "content": "Enquanto titular dos dados, o Utilizador tem os seguintes direitos nos termos do RGPD:",
+          "bullets": {
+            "access": "Acesso aos dados conservados sobre si (Art. 15 RGPD)",
+            "rectification": "Retificação de dados inexatos (Art. 16 RGPD)",
+            "deletion": "Apagamento dos dados (Art. 17 RGPD)",
+            "restriction": "Limitação do tratamento (Art. 18 RGPD)",
+            "portability": "Portabilidade dos dados (Art. 20 RGPD)",
+            "objection": "Oposição ao tratamento baseado em interesse legítimo (Art. 21 RGPD)",
+            "consentWithdrawal": "Retirada de consentimento prestado, com efeitos futuros, sem afetar a licitude do tratamento efetuado até então (Art. 7(3) RGPD)"
+          },
+          "contact": "O Utilizador pode retificar os dados da conta, exportar os dados e pedir a eliminação da conta diretamente nas definições da conta. Para casos excecionais não abrangidos por estas funções de autosserviço, o responsável pelo tratamento continua disponível através de info@openfarmplanner.org."
+        },
+        "complaint": {
+          "title": "Direito de apresentar reclamação",
+          "content": "Além dos direitos acima indicados, o Utilizador tem o direito de apresentar reclamação a uma autoridade de controlo de proteção de dados se considerar que o tratamento dos dados pessoais viola o RGPD (Art. 77 RGPD). Pode, em particular, contactar a autoridade de controlo do local de residência habitual, do local de trabalho ou do local da alegada infração.\n\nPara o OpenFarmPlanner, a autoridade de controlo competente na Áustria é a Autoridade Austríaca de Proteção de Dados:\n\nAutoridade Austríaca de Proteção de Dados\nBarichgasse 40-42\n1030 Viena\nhttps://www.dsb.gv.at"
+        },
+        "changes": {
+          "title": "Alterações à presente política de privacidade",
+          "content": "Atualizamos esta política de privacidade quando o tratamento de dados pessoais muda devido a novas funcionalidades ou a alterações dos requisitos legais. Aplica-se a versão publicada na aplicação. A data da última alteração é indicada no final desta política. Informamos os utilizadores ativos de alterações substanciais de forma adequada, por exemplo por e-mail ou através de um aviso na aplicação."
+        },
+        "languageVersions": {
+          "title": "Versões linguísticas",
+          "content": "Este documento é disponibilizado em alemão, inglês, francês, espanhol, italiano e português. Em caso de divergências ou ambiguidades entre as versões linguísticas, prevalece a versão inglesa."
+        }
+      }
+    },
+    "terms": {
+      "title": "Termos de Utilização",
+      "print": "Imprimir / Guardar como PDF",
+      "version": "Atualização: 17 de julho de 2026",
+      "sections": {
+        "provider": {
+          "title": "Prestador e contactos",
+          "content": "O prestador da aplicação disponível em openfarmplanner.org é:\n\nMartin Stipsitz\nBurgenlandstraße 44A / 9\n9500 Villach\nÁustria\n\nE-mail: info@openfarmplanner.org\n\nAtualmente não existe número de identificação para efeitos de IVA."
+        },
+        "scope": {
+          "title": "Âmbito e utilização da plataforma",
+          "content": "Os presentes Termos de Utilização aplicam-se à utilização do OpenFarmPlanner, uma aplicação Web para planeamento do cultivo agrícola e hortícola. Ao registar uma conta de utilizador ou utilizar a aplicação, o Utilizador aceita estes Termos de Utilização.\n\nO OpenFarmPlanner destina-se a particulares e a empresas agrícolas e hortícolas que pretendam organizar digitalmente o planeamento das culturas. As informações sobre o tratamento de dados pessoais encontram-se na Política de Privacidade."
+        },
+        "serviceAndCosts": {
+          "title": "Âmbito do serviço",
+          "content": "O OpenFarmPlanner disponibiliza funções digitais de planeamento como aplicação Web alojada."
+        },
+        "accounts": {
+          "title": "Contas de utilizador",
+          "content": "É necessária uma conta de utilizador para utilizar a aplicação. O Utilizador obriga-se a fornecer informações verdadeiras no registo e a manter a palavra-passe confidencial.\n\nO Utilizador é responsável por todas as atividades efetuadas através da sua conta. Deve informar-nos imediatamente através de info@openfarmplanner.org se suspeitar que alguém obteve acesso não autorizado à conta. A conta de utilizador é pessoal e intransmissível."
+        },
+        "userContent": {
+          "title": "Conteúdos do Utilizador no OpenFarmPlanner",
+          "content": "Nos seus projetos, o Utilizador pode criar dados próprios, como dados de explorações, parcelas e culturas, planos de cultivo, tarefas, notas e fotografias. O Utilizador é responsável pela exatidão, integralidade e licitude destes conteúdos.\n\nNão deve enviar conteúdos para os quais não disponha dos direitos necessários, como fotografias de terceiros protegidas por direitos de autor."
+        },
+        "publicLibrary": {
+          "title": "Biblioteca pública de culturas",
+          "content": "O Utilizador pode publicar voluntariamente registos individuais de culturas de um projeto privado na biblioteca pública de culturas. Esta biblioteca destina-se a ser uma base de conhecimentos construída em colaboração e mantida permanentemente para dados de cultivo agrícola e hortícola. Os registos publicados são visíveis a outros utilizadores, podem ser importados para os respetivos projetos e, a longo prazo, poderão ser reutilizados através de funcionalidades como históricos de versões, edição colaborativa, comentários, avaliações, APIs públicas ou exportações de dados.\n\nAo publicar, o Utilizador confirma que, tanto quanto é do seu conhecimento, as informações publicadas são exatas, não contêm dados pessoais de terceiros e dispõe do direito de as publicar permanentemente sob a licença aberta indicada nestes termos de utilização."
+        },
+        "contributionLicense": {
+          "title": "Licença aberta para dados de cultivo publicados",
+          "content": "Ao publicar um registo de cultura na biblioteca pública, o Utilizador licencia os dados de cultivo publicados sob a licença Creative Commons Atribuição-Partilha nas Mesmas Condições 4.0 Internacional (CC BY-SA 4.0). Esta licença permite, em particular, que terceiros reproduzam, distribuam, editem e combinem os dados de cultivo publicados com outros dados e os utilizem comercialmente, desde que cumpram as condições da licença. Estas incluem, em particular, a atribuição adequada da autoria, a indicação da licença e a partilha de versões alteradas sob as mesmas condições ou condições compatíveis.\n\nUma vez validamente concedida, a licença é irrevogável nos termos das suas condições. O OpenFarmPlanner pode guardar e apresentar permanentemente os dados de cultivo publicados, incluí-los em funções de pesquisa e importação, disponibilizá-los em exportações públicas de dados ou APIs, tratá-los tecnicamente e desenvolvê-los como parte da biblioteca colaborativa de culturas."
+        },
+        "prohibitedContent": {
+          "title": "Conteúdos e comportamentos proibidos",
+          "content": "Ao utilizar o OpenFarmPlanner, em especial ao publicar conteúdos na biblioteca pública de culturas, não é permitido",
+          "bullets": {
+            "illegalContent": "Publicar conteúdos ilícitos, enganosos ou que violem direitos de terceiros, por exemplo direitos de autor ou de personalidade,",
+            "malware": "Distribuir software malicioso ou contornar medidas de segurança da aplicação,",
+            "abuse": "Utilizar abusivamente a aplicação de forma automatizada, por exemplo através de registos em massa ou spam,",
+            "misrepresentation": "Fazer-se passar por outra pessoa ou publicar conscientemente informações falsas."
+          }
+        },
+        "copyright": {
+          "title": "Direitos de autor",
+          "content": "O software OpenFarmPlanner é protegido por direitos de autor e licenciado sob a licença indicada na secção «Software de código aberto». Os conteúdos introduzidos pelo Utilizador, como dados de culturas ou notas, continuam a ser sua propriedade.\n\nSe o Utilizador considerar que um registo publicado na biblioteca pública viola os seus direitos de autor ou outros direitos, deve contactar info@openfarmplanner.org. Investigamos as notificações fundamentadas (ver a secção «Remoção de conteúdos»)."
+        },
+        "contentRemoval": {
+          "title": "Remoção de conteúdos",
+          "content": "Em regra, os registos publicados na biblioteca de culturas destinam-se a permanecer permanentemente e não são removidos a pedido como funcionalidade normal do utilizador. No entanto, reservamo-nos o direito de remover, bloquear ou anonimizar conteúdos publicados, no todo ou em parte, ou de os corrigir futuramente através de funções de moderação ou controlo de versões, quando existirem indícios concretos de violação destes termos de utilização ou da legislação aplicável. Tal aplica-se, em particular, a violações da lei, dados pessoais no registo publicado, spam, abuso evidente, informações enganosas ou decisões de moderação.\n\nO Utilizador pode denunciar a qualquer momento conteúdos suspeitos de serem ilícitos ou problemáticos através de info@openfarmplanner.org. Não estamos obrigados a efetuar uma fiscalização geral e proativa dos conteúdos publicados."
+        },
+        "accountSuspension": {
+          "title": "Suspensão de contas de utilizador",
+          "content": "Em caso de violação grave ou reiterada destes Termos de Utilização, podemos restringir temporariamente o acesso à conta do Utilizador ou suspendê-la. Atuamos de forma proporcional e temos em conta a gravidade da violação e se se trata de um incidente isolado ou repetido.\n\nEm caso de suspensão, informaremos o Utilizador do motivo sempre que possível. O Utilizador pode contactar-nos a qualquer momento sobre este assunto através de info@openfarmplanner.org."
+        },
+        "liability": {
+          "title": "Responsabilidade",
+          "content": "O OpenFarmPlanner é desenvolvido e operado com grande cuidado. Ainda assim, não podemos garantir uma disponibilidade sem erros ou interrupções em todos os momentos, por exemplo durante manutenção, falhas técnicas ou acontecimentos fora do nosso controlo.\n\nA biblioteca pública de culturas contém conteúdos criados pelos próprios utilizadores. A responsabilidade pela sua exatidão cabe aos utilizadores que os publicam, não ao OpenFarmPlanner (ver a secção «Conteúdos do Utilizador no OpenFarmPlanner»).\n\nAs informações agrícolas e hortícolas do OpenFarmPlanner, como períodos de crescimento e colheita, distâncias de plantação ou quantidades de sementes, destinam-se apenas a apoiar o planeamento de culturas do Utilizador e não substituem aconselhamento profissional.\n\nA nossa responsabilidade por danos resultantes de incumprimento de deveres por negligência leve é limitada. Permanecem inalteradas a responsabilidade por dolo e negligência grosseira, a responsabilidade por danos resultantes de lesões à vida, à integridade física ou à saúde e as restantes normas legais imperativas de responsabilidade."
+        },
+        "openSource": {
+          "title": "Software de código aberto",
+          "content": "O código-fonte do OpenFarmPlanner é publicado como software de código aberto sob a GNU Affero General Public License Version 3 (AGPLv3) e pode ser consultado, reutilizado e alterado no repositório GitHub do OpenFarmPlanner (https://github.com/OpenFarmPlanner/planner). A licença regula apenas os direitos sobre o próprio software e, como é habitual no software de código aberto, exclui qualquer garantia relativa ao software.\n\nEsta situação é distinta da utilização da aplicação alojada em openfarmplanner.org, que é regida pelos presentes Termos de Utilização."
+        },
+        "futureFeatures": {
+          "title": "Desenvolvimento futuro da plataforma",
+          "content": "O OpenFarmPlanner é desenvolvido continuamente. A longo prazo, a biblioteca pública de culturas destina-se a suportar funcionalidades como históricos de versões, edição colaborativa, comentários, avaliações, APIs públicas e exportações de dados. Estes Termos de Utilização aplicam-se por analogia a essas futuras funcionalidades relativas aos dados de cultivo publicados e aos conteúdos fornecidos pelos utilizadores. Em caso de novas funções substanciais deste tipo, atualizaremos estes Termos de Utilização se necessário (ver a secção «Alterações a estes Termos de Utilização»)."
+        },
+        "changes": {
+          "title": "Alterações a estes Termos de Utilização",
+          "content": "Atualizamos estes Termos de Utilização se as funcionalidades disponibilizadas ou o enquadramento jurídico mudarem. É aplicável a versão publicada na aplicação no momento da utilização; a data da última alteração encontra-se no final desta página. Em caso de alterações substanciais, informaremos os utilizadores ativos de forma adequada, por exemplo por e-mail ou através de um aviso na aplicação."
+        },
+        "languageVersions": {
+          "title": "Versões linguísticas",
+          "content": "Este documento é disponibilizado em alemão, inglês, francês, espanhol, italiano e português. Em caso de divergências ou ambiguidades entre as versões linguísticas, prevalece a versão inglesa."
+        }
+      }
+    }
+  },
+  "seo": {
+    "titles": {
+      "landing": "OpenFarmPlanner – planeamento de culturas para horticultura",
+      "about": "Sobre o OpenFarmPlanner",
+      "demo": "Experimentar a demonstração – OpenFarmPlanner",
+      "imprint": "Aviso legal – OpenFarmPlanner",
+      "privacy": "Política de privacidade – OpenFarmPlanner",
+      "terms": "Termos de utilização – OpenFarmPlanner",
+      "login": "Iniciar sessão – OpenFarmPlanner",
+      "register": "Registar – OpenFarmPlanner"
+    },
+    "descriptions": {
+      "landing": "OpenFarmPlanner: planeamento de culturas de código aberto para horticultura. Edite parcelas, culturas e séries diretamente em tabelas, com uma biblioteca de culturas aberta.",
+      "about": "Como e por que surgiu o OpenFarmPlanner: a abordagem de código aberto, o financiamento por donativos e como participar.",
+      "imprint": "Aviso legal do OpenFarmPlanner: identificação do prestador, contactos e responsável nos termos do § 5 ECG (lei austríaca do comércio eletrónico).",
+      "privacy": "Política de privacidade do OpenFarmPlanner: informações sobre alojamento, registo, dados dos projetos, cookies e direitos do Utilizador nos termos do RGPD.",
+      "terms": "Termos de utilização do OpenFarmPlanner: regras relativas a contas, conteúdos, biblioteca pública de culturas e responsabilidade."
+    }
+  }
+}

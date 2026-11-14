@@ -35,6 +35,7 @@ ACTIVATION_SUBJECTS = {
     'fr': 'Confirmez votre inscription à OpenFarmPlanner',
     'es': 'Confirma tu registro en OpenFarmPlanner',
     'it': 'Conferma la registrazione a OpenFarmPlanner',
+    'pt': 'Confirmar o registo no OpenFarmPlanner',
 }
 PASSWORD_RESET_SUBJECTS = {
     'de': 'OpenFarmPlanner-Passwort zurücksetzen',
@@ -42,6 +43,7 @@ PASSWORD_RESET_SUBJECTS = {
     'fr': 'Réinitialisez votre mot de passe OpenFarmPlanner',
     'es': 'Restablece tu contraseña de OpenFarmPlanner',
     'it': 'Reimposta la password di OpenFarmPlanner',
+    'pt': 'Repor a palavra-passe do OpenFarmPlanner',
 }
 EMAIL_CHANGE_SUBJECTS = {
     'de': 'E-Mail-Änderung bei OpenFarmPlanner bestätigen',
@@ -104,7 +106,7 @@ class EmailTemplateParityTests(SimpleTestCase):
         self.assertEqual(render_project_role_label('member', 'es'), 'Miembro')
 
     def test_additional_languages_render_their_own_templates(self) -> None:
-        for language in ('fr', 'es', 'it'):
+        for language in ('fr', 'es', 'it', 'pt'):
             with self.subTest(language=language):
                 email = render_email(PASSWORD_RESET_EMAIL, language, {'reset_link': 'https://example.org/reset'})
                 self.assertEqual(email.subject, PASSWORD_RESET_SUBJECTS[language])
@@ -120,6 +122,7 @@ class EmailTemplateParityTests(SimpleTestCase):
         self.assertEqual(public_website_url('fr'), 'https://openfarmplanner.org/fr')
         self.assertEqual(public_website_url('es-419'), 'https://openfarmplanner.org/es')
         self.assertEqual(public_website_url('it-IT'), 'https://openfarmplanner.org/it')
+        self.assertEqual(public_website_url('pt-BR'), 'https://openfarmplanner.org/pt')
 
     def test_resolve_email_language_without_any_hint_is_english(self) -> None:
         self.assertEqual(resolve_email_language(), 'en')
@@ -184,7 +187,7 @@ class LocalizedAccountEmailTests(APITestCase):
         self.assertFalse(UserProjectSettings.objects.filter(user__email='ja-guest@example.com').exists())
 
     def test_registration_in_french_and_spanish_sends_localized_mail_and_stores_preference(self) -> None:
-        for language in ('fr', 'es', 'it'):
+        for language in ('fr', 'es', 'it', 'pt'):
             with self.subTest(language=language):
                 email = f'{language}-guest@example.com'
                 response = self._register(email, query=f'?language={language}', HTTP_ACCEPT_LANGUAGE='de')

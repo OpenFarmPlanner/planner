@@ -26,6 +26,7 @@ import {
   type SupportedLanguage,
 } from './languages';
 import { getRouteLanguage } from './routeLanguage';
+import { canonicalPluralRules } from './canonicalPluralRules';
 
 type LanguageBundle = Record<string, Record<string, unknown>>;
 
@@ -51,6 +52,7 @@ const LANGUAGE_BUNDLES: Record<SupportedLanguage, () => Promise<{ default: Langu
   fr: () => import('./locales/fr/index'),
   es: () => import('./locales/es/index'),
   it: () => import('./locales/it/index'),
+  pt: () => import('./locales/pt/index'),
 };
 
 const bundleRequests = new Map<string, Promise<LanguageBundle>>();
@@ -127,6 +129,7 @@ const initialLanguage = getRouteLanguage() ?? resolveInitialLanguage();
 export const i18nReady: Promise<void> = i18n
   .use(lazyLanguageBackend)
   .use(initReactI18next)
+  .use(canonicalPluralRules)
   .init({
     // A public page's URL fixes its language (routeLanguage.ts); everywhere
     // else it is resolved from the stored choice / browser language.

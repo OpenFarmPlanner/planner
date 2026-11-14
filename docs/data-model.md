@@ -44,9 +44,10 @@ erDiagram
   role, remove a member, send invitations, restore-from-history) requires
   the `admin` role — enforced in view code (`require_project_admin()` in
   `backend/farm/project_context.py`), not a DB constraint.
-- `UserProjectSettings.ui_language` is an account preference (`auto`, de/en/fr/es/it),
-  independent of project membership and project content. The Italian migration
-  extends choices only; it does not rewrite preferences or crop data.
+- `UserProjectSettings.ui_language` is an account preference (`auto`, de/en/fr/es/it/pt),
+  independent of project membership and project content. The Italian (0017) and
+  Portuguese (0018) migrations extend choices only; forward and reverse SQL are
+  no-ops. They do not rewrite preferences or crop data.
 - Final account deletion removes the user's `ProjectMembership` rows. Any
   project that is left with zero memberships is hard-deleted together with
   its project-scoped data. If members remain but the deleted account was the

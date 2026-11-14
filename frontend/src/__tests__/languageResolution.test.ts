@@ -63,8 +63,15 @@ describe('normalizeLanguageTag', () => {
     expect(getLanguageLabel('it')).toBe('Italiano');
   });
 
+  it('maps Portuguese regional tags to the single European Portuguese bundle', () => {
+    for (const tag of ['pt', 'pt-PT', 'pt-BR', 'PT_pt']) expect(normalizeLanguageTag(tag)).toBe('pt');
+    expect(detectBrowserLanguage(navigatorWith(['pt-BR']))).toBe('pt');
+    expect(normalizeLanguagePreference('pt')).toBe('pt');
+    expect(getLanguageLabel('pt')).toBe('Português');
+  });
+
   it('returns null for unsupported and empty tags', () => {
-    for (const tag of ['ja', 'ja-JP', 'pt-BR', 'zh-Hans', 'xx', '', '   ', null, undefined]) {
+    for (const tag of ['ja', 'ja-JP', 'ko-KR', 'zh-Hans', 'xx', '', '   ', null, undefined]) {
       expect(normalizeLanguageTag(tag)).toBeNull();
     }
   });
@@ -86,7 +93,7 @@ describe('detectBrowserLanguage', () => {
   });
 
   it('falls back to English for unsupported browser languages', () => {
-    expect(detectBrowserLanguage(navigatorWith(['ja-JP', 'pt-BR']))).toBe(FALLBACK_LANGUAGE);
+    expect(detectBrowserLanguage(navigatorWith(['ja-JP', 'ko-KR']))).toBe(FALLBACK_LANGUAGE);
     expect(detectBrowserLanguage(navigatorWith([]))).toBe(FALLBACK_LANGUAGE);
   });
 

@@ -15,6 +15,7 @@ const FORMATTING_LOCALES: Record<string, string> = {
   fr: "fr-FR",
   es: "es-ES",
   it: "it-IT",
+  pt: "pt-PT",
 };
 
 export function resolveLocaleFromLanguage(language: string | undefined): string {

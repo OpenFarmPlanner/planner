@@ -8,17 +8,17 @@ produced by the **frontend build**.
 
 ## What is indexable
 
-Every public page exists in German, English, French, Spanish and Italian. German is
+Every public page exists in German, English, French, Spanish, Italian and Portuguese. German is
 the default language and lives at the root without a prefix; every other
 language lives under its own prefix with slugs in that language:
 
-| Page             | German (`x-default`)   | English            | French                      | Spanish           | Italian |
-| ---------------- | ---------------------- | ------------------ | --------------------------- | ----------------- | --- |
-| Landing page     | `/`                    | `/en`              | `/fr`                       | `/es`             | `/it` |
-| About            | `/ueber`               | `/en/about`        | `/fr/a-propos`              | `/es/acerca-de`   | `/it/chi-siamo` |
-| Imprint (legal)  | `/impressum`           | `/en/legal-notice` | `/fr/mentions-legales`      | `/es/aviso-legal` | `/it/note-legali` |
-| Privacy (legal)  | `/datenschutz`         | `/en/privacy`      | `/fr/confidentialite`       | `/es/privacidad`  | `/it/privacy` |
-| Terms (legal)    | `/nutzungsbedingungen` | `/en/terms`        | `/fr/conditions-utilisation` | `/es/terminos`   | `/it/termini` |
+| Page             | German (`x-default`)   | English            | French                      | Spanish           | Italian | Portuguese |
+| ---------------- | ---------------------- | ------------------ | --------------------------- | ----------------- | --- | --- |
+| Landing page     | `/`                    | `/en`              | `/fr`                       | `/es`             | `/it` | `/pt` |
+| About            | `/ueber`               | `/en/about`        | `/fr/a-propos`              | `/es/acerca-de`   | `/it/chi-siamo` | `/pt/sobre` |
+| Imprint (legal)  | `/impressum`           | `/en/legal-notice` | `/fr/mentions-legales`      | `/es/aviso-legal` | `/it/note-legali` | `/pt/aviso-legal` |
+| Privacy (legal)  | `/datenschutz`         | `/en/privacy`      | `/fr/confidentialite`       | `/es/privacidad`  | `/it/privacy` | `/pt/privacidade` |
+| Terms (legal)    | `/nutzungsbedingungen` | `/en/terms`        | `/fr/conditions-utilisation` | `/es/terminos`   | `/it/termini` | `/pt/termos` |
 
 Slugs are plain ASCII (no accents), lowercase, hyphen-separated.
 
@@ -80,7 +80,7 @@ else is derived from it, so no public path is listed anywhere else:
   first load of a public page, a visitor whose language differs from the
   page's is sent to the counterpart URL with `location.replace` (query and
   hash kept): their stored choice from the switcher if any, otherwise the
-  browser language — German, French, Spanish and Italian browsers (any regional
+  browser language — German, French, Spanish, Italian and Portuguese browsers (any regional
   variant, e.g. `fr-CA`, `es-419`, `es-MX`) get their language, every other
   language gets English.
   The `index.html` preboot does this before first paint on prerendered pages

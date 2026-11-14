@@ -1,0 +1,105 @@
+{
+  "title": "Visão geral",
+  "errors": {
+    "load": "Não foi possível carregar os dados da visão geral"
+  },
+  "emptyState": {
+    "title": "Iniciar o planeamento de culturas",
+    "description": "Abra Parcelas e canteiros e adicione uma parcela. Depois será possível registar culturas e séries.",
+    "shortDescription": "Adicione uma parcela na página Parcelas e canteiros.",
+    "action": "Adicionar parcela"
+  },
+  "tasks": {
+    "title": "Próximas tarefas",
+    "empty": "Sem próximas tarefas",
+    "emptyTitle": "Sem próximas tarefas",
+    "emptyDescription": "Não existem próximas tarefas para este projeto."
+  },
+  "checklist": {
+    "title": "Início do projeto",
+    "intro": "O OpenFarmPlanner ajuda a organizar o planeamento de áreas, culturas e ciclos de cultivo. Comece pela primeira parcela.",
+    "field": "Adicionar parcela",
+    "bed": "Adicionar canteiro",
+    "crop": "Adicionar cultura",
+    "plan": "Adicionar série"
+  },
+  "board": {
+    "title": "Tarefas",
+    "status": {
+      "pending": "Por fazer",
+      "in_progress": "Em curso",
+      "completed": "Concluídas"
+    },
+    "origin": {
+      "manual": "Manual",
+      "automatic": "Automática",
+      "template": "Modelo"
+    },
+    "metrics": {
+      "overdue": "Em atraso",
+      "today": "Hoje",
+      "week": "Esta semana"
+    },
+    "filters": {
+      "title": "Filtrar tarefas",
+      "period": "Período",
+      "crop": "Cultura",
+      "field": "Parcela",
+      "person": "Responsável",
+      "from": "De",
+      "to": "Até"
+    },
+    "period": {
+      "all": "Todas as datas",
+      "overdue": "Em atraso",
+      "today": "Hoje",
+      "week": "Esta semana",
+      "custom": "Período personalizado"
+    },
+    "all": "Todas",
+    "unassigned": "Sem responsável",
+    "noDate": "Sem prazo",
+    "dateOverride": "Data alterada manualmente",
+    "changeStatus": "Alterar estado: {{title}}",
+    "dragInstructions": "Arraste o cartão da tarefa para outra coluna. Também é possível alterar o estado com o teclado através do menu de estado.",
+    "dragStarted": "A mover {{title}}.",
+    "dragOver": "Destino: {{status}}.",
+    "dragEnded": "{{title}} movida para {{status}}.",
+    "dragCancelled": "Movimento cancelado.",
+    "resetFilters": "Repor filtros",
+    "invalidRange": "A data de fim tem de ser posterior à data de início.",
+    "noMatches": "Nenhuma tarefa corresponde a estes filtros. Reponha os filtros para ver todas as tarefas.",
+    "empty": "Ainda não existem tarefas nesta época. Acompanhe aqui os próximos trabalhos.",
+    "emptyColumn": "Sem tarefas",
+    "showMore": "Mostrar mais tarefas",
+    "saveError": "Não foi possível guardar o estado. A alteração foi anulada. Tente novamente.",
+    "dragHint": {
+      "desktop": "Arraste os cartões de tarefas para outra coluna. Nos dispositivos táteis, mantenha primeiro um cartão premido. Também é possível alterar o estado através do menu da tarefa.",
+      "mobile": "Altere o estado de uma tarefa através do respetivo menu. Em ecrãs maiores, também é possível arrastar tarefas.",
+      "saveError": "Não foi possível ocultar esta sugestão permanentemente. Tente novamente."
+    }
+  },
+  "form": {
+    "add": "Adicionar tarefa",
+    "edit": "Editar tarefa",
+    "delete": "Eliminar tarefa",
+    "createSeason": "Criar época",
+    "title": "Título",
+    "description": "Descrição",
+    "date": "Prazo",
+    "status": "Estado",
+    "origin": "Origem",
+    "plan": "Série (opcional)",
+    "none": "Sem ligação",
+    "saveError": "Não foi possível guardar a tarefa. Verifique os dados e tente novamente.",
+    "deleteConfirm": "Eliminar definitivamente «{{title}}»?",
+    "deleteError": "Não foi possível eliminar a tarefa. Tente novamente."
+  },
+  "events": {
+    "propagation_start": "Iniciar viveiro",
+    "sowing": "Sementeira direta",
+    "planting": "Transplantação",
+    "harvest_start": "Iniciar colheita",
+    "harvest_end": "Terminar colheita"
+  }
+}

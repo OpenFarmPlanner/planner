@@ -38,6 +38,7 @@ describe('preferredPublicPagePath', () => {
     expect(preferredPublicPagePath('/es/terminos', 'fr')).toBe('/fr/conditions-utilisation');
     expect(preferredPublicPagePath('/es', 'de')).toBe('/');
     expect(preferredPublicPagePath('/ueber', 'it')).toBe('/it/chi-siamo');
+    expect(preferredPublicPagePath('/ueber', 'pt')).toBe('/pt/sobre');
     expect(preferredPublicPagePath('/it/termini', 'en')).toBe('/en/terms');
   });
 
@@ -57,7 +58,7 @@ describe('isCrawlerUserAgent', () => {
 
 describe('redirectToPreferredLanguageVersion', () => {
   it('sends a browser in an unsupported language from a German page to the English version', () => {
-    const replace = stubBrowser('/ueber', ['ja-JP', 'pt-BR']);
+    const replace = stubBrowser('/ueber', ['ja-JP', 'ko-KR']);
     expect(redirectToPreferredLanguageVersion()).toBe(true);
     expect(replace).toHaveBeenCalledWith('/en/about?ref=x#top');
   });

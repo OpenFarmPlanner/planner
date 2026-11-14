@@ -1,0 +1,276 @@
+{
+  "appName": "OpenFarmPlanner",
+  "actions": {
+    "add": "Adicionar",
+    "edit": "Editar",
+    "duplicate": "Duplicar",
+    "delete": "Eliminar",
+    "undo": "Anular",
+    "copyRow": "Copiar linha",
+    "copyTable": "Copiar tabela",
+    "save": "Guardar",
+    "saveRow": "Guardar linha",
+    "cancelRowEdit": "Cancelar edição",
+    "deleteRow": "Eliminar linha",
+    "cancel": "Cancelar",
+    "reset": "Repor",
+    "search": "Pesquisar",
+    "close": "Fechar",
+    "actions": "Ações",
+    "moreOptions": "Mais opções",
+    "moreActions": "Mais ações"
+  },
+  "messages": {
+    "loading": "A carregar...",
+    "noData": "Sem dados",
+    "error": "Erro",
+    "success": "Sucesso",
+    "rowCopied": "Linha copiada.",
+    "tableCopied": "Tabela copiada.",
+    "copyError": "Não foi possível copiar os dados.",
+    "contextMenuTableHint": "Sugestão: clicar com o botão direito numa linha para ver mais ações.",
+    "contextMenuTableHintTouch": "Sugestão: manter uma linha premida para ver mais ações.",
+    "contextMenuHintKeyboard": "Em alternativa: tecla de menu de contexto ou Shift+F10.",
+    "tableEditHint": "Fazer duplo clique, premir Enter ou começar a escrever para editar",
+    "tableEditHintDismiss": "Ocultar sugestão",
+    "confirmation": "Confirmação",
+    "rowChanged": "Alterado",
+    "unsavedChanges": "Existem alterações não guardadas na tabela. Clicar fora de uma linha guarda as alterações. Pretende continuar?",
+    "validationErrors": "Existem erros de validação que têm de ser corrigidos antes de continuar. Corrija os erros ou cancele a edição (tecla Escape).",
+    "noRows": "Sem registos",
+    "noResults": "Não foram encontrados registos correspondentes"
+  },
+  "fields": {
+    "name": "Nome",
+    "address": "Morada",
+    "notes": "Notas",
+    "description": "Descrição",
+    "project": "Projeto"
+  },
+  "columns": {
+    "project": "Projeto"
+  },
+  "hierarchyLevelToggle": {
+    "expandTooltip": "Mostrar mais um nível da hierarquia",
+    "collapseTooltip": "Ocultar um nível da hierarquia"
+  },
+  "project": "Projeto",
+  "setupActions": {
+    "createField": "Adicionar parcela",
+    "createBed": "Adicionar canteiro",
+    "openAreas": "Abrir áreas de cultivo",
+    "openCropLibrary": "Abrir biblioteca de culturas",
+    "createCrop": "Adicionar cultura",
+    "createPlan": "Adicionar série"
+  },
+  "notes": {
+    "empty": "Sem notas",
+    "editEmpty": "Adicionar nota",
+    "editWithContent": "Editar nota",
+    "compactNoteAndImages": "Nota e imagens disponíveis",
+    "compactNote": "Nota disponível",
+    "compactImages": "Imagens disponíveis",
+    "compactEmpty": "Sem nota nem imagens disponíveis",
+    "attachmentsCount_one": "{{count}} fotografia nas notas",
+    "attachmentsCount_other": "{{count}} fotografias nas notas",
+    "attachmentsCount_many": "{{count}} fotografias nas notas"
+  },
+  "notesPreview": {
+    "heading": "Nota",
+    "empty": "Sem nota disponível",
+    "openNote": "Abrir nota",
+    "loadingImages": "A carregar imagens…",
+    "imagesLoadError": "Não foi possível carregar as imagens.",
+    "openImageAria": "Abrir fotografia",
+    "moreImagesAria": "Abrir mais {{count}} fotografias"
+  },
+  "notesDrawer": {
+    "takePhoto": "Tirar fotografia",
+    "selectFromGallery": "Escolher da galeria",
+    "uploading": "A enviar…",
+    "attachmentAlt": "Anexo",
+    "markdownPlaceholder": "Notas em Markdown…",
+    "imageDialogTitle": "Fotografia",
+    "attachmentPreviewAlt": "Pré-visualização do anexo",
+    "cropDialogTitle": "Recortar imagem",
+    "cropInstructions": "Desenhar, mover e redimensionar a área de recorte. A área exterior fica escurecida.",
+    "cropSourceAlt": "Imagem original",
+    "backendUnavailable": "O processamento de imagens não está disponível no servidor. Instale o Pillow e reinicie o backend.",
+    "uploadFailed": "Não foi possível enviar. Tente novamente.",
+    "camera": {
+      "title": "Tirar fotografia",
+      "capture": "Capturar",
+      "noSignal": "Não está a ser recebida imagem da câmara. Pode estar a ser utilizada por outra aplicação ou não estar disponível neste ambiente.",
+      "useFilePicker": "Escolher um ficheiro em alternativa"
+    },
+    "tabs": {
+      "edit": "Editar",
+      "preview": "Pré-visualizar"
+    },
+    "unsavedDialog": {
+      "title": "Notas não guardadas",
+      "message": "As notas contêm alterações não guardadas. Continuar a editar ou descartar as alterações?",
+      "continueEditing": "Continuar a editar",
+      "discardAndClose": "Descartar"
+    },
+    "markdownToolbar": {
+      "bold": "Negrito",
+      "boldTooltip": "Negrito (Ctrl+B)",
+      "italic": "Itálico",
+      "italicTooltip": "Itálico (Ctrl+I)",
+      "code": "Código",
+      "heading": "Título",
+      "bulletList": "Lista com marcas",
+      "numberedList": "Lista numerada",
+      "link": "Inserir ligação",
+      "quote": "Citação",
+      "ariaLabel": "Barra de formatação"
+    },
+    "defaults": {
+      "bold": "texto a negrito",
+      "italic": "texto em itálico",
+      "heading": "Título",
+      "listItem": "Item da lista",
+      "linkText": "Texto da ligação",
+      "quote": "Citação"
+    }
+  },
+  "errors": {
+    "generic": "Ocorreu um erro inesperado. Tente novamente.",
+    "sessionExpired": "A sessão expirou. Inicie sessão novamente.",
+    "noPublicCrops": "Não foram encontradas culturas públicas.",
+    "bedNotFound": "O canteiro não foi encontrado.",
+    "fileTooLarge": "O ficheiro é demasiado grande (máximo de 10 MB).",
+    "invalidImage": "O ficheiro enviado não é uma imagem válida.",
+    "supplierDataDuplicate": "Este fornecedor já tem dados para esta cultura.",
+    "supplierDataMissingSupplier": "Selecione um fornecedor ou remova os dados do fornecedor.",
+    "supplierSpecificTkgUnsupported": "O peso de mil sementes específico do fornecedor já não é suportado.",
+    "supplierProjectMismatch": "O fornecedor não pertence ao projeto ativo.",
+    "selectedSupplierProjectMismatch": "O fornecedor de sementes selecionado não pertence ao projeto ativo.",
+    "cropProjectMismatch": "A cultura não pertence ao projeto ativo."
+  },
+  "validation": {
+    "required": "Este campo é obrigatório.",
+    "invalidEmail": "Introduza um endereço de e-mail válido.",
+    "minLength": "São necessários pelo menos {{count}} caracteres.",
+    "invalidNumberExample": "Introduza um número válido, por exemplo 3,9",
+    "areaInputPositive": "O valor tem de ser superior a 0.",
+    "areaInputPlantsCropRequired": "Selecione uma cultura para calcular a área a partir do número de plantas.",
+    "areaInputPlantsSpacingMissing": "Falta a distância entre plantas ou entre linhas desta cultura, pelo que não é possível calcular a área a partir do número de plantas.",
+    "bedAreaExceeded": "A área introduzida excede a área máxima disponível neste canteiro.",
+    "availableArea": "Área restante disponível"
+  },
+  "projectRequired": {
+    "noProjectsTitle": "Ainda não existe um projeto.",
+    "noProjectsDescription": "Crie primeiro um projeto para gerir explorações, áreas de cultivo, séries e calendários.",
+    "noProjectsSelectionDescription": "Crie o primeiro projeto para começar a planear.",
+    "noActiveProjectTitle": "Não está selecionado nenhum projeto.",
+    "noActiveProjectDescription": "Selecione um projeto para gerir explorações, áreas de cultivo, séries e calendários.",
+    "createProjectAction": "Criar primeiro projeto",
+    "createFirstProjectAction": "Criar primeiro projeto",
+    "selectProjectAction": "Selecionar projeto"
+  },
+  "projectOnboarding": {
+    "pageTitle": "Iniciar o primeiro projeto",
+    "pageDescription": "Escolha entre começar com um projeto vazio ou explorar primeiro o OpenFarmPlanner com dados de exemplo realistas.",
+    "emptyTitle": "Começar com um projeto vazio",
+    "emptyDescription": "Crie um projeto e adicione explorações, culturas e séries passo a passo.",
+    "emptyAction": "Criar projeto vazio",
+    "demoTitle": "Experimentar um projeto de demonstração",
+    "demoDescription": "Comece com um projeto de cultivo preparado e explore as funções principais com dados de exemplo realistas.",
+    "demoAction": "Criar projeto de demonstração",
+    "demoCreating": "A criar projeto de demonstração...",
+    "demoCreatedHint": "Este projeto contém dados de exemplo. É possível editar livremente todos os dados ou eliminar o projeto a qualquer momento.",
+    "demoCreateError": "Não foi possível criar o projeto de demonstração. Tente novamente."
+  },
+  "guestDemo": {
+    "restricted": "Não disponível na demonstração. Crie uma conta gratuita para utilizar esta função.",
+    "cropLibraryNotice": "Está a utilizar a demonstração: é possível consultar a biblioteca pública de culturas e importar culturas para o projeto de demonstração. Para editar ou traduzir registos, restaurar versões anteriores e escrever nas discussões, é necessária uma conta gratuita.",
+    "cropLibraryEdit": "Não é possível editar a biblioteca pública de culturas na demonstração.",
+    "cropLibraryDiscussion": "Na demonstração é possível ler as discussões, mas não escrever mensagens.",
+    "publishCrop": "Na demonstração não é possível publicar culturas na biblioteca pública nem enviar alterações. Continua a ser possível aplicar atualizações da biblioteca.",
+    "unlinkPublicCrop": "Na demonstração não é possível remover a ligação à biblioteca pública de culturas.",
+    "accountSettingsNotice": "Está a utilizar a demonstração sem conta: o perfil, o endereço de e-mail, a palavra-passe, os pedidos de moderação, a exportação de dados e a eliminação da conta não estão disponíveis. Os dados da demonstração são eliminados automaticamente, no máximo ao fim de 8 horas.",
+    "createProject": "Não é possível criar projetos adicionais na demonstração.",
+    "inviteMembers": "Não é possível convidar pessoas para o projeto na demonstração.",
+    "noteAttachments": "Não é possível enviar fotografias para as notas na demonstração."
+  },
+  "runtime": {
+    "applicationUpdatedFallback": "Não foi possível atualizar a aplicação automaticamente. Recarregue a página.",
+    "routeErrorFallback": "Não foi possível restaurar a página automaticamente. Recarregue a página.",
+    "serverUnavailable": "O servidor não está acessível neste momento. Tente novamente dentro de instantes.",
+    "reloadAction": "Recarregar página",
+    "retryAction": "Tentar novamente"
+  },
+  "language": {
+    "label": "Idioma",
+    "auto": "Automático (idioma do navegador)",
+    "switcherLabel": "Alterar idioma, atual: {{language}}"
+  },
+  "errorFieldLabels": {
+    "area_input_value": "Área",
+    "area_input_unit": "Introdução da área",
+    "area_usage_sqm": "Área (m²)",
+    "area_sqm": "Área (m²)",
+    "planting_date": "Data de transplantação",
+    "harvest_date": "Início da colheita",
+    "harvest_end_date": "Fim da colheita",
+    "quantity": "Plantas",
+    "cultivation_type": "Tipo de cultivo",
+    "crop": "Cultura",
+    "bed": "Canteiro",
+    "field": "Parcela",
+    "location": "Exploração",
+    "non_field_errors": "Erro"
+  },
+  "dateFormatPlaceholder": "DD.MM.AAAA",
+  "disabledReasons": {
+    "busy": "A ação está a ser processada.",
+    "noChanges": "Não existem alterações não guardadas.",
+    "invalidDateRange": "Introduza primeiro um intervalo de datas válido.",
+    "requiredFields": "Preencha todos os campos obrigatórios.",
+    "selectFile": "Selecione primeiro um ficheiro.",
+    "cameraNotReady": "A câmara ainda não está pronta.",
+    "copyRowUnavailable": "Não existem dados copiáveis nesta linha.",
+    "copyTableUnavailable": "A tabela não contém linhas copiáveis."
+  },
+  "units": {
+    "squareMeters": "m²",
+    "kilograms": "kg"
+  },
+  "requirements": {
+    "satisfied": "{{label}} disponível",
+    "missing": "{{label}} em falta"
+  },
+  "months": {
+    "jan": "janeiro",
+    "feb": "fevereiro",
+    "mar": "março",
+    "apr": "abril",
+    "may": "maio",
+    "jun": "junho",
+    "jul": "julho",
+    "aug": "agosto",
+    "sep": "setembro",
+    "oct": "outubro",
+    "nov": "novembro",
+    "dec": "dezembro"
+  },
+  "monthsShort": {
+    "jan": "jan",
+    "feb": "fev",
+    "mar": "mar",
+    "apr": "abr",
+    "may": "mai",
+    "jun": "jun",
+    "jul": "jul",
+    "aug": "ago",
+    "sep": "set",
+    "oct": "out",
+    "nov": "nov",
+    "dec": "dez"
+  },
+  "settingsNavigation": {
+    "label": "Secções"
+  }
+}

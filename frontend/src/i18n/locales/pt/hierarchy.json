@@ -1,0 +1,247 @@
+{
+  "title": "Parcelas e canteiros",
+  "addField": "Parcela",
+  "addBed": "Canteiro",
+  "addBedToField": "Adicionar canteiro a esta parcela",
+  "createPlantingPlan": "Adicionar série",
+  "columns": {
+    "name": "Nome",
+    "location": "Exploração",
+    "field": "Parcela",
+    "bed": "Canteiro",
+    "area": "Área (m²)",
+    "notes": "Notas",
+    "length": "Comprimento (m)",
+    "width": "Largura (m)"
+  },
+  "errors": {
+    "load": "Não foi possível carregar os dados",
+    "save": "Não foi possível guardar",
+    "delete": "Não foi possível eliminar",
+    "createField": "Não foi possível criar a parcela",
+    "deleteField": "Não foi possível eliminar a parcela",
+    "saveBed": "Não foi possível guardar o canteiro",
+    "deleteBed": "Não foi possível eliminar o canteiro"
+  },
+  "validation": {
+    "nameRequired": "O nome é obrigatório",
+    "bedAreaExceedsField": "A soma das áreas dos canteiros ({{sum}} m²) excede a área da parcela ({{max}} m²). Ajuste as áreas.",
+    "areaMustBePositive": "A área tem de ser superior a 0.",
+    "areaTooLarge": "A área introduzida é demasiado grande. Introduza um valor inferior.",
+    "lengthNonNegative": "O comprimento tem de ser superior ou igual a 0.",
+    "widthNonNegative": "A largura tem de ser superior ou igual a 0.",
+    "lengthNotANumber": "O comprimento tem de ser um número válido.",
+    "widthNotANumber": "A largura tem de ser um número válido.",
+    "duplicateFieldName": "Já existe uma parcela com este nome nesta exploração.",
+    "duplicateBedName": "Já existe um canteiro com este nome nesta parcela."
+  },
+  "confirmDelete": "Pretende eliminar este registo?",
+  "footer": {
+    "singleLocation": "Expandir parcelas para adicionar canteiros",
+    "multipleLocations": "Expandir explorações/parcelas para adicionar parcelas/canteiros"
+  },
+  "tooltips": {
+    "expand": "Expandir registo",
+    "collapse": "Recolher registo",
+    "addField": "Adicionar parcela",
+    "calculatedArea": "A área é calculada automaticamente a partir do comprimento × largura e não pode ser editada diretamente."
+  },
+  "messages": {
+    "createLocationFirst": "Crie primeiro uma exploração.",
+    "singleLocationHint": "Exploração: {{name}}",
+    "invalidLocationSelection": "Selecione uma exploração válida.",
+    "noBedsHintTitle": "Ainda não existem canteiros.",
+    "noBedsHintBeforeIcon": "Adicione canteiros através do ícone",
+    "noBedsHintAfterIcon": "na respetiva parcela. O ícone aparece ao passar o rato.",
+    "noBedsHintMobile": "Mantenha premida a respetiva parcela e selecione «Adicionar canteiro».",
+    "missingDimensionsHint": "O comprimento e a largura são importantes para calcular áreas, necessidades de sementes e o planeamento das culturas.",
+    "missingDimensionsHintOptional": "É possível adicionar os valores mais tarde.",
+    "missingDimensionsCellTooltip": "Este valor é necessário para calcular a área e para todo o planeamento nela baseado.",
+    "createLocationError": "Não foi possível criar a exploração.",
+    "locationCreated": "A exploração foi criada.",
+    "unsavedMissingName": "A linha não foi guardada porque falta o nome.",
+    "unsavedInvalidRowsNavigationWarning": "Existe uma linha não guardada sem nome. Será perdida ao sair da página.",
+    "unsavedRowEditNavigationWarning": "Está a ser editada uma linha. As alterações serão perdidas ao sair da página.",
+    "locationDeleted": "Exploração eliminada",
+    "fieldDeleted": "Parcela eliminada",
+    "bedDeleted": "Canteiro eliminado",
+    "locationAndBedsDeleted": "Exploração e {{count}} canteiros eliminados",
+    "fieldAndBedsDeleted": "Parcela e {{count}} canteiros eliminados",
+    "locationsNowVisible": "As explorações são agora apresentadas porque existem várias."
+  },
+  "prompts": {
+    "newFieldName": "Nome da nova parcela:",
+    "selectLocationForField": "Introduza o ID da exploração para a nova parcela:\n{{options}}"
+  },
+  "actions": {
+    "addField": "Adicionar parcela",
+    "addBed": "Adicionar canteiro",
+    "addShortcutHint": "Ins",
+    "createLocation": "Adicionar exploração",
+    "addAdditionalLocation": "Vários locais? Adicionar outra exploração",
+    "undo": "Anular",
+    "addFieldDropdown": "Adicionar parcela",
+    "duplicateBed": "Duplicar canteiro",
+    "duplicateShortcutHint": "Ctrl+D",
+    "duplicateShortcutHintMac": "⌘D",
+    "bulkCreateBeds": "Adicionar vários canteiros",
+    "duplicateField": "Duplicar parcela"
+  },
+  "dialogs": {
+    "addField": {
+      "title": "Adicionar parcela",
+      "nameLabel": "Nome da parcela",
+      "submit": "Adicionar"
+    },
+    "addAdditionalLocation": {
+      "title": "Adicionar outra exploração",
+      "description": "As explorações permitem gerir separadamente áreas em locais diferentes. Num projeto com um único local, não é necessário configurar mais nada.",
+      "nameLabel": "Nome da exploração",
+      "submit": "Criar exploração"
+    },
+    "unsavedRow": {
+      "title": "Linha não guardada",
+      "message": "O nome é um campo obrigatório. Não é possível guardar esta linha sem nome.",
+      "continueEditing": "Continuar a editar",
+      "discard": "Descartar"
+    },
+    "bulkCreateBeds": {
+      "title": "Adicionar vários canteiros a {{field}}",
+      "dimensionsSection": "Dimensões",
+      "orientation": "Direção dos canteiros",
+      "orientationLength": "Canteiros ao longo do comprimento",
+      "orientationWidth": "Canteiros ao longo da largura",
+      "length": "Comprimento (m)",
+      "width": "Largura (m)",
+      "pathWidth": "Caminho (m)",
+      "pathHelper": "Espaço entre os canteiros",
+      "countSection": "Número",
+      "count": "Número de canteiros",
+      "suggestion_one": "Com um caminho de {{path}} m, cabe {{count}} canteiro em {{side}} m.",
+      "suggestion_other": "Com um caminho de {{path}} m, cabem {{count}} canteiros em {{side}} m.",
+      "suggestionRemaining_one": "Com um caminho de {{path}} m, cabe mais {{count}} canteiro em {{side}} m ({{existing}}).",
+      "suggestionRemaining_other": "Com um caminho de {{path}} m, cabem mais {{count}} canteiros em {{side}} m ({{existing}}).",
+      "existingBeds_one": "incluindo {{count}} canteiro existente",
+      "existingBeds_other": "incluindo {{count}} canteiros existentes",
+      "noSpaceLeft": "Segundo as dimensões da parcela, já não existe espaço disponível.",
+      "applySuggestion_one": "Utilizar {{count}}",
+      "applySuggestion_other": "Utilizar {{count}}",
+      "namingSection": "Nomes",
+      "firstName": "Nome do primeiro canteiro",
+      "defaultFirstName": "Canteiro 1",
+      "previewSection": "Pré-visualizar",
+      "previewEmpty": "Introduza o número e o nome para ver aqui os nomes dos novos canteiros.",
+      "previewList": "Nomes dos novos canteiros",
+      "summary_one": "{{count}} canteiro, {{area}} m² cada, {{total}} m² no total",
+      "summary_other": "{{count}} canteiros, {{area}} m² cada, {{total}} m² no total",
+      "areaWarning": "Juntamente com os canteiros existentes ({{existingArea}} m²), os novos canteiros ({{newArea}} m²) são maiores do que a parcela ({{fieldArea}} m²). Ainda assim, é possível adicioná-los.",
+      "namesTaken_one": "Este nome já é utilizado na parcela: {{names}}",
+      "namesTaken_other": "Estes nomes já são utilizados na parcela: {{names}}",
+      "positiveNumber": "Tem de ser superior a 0.",
+      "nonNegativeNumber": "Não pode ser negativo.",
+      "wholeNumber": "Introduza um número inteiro de pelo menos {{min}}.",
+      "tooMany": "No máximo, {{max}} canteiros de cada vez.",
+      "saveError": "Não foi possível adicionar os canteiros. Nenhum canteiro foi guardado.",
+      "submit": "Adicionar canteiros",
+      "submitCount_one": "Adicionar {{count}} canteiro",
+      "submitCount_other": "Adicionar {{count}} canteiros",
+      "created_one": "{{count}} canteiro adicionado.",
+      "created_other": "{{count}} canteiros adicionados.",
+      "suggestion_many": "Com um caminho de {{path}} m, cabem {{count}} canteiros em {{side}} m.",
+      "suggestionRemaining_many": "Com um caminho de {{path}} m, cabem mais {{count}} canteiros em {{side}} m ({{existing}}).",
+      "existingBeds_many": "incluindo {{count}} canteiros existentes",
+      "applySuggestion_many": "Utilizar {{count}}",
+      "summary_many": "{{count}} canteiros, {{area}} m² cada, {{total}} m² no total",
+      "namesTaken_many": "Estes nomes já são utilizados na parcela: {{names}}",
+      "submitCount_many": "Adicionar {{count}} canteiros",
+      "created_many": "{{count}} canteiros adicionados."
+    },
+    "duplicateField": {
+      "title": "Duplicar parcela",
+      "name": "Nome da nova parcela",
+      "copyBeds": "Copiar canteiros ({{total}})",
+      "replaceSearch": "Substituir nos nomes dos canteiros",
+      "replaceWith": "por",
+      "searchNotFound": "Não foi encontrado em nenhum nome de canteiro.",
+      "previewSection": "Pré-visualizar",
+      "previewField": "Nova parcela {{name}}",
+      "previewDimensions": "{{length}} × {{width}} m",
+      "previewBeds_one": "{{count}} canteiro: {{names}}",
+      "previewBeds_other": "{{count}} canteiros: {{names}}",
+      "nameTaken": "Já existe uma parcela com este nome nesta exploração.",
+      "bedNamesConflict_one": "Após a substituição, vários canteiros teriam este nome: {{names}}",
+      "bedNamesConflict_other": "Após a substituição, vários canteiros partilhariam um destes nomes: {{names}}",
+      "invalidBedNames_one": "Após a substituição, este nome de canteiro ficaria vazio ou demasiado longo: {{names}}",
+      "invalidBedNames_other": "Após a substituição, estes nomes de canteiro ficariam vazios ou demasiado longos: {{names}}",
+      "bedNamesBlocked": "A substituição origina nomes de canteiro vazios ou repetidos.",
+      "submit": "Duplicar",
+      "saveError": "Não foi possível duplicar a parcela. Nada foi guardado.",
+      "created": "Parcela «{{name}}» adicionada",
+      "createdWithBeds_one": "Parcela «{{name}}» adicionada com {{count}} canteiro",
+      "createdWithBeds_other": "Parcela «{{name}}» adicionada com {{count}} canteiros",
+      "previewBeds_many": "{{count}} canteiros: {{names}}",
+      "bedNamesConflict_many": "Após a substituição, vários canteiros partilhariam um destes nomes: {{names}}",
+      "invalidBedNames_many": "Após a substituição, estes nomes de canteiro ficariam vazios ou demasiado longos: {{names}}",
+      "createdWithBeds_many": "Parcela «{{name}}» adicionada com {{count}} canteiros"
+    }
+  },
+  "emptyAreas": {
+    "title": "Ainda não existem áreas de cultivo",
+    "description": "A exploração principal ainda não está disponível neste projeto. Depois será possível registar parcelas e canteiros nessa exploração.",
+    "missingLocationTitle": "Exploração em falta",
+    "missingLocationDescription": "A exploração principal ainda não está disponível neste projeto.",
+    "missingFieldTitle": "Parcela em falta",
+    "missingFieldSingleLocationDescription": "Crie uma parcela para começar.",
+    "additionalLocationHint": "Se gerir áreas em vários locais, também é possível",
+    "additionalLocationLink": "criar explorações adicionais",
+    "missingFieldMultipleLocationsBeforeIcon": "Adicione uma parcela à exploração pretendida através do",
+    "missingFieldMultipleLocationsAfterIcon": "ícone ou do menu de contexto.",
+    "actions": {
+      "createLocation": "Adicionar exploração",
+      "createField": "Adicionar parcela",
+      "createBed": "Adicionar canteiro"
+    }
+  },
+  "confirm": {
+    "deleteFieldWithBeds": "Pretende eliminar esta parcela? Todos os canteiros associados também serão eliminados.",
+    "deleteBed": "Pretende eliminar este canteiro?"
+  },
+  "commands": {
+    "create": "Criar novo",
+    "delete": "Eliminar (Alt+Shift+D)",
+    "keywords": {
+      "create": "novo, áreas de cultivo, criar",
+      "edit": "editar",
+      "delete": "eliminar"
+    }
+  },
+  "mobile": {
+    "expand": "Expandir: {{name}}",
+    "collapse": "Recolher: {{name}}",
+    "hasNotes": "Nota disponível",
+    "secondary": {
+      "field_zero": "Sem parcelas",
+      "field_one": "{{count}} parcela",
+      "field_other": "{{count}} parcelas",
+      "dimensions": "{{type}} · {{length}} × {{width}} m · {{area}} m²",
+      "noDimensions": "{{type}} · sem dimensões",
+      "field_many": "{{count}} parcelas"
+    },
+    "sheet": {
+      "topLevel": "Nível superior",
+      "editTitle": "Editar {{type}}",
+      "createTitle": "Adicionar {{type}}",
+      "locationNoDimensions": "As explorações não têm dimensões próprias.",
+      "calculatedArea": "Área (calculada)",
+      "discardTitle": "Descartar alterações?",
+      "discardMessage": "Existem alterações não guardadas. Descartar ou continuar a editar?",
+      "discardKeep": "Continuar a editar",
+      "discardConfirm": "Descartar"
+    },
+    "typeLabel": {
+      "location": "Exploração",
+      "field": "Parcela",
+      "bed": "Canteiro"
+    }
+  }
+}

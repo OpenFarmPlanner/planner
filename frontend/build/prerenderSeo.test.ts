@@ -100,7 +100,7 @@ describe('applyHeadTags', () => {
     // The language versions reach the preboot as a script value, before its
     // own script, never as DOM text.
     expect(html).toContain(
-      '<script>window.__OFP_PAGE_ALTERNATES__ = {"de":"/ueber","en":"/en/about","fr":"/fr/a-propos","es":"/es/acerca-de","it":"/it/chi-siamo"};</script>',
+      '<script>window.__OFP_PAGE_ALTERNATES__ = {"de":"/ueber","en":"/en/about","fr":"/fr/a-propos","es":"/es/acerca-de","it":"/it/chi-siamo","pt":"/pt/sobre"};</script>',
     );
     expect(html).not.toContain('data-ofp-page-alternates');
     expect(html).toContain(`<title>${meta.title}</title>`);

@@ -148,6 +148,7 @@ describe('public page registry', () => {
       { hreflang: 'fr', href: 'https://example.org/fr/a-propos' },
       { hreflang: 'es', href: 'https://example.org/es/acerca-de' },
       { hreflang: 'it', href: 'https://example.org/it/chi-siamo' },
+      { hreflang: 'pt', href: 'https://example.org/pt/sobre' },
       { hreflang: 'x-default', href: 'https://example.org/ueber' },
     ]);
   });

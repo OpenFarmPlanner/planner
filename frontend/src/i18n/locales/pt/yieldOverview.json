@@ -1,0 +1,38 @@
+{
+  "loading": "A carregar...",
+  "errors": {
+    "load": "Não foi possível carregar a visão geral dos rendimentos."
+  },
+  "filters": {
+    "crop": "Cultura",
+    "allCrops": "Todas as culturas",
+    "period": "Visualização",
+    "week": "Semana",
+    "month": "Mês"
+  },
+  "chart": {
+    "title": "Distribuição dos rendimentos",
+    "subtitle": "Previsão a partir das séries da época ativa: área planeada ou número de plantas multiplicado pelo rendimento esperado da cultura.",
+    "tooltip": "{{period}} · {{crop}}: {{yield}} kg",
+    "tooltipPeriod": "Período",
+    "tooltipYield": "Rendimento esperado",
+    "yearBoundary": "Mudança de ano: {{year1}} → {{year2}}"
+  },
+  "legend": {
+    "showAll": "Mostrar todas as {{count}} culturas",
+    "showMore": "Mostrar mais {{count}}",
+    "expand": "Mostrar mais",
+    "collapse": "Reduzir às {{count}} principais"
+  },
+  "contextMenu": {
+    "openCrop": "Abrir cultura"
+  },
+  "empty": {
+    "noPlansTitle": "Ainda não existe previsão de rendimentos",
+    "description": "As previsões de rendimentos ficam disponíveis quando existirem séries com períodos de colheita.",
+    "createPlanAction": "Adicionar série",
+    "noYieldTitle": "Sem rendimentos esperados nesta época",
+    "noYieldDescription": "Não existem dados de colheita para a época ativa. Verifique se as culturas têm rendimentos esperados definidos.",
+    "openPlansAction": "Abrir plano de cultivo"
+  }
+}

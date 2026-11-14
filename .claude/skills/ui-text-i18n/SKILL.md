@@ -1,6 +1,6 @@
 ---
 name: ui-text-i18n
-description: Add or change user-visible UI text in the frontend in all supported languages (de, en, fr, es, it) with correct plurals, placeholders and glossary terms. Use whenever a component, dialog, snackbar, tooltip, error message or email gets new or changed wording.
+description: Add or change user-visible UI text in the frontend in all supported languages (de, en, fr, es, it, pt) with correct plurals, placeholders and glossary terms. Use whenever a component, dialog, snackbar, tooltip, error message or email gets new or changed wording.
 ---
 
 # UI text in all supported languages
@@ -17,11 +17,12 @@ and section 8 (emails), terminology in `docs/i18n-glossary.md`.
 2. **Name the key** descriptively and hierarchically
    (`crops:form.growthDurationDaysHelp`), never numbered.
 3. **Write German first** (the reference bundle), then English, French and
-   Spanish and Italian. Look up every domain term in the glossary and keep its form of
+   Spanish, Italian and Portuguese. Look up every domain term in the glossary and keep its form of
    address.
 4. **Plurals**: use `t('key', { count })`, never `count === 1 ? …`. Add every
-   category per language: de/en `_one`, `_other`; fr/es/it `_one`, `_many`,
-   `_other`. French `_one` also covers 0, so interpolate `{{count}}`.
+   category per language: de/en `_one`, `_other`; fr/es/it/pt `_one`, `_many`,
+   `_other`. French `_one` also covers 0, so interpolate `{{count}}`. Portuguese uses
+   pt-PT rules explicitly through `canonicalPluralRules`: 0 and 0.5 are plural.
 5. **Placeholders**: the same `{{name}}` set in all supported languages.
 6. **In code**: no hardcoded strings and no `defaultValue` with German text.
    Map enum values, backend field names and API error codes to localized
