@@ -46,6 +46,13 @@ rule when a queue request has no position. Preserve unrelated prose, PR gates,
 other entries and their relative order. Move an existing row instead of adding
 a duplicate. Priority labels do not determine ordering. Keep #1058 open.
 
+On every queue inspection, apply the personal-acceptance cleanup rules in
+[`docs/work-execution-queue.md`](../../../docs/work-execution-queue.md#personal-acceptance-and-queue-cleanup):
+only the owner checks boxes. Retain unchecked completed rows for manual testing;
+remove checked rows only after verifying closure/merge and absence of an open
+implementation PR. Checked open work stays in the queue. Acceptance never
+replaces required implementation or review gates.
+
 Re-fetch immediately before writing. If the body changed, reapply the requested
 delta to that latest body; do not write an earlier reconstructed copy. GitHub
 issue-body writes do not provide an atomic compare-and-swap through these tools:
