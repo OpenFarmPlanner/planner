@@ -175,9 +175,12 @@ for (const viewport of [{ width: 375, height: 800 }, { width: 800, height: 375 }
       localStorage.setItem('ui.language', 'de');
       localStorage.setItem('ui.language.pendingChoice', 'de');
     });
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('lang', 'de');
-    await page.setViewportSize({ width: 1440, height: 900 });
+    // The shell language is ready before the lazy crop page registers its actions.
+    await expect(page.getByRole('heading', { name: 'Tomate', exact: true })).toBeVisible();
+    await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: 'Import/Export öffnen', exact: true }).click();
     await page.getByRole('menuitem', { name: /Alle Kulturen exportieren/ }).click();
     dialog = page.getByRole('dialog', { name: 'Kulturen exportieren' });
