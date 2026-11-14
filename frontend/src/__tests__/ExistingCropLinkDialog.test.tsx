@@ -130,4 +130,24 @@ describe('ExistingCropLinkDialog', () => {
     expect(onLinked).not.toHaveBeenCalled();
   });
 
+  it('preserves chosen values across import methods without pinning a one-time copy', async () => {
+    setup();
+    await waitFor(() => expect(button()).toBeEnabled());
+    const growth = screen.getByTestId('public-crop-sync-row-growth_duration_days');
+    fireEvent.click(growth.querySelector('input[value="mine"]')!);
+    fireEvent.click(screen.getByRole('radio', { name: t('library.importDecision.link') }));
+    await waitFor(() => expect(button('link')).toBeEnabled());
+    expect(growth.querySelector('input[value="mine"]')).toBeChecked();
+    const notes = screen.getByTestId('public-crop-sync-row-notes');
+    fireEvent.click(notes.querySelector('input[value="local"]')!);
+    fireEvent.click(screen.getByRole('radio', { name: t('library.importDecision.copy') }));
+    await waitFor(() => expect(button()).toBeEnabled());
+    expect(growth.querySelector('input[value="mine"]')).toBeChecked();
+    expect(notes.querySelector('input[value="mine"]')).toBeChecked();
+    expect(notes.querySelector('input[value="local"]')).not.toBeInTheDocument();
+    fireEvent.click(button());
+    await waitFor(() => expect(copy).toHaveBeenCalledWith(1, 77, [], 4, '2026-11-14T12:00:00Z'));
+    expect(link).not.toHaveBeenCalled();
+  });
+
 });

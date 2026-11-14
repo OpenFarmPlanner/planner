@@ -27,7 +27,14 @@ export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLink
   const hasProject = Number.isInteger(projectId) && projectId > 0;
   const [failed, setFailed] = useState<'failed' | 'projectChanged' | null>(null);
   const targetId = typeof target === 'number' ? target : undefined;
-  const preview = usePublicCropSyncPreview(targetId, publicCrop.id, Boolean(targetId), mode === 'link');
+  // Switching import methods keeps the same field decisions.
+  const preview = usePublicCropSyncPreview(targetId, publicCrop.id, Boolean(targetId), true);
+  const choices = { ...preview.choices };
+  if (mode === 'copy') {
+    for (const field of Object.keys(choices)) {
+      if (choices[field] === 'local') choices[field] = 'mine';
+    }
+  }
   const hasSelectable = candidates.some(candidate => !candidate.source_public_crop);
   const ready = target === 'new' ? canCreate && hasProject : Boolean(targetId && preview.preview);
   const confirm = async () => {
@@ -42,8 +49,8 @@ export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLink
         });
         onLinked(response.data.crop);
       } else if (targetId && preview.preview) {
-        const fields = preview.preview.changes.filter(change => preview.choices[change.field] !== 'mine'
-          && preview.choices[change.field] !== 'local').map(change => change.field);
+        const fields = preview.preview.changes.filter(change => choices[change.field] !== 'mine'
+          && choices[change.field] !== 'local').map(change => change.field);
         const response = mode === 'copy'
           ? await cropAPI.copyPublicCrop(targetId, publicCrop.id, fields, preview.preview.public_version, preview.preview.crop_updated_at)
           : await cropAPI.linkPublicCrop(targetId, publicCrop.id, fields, preview.preview.public_version, preview.preview.crop_updated_at, preview.selection.pinFields);
@@ -78,7 +85,7 @@ export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLink
           </RadioGroup>
           <Alert severity="info">{t(mode === 'copy' ? 'library.importDecision.copyHelp' : 'library.importDecision.linkHelp')}</Alert>
           {targetId ? <PublicCropSyncPanel changes={preview.preview?.changes.map(change => ({ ...change, pushable: true })) ?? null}
-            choices={preview.choices} onChoicesChange={preview.setChoices} requiresModeration={false}
+            choices={choices} onChoicesChange={preview.setChoices} requiresModeration={false}
             keepMineLocally allowLocal={mode === 'link'} disabled={submitting} loadError={preview.loadError} /> : null}
           {target === 'new' && !hasProject ? <Alert severity="warning">{t('library.importDecision.projectChanged')}</Alert> : null}
           {failed ? <Alert severity="error">{t(`library.importDecision.${failed}`)}</Alert> : null}

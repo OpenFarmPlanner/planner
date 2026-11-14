@@ -212,6 +212,19 @@ for (const entryPoint of ['publish', 'import', 'copy'] as const) {
     await localChoice.focus();
     await localChoice.press('Space');
     await expect(localChoice).toBeChecked();
+    if (entryPoint === 'copy') {
+      const growth = page.getByTestId('public-crop-sync-row-growth_duration_days');
+      const keepGrowth = growth.getByRole('radio', { name: labels.library.linkExisting.keepLocal, exact: true });
+      await keepGrowth.focus();
+      await keepGrowth.press('Space');
+      await page.getByRole('radio', { name: labels.library.importDecision.link, exact: true }).click();
+      await expect(keepGrowth).toBeChecked();
+      await page.getByRole('radio', { name: labels.library.importDecision.copy, exact: true }).click();
+      await expect(keepGrowth).toBeChecked();
+      const takeGrowth = growth.getByRole('radio', { name: labels.library.linkExisting.takeLibrary, exact: true });
+      await takeGrowth.focus();
+      await takeGrowth.press('Space');
+    }
     for (const viewport of [{ width: 375, height: 800 }, { width: 768, height: 900 },
       { width: 1024, height: 900 }, { width: 1440, height: 900 }, { width: 800, height: 375 }]) {
       await page.setViewportSize(viewport);
@@ -226,10 +239,11 @@ for (const entryPoint of ['publish', 'import', 'copy'] as const) {
     }
     await confirm.click();
     await expect(confirm).not.toBeVisible();
-    const linked = await apiRequest<{ id: number; source_public_crop: number; notes: string; library_pinned_fields: string[] }>(page, 'GET', `/crops/${local.id}/`);
+    const linked = await apiRequest<{ id: number; source_public_crop: number; growth_duration_days: number; notes: string; library_pinned_fields: string[] }>(page, 'GET', `/crops/${local.id}/`);
     expect(linked.id).toBe(local.id);
     expect(linked.source_public_crop).toBe(entryPoint === 'copy' ? null : published.public_crop.id);
     expect(linked.notes).toBe('Private synthetic note');
+    expect(linked.growth_duration_days).toBe(80);
     if (entryPoint === 'copy') expect(linked.library_pinned_fields).toEqual([]);
     else expect(linked.library_pinned_fields).toContain('notes');
     const savedRows = await apiRequest<{ results: (CropRow & { crop_species: number; source_public_crop: number | null })[] }>(page, 'GET', '/crops/?page_size=500');
