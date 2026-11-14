@@ -38,7 +38,7 @@ function assess(status, coverage, report, policy) {
     for (const instance of alert.instances) {
       const url = new URL(instance.uri);
       requireValid(url.origin === TARGET.slice(0, -1), 'Alert outside the isolated target.');
-      const fixture = url.pathname === '/__zap_fixture__/';
+      const fixture = url.pathname === '/__zap_fixture__/' && String(alert.pluginid) === '10021';
       const candidate = policy.rules[String(alert.pluginid)];
       const rule = candidate
         && !(candidate.excludePathPrefixes ?? []).some(prefix => url.pathname.startsWith(prefix))

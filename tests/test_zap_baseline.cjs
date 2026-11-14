@@ -63,6 +63,16 @@ test('a new rule remains visible and explicitly needs triage without blanket war
   assert.equal(result.status, 'completed-with-findings');
 });
 
+test('an unexpected high-risk rule on the fixture still requires triage', () => {
+  const f = fixture();
+  f.report.site[0].alerts.push({ pluginid: '99999', riskcode: '3',
+    instances: [{ uri: TARGET + '__zap_fixture__/' }] });
+  const result = evaluate(f);
+  assert.equal(result.findings[0].classification, 'benign-fixture');
+  assert.equal(result.findings[1].classification, 'needs-triage');
+  assert.equal(result.findings[1].risk, 3);
+});
+
 test('unanswered optional crawler records are explicit coverage gaps, never completed responses', () => {
   const f = fixture();
   f.coverage.requests.push({ method: 'GET', path: '/unanswered', status: 0 });
