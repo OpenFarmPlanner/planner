@@ -1,5 +1,4 @@
 import type { Crop } from '../api/types';
-import type { PublicCropUpdateController } from './usePublicCropUpdate';
 
 /**
  * The public-library state of a crop, shown as an action in the crop detail
@@ -52,7 +51,12 @@ export interface CropLibraryAction {
 /** The dialog a library action opens: the publishing wizard or the pull diff. */
 export type CropLibraryTrigger = 'publish' | 'diff';
 
-export type CropLibrarySyncFlags = Pick<PublicCropUpdateController, 'hasOpenUpdate' | 'isRejected'>;
+export interface CropLibrarySyncFlags {
+  /** An undecided library update exists. */
+  hasOpenUpdate: boolean;
+  /** The pending library version was explicitly declined. */
+  isRejected: boolean;
+}
 
 /**
  * The two pull-side flags straight from the serialized crop. The detail

@@ -1,20 +1,16 @@
 from __future__ import annotations
 
 import copy
-import json
 import re
 
-# The public crop library (PublicCrop + this module) is a candidate for
-# extraction into a separate service consumed by OFP over an API (under
-# discussion as of 2026-07). Keep this module's dependency on `farm.models`
-# limited to Crop/Project/PublicCrop, and avoid pulling in
-# project-history/EntityRevision or other farm-app-internal concerns here.
+# Application bridge between project-owned crops and the public library.
+# Transactions and domain policy stay here; model-free value comparison lives
+# in public_crop_values so callers do not need this orchestration dependency.
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
 from django.contrib.auth import get_user_model
-from django.core.serializers.json import DjangoJSONEncoder
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -74,9 +70,9 @@ from farm.services.crop_inheritance import (
     forces_species_invariant_inheritance,
     get_general_crop,
     is_unset_crop_value,
+    lock_crop_project,
     resolve_crop_field,
     sync_crop_species_across_crop_group,
-    lock_crop_project,
     validate_general_crop_identity,
 )
 from farm.services.public_crop_trade_names import (
@@ -85,6 +81,9 @@ from farm.services.public_crop_trade_names import (
     prune_trade_names_for_variety,
     variety_identity_query,
 )
+from farm.services.public_crop_values import comparable_copy_fields as _comparable_copy_fields
+from farm.services.public_crop_values import json_safe as _json_safe
+from farm.services.public_crop_values import same_snapshot_value as _same_snapshot_value
 
 User = get_user_model()
 
@@ -413,18 +412,6 @@ def _copy_fields(instance: Any) -> dict[str, Any]:
     return payload
 
 
-def _comparable_copy_fields(payload: dict[str, Any]) -> dict[str, Any]:
-    """``payload`` as compared between a crop and an entry, never as written.
-
-    A ``seed_rate_unit`` without any seed rate carries no information. The crop
-    form drops such a unit on save, while an entry can still hold one, so it
-    would otherwise read as a difference no sync can resolve.
-    """
-    if payload.get('seed_rate_value') is None and not payload.get('seed_rate_by_cultivation'):
-        return {**payload, 'seed_rate_unit': None}
-    return payload
-
-
 def _resolved_copy_fields(
     crop: Crop,
     index: GeneralCropIndex | None = None,
@@ -445,10 +432,6 @@ def _resolved_copy_fields(
         if field in payload and field not in CROP_SPECIES_INVARIANT_FIELDS:
             payload[field] = resolve_crop_field(crop, field, index)
     return payload
-
-
-def _json_safe(value: Any) -> Any:
-    return json.loads(json.dumps(value, cls=DjangoJSONEncoder))
 
 
 # Compared fields that can never be kept locally: ``name`` and ``variety`` are
@@ -3818,16 +3801,6 @@ def public_update_keepable_fields(
         field for field in local_changes
         if field in pinnable and _has_effective_value(crop, field)
     }
-
-
-_EMPTY_SNAPSHOT_VALUES: tuple[Any, ...] = (None, '', [], {})
-
-
-def _same_snapshot_value(value: Any, snapshot_value: Any) -> bool:
-    """Equality for snapshot values, with every empty spelling counting as the same."""
-    if value in _EMPTY_SNAPSHOT_VALUES and snapshot_value in _EMPTY_SNAPSHOT_VALUES:
-        return True
-    return value == snapshot_value
 
 
 def validate_public_update_pin_fields(

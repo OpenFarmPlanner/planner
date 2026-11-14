@@ -13,6 +13,7 @@ from django.utils.translation import gettext as _
 from rest_framework import serializers
 
 from accounts.demo_access import is_active_guest_demo_user
+from accounts.public_identity import get_public_user_label
 from config.languages import UI_LANGUAGE_AUTO, UI_LANGUAGE_VALUES
 from crops.permissions import is_public_library_moderator
 from farm.models import ProjectMembership
@@ -133,8 +134,7 @@ class UserSerializer(serializers.ModelSerializer):
         return full_name or obj.email or obj.username
 
     def get_public_display_name(self, obj: User) -> str:
-        public_profile = getattr(obj, 'public_profile', None)
-        return public_profile.public_display_name if public_profile else ''
+        return get_public_user_label(obj)
 
     def get_default_project_id(self, obj: User) -> int | None:
         settings = getattr(obj, 'project_settings', None)

@@ -1519,7 +1519,8 @@ backend/crops/
                     migrations — never edited, see its README
   services.py      list_published_crops(), get_published_crop(),
                     find_exact_crop_match() — reads farm.models.PublicCrop,
-                    nothing else
+                    trade-name queries; late bridge calls finish/cancel
+                    species relinks and remove rejected entries
   serializers.py   CropSerializer (read-only; deliberately excludes
                     source_project/source_project_crop — see §3),
                     CropSpecies + moderator-request serializers
@@ -1601,26 +1602,31 @@ inline (`aria-hidden`) next to "In Bibliothek teilen". It never points at the
 
 ## 3. The domain rule, and where it bites
 
-> "Die Crop Library darf keinerlei Wissen über Projekte besitzen. Die
-> Projektlogik darf lediglich die Crop Library verwenden."
+The confirmed design is a modular monolith: reuse crop facts, forms and pure
+display/validation helpers, while keeping project ownership and public
+moderation workflows distinct. The application bridge owns interactions
+between them. The [incremental boundary audit](crop-library-boundaries.md)
+records the current dependencies and accepted exceptions (#1117).
 
 Applied concretely:
 
-- `crops/services.py` imports only `farm.models.PublicCrop` and
-  `farm.utils.normalize_text` — never farm's view/serializer packages,
-  `Project`, or `Crop`. This is the one dependency direction that matters:
-  if `crops` imports from farm's serializers, the arrow points the wrong way
-  (crop library depending on farm planning).
-- **The rule has two live exceptions today, and they are worth knowing
-  about before you extract the app.** `crops/serializers.py` imports
-  `get_public_user_label` from `farm.crops.serializers.public`, and
-  `crops/views.py` imports `guest_demo_forbidden_response` /
-  `is_active_guest_demo_user` from `accounts.demo_access`. Neither touches
-  `Project` or `Crop`, so the *data* boundary still holds, but the import
-  graph is no longer strictly one-directional. If `crops` is ever pulled out
-  into its own service, these two are the concrete things that have to move
-  (a shared display-label helper) or be re-expressed at the boundary (a guest
-  check the crop library cannot make on its own).
+- `crops/services.py` reads `farm.models.PublicCrop`, text normalization and
+  trade-name query helpers. Species moderation intentionally makes late
+  calls to `farm.services.public_crops` to finish/cancel relinks and remove
+  rejected entries. The bridge imports species lookup at module scope; the
+  reverse workflow calls stay late. This is a real logical dependency cycle,
+  not evidence of a failing runtime circular import. Do not move transaction
+  or project policy into a duplicate library implementation.
+- Public contributor labels come from the model-free
+  `accounts.public_identity.get_public_user_label`, shared by account and
+  library serializers and anonymous-author classification. The old
+  `farm.crops.serializers.public` import remains a compatibility alias, but
+  `crops.serializers` no longer imports that web serializer module.
+- Accepted adapters remain explicit: `crops/views.py` uses
+  `accounts.demo_access` for guest-account restrictions; request-region
+  resolution in `crops.serializers` can consult the optional active project.
+  Shared companion notes, plant-family and crop-value helpers are reused.
+  These are not permission-free replacements for the bridge.
 - `crops/serializers.py`'s `CropSerializer` is **not** a re-export or
   subclass of `farm.crops.serializers.PublicCropSerializer`, even though
   they're currently near-identical — importing it would create exactly
@@ -1638,6 +1644,10 @@ Applied concretely:
   direction; deciding whether it should
   someday become a real network call (once crops is an actual separate
   service) is future work, documented in §5, not solved now.
+  Pure snapshot encoding/comparison lives in the model-free internal
+  `farm/services/public_crop_values.py`; the original helper names remain
+  importable through the bridge façade. Locks, validation, permissions and
+  writes remain in the application service.
 - `frontend/src/pages/usePublicCropLibrary.ts` — the hook driving
   publish/import from the project Crop Library page — stays in `pages/` for the same
   reason: it's the Farm-Planning-side integration point, not

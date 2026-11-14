@@ -80,6 +80,9 @@ for step-by-step procedures of recurring tasks, see the skills in
 - **[Crop Library Architecture](./crop-library-architecture.md)** — the
   project-owned `Crop` vs. shared `PublicCrop` split, and the `crops`
   Django app that prepares (but doesn't yet expose) a public Crop Library.
+- **[Crop Library Boundary Audit](./crop-library-boundaries.md)** — current
+  import/ownership inventory, shared UI facts, deliberate workflow differences
+  and small model-free extractions with compatibility and rollback guidance.
 - **[Crop spreadsheet and JSON import](./crop-spreadsheet-import.md)** — bounded
   preview/apply batches, cross-batch identity and neighbours, source rows and
   truthful partial results after an interrupted import.
