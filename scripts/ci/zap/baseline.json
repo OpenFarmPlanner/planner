@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "mode": "advisory-rollout",
+  "rules": {
+    "10020": {
+      "excludePathPrefixes": ["/api/"],
+      "classification": "ci-configuration",
+      "reason": "The disposable static server has no deployment proxy anti-framing headers; this is not a production assessment."
+    },
+    "10021": {
+      "excludePathPrefixes": ["/api/"],
+      "classification": "ci-configuration",
+      "reason": "The disposable static server does not add nosniff; the synthetic fixture deliberately proves this rule. Django API headers are preserved."
+    },
+    "10027": {
+      "evidenceContains": "build/seoPlugin.ts from seoConfig.ts",
+      "classification": "informational",
+      "reason": "Observed public build/SEO comments and client bootstrap source, not credentials; review new evidence rather than suppressing the rule."
+    },
+    "10036": {
+      "evidenceContains": "SimpleHTTP/0.6 Python/3.12.12",
+      "classification": "ci-configuration",
+      "reason": "The disposable Python static server identifies its own version; it is not the deployed frontend server."
+    },
+    "10038": {
+      "excludePathPrefixes": ["/api/"],
+      "classification": "ci-configuration",
+      "reason": "This static CI transport does not emulate the deployment proxy CSP; missing headers here do not establish production configuration."
+    },
+    "10096": {
+      "pathPrefix": "/assets/",
+      "evidenceOneOf": ["1640531535", "1831565813", "2048144777", "1540483477"],
+      "classification": "false-positive-evidence",
+      "reason": "These exact bundled numeric literals are hash/PRNG constants, not timestamps. Different evidence requires triage; the rule remains enabled."
+    },
+    "10109": {
+      "classification": "coverage-limitation",
+      "reason": "SPA bootstrap detected: the non-JavaScript classic spider does not exercise authenticated or client-rendered behavior."
+    }
+  }
+}

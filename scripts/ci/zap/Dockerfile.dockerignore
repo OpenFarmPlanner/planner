@@ -1,0 +1,16 @@
+**
+!backend/
+!backend/**
+!frontend/
+!frontend/dist/
+!frontend/dist/**
+!scripts/
+!scripts/ci/
+!scripts/ci/zap/
+!scripts/ci/zap/**
+**/.env*
+**/.venv
+**/__pycache__
+**/*.sqlite3*
+**/media
+**/staticfiles

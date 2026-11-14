@@ -10,6 +10,7 @@ separate because each check answers a different security question.
 | CodeQL | Pull requests, pushes to `main`, weekly, manual | Scan Python and JavaScript/TypeScript source for security-relevant data-flow and coding defects. |
 | Django deployment checks | The backend CI job | Fail CI when Django reports a deployment security warning for the production-like CI configuration. |
 | Dependabot | Weekly | Propose updates for Python, npm, and GitHub Actions dependencies. |
+| ZAP passive baseline | Pull requests to `main`, manual | Observe anonymous responses from a disposable local build. Rollout findings are advisory; missing coverage or scanner failure fails the job. |
 
 The scheduled dependency and CodeQL scans are intentional: a vulnerability can
 be disclosed after an unchanged commit has passed its pull-request checks.
@@ -34,6 +35,104 @@ still fails the workflow exactly as before.
 `pip-audit` has the same shape of exit code and has not been given the same
 treatment, because it has not been observed failing this way. If it starts
 to, fix it the same way rather than pinning or skipping the scan.
+
+## ZAP passive baseline (#1071)
+
+`.github/workflows/zap-security.yml` runs on PRs to `main` and manual dispatch
+with contents-read permission, no stored checkout credential, no secrets and
+no configurable target. It builds the same production frontend/prerender used
+by E2E and a Python/Daphne target image from the locked backend dependencies.
+Only CI imports `scripts/ci/zap/zap_settings.py`: a new SQLite file under
+`/tmp`, synthetic private crop/project, in-memory email delivery, no E2E token,
+no external credentials and no production settings changes.
+
+The target runs unprivileged with a read-only filesystem and temporary `/tmp`,
+on Docker **`--network none`**, with no published ports. ZAP joins that exact
+network namespace; the only reachable application is the hardcoded
+`http://127.0.0.1:4173/`. Neither canonical links nor PR inputs can give this
+namespace external connectivity. Package/image downloads happen before runtime
+isolation. No host files, Docker socket, accounts, cookies or credentials are
+passed to ZAP: it mounts only its hook and disposable report directory.
+
+The official `ghcr.io/zaproxy/zaproxy:2.17.0` image is pinned to the Linux amd64
+digest recorded in `scripts/ci/zap/run.cjs`. Its classic `zap-baseline.py` runs
+with `-silent` (no addon updates), no active/Ajax scan, form processing and
+POST submission disabled, one minute of spidering and a five-minute passive
+wait. The target maps flat prerender files (`en.html`, `en/about.html`) to their
+canonical slashless routes. The hook seeds the public landing pages,
+`/api/schema/`, an anonymous
+`/api/crops/` denial probe and a harmless JavaScript fixture. The CI static
+gateway proxies only those two API paths, without forwarding authentication;
+other API routes and non-GET/HEAD methods are not proxied. Excluded API paths
+receive a CI-generated JSON denial rather than an HTML page that could be
+mistaken for application content.
+
+### Completion, reports and rollout policy
+
+`assess.cjs` requires the pinned version, expected origin, ordinary scanner
+exit, empty passive queue, actual successful required public responses, the
+matching fixed page-path and language markers in each landing page's HTML, an
+anonymous 401/403 crop response, and a real rule-10021 finding on the fixture's
+deliberately missing `nosniff` header. Stale reports are deleted before each run.
+Exit 0 or 2, or HTTP 200 from an SPA fallback, proves nothing. Startup failure,
+missing/malformed reports,
+wrong origin, missing required response or missing fixture detection produces
+**inconclusive** and fails the job. Real isolated unreachable-target and
+failed-before-startup invocations test that path on every run.
+
+On all outcomes where the runner can still execute upload steps, the seven-day
+`zap-passive-baseline` artifact contains `result.json` and `summary.html`.
+Completed scans also provide raw `report.json` / `report.html`, `coverage.json`
+with only method/path/status and verified public-page language metadata,
+exit/image metadata and scanner logs. Response bodies and headers are not
+copied into the coverage artifact.
+Negative controls have separate HTML/JSON outcomes and logs under `negative/`.
+Missing raw ZAP reports on a startup/crash outcome are explicitly inconclusive,
+never fabricated clean reports. No authenticated traffic or sensitive test
+credentials are generated. Abrupt runner loss/cancellation can prevent uploads.
+
+All findings remain in raw reports: there are **no suppressed rules**. During
+rollout they do not block simply because ZAP calls them WARN; new rules or
+unmatched evidence are marked `needs-triage`. Classifications annotate evidence,
+not exceptions to other checks. A future policy blocking verified regressions
+needs an agreed, reliable baseline; this PR establishes no such blanket policy.
+
+The local 2.17.0 scan observed 71 responses, verified all four landing-page
+language/path markers and had zero remaining passive records. It also recorded
+11 optional crawler nodes with response status 0;
+`coverageGaps` lists these rather than counting them as successful requests.
+Required seeds must still respond. The report contains five warning rules and
+two informational rules, with bounded representative instances:
+
+| Rule | Initial classification and evidence |
+| --- | --- |
+| 10020 / 10021 / 10038 | CI static-server anti-framing/nosniff/CSP configuration differences. API paths are excluded from this annotation, so missing API headers require triage. The fixture's 10021 is separately `benign-fixture`. |
+| 10036 | CI server version header, matched to the disposable SimpleHTTP/Python version; not the deployed server. |
+| 10027 | Informational public build/SEO comment, matched to its observed text. Different comments need triage. |
+| 10096 | Four verified false-positive literals in bundled assets: hash/PRNG constants `1640531535`, `1831565813`, `2048144777`, `1540483477`. Annotation matches exact evidence and asset paths; other values require triage. Raw warnings remain. |
+| 10109 | SPA detection and missing client-rendered coverage. |
+
+The source annotations live in `scripts/ci/zap/baseline.json`. They do not assert
+that similar production findings are safe. The static gateway does not emulate
+the deployment reverse proxy/TLS: this HTTP-only scan cannot establish CSP,
+anti-framing, HSTS, cookie or TLS behavior in production. The non-JavaScript
+spider sees prerendered pages/assets and SPA shells; it does not certify routes
+behind login, frontend interactions, API authorization, tenancy, forms, email
+or data-changing endpoints. Optional unanswered crawler nodes remain visible
+coverage gaps. Existing Claude/Codex review, CodeQL, dependency checks and
+Django deployment checks remain separate and unchanged.
+
+Review new evidence before calling it a vulnerability. Reproduce genuine
+application defects against the disposable instance, deduplicate open/closed
+security issues, and use the shared issue/private-handoff rules. Do not file
+production defects solely from this CI transport's headers. Later authenticated
+or active API coverage needs its own design, disposable accounts/tenant tests,
+bounded request policy and separate authorization; it is excluded here.
+
+Update the official version **and** digest together, verify the upstream
+release/architecture, rerun positive/negative controls and review report/schema
+and baseline changes in an independently reviewed PR. Do not switch to `stable`,
+`weekly`, automatic addon updates or warning suppression to recover a failed scan.
 
 ## GitHub repository settings
 
@@ -414,6 +513,17 @@ Per-PR review results do not belong here; they live in the PR's review
 comment. Add an entry with the date, the decision, the reason and the
 PR or issue that made it. Reviewers must not re-report an accepted risk or
 deliberate exception listed here.
+
+### 2026-11-14 — Isolated passive ZAP rollout (#1071)
+
+The owner requested anonymous passive baseline coverage with advisory initial
+findings and failing infrastructure/required-coverage checks. Runtime targets
+and scanner share a network-less Docker namespace; no deployed target, active
+scan or authentication is authorized. CI transport annotations suppress no
+rules and establish no production exception. Introducing regression-blocking
+rules or active/authenticated coverage needs a separately agreed policy.
+This complements, without changing, the independent security completion gate.
+See [the scan contract and initial evidence](#zap-passive-baseline-1071).
 
 ### 2026-11-14 — Owner-authorized agent inputs and local fixture handoff
 
