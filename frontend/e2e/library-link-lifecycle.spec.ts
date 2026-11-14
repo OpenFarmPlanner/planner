@@ -413,6 +413,15 @@ for (const { width, surface } of [{ width: 375, surface: 'dialog' }, { width: 14
     expect(group).toHaveLength(2);
     expect(group.every(crop => crop.source_public_crop !== null)).toBe(true);
     expect(group.every(crop => crop.derived_from_public_crop !== null)).toBe(true);
+    if (surface === 'page') {
+      await browser.getByRole('button', { name: germanCrops.filters.openAdvanced, exact: true }).click();
+      await page.getByLabel(germanCrops.filters.growthDaysMin, { exact: true }).fill('');
+      await page.keyboard.press('Escape');
+      await search.fill('');
+      await browser.getByRole('option', { name: species.name, exact: true }).click();
+      await expect(browser.getByRole('button', { name: germanCrops.library.linkExisting.alreadyLinked, exact: true }).first()).toBeDisabled();
+      await expect(page.getByRole('dialog', { name: germanCrops.library.importDecision.title })).toHaveCount(0);
+    }
   });
 }
 

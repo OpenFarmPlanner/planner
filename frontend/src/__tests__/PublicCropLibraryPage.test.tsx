@@ -2204,6 +2204,31 @@ describe('PublicCropLibraryPage', () => {
       window.removeEventListener(GLOBAL_SNACKBAR_EVENT, snackbarSpy);
     });
 
+    it('refreshes the implicitly linked general culture after a direct variety import', async () => {
+      const general: PublicCrop = { ...publicCrops[0], id: 3, variety: '' };
+      const initial = [...publicCrops, general];
+      publicCropApiMocks.list.mockResolvedValue(paginated(initial.map(crop => ({
+        ...crop, project_import_status: { crop_id: crop.id + 90, is_up_to_date: true,
+          is_modified_from_source: false },
+      })))).mockResolvedValueOnce(paginated(initial));
+      publicCropApiMocks.importToProject.mockResolvedValue({ data: {
+        crop: { id: 99, name: 'Tomate', variety: 'Roma', source_public_crop: 1,
+          source_public_version: 1, is_modified_from_source: false, public_update_available: false },
+        operation: 'created',
+      } });
+      const user = userEvent.setup();
+      renderPage();
+      const search = await screen.findByLabelText('Öffentliche Kulturen durchsuchen');
+      await user.type(search, 'Tomate');
+      await importViaButton(user);
+      await waitFor(() => expect(publicCropApiMocks.list).toHaveBeenCalledTimes(2));
+      expect(search).toHaveValue('Tomate');
+      await user.click(screen.getByRole('option', { name: 'Tomate', exact: true }));
+      await waitFor(() => expect(within(screen.getByTestId('public-crop-detail-header'))
+        .getByRole('button', { name: 'Bereits verknüpft' })).toBeDisabled());
+      expect(publicCropApiMocks.importPreview).toHaveBeenCalledTimes(1);
+    });
+
     it('shows a non-blocking info toast when re-importing an unchanged crop', async () => {
       const user = userEvent.setup();
       const snackbarSpy = vi.fn<(event: Event) => void>();

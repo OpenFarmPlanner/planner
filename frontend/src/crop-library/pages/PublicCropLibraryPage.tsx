@@ -999,6 +999,7 @@ export default function PublicCropLibraryPage() {
       }
       const importedCrop = response.data.crop;
       markProjectImport(publicCropId, importedCrop);
+      if (newEntry) await loadCrops();
       if (mode === 'update') {
         showGlobalSnackbar({ message: t('library.importUpdatedForced', { name }), severity: 'success' });
       } else if (mode === 'new') {
@@ -1045,7 +1046,7 @@ export default function PublicCropLibraryPage() {
       importInFlight.current = false;
       setImportingId(null);
     }
-  }, [markProjectImport, t]);
+  }, [loadCrops, markProjectImport, t]);
 
   const handleImport = useCallback(async (): Promise<void> => {
     if (!selectedCrop) {
