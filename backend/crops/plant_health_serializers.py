@@ -143,7 +143,7 @@ class PlantHealthHostSerializer(serializers.ModelSerializer):
             attrs.get("variety_name", getattr(self.instance, "variety_name", "")).split()
         )
         duplicates = PlantHealthHost.objects.filter(
-            entry=entry, species=species, variety_name=variety
+            entry=entry, species=species, variety_name=variety, is_active=True
         )
         if self.instance is not None:
             duplicates = duplicates.exclude(pk=self.instance.pk)

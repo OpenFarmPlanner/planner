@@ -272,6 +272,17 @@ def write_host(
         if not archive:
             PlantHealthHostSerializer(instance=host).validate(attrs)
         if host is None:
+            # An archived link of the same scope is reactivated: the unique scope constraint
+            # would otherwise make a once-archived relationship impossible to restore.
+            host = PlantHealthHost.objects.filter(
+                entry=entry,
+                species=attrs["species"],
+                variety_name=attrs["variety_name"],
+                is_active=False,
+            ).first()
+            if host is not None:
+                attrs = {**attrs, "is_active": True}
+        if host is None:
             host = PlantHealthHost.objects.create(**attrs)
         else:
             for field, value in attrs.items():

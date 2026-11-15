@@ -320,6 +320,20 @@ class PlantHealthApiTests(TestCase):
             "Only the documented synthetic variety.",
         )
         self.assertFalse(history[0]["snapshot"]["hosts"][0]["is_active"])
+        recreated = self.client.post(
+            HOSTS,
+            {
+                "entry": entry_id,
+                "species": self.species.pk,
+                "variety_name": "Example variety",
+                "sources": [SOURCE],
+                "is_confirmed": True,
+            },
+            format="json",
+        )
+        self.assertEqual(recreated.status_code, 201, recreated.data)
+        self.assertEqual(recreated.data["id"], host_id)
+        self.assertTrue(recreated.data["is_active"])
 
     def test_history_actor_privacy_and_stable_entry_pseudonyms(
         self,
