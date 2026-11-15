@@ -8,6 +8,9 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
 
 ### Features
 
+- Add the plant-health catalogue foundation (#1011): stable identities, seven-language
+  names, sourced and qualified host relationships, auditable moderation, and a
+  platform-token maintenance API. Private crop tags and sharing follow separately.
 - Platform admins can update plant-family language labels through the
   translation-only API using a write-scoped crop-library token. Existing
   languages, family identities, crop links and rotation defaults are preserved.

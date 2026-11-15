@@ -185,7 +185,17 @@ class CropSpeciesViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         if not is_public_library_moderator(request.user):
             return self._moderator_required_response()
-        return super().destroy(request, *args, **kwargs)
+        from django.db.models.deletion import ProtectedError
+
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except ProtectedError:
+            return api_error_response(
+                code='species_has_protected_references',
+                detail=('This species is referenced by catalogue host evidence '
+                        'and cannot be deleted.'),
+                status_code=status.HTTP_409_CONFLICT,
+            )
 
     @staticmethod
     def _moderator_required_response() -> Response:

@@ -80,6 +80,8 @@ for step-by-step procedures of recurring tasks, see the skills in
 - **[Crop Library Architecture](./crop-library-architecture.md)** — the
   project-owned `Crop` vs. shared `PublicCrop` split, and the `crops`
   Django app that prepares (but doesn't yet expose) a public Crop Library.
+- **[Plant-health Catalogue](./plant-health-catalogue.md)** — global identities,
+  multilingual names, sourced host relationships, moderation and API boundaries.
 - **[Crop Library Boundary Audit](./crop-library-boundaries.md)** — current
   import/ownership inventory, shared UI facts, deliberate workflow differences
   and small model-free extractions with compatibility and rollback guidance.

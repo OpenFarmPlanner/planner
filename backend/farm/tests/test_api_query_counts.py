@@ -26,6 +26,12 @@ from crops.models import (
     PublicLibraryModeratorRequest,
 )
 from crops.permissions import grant_public_library_moderator_access
+from crops.plant_health_models import (
+    PlantHealthEntry,
+    PlantHealthHost,
+    PlantHealthRevision,
+    PlantHealthTranslation,
+)
 from farm.models import (
     Bed,
     Crop,
@@ -64,6 +70,65 @@ PAGE_SIZE = 100
 
 class ListEndpointQueryCountTest(ProjectApiTestCase):
     """Each list endpoint must cost the same number of queries for every row."""
+
+    def test_plant_health_history_actor_queries_do_not_grow_with_rows(self):
+        self.user.is_staff = True
+        self.user.save(update_fields=['is_staff'])
+        entry = PlantHealthEntry.objects.create(name='Synthetic history identity')
+        history_url = f'/openfarmplanner/api/plant-health/entries/{entry.pk}/history/'
+        PlantHealthRevision.objects.create(
+            entry=entry, actor=self.user, action='create', snapshot={},
+        )
+        self.client.get(history_url)
+        with CaptureQueriesContext(connection) as initial:
+            self.client.get(history_url)
+        for index in range(2):
+            actor = User.objects.create_user(username=f'synthetic-history-curator-{index}')
+            PlantHealthRevision.objects.bulk_create([
+                PlantHealthRevision(entry=entry, actor=actor, action='update', snapshot={})
+                for _ in range(ROW_COUNT)
+            ])
+        with self.assertNumQueries(len(initial)):
+            response = self.client.get(history_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1 + 2 * ROW_COUNT)
+        self.assertEqual({row['actor_anonymous_number'] for row in response.data}, {1, 2, 3})
+
+    def test_plant_health_lists_have_constant_query_counts(self):
+        entries_url = '/openfarmplanner/api/plant-health/entries/'
+        hosts_url = '/openfarmplanner/api/plant-health/hosts/'
+        species = CropSpecies.objects.create(name='Synthetic host', status='published')
+
+        def add_identity(index):
+            entry = PlantHealthEntry.objects.create(
+                name=f'Synthetic pest {index}', kind='pest', status='published',
+                scientific_name=f'Syntheticus pest {index}',
+            )
+            PlantHealthTranslation.objects.create(
+                entry=entry, language_code='de', preferred_name=f'Synthetischer Schädling {index}',
+            )
+            PlantHealthHost.objects.create(
+                entry=entry, species=species, is_confirmed=True,
+                sources=[{'url': 'https://example.org/synthetic-host-study'}],
+            )
+
+        add_identity(0)
+        self.client.get(entries_url)
+        self.client.get(hosts_url)
+        with CaptureQueriesContext(connection) as initial_entries:
+            self.client.get(entries_url)
+        with CaptureQueriesContext(connection) as initial_hosts:
+            self.client.get(hosts_url)
+        for index in range(1, ROW_COUNT + 1):
+            add_identity(index)
+        with self.assertNumQueries(len(initial_entries)):
+            response = self.client.get(entries_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], ROW_COUNT + 1)
+        with self.assertNumQueries(len(initial_hosts)):
+            response = self.client.get(hosts_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], ROW_COUNT + 1)
 
     def setUp(self):
         super().setUp()

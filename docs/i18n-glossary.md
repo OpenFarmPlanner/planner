@@ -355,3 +355,21 @@ Terms marked † for domain review: IT *aiuola* (alternative *prosa*), *vivaio*,
 *serie*; PT *exploração*, *viveiro*, *plantas de viveiro*, *época*, *série*;
 NL *areaal*, *teelt* as one planting-plan entry. These choices distinguish the
 whole planning page from one succession; they do not imply database translations.
+
+### Pest and disease catalogue (#1011)
+
+The existing “Schädlinge und Krankheiten” term remains the general heading.
+A catalogue identity is not an infestation observation or a resistance claim.
+Broad groups and disease concepts never establish a confirmed shared pathogen.
+
+| DE | EN | FR | ES | IT | PT (pt-PT) | NL |
+| --- | --- | --- | --- | --- | --- | --- |
+| Schädlings- und Krankheitskatalog | Pest and disease catalogue | Catalogue des ravageurs et maladies | Catálogo de plagas y enfermedades | catalogo di parassiti e malattie | catálogo de pragas e doenças | catalogus van plagen en ziekten |
+| Krankheitserreger | Pathogen | Agent pathogène | Patógeno | patogeno | agente patogénico | ziekteverwekker |
+| Krankheitsbild | Disease concept | Maladie | Enfermedad | malattia | doença | ziektebeeld |
+| Sammelbegriff | Broad group | Groupe général | Grupo amplio | gruppo generico | grupo genérico | brede groep |
+| Wirtspflanze | Host plant | Plante hôte | Planta hospedante | pianta ospite | planta hospedeira | waardplant |
+| bestätigte Wirtspflanze | Confirmed host plant | Plante hôte confirmée | Planta hospedante confirmada | pianta ospite confermata | planta hospedeira confirmada | bevestigde waardplant |
+| unbestätigte Zuordnung | Unconfirmed association | Association non confirmée | Asociación no confirmada | associazione non confermata | associação não confirmada | onbevestigde koppeling |
+| Quellenbeleg | Source evidence | Source | Fuente | fonte | fonte | bron |
+| wissenschaftlicher Ersatzname | Scientific-name fallback | Nom scientifique par défaut | Nombre científico alternativo | nome scientifico sostitutivo | nome científico alternativo | wetenschappelijke naam als terugval |
