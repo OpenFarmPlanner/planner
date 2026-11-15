@@ -961,6 +961,20 @@ test('visible same-head running rows remain evidence when both hidden markers ar
   }
 });
 
+test('authenticated visible running summaries block even when current hidden markers are unusable', async () => {
+  for (const kind of ['missing', 'malformed', 'unsupported']) {
+    const f = nativeSnapshotFixture(); f.summary.body = f.summary.history[0].diff;
+    if (kind === 'missing') f.summary.body = f.summary.body.replace(/^<!--[^\n]+-->\n?/gm, '');
+    if (kind === 'malformed') f.summary.body = f.summary.body.replace(/<!-- codex-[^\n]+-->/g,
+      '<!-- codex-security-review:v1 {broken} -->');
+    if (kind === 'unsupported') f.summary.body = f.summary.body.replaceAll(':v1 ', ':v2 ');
+    f.comments.push(reportComment, approvalComment());
+    assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_pending', kind);
+    assert.equal((await snapshot({ ...f.args, expectedHead: HEAD,
+      codexVerifier: async () => ({ allowed: true, state: 'codex_local_completed' }) })).state, 'codex_native_pending', kind);
+  }
+});
+
 test('second-precision artifact timestamps cannot certify a task in the same timestamp second', async () => {
   const f = nativeSnapshotFixture();
   f.contextArtifacts[0].created_at = '2026-11-15T07:25:00Z';

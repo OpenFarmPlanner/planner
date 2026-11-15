@@ -75,6 +75,10 @@ const NATIVE_CODEX_APP = 1144995;
 const NATIVE_CODEX_BOT = 199175422;
 const nativeCodexAuthor = comment => comment.user?.type === 'Bot' &&
   comment.user.id === NATIVE_CODEX_BOT && comment.performed_via_github_app?.id === NATIVE_CODEX_APP;
+const visibleNativeRunning = (body, head) => {
+  const row = (typeof body === 'string' ? body : '').match(/^\|[^\n]*Security Review[^\n]*\bRunning\b[^\n]*\| `([0-9a-f]{7,40})` \|/m);
+  return Boolean(row && head.startsWith(row[1]));
+};
 
 async function nativeEvidenceProvenance({ github, context, checked, history = false, historyCursor = null, verified = () => {} }) {
   if (checked.length > 100) return 'Too many native records to verify in one snapshot.';
@@ -118,6 +122,12 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
   const ambiguous = reason => blocked('codex_native_ambiguous', reason);
   const summaries = [];
   let summaryProblem;
+  let visiblePending = false;
+  for (const comment of comments.filter(item => nativeCodexAuthor(item) && visibleNativeRunning(item.body, head))) {
+    const problem = await nativeEvidenceProvenance({ github, context, checked: [comment] });
+    if (problem) summaryProblem = problem;
+    else visiblePending = true;
+  }
   for (const comment of comments.filter(item => nativeCodexAuthor(item) && marker.test(item.body ?? ''))) {
     let evidence;
     try { evidence = JSON.parse(comment.body.match(marker)[1]); }
@@ -161,7 +171,7 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
       return blocked('codex_native_incomplete', 'An authenticated current-head native receipt reports a nonclean result.');
     }
   }
-  if (authenticated.some(pending)) return blocked('codex_native_pending', 'The native security review is still in progress.');
+  if (visiblePending || authenticated.some(pending)) return blocked('codex_native_pending', 'The native security review is still in progress.');
   if (summaryProblem) return invalid(summaryProblem);
   if (!authenticated.length) return null;
   if (authenticated.length !== 1) return ambiguous('Multiple native summaries make task correlation ambiguous; a fresh head is required.');
@@ -228,10 +238,9 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
     let previous;
     try { previous = JSON.parse(edit.diff.match(marker)?.[1]); } catch { previous = null; }
     const previousState = securityState({ body: edit.diff });
-    const visibleRunning = edit.diff.match(/^\|[^\n]*Security Review[^\n]*\bRunning\b[^\n]*\| `([0-9a-f]{7,40})` \|/m);
     if (!(previous?.headSha === head && previous.status === 'running') &&
         !(previousState?.commit_sha === head && previousState.status === 'running') &&
-        !(visibleRunning && head.startsWith(visibleRunning[1]))) continue;
+        !visibleNativeRunning(edit.diff, head)) continue;
     if (previous?.repository !== evidence.repository || previous.pullRequestNumber !== evidence.pullRequestNumber ||
         previous.headSha !== head || previous.status !== 'running' ||
         previousState?.commit_sha !== head || previousState.status !== 'running') {

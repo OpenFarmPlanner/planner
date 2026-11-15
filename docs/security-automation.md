@@ -310,6 +310,8 @@ Every receipt must follow the running revision's edit timestamp by at least one
 second, so a same-second older result cannot be rebound to a later task.
 An authenticated visible same-head running row with malformed or unsupported
 hidden markers is ambiguous evidence, not an ignorable historical record.
+The current visible running summary also stays pending when its hidden markers
+are missing, malformed or unsupported; older approvals cannot override it.
 Multiple same-head executions are ambiguous
 because the summary carries no task ID; even clean repeats require a fresh head
 and context. Ambiguity may conceal a pending task, so human and signed
