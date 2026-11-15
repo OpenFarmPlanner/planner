@@ -33,7 +33,8 @@ export function NameFields({ value, scientificName, onChange, disabled }: {
               slotProps={{ htmlInput: { lang: code } }} onChange={event => set(code, { synonyms: event.target.value.split('\n') })} />
             <FormControlLabel control={<Checkbox checked={Boolean(row.is_scientific_fallback)} disabled={disabled || !scientificName.trim() && !row.is_scientific_fallback}
               onChange={(_, checked) => set(code, { is_scientific_fallback: checked,
-                preferred_name: checked ? scientificName.trim() : row.preferred_name })} />}
+                preferred_name: checked ? scientificName.trim() : row.preferred_name,
+                fallback_reason: checked ? row.fallback_reason ?? '' : '' })} />}
               label={t('plantHealthCatalogue.scientificFallback')} />
             {row.is_scientific_fallback ? <TextField label={t('plantHealthCatalogue.fallbackReason')} value={row.fallback_reason ?? ''}
               required disabled={disabled} fullWidth size="small" onChange={event => set(code, { fallback_reason: event.target.value })} /> : null}

@@ -63,6 +63,26 @@ describe('catalogue entry editor', () => {
     expect(plantHealthAPI.create).toHaveBeenCalledWith(expect.objectContaining({ name: 'A synthetic pest', kind: 'group', sources: [], translations: [expect.objectContaining({ language_code: 'en', preferred_name: 'A synthetic pest' })] }));
     expect(plantHealthAPI.approve).not.toHaveBeenCalled();
   });
+  it('can omit an optional language after disabling its scientific fallback', async () => {
+    const user = userEvent.setup();
+    const actions = callbacks();
+    vi.mocked(plantHealthAPI.create).mockResolvedValue({ data: entry() } as never);
+    render(<EntryDialog mode="create" {...actions} />);
+    await user.type(screen.getByRole('textbox', { name: 'Name (English)' }), 'Primary name');
+    await user.type(screen.getByRole('textbox', { name: 'Scientific name' }), 'Syntheticus example');
+    const language = screen.getByRole('button', { name: 'Français', exact: true });
+    await user.click(language);
+    const fields = within(language.closest('.MuiAccordion-root') as HTMLElement);
+    await user.click(fields.getByRole('checkbox'));
+    await user.type(fields.getByRole('textbox', { name: 'Reason for the scientific-name fallback' }), 'Synthetic fallback reason.');
+    await user.click(fields.getByRole('checkbox'));
+    await user.clear(fields.getByRole('textbox', { name: 'Name (French)' }));
+    await user.click(screen.getByRole('button', { name: 'Save', exact: true }));
+    await waitFor(() => expect(actions.onSaved).toHaveBeenCalledOnce());
+    expect(plantHealthAPI.create).toHaveBeenCalledWith(expect.objectContaining({
+      translations: [expect.objectContaining({ language_code: 'en', preferred_name: 'Primary name' })],
+    }));
+  });
   it('does not submit an incomplete approval', async () => {
     const user = userEvent.setup();
     render(<EntryDialog entry={entry({ translations: [{ language_code: 'en', preferred_name: 'Only English' }] })} mode="approve" {...callbacks()} />);
