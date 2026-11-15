@@ -11,7 +11,7 @@ import { createNameDrafts, sourcePayload, translationPayload } from '../crop-lib
 import type { PlantHealthEntry, PlantHealthHost } from '../crop-library/plant-health/types';
 
 vi.mock('../crop-library/plant-health/api', () => ({ plantHealthAPI: {
-  create: vi.fn(), update: vi.fn(), approve: vi.fn(), saveHost: vi.fn(), list: vi.fn(), history: vi.fn(),
+  create: vi.fn(), update: vi.fn(), approve: vi.fn(), saveHost: vi.fn(), list: vi.fn(), history: vi.fn(), review: vi.fn(),
 } }));
 const entry = (overrides: Partial<PlantHealthEntry> = {}): PlantHealthEntry => ({
   id: 14, identity_key: 'synthetic-identity', name: 'Synthetic reference', scientific_name: 'Syntheticus example', kind: 'pathogen', eppo_code: '',
@@ -181,4 +181,42 @@ it('shows public, anonymous and deleted actors in the moderator history', async 
   expect(within(dialog).getByText('Public curator')).toBeInTheDocument();
   expect(within(dialog).getByText('Anonymous 2')).toBeInTheDocument();
   expect(within(dialog).getByText('Unknown user')).toBeInTheDocument();
+});
+
+
+describe('catalogue moderation pagination', () => {
+  it.each(['approve', 'reject', 'archive'] as const)('returns to matching results after %s removes the last row on page two', async action => {
+    const user = userEvent.setup();
+    let changed = false;
+    const first = entry({ id: 1, display_name: 'Synthetic first-page result' });
+    const last = entry({ id: 21, display_name: 'Synthetic final proposal' });
+    vi.mocked(plantHealthAPI.list).mockImplementation(async params => ({ data: {
+      count: changed ? 20 : 21,
+      results: params.page === 2 ? changed ? [] : [last] : [first],
+    } }) as never);
+    vi.mocked(plantHealthAPI.approve).mockImplementation(async () => {
+      changed = true; return { data: last } as never;
+    });
+    vi.mocked(plantHealthAPI.review).mockImplementation(async () => {
+      changed = true; return { data: last } as never;
+    });
+    render(<PlantHealthCataloguePanel />);
+    await screen.findByRole('article', { name: first.display_name });
+    await user.type(screen.getByRole('textbox', { name: i18n.t('crops:plantHealthCatalogue.search') }), 'Synthetic');
+    await waitFor(() => expect(plantHealthAPI.list).toHaveBeenLastCalledWith(
+      expect.objectContaining({ q: 'Synthetic', page: 1 }), expect.any(AbortSignal)));
+    await user.click(await screen.findByRole('button', { name: 'Go to page 2' }));
+    const card = await screen.findByRole('article', { name: last.display_name });
+    const openAction = action === 'approve' ? 'review' : action;
+    await user.click(within(card).getByRole('button', { name: i18n.t(`crops:plantHealthCatalogue.${openAction}`), exact: true }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: i18n.t(`crops:plantHealthCatalogue.${action}`), exact: true }));
+    await screen.findByRole('article', { name: first.display_name });
+    expect(plantHealthAPI.list).toHaveBeenLastCalledWith(expect.objectContaining({
+      q: 'Synthetic', status: 'proposed', page: 1,
+    }), expect.any(AbortSignal));
+    expect(screen.queryByRole('article', { name: last.display_name })).not.toBeInTheDocument();
+    expect(screen.queryByText(i18n.t('crops:plantHealthCatalogue.empty'))).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+  });
 });

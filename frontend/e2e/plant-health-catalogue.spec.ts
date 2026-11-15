@@ -144,3 +144,41 @@ for (const { code } of SUPPORTED_LANGUAGES) {
     });
   }
 }
+
+for (const width of [375, 1440]) {
+  test(`plant-health moderation returns from an emptied second page at ${width}px`, async ({ page, request }, testInfo) => {
+    test.setTimeout(120_000);
+    const scenario = `plant-health-pagination-${width}-${Date.now()}`;
+    const prefix = `Synthetic pagination ${scenario}`;
+    await page.setViewportSize({ width, height: width === 375 ? 800 : 900 });
+    try {
+      await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true, libraryModerator: true });
+      for (let index = 0; index < 21; index++) {
+        const name = `${prefix} ${String(index).padStart(2, '0')}`;
+        await apiRequest(page, 'POST', '/plant-health/entries/', {
+          name, kind: 'group', translations: [{ language_code: 'de', preferred_name: name }],
+        });
+      }
+      await page.goto('/app/public-library-moderation');
+      const panel = page.getByRole('region', { name: de.plantHealthCatalogue.title });
+      await panel.getByLabel(de.plantHealthCatalogue.search).fill(prefix);
+      await expect(panel.getByRole('article')).toHaveCount(20);
+      await panel.getByRole('navigation').getByRole('button', { name: /2/ }).click();
+      await expect(panel.getByRole('article')).toHaveCount(1);
+      const card = panel.getByRole('article');
+      const removedName = await card.getAttribute('aria-label');
+      await card.getByRole('button', { name: de.plantHealthCatalogue.reject, exact: true }).click();
+      const dialog = page.getByRole('dialog', { name: de.plantHealthCatalogue.reject, exact: true });
+      await dialog.getByRole('button', { name: de.plantHealthCatalogue.reject, exact: true }).click();
+      await expect(dialog).not.toBeVisible();
+      await expect(panel.getByRole('article')).toHaveCount(20);
+      await expect(panel.getByRole('article', { name: removedName!, exact: true })).toHaveCount(0);
+      await expect(panel.getByLabel(de.plantHealthCatalogue.search)).toHaveValue(prefix);
+      await expect(panel.getByRole('combobox', { name: de.plantHealthCatalogue.status, exact: true })).toContainText(de.plantHealthCatalogue.statuses.proposed);
+      await expect(panel.getByRole('navigation')).toHaveCount(0);
+      await panel.getByRole('article').first().scrollIntoViewIfNeeded();
+      await expectNoHorizontalPageOverflow(page);
+      await page.screenshot({ path: testInfo.outputPath(`plant-health-pagination-${width}.png`), animations: 'disabled' });
+    } finally { await resetE2EScenario(request, scenario); }
+  });
+}

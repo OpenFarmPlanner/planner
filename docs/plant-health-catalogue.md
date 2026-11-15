@@ -57,6 +57,10 @@ proposal never publishes it. Only session-authenticated moderators may approve,
 reject, archive or reopen an entry. Reopening a rejected/archived identity keeps
 its UUID and returns it to proposed status for another complete review.
 
+After a successful catalogue save or moderation action, the moderation list returns
+to its first page while preserving its search and status filters. Removing the
+last matching row on a later page cannot leave the remaining results unreachable.
+
 Partial translation writes upsert only supplied languages and fields. Omitted
 languages, synonyms and regional names survive. Explicit `synonyms: []` and
 `regional_names: {}` clear those fields. An empty translations array is a no-op;

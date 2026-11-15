@@ -48,7 +48,11 @@ export function PlantHealthCataloguePanel() {
     const timeout = window.setTimeout(() => { void load(controller.signal); }, 250);
     return () => { window.clearTimeout(timeout); controller.abort(); };
   }, [load, language]);
-  const saved = async () => { await load(); showGlobalSnackbar({ message: t('crops:plantHealthCatalogue.saved'), severity: 'success' }); };
+  const saved = async () => {
+    if (page === 1) await load();
+    else { setLoading(true); setPage(1); }
+    showGlobalSnackbar({ message: t('crops:plantHealthCatalogue.saved'), severity: 'success' });
+  };
   const startReview = (target: ReviewTarget) => { setReview(target); setReviewNote(''); setActionFailed(false); };
   const applyReview = async () => {
     if (!review || lock.current) return;
