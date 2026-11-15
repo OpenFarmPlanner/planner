@@ -280,7 +280,7 @@ function nativeFixture() {
     author: { __typename: 'Bot', databaseId: 199175422 } })) });
   return { evidence, summary, receipt, comments, args: { head: HEAD, now: NATIVE_NOW, comments,
     context: { repo: { owner: 'owner', repo: 'repo' }, payload: { pull_request: { number: 1 } } },
-    github: { graphql, rest: { repos: { getCommit: async ({ ref }) => {
+    github: { graphql, rest: { git: { getRef: async () => { throw Object.assign(new Error('Not found'), { status: 404 }); } }, repos: { getCommit: async ({ ref }) => {
       if (![HEAD, HEAD.slice(0, 10)].includes(ref)) throw new Error('Unknown commit');
       return { data: { sha: HEAD } };
     } } } } } };
@@ -369,6 +369,7 @@ function nativeSnapshotFixture() {
   const f = nativeFixture();
   const listFiles = () => {}, listComments = () => {};
   f.args.github.rest = {
+    git: f.args.github.rest.git,
     pulls: { get: async () => ({ data: { state: 'open', base: { sha: OLD }, labels: [], user: { login: 'owner' },
       head: { sha: HEAD, repo: { full_name: 'owner/repo' } } } }), listFiles },
     issues: { listComments },
@@ -447,4 +448,16 @@ test('native commit abbreviations must resolve unambiguously to the entire curre
     assert.equal(result.allowed, false);
     assert.equal(result.state, 'codex_native_invalid');
   }
+});
+
+
+test('hex-named Git references cannot shadow a reviewed commit abbreviation', async () => {
+  const f = nativeFixture();
+  f.args.github.rest.git.getRef = async ({ ref }) => {
+    if (ref.startsWith('heads/')) return { data: { object: { sha: HEAD } } };
+    throw Object.assign(new Error('Not found'), { status: 404 });
+  };
+  assert.equal((await verifiedNativeCodexReview(f.args)).allowed, false);
+  f.args.github.rest.git.getRef = async () => { throw new Error('API unavailable'); };
+  assert.equal((await verifiedNativeCodexReview(f.args)).allowed, false);
 });

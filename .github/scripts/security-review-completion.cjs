@@ -137,11 +137,25 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
   }
   const sha = receipt.body.match(/^\*\*Reviewed commit:\*\* `([0-9a-f]{10,40})`$/m)?.[1];
   const task = receipt.body.match(/^\[View security finding report\]\((https:\/\/chatgpt\.com\/codex\/(?:cloud\/)?tasks\/[a-zA-Z0-9_-]+)\)$/m)?.[1];
-  if (!sha || !task) {
+  if (!sha || !head.startsWith(sha) || !task) {
     return invalid('The native security receipt does not establish a clean review for this head.');
   }
   // Resolve the provider's abbreviation through GitHub's commit object API. A prefix
   // collision must fail closed; startsWith alone would bind only 40 bits of the SHA.
+  if (sha.length < 40) {
+    // The commit endpoint also accepts named refs. Do not let a hex-named branch/tag
+    // shadow an ambiguous object abbreviation (including Git's other DWIM namespaces).
+    const refs = [sha, `tags/${sha}`, `heads/${sha}`, `remotes/${sha}`, `remotes/${sha}/HEAD`];
+    try {
+      const named = await Promise.all(refs.map(async ref => {
+        try { await github.rest.git.getRef({ ...context.repo, ref }); return true; }
+        catch (error) { if (error.status === 404) return false; throw error; }
+      }));
+      if (named.some(Boolean)) return invalid('The abbreviated reviewed SHA is shadowed by a named Git reference.');
+    } catch {
+      return invalid('Named-reference ambiguity could not be checked.');
+    }
+  }
   let reviewed;
   try {
     ({ data: reviewed } = await github.rest.repos.getCommit({ ...context.repo, ref: sha }));
