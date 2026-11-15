@@ -8,6 +8,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AbstractBaseUser
 from django.core.management.base import BaseCommand, CommandError, CommandParser
 from django.db import connection, transaction
 from django.db.migrations.executor import MigrationExecutor
@@ -45,6 +46,11 @@ class Command(BaseCommand):
         parser.add_argument(
             "--include-direct-import", action="store_true",
             help="Also prepare an empty project for a one-click linked library import.",
+        )
+
+        parser.add_argument(
+            "--include-name-conflicts", action="store_true",
+            help="Add two unclassified import targets and a legacy numbered-name sync conflict.",
         )
 
     def validate_database(self, confirmed_name: str) -> tuple[str, str, str]:
@@ -120,23 +126,9 @@ class Command(BaseCommand):
             f'Target: {engine}, host={host or "local file"}, database={name}; '
             f"user={user.username}; entry={entry.pk}."
         )
-        modes = (
-            ("once", "link", "resolve") if options.get("include_resolution") else ("once", "link")
-        )
-        if options.get("include_direct_import"):
-            modes += ("direct",)
+        modes = self._fixture_modes(options)
         if not options["apply"]:
-            if options.get("include_direct_import"):
-                self.stdout.write(
-                    f"Preview only: {len(modes)} projects: {len(modes) - 1} with one "
-                    "general culture, 12 varieties and 12 plans each, plus one empty "
-                    "direct-import project. No changes made."
-                )
-            else:
-                self.stdout.write(
-                    f"Preview only: {len(modes)} projects, each with one general culture, "
-                    "12 varieties and 12 plans. No changes made."
-                )
+            self._preview(modes, options)
             return
         with transaction.atomic():
             for mode in modes:
@@ -165,50 +157,7 @@ class Command(BaseCommand):
                         "no reset performed."
                     )
                     continue
-                ProjectMembership.objects.create(project=project, user=user, role="admin")
-                SeasonPattern.objects.create(project=project)
-                year = date.today().year
-                season = Season.objects.create(
-                    project=project,
-                    start_date=date(year, 1, 1),
-                    end_date=date(year, 12, 31),
-                    created_by=user,
-                )
-                if mode == "direct":
-                    self.stdout.write(
-                        f"Created empty project {project.pk}: {project.name}; no matching culture."
-                    )
-                    continue
-                general = Crop.objects.create(
-                    project=project,
-                    name=entry.name,
-                    crop_species=entry.crop_species,
-                    growth_duration_days=(entry.growth_duration_days or 80) + 10,
-                    harvest_duration_days=(entry.harvest_duration_days or 20) + 7
-                    if mode == "resolve" else None,
-                    notes="Private acceptance-test notes: keep this value.",
-                    cultivation_types=["pre_cultivation"],
-                )
-                for index in range(1, 13):
-                    variety = Crop.objects.create(
-                        project=project,
-                        name=entry.name,
-                        crop_species=entry.crop_species,
-                        variety=f"Test variety {index:02d}",
-                        growth_duration_days=105 if index == 1 else None,
-                    )
-                    PlantingPlan.objects.create(
-                        project=project,
-                        season=season,
-                        crop=variety,
-                        planting_date=date(year, 5, 15),
-                        quantity=8,
-                        cultivation_type="pre_cultivation",
-                        created_by=user,
-                    )
-                self.stdout.write(
-                    f"Created project {project.pk}: {project.name}; general culture {general.pk}."
-                )
+                self._populate_project(project, user, entry, mode)
         self.stdout.write(
             "Fixtures ready. Import selected library values once in the first project "
             "and link in the second; preserve IDs, notes, variety overrides and plans."
@@ -227,3 +176,100 @@ class Command(BaseCommand):
                 "the existing-culture comparison still opens. Repeated seeding preserves "
                 "these manual decisions."
             )
+        if options.get("include_name_conflicts"):
+            self.stdout.write(
+                "In each unclassified project, use the picker/page import, explicitly select "
+                "the existing culture and confirm. In legacy-sync, take the library name: "
+                "expect a conflict and unchanged rows, then cancel. No repair is performed."
+            )
+
+    @staticmethod
+    def _fixture_modes(options: dict[str, object]) -> tuple[str, ...]:
+        modes = (
+            ("once", "link", "resolve") if options.get("include_resolution") else ("once", "link")
+        )
+        if options.get("include_direct_import"):
+            modes += ("direct",)
+        if options.get("include_name_conflicts"):
+            modes += ("unclassified-picker", "unclassified-page", "legacy-sync")
+        return modes
+
+    def _preview(self, modes: tuple[str, ...], options: dict[str, object]) -> None:
+        if options.get("include_name_conflicts"):
+            self.stdout.write(
+                f"Preview only: {len(modes)} projects ({', '.join(modes)}); "
+                "unclassified modes keep the general culture and varieties without a species. "
+                "The legacy-sync project also has a numbered linked general culture. "
+                "No changes made."
+            )
+            return
+        if options.get("include_direct_import"):
+            self.stdout.write(
+                f"Preview only: {len(modes)} projects: {len(modes) - 1} with one "
+                "general culture, 12 varieties and 12 plans each, plus one empty "
+                "direct-import project. No changes made."
+            )
+        else:
+            self.stdout.write(
+                f"Preview only: {len(modes)} projects, each with one general culture, "
+                "12 varieties and 12 plans. No changes made."
+            )
+
+    def _populate_project(
+        self, project: Project, user: AbstractBaseUser, entry: PublicCrop, mode: str,
+    ) -> None:
+        ProjectMembership.objects.create(project=project, user=user, role="admin")
+        SeasonPattern.objects.create(project=project)
+        year = date.today().year
+        season = Season.objects.create(
+            project=project,
+            start_date=date(year, 1, 1),
+            end_date=date(year, 12, 31),
+            created_by=user,
+        )
+        if mode == "direct":
+            self.stdout.write(
+                f"Created empty project {project.pk}: {project.name}; no matching culture."
+            )
+            return
+        unclassified = mode.startswith("unclassified-") or mode == "legacy-sync"
+        general = Crop.objects.create(
+            project=project,
+            name=entry.name,
+            crop_species=None if unclassified else entry.crop_species,
+            growth_duration_days=(entry.growth_duration_days or 80) + 10,
+            harvest_duration_days=(entry.harvest_duration_days or 20) + 7
+            if mode == "resolve" else None,
+            notes="Private acceptance-test notes: keep this value.",
+            cultivation_types=["pre_cultivation"],
+        )
+        for index in range(1, 13):
+            variety = Crop.objects.create(
+                project=project,
+                name=entry.name,
+                crop_species=None if unclassified else entry.crop_species,
+                variety=f"Test variety {index:02d}",
+                growth_duration_days=105 if index == 1 else None,
+            )
+            PlantingPlan.objects.create(
+                project=project,
+                season=season,
+                crop=variety,
+                planting_date=date(year, 5, 15),
+                quantity=8,
+                cultivation_type="pre_cultivation",
+                created_by=user,
+            )
+        if mode == "legacy-sync":
+            from farm.services.public_crops import import_public_crop_into_project
+
+            imported, _ = import_public_crop_into_project(
+                public_crop=entry, project=project, mode="new", base_version=entry.version,
+            )
+            self.stdout.write(
+                f"Legacy sync conflict: manual culture {general.pk}; "
+                f"numbered linked culture {imported.pk}. Both rows must be preserved."
+            )
+        self.stdout.write(
+            f"Created project {project.pk}: {project.name}; general culture {general.pk}."
+        )

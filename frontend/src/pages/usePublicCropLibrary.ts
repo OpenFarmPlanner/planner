@@ -1,3 +1,4 @@
+import type { PublicCropSyncSubmitResult } from '../crops/publicCropSync';
 import type { CropLinkCandidate } from '../crops/ExistingCropLinkDialog';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
@@ -231,6 +232,9 @@ export function usePublicCropLibrary({
 
   const describePublicSyncError = (error: unknown): string => {
     const code = extractApiErrorCode(error);
+    if (code === 'crop_name_conflict') {
+      return extractApiErrorMessage(error, t, t('library.sync.error'));
+    }
     if (code === 'stale_public_crop_version') {
       return t('library.sync.staleError');
     }
@@ -337,9 +341,9 @@ export function usePublicCropLibrary({
     pullFields: string[];
     pushFields: string[];
     pinFields: string[];
-  }): Promise<boolean> => {
+  }): Promise<PublicCropSyncSubmitResult> => {
     if (!selectedCrop?.id) {
-      return false;
+      return { success: false, error: t('library.sync.error') };
     }
     const name = formatCropDisplayName(selectedCrop);
     try {
@@ -350,11 +354,13 @@ export function usePublicCropLibrary({
         'success',
       );
       await refreshPublicCropStatusContext();
-      return true;
+      return { success: true };
     } catch (error) {
       console.error('Error syncing crop with the library:', error);
-      showSnackbar(describePublicSyncError(error), 'error');
-      return false;
+      return {
+        success: false, error: describePublicSyncError(error),
+        code: extractApiErrorCode(error) ?? undefined,
+      };
     } finally {
       setPublishingCropId(null);
     }

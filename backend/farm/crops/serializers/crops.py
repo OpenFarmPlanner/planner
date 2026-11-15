@@ -60,6 +60,7 @@ from farm.services.crop_display import resolve_crop_display_name
 from farm.services.crop_inheritance import (
     CROP_INHERITABLE_FIELDS,
     CROP_SPECIES_INVARIANT_FIELDS,
+    CropNameConflict,
     build_effective_crop_values,
     build_general_crop_index,
     build_inherited_crop_values,
@@ -70,6 +71,7 @@ from farm.services.crop_inheritance import (
     is_unset_crop_value,
     lock_crop_project,
     promote_species_invariant_values,
+    raise_general_crop_name_conflict,
     resolve_effective_rotation_break_years,
     resolve_effective_timing_windows,
     resolve_plants_per_m2,
@@ -123,17 +125,6 @@ class MediaFileReferenceSerializer(serializers.Serializer):
 
     id = serializers.IntegerField()
     storage_path = serializers.CharField()
-
-
-class CropNameConflict(APIException):
-    status_code = 409
-    default_code = 'crop_name_conflict'
-
-    def __init__(self) -> None:
-        super().__init__({
-            'code': self.default_code,
-            'detail': 'A general crop with this name already exists in this project.',
-        })
 
 
 class LibraryPinnedFieldsInvalid(APIException):
@@ -1454,14 +1445,7 @@ class CropSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def _raise_name_conflict_if_general_name_constraint(exc: IntegrityError) -> None:
-        constraint = getattr(getattr(exc.__cause__, 'diag', None), 'constraint_name', None)
-        message = str(exc)
-        if (
-            constraint == 'unique_general_crop_name_per_project'
-            or 'unique_general_crop_name_per_project' in message
-            or message == 'UNIQUE constraint failed: farm_crop.project_id, farm_crop.name_normalized'
-        ):
-            raise CropNameConflict() from exc
+        raise_general_crop_name_conflict(exc)
 
     def _creates_inheriting_variety(self, attrs: dict[str, Any]) -> bool:
         return (

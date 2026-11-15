@@ -136,3 +136,7 @@ export function splitSyncChoices(
   });
   return { pullFields, pushFields, pinFields };
 }
+
+export type PublicCropSyncSubmitResult =
+  | { success: true }
+  | { success: false; error: string; code?: string };

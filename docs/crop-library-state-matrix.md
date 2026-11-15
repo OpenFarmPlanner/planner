@@ -146,7 +146,8 @@ Rules that cut across cells:
 | Already-linked target | Retain re-import conflict/update behavior; reject another initial link |
 | Multiple candidates | No preselected target; reject links retaining duplicate general rows of one species |
 | Entry/local row changed after preview | Refuse stale confirmation; reload comparison; no partial mutation |
-| General identity writers | CRUD, implicit general creation, species assignment and restore serialize on the project row and reject a conflicting active general identity. Busy projects return 409 rather than waiting in reverse library/project lock order. Legacy duplicates remain readable; no canonical row is selected. |
+| General identity writers | CRUD, initial link/copy, library sync/update, implicit general creation, species assignment and restore serialize on the project row and reject a conflicting active general identity. Busy projects return 409 rather than waiting in reverse library/project lock order. Legacy duplicates remain readable; no canonical row is selected. |
+| Legacy numbered import beside a manual general culture | Pulling the occupied library name through public-sync returns 409 crop_name_conflict; both rows, references, pins, history and public data stay unchanged, including on retry. The comparison stays open with decisions intact and a localized inline error. Correction is explicit; cancel writes nothing. |
 | Restore after replacement | Undelete and historical restore reject a conflicting general identity atomically, leaving deleted rows and their varieties unchanged. |
 | Legacy duplicate generals | Display as general entries; reject rename/delete; expose full delete scope and block confirmation |
 

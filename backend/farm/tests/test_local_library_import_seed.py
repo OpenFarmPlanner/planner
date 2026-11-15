@@ -224,3 +224,33 @@ class LocalLibraryImportSeedTests(TestCase):
                          set(self.project_ids_before + [occupied.pk]))
         self.assertEqual(Crop.objects.count(), 0)
         self.assertEqual(PlantingPlan.objects.count(), 0)
+
+
+    def test_name_conflict_fixtures_preview_guard_and_repeat_preserve_local_values(self):
+        self.seed(include_name_conflicts=True)
+        self.assertIn('5 projects', self.arguments['stdout'].getvalue())
+        self.assertEqual(Crop.objects.count(), 0)
+        with override_settings(DJANGO_ENV='production'), self.assertRaises(CommandError):
+            self.seed(apply=True, include_name_conflicts=True)
+        self.seed(apply=True, include_name_conflicts=True)
+        for mode in ('unclassified-picker', 'unclassified-page', 'legacy-sync'):
+            project = Project.objects.get(
+                slug=f'local-library-import-{self.user.pk}-{self.entry.pk}-{mode}',
+            )
+            manual = Crop.objects.get(project=project, name=self.entry.name, variety='')
+            self.assertIsNone(manual.crop_species_id)
+            self.assertIsNone(manual.source_public_crop_id)
+            self.assertEqual(PlantingPlan.objects.filter(project=project).count(), 12)
+            if mode == 'legacy-sync':
+                imported = Crop.objects.get(project=project, source_public_crop=self.entry)
+                self.assertEqual(imported.name, f'{self.entry.name} (2)')
+                self.assertEqual(imported.crop_species_id, self.species.pk)
+            else:
+                self.assertEqual(Crop.objects.filter(project=project).count(), 13)
+        manual.notes = 'Preserved manual acceptance edits'
+        manual.save()
+        before = list(Crop.objects.order_by('pk').values())
+        public_before = list(PublicCrop.objects.values())
+        self.seed(apply=True, include_name_conflicts=True)
+        self.assertEqual(list(Crop.objects.order_by('pk').values()), before)
+        self.assertEqual(list(PublicCrop.objects.values()), public_before)
