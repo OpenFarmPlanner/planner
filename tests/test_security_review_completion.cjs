@@ -461,3 +461,18 @@ test('hex-named Git references cannot shadow a reviewed commit abbreviation', as
   f.args.github.rest.git.getRef = async () => { throw new Error('API unavailable'); };
   assert.equal((await verifiedNativeCodexReview(f.args)).allowed, false);
 });
+
+
+test('overlapping same-head native reviews cannot hide a findings receipt with a later clean one', async () => {
+  for (const findingsFirst of [true, false]) {
+    const f = nativeSnapshotFixture();
+    const other = { ...structuredClone(f.receipt), id: 5, node_id: 'findings',
+      html_url: 'https://github.com/owner/repo/pull/1#issuecomment-5',
+      created_at: findingsFirst ? '2026-11-15T07:25:16Z' : '2026-11-15T07:25:18Z',
+      body: f.receipt.body.replace('No security issues were found in this pull request.', 'Found security issues.')
+        .replace('task_review', 'task_other') };
+    f.comments.push(other, reportComment, approvalComment());
+    assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_incomplete');
+  }
+});
+

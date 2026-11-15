@@ -266,8 +266,12 @@ any provider commit abbreviation through GitHub's commit-object API and compare
 the returned full SHA; missing, ambiguous or differently resolved commits fail
 closed. A text-prefix match alone is never sufficient. GraphQL
 confirms the original author, last editor and unchanged body/version; a human
-edit cannot preserve app provenance. A running native review stays pending within the normal bounded CI polling
-window. A newer review or findings blocks an earlier clean result for the same
+edit cannot preserve app provenance. The summary does not expose a task ID. To avoid guessing task correspondence,
+all observed, authenticated receipts resolving to the current full head must
+report clean results. A findings receipt cannot be superseded by a different
+clean review of the same unchanged head, regardless of completion order. A
+running native review takes precedence over an older contingency approval and
+stays pending within the normal bounded CI polling window. A newer review or findings blocks an earlier clean result for the same
 head. Unverifiable or unsupported provider evidence still allows the optional
 explicit independent-human contingency; a supported nonclean result does not. Ordinary code reviews, reactions,
 request delivery, copied comments and unsupported provider formats are not

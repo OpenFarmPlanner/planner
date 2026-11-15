@@ -101,8 +101,18 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
     .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
   const receipt = receipts[0];
   if (!receipt) return invalid('No native security result receipt is available.');
+  // A summary does not carry a task ID. Never infer a clean outcome by pairing
+  // two independent "latest" records: every observed receipt for this head must
+  // be clean, regardless of overlapping tasks or their completion order.
+  const relevant = receipts.filter(item => {
+    const ref = item.body.match(/^\*\*Reviewed commit:\*\* `([0-9a-f]{10,40})`$/m)?.[1];
+    return ref && head.startsWith(ref);
+  });
+  const checked = [...new Map([summary, receipt, ...relevant].map(item => [item.node_id, item])).values()];
+  if (checked.length > 100) return invalid('Too many native receipts to verify in one consistent snapshot.');
+
   const prefix = `https://github.com/${context.repo.owner}/${context.repo.repo}/pull/${context.payload.pull_request.number}#issuecomment-`;
-  for (const comment of [summary, receipt]) {
+  for (const comment of checked) {
     if (comment.html_url !== `${prefix}${comment.id}` || !comment.node_id) {
       return invalid('Native security evidence is not bound to this PR.');
     }
@@ -117,12 +127,12 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
       author { __typename ... on Bot { databaseId } }
       editor { __typename ... on Bot { databaseId } }
     } }
-  }`, { ids: [summary.node_id, receipt.node_id] }));
+  }`, { ids: checked.map(item => item.node_id) }));
   } catch {
     return invalid('Native provenance could not be read from GitHub.');
   }
   const trustedActor = actor => actor?.__typename === 'Bot' && actor.databaseId === NATIVE_CODEX_BOT;
-  for (const comment of [summary, receipt]) {
+  for (const comment of checked) {
     const node = nodes?.find(item => item?.id === comment.node_id);
     if (!node || node.body !== comment.body || node.updatedAt !== comment.updated_at ||
         !trustedActor(node.author) || !Object.hasOwn(node, 'lastEditedAt') || !Object.hasOwn(node, 'editor') ||
@@ -135,39 +145,42 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
       now - finished < -300_000 || now - finished > 7 * 24 * 60 * 60_000) {
     return invalid('The native receipt is stale or does not match the latest review completion.');
   }
-  const sha = receipt.body.match(/^\*\*Reviewed commit:\*\* `([0-9a-f]{10,40})`$/m)?.[1];
-  const task = receipt.body.match(/^\[View security finding report\]\((https:\/\/chatgpt\.com\/codex\/(?:cloud\/)?tasks\/[a-zA-Z0-9_-]+)\)$/m)?.[1];
-  if (!sha || !head.startsWith(sha) || !task) {
-    return invalid('The native security receipt does not establish a clean review for this head.');
-  }
-  // Resolve the provider's abbreviation through GitHub's commit object API. A prefix
-  // collision must fail closed; startsWith alone would bind only 40 bits of the SHA.
-  if (sha.length < 40) {
-    // The commit endpoint also accepts named refs. Do not let a hex-named branch/tag
-    // shadow an ambiguous object abbreviation (including Git's other DWIM namespaces).
-    const refs = [sha, `tags/${sha}`, `heads/${sha}`, `remotes/${sha}`, `remotes/${sha}/HEAD`];
+  for (const candidate of relevant) {
+    const sha = candidate.body.match(/^\*\*Reviewed commit:\*\* `([0-9a-f]{10,40})`$/m)?.[1];
+    const task = candidate.body.match(/^\[View security finding report\]\((https:\/\/chatgpt\.com\/codex\/(?:cloud\/)?tasks\/[a-zA-Z0-9_-]+)\)$/m)?.[1];
+    if (!sha || !head.startsWith(sha) || !task) {
+      return invalid('The native security receipt does not establish a clean review for this head.');
+    }
+    // Resolve the provider's abbreviation through GitHub's commit object API. A prefix
+    // collision must fail closed; startsWith alone would bind only 40 bits of the SHA.
+    if (sha.length < 40) {
+      // The commit endpoint also accepts named refs. Do not let a hex-named branch/tag
+      // shadow an ambiguous object abbreviation (including Git's other DWIM namespaces).
+      const refs = [sha, `tags/${sha}`, `heads/${sha}`, `remotes/${sha}`, `remotes/${sha}/HEAD`];
+      try {
+        const named = await Promise.all(refs.map(async ref => {
+          try { await github.rest.git.getRef({ ...context.repo, ref }); return true; }
+          catch (error) { if (error.status === 404) return false; throw error; }
+        }));
+        if (named.some(Boolean)) return invalid('The abbreviated reviewed SHA is shadowed by a named Git reference.');
+      } catch {
+        return invalid('Named-reference ambiguity could not be checked.');
+      }
+    }
+    let reviewed;
     try {
-      const named = await Promise.all(refs.map(async ref => {
-        try { await github.rest.git.getRef({ ...context.repo, ref }); return true; }
-        catch (error) { if (error.status === 404) return false; throw error; }
-      }));
-      if (named.some(Boolean)) return invalid('The abbreviated reviewed SHA is shadowed by a named Git reference.');
+      ({ data: reviewed } = await github.rest.repos.getCommit({ ...context.repo, ref: sha }));
     } catch {
-      return invalid('Named-reference ambiguity could not be checked.');
+      return invalid('The reviewed commit is missing, ambiguous or could not be resolved.');
+    }
+    if (reviewed.sha !== head) return invalid('The reviewed commit does not resolve to the full current head.');
+    if (!candidate.body.split('\n').includes('Security review completed. No security issues were found in this pull request.')) {
+      return candidate.body.split('\n').some(line => line.startsWith('Security review completed. '))
+        ? blocked('codex_native_incomplete', 'The completed native review does not report a clean result.')
+        : invalid('The native security receipt format is unsupported.');
     }
   }
-  let reviewed;
-  try {
-    ({ data: reviewed } = await github.rest.repos.getCommit({ ...context.repo, ref: sha }));
-  } catch {
-    return invalid('The reviewed commit is missing, ambiguous or could not be resolved.');
-  }
-  if (reviewed.sha !== head) return invalid('The reviewed commit does not resolve to the full current head.');
-  if (!receipt.body.split('\n').includes('Security review completed. No security issues were found in this pull request.')) {
-    return receipt.body.split('\n').some(line => line.startsWith('Security review completed. '))
-      ? blocked('codex_native_incomplete', 'The completed native review does not report a clean result.')
-      : invalid('The native security receipt format is unsupported.');
-  }
+  if (!relevant.includes(receipt)) return invalid('The latest receipt is not bound to the current head.');
   return passed('codex_native_completed',
     'The trusted Codex GitHub app reports a completed, clean security review for this exact PR/head. No human attestation is required.',
     receipt.html_url);
