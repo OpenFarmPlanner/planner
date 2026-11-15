@@ -493,3 +493,12 @@ test('an older-head summary updated later cannot hide a pending current-head rev
     reportComment, approvalComment());
   assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_pending');
 });
+
+
+test('an older-head receipt published later does not reject clean current-head completion', async () => {
+  const f = nativeFixture();
+  f.comments.push({ ...structuredClone(f.receipt), id: 9, node_id: 'other-receipt',
+    html_url: 'https://github.com/owner/repo/pull/1#issuecomment-9', created_at: '2026-11-15T07:26:01Z',
+    body: f.receipt.body.replace(HEAD.slice(0, 10), OLD.slice(0, 10)) });
+  assert.equal((await verifiedNativeCodexReview(f.args)).state, 'codex_native_completed');
+});

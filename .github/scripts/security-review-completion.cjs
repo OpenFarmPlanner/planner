@@ -101,8 +101,6 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
     /^### 🛡️ Codex Security Review$/m.test(comment.body ?? '') &&
     comment.body.startsWith('<!-- codex-review-receipt:v1 -->\n'))
     .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
-  const receipt = receipts[0];
-  if (!receipt) return invalid('No native security result receipt is available.');
   // A summary does not carry a task ID. Never infer a clean outcome by pairing
   // two independent "latest" records: every observed receipt for this head must
   // be clean, regardless of overlapping tasks or their completion order.
@@ -110,7 +108,9 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
     const ref = item.body.match(/^\*\*Reviewed commit:\*\* `([0-9a-f]{10,40})`$/m)?.[1];
     return ref && head.startsWith(ref);
   });
-  const checked = [...new Map([summary, receipt, ...relevant].map(item => [item.node_id, item])).values()];
+  const receipt = relevant[0];
+  if (!receipt) return invalid('No native security result receipt for the current head is available.');
+  const checked = [summary, ...relevant];
   if (checked.length > 100) return invalid('Too many native receipts to verify in one consistent snapshot.');
 
   const prefix = `https://github.com/${context.repo.owner}/${context.repo.repo}/pull/${context.payload.pull_request.number}#issuecomment-`;
