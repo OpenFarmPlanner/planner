@@ -108,7 +108,7 @@ export function PublicCropVarietyImportDialog({ parent, onClose, onComplete, onW
   };
   if (comparison) return <ExistingCropLinkDialog key={comparison.entry.id}
     publicCrop={comparison.entry} candidates={comparison.candidates}
-    termsAlreadyAccepted={termsAlreadyAccepted} onClose={onClose} onLinked={() => undefined}
+    termsAlreadyAccepted={termsAlreadyAccepted || comparison.consent} onClose={onClose} onLinked={() => undefined}
     decisionProgress={t('library.varietyImport.reviewProgress', { current: comparison.decisions.length + 1, total: 1 + selected.size })}
     onDecision={(decision, consent) => { setComparison(null); void run(comparison.remaining, [...comparison.decisions, decision], comparison.consent || consent, comparison.previews); }} />;
   if (!entries && !error) return null;

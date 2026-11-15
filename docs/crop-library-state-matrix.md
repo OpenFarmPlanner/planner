@@ -206,7 +206,9 @@ failed batch drains before retry is possible; a project switch stops the next
 batch. Closing the selection during preview loading also prevents the final
 write. The same attempt reuses those previews across comparison steps.
 Comparisons reuse the existing target, copy/link, pull/share/private-pin and
-consent controls. In this workflow **Continue** stages a decision without a
+consent controls. An explicit contribution consent carries into later comparisons
+in the same attempt and is persisted only with a successful complete commit.
+In this workflow **Continue** stages a decision without a
 write. Only after every selected match has an explicit decision does
 `public-crops/<parent>/import-selection/` commit the complete selection in one
 transaction. Cancellation before that request writes nothing. A failed request

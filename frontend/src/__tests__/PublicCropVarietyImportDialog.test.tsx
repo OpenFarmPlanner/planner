@@ -129,6 +129,35 @@ describe('selected library variety import', () => {
     expect(preview).toHaveBeenCalledTimes(4);
     expect(link).not.toHaveBeenCalled();
   });
+  it.each([false, true])('asks for staged sharing consent only once, with cancellation: %s', async cancel => {
+    preview.mockImplementation(async (id: number) => ({ data: { candidates: id === 1 || id === 4 ? [
+      { id: id + 90, name: 'Carrot', variety: id === 4 ? 'Rodelika' : '', species_match: true, source_public_crop: null },
+    ] : [] } }));
+    setup(); await submit();
+    let next = await screen.findByRole('button', { name: t('library.varietyImport.continue') });
+    await waitFor(() => expect(next).toBeEnabled());
+    fireEvent.click(screen.getByTestId('public-crop-sync-row-notes').querySelector('input[value="mine"]')!);
+    expect(next).toBeDisabled();
+    fireEvent.click(screen.getByRole('checkbox', { name: t('library.publishConfirm.acceptLicense') }));
+    fireEvent.click(next);
+    await waitFor(() => expect(sync).toHaveBeenCalledWith(94, 4));
+    next = await screen.findByRole('button', { name: t('library.varietyImport.continue') });
+    await waitFor(() => expect(next).toBeEnabled());
+    fireEvent.click(screen.getByTestId('public-crop-sync-row-notes').querySelector('input[value="mine"]')!);
+    expect(screen.queryByRole('checkbox', { name: t('library.publishConfirm.acceptLicense') })).not.toBeInTheDocument();
+    expect(next).toBeEnabled();
+    if (cancel) {
+      fireEvent.click(screen.getByRole('button', { name: i18n.getFixedT('de', 'common')('actions.cancel') }));
+      expect(commit).not.toHaveBeenCalled();
+    } else {
+      fireEvent.click(next);
+      await waitFor(() => expect(commit).toHaveBeenCalledTimes(1));
+      const data = commit.mock.calls[0][1];
+      expect(data.accepted_public_library_terms).toBe(true);
+      expect(data.decisions.filter((item: { push_fields?: string[] }) => item.push_fields?.includes('notes'))).toHaveLength(2);
+    }
+    expect(link).not.toHaveBeenCalled();
+  });
   it('does not commit if navigation closes the selection while previews are loading', async () => {
     const pending: (() => void)[] = [];
     preview.mockImplementation(() => new Promise(resolve => {
