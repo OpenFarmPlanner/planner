@@ -201,12 +201,10 @@ describe('bed label orientation', () => {
     for (const size of [{ width: 300, height: 2000 }, { width: 2000, height: 300 }]) {
       const label = getBedLabelLayout(size, scale)!;
       expect(label).not.toBeNull();
-      expect(label.rotation).toBe(size.height > size.width ? -90 : 0);
+      expect(label.rotation).toBe(0);
       const x = label.x * scale;
       const y = label.y * scale;
-      const bounds = label.rotation === -90
-        ? { x, y: y - label.width, width: label.height, height: label.width }
-        : { x, y, width: label.width, height: label.height };
+      const bounds = { x, y, width: label.width, height: label.height };
       expect(bounds.x).toBeGreaterThanOrEqual(0);
       expect(bounds.y).toBeGreaterThanOrEqual(0);
       expect(bounds.x + bounds.width).toBeLessThanOrEqual(size.width * scale);
@@ -216,7 +214,7 @@ describe('bed label orientation', () => {
   it('requires enough screen space for a line and finite positive zoom', () => {
     expect(getBedLabelLayout({ width: 100, height: 12 }, 1)).toBeNull();
     expect(getBedLabelLayout({ width: 12, height: 100 }, 1)).toBeNull();
-    expect(getBedLabelLayout({ width: 14, height: 80 }, 1)?.rotation).toBe(-90);
+    expect(getBedLabelLayout({ width: 14, height: 80 }, 1)).toBeNull();
     expect(getBedLabelLayout({ width: 80, height: 14 }, 1)?.rotation).toBe(0);
     for (const scale of [0, -1, NaN, Infinity]) {
       expect(getBedLabelLayout({ width: 100, height: 100 }, scale)).toBeNull();

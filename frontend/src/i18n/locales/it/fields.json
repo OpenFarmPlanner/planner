@@ -52,6 +52,8 @@
     "panDown": "Sposta in basso",
     "panLeft": "Sposta a sinistra",
     "panRight": "Sposta a destra",
+    "rotateLeft": "Ruota la vista di 90° a sinistra",
+    "rotateRight": "Ruota la vista di 90° a destra",
     "fitToView": "Adatta tutto",
     "enterFullscreen": "Apri a schermo intero",
     "exitFullscreen": "Esci dallo schermo intero",
