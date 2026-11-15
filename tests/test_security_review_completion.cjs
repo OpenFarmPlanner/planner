@@ -376,7 +376,8 @@ function nativeSnapshotFixture() {
   f.contextRun = { id: 12, run_attempt: 1, path: '.github/workflows/native-security-context.yml',
     event: 'pull_request_target', head_sha: OLD, head_repository: { full_name: 'owner/repo' },
     created_at: '2026-11-15T07:24:00Z' };
-  f.contextArtifacts = [{ id: 15, name: `native-review-context-1-${HEAD}`, workflow_run: { id: 12 } }];
+  f.contextArtifacts = [{ id: 15, name: `native-review-context-1-${HEAD}`,
+    created_at: '2026-11-15T07:24:30Z', workflow_run: { id: 12 } }];
   f.args.artifactReader = async () => f.contextRecord;
   f.args.github.rest = {
     git: f.args.github.rest.git,
@@ -554,12 +555,21 @@ test('native review context binds the exact main base and changed-file scope', a
     f => { f.contextRecord.base_sha = 'c'.repeat(40); },
     f => { f.contextRecord.scope = ['hidden-code.py']; },
     f => { f.contextRecord.workflow_sha = HEAD; },
-    f => { f.contextRun.created_at = '2026-11-15T07:26:00Z'; },
+    f => { f.contextArtifacts[0].created_at = '2026-11-15T07:26:00Z'; },
   ]) {
     const f = nativeSnapshotFixture(); mutate(f);
     f.comments.push(reportComment, approvalComment());
     assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_context_invalid');
   }
+});
+
+test('a queued context run cannot certify a receipt published before its artifact', async () => {
+  const f = nativeSnapshotFixture();
+  f.contextRun.created_at = '2026-11-15T07:20:00Z';
+  f.contextArtifacts[0].created_at = '2026-11-15T07:26:00Z';
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_context_invalid');
+  delete f.contextArtifacts[0].created_at;
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_context_invalid');
 });
 
 test('a retargeted PR cannot reuse a clean native review while retaining its head', async () => {

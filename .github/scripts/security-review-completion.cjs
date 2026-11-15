@@ -261,7 +261,7 @@ async function verifiedNativeContext({ github, context, head, base, scope, recei
         run.head_sha !== base || !sameScope(report.scope, scope)) {
       return invalid('The native review context belongs to another base or changed-file scope.');
     }
-    const created = Date.parse(run.created_at);
+    const created = Date.parse(artifact.created_at);
     if (!Number.isFinite(created)) return invalid('The native context timestamp is unavailable.');
     earliest = Math.min(earliest, created); count++;
   }
