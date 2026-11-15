@@ -15,24 +15,27 @@ from typing import Any
 
 from django.db import transaction
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.request import Request
 from rest_framework.response import Response
-from config.responses import api_error_response
 
 from accounts.demo_access import guest_demo_forbidden_response, is_active_guest_demo_user
 from config.languages import REQUIRED_PUBLIC_CROP_SPECIES_LANGUAGE_CODES
+from config.responses import api_error_response
+from farm.agent_api.permissions import ApiTokenAccessPermission
 from farm.services.public_crop_trade_names import matched_trade_name
 
 from . import services
 from .agent_api.permissions import CropLibraryTokenAccessPermission
-from .models import CropSpecies, PlantFamily, PublicLibraryModeratorRequest
-from .plant_family_serializers import PlantFamilySerializer
+from .models import CropSpecies, PlantFamily, PlantFamilyTranslation, PublicLibraryModeratorRequest
 from .permissions import (
     grant_public_library_moderator_access,
     is_public_library_admin,
     is_public_library_moderator,
 )
+from .plant_family_serializers import PlantFamilySerializer, PlantFamilyTranslationsUpdateSerializer
 from .serializers import (
     CropSerializer,
     CropSpeciesSerializer,
@@ -89,7 +92,9 @@ class CropSpeciesViewSet(viewsets.ModelViewSet):
         return queryset
 
     def list(self, request, *args, **kwargs):
-        query = (request.query_params.get('q') or '').strip()[:services.MAX_SPECIES_SEARCH_QUERY_LENGTH]
+        query = (request.query_params.get('q') or '').strip()[
+            :services.MAX_SPECIES_SEARCH_QUERY_LENGTH
+        ]
         if not query:
             return super().list(request, *args, **kwargs)
         # Typo-tolerant ranked search (exact > prefix > similarity) replaces
@@ -99,7 +104,9 @@ class CropSpeciesViewSet(viewsets.ModelViewSet):
         # similarity ranking ever sees them. See
         # `services.search_crop_species` / docs/crop-library-architecture.md.
         try:
-            requested_limit = int(request.query_params.get('page_size') or services.SPECIES_SEARCH_RESULT_LIMIT)
+            requested_limit = int(
+                request.query_params.get('page_size') or services.SPECIES_SEARCH_RESULT_LIMIT
+            )
         except ValueError:
             requested_limit = services.SPECIES_SEARCH_RESULT_LIMIT
         limit = max(1, min(requested_limit, services.SPECIES_SEARCH_RESULT_LIMIT))
@@ -313,11 +320,16 @@ class CropSpeciesViewSet(viewsets.ModelViewSet):
             from farm.utils import normalize_text
 
             identity_queries = [
-                services.build_exact_species_identity_query(normalize_text(item['common_name']) or '')
+                services.build_exact_species_identity_query(
+                    normalize_text(item['common_name']) or ''
+                )
                 for item in approved_translations.values()
                 if (item.get('common_name') or '').strip()
             ]
-            duplicate_query = identity_queries[0] if identity_queries else services.build_exact_species_identity_query(species.name_normalized)
+            duplicate_query = (
+                identity_queries[0] if identity_queries
+                else services.build_exact_species_identity_query(species.name_normalized)
+            )
             for query in identity_queries[1:]:
                 duplicate_query |= query
             duplicate = CropSpecies.objects.filter(
@@ -534,7 +546,7 @@ class CropViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class PlantFamilyViewSet(viewsets.ReadOnlyModelViewSet):
-    """The curated, global plant-family list (read-only; maintained in the Django admin).
+    """Global family list with admin-only translation maintenance.
 
     Not project-scoped and unpaginated: the list is small and every crop form
     needs all of it. ``display_name`` follows the request language.
@@ -543,8 +555,32 @@ class PlantFamilyViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = PlantFamilySerializer
     pagination_class = None
     lookup_value_regex = '[^/]+'
+    permission_classes = [
+        permissions.IsAuthenticated, ApiTokenAccessPermission, CropLibraryTokenAccessPermission,
+    ]
     api_token_actions = {'list', 'retrieve'}
-    crop_library_token_actions = {'list', 'retrieve'}
+    crop_library_token_actions = {'list', 'retrieve', 'translations'}
 
     def get_queryset(self):
         return PlantFamily.objects.prefetch_related('translations')
+
+    @extend_schema(request=PlantFamilyTranslationsUpdateSerializer, responses=PlantFamilySerializer)
+    @action(detail=True, methods=['patch'], url_path='translations')
+    def translations(self, request: Request, pk: str | None = None) -> Response:
+        if not is_public_library_admin(request.user):
+            return api_error_response(
+                code='admin_required',
+                detail='Only platform admins may edit plant family translations.',
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
+        family = self.get_object()
+        serializer = PlantFamilyTranslationsUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            family = PlantFamily.objects.select_for_update().get(pk=family.pk)
+            for code, name in serializer.validated_data['translations'].items():
+                PlantFamilyTranslation.objects.update_or_create(
+                    family=family, language_code=code, defaults={'name': name},
+                )
+        family = self.get_queryset().get(pk=family.pk)
+        return Response(self.get_serializer(family).data)

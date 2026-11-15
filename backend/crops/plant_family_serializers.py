@@ -11,7 +11,11 @@ from typing import Any
 
 from rest_framework import serializers
 
-from config.languages import DEFAULT_LANGUAGE_CODE, resolve_request_language
+from config.languages import (
+    DEFAULT_LANGUAGE_CODE,
+    SUPPORTED_LANGUAGE_CODES,
+    resolve_request_language,
+)
 
 from .models import PlantFamily
 
@@ -21,6 +25,24 @@ PLANT_FAMILY_FIELD_HELP_TEXT = (
 )
 
 _PLANT_FAMILY_CONTEXT_CACHE_KEY = '_plant_families_by_key'
+
+
+class PlantFamilyTranslationsUpdateSerializer(serializers.Serializer):
+    translations = serializers.DictField(
+        child=serializers.CharField(max_length=200, allow_blank=False),
+        allow_empty=False,
+    )
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        if set(self.initial_data) != {'translations'}:
+            raise serializers.ValidationError('Only translations may be updated.')
+        return attrs
+
+    def validate_translations(self, value: dict[str, str]) -> dict[str, str]:
+        unsupported = set(value) - set(SUPPORTED_LANGUAGE_CODES)
+        if unsupported:
+            raise serializers.ValidationError('Unsupported translation language code.')
+        return {code: ' '.join(name.split()) for code, name in value.items()}
 
 
 def _request_language(context: dict[str, Any]) -> str:
