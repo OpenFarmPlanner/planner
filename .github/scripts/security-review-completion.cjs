@@ -219,6 +219,7 @@ const NATIVE_CONTEXT_WORKFLOW = '.github/workflows/native-security-context.yml';
 
 async function verifiedNativeContext({ github, context, head, base, scope, receiptTime, artifactReader = readArtifact }) {
   const invalid = reason => blocked('codex_native_context_invalid', reason);
+  const unavailable = reason => blocked('codex_native_context_unavailable', reason);
   if (!SHA.test(base ?? '') || !Array.isArray(scope)) return invalid('Native review context is incomplete.');
   let repository;
   try {
@@ -230,7 +231,7 @@ async function verifiedNativeContext({ github, context, head, base, scope, recei
         }
       } }
     }`, { owner: context.repo.owner, repo: context.repo.repo, number: context.payload.pull_request.number }));
-  } catch { return invalid('The native review base history could not be verified.'); }
+  } catch { return unavailable('The native review base history could not be verified.'); }
   const pr = repository?.pullRequest;
   if (pr?.baseRefName !== 'main' || pr.baseRefOid !== base || pr.headRefOid !== head ||
       pr.timelineItems?.totalCount !== 0 || pr.timelineItems?.pageInfo?.hasNextPage !== false) {
@@ -239,18 +240,18 @@ async function verifiedNativeContext({ github, context, head, base, scope, recei
   const name = `native-review-context-${context.payload.pull_request.number}-${head}`;
   let artifacts;
   try { artifacts = await github.paginate('GET /repos/{owner}/{repo}/actions/artifacts', { ...context.repo, name, per_page: 100 }); }
-  catch { return invalid('Trusted native review context artifacts could not be read.'); }
+  catch { return unavailable('Trusted native review context artifacts could not be read.'); }
   let earliest = Infinity, count = 0;
   for (const artifact of artifacts) {
     if (artifact.name !== name || artifact.expired || !artifact.workflow_run?.id) continue;
     let run;
     try { ({ data: run } = await github.rest.actions.getWorkflowRun({ ...context.repo, run_id: artifact.workflow_run.id })); }
-    catch { return invalid('The context producer run could not be verified.'); }
+    catch { return unavailable('The context producer run could not be verified.'); }
     if (run.path !== NATIVE_CONTEXT_WORKFLOW || run.event !== 'pull_request_target' ||
         run.head_repository?.full_name !== `${context.repo.owner}/${context.repo.repo}`) continue;
     let report;
     try { report = await artifactReader({ github, coordinates: context.repo, run, name, filename: 'native-review-context.json' }); }
-    catch { return invalid('The trusted context record could not be read.'); }
+    catch { return unavailable('The trusted context record could not be read.'); }
     if (!report && ['queued', 'in_progress', 'requested', 'waiting', 'pending'].includes(run.status)) {
       return blocked('codex_native_context_pending', 'The trusted context producer is still publishing its current attempt.');
     }
@@ -314,14 +315,15 @@ function parseApproval(comment, head) {
     if (url.username || url.password || url.search) return null;
     if (match[1] === 'codex' && (url.hostname !== 'chatgpt.com' ||
         !/^\/codex\/(?:cloud\/)?tasks\/[^/]+\/?$/.test(url.pathname))) return null;
-    return { mode: match[1], report: url, url: comment.html_url };
+    return { mode: match[1], report: url, url: comment.html_url,
+      base_sha: body.match(/^Reviewed base: ([0-9a-f]{40})$/m)?.[1] ?? null };
   } catch { return null; }
 }
 
-async function approvedReview({ github, coordinates, comments, head, scope }) {
+async function approvedReview({ github, coordinates, comments, head, scope, base, requireBase = false }) {
   for (const comment of [...comments].reverse()) {
     const approval = parseApproval(comment, head);
-    if (!approval) continue;
+    if (!approval || requireBase && (!SHA.test(base ?? '') || approval.base_sha !== base)) continue;
     let permission;
     try {
       ({ data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
@@ -343,6 +345,7 @@ async function approvedReview({ github, coordinates, comments, head, scope }) {
       const marker = `<!-- manual-security-review:${head} -->`;
       if (!(report.body ?? '').includes(marker) || !(report.body ?? '').includes('Result: No unresolved findings')) continue;
       if (!scope.every(file => (report.body ?? '').includes(`\`${file}\``))) continue;
+      if (requireBase && !(report.body ?? '').split('\n').includes(`Reviewed base: ${base}`)) continue;
     }
     return approval;
   }
@@ -410,7 +413,13 @@ async function snapshot({ github, context, expectedHead, artifactReader = readAr
   // evidence can still use an explicitly verified independent human contingency.
   if (codex?.state === 'codex_local_incomplete') return codex;
   if (native?.state === 'codex_native_incomplete') return native;
-  if (['codex_native_context_invalid', 'codex_native_context_pending'].includes(native?.state)) return codex?.allowed ? codex : native;
+  if (native?.state === 'codex_native_context_invalid') return codex?.allowed ? codex : native;
+  if (['codex_native_context_pending', 'codex_native_context_unavailable'].includes(native?.state)) {
+    if (codex?.allowed) return codex;
+    const contingency = await approvedReview({ github, coordinates, comments, head: expectedHead,
+      scope, base: pr.base.sha, requireBase: true });
+    return contingency ? evaluate({ head: expectedHead, scope, approval: contingency }) : native;
+  }
   if (native?.allowed) return native;
   if (native?.state === 'codex_native_pending') return native;
   const approval = await approvedReview({ github, coordinates, comments, head: expectedHead, scope });
@@ -491,18 +500,18 @@ async function enforce({ github, context, core, expectedHead, timeoutMs = 20 * 6
     }
     if (result.state !== previous) core.info(`Security review: ${result.state}. ${result.reason}`);
     previous = result.state;
-    if (result.allowed || ['stale_head', 'codex_rejected', 'codex_local_incomplete', 'codex_evidence_invalid', 'manual_review_required', 'claude_failed', 'triage_failed', 'scope_unavailable', 'evidence_unavailable', 'codex_native_incomplete', 'codex_native_invalid', 'codex_native_context_invalid', 'stale_base'].includes(result.state)) break;
+    if (result.allowed || ['stale_head', 'codex_rejected', 'codex_local_incomplete', 'codex_evidence_invalid', 'manual_review_required', 'claude_failed', 'triage_failed', 'scope_unavailable', 'evidence_unavailable', 'codex_native_incomplete', 'codex_native_invalid', 'codex_native_context_invalid', 'codex_native_context_unavailable', 'stale_base'].includes(result.state)) break;
     if (now() >= deadline) { result = blocked('timed_out', `Timed out while ${result.state}: ${result.reason}`); break; }
     await wait(Math.min(intervalMs, deadline - now()));
   } while (true);
   await core.summary.addHeading('Security review completion').addRaw(
     `State: **${result.state}**\n\nHead: \`${expectedHead}\`\n\n${result.reason}\n\n` +
     (result.evidence ? `Evidence: ${result.evidence}\n` : '') +
-    (!result.allowed ? '\nRecovery: publish fresh signed evidence from the trusted local Codex launcher, ' +
-      'or obtain explicit maintainer approval of an independent manual report. No Claude allowance is required. ' +
+    (!result.allowed ? '\nRecovery: obtain verified native completion with its trusted current context, publish fresh signed evidence from the trusted local Codex launcher, ' +
+      'or use the optional base-bound independent human contingency when provider evidence is unavailable. Verified native and signed-local completion need no human confirmation. ' +
       'See [review recovery](https://github.com/' + context.repo.owner + '/' + context.repo.repo +
       '/blob/main/docs/security-automation.md#recovery-and-explicit-human-contingency). ' +
-      'After approval, rerun all failed jobs in this CI run together.\n' : '')).write();
+      'After completion or optional approval, rerun all failed jobs in this CI run together.\n' : '')).write();
   core.setOutput('security_review_state', result.state);
   if (!result.allowed) core.setFailed(`Security review gate blocked: ${result.state}. ${result.reason}`);
   return result;

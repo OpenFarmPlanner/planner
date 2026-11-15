@@ -643,3 +643,30 @@ test('native inline findings reported in the authenticated summary block an olde
   f.comments.push(reportComment, approvalComment());
   assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_incomplete');
 });
+
+
+function addBaseBoundContingency(f, base = OLD, reportBase = OLD) {
+  f.comments.push({ ...reportComment, body: `${reportComment.body}\nReviewed base: ${reportBase}` },
+    { ...approvalComment(), body: `${approvalComment().body}\nReviewed base: ${base}` });
+}
+
+test('missing or unavailable context supports an optional independently reviewed base-bound contingency', async () => {
+  for (const transport of [false, true]) {
+    const f = nativeSnapshotFixture(); addBaseBoundContingency(f);
+    if (transport) f.args.artifactReader = async () => { throw new Error('Context transport unavailable'); };
+    else f.contextArtifacts = [];
+    assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'manual_review_approved');
+  }
+});
+
+test('context contingency rejects head-only, wrong-base or unbound reports and cannot override a real mismatch', async () => {
+  for (const kind of ['head-only', 'wrong-base', 'report-base', 'mismatch']) {
+    const f = nativeSnapshotFixture();
+    if (kind === 'head-only') f.comments.push(reportComment, approvalComment());
+    else addBaseBoundContingency(f, kind === 'wrong-base' ? HEAD : OLD, kind === 'report-base' ? HEAD : OLD);
+    if (kind === 'mismatch') f.contextRecord.scope = ['another-file'];
+    else f.contextArtifacts = [];
+    const result = await snapshot({ ...f.args, expectedHead: HEAD });
+    assert.equal(result.allowed, false, kind);
+  }
+});

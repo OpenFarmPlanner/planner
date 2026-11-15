@@ -284,8 +284,11 @@ out, and records GitHub's event-pinned head/base plus the complete changed-file
 scope after checking the live PR before and after collection. Its artifact name
 binds the PR/head; the gate verifies the workflow path/event, repository, source
 SHA, run/attempt and exact current base/scope. The record must precede the native
-receipt. Missing records stay pending; mismatched contexts do not permit automatic
-completion or replay of a head-only human approval. A valid signed review already
+receipt. Missing records stay pending. Unavailable context may use an optional human
+contingency only when its approval and independent manual report explicitly
+include `Reviewed base: FULL_BASE_SHA` for the current base, in addition to the
+existing exact-head/full-scope requirements. Actual context mismatches stay
+blocked; a head-only human approval is insufficient. A valid signed review already
 binds the current base/scope and remains an independent fallback.
 
 Automatic native eligibility is limited to unchanged `main` targets. Base-ref
@@ -488,6 +491,7 @@ inspecting the completed task/report for the exact SHA, can post:
 ```text
 /security-review approve codex FULL_HEAD_SHA https://chatgpt.com/codex/tasks/TASK_ID
 I verified the completed Codex Security Report for this exact commit.
+Reviewed base: FULL_BASE_SHA
 Result: No unresolved findings
 Reason: native completion verified in the task and Security Report
 ```
@@ -503,6 +507,7 @@ Then a human admin/maintainer approves that report:
 ```text
 /security-review approve manual FULL_HEAD_SHA https://github.com/OpenFarmPlanner/planner/pull/PR_NUMBER#issuecomment-REPORT_ID
 I independently reviewed this exact commit and approve its security review.
+Reviewed base: FULL_BASE_SHA
 Reason: automated providers unavailable; completed manual review linked above
 ```
 

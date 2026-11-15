@@ -45,6 +45,7 @@ class LocalReviewTests(unittest.TestCase):
         report = review.render(self.manifest, self.result)
         self.assertIn(f"<!-- manual-security-review:{'a' * 40} -->", report)
         self.assertIn("Result: No unresolved findings", report)
+        self.assertIn(f"Reviewed base: {self.manifest['base']}", report)
         for path in self.manifest["scope"]:
             self.assertIn(f"`{path}`", report)
         self.result["review_notes"] = ["Static analysis; no code executed."]
