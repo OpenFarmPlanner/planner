@@ -554,7 +554,6 @@ test('native review context binds the exact main base and changed-file scope', a
     f => { f.contextRecord.base_sha = 'c'.repeat(40); },
     f => { f.contextRecord.scope = ['hidden-code.py']; },
     f => { f.contextRecord.workflow_sha = HEAD; },
-    f => { f.contextRun.head_sha = HEAD; },
     f => { f.contextRun.created_at = '2026-11-15T07:26:00Z'; },
   ]) {
     const f = nativeSnapshotFixture(); mutate(f);
@@ -669,4 +668,19 @@ test('context contingency rejects head-only, wrong-base or unbound reports and c
     const result = await snapshot({ ...f.args, expectedHead: HEAD });
     assert.equal(result.allowed, false, kind);
   }
+});
+
+
+test('superseded main-base context artifacts do not block a fresh current-base capture', async () => {
+  for (const reverse of [false, true]) {
+    const f = nativeSnapshotFixture();
+    const read = f.args.github.rest.actions.getWorkflowRun;
+    f.args.github.rest.actions.getWorkflowRun = async args => args.run_id === 13
+      ? { data: { ...f.contextRun, id: 13, head_sha: 'c'.repeat(40) } } : read(args);
+    f.contextArtifacts.push({ ...f.contextArtifacts[0], id: 16, workflow_run: { id: 13 } });
+    if (reverse) f.contextArtifacts.reverse();
+    assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_completed');
+  }
+  const f = nativeSnapshotFixture(); f.contextRun.head_sha = HEAD;
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_context_pending');
 });

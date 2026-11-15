@@ -249,6 +249,7 @@ async function verifiedNativeContext({ github, context, head, base, scope, recei
     catch { return unavailable('The context producer run could not be verified.'); }
     if (run.path !== NATIVE_CONTEXT_WORKFLOW || run.event !== 'pull_request_target' ||
         run.head_repository?.full_name !== `${context.repo.owner}/${context.repo.repo}`) continue;
+    if (run.head_sha !== base) continue; // A prior main base cannot certify the current scope.
     let report;
     try { report = await artifactReader({ github, coordinates: context.repo, run, name, filename: 'native-review-context.json' }); }
     catch { return unavailable('The trusted context record could not be read.'); }
