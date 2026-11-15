@@ -39,8 +39,12 @@ host relationship. Archive its active confirmed links before changing that
 identity into a broad concept. Active host links can also be archived while the
 parent identity is archived, rejected or pending; create/update still requires
 a published identity and species. Host entry/species references cannot be moved by
-editing: archive the old relationship and create the replacement. A species with
-historical host references is protected from deletion (HTTP 409).
+editing: archive the old relationship and create the replacement. Creating the
+same entry/species/variety scope after archival reactivates its existing row and ID. The new POST payload replaces the sources; omitted optional
+confirmation/qualification values use new-creation defaults (false/empty), so old
+confirmed evidence cannot silently survive a changed broad identity. PATCH
+preserves omitted fields and refuses collisions with active or archived scopes.
+A species with historical host references is protected from deletion (HTTP 409).
 
 ## Moderation and audit
 

@@ -335,6 +335,77 @@ class PlantHealthApiTests(TestCase):
         self.assertEqual(recreated.data["id"], host_id)
         self.assertTrue(recreated.data["is_active"])
 
+    def test_search_handles_many_terms_and_matches_across_translated_names(self) -> None:
+        import string
+
+        terms = " ".join(string.ascii_lowercase + string.digits + string.punctuation)
+        entry_id = self.create_entry(
+            translations=[
+                {"language_code": "en", "preferred_name": terms},
+                {"language_code": "nl", "preferred_name": "Other translated alias"},
+            ]
+        )
+        for query in [terms, "translated alias z"]:
+            response = self.client.get(ENTRIES, {"include_proposed": "true", "q": query})
+            self.assertEqual(response.status_code, 200, response.data)
+            self.assertEqual([row["id"] for row in response.data["results"]], [entry_id])
+
+    def test_host_reactivation_uses_new_creation_defaults_after_identity_broadens(self) -> None:
+        entry_id = self.published_entry()
+        payload = {"entry": entry_id, "species": self.species.pk, "sources": [SOURCE]}
+        host = self.client.post(
+            HOSTS,
+            {
+                **payload,
+                "is_confirmed": True,
+                "qualification": "Previous source qualification",
+            },
+            format="json",
+        ).data
+        self.assertEqual(self.client.post(f"{HOSTS}{host['id']}/archive/").status_code, 200)
+        self.assertEqual(
+            self.client.patch(
+                f"{ENTRIES}{entry_id}/",
+                {"kind": "group"},
+                format="json",
+            ).status_code,
+            200,
+        )
+        response = self.client.post(HOSTS, payload, format="json")
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data["id"], host["id"])
+        self.assertFalse(response.data["is_confirmed"])
+        self.assertEqual(response.data["qualification"], "")
+
+    def test_host_update_cannot_collide_with_an_archived_scope(self) -> None:
+        entry_id = self.published_entry()
+        payload = {"entry": entry_id, "species": self.species.pk, "sources": [SOURCE]}
+        archived = self.client.post(
+            HOSTS,
+            {
+                **payload,
+                "variety_name": "Archived scope",
+            },
+            format="json",
+        ).data
+        self.client.post(f"{HOSTS}{archived['id']}/archive/")
+        active = self.client.post(
+            HOSTS,
+            {
+                **payload,
+                "variety_name": "Active scope",
+            },
+            format="json",
+        ).data
+        response = self.client.patch(
+            f"{HOSTS}{active['id']}/",
+            {
+                "variety_name": "Archived scope",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400, response.data)
+
     def test_history_actor_privacy_and_stable_entry_pseudonyms(
         self,
     ) -> None:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from django.contrib.auth import get_user_model
-from django.db.models import Min, Q, QuerySet
+from django.db.models import Exists, Min, OuterRef, Q, QuerySet
 from django.shortcuts import get_object_or_404
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
@@ -18,7 +18,7 @@ from farm.utils import normalize_text
 
 from .agent_api.permissions import CropLibraryTokenAccessPermission
 from .permissions import is_public_library_moderator
-from .plant_health_models import PlantHealthEntry, PlantHealthHost
+from .plant_health_models import PlantHealthEntry, PlantHealthHost, PlantHealthTranslation
 from .plant_health_serializers import (
     PlantHealthEntrySerializer,
     PlantHealthHostSerializer,
@@ -61,12 +61,16 @@ class PlantHealthEntryViewSet(viewsets.ModelViewSet):
         if self.request.query_params.get("kind"):
             queryset = queryset.filter(kind=self.request.query_params["kind"])
         query = normalize_text(self.request.query_params.get("q", "")[:200]) or ""
-        for term in query.split():
+        for term in dict.fromkeys(query.split()):
+            names = PlantHealthTranslation.objects.filter(
+                entry_id=OuterRef("pk"),
+                search_text__contains=term,
+            )
             queryset = queryset.filter(
                 Q(name_normalized__contains=term)
-                | Q(scientific_name__icontains=term)
+                | Q(scientific_name_normalized__contains=term)
                 | Q(eppo_code__icontains=term)
-                | Q(translations__search_text__contains=term),
+                | Q(Exists(names)),
             )
         return queryset.distinct()
 

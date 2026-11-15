@@ -281,7 +281,12 @@ def write_host(
                 is_active=False,
             ).first()
             if host is not None:
-                attrs = {**attrs, "is_active": True}
+                attrs = {
+                    **attrs,
+                    "is_active": True,
+                    "is_confirmed": attrs.get("is_confirmed", False),
+                    "qualification": attrs.get("qualification", ""),
+                }
         if host is None:
             host = PlantHealthHost.objects.create(**attrs)
         else:
