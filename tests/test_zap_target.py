@@ -20,6 +20,21 @@ hook_spec.loader.exec_module(hooks)
 
 
 class ScanHookTests(unittest.TestCase):
+    def test_control_is_seeded_before_pages_can_exhaust_the_passive_alert_cap(self):
+        calls = []
+        zap = SimpleNamespace(core=SimpleNamespace(
+            access_url=lambda url, followredirects: calls.append((url, followredirects)),
+        ))
+        hooks.zap_started(zap, hooks.TARGET)
+        self.assertEqual(calls[0], (hooks.TARGET + '__zap_fixture__/', False))
+        self.assertEqual({url for url, _ in calls}, {
+            hooks.TARGET.rstrip('/') + path for path in (
+                '/__zap_fixture__/', '/', '/en', '/fr', '/es', '/it', '/pt', '/nl',
+                '/api/schema/', '/api/crops/',
+            )
+        })
+        self.assertTrue(all(followredirects is False for _, followredirects in calls))
+
     def test_empty_response_header_is_a_gap_and_only_response_metadata_is_recorded(self):
         messages = [{
             'requestHeader': f'GET http://127.0.0.1:4173/probe-{index} HTTP/1.1\r\n'
