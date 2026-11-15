@@ -474,6 +474,42 @@ test('a contingency cannot hide a supported completed nonclean native result', a
   assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_incomplete');
 });
 
+test('invalid sibling summaries cannot hide authenticated pending reviews or findings', async () => {
+  for (const reverse of [false, true]) {
+    for (const kind of ['pending', 'summary-finding', 'receipt-finding', 'malformed-sibling']) {
+      const f = nativeSnapshotFixture();
+      const sibling = { ...f.summary, id: 9, node_id: 'edited-summary',
+        html_url: 'https://github.com/owner/repo/pull/1#issuecomment-9' };
+      f.comments.push(sibling, reportComment, approvalComment());
+      const read = f.args.github.graphql;
+      f.args.github.graphql = async query => { const data = await read(query);
+        const edited = data.nodes?.find(node => node.id === sibling.node_id);
+        if (edited) { edited.editor = { __typename: 'User', databaseId: 1 }; edited.lastEditedAt = 'now'; }
+        return data; };
+      if (kind === 'summary-finding') {
+        f.summary.body = f.summary.body.replace('"has_any_findings":null', '"has_any_findings":true');
+      } else if (kind === 'receipt-finding') {
+        f.receipt.body = f.receipt.body.replace('No security issues were found in this pull request.', 'Security findings remain.');
+      } else {
+        f.summary.body = f.summary.body.replaceAll('completed', 'running');
+        if (kind === 'malformed-sibling') sibling.body = '<!-- codex-security-review:v1 {broken} -->';
+      }
+      if (reverse) f.comments.reverse();
+      const result = await snapshot({ ...f.args, expectedHead: HEAD });
+      assert.equal(result.state, ['pending', 'malformed-sibling'].includes(kind)
+        ? 'codex_native_pending' : 'codex_native_incomplete', kind);
+    }
+  }
+});
+
+test('authenticated nonclean receipts block even when their summary is unavailable', async () => {
+  const f = nativeSnapshotFixture();
+  f.comments.splice(f.comments.indexOf(f.summary), 1);
+  f.receipt.body = f.receipt.body.replace('No security issues were found in this pull request.', 'Security findings remain.');
+  f.comments.push(reportComment, approvalComment());
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_incomplete');
+});
+
 
 test('native commit abbreviations must resolve unambiguously to the entire current SHA', async () => {
   for (const getCommit of [
