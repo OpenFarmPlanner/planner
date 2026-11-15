@@ -1276,9 +1276,13 @@ so the stored reference *is* the stable name (`"Brassicaceae"`). Display
 names live in `PlantFamilyTranslation` (one row per language, same pattern as
 `CropSpeciesTranslation`; `PlantFamily.localized_name()` uses the standard
 fallback chain). The list is seeded by migration `crops.0019_plant_family`
-from `backend/crops/plant_families.py` and is **not user-editable**: changes
-go through the Django admin only, where the botanical name is read-only once
-created because every crop references it.
+from `backend/crops/plant_families.py` and is **not user-editable**: structural
+changes go through the Django admin, where the botanical name is read-only once
+created because every crop references it. Platform admins can maintain only
+language labels through `PATCH /api/plant-families/<botanical_name>/translations/`
+with a session or write-scoped crop-library token. Omitted languages are kept;
+the complete request is validated before an atomic upsert. See
+[`crop-library-api-tokens.md`](crop-library-api-tokens.md#plant-family-translations).
 
 | Botanical name | German name | `default_rotation_break_years` |
 |---|---|---|
@@ -1328,8 +1332,9 @@ it.
 other unknown value is a `400` naming `/api/plant-families/`). Responses add
 `crop_family_display_name` (the row's own family in the request language).
 `GET /api/plant-families/` lists every family with `display_name`,
-`translations` and `default_rotation_break_years`; it is read-only,
-unpaginated, and on both API-token allowlists. The crop serializers load the
+`translations` and `default_rotation_break_years`; the list remains read-only,
+unpaginated, and on both API-token allowlists. The separate translation action
+does not accept project tokens or non-admin accounts. The crop serializers load the
 list once per response (`get_plant_families_by_key`), so the list endpoints
 pay two constant queries for it. Imports are more lenient than the plain API:
 the agent import (`crop_import/analysis.py`) and the crops-page spreadsheet

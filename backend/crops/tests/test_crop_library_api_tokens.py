@@ -13,7 +13,13 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
-from crops.models import CROP_LIBRARY_TOKEN_PREFIX, CropLibraryApiToken, CropSpecies
+from crops.models import (
+    CROP_LIBRARY_TOKEN_PREFIX,
+    CropLibraryApiToken,
+    CropSpecies,
+    PlantFamily,
+    PlantFamilyTranslation,
+)
 from crops.permissions import grant_public_library_moderator_access
 
 User = get_user_model()
@@ -49,6 +55,138 @@ class CropLibraryApiTokenTestBase(APITestCase):
         client = APIClient()
         client.credentials(HTTP_AUTHORIZATION=f'Bearer {raw_token}')
         return client
+
+
+class PlantFamilyTranslationApiTests(CropLibraryApiTokenTestBase):
+    url = "/api/plant-families/Solanaceae/translations/"
+
+    def test_admin_write_token_upserts_only_supplied_languages(self) -> None:
+        _, raw = self.issue_token(scope=CropLibraryApiToken.SCOPE_WRITE)
+        client = self.bearer_client(raw)
+        family = PlantFamily.objects.get(pk="Solanaceae")
+        original = dict(family.translations.values_list("language_code", "name"))
+        data = {
+            "translations": {"it": " Solanacee ", "pt": "Solanáceas", "nl": "Nachtschadefamilie"}
+        }
+        for _ in range(2):
+            response = client.patch(self.url, data, format="json")
+            self.assertEqual(response.status_code, 200, response.data)
+            self.assertEqual(
+                response.data["translations"],
+                {
+                    **original,
+                    "it": "Solanacee",
+                    "pt": "Solanáceas",
+                    "nl": "Nachtschadefamilie",
+                },
+            )
+        self.assertEqual(family.translations.count(), len(original) + 3)
+        family.refresh_from_db()
+        self.assertEqual(family.default_rotation_break_years, 3)
+        self.assertEqual(family.localized_name("it"), ("Solanacee", "it"))
+
+    def test_session_admin_can_update_existing_translation(self) -> None:
+        self.client.force_authenticate(self.admin)
+        response = self.client.patch(
+            self.url, {"translations": {"fr": "Solanacées"}}, format="json"
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        response = self.client.patch(
+            self.url, {"translations": {"fr": "Solanacées révisées"}}, format="json"
+        )
+        self.assertEqual(response.data["translations"]["fr"], "Solanacées révisées")
+
+    def test_read_scope_is_denied(self) -> None:
+        _, raw = self.issue_token(scope=CropLibraryApiToken.SCOPE_READ)
+        client = self.bearer_client(raw)
+        self.assertEqual(
+            client.patch(
+                self.url, {"translations": {"it": "Solanacee"}}, format="json"
+            ).status_code,
+            403,
+        )
+        self.assertEqual(client.get("/api/plant-families/").status_code, 200)
+
+    def test_project_write_token_cannot_edit_global_family_translations(self) -> None:
+        from farm.models import Project, ProjectApiToken, ProjectMembership
+
+        project = Project.objects.create(name="Family token test", slug="family-token-test")
+        ProjectMembership.objects.create(user=self.admin, project=project, role="admin")
+        _, raw = ProjectApiToken.create_token(
+            user=self.admin,
+            project=project,
+            name="Project write token",
+            scope=ProjectApiToken.SCOPE_WRITE,
+        )
+        client = self.bearer_client(raw)
+        self.assertEqual(client.get("/api/plant-families/").status_code, 200)
+        response = client.patch(self.url, {"translations": {"it": "Solanacee"}}, format="json")
+        self.assertEqual(response.status_code, 403, response.data)
+        self.assertFalse(
+            PlantFamilyTranslation.objects.filter(
+                family_id="Solanaceae", language_code="it"
+            ).exists()
+        )
+
+    def test_moderator_and_regular_sessions_cannot_edit_global_families(self) -> None:
+        for user in (self.moderator, self.plain_user):
+            self.client.force_authenticate(user)
+            response = self.client.patch(
+                self.url, {"translations": {"it": "Solanacee"}}, format="json"
+            )
+            self.assertEqual(response.status_code, 403, response.data)
+        self.assertFalse(
+            PlantFamilyTranslation.objects.filter(
+                family_id="Solanaceae", language_code="it"
+            ).exists()
+        )
+
+    def test_token_owner_losing_admin_rights_is_denied(self) -> None:
+        _, raw = self.issue_token(scope=CropLibraryApiToken.SCOPE_WRITE)
+        self.admin.is_staff = False
+        self.admin.is_superuser = False
+        self.admin.save(update_fields=["is_staff", "is_superuser"])
+        response = self.bearer_client(raw).patch(
+            self.url, {"translations": {"it": "Solanacee"}}, format="json"
+        )
+        self.assertEqual(response.status_code, 403, response.data)
+
+    def test_invalid_payloads_are_atomic(self) -> None:
+        self.client.force_authenticate(self.admin)
+        for data in (
+            {"translations": {"it": "Solanacee", "xx": "Unknown"}},
+            {"translations": {"pt-BR": "Solanáceas"}},
+            {"translations": {"it": "   "}},
+            {"translations": {"it": "x" * 201}},
+            {"translations": {}},
+            {"translations": {"it": "Solanacee"}, "botanical_name": "Rosaceae"},
+            {"translations": {"it": "Solanacee"}, "default_rotation_break_years": 0},
+        ):
+            with self.subTest(data=data):
+                response = self.client.patch(self.url, data, format="json")
+                self.assertEqual(response.status_code, 400, response.data)
+                self.assertFalse(
+                    PlantFamilyTranslation.objects.filter(
+                        family_id="Solanaceae", language_code="it"
+                    ).exists()
+                )
+
+    def test_unknown_family_is_not_created(self) -> None:
+        self.client.force_authenticate(self.admin)
+        response = self.client.patch(
+            "/api/plant-families/Unknown/translations/",
+            {"translations": {"it": "Unknown"}},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(PlantFamily.objects.filter(pk="Unknown").exists())
+
+    def test_family_structure_remains_read_only(self) -> None:
+        _, raw = self.issue_token(scope=CropLibraryApiToken.SCOPE_WRITE)
+        client = self.bearer_client(raw)
+        for method in ("put", "patch", "delete"):
+            response = getattr(client, method)("/api/plant-families/Solanaceae/", {}, format="json")
+            self.assertIn(response.status_code, (403, 405))
 
 
 class CropLibraryApiTokenStorageTests(CropLibraryApiTokenTestBase):
