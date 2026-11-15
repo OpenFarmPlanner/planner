@@ -86,7 +86,9 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
     catch { return invalid('The native security summary is malformed.'); }
     if (evidence.headSha === head) summaries.push({ comment, evidence });
   }
-  summaries.sort((a, b) => String(b.comment.updated_at).localeCompare(String(a.comment.updated_at)));
+  const pending = item => ['running', 'queued', 'pending'].includes(item.evidence.status);
+  summaries.sort((a, b) => String(b.comment.updated_at).localeCompare(String(a.comment.updated_at)) ||
+    Number(pending(b)) - Number(pending(a)) || Number(b.comment.id) - Number(a.comment.id));
   if (!summaries.length) return null;
   const { comment: summary, evidence } = summaries[0];
   if (evidence.repository !== `${context.repo.owner}/${context.repo.repo}` ||

@@ -502,3 +502,16 @@ test('an older-head receipt published later does not reject clean current-head c
     body: f.receipt.body.replace(HEAD.slice(0, 10), OLD.slice(0, 10)) });
   assert.equal((await verifiedNativeCodexReview(f.args)).state, 'codex_native_completed');
 });
+
+
+test('second-granularity timestamp ties keep a pending review ahead of completed evidence', async () => {
+  for (const reverse of [false, true]) {
+    const f = nativeSnapshotFixture();
+    const running = { ...structuredClone(f.summary), id: 9, node_id: 'tied-summary',
+      html_url: 'https://github.com/owner/repo/pull/1#issuecomment-9',
+      body: f.summary.body.replace('completed', 'running') };
+    f.comments.push(running, reportComment, approvalComment());
+    if (reverse) f.comments.reverse();
+    assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_pending');
+  }
+});
