@@ -277,6 +277,25 @@ explicit independent-human contingency; a supported nonclean result does not. Or
 request delivery, copied comments and unsupported provider formats are not
 security completion. No additional human attestation is required for this route.
 
+Native completion also requires `native-security-context.yml` evidence. This
+read-only `pull_request_target` workflow runs from the base, checks no PR code
+out, and records GitHub's event-pinned head/base plus the complete changed-file
+scope after checking the live PR before and after collection. Its artifact name
+binds the PR/head; the gate verifies the workflow path/event, repository, source
+SHA, run/attempt and exact current base/scope. The record must precede the native
+receipt. Missing records stay pending; mismatched contexts do not permit automatic
+completion or replay of a head-only human approval. A valid signed review already
+binds the current base/scope and remains an independent fallback.
+
+Automatic native eligibility is limited to unchanged `main` targets. Base-ref
+changes or force-push history invalidate native evidence, even if the head stays
+unchanged. CI now reruns on base edits and rejects stale event bases. Metadata-only
+edits use distinct ignored check names, so skipped metadata jobs cannot replace
+required app checks. Refresh an outdated queue branch from main and obtain fresh
+review; do not retarget it or reuse pre-installation native receipts without a
+trusted context record. The context producer is not an AI worker,
+signer or API queue controller and starts no model calls.
+
 This authenticates the provider's public completion statement using GitHub's
 app metadata. CI does not fetch the private Security Report or claim a vendor
 signature. Receipts expire after seven days, and a new head needs fresh review.
@@ -286,7 +305,7 @@ read/write access, a Codex Cloud environment exists, and automatic code/security
 reviews are enabled. Requests were posted as `stipsitzm`; the connector rejected
 them within seconds with an account-connection instruction and a legacy Cloud
 settings URL. Current [GitHub review documentation](https://learn.chatgpt.com/docs/third-party/github)
-distinguishes legacy setup and current review settings. These observations do
+distinguishes legacy setup and current review settings. These historical observations do
 **not** establish a wrong installation, missing entitlement or identity mapping.
 The provider-side rejection remains unresolved; reinstalling/reconnecting is
 not a repository fix and is not recommended without provider diagnosis.

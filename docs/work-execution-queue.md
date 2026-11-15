@@ -183,7 +183,8 @@ production deployment or selecting metered APIs.
 
 Use the configured independent PR review workflow first. Completed native Codex
 Security Reviews with base-policy-verified GitHub app provenance, exact PR/head
-and a matching clean receipt require no additional human confirmation. Inspect
+and a matching clean receipt plus trusted event-bound base/scope context require
+no additional human confirmation. Inspect
 exact-head completion evidence and fix findings; a delivered native review request, ordinary
 code-review summary or reaction is not security completion. After a provider
 allowance becomes available, a full review retry including Triage is needed when

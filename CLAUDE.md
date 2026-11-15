@@ -630,8 +630,8 @@ content patterns live, commented, in the triage step's `env` block.
   `docs/security-automation.md`.
 - **Native completion:** a completed clean native Codex Security Review needs no
   additional human confirmation when the base-policy reader authenticates the
-  pinned GitHub app/bot, exact PR/full head, matching recent clean receipt and
-  last-editor provenance. Code-review comments, reactions and request delivery
+  pinned GitHub app/bot, exact PR/full head, matching recent clean receipt,
+  last-editor provenance and trusted event-bound base/scope context. Code-review comments, reactions and request delivery
   remain insufficient. See `docs/security-automation.md` for accepted evidence.
 - **Local fallback:** when cloud providers cannot complete a review, prepare a
   signed result with the trusted `scripts/ci/run_codex_review.cjs` launcher.

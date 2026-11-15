@@ -1,0 +1,47 @@
+name: Native security review context
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  record-context:
+    if: github.event.action != 'edited' || github.event.changes.base
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Run only the immutable base workflow. Never check out or execute PR code.
+      - name: Record server-provided review context
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const expected = context.payload.pull_request;
+            const coordinates = { ...context.repo, pull_number: expected.number };
+            const matches = pr => pr.head.sha === expected.head.sha && pr.base.sha === expected.base.sha && pr.base.ref === expected.base.ref;
+            const { data: before } = await github.rest.pulls.get(coordinates);
+            if (!matches(before)) throw new Error('The PR changed before context capture.');
+            const files = await github.paginate(github.rest.pulls.listFiles, { ...coordinates, per_page: 100 });
+            if (files.length >= 3000) throw new Error('The changed-file scope is truncated.');
+            const scope = [...new Set(files.flatMap(file => file.status === 'renamed'
+              ? [file.filename, file.previous_filename] : [file.filename]))].sort();
+            const { data: after } = await github.rest.pulls.get(coordinates);
+            if (!matches(after)) throw new Error('The PR changed during context capture.');
+            require('node:fs').writeFileSync('native-review-context.json', JSON.stringify({
+              schema: 1, pull_request: expected.number, head_sha: expected.head.sha,
+              base_sha: expected.base.sha, base_ref: expected.base.ref, scope,
+              workflow_sha: context.sha, run_id: context.runId,
+              run_attempt: Number(process.env.GITHUB_RUN_ATTEMPT),
+            }));
+
+      - name: Preserve trusted native review context
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-review-context-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: native-review-context.json
+          if-no-files-found: error
+          retention-days: 30
+          overwrite: true

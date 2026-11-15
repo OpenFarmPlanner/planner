@@ -195,9 +195,64 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
     }
   }
   if (!relevant.includes(receipt)) return invalid('The latest receipt is not bound to the current head.');
-  return passed('codex_native_completed',
+  return { ...passed('codex_native_completed',
     'The trusted Codex GitHub app reports a completed, clean security review for this exact PR/head. No human attestation is required.',
-    receipt.html_url);
+    receipt.html_url), receipt_created_at: relevant.map(item => item.created_at).sort()[0] };
+}
+
+const NATIVE_CONTEXT_WORKFLOW = '.github/workflows/native-security-context.yml';
+
+async function verifiedNativeContext({ github, context, head, base, scope, receiptTime, artifactReader = readArtifact }) {
+  const invalid = reason => blocked('codex_native_context_invalid', reason);
+  if (!SHA.test(base ?? '') || !Array.isArray(scope)) return invalid('Native review context is incomplete.');
+  let repository;
+  try {
+    ({ repository } = await github.graphql(`query NativeContext($owner:String!,$repo:String!,$number:Int!) {
+      repository(owner:$owner,name:$repo) { pullRequest(number:$number) {
+        baseRefName baseRefOid headRefOid
+        timelineItems(first:100,itemTypes:[BASE_REF_CHANGED_EVENT,BASE_REF_FORCE_PUSHED_EVENT]) {
+          totalCount pageInfo { hasNextPage }
+        }
+      } }
+    }`, { owner: context.repo.owner, repo: context.repo.repo, number: context.payload.pull_request.number }));
+  } catch { return invalid('The native review base history could not be verified.'); }
+  const pr = repository?.pullRequest;
+  if (pr?.baseRefName !== 'main' || pr.baseRefOid !== base || pr.headRefOid !== head ||
+      pr.timelineItems?.totalCount !== 0 || pr.timelineItems?.pageInfo?.hasNextPage !== false) {
+    return invalid('Native completion requires an unchanged main target and no retarget/force-push history.');
+  }
+  const name = `native-review-context-${context.payload.pull_request.number}-${head}`;
+  let artifacts;
+  try { artifacts = await github.paginate(github.rest.actions.listArtifacts, { ...context.repo, name, per_page: 100 }); }
+  catch { return invalid('Trusted native review context artifacts could not be read.'); }
+  let earliest = Infinity, count = 0;
+  for (const artifact of artifacts) {
+    if (artifact.name !== name || artifact.expired || !artifact.workflow_run?.id) continue;
+    let run;
+    try { ({ data: run } = await github.rest.actions.getWorkflowRun({ ...context.repo, run_id: artifact.workflow_run.id })); }
+    catch { return invalid('The context producer run could not be verified.'); }
+    if (run.path !== NATIVE_CONTEXT_WORKFLOW || run.event !== 'pull_request_target' ||
+        run.head_repository?.full_name !== `${context.repo.owner}/${context.repo.repo}`) continue;
+    let report;
+    try { report = await artifactReader({ github, coordinates: context.repo, run, name, filename: 'native-review-context.json' }); }
+    catch { return invalid('The trusted context record could not be read.'); }
+    if (!report && ['queued', 'in_progress', 'requested', 'waiting', 'pending'].includes(run.status)) {
+      return blocked('codex_native_context_pending', 'The trusted context producer is still publishing its current attempt.');
+    }
+    if (!report || report.pull_request !== context.payload.pull_request.number || report.head_sha !== head ||
+        report.base_sha !== base || report.base_ref !== 'main' || report.workflow_sha !== run.head_sha ||
+        run.head_sha !== base || !sameScope(report.scope, scope)) {
+      return invalid('The native review context belongs to another base or changed-file scope.');
+    }
+    const created = Date.parse(run.created_at);
+    if (!Number.isFinite(created)) return invalid('The native context timestamp is unavailable.');
+    earliest = Math.min(earliest, created); count++;
+  }
+  if (!count) return blocked('codex_native_context_pending', 'Waiting for the trusted base/scope context producer.');
+  if (!Number.isFinite(Date.parse(receiptTime)) || earliest > Date.parse(receiptTime)) {
+    return invalid('The native result predates its trusted review context.');
+  }
+  return null;
 }
 
 function evaluate({ head, scope, triage, claude, approval, request, rejection, failed, providerPending }) {
@@ -309,6 +364,8 @@ async function snapshot({ github, context, expectedHead, artifactReader = readAr
   if (!SHA.test(expectedHead) || pr.head.sha !== expectedHead) {
     return blocked('stale_head', 'A new push invalidated this run; the new head needs its own checks and review.');
   }
+  const eventBase = context.payload.pull_request.base?.sha;
+  if (eventBase && pr.base.sha !== eventBase) return blocked('stale_base', 'The PR base changed; its new context needs fresh checks.');
   const exemption = pr.draft ? 'draft' : pr.state !== 'open' ? 'closed' :
     pr.head.repo?.full_name !== `${coordinates.owner}/${coordinates.repo}` ? 'fork' :
       pr.user.login === 'dependabot[bot]' ? 'Dependabot' :
@@ -321,7 +378,12 @@ async function snapshot({ github, context, expectedHead, artifactReader = readAr
   const scope = [...new Set(files.flatMap(file => file.status === 'renamed'
     ? [file.filename, file.previous_filename] : [file.filename]))].sort();
   const comments = await github.paginate(github.rest.issues.listComments, { ...coordinates, per_page: 100 });
-  const native = await verifiedNativeCodexReview({ github, context, comments, head: expectedHead });
+  let native = await verifiedNativeCodexReview({ github, context, comments, head: expectedHead });
+  if (native?.allowed) {
+    const contextResult = await verifiedNativeContext({ github, context, head: expectedHead,
+      base: pr.base.sha, scope, receiptTime: native.receipt_created_at, artifactReader });
+    if (contextResult) native = contextResult;
+  }
   let codex;
   try {
     codex = await codexVerifier({ github, context, comments, head: expectedHead,
@@ -333,6 +395,7 @@ async function snapshot({ github, context, expectedHead, artifactReader = readAr
   // evidence can still use an explicitly verified independent human contingency.
   if (codex?.state === 'codex_local_incomplete') return codex;
   if (native?.state === 'codex_native_incomplete') return native;
+  if (['codex_native_context_invalid', 'codex_native_context_pending'].includes(native?.state)) return codex?.allowed ? codex : native;
   if (native?.allowed) return native;
   if (native?.state === 'codex_native_pending') return native;
   const approval = await approvedReview({ github, coordinates, comments, head: expectedHead, scope });
@@ -413,7 +476,7 @@ async function enforce({ github, context, core, expectedHead, timeoutMs = 20 * 6
     }
     if (result.state !== previous) core.info(`Security review: ${result.state}. ${result.reason}`);
     previous = result.state;
-    if (result.allowed || ['stale_head', 'codex_rejected', 'codex_local_incomplete', 'codex_evidence_invalid', 'manual_review_required', 'claude_failed', 'triage_failed', 'scope_unavailable', 'evidence_unavailable', 'codex_native_incomplete', 'codex_native_invalid'].includes(result.state)) break;
+    if (result.allowed || ['stale_head', 'codex_rejected', 'codex_local_incomplete', 'codex_evidence_invalid', 'manual_review_required', 'claude_failed', 'triage_failed', 'scope_unavailable', 'evidence_unavailable', 'codex_native_incomplete', 'codex_native_invalid', 'codex_native_context_invalid', 'stale_base'].includes(result.state)) break;
     if (now() >= deadline) { result = blocked('timed_out', `Timed out while ${result.state}: ${result.reason}`); break; }
     await wait(Math.min(intervalMs, deadline - now()));
   } while (true);
@@ -431,4 +494,4 @@ async function enforce({ github, context, core, expectedHead, timeoutMs = 20 * 6
 }
 
 module.exports = { evaluate, parseApproval, approvedReview, readArtifact, snapshot, enforce,
-  signedCodexPayload, verifiedCodexReview, verifiedNativeCodexReview, CODEX_SIGNERS, CODEX_SOURCES };
+  signedCodexPayload, verifiedCodexReview, verifiedNativeCodexReview, verifiedNativeContext, CODEX_SIGNERS, CODEX_SOURCES };

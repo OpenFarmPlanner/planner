@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { execFileSync } = require('node:child_process');
-const { evaluate, parseApproval, approvedReview, readArtifact, snapshot, enforce, verifiedNativeCodexReview } =
+const { evaluate, parseApproval, approvedReview, readArtifact, snapshot, enforce, verifiedNativeCodexReview, verifiedNativeContext } =
   require('../.github/scripts/security-review-completion.cjs');
 
 const HEAD = 'a'.repeat(40);
@@ -275,9 +275,12 @@ function nativeFixture() {
   const receipt = { ...structuredClone(base), id: 2, node_id: 'receipt', html_url: 'https://github.com/owner/repo/pull/1#issuecomment-2',
     body: `<!-- codex-review-receipt:v1 -->\n\n### 🛡️ Codex Security Review\n\nSecurity review completed. No security issues were found in this pull request.\n\n**Reviewed commit:** \`${HEAD.slice(0, 10)}\`\n\n[View security finding report](https://chatgpt.com/codex/cloud/tasks/task_review)` };
   const comments = [summary, receipt];
-  const graphql = async () => ({ nodes: comments.map(comment => ({ id: comment.node_id,
-    body: comment.body, updatedAt: comment.updated_at, lastEditedAt: null, editor: null,
-    author: { __typename: 'Bot', databaseId: 199175422 } })) });
+  const graphql = async query => query.includes('query NativeContext(')
+    ? { repository: { pullRequest: { baseRefName: 'main', baseRefOid: OLD, headRefOid: HEAD,
+      timelineItems: { totalCount: 0, pageInfo: { hasNextPage: false } } } } }
+    : { nodes: comments.map(comment => ({ id: comment.node_id,
+      body: comment.body, updatedAt: comment.updated_at, lastEditedAt: null, editor: null,
+      author: { __typename: 'Bot', databaseId: 199175422 } })) };
   return { evidence, summary, receipt, comments, args: { head: HEAD, now: NATIVE_NOW, comments,
     context: { repo: { owner: 'owner', repo: 'repo' }, payload: { pull_request: { number: 1 } } },
     github: { graphql, rest: { git: { getRef: async () => { throw Object.assign(new Error('Not found'), { status: 404 }); } }, repos: { getCommit: async ({ ref }) => {
@@ -367,16 +370,25 @@ test('newer running review or findings supersede an earlier clean result for the
 
 function nativeSnapshotFixture() {
   const f = nativeFixture();
-  const listFiles = () => {}, listComments = () => {};
+  const listFiles = () => {}, listComments = () => {}, listArtifacts = () => {};
+  f.contextRecord = { schema: 1, run_id: 12, run_attempt: 1, pull_request: 1,
+    head_sha: HEAD, base_sha: OLD, base_ref: 'main', scope: SCOPE, workflow_sha: OLD };
+  f.contextRun = { id: 12, run_attempt: 1, path: '.github/workflows/native-security-context.yml',
+    event: 'pull_request_target', head_sha: OLD, head_repository: { full_name: 'owner/repo' },
+    created_at: '2026-11-15T07:24:00Z' };
+  f.contextArtifacts = [{ id: 15, name: `native-review-context-1-${HEAD}`, workflow_run: { id: 12 } }];
+  f.args.artifactReader = async () => f.contextRecord;
   f.args.github.rest = {
     git: f.args.github.rest.git,
     pulls: { get: async () => ({ data: { state: 'open', base: { sha: OLD }, labels: [], user: { login: 'owner' },
       head: { sha: HEAD, repo: { full_name: 'owner/repo' } } } }), listFiles },
     issues: { listComments },
+    actions: { listArtifacts, getWorkflowRun: async () => ({ data: f.contextRun }) },
     repos: { ...f.args.github.rest.repos,
       getCollaboratorPermissionLevel: async () => ({ data: { permission: 'maintain' } }) },
   };
-  f.args.github.paginate = async method => method === listFiles ? SCOPE.map(filename => ({ filename })) : f.comments;
+  f.args.github.paginate = async method => method === listFiles ? SCOPE.map(filename => ({ filename }))
+    : method === listArtifacts ? f.contextArtifacts : f.comments;
   return f;
 }
 
@@ -534,4 +546,92 @@ test('a human-edited pending marker is unverifiable evidence rather than an auth
     data.nodes[0].editor = { __typename: 'User', databaseId: 1 }; data.nodes[0].lastEditedAt = 'now'; return data; };
   f.comments.push(reportComment, approvalComment());
   assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'manual_review_approved');
+});
+
+
+test('native review context binds the exact main base and changed-file scope', async () => {
+  for (const mutate of [
+    f => { f.contextRecord.base_sha = 'c'.repeat(40); },
+    f => { f.contextRecord.scope = ['hidden-code.py']; },
+    f => { f.contextRecord.workflow_sha = HEAD; },
+    f => { f.contextRun.head_sha = HEAD; },
+    f => { f.contextRun.created_at = '2026-11-15T07:26:00Z'; },
+  ]) {
+    const f = nativeSnapshotFixture(); mutate(f);
+    f.comments.push(reportComment, approvalComment());
+    assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_context_invalid');
+  }
+});
+
+test('a retargeted PR cannot reuse a clean native review while retaining its head', async () => {
+  const f = nativeSnapshotFixture(); const read = f.args.github.graphql;
+  f.args.github.graphql = async query => { const data = await read(query);
+    if (data.repository) data.repository.pullRequest.timelineItems.totalCount = 1;
+    return data; };
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_context_invalid');
+});
+
+test('native completion waits for trusted context and rejects another workflow as its producer', async () => {
+  const f = nativeSnapshotFixture(); f.contextRun.path = '.github/workflows/untrusted.yml';
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_context_pending');
+  f.contextRun.path = '.github/workflows/native-security-context.yml';
+  f.contextArtifacts = [];
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_context_pending');
+});
+
+test('old-base CI snapshots fail after a base update without a head update', async () => {
+  const f = fixture(); f.args.context.payload.pull_request.base = { sha: 'c'.repeat(40) };
+  assert.equal((await snapshot(f.args)).state, 'stale_base');
+});
+
+test('trusted context producer captures API file scope without executing PR code', async () => {
+  const source = fs.readFileSync('.github/workflows/native-security-context.yml', 'utf8');
+  assert.doesNotMatch(source, /actions\/checkout|git checkout|git clone/);
+  const script = source.split('          script: |\n')[1].split('\n      - name:')[0]
+    .split('\n').map(line => line.startsWith('            ') ? line.slice(12) : line).join('\n');
+  const run = new (Object.getPrototypeOf(async function () {}).constructor)('github', 'context', 'require', 'process', script);
+  const expected = { number: 1, head: { sha: HEAD }, base: { sha: OLD, ref: 'main' } };
+  let captures = [], reads = 0, changeAt = 0;
+  const github = { rest: { pulls: { get: async () => ({ data: changeAt && ++reads === changeAt
+    ? { ...expected, base: { sha: HEAD, ref: 'main' } } : expected }), listFiles() {} } },
+    paginate: async () => [{ filename: 'new.py', previous_filename: 'old.py', status: 'renamed' }] };
+  const args = [github, { repo: { owner: 'owner', repo: 'repo' }, payload: { pull_request: expected },
+    sha: OLD, runId: 12 }, () => ({ writeFileSync: (path, data) => captures.push(JSON.parse(data)) }),
+  { env: { GITHUB_RUN_ATTEMPT: '1' } }];
+  await run(...args);
+  assert.deepEqual(captures[0].scope, ['new.py', 'old.py']);
+  assert.equal(captures[0].base_sha, OLD);
+  assert.equal(captures[0].workflow_sha, OLD);
+  for (changeAt of [1, 2]) { reads = 0; captures = [];
+    await assert.rejects(run(...args), /PR changed/); assert.equal(captures.length, 0); }
+});
+
+
+test('context transport failure does not hide a separately valid base-bound signed review', async () => {
+  const f = nativeSnapshotFixture(); f.args.artifactReader = async () => { throw new Error('Artifact unavailable'); };
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD,
+    codexVerifier: async () => ({ allowed: true, state: 'codex_local_completed' }) })).state, 'codex_local_completed');
+});
+
+test('base edits trigger fresh CI while metadata edits cannot replace required check names with skips', () => {
+  const workflow = fs.readFileSync('.github/workflows/ci.yml', 'utf8');
+  assert.match(workflow, /types: \[opened, synchronize, reopened, edited\]/);
+  for (const id of ['frontend-tests', 'backend-tests', 'backend-postgres-tests', 'security-review-completion', 'quality']) {
+    const block = workflow.slice(workflow.indexOf(`  ${id}:\n`)).split(/\n  [a-z][a-z-]+:\n/)[0];
+    assert.match(block, /Ignored metadata edit/);
+    assert.match(block, /github\.event\.action != 'edited' \|\| github\.event\.changes\.base/);
+  }
+  assert.match(workflow, /current\.base\.sha !== pr\.base\.sha/);
+});
+
+
+test('a valid base-bound signed review does not need a missing native context artifact', async () => {
+  const f = nativeSnapshotFixture(); f.contextArtifacts = [];
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD,
+    codexVerifier: async () => ({ allowed: true, state: 'codex_local_completed' }) })).state, 'codex_local_completed');
+});
+
+test('a context producer rerun remains pending until its current-attempt artifact arrives', async () => {
+  const f = nativeSnapshotFixture(); f.contextRun.status = 'in_progress'; f.args.artifactReader = async () => null;
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_context_pending');
 });

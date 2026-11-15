@@ -30,7 +30,7 @@ ls docs/security-review-*.md
 
 Use completed native Codex Security Review evidence automatically when the
 immutable-base gate verifies the pinned GitHub app/bot, exact PR/head, recent
-clean security receipt and last-editor provenance. Do not ask for an additional
+clean security receipt, last-editor provenance and the trusted base/scope context. Do not ask for an additional
 human confirmation or reaction on that route. Request delivery and ordinary
 code reviews are not security completion. The manual contingency below applies
 when provider evidence is unavailable, not to verified native completion.
