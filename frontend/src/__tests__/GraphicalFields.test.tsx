@@ -3,13 +3,19 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { act } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import GraphicalFields from "../pages/GraphicalFields";
+import type { BedLayoutEntry, FieldLayoutEntry } from "../api/api";
+
+interface LayoutData {
+  bed_layouts: BedLayoutEntry[];
+  field_layouts: FieldLayoutEntry[];
+}
 
 const mockUseHierarchyData = vi.fn();
 const { listByLocationMock, saveByLocationMock } = vi.hoisted(() => ({
-  listByLocationMock: vi.fn(async () => ({
+  listByLocationMock: vi.fn(async (): Promise<{ data: LayoutData }> => ({
     data: { bed_layouts: [], field_layouts: [] },
   })),
-  saveByLocationMock: vi.fn(async () => ({
+  saveByLocationMock: vi.fn<(locationId: number, body: LayoutData) => Promise<{ data: LayoutData }>>(async () => ({
     data: { bed_layouts: [], field_layouts: [] },
   })),
 }));
@@ -378,6 +384,57 @@ describe("GraphicalFields", () => {
     expect(mobileGeometry).toEqual(desktopGeometry);
   });
 
+  it("defaults to horizontal lengths and restores the layout after four turns without saving", async () => {
+    render(<GraphicalFields />);
+    const field = await screen.findByTestId("field-rect-10");
+    const bed = screen.getByTestId("bed-rect-100");
+    expect(Number(field.getAttribute("width"))).toBeGreaterThan(Number(field.getAttribute("height")));
+    expect(Number(bed.getAttribute("width"))).toBeGreaterThan(Number(bed.getAttribute("height")));
+    const initial = mockKonvaNodes["bed-rect-100"].getPosition();
+    const originalWidth = bed.getAttribute("width");
+    for (let i = 0; i < 4; i += 1) {
+      fireEvent.click(screen.getByRole("button", { name: "Ansicht um 90° nach rechts drehen" }));
+      for (const label of screen.queryAllByTestId(/^bed-label-/)) expect(label).toHaveAttribute("rotation", "0");
+    }
+    expect(mockKonvaNodes["bed-rect-100"].getPosition()).toEqual(initial);
+    expect(screen.getByTestId("bed-rect-100")).toHaveAttribute("width", originalWidth);
+    expect(saveByLocationMock).not.toHaveBeenCalled();
+  });
+
+  it.each([0, 90, 180, 270] as const)("saves field and bed drags in stored coordinates at %s degrees", async rotation => {
+    listByLocationMock.mockResolvedValueOnce({ data: {
+      field_layouts: [{ field: 10, location: 1, x: 1200, y: 800, version: 1 }],
+      bed_layouts: [{ bed: 100, location: 1, x: 100, y: 100, version: 1 }],
+    } });
+    render(<GraphicalFields />);
+    await waitFor(() => expect(mockKonvaNodes["field-rect-10"].getPosition().y).toBe(1200));
+    if (rotation === 0) fireEvent.click(screen.getByRole("button", { name: "Ansicht um 90° nach links drehen" }));
+    for (let angle = 90; angle < rotation; angle += 90) {
+      fireEvent.click(screen.getByRole("button", { name: "Ansicht um 90° nach rechts drehen" }));
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Bearbeiten" }));
+    const drag = (id: string) => {
+      const node = mockKonvaNodes[id];
+      const start = node.getPosition();
+      act(() => node.handlers.onDragEnd?.({
+        evt: new Event("dragend"),
+        target: createKonvaTarget({ current: { x: start.x + 30, y: start.y + 10 } }),
+      }));
+    };
+    drag("field-rect-10");
+    const [dx, dy] = ({ 0: [30, 10], 90: [10, -30], 180: [-30, -10], 270: [-10, 30] })[rotation]!;
+    await waitFor(() => expect(saveByLocationMock).toHaveBeenCalledWith(1, {
+      field_layouts: [expect.objectContaining({ field: 10, x: 1200 + dx, y: 800 + dy })], bed_layouts: [],
+    }));
+    drag("bed-rect-100");
+    await waitFor(() => expect(saveByLocationMock.mock.calls.some(([, body]) => body.bed_layouts.length > 0)).toBe(true));
+    const body = saveByLocationMock.mock.calls.findLast(([, body]) => body.bed_layouts.length > 0)![1];
+    const saved = body.bed_layouts[0];
+    const quarterTurn = rotation === 90 || rotation === 270;
+    expect(saved.x).toBeCloseTo(100 + dx * (quarterTurn ? 340 / 316 : 1));
+    expect(saved.y).toBeCloseTo(100 + dy * (quarterTurn ? 676 / 700 : 1));
+  });
+
   it("shades the margin beds cannot use and leaves the usable area white, also in view mode", async () => {
     render(<GraphicalFields />);
     act(() => {
@@ -485,7 +542,7 @@ describe("GraphicalFields", () => {
 
     const stage = screen.getByTestId("konva-stage");
     act(() => {
-      Array.from({ length: 6 }).forEach(() => {
+      Array.from({ length: 12 }).forEach(() => {
         fireEvent.click(screen.getByRole("button", { name: "Hineinzoomen" }));
       });
     });
@@ -632,6 +689,10 @@ describe("GraphicalFields", () => {
       );
     });
 
+    act(() => {
+      for (let i = 0; i < 12; i += 1) fireEvent.click(screen.getByRole("button", { name: "Hineinzoomen" }));
+    });
+
     const stage = screen.getByTestId("konva-stage");
     const startX = Number(stage.getAttribute("data-x"));
     const startY = Number(stage.getAttribute("data-y"));
@@ -677,6 +738,10 @@ describe("GraphicalFields", () => {
       fireEvent.click(
         getLocationHeaderButton(),
       );
+    });
+
+    act(() => {
+      for (let i = 0; i < 12; i += 1) fireEvent.click(screen.getByRole("button", { name: "Hineinzoomen" }));
     });
 
     const stage = screen.getByTestId("konva-stage");
@@ -741,6 +806,10 @@ describe("GraphicalFields", () => {
     act(() => {
       fireEvent.click(getLocationHeaderButton());
       fireEvent.click(screen.getByRole("button", { name: "Bearbeiten" }));
+    });
+
+    act(() => {
+      for (let i = 0; i < 12; i += 1) fireEvent.click(screen.getByRole("button", { name: "Hineinzoomen" }));
     });
 
     const stage = screen.getByTestId("konva-stage");
@@ -809,6 +878,10 @@ describe("GraphicalFields", () => {
     act(() => {
       fireEvent.click(getLocationHeaderButton());
       fireEvent.click(screen.getByRole("button", { name: "Bearbeiten" }));
+    });
+
+    act(() => {
+      for (let i = 0; i < 12; i += 1) fireEvent.click(screen.getByRole("button", { name: "Hineinzoomen" }));
     });
 
     const stage = screen.getByTestId("konva-stage");

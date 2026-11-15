@@ -66,8 +66,8 @@ test('fits unsaved plots together and shows readable beds in the schematic view'
       expect(field.bounds.x + field.bounds.width).toBeLessThanOrEqual(field.stage.width + 1);
       expect(field.bounds.y + field.bounds.height).toBeLessThanOrEqual(field.stage.height + 1);
     }
-    expect(fields[0].width / fields[0].height).toBeCloseTo(0.5);
-    expect(fields[1].width / fields[1].height).toBeCloseTo(2.4);
+    expect(fields[0].width / fields[0].height).toBeCloseTo(2);
+    expect(fields[1].width / fields[1].height).toBeCloseTo(1 / 2.4);
     for (const [index, field] of fields.entries()) {
       for (const other of fields.slice(index + 1)) {
         expect(field.x + field.width <= other.x || other.x + other.width <= field.x ||
@@ -78,9 +78,9 @@ test('fits unsaved plots together and shows readable beds in the schematic view'
     const labels = await canvasRects(page, 'bed-label-');
     for (const bed of beds) {
       const label = labels.find(label => label.id === bed.id.replace('bed-rect-', 'bed-label-'));
-      if (Math.min(bed.screenSize.width, bed.screenSize.height) >= 13 && Math.max(bed.screenSize.width, bed.screenSize.height) >= 22) {
+      if (bed.screenSize.height >= 13 && bed.screenSize.width >= 22) {
         expect(label).toBeDefined();
-        expect(label!.rotation).toBe(bed.height > bed.width ? -90 : 0);
+        expect(label!.rotation).toBe(0);
         expect(label!.bounds.x).toBeGreaterThanOrEqual(bed.bounds.x - 1);
         expect(label!.bounds.y).toBeGreaterThanOrEqual(bed.bounds.y - 1);
         expect(label!.bounds.x + label!.bounds.width).toBeLessThanOrEqual(bed.bounds.x + bed.bounds.width + 1);
@@ -95,16 +95,58 @@ test('fits unsaved plots together and shows readable beds in the schematic view'
   }
   await page.setViewportSize({ width: 375, height: 800 });
   const card = page.locator('.MuiAccordion-root').filter({ has: page.getByRole('heading', { name: 'Standort: Grafik913', exact: true }) });
-  await card.getByRole('button', { name: 'Hineinzoomen', exact: true }).click();
+  await expect.poll(async () => (await canvasRects(page, `bed-rect-${bedIds[0]}`))[0].stage.width).toBeLessThanOrEqual(375);
+  await card.scrollIntoViewIfNeeded();
+  const zoomTarget = (await canvasRects(page, `bed-rect-${bedIds[0]}`))[0];
+  await page.mouse.move(zoomTarget.container.x + zoomTarget.bounds.x + zoomTarget.bounds.width / 2,
+    zoomTarget.container.y + zoomTarget.bounds.y + zoomTarget.bounds.height / 2);
+  for (let i = 0; i < 2; i += 1) {
+    const before = (await canvasRects(page, `bed-rect-${bedIds[0]}`))[0].screenSize.height;
+    await page.mouse.wheel(0, -100);
+    await expect.poll(async () => (await canvasRects(page, `bed-rect-${bedIds[0]}`))[0].screenSize.height).toBeGreaterThan(before);
+  }
   await expect.poll(async () => (await canvasRects(page, `bed-label-${bedIds[0]}`)).length).toBe(1);
+  let zoomedLabel = (await canvasRects(page, `bed-label-${bedIds[0]}`))[0];
+  if (zoomedLabel.bounds.x + zoomedLabel.bounds.width > zoomedLabel.stage.width) {
+    await page.keyboard.press('ArrowRight');
+    zoomedLabel = (await canvasRects(page, `bed-label-${bedIds[0]}`))[0];
+  }
+  expect(zoomedLabel.bounds.x).toBeGreaterThanOrEqual(0);
+  expect(zoomedLabel.bounds.y).toBeGreaterThanOrEqual(0);
+  expect(zoomedLabel.bounds.x + zoomedLabel.bounds.width).toBeLessThanOrEqual(zoomedLabel.stage.width);
   await page.screenshot({ path: testInfo.outputPath('graphical-mobile-zoomed.png'), animations: 'disabled' });
   await page.setViewportSize({ width: 1440, height: 900 });
   await card.getByRole('button', { name: 'Alles einpassen', exact: true }).click();
   await page.getByRole('heading', { name: 'Standort: Grafik913', exact: true }).scrollIntoViewIfNeeded();
+  const original = (await canvasRects(page, `field-rect-${fieldIds[0]}`))[0];
+  for (let turn = 1; turn <= 4; turn += 1) {
+    await card.getByRole('button', { name: 'Ansicht um 90° nach rechts drehen', exact: true }).click();
+    const field = (await canvasRects(page, `field-rect-${fieldIds[0]}`))[0];
+    expect(field.width / field.height).toBeCloseTo(turn % 2 ? 0.5 : 2);
+    for (const label of await canvasRects(page, 'bed-label-')) expect(label.rotation).toBe(0);
+    expect(field.bounds.x).toBeGreaterThanOrEqual(0);
+    expect(field.bounds.y).toBeGreaterThanOrEqual(47);
+    expect(field.bounds.x + field.bounds.width).toBeLessThanOrEqual(field.stage.width + 1);
+    expect(field.bounds.y + field.bounds.height).toBeLessThanOrEqual(field.stage.height + 1);
+  }
+  const restored = (await canvasRects(page, `field-rect-${fieldIds[0]}`))[0];
+  expect(restored.x).toBe(original.x);
+  expect(restored.y).toBe(original.y);
+  await card.getByRole('button', { name: 'Ansicht um 90° nach links drehen', exact: true }).click();
+  await card.getByRole('button', { name: 'Ansicht um 90° nach rechts drehen', exact: true }).click();
   const bed = (await canvasRects(page, `bed-rect-${bedIds[0]}`))[0];
   await page.mouse.click(bed.container.x + bed.bounds.x + bed.bounds.width / 2,
     bed.container.y + bed.bounds.y + bed.bounds.height / 2);
   await expect(page.getByRole('dialog')).toContainText('Beet 1 mit einem langen lesbaren Namen');
   await page.screenshot({ path: testInfo.outputPath('graphical-bed-details.png'), animations: 'disabled' });
   expect(layoutWrites).toEqual([]);
+  await page.getByRole('button', { name: 'Schließen', exact: true }).click();
+  await page.evaluate(() => localStorage.setItem('ui.language', 'fr'));
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.reload();
+  const rotateRight = page.getByRole('button', { name: 'Tourner la vue de 90° vers la droite', exact: true }).first();
+  await rotateRight.scrollIntoViewIfNeeded();
+  await rotateRight.click();
+  await rotateRight.hover();
+  await page.screenshot({ path: testInfo.outputPath('graphical-mobile-fr.png'), animations: 'disabled' });
 });

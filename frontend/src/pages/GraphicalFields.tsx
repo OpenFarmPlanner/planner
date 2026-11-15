@@ -16,6 +16,8 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import FitScreenIcon from "@mui/icons-material/FitScreen";
+import RotateLeftIcon from "@mui/icons-material/RotateLeft";
+import RotateRightIcon from "@mui/icons-material/RotateRight";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
 import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
@@ -47,6 +49,11 @@ import {
   arrangeFieldRects,
   placeFieldRects,
   initialAutoLayout,
+  DEFAULT_GRAPHICAL_ROTATION,
+  rotateRect,
+  rotateRectBetweenSizes,
+  turnRotation,
+  type GraphicalRotation,
   type Rect as PlacementRect,
   type RectSize,
 } from "./graphicalLayoutUtils";
@@ -145,6 +152,7 @@ export default function GraphicalFields({
   const [viewportByLocation, setViewportByLocation] = useState<
     Record<number, ViewportState>
   >({});
+  const [rotationByLocation, setRotationByLocation] = useState<Record<number, GraphicalRotation>>({});
   const [selectedElement, setSelectedElement] =
     useState<SelectedElement | null>(null);
   const [activePanLocationId, setActivePanLocationId] = useState<number | null>(
@@ -364,8 +372,9 @@ export default function GraphicalFields({
     const fitPadding = getFitViewportPadding(stageWidth);
     const arrangement = arrangeFieldRects(
       sizedFields,
-      Math.max(1, stageWidth - fitPadding.left - fitPadding.right) /
-        Math.max(1, stageHeight - fitPadding.top - fitPadding.bottom),
+      // Pack for the default quarter turn; later rotations preserve this arrangement.
+      Math.max(1, stageHeight - fitPadding.top - fitPadding.bottom) /
+        Math.max(1, stageWidth - fitPadding.left - fitPadding.right),
       LOCATION_FIELD_GAP,
     );
     const originX = Math.max(
@@ -394,19 +403,23 @@ export default function GraphicalFields({
           rect.width + rect.defaultX + LOCATION_LAYOUT_PADDING,
       ),
     );
+    const rotation = rotationByLocation[location.id] ?? DEFAULT_GRAPHICAL_ROTATION;
+    const storedContentSize = { width: contentWidth, height: contentHeight };
+    const rotatedContent = rotateRect({ x: 0, y: 0, ...storedContentSize }, storedContentSize, rotation);
     const fieldViewModels = placeFieldRects(
       defaultFieldRects,
       layoutsByField,
       { width: contentWidth, height: contentHeight },
-    );
+    ).map(rect => rotateRect(rect, storedContentSize, rotation));
 
     return [
       {
         location,
         defaultFieldRects,
         fieldViewModels,
-        contentWidth,
-        contentHeight,
+        contentWidth: rotatedContent.width,
+        contentHeight: rotatedContent.height,
+        rotation,
       },
     ];
   });
@@ -473,6 +486,20 @@ export default function GraphicalFields({
         y: stageHeight / 2,
       }),
     );
+  };
+
+  const handleRotate = (locationId: number, direction: -1 | 1): void => {
+    stopKonvaDragging();
+    resetTransientInteractionState();
+    setRotationByLocation(prev => ({
+      ...prev,
+      [locationId]: turnRotation(prev[locationId] ?? DEFAULT_GRAPHICAL_ROTATION, direction),
+    }));
+    setViewportByLocation(prev => {
+      const next = { ...prev };
+      delete next[locationId];
+      return next;
+    });
   };
 
   const handlePanByOffset = (
@@ -664,6 +691,7 @@ export default function GraphicalFields({
     fieldViewModels: RectViewModel[],
     locationName: string,
     locationId: number,
+    rotation: GraphicalRotation,
   ) => {
     if (!isLocationEditMode(locationId)) {
       return {
@@ -730,11 +758,12 @@ export default function GraphicalFields({
           contentBounds,
         );
         event.target.position(finalClamped);
+        const stored = rotateRect({ ...baseRect, ...finalClamped }, contentBounds, ((360 - rotation) % 360) as GraphicalRotation);
         const nextLayout: FieldLayoutEntry = {
           field: fieldId,
           location: locationId,
-          x: finalClamped.x,
-          y: finalClamped.y,
+          x: stored.x,
+          y: stored.y,
           version: 1,
         };
         setActiveGuides([]);
@@ -752,6 +781,8 @@ export default function GraphicalFields({
     locationName: string,
     fieldName: string,
     locationId: number,
+    storedFieldInnerSize: RectSize,
+    rotation: GraphicalRotation,
   ) => {
     if (!isLocationEditMode(locationId)) {
       return {
@@ -847,11 +878,15 @@ export default function GraphicalFields({
           x: currentFieldRect.x + FIELD_INNER_OFFSET_X + finalClamped.x,
           y: currentFieldRect.y + FIELD_INNER_OFFSET_Y + finalClamped.y,
         });
+        const stored = rotateRectBetweenSizes(
+          { ...bedVm, ...finalClamped }, fieldInnerSize, storedFieldInnerSize,
+          ((360 - rotation) % 360) as GraphicalRotation,
+        );
         const nextLayout: BedLayoutEntry = {
           bed: bedVm.id,
           location: locationId,
-          x: finalClamped.x,
-          y: finalClamped.y,
+          x: stored.x,
+          y: stored.y,
           version: 1,
         };
         setActiveGuides([]);
@@ -970,6 +1005,7 @@ export default function GraphicalFields({
           fieldViewModels,
           contentWidth,
           contentHeight,
+          rotation,
         }) => {
           if (!location.id) {
             return null;
@@ -1203,10 +1239,26 @@ export default function GraphicalFields({
                       zIndex: 2,
                       borderRadius: 3,
                       overflow: "hidden",
+                      maxHeight: "calc(100% - 24px)",
+                      overflowY: "auto",
                       bgcolor: "background.paper",
                     }}
                   >
                     <Stack spacing={0} sx={{ alignItems: "stretch", }} >
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={0}>
+                        {([-1, 1] as const).map(direction => (
+                          <AppTooltip key={direction} title={t(direction === -1 ? "fields:graphical.rotateLeft" : "fields:graphical.rotateRight")} placement="left">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleRotate(locationId, direction)}
+                              aria-label={t(direction === -1 ? "fields:graphical.rotateLeft" : "fields:graphical.rotateRight")}
+                              sx={{ borderRadius: 0, p: 1.25 }}
+                            >
+                              {direction === -1 ? <RotateLeftIcon fontSize="small" /> : <RotateRightIcon fontSize="small" />}
+                            </IconButton>
+                          </AppTooltip>
+                        ))}
+                      </Stack>
                       <Box sx={{ display: { xs: "none", sm: "block" } }}>
                         <Box sx={{ display: "flex", justifyContent: "center" }}>
                           <AppTooltip title={t("fields:graphical.panUp")} placement="left">
@@ -1284,37 +1336,39 @@ export default function GraphicalFields({
                           </AppTooltip>
                         </Box>
                       </Box>
-                      <AppTooltip
-                        title={t("fields:graphical.zoomIn")}
-                        placement="left"
-                      >
-                        <IconButton
-                          size="small"
-                          onClick={() => handleZoom(locationId, ZOOM_STEP)}
-                          aria-label={t("fields:graphical.zoomIn")}
-                          sx={{ borderRadius: 0, p: 1.25 }}
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={0}>
+                        <AppTooltip
+                          title={t("fields:graphical.zoomIn")}
+                          placement="left"
                         >
-                          <AddIcon fontSize="small" />
-                        </IconButton>
-                      </AppTooltip>
-                      <AppTooltip
-                        title={t("fields:graphical.zoomOut")}
-                        placement="left"
-                      >
-                        <IconButton
-                          size="small"
-                          onClick={() => handleZoom(locationId, 1 / ZOOM_STEP)}
-                          aria-label={t("fields:graphical.zoomOut")}
-                          sx={{
-                            borderRadius: 0,
-                            p: 1.25,
-                            borderTop: "1px solid",
-                            borderColor: "divider",
-                          }}
+                          <IconButton
+                            size="small"
+                            onClick={() => handleZoom(locationId, ZOOM_STEP)}
+                            aria-label={t("fields:graphical.zoomIn")}
+                            sx={{ borderRadius: 0, p: 1.25 }}
+                          >
+                            <AddIcon fontSize="small" />
+                          </IconButton>
+                        </AppTooltip>
+                        <AppTooltip
+                          title={t("fields:graphical.zoomOut")}
+                          placement="left"
                         >
-                          <RemoveIcon fontSize="small" />
-                        </IconButton>
-                      </AppTooltip>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleZoom(locationId, 1 / ZOOM_STEP)}
+                            aria-label={t("fields:graphical.zoomOut")}
+                            sx={{
+                              borderRadius: 0,
+                              p: 1.25,
+                              borderTop: "1px solid",
+                              borderColor: "divider",
+                            }}
+                          >
+                            <RemoveIcon fontSize="small" />
+                          </IconButton>
+                        </AppTooltip>
+                      </Stack>
                       <AppTooltip
                         title={t("fields:graphical.fitToView")}
                         placement="left"
@@ -1420,7 +1474,13 @@ export default function GraphicalFields({
                     }}
                   >
                     <Layer>
-                      {defaultFieldRects.map((baseRect) => {
+                      {defaultFieldRects.map((storedBaseRect) => {
+                        const baseRect = {
+                          ...storedBaseRect,
+                          ...(rotation === 90 || rotation === 270
+                            ? { width: storedBaseRect.height, height: storedBaseRect.width }
+                            : {}),
+                        };
                         const fieldId = baseRect.field.id!;
                         const currentFieldRect = fieldViewModels.find(
                           (fieldRect) => fieldRect.id === fieldId,
@@ -1439,13 +1499,14 @@ export default function GraphicalFields({
                           width: fieldUsableArea.width,
                           height: fieldUsableArea.height,
                         };
+                        const storedFieldInnerSize = getFieldUsableArea(storedBaseRect);
                         fieldBeds.forEach((bed) => {
                           bedSizeMap.set(
                             bed.id!,
                             getBedRectSizeWithinField(
                               bed,
                               baseRect.field,
-                              fieldInnerSize,
+                              storedFieldInnerSize,
                             ),
                           );
                         });
@@ -1462,7 +1523,7 @@ export default function GraphicalFields({
                             const clamped = clampInsideParent(
                               { x: saved.x, y: saved.y },
                               size,
-                              fieldInnerSize,
+                              storedFieldInnerSize,
                             );
                             return {
                               x: clamped.x,
@@ -1474,7 +1535,7 @@ export default function GraphicalFields({
                         const autoLayout = initialAutoLayout(
                           missingBeds,
                           bedSizeMap,
-                          fieldInnerSize,
+                          storedFieldInnerSize,
                           BED_AUTO_LAYOUT_GAP,
                           occupiedBedRects,
                           BED_PLACEMENT_SPACING,
@@ -1494,7 +1555,7 @@ export default function GraphicalFields({
                                 y: saved?.y ?? fallback.y,
                               },
                               size,
-                              fieldInnerSize,
+                              storedFieldInnerSize,
                             );
                             return {
                               id: bedId,
@@ -1506,7 +1567,7 @@ export default function GraphicalFields({
                               height: size.height,
                             };
                           },
-                        );
+                        ).map(rect => rotateRectBetweenSizes(rect, storedFieldInnerSize, fieldInnerSize, rotation));
 
                         return (
                           <Group key={fieldId}>
@@ -1550,6 +1611,7 @@ export default function GraphicalFields({
                                 fieldViewModels,
                                 location.name,
                                 locationId,
+                                rotation,
                               )}
                             />
                             {shouldShowFieldLabel(
@@ -1601,6 +1663,8 @@ export default function GraphicalFields({
                                         location.name,
                                         baseRect.field.name,
                                         locationId,
+                                        storedFieldInnerSize,
+                                        rotation,
                                       )}
                                     />
                                     {(() => {

@@ -1,7 +1,33 @@
 import { describe, expect, it } from 'vitest';
+import { rotateRect, rotateRectBetweenSizes, turnRotation, type GraphicalRotation } from '../pages/graphicalLayoutUtils';
 import { arrangeFieldRects, areaToRectSize, clampInsideParent, findFreePlacementPosition, getBedRectSize, getBedRectSizeWithinField, getBedScaleFromField, getFieldRectSize, initialAutoLayout, placeFieldRects, rectsOverlap, FIELD_PLACEMENT_SPACING, type Rect } from '../pages/graphicalLayoutUtils';
 
 describe('graphicalLayoutUtils', () => {
+  it('rotates positions and dimensions clockwise through all four orientations', () => {
+    const rect = { x: 10, y: 20, width: 30, height: 40 };
+    const parent = { width: 200, height: 100 };
+    expect(rotateRect(rect, parent, 0)).toEqual(rect);
+    expect(rotateRect(rect, parent, 90)).toEqual({ x: 40, y: 10, width: 40, height: 30 });
+    expect(rotateRect(rect, parent, 180)).toEqual({ x: 160, y: 40, width: 30, height: 40 });
+    expect(rotateRect(rect, parent, 270)).toEqual({ x: 20, y: 160, width: 40, height: 30 });
+    expect(turnRotation(270, 1)).toBe(0);
+    expect(turnRotation(0, -1)).toBe(270);
+  });
+
+  it.each<GraphicalRotation>([0, 90, 180, 270])('preserves stored positions after displaying and dragging at %s degrees', rotation => {
+    const source = { width: 340, height: 676 };
+    const target = rotation % 180 ? { width: 700, height: 316 } : source;
+    const rect = { id: 100, x: 20, y: 36, width: 68, height: 169 };
+    const displayed = rotateRectBetweenSizes(rect, source, target, rotation);
+    expect(displayed.id).toBe(100);
+    expect(displayed.x).toBeGreaterThanOrEqual(0);
+    expect(displayed.y).toBeGreaterThanOrEqual(0);
+    expect(displayed.x + displayed.width).toBeLessThanOrEqual(target.width);
+    expect(displayed.y + displayed.height).toBeLessThanOrEqual(target.height);
+    const stored = rotateRectBetweenSizes(displayed, target, source, ((360 - rotation) % 360) as GraphicalRotation);
+    for (const key of ['x', 'y', 'width', 'height'] as const) expect(stored[key]).toBeCloseTo(rect[key]);
+  });
+
   it('returns deterministic area size', () => {
     const first = areaToRectSize(12.5, { baseWidth: 120 });
     const second = areaToRectSize(12.5, { baseWidth: 120 });
