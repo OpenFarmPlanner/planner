@@ -87,6 +87,7 @@ function main() {
     : `ZAP passive baseline completed: ${result.requestCount} anonymous responses; ${result.coverageGaps.length} crawler records without responses (see result.json). Findings by instance: ${JSON.stringify(counts)}. Rollout findings are advisory.`;
   fs.writeFileSync(path.join(REPORTS, 'summary.html'), `<!doctype html><html lang="en"><meta charset="utf-8"><title>ZAP scan outcome</title><h1>${result.status}</h1><p>${summary}</p><p>See result.json and, when available, report.html/report.json. Authenticated and active testing are excluded.</p></html>\n`);
   console.log(summary);
+  if (result.status === 'inconclusive') console.error(`Reason: ${result.reason}`);
   if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary + '\n');
   return result.status === 'inconclusive' ? 1 : 0;
 }
