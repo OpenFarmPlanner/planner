@@ -419,6 +419,9 @@ test('unverifiable provider evidence preserves the explicit independent human co
   f.args.github.rest.repos = { getCollaboratorPermissionLevel: async () => ({ data: { permission: 'maintain' } }) };
   assert.equal((await snapshot({ ...f.args, codexVerifier: async () => ({ allowed: false,
     state: 'codex_evidence_invalid', reason: 'expired signed receipt' }) })).state, 'manual_review_approved');
+  assert.equal((await snapshot({ ...f.args, codexVerifier: async () => {
+    throw new Error('Provider evidence API unavailable');
+  } })).state, 'manual_review_approved');
 });
 
 test('a contingency cannot hide a supported completed nonclean native result', async () => {

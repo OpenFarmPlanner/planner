@@ -272,8 +272,13 @@ async function snapshot({ github, context, expectedHead, artifactReader = readAr
     ? [file.filename, file.previous_filename] : [file.filename]))].sort();
   const comments = await github.paginate(github.rest.issues.listComments, { ...coordinates, per_page: 100 });
   const native = await verifiedNativeCodexReview({ github, context, comments, head: expectedHead });
-  const codex = await codexVerifier({ github, context, comments, head: expectedHead,
-    base: pr.base.sha, scope });
+  let codex;
+  try {
+    codex = await codexVerifier({ github, context, comments, head: expectedHead,
+      base: pr.base.sha, scope });
+  } catch {
+    codex = blocked('codex_evidence_invalid', 'Signed provider evidence could not be verified.');
+  }
   // Known incomplete/finding results remain blocked. Invalid/unavailable provider
   // evidence can still use an explicitly verified independent human contingency.
   if (codex?.state === 'codex_local_incomplete') return codex;
