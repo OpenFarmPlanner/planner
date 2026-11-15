@@ -289,8 +289,13 @@ remain checked for findings but do not replace the selected fresh result.
 The artifact creation time must precede the native task's start. The gate reads
 the summary's GitHub edit history, verifies an undeleted Codex-bot-authored
 running revision for the full head, and extracts the Security Review row's start
-timestamp. An edit timestamp alone cannot establish task start. Missing or
-unsupported start history cannot authorize native completion. A queued context
+timestamp. It reads the complete history (up to 1,000 revisions), requires the
+original revision and no deleted records, and accepts only one unique start and
+one task identity for that head. Multiple same-head executions are ambiguous
+because the summary carries no task ID; even clean repeats require a fresh head
+and context, or separate exact-base signed evidence. An edit timestamp alone
+cannot establish task start. Missing or unsupported history cannot authorize
+native completion. A queued context
 workflow's earlier creation time and a later receipt are insufficient. Missing
 context records stay pending. Unavailable context may use an optional human
 contingency only when its approval and independent manual report explicitly

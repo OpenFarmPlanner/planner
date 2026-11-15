@@ -76,7 +76,7 @@ const NATIVE_CODEX_BOT = 199175422;
 const nativeCodexAuthor = comment => comment.user?.type === 'Bot' &&
   comment.user.id === NATIVE_CODEX_BOT && comment.performed_via_github_app?.id === NATIVE_CODEX_APP;
 
-async function nativeEvidenceProvenance({ github, context, checked, history = false, verified = () => {} }) {
+async function nativeEvidenceProvenance({ github, context, checked, history = false, historyCursor = null, verified = () => {} }) {
   if (checked.length > 100) return 'Too many native records to verify in one snapshot.';
   const prefix = `https://github.com/${context.repo.owner}/${context.repo.repo}/pull/${context.payload.pull_request.number}#issuecomment-`;
   for (const comment of checked) {
@@ -88,14 +88,14 @@ async function nativeEvidenceProvenance({ github, context, checked, history = fa
   // and compare the independently read body/version to avoid trusting a changing snapshot.
   let nodes;
   try {
-    ({ nodes } = await github.graphql(`query($ids:[ID!]!) {
+    ({ nodes } = await github.graphql(`query($ids:[ID!]!${history ? ', $cursor:String' : ''}) {
     nodes(ids:$ids) { ... on IssueComment {
       id body updatedAt lastEditedAt
-      ${history ? 'userContentEdits(first:100) { nodes { diff editedAt deletedAt editor { __typename ... on Bot { databaseId } } } }' : ''}
+      ${history ? 'userContentEdits(first:100,after:$cursor) { pageInfo { hasNextPage endCursor } nodes { diff editedAt deletedAt editor { __typename ... on Bot { databaseId } } } }' : ''}
       author { __typename ... on Bot { databaseId } }
       editor { __typename ... on Bot { databaseId } }
     } }
-  }`, { ids: checked.map(item => item.node_id) }));
+  }`, { ids: checked.map(item => item.node_id), ...(history ? { cursor: historyCursor } : {}) }));
   } catch {
     return 'Native provenance could not be read from GitHub.';
   }
@@ -163,6 +163,7 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
   if (authenticated.some(pending)) return blocked('codex_native_pending', 'The native security review is still in progress.');
   if (summaryProblem) return invalid(summaryProblem);
   if (!authenticated.length) return null;
+  if (authenticated.length !== 1) return invalid('Multiple native summaries make task correlation ambiguous.');
   const { comment: summary, evidence } = authenticated[0];
   if (evidence.repository !== `${context.repo.owner}/${context.repo.repo}` ||
       evidence.pullRequestNumber !== context.payload.pull_request.number) {
@@ -194,8 +195,28 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
       now - finished < -300_000 || now - finished > 7 * 24 * 60 * 60_000) {
     return invalid('The native receipt is stale or does not match the latest review completion.');
   }
+  let history = verifiedNodes?.find(node => node.id === summary.node_id)?.userContentEdits;
+  const revisions = [], cursors = new Set();
+  while (true) {
+    if (!Array.isArray(history?.nodes) || typeof history.pageInfo?.hasNextPage !== 'boolean') {
+      return invalid('The complete native task history is unavailable.');
+    }
+    revisions.push(...history.nodes);
+    if (revisions.length > 1000) return invalid('The native task history exceeds the verification bound.');
+    if (!history.pageInfo.hasNextPage) break;
+    const cursor = history.pageInfo.endCursor;
+    if (!cursor || cursors.has(cursor) || revisions.length >= 1000) return invalid('Native task history is truncated.');
+    cursors.add(cursor);
+    const problem = await nativeEvidenceProvenance({ github, context, checked: [summary], history: true,
+      historyCursor: cursor, verified: nodes => { history = nodes[0]?.userContentEdits; } });
+    if (problem) return invalid(problem);
+  }
+  if (revisions.some(edit => edit.deletedAt !== null) ||
+      Math.min(...revisions.map(edit => Date.parse(edit.editedAt))) !== Date.parse(summary.created_at)) {
+    return invalid('Native task history is deleted or missing its original revision.');
+  }
   const starts = [];
-  for (const edit of verifiedNodes?.find(node => node.id === summary.node_id)?.userContentEdits?.nodes ?? []) {
+  for (const edit of revisions) {
     if (edit.deletedAt !== null || edit.editor?.__typename !== 'Bot' || edit.editor.databaseId !== NATIVE_CODEX_BOT ||
         typeof edit.diff !== 'string') continue;
     let previous;
@@ -207,10 +228,17 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
     const row = edit.diff.match(/^\| 🔒 \*\*Security Review\*\* \| 🔄 \*\*Running\*\* since <relative-time datetime="([^"]+)">[^<]+<\/relative-time> \| `([0-9a-f]{7,40})` \|/m);
     const start = Date.parse(row?.[1]), edited = Date.parse(edit.editedAt);
     if (row && head.startsWith(row[2]) && Number.isFinite(start) && Number.isFinite(edited) &&
-        start <= edited && edited - start <= 300_000 && edited <= issued) starts.push(start);
+        start <= edited && edited - start <= 300_000) starts.push({ start, edited });
   }
-  if (!starts.length) return invalid('The native task start could not be verified from app-authored comment history.');
-  const started = Math.max(...starts);
+  if (new Set(starts.map(item => item.start)).size !== 1 || starts.some(item => item.edited > issued)) {
+    return invalid('Native task starts are missing or ambiguous for this head.');
+  }
+  const started = starts[0].start;
+  const tasks = new Set(relevant.map(candidate => candidate.body.match(
+    /^\[View security finding report\]\(https:\/\/chatgpt\.com\/codex\/(?:cloud\/)?tasks\/([a-zA-Z0-9_-]+)\)$/m)?.[1]));
+  if (tasks.size !== 1 || tasks.has(undefined) || relevant.some(candidate => Date.parse(candidate.created_at) < started)) {
+    return invalid('Native receipts cannot be correlated to one unambiguous task start.');
+  }
   for (const candidate of relevant) {
     const sha = candidate.body.match(/^\*\*Reviewed commit:\*\* `([0-9a-f]{10,40})`$/m)?.[1];
     const task = candidate.body.match(/^\[View security finding report\]\((https:\/\/chatgpt\.com\/codex\/(?:cloud\/)?tasks\/[a-zA-Z0-9_-]+)\)$/m)?.[1];

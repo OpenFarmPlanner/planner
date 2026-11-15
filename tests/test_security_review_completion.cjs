@@ -293,6 +293,7 @@ function nativeFixture() {
   const evidence = { repository: 'owner/repo', pullRequestNumber: 1, headSha: HEAD, status: 'completed' };
   const summary = { ...structuredClone(base), id: 1, node_id: 'summary', html_url: 'https://github.com/owner/repo/pull/1#issuecomment-1',
     body: `<!-- codex-security-review:v1 ${JSON.stringify(evidence)} -->\n<!-- codex-review-state:v1 ${JSON.stringify({ security_review: { commit_sha: HEAD, status: 'completed', has_any_findings: null, has_unresolved_findings: null } })} -->` };
+  summary.created_at = '2026-11-15T07:25:01Z';
   summary.history = [{ diff: summary.body.replaceAll('completed', 'running') +
     `\n| 🔒 **Security Review** | 🔄 **Running** since <relative-time datetime="2026-11-15T07:25:00Z">2026-11-15T07:25:00Z</relative-time> | \`${HEAD.slice(0, 7)}\` | Manual request |`,
     editedAt: '2026-11-15T07:25:01Z', deletedAt: null, editor: { __typename: 'Bot', databaseId: 199175422 } }];
@@ -304,7 +305,7 @@ function nativeFixture() {
       timelineItems: { totalCount: 40, nodes: [], pageInfo: { hasNextPage: false } } } } }
     : { nodes: comments.map(comment => ({ id: comment.node_id,
       body: comment.body, updatedAt: comment.updated_at, lastEditedAt: null, editor: null,
-      userContentEdits: { nodes: comment.history ?? [] },
+      userContentEdits: { nodes: comment.history ?? [], pageInfo: { hasNextPage: false, endCursor: null } },
       author: { __typename: 'Bot', databaseId: 199175422 } })) };
   return { evidence, summary, receipt, comments, args: { head: HEAD, now: NATIVE_NOW, comments,
     context: { repo: { owner: 'owner', repo: 'repo' }, payload: { pull_request: { number: 1 } } },
@@ -794,11 +795,48 @@ test('superseded main-base context artifacts do not block a fresh current-base c
 });
 
 
-test('fresh clean completion uses the selected receipt time while retaining older clean receipts', async () => {
+test('an older completion cannot be rebound to a later same-head task start', async () => {
   const f = nativeSnapshotFixture();
   f.comments.push({ ...structuredClone(f.receipt), id: 19, node_id: 'pre-context-receipt',
     html_url: 'https://github.com/owner/repo/pull/1#issuecomment-19',
     created_at: '2026-11-15T07:23:00Z', updated_at: '2026-11-15T07:23:00Z' });
-  assert.equal((await verifiedNativeCodexReview(f.args)).receipt_created_at, f.receipt.created_at);
-  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_completed');
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_invalid');
+});
+
+test('overlapping same-head tasks cannot assign a later start to an earlier receipt', async () => {
+  const f = nativeSnapshotFixture();
+  const earlier = structuredClone(f.summary.history[0]);
+  earlier.diff = earlier.diff.replaceAll('07:25:00Z', '07:23:00Z');
+  earlier.editedAt = '2026-11-15T07:23:01Z';
+  f.summary.created_at = earlier.editedAt;
+  f.summary.history.push(earlier);
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_invalid');
+});
+
+test('distinct receipt tasks are ambiguous even if only one start is visible', async () => {
+  const f = nativeFixture();
+  f.comments.push({ ...structuredClone(f.receipt), id: 19, node_id: 'second-task',
+    html_url: 'https://github.com/owner/repo/pull/1#issuecomment-19',
+    body: f.receipt.body.replace('task_review', 'task_other') });
+  assert.equal((await verifiedNativeCodexReview(f.args)).state, 'codex_native_invalid');
+});
+
+test('task history must be complete across pages and retains snapshot provenance', async () => {
+  for (const kind of ['valid', 'deleted', 'changed', 'truncated']) {
+    const f = nativeFixture(); const read = f.args.github.graphql;
+    f.args.github.graphql = async (query, vars) => {
+      const data = await read(query);
+      if (!query.includes('userContentEdits')) return data;
+      const node = data.nodes.find(node => node.id === f.summary.node_id);
+      if (vars.cursor) {
+        if (kind === 'deleted') node.userContentEdits.nodes[0].deletedAt = '2026-11-15T07:25:10Z';
+        if (kind === 'changed') node.body += 'changed';
+        if (kind === 'truncated') node.userContentEdits.pageInfo = { hasNextPage: true, endCursor: vars.cursor };
+      } else {
+        node.userContentEdits = { nodes: [], pageInfo: { hasNextPage: true, endCursor: 'older-page' } };
+      }
+      return data;
+    };
+    assert.equal((await verifiedNativeCodexReview(f.args)).allowed, kind === 'valid', kind);
+  }
 });
