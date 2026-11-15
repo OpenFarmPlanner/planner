@@ -70,6 +70,74 @@ async function verifiedCodexReview({ github, context, comments, head, base, scop
     comment.html_url);
 }
 
+// GitHub supplies these immutable numeric identities; display names alone are not provenance.
+const NATIVE_CODEX_APP = 1144995;
+const NATIVE_CODEX_BOT = 199175422;
+const nativeCodexAuthor = comment => comment.user?.type === 'Bot' &&
+  comment.user.id === NATIVE_CODEX_BOT && comment.performed_via_github_app?.id === NATIVE_CODEX_APP;
+
+async function verifiedNativeCodexReview({ github, context, comments, head, now = Date.now() }) {
+  const marker = /^<!-- codex-security-review:v1 (\{[^\n]+\}) -->$/m;
+  const summaries = comments.filter(comment => nativeCodexAuthor(comment) && marker.test(comment.body ?? ''))
+    .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
+  if (!summaries.length) return null;
+  const invalid = reason => blocked('codex_native_incomplete', reason);
+  const summary = summaries[0];
+  let evidence;
+  try { evidence = JSON.parse(summary.body.match(marker)[1]); }
+  catch { return invalid('The current native security summary is malformed.'); }
+  if (evidence.headSha !== head) return null;
+  if (evidence.repository !== `${context.repo.owner}/${context.repo.repo}` ||
+      evidence.pullRequestNumber !== context.payload.pull_request.number) {
+    return invalid('The latest native security review belongs to another PR or head.');
+  }
+  if (evidence.status !== 'completed') return invalid('The latest native security review has not completed.');
+  const receipts = comments.filter(comment => nativeCodexAuthor(comment) &&
+    /^### 🛡️ Codex Security Review$/m.test(comment.body ?? '') &&
+    comment.body.startsWith('<!-- codex-review-receipt:v1 -->\n'))
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  const receipt = receipts[0];
+  if (!receipt) return invalid('No native security result receipt is available.');
+  const prefix = `https://github.com/${context.repo.owner}/${context.repo.repo}/pull/${context.payload.pull_request.number}#issuecomment-`;
+  for (const comment of [summary, receipt]) {
+    if (comment.html_url !== `${prefix}${comment.id}` || !comment.node_id) {
+      return invalid('Native security evidence is not bound to this PR.');
+    }
+  }
+  // Maintainers can edit comments. Verify the actual last editor as well as the creating app,
+  // and compare the independently read body/version to avoid trusting a changing snapshot.
+  const { nodes } = await github.graphql(`query($ids:[ID!]!) {
+    nodes(ids:$ids) { ... on IssueComment {
+      id body updatedAt lastEditedAt
+      author { __typename ... on Bot { databaseId } }
+      editor { __typename ... on Bot { databaseId } }
+    } }
+  }`, { ids: [summary.node_id, receipt.node_id] });
+  const trustedActor = actor => actor?.__typename === 'Bot' && actor.databaseId === NATIVE_CODEX_BOT;
+  for (const comment of [summary, receipt]) {
+    const node = nodes?.find(item => item?.id === comment.node_id);
+    if (!node || node.body !== comment.body || node.updatedAt !== comment.updated_at ||
+        !trustedActor(node.author) || !Object.hasOwn(node, 'lastEditedAt') || !Object.hasOwn(node, 'editor') ||
+        (node.lastEditedAt != null ? !trustedActor(node.editor) : node.editor != null && !trustedActor(node.editor))) {
+      return invalid('Native evidence changed or was edited outside the trusted Codex app.');
+    }
+  }
+  const finished = Date.parse(summary.updated_at), issued = Date.parse(receipt.created_at);
+  if (!Number.isFinite(finished) || !Number.isFinite(issued) || Math.abs(finished - issued) > 300_000 ||
+      now - finished < -300_000 || now - finished > 7 * 24 * 60 * 60_000) {
+    return invalid('The native receipt is stale or does not match the latest review completion.');
+  }
+  const sha = receipt.body.match(/^\*\*Reviewed commit:\*\* `([0-9a-f]{10,40})`$/m)?.[1];
+  const task = receipt.body.match(/^\[View security finding report\]\((https:\/\/chatgpt\.com\/codex\/(?:cloud\/)?tasks\/[a-zA-Z0-9_-]+)\)$/m)?.[1];
+  if (!sha || !head.startsWith(sha) || !task ||
+      !receipt.body.split('\n').includes('Security review completed. No security issues were found in this pull request.')) {
+    return invalid('The native security receipt does not establish a clean review for this head.');
+  }
+  return passed('codex_native_completed',
+    'The trusted Codex GitHub app reports a completed, clean security review for this exact PR/head. No human attestation is required.',
+    receipt.html_url);
+}
+
 function evaluate({ head, scope, triage, claude, approval, request, rejection, failed, providerPending }) {
   if (approval) return passed(approval.mode === 'codex' ? 'codex_completed_attested' : 'manual_review_approved',
     'A maintainer explicitly attested the exact-head review; this is not automated verification.', approval.url);
@@ -191,12 +259,16 @@ async function snapshot({ github, context, expectedHead, artifactReader = readAr
   const scope = [...new Set(files.flatMap(file => file.status === 'renamed'
     ? [file.filename, file.previous_filename] : [file.filename]))].sort();
   const comments = await github.paginate(github.rest.issues.listComments, { ...coordinates, per_page: 100 });
-  const approval = await approvedReview({ github, coordinates, comments, head: expectedHead, scope });
-  // Approval is explicit, head-bound and recorded separately from provider completion.
-  if (approval) return evaluate({ head: expectedHead, scope, approval });
+  const native = await verifiedNativeCodexReview({ github, context, comments, head: expectedHead });
   const codex = await codexVerifier({ github, context, comments, head: expectedHead,
     base: pr.base.sha, scope });
+  // A clean result from one route cannot conceal a current incomplete/finding result
+  // from the other. Correct the findings and obtain fresh evidence on that route.
+  if (codex && !codex.allowed) return codex;
+  if (native) return native;
   if (codex) return codex;
+  const approval = await approvedReview({ github, coordinates, comments, head: expectedHead, scope });
+  if (approval) return evaluate({ head: expectedHead, scope, approval });
   // A PR can change the triage script embedded in this workflow. Preserve
   // the provider's self-change guard without trusting its edited skip output.
   if (scope.includes('.github/workflows/claude-pr.yml')) {
@@ -270,7 +342,7 @@ async function enforce({ github, context, core, expectedHead, timeoutMs = 20 * 6
     }
     if (result.state !== previous) core.info(`Security review: ${result.state}. ${result.reason}`);
     previous = result.state;
-    if (result.allowed || ['stale_head', 'codex_rejected', 'codex_local_incomplete', 'codex_evidence_invalid', 'manual_review_required', 'claude_failed', 'triage_failed', 'scope_unavailable', 'evidence_unavailable'].includes(result.state)) break;
+    if (result.allowed || ['stale_head', 'codex_rejected', 'codex_local_incomplete', 'codex_evidence_invalid', 'manual_review_required', 'claude_failed', 'triage_failed', 'scope_unavailable', 'evidence_unavailable', 'codex_native_incomplete'].includes(result.state)) break;
     if (now() >= deadline) { result = blocked('timed_out', `Timed out while ${result.state}: ${result.reason}`); break; }
     await wait(Math.min(intervalMs, deadline - now()));
   } while (true);
@@ -288,4 +360,4 @@ async function enforce({ github, context, core, expectedHead, timeoutMs = 20 * 6
 }
 
 module.exports = { evaluate, parseApproval, approvedReview, readArtifact, snapshot, enforce,
-  signedCodexPayload, verifiedCodexReview, CODEX_SIGNERS, CODEX_SOURCES };
+  signedCodexPayload, verifiedCodexReview, verifiedNativeCodexReview, CODEX_SIGNERS, CODEX_SOURCES };

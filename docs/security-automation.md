@@ -257,12 +257,20 @@ are not completed security reviews.
 The exact `@codex security review` command is supported by the current
 [Security Review documentation](https://learn.chatgpt.com/docs/security/security-review).
 Native reviews require eligible workspace access and a connected repository.
-A clean native review can post no findings: reactions, silence, code-review
-comments and delivery acknowledgements cannot establish security completion.
-The full task and Security Report are the completion evidence. No documented
-public exact-head completion API was established in this investigation, so
-this gate does not invent a bot-comment format or treat ordinary Codex code
-review as a completed Security Review.
+A native review is accepted automatically when GitHub attributes both its current
+security summary and clean security receipt to the pinned Codex app (`1144995`)
+and bot (`199175422`). The summary must name this repository, PR and full current
+head, with completed status. The matching recent receipt must explicitly report
+no security issues, name the same commit and link its Security Report. GraphQL
+confirms the original author, last editor and unchanged body/version; a human
+edit cannot preserve app provenance. A newer running review or findings blocks
+an earlier clean result for the same head. Ordinary code reviews, reactions,
+request delivery, copied comments and unsupported provider formats are not
+security completion. No additional human attestation is required for this route.
+
+This authenticates the provider's public completion statement using GitHub's
+app metadata. CI does not fetch the private Security Report or claim a vendor
+signature. Receipts expire after seven days, and a new head needs fresh review.
 
 The owner reports that GitHub is connected, the Connector app has all-repository
 read/write access, a Codex Cloud environment exists, and automatic code/security
@@ -443,9 +451,10 @@ Reruns do not spam the same rejected request. After an upstream fix, a maintaine
 may manually request another native review with the supported command, then
 verify its actual task/report. New heads get new requests and new reviews.
 
-If native completion cannot be automatically verified, a **human admin or
-maintainer**, after inspecting the completed task/report for the exact SHA,
-can post:
+Completed clean native reviews with verified app provenance need no human
+confirmation. If provider evidence is unavailable or unsupported, the following
+human contingency remains optional. A **human admin or maintainer**, after
+inspecting the completed task/report for the exact SHA, can post:
 
 ```text
 /security-review approve codex FULL_HEAD_SHA https://chatgpt.com/codex/tasks/TASK_ID
@@ -489,7 +498,7 @@ normal base-policy loading applies; editing the head cannot edit that policy.
 After completion/approval becomes available, rerun both failed CI jobs together
 with `gh run rerun RUN_ID --failed`. The completion reader must re-evaluate the
 new evidence before quality evaluates its dependency result; rerunning quality
-alone does not refresh the failed reader. A comment itself does not launch more
+alone does not refresh the failed reader. An approval comment itself does not launch more
 provider jobs. Pending checks have a bounded wait; provider failures, rejection
 and guarded execution fail clearly. If a new push occurs, repeat the review and
 approval for its new SHA. Do not rerun tests repeatedly to mask a provider error.
@@ -506,6 +515,19 @@ node --test tests/test_codex_security_request.cjs tests/test_security_review_com
 ```
 
 ## Security decisions
+
+### 2026-11-15 — Automatic native Codex completion
+
+The owner explicitly removed mandatory human confirmation of completed native
+Codex Security Reviews. Use GitHub-authenticated provider evidence for the exact
+current PR/head as specified above; no per-PR attestation or reaction is needed.
+This deliberately trusts the pinned Codex app's public clean-result statement,
+not agent-authored text or access to the private report. Required CI, fresh
+independent review, finding remediation and immutable-base policy loading stay
+in place. This policy change must itself pass the existing base policy before
+it can govern later runs; it does not self-certify its own merge. Manual and
+signed-local contingencies remain available when native evidence cannot verify.
+
 
 Durable security decisions that outlive a single PR: accepted risks,
 deliberate exceptions and recurring patterns reviewers should know about.

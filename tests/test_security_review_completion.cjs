@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { execFileSync } = require('node:child_process');
-const { evaluate, parseApproval, approvedReview, readArtifact, snapshot, enforce } =
+const { evaluate, parseApproval, approvedReview, readArtifact, snapshot, enforce, verifiedNativeCodexReview } =
   require('../.github/scripts/security-review-completion.cjs');
 
 const HEAD = 'a'.repeat(40);
@@ -263,4 +263,121 @@ test('required quality job loads immutable base policy and bootstrap needs expli
   await runScript(args.github, args.context, { summary }, require);
   comments[0].body = comments[0].body.replace(HEAD, OLD);
   await assert.rejects(runScript(args.github, args.context, { summary }, require), /explicit human maintainer review/);
+});
+
+const NATIVE_NOW = Date.parse('2026-11-15T07:26:00Z');
+function nativeFixture() {
+  const base = { user: { id: 199175422, type: 'Bot' }, performed_via_github_app: { id: 1144995 },
+    created_at: '2026-11-15T07:25:17Z', updated_at: '2026-11-15T07:25:21Z' };
+  const evidence = { repository: 'owner/repo', pullRequestNumber: 1, headSha: HEAD, status: 'completed' };
+  const summary = { ...structuredClone(base), id: 1, node_id: 'summary', html_url: 'https://github.com/owner/repo/pull/1#issuecomment-1',
+    body: `<!-- codex-security-review:v1 ${JSON.stringify(evidence)} -->` };
+  const receipt = { ...structuredClone(base), id: 2, node_id: 'receipt', html_url: 'https://github.com/owner/repo/pull/1#issuecomment-2',
+    body: `<!-- codex-review-receipt:v1 -->\n\n### 🛡️ Codex Security Review\n\nSecurity review completed. No security issues were found in this pull request.\n\n**Reviewed commit:** \`${HEAD.slice(0, 10)}\`\n\n[View security finding report](https://chatgpt.com/codex/cloud/tasks/task_review)` };
+  const comments = [summary, receipt];
+  const graphql = async () => ({ nodes: comments.map(comment => ({ id: comment.node_id,
+    body: comment.body, updatedAt: comment.updated_at, lastEditedAt: null, editor: null,
+    author: { __typename: 'Bot', databaseId: 199175422 } })) });
+  return { evidence, summary, receipt, comments, args: { head: HEAD, now: NATIVE_NOW, comments,
+    context: { repo: { owner: 'owner', repo: 'repo' }, payload: { pull_request: { number: 1 } } },
+    github: { graphql } } };
+}
+
+test('genuine current-head native clean completion needs no human comment or signing key', async () => {
+  const f = nativeFixture();
+  const result = await verifiedNativeCodexReview(f.args);
+  assert.equal(result.state, 'codex_native_completed');
+  assert.equal(result.allowed, true);
+  assert.equal(result.evidence, f.receipt.html_url);
+});
+
+test('ordinary code review, human copies, and lookalike bot names are not native evidence', async () => {
+  for (const mutate of [
+    f => { f.summary.body = 'Code review completed. No issues.'; },
+    f => { f.summary.user = { id: 199175422, type: 'User' }; },
+    f => { f.summary.user.id = 123; },
+    f => { f.summary.performed_via_github_app.id = 123; },
+    f => { delete f.summary.performed_via_github_app; },
+    f => { f.summary.body = f.summary.body.replace(HEAD, 'b'.repeat(40)); },
+  ]) {
+    const f = nativeFixture(); mutate(f);
+    assert.equal(await verifiedNativeCodexReview(f.args), null);
+  }
+});
+
+test('wrong PR, malformed summary, and nonterminal outcomes remain blocked', async () => {
+  for (const changes of [{ repository: 'other/repo' }, { pullRequestNumber: 2 },
+    { status: 'running' }, { status: 'failed' }, { status: 'cancelled' }]) {
+    const f = nativeFixture();
+    f.summary.body = `<!-- codex-security-review:v1 ${JSON.stringify({ ...f.evidence, ...changes })} -->`;
+    assert.equal((await verifiedNativeCodexReview(f.args)).allowed, false);
+  }
+  const f = nativeFixture(); f.summary.body = '<!-- codex-security-review:v1 {invalid} -->';
+  assert.equal((await verifiedNativeCodexReview(f.args)).allowed, false);
+});
+
+test('missing, nonclean, stale, mismatched or forged receipts never complete review', async () => {
+  for (const mutate of [
+    f => { f.comments.pop(); },
+    f => { f.receipt.body = f.receipt.body.replace('No security issues were found in this pull request.', 'Found a security issue.'); },
+    f => { f.receipt.body = f.receipt.body.replace(HEAD.slice(0, 10), 'bbbbbbbbbb'); },
+    f => { f.receipt.body = f.receipt.body.replace(HEAD.slice(0, 10), 'aaaa'); },
+    f => { f.receipt.body = f.receipt.body.replace('chatgpt.com', 'evil.test'); },
+    f => { f.receipt.html_url = 'https://github.com/owner/repo/pull/2#issuecomment-2'; },
+    f => { f.receipt.created_at = '2026-11-14T07:25:17Z'; },
+    f => { f.summary.updated_at = '2026-11-01T07:25:21Z'; },
+    f => { f.summary.updated_at = '2026-11-16T07:25:21Z'; },
+    f => { f.receipt.user.id = 123; },
+    f => { delete f.receipt.node_id; },
+  ]) {
+    const f = nativeFixture(); mutate(f);
+    assert.equal((await verifiedNativeCodexReview(f.args)).allowed, false);
+  }
+});
+
+test('a human edit or incomplete/changing GraphQL snapshot cannot preserve app provenance', async () => {
+  for (const mutate of [
+    nodes => { nodes[0].editor = { __typename: 'User', databaseId: 1 }; nodes[0].lastEditedAt = 'now'; },
+    nodes => { nodes[1].author = { __typename: 'User', databaseId: 199175422 }; },
+    nodes => { nodes[1].body += 'changed'; },
+    nodes => { nodes[1].updatedAt = 'changed'; },
+    nodes => { delete nodes[1].editor; },
+    nodes => { delete nodes[0].lastEditedAt; },
+    nodes => { nodes.pop(); },
+  ]) {
+    const f = nativeFixture(); const read = f.args.github.graphql;
+    f.args.github.graphql = async () => { const data = await read(); mutate(data.nodes); return data; };
+    assert.equal((await verifiedNativeCodexReview(f.args)).allowed, false);
+  }
+});
+
+test('newer running review or findings supersede an earlier clean result for the same head', async () => {
+  const f = nativeFixture();
+  f.comments.push({ ...f.summary, id: 3, updated_at: '2026-11-15T07:26:01Z',
+    body: f.summary.body.replace('completed', 'running') });
+  assert.equal((await verifiedNativeCodexReview(f.args)).allowed, false);
+  f.comments.pop();
+  f.comments.push({ ...f.receipt, id: 4, created_at: '2026-11-15T07:25:20Z',
+    body: f.receipt.body.replace('No security issues were found in this pull request.', 'Security findings remain.') });
+  assert.equal((await verifiedNativeCodexReview(f.args)).allowed, false);
+});
+
+test('snapshot uses native completion under the base policy without a Claude rerun or human attestation', async () => {
+  const f = nativeFixture();
+  const listFiles = () => {}, listComments = () => {};
+  f.args.github.rest = {
+    pulls: { get: async () => ({ data: { state: 'open', base: { sha: OLD }, labels: [], user: { login: 'owner' },
+      head: { sha: HEAD, repo: { full_name: 'owner/repo' } } } }), listFiles },
+    issues: { listComments },
+  };
+  f.args.github.paginate = async method => method === listFiles ? [{ filename: 'code.py' }] : f.comments;
+  const result = await snapshot({ ...f.args, expectedHead: HEAD });
+  assert.equal(result.allowed, true);
+  assert.equal(result.state, 'codex_native_completed');
+  const incomplete = { state: 'codex_local_incomplete', allowed: false, reason: 'signed finding' };
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD,
+    codexVerifier: async () => incomplete })).state, 'codex_local_incomplete');
+  f.summary.body = f.summary.body.replace('completed', 'running');
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD,
+    codexVerifier: async () => ({ allowed: true, state: 'codex_local_completed' }) })).allowed, false);
 });
