@@ -813,6 +813,15 @@ test('overlapping same-head tasks cannot assign a later start to an earlier rece
   assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_invalid');
 });
 
+test('duplicate running revisions remain ambiguous even with identical start and edit timestamps', async () => {
+  for (const tiedEdit of [false, true]) {
+    const f = nativeFixture(); const second = structuredClone(f.summary.history[0]);
+    if (!tiedEdit) second.editedAt = '2026-11-15T07:25:02Z';
+    f.summary.history.push(second);
+    assert.equal((await verifiedNativeCodexReview(f.args)).state, 'codex_native_invalid');
+  }
+});
+
 test('unsupported earlier running revisions cannot disappear from task correlation', async () => {
   for (const kind of ['row', 'delay', 'metadata', 'malformed', 'submillisecond']) {
     const f = nativeFixture(); const earlier = structuredClone(f.summary.history[0]);

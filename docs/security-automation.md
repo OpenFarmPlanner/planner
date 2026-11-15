@@ -291,8 +291,11 @@ precede the native task's start. The gate reads
 the summary's GitHub edit history, verifies an undeleted Codex-bot-authored
 running revision for the full head, and extracts the Security Review row's start
 timestamp. It reads the complete history (up to 1,000 revisions), requires the
-original revision and no deleted records, and accepts only one unique start and
-one task identity for that head. Multiple same-head executions are ambiguous
+original revision and no deleted records, and accepts only one running revision
+and one receipt task identity for that head. Duplicate running revisions remain
+ambiguous even with identical timestamps. Wait for code review completion before
+requesting security review to avoid unrelated summary updates during its run.
+Multiple same-head executions are ambiguous
 because the summary carries no task ID; even clean repeats require a fresh head
 and context, or separate exact-base signed evidence. An edit timestamp alone
 cannot establish task start. Missing or unsupported history cannot authorize

@@ -235,9 +235,9 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
         start > edited || edited - start > 300_000) {
       return invalid('A current-head running revision has unsupported task-start evidence.');
     }
-    starts.push({ start, edited, identity: row[1] });
+    starts.push({ start, edited });
   }
-  if (new Set(starts.map(item => item.identity)).size !== 1 || starts.some(item => item.edited > issued)) {
+  if (starts.length !== 1 || starts.some(item => item.edited > issued)) {
     return invalid('Native task starts are missing or ambiguous for this head.');
   }
   const started = starts[0].start;
