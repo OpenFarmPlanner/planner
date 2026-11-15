@@ -91,6 +91,9 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
       evidence.pullRequestNumber !== context.payload.pull_request.number) {
     return invalid('The latest native security review belongs to another PR or head.');
   }
+  if (['running', 'queued', 'pending'].includes(evidence.status)) {
+    return blocked('codex_native_pending', 'The native security review is still in progress.');
+  }
   if (evidence.status !== 'completed') return invalid('The latest native security review has not completed.');
   const receipts = comments.filter(comment => nativeCodexAuthor(comment) &&
     /^### 🛡️ Codex Security Review$/m.test(comment.body ?? '') &&

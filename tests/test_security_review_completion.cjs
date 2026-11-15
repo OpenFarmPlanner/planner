@@ -381,3 +381,20 @@ test('snapshot uses native completion under the base policy without a Claude rer
   assert.equal((await snapshot({ ...f.args, expectedHead: HEAD,
     codexVerifier: async () => ({ allowed: true, state: 'codex_local_completed' }) })).allowed, false);
 });
+
+
+test('running native review is polled until completion without a CI rerun', async () => {
+  let inspections = 0, time = 0;
+  const result = await enforce({ github: {}, context: { repo: { owner: 'owner', repo: 'repo' } },
+    expectedHead: HEAD, now: () => time, wait: async ms => { time += ms; }, intervalMs: 10,
+    timeoutMs: 100, core: { info() {}, setOutput() {}, setFailed() { assert.fail('must wait for completion'); },
+      summary: { addHeading() { return this; }, addRaw() { return this; }, async write() {} } },
+    inspect: async () => {
+      const f = nativeFixture(); inspections++;
+      if (inspections === 1) f.summary.body = f.summary.body.replace('completed', 'running');
+      return verifiedNativeCodexReview(f.args);
+    } });
+  assert.equal(inspections, 2);
+  assert.equal(time, 10);
+  assert.equal(result.state, 'codex_native_completed');
+});
