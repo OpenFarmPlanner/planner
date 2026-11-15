@@ -315,10 +315,11 @@ binds the current base/scope and remains an independent fallback.
 
 Automatic native eligibility is limited to unchanged `main` targets. Base-ref
 changes or force-push history invalidate native evidence, even if the head stays
-unchanged. CI now reruns on base edits and when drafts become ready, and rejects stale
-event bases. Metadata-only
-edits use distinct ignored check names, so skipped metadata jobs cannot replace
-required app checks. Refresh an outdated queue branch from main and obtain fresh
+unchanged. CI reruns its normal named jobs on every PR edit, including title/body
+edits, and when drafts become ready; it rejects stale event bases. This preserves
+all required contexts in the latest CI check suite. Skipping renamed placeholder
+jobs leaves those required contexts expected, even if an earlier suite passed.
+Refresh an outdated queue branch from main and obtain fresh
 review; do not retarget it or reuse pre-installation native receipts without a
 trusted context record. The context producer is not an AI worker,
 signer or API queue controller and starts no model calls.

@@ -747,13 +747,15 @@ test('context transport failure does not hide a separately valid base-bound sign
     codexVerifier: async () => ({ allowed: true, state: 'codex_local_completed' }) })).state, 'codex_local_completed');
 });
 
-test('base edits trigger fresh CI while metadata edits cannot replace required check names with skips', () => {
+test('base and metadata edits both run the normal required CI jobs', () => {
   const workflow = fs.readFileSync('.github/workflows/ci.yml', 'utf8');
   assert.match(workflow, /types: \[opened, synchronize, reopened, ready_for_review, edited\]/);
   for (const id of ['frontend-tests', 'backend-tests', 'backend-postgres-tests', 'security-review-completion', 'quality']) {
     const block = workflow.slice(workflow.indexOf(`  ${id}:\n`)).split(/\n  [a-z][a-z-]+:\n/)[0];
-    assert.match(block, /Ignored metadata edit/);
-    assert.match(block, /github\.event\.action != 'edited' \|\| github\.event\.changes\.base/);
+    assert.doesNotMatch(block, /Ignored metadata edit|github\.event\.action|github\.event\.changes\.base/);
+    const condition = block.match(/^    if: (.+)$/m)?.[1];
+    assert.equal(condition, id === 'quality' ? 'always()'
+      : id === 'security-review-completion' ? "github.event_name == 'pull_request'" : undefined);
   }
   assert.match(workflow, /current\.base\.sha !== pr\.base\.sha/);
 });

@@ -8,8 +8,6 @@ on:
 
 jobs:
   frontend-tests:
-    name: ${{ github.event.action == 'edited' && !github.event.changes.base && 'Ignored metadata edit (frontend-tests)' || format('frontend-tests ({0})', matrix.shard) }}
-    if: github.event.action != 'edited' || github.event.changes.base
     # Keep each frontend test process comfortably below the shell and job hard
     # timeouts as the suite grows. The shard count and the Vitest denominator
     # below must remain in sync.
@@ -74,8 +72,6 @@ jobs:
           exit "$exit_code"
 
   backend-tests:
-    name: ${{ github.event.action == 'edited' && !github.event.changes.base && 'Ignored metadata edit (backend-tests)' || 'backend-tests' }}
-    if: github.event.action != 'edited' || github.event.changes.base
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -125,8 +121,6 @@ jobs:
   # PostgreSQL raises are pinned by tests marked `postgres` and run here
   # against a real PostgreSQL server. See docs/testing-and-ci.md.
   backend-postgres-tests:
-    name: ${{ github.event.action == 'edited' && !github.event.changes.base && 'Ignored metadata edit (backend-postgres-tests)' || 'backend-postgres-tests' }}
-    if: github.event.action != 'edited' || github.event.changes.base
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -169,8 +163,7 @@ jobs:
           pdm run test -m postgres -n0 --no-cov --create-db
 
   security-review-completion:
-    name: ${{ github.event.action == 'edited' && !github.event.changes.base && 'Ignored metadata edit (security-review-completion)' || 'security-review-completion' }}
-    if: github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base)
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
@@ -230,9 +223,8 @@ jobs:
             } finally { fs.rmSync(directory, { recursive: true, force: true }); }
 
   quality:
-    name: ${{ github.event.action == 'edited' && !github.event.changes.base && 'Ignored metadata edit (quality)' || 'quality' }}
     needs: security-review-completion
-    if: always() && (github.event.action != 'edited' || github.event.changes.base)
+    if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
