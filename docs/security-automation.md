@@ -286,7 +286,8 @@ binds the PR/head; the gate verifies the workflow path/event, repository, source
 SHA, run/attempt and exact current base/scope. Superseded main-base records are ignored; a
 current-base record must exist and match the full scope. Older clean receipts
 remain checked for findings but do not replace the selected fresh result.
-The artifact creation time must precede the native task's start. The gate reads
+The artifact creation time plus one second (GitHub timestamp precision) must
+precede the native task's start. The gate reads
 the summary's GitHub edit history, verifies an undeleted Codex-bot-authored
 running revision for the full head, and extracts the Security Review row's start
 timestamp. It reads the complete history (up to 1,000 revisions), requires the

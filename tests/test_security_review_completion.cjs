@@ -814,7 +814,7 @@ test('overlapping same-head tasks cannot assign a later start to an earlier rece
 });
 
 test('unsupported earlier running revisions cannot disappear from task correlation', async () => {
-  for (const kind of ['row', 'delay', 'metadata', 'submillisecond']) {
+  for (const kind of ['row', 'delay', 'metadata', 'malformed', 'submillisecond']) {
     const f = nativeFixture(); const earlier = structuredClone(f.summary.history[0]);
     earlier.diff = earlier.diff.replaceAll('07:25:00Z', '07:23:00Z');
     earlier.editedAt = '2026-11-15T07:23:01Z';
@@ -822,6 +822,7 @@ test('unsupported earlier running revisions cannot disappear from task correlati
     if (kind === 'row') earlier.diff = earlier.diff.replace('**Security Review**', '**Unknown**');
     if (kind === 'delay') earlier.diff = earlier.diff.replaceAll('07:23:00Z', '07:15:00Z');
     if (kind === 'metadata') earlier.diff = earlier.diff.replace('"status":"running"', '"status":"completed"');
+    if (kind === 'malformed') earlier.diff = earlier.diff.replace(/<!-- codex-security-review:v1 [^\n]+/, '<!-- codex-security-review:v1 {broken} -->');
     if (kind === 'submillisecond') {
       f.summary.created_at = earlier.editedAt = '2026-11-15T07:25:01Z';
       earlier.diff = earlier.diff.replaceAll('07:23:00Z', '07:25:00.0001Z');

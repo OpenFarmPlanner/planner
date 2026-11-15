@@ -220,7 +220,7 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
     if (edit.deletedAt !== null || edit.editor?.__typename !== 'Bot' || edit.editor.databaseId !== NATIVE_CODEX_BOT ||
         typeof edit.diff !== 'string') continue;
     let previous;
-    try { previous = JSON.parse(edit.diff.match(marker)?.[1]); } catch { continue; }
+    try { previous = JSON.parse(edit.diff.match(marker)?.[1]); } catch { previous = null; }
     const previousState = securityState({ body: edit.diff });
     if (!(previous?.headSha === head && previous.status === 'running') &&
         !(previousState?.commit_sha === head && previousState.status === 'running')) continue;
