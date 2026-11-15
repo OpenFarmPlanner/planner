@@ -212,7 +212,7 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
   if (!relevant.includes(receipt)) return invalid('The latest receipt is not bound to the current head.');
   return { ...passed('codex_native_completed',
     'The trusted Codex GitHub app reports a completed, clean security review for this exact PR/head. No human attestation is required.',
-    receipt.html_url), receipt_created_at: relevant.map(item => item.created_at).sort()[0] };
+    receipt.html_url), receipt_created_at: receipt.created_at };
 }
 
 const NATIVE_CONTEXT_WORKFLOW = '.github/workflows/native-security-context.yml';

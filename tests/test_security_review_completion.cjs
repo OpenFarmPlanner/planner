@@ -684,3 +684,13 @@ test('superseded main-base context artifacts do not block a fresh current-base c
   const f = nativeSnapshotFixture(); f.contextRun.head_sha = HEAD;
   assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_context_pending');
 });
+
+
+test('fresh clean completion uses the selected receipt time while retaining older clean receipts', async () => {
+  const f = nativeSnapshotFixture();
+  f.comments.push({ ...structuredClone(f.receipt), id: 19, node_id: 'pre-context-receipt',
+    html_url: 'https://github.com/owner/repo/pull/1#issuecomment-19',
+    created_at: '2026-11-15T07:23:00Z', updated_at: '2026-11-15T07:23:00Z' });
+  assert.equal((await verifiedNativeCodexReview(f.args)).receipt_created_at, f.receipt.created_at);
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_completed');
+});

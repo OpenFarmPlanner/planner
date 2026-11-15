@@ -284,7 +284,9 @@ out, and records GitHub's event-pinned head/base plus the complete changed-file
 scope after checking the live PR before and after collection. Its artifact name
 binds the PR/head; the gate verifies the workflow path/event, repository, source
 SHA, run/attempt and exact current base/scope. Superseded main-base records are ignored; a
-current-base record must exist and match the full scope. The record must precede
+current-base record must exist and match the full scope. Older clean receipts
+remain checked for findings but do not replace the selected fresh receipt
+when comparing the context timestamp. The record must precede
 the selected current native receipt. Missing records stay pending. Unavailable context may use an optional human
 contingency only when its approval and independent manual report explicitly
 include `Reviewed base: FULL_BASE_SHA` for the current base, in addition to the
