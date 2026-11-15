@@ -12,7 +12,6 @@ transitions across the APIs rather than duplicating date arithmetic tests.
 | Rescheduling, cancellation, date overrides, unchanged completion and no duplicate IDs | `test_task_generation.py`, `test_task_workflow.py` |
 | Template CRUD, signed offsets, project isolation, history | `test_task_templates.py` |
 | Recurrence count, inclusive harvest endpoints, independent completion, shortened rules, limits | `test_task_recurrence.py`, `test_task_workflow.py` |
-| Schema/data forward migration and rollback/replay | `test_migrations_plan_event_tasks.py`, `test_migrations_task_identity.py`, `test_migrations_task_templates.py` |
 | Season deletion/restoration and plan deletion with protected/manual tasks | `test_seasons.py`, `test_task_workflow.py` |
 | User-private hint retirement, authentication and preference preservation | `backend/accounts/tests/test_task_drag_hint.py`, `test_migrations_task_drag_hint.py` |
 | Board filters/metrics, manual CRUD, generated editing and concurrent rollback | `frontend/src/__tests__/Dashboard.test.tsx`, `taskBoard.test.ts`, `api.test.ts` |
