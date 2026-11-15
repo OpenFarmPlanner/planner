@@ -833,6 +833,20 @@ test('an older completion cannot be rebound to a later same-head task start', as
   assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_ambiguous');
 });
 
+test('every native receipt must follow the running revision beyond timestamp precision', async () => {
+  for (const offset of [0, 999, 1000]) {
+    const f = nativeFixture();
+    f.receipt.created_at = new Date(Date.parse(f.summary.history[0].editedAt) + offset).toISOString();
+    assert.equal((await verifiedNativeCodexReview(f.args)).allowed, offset === 1000, String(offset));
+    if (!offset) {
+      const newer = { ...f.receipt, id: 19, node_id: 'newer-duplicate',
+        html_url: 'https://github.com/owner/repo/pull/1#issuecomment-19', created_at: '2026-11-15T07:25:17Z' };
+      f.comments.push(newer);
+      assert.equal((await verifiedNativeCodexReview(f.args)).state, 'codex_native_ambiguous');
+    }
+  }
+});
+
 test('overlapping same-head tasks cannot assign a later start to an earlier receipt', async () => {
   const f = nativeSnapshotFixture();
   const earlier = structuredClone(f.summary.history[0]);

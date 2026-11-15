@@ -296,6 +296,8 @@ original revision and no deleted records, and accepts only one running revision
 and one receipt task identity for that head. Duplicate running revisions remain
 ambiguous even with identical timestamps. Wait for code review completion before
 requesting security review to avoid unrelated summary updates during its run.
+Every receipt must follow the running revision's edit timestamp by at least one
+second, so a same-second older result cannot be rebound to a later task.
 Multiple same-head executions are ambiguous
 because the summary carries no task ID; even clean repeats require a fresh head
 and context. Ambiguity may conceal a pending task, so human and signed

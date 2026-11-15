@@ -244,13 +244,13 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
     starts.push({ start, edited });
   }
   if (!starts.length) return invalid('The native task start is unavailable.');
-  if (starts.length !== 1 || starts.some(item => item.edited > issued)) {
+  if (starts.length !== 1 || starts.some(item => item.edited + 1000 > issued)) {
     return ambiguous('Native task history may hide another pending task; a fresh head is required.');
   }
   const started = starts[0].start;
   const tasks = new Set(relevant.map(candidate => candidate.body.match(
     /^\[View security finding report\]\(https:\/\/chatgpt\.com\/codex\/(?:cloud\/)?tasks\/([a-zA-Z0-9_-]+)\)$/m)?.[1]));
-  if (tasks.size !== 1 || relevant.some(candidate => Date.parse(candidate.created_at) < started)) {
+  if (tasks.size !== 1 || relevant.some(candidate => Date.parse(candidate.created_at) < starts[0].edited + 1000)) {
     return ambiguous('Native receipts cannot be correlated to one task start; a fresh head is required.');
   }
   if (tasks.has(undefined)) return invalid('The native receipt task identity is unavailable.');
