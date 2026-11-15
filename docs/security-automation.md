@@ -279,12 +279,22 @@ explicit independent-human contingency; a supported nonclean result does not. Or
 request delivery, copied comments and unsupported provider formats are not
 security completion. No additional human attestation is required for this route.
 
-Native completion also requires `native-security-context.yml` evidence. This
-read-only `pull_request_target` workflow runs from the base, checks no PR code
-out, and records GitHub's event-pinned head/base plus the complete changed-file
-scope after checking the live PR before and after collection. Its artifact name
-binds the PR/head; the gate verifies the workflow path/event, repository, source
-SHA, run/attempt and exact current base/scope. Superseded main-base records are ignored; a
+Native completion also requires `native-security-context.yml` evidence. A
+`pull_request_target` requester has `actions: write` solely to dispatch that
+fixed recorder on `main`. The recorder itself has read-only permissions, checks
+no PR code out, validates its dispatch inputs and main workflow source, and
+records the head/base plus the complete changed-file scope after checking the
+live PR before and after collection. Neither workflow starts a model call.
+
+The recorder uses `workflow_dispatch`, so GitHub's run metadata independently
+pins its `main` branch and immutable workflow source SHA. In contrast, a
+`pull_request_target` run's `head_sha` identifies the PR head and cannot prove
+the base workflow source. Self-reported JSON from an arbitrary base branch is
+insufficient. The recorder also checks `GITHUB_WORKFLOW_SHA` against the event
+base. Its artifact name binds the PR/head; the gate verifies the workflow
+path/event, repository, protected source SHA, run/attempt and exact current
+base/scope, including the actual main ref. A changed main ref cannot be waived
+with stale human or signed evidence. Superseded main-base records are ignored; a
 current-base record must exist and match the full scope. Older clean receipts
 remain checked for findings but do not replace the selected fresh result.
 The artifact creation time plus one second (GitHub timestamp precision) must

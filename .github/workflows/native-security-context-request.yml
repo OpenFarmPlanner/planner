@@ -1,0 +1,25 @@
+name: Request native security review context
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+
+permissions:
+  actions: write
+
+jobs:
+  request-context:
+    if: github.event.action != 'edited' || github.event.changes.base
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Dispatch the read-only recorder on main
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (pr.base.ref !== 'main' || pr.head.repo.full_name !== `${context.repo.owner}/${context.repo.repo}`) return;
+            await github.rest.actions.createWorkflowDispatch({
+              ...context.repo, workflow_id: 'native-security-context.yml', ref: 'main',
+              inputs: { pull_request: String(pr.number), head_sha: pr.head.sha, base_sha: pr.base.sha },
+            });

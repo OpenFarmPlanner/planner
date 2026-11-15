@@ -301,7 +301,7 @@ function nativeFixture() {
     body: `<!-- codex-review-receipt:v1 -->\n\n### 🛡️ Codex Security Review\n\nSecurity review completed. No security issues were found in this pull request.\n\n**Reviewed commit:** \`${HEAD.slice(0, 10)}\`\n\n[View security finding report](https://chatgpt.com/codex/cloud/tasks/task_review)` };
   const comments = [summary, receipt];
   const graphql = async query => query.includes('query NativeContext(')
-    ? { repository: { pullRequest: { baseRefName: 'main', baseRefOid: OLD, headRefOid: HEAD,
+    ? { repository: { pullRequest: { baseRefName: 'main', baseRefOid: OLD, headRefOid: HEAD, baseRef: { target: { oid: OLD } },
       timelineItems: { totalCount: 40, nodes: [], pageInfo: { hasNextPage: false } } } } }
     : { nodes: comments.map(comment => ({ id: comment.node_id,
       body: comment.body, updatedAt: comment.updated_at, lastEditedAt: null, editor: null,
@@ -400,7 +400,7 @@ function nativeSnapshotFixture() {
   f.contextRecord = { schema: 1, run_id: 12, run_attempt: 1, pull_request: 1,
     head_sha: HEAD, base_sha: OLD, base_ref: 'main', scope: SCOPE, workflow_sha: OLD };
   f.contextRun = { id: 12, run_attempt: 1, path: '.github/workflows/native-security-context.yml',
-    event: 'pull_request_target', head_sha: OLD, head_repository: { full_name: 'owner/repo' },
+    event: 'workflow_dispatch', head_sha: OLD, head_branch: 'main', head_repository: { full_name: 'owner/repo' },
     created_at: '2026-11-15T07:24:00Z' };
   f.contextArtifacts = [{ id: 15, name: `native-review-context-1-${HEAD}`,
     created_at: '2026-11-15T07:24:30Z', workflow_run: { id: 12 } }];
@@ -724,20 +724,24 @@ test('trusted context producer captures API file scope without executing PR code
   const script = source.split('          script: |\n')[1].split('\n      - name:')[0]
     .split('\n').map(line => line.startsWith('            ') ? line.slice(12) : line).join('\n');
   const run = new (Object.getPrototypeOf(async function () {}).constructor)('github', 'context', 'require', 'process', script);
-  const expected = { number: 1, head: { sha: HEAD }, base: { sha: OLD, ref: 'main' } };
+  const expected = { number: 1, state: 'open', head: { sha: HEAD }, base: { sha: OLD, ref: 'main' } };
   let captures = [], reads = 0, changeAt = 0;
   const github = { rest: { pulls: { get: async () => ({ data: changeAt && ++reads === changeAt
     ? { ...expected, base: { sha: HEAD, ref: 'main' } } : expected }), listFiles() {} } },
     paginate: async () => [{ filename: 'new.py', previous_filename: 'old.py', status: 'renamed' }] };
-  const args = [github, { repo: { owner: 'owner', repo: 'repo' }, payload: { pull_request: expected },
-    sha: OLD, runId: 12 }, () => ({ writeFileSync: (path, data) => captures.push(JSON.parse(data)) }),
-  { env: { GITHUB_RUN_ATTEMPT: '1' } }];
+  const args = [github, { repo: { owner: 'owner', repo: 'repo' },
+    payload: { inputs: { pull_request: '1', head_sha: HEAD, base_sha: OLD } },
+    ref: 'refs/heads/main', sha: OLD, runId: 12 }, () => ({ writeFileSync: (path, data) => captures.push(JSON.parse(data)) }),
+  { env: { GITHUB_RUN_ATTEMPT: '1', GITHUB_WORKFLOW_SHA: OLD } }];
   await run(...args);
   assert.deepEqual(captures[0].scope, ['new.py', 'old.py']);
   assert.equal(captures[0].base_sha, OLD);
   assert.equal(captures[0].workflow_sha, OLD);
   for (changeAt of [1, 2]) { reads = 0; captures = [];
     await assert.rejects(run(...args), /PR changed/); assert.equal(captures.length, 0); }
+  changeAt = 0; captures = [];
+  args[3].env.GITHUB_WORKFLOW_SHA = HEAD;
+  await assert.rejects(run(...args), /workflow source/); assert.equal(captures.length, 0);
 });
 
 
@@ -816,11 +820,58 @@ test('superseded main-base context artifacts do not block a fresh current-base c
     const read = f.args.github.rest.actions.getWorkflowRun;
     f.args.github.rest.actions.getWorkflowRun = async args => args.run_id === 13
       ? { data: { ...f.contextRun, id: 13, head_sha: 'c'.repeat(40) } } : read(args);
+    f.args.artifactReader = async ({ run }) => run.id === 13
+      ? { ...f.contextRecord, run_id: 13, base_sha: 'c'.repeat(40), workflow_sha: 'c'.repeat(40) }
+      : f.contextRecord;
     f.contextArtifacts.push({ ...f.contextArtifacts[0], id: 16, workflow_run: { id: 13 } });
     if (reverse) f.contextArtifacts.reverse();
     assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_completed');
   }
-  const f = nativeSnapshotFixture(); f.contextRun.head_sha = HEAD;
+  const f = nativeSnapshotFixture();
+  f.contextRecord.base_sha = f.contextRecord.workflow_sha = 'c'.repeat(40);
+  f.contextRun.head_sha = 'c'.repeat(40);
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_context_pending');
+});
+
+test('a changed actual main ref cannot be waived with old-base human or signed evidence', async () => {
+  const f = nativeSnapshotFixture(); const read = f.args.github.graphql;
+  f.args.github.graphql = async query => { const data = await read(query);
+    if (data.repository) data.repository.pullRequest.baseRef.target.oid = HEAD;
+    return data; };
+  f.comments.push(reportComment, approvalComment());
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'stale_base');
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD,
+    codexVerifier: async () => ({ allowed: true, state: 'codex_local_completed' }) })).state, 'stale_base');
+});
+
+test('the context requester dispatches only the fixed read-only recorder on main', async () => {
+  const source = fs.readFileSync('.github/workflows/native-security-context-request.yml', 'utf8');
+  assert.doesNotMatch(source, /actions\/checkout|git checkout|git clone/);
+  assert.match(source, /actions: write/);
+  const script = source.split('          script: |\n')[1]
+    .split('\n').map(line => line.startsWith('            ') ? line.slice(12) : line).join('\n');
+  const run = new (Object.getPrototypeOf(async function () {}).constructor)('github', 'context', script);
+  let calls = [];
+  const github = { rest: { actions: { createWorkflowDispatch: async args => calls.push(args) } } };
+  const pr = { number: 1, head: { sha: HEAD, repo: { full_name: 'owner/repo' } }, base: { sha: OLD, ref: 'main' } };
+  const context = { repo: { owner: 'owner', repo: 'repo' }, payload: { pull_request: pr } };
+  await run(github, context);
+  assert.deepEqual(calls, [{ owner: 'owner', repo: 'repo', workflow_id: 'native-security-context.yml', ref: 'main',
+    inputs: { pull_request: '1', head_sha: HEAD, base_sha: OLD } }]);
+  for (const change of [() => { pr.base.ref = 'untrusted'; },
+    () => { pr.base.ref = 'main'; pr.head.repo.full_name = 'fork/repo'; }]) {
+    calls = []; change(); await run(github, context); assert.deepEqual(calls, []);
+  }
+});
+
+test('only a dispatch on main can authenticate the recorder workflow source', async () => {
+  const f = nativeSnapshotFixture();
+  assert.equal(f.contextRun.head_sha, f.contextRecord.workflow_sha);
+  assert.notEqual(f.contextRun.head_sha, HEAD);
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_completed');
+  f.contextRun.event = 'pull_request_target'; f.contextRun.head_sha = HEAD;
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_context_pending');
+  f.contextRun.event = 'workflow_dispatch'; f.contextRun.head_sha = OLD; f.contextRun.head_branch = 'untrusted';
   assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_context_pending');
 });
 

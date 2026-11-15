@@ -1,8 +1,17 @@
 name: Native security review context
 
 on:
-  pull_request_target:
-    types: [opened, synchronize, reopened, ready_for_review, edited]
+  workflow_dispatch:
+    inputs:
+      pull_request:
+        required: true
+        type: string
+      head_sha:
+        required: true
+        type: string
+      base_sha:
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -10,18 +19,27 @@ permissions:
 
 jobs:
   record-context:
-    if: github.event.action != 'edited' || github.event.changes.base
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      # Run only the immutable base workflow. Never check out or execute PR code.
+      # Dispatch only on main; its run SHA independently pins the producer source.
       - name: Record server-provided review context
         uses: actions/github-script@v9
         with:
           script: |
-            const expected = context.payload.pull_request;
+            const inputs = context.payload.inputs;
+            const number = Number(inputs.pull_request);
+            if (!/^[1-9][0-9]*$/.test(inputs.pull_request ?? '') || !Number.isSafeInteger(number) ||
+                !/^[0-9a-f]{40}$/.test(inputs.head_sha ?? '') || !/^[0-9a-f]{40}$/.test(inputs.base_sha ?? '')) {
+              throw new Error('Invalid review context coordinates.');
+            }
+            const expected = { number, head: { sha: inputs.head_sha }, base: { sha: inputs.base_sha, ref: 'main' } };
+            const workflowSha = process.env.GITHUB_WORKFLOW_SHA;
+            if (context.ref !== 'refs/heads/main' || context.sha !== expected.base.sha || workflowSha !== expected.base.sha) {
+              throw new Error('The context workflow source does not match the requested main base.');
+            }
             const coordinates = { ...context.repo, pull_number: expected.number };
-            const matches = pr => pr.head.sha === expected.head.sha && pr.base.sha === expected.base.sha && pr.base.ref === expected.base.ref;
+            const matches = pr => pr.state === 'open' && pr.head.sha === expected.head.sha && pr.base.sha === expected.base.sha && pr.base.ref === expected.base.ref;
             const { data: before } = await github.rest.pulls.get(coordinates);
             if (!matches(before)) throw new Error('The PR changed before context capture.');
             const files = await github.paginate(github.rest.pulls.listFiles, { ...coordinates, per_page: 100 });
@@ -33,14 +51,14 @@ jobs:
             require('node:fs').writeFileSync('native-review-context.json', JSON.stringify({
               schema: 1, pull_request: expected.number, head_sha: expected.head.sha,
               base_sha: expected.base.sha, base_ref: expected.base.ref, scope,
-              workflow_sha: context.sha, run_id: context.runId,
+              workflow_sha: workflowSha, run_id: context.runId,
               run_attempt: Number(process.env.GITHUB_RUN_ATTEMPT),
             }));
 
       - name: Preserve trusted native review context
         uses: actions/upload-artifact@v7
         with:
-          name: native-review-context-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          name: native-review-context-${{ inputs.pull_request }}-${{ inputs.head_sha }}
           path: native-review-context.json
           if-no-files-found: error
           retention-days: 30

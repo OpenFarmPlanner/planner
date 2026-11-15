@@ -307,7 +307,7 @@ async function verifiedNativeContext({ github, context, head, base, scope, revie
   try {
     ({ repository } = await github.graphql(`query NativeContext($owner:String!,$repo:String!,$number:Int!) {
       repository(owner:$owner,name:$repo) { pullRequest(number:$number) {
-        baseRefName baseRefOid headRefOid
+        baseRefName baseRefOid headRefOid baseRef { target { oid } }
         timelineItems(first:100,itemTypes:[BASE_REF_CHANGED_EVENT,BASE_REF_FORCE_PUSHED_EVENT]) {
           nodes { __typename } pageInfo { hasNextPage }
         }
@@ -315,6 +315,8 @@ async function verifiedNativeContext({ github, context, head, base, scope, revie
     }`, { owner: context.repo.owner, repo: context.repo.repo, number: context.payload.pull_request.number }));
   } catch { return unavailable('The native review base history could not be verified.'); }
   const pr = repository?.pullRequest;
+  if (!SHA.test(pr?.baseRef?.target?.oid ?? '')) return unavailable('The actual base branch could not be verified.');
+  if (pr?.baseRef?.target?.oid !== base) return blocked('stale_base', 'The actual base branch changed; refresh the PR head and review context.');
   if (pr?.baseRefName !== 'main' || pr.baseRefOid !== base || pr.headRefOid !== head ||
       !Array.isArray(pr.timelineItems?.nodes) || pr.timelineItems.nodes.length !== 0 ||
       pr.timelineItems?.pageInfo?.hasNextPage !== false) {
@@ -330,9 +332,9 @@ async function verifiedNativeContext({ github, context, head, base, scope, revie
     let run;
     try { ({ data: run } = await github.rest.actions.getWorkflowRun({ ...context.repo, run_id: artifact.workflow_run.id })); }
     catch { return unavailable('The context producer run could not be verified.'); }
-    if (run.path !== NATIVE_CONTEXT_WORKFLOW || run.event !== 'pull_request_target' ||
+    if (run.path !== NATIVE_CONTEXT_WORKFLOW || run.event !== 'workflow_dispatch' || run.head_branch !== 'main' ||
         run.head_repository?.full_name !== `${context.repo.owner}/${context.repo.repo}`) continue;
-    if (run.head_sha !== base) continue; // A prior main base cannot certify the current scope.
+    if (run.head_sha !== base) continue;
     let report;
     try { report = await artifactReader({ github, coordinates: context.repo, run, name, filename: 'native-review-context.json' }); }
     catch { return unavailable('The trusted context record could not be read.'); }
@@ -341,7 +343,7 @@ async function verifiedNativeContext({ github, context, head, base, scope, revie
     }
     if (!report || report.pull_request !== context.payload.pull_request.number || report.head_sha !== head ||
         report.base_sha !== base || report.base_ref !== 'main' || report.workflow_sha !== run.head_sha ||
-        run.head_sha !== base || !sameScope(report.scope, scope)) {
+        !sameScope(report.scope, scope)) {
       return invalid('The native review context belongs to another base or changed-file scope.');
     }
     const created = Date.parse(artifact.created_at);
@@ -496,7 +498,7 @@ async function snapshot({ github, context, expectedHead, artifactReader = readAr
   // Known incomplete/finding results remain blocked. Invalid/unavailable provider
   // evidence can still use an explicitly verified independent human contingency.
   if (codex?.state === 'codex_local_incomplete') return codex;
-  if (['codex_native_incomplete', 'codex_native_ambiguous'].includes(native?.state)) return native;
+  if (['codex_native_incomplete', 'codex_native_ambiguous', 'stale_base'].includes(native?.state)) return native;
   if (native?.state === 'codex_native_context_invalid') return codex?.allowed ? codex : native;
   if (['codex_native_context_pending', 'codex_native_context_unavailable'].includes(native?.state)) {
     if (codex?.allowed) return codex;
