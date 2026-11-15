@@ -321,6 +321,18 @@ class PlantHealthApiTests(TestCase):
         )
         self.assertFalse(history[0]["snapshot"]["hosts"][0]["is_active"])
 
+    def test_host_can_be_archived_after_its_entry_is_archived(self) -> None:
+        entry_id = self.published_entry()
+        host_id = self.client.post(
+            HOSTS,
+            {"entry": entry_id, "species": self.species.id, "sources": [SOURCE]},
+            format="json",
+        ).data["id"]
+        self.assertEqual(self.client.post(f"{ENTRIES}{entry_id}/archive/").status_code, 200)
+        response = self.client.post(f"{HOSTS}{host_id}/archive/")
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertFalse(response.data["is_active"])
+
     def test_regular_users_cannot_write_official_hosts_and_invalid_query_ids_are_400(self) -> None:
         self.assertEqual(self.client.post(HOSTS, {}, format="json").status_code, 403)
         self.assertEqual(self.client.get(HOSTS, {"entry": "invalid"}).status_code, 400)

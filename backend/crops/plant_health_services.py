@@ -269,8 +269,8 @@ def write_host(
         # Use the same entry lock as moderation, so identity changes and host writes cannot race.
         entry = PlantHealthEntry.objects.select_for_update().get(pk=entry.pk)
         attrs = {**attrs, "entry": entry}
-        validator = PlantHealthHostSerializer(instance=host)
-        validator.validate(attrs)
+        if not archive:
+            PlantHealthHostSerializer(instance=host).validate(attrs)
         if host is None:
             host = PlantHealthHost.objects.create(**attrs)
         else:
