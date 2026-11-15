@@ -614,7 +614,7 @@ test('context transport failure does not hide a separately valid base-bound sign
 
 test('base edits trigger fresh CI while metadata edits cannot replace required check names with skips', () => {
   const workflow = fs.readFileSync('.github/workflows/ci.yml', 'utf8');
-  assert.match(workflow, /types: \[opened, synchronize, reopened, edited\]/);
+  assert.match(workflow, /types: \[opened, synchronize, reopened, ready_for_review, edited\]/);
   for (const id of ['frontend-tests', 'backend-tests', 'backend-postgres-tests', 'security-review-completion', 'quality']) {
     const block = workflow.slice(workflow.indexOf(`  ${id}:\n`)).split(/\n  [a-z][a-z-]+:\n/)[0];
     assert.match(block, /Ignored metadata edit/);

@@ -296,7 +296,8 @@ binds the current base/scope and remains an independent fallback.
 
 Automatic native eligibility is limited to unchanged `main` targets. Base-ref
 changes or force-push history invalidate native evidence, even if the head stays
-unchanged. CI now reruns on base edits and rejects stale event bases. Metadata-only
+unchanged. CI now reruns on base edits and when drafts become ready, and rejects stale
+event bases. Metadata-only
 edits use distinct ignored check names, so skipped metadata jobs cannot replace
 required app checks. Refresh an outdated queue branch from main and obtain fresh
 review; do not retarget it or reuse pre-installation native receipts without a
