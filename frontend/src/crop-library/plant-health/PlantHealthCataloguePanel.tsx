@@ -81,9 +81,9 @@ export function PlantHealthCataloguePanel() {
       <Button variant="outlined" startIcon={<AddIcon />} sx={{ alignSelf: 'flex-start' }} disabled={busy}
         onClick={() => setEditor({ mode: 'create' })}>{t('crops:plantHealthCatalogue.add')}</Button>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-        <TextField label={t('crops:plantHealthCatalogue.search')} value={query} size="small" fullWidth
+        <TextField label={t('crops:plantHealthCatalogue.search')} disabled={busy} value={query} size="small" fullWidth
           onChange={event => { setQuery(event.target.value); setPage(1); setLoading(true); }} />
-        <TextField select label={t('crops:plantHealthCatalogue.status')} value={status} size="small" sx={{ minWidth: { sm: 260 }, flexShrink: 0 }}
+        <TextField select label={t('crops:plantHealthCatalogue.status')} disabled={busy} value={status} size="small" sx={{ minWidth: { sm: 260 }, flexShrink: 0 }}
           onChange={event => { setStatus(event.target.value as PlantHealthStatus | ''); setPage(1); setLoading(true); }}>
           <MenuItem value="">{t('crops:plantHealthCatalogue.allStatuses')}</MenuItem>
           {(['proposed', 'published', 'rejected', 'archived'] as const).map(value => <MenuItem key={value} value={value}>{t(`crops:plantHealthCatalogue.statuses.${value}`)}</MenuItem>)}
@@ -97,7 +97,7 @@ export function PlantHealthCataloguePanel() {
           onReject={() => startReview({ entry, action: 'reject' })} onArchive={() => startReview({ entry, action: 'archive' })}
           onReopen={() => { void reopen(entry); }} onHistory={() => { void showHistory(entry); }} onHost={host => setHostEditor({ entry, host })}
           onArchiveHost={host => startReview({ entry, action: 'archiveHost', host })} />)}
-      {total > PAGE_SIZE ? <Pagination count={Math.ceil(total / PAGE_SIZE)} page={page} disabled={loading} size="small"
+      {total > PAGE_SIZE ? <Pagination count={Math.ceil(total / PAGE_SIZE)} page={page} disabled={loading || busy} size="small"
         onChange={(_, value) => { setPage(value); setLoading(true); }} /> : null}
     </Stack>
     {editor ? <EntryDialog {...editor} onClose={() => setEditor(null)} onSaved={saved} /> : null}

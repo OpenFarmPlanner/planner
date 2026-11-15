@@ -13,11 +13,11 @@ const source = { url: 'https://example.org/synthetic-plant-health', title: 'Synt
 const bundles = { de, en, fr, es, it, pt, nl };
 type Entry = { id: number; status: string; identity_key: string; translations: { language_code: string; synonyms: string[] }[] };
 
-for (const width of [375, 1440]) {
+for (const width of [375, 800, 1440]) {
   test(`plant-health proposal, approval and sourced host moderation at ${width}px`, async ({ page, request }, testInfo) => {
     test.setTimeout(120_000);
     const scenario = `plant-health-flow-${width}-${Date.now()}`;
-    await page.setViewportSize({ width, height: width === 375 ? 800 : 900 });
+    await page.setViewportSize({ width, height: width === 800 ? 375 : width === 375 ? 800 : 900 });
     try {
       await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true, libraryModerator: true });
       await page.goto('/app/public-library-moderation');
@@ -68,6 +68,8 @@ for (const width of [375, 1440]) {
       await panel.getByLabel(de.plantHealthCatalogue.search).fill(`Alias ${scenario}`);
       await expect(card).toBeVisible();
       await expectNoHorizontalPageOverflow(page);
+      await page.mouse.move(1, 1);
+      await expect(page.getByText(de.plantHealthCatalogue.saved, { exact: true })).not.toBeVisible();
       await page.screenshot({ path: testInfo.outputPath(`locale-plant-health-published-${width}.png`), animations: 'disabled' });
       await card.getByRole('button', { name: de.plantHealthCatalogue.history, exact: true }).click();
       const history = page.getByRole('dialog', { name: de.plantHealthCatalogue.history });
@@ -113,6 +115,15 @@ for (const { code } of SUPPORTED_LANGUAGES) {
         await expectNoHorizontalPageOverflow(page);
         expect(await editor.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
         await page.screenshot({ path: testInfo.outputPath(`locale-plant-health-${code}-editor-${width}.png`), animations: 'disabled' });
+        if (width === 375) {
+          await editor.locator(`input[lang="${code}"]`).fill('Synthetic regional-name fixture');
+          await editor.getByRole('button', { name: text.addRegion, exact: true }).click();
+          await editor.getByRole('textbox', { name: text.countryCode, exact: true }).fill('AT');
+          await editor.getByRole('textbox', { name: text.regionalName, exact: true }).fill('Synthetic regional label');
+          await expectNoHorizontalPageOverflow(page);
+          await page.screenshot({ path: testInfo.outputPath(`locale-plant-health-${code}-regional-${width}.png`), animations: 'disabled' });
+        }
+
       } finally { await resetE2EScenario(request, scenario); }
     });
   }

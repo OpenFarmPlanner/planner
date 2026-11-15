@@ -38,8 +38,8 @@ export function NameFields({ value, scientificName, onChange, disabled }: {
             {row.is_scientific_fallback ? <TextField label={t('plantHealthCatalogue.fallbackReason')} value={row.fallback_reason ?? ''}
               required disabled={disabled} fullWidth size="small" onChange={event => set(code, { fallback_reason: event.target.value })} /> : null}
             <Typography variant="subtitle2">{t('plantHealthCatalogue.regionalNames')}</Typography>
-            {regions.map(([country, name], index) => <Stack key={index} direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              <TextField label={t('plantHealthCatalogue.countryCode')} value={country} disabled={disabled} size="small" sx={{ width: 96, flexShrink: 0 }}
+            {regions.map(([country, name], index) => <Stack key={index} direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ alignItems: { xs: 'stretch', sm: 'center' } }}>
+              <TextField label={t('plantHealthCatalogue.countryCode')} value={country} disabled={disabled} size="small" sx={{ width: { xs: '100%', sm: 140 }, flexShrink: 0 }}
                 slotProps={{ htmlInput: { maxLength: 2 } }} onChange={event => {
                   const countryCode = event.target.value.toUpperCase();
                   if (regions.some(([existing], current) => current !== index && existing === countryCode)) return;
@@ -48,7 +48,7 @@ export function NameFields({ value, scientificName, onChange, disabled }: {
                 }} />
               <TextField label={t('plantHealthCatalogue.regionalName')} value={name} disabled={disabled} size="small" fullWidth
                 onChange={event => set(code, { regional_names: { ...row.regional_names, [country]: event.target.value } })} />
-              <IconButton aria-label={t('plantHealthCatalogue.removeRegion')} disabled={disabled}
+              <IconButton aria-label={t('plantHealthCatalogue.removeRegion')} disabled={disabled} sx={{ alignSelf: { xs: 'flex-end', sm: 'center' } }}
                 onClick={() => set(code, { regional_names: Object.fromEntries(regions.filter((_, current) => current !== index)) })}><DeleteOutlineIcon /></IconButton>
             </Stack>)}
             <Button disabled={disabled || '' in (row.regional_names ?? {}) || regions.length >= 50} sx={{ alignSelf: 'flex-start' }}
