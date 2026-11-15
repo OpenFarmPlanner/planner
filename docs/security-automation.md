@@ -268,7 +268,8 @@ closed. A text-prefix match alone is never sufficient. GraphQL
 confirms the original author, last editor and unchanged body/version; a human
 edit cannot preserve app provenance. The summary does not expose a task ID. To avoid guessing task correspondence,
 all observed, authenticated receipts resolving to the current full head must
-report clean results. A findings receipt cannot be superseded by a different
+report clean results. Structured native-summary finding flags also block completion,
+including findings published inline rather than in a top-level result receipt. A findings receipt cannot be superseded by a different
 clean review of the same unchanged head, regardless of completion order. A
 running native review takes precedence over an older contingency approval and
 stays pending within the normal bounded CI polling window. A newer review or findings blocks an earlier clean result for the same

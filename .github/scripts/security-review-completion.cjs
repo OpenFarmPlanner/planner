@@ -127,6 +127,16 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
   const summaryProblem = await nativeEvidenceProvenance({ github, context,
     checked: summaries.map(item => item.comment) });
   if (summaryProblem) return invalid(summaryProblem);
+  const securityState = comment => {
+    const match = comment.body.match(/^<!-- codex-review-state:v1 (\{[^\n]+\}) -->$/m);
+    try { return match ? JSON.parse(match[1]).security_review : null; } catch { return null; }
+  };
+  for (const item of summaries) {
+    const state = securityState(item.comment);
+    if (state?.commit_sha === head && (state.has_any_findings === true || state.has_unresolved_findings === true)) {
+      return blocked('codex_native_incomplete', 'The trusted native summary reports security findings for this head.');
+    }
+  }
   const { comment: summary, evidence } = summaries[0];
   if (evidence.repository !== `${context.repo.owner}/${context.repo.repo}` ||
       evidence.pullRequestNumber !== context.payload.pull_request.number) {
@@ -136,6 +146,11 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
     return blocked('codex_native_pending', 'The native security review is still in progress.');
   }
   if (evidence.status !== 'completed') return invalid('The latest native security review has not completed.');
+  const state = securityState(summary);
+  if (state?.commit_sha !== head || state.status !== 'completed') {
+    return invalid('The native security result summary is missing or inconsistent.');
+  }
+
   const receipts = comments.filter(comment => nativeCodexAuthor(comment) &&
     /^### 🛡️ Codex Security Review$/m.test(comment.body ?? '') &&
     comment.body.startsWith('<!-- codex-review-receipt:v1 -->\n'))

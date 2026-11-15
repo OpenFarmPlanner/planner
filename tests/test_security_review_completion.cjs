@@ -271,7 +271,7 @@ function nativeFixture() {
     created_at: '2026-11-15T07:25:17Z', updated_at: '2026-11-15T07:25:21Z' };
   const evidence = { repository: 'owner/repo', pullRequestNumber: 1, headSha: HEAD, status: 'completed' };
   const summary = { ...structuredClone(base), id: 1, node_id: 'summary', html_url: 'https://github.com/owner/repo/pull/1#issuecomment-1',
-    body: `<!-- codex-security-review:v1 ${JSON.stringify(evidence)} -->` };
+    body: `<!-- codex-security-review:v1 ${JSON.stringify(evidence)} -->\n<!-- codex-review-state:v1 ${JSON.stringify({ security_review: { commit_sha: HEAD, status: 'completed', has_any_findings: null, has_unresolved_findings: null } })} -->` };
   const receipt = { ...structuredClone(base), id: 2, node_id: 'receipt', html_url: 'https://github.com/owner/repo/pull/1#issuecomment-2',
     body: `<!-- codex-review-receipt:v1 -->\n\n### 🛡️ Codex Security Review\n\nSecurity review completed. No security issues were found in this pull request.\n\n**Reviewed commit:** \`${HEAD.slice(0, 10)}\`\n\n[View security finding report](https://chatgpt.com/codex/cloud/tasks/task_review)` };
   const comments = [summary, receipt];
@@ -634,4 +634,12 @@ test('a valid base-bound signed review does not need a missing native context ar
 test('a context producer rerun remains pending until its current-attempt artifact arrives', async () => {
   const f = nativeSnapshotFixture(); f.contextRun.status = 'in_progress'; f.args.artifactReader = async () => null;
   assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_context_pending');
+});
+
+
+test('native inline findings reported in the authenticated summary block an older clean receipt', async () => {
+  const f = nativeSnapshotFixture();
+  f.summary.body = f.summary.body.replace('"has_any_findings":null', '"has_any_findings":true');
+  f.comments.push(reportComment, approvalComment());
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_incomplete');
 });
