@@ -42,11 +42,12 @@ class PlantHealthEntry(models.Model):
 
     identity_key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     name = models.CharField(max_length=200)
-    name_normalized = models.CharField(max_length=200, db_index=True, editable=False)
+    name_normalized = models.CharField(max_length=400, db_index=True, editable=False)
     scientific_name = models.CharField(max_length=200, blank=True)
     scientific_name_normalized = models.CharField(
-        max_length=200, db_index=True, editable=False, blank=True
+        max_length=400, db_index=True, editable=False, blank=True
     )
+    search_text = models.TextField(blank=True, editable=False)
     kind = models.CharField(max_length=20, choices=KIND_CHOICES, default=KIND_GROUP)
     eppo_code = models.CharField(max_length=6, blank=True)
     sources = models.JSONField(default=list, blank=True)
@@ -87,19 +88,24 @@ class PlantHealthEntry(models.Model):
         ]
 
     def save(self, *args: Any, **kwargs: Any) -> None:
-        from farm.utils import normalize_text
+        from farm.utils import normalize_search_text, normalize_text
 
         self.name = " ".join(self.name.split())
         self.name_normalized = normalize_text(self.name) or ""
         self.scientific_name = " ".join(self.scientific_name.split())
         self.scientific_name_normalized = normalize_text(self.scientific_name) or ""
         self.eppo_code = self.eppo_code.strip().upper()
+        self.search_text = "\n".join(
+            normalize_search_text(name)
+            for name in [self.name, self.scientific_name, self.eppo_code]
+        )
         if kwargs.get("update_fields") is not None:
             kwargs["update_fields"] = set(kwargs["update_fields"]) | {
                 "name",
                 "name_normalized",
                 "scientific_name",
                 "scientific_name_normalized",
+                "search_text",
                 "eppo_code",
                 "updated_at",
             }
@@ -142,10 +148,10 @@ class PlantHealthTranslation(models.Model):
         ]
 
     def save(self, *args: Any, **kwargs: Any) -> None:
-        from farm.utils import normalize_text
+        from farm.utils import normalize_search_text
 
         names = [self.preferred_name, *self.synonyms, *self.regional_names.values()]
-        self.search_text = "\n".join(normalize_text(name) or "" for name in names)
+        self.search_text = "\n".join(normalize_search_text(name) for name in names)
         if kwargs.get("update_fields") is not None:
             kwargs["update_fields"] = set(kwargs["update_fields"]) | {"search_text"}
         super().save(*args, **kwargs)

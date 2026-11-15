@@ -18,9 +18,11 @@ powdery mildew does not establish a shared pathogen. Neither a crop association
 nor missing evidence establishes infestation, resistance or immunity.
 
 Each identity has translated preferred names, synonyms and ISO two-letter
-country-specific names. Search normalizes whitespace/case and ANDs query words
-across the reference name, scientific name, EPPO code and every translated name,
-synonym and regional name. It never performs fuzzy or semantic identity merges.
+country-specific names. Search uses the binding accent/ligature/ß folding from
+`docs/search.md` and ANDs query words across the reference name, scientific name,
+EPPO code and every translated name, synonym and regional name. Search folding
+never changes displayed names or the stricter whitespace/case-only identity keys,
+and never performs fuzzy or semantic identity merges.
 
 Approval requires identity sources and names in all seven supported languages
 (de/en/fr/es/it/pt/nl). An explicit scientific-name fallback is allowed per

@@ -335,6 +335,59 @@ class PlantHealthApiTests(TestCase):
         self.assertEqual(recreated.data["id"], host_id)
         self.assertTrue(recreated.data["is_active"])
 
+    def test_search_folds_accents_ligatures_and_regional_names_without_rewriting_them(self) -> None:
+        entry_id = self.create_entry(
+            name="Référence Æ",
+            scientific_name="Œdème synthetic",
+            translations=[
+                {
+                    "language_code": "en",
+                    "preferred_name": "Synthetic Cœur",
+                    "synonyms": ["Æthusa"],
+                    "regional_names": {"CH": "Straße"},
+                },
+                {"language_code": "de", "preferred_name": "Rübe"},
+            ],
+        )
+        for query in [
+            "reference ae",
+            "coeur",
+            "aethusa",
+            "strasse",
+            "rube",
+            "oedeme",
+            "rube coeur",
+        ]:
+            with self.subTest(query=query):
+                response = self.client.get(ENTRIES, {"include_proposed": "true", "q": query})
+                self.assertEqual(response.status_code, 200, response.data)
+                self.assertEqual([row["id"] for row in response.data["results"]], [entry_id])
+        entry = PlantHealthEntry.objects.get(pk=entry_id)
+        self.assertEqual(entry.name, "Référence Æ")
+        self.assertEqual(entry.scientific_name_normalized, "œdème synthetic")
+        english = entry.translations.get(language_code="en")
+        self.assertEqual(english.preferred_name, "Synthetic Cœur")
+        self.assertEqual(english.synonyms, ["Æthusa"])
+        self.assertEqual(english.regional_names, {"CH": "Straße"})
+        entry.scientific_name = "Nouveau scientific name"
+        entry.save(update_fields=["scientific_name"])
+        response = self.client.get(ENTRIES, {"include_proposed": "true", "q": "nouveau"})
+        self.assertEqual(response.data["count"], 1)
+        response = self.client.get(ENTRIES, {"include_proposed": "true", "q": "oedeme"})
+        self.assertEqual(response.data["count"], 0)
+
+    def test_search_folding_does_not_merge_distinct_scientific_identity_keys(self) -> None:
+        first = self.create_entry(scientific_name="Syntheticus cœur")
+        self.assertEqual(self.approve(first).status_code, 200)
+        second = self.create_entry(scientific_name="Syntheticus coeur")
+        self.assertEqual(self.approve(second).status_code, 200)
+        response = self.client.get(ENTRIES, {"q": "coeur"})
+        self.assertEqual({row["id"] for row in response.data["results"]}, {first, second})
+        self.assertNotEqual(
+            PlantHealthEntry.objects.get(pk=first).identity_key,
+            PlantHealthEntry.objects.get(pk=second).identity_key,
+        )
+
     def test_search_handles_many_terms_and_matches_across_translated_names(self) -> None:
         import string
 

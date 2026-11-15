@@ -14,7 +14,7 @@ from rest_framework.response import Response
 
 from accounts.demo_access import guest_demo_forbidden_response, is_active_guest_demo_user
 from farm.services.public_pseudonyms import number_anonymous_authors
-from farm.utils import normalize_text
+from farm.utils import normalize_search_text
 
 from .agent_api.permissions import CropLibraryTokenAccessPermission
 from .permissions import is_public_library_moderator
@@ -60,17 +60,14 @@ class PlantHealthEntryViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(status=PlantHealthEntry.STATUS_PUBLISHED)
         if self.request.query_params.get("kind"):
             queryset = queryset.filter(kind=self.request.query_params["kind"])
-        query = normalize_text(self.request.query_params.get("q", "")[:200]) or ""
+        query = normalize_search_text(self.request.query_params.get("q", "")[:200])
         for term in dict.fromkeys(query.split()):
             names = PlantHealthTranslation.objects.filter(
                 entry_id=OuterRef("pk"),
                 search_text__contains=term,
             )
             queryset = queryset.filter(
-                Q(name_normalized__contains=term)
-                | Q(scientific_name_normalized__contains=term)
-                | Q(eppo_code__icontains=term)
-                | Q(Exists(names)),
+                Q(search_text__contains=term) | Q(Exists(names)),
             )
         return queryset.distinct()
 
