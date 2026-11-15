@@ -147,6 +147,7 @@ def render(manifest: dict[str, Any], review: dict[str, Any]) -> str:
         raise ValueError("Invalid methodology notes.")
     return (f"<!-- manual-security-review:{manifest['head']} -->\n"
             f"Independent local AI-assisted manual security review of `{manifest['head']}`.\n"
+            f"Reviewed base: {manifest['base']}\n"
             "Fresh reviewer session; this is not a native cloud Security Report.\n\n"
             "Scope:\n" + "\n".join(f"- `{file}`" for file in scope) +
             f"\n\n{analysis.strip()}\n\n" +

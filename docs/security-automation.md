@@ -234,6 +234,7 @@ malformed, wrong-PR, old-attempt and stale-head evidence never passes.
 | `manual_review_required` | Provider execution is guarded; an explicit exact-head review/approval is needed. |
 | `codex_completed_attested` | A human maintainer verified the native task and Security Report; auditable attestation, **not automated verification**. |
 | `manual_review_approved` | A human maintainer explicitly approved a completed manual review; **not an automated scan**. |
+| `codex_native_ambiguous` | Current-head history may conceal another running task. A fresh head/context is required; older human or separate signed approvals cannot override this state. |
 
 The GitHub summary records the SHA, state, reason and evidence link. A successful
 **quality** job means the required policy was satisfied, possibly by an explicit
@@ -257,19 +258,101 @@ are not completed security reviews.
 The exact `@codex security review` command is supported by the current
 [Security Review documentation](https://learn.chatgpt.com/docs/security/security-review).
 Native reviews require eligible workspace access and a connected repository.
-A clean native review can post no findings: reactions, silence, code-review
-comments and delivery acknowledgements cannot establish security completion.
-The full task and Security Report are the completion evidence. No documented
-public exact-head completion API was established in this investigation, so
-this gate does not invent a bot-comment format or treat ordinary Codex code
-review as a completed Security Review.
+A native review is accepted automatically when GitHub attributes both its current
+security summary and clean security receipt to the pinned Codex app (`1144995`)
+and bot (`199175422`). The summary must name this repository, PR and full current
+head, with completed status. The matching recent receipt must explicitly report
+no security issues, name the same commit and link its Security Report. Resolve
+any provider commit abbreviation through GitHub's commit-object API and compare
+the returned full SHA; missing, ambiguous or differently resolved commits fail
+closed. A text-prefix match alone is never sufficient. GraphQL
+confirms the original author, last editor and unchanged body/version; a human
+edit cannot preserve app provenance. The summary does not expose a task ID. To avoid guessing task correspondence,
+all observed, authenticated receipts resolving to the current full head must
+report clean results. Structured native-summary finding flags also block completion,
+including findings published inline rather than in a top-level result receipt. A findings receipt cannot be superseded by a different
+clean review of the same unchanged head, regardless of completion order. A
+running native review takes precedence over an older contingency approval and
+stays pending within the normal bounded CI polling window. A newer review or findings blocks an earlier clean result for the same
+head. Unverifiable or unsupported provider evidence still allows the optional
+explicit independent-human contingency; a supported nonclean result does not. Ordinary code reviews, reactions,
+request delivery, copied comments and unsupported provider formats are not
+security completion. No additional human attestation is required for this route.
+
+Native completion also requires `native-security-context.yml` evidence. A
+`pull_request_target` requester has `actions: write` solely to dispatch that
+fixed recorder on `main`. The recorder itself has read-only permissions, checks
+no PR code out, validates its dispatch inputs and main workflow source, and
+records the head/base plus the complete changed-file scope after checking the
+live PR before and after collection. Neither workflow starts a model call.
+
+The recorder uses `workflow_dispatch`, so GitHub's run metadata independently
+pins its `main` branch and immutable workflow source SHA. In contrast, a
+`pull_request_target` run's `head_sha` identifies the PR head and cannot prove
+the base workflow source. Self-reported JSON from an arbitrary base branch is
+insufficient. The recorder also checks `GITHUB_WORKFLOW_SHA` against the event
+base. Its artifact name binds the PR/head; the gate verifies the workflow
+path/event, repository, protected source SHA, run/attempt and exact current
+base/scope, including the actual main ref. A changed main ref cannot be waived
+with stale human or signed evidence. Superseded main-base records are ignored; a
+current-base record must exist and match the full scope. Older clean receipts
+remain checked for findings but do not replace the selected fresh result.
+The artifact creation time plus one second (GitHub timestamp precision) must
+precede the native task's start. The gate reads
+the summary's GitHub edit history, verifies an undeleted Codex-bot-authored
+running revision for the full head, and extracts the Security Review row's start
+timestamp. It reads the complete history (up to 1,000 revisions), requires the
+original revision and no deleted records, and accepts only one running revision
+and one receipt task identity for that head. Duplicate running revisions remain
+ambiguous even with identical timestamps. Wait for code review completion before
+requesting security review to avoid unrelated summary updates during its run.
+Every receipt must follow the running revision's edit timestamp by at least one
+second, so a same-second older result cannot be rebound to a later task.
+An authenticated visible same-head running row with malformed or unsupported
+hidden markers is ambiguous evidence, not an ignorable historical record.
+The current visible running summary also stays pending when its hidden markers
+are missing, malformed or unsupported; older approvals cannot override it.
+If an authenticated bot edit changes a body or version between the REST and
+GraphQL reads, the gate waits for a consistent fresh snapshot instead of
+falling through to older approval. Human-edited evidence remains unverifiable.
+Multiple same-head executions are ambiguous
+because the summary carries no task ID; even clean repeats require a fresh head
+and context. Ambiguity may conceal a pending task, so human and signed
+contingencies cannot override it. An edit timestamp alone
+cannot establish task start. Missing or unsupported history cannot authorize
+native completion. A queued context
+workflow's earlier creation time and a later receipt are insufficient. Missing
+receipts remain pending during the five-minute publication/correlation window
+after an authenticated completed summary, within the gate's existing timeout.
+Older completed summaries without receipts remain invalid. Missing
+context records stay pending. Unavailable context may use an optional human
+contingency only when its approval and independent manual report explicitly
+include `Reviewed base: FULL_BASE_SHA` for the current base, in addition to the
+existing exact-head/full-scope requirements. Actual context mismatches stay
+blocked; a head-only human approval is insufficient. A valid signed review already
+binds the current base/scope and remains an independent fallback.
+
+Automatic native eligibility is limited to unchanged `main` targets. Base-ref
+changes or force-push history invalidate native evidence, even if the head stays
+unchanged. CI reruns its normal named jobs on every PR edit, including title/body
+edits, and when drafts become ready; it rejects stale event bases. This preserves
+all required contexts in the latest CI check suite. Skipping renamed placeholder
+jobs leaves those required contexts expected, even if an earlier suite passed.
+Refresh an outdated queue branch from main and obtain fresh
+review; do not retarget it or reuse pre-installation native receipts without a
+trusted context record. The context producer is not an AI worker,
+signer or API queue controller and starts no model calls.
+
+This authenticates the provider's public completion statement using GitHub's
+app metadata. CI does not fetch the private Security Report or claim a vendor
+signature. Receipts expire after seven days, and a new head needs fresh review.
 
 The owner reports that GitHub is connected, the Connector app has all-repository
 read/write access, a Codex Cloud environment exists, and automatic code/security
 reviews are enabled. Requests were posted as `stipsitzm`; the connector rejected
 them within seconds with an account-connection instruction and a legacy Cloud
 settings URL. Current [GitHub review documentation](https://learn.chatgpt.com/docs/third-party/github)
-distinguishes legacy setup and current review settings. These observations do
+distinguishes legacy setup and current review settings. These historical observations do
 **not** establish a wrong installation, missing entitlement or identity mapping.
 The provider-side rejection remains unresolved; reinstalling/reconnecting is
 not a repository fix and is not recommended without provider diagnosis.
@@ -443,13 +526,17 @@ Reruns do not spam the same rejected request. After an upstream fix, a maintaine
 may manually request another native review with the supported command, then
 verify its actual task/report. New heads get new requests and new reviews.
 
-If native completion cannot be automatically verified, a **human admin or
-maintainer**, after inspecting the completed task/report for the exact SHA,
-can post:
+Completed clean native reviews with verified app provenance need no human
+confirmation. If provider evidence is unavailable or unsupported, the following
+human contingency remains optional. Every contingency must explicitly bind the
+current base as well as the head, including when no native evidence is available.
+A **human admin or maintainer**, after inspecting the completed task/report for
+the exact head and base, can post:
 
 ```text
 /security-review approve codex FULL_HEAD_SHA https://chatgpt.com/codex/tasks/TASK_ID
 I verified the completed Codex Security Report for this exact commit.
+Reviewed base: FULL_BASE_SHA
 Result: No unresolved findings
 Reason: native completion verified in the task and Security Report
 ```
@@ -458,13 +545,14 @@ This is explicitly a maintainer attestation of Codex completion. The gate does
 not claim to have fetched or independently verified that private report.
 
 For an independent manual review, first post a PR comment containing
-`<!-- manual-security-review:FULL_HEAD_SHA -->`, every changed path in backticks,
+`<!-- manual-security-review:FULL_HEAD_SHA -->`, `Reviewed base: FULL_BASE_SHA`, every changed path in backticks,
 the actual review findings/resolution and `Result: No unresolved findings`.
 Then a human admin/maintainer approves that report:
 
 ```text
 /security-review approve manual FULL_HEAD_SHA https://github.com/OpenFarmPlanner/planner/pull/PR_NUMBER#issuecomment-REPORT_ID
 I independently reviewed this exact commit and approve its security review.
+Reviewed base: FULL_BASE_SHA
 Reason: automated providers unavailable; completed manual review linked above
 ```
 
@@ -489,7 +577,7 @@ normal base-policy loading applies; editing the head cannot edit that policy.
 After completion/approval becomes available, rerun both failed CI jobs together
 with `gh run rerun RUN_ID --failed`. The completion reader must re-evaluate the
 new evidence before quality evaluates its dependency result; rerunning quality
-alone does not refresh the failed reader. A comment itself does not launch more
+alone does not refresh the failed reader. An approval comment itself does not launch more
 provider jobs. Pending checks have a bounded wait; provider failures, rejection
 and guarded execution fail clearly. If a new push occurs, repeat the review and
 approval for its new SHA. Do not rerun tests repeatedly to mask a provider error.
@@ -506,6 +594,19 @@ node --test tests/test_codex_security_request.cjs tests/test_security_review_com
 ```
 
 ## Security decisions
+
+### 2026-11-15 — Automatic native Codex completion
+
+The owner explicitly removed mandatory human confirmation of completed native
+Codex Security Reviews. Use GitHub-authenticated provider evidence for the exact
+current PR/head as specified above; no per-PR attestation or reaction is needed.
+This deliberately trusts the pinned Codex app's public clean-result statement,
+not agent-authored text or access to the private report. Required CI, fresh
+independent review, finding remediation and immutable-base policy loading stay
+in place. This policy change must itself pass the existing base policy before
+it can govern later runs; it does not self-certify its own merge. Manual and
+signed-local contingencies remain available when native evidence cannot verify.
+
 
 Durable security decisions that outlive a single PR: accepted risks,
 deliberate exceptions and recurring patterns reviewers should know about.
