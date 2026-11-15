@@ -8,6 +8,10 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
 
 ### Features
 
+- Platform admins can update plant-family language labels through the
+  translation-only API using a write-scoped crop-library token. Existing
+  languages, family identities, crop links and rotation defaults are preserved.
+
 - Add Dutch UI, public/legal pages, emails and crop-library translation support,
   with nl-NL formatting for Dutch and Belgian browser variants. Preserve legal
   consent versions, stored project data and required species names.
