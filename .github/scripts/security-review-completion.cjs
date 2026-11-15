@@ -81,7 +81,7 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
   const summaries = comments.filter(comment => nativeCodexAuthor(comment) && marker.test(comment.body ?? ''))
     .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
   if (!summaries.length) return null;
-  const invalid = reason => blocked('codex_native_incomplete', reason);
+  const invalid = reason => blocked('codex_native_invalid', reason);
   const summary = summaries[0];
   let evidence;
   try { evidence = JSON.parse(summary.body.match(marker)[1]); }
@@ -109,13 +109,18 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
   }
   // Maintainers can edit comments. Verify the actual last editor as well as the creating app,
   // and compare the independently read body/version to avoid trusting a changing snapshot.
-  const { nodes } = await github.graphql(`query($ids:[ID!]!) {
+  let nodes;
+  try {
+    ({ nodes } = await github.graphql(`query($ids:[ID!]!) {
     nodes(ids:$ids) { ... on IssueComment {
       id body updatedAt lastEditedAt
       author { __typename ... on Bot { databaseId } }
       editor { __typename ... on Bot { databaseId } }
     } }
-  }`, { ids: [summary.node_id, receipt.node_id] });
+  }`, { ids: [summary.node_id, receipt.node_id] }));
+  } catch {
+    return invalid('Native provenance could not be read from GitHub.');
+  }
   const trustedActor = actor => actor?.__typename === 'Bot' && actor.databaseId === NATIVE_CODEX_BOT;
   for (const comment of [summary, receipt]) {
     const node = nodes?.find(item => item?.id === comment.node_id);
@@ -132,9 +137,13 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
   }
   const sha = receipt.body.match(/^\*\*Reviewed commit:\*\* `([0-9a-f]{10,40})`$/m)?.[1];
   const task = receipt.body.match(/^\[View security finding report\]\((https:\/\/chatgpt\.com\/codex\/(?:cloud\/)?tasks\/[a-zA-Z0-9_-]+)\)$/m)?.[1];
-  if (!sha || !head.startsWith(sha) || !task ||
-      !receipt.body.split('\n').includes('Security review completed. No security issues were found in this pull request.')) {
+  if (!sha || !head.startsWith(sha) || !task) {
     return invalid('The native security receipt does not establish a clean review for this head.');
+  }
+  if (!receipt.body.split('\n').includes('Security review completed. No security issues were found in this pull request.')) {
+    return receipt.body.split('\n').some(line => line.startsWith('Security review completed. '))
+      ? blocked('codex_native_incomplete', 'The completed native review does not report a clean result.')
+      : invalid('The native security receipt format is unsupported.');
   }
   return passed('codex_native_completed',
     'The trusted Codex GitHub app reports a completed, clean security review for this exact PR/head. No human attestation is required.',
@@ -265,13 +274,17 @@ async function snapshot({ github, context, expectedHead, artifactReader = readAr
   const native = await verifiedNativeCodexReview({ github, context, comments, head: expectedHead });
   const codex = await codexVerifier({ github, context, comments, head: expectedHead,
     base: pr.base.sha, scope });
-  // A clean result from one route cannot conceal a current incomplete/finding result
-  // from the other. Correct the findings and obtain fresh evidence on that route.
-  if (codex && !codex.allowed) return codex;
-  if (native) return native;
-  if (codex) return codex;
+  // Known incomplete/finding results remain blocked. Invalid/unavailable provider
+  // evidence can still use an explicitly verified independent human contingency.
+  if (codex?.state === 'codex_local_incomplete') return codex;
+  if (native?.state === 'codex_native_incomplete') return native;
+  if (native?.allowed) return native;
   const approval = await approvedReview({ github, coordinates, comments, head: expectedHead, scope });
   if (approval) return evaluate({ head: expectedHead, scope, approval });
+  if (native?.state === 'codex_native_pending') return native;
+  if (codex?.allowed) return codex;
+  if (native) return native;
+  if (codex) return codex;
   // A PR can change the triage script embedded in this workflow. Preserve
   // the provider's self-change guard without trusting its edited skip output.
   if (scope.includes('.github/workflows/claude-pr.yml')) {
@@ -345,7 +358,7 @@ async function enforce({ github, context, core, expectedHead, timeoutMs = 20 * 6
     }
     if (result.state !== previous) core.info(`Security review: ${result.state}. ${result.reason}`);
     previous = result.state;
-    if (result.allowed || ['stale_head', 'codex_rejected', 'codex_local_incomplete', 'codex_evidence_invalid', 'manual_review_required', 'claude_failed', 'triage_failed', 'scope_unavailable', 'evidence_unavailable', 'codex_native_incomplete'].includes(result.state)) break;
+    if (result.allowed || ['stale_head', 'codex_rejected', 'codex_local_incomplete', 'codex_evidence_invalid', 'manual_review_required', 'claude_failed', 'triage_failed', 'scope_unavailable', 'evidence_unavailable', 'codex_native_incomplete', 'codex_native_invalid'].includes(result.state)) break;
     if (now() >= deadline) { result = blocked('timed_out', `Timed out while ${result.state}: ${result.reason}`); break; }
     await wait(Math.min(intervalMs, deadline - now()));
   } while (true);

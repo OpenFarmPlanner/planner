@@ -263,8 +263,10 @@ and bot (`199175422`). The summary must name this repository, PR and full curren
 head, with completed status. The matching recent receipt must explicitly report
 no security issues, name the same commit and link its Security Report. GraphQL
 confirms the original author, last editor and unchanged body/version; a human
-edit cannot preserve app provenance. A newer running review or findings blocks
-an earlier clean result for the same head. Ordinary code reviews, reactions,
+edit cannot preserve app provenance. A running native review stays pending within the normal bounded CI polling
+window. A newer review or findings blocks an earlier clean result for the same
+head. Unverifiable or unsupported provider evidence still allows the optional
+explicit independent-human contingency; a supported nonclean result does not. Ordinary code reviews, reactions,
 request delivery, copied comments and unsupported provider formats are not
 security completion. No additional human attestation is required for this route.
 

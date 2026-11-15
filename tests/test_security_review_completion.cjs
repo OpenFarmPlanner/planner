@@ -362,15 +362,21 @@ test('newer running review or findings supersede an earlier clean result for the
   assert.equal((await verifiedNativeCodexReview(f.args)).allowed, false);
 });
 
-test('snapshot uses native completion under the base policy without a Claude rerun or human attestation', async () => {
+function nativeSnapshotFixture() {
   const f = nativeFixture();
   const listFiles = () => {}, listComments = () => {};
   f.args.github.rest = {
     pulls: { get: async () => ({ data: { state: 'open', base: { sha: OLD }, labels: [], user: { login: 'owner' },
       head: { sha: HEAD, repo: { full_name: 'owner/repo' } } } }), listFiles },
     issues: { listComments },
+    repos: { getCollaboratorPermissionLevel: async () => ({ data: { permission: 'maintain' } }) },
   };
-  f.args.github.paginate = async method => method === listFiles ? [{ filename: 'code.py' }] : f.comments;
+  f.args.github.paginate = async method => method === listFiles ? SCOPE.map(filename => ({ filename })) : f.comments;
+  return f;
+}
+
+test('snapshot uses native completion under the base policy without a Claude rerun or human attestation', async () => {
+  const f = nativeSnapshotFixture();
   const result = await snapshot({ ...f.args, expectedHead: HEAD });
   assert.equal(result.allowed, true);
   assert.equal(result.state, 'codex_native_completed');
@@ -397,4 +403,27 @@ test('running native review is polled until completion without a CI rerun', asyn
   assert.equal(inspections, 2);
   assert.equal(time, 10);
   assert.equal(result.state, 'codex_native_completed');
+});
+
+
+test('unverifiable provider evidence preserves the explicit independent human contingency', async () => {
+  for (const mutate of [
+    f => { f.receipt.body = f.receipt.body.replace('chatgpt.com', 'unsupported.example'); },
+    f => { f.args.github.graphql = async () => { throw new Error('GitHub unavailable'); }; },
+  ]) {
+    const f = nativeSnapshotFixture(); mutate(f);
+    f.comments.push(reportComment, approvalComment());
+    assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'manual_review_approved');
+  }
+  const f = fixture(); f.comments.push(reportComment, approvalComment());
+  f.args.github.rest.repos = { getCollaboratorPermissionLevel: async () => ({ data: { permission: 'maintain' } }) };
+  assert.equal((await snapshot({ ...f.args, codexVerifier: async () => ({ allowed: false,
+    state: 'codex_evidence_invalid', reason: 'expired signed receipt' }) })).state, 'manual_review_approved');
+});
+
+test('a contingency cannot hide a supported completed nonclean native result', async () => {
+  const f = nativeSnapshotFixture();
+  f.receipt.body = f.receipt.body.replace('No security issues were found in this pull request.', 'Found security issues.');
+  f.comments.push(reportComment, approvalComment());
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_incomplete');
 });
