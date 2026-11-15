@@ -2020,6 +2020,7 @@
     "proposalHint": "Um idioma é suficiente para propor uma entrada. Os restantes nomes podem ser completados durante a revisão.",
     "saveError": "Não foi possível guardar a alteração. Verifique os nomes, as fontes e a identidade; poderá já existir um duplicado.",
     "confirmArchive": "Arquivar «{{name}}»? A identidade e o histórico mantêm-se disponíveis; a entrada deixará de ser apresentada para novas seleções.",
+    "confirmArchiveHost": "Arquivar a relação de planta hospedeira entre «{{entry}}» e «{{host}}»? O histórico será mantido.",
     "confirmReject": "Rejeitar a proposta «{{name}}»? O respetivo histórico mantém-se disponível.",
     "reviewNote": "Nota de revisão (opcional)",
     "hosts": "Relações documentadas com plantas hospedeiras",

@@ -2020,6 +2020,7 @@
     "proposalHint": "Per proporre una voce basta una lingua. Gli altri nomi possono essere completati durante la verifica.",
     "saveError": "Impossibile salvare la modifica. Controlla nomi, fonti e identità; potrebbe già esistere un duplicato.",
     "confirmArchive": "Archiviare «{{name}}»? Identità e cronologia restano disponibili; la voce non sarà più proposta per nuove selezioni.",
+    "confirmArchiveHost": "Archiviare la relazione con la pianta ospite tra «{{entry}}» e «{{host}}»? La cronologia verrà conservata.",
     "confirmReject": "Rifiutare la proposta «{{name}}»? La sua cronologia resta disponibile.",
     "reviewNote": "Nota di verifica (facoltativa)",
     "hosts": "Relazioni documentate con piante ospiti",

@@ -2020,6 +2020,7 @@
     "proposalHint": "Une seule langue suffit pour proposer une entrée. Les autres noms peuvent être complétés lors de l’examen.",
     "saveError": "La modification n’a pas pu être enregistrée. Vérifiez les noms, les sources et l’identité ; un doublon existe peut-être déjà.",
     "confirmArchive": "Archiver « {{name}} » ? Son identité et son historique sont conservés ; l’entrée ne sera plus proposée pour de nouvelles sélections.",
+    "confirmArchiveHost": "Archiver la relation de plante hôte entre « {{entry}} » et « {{host}} » ? Son historique sera conservé.",
     "confirmReject": "Rejeter la proposition « {{name}} » ? Son historique est conservé.",
     "reviewNote": "Note d’examen (facultative)",
     "hosts": "Relations avec les plantes hôtes documentées",

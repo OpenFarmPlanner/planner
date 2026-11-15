@@ -42,10 +42,10 @@ export function EntryCard({ entry, disabled, onEdit, onReview, onReject, onArchi
             label={t(`crops:plantHealthCatalogue.${host.is_confirmed ? 'confirmed' : 'unconfirmed'}`)} />
           {host.qualification ? <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{host.qualification}</Typography> : null}
           <SourceLinks sources={host.sources} />
-          {entry.status === 'published' ? <Stack direction="row" useFlexGap sx={{ flexWrap: 'wrap', gap: 1 }}>
-            <Button size="small" disabled={disabled} onClick={() => onHost(host)}>{t('crops:plantHealthCatalogue.editHost')}</Button>
+          <Stack direction="row" useFlexGap sx={{ flexWrap: 'wrap', gap: 1 }}>
+            {entry.status === 'published' ? <Button size="small" disabled={disabled} onClick={() => onHost(host)}>{t('crops:plantHealthCatalogue.editHost')}</Button> : null}
             <Button size="small" disabled={disabled} onClick={() => onArchiveHost(host)}>{t('crops:plantHealthCatalogue.archiveHost')}</Button>
-          </Stack> : null}
+          </Stack>
         </Stack>
       </Box>)}
       {entry.status === 'published' ? <Button variant="outlined" disabled={disabled} sx={{ alignSelf: 'flex-start' }} onClick={() => onHost()}>{t('crops:plantHealthCatalogue.addHost')}</Button> : null}

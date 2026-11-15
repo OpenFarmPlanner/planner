@@ -1973,6 +1973,7 @@
     "proposalHint": "One language is enough for a proposal. Other names can be completed during moderation.",
     "saveError": "The change could not be saved. Check names, sources and identity; a duplicate may already exist.",
     "confirmArchive": "Archive “{{name}}”? Its identity and history remain available; it will no longer be offered for new selections.",
+    "confirmArchiveHost": "Archive the host relationship between “{{entry}}” and “{{host}}”? Its history will be kept.",
     "confirmReject": "Reject the proposal “{{name}}”? Its history remains available.",
     "reviewNote": "Review note (optional)",
     "hosts": "Sourced host relationships",

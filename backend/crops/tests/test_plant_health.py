@@ -321,6 +321,52 @@ class PlantHealthApiTests(TestCase):
         )
         self.assertFalse(history[0]["snapshot"]["hosts"][0]["is_active"])
 
+    def test_history_actor_privacy_and_stable_entry_pseudonyms(
+        self,
+    ) -> None:
+        import json
+
+        from accounts.models import PublicProfile
+        from crops.plant_health_models import PlantHealthRevision
+
+        entry_id = self.published_entry()
+        PublicProfile.objects.create(user=self.moderator, public_display_name="Public curator")
+        anonymous = get_user_model().objects.create_user(
+            username="private-token-curator",
+            email="private-curator@example.org",
+            is_staff=True,
+        )
+        client = self.token_client(anonymous)
+        response = client.patch(f"{ENTRIES}{entry_id}/", {"name": "Audited update"}, format="json")
+        self.assertEqual(response.status_code, 200, response.data)
+        history = self.client.get(f"{ENTRIES}{entry_id}/history/").data
+        self.assertEqual(history[0]["actor_label"], "")
+        self.assertEqual(history[0]["actor_anonymous_number"], 2)
+        self.assertEqual(history[1]["actor_label"], "Public curator")
+        self.assertIsNone(history[1]["actor_anonymous_number"])
+        self.assertEqual(history[2]["actor_anonymous_number"], 1)
+        self.assertNotIn(anonymous.username, json.dumps(history))
+        self.assertNotIn(anonymous.email, json.dumps(history))
+        PlantHealthRevision.objects.bulk_create(
+            [
+                PlantHealthRevision(
+                    entry_id=entry_id, actor=anonymous, action="update", snapshot={}
+                )
+                for _ in range(101)
+            ]
+        )
+        history = self.client.get(f"{ENTRIES}{entry_id}/history/").data
+        self.assertEqual(len(history), 100)
+        self.assertTrue(all(row["actor_anonymous_number"] == 2 for row in history))
+        anonymous.delete()
+        history = self.client.get(f"{ENTRIES}{entry_id}/history/").data
+        self.assertTrue(
+            all(
+                row["actor_label"] == "" and row["actor_anonymous_number"] is None
+                for row in history
+            )
+        )
+
     def test_host_can_be_archived_after_its_entry_is_archived(self) -> None:
         entry_id = self.published_entry()
         host_id = self.client.post(

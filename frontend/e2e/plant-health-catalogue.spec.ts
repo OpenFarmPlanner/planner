@@ -75,6 +75,8 @@ for (const width of [375, 800, 1440]) {
       const history = page.getByRole('dialog', { name: de.plantHealthCatalogue.history });
       await expect(history).toContainText(de.plantHealthCatalogue.historyActions.approve);
       await expect(history).toContainText(de.plantHealthCatalogue.historyActions.update_host);
+      await expect(history).toContainText(de.library.anonymousAuthorNumbered.replace('{{number}}', '1'));
+      await page.screenshot({ path: testInfo.outputPath(`locale-plant-health-history-${width}.png`), animations: 'disabled' });
       await history.getByRole('button', { name: 'Schließen', exact: true }).click();
       await card.getByRole('button', { name: de.plantHealthCatalogue.archive, exact: true }).click();
       const archive = page.getByRole('dialog', { name: de.plantHealthCatalogue.archive, exact: true });
@@ -85,6 +87,20 @@ for (const width of [375, 800, 1440]) {
       expect(final.status).toBe('archived');
       expect(final.translations).toHaveLength(7);
       expect(final.translations.every(row => row.synonyms.includes(`Alias ${scenario}`))).toBe(true);
+      await panel.getByRole('combobox', { name: de.plantHealthCatalogue.status, exact: true }).click();
+      await page.getByRole('option', { name: de.plantHealthCatalogue.statuses.archived, exact: true }).click();
+      await card.getByRole('button', { name: de.plantHealthCatalogue.archiveHost, exact: true }).click();
+      const archiveHost = page.getByRole('dialog', { name: de.plantHealthCatalogue.archiveHost, exact: true });
+      await expect(archiveHost).toContainText(name);
+      await expect(archiveHost).toContainText('Synthetic variety only');
+      await page.screenshot({ path: testInfo.outputPath(`locale-plant-health-archive-host-${width}.png`), animations: 'disabled' });
+      await archiveHost.getByRole('button', { name: de.plantHealthCatalogue.archiveHost, exact: true }).click();
+      await expect(archiveHost).not.toBeVisible();
+      await expect(card).toContainText(de.plantHealthCatalogue.noHosts);
+      const hosts = await apiRequest<{ results: { is_active: boolean }[] }>(page, 'GET', `/plant-health/hosts/?entry=${entry.id}`);
+      expect(hosts.results).toHaveLength(1);
+      expect(hosts.results[0].is_active).toBe(false);
+
     } finally { await resetE2EScenario(request, scenario); }
   });
 }

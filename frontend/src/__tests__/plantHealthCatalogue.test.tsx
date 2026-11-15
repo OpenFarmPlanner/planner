@@ -5,12 +5,13 @@ import i18n from '../i18n/config';
 import { SUPPORTED_LANGUAGES } from '../i18n/languages';
 import { plantHealthAPI } from '../crop-library/plant-health/api';
 import { EntryDialog } from '../crop-library/plant-health/EntryDialog';
+import { PlantHealthCataloguePanel } from '../crop-library/plant-health/PlantHealthCataloguePanel';
 import { HostDialog } from '../crop-library/plant-health/HostDialog';
 import { createNameDrafts, sourcePayload, translationPayload } from '../crop-library/plant-health/drafts';
 import type { PlantHealthEntry, PlantHealthHost } from '../crop-library/plant-health/types';
 
 vi.mock('../crop-library/plant-health/api', () => ({ plantHealthAPI: {
-  create: vi.fn(), update: vi.fn(), approve: vi.fn(), saveHost: vi.fn(),
+  create: vi.fn(), update: vi.fn(), approve: vi.fn(), saveHost: vi.fn(), list: vi.fn(), history: vi.fn(),
 } }));
 const entry = (overrides: Partial<PlantHealthEntry> = {}): PlantHealthEntry => ({
   id: 14, identity_key: 'synthetic-identity', name: 'Synthetic reference', scientific_name: 'Syntheticus example', kind: 'pathogen', eppo_code: '',
@@ -140,4 +141,24 @@ describe('host editor', () => {
     await waitFor(() => expect(plantHealthAPI.saveHost).toHaveBeenCalled());
     expect(plantHealthAPI.saveHost).toHaveBeenCalledWith(expect.objectContaining({ is_confirmed: false, qualification: 'Preserved qualification', variety_name: 'Variety A' }), 3);
   });
+});
+
+
+it('shows public, anonymous and deleted actors in the moderator history', async () => {
+  const user = userEvent.setup();
+  vi.mocked(plantHealthAPI.list).mockResolvedValue({ data: { count: 1, results: [entry()] } } as never);
+  vi.mocked(plantHealthAPI.history).mockResolvedValue({ data: [
+    { id: 1, action: 'update', actor_label: 'Public curator', actor_anonymous_number: null,
+      created_at: '2026-11-15T02:00:00Z', snapshot: entry() },
+    { id: 2, action: 'update', actor_label: '', actor_anonymous_number: 2,
+      created_at: '2026-11-15T02:00:01Z', snapshot: entry() },
+    { id: 3, action: 'update', actor_label: '', actor_anonymous_number: null,
+      created_at: '2026-11-15T02:00:02Z', snapshot: entry() },
+  ] } as never);
+  render(<PlantHealthCataloguePanel />);
+  await user.click(await screen.findByRole('button', { name: i18n.t('crops:plantHealthCatalogue.history'), exact: true }));
+  const dialog = await screen.findByRole('dialog', { name: i18n.t('crops:plantHealthCatalogue.history') });
+  expect(within(dialog).getByText('Public curator')).toBeInTheDocument();
+  expect(within(dialog).getByText('Anonymous 2')).toBeInTheDocument();
+  expect(within(dialog).getByText('Unknown user')).toBeInTheDocument();
 });

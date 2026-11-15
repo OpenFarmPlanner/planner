@@ -1973,6 +1973,7 @@
     "proposalHint": "Eén taal is voldoende om een item voor te stellen. Andere namen kunnen tijdens de beoordeling worden aangevuld.",
     "saveError": "De wijziging kon niet worden opgeslagen. Controleer de namen, bronnen en identiteit; mogelijk bestaat er al een duplicaat.",
     "confirmArchive": "‘{{name}}’ archiveren? De identiteit en geschiedenis blijven beschikbaar; het item wordt niet meer aangeboden voor nieuwe selecties.",
+    "confirmArchiveHost": "De waardplantrelatie tussen ‘{{entry}}’ en ‘{{host}}’ archiveren? De geschiedenis blijft bewaard.",
     "confirmReject": "Het voorstel ‘{{name}}’ afwijzen? De geschiedenis blijft beschikbaar.",
     "reviewNote": "Beoordelingsnotitie (optioneel)",
     "hosts": "Onderbouwde waardplantrelaties",

@@ -45,6 +45,8 @@ export type PlantHealthHostWrite = Pick<PlantHealthHost,
   'entry' | 'species' | 'variety_name' | 'qualification' | 'sources' | 'is_confirmed'>;
 export interface PlantHealthRevision {
   id: number;
+  actor_label: string;
+  actor_anonymous_number: number | null;
   action: string;
   created_at: string;
   snapshot: PlantHealthEntryWrite & { status: PlantHealthStatus; review_note: string; hosts: PlantHealthHost[] };

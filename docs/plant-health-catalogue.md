@@ -36,7 +36,9 @@ server validates structure and provenance without fetching external URLs.
 optional variety and qualification, nonempty sources, and separate confirmation
 and active flags. Only a specific pest/pathogen identity can have a confirmed
 host relationship. Archive its active confirmed links before changing that
-identity into a broad concept. Host entry/species references cannot be moved by
+identity into a broad concept. Active host links can also be archived while the
+parent identity is archived, rejected or pending; create/update still requires
+a published identity and species. Host entry/species references cannot be moved by
 editing: archive the old relationship and create the replacement. A species with
 historical host references is protected from deletion (HTTP 409).
 
@@ -57,7 +59,12 @@ have empty sources; approval and edits of published entries must retain sources.
 
 Every entry/host write records a `PlantHealthRevision` containing the complete
 entry, names and active/archived host rows, actor, action and time. Moderator
-history returns the most recent 100 snapshots. There are no hard-delete API
+history returns the most recent 100 snapshots, with each actor's explicitly
+chosen public display name or an entry-scoped anonymous number, following the
+existing public-library identity policy. Anonymous numbers are assigned from
+first contribution across the complete entry history, so the 100-row response
+window does not renumber them. Deleted accounts use the localized unknown-user
+label. Private usernames and email addresses are never returned. There are no hard-delete API
 routes; archival preserves identity and evidence. Reversal of the schema-only
 migration removes these new tables and any catalogue data entered since upgrade;
 existing crop prose and public translations are untouched.

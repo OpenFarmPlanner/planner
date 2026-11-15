@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from django.db.models import Q, QuerySet
+from django.contrib.auth import get_user_model
+from django.db.models import Min, Q, QuerySet
 from django.shortcuts import get_object_or_404
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
@@ -12,6 +13,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from accounts.demo_access import guest_demo_forbidden_response, is_active_guest_demo_user
+from farm.services.public_pseudonyms import number_anonymous_authors
 from farm.utils import normalize_text
 
 from .agent_api.permissions import CropLibraryTokenAccessPermission
@@ -134,7 +136,29 @@ class PlantHealthEntryViewSet(viewsets.ModelViewSet):
     def history(self, request: Request, **kwargs: Any) -> Response:
         self._require_moderator(request)
         entry = get_object_or_404(PlantHealthEntry, pk=self.kwargs["pk"])
-        return Response(PlantHealthRevisionSerializer(entry.revisions.all()[:100], many=True).data)
+        first_authors = list(
+            entry.revisions.filter(actor__isnull=False)
+            .values("actor_id")
+            .annotate(first_revision=Min("pk"))
+            .order_by("first_revision")
+        )
+        authors = (
+            get_user_model()
+            .objects.filter(pk__in=[row["actor_id"] for row in first_authors])
+            .select_related("public_profile")
+            .in_bulk()
+        )
+        anonymous_numbers = number_anonymous_authors(
+            authors[row["actor_id"]] for row in first_authors if row["actor_id"] in authors
+        )
+        revisions = entry.revisions.select_related("actor__public_profile")[:100]
+        return Response(
+            PlantHealthRevisionSerializer(
+                revisions,
+                many=True,
+                context={"anonymous_numbers": anonymous_numbers},
+            ).data
+        )
 
 
 class PlantHealthHostViewSet(viewsets.ModelViewSet):

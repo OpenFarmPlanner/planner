@@ -1973,6 +1973,7 @@
     "proposalHint": "Für einen Vorschlag reicht eine Sprache. Weitere Namen können während der Prüfung ergänzt werden.",
     "saveError": "Die Änderung konnte nicht gespeichert werden. Prüfe Namen, Quellen und Identität; möglicherweise gibt es bereits einen gleichartigen Eintrag.",
     "confirmArchive": "„{{name}}“ archivieren? Identität und Verlauf bleiben erhalten. Für neue Auswahlen wird der Eintrag nicht mehr angeboten.",
+    "confirmArchiveHost": "Die Wirtspflanzenbeziehung von „{{entry}}“ zu „{{host}}“ archivieren? Der Verlauf bleibt erhalten.",
     "confirmReject": "Den Vorschlag „{{name}}“ ablehnen? Sein Verlauf bleibt erhalten.",
     "reviewNote": "Prüfnotiz (optional)",
     "hosts": "Belegte Wirtspflanzenbeziehungen",

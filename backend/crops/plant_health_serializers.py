@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 
 from rest_framework import serializers
 
+from accounts.public_identity import get_public_user_label
 from config.languages import SUPPORTED_LANGUAGE_CODES, resolve_request_language
 from crops.models import CropSpecies
 
@@ -252,7 +253,16 @@ class PlantHealthEntrySerializer(serializers.ModelSerializer):
 
 
 class PlantHealthRevisionSerializer(serializers.ModelSerializer):
+    actor_label = serializers.SerializerMethodField()
+    actor_anonymous_number = serializers.SerializerMethodField()
+
+    def get_actor_label(self, obj: PlantHealthRevision) -> str:
+        return get_public_user_label(obj.actor)
+
+    def get_actor_anonymous_number(self, obj: PlantHealthRevision) -> int | None:
+        return self.context.get("anonymous_numbers", {}).get(obj.actor_id)
+
     class Meta:
         model = PlantHealthRevision
-        fields = ["id", "action", "snapshot", "created_at"]
+        fields = ["id", "action", "snapshot", "created_at", "actor_label", "actor_anonymous_number"]
         read_only_fields = fields

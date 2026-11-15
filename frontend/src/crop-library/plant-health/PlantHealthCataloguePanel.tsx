@@ -103,10 +103,15 @@ export function PlantHealthCataloguePanel() {
     {editor ? <EntryDialog {...editor} onClose={() => setEditor(null)} onSaved={saved} /> : null}
     {hostEditor ? <HostDialog {...hostEditor} onClose={() => setHostEditor(null)} onSaved={saved} /> : null}
     <ConfirmationDialog open={Boolean(review)} title={t(`crops:plantHealthCatalogue.${review?.action ?? 'archive'}`)}
+      titleSx={{ overflowWrap: 'anywhere' }}
+      actionsSx={{ flexWrap: 'wrap', gap: 1, '& > button': { m: 0, maxWidth: '100%', overflowWrap: 'anywhere' } }}
       messageTypographyProps={{ component: 'div' }}
       message={<Stack spacing={1.5}>
         {actionFailed ? <Alert severity="error">{t('crops:plantHealthCatalogue.saveError')}</Alert> : null}
-        <Typography component="span">{t(`crops:plantHealthCatalogue.${review?.action === 'reject' ? 'confirmReject' : 'confirmArchive'}`, { name: review?.entry.display_name ?? '' })}</Typography>
+        <Typography component="span" sx={{ overflowWrap: 'anywhere' }}>{t(`crops:plantHealthCatalogue.${review?.action === 'archiveHost' ? 'confirmArchiveHost' : review?.action === 'reject' ? 'confirmReject' : 'confirmArchive'}`, {
+          name: review?.entry.display_name ?? '', entry: review?.entry.display_name ?? '',
+          host: review?.action === 'archiveHost' ? [review.host.species_name, review.host.variety_name].filter(Boolean).join(' · ') : '',
+        })}</Typography>
         {review?.action !== 'archiveHost' ? <TextField label={t('crops:plantHealthCatalogue.reviewNote')} value={reviewNote} multiline minRows={2} fullWidth disabled={busy}
           onChange={event => setReviewNote(event.target.value)} slotProps={{ htmlInput: { maxLength: 2000 } }} /> : null}
       </Stack>} cancelLabel={t('common:actions.cancel')} confirmLabel={t(`crops:plantHealthCatalogue.${review?.action ?? 'archive'}`)}
@@ -115,8 +120,11 @@ export function PlantHealthCataloguePanel() {
     <Dialog open={history !== null} fullWidth maxWidth="sm" onClose={() => setHistory(null)}>
       <DialogTitle>{t('crops:plantHealthCatalogue.history')}</DialogTitle>
       <DialogContent dividers><Stack spacing={2}>{history?.map(row => <Stack key={row.id} spacing={0.5}>
-        <Typography sx={{ fontWeight: 'bold' }}>{row.snapshot.name}</Typography>
+        <Typography sx={{ fontWeight: 'bold', overflowWrap: 'anywhere' }}>{row.snapshot.name}</Typography>
         <Typography variant="body2">{t(`crops:plantHealthCatalogue.historyActions.${row.action}`, { defaultValue: t('crops:plantHealthCatalogue.historyActions.update') })}</Typography>
+        <Typography variant="caption" sx={{ overflowWrap: 'anywhere' }}>{row.actor_label || (row.actor_anonymous_number !== null
+          ? t('crops:library.anonymousAuthorNumbered', { number: row.actor_anonymous_number })
+          : t('crops:history.unknownUser'))}</Typography>
         <Typography variant="caption">{new Intl.DateTimeFormat(resolveLocaleFromLanguage(language), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(row.created_at))}</Typography>
         {row.snapshot.review_note ? <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{row.snapshot.review_note}</Typography> : null}
       </Stack>)}</Stack></DialogContent>
