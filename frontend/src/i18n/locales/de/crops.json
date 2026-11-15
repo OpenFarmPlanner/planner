@@ -1626,7 +1626,8 @@
       "success_other": "{{count}} Einträge importiert.",
       "selectAll_one": "Alle auswählbaren Sorten ({{count}})",
       "selectAll_other": "Alle auswählbaren Sorten ({{count}})",
-      "continue": "Weiter"
+      "continue": "Weiter",
+      "selectionLimit": "Wähle höchstens {{limit}} Sorten pro Import aus. Weitere Sorten kannst du später über „Sorten importieren“ ergänzen."
     }
   },
   "commands": {

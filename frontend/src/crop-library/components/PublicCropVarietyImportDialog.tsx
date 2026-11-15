@@ -7,6 +7,8 @@ import { useTranslation } from '../../i18n';
 import { ExistingCropLinkDialog, type CropLinkCandidate } from '../../crops/ExistingCropLinkDialog';
 import { getPublicCropTitle } from '../publicCropDisplay';
 
+const MAX_SELECTED_VARIETIES = 500;
+
 type Comparison = { entry: PublicCrop; candidates: CropLinkCandidate[]; remaining: PublicCrop[]; decisions: PublicCropImportDecision[]; consent: boolean };
 
 export function PublicCropVarietyImportDialog({ parent, onClose, onComplete, onWithoutVarieties, termsAlreadyAccepted = false }: {
@@ -78,7 +80,7 @@ export function PublicCropVarietyImportDialog({ parent, onClose, onComplete, onW
     finally { onClose(); }
   };
   const run = async (remaining: PublicCrop[], decisions: PublicCropImportDecision[] = [], consent = false) => {
-    if (inFlight.current) return;
+    if (inFlight.current || selected.size > MAX_SELECTED_VARIETIES) return;
     inFlight.current = true;
     setBusy(true);
     setError('');
@@ -102,6 +104,9 @@ export function PublicCropVarietyImportDialog({ parent, onClose, onComplete, onW
         <Typography variant="subtitle2">{getPublicCropTitle(parent, i18n.resolvedLanguage ?? i18n.language, t('library.translation.missingName'))}</Typography>
         <Typography>{t(parentLinked ? 'library.varietyImport.parentLinked' : 'library.varietyImport.parentIncluded')}</Typography>
         <Typography variant="body2" color="text.secondary">{t('library.varietyImport.atomicHelp')}</Typography>
+        {eligible.length > MAX_SELECTED_VARIETIES ? <Alert severity={selected.size > MAX_SELECTED_VARIETIES ? 'warning' : 'info'}>
+          {t('library.varietyImport.selectionLimit', { limit: MAX_SELECTED_VARIETIES })}
+        </Alert> : null}
         {entries ? <>
           <FormControlLabel label={t('library.varietyImport.selectAll', { count: eligible.length })}
             control={<Checkbox disabled={busy || !eligible.length} checked={eligible.length > 0 && selected.size === eligible.length}
@@ -120,7 +125,7 @@ export function PublicCropVarietyImportDialog({ parent, onClose, onComplete, onW
     </DialogContent>
     <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
       <Button disabled={busy} onClick={onClose}>{t('common:actions.cancel')}</Button>
-      <Button variant="contained" disabled={busy || !entries || (parentLinked && !selected.size)}
+      <Button variant="contained" disabled={busy || !entries || selected.size > MAX_SELECTED_VARIETIES || (parentLinked && !selected.size)}
         onClick={() => { if (entries) void run(entries.filter((entry, index) => index === 0 || selected.has(entry.id))); }}>
         {t(parentLinked ? 'library.varietyImport.importVarieties' : selected.size ? 'library.varietyImport.importWithVarieties' : 'library.varietyImport.importParent', { count: selected.size })}
       </Button>

@@ -1670,7 +1670,8 @@
       "importWithVarieties_many": "Importa coltura e {{count}} varietà",
       "importVarieties_many": "Importa {{count}} varietà",
       "success_many": "{{count}} voci importate.",
-      "continue": "Continua"
+      "continue": "Continua",
+      "selectionLimit": "Seleziona al massimo {{limit}} varietà per importazione. Puoi aggiungere le altre in seguito con “Importa varietà”."
     }
   },
   "commands": {

@@ -223,7 +223,9 @@ only entries actually created, linked or copied. Later library varieties always
 require a new explicit selection; there is no subscription or automatic import.
 
 The endpoint is session-only, project-scoped and limited to the parent plus
-500 explicit variety decisions. Sharing keeps the existing established-account,
+500 explicit variety decisions. If more missing varieties are selected, the dialog
+explains the limit and disables confirmation before making any preview request.
+The user can add the remaining varieties in a later explicit import. Sharing keeps the existing established-account,
 field permission and current contribution-consent checks. This is a single
 culture import action, not a general batch-write endpoint. List serializers and
 query counts are unchanged.

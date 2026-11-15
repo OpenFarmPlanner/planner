@@ -1671,7 +1671,8 @@
       "importWithVarieties_many": "Importer la culture et {{count}} variétés",
       "importVarieties_many": "Importer {{count}} variétés",
       "success_many": "{{count}} entrées importées.",
-      "continue": "Continuer"
+      "continue": "Continuer",
+      "selectionLimit": "Choisissez au maximum {{limit}} variétés par import. Vous pourrez ajouter les autres plus tard avec « Importer des variétés »."
     }
   },
   "commands": {

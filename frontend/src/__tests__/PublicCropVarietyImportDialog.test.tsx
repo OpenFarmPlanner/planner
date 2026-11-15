@@ -53,6 +53,18 @@ describe('selected library variety import', () => {
     await submit(2);
     await waitFor(() => expect(commit).toHaveBeenCalledWith(1, expect.objectContaining({ decisions: [parent, ...varieties.slice(0, 2)].map(decision) })));
   });
+  it('explains the 500-variety limit before any preview and accepts the exact boundary', async () => {
+    const many = Array.from({ length: 501 }, (_, index) => ({ ...parent, id: index + 2, variety: `Selection ${index + 1}` }));
+    list.mockResolvedValue({ results: [parent, ...many] });
+    setup();
+    const submit = await screen.findByRole('button', { name: t('library.varietyImport.importWithVarieties', { count: 501 }) });
+    expect(submit).toBeDisabled();
+    expect(screen.getByText(t('library.varietyImport.selectionLimit', { limit: 500 }))).toBeVisible();
+    fireEvent.click(submit);
+    expect(preview).not.toHaveBeenCalled(); expect(commit).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Selection 501', exact: true }));
+    expect(screen.getByRole('button', { name: t('library.varietyImport.importWithVarieties', { count: 500 }) })).toBeEnabled();
+  });
   it('clearing all imports only the parent', async () => {
     setup();
     fireEvent.click(await screen.findByRole('checkbox', { name: t('library.varietyImport.selectAll', { count: 3 }) }));

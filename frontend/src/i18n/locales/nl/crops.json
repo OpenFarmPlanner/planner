@@ -1626,7 +1626,8 @@
       "success_other": "{{count}} items geïmporteerd.",
       "selectAll_one": "Alle beschikbare rassen ({{count}})",
       "selectAll_other": "Alle beschikbare rassen ({{count}})",
-      "continue": "Doorgaan"
+      "continue": "Doorgaan",
+      "selectionLimit": "Kies maximaal {{limit}} rassen per import. Je kunt de overige rassen later toevoegen via ‘Rassen importeren’."
     }
   },
   "commands": {

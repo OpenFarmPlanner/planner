@@ -1626,7 +1626,8 @@
       "success_other": "{{count}} entries imported.",
       "selectAll_one": "All eligible varieties ({{count}})",
       "selectAll_other": "All eligible varieties ({{count}})",
-      "continue": "Continue"
+      "continue": "Continue",
+      "selectionLimit": "Select up to {{limit}} varieties per import. You can add the remaining varieties later with “Import varieties”."
     }
   },
   "commands": {
