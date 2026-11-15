@@ -2,7 +2,7 @@ import germanCrops from '../src/i18n/locales/de/crops.json' with { type: 'json' 
 import frenchCrops from '../src/i18n/locales/fr/crops.json' with { type: 'json' };
 import frenchNavigation from '../src/i18n/locales/fr/navigation.json' with { type: 'json' };
 import { expect, test, type Page } from '@playwright/test';
-import { apiRequest, loginWithDeterministicProject, resetE2EScenario } from './utils';
+import { apiRequest, expectNoHorizontalPageOverflow, loginWithDeterministicProject, resetE2EScenario } from './utils';
 
 // Functional assertions, not screenshots: these flows are about which control
 // the crop offers per library state and that no expected state produces a
@@ -182,8 +182,9 @@ test('correcting the crop species to one that already has the variety shows the 
   await expect(dialog).toBeVisible();
 });
 
-for (const entryPoint of ['publish', 'import', 'copy', 'resolve', 'resolve-browser'] as const) {
+for (const entryPoint of ['publish', 'import', 'copy', 'resolve', 'resolve-browser', 'unclassified-picker', 'unclassified-page'] as const) {
   test(`existing culture imports through ${entryPoint} without replacing IDs or publishing local notes`, async ({ page, request }, testInfo) => {
+    const unclassified = entryPoint.startsWith('unclassified-');
     const resolvesDifferences = entryPoint === 'resolve' || entryPoint === 'resolve-browser';
     await loginWithDeterministicProject(page, request, `library-existing-${entryPoint}-${Date.now()}`, { loginAsAdmin: true, libraryModerator: true });
     const species = await apiRequest<CropSpecies>(page, 'POST', '/crop-species/', { name: `Synthetic Tomato ${entryPoint} ${Date.now()}` });
@@ -204,13 +205,14 @@ for (const entryPoint of ['publish', 'import', 'copy', 'resolve', 'resolve-brows
     await apiRequest(page, 'POST', '/auth/logout/', {});
     await loginWithDeterministicProject(page, request, `library-target-${entryPoint}-${Date.now()}`, { loginAsAdmin: true });
     const local = await apiRequest<CropRow>(page, 'POST', '/crops/', {
-      name: species.name, variety: '', crop_species: species.id,
+      name: species.name, variety: '', ...(unclassified ? {} : { crop_species: species.id }),
       growth_duration_days: 90, harvest_duration_days: entryPoint === 'copy' || resolvesDifferences ? 30 : 20, notes: 'Private synthetic note',
       ...(resolvesDifferences ? { germination_temperature_requirement: 'frost_treatment', germination_light_requirement: 'dark' } : {}),
     });
+    if (unclassified) expect((await apiRequest<{ crop_species: number | null }>(page, 'GET', `/crops/${local.id}/`)).crop_species).toBeNull();
     const varieties: CropRow[] = [];
     for (let index = 0; index < 12; index++) varieties.push(await apiRequest<CropRow>(page, 'POST', '/crops/', {
-      name: species.name, variety: `Synthetic Roma ${index}`, crop_species: species.id,
+      name: species.name, variety: `Synthetic Roma ${index}`, ...(unclassified ? {} : { crop_species: species.id }),
       growth_duration_days: index === 0 ? 40 : null,
     }));
     const variety = varieties[0];
@@ -230,7 +232,7 @@ for (const entryPoint of ['publish', 'import', 'copy', 'resolve', 'resolve-brows
     if (entryPoint !== 'publish') {
       await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'fr' });
       await page.evaluate(() => localStorage.setItem('ui.language', 'fr'));
-      if (entryPoint === 'resolve-browser') {
+      if (entryPoint === 'resolve-browser' || entryPoint === 'unclassified-picker') {
         await page.goto(`/app/crops?cropId=${local.id}`);
         await page.getByRole('button', { name: frenchNavigation.cropActions.openImportExport, exact: true }).click();
         await page.getByRole('menuitem', { name: labels.library.openButton, exact: true }).click();
@@ -246,6 +248,7 @@ for (const entryPoint of ['publish', 'import', 'copy', 'resolve', 'resolve-brows
         if (resolvesDifferences) await page.getByRole('textbox').first().fill(species.name);
         await page.getByRole('button', { name: labels.library.importButton }).first().click();
       }
+      if (unclassified) await expect(page.getByRole('button', { name: labels.library.importDecision.link, exact: true })).toBeDisabled();
       await page.getByRole('combobox', { name: labels.library.linkExisting.localTarget }).click();
       await page.getByRole('option', { name: species.name, exact: true }).click();
       if (entryPoint === 'copy') await page.getByRole('radio', { name: labels.library.importDecision.copy, exact: true }).click();
@@ -549,6 +552,76 @@ for (const surface of ['page', 'dialog'] as const) {
       if (!page.isClosed()) await page.goto('about:blank').catch(() => undefined);
       await resetE2EScenario(request, scenario);
       await resetE2EScenario(request, sourceScenario);
+    }
+  });
+}
+
+for (const width of [375, 1440]) {
+  test(`library sync name conflicts preserve decisions and rows until explicit correction at ${width}px`, async ({ page, request }, testInfo) => {
+    test.setTimeout(120_000);
+    const scenario = `library-name-conflict-${width}-${Date.now()}`;
+    await page.setViewportSize({ width, height: width === 375 ? 800 : 900 });
+    try {
+      await loginWithDeterministicProject(page, request, `${scenario}-source`, { loginAsAdmin: true });
+      const entry = await prepareCarrotEntry(page);
+      await apiRequest(page, 'POST', '/auth/logout/', {});
+      await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
+      const manual = await apiRequest<CropRow>(page, 'POST', '/crops/', {
+        name: entry.name, notes: 'Private manual culture kept intact', growth_duration_days: 95,
+        cultivation_type: 'direct_sowing', cultivation_types: ['direct_sowing'],
+      });
+      const projectId = await page.evaluate(() => Number(localStorage.getItem('activeProjectId')));
+      const imported = await apiRequest<{ crop: CropRow }>(page, 'POST', `/public-crops/${entry.id}/import/`, {
+        mode: 'new', link_to_library: true, base_version: entry.version, expected_project_id: projectId,
+      });
+      expect(imported.crop.id).not.toBe(manual.id);
+      expect(imported.crop.name).toBe(`${entry.name} (2)`);
+      type State = CropRow & { crop_species: number | null; source_public_crop: number | null; source_public_version: number | null; library_pinned_fields: string[]; notes: string; growth_duration_days: number | null; updated_at: string };
+      const original = await apiRequest<State>(page, 'GET', `/crops/${manual.id}/`);
+      const copy = await apiRequest<State>(page, 'GET', `/crops/${imported.crop.id}/`);
+      await page.goto(`/app/crops?cropId=${copy.id}`);
+      await page.getByTestId('crop-detail-publish-action').click();
+      const dialog = page.getByRole('dialog', { name: germanCrops.library.sync.dialogTitle });
+      await dialog.getByRole('button', { name: 'Alle aus Bibliothek', exact: true }).click();
+      const selections = () => dialog.locator('input[type="radio"]').evaluateAll(nodes =>
+        nodes.map(node => ({ value: (node as HTMLInputElement).value, checked: (node as HTMLInputElement).checked })));
+      const choices = await selections();
+      const rejected = page.waitForResponse(response => response.request().method() === 'POST'
+        && response.url().endsWith(`/crops/${copy.id}/public-sync/`));
+      await dialog.getByRole('button', { name: 'Abgleichen', exact: true }).click();
+      const failure = await rejected;
+      expect(failure.status()).toBe(409);
+      expect((await failure.json()).code).toBe('crop_name_conflict');
+      await expect(dialog.getByText(germanCrops.form.cropNameConflict)).toBeVisible();
+      expect(await selections()).toEqual(choices);
+      const unchanged = (row: State) => ({ id: row.id, name: row.name, variety: row.variety,
+        crop_species: row.crop_species, source: row.source_public_crop, version: row.source_public_version,
+        pins: row.library_pinned_fields, notes: row.notes, growth: row.growth_duration_days, updated: row.updated_at });
+      expect(unchanged(await apiRequest<State>(page, 'GET', `/crops/${manual.id}/`))).toEqual(unchanged(original));
+      expect(unchanged(await apiRequest<State>(page, 'GET', `/crops/${copy.id}/`))).toEqual(unchanged(copy));
+      await expect(dialog.getByRole('button', { name: 'Abbrechen', exact: true })).toBeInViewport();
+      await expectNoHorizontalPageOverflow(page);
+      await page.screenshot({ path: testInfo.outputPath(`library-sync-name-conflict-${width}.png`), animations: 'disabled' });
+      await dialog.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+      await expect(dialog).not.toBeVisible();
+      // An explicit local correction, representing a separate deliberate edit.
+      await apiRequest(page, 'PATCH', `/crops/${manual.id}/`, { name: `Synthetic corrected manual ${scenario}` });
+      await page.goto(`/app/crops?cropId=${copy.id}`);
+      await page.getByTestId('crop-detail-publish-action').click();
+      await dialog.getByRole('button', { name: 'Alle aus Bibliothek', exact: true }).click();
+      await dialog.getByRole('button', { name: 'Abgleichen', exact: true }).click();
+      await expect(dialog).not.toBeVisible();
+      const resolved = await apiRequest<State>(page, 'GET', `/crops/${copy.id}/`);
+      expect(resolved.id).toBe(copy.id);
+      expect(resolved.name).toBe(entry.name);
+      expect(resolved.source_public_crop).toBe(entry.id);
+      const retained = await apiRequest<State>(page, 'GET', `/crops/${manual.id}/`);
+      expect(retained.id).toBe(manual.id);
+      expect(retained.notes).toBe(original.notes);
+      expect(retained.source_public_crop).toBeNull();
+    } finally {
+      await resetE2EScenario(request, scenario);
+      await resetE2EScenario(request, `${scenario}-source`);
     }
   });
 }

@@ -88,6 +88,10 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
 
 ### Fixes
 
+- Crops: library synchronization returns an actionable name conflict instead of
+  HTTP 500, preserves both cultures and their references, and keeps comparison
+  decisions open for correction or cancellation (#1145).
+
 - Anbauflächen: clicking a cell in another row while a row was being edited
   no longer makes the focus jump back to the saved row; the clicked cell
   stays selected. In edit mode the name keeps its hierarchy indentation.

@@ -1,3 +1,4 @@
+import type { PublicCropSyncSubmitResult } from '../crops/publicCropSync';
 import { ExistingCropLinkDialog } from '../crops/ExistingCropLinkDialog';
 /**
  * Crops (Kulturen) page component.
@@ -439,12 +440,12 @@ function Crops() {
 
   const handleSyncPublicCropSubmit = useCallback(async (
     data: Parameters<typeof handleSyncPublicCrop>[0],
-  ): Promise<boolean> => {
-    const success = await handleSyncPublicCrop(data);
-    if (success) {
+  ): Promise<PublicCropSyncSubmitResult> => {
+    const result = await handleSyncPublicCrop(data);
+    if (result.success) {
       setPublishWizardOpen(false);
     }
-    return success;
+    return result;
   }, [handleSyncPublicCrop]);
 
   // Fetch crops on mount

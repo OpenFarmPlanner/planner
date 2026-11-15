@@ -187,6 +187,25 @@ describe('usePublicCropLibrary field-by-field sync', () => {
     expect(publicSyncMock).not.toHaveBeenCalled();
   });
 
+  it('returns the localized name conflict without reporting a successful sync', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    publicSyncMock.mockRejectedValue({ isAxiosError: true, response: {
+      status: 409, data: { code: 'crop_name_conflict', detail: 'General crop name conflict.' },
+    } });
+    const showSnackbar = vi.fn();
+    const { result } = renderLibraryHook(showSnackbar);
+    let outcome;
+    await act(async () => { outcome = await result.current.handleSyncPublicCrop({
+      acceptedPublicLibraryTerms: false, publicCropId: 77, baseVersion: 4,
+      pullFields: ['name'], pushFields: [], pinFields: [],
+    }); });
+    expect(outcome).toEqual({
+      success: false, code: 'crop_name_conflict',
+      error: 'Diese Kultur existiert bereits in diesem Projekt. Füge stattdessen eine neue Sorte hinzu oder wähle einen anderen Namen.',
+    });
+    expect(showSnackbar).not.toHaveBeenCalled();
+  });
+
   it('reports a sync that became a proposal under review', async () => {
     publicSyncMock.mockResolvedValue({
       data: { operation: 'pending_moderation', crop: {}, change_proposal: { id: 1 } },
@@ -200,7 +219,7 @@ describe('usePublicCropLibrary field-by-field sync', () => {
       baseVersion: 4,
       pullFields: [],
       pushFields: ['notes'],
-    })).resolves.toBe(true);
+    })).resolves.toEqual({ success: true });
 
     expect(showSnackbar).toHaveBeenCalledWith(
       '„Tomate“ wurde abgeglichen. Deine Änderungen an der Kulturbibliothek warten auf Freigabe.',

@@ -1,3 +1,4 @@
+import type { PublicCropSyncSubmitResult } from '../crops/publicCropSync';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
@@ -98,7 +99,7 @@ interface CropsPublishingWizardDialogProps {
   /**
    * Syncs an already linked crop with its entry ("Mit Kulturbibliothek
    * abgleichen"). Awaited like `onLinkPublicCrop`: on failure the dialog
-   * stays open and reloads the differences.
+   * stays open with its decisions; stale library versions reload the differences.
    */
   onSyncPublicCrop: (data: {
     acceptedPublicLibraryTerms: boolean;
@@ -108,7 +109,7 @@ interface CropsPublishingWizardDialogProps {
     pushFields: string[];
     /** Fields kept locally ("Nur lokal"). */
     pinFields: string[];
-  }) => Promise<boolean>;
+  }) => Promise<PublicCropSyncSubmitResult>;
 }
 
 const LANGUAGE_CODES = SUPPORTED_LANGUAGES.map(({ code }) => code);
@@ -185,6 +186,7 @@ export function CropsPublishingWizardDialog({
   const speciesInputRef = useRef<HTMLInputElement | null>(null);
   const languageInputRef = useRef<HTMLInputElement | null>(null);
   const [syncSubmitting, setSyncSubmitting] = useState(false);
+  const [syncError, setSyncError] = useState('');
   const ownedPublicCropId = crop?.owned_public_crop_id ?? null;
   // A crop connected to an entry (its own, or one it was imported from or
   // linked to) is not published again: the wizard becomes the field-by-field
@@ -250,6 +252,7 @@ export function CropsPublishingWizardDialog({
       setLinkConfirmError('');
       setLinkConfirmSubmitting(false);
       setSyncSubmitting(false);
+      setSyncError('');
     });
   }, [crop?.name, crop?.variety, open]);
 
@@ -542,8 +545,9 @@ export function CropsPublishingWizardDialog({
       return;
     }
     setSyncSubmitting(true);
+    setSyncError('');
     try {
-      const success = await onSyncPublicCrop({
+      const result = await onSyncPublicCrop({
         acceptedPublicLibraryTerms: needsLicense && acceptedLicense,
         publicCropId: linkedPublicCropId,
         baseVersion: syncPreview.preview.public_version,
@@ -551,9 +555,9 @@ export function CropsPublishingWizardDialog({
         pushFields: syncSelection.pushFields,
         pinFields: syncSelection.pinFields,
       });
-      if (!success) {
-        // The entry may have changed meanwhile: show the current differences.
-        syncPreview.reload();
+      if (!result.success) {
+        setSyncError(result.error);
+        if (result.code === 'stale_public_crop_version') syncPreview.reload();
       }
     } finally {
       setSyncSubmitting(false);
@@ -771,6 +775,7 @@ export function CropsPublishingWizardDialog({
               })}
             </Typography>
 
+            {syncError ? <Alert severity="error">{syncError}</Alert> : null}
             {syncPanel}
 
             {licenseBox}

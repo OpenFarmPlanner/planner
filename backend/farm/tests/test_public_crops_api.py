@@ -1880,6 +1880,75 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertFalse(Crop.objects.filter(project=other).exists())
         self.assertFalse(Crop.objects.filter(project=self.project, name=entry.name).exists())
 
+    def test_unclassified_manual_general_import_requires_choice_and_preserves_references(self):
+        from farm.models import PlantingPlan
+
+        for establish_link in (False, True):
+            with self.subTest(establish_link=establish_link):
+                name = f'Synthetic manual general {establish_link}'
+                species = CropSpecies.objects.create(name=name)
+                general = Crop.objects.create(
+                    project=self.project, name=name, growth_duration_days=90, notes='Private notes',
+                )
+                varieties = [Crop.objects.create(
+                    project=self.project, name=name, variety=f'Private variety {index}',
+                    notes=f'Private variety note {index}',
+                ) for index in range(2)]
+                plans = [PlantingPlan.objects.create(
+                    project=self.project, crop=crop, notes='Preserved plan reference',
+                ) for crop in [general, *varieties]]
+                references = [(plan.pk, plan.crop_id, plan.notes) for plan in plans]
+                entry = PublicCrop.objects.create(
+                    name=name, crop_species=species, status='published', created_by=self.user,
+                    growth_duration_days=110, notes='Library notes',
+                )
+                url = f'/openfarmplanner/api/public-crops/{entry.pk}/'
+                count = Crop.objects.filter(project=self.project).count()
+                preview = self.client.get(url + 'import-preview/')
+                self.assertEqual(preview.status_code, 200, preview.data)
+                self.assertEqual(preview.data['candidates'], [{
+                    'id': general.pk, 'name': name, 'variety': '',
+                    'source_public_crop': None, 'species_match': False,
+                }])
+                response = self.client.post(url + 'import/', {
+                    'base_version': entry.version, 'expected_project_id': self.project.pk,
+                }, format='json')
+                self.assertEqual(response.status_code, 409, response.data)
+                self.assertEqual(response.data['code'], 'existing_crop_requires_link')
+                general.refresh_from_db()
+                self.assertIsNone(general.crop_species_id)
+                if establish_link:
+                    response = self.client.post(
+                        f'/openfarmplanner/api/crops/{general.pk}/link-public-crop/', {
+                            'public_crop_id': entry.pk, 'pull_fields': ['growth_duration_days'],
+                            'base_version': entry.version,
+                            'expected_updated_at': general.updated_at.isoformat(),
+                        }, format='json',
+                    )
+                else:
+                    response = self._copy_library_values(general, entry)
+                self.assertEqual(response.status_code, 200, response.data)
+                general.refresh_from_db()
+                self.assertEqual(
+                    (general.growth_duration_days, general.notes), (110, 'Private notes'),
+                )
+                self.assertEqual(general.crop_species_id, species.pk)
+                self.assertEqual(
+                    general.source_public_crop_id, entry.pk if establish_link else None,
+                )
+                self.assertEqual(Crop.objects.filter(project=self.project).count(), count)
+                self.assertEqual(
+                    list(PlantingPlan.objects.filter(pk__in=[p.pk for p in plans])
+                         .order_by('pk').values_list('pk', 'crop_id', 'notes')), references,
+                )
+                for crop in varieties:
+                    crop.refresh_from_db()
+                    self.assertIsNone(crop.source_public_crop_id)
+                    self.assertTrue(crop.notes.startswith('Private variety note'))
+                entry.refresh_from_db()
+                self.assertEqual((entry.version, entry.notes), (1, 'Library notes'))
+                self.assertFalse(PublicCropChangeProposal.objects.filter(public_crop=entry).exists())
+
     def test_general_import_requires_explicit_link_and_preserves_twelve_varieties(self):
         species = CropSpecies.objects.create(name='Synthetic Tomato')
         general = Crop.objects.create(project=self.project, name=species.name, crop_species=species,
@@ -2011,6 +2080,46 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual([row['id'] for row in response.data['candidates']], [local.pk])
         local.refresh_from_db()
         self.assertIsNone(local.source_public_crop_id)
+
+    def test_new_import_translates_only_general_name_constraint_after_rollback(self):
+        from unittest.mock import patch
+
+        from django.db import IntegrityError
+
+        entry = PublicCrop.objects.create(
+            name='Synthetic raced import', status='published', created_by=self.user,
+        )
+        before = list(Crop.objects.filter(project=self.project).values())
+        history = list(EntityRevision.objects.filter(project=self.project).values())
+        save = Crop.save
+        for recognized in (True, False):
+            failure = IntegrityError(
+                'duplicate key violates constraint "unique_general_crop_name_per_project"'
+                if recognized else 'Unrelated synthetic import integrity failure'
+            )
+
+            def fail_after_save(crop, *args, failure=failure, **kwargs):
+                result = save(crop, *args, **kwargs)
+                if crop.source_public_crop_id == entry.pk:
+                    raise failure
+                return result
+
+            with self.subTest(recognized=recognized), patch.object(Crop, 'save', fail_after_save):
+                if recognized:
+                    response = self.client.post(
+                        f'/openfarmplanner/api/public-crops/{entry.pk}/import/', {}, format='json',
+                    )
+                    self.assertEqual(response.status_code, 409, response.data)
+                    self.assertEqual(response.data['code'], 'crop_name_conflict')
+                else:
+                    with self.assertRaises(IntegrityError):
+                        self.client.post(
+                            f'/openfarmplanner/api/public-crops/{entry.pk}/import/',
+                            {}, format='json',
+                        )
+            self.assertEqual(list(Crop.objects.filter(project=self.project).values()), before)
+            after_history = list(EntityRevision.objects.filter(project=self.project).values())
+            self.assertEqual(after_history, history)
 
     def test_import_public_crop_creates_project_local_copy(self):
         public_crop = PublicCrop.objects.create(
@@ -5844,6 +5953,93 @@ class PublicCropFieldSyncApiTest(DRFAPITestCase):
             },
             format='json',
         )
+
+    def test_sync_rejects_general_name_conflict_without_mutating_either_crop(self):
+        imported = Crop.objects.create(
+            project=self.project, name='Spinat (2)', variety='', crop_species=self.species,
+            source_public_crop=self.entry, source_public_version=self.entry.version,
+            derived_from_public_crop=self.entry, origin_type=Crop.ORIGIN_IMPORTED,
+            notes='Preserved private import notes', growth_duration_days=55,
+            harvest_duration_days=27, library_pinned_fields=['notes'],
+        )
+        package = SeedPackage.objects.create(
+            crop=imported, project=self.project, size_value='25.0', size_unit='g',
+        )
+        crops_before = list(Crop.objects.filter(project=self.project).order_by('id').values())
+        entry_before = PublicCrop.objects.filter(pk=self.entry.pk).values().get()
+        revisions_before = list(EntityRevision.objects.filter(project=self.project).values())
+        public_revisions_before = list(PublicCropRevision.objects.values())
+        for _ in range(2):
+            response = self._sync(
+                imported, pull_fields=['name', 'growth_duration_days'],
+                push_fields=['harvest_duration_days'],
+            )
+            self.assertEqual(response.status_code, 409, response.data)
+            self.assertEqual(response.data['code'], 'crop_name_conflict')
+            self.assertEqual(
+                list(Crop.objects.filter(project=self.project).order_by('id').values()),
+                crops_before,
+            )
+            self.assertEqual(
+                PublicCrop.objects.filter(pk=self.entry.pk).values().get(), entry_before,
+            )
+            history_after = list(EntityRevision.objects.filter(project=self.project).values())
+            self.assertEqual(history_after, revisions_before)
+            self.assertEqual(list(PublicCropRevision.objects.values()), public_revisions_before)
+            self.assertFalse(PublicCropChangeProposal.objects.exists())
+            package.refresh_from_db()
+            self.assertEqual(package.crop_id, imported.pk)
+
+    def test_sync_constraint_fallback_rolls_back_public_and_private_writes(self):
+        from unittest.mock import patch
+
+        from django.db import IntegrityError
+        from django.db.models import QuerySet
+
+        self.kultur.source_public_crop = self.entry
+        self.kultur.source_public_version = self.entry.version
+        self.kultur.harvest_duration_days = 27
+        self.kultur.library_pinned_fields = ['notes']
+        self.kultur.save()
+        crops_before = list(Crop.objects.filter(project=self.project).values())
+        entries_before = list(PublicCrop.objects.values())
+        revisions_before = list(EntityRevision.objects.filter(project=self.project).values())
+        public_revisions_before = list(PublicCropRevision.objects.values())
+        update = QuerySet.update
+        for recognized in (True, False):
+            failure = IntegrityError(
+                'duplicate key violates constraint "unique_general_crop_name_per_project"'
+                if recognized else 'Unrelated synthetic integrity failure'
+            )
+
+            def fail_final_metadata(queryset, failure=failure, **kwargs):
+                if queryset.model is Crop and {
+                    'source_public_crop', 'source_public_version',
+                    'is_modified_from_source', 'rejected_public_version',
+                }.issubset(kwargs):
+                    raise failure
+                return update(queryset, **kwargs)
+
+            with self.subTest(recognized=recognized), patch.object(
+                QuerySet, 'update', new=fail_final_metadata,
+            ):
+                if recognized:
+                    response = self._sync(
+                        self.kultur, pull_fields=['growth_duration_days'],
+                        push_fields=['harvest_duration_days'],
+                    )
+                    self.assertEqual(response.status_code, 409, response.data)
+                    self.assertEqual(response.data['code'], 'crop_name_conflict')
+                else:
+                    with self.assertRaises(IntegrityError):
+                        self._sync(self.kultur, pull_fields=['growth_duration_days'],
+                                   push_fields=['harvest_duration_days'])
+            self.assertEqual(list(Crop.objects.filter(project=self.project).values()), crops_before)
+            self.assertEqual(list(PublicCrop.objects.values()), entries_before)
+            history_after = list(EntityRevision.objects.filter(project=self.project).values())
+            self.assertEqual(history_after, revisions_before)
+            self.assertEqual(list(PublicCropRevision.objects.values()), public_revisions_before)
+            self.assertFalse(PublicCropChangeProposal.objects.exists())
 
     def test_link_with_pulled_fields_changes_only_those_fields(self):
         response = self._link(self.kultur, ['growth_duration_days'])

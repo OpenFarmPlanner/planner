@@ -114,11 +114,23 @@ The public Crop Library follows an open-data model:
   edits (the 409 response there also flags `variety_changed` so the frontend
   can call the identity change out explicitly instead of blending it into a
   generic warning).
-- A first import never collides with the project's names: a project holds
-  one general crop per name, whatever its species, so a general entry whose
-  name is already taken is created under a free name ("Paprika (2)"), as the
-  conflict dialog's "import as new" does. Importing a variety leaves out its
-  general crop in that case and imports the variety alone.
+- Initial imports first check project identities and unclassified name/alias
+  suggestions. A name-only match requires explicit target selection and
+  confirmation; it never silently links or merges rows. An explicit new-copy
+  choice can use a free name ("Paprika (2)"). Importing a variety leaves out
+  its general crop when that name belongs to another general culture.
+- Library sync, initial link/copy and library updates use the same project
+  identity lock and general-name conflict recognition as ordinary editing.
+  Sync validates the prospective name/variety before companion or crop writes.
+  Taking a library name already held by another active general culture returns
+  HTTP 409 `crop_name_conflict`, preserving both cultures and their references.
+  Only that recognized constraint is translated after the transaction rolls
+  back; unrelated integrity errors remain errors. Public revisions/proposals,
+  private revisions, companions, pins and source metadata commit or roll back
+  together. No automatic rename, merge or deletion repairs legacy numbered copies.
+- A rejected sync stays open with its selected values and a localized inline
+  error. Name conflicts retain the comparison and allow correction or cancel;
+  only `stale_public_crop_version` reloads the differences for a fresh decision.
 - Nothing about that model is automatic, but it is no longer invisible.
   `CropSerializer.public_update_available` is true when the linked entry's
   `version` moved past the copy's `source_public_version` **and**
@@ -465,6 +477,12 @@ The public Crop Library follows an open-data model:
   so they do not reset an already used direct-import project to empty. The guard
   accepts the application’s fixed SQLite concurrency options; other connection
   options and PostgreSQL routing overrides remain unsupported.
+  Add `--include-name-conflicts` for separate unclassified picker/page targets
+  and a `legacy-sync` project with both an unclassified manual general culture
+  and a numbered linked copy. The former require an explicit existing target;
+  taking the library name in the latter must return a conflict with both rows
+  unchanged. These scenarios have twelve private varieties and twelve plan
+  references, preserve manual edits on repeat, and never repair legacy data.
 - **Pulling never breaks live inheritance.** `_pull_public_crop_fields()` (used
   by the link's and the sync's pull) writes a raw value only when the entry's
   value differs from the crop's *effective* one. A Sorte that inherits a field

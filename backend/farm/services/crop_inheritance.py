@@ -13,17 +13,18 @@ and therefore always resolve to their own values.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from decimal import Decimal
 from typing import Any
 
-from django.db import OperationalError, transaction
+from django.db import IntegrityError, OperationalError, transaction
 from django.db.models import Q, QuerySet
 from django.utils import timezone
 from rest_framework.exceptions import APIException
 
-from farm.models import Crop, Project
 from farm.germination import REQUIREMENT_LEGACY_VALUES, project_legacy_requirements
+from farm.models import Crop, Project
 from farm.models.crops import (
     compute_plants_per_m2,
     crop_model_kwargs,
@@ -194,12 +195,43 @@ def find_general_crop(
 class GeneralCropIdentityConflict(APIException):
     status_code = 409
     default_code = 'crop_name_conflict'
+    default_detail = 'The general crop identity conflicts with another write in this project.'
 
     def __init__(self) -> None:
         super().__init__({
             'code': self.default_code,
-            'detail': 'The general crop identity conflicts with another write in this project.',
+            'detail': self.default_detail,
         })
+
+
+class CropNameConflict(GeneralCropIdentityConflict):
+    default_detail = 'A general crop with this name already exists in this project.'
+
+
+def raise_general_crop_name_conflict(exc: IntegrityError) -> None:
+    constraint = getattr(getattr(exc.__cause__, 'diag', None), 'constraint_name', None)
+    message = str(exc)
+    if (
+        constraint == 'unique_general_crop_name_per_project'
+        or 'unique_general_crop_name_per_project' in message
+        or message == 'UNIQUE constraint failed: farm_crop.project_id, farm_crop.name_normalized'
+    ):
+        raise CropNameConflict() from exc
+
+
+@contextmanager
+def crop_identity_write(project_id: int, *, nowait: bool = True) -> Iterator[None]:
+    """Lock the project and translate only its general-name race after rollback."""
+    try:
+        with transaction.atomic():
+            if nowait:
+                lock_crop_project(project_id)
+            else:
+                Project.objects.select_for_update().get(pk=project_id)
+            yield
+    except IntegrityError as exc:
+        raise_general_crop_name_conflict(exc)
+        raise
 
 
 def lock_crop_project(project_id: int) -> None:
