@@ -149,7 +149,7 @@ _NUMERIC_DATE = re.compile(
 )
 # Between two windows, like ";". Whole words only; "o." needs its dot, since a
 # bare letter is too easy to misread.
-_WINDOW_SEPARATOR = re.compile(r'[;\n\r]+|\s+(?:oder|or|ou|oppure)\s+|\s+o\.\s*', re.IGNORECASE)
+_WINDOW_SEPARATOR = re.compile(r'[;\n\r]+|\s+(?:oder|or|ou|oppure|of)\s+|\s+o\.\s*', re.IGNORECASE)
 _ORDINAL = re.compile(r'^\d+(?:er|e|st|nd|rd|th|º|ª)$')
 _DASHES = str.maketrans({'–': '-', '—': '-', '‑': '-', '−': '-', '’': "'"})
 
@@ -173,8 +173,20 @@ def parse_timing_window_cell(kind: str, value: object) -> list[TimingWindow]:
 
     :raises TimingWindowParseError: for the first part that is not a supported window.
     """
-    text = '' if value is None else str(value)
-    parts = [part.strip() for part in _WINDOW_SEPARATOR.split(text.strip())]
+    text = '' if value is None else str(value).strip()
+    parts = []
+    start = 0
+    for separator in _WINDOW_SEPARATOR.finditer(text):
+        part = text[start:separator.start()].strip()
+        if separator.group().strip().lower() == 'of':
+            # Dutch alternatives follow a complete window; English "end of August" does not.
+            try:
+                _parse_part(kind, part)
+            except TimingWindowParseError:
+                continue
+        parts.append(part)
+        start = separator.end()
+    parts.append(text[start:].strip())
     return [_parse_part(kind, part) for part in parts if part]
 
 

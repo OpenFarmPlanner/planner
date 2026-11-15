@@ -246,7 +246,10 @@ class ParserTest(SimpleTestCase):
     def test_or_separates_windows_in_every_language(self):
         early_feb, early_nov = decade(2, 'early', 2, 'early'), decade(11, 'early', 11, 'early')
         for text in ('02a o. 11a', '02a O.11a', 'Anfang Februar oder Anfang November',
-                     'early February or early November', 'début février ou début novembre'):
+                     'early February or early November', 'début février ou début novembre',
+                     'inizio febbraio oppure inizio novembre',
+                     'início fevereiro ou início novembro',
+                     'begin februari of begin november', '02a OF 11a'):
             with self.subTest(text=text):
                 self.assertEqual(
                     parse_timing_window_cell('direct_sowing', text), [early_feb, early_nov],
@@ -255,6 +258,21 @@ class ParserTest(SimpleTestCase):
             parse_timing_window_cell('direct_sowing', 'März bis April oder KW 40; Mai'),
             [decade(3, 'early', 4, 'late'), weeks(40, 40), decade(5, 'early', 5, 'late')],
         )
+
+    def test_dutch_alternatives_preserve_english_of_phrases_and_day_date_errors(self):
+        for text in ('maart of oktober', 'maart OF oktober'):
+            with self.subTest(text=text):
+                self.assertEqual(parse_timing_window_cell('direct_sowing', text), [
+                    decade(3, 'early', 3, 'late'), decade(10, 'early', 10, 'late'),
+                ])
+        self.assertEqual(parse_timing_window_cell('direct_sowing', 'week 10 of week 40'), [
+            weeks(10, 10), weeks(40, 40),
+        ])
+        self.assertEqual(parse_timing_window_cell(
+            'direct_sowing', 'end of August of beginning of October',
+        ), [decade(8, 'late', 8, 'late'), decade(10, 'early', 10, 'early')])
+        self.assertEqual(self.parse_one('middle of March'), decade(3, 'mid', 3, 'mid'))
+        self.assert_rejected('15 of March', ERROR_DAY_DATES)
 
     def test_rejected_forms(self):
         cases = {
