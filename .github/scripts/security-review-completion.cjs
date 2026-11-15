@@ -78,15 +78,17 @@ const nativeCodexAuthor = comment => comment.user?.type === 'Bot' &&
 
 async function verifiedNativeCodexReview({ github, context, comments, head, now = Date.now() }) {
   const marker = /^<!-- codex-security-review:v1 (\{[^\n]+\}) -->$/m;
-  const summaries = comments.filter(comment => nativeCodexAuthor(comment) && marker.test(comment.body ?? ''))
-    .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
-  if (!summaries.length) return null;
   const invalid = reason => blocked('codex_native_invalid', reason);
-  const summary = summaries[0];
-  let evidence;
-  try { evidence = JSON.parse(summary.body.match(marker)[1]); }
-  catch { return invalid('The current native security summary is malformed.'); }
-  if (evidence.headSha !== head) return null;
+  const summaries = [];
+  for (const comment of comments.filter(item => nativeCodexAuthor(item) && marker.test(item.body ?? ''))) {
+    let evidence;
+    try { evidence = JSON.parse(comment.body.match(marker)[1]); }
+    catch { return invalid('The native security summary is malformed.'); }
+    if (evidence.headSha === head) summaries.push({ comment, evidence });
+  }
+  summaries.sort((a, b) => String(b.comment.updated_at).localeCompare(String(a.comment.updated_at)));
+  if (!summaries.length) return null;
+  const { comment: summary, evidence } = summaries[0];
   if (evidence.repository !== `${context.repo.owner}/${context.repo.repo}` ||
       evidence.pullRequestNumber !== context.payload.pull_request.number) {
     return invalid('The latest native security review belongs to another PR or head.');

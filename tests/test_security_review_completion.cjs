@@ -482,3 +482,14 @@ test('a newer running native review takes precedence over an older human conting
   f.comments.push(reportComment, approvalComment());
   assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_pending');
 });
+
+
+test('an older-head summary updated later cannot hide a pending current-head review', async () => {
+  const f = nativeSnapshotFixture();
+  f.summary.body = f.summary.body.replace('completed', 'running');
+  f.comments.push({ ...structuredClone(f.summary), id: 9, node_id: 'other-summary',
+    html_url: 'https://github.com/owner/repo/pull/1#issuecomment-9', updated_at: '2026-11-15T07:26:01Z',
+    body: `<!-- codex-security-review:v1 ${JSON.stringify({ ...f.evidence, headSha: OLD })} -->` },
+    reportComment, approvalComment());
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_pending');
+});
