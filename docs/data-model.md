@@ -115,9 +115,15 @@ erDiagram
   position do fields use compact schematic rows fitted to the viewport.
   Stored positions and world sizes are preserved; dimensions determine aspect
   ratio, while area-only records use approximate rectangles, not georeferencing.
-  Beds remain visible in the overview. Their single-line labels follow the
-  longer edge (vertical for tall beds), use an ellipsis within the bed and hide
-  only when there is insufficient screen space; clicking opens the full details.
+  The default display turns the stored layout 90° so length runs horizontally
+  and width vertically. Each location has left/right 90° view controls; rotating
+  refits the view and does not write layouts or change physical dimensions.
+  The angle is local to the mounted view. Field title strips stay at the top;
+  beds are projected between the stored and displayed usable areas, and dragging
+  is inversely projected before saving so existing positions remain compatible.
+  Beds remain visible in the overview. Their single-line labels always stay
+  horizontal, use an ellipsis within the bed and hide only when there is
+  insufficient horizontal screen space; clicking opens the full details.
   Task indicators and quick actions are separate work (#975).
   For local acceptance, `seed_graphical_layout_acceptance --username USER
   --database-name LOCAL_DATABASE` previews an isolated project with three plots

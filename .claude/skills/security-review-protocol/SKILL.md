@@ -28,6 +28,13 @@ ls docs/security-review-*.md
 
 ## 2. Review
 
+Use completed native Codex Security Review evidence automatically when the
+immutable-base gate verifies the pinned GitHub app/bot, exact PR/head, recent
+clean security receipt, last-editor provenance and the trusted base/scope context. Do not ask for an additional
+human confirmation or reaction on that route. Request delivery and ordinary
+code reviews are not security completion. The manual contingency below applies
+when provider evidence is unavailable, not to verified native completion.
+
 If Claude's allowance is exhausted or cloud review is unavailable, follow
 `docs/security-automation.md` ("Verified local Codex completion without per-PR approval"):
 run `node scripts/ci/run_codex_review.cjs PR_NUMBER /tmp/review-PR_NUMBER`

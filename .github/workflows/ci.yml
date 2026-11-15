@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
 
 jobs:
   frontend-tests:
@@ -178,7 +179,7 @@ jobs:
             const { data: current } = await github.rest.pulls.get({
               ...context.repo, pull_number: pr.number,
             });
-            if (current.head.sha !== pr.head.sha) throw new Error('Stale CI head; a new push needs new checks.');
+            if (current.head.sha !== pr.head.sha || current.base.sha !== pr.base.sha || current.base.ref !== pr.base.ref) throw new Error('Stale CI head/base; the new context needs fresh checks.');
             let policy;
             try {
               const { data } = await github.rest.repos.getContent({

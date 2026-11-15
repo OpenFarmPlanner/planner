@@ -52,6 +52,8 @@
     "panDown": "Déplacer vers le bas",
     "panLeft": "Déplacer vers la gauche",
     "panRight": "Déplacer vers la droite",
+    "rotateLeft": "Tourner la vue de 90° vers la gauche",
+    "rotateRight": "Tourner la vue de 90° vers la droite",
     "fitToView": "Tout afficher",
     "enterFullscreen": "Plein écran",
     "exitFullscreen": "Quitter le plein écran",

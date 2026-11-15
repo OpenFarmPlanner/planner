@@ -52,6 +52,8 @@
     "panDown": "Ansicht nach unten verschieben",
     "panLeft": "Ansicht nach links verschieben",
     "panRight": "Ansicht nach rechts verschieben",
+    "rotateLeft": "Ansicht um 90° nach links drehen",
+    "rotateRight": "Ansicht um 90° nach rechts drehen",
     "fitToView": "Alles einpassen",
     "enterFullscreen": "Vollbild öffnen",
     "exitFullscreen": "Vollbild schließen",

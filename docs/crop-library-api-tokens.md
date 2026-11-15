@@ -7,6 +7,32 @@ the design decided in
 [`rfc-crop-taxonomy-admin-api.md`](./rfc-crop-taxonomy-admin-api.md); read
 that first for the "why" and the alternatives considered.
 
+## Plant-family translations
+
+Platform admins can also use a write-scoped crop-library token with
+`PATCH /api/plant-families/<botanical_name>/translations/`:
+
+```json
+{"translations": {"fr": "Solanacées", "es": "Solanáceas", "it": "Solanacee", "pt": "Solanáceas", "nl": "Nachtschadefamilie"}}
+```
+
+This action upserts only the supplied language labels; omitted languages are
+preserved. All language codes must be in `SUPPORTED_LANGUAGE_CODES`, and names
+must be nonempty and at most 200 characters. The complete payload is validated
+before an atomic update. An unsupported language, blank label, or extra field
+rejects the request without applying its other translations. Repeat requests
+update the same translation rows rather than creating duplicates.
+
+The response is the family representation, including all stored translations.
+GET first and record the old values, PATCH only reviewed labels, then read back
+the family in each written language. This does not create, delete or rename
+families, change crop-rotation defaults, or alter any crop's family reference.
+Those structural operations remain outside this API. Regular users, moderators
+without platform-admin rights, read-only catalogue tokens and all project API
+tokens cannot write family translations. Existing project-token family reads
+remain available. A revoked token or loss of the bound account's admin rights
+is enforced on the next request.
+
 This API is the only way to maintain crop-species names, synonyms, regional
 names and languages: the database is their sole source, and the bootstrap
 snapshot under `backend/crops/migrations/data/` is frozen. Which name belongs

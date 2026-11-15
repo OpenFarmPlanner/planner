@@ -52,6 +52,8 @@
     "panDown": "Pan down",
     "panLeft": "Pan left",
     "panRight": "Pan right",
+    "rotateLeft": "Rotate view 90° left",
+    "rotateRight": "Rotate view 90° right",
     "fitToView": "Fit all",
     "enterFullscreen": "Enter fullscreen",
     "exitFullscreen": "Exit fullscreen",
