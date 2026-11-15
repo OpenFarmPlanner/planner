@@ -816,9 +816,13 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         except PublicCropEditConflictError as error:
             return self._edit_conflict_response(error)
         except (CropLinkConflictError, PublicCropImportConfirmationRequiredError) as error:
-            return api_error_response(code=error.code, detail=str(error), status_code=409)
+            return api_error_response(
+                code=error.code, detail=getattr(error, "message", str(error)), status_code=409
+            )
         except (LibraryPinnedFieldsError, PublicCropSyncFieldsError) as error:
-            return api_error_response(code=error.code, detail=str(error), status_code=400)
+            return api_error_response(
+                code=error.code, detail=getattr(error, "message", str(error)), status_code=400
+            )
         except PublicCropPermissionError as error:
             return api_error_response(
                 code="public_library_permission_denied", detail=str(error), status_code=403
