@@ -76,7 +76,7 @@ const NATIVE_CODEX_BOT = 199175422;
 const nativeCodexAuthor = comment => comment.user?.type === 'Bot' &&
   comment.user.id === NATIVE_CODEX_BOT && comment.performed_via_github_app?.id === NATIVE_CODEX_APP;
 
-async function nativeEvidenceProvenance({ github, context, checked }) {
+async function nativeEvidenceProvenance({ github, context, checked, history = false, verified = () => {} }) {
   if (checked.length > 100) return 'Too many native records to verify in one snapshot.';
   const prefix = `https://github.com/${context.repo.owner}/${context.repo.repo}/pull/${context.payload.pull_request.number}#issuecomment-`;
   for (const comment of checked) {
@@ -91,6 +91,7 @@ async function nativeEvidenceProvenance({ github, context, checked }) {
     ({ nodes } = await github.graphql(`query($ids:[ID!]!) {
     nodes(ids:$ids) { ... on IssueComment {
       id body updatedAt lastEditedAt
+      ${history ? 'userContentEdits(first:100) { nodes { diff editedAt deletedAt editor { __typename ... on Bot { databaseId } } } }' : ''}
       author { __typename ... on Bot { databaseId } }
       editor { __typename ... on Bot { databaseId } }
     } }
@@ -107,6 +108,7 @@ async function nativeEvidenceProvenance({ github, context, checked }) {
       return 'Native evidence changed or was edited outside the trusted Codex app.';
     }
   }
+  verified(nodes);
   return null;
 }
 
@@ -167,13 +169,32 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
   const checked = [summary, ...relevant];
   if (checked.length > 100) return invalid('Too many native receipts to verify in one consistent snapshot.');
 
-  const problem = await nativeEvidenceProvenance({ github, context, checked });
+  let verifiedNodes;
+  const problem = await nativeEvidenceProvenance({ github, context, checked, history: true,
+    verified: nodes => { verifiedNodes = nodes; } });
   if (problem) return invalid(problem);
   const finished = Date.parse(summary.updated_at), issued = Date.parse(receipt.created_at);
   if (!Number.isFinite(finished) || !Number.isFinite(issued) || Math.abs(finished - issued) > 300_000 ||
       now - finished < -300_000 || now - finished > 7 * 24 * 60 * 60_000) {
     return invalid('The native receipt is stale or does not match the latest review completion.');
   }
+  const starts = [];
+  for (const edit of verifiedNodes?.find(node => node.id === summary.node_id)?.userContentEdits?.nodes ?? []) {
+    if (edit.deletedAt !== null || edit.editor?.__typename !== 'Bot' || edit.editor.databaseId !== NATIVE_CODEX_BOT ||
+        typeof edit.diff !== 'string') continue;
+    let previous;
+    try { previous = JSON.parse(edit.diff.match(marker)?.[1]); } catch { continue; }
+    const previousState = securityState({ body: edit.diff });
+    if (previous?.repository !== evidence.repository || previous.pullRequestNumber !== evidence.pullRequestNumber ||
+        previous.headSha !== head || previous.status !== 'running' ||
+        previousState?.commit_sha !== head || previousState.status !== 'running') continue;
+    const row = edit.diff.match(/^\| 🔒 \*\*Security Review\*\* \| 🔄 \*\*Running\*\* since <relative-time datetime="([^"]+)">[^<]+<\/relative-time> \| `([0-9a-f]{7,40})` \|/m);
+    const start = Date.parse(row?.[1]), edited = Date.parse(edit.editedAt);
+    if (row && head.startsWith(row[2]) && Number.isFinite(start) && Number.isFinite(edited) &&
+        start <= edited && edited - start <= 300_000 && edited <= issued) starts.push(start);
+  }
+  if (!starts.length) return invalid('The native task start could not be verified from app-authored comment history.');
+  const started = Math.max(...starts);
   for (const candidate of relevant) {
     const sha = candidate.body.match(/^\*\*Reviewed commit:\*\* `([0-9a-f]{10,40})`$/m)?.[1];
     const task = candidate.body.match(/^\[View security finding report\]\((https:\/\/chatgpt\.com\/codex\/(?:cloud\/)?tasks\/[a-zA-Z0-9_-]+)\)$/m)?.[1];
@@ -212,12 +233,12 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
   if (!relevant.includes(receipt)) return invalid('The latest receipt is not bound to the current head.');
   return { ...passed('codex_native_completed',
     'The trusted Codex GitHub app reports a completed, clean security review for this exact PR/head. No human attestation is required.',
-    receipt.html_url), receipt_created_at: receipt.created_at };
+    receipt.html_url), receipt_created_at: receipt.created_at, review_started_at: new Date(started).toISOString() };
 }
 
 const NATIVE_CONTEXT_WORKFLOW = '.github/workflows/native-security-context.yml';
 
-async function verifiedNativeContext({ github, context, head, base, scope, receiptTime, artifactReader = readArtifact }) {
+async function verifiedNativeContext({ github, context, head, base, scope, reviewStartTime, artifactReader = readArtifact }) {
   const invalid = reason => blocked('codex_native_context_invalid', reason);
   const unavailable = reason => blocked('codex_native_context_unavailable', reason);
   if (!SHA.test(base ?? '') || !Array.isArray(scope)) return invalid('Native review context is incomplete.');
@@ -267,8 +288,8 @@ async function verifiedNativeContext({ github, context, head, base, scope, recei
     earliest = Math.min(earliest, created); count++;
   }
   if (!count) return blocked('codex_native_context_pending', 'Waiting for the trusted base/scope context producer.');
-  if (!Number.isFinite(Date.parse(receiptTime)) || earliest > Date.parse(receiptTime)) {
-    return invalid('The native result predates its trusted review context.');
+  if (!Number.isFinite(Date.parse(reviewStartTime)) || earliest > Date.parse(reviewStartTime)) {
+    return invalid('The native task started before its trusted review context.');
   }
   return null;
 }
@@ -401,7 +422,7 @@ async function snapshot({ github, context, expectedHead, artifactReader = readAr
   let native = await verifiedNativeCodexReview({ github, context, comments, head: expectedHead });
   if (native?.allowed) {
     const contextResult = await verifiedNativeContext({ github, context, head: expectedHead,
-      base: pr.base.sha, scope, receiptTime: native.receipt_created_at, artifactReader });
+      base: pr.base.sha, scope, reviewStartTime: native.review_started_at, artifactReader });
     if (contextResult) native = contextResult;
   }
   let codex;

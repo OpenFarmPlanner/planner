@@ -285,9 +285,14 @@ scope after checking the live PR before and after collection. Its artifact name
 binds the PR/head; the gate verifies the workflow path/event, repository, source
 SHA, run/attempt and exact current base/scope. Superseded main-base records are ignored; a
 current-base record must exist and match the full scope. Older clean receipts
-remain checked for findings but do not replace the selected fresh receipt
-when comparing the context timestamp. The artifact creation time must precede
-the selected current native receipt; a queued workflow's earlier start time is insufficient. Missing records stay pending. Unavailable context may use an optional human
+remain checked for findings but do not replace the selected fresh result.
+The artifact creation time must precede the native task's start. The gate reads
+the summary's GitHub edit history, verifies an undeleted Codex-bot-authored
+running revision for the full head, and extracts the Security Review row's start
+timestamp. An edit timestamp alone cannot establish task start. Missing or
+unsupported start history cannot authorize native completion. A queued context
+workflow's earlier creation time and a later receipt are insufficient. Missing
+context records stay pending. Unavailable context may use an optional human
 contingency only when its approval and independent manual report explicitly
 include `Reviewed base: FULL_BASE_SHA` for the current base, in addition to the
 existing exact-head/full-scope requirements. Actual context mismatches stay

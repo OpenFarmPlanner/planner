@@ -293,6 +293,9 @@ function nativeFixture() {
   const evidence = { repository: 'owner/repo', pullRequestNumber: 1, headSha: HEAD, status: 'completed' };
   const summary = { ...structuredClone(base), id: 1, node_id: 'summary', html_url: 'https://github.com/owner/repo/pull/1#issuecomment-1',
     body: `<!-- codex-security-review:v1 ${JSON.stringify(evidence)} -->\n<!-- codex-review-state:v1 ${JSON.stringify({ security_review: { commit_sha: HEAD, status: 'completed', has_any_findings: null, has_unresolved_findings: null } })} -->` };
+  summary.history = [{ diff: summary.body.replaceAll('completed', 'running') +
+    `\n| 🔒 **Security Review** | 🔄 **Running** since <relative-time datetime="2026-11-15T07:25:00Z">2026-11-15T07:25:00Z</relative-time> | \`${HEAD.slice(0, 7)}\` | Manual request |`,
+    editedAt: '2026-11-15T07:25:01Z', deletedAt: null, editor: { __typename: 'Bot', databaseId: 199175422 } }];
   const receipt = { ...structuredClone(base), id: 2, node_id: 'receipt', html_url: 'https://github.com/owner/repo/pull/1#issuecomment-2',
     body: `<!-- codex-review-receipt:v1 -->\n\n### 🛡️ Codex Security Review\n\nSecurity review completed. No security issues were found in this pull request.\n\n**Reviewed commit:** \`${HEAD.slice(0, 10)}\`\n\n[View security finding report](https://chatgpt.com/codex/cloud/tasks/task_review)` };
   const comments = [summary, receipt];
@@ -301,6 +304,7 @@ function nativeFixture() {
       timelineItems: { totalCount: 40, nodes: [], pageInfo: { hasNextPage: false } } } } }
     : { nodes: comments.map(comment => ({ id: comment.node_id,
       body: comment.body, updatedAt: comment.updated_at, lastEditedAt: null, editor: null,
+      userContentEdits: { nodes: comment.history ?? [] },
       author: { __typename: 'Bot', databaseId: 199175422 } })) };
   return { evidence, summary, receipt, comments, args: { head: HEAD, now: NATIVE_NOW, comments,
     context: { repo: { owner: 'owner', repo: 'repo' }, payload: { pull_request: { number: 1 } } },
@@ -591,6 +595,31 @@ test('a queued context run cannot certify a receipt published before its artifac
   assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_context_invalid');
   delete f.contextArtifacts[0].created_at;
   assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_context_invalid');
+});
+
+test('a task started before a base refresh cannot use context published before its completion', async () => {
+  const f = nativeSnapshotFixture();
+  f.contextArtifacts[0].created_at = '2026-11-15T07:25:10Z';
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_context_invalid');
+  f.contextArtifacts[0].created_at = '2026-11-15T07:24:30Z';
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_completed');
+});
+
+test('native task start requires an authentic running revision for this full head', async () => {
+  const clean = nativeFixture();
+  assert.equal((await verifiedNativeCodexReview(clean.args)).review_started_at, '2026-11-15T07:25:00.000Z');
+  for (const mutate of [
+    f => { f.summary.history = []; },
+    f => { f.summary.history[0].editor = { __typename: 'User', databaseId: 1 }; },
+    f => { f.summary.history[0].deletedAt = '2026-11-15T07:25:02Z'; },
+    f => { f.summary.history[0].diff = f.summary.history[0].diff.replaceAll(HEAD, OLD); },
+    f => { f.summary.history[0].diff = f.summary.history[0].diff.replaceAll('07:25:00Z', '07:26:00Z'); },
+    f => { f.summary.history[0].editedAt = '2026-11-15T07:26:00Z'; },
+    f => { f.summary.history[0].diff = f.summary.history[0].diff.replace('**Security Review**', '**Code Review**'); },
+  ]) {
+    const f = nativeFixture(); mutate(f);
+    assert.equal((await verifiedNativeCodexReview(f.args)).state, 'codex_native_invalid');
+  }
 });
 
 test('a retargeted PR cannot reuse a clean native review while retaining its head', async () => {
