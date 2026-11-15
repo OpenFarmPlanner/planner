@@ -80,7 +80,8 @@ const visibleNativeRunning = (body, head) => {
   return Boolean(row && head.startsWith(row[1]));
 };
 
-async function nativeEvidenceProvenance({ github, context, checked, history = false, historyCursor = null, verified = () => {} }) {
+async function nativeEvidenceProvenance({ github, context, checked, history = false, historyCursor = null,
+  verified = () => {}, onSnapshotChange = () => {} }) {
   if (checked.length > 100) return 'Too many native records to verify in one snapshot.';
   const prefix = `https://github.com/${context.repo.owner}/${context.repo.repo}/pull/${context.payload.pull_request.number}#issuecomment-`;
   for (const comment of checked) {
@@ -106,10 +107,14 @@ async function nativeEvidenceProvenance({ github, context, checked, history = fa
   const trustedActor = actor => actor?.__typename === 'Bot' && actor.databaseId === NATIVE_CODEX_BOT;
   for (const comment of checked) {
     const node = nodes?.find(item => item?.id === comment.node_id);
-    if (!node || node.body !== comment.body || node.updatedAt !== comment.updated_at ||
+    if (!node || typeof node.body !== 'string' || typeof node.updatedAt !== 'string' ||
         !trustedActor(node.author) || !Object.hasOwn(node, 'lastEditedAt') || !Object.hasOwn(node, 'editor') ||
         (node.lastEditedAt != null ? !trustedActor(node.editor) : node.editor != null && !trustedActor(node.editor))) {
       return 'Native evidence changed or was edited outside the trusted Codex app.';
+    }
+    if (node.body !== comment.body || node.updatedAt !== comment.updated_at) {
+      onSnapshotChange();
+      return 'The authenticated native evidence changed during this snapshot.';
     }
   }
   verified(nodes);
@@ -120,11 +125,15 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
   const marker = /^<!-- codex-security-review:v1 (\{[^\n]+\}) -->$/m;
   const invalid = reason => blocked('codex_native_invalid', reason);
   const ambiguous = reason => blocked('codex_native_ambiguous', reason);
+  let snapshotChanged = false;
+  const prove = (checked, options = {}) => nativeEvidenceProvenance({ github, context, checked, ...options,
+    onSnapshotChange: () => { snapshotChanged = true; } });
+  const changing = () => blocked('codex_native_pending', 'Authenticated native evidence changed; waiting for a consistent fresh snapshot.');
   const summaries = [];
   let summaryProblem;
   let visiblePending = false;
   for (const comment of comments.filter(item => nativeCodexAuthor(item) && visibleNativeRunning(item.body, head))) {
-    const problem = await nativeEvidenceProvenance({ github, context, checked: [comment] });
+    const problem = await prove([comment]);
     if (problem) summaryProblem = problem;
     else visiblePending = true;
   }
@@ -139,7 +148,7 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
     String(b.comment.updated_at).localeCompare(String(a.comment.updated_at)) || Number(b.comment.id) - Number(a.comment.id));
   const authenticated = [];
   for (const item of summaries) {
-    const problem = await nativeEvidenceProvenance({ github, context, checked: [item.comment] });
+    const problem = await prove([item.comment]);
     if (problem) summaryProblem = problem;
     else if (item.evidence.repository !== `${context.repo.owner}/${context.repo.repo}` ||
         item.evidence.pullRequestNumber !== context.payload.pull_request.number) {
@@ -165,12 +174,13 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
     return ref && head.startsWith(ref);
   });
   for (const candidate of relevant) {
-    const problem = await nativeEvidenceProvenance({ github, context, checked: [candidate] });
+    const problem = await prove([candidate]);
     if (!problem && candidate.body.split('\n').some(line => line.startsWith('Security review completed. ') &&
         line !== 'Security review completed. No security issues were found in this pull request.')) {
       return blocked('codex_native_incomplete', 'An authenticated current-head native receipt reports a nonclean result.');
     }
   }
+  if (snapshotChanged) return changing();
   if (visiblePending || authenticated.some(pending)) return blocked('codex_native_pending', 'The native security review is still in progress.');
   if (summaryProblem) return invalid(summaryProblem);
   if (!authenticated.length) return null;
@@ -203,9 +213,9 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
   if (checked.length > 100) return invalid('Too many native receipts to verify in one consistent snapshot.');
 
   let verifiedNodes;
-  const problem = await nativeEvidenceProvenance({ github, context, checked, history: true,
+  const problem = await prove(checked, { history: true,
     verified: nodes => { verifiedNodes = nodes; } });
-  if (problem) return invalid(problem);
+  if (problem) return snapshotChanged ? changing() : invalid(problem);
   const finished = Date.parse(summary.updated_at), issued = Date.parse(receipt.created_at);
   if (!Number.isFinite(finished) || !Number.isFinite(issued) || Math.abs(finished - issued) > 300_000 ||
       now - finished < -300_000 || now - finished > 7 * 24 * 60 * 60_000) {
@@ -223,9 +233,9 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
     const cursor = history.pageInfo.endCursor;
     if (!cursor || cursors.has(cursor) || revisions.length >= 1000) return invalid('Native task history is truncated.');
     cursors.add(cursor);
-    const problem = await nativeEvidenceProvenance({ github, context, checked: [summary], history: true,
+    const problem = await prove([summary], { history: true,
       historyCursor: cursor, verified: nodes => { history = nodes[0]?.userContentEdits; } });
-    if (problem) return invalid(problem);
+    if (problem) return snapshotChanged ? changing() : invalid(problem);
   }
   if (revisions.some(edit => edit.deletedAt !== null) ||
       Math.min(...revisions.map(edit => Date.parse(edit.editedAt))) !== Date.parse(summary.created_at)) {

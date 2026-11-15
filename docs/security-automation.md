@@ -312,6 +312,9 @@ An authenticated visible same-head running row with malformed or unsupported
 hidden markers is ambiguous evidence, not an ignorable historical record.
 The current visible running summary also stays pending when its hidden markers
 are missing, malformed or unsupported; older approvals cannot override it.
+If an authenticated bot edit changes a body or version between the REST and
+GraphQL reads, the gate waits for a consistent fresh snapshot instead of
+falling through to older approval. Human-edited evidence remains unverifiable.
 Multiple same-head executions are ambiguous
 because the summary carries no task ID; even clean repeats require a fresh head
 and context. Ambiguity may conceal a pending task, so human and signed

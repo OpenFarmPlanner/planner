@@ -975,6 +975,44 @@ test('authenticated visible running summaries block even when current hidden mar
   }
 });
 
+test('authenticated cross-read mutations cannot fall through to older approval or signed evidence', async () => {
+  for (const stage of ['summary-body', 'summary-version', 'receipt', 'history']) {
+    const f = nativeSnapshotFixture(); const read = f.args.github.graphql;
+    f.args.github.graphql = async (query, vars) => {
+      const data = await read(query); if (!data.nodes) return data;
+      const node = data.nodes.find(item => item.id === (stage === 'receipt' ? f.receipt.node_id : f.summary.node_id));
+      if (stage === 'history' && !query.includes('userContentEdits')) return data;
+      if (node) {
+        if (stage !== 'summary-version') node.body = node.body.replaceAll('completed', 'running');
+        node.updatedAt = '2026-11-15T07:25:22Z';
+        node.lastEditedAt = node.updatedAt; node.editor = { __typename: 'Bot', databaseId: 199175422 };
+      }
+      return data;
+    };
+    f.comments.push(reportComment, approvalComment());
+    assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_pending', stage);
+    assert.equal((await snapshot({ ...f.args, expectedHead: HEAD,
+      codexVerifier: async () => ({ allowed: true, state: 'codex_local_completed' }) })).state, 'codex_native_pending', stage);
+  }
+});
+
+test('a changing native snapshot automatically refetches and completes once consistent', async () => {
+  const f = nativeFixture(); const read = f.args.github.graphql;
+  f.args.github.graphql = async query => { const data = await read(query);
+    const node = data.nodes.find(item => item.id === f.summary.node_id);
+    node.updatedAt = '2026-11-15T07:25:22Z';
+    node.lastEditedAt = node.updatedAt; node.editor = { __typename: 'Bot', databaseId: 199175422 };
+    return data; };
+  let inspections = 0, time = 0;
+  const result = await enforce({ github: {}, context: { repo: { owner: 'owner', repo: 'repo' } },
+    expectedHead: HEAD, now: () => time, intervalMs: 10, timeoutMs: 100,
+    wait: async ms => { time += ms; f.summary.updated_at = '2026-11-15T07:25:22Z'; },
+    core: { info() {}, setOutput() {}, setFailed() { assert.fail('must refetch changing evidence'); },
+      summary: { addHeading() { return this; }, addRaw() { return this; }, async write() {} } },
+    inspect: async () => { inspections++; return verifiedNativeCodexReview(f.args); } });
+  assert.equal(inspections, 2); assert.equal(time, 10); assert.equal(result.state, 'codex_native_completed');
+});
+
 test('second-precision artifact timestamps cannot certify a task in the same timestamp second', async () => {
   const f = nativeSnapshotFixture();
   f.contextArtifacts[0].created_at = '2026-11-15T07:25:00Z';
