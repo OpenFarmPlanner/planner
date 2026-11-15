@@ -234,6 +234,7 @@ malformed, wrong-PR, old-attempt and stale-head evidence never passes.
 | `manual_review_required` | Provider execution is guarded; an explicit exact-head review/approval is needed. |
 | `codex_completed_attested` | A human maintainer verified the native task and Security Report; auditable attestation, **not automated verification**. |
 | `manual_review_approved` | A human maintainer explicitly approved a completed manual review; **not an automated scan**. |
+| `codex_native_ambiguous` | Current-head history may conceal another running task. A fresh head/context is required; older human or separate signed approvals cannot override this state. |
 
 The GitHub summary records the SHA, state, reason and evidence link. A successful
 **quality** job means the required policy was satisfied, possibly by an explicit
@@ -297,7 +298,8 @@ ambiguous even with identical timestamps. Wait for code review completion before
 requesting security review to avoid unrelated summary updates during its run.
 Multiple same-head executions are ambiguous
 because the summary carries no task ID; even clean repeats require a fresh head
-and context, or separate exact-base signed evidence. An edit timestamp alone
+and context. Ambiguity may conceal a pending task, so human and signed
+contingencies cannot override it. An edit timestamp alone
 cannot establish task start. Missing or unsupported history cannot authorize
 native completion. A queued context
 workflow's earlier creation time and a later receipt are insufficient. Missing

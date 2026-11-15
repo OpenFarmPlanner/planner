@@ -115,6 +115,7 @@ async function nativeEvidenceProvenance({ github, context, checked, history = fa
 async function verifiedNativeCodexReview({ github, context, comments, head, now = Date.now() }) {
   const marker = /^<!-- codex-security-review:v1 (\{[^\n]+\}) -->$/m;
   const invalid = reason => blocked('codex_native_invalid', reason);
+  const ambiguous = reason => blocked('codex_native_ambiguous', reason);
   const summaries = [];
   let summaryProblem;
   for (const comment of comments.filter(item => nativeCodexAuthor(item) && marker.test(item.body ?? ''))) {
@@ -163,7 +164,7 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
   if (authenticated.some(pending)) return blocked('codex_native_pending', 'The native security review is still in progress.');
   if (summaryProblem) return invalid(summaryProblem);
   if (!authenticated.length) return null;
-  if (authenticated.length !== 1) return invalid('Multiple native summaries make task correlation ambiguous.');
+  if (authenticated.length !== 1) return ambiguous('Multiple native summaries make task correlation ambiguous; a fresh head is required.');
   const { comment: summary, evidence } = authenticated[0];
   if (evidence.repository !== `${context.repo.owner}/${context.repo.repo}` ||
       evidence.pullRequestNumber !== context.payload.pull_request.number) {
@@ -227,25 +228,27 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
     if (previous?.repository !== evidence.repository || previous.pullRequestNumber !== evidence.pullRequestNumber ||
         previous.headSha !== head || previous.status !== 'running' ||
         previousState?.commit_sha !== head || previousState.status !== 'running') {
-      return invalid('A current-head running revision has inconsistent task metadata.');
+      return ambiguous('A current-head running revision has inconsistent task metadata; a fresh head is required.');
     }
     const row = edit.diff.match(/^\| 🔒 \*\*Security Review\*\* \| 🔄 \*\*Running\*\* since <relative-time datetime="([^"]+)">[^<]+<\/relative-time> \| `([0-9a-f]{7,40})` \|/m);
     const start = Date.parse(row?.[1]), edited = Date.parse(edit.editedAt);
     if (!row || !head.startsWith(row[2]) || !Number.isFinite(start) || !Number.isFinite(edited) ||
         start > edited || edited - start > 300_000) {
-      return invalid('A current-head running revision has unsupported task-start evidence.');
+      return ambiguous('A current-head running revision has unsupported task-start evidence; a fresh head is required.');
     }
     starts.push({ start, edited });
   }
+  if (!starts.length) return invalid('The native task start is unavailable.');
   if (starts.length !== 1 || starts.some(item => item.edited > issued)) {
-    return invalid('Native task starts are missing or ambiguous for this head.');
+    return ambiguous('Native task history may hide another pending task; a fresh head is required.');
   }
   const started = starts[0].start;
   const tasks = new Set(relevant.map(candidate => candidate.body.match(
     /^\[View security finding report\]\(https:\/\/chatgpt\.com\/codex\/(?:cloud\/)?tasks\/([a-zA-Z0-9_-]+)\)$/m)?.[1]));
-  if (tasks.size !== 1 || tasks.has(undefined) || relevant.some(candidate => Date.parse(candidate.created_at) < started)) {
-    return invalid('Native receipts cannot be correlated to one unambiguous task start.');
+  if (tasks.size !== 1 || relevant.some(candidate => Date.parse(candidate.created_at) < started)) {
+    return ambiguous('Native receipts cannot be correlated to one task start; a fresh head is required.');
   }
+  if (tasks.has(undefined)) return invalid('The native receipt task identity is unavailable.');
   for (const candidate of relevant) {
     const sha = candidate.body.match(/^\*\*Reviewed commit:\*\* `([0-9a-f]{10,40})`$/m)?.[1];
     const task = candidate.body.match(/^\[View security finding report\]\((https:\/\/chatgpt\.com\/codex\/(?:cloud\/)?tasks\/[a-zA-Z0-9_-]+)\)$/m)?.[1];
@@ -486,7 +489,7 @@ async function snapshot({ github, context, expectedHead, artifactReader = readAr
   // Known incomplete/finding results remain blocked. Invalid/unavailable provider
   // evidence can still use an explicitly verified independent human contingency.
   if (codex?.state === 'codex_local_incomplete') return codex;
-  if (native?.state === 'codex_native_incomplete') return native;
+  if (['codex_native_incomplete', 'codex_native_ambiguous'].includes(native?.state)) return native;
   if (native?.state === 'codex_native_context_invalid') return codex?.allowed ? codex : native;
   if (['codex_native_context_pending', 'codex_native_context_unavailable'].includes(native?.state)) {
     if (codex?.allowed) return codex;
@@ -575,7 +578,7 @@ async function enforce({ github, context, core, expectedHead, timeoutMs = 20 * 6
     }
     if (result.state !== previous) core.info(`Security review: ${result.state}. ${result.reason}`);
     previous = result.state;
-    if (result.allowed || ['stale_head', 'codex_rejected', 'codex_local_incomplete', 'codex_evidence_invalid', 'manual_review_required', 'claude_failed', 'triage_failed', 'scope_unavailable', 'evidence_unavailable', 'codex_native_incomplete', 'codex_native_invalid', 'codex_native_context_invalid', 'codex_native_context_unavailable', 'stale_base'].includes(result.state)) break;
+    if (result.allowed || ['stale_head', 'codex_rejected', 'codex_local_incomplete', 'codex_evidence_invalid', 'manual_review_required', 'claude_failed', 'triage_failed', 'scope_unavailable', 'evidence_unavailable', 'codex_native_incomplete', 'codex_native_ambiguous', 'codex_native_invalid', 'codex_native_context_invalid', 'codex_native_context_unavailable', 'stale_base'].includes(result.state)) break;
     if (now() >= deadline) { result = blocked('timed_out', `Timed out while ${result.state}: ${result.reason}`); break; }
     await wait(Math.min(intervalMs, deadline - now()));
   } while (true);

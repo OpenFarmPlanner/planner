@@ -655,7 +655,7 @@ test('native task start requires an authentic running revision for this full hea
     f => { f.summary.history[0].diff = f.summary.history[0].diff.replace('**Security Review**', '**Code Review**'); },
   ]) {
     const f = nativeFixture(); mutate(f);
-    assert.equal((await verifiedNativeCodexReview(f.args)).state, 'codex_native_invalid');
+    assert.equal((await verifiedNativeCodexReview(f.args)).allowed, false);
   }
 });
 
@@ -800,7 +800,7 @@ test('an older completion cannot be rebound to a later same-head task start', as
   f.comments.push({ ...structuredClone(f.receipt), id: 19, node_id: 'pre-context-receipt',
     html_url: 'https://github.com/owner/repo/pull/1#issuecomment-19',
     created_at: '2026-11-15T07:23:00Z', updated_at: '2026-11-15T07:23:00Z' });
-  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_invalid');
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_ambiguous');
 });
 
 test('overlapping same-head tasks cannot assign a later start to an earlier receipt', async () => {
@@ -810,7 +810,7 @@ test('overlapping same-head tasks cannot assign a later start to an earlier rece
   earlier.editedAt = '2026-11-15T07:23:01Z';
   f.summary.created_at = earlier.editedAt;
   f.summary.history.push(earlier);
-  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_invalid');
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_ambiguous');
 });
 
 test('duplicate running revisions remain ambiguous even with identical start and edit timestamps', async () => {
@@ -818,8 +818,17 @@ test('duplicate running revisions remain ambiguous even with identical start and
     const f = nativeFixture(); const second = structuredClone(f.summary.history[0]);
     if (!tiedEdit) second.editedAt = '2026-11-15T07:25:02Z';
     f.summary.history.push(second);
-    assert.equal((await verifiedNativeCodexReview(f.args)).state, 'codex_native_invalid');
+    assert.equal((await verifiedNativeCodexReview(f.args)).state, 'codex_native_ambiguous');
   }
+});
+
+test('an existing human contingency cannot override an ambiguous potentially pending native task', async () => {
+  const f = nativeSnapshotFixture();
+  f.summary.history.push(structuredClone(f.summary.history[0]));
+  f.comments.push(reportComment, approvalComment());
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_ambiguous');
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD,
+    codexVerifier: async () => ({ allowed: true, state: 'codex_local_completed' }) })).state, 'codex_native_ambiguous');
 });
 
 test('unsupported earlier running revisions cannot disappear from task correlation', async () => {
@@ -853,7 +862,7 @@ test('distinct receipt tasks are ambiguous even if only one start is visible', a
   f.comments.push({ ...structuredClone(f.receipt), id: 19, node_id: 'second-task',
     html_url: 'https://github.com/owner/repo/pull/1#issuecomment-19',
     body: f.receipt.body.replace('task_review', 'task_other') });
-  assert.equal((await verifiedNativeCodexReview(f.args)).state, 'codex_native_invalid');
+  assert.equal((await verifiedNativeCodexReview(f.args)).state, 'codex_native_ambiguous');
 });
 
 test('task history must be complete across pages and retains snapshot provenance', async () => {
