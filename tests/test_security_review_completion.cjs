@@ -449,6 +449,34 @@ test('running native review is polled until completion without a CI rerun', asyn
   assert.equal(result.state, 'codex_native_completed');
 });
 
+test('a completed summary waits for its publishing receipt while stale evidence remains invalid', async () => {
+  const f = nativeFixture(); f.comments.pop();
+  assert.equal((await verifiedNativeCodexReview(f.args)).state, 'codex_native_pending');
+  const updated = f.summary.updated_at;
+  f.summary.updated_at = '2026-11-14T07:25:21Z';
+  assert.equal((await verifiedNativeCodexReview(f.args)).state, 'codex_native_invalid');
+  f.summary.updated_at = updated;
+  let inspections = 0, time = 0;
+  const result = await enforce({ github: {}, context: { repo: { owner: 'owner', repo: 'repo' } },
+    expectedHead: HEAD, now: () => time, wait: async ms => { time += ms; }, intervalMs: 10,
+    timeoutMs: 100, core: { info() {}, setOutput() {}, setFailed() { assert.fail('must wait for publication'); },
+      summary: { addHeading() { return this; }, addRaw() { return this; }, async write() {} } },
+    inspect: async () => { if (++inspections === 2) f.comments.push(f.receipt);
+      return verifiedNativeCodexReview(f.args); } });
+  assert.equal(inspections, 2);
+  assert.equal(time, 10);
+  assert.equal(result.state, 'codex_native_completed');
+});
+
+test('receipt publication cannot be bypassed with an earlier contingency or signed result', async () => {
+  const f = nativeSnapshotFixture(); f.comments.pop();
+  f.summary.updated_at = new Date().toISOString();
+  f.comments.push(reportComment, approvalComment());
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_pending');
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD,
+    codexVerifier: async () => ({ allowed: true, state: 'codex_local_completed' }) })).state, 'codex_native_pending');
+});
+
 
 test('unverifiable provider evidence preserves the explicit independent human contingency', async () => {
   for (const mutate of [

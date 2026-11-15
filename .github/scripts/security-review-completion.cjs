@@ -183,7 +183,12 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
   // two independent "latest" records: every observed receipt for this head must
   // be clean, regardless of overlapping tasks or their completion order.
   const receipt = relevant[0];
-  if (!receipt) return invalid('No native security result receipt for the current head is available.');
+  if (!receipt) {
+    const age = now - Date.parse(summary.updated_at);
+    return Number.isFinite(age) && age >= -300_000 && age <= 300_000
+      ? blocked('codex_native_pending', 'The completed native review is still publishing its result receipt.')
+      : invalid('No recent native security result receipt for the current head is available.');
+  }
   const checked = [summary, ...relevant];
   if (checked.length > 100) return invalid('Too many native receipts to verify in one consistent snapshot.');
 

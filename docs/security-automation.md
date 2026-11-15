@@ -303,6 +303,9 @@ contingencies cannot override it. An edit timestamp alone
 cannot establish task start. Missing or unsupported history cannot authorize
 native completion. A queued context
 workflow's earlier creation time and a later receipt are insufficient. Missing
+receipts remain pending during the five-minute publication/correlation window
+after an authenticated completed summary, within the gate's existing timeout.
+Older completed summaries without receipts remain invalid. Missing
 context records stay pending. Unavailable context may use an optional human
 contingency only when its approval and independent manual report explicitly
 include `Reviewed base: FULL_BASE_SHA` for the current base, in addition to the
