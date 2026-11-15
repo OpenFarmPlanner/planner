@@ -935,7 +935,8 @@ test('unsupported earlier running revisions cannot disappear from task correlati
     if (kind === 'row') earlier.diff = earlier.diff.replace('**Security Review**', '**Unknown**');
     if (kind === 'delay') earlier.diff = earlier.diff.replaceAll('07:23:00Z', '07:15:00Z');
     if (kind === 'metadata') earlier.diff = earlier.diff.replace('"status":"running"', '"status":"completed"');
-    if (kind === 'malformed') earlier.diff = earlier.diff.replace(/<!-- codex-security-review:v1 [^\n]+/, '<!-- codex-security-review:v1 {broken} -->');
+    if (kind === 'malformed') earlier.diff = earlier.diff.split('\n').map(line => line.startsWith('<!-- codex-security-review:v1 ')
+      ? '<!-- codex-security-review:v1 {broken} -->' : line).join('\n');
     if (kind === 'submillisecond') {
       f.summary.created_at = earlier.editedAt = '2026-11-15T07:25:01Z';
       earlier.diff = earlier.diff.replaceAll('07:23:00Z', '07:25:00.0001Z');
@@ -951,8 +952,9 @@ test('visible same-head running rows remain evidence when both hidden markers ar
     earlier.diff = earlier.diff.replaceAll('07:25:00Z', '07:23:00Z');
     earlier.editedAt = '2026-11-15T07:23:01Z'; f.summary.created_at = earlier.editedAt;
     if (kind === 'unsupported') earlier.diff = earlier.diff.replaceAll(':v1 ', ':v2 ');
-    else earlier.diff = earlier.diff.replace(/<!-- codex-(?:security-review|review-state):v1 [^\n]+/g,
-      '<!-- unusable provider metadata -->');
+    else earlier.diff = earlier.diff.split('\n').map(line =>
+      ['<!-- codex-security-review:v1 ', '<!-- codex-review-state:v1 '].some(prefix => line.startsWith(prefix))
+        ? '<!-- unusable provider metadata -->' : line).join('\n');
     if (kind === 'row-format') earlier.diff = earlier.diff.replace('🔒', '🔐');
     if (kind === 'other-head') earlier.diff = earlier.diff.replaceAll(HEAD.slice(0, 7), OLD.slice(0, 7));
     f.summary.history.push(earlier); f.comments.push(reportComment, approvalComment());
@@ -964,9 +966,9 @@ test('visible same-head running rows remain evidence when both hidden markers ar
 test('authenticated visible running summaries block even when current hidden markers are unusable', async () => {
   for (const kind of ['missing', 'malformed', 'unsupported']) {
     const f = nativeSnapshotFixture(); f.summary.body = f.summary.history[0].diff;
-    if (kind === 'missing') f.summary.body = f.summary.body.replace(/^<!--[^\n]+-->\n?/gm, '');
-    if (kind === 'malformed') f.summary.body = f.summary.body.replace(/<!-- codex-[^\n]+-->/g,
-      '<!-- codex-security-review:v1 {broken} -->');
+    if (kind === 'missing') f.summary.body = f.summary.body.split('\n').filter(line => !line.startsWith('<!-- codex-')).join('\n');
+    if (kind === 'malformed') f.summary.body = f.summary.body.split('\n').map(line => line.startsWith('<!-- codex-')
+      ? '<!-- codex-security-review:v1 {broken} -->' : line).join('\n');
     if (kind === 'unsupported') f.summary.body = f.summary.body.replaceAll(':v1 ', ':v2 ');
     f.comments.push(reportComment, approvalComment());
     assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_pending', kind);
