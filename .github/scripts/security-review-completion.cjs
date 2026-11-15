@@ -228,8 +228,10 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
     let previous;
     try { previous = JSON.parse(edit.diff.match(marker)?.[1]); } catch { previous = null; }
     const previousState = securityState({ body: edit.diff });
+    const visibleRunning = edit.diff.match(/^\|[^\n]*Security Review[^\n]*\bRunning\b[^\n]*\| `([0-9a-f]{7,40})` \|/m);
     if (!(previous?.headSha === head && previous.status === 'running') &&
-        !(previousState?.commit_sha === head && previousState.status === 'running')) continue;
+        !(previousState?.commit_sha === head && previousState.status === 'running') &&
+        !(visibleRunning && head.startsWith(visibleRunning[1]))) continue;
     if (previous?.repository !== evidence.repository || previous.pullRequestNumber !== evidence.pullRequestNumber ||
         previous.headSha !== head || previous.status !== 'running' ||
         previousState?.commit_sha !== head || previousState.status !== 'running') {

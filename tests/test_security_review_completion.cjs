@@ -894,6 +894,22 @@ test('unsupported earlier running revisions cannot disappear from task correlati
   }
 });
 
+test('visible same-head running rows remain evidence when both hidden markers are unusable', async () => {
+  for (const kind of ['malformed', 'unsupported', 'row-format', 'other-head']) {
+    const f = nativeSnapshotFixture(); const earlier = structuredClone(f.summary.history[0]);
+    earlier.diff = earlier.diff.replaceAll('07:25:00Z', '07:23:00Z');
+    earlier.editedAt = '2026-11-15T07:23:01Z'; f.summary.created_at = earlier.editedAt;
+    if (kind === 'unsupported') earlier.diff = earlier.diff.replaceAll(':v1 ', ':v2 ');
+    else earlier.diff = earlier.diff.replace(/<!-- codex-(?:security-review|review-state):v1 [^\n]+/g,
+      '<!-- unusable provider metadata -->');
+    if (kind === 'row-format') earlier.diff = earlier.diff.replace('🔒', '🔐');
+    if (kind === 'other-head') earlier.diff = earlier.diff.replaceAll(HEAD.slice(0, 7), OLD.slice(0, 7));
+    f.summary.history.push(earlier); f.comments.push(reportComment, approvalComment());
+    const result = await snapshot({ ...f.args, expectedHead: HEAD });
+    assert.equal(result.state, kind === 'other-head' ? 'codex_native_completed' : 'codex_native_ambiguous', kind);
+  }
+});
+
 test('second-precision artifact timestamps cannot certify a task in the same timestamp second', async () => {
   const f = nativeSnapshotFixture();
   f.contextArtifacts[0].created_at = '2026-11-15T07:25:00Z';
