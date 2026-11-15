@@ -222,15 +222,22 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
     let previous;
     try { previous = JSON.parse(edit.diff.match(marker)?.[1]); } catch { continue; }
     const previousState = securityState({ body: edit.diff });
+    if (!(previous?.headSha === head && previous.status === 'running') &&
+        !(previousState?.commit_sha === head && previousState.status === 'running')) continue;
     if (previous?.repository !== evidence.repository || previous.pullRequestNumber !== evidence.pullRequestNumber ||
         previous.headSha !== head || previous.status !== 'running' ||
-        previousState?.commit_sha !== head || previousState.status !== 'running') continue;
+        previousState?.commit_sha !== head || previousState.status !== 'running') {
+      return invalid('A current-head running revision has inconsistent task metadata.');
+    }
     const row = edit.diff.match(/^\| 🔒 \*\*Security Review\*\* \| 🔄 \*\*Running\*\* since <relative-time datetime="([^"]+)">[^<]+<\/relative-time> \| `([0-9a-f]{7,40})` \|/m);
     const start = Date.parse(row?.[1]), edited = Date.parse(edit.editedAt);
-    if (row && head.startsWith(row[2]) && Number.isFinite(start) && Number.isFinite(edited) &&
-        start <= edited && edited - start <= 300_000) starts.push({ start, edited });
+    if (!row || !head.startsWith(row[2]) || !Number.isFinite(start) || !Number.isFinite(edited) ||
+        start > edited || edited - start > 300_000) {
+      return invalid('A current-head running revision has unsupported task-start evidence.');
+    }
+    starts.push({ start, edited, identity: row[1] });
   }
-  if (new Set(starts.map(item => item.start)).size !== 1 || starts.some(item => item.edited > issued)) {
+  if (new Set(starts.map(item => item.identity)).size !== 1 || starts.some(item => item.edited > issued)) {
     return invalid('Native task starts are missing or ambiguous for this head.');
   }
   const started = starts[0].start;
@@ -332,7 +339,7 @@ async function verifiedNativeContext({ github, context, head, base, scope, revie
     earliest = Math.min(earliest, created); count++;
   }
   if (!count) return blocked('codex_native_context_pending', 'Waiting for the trusted base/scope context producer.');
-  if (!Number.isFinite(Date.parse(reviewStartTime)) || earliest > Date.parse(reviewStartTime)) {
+  if (!Number.isFinite(Date.parse(reviewStartTime)) || earliest + 1000 > Date.parse(reviewStartTime)) {
     return invalid('The native task started before its trusted review context.');
   }
   return null;

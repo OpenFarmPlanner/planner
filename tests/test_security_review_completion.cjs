@@ -813,6 +813,31 @@ test('overlapping same-head tasks cannot assign a later start to an earlier rece
   assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_invalid');
 });
 
+test('unsupported earlier running revisions cannot disappear from task correlation', async () => {
+  for (const kind of ['row', 'delay', 'metadata', 'submillisecond']) {
+    const f = nativeFixture(); const earlier = structuredClone(f.summary.history[0]);
+    earlier.diff = earlier.diff.replaceAll('07:25:00Z', '07:23:00Z');
+    earlier.editedAt = '2026-11-15T07:23:01Z';
+    f.summary.created_at = earlier.editedAt;
+    if (kind === 'row') earlier.diff = earlier.diff.replace('**Security Review**', '**Unknown**');
+    if (kind === 'delay') earlier.diff = earlier.diff.replaceAll('07:23:00Z', '07:15:00Z');
+    if (kind === 'metadata') earlier.diff = earlier.diff.replace('"status":"running"', '"status":"completed"');
+    if (kind === 'submillisecond') {
+      f.summary.created_at = earlier.editedAt = '2026-11-15T07:25:01Z';
+      earlier.diff = earlier.diff.replaceAll('07:23:00Z', '07:25:00.0001Z');
+    }
+    f.summary.history.push(earlier);
+    assert.equal((await verifiedNativeCodexReview(f.args)).allowed, false, kind);
+  }
+});
+
+test('second-precision artifact timestamps cannot certify a task in the same timestamp second', async () => {
+  const f = nativeSnapshotFixture();
+  f.contextArtifacts[0].created_at = '2026-11-15T07:25:00Z';
+  f.summary.history[0].diff = f.summary.history[0].diff.replaceAll('07:25:00Z', '07:25:00.500Z');
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_context_invalid');
+});
+
 test('distinct receipt tasks are ambiguous even if only one start is visible', async () => {
   const f = nativeFixture();
   f.comments.push({ ...structuredClone(f.receipt), id: 19, node_id: 'second-task',
