@@ -125,6 +125,8 @@ class GuestDemoApiTests(TestCase):
             ('', 'pt-BR,pt;q=0.9', 'pt'),
             ('it', 'en', 'it'),
             ('', 'it-CH,it;q=0.9', 'it'),
+            ('nl', 'en', 'nl'),
+            ('', 'nl-BE,nl;q=0.9', 'nl'),
         ):
             with self.subTest(query=query, header=header):
                 client = APIClient()
@@ -142,9 +144,11 @@ class GuestDemoApiTests(TestCase):
                 )
 
     def test_guest_demo_service_normalizes_ui_independently_of_content(self) -> None:
-        session = create_guest_demo_session(language_code='pt-BR')
-        self.assertEqual(session.user.project_settings.ui_language, 'pt')
-        self.assertEqual(session.project.name, DEMO_PROJECT_NAME_EN)
+        for tag, expected in (('pt-BR', 'pt'), ('it-CH', 'it'), ('nl-BE', 'nl')):
+            with self.subTest(tag=tag):
+                session = create_guest_demo_session(language_code=tag)
+                self.assertEqual(session.user.project_settings.ui_language, expected)
+                self.assertEqual(session.project.name, DEMO_PROJECT_NAME_EN)
 
     def test_each_start_receives_its_own_workspace(self) -> None:
         first = self.client.post(

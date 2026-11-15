@@ -14,7 +14,7 @@ import {
 import cases from '../../../tests/fixtures/timing_windows.json';
 
 type FixtureWindow = Omit<CropTimingWindow, 'kind'>;
-const LANGUAGES = ['de', 'en', 'fr', 'es', 'it', 'pt'] as const;
+const LANGUAGES = ['de', 'en', 'fr', 'es', 'it', 'pt', 'nl'] as const;
 
 const toWindow = (window: FixtureWindow): CropTimingWindow => ({ kind: 'direct_sowing', ...window } as CropTimingWindow);
 

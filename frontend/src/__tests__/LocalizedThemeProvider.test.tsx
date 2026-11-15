@@ -45,3 +45,22 @@ describe('European Portuguese built-in controls and formatting', () => {
     }
   });
 });
+
+describe('Dutch built-in controls and formatting', () => {
+  it('uses the nl-NL MUI core and DataGrid translations', async () => {
+    await i18n.changeLanguage('nl');
+    render(<LocalizedThemeProvider><Pagination count={3} /></LocalizedThemeProvider>);
+    expect(screen.getByRole('button', { name: 'Ga naar volgende pagina' })).toBeEnabled();
+    expect(getDataGridLocaleText().columnMenuSortAsc).toBe('Oplopend sorteren');
+    await act(async () => { await i18n.changeLanguage('en'); });
+  });
+
+  it('formats nl and nl-BE with the canonical nl-NL variant', () => {
+    for (const language of ['nl', 'nl-NL', 'nl-BE']) {
+      const locale = resolveLocaleFromLanguage(language);
+      expect(locale).toBe('nl-NL');
+      expect(new Intl.NumberFormat(locale).format(12345.5)).toBe('12.345,5');
+      expect(new Intl.DateTimeFormat(locale, { month: 'long' }).format(new Date(2026, 2, 1))).toBe('maart');
+    }
+  });
+});

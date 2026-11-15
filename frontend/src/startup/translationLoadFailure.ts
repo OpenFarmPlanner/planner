@@ -12,6 +12,7 @@ const MESSAGE_LINES = [
   'No se pudo cargar OpenFarmPlanner. Comprueba tu conexión y vuelve a cargar la página.',
   'Impossibile caricare OpenFarmPlanner. Verifica la connessione e ricarica la pagina.',
   'Não foi possível carregar o OpenFarmPlanner. Verifique a ligação e recarregue a página.',
+  'OpenFarmPlanner kon niet worden geladen. Controleer je verbinding en laad de pagina opnieuw.',
 ];
 
 export function handleTranslationLoadFailure(error: unknown): void {

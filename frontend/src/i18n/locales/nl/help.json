@@ -1,0 +1,289 @@
+{
+  "showTooltip": "Hulp tonen",
+  "title": "Hulp",
+  "globalTitle": "Overzicht: zo werkt OpenFarmPlanner",
+  "heading": "Zo werkt OpenFarmPlanner",
+  "intro": "OpenFarmPlanner bestaat uit verschillende samenwerkende pagina's:",
+  "sections": [
+    {
+      "title": "Overzicht",
+      "points": [
+        "Bekijk komende taken voor zaaien, uitplanten, opkweek en oogst in één oogopslag."
+      ]
+    },
+    {
+      "title": "Teeltoppervlakken",
+      "points": [
+        "Maak hier percelen en bedden. Voeg extra locaties toe als je die nodig hebt."
+      ]
+    },
+    {
+      "title": "Gewassen",
+      "points": [
+        "Voer hier je gewasgegevens in of gebruik de gewassenbibliotheek."
+      ]
+    },
+    {
+      "title": "Teeltplan",
+      "points": [
+        "Plan welk gewas wanneer op welk bed wordt geteeld."
+      ]
+    },
+    {
+      "title": "Kalender",
+      "points": [
+        "Bekijk hier de tijdlijn van je teelten."
+      ]
+    },
+    {
+      "title": "Opbrengsten",
+      "points": [
+        "Bekijk de verwachte oogsthoeveelheden van je teelten."
+      ]
+    },
+    {
+      "title": "Zaad",
+      "points": [
+        "Bekijk hoeveel zaad je voor je teelten nodig hebt."
+      ]
+    },
+    {
+      "title": "Plantgoed",
+      "points": [
+        "Bekijk hoeveel plantgoed je moet bestellen voor teelten met ingekochte planten."
+      ]
+    },
+    {
+      "title": "Leveranciers",
+      "points": [
+        "Leg hier je leveranciers vast om ze aan gewassen te kunnen koppelen."
+      ]
+    },
+    {
+      "title": "Seizoenen",
+      "points": [
+        "Teelten horen altijd bij een seizoen. Gebruik de seizoenskeuze om het actieve seizoen te wisselen of een nieuw seizoen te maken."
+      ]
+    }
+  ],
+  "workflowTitle": "Werkwijze",
+  "workflow": "Teeltoppervlakken → Gewassen → Teeltplan → Teeltkalender → Zaad- en plantgoedbehoefte",
+  "pages": {
+    "dashboard": {
+      "title": "Hulp: Overzicht",
+      "intro": "De instellingschecklist leidt je door percelen, bedden, gewassen en teelten. Het taakoverzicht toont opgeslagen taken voor het actieve seizoen onder Te doen, Bezig en Voltooid. Filter op periode, gewas, perceel of verantwoordelijke. De kengetallen tellen onvoltooide taken. Op grote schermen kun je kaarten verslepen, op aanraakapparaten nadat je ze kort ingedrukt houdt. Het gewas en perceel op een kaart linken naar hun details. Via het kaartmenu kun je de status ook met het toetsenbord wijzigen. Kleine schermen tonen een compacte lijst."
+    },
+    "locations": {
+      "title": "Hulp: Locaties",
+      "intro": "Beheer hier de locaties in je project. Ze vormen het hoogste niveau van je teeltoppervlakstructuur.",
+      "sections": [
+        {
+          "title": "Zo gebruik je het",
+          "points": [
+            "Maak locaties en voeg coördinaten, adres, bodemsoort of notities toe.",
+            "Bewerk bestaande locaties via de lijstacties."
+          ]
+        },
+        {
+          "title": "Samenhang met andere pagina's",
+          "points": [
+            "Op de pagina Teeltoppervlakken voeg je per locatie percelen en bedden toe.",
+            "Taken worden uit de teelten afgeleid."
+          ]
+        }
+      ],
+      "symbolsTitle": "Pictogrammen en bediening",
+      "symbols": {
+        "add": "Nieuwe locatie toevoegen",
+        "edit": "Locatie bewerken",
+        "delete": "Locatie verwijderen"
+      }
+    },
+    "fields": {
+      "title": "Hulp: Percelen",
+      "intro": "Beheer hier percelen binnen een locatie. Een perceel groepeert meerdere bedden.",
+      "sections": [
+        {
+          "title": "Zo gebruik je het",
+          "points": [
+            "Gebruik ‘Nieuw’ om een perceel te maken.",
+            "Dubbelklik op een cel, druk op Enter of begin met typen om een item te bewerken. Op aanraakapparaten is één tik voldoende."
+          ]
+        }
+      ]
+    },
+    "beds": {
+      "title": "Hulp: Bedden",
+      "intro": "Beheer hier je bedden. Elk bed hoort bij een perceel en kan later in teelten worden gebruikt.",
+      "sections": [
+        {
+          "title": "Zo gebruik je het",
+          "points": [
+            "Gebruik ‘Nieuw’ om een bed te maken.",
+            "Dubbelklik op een cel, druk op Enter of begin met typen om een item te bewerken. Op aanraakapparaten is één tik voldoende."
+          ]
+        },
+        {
+          "title": "Samenhang met andere pagina's",
+          "points": [
+            "In het teeltplan wijs je gewassen aan specifieke bedden toe."
+          ]
+        }
+      ]
+    },
+    "areas": {
+      "title": "Hulp: Teeltoppervlakken - lijstweergave",
+      "intro": "Beheer hier de oppervlakstructuur van je bedrijf, van locaties via percelen tot afzonderlijke bedden.\n\nNieuwe locaties, percelen en bedden voeg je toe met het {{addIcon}} dat verschijnt als je de muisaanwijzer boven een element houdt.\n\nItems kunnen rechtstreeks in de tabel worden bewerkt. Met het {{createPlanIcon}} bij een bed maak je er meteen een teelt voor. Verdere acties, zoals hernoemen of verwijderen, vind je in het contextmenu via de rechtermuisknop.\n\nIn het contextmenu van een perceel maakt ‘Meerdere bedden toevoegen’ in één keer bedden van dezelfde grootte. ‘Perceel dupliceren’ kopieert het perceel samen met de bedden.",
+      "symbolsTitle": "Pictogrammen en bediening",
+      "symbols": {
+        "expandToggle": "Onderdeel uit- of inklappen",
+        "add": "Nieuw element maken",
+        "delete": "Element verwijderen",
+        "createPlan": "Teelt voor dit bed maken",
+        "dimensions": "Lengte- en breedterichting voor de grafische weergave instellen"
+      }
+    },
+    "crops": {
+      "title": "Hulp: Gewassen",
+      "intro": "Beheer hier gewassen en hun belangrijkste eigenschappen. Deze gegevens worden gebruikt in het teeltplan, de kalender en de zaadbehoefte.",
+      "sections": [
+        {
+          "title": "Zo gebruik je het",
+          "points": [
+            "Kies een gewas om details te bekijken of te bewerken, of om er teelten voor te maken.",
+            "Voeg rassen aan een gewas toe. Wat je bij een ras niet invult, wordt van het gewas overgenomen.",
+            "Het {{moreIcon}} opent verdere acties, zoals versies, exporteren of het geselecteerde gewas verwijderen.",
+            "Gebruik ‘Importeren/exporteren’ om gewassen als spreadsheet uit te wisselen. In het importvenster kun je een sjabloon downloaden.",
+            "Deel je eigen gewassen via ‘Delen met de bibliotheek’ bij het gewas, of met het pictogram naast het gewas in de gewassenlijst. In de gewassenbibliotheek vind je gewassen van anderen die je in je project kunt importeren."
+          ]
+        },
+        {
+          "title": "Samenhang met andere pagina's",
+          "points": [
+            "In het teeltplan wijs je gewassen aan specifieke bedden en periodes toe.",
+            "De plantenfamilie en rotatiepauze onder ‘Vruchtwisselingseigenschappen’ worden gebruikt voor de vruchtwisselingscontrole in het teeltplan.",
+            "De teeltkalender, zaadbehoefte en plantgoedbehoefte gebruiken deze gegevens voor tijd- en hoeveelheidsplanning."
+          ]
+        }
+      ],
+      "symbolsTitle": "Pictogrammen en bediening",
+      "symbols": {
+        "add": "Gewas of ras toevoegen",
+        "createPlan": "Teelt voor dit gewas maken",
+        "edit": "Gewasgegevens bewerken",
+        "more": "Meer acties openen",
+        "libraryNotLinked": "Nog niet in de gewassenbibliotheek: klik om te delen",
+        "libraryUpToDate": "Komt overeen met de huidige versie in de gewassenbibliotheek",
+        "libraryPull": "Nieuwere versie in de gewassenbibliotheek: bekijk de wijzigingen en neem ze over",
+        "libraryPush": "Je gewas wijkt af van de gewassenbibliotheek: deel de waarden of bewaar ze lokaal",
+        "libraryPending": "Je wijzigingen aan de gewassenbibliotheek wachten op goedkeuring",
+        "pinned": "Waarde lokaal vastgezet: wordt niet overschreven door updates uit de gewassenbibliotheek"
+      }
+    },
+    "cropLibrary": {
+      "title": "Hulp: Gewassenbibliotheek",
+      "intro": "De gewassenbibliotheek bevat door de gemeenschap gepubliceerde gewassen die in meerdere projecten kunnen worden gebruikt.",
+      "sections": [
+        {
+          "title": "Samenwerking",
+          "points": [
+            "Aangemelde gebruikers kunnen openbare gewassen samen bewerken.",
+            "Elke wijziging wordt als versie opgeslagen met tijd en auteur.",
+            "Oudere versies kunnen worden hersteld zonder de versiegeschiedenis te verwijderen.",
+            "Onder ‘Discussies’ kun je met anderen over een item praten."
+          ]
+        },
+        {
+          "title": "Gewassen gebruiken",
+          "points": [
+            "Importeer bruikbare gewassen als je eigen projectkopie in het huidige project.",
+            "Als een geïmporteerd gewas in de gewassenbibliotheek verandert, zie je dat bij je gewas en beslis je welke waarden je overneemt.",
+            "Je kunt je eigen waarden lokaal vastzetten. Ze worden dan niet overschreven door updates uit de gewassenbibliotheek."
+          ]
+        }
+      ]
+    },
+    "plantingPlans": {
+      "title": "Hulp: Teeltplan",
+      "intro": "Plan welk gewas wanneer op welk bed wordt geteeld.\n\nItems kunnen rechtstreeks in de tabel worden gemaakt en bewerkt. De teelten van het actieve seizoen worden getoond. Gebruik het zoekveld en ‘Filteren’ om items snel te vinden. Klik met de rechtermuisknop om een teelt te dupliceren.\n\nZaaidatum en plantdatum zijn gekoppeld: als je de ene wijzigt, volgt de andere. Koop je plantgoed in, kies dan de teeltwijze ‘Uitplanten met ingekochte planten’. Deze teelten verschijnen dan bij de plantgoedbehoefte in plaats van de zaadbehoefte.\n\nBij het toewijzen van een bed wordt de vruchtwisseling gecontroleerd. Als dezelfde plantenfamilie te vroeg op het bed terugkomt, verschijnt een melding. ‘Geschikte bedden tonen’ geeft bedden weer die in de periode vrij zijn en bij de vruchtwisseling passen.",
+      "symbolsTitle": "Pictogrammen en bediening",
+      "symbols": {
+        "add": "Nieuwe teelt maken",
+        "mobileAdd": "Snel een nieuw item op je telefoon maken",
+        "notes": "Notities en bijlagen voor een item openen",
+        "edit": "Waarden rechtstreeks in de tabel wijzigen"
+      }
+    },
+    "calendar": {
+      "title": "Hulp: Teeltkalender",
+      "intro": "De teeltkalender toont de tijdlijn van je teelten. Daarmee herken je bezetting, opkweekfasen, oogstperiodes en mogelijke overlappingen.\n\nHoud de muisaanwijzer boven items om meer details te zien.\n\nMet ‘Periode verschuiven’ sleep je een teelt naar links of rechts. Alle fasen van de teelt verschuiven samen.",
+      "symbolsTitle": "Pictogrammen en bediening",
+      "symbols": {
+        "tabs": "Wisselen tussen bezetting en opkweek",
+        "tooltip": "Aanvullende details tonen"
+      }
+    },
+    "seedDemand": {
+      "title": "Hulp: Zaadbehoefte",
+      "intro": "Hier zie je hoeveel zaad de teelten van het actieve seizoen nodig hebben: voor directe zaai en voor planten die je zelf opkweekt. De hoeveelheid volgt uit de zaaihoeveelheid van het gewas en de geplande oppervlakte.\n\nUitplanten met ingekochte planten valt hier niet onder. Dat vind je bij de plantgoedbehoefte. Wanneer je moet zaaien, zie je in de opkweekweergave van de teeltkalender.",
+      "symbolsTitle": "Pictogrammen en bediening",
+      "symbols": {
+        "supplierSelect": "Leverancier per gewas instellen",
+        "packageInfo": "Aanbevolen verpakkingscombinaties bekijken"
+      }
+    },
+    "youngPlantDemand": {
+      "title": "Hulp: Plantgoedbehoefte",
+      "intro": "Hier zie je hoeveel plantgoed je moet bestellen voor de teelten met ingekochte planten in het actieve seizoen, gegroepeerd op gewas, ras en plantweek. Planten die je zelf opkweekt, hebben in plaats daarvan zaad nodig; zie de zaadbehoefte.\n\nHet aantal volgt uit de oppervlakte van de teelt en de plant- en rijafstand van het gewas. De verliesreserve wordt naar hele planten naar boven afgerond.",
+      "symbolsTitle": "Pictogrammen en bediening",
+      "symbols": {
+        "expand": "Onderliggende teelten tonen of verbergen"
+      }
+    },
+    "suppliers": {
+      "title": "Hulp: Leveranciers",
+      "intro": "Beheer hier zaadleveranciers en hun verpakkingsinformatie.",
+      "symbolsTitle": "Pictogrammen en bediening",
+      "symbols": {
+        "add": "Leverancier toevoegen",
+        "edit": "Leveranciersgegevens bewerken",
+        "delete": "Leverancier verwijderen"
+      }
+    },
+    "graphical": {
+      "title": "Hulp: Teeltoppervlakken - grafische weergave",
+      "intro": "Bekijk hier locaties, percelen en bedden in hun ruimtelijke indeling. De grafische weergave helpt je om de oppervlakstructuur visueel te beoordelen en aan te passen.",
+      "sections": [
+        {
+          "title": "Zo gebruik je het",
+          "points": [
+            "Klik op een bed of perceel om details te tonen.",
+            "Verplaats elementen in de modus ‘Bewerken’.",
+            "Sleep in de lege ruimte om de weergave te verschuiven.",
+            "Zoom met het muiswiel of een knijpbeweging."
+          ]
+        },
+        {
+          "title": "Samenhang met andere pagina's",
+          "points": [
+            "De grafische weergave toont dezelfde oppervlakken als de lijstweergave."
+          ]
+        }
+      ],
+      "symbolsTitle": "Pictogrammen en bediening",
+      "symbols": {
+        "panArrows": "Weergave omhoog, naar links, naar rechts of omlaag verplaatsen",
+        "zoomIn": "Inzoomen",
+        "zoomOut": "Uitzoomen",
+        "fit": "Hele weergave inpassen",
+        "fullscreen": "Volledig scherm tonen",
+        "editToggle": "Indeling bewerken: versleep bedden en percelen van een locatie om ze te verplaatsen en te ordenen"
+      }
+    },
+    "yieldOverview": {
+      "title": "Hulp: Opbrengstoverzicht",
+      "intro": "Het opbrengstoverzicht is een prognose: het verdeelt de verwachte oogst van de teelten van het actieve seizoen over hun oogstperiodes. Het is gebaseerd op de geplande oppervlakte of het aantal planten en de verwachte opbrengst per m² of per plant van het gewas. Werkelijke oogsten worden niet vastgelegd.\n\nBeperk de weergave tot één gewas of wissel onder ‘Weergave’ tussen weken en maanden. Houd de muisaanwijzer boven een balk om de periode, het gewas en de oogsthoeveelheid te zien.",
+      "points": []
+    }
+  }
+}

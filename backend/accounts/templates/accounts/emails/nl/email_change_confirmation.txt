@@ -1,0 +1,11 @@
+{% autoescape off %}Hallo,
+
+bevestig de wijziging van je e-mailadres naar:
+{{ new_email }}
+
+Klik daarvoor op de volgende link:
+
+{{ confirmation_link }}
+
+Als je deze wijziging niet hebt aangevraagd, kun je deze e-mail negeren.
+{% endautoescape %}

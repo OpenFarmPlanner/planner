@@ -1,0 +1,39 @@
+{
+  "bell": {
+    "ariaLabel": "Meldingen",
+    "unreadAriaLabel": "Meldingen ({{unread}} ongelezen)",
+    "title": "Meldingen",
+    "loadError": "De meldingen konden niet worden geladen.",
+    "noUnread": "Geen nieuwe meldingen",
+    "showAll": "Alle meldingen tonen"
+  },
+  "history": {
+    "title": "Alle meldingen",
+    "back": "Terug",
+    "unreadSubtitle": "{{unread}} ongelezen",
+    "emptyTitle": "Nog geen meldingen",
+    "emptyDescription": "Beslissingen over je voorstellen en berichten uit de gewassenbibliotheek verschijnen hier zodra er iets te melden is.",
+    "pageAriaLabel": "Pagina {{page}}",
+    "nextPageAriaLabel": "Volgende pagina",
+    "previousPageAriaLabel": "Vorige pagina"
+  },
+  "markAllRead": {
+    "label": "Alles als gelezen markeren",
+    "nothingUnread": "Geen ongelezen meldingen",
+    "error": "De meldingen konden niet als gelezen worden gemarkeerd."
+  },
+  "messages": {
+    "crop_species_proposal_accepted": "Je voorstel voor de gewassoort ‘{{name}}’ is geaccepteerd.",
+    "crop_species_proposal_rejected": "Je voorstel voor de gewassoort ‘{{name}}’ is afgewezen.",
+    "crop_species_proposal_submitted": "Het nieuwe voorstel voor de gewassoort ‘{{name}}’ wacht op beoordeling.",
+    "moderator_request_submitted": "{{name}} heeft moderatorrechten voor de gewassenbibliotheek aangevraagd.",
+    "public_crop_removed": "Je gepubliceerde gewas ‘{{name}}’ is uit de gewassenbibliotheek verwijderd omdat de gewassoort ‘{{species_name}}’ is afgewezen.",
+    "public_crop_species_relink_cancelled": "De correctie van de gewassoort van ‘{{name}}’ naar ‘{{species_name}}’ is niet toegepast. Controleer het item opnieuw.",
+    "crop_species_reassigned": "De gewassoort van ‘{{crop_name}}’ is gecorrigeerd van ‘{{old_name}}’ naar ‘{{new_name}}’. Gewijzigde overgenomen waarden: {{changes}}.",
+    "public_crop_change_proposal_submitted": "Een bijdrage aan ‘{{name}}’ wacht op beoordeling.",
+    "public_crop_change_proposal_reviewed_approved": "Je bijdrage aan ‘{{name}}’ is goedgekeurd.",
+    "public_crop_change_proposal_reviewed_rejected": "Je bijdrage aan ‘{{name}}’ is afgewezen.",
+    "public_crop_change_proposal_reviewed": "Je bijdrage aan ‘{{name}}’ is beoordeeld.",
+    "public_crop_trade_name_reported": "De handelsnaam ‘{{name}}’ van het ras ‘{{variety}}’ is gemeld."
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "title": "Locaties",
+  "errors": {
+    "load": "Locaties konden niet worden geladen",
+    "save": "De locatie kon niet worden opgeslagen",
+    "delete": "De locatie kon niet worden verwijderd"
+  },
+  "validation": {
+    "nameRequired": "Naam is verplicht",
+    "latitudeRange": "De breedtegraad moet tussen -90 en 90 liggen.",
+    "longitudeRange": "De lengtegraad moet tussen -180 en 180 liggen.",
+    "coordinateFormat": "Voer coördinaten in als ‘breedtegraad, lengtegraad’."
+  },
+  "confirmDelete": "Wil je deze locatie echt verwijderen?",
+  "addButton": "Locatie toevoegen",
+  "editTitle": "Locatie bewerken",
+  "emptyState": {
+    "title": "Nog geen locaties.",
+    "description": "Locaties helpen je om je teeltoppervlakken te structureren, bijvoorbeeld verschillende tuinen of velden."
+  },
+  "openInGoogleMaps": "Openen in Google Maps",
+  "upcomingTasks": "Komende taken",
+  "noUpcomingTasks": "Geen komende taken",
+  "taskTitles": {
+    "sowing": "Zaaien",
+    "planting": "Uitplanten",
+    "propagationStart": "Opkweek starten",
+    "harvestStart": "Oogst begint"
+  },
+  "columns": {
+    "coordinates": "Coördinaten",
+    "latitude": "Breedtegraad",
+    "longitude": "Lengtegraad",
+    "address": "Adres",
+    "description": "Beschrijving",
+    "soilType": "Bodemsoort",
+    "exposure": "Oriëntatie"
+  },
+  "helpers": {
+    "optionalField": "Optioneel",
+    "coordinatesExample": "Voorbeeld: 46.6473, 13.8688"
+  },
+  "soilType": {
+    "sand": "Zand",
+    "loam": "Leem",
+    "clay": "Klei"
+  },
+  "exposure": {
+    "north": "Noord",
+    "south": "Zuid",
+    "east": "Oost",
+    "west": "West",
+    "flat": "Vlak"
+  },
+  "placeholders": {
+    "coordinates": "bijv. 46.6473, 13.8688"
+  }
+}

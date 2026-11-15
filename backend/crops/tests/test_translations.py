@@ -383,6 +383,20 @@ class CropSpeciesApiTest(DRFAPITestCase):
         self.assertEqual(species.translations_by_language()['pt'], 'Nome português de exemplo')
         self.assertEqual(species.localized_name('pt'), ('Nome português de exemplo', 'pt'))
 
+    def test_accepts_optional_dutch_names_and_synonyms_with_a_proposal(self):
+        response = self.client.post(
+            '/openfarmplanner/api/crop-species/',
+            {'name': 'Dutch translation fixture', 'translations': [{
+                'language_code': 'nl', 'common_name': 'Nederlandse voorbeeldnaam',
+                'synonyms': ['Nederlands voorbeeldsynoniem'],
+            }]},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        species = CropSpecies.objects.get(pk=response.data['id'])
+        self.assertEqual(species.translations_by_language()['nl'], 'Nederlandse voorbeeldnaam')
+        self.assertEqual(species.localized_name('nl'), ('Nederlandse voorbeeldnaam', 'nl'))
+
     def test_rejects_an_unsupported_translation_language(self):
         response = self.client.post(
             '/openfarmplanner/api/crop-species/',

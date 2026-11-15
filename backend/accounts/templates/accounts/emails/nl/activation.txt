@@ -1,0 +1,17 @@
+{% autoescape off %}Hallo,
+
+je hebt zojuist een account bij OpenFarmPlanner gemaakt.
+
+Bevestig je registratie via de volgende link:
+
+{{ activation_link }}
+
+OpenFarmPlanner is een webapplicatie met open broncode voor teeltplanning in de groenteteelt.
+
+Als je geen account hebt gemaakt, kun je deze e-mail negeren.
+
+Contact:
+{{ contact_email }}
+
+{{ project_website }}
+{% endautoescape %}

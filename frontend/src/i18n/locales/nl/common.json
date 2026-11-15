@@ -1,0 +1,275 @@
+{
+  "appName": "OpenFarmPlanner",
+  "actions": {
+    "add": "Toevoegen",
+    "edit": "Bewerken",
+    "duplicate": "Dupliceren",
+    "delete": "Verwijderen",
+    "undo": "Ongedaan maken",
+    "copyRow": "Rij kopiëren",
+    "copyTable": "Tabel kopiëren",
+    "save": "Opslaan",
+    "saveRow": "Rij opslaan",
+    "cancelRowEdit": "Bewerken annuleren",
+    "deleteRow": "Rij verwijderen",
+    "cancel": "Annuleren",
+    "reset": "Herstellen",
+    "search": "Zoeken",
+    "close": "Sluiten",
+    "actions": "Acties",
+    "moreOptions": "Meer opties",
+    "moreActions": "Meer acties"
+  },
+  "messages": {
+    "loading": "Laden...",
+    "noData": "Geen gegevens",
+    "error": "Fout",
+    "success": "Gelukt",
+    "rowCopied": "Rij gekopieerd.",
+    "tableCopied": "Tabel gekopieerd.",
+    "copyError": "De gegevens konden niet worden gekopieerd.",
+    "contextMenuTableHint": "Tip: klik met de rechtermuisknop op een rij voor meer acties.",
+    "contextMenuTableHintTouch": "Tip: houd een rij ingedrukt voor meer acties.",
+    "contextMenuHintKeyboard": "Alternatief: de contextmenutoets of Shift+F10.",
+    "tableEditHint": "Dubbelklik, druk op Enter of begin met typen om te bewerken",
+    "tableEditHintDismiss": "Tip verbergen",
+    "confirmation": "Bevestiging",
+    "rowChanged": "Gewijzigd",
+    "unsavedChanges": "Je hebt niet-opgeslagen wijzigingen in de tabel. Klik buiten een rij om ze op te slaan. Wil je echt doorgaan?",
+    "validationErrors": "Er zijn validatiefouten die je moet oplossen voordat je kunt doorgaan. Corrigeer de fouten of annuleer het bewerken (Escape-toets).",
+    "noRows": "Geen items",
+    "noResults": "Geen overeenkomende items gevonden"
+  },
+  "fields": {
+    "name": "Naam",
+    "address": "Adres",
+    "notes": "Notities",
+    "description": "Beschrijving",
+    "project": "Project"
+  },
+  "columns": {
+    "project": "Project"
+  },
+  "hierarchyLevelToggle": {
+    "expandTooltip": "Eén hiërarchieniveau meer tonen",
+    "collapseTooltip": "Eén hiërarchieniveau verbergen"
+  },
+  "project": "Project",
+  "setupActions": {
+    "createField": "Perceel toevoegen",
+    "createBed": "Bed toevoegen",
+    "openAreas": "Teeltoppervlakken openen",
+    "openCropLibrary": "Gewassenbibliotheek openen",
+    "createCrop": "Gewas toevoegen",
+    "createPlan": "Teelt toevoegen"
+  },
+  "notes": {
+    "empty": "Geen notities",
+    "editEmpty": "Notitie toevoegen",
+    "editWithContent": "Notitie bewerken",
+    "compactNoteAndImages": "Notitie en afbeeldingen beschikbaar",
+    "compactNote": "Notitie beschikbaar",
+    "compactImages": "Afbeeldingen beschikbaar",
+    "compactEmpty": "Geen notitie of afbeeldingen beschikbaar",
+    "attachmentsCount_one": "{{count}} foto in notities",
+    "attachmentsCount_other": "{{count}} foto's in notities"
+  },
+  "notesPreview": {
+    "heading": "Notitie",
+    "empty": "Geen notitie beschikbaar",
+    "openNote": "Notitie openen",
+    "loadingImages": "Afbeeldingen laden…",
+    "imagesLoadError": "De afbeeldingen konden niet worden geladen.",
+    "openImageAria": "Foto openen",
+    "moreImagesAria": "Nog {{count}} foto's openen"
+  },
+  "notesDrawer": {
+    "takePhoto": "Foto maken",
+    "selectFromGallery": "Uit galerij kiezen",
+    "uploading": "Uploaden…",
+    "attachmentAlt": "Bijlage",
+    "markdownPlaceholder": "Notities in Markdown…",
+    "imageDialogTitle": "Foto",
+    "attachmentPreviewAlt": "Voorbeeld van bijlage",
+    "cropDialogTitle": "Afbeelding bijsnijden",
+    "cropInstructions": "Teken, verplaats en vergroot of verklein het bijsnijdgebied. Het gebied erbuiten wordt gedimd.",
+    "cropSourceAlt": "Bronafbeelding voor bijsnijden",
+    "backendUnavailable": "Beeldverwerking is momenteel niet beschikbaar op de server. Installeer Pillow en start de backend opnieuw.",
+    "uploadFailed": "Uploaden mislukt. Probeer het opnieuw.",
+    "camera": {
+      "title": "Foto maken",
+      "capture": "Vastleggen",
+      "noSignal": "Er is geen camerabeeld. Mogelijk gebruikt een andere app de camera of is die in deze omgeving niet beschikbaar.",
+      "useFilePicker": "In plaats daarvan een bestand kiezen"
+    },
+    "tabs": {
+      "edit": "Bewerken",
+      "preview": "Voorbeeld"
+    },
+    "unsavedDialog": {
+      "title": "Niet-opgeslagen notities",
+      "message": "De notities bevatten niet-opgeslagen wijzigingen. Wil je verder bewerken of de wijzigingen verwerpen?",
+      "continueEditing": "Verder bewerken",
+      "discardAndClose": "Verwerpen"
+    },
+    "markdownToolbar": {
+      "bold": "Vet",
+      "boldTooltip": "Vet (Ctrl+B)",
+      "italic": "Cursief",
+      "italicTooltip": "Cursief (Ctrl+I)",
+      "code": "Code",
+      "heading": "Kop",
+      "bulletList": "Opsomming",
+      "numberedList": "Genummerde lijst",
+      "link": "Link invoegen",
+      "quote": "Citaat",
+      "ariaLabel": "Opmaakwerkbalk"
+    },
+    "defaults": {
+      "bold": "vette tekst",
+      "italic": "cursieve tekst",
+      "heading": "Kop",
+      "listItem": "Lijstitem",
+      "linkText": "Linktekst",
+      "quote": "Citaat"
+    }
+  },
+  "errors": {
+    "generic": "Er is een onverwachte fout opgetreden. Probeer het opnieuw.",
+    "sessionExpired": "Je sessie is verlopen. Meld je opnieuw aan.",
+    "noPublicCrops": "Er zijn geen openbare gewassen gevonden.",
+    "bedNotFound": "Het bed is niet gevonden.",
+    "fileTooLarge": "Het bestand is te groot (maximaal 10 MB).",
+    "invalidImage": "Het geüploade bestand is geen geldige afbeelding.",
+    "supplierDataDuplicate": "Deze leverancier heeft al gegevens voor dit gewas.",
+    "supplierDataMissingSupplier": "Kies een leverancier of verwijder de leveranciersgegevens.",
+    "supplierSpecificTkgUnsupported": "Een leveranciersspecifiek duizendkorrelgewicht wordt niet meer ondersteund.",
+    "supplierProjectMismatch": "De leverancier hoort niet bij het actieve project.",
+    "selectedSupplierProjectMismatch": "De gekozen zaadleverancier hoort niet bij het actieve project.",
+    "cropProjectMismatch": "Het gewas hoort niet bij het actieve project."
+  },
+  "validation": {
+    "required": "Dit veld is verplicht.",
+    "invalidEmail": "Voer een geldig e-mailadres in.",
+    "minLength": "Er zijn minimaal {{count}} tekens nodig.",
+    "invalidNumberExample": "Voer een geldig getal in, bijvoorbeeld 3,9",
+    "areaInputPositive": "De waarde moet groter zijn dan 0.",
+    "areaInputPlantsCropRequired": "Kies een gewas om de oppervlakte uit het aantal planten te berekenen.",
+    "areaInputPlantsSpacingMissing": "Bij dit gewas ontbreekt de plantafstand of rijafstand, waardoor we de oppervlakte niet uit het aantal planten kunnen berekenen.",
+    "bedAreaExceeded": "De ingevoerde oppervlakte is groter dan de maximaal beschikbare oppervlakte op dit bed.",
+    "availableArea": "Resterende beschikbare oppervlakte"
+  },
+  "projectRequired": {
+    "noProjectsTitle": "Je hebt nog geen project.",
+    "noProjectsDescription": "Maak eerst een project om locaties, teeltoppervlakken, teeltplannen en kalenders te beheren.",
+    "noProjectsSelectionDescription": "Maak je eerste project om te beginnen met plannen.",
+    "noActiveProjectTitle": "Er is momenteel geen project geselecteerd.",
+    "noActiveProjectDescription": "Kies een project om locaties, teeltoppervlakken, teeltplannen en kalenders te beheren.",
+    "createProjectAction": "Eerste project maken",
+    "createFirstProjectAction": "Eerste project maken",
+    "selectProjectAction": "Project kiezen"
+  },
+  "projectOnboarding": {
+    "pageTitle": "Start je eerste project",
+    "pageDescription": "Kies of je met een eigen leeg project wilt beginnen of OpenFarmPlanner eerst met realistische voorbeeldgegevens wilt verkennen.",
+    "emptyTitle": "Begin met een leeg project",
+    "emptyDescription": "Maak je eigen project en voeg stap voor stap locaties, gewassen en teelten toe.",
+    "emptyAction": "Leeg project maken",
+    "demoTitle": "Probeer een demoproject",
+    "demoDescription": "Begin met een voorbereid teeltproject en verken de belangrijkste functies meteen met realistische voorbeeldgegevens.",
+    "demoAction": "Demoproject maken",
+    "demoCreating": "Demoproject maken...",
+    "demoCreatedHint": "Dit project bevat voorbeeldgegevens. Je kunt alles vrij bewerken of het project op elk moment verwijderen.",
+    "demoCreateError": "Het demoproject kon niet worden gemaakt. Probeer het opnieuw."
+  },
+  "guestDemo": {
+    "restricted": "Niet beschikbaar in de demo. Maak een gratis account om deze functie te gebruiken.",
+    "cropLibraryNotice": "Je gebruikt de demo: je kunt de openbare gewassenbibliotheek bekijken en gewassen in je demoproject importeren. Om items te bewerken of te vertalen, eerdere versies te herstellen en discussiebijdragen te schrijven, heb je een gratis account nodig.",
+    "cropLibraryEdit": "De openbare gewassenbibliotheek kan niet in de demo worden bewerkt.",
+    "cropLibraryDiscussion": "In de demo kun je discussies lezen, maar geen bijdragen schrijven.",
+    "publishCrop": "In de demo kun je geen gewassen in de openbare gewassenbibliotheek publiceren of er wijzigingen naartoe sturen. Je kunt wel updates uit de bibliotheek overnemen.",
+    "unlinkPublicCrop": "In de demo kan de koppeling met de openbare gewassenbibliotheek niet worden verwijderd.",
+    "accountSettingsNotice": "Je gebruikt de demo zonder account. Daarom zijn profiel, e-mailadres, wachtwoord, moderatoraanvragen, gegevensexport en accountverwijdering niet beschikbaar. Demogegevens worden uiterlijk na 8 uur automatisch verwijderd.",
+    "createProject": "Je kunt in de demo geen extra projecten maken.",
+    "inviteMembers": "Je kunt in de demo geen mensen voor het project uitnodigen.",
+    "noteAttachments": "In de demo kunnen geen foto's bij notities worden geüpload."
+  },
+  "runtime": {
+    "applicationUpdatedFallback": "De toepassing kon niet automatisch worden bijgewerkt. Laad de pagina opnieuw.",
+    "routeErrorFallback": "De pagina kon niet automatisch worden hersteld. Laad de pagina opnieuw.",
+    "serverUnavailable": "De server is momenteel niet bereikbaar. Probeer het over een ogenblik opnieuw.",
+    "reloadAction": "Pagina opnieuw laden",
+    "retryAction": "Opnieuw proberen"
+  },
+  "language": {
+    "label": "Taal",
+    "auto": "Automatisch (browsertaal)",
+    "switcherLabel": "Taal wijzigen, momenteel: {{language}}"
+  },
+  "errorFieldLabels": {
+    "area_input_value": "Oppervlakte",
+    "area_input_unit": "Oppervlakte-invoer",
+    "area_usage_sqm": "Oppervlakte (m²)",
+    "area_sqm": "Oppervlakte (m²)",
+    "planting_date": "Plantdatum",
+    "harvest_date": "Begin oogst",
+    "harvest_end_date": "Einde oogst",
+    "quantity": "Planten",
+    "cultivation_type": "Teeltwijze",
+    "crop": "Gewas",
+    "bed": "Bed",
+    "field": "Perceel",
+    "location": "Locatie",
+    "non_field_errors": "Fout"
+  },
+  "dateFormatPlaceholder": "DD.MM.JJJJ",
+  "disabledReasons": {
+    "busy": "De actie wordt momenteel verwerkt.",
+    "noChanges": "Er zijn geen niet-opgeslagen wijzigingen.",
+    "invalidDateRange": "Voer eerst een geldige periode in.",
+    "requiredFields": "Vul alle verplichte velden in.",
+    "selectFile": "Kies eerst een bestand.",
+    "cameraNotReady": "De camera is nog niet gereed.",
+    "copyRowUnavailable": "Voor deze rij zijn geen kopieerbare gegevens beschikbaar.",
+    "copyTableUnavailable": "De tabel bevat geen kopieerbare rijen."
+  },
+  "units": {
+    "squareMeters": "m²",
+    "kilograms": "kg"
+  },
+  "requirements": {
+    "satisfied": "{{label}} beschikbaar",
+    "missing": "{{label}} ontbreekt"
+  },
+  "months": {
+    "jan": "januari",
+    "feb": "februari",
+    "mar": "maart",
+    "apr": "april",
+    "may": "mei",
+    "jun": "juni",
+    "jul": "juli",
+    "aug": "augustus",
+    "sep": "september",
+    "oct": "oktober",
+    "nov": "november",
+    "dec": "december"
+  },
+  "monthsShort": {
+    "jan": "jan",
+    "feb": "feb",
+    "mar": "mrt",
+    "apr": "apr",
+    "may": "mei",
+    "jun": "jun",
+    "jul": "jul",
+    "aug": "aug",
+    "sep": "sep",
+    "oct": "okt",
+    "nov": "nov",
+    "dec": "dec"
+  },
+  "settingsNavigation": {
+    "label": "Secties"
+  }
+}

@@ -1,0 +1,212 @@
+{
+  "title": "Teeltkalender",
+  "zoomIn": "Inzoomen",
+  "zoomOut": "Uitzoomen",
+  "viewModes": {
+    "month": "Maandweergave",
+    "week": "Weekweergave"
+  },
+  "months": {
+    "jan": "januari",
+    "feb": "februari",
+    "mar": "maart",
+    "apr": "april",
+    "may": "mei",
+    "jun": "juni",
+    "jul": "juli",
+    "aug": "augustus",
+    "sep": "september",
+    "oct": "oktober",
+    "nov": "november",
+    "dec": "december"
+  },
+  "weekShort": "wk",
+  "field": "Perceel",
+  "bed": "Bed",
+  "area": "Oppervlakte",
+  "year": "Jaar",
+  "today": "Vandaag",
+  "previousYear": "Vorig jaar",
+  "nextYear": "Volgend jaar",
+  "loading": "Laden...",
+  "errors": {
+    "load": "De gegevens konden niet worden geladen",
+    "updatePlan": "De teelt kon niet worden bijgewerkt",
+    "render": "De kalenderweergave kon niet worden geladen."
+  },
+  "tooltip": {
+    "crop": "Gewas",
+    "plantingDate": "Plantdatum",
+    "harvestDate": "Oogstdatum",
+    "firstHarvest": "Eerste oogst",
+    "lastHarvest": "Laatste oogst",
+    "areaUsage": "Oppervlakte",
+    "propagationStart": "Begin opkweek",
+    "transplantDate": "Uitplanten",
+    "propagationDuration": "Opkweekduur",
+    "bed": "Bed",
+    "location": "Locatie",
+    "plantsCount": "Aantal planten",
+    "totalPlantsCount": "Totaal aantal planten",
+    "plantingPlanCount": "Aantal teelten",
+    "involvedLocations": "Betrokken locaties",
+    "seedRequirement": "Zaadbehoefte",
+    "notes": "Notitie",
+    "phase": {
+      "growth": "Groeifase",
+      "harvest": "Oogstfase"
+    },
+    "actualHarvestEnd": "Oogst eindigt uiterlijk"
+  },
+  "noData": "Geen teelten beschikbaar",
+  "modeLabel": "Modus",
+  "modeAriaLabel": "Modus kiezen",
+  "modeViewOption": "Bekijken",
+  "moveModeOption": "Periode verschuiven",
+  "moveModeActiveOption": "Periode verschuiven actief",
+  "moveModeCommandActivate": "Periode verschuiven activeren",
+  "moveModeCommandDeactivate": "Periode verschuiven deactiveren",
+  "modeViewTooltip": "Weergavemodus: bekijk de kalender en navigeer erin. Geen wijzigingen via slepen en neerzetten.",
+  "moveModeTooltipDescription": "Activeer de verschuifmodus om teeltperiodes met slepen en neerzetten te verplaatsen.",
+  "moveModeActiveTooltipDescription": "Sleep een periode naar links of rechts om de hele teelt in de tijd te verschuiven.",
+  "viewMode": "Weergavemodus",
+  "viewSelectorAriaLabel": "Kalenderweergave kiezen",
+  "chartLocaleText": {
+    "titleOccupancy": "Perceelplanning",
+    "titleSeedlings": "Opkweekplanning",
+    "resources": "Areaal",
+    "resourcesSeedlings": "Gewassen",
+    "today": "Vandaag",
+    "actions": "Acties",
+    "adjustProgress": "Sleep om de voortgang aan te passen",
+    "viewModes": {
+      "minute": "Minuut",
+      "hour": "Uur",
+      "day": "Dag",
+      "week": "Week",
+      "month": "Maand",
+      "quarter": "Kwartaal",
+      "year": "Jaar"
+    }
+  },
+  "days": "dagen",
+  "yieldDistributionTitle": "Opbrengstverdeling",
+  "noYieldData": "Geen verwachte opbrengsten beschikbaar voor dit jaar.",
+  "modes": {
+    "occupancy": "Perceelbezetting",
+    "seedlings": "Opkweek"
+  },
+  "modesShort": {
+    "occupancy": "Bezetting",
+    "seedlings": "Opkweek"
+  },
+  "modeTooltips": {
+    "occupancy": "Toont de bedbezetting gedurende het jaar. De getoonde periodes worden berekend uit de teelten en gewasspecifieke tijdsgegevens, bijvoorbeeld zaaien, uitplanten en oogsten.",
+    "seedlings": "Toont de opkweekfase van gewassen vóór het uitplanten. De getoonde periodes worden berekend uit de teelten en gewasspecifieke opkweekduur."
+  },
+  "shortcuts": {
+    "today": "Naar de huidige periode springen",
+    "previousPeriod": "Vorige kalenderperiode",
+    "nextPeriod": "Volgende kalenderperiode",
+    "previousLargePeriod": "Een grote periode terugspringen",
+    "nextLargePeriod": "Een grote periode vooruitspringen",
+    "dayView": "Dagweergave tonen",
+    "weekView": "Weekweergave tonen",
+    "monthView": "Maandweergave tonen",
+    "quarterView": "Kwartaalweergave tonen",
+    "yearView": "Jaarweergave tonen",
+    "showOccupancy": "Perceelbezetting tonen",
+    "showSeedlings": "Opkweek tonen",
+    "focusSearch": "Zoekveld activeren (/)"
+  },
+  "modeDescriptions": {
+    "occupancy": "Bezetting van percelen en bedden gedurende het jaar. In deze weergave kunnen bestaande teelten nog steeds worden verplaatst.",
+    "seedlings": "Opkweekperiodes per gewas. Deze weergave is alleen-lezen en toont uitsluitend relevante opkweek in het huidige jaar."
+  },
+  "seedlings": {
+    "emptyState": "Geen opkweekperiodes beschikbaar voor dit jaar.",
+    "plantsUnit": "planten"
+  },
+  "requirements": {
+    "field": {
+      "label": "Perceel",
+      "missing": "Perceel ontbreekt",
+      "done": "Perceel beschikbaar"
+    },
+    "crop": {
+      "label": "Gewas",
+      "missing": "Gewas ontbreekt",
+      "done": "Gewas beschikbaar"
+    },
+    "bed": {
+      "label": "Bed",
+      "missing": "Bed ontbreekt",
+      "done": "Bed beschikbaar"
+    },
+    "plan": {
+      "label": "Teelt",
+      "missing": "Teelt ontbreekt",
+      "done": "Teelt beschikbaar"
+    }
+  },
+  "emptyStates": {
+    "requirementsTitle": "Nog geen teeltplanning mogelijk",
+    "requirementsDescription": "Open Teeltoppervlakken en voeg daar een perceel toe op de juiste locatie. Daarna kun je bedden, gewassen en teelten vastleggen.",
+    "states": {
+      "crops": {
+        "title": "Nog geen gewassen",
+        "description": "Maak nu je eerste gewas of importeer er een uit de gewassenbibliotheek. Daarna kun je teelten maken."
+      },
+      "plans": {
+        "title": "Nog geen teelten",
+        "description": "Er zijn nog geen teelten gemaakt voor de bestaande teeltoppervlakken. Maak een teelt om gewassen en datums in de teeltkalender te tonen."
+      }
+    },
+    "actions": {
+      "createCrop": "Gewas toevoegen",
+      "createField": "Perceel toevoegen",
+      "createAreas": "Naar Teeltoppervlakken",
+      "createPlan": "Teelt toevoegen"
+    }
+  },
+  "sidebar": {
+    "resizeHandle": "Zijbalk breder of smaller maken"
+  },
+  "structureSummary": {
+    "fields_one": "{{count}} perceel",
+    "fields_other": "{{count}} percelen",
+    "beds_one": "{{count}} bed",
+    "beds_other": "{{count}} bedden",
+    "occupiedBeds_one": "{{count}} bezet",
+    "occupiedBeds_other": "{{count}} bezet"
+  },
+  "treeFilters": {
+    "searchPlaceholder": "Zoeken op gewas, bed, perceel of locatie…",
+    "searchPlaceholderSeedlings": "Zoeken op gewas…",
+    "allLocations": "Alle locaties",
+    "allFields": "Alle percelen",
+    "onlyOccupiedBeds": "Alleen bezette bedden",
+    "filterButton": "Filteren",
+    "filterButtonWithCount": "Filteren ({{count}})",
+    "locationLabel": "Locatie",
+    "fieldLabel": "Perceel",
+    "resetFilters": "Filters herstellen",
+    "clearSearch": "Zoekveld wissen"
+  },
+  "contextMenu": {
+    "openPlan": "Teelt openen",
+    "openCrop": "Gewas openen",
+    "openBed": "Bed openen",
+    "openField": "Perceel openen",
+    "openLocation": "Locatie openen",
+    "editBed": "Bed bewerken",
+    "editField": "Perceel bewerken",
+    "editLocation": "Locatie bewerken",
+    "addPlan": "Teelt toevoegen",
+    "confirmDeletePlan": "Deze teelt echt verwijderen?"
+  },
+  "taskNames": {
+    "harvest": "{{crop}} (oogst)",
+    "unknownCrop": "Gewas {{id}}"
+  }
+}

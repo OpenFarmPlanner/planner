@@ -12,7 +12,8 @@ Three separate concerns use these helpers and must not be confused:
    supplier names, variety names. Never translated, never duplicated per
    language; stored and shown exactly as typed.
 
-Supported languages are English, German, French and Spanish. Adding a
+Supported languages are English, German, French, Spanish, Italian, Portuguese
+and Dutch. Adding a
 language means: add the code here, add the frontend locale bundle under
 ``frontend/src/i18n/locales/<code>/``, add the code to
 ``frontend/src/i18n/languages.ts``, and add the email templates under
@@ -24,7 +25,7 @@ project templates) must fall back explicitly; see docs/i18n.md.
 from __future__ import annotations
 
 # Ordered by preference for the "any other translation" fallback step.
-SUPPORTED_LANGUAGE_CODES: tuple[str, ...] = ('en', 'de', 'fr', 'es', 'it', 'pt')
+SUPPORTED_LANGUAGE_CODES: tuple[str, ...] = ('en', 'de', 'fr', 'es', 'it', 'pt', 'nl')
 
 # Public crop species become shared lookup data once approved, so a species
 # needs a common name in each required language before publication. Keep this
@@ -45,6 +46,7 @@ UI_LANGUAGE_CHOICES = [
     ('es', 'Español'),
     ('it', 'Italiano'),
     ('pt', 'Português'),
+    ('nl', 'Nederlands'),
 ]
 UI_LANGUAGE_VALUES = frozenset({UI_LANGUAGE_AUTO, *SUPPORTED_LANGUAGE_CODES})
 

@@ -63,6 +63,7 @@ describe('public page language', () => {
     ['/fr/mentions-legales', 'fr', 'Mentions légales'],
     ['/es/aviso-legal', 'es', 'Aviso legal'],
     ['/pt/aviso-legal', 'pt', 'Aviso legal'],
+    ['/nl/juridische-informatie', 'nl', 'Juridische informatie'],
   ])('renders %s in its own language', async (path, language, heading) => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'de');
     renderAt(path, <ImprintPage />);
@@ -149,6 +150,7 @@ describe('public page language', () => {
       'es=https://openfarmplanner.org/es/acerca-de',
       'it=https://openfarmplanner.org/it/chi-siamo',
       'pt=https://openfarmplanner.org/pt/sobre',
+      'nl=https://openfarmplanner.org/nl/over',
       'x-default=https://openfarmplanner.org/ueber',
     ]);
     expect(document.title).toBe('About OpenFarmPlanner');

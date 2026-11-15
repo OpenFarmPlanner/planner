@@ -8,7 +8,8 @@
  *  3. **user project content** (project/location/bed names, notes, suppliers),
  *     which is shown exactly as typed and is never translated.
  *
- * Supported: German, English, French, Spanish and Italian. To add a language: extend
+ * Supported: German, English, French, Spanish, Italian, Portuguese and Dutch.
+ * To add a language: extend
  * `SUPPORTED_LANGUAGES`, add a locale bundle under `src/i18n/locales/<code>/`,
  * register it in `config.ts`, add the code to `backend/config/languages.py`
  * and to the preboot resolver in `index.html`, and follow the checklist in
@@ -22,6 +23,7 @@ export const SUPPORTED_LANGUAGES = [
   { code: 'es', label: 'Español' },
   { code: 'it', label: 'Italiano' },
   { code: 'pt', label: 'Português' },
+  { code: 'nl', label: 'Nederlands' },
 ] as const;
 
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number]['code'];

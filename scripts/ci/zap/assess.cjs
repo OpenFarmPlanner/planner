@@ -17,13 +17,13 @@ function assess(status, coverage, report, policy) {
     && Number.isInteger(row.status) && (row.status === 0 || (row.status >= 100 && row.status < 600))),
   'Invalid HTTP coverage.');
   for (const [route, codes] of [
-    ['/', [200]], ['/en', [200, 301]], ['/fr', [200, 301]], ['/es', [200, 301]], ['/it', [200, 301]], ['/pt', [200, 301]],
+    ['/', [200]], ['/en', [200, 301]], ['/fr', [200, 301]], ['/es', [200, 301]], ['/it', [200, 301]], ['/pt', [200, 301]], ['/nl', [200, 301]],
     ['/api/schema/', [200]], ['/api/crops/', [401, 403]], ['/__zap_fixture__/', [200]],
   ]) {
     requireValid(coverage.requests.some(row => row.path === route && codes.includes(row.status)),
       `Required anonymous route was not observed: ${route}`);
   }
-  for (const [route, language] of [['/', 'de'], ['/en', 'en'], ['/fr', 'fr'], ['/es', 'es'], ['/it', 'it'], ['/pt', 'pt']]) {
+  for (const [route, language] of [['/', 'de'], ['/en', 'en'], ['/fr', 'fr'], ['/es', 'es'], ['/it', 'it'], ['/pt', 'pt'], ['/nl', 'nl']]) {
     requireValid(coverage.public_pages?.[route] === language,
       `Prerendered page content was not observed: ${route}`);
   }

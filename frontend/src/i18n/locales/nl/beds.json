@@ -1,0 +1,22 @@
+{
+  "title": "Bedden",
+  "columns": {
+    "name": "Naam",
+    "field": "Perceel",
+    "area": "Oppervlakte (m²)",
+    "notes": "Notities"
+  },
+  "errors": {
+    "load": "Bedden konden niet worden geladen",
+    "save": "Het bed kon niet worden opgeslagen",
+    "delete": "Het bed kon niet worden verwijderd",
+    "loadFields": "Percelen konden niet worden geladen"
+  },
+  "validation": {
+    "nameRequired": "Naam is verplicht",
+    "fieldRequired": "Perceel is verplicht"
+  },
+  "confirmDelete": "Wil je dit bed echt verwijderen?",
+  "addButton": "Bed toevoegen",
+  "selectField": "Perceel kiezen"
+}

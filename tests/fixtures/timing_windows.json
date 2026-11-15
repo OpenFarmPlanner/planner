@@ -17,7 +17,8 @@
         "fr": "mars",
         "es": "marzo",
         "it": "marzo",
-        "pt": "março"
+        "pt": "março",
+        "nl": "maart"
       }
     },
     {
@@ -36,7 +37,8 @@
         "fr": "mars à mai",
         "es": "marzo a mayo",
         "it": "marzo a maggio",
-        "pt": "de março a maio"
+        "pt": "de março a maio",
+        "nl": "maart tot mei"
       }
     },
     {
@@ -55,7 +57,8 @@
         "fr": "mi-mars",
         "es": "mediados de marzo",
         "it": "metà marzo",
-        "pt": "meados de março"
+        "pt": "meados de março",
+        "nl": "half maart"
       }
     },
     {
@@ -74,7 +77,8 @@
         "fr": "début mars à mi-mai",
         "es": "principios de marzo a mediados de mayo",
         "it": "inizio marzo a metà maggio",
-        "pt": "de início de março a meados de maio"
+        "pt": "de início de março a meados de maio",
+        "nl": "begin maart tot half mei"
       }
     },
     {
@@ -93,7 +97,8 @@
         "fr": "mi-août à fin août",
         "es": "mediados de agosto a finales de agosto",
         "it": "metà agosto a fine agosto",
-        "pt": "de meados de agosto a fim de agosto"
+        "pt": "de meados de agosto a fim de agosto",
+        "nl": "half augustus tot eind augustus"
       }
     },
     {
@@ -112,7 +117,8 @@
         "fr": "novembre à février",
         "es": "noviembre a febrero",
         "it": "novembre a febbraio",
-        "pt": "de novembro a fevereiro"
+        "pt": "de novembro a fevereiro",
+        "nl": "november tot februari"
       }
     },
     {
@@ -131,7 +137,8 @@
         "fr": "début avril à mi-avril",
         "es": "principios de abril a mediados de abril",
         "it": "inizio aprile a metà aprile",
-        "pt": "de início de abril a meados de abril"
+        "pt": "de início de abril a meados de abril",
+        "nl": "begin april tot half april"
       }
     },
     {
@@ -150,7 +157,8 @@
         "fr": "semaine 10",
         "es": "semana 10",
         "it": "settimana 10",
-        "pt": "semana 10"
+        "pt": "semana 10",
+        "nl": "week 10"
       }
     },
     {
@@ -169,7 +177,8 @@
         "fr": "semaines 10 à 14",
         "es": "semanas 10 a 14",
         "it": "settimana 10 a 14",
-        "pt": "semana 10 a 14"
+        "pt": "semana 10 a 14",
+        "nl": "week 10 tot 14"
       }
     },
     {
@@ -188,7 +197,8 @@
         "fr": "semaines 44 à 8",
         "es": "semanas 44 a 8",
         "it": "settimana 44 a 8",
-        "pt": "semana 44 a 8"
+        "pt": "semana 44 a 8",
+        "nl": "week 44 tot 8"
       }
     }
   ],
@@ -220,7 +230,8 @@
         "fr": "mars à avril; mi-août à fin août",
         "es": "marzo a abril; mediados de agosto a finales de agosto",
         "it": "marzo a aprile; metà agosto a fine agosto",
-        "pt": "de março a abril; de meados de agosto a fim de agosto"
+        "pt": "de março a abril; de meados de agosto a fim de agosto",
+        "nl": "maart tot april; half augustus tot eind augustus"
       }
     }
   ],

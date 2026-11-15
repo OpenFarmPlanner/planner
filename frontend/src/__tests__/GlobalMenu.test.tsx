@@ -231,8 +231,8 @@ describe('GlobalMenu development language switcher', () => {
 
     await userEvent.click(screen.getByRole('menuitem', { name: /Sprache/ }));
     const options = screen.getAllByRole('menuitemradio');
-    expect(options.map((option) => option.textContent)).toEqual(['Deutsch', 'English', 'Français', 'Español', 'Italiano', 'Português']);
-    expect(options.map((option) => option.getAttribute('lang'))).toEqual(['de', 'en', 'fr', 'es', 'it', 'pt']);
+    expect(options.map((option) => option.textContent)).toEqual(['Deutsch', 'English', 'Français', 'Español', 'Italiano', 'Português', 'Nederlands']);
+    expect(options.map((option) => option.getAttribute('lang'))).toEqual(['de', 'en', 'fr', 'es', 'it', 'pt', 'nl']);
     expect(screen.getByRole('menuitemradio', { name: 'Deutsch' })).toHaveAttribute('aria-checked', 'true');
 
     await userEvent.click(screen.getByRole('menuitemradio', { name: 'Français' }));

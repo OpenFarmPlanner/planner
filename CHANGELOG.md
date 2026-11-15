@@ -8,6 +8,10 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
 
 ### Features
 
+- Add Dutch UI, public/legal pages, emails and crop-library translation support,
+  with nl-NL formatting for Dutch and Belgian browser variants. Preserve legal
+  consent versions, stored project data and required species names.
+
 - Add European Portuguese UI, public/legal pages, emails and crop-library
   translation support, with explicit pt-PT formatting and plural rules.
   Preserve legal consent versions, stored project content and required species names.

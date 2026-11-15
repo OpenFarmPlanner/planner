@@ -1,0 +1,76 @@
+{
+  "title": "Percelen",
+  "columns": {
+    "name": "Naam",
+    "location": "Locatie",
+    "area": "Oppervlakte (m²)",
+    "notes": "Notities"
+  },
+  "errors": {
+    "load": "Fout bij het laden van percelen",
+    "save": "Fout bij het opslaan van het perceel",
+    "delete": "Fout bij het verwijderen van het perceel",
+    "loadLocations": "Fout bij het laden van locaties"
+  },
+  "validation": {
+    "nameRequired": "Naam is verplicht",
+    "locationRequired": "Locatie is verplicht"
+  },
+  "confirmDelete": "Wil je dit perceel echt verwijderen?",
+  "addButton": "Nieuw perceel toevoegen",
+  "createNew": "Nieuw perceel maken",
+  "cancel": "Annuleren",
+  "submit": "Maken",
+  "selectLocation": "Locatie kiezen",
+  "representation": {
+    "label": "Weergave",
+    "ariaLabel": "Weergave kiezen",
+    "table": "Lijst",
+    "graphical": "Grafisch"
+  },
+  "graphical": {
+    "title": "Grafische perceelweergave",
+    "viewMode": "Modus",
+    "modeAriaLabel": "Modus kiezen",
+    "viewModeOption": "Bekijken",
+    "editModeOption": "Bewerken",
+    "editMode": "Bewerkmodus",
+    "modeHelpAria": "Uitleg over de modus tonen",
+    "modeHelpTooltip": "Navigeer, zoom en bekijk details. Teeltoppervlakken kunnen alleen in de bewerkmodus worden verplaatst of bewerkt. Sneltoets: Alt+E",
+    "viewModeDescription": "Navigeer, zoom en bekijk details. Teeltoppervlakken kunnen alleen in de bewerkmodus worden verplaatst of bewerkt.",
+    "editModeDescription": "Verplaats percelen en bedden en pas indelingen aan.",
+    "editModeBanner": "Bewerkmodus actief: percelen en bedden kunnen nu worden verplaatst.",
+    "locationEditModeBanner": "Grafisch bewerken actief: percelen en bedden op deze locatie kunnen worden verplaatst.",
+    "editModeShortcut": "Sneltoets: Alt+E",
+    "locationEditModeAction": "Grafische weergave bewerken",
+    "locationEditModeActive": "Grafisch bewerken actief",
+    "enableLocationEditMode": "Grafische weergave bewerken",
+    "disableLocationEditMode": "Grafisch bewerken voor locatie ‘{{name}}’ stoppen",
+    "zoomIn": "Inzoomen",
+    "zoomOut": "Uitzoomen",
+    "panUp": "Omhoog schuiven",
+    "panDown": "Omlaag schuiven",
+    "panLeft": "Naar links schuiven",
+    "panRight": "Naar rechts schuiven",
+    "fitToView": "Alles in beeld",
+    "enterFullscreen": "Volledig scherm openen",
+    "exitFullscreen": "Volledig scherm sluiten",
+    "zoomLevel": "Zoom: {{value}}×",
+    "locationTitle": "Locatie: {{name}}",
+    "details": {
+      "field": "Perceeldetails",
+      "bed": "Beddetails"
+    },
+    "location": "Locatie",
+    "parentField": "Perceel",
+    "area": "Oppervlakte"
+  },
+  "commands": {
+    "showList": "Lijstweergave tonen",
+    "showGraphical": "Grafische weergave tonen",
+    "keywords": {
+      "showList": "lijst, tabel, teeltoppervlakken",
+      "showGraphical": "grafiek, grafisch, teeltoppervlakken"
+    }
+  }
+}
