@@ -76,6 +76,40 @@ const NATIVE_CODEX_BOT = 199175422;
 const nativeCodexAuthor = comment => comment.user?.type === 'Bot' &&
   comment.user.id === NATIVE_CODEX_BOT && comment.performed_via_github_app?.id === NATIVE_CODEX_APP;
 
+async function nativeEvidenceProvenance({ github, context, checked }) {
+  if (checked.length > 100) return 'Too many native records to verify in one snapshot.';
+  const prefix = `https://github.com/${context.repo.owner}/${context.repo.repo}/pull/${context.payload.pull_request.number}#issuecomment-`;
+  for (const comment of checked) {
+    if (comment.html_url !== `${prefix}${comment.id}` || !comment.node_id) {
+      return 'Native security evidence is not bound to this PR.';
+    }
+  }
+  // Maintainers can edit comments. Verify the actual last editor as well as the creating app,
+  // and compare the independently read body/version to avoid trusting a changing snapshot.
+  let nodes;
+  try {
+    ({ nodes } = await github.graphql(`query($ids:[ID!]!) {
+    nodes(ids:$ids) { ... on IssueComment {
+      id body updatedAt lastEditedAt
+      author { __typename ... on Bot { databaseId } }
+      editor { __typename ... on Bot { databaseId } }
+    } }
+  }`, { ids: checked.map(item => item.node_id) }));
+  } catch {
+    return 'Native provenance could not be read from GitHub.';
+  }
+  const trustedActor = actor => actor?.__typename === 'Bot' && actor.databaseId === NATIVE_CODEX_BOT;
+  for (const comment of checked) {
+    const node = nodes?.find(item => item?.id === comment.node_id);
+    if (!node || node.body !== comment.body || node.updatedAt !== comment.updated_at ||
+        !trustedActor(node.author) || !Object.hasOwn(node, 'lastEditedAt') || !Object.hasOwn(node, 'editor') ||
+        (node.lastEditedAt != null ? !trustedActor(node.editor) : node.editor != null && !trustedActor(node.editor))) {
+      return 'Native evidence changed or was edited outside the trusted Codex app.';
+    }
+  }
+  return null;
+}
+
 async function verifiedNativeCodexReview({ github, context, comments, head, now = Date.now() }) {
   const marker = /^<!-- codex-security-review:v1 (\{[^\n]+\}) -->$/m;
   const invalid = reason => blocked('codex_native_invalid', reason);
@@ -87,9 +121,12 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
     if (evidence.headSha === head) summaries.push({ comment, evidence });
   }
   const pending = item => ['running', 'queued', 'pending'].includes(item.evidence.status);
-  summaries.sort((a, b) => String(b.comment.updated_at).localeCompare(String(a.comment.updated_at)) ||
-    Number(pending(b)) - Number(pending(a)) || Number(b.comment.id) - Number(a.comment.id));
+  summaries.sort((a, b) => Number(pending(b)) - Number(pending(a)) ||
+    String(b.comment.updated_at).localeCompare(String(a.comment.updated_at)) || Number(b.comment.id) - Number(a.comment.id));
   if (!summaries.length) return null;
+  const summaryProblem = await nativeEvidenceProvenance({ github, context,
+    checked: summaries.map(item => item.comment) });
+  if (summaryProblem) return invalid(summaryProblem);
   const { comment: summary, evidence } = summaries[0];
   if (evidence.repository !== `${context.repo.owner}/${context.repo.repo}` ||
       evidence.pullRequestNumber !== context.payload.pull_request.number) {
@@ -115,35 +152,8 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
   const checked = [summary, ...relevant];
   if (checked.length > 100) return invalid('Too many native receipts to verify in one consistent snapshot.');
 
-  const prefix = `https://github.com/${context.repo.owner}/${context.repo.repo}/pull/${context.payload.pull_request.number}#issuecomment-`;
-  for (const comment of checked) {
-    if (comment.html_url !== `${prefix}${comment.id}` || !comment.node_id) {
-      return invalid('Native security evidence is not bound to this PR.');
-    }
-  }
-  // Maintainers can edit comments. Verify the actual last editor as well as the creating app,
-  // and compare the independently read body/version to avoid trusting a changing snapshot.
-  let nodes;
-  try {
-    ({ nodes } = await github.graphql(`query($ids:[ID!]!) {
-    nodes(ids:$ids) { ... on IssueComment {
-      id body updatedAt lastEditedAt
-      author { __typename ... on Bot { databaseId } }
-      editor { __typename ... on Bot { databaseId } }
-    } }
-  }`, { ids: checked.map(item => item.node_id) }));
-  } catch {
-    return invalid('Native provenance could not be read from GitHub.');
-  }
-  const trustedActor = actor => actor?.__typename === 'Bot' && actor.databaseId === NATIVE_CODEX_BOT;
-  for (const comment of checked) {
-    const node = nodes?.find(item => item?.id === comment.node_id);
-    if (!node || node.body !== comment.body || node.updatedAt !== comment.updated_at ||
-        !trustedActor(node.author) || !Object.hasOwn(node, 'lastEditedAt') || !Object.hasOwn(node, 'editor') ||
-        (node.lastEditedAt != null ? !trustedActor(node.editor) : node.editor != null && !trustedActor(node.editor))) {
-      return invalid('Native evidence changed or was edited outside the trusted Codex app.');
-    }
-  }
+  const problem = await nativeEvidenceProvenance({ github, context, checked });
+  if (problem) return invalid(problem);
   const finished = Date.parse(summary.updated_at), issued = Date.parse(receipt.created_at);
   if (!Number.isFinite(finished) || !Number.isFinite(issued) || Math.abs(finished - issued) > 300_000 ||
       now - finished < -300_000 || now - finished > 7 * 24 * 60 * 60_000) {

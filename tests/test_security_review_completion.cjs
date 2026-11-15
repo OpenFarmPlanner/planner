@@ -515,3 +515,23 @@ test('second-granularity timestamp ties keep a pending review ahead of completed
     assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_pending');
   }
 });
+
+
+test('any authenticated same-head running task blocks a later completed task', async () => {
+  const f = nativeSnapshotFixture();
+  f.comments.push({ ...structuredClone(f.summary), id: 9, node_id: 'older-running',
+    html_url: 'https://github.com/owner/repo/pull/1#issuecomment-9',
+    updated_at: '2026-11-15T07:25:00Z', body: f.summary.body.replace('completed', 'running') },
+    reportComment, approvalComment());
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_pending');
+});
+
+test('a human-edited pending marker is unverifiable evidence rather than an authenticated running task', async () => {
+  const f = nativeSnapshotFixture();
+  f.summary.body = f.summary.body.replace('completed', 'running');
+  const read = f.args.github.graphql;
+  f.args.github.graphql = async () => { const data = await read();
+    data.nodes[0].editor = { __typename: 'User', databaseId: 1 }; data.nodes[0].lastEditedAt = 'now'; return data; };
+  f.comments.push(reportComment, approvalComment());
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'manual_review_approved');
+});
