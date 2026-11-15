@@ -476,3 +476,9 @@ test('overlapping same-head native reviews cannot hide a findings receipt with a
   }
 });
 
+test('a newer running native review takes precedence over an older human contingency', async () => {
+  const f = nativeSnapshotFixture();
+  f.summary.body = f.summary.body.replace('completed', 'running');
+  f.comments.push(reportComment, approvalComment());
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_pending');
+});

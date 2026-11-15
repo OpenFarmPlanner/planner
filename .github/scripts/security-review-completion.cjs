@@ -320,9 +320,9 @@ async function snapshot({ github, context, expectedHead, artifactReader = readAr
   if (codex?.state === 'codex_local_incomplete') return codex;
   if (native?.state === 'codex_native_incomplete') return native;
   if (native?.allowed) return native;
+  if (native?.state === 'codex_native_pending') return native;
   const approval = await approvedReview({ github, coordinates, comments, head: expectedHead, scope });
   if (approval) return evaluate({ head: expectedHead, scope, approval });
-  if (native?.state === 'codex_native_pending') return native;
   if (codex?.allowed) return codex;
   if (native) return native;
   if (codex) return codex;
