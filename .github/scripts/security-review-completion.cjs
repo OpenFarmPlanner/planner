@@ -321,10 +321,10 @@ function parseApproval(comment, head) {
   } catch { return null; }
 }
 
-async function approvedReview({ github, coordinates, comments, head, scope, base, requireBase = false }) {
+async function approvedReview({ github, coordinates, comments, head, scope, base }) {
   for (const comment of [...comments].reverse()) {
     const approval = parseApproval(comment, head);
-    if (!approval || requireBase && (!SHA.test(base ?? '') || approval.base_sha !== base)) continue;
+    if (!approval || !SHA.test(base ?? '') || approval.base_sha !== base) continue;
     let permission;
     try {
       ({ data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
@@ -346,7 +346,7 @@ async function approvedReview({ github, coordinates, comments, head, scope, base
       const marker = `<!-- manual-security-review:${head} -->`;
       if (!(report.body ?? '').includes(marker) || !(report.body ?? '').includes('Result: No unresolved findings')) continue;
       if (!scope.every(file => (report.body ?? '').includes(`\`${file}\``))) continue;
-      if (requireBase && !(report.body ?? '').split('\n').includes(`Reviewed base: ${base}`)) continue;
+      if (!(report.body ?? '').split('\n').includes(`Reviewed base: ${base}`)) continue;
     }
     return approval;
   }
@@ -418,12 +418,13 @@ async function snapshot({ github, context, expectedHead, artifactReader = readAr
   if (['codex_native_context_pending', 'codex_native_context_unavailable'].includes(native?.state)) {
     if (codex?.allowed) return codex;
     const contingency = await approvedReview({ github, coordinates, comments, head: expectedHead,
-      scope, base: pr.base.sha, requireBase: true });
+      scope, base: pr.base.sha });
     return contingency ? evaluate({ head: expectedHead, scope, approval: contingency }) : native;
   }
   if (native?.allowed) return native;
   if (native?.state === 'codex_native_pending') return native;
-  const approval = await approvedReview({ github, coordinates, comments, head: expectedHead, scope });
+  const approval = await approvedReview({ github, coordinates, comments, head: expectedHead,
+    scope, base: pr.base.sha });
   if (approval) return evaluate({ head: expectedHead, scope, approval });
   if (codex?.allowed) return codex;
   if (native) return native;

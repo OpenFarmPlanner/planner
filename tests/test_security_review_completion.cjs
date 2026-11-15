@@ -45,10 +45,10 @@ function approvalComment(mode = 'manual', sha = HEAD, overrides = {}) {
     : 'https://chatgpt.com/codex/tasks/task_review';
   return { id: 11, user: { login: 'maintainer', type: 'User' }, created_at: '2026-11-12T10:01:00Z',
     html_url: 'https://github.com/owner/repo/pull/1#issuecomment-11',
-    body: `/security-review approve ${mode} ${sha} ${report}\n${statement}\nResult: No unresolved findings\nReason: provider unavailable`, ...overrides };
+    body: `/security-review approve ${mode} ${sha} ${report}\n${statement}\nResult: No unresolved findings\nReviewed base: ${OLD}\nReason: provider unavailable`, ...overrides };
 }
 const reportComment = { id: 10, user: { login: 'reviewer', type: 'User' },
-  created_at: '2026-11-12T10:00:00Z', body: `<!-- manual-security-review:${HEAD} -->\nScope: \`${SCOPE[0]}\`\nResult: No unresolved findings` };
+  created_at: '2026-11-12T10:00:00Z', body: `<!-- manual-security-review:${HEAD} -->\nScope: \`${SCOPE[0]}\`\nReviewed base: ${OLD}\nResult: No unresolved findings` };
 
 test('approval requires a human, an exact SHA, explicit statement and a supported report URL', () => {
   assert.ok(parseApproval(approvalComment(), HEAD));
@@ -64,7 +64,7 @@ test('approval requires a human, an exact SHA, explicit statement and a supporte
 test('manual contingency is authorized, scoped, linked, and rejects authoring-session self-review', async () => {
   const github = { rest: { repos: { getCollaboratorPermissionLevel: async () => ({ data: { permission: 'admin' } }) } } };
   const args = { github, coordinates: { owner: 'owner', repo: 'repo', issue_number: 1 },
-    head: HEAD, scope: SCOPE, comments: [reportComment, approvalComment()] };
+    head: HEAD, base: OLD, scope: SCOPE, comments: [reportComment, approvalComment()] };
   assert.equal((await approvedReview(args)).mode, 'manual');
   for (const body of [reportComment.body + '\nAuthoring-session review',
     reportComment.body.replace(SCOPE[0], 'another-file'), reportComment.body.replace(HEAD, OLD)]) {
@@ -76,10 +76,31 @@ test('manual contingency is authorized, scoped, linked, and rejects authoring-se
 
 test('Codex task attestation remains distinct from automatic completion and manual code review', async () => {
   const github = { rest: { repos: { getCollaboratorPermissionLevel: async () => ({ data: { permission: 'maintain' } }) } } };
-  const approval = await approvedReview({ github, coordinates: {}, comments: [approvalComment('codex')], head: HEAD, scope: SCOPE });
+  const approval = await approvedReview({ github, coordinates: {}, comments: [approvalComment('codex')], head: HEAD, base: OLD, scope: SCOPE });
   const result = evaluate(input({ approval }));
   assert.equal(result.state, 'codex_completed_attested');
   assert.match(result.reason, /not automated verification/);
+});
+
+test('every contingency route binds the current base even without verifiable native evidence', async () => {
+  for (const native of [false, true]) {
+    for (const mode of ['manual', 'codex']) {
+      const f = native ? nativeSnapshotFixture() : fixture();
+      f.args.expectedHead = HEAD;
+      if (native) f.receipt.body = f.receipt.body.replace('chatgpt.com', 'unsupported.example');
+      else f.args.github.rest.repos = { getCollaboratorPermissionLevel: async () => ({ data: { permission: 'maintain' } }) };
+      f.args.codexVerifier = async () => ({ allowed: false, state: 'codex_evidence_invalid' });
+      const approval = approvalComment(mode);
+      f.comments.push(reportComment, approval);
+      assert.equal((await snapshot(f.args)).allowed, true);
+      approval.body = approval.body.replace(`Reviewed base: ${OLD}\n`, '');
+      assert.equal((await snapshot(f.args)).allowed, false, `${native}/${mode}: head-only approval`);
+      approval.body = approvalComment(mode).body;
+      f.args.github.rest.pulls.get = async () => ({ data: { state: 'open', base: { sha: HEAD },
+        labels: [], user: { login: 'author' }, head: { sha: HEAD, repo: { full_name: 'owner/repo' } } } });
+      assert.equal((await snapshot(f.args)).allowed, false, `${native}/${mode}: old-base approval`);
+    }
+  }
 });
 
 function fixture(changes = {}) {
@@ -655,8 +676,8 @@ test('native inline findings reported in the authenticated summary block an olde
 
 
 function addBaseBoundContingency(f, base = OLD, reportBase = OLD) {
-  f.comments.push({ ...reportComment, body: `${reportComment.body}\nReviewed base: ${reportBase}` },
-    { ...approvalComment(), body: `${approvalComment().body}\nReviewed base: ${base}` });
+  f.comments.push({ ...reportComment, body: reportComment.body.replace(`Reviewed base: ${OLD}`, `Reviewed base: ${reportBase}`) },
+    { ...approvalComment(), body: approvalComment().body.replace(`Reviewed base: ${OLD}`, `Reviewed base: ${base}`) });
 }
 
 test('missing or unavailable context supports an optional independently reviewed base-bound contingency', async () => {
@@ -671,7 +692,9 @@ test('missing or unavailable context supports an optional independently reviewed
 test('context contingency rejects head-only, wrong-base or unbound reports and cannot override a real mismatch', async () => {
   for (const kind of ['head-only', 'wrong-base', 'report-base', 'mismatch']) {
     const f = nativeSnapshotFixture();
-    if (kind === 'head-only') f.comments.push(reportComment, approvalComment());
+    if (kind === 'head-only') f.comments.push(
+      { ...reportComment, body: reportComment.body.replace(`Reviewed base: ${OLD}\n`, '') },
+      { ...approvalComment(), body: approvalComment().body.replace(`Reviewed base: ${OLD}\n`, '') });
     else addBaseBoundContingency(f, kind === 'wrong-base' ? HEAD : OLD, kind === 'report-base' ? HEAD : OLD);
     if (kind === 'mismatch') f.contextRecord.scope = ['another-file'];
     else f.contextArtifacts = [];

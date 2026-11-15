@@ -489,8 +489,10 @@ verify its actual task/report. New heads get new requests and new reviews.
 
 Completed clean native reviews with verified app provenance need no human
 confirmation. If provider evidence is unavailable or unsupported, the following
-human contingency remains optional. A **human admin or maintainer**, after
-inspecting the completed task/report for the exact SHA, can post:
+human contingency remains optional. Every contingency must explicitly bind the
+current base as well as the head, including when no native evidence is available.
+A **human admin or maintainer**, after inspecting the completed task/report for
+the exact head and base, can post:
 
 ```text
 /security-review approve codex FULL_HEAD_SHA https://chatgpt.com/codex/tasks/TASK_ID
@@ -504,7 +506,7 @@ This is explicitly a maintainer attestation of Codex completion. The gate does
 not claim to have fetched or independently verified that private report.
 
 For an independent manual review, first post a PR comment containing
-`<!-- manual-security-review:FULL_HEAD_SHA -->`, every changed path in backticks,
+`<!-- manual-security-review:FULL_HEAD_SHA -->`, `Reviewed base: FULL_BASE_SHA`, every changed path in backticks,
 the actual review findings/resolution and `Result: No unresolved findings`.
 Then a human admin/maintainer approves that report:
 
