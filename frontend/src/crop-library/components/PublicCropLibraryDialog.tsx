@@ -52,6 +52,7 @@ interface PublicCropLibraryDialogProps {
   onClose: () => void;
   onSearch: (query: string) => void;
   onImport: (crop: PublicCrop) => void;
+  onImportVarieties?: (crop: PublicCrop) => void;
 }
 
 const previewBadgeSx = {
@@ -140,6 +141,7 @@ export function PublicCropLibraryDialog({
   onClose,
   onSearch,
   onImport,
+  onImportVarieties,
 }: PublicCropLibraryDialogProps) {
   const { t, i18n } = useTranslation('crops');
   const plantFamilies = usePlantFamilies();
@@ -428,6 +430,12 @@ export function PublicCropLibraryDialog({
                     <strong>{t('form.harvestDurationDays')}:</strong> {selectedCrop.harvest_duration_days ?? t('noData')}
                   </Typography>
                 </Box>
+                {!selectedCrop.variety?.trim() && selectedCrop.crop_species && onImportVarieties
+                  && crops.some(entry => entry.crop_species === selectedCrop.crop_species && entry.variety?.trim()) ? (
+                  <DetailSection title={t('hierarchy.varietiesTitle')} outlined>
+                    <Button disabled={importingId !== null} onClick={() => onImportVarieties(selectedCrop)}>{t('library.varietyImport.action')}</Button>
+                  </DetailSection>
+                ) : null}
                 <DetailSection title={t('library.page.sections.notes')} outlined showHeaderDivider>
                   <LocalizedMarkdownNotes
                     localized={getPublicCropDescription(selectedCrop, language)}

@@ -1649,6 +1649,29 @@
       "failed": "No se pudieron importar los valores. Vuelve a comprobar el destino y la comparación. Para un cultivo nuevo, cierra este diálogo y recarga la biblioteca.",
       "success": "Valores de la biblioteca importados.",
       "projectChanged": "El proyecto activo ha cambiado. Cierra este diálogo y reinicia la importación en el proyecto deseado."
+    },
+    "varietyImport": {
+      "action": "Importar variedades",
+      "title": "Elegir variedades",
+      "parentIncluded": "El cultivo general se incluye en esta importación.",
+      "parentLinked": "El cultivo general ya está vinculado y permanece sin cambios.",
+      "atomicHelp": "La selección y las comparaciones no se guardan hasta que confirmes la última comparación. Si se produce un error, no se importa nada. Las variedades publicadas después nunca se importan automáticamente.",
+      "importParent": "Importar cultivo",
+      "importWithVarieties_one": "Importar cultivo y {{count}} variedad",
+      "importWithVarieties_other": "Importar cultivo y {{count}} variedades",
+      "importVarieties_one": "Importar {{count}} variedad",
+      "importVarieties_other": "Importar {{count}} variedades",
+      "reviewProgress": "Comparación {{current}} de {{total}}",
+      "failed": "La importación no se ha guardado. Revisa la selección y las comparaciones.",
+      "success_one": "{{count}} entrada importada.",
+      "success_other": "{{count}} entradas importadas.",
+      "selectAll_one": "Todas las variedades disponibles ({{count}})",
+      "selectAll_other": "Todas las variedades disponibles ({{count}})",
+      "selectAll_many": "Todas las variedades disponibles ({{count}})",
+      "importWithVarieties_many": "Importar cultivo y {{count}} variedades",
+      "importVarieties_many": "Importar {{count}} variedades",
+      "success_many": "{{count}} entradas importadas.",
+      "continue": "Continuar"
     }
   },
   "commands": {

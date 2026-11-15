@@ -42,6 +42,7 @@ export function usePublicCropLibrary({
   const location = useLocation();
   const navigate = useNavigate();
 
+  const [varietyImport, setVarietyImport] = useState<PublicCrop | null>(null);
   const [importLink, setImportLink] = useState<{ publicCrop: PublicCrop; candidates: CropLinkCandidate[] } | null>(null);
   const [publicLibraryOpen, setPublicLibraryOpen] = useState(false);
   const [publicLibraryLoading, setPublicLibraryLoading] = useState(false);
@@ -101,7 +102,11 @@ export function usePublicCropLibrary({
       ? withProjectImportStatus(entry, crop) : entry));
   }, []);
 
-  const handleImportPublicCrop = async (publicCrop: PublicCrop, mode?: 'new') => {
+  const handleImportPublicCrop = async (publicCrop: PublicCrop, mode?: 'new', skipVarieties = false) => {
+    if (!skipVarieties && !mode && !publicCrop.variety?.trim() && publicCrop.crop_species && !publicCrop.project_import_status) {
+      setVarietyImport(publicCrop);
+      return;
+    }
     if (importInFlight.current) return;
     importInFlight.current = true;
     const name = getPublicCropTitle(publicCrop, language, t('library.translation.missingName'));
@@ -471,6 +476,16 @@ export function usePublicCropLibrary({
   }, [handleOpenPublicLibrary, location.pathname, location.search, navigate, publicLibraryOpen, shouldShowProjectRequiredState]);
 
   return {
+    varietyImport,
+    setVarietyImport,
+    handleVarietyImportSuccess: async (result: import('../api/types').PublicCropSelectionImportResult) => {
+      setVarietyImport(null);
+      const response = await cropAPI.get(result.entries[0].crop_id);
+      await onImportSuccess(response.data);
+      await fetchPublicCrops(librarySearch.current.query, librarySearch.current.exactMatch);
+      await refreshUser();
+      showSnackbar(t('library.varietyImport.success', { count: result.entries.filter(entry => entry.operation !== 'unchanged').length }), 'success');
+    },
     importLink,
     setImportLink,
     handleImportLinkSuccess: async (crop: Crop) => {

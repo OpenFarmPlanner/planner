@@ -1649,6 +1649,29 @@
       "failed": "Les valeurs n’ont pas pu être importées. Vérifiez à nouveau la cible et la comparaison. Pour une nouvelle culture, fermez ce dialogue et rechargez la bibliothèque.",
       "success": "Valeurs de la bibliothèque importées.",
       "projectChanged": "Le projet actif a changé. Fermez ce dialogue et recommencez l’import dans le projet souhaité."
+    },
+    "varietyImport": {
+      "action": "Importer des variétés",
+      "title": "Choisir les variétés",
+      "parentIncluded": "La culture générale est incluse dans cet import.",
+      "parentLinked": "La culture générale est déjà liée et reste inchangée.",
+      "atomicHelp": "La sélection et les comparaisons ne sont enregistrées qu’après confirmation de la dernière comparaison. En cas d’erreur, rien n’est importé. Les variétés publiées ultérieurement ne sont jamais importées automatiquement.",
+      "importParent": "Importer la culture",
+      "importWithVarieties_one": "Importer la culture et {{count}} variété",
+      "importWithVarieties_other": "Importer la culture et {{count}} variétés",
+      "importVarieties_one": "Importer {{count}} variété",
+      "importVarieties_other": "Importer {{count}} variétés",
+      "reviewProgress": "Comparaison {{current}} sur {{total}}",
+      "failed": "L’import n’a pas été enregistré. Vérifiez à nouveau la sélection et les comparaisons.",
+      "success_one": "{{count}} entrée importée.",
+      "success_other": "{{count}} entrées importées.",
+      "selectAll_one": "Toutes les variétés disponibles ({{count}})",
+      "selectAll_other": "Toutes les variétés disponibles ({{count}})",
+      "selectAll_many": "Toutes les variétés disponibles ({{count}})",
+      "importWithVarieties_many": "Importer la culture et {{count}} variétés",
+      "importVarieties_many": "Importer {{count}} variétés",
+      "success_many": "{{count}} entrées importées.",
+      "continue": "Continuer"
     }
   },
   "commands": {

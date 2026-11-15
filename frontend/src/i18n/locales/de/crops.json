@@ -1608,6 +1608,25 @@
       "failed": "Die Werte konnten nicht übernommen werden. Prüfe Ziel und Vergleich erneut. Bei einem neuen Eintrag schließe den Dialog und lade die Bibliothek neu.",
       "success": "Bibliothekswerte übernommen.",
       "projectChanged": "Das aktive Projekt hat sich geändert. Schließe den Dialog und starte den Import im gewünschten Projekt neu."
+    },
+    "varietyImport": {
+      "action": "Sorten importieren",
+      "title": "Sorten auswählen",
+      "parentIncluded": "Die allgemeine Kultur wird mit importiert.",
+      "parentLinked": "Die allgemeine Kultur ist bereits verknüpft und bleibt unverändert.",
+      "atomicHelp": "Alle Auswahl- und Vergleichsschritte bleiben ungespeichert, bis du den letzten Vergleich bestätigst. Bei einem Fehler wird nichts importiert. Später veröffentlichte Sorten werden nicht automatisch übernommen.",
+      "importParent": "Kultur importieren",
+      "importWithVarieties_one": "Kultur und {{count}} Sorte importieren",
+      "importWithVarieties_other": "Kultur und {{count}} Sorten importieren",
+      "importVarieties_one": "{{count}} Sorte importieren",
+      "importVarieties_other": "{{count}} Sorten importieren",
+      "reviewProgress": "Vergleich {{current}} von {{total}}",
+      "failed": "Der Import wurde nicht gespeichert. Prüfe die Auswahl und die Vergleiche erneut.",
+      "success_one": "{{count}} Eintrag importiert.",
+      "success_other": "{{count}} Einträge importiert.",
+      "selectAll_one": "Alle auswählbaren Sorten ({{count}})",
+      "selectAll_other": "Alle auswählbaren Sorten ({{count}})",
+      "continue": "Weiter"
     }
   },
   "commands": {

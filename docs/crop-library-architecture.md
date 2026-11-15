@@ -2490,3 +2490,23 @@ This foundation does not alter private crop fields, public-crop synchronization
 or legacy `pests_diseases` notes; those are subsequent #1011 parts. See
 [Plant-health catalogue](./plant-health-catalogue.md) for evidence, identity,
 partial-name writes, archival, API and migration contracts.
+
+## Selecting a culture's varieties during import
+
+The library page and compact picker share `PublicCropVarietyImportDialog`.
+It loads every published entry for the selected species independently of search,
+preselects missing varieties, and stages existing-culture decisions through
+`ExistingCropLinkDialog` without issuing its normal individual writes. The
+original direct flow remains for cultures without varieties and for individual
+variety imports. The varieties-section action can complete an already linked
+culture without updating its parent.
+
+The scoped `import-selection` action validates an explicit parent and at most
+500 varieties, then `public_crop_import_selection` reuses the ordinary import
+and initial link/copy services inside one project-locked transaction. All local
+snapshots are validated before writes; existing variety decisions are applied
+before changing their parent's inherited values, while new varieties follow the
+parent. Already linked rows are read without updating them. Authorization,
+explicit sharing, private pins, terms, public versions and rollback retain the
+existing service boundaries. See the [state matrix](crop-library-state-matrix.md#selecting-varieties-during-import-1141)
+for cancellation, retry and concurrency behavior.

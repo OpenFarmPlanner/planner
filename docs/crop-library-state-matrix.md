@@ -189,3 +189,41 @@ middle-column behavior. Older link clients that omit sharing fields also publish
 nothing. Copy-only import never publishes or creates pins. Invalid selections,
 empty shares and overlapping pull/share/pin fields reject the complete request;
 valid pins survive later library updates until explicitly released.
+
+### Selecting varieties during import (#1141)
+
+A general library culture with published varieties opens one selection dialog on
+both the full library page and project picker. All missing varieties start
+selected; select-all has an indeterminate state and excludes already linked
+rows. Clearing the selection imports only the parent. A culture without
+varieties retains its direct initial import. The **Import varieties** action in
+the varieties section also works when the parent is already linked, even when
+that parent's ordinary import action is disabled. Fetching this scope is
+independent of the browser's search and filters; the browser stays open.
+
+Comparisons reuse the existing target, copy/link, pull/share/private-pin and
+consent controls. In this workflow **Continue** stages a decision without a
+write. Only after every selected match has an explicit decision does
+`public-crops/<parent>/import-selection/` commit the complete selection in one
+transaction. Cancellation before that request writes nothing. A failed request
+rolls back crops, companion/package writes, history, explicit public shares and
+consent together. Retrying previews the selection again. A lost response may be
+retried safely: linked entries are skipped without updating them or creating
+another copy. Explicit copy decisions retain their existing snapshot guards.
+
+The server serializes on the project, locks library entries in ID order, checks
+that every selected variety belongs to the published parent species, and
+validates all local timestamps before applying decisions. Existing variety
+comparisons run before parent changes so their original inherited values are
+used. Internal species adoption can update sibling timestamps; those changes
+must not invalidate another decision from the same transaction. New varieties
+are created after resolving the parent. Already linked entries, including an
+outdated or privately edited parent, remain untouched. Completion counts report
+only entries actually created, linked or copied. Later library varieties always
+require a new explicit selection; there is no subscription or automatic import.
+
+The endpoint is session-only, project-scoped and limited to the parent plus
+500 explicit variety decisions. Sharing keeps the existing established-account,
+field permission and current contribution-consent checks. This is a single
+culture import action, not a general batch-write endpoint. List serializers and
+query counts are unchanged.

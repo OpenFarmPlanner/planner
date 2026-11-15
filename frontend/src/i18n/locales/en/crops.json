@@ -1608,6 +1608,25 @@
       "failed": "The values could not be imported. Check the target and comparison again. For a new crop, close this dialog and reload the library.",
       "success": "Library values imported.",
       "projectChanged": "The active project has changed. Close this dialog and restart the import in the intended project."
+    },
+    "varietyImport": {
+      "action": "Import varieties",
+      "title": "Select varieties",
+      "parentIncluded": "The general culture is included in this import.",
+      "parentLinked": "The general culture is already linked and stays unchanged.",
+      "atomicHelp": "Selection and comparison steps stay unsaved until you confirm the last comparison. If any step fails, nothing is imported. Varieties published later are never imported automatically.",
+      "importParent": "Import culture",
+      "importWithVarieties_one": "Import culture and {{count}} variety",
+      "importWithVarieties_other": "Import culture and {{count}} varieties",
+      "importVarieties_one": "Import {{count}} variety",
+      "importVarieties_other": "Import {{count}} varieties",
+      "reviewProgress": "Comparison {{current}} of {{total}}",
+      "failed": "The import was not saved. Check the selection and comparisons again.",
+      "success_one": "{{count}} entry imported.",
+      "success_other": "{{count}} entries imported.",
+      "selectAll_one": "All eligible varieties ({{count}})",
+      "selectAll_other": "All eligible varieties ({{count}})",
+      "continue": "Continue"
     }
   },
   "commands": {
