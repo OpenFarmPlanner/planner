@@ -52,6 +52,8 @@
     "panDown": "Omlaag schuiven",
     "panLeft": "Naar links schuiven",
     "panRight": "Naar rechts schuiven",
+    "rotateLeft": "Weergave 90° naar links draaien",
+    "rotateRight": "Weergave 90° naar rechts draaien",
     "fitToView": "Alles in beeld",
     "enterFullscreen": "Volledig scherm openen",
     "exitFullscreen": "Volledig scherm sluiten",
