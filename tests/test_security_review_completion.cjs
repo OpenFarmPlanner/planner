@@ -370,7 +370,7 @@ test('newer running review or findings supersede an earlier clean result for the
 
 function nativeSnapshotFixture() {
   const f = nativeFixture();
-  const listFiles = () => {}, listComments = () => {}, listArtifacts = () => {};
+  const listFiles = () => {}, listComments = () => {}, listArtifacts = 'GET /repos/{owner}/{repo}/actions/artifacts';
   f.contextRecord = { schema: 1, run_id: 12, run_attempt: 1, pull_request: 1,
     head_sha: HEAD, base_sha: OLD, base_ref: 'main', scope: SCOPE, workflow_sha: OLD };
   f.contextRun = { id: 12, run_attempt: 1, path: '.github/workflows/native-security-context.yml',

@@ -238,7 +238,7 @@ async function verifiedNativeContext({ github, context, head, base, scope, recei
   }
   const name = `native-review-context-${context.payload.pull_request.number}-${head}`;
   let artifacts;
-  try { artifacts = await github.paginate(github.rest.actions.listArtifacts, { ...context.repo, name, per_page: 100 }); }
+  try { artifacts = await github.paginate('GET /repos/{owner}/{repo}/actions/artifacts', { ...context.repo, name, per_page: 100 }); }
   catch { return invalid('Trusted native review context artifacts could not be read.'); }
   let earliest = Infinity, count = 0;
   for (const artifact of artifacts) {
