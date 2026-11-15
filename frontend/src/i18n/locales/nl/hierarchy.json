@@ -1,0 +1,234 @@
+{
+  "title": "Teeltoppervlakken",
+  "addField": "Perceel",
+  "addBed": "Bed",
+  "addBedToField": "Bed aan dit perceel toevoegen",
+  "createPlantingPlan": "Teelt toevoegen",
+  "columns": {
+    "name": "Naam",
+    "location": "Locatie",
+    "field": "Perceel",
+    "bed": "Bed",
+    "area": "Oppervlakte (m²)",
+    "notes": "Notities",
+    "length": "Lengte (m)",
+    "width": "Breedte (m)"
+  },
+  "errors": {
+    "load": "De gegevens konden niet worden geladen",
+    "save": "Opslaan mislukt",
+    "delete": "Verwijderen mislukt",
+    "createField": "Het perceel kon niet worden gemaakt",
+    "deleteField": "Het perceel kon niet worden verwijderd",
+    "saveBed": "Het bed kon niet worden opgeslagen",
+    "deleteBed": "Het bed kon niet worden verwijderd"
+  },
+  "validation": {
+    "nameRequired": "Naam is verplicht",
+    "bedAreaExceedsField": "De som van de bedoppervlakken ({{sum}} m²) is groter dan de perceeloppervlakte ({{max}} m²). Pas de oppervlakken aan.",
+    "areaMustBePositive": "De oppervlakte moet groter zijn dan 0.",
+    "areaTooLarge": "De ingevoerde oppervlakte is te groot. Voer een kleinere waarde in.",
+    "lengthNonNegative": "De lengte moet groter dan of gelijk aan 0 zijn.",
+    "widthNonNegative": "De breedte moet groter dan of gelijk aan 0 zijn.",
+    "lengthNotANumber": "De lengte moet een geldig getal zijn.",
+    "widthNotANumber": "De breedte moet een geldig getal zijn.",
+    "duplicateFieldName": "Er bestaat al een perceel met deze naam op deze locatie.",
+    "duplicateBedName": "Er bestaat al een bed met deze naam in dit perceel."
+  },
+  "confirmDelete": "Wil je dit item echt verwijderen?",
+  "footer": {
+    "singleLocation": "Klap percelen uit om bedden toe te voegen",
+    "multipleLocations": "Klap locaties of percelen uit om nieuwe percelen of bedden toe te voegen"
+  },
+  "tooltips": {
+    "expand": "Item uitklappen",
+    "collapse": "Item inklappen",
+    "addField": "Perceel toevoegen",
+    "calculatedArea": "De oppervlakte wordt automatisch berekend uit lengte × breedte en kan niet rechtstreeks worden bewerkt."
+  },
+  "messages": {
+    "createLocationFirst": "Maak eerst een locatie.",
+    "singleLocationHint": "Locatie: {{name}}",
+    "invalidLocationSelection": "Kies een geldige locatie.",
+    "noBedsHintTitle": "Er zijn nog geen bedden.",
+    "noBedsHintBeforeIcon": "Voeg bedden toe met het",
+    "noBedsHintAfterIcon": "pictogram bij het betreffende perceel. Het verschijnt als je de muisaanwijzer erboven houdt.",
+    "noBedsHintMobile": "Houd het betreffende perceel ingedrukt en kies ‘Bed toevoegen’.",
+    "missingDimensionsHint": "Lengte en breedte zijn belangrijk voor oppervlakteberekeningen, zaadbehoefte en teeltplanning.",
+    "missingDimensionsHintOptional": "Je kunt de waarden later toevoegen.",
+    "missingDimensionsCellTooltip": "Deze waarde is nodig voor de oppervlakteberekening en alle daarop gebaseerde planning.",
+    "createLocationError": "De locatie kon niet worden gemaakt.",
+    "locationCreated": "Locatie gemaakt.",
+    "unsavedMissingName": "De rij is niet opgeslagen omdat de naam ontbreekt.",
+    "unsavedInvalidRowsNavigationWarning": "Er is een niet-opgeslagen rij zonder naam. Deze gaat verloren als je de pagina verlaat.",
+    "unsavedRowEditNavigationWarning": "Er wordt momenteel een rij bewerkt. De wijzigingen gaan verloren als je de pagina verlaat.",
+    "locationDeleted": "Locatie verwijderd",
+    "fieldDeleted": "Perceel verwijderd",
+    "bedDeleted": "Bed verwijderd",
+    "locationAndBedsDeleted": "Locatie en {{count}} bedden verwijderd",
+    "fieldAndBedsDeleted": "Perceel en {{count}} bedden verwijderd",
+    "locationsNowVisible": "Locaties worden nu getoond omdat er meerdere locaties zijn."
+  },
+  "prompts": {
+    "newFieldName": "Naam van het nieuwe perceel:",
+    "selectLocationForField": "Voer de locatie-ID voor het nieuwe perceel in:\n{{options}}"
+  },
+  "actions": {
+    "addField": "Perceel toevoegen",
+    "addBed": "Bed toevoegen",
+    "addShortcutHint": "Ins",
+    "createLocation": "Locatie toevoegen",
+    "addAdditionalLocation": "Meerdere plaatsen? Voeg nog een locatie toe",
+    "undo": "Ongedaan maken",
+    "addFieldDropdown": "Perceel toevoegen",
+    "duplicateBed": "Bed dupliceren",
+    "duplicateShortcutHint": "Ctrl+D",
+    "duplicateShortcutHintMac": "⌘D",
+    "bulkCreateBeds": "Meerdere bedden toevoegen",
+    "duplicateField": "Perceel dupliceren"
+  },
+  "dialogs": {
+    "addField": {
+      "title": "Perceel toevoegen",
+      "nameLabel": "Perceelnaam",
+      "submit": "Toevoegen"
+    },
+    "addAdditionalLocation": {
+      "title": "Nog een locatie toevoegen",
+      "description": "Locaties helpen je om oppervlakken op verschillende plaatsen afzonderlijk te beheren. Voor een project op slechts één plaats hoef je verder niets in te stellen.",
+      "nameLabel": "Locatienaam",
+      "submit": "Locatie maken"
+    },
+    "unsavedRow": {
+      "title": "Rij niet opgeslagen",
+      "message": "Naam is een verplicht veld. Zonder naam kan deze rij niet worden opgeslagen.",
+      "continueEditing": "Verder bewerken",
+      "discard": "Verwerpen"
+    },
+    "bulkCreateBeds": {
+      "title": "Meerdere bedden aan {{field}} toevoegen",
+      "dimensionsSection": "Afmetingen",
+      "orientation": "Richting van de bedden",
+      "orientationLength": "Bedden lopen in de lengterichting",
+      "orientationWidth": "Bedden lopen in de breedterichting",
+      "length": "Lengte (m)",
+      "width": "Breedte (m)",
+      "pathWidth": "Pad (m)",
+      "pathHelper": "Ruimte tussen de bedden",
+      "countSection": "Aantal",
+      "count": "Aantal bedden",
+      "suggestion_one": "Met een pad van {{path}} m past {{count}} bed over {{side}} m.",
+      "suggestion_other": "Met een pad van {{path}} m passen {{count}} bedden over {{side}} m.",
+      "suggestionRemaining_one": "Met een pad van {{path}} m past nog {{count}} bed over {{side}} m ({{existing}}).",
+      "suggestionRemaining_other": "Met een pad van {{path}} m passen nog {{count}} bedden over {{side}} m ({{existing}}).",
+      "existingBeds_one": "inclusief {{count}} bestaand bed",
+      "existingBeds_other": "inclusief {{count}} bestaande bedden",
+      "noSpaceLeft": "Volgens de perceelafmetingen is er geen ruimte meer.",
+      "applySuggestion_one": "{{count}} gebruiken",
+      "applySuggestion_other": "{{count}} gebruiken",
+      "namingSection": "Namen",
+      "firstName": "Naam van het eerste bed",
+      "defaultFirstName": "Bed 1",
+      "previewSection": "Voorbeeld",
+      "previewEmpty": "Voer het aantal en de naam in om hier de namen van de nieuwe bedden te zien.",
+      "previewList": "Namen van de nieuwe bedden",
+      "summary_one": "{{count}} bed, elk {{area}} m², in totaal {{total}} m²",
+      "summary_other": "{{count}} bedden, elk {{area}} m², in totaal {{total}} m²",
+      "areaWarning": "Samen met de bestaande bedden ({{existingArea}} m²) zijn de nieuwe bedden ({{newArea}} m²) groter dan het perceel ({{fieldArea}} m²). Je kunt ze toch toevoegen.",
+      "namesTaken_one": "Deze naam wordt al in het perceel gebruikt: {{names}}",
+      "namesTaken_other": "Deze namen worden al in het perceel gebruikt: {{names}}",
+      "positiveNumber": "Moet groter zijn dan 0.",
+      "nonNegativeNumber": "Mag niet negatief zijn.",
+      "wholeNumber": "Voer een geheel getal van minimaal {{min}} in.",
+      "tooMany": "Maximaal {{max}} bedden tegelijk.",
+      "saveError": "De bedden konden niet worden toegevoegd. Er is geen enkel bed opgeslagen.",
+      "submit": "Bedden toevoegen",
+      "submitCount_one": "{{count}} bed toevoegen",
+      "submitCount_other": "{{count}} bedden toevoegen",
+      "created_one": "{{count}} bed toegevoegd.",
+      "created_other": "{{count}} bedden toegevoegd."
+    },
+    "duplicateField": {
+      "title": "Perceel dupliceren",
+      "name": "Naam van het nieuwe perceel",
+      "copyBeds": "Bedden kopiëren ({{total}})",
+      "replaceSearch": "In bednamen vervangen",
+      "replaceWith": "door",
+      "searchNotFound": "Niet gevonden in een bednaam.",
+      "previewSection": "Voorbeeld",
+      "previewField": "Nieuw perceel {{name}}",
+      "previewDimensions": "{{length}} × {{width}} m",
+      "previewBeds_one": "{{count}} bed: {{names}}",
+      "previewBeds_other": "{{count}} bedden: {{names}}",
+      "nameTaken": "Er bestaat al een perceel met deze naam op deze locatie.",
+      "bedNamesConflict_one": "Na het vervangen zouden meerdere bedden deze naam hebben: {{names}}",
+      "bedNamesConflict_other": "Na het vervangen zouden meerdere bedden een van deze namen delen: {{names}}",
+      "invalidBedNames_one": "Na het vervangen zou deze bednaam leeg of te lang zijn: {{names}}",
+      "invalidBedNames_other": "Na het vervangen zouden deze bednamen leeg of te lang zijn: {{names}}",
+      "bedNamesBlocked": "De vervanging leidt tot lege of dubbele bednamen.",
+      "submit": "Dupliceren",
+      "saveError": "Het perceel kon niet worden gedupliceerd. Er is niets opgeslagen.",
+      "created": "Perceel ‘{{name}}’ toegevoegd",
+      "createdWithBeds_one": "Perceel ‘{{name}}’ toegevoegd met {{count}} bed",
+      "createdWithBeds_other": "Perceel ‘{{name}}’ toegevoegd met {{count}} bedden"
+    }
+  },
+  "emptyAreas": {
+    "title": "Nog geen teeltoppervlakken",
+    "description": "De hoofdlocatie is nog niet beschikbaar voor dit project. Daarna kun je daar percelen en bedden vastleggen.",
+    "missingLocationTitle": "Locatie ontbreekt",
+    "missingLocationDescription": "De hoofdlocatie is nog niet beschikbaar voor dit project.",
+    "missingFieldTitle": "Perceel ontbreekt",
+    "missingFieldSingleLocationDescription": "Maak een perceel om te beginnen.",
+    "additionalLocationHint": "Als je oppervlakken op meerdere plaatsen beheert, kun je ook",
+    "additionalLocationLink": "extra locaties maken",
+    "missingFieldMultipleLocationsBeforeIcon": "Voeg op de gewenste locatie een perceel toe met het",
+    "missingFieldMultipleLocationsAfterIcon": "pictogram of het contextmenu.",
+    "actions": {
+      "createLocation": "Locatie toevoegen",
+      "createField": "Perceel toevoegen",
+      "createBed": "Bed toevoegen"
+    }
+  },
+  "confirm": {
+    "deleteFieldWithBeds": "Wil je dit perceel echt verwijderen? Alle bijbehorende bedden worden ook verwijderd.",
+    "deleteBed": "Wil je dit bed echt verwijderen?"
+  },
+  "commands": {
+    "create": "Nieuw maken",
+    "delete": "Verwijderen (Alt+Shift+D)",
+    "keywords": {
+      "create": "nieuw, teeltoppervlakken, maken",
+      "edit": "bewerken",
+      "delete": "verwijderen"
+    }
+  },
+  "mobile": {
+    "expand": "Uitklappen: {{name}}",
+    "collapse": "Inklappen: {{name}}",
+    "hasNotes": "Notitie aanwezig",
+    "secondary": {
+      "field_zero": "Geen percelen",
+      "field_one": "{{count}} perceel",
+      "field_other": "{{count}} percelen",
+      "dimensions": "{{type}} · {{length}} × {{width}} m · {{area}} m²",
+      "noDimensions": "{{type}} · geen afmetingen"
+    },
+    "sheet": {
+      "topLevel": "Hoogste niveau",
+      "editTitle": "{{type}} bewerken",
+      "createTitle": "{{type}} toevoegen",
+      "locationNoDimensions": "Locaties hebben geen eigen afmetingen.",
+      "calculatedArea": "Oppervlakte (berekend)",
+      "discardTitle": "Wijzigingen verwerpen?",
+      "discardMessage": "Je hebt niet-opgeslagen wijzigingen. Wil je ze verwerpen of verder bewerken?",
+      "discardKeep": "Verder bewerken",
+      "discardConfirm": "Verwerpen"
+    },
+    "typeLabel": {
+      "location": "Locatie",
+      "field": "Perceel",
+      "bed": "Bed"
+    }
+  }
+}

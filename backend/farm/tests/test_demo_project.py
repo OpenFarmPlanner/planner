@@ -751,7 +751,7 @@ class DemoRequestLanguageTests(TestCase):
             with self.subTest(language=language):
                 request = self.factory.get('/', HTTP_ACCEPT_LANGUAGE=language)
                 self.assertEqual(resolve_request_language(request), language)
-                expected = 'en' if language in {'it', 'pt'} else language
+                expected = 'en' if language in {'it', 'pt', 'nl'} else language
                 self.assertEqual(resolve_demo_request_language(request), expected)
                 self.assertEqual(resolve_demo_language(language), expected)
                 self.assertTrue(is_demo_project_description(get_demo_project_description(language)))

@@ -15,6 +15,7 @@ import homeES from '../i18n/locales/es/home.json';
 import homeFR from '../i18n/locales/fr/home.json';
 import homeIT from '../i18n/locales/it/home.json';
 import homePT from '../i18n/locales/pt/home.json';
+import homeNL from '../i18n/locales/nl/home.json';
 
 type Tree = { [key: string]: string | Tree };
 
@@ -40,6 +41,7 @@ const LEGAL = {
   es: flatten(homeES.legal as Tree),
   it: flatten(homeIT.legal as Tree),
   pt: flatten(homePT.legal as Tree),
+  nl: flatten(homeNL.legal as Tree),
 };
 
 const citations = (text: string): string[] =>
@@ -49,11 +51,11 @@ const links = (text: string): string[] =>
   [...text.matchAll(/https?:\/\/[^\s)]+|[\w.+-]+@[\w.-]+\.\w+/g)].map((m) => m[0]).sort();
 
 describe('legal texts say the same in every language', () => {
-  it.each(['fr', 'es', 'de', 'it', 'pt'] as const)('%s has every English paragraph and no extra one', (language) => {
+  it.each(['fr', 'es', 'de', 'it', 'pt', 'nl'] as const)('%s has every English paragraph and no extra one', (language) => {
     expect([...LEGAL[language].keys()].sort()).toEqual([...LEGAL.en.keys()].sort());
   });
 
-  it.each(['de', 'fr', 'es', 'it', 'pt'] as const)('%s cites the same articles, numbers and links as English', (language) => {
+  it.each(['de', 'fr', 'es', 'it', 'pt', 'nl'] as const)('%s cites the same articles, numbers and links as English', (language) => {
     for (const [key, english] of LEGAL.en) {
       const text = LEGAL[language].get(key) ?? '';
       expect(citations(text), `citations in ${language}:${key}`).toEqual(citations(english));

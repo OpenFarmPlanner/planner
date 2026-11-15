@@ -53,6 +53,7 @@ const LANGUAGE_BUNDLES: Record<SupportedLanguage, () => Promise<{ default: Langu
   es: () => import('./locales/es/index'),
   it: () => import('./locales/it/index'),
   pt: () => import('./locales/pt/index'),
+  nl: () => import('./locales/nl/index'),
 };
 
 const bundleRequests = new Map<string, Promise<LanguageBundle>>();

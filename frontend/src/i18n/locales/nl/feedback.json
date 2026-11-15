@@ -1,0 +1,30 @@
+{
+  "dialog": {
+    "title": "Feedback versturen",
+    "subtitle": "We lezen elk bericht persoonlijk. Bedankt dat je OpenFarmPlanner helpt vormgeven.",
+    "categoryLabel": "Categorie (optioneel)",
+    "categoryAriaLabel": "Feedbackcategorie",
+    "categories": {
+      "bug": "Fout",
+      "idea": "Idee",
+      "question": "Vraag",
+      "other": "Anders"
+    },
+    "messageLabel": "Bericht",
+    "messagePlaceholder": "Wat wil je ons vertellen?",
+    "messageRequiredTooltip": "Voer een bericht in",
+    "context": "Automatisch meegestuurd: project ‘{{project}}’, weergave ‘{{route}}’, browserinformatie.",
+    "contextNoProject": "geen project",
+    "contactConsent": "Sta toe dat we contact met je opnemen voor vervolgvragen",
+    "contactConsentHint": "We praten ook graag persoonlijk met je. We wisselen graag ideeën uit met actieve landbouwbedrijven.",
+    "contactEmail": "{{email}} (uit je account)",
+    "cancel": "Annuleren",
+    "submit": "Versturen",
+    "error": "Je feedback kon niet worden verstuurd. Probeer het opnieuw."
+  },
+  "success": {
+    "title": "Bedankt voor je feedback!",
+    "text": "Je bericht is ontvangen. Als je toestemming hebt gegeven om contact op te nemen, hoor je rechtstreeks van ons.",
+    "close": "Sluiten"
+  }
+}

@@ -12,6 +12,7 @@ import homeES from '../i18n/locales/es/home.json';
 import homeFR from '../i18n/locales/fr/home.json';
 import homeIT from '../i18n/locales/it/home.json';
 import homePT from '../i18n/locales/pt/home.json';
+import homeNL from '../i18n/locales/nl/home.json';
 import { resolveLocaleFromLanguage } from '../utils/numberLocalization';
 
 const GERMAN_MONTHS = [
@@ -19,7 +20,7 @@ const GERMAN_MONTHS = [
   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
 ];
 
-const BUNDLES = { de: homeDE, en: homeEN, fr: homeFR, es: homeES, it: homeIT, pt: homePT } as const;
+const BUNDLES = { de: homeDE, en: homeEN, fr: homeFR, es: homeES, it: homeIT, pt: homePT, nl: homeNL } as const;
 
 function germanStampDate(stamp: string): Date {
   const match = /(\d{1,2})\. (\p{L}+) (\d{4})/u.exec(stamp);

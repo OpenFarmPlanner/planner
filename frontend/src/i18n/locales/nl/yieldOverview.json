@@ -1,0 +1,38 @@
+{
+  "loading": "Laden...",
+  "errors": {
+    "load": "Het opbrengstoverzicht kon niet worden geladen."
+  },
+  "filters": {
+    "crop": "Gewas",
+    "allCrops": "Alle gewassen",
+    "period": "Weergave",
+    "week": "Week",
+    "month": "Maand"
+  },
+  "chart": {
+    "title": "Opbrengstverdeling",
+    "subtitle": "Prognose op basis van de teelten van het actieve seizoen: geplande oppervlakte of aantal planten maal de verwachte opbrengst van het gewas.",
+    "tooltip": "{{period}} · {{crop}}: {{yield}} kg",
+    "tooltipPeriod": "Periode",
+    "tooltipYield": "Verwachte opbrengst",
+    "yearBoundary": "Jaarwisseling: {{year1}} → {{year2}}"
+  },
+  "legend": {
+    "showAll": "Alle {{count}} gewassen tonen",
+    "showMore": "Nog {{count}} tonen",
+    "expand": "Meer tonen",
+    "collapse": "Terug naar de top {{count}}"
+  },
+  "contextMenu": {
+    "openCrop": "Gewas openen"
+  },
+  "empty": {
+    "noPlansTitle": "Nog geen opbrengstprognose beschikbaar",
+    "description": "Opbrengstprognoses zijn beschikbaar zodra er teelten met oogstperiodes bestaan.",
+    "createPlanAction": "Teelt toevoegen",
+    "noYieldTitle": "Geen verwachte opbrengsten in dit seizoen",
+    "noYieldDescription": "Er zijn geen oogstgegevens voor het actieve seizoen. Controleer of bij je gewassen verwachte opbrengsten zijn ingevoerd.",
+    "openPlansAction": "Teeltplan openen"
+  }
+}

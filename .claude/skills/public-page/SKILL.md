@@ -12,16 +12,16 @@ work, not a second copy of the rules.
 ## Steps
 
 1. **Register** the page in `PUBLIC_PAGES` (`frontend/src/seo/seoConfig.ts`):
-   German path at the root, `/en`, `/fr`, `/es`, `/it`, `/pt` paths with slugs in that
+   German path at the root, `/en`, `/fr`, `/es`, `/it`, `/pt`, `/nl` paths with slugs in that
    language, sitemap `changefreq`/`priority`, `titleKey`/`descriptionKey`.
    Map its id in `PUBLIC_PAGE_ELEMENTS` (`frontend/src/App.tsx`).
 2. **Translate**: `seo.titles.*`, `seo.descriptions.*` and the page content
-   in de, en, fr, es, it, pt; follow the `ui-text-i18n` skill. Legal pages: the
+   in de, en, fr, es, it, pt, nl; follow the `ui-text-i18n` skill. Legal pages: the
    prevailing-language clauses live in the terms and privacy policy texts.
 3. **Link** only through `usePublicPagePath(id)`; never hardcode a public
    path, canonical, hreflang or sitemap entry.
 4. **App-only routes** never become public pages: add their prefixes (and the
-   `/en`, `/fr`, `/es`, `/it`, `/pt` twins) to `NON_INDEXABLE_PATH_PREFIXES`.
+   `/en`, `/fr`, `/es`, `/it`, `/pt`, `/nl` twins) to `NON_INDEXABLE_PATH_PREFIXES`.
 5. **Legal texts**: decide whether the change needs renewed user consent; if
    so, implement the consent/version bump in the same change, otherwise say
    so in the summary (`CLAUDE.md`, "Agent Collaboration Preferences").

@@ -8,17 +8,17 @@ produced by the **frontend build**.
 
 ## What is indexable
 
-Every public page exists in German, English, French, Spanish, Italian and Portuguese. German is
+Every public page exists in German, English, French, Spanish, Italian, Portuguese and Dutch. German is
 the default language and lives at the root without a prefix; every other
 language lives under its own prefix with slugs in that language:
 
-| Page             | German (`x-default`)   | English            | French                      | Spanish           | Italian | Portuguese |
-| ---------------- | ---------------------- | ------------------ | --------------------------- | ----------------- | --- | --- |
-| Landing page     | `/`                    | `/en`              | `/fr`                       | `/es`             | `/it` | `/pt` |
-| About            | `/ueber`               | `/en/about`        | `/fr/a-propos`              | `/es/acerca-de`   | `/it/chi-siamo` | `/pt/sobre` |
-| Imprint (legal)  | `/impressum`           | `/en/legal-notice` | `/fr/mentions-legales`      | `/es/aviso-legal` | `/it/note-legali` | `/pt/aviso-legal` |
-| Privacy (legal)  | `/datenschutz`         | `/en/privacy`      | `/fr/confidentialite`       | `/es/privacidad`  | `/it/privacy` | `/pt/privacidade` |
-| Terms (legal)    | `/nutzungsbedingungen` | `/en/terms`        | `/fr/conditions-utilisation` | `/es/terminos`   | `/it/termini` | `/pt/termos` |
+| Page             | German (`x-default`)   | English            | French                      | Spanish           | Italian | Portuguese | Dutch |
+| ---------------- | ---------------------- | ------------------ | --------------------------- | ----------------- | --- | --- | --- |
+| Landing page     | `/`                    | `/en`              | `/fr`                       | `/es`             | `/it` | `/pt` | `/nl` |
+| About            | `/ueber`               | `/en/about`        | `/fr/a-propos`              | `/es/acerca-de`   | `/it/chi-siamo` | `/pt/sobre` | `/nl/over` |
+| Imprint (legal)  | `/impressum`           | `/en/legal-notice` | `/fr/mentions-legales`      | `/es/aviso-legal` | `/it/note-legali` | `/pt/aviso-legal` | `/nl/juridische-informatie` |
+| Privacy (legal)  | `/datenschutz`         | `/en/privacy`      | `/fr/confidentialite`       | `/es/privacidad`  | `/it/privacy` | `/pt/privacidade` | `/nl/privacy` |
+| Terms (legal)    | `/nutzungsbedingungen` | `/en/terms`        | `/fr/conditions-utilisation` | `/es/terminos`   | `/it/termini` | `/pt/termos` | `/nl/voorwaarden` |
 
 Slugs are plain ASCII (no accents), lowercase, hyphen-separated.
 
@@ -32,7 +32,7 @@ Explicitly **not** indexable (disallowed in `robots.txt` and served with a
   the route is not intended for search indexing
 - `/invite/*`, `/invitation`
 
-None of these has an `/en/...`, `/fr/...` or `/es/...` twin — app and auth
+None of these has a language-prefixed twin — app and auth
 routes are language-neutral and follow the user's language preference. If one
 ever gets one, its prefixed path must be added to `NON_INDEXABLE_PATH_PREFIXES` too (the SEO guard rejects
 registering it as public).
@@ -80,7 +80,7 @@ else is derived from it, so no public path is listed anywhere else:
   first load of a public page, a visitor whose language differs from the
   page's is sent to the counterpart URL with `location.replace` (query and
   hash kept): their stored choice from the switcher if any, otherwise the
-  browser language — German, French, Spanish, Italian and Portuguese browsers (any regional
+  browser language — German, French, Spanish, Italian, Portuguese and Dutch browsers (any regional
   variant, e.g. `fr-CA`, `es-419`, `es-MX`) get their language, every other
   language gets English.
   The `index.html` preboot does this before first paint on prerendered pages
@@ -327,7 +327,7 @@ above:
 ## Environment variables
 
 | Variable               | Default                         | Effect                                                                                                    |
-| ---------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------- | --- |
+| ---------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `VITE_PUBLIC_SITE_URL` | `https://openfarmplanner.org`   | Canonical origin used for canonical/OG URLs, the `robots.txt` `Sitemap:` line and sitemap `<loc>` values. |
 | `VITE_SEO_INDEXABLE`   | `true`                          | `false`/`0`/`no`/`off` → `robots.txt` becomes `Disallow: /` and a `noindex` meta is emitted.               |
 

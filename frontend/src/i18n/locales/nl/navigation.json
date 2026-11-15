@@ -1,0 +1,449 @@
+{
+  "home": "Start",
+  "dashboard": "Overzicht",
+  "locations": "Locaties",
+  "fieldsAndBeds": "Teeltoppervlakken",
+  "crops": "Gewassen",
+  "cropLibrary": "Gewassenbibliotheek",
+  "suppliers": "Leveranciers",
+  "plantingPlans": "Teeltplan",
+  "ganttChart": "Teeltkalender",
+  "yieldOverview": "Opbrengstoverzicht",
+  "seedDemand": "Zaadbehoefte",
+  "youngPlantDemand": "Plantgoedbehoefte",
+  "short": {
+    "dashboard": "Overzicht",
+    "fieldsAndBeds": "Areaal",
+    "crops": "Gewassen",
+    "cropLibrary": "Bibliotheek",
+    "plantingPlans": "Teeltplan",
+    "ganttChart": "Kalender",
+    "yieldOverview": "Opbrengsten",
+    "seedDemand": "Zaad",
+    "youngPlantDemand": "Plantgoed",
+    "suppliers": "Leveranciers"
+  },
+  "graphicalFields": "Grafische weergave",
+  "accountSettings": "Accountinstellingen",
+  "publicLibraryModeration": "Gewassenbibliotheek modereren",
+  "appVersionLabel": "Versie",
+  "disabledNoProjectTooltip": "Maak eerst een project.",
+  "project": {
+    "settings": "Projectinstellingen",
+    "selection": "Projectkeuze",
+    "members": "Leden beheren",
+    "create": "Nieuw project",
+    "switch": "Project wisselen"
+  },
+  "projectSwitcher": {
+    "ariaLabel": "Actief project wisselen",
+    "noProject": "Geen project",
+    "zeroProjects": "Je hebt momenteel geen toegang tot projecten.",
+    "newProjectPlaceholder": "Nieuw project (binnenkort)",
+    "switchError": "Het project kon niet worden gewisseld.",
+    "newProjectAction": "Nieuw project",
+    "openProjectAction": "Openen",
+    "activeProject": "Actief project",
+    "projects": "Projecten",
+    "createDialogTitle": "Project maken",
+    "createNameLabel": "Projectnaam",
+    "createCancel": "Annuleren",
+    "createSubmit": "Project maken",
+    "createError": "Het project kon niet worden gemaakt.",
+    "loadDemoProject": "Demoproject laden",
+    "trash": "Prullenbak ({{count}})"
+  },
+  "connectionStatus": {
+    "online": "Online – verbonden",
+    "offline": "Offline – geen verbinding. Wijzigingen kunnen niet worden opgeslagen."
+  },
+  "seasonSwitcher": {
+    "ariaLabel": "Actief seizoen wisselen",
+    "sectionTitle": "Seizoenen",
+    "planCount_one": "{{count}} teelt",
+    "planCount_other": "{{count}} teelten",
+    "loadError": "De seizoenen konden niet worden geladen.",
+    "deleted": "Seizoen ‘{{label}}’ verwijderd",
+    "undo": "Ongedaan maken",
+    "settingsLink": "Seizoenspatroon in de projectinstellingen wijzigen",
+    "menu": {
+      "openAria": "Seizoensacties openen",
+      "copyDataFrom": "Gegevens kopiëren uit…",
+      "rename": "Hernoemen",
+      "editPeriod": "Periode bewerken",
+      "delete": "Verwijderen"
+    },
+    "periodEditDialog": {
+      "title": "Periode bewerken",
+      "startLabel": "Begindatum",
+      "endLabel": "Einddatum",
+      "currentPeriod": "Huidige periode: {{period}}",
+      "endBeforeStart": "De einddatum moet na de begindatum liggen.",
+      "save": "Opslaan",
+      "error": "De periode kon niet worden gewijzigd.",
+      "unknownCrop": "Onbekend gewas",
+      "plantingConflictIntro": "Deze teelten hebben een plantdatum buiten de nieuwe periode. Pas ze eerst aan of verplaats ze voordat je de periode wijzigt:",
+      "plantingConflictItem": "{{crop}} – plantdatum {{date}}",
+      "overlapConflictIntro": "De nieuwe periode overlapt een ander seizoen:",
+      "overlapConflictItem": "Seizoen {{label}}: {{period}}"
+    },
+    "suggestion": {
+      "title": "Seizoen {{label}} maken",
+      "confirmTitle": "Seizoen {{label}} maken?",
+      "copyCheckbox": "Gegevens uit seizoen {{label}} kopiëren",
+      "copyDescription": "Teeltoppervlakken, bedden en vruchtwisselingstoewijzingen worden naar het nieuwe seizoen gekopieerd.",
+      "create": "Maken",
+      "createError": "Het seizoen kon niet worden gemaakt.",
+      "outOfRangeError_one": "Het seizoen voor {{period}} kan niet worden gemaakt omdat één bestaande teelt buiten die periode valt: {{examples}}. Pas het seizoenspatroon in de projectinstellingen aan en maak het seizoen daarna opnieuw.",
+      "outOfRangeError_other": "Het seizoen voor {{period}} kan niet worden gemaakt omdat {{count}} bestaande teelten buiten die periode vallen: {{examples}}. Pas het seizoenspatroon in de projectinstellingen aan en maak het seizoen daarna opnieuw.",
+      "outOfRangeFallbackExamples": "bestaande teelten",
+      "patternHint": {
+        "prefix": "Past de periode niet? Je kunt het seizoenspatroon aanpassen in de",
+        "link": "projectinstellingen",
+        "suffix": ". De wijziging geldt dan voor toekomstige seizoenen."
+      },
+      "gap": {
+        "intro": {
+          "gap": "Er zit een gat tussen het laatste seizoen ‘{{label}}’ en het nieuwe seizoen ({{period}}). Kies hoe je wilt doorgaan:",
+          "overlap": "Het nieuwe seizoen overlapt het laatste seizoen ‘{{label}}’ ({{period}}). Kies hoe je wilt doorgaan:"
+        },
+        "chooseLabel": "Hoe moet het nieuwe seizoen beginnen?",
+        "adopt": {
+          "gap": "Gat behouden (seizoen precies zoals berekend volgens het patroon)",
+          "overlap": "Overlap behouden (seizoen precies zoals berekend volgens het patroon)"
+        },
+        "transition": "Overgangsseizoen maken (sluit naadloos aan op het laatste seizoen)",
+        "transitionTwoSeasons": "Er worden twee seizoenen gemaakt: overgangsseizoen {{transitionPeriod}} en {{followupLabel}} ({{followupPeriod}}).",
+        "manual": "Begindatum handmatig instellen",
+        "manualCaption": "Het seizoen sluit het gat vanaf de gekozen datum en loopt tot het einde van de volgende reguliere patroonperiode.",
+        "manualStartLabel": "Begindatum",
+        "manualPeriod": "Periode: {{period}}",
+        "residualClosed": {
+          "gap": "Het gat is volledig gesloten.",
+          "overlap": "De overlap is volledig vermeden."
+        },
+        "residualRemains": {
+          "gap": "Er blijft een gat over: {{period}}.",
+          "overlap": "Er blijft een overlap: {{period}}."
+        },
+        "copyPreviewAll": "Alle {{total}} teelten uit {{label}} worden gekopieerd.",
+        "copyPreviewPartial": "{{copied}} van {{total}} teelten uit {{label}} worden gekopieerd. {{skipped}} vallen buiten de periode en worden niet gekopieerd.",
+        "copyPreviewFollowup": "Volgend seizoen {{label}}: {{copied}} van {{total}} teelten worden gekopieerd."
+      },
+      "createDisabledTooltip": "Kies eerst een optie voor de seizoensovergang."
+    },
+    "renameDialog": {
+      "title": "Seizoen hernoemen",
+      "label": "Naam",
+      "helper": "Laat dit leeg om de berekende naam ‘{{computed}}’ te gebruiken.",
+      "save": "Opslaan"
+    },
+    "copyDialog": {
+      "title": "Gegevens kopiëren",
+      "sourceLabel": "Bron",
+      "warning_one": "Seizoen {{target}} bevat al 1 teelt. Bij het kopiëren worden de teelten uit seizoen {{source}} extra toegevoegd. Bestaande teelten in {{target}} worden niet gewijzigd of vervangen.",
+      "warning_other": "Seizoen {{target}} bevat al {{count}} teelten. Bij het kopiëren worden de teelten uit seizoen {{source}} extra toegevoegd. Bestaande teelten in {{target}} worden niet gewijzigd of vervangen.",
+      "summary_one": "→ 1 teelt uit seizoen {{source}} wordt aan seizoen {{target}} toegevoegd (totaal daarna: {{total}}).",
+      "summary_other": "→ {{count}} teelten uit seizoen {{source}} worden aan seizoen {{target}} toegevoegd (totaal daarna: {{total}}).",
+      "confirm": "Kopiëren",
+      "error": "De gegevens konden niet worden gekopieerd.",
+      "confirmDisabledTooltip": "Kies eerst een bronseizoen.",
+      "rotation": {
+        "checking": "Vruchtwisseling in het doelseizoen controleren…",
+        "checkError": "De vruchtwisseling kon niet worden gecontroleerd. Je kunt toch kopiëren.",
+        "summary_one": "1 teelt uit seizoen {{source}} wordt naar dezelfde bedden gekopieerd.",
+        "summary_other": "{{count}} teelten uit seizoen {{source}} worden naar dezelfde bedden gekopieerd.",
+        "warningConflicts": "Daarvan schenden {{conflicts}} de vruchtwisseling, omdat dezelfde familie het volgende jaar opnieuw op hetzelfde bed zou staan.",
+        "warningConflictsAndHints": "Daarvan schenden {{conflicts}} de vruchtwisseling, omdat dezelfde familie het volgende jaar opnieuw op hetzelfde bed zou staan. Bij nog {{hints}} is er een tip over de opeenvolging van voedingsbehoefte.",
+        "hintsOnly": "Bij {{hints}} is er een tip over de opeenvolging van voedingsbehoefte.",
+        "showAll": "Alle {{conflicts}} conflicten tonen",
+        "showAllItems": "Alle {{count}} items tonen",
+        "showLess": "Minder tonen",
+        "item": "{{culture}} · {{bed}}",
+        "reasonConflict": "{{family}} voor het laatst in {{year}}, op zijn vroegst weer in {{earliestYear}}",
+        "reasonHint": "Hoge voedingsbehoefte na {{previousCulture}} ({{year}})",
+        "modeLabel": "Wat moet er met de {{conflicts}} conflicten gebeuren?",
+        "modes": {
+          "without_bed": {
+            "label": "Zonder bed kopiëren",
+            "description": "De {{conflicts}} teelten worden als open toewijzingen gemaakt. Je kiest daarna het bed aan de hand van suggesties."
+          },
+          "keep": {
+            "label": "Toch naar dezelfde bedden kopiëren",
+            "description": "De conflicten blijven in de tabel gemarkeerd."
+          },
+          "skip": {
+            "label": "Niet kopiëren",
+            "description": "Alleen de {{ok}} teelten zonder conflict worden gekopieerd."
+          }
+        }
+      }
+    }
+  },
+  "seasonSetup": {
+    "title": "Seizoensplanning instellen",
+    "description_one": "Voordat je met seizoenen kunt werken, stellen we je seizoenspatroon in en wijzen we de 1 bestaande teelt van dit project aan een seizoen toe.",
+    "description_other": "Voordat je met seizoenen kunt werken, stellen we je seizoenspatroon in en wijzen we de {{count}} bestaande teelten van dit project aan een seizoen toe.",
+    "startLabel": "Seizoen begint op",
+    "infoBox": "Er worden geen gegevens gewijzigd of verwijderd. Alle bestaande teelten worden alleen aan seizoen ‘{{label}}’ toegewezen. Je kunt het patroon en de toewijzing later op elk moment aanpassen.",
+    "summary_one": "→ De 1 bestaande teelt wordt aan seizoen ‘{{label}}’ toegewezen ({{period}}).",
+    "summary_other": "→ Alle {{count}} bestaande teelten worden aan seizoen ‘{{label}}’ toegewezen ({{period}}).",
+    "submit": "Instellen",
+    "error": "Instellen mislukt."
+  },
+  "seasonPattern": {
+    "title": "Seizoenspatroon",
+    "dayLabel": "Dag",
+    "monthLabel": "Maand",
+    "helper": "Elk seizoen duurt vanaf deze datum precies 12 maanden.",
+    "previewTitle": "Voorbeeld van berekende seizoenen",
+    "previewColumnLabel": "Jaar",
+    "previewColumnPeriod": "Periode",
+    "current": "(huidig)",
+    "previewReferenceHint": "(laatste bestaande seizoen)",
+    "previewHint": "(voorbeeld)",
+    "transition": {
+      "gapLabel": "Gat",
+      "overlapLabel": "Overlap",
+      "rowHint": "Opties kunnen bij het maken worden gekozen"
+    },
+    "changeNotice": "De wijziging geldt alleen voor seizoenen die vanaf nu worden gemaakt. Bestaande seizoenen blijven ongewijzigd.",
+    "cancel": "Annuleren",
+    "save": "Opslaan",
+    "saveAriaLabel": "Seizoenspatroon opslaan",
+    "saveSuccess": "Seizoenspatroon opgeslagen.",
+    "saveError": "Het seizoenspatroon kon niet worden opgeslagen.",
+    "months": {
+      "january": "januari",
+      "february": "februari",
+      "march": "maart",
+      "april": "april",
+      "may": "mei",
+      "june": "juni",
+      "july": "juli",
+      "august": "augustus",
+      "september": "september",
+      "october": "oktober",
+      "november": "november",
+      "december": "december"
+    }
+  },
+  "projectRoles": {
+    "admin": "Beheerder",
+    "member": "Lid"
+  },
+  "globalMenu": {
+    "notifications": "Meldingen",
+    "projectActions": "Projectacties",
+    "app": "App",
+    "shortcuts": "Sneltoetsen",
+    "pageHelp": "Hulp voor deze pagina",
+    "pageHelpUnavailable": "Voor deze pagina is geen specifieke hulp beschikbaar.",
+    "appHelp": "Apphulp",
+    "feedback": "Feedback versturen",
+    "account": "Account",
+    "closeSidebar": "Zijbalk sluiten",
+    "openSidebar": "Zijbalk openen",
+    "collapseSidebar": "Zijbalk inklappen",
+    "expandSidebar": "Zijbalk uitklappen",
+    "dashboardLink": "Naar dashboard",
+    "openMobileMenu": "Menu openen",
+    "moreActions": "Meer"
+  },
+  "pageHelp": {
+    "dashboard": "Hulp voor het dashboard",
+    "locations": "Hulp voor locaties",
+    "areas": "Hulp voor teeltoppervlakken",
+    "crops": "Hulp voor gewassen",
+    "cropLibrary": "Hulp voor de gewassenbibliotheek",
+    "plantingPlans": "Hulp voor het teeltplan",
+    "calendar": "Hulp voor de teeltkalender",
+    "yieldOverview": "Hulp voor het opbrengstoverzicht",
+    "seedDemand": "Hulp voor de zaadbehoefte",
+    "youngPlantDemand": "Hulp voor de plantgoedbehoefte",
+    "suppliers": "Hulp voor leveranciers",
+    "openAria": "{{label}} openen"
+  },
+  "cropActions": {
+    "openLibrary": "Uit bibliotheek importeren",
+    "library": "Uit bibliotheek importeren",
+    "libraryShort": "Importeren",
+    "openImportExport": "Importeren/exporteren openen",
+    "importExport": "Importeren/exporteren",
+    "openCropActions": "Gewasacties openen",
+    "actions": "Acties"
+  },
+  "projectTrash": {
+    "title": "Prullenbak",
+    "empty": "De prullenbak is leeg.",
+    "retentionNotice": "Verwijderde projecten worden na 30 dagen automatisch definitief verwijderd.",
+    "loadError": "Verwijderde projecten konden niet worden geladen.",
+    "deletedDays_zero": "vandaag verwijderd",
+    "deletedDays_one": "{{count}} dag geleden verwijderd",
+    "deletedDays_other": "{{count}} dagen geleden verwijderd",
+    "deletedUnknown": "Verwijderdatum onbekend",
+    "restore": "Herstellen",
+    "restoreSuccess": "Project hersteld",
+    "restoreError": "Het project kon niet worden hersteld.",
+    "permanentDelete": "Definitief verwijderen",
+    "permanentConfirm": "Project {{name}} definitief verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
+    "permanentSuccess": "Project definitief verwijderd.",
+    "permanentError": "Het project kon niet definitief worden verwijderd."
+  },
+  "commandGroups": {
+    "project": "Project",
+    "account": "Account",
+    "navigation": "Navigatie",
+    "help": "Hulp"
+  },
+  "commandPalette": {
+    "label": "Acties zoeken (Alt+K)",
+    "placeholder": "Actie zoeken of rechtstreeks uitvoeren",
+    "emptyTitle": "Geen overeenkomende acties gevonden.",
+    "emptyDescription": "Probeer een andere zoekterm of controleer of er in de huidige context meer acties beschikbaar zijn.",
+    "shortcutsTitle": "Sneltoetsen",
+    "createNew": "Nieuw maken...",
+    "createNewShortcut": "Nieuw maken",
+    "contextualShortcutsTitle": "Contextafhankelijke sneltoetsen (Alt+K)",
+    "contextualShortcutsDescription": "Sneltoetsen zijn veilig voor de browser en overschrijven geen gebruikelijke browsersneltoetsen.",
+    "primaryShortcutTitle": "Acties zoeken",
+    "primaryShortcutDescription": "Paginaspecifieke opdrachten en sneltoetsen tonen",
+    "universalShortcutsTitle": "Basisnavigatie",
+    "universalShortcuts": {
+      "nextRegion": "Volgend focusgebied",
+      "previousRegion": "Vorig focusgebied",
+      "withinRegion": "Binnen het gebied navigeren",
+      "closeDialog": "Dialoogvenster of menu sluiten"
+    },
+    "currentRegionShortcutsTitle": "Huidig focusgebied",
+    "allPageShortcutsTitle": "Paginaspecifieke sneltoetsen",
+    "allPageShortcuts": {
+      "crops": {
+        "title": "Gewassen",
+        "create": "Gewas toevoegen",
+        "search": "Gewaszoekveld activeren",
+        "edit": "Gewas bewerken",
+        "delete": "Gewas verwijderen",
+        "exportCurrent": "Geselecteerd gewas exporteren",
+        "exportAll": "Alle gewassen exporteren",
+        "import": "Gewassen importeren",
+        "createPlan": "Teelt maken uit gewas",
+        "previous": "Vorig gewas kiezen",
+        "next": "Volgend gewas kiezen"
+      },
+      "publicCropLibrary": {
+        "title": "Gewassenbibliotheek",
+        "search": "Gewassenbibliotheek doorzoeken",
+        "edit": "Openbaar gewas bewerken",
+        "import": "Gewas importeren",
+        "previous": "Vorig gewas kiezen",
+        "next": "Volgend gewas kiezen"
+      },
+      "areas": {
+        "title": "Teeltoppervlakken",
+        "create": "Teeltoppervlak maken",
+        "focusTable": "Tabel activeren",
+        "createFromSelection": "Onderliggend item aan selectie toevoegen",
+        "delete": "Geselecteerd teeltoppervlak verwijderen",
+        "showList": "Lijstweergave tonen",
+        "showGraphical": "Grafische weergave tonen",
+        "toggleGraphicalEdit": "Grafisch bewerken in- of uitschakelen"
+      },
+      "plans": {
+        "title": "Teeltplan",
+        "create": "Teelt toevoegen",
+        "edit": "Teelt bewerken",
+        "delete": "Teelt verwijderen",
+        "search": "Teeltzoekveld activeren"
+      },
+      "calendar": {
+        "title": "Kalender",
+        "today": "Naar de huidige periode springen",
+        "previousPeriod": "Vorige periode",
+        "nextPeriod": "Volgende periode",
+        "previousLargePeriod": "Vorige grote periode",
+        "nextLargePeriod": "Volgende grote periode",
+        "dayView": "Dagweergave",
+        "weekView": "Weekweergave",
+        "monthView": "Maandweergave",
+        "quarterView": "Kwartaalweergave",
+        "yearView": "Jaarweergave",
+        "search": "Kalenderzoekveld activeren",
+        "showOccupancy": "Perceelbezetting tonen",
+        "showSeedlings": "Opkweek tonen",
+        "toggleEdit": "Periodes verschuiven in- of uitschakelen"
+      },
+      "locations": {
+        "title": "Locaties",
+        "create": "Locatie toevoegen"
+      },
+      "suppliers": {
+        "title": "Leveranciers",
+        "create": "Leverancier toevoegen"
+      }
+    },
+    "versionHistoryTitle": "Versiegeschiedenis",
+    "versionHistoryEmpty": "Nog geen wijzigingen vastgelegd.",
+    "restoreVersion": "Naar deze versie overschakelen",
+    "contextTitles": {
+      "global": "Algemeen",
+      "crops": "Gewassen",
+      "publicCropLibrary": "Gewassenbibliotheek",
+      "locations": "Locaties",
+      "areas": "Teeltoppervlakken",
+      "plans": "Teeltplan",
+      "calendar": "Kalender",
+      "seedDemand": "Zaad",
+      "youngPlantDemand": "Plantgoed"
+    },
+    "shortcutSections": {
+      "navigation": "Navigatie",
+      "viewsLayout": "Weergaven en indeling",
+      "dialogsHelp": "Dialoogvensters en hulp"
+    },
+    "commands": {
+      "nextPage": "Volgende pagina",
+      "previousPage": "Vorige pagina",
+      "openProjectSettings": "Projectinstellingen openen",
+      "createProject": "Nieuw project",
+      "switchProjectPrefix": "Project wisselen",
+      "openAccountSettings": "Accountinstellingen openen",
+      "openVersionHistory": "Versiegeschiedenis openen",
+      "toggleSidebar": "Zijbalk in- of uitschakelen",
+      "openPageHelp": "Paginahulp openen",
+      "leaveDemo": "Demo verlaten",
+      "logout": "Afmelden",
+      "openShortcutsHelp": "Sneltoetsen tonen",
+      "closeDialog": "Dialoogvenster sluiten",
+      "calendarToday": "Naar de huidige periode springen",
+      "calendarPreviousPeriod": "Vorige kalenderperiode",
+      "calendarNextPeriod": "Volgende kalenderperiode",
+      "calendarDayView": "Dagweergave",
+      "calendarWeekView": "Weekweergave",
+      "calendarMonthView": "Maandweergave",
+      "calendarQuarterView": "Kwartaalweergave",
+      "calendarYearView": "Jaarweergave",
+      "calendarOccupancy": "Perceelbezetting tonen",
+      "calendarSeedlings": "Opkweek tonen",
+      "calendarToggleMove": "Periodes verschuiven in- of uitschakelen"
+    },
+    "feedback": {
+      "versionHistoryLoadError": "De versiegeschiedenis kon niet worden geladen.",
+      "versionRestored": "Versie hersteld.",
+      "versionRestoredWithBackup": "Versie hersteld. De vorige versie is automatisch opgeslagen.",
+      "versionRestoreError": "De projectversie kon niet worden hersteld.",
+      "leaveDemoError": "De demo kon niet worden verlaten. Probeer het opnieuw.",
+      "logoutError": "Afmelden mislukt. Probeer het opnieuw."
+    },
+    "shortcutHint": "Tip: druk op Alt+K voor het opdrachtenpalet.",
+    "historyBy": "Door {{actor}}",
+    "unknownUser": "Onbekende gebruiker"
+  },
+  "language": {
+    "label": "Taal"
+  },
+  "backToProject": {
+    "named": "Terug naar {{project}}",
+    "overview": "Terug naar het overzicht"
+  }
+}

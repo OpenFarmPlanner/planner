@@ -1,0 +1,105 @@
+{
+  "title": "Overzicht",
+  "errors": {
+    "load": "De dashboardgegevens konden niet worden geladen"
+  },
+  "emptyState": {
+    "title": "Begin met je teeltplanning",
+    "description": "Open Teeltoppervlakken en voeg daar een perceel toe. Daarna kun je gewassen en teelten vastleggen.",
+    "shortDescription": "Voeg een perceel toe op de pagina Teeltoppervlakken.",
+    "action": "Perceel toevoegen"
+  },
+  "tasks": {
+    "title": "Komende taken",
+    "empty": "Geen komende taken",
+    "emptyTitle": "Geen komende taken",
+    "emptyDescription": "Er zijn momenteel geen komende taken voor dit project."
+  },
+  "checklist": {
+    "title": "Projectstart",
+    "intro": "OpenFarmPlanner helpt je bij het gestructureerd plannen van oppervlakken, gewassen en teeltcycli. Begin met je eerste perceel.",
+    "field": "Perceel toevoegen",
+    "bed": "Bed toevoegen",
+    "crop": "Gewas toevoegen",
+    "plan": "Teelt toevoegen"
+  },
+  "board": {
+    "title": "Taken",
+    "status": {
+      "pending": "Te doen",
+      "in_progress": "Bezig",
+      "completed": "Voltooid"
+    },
+    "origin": {
+      "manual": "Handmatig",
+      "automatic": "Automatisch",
+      "template": "Sjabloon"
+    },
+    "metrics": {
+      "overdue": "Te laat",
+      "today": "Vandaag",
+      "week": "Deze week"
+    },
+    "filters": {
+      "title": "Taken filteren",
+      "period": "Periode",
+      "crop": "Gewas",
+      "field": "Perceel",
+      "person": "Verantwoordelijke",
+      "from": "Van",
+      "to": "Tot"
+    },
+    "period": {
+      "all": "Alle datums",
+      "overdue": "Te laat",
+      "today": "Vandaag",
+      "week": "Deze week",
+      "custom": "Aangepaste periode"
+    },
+    "all": "Alles",
+    "unassigned": "Niet toegewezen",
+    "noDate": "Geen uiterste datum",
+    "dateOverride": "Datum handmatig gewijzigd",
+    "changeStatus": "Status wijzigen: {{title}}",
+    "dragInstructions": "Sleep de taakkaart naar een andere kolom. Je kunt de status ook met het toetsenbord wijzigen via het statusmenu.",
+    "dragStarted": "{{title}} verplaatsen.",
+    "dragOver": "Doel: {{status}}.",
+    "dragEnded": "{{title}} verplaatst naar {{status}}.",
+    "dragCancelled": "Verplaatsen geannuleerd.",
+    "resetFilters": "Filters herstellen",
+    "invalidRange": "De einddatum moet na de begindatum liggen.",
+    "noMatches": "Geen taken komen overeen met deze filters. Herstel de filters om alle taken te zien.",
+    "empty": "Nog geen taken in dit seizoen. Houd hier komende werkzaamheden bij.",
+    "emptyColumn": "Geen taken",
+    "showMore": "Meer taken tonen",
+    "saveError": "De status kon niet worden opgeslagen. De wijziging is teruggedraaid. Probeer het opnieuw.",
+    "dragHint": {
+      "desktop": "Sleep taakkaarten naar een andere kolom. Houd op aanraakapparaten eerst een kaart ingedrukt. Je kunt de status ook via het taakmenu wijzigen.",
+      "mobile": "Wijzig de status van een taak via het menu. Op grotere schermen kun je taken ook verslepen.",
+      "saveError": "Deze tip kon niet blijvend worden verborgen. Probeer het opnieuw."
+    }
+  },
+  "form": {
+    "add": "Taak toevoegen",
+    "edit": "Taak bewerken",
+    "delete": "Taak verwijderen",
+    "createSeason": "Seizoen maken",
+    "title": "Titel",
+    "description": "Beschrijving",
+    "date": "Uiterste datum",
+    "status": "Status",
+    "origin": "Herkomst",
+    "plan": "Teelt (optioneel)",
+    "none": "Geen koppeling",
+    "saveError": "De taak kon niet worden opgeslagen. Controleer je invoer en probeer het opnieuw.",
+    "deleteConfirm": "‘{{title}}’ definitief verwijderen?",
+    "deleteError": "De taak kon niet worden verwijderd. Probeer het opnieuw."
+  },
+  "events": {
+    "propagation_start": "Opkweek starten",
+    "sowing": "Directe zaai",
+    "planting": "Uitplanten",
+    "harvest_start": "Begin oogst",
+    "harvest_end": "Einde oogst"
+  }
+}

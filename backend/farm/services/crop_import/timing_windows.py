@@ -81,15 +81,16 @@ class TimingWindowParseError(ValueError):
 def _month_words() -> dict[str, int]:
     names: dict[int, tuple[str, ...]] = {
         1: ('januar', 'jänner', 'jaenner', 'jän', 'jan', 'january', 'janvier', 'janv', 'enero',
-            'ene', 'gennaio', 'gen', 'janeiro'),
+            'ene', 'gennaio', 'gen', 'janeiro', 'januari'),
         2: ('februar', 'feber', 'feb', 'february', 'février', 'fevrier', 'févr', 'fevr', 'fév',
-            'fev', 'febrero', 'febbraio', 'fevereiro'),
-        3: ('märz', 'maerz', 'mär', 'mrz', 'march', 'mar', 'mars', 'marzo', 'março', 'marco'),
+            'fev', 'febrero', 'febbraio', 'fevereiro', 'februari'),
+        3: ('märz', 'maerz', 'mär', 'mrz', 'march', 'mar', 'mars', 'marzo', 'março', 'marco',
+            'maart', 'mrt'),
         4: ('april', 'apr', 'avril', 'avr', 'abril', 'abr', 'aprile'),
-        5: ('mai', 'may', 'mayo', 'maggio', 'mag', 'maio'),
+        5: ('mai', 'may', 'mayo', 'maggio', 'mag', 'maio', 'mei'),
         6: ('juni', 'jun', 'june', 'juin', 'junio', 'giugno', 'giu', 'junho'),
         7: ('juli', 'jul', 'july', 'juillet', 'juil', 'julio', 'luglio', 'lug', 'julho'),
-        8: ('august', 'aug', 'août', 'aout', 'agosto', 'ago'),
+        8: ('august', 'aug', 'août', 'aout', 'agosto', 'ago', 'augustus'),
         9: ('september', 'sept', 'sep', 'septembre', 'septiembre', 'setiembre',
             'set', 'settembre', 'setembro'),
         10: ('oktober', 'okt', 'october', 'oct', 'octobre', 'octubre',
@@ -106,31 +107,34 @@ MONTH_WORDS = _month_words()
 DECADE_WORDS: dict[str, str] = {
     **dict.fromkeys(
         ('anfang', 'early', 'beginning', 'start', 'début', 'debut', 'principios', 'principio',
-         'inicios', 'inicio', 'comienzos', 'inizio', 'início'),
+         'inicios', 'inicio', 'comienzos', 'inizio', 'início', 'begin'),
         DECADE_EARLY,
     ),
     **dict.fromkeys(
-        ('mitte', 'mid', 'middle', 'mi', 'mediados', 'mitad', 'metà', 'meta', 'meados'),
+        ('mitte', 'mid', 'middle', 'mi', 'mediados', 'mitad', 'metà', 'meta', 'meados',
+         'half', 'midden'),
         DECADE_MID,
     ),
     **dict.fromkeys(
-        ('ende', 'late', 'end', 'fin', 'finales', 'final', 'fines', 'fine', 'fim'), DECADE_LATE,
+        ('ende', 'late', 'end', 'fin', 'finales', 'final', 'fines', 'fine', 'fim', 'eind'),
+        DECADE_LATE,
     ),
 }
 
 WEEK_WORDS = frozenset({
-    'kw', 'kalenderwoche', 'woche', 'wochen', 'cw', 'wk', 'week', 'weeks', 'w',
+    'kw', 'kalenderwoche', 'woche', 'wochen', 'cw', 'wk', 'week', 'weeks', 'weken', 'w',
     'semaine', 'semaines', 'sem', 's', 'semana', 'semanas', 'settimana', 'settimane', 'sett',
 })
 
 SEPARATOR_WORDS = frozenset({
     '-', 'bis', 'to', 'till', 'until', 'through', 'thru', 'à', 'au', 'a', 'hasta', 'al',
-    'até', 'ate',
+    'até', 'ate', 'tot',
 })
 
 # "from": a filler before a start, but alone it leaves the window open.
 FROM_WORDS = frozenset({
     'von', 'vom', 'ab', 'from', 'since', 'starting', 'du', 'dès', 'depuis', 'desde', 'da', 'dal',
+    'van',
 })
 
 FILLER_WORDS = frozenset({
@@ -145,7 +149,7 @@ _NUMERIC_DATE = re.compile(
 )
 # Between two windows, like ";". Whole words only; "o." needs its dot, since a
 # bare letter is too easy to misread.
-_WINDOW_SEPARATOR = re.compile(r'[;\n\r]+|\s+(?:oder|or|ou|oppure)\s+|\s+o\.\s*', re.IGNORECASE)
+_WINDOW_SEPARATOR = re.compile(r'[;\n\r]+|\s+(?:oder|or|ou|oppure|of)\s+|\s+o\.\s*', re.IGNORECASE)
 _ORDINAL = re.compile(r'^\d+(?:er|e|st|nd|rd|th|º|ª)$')
 _DASHES = str.maketrans({'–': '-', '—': '-', '‑': '-', '−': '-', '’': "'"})
 
@@ -169,8 +173,20 @@ def parse_timing_window_cell(kind: str, value: object) -> list[TimingWindow]:
 
     :raises TimingWindowParseError: for the first part that is not a supported window.
     """
-    text = '' if value is None else str(value)
-    parts = [part.strip() for part in _WINDOW_SEPARATOR.split(text.strip())]
+    text = '' if value is None else str(value).strip()
+    parts = []
+    start = 0
+    for separator in _WINDOW_SEPARATOR.finditer(text):
+        part = text[start:separator.start()].strip()
+        if separator.group().strip().lower() == 'of':
+            # Dutch alternatives follow a complete window; English "end of August" does not.
+            try:
+                _parse_part(kind, part)
+            except TimingWindowParseError:
+                continue
+        parts.append(part)
+        start = separator.end()
+    parts.append(text[start:].strip())
     return [_parse_part(kind, part) for part in parts if part]
 
 

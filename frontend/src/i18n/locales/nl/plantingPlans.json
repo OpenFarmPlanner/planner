@@ -1,0 +1,395 @@
+{
+  "title": "Teeltplan",
+  "columns": {
+    "crop": "Gewas (ras)",
+    "location": "Locatie",
+    "field": "Perceel",
+    "bed": "Bed",
+    "fieldBed": "Perceel{{separator}}Bed",
+    "sowingDate": "Zaaidatum",
+    "plantingDate": "Plantdatum",
+    "harvestDate": "Oogstdatum",
+    "harvestStartDate": "Begin oogst",
+    "harvestEndDate": "Einde oogst",
+    "areaM2": "Oppervlakte (m²)",
+    "plantsCount": "Planten (≈)",
+    "notes": "Notities",
+    "cultivationType": "Teeltwijze"
+  },
+  "labels": {
+    "coupled": "gekoppeld"
+  },
+  "actions": {
+    "useAvailableArea": "Resterende oppervlakte gebruiken",
+    "useBedArea": "Bedoppervlakte gebruiken",
+    "copyPlantingPlan": "Teelt kopiëren",
+    "createPlantingPlan": "Teelt maken"
+  },
+  "feedback": {
+    "areaAutoFilled": "Beschikbare resterende oppervlakte automatisch overgenomen: {{area}}"
+  },
+  "dateEditor": {
+    "openCalendar": "Kalender openen"
+  },
+  "areaValidation": {
+    "maxAreaApplied": "Maximaal beschikbare oppervlakte overgenomen: {{area}}",
+    "remainingLimitTitle": "De opgegeven oppervlakte is groter dan de beschikbare resterende oppervlakte van dit bed.",
+    "noRemainingTitle": "Voor dit bed is in de gekozen periode geen vrije oppervlakte beschikbaar.",
+    "bedLimitTitle": "De opgegeven oppervlakte is groter dan dit bed.",
+    "availableArea": "Beschikbare resterende oppervlakte: {{area}}",
+    "bedArea": "Bedoppervlakte: {{area}}",
+    "occupiedArea": "Al bezet: {{area}}",
+    "requestedArea": "Gevraagd: {{area}}",
+    "acceptedArea": "Overgenomen: {{area}}",
+    "applyRemainingArea": "Resterende oppervlakte gebruiken",
+    "applyBedArea": "Bedoppervlakte gebruiken",
+    "successionLimit_one": "Bedoppervlakte overschreden. Een volggewas kan {{crop}} op zijn vroegst {{count}} dag na het begin van de oogst opvolgen ({{date}}).",
+    "successionLimit_other": "Bedoppervlakte overschreden. Een volggewas kan {{crop}} op zijn vroegst {{count}} dagen na het begin van de oogst opvolgen ({{date}})."
+  },
+  "placeholders": {
+    "selectCrop": "Gewas kiezen",
+    "selectCultivationType": "Teeltwijze kiezen",
+    "selectArea": "Teeltoppervlak kiezen",
+    "plantsCount": "Aantal invoeren",
+    "maxKeyword": "max"
+  },
+  "tooltips": {
+    "coupledFields": "Gebruikte oppervlakte: gekoppeld aan het aantal planten. Wijzigingen werken de andere waarde automatisch bij.",
+    "areaAutoMax": "Leeg of ‘max’ gebruikt automatisch de maximaal beschikbare resterende oppervlakte.",
+    "areaInputTitle": "Oppervlakte die deze teelt inneemt",
+    "areaInputDescription": "De oppervlakte van het bed die deze teelt inneemt. Wijzigingen in de oppervlakte of het aantal planten werken de andere waarde automatisch bij. Leeg of ‘max’ gebruikt de maximaal beschikbare resterende oppervlakte.",
+    "plantsFromSpacing": "Aantal planten: gekoppeld aan de gebruikte oppervlakte. Wijzigingen werken de andere waarde automatisch bij.",
+    "calculatedHarvestStartDate": "Automatisch berekend uit de plantdatum en de groeiduur van het gewas.",
+    "calculatedHarvestEndDate": "Automatisch berekend uit het begin van de oogst en de oogstduur van het gewas.",
+    "missingGrowthDuration": "Kan niet worden berekend omdat dit gewas geen groeiduur heeft.",
+    "missingHarvestDuration": "Kan niet worden berekend omdat dit gewas geen oogstduur heeft.",
+    "missingGrowthAndHarvestDuration": "Kan niet worden berekend omdat dit gewas geen groei- of oogstduur heeft.",
+    "sowingDateTitle": "Zaaidatum",
+    "sowingDateDescription": "Gekoppeld aan de plantdatum: plantdatum min de opkweekduur van het gewas. Wijzigingen werken de andere waarde automatisch bij. Bij directe zaai gelijk aan de plantdatum.",
+    "plantingDateTitle": "Plantdatum",
+    "plantingDateDescription": "Gekoppeld aan de zaaidatum. Bij directe zaai is dit ook de zaaidatum. Moet binnen het seizoen vallen.",
+    "missingPropagationDuration": "Kan niet worden berekend omdat voor dit gewas geen opkweekduur is ingesteld.",
+    "noOwnPropagation": "Geen eigen opkweek, de planten worden ingekocht."
+  },
+  "hints": {
+    "plantingDateSeasonRange": "Binnen het seizoen: {{start}} – {{end}}"
+  },
+  "errors": {
+    "load": "De teelten konden niet worden geladen",
+    "save": "De teelt kon niet worden opgeslagen",
+    "delete": "De teelt kon niet worden verwijderd",
+    "editCropSpacing": "Gewas bewerken"
+  },
+  "messages": {
+    "deleted": "Teelt verwijderd",
+    "plantingPlanCopied": "Teelt gekopieerd."
+  },
+  "validation": {
+    "plantingDateRequired": "Plantdatum is verplicht",
+    "cropRequired": "Gewas is verplicht",
+    "bedRequired": "Bed is verplicht",
+    "cultivationTypeRequired": "Teeltwijze is verplicht",
+    "plantingDateOutsideSeason": "De plantdatum moet binnen het seizoen vallen ({{start}} – {{end}}).",
+    "requiredFields": "De volgende verplichte velden moeten worden ingevuld: {{fields}}",
+    "cropOrBedRequired": "Gewas of bed is verplicht",
+    "areaExceedsRemaining": "De opgegeven oppervlakte is groter dan de beschikbare resterende oppervlakte van dit bed.",
+    "areaExceedsBedArea": "De opgegeven oppervlakte is groter dan dit bed.",
+    "bedArea": "Bedoppervlakte",
+    "alreadyAllocated": "Bezet",
+    "requestedArea": "Gevraagd",
+    "availableArea": "Beschikbare resterende oppervlakte",
+    "noAvailableArea": "Voor dit bed is in de gekozen periode geen vrije oppervlakte meer beschikbaar."
+  },
+  "confirmDelete": "Wil je deze teelt echt verwijderen?",
+  "addButton": "Teelt toevoegen",
+  "cultivationTypes": {
+    "directSowing": "Directe zaai",
+    "preCultivation": "Uitplanten",
+    "purchasedTransplant": "Ingekocht"
+  },
+  "cultivationTypesLong": {
+    "directSowing": "Directe zaai",
+    "preCultivation": "Uitplanten (eigen opkweek)",
+    "purchasedTransplant": "Uitplanten met ingekochte planten"
+  },
+  "areaAssignment": {
+    "title": "Teeltoppervlak wijzigen",
+    "editButton": "Teeltoppervlak bewerken",
+    "hierarchyHint": "Locatie filtert percelen, perceel filtert bedden.",
+    "emptyStateTitle": "Geen teeltoppervlakken beschikbaar",
+    "emptyStateDescription": "Maak eerst percelen en bedden voordat je een oppervlakte aan een teelt toewijst.",
+    "emptyStateAction": "Naar Teeltoppervlakken",
+    "apply": "Toepassen",
+    "cancel": "Annuleren",
+    "selectLocationFirst": "Kies eerst een locatie.",
+    "noFieldsForLocation": "Voor deze locatie zijn geen percelen beschikbaar.",
+    "selectFieldFirst": "Kies eerst een perceel.",
+    "noBedsForField": "Voor dit perceel zijn geen bedden beschikbaar.",
+    "selectBedFirst": "Kies eerst een bed."
+  },
+  "mobile": {
+    "showDetails": "Details tonen",
+    "hideDetails": "Details verbergen",
+    "fabLabel": "Teelt toevoegen",
+    "fabAria": "Teelt toevoegen",
+    "emptyTitle": "Nog geen teelten",
+    "emptyDescription": "Maak je eerste teelt om gewas, teeltwijze en periodes overzichtelijk op je telefoon te beheren.",
+    "emptyCta": "Teelt toevoegen",
+    "createTitle": "Teelt toevoegen",
+    "editTitle": "Teelt bewerken",
+    "editAria": "Teelt bewerken",
+    "actionsAria": "Acties voor teelt {{plan}}",
+    "notesPhotos": "Foto's",
+    "notesPhotosAria": "Notities en foto's openen"
+  },
+  "emptyStates": {
+    "createBlockedTooltip": "Bedden worden binnen percelen toegevoegd op de pagina Teeltoppervlakken.",
+    "states": {
+      "fields": {
+        "title": "Je kunt nog geen teelt toevoegen.",
+        "description": "Open Teeltoppervlakken en voeg daar een perceel toe op de juiste locatie."
+      },
+      "beds": {
+        "title": "Je hebt nog geen bedden gemaakt.",
+        "description": "Bedden vormen de basis voor teelten. Open Teeltoppervlakken en voeg via een perceel een bed toe."
+      },
+      "crops": {
+        "title": "Je hebt nog geen gewassen gemaakt.",
+        "description": "Gewassen zijn nodig om teelten te maken."
+      },
+      "seasons": {
+        "title": "Nog geen seizoen gemaakt",
+        "description": "Maak een seizoen voordat je teelten toevoegt."
+      },
+      "plans": {
+        "title": "Je hebt nog geen teelt gemaakt.",
+        "description": "Maak nu je eerste teelt."
+      }
+    },
+    "actions": {
+      "createField": "Perceel toevoegen",
+      "createAreas": "Naar Teeltoppervlakken",
+      "openCropLibrary": "Gewassenbibliotheek openen",
+      "addCrop": "Gewas toevoegen",
+      "createSeason": "Seizoen maken"
+    }
+  },
+  "commands": {
+    "edit": "Teelt bewerken (Alt+E)",
+    "delete": "Teelt verwijderen (Del)",
+    "keywords": {
+      "edit": "teelt, bewerken",
+      "delete": "teelt, verwijderen",
+      "search": "teelt, zoeken, vinden, filteren"
+    },
+    "focusSearch": "Teeltzoekveld activeren (/)"
+  },
+  "loadingPlans": "Teelten laden…",
+  "search": {
+    "placeholderDesktop": "Teelten zoeken",
+    "placeholderMobile": "Zoeken",
+    "ariaLabel": "Teelten zoeken",
+    "clear": "Zoekveld wissen",
+    "shortcutHintAria": "Druk op / om het zoekveld te activeren",
+    "filterButton": "Filteren",
+    "filterButtonActiveAria_one": "Filteren, {{count}} actief filter",
+    "filterButtonActiveAria_other": "Filteren, {{count}} actieve filters",
+    "columnsButton": "Kolommen",
+    "panelTitle": "Filteren",
+    "sheetTitle": "Filteren en sorteren",
+    "fields": {
+      "sort": "Sorteren op",
+      "location": "Locatie",
+      "field": "Perceel",
+      "cultivationType": "Teeltwijze",
+      "crop": "Gewas",
+      "plantingDate": "Plantperiode",
+      "harvestStartDate": "Begin oogst",
+      "harvestEndDate": "Einde oogst",
+      "rotation": "Vruchtwisseling",
+      "occupancy": "Bedbezetting",
+      "timing": "Periodes"
+    },
+    "monthFrom": "Van",
+    "monthTo": "Tot",
+    "monthRangeSeparator": "tot",
+    "fieldHint": "Tip: kies eerst een locatie om alleen de bijbehorende percelen te zien.",
+    "sortOptions": {
+      "plantingDateAsc": "Plantdatum, oplopend",
+      "plantingDateDesc": "Plantdatum, aflopend",
+      "cropAsc": "Gewas, A tot Z",
+      "harvestStartAsc": "Begin oogst, oplopend"
+    },
+    "count_one": "{{count}} teelt",
+    "count_other": "{{count}} teelten",
+    "filteredCountDesktop": "{{shown}} van {{total}} teelten",
+    "filteredCountMobile": "{{shown}} van {{total}}",
+    "reset": "Herstellen",
+    "matches_one": "{{count}} resultaat",
+    "matches_other": "{{count}} resultaten",
+    "showResults_one": "{{count}} teelt tonen",
+    "showResults_other": "{{count}} teelten tonen",
+    "chip": "{{filter}}: {{values}}",
+    "chipDateLabels": {
+      "plantingDate": "Plantdatum",
+      "harvestStartDate": "Begin oogst",
+      "harvestEndDate": "Einde oogst"
+    },
+    "chipMonthRange": {
+      "range": "{{filter}}: {{from}} tot {{to}}",
+      "from": "{{filter}}: vanaf {{from}}",
+      "to": "{{filter}}: tot {{to}}"
+    },
+    "removeChip": "Filter {{filter}} verwijderen",
+    "resetAll": "Alles herstellen",
+    "activeFiltersAria": "Actieve filters",
+    "synonymHint": "Synoniem: {{name}}",
+    "notesMatchAria": "Gevonden in de notities",
+    "empty": {
+      "titleWithQuery": "Geen teelten gevonden voor ‘{{query}}’",
+      "title": "Geen teelten gevonden",
+      "hintWithFilters_one": "Zonder de actieve filters zou er {{count}} resultaat zijn.",
+      "hintWithFilters_other": "Zonder de actieve filters zouden er {{count}} resultaten zijn.",
+      "hint": "Controleer de spelling of zoek op een gewas, ras of bed.",
+      "clearSearch": "Zoekveld wissen",
+      "resetFilters": "Filters herstellen"
+    },
+    "rotationOptions": {
+      "conflict": "Conflict",
+      "accepted": "Geaccepteerd",
+      "info": "Niet controleerbaar"
+    },
+    "occupancyOptions": {
+      "harvestOverlap": "Oogstoverlap"
+    },
+    "timingOptions": {
+      "outsideWindow": "Buiten de periodes"
+    }
+  },
+  "rotation": {
+    "iconAria": {
+      "conflict": "Vruchtwisselingsconflict, teeltoppervlak wijzigen",
+      "info": "Vruchtwisseling niet controleerbaar, teeltoppervlak wijzigen"
+    },
+    "status": {
+      "conflict": "Conflict",
+      "accepted": "Conflict geaccepteerd",
+      "hint": "Tip",
+      "info": "Kan niet worden gecontroleerd",
+      "ok": "Past"
+    },
+    "checking": "Vruchtwisseling controleren…",
+    "checkError": "De vruchtwisseling kon momenteel niet worden gecontroleerd. Je kunt toch opslaan.",
+    "conflict": {
+      "title": "Vruchtwisseling: {{family}} te vroeg op dit bed",
+      "textCrop_one": "{{previousCulture}} ({{family}}) groeide in {{year}} op {{bed}}. {{culture}} heeft een rotatiepauze van {{count}} jaar. Het vroegste jaar is daarom {{earliestYear}}.",
+      "textCrop_other": "{{previousCulture}} ({{family}}) groeide in {{year}} op {{bed}}. {{culture}} heeft een rotatiepauze van {{count}} jaar. Het vroegste jaar is daarom {{earliestYear}}.",
+      "textFamily_one": "{{previousCulture}} ({{family}}) groeide in {{year}} op {{bed}}. {{family}} heeft een standaardrotatiepauze van {{count}} jaar. Het vroegste jaar is daarom {{earliestYear}}.",
+      "textFamily_other": "{{previousCulture}} ({{family}}) groeide in {{year}} op {{bed}}. {{family}} heeft een standaardrotatiepauze van {{count}} jaar. Het vroegste jaar is daarom {{earliestYear}}.",
+      "showSuggestions": "Geschikte bedden tonen",
+      "showBedHistory": "Geschiedenis van {{bed}} bekijken",
+      "hideBedHistory": "Geschiedenis van {{bed}} verbergen",
+      "changeBreak": "Rotatiepauze van {{culture}} wijzigen",
+      "setBreak": "Rotatiepauze voor {{culture}} instellen",
+      "acceptLabel": "Bewust zo plannen (het conflict accepteren)",
+      "saveNote": "Je kunt toch opslaan. Geaccepteerde conflicten blijven als zodanig in de tabel gemarkeerd."
+    },
+    "accepted": {
+      "title": "{{family}} te vroeg, bewust geaccepteerd",
+      "text": "{{previousCulture}} in {{year}} op dit bed. Geaccepteerd door {{user}} op {{date}}.",
+      "textWithoutUser": "{{previousCulture}} in {{year}} op dit bed. Geaccepteerd op {{date}}.",
+      "revoke": "Acceptatie intrekken"
+    },
+    "hint": {
+      "title": "Twee gewassen met hoge voedingsbehoefte na elkaar",
+      "text": "{{previousCulture}} groeide hier in {{year}}. Plan voldoende compost of een groenbemester ertussen."
+    },
+    "info": {
+      "title": "Vruchtwisseling kan niet worden gecontroleerd",
+      "noFamily": "{{culture}} heeft geen plantenfamilie. Zonder familie kunnen we geen rotatiepauze controleren.",
+      "addFamily": "Familie aan {{culture}} toevoegen",
+      "noBreak": "Noch {{family}} noch {{culture}} heeft een rotatiepauze. Zonder pauze kunnen we de vruchtwisseling niet controleren.",
+      "incomplete": "Kies een gewas, bed en plantdatum, zodat we de vruchtwisseling kunnen controleren.",
+      "missingData": {
+        "heading": "Vruchtwisseling kan niet worden gecontroleerd:",
+        "noFamily": "Voor {{crop}} is geen plantenfamilie ingesteld.",
+        "noBreak": "Voor {{crop}} is geen rotatiepauze ingesteld.",
+        "previousNoFamily": "Voor het vorige gewas {{crop}} ({{year}}) is geen plantenfamilie ingesteld.",
+        "closing": "Je kunt de ontbrekende informatie in de gewassenbibliotheek toevoegen."
+      }
+    },
+    "ok": {
+      "text": "Vruchtwisseling past: {{reason}}",
+      "reasons": {
+        "lastFamily": "laatste {{family}} in {{year}}, vorig gewas {{previousCulture}}.",
+        "lastFamilyWithoutPrevious": "laatste {{family}} in {{year}}.",
+        "noFamilyOnBed": "geen {{family}} op dit bed vastgelegd.",
+        "noHistory": "geen eerdere teelten op dit bed vastgelegd."
+      }
+    },
+    "bedHistory": {
+      "title": "Geschiedenis van {{bed}}",
+      "empty": "Voor dit bed is geen teeltgeschiedenis vastgelegd.",
+      "entry": "{{years}}: {{culture}}",
+      "entryWithFamily": "{{years}}: {{culture}} ({{family}})"
+    },
+    "suggestions": {
+      "title": "Geschikte bedden voor {{culture}}",
+      "periodTitle": "Passende bedden, vrij van {{start}} tot {{end}}",
+      "subtitle": "Gesorteerd op rotatiepauze, opeenvolging van voedingsbehoefte en jaren sinds dezelfde familie. Alleen bedden met voldoende vrije oppervlakte in de periode.",
+      "categories": {
+        "good": "Past goed",
+        "fits": "Past",
+        "hint": "Tip",
+        "no_data": "Geen gegevens",
+        "conflict": "Conflict"
+      },
+      "apply": "Toepassen",
+      "applyAria": "{{bed}} toepassen",
+      "current": "momenteel geselecteerd",
+      "showAll": "Alle {{count}} bedden tonen",
+      "showAllMatching": "Alle {{count}} passende bedden tonen",
+      "showLess": "Minder bedden tonen",
+      "empty": "Op de plantdatum is geen bed vrij. Controleer de plantdatum of voeg een ander bed toe.",
+      "emptyMatching": "Geen enkel bed heeft in deze periode voldoende vrije oppervlakte zonder vruchtwisselingsconflict. Controleer de plantdatum en oppervlakte of voeg een ander bed toe.",
+      "loading": "Bedden controleren…",
+      "error": "De bedsuggesties konden niet worden geladen.",
+      "needsInput": "Kies een gewas en plantdatum. Dan tonen we geschikte bedden.",
+      "show": "Geschikte bedden tonen",
+      "hide": "Suggesties verbergen",
+      "reasons": {
+        "neverOnBed": "Geen {{family}} vastgelegd",
+        "neverOnBedWithPrevious": "Geen {{family}} vastgelegd, vorig gewas {{previousCulture}}",
+        "lastFamily": "Laatste {{family}} in {{year}}",
+        "soilImproverBefore": "Vorig gewas {{previousCulture}} laat stikstof achter voor {{culture}}.",
+        "hint": "{{previousCulture}} groeide hier in {{year}} en heeft ook een hoge voedingsbehoefte.",
+        "noHistory": "Geen eerdere teelten vastgelegd",
+        "noFamily": "{{culture}} heeft geen plantenfamilie.",
+        "noBreak": "{{family}} heeft geen rotatiepauze.",
+        "conflict": "{{previousCulture}} ({{family}}) groeide hier in {{year}}, op zijn vroegst weer in {{earliestYear}}."
+      }
+    },
+    "capacity": {
+      "partial": "{{free}} van {{total}} m² vrij in deze periode",
+      "insufficient": "Slechts {{free}} m² vrij in deze periode ({{blockingCulture}} tot {{date}}), {{needed}} m² nodig",
+      "insufficientWithoutBlocker": "Slechts {{free}} m² vrij in deze periode, {{needed}} m² nodig"
+    }
+  },
+  "harvestOverlap": {
+    "predecessor": "{{crop}} volgt vanaf {{date}} op dit bed. De oogst moet dan zijn afgerond.",
+    "successor": "Begint vóór het geplande einde van de oogst van {{crop}} ({{date}}).",
+    "iconAria": "Oogstoverlap"
+  },
+  "timingWindow": {
+    "direct_sowing": "De zaaidatum valt buiten de periodes voor directe zaai ({{windows}}).",
+    "pre_cultivation": "De zaaidatum valt buiten de opkweekperiodes ({{windows}}).",
+    "planting": "De plantdatum valt buiten de periodes voor uitplanten ({{windows}}).",
+    "iconAria": "Datum buiten de periodes"
+  },
+  "germination": {
+    "cold_period_required": "Het zaad heeft een koudeperiode nodig.",
+    "propagation_shorter_than_germination": "De opkweekduur is korter dan de kiemtijd.",
+    "emergence": "Verwachte opkomst rond {{from}}–{{to}}",
+    "hints": "Kiemtips"
+  }
+}

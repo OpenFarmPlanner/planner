@@ -1,0 +1,15 @@
+{% autoescape off %}Hallo,
+
+{{ invited_by }} heeft je uitgenodigd voor OpenFarmPlanner.
+
+Project: {{ project_name }}
+Rol: {{ role_label }}
+
+Open de volgende link om de uitnodiging te accepteren:
+{{ invite_link }}
+
+Als je nog geen OpenFarmPlanner-account hebt, registreer je dan eerst met hetzelfde e-mailadres.
+
+Met vriendelijke groet
+OpenFarmPlanner
+{% endautoescape %}

@@ -8,11 +8,11 @@ relative to the last frost date are #872 and not part of this.
 
 ## Kinds and terms
 
-| Kind (code) | DE | EN | FR | ES |
-| --- | --- | --- | --- | --- |
-| `pre_cultivation` | Anzuchtzeitraum | Propagation window | Période de semis en pépinière | Periodo de siembra en semillero |
-| `direct_sowing` | Direktsaatzeitraum | Direct sowing window | Période de semis direct | Periodo de siembra directa |
-| `planting` | Pflanzzeitraum | Transplanting window | Période de plantation | Periodo de trasplante |
+| Kind (code) | DE | EN | FR | ES | IT | PT | NL |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `pre_cultivation` | Anzuchtzeitraum | Propagation window | Période de semis en pépinière | Periodo de siembra en semillero | Periodo di semina in vivaio | Período de sementeira em viveiro | Opkweekperiode |
+| `direct_sowing` | Direktsaatzeitraum | Direct sowing window | Période de semis direct | Periodo de siembra directa | Periodo di semina diretta | Período de sementeira direta | Periode voor directe zaai |
+| `planting` | Pflanzzeitraum | Transplanting window | Période de plantation | Periodo de trasplante | Periodo di trapianto | Período de transplantação | Periode voor uitplanten |
 
 **No harvest windows.** A plan's harvest start already follows from its
 planting date plus the growth duration
@@ -73,7 +73,7 @@ Only a check resolves a window to real dates, always for a concrete year
 The frontend keeps a small equivalent (`frontend/src/crops/timingWindows.ts`)
 for the form's "Über den Jahreswechsel" note, the canonical text and the
 detail view's year bar. `tests/fixtures/timing_windows.json` holds shared
-cases (text in all four languages, ranges, containment, months) that both
+cases (text in all seven languages, ranges, containment, months) that both
 `backend/farm/tests/test_timing_windows.py` and
 `frontend/src/__tests__/timingWindows.test.ts` run, so the two cannot drift.
 
@@ -83,16 +83,19 @@ Used for display, the planting hints and the spreadsheet export, in the UI
 language (frontend: `crops:timingWindows.text.*` with `common:months`;
 backend: the same forms in `timing_windows.py`):
 
-| Window | DE | EN | FR | ES |
-| --- | --- | --- | --- | --- |
-| whole month | März | March | mars | marzo |
-| whole months | März bis Mai | March to May | mars à mai | marzo a mayo |
-| one third | Mitte März | mid March | mi-mars | mediados de marzo |
-| otherwise | Anfang März bis Mitte Mai | early March to mid May | début mars à mi-mai | principios de marzo a mediados de mayo |
-| one week | KW 10 | week 10 | semaine 10 | semana 10 |
-| weeks | KW 10 bis 14 | week 10 to 14 | semaines 10 à 14 | semanas 10 a 14 |
+| Window | DE | EN | FR | ES | IT | PT | NL |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| whole month | März | March | mars | marzo | marzo | março | maart |
+| whole months | März bis Mai | March to May | mars à mai | marzo a mayo | marzo a maggio | de março a maio | maart tot mei |
+| one third | Mitte März | mid March | mi-mars | mediados de marzo | metà marzo | meados de março | midden maart |
+| otherwise | Anfang März bis Mitte Mai | early March to mid May | début mars à mi-mai | principios de marzo a mediados de mayo | inizio marzo a metà maggio | de início de março a meados de maio | begin maart tot midden mei |
+| one week | KW 10 | week 10 | semaine 10 | semana 10 | settimana 10 | semana 10 | week 10 |
+| weeks | KW 10 bis 14 | week 10 to 14 | semaines 10 à 14 | semanas 10 a 14 | settimana 10 a 14 | semana 10 a 14 | week 10 tot 14 |
 
-Several windows of a kind are joined with "; ".
+Several windows of a kind are joined with "; ". Dutch mid-month text follows the glossary
+("midden maart"); the importer also accepts "half maart". Dutch "of" splits
+complete alternatives ("maart of oktober"), while English filler phrases
+such as "end of August" remain a single window.
 
 ## Kultur and Sorte
 
@@ -171,15 +174,15 @@ country, so months copied from someone else's farm would mislead. See
 
 One column per kind ("Anzuchtzeitraum", "Direktsaatzeitraum", "Pflanzzeitraum", localized like the
 other headers), several windows in one cell separated by ";" (also accepted
-on import: a line break or the word "or": "oder", "o.", "or", "ou", so
+on import: a line break or the word "or": "oder", "o.", "or", "ou", "oppure", "of", so
 "02a o. 11a" is two windows). Only "or" is accepted, not "and", which could
 also be read as one range ("Mitte März und April"); a bare Spanish "o" is
 left out as too easy to misread. The
 export writes the canonical text in the UI language; importing it again gives
-the same windows (tested in all four languages, backend and frontend).
+the same windows (tested in all seven languages, backend and frontend).
 
 The parser (`farm/services/crop_import/timing_windows.py`) accepts the
-vocabulary of all four app languages whatever the UI language, case- and
+vocabulary of all seven app languages whatever the UI language, case- and
 space-insensitively:
 
 - Separators "–", "—", "-", "bis", "to", "à", "a", "hasta", "jusqu'à".
@@ -199,7 +202,7 @@ space-insensitively:
   as are mixed formats in one column or file. No format selector or new unit.
   The preview displays parsed windows in the UI language, including new crops.
   Export always writes the canonical long form in the export language;
-  shorthand is for import only. All four languages import back identically.
+  shorthand is for import only. All seven languages import back identically.
 - Weeks: `KW10-14`, `W10-14`, `KW10–14`, `W10–14`, "KW 10", "KW10", "KW 10 bis 14", "KW 10 bis KW 14", "CW 10",
   "week 10 to 14", "semaine(s) 10 à 14", "semana(s) 10 a 14".
 

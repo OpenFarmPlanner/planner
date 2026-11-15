@@ -27,6 +27,7 @@ describe('Intl plural categories', () => {
     expect(categories('es')).toEqual(['other', 'one', 'other', 'many']);
     expect(categories('it-IT')).toEqual(['other', 'one', 'other', 'many']);
     expect(categories('pt-PT')).toEqual(['other', 'one', 'other', 'many']);
+    expect(categories('nl-NL')).toEqual(['other', 'one', 'other', 'other']);
   });
 
   it('uses pt-PT rules for the pt bundle, including zero and fractional counts', () => {
@@ -46,6 +47,7 @@ describe('plural texts', () => {
     ['es', ['0 series', '1 serie', '2 series', '1000000 series']],
     ['it', ['0 serie', '1 serie', '2 serie', '1000000 serie']],
     ['pt', ['0 séries', '1 série', '2 séries', '1000000 séries']],
+    ['nl', ['0 teelten', '1 teelt', '2 teelten', '1000000 teelten']],
   ])('renders search.count in %s for 0, 1, 2 and 1000000', (language, expected) => {
     expect(COUNTS.map((count) => render(language, 'search.count', count))).toEqual(expected);
   });

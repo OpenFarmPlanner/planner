@@ -1,0 +1,47 @@
+{
+  "title": "Leveranciers",
+  "create": "Leverancier toevoegen",
+  "edit": "Leverancier bewerken",
+  "name": "Naam",
+  "homepage": "Website",
+  "allowedDomains": "Toegestane domeinen",
+  "active": "Actief",
+  "actions": "Acties",
+  "save": "Opslaan",
+  "cancel": "Annuleren",
+  "addDomain": "Domein toevoegen",
+  "add": "Toevoegen",
+  "saveError": "De leverancier kon niet worden opgeslagen.",
+  "loadError": "De leveranciers konden niet worden geladen.",
+  "yes": "Ja",
+  "no": "Nee",
+  "editAction": "Bewerken",
+  "deleteAction": "Verwijderen",
+  "deleteError": "De leverancier kon niet worden verwijderd.",
+  "restoreDeleteError": "De leverancier kon niet worden hersteld.",
+  "messages": {
+    "deleted": "Leverancier verwijderd.",
+    "deletedWithUnlinkedCrops_one": "Leverancier verwijderd. De leverancierskoppeling is bij {{count}} gewas verwijderd.",
+    "deletedWithUnlinkedCrops_other": "Leverancier verwijderd. De leverancierskoppeling is bij {{count}} gewassen verwijderd."
+  },
+  "deleteUsageDialog": {
+    "title": "Leverancier is nog in gebruik",
+    "summary_one": "Deze leverancier wordt nog door {{count}} gewas gebruikt.",
+    "summary_other": "Deze leverancier wordt nog door {{count}} gewassen gebruikt.",
+    "cropUsage_one": "{{count}} gewas gebruikt deze leverancier rechtstreeks.",
+    "cropUsage_other": "{{count}} gewassen gebruiken deze leverancier rechtstreeks.",
+    "supplierDataUsage": "{{cropCount}} gewassen hebben zaad- of leveranciersgegevens met {{rowCount}} items.",
+    "seedDemandUsage_one": "{{count}} gewas gebruikt deze leverancier in de zaadbehoefteplanning.",
+    "seedDemandUsage_other": "{{count}} gewassen gebruiken deze leverancier in de zaadbehoefteplanning.",
+    "unlinkExplanation": "Gewassen worden niet verwijderd. Alleen hun leverancierskoppeling wordt verwijderd voordat de leverancier wordt verwijderd.",
+    "openAffectedCrops": "Naar betrokken gewassen",
+    "unlinkAndDelete": "Leverancier verwijderen"
+  },
+  "invalidDomain": "Ongeldig domein: {{domain}}. Domeinen moeten geldige hostnamen zonder schema of pad zijn, bijvoorbeeld example.com.",
+  "domainValidationError": "Sommige domeinen zijn ongeldig. Corrigeer de invoer.",
+  "invalidUrl": "Voer een geldige URL in, bijvoorbeeld https://example.com.",
+  "emptyState": {
+    "title": "Nog geen leveranciers",
+    "description": "Leveranciers helpen je bij de zaadbehoefteplanning en het vergelijken van verpakkingen. Je kunt ook zonder leveranciers beginnen."
+  }
+}

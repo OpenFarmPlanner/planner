@@ -70,6 +70,13 @@ describe('normalizeLanguageTag', () => {
     expect(getLanguageLabel('pt')).toBe('Português');
   });
 
+  it('maps Dutch regional tags to the single nl-NL bundle', () => {
+    for (const tag of ['nl', 'nl-NL', 'nl-BE', 'NL_nl']) expect(normalizeLanguageTag(tag)).toBe('nl');
+    expect(detectBrowserLanguage(navigatorWith(['nl-BE']))).toBe('nl');
+    expect(normalizeLanguagePreference('nl')).toBe('nl');
+    expect(getLanguageLabel('nl')).toBe('Nederlands');
+  });
+
   it('returns null for unsupported and empty tags', () => {
     for (const tag of ['ja', 'ja-JP', 'ko-KR', 'zh-Hans', 'xx', '', '   ', null, undefined]) {
       expect(normalizeLanguageTag(tag)).toBeNull();

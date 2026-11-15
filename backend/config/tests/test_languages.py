@@ -34,7 +34,7 @@ class NormalizeLanguageTagTest(SimpleTestCase):
             self.assertEqual(normalize_language_tag(tag), 'es', tag)
 
     def test_supported_codes_are_ordered_english_german_french_spanish(self):
-        self.assertEqual(SUPPORTED_LANGUAGE_CODES, ('en', 'de', 'fr', 'es', 'it', 'pt'))
+        self.assertEqual(SUPPORTED_LANGUAGE_CODES, ('en', 'de', 'fr', 'es', 'it', 'pt', 'nl'))
 
     def test_italian_regional_tags_normalize_to_it(self):
         for tag in ('it', 'it-IT', 'it-CH', 'IT_it'):
@@ -45,7 +45,12 @@ class NormalizeLanguageTagTest(SimpleTestCase):
             self.assertEqual(normalize_language_tag(tag), 'pt', tag)
         self.assertEqual(parse_accept_language('pt-BR,pt;q=0.9,en;q=0.8'), 'pt')
 
-    def test_adding_italian_does_not_expand_required_species_names(self):
+    def test_dutch_regional_tags_normalize_to_nl(self):
+        for tag in ('nl', 'nl-NL', 'nl-BE', 'NL_nl'):
+            self.assertEqual(normalize_language_tag(tag), 'nl', tag)
+        self.assertEqual(parse_accept_language('nl-BE,nl;q=0.9,en;q=0.8'), 'nl')
+
+    def test_adding_ui_languages_does_not_expand_required_species_names(self):
         self.assertEqual(REQUIRED_PUBLIC_CROP_SPECIES_LANGUAGE_CODES, ('de', 'en', 'fr', 'es'))
 
     def test_unsupported_tags_return_empty(self):
@@ -93,10 +98,10 @@ class UiLanguagePreferenceTest(SimpleTestCase):
 
 class FallbackChainTest(SimpleTestCase):
     def test_requested_language_comes_first_then_english_then_the_rest(self):
-        self.assertEqual(build_fallback_chain('de'), ('de', 'en', 'fr', 'es', 'it', 'pt'))
-        self.assertEqual(build_fallback_chain('en'), ('en', 'de', 'fr', 'es', 'it', 'pt'))
-        self.assertEqual(build_fallback_chain('fr'), ('fr', 'en', 'de', 'es', 'it', 'pt'))
-        self.assertEqual(build_fallback_chain('es-419'), ('es', 'en', 'de', 'fr', 'it', 'pt'))
+        self.assertEqual(build_fallback_chain('de'), ('de', 'en', 'fr', 'es', 'it', 'pt', 'nl'))
+        self.assertEqual(build_fallback_chain('en'), ('en', 'de', 'fr', 'es', 'it', 'pt', 'nl'))
+        self.assertEqual(build_fallback_chain('fr'), ('fr', 'en', 'de', 'es', 'it', 'pt', 'nl'))
+        self.assertEqual(build_fallback_chain('es-419'), ('es', 'en', 'de', 'fr', 'it', 'pt', 'nl'))
 
     def test_unsupported_request_falls_back_to_english_first(self):
         self.assertEqual(build_fallback_chain('ja')[0], DEFAULT_LANGUAGE_CODE)

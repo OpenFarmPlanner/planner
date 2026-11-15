@@ -19,11 +19,12 @@ missing, add it here in the same change.
   agriculture, regional plant-health bulletins, Junta de Andalucía, FAO
   AGROVOC).
 
-Italian and European Portuguese ship in #949; the NL column records the agreed
-terminology for the remaining Dutch PR, not shipped-language availability.
+Italian, European Portuguese and Dutch ship in #949; all seven glossary
+languages are available in the UI, public/legal pages and emails.
 Canonical variants: it-IT, pt-PT (Acordo Ortográfico), nl-NL. Portuguese uses
 *sementeira, utilizador, ficheiro, ecrã*; browser pt-BR selects the pt-PT bundle,
-never a mixed regional bundle. Formatting and plurals must use pt-PT explicitly.
+never a mixed regional bundle. Formatting and plurals must use pt-PT explicitly. Dutch uses nl-NL formatting;
+nl-BE browsers select the same Dutch bundle.
 
 ## Form of address
 

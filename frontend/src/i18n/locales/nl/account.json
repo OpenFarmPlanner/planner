@@ -1,0 +1,214 @@
+{
+  "title": "Accountinstellingen",
+  "email": "E-mail",
+  "displayName": "Weergavenaam",
+  "sections": {
+    "profile": "Profiel",
+    "publicProfile": "Gewassenbibliotheek",
+    "security": "Aanmelden en beveiliging",
+    "privacy": "Privacy en gegevensexport",
+    "language": "Taal",
+    "apiAccess": "API-toegang",
+    "deleteAccount": "Account verwijderen"
+  },
+  "dataExport": {
+    "description": "Download een gestructureerde kopie van je account-, project- en bibliotheekgegevens als JSON-bestand.",
+    "downloadButton": "Mijn gegevens downloaden",
+    "success": "De gegevensexport is gemaakt."
+  },
+  "publicProfile": {
+    "description": "Deze naam hoort bij je account en wordt als auteur getoond bij elk gewas dat je in de gewassenbibliotheek hebt gepubliceerd of nog zult publiceren.",
+    "publicDisplayName": "Naam bij publicaties",
+    "noPublicDisplayName": "Anoniem",
+    "helperText": "Zonder naam verschijnen je publicaties anoniem. Als je later een naam instelt, verschijnt die automatisch als auteur bij alle gewassen die je al hebt gepubliceerd. Verwijder je de naam weer, dan verschijnen die gewassen opnieuw anoniem. De naam moet uniek zijn en mag niet al door iemand anders worden gebruikt.",
+    "actions": {
+      "setPublicDisplayName": "Naam instellen",
+      "editPublicDisplayName": "Naam wijzigen"
+    },
+    "transparencyHint": "Wordt openbaar getoond als auteur van je bijdragen aan de gewassenbibliotheek, ook van eerdere bijdragen."
+  },
+  "moderatorRequest": {
+    "title": "Help mee als moderator",
+    "description": "Help voorstellen voor nieuwe gewassoorten te beoordelen en de gewassenbibliotheek consistent te houden.",
+    "loading": "Status laden…",
+    "alreadyModerator": "Je hebt al moderatorrechten voor de gewassenbibliotheek.",
+    "pending": "Je aanvraag wordt beoordeeld.",
+    "rejectedHint": "Je kunt een nieuwe aanvraag sturen als je nog steeds wilt helpen.",
+    "motivationLabel": "Waarom wil je modereren?",
+    "submit": "Aanvraag versturen",
+    "sending": "Versturen…",
+    "success": "Je aanvraag is verstuurd."
+  },
+  "actions": {
+    "saveProfile": "Profiel opslaan",
+    "requestEmailChange": "E-mailwijziging aanvragen",
+    "changePassword": "Wachtwoord wijzigen",
+    "editDisplayName": "Weergavenaam wijzigen",
+    "save": "Opslaan",
+    "sendConfirmationLink": "Bevestigingslink versturen",
+    "savePassword": "Wachtwoord opslaan"
+  },
+  "security": {
+    "changeEmailTitle": "E-mailadres wijzigen",
+    "credentials": "Aanmeldgegevens",
+    "newEmail": "Nieuw e-mailadres",
+    "changePasswordTitle": "Wachtwoord wijzigen",
+    "newPassword": "Nieuw wachtwoord",
+    "repeatNewPassword": "Nieuw wachtwoord herhalen",
+    "noPasswordHint": "Dit account meldt zich aan met Google of Microsoft en heeft geen wachtwoord. Je kunt er een instellen via ‘Wachtwoord vergeten’ op de aanmeldpagina."
+  },
+  "loginMethods": {
+    "title": "Aanmeldmethoden",
+    "description": "Deze aanmeldmethoden zijn aan je account gekoppeld.",
+    "emailPasswordActive": "E-mail en wachtwoord · Actief",
+    "connect": "{{provider}} koppelen",
+    "connected": "De aanmeldmethode is gekoppeld.",
+    "connectedSince": "{{provider}} · gekoppeld sinds {{date}}",
+    "connectedSinceWithEmail": "{{provider}} · {{email}} · gekoppeld sinds {{date}}"
+  },
+  "deleteDescription": "Als je je account verwijdert, wordt het direct gedeactiveerd en na 14 dagen geanonimiseerd. Projecten zonder overgebleven leden worden dan samen met hun projectgegevens verwijderd. Gepubliceerde items in de gewassenbibliotheek blijven behouden.",
+  "restoreDescription": "Je kunt de verwijdering binnen deze termijn ongedaan maken.",
+  "deleteButton": "Account verwijderen…",
+  "dialogTitle": "Account voor verwijdering inplannen",
+  "dialogWarning": "Bevestig met je huidige wachtwoord en de tekst ‘{{phrase}}’. Je account wordt gedeactiveerd en na 14 dagen geanonimiseerd. Projecten zonder overgebleven leden worden dan verwijderd.",
+  "dialogWarningWithoutPassword": "Bevestig met de tekst ‘{{phrase}}’. Je account wordt gedeactiveerd en na 14 dagen geanonimiseerd. Projecten zonder overgebleven leden worden dan verwijderd.",
+  "currentPassword": "Huidig wachtwoord",
+  "deletePhrase": "VERWIJDEREN",
+  "deletePhraseLabel": "Bevestigingstekst",
+  "deletePhraseHelper": "Voer precies ‘{{phrase}}’ in om te bevestigen.",
+  "cancel": "Annuleren",
+  "confirmDelete": "Account voor verwijdering inplannen",
+  "deletionScheduled": "Je account staat gepland voor verwijdering. Het wordt op {{date}} geanonimiseerd.",
+  "noDisplayName": "—",
+  "errors": {
+    "generic": "De actie kon niet worden uitgevoerd.",
+    "delete": "Het inplannen van de verwijdering is mislukt."
+  },
+  "unsavedChangesWarning": "Er zijn niet-opgeslagen wijzigingen. Deze gaan verloren als je de pagina verlaat.",
+  "emailConfirm": {
+    "title": "E-mailwijziging bevestigen",
+    "loading": "Bevestiging controleren…",
+    "invalid": "De bevestigingslink is ongeldig of verlopen."
+  },
+  "developer": {
+    "title": "Ontwikkelaar",
+    "hintsDescription": "Herstel lokale ontwikkeltips of toon de introductie voor je eerste project opnieuw. Dit verwijdert geen projecten of accountgegevens.",
+    "hintsResetDone": "Tips hersteld.",
+    "resetHintsAction": "Tips herstellen",
+    "showOnboardingAction": "Introductie opnieuw tonen"
+  },
+  "language": {
+    "description": "De interfacetaal hoort bij je account, niet bij een project. Andere leden van hetzelfde project kunnen OpenFarmPlanner tegelijkertijd in een andere taal gebruiken. Zelf ingevoerde inhoud, zoals project-, locatie- en bednamen, wordt nooit vertaald."
+  },
+  "apiTokens": {
+    "title": "API-tokens voor externe hulpmiddelen",
+    "description": "Elk token geldt voor slechts één project en kan nooit leden, uitnodigingen of accountinstellingen wijzigen.",
+    "docsLink": "API-documentatie openen",
+    "loading": "Tokens laden…",
+    "empty": "Je hebt nog geen API-tokens gemaakt.",
+    "noProjects": "Je moet lid zijn van een project voordat je een API-token kunt maken.",
+    "revoked": "Het token ‘{{name}}’ is ingetrokken en werkt niet meer.",
+    "inactiveToggle": "Verlopen en ingetrokken tokens tonen ({{count}})",
+    "status": {
+      "active": "Actief",
+      "expired": "Verlopen",
+      "revoked": "Ingetrokken"
+    },
+    "scopes": {
+      "read": "Lezen",
+      "write": "Lezen en schrijven",
+      "delete": "Lezen, schrijven en verwijderen"
+    },
+    "scopeHelp": {
+      "read": "Mag de projectgegevens lezen. Kan niets wijzigen.",
+      "write": "Mag de projectgegevens lezen en gewassen maken of bijwerken. Kan niets verwijderen.",
+      "delete": "Mag daarnaast gewassen verwijderen en herstellen. Projectleden, uitnodigingen, accountinstellingen en andere beheeronderdelen blijven geblokkeerd."
+    },
+    "columns": {
+      "name": "Naam",
+      "scope": "Rechten",
+      "project": "Project",
+      "created": "Aangemaakt",
+      "expires": "Verloopt",
+      "lastUsed": "Laatst gebruikt",
+      "action": "Actie"
+    },
+    "meta": {
+      "project": "Project",
+      "prefix": "Token",
+      "created": "Aangemaakt",
+      "expires": "Verloopt",
+      "lastUsed": "Laatst gebruikt",
+      "never": "geen vervaldatum",
+      "neverUsed": "nooit"
+    },
+    "actions": {
+      "create": "Token maken",
+      "revoke": "Intrekken"
+    },
+    "form": {
+      "name": "Naam",
+      "project": "Project",
+      "projectHelper": "Het token heeft uitsluitend toegang tot dit project. Dit kan later niet worden gewijzigd.",
+      "scope": "Rechten",
+      "expiresAt": "Vervaldatum (optioneel)",
+      "expiresAtHelper": "Laat dit leeg voor een token zonder vervaldatum. Maximaal één jaar vooruit."
+    },
+    "created": {
+      "title": "Je nieuwe API-token",
+      "warning": "Kopieer het token nu. Het wordt slechts één keer getoond en kan niet opnieuw worden opgevraagd.",
+      "description": "Bewaar het token als een wachtwoord, bijvoorbeeld in de geheime opslag van je agent. Leg het nooit vast in een repository. Raak je het kwijt, trek het dan hier in en maak een nieuw token.",
+      "tokenLabel": "Token",
+      "usageHint": "Gebruik het als HTTP-header: Authorization: Bearer <token>",
+      "confirm": "Ik heb het token opgeslagen"
+    }
+  },
+  "cropLibraryToken": {
+    "title": "API-token voor de gewassenbibliotheek",
+    "description": "Alleen voor supergebruikers: dit token werkt platformbreed en kan officiële gewassoorten, synoniemen en regionale namen schrijven. Het is niet aan een project gebonden en staat los van de API-tokens hierboven.",
+    "docsLink": "Documentatie openen",
+    "loading": "Token laden…",
+    "empty": "Er is nog geen token voor de gewassenbibliotheek gemaakt.",
+    "revoked": "Het token ‘{{name}}’ is ingetrokken en werkt niet meer.",
+    "inactiveToggle": "Verlopen en ingetrokken tokens tonen ({{count}})",
+    "scopes": {
+      "read": "Lezen",
+      "write": "Lezen en schrijven"
+    },
+    "scopeHelp": {
+      "read": "Mag officiële gewassoorten lezen, inclusief voorstellen die nog worden beoordeeld.",
+      "write": "Mag daarnaast gewassoorten voorstellen en bewerken, inclusief synoniemen en regionale namen. Goedkeuren, afwijzen en verwijderen blijven geblokkeerd."
+    },
+    "columns": {
+      "name": "Naam",
+      "scope": "Rechten",
+      "created": "Aangemaakt",
+      "expires": "Verloopt",
+      "lastUsed": "Laatst gebruikt",
+      "action": "Actie"
+    },
+    "meta": {
+      "prefix": "Token",
+      "never": "geen vervaldatum",
+      "neverUsed": "nooit"
+    },
+    "actions": {
+      "create": "Token maken",
+      "revoke": "Intrekken"
+    },
+    "form": {
+      "name": "Naam",
+      "scope": "Rechten",
+      "expiresAt": "Vervaldatum (optioneel)",
+      "expiresAtHelper": "Laat dit leeg voor een token zonder vervaldatum. Maximaal één jaar vooruit."
+    },
+    "created": {
+      "title": "Je nieuwe bibliotheektoken",
+      "warning": "Kopieer het token nu. Het wordt slechts één keer getoond en kan niet opnieuw worden opgevraagd.",
+      "description": "Bewaar het token als een wachtwoord. Leg het nooit vast in een repository. Raak je het kwijt, trek het dan hier in en maak een nieuw token.",
+      "tokenLabel": "Token",
+      "usageHint": "Gebruik het als HTTP-header: Authorization: Bearer <token>",
+      "confirm": "Ik heb het token opgeslagen"
+    }
+  }
+}

@@ -1,0 +1,490 @@
+{
+  "landing": {
+    "title": "OpenFarmPlanner",
+    "heroImageAlt": "Groentebedden voor een beboste berghelling",
+    "subtitle": "Teeltplanning met open broncode voor de groenteteelt.",
+    "description": "Speciaal ontworpen voor tuinderijen, gemeenschapslandbouw en andere bedrijven die veel verschillende gewassen telen.",
+    "statusLine": "Gratis te gebruiken, met beoogde financiering door vrijwillige donaties.",
+    "actions": {
+      "openApp": "Aanmelden",
+      "register": "Registreren",
+      "installApp": "App installeren",
+      "demo": "Demo bekijken",
+      "demoWithoutRegistration": "Demo bekijken zonder registratie",
+      "demoShort": "Demo",
+      "startingDemo": "Demo starten...",
+      "demoStartError": "De demo kon niet worden gestart. Probeer het opnieuw.",
+      "demoRateLimited": "De demo is onlangs gestart. Probeer het later opnieuw.",
+      "demoRateLimitedWithTime": "De demo is onlangs gestart. Probeer het {{time}} opnieuw.",
+      "demoNetworkError": "De demo is momenteel niet bereikbaar. Controleer je internetverbinding en probeer het later opnieuw.",
+      "demoServerError": "De demo kon vanwege een serverfout niet worden gestart. Probeer het later opnieuw.",
+      "demoUnexpectedResponse": "De demo kon niet worden gestart omdat het antwoord van de server onverwacht was. Probeer het opnieuw.",
+      "demoAvailableIn": "Demo weer beschikbaar {{time}}"
+    },
+    "installManual": {
+      "title": "OpenFarmPlanner als app installeren",
+      "firefoxAndroid": "Tik rechtsboven op het menu (⋮) en kies ‘Installeren’ of ‘Toevoegen aan startscherm’.",
+      "ios": "Tik op het deelpictogram en kies ‘Zet op beginscherm’. In Chrome of Firefox op een iPhone staat het deelpictogram in de adresbalk of het menu.",
+      "dismiss": "Begrepen"
+    },
+    "retryTime": {
+      "lessThanMinute": "over minder dan een minuut",
+      "minutes_one": "over ongeveer {{count}} minuut",
+      "minutes_other": "over ongeveer {{count}} minuten",
+      "hours_one": "over ongeveer {{count}} uur",
+      "hours_other": "over ongeveer {{count}} uur",
+      "hoursAndMinutes": "over ongeveer {{hours}} uur en {{minutes}} minuten",
+      "compact": {
+        "lessThanMinute": "< 1 min",
+        "minutes_one": "{{count}} min",
+        "minutes_other": "{{count}} min",
+        "hours_one": "{{count}} uur",
+        "hours_other": "{{count}} uur",
+        "hoursAndMinutes": "{{hours}} uur {{minutes}} min"
+      }
+    }
+  },
+  "demoPage": {
+    "title": "Probeer de demo",
+    "subtitle": "Probeer OpenFarmPlanner direct met een tijdelijk voorbeeldproject.",
+    "description": "Deze link kan rechtstreeks worden gedeeld. Er wordt pas een demowerkruimte gemaakt wanneer je de demo actief start.",
+    "startAction": "Demo nu starten",
+    "backToLanding": "Terug naar de startpagina",
+    "safetyNote": "Voor de demo hoef je je niet te registreren. Wijzigingen worden automatisch verwijderd en zijn niet bedoeld voor echte productiegegevens."
+  },
+  "github": {
+    "url": "https://github.com/OpenFarmPlanner/openfarmplanner"
+  },
+  "topbar": {
+    "brandAriaLabel": "Terug naar boven",
+    "navAriaLabel": "Hoofdnavigatie",
+    "menuAriaLabel": "Menu openen",
+    "signIn": "Aanmelden",
+    "nav": {
+      "features": "Functies",
+      "cropLibrary": "Gewassenbibliotheek",
+      "openSource": "Open source",
+      "about": "Over het project"
+    }
+  },
+  "features": {
+    "eyebrow": "Wat OpenFarmPlanner anders maakt",
+    "title": "Bewerken zoals in een spreadsheet. Met alles verbonden.",
+    "description": "Je voert percelen, gewassen en teelten rechtstreeks in tabellen in, zonder formulieren of paginawisselingen. Omdat alles in één database staat, worden de kalender, zaadbehoefte en het opbrengstoverzicht meteen opnieuw berekend.",
+    "points": {
+      "typing": "Bewerk waarden rechtstreeks in de tabel en spring met het toetsenbord van cel naar cel",
+      "oneSource": "Werk iets op één plek bij en het is overal actueel: geen afzonderlijke lijsten meer vergelijken",
+      "validation": "Fouten vallen meteen op, bijvoorbeeld als een bed overbezet is"
+    },
+    "illustration": {
+      "ariaLabel": "Voorbeeld van een teelttabel uit het demoproject met gewas, perceel en bed, zaaidatum, plantdatum en oppervlakte. De komkommerrij toont hoe het wijzigen van de plantdatum de zaaidatum automatisch mee verschuift. Daaronder staan twee gekoppelde weergaven, de teeltkalender en opbrengsten, die ook automatisch worden herberekend.",
+      "rows": {
+        "lettuce": {
+          "crop": "Sla (Lollo Bionda)",
+          "field": "Vroege bedden noord",
+          "bed": "Sla 2"
+        },
+        "tomato": {
+          "crop": "Tomaat (Roma)",
+          "field": "Folietunnel zuid",
+          "bed": "Tomatenrij 1"
+        },
+        "cucumber": {
+          "crop": "Komkommer (Arola)",
+          "field": "Folietunnel zuid",
+          "bed": "Komkommerrij"
+        }
+      },
+      "linkedCaption": "Gekoppelde weergaven worden automatisch herberekend",
+      "cards": {
+        "calendar": {
+          "title": "Teeltkalender",
+          "detail": "Komkommerrij vanaf week 19"
+        },
+        "yield": {
+          "title": "Opbrengsten",
+          "detail": "Begin van de oogst schuift mee"
+        }
+      }
+    }
+  },
+  "cropLibrary": {
+    "eyebrow": "Gewassenbibliotheek",
+    "title": "Gewasgegevens die met de gemeenschap meegroeien.",
+    "description": "Neem afstanden, groeiduur en opbrengstwaarden uit de open bibliotheek over in plaats van bij nul te beginnen. Wat je uit eigen ervaring toevoegt, kun je met één klik delen. Zo wordt de bibliotheek met elk bedrijf beter.",
+    "illustration": {
+      "ariaLabel": "Schema dat toont hoe gewasgegevens in beide richtingen tussen een project en de gewassenbibliotheek stromen: een gewas delen, een verbetering delen, een gewas importeren en een update overnemen.",
+      "libraryTitle": "Gewassenbibliotheek",
+      "librarySubtitle": "Samen onderhouden door veel bedrijven",
+      "arrows": {
+        "share": "Een gewas delen",
+        "shareUpdate": "Een verbetering delen",
+        "import": "Een gewas importeren",
+        "pullUpdate": "Een update overnemen"
+      },
+      "yourCropsTitle": "Je gewassen"
+    }
+  },
+  "seasonFeatures": {
+    "title": "Alles voor je seizoen",
+    "items": {
+      "calendar": {
+        "title": "Teeltkalender",
+        "description": "Zie in één oogopslag welk gewas wanneer welk bed bezet en herken overlappingen vroeg."
+      },
+      "rolloverSeason": {
+        "title": "Overgaan naar het volgende seizoen",
+        "description": "Neem beproefde teelten in één stap mee naar het nieuwe seizoen en pas alleen aan wat verandert."
+      },
+      "seedDemand": {
+        "title": "Zaadbehoefte berekenen",
+        "description": "Hoeveelheden en passende verpakkingsgroottes worden uit teelten, gewasgegevens en leveranciers afgeleid."
+      },
+      "yieldDistribution": {
+        "title": "Opbrengstverdeling",
+        "description": "Verwachte oogsthoeveelheden per week en gewas maken gaten en pieken vooraf zichtbaar."
+      },
+      "fieldMap": {
+        "title": "Grafische perceelweergave",
+        "description": "Rangschik bedden op je percelen zoals ze werkelijk op het land liggen."
+      },
+      "collaboration": {
+        "title": "Samen plannen",
+        "description": "Nodig je teeltteam uit en werk aan hetzelfde actuele plan."
+      },
+      "history": {
+        "title": "Versiegeschiedenis en prullenbak",
+        "description": "Elke wijziging is te volgen en eerdere toestanden kunnen worden hersteld."
+      },
+      "importExport": {
+        "title": "Importeren en exporteren",
+        "description": "Neem je gewasgegevens uit spreadsheets over en neem ze op elk moment weer mee."
+      },
+      "installApp": {
+        "title": "Als app installeren",
+        "description": "Werkt in de browser en kan als een app op je telefoon of tablet worden geïnstalleerd."
+      }
+    }
+  },
+  "openSource": {
+    "eyebrow": "Open source",
+    "title": "Je gegevens zijn van jou.",
+    "description": "OpenFarmPlanner is vrije software onder de AGPL. Geen advertenties en geen doorverkoop van bedrijfsgegevens.",
+    "sourceButton": "Broncode op GitHub",
+    "boxes": {
+      "agpl": {
+        "title": "AGPL-3.0",
+        "description": "Open broncode, openbaar te beoordelen."
+      },
+      "gdpr": {
+        "title": "AVG",
+        "description": "Gehost in Duitsland, met minimale gegevensverwerking."
+      },
+      "api": {
+        "title": "Gedocumenteerde API",
+        "description": "Met je eigen toegangstoken voor scripts, automatisering en AI-agents."
+      },
+      "practice": {
+        "title": "Uit de praktijk",
+        "description": "Ontwikkeld samen met een gemeenschapslandbouwbedrijf (GeLaWi) in Karinthië."
+      }
+    }
+  },
+  "closing": {
+    "title": "Probeer het op een voorbeeldbedrijf.",
+    "startDemo": "Demo starten",
+    "aboutLink": "Meer over OpenFarmPlanner en wie erachter zit"
+  },
+  "about": {
+    "eyebrow": "Over het project",
+    "title": "Hoe OpenFarmPlanner is ontstaan",
+    "intro1": "Een tijd geleden vroeg onze boer bij <zwiebelzopf>GeLaWi Zwiebelzopf</zwiebelzopf> me om naar een programma voor teeltplanning te kijken. Dat programma en de vele andere die ik daarna probeerde, konden me niet overtuigen. Vaak moest ik eerst de handleiding lezen om te begrijpen hoe iets werkte, en het invoeren en wijzigen van gegevens was omslachtig.",
+    "intro2": "Daarom ben ik als elektrotechnisch ingenieur en informaticastudent in december 2025 aan mijn eigen programma begonnen. OpenFarmPlanner is opgebouwd rond tabellen die je als een spreadsheet kunt bewerken en een interface die je zonder handleiding begrijpt.",
+    "photoCaption": "De ontwikkelaar ontspant tijdens het zaaien van bonen bij GeLaWi Zwiebelzopf.",
+    "photoAlt": "Martin ligt lachend op een perceel en zaait bonen",
+    "openSection": {
+      "title": "Open en samenwerkend",
+      "text": "OpenFarmPlanner is om verschillende redenen open source. De broncode blijft blijvend beschikbaar en kan ook zonder mij verder worden ontwikkeld. Iedereen kan controleren hoe de gegevens worden verwerkt. Functiewensen en fouten kunnen openlijk worden besproken en iedereen die dat wil, kan zelf verbeteringen bijdragen. Ten slotte past het bij het idee van gemeenschapslandbouw: samen iets dragen en met elkaar delen."
+    },
+    "freeSection": {
+      "title": "Gratis te gebruiken, gefinancierd door donaties",
+      "text": "OpenFarmPlanner is gratis te gebruiken. Ontwikkeling en hosting moeten door vrijwillige donaties worden gefinancierd. Binnenkort komt er een manier om te doneren."
+    },
+    "contributeSection": {
+      "title": "Meedoen",
+      "text": "De eenvoudigste manier om bij te dragen is je gewasgegevens in de gewassenbibliotheek te delen. Elk gedeeld gewas bespaart andere bedrijven uitzoekwerk en maakt de bibliotheek beter. Feedback, ideeën of hulp bij de ontwikkeling zijn altijd welkom:"
+    },
+    "closing": {
+      "name": "Martin Stipsitz, Villach"
+    }
+  },
+  "footer": {
+    "imprint": "Juridische informatie",
+    "privacy": "Privacyverklaring",
+    "terms": "Gebruiksvoorwaarden",
+    "apiDocs": "API voor ontwikkelaars",
+    "contactLabel": "Contact: {{email}}",
+    "contactEmail": "info@openfarmplanner.org"
+  },
+  "legal": {
+    "imprint": {
+      "title": "Juridische informatie",
+      "sections": {
+        "provider": {
+          "title": "Informatie volgens § 5 ECG (Oostenrijkse wet inzake elektronische handel)",
+          "content": "Martin Stipsitz\nBurgenlandstraße 44A / 9\n9500 Villach\nOostenrijk"
+        },
+        "contact": {
+          "title": "Contact",
+          "content": "E-mail: info@openfarmplanner.org"
+        },
+        "responsiblePerson": {
+          "title": "Verantwoordelijk voor de inhoud",
+          "content": "Martin Stipsitz\nBurgenlandstraße 44A / 9\n9500 Villach\nOostenrijk"
+        },
+        "mediaDisclosure": {
+          "title": "Openbaarmaking volgens § 25 MedienG (Oostenrijkse mediawet)",
+          "content": "Media-eigenaar: Martin Stipsitz\nBedrijfsdoel: ontwikkeling en exploitatie van de opensourcewebapplicatie OpenFarmPlanner voor teeltplanning in de groenteteelt\nWoonplaats: Villach, Oostenrijk"
+        }
+      }
+    },
+    "privacy": {
+      "title": "Privacyverklaring",
+      "version": "Laatst bijgewerkt: 29 september 2026",
+      "sections": {
+        "controller": {
+          "title": "Verwerkingsverantwoordelijke",
+          "content": "Verwerkingsverantwoordelijke voor de verwerking van gegevens op deze website in de zin van de Algemene verordening gegevensbescherming (AVG):\n\nMartin Stipsitz\nBurgenlandstraße 44A / 9\n9500 Villach\nOostenrijk\n\nE-mail: info@openfarmplanner.org"
+        },
+        "generalNotice": {
+          "title": "Algemene informatie",
+          "content": "We verwerken uw persoonsgegevens vertrouwelijk en in overeenstemming met de toepasselijke wetgeving inzake gegevensbescherming en deze privacyverklaring. Deze privacyverklaring vult de gebruiksvoorwaarden van OpenFarmPlanner aan. Voor vragen over de verwerking van persoonsgegevens is uitsluitend deze privacyverklaring doorslaggevend.\n\nU kunt de startpagina van OpenFarmPlanner gebruiken zonder persoonsgegevens te verstrekken. Zodra u een gebruikersaccount aanmaakt en de toepassing gebruikt, verwerken we de gegevens die in de volgende onderdelen worden beschreven. Voor elke verwerking is de daar genoemde rechtsgrondslag volgens Art. 6(1) AVG doorslaggevend."
+        },
+        "hosting": {
+          "title": "Hosting",
+          "content": "Deze toepassing wordt gehost door de volgende aanbieder, die als onze verwerker optreedt:\n\nUberspace GmbH\nKaiserstraße 15\n55116 Mainz\nDuitsland\n\nBij toegang tot de toepassing verwerkt de webserver technische toegangsgegevens:",
+          "bullets": {
+            "ipAddress": "verkort IP-adres (bij IPv4 worden alleen de eerste 16 bits opgeslagen, bij IPv6 alleen de eerste 32 bits)",
+            "requestTime": "Datum en tijd van het verzoek",
+            "requestedResource": "opgevraagde pagina of bron",
+            "browser": "Browsertype en -versie",
+            "operatingSystem": "Besturingssysteem",
+            "referrerUrl": "Verwijzende URL, indien meegestuurd"
+          },
+          "legalBasis": "De logbestanden van de webserver worden na 7 dagen automatisch verwijderd. Daarnaast verwerken we technische toepassingslogboeken, bijvoorbeeld foutlogboeken van Django of Gunicorn. Deze bevatten hoofdzakelijk technische informatie, zoals foutmeldingen, tijdstempels en betrokken verzoeken. In afzonderlijke foutgevallen rond account-, aanmeld- of uitnodigingsbeheer kunnen ze ook het betrokken e-mailadres, de gebruikersnaam of een interne gebruikers-ID bevatten. De logboeken worden uitsluitend gebruikt voor het oplossen van fouten en een veilige, stabiele werking van de toepassing.\n\nRechtsgrondslag: Art. 6(1)(f) AVG (gerechtvaardigd belang bij een veilige en stabiele werking van de toepassing; zie overweging 49 AVG over netwerk- en informatiebeveiliging)."
+        },
+        "cloudflare": {
+          "title": "Cloudflare (DNS, CDN en beveiliging)",
+          "content": "We gebruiken de volgende aanbieder voor het omzetten van onze domeinnaam (DNS), als content delivery network (CDN) en voor beveiligingsfuncties zoals bescherming tegen DDoS-aanvallen:\n\nCloudflare, Inc.\n101 Townsend St.\nSan Francisco, CA 94107\nVerenigde Staten\n\nWanneer Cloudflare als reverse proxy vóór onze server bij Uberspace is ingesteld, lopen verzoeken aan de toepassing eerst via de servers van Cloudflare. Daarbij verwerkt Cloudflare uw IP-adres en technische verbindingsgegevens, bijvoorbeeld het tijdstip van het verzoek, de opgevraagde bron en browser- en apparaatinformatie, om de beschikbaarheid, prestaties en beveiliging van de website te waarborgen en schadelijke verzoeken te blokkeren.",
+          "legalBasis": "Rechtsgrondslag: Art. 6(1)(f) AVG (gerechtvaardigd belang bij een veilige en beschikbare werking van het platform). Cloudflare, Inc. heeft zijn hoofdkantoor in de Verenigde Staten. De doorgifte is gebaseerd op de standaardcontractbepalingen van de EU (zie het onderdeel ‘Doorgifte naar derde landen’). Meer informatie vindt u in de privacyverklaring van Cloudflare (https://www.cloudflare.com/privacypolicy/)."
+        },
+        "registration": {
+          "title": "Registratie en gebruikersaccount",
+          "content": "Om OpenFarmPlanner te gebruiken, kunt u een gebruikersaccount aanmaken met een e-mailadres en wachtwoord of via uw Google-account (zie het onderdeel ‘Aanmelden met Google’). Bij registratie met een e-mailadres en wachtwoord kunnen de volgende gegevens worden verwerkt:",
+          "bullets": {
+            "emailAddress": "E-mailadres (zichtbaar voor andere leden van hetzelfde project in de ledenlijst; wordt nooit openbaar gepubliceerd)",
+            "nameOptional": "Weergavenaam (optioneel)",
+            "encryptedPassword": "Wachtwoord (veilig gehasht opgeslagen, voor ons niet als leesbare tekst in te zien)"
+          },
+          "legalBasis": "Rechtsgrondslag: Art. 6(1)(b) AVG (uitvoering van de gebruiksovereenkomst door het aanbieden van een gebruikersaccount)."
+        },
+        "turnstile": {
+          "title": "Botbescherming bij registratie (Cloudflare Turnstile)",
+          "content": "Om misbruik en geautomatiseerde massaregistraties te voorkomen, gebruiken we op het registratieformulier Cloudflare Turnstile, een dienst van Cloudflare, Inc. (zie het onderdeel ‘Cloudflare’). Turnstile stelt met een gedragsgebaseerde controle, die voor u meestal onzichtbaar is, vast of een registratie door een persoon of een geautomatiseerd programma (bot) wordt uitgevoerd. Traditionele afbeeldingspuzzels zijn niet nodig. Hiervoor worden tijdens het registratieproces technische apparaat- en gedragssignalen uit uw browser naar Cloudflare verzonden en daar beoordeeld.\n\nTurnstile wordt uitsluitend gebruikt ter bescherming tegen geautomatiseerd misbruik en niet voor tracking, analyses of marketing. Omdat het een technisch noodzakelijke beveiligingsmaatregel is, is geen afzonderlijke toestemming nodig.",
+          "legalBasis": "Rechtsgrondslag: Art. 6(1)(f) AVG (gerechtvaardigd belang bij het beschermen van het platform en zijn gebruikers tegen geautomatiseerd misbruik). Omdat Turnstile ook wordt aangeboden door Cloudflare, Inc., met hoofdkantoor in de Verenigde Staten, is de doorgifte gebaseerd op de standaardcontractbepalingen van de EU (zie het onderdeel ‘Doorgifte naar derde landen’). Meer informatie vindt u in de privacyverklaring van Cloudflare (https://www.cloudflare.com/privacypolicy/). Deze rechtsgrondslag betreft de verwerking van de verzonden gegevens als zodanig. Of de bijbehorende technische toegang tot opslag in uw browser, bijvoorbeeld een kortlevend token dat Turnstile plaatst, afzonderlijke toestemming vereist, wordt geregeld door § 165(3) van de Oostenrijkse telecommunicatiewet (TKG), die de ePrivacy-richtlijn omzet. Turnstile valt daar onder de uitzondering voor technisch noodzakelijke maatregelen, omdat het uitsluitend dient voor de beveiligingscontrole die u door het versturen van het formulier hebt aangevraagd."
+        },
+        "socialLogin": {
+          "title": "Aanmelden met Google",
+          "content": "Naast registratie met een e-mailadres en wachtwoord kunt u zich met uw Google-account bij OpenFarmPlanner registreren en aanmelden (Google Sign-In). Wanneer u op ‘Aanmelden met Google’ klikt, wordt u doorgestuurd naar Google. Na een geslaagde aanmelding bij Google wordt u teruggestuurd naar OpenFarmPlanner.",
+          "bullets": {
+            "receivedData": "Van Google ontvangen we uw e-mailadres, uw voor- en achternaam, een vaste Google-accountidentificatie en, indien door Google doorgegeven, een URL van uw profielfoto en uw bij Google opgeslagen taalinstelling.",
+            "storedData": "Alleen uw e-mailadres en voornaam worden in uw OpenFarmPlanner-account overgenomen. Daarnaast slaan we het volledige aanmeldantwoord van Google, inclusief de Google-accountidentificatie en eventueel doorgegeven profielfoto-URL en taalinstelling, op in een afzonderlijk technisch record voor aanmeldbeheer, zodat we u bij toekomstige Google-aanmeldingen kunnen herkennen.",
+            "purpose": "Deze gegevens worden uitsluitend gebruikt voor het aanmaken van een account en het aanmelden. OpenFarmPlanner roept na het aanmelden geen Google-API's aan en slaat geen Google-toegangstokens op.",
+            "disconnect": "U kunt uw Google-account op elk moment loskoppelen in de accountinstellingen onder ‘Aanmeldmethoden’, mits u een andere aanmeldmogelijkheid hebt, zoals een wachtwoord of een andere gekoppelde aanbieder."
+          },
+          "legalBasis": "Rechtsgrondslag: Art. 6(1)(b) AVG (uitvoering van de gebruiksovereenkomst door het aanbieden van een alternatieve aanmeldmethode). Zie voor de doorgifte aan Google het onderdeel ‘Doorgifte naar derde landen’."
+        },
+        "projectData": {
+          "title": "Project- en toepassingsgegevens",
+          "content": "Binnen uw projecten verwerken we de projectgegevens die u en andere projectleden invoeren. Dit omvat met name de stamgegevens van het project, zoals projectnaam, lidmaatschappen en locaties, operationele plannings- en beheergegevens voor de gebruikte functies, bijvoorbeeld over percelen, gewassen, teeltplanning of taken, en aanvullende informatie zoals notities, geüploade bestanden en de wijzigingsgeschiedenis, inclusief de weergavenaam van de persoon die de wijziging heeft aangebracht. Deze gegevens zijn in beginsel alleen zichtbaar voor u en de andere leden van het betreffende project.",
+          "legalBasis": "Rechtsgrondslag: Art. 6(1)(b) AVG (uitvoering van de gebruiksovereenkomst: het aanbieden van de planningsfuncties)."
+        },
+        "publicLibrary": {
+          "title": "Openbare gewassenbibliotheek",
+          "content": "U kunt zelf afzonderlijke gewasrecords, bijvoorbeeld teeltinformatie over een groenteras, vanuit een privéproject in een openbare gewassenbibliotheek publiceren. Deze bibliotheek is bedoeld als een gezamenlijk opgebouwde, blijvend onderhouden kennisbank. Gepubliceerde items kunnen door andere gebruikers worden bekeken, in hun eigen projecten worden geïmporteerd en in de toekomst worden hergebruikt via functies zoals versiegeschiedenis, gezamenlijk bewerken, reacties, beoordelingen, openbare API's of gegevensexports. Publiceren is vrijwillig en is niet vereist om OpenFarmPlanner te gebruiken. Welke gebruiksrechten u daarmee aan het publiek en aan OpenFarmPlanner verleent, wordt geregeld door de gebruiksvoorwaarden, in het bijzonder het onderdeel ‘Open licentie voor gepubliceerde gewasgegevens’.",
+          "bullets": {
+            "publicContent": "Alleen de landbouwkundige teeltgegevens van het gewas worden gepubliceerd, bijvoorbeeld naam, ras, groei- en oogstduur, plantafstand en zaadhoeveelheid. Notities uit het privéproject en projectinterne informatie zoals zaadleveranciers worden niet gepubliceerd.",
+            "attribution": "De auteur van een gepubliceerd item wordt getoond met de openbare weergavenaam die u vrij in uw accountinstellingen kunt kiezen. Deze naam hoort bij uw account, niet bij het afzonderlijke item: wanneer u die voor het eerst instelt of wijzigt, verschijnt deze automatisch als auteur bij alle gewassen die u al hebt gepubliceerd. Verwijdert u de naam weer, dan worden die items opnieuw anoniem getoond. Eerdere namen worden niet bij afzonderlijke items opgeslagen. Als u geen openbare weergavenaam hebt ingesteld, gebeurt publicatie anoniem, zonder naam. De weergavenaam moet uniek zijn. Bij het instellen wordt technisch gecontroleerd of die al door een ander account wordt gebruikt. Uw gebruikersnaam en e-mailadres maken nooit deel uit van een openbaar item. Het e-mailadres wordt uitsluitend gebruikt voor accountbeheer en onze communicatie met u (zie het onderdeel ‘E-mailcommunicatie’).",
+            "noReview": "Publicatie gebeurt onmiddellijk en rechtstreeks door u. Momenteel controleren of keuren wij de inhoud niet goed.",
+            "persistence": "Een gepubliceerd item blijft in beginsel blijvend onderdeel van de openbare bibliotheek, ook wanneer u het oorspronkelijke gewas in uw privéproject later wijzigt of verwijdert.",
+            "removal": "Verwijdering wordt niet als normale gebruikersfunctie aangeboden. Deze wordt alleen in uitzonderlijke gevallen overwogen, zoals wetsovertredingen, persoonsgegevens in het gepubliceerde record, spam, duidelijk misbruik of een moderatiebeslissing.",
+            "futureOutlook": "Op lange termijn is het de bedoeling de gewassenbibliotheek gezamenlijk verder te ontwikkelen. Feedback op items moet in de toekomst via functies binnen de toepassing worden gegeven, zoals reacties, beoordelingen, versiegeschiedenis, openbare API's of gegevensexports, en niet via de persoonlijke contactgegevens van andere gebruikers."
+          },
+          "legalBasis": "Rechtsgrondslag: Art. 6(1)(b) AVG, voor zover we uw bijdrage op basis van de gebruiksvoorwaarden en uw uitdrukkelijke publicatiehandeling in de openbare gewassenbibliotheek beschikbaar stellen. Voor zover gepubliceerde bijdragen nog persoonlijke verwijzingen bevatten, bijvoorbeeld via de openbare weergavenaam, en we deze blijvend bewaren voor de integriteit en traceerbaarheid van de gezamenlijke kennisbank, beroepen we ons daarnaast op Art. 6(1)(f) AVG. Ons gerechtvaardigd belang ligt bij het opbouwen en onderhouden van een betrouwbare open gewassendatabase. Zuiver feitelijke of geanonimiseerde gewasgegevens vallen niet onder de AVG."
+        },
+        "emailCommunication": {
+          "title": "E-mailcommunicatie",
+          "content": "We gebruiken uw e-mailadres voor:",
+          "bullets": {
+            "registration": "Registratie",
+            "accountActivation": "Accountactivering",
+            "passwordReset": "Wachtwoordherstel",
+            "projectInvitations": "Projectuitnodigingen",
+            "systemNotifications": "andere communicatie rond uw gebruikersaccount, zoals systeemmeldingen"
+          },
+          "legalBasis": "Rechtsgrondslag: Art. 6(1)(b) AVG (uitvoering van de gebruiksovereenkomst)."
+        },
+        "cookies": {
+          "title": "Cookies",
+          "content": "OpenFarmPlanner gebruikt alleen technisch noodzakelijke cookies. Er worden geen cookies voor analyses, tracking of marketing gebruikt. De cookies dienen uitsluitend om aangemeld gebruik van de toepassing mogelijk te maken en verzoeken technisch te beveiligen. De concrete bewaartermijn hangt af van de sessie- en beveiligingsconfiguratie van de server. Sessiecookies worden uiterlijk verwijderd wanneer ze verlopen of wanneer u ze in uw browser verwijdert.",
+          "bullets": {
+            "sessionCookies": "Sessiecookie om uw aanmelding te behouden (rechtsgrondslag: Art. 6(1)(b) AVG; zonder deze cookie kan aangemeld gebruik van de toepassing niet worden aangeboden)",
+            "securityCookies": "Beveiligingscookie ter bescherming tegen cross-site request forgery, of CSRF (rechtsgrondslag: Art. 6(1)(f) AVG, gerechtvaardigd belang bij het beveiligen van de toepassing; zie overweging 49 AVG)"
+          }
+        },
+        "localStorage": {
+          "title": "Lokale opslag (Local Storage/Session Storage)",
+          "content": "Naast cookies slaat de toepassing afzonderlijke technische instellingen op in de lokale opslag van uw browser (Local Storage/Session Storage). Dit betreft met name het laatst geopende project, weergaveopties, zijbalk- en tabelstatussen, sortering en filters, al getoonde tips en tijdelijk opgeslagen omleidingen of tokens voor projectuitnodigingen. Deze gegevens verlaten uw apparaat niet, zijn voor ons niet zichtbaar en bevatten geen aanmeldgegevens. Gegevens in Local Storage blijven in uw browser staan totdat de toepassing ze vervangt, u ze in de toepassing herstelt of u ze via browserfuncties verwijdert. Gegevens in Session Storage worden gewoonlijk verwijderd wanneer het browsertabblad wordt gesloten. Omdat we deze gegevens niet op onze systemen verwerken, is dit geen verwerking van persoonsgegevens door ons in de zin van Art. 4(2) AVG. Een afzonderlijke rechtsgrondslag is daarom niet van toepassing."
+        },
+        "dataSharing": {
+          "title": "Gegevens delen",
+          "content": "Afgezien van de samenwerking met onze hostingaanbieder als verwerker (zie het onderdeel Hosting), delen we uw persoonsgegevens alleen als:\n\n- dit noodzakelijk is voor de technische bezorging van e-mail rond uw account of projectuitnodigingen; e-mailbezorging gebruikt de door Uberspace beheerde mailinfrastructuur,\n- u zich met uw Google-account aanmeldt of registreert; in dat geval ontvangt Google de technische gegevens die nodig zijn voor de aanmelding (zie de onderdelen ‘Aanmelden met Google’ en ‘Doorgifte naar derde landen’),\n- u de toepassing bezoekt of het registratieformulier gebruikt; in dat geval verwerkt Cloudflare de technische gegevens die nodig zijn voor levering, beveiliging en botbescherming (zie de onderdelen ‘Cloudflare’, ‘Botbescherming bij registratie’ en ‘Doorgifte naar derde landen’),\n- u actief een gewas in de openbare gewassenbibliotheek publiceert en daarmee kiest voor zichtbaarheid voor alle aangemelde gebruikers, inclusief uw openbare weergavenaam als u die hebt ingesteld (zie het onderdeel Openbare gewassenbibliotheek), of\n- we daartoe wettelijk verplicht zijn, bijvoorbeeld tegenover overheidsinstanties."
+        },
+        "thirdCountryTransfers": {
+          "title": "Doorgifte naar derde landen",
+          "content": "Als u zich met uw Google-account aanmeldt of registreert (zie het onderdeel ‘Aanmelden met Google’), worden persoonsgegevens doorgegeven aan Google LLC, met hoofdkantoor in de Verenigde Staten. Voor zover ons momenteel bekend, is Google LLC gecertificeerd onder het EU-U.S. Data Privacy Framework (DPF). De Europese Commissie heeft vastgesteld dat voor gegevens die aan gecertificeerde bedrijven worden doorgegeven een passend beschermingsniveau geldt (adequaatheidsbesluit volgens Art. 45 AVG van 10 juli 2023). U kunt de actuele certificeringsstatus op elk moment zelf controleren in de officiële DPF-deelnemerslijst (https://www.dataprivacyframework.gov/list).\n\nBij toegang tot de toepassing via Cloudflare en tijdens de botcontrole met Cloudflare Turnstile bij registratie (zie de onderdelen ‘Cloudflare’ en ‘Botbescherming bij registratie’) worden persoonsgegevens, met name uw IP-adres, doorgegeven aan Cloudflare, Inc., met hoofdkantoor in de Verenigde Staten. Deze doorgifte is gebaseerd op de door de Europese Commissie vastgestelde standaardcontractbepalingen (Art. 46(2)(c) AVG).\n\nVerder worden volgens de huidige beoordeling geen persoonsgegevens doorgegeven aan ontvangers buiten de Europese Unie of de Europese Economische Ruimte. Aanmelden met een Microsoft-account is in de broncode van OpenFarmPlanner voorbereid, maar momenteel niet geactiveerd. Dit wordt pas na activering onderdeel van deze privacyverklaring."
+        },
+        "mandatoryProvision": {
+          "title": "Verstrekking van persoonsgegevens",
+          "content": "Het verstrekken van persoonsgegevens is niet wettelijk of contractueel verplicht als u alleen de openbare startpagina bezoekt. Voor registratie en gebruik van de toepassing zijn uw e-mailadres, wachtwoord en technisch noodzakelijke cookies vereist. Zonder deze gegevens kunnen we geen gebruikersaccount aanbieden of aanmelden mogelijk maken. Project- en toepassingsgegevens verstrekt u vrijwillig wanneer u de betreffende functies wilt gebruiken. Zonder deze informatie kunnen de bijbehorende planningsfuncties niet of slechts beperkt worden gebruikt. Publiceren in de openbare gewassenbibliotheek is vrijwillig en niet vereist voor gebruik van de rest van de toepassing."
+        },
+        "storageDuration": {
+          "title": "Bewaartermijn",
+          "content": "Uw accountgegevens worden opgeslagen zolang uw gebruikersaccount bestaat. Niet-geactiveerde gebruikersaccounts worden na afloop van de activeringsperiode verwijderd. Activeringslinks zijn momenteel 7 dagen geldig. Links voor wachtwoordherstel zijn momenteel 3 dagen geldig en links voor e-mailwijzigingen 24 uur. Projectuitnodigingen zijn momenteel 14 dagen geldig. Daarna blijft het uitnodigingsrecord bestaan, maar kan het niet meer worden geaccepteerd. Als u de demofunctie zonder aanmelding (‘Demo bekijken’) gebruikt, worden de tijdens die sessie gemaakte gegevens uiterlijk 8 uur na het begin van de sessie automatisch verwijderd.\n\nAls u accountverwijdering aanvraagt, wordt het account eerst 14 dagen voor verwijdering gemarkeerd. Tijdens deze periode kunt u de verwijdering ongedaan maken. Daarna anonimiseren we uw account: e-mailadres en weergavenaam worden verwijderd, het account wordt gedeactiveerd en een gekoppelde Google-aanmelding wordt verwijderd. Ook verwijderen we uw projectlidmaatschappen, tenzij wettelijke verplichtingen of andere dwingende redenen dit verhinderen.\n\nProjecten blijven bestaan zolang er minstens één lid is. Als een project na accountverwijdering geen leden meer heeft, verwijderen we het project inclusief de projectspecifieke gegevens. Gepubliceerde items in de openbare gewassenbibliotheek vallen hier niet onder en blijven onderdeel van de openbare kennisbank (zie de onderdelen Project- en toepassingsgegevens en Openbare gewassenbibliotheek). Serverlogbestanden van de hostingaanbieder worden na 7 dagen verwijderd. IP-adressen worden door Uberspace in verkorte vorm opgeslagen. Onze eigen logboeken voor gepland onderhoud (cronjobs) verwijderen we automatisch uiterlijk 14 dagen na het aanmaken. De eigen foutuitvoer van onze toepassing (Django/Gunicorn) wordt niet opgeslagen in logbestanden die we zelf beheren, maar wordt opgevangen door het procesbeheer van onze hostingaanbieder. De eigen technische configuratie daarvan bepaalt hoelang deze wordt bewaard. Er zijn momenteel geen verdere wettelijke bewaarplichten voor de gegevens die we verwerken, omdat OpenFarmPlanner geen facturerings- of fiscaal relevante gegevens verwerkt."
+        },
+        "rights": {
+          "title": "Uw rechten",
+          "content": "Als betrokkene hebt u onder de AVG de volgende rechten:",
+          "bullets": {
+            "access": "Inzage in de over u opgeslagen gegevens (Art. 15 AVG)",
+            "rectification": "Rectificatie van onjuiste gegevens (Art. 16 AVG)",
+            "deletion": "Wissing van uw gegevens (Art. 17 AVG)",
+            "restriction": "Beperking van de verwerking (Art. 18 AVG)",
+            "portability": "Overdraagbaarheid van gegevens (Art. 20 AVG)",
+            "objection": "Bezwaar tegen verwerking op basis van een gerechtvaardigd belang (Art. 21 AVG)",
+            "consentWithdrawal": "Intrekking van eerder gegeven toestemming met werking voor de toekomst, zonder afbreuk te doen aan de rechtmatigheid van de tot dan toe uitgevoerde verwerking (Art. 7(3) AVG)"
+          },
+          "contact": "U kunt uw accountgegevens rechtstreeks in de accountinstellingen corrigeren, uw gegevens exporteren en accountverwijdering aanvragen. Voor uitzonderlijke gevallen die niet onder deze zelfservicefuncties vallen, blijft de verwerkingsverantwoordelijke bereikbaar via info@openfarmplanner.org."
+        },
+        "complaint": {
+          "title": "Recht om een klacht in te dienen",
+          "content": "Naast de hierboven genoemde rechten hebt u het recht een klacht in te dienen bij een toezichthoudende autoriteit voor gegevensbescherming als u vindt dat de verwerking van uw persoonsgegevens in strijd is met de AVG (Art. 77 AVG). U kunt zich met name wenden tot de toezichthoudende autoriteit van uw gewone verblijfplaats, uw werkplek of de plaats van de vermeende inbreuk.\n\nVoor OpenFarmPlanner is de Oostenrijkse gegevensbeschermingsautoriteit de bevoegde toezichthoudende autoriteit in Oostenrijk:\n\nOostenrijkse gegevensbeschermingsautoriteit\nBarichgasse 40-42\n1030 Wenen\nhttps://www.dsb.gv.at"
+        },
+        "changes": {
+          "title": "Wijzigingen in deze privacyverklaring",
+          "content": "We werken deze privacyverklaring bij wanneer de verwerking van persoonsgegevens verandert door nieuwe functies of gewijzigde wettelijke vereisten. De in de toepassing gepubliceerde versie geldt. De datum van de laatste wijziging staat aan het einde van deze privacyverklaring. We informeren actieve gebruikers op passende wijze over wezenlijke wijzigingen, bijvoorbeeld per e-mail of via een melding in de toepassing."
+        },
+        "languageVersions": {
+          "title": "Taalversies",
+          "content": "Dit document is beschikbaar in het Duits, Engels, Frans, Spaans, Italiaans, Portugees en Nederlands. Bij verschillen of onduidelijkheden tussen de taalversies is de Engelse versie doorslaggevend."
+        }
+      }
+    },
+    "terms": {
+      "title": "Gebruiksvoorwaarden",
+      "print": "Afdrukken / Opslaan als PDF",
+      "version": "Laatst bijgewerkt: 17 juli 2026",
+      "sections": {
+        "provider": {
+          "title": "Aanbieder en contact",
+          "content": "De aanbieder van de op openfarmplanner.org beschikbare toepassing is:\n\nMartin Stipsitz\nBurgenlandstraße 44A / 9\n9500 Villach\nOostenrijk\n\nE-mail: info@openfarmplanner.org\n\nEr is momenteel geen btw-identificatienummer."
+        },
+        "scope": {
+          "title": "Toepassingsgebied en gebruik van het platform",
+          "content": "Deze Gebruiksvoorwaarden zijn van toepassing op het gebruik van OpenFarmPlanner, een webapplicatie voor landbouwkundige en tuinbouwkundige teeltplanning. Door een gebruikersaccount te registreren of de toepassing te gebruiken, accepteert u deze Gebruiksvoorwaarden.\n\nOpenFarmPlanner is bedoeld voor zowel particulieren als landbouw- en tuinbouwbedrijven die hun teeltplanning digitaal willen organiseren. Informatie over de verwerking van persoonsgegevens vindt u in de Privacyverklaring."
+        },
+        "serviceAndCosts": {
+          "title": "Omvang van de dienstverlening",
+          "content": "OpenFarmPlanner biedt digitale planningsfuncties als gehoste webapplicatie."
+        },
+        "accounts": {
+          "title": "Gebruikersaccounts",
+          "content": "Voor gebruik van de toepassing is een gebruikersaccount vereist. U bent verplicht bij registratie waarheidsgetrouwe informatie te verstrekken en uw wachtwoord vertrouwelijk te houden.\n\nU bent verantwoordelijk voor alle activiteiten die via uw gebruikersaccount worden uitgevoerd. Informeer ons direct via info@openfarmplanner.org als u vermoedt dat iemand ongeoorloofd toegang tot uw account heeft gekregen. Een gebruikersaccount is persoonlijk en niet overdraagbaar."
+        },
+        "userContent": {
+          "title": "Uw inhoud in OpenFarmPlanner",
+          "content": "Binnen uw projecten kunt u eigen gegevens maken, zoals locatie-, perceel- en gewasgegevens, teeltplannen, taken, notities en foto's. U bent verantwoordelijk voor de juistheid, volledigheid en rechtmatigheid van deze inhoud.\n\nUpload geen inhoud waarvoor u niet de benodigde rechten hebt, zoals auteursrechtelijk beschermde foto's van derden."
+        },
+        "publicLibrary": {
+          "title": "Openbare gewassenbibliotheek",
+          "content": "U kunt vrijwillig afzonderlijke gewasrecords vanuit een privéproject in de openbare gewassenbibliotheek publiceren. Deze bibliotheek is bedoeld als een gezamenlijk opgebouwde, blijvend onderhouden kennisbank voor landbouwkundige en tuinbouwkundige gewasgegevens. Gepubliceerde items zijn zichtbaar voor andere gebruikers, kunnen in hun eigen projecten worden geïmporteerd en kunnen op lange termijn worden hergebruikt via functies zoals versiegeschiedenis, gezamenlijk bewerken, reacties, beoordelingen, openbare API's of gegevensexports.\n\nDoor te publiceren bevestigt u dat de gepubliceerde informatie naar uw beste weten juist is, geen persoonsgegevens van derden bevat en dat u gerechtigd bent deze blijvend te publiceren onder de in deze gebruiksvoorwaarden genoemde open licentie."
+        },
+        "contributionLicense": {
+          "title": "Open licentie voor gepubliceerde gewasgegevens",
+          "content": "Wanneer u een gewasrecord in de openbare gewassenbibliotheek publiceert, geeft u de gepubliceerde gewasgegevens vrij onder de licentie Creative Commons Naamsvermelding-GelijkDelen 4.0 Internationaal (CC BY-SA 4.0). Deze licentie staat derden met name toe de gepubliceerde gewasgegevens te reproduceren, te verspreiden, te bewerken, met andere gegevens te combineren en commercieel te gebruiken, mits de licentievoorwaarden worden nageleefd. Deze voorwaarden omvatten in het bijzonder passende naamsvermelding, een verwijzing naar de licentie en het delen van gewijzigde versies onder dezelfde of verenigbare voorwaarden.\n\nEenmaal rechtsgeldig verleend, is de licentie volgens haar voorwaarden onherroepelijk. OpenFarmPlanner mag de gepubliceerde gewasgegevens blijvend opslaan en tonen, in zoek- en importfuncties opnemen, via openbare gegevensexports of API's beschikbaar stellen, technisch verwerken en als onderdeel van de gezamenlijke gewassenbibliotheek verder ontwikkelen."
+        },
+        "prohibitedContent": {
+          "title": "Verboden inhoud en gedrag",
+          "content": "Bij gebruik van OpenFarmPlanner, in het bijzonder bij publicatie in de openbare gewassenbibliotheek, is het niet toegestaan om",
+          "bullets": {
+            "illegalContent": "onrechtmatige of misleidende inhoud te plaatsen of inhoud die inbreuk maakt op rechten van derden, zoals auteursrechten of persoonlijkheidsrechten,",
+            "malware": "schadelijke software te verspreiden of beveiligingsmaatregelen van de toepassing te omzeilen,",
+            "abuse": "de toepassing geautomatiseerd te misbruiken, bijvoorbeeld via massaregistraties of spam,",
+            "misrepresentation": "zich als een andere persoon voor te doen of bewust onjuiste informatie te publiceren."
+          }
+        },
+        "copyright": {
+          "title": "Auteursrecht",
+          "content": "De OpenFarmPlanner-software is auteursrechtelijk beschermd en wordt onder de in het onderdeel ‘Opensourcesoftware’ genoemde licentie aangeboden. De door u ingevoerde inhoud, zoals gewasgegevens of notities, blijft uw eigendom.\n\nAls u denkt dat een in de openbare gewassenbibliotheek gepubliceerd item inbreuk maakt op uw auteursrecht of andere rechten, neem dan contact op via info@openfarmplanner.org. We onderzoeken gerechtvaardigde meldingen (zie het onderdeel ‘Verwijdering van inhoud’)."
+        },
+        "contentRemoval": {
+          "title": "Verwijdering van inhoud",
+          "content": "Gepubliceerde items in de gewassenbibliotheek zijn in beginsel bedoeld om blijvend beschikbaar te blijven en worden niet op verzoek verwijderd als normale gebruikersfunctie. We behouden ons echter het recht voor gepubliceerde inhoud geheel of gedeeltelijk te verwijderen, te blokkeren of te anonimiseren, of in de toekomst via moderatie- of versiebeheerfuncties te corrigeren, wanneer er concrete aanwijzingen zijn voor een schending van deze gebruiksvoorwaarden of het toepasselijke recht. Dit geldt met name bij wetsovertredingen, persoonsgegevens in het gepubliceerde record, spam, duidelijk misbruik, misleidende informatie of een moderatiebeslissing.\n\nU kunt vermoedelijk onrechtmatige of problematische inhoud op elk moment melden via info@openfarmplanner.org. We zijn niet verplicht gepubliceerde inhoud algemeen en proactief te controleren."
+        },
+        "accountSuspension": {
+          "title": "Blokkering van gebruikersaccounts",
+          "content": "Bij een ernstige of herhaalde schending van deze Gebruiksvoorwaarden kunnen we de toegang tot uw gebruikersaccount tijdelijk beperken of het account blokkeren. We handelen evenredig en houden rekening met de ernst van de schending en met de vraag of het om een eenmalig of herhaald incident gaat.\n\nBij blokkering informeren we u waar mogelijk over de reden. U kunt hierover op elk moment contact opnemen via info@openfarmplanner.org."
+        },
+        "liability": {
+          "title": "Aansprakelijkheid",
+          "content": "OpenFarmPlanner wordt met grote zorg ontwikkeld en beheerd. Toch kunnen we niet op elk moment een foutloze of ononderbroken beschikbaarheid garanderen, bijvoorbeeld tijdens onderhoud, technische storingen of gebeurtenissen buiten onze invloed.\n\nDe openbare gewassenbibliotheek bevat inhoud die door gebruikers zelf is gemaakt. De betreffende publicerende gebruikers zijn verantwoordelijk voor de juistheid daarvan, niet OpenFarmPlanner (zie het onderdeel ‘Uw inhoud in OpenFarmPlanner’).\n\nLandbouwkundige en tuinbouwkundige informatie in OpenFarmPlanner, zoals groei- en oogstperiodes, plantafstanden of zaadhoeveelheden, dient uitsluitend ter ondersteuning van uw eigen teeltplanning en vervangt geen professioneel advies.\n\nVoor schade als gevolg van licht nalatige schendingen van verplichtingen is onze aansprakelijkheid beperkt. Onze aansprakelijkheid voor opzet en grove nalatigheid en voor schade als gevolg van aantasting van het leven, het lichaam of de gezondheid blijft onverkort gelden, evenals andere dwingende wettelijke aansprakelijkheidsregels."
+        },
+        "openSource": {
+          "title": "Opensourcesoftware",
+          "content": "De broncode van OpenFarmPlanner wordt als opensourcesoftware gepubliceerd onder de GNU Affero General Public License versie 3 (AGPLv3) en kan in de GitHub-repository van OpenFarmPlanner (https://github.com/OpenFarmPlanner/planner) worden bekeken, hergebruikt en gewijzigd. De licentie regelt uitsluitend de rechten op de software zelf en sluit, zoals gebruikelijk bij opensourcesoftware, elke garantie voor de software uit.\n\nDit staat los van het gebruik van de gehoste toepassing op openfarmplanner.org, waarop deze Gebruiksvoorwaarden van toepassing zijn."
+        },
+        "futureFeatures": {
+          "title": "Verdere ontwikkeling van het platform",
+          "content": "OpenFarmPlanner wordt voortdurend verder ontwikkeld. Op lange termijn is het de bedoeling dat de openbare gewassenbibliotheek functies zoals versiegeschiedenis, gezamenlijk bewerken, reacties, beoordelingen, openbare API's en gegevensexports ondersteunt. Deze Gebruiksvoorwaarden zijn op overeenkomstige wijze van toepassing op zulke toekomstige functies rond gepubliceerde gewasgegevens en door gebruikers verstrekte inhoud. Bij wezenlijke nieuwe functies van dit type werken we deze Gebruiksvoorwaarden zo nodig bij (zie het onderdeel ‘Wijzigingen in deze Gebruiksvoorwaarden’)."
+        },
+        "changes": {
+          "title": "Wijzigingen in deze Gebruiksvoorwaarden",
+          "content": "We werken deze Gebruiksvoorwaarden bij als de aangeboden functies of het juridische kader veranderen. De versie die op het moment van uw gebruik in de toepassing is gepubliceerd, is doorslaggevend. De datum van de laatste wijziging staat aan het einde van deze pagina. Bij wezenlijke wijzigingen informeren we actieve gebruikers op passende wijze, bijvoorbeeld per e-mail of via een melding in de toepassing."
+        },
+        "languageVersions": {
+          "title": "Taalversies",
+          "content": "Dit document is beschikbaar in het Duits, Engels, Frans, Spaans, Italiaans, Portugees en Nederlands. Bij verschillen of onduidelijkheden tussen de taalversies is de Engelse versie doorslaggevend."
+        }
+      }
+    }
+  },
+  "seo": {
+    "titles": {
+      "landing": "OpenFarmPlanner – teeltplanning voor de groenteteelt",
+      "about": "Over OpenFarmPlanner",
+      "demo": "Probeer de demo – OpenFarmPlanner",
+      "imprint": "Juridische informatie – OpenFarmPlanner",
+      "privacy": "Privacyverklaring – OpenFarmPlanner",
+      "terms": "Gebruiksvoorwaarden – OpenFarmPlanner",
+      "login": "Aanmelden – OpenFarmPlanner",
+      "register": "Registreren – OpenFarmPlanner"
+    },
+    "descriptions": {
+      "landing": "OpenFarmPlanner: teeltplanning met open broncode voor de groenteteelt. Bewerk percelen, gewassen en teelten rechtstreeks in tabellen, met een open gewassenbibliotheek.",
+      "about": "Hoe en waarom OpenFarmPlanner is ontstaan: de opensourceaanpak, financiering door donaties en hoe je kunt bijdragen.",
+      "imprint": "Juridische informatie van OpenFarmPlanner: identificatie van de aanbieder, contactgegevens en de verantwoordelijke volgens § 5 ECG (Oostenrijkse wet inzake elektronische handel).",
+      "privacy": "Privacyverklaring van OpenFarmPlanner: informatie over hosting, registratie, projectgegevens, cookies en uw rechten onder de AVG.",
+      "terms": "Gebruiksvoorwaarden van OpenFarmPlanner: regels over accounts, inhoud, de openbare gewassenbibliotheek en aansprakelijkheid."
+    }
+  }
+}

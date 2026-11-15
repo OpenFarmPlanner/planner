@@ -1,0 +1,1 @@
+{% autoescape off %}Uitnodiging voor OpenFarmPlanner: {{ project_name }}{% endautoescape %}

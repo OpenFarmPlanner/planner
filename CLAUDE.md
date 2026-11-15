@@ -8,7 +8,7 @@
 - All API responses and application logs must be in English.
 - All explanations, summaries, and code-related output from AI agents must be in English.
 - UI text is handled through i18n resources in German (the reference bundle),
-  English, French, Spanish, Italian and Portuguese; terminology and forms of address follow
+  English, French, Spanish, Italian, Portuguese and Dutch; terminology and forms of address follow
   [`docs/i18n-glossary.md`](docs/i18n-glossary.md).
 - Emails to users are written in the recipient's language from per-language
   template files under `backend/accounts/templates/accounts/emails/<code>/`;
@@ -193,7 +193,7 @@ Deploy scripts, cron/scheduling config, and infra are **not** in this repo — t
 
 ### Text, Types, and Components
 - UI text must always use i18n resources. New or changed user-facing text must
-  include translations in all six languages (de, en, fr, es, it, pt) in the relevant
+  include translations in all seven languages (de, en, fr, es, it, pt, nl) in the relevant
   namespace, using the terms of [`docs/i18n-glossary.md`](docs/i18n-glossary.md);
   pluralized keys need every plural form of each language (fr/es add `_many`).
   Details: [`docs/i18n.md`](docs/i18n.md).
@@ -301,13 +301,13 @@ tests, screenshots, or manual checks were performed.
 
 ## Public pages and SEO
 Public marketing pages (landing, about, legal) must stay indexable by Google
-in German, English, French, Spanish, Italian and Portuguese. Full rules and rationale:
+in German, English, French, Spanish, Italian, Portuguese and Dutch. Full rules and rationale:
 [`docs/seo-and-indexing.md`](docs/seo-and-indexing.md). Checklist for adding
 or changing a public page:
 
 1. Register it in `PUBLIC_PAGES` in `frontend/src/seo/seoConfig.ts` with a
-   German path (root, no prefix) and an English, French, Spanish, Italian and Portuguese path
-   (under `/en`, `/fr`, `/es`, `/it`, `/pt`, with slugs in that language), sitemap `changefreq`/`priority`, and `titleKey`/`descriptionKey`.
+   German path (root, no prefix) and an English, French, Spanish, Italian, Portuguese and Dutch path
+   (under `/en`, `/fr`, `/es`, `/it`, `/pt`, `/nl`, with slugs in that language), sitemap `changefreq`/`priority`, and `titleKey`/`descriptionKey`.
    Map its id to the component in `PUBLIC_PAGE_ELEMENTS` (`App.tsx`). The
    router, prerendering, sitemap, canonical, hreflang, switcher links and
    internal links all derive from the registry.
@@ -318,17 +318,17 @@ or changing a public page:
    contradict it on the page.
 3. URLs are slashless (`/ueber`, never `/ueber/`) on the apex host
    (`openfarmplanner.org`, never `www`). The canonical is the URL served with
-   200; hreflang carries `de`, `en`, `fr`, `es`, `it`, `pt` and `x-default` (German).
+   200; hreflang carries `de`, `en`, `fr`, `es`, `it`, `pt`, `nl` and `x-default` (German).
 4. Never hardcode a public path, canonical, hreflang or sitemap entry; link
    with `usePublicPagePath(id)`.
 5. Every URL renders its own language. Visitors (never crawlers) landing on
    the other language version are redirected once, on page load, by
    `publicPageLanguageRedirect.ts` / the `index.html` preboot: stored choice,
-   otherwise browser language (German, French, Spanish, Italian and Portuguese → their version,
+   otherwise browser language (German, French, Spanish, Italian, Portuguese and Dutch → their version,
    anything else → English).
    No server-side `Accept-Language` or geolocation redirect.
 6. App-only routes are never public pages; add their prefixes (and any
-   `/en`, `/fr`, `/es`, `/it` or `/pt` twin) to `NON_INDEXABLE_PATH_PREFIXES` so `robots.txt` disallows them.
+   `/en`, `/fr`, `/es`, `/it`, `/pt` or `/nl` twin) to `NON_INDEXABLE_PATH_PREFIXES` so `robots.txt` disallows them.
 7. Run the SEO guard: `cd frontend && npx vitest run src/seo build` and
    `npm run build` (the build fails on guard errors); add
    `npx playwright test e2e/public-page-prerendering.spec.ts` for the

@@ -7,7 +7,7 @@ const languages = [
     menuLabel: 'Apri menu', dialogTitle: 'Modifica traduzione', saveLabel: 'Salva',
     translationAction: /Aggiungi traduzione in italiano/i, editorLabel: /italiano – Traduzione/i,
     description: 'Note colturali italiane di esempio.',
-    languageClause: 'tedesco, inglese, francese, spagnolo, italiano e portoghese',
+    languageClause: 'tedesco, inglese, francese, spagnolo, italiano, portoghese e olandese',
     authoritativeClause: 'prevale la versione inglese',
     publicPaths: ['/it', '/it/chi-siamo', '/it/note-legali', '/it/privacy', '/it/termini'],
     routes: {
@@ -22,7 +22,7 @@ const languages = [
     menuLabel: 'Abrir menu', dialogTitle: 'Editar tradução', saveLabel: 'Guardar',
     translationAction: /Adicionar tradução em português/i, editorLabel: /português – Tradução/i,
     description: 'Notas de cultivo portuguesas de exemplo.',
-    languageClause: 'alemão, inglês, francês, espanhol, italiano e português',
+    languageClause: 'alemão, inglês, francês, espanhol, italiano, português e neerlandês',
     authoritativeClause: 'prevalece a versão inglesa',
     publicPaths: ['/pt', '/pt/sobre', '/pt/aviso-legal', '/pt/privacidade', '/pt/termos'],
     routes: {
@@ -30,6 +30,21 @@ const languages = [
       anbauplaene: 'Plano de cultivo', 'gantt-chart': 'Calendário de cultivo',
       'yield-overview': 'Visão geral dos rendimentos', 'seed-demand': 'Necessidades de sementes',
       'young-plant-demand': 'Necessidades de plantas de viveiro', suppliers: 'Fornecedores',
+    },
+  },
+  {
+    code: 'nl', name: 'Dutch', label: 'Nederlands', browserLocale: 'nl-BE', accountLabel: 'Taal',
+    menuLabel: 'Menu openen', dialogTitle: 'Vertaling bewerken', saveLabel: 'Opslaan',
+    translationAction: /Vertaling in het Nederlands toevoegen/i, editorLabel: /Nederlands – Vertaling/i,
+    description: 'Nederlandse voorbeeldnotities over de teelt.',
+    languageClause: 'Duits, Engels, Frans, Spaans, Italiaans, Portugees en Nederlands',
+    authoritativeClause: 'de Engelse versie doorslaggevend',
+    publicPaths: ['/nl', '/nl/over', '/nl/juridische-informatie', '/nl/privacy', '/nl/voorwaarden'],
+    routes: {
+      dashboard: 'Overzicht', 'fields-beds': 'Teeltoppervlakken', crops: 'Gewassen',
+      anbauplaene: 'Teeltplan', 'gantt-chart': 'Teeltkalender',
+      'yield-overview': 'Opbrengstoverzicht', 'seed-demand': 'Zaadbehoefte',
+      'young-plant-demand': 'Plantgoedbehoefte', suppliers: 'Leveranciers',
     },
   },
 ] as const;
@@ -172,10 +187,10 @@ for (const language of languages) {
 }
 
 // The shared language-version sentence also grows in existing legal translations.
-test('existing legal clauses fit on phones after adding Portuguese', async ({ browser }, testInfo) => {
+test('existing legal clauses fit on phones after adding languages', async ({ browser }, testInfo) => {
   for (const language of [
-    { code: 'fr', clause: 'allemand, anglais, français, espagnol, italien et portugais', paths: ['/fr/confidentialite', '/fr/conditions-utilisation'] },
-    { code: 'es', clause: 'alemán, inglés, francés, español, italiano y portugués', paths: ['/es/privacidad', '/es/terminos'] },
+    { code: 'fr', clause: 'allemand, anglais, français, espagnol, italien, portugais et néerlandais', paths: ['/fr/confidentialite', '/fr/conditions-utilisation'] },
+    { code: 'es', clause: 'alemán, inglés, francés, español, italiano, portugués y neerlandés', paths: ['/es/privacidad', '/es/terminos'] },
   ]) {
     const context = await browser.newContext({ locale: language.code, viewport: { width: 375, height: 800 } });
     const page = await context.newPage();

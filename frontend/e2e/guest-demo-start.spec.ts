@@ -159,6 +159,7 @@ test('stays on the demo project instead of bouncing back to login after a few se
 for (const language of [
   { code: 'pt', browser: 'pt-BR', start: 'Ver demonstração sem registo', heading: 'Áreas de cultivo' },
   { code: 'it', browser: 'it-IT', start: 'Guarda la demo senza registrarti', heading: 'Superfici coltivate' },
+  { code: 'nl', browser: 'nl-BE', start: 'Demo bekijken zonder registratie', heading: 'Teeltoppervlakken' },
 ]) {
   test.describe(`${language.code} demo with English content fallback`, () => {
     test.use({ locale: language.browser });
