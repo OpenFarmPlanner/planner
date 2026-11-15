@@ -137,9 +137,18 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
   }
   const sha = receipt.body.match(/^\*\*Reviewed commit:\*\* `([0-9a-f]{10,40})`$/m)?.[1];
   const task = receipt.body.match(/^\[View security finding report\]\((https:\/\/chatgpt\.com\/codex\/(?:cloud\/)?tasks\/[a-zA-Z0-9_-]+)\)$/m)?.[1];
-  if (!sha || !head.startsWith(sha) || !task) {
+  if (!sha || !task) {
     return invalid('The native security receipt does not establish a clean review for this head.');
   }
+  // Resolve the provider's abbreviation through GitHub's commit object API. A prefix
+  // collision must fail closed; startsWith alone would bind only 40 bits of the SHA.
+  let reviewed;
+  try {
+    ({ data: reviewed } = await github.rest.repos.getCommit({ ...context.repo, ref: sha }));
+  } catch {
+    return invalid('The reviewed commit is missing, ambiguous or could not be resolved.');
+  }
+  if (reviewed.sha !== head) return invalid('The reviewed commit does not resolve to the full current head.');
   if (!receipt.body.split('\n').includes('Security review completed. No security issues were found in this pull request.')) {
     return receipt.body.split('\n').some(line => line.startsWith('Security review completed. '))
       ? blocked('codex_native_incomplete', 'The completed native review does not report a clean result.')

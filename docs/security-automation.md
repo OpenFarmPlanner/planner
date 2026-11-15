@@ -261,7 +261,10 @@ A native review is accepted automatically when GitHub attributes both its curren
 security summary and clean security receipt to the pinned Codex app (`1144995`)
 and bot (`199175422`). The summary must name this repository, PR and full current
 head, with completed status. The matching recent receipt must explicitly report
-no security issues, name the same commit and link its Security Report. GraphQL
+no security issues, name the same commit and link its Security Report. Resolve
+any provider commit abbreviation through GitHub's commit-object API and compare
+the returned full SHA; missing, ambiguous or differently resolved commits fail
+closed. A text-prefix match alone is never sufficient. GraphQL
 confirms the original author, last editor and unchanged body/version; a human
 edit cannot preserve app provenance. A running native review stays pending within the normal bounded CI polling
 window. A newer review or findings blocks an earlier clean result for the same

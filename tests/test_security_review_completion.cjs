@@ -280,7 +280,10 @@ function nativeFixture() {
     author: { __typename: 'Bot', databaseId: 199175422 } })) });
   return { evidence, summary, receipt, comments, args: { head: HEAD, now: NATIVE_NOW, comments,
     context: { repo: { owner: 'owner', repo: 'repo' }, payload: { pull_request: { number: 1 } } },
-    github: { graphql } } };
+    github: { graphql, rest: { repos: { getCommit: async ({ ref }) => {
+      if (![HEAD, HEAD.slice(0, 10)].includes(ref)) throw new Error('Unknown commit');
+      return { data: { sha: HEAD } };
+    } } } } } };
 }
 
 test('genuine current-head native clean completion needs no human comment or signing key', async () => {
@@ -369,7 +372,8 @@ function nativeSnapshotFixture() {
     pulls: { get: async () => ({ data: { state: 'open', base: { sha: OLD }, labels: [], user: { login: 'owner' },
       head: { sha: HEAD, repo: { full_name: 'owner/repo' } } } }), listFiles },
     issues: { listComments },
-    repos: { getCollaboratorPermissionLevel: async () => ({ data: { permission: 'maintain' } }) },
+    repos: { ...f.args.github.rest.repos,
+      getCollaboratorPermissionLevel: async () => ({ data: { permission: 'maintain' } }) },
   };
   f.args.github.paginate = async method => method === listFiles ? SCOPE.map(filename => ({ filename })) : f.comments;
   return f;
@@ -429,4 +433,18 @@ test('a contingency cannot hide a supported completed nonclean native result', a
   f.receipt.body = f.receipt.body.replace('No security issues were found in this pull request.', 'Found security issues.');
   f.comments.push(reportComment, approvalComment());
   assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_incomplete');
+});
+
+
+test('native commit abbreviations must resolve unambiguously to the entire current SHA', async () => {
+  for (const getCommit of [
+    async () => ({ data: { sha: HEAD.slice(0, 10) + 'b'.repeat(30) } }),
+    async () => { throw Object.assign(new Error('Ambiguous abbreviated commit'), { status: 422 }); },
+    async () => { throw Object.assign(new Error('Commit missing'), { status: 404 }); },
+  ]) {
+    const f = nativeFixture(); f.args.github.rest.repos.getCommit = getCommit;
+    const result = await verifiedNativeCodexReview(f.args);
+    assert.equal(result.allowed, false);
+    assert.equal(result.state, 'codex_native_invalid');
+  }
 });
