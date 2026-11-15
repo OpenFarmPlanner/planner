@@ -327,7 +327,7 @@ above:
 ## Environment variables
 
 | Variable               | Default                         | Effect                                                                                                    |
-| ---------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------- | --- | --- |
+| ---------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `VITE_PUBLIC_SITE_URL` | `https://openfarmplanner.org`   | Canonical origin used for canonical/OG URLs, the `robots.txt` `Sitemap:` line and sitemap `<loc>` values. |
 | `VITE_SEO_INDEXABLE`   | `true`                          | `false`/`0`/`no`/`off` → `robots.txt` becomes `Disallow: /` and a `noindex` meta is emitted.               |
 
