@@ -298,7 +298,7 @@ function nativeFixture() {
   const comments = [summary, receipt];
   const graphql = async query => query.includes('query NativeContext(')
     ? { repository: { pullRequest: { baseRefName: 'main', baseRefOid: OLD, headRefOid: HEAD,
-      timelineItems: { totalCount: 0, pageInfo: { hasNextPage: false } } } } }
+      timelineItems: { totalCount: 40, nodes: [], pageInfo: { hasNextPage: false } } } } }
     : { nodes: comments.map(comment => ({ id: comment.node_id,
       body: comment.body, updatedAt: comment.updated_at, lastEditedAt: null, editor: null,
       author: { __typename: 'Bot', databaseId: 199175422 } })) };
@@ -596,7 +596,17 @@ test('a queued context run cannot certify a receipt published before its artifac
 test('a retargeted PR cannot reuse a clean native review while retaining its head', async () => {
   const f = nativeSnapshotFixture(); const read = f.args.github.graphql;
   f.args.github.graphql = async query => { const data = await read(query);
-    if (data.repository) data.repository.pullRequest.timelineItems.totalCount = 1;
+    if (data.repository) data.repository.pullRequest.timelineItems.nodes.push({ __typename: 'BaseRefChangedEvent' });
+    return data; };
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_context_invalid');
+});
+
+test('unfiltered timeline totals do not count as base-change history', async () => {
+  const f = nativeSnapshotFixture();
+  assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_completed');
+  const read = f.args.github.graphql;
+  f.args.github.graphql = async query => { const data = await read(query);
+    if (data.repository) delete data.repository.pullRequest.timelineItems.nodes;
     return data; };
   assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, 'codex_native_context_invalid');
 });

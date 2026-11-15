@@ -227,14 +227,15 @@ async function verifiedNativeContext({ github, context, head, base, scope, recei
       repository(owner:$owner,name:$repo) { pullRequest(number:$number) {
         baseRefName baseRefOid headRefOid
         timelineItems(first:100,itemTypes:[BASE_REF_CHANGED_EVENT,BASE_REF_FORCE_PUSHED_EVENT]) {
-          totalCount pageInfo { hasNextPage }
+          nodes { __typename } pageInfo { hasNextPage }
         }
       } }
     }`, { owner: context.repo.owner, repo: context.repo.repo, number: context.payload.pull_request.number }));
   } catch { return unavailable('The native review base history could not be verified.'); }
   const pr = repository?.pullRequest;
   if (pr?.baseRefName !== 'main' || pr.baseRefOid !== base || pr.headRefOid !== head ||
-      pr.timelineItems?.totalCount !== 0 || pr.timelineItems?.pageInfo?.hasNextPage !== false) {
+      !Array.isArray(pr.timelineItems?.nodes) || pr.timelineItems.nodes.length !== 0 ||
+      pr.timelineItems?.pageInfo?.hasNextPage !== false) {
     return invalid('Native completion requires an unchanged main target and no retarget/force-push history.');
   }
   const name = `native-review-context-${context.payload.pull_request.number}-${head}`;
