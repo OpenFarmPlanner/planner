@@ -505,6 +505,24 @@ python3 -m unittest discover -s tests -p test_local_security_review.py
 node --test tests/test_codex_security_request.cjs tests/test_security_review_completion.cjs tests/test_signed_codex_review.cjs
 ```
 
+### Diagnosing rejected Claude completion
+
+A failed `security-review-completion` artifact includes a fixed `reason` code,
+also printed by the validation step. It distinguishes missing execution messages,
+an invalid terminal result, non-JSON output, a wrong final SHA or changed-file
+scope, incomplete review and unresolved findings. Reasons never contain raw
+provider output, paths from findings, review text or credentials. Inspect the
+reason before retrying; a successful provider step or “No issues” comment is
+still insufficient. The security job reinforces the standalone JSON response
+contract through an appended system instruction; validation remains strict.
+
+These diagnostics do not change accepted evidence, signature policy, independent
+review requirements or immutable-base loading. A repair to the review workflow
+cannot review itself: it needs the existing independent completion route before
+merge. Only after the repair is merged can a PR refresh from main and run the
+new producer/diagnostics. Existing failed runs remain failed; do not reinterpret
+them as clean reviews. Raw execution transcripts are not uploaded publicly.
+
 ## Security decisions
 
 Durable security decisions that outlive a single PR: accepted risks,

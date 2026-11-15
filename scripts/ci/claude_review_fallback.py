@@ -49,14 +49,14 @@ def completion_report(
         "state": "claude_failed",
     }
     if not re.fullmatch(r"[0-9a-f]{40}", head) or not scope:
-        return report
+        return {**report, "reason": "invalid_review_target"}
     try:
         if needs_codex_fallback(outcome, messages):
-            return {**report, "state": "claude_allowance_exhausted"}
+            return {**report, "state": "claude_allowance_exhausted", "reason": "allowance_exhausted"}
     except ValueError:
-        return report
+        return {**report, "reason": "provider_execution_failed"}
     if outcome != "success" or not isinstance(messages, list) or not messages:
-        return report
+        return {**report, "reason": "missing_execution_messages"}
     terminal = messages[-1]
     if (
         not isinstance(terminal, dict)
@@ -66,20 +66,23 @@ def completion_report(
         or not isinstance(terminal.get("num_turns"), int)
         or terminal["num_turns"] < 1
     ):
-        return report
+        return {**report, "reason": "invalid_terminal_result"}
     try:
         evidence = json.loads(terminal.get("result", ""))
     except (TypeError, ValueError):
-        return report
-    if (
-        not isinstance(evidence, dict)
-        or evidence.get("reviewed_sha") != head
-        or evidence.get("security_review_completed") is not True
-        or evidence.get("scope") != sorted(scope)
-        or evidence.get("result") not in ("no_issues", "issues_fixed")
-        or evidence.get("unfixed_findings") != []
-    ):
-        return report
+        return {**report, "reason": "terminal_result_not_json"}
+    if not isinstance(evidence, dict):
+        return {**report, "reason": "terminal_evidence_not_object"}
+    checks = (
+        (evidence.get("reviewed_sha") == head, "reviewed_sha_mismatch"),
+        (evidence.get("security_review_completed") is True, "review_not_completed"),
+        (evidence.get("scope") == sorted(scope), "scope_mismatch"),
+        (evidence.get("result") in ("no_issues", "issues_fixed"), "invalid_review_result"),
+        (evidence.get("unfixed_findings") == [], "unresolved_findings"),
+    )
+    for valid, reason in checks:
+        if not valid:
+            return {**report, "reason": reason}
     return {**report, "state": "claude_completed", "result": evidence["result"]}
 
 
@@ -106,6 +109,8 @@ def main() -> None:
         output.write(f"codex_fallback={str(fallback).lower()}\n")
         output.write(f"review_completed={str(completed).lower()}\n")
     print(f"Security review state: {report['state']}")
+    if not completed:
+        print(f"Security review completion reason: {report['reason']}")
     if fallback:
         print(
             "::warning::Claude allowance exhausted; security review did not complete. "

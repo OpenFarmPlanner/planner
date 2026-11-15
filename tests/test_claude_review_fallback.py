@@ -71,6 +71,42 @@ class ClaudeReviewFallbackTests(unittest.TestCase):
                     completion_report("success", messages, HEAD, SCOPE)["state"], "claude_failed"
                 )
 
+    def test_completion_failures_have_safe_actionable_reasons(self) -> None:
+        cases = [
+            (None, "missing_execution_messages"),
+            ([], "missing_execution_messages"),
+            ([{"type": "assistant", "message": "PRIVATE"}], "invalid_terminal_result"),
+        ]
+        for changes, reason in (
+            ({"result": "PRIVATE malformed JSON"}, "terminal_result_not_json"),
+            ({"result": "null"}, "terminal_evidence_not_object"),
+            ({"is_error": True}, "invalid_terminal_result"),
+        ):
+            messages = completed_messages()
+            messages[-1].update(changes)
+            cases.append((messages, reason))
+        for changes, reason in (
+            ({"reviewed_sha": "b" * 40}, "reviewed_sha_mismatch"),
+            ({"security_review_completed": False}, "review_not_completed"),
+            ({"scope": ["PRIVATE/path.py"]}, "scope_mismatch"),
+            ({"result": "PRIVATE"}, "invalid_review_result"),
+            ({"unfixed_findings": ["PRIVATE vulnerability"]}, "unresolved_findings"),
+        ):
+            cases.append((completed_messages(**changes), reason))
+        for messages, reason in cases:
+            with self.subTest(reason=reason):
+                report = completion_report("success", messages, HEAD, SCOPE)
+                self.assertEqual(report["state"], "claude_failed")
+                self.assertEqual(report["reason"], reason)
+                self.assertNotIn("PRIVATE", json.dumps(report))
+
+    def test_valid_completion_has_no_failure_reason(self) -> None:
+        for result in ("no_issues", "issues_fixed"):
+            report = completion_report("success", completed_messages(result=result), HEAD, SCOPE)
+            self.assertEqual(report["state"], "claude_completed")
+            self.assertEqual(report["result"], result)
+            self.assertNotIn("reason", report)
+
     def test_allowance_is_recorded_as_incomplete(self) -> None:
         messages = [{"type": "result", "is_error": True, "result": "insufficient_quota"}]
         report = completion_report("failure", messages, HEAD, SCOPE)
@@ -168,4 +204,5 @@ class ClaudeReviewFallbackTests(unittest.TestCase):
             evidence = json.loads(completion.read_text(encoding="utf-8"))
             self.assertEqual(evidence["state"], "claude_allowance_exhausted")
             self.assertEqual(evidence["run_attempt"], 2)
+            self.assertIn("Security review completion reason: allowance_exhausted", result.stdout)
             self.assertNotIn("PRIVATE", result.stdout + result.stderr)

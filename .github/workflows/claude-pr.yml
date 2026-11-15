@@ -656,6 +656,7 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: |
+            --append-system-prompt "The final assistant response is consumed by a strict security-completion parser. After posting the requested GitHub summary, return only the standalone JSON completion object specified in the task. Do not use Markdown fences or replace the final JSON with a summary or a tool call. Report the actual final SHA, exact sorted changed paths and unresolved findings; never claim completion if the review is incomplete."
             --allowedTools "Read,Edit,MultiEdit,Write,Glob,Grep,LS,TodoWrite,mcp__github_inline_comment__create_inline_comment,Bash(cd:*),Bash(ls:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git fetch:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git reset --hard HEAD~1),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue create:*),Bash(gh issue list:*),Bash(pdm run test:*),Bash(pdm run python -m pytest:*),Bash(pdm run makemigrations:*),Bash(pdm run python manage.py makemigrations:*),Bash(pdm run ruff:*),Bash(pdm run compilemessages:*),Bash(npm run test:*),Bash(npm run lint:*),Bash(npx vitest:*),Bash(npx tsc:*),Bash(npx eslint:*)"
           prompt: |
             REPO: ${{ github.repository }}
