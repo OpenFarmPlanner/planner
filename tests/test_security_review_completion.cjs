@@ -1049,3 +1049,80 @@ test('task history must be complete across pages and retains snapshot provenance
     assert.equal((await verifiedNativeCodexReview(f.args)).allowed, kind === 'valid', kind);
   }
 });
+
+test('native completion is revalidated after context and signed-provider reads', async () => {
+  for (const stage of ['context', 'signed']) {
+    for (const mode of ['running', 'finding', 'new-task']) {
+      const f = nativeSnapshotFixture();
+      f.comments.push(reportComment, approvalComment());
+      const read = f.args.github.paginate;
+      f.args.github.paginate = async (method, args) => {
+        const value = await read(method, args);
+        return method === f.args.github.rest.issues.listComments ? structuredClone(value) : value;
+      };
+      const mutate = () => {
+        if (mode === 'running') f.summary.body = f.summary.body.replaceAll('completed', 'running');
+        else if (mode === 'finding') f.receipt.body = f.receipt.body.replace(
+          'No security issues were found in this pull request.', 'Security findings remain.');
+        else f.comments.push({ ...structuredClone(f.summary), id: 17, node_id: 'new-task',
+          html_url: 'https://github.com/owner/repo/pull/1#issuecomment-17',
+          body: f.summary.body.replaceAll('completed', 'running') });
+      };
+      if (stage === 'context') f.args.artifactReader = async () => { mutate(); return f.contextRecord; };
+      const result = await snapshot({ ...f.args, expectedHead: HEAD, codexVerifier: async () => {
+        if (stage === 'signed') mutate();
+        return { allowed: true, state: 'codex_local_completed' };
+      } });
+      assert.equal(result.state, 'codex_native_pending', `${stage}/${mode}`);
+    }
+  }
+});
+
+test('native provenance and history are checked again after Git object resolution', async () => {
+  for (const kind of ['body', 'history']) {
+    const f = nativeFixture();
+    f.args.comments = structuredClone(f.comments);
+    f.args.github.rest.repos.getCommit = async () => {
+      if (kind === 'body') f.summary.body = f.summary.body.replaceAll('completed', 'running');
+      else f.summary.history.push(structuredClone(f.summary.history[0]));
+      return { data: { sha: HEAD } };
+    };
+    assert.equal((await verifiedNativeCodexReview(f.args)).state, 'codex_native_pending', kind);
+  }
+});
+
+test('all successful providers refetch comments after slow evidence reads', async () => {
+  for (const provider of ['claude', 'signed', 'human']) {
+    const f = fixture();
+    f.args.github.rest.repos = { getCollaboratorPermissionLevel: async () => {
+      f.comments.push({ id: 99, body: 'New review evidence' });
+      return { data: { permission: 'maintain' } };
+    } };
+    if (provider === 'human') f.comments.push(reportComment, approvalComment());
+    if (provider === 'signed') f.args.codexVerifier = async () => {
+      f.comments.push({ id: 99, body: 'New review evidence' });
+      return { allowed: true, state: 'codex_local_completed' };
+    };
+    if (provider === 'claude') {
+      const read = f.args.artifactReader;
+      f.args.artifactReader = async args => {
+        if (args.name === 'security-review-completion') f.comments.push({ id: 99, body: 'New review evidence' });
+        return read(args);
+      };
+    }
+    assert.equal((await snapshot(f.args)).state, 'codex_native_pending', provider);
+  }
+});
+
+test('a head or base changed during context reads invalidates completion', async () => {
+  for (const field of ['head', 'base']) {
+    const f = nativeSnapshotFixture();
+    f.args.artifactReader = async () => {
+      f.args.github.rest.pulls.get = async () => ({ data: {
+        head: { sha: field === 'head' ? OLD : HEAD }, base: { sha: field === 'base' ? HEAD : OLD },
+      } });
+      return f.contextRecord;
+    };
+    assert.equal((await snapshot({ ...f.args, expectedHead: HEAD })).state, `stale_${field}`);
+  }
+});

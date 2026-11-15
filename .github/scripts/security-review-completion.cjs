@@ -222,6 +222,7 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
     return invalid('The native receipt is stale or does not match the latest review completion.');
   }
   let history = verifiedNodes?.find(node => node.id === summary.node_id)?.userContentEdits;
+  const initialHistory = JSON.stringify(history);
   const revisions = [], cursors = new Set();
   while (true) {
     if (!Array.isArray(history?.nodes) || typeof history.pageInfo?.hasNextPage !== 'boolean') {
@@ -310,6 +311,15 @@ async function verifiedNativeCodexReview({ github, context, comments, head, now 
         : invalid('The native security receipt format is unsupported.');
     }
   }
+  // Commit/ref resolution can take several API calls. Reauthenticate after it,
+  // including history, so an intervening task cannot retain the earlier result.
+  const finalProblem = await prove(checked, { history: true, verified: nodes => {
+    if (JSON.stringify(nodes.find(node => node.id === summary.node_id)?.userContentEdits) !== initialHistory) {
+      snapshotChanged = true;
+    }
+  } });
+  if (snapshotChanged) return changing();
+  if (finalProblem) return invalid(finalProblem);
   if (!relevant.includes(receipt)) return invalid('The latest receipt is not bound to the current head.');
   return { ...passed('codex_native_completed',
     'The trusted Codex GitHub app reports a completed, clean security review for this exact PR/head. No human attestation is required.',
@@ -501,7 +511,39 @@ async function snapshot({ github, context, expectedHead, artifactReader = readAr
   const scope = [...new Set(files.flatMap(file => file.status === 'renamed'
     ? [file.filename, file.previous_filename] : [file.filename]))].sort();
   const comments = await github.paginate(github.rest.issues.listComments, { ...coordinates, per_page: 100 });
+  const commentVersion = items => JSON.stringify(items.map(item => ({
+    id: item.id, node_id: item.node_id, body: item.body, updated_at: item.updated_at,
+    created_at: item.created_at, html_url: item.html_url, user: item.user && {
+      id: item.user.id, login: item.user.login, type: item.user.type,
+    }, app: item.performed_via_github_app?.id,
+  })).sort((a, b) => String(a.id).localeCompare(String(b.id))));
+  const initialComments = commentVersion(comments);
+  const initialBase = pr.base.sha, initialBaseRef = pr.base.ref;
   let native = await verifiedNativeCodexReview({ github, context, comments, head: expectedHead });
+  const initialNative = native;
+  const finish = async result => {
+    if (!result.allowed) return result;
+    const changing = () => blocked('codex_native_pending',
+      'Review evidence changed during verification; waiting for a consistent fresh snapshot.');
+    // Context, artifacts, permissions and signed-source verification all perform
+    // asynchronous reads. Every successful route must finish with fresh evidence.
+    const fresh = await github.paginate(github.rest.issues.listComments, { ...coordinates, per_page: 100 });
+    if (commentVersion(fresh) !== initialComments) return changing();
+    if (initialNative?.allowed) {
+      const current = await verifiedNativeCodexReview({ github, context, comments: fresh, head: expectedHead });
+      if (!current?.allowed) return current ?? changing();
+      if (current.evidence !== initialNative.evidence ||
+          current.review_started_at !== initialNative.review_started_at ||
+          current.receipt_created_at !== initialNative.receipt_created_at) return changing();
+    }
+    const { data: live } = await github.rest.pulls.get({ ...context.repo, pull_number: coordinates.issue_number });
+    if (live.head.sha !== expectedHead) return blocked('stale_head', 'The PR head changed during review verification.');
+    if (live.base.sha !== initialBase || live.base.ref !== initialBaseRef) {
+      return blocked('stale_base', 'The PR base changed during review verification.');
+    }
+    const finalComments = await github.paginate(github.rest.issues.listComments, { ...coordinates, per_page: 100 });
+    return commentVersion(finalComments) === initialComments ? result : changing();
+  };
   if (native?.allowed) {
     const contextResult = await verifiedNativeContext({ github, context, head: expectedHead,
       base: pr.base.sha, scope, reviewStartTime: native.review_started_at, artifactReader });
@@ -518,19 +560,19 @@ async function snapshot({ github, context, expectedHead, artifactReader = readAr
   // evidence can still use an explicitly verified independent human contingency.
   if (codex?.state === 'codex_local_incomplete') return codex;
   if (['codex_native_incomplete', 'codex_native_ambiguous', 'stale_base'].includes(native?.state)) return native;
-  if (native?.state === 'codex_native_context_invalid') return codex?.allowed ? codex : native;
+  if (native?.state === 'codex_native_context_invalid') return finish(codex?.allowed ? codex : native);
   if (['codex_native_context_pending', 'codex_native_context_unavailable'].includes(native?.state)) {
-    if (codex?.allowed) return codex;
+    if (codex?.allowed) return finish(codex);
     const contingency = await approvedReview({ github, coordinates, comments, head: expectedHead,
       scope, base: pr.base.sha });
-    return contingency ? evaluate({ head: expectedHead, scope, approval: contingency }) : native;
+    return finish(contingency ? evaluate({ head: expectedHead, scope, approval: contingency }) : native);
   }
-  if (native?.allowed) return native;
+  if (native?.allowed) return finish(native);
   if (native?.state === 'codex_native_pending') return native;
   const approval = await approvedReview({ github, coordinates, comments, head: expectedHead,
     scope, base: pr.base.sha });
-  if (approval) return evaluate({ head: expectedHead, scope, approval });
-  if (codex?.allowed) return codex;
+  if (approval) return finish(evaluate({ head: expectedHead, scope, approval }));
+  if (codex?.allowed) return finish(codex);
   if (native) return native;
   if (codex) return codex;
   // A PR can change the triage script embedded in this workflow. Preserve
@@ -591,7 +633,7 @@ async function snapshot({ github, context, expectedHead, artifactReader = readAr
   const rejection = request && comments.find(comment => comment.user?.login === 'chatgpt-codex-connector[bot]' &&
     comment.user?.type === 'Bot' && comment.created_at >= request.created_at &&
     /(?:create a Codex account|connect to github|unable to|could not|not authorized|not enabled)/i.test(comment.body ?? ''));
-  return evaluate({ head: expectedHead, scope, triage, claude, approval, request, rejection, failed, providerPending });
+  return finish(evaluate({ head: expectedHead, scope, triage, claude, approval, request, rejection, failed, providerPending }));
 }
 
 async function enforce({ github, context, core, expectedHead, timeoutMs = 20 * 60_000,
