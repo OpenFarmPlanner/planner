@@ -201,6 +201,10 @@ the varieties section also works when the parent is already linked, even when
 that parent's ordinary import action is disabled. Fetching this scope is
 independent of the browser's search and filters; the browser stays open.
 
+Import previews load in batches of at most eight concurrent read requests. A
+failed batch drains before retry is possible; a project switch stops the next
+batch. Closing the selection during preview loading also prevents the final
+write. The same attempt reuses those previews across comparison steps.
 Comparisons reuse the existing target, copy/link, pull/share/private-pin and
 consent controls. In this workflow **Continue** stages a decision without a
 write. Only after every selected match has an explicit decision does
@@ -219,7 +223,9 @@ used. Internal species adoption can update sibling timestamps; those changes
 must not invalidate another decision from the same transaction. New varieties
 are created after resolving the parent. Already linked entries, including an
 outdated or privately edited parent, remain untouched. Completion counts report
-only entries actually created, linked or copied. Later library varieties always
+only entries actually created, linked or copied. A successful commit is reported
+even if a later refresh fails; the dialog stays busy through that refresh, and
+an abandoned dialog cannot close a subsequently opened selection. Later library varieties always
 require a new explicit selection; there is no subscription or automatic import.
 
 The endpoint is session-only, project-scoped and limited to the parent plus

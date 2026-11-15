@@ -6,10 +6,11 @@ import { extractApiErrorCode } from '../../api/errors';
 import { useTranslation } from '../../i18n';
 import { ExistingCropLinkDialog, type CropLinkCandidate } from '../../crops/ExistingCropLinkDialog';
 import { getPublicCropTitle } from '../publicCropDisplay';
+import { loadVarietyImportPreviews } from '../importVarietyPreviews';
 
 const MAX_SELECTED_VARIETIES = 500;
 
-type Comparison = { entry: PublicCrop; candidates: CropLinkCandidate[]; remaining: PublicCrop[]; decisions: PublicCropImportDecision[]; consent: boolean };
+type Comparison = { entry: PublicCrop; candidates: CropLinkCandidate[]; remaining: PublicCrop[]; decisions: PublicCropImportDecision[]; consent: boolean; previews: Map<number, CropLinkCandidate[]> };
 
 export function PublicCropVarietyImportDialog({ parent, onClose, onComplete, onWithoutVarieties, termsAlreadyAccepted = false }: {
   parent: PublicCrop;
@@ -27,6 +28,11 @@ export function PublicCropVarietyImportDialog({ parent, onClose, onComplete, onW
   const [comparison, setComparison] = useState<Comparison | null>(null);
   const [progress, setProgress] = useState(0);
   const inFlight = useRef(false);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   const emptyCallback = useRef(onWithoutVarieties);
   useEffect(() => { emptyCallback.current = onWithoutVarieties; }, [onWithoutVarieties]);
   useEffect(() => {
@@ -53,23 +59,26 @@ export function PublicCropVarietyImportDialog({ parent, onClose, onComplete, onW
       : code === 'crop_name_conflict' ? 'form.cropNameConflict'
         : 'library.varietyImport.failed');
   };
-  const advance = async (remaining: PublicCrop[], decisions: PublicCropImportDecision[], consent: boolean): Promise<void> => {
+  const checkProject = () => {
+    if (!mounted.current) throw new Error('Import selection closed');
     if (Number(localStorage.getItem('activeProjectId')) !== projectId || !Number.isInteger(projectId) || projectId <= 0) {
       throw new Error('Active project changed');
     }
+  };
+  const advance = async (remaining: PublicCrop[], decisions: PublicCropImportDecision[], consent: boolean,
+    previews: Map<number, CropLinkCandidate[]>): Promise<void> => {
+    checkProject();
     for (let index = 0; index < remaining.length; index += 1) {
       const entry = remaining[index];
       setProgress(decisions.length + 1);
-      if (!entry.project_import_status) {
-        const response = await publicCropAPI.importPreview(entry.id);
-        if (response.data.candidates.length) {
-          setComparison({ entry, candidates: response.data.candidates, remaining: remaining.slice(index + 1), decisions, consent });
-          return;
-        }
+      const candidates = previews.get(entry.id) ?? [];
+      if (candidates.length) {
+        setComparison({ entry, candidates, remaining: remaining.slice(index + 1), decisions, consent, previews });
+        return;
       }
       decisions = [...decisions, { public_crop_id: entry.id, base_version: entry.version, link_to_library: true }];
     }
-    if (Number(localStorage.getItem('activeProjectId')) !== projectId) throw new Error('Active project changed');
+    checkProject();
     const result = await publicCropAPI.importSelection(parent.id, {
       expected_project_id: projectId, decisions, accepted_public_library_terms: consent,
     });
@@ -77,25 +86,31 @@ export function PublicCropVarietyImportDialog({ parent, onClose, onComplete, onW
     setComparison(null);
     try { await onComplete(result.data); }
     catch (failure) { console.error('Error refreshing completed variety import:', failure); }
-    finally { onClose(); }
+    finally { if (mounted.current) onClose(); }
   };
-  const run = async (remaining: PublicCrop[], decisions: PublicCropImportDecision[] = [], consent = false) => {
+  const run = async (remaining: PublicCrop[], decisions: PublicCropImportDecision[] = [], consent = false,
+    preparedPreviews?: Map<number, CropLinkCandidate[]>) => {
     if (inFlight.current || selected.size > MAX_SELECTED_VARIETIES) return;
     inFlight.current = true;
     setBusy(true);
     setError('');
-    try { await advance(remaining, decisions, consent); }
+    setProgress(1);
+    try {
+      const previews = preparedPreviews ?? await loadVarietyImportPreviews(remaining, checkProject, setProgress);
+      await advance(remaining, decisions, consent, previews);
+    }
     catch (failure) {
+      if (!mounted.current) return;
       setComparison(null);
       setError(Number(localStorage.getItem('activeProjectId')) !== projectId
         ? t('library.importProjectChanged') : describeError(failure));
-    } finally { inFlight.current = false; setBusy(false); }
+    } finally { inFlight.current = false; if (mounted.current) setBusy(false); }
   };
   if (comparison) return <ExistingCropLinkDialog key={comparison.entry.id}
     publicCrop={comparison.entry} candidates={comparison.candidates}
     termsAlreadyAccepted={termsAlreadyAccepted} onClose={onClose} onLinked={() => undefined}
     decisionProgress={t('library.varietyImport.reviewProgress', { current: comparison.decisions.length + 1, total: 1 + selected.size })}
-    onDecision={(decision, consent) => { setComparison(null); void run(comparison.remaining, [...comparison.decisions, decision], comparison.consent || consent); }} />;
+    onDecision={(decision, consent) => { setComparison(null); void run(comparison.remaining, [...comparison.decisions, decision], comparison.consent || consent, comparison.previews); }} />;
   if (!entries && !error) return null;
   return <Dialog open fullWidth maxWidth="sm" onClose={busy ? undefined : onClose} aria-labelledby="variety-import-title">
     <DialogTitle id="variety-import-title">{t('library.varietyImport.title')}</DialogTitle>

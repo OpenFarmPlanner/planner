@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+import { loadVarietyImportPreviews } from '../crop-library/importVarietyPreviews';
 import { PublicCropVarietyImportDialog } from '../crop-library/components/PublicCropVarietyImportDialog';
 import type { PublicCrop } from '../api/types';
 import i18n from '../i18n';
@@ -20,9 +21,9 @@ const varieties = ['Nantaise 2', 'Nantaise 2/Milan', 'Rodelika'].map((variety, i
 const decision = (entry: PublicCrop) => ({ public_crop_id: entry.id, base_version: entry.version, link_to_library: true });
 function setup(entry = parent) {
   const onClose = vi.fn(); const onComplete = vi.fn().mockResolvedValue(undefined); const onWithoutVarieties = vi.fn();
-  render(<MemoryRouter><PublicCropVarietyImportDialog parent={entry} onClose={onClose}
+  const rendered = render(<MemoryRouter><PublicCropVarietyImportDialog parent={entry} onClose={onClose}
     onComplete={onComplete} onWithoutVarieties={onWithoutVarieties} /></MemoryRouter>);
-  return { onClose, onComplete, onWithoutVarieties };
+  return { onClose, onComplete, onWithoutVarieties, unmount: rendered.unmount };
 }
 async function submit(count = 3, linked = false) {
   fireEvent.click(await screen.findByRole('button', { name: t(linked ? 'library.varietyImport.importVarieties' : count ? 'library.varietyImport.importWithVarieties' : 'library.varietyImport.importParent', { count }) }));
@@ -113,6 +114,48 @@ describe('selected library variety import', () => {
     ] })));
     expect(link).not.toHaveBeenCalled();
   });
+  it('reuses prepared previews when multiple existing comparisons are confirmed', async () => {
+    preview.mockImplementation(async (id: number) => ({ data: { candidates: id === 1 || id === 4 ? [
+      { id: id + 90, name: 'Carrot', variety: id === 4 ? 'Rodelika' : '', species_match: true, source_public_crop: null },
+    ] : [] } }));
+    setup(); await submit();
+    for (let index = 0; index < 2; index++) {
+      const next = await screen.findByRole('button', { name: t('library.varietyImport.continue') });
+      await waitFor(() => expect(next).toBeEnabled());
+      fireEvent.click(next);
+      if (index === 0) await waitFor(() => expect(sync).toHaveBeenCalledWith(94, 4));
+    }
+    await waitFor(() => expect(commit).toHaveBeenCalledTimes(1));
+    expect(preview).toHaveBeenCalledTimes(4);
+    expect(link).not.toHaveBeenCalled();
+  });
+  it('does not commit if navigation closes the selection while previews are loading', async () => {
+    const pending: (() => void)[] = [];
+    preview.mockImplementation(() => new Promise(resolve => {
+      pending.push(() => resolve({ data: { candidates: [] } }));
+    }));
+    const { unmount, onComplete } = setup();
+    await submit();
+    expect(preview).toHaveBeenCalledTimes(4);
+    unmount();
+    await act(async () => { pending.forEach(resolve => resolve()); });
+    expect(commit).not.toHaveBeenCalled(); expect(onComplete).not.toHaveBeenCalled();
+  });
+  it.each([false, true])('keeps completion tied to its own dialog when navigation closes it: %s', async closed => {
+    let finish!: () => void;
+    const onComplete = vi.fn(() => new Promise<void>(resolve => { finish = resolve; }));
+    const onClose = vi.fn();
+    const rendered = render(<MemoryRouter><PublicCropVarietyImportDialog parent={parent} onClose={onClose}
+      onComplete={onComplete} onWithoutVarieties={vi.fn()} /></MemoryRouter>);
+    await submit();
+    await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1));
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: t('library.varietyImport.importWithVarieties', { count: 3 }) })).toBeDisabled();
+    if (closed) rendered.unmount();
+    await act(async () => { finish(); });
+    expect(onClose).toHaveBeenCalledTimes(closed ? 0 : 1);
+    expect(commit).toHaveBeenCalledTimes(1);
+  });
   it('retains selection after an atomic failure and retries the scope once', async () => {
     commit.mockRejectedValueOnce(new Error('Synthetic rollback'));
     setup(); await submit();
@@ -125,5 +168,68 @@ describe('selected library variety import', () => {
     localStorage.setItem('activeProjectId', '43'); await submit();
     expect(await screen.findByText(t('library.importProjectChanged'))).toBeVisible();
     expect(commit).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('bounded variety preview requests', () => {
+  const entries = Array.from({ length: 20 }, (_, index) => ({ ...parent, id: index + 1 }));
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('loads concurrently with at most eight requests and retains input order', async () => {
+    const pending: (() => void)[] = [];
+    let active = 0; let peak = 0;
+    preview.mockImplementation((id: number) => new Promise(resolve => {
+      active++; peak = Math.max(peak, active);
+      pending.push(() => { active--; resolve({ data: { candidates: [{ id, name: `Local ${id}` }] } }); });
+    }));
+    const progress = vi.fn();
+    const result = loadVarietyImportPreviews(entries, () => undefined, progress);
+    expect(preview).toHaveBeenCalledTimes(8);
+    pending.splice(0).forEach(resolve => resolve());
+    await waitFor(() => expect(preview).toHaveBeenCalledTimes(16));
+    pending.splice(0).forEach(resolve => resolve());
+    await waitFor(() => expect(preview).toHaveBeenCalledTimes(20));
+    pending.splice(0).forEach(resolve => resolve());
+    const previews = await result;
+    expect(peak).toBe(8); expect(active).toBe(0);
+    expect([...previews.keys()]).toEqual(entries.map(entry => entry.id));
+    expect(progress.mock.calls.map(([completed]) => completed)).toEqual([8, 16, 20]);
+  });
+
+  it('drains an unsuccessful batch before permitting another attempt and starts no later batch', async () => {
+    const pending: (() => void)[] = [];
+    const failure = new Error('Synthetic preview failure');
+    preview.mockImplementation((id: number) => new Promise((resolve, reject) => {
+      pending.push(() => id === 1 ? reject(failure) : resolve({ data: { candidates: [] } }));
+    }));
+    let settled = false;
+    const result = loadVarietyImportPreviews(entries, () => undefined, () => undefined)
+      .catch(error => error).finally(() => { settled = true; });
+    pending.shift()!();
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    expect(preview).toHaveBeenCalledTimes(8);
+    pending.splice(0).forEach(resolve => resolve());
+    expect(await result).toBe(failure);
+    expect(settled).toBe(true); expect(preview).toHaveBeenCalledTimes(8);
+  });
+
+  it('stops before the next batch if the active project changes', async () => {
+    preview.mockResolvedValue({ data: { candidates: [] } });
+    let current = true;
+    const result = loadVarietyImportPreviews(entries, () => {
+      if (!current) throw new Error('Project changed');
+    }, () => { current = false; });
+    await expect(result).rejects.toThrow('Project changed');
+    expect(preview).toHaveBeenCalledTimes(8);
+  });
+
+  it('skips preview requests for already linked entries', async () => {
+    preview.mockResolvedValue({ data: { candidates: [] } });
+    const linked = { ...parent, project_import_status: { crop_id: 99 } } as PublicCrop;
+    const result = await loadVarietyImportPreviews([linked, ...varieties], () => undefined, () => undefined);
+    expect(preview).toHaveBeenCalledTimes(3); expect(preview).not.toHaveBeenCalledWith(parent.id);
+    expect(result.get(parent.id)).toEqual([]);
   });
 });

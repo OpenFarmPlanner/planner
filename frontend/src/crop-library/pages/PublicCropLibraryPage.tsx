@@ -1528,6 +1528,7 @@ export default function PublicCropLibraryPage() {
   const cropActions = useMemo(() => (selectedCrop ? (
     <DetailPageActions
       compact={useCompactLibraryLayout}
+      suppressTooltips={Boolean(varietyImport)}
       primaryActions={[
         {
           label: t('library.page.edit.open'),
@@ -1572,6 +1573,7 @@ export default function PublicCropLibraryPage() {
     selectedCrop,
     t,
     useCompactLibraryLayout,
+    varietyImport,
   ]);
   return (
     <PageContainer variant="xwide">
@@ -2473,10 +2475,9 @@ export default function PublicCropLibraryPage() {
             varietyImport.project_import_status ? undefined : varietyImport);
         }}
         onComplete={async result => {
-          setVarietyImport(null);
+          showGlobalSnackbar({ message: t('library.varietyImport.success', { count: result.entries.filter(entry => entry.operation !== 'unchanged').length }), severity: 'success' });
           await loadCrops({ preserveExisting: true });
           await refreshUser();
-          showGlobalSnackbar({ message: t('library.varietyImport.success', { count: result.entries.filter(entry => entry.operation !== 'unchanged').length }), severity: 'success' });
         }} /> : null}
       {linkImport ? <ExistingCropLinkDialog key={linkImport.publicCrop.id} publicCrop={linkImport.publicCrop}
         candidates={linkImport.candidates} termsAlreadyAccepted={Boolean(user?.public_library_terms_accepted)} onTermsAccepted={refreshUser}
