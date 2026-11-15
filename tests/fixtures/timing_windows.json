@@ -58,7 +58,7 @@
         "es": "mediados de marzo",
         "it": "metà marzo",
         "pt": "meados de março",
-        "nl": "half maart"
+        "nl": "midden maart"
       }
     },
     {
@@ -78,7 +78,7 @@
         "es": "principios de marzo a mediados de mayo",
         "it": "inizio marzo a metà maggio",
         "pt": "de início de março a meados de maio",
-        "nl": "begin maart tot half mei"
+        "nl": "begin maart tot midden mei"
       }
     },
     {
@@ -98,7 +98,7 @@
         "es": "mediados de agosto a finales de agosto",
         "it": "metà agosto a fine agosto",
         "pt": "de meados de agosto a fim de agosto",
-        "nl": "half augustus tot eind augustus"
+        "nl": "midden augustus tot eind augustus"
       }
     },
     {
@@ -138,7 +138,7 @@
         "es": "principios de abril a mediados de abril",
         "it": "inizio aprile a metà aprile",
         "pt": "de início de abril a meados de abril",
-        "nl": "begin april tot half april"
+        "nl": "begin april tot midden april"
       }
     },
     {
@@ -231,7 +231,7 @@
         "es": "marzo a abril; mediados de agosto a finales de agosto",
         "it": "marzo a aprile; metà agosto a fine agosto",
         "pt": "de março a abril; de meados de agosto a fim de agosto",
-        "nl": "maart tot april; half augustus tot eind augustus"
+        "nl": "maart tot april; midden augustus tot eind augustus"
       }
     }
   ],

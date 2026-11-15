@@ -365,7 +365,8 @@ _TEXT_FORMS: dict[str, _TextForms] = {
     ),
     'nl': _TextForms(
         decade_month={
-            DECADE_EARLY: 'begin {month}', DECADE_MID: 'half {month}', DECADE_LATE: 'eind {month}',
+            DECADE_EARLY: 'begin {month}', DECADE_MID: 'midden {month}',
+            DECADE_LATE: 'eind {month}',
         },
         range='{start} tot {end}',
         week='week {week}',

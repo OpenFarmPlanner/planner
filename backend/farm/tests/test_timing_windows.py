@@ -140,6 +140,13 @@ class ParserTest(SimpleTestCase):
                 parsed = parse_timing_window_cell('direct_sowing', case['text'][language])
                 self.assertEqual(parsed, [_window(window) for window in case['windows']])
 
+    def test_dutch_mid_month_uses_glossary_word_and_accepts_half_as_an_alias(self):
+        expected = decade(3, 'mid', 3, 'mid')
+        self.assertEqual(format_window(expected, 'nl'), 'midden maart')
+        for text in ('midden maart', 'half maart', 'MIDDEN MRT'):
+            with self.subTest(text=text):
+                self.assertEqual(self.parse_one(text), expected)
+
     def test_short_decades_and_week_forms(self):
         cases = {
             '04a-04c': decade(4, 'early', 4, 'late'),

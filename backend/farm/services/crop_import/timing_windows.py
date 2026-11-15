@@ -111,7 +111,8 @@ DECADE_WORDS: dict[str, str] = {
         DECADE_EARLY,
     ),
     **dict.fromkeys(
-        ('mitte', 'mid', 'middle', 'mi', 'mediados', 'mitad', 'metà', 'meta', 'meados', 'half'),
+        ('mitte', 'mid', 'middle', 'mi', 'mediados', 'mitad', 'metà', 'meta', 'meados',
+         'half', 'midden'),
         DECADE_MID,
     ),
     **dict.fromkeys(

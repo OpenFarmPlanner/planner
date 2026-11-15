@@ -1739,7 +1739,7 @@
     "week": "Kalenderweek",
     "decades": {
       "early": "Begin",
-      "mid": "Half",
+      "mid": "Midden",
       "late": "Eind"
     },
     "weekOption": "Week {{week}}",
@@ -1750,7 +1750,7 @@
     "text": {
       "decadeMonth": {
         "early": "begin {{month}}",
-        "mid": "half {{month}}",
+        "mid": "midden {{month}}",
         "late": "eind {{month}}"
       },
       "range": "{{start}} tot {{end}}",
@@ -1761,7 +1761,7 @@
       "timing_window_not_recognized": "‘{{value}}’ is geen periode. Voorbeelden zijn ‘begin maart tot eind april’, ‘week 10 tot 14’ of ‘03a-04c’. Scheid meerdere periodes met ‘;’, bijvoorbeeld ‘maart; oktober’.",
       "timing_window_open_end": "‘{{value}}’: geef een begin en een einde op, bijvoorbeeld ‘maart tot mei’.",
       "timing_window_ambiguous_slash": "‘{{value}}’ is dubbelzinnig. Schrijf ‘maart tot april’ voor één periode en ‘maart; april’ voor twee.",
-      "timing_window_day_dates": "Dagdatums worden niet ondersteund. Gebruik derde delen van een maand, bijvoorbeeld ‘half maart’, of kalenderweken, bijvoorbeeld ‘week 11’.",
+      "timing_window_day_dates": "Dagdatums worden niet ondersteund. Gebruik derde delen van een maand, bijvoorbeeld ‘midden maart’, of kalenderweken, bijvoorbeeld ‘week 11’.",
       "timing_window_mixed_units": "Combineer geen maanden en kalenderweken binnen één periode.",
       "timing_window_invalid_week": "Kalenderweken lopen van 1 tot 52.",
       "timing_window_harvest_not_imported": "Oogstperiodes worden niet geïmporteerd. De oogst volgt uit het uitplanten en de groeiduur. Deze kolom verwacht de oogstduur in dagen."
