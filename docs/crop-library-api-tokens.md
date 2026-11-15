@@ -1,7 +1,8 @@
 # Crop Library API Tokens
 
 A second, independent bearer-token type for the crop-taxonomy API
-(`CropSpecies`, its translations, synonyms, and regional names). Implements
+(`CropSpecies`, its translations, synonyms, regional names, and the
+[plant-health catalogue](./plant-health-catalogue.md)). Implements
 the design decided in
 [`rfc-crop-taxonomy-admin-api.md`](./rfc-crop-taxonomy-admin-api.md); read
 that first for the "why" and the alternatives considered.
@@ -22,7 +23,7 @@ exists instead:
 | | `ProjectApiToken` | `CropLibraryApiToken` |
 |---|---|---|
 | Bound to | one user, one project | one user only |
-| Reaches | project data (`/api/crops/`, …) | `/api/crop-species/` only |
+| Reaches | project data (`/api/crops/`, …) | `/api/crop-species/` and `/api/plant-health/{entries,hosts}/` |
 | Scopes | `read` / `write` / `delete` | `read` / `write` |
 | Created by | any project member, for themselves | a superuser, for themselves |
 | Header prefix | `ofp_pat_` | `ofp_clt_` |
@@ -53,6 +54,13 @@ Reachable (`write` scope required for anything but GET):
 | `GET /api/crop-species/`, `GET /api/crop-species/{id}/` | Same visibility rules as a session request — a non-moderator only sees published, mapping-eligible species; pass `?include_proposed=true` to see pending proposals as a moderator. |
 | `POST /api/crop-species/` | Propose a new species. Any authenticated user may propose; not moderator-gated. |
 | `PATCH`/`PUT /api/crop-species/{id}/` | Edit a species, including its nested `translations` — `common_name`, **`synonyms`**, and **`regional_names`**. Requires the bound user to be a moderator. |
+
+The plant-health surface also allows list/retrieve, proposal creation and
+moderator-bound entry/host updates under `/api/plant-health/`. The same read/write
+scope and bound-user role checks apply. Entry approval, rejection, archival,
+reopening and history, plus host archival, remain session-only. Neither token
+can bypass the seven-language/source checks. Project tokens cannot reach these
+global endpoints at all, even when their owner is a moderator.
 
 Explicitly **not** reachable with this token, in this version (decided in
 the RFC's §6, not an oversight):

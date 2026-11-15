@@ -9,6 +9,13 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
+from .plant_health_models import (  # noqa: F401
+    PlantHealthEntry,
+    PlantHealthHost,
+    PlantHealthRevision,
+    PlantHealthTranslation,
+)
+
 SUPPORTED_REGIONAL_NAME_KEYS = {'austria', 'switzerland'}
 
 

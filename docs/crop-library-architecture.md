@@ -2456,3 +2456,14 @@ also protects its legacy projection, without pinning the other canonical axis.
 Explicit new pins survive compatibility pulls. Opposite pull/share decisions
 through overlapping legacy and canonical fields are rejected atomically, so
 normalization cannot overwrite a confirmed share or leak a private pinned value.
+
+## Plant-health catalogue foundation (#1011)
+
+The global, moderated plant-health catalogue uses separate entry, translation,
+host-evidence and revision models in `crops/plant_health_models.py`. It reuses
+the crop-library moderator role and platform token surface, with session-only
+approval. Its seven-language editor is below the existing moderation queue.
+This foundation does not alter private crop fields, public-crop synchronization
+or legacy `pests_diseases` notes; those are subsequent #1011 parts. See
+[Plant-health catalogue](./plant-health-catalogue.md) for evidence, identity,
+partial-name writes, archival, API and migration contracts.

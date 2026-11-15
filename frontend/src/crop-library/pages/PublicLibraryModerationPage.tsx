@@ -47,6 +47,7 @@ import { resolveLocaleFromLanguage } from '../../utils/numberLocalization';
 import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
 import { ConfirmationDialog } from '../../components/feedback/ConfirmationDialog';
 import ChangeProposalQueue from '../components/ChangeProposalQueue';
+import { PlantHealthCataloguePanel } from '../plant-health/PlantHealthCataloguePanel';
 import { SpeciesApprovalFields } from '../components/SpeciesApprovalFields';
 import { SpeciesLanguageChips, SpeciesTranslationCell } from '../components/SpeciesTranslationPreview';
 import {
@@ -454,6 +455,8 @@ export default function PublicLibraryModerationPage() {
               formatDate={formatDate}
               onReview={reviewChangeProposal}
             />
+
+            <PlantHealthCataloguePanel />
 
             <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 1 }}>
               <Stack direction="row" spacing={1} sx={{ mb: 1.5,

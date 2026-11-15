@@ -58,6 +58,8 @@ function Harness({ overrides, spies }: {
       label={overrides.label}
       required={overrides.required}
       serverSearched={overrides.serverSearched}
+      allowProposal={overrides.allowProposal}
+      disabled={overrides.disabled}
     />
   );
 }
@@ -633,5 +635,22 @@ describe('CropSpeciesPicker', () => {
       expect(screen.queryByText('Keine passende offizielle Kulturart gefunden.'))
         .not.toBeInTheDocument();
     });
+  });
+});
+
+
+describe('existing-species-only callers', () => {
+  it('does not offer or commit a new proposal when a host link requires an approved species', async () => {
+    const user = userEvent.setup();
+    const { onProposalNameChange } = setup({ allowProposal: false });
+    await user.type(field(), 'An unknown species');
+    expect(screen.queryByTestId('propose-species-option')).not.toBeInTheDocument();
+    await user.tab();
+    expect(onProposalNameChange.mock.calls.flat()).not.toContain('An unknown species');
+  });
+
+  it('disables the picker while its parent is saving', () => {
+    setup({ disabled: true });
+    expect(field()).toBeDisabled();
   });
 });

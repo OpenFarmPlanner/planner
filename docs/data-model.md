@@ -377,3 +377,27 @@ remain shared and language independent. The compatibility `note` field is
 resolved to the requested language in API responses, without fallback. See
 [Companion planting](./crop-companions.md) for locale patches, migration,
 reciprocal pairs and reversible ordinary spreadsheet cells.
+
+## Plant-health identities and evidence
+
+The global catalogue is independent of project crops and their legacy plant-health
+notes. No farm row or public crop is modified by the catalogue schema migration.
+See [Plant-health catalogue](./plant-health-catalogue.md) for moderation and API contracts.
+
+```mermaid
+erDiagram
+    PlantHealthEntry ||--o{ PlantHealthTranslation : names
+    PlantHealthEntry ||--o{ PlantHealthHost : evidence
+    CropSpecies ||--o{ PlantHealthHost : official_species
+    PlantHealthEntry ||--o{ PlantHealthRevision : snapshots
+    User o|--o{ PlantHealthEntry : proposes_reviews
+    User o|--o{ PlantHealthRevision : actor
+```
+
+`PlantHealthEntry` has an immutable UUID, kind, status, scientific identity and
+source metadata. Each language has one `PlantHealthTranslation` with preferred
+name, synonyms, regional names and explicit documented scientific fallback.
+`PlantHealthHost` records sourced, optionally variety-qualified relationships;
+confirmation requires a specific pest/pathogen identity. `PlantHealthRevision`
+retains complete snapshots, including archived host links. Protected entry/species
+references and API archival prevent deletion of historical evidence.

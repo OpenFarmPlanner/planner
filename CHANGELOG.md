@@ -8,6 +8,10 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
 
 ### Features
 
+- Add the plant-health catalogue foundation (#1011): stable identities, seven-language
+  names, sourced and qualified host relationships, auditable moderation, and a
+  platform-token maintenance API. Private crop tags and sharing follow separately.
+
 - Add Dutch UI, public/legal pages, emails and crop-library translation support,
   with nl-NL formatting for Dutch and Belgian browser variants. Preserve legal
   consent versions, stored project data and required species names.

@@ -111,6 +111,9 @@ export interface CropSpeciesPickerProps {
    * full-list mode.
    */
   serverSearched?: boolean;
+  /** Restrict callers such as sourced host links to an existing approved species. */
+  allowProposal?: boolean;
+  disabled?: boolean;
 }
 
 /**
@@ -135,6 +138,8 @@ export function CropSpeciesPicker({
   required = false,
   inputRef,
   serverSearched = false,
+  allowProposal = true,
+  disabled = false,
 }: CropSpeciesPickerProps) {
   const { t } = useTranslation(['crops', 'common']);
   const highlightedOptionRef = useRef<SpeciesPickerOption | null>(null);
@@ -167,16 +172,17 @@ export function CropSpeciesPicker({
 
   const canUseProposalName = useCallback((name: string): boolean => {
     const trimmedName = name.trim();
-    if (!trimmedName || loading) return false;
+    if (!allowProposal || !trimmedName || loading) return false;
     return !hasStrongCropSpeciesIdentityMatch(
       trimmedName,
       species.map((option) => ({ searchNames: getCropSpeciesSearchNames(option) })),
     );
-  }, [loading, species]);
+  }, [allowProposal, loading, species]);
 
   return (
     <Autocomplete<SpeciesPickerOption>
       options={species}
+      disabled={disabled}
       value={value}
       inputValue={inputValue}
       loading={loading}
@@ -205,7 +211,7 @@ export function CropSpeciesPicker({
           proposeName,
           knownOptions.map((option) => ({ searchNames: getCropSpeciesSearchNames(option) })),
         );
-        if (!proposeName || loading || hasStrongExistingSpeciesMatch) {
+        if (!allowProposal || !proposeName || loading || hasStrongExistingSpeciesMatch) {
           return filtered;
         }
         return [...filtered, { proposeName, dividerAbove: filtered.length > 0 }];
