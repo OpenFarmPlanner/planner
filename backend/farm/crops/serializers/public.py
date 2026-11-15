@@ -1047,3 +1047,30 @@ class PublicCropChangeProposalSerializer(serializers.ModelSerializer):
 
     def get_reviewed_by_label(self, obj: PublicCropChangeProposal) -> str:
         return get_public_user_label(obj.reviewed_by)
+
+
+class PublicCropImportDecisionSerializer(serializers.Serializer):
+    public_crop_id = serializers.IntegerField(min_value=1)
+    base_version = serializers.IntegerField(min_value=1)
+    target_id = serializers.IntegerField(min_value=1, required=False)
+    expected_updated_at = serializers.CharField(required=False)
+    link_to_library = serializers.BooleanField(default=True)
+    mode = serializers.ChoiceField(choices=["auto", "new"], default="auto")
+    pull_fields = serializers.ListField(child=serializers.CharField(), default=list, max_length=100)
+    pin_fields = serializers.ListField(child=serializers.CharField(), default=list, max_length=100)
+    push_fields = serializers.ListField(child=serializers.CharField(), default=list, max_length=100)
+
+    def validate(self, attrs):
+        if attrs.get("target_id") and not attrs.get("expected_updated_at"):
+            raise serializers.ValidationError("An existing target requires its preview timestamp.")
+        if not attrs.get("target_id") and any(
+            attrs[key] for key in ("pull_fields", "pin_fields", "push_fields")
+        ):
+            raise serializers.ValidationError("Field choices require an existing target.")
+        return attrs
+
+
+class PublicCropImportSelectionSerializer(serializers.Serializer):
+    expected_project_id = serializers.IntegerField(min_value=1)
+    decisions = PublicCropImportDecisionSerializer(many=True, allow_empty=False, max_length=501)
+    accepted_public_library_terms = serializers.BooleanField(default=False)

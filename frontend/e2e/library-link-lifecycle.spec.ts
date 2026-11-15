@@ -625,3 +625,193 @@ for (const width of [375, 1440]) {
     }
   });
 }
+
+async function prepareSelectedVarietyParent(page: Page, scenario: string): Promise<CarrotEntry> {
+  const name = `Synthetic Carrot ${scenario}`;
+  const translations = ['de', 'en', 'fr', 'es', 'it', 'pt', 'nl'].map(language_code => ({ language_code, common_name: name }));
+  const species = await apiRequest<CropSpecies>(page, 'POST', '/crop-species/', { name, translations });
+  await apiRequest(page, 'POST', `/crop-species/${species.id}/approve/`, { translations });
+  const crop = await apiRequest<CropRow>(page, 'POST', '/crops/', {
+    name, crop_species: species.id, variety: '', growth_duration_days: 78,
+    harvest_duration_days: 21, notes: 'Isolated synthetic selection fixture',
+  });
+  const published = await apiRequest<PublishResponse>(page, 'POST', `/crops/${crop.id}/publish-public/`, {
+    accepted_public_library_terms: true, crop_species_id: species.id,
+    publish_as_general: true, original_language_code: 'de',
+  });
+  return apiRequest<CarrotEntry>(page, 'GET', `/public-crops/${published.public_crop.id}/`);
+}
+
+test.describe('selected library varieties', () => {
+  test.use({ serviceWorkers: 'block' });
+  for (const { width, surface } of [{ width: 375, surface: 'dialog' }, { width: 1440, surface: 'page' }] as const) {
+    test(`selected varieties import atomically and complete existing links in the ${surface} at ${width}px`, async ({ page, request }, testInfo) => {
+      const scenario = `selected-varieties-${surface}-${Date.now()}`;
+      await loginWithDeterministicProject(page, request, `${scenario}-source`, { loginAsAdmin: true, libraryModerator: true });
+      const parent = await prepareSelectedVarietyParent(page, scenario);
+      const species = { id: parent.crop_species, name: parent.name };
+      const published = [];
+      for (const name of ['Nantaise 2', 'Nantaise 2-Milan', 'Rodelika']) {
+        published.push(await publishVariety(page, species, `${name} ${scenario}`));
+      }
+      await apiRequest(page, 'POST', '/auth/logout/', {});
+      await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
+      try {
+        await page.setViewportSize({ width, height: width === 375 ? 800 : 900 });
+        await page.goto(surface === 'page' ? `/app/crop-library?cropId=${parent.id}` : '/app/crops?library=true');
+        const browser = surface === 'dialog' ? page.getByRole('dialog', { name: germanCrops.library.dialogTitle }) : page;
+        const search = browser.getByLabel(germanCrops.library.searchLabel, { exact: true });
+        await search.fill(parent.name);
+        if (surface === 'dialog') await browser.getByRole('option', { name: parent.name, exact: true }).click();
+        await browser.getByRole('button', { name: germanCrops.library.importButton, exact: true }).first().click();
+        const selector = page.getByRole('dialog', { name: germanCrops.library.varietyImport.title });
+        await expect(selector.getByRole('checkbox', { name: published[2].crop.variety, exact: true })).toBeChecked();
+        await selector.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+        expect((await apiRequest<{ results: CropRow[] }>(page, 'GET', '/crops/?page_size=500')).results).toHaveLength(0);
+        await browser.getByRole('button', { name: germanCrops.library.importButton, exact: true }).first().click();
+        const selectAll = selector.getByRole('checkbox').first();
+        await selectAll.uncheck();
+        for (const child of published.slice(0, 2)) await selector.getByRole('checkbox', { name: child.crop.variety, exact: true }).check();
+        for (const viewport of [{ width: 375, height: 800 }, { width: 768, height: 900 }, { width: 1024, height: 900 }, { width: 1440, height: 900 }, { width: 800, height: 375 }]) {
+          await page.setViewportSize(viewport);
+          await page.mouse.move(0, 0);
+          await expect(page.getByRole('tooltip')).toHaveCount(0);
+          await expect(selector.getByRole('button', { name: 'Kultur und 2 Sorten importieren', exact: true })).toBeInViewport();
+          await expectNoHorizontalPageOverflow(page);
+          await page.screenshot({ path: testInfo.outputPath(`variety-selector-${viewport.width}-${viewport.height}.png`), animations: 'disabled' });
+        }
+        await page.setViewportSize({ width, height: width === 375 ? 800 : 900 });
+        // A rejected request saves nothing and preserves the scope for retry.
+        let attempts = 0;
+        await page.route(`**/api/public-crops/${parent.id}/import-selection/`, route => {
+          if (attempts++ === 0) return route.fulfill({ status: 503, contentType: 'application/json', body: '{}' });
+          return route.continue();
+        });
+        await selector.getByRole('button', { name: 'Kultur und 2 Sorten importieren', exact: true }).click();
+        await expect(selector.getByText(germanCrops.library.varietyImport.failed, { exact: true })).toBeVisible();
+        expect((await apiRequest<{ results: CropRow[] }>(page, 'GET', '/crops/?page_size=500')).results).toHaveLength(0);
+        await selector.getByRole('button', { name: 'Kultur und 2 Sorten importieren', exact: true }).click();
+        await expect(selector).not.toBeVisible();
+        await expect(search).toHaveValue(parent.name);
+        interface LinkedCrop extends CropRow { source_public_crop: number | null; updated_at: string; notes: string; growth_duration_days: number | null }
+        const first = (await apiRequest<{ results: LinkedCrop[] }>(page, 'GET', '/crops/?page_size=500')).results;
+        expect(first).toHaveLength(3);
+        const general = first.find(row => row.source_public_crop === parent.id)!;
+        expect(first.filter(row => row.source_public_crop !== parent.id).map(row => row.source_public_crop).sort()).toEqual(published.slice(0, 2).map(row => row.publicCropId).sort());
+        // The last missing variety already exists privately and must keep its ID and plan.
+        const local = await apiRequest<LinkedCrop>(page, 'POST', '/crops/', { name: parent.name, crop_species: species.id,
+          variety: published[2].crop.variety, notes: 'Private selected variety note', growth_duration_days: 105 });
+        const season = await apiRequest<{ id: number }>(page, 'POST', '/seasons/', { start_date: '2026-01-01', end_date: '2026-12-31' });
+        const plan = await apiRequest<{ id: number; crop: number }>(page, 'POST', '/planting-plans/', {
+          season: season.id, crop: local.id, planting_date: '2026-05-15', cultivation_type: 'direct_sowing', quantity: 8 });
+        await browser.getByRole('button', { name: germanCrops.library.varietyImport.action, exact: true }).click();
+        await expect(selector.getByText(germanCrops.library.varietyImport.parentLinked, { exact: true })).toBeVisible();
+        await expect(selector.getByRole('checkbox', { name: new RegExp(published[0].crop.variety) })).toBeDisabled();
+        await selector.getByRole('checkbox').first().uncheck();
+        await selector.getByRole('checkbox', { name: published[2].crop.variety, exact: true }).check();
+        await selector.getByRole('button', { name: '1 Sorte importieren', exact: true }).click();
+        const comparison = page.getByRole('dialog', { name: germanCrops.library.importDecision.title });
+        await expect(comparison).toBeVisible();
+        await comparison.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+        expect((await apiRequest<LinkedCrop>(page, 'GET', `/crops/${local.id}/`)).source_public_crop).toBeNull();
+        await browser.getByRole('button', { name: germanCrops.library.varietyImport.action, exact: true }).click();
+        await selector.getByRole('checkbox').first().uncheck();
+        await selector.getByRole('checkbox', { name: published[2].crop.variety, exact: true }).check();
+        await selector.getByRole('button', { name: '1 Sorte importieren', exact: true }).click();
+        await comparison.getByRole('button', { name: 'Alle nur lokal', exact: true }).click();
+        await comparison.getByRole('button', { name: germanCrops.library.varietyImport.continue, exact: true }).click();
+        await expect(comparison).not.toBeVisible();
+        const after = (await apiRequest<{ results: LinkedCrop[] }>(page, 'GET', '/crops/?page_size=500')).results;
+        expect(after).toHaveLength(4);
+        const kept = after.find(row => row.id === local.id)!;
+        expect(kept.source_public_crop).toBe(published[2].publicCropId);
+        expect(kept.notes).toBe(local.notes); expect(kept.growth_duration_days).toBe(105);
+        expect(after.find(row => row.id === general.id)?.updated_at).toBe(general.updated_at);
+        expect((await apiRequest<{ crop: number }>(page, 'GET', `/planting-plans/${plan.id}/`)).crop).toBe(local.id);
+        await expect(search).toHaveValue(parent.name);
+      } finally {
+        await resetE2EScenario(request, scenario);
+        await resetE2EScenario(request, `${scenario}-source`);
+      }
+    });
+  }
+});
+
+test('the variety selector supports French labels, keyboard selection and cancellation on a phone', async ({ page, request }, testInfo) => {
+  const scenario = `selected-varieties-fr-${Date.now()}`;
+  await loginWithDeterministicProject(page, request, `${scenario}-source`, { loginAsAdmin: true, libraryModerator: true });
+  const parent = await prepareSelectedVarietyParent(page, scenario);
+  const child = await publishVariety(page, { id: parent.crop_species, name: parent.name }, `Synthetic phone variety ${scenario}`);
+  await apiRequest(page, 'POST', '/auth/logout/', {});
+  await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
+  try {
+    await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'fr' });
+    await page.evaluate(() => localStorage.setItem('ui.language', 'fr'));
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.goto(`/app/crop-library?cropId=${parent.id}`);
+    await page.getByRole('button', { name: frenchCrops.library.importButton, exact: true }).first().click();
+    const selector = page.getByRole('dialog', { name: frenchCrops.library.varietyImport.title });
+    const all = selector.getByRole('checkbox').first();
+    await all.uncheck();
+    const checkbox = selector.getByRole('checkbox', { name: child.crop.variety, exact: true });
+    await checkbox.focus(); await page.keyboard.press('Space');
+    await expect(checkbox).toBeChecked();
+    await expect(selector.getByRole('button', { name: 'Importer la culture et 1 variété', exact: true })).toBeVisible();
+    for (const viewport of [{ width: 375, height: 800 }, { width: 800, height: 375 }]) {
+      await page.setViewportSize(viewport);
+      await expectNoHorizontalPageOverflow(page);
+      await page.screenshot({ path: testInfo.outputPath(`variety-selector-fr-${viewport.width}.png`), animations: 'disabled' });
+    }
+    await page.keyboard.press('Escape');
+    await expect(selector).not.toBeVisible();
+    expect((await apiRequest<{ results: CropRow[] }>(page, 'GET', '/crops/?page_size=500')).results).toHaveLength(0);
+  } finally {
+    await resetE2EScenario(request, scenario);
+    await resetE2EScenario(request, `${scenario}-source`);
+  }
+});
+
+test.describe('bounded variety selection', () => {
+  test.use({ serviceWorkers: 'block' });
+test('a variety selection over the import limit is explained before any preview request', async ({ page, request }, testInfo) => {
+  const scenario = `selected-varieties-limit-${Date.now()}`;
+  await loginWithDeterministicProject(page, request, `${scenario}-source`, { loginAsAdmin: true, libraryModerator: true });
+  const parent = await prepareSelectedVarietyParent(page, scenario);
+  await apiRequest(page, 'POST', '/auth/logout/', {});
+  await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
+  try {
+    const unlinked = { ...parent, project_import_status: undefined };
+    const varieties = Array.from({ length: 501 }, (_, index) => ({ ...unlinked, id: 100000 + index, variety: `Bounded ${index + 1}` }));
+    await page.route('**/api/public-crops/**', route => {
+      if (route.request().method() === 'GET' && new URL(route.request().url()).searchParams.get('crop_species') === String(parent.crop_species)) {
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ count: 502, next: null, previous: null, results: [unlinked, ...varieties] }) });
+      }
+      return route.continue();
+    });
+    let previews = 0;
+    page.on('request', req => { if (req.url().includes('/import-preview/')) previews++; });
+    for (const language of ['de', 'fr'] as const) {
+      await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: language });
+      await page.evaluate(code => localStorage.setItem('ui.language', code), language);
+      await page.setViewportSize({ width: 375, height: 800 });
+      await page.goto(`/app/crop-library?cropId=${parent.id}`);
+      const labels = language === 'de' ? germanCrops : frenchCrops;
+      await page.getByRole('button', { name: labels.library.importButton, exact: true }).first().click();
+      const dialog = page.getByRole('dialog', { name: labels.library.varietyImport.title });
+      const confirm = dialog.getByRole('button', { name: labels.library.varietyImport.importWithVarieties_other.replace('{{count}}', '501'), exact: true });
+      await expect(confirm).toBeDisabled();
+      await expect(dialog.getByText(labels.library.varietyImport.selectionLimit.replace('{{limit}}', '500'), { exact: true })).toBeVisible();
+      await expectNoHorizontalPageOverflow(page);
+      await page.screenshot({ path: testInfo.outputPath(`variety-selection-limit-${language}-375.png`), animations: 'disabled' });
+      await dialog.getByRole('checkbox', { name: 'Bounded 501', exact: true }).uncheck();
+      await expect(dialog.getByRole('button', { name: labels.library.varietyImport.importWithVarieties_other.replace('{{count}}', '500'), exact: true })).toBeEnabled();
+      expect(previews).toBe(0);
+      await page.keyboard.press('Escape');
+    }
+  } finally {
+    await resetE2EScenario(request, scenario);
+    await resetE2EScenario(request, `${scenario}-source`);
+  }
+});
+
+});

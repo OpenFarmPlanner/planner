@@ -379,3 +379,57 @@ def test_new_library_import_translates_a_real_postgres_general_name_race():
     assert list(Crop.objects.filter(project=project).values_list('pk', flat=True)) == [other.pk]
     other.refresh_from_db()
     assert other.name == entry.name
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_selected_variety_imports_commit_one_complete_scope():
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    from django.db import close_old_connections, connection
+
+    from crops.models import CropSpecies
+    from farm.models import Crop, Project, PublicCrop
+    from farm.services.public_crop_import_selection import import_public_crop_selection
+    from farm.tests.api_base import User
+
+    if connection.vendor != "postgresql":
+        pytest.skip("PostgreSQL row-lock regression")
+    user = User.objects.create_user(username="concurrent-selection-user")
+    project = Project.objects.create(name="Concurrent selection", slug="concurrent-selection")
+    species = CropSpecies.objects.create(name="Concurrent selection carrot")
+    entries = [
+        PublicCrop.objects.create(
+            name=species.name, crop_species=species, variety=variety, status="published"
+        )
+        for variety in ("", "One", "Two", "Three")
+    ]
+    decisions = [
+        {
+            "public_crop_id": entry.pk,
+            "base_version": entry.version,
+            "link_to_library": True,
+            "mode": "auto",
+        }
+        for entry in entries
+    ]
+    barrier = Barrier(2)
+
+    def import_once():
+        close_old_connections()
+        try:
+            barrier.wait(timeout=10)
+            return import_public_crop_selection(
+                parent=entries[0], project=project, decisions=decisions, user=user, language="en"
+            )
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [executor.submit(import_once) for _ in range(2)]
+        results = [future.result(timeout=30) for future in futures]
+    assert {entry["crop_id"] for entry in results[0]} == {entry["crop_id"] for entry in results[1]}
+    assert sorted(entry["operation"] for result in results for entry in result) == (
+        ["created"] * 4 + ["unchanged"] * 4
+    )
+    assert Crop.objects.filter(project=project).count() == 4

@@ -1608,6 +1608,26 @@
       "failed": "De waarden konden niet worden geïmporteerd. Controleer het doel en de vergelijking opnieuw. Sluit dit venster bij een nieuw gewas en laad de bibliotheek opnieuw.",
       "success": "Bibliotheekwaarden geïmporteerd.",
       "projectChanged": "Het actieve project is gewijzigd. Sluit dit venster en start de import opnieuw in het bedoelde project."
+    },
+    "varietyImport": {
+      "action": "Rassen importeren",
+      "title": "Rassen kiezen",
+      "parentIncluded": "Het algemene gewas wordt ook geïmporteerd.",
+      "parentLinked": "Het algemene gewas is al gekoppeld en blijft ongewijzigd.",
+      "atomicHelp": "De selectie en vergelijkingen worden pas opgeslagen zodra je de laatste vergelijking bevestigt. Bij een fout wordt niets geïmporteerd. Later gepubliceerde rassen worden nooit automatisch geïmporteerd.",
+      "importParent": "Gewas importeren",
+      "importWithVarieties_one": "Gewas en {{count}} ras importeren",
+      "importWithVarieties_other": "Gewas en {{count}} rassen importeren",
+      "importVarieties_one": "{{count}} ras importeren",
+      "importVarieties_other": "{{count}} rassen importeren",
+      "reviewProgress": "Vergelijking {{current}} van {{total}}",
+      "failed": "De import is niet opgeslagen. Controleer de selectie en vergelijkingen opnieuw.",
+      "success_one": "{{count}} item geïmporteerd.",
+      "success_other": "{{count}} items geïmporteerd.",
+      "selectAll_one": "Alle beschikbare rassen ({{count}})",
+      "selectAll_other": "Alle beschikbare rassen ({{count}})",
+      "continue": "Doorgaan",
+      "selectionLimit": "Kies maximaal {{limit}} rassen per import. Je kunt de overige rassen later toevoegen via ‘Rassen importeren’."
     }
   },
   "commands": {

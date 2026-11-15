@@ -1648,7 +1648,31 @@
     "publishVarietiesSuccess_many": "Foram publicadas {{count}} variedades em conjunto.",
     "publishVarietiesAlreadyPublic_many": "{{count}} variedades já estavam na biblioteca.",
     "publishVarietiesPendingModeration_many": "Foram enviadas {{count}} variedades para análise.",
-    "publishVarietiesPartialError_many": "Não foi possível publicar {{count}} variedades."
+    "publishVarietiesPartialError_many": "Não foi possível publicar {{count}} variedades.",
+    "varietyImport": {
+      "action": "Importar variedades",
+      "title": "Selecionar variedades",
+      "parentIncluded": "A cultura geral está incluída nesta importação.",
+      "parentLinked": "A cultura geral já está associada e permanece inalterada.",
+      "atomicHelp": "A seleção e as comparações só são guardadas após a confirmação da última comparação. Em caso de erro, nada é importado. As variedades publicadas posteriormente nunca são importadas automaticamente.",
+      "importParent": "Importar cultura",
+      "importWithVarieties_one": "Importar cultura e {{count}} variedade",
+      "importWithVarieties_other": "Importar cultura e {{count}} variedades",
+      "importVarieties_one": "Importar {{count}} variedade",
+      "importVarieties_other": "Importar {{count}} variedades",
+      "reviewProgress": "Comparação {{current}} de {{total}}",
+      "failed": "A importação não foi guardada. Verifique novamente a seleção e as comparações.",
+      "success_one": "{{count}} entrada importada.",
+      "success_other": "{{count}} entradas importadas.",
+      "selectAll_one": "Todas as variedades disponíveis ({{count}})",
+      "selectAll_other": "Todas as variedades disponíveis ({{count}})",
+      "selectAll_many": "Todas as variedades disponíveis ({{count}})",
+      "importWithVarieties_many": "Importar cultura e {{count}} variedades",
+      "importVarieties_many": "Importar {{count}} variedades",
+      "success_many": "{{count}} entradas importadas.",
+      "continue": "Continuar",
+      "selectionLimit": "Selecione até {{limit}} variedades por importação. Pode adicionar as restantes mais tarde com «Importar variedades»."
+    }
   },
   "commands": {
     "focusSearch": "Focar pesquisa de culturas (/)",

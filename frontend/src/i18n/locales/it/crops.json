@@ -1648,7 +1648,31 @@
     "publishVarietiesSuccess_many": "Sono state pubblicate anche {{count}} varietà.",
     "publishVarietiesAlreadyPublic_many": "{{count}} varietà erano già nella biblioteca.",
     "publishVarietiesPendingModeration_many": "{{count}} varietà sono state inviate per l'esame.",
-    "publishVarietiesPartialError_many": "Impossibile pubblicare {{count}} varietà."
+    "publishVarietiesPartialError_many": "Impossibile pubblicare {{count}} varietà.",
+    "varietyImport": {
+      "action": "Importa varietà",
+      "title": "Scegli le varietà",
+      "parentIncluded": "La coltura generale è inclusa in questa importazione.",
+      "parentLinked": "La coltura generale è già collegata e rimane invariata.",
+      "atomicHelp": "La selezione e i confronti non vengono salvati finché non confermi l’ultimo confronto. In caso di errore non viene importato nulla. Le varietà pubblicate in seguito non vengono mai importate automaticamente.",
+      "importParent": "Importa coltura",
+      "importWithVarieties_one": "Importa coltura e {{count}} varietà",
+      "importWithVarieties_other": "Importa coltura e {{count}} varietà",
+      "importVarieties_one": "Importa {{count}} varietà",
+      "importVarieties_other": "Importa {{count}} varietà",
+      "reviewProgress": "Confronto {{current}} di {{total}}",
+      "failed": "L’importazione non è stata salvata. Ricontrolla la selezione e i confronti.",
+      "success_one": "{{count}} voce importata.",
+      "success_other": "{{count}} voci importate.",
+      "selectAll_one": "Tutte le varietà disponibili ({{count}})",
+      "selectAll_other": "Tutte le varietà disponibili ({{count}})",
+      "selectAll_many": "Tutte le varietà disponibili ({{count}})",
+      "importWithVarieties_many": "Importa coltura e {{count}} varietà",
+      "importVarieties_many": "Importa {{count}} varietà",
+      "success_many": "{{count}} voci importate.",
+      "continue": "Continua",
+      "selectionLimit": "Seleziona al massimo {{limit}} varietà per importazione. Puoi aggiungere le altre in seguito con “Importa varietà”."
+    }
   },
   "commands": {
     "focusSearch": "Attiva ricerca colture (/)",

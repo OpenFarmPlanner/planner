@@ -53,6 +53,11 @@ class Command(BaseCommand):
             help="Add two unclassified import targets and a legacy numbered-name sync conflict.",
         )
 
+        parser.add_argument(
+            "--include-variety-selection", action="store_true",
+            help="Add synthetic Carrot entries with empty/partially linked local projects.",
+        )
+
     def validate_database(self, confirmed_name: str) -> tuple[str, str, str]:
         database = connection.settings_dict
         if (
@@ -158,6 +163,8 @@ class Command(BaseCommand):
                     )
                     continue
                 self._populate_project(project, user, entry, mode)
+            if options.get("include_variety_selection"):
+                self._seed_variety_selection(user)
         self.stdout.write(
             "Fixtures ready. Import selected library values once in the first project "
             "and link in the second; preserve IDs, notes, variety overrides and plans."
@@ -195,6 +202,9 @@ class Command(BaseCommand):
         return modes
 
     def _preview(self, modes: tuple[str, ...], options: dict[str, object]) -> None:
+        if options.get("include_variety_selection"):
+            self.stdout.write("Also preview: isolated synthetic Carrot with three varieties; "
+                              "empty and partially linked projects. No library rows changed.")
         if options.get("include_name_conflicts"):
             self.stdout.write(
                 f"Preview only: {len(modes)} projects ({', '.join(modes)}); "
@@ -273,3 +283,70 @@ class Command(BaseCommand):
         self.stdout.write(
             f"Created project {project.pk}: {project.name}; general culture {general.pk}."
         )
+
+    def _seed_variety_selection(self, user: AbstractBaseUser) -> None:
+        from crops.models import CropSpecies
+        from farm.services.public_crops import import_public_crop_into_project
+
+        name = f"Carrot (local variety selection {user.pk})"
+        species, created = CropSpecies.objects.get_or_create(name=name)
+        if not created:
+            projects = Project.objects.filter(
+                slug__startswith=f"local-variety-selection-{user.pk}-"
+            )
+            if projects.count() != 2 or any(
+                project.description != MARKER
+                or not ProjectMembership.objects.filter(
+                    project=project, user=user, role="admin"
+                ).exists()
+                for project in projects
+            ):
+                raise CommandError(
+                    "Synthetic selection fixture identity is occupied; nothing changed."
+                )
+            self.stdout.write(
+                "Kept existing synthetic variety selection projects; no reset performed."
+            )
+            return
+        entries = [
+            PublicCrop.objects.create(
+                name=name,
+                crop_species=species,
+                variety=variety,
+                status=PublicCrop.STATUS_PUBLISHED,
+                created_by=user,
+                growth_duration_days=78 if not variety else 90,
+                notes="Synthetic local variety selection fixture.",
+            )
+            for variety in ("", "Nantaise 2", "Nantaise 2/Milan", "Rodelika")
+        ]
+        for mode in ("empty", "partial"):
+            project = Project.objects.create(
+                name=f"Carrot variety selection ({mode})",
+                description=MARKER,
+                slug=f"local-variety-selection-{user.pk}-{mode}",
+            )
+            ProjectMembership.objects.create(project=project, user=user, role="admin")
+            SeasonPattern.objects.create(project=project)
+            if mode == "partial":
+                for entry in entries[:2]:
+                    import_public_crop_into_project(public_crop=entry, project=project)
+                target = Crop.objects.create(
+                    project=project,
+                    name=name,
+                    variety="Rodelika",
+                    crop_species=species,
+                    notes="Private synthetic variety notes; keep local.",
+                    growth_duration_days=105,
+                )
+                PlantingPlan.objects.create(
+                    project=project,
+                    crop=target,
+                    planting_date=date(date.today().year, 5, 15),
+                    quantity=8,
+                    cultivation_type="direct_sowing",
+                    created_by=user,
+                )
+            self.stdout.write(
+                f"Variety selection project {project.pk} ({mode}); library culture {entries[0].pk}."
+            )

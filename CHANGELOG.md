@@ -6,6 +6,8 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
 
 ## Unreleased
 
+- Select which library varieties to import with a culture, and add missing varieties later with explicit comparisons and atomic rollback.
+
 ### Features
 
 - Add the plant-health catalogue foundation (#1011): stable identities, seven-language

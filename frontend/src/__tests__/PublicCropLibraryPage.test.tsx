@@ -2153,6 +2153,20 @@ describe('PublicCropLibraryPage', () => {
     expect(screen.queryByText('70 Tage')).not.toBeInTheDocument();
   }, 30000);
 
+  it('offers variety completion directly on an already linked general culture', async () => {
+    const general: PublicCrop = { ...publicCrops[0], id: 3, variety: '', crop_species: 17,
+      project_import_status: { crop_id: 93, crop_name: 'Tomate', is_up_to_date: true, is_modified_from_source: false } };
+    const variety = { ...publicCrops[0], crop_species: 17 };
+    publicCropApiMocks.list.mockResolvedValue(paginated([general, variety]));
+    renderPage(['/app/crop-library?cropId=3']);
+    const action = await screen.findByRole('button', { name: 'Sorten importieren', exact: true });
+    expect(screen.getByRole('button', { name: 'Bereits verknüpft', exact: true })).toBeDisabled();
+    fireEvent.click(action);
+    expect(await screen.findByRole('dialog', { name: 'Sorten auswählen' })).toBeVisible();
+    expect(screen.getByText('Die allgemeine Kultur ist bereits verknüpft und bleibt unverändert.')).toBeVisible();
+    expect(publicCropApiMocks.importToProject).not.toHaveBeenCalled();
+  });
+
   describe('re-import handling', () => {
     beforeEach(() => {
       publicCropApiMocks.list.mockResolvedValue(paginated(publicCrops.map((crop, index) => index ? crop : {

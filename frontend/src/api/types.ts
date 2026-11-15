@@ -1813,3 +1813,19 @@ export interface CropTaskTemplate extends CropTaskTemplateWrite {
   id: number;
   project: number;
 }
+
+export interface PublicCropImportDecision {
+  public_crop_id: number;
+  base_version: number;
+  target_id?: number;
+  expected_updated_at?: string;
+  link_to_library: boolean;
+  mode?: 'auto' | 'new';
+  pull_fields?: string[];
+  pin_fields?: string[];
+  push_fields?: string[];
+}
+
+export interface PublicCropSelectionImportResult {
+  entries: { public_crop_id: number; crop_id: number; operation: 'created' | 'linked' | 'copied' | 'unchanged' }[];
+}
