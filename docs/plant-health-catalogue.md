@@ -294,6 +294,9 @@ and full library updates replace only the official segment and preserve all
 private names, IDs, plans and notes. If the combined private/public selection
 would exceed 40 entries, the transaction fails instead of dropping names. An
 unchanged inherited official segment leaves the variety's raw null intact.
+A null public value also preserves an already-inheriting variety's raw null,
+including when the parent contains private names; those names are not copied
+into a frozen variety override.
 Official references can be pinned locally; private names are always retained,
 and a private-only/empty official segment cannot keep a library pin.
 Public proposals, revision snapshots and revert include this field while partial

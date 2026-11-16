@@ -908,6 +908,41 @@ class PublicPlantHealthTests(ProjectApiTestCase):
             self.crop.plant_health,
         )
 
+    def test_null_public_pull_never_copies_inherited_private_names_onto_the_variety(self):
+        variety, public = self.linked_variety_for_override(None, None)
+        for mode in ("full", "selected"):
+            for parent_value in (
+                selections(),
+                selections("Parent-only private name"),
+                self.mixed(self.entries[0]),
+            ):
+                with self.subTest(mode=mode, parent_value=parent_value):
+                    self.crop.plant_health = parent_value
+                    self.crop.save()
+                    variety.plant_health = None
+                    variety.save()
+                    if mode == "full":
+                        _apply_public_crop_update(crop=variety, public_crop=public)
+                    else:
+                        response = self.client.post(
+                            f"{CROPS_URL}{variety.pk}/public-sync/",
+                            {
+                                "public_crop_id": public.pk,
+                                "base_version": public.version,
+                                "pull_fields": ["plant_health"],
+                            },
+                            format="json",
+                        )
+                        self.assertEqual(response.status_code, 200, response.data)
+                    variety.refresh_from_db()
+                    self.assertIsNone(variety.plant_health)
+                    self.crop.plant_health = self.mixed(self.entries[1], "Later parent name")
+                    self.crop.save()
+                    current = self.client.get(f"{CROPS_URL}{variety.pk}/")
+                    self.assertEqual(
+                        current.data["effective_values"]["plant_health"], self.crop.plant_health
+                    )
+
     def test_explicit_empty_can_be_shared_but_cannot_keep_an_empty_library_pin(self):
         self.crop.plant_health = selections()
         self.crop.save()

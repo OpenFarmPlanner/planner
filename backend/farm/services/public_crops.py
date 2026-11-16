@@ -1718,6 +1718,8 @@ def build_public_crop_sync_preview(
 
 def _set_project_library_value(crop: Crop, field: str, value: Any) -> None:
     if field == 'plant_health':
+        if value is None and get_crop_field_value(crop, field) is None:
+            return
         effective = resolve_crop_field(crop, field)
         if _same_public_field_value(field, effective, value):
             return
