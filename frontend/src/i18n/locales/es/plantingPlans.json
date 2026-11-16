@@ -399,5 +399,11 @@
     "propagation_shorter_than_germination": "La duración en semillero es más corta que el tiempo de germinación.",
     "emergence": "Emergencia prevista hacia {{from}}–{{to}}",
     "hints": "Consejos de germinación"
+  },
+  "tableHeaders": {
+    "sowingDate": "Siembra",
+    "plantingDate": "Trasplante",
+    "harvestStartDate": "Inicio de cosecha",
+    "harvestEndDate": "Fin de cosecha"
   }
 }

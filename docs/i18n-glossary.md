@@ -373,3 +373,22 @@ Broad groups and disease concepts never establish a confirmed shared pathogen.
 | unbestätigte Zuordnung | Unconfirmed association | Association non confirmée | Asociación no confirmada | associazione non confermata | associação não confirmada | onbevestigde koppeling |
 | Quellenbeleg | Source evidence | Source | Fuente | fonte | fonte | bron |
 | wissenschaftlicher Ersatzname | Scientific-name fallback | Nom scientifique par défaut | Nombre científico alternativo | nome scientifico sostitutivo | nome científico alternativo | wetenschappelijke naam als terugval |
+
+### Planting-plan table date headings
+
+`plantingPlans.tableHeaders` is table-specific. In Portuguese, Italian and
+Spanish the visible headers use the following concise forms; editing dialogs,
+column chooser/filter labels and exports keep the explicit `columns` labels.
+Other languages retain their existing header wording.
+
+| Column | pt-PT | Italian | Spanish |
+| --- | --- | --- | --- |
+| Sowing | Sementeira | Semina | Siembra |
+| Transplanting | Transplantação | Trapianto | Trasplante |
+| Harvest start | Início da colheita | Inizio raccolta | Inicio de cosecha |
+| Harvest end | Fim da colheita | Fine raccolta | Fin de cosecha |
+
+The remaining headings already name their domain clearly and stay unchanged,
+including *Tipo de cultivo* / *Tipo di coltivazione*; do not shorten these to a
+vague *Type*. The planting-plan table permits two-line header labels while
+retaining its sort/menu controls and horizontal scrolling.

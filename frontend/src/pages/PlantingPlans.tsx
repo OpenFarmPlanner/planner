@@ -44,6 +44,7 @@ import {
   getAllowedCultivationTypesForCrop,
   isEmptyNewPlantingPlanRow,
 } from "./plantingPlansUtils";
+import { plantingPlanTableHeaderSx } from "./plantingPlanHeaderStyles";
 import { usePlantingPlanHierarchy } from "./usePlantingPlanHierarchy";
 import { CultivationTypeEditCell } from "./CultivationTypeEditCell";
 import PageContainer from "../components/layout/PageContainer";
@@ -917,7 +918,7 @@ function PlantingPlans() {
             )}
           >
             <Box component="span" sx={dataGridHeaderLabelSx}>
-              {t("plantingPlans:columns.sowingDate")}
+              {t("plantingPlans:tableHeaders.sowingDate")}
             </Box>
           </AppTooltip>
         ),
@@ -1009,7 +1010,7 @@ function PlantingPlans() {
             )}
           >
             <Box component="span" sx={dataGridHeaderLabelSx}>
-              {t("plantingPlans:columns.plantingDate")}
+              {t("plantingPlans:tableHeaders.plantingDate")}
             </Box>
           </AppTooltip>
         ),
@@ -1053,7 +1054,7 @@ function PlantingPlans() {
         width: dynamicWidths.harvestDate,
         maxWidth: dynamicWidths.harvestDate,
         ...getCalculatedColumnProps<PlantingPlanRow>({
-          headerName: t("plantingPlans:columns.harvestStartDate"),
+          headerName: t("plantingPlans:tableHeaders.harvestStartDate"),
           tooltip: t("plantingPlans:tooltips.calculatedHarvestStartDate"),
         }),
         type: "date",
@@ -1071,7 +1072,7 @@ function PlantingPlans() {
         width: dynamicWidths.harvestEndDate,
         maxWidth: dynamicWidths.harvestEndDate,
         ...getCalculatedColumnProps<PlantingPlanRow>({
-          headerName: t("plantingPlans:columns.harvestEndDate"),
+          headerName: t("plantingPlans:tableHeaders.harvestEndDate"),
           tooltip: t("plantingPlans:tooltips.calculatedHarvestEndDate"),
         }),
         type: "date",
@@ -2361,11 +2362,13 @@ function PlantingPlans() {
               toolbar does not jump when the last hit disappears. */}
           <Box
             aria-hidden={!isMobile && showDesktopSearchEmptyState ? true : undefined}
-            sx={!isMobile && showDesktopSearchEmptyState ? { height: 0, overflow: 'hidden', visibility: 'hidden' } : undefined}
+            sx={[plantingPlanTableHeaderSx, !isMobile && showDesktopSearchEmptyState
+              ? { height: 0, overflow: 'hidden', visibility: 'hidden' } : {}]}
           >
           <EditableDataGrid<PlantingPlanRow>
             surfaceSizing={isMobile ? "fullWorkspace" : "contentFit"}
             scrollMode="continuous"
+            columnHeaderHeight={isMobile ? undefined : 80}
             pinCreatedRowsToTop
             columns={columns}
             api={plantingPlanGridAPI}

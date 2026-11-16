@@ -1,10 +1,11 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { estimateCultivationTypeColumnWidth, usePlantingPlanHierarchy } from '../pages/usePlantingPlanHierarchy';
 import plantingPlansDE from '../i18n/locales/de/plantingPlans.json';
 import plantingPlansEN from '../i18n/locales/en/plantingPlans.json';
 import plantingPlansFR from '../i18n/locales/fr/plantingPlans.json';
 import plantingPlansES from '../i18n/locales/es/plantingPlans.json';
+import { switchLanguage } from '../i18n/config';
 
 const apiMocks = vi.hoisted(() => ({
   cropListAll: vi.fn(),
@@ -62,6 +63,21 @@ describe('usePlantingPlanHierarchy', () => {
     expect(result.current.cropOptions).toEqual([
       { value: 1, label: 'Broad bean (Hangdown)' },
     ]);
+  });
+
+  it('updates date widths on a live language switch and restores existing English widths', async () => {
+    const { result } = renderHook(() => usePlantingPlanHierarchy(false));
+    await waitFor(() => expect(result.current.isHierarchyLoading).toBe(false));
+    try {
+      await act(() => switchLanguage('pt'));
+      const portugueseWidth = result.current.dynamicWidths.plantingDate;
+      await act(() => switchLanguage('it'));
+      expect(result.current.dynamicWidths.plantingDate).toBeLessThan(portugueseWidth);
+      await act(() => switchLanguage('en'));
+      expect(result.current.dynamicWidths.plantingDate).toBe(142);
+    } finally {
+      await act(() => switchLanguage('de'));
+    }
   });
 });
 

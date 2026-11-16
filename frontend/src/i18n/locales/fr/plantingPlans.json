@@ -399,5 +399,11 @@
     "propagation_shorter_than_germination": "La durée en pépinière est plus courte que la durée de germination.",
     "emergence": "Levée prévue vers le {{from}}–{{to}}",
     "hints": "Conseils de germination"
+  },
+  "tableHeaders": {
+    "sowingDate": "Date de semis",
+    "plantingDate": "Date de plantation",
+    "harvestStartDate": "Début de récolte",
+    "harvestEndDate": "Fin de récolte"
   }
 }

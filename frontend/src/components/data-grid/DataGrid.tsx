@@ -230,6 +230,7 @@ export function EditableDataGrid<T extends EditableRow>({
   paginationPageSizeOptions,
   initialPageSize = 25,
   scrollMode = 'autoHeight',
+  columnHeaderHeight,
   columnVisibilityModel,
   onColumnVisibilityModelChange,
   columnsPanelOpen,
@@ -2759,7 +2760,7 @@ export function EditableDataGrid<T extends EditableRow>({
           }
           pageSizeOptions={showPaginationControls ? paginationPageSizeOptions : undefined}
           rowHeight={isContinuousScroll ? CONTINUOUS_SCROLL_REQUESTED_ROW_HEIGHT_PX : undefined}
-          columnHeaderHeight={isContinuousScroll ? CONTINUOUS_SCROLL_HEADER_HEIGHT_PX : undefined}
+          columnHeaderHeight={columnHeaderHeight ?? (isContinuousScroll ? CONTINUOUS_SCROLL_HEADER_HEIGHT_PX : undefined)}
           sortModel={sortModel}
           onSortModelChange={handleSortModelChange}
           sortingMode="server"
