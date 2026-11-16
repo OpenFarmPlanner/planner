@@ -62,8 +62,8 @@ _RESTORABLE_ENTITY_TYPES: list[tuple[type, str]] = [
     (NoteAttachment, 'note_attachment'),
 ]
 
-# Entity types recorded in history but not part of whole-project restore
-# (mirrors the entities `_serialize_project_state` used to omit).
+# Additional audit labels retain their persisted spellings. The complete-domain
+# registry in project_restore includes these types in dependency order.
 _ENTITY_TYPE_LABELS: dict[type, str] = {model: label for model, label in _RESTORABLE_ENTITY_TYPES} | {
     MediaFile: 'media_file',
     SeedPackage: 'seed_package',

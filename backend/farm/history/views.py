@@ -15,7 +15,11 @@ from farm.project_context import get_active_project_or_400, require_project_admi
 
 from .import_operations import ImportOperationConflict, import_undo_preview, undo_crop_import
 from .payloads import build_crop_history_payload
-from .project_restore import ProjectRestoreConflict, restore_project_version
+from .project_restore import (
+    ProjectRestoreConflict,
+    ensure_project_checkpoint,
+    restore_project_version,
+)
 from .records import _current_actor_label
 from .restore import (
     BatchRevertError,
@@ -41,6 +45,9 @@ class ProjectHistoryListView(APIView):
         rows = list(
             EntityRevision.objects
             .filter(project=active_project, created_at__gte=since)
+            .exclude(
+                batch_operation_id__isnull=True, snapshot__has_key="_project_version_internal"
+            )
             .defer('snapshot')
             .order_by('-created_at', '-id')
         )
@@ -118,6 +125,12 @@ class ProjectHistoryRestoreView(APIView):
         revision = get_object_or_404(
             EntityRevision.objects.filter(project=active_project), id=revision_id
         )
+        if revision.snapshot.get("_project_version_internal"):
+            return api_error_response(
+                code="project_restore_conflict",
+                detail="Select the completed crop action instead of an internal derived revision.",
+                status_code=status.HTTP_409_CONFLICT,
+            )
         if is_latest_project_revision(active_project, revision):
             return api_error_response(
                 code="already_current_version",
@@ -229,6 +242,7 @@ class GlobalHistoryRestoreView(APIView):
             id=revision_id,
         )
         crop = get_object_or_404(Crop.all_objects.filter(project=active_project), pk=revision.object_id)
+        ensure_project_checkpoint(active_project, user_name=_current_actor_label(request))
         restore_crop_from_revision(crop, revision)
 
         return Response(CropSerializer(crop).data, status=status.HTTP_200_OK)

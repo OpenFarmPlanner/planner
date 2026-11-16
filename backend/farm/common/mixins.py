@@ -90,7 +90,9 @@ class ProjectScopedMixin:
     def initial(self, request, *args, **kwargs):
         super().initial(request, *args, **kwargs)
         request.active_project = get_active_project_or_400(request)
-        if getattr(self, "action", None) in {"create", "update", "partial_update", "destroy"}:
+        if request.method in {"POST", "PUT", "PATCH", "DELETE"} and (
+            getattr(self, "action", None) != "import_preview"
+        ):
             from farm.history.project_restore import ensure_project_checkpoint
 
             ensure_project_checkpoint(

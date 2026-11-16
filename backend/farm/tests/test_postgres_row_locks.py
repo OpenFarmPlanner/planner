@@ -353,6 +353,9 @@ def test_library_sync_translates_a_real_postgres_name_race_after_rollback():
     target = Crop.objects.create(project=project, name='Synthetic conflict (2)',
                                  source_public_crop=entry, source_public_version=entry.version)
     other = Crop.objects.create(project=project, name='Synthetic unclaimed')
+    from farm.history.project_restore import ensure_project_checkpoint
+
+    ensure_project_checkpoint(project)
     before = Crop.objects.filter(pk=target.pk).values().get()
     revisions = list(EntityRevision.objects.filter(object_id=target.pk).values())
     save = Crop.save
@@ -360,6 +363,8 @@ def test_library_sync_translates_a_real_postgres_name_race_after_rollback():
     def competing_write():
         close_old_connections()
         try:
+            with connection.cursor() as cursor:
+                cursor.execute("SET lock_timeout = '5s'")
             # An older writer bypasses the cooperative project lock. Updating an
             # existing row does not need to recheck its unchanged project FK.
             Crop.objects.filter(pk=other.pk).update(
@@ -409,11 +414,16 @@ def test_new_library_import_translates_a_real_postgres_general_name_race():
         name='Synthetic raced import', status='published', created_by=user,
     )
     other = Crop.objects.create(project=project, name='Synthetic unclaimed import')
+    from farm.history.project_restore import ensure_project_checkpoint
+
+    ensure_project_checkpoint(project)
     save = Crop.save
 
     def competing_write():
         close_old_connections()
         try:
+            with connection.cursor() as cursor:
+                cursor.execute("SET lock_timeout = '5s'")
             Crop.objects.filter(pk=other.pk).update(
                 name=entry.name, name_normalized='synthetic raced import',
             )

@@ -818,6 +818,91 @@ class ImportOperationHistoryTests(TestCase):
         self.crop.refresh_from_db()
         self.assertEqual(self.crop.notes, "Later edit")
 
+    def test_later_untracked_creation_within_the_target_millisecond_is_removed(self) -> None:
+        from farm.history.project_restore import capture_project_state, record_project_checkpoint
+
+        record_project_checkpoint(self.project, capture_project_state(self.project))
+        target = EntityRevision.objects.filter(project=self.project).latest("id")
+        if target.created_at.microsecond % 1000 == 999:
+            target.created_at -= timedelta(microseconds=1)
+        EntityRevision.objects.filter(pk=target.pk).update(created_at=target.created_at)
+        later = Location.objects.create(project=self.project, name="Later within millisecond")
+        Location.objects.filter(pk=later.pk).update(
+            created_at=target.created_at + timedelta(microseconds=1)
+        )
+        record_later_revision(self.project)
+        response = self.client.post(
+            "/openfarmplanner/api/history/project/restore/",
+            {"history_id": target.pk},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertFalse(Location.objects.filter(pk=later.pk).exists())
+
+    def test_first_custom_undelete_establishes_a_complete_pre_mutation_baseline(self) -> None:
+        from farm.history.project_restore import CHECKPOINT_KEY
+
+        archived_at = timezone.now()
+        Crop.all_objects.filter(pk=self.crop.pk).update(deleted_at=archived_at)
+        untouched = Location.objects.create(project=self.project, name="Untouched legacy location")
+        EntityRevision.objects.filter(project=self.project).delete()
+        response = self.client.post(f"/openfarmplanner/api/crops/{self.crop.pk}/undelete/")
+        self.assertEqual(response.status_code, 200, response.content)
+        baseline = EntityRevision.objects.get(
+            project=self.project, snapshot__has_key=CHECKPOINT_KEY
+        )
+        self.assertIsNotNone(
+            baseline.snapshot[CHECKPOINT_KEY]["crop"][str(self.crop.pk)]["deleted_at"]
+        )
+        target = EntityRevision.objects.filter(project=self.project, entity_type="crop").latest(
+            "id"
+        )
+        self.crop.refresh_from_db()
+        self.crop.notes = "Later edit"
+        self.crop.save()
+        response = self.client.post(
+            "/openfarmplanner/api/history/project/restore/",
+            {"history_id": target.pk},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertTrue(Location.objects.filter(pk=untouched.pk).exists())
+
+    def test_legacy_archived_season_and_generated_task_require_complete_after_states(self) -> None:
+        from farm.history import _serialize_instance, record_entity_revision
+        from farm.history.project_restore import capture_project_state, record_project_checkpoint
+        from farm.models import Season, Task
+
+        season = Season.objects.create(
+            project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31)
+        )
+        task = Task.objects.create(
+            project=self.project, title="Generated legacy task", source_key="legacy-source"
+        )
+        for instance, label in ((season, "season"), (task, "task")):
+            with self.subTest(entity_type=label):
+                EntityRevision.objects.filter(project=self.project).delete()
+                record_project_checkpoint(self.project, capture_project_state(self.project))
+                snapshot = _serialize_instance(instance)
+                type(instance)._base_manager.filter(pk=instance.pk).update(
+                    deleted_at=timezone.now()
+                )
+                record_entity_revision(
+                    project=self.project, entity_type=label, object_id=instance.pk,
+                    action="deleted", snapshot=snapshot,
+                )
+                target = EntityRevision.objects.filter(project=self.project).latest("id")
+                record_later_revision(self.project)
+                count = EntityRevision.objects.filter(project=self.project).count()
+                response = self.client.post(
+                    "/openfarmplanner/api/history/project/restore/",
+                    {"history_id": target.pk}, content_type="application/json",
+                )
+                self.assertEqual(response.status_code, 409, response.content)
+                instance.refresh_from_db()
+                self.assertIsNotNone(instance.deleted_at)
+                self.assertEqual(EntityRevision.objects.filter(project=self.project).count(), count)
+
     def test_cleanup_keeps_the_state_needed_for_recent_restore(self) -> None:
         from farm.history.project_restore import capture_project_state, record_project_checkpoint
 
@@ -1014,6 +1099,24 @@ class ImportOperationHistoryTests(TestCase):
         )
         self.assertEqual(response.status_code, 200, response.content)
         target = EntityRevision.objects.filter(project=self.project).latest("id")
+        self.assertEqual(target.entity_type, "crop")
+        derived = EntityRevision.objects.filter(
+            project=self.project,
+            entity_type="planting_plan",
+            snapshot__has_key="_project_version_internal",
+        ).latest("id")
+        visible_ids = {
+            entry["history_id"] for entry in self.client.get(
+                "/openfarmplanner/api/history/project/"
+            ).json()
+        }
+        self.assertIn(target.pk, visible_ids)
+        self.assertNotIn(derived.pk, visible_ids)
+        rejected = self.client.post(
+            "/openfarmplanner/api/history/project/restore/",
+            {"history_id": derived.pk}, content_type="application/json",
+        )
+        self.assertEqual(rejected.status_code, 409)
         plan.refresh_from_db()
         expected_harvest = plan.harvest_date
         self.client.patch(

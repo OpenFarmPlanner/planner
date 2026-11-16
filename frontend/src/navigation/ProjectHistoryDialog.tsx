@@ -138,6 +138,11 @@ export function ProjectHistoryDialog({
             <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>{summary}</Typography>
+                <Typography variant="caption" color="text.secondary" component="div">
+                  {tCrops('import.created', { count: Number(entry.batch_context?.created_count ?? 0) })}
+                  {' · '}
+                  {tCrops('import.updated', { count: Number(entry.batch_context?.updated_count ?? 0) })}
+                </Typography>
                 {renderEntryMeta(entry)}
               </Box>
               {menuButton}

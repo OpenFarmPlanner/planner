@@ -66,6 +66,7 @@ describe('ProjectHistoryDialog', () => {
       ] });
     const { onRestore, onRevertBatch } = renderDialog([imported]);
     expect(screen.getByText('3 Kulturen importiert')).toBeInTheDocument();
+    expect(screen.getByText('2 neue Kulturen erstellt · 1 Kultur aktualisiert')).toBeInTheDocument();
     expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: restoreVersionLabel }));
     expect(onRestore).toHaveBeenCalledWith(imported);

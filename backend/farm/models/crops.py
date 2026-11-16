@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Q
 from django.utils import timezone
 
@@ -871,6 +871,7 @@ class Crop(TimestampedModel):
         'selected_seed_demand_supplier_id',
     }
 
+    @transaction.atomic
     def save(self, *args: Any, **kwargs: Any) -> None:
         """Save the crop and auto-generate display color and normalized fields."""
         from farm.utils import normalize_text
@@ -905,14 +906,13 @@ class Crop(TimestampedModel):
         if previous:
             previous['timing_windows'] = previous_windows
         changed_fields = self._compute_changed_fields(previous, current)
-        self._record_save_revision(current, previous, changed_fields)
-
         timing_changed_fields = [
             field for field in ('growth_duration_days', 'harvest_duration_days')
             if field in changed_fields
         ]
         if timing_changed_fields:
             self._recalculate_related_planting_plan_dates(timing_changed_fields)
+        self._record_save_revision(current, previous, changed_fields)
 
     @property
     def pending_timing_windows(self) -> list[Any] | None:
@@ -1083,6 +1083,7 @@ class Crop(TimestampedModel):
             values = {
                 field.attname: getattr(plan, field.attname) for field in plan._meta.concrete_fields
             }
+            values["_project_version_internal"] = True
             record_entity_revision(
                 project=self.project,
                 entity_type="planting_plan",

@@ -177,11 +177,14 @@ def _revision_overlay(
             continue
         seen.add(key)
         if (
-            row.entity_type == "croptasktemplate"
+            (
+                entity_type in {"crop_task_template", "season"}
+                or (entity_type == "task" and row.snapshot.get("source_key"))
+            )
             and row.action == EntityRevision.ACTION_DELETED
             and row.snapshot.get("deleted_at") is None
         ):
-            raise ProjectRestoreConflict("legacy template deletion has no complete after-state")
+            raise ProjectRestoreConflict("legacy soft deletion has no complete after-state")
         soft_deleted = row.snapshot.get("deleted_at") is not None and any(
             field.name == "deleted_at" for field in _MODELS[entity_type]._meta.concrete_fields
         )
@@ -227,13 +230,29 @@ def _require_legacy_evidence(
     seen: set[tuple[str, str]],
     state: ProjectState,
 ) -> None:
-    for label, objects in current.items():
-        for pk, snapshot in objects.items():
-            if (label, pk) in seen or pk in state[label]:
-                continue
-            created_at = snapshot.get("created_at") or snapshot.get("uploaded_at")
-            if not created_at or parse_datetime(created_at) <= revision.created_at:
-                raise ProjectRestoreConflict("incomplete historical evidence")
+    for model, label in PROJECT_STATE_MODELS:
+        unknown = {
+            pk for pk in current[label] if (label, pk) not in seen and pk not in state[label]
+        }
+        if not unknown:
+            continue
+        fields = {field.name for field in model._meta.concrete_fields}
+        creation_field = next(
+            (name for name in ("created_at", "uploaded_at") if name in fields), None
+        )
+        if creation_field is None:
+            raise ProjectRestoreConflict("incomplete historical evidence")
+        # JSON snapshots truncate timestamps to milliseconds. Read the locked
+        # live rows to prove creation after a target within that same millisecond.
+        created = dict(
+            _model_manager(model)
+            .filter(project=project, pk__in=unknown)
+            .values_list("pk", creation_field)
+        )
+        if len(created) != len(unknown) or any(
+            value is None or value <= revision.created_at for value in created.values()
+        ):
+            raise ProjectRestoreConflict("incomplete historical evidence")
     future_keys: set[tuple[str, str]] = set()
     for row in (
         EntityRevision.objects.filter(project=project)

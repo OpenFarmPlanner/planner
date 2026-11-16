@@ -92,7 +92,9 @@ timestamps are never used to guess which old revisions belong together.
 
 Before a project's first ordinary create/update/delete request,
 `ensure_project_checkpoint` establishes a complete baseline once. Read-only and
-import-preview requests do not create that baseline. Lazy creation of a default
+import-preview requests do not create that baseline. Mutating custom actions
+(including undelete, library import/link/sync, season transitions and layout or
+attachment writes) establish it too. Lazy creation of a default
 location gets its own creation revision. Later ordinary mutations continue to
 write per-entity revisions, without serializing the whole project again.
 
@@ -169,6 +171,15 @@ packages, task templates, season patterns and media metadata. Crop timing window
 remain embedded in their parent snapshot. It does not recreate file bytes that
 have already been removed from storage. An incomplete old version remains
 readable but cannot be destructively reconstructed by guessing.
+
+Crop timing edits record recalculated plan after-images inside the crop save's
+transaction, followed by the crop revision as the completed version boundary.
+Those derived plan rows remain in the audit trail and reconstruction, but cannot
+be selected as intermediate project versions. Ambiguous legacy season, template
+and generated-task deletion snapshots without a soft-delete after-state conflict
+instead of hard-deleting an archived row. Proof of later creation reads the live
+database timestamp at full precision, including creation within the target's
+millisecond.
 
 ## Local acceptance fixtures
 
