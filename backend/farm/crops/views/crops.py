@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 
+from django.core.exceptions import ValidationError as ModelValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Prefetch, Q
 from django.http import Http404
@@ -32,7 +33,6 @@ from farm.agent_api.schema_serializers import (
     SeedRateConstraintsSerializer,
 )
 from farm.common.mixins import ProjectScopedMixin
-from farm.services.crop_inheritance import lock_crop_project, validate_general_crop_identity
 from farm.companion_notes import note_language
 from farm.crops.moderation import (
     describe_contribution_origin,
@@ -62,6 +62,8 @@ from farm.services.crop_import.spreadsheet import (
     apply_crop_import_companions,
     preview_crop_import,
 )
+from farm.services.crop_inheritance import lock_crop_project, validate_general_crop_identity
+from farm.services.crop_plant_health import map_crop_plant_health
 from farm.services.public_crops import (
     VARIETY_ONLY_COPY_FIELDS,
     CropLinkConflictError,
@@ -95,6 +97,7 @@ from ..serializers import (
     PublicCropSerializer,
 )
 from ..serializers.crops import CropNameConflict
+from ..serializers.plant_health import CropPlantHealthMappingSerializer
 from ..serializers.public import (
     PUBLIC_CROP_PROPOSABLE_FIELDS,
     PublicCropChangeProposalSerializer,
@@ -186,6 +189,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         'create',
         'update',
         'partial_update',
+        'map_plant_health',
         'destroy',
         'delete_preview',
         'duplicate_check',
@@ -198,6 +202,24 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         'undelete',
     }
     api_token_delete_actions = {'destroy', 'undelete'}
+
+    @extend_schema(request=CropPlantHealthMappingSerializer, responses={200: CropSerializer})
+    @action(detail=True, methods=['post'], url_path='plant-health/mappings')
+    def map_plant_health(self, request: Request, pk=None) -> Response:
+        crop = self.get_object()
+        serializer = CropPlantHealthMappingSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            try:
+                map_crop_plant_health(crop, **serializer.validated_data)
+            except ModelValidationError as error:
+                return api_error_response(
+                    code='plant_health_mapping_invalid',
+                    detail='Review the selected catalogue mapping.',
+                    status_code=status.HTTP_400_BAD_REQUEST, errors={'mappings': error.messages},
+                )
+            self._set_latest_revision_actor(crop)
+            return Response(self.get_serializer(self.get_queryset().get(pk=crop.pk)).data)
 
     def _set_latest_revision_actor(self, crop: Crop) -> None:
         actor_label = _current_actor_label(self.request)
@@ -409,33 +431,65 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         language = note_language({'request': request}, request.data.get('companion_note_language'))
-        if phase == 'companions':
-            summary = apply_crop_import_companions(
-                request.active_project, items, language=language,
-                replace_notes=request.data.get('replace_companion_notes') is True,
+        if phase == 'finalize' and items:
+            return api_error_response(
+                code="invalid_crop_import_items",
+                detail="Finalization does not accept crop rows.",
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
-            return Response(summary, status=status.HTTP_200_OK)
-        if phase == 'finalize':
-            if items:
-                return api_error_response(
-                    code='invalid_crop_import_items',
-                    detail='Finalization does not accept crop rows.',
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                )
+        from farm.history.import_operations import ImportOperationConflict, execute_import_request
+
+        try:
+            summary = execute_import_request(
+                request.active_project,
+                request_id=request.data.get("import_operation_id"),
+                actor_id=request.user.pk,
+                actor_label=_current_actor_label(request),
+                phase=phase,
+                run=lambda: self._apply_import_phase(request, items, phase, language),
+            )
+        except ImportOperationConflict:
+            return api_error_response(
+                code="crop_import_operation_unavailable",
+                detail=(
+                    "This import operation is unavailable. "
+                    "Inspect the saved crops before starting another import."
+                ),
+                status_code=status.HTTP_409_CONFLICT,
+            )
+        return Response(summary, status=status.HTTP_200_OK)
+
+    @staticmethod
+    def _apply_import_phase(
+        request: Request, items: list, phase: str | None, language: str
+    ) -> dict:
+        if phase == "companions":
+            summary = apply_crop_import_companions(
+                request.active_project,
+                items,
+                language=language,
+                replace_notes=request.data.get("replace_companion_notes") is True,
+            )
+            return summary
+        if phase == "finalize":
             link_free_text_companions(request.active_project.pk)
-            return Response({
-                'created_count': 0, 'updated_count': 0, 'skipped_count': 0,
-                'duplicate_count': 0, 'errors': [], 'results': [],
-            })
+            return {
+                "created_count": 0,
+                "updated_count": 0,
+                "skipped_count": 0,
+                "duplicate_count": 0,
+                "errors": [],
+                "results": [],
+            }
         summary = apply_crop_import(
             request.active_project,
             items,
-            confirm_updates=request.data.get('confirm_updates', False),
+            confirm_updates=request.data.get("confirm_updates", False),
             companion_note_language=language,
-            replace_companion_notes=request.data.get('replace_companion_notes') is True,
-            defer_companions=phase == 'crops',
+            replace_companion_notes=request.data.get("replace_companion_notes") is True,
+            defer_companions=phase == "crops",
         )
-        return Response(summary, status=status.HTTP_200_OK)
+        return summary
 
     @staticmethod
     def _import_project_error(request: Request) -> Response | None:
@@ -709,6 +763,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 payload = build_public_crop_payload(
                     crop, public_variety=None if publish_as_general else crop.variety,
                     companion_note_language=note_language({'request': request}),
+                    retained_public_crop=public_crop,
                 )
                 proposed_data = {
                     field: value for field, value in payload.items()
@@ -1210,6 +1265,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             ],
             'duplicates': self._serialize_duplicates(result.duplicates),
             'unpublishable_companion_count': result.unpublishable_companion_count,
+            'unpublishable_plant_health_count': result.unpublishable_plant_health_count,
             'can_publish': result.can_publish,
             'blocking_reasons': result.blocking_reasons,
             'general_crop_notice': (

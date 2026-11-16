@@ -6,6 +6,7 @@ import { loadRetryAlertSx } from '../../components/loadRetryStyles';
 import LoadRetryButton from '../../components/LoadRetryButton';
 import { germinationDetailFields, formatGerminationValue } from '../../crops/germination';
 import { SITE_HEALTH_FIELDS, formatSiteHealthValue } from '../../crops/siteHealth';
+import { PlantHealthChips } from '../../crops/PlantHealthChips';
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type UIEvent } from 'react';
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router';
 import axios from 'axios';
@@ -222,6 +223,18 @@ export default function PublicCropLibraryPage() {
   const activeLibraryFilterCount = countActivePublicCropFilters(libraryFilters);
   const isMobile = useMediaQuery('(max-width:600px)');
   const useCompactLibraryLayout = useMediaQuery('(max-width:899.95px)');
+  const libraryFilterButton = <IconButton
+    size="small" onClick={(event) => setLibraryFilterAnchorEl(event.currentTarget)}
+    aria-expanded={isLibraryFilterPopoverOpen} aria-haspopup="dialog"
+    aria-controls={isLibraryFilterPopoverOpen ? 'public-crop-filters-popover' : undefined}
+    aria-label={t('filters.openAdvanced')}
+    sx={{ bgcolor: activeLibraryFilterCount > 0 ? 'action.selected' : 'transparent',
+      ...(useCompactLibraryLayout ? { minWidth: 48, minHeight: 48 } : {}),
+    }}>
+    <Badge color="primary" badgeContent={activeLibraryFilterCount > 0 ? activeLibraryFilterCount : null}>
+      <TuneIcon fontSize="small" />
+    </Badge>
+  </IconButton>;
   const libraryAreaRef = useRef<HTMLDivElement>(null);
   // How tall the two-pane area is allowed to be, measured directly from where it
   // actually starts in the viewport rather than guessed via a hardcoded "chrome
@@ -464,8 +477,8 @@ export default function PublicCropLibraryPage() {
   const libraryFilterOptions = useMemo(() => getPublicCropFilterOptions(crops), [crops]);
   const normalizedSearchQuery = normalizePublicCropSearchQuery(query);
   const filterMatchingLibraryCrops = useMemo(
-    () => crops.filter((crop) => matchesPublicCropFilters(crop, libraryFilters)),
-    [crops, libraryFilters],
+    () => crops.filter((crop) => matchesPublicCropFilters(crop, libraryFilters, libraryFilterOptions.plantHealthValues)),
+    [crops, libraryFilters, libraryFilterOptions.plantHealthValues],
   );
   const filteredLibraryCrops = useMemo(
     () => filterCropGroupsForSearch({
@@ -556,6 +569,7 @@ export default function PublicCropLibraryPage() {
       : []),
     [companionSourceCrop, crops, plantFamilies, t],
   );
+  const publicPlantHealth = selectedCrop ? getPublicFieldValue('plant_health', selectedCrop.plant_health) : null;
   const getPublicFieldSource = useCallback((field: keyof PublicCrop): ValueSource | null => {
     if (isSpeciesView || !selectedCrop?.variety || !selectedSpeciesCrop) {
       return null;
@@ -1635,36 +1649,13 @@ export default function PublicCropLibraryPage() {
                                 </IconButton>
                               </AppTooltip>
                             ) : null}
-                            <IconButton
-                              size="small"
-                              onClick={(event) => setLibraryFilterAnchorEl(event.currentTarget)}
-                              aria-expanded={isLibraryFilterPopoverOpen}
-                              aria-haspopup="dialog"
-                              aria-controls={isLibraryFilterPopoverOpen ? 'public-crop-filters-popover' : undefined}
-                              aria-label={t('filters.openAdvanced')}
-                              sx={{ bgcolor: activeLibraryFilterCount > 0 ? 'action.selected' : 'transparent' }}
-                            >
-                              <Badge color="primary" badgeContent={activeLibraryFilterCount > 0 ? activeLibraryFilterCount : null}>
-                                <TuneIcon fontSize="small" />
-                              </Badge>
-                            </IconButton>
+                            {libraryFilterButton}
                           </>
                         ),
                       }
                     }}
                 />
               </Box>
-              <PublicCropFiltersPopover
-                anchorEl={libraryFilterAnchorEl}
-                onClose={() => setLibraryFilterAnchorEl(null)}
-                filters={libraryFilters}
-                onFilterChange={(key, value) => setLibraryFilters((prev) => ({ ...prev, [key]: value }))}
-                options={libraryFilterOptions}
-                onReset={() => {
-                  setLibraryFilters(EMPTY_PUBLIC_CROP_FILTERS);
-                  setLibraryFilterAnchorEl(null);
-                }}
-              />
               {isCropLoading ? (
                 <Box sx={{ minHeight: 220, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Stack spacing={1} sx={{ alignItems: "center", }} >
@@ -2065,12 +2056,15 @@ export default function PublicCropLibraryPage() {
                               </DetailGrid>
                             </DetailSection>
                           ) : null,
-                          hasAnyDetailValue(...SITE_HEALTH_FIELDS.map((field) => getPublicFieldValue(field, selectedCrop[field]))) ? (
+                          (publicPlantHealth?.entries.length || hasAnyDetailValue(...SITE_HEALTH_FIELDS.map((field) => getPublicFieldValue(field, selectedCrop[field])))) ? (
                             <DetailSection key="siteHealth" title={t('siteHealth.title')}>
+                              {publicPlantHealth?.entries.length ? <Box sx={{ mb: 2 }}>
+                                <PlantHealthChips value={publicPlantHealth} />
+                              </Box> : null}
                               <DetailGrid>
                                 {SITE_HEALTH_FIELDS
                                   .filter((field) => hasDetailValue(getPublicFieldValue(field, selectedCrop[field])))
-                                  .map((field) => <DetailRow key={field} label={t(`siteHealth.fields.${field}`)} value={formatSiteHealthValue(field, getPublicFieldValue(field, selectedCrop[field]), t)} source={getPublicFieldSource(field)} />)}
+                                  .map((field) => <DetailRow key={field} label={t(field === 'pests_diseases' ? 'plantHealth.notes' : `siteHealth.fields.${field}`)} value={formatSiteHealthValue(field, getPublicFieldValue(field, selectedCrop[field]), t)} source={getPublicFieldSource(field)} />)}
                               </DetailGrid>
                             </DetailSection>
                           ) : null,
@@ -2347,7 +2341,16 @@ export default function PublicCropLibraryPage() {
           </Box> : null}
         </Stack>
       </Box>
+      <PublicCropFiltersPopover
+        anchorEl={libraryFilterAnchorEl}
+        onClose={() => setLibraryFilterAnchorEl(null)}
+        filters={libraryFilters}
+        onFilterChange={(key, value) => setLibraryFilters((prev) => ({ ...prev, [key]: value }))}
+        options={libraryFilterOptions}
+        onReset={() => { setLibraryFilters(EMPTY_PUBLIC_CROP_FILTERS); setLibraryFilterAnchorEl(null); }}
+      />
       <PublicCropMobileSelectorDialog
+          filterControl={libraryFilterButton}
           open={mobileSelectorOpen}
           query={query}
           crops={filteredLibraryCrops}

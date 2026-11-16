@@ -436,13 +436,23 @@ def get_or_create_season_for_period(
     end_date: date,
     *,
     created_by=None,
+    user_name: str = '',
 ) -> Season:
     """Return the project's season starting on `start_date`, creating it if missing."""
-    season, _ = Season.objects.get_or_create(
+    season, created = Season.objects.get_or_create(
         project=project,
         start_date=start_date,
         defaults={'end_date': end_date, 'created_by': created_by},
     )
+    if created:
+        from farm.history import _serialize_instance, record_entity_revision
+
+        record_entity_revision(
+            project=project, entity_type='season', object_id=season.pk,
+            action=EntityRevision.ACTION_CREATED,
+            snapshot={**_serialize_instance(season), '_project_version_internal': True},
+            display_name=season.label, user_name=user_name,
+        )
     return season
 
 

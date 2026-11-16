@@ -9,6 +9,8 @@ from rest_framework.test import APIClient, APITestCase
 from farm.models import (
     Crop,
     CropImportDraft,
+    EntityRevision,
+    Location,
     Project,
     ProjectApiToken,
     ProjectMembership,
@@ -61,6 +63,16 @@ class CropImportFlowTestCase(APITestCase):
 
 class PreviewIsReadOnlyTests(CropImportFlowTestCase):
     """The preview step must never touch crop data."""
+
+    def test_valid_and_malformed_previews_create_no_project_versions_or_checkpoints(self):
+        Location.objects.create(project=self.project, name='Untouched legacy location')
+        Crop.objects.create(project=self.project, name='Legacy crop')
+        before = list(EntityRevision.objects.filter(project=self.project).values())
+        response = self.preview({'name': 'Preview candidate'})
+        self.assertEqual(response.status_code, 200, response.data)
+        malformed = self.client.post(PREVIEW_URL, {'items': 'invalid'}, format='json')
+        self.assertEqual(malformed.status_code, 400, malformed.data)
+        self.assertEqual(list(EntityRevision.objects.filter(project=self.project).values()), before)
 
     def test_preview_creates_no_crops(self):
         response = self.preview({'name': 'Brokkoli', 'variety': 'Calabrese', 'row_spacing_cm': 50})

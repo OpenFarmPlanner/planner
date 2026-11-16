@@ -582,7 +582,9 @@
       "fallback": "Entrada",
       "openTarget": "Abrir",
       "season": "Temporada",
-      "cropCompanion": "Vecino (asociación de cultivos)"
+      "cropCompanion": "Vecino (asociación de cultivos)",
+      "cropTaskTemplate": "Plantilla de tareas",
+      "seasonPattern": "Ajustes de temporada"
     },
     "batch": {
       "seasonCreate": "Temporada {{season}} creada",
@@ -602,7 +604,30 @@
       "countUpdated_one": "{{count}} serie actualizada",
       "countUpdated_other": "{{count}} series actualizadas",
       "countUpdated_many": "{{count}} series actualizadas",
-      "reverted": "Restaurado: {{what}}"
+      "reverted": "Restaurado: {{what}}",
+      "undo": "Deshacer esta acción"
+    },
+    "import": {
+      "summary_one": "{{count}} cultivo importado",
+      "summary_other": "{{count}} cultivos importados",
+      "actions": "Acciones de importación",
+      "details": "Registros afectados",
+      "undo": "Deshacer solo esta importación",
+      "selectiveNotice": "Solo se desharán los cambios de esta importación. Los demás cambios posteriores se conservarán. La operación se guardará como una nueva entrada del historial.",
+      "loading": "Comprobando la operación",
+      "previewError": "No se pudo comprobar esta operación. Cierra el diálogo e inténtalo de nuevo.",
+      "removeCreated_one": "Se eliminará {{count}} cultivo recién creado.",
+      "removeCreated_other": "Se eliminarán {{count}} cultivos recién creados.",
+      "restoreUpdated_one": "{{count}} cultivo existente volverá a su estado anterior a la importación.",
+      "restoreUpdated_other": "{{count}} cultivos existentes volverán a su estado anterior a la importación.",
+      "laterEdit": "Los registros afectados se editaron después. La operación está bloqueada para conservar esos cambios.",
+      "dependentData": "Otros registros hacen referencia a esta importación. La operación está bloqueada para proteger los vínculos y los datos.",
+      "summary_many": "{{count}} cultivos importados",
+      "removeCreated_many": "Se eliminarán {{count}} cultivos recién creados.",
+      "restoreUpdated_many": "{{count}} cultivos existentes volverán a su estado anterior a la importación.",
+      "undone": "Importación deshecha",
+      "alreadyUndone": "Esta importación ya se ha deshecho. Usa «Restaurar esta versión» para elegir un estado anterior del proyecto.",
+      "unavailableState": "El estado anterior ya no está completo o entra en conflicto con otros registros. La operación está bloqueada; no se ha cambiado nada."
     }
   },
   "shortcuts": {
@@ -1701,7 +1726,7 @@
   "restoreDialog": {
     "title": "¿Restaurar la versión?",
     "batchDescription": "Se deshará esta acción y todos los cambios relacionados.",
-    "versionDescription": "Estás restaurando una versión anterior.",
+    "versionDescription": "Restauras todo el proyecto a esta versión. Se desharán todos los cambios posteriores, incluidos los cultivos y bancales creados después.",
     "batchNotice": "Se restaurará el estado anterior. La acción permanece en el historial y se puede volver a realizar.",
     "versionNotice": "La versión actual se conserva. Antes de restaurar se crea automáticamente una nueva versión, para que puedas volver en cualquier momento.",
     "cancel": "Cancelar",
@@ -2086,6 +2111,32 @@
     "templateEntry": "Entrada de ejemplo sintética",
     "validation": "Usa un máximo de 40 nombres individuales de hasta 200 caracteres cada uno.",
     "unspecified": "Sin especificar / heredar del cultivo",
-    "emptySelection": "Selección propia explícitamente vacía"
+    "emptySelection": "Selección propia explícitamente vacía",
+    "officialHelper": "Selecciona explícitamente entradas del catálogo. Los nombres libres se quedan en el proyecto.",
+    "officialSearchError": "No se pudieron cargar las sugerencias del catálogo. Inténtalo de nuevo.",
+    "publishSkipped": "Entradas sin publicar: {{number}}. Se conservan en el proyecto.",
+    "publication": {
+      "title": "Vincular entradas privadas: {{name}}",
+      "helper": "Elige como máximo una entrada aprobada del catálogo para cada nombre privado. «Guardar vínculo» modifica inmediatamente este cultivo del proyecto, aunque canceles la publicación. Los nombres sin vincular siguen siendo privados. Las nuevas propuestas estarán disponibles tras la moderación.",
+      "map": "Guardar vínculo",
+      "propose": "Proponer el nombre para revisión",
+      "proposed": "Propuesta enviada. El nombre sigue siendo privado hasta que lo vincules expresamente.",
+      "saved": "Se ha guardado el vínculo privado. Confirma por separado la publicación o la sincronización con la biblioteca.",
+      "error": "No se pudo completar la acción. Comprueba la selección e inténtalo de nuevo.",
+      "conflict": "El cultivo o la selección ha cambiado. Cierra el diálogo y vuelve a cargar los cultivos antes de revisar el vínculo.",
+      "inherited": "Esta variedad hereda las entradas de «{{name}}». Guarda el vínculo en ese cultivo; se aplica a todas las variedades que las heredan. La herencia sigue activa.",
+      "editGeneral": "Editar cultivo general"
+    },
+    "filterPlaceholder": "Seleccionar entradas utilizadas",
+    "filterHelper": "Elige entradas existentes. El cultivo debe contener todas las entradas seleccionadas (Y).",
+    "filterSearchError": "No se pudieron cargar los nombres del catálogo. Inténtalo de nuevo.",
+    "relationshipsTitle": "Relaciones de hospedantes documentadas",
+    "relationshipsHint": "Estas relaciones del catálogo tienen fuentes. Seleccionar una entrada en un cultivo no demuestra por sí solo una relación de hospedante ni una infestación. Consulta las fuentes y las precisiones sobre variedades.",
+    "broadRelationshipHint": "Este grupo general o concepto de enfermedad no identifica una plaga o un patógeno concreto confirmado. No permite establecer una relación de hospedante compartida.",
+    "noConfirmedHosts": "No se conocen relaciones de hospedantes confirmadas. La falta de información significa desconocido, no resistente.",
+    "qualifiedVariety": "Evidencia específica de la variedad: {{name}}",
+    "speciesHost": "Evidencia a nivel de especie cultivada; consulta las precisiones sobre variedades.",
+    "relationshipsError": "No se pudieron cargar las relaciones de hospedantes.",
+    "relationshipsActionHint": "Selecciona una entrada del catálogo para consultar las relaciones de hospedantes documentadas."
   }
 }

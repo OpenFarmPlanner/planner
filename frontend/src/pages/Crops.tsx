@@ -85,7 +85,7 @@ function Crops() {
   const setTopbarContextActions = outletContext?.setTopbarContextActions;
   const activeSeasonLoaded = outletContext?.activeSeasonLoaded ?? true;
   const isMissingActiveSeason = Boolean(outletContext) && activeSeasonLoaded && !outletContext?.activeSeason;
-  const { shouldShowProjectRequiredState, missingProjectReason } = useProjectRequirement();
+  const { shouldShowProjectRequiredState, missingProjectReason, activeProjectId } = useProjectRequirement();
   const { selectedCropId, updateSelectedCropId } = useSelectedCropSync();
   const fallbackHistoryActorLabel = user?.display_label || user?.display_name || user?.email || undefined;
 
@@ -835,6 +835,8 @@ function Crops() {
       ) : null}
       <Box sx={{ display: initialLoadFailed ? 'none' : 'flex', gap: 2, mb: 2 }}>
         <CropDetail
+          key={activeProjectId ?? 'no-project'}
+          projectId={activeProjectId}
           crops={crops}
           isLoading={isCropsLoading}
           selectedCropId={selectedCropId}
@@ -937,9 +939,14 @@ function Crops() {
         open={publishWizardOpen}
         crop={selectedCrop}
         varieties={publishWizardVarieties}
+        projectCrops={crops}
         termsAlreadyAccepted={Boolean(user?.public_library_terms_accepted)}
         publishing={Boolean(selectedCrop && publishingCropId === selectedCrop.id)}
         onClose={() => setPublishWizardOpen(false)}
+        onCropMapped={saved => {
+          setCrops(previous => previous.map(crop => crop.id === saved.id ? saved : crop));
+          void fetchCrops();
+        }}
         onPublish={handlePublishingWizardPublish}
         onLinkPublicCrop={handleLinkPublicCropSubmit}
         onSyncPublicCrop={handleSyncPublicCropSubmit}

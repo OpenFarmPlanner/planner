@@ -581,7 +581,9 @@
       "fallback": "Voce",
       "openTarget": "Apri",
       "season": "Stagione",
-      "cropCompanion": "Vicino (consociazione)"
+      "cropCompanion": "Vicino (consociazione)",
+      "cropTaskTemplate": "Modello di attività",
+      "seasonPattern": "Impostazioni della stagione"
     },
     "batch": {
       "seasonCreate": "Stagione {{season}} creata",
@@ -601,7 +603,30 @@
       "countDeleted_many": "{{count}} serie eliminate",
       "countCreated_many": "{{count}} serie create",
       "countRestored_many": "{{count}} serie ripristinate",
-      "countUpdated_many": "{{count}} serie aggiornate"
+      "countUpdated_many": "{{count}} serie aggiornate",
+      "undo": "Annulla questa azione"
+    },
+    "import": {
+      "summary_one": "{{count}} coltura importata",
+      "summary_other": "{{count}} colture importate",
+      "actions": "Azioni di importazione",
+      "details": "Dati interessati",
+      "undo": "Annulla solo questa importazione",
+      "selectiveNotice": "Saranno annullate solo le modifiche di questa importazione. Le altre modifiche successive saranno conservate. L’operazione sarà registrata nella cronologia.",
+      "loading": "Verifica dell’annullamento",
+      "previewError": "Impossibile verificare l’annullamento. Chiudi la finestra e riprova.",
+      "removeCreated_one": "Verrà rimossa {{count}} coltura creata dall’importazione.",
+      "removeCreated_other": "Verranno rimosse {{count}} colture create dall’importazione.",
+      "restoreUpdated_one": "{{count}} coltura esistente tornerà allo stato precedente all’importazione.",
+      "restoreUpdated_other": "{{count}} colture esistenti torneranno allo stato precedente all’importazione.",
+      "laterEdit": "I dati interessati sono stati modificati successivamente. L’annullamento è bloccato per conservare tali modifiche.",
+      "dependentData": "Altri dati fanno riferimento a questa importazione. L’annullamento è bloccato per proteggere i collegamenti e i dati.",
+      "summary_many": "{{count}} colture importate",
+      "removeCreated_many": "Verranno rimosse {{count}} colture create dall’importazione.",
+      "restoreUpdated_many": "{{count}} colture esistenti torneranno allo stato precedente all’importazione.",
+      "undone": "Importazione annullata",
+      "alreadyUndone": "Questa importazione è già stata annullata. Usa «Ripristina questa versione» per scegliere uno stato precedente del progetto.",
+      "unavailableState": "Lo stato precedente non è più completo o è in conflitto con altri dati. L’annullamento è bloccato; nessuna modifica è stata effettuata."
     }
   },
   "shortcuts": {
@@ -1700,7 +1725,7 @@
   "restoreDialog": {
     "title": "Ripristinare la versione?",
     "batchDescription": "Questa azione e tutte le modifiche correlate verranno annullate.",
-    "versionDescription": "Stai ripristinando una versione precedente.",
+    "versionDescription": "Ripristini l’intero progetto a questa versione. Tutte le modifiche successive saranno annullate, incluse le colture e le aiuole create in seguito.",
     "batchNotice": "Verrà ripristinato lo stato precedente. L'azione rimane nella cronologia e può essere eseguita di nuovo.",
     "versionNotice": "La versione attuale viene conservata. Prima del ripristino viene creata automaticamente una nuova versione, così puoi tornare indietro in qualsiasi momento.",
     "cancel": "Annulla",
@@ -2086,6 +2111,32 @@
     "templateEntry": "Voce di esempio sintetica",
     "validation": "Usa al massimo 40 nomi singoli di 200 caratteri ciascuno.",
     "unspecified": "Non specificato / eredita dalla coltura",
-    "emptySelection": "Selezione propria esplicitamente vuota"
+    "emptySelection": "Selezione propria esplicitamente vuota",
+    "officialHelper": "Seleziona esplicitamente le voci del catalogo. I nomi liberi restano nel progetto.",
+    "officialSearchError": "Impossibile caricare i suggerimenti del catalogo. Riprova.",
+    "publishSkipped": "Voci non pubblicate: {{number}}. Restano nel progetto.",
+    "publication": {
+      "title": "Associa le voci private: {{name}}",
+      "helper": "Scegli al massimo una voce approvata del catalogo per ogni nome privato. «Salva associazione» modifica subito questa coltura del progetto, anche se annulli la pubblicazione. I nomi non associati restano privati. Le nuove proposte saranno disponibili dopo la moderazione.",
+      "map": "Salva associazione",
+      "propose": "Proponi il nome per la revisione",
+      "proposed": "Proposta inviata. Il nome resta privato finché non lo associ esplicitamente.",
+      "saved": "L’associazione privata è stata salvata. Conferma separatamente la pubblicazione o la sincronizzazione con la biblioteca.",
+      "error": "Impossibile completare l’azione. Controlla la selezione e riprova.",
+      "conflict": "La coltura o la selezione è cambiata. Chiudi la finestra e ricarica le colture prima di verificare di nuovo l’associazione.",
+      "inherited": "Questa varietà eredita le voci da «{{name}}». Salva l’associazione su quella coltura: vale per tutte le varietà che le ereditano. L’ereditarietà resta attiva.",
+      "editGeneral": "Modifica coltura generale"
+    },
+    "filterPlaceholder": "Seleziona voci utilizzate",
+    "filterHelper": "Scegli voci esistenti. La coltura deve contenere tutte le voci selezionate (E).",
+    "filterSearchError": "Impossibile caricare i nomi del catalogo. Riprova.",
+    "relationshipsTitle": "Relazioni con piante ospiti documentate",
+    "relationshipsHint": "Queste relazioni del catalogo sono documentate da fonti. Selezionare una voce per una coltura non dimostra da solo una relazione con una pianta ospite o un’infestazione. Consulta le fonti e le precisazioni sulle varietà.",
+    "broadRelationshipHint": "Questo gruppo generale o concetto di malattia non identifica un singolo parassita o agente patogeno confermato. Non permette di stabilire una relazione condivisa con piante ospiti.",
+    "noConfirmedHosts": "Nessuna relazione confermata con piante ospiti nota. L’assenza di informazioni significa sconosciuto, non resistente.",
+    "qualifiedVariety": "Prova specifica per la varietà: {{name}}",
+    "speciesHost": "Prova a livello di specie coltivata; consulta le precisazioni sulle varietà.",
+    "relationshipsError": "Impossibile caricare le relazioni con piante ospiti.",
+    "relationshipsActionHint": "Seleziona una voce del catalogo per consultare le relazioni documentate con piante ospiti."
   }
 }

@@ -1,6 +1,6 @@
 import { loadRetryAlertSx } from '../../../components/loadRetryStyles';
 import LoadRetryButton from '../../../components/LoadRetryButton';
-import { useEffect, useMemo, type FormEvent, type Ref, type UIEvent } from 'react';
+import { useEffect, useMemo, type FormEvent, type ReactNode, type Ref, type UIEvent } from 'react';
 import {
   Alert,
   Box,
@@ -50,6 +50,7 @@ export interface PublicCropMobileSelectorDialogProps {
   onSearchSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onSelect: (crop: PublicCrop, itemKind: CropHierarchyItemKind, speciesKey: string) => void;
   onListScroll: (event: UIEvent<HTMLUListElement>) => void;
+  filterControl?: ReactNode;
 }
 
 export function PublicCropMobileSelectorDialog({
@@ -67,6 +68,7 @@ export function PublicCropMobileSelectorDialog({
   onSearchSubmit,
   onSelect,
   onListScroll,
+  filterControl,
 }: PublicCropMobileSelectorDialogProps) {
   const { t, i18n } = useTranslation('crops');
   const language = i18n.resolvedLanguage ?? i18n.language;
@@ -126,6 +128,7 @@ export function PublicCropMobileSelectorDialog({
             label={t('library.searchLabel')}
             size="medium"
             fullWidth
+            slotProps={{ input: { endAdornment: filterControl } }}
           />
         </Box>
         {loading ? (

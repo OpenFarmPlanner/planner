@@ -1,4 +1,5 @@
-import type { Crop, PublicCropSyncFieldChange } from '../api/types';
+import type { Crop, PlantHealthSelections, PublicCropSyncFieldChange } from '../api/types';
+import { mergeOfficialPlantHealth, officialPlantHealth, samePlantHealthIdentities } from './plantHealth';
 import {
   arePublicValuesEqual,
   isEmptyPublicValue,
@@ -35,6 +36,7 @@ export const LIBRARY_LINK_FIELDS = [
   'germination_pretreatment',
   'specific_properties',
   'pests_diseases',
+  'plant_health',
   'light_requirement',
   'water_requirement',
   'life_cycle',
@@ -88,6 +90,17 @@ export function planLibraryLink(formValues: Partial<Crop>, libraryValues: Partia
   LIBRARY_LINK_FIELDS.forEach((field) => {
     const libraryValue = libraryValues[field];
     const formValue = formValues[field];
+    if (field === 'plant_health') {
+      const remote = officialPlantHealth(libraryValues.plant_health);
+      const local = formValues.plant_health;
+      if (!remote || samePlantHealthIdentities(local, remote)) return;
+      if (local == null || (local.entries.length > 0 && !local.entries.some(entry => entry.catalogue_identity))) {
+        fills.plant_health = mergeOfficialPlantHealth(local, remote);
+      } else {
+        conflicts.push({ field, local_value: local, public_value: remote, pushable: true });
+      }
+      return;
+    }
     if (isEmptyPublicValue(libraryValue) || arePublicValuesEqual(formValue, libraryValue)) {
       return;
     }
@@ -107,7 +120,9 @@ export function pickLibraryChoices(
 ): Partial<Crop> {
   return Object.fromEntries(conflicts
     .filter((change) => choices[change.field] !== 'mine')
-    .map((change) => [change.field, change.public_value]));
+    .map((change) => [change.field, change.field === 'plant_health'
+      ? mergeOfficialPlantHealth(change.local_value as PlantHealthSelections | null, change.public_value as PlantHealthSelections | null)
+      : change.public_value]));
 }
 
 /** The entry's non-empty values for the linked fields, e.g. for the general Kultur. */

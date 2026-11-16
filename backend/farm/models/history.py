@@ -1,6 +1,7 @@
 """Entity revision history models (current + deprecated drain-only)."""
 
 
+from django.conf import settings
 from django.db import models
 
 from .projects import Project
@@ -56,12 +57,14 @@ class BatchOperation(models.Model):
     TYPE_SEASON_UNDELETE = 'season_undelete'
     TYPE_SEASON_COPY_DATA = 'season_copy_data'
     TYPE_REVERTED = 'batch_reverted'
+    TYPE_CROP_IMPORT = 'crop_import'
     TYPE_CHOICES = [
         (TYPE_SEASON_CREATE, 'Season created'),
         (TYPE_SEASON_DELETE, 'Season deleted'),
         (TYPE_SEASON_UNDELETE, 'Season restored'),
         (TYPE_SEASON_COPY_DATA, 'Season data copied'),
         (TYPE_REVERTED, 'Batch operation reverted'),
+        (TYPE_CROP_IMPORT, 'Crops imported'),
     ]
 
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='batch_operations')
@@ -70,6 +73,12 @@ class BatchOperation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     user_name = models.CharField(max_length=150, blank=True)
     reverted_at = models.DateTimeField(null=True, blank=True)
+    request_id = models.UUIDField(null=True, blank=True, unique=True)
+    initiated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='+',
+    )
+    completed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']

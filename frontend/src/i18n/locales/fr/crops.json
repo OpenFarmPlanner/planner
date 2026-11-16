@@ -582,7 +582,9 @@
       "fallback": "Entrée",
       "openTarget": "Ouvrir",
       "season": "Saison",
-      "cropCompanion": "Voisin (association de cultures)"
+      "cropCompanion": "Voisin (association de cultures)",
+      "cropTaskTemplate": "Modèle de tâche",
+      "seasonPattern": "Paramètres de saison"
     },
     "batch": {
       "seasonCreate": "Saison {{season}} créée",
@@ -602,7 +604,30 @@
       "countUpdated_one": "{{count}} série mise à jour",
       "countUpdated_other": "{{count}} séries mises à jour",
       "countUpdated_many": "{{count}} séries mises à jour",
-      "reverted": "Restauré : {{what}}"
+      "reverted": "Restauré : {{what}}",
+      "undo": "Annuler cette action"
+    },
+    "import": {
+      "summary_one": "{{count}} culture importée",
+      "summary_other": "{{count}} cultures importées",
+      "actions": "Actions de l’import",
+      "details": "Enregistrements concernés",
+      "undo": "Annuler uniquement cet import",
+      "selectiveNotice": "Seules les modifications de cet import seront annulées. Les autres modifications ultérieures seront conservées. L’annulation sera enregistrée dans l’historique.",
+      "loading": "Vérification de l’annulation",
+      "previewError": "Impossible de vérifier cette annulation. Fermez la fenêtre et réessayez.",
+      "removeCreated_one": "{{count}} culture nouvellement créée sera supprimée.",
+      "removeCreated_other": "{{count}} cultures nouvellement créées seront supprimées.",
+      "restoreUpdated_one": "{{count}} culture existante retrouvera son état avant l’import.",
+      "restoreUpdated_other": "{{count}} cultures existantes retrouveront leur état avant l’import.",
+      "laterEdit": "Des enregistrements concernés ont été modifiés ensuite. L’annulation est bloquée pour préserver ces modifications.",
+      "dependentData": "D’autres enregistrements font référence à cet import. L’annulation est bloquée pour préserver les liens et les données.",
+      "summary_many": "{{count}} cultures importées",
+      "removeCreated_many": "{{count}} cultures nouvellement créées seront supprimées.",
+      "restoreUpdated_many": "{{count}} cultures existantes retrouveront leur état avant l’import.",
+      "undone": "Import annulé",
+      "alreadyUndone": "Cet import a déjà été annulé. Utilisez « Restaurer cette version » pour choisir un état antérieur du projet.",
+      "unavailableState": "L’état précédent n’est plus entièrement disponible ou est incompatible avec d’autres enregistrements. L’annulation est bloquée ; rien n’a été modifié."
     }
   },
   "shortcuts": {
@@ -1701,7 +1726,7 @@
   "restoreDialog": {
     "title": "Restaurer la version ?",
     "batchDescription": "Cette action et toutes les modifications associées seront annulées.",
-    "versionDescription": "Vous restaurez une version antérieure.",
+    "versionDescription": "Vous rétablissez tout le projet dans cette version. Toutes les modifications ultérieures seront annulées, y compris les cultures et les planches créées ensuite.",
     "batchNotice": "L'état précédent sera restauré. L'action reste dans l'historique et peut être effectuée à nouveau.",
     "versionNotice": "La version actuelle est conservée. Une nouvelle version est créée automatiquement avant la restauration, afin que vous puissiez revenir en arrière à tout moment.",
     "cancel": "Annuler",
@@ -2086,6 +2111,32 @@
     "templateEntry": "Entrée d’exemple synthétique",
     "validation": "Utilisez au maximum 40 noms individuels de 200 caractères chacun.",
     "unspecified": "Non renseigné / hériter de la culture",
-    "emptySelection": "Sélection personnelle explicitement vide"
+    "emptySelection": "Sélection personnelle explicitement vide",
+    "officialHelper": "Sélectionnez explicitement des entrées du catalogue. Les noms libres restent dans le projet.",
+    "officialSearchError": "Les suggestions du catalogue n’ont pas pu être chargées. Réessayez.",
+    "publishSkipped": "Entrées non publiées : {{number}}. Elles restent dans le projet.",
+    "publication": {
+      "title": "Associer les entrées privées : {{name}}",
+      "helper": "Choisissez au plus une entrée approuvée du catalogue pour chaque nom privé. « Enregistrer l’association » modifie immédiatement cette culture du projet, même si vous annulez la publication. Les noms non associés restent privés. Les nouvelles propositions sont disponibles après modération.",
+      "map": "Enregistrer l’association",
+      "propose": "Proposer le nom à la modération",
+      "proposed": "Proposition envoyée. Le nom reste privé tant que vous ne l’associez pas explicitement.",
+      "saved": "L’association privée a été enregistrée. Confirmez séparément la publication ou la synchronisation avec la bibliothèque.",
+      "error": "L’action a échoué. Vérifiez votre sélection et réessayez.",
+      "conflict": "La culture ou la sélection a changé. Fermez la boîte de dialogue et rechargez vos cultures avant de vérifier à nouveau l’association.",
+      "inherited": "Cette variété reprend les entrées de « {{name}} ». Enregistrez l’association sur cette culture ; elle s’applique à toutes les variétés qui en héritent. L’héritage reste actif.",
+      "editGeneral": "Modifier la culture générale"
+    },
+    "filterPlaceholder": "Choisir des entrées utilisées",
+    "filterHelper": "Choisis des entrées existantes. La culture doit contenir toutes les entrées sélectionnées (ET).",
+    "filterSearchError": "Impossible de charger les noms du catalogue. Réessaie.",
+    "relationshipsTitle": "Relations avec des plantes hôtes documentées",
+    "relationshipsHint": "Ces relations du catalogue sont documentées. Sélectionner une entrée sur une culture ne prouve ni une relation avec une plante hôte ni une infestation. Consulte les sources et les précisions sur les variétés.",
+    "broadRelationshipHint": "Ce groupe général ou concept de maladie ne désigne pas un ravageur ou un agent pathogène précis et confirmé. Il ne permet pas d’établir une relation commune avec des plantes hôtes.",
+    "noConfirmedHosts": "Aucune relation confirmée avec des plantes hôtes connue. Une information manquante signifie inconnu, et non résistant.",
+    "qualifiedVariety": "Preuve concernant une variété : {{name}}",
+    "speciesHost": "Preuve au niveau de l’espèce cultivée ; consulte les précisions sur les variétés.",
+    "relationshipsError": "Impossible de charger les relations avec des plantes hôtes.",
+    "relationshipsActionHint": "Sélectionne une entrée du catalogue pour consulter les relations documentées avec des plantes hôtes."
   }
 }

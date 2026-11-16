@@ -9,11 +9,15 @@ from urllib.parse import urlparse
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from crops.plant_health_values import validate_plant_health_value
+from crops.plant_health_values import (
+    plant_health_identities,
+    validate_plant_health_value,
+    validate_public_plant_health_value,
+)
 from crops.specific_properties import crop_specific_property_errors
 from farm.germination import (
     LIGHT_REQUIREMENT_CHOICES as GERMINATION_LIGHT_CHOICES,
@@ -854,7 +858,7 @@ class Crop(TimestampedModel):
         'stratification_temperature_min_c',
         'stratification_temperature_max_c',
         'germination_types', 'germination_pretreatment', 'specific_properties',
-        'pests_diseases', 'light_requirement', 'water_requirement', 'life_cycle',
+        'pests_diseases', 'plant_health', 'light_requirement', 'water_requirement', 'life_cycle',
         'winter_hardiness',
         'harvest_method', 'expected_yield', 'distance_within_row_m',
         'row_spacing_m', 'sowing_depth_m', 'sowing_depth_max_m', 'seed_rate_value', 'seed_rate_unit',
@@ -867,6 +871,7 @@ class Crop(TimestampedModel):
         'selected_seed_demand_supplier_id',
     }
 
+    @transaction.atomic
     def save(self, *args: Any, **kwargs: Any) -> None:
         """Save the crop and auto-generate display color and normalized fields."""
         from farm.utils import normalize_text
@@ -901,14 +906,13 @@ class Crop(TimestampedModel):
         if previous:
             previous['timing_windows'] = previous_windows
         changed_fields = self._compute_changed_fields(previous, current)
-        self._record_save_revision(current, previous, changed_fields)
-
         timing_changed_fields = [
             field for field in ('growth_duration_days', 'harvest_duration_days')
             if field in changed_fields
         ]
         if timing_changed_fields:
             self._recalculate_related_planting_plan_dates(timing_changed_fields)
+        self._record_save_revision(current, previous, changed_fields)
 
     @property
     def pending_timing_windows(self) -> list[Any] | None:
@@ -981,7 +985,13 @@ class Crop(TimestampedModel):
 
         pinned = {crop_field_attname(field) for field in effective_library_pinned_fields(self)}
         tracked = self._SOURCE_DIVERGENCE_TRACKED_FIELDS - pinned
-        if any(previous.get(field) != getattr(self, field) for field in tracked):
+        health_changed = 'plant_health' in tracked and (
+            plant_health_identities(previous.get('plant_health'))
+            != plant_health_identities(self.plant_health)
+        )
+        if health_changed or any(
+            previous.get(field) != getattr(self, field) for field in tracked - {'plant_health'}
+        ):
             self.is_modified_from_source = True
 
     @staticmethod
@@ -1008,12 +1018,14 @@ class Crop(TimestampedModel):
         if history_action is None:
             history_action = EntityRevision.ACTION_CREATED if not previous else EntityRevision.ACTION_UPDATED
 
-        EntityRevision.objects.create(
+        from farm.history.records import record_entity_revision
+
+        record_entity_revision(
             project=self.project,
-            entity_type='crop',
+            entity_type="crop",
             object_id=self.pk,
             action=history_action,
-            display_name=format_crop_display_name(self.name, self.variety) or '',
+            display_name=format_crop_display_name(self.name, self.variety) or "",
             snapshot=serializable_snapshot,
             changed_fields=changed_fields,
         )
@@ -1023,6 +1035,7 @@ class Crop(TimestampedModel):
         from .planning import PlantingPlan
 
         plans_to_update = []
+        date_changes: dict[int, list[str]] = {}
         now = timezone.now()
         plans = self._planting_plans_affected_by_timing_change(changed_timing_fields)
         for plan in plans:
@@ -1042,14 +1055,48 @@ class Crop(TimestampedModel):
             ):
                 plan.updated_at = now
                 plans_to_update.append(plan)
+                date_changes[plan.pk] = [
+                    field
+                    for field, before in (
+                        ("harvest_date", previous_harvest_date),
+                        ("harvest_end_date", previous_harvest_end_date),
+                    )
+                    if getattr(plan, field) != before
+                ]
 
         if plans_to_update:
             PlantingPlan.objects.bulk_update(
                 plans_to_update,
-                ['harvest_date', 'harvest_end_date', 'updated_at'],
+                ["harvest_date", "harvest_end_date", "updated_at"],
+            )
+            self._record_recalculated_plan_dates(date_changes)
+
+    def _record_recalculated_plan_dates(self, changes: dict[int, list[str]]) -> None:
+        from farm.history.records import _entity_display_name, record_entity_revision
+
+        from .planning import PlantingPlan
+
+        for plan in PlantingPlan.objects.filter(
+            project_id=self.project_id,
+            pk__in=changes,
+        ).select_related("crop", "bed"):
+            values = {
+                field.attname: getattr(plan, field.attname) for field in plan._meta.concrete_fields
+            }
+            values["_project_version_internal"] = True
+            record_entity_revision(
+                project=self.project,
+                entity_type="planting_plan",
+                object_id=plan.pk,
+                action=EntityRevision.ACTION_UPDATED,
+                snapshot=json.loads(json.dumps(values, cls=DjangoJSONEncoder)),
+                display_name=_entity_display_name(plan),
+                changed_fields=changes[plan.pk],
             )
 
-    def _planting_plans_affected_by_timing_change(self, changed_timing_fields: list[str]) -> models.QuerySet:
+    def _planting_plans_affected_by_timing_change(
+        self, changed_timing_fields: list[str]
+    ) -> models.QuerySet:
         """Return direct plans plus Sorte plans inheriting the changed timing."""
         from .planning import PlantingPlan
 
@@ -1058,9 +1105,9 @@ class Crop(TimestampedModel):
         is_general_crop = self.crop_species_id is not None and self.variety_normalized is None
         if is_general_crop:
             inherited_timing = Q()
-            if 'growth_duration_days' in changed_timing_fields:
+            if "growth_duration_days" in changed_timing_fields:
                 inherited_timing |= Q(crop__growth_duration_days__isnull=True)
-            if 'harvest_duration_days' in changed_timing_fields:
+            if "harvest_duration_days" in changed_timing_fields:
                 inherited_timing |= Q(crop__harvest_duration_days__isnull=True)
             if inherited_timing:
                 inherited_plans = (
@@ -1072,11 +1119,9 @@ class Crop(TimestampedModel):
                     & inherited_timing
                 )
 
-        return (
-            PlantingPlan.objects
-            .filter(direct_plans | inherited_plans)
-            .select_related('crop')
-        )
+        return PlantingPlan.objects.filter(
+            direct_plans | inherited_plans, project_id=self.project_id
+        ).select_related("crop")
 
     def _generate_display_color(self) -> str:
         """Generate a display color using a Golden Angle HSL strategy."""
@@ -1373,6 +1418,13 @@ class PublicCrop(TimestampedModel):
     specific_properties = models.JSONField(
         default=dict, blank=True,
         help_text="Typed values for this record, validated against its species property profile.",
+    )
+    plant_health = models.JSONField(
+        null=True, blank=True, default=None,
+        validators=[validate_public_plant_health_value],
+        help_text=(
+            'Explicit catalogue UUID references only; unresolved project names remain private.'
+        ),
     )
     pests_diseases = models.TextField(blank=True)
     light_requirement = models.CharField(

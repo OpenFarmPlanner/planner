@@ -81,6 +81,8 @@ vi.mock('../components/data-grid/RichTextEditor', () => ({
   ),
 }));
 
+vi.mock('../crop-library/plant-health/api', () => ({ plantHealthAPI: { list: vi.fn().mockResolvedValue({ data: { results: [] } }) } }));
+
 vi.mock('../api/api', async () => {
   const actual = await vi.importActual<typeof import('../api/api')>('../api/api');
   return {
@@ -331,6 +333,24 @@ describe('PublicCropLibraryPage', () => {
     publicCropApiMocks.remove.mockResolvedValue({
       data: { ...publicCrops[0], status: 'removed' },
     });
+  });
+
+  it.each([null, { entries: [] }])('shows inherited health-only sections while respecting an empty variety override: %j', async value => {
+    const identity = '00000000-0000-4000-8000-000000000001';
+    const general = { ...publicCrops[0], id: 10, name: 'Tomate', variety: '', crop_species: 77,
+      plant_health: { entries: [{ name: 'Synthetic inherited pathogen', catalogue_identity: identity }] } };
+    const variety = { ...publicCrops[0], id: 11, crop_species: 77, plant_health: value };
+    publicCropApiMocks.list.mockResolvedValue(paginated([general, variety]));
+    publicCropApiMocks.get.mockResolvedValue({ data: variety });
+    renderPage(['/app/crop-library?cropId=11']);
+    await screen.findByRole('heading', { name: 'Allgemeine Informationen' });
+    if (value === null) {
+      expect(await screen.findByRole('heading', { name: 'Standort und Pflanzengesundheit' })).toBeInTheDocument();
+      expect(await screen.findByText(/Synthetic inherited pathogen/)).toBeInTheDocument();
+    } else {
+      expect(screen.queryByRole('heading', { name: 'Standort und Pflanzengesundheit' })).not.toBeInTheDocument();
+      expect(screen.queryByText(/Synthetic inherited pathogen/)).not.toBeInTheDocument();
+    }
   });
 
   it('hides the global moderation action completely for users without moderation rights', async () => {
@@ -718,6 +738,18 @@ describe('PublicCropLibraryPage', () => {
     await user.click(within(titleTrigger).getByTestId('crop-title-selector-chevron'));
 
     expect(screen.getByRole('listbox', { name: 'Kulturbibliothek' })).toBeInTheDocument();
+  });
+
+  it('opens shared advanced filters inside the mobile selector and closes only the filter', async () => {
+    const user = userEvent.setup();
+    mockMobileViewport();
+    renderPage(['/app/crop-library?cropId=1']);
+    await user.click(await screen.findByRole('button', { name: 'Kultur auswählen' }));
+    await user.click(screen.getByRole('button', { name: 'Erweiterte Filter öffnen' }));
+    expect(screen.getByRole('combobox', { name: 'Schädlings- und Krankheitseinträge' })).toBeVisible();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('combobox', { name: 'Schädlings- und Krankheitseinträge' })).not.toBeInTheDocument());
+    expect(screen.getByRole('textbox', { name: 'Öffentliche Kulturen durchsuchen' })).toBeVisible();
   });
 
   it('keeps the selected public crop when the mobile selector is cancelled', async () => {

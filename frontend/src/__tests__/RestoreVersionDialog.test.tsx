@@ -39,7 +39,6 @@ const renderDialog = (value: CropHistoryEntry | null) => {
       tCrops={tCrops}
       onClose={onClose}
       onConfirm={onConfirm}
-      onConfirmRevertBatch={onConfirmRevertBatch}
     />,
   );
   return { ...view, onClose, onConfirm, onConfirmRevertBatch, getEntryTitle, formatTimestamp };
@@ -50,24 +49,16 @@ const confirmButton = (): HTMLElement =>
 
 const cancelButton = (): HTMLElement => screen.getByRole('button', { name: 'Abbrechen' });
 
-/**
- * The project history's confirmation dialog. It is presentational -- the state
- * and the two restore calls live in `RootLayout.tsx`, and the label helpers are
- * covered by `cropsHistoryUtils.test.ts`. What is left, and what is covered
- * here, is the fork it makes on `is_batch`: a plain revision offers "restore to
- * this version" and confirms with the `history_id`, while a batch offers "undo
- * this action" and confirms with the `batch_id`. Every user-facing string is
- * asserted through the real German bundle, because a swapped branch renders
- * perfectly valid copy that just describes the other operation.
- *
- * Three lines here are unreachable rather than untested, and no fixture can
- * reach them: `entry ? ... : null`, `entry ? isBatchGroupEntry(entry) : false`
- * and the confirm handler's `if (!entry) return;`. MUI unmounts a closed
- * dialog's children, so `entry === null` means nothing below `DialogTitle`
- * exists at all; those guards only narrow `CropHistoryEntry | null` for
- * TypeScript.
- */
 describe('RestoreVersionDialog', () => {
+  it('confirms a legacy secondary undo by batch ID with its own explanation', async () => {
+    const onConfirm = vi.fn();
+    render(<RestoreVersionDialog entry={batchEntry({ history_id: 123, batch_id: 42 })}
+      mode="batch" getEntryTitle={() => 'Season'} formatTimestamp={value => value}
+      tCrops={tCrops} onClose={vi.fn()} onConfirm={onConfirm} />);
+    expect(screen.getByText(tCrops('restoreDialog.batchDescription'))).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Diese Aktion rückgängig machen' }));
+    expect(onConfirm).toHaveBeenCalledWith(42);
+  });
   describe('open state', () => {
     it('renders nothing while the entry is null', () => {
       renderDialog(null);
@@ -92,7 +83,7 @@ describe('RestoreVersionDialog', () => {
   describe('copy for a plain revision', () => {
     it('describes restoring an earlier version', () => {
       renderDialog(entry());
-      expect(screen.getByText('Du stellst eine frühere Version wieder her.')).toBeInTheDocument();
+      expect(screen.getByText('Du setzt das gesamte Projekt auf diese Version zurück. Alle späteren Änderungen werden rückgängig gemacht; später angelegte Kulturen und Beete werden entfernt.')).toBeInTheDocument();
       expect(
         screen.queryByText('Du machst diese Aktion mit allen zugehörigen Änderungen rückgängig.'),
       ).not.toBeInTheDocument();
@@ -109,28 +100,11 @@ describe('RestoreVersionDialog', () => {
   });
 
   describe('copy for a batch entry', () => {
-    it('describes undoing the whole action', () => {
+    it('describes a full restore and automatic backup for grouped entries', () => {
       renderDialog(batchEntry());
-      expect(
-        screen.getByText('Du machst diese Aktion mit allen zugehörigen Änderungen rückgängig.'),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText('Du stellst eine frühere Version wieder her.'),
-      ).not.toBeInTheDocument();
-    });
-
-    it('promises that the action itself stays in the history', () => {
-      renderDialog(batchEntry());
-      expect(
-        screen.getByText(
-          'Der vorherige Stand wird wiederhergestellt. Die Aktion selbst bleibt im Verlauf und kann erneut ausgeführt werden.',
-        ),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText(
-          'Die aktuelle Version bleibt erhalten. Vor der Wiederherstellung wird automatisch eine neue Version erstellt, sodass du jederzeit wieder zurückwechseln kannst.',
-        ),
-      ).not.toBeInTheDocument();
+      expect(screen.getByText(tCrops('restoreDialog.versionDescription'))).toBeInTheDocument();
+      expect(screen.getByText(tCrops('restoreDialog.versionNotice'))).toBeInTheDocument();
+      expect(screen.queryByText(tCrops('restoreDialog.batchDescription'))).not.toBeInTheDocument();
     });
   });
 
@@ -229,14 +203,14 @@ describe('RestoreVersionDialog', () => {
       expect(onClose).not.toHaveBeenCalled();
     });
 
-    it('reverts a batch by its batch id', async () => {
+    it('restores a batch endpoint state by its revision id', async () => {
       const user = userEvent.setup();
       const { onConfirm, onConfirmRevertBatch } = renderDialog(
         batchEntry({ history_id: 123, batch_id: 42 }),
       );
       await user.click(confirmButton());
-      expect(onConfirmRevertBatch).toHaveBeenCalledWith(42);
-      expect(onConfirm).not.toHaveBeenCalled();
+      expect(onConfirm).toHaveBeenCalledWith(123);
+      expect(onConfirmRevertBatch).not.toHaveBeenCalled();
     });
 
     it.each([
@@ -270,12 +244,12 @@ describe('RestoreVersionDialog', () => {
       expect(onConfirmRevertBatch).not.toHaveBeenCalled();
     });
 
-    it('reverts a batch whose id is zero', async () => {
+    it('restores a batch revision even when its batch id is zero', async () => {
       const user = userEvent.setup();
       const { onConfirm, onConfirmRevertBatch } = renderDialog(batchEntry({ batch_id: 0 }));
       await user.click(confirmButton());
-      expect(onConfirmRevertBatch).toHaveBeenCalledWith(0);
-      expect(onConfirm).not.toHaveBeenCalled();
+      expect(onConfirm).toHaveBeenCalledWith(7);
+      expect(onConfirmRevertBatch).not.toHaveBeenCalled();
     });
 
     it('leaves closing the dialog to the caller', async () => {

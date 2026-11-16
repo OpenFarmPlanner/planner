@@ -572,7 +572,9 @@
       "fallback": "Entry",
       "openTarget": "Open",
       "season": "Season",
-      "cropCompanion": "Neighbor (companion planting)"
+      "cropCompanion": "Neighbor (companion planting)",
+      "cropTaskTemplate": "Task template",
+      "seasonPattern": "Season settings"
     },
     "batch": {
       "seasonCreate": "Season {{season}} created",
@@ -588,7 +590,27 @@
       "countRestored_other": "{{count}} planting plans restored",
       "countUpdated_one": "{{count}} planting plan updated",
       "countUpdated_other": "{{count}} planting plans updated",
-      "reverted": "Restored: {{what}}"
+      "reverted": "Restored: {{what}}",
+      "undo": "Undo this action"
+    },
+    "import": {
+      "summary_one": "{{count}} crop imported",
+      "summary_other": "{{count}} crops imported",
+      "actions": "Import actions",
+      "details": "Affected records",
+      "undo": "Undo only this import",
+      "selectiveNotice": "Only this import’s changes will be undone. Other later changes will remain. The undo will be saved as a new history entry.",
+      "loading": "Checking undo",
+      "previewError": "Could not check this undo. Close the dialog and try again.",
+      "removeCreated_one": "{{count}} newly created crop will be removed.",
+      "removeCreated_other": "{{count}} newly created crops will be removed.",
+      "restoreUpdated_one": "{{count}} existing crop will return to its state before the import.",
+      "restoreUpdated_other": "{{count}} existing crops will return to their state before the import.",
+      "laterEdit": "Affected records were edited later. Undo is blocked to preserve your later changes.",
+      "dependentData": "Other records refer to this import. Undo is blocked to protect references and data.",
+      "undone": "Import undone",
+      "alreadyUndone": "This import has already been undone. Use “Restore this version” to choose an earlier project state.",
+      "unavailableState": "The previous state is no longer fully available or conflicts with other records. Undo is blocked; nothing was changed."
     }
   },
   "shortcuts": {
@@ -1656,7 +1678,7 @@
   "restoreDialog": {
     "title": "Restore version?",
     "batchDescription": "This action and all related changes will be undone.",
-    "versionDescription": "You are restoring an earlier version.",
+    "versionDescription": "Restore the whole project to this version. All later changes will be undone, including removing crops and beds created afterward.",
     "batchNotice": "The previous state will be restored. The action remains in the history and can be performed again.",
     "versionNotice": "The current version is retained. A new version is created automatically before restoring, so you can switch back at any time.",
     "cancel": "Cancel",
@@ -2035,6 +2057,32 @@
     "templateEntry": "Synthetic example entry",
     "validation": "Use at most 40 individual names, each up to 200 characters.",
     "unspecified": "Unspecified / inherit from culture",
-    "emptySelection": "Explicitly empty selection"
+    "emptySelection": "Explicitly empty selection",
+    "officialHelper": "Choose catalogue entries explicitly. Free names stay in the project.",
+    "officialSearchError": "Catalogue suggestions could not be loaded. Try again.",
+    "publishSkipped": "Unpublished selections: {{number}}. They remain in the project.",
+    "publication": {
+      "title": "Map private entries: {{name}}",
+      "helper": "Choose at most one approved catalogue entry for each private name. “Save mapping” immediately changes this project crop, even if you cancel publication. Unresolved names stay private. New proposals become available after moderation.",
+      "map": "Save mapping",
+      "propose": "Propose name for review",
+      "proposed": "Proposal submitted. The name stays private until you explicitly map it.",
+      "saved": "The private mapping was saved. Confirm publication or library synchronization separately.",
+      "error": "The action could not be completed. Check your selection and try again.",
+      "conflict": "The crop or selection changed. Close the dialog and reload your crops before reviewing the mapping again.",
+      "inherited": "This variety inherits entries from “{{name}}”. Save the mapping on that culture; it applies to every inheriting variety. Live inheritance stays active.",
+      "editGeneral": "Edit general culture"
+    },
+    "filterPlaceholder": "Select entries in use",
+    "filterHelper": "Choose existing entries. A crop must contain every selected entry (AND).",
+    "filterSearchError": "Catalogue names could not be loaded. Try again.",
+    "relationshipsTitle": "Sourced host relationships",
+    "relationshipsHint": "These are sourced catalogue relationships. Selecting an entry on a crop alone does not establish a host relationship or an infestation. Check the sources and variety qualifications.",
+    "broadRelationshipHint": "This broad group or disease concept does not identify one confirmed pest or pathogen. It cannot establish a shared host relationship.",
+    "noConfirmedHosts": "No confirmed host relationships are known. Missing information means unknown, not resistant.",
+    "qualifiedVariety": "Variety-specific evidence: {{name}}",
+    "speciesHost": "Species-level evidence; check variety qualifications.",
+    "relationshipsError": "Host relationships could not be loaded.",
+    "relationshipsActionHint": "Select a catalogue entry to inspect sourced host relationships."
   }
 }

@@ -645,3 +645,17 @@ describe('arePublicValuesEqual', () => {
     expect(arePublicValuesEqual([{ a: 1, b: 2 }], [{ b: 2, a: 1 }])).toBe(false);
   });
 });
+
+describe('plant-health comparison labels and portable identities', () => {
+  it.each(['de', 'en', 'fr', 'es', 'it', 'pt', 'nl'])('uses localized labels and readable snapshot identities in %s', language => {
+    const translate = i18n.getFixedT(language, 'crops') as TFunction;
+    const id = '00000000-0000-4000-8000-000000000001';
+    expect(getPublicCropComparisonFieldLabel('plant_health', translate)).toBe(translate('plantHealth.label'));
+    expect(getPublicCropFormUnitFieldLabel('plant_health', translate)).toBe(translate('plantHealth.label'));
+    expect(getPublicCropComparisonFieldLabel('pests_diseases', translate)).toBe(translate('plantHealth.notes'));
+    const value = formatPublicCropValue('plant_health', { entries: [{ name: 'Synthetic snapshot', catalogue_identity: id }] }, translate);
+    expect(value).toContain('Synthetic snapshot');
+    expect(value).toContain(id);
+    expect(value).not.toContain('[object Object]');
+  });
+});

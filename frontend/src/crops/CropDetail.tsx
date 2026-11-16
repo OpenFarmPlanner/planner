@@ -8,6 +8,7 @@ import { CropTaskTemplatesSection } from './CropTaskTemplatesSection';
 import { germinationDetailFields, formatGerminationValue } from './germination';
 import { SITE_HEALTH_FIELDS, formatSiteHealthValue } from './siteHealth';
 import { PlantHealthChips } from './PlantHealthChips';
+import { matchesPlantHealthFilter, normalizePlantHealthSelections } from './plantHealth';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Ref } from 'react';
 import { useMediaQuery, useTheme } from '@mui/material';
@@ -82,6 +83,7 @@ import { buildLocalizedText } from '../crop-library/publicCropDisplay';
 import { LocalizedMarkdownNotes } from '../crop-library/components/LocalizedMarkdownNotes';
 
 interface CropDetailProps {
+  projectId?: number | null;
   crops: Crop[];
   isLoading?: boolean;
   selectedCropId?: number;
@@ -129,6 +131,7 @@ import { detailHeaderRowSx, detailHeaderTitleColumnSx, detailHeaderTitleTextSx }
 
 
 export function CropDetail({
+  projectId = null,
   crops,
   isLoading = false,
   selectedCropId,
@@ -205,7 +208,7 @@ export function CropDetail({
     };
   }, [useUnifiedMobileLayout, isLoading, crops.length]);
 
-  const { filters, updateFilter, resetFilters } = usePersistedCropFilters(searchParams, setSearchParams);
+  const { filters, updateFilter, resetFilters } = usePersistedCropFilters(searchParams, setSearchParams, projectId);
   // The clear button unmounts as it empties the field, so focus has to be put
   // back on the input explicitly instead of dropping to the document body.
   // The input is addressed by id because `searchInputRef` belongs to the
@@ -240,6 +243,7 @@ const detailSectionGridSx = {
       const filterValues = [
         filters.selectedFamilyFilter,
         filters.selectedTagFilter,
+        filters.selectedPlantHealthFilter,
         filters.selectedCultivationFilter,
         filters.selectedNutrientFilter,
         filters.selectedSeedTypeFilter,
@@ -265,6 +269,9 @@ const detailSectionGridSx = {
   );
 
   const tagOptions = useMemo(() => collectProjectTags(crops), [crops]);
+  const plantHealthOptions = useMemo(() => normalizePlantHealthSelections(
+    crops.flatMap(crop => getEffectiveCropValue(crop, 'plant_health')?.entries ?? []),
+  ), [crops]);
   const supplierOptions = useMemo(
     () => {
       const suppliersById = new Map<string, string>();
@@ -361,6 +368,7 @@ const detailSectionGridSx = {
 
       return familyMatches
         && tagMatches
+        && matchesPlantHealthFilter(getEffectiveCropValue(crop, 'plant_health'), filters.selectedPlantHealthFilter)
         && cultivationMatches
         && growthMatches
         && nutrientMatches
@@ -763,6 +771,7 @@ const detailSectionGridSx = {
           onFilterChange={updateFilter}
           familyOptions={familyOptions}
           tagOptions={tagOptions}
+          plantHealthOptions={plantHealthOptions}
           supplierOptions={supplierOptions}
           onReset={() => {
             resetFilters();

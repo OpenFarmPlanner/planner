@@ -433,7 +433,8 @@
       "versionRestoredWithBackup": "Versie hersteld. De vorige versie is automatisch opgeslagen.",
       "versionRestoreError": "De projectversie kon niet worden hersteld.",
       "leaveDemoError": "De demo kon niet worden verlaten. Probeer het opnieuw.",
-      "logoutError": "Afmelden mislukt. Probeer het opnieuw."
+      "logoutError": "Afmelden mislukt. Probeer het opnieuw.",
+      "versionRestoreConflict": "Deze versie is onvolledig of conflicteert met gekoppelde gegevens. Er is niets gewijzigd."
     },
     "shortcutHint": "Tip: druk op Alt+K voor het opdrachtenpalet.",
     "historyBy": "Door {{actor}}",

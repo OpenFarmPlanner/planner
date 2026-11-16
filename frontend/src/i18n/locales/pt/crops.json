@@ -581,7 +581,9 @@
       "fallback": "Registo",
       "openTarget": "Abrir",
       "season": "Época",
-      "cropCompanion": "Vizinho (consociação)"
+      "cropCompanion": "Vizinho (consociação)",
+      "cropTaskTemplate": "Modelo de tarefa",
+      "seasonPattern": "Definições da época"
     },
     "batch": {
       "seasonCreate": "Época {{season}} criada",
@@ -601,7 +603,30 @@
       "countDeleted_many": "{{count}} séries eliminadas",
       "countCreated_many": "{{count}} séries criadas",
       "countRestored_many": "{{count}} séries restauradas",
-      "countUpdated_many": "{{count}} séries atualizadas"
+      "countUpdated_many": "{{count}} séries atualizadas",
+      "undo": "Anular esta ação"
+    },
+    "import": {
+      "summary_one": "{{count}} cultura importada",
+      "summary_other": "{{count}} culturas importadas",
+      "actions": "Ações de importação",
+      "details": "Registos afetados",
+      "undo": "Anular apenas esta importação",
+      "selectiveNotice": "Apenas as alterações desta importação serão anuladas. As outras alterações posteriores serão mantidas. A operação ficará registada no histórico.",
+      "loading": "A verificar a anulação",
+      "previewError": "Não foi possível verificar esta anulação. Fecha a janela e tenta novamente.",
+      "removeCreated_one": "Será removida {{count}} cultura criada pela importação.",
+      "removeCreated_other": "Serão removidas {{count}} culturas criadas pela importação.",
+      "restoreUpdated_one": "{{count}} cultura existente voltará ao estado anterior à importação.",
+      "restoreUpdated_other": "{{count}} culturas existentes voltarão ao estado anterior à importação.",
+      "laterEdit": "Os registos afetados foram editados posteriormente. A anulação está bloqueada para preservar essas alterações.",
+      "dependentData": "Outros registos fazem referência a esta importação. A anulação está bloqueada para proteger as ligações e os dados.",
+      "summary_many": "{{count}} culturas importadas",
+      "removeCreated_many": "Serão removidas {{count}} culturas criadas pela importação.",
+      "restoreUpdated_many": "{{count}} culturas existentes voltarão ao estado anterior à importação.",
+      "undone": "Importação anulada",
+      "alreadyUndone": "Esta importação já foi anulada. Usa «Repor esta versão» para escolher um estado anterior do projeto.",
+      "unavailableState": "O estado anterior já não está completo ou entra em conflito com outros registos. A anulação está bloqueada; nada foi alterado."
     }
   },
   "shortcuts": {
@@ -1700,7 +1725,7 @@
   "restoreDialog": {
     "title": "Restaurar versão?",
     "batchDescription": "Esta ação e todas as alterações relacionadas serão anuladas.",
-    "versionDescription": "Está a restaurar uma versão anterior.",
+    "versionDescription": "Repões todo o projeto nesta versão. Todas as alterações posteriores serão anuladas, incluindo as culturas e os canteiros criados depois.",
     "batchNotice": "O estado anterior será restaurado. A ação permanece no histórico e pode ser executada novamente.",
     "versionNotice": "A versão atual é mantida. É criada automaticamente uma nova versão antes do restauro, para permitir regressar a qualquer momento.",
     "cancel": "Cancelar",
@@ -2086,6 +2111,32 @@
     "templateEntry": "Entrada de exemplo sintética",
     "validation": "Utilize no máximo 40 nomes individuais com até 200 caracteres cada.",
     "unspecified": "Não especificado / herdar da cultura",
-    "emptySelection": "Seleção própria explicitamente vazia"
+    "emptySelection": "Seleção própria explicitamente vazia",
+    "officialHelper": "Seleciona explicitamente entradas do catálogo. Os nomes livres ficam no projeto.",
+    "officialSearchError": "Não foi possível carregar as sugestões do catálogo. Tenta novamente.",
+    "publishSkipped": "Entradas não publicadas: {{number}}. São mantidas no projeto.",
+    "publication": {
+      "title": "Associar entradas privadas: {{name}}",
+      "helper": "Escolhe no máximo uma entrada aprovada do catálogo para cada nome privado. «Guardar associação» altera imediatamente esta cultura do projeto, mesmo que canceles a publicação. Os nomes não associados continuam privados. As novas propostas ficam disponíveis após moderação.",
+      "map": "Guardar associação",
+      "propose": "Propor nome para revisão",
+      "proposed": "Proposta enviada. O nome continua privado até o associares explicitamente.",
+      "saved": "A associação privada foi guardada. Confirma separadamente a publicação ou a sincronização com a biblioteca.",
+      "error": "Não foi possível concluir a ação. Verifica a seleção e tenta novamente.",
+      "conflict": "A cultura ou a seleção mudou. Fecha a janela e recarrega as culturas antes de voltares a verificar a associação.",
+      "inherited": "Esta variedade herda as entradas de «{{name}}». Guarda a associação nessa cultura; aplica-se a todas as variedades que as herdam. A herança mantém-se ativa.",
+      "editGeneral": "Editar cultura geral"
+    },
+    "filterPlaceholder": "Selecionar entradas utilizadas",
+    "filterHelper": "Escolhe entradas existentes. A cultura tem de conter todas as entradas selecionadas (E).",
+    "filterSearchError": "Não foi possível carregar os nomes do catálogo. Tenta novamente.",
+    "relationshipsTitle": "Relações de hospedeiros documentadas",
+    "relationshipsHint": "Estas relações do catálogo têm fontes. Selecionar uma entrada numa cultura não comprova, por si só, uma relação de hospedeiro nem uma infestação. Consulta as fontes e as indicações sobre variedades.",
+    "broadRelationshipHint": "Este grupo geral ou conceito de doença não identifica uma praga ou um agente patogénico específico confirmado. Não permite estabelecer uma relação de hospedeiro partilhada.",
+    "noConfirmedHosts": "Não são conhecidas relações de hospedeiros confirmadas. A falta de informação significa desconhecido, não resistente.",
+    "qualifiedVariety": "Evidência específica da variedade: {{name}}",
+    "speciesHost": "Evidência ao nível da espécie cultivada; consulta as indicações sobre variedades.",
+    "relationshipsError": "Não foi possível carregar as relações de hospedeiros.",
+    "relationshipsActionHint": "Seleciona uma entrada do catálogo para consultar relações de hospedeiros documentadas."
   }
 }

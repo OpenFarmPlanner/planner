@@ -152,6 +152,8 @@ export const cropAPI = {
   seedRateConstraints: () => http.get<SeedRateConstraintsResponse>('/crops/seed-rate-constraints/'),
   create: (data: Crop) => http.post<Crop>('/crops/', withActiveProject(data)),
   update: (id: number, data: Crop) => http.put<Crop>(`/crops/${id}/`, withActiveProject(data)),
+  mapPlantHealth: (id: number, data: { expected_updated_at: string; mappings: Array<{ local_name: string; catalogue_identity: string }> }) =>
+    http.post<Crop>(`/crops/${id}/plant-health/mappings/`, data),
   updateSupplierData: (id: number, rows: CropSupplierDataInput[]) =>
     http.patch<Crop>(`/crops/${id}/`, { supplier_data_input: rows }),
   deletePreview: (id: number) => http.get<CropDeletePreview>(`/crops/${id}/delete-preview/`),
@@ -164,6 +166,10 @@ export const cropAPI = {
   projectHistory: () => http.get<CropHistoryEntry[]>('/history/project/'),
   projectRestore: (history_id: number) => http.post<{ detail: string }>('/history/project/restore/', { history_id }),
   revertBatch: (batch_id: number) => http.post<{ detail: string }>(`/history/batch/${batch_id}/revert/`, {}),
+  importUndoPreview: (batchId: number) => http.post<{
+    created_count: number; updated_count: number;
+    conflicts: Array<{ code: string; object_type: string; object_id: number; object_display_name?: string }>;
+  }>(`/history/batch/${batchId}/undo-preview/`, {}),
   // Legacy import flow split into preview/apply endpoints.
   importPreview: (
     data: Record<string, unknown>[], companionNoteLanguage?: string, knownCropNames?: string[],
@@ -193,6 +199,7 @@ export const cropAPI = {
     companion_note_language?: string;
     phase?: 'crops' | 'companions' | 'finalize';
     expected_project_id?: number;
+    import_operation_id?: string;
   }) => http.post<CropImportApplyResult>('/crops/import/apply/', data),
   publishPreview: (id: number, params: { crop_species_id?: number | null; original_language_code?: string; publish_as_general?: boolean }) =>
     http.get<PublishPublicCropPreview>(`/crops/${id}/publish-public/preview/`, { params }),

@@ -1,14 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Autocomplete, Box, Button, Chip, TextField, Typography, type SxProps, type Theme } from '@mui/material';
 import type { PlantHealthSelection, PlantHealthSelections } from '../../api/types';
+import type { PlantHealthKind } from '../../crop-library/plant-health/types';
 import { plantHealthAPI } from '../../crop-library/plant-health/api';
 import { useTranslation } from '../../i18n';
 import { textContainsTerm, tokenizeSearchQuery } from '../../search/searchText';
-import { normalizePlantHealthSelections, plantHealthKey } from '../plantHealth';
+import { normalizePlantHealthSelections, plantHealthDisplayName, plantHealthKey } from '../plantHealth';
 import { usePlantHealthNames } from '../usePlantHealthNames';
 import LoadRetryButton from '../../components/LoadRetryButton';
 
-type Option = PlantHealthSelection & { display_name?: string };
+type Option = PlantHealthSelection & { display_name?: string; scientific_name?: string; kind?: PlantHealthKind };
 interface Props {
   value: PlantHealthSelections | null;
   localOptions: readonly PlantHealthSelection[];
@@ -17,12 +18,18 @@ interface Props {
   inheritedValue?: PlantHealthSelections | null;
   sx?: SxProps<Theme>;
   error?: string;
+  allowLocal?: boolean;
+  pinButton?: ReactNode;
+  selectionLimit?: number;
+  /** Filter mode: choose only entries already used in this scoped crop collection. */
+  existingOptions?: readonly PlantHealthSelection[];
 }
 
-export function PlantHealthField({ value, localOptions, onChange, canInherit, inheritedValue, sx, error }: Props) {
+export function PlantHealthField({ value, localOptions, onChange, canInherit, inheritedValue, sx, error, allowLocal = true, pinButton, selectionLimit = 40, existingOptions }: Props) {
   const { t, i18n } = useTranslation('crops');
   const entries = (value ?? inheritedValue)?.entries ?? [];
-  const names = usePlantHealthNames(entries);
+  const names = usePlantHealthNames(existingOptions ?? entries, existingOptions !== undefined);
+  const allowNewLocal = allowLocal && existingOptions === undefined;
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [attempt, setAttempt] = useState(0);
@@ -30,42 +37,60 @@ export function PlantHealthField({ value, localOptions, onChange, canInherit, in
   const language = i18n?.resolvedLanguage ?? i18n?.language ?? 'de';
   const key = `${language}:${query}:${attempt}`;
   useEffect(() => {
-    if (!open) return;
+    if (!open || existingOptions !== undefined) return;
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       void plantHealthAPI.list({ q: query, status: 'published', page_size: 40 }, controller.signal)
         .then(response => { if (!controller.signal.aborted) setResult({ key, error: false, options: response.data.results.map(entry => ({
           name: entry.name, catalogue_identity: entry.identity_key, display_name: entry.display_name,
+          scientific_name: entry.scientific_name, kind: entry.kind,
         })) }); })
         .catch(() => { if (!controller.signal.aborted) setResult({ key, options: [], error: true }); });
     }, 200);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [key, open, query]);
+  }, [key, open, query, existingOptions]);
   const current = result?.key === key ? result : undefined;
   const label = (entry: Option | string): string => typeof entry === 'string' ? entry
     : (entry.catalogue_identity ? names.catalogue.get(entry.catalogue_identity)?.display_name : undefined)
       ?? entry.display_name ?? entry.name;
-  const options: Option[] = [
-    ...localOptions.filter(entry => tokenizeSearchQuery(query).every(term => textContainsTerm(entry.name, term))),
+  const existing: Option[] | undefined = existingOptions?.map(entry => {
+    const official = entry.catalogue_identity ? names.catalogue.get(entry.catalogue_identity) : undefined;
+    return { ...entry, display_name: official?.display_name, scientific_name: official?.scientific_name, kind: official?.kind };
+  }).filter(entry => {
+    const official = entry.catalogue_identity ? names.catalogue.get(entry.catalogue_identity) : undefined;
+    const texts = [entry.name, official?.name ?? '', official?.display_name ?? '', official?.scientific_name ?? '', official?.eppo_code ?? '',
+      ...(official?.translations.flatMap(row => [row.preferred_name, ...(row.synonyms ?? []), ...Object.values(row.regional_names ?? {})]) ?? [])];
+    return tokenizeSearchQuery(query).every(term => texts.some(text => textContainsTerm(text, term)));
+  });
+  const options: Option[] = existing ?? [
+    ...(allowLocal ? localOptions.filter(entry => tokenizeSearchQuery(query).every(term => textContainsTerm(entry.name, term))) : []),
     ...(current?.options ?? []),
   ];
   return <Box sx={sx}>
-    <Autocomplete<Option, true, false, true>
-      multiple freeSolo filterSelectedOptions open={open} onOpen={() => setOpen(true)} onClose={() => setOpen(false)}
+    <Autocomplete<Option, true, false, boolean>
+      multiple freeSolo={allowNewLocal} loading={names.loading} filterSelectedOptions open={open} onOpen={() => setOpen(true)} onClose={() => setOpen(false)}
       value={entries} options={options} inputValue={query}
       onInputChange={(_event, input) => setQuery(input)}
       onBlur={() => {
-        if (!query.trim()) return;
+        if (!allowNewLocal || !query.trim()) return;
         onChange({ entries: normalizePlantHealthSelections([...entries, query], localOptions) });
         setQuery('');
       }}
       getOptionLabel={label} isOptionEqualToValue={(a, b) => plantHealthKey(a) === plantHealthKey(b)}
+      getOptionDisabled={option => entries.length >= selectionLimit && !entries.some(entry => plantHealthKey(entry) === plantHealthKey(option))}
       filterOptions={items => items}
       groupBy={entry => t(entry.catalogue_identity ? 'plantHealth.catalogue' : 'plantHealth.local')}
       onChange={(_event, selected) => onChange({ entries: normalizePlantHealthSelections(selected, localOptions) })}
       renderOption={(props, option) => {
         const { key: optionKey, ...rest } = props;
-        return <Box component="li" key={`${optionKey}:${plantHealthKey(option)}`} {...rest} sx={{ overflowWrap: 'anywhere' }}>{label(option)}</Box>;
+        return <Box component="li" key={`${optionKey}:${plantHealthKey(option)}`} {...rest} sx={{ overflowWrap: 'anywhere' }}>
+          <Box>
+            <Typography component="span" variant="body2">{label(option)}</Typography>
+            {option.kind ? <Typography component="span" variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+              {[t(`plantHealthCatalogue.kinds.${option.kind}`), option.scientific_name || (option.name !== label(option) ? option.name : '')].filter(Boolean).join(' · ')}
+            </Typography> : null}
+          </Box>
+        </Box>;
       }}
       renderValue={(selected, getItemProps) => selected.map((entry, index) => {
         const { key: itemKey, ...rest } = getItemProps({ index });
@@ -73,20 +98,23 @@ export function PlantHealthField({ value, localOptions, onChange, canInherit, in
         const origin = !selection.catalogue_identity ? 'local'
           : !names.loading && !names.catalogue.has(selection.catalogue_identity) ? 'unavailable' : 'catalogue';
         return <Chip key={itemKey} {...rest} size="small"
-          label={`${label(entry)} · ${t(`plantHealth.${origin}`)}`}
+          label={`${selection.catalogue_identity && names.catalogue.has(selection.catalogue_identity) ? plantHealthDisplayName(selection, entries, names.catalogue) : label(entry)} · ${t(`plantHealth.${origin}`)}`}
           sx={{ maxWidth: '100%', height: 'auto', '& .MuiChip-label': { whiteSpace: 'normal', overflowWrap: 'anywhere', py: 0.5 } }} />;
       })}
       renderInput={params => <TextField {...params} label={t('plantHealth.label')}
         slotProps={{ ...params.slotProps, inputLabel: { ...params.slotProps.inputLabel, shrink: true } }}
-        placeholder={t('plantHealth.placeholder')} helperText={error ?? (current?.error || names.error ? t('plantHealth.searchError') : t('plantHealth.helper'))}
+        placeholder={t(existingOptions ? 'plantHealth.filterPlaceholder' : 'plantHealth.placeholder')} helperText={error ?? (current?.error || names.error ? t(existingOptions ? 'plantHealth.filterSearchError' : allowLocal ? 'plantHealth.searchError' : 'plantHealth.officialSearchError') : t(existingOptions ? 'plantHealth.filterHelper' : allowLocal ? 'plantHealth.helper' : 'plantHealth.officialHelper'))}
         error={Boolean(error) || entries.length > 40} />}
     />
     {current?.error || names.error ? <LoadRetryButton onClick={() => { setAttempt(value => value + 1); names.retry(); }} /> : null}
-    {canInherit ? <Button size="small" onClick={() => onChange(null)} disabled={value === null}>
-      {t('plantHealth.inherit')}
-    </Button> : null}
-    <Typography variant="caption" color="text.secondary" sx={canInherit ? { display: 'block' } : undefined}>
+    {canInherit || pinButton ? <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+      {canInherit ? <Button size="small" onClick={() => onChange(null)} disabled={value === null}>
+        {t('plantHealth.inherit')}
+      </Button> : null}
+      {pinButton}
+    </Box> : null}
+    {existingOptions === undefined ? <Typography variant="caption" color="text.secondary" sx={canInherit || pinButton ? { display: 'block' } : undefined}>
       {t('plantHealth.associationHint')}
-    </Typography>
+    </Typography> : null}
   </Box>;
 }

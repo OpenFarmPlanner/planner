@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from accounts.demo_access import guest_demo_forbidden_response, is_active_guest_demo_user
 from config.responses import api_error_response
 from farm.history import _current_actor_label, _serialize_instance, record_entity_revision
+from farm.history.project_restore import ensure_project_checkpoint, retain_upload_paths
 from farm.image_processing import (
     ImageProcessingBackendUnavailableError,
     ImageProcessingError,
@@ -89,6 +90,7 @@ class MediaFileUploadView(APIView):
                 detail='Unsupported file type. Only image uploads are allowed.',
             )
 
+        ensure_project_checkpoint(active_project, user_name=_current_actor_label(request))
         rel_path = crop_media_upload_path(None, f'image.{extension}')
         saved_path = default_storage.save(rel_path, upload)
         media = MediaFile.objects.create(project=active_project, storage_path=saved_path)
@@ -158,6 +160,7 @@ class NoteAttachmentListCreateView(APIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
+        ensure_project_checkpoint(active_project, user_name=_current_actor_label(request))
         attachment = NoteAttachment(
             planting_plan=plan,
             caption=caption,
@@ -189,11 +192,13 @@ class NoteAttachmentDeleteView(APIView):
 
     def delete(self, request, attachment_id: int):
         active_project = get_active_project_or_400(request)
+        ensure_project_checkpoint(active_project, user_name=_current_actor_label(request))
         attachment = get_object_or_404(NoteAttachment, pk=attachment_id, project=active_project)
         attachment_id = attachment.pk
         attachment_project = attachment.project
         snapshot = _serialize_instance(attachment)
-        attachment.image.delete(save=False)
+        paths = {attachment.image.name} if attachment.image.name else set()
+        retain_upload_paths(active_project, paths)
         attachment.delete()
         record_entity_revision(
             project=attachment_project,

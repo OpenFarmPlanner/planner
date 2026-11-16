@@ -29,6 +29,7 @@ from farm.crops.moderation import (
     pending_queue_limit_exceeded,
     requires_moderation_queue,
 )
+from farm.history.project_restore import ensure_project_checkpoint
 from farm.models import (
     Crop,
     PublicCrop,
@@ -372,6 +373,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                 'summary': f'Direct edit awaiting moderation ({len(proposed_data)} field(s) changed)',
                 'proposed_data': proposed_data,
             },
+            context={'request': request, 'public_crop': public_crop},
         )
         serializer.is_valid(raise_exception=True)
         proposal = serializer.save(
@@ -726,6 +728,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         try:
+            ensure_project_checkpoint(request.active_project)
             imported, operation = import_public_crop_into_project(
                 public_crop=public_crop,
                 project=request.active_project,
@@ -804,6 +807,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             return error
         try:
             with transaction.atomic():
+                ensure_project_checkpoint(project)
                 entries = import_public_crop_selection(
                     parent=parent,
                     project=project,

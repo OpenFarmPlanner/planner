@@ -9,6 +9,8 @@ import { FilterPopoverShell } from '../components/filters/FilterPopoverShell';
 import { FilterSelectField } from '../components/filters/FilterSelectField';
 import { SEED_TYPE_OPTIONS, SEED_TYPE_UNKNOWN_FILTER, SEED_TYPE_UNKNOWN_LABEL_KEY } from './seedType';
 import { normalizeCropTags } from './cropTags';
+import type { PlantHealthSelection } from '../api/types';
+import { PlantHealthField } from './sections/PlantHealthField';
 
 const FULL_WIDTH_ROW = { gridColumn: '1 / -1' } as const;
 const MONTH_KEYS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
@@ -25,6 +27,7 @@ interface CropFiltersPopoverProps {
   familyOptions: string[];
   /** The project's tags. */
   tagOptions: string[];
+  plantHealthOptions?: readonly PlantHealthSelection[];
   supplierOptions: Array<{ id: string; name: string }>;
   /** Clears all filters and closes the popover — handled by the parent. */
   onReset: () => void;
@@ -42,6 +45,7 @@ export function CropFiltersPopover({
   onFilterChange,
   familyOptions,
   tagOptions,
+  plantHealthOptions = [],
   supplierOptions,
   onReset,
 }: CropFiltersPopoverProps): ReactElement {
@@ -57,6 +61,10 @@ export function CropFiltersPopover({
       onReset={onReset}
       resetLabel={t('filters.reset')}
     >
+      <PlantHealthField canInherit={false} localOptions={[]} existingOptions={plantHealthOptions}
+        value={{ entries: filters.selectedPlantHealthFilter ?? [] }}
+        onChange={value => onFilterChange('selectedPlantHealthFilter', value?.entries ?? [])}
+        sx={FULL_WIDTH_ROW} />
       <FilterSelectField
         id="crop-family-filter"
         label={t('filters.cropFamily')}

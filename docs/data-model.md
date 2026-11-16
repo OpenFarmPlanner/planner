@@ -366,8 +366,13 @@ name from an explicit stable catalogue UUID; names never imply identity or
 confirmed host evidence. Null inherits on a linked variety, while
 `{"entries": []}` is an explicit empty override. Omission preserves stored
 values. Migration 0142 adds the nullable column without parsing existing prose;
-history and legacy snapshots preserve that distinction. This private field is
-not yet a public library copy field. See
+history and legacy snapshots preserve that distinction.
+`PublicCrop.plant_health` uses the same nullable wrapper but permits only explicit
+catalogue UUID references. Schema-only migration 0143 adds its column; reversing
+it drops public selections while preserving private selections and all prose.
+Library comparisons use official UUID sets rather than labels or private names;
+pull/update replaces only references, retaining unresolved private names and
+unchanged variety inheritance. Private choices do not create official host evidence. See
 [private crop selections](plant-health-catalogue.md#private-crop-selections) for
 validation, portable files, rollback behavior and the guarded local fixture.
 
@@ -418,3 +423,21 @@ name, synonyms, regional names and explicit documented scientific fallback.
 confirmation requires a specific pest/pathogen identity. `PlantHealthRevision`
 retains complete snapshots, including archived host links. Protected entry/species
 references and API archival prevent deletion of historical evidence.
+
+### Import operation identity
+
+`BatchOperation` now includes nullable unique `request_id`, nullable
+`initiated_by` and `completed_at` for multi-request crop import groups. These
+schema-only additions preserve existing season operations and old revisions.
+Private context keeps first before-images/latest after-images; public history
+excludes those keys. Project-state checkpoints live in `EntityRevision`, not
+the deprecated `ProjectRevision` model. See
+[Versioning and History](./versioning-and-history.md).
+
+`RetainedUpload` stores unique storage paths and removal times for uploads
+removed by a project restore or import undo. Its nullable project reference
+uses `SET_NULL`, so deleting the project does not orphan storage cleanup work.
+It is excluded from restored domain snapshots. The existing media cleanup
+command removes expired unreferenced bytes after 30 days, while protecting
+live media and note attachments across projects. Migration 0145 only creates
+this metadata table; existing rows and files are unchanged.

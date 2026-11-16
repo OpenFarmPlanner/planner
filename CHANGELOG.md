@@ -6,6 +6,14 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
 
 ## Unreleased
 
+- Group a spreadsheet/JSON crop import across HTTP batches into one history entry;
+  offer selective import undo with dependency/edit checks and restore whole-project
+  historical states with automatic restorable backups.
+
+- Filter project and library crops by structured pest/disease selections, and inspect sourced, qualified host relationships without inferring infestation or resistance.
+
+- Share explicit catalogue pest/disease selections with library crops, including private-name mapping/proposals, local pins, field sync and revision history; unresolved names and existing explanatory notes remain intact.
+
 - Add private structured pest/disease selections with explicit catalogue references, live variety inheritance, history and compatible JSON/CSV/XLSX/ODS exchange while preserving explanatory prose.
 
 - Give each selected growing-area location a full graphical workspace with shared topbar controls and retained per-location cameras.

@@ -433,7 +433,8 @@
       "versionRestoredWithBackup": "Version wiederhergestellt. Die vorherige Version wurde automatisch gespeichert.",
       "versionRestoreError": "Projektversion konnte nicht wiederhergestellt werden.",
       "leaveDemoError": "Demo konnte nicht verlassen werden. Bitte versuche es erneut.",
-      "logoutError": "Abmeldung fehlgeschlagen. Bitte versuche es erneut."
+      "logoutError": "Abmeldung fehlgeschlagen. Bitte versuche es erneut.",
+      "versionRestoreConflict": "Diese Version ist unvollständig oder steht im Konflikt mit abhängigen Daten. Es wurde nichts geändert."
     },
     "shortcutHint": "Tipp: Drücke Alt+K für die Command Palette.",
     "historyBy": "Von {{actor}}",

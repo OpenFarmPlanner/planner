@@ -572,7 +572,9 @@
       "fallback": "Eintrag",
       "openTarget": "Öffnen",
       "season": "Saison",
-      "cropCompanion": "Nachbar (Mischkultur)"
+      "cropCompanion": "Nachbar (Mischkultur)",
+      "cropTaskTemplate": "Aufgabenvorlage",
+      "seasonPattern": "Saisoneinstellungen"
     },
     "batch": {
       "seasonCreate": "Saison {{season}} erstellt",
@@ -588,7 +590,27 @@
       "countRestored_other": "{{count}} Anbaupläne wiederhergestellt",
       "countUpdated_one": "{{count}} Anbauplan bearbeitet",
       "countUpdated_other": "{{count}} Anbaupläne bearbeitet",
-      "reverted": "Wiederhergestellt: {{what}}"
+      "reverted": "Wiederhergestellt: {{what}}",
+      "undo": "Diese Aktion rückgängig machen"
+    },
+    "import": {
+      "summary_one": "{{count}} Kultur importiert",
+      "summary_other": "{{count}} Kulturen importiert",
+      "actions": "Importaktionen",
+      "details": "Betroffene Datensätze",
+      "undo": "Nur diesen Import rückgängig machen",
+      "selectiveNotice": "Nur die Änderungen dieses Imports werden zurückgenommen. Andere spätere Änderungen bleiben erhalten. Die Rücknahme wird als neuer Eintrag gespeichert.",
+      "loading": "Rücknahme wird geprüft",
+      "previewError": "Die Rücknahme konnte nicht geprüft werden. Schließe den Dialog und versuche es erneut.",
+      "removeCreated_one": "{{count}} neu angelegte Kultur wird entfernt.",
+      "removeCreated_other": "{{count}} neu angelegte Kulturen werden entfernt.",
+      "restoreUpdated_one": "{{count}} bestehende Kultur wird auf ihren Stand vor dem Import zurückgesetzt.",
+      "restoreUpdated_other": "{{count}} bestehende Kulturen werden auf ihren Stand vor dem Import zurückgesetzt.",
+      "laterEdit": "Betroffene Datensätze wurden später bearbeitet. Die Rücknahme ist gesperrt; deine späteren Änderungen bleiben erhalten.",
+      "dependentData": "Andere Datensätze verweisen auf diesen Import. Die Rücknahme ist gesperrt, damit keine Verweise oder Daten verloren gehen.",
+      "undone": "Import rückgängig gemacht",
+      "alreadyUndone": "Dieser Import wurde bereits rückgängig gemacht. Einen früheren Projektstand kannst du über „Version wiederherstellen“ wählen.",
+      "unavailableState": "Der frühere Zustand ist nicht mehr vollständig verfügbar oder kollidiert mit anderen Datensätzen. Die Rücknahme ist gesperrt; es wurde nichts geändert."
     }
   },
   "shortcuts": {
@@ -1656,7 +1678,7 @@
   "restoreDialog": {
     "title": "Version wiederherstellen?",
     "batchDescription": "Du machst diese Aktion mit allen zugehörigen Änderungen rückgängig.",
-    "versionDescription": "Du stellst eine frühere Version wieder her.",
+    "versionDescription": "Du setzt das gesamte Projekt auf diese Version zurück. Alle späteren Änderungen werden rückgängig gemacht; später angelegte Kulturen und Beete werden entfernt.",
     "batchNotice": "Der vorherige Stand wird wiederhergestellt. Die Aktion selbst bleibt im Verlauf und kann erneut ausgeführt werden.",
     "versionNotice": "Die aktuelle Version bleibt erhalten. Vor der Wiederherstellung wird automatisch eine neue Version erstellt, sodass du jederzeit wieder zurückwechseln kannst.",
     "cancel": "Abbrechen",
@@ -2035,6 +2057,32 @@
     "templateEntry": "Synthetischer Beispieleintrag",
     "validation": "Verwende höchstens 40 einzelne Namen mit jeweils bis zu 200 Zeichen.",
     "unspecified": "Nicht gesetzt / von Kultur übernehmen",
-    "emptySelection": "Leere eigene Auswahl"
+    "emptySelection": "Leere eigene Auswahl",
+    "officialHelper": "Wähle Katalogeinträge ausdrücklich aus. Freie Namen bleiben im Projekt.",
+    "officialSearchError": "Katalogvorschläge konnten nicht geladen werden. Versuche es erneut.",
+    "publishSkipped": "Nicht veröffentlichte Einträge: {{number}}. Sie bleiben im Projekt erhalten.",
+    "publication": {
+      "title": "Private Einträge zuordnen: {{name}}",
+      "helper": "Wähle für jeden privaten Namen höchstens einen freigegebenen Katalogeintrag. „Zuordnung speichern“ ändert sofort diese Projektkultur, auch wenn du die Veröffentlichung abbrichst. Ungelöste Namen bleiben privat. Neue Vorschläge werden erst nach Moderation verfügbar.",
+      "map": "Zuordnung speichern",
+      "propose": "Namen zur Prüfung vorschlagen",
+      "proposed": "Vorschlag eingereicht. Der Name bleibt bis zur ausdrücklichen Zuordnung privat.",
+      "saved": "Die private Zuordnung wurde gespeichert. Bestätige die Veröffentlichung oder den Bibliotheksabgleich separat.",
+      "error": "Die Aktion konnte nicht abgeschlossen werden. Prüfe die Auswahl und versuche es erneut.",
+      "conflict": "Die Kultur oder Auswahl hat sich geändert. Schließe den Dialog und lade die Kulturen neu, bevor du die Zuordnung erneut prüfst.",
+      "inherited": "Diese Sorte übernimmt die Einträge von „{{name}}“. Speichere die Zuordnung an dieser Kultur; sie gilt für alle erbenden Sorten. Die Vererbung bleibt aktiv.",
+      "editGeneral": "Übergeordnete Kultur bearbeiten"
+    },
+    "filterPlaceholder": "Verwendete Einträge auswählen",
+    "filterHelper": "Wähle vorhandene Einträge. Die Kultur muss alle ausgewählten Einträge enthalten (UND).",
+    "filterSearchError": "Katalognamen konnten nicht geladen werden. Versuche es erneut.",
+    "relationshipsTitle": "Belegte Wirtsbeziehungen",
+    "relationshipsHint": "Hier stehen belegte Beziehungen aus dem Katalog. Die Auswahl an einer Kultur ist allein kein Beleg für eine Wirtsbeziehung oder einen Befall. Beachte die Quellen und Sortenangaben.",
+    "broadRelationshipHint": "Dieser Sammel- oder Krankheitsbegriff bezeichnet keinen einzelnen bestätigten Schädling oder Erreger. Daraus lässt sich keine gemeinsame Wirtsbeziehung ableiten.",
+    "noConfirmedHosts": "Keine bestätigten Wirtsbeziehungen bekannt. Fehlende Angaben bedeuten unbekannt, nicht resistent.",
+    "qualifiedVariety": "Sortenbezogener Beleg: {{name}}",
+    "speciesHost": "Beleg auf Ebene der Kulturart; Sortenhinweise beachten.",
+    "relationshipsError": "Wirtsbeziehungen konnten nicht geladen werden.",
+    "relationshipsActionHint": "Wähle einen Katalogeintrag, um belegte Wirtsbeziehungen anzusehen."
   }
 }

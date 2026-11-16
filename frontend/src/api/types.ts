@@ -477,6 +477,7 @@ export interface PublicCrop {
   germination_pretreatment?: string;
   specific_properties?: SpecificProperties;
   specific_property_profile?: string;
+  plant_health?: PlantHealthSelections | null;
   pests_diseases?: string;
   light_requirement?: LightRequirement | '';
   water_requirement?: WaterRequirement | '';
@@ -952,6 +953,7 @@ export interface PublishPublicCropPreview {
   general_crop_notice: GeneralCropNotice | null;
   /** Neighbours of the crop's Kultur that stay in the project (free text, or no crop species). */
   unpublishable_companion_count?: number;
+  unpublishable_plant_health_count?: number;
 }
 
 export interface PublishPublicCropResponse {
@@ -1640,6 +1642,7 @@ export interface CropHistoryEntry {
   history_user: string | null;
   summary: string;
   object_type?: string;
+  object_id?: number;
   object_display_name?: string | null;
   action?: string;
   actor_label?: string | null;

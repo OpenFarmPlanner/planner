@@ -22,7 +22,7 @@ interface RestoreVersionDialogProps {
   tCrops: TFunction<'crops'>;
   onClose: () => void;
   onConfirm: (historyId: number) => void;
-  onConfirmRevertBatch: (batchId: number) => void;
+  mode?: 'version' | 'batch';
 }
 
 /**
@@ -38,18 +38,16 @@ export function RestoreVersionDialog({
   tCrops,
   onClose,
   onConfirm,
-  onConfirmRevertBatch,
+  mode = 'version',
 }: RestoreVersionDialogProps) {
   const isBatch = entry ? isBatchGroupEntry(entry) : false;
 
   return (
     <Dialog open={Boolean(entry)} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>{tCrops('restoreDialog.title')}</DialogTitle>
+      <DialogTitle>{tCrops(mode === 'batch' ? 'history.batch.undo' : 'restoreDialog.title')}</DialogTitle>
       <DialogContent>
         <Typography variant="body2" sx={{ mb: 1.5 }}>
-          {isBatch
-            ? tCrops('restoreDialog.batchDescription')
-            : tCrops('restoreDialog.versionDescription')}
+          {tCrops(mode === 'batch' ? 'restoreDialog.batchDescription' : 'restoreDialog.versionDescription')}
         </Typography>
         {entry ? (
           <Box sx={{ mb: 1.5 }}>
@@ -74,9 +72,7 @@ export function RestoreVersionDialog({
           }}
         >
           <Typography variant="body2" sx={{ fontWeight: 500 }}>
-            {isBatch
-              ? tCrops('restoreDialog.batchNotice')
-              : tCrops('restoreDialog.versionNotice')}
+            {tCrops(mode === 'batch' ? 'restoreDialog.batchNotice' : 'restoreDialog.versionNotice')}
           </Typography>
         </Box>
       </DialogContent>
@@ -88,14 +84,10 @@ export function RestoreVersionDialog({
             if (!entry) {
               return;
             }
-            if (isBatch && entry.batch_id != null) {
-              onConfirmRevertBatch(entry.batch_id);
-            } else {
-              onConfirm(entry.history_id);
-            }
+            onConfirm(mode === 'batch' ? entry.batch_id! : entry.history_id);
           }}
         >
-          {tCrops('restoreDialog.confirm')}
+          {tCrops(mode === 'batch' ? 'history.batch.undo' : 'restoreDialog.confirm')}
         </Button>
       </DialogActions>
     </Dialog>

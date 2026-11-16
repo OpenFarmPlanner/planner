@@ -7,6 +7,7 @@ import { FilterSelectField } from '../../components/filters/FilterSelectField';
 import type { PublicCropFilterOptions, PublicCropFilterState } from '../publicCropFilters';
 import { buildPlantFamilyFilterOptions, usePlantFamilies } from '../../crops/plantFamilies';
 import { SEED_TYPE_OPTIONS, SEED_TYPE_UNKNOWN_FILTER, SEED_TYPE_UNKNOWN_LABEL_KEY } from '../../crops/seedType';
+import { PlantHealthField } from '../../crops/sections/PlantHealthField';
 
 interface PublicCropFiltersPopoverProps {
   anchorEl: HTMLElement | null;
@@ -53,6 +54,9 @@ export function PublicCropFiltersPopover({
       onReset={onReset}
       resetLabel={t('filters.reset')}
     >
+      <PlantHealthField canInherit={false} allowLocal={false} localOptions={[]}
+        existingOptions={options.plantHealthOptions ?? []} value={{ entries: filters.plantHealth ?? [] }}
+        onChange={value => onFilterChange('plantHealth', value?.entries ?? [])} sx={FULL_WIDTH_ROW} />
       <FilterSelectField
         id="public-crop-family-filter"
         label={t('filters.cropFamily')}

@@ -21,6 +21,10 @@ const OBJECT_TYPE_TRANSLATION_KEYS: Record<string, string> = {
   seed_package: 'history.objectTypes.seedPackage',
   crop_companion: 'history.objectTypes.cropCompanion',
   project: 'history.objectTypes.project',
+  crop_task_template: 'history.objectTypes.cropTaskTemplate',
+  croptasktemplate: 'history.objectTypes.cropTaskTemplate',
+  season_pattern: 'history.objectTypes.seasonPattern',
+  seasonpattern: 'history.objectTypes.seasonPattern',
 };
 
 const ACTION_TRANSLATION_KEYS: Record<string, string> = {
@@ -245,7 +249,7 @@ export function formatSeedRateByCultivation(value: unknown, t: TFunction<'crops'
   return entries.length > 0 ? entries.join('; ') : t('history.emptyValue');
 }
 
-function formatPlantHealthValue(value: unknown, t: TFunction<'crops'>): string {
+export function formatPlantHealthValue(value: unknown, t: TFunction<'crops'>): string {
   if (value == null) return t('plantHealth.unspecified');
   if (typeof value !== 'object' || !('entries' in value) || !Array.isArray(value.entries)) {
     return t('history.complexValue');
@@ -375,6 +379,9 @@ function batchBaseText(
   context: Record<string, unknown>,
   t: TFunction<'crops'>,
 ): string {
+  if (operationType === 'crop_import') {
+    return t('history.import.summary', { count: Number(context.created_count ?? 0) + Number(context.updated_count ?? 0) });
+  }
   const baseKey = BATCH_OPERATION_BASE_KEYS[operationType ?? ''] ?? 'history.batch.fallback';
   return t(baseKey, {
     season: String(context.season_label ?? ''),
@@ -387,6 +394,7 @@ export function getBatchSummary(entry: CropHistoryEntry, t: TFunction<'crops'>):
   const context = (entry.batch_context ?? {}) as Record<string, unknown>;
 
   if (entry.batch_operation_type === 'batch_reverted') {
+    if (context.reverted_operation_type === 'crop_import') return t('history.import.undone');
     return t('history.batch.reverted', {
       what: batchBaseText(String(context.reverted_operation_type ?? ''), context, t),
     });
@@ -413,7 +421,7 @@ export function getBatchSummary(entry: CropHistoryEntry, t: TFunction<'crops'>):
 
 export function getHistoryEntryTarget(entry: CropHistoryEntry): string | null {
   if (entry.object_type === 'crop') {
-    const cropId = entry.crop_id ?? extractObjectIdFromSummary(entry.summary);
+    const cropId = entry.crop_id ?? entry.object_id ?? extractObjectIdFromSummary(entry.summary);
     if (cropId) {
       return `/app/crops?cropId=${cropId}`;
     }
