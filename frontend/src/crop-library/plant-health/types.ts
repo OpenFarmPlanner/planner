@@ -16,6 +16,7 @@ export interface PlantHealthHost {
   entry: number;
   species: number;
   species_name: string;
+  species_status?: string;
   variety_name: string;
   qualification: string;
   sources: PlantHealthSource[];

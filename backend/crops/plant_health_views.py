@@ -19,6 +19,7 @@ from farm.services.public_pseudonyms import number_anonymous_authors
 from farm.utils import normalize_search_text
 
 from .agent_api.permissions import CropLibraryTokenAccessPermission
+from .models import CropSpecies
 from .permissions import is_public_library_moderator
 from .plant_health_models import PlantHealthEntry, PlantHealthHost, PlantHealthTranslation
 from .plant_health_serializers import (
@@ -43,8 +44,8 @@ class PlantHealthEntryViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "post", "put", "patch", "head", "options"]
 
     def get_queryset(self) -> QuerySet[PlantHealthEntry]:
-        queryset = catalogue_queryset()
         moderator = is_public_library_moderator(self.request.user)
+        queryset = catalogue_queryset(include_unpublished_hosts=moderator)
         include_proposed = self.request.query_params.get("include_proposed") in {"true", "1"}
         requested_status = self.request.query_params.get("status", "")
         if moderator and self.action != "list":
@@ -193,7 +194,8 @@ class PlantHealthHostViewSet(viewsets.ModelViewSet):
         )
         if not is_public_library_moderator(self.request.user):
             queryset = queryset.filter(
-                is_active=True, entry__status=PlantHealthEntry.STATUS_PUBLISHED
+                is_active=True, entry__status=PlantHealthEntry.STATUS_PUBLISHED,
+                species__status=CropSpecies.STATUS_PUBLISHED,
             )
         if self.request.query_params.get("entry"):
             queryset = queryset.filter(entry_id=self._query_id("entry"))

@@ -2101,6 +2101,17 @@
       "conflict": "A cultura ou a seleção mudou. Fecha a janela e recarrega as culturas antes de voltares a verificar a associação.",
       "inherited": "Esta variedade herda as entradas de «{{name}}». Guarda a associação nessa cultura; aplica-se a todas as variedades que as herdam. A herança mantém-se ativa.",
       "editGeneral": "Editar cultura geral"
-    }
+    },
+    "filterPlaceholder": "Selecionar entradas utilizadas",
+    "filterHelper": "Escolhe entradas existentes. A cultura tem de conter todas as entradas selecionadas (E).",
+    "filterSearchError": "Não foi possível carregar os nomes do catálogo. Tenta novamente.",
+    "relationshipsTitle": "Relações de hospedeiros documentadas",
+    "relationshipsHint": "Estas relações do catálogo têm fontes. Selecionar uma entrada numa cultura não comprova, por si só, uma relação de hospedeiro nem uma infestação. Consulta as fontes e as indicações sobre variedades.",
+    "broadRelationshipHint": "Este grupo geral ou conceito de doença não identifica uma praga ou um agente patogénico específico confirmado. Não permite estabelecer uma relação de hospedeiro partilhada.",
+    "noConfirmedHosts": "Não são conhecidas relações de hospedeiros confirmadas. A falta de informação significa desconhecido, não resistente.",
+    "qualifiedVariety": "Evidência específica da variedade: {{name}}",
+    "speciesHost": "Evidência ao nível da espécie cultivada; consulta as indicações sobre variedades.",
+    "relationshipsError": "Não foi possível carregar as relações de hospedeiros.",
+    "relationshipsActionHint": "Seleciona uma entrada do catálogo para consultar relações de hospedeiros documentadas."
   }
 }

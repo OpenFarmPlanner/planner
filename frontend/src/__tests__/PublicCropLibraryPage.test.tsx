@@ -740,6 +740,18 @@ describe('PublicCropLibraryPage', () => {
     expect(screen.getByRole('listbox', { name: 'Kulturbibliothek' })).toBeInTheDocument();
   });
 
+  it('opens shared advanced filters inside the mobile selector and closes only the filter', async () => {
+    const user = userEvent.setup();
+    mockMobileViewport();
+    renderPage(['/app/crop-library?cropId=1']);
+    await user.click(await screen.findByRole('button', { name: 'Kultur auswählen' }));
+    await user.click(screen.getByRole('button', { name: 'Erweiterte Filter öffnen' }));
+    expect(screen.getByRole('combobox', { name: 'Schädlings- und Krankheitseinträge' })).toBeVisible();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('combobox', { name: 'Schädlings- und Krankheitseinträge' })).not.toBeInTheDocument());
+    expect(screen.getByRole('textbox', { name: 'Öffentliche Kulturen durchsuchen' })).toBeVisible();
+  });
+
   it('keeps the selected public crop when the mobile selector is cancelled', async () => {
     const user = userEvent.setup();
     mockMobileViewport();

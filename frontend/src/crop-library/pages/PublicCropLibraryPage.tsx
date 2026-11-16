@@ -223,6 +223,18 @@ export default function PublicCropLibraryPage() {
   const activeLibraryFilterCount = countActivePublicCropFilters(libraryFilters);
   const isMobile = useMediaQuery('(max-width:600px)');
   const useCompactLibraryLayout = useMediaQuery('(max-width:899.95px)');
+  const libraryFilterButton = <IconButton
+    size="small" onClick={(event) => setLibraryFilterAnchorEl(event.currentTarget)}
+    aria-expanded={isLibraryFilterPopoverOpen} aria-haspopup="dialog"
+    aria-controls={isLibraryFilterPopoverOpen ? 'public-crop-filters-popover' : undefined}
+    aria-label={t('filters.openAdvanced')}
+    sx={{ bgcolor: activeLibraryFilterCount > 0 ? 'action.selected' : 'transparent',
+      ...(useCompactLibraryLayout ? { minWidth: 48, minHeight: 48 } : {}),
+    }}>
+    <Badge color="primary" badgeContent={activeLibraryFilterCount > 0 ? activeLibraryFilterCount : null}>
+      <TuneIcon fontSize="small" />
+    </Badge>
+  </IconButton>;
   const libraryAreaRef = useRef<HTMLDivElement>(null);
   // How tall the two-pane area is allowed to be, measured directly from where it
   // actually starts in the viewport rather than guessed via a hardcoded "chrome
@@ -465,8 +477,8 @@ export default function PublicCropLibraryPage() {
   const libraryFilterOptions = useMemo(() => getPublicCropFilterOptions(crops), [crops]);
   const normalizedSearchQuery = normalizePublicCropSearchQuery(query);
   const filterMatchingLibraryCrops = useMemo(
-    () => crops.filter((crop) => matchesPublicCropFilters(crop, libraryFilters)),
-    [crops, libraryFilters],
+    () => crops.filter((crop) => matchesPublicCropFilters(crop, libraryFilters, libraryFilterOptions.plantHealthValues)),
+    [crops, libraryFilters, libraryFilterOptions.plantHealthValues],
   );
   const filteredLibraryCrops = useMemo(
     () => filterCropGroupsForSearch({
@@ -1637,36 +1649,13 @@ export default function PublicCropLibraryPage() {
                                 </IconButton>
                               </AppTooltip>
                             ) : null}
-                            <IconButton
-                              size="small"
-                              onClick={(event) => setLibraryFilterAnchorEl(event.currentTarget)}
-                              aria-expanded={isLibraryFilterPopoverOpen}
-                              aria-haspopup="dialog"
-                              aria-controls={isLibraryFilterPopoverOpen ? 'public-crop-filters-popover' : undefined}
-                              aria-label={t('filters.openAdvanced')}
-                              sx={{ bgcolor: activeLibraryFilterCount > 0 ? 'action.selected' : 'transparent' }}
-                            >
-                              <Badge color="primary" badgeContent={activeLibraryFilterCount > 0 ? activeLibraryFilterCount : null}>
-                                <TuneIcon fontSize="small" />
-                              </Badge>
-                            </IconButton>
+                            {libraryFilterButton}
                           </>
                         ),
                       }
                     }}
                 />
               </Box>
-              <PublicCropFiltersPopover
-                anchorEl={libraryFilterAnchorEl}
-                onClose={() => setLibraryFilterAnchorEl(null)}
-                filters={libraryFilters}
-                onFilterChange={(key, value) => setLibraryFilters((prev) => ({ ...prev, [key]: value }))}
-                options={libraryFilterOptions}
-                onReset={() => {
-                  setLibraryFilters(EMPTY_PUBLIC_CROP_FILTERS);
-                  setLibraryFilterAnchorEl(null);
-                }}
-              />
               {isCropLoading ? (
                 <Box sx={{ minHeight: 220, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Stack spacing={1} sx={{ alignItems: "center", }} >
@@ -2352,7 +2341,16 @@ export default function PublicCropLibraryPage() {
           </Box> : null}
         </Stack>
       </Box>
+      <PublicCropFiltersPopover
+        anchorEl={libraryFilterAnchorEl}
+        onClose={() => setLibraryFilterAnchorEl(null)}
+        filters={libraryFilters}
+        onFilterChange={(key, value) => setLibraryFilters((prev) => ({ ...prev, [key]: value }))}
+        options={libraryFilterOptions}
+        onReset={() => { setLibraryFilters(EMPTY_PUBLIC_CROP_FILTERS); setLibraryFilterAnchorEl(null); }}
+      />
       <PublicCropMobileSelectorDialog
+          filterControl={libraryFilterButton}
           open={mobileSelectorOpen}
           query={query}
           crops={filteredLibraryCrops}

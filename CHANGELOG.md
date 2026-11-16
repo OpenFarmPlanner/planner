@@ -6,6 +6,8 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
 
 ## Unreleased
 
+- Filter project and library crops by structured pest/disease selections, and inspect sourced, qualified host relationships without inferring infestation or resistance.
+
 - Share explicit catalogue pest/disease selections with library crops, including private-name mapping/proposals, local pins, field sync and revision history; unresolved names and existing explanatory notes remain intact.
 
 - Add private structured pest/disease selections with explicit catalogue references, live variety inheritance, history and compatible JSON/CSV/XLSX/ODS exchange while preserving explanatory prose.

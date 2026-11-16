@@ -4,6 +4,7 @@
  */
 
 import { getActiveFormattingLocale } from '../utils/numberLocalization';
+import type { PlantHealthSelection } from '../api/types';
 
 export const CROP_FILTERS_STORAGE_KEY = 'cropsDetailFiltersV1';
 /** Pre-"Crop" spelling, still present in a tab opened before the rename. */
@@ -14,6 +15,7 @@ export interface PersistedCropFilters {
   selectedFamilyFilter: string;
   /** Every selected tag must match; an empty list does not restrict tags. */
   selectedTagFilter: string[];
+  selectedPlantHealthFilter: PlantHealthSelection[];
   selectedCultivationFilter: string;
   selectedNutrientFilter: string;
   /** 'open_pollinated', 'f1_hybrid', 'unknown', or '' for all. */

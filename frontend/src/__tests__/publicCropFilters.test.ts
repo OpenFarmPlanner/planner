@@ -72,6 +72,7 @@ describe('getPublicCropFilterOptions', () => {
   it('has nothing to offer for an empty library', () => {
     expect(getPublicCropFilterOptions([])).toEqual({
       cropFamilyOptions: [], varietyOptions: [], nutrientOptions: [],
+      plantHealthOptions: [], plantHealthValues: new Map(),
     });
   });
 });
@@ -225,5 +226,37 @@ describe('seed type filter', () => {
 
   it('leaves every row in when the filter is off', () => {
     expect(matchesPublicCropFilters(crop({ variety: '' }), filters())).toBe(true);
+  });
+});
+
+describe('plant-health filters', () => {
+  const a = { name: 'Same label', catalogue_identity: '00000000-0000-4000-8000-000000000001' };
+  const b = { name: 'Same label', catalogue_identity: '00000000-0000-4000-8000-000000000002' };
+  it('requires every stable identity and preserves null inheritance versus explicit empty', () => {
+    const parent = crop({ id: 10, crop_species: 7, plant_health: { entries: [a, b] } });
+    const inheriting = crop({ id: 11, crop_species: 7, variety: 'Inherits', plant_health: null });
+    const empty = crop({ id: 12, crop_species: 7, variety: 'Empty', plant_health: { entries: [] } });
+    const own = crop({ id: 13, crop_species: 7, variety: 'Own', plant_health: { entries: [a] } });
+    const crops = [parent, inheriting, empty, own];
+    const options = getPublicCropFilterOptions(crops);
+    const both = filters({ plantHealth: [a, { ...b, name: 'Another translation' }] });
+    expect(crops.filter(row => matchesPublicCropFilters(row, both, options.plantHealthValues)).map(row => row.id)).toEqual([10, 11]);
+    expect(matchesPublicCropFilters(own, filters({ plantHealth: [a] }), options.plantHealthValues)).toBe(true);
+    expect(options.plantHealthOptions).toEqual([a, b]);
+    expect(countActivePublicCropFilters(both)).toBe(1);
+    expect(countActivePublicCropFilters(filters({ plantHealth: [] }))).toBe(0);
+  });
+  it('never derives official filter options from legacy prose or unresolved names', () => {
+    expect(getPublicCropFilterOptions([crop({ pests_diseases: 'Repels aphids', plant_health: { entries: [{ name: 'Local only' }] } })]).plantHealthOptions).toEqual([]);
+  });
+  it('inherits from the first general entry just like the hierarchy when legacy duplicates remain', () => {
+    const first = crop({ id: 10, crop_species: 7, plant_health: { entries: [a] } });
+    const duplicate = crop({ id: 11, crop_species: 7, plant_health: { entries: [b] } });
+    const variety = crop({ id: 12, crop_species: 7, variety: 'Inherits', plant_health: null });
+    const options = getPublicCropFilterOptions([first, duplicate, variety]);
+    expect(matchesPublicCropFilters(variety, filters({ plantHealth: [a] }), options.plantHealthValues)).toBe(true);
+    expect(matchesPublicCropFilters(variety, filters({ plantHealth: [b] }), options.plantHealthValues)).toBe(false);
+    const unspecified = getPublicCropFilterOptions([{ ...first, plant_health: null }, duplicate, variety]);
+    expect(matchesPublicCropFilters(variety, filters({ plantHealth: [b] }), unspecified.plantHealthValues)).toBe(false);
   });
 });

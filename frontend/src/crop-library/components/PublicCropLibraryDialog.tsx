@@ -215,8 +215,8 @@ export function PublicCropLibraryDialog({
       plantFamilies.getName(entry.crop_family),
     ].join(' ').toLowerCase();
     const matchesQuery = normalizedQuery.length === 0 || label.includes(normalizedQuery);
-    return matchesQuery && matchesPublicCropFilters(entry, filters);
-  }), [crops, filters, language, normalizedQuery, plantFamilies, t]);
+    return matchesQuery && matchesPublicCropFilters(entry, filters, filterOptions.plantHealthValues);
+  }), [crops, filters, filterOptions.plantHealthValues, language, normalizedQuery, plantFamilies, t]);
 
   useEffect(() => {
     if (loading || (initialSelectedId && selectedId === initialSelectedId && crops.length === 0)) {

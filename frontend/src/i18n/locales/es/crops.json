@@ -2101,6 +2101,17 @@
       "conflict": "El cultivo o la selección ha cambiado. Cierra el diálogo y vuelve a cargar los cultivos antes de revisar el vínculo.",
       "inherited": "Esta variedad hereda las entradas de «{{name}}». Guarda el vínculo en ese cultivo; se aplica a todas las variedades que las heredan. La herencia sigue activa.",
       "editGeneral": "Editar cultivo general"
-    }
+    },
+    "filterPlaceholder": "Seleccionar entradas utilizadas",
+    "filterHelper": "Elige entradas existentes. El cultivo debe contener todas las entradas seleccionadas (Y).",
+    "filterSearchError": "No se pudieron cargar los nombres del catálogo. Inténtalo de nuevo.",
+    "relationshipsTitle": "Relaciones de hospedantes documentadas",
+    "relationshipsHint": "Estas relaciones del catálogo tienen fuentes. Seleccionar una entrada en un cultivo no demuestra por sí solo una relación de hospedante ni una infestación. Consulta las fuentes y las precisiones sobre variedades.",
+    "broadRelationshipHint": "Este grupo general o concepto de enfermedad no identifica una plaga o un patógeno concreto confirmado. No permite establecer una relación de hospedante compartida.",
+    "noConfirmedHosts": "No se conocen relaciones de hospedantes confirmadas. La falta de información significa desconocido, no resistente.",
+    "qualifiedVariety": "Evidencia específica de la variedad: {{name}}",
+    "speciesHost": "Evidencia a nivel de especie cultivada; consulta las precisiones sobre variedades.",
+    "relationshipsError": "No se pudieron cargar las relaciones de hospedantes.",
+    "relationshipsActionHint": "Selecciona una entrada del catálogo para consultar las relaciones de hospedantes documentadas."
   }
 }
