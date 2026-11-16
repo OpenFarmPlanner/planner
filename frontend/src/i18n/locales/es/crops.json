@@ -1220,6 +1220,7 @@
         "bulkApprovePartial_one": "{{count}} especie de cultivo aceptada, {{failed}} con error: {{names}}",
         "bulkApprovePartial_other": "{{count}} especies de cultivo aceptadas, {{failed}} con error: {{names}}",
         "bulkApprovePartial_many": "{{count}} especies de cultivo aceptadas, {{failed}} con error: {{names}}",
+        "translationCompleteness": "Traducciones: {{available}}/{{total}}",
         "showAllLanguages": "Mostrar todos los idiomas",
         "previewSynonyms": "Sinónimos: {{synonyms}}",
         "previewMissing": "falta"

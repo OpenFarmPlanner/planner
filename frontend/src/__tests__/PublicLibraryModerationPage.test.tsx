@@ -1,7 +1,9 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { GLOBAL_SNACKBAR_EVENT, type GlobalSnackbarDetail } from '../utils/globalSnackbar';
+import i18n, { loadLanguages } from '../i18n/config';
+import { SUPPORTED_LANGUAGES } from '../i18n/languages';
 import PublicLibraryModerationPage from '../crop-library/pages/PublicLibraryModerationPage';
 
 const authUser = vi.hoisted(() => ({
@@ -207,13 +209,13 @@ describe('PublicLibraryModerationPage', () => {
     render(<PublicLibraryModerationPage />);
 
     expect(await screen.findByText('Kulturart-Vorschläge')).toBeInTheDocument();
-    expect(screen.getByText('Baumspinat')).toBeInTheDocument();
+    expect(screen.getAllByText('Baumspinat')).toHaveLength(2);
     expect(screen.getByText('Spinat')).toBeInTheDocument();
     expect(screen.getByText('Moderator-Anfragen')).toBeInTheDocument();
     expect(screen.getByText('Jonas')).toBeInTheDocument();
     const speciesTable = screen.getByRole('table', { name: 'Kulturart-Vorschläge' });
-    expect(within(speciesTable).getByLabelText('Deutsch')).toBeInTheDocument();
-    expect(within(speciesTable).getByLabelText('Englisch fehlt')).toBeInTheDocument();
+    expect(within(speciesTable).getByRole('columnheader', { name: 'Deutsch' })).toBeInTheDocument();
+    expect(within(speciesTable).queryByRole('columnheader', { name: 'Englisch' })).not.toBeInTheDocument();
 
     await user.click(screen.getAllByRole('button', { name: 'Annehmen' })[0]);
 
@@ -311,8 +313,9 @@ describe('PublicLibraryModerationPage', () => {
 
     const speciesTable = await screen.findByRole('table', { name: 'Kulturart-Vorschläge' });
     expect(within(speciesTable).getByText('Cyperus esculentus')).toBeInTheDocument();
+    await user.click(screen.getByRole('switch', { name: 'Alle Sprachen anzeigen' }));
     for (const language of ['Deutsch', 'Englisch', 'Französisch', 'Spanisch']) {
-      expect(within(speciesTable).getByLabelText(language)).toBeInTheDocument();
+      expect(within(speciesTable).getByRole('columnheader', { name: language })).toBeInTheDocument();
     }
     await user.click(within(speciesTable).getByRole('button', { name: 'Annehmen' }));
 
@@ -507,27 +510,19 @@ describe('PublicLibraryModerationPage', () => {
     similar_species: [],
   };
 
-  it('shows the translation of a language in the tooltip of its chip', async () => {
-    const user = userEvent.setup();
+  it('shows only the current language with readable synonyms and regional names by default', async () => {
     window.localStorage.removeItem('moderationSpeciesAllLanguages');
     apiMocks.cropSpeciesList.mockImplementation((params?: { status?: string }) => Promise.resolve({
       data: { results: params?.status === 'proposed' ? [erdmandelProposal] : [] },
     }));
     render(<PublicLibraryModerationPage />);
-
     const speciesTable = await screen.findByRole('table', { name: 'Kulturart-Vorschläge' });
-    await user.hover(within(speciesTable).getByLabelText('Französisch'));
-    const frenchTooltip = await screen.findByRole('tooltip');
-    expect(frenchTooltip).toHaveTextContent('Souchet comestible');
-    expect(frenchTooltip).toHaveTextContent('Synonyme: Amande de terre');
-    await user.unhover(within(speciesTable).getByLabelText('Französisch'));
-
-    await user.hover(within(speciesTable).getByLabelText('Deutsch'));
-    await waitFor(() => expect(screen.getByRole('tooltip')).toHaveTextContent('Name in der Schweiz: Erdmandeli'));
-    await user.unhover(within(speciesTable).getByLabelText('Deutsch'));
-
-    await user.hover(within(speciesTable).getByLabelText('Spanisch fehlt'));
-    await waitFor(() => expect(screen.getByRole('tooltip')).toHaveTextContent('Spanisch fehlt'));
+    expect(within(speciesTable).getByRole('columnheader', { name: 'Deutsch' })).toBeInTheDocument();
+    expect(within(speciesTable).queryByRole('columnheader', { name: 'Französisch' })).not.toBeInTheDocument();
+    expect(within(speciesTable).getByText('Synonyme: Tigernuss, Chufa')).toBeInTheDocument();
+    expect(within(speciesTable).getByText('Name in der Schweiz: Erdmandeli')).toBeInTheDocument();
+    expect(within(speciesTable).queryByText('Souchet comestible')).not.toBeInTheDocument();
+    expect(within(speciesTable).getByLabelText('Übersetzungen: 3/7')).toBeInTheDocument();
   });
 
   it('switches the proposal table to one column per language and remembers the choice', async () => {
@@ -539,17 +534,17 @@ describe('PublicLibraryModerationPage', () => {
     const { unmount } = render(<PublicLibraryModerationPage />);
 
     const speciesTable = await screen.findByRole('table', { name: 'Kulturart-Vorschläge' });
-    expect(within(speciesTable).getByRole('columnheader', { name: 'Sprachen' })).toBeInTheDocument();
+    expect(within(speciesTable).getByRole('columnheader', { name: 'Deutsch' })).toBeInTheDocument();
     await user.click(screen.getByRole('switch', { name: 'Alle Sprachen anzeigen' }));
 
-    for (const language of ['Deutsch', 'Englisch', 'Französisch', 'Spanisch']) {
+    for (const language of ['Deutsch', 'Englisch', 'Französisch', 'Spanisch', 'Italienisch', 'Portugiesisch', 'Niederländisch']) {
       expect(within(speciesTable).getByRole('columnheader', { name: language })).toBeInTheDocument();
     }
     expect(within(speciesTable).queryByRole('columnheader', { name: 'Sprachen' })).not.toBeInTheDocument();
     expect(within(speciesTable).getByText('Souchet comestible')).toBeInTheDocument();
     expect(within(speciesTable).getByText('Synonyme: Tigernuss, Chufa')).toBeInTheDocument();
     expect(within(speciesTable).getByText('Name in der Schweiz: Erdmandeli')).toBeInTheDocument();
-    expect(within(speciesTable).getByText('fehlt')).toBeInTheDocument();
+    expect(within(speciesTable).getAllByText('fehlt')).toHaveLength(4);
     expect(window.localStorage.getItem('moderationSpeciesAllLanguages')).toBe('true');
 
     unmount();
@@ -557,6 +552,57 @@ describe('PublicLibraryModerationPage', () => {
     const reloadedTable = await screen.findByRole('table', { name: 'Kulturart-Vorschläge' });
     expect(within(reloadedTable).getByRole('columnheader', { name: 'Spanisch' })).toBeInTheDocument();
     window.localStorage.removeItem('moderationSpeciesAllLanguages');
+  });
+
+  it('counts seven nonblank names and preserves selection across columns and UI language', async () => {
+    const user = userEvent.setup();
+    window.localStorage.removeItem('moderationSpeciesAllLanguages');
+    const translations = SUPPORTED_LANGUAGES.map(({ code }) => ({
+      language_code: code, common_name: `${code} name`, synonyms: [`${code} synonym`],
+    }));
+    const proposals = [
+      { id: 71, name: 'All seven', translations },
+      { id: 72, name: 'Required only', translations: translations.map((item) => ({
+        ...item, common_name: ['de', 'en', 'fr', 'es'].includes(item.language_code) ? item.common_name : '   ',
+      })) },
+      { id: 73, name: 'Missing required', translations: translations.map((item) => ({
+        ...item, common_name: item.language_code === 'en' ? '   ' : item.common_name,
+      })) },
+    ];
+    apiMocks.cropSpeciesList.mockImplementation((params?: { status?: string }) => Promise.resolve({
+      data: { results: params?.status === 'proposed' ? proposals : [] },
+    }));
+    render(<PublicLibraryModerationPage />);
+    const full = await screen.findByRole('row', { name: /All seven/ });
+    expect(within(full).getByLabelText('Übersetzungen: 7/7')).toBeInTheDocument();
+    const required = screen.getByRole('row', { name: /Required only/ });
+    expect(within(required).getByLabelText('Übersetzungen: 4/7')).toBeInTheDocument();
+    expect(within(required).getByRole('checkbox')).toBeEnabled();
+    const missing = screen.getByRole('row', { name: /Missing required/ });
+    expect(within(missing).getByLabelText('Übersetzungen: 6/7')).toBeInTheDocument();
+    expect(within(missing).getByRole('checkbox')).toBeDisabled();
+    await user.click(within(full).getByRole('checkbox'));
+    await user.click(screen.getByRole('switch', { name: 'Alle Sprachen anzeigen' }));
+    for (const code of ['it', 'pt', 'nl']) {
+      expect(within(full).getByText(`${code} name`)).toBeInTheDocument();
+      expect(within(full).getByText(`Synonyme: ${code} synonym`)).toBeInTheDocument();
+    }
+    expect(full.querySelectorAll('[lang]')).toHaveLength(7);
+    expect(within(full).getByRole('checkbox')).toBeChecked();
+    try {
+      await act(async () => { await loadLanguages(['it']); await i18n.changeLanguage('it'); });
+      const translated = await screen.findByRole('row', { name: /All seven/ });
+      expect(within(translated).getByRole('checkbox')).toBeChecked();
+      await user.click(screen.getByRole('switch'));
+      const current = screen.getByRole('row', { name: /All seven/ });
+      expect(current.querySelectorAll('[lang]')).toHaveLength(1);
+      expect(within(current).getByText('it name')).toBeInTheDocument();
+      expect(within(current).queryByText('de name')).not.toBeInTheDocument();
+      expect(within(current).getByRole('checkbox')).toBeChecked();
+    } finally {
+      await act(async () => { await i18n.changeLanguage('de'); });
+      window.localStorage.removeItem('moderationSpeciesAllLanguages');
+    }
   });
 
   it('lists removed public crops and restores one', async () => {

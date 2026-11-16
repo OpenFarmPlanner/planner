@@ -41,19 +41,21 @@ import { useAuth } from '../../auth/useAuth';
 import PageContainer from '../../components/layout/PageContainer';
 import PageHeader from '../../components/layout/PageHeader';
 import { useTranslation } from '../../i18n';
-import { getLanguageDisplayName, SUPPORTED_LANGUAGES } from '../../i18n/languages';
+import { getLanguageDisplayName, normalizeLanguageTag, SUPPORTED_LANGUAGES } from '../../i18n/languages';
 import { showGlobalSnackbar } from '../../utils/globalSnackbar';
 import { resolveLocaleFromLanguage } from '../../utils/numberLocalization';
+import { AppTooltip } from '../../components/AppTooltip';
 import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
 import { ConfirmationDialog } from '../../components/feedback/ConfirmationDialog';
 import ChangeProposalQueue from '../components/ChangeProposalQueue';
 import { PlantHealthCataloguePanel } from '../plant-health/PlantHealthCataloguePanel';
 import { SpeciesApprovalFields } from '../components/SpeciesApprovalFields';
-import { SpeciesLanguageChips, SpeciesTranslationCell } from '../components/SpeciesTranslationPreview';
+import { SpeciesTranslationCell } from '../components/SpeciesTranslationPreview';
 import {
   buildSpeciesApprovalPayload,
   createEmptySpeciesApprovalTranslations,
   getInitialSpeciesApprovalTranslations,
+  getSpeciesTranslation,
   isSpeciesApprovalComplete,
   parseSpeciesAliasInput,
   REQUIRED_SPECIES_LANGUAGES,
@@ -66,6 +68,29 @@ const ALIAS_SEARCH_DEBOUNCE_MS = 250;
 // Browser-storage key of the "show all languages" toggle; keep the spelling stable.
 const SPECIES_ALL_LANGUAGES_STORAGE_KEY = 'moderationSpeciesAllLanguages';
 const ALIAS_SPECIES_PAGE_SIZE = 20;
+
+const speciesSelectionCellSx = {
+  position: 'sticky', left: 0, zIndex: 2, bgcolor: 'background.paper',
+  width: 44, minWidth: 44, maxWidth: 44, p: 0,
+} as const;
+const speciesIdentityCellSx = {
+  position: 'sticky', left: 44, zIndex: 2, bgcolor: 'background.paper',
+  width: { xs: 88, sm: 220 }, px: { xs: 0.5, sm: 2 }, overflowWrap: 'anywhere',
+  borderRight: 1, borderColor: 'divider',
+} as const;
+const speciesActionsCellSx = {
+  position: 'sticky', right: 0, zIndex: 2, bgcolor: 'background.paper',
+  width: { xs: 44, lg: 260 }, px: { xs: 0, lg: 1 },
+  borderLeft: 1, borderColor: 'divider',
+} as const;
+const speciesActionButtonSx = {
+  minWidth: { xs: 44, lg: 0 }, minHeight: { xs: 44, lg: 0 }, px: { xs: 0, lg: 1 },
+  '& .MuiButton-startIcon': { mr: { xs: 0, lg: 1 }, ml: 0 },
+} as const;
+const speciesLanguageCellSx = {
+  width: { xs: 140, sm: 190 }, px: { xs: 1, sm: 2 },
+  verticalAlign: 'top', overflowWrap: 'anywhere',
+} as const;
 
 /** Whether a proposal already has every required common name, i.e. can be approved as stored. */
 const isSpeciesProposalComplete = (species: CropSpecies): boolean => REQUIRED_SPECIES_LANGUAGES.every(
@@ -119,6 +144,9 @@ export default function PublicLibraryModerationPage() {
   const canModerate = Boolean(user?.is_public_library_moderator || user?.is_staff || user?.is_superuser);
   const canManageRequests = Boolean(user?.is_staff || user?.is_superuser);
   const locale = resolveLocaleFromLanguage(i18n.resolvedLanguage);
+  const speciesLanguages = showAllSpeciesLanguages
+    ? SUPPORTED_LANGUAGES.map(({ code }) => code)
+    : [normalizeLanguageTag(i18n.resolvedLanguage ?? i18n.language) ?? 'en'];
 
   const formatDate = (value?: string | null): string => {
     if (!value) {
@@ -465,7 +493,8 @@ export default function PublicLibraryModerationPage() {
                 <Typography variant="h6">{t('library.moderation.species.title')}</Typography>
               </Stack>
               {speciesProposals.length > 0 ? (
-                <Stack direction="row" spacing={1} sx={{ mb: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} useFlexGap
+                  sx={{ mb: 1.5, alignItems: { xs: 'stretch', sm: 'center' }, flexWrap: 'wrap' }}>
                   <DisabledActionTooltip
                     title={busyAction !== null
                       ? t('common:disabledReasons.busy')
@@ -479,6 +508,7 @@ export default function PublicLibraryModerationPage() {
                       startIcon={<CheckOutlinedIcon />}
                       disabled={busyAction !== null || selectedSpeciesProposals.length === 0}
                       onClick={() => setBulkApprovalOpen(true)}
+                      sx={{ width: { xs: '100%', sm: 'auto' } }}
                     >
                       {busyAction === 'species-bulk-approve'
                         ? t('library.moderation.saving')
@@ -497,111 +527,126 @@ export default function PublicLibraryModerationPage() {
                       />
                     )}
                     label={t('library.moderation.species.showAllLanguages')}
+                    sx={{ mx: 0 }}
                   />
                 </Stack>
               ) : null}
               {speciesProposals.length === 0 ? (
                 <Typography color="text.secondary">{t('library.moderation.species.empty')}</Typography>
               ) : (
-                <TableContainer>
-                  <Table size="small" aria-label={t('library.moderation.species.title')}>
+                <TableContainer
+                  role="region" aria-label={t('library.moderation.species.title')} tabIndex={0}
+                  sx={{ maxWidth: '100%', overflowX: 'auto', position: 'relative', isolation: 'isolate' }}
+                >
+                  <Table
+                    size="small" aria-label={t('library.moderation.species.title')}
+                    sx={{ tableLayout: 'fixed', width: {
+                      xs: 496 + speciesLanguages.length * 140,
+                      sm: 648 + speciesLanguages.length * 190,
+                      lg: 864 + speciesLanguages.length * 190,
+                    } }}
+                  >
+                    <colgroup>
+                      <Box component="col" sx={{ width: 44 }} />
+                      <Box component="col" sx={{ width: { xs: 88, sm: 220 } }} />
+                      {speciesLanguages.map((code) => <Box component="col" key={code} sx={{ width: { xs: 140, sm: 190 } }} />)}
+                      <Box component="col" sx={{ width: 160 }} />
+                      <Box component="col" sx={{ width: { xs: 160, sm: 180 } }} />
+                      <Box component="col" sx={{ width: { xs: 44, lg: 260 } }} />
+                    </colgroup>
                     <TableHead>
                       <TableRow>
-                        <TableCell padding="checkbox">
+                        <TableCell padding="checkbox" sx={speciesSelectionCellSx}>
                           <Checkbox
-                            checked={allCompleteSelected}
+                            sx={{ p: 1.25 }} checked={allCompleteSelected}
                             indeterminate={!allCompleteSelected && selectedSpeciesProposals.length > 0}
                             disabled={busyAction !== null || completeSpeciesProposals.length === 0}
                             onChange={toggleAllSpeciesSelection}
                             slotProps={{ input: { 'aria-label': t('library.moderation.species.bulkSelectAll') } }}
                           />
                         </TableCell>
-                        <TableCell>{t('library.moderation.columns.name')}</TableCell>
-                        {showAllSpeciesLanguages
-                          ? REQUIRED_SPECIES_LANGUAGES.map((languageCode) => (
-                            <TableCell key={languageCode} sx={{ minWidth: 160 }}>
-                              {getLanguageDisplayName(languageCode, i18n.resolvedLanguage ?? i18n.language)}
-                            </TableCell>
-                          ))
-                          : <TableCell>{t('library.moderation.columns.languages')}</TableCell>}
-                        <TableCell>{t('library.moderation.columns.proposer')}</TableCell>
-                        <TableCell>{t('library.moderation.columns.similar')}</TableCell>
-                        <TableCell align="right">{t('library.moderation.columns.actions')}</TableCell>
+                        <TableCell sx={speciesIdentityCellSx}>{t('library.moderation.columns.name')}</TableCell>
+                        {speciesLanguages.map((languageCode) => (
+                          <TableCell key={languageCode} sx={speciesLanguageCellSx}>
+                            {getLanguageDisplayName(languageCode, i18n.resolvedLanguage ?? i18n.language)}
+                          </TableCell>
+                        ))}
+                        <TableCell sx={{ width: 160 }}>{t('library.moderation.columns.proposer')}</TableCell>
+                        <TableCell sx={{ width: { xs: 160, sm: 180 } }}>{t('library.moderation.columns.similar')}</TableCell>
+                        <TableCell align="right" sx={speciesActionsCellSx} aria-label={t('library.moderation.columns.actions')}>
+                          <Box component="span" sx={{ display: { xs: 'none', lg: 'inline' } }}>
+                            {t('library.moderation.columns.actions')}
+                          </Box>
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {speciesProposals.map((proposal) => (
-                        <TableRow key={proposal.id} selected={selectedSpeciesIds.has(proposal.id)}>
-                          <TableCell padding="checkbox">
-                            <DisabledActionTooltip
-                              title={isSpeciesProposalComplete(proposal)
-                                ? ''
-                                : t('library.moderation.species.bulkIncomplete')}
-                            >
+                      {speciesProposals.map((proposal) => {
+                        const available = SUPPORTED_LANGUAGES.filter(({ code }) => getSpeciesTranslation(proposal, code)).length;
+                        const completeness = t('library.moderation.species.translationCompleteness', {
+                          available, total: SUPPORTED_LANGUAGES.length,
+                        });
+                        return <TableRow key={proposal.id} selected={selectedSpeciesIds.has(proposal.id)}>
+                          <TableCell padding="checkbox" sx={speciesSelectionCellSx}>
+                            <DisabledActionTooltip title={isSpeciesProposalComplete(proposal)
+                              ? '' : t('library.moderation.species.bulkIncomplete')}>
                               <Checkbox
-                                checked={selectedSpeciesIds.has(proposal.id)}
+                                sx={{ p: 1.25 }} checked={selectedSpeciesIds.has(proposal.id)}
                                 disabled={busyAction !== null || !isSpeciesProposalComplete(proposal)}
                                 onChange={() => toggleSpeciesSelection(proposal.id)}
-                                slotProps={{
-                                  input: { 'aria-label': t('library.moderation.species.bulkSelect', { name: proposal.name }) },
-                                }}
+                                slotProps={{ input: { 'aria-label': t('library.moderation.species.bulkSelect', { name: proposal.name }) } }}
                               />
                             </DisabledActionTooltip>
                           </TableCell>
-                          <TableCell>
+                          <TableCell sx={speciesIdentityCellSx}>
                             {proposal.name}
                             {proposal.scientific_name ? (
                               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontStyle: 'italic' }}>
                                 {proposal.scientific_name}
                               </Typography>
                             ) : null}
+                            <AppTooltip title={completeness}>
+                              <Typography component="span" tabIndex={0} variant="caption" color="text.secondary"
+                                aria-label={completeness} sx={{ display: 'block' }}>
+                                {available}/{SUPPORTED_LANGUAGES.length}
+                              </Typography>
+                            </AppTooltip>
                           </TableCell>
-                          {showAllSpeciesLanguages
-                            ? REQUIRED_SPECIES_LANGUAGES.map((languageCode) => (
-                              <TableCell key={languageCode} sx={{ verticalAlign: 'top' }}>
-                                <SpeciesTranslationCell species={proposal} languageCode={languageCode} />
-                              </TableCell>
-                            ))
-                            : (
-                              <TableCell>
-                                <SpeciesLanguageChips species={proposal} />
-                              </TableCell>
-                            )}
+                          {speciesLanguages.map((languageCode) => (
+                            <TableCell key={languageCode} sx={speciesLanguageCellSx}>
+                              <SpeciesTranslationCell species={proposal} languageCode={languageCode} />
+                            </TableCell>
+                          ))}
                           <TableCell>{proposal.proposed_by_label || t('library.anonymousAuthor')}</TableCell>
                           <TableCell>
                             {(proposal.similar_species ?? []).length > 0
                               ? proposal.similar_species?.map((item) => <Chip key={item.id} size="small" label={item.name} sx={{ mr: 0.5, mb: 0.5 }} />)
                               : t('library.moderation.none')}
                           </TableCell>
-                          <TableCell align="right">
-                            <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end", }} >
-                              <DisabledActionTooltip title={busyAction !== null ? t('common:disabledReasons.busy') : ''}>
-                                <Button
-                                  size="small"
-                                  variant="contained"
-                                  startIcon={<CheckOutlinedIcon />}
-                                  disabled={busyAction !== null}
-                                  onClick={() => openSpeciesApproval(proposal)}
-                                >
-                                  {busyAction === `species-${proposal.id}-approve` ? t('library.moderation.saving') : t('library.moderation.approve')}
+                          <TableCell align="right" sx={speciesActionsCellSx}>
+                            <Stack direction={{ xs: 'column', lg: 'row' }} spacing={0.5} sx={{ alignItems: 'center', justifyContent: 'flex-end' }}>
+                              <DisabledActionTooltip title={busyAction !== null ? t('common:disabledReasons.busy') : t('library.moderation.approve')}>
+                                <Button size="small" variant="contained" sx={speciesActionButtonSx}
+                                  startIcon={<CheckOutlinedIcon />} disabled={busyAction !== null}
+                                  aria-label={t('library.moderation.approve')}
+                                  onClick={() => openSpeciesApproval(proposal)}>
+                                  <Box component="span" sx={{ display: { xs: 'none', lg: 'inline' } }}>
+                                    {busyAction === `species-${proposal.id}-approve` ? t('library.moderation.saving') : t('library.moderation.approve')}
+                                  </Box>
                                 </Button>
                               </DisabledActionTooltip>
-                              <DisabledActionTooltip title={busyAction !== null ? t('common:disabledReasons.busy') : ''}>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  color="error"
-                                  startIcon={<CloseOutlinedIcon />}
-                                  disabled={busyAction !== null}
-                                  onClick={() => void reviewSpecies(proposal, 'reject')}
-                                >
-                                  {t('library.moderation.reject')}
+                              <DisabledActionTooltip title={busyAction !== null ? t('common:disabledReasons.busy') : t('library.moderation.reject')}>
+                                <Button size="small" variant="outlined" color="error" sx={speciesActionButtonSx}
+                                  startIcon={<CloseOutlinedIcon />} disabled={busyAction !== null}
+                                  aria-label={t('library.moderation.reject')}
+                                  onClick={() => void reviewSpecies(proposal, 'reject')}>
+                                  <Box component="span" sx={{ display: { xs: 'none', lg: 'inline' } }}>{t('library.moderation.reject')}</Box>
                                 </Button>
                               </DisabledActionTooltip>
                             </Stack>
                           </TableCell>
-                        </TableRow>
-                      ))}
+                        </TableRow>;
+                      })}
                     </TableBody>
                   </Table>
                 </TableContainer>

@@ -1182,6 +1182,7 @@
         "bulkApproveSuccess_other": "{{count}} gewassoorten zijn goedgekeurd.",
         "bulkApprovePartial_one": "{{count}} gewassoort goedgekeurd, {{failed}} mislukt: {{names}}",
         "bulkApprovePartial_other": "{{count}} gewassoorten goedgekeurd, {{failed}} mislukt: {{names}}",
+        "translationCompleteness": "Vertalingen: {{available}}/{{total}}",
         "showAllLanguages": "Alle talen tonen",
         "previewSynonyms": "Synoniemen: {{synonyms}}",
         "previewMissing": "ontbreekt"

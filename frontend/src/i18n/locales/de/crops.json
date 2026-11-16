@@ -1182,6 +1182,7 @@
         "bulkApproveSuccess_other": "{{count}} Kulturarten wurden angenommen.",
         "bulkApprovePartial_one": "{{count}} Kulturart angenommen, {{failed}} fehlgeschlagen: {{names}}",
         "bulkApprovePartial_other": "{{count}} Kulturarten angenommen, {{failed}} fehlgeschlagen: {{names}}",
+        "translationCompleteness": "Übersetzungen: {{available}}/{{total}}",
         "showAllLanguages": "Alle Sprachen anzeigen",
         "previewSynonyms": "Synonyme: {{synonyms}}",
         "previewMissing": "fehlt"

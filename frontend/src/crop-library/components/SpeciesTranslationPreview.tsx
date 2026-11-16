@@ -7,10 +7,9 @@ import {
   getSpeciesTranslation,
   REQUIRED_SPECIES_LANGUAGES,
   SPECIES_REGIONAL_NAME_KEYS,
-  type RequiredSpeciesLanguage,
 } from '../../crops/cropSpeciesMatching';
 import { useTranslation } from '../../i18n';
-import { getLanguageDisplayName } from '../../i18n/languages';
+import { getLanguageDisplayName, type SupportedLanguage } from '../../i18n/languages';
 
 /** Synonyms and (German) regional names under a translated name, as small secondary lines. */
 function TranslationDetails({ translation }: { translation: CropSpeciesTranslation }): JSX.Element | null {
@@ -82,7 +81,7 @@ export function SpeciesLanguageChips({ species }: { species: CropSpecies }): JSX
 /** Table cell content for one language: the name with its synonyms below, or a "missing" marker. */
 export function SpeciesTranslationCell({
   species, languageCode,
-}: { species: CropSpecies; languageCode: RequiredSpeciesLanguage }): JSX.Element {
+}: { species: CropSpecies; languageCode: SupportedLanguage }): JSX.Element {
   const { t } = useTranslation('crops');
   const translation = getSpeciesTranslation(species, languageCode);
   if (!translation) {

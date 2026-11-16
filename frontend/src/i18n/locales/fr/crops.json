@@ -1220,6 +1220,7 @@
         "bulkApprovePartial_one": "{{count}} espèce cultivée acceptée, {{failed}} en échec : {{names}}",
         "bulkApprovePartial_other": "{{count}} espèces cultivées acceptées, {{failed}} en échec : {{names}}",
         "bulkApprovePartial_many": "{{count}} espèces cultivées acceptées, {{failed}} en échec : {{names}}",
+        "translationCompleteness": "Traductions : {{available}}/{{total}}",
         "showAllLanguages": "Afficher toutes les langues",
         "previewSynonyms": "Synonymes : {{synonyms}}",
         "previewMissing": "manquant"

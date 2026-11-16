@@ -5,6 +5,7 @@ import type {
   CropSpeciesSearchMatch,
   PublicCrop,
 } from '../api/types';
+import type { SupportedLanguage } from '../i18n/languages';
 import { normalizeSearchText } from '../search/searchText';
 
 export const normalizeCropSpeciesSearchValue = (value: string | undefined | null): string => (
@@ -334,7 +335,7 @@ export const getInitialSpeciesApprovalTranslations = (
 
 /** The stored translation of one language, or null when it has no common name. */
 export const getSpeciesTranslation = (
-  species: CropSpecies, languageCode: RequiredSpeciesLanguage,
+  species: CropSpecies, languageCode: SupportedLanguage,
 ): CropSpeciesTranslation | null => {
   const translation = species.translations?.find((item) => item.language_code === languageCode);
   return translation && translation.common_name.trim() ? translation : null;

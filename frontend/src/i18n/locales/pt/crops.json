@@ -1211,6 +1211,7 @@
         "bulkApproveSuccess_other": "Foram aprovadas {{count}} espécies cultivadas.",
         "bulkApprovePartial_one": "{{count}} espécies cultivadas aprovadas; {{failed}} falharam: {{names}}",
         "bulkApprovePartial_other": "{{count}} espécies cultivadas aprovadas; {{failed}} falharam: {{names}}",
+        "translationCompleteness": "Traduções: {{available}}/{{total}}",
         "showAllLanguages": "Mostrar todos os idiomas",
         "previewSynonyms": "Sinónimos: {{synonyms}}",
         "previewMissing": "em falta",
