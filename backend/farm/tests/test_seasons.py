@@ -805,7 +805,8 @@ class SeasonApiTest(ProjectApiTestCase):
         entries = self.client.get('/openfarmplanner/api/history/project/').json()
 
         self.assertTrue(entries[0]['is_batch'])
-        self.assertFalse(any(entry.get('is_current_version') for entry in entries))
+        self.assertTrue(entries[0].get('is_current_version'))
+        self.assertFalse(any(entry.get('is_current_version') for entry in entries[1:]))
 
     def test_reverting_a_season_create_batch_deletes_the_season(self):
         create = self.client.post('/openfarmplanner/api/seasons/', {

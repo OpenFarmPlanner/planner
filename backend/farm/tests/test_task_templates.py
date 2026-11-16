@@ -104,4 +104,5 @@ class CropTaskTemplateTest(TaskTimingFixture):
         )
         self.assertEqual(revisions[0].snapshot['day_offset'], -3)
         self.assertEqual(revisions[1].snapshot['day_offset'], 5)
-        self.assertIsNone(revisions[2].snapshot['deleted_at'])
+        self.assertIsNotNone(revisions[2].snapshot['deleted_at'])
+        self.assertIn('deleted_at', revisions[2].changed_fields)

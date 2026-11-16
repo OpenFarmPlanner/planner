@@ -29,53 +29,6 @@ def _model_manager(model):
     return getattr(model, 'all_objects', None) or model._base_manager
 
 
-def _bulk_create_skipping_conflicts(model, instances: list, object_ids: list[int]) -> set[int]:
-    """Recreate `instances` (aligned with `object_ids`), returning the ids that
-    landed.
-
-    Fast path is one `bulk_create`. It can still fail when two historical
-    snapshots both look "active" and collide on a (possibly partial) unique
-    constraint — which happens when an entity was hard-deleted without an
-    `ACTION_DELETED` revision (e.g. an old demo reset). Then fall back to
-    inserting row by row in savepoints and skip the losers; callers pass the
-    rows newest-id-first, so the most recent snapshot wins.
-    """
-    if not instances:
-        return set()
-    try:
-        with transaction.atomic():
-            model.objects.bulk_create(instances)
-        return set(object_ids)
-    except IntegrityError:
-        pass
-
-    inserted: set[int] = set()
-    for instance, object_id in zip(instances, object_ids, strict=True):
-        try:
-            with transaction.atomic():
-                model.objects.bulk_create([instance])
-            inserted.add(object_id)
-        except IntegrityError:
-            continue
-    return inserted
-
-
-def _entity_states_at(project: Project, entity_type: str, target_time) -> dict[int, dict[str, Any] | None]:
-    """Return {object_id: snapshot} for every object with a revision at/before
-    target_time; a value of None marks an object that was deleted by then."""
-    revisions = (
-        EntityRevision.objects
-        .filter(project=project, entity_type=entity_type, created_at__lte=target_time)
-        .order_by('object_id', '-created_at')
-    )
-    states: dict[int, dict[str, Any] | None] = {}
-    for revision in revisions:
-        if revision.object_id in states:
-            continue
-        states[revision.object_id] = None if revision.action == EntityRevision.ACTION_DELETED else revision.snapshot
-    return states
-
-
 _SKIP_ON_UPDATE = {'id', 'created_at', 'updated_at'}
 
 
@@ -133,164 +86,16 @@ def _validate_restored_general_identities(
             raise GeneralCropIdentityConflict()
 
 
-def _restore_project_crop_rows(
-    current: dict[int, dict[str, Any]], targets: dict[int, dict[str, Any]],
-) -> set[int]:
-    """Validate the final identities before staging and applying any crop changes."""
-    from uuid import uuid4
-
-    final = {pk: row for pk, row in current.items() if row['deleted_at'] is None}
-    final.update({pk: row for pk, row in targets.items() if pk in current})
-    occupied_names = {
-        _crop_restore_identity(row)[0] for row in final.values()
-        if not _crop_restore_identity(row)[1]
-    }
-    accepted = dict(targets)
-    # Preserve the historical skip for missing ghost rows whose general name is occupied.
-    for pk in sorted(set(targets) - set(current), reverse=True):
-        row = targets[pk]
-        name, variety, _species = _crop_restore_identity(row)
-        if not variety and name in occupied_names:
-            accepted.pop(pk)
-            continue
-        final[pk] = row
-        if not variety:
-            occupied_names.add(name)
-
-    _validate_restored_general_identities(current, final)
-
-    # Temporary normalized names allow valid name swaps under the existing unique constraint.
-    prefix = f'restore{uuid4().hex}'
-    for pk in accepted.keys() & current.keys():
-        if _crop_restore_identity(current[pk])[:2] != _crop_restore_identity(accepted[pk])[:2]:
-            Crop.all_objects.filter(pk=pk).update(name_normalized=f'{prefix}{pk}')
-    recreated: list[Crop] = []
-    for pk, row in accepted.items():
-        name, row['variety_normalized'], _species = _crop_restore_identity(row)
-        row['name_normalized'] = name or ''
-        if pk in current:
-            Crop.all_objects.filter(pk=pk).update(
-                **{key: value for key, value in row.items() if key not in _SKIP_ON_UPDATE},
-            )
-        else:
-            recreated.append(Crop(**row))
-    recreated.sort(key=lambda row: row.pk, reverse=True)
-    inserted = _bulk_create_skipping_conflicts(Crop, recreated, [row.pk for row in recreated])
-    return set(current) | inserted
-
-
 def _restore_project_state_at(project: Project, target_time) -> None:
-    """Roll every restorable entity type back to its state at target_time.
+    """Compatibility entry point for callers holding a historical timestamp."""
+    from .project_restore import ProjectRestoreConflict, restore_project_version
 
-    Works only through recorded revisions and never mass-deletes: a tracked row
-    is *updated in place* to its snapshot (or recreated if it had been
-    deleted). The only rows it removes are ones history positively records as
-    deleted by target_time. Rows history never recorded (the auto
-    "Hauptstandort" default, demo-seeder rows, data predating history) — and
-    entities merely created *after* target_time — are left untouched, so a
-    partial history can't empty a project or orphan its planting plans. The
-    trade-off is deliberate: recovering old state matters more than perfectly
-    un-creating everything newer.
-    """
-    restorable_models = {model for model, _entity_type in _RESTORABLE_ENTITY_TYPES}
-    with transaction.atomic():
-        lock_crop_project(project.pk)
-        # 1. Remove tracked rows history records as deleted by target_time.
-        #    Reverse dependency order so a parent's delete cascade never hits a
-        #    child we still have to process.
-        for model, entity_type in reversed(_RESTORABLE_ENTITY_TYPES):
-            states = _entity_states_at(project, entity_type, target_time)
-            gone_at_target = {object_id for object_id, snap in states.items() if snap is None}
-            if gone_at_target:
-                _model_manager(model).filter(project=project, pk__in=gone_at_target).delete()
-
-        # 2. Bring every tracked row that existed at target_time to its
-        #    snapshot — update in place, or recreate if it had been deleted.
-        present_ids: dict[type, set[int]] = {}
-        for model, entity_type in _RESTORABLE_ENTITY_TYPES:
-            manager = _model_manager(model)
-            allowed_fields = {field.attname for field in model._meta.concrete_fields}
-            restorable_fk_fields = [
-                field for field in model._meta.concrete_fields
-                if field.remote_field is not None and field.remote_field.model in restorable_models
-            ]
-            # FKs to non-restorable models can still dangle if the target row was
-            # hard-deleted since the snapshot — null the (nullable) FK instead of
-            # failing the insert.
-            external_fk_fields = [
-                field for field in model._meta.concrete_fields
-                if field.remote_field is not None
-                and field.remote_field.model not in restorable_models
-                and field.null
-            ]
-            existing_external_ids: dict[type, set[int]] = {
-                field.remote_field.model: set(
-                    field.remote_field.model._base_manager.values_list('pk', flat=True)
-                )
-                for field in external_fk_fields
-            }
-
-            live_ids = set(manager.filter(project=project).values_list('pk', flat=True))
-            present_ids[model] = set(live_ids)
-            current_crops = {
-                row['id']: row for row in manager.filter(project=project).values(
-                    'id', 'name', 'variety', 'crop_species_id', 'deleted_at',
-                )
-            } if model is Crop else {}
-            states = _entity_states_at(project, entity_type, target_time)
-            recreate: list[tuple[int, Any]] = []
-            crop_targets: dict[int, dict[str, Any]] = {}
-            for object_id, snapshot in states.items():
-                if snapshot is None:
-                    continue
-                # Skip if a parent this row needs was itself not restored.
-                if any(
-                    snapshot.get(field.attname) is not None
-                    and snapshot[field.attname] not in present_ids.get(field.remote_field.model, set())
-                    for field in restorable_fk_fields
-                ):
-                    continue
-                # Snapshots may carry fields the model has since dropped — keep
-                # only what still exists rather than crashing on an unknown kwarg.
-                snapshot = _with_legacy_snapshot_fields(model, snapshot)
-                row_data = {key: value for key, value in snapshot.items() if key in allowed_fields}
-                for field in external_fk_fields:
-                    if (
-                        row_data.get(field.attname) is not None
-                        and row_data[field.attname] not in existing_external_ids[field.remote_field.model]
-                    ):
-                        row_data[field.attname] = None
-                row_data['project_id'] = project.id
-                if 'deleted_at' in allowed_fields:
-                    row_data['deleted_at'] = None
-
-                if model is Crop:
-                    row_data['id'] = object_id
-                    crop_targets[object_id] = row_data
-                    continue
-                if object_id in live_ids:
-                    manager.filter(pk=object_id).update(
-                        **{key: value for key, value in row_data.items() if key not in _SKIP_ON_UPDATE},
-                    )
-                    present_ids[model].add(object_id)
-                else:
-                    recreate.append((object_id, model(**row_data)))
-
-            # Newest object_id first, so a unique-constraint collision between
-            # two stale snapshots resolves in favour of the most recent one.
-            recreate.sort(key=lambda pair: pair[0], reverse=True)
-            if model is Crop:
-                present_ids[model] = _restore_project_crop_rows(current_crops, crop_targets)
-            present_ids[model] |= _bulk_create_skipping_conflicts(
-                model,
-                [instance for _object_id, instance in recreate],
-                [object_id for object_id, _instance in recreate],
-            )
-            for object_id, snapshot in states.items():
-                if snapshot is not None and object_id in present_ids[model]:
-                    _restore_snapshot_children(model, object_id, snapshot)
-        # Restoring shared companion rows can change crops outside the snapshot set.
-        Crop.objects.filter(project=project).update(updated_at=timezone.now())
+    revision = EntityRevision.objects.filter(
+        project=project, created_at__lte=target_time,
+    ).order_by('-created_at', '-id').first()
+    if revision is None:
+        raise ProjectRestoreConflict('no historical state')
+    restore_project_version(project, revision)
 
 
 def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:

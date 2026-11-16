@@ -574,6 +574,7 @@ class TaskViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSe
         if instance.source_key:
             instance.deleted_at = timezone.now()
             instance.save(update_fields=['deleted_at', 'updated_at'])
+            snapshot = _serialize_instance(instance)
         else:
             instance.delete()
         self.record_revision(

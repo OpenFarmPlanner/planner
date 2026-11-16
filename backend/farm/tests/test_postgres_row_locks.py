@@ -18,10 +18,68 @@ from farm.tests.test_task_generation import TaskTimingFixture
 pytestmark = pytest.mark.postgres
 
 
+@pytest.mark.django_db(transaction=True)
+def test_two_projects_cannot_claim_the_same_import_uuid_concurrently():
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    from unittest.mock import patch
+    from uuid import uuid4
+
+    from django.db import close_old_connections, connection
+    from rest_framework.test import APIClient
+
+    from farm.history.records import start_batch_operation
+    from farm.models import BatchOperation, Crop, Project, ProjectMembership
+    from farm.tests.api_base import User
+
+    if connection.vendor != "postgresql":
+        pytest.skip("PostgreSQL unique-key race regression")
+    user = User.objects.create_user(username="import-uuid-race-owner")
+    projects = [
+        Project.objects.create(name=f"Import race {n}", slug=f"import-race-{n}") for n in range(2)
+    ]
+    for project in projects:
+        ProjectMembership.objects.create(project=project, user=user, role="admin")
+    identifier = str(uuid4())
+    barrier = Barrier(2)
+
+    def synchronized_start(**kwargs):
+        barrier.wait(timeout=10)
+        return start_batch_operation(**kwargs)
+
+    def import_once(project_id):
+        close_old_connections()
+        try:
+            client = APIClient()
+            client.force_authenticate(User.objects.get(pk=user.pk))
+            client.credentials(HTTP_X_PROJECT_ID=str(project_id))
+            return client.post(
+                "/openfarmplanner/api/crops/import/apply/",
+                {
+                    "items": [{"name": "UUID race crop"}],
+                    "phase": "crops",
+                    "import_operation_id": identifier,
+                },
+                format="json",
+            ).status_code
+        finally:
+            close_old_connections()
+
+    with patch(
+        "farm.history.import_operations.start_batch_operation", side_effect=synchronized_start
+    ):
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [pool.submit(import_once, project.pk) for project in projects]
+            outcomes = [future.result(timeout=30) for future in futures]
+    assert sorted(outcomes) == [200, 409]
+    assert BatchOperation.objects.filter(request_id=identifier).count() == 1
+    assert Crop.objects.filter(project__in=projects).count() == 1
+
+
 class PlanTaskSynchronizationLockTest(TaskTimingFixture):
     def setUp(self) -> None:
         super().setUp()
-        self.client.defaults['HTTP_X_SEASON_ID'] = str(self.season.pk)
+        self.client.defaults["HTTP_X_SEASON_ID"] = str(self.season.pk)
 
     def test_updating_plan_dates_synchronizes_automatic_and_template_tasks(self) -> None:
         CropTaskTemplate.objects.create(

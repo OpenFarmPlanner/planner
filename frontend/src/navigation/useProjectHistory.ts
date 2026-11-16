@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { cropAPI } from '../api/api';
 import type { CropHistoryEntry } from '../api/types';
 import { useTranslation } from '../i18n';
@@ -17,6 +17,15 @@ export interface ProjectHistory {
   cancelRestore: () => void;
   restoreVersion: (historyId: number) => Promise<void>;
   revertBatch: (batchId: number) => Promise<void>;
+  pendingImportUndo: CropHistoryEntry | null;
+  importUndoPreview: Awaited<ReturnType<typeof cropAPI.importUndoPreview>>['data'] | null;
+  importUndoError: 'unavailable' | 'already_undone' | null;
+  undoBusy: boolean;
+  requestImportUndo: (entry: CropHistoryEntry) => Promise<void>;
+  cancelImportUndo: () => void;
+  confirmImportUndo: () => Promise<void>;
+  pendingBatchRevert: CropHistoryEntry | null;
+  requestBatchRevert: (entry: CropHistoryEntry | null) => void;
 }
 
 /**
@@ -31,6 +40,50 @@ export function useProjectHistory(showSnackbar: ShowSnackbar): ProjectHistory {
   const [items, setItems] = useState<CropHistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [pendingRestoreEntry, setPendingRestoreEntry] = useState<CropHistoryEntry | null>(null);
+  const [pendingBatchRevert, requestBatchRevert] = useState<CropHistoryEntry | null>(null);
+  const [pendingImportUndo, setPendingImportUndo] = useState<CropHistoryEntry | null>(null);
+  const [importUndoPreview, setImportUndoPreview] = useState<ProjectHistory['importUndoPreview']>(null);
+  const [importUndoError, setImportUndoError] = useState<ProjectHistory['importUndoError']>(null);
+  const [undoBusy, setUndoBusy] = useState(false);
+  const undoRequest = useRef(0);
+
+  const cancelImportUndo = useCallback(() => {
+    undoRequest.current += 1;
+    setPendingImportUndo(null);
+    setImportUndoPreview(null);
+    setImportUndoError(null);
+  }, []);
+
+  const requestImportUndo = useCallback(async (entry: CropHistoryEntry): Promise<void> => {
+    const request = ++undoRequest.current;
+    setPendingImportUndo(entry);
+    setImportUndoPreview(null);
+    setImportUndoError(null);
+    try {
+      const response = await cropAPI.importUndoPreview(entry.batch_id!);
+      if (request === undoRequest.current) setImportUndoPreview(response.data);
+    } catch (error) {
+      const code = (error as { response?: { data?: { code?: string } } })?.response?.data?.code;
+      if (request === undoRequest.current) setImportUndoError(code === 'crop_import_already_undone' ? 'already_undone' : 'unavailable');
+    }
+  }, []);
+
+  const confirmImportUndo = useCallback(async (): Promise<void> => {
+    if (!pendingImportUndo?.batch_id || !importUndoPreview || importUndoPreview.conflicts.length || undoBusy) return;
+    setUndoBusy(true);
+    try {
+      await cropAPI.revertBatch(pendingImportUndo.batch_id);
+      cancelImportUndo();
+      setOpen(false);
+      showSnackbar(t('crops:history.import.undone'), 'success');
+      window.location.reload();
+    } catch {
+      // A later edit can invalidate a preview; refresh the same checks before retry.
+      await requestImportUndo(pendingImportUndo);
+    } finally {
+      setUndoBusy(false);
+    }
+  }, [pendingImportUndo, importUndoPreview, undoBusy, cancelImportUndo, showSnackbar, t, requestImportUndo]);
 
   const openHistory = useCallback(async (): Promise<void> => {
     setLoading(true);
@@ -68,7 +121,10 @@ export function useProjectHistory(showSnackbar: ShowSnackbar): ProjectHistory {
     } catch (error) {
       console.error('Error restoring project version:', error);
       setPendingRestoreEntry(null);
-      showSnackbar(t('commandPalette.feedback.versionRestoreError'), 'error');
+      const code = (error as { response?: { data?: { code?: string } } })?.response?.data?.code;
+      showSnackbar(t(code === 'project_restore_conflict'
+        ? 'commandPalette.feedback.versionRestoreConflict'
+        : 'commandPalette.feedback.versionRestoreError'), 'error');
     }
   }, [showSnackbar, t]);
 
@@ -78,10 +134,12 @@ export function useProjectHistory(showSnackbar: ShowSnackbar): ProjectHistory {
       showSnackbar(t('commandPalette.feedback.versionRestored'), 'success');
       setOpen(false);
       setPendingRestoreEntry(null);
+      requestBatchRevert(null);
       window.location.reload();
     } catch (error) {
       console.error('Error reverting batch operation:', error);
       setPendingRestoreEntry(null);
+      requestBatchRevert(null);
       showSnackbar(t('commandPalette.feedback.versionRestoreError'), 'error');
     }
   }, [showSnackbar, t]);
@@ -97,5 +155,8 @@ export function useProjectHistory(showSnackbar: ShowSnackbar): ProjectHistory {
     cancelRestore,
     restoreVersion,
     revertBatch,
+    pendingImportUndo, importUndoPreview, importUndoError, undoBusy,
+    requestImportUndo, cancelImportUndo, confirmImportUndo,
+    pendingBatchRevert, requestBatchRevert,
   };
 }

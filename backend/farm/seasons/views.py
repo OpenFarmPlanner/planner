@@ -19,8 +19,10 @@ from farm.history import (
     _current_actor_label,
     _entity_display_name,
     _serialize_instance,
+    record_entity_revision,
     start_batch_operation,
 )
+from farm.history.project_restore import ensure_project_checkpoint
 from farm.history.restore import _record_cascade_deletions, restore_season_planting_plans
 from farm.models import BatchOperation, EntityRevision, PlantingPlan, Season, SeasonPattern, Task
 from farm.project_context import get_active_project_or_400
@@ -113,10 +115,13 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
                 user_name=_current_actor_label(request),
             )
             season.deleted_at = timezone.now()
-            season.save(update_fields=['deleted_at', 'updated_at'])
+            season.save(update_fields=["deleted_at", "updated_at"])
             self.record_revision(
-                season, EntityRevision.ACTION_DELETED,
-                snapshot=snapshot, display_name=display_name, changed_fields=[],
+                season,
+                EntityRevision.ACTION_DELETED,
+                previous_snapshot=snapshot,
+                display_name=display_name,
+                changed_fields=["deleted_at"],
                 batch_operation=batch,
             )
             self._delete_planting_plans_with_season(season, batch)
@@ -370,6 +375,8 @@ class SeasonPatternView(APIView):
         pattern = get_or_create_season_pattern(active_project)
         serializer = SeasonPatternSerializer(pattern, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
+        ensure_project_checkpoint(active_project, user_name=_current_actor_label(request))
+        pattern._history_user_name = _current_actor_label(request)
         serializer.save()
         return Response(serializer.data)
 
@@ -467,6 +474,8 @@ class SeasonSetupApplyView(APIView):
             partial=True,
         )
         pattern_serializer.is_valid(raise_exception=True)
+        ensure_project_checkpoint(active_project, user_name=_current_actor_label(request))
+        pattern_serializer.instance._history_user_name = _current_actor_label(request)
         pattern = pattern_serializer.save()
 
         start_date, end_date = compute_setup_target_period(active_project, pattern)
@@ -476,9 +485,16 @@ class SeasonSetupApplyView(APIView):
             end_date,
             created_by=request.user if request.user.is_authenticated else None,
         )
-        assigned_count = PlantingPlan.objects.filter(
-            project=active_project, season__isnull=True,
-        ).update(season=season)
+        unassigned = PlantingPlan.objects.filter(project=active_project, season__isnull=True)
+        assigned_ids = list(unassigned.values_list('pk', flat=True))
+        assigned_count = unassigned.update(season=season, updated_at=timezone.now())
+        for plan in PlantingPlan.objects.filter(pk__in=assigned_ids).select_related('crop', 'bed'):
+            record_entity_revision(
+                project=active_project, entity_type='planting_plan', object_id=plan.pk,
+                action=EntityRevision.ACTION_UPDATED, snapshot=_serialize_instance(plan),
+                display_name=_entity_display_name(plan), changed_fields=['season_id'],
+                user_name=_current_actor_label(request),
+            )
 
         generate_tasks_for_plans(
             PlantingPlan.objects.filter(project=active_project, season=season)

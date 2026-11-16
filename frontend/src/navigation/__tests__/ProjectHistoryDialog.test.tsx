@@ -47,6 +47,37 @@ function renderDialog(
 }
 
 describe('ProjectHistoryDialog', () => {
+  it('retains the legacy season undo as a secondary action', async () => {
+    const user = userEvent.setup();
+    const season = entry({ is_batch: true, batch_id: 8, batch_operation_type: 'season_delete',
+      batch_context: { season_label: '2026' } });
+    const { onRevertBatch, onRestore } = renderDialog([season]);
+    await user.click(screen.getByRole('button', { name: 'Mehr' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Diese Aktion rückgängig machen' }));
+    expect(onRevertBatch).toHaveBeenCalledWith(season);
+    expect(onRestore).not.toHaveBeenCalled();
+  });
+  it('keeps selective import undo in the menu and full restore on the main row', async () => {
+    const user = userEvent.setup();
+    const imported = entry({ is_batch: true, batch_id: 14, batch_operation_type: 'crop_import',
+      batch_context: { created_count: 2, updated_count: 1 }, children: [
+        entry({ object_type: 'crop', object_id: 70, object_display_name: 'Carrot', action: 'created' }),
+        entry({ object_type: 'crop', object_id: 71, object_display_name: 'Leek', action: 'updated' }),
+      ] });
+    const { onRestore, onRevertBatch } = renderDialog([imported]);
+    expect(screen.getByText('3 Kulturen importiert')).toBeInTheDocument();
+    expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: restoreVersionLabel }));
+    expect(onRestore).toHaveBeenCalledWith(imported);
+    expect(onRevertBatch).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Betroffene Datensätze' }));
+    expect(screen.getByText(/Carrot/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Carrot/ })).toHaveAttribute('href', '/app/crops?cropId=70');
+    expect(screen.getByText(/Leek/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Importaktionen' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Nur diesen Import rückgängig machen' }));
+    expect(onRevertBatch).toHaveBeenCalledWith(imported);
+  });
   it('renders a cascade as one summarized row with a single undo action', async () => {
     const user = userEvent.setup();
     const batchEntry = entry({
@@ -60,7 +91,7 @@ describe('ProjectHistoryDialog', () => {
         entry({ object_type: 'planting_plan', object_display_name: 'Karotte / Beet 2', action: 'deleted' }),
       ],
     });
-    const { onRevertBatch } = renderDialog([batchEntry]);
+    const { onRestore } = renderDialog([batchEntry]);
 
     expect(screen.getByText('Saison 25/26 gelöscht: 2 Anbaupläne gelöscht')).toBeInTheDocument();
     // One summary row, no individual child rows.
@@ -69,7 +100,7 @@ describe('ProjectHistoryDialog', () => {
     const buttons = screen.getAllByRole('button', { name: restoreVersionLabel });
     expect(buttons).toHaveLength(1);
     await user.click(buttons[0]);
-    expect(onRevertBatch).toHaveBeenCalledWith(batchEntry);
+    expect(onRestore).toHaveBeenCalledWith(batchEntry);
   });
 
   it('shows a "revert of a revert" entry with the same restore button', async () => {
@@ -81,11 +112,11 @@ describe('ProjectHistoryDialog', () => {
       batch_context: { reverted_operation_type: 'season_delete', season_label: '25/26' },
       children: [entry({ object_type: 'season', action: 'restored' })],
     });
-    const { onRevertBatch } = renderDialog([revertEntry]);
+    const { onRestore } = renderDialog([revertEntry]);
 
     expect(screen.getByText('Wiederhergestellt: Saison 25/26 gelöscht')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: restoreVersionLabel }));
-    expect(onRevertBatch).toHaveBeenCalledWith(revertEntry);
+    expect(onRestore).toHaveBeenCalledWith(revertEntry);
   });
 
   it('lists ungrouped revisions flat with the localized restore action', () => {

@@ -1018,12 +1018,14 @@ class Crop(TimestampedModel):
         if history_action is None:
             history_action = EntityRevision.ACTION_CREATED if not previous else EntityRevision.ACTION_UPDATED
 
-        EntityRevision.objects.create(
+        from farm.history.records import record_entity_revision
+
+        record_entity_revision(
             project=self.project,
-            entity_type='crop',
+            entity_type="crop",
             object_id=self.pk,
             action=history_action,
-            display_name=format_crop_display_name(self.name, self.variety) or '',
+            display_name=format_crop_display_name(self.name, self.variety) or "",
             snapshot=serializable_snapshot,
             changed_fields=changed_fields,
         )
@@ -1033,6 +1035,7 @@ class Crop(TimestampedModel):
         from .planning import PlantingPlan
 
         plans_to_update = []
+        date_changes: dict[int, list[str]] = {}
         now = timezone.now()
         plans = self._planting_plans_affected_by_timing_change(changed_timing_fields)
         for plan in plans:
@@ -1052,14 +1055,47 @@ class Crop(TimestampedModel):
             ):
                 plan.updated_at = now
                 plans_to_update.append(plan)
+                date_changes[plan.pk] = [
+                    field
+                    for field, before in (
+                        ("harvest_date", previous_harvest_date),
+                        ("harvest_end_date", previous_harvest_end_date),
+                    )
+                    if getattr(plan, field) != before
+                ]
 
         if plans_to_update:
             PlantingPlan.objects.bulk_update(
                 plans_to_update,
-                ['harvest_date', 'harvest_end_date', 'updated_at'],
+                ["harvest_date", "harvest_end_date", "updated_at"],
+            )
+            self._record_recalculated_plan_dates(date_changes)
+
+    def _record_recalculated_plan_dates(self, changes: dict[int, list[str]]) -> None:
+        from farm.history.records import _entity_display_name, record_entity_revision
+
+        from .planning import PlantingPlan
+
+        for plan in PlantingPlan.objects.filter(
+            project_id=self.project_id,
+            pk__in=changes,
+        ).select_related("crop", "bed"):
+            values = {
+                field.attname: getattr(plan, field.attname) for field in plan._meta.concrete_fields
+            }
+            record_entity_revision(
+                project=self.project,
+                entity_type="planting_plan",
+                object_id=plan.pk,
+                action=EntityRevision.ACTION_UPDATED,
+                snapshot=json.loads(json.dumps(values, cls=DjangoJSONEncoder)),
+                display_name=_entity_display_name(plan),
+                changed_fields=changes[plan.pk],
             )
 
-    def _planting_plans_affected_by_timing_change(self, changed_timing_fields: list[str]) -> models.QuerySet:
+    def _planting_plans_affected_by_timing_change(
+        self, changed_timing_fields: list[str]
+    ) -> models.QuerySet:
         """Return direct plans plus Sorte plans inheriting the changed timing."""
         from .planning import PlantingPlan
 
@@ -1068,9 +1104,9 @@ class Crop(TimestampedModel):
         is_general_crop = self.crop_species_id is not None and self.variety_normalized is None
         if is_general_crop:
             inherited_timing = Q()
-            if 'growth_duration_days' in changed_timing_fields:
+            if "growth_duration_days" in changed_timing_fields:
                 inherited_timing |= Q(crop__growth_duration_days__isnull=True)
-            if 'harvest_duration_days' in changed_timing_fields:
+            if "harvest_duration_days" in changed_timing_fields:
                 inherited_timing |= Q(crop__harvest_duration_days__isnull=True)
             if inherited_timing:
                 inherited_plans = (
@@ -1082,11 +1118,9 @@ class Crop(TimestampedModel):
                     & inherited_timing
                 )
 
-        return (
-            PlantingPlan.objects
-            .filter(direct_plans | inherited_plans)
-            .select_related('crop')
-        )
+        return PlantingPlan.objects.filter(
+            direct_plans | inherited_plans, project_id=self.project_id
+        ).select_related("crop")
 
     def _generate_display_color(self) -> str:
         """Generate a display color using a Golden Angle HSL strategy."""

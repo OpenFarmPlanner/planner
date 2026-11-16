@@ -6,6 +6,7 @@ const api = vi.hoisted(() => ({
   projectHistory: vi.fn(),
   projectRestore: vi.fn(),
   revertBatch: vi.fn(),
+  importUndoPreview: vi.fn(),
 }));
 
 vi.mock('../api/api', () => ({ cropAPI: api }));
@@ -85,6 +86,59 @@ describe('openHistory', () => {
     await act(async () => { await result.current.openHistory(); });
 
     expect(result.current.items).toEqual([entry(3)]);
+  });
+});
+
+describe('selective import undo', () => {
+  it('checks the selected import before allowing a destructive call', async () => {
+    api.importUndoPreview.mockResolvedValue({ data: { created_count: 2, updated_count: 1, conflicts: [] } });
+    api.revertBatch.mockResolvedValue({ data: {} });
+    const { result, showSnackbar } = setup();
+    await act(async () => { await result.current.requestImportUndo(ENTRIES[0]); });
+    expect(api.importUndoPreview).toHaveBeenCalledWith(10);
+    expect(api.revertBatch).not.toHaveBeenCalled();
+    expect(result.current.importUndoPreview?.created_count).toBe(2);
+    await act(async () => { await result.current.confirmImportUndo(); });
+    expect(api.revertBatch).toHaveBeenCalledWith(10);
+    expect(showSnackbar).toHaveBeenCalledWith('crops:history.import.undone', 'success');
+    expect(reload).toHaveBeenCalledOnce();
+    expect(result.current.pendingImportUndo).toBeNull();
+  });
+
+  it('keeps a conflicting import untouched', async () => {
+    api.importUndoPreview.mockResolvedValue({ data: { created_count: 1, updated_count: 0, conflicts: [{ code: 'later_edit' }] } });
+    const { result } = setup();
+    await act(async () => { await result.current.requestImportUndo(ENTRIES[0]); });
+    await act(async () => { await result.current.confirmImportUndo(); });
+    expect(api.revertBatch).not.toHaveBeenCalled();
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('discards a preview that arrives after cancellation', async () => {
+    let resolve!: (value: unknown) => void;
+    api.importUndoPreview.mockImplementation(() => new Promise(done => { resolve = done; }));
+    const { result } = setup();
+    let loading!: Promise<void>;
+    act(() => { loading = result.current.requestImportUndo(ENTRIES[0]); });
+    act(() => { result.current.cancelImportUndo(); });
+    await act(async () => {
+      resolve({ data: { created_count: 9, updated_count: 0, conflicts: [] } });
+      await loading;
+    });
+    expect(result.current.pendingImportUndo).toBeNull();
+    expect(result.current.importUndoPreview).toBeNull();
+  });
+
+  it('refreshes conflicts after a stale preview without automatically retrying undo', async () => {
+    api.importUndoPreview.mockResolvedValueOnce({ data: { created_count: 1, updated_count: 0, conflicts: [] } })
+      .mockResolvedValueOnce({ data: { created_count: 1, updated_count: 0, conflicts: [{ code: 'dependent_data' }] } });
+    api.revertBatch.mockRejectedValue({ response: { status: 409 } });
+    const { result } = setup();
+    await act(async () => { await result.current.requestImportUndo(ENTRIES[0]); });
+    await act(async () => { await result.current.confirmImportUndo(); });
+    expect(api.revertBatch).toHaveBeenCalledOnce();
+    expect(result.current.importUndoPreview?.conflicts[0].code).toBe('dependent_data');
+    expect(reload).not.toHaveBeenCalled();
   });
 });
 

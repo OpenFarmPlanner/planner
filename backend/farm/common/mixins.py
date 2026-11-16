@@ -90,6 +90,12 @@ class ProjectScopedMixin:
     def initial(self, request, *args, **kwargs):
         super().initial(request, *args, **kwargs)
         request.active_project = get_active_project_or_400(request)
+        if getattr(self, "action", None) in {"create", "update", "partial_update", "destroy"}:
+            from farm.history.project_restore import ensure_project_checkpoint
+
+            ensure_project_checkpoint(
+                request.active_project, user_name=_current_actor_label(request)
+            )
         if self.ensure_default_location:
             self.ensure_active_project_location()
 
@@ -120,12 +126,21 @@ class ProjectScopedMixin:
                 with transaction.atomic():
                     if Location.objects.filter(project=project).exists():
                         return
-                    Location.objects.create(project=project, name=name)
+                    location = Location.objects.create(project=project, name=name)
+                    record_entity_revision(
+                        project=project,
+                        entity_type="location",
+                        object_id=location.pk,
+                        action=EntityRevision.ACTION_CREATED,
+                        snapshot=_serialize_instance(location),
+                        display_name=location.name,
+                        user_name=_current_actor_label(self.request),
+                    )
                 return
             except OperationalError as exc:
-                if attempt == attempts - 1 or 'locked' not in str(exc).lower():
+                if attempt == attempts - 1 or "locked" not in str(exc).lower():
                     raise
-                time.sleep(min(0.05 * (2 ** attempt), 0.5))
+                time.sleep(min(0.05 * (2**attempt), 0.5))
 
     def get_queryset(self):
         queryset = super().get_queryset()

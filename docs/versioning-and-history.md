@@ -73,86 +73,125 @@ write path — it just creates an `EntityRevision` row. It's called:
   menu / command palette). Loading those entries and both undo paths —
   restoring one version and reverting a whole batch — live in
   `frontend/src/navigation/useProjectHistory.ts`; `RootLayout` only mounts the
-  two dialogs. Both undo paths reload the page afterwards, because a restore
+  history and confirmation dialogs. Both undo paths reload the page afterwards, because a restore
   rewrites rows every open screen may already be showing.
 
-## Batch operations (grouping a cascade)
+## Grouped operations and imports
 
-A single user action can cascade into many entity mutations — deleting a
-season also deletes every planting plan in it. `BatchOperation`
-(`backend/farm/models/history.py`) groups the resulting revisions so the
-history shows them as **one entry with a single "rückgängig machen"** instead
-of a dozen unrelated "planting plan deleted" rows.
+`BatchOperation` groups one logical action while retaining granular
+`EntityRevision` rows. Season create/delete/undelete/copy operations still use
+`start_batch_operation` and the backwards-compatible batch revert endpoint.
 
-- `start_batch_operation(project=, operation_type=, context=, user_name=)`
-  (`backend/farm/history/records.py`) creates the group; pass the returned
-  instance as `batch_operation=` to every `record_entity_revision` /
-  `record_revision` call the action makes. `context` is free-form JSON the
-  frontend uses to phrase the summary (e.g. `{"season_label": "25/26"}`).
-- `EntityRevision.batch_operation` is a nullable `SET_NULL` FK — ordinary
-  single-entity edits leave it NULL and render flat with "Version
-  wiederherstellen" (whole-project point-in-time restore).
-- Wired in `SeasonViewSet`: `season_create`, `season_delete`,
-  `season_undelete`, `season_copy_data`. Reuse the helper for any future
-  cascade — no schema change, just a new `operation_type` constant + a
-  frontend label in `BATCH_OPERATION_BASE_KEYS`.
-- `ProjectHistoryListView` folds revisions sharing a `batch_operation` into
-  one `is_batch` payload entry (still carrying the members in `children`, used
-  only for the summary counts). `ProjectHistoryDialog` renders it as one row.
-- **Revert:** every batch entry (including a `batch_reverted` one) shows the
-  same "Version wiederherstellen" button. `BatchOperationRevertView` →
-  `revert_batch_operation` (`restore.py`) undoes the whole batch — every entity
-  goes back to its state *just before* the batch (`created` → deleted,
-  `deleted` → recreated, `updated`/`restored` → rolled back to the prior
-  revision), grouped under a new `batch_reverted` batch. It is idempotent and
-  composes: reverting a `batch_reverted` batch re-applies the original action.
-- `cleanup_history` drops `BatchOperation` rows older than the cutoff once
-  all their revisions have been pruned.
+The crops page generates one random `import_operation_id` for the entire apply
+attempt, including all crop, companion and finalize HTTP batches. It never
+retries an uncertain write automatically. The server binds this UUID to the
+active project and initiating user under the existing project write lock.
+Closed/reverted, foreign-user/project and expired (24-hour) IDs cannot accept
+more batches. Old requests without an ID keep the previous ungrouped behavior;
+timestamps are never used to guess which old revisions belong together.
 
-## Restoring
+Before a project's first ordinary create/update/delete request,
+`ensure_project_checkpoint` establishes a complete baseline once. Read-only and
+import-preview requests do not create that baseline. Lazy creation of a default
+location gets its own creation revision. Later ordinary mutations continue to
+write per-entity revisions, without serializing the whole project again.
 
-Two restore paths, both admin-only (`require_project_admin`):
+`history/import_operations.py` owns grouping and selective undo:
 
-- **`GlobalHistoryRestoreView`** restores a *single crop* from one of its
-  own past revisions: copies every allowed field from that revision's
-  snapshot onto the (possibly soft-deleted — looked up via
-  `Crop.all_objects`, not the default manager) crop row, clears
-  `deleted_at`, and saves with `_history_action = ACTION_RESTORED`.
-- **`ProjectHistoryRestoreView`** rolls the *whole project* back to the
-  clicked revision's timestamp (`_restore_project_state_at`). The project's
-  newest revision (by `created_at`, then `id`) is the current state, so
-  restoring it is refused with `409 already_current_version`
-  (`is_latest_project_revision`). `ProjectHistoryListView` flags that entry
-  `is_current_version` when it is a flat row, and `ProjectHistoryDialog`
-  shows an "Aktuelle Version" badge there instead of the restore action. If
-  the newest revision belongs to a batch, no row is flagged: the batch row
-  keeps its revert action, because undoing it does change state. It works purely
-  through recorded revisions and **never mass-deletes**:
-  - `_entity_states_at(project, entity_type, target_time)` gives, per
-    `object_id`, the most recent revision at or before `target_time` — a
-    snapshot, or `None` if it was deleted by then.
-  - **Phase 1 (reverse dependency order):** delete only the rows whose state
-    is `None` (history positively records them as deleted by then).
-  - **Phase 2 (forward order):** every tracked row that existed at
-    `target_time` is `UPDATE`d in place to its snapshot (bypassing
-    `Model.save()`), or recreated with `bulk_create` if it had been deleted.
-    A row whose restorable parent wasn't restored is skipped; a dangling
-    nullable non-restorable FK is nulled; snapshot fields the model has since
-    dropped are ignored.
-  - **Left untouched:** rows with no revision at all — the auto-created
-    default location ("Hauptstandort"/"Main location"/…)
-    (`ProjectScopedMixin.ensure_active_project_location`), demo-seeder rows
-    (`demo_project.py` uses plain `Model.objects.create`), pre-history data —
-    **and** entities merely *created after* `target_time`. Recovering old
-    state is the goal, not perfectly un-creating everything newer; the
-    alternative (deleting them) cascade-wiped untracked planting plans and
-    once emptied a demo project.
-  - `_bulk_create_skipping_conflicts` recreates newest-`object_id`-first and,
-    if an insert hits a (possibly partial) unique constraint — two stale
-    snapshots that both look "active" because one entity was hard-deleted
-    without an `ACTION_DELETED` revision — falls back to per-row inserts that
-    skip the losers.
-  - Records one `EntityRevision` (`entity_type='project'`, `ACTION_RESTORED`).
+- A context-local `revision_batch` binds nested crop/model/service audit writes
+  to the server-selected group. It is reset even on exceptions and never takes
+  a client-supplied database batch ID.
+- Each apply request captures its domain rows before and after executing, inside
+  the transaction. The group privately retains the first before-image and latest
+  after-image of each row the import actually changed, including supplier data,
+  companions, timing windows and recalculated plan/task state. It does not absorb
+  unrelated changes made between HTTP batches. Interleaved edits to an affected
+  row block selective undo.
+- The operation also writes complete domain checkpoints before and after each
+  HTTP batch. These are exceptional writes per bounded batch, **not per crop or
+  every ordinary mutation**. They establish untracked initial rows and make the
+  applied state, interrupted-import state and undo result restorable.
+- History displays one import group with unique created/updated crop counts,
+  actor/time and expandable affected-record labels. Private before/after images
+  and checkpoints are never included in list responses. The list defers revision
+  snapshots and loads each batch context once, with a constant query count.
+
+The primary **Restore this version** action selects the group's last revision,
+just like a flat entry. The newest flat/grouped entry gets the current-version
+badge. **Undo only this import** is an additional overflow-menu action, including
+on the current import group; ordinary revisions do not expose it.
+
+`POST /api/history/batch/{id}/undo-preview/` checks a project-admin's selected
+import and returns created/updated counts and localized-by-code conflicts. The
+execution endpoint `POST /api/history/batch/{id}/revert/` recomputes those checks
+under project/row locks. It refuses changed after-images, interleaved same-row
+edits and dependencies from other records, including nullable references that a
+normal delete would silently clear. It never cascades away later plans/tasks or
+silently overwrites newer work. An accepted inverse applies only recorded
+before-images as one transaction, preserves independent later rows, and writes
+a new `batch_reverted` entry with complete state checkpoints. A second undo is
+refused. Older season batch revert behavior remains available through its existing
+overflow action and API; import-specific checks do not change that contract.
+
+## Full project restoration
+
+The owner clarified in #1061 that **Restore this version means the complete
+historical domain state, including removing later-created crops and beds**.
+This deliberately replaces the old retain-later-created-rows behavior.
+
+`ProjectHistoryRestoreView` and the timestamp compatibility helper delegate to
+`history/project_restore.py`:
+
+1. Lock the project and current domain rows. Resolve the selected revision by
+   `(created_at, id)`, so equal timestamps cannot include a later revision.
+2. Start with the latest complete checkpoint at/before that revision and overlay
+   its subsequent entity revisions. With older history, require positive
+   evidence: snapshots establish presence, deletion revisions establish absence,
+   and a database creation time after the target establishes later creation.
+   Unknown/pruned pre-change history, incompatible checkpoints and old restore
+   markers without resulting state return `409 project_restore_conflict`.
+3. Validate ownership, historical parents, external references and final general
+   crop identities. Refuse untracked/external cascades. Missing optional global
+   references retain the established nulling behavior; required missing parents
+   cannot be silently skipped.
+4. Save a complete current-state backup, remove absent rows in reverse dependency
+   order and restore targets in forward order. Crops use soft deletion to retain
+   identity, library provenance and the drain-only legacy crop audit rows. No
+   uniqueness loser is silently skipped. Any failure rolls back all writes and
+   backup entries.
+5. Record the resulting state as a new complete checkpoint. Both this result and
+   the preceding backup can be selected later; old historical entries remain.
+
+This versions farm domain data, not accounts, memberships, API tokens, shared
+public-library records or project access/lifecycle settings. The ordered domain
+registry covers the original restorable types plus private supplier rows, seed
+packages, task templates, season patterns and media metadata. Crop timing windows
+remain embedded in their parent snapshot. It does not recreate file bytes that
+have already been removed from storage. An incomplete old version remains
+readable but cannot be destructively reconstructed by guessing.
+
+## Local acceptance fixtures
+
+`seed_import_history_acceptance` uses the existing development-only database
+guards: an existing active local account, `OFP_LOCAL_TEST_DATA=1`, exact database
+confirmation, applied migrations, and local SQLite/loopback PostgreSQL. Preview
+first, then repeat with `--apply` after checking the printed target:
+
+```bash
+OFP_LOCAL_TEST_DATA=1 pdm run python manage.py seed_import_history_acceptance \
+  --username LOCAL_ACCOUNT --database-name EXACT_LOCAL_DATABASE
+```
+
+The command creates three isolated private projects, each with a two-batch
+create/update import, a variety and unrelated later crop/bed data. It changes no
+catalogue or existing projects; repeating preserves manual edits. In
+**Import history acceptance: safe**, selectively undo the three-crop import:
+the created culture/variety disappear, the existing crop regains its old notes,
+and the later crop/bed remain. **conflict** adds a later planting-plan reference:
+preview must explain the conflict and disable undo. In **full**, restore the
+import version: later crop/bed data disappear; select the automatic backup to
+bring them back. Repeat at phone/desktop sizes and in another language. Cloud
+verification uses its own synthetic database and never seeds localhost.
 
 ## What to check before changing this
 
@@ -177,13 +216,34 @@ recreates in forward order:
 `Crop` → `CropCompanion` → `Season` → `PlantingPlan` → `Task` →
 `NoteAttachment`.
 
-Three more entity types get revision rows but are **not** part of
-whole-project restore (they are in `_ENTITY_TYPE_LABELS` only):
-`MediaFile`, `SeedPackage`, and `CropSupplierData`. Read the list in the
-source before relying on it — this is the kind of thing a new model silently
-misses.
+`PROJECT_STATE_MODELS` in `history/project_restore.py` augments this dependency
+order with `MediaFile`, `CropSupplierData`, `SeedPackage`, `CropTaskTemplate`
+and `SeasonPattern` for complete checkpoints and guarded inverses. New entity
+registrations require checkpoint compatibility and dependency tests as well as
+an ordinary revision write path.
 
 Public crop-library entries have their **own**, separate version history
 (`PublicCropRevision`, see
 [crop-library-architecture.md](./crop-library-architecture.md)). They are not
 project-scoped and never take part in project restore.
+
+## Retention anchors
+
+`cleanup_history` retains all revisions inside 30 days, the newest revision
+before the cutoff per entity, and the newest complete checkpoint before the
+cutoff per project. These anchors are required to reconstruct a recent target
+when an entity changes both before and after it. Timestamp ties use the ID.
+Keeping only the newest revision overall would discard the pre-target state.
+
+## Derived fields and legacy entity labels
+
+Crop timing changes record the recalculated planting-plan date snapshots in
+addition to the crop revision. Season-pattern saves and first-run plan assignment
+record their own revisions; task-template history retains its existing persisted
+`croptasktemplate` label, accepted alongside the canonical checkpoint label.
+Soft-deletion snapshots retain the post-delete flag so a full-state restore
+preserves archived rows and their surviving references. Known hard-parent
+deletions replay the schema's cascade/nullable-FK effects without inventing
+absence for untracked rows. If deleting a newer parent cascades into a row that
+belongs in the target, the restore recreates it with its original ID and stored
+creation timestamp.

@@ -423,3 +423,13 @@ name, synonyms, regional names and explicit documented scientific fallback.
 confirmation requires a specific pest/pathogen identity. `PlantHealthRevision`
 retains complete snapshots, including archived host links. Protected entry/species
 references and API archival prevent deletion of historical evidence.
+
+### Import operation identity
+
+`BatchOperation` now includes nullable unique `request_id`, nullable
+`initiated_by` and `completed_at` for multi-request crop import groups. These
+schema-only additions preserve existing season operations and old revisions.
+Private context keeps first before-images/latest after-images; public history
+excludes those keys. Project-state checkpoints live in `EntityRevision`, not
+the deprecated `ProjectRevision` model. See
+[Versioning and History](./versioning-and-history.md).

@@ -581,7 +581,9 @@
       "fallback": "Registo",
       "openTarget": "Abrir",
       "season": "Época",
-      "cropCompanion": "Vizinho (consociação)"
+      "cropCompanion": "Vizinho (consociação)",
+      "cropTaskTemplate": "Modelo de tarefa",
+      "seasonPattern": "Definições da época"
     },
     "batch": {
       "seasonCreate": "Época {{season}} criada",
@@ -601,7 +603,30 @@
       "countDeleted_many": "{{count}} séries eliminadas",
       "countCreated_many": "{{count}} séries criadas",
       "countRestored_many": "{{count}} séries restauradas",
-      "countUpdated_many": "{{count}} séries atualizadas"
+      "countUpdated_many": "{{count}} séries atualizadas",
+      "undo": "Anular esta ação"
+    },
+    "import": {
+      "summary_one": "{{count}} cultura importada",
+      "summary_other": "{{count}} culturas importadas",
+      "actions": "Ações de importação",
+      "details": "Registos afetados",
+      "undo": "Anular apenas esta importação",
+      "selectiveNotice": "Apenas as alterações desta importação serão anuladas. As outras alterações posteriores serão mantidas. A operação ficará registada no histórico.",
+      "loading": "A verificar a anulação",
+      "previewError": "Não foi possível verificar esta anulação. Fecha a janela e tenta novamente.",
+      "removeCreated_one": "Será removida {{count}} cultura criada pela importação.",
+      "removeCreated_other": "Serão removidas {{count}} culturas criadas pela importação.",
+      "restoreUpdated_one": "{{count}} cultura existente voltará ao estado anterior à importação.",
+      "restoreUpdated_other": "{{count}} culturas existentes voltarão ao estado anterior à importação.",
+      "laterEdit": "Os registos afetados foram editados posteriormente. A anulação está bloqueada para preservar essas alterações.",
+      "dependentData": "Outros registos fazem referência a esta importação. A anulação está bloqueada para proteger as ligações e os dados.",
+      "summary_many": "{{count}} culturas importadas",
+      "removeCreated_many": "Serão removidas {{count}} culturas criadas pela importação.",
+      "restoreUpdated_many": "{{count}} culturas existentes voltarão ao estado anterior à importação.",
+      "undone": "Importação anulada",
+      "alreadyUndone": "Esta importação já foi anulada. Usa «Repor esta versão» para escolher um estado anterior do projeto.",
+      "unavailableState": "O estado anterior já não está completo ou entra em conflito com outros registos. A anulação está bloqueada; nada foi alterado."
     }
   },
   "shortcuts": {
@@ -1700,7 +1725,7 @@
   "restoreDialog": {
     "title": "Restaurar versão?",
     "batchDescription": "Esta ação e todas as alterações relacionadas serão anuladas.",
-    "versionDescription": "Está a restaurar uma versão anterior.",
+    "versionDescription": "Repões todo o projeto nesta versão. Todas as alterações posteriores serão anuladas, incluindo as culturas e os canteiros criados depois.",
     "batchNotice": "O estado anterior será restaurado. A ação permanece no histórico e pode ser executada novamente.",
     "versionNotice": "A versão atual é mantida. É criada automaticamente uma nova versão antes do restauro, para permitir regressar a qualquer momento.",
     "cancel": "Cancelar",

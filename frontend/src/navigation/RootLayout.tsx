@@ -54,6 +54,7 @@ import { useNotificationMenuItems } from '../notifications/useNotificationMenuIt
 import { projectAPI } from '../api/api';
 import { MobileProjectSwitcherDialog } from './MobileProjectSwitcherDialog';
 import { RestoreVersionDialog } from './RestoreVersionDialog';
+import { ImportUndoDialog } from './ImportUndoDialog';
 import { ProjectHistoryDialog } from './ProjectHistoryDialog';
 import { useCollapsibleSidebar } from './useCollapsibleSidebar';
 import { useDeletedProjectsCount } from './useDeletedProjectsCount';
@@ -2059,7 +2060,10 @@ function RootLayout() {
         formatTimestamp={formatHistoryTimestamp}
         onClose={projectHistory.closeHistory}
         onRestore={projectHistory.requestRestore}
-        onRevertBatch={projectHistory.requestRestore}
+        onRevertBatch={(entry) => {
+          if (entry.batch_operation_type === 'crop_import') void projectHistory.requestImportUndo(entry);
+          else projectHistory.requestBatchRevert(entry);
+        }}
         t={t}
         tCrops={tCrops}
       />
@@ -2100,7 +2104,16 @@ function RootLayout() {
         tCrops={tCrops}
         onClose={projectHistory.cancelRestore}
         onConfirm={(historyId) => void projectHistory.restoreVersion(historyId)}
-        onConfirmRevertBatch={(batchId) => void projectHistory.revertBatch(batchId)}
+      />
+      <ImportUndoDialog history={projectHistory} />
+      <RestoreVersionDialog
+        entry={projectHistory.pendingBatchRevert}
+        mode="batch"
+        getEntryTitle={(entry) => getHistoryEntryTitle(entry, tCrops)}
+        formatTimestamp={formatHistoryTimestamp}
+        tCrops={tCrops}
+        onClose={() => projectHistory.requestBatchRevert(null)}
+        onConfirm={(batchId) => void projectHistory.revertBatch(batchId)}
       />
 
       <CreateProjectDialog

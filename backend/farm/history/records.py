@@ -1,7 +1,11 @@
 """Recording of entity revisions: registry, snapshots, and revision writes."""
 
 import json
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any
+from uuid import UUID
 
 from django.core.serializers.json import DjangoJSONEncoder
 
@@ -12,6 +16,7 @@ from farm.models import (
     Crop,
     CropCompanion,
     CropSupplierData,
+    CropTaskTemplate,
     EntityRevision,
     Field,
     FieldLayout,
@@ -21,11 +26,24 @@ from farm.models import (
     PlantingPlan,
     Project,
     Season,
+    SeasonPattern,
     SeedPackage,
     Supplier,
     Task,
     format_crop_display_name,
 )
+
+_active_batch: ContextVar[BatchOperation | None] = ContextVar('history_batch', default=None)
+
+
+@contextmanager
+def revision_batch(batch: BatchOperation) -> Iterator[None]:
+    """Bind nested model/service revision writes to the server-selected operation."""
+    token = _active_batch.set(batch)
+    try:
+        yield
+    finally:
+        _active_batch.reset(token)
 
 # Entity types that participate in per-entity revision history and whole-project
 # point-in-time restore, in FK-dependency order (parents before children).
@@ -50,7 +68,15 @@ _ENTITY_TYPE_LABELS: dict[type, str] = {model: label for model, label in _RESTOR
     MediaFile: 'media_file',
     SeedPackage: 'seed_package',
     CropSupplierData: 'crop_supplier_data',
+    CropTaskTemplate: 'croptasktemplate',
+    SeasonPattern: 'seasonpattern',
 }
+
+
+def _canonical_entity_type(entity_type: str) -> str:
+    return {'croptasktemplate': 'crop_task_template', 'seasonpattern': 'season_pattern'}.get(
+        entity_type, entity_type,
+    )
 
 
 def _entity_type_for(instance) -> str:
@@ -62,12 +88,11 @@ def _current_actor_label(request) -> str:
     if not user or not getattr(user, 'is_authenticated', False):
         return ''
     display_name = (getattr(user, 'display_name', '') or '').strip()
-    if display_name:
-        return display_name
-    full_name = (user.get_full_name() or '').strip()
-    if full_name:
-        return full_name
-    return user.email or user.username or ''
+    label = (
+        display_name or (user.get_full_name() or '').strip()
+        or user.email or user.username or ''
+    )
+    return label[:EntityRevision._meta.get_field('user_name').max_length]
 
 
 def _serialize_instance(instance) -> dict[str, Any]:
@@ -105,7 +130,7 @@ def _entity_display_name(instance) -> str:
             instance.companion_family_id or instance.companion_text
         )
         return ' / '.join(part for part in (instance.crop.name if instance.crop_id else '', partner) if part)
-    if isinstance(instance, Task):
+    if isinstance(instance, Task | CropTaskTemplate):
         return instance.title or ''
     if isinstance(instance, Season):
         return instance.label or ''
@@ -118,6 +143,8 @@ def start_batch_operation(
     operation_type: str,
     context: dict[str, Any] | None = None,
     user_name: str = '',
+    request_id: UUID | None = None,
+    initiated_by_id: int | None = None,
 ) -> BatchOperation:
     """Create a BatchOperation to group the revisions of one cascading action.
 
@@ -129,6 +156,8 @@ def start_batch_operation(
         operation_type=operation_type,
         context=context or {},
         user_name=user_name or '',
+        request_id=request_id,
+        initiated_by_id=initiated_by_id,
     )
 
 
@@ -144,6 +173,11 @@ def record_entity_revision(
     user_name: str = '',
     batch_operation: BatchOperation | None = None,
 ) -> None:
+    if batch_operation is None:
+        candidate = _active_batch.get()
+        if candidate is not None and candidate.project_id == project.pk:
+            batch_operation = candidate
+            user_name = user_name or candidate.user_name
     EntityRevision.objects.create(
         project=project,
         entity_type=entity_type,
