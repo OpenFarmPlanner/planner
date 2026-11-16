@@ -181,7 +181,7 @@ Follow existing placement patterns before creating new directories.
   committed lockfile. Do not introduce yarn or pnpm, and do not hand-edit the
   lockfile. (The backend uses PDM — see "Backend Rules".)
 - **Node.js 22 LTS.** CI pins `lts/*` and `'22'`; the supported floor is Node
-  20 with npm 10 (`README.md`).
+  22 with npm 10 (`README.md`).
 - The frontend is a **PWA**: `vite-plugin-pwa` generates a service worker that
   caches build assets only. API responses must never be cached — see
   [`docs/pwa.md`](docs/pwa.md) before touching the service worker, the
