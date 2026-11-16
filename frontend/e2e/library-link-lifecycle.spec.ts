@@ -2,7 +2,7 @@ import germanCrops from '../src/i18n/locales/de/crops.json' with { type: 'json' 
 import frenchCrops from '../src/i18n/locales/fr/crops.json' with { type: 'json' };
 import frenchNavigation from '../src/i18n/locales/fr/navigation.json' with { type: 'json' };
 import { expect, test, type Page } from '@playwright/test';
-import { apiRequest, expectNoHorizontalPageOverflow, loginWithDeterministicProject, resetE2EScenario } from './utils';
+import { apiRequest, expectNoHorizontalPageOverflow, loginWithDeterministicProject, resetE2EScenario, waitForPageStable } from './utils';
 
 // Functional assertions, not screenshots: these flows are about which control
 // the crop offers per library state and that no expected state produces a
@@ -234,6 +234,7 @@ for (const entryPoint of ['publish', 'import', 'copy', 'resolve', 'resolve-brows
       await page.evaluate(() => localStorage.setItem('ui.language', 'fr'));
       if (entryPoint === 'resolve-browser' || entryPoint === 'unclassified-picker') {
         await page.goto(`/app/crops?cropId=${local.id}`);
+        await waitForPageStable(page);
         await page.getByRole('button', { name: frenchNavigation.cropActions.openImportExport, exact: true }).click();
         await page.getByRole('menuitem', { name: labels.library.openButton, exact: true }).click();
         const browser = page.getByRole('dialog', { name: labels.library.dialogTitle, exact: true });
