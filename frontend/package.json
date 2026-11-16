@@ -39,7 +39,7 @@
     "date-fns": "^4.4.0",
     "fflate": "^0.8.3",
     "html2canvas": "^1.4.1",
-    "i18next": "^26.7.2",
+    "i18next": "^27.1.1",
     "jspdf": "^4.1.0",
     "konva": "^10.9.1",
     "lucide-react": "^1.70.0",
