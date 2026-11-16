@@ -7,6 +7,7 @@ import { plantHealthAPI } from './api';
 import { createNameDrafts, sourcePayload, translationPayload } from './drafts';
 import { NameFields } from './NameFields';
 import { SourceFields } from './SourceFields';
+import { useDialogSaveFeedback } from './useDialogSaveFeedback';
 import type { PlantHealthEntry, PlantHealthEntryWrite, PlantHealthKind } from './types';
 
 export function EntryDialog({ entry, mode, onClose, onSaved }: {
@@ -21,7 +22,7 @@ export function EntryDialog({ entry, mode, onClose, onSaved }: {
   const [sources, setSources] = useState(entry?.sources.length ? entry.sources : [{ url: '' }]);
   const [names, setNames] = useState(() => createNameDrafts(entry?.translations ?? []));
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const { failed, showFailure, clearFailure, contentRef, errorRef } = useDialogSaveFeedback();
   const [discard, setDiscard] = useState(false);
   const lock = useRef(false);
   const [initial] = useState(() => JSON.stringify({ kind, scientificName, eppoCode, sources, names }));
@@ -37,16 +38,16 @@ export function EntryDialog({ entry, mode, onClose, onSaved }: {
     const clearedExistingName = entry?.translations.some(row => !names[row.language_code]?.preferred_name.trim());
     if (clearedExistingName || !translations?.length || sourceRows === null || publishing && (
       translations.length !== SUPPORTED_LANGUAGES.length || !sourceRows.length || specific && !scientificName.trim()
-    )) { setFailed(true); return; }
+    )) { showFailure(); return; }
     const payload: PlantHealthEntryWrite = { name: names.en.preferred_name.trim() || translations[0].preferred_name,
       kind, scientific_name: scientificName.trim(), eppo_code: specific ? eppoCode.trim() : '', sources: sourceRows, translations };
-    lock.current = true; setBusy(true); setFailed(false);
+    lock.current = true; setBusy(true); clearFailure();
     try {
       if (mode === 'approve' && entry) await plantHealthAPI.approve(entry.id, payload);
       else if (entry) await plantHealthAPI.update(entry.id, payload);
       else await plantHealthAPI.create(payload);
       await onSaved(); onClose();
-    } catch { setFailed(true); }
+    } catch { showFailure(); }
     finally { lock.current = false; setBusy(false); }
   };
   return <>
@@ -55,10 +56,12 @@ export function EntryDialog({ entry, mode, onClose, onSaved }: {
       >
       <Box component="form" noValidate onSubmit={save} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
       <DialogTitle id={id}>{t(`crops:plantHealthCatalogue.${mode === 'approve' ? 'review' : mode === 'create' ? 'add' : 'edit'}`)}</DialogTitle>
-      <DialogContent dividers>
+      <DialogContent dividers ref={contentRef}>
         <Stack spacing={2}>
-          <Alert severity="info">{t(`crops:plantHealthCatalogue.${publishing ? 'approvalHint' : 'proposalHint'}`)}</Alert>
-          {failed ? <Alert severity="error">{t('crops:plantHealthCatalogue.saveError')}</Alert> : null}
+          {failed ? <Alert severity="error" ref={errorRef} tabIndex={-1} aria-atomic="true" aria-describedby={`${id}-guidance`}>
+            {t('crops:plantHealthCatalogue.saveError')}
+          </Alert> : null}
+          <Alert severity="info" id={`${id}-guidance`}>{t(`crops:plantHealthCatalogue.${publishing ? 'approvalHint' : 'proposalHint'}`)}</Alert>
           <TextField select label={t('crops:plantHealthCatalogue.kind')} value={kind} disabled={busy} fullWidth size="small"
             onChange={event => setKind(event.target.value as PlantHealthKind)}>
             {(['pest', 'pathogen', 'disease', 'group'] as const).map(value =>

@@ -8,6 +8,7 @@ import { useTranslation } from '../../i18n';
 import { plantHealthAPI } from './api';
 import { sourcePayload } from './drafts';
 import { SourceFields } from './SourceFields';
+import { useDialogSaveFeedback } from './useDialogSaveFeedback';
 import type { PlantHealthEntry, PlantHealthHost } from './types';
 
 export function HostDialog({ entry, host, onClose, onSaved }: {
@@ -24,7 +25,7 @@ export function HostDialog({ entry, host, onClose, onSaved }: {
   const [confirmed, setConfirmed] = useState(host?.is_confirmed ?? false);
   const [sources, setSources] = useState(host?.sources.length ? host.sources : [{ url: '' }]);
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const { failed, showFailure, clearFailure, contentRef, errorRef } = useDialogSaveFeedback();
   const [discard, setDiscard] = useState(false);
   const lock = useRef(false);
   const [initial] = useState(() => JSON.stringify({ species, variety, qualification, confirmed, sources }));
@@ -35,13 +36,13 @@ export function HostDialog({ entry, host, onClose, onSaved }: {
     if (lock.current) return;
     const sourceRows = sourcePayload(sources);
     const speciesId = host?.species ?? species?.id;
-    if (!speciesId || !sourceRows?.length) { setFailed(true); return; }
-    lock.current = true; setBusy(true); setFailed(false);
+    if (!speciesId || !sourceRows?.length) { showFailure(); return; }
+    lock.current = true; setBusy(true); clearFailure();
     try {
       await plantHealthAPI.saveHost({ entry: entry.id, species: speciesId, variety_name: variety.trim(),
         qualification: qualification.trim(), sources: sourceRows, is_confirmed: entry.has_specific_identity && confirmed }, host?.id);
       await onSaved(); onClose();
-    } catch { setFailed(true); }
+    } catch { showFailure(); }
     finally { lock.current = false; setBusy(false); }
   };
   return <>
@@ -50,9 +51,11 @@ export function HostDialog({ entry, host, onClose, onSaved }: {
       >
       <Box component="form" noValidate onSubmit={save} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
       <DialogTitle id={id}>{t(`crops:plantHealthCatalogue.${host ? 'editHost' : 'addHost'}`)}</DialogTitle>
-      <DialogContent dividers><Stack spacing={2}>
-        <Alert severity="info">{t('crops:plantHealthCatalogue.hostDisclaimer')}</Alert>
-        {failed ? <Alert severity="error">{t('crops:plantHealthCatalogue.hostError')}</Alert> : null}
+      <DialogContent dividers ref={contentRef}><Stack spacing={2}>
+        {failed ? <Alert severity="error" ref={errorRef} tabIndex={-1} aria-atomic="true" aria-describedby={`${id}-guidance`}>
+          {t('crops:plantHealthCatalogue.hostError')}
+        </Alert> : null}
+        <Alert severity="info" id={`${id}-guidance`}>{t('crops:plantHealthCatalogue.hostDisclaimer')}</Alert>
         {host ? <TextField label={t('crops:plantHealthCatalogue.species')} value={host.species_name} fullWidth size="small" slotProps={{ input: { readOnly: true } }} /> :
           <CropSpeciesPicker species={species && !search.results.some(row => row.id === species.id) ? [species, ...search.results] : search.results}
             loading={search.loading} value={species} onChange={setSpecies} inputValue={query}
