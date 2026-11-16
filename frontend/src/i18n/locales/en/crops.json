@@ -1182,6 +1182,7 @@
         "bulkApproveSuccess_other": "{{count}} crop species were approved.",
         "bulkApprovePartial_one": "{{count}} crop species approved, {{failed}} failed: {{names}}",
         "bulkApprovePartial_other": "{{count}} crop species approved, {{failed}} failed: {{names}}",
+        "translationCompleteness": "Translations: {{available}}/{{total}}",
         "showAllLanguages": "Show all languages",
         "previewSynonyms": "Synonyms: {{synonyms}}",
         "previewMissing": "missing"

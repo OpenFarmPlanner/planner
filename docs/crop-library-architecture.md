@@ -1852,11 +1852,10 @@ creates a proposal it stores the typed name as a `CropSpeciesTranslation` in
 the currently selected original language, so an English publication pre-fills
 the English name and a German publication pre-fills the German name. A
 moderator cannot approve the proposal until all
-`REQUIRED_PUBLIC_CROP_SPECIES_LANGUAGE_CODES` (`de`, `en`, `fr`, `es`, every UI
-language today) have non-empty names; `CropSpeciesViewSet.approve()` writes
+`REQUIRED_PUBLIC_CROP_SPECIES_LANGUAGE_CODES` (`de`, `en`, `fr`, `es`) have non-empty names; `CropSpeciesViewSet.approve()` writes
 those translations in the same transaction as the status change and uses the
 English common name as the canonical `CropSpecies.name`. That keeps approved
-species immediately usable in every supported UI language instead of
+species immediately usable in the four required languages instead of
 publishing a single-language lookup row that has to be cleaned up later. The
 list stays explicit rather than following `SUPPORTED_LANGUAGE_CODES`, so a new
 UI language does not silently block every older proposal.
@@ -2526,3 +2525,29 @@ New library-created rows use the same prospective identity guard, including
 when a differently classified local variety was excluded from link candidates.
 An automatic duplicate import is rejected; an explicit new-copy request retains
 its existing unique-name behavior.
+
+### Seven-language species moderation table
+
+The proposal table derives its display languages from the shared seven-language
+UI configuration. With “Show all languages” off, only the current UI language
+is displayed; changing the language or toggle preserves selection. Each fixed
+identity cell shows the number of nonblank common names out of seven, independent
+of synonyms. This availability indicator does not change the four required
+approval languages above. Optional Italian, Portuguese and Dutch names remain
+visible when present and are preserved by approval's existing upsert behavior.
+
+The table scrolls horizontally within a focusable region. Selection and identity
+stay fixed on the left; approve/reject stay fixed on the right. Narrow screens
+use labelled icon actions and narrower identity cells to leave room for readable
+translation columns. Synonyms and regional names remain visible below each name.
+
+Local acceptance: preview `seed_species_moderation_acceptance --username
+<existing-local-moderator> --database-name <exact-local-database>` with
+`DJANGO_ENV=development` and `OFP_LOCAL_TEST_DATA=1`; inspect the target, then
+repeat with `--apply`. The inherited database guard requires local data and
+current migrations. It creates a private marker project and three synthetic
+pending proposals: 7/7, 5/7 with all required names, and 5/7 missing English.
+Existing library rows and user roles are unchanged; repeats preserve manual
+edits and approval/rejection decisions. In local moderation, toggle languages,
+scroll both ways on phone/desktop and check pinned identity/actions, synonyms,
+counts and unchanged single/bulk approval rules. Never run this in production.

@@ -328,3 +328,80 @@ class LocalLibraryImportSeedTests(TestCase):
         with self.assertRaisesMessage(CommandError, "identity is occupied"):
             self.seed(apply=True, include_variety_selection=True)
         self.assertEqual(list(Project.objects.values_list("pk", flat=True)), before)
+
+
+@override_settings(DJANGO_ENV='development')
+class SpeciesModerationLocalSeedTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username='species-seed', is_staff=True)
+        self.published = CropSpecies.objects.create(name='Existing published catalogue species')
+        self.existing_species = list(CropSpecies.objects.order_by('pk').values())
+        self.projects_before = Project.objects.count()
+        self.memberships_before = ProjectMembership.objects.filter(user=self.user).count()
+        self.options = {
+            'username': self.user.username, 'database_name': str(connection.settings_dict['NAME']),
+            'stdout': StringIO(),
+        }
+        environment = patch.dict('os.environ', {'OFP_LOCAL_TEST_DATA': '1'})
+        environment.start()
+        self.addCleanup(environment.stop)
+
+    def seed(self, **options):
+        call_command('seed_species_moderation_acceptance', **{**self.options, **options})
+
+    def test_preview_repeat_and_manual_decisions_preserve_existing_data(self):
+        existing = CropSpecies.objects.filter(pk=self.published.pk).values().get()
+        self.seed()
+        self.assertEqual(list(CropSpecies.objects.order_by('pk').values()), self.existing_species)
+        self.assertEqual(Project.objects.count(), self.projects_before)
+        self.seed(apply=True)
+        self.assertEqual(
+            list(CropSpecies.objects.filter(
+                pk__in=[row['id'] for row in self.existing_species],
+            ).order_by('pk').values()), self.existing_species,
+        )
+        self.assertEqual(
+            CropSpecies.objects.filter(proposed_by=self.user, status='proposed').count(), 3,
+        )
+        counts = {}
+        for species in CropSpecies.objects.filter(proposed_by=self.user):
+            counts[species.name.rsplit(' ', 1)[-1]] = sum(
+                bool(row.common_name.strip()) for row in species.translations.all()
+            )
+        self.assertEqual(counts, {'complete': 7, 'optional-missing': 5, 'required-missing': 5})
+        proposal = CropSpecies.objects.filter(proposed_by=self.user).first()
+        proposal.status = 'published'
+        proposal.name = 'Manual local decision and rename'
+        proposal.save()
+        before = list(CropSpecies.objects.order_by('pk').values())
+        self.seed(apply=True)
+        self.assertEqual(list(CropSpecies.objects.order_by('pk').values()), before)
+        self.assertEqual(CropSpecies.objects.filter(pk=self.published.pk).values().get(), existing)
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_superuser)
+        self.assertEqual(
+            ProjectMembership.objects.filter(user=self.user).count(), self.memberships_before + 1,
+        )
+
+    def test_explicit_target_and_existing_moderator_are_required(self):
+        with self.assertRaises(CommandError):
+            self.seed(apply=True, database_name='wrong-target')
+        self.user.is_staff = False
+        self.user.save()
+        with self.assertRaises(CommandError):
+            self.seed(apply=True)
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_staff)
+        self.assertEqual(list(CropSpecies.objects.order_by('pk').values()), self.existing_species)
+        self.assertEqual(Project.objects.count(), self.projects_before)
+
+    def test_existing_fixture_project_with_different_ownership_is_not_changed(self):
+        project = Project.objects.create(
+            name='Unrelated project', slug=f'ofp-local-species-moderation-{self.user.pk}',
+            description='Existing unrelated data',
+        )
+        with self.assertRaises(CommandError):
+            self.seed(apply=True)
+        project.refresh_from_db()
+        self.assertEqual(project.description, 'Existing unrelated data')
+        self.assertFalse(CropSpecies.objects.filter(proposed_by=self.user).exists())

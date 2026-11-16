@@ -1211,6 +1211,7 @@
         "bulkApproveSuccess_other": "{{count}} specie coltivate approvate.",
         "bulkApprovePartial_one": "{{count}} specie coltivate approvate, {{failed}} non riuscite: {{names}}",
         "bulkApprovePartial_other": "{{count}} specie coltivate approvate, {{failed}} non riuscite: {{names}}",
+        "translationCompleteness": "Traduzioni: {{available}}/{{total}}",
         "showAllLanguages": "Mostra tutte le lingue",
         "previewSynonyms": "Sinonimi: {{synonyms}}",
         "previewMissing": "mancante",
