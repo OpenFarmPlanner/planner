@@ -2101,6 +2101,17 @@
       "conflict": "La culture ou la sélection a changé. Fermez la boîte de dialogue et rechargez vos cultures avant de vérifier à nouveau l’association.",
       "inherited": "Cette variété reprend les entrées de « {{name}} ». Enregistrez l’association sur cette culture ; elle s’applique à toutes les variétés qui en héritent. L’héritage reste actif.",
       "editGeneral": "Modifier la culture générale"
-    }
+    },
+    "filterPlaceholder": "Choisir des entrées utilisées",
+    "filterHelper": "Choisis des entrées existantes. La culture doit contenir toutes les entrées sélectionnées (ET).",
+    "filterSearchError": "Impossible de charger les noms du catalogue. Réessaie.",
+    "relationshipsTitle": "Relations avec des plantes hôtes documentées",
+    "relationshipsHint": "Ces relations du catalogue sont documentées. Sélectionner une entrée sur une culture ne prouve ni une relation avec une plante hôte ni une infestation. Consulte les sources et les précisions sur les variétés.",
+    "broadRelationshipHint": "Ce groupe général ou concept de maladie ne désigne pas un ravageur ou un agent pathogène précis et confirmé. Il ne permet pas d’établir une relation commune avec des plantes hôtes.",
+    "noConfirmedHosts": "Aucune relation confirmée avec des plantes hôtes connue. Une information manquante signifie inconnu, et non résistant.",
+    "qualifiedVariety": "Preuve concernant une variété : {{name}}",
+    "speciesHost": "Preuve au niveau de l’espèce cultivée ; consulte les précisions sur les variétés.",
+    "relationshipsError": "Impossible de charger les relations avec des plantes hôtes.",
+    "relationshipsActionHint": "Sélectionne une entrée du catalogue pour consulter les relations documentées avec des plantes hôtes."
   }
 }

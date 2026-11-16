@@ -1,13 +1,7 @@
-import { Box, Button, Chip, Link, Paper, Stack, Typography } from '@mui/material';
+import { Box, Button, Chip, Paper, Stack, Typography } from '@mui/material';
 import { useTranslation } from '../../i18n';
-import type { PlantHealthEntry, PlantHealthHost, PlantHealthSource } from './types';
-
-function SourceLinks({ sources }: { sources: PlantHealthSource[] }) {
-  return <Stack spacing={0.5}>{sources.map((source, index) => <Box key={index}>
-    <Link href={source.url} target="_blank" rel="noopener noreferrer" sx={{ overflowWrap: 'anywhere' }}>{source.title || source.url}</Link>
-    {source.evidence ? <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{source.evidence}</Typography> : null}
-  </Box>)}</Stack>;
-}
+import type { PlantHealthEntry, PlantHealthHost } from './types';
+import { SourceLinks } from './SourceLinks';
 
 export function EntryCard({ entry, disabled, onEdit, onReview, onReject, onArchive, onReopen, onHistory, onHost, onArchiveHost }: {
   entry: PlantHealthEntry; disabled: boolean; onEdit: () => void; onReview: () => void; onReject: () => void;

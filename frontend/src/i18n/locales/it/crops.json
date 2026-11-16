@@ -2101,6 +2101,17 @@
       "conflict": "La coltura o la selezione è cambiata. Chiudi la finestra e ricarica le colture prima di verificare di nuovo l’associazione.",
       "inherited": "Questa varietà eredita le voci da «{{name}}». Salva l’associazione su quella coltura: vale per tutte le varietà che le ereditano. L’ereditarietà resta attiva.",
       "editGeneral": "Modifica coltura generale"
-    }
+    },
+    "filterPlaceholder": "Seleziona voci utilizzate",
+    "filterHelper": "Scegli voci esistenti. La coltura deve contenere tutte le voci selezionate (E).",
+    "filterSearchError": "Impossibile caricare i nomi del catalogo. Riprova.",
+    "relationshipsTitle": "Relazioni con piante ospiti documentate",
+    "relationshipsHint": "Queste relazioni del catalogo sono documentate da fonti. Selezionare una voce per una coltura non dimostra da solo una relazione con una pianta ospite o un’infestazione. Consulta le fonti e le precisazioni sulle varietà.",
+    "broadRelationshipHint": "Questo gruppo generale o concetto di malattia non identifica un singolo parassita o agente patogeno confermato. Non permette di stabilire una relazione condivisa con piante ospiti.",
+    "noConfirmedHosts": "Nessuna relazione confermata con piante ospiti nota. L’assenza di informazioni significa sconosciuto, non resistente.",
+    "qualifiedVariety": "Prova specifica per la varietà: {{name}}",
+    "speciesHost": "Prova a livello di specie coltivata; consulta le precisazioni sulle varietà.",
+    "relationshipsError": "Impossibile caricare le relazioni con piante ospiti.",
+    "relationshipsActionHint": "Seleziona una voce del catalogo per consultare le relazioni documentate con piante ospiti."
   }
 }

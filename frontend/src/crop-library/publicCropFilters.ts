@@ -1,5 +1,7 @@
-import type { PublicCrop } from '../api/types';
+import type { PlantHealthSelection, PlantHealthSelections, PublicCrop } from '../api/types';
 import { matchesSeedTypeFilter } from '../crops/seedType';
+import { getCropSpeciesKey } from '../crops/cropHierarchy';
+import { matchesPlantHealthFilter, normalizePlantHealthSelections } from '../crops/plantHealth';
 
 export interface PublicCropFilterState {
   cropFamily: string;
@@ -11,6 +13,7 @@ export interface PublicCropFilterState {
   growthDaysMax: string;
   yieldMin: string;
   yieldMax: string;
+  plantHealth: PlantHealthSelection[];
 }
 
 export const EMPTY_PUBLIC_CROP_FILTERS: PublicCropFilterState = {
@@ -23,20 +26,31 @@ export const EMPTY_PUBLIC_CROP_FILTERS: PublicCropFilterState = {
   growthDaysMax: '',
   yieldMin: '',
   yieldMax: '',
+  plantHealth: [],
 };
 
 export function countActivePublicCropFilters(filters: PublicCropFilterState): number {
-  return Object.values(filters).filter(Boolean).length;
+  return Object.values(filters).filter(value => Array.isArray(value) ? value.length > 0 : Boolean(value)).length;
 }
 
 export interface PublicCropFilterOptions {
   cropFamilyOptions: string[];
   varietyOptions: string[];
   nutrientOptions: string[];
+  plantHealthOptions: PlantHealthSelection[];
+  plantHealthValues: ReadonlyMap<number, PlantHealthSelections | null>;
 }
 
 export function getPublicCropFilterOptions(crops: readonly PublicCrop[]): PublicCropFilterOptions {
+  const general = new Map(crops.filter(crop => !(crop.variety || '').trim())
+    .map(crop => [getCropSpeciesKey(crop), crop.plant_health]));
+  const plantHealthValues = new Map(crops.map(crop => [crop.id,
+    crop.plant_health ?? ((crop.variety || '').trim() ? general.get(getCropSpeciesKey(crop)) : null) ?? null,
+  ]));
   return {
+    plantHealthValues,
+    plantHealthOptions: normalizePlantHealthSelections([...plantHealthValues.values()]
+      .flatMap(value => value?.entries ?? []).filter(entry => entry.catalogue_identity)),
     cropFamilyOptions: Array.from(new Set(crops.map((entry) => entry.crop_family?.trim()).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b)),
     varietyOptions: Array.from(new Set(crops.map((entry) => entry.variety?.trim()).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b)),
     nutrientOptions: Array.from(new Set(crops.map((entry) => entry.nutrient_demand || '').filter(Boolean))).sort((a, b) => a.localeCompare(b)),
@@ -44,7 +58,8 @@ export function getPublicCropFilterOptions(crops: readonly PublicCrop[]): Public
 }
 
 /** Whether a single public crop entry matches the given attribute filters (text search is handled separately by each caller). */
-export function matchesPublicCropFilters(crop: PublicCrop, filters: PublicCropFilterState): boolean {
+export function matchesPublicCropFilters(crop: PublicCrop, filters: PublicCropFilterState,
+  plantHealthValues?: ReadonlyMap<number, PlantHealthSelections | null>): boolean {
   const parsedGrowthDaysMin = filters.growthDaysMin ? Number(filters.growthDaysMin) : null;
   const parsedGrowthDaysMax = filters.growthDaysMax ? Number(filters.growthDaysMax) : null;
   const parsedYieldMin = filters.yieldMin ? Number(filters.yieldMin) : null;
@@ -78,5 +93,6 @@ export function matchesPublicCropFilters(crop: PublicCrop, filters: PublicCropFi
 
   const seedTypeMatches = matchesSeedTypeFilter(crop, filters.seedType);
 
-  return familyMatches && varietyMatches && seedTypeMatches && nutrientMatches && cultivationMatches && growthMatches && yieldMatches;
+  const healthMatches = matchesPlantHealthFilter(plantHealthValues?.get(crop.id) ?? crop.plant_health, filters.plantHealth ?? []);
+  return familyMatches && varietyMatches && seedTypeMatches && nutrientMatches && cultivationMatches && growthMatches && yieldMatches && healthMatches;
 }

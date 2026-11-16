@@ -2050,6 +2050,17 @@
       "conflict": "The crop or selection changed. Close the dialog and reload your crops before reviewing the mapping again.",
       "inherited": "This variety inherits entries from “{{name}}”. Save the mapping on that culture; it applies to every inheriting variety. Live inheritance stays active.",
       "editGeneral": "Edit general culture"
-    }
+    },
+    "filterPlaceholder": "Select entries in use",
+    "filterHelper": "Choose existing entries. A crop must contain every selected entry (AND).",
+    "filterSearchError": "Catalogue names could not be loaded. Try again.",
+    "relationshipsTitle": "Sourced host relationships",
+    "relationshipsHint": "These are sourced catalogue relationships. Selecting an entry on a crop alone does not establish a host relationship or an infestation. Check the sources and variety qualifications.",
+    "broadRelationshipHint": "This broad group or disease concept does not identify one confirmed pest or pathogen. It cannot establish a shared host relationship.",
+    "noConfirmedHosts": "No confirmed host relationships are known. Missing information means unknown, not resistant.",
+    "qualifiedVariety": "Variety-specific evidence: {{name}}",
+    "speciesHost": "Species-level evidence; check variety qualifications.",
+    "relationshipsError": "Host relationships could not be loaded.",
+    "relationshipsActionHint": "Select a catalogue entry to inspect sourced host relationships."
   }
 }

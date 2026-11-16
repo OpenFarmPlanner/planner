@@ -129,6 +129,9 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             response = self.client.get(hosts_url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], initial_host_response.data['count'] + ROW_COUNT)
+        self.assertTrue(all(
+            host['species_status'] == 'published' for host in response.data['results']
+        ))
 
     def setUp(self):
         super().setUp()

@@ -13,6 +13,7 @@ from rest_framework import serializers
 
 from config.languages import SUPPORTED_LANGUAGE_CODES
 
+from .models import CropSpecies
 from .plant_health_models import (
     PlantHealthEntry,
     PlantHealthHost,
@@ -31,7 +32,7 @@ TRANSLATION_FIELDS = (
 ENTRY_FIELDS = ("name", "scientific_name", "kind", "eppo_code", "sources")
 
 
-def catalogue_queryset() -> QuerySet[PlantHealthEntry]:
+def catalogue_queryset(*, include_unpublished_hosts: bool = False) -> QuerySet[PlantHealthEntry]:
     hosts = (
         PlantHealthHost.objects.filter(is_active=True)
         .select_related("species")
@@ -39,6 +40,8 @@ def catalogue_queryset() -> QuerySet[PlantHealthEntry]:
             "species__translations",
         )
     )
+    if not include_unpublished_hosts:
+        hosts = hosts.filter(species__status=CropSpecies.STATUS_PUBLISHED)
     return PlantHealthEntry.objects.prefetch_related(
         "translations",
         Prefetch("hosts", queryset=hosts, to_attr="active_hosts"),

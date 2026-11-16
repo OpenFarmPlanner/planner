@@ -2050,6 +2050,17 @@
       "conflict": "Het gewas of de selectie is gewijzigd. Sluit het venster en laad je gewassen opnieuw voordat je de koppeling opnieuw controleert.",
       "inherited": "Dit ras erft de vermeldingen van ‘{{name}}’. Sla de koppeling bij dat gewas op; deze geldt voor alle rassen die ervan erven. Overerving blijft actief.",
       "editGeneral": "Algemeen gewas bewerken"
-    }
+    },
+    "filterPlaceholder": "Gebruikte vermeldingen kiezen",
+    "filterHelper": "Kies bestaande vermeldingen. Het gewas moet alle geselecteerde vermeldingen bevatten (EN).",
+    "filterSearchError": "Catalogusnamen konden niet worden geladen. Probeer het opnieuw.",
+    "relationshipsTitle": "Onderbouwde waardplantrelaties",
+    "relationshipsHint": "Dit zijn onderbouwde relaties uit de catalogus. Een vermelding bij een gewas kiezen bewijst op zichzelf geen waardplantrelatie of aantasting. Bekijk de bronnen en de voorwaarden voor rassen.",
+    "broadRelationshipHint": "Deze brede groep of dit ziektebegrip duidt niet op één bevestigde plaag of ziekteverwekker. Hieruit kan geen gedeelde waardplantrelatie worden afgeleid.",
+    "noConfirmedHosts": "Geen bevestigde waardplantrelaties bekend. Ontbrekende informatie betekent onbekend, niet resistent.",
+    "qualifiedVariety": "Rasspecifiek bewijs: {{name}}",
+    "speciesHost": "Bewijs op het niveau van de gewassoort; bekijk de voorwaarden voor rassen.",
+    "relationshipsError": "Waardplantrelaties konden niet worden geladen.",
+    "relationshipsActionHint": "Kies een catalogusvermelding om onderbouwde waardplantrelaties te bekijken."
   }
 }

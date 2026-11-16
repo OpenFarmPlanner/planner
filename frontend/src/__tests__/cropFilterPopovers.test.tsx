@@ -26,10 +26,13 @@ const emptyPrivateFilters: PersistedCropFilters = {
   yieldMin: '',
   yieldMax: '',
   selectedTagFilter: [],
+  selectedPlantHealthFilter: [],
   sowingMonth: '',
 };
 
 const emptyPublicFilters: PublicCropFilterState = {
+  plantHealth: [],
+  seedType: '',
   cropFamily: '',
   cultivationType: '',
   nutrientDemand: '',
@@ -87,6 +90,7 @@ const renderPublic = (filters: Partial<PublicCropFilterState> = {}) => {
         cropFamilyOptions: ['Brassicaceae', 'Fabaceae'],
         varietyOptions: ['Nantaise', 'Rodelika'],
         nutrientOptions: ['high', 'low', 'medium'],
+        plantHealthOptions: [], plantHealthValues: new Map(),
       }}
       onReset={onReset}
     />,
@@ -403,7 +407,7 @@ describe('PublicCropFiltersPopover', () => {
         onClose={vi.fn()}
         filters={emptyPublicFilters}
         onFilterChange={vi.fn()}
-        options={{ cropFamilyOptions: [], varietyOptions: [], nutrientOptions: ['very_high'] }}
+        options={{ cropFamilyOptions: [], varietyOptions: [], nutrientOptions: ['very_high'], plantHealthOptions: [], plantHealthValues: new Map() }}
         onReset={vi.fn()}
       />,
     );

@@ -12,6 +12,7 @@ from accounts.public_identity import get_public_user_label
 from config.languages import SUPPORTED_LANGUAGE_CODES, resolve_request_language
 from crops.models import CropSpecies
 
+from .permissions import is_public_library_moderator
 from .plant_health_models import (
     PlantHealthEntry,
     PlantHealthHost,
@@ -87,6 +88,7 @@ class PlantHealthTranslationSerializer(serializers.ModelSerializer):
 class PlantHealthHostSerializer(serializers.ModelSerializer):
     sources = PlantHealthSourceSerializer(many=True, required=True, allow_empty=False)
     species_name = serializers.SerializerMethodField()
+    species_status = serializers.CharField(source="species.status", read_only=True)
 
     class Meta:
         model = PlantHealthHost
@@ -95,6 +97,7 @@ class PlantHealthHostSerializer(serializers.ModelSerializer):
             "entry",
             "species",
             "species_name",
+            "species_status",
             "variety_name",
             "qualification",
             "sources",
@@ -218,6 +221,9 @@ class PlantHealthEntrySerializer(serializers.ModelSerializer):
                     "species__translations",
                 )
             )
+            request = self.context.get("request")
+            if request is None or not is_public_library_moderator(request.user):
+                hosts = hosts.filter(species__status=CropSpecies.STATUS_PUBLISHED)
         return PlantHealthHostSerializer(hosts, many=True, context=self.context).data
 
     def validate_sources(self, value: list[dict[str, str]]) -> list[dict[str, str]]:

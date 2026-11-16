@@ -15,7 +15,7 @@ from rest_framework.test import APIClient
 
 from config.languages import SUPPORTED_LANGUAGE_CODES
 from crops.models import CropLibraryApiToken, CropSpecies
-from crops.plant_health_models import PlantHealthEntry, PlantHealthTranslation
+from crops.plant_health_models import PlantHealthEntry, PlantHealthHost, PlantHealthTranslation
 
 ENTRIES = "/openfarmplanner/api/plant-health/entries/"
 HOSTS = "/openfarmplanner/api/plant-health/hosts/"
@@ -534,6 +534,30 @@ class PlantHealthApiTests(TestCase):
     def test_regular_users_cannot_write_official_hosts_and_invalid_query_ids_are_400(self) -> None:
         self.assertEqual(self.client.post(HOSTS, {}, format="json").status_code, 403)
         self.assertEqual(self.client.get(HOSTS, {"entry": "invalid"}).status_code, 400)
+
+    def test_public_host_reads_hide_species_that_are_no_longer_published(self):
+        entry_id = self.published_entry()
+        other_species = CropSpecies.objects.create(name="Reopened host name", status="published")
+        visible = PlantHealthHost.objects.create(
+            entry_id=entry_id, species=self.species, sources=[SOURCE], is_confirmed=True,
+        )
+        hidden = PlantHealthHost.objects.create(
+            entry_id=entry_id, species=other_species, sources=[SOURCE], is_confirmed=True,
+        )
+        other_species.status = "proposed"
+        other_species.save()
+        self.client.force_authenticate(self.user)
+        for url in [ENTRIES, f"{ENTRIES}{entry_id}/"]:
+            response = self.client.get(url)
+            row = response.data["results"][0] if url == ENTRIES else response.data
+            self.assertEqual([host["id"] for host in row["hosts"]], [visible.pk])
+            self.assertEqual(row["hosts"][0]["species_status"], "published")
+        self.assertEqual(self.client.get(HOSTS).data["count"], 1)
+        self.assertEqual(self.client.get(f"{HOSTS}{hidden.pk}/").status_code, 404)
+        self.client.force_authenticate(self.moderator)
+        row = self.client.get(f"{ENTRIES}{entry_id}/").data
+        self.assertEqual({host["id"] for host in row["hosts"]}, {visible.pk, hidden.pk})
+        self.assertEqual(self.client.get(f"{HOSTS}{hidden.pk}/").data["species_status"], "proposed")
 
     def token_client(self, user: Any, scope: str = "write") -> APIClient:
         _, raw = CropLibraryApiToken.create_token(

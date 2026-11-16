@@ -4,8 +4,8 @@ The catalogue foundation for #1011 lives in `crops/plant_health_*.py` and in
 **Crop library → Moderation**, below the existing change-proposal queue.
 It manages global identities and sourced host relationships. Project crops can
 also store the private selections described below. Explicit mappings, publication,
-library synchronization and pins are implemented. Filters and shared-pathogen
-views remain the next part of #1011. Existing `pests_diseases` prose is preserved. No initial catalogue data is seeded. The separate
+library synchronization, pins, selection filters and sourced-host inspection
+are implemented. Existing `pests_diseases` prose is preserved. No initial catalogue data is seeded. The separate
 crop-data #8 work owns researching and populating the initial entries.
 
 ## Identity and evidence
@@ -47,6 +47,9 @@ confirmation/qualification values use new-creation defaults (false/empty), so ol
 confirmed evidence cannot silently survive a changed broad identity. PATCH
 preserves omitted fields and refuses collisions with active or archived scopes.
 A species with historical host references is protected from deletion (HTTP 409).
+Ordinary catalogue and host reads omit relationships whose species is no longer
+published. Moderators retain editorial access. Host responses include the
+species status without extra per-row queries.
 
 ## Moderation and audit
 
@@ -314,3 +317,46 @@ The existing guarded `seed_private_plant_health_acceptance` fixture can be reuse
 to inspect private mapping/proposal controls with existing published catalogue
 and species IDs. Preview/apply only on a verified disposable local database;
 the command never writes shared library/catalogue entries or changes roles.
+
+## Selection filters and sourced host inspection
+
+The project filter and both public-library pickers offer a multiple-selection
+plant-health filter. Every selected entry must match (AND), alongside the
+other filters and search. The full library's mobile selector uses the same
+filter button and popover as its desktop selector, with the same state and
+reset behavior. UUIDs identify official entries across translations;
+local names use only exact case/spacing normalization inside the active
+project. Notes and broad wording never generate extra identities. Options come
+from the effective values of the current crop collection; a null variety
+inherits, while an explicit empty wrapper supplies no matches.
+
+The filter reuses the selection editor without free-text creation. It searches
+canonical/scientific names and all translated names, synonyms and regional
+names, retaining distinct UUIDs under the same vernacular label. Official
+metadata is looked up in batches of at most 40 UUIDs, with at most four requests
+in flight, so unrelated global search results cannot hide an in-use identity
+beyond the first result page. Unavailable identities remain filterable by their
+saved label; no evidence is inferred from that fallback. New project-local
+filter selections carry their project ID in session state and are masked on a
+project switch, including while the component remains mounted. Existing
+unrelated filter persistence and legacy storage-key reads remain supported.
+
+Choose an official selection chip on a private or public crop to inspect its
+host evidence. The dialog refreshes the catalogue lookup and only presents
+active, confirmed, sourced relationships for a published specific pest/pathogen
+and published host species. Species-level and variety-qualified evidence stay
+separate, with their original qualification and sources. A broad group or
+disease concept explains why no single shared organism can be inferred.
+Unresolved private names have no official-host action. An ordinary crop
+selection is never itself proof that the crop is a confirmed host or currently
+infested; an empty evidence list means unknown, not resistant or safe. No
+rotation or companion rule is derived from these filters or relationships.
+
+For local manual testing, reuse the guarded catalogue and private fixture
+commands above: the specific synthetic entry has a qualified sourced host,
+the two broad entries deliberately share a label, and the private project has
+inherited, empty and own-value varieties. Select a private name and the official
+identity together, change the parent and switch projects. Then inspect a
+specific and a broad entry, including at phone portrait/landscape sizes and in
+another language. These fixtures are not agronomic evidence; Cloud never
+populates a production catalogue or the user's localhost.

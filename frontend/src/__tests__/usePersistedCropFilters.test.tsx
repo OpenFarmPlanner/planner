@@ -28,6 +28,7 @@ const FULL_FILTERS: PersistedCropFilters = {
   searchQuery: 'möhre',
   selectedFamilyFilter: 'Apiaceae',
   selectedTagFilter: ['Kräuter', 'Blumen'],
+  selectedPlantHealthFilter: [],
   selectedCultivationFilter: 'direct_sowing',
   selectedNutrientFilter: 'low',
   selectedSeedTypeFilter: 'f1_hybrid',
@@ -314,5 +315,31 @@ describe('usePersistedCropFilters — writing back to storage', () => {
   it('stores the supplier the query parameter supplied', () => {
     setup('?supplierId=7');
     expect(stored()?.selectedSupplierFilter).toBe('7');
+  });
+});
+
+describe('project-scoped plant-health filter state', () => {
+  const selected = [{ name: 'Private project name' }];
+  it('retains the same project and immediately masks local selections on a mounted project switch', () => {
+    const setter = vi.fn();
+    const { result, rerender, unmount } = renderHook(({ projectId }) => usePersistedCropFilters(new URLSearchParams(), setter, projectId), { initialProps: { projectId: 1 } });
+    act(() => result.current.updateFilter('selectedPlantHealthFilter', selected));
+    expect(result.current.filters.selectedPlantHealthFilter).toEqual(selected);
+    rerender({ projectId: 2 });
+    expect(result.current.filters.selectedPlantHealthFilter).toEqual([]);
+    act(() => result.current.updateFilter('searchQuery', 'other project'));
+    expect(result.current.filters.selectedPlantHealthFilter).toEqual([]);
+    unmount();
+    const reopened = renderHook(() => usePersistedCropFilters(new URLSearchParams(), setter, 1));
+    expect(reopened.result.current.filters.selectedPlantHealthFilter).toEqual([]);
+  });
+  it('restores only matching project metadata and bounds malformed stored selections', () => {
+    window.sessionStorage.setItem(CROP_FILTERS_STORAGE_KEY, JSON.stringify({ plantHealthProjectId: 1,
+      selectedPlantHealthFilter: [null, 42, { name: 'Private project name' }, { name: 'Forged', catalogue_identity: 'invalid' }, ...Array.from({ length: 45 }, (_, n) => ({ name: `Local ${n}` }))],
+    }));
+    const { result } = renderHook(() => usePersistedCropFilters(new URLSearchParams(), vi.fn(), 1));
+    expect(result.current.filters.selectedPlantHealthFilter[0]).toEqual(selected[0]);
+    expect(result.current.filters.selectedPlantHealthFilter.length).toBeLessThanOrEqual(40);
+    expect(result.current.filters.selectedPlantHealthFilter.some(row => row.name === 'Forged')).toBe(false);
   });
 });

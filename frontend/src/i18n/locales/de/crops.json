@@ -2050,6 +2050,17 @@
       "conflict": "Die Kultur oder Auswahl hat sich geändert. Schließe den Dialog und lade die Kulturen neu, bevor du die Zuordnung erneut prüfst.",
       "inherited": "Diese Sorte übernimmt die Einträge von „{{name}}“. Speichere die Zuordnung an dieser Kultur; sie gilt für alle erbenden Sorten. Die Vererbung bleibt aktiv.",
       "editGeneral": "Übergeordnete Kultur bearbeiten"
-    }
+    },
+    "filterPlaceholder": "Verwendete Einträge auswählen",
+    "filterHelper": "Wähle vorhandene Einträge. Die Kultur muss alle ausgewählten Einträge enthalten (UND).",
+    "filterSearchError": "Katalognamen konnten nicht geladen werden. Versuche es erneut.",
+    "relationshipsTitle": "Belegte Wirtsbeziehungen",
+    "relationshipsHint": "Hier stehen belegte Beziehungen aus dem Katalog. Die Auswahl an einer Kultur ist allein kein Beleg für eine Wirtsbeziehung oder einen Befall. Beachte die Quellen und Sortenangaben.",
+    "broadRelationshipHint": "Dieser Sammel- oder Krankheitsbegriff bezeichnet keinen einzelnen bestätigten Schädling oder Erreger. Daraus lässt sich keine gemeinsame Wirtsbeziehung ableiten.",
+    "noConfirmedHosts": "Keine bestätigten Wirtsbeziehungen bekannt. Fehlende Angaben bedeuten unbekannt, nicht resistent.",
+    "qualifiedVariety": "Sortenbezogener Beleg: {{name}}",
+    "speciesHost": "Beleg auf Ebene der Kulturart; Sortenhinweise beachten.",
+    "relationshipsError": "Wirtsbeziehungen konnten nicht geladen werden.",
+    "relationshipsActionHint": "Wähle einen Katalogeintrag, um belegte Wirtsbeziehungen anzusehen."
   }
 }

@@ -85,7 +85,7 @@ function Crops() {
   const setTopbarContextActions = outletContext?.setTopbarContextActions;
   const activeSeasonLoaded = outletContext?.activeSeasonLoaded ?? true;
   const isMissingActiveSeason = Boolean(outletContext) && activeSeasonLoaded && !outletContext?.activeSeason;
-  const { shouldShowProjectRequiredState, missingProjectReason } = useProjectRequirement();
+  const { shouldShowProjectRequiredState, missingProjectReason, activeProjectId } = useProjectRequirement();
   const { selectedCropId, updateSelectedCropId } = useSelectedCropSync();
   const fallbackHistoryActorLabel = user?.display_label || user?.display_name || user?.email || undefined;
 
@@ -835,6 +835,8 @@ function Crops() {
       ) : null}
       <Box sx={{ display: initialLoadFailed ? 'none' : 'flex', gap: 2, mb: 2 }}>
         <CropDetail
+          key={activeProjectId ?? 'no-project'}
+          projectId={activeProjectId}
           crops={crops}
           isLoading={isCropsLoading}
           selectedCropId={selectedCropId}
