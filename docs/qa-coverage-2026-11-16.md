@@ -6,6 +6,29 @@ This is not a full application sweep, a security review, a PostgreSQL
 concurrency run or production validation. Older broad UI coverage remains in
 [the July coverage archive](qa-archive/qa-coverage-2026-07-27.md).
 
+## Outstanding full-sweep backlog
+
+This targeted audit does **not** advance the baseline for a full sweep.
+Retain `a2caf390195742d3c5934e68287179bf8aa9af61`, the latest commit
+recorded before this audit in the archived coverage, as the conservative
+change-review anchor. That older entry was itself targeted; it is not proof
+that the whole application was covered at that commit. The archive's other
+coverage limits and the open checks in `docs/qa-strategy.md` remain outstanding.
+
+There are 1,307 commits from that anchor to this audit's `fb7ac141`.
+The full-resweep triggers in `docs/qa-strategy.md` therefore remain active.
+The next QA pass must begin with:
+
+```bash
+git log a2caf390195742d3c5934e68287179bf8aa9af61..HEAD --stat
+```
+
+Run the full application sweep required by that strategy, including changed
+non-identity areas and shared components that this audit did not test. Do not
+use `fb7ac141..HEAD` as the sole scope, or treat the identity probes below as
+coverage of the intervening changes. Replace this outstanding baseline/backlog
+only when an actual full sweep records its scope, limits and reviewed commit.
+
 ## Scope and environment
 
 The owner asked whether other operations could fail like the library-sync

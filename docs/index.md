@@ -225,7 +225,8 @@ table of what is and isn't implemented.
   exploratory QA sweep.
 - [`qa-coverage-2026-11-16.md`](./qa-coverage-2026-11-16.md) (or a later
   `qa-coverage-*.md`, if one exists — use the most recent date; older ones are
-  in [`qa-archive/`](./qa-archive/)) — what was last tested, at which commit.
+  in [`qa-archive/`](./qa-archive/)) — what was last tested, at which commit,
+  and the retained baseline/backlog for an outstanding full sweep.
 - [`qa-excluded-issues.md`](./qa-excluded-issues.md) — known, intentional
   behavior that looks like a bug but isn't; don't re-report these.
 - [`keyboard-shortcuts-audit.md`](./keyboard-shortcuts-audit.md) — shortcut
