@@ -12,7 +12,8 @@ from rest_framework.views import APIView
 
 from config.responses import api_error_response
 from farm.common.mixins import ProjectRevisionMixin, ProjectScopedMixin
-from farm.history import _serialize_instance
+from farm.history import _current_actor_label, _serialize_instance, record_entity_revision
+from farm.history.project_restore import ensure_project_checkpoint
 from farm.models import Bed, BedLayout, EntityRevision, Field, FieldLayout, Location
 from farm.project_context import get_active_project_or_400
 from farm.services.bed_layouts import extract_layout_payloads, save_location_layouts
@@ -64,7 +65,16 @@ class BedLayoutByLocationView(APIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
-        outcome = save_location_layouts(location, bed_payload, field_payload)
+        ensure_project_checkpoint(active_project)
+        outcome = save_location_layouts(
+            location, bed_payload, field_payload, user_name=_current_actor_label(request)
+        )
+        if outcome.changed_count:
+            record_entity_revision(
+                project=active_project, entity_type='project', object_id=active_project.pk,
+                action=EntityRevision.ACTION_UPDATED, snapshot={},
+                display_name=active_project.name, user_name=_current_actor_label(request),
+            )
         if outcome.error_detail:
             return api_error_response(
                 code='invalid_location_layout',

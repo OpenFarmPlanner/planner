@@ -572,7 +572,9 @@
       "fallback": "Entry",
       "openTarget": "Open",
       "season": "Season",
-      "cropCompanion": "Neighbor (companion planting)"
+      "cropCompanion": "Neighbor (companion planting)",
+      "cropTaskTemplate": "Task template",
+      "seasonPattern": "Season settings"
     },
     "batch": {
       "seasonCreate": "Season {{season}} created",
@@ -588,7 +590,27 @@
       "countRestored_other": "{{count}} planting plans restored",
       "countUpdated_one": "{{count}} planting plan updated",
       "countUpdated_other": "{{count}} planting plans updated",
-      "reverted": "Restored: {{what}}"
+      "reverted": "Restored: {{what}}",
+      "undo": "Undo this action"
+    },
+    "import": {
+      "summary_one": "{{count}} crop imported",
+      "summary_other": "{{count}} crops imported",
+      "actions": "Import actions",
+      "details": "Affected records",
+      "undo": "Undo only this import",
+      "selectiveNotice": "Only this import’s changes will be undone. Other later changes will remain. The undo will be saved as a new history entry.",
+      "loading": "Checking undo",
+      "previewError": "Could not check this undo. Close the dialog and try again.",
+      "removeCreated_one": "{{count}} newly created crop will be removed.",
+      "removeCreated_other": "{{count}} newly created crops will be removed.",
+      "restoreUpdated_one": "{{count}} existing crop will return to its state before the import.",
+      "restoreUpdated_other": "{{count}} existing crops will return to their state before the import.",
+      "laterEdit": "Affected records were edited later. Undo is blocked to preserve your later changes.",
+      "dependentData": "Other records refer to this import. Undo is blocked to protect references and data.",
+      "undone": "Import undone",
+      "alreadyUndone": "This import has already been undone. Use “Restore this version” to choose an earlier project state.",
+      "unavailableState": "The previous state is no longer fully available or conflicts with other records. Undo is blocked; nothing was changed."
     }
   },
   "shortcuts": {
@@ -1656,7 +1678,7 @@
   "restoreDialog": {
     "title": "Restore version?",
     "batchDescription": "This action and all related changes will be undone.",
-    "versionDescription": "You are restoring an earlier version.",
+    "versionDescription": "Restore the whole project to this version. All later changes will be undone, including removing crops and beds created afterward.",
     "batchNotice": "The previous state will be restored. The action remains in the history and can be performed again.",
     "versionNotice": "The current version is retained. A new version is created automatically before restoring, so you can switch back at any time.",
     "cancel": "Cancel",

@@ -1,6 +1,10 @@
 """Seasons: per-project season pattern and season-scoped planning periods."""
 
+import json
+from typing import Any
+
 from django.conf import settings
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 
 from .base import TimestampedModel
@@ -15,9 +19,39 @@ class SeasonPattern(TimestampedModel):
     feature spec: "Dauer ist IMMER fix 12 Monate").
     """
 
-    project = models.OneToOneField(Project, on_delete=models.CASCADE, related_name='season_pattern')
-    start_day = models.PositiveSmallIntegerField(default=1, help_text="Day of month a season starts on (1-31).")
-    start_month = models.PositiveSmallIntegerField(default=1, help_text="Month a season starts on (1-12).")
+    project = models.OneToOneField(Project, on_delete=models.CASCADE, related_name="season_pattern")
+    start_day = models.PositiveSmallIntegerField(
+        default=1, help_text="Day of month a season starts on (1-31)."
+    )
+    start_month = models.PositiveSmallIntegerField(
+        default=1, help_text="Month a season starts on (1-12)."
+    )
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        from farm.history.records import _diff_changed_fields, record_entity_revision
+        from farm.models import EntityRevision
+
+        previous = type(self).objects.filter(pk=self.pk).values().first() if self.pk else None
+        super().save(*args, **kwargs)
+        current = {
+            field.attname: getattr(self, field.attname) for field in self._meta.concrete_fields
+        }
+        snapshot = json.loads(json.dumps(current, cls=DjangoJSONEncoder))
+        before = json.loads(json.dumps(previous, cls=DjangoJSONEncoder)) if previous else None
+        changed = _diff_changed_fields(before, snapshot) if before else ["created"]
+        internal = self.__dict__.pop("_history_internal", False)
+        if previous is None or internal:
+            snapshot["_project_version_internal"] = True
+        if changed:
+            record_entity_revision(
+                project=self.project,
+                entity_type="season_pattern",
+                object_id=self.pk,
+                action=EntityRevision.ACTION_UPDATED if previous else EntityRevision.ACTION_CREATED,
+                snapshot=snapshot,
+                changed_fields=changed,
+                user_name=self.__dict__.pop("_history_user_name", ""),
+            )
 
     def __str__(self) -> str:
         """Return a short description of the configured start date."""

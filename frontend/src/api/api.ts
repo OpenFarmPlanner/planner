@@ -166,6 +166,10 @@ export const cropAPI = {
   projectHistory: () => http.get<CropHistoryEntry[]>('/history/project/'),
   projectRestore: (history_id: number) => http.post<{ detail: string }>('/history/project/restore/', { history_id }),
   revertBatch: (batch_id: number) => http.post<{ detail: string }>(`/history/batch/${batch_id}/revert/`, {}),
+  importUndoPreview: (batchId: number) => http.post<{
+    created_count: number; updated_count: number;
+    conflicts: Array<{ code: string; object_type: string; object_id: number; object_display_name?: string }>;
+  }>(`/history/batch/${batchId}/undo-preview/`, {}),
   // Legacy import flow split into preview/apply endpoints.
   importPreview: (
     data: Record<string, unknown>[], companionNoteLanguage?: string, knownCropNames?: string[],
@@ -195,6 +199,7 @@ export const cropAPI = {
     companion_note_language?: string;
     phase?: 'crops' | 'companions' | 'finalize';
     expected_project_id?: number;
+    import_operation_id?: string;
   }) => http.post<CropImportApplyResult>('/crops/import/apply/', data),
   publishPreview: (id: number, params: { crop_species_id?: number | null; original_language_code?: string; publish_as_general?: boolean }) =>
     http.get<PublishPublicCropPreview>(`/crops/${id}/publish-public/preview/`, { params }),

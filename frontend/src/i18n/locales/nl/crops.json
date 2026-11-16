@@ -572,7 +572,9 @@
       "fallback": "Item",
       "openTarget": "Openen",
       "season": "Seizoen",
-      "cropCompanion": "Buurgewas (combinatieteelt)"
+      "cropCompanion": "Buurgewas (combinatieteelt)",
+      "cropTaskTemplate": "Taaksjabloon",
+      "seasonPattern": "Seizoensinstellingen"
     },
     "batch": {
       "seasonCreate": "Seizoen {{season}} gemaakt",
@@ -588,7 +590,27 @@
       "countRestored_other": "{{count}} teelten hersteld",
       "countUpdated_one": "{{count}} teelt bijgewerkt",
       "countUpdated_other": "{{count}} teelten bijgewerkt",
-      "reverted": "Hersteld: {{what}}"
+      "reverted": "Hersteld: {{what}}",
+      "undo": "Deze actie ongedaan maken"
+    },
+    "import": {
+      "summary_one": "{{count}} gewas geïmporteerd",
+      "summary_other": "{{count}} gewassen geïmporteerd",
+      "actions": "Importacties",
+      "details": "Betrokken gegevens",
+      "undo": "Alleen deze import ongedaan maken",
+      "selectiveNotice": "Alleen de wijzigingen van deze import worden teruggedraaid. Andere latere wijzigingen blijven behouden. De actie wordt opgeslagen als een nieuw geschiedenisitem.",
+      "loading": "Ongedaan maken controleren",
+      "previewError": "Deze actie kon niet worden gecontroleerd. Sluit het venster en probeer opnieuw.",
+      "removeCreated_one": "{{count}} nieuw aangemaakt gewas wordt verwijderd.",
+      "removeCreated_other": "{{count}} nieuw aangemaakte gewassen worden verwijderd.",
+      "restoreUpdated_one": "{{count}} bestaand gewas keert terug naar de toestand vóór de import.",
+      "restoreUpdated_other": "{{count}} bestaande gewassen keren terug naar de toestand vóór de import.",
+      "laterEdit": "Betrokken gegevens zijn later bewerkt. Ongedaan maken is geblokkeerd om die wijzigingen te behouden.",
+      "dependentData": "Andere gegevens verwijzen naar deze import. Ongedaan maken is geblokkeerd om verwijzingen en gegevens te beschermen.",
+      "undone": "Import ongedaan gemaakt",
+      "alreadyUndone": "Deze import is al ongedaan gemaakt. Gebruik ‘Deze versie herstellen’ om een eerdere projecttoestand te kiezen.",
+      "unavailableState": "De eerdere toestand is niet meer volledig beschikbaar of conflicteert met andere gegevens. Ongedaan maken is geblokkeerd; er is niets gewijzigd."
     }
   },
   "shortcuts": {
@@ -1656,7 +1678,7 @@
   "restoreDialog": {
     "title": "Versie herstellen?",
     "batchDescription": "Deze actie en alle bijbehorende wijzigingen worden ongedaan gemaakt.",
-    "versionDescription": "Je herstelt een eerdere versie.",
+    "versionDescription": "Je zet het hele project terug naar deze versie. Alle latere wijzigingen worden teruggedraaid, inclusief later aangemaakte gewassen en bedden.",
     "batchNotice": "De vorige toestand wordt hersteld. De actie blijft in de geschiedenis staan en kan opnieuw worden uitgevoerd.",
     "versionNotice": "De huidige versie blijft behouden. Vóór het herstellen wordt automatisch een nieuwe versie gemaakt, zodat je op elk moment kunt terugkeren.",
     "cancel": "Annuleren",

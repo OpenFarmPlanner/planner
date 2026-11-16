@@ -996,6 +996,60 @@ class CropSerializer(serializers.ModelSerializer):
 
         return normalized_packages
 
+    def save(self, **kwargs):
+        if not {'supplier_data_input', 'seed_packages'}.intersection(self.validated_data):
+            return super().save(**kwargs)
+        from farm.history.records import (
+            _entity_display_name,
+            _serialize_instance,
+            internal_project_versions,
+            record_entity_revision,
+        )
+        from farm.models import EntityRevision
+
+        creating = self.instance is None
+        project = kwargs.get('project') or self.validated_data.get('project')
+        if project is None:
+            project = self.instance.project
+        with transaction.atomic():
+            lock_crop_project(project.pk)
+            children = (CropSupplierData, SeedPackage)
+            before = {
+                model: {
+                    row.pk: _serialize_instance(row)
+                    for row in model.objects.filter(crop=self.instance)
+                } if self.instance is not None else {}
+                for model in children
+            }
+            with internal_project_versions():
+                crop = super().save(**kwargs)
+                for model, label in ((CropSupplierData, 'crop_supplier_data'),
+                                     (SeedPackage, 'seed_package')):
+                    after = {
+                        row.pk: _serialize_instance(row)
+                        for row in model.objects.filter(crop=crop)
+                    }
+                    for pk in before[model].keys() | after.keys():
+                        old, new = before[model].get(pk), after.get(pk)
+                        if old == new:
+                            continue
+                        record_entity_revision(
+                            project=project, entity_type=label, object_id=pk,
+                            action=('created' if old is None else
+                                    'deleted' if new is None else 'updated'),
+                            snapshot=new or old, display_name=crop.name,
+                        )
+            latest = EntityRevision.objects.filter(
+                project=project, entity_type='crop', object_id=crop.pk,
+            ).latest('id')
+            record_entity_revision(
+                project=project, entity_type='crop', object_id=crop.pk,
+                action=EntityRevision.ACTION_CREATED if creating else EntityRevision.ACTION_UPDATED,
+                snapshot=_serialize_instance(crop), display_name=_entity_display_name(crop),
+                changed_fields=latest.changed_fields,
+            )
+            return crop
+
     def create(self, validated_data):
         copy_values_to_crop = validated_data.pop('copy_values_to_crop', False)
         link_public_crop = validated_data.pop('link_public_crop', None)

@@ -116,6 +116,12 @@ for (const [language, width, height, interrupted] of [
       const companions = await apiRequest<{ companion_crop: number }[]>(page, 'GET', '/crop-companions/');
       expect(companions).toHaveLength(1);
       expect(companions[0].companion_crop).toBeTruthy();
+      const history = await apiRequest<Array<{
+        batch_operation_type?: string; batch_context?: { created_count?: number; updated_count?: number };
+      }>>(page, 'GET', '/history/project/');
+      const imports = history.filter(entry => entry.batch_operation_type === 'crop_import');
+      expect(imports).toHaveLength(1);
+      expect(imports[0].batch_context).toMatchObject({ created_count: 201, updated_count: 0 });
     }
     for (const item of observed) {
       expect(item.count).toBeLessThanOrEqual(200);

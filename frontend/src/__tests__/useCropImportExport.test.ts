@@ -90,7 +90,10 @@ describe('useCropImportExport', () => {
       status: 'duplicate', row_number: 12, duplicate_of_row_number: 5,
     });
     await act(async () => { await view.result.current.handleImportStart(); });
-    expect(api.importApply).toHaveBeenCalledWith({ phase: 'crops', items: [entries[0]], confirm_updates: false, companion_note_language: 'de', expected_project_id: 42 });
+    expect(api.importApply).toHaveBeenCalledWith({ phase: 'crops', items: [entries[0]], confirm_updates: false, companion_note_language: 'de', expected_project_id: 42, import_operation_id: expect.any(String) });
+    const operationIds = api.importApply.mock.calls.map(([payload]) => payload.import_operation_id);
+    expect(new Set(operationIds).size).toBe(1);
+    expect(operationIds[0]).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
     expect(view.showSnackbar).toHaveBeenCalledWith('import.created, import.duplicatesSkipped', 'success');
   });
 
@@ -361,6 +364,7 @@ describe('useCropImportExport', () => {
         confirm_updates: true,
         companion_note_language: 'de',
         expected_project_id: 42,
+        import_operation_id: expect.any(String),
       });
     });
 

@@ -42,6 +42,23 @@ class LocalLibraryImportSeedTests(TestCase):
     def seed(self, **options):
         call_command("seed_library_import_acceptance", **{**self.arguments, **options})
 
+    def test_import_history_fixture_is_previewed_and_repeat_safe(self):
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        before = Project.objects.count()
+        call_command('seed_import_history_acceptance', **arguments)
+        self.assertEqual(Project.objects.count(), before)
+        call_command('seed_import_history_acceptance', apply=True, **arguments)
+        self.assertEqual(Project.objects.count(), before + 3)
+        project = Project.objects.get(slug=f'ofp-local-import-history-{self.user.pk}-safe')
+        crop = Crop.objects.get(project=project, name='Later independent crop')
+        crop.notes = 'Preserve my manual edit'
+        crop.save()
+        revisions = project.entity_revisions.count()
+        call_command('seed_import_history_acceptance', apply=True, **arguments)
+        crop.refresh_from_db()
+        self.assertEqual(crop.notes, 'Preserve my manual edit')
+        self.assertEqual(project.entity_revisions.count(), revisions)
+
     def test_preview_and_invalid_target_never_write(self):
         self.seed()
         self.assertEqual(
@@ -72,6 +89,8 @@ class LocalLibraryImportSeedTests(TestCase):
         )
 
     def test_normal_sqlite_concurrency_options_allow_safe_local_fixture_creation(self):
+        if connection.vendor != 'sqlite':
+            self.skipTest('SQLite-specific concurrency options; PostgreSQL uses its native locks.')
         public_count = PublicCrop.objects.count()
         options = {
             'timeout': 20,

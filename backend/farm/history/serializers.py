@@ -11,6 +11,7 @@ class CropHistoryEntrySerializer(serializers.Serializer):
     history_user = serializers.CharField(allow_null=True)
     summary = serializers.CharField()
     object_type = serializers.CharField(required=False, allow_blank=True)
+    object_id = serializers.IntegerField(required=False)
     object_display_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     action = serializers.CharField(required=False, allow_blank=True)
     actor_label = serializers.CharField(required=False, allow_blank=True, allow_null=True)

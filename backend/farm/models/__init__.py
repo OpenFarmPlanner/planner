@@ -23,12 +23,12 @@ def crop_media_upload_path(instance: 'MediaFile', filename: str) -> str:
     return f"crop-media/{timezone.now().strftime('%Y/%m')}/{uuid.uuid4().hex}.{extension}"
 
 
-from .base import TimestampedModel  # noqa: E402
 from .agent_api import (  # noqa: E402
     API_TOKEN_PREFIX,
     CropImportDraft,
     ProjectApiToken,
 )
+from .base import TimestampedModel  # noqa: E402
 from .crops import (  # noqa: E402
     ActiveCropManager,
     Crop,
@@ -61,6 +61,7 @@ from .projects import (  # noqa: E402
     Project,
     ProjectInvitation,
     ProjectMembership,
+    RetainedUpload,
 )
 from .seasons import ActiveSeasonManager, Season, SeasonPattern  # noqa: E402
 from .structure import Bed, BedLayout, Field, FieldLayout, Location  # noqa: E402
@@ -93,6 +94,7 @@ __all__ = [
     'ProjectInvitation',
     'ProjectMembership',
     'ProjectRevision',
+    'RetainedUpload',
     'PublicCrop',
     'PublicCropChangeProposal',
     'PublicCropDiscussionComment',

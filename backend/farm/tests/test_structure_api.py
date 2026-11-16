@@ -373,6 +373,9 @@ class BedBulkCreateApiTest(ProjectApiTestCase):
         self.assertFalse(Bed.objects.filter(field=foreign_field).exists())
 
     def test_query_count_does_not_depend_on_lookups_per_bed(self):
+        from farm.history.project_restore import ensure_project_checkpoint
+
+        ensure_project_checkpoint(self.project)
         # Validation reads the field and the taken names once for the whole
         # series; per bed there is only the insert, the revision snapshot
         # read and the revision insert (the same as a single create).
@@ -535,6 +538,8 @@ class FieldDuplicateApiTest(ProjectApiTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_query_count_does_not_grow_with_lookups_per_bed(self):
+        from farm.history.project_restore import ensure_project_checkpoint
+
         # Per copied bed there is only the insert, the revision snapshot read
         # and the revision insert, the same as in the bulk create.
         small_field = Field.objects.create(
@@ -548,6 +553,7 @@ class FieldDuplicateApiTest(ProjectApiTestCase):
         for index in range(4):
             Bed.objects.create(name=f'G {index}', field=large_field, project=self.project)
 
+        ensure_project_checkpoint(self.project)
         with CaptureQueriesContext(connection) as small:
             self.client.post(self._url(small_field.id), {'name': 'Klein 2'}, format='json')
         with CaptureQueriesContext(connection) as large:
