@@ -775,3 +775,29 @@ class PublicPlantHealthTests(ProjectApiTestCase):
         self.crop.refresh_from_db()
         self.assertEqual(self.public.plant_health, original)
         self.assertIn({"name": "Unresolved private name"}, self.crop.plant_health["entries"])
+
+    def test_queued_direct_edit_retains_reopened_reference_for_session_and_project_token(self):
+        self.entries[0].status = PlantHealthEntry.STATUS_PROPOSED
+        self.entries[0].save()
+        profile = AccountTrustProfile.objects.get(user=self.user)
+        profile.trust_level = AccountTrustProfile.TRUST_NEW
+        profile.save()
+        original = self.public.plant_health
+        payload = {"notes": "Unrelated queued edit", "plant_health": original}
+        response = self.client.patch(self.public_url, payload, format="json")
+        self.assertEqual(response.status_code, 202, response.data)
+        proposal = PublicCropChangeProposal.objects.get(pk=response.data["id"])
+        self.assertEqual(proposal.proposed_data["plant_health"], original)
+        proposal.delete()
+        _, raw_token = ProjectApiToken.create_token(
+            project=self.project, user=self.user, name="Synthetic queued retained identity",
+            scope=ProjectApiToken.SCOPE_WRITE,
+        )
+        token_client = APIClient()
+        token_client.credentials(HTTP_AUTHORIZATION=f"Bearer {raw_token}")
+        response = token_client.patch(self.public_url, payload, format="json")
+        self.assertEqual(response.status_code, 202, response.data)
+        proposal = PublicCropChangeProposal.objects.get(pk=response.data["id"])
+        self.assertEqual(proposal.proposed_data["plant_health"], original)
+        self.public.refresh_from_db()
+        self.assertEqual(self.public.plant_health, original)

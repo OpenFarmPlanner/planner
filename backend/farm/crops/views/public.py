@@ -372,6 +372,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                 'summary': f'Direct edit awaiting moderation ({len(proposed_data)} field(s) changed)',
                 'proposed_data': proposed_data,
             },
+            context={'request': request, 'public_crop': public_crop},
         )
         serializer.is_valid(raise_exception=True)
         proposal = serializer.save(
