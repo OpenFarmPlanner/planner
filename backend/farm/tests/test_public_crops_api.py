@@ -3027,12 +3027,13 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
 
     def test_editing_imported_crop_with_supplier_name_and_null_supplier_id_keeps_supplier_null(self):
         public_crop = PublicCrop.objects.create(
-            name='Lettuce',
+            name='Supplier edit lettuce',
             variety='Bijella',
             status='published',
             created_by=self.user,
         )
         import_response = self.client.post(f'/openfarmplanner/api/public-crops/{public_crop.id}/import/', {}, format='json')
+        self.assertEqual(import_response.status_code, status.HTTP_201_CREATED, import_response.data)
         imported_id = import_response.data['crop']['id']
 
         # Public crops no longer carry supplier data, so seed this
