@@ -441,7 +441,8 @@
       "versionRestoredWithBackup": "Versión restaurada. La versión anterior se ha guardado automáticamente.",
       "versionRestoreError": "No se ha podido restaurar la versión del proyecto.",
       "leaveDemoError": "No se ha podido salir de la demo. Inténtalo de nuevo.",
-      "logoutError": "No se ha podido cerrar la sesión. Inténtalo de nuevo."
+      "logoutError": "No se ha podido cerrar la sesión. Inténtalo de nuevo.",
+      "versionRestoreConflict": "Esta versión está incompleta o entra en conflicto con datos relacionados. No se ha cambiado nada."
     },
     "shortcutHint": "Consejo: pulsa Alt+K para abrir la paleta de comandos.",
     "historyBy": "Por {{actor}}",

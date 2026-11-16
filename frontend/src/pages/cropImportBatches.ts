@@ -170,6 +170,7 @@ export async function applyCropImportBatches(
   options: { confirm_updates: boolean; companion_note_language: string; expected_project_id?: number },
   progress: ProgressCallback,
 ): Promise<BatchedImportResult> {
+  const operation = { import_operation_id: crypto.randomUUID() };
   const outcomes: ImportOutcome[] = payload.map((_, index) => ({ index, status: 'not_sent' }));
   const result: BatchedImportResult = {
     created_count: 0, updated_count: 0, skipped_count: 0, duplicate_count: 0,
@@ -193,7 +194,7 @@ export async function applyCropImportBatches(
     ) }));
 
   const run = async (rows: IndexedRow[], stage: 'crops' | 'companions'): Promise<boolean> => {
-    const body = (items: ImportRow[]) => ({ items, ...options, phase: stage });
+    const body = (items: ImportRow[]) => ({ items, ...options, ...operation, phase: stage });
     let batches: IndexedRow[][];
     try { batches = buildCropImportBatches(rows, body); }
     catch (error) {
@@ -231,7 +232,7 @@ export async function applyCropImportBatches(
         const tooLarge = isImportBodyLimitError(error);
         const status = (error as { response?: { status?: number } })?.response?.status;
         const projectChanged = isImportProjectChangedError(error);
-        const rejected = tooLarge || projectChanged || [400, 401, 403, 404, 422, 429].includes(status ?? 0);
+        const rejected = tooLarge || projectChanged || [400, 401, 403, 404, 409, 422, 429].includes(status ?? 0);
         for (const row of batch) {
           if (stage === 'crops') outcomes[row.index].status = rejected ? 'not_sent' : 'unknown';
           else outcomes[row.index].companions = rejected ? 'not_sent' : 'unknown';
@@ -262,7 +263,7 @@ export async function applyCropImportBatches(
   progress({ stage: 'finalize', completed: 0, total: 1 });
   try {
     result.attempted = true;
-    const response = await cropAPI.importApply({ items: [], ...options, phase: 'finalize' });
+    const response = await cropAPI.importApply({ items: [], ...options, ...operation, phase: 'finalize' });
     validateReceipts(response.data, 0, true);
     progress({ stage: 'finalize', completed: 1, total: 1 });
   } catch (error) {

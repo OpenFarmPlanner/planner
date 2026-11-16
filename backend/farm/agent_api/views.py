@@ -97,6 +97,7 @@ class ProjectApiTokenViewSet(viewsets.ViewSet):
 class CropImportPreviewView(ProjectScopedMixin, APIView):
     """Validate a crop import and store the reviewable draft. Writes no crop data."""
 
+    history_read_only = True
     api_token_actions = {'post'}
 
     @extend_schema(

@@ -230,7 +230,6 @@ class ProjectsApiTests(APITestCase):
             project=self.project, name='Historical general', crop_species=species,
         )
         ghost_id = ghost.pk
-        ghost.delete()
         live = Crop.objects.create(
             project=self.project, name='Current general', crop_species=species,
         )
@@ -239,6 +238,7 @@ class ProjectsApiTests(APITestCase):
                          format='json', **headers)
         history = self.client.get('/openfarmplanner/api/history/project/', **headers).data
         history_id = next(entry['history_id'] for entry in history if not entry.get('is_batch'))
+        ghost.delete()
         record_later_revision(self.project)
         response = self.client.post('/openfarmplanner/api/history/project/restore/', {
             'history_id': history_id,
@@ -274,11 +274,11 @@ class ProjectsApiTests(APITestCase):
         self.assertEqual(set(Crop.objects.filter(project=self.project, crop_species=species)
                              .values_list('pk', flat=True)), {first.pk, second.pk})
 
-    def test_project_history_restore_survives_stale_duplicate_snapshots(self) -> None:
+    def test_project_history_restore_rejects_conflicting_legacy_snapshots(self) -> None:
         """A crop hard-deleted without an ACTION_DELETED revision (e.g. an
         old demo reset) leaves a snapshot that still looks 'active'. Restoring
-        must not 500 on the unique-constraint collision with the live crop —
-        the newest snapshot wins, the stale one is skipped."""
+        must reject the ambiguous target atomically instead of silently choosing
+        one historical identity and skipping the other."""
         from farm.history import record_entity_revision
         from farm.models import EntityRevision
 
@@ -303,25 +303,30 @@ class ProjectsApiTests(APITestCase):
         history = self.client.get('/openfarmplanner/api/history/project/', **headers).data
         history_id = next(entry['history_id'] for entry in history if not entry.get('is_batch'))
         record_later_revision(self.project)
+        revision_count = EntityRevision.objects.filter(project=self.project).count()
         response = self.client.post(
             '/openfarmplanner/api/history/project/restore/',
             {'history_id': history_id}, format='json', **headers,
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT, response.data)
+        self.assertEqual(response.data['code'], 'crop_name_conflict')
+        self.assertFalse(Crop.all_objects.filter(pk=ghost_id).exists())
+        self.assertEqual(
+            EntityRevision.objects.filter(project=self.project).count(), revision_count,
+        )
         general_tomate = Crop.objects.filter(
             project=self.project, name_normalized='tomate', variety_normalized__isnull=True,
         )
         self.assertEqual(general_tomate.count(), 1)
         self.assertEqual(general_tomate.first().pk, live.pk)
         live.refresh_from_db()
-        self.assertNotEqual(live.updated_at, comparison_timestamp)
+        self.assertEqual(live.updated_at, comparison_timestamp)
 
     def test_project_history_restore_leaves_untracked_rows_untouched(self) -> None:
         """Rows created outside the API (the demo seeder, the auto default
-        location) have no EntityRevision. A restore rebuilds only what history
-        recorded and must leave those rows alone — not delete them, which once
-        emptied a whole demo project."""
+        location) have no entity revision. The initial complete baseline must
+        preserve these pre-existing rows when restoring a later version."""
         headers = {'HTTP_X_PROJECT_ID': str(self.project.id)}
         location = Location.objects.create(name='Seeded L', project=self.project)
         field = location.fields.create(name='Seeded F', project=self.project)

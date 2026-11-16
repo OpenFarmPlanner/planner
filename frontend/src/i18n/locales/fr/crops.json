@@ -582,7 +582,9 @@
       "fallback": "Entrée",
       "openTarget": "Ouvrir",
       "season": "Saison",
-      "cropCompanion": "Voisin (association de cultures)"
+      "cropCompanion": "Voisin (association de cultures)",
+      "cropTaskTemplate": "Modèle de tâche",
+      "seasonPattern": "Paramètres de saison"
     },
     "batch": {
       "seasonCreate": "Saison {{season}} créée",
@@ -602,7 +604,30 @@
       "countUpdated_one": "{{count}} série mise à jour",
       "countUpdated_other": "{{count}} séries mises à jour",
       "countUpdated_many": "{{count}} séries mises à jour",
-      "reverted": "Restauré : {{what}}"
+      "reverted": "Restauré : {{what}}",
+      "undo": "Annuler cette action"
+    },
+    "import": {
+      "summary_one": "{{count}} culture importée",
+      "summary_other": "{{count}} cultures importées",
+      "actions": "Actions de l’import",
+      "details": "Enregistrements concernés",
+      "undo": "Annuler uniquement cet import",
+      "selectiveNotice": "Seules les modifications de cet import seront annulées. Les autres modifications ultérieures seront conservées. L’annulation sera enregistrée dans l’historique.",
+      "loading": "Vérification de l’annulation",
+      "previewError": "Impossible de vérifier cette annulation. Fermez la fenêtre et réessayez.",
+      "removeCreated_one": "{{count}} culture nouvellement créée sera supprimée.",
+      "removeCreated_other": "{{count}} cultures nouvellement créées seront supprimées.",
+      "restoreUpdated_one": "{{count}} culture existante retrouvera son état avant l’import.",
+      "restoreUpdated_other": "{{count}} cultures existantes retrouveront leur état avant l’import.",
+      "laterEdit": "Des enregistrements concernés ont été modifiés ensuite. L’annulation est bloquée pour préserver ces modifications.",
+      "dependentData": "D’autres enregistrements font référence à cet import. L’annulation est bloquée pour préserver les liens et les données.",
+      "summary_many": "{{count}} cultures importées",
+      "removeCreated_many": "{{count}} cultures nouvellement créées seront supprimées.",
+      "restoreUpdated_many": "{{count}} cultures existantes retrouveront leur état avant l’import.",
+      "undone": "Import annulé",
+      "alreadyUndone": "Cet import a déjà été annulé. Utilisez « Restaurer cette version » pour choisir un état antérieur du projet.",
+      "unavailableState": "L’état précédent n’est plus entièrement disponible ou est incompatible avec d’autres enregistrements. L’annulation est bloquée ; rien n’a été modifié."
     }
   },
   "shortcuts": {
@@ -1701,7 +1726,7 @@
   "restoreDialog": {
     "title": "Restaurer la version ?",
     "batchDescription": "Cette action et toutes les modifications associées seront annulées.",
-    "versionDescription": "Vous restaurez une version antérieure.",
+    "versionDescription": "Vous rétablissez tout le projet dans cette version. Toutes les modifications ultérieures seront annulées, y compris les cultures et les planches créées ensuite.",
     "batchNotice": "L'état précédent sera restauré. L'action reste dans l'historique et peut être effectuée à nouveau.",
     "versionNotice": "La version actuelle est conservée. Une nouvelle version est créée automatiquement avant la restauration, afin que vous puissiez revenir en arrière à tout moment.",
     "cancel": "Annuler",

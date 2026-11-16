@@ -441,7 +441,8 @@
       "versionRestoredWithBackup": "Versione ripristinata. La versione precedente è stata salvata automaticamente.",
       "versionRestoreError": "Impossibile ripristinare la versione del progetto.",
       "leaveDemoError": "Impossibile uscire dalla demo. Riprova.",
-      "logoutError": "Uscita non riuscita. Riprova."
+      "logoutError": "Uscita non riuscita. Riprova.",
+      "versionRestoreConflict": "Questa versione è incompleta o in conflitto con dati collegati. Nessuna modifica effettuata."
     },
     "shortcutHint": "Suggerimento: premi Alt+K per la tavolozza dei comandi.",
     "historyBy": "Di {{actor}}",

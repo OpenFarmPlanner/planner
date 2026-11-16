@@ -31,6 +31,14 @@ class MediaFile(models.Model):
         ordering = ['-uploaded_at']
 
 
+class RetainedUpload(models.Model):
+    """Storage cleanup metadata for files removed by a historical restore."""
+
+    project = models.ForeignKey('Project', null=True, on_delete=models.SET_NULL, related_name='+')
+    storage_path = models.CharField(max_length=500, unique=True)
+    removed_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+
 class Project(TimestampedModel):
     """A collaborative workspace that owns farm planning data."""
 
