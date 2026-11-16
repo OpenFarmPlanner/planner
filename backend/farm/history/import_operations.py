@@ -4,7 +4,7 @@ from collections.abc import Callable
 from copy import deepcopy
 from datetime import timedelta
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from django.db import IntegrityError, transaction
 from django.db.models.deletion import Collector, ProtectedError
@@ -136,7 +136,7 @@ def execute_import_request(
     if request_id is None:
         return run()
     try:
-        identifier = uuid4() if request_id is None else UUID(str(request_id))
+        identifier = UUID(str(request_id))
     except (ValueError, TypeError, AttributeError) as exc:
         raise ImportOperationConflict("invalid import identifier") from exc
     with transaction.atomic():
@@ -175,7 +175,7 @@ def execute_import_request(
         batch.context["skipped_count"] = batch.context.get("skipped_count", 0) + summary.get(
             "skipped_count", 0
         )
-        if phase in (None, "finalize") or request_id is None:
+        if phase in (None, "finalize"):
             batch.completed_at = timezone.now()
         batch.save()
         return summary
