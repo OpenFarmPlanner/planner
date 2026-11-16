@@ -90,8 +90,14 @@ for (const width of [375, 1440]) {
       await page.goto(`/app/crops?cropId=${crop.id}`);
       await page.getByTestId('crop-detail-badge-row').getByRole('button', { name: de.library.libraryAction.pushUpdate, exact: true }).click();
       const sync = page.getByRole('dialog');
+      await expect(sync.getByTestId('public-crop-sync-row-plant_health')).toContainText(de.plantHealth.label);
       await sync.getByTestId('public-crop-sync-row-plant_health').locator('[data-testid^="public-crop-sync-option-local-"]').click();
+      const expand = sync.getByTestId('public-crop-sync-toggle-plant_health');
+      await expect(expand).toBeVisible();
       await page.screenshot({ path: info.outputPath(`sync-private-pin-${width}.png`), animations: 'disabled' });
+      await expand.click();
+      await expect(expand).toHaveText(de.library.sync.showLessValue);
+      await expand.click();
       await sync.getByRole('button', { name: de.library.sync.submit, exact: true }).click();
       await expect(sync).toBeHidden();
       const pinned = await apiRequest<Crop>(page, 'GET', `/crops/${crop.id}/`);
