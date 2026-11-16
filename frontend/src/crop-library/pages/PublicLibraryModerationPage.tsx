@@ -586,7 +586,7 @@ export default function PublicLibraryModerationPage() {
                         const completeness = t('library.moderation.species.translationCompleteness', {
                           available, total: SUPPORTED_LANGUAGES.length,
                         });
-                        return <TableRow key={proposal.id}>
+                        return <TableRow key={proposal.id} selected={selectedSpeciesIds.has(proposal.id)}>
                           <TableCell padding="checkbox" sx={speciesSelectionCellSx}>
                             <DisabledActionTooltip title={isSpeciesProposalComplete(proposal)
                               ? '' : t('library.moderation.species.bulkIncomplete')}>
