@@ -329,6 +329,8 @@ local names use only exact case/spacing normalization inside the active
 project. Notes and broad wording never generate extra identities. Options come
 from the effective values of the current crop collection; a null variety
 inherits, while an explicit empty wrapper supplies no matches.
+When legacy duplicate general rows remain, inheritance uses the first general
+entry in the collection, matching the crop hierarchy and detail view.
 
 The filter reuses the selection editor without free-text creation. It searches
 canonical/scientific names and all translated names, synonyms and regional

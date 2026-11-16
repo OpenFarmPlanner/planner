@@ -249,4 +249,14 @@ describe('plant-health filters', () => {
   it('never derives official filter options from legacy prose or unresolved names', () => {
     expect(getPublicCropFilterOptions([crop({ pests_diseases: 'Repels aphids', plant_health: { entries: [{ name: 'Local only' }] } })]).plantHealthOptions).toEqual([]);
   });
+  it('inherits from the first general entry just like the hierarchy when legacy duplicates remain', () => {
+    const first = crop({ id: 10, crop_species: 7, plant_health: { entries: [a] } });
+    const duplicate = crop({ id: 11, crop_species: 7, plant_health: { entries: [b] } });
+    const variety = crop({ id: 12, crop_species: 7, variety: 'Inherits', plant_health: null });
+    const options = getPublicCropFilterOptions([first, duplicate, variety]);
+    expect(matchesPublicCropFilters(variety, filters({ plantHealth: [a] }), options.plantHealthValues)).toBe(true);
+    expect(matchesPublicCropFilters(variety, filters({ plantHealth: [b] }), options.plantHealthValues)).toBe(false);
+    const unspecified = getPublicCropFilterOptions([{ ...first, plant_health: null }, duplicate, variety]);
+    expect(matchesPublicCropFilters(variety, filters({ plantHealth: [b] }), unspecified.plantHealthValues)).toBe(false);
+  });
 });

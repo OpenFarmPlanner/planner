@@ -42,10 +42,13 @@ export interface PublicCropFilterOptions {
 }
 
 export function getPublicCropFilterOptions(crops: readonly PublicCrop[]): PublicCropFilterOptions {
-  const general = new Map(crops.filter(crop => !(crop.variety || '').trim())
-    .map(crop => [getCropSpeciesKey(crop), crop.plant_health]));
+  const general = new Map<string, PublicCrop>();
+  for (const crop of crops) {
+    const key = getCropSpeciesKey(crop);
+    if (!(crop.variety || '').trim() && !general.has(key)) general.set(key, crop);
+  }
   const plantHealthValues = new Map(crops.map(crop => [crop.id,
-    crop.plant_health ?? ((crop.variety || '').trim() ? general.get(getCropSpeciesKey(crop)) : null) ?? null,
+    crop.plant_health ?? ((crop.variety || '').trim() ? general.get(getCropSpeciesKey(crop))?.plant_health : null) ?? null,
   ]));
   return {
     plantHealthValues,
