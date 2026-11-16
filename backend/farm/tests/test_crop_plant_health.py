@@ -726,6 +726,54 @@ class PublicPlantHealthTests(ProjectApiTestCase):
         self.assertEqual(self.crop.plant_health, self.mixed(self.entries[0]))
         self.assertFalse(self.entries[1].hosts.exists())
 
+    def test_queued_proposal_displays_the_canonical_name_that_approval_applies(self):
+        contributor = User.objects.create_user(
+            username="health-label-proposer", password="testpass"
+        )
+        self.client.force_authenticate(contributor)
+        expected = {"entries": [self.official(self.entries[1])]}
+        supplied = {
+            "entries": [
+                {
+                    "name": "Misleading user-supplied identity label",
+                    "catalogue_identity": str(self.entries[1].identity_key),
+                }
+            ]
+        }
+        for mode in ("direct", "proposal"):
+            with self.subTest(mode=mode):
+                if mode == "direct":
+                    result = self.client.patch(
+                        self.public_url, {"plant_health": supplied}, format="json"
+                    )
+                    self.assertEqual(result.status_code, 202, result.data)
+                else:
+                    result = self.client.post(
+                        self.public_url + "change-proposals/",
+                        {
+                            "summary": "Synthetic canonical label",
+                            "proposed_data": {
+                                "plant_health": supplied,
+                            },
+                        },
+                        format="json",
+                    )
+                    self.assertEqual(result.status_code, 201, result.data)
+                proposal = PublicCropChangeProposal.objects.get(pk=result.data["id"])
+                self.assertEqual(proposal.proposed_data["plant_health"], expected)
+                self.assertEqual(result.data["proposed_data"]["plant_health"], expected)
+                grant_public_library_moderator_access(self.user)
+                reviewer = APIClient()
+                reviewer.force_authenticate(self.user)
+                approved = reviewer.post(
+                    self.public_url + f"change-proposals/{proposal.pk}/approve/",
+                    {},
+                    format="json",
+                )
+                self.assertEqual(approved.status_code, 200, approved.data)
+                self.public.refresh_from_db()
+                self.assertEqual(self.public.plant_health, expected)
+
     def test_public_history_restore_keeps_archived_identity_and_other_language_prose(self):
         PublicCropTranslation.objects.create(
             public_crop=self.public,

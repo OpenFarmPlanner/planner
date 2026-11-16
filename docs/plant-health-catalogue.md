@@ -305,6 +305,8 @@ translation edits preserve omitted languages. Old snapshots have no references.
 Migration `0143_public_crop_plant_health_selections` only adds the nullable public
 column. It seeds no catalogue rows and parses no prose; reversing it drops only
 the new public selections and leaves legacy notes and private selections intact.
+Queued plant-health proposals store canonical catalogue names alongside the
+validated UUIDs, so moderation displays the same identity that approval applies.
 The existing guarded `seed_private_plant_health_acceptance` fixture can be reused
 to inspect private mapping/proposal controls with existing published catalogue
 and species IDs. Preview/apply only on a verified disposable local database;

@@ -1045,6 +1045,8 @@ class PublicCropChangeProposalSerializer(serializers.ModelSerializer):
                 cleaned[field] = typed_serializer.validated_data[field]
         if 'crop_family' in typed_serializer.validated_data:
             cleaned['crop_family'] = typed_serializer.validated_data['crop_family']
+        if 'plant_health' in typed_serializer.validated_data:
+            cleaned['plant_health'] = typed_serializer.validated_data['plant_health']
         if 'seed_packages' in typed_serializer.validated_data:
             cleaned['seed_packages'] = PublicCropSeedPackageSerializer(
                 typed_serializer.validated_data['seed_packages'],
