@@ -3027,8 +3027,8 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
 
     def test_editing_imported_crop_with_supplier_name_and_null_supplier_id_keeps_supplier_null(self):
         public_crop = PublicCrop.objects.create(
-            name='Supplier edit lettuce',
-            variety='Bijella',
+            name='Lettuce',
+            variety='Winter Density',
             status='published',
             created_by=self.user,
         )
