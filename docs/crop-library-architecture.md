@@ -2515,3 +2515,9 @@ parent. Already linked rows are read without updating them. Authorization,
 explicit sharing, private pins, terms, public versions and rollback retain the
 existing service boundaries. See the [state matrix](crop-library-state-matrix.md#selecting-varieties-during-import-1141)
 for cancellation, retry and concurrency behavior.
+
+Library identity pulls, initial links and applied updates share the project crop
+identity guard. A conflicting nonempty variety returns `crop_variety_conflict`
+(HTTP 409), independent of supplier. Validation precedes companion writes; the
+transaction rolls back proposals, public/private revisions, pins and source
+metadata if a recognized database identity race is detected after validation.

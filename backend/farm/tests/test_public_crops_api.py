@@ -6273,6 +6273,60 @@ class PublicCropFieldSyncApiTest(DRFAPITestCase):
             format='json',
         )
 
+    def test_variety_pull_and_initial_link_reject_duplicates_without_any_writes(self):
+        from farm.history.project_restore import ensure_project_checkpoint
+        from farm.models import Supplier
+
+        self.entry.variety = "New"
+        self.entry.save()
+        supplier = Supplier.objects.create(project=self.project, name="Identity supplier")
+        for supplier_value in (supplier, None):
+            with self.subTest(supplier=supplier_value):
+                name = f'Spinach {supplier_value.pk if supplier_value else "none"}'
+                self.entry.name = name
+                self.entry.save()
+                crop = Crop.objects.create(
+                    project=self.project,
+                    name=name,
+                    variety="Old",
+                    supplier=supplier_value,
+                    library_pinned_fields=["notes"],
+                    notes="Keep private",
+                    harvest_duration_days=27,
+                )
+                Crop.objects.create(
+                    project=self.project, name=name, variety="New", supplier=supplier_value
+                )
+                models = (
+                    Crop,
+                    EntityRevision,
+                    PublicCrop,
+                    PublicCropRevision,
+                    PublicCropChangeProposal,
+                    CropCompanion,
+                )
+                ensure_project_checkpoint(self.project)
+                for operation in ('link', 'sync'):
+                    if operation == 'sync':
+                        crop.source_public_crop = self.entry
+                        crop.source_public_version = self.entry.version
+                        crop.save()
+                    before = {
+                        model: list(model._base_manager.order_by('pk').values()) for model in models
+                    }
+                    response = (
+                        self._link(crop, ['variety', 'growth_duration_days'])
+                        if operation == 'link' else self._sync(
+                            crop, pull_fields=['variety', 'growth_duration_days'],
+                            push_fields=['harvest_duration_days'],
+                        )
+                    )
+                    self.assertEqual(response.status_code, 409, response.data)
+                    self.assertEqual(response.data['code'], 'crop_variety_conflict')
+                    self.assertEqual({
+                        model: list(model._base_manager.order_by('pk').values()) for model in models
+                    }, before)
+
     def test_sync_rejects_general_name_conflict_without_mutating_either_crop(self):
         imported = Crop.objects.create(
             project=self.project, name='Spinat (2)', variety='', crop_species=self.species,

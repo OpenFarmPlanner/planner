@@ -62,7 +62,7 @@ from farm.services.crop_import.spreadsheet import (
     apply_crop_import_companions,
     preview_crop_import,
 )
-from farm.services.crop_inheritance import lock_crop_project, validate_general_crop_identity
+from farm.services.crop_inheritance import crop_identity_write, validate_crop_identity
 from farm.services.crop_plant_health import map_crop_plant_health
 from farm.services.public_crops import (
     VARIETY_ONLY_COPY_FIELDS,
@@ -550,11 +550,10 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 .filter(self._crop_group_q(crop), deleted_at=deleted_at)
                 .order_by('id')
             )
-        with transaction.atomic():
-            lock_crop_project(crop.project_id)
+        with crop_identity_write(crop.project_id):
             for restored_crop in crops_to_restore:
                 restored_crop.deleted_at = None
-                validate_general_crop_identity(restored_crop)
+                validate_crop_identity(restored_crop)
                 restored_crop._history_action = EntityRevision.ACTION_RESTORED
                 restored_crop.save(update_fields=['deleted_at', 'updated_at'])
                 self._set_latest_revision_actor(restored_crop)
@@ -578,7 +577,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 if updated.name != old_name:
                     self._rename_sibling_crops(updated, old_name, old_crop_species_id)
         except IntegrityError as error:
-            CropSerializer._raise_name_conflict_if_general_name_constraint(error)
+            CropSerializer._raise_identity_conflict_if_named_constraint(error)
             raise
         if previous_media_id and previous_media_id != updated.image_file_id:
             MediaFile.objects.filter(id=previous_media_id, orphaned_at__isnull=True).update(orphaned_at=timezone.now())
@@ -628,6 +627,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
 
         for sibling in siblings_qs:
             sibling.name = updated.name
+            validate_crop_identity(sibling)
             sibling.save(update_fields=['name', 'name_normalized', 'updated_at'])
 
     @extend_schema(responses=CropHistoryEntrySerializer(many=True))

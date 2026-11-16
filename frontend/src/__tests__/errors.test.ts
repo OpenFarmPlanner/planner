@@ -6,7 +6,7 @@ import {
   isGuestDemoRestrictedError,
   isMissingProjectHeaderError,
 } from '../api/errors';
-import i18n from '../i18n/config';
+import i18n, { loadLanguages } from '../i18n/config';
 
 const fallbackMessage = 'Ein Fehler ist aufgetreten';
 
@@ -150,6 +150,28 @@ describe('extractApiErrorMessage', () => {
 
     expect(result).toBe('Diese Kultur existiert bereits in diesem Projekt. Füge stattdessen eine neue Sorte hinzu oder wähle einen anderen Namen.');
   });
+
+  it('localizes variety conflicts through the crops namespace and preserves fallback', () => {
+    const error = createAxiosError(409, {
+      code: 'crop_variety_conflict', detail: 'A crop with this name and variety already exists.',
+    });
+    expect(extractApiErrorMessage(error, createT({
+      'crops:form.duplicateNameVariety': 'Duplicate variety',
+    }), fallbackMessage)).toBe('Duplicate variety');
+    expect(extractApiErrorMessage(error, createT({}), fallbackMessage)).toBe(fallbackMessage);
+  });
+
+  it.each(['de', 'en', 'fr', 'es', 'it', 'pt', 'nl'])(
+    'renders variety conflicts in %s with a real translation function', async (language) => {
+      await loadLanguages([language]);
+      const t = i18n.getFixedT(language, 'common');
+      const expected = i18n.getFixedT(language, 'crops')('form.duplicateNameVariety');
+      expect(expected).not.toBe('form.duplicateNameVariety');
+      expect(extractApiErrorMessage(createAxiosError(409, {
+        code: 'crop_variety_conflict',
+      }), t, fallbackMessage)).toBe(expected);
+    },
+  );
 
   it('maps duplicate supplier-data backend codes to localized text', () => {
     const t = createT({

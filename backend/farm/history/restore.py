@@ -10,7 +10,11 @@ from django.utils import timezone
 
 from crops.plant_families import coerce_plant_family_key
 from farm.models import Crop, CropCompanion, EntityRevision, PlantingPlan, Project, PublicCrop, Task
-from farm.services.crop_inheritance import lock_crop_project, validate_general_crop_identity
+from farm.services.crop_inheritance import (
+    crop_identity_write,
+    lock_crop_project,
+    validate_crop_identity,
+)
 
 from .records import (
     _ENTITY_TYPE_LABELS,
@@ -55,11 +59,31 @@ def _crop_restore_identity(row: dict[str, Any]) -> tuple[str | None, str | None,
             row.get('crop_species_id'))
 
 
+def _validate_restored_variety_identities(
+    current: dict[int, dict[str, Any]], final: dict[int, dict[str, Any]],
+) -> None:
+    from farm.services.crop_inheritance import CropVarietyConflict
+
+    varieties: dict[tuple[str | None, str], set[int]] = {}
+    for pk, row in final.items():
+        name, variety, _ = _crop_restore_identity(row)
+        if variety:
+            varieties.setdefault((name, variety), set()).add(pk)
+    for identity, ids in varieties.items():
+        if len(ids) > 1 and any(
+            pk not in current or current[pk]['deleted_at'] is not None
+            or _crop_restore_identity(current[pk])[:2] != identity
+            for pk in ids
+        ):
+            raise CropVarietyConflict()
+
+
 def _validate_restored_general_identities(
     current: dict[int, dict[str, Any]], final: dict[int, dict[str, Any]],
 ) -> None:
     from farm.services.crop_inheritance import GeneralCropIdentityConflict
 
+    _validate_restored_variety_identities(current, final)
     names: set[str | None] = set()
     species_groups: dict[int, set[int]] = {}
     for pk, row in final.items():
@@ -124,8 +148,7 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
         PublicCrop.objects.filter(pk__in=linked_ids).values_list('pk', flat=True)
     ) if linked_ids else set()
 
-    with transaction.atomic():
-        lock_crop_project(crop.project_id)
+    with crop_identity_write(crop.project_id):
         for key, value in snapshot.items():
             if key in restorable_fields:
                 setattr(crop, key, value)
@@ -139,7 +162,7 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
         if 'library_pinned_fields' not in revision.snapshot:
             crop.library_pinned_fields = []
         crop.deleted_at = None
-        validate_general_crop_identity(crop)
+        validate_crop_identity(crop)
         crop._history_action = EntityRevision.ACTION_RESTORED
         crop.save()
 

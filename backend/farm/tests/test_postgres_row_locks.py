@@ -556,3 +556,119 @@ def test_existing_baseline_mutations_cannot_enter_an_import_capture_window():
     assert response.status_code == 200
     task.refresh_from_db()
     assert task.title == 'Independent later edit'
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize('operation', ['undelete', 'restore', 'public-sync'])
+def test_variety_constraint_race_rolls_back_restore_and_sync(operation):
+    from concurrent.futures import ThreadPoolExecutor
+    from unittest.mock import patch
+
+    from django.db import close_old_connections, connection
+    from rest_framework.test import APIClient
+
+    from farm.history.project_restore import ensure_project_checkpoint
+    from farm.models import Crop, EntityRevision, Project, ProjectMembership, PublicCrop, Supplier
+    from farm.tests.api_base import User
+
+    if connection.vendor != 'postgresql':
+        pytest.skip('PostgreSQL variety constraint-race regression')
+    user = User.objects.create_user(username=f'variety-race-{operation}')
+    project = Project.objects.create(name='Variety race', slug=f'variety-race-{operation}')
+    ProjectMembership.objects.create(project=project, user=user, role='admin')
+    supplier = Supplier.objects.create(project=project, name='Synthetic supplier')
+    entry = PublicCrop.objects.create(
+        name='Synthetic', variety='New', status='published', created_by=user,
+    )
+    target = Crop.objects.create(
+        project=project, name='Synthetic', variety='New', supplier=supplier,
+        source_public_crop=entry, source_public_version=entry.version,
+    )
+    revision = EntityRevision.objects.filter(entity_type='crop', object_id=target.pk).latest('pk')
+    if operation == 'undelete':
+        from django.utils import timezone
+
+        target.deleted_at = timezone.now()
+        target.save()
+    else:
+        target.variety = 'Old'
+        target.save()
+    other = Crop.objects.create(
+        project=project, name='Synthetic', variety='Unclaimed', supplier=supplier,
+    )
+    ensure_project_checkpoint(project)
+    before = Crop.all_objects.filter(pk=target.pk).values().get()
+    revisions = list(EntityRevision.objects.filter(project=project).order_by('pk').values())
+    save = Crop.save
+
+    def competing_write():
+        close_old_connections()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SET lock_timeout = '5s'")
+            Crop.objects.filter(pk=other.pk).update(variety='New', variety_normalized='new')
+        finally:
+            close_old_connections()
+
+    def save_after_race(instance, *args, **kwargs):
+        if instance.pk == target.pk:
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                executor.submit(competing_write).result(timeout=15)
+        return save(instance, *args, **kwargs)
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+    payload = {
+        'undelete': {}, 'restore': {'history_id': revision.pk},
+        'public-sync': {'public_crop_id': entry.pk, 'base_version': entry.version,
+                        'pull_fields': ['variety'], 'push_fields': []},
+    }[operation]
+    with patch.object(Crop, 'save', new=save_after_race):
+        response = client.post(f'/api/crops/{target.pk}/{operation}/', payload,
+                               format='json', HTTP_X_PROJECT_ID=str(project.pk))
+    assert response.status_code == 409
+    assert response.data['code'] == 'crop_variety_conflict'
+    assert Crop.all_objects.filter(pk=target.pk).values().get() == before
+    assert list(EntityRevision.objects.filter(project=project).order_by('pk').values()) == revisions
+    other.refresh_from_db()
+    assert other.variety == 'New'
+
+
+@pytest.mark.django_db(transaction=True)
+def test_supplierless_undeletes_cannot_create_duplicate_varieties_concurrently():
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    from django.db import close_old_connections, connection
+    from django.utils import timezone
+    from rest_framework.test import APIClient
+
+    from farm.history.project_restore import ensure_project_checkpoint
+    from farm.models import Crop, Project, ProjectMembership
+    from farm.tests.api_base import User
+
+    if connection.vendor != 'postgresql':
+        pytest.skip('PostgreSQL supplierless identity lock regression')
+    user = User.objects.create_user(username='supplierless-race')
+    project = Project.objects.create(name='Supplierless race', slug='supplierless-race')
+    ProjectMembership.objects.create(project=project, user=user, role='admin')
+    targets = [Crop.objects.create(project=project, name='Carrot', variety='Nantes',
+                                   deleted_at=timezone.now()) for _ in range(2)]
+    ensure_project_checkpoint(project)
+    barrier = Barrier(2)
+
+    def restore(pk):
+        close_old_connections()
+        try:
+            client = APIClient()
+            client.force_authenticate(user=user)
+            barrier.wait(timeout=10)
+            return client.post(f'/api/crops/{pk}/undelete/', format='json',
+                               HTTP_X_PROJECT_ID=str(project.pk)).status_code
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        statuses = list(executor.map(restore, [crop.pk for crop in targets]))
+    assert sorted(statuses) == [200, 409]
+    assert Crop.objects.filter(project=project, name='Carrot', variety='Nantes').count() == 1

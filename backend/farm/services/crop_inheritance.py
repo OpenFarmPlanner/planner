@@ -210,12 +210,26 @@ class CropNameConflict(GeneralCropIdentityConflict):
     default_detail = 'A general crop with this name already exists in this project.'
 
 
-def raise_general_crop_name_conflict(exc: IntegrityError) -> None:
+class CropVarietyConflict(GeneralCropIdentityConflict):
+    default_code = 'crop_variety_conflict'
+    default_detail = 'A crop with this name and variety already exists.'
+
+
+def raise_crop_identity_conflict(exc: IntegrityError) -> None:
     constraint = getattr(getattr(exc.__cause__, 'diag', None), 'constraint_name', None)
     message = str(exc)
     if (
+        constraint == 'unique_crop_normalized'
+        or 'constraint "unique_crop_normalized"' in message
+        or message == (
+            'UNIQUE constraint failed: farm_crop.name_normalized, '
+            'farm_crop.variety_normalized, farm_crop.supplier_id'
+        )
+    ):
+        raise CropVarietyConflict() from exc
+    if (
         constraint == 'unique_general_crop_name_per_project'
-        or 'unique_general_crop_name_per_project' in message
+        or 'constraint "unique_general_crop_name_per_project"' in message
         or message == 'UNIQUE constraint failed: farm_crop.project_id, farm_crop.name_normalized'
     ):
         raise CropNameConflict() from exc
@@ -223,7 +237,7 @@ def raise_general_crop_name_conflict(exc: IntegrityError) -> None:
 
 @contextmanager
 def crop_identity_write(project_id: int, *, nowait: bool = True) -> Iterator[None]:
-    """Lock the project and translate only its general-name race after rollback."""
+    """Lock the project and translate only recognized identity races after rollback."""
     try:
         with transaction.atomic():
             if nowait:
@@ -232,7 +246,7 @@ def crop_identity_write(project_id: int, *, nowait: bool = True) -> Iterator[Non
                 Project.objects.select_for_update().get(pk=project_id)
             yield
     except IntegrityError as exc:
-        raise_general_crop_name_conflict(exc)
+        raise_crop_identity_conflict(exc)
         raise
 
 
@@ -263,6 +277,42 @@ def validate_general_crop_identity(crop: Crop) -> None:
         identity |= Q(crop_species_id=crop.crop_species_id)
     if others.filter(identity).exists():
         raise GeneralCropIdentityConflict()
+
+
+def has_variety_identity_conflict(
+    project_id: int, name: str, variety: str | None, *, exclude_pk: int | None = None,
+) -> bool:
+    """Suppliers do not distinguish identities within a project."""
+    from farm.utils import normalize_text
+
+    others = Crop.objects.filter(
+        project_id=project_id, name_normalized=normalize_text(name),
+        variety_normalized=normalize_text(variety),
+    )
+    if exclude_pk is not None:
+        others = others.exclude(pk=exclude_pk)
+    return others.exists()
+
+
+def validate_crop_identity(crop: Crop) -> None:
+    """Validate a prospective row under the project lock, preserving legacy edits."""
+    from farm.utils import normalize_text
+
+    if crop.deleted_at is not None:
+        return
+    name, variety = normalize_text(crop.name), normalize_text(crop.variety)
+    if not variety:
+        validate_general_crop_identity(crop)
+        return
+    previous = (
+        Crop.objects.filter(pk=crop.pk, project_id=crop.project_id).first() if crop.pk else None
+    )
+    if previous and (
+        normalize_text(previous.name), normalize_text(previous.variety)
+    ) == (name, variety):
+        return
+    if has_variety_identity_conflict(crop.project_id, crop.name, crop.variety, exclude_pk=crop.pk):
+        raise CropVarietyConflict()
 
 
 @transaction.atomic

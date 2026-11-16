@@ -198,6 +198,106 @@ class CropApiTest(ProjectApiTestCase):
         self.assertIsNotNone(general.deleted_at)
         self.assertEqual(list(Crop.objects.filter(crop_species=species)), [replacement])
 
+    def _identity_state(self):
+        return {
+            model.__name__: list(model._base_manager.order_by("pk").values())
+            for model in (Crop, EntityRevision, PlantingPlan, Task, CropTimingWindow, SeedPackage)
+        }
+
+    def test_variety_undelete_conflict_is_atomic_with_and_without_supplier(self):
+        for supplier in (self.supplier, None):
+            with self.subTest(supplier=supplier):
+                name = f'Carrot {supplier.pk if supplier else "none"}'
+                general = Crop.objects.create(project=self.project, name=name)
+                old = Crop.objects.create(
+                    project=self.project, name=name, variety="Nantes", supplier=supplier
+                )
+                PlantingPlan.objects.create(
+                    project=self.project, crop=old, bed=self.bed, planting_date=date(2026, 3, 1),
+                )
+                self.assertEqual(
+                    self.client.delete(f"/openfarmplanner/api/crops/{general.pk}/").status_code, 204
+                )
+                Crop.objects.create(
+                    project=self.project, name=name, variety="Nantes", supplier=supplier
+                )
+                before = self._identity_state()
+                response = self.client.post(f"/openfarmplanner/api/crops/{general.pk}/undelete/")
+                self.assertEqual(response.status_code, 409, response.data)
+                self.assertEqual(response.data["code"], "crop_variety_conflict")
+                self.assertEqual(self._identity_state(), before)
+                old.refresh_from_db()
+                self.assertIsNotNone(old.deleted_at)
+
+    def test_variety_revision_restore_conflict_preserves_current_state(self):
+        old = Crop.objects.create(
+            project=self.project, name="Beet", variety="Boro", supplier=self.supplier
+        )
+        revision = EntityRevision.objects.filter(entity_type="crop", object_id=old.pk).latest("pk")
+        response = self.client.patch(
+            f"/openfarmplanner/api/crops/{old.pk}/", {"variety": "Boltardy"}, format="json"
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        Crop.objects.create(
+            project=self.project, name="Beet", variety="Boro", supplier=self.supplier
+        )
+        before = self._identity_state()
+        response = self.client.post(
+            f"/openfarmplanner/api/crops/{old.pk}/restore/",
+            {"history_id": revision.pk},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 409, response.data)
+        self.assertEqual(response.data["code"], "crop_variety_conflict")
+        self.assertEqual(self._identity_state(), before)
+
+    def test_general_rename_rejects_sibling_variety_conflict_atomically(self):
+        general = Crop.objects.create(project=self.project, name="Source")
+        sibling = Crop.objects.create(
+            project=self.project, name="Source", variety="V", supplier=self.supplier
+        )
+        PlantingPlan.objects.create(
+            project=self.project, crop=sibling, bed=self.bed, planting_date=date(2026, 3, 1),
+        )
+        Crop.objects.create(
+            project=self.project, name="Target", variety="V", supplier=self.supplier
+        )
+        before = self._identity_state()
+        response = self.client.patch(
+            f"/openfarmplanner/api/crops/{general.pk}/", {"name": "Target"}, format="json"
+        )
+        self.assertEqual(response.status_code, 409, response.data)
+        self.assertEqual(response.data["code"], "crop_variety_conflict")
+        self.assertEqual(self._identity_state(), before)
+
+    def test_variety_identity_controls_preserve_legacy_edits_and_project_scope(self):
+        old = Crop.objects.create(project=self.project, name="Legacy", variety="V")
+        Crop.objects.create(project=self.project, name="Legacy", variety="V")
+        response = self.client.patch(
+            f"/openfarmplanner/api/crops/{old.pk}/", {"notes": "Editable"}, format="json"
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        other = Project.objects.create(name="Isolated", slug="isolated-identities")
+        Crop.objects.create(project=other, name="Control", variety="V")
+        response = self.client.post(
+            "/openfarmplanner/api/crops/", {"name": "Control", "variety": "V"}, format="json"
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        response = self.client.post(
+            "/openfarmplanner/api/crops/", {"name": "Control", "variety": "Other"}, format="json"
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        response = self.client.post(
+            "/openfarmplanner/api/crops/",
+            {
+                "name": "Control",
+                "variety": "V",
+                "supplier_name": self.supplier.name,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400, response.data)
+
     def test_delete_preview_reports_cascaded_varieties_and_planning_data(self):
         species = CropSpecies.objects.create(name='Daucus carota')
         general = Crop.objects.create(name='Karotte', variety='', project=self.project, crop_species=species)
@@ -1853,3 +1953,37 @@ class LegacyCultureEndpointAliasTest(ProjectApiTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('crops', response.data)
         self.assertNotIn('cultures', response.data)
+
+
+class CropIdentityConstraintTest(ProjectApiTestCase):
+    def test_only_named_identity_constraints_are_translated(self):
+        from django.db import IntegrityError
+
+        from farm.services.crop_inheritance import CropVarietyConflict, crop_identity_write
+
+        for message in (
+            'duplicate key violates constraint "unique_crop_normalized"',
+            'UNIQUE constraint failed: farm_crop.name_normalized, '
+            'farm_crop.variety_normalized, farm_crop.supplier_id',
+        ):
+            with self.subTest(message=message), self.assertRaises(CropVarietyConflict):
+                with crop_identity_write(self.project.pk):
+                    raise IntegrityError(message)
+        with self.assertRaises(IntegrityError):
+            with crop_identity_write(self.project.pk):
+                raise IntegrityError(
+                    'duplicate key violates constraint "other_unique_crop_normalized"'
+                )
+
+    def test_projected_restore_identity_allows_only_unchanged_legacy_duplicates(self):
+        from farm.history.restore import _validate_restored_general_identities
+        from farm.services.crop_inheritance import CropVarietyConflict
+
+        rows = {pk: {'name': 'Carrot', 'variety': 'Nantes', 'deleted_at': None}
+                for pk in (1, 2)}
+        _validate_restored_general_identities(rows, rows)
+        previous = {1: rows[1], 2: {**rows[2], 'variety': 'Other'}}
+        with self.assertRaises(CropVarietyConflict):
+            _validate_restored_general_identities(previous, rows)
+        with self.assertRaises(CropVarietyConflict):
+            _validate_restored_general_identities({1: rows[1]}, rows)

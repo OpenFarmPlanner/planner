@@ -59,6 +59,26 @@ class LocalLibraryImportSeedTests(TestCase):
         self.assertEqual(crop.notes, 'Preserve my manual edit')
         self.assertEqual(project.entity_revisions.count(), revisions)
 
+    def test_variety_fixture_is_guarded_previewed_and_preserves_manual_edits(self):
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        before = Project.objects.count()
+        call_command('seed_variety_conflict_acceptance', **arguments)
+        self.assertEqual(Project.objects.count(), before)
+        with self.assertRaises(CommandError):
+            call_command('seed_variety_conflict_acceptance', apply=True,
+                         **{**arguments, 'database_name': 'wrong-target'})
+        call_command('seed_variety_conflict_acceptance', apply=True, **arguments)
+        project = Project.objects.get(slug=f'ofp-local-variety-conflict-{self.user.pk}')
+        crop = Crop.objects.get(project=project, name='Source', variety='')
+        crop.notes = 'Keep manual edit'
+        crop.save()
+        revisions = project.entity_revisions.count()
+        call_command('seed_variety_conflict_acceptance', apply=True, **arguments)
+        crop.refresh_from_db()
+        self.assertEqual(crop.notes, 'Keep manual edit')
+        self.assertEqual(project.entity_revisions.count(), revisions)
+        self.assertEqual(Project.objects.count(), before + 1)
+
     def test_preview_and_invalid_target_never_write(self):
         self.seed()
         self.assertEqual(
