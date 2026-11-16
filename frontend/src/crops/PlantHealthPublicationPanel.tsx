@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, Box, Button, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, Link, Stack, Typography } from '@mui/material';
+import { Link as RouterLink } from 'react-router';
 import { isAxiosError } from 'axios';
 import { cropAPI, type Crop } from '../api/api';
 import type { PlantHealthSelections } from '../api/types';
@@ -10,6 +11,8 @@ import { PlantHealthField } from './sections/PlantHealthField';
 
 interface Props {
   crop: Crop;
+  inheritedSource?: Crop;
+  onNavigate?: () => void;
   disabled: boolean;
   onMapped: (crop: Crop) => void;
   onBusyChange: (busy: boolean) => void;
@@ -69,6 +72,18 @@ export function PlantHealthPublicationPanel(props: Props) {
   const names = (props.crop.plant_health ?? props.crop.effective_values?.plant_health)?.entries
     .filter(entry => !entry.catalogue_identity).map(entry => entry.name) ?? [];
   if (!names.length) return null;
+  if (props.crop.plant_health == null && props.crop.general_crop) {
+    const source = props.inheritedSource?.id === props.crop.general_crop ? props.inheritedSource : undefined;
+    return <Stack spacing={2}>
+      <Alert severity="info">
+        {t('plantHealth.publication.inherited', { name: source?.name ?? props.crop.name })}
+        {!source ? <> <Link component={RouterLink} to={`/app/crops?cropId=${props.crop.general_crop}&action=edit`} onClick={props.onNavigate}>
+          {t('plantHealth.publication.editGeneral')}
+        </Link></> : null}
+      </Alert>
+      {source ? <PlantHealthPublicationPanel {...props} crop={source} inheritedSource={undefined} /> : null}
+    </Stack>;
+  }
   return <Stack spacing={2} data-testid="plant-health-publication">
     <Typography variant="subtitle2" sx={{ overflowWrap: 'anywhere' }}>
       {t('plantHealth.publication.title', { name: props.crop.variety || props.crop.name })}

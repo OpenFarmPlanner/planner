@@ -117,15 +117,29 @@ class PlantHealthMappingConflict(APIException):
         })
 
 
+class InheritedPlantHealthMapping(APIException):
+    status_code = 409
+    default_detail = {
+        "code": "plant_health_mapping_inherited",
+        "detail": "Map inherited selections on the general crop to preserve live inheritance.",
+    }
+
+
 def map_crop_plant_health(
     crop: Crop, *, expected_updated_at: datetime, mappings: list[dict[str, Any]],
 ) -> Crop:
-    from farm.services.crop_inheritance import crop_identity_write, resolve_crop_field
+    from farm.services.crop_inheritance import (
+        crop_identity_write,
+        get_general_crop,
+        resolve_crop_field,
+    )
 
     with crop_identity_write(crop.project_id):
         crop.refresh_from_db()
         if crop.updated_at != expected_updated_at:
             raise PlantHealthMappingConflict()
+        if crop.plant_health is None and get_general_crop(crop) is not None:
+            raise InheritedPlantHealthMapping()
         effective = normalize_plant_health(resolve_crop_field(crop, "plant_health"))
         entries = (effective or {}).get("entries", [])
         names = {item["name"].casefold() for item in entries if "catalogue_identity" not in item}

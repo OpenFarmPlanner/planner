@@ -64,6 +64,7 @@ interface CropsPublishingWizardDialogProps {
    * own — which keeps the dialog exactly as it was for those crops.
    */
   varieties?: Crop[];
+  projectCrops?: Crop[];
   termsAlreadyAccepted: boolean;
   publishing: boolean;
   onClose: () => void;
@@ -138,6 +139,7 @@ export function CropsPublishingWizardDialog({
   open,
   crop,
   varieties = EMPTY_VARIETIES,
+  projectCrops = EMPTY_VARIETIES,
   termsAlreadyAccepted,
   publishing,
   onClose,
@@ -711,8 +713,11 @@ export function CropsPublishingWizardDialog({
 
   const healthMappingPanel = crop && onCropMapped ? <>
     {healthMappingSaved ? <Alert severity="success">{t('plantHealth.publication.saved')}</Alert> : null}
-    {[crop, ...varieties.filter(variety => selectedVarieties.some(item => item.cropId === variety.id))].map(item => (
+    {[crop, ...varieties.filter(variety => selectedVarieties.some(item => item.cropId === variety.id)
+      && !(variety.plant_health == null && variety.general_crop === crop.id))].map(item => (
       <PlantHealthPublicationPanel key={item.id} crop={item}
+        inheritedSource={projectCrops.find(source => source.id === item.general_crop)}
+        onNavigate={onClose}
         disabled={healthMappingBusy || publishing || syncSubmitting || linkConfirmSubmitting}
         onBusyChange={setHealthMappingBusy}
         onMapped={saved => {

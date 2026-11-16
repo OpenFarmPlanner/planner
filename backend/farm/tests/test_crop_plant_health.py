@@ -421,6 +421,48 @@ class PrivatePlantHealthTests(ProjectApiTestCase):
         )
 
 
+    def test_inherited_mapping_requires_the_general_crop_and_keeps_live_inheritance(self):
+        species = CropSpecies.objects.create(name="Synthetic inherited mapping", status="published")
+        self.crop.crop_species = species
+        self.crop.plant_health = selections("Inherited private name")
+        self.crop.save()
+        variety = Crop.objects.create(
+            project=self.project, name=self.crop.name, variety="Synthetic mapped variety",
+            crop_species=species, plant_health=None,
+        )
+        url = f"{CROPS_URL}{variety.pk}/"
+        blocked = self.client.post(
+            url + "plant-health/mappings/",
+            {
+                "expected_updated_at": variety.updated_at.isoformat(),
+                "mappings": [{
+                    "local_name": "Inherited private name",
+                    "catalogue_identity": str(self.entry.identity_key),
+                }],
+            }, format="json",
+        )
+        self.assertEqual(blocked.status_code, 409, blocked.data)
+        self.assertEqual(blocked.data["code"], "plant_health_mapping_inherited")
+        variety.refresh_from_db()
+        self.assertIsNone(variety.plant_health)
+        mapped = self.map_name("Inherited private name")
+        self.assertEqual(mapped.status_code, 200, mapped.data)
+        inherited = self.client.get(url)
+        self.assertIsNone(inherited.data["plant_health"])
+        self.assertEqual(
+            inherited.data["effective_values"]["plant_health"], mapped.data["plant_health"],
+        )
+        self.crop.refresh_from_db()
+        self.crop.plant_health["entries"].append({"name": "Later general-crop change"})
+        self.crop.save()
+        later = self.client.get(url)
+        self.assertIsNone(later.data["plant_health"])
+        self.assertIn(
+            {"name": "Later general-crop change"},
+            later.data["effective_values"]["plant_health"]["entries"],
+        )
+
+
 class PublicPlantHealthTests(ProjectApiTestCase):
     def setUp(self):
         super().setUp()

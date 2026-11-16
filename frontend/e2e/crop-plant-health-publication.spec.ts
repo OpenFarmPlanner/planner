@@ -116,3 +116,49 @@ for (const width of [375, 1440]) {
     } finally { await resetE2EScenario(request, scenario); }
   });
 }
+
+for (const width of [375, 1440]) {
+  test(`mapping an inherited name keeps the variety live at ${width}px`, async ({ page, request }, info) => {
+    test.setTimeout(120_000);
+    const scenario = `health-inherited-${width}-${Date.now()}`;
+    try {
+      await page.setViewportSize({ width, height: width === 375 ? 800 : 900 });
+      await loginWithDeterministicProject(page, request, scenario, { demoProject: true, loginAsAdmin: true, libraryModerator: true });
+      const parent = (await apiRequest<{ results: Crop[] }>(page, 'GET', '/crops/?page_size=200')).results.find(crop => crop.name === 'Gurke' && !crop.variety)!;
+      const name = `Synthetic inherited reference ${scenario}`;
+      const entry = await apiRequest<PlantHealthEntry>(page, 'POST', '/plant-health/entries/', {
+        name, kind: 'group', sources: [{ url: 'https://example.org/synthetic-inheritance', title: 'Synthetic test only' }],
+        translations: SUPPORTED_LANGUAGES.map(({ code }) => ({ language_code: code, preferred_name: name })),
+      });
+      await apiRequest(page, 'POST', `/plant-health/entries/${entry.id}/approve/`, {});
+      const privateName = 'Synthetic inherited private name';
+      await apiRequest(page, 'PATCH', `/crops/${parent.id}/`, { plant_health: { entries: [{ name: privateName }] } });
+      const child = await apiRequest<Crop>(page, 'POST', '/crops/', {
+        name: parent.name, variety: `Synthetic inherited ${scenario}`, crop_species: parent.crop_species,
+        plant_health: null, growth_duration_days: 42, harvest_duration_days: 14,
+      });
+      expect(child.general_crop).toBe(parent.id);
+      await page.goto(`/app/crops?cropId=${child.id}`);
+      await page.getByTestId('crop-detail-badge-row').getByRole('button', { name: de.library.libraryAction.publish, exact: true }).click();
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toContainText(`Diese Sorte übernimmt die Einträge von „${parent.name}“.`);
+      await expect(dialog).toContainText('sie gilt für alle erbenden Sorten');
+      const row = dialog.getByRole('group', { name: privateName, exact: true });
+      await row.getByRole('combobox').fill(name);
+      await page.getByRole('option').filter({ hasText: name }).click();
+      await page.screenshot({ path: info.outputPath(`inherited-mapping-${width}.png`), animations: 'disabled' });
+      const requestMapping = page.waitForRequest(request => request.method() === 'POST' && request.url().includes('/plant-health/mappings/'));
+      await row.getByRole('button', { name: de.plantHealth.publication.map, exact: true }).click();
+      expect((await requestMapping).url()).toContain(`/crops/${parent.id}/plant-health/mappings/`);
+      await expect(dialog).toContainText(de.plantHealth.publication.saved);
+      await dialog.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+      const mapped = await apiRequest<Crop>(page, 'GET', `/crops/${child.id}/`);
+      expect(mapped.plant_health).toBeNull();
+      expect(mapped.effective_values?.plant_health?.entries).toContainEqual({ name, catalogue_identity: entry.identity_key });
+      await apiRequest(page, 'PATCH', `/crops/${parent.id}/`, { plant_health: { entries: [{ name, catalogue_identity: entry.identity_key }, { name: 'Later parent change' }] } });
+      const later = await apiRequest<Crop>(page, 'GET', `/crops/${child.id}/`);
+      expect(later.plant_health).toBeNull();
+      expect(later.effective_values?.plant_health?.entries).toContainEqual({ name: 'Later parent change' });
+    } finally { await resetE2EScenario(request, scenario); }
+  });
+}

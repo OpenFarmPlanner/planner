@@ -2047,7 +2047,9 @@
       "proposed": "Vorschlag eingereicht. Der Name bleibt bis zur ausdrücklichen Zuordnung privat.",
       "saved": "Die private Zuordnung wurde gespeichert. Bestätige die Veröffentlichung oder den Bibliotheksabgleich separat.",
       "error": "Die Aktion konnte nicht abgeschlossen werden. Prüfe die Auswahl und versuche es erneut.",
-      "conflict": "Die Kultur oder Auswahl hat sich geändert. Schließe den Dialog und lade die Kulturen neu, bevor du die Zuordnung erneut prüfst."
+      "conflict": "Die Kultur oder Auswahl hat sich geändert. Schließe den Dialog und lade die Kulturen neu, bevor du die Zuordnung erneut prüfst.",
+      "inherited": "Diese Sorte übernimmt die Einträge von „{{name}}“. Speichere die Zuordnung an dieser Kultur; sie gilt für alle erbenden Sorten. Die Vererbung bleibt aktiv.",
+      "editGeneral": "Übergeordnete Kultur bearbeiten"
     }
   }
 }

@@ -2098,7 +2098,9 @@
       "proposed": "Propuesta enviada. El nombre sigue siendo privado hasta que lo vincules expresamente.",
       "saved": "Se ha guardado el vínculo privado. Confirma por separado la publicación o la sincronización con la biblioteca.",
       "error": "No se pudo completar la acción. Comprueba la selección e inténtalo de nuevo.",
-      "conflict": "El cultivo o la selección ha cambiado. Cierra el diálogo y vuelve a cargar los cultivos antes de revisar el vínculo."
+      "conflict": "El cultivo o la selección ha cambiado. Cierra el diálogo y vuelve a cargar los cultivos antes de revisar el vínculo.",
+      "inherited": "Esta variedad hereda las entradas de «{{name}}». Guarda el vínculo en ese cultivo; se aplica a todas las variedades que las heredan. La herencia sigue activa.",
+      "editGeneral": "Editar cultivo general"
     }
   }
 }

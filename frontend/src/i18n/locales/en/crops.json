@@ -2047,7 +2047,9 @@
       "proposed": "Proposal submitted. The name stays private until you explicitly map it.",
       "saved": "The private mapping was saved. Confirm publication or library synchronization separately.",
       "error": "The action could not be completed. Check your selection and try again.",
-      "conflict": "The crop or selection changed. Close the dialog and reload your crops before reviewing the mapping again."
+      "conflict": "The crop or selection changed. Close the dialog and reload your crops before reviewing the mapping again.",
+      "inherited": "This variety inherits entries from “{{name}}”. Save the mapping on that culture; it applies to every inheriting variety. Live inheritance stays active.",
+      "editGeneral": "Edit general culture"
     }
   }
 }

@@ -2098,7 +2098,9 @@
       "proposed": "Proposta inviata. Il nome resta privato finché non lo associ esplicitamente.",
       "saved": "L’associazione privata è stata salvata. Conferma separatamente la pubblicazione o la sincronizzazione con la biblioteca.",
       "error": "Impossibile completare l’azione. Controlla la selezione e riprova.",
-      "conflict": "La coltura o la selezione è cambiata. Chiudi la finestra e ricarica le colture prima di verificare di nuovo l’associazione."
+      "conflict": "La coltura o la selezione è cambiata. Chiudi la finestra e ricarica le colture prima di verificare di nuovo l’associazione.",
+      "inherited": "Questa varietà eredita le voci da «{{name}}». Salva l’associazione su quella coltura: vale per tutte le varietà che le ereditano. L’ereditarietà resta attiva.",
+      "editGeneral": "Modifica coltura generale"
     }
   }
 }

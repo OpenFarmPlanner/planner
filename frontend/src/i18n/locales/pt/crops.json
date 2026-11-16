@@ -2098,7 +2098,9 @@
       "proposed": "Proposta enviada. O nome continua privado até o associares explicitamente.",
       "saved": "A associação privada foi guardada. Confirma separadamente a publicação ou a sincronização com a biblioteca.",
       "error": "Não foi possível concluir a ação. Verifica a seleção e tenta novamente.",
-      "conflict": "A cultura ou a seleção mudou. Fecha a janela e recarrega as culturas antes de voltares a verificar a associação."
+      "conflict": "A cultura ou a seleção mudou. Fecha a janela e recarrega as culturas antes de voltares a verificar a associação.",
+      "inherited": "Esta variedade herda as entradas de «{{name}}». Guarda a associação nessa cultura; aplica-se a todas as variedades que as herdam. A herança mantém-se ativa.",
+      "editGeneral": "Editar cultura geral"
     }
   }
 }

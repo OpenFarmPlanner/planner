@@ -260,9 +260,11 @@ for each crop's unresolved names, including selected varieties. **Save mapping**
 is a separate private write: it persists immediately even if publication is later
 cancelled, and the panel states this before the action. It replaces only the
 chosen local name on that project crop with a currently published stable UUID.
-It never infers a match from typed text, changes other crops, publishes a library
-entry or creates sourced host evidence. Inherited names become an explicit own
-selection on the mapped variety. New catalogue proposals use the existing
+It never infers a match from typed text, publishes a library entry or creates
+sourced host evidence. A variety's inherited names are mapped explicitly on its
+general culture instead: the dialog names that culture and explains the effect
+on every inheriting variety. The variety keeps its stored null and live inheritance;
+it is never silently frozen into an override. New catalogue proposals use the existing
 one-language moderation endpoint, start as broad pending concepts and keep the
 private name unresolved until moderation and a later explicit mapping.
 
@@ -271,7 +273,8 @@ private name unresolved until moderation and a later explicit mapping.
 permissions and token write scope apply. The action locks the project, verifies
 the timestamp and effective source names, locks published targets and records
 normal private history/actor attribution. Stale timestamps or disappeared source
-names return 409 `plant_health_mapping_conflict`; invalid/unapproved targets
+names return 409 `plant_health_mapping_conflict`; attempting to map an inherited
+variety directly returns 409 `plant_health_mapping_inherited`. Invalid/unapproved targets
 return 400 without changing the crop. Project tokens still cannot propose or
 read global catalogue entries. There is no automatic retry of a stale mapping.
 

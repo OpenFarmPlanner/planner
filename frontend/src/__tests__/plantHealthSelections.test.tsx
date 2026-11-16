@@ -2,6 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
+import { MemoryRouter } from 'react-router';
 import type { Crop, PlantHealthSelections } from '../api/types';
 import type { PlantHealthEntry } from '../crop-library/plant-health/types';
 import { PlantHealthField } from '../crops/sections/PlantHealthField';
@@ -192,4 +193,38 @@ it('retains unsaved private names when linking a draft and compares only officia
   expect(pickLibraryChoices(plan.conflicts, { plant_health: 'library' }).plant_health).toEqual({ entries: [...local.entries, ...official.entries] });
   expect(pickLibraryChoices(plan.conflicts, { plant_health: 'mine' })).toEqual({});
   expect(planLibraryLink({ plant_health: { entries: [...local.entries, { name: 'Different language', catalogue_identity: ID }] } }, { plant_health: official }).conflicts).toEqual([]);
+});
+
+it('maps inherited names explicitly on the named general culture without writing the variety', async () => {
+  const general = { id: 24, name: 'Synthetic general culture', updated_at: '2026-11-16T01:00:00Z', plant_health: { entries: [{ name: 'Inherited local name' }] } } as Crop;
+  const variety = { id: 25, name: general.name, variety: 'Synthetic child', general_crop: general.id, plant_health: null,
+    updated_at: '2026-11-16T02:00:00Z', effective_values: { plant_health: general.plant_health } } as Crop;
+  listMock.mockResolvedValue(response(catalogueEntry()));
+  mapMock.mockResolvedValue({ data: { ...general, plant_health: { entries: [{ name: 'Canonical name', catalogue_identity: ID }] } } });
+  const onMapped = vi.fn();
+  render(<PlantHealthPublicationPanel crop={variety} inheritedSource={general} disabled={false} onMapped={onMapped} onBusyChange={vi.fn()} />);
+  expect(screen.getByRole('alert')).toHaveTextContent('Diese Sorte übernimmt die Einträge von „Synthetic general culture“.');
+  expect(screen.getByRole('alert')).toHaveTextContent('sie gilt für alle erbenden Sorten');
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('combobox'));
+  await user.click(await screen.findByRole('option', { name: /^Bevorzugter Name/ }));
+  await user.click(screen.getByRole('button', { name: 'Zuordnung speichern' }));
+  await waitFor(() => expect(onMapped).toHaveBeenCalledWith(expect.objectContaining({ id: 24 })));
+  expect(mapMock).toHaveBeenCalledWith(24, { expected_updated_at: general.updated_at,
+    mappings: [{ local_name: 'Inherited local name', catalogue_identity: ID }] });
+  expect(variety.plant_health).toBeNull();
+});
+
+
+it('offers an explicit general-culture edit link when inherited source data is unavailable', async () => {
+  const crop = { id: 25, name: 'Synthetic culture', variety: 'Child', general_crop: 24, plant_health: null,
+    effective_values: { plant_health: { entries: [{ name: 'Inherited name' }] } } } as Crop;
+  const close = vi.fn();
+  render(<MemoryRouter><PlantHealthPublicationPanel crop={crop} disabled={false} onMapped={vi.fn()} onBusyChange={vi.fn()} onNavigate={close} /></MemoryRouter>);
+  const link = screen.getByRole('link', { name: 'Übergeordnete Kultur bearbeiten' });
+  expect(link).toHaveAttribute('href', '/app/crops?cropId=24&action=edit');
+  expect(screen.queryByRole('button', { name: 'Zuordnung speichern' })).not.toBeInTheDocument();
+  await userEvent.setup().click(link);
+  expect(close).toHaveBeenCalledOnce();
+  expect(mapMock).not.toHaveBeenCalled();
 });

@@ -937,10 +937,14 @@ function Crops() {
         open={publishWizardOpen}
         crop={selectedCrop}
         varieties={publishWizardVarieties}
+        projectCrops={crops}
         termsAlreadyAccepted={Boolean(user?.public_library_terms_accepted)}
         publishing={Boolean(selectedCrop && publishingCropId === selectedCrop.id)}
         onClose={() => setPublishWizardOpen(false)}
-        onCropMapped={saved => setCrops(previous => previous.map(crop => crop.id === saved.id ? saved : crop))}
+        onCropMapped={saved => {
+          setCrops(previous => previous.map(crop => crop.id === saved.id ? saved : crop));
+          void fetchCrops();
+        }}
         onPublish={handlePublishingWizardPublish}
         onLinkPublicCrop={handleLinkPublicCropSubmit}
         onSyncPublicCrop={handleSyncPublicCropSubmit}

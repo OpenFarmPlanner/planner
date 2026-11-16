@@ -2047,7 +2047,9 @@
       "proposed": "Voorstel ingediend. De naam blijft privé totdat je deze uitdrukkelijk koppelt.",
       "saved": "De privékoppeling is opgeslagen. Bevestig de publicatie of bibliotheeksynchronisatie apart.",
       "error": "De actie kon niet worden voltooid. Controleer de selectie en probeer het opnieuw.",
-      "conflict": "Het gewas of de selectie is gewijzigd. Sluit het venster en laad je gewassen opnieuw voordat je de koppeling opnieuw controleert."
+      "conflict": "Het gewas of de selectie is gewijzigd. Sluit het venster en laad je gewassen opnieuw voordat je de koppeling opnieuw controleert.",
+      "inherited": "Dit ras erft de vermeldingen van ‘{{name}}’. Sla de koppeling bij dat gewas op; deze geldt voor alle rassen die ervan erven. Overerving blijft actief.",
+      "editGeneral": "Algemeen gewas bewerken"
     }
   }
 }
