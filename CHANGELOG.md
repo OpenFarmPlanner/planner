@@ -6,6 +6,8 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
 
 ## Unreleased
 
+- Shorten Portuguese, Italian and Spanish planting-plan date headers and allow two-line table headings while preserving explicit form and export labels.
+
 - Select which library varieties to import with a culture, and add missing varieties later with explicit comparisons and atomic rollback.
 
 ### Features

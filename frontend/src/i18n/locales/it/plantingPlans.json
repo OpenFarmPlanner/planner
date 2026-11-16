@@ -399,5 +399,11 @@
     "propagation_shorter_than_germination": "La durata in vivaio è inferiore al tempo di germinazione.",
     "emergence": "Emergenza prevista tra {{from}} e {{to}}",
     "hints": "Suggerimenti per la germinazione"
+  },
+  "tableHeaders": {
+    "sowingDate": "Semina",
+    "plantingDate": "Trapianto",
+    "harvestStartDate": "Inizio raccolta",
+    "harvestEndDate": "Fine raccolta"
   }
 }

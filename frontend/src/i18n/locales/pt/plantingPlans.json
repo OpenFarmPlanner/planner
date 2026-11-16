@@ -399,5 +399,11 @@
     "propagation_shorter_than_germination": "A duração em viveiro é inferior ao tempo de germinação.",
     "emergence": "Emergência esperada por volta de {{from}}–{{to}}",
     "hints": "Sugestões de germinação"
+  },
+  "tableHeaders": {
+    "sowingDate": "Sementeira",
+    "plantingDate": "Transplantação",
+    "harvestStartDate": "Início da colheita",
+    "harvestEndDate": "Fim da colheita"
   }
 }
