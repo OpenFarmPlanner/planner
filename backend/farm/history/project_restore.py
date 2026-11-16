@@ -18,6 +18,7 @@ from farm.models import (
     EntityRevision,
     MediaFile,
     Project,
+    RetainedUpload,
     Season,
     SeasonPattern,
     SeedPackage,
@@ -393,6 +394,7 @@ def apply_project_state(project: Project, state: ProjectState, current: ProjectS
         {int(pk): row for pk, row in current["crop"].items()},
         {pk: row for pk, row in crop_rows.items() if row.get("deleted_at") is None},
     )
+    _retain_removed_uploads(project, state, current)
     for model, label in reversed(PROJECT_STATE_MODELS):
         removed = set(map(int, current[label])) - set(target[model])
         queryset = _model_manager(model).filter(project=project, pk__in=removed)
@@ -409,6 +411,27 @@ def apply_project_state(project: Project, state: ProjectState, current: ProjectS
         if state["crop"][str(pk)] != current["crop"][str(pk)]:
             Crop.all_objects.filter(project=project, pk=pk).update(name_normalized=f"{prefix}{pk}")
     _write_target_rows(project, target, state, current)
+
+
+def _retain_removed_uploads(project: Project, state: ProjectState, current: ProjectState) -> None:
+    def paths(snapshot: ProjectState) -> set[str]:
+        return {
+            row[field]
+            for label, field in (("media_file", "storage_path"), ("note_attachment", "image"))
+            for row in snapshot[label].values()
+            if row.get(field)
+        }
+
+    removed_at = timezone.now()
+    RetainedUpload.objects.bulk_create(
+        [
+            RetainedUpload(project=project, storage_path=path, removed_at=removed_at)
+            for path in paths(current) - paths(state)
+        ],
+        update_conflicts=True,
+        unique_fields=["storage_path"],
+        update_fields=["project", "removed_at"],
+    )
 
 
 def _write_target_rows(

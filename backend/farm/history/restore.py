@@ -429,7 +429,16 @@ def revert_batch_operation(project: Project, batch, *, user_name: str = '') -> N
     pre-batch state is a no-op — and it composes: reverting a `batch_reverted`
     batch re-applies the original action.
     """
-    revisions = list(batch.revisions.all())
+    from .project_restore import (
+        CHECKPOINT_KEY,
+        _retain_removed_uploads,
+        capture_project_state,
+        record_project_checkpoint,
+    )
+
+    revisions = list(batch.revisions.exclude(
+        entity_type='project', snapshot__has_key=CHECKPOINT_KEY,
+    ))
     if not revisions:
         raise BatchRevertError('empty batch')
 
@@ -465,6 +474,12 @@ def revert_batch_operation(project: Project, batch, *, user_name: str = '') -> N
             to_write.append((revision.entity_type, revision.object_id, prior.snapshot))
 
     with transaction.atomic():
+        lock_crop_project(project.pk)
+        current = capture_project_state(project, lock=True)
+        record_project_checkpoint(
+            project, current,
+            user_name=user_name, action=EntityRevision.ACTION_UPDATED,
+        )
         revert_batch = start_batch_operation(
             project=project,
             operation_type='batch_reverted',
@@ -524,3 +539,9 @@ def revert_batch_operation(project: Project, batch, *, user_name: str = '') -> N
 
         batch.reverted_at = timezone.now()
         batch.save(update_fields=['reverted_at'])
+        result = capture_project_state(project)
+        _retain_removed_uploads(project, result, current)
+        record_project_checkpoint(
+            project, result,
+            user_name=user_name, batch_operation=revert_batch,
+        )

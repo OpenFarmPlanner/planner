@@ -134,6 +134,9 @@ before-images as one transaction, preserves independent later rows, and writes
 a new `batch_reverted` entry with complete state checkpoints. A second undo is
 refused. Older season batch revert behavior remains available through its existing
 overflow action and API; import-specific checks do not change that contract.
+Legacy batch reverts also save a separate selectable backup and finish their
+group with a complete checkpoint. Reverting that group still composes using
+its entity revisions; the checkpoint is not treated as another inverse entity.
 
 ## Full project restoration
 
@@ -258,6 +261,16 @@ before the cutoff per entity, and the newest complete checkpoint before the
 cutoff per project. These anchors are required to reconstruct a recent target
 when an entity changes both before and after it. Timestamp ties use the ID.
 Keeping only the newest revision overall would discard the pre-target state.
+
+Full restore, selective import undo and legacy batch revert retain cleanup metadata for media and
+note-attachment paths removed from the domain state, including cascades and
+replaced paths. `RetainedUpload` is cleanup metadata outside project versions;
+it survives project deletion. File bytes remain available to restore backups
+for 30 days after the latest removal. `cleanup_orphaned_media` then removes
+unreferenced bytes and the metadata, checking live media and attachment paths
+across all projects first. A file restored in the meantime remains available.
+Cleanup and restore use the same project-first lock order. History anchors do
+not extend the file-byte retention window indefinitely.
 
 ## Derived fields and legacy entity labels
 

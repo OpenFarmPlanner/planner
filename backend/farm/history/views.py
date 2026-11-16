@@ -100,10 +100,7 @@ class ProjectHistoryListView(APIView):
                 }
                 groups_by_batch[batch.id] = group
                 payload.append(group)
-            if (
-                batch.operation_type != BatchOperation.TYPE_CROP_IMPORT
-                or row.entity_type != "project"
-            ):
+            if row.entity_type != "project":
                 group["children"].append(revision_payload(row))
 
         for group in groups_by_batch.values():

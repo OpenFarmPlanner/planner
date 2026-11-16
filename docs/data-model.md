@@ -433,3 +433,11 @@ Private context keeps first before-images/latest after-images; public history
 excludes those keys. Project-state checkpoints live in `EntityRevision`, not
 the deprecated `ProjectRevision` model. See
 [Versioning and History](./versioning-and-history.md).
+
+`RetainedUpload` stores unique storage paths and removal times for uploads
+removed by a project restore or import undo. Its nullable project reference
+uses `SET_NULL`, so deleting the project does not orphan storage cleanup work.
+It is excluded from restored domain snapshots. The existing media cleanup
+command removes expired unreferenced bytes after 30 days, while protecting
+live media and note attachments across projects. Migration 0145 only creates
+this metadata table; existing rows and files are unchanged.

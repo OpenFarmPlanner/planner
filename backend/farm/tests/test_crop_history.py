@@ -1,6 +1,9 @@
 from datetime import date, timedelta
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.core.management import call_command
 from django.test import TestCase
 from django.utils import timezone
@@ -14,6 +17,7 @@ from farm.models import (
     Project,
     ProjectMembership,
     ProjectRevision,
+    RetainedUpload,
 )
 from farm.tests.api_base import record_later_revision
 
@@ -516,6 +520,44 @@ class MediaCleanupTests(TestCase):
         call_command("cleanup_orphaned_media")
         self.assertFalse(MediaFile.objects.filter(id=media.id).exists())
 
+    def test_retained_cleanup_preserves_live_files_and_survives_project_deletion(self):
+        from farm.models import NoteAttachment, PlantingPlan
+
+        with self.settings(STORAGES={
+            'default': {'BACKEND': 'django.core.files.storage.InMemoryStorage'},
+        }):
+            project = Project.objects.create(name='Removed project', slug='removed-project')
+            crop = Crop.objects.create(project=project, name='Attachment crop')
+            plan = PlantingPlan.objects.create(project=project, crop=crop)
+            attachment = NoteAttachment.objects.create(
+                project=project, planting_plan=plan, image='notes/live.jpg',
+            )
+            paths = ['notes/live.jpg', 'crop-media/live.jpg', 'notes/expired.jpg']
+            for path in paths:
+                default_storage.save(path, ContentFile(b'fixture'))
+                RetainedUpload.objects.create(
+                    project=project, storage_path=path,
+                    removed_at=timezone.now() - timedelta(days=31),
+                )
+            MediaFile.objects.create(storage_path='crop-media/live.jpg')
+            call_command('cleanup_orphaned_media')
+            self.assertTrue(default_storage.exists(attachment.image.name))
+            self.assertTrue(default_storage.exists('crop-media/live.jpg'))
+            self.assertFalse(default_storage.exists('notes/expired.jpg'))
+            self.assertFalse(RetainedUpload.objects.exists())
+
+            path = default_storage.save('notes/deleted-project.jpg', ContentFile(b'fixture'))
+            retained = RetainedUpload.objects.create(
+                project=project, storage_path=path,
+                removed_at=timezone.now() - timedelta(days=31),
+            )
+            project.delete()
+            retained.refresh_from_db()
+            self.assertIsNone(retained.project_id)
+            call_command('cleanup_orphaned_media')
+            self.assertFalse(default_storage.exists(path))
+            self.assertFalse(RetainedUpload.objects.exists())
+
 
 class ImportOperationHistoryTests(TestCase):
     """Exercise real import, history, global restore and selective undo endpoints."""
@@ -940,6 +982,92 @@ class ImportOperationHistoryTests(TestCase):
         self.assertEqual(response.status_code, 200, response.content)
         self.crop.refresh_from_db()
         self.assertEqual(self.crop.notes, "State before cutoff")
+
+    def test_restore_retains_upload_bytes_for_backup_then_cleans_expired_files(self) -> None:
+        from farm.history.project_restore import capture_project_state, record_project_checkpoint
+        from farm.models import NoteAttachment, PlantingPlan
+
+        with self.settings(STORAGES={
+            'default': {'BACKEND': 'django.core.files.storage.InMemoryStorage'},
+        }):
+            record_project_checkpoint(self.project, capture_project_state(self.project))
+            target = EntityRevision.objects.filter(project=self.project).latest('id')
+            plan = PlantingPlan.objects.create(project=self.project, crop=self.crop)
+            attachment = NoteAttachment.objects.create(
+                project=self.project, planting_plan=plan,
+                image=ContentFile(b'note fixture', name='note.jpg'),
+            )
+            media_path = default_storage.save(
+                'crop-media/restore.jpg', ContentFile(b'crop fixture'),
+            )
+            media = MediaFile.objects.create(project=self.project, storage_path=media_path)
+            self.crop.image_file = media
+            self.crop.save()
+            record_project_checkpoint(self.project, capture_project_state(self.project))
+            revision_count = EntityRevision.objects.filter(project=self.project).count()
+            last_id = EntityRevision.objects.latest('id').pk
+            url = '/openfarmplanner/api/history/project/restore/'
+
+            with patch('farm.history.project_restore._write_target_rows', side_effect=ValueError):
+                failed = self.client.post(
+                    url, {'history_id': target.pk}, content_type='application/json',
+                )
+            self.assertEqual(failed.status_code, 409)
+            self.assertTrue(NoteAttachment.objects.filter(pk=attachment.pk).exists())
+            self.assertTrue(MediaFile.objects.filter(pk=media.pk).exists())
+            self.assertFalse(RetainedUpload.objects.exists())
+            self.assertEqual(
+                EntityRevision.objects.filter(project=self.project).count(), revision_count,
+            )
+
+            restored = self.client.post(
+                url, {'history_id': target.pk}, content_type='application/json',
+            )
+            self.assertEqual(restored.status_code, 200, restored.content)
+            self.assertFalse(PlantingPlan.objects.filter(pk=plan.pk).exists())
+            self.assertFalse(NoteAttachment.objects.filter(pk=attachment.pk).exists())
+            self.assertFalse(MediaFile.objects.filter(pk=media.pk).exists())
+            paths = {attachment.image.name, media_path}
+            self.assertEqual(
+                set(RetainedUpload.objects.values_list('storage_path', flat=True)), paths,
+            )
+            call_command('cleanup_orphaned_media')
+            self.assertEqual(RetainedUpload.objects.count(), 2)
+            self.assertTrue(all(default_storage.exists(path) for path in paths))
+            backup = EntityRevision.objects.filter(
+                project=self.project, id__gt=last_id, entity_type='project', action='updated',
+            ).earliest('id')
+
+            restored = self.client.post(
+                url, {'history_id': backup.pk}, content_type='application/json',
+            )
+            self.assertEqual(restored.status_code, 200, restored.content)
+            self.assertTrue(PlantingPlan.objects.filter(pk=plan.pk).exists())
+            self.assertEqual(
+                NoteAttachment.objects.get(pk=attachment.pk).image.name, attachment.image.name,
+            )
+            self.assertEqual(MediaFile.objects.get(pk=media.pk).storage_path, media_path)
+            RetainedUpload.objects.update(removed_at=timezone.now() - timedelta(days=31))
+            call_command('cleanup_orphaned_media')
+            self.assertFalse(RetainedUpload.objects.exists())
+            self.assertTrue(all(default_storage.exists(path) for path in paths))
+
+            RetainedUpload.objects.create(
+                project=self.project, storage_path=media_path,
+                removed_at=timezone.now() - timedelta(days=31),
+            )
+            restored = self.client.post(
+                url, {'history_id': target.pk}, content_type='application/json',
+            )
+            self.assertEqual(restored.status_code, 200, restored.content)
+            self.assertTrue(all(
+                removed_at > timezone.now() - timedelta(minutes=1)
+                for removed_at in RetainedUpload.objects.values_list('removed_at', flat=True)
+            ))
+            RetainedUpload.objects.update(removed_at=timezone.now() - timedelta(days=31))
+            call_command('cleanup_orphaned_media')
+            self.assertFalse(RetainedUpload.objects.exists())
+            self.assertFalse(any(default_storage.exists(path) for path in paths))
 
     def test_global_media_reference_is_retained_without_taking_ownership(self) -> None:
         from farm.history.project_restore import capture_project_state, record_project_checkpoint
