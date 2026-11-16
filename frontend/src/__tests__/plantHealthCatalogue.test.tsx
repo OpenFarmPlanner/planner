@@ -88,7 +88,11 @@ describe('catalogue entry editor', () => {
     render(<EntryDialog entry={entry({ translations: [{ language_code: 'en', preferred_name: 'Only English' }] })} mode="approve" {...callbacks()} />);
     await user.click(screen.getByRole('button', { name: 'Approve', exact: true }));
     expect(plantHealthAPI.approve).not.toHaveBeenCalled();
-    expect(screen.getByText(/The change could not be saved/)).toBeVisible();
+    const error = screen.getByText(/The change could not be saved/).closest('[role="alert"]');
+    expect(error).toHaveFocus();
+    expect(error).toHaveAccessibleDescription(i18n.t('crops:plantHealthCatalogue.approvalHint'));
+    await user.click(screen.getByRole('button', { name: 'Approve', exact: true }));
+    expect(error).toHaveFocus();
   });
   it('approves complete names without discarding aliases, regions or sources', async () => {
     const user = userEvent.setup();
@@ -119,6 +123,10 @@ describe('catalogue entry editor', () => {
     await screen.findByText(/The change could not be saved/);
     expect(screen.getByRole('textbox', { name: 'Name (English)' })).toHaveValue('Name en retained');
     expect(actions.onClose).not.toHaveBeenCalled();
+    expect(screen.getByText(/The change could not be saved/).closest('[role="alert"]')).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Save', exact: true }));
+    await waitFor(() => expect(plantHealthAPI.update).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByText(/The change could not be saved/).closest('[role="alert"]')).toHaveFocus());
   });
   it('confirms discarding edits without writing', async () => {
     const user = userEvent.setup();
@@ -151,6 +159,20 @@ describe('catalogue entry editor', () => {
 });
 
 describe('host editor', () => {
+  it('reveals repeated validation failures without discarding host input', async () => {
+    const user = userEvent.setup();
+    render(<HostDialog entry={entry()} {...callbacks()} />);
+    await user.type(screen.getByRole('textbox', { name: i18n.t('crops:plantHealthCatalogue.variety') }), 'Preserved variety');
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await user.click(screen.getByRole('button', { name: 'Save', exact: true }));
+      const error = screen.getByText(i18n.t('crops:plantHealthCatalogue.hostError')).closest('[role="alert"]');
+      expect(error).toHaveFocus();
+      expect(error).toHaveAccessibleDescription(i18n.t('crops:plantHealthCatalogue.hostDisclaimer'));
+      expect(screen.getByRole('textbox', { name: i18n.t('crops:plantHealthCatalogue.variety') })).toHaveValue('Preserved variety');
+    }
+    expect(plantHealthAPI.saveHost).not.toHaveBeenCalled();
+  });
+
   it('cannot turn a broad concept into a confirmed pathogen relationship', async () => {
     const user = userEvent.setup();
     const host: PlantHealthHost = { id: 3, entry: 14, species: 7, species_name: 'Synthetic crop', variety_name: 'Variety A', qualification: 'Preserved qualification', sources: [{ url: 'https://example.org/host' }], is_confirmed: false, is_active: true };

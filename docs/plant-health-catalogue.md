@@ -64,6 +64,12 @@ After a successful catalogue save or moderation action, the moderation list retu
 to its first page while preserving its search and status filters. Removing the
 last matching row on a later page cannot leave the remaining results unreachable.
 
+Failed entry and host saves keep the draft open and focus the persistent error
+summary at the top of the dialog's own scroll area. The requirements notice is
+linked as its accessible description. Repeated failures reveal the summary again;
+background-page scroll and entered values are preserved. Successful saves close
+the editor and use the existing moderation-page success notification.
+
 Partial translation writes upsert only supplied languages and fields. Omitted
 languages, synonyms and regional names survive. Explicit `synonyms: []` and
 `regional_names: {}` clear those fields. An empty translations array is a no-op;
@@ -242,7 +248,13 @@ manual edits. An identity ownership collision aborts the transaction.
 Open `/app/public-library-moderation`, find the catalogue below the existing
 change-proposal queue, and search for `Synthetic`. Review the pending proposal:
 one language is enough to propose, but approval needs all seven names and identity
-sources. Inspect the approved host's variety/scope, search a synonym, then archive
+sources. Scroll to the bottom and approve the incomplete proposal: the persistent
+error must be visible and focused above the requirements notice. Scroll down and
+retry unchanged, then correct the names and sources. A failed server request must
+reveal the same feedback and preserve the draft; a successful approval closes the
+dialog and shows the existing success notification. Check 375px portrait, short
+phone landscape and desktop, including keyboard submission. The host editor uses
+the same feedback behavior. Inspect the approved host's variety/scope, search a synonym, then archive
 and reopen an entry and inspect its history. The two broad labels must remain
 separate, and broad host editors must not allow confirmed-pathogen evidence.
 Repeat at phone and desktop widths. This exercises only the catalogue foundation.

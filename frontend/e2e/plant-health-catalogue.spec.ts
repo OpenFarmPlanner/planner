@@ -182,3 +182,87 @@ for (const width of [375, 1440]) {
     } finally { await resetE2EScenario(request, scenario); }
   });
 }
+
+for (const { width, language } of [{ width: 375, language: 'de' }, { width: 800, language: 'de' }, { width: 1440, language: 'de' }, { width: 375, language: 'fr' }] as const) {
+  test(`plant-health approval reveals repeated validation and server feedback in ${language} at ${width}px`, async ({ page, request }, testInfo) => {
+    test.setTimeout(120_000);
+    const scenario = `plant-health-feedback-${language}-${width}-${Date.now()}`;
+    const name = `Synthetic feedback ${scenario}`;
+    const text = bundles[language].plantHealthCatalogue;
+    await page.setViewportSize({ width, height: width === 800 ? 375 : width === 375 ? 800 : 900 });
+    try {
+      await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true, libraryModerator: true });
+      await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: language });
+      await page.evaluate(code => localStorage.setItem('ui.language', code), language);
+      const entry = await apiRequest<Entry>(page, 'POST', '/plant-health/entries/', {
+        name, kind: 'group', sources: [source], translations: [{ language_code: 'de', preferred_name: name }],
+      });
+      await page.goto('/app/public-library-moderation');
+      const panel = page.getByRole('region', { name: text.title });
+      await panel.getByLabel(text.search).fill(name);
+      await panel.getByRole('article', { name, exact: true }).getByRole('button', { name: text.review, exact: true }).click();
+      const dialog = page.getByRole('dialog', { name: text.review, exact: true });
+      const content = dialog.locator('.MuiDialogContent-root');
+      const approve = dialog.getByRole('button', { name: text.approve, exact: true });
+      const error = dialog.getByRole('alert').filter({ hasText: text.saveError });
+      const guidance = dialog.getByText(text.approvalHint, { exact: true });
+      const backgroundScroll = () => page.evaluate(() => ({
+        window: window.scrollY,
+        containers: Array.from(document.querySelectorAll('main, [role="main"]')).map(node => node.scrollTop),
+      }));
+      const initialScroll = await backgroundScroll();
+      const submitFromBottom = async () => {
+        await content.evaluate(node => { node.scrollTop = node.scrollHeight; });
+        expect(await content.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
+        const hiddenGuidance = await guidance.boundingBox();
+        const viewport = await content.boundingBox();
+        expect(hiddenGuidance!.y + hiddenGuidance!.height).toBeLessThanOrEqual(viewport!.y);
+        await approve.focus();
+        await page.keyboard.press('Enter');
+        await expect(error).toBeFocused();
+        await expect(error).toHaveAttribute('aria-atomic', 'true');
+        await expect(error).toHaveAccessibleDescription(text.approvalHint);
+        const bounds = await error.boundingBox();
+        const title = await dialog.locator('.MuiDialogTitle-root').boundingBox();
+        const actions = await dialog.locator('.MuiDialogActions-root').boundingBox();
+        expect(bounds!.y).toBeGreaterThanOrEqual(viewport!.y);
+        expect(bounds!.y).toBeGreaterThanOrEqual(title!.y + title!.height);
+        expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(Math.min(viewport!.y + viewport!.height, actions!.y));
+        expect(await backgroundScroll()).toEqual(initialScroll);
+        await expect(dialog.locator('input[lang="de"]')).toHaveValue(name);
+        await expect(dialog.getByLabel(text.sourceUrl, { exact: true })).toHaveValue(source.url);
+      };
+      await submitFromBottom();
+      await submitFromBottom();
+      await expectNoHorizontalPageOverflow(page);
+      await page.screenshot({ path: testInfo.outputPath(`plant-health-feedback-${width}.png`), animations: 'disabled' });
+      for (const { code, label } of SUPPORTED_LANGUAGES) {
+        if (code === 'de') continue;
+        const section = dialog.getByRole('button', { name: label, exact: true });
+        if (await section.getAttribute('aria-expanded') !== 'true') await section.click();
+        await dialog.locator(`input[lang="${code}"]`).fill(`${name} ${code}`);
+      }
+      const approvalUrl = `**/api/plant-health/entries/${entry.id}/approve/`;
+      let failedRequests = 0;
+      await page.route(approvalUrl, route => {
+        failedRequests++;
+        return route.fulfill({ status: 500, contentType: 'application/json', body: '{"detail":"Synthetic failure"}' });
+      });
+      await submitFromBottom();
+      expect(failedRequests).toBe(1);
+      await submitFromBottom();
+      expect(failedRequests).toBe(2);
+      for (const { code } of SUPPORTED_LANGUAGES) {
+        await expect(dialog.locator(`input[lang="${code}"]`)).toHaveValue(code === 'de' ? name : `${name} ${code}`);
+      }
+      await page.unroute(approvalUrl);
+      await content.evaluate(node => { node.scrollTop = node.scrollHeight; });
+      await approve.click();
+      await expect(dialog).not.toBeVisible();
+      await expect(page.getByText(text.saved, { exact: true })).toBeVisible();
+      const published = await apiRequest<Entry>(page, 'GET', `/plant-health/entries/${entry.id}/`);
+      expect(published.status).toBe('published');
+      expect(published.translations).toHaveLength(SUPPORTED_LANGUAGES.length);
+    } finally { await resetE2EScenario(request, scenario); }
+  });
+}
