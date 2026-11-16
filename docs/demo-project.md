@@ -34,6 +34,24 @@ so the species → variety relationship can be reviewed in the UI. All personal
 and guest demo records are project-scoped and owned by the receiving user
 through a regular admin `ProjectMembership`.
 
+### Graphical workspace walkthrough
+
+Open Growing areas → Graphic in a personal or guest demo. The topbar location
+selector exposes the same three locations as the list hierarchy: Acker am Bach,
+Hofgarten and Pachtacker Lindenhof (translated in localized demos). One location
+fills the available canvas. Select another, zoom/pan/rotate, then switch between
+List and Graphic: the selected location and its camera stay intact. Edit graphic
+in the same topbar applies to the selected location only; Add location remains
+available through the existing add action/menu. Fullscreen stays optional.
+
+The location selector and editing action are absent in List mode. At narrower
+widths the shared topbar places graphical controls and the add action in a
+wrapping row, and the canvas uses the remaining height. For manual review,
+include phone landscape and a short desktop window, reach the final canvas
+actions through their own scrolling control panel, and try Fit to contents
+before and after resizing/fullscreen. No demo-data migration or new seed is
+needed: the existing three-location fixture demonstrates the flow.
+
 ### Crop rotation story
 
 The previous seasons rotate the plant families across the beds so the

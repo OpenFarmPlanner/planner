@@ -252,7 +252,7 @@
     },
     "graphical": {
       "title": "Hilfe: Anbauflächen – Grafische Ansicht",
-      "intro": "Hier siehst du Parzellen und Beete räumlich angeordnet.",
+      "intro": "Wähle in der Kopfleiste neben Liste/Grafik einen Standort. Seine Parzellen und Beete nutzen eine große Zeichenfläche; Zoom und Verschiebung bleiben beim Standort- und Ansichtswechsel erhalten. Mit „Grafik bearbeiten“ änderst du die Anordnung des gewählten Standorts.",
       "sections": [
         {
           "title": "Bedienung",

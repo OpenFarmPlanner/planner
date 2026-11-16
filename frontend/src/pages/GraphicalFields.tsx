@@ -1,8 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
   Alert,
   Box,
   CircularProgress,
@@ -12,7 +9,6 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import FitScreenIcon from "@mui/icons-material/FitScreen";
@@ -24,20 +20,17 @@ import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import { Group, Layer, Rect, Stage, Text } from "react-konva";
 import type Konva from "konva";
 import { alpha } from "@mui/material/styles";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { useHierarchyData } from "../components/hierarchy/hooks/useHierarchyData";
-import { useExpandedState } from "../components/hierarchy/hooks/useExpandedState";
 import {
   layoutAPI,
   type BedLayoutEntry,
   type FieldLayoutEntry,
 } from "../api/api";
-import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
+import { isTypingInEditableElement, useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useTranslation } from "../i18n";
 import { GraphicalFieldDetailsDialog } from "./GraphicalFieldDetailsDialog";
 import ModeToggle from "../components/ModeToggle";
@@ -97,6 +90,7 @@ import {
   snapToNeighbors,
   type BedViewModel,
   type GraphicalFieldsProps,
+  type GraphicalCameraState,
   type GuideLine,
   type InteractionMode,
   type Point,
@@ -105,7 +99,7 @@ import {
 } from "./graphicalFieldsGeometry";
 import { useGraphicalStageSize } from "./useGraphicalStageSize";
 import { AppTooltip } from '../components/AppTooltip';
-import { OverflowTooltip } from '../components/OverflowTooltip';
+import LoadRetryButton from '../components/LoadRetryButton';
 
 /** Gap used when auto-arranging beds that do not yet have a saved layout. */
 const BED_AUTO_LAYOUT_GAP = DEFAULT_PLACEMENT_SPACING;
@@ -118,25 +112,26 @@ export default function GraphicalFields({
   onInteractionModeChange,
   showModeToggle = true,
   hierarchyData,
+  selectedLocationId,
+  cameraState: controlledCameraState,
+  onCameraStateChange,
 }: GraphicalFieldsProps) {
   const { t } = useTranslation(["fields", "common"]);
   const theme = useTheme();
   const internalHierarchyData = useHierarchyData(hierarchyData === undefined);
   const { loading, error, locations, fields, beds } = hierarchyData ?? internalHierarchyData;
-  const {
-    expandedRows: expandedLocationIds,
-    hasPersistedState: hasPersistedExpandedState,
-    toggleExpand: toggleLocationExpanded,
-    ensureExpanded: ensureLocationExpanded,
-    expandAll: expandAllLocations,
-  } = useExpandedState("graphicalFields");
-  const hasInitiallyExpandedRef = useRef(false);
+  const activeLocationId = locations.find(location => location.id === selectedLocationId)?.id
+    ?? locations.find(location => typeof location.id === 'number' && location.id > 0)?.id ?? null;
   const [layoutsByBed, setLayoutsByBed] = useState<
     Record<number, BedLayoutEntry>
   >({});
   const [layoutsByField, setLayoutsByField] = useState<
     Record<number, FieldLayoutEntry>
   >({});
+  const [layoutAttempt, setLayoutAttempt] = useState(0);
+  const [layoutLoad, setLayoutLoad] = useState({ locationId: null as number | null, attempt: -1, error: false });
+  const layoutReady = activeLocationId === null || (layoutLoad.locationId === activeLocationId && layoutLoad.attempt === layoutAttempt);
+  const layoutFailed = activeLocationId !== null && layoutReady && layoutLoad.error;
   const [activeGuides, setActiveGuides] = useState<GuideLine[]>([]);
   const [localInteractionMode, setLocalInteractionMode] =
     useState<InteractionMode>("view");
@@ -149,15 +144,18 @@ export default function GraphicalFields({
     onInteractionModeChange?.(mode);
   };
   const globalEditMode = interactionMode === "edit";
-  const [viewportByLocation, setViewportByLocation] = useState<
-    Record<number, ViewportState>
-  >({});
-  const [rotationByLocation, setRotationByLocation] = useState<Record<number, GraphicalRotation>>({});
+  const [localCameraState, setLocalCameraState] = useState<GraphicalCameraState>({ viewports: {}, rotations: {} });
+  const cameraState = controlledCameraState ?? localCameraState;
+  const setCameraState = onCameraStateChange ?? setLocalCameraState;
+  const { viewports: viewportByLocation, rotations: rotationByLocation } = cameraState;
+  const setViewportByLocation = (update: (current: Record<number, ViewportState>) => Record<number, ViewportState>): void => {
+    setCameraState(current => ({ ...current, viewports: update(current.viewports) }));
+  };
+  const setRotationByLocation = (update: (current: Record<number, GraphicalRotation>) => Record<number, GraphicalRotation>): void => {
+    setCameraState(current => ({ ...current, rotations: update(current.rotations) }));
+  };
   const [selectedElement, setSelectedElement] =
     useState<SelectedElement | null>(null);
-  const [activePanLocationId, setActivePanLocationId] = useState<number | null>(
-    null,
-  );
   const stageRefs = useRef<Record<number, Konva.Stage | null>>({});
   const saveTimers = useRef<Record<string, number>>({});
   const panSessionRef = useRef<Record<number, PanSession | null>>({});
@@ -171,7 +169,7 @@ export default function GraphicalFields({
     containerRef,
     locationCanvasRefs,
     toggleFullscreen,
-  } = useGraphicalStageSize();
+  } = useGraphicalStageSize(activeLocationId, !loading && layoutReady && !layoutFailed);
   const resetTransientInteractionState = (): void => {
     setActiveGuides([]);
     Object.keys(panSessionRef.current).forEach((key) => {
@@ -193,26 +191,11 @@ export default function GraphicalFields({
   };
 
   useEffect(() => {
-    if (
-      !hasPersistedExpandedState &&
-      !hasInitiallyExpandedRef.current &&
-      locations.length > 0
-    ) {
-      expandAllLocations(
-        locations
-          .map((location) => location.id)
-          .filter((id): id is number => Boolean(id)),
-      );
-      hasInitiallyExpandedRef.current = true;
-    }
-  }, [expandAllLocations, hasPersistedExpandedState, locations]);
-
-  useEffect(() => {
     let active = true;
     const loadLayouts = async (): Promise<void> => {
       const locationIds = locations
         .map((location) => location.id)
-        .filter((id): id is number => typeof id === "number");
+        .filter((id): id is number => typeof id === "number" && id === activeLocationId);
       if (locationIds.length === 0) return;
 
       try {
@@ -240,7 +223,10 @@ export default function GraphicalFields({
           });
           return next;
         });
+        setLayoutLoad({ locationId: activeLocationId, attempt: layoutAttempt, error: false });
       } catch (layoutError) {
+        if (!active) return;
+        setLayoutLoad({ locationId: activeLocationId, attempt: layoutAttempt, error: true });
         console.error("Failed to load bed layouts", layoutError);
       }
     };
@@ -249,7 +235,7 @@ export default function GraphicalFields({
     return () => {
       active = false;
     };
-  }, [locations]);
+  }, [activeLocationId, layoutAttempt, locations]);
 
   useEffect(() => {
     const timers = saveTimers.current;
@@ -265,7 +251,7 @@ export default function GraphicalFields({
       resetTransientInteractionState();
       stopKonvaDragging();
     });
-  }, [editableLocationId, interactionMode]);
+  }, [activeLocationId, editableLocationId, interactionMode]);
 
   const isLocationEditMode = (locationId: number): boolean =>
     globalEditMode || editableLocationId === locationId;
@@ -275,7 +261,6 @@ export default function GraphicalFields({
     setEditableLocationId((currentLocationId) =>
       currentLocationId === locationId ? null : locationId,
     );
-    ensureLocationExpanded(locationId);
   };
 
   useKeyboardShortcuts(
@@ -286,12 +271,11 @@ export default function GraphicalFields({
         keys: { alt: true, key: "e" },
         contexts: [],
         action: () => {
-          if (showModeToggle) {
+          if (showModeToggle || controlledInteractionMode !== undefined) {
             setInteractionMode(interactionMode === "edit" ? "view" : "edit");
             return;
           }
-          const fallbackLocationId = locationLayouts[0]?.location.id;
-          const targetLocationId = activePanLocationId ?? fallbackLocationId ?? null;
+          const targetLocationId = activeLocationId;
           if (targetLocationId !== null) {
             handleLocationEditToggle(targetLocationId);
           }
@@ -369,7 +353,7 @@ export default function GraphicalFields({
         height: size.height,
       };
     });
-    const fitPadding = getFitViewportPadding(stageWidth);
+    const fitPadding = getFitViewportPadding(stageWidth, stageHeight);
     const arrangement = arrangeFieldRects(
       sizedFields,
       // Pack for the default quarter turn; later rotations preserve this arrangement.
@@ -443,7 +427,7 @@ export default function GraphicalFields({
   const resetViewport = (locationId: number): void => {
     setViewportByLocation((prev) => {
       const contentBounds = getContentBoundsForLocation(locationId);
-      const fitPadding = getFitViewportPadding(stageWidth);
+      const fitPadding = getFitViewportPadding(stageWidth, stageHeight);
       return {
         ...prev,
         [locationId]: fitBoundsToStage(
@@ -461,7 +445,7 @@ export default function GraphicalFields({
   ): void => {
     setViewportByLocation((prev) => {
       const contentBounds = getContentBoundsForLocation(locationId);
-      const fitPadding = getFitViewportPadding(stageWidth);
+      const fitPadding = getFitViewportPadding(stageWidth, stageHeight);
       const current =
         prev[locationId] ??
         fitBoundsToStage(
@@ -564,7 +548,6 @@ export default function GraphicalFields({
       return;
     }
     panSessionRef.current[locationId] = startPanSession(viewport, pointer);
-    setActivePanLocationId(locationId);
   };
 
   const continuePanSession = (
@@ -901,28 +884,12 @@ export default function GraphicalFields({
     pinchStateRef.current[locationId] = null;
   };
 
-  const effectiveActivePanLocationId =
-    activePanLocationId !== null &&
-    locationLayouts.some((layout) => layout.location.id === activePanLocationId)
-      ? activePanLocationId
-      : (locationLayouts[0]?.location.id ?? null);
+  const effectiveActivePanLocationId = activeLocationId;
 
   useEffect(() => {
-    const isTypingElement = (target: EventTarget | null): boolean => {
-      if (!(target instanceof HTMLElement)) {
-        return false;
-      }
-      const tagName = target.tagName.toLowerCase();
-      return (
-        target.isContentEditable ||
-        tagName === "input" ||
-        tagName === "textarea" ||
-        tagName === "select"
-      );
-    };
-
+    if (!layoutReady || layoutFailed) return;
     const handleKeyDown = (event: KeyboardEvent): void => {
-      if (isTypingElement(event.target) || effectiveActivePanLocationId === null) {
+      if (isTypingInEditableElement(event.target instanceof Element ? event.target : document.activeElement) || effectiveActivePanLocationId === null) {
         return;
       }
       const step = event.shiftKey ? PAN_FAST_STEP : PAN_STEP;
@@ -950,9 +917,9 @@ export default function GraphicalFields({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [effectiveActivePanLocationId, handlePanByOffset]);
+  }, [effectiveActivePanLocationId, handlePanByOffset, layoutFailed, layoutReady]);
 
-  if (loading) {
+  if (loading || !layoutReady) {
     return (
       <Box sx={{ p: { xs: 0, sm: 3 } }}>
         <CircularProgress />
@@ -960,14 +927,18 @@ export default function GraphicalFields({
     );
   }
 
+  if (layoutFailed) {
+    return <Alert severity="error" action={<LoadRetryButton onClick={() => setLayoutAttempt(attempt => attempt + 1)} />}>
+      {t('fields:graphical.layoutLoadError')}
+    </Alert>;
+  }
+
   return (
     <Box
       ref={containerRef}
-      // This wrapper was the real xs gutter source on Anbauflächen mobile.
-      // Keep edge-aligned content on xs and preserve current spacing on sm+.
-      sx={{ p: { xs: 0, sm: 3 } }}
+      sx={{ minWidth: 0 }}
     >
-      <Stack
+      {showTitle || showModeToggle ? <Stack
         direction={{ xs: "column", sm: "row" }}
         sx={{ mb: 2,
         justifyContent: "space-between",
@@ -994,11 +965,11 @@ export default function GraphicalFields({
             />
           </Stack>
         ) : null}
-      </Stack>
+      </Stack> : null}
 
       {error ? <Alert severity="error">{error}</Alert> : null}
 
-      {locationLayouts.map(
+      {locationLayouts.filter(layout => layout.location.id === activeLocationId).map(
         ({
           location,
           defaultFieldRects,
@@ -1019,193 +990,12 @@ export default function GraphicalFields({
             fitBoundsToStage(
               contentBounds,
               { width: stageWidth, height: stageHeight },
-              getFitViewportPadding(stageWidth),
+              getFitViewportPadding(stageWidth, stageHeight),
             );
           const visibility = getVisibleElements(viewport.scale);
 
           return (
-            <Accordion
-              key={locationId}
-              expanded={expandedLocationIds.has(locationId)}
-              onChange={() => toggleLocationExpanded(locationId)}
-              sx={{
-                ...(locationIsEditable
-                  ? {
-                    borderLeft: 4,
-                    borderLeftColor: "success.main",
-                    "&:before": { display: "none" },
-                  }
-                  : {}),
-              }}
-            >
-              <AccordionSummary
-                expandIcon={<ExpandMoreIcon />}
-                sx={{
-                  ...(locationIsEditable
-                    ? {
-                      bgcolor: "success.50",
-                      "&:hover": { bgcolor: "success.100" },
-                    }
-                    : {}),
-                }}
-              >
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "flex-start",
-                    flexWrap: "nowrap",
-                    gap: 1.5,
-                    minWidth: 0,
-                    width: "100%",
-                    pr: 1,
-                  }}
-                >
-                  <OverflowTooltip title={t("fields:graphical.locationTitle", { name: location.name })}>
-                    <Typography
-                      variant="h6"
-                      noWrap
-                      sx={{
-                        minWidth: 0,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {t("fields:graphical.locationTitle", { name: location.name })}
-                    </Typography>
-                  </OverflowTooltip>
-                  {!globalEditMode ? (
-                    <>
-                      <AppTooltip
-                        title={t(
-                          locationIsEditable
-                            ? "fields:graphical.disableLocationEditMode"
-                            : "fields:graphical.enableLocationEditMode",
-                          { name: location.name },
-                        )}
-                      >
-                        <Box
-                          component="span"
-                          role="button"
-                          tabIndex={0}
-                          aria-label={t(
-                            locationIsEditable
-                              ? "fields:graphical.disableLocationEditMode"
-                              : "fields:graphical.enableLocationEditMode",
-                            { name: location.name },
-                          )}
-                          aria-pressed={locationIsEditable}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleLocationEditToggle(locationId);
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key !== "Enter" && event.key !== " ") {
-                              return;
-                            }
-                            event.preventDefault();
-                            event.stopPropagation();
-                            handleLocationEditToggle(locationId);
-                          }}
-                          sx={{
-                            display: { xs: "none", sm: "inline-flex" },
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
-                            gap: 0.75,
-                            minHeight: 32,
-                            px: 1.25,
-                            borderRadius: 1,
-                            typography: "button",
-                            textTransform: "none",
-                            color: locationIsEditable ? "success.contrastText" : "success.dark",
-                            bgcolor: locationIsEditable ? "success.main" : "background.paper",
-                            border: "1px solid",
-                            borderColor: locationIsEditable ? "success.dark" : "success.main",
-                            cursor: "pointer",
-                            whiteSpace: "nowrap",
-                            boxShadow: locationIsEditable ? 1 : 0,
-                            "&:hover": {
-                              bgcolor: locationIsEditable ? "success.dark" : "success.50",
-                              borderColor: "success.dark",
-                            },
-                            "&:focus-visible": {
-                              outline: "2px solid",
-                              outlineColor: "primary.main",
-                              outlineOffset: 2,
-                            },
-                          }}
-                        >
-                          {locationIsEditable ? (
-                            <CheckCircleOutlineIcon fontSize="small" />
-                          ) : (
-                            <EditOutlinedIcon fontSize="small" />
-                          )}
-                          {t(
-                            locationIsEditable
-                              ? "fields:graphical.locationEditModeActive"
-                              : "fields:graphical.locationEditModeAction",
-                          )}
-                        </Box>
-                      </AppTooltip>
-                      <AppTooltip
-                        title={t("fields:graphical.locationEditModeAction")}
-                      >
-                        <Box
-                          component="span"
-                          role="button"
-                          tabIndex={0}
-                          aria-label={t("fields:graphical.locationEditModeAction")}
-                          aria-pressed={locationIsEditable}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleLocationEditToggle(locationId);
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key !== "Enter" && event.key !== " ") {
-                              return;
-                            }
-                            event.preventDefault();
-                            event.stopPropagation();
-                            handleLocationEditToggle(locationId);
-                          }}
-                          sx={{
-                            display: { xs: "inline-flex", sm: "none" },
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
-                            width: 34,
-                            height: 34,
-                            borderRadius: "50%",
-                            color: locationIsEditable ? "success.contrastText" : "success.dark",
-                            bgcolor: locationIsEditable ? "success.main" : "background.paper",
-                            border: "1px solid",
-                            borderColor: locationIsEditable ? "success.dark" : "success.main",
-                            boxShadow: locationIsEditable ? 1 : 0,
-                            cursor: "pointer",
-                            "&:hover": {
-                              bgcolor: locationIsEditable ? "success.dark" : "success.50",
-                            },
-                            "&:focus-visible": {
-                              outline: "2px solid",
-                              outlineColor: "primary.main",
-                              outlineOffset: 2,
-                            },
-                          }}
-                        >
-                          {locationIsEditable ? (
-                            <CheckCircleOutlineIcon fontSize="small" />
-                          ) : (
-                            <EditOutlinedIcon fontSize="small" />
-                          )}
-                        </Box>
-                      </AppTooltip>
-                    </>
-                  ) : null}
-                </Box>
-              </AccordionSummary>
-              <AccordionDetails>
+            <Box key={locationId} role="region" aria-label={t("fields:graphical.locationTitle", { name: location.name })}>
                 {locationIsEditable ? (
                   <Alert severity="warning" sx={{ mb: 1.5 }}>
                     {t("fields:graphical.locationEditModeBanner")}
@@ -1467,8 +1257,6 @@ export default function GraphicalFields({
                       handleStageTouchMove(locationId, event)
                     }
                     onTouchEnd={() => handleStageTouchEnd(locationId)}
-                    onMouseEnter={() => setActivePanLocationId(locationId)}
-                    onPointerDown={() => setActivePanLocationId(locationId)}
                     ref={(node) => {
                       stageRefs.current[locationId] = node;
                     }}
@@ -1741,8 +1529,7 @@ export default function GraphicalFields({
                     </Layer>
                   </Stage>
                 </Box>
-              </AccordionDetails>
-            </Accordion>
+            </Box>
           );
         },
       )}

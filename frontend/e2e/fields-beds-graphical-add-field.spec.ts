@@ -9,15 +9,8 @@ test('adding a field in the list view keeps the graphical view zoomed to the fie
   await loginWithDeterministicProject(page, request, 'fields-graphical-add-field', { demoProject: true, loginAsAdmin: true });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/app/fields-beds');
-  // The innermost element holding both the location heading and its zoom
-  // read-out is that location's card.
-  const zoomLabel = page.locator('div')
-    .filter({ has: page.getByRole('heading', { name: 'Standort: Acker am Bach' }) })
-    .filter({ has: page.getByText(/^Zoom: /) })
-    .last()
-    .getByText(/^Zoom: /);
-  // The view fits itself live until the user zooms, so read it only once the
-  // saved layouts of every location have arrived.
+  const zoomLabel = page.getByRole('region', { name: 'Standort: Acker am Bach', exact: true }).getByText(/^Zoom: /);
+  // Read the automatic fit once the selected location's saved layout has arrived.
   const showGraphicalView = async (): Promise<void> => {
     const layouts = page.waitForResponse((response) => /\/locations\/\d+\/layouts\/$/.test(new URL(response.url()).pathname));
     await page.getByRole('button', { name: 'Grafik', exact: true }).click();

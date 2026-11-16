@@ -1,10 +1,8 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
-import { MAX_STAGE_HEIGHT, MIN_STAGE_HEIGHT } from './graphicalFieldsGeometry';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 
-const MIN_STAGE_WIDTH = 320;
-/** Leaves room for the canvas card's border so the stage never overflows it. */
-const STAGE_INSET = 8;
-const VIEWPORT_HEIGHT_SHARE = 0.45;
+const MIN_STAGE_SIZE = 1;
+const MIN_USABLE_STAGE_HEIGHT = 96;
+const FALLBACK_GUTTER = 8;
 
 export interface GraphicalStageSize {
   stageWidth: number;
@@ -27,61 +25,42 @@ export interface GraphicalStageSize {
  * `fullscreenchange` event rather than from the toggle, so leaving via Escape or
  * the browser chrome is noticed too.
  */
-export function useGraphicalStageSize(): GraphicalStageSize {
+export function useGraphicalStageSize(selectedLocationId?: number | null, ready = true): GraphicalStageSize {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const locationCanvasRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const [fullscreenLocationId, setFullscreenLocationId] = useState<number | null>(null);
-  const [stageWidth, setStageWidth] = useState<number>(() =>
-    Math.max(MIN_STAGE_WIDTH, window.innerWidth - 48),
-  );
-  const [stageHeight, setStageHeight] = useState<number>(() =>
-    Math.max(
-      MIN_STAGE_HEIGHT,
-      Math.min(MAX_STAGE_HEIGHT, Math.round(window.innerHeight * VIEWPORT_HEIGHT_SHARE)),
-    ),
-  );
+  const [stageWidth, setStageWidth] = useState(() => Math.max(MIN_STAGE_SIZE, window.innerWidth - FALLBACK_GUTTER * 2));
+  const [stageHeight, setStageHeight] = useState(() => Math.max(MIN_USABLE_STAGE_HEIGHT, window.innerHeight - FALLBACK_GUTTER * 2));
 
-  useEffect(() => {
-    const handleResize = (): void => {
-      const fullscreenContainer =
-        fullscreenLocationId !== null
-          ? locationCanvasRefs.current[fullscreenLocationId]
-          : null;
-      const locationCanvas = Object.values(locationCanvasRefs.current).find(
-        node => (node?.clientWidth ?? 0) > 0,
-      );
-      const containerWidth =
-        fullscreenContainer?.clientWidth ??
-        locationCanvas?.clientWidth ??
-        containerRef.current?.clientWidth ??
-        window.innerWidth;
-      setStageWidth(Math.max(MIN_STAGE_WIDTH, Math.round(containerWidth - STAGE_INSET)));
-      if (fullscreenContainer) {
-        setStageHeight(
-          Math.max(MIN_STAGE_HEIGHT, Math.round(fullscreenContainer.clientHeight - STAGE_INSET)),
-        );
-      } else {
-        setStageHeight(
-          Math.max(
-            MIN_STAGE_HEIGHT,
-            Math.min(MAX_STAGE_HEIGHT, Math.round(window.innerHeight * VIEWPORT_HEIGHT_SHARE)),
-          ),
-        );
-      }
+  useLayoutEffect(() => {
+    if (!ready) return;
+    const getCanvas = () => (selectedLocationId == null ? null : locationCanvasRefs.current[selectedLocationId])
+      ?? Object.values(locationCanvasRefs.current).find(node => node !== null);
+    const container = containerRef.current;
+    const canvas = getCanvas();
+    const header = document.querySelector('header');
+    const main = container?.closest('main');
+    const measure = (): void => {
+      const fullscreenCanvas = fullscreenLocationId === null ? null : locationCanvasRefs.current[fullscreenLocationId];
+      const target = fullscreenCanvas ?? getCanvas() ?? containerRef.current;
+      const width = target?.clientWidth || window.innerWidth - FALLBACK_GUTTER * 2;
+      const top = Math.max(0, target?.getBoundingClientRect().top ?? 0);
+      const bottomGutter = main ? Number.parseFloat(getComputedStyle(main).paddingBottom) || FALLBACK_GUTTER : FALLBACK_GUTTER;
+      const borders = target ? Math.max(0, target.offsetHeight - target.clientHeight) : 0;
+      setStageWidth(Math.max(MIN_STAGE_SIZE, Math.floor(width)));
+      setStageHeight(fullscreenCanvas
+        ? Math.max(MIN_STAGE_SIZE, fullscreenCanvas.clientHeight)
+        : Math.max(MIN_USABLE_STAGE_HEIGHT, Math.floor(window.innerHeight - top - bottomGutter - borders)));
     };
-
-    handleResize();
-    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(handleResize);
-    if (containerRef.current) observer?.observe(containerRef.current);
-    for (const node of Object.values(locationCanvasRefs.current)) {
-      if (node) observer?.observe(node);
-    }
-    window.addEventListener('resize', handleResize);
+    measure();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    for (const node of new Set([container, canvas, main, header])) if (node) observer?.observe(node);
+    window.addEventListener('resize', measure);
     return () => {
       observer?.disconnect();
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', measure);
     };
-  }, [fullscreenLocationId]);
+  }, [fullscreenLocationId, ready, selectedLocationId]);
 
   useEffect(() => {
     const handleFullscreenChange = (): void => {

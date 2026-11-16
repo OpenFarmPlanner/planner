@@ -29,6 +29,9 @@
     "graphical": "Graphique"
   },
   "graphical": {
+    "layoutLoadError": "Le graphique n’a pas pu être chargé. Veuillez réessayer.",
+    "noFields": "Ce site ne contient pas encore de parcelles. Passez à la liste pour en ajouter.",
+    "locationSelector": "Site",
     "title": "Vue graphique des parcelles",
     "viewMode": "Mode",
     "modeAriaLabel": "Choisir le mode",

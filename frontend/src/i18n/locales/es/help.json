@@ -252,7 +252,7 @@
     },
     "graphical": {
       "title": "Ayuda: Superficies de cultivo - vista gráfica",
-      "intro": "Consulta aquí las ubicaciones, parcelas y bancales dispuestos en el espacio. La vista gráfica te ayuda a revisar y ajustar visualmente la estructura de superficies.",
+      "intro": "Elige una ubicación en la barra superior, junto a Lista/Gráfico. Sus parcelas y bancales usan un lienzo amplio; el zoom y el desplazamiento de cada ubicación se conservan al cambiar de ubicación o de vista. Usa Editar gráfico para cambiar la distribución de la ubicación seleccionada.",
       "sections": [
         {
           "title": "Cómo se usa",

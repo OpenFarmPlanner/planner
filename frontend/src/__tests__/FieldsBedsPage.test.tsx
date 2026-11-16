@@ -2,7 +2,9 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import FieldsBedsPage from '../pages/FieldsBedsPage';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, Outlet, Route, Routes } from 'react-router';
+import { useState, type ReactNode } from 'react';
+import type { GraphicalFieldsProps } from '../pages/graphicalFieldsGeometry';
 
 const { locationListMock, locationCreateMock, fieldListMock, bedListMock, addFieldMock, navigateMock } = vi.hoisted(() => ({
   locationListMock: vi.fn(),
@@ -13,6 +15,7 @@ const { locationListMock, locationCreateMock, fieldListMock, bedListMock, addFie
   navigateMock: vi.fn(),
 }));
 const projectRequirementState = vi.hoisted(() => ({
+  activeProjectId: 1 as number | null,
   shouldShowProjectRequiredState: false,
   missingProjectReason: null as null | 'no_projects' | 'no_active_project',
 }));
@@ -36,8 +39,11 @@ vi.mock('../pages/FieldsBedsHierarchy', () => ({
 }));
 
 vi.mock('../pages/GraphicalFields', () => ({
-  default: ({ interactionMode }: { interactionMode?: 'view' | 'edit' }) => (
-    <div>{`EditMode-${interactionMode ?? 'location-scoped'}`}</div>
+  default: ({ interactionMode, selectedLocationId, hierarchyData }: GraphicalFieldsProps) => (
+    <div><span>{`EditMode-${interactionMode ?? 'location-scoped'}`}</span>
+      <span data-testid="selected-graphical-location">{selectedLocationId}</span>
+      <button onClick={() => hierarchyData?.setLocations(current => current.filter(item => item.id !== selectedLocationId))}>Remove displayed location</button>
+    </div>
   ),
 }));
 
@@ -87,7 +93,11 @@ interface RegisteredTopbarAction {
   onClick?: () => void;
   menuActions?: RegisteredTopbarAction[];
 }
-const registeredUiState: { topbarActions: RegisteredTopbarAction[] } = { topbarActions: [] };
+const registeredUiState: { topbarActions: RegisteredTopbarAction[]; titleActions: RegisteredTopbarAction[] } = { topbarActions: [], titleActions: [] };
+
+vi.mock('../hooks/useTopbarTitleActions', () => ({
+  useTopbarTitleActions: (_setter: unknown, actions: RegisteredTopbarAction[]) => { registeredUiState.titleActions = actions; },
+}));
 
 vi.mock('../hooks/useTopbarContextActions', () => ({
   useTopbarContextActions: (_setter: unknown, actions: typeof registeredUiState.topbarActions) => {
@@ -117,6 +127,7 @@ describe('FieldsBedsPage', () => {
     locationCreateMock.mockReset();
     fieldListMock.mockReset();
     bedListMock.mockReset();
+    projectRequirementState.activeProjectId = 1;
     projectRequirementState.shouldShowProjectRequiredState = false;
     projectRequirementState.missingProjectReason = null;
     locationListMock.mockResolvedValue({
@@ -124,11 +135,12 @@ describe('FieldsBedsPage', () => {
         results: [{ id: 1, name: 'Hofstelle' }],
       },
     });
-    fieldListMock.mockResolvedValue({ data: { results: [{ id: 11, name: 'Nord' }] } });
+    fieldListMock.mockResolvedValue({ data: { results: [{ id: 11, name: 'Nord', location: 1 }] } });
     bedListMock.mockResolvedValue({ data: { results: [{ id: 21, name: 'A', field: 11 }] } });
     addFieldMock.mockReset();
     navigateMock.mockReset();
     window.localStorage.clear();
+    window.sessionStorage.clear();
   });
 
   it('restores graphical view from persisted state', async () => {
@@ -136,7 +148,7 @@ describe('FieldsBedsPage', () => {
 
     renderPage();
 
-    expect(await screen.findByText('EditMode-location-scoped')).toBeInTheDocument();
+    expect(await screen.findByText('EditMode-view')).toBeInTheDocument();
     expect(screen.queryByText('Hierarchieansicht')).not.toBeInTheDocument();
   });
 
@@ -310,4 +322,55 @@ describe('FieldsBedsPage', () => {
     expect(screen.getByText((content) => content.includes('Füge Beete über das') && content.includes('Symbol bei der jeweiligen Parzelle hinzu. Es erscheint beim Darüberfahren.'))).toBeInTheDocument();
     expect(screen.getByText('Hierarchieansicht')).toBeInTheDocument();
   });
+  function WorkspaceShell() {
+    const [controls, setControls] = useState<ReactNode>(null);
+    return <>{controls}<Outlet context={{ setTopbarWorkspaceControls: setControls }} /></>;
+  }
+  const workspace = () => <MemoryRouter><Routes><Route element={<WorkspaceShell />}>
+    <Route index element={<FieldsBedsPage />} />
+  </Route></Routes></MemoryRouter>;
+
+  it('keeps location selection across representations and falls back safely after removal', async () => {
+    locationListMock.mockResolvedValue({ data: { results: [{ id: 1, name: 'Hof Nord' }, { id: 2, name: 'Hof Süd' }] } });
+    fieldListMock.mockResolvedValue({ data: { results: [{ id: 11, name: 'Nord', location: 1 }, { id: 21, name: 'Süd', location: 2 }] } });
+    window.localStorage.setItem('fieldsBedsViewMode', 'graphical');
+    const user = userEvent.setup();
+    render(workspace());
+    await user.click(await screen.findByRole('combobox', { name: 'Standort' }));
+    await user.click(screen.getByRole('option', { name: 'Hof Süd' }));
+    expect(screen.getByTestId('selected-graphical-location')).toHaveTextContent('2');
+    act(() => registeredUiState.titleActions.find(action => action.id === 'fields-view-mode-list')?.onClick?.());
+    expect(screen.queryByRole('combobox', { name: 'Standort' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('location-order')).toHaveTextContent('Hof Nord, Hof Süd');
+    act(() => registeredUiState.titleActions.find(action => action.id === 'fields-view-mode-graphical')?.onClick?.());
+    expect(await screen.findByTestId('selected-graphical-location')).toHaveTextContent('2');
+    await user.click(await screen.findByRole('button', { name: 'Grafik bearbeiten' }));
+    expect(screen.getByText('EditMode-edit')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Remove displayed location' }));
+    expect(screen.getByTestId('selected-graphical-location')).toHaveTextContent('1');
+    expect(screen.getByText('EditMode-view')).toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Standort' })).not.toBeInTheDocument();
+    expect(await screen.findByText('Standort: Hof Nord')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Remove displayed location' }));
+    expect(screen.queryByRole('button', { name: 'Grafik bearbeiten' })).not.toBeInTheDocument();
+    expect(screen.getByText('Standort fehlt')).toBeInTheDocument();
+  });
+
+  it('resets graphic editing and location data when the active project changes', async () => {
+    window.localStorage.setItem('fieldsBedsViewMode', 'graphical');
+    const user = userEvent.setup();
+    const view = render(workspace());
+    await user.click(await screen.findByRole('button', { name: 'Grafik bearbeiten' }));
+    expect(screen.getByText('EditMode-edit')).toBeInTheDocument();
+    projectRequirementState.activeProjectId = 2;
+    locationListMock.mockResolvedValue({ data: { results: [{ id: 7, name: 'Anderer Hof' }] } });
+    fieldListMock.mockResolvedValue({ data: { results: [{ id: 77, name: 'Anderes Feld', location: 7 }] } });
+    bedListMock.mockResolvedValue({ data: { results: [{ id: 777, name: 'Anderes Beet', field: 77 }] } });
+    view.rerender(workspace());
+    await screen.findByText('Standort: Anderer Hof');
+    expect(screen.getByTestId('selected-graphical-location')).toHaveTextContent('7');
+    expect(screen.getByText('EditMode-view')).toBeInTheDocument();
+    expect(screen.queryByText('Standort: Hofstelle')).not.toBeInTheDocument();
+  });
+
 });
