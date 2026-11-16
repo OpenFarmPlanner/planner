@@ -34,19 +34,22 @@ export function collectLocalPlantHealth(crops: readonly Partial<Crop>[]): PlantH
 }
 
 export function officialPlantHealth(value: PlantHealthSelections | null | undefined): PlantHealthSelections | null {
-  const entries = value?.entries.filter(entry => entry.catalogue_identity) ?? [];
-  return entries.length ? { entries } : null;
+  if (value == null) return null;
+  const entries = value.entries.filter(entry => entry.catalogue_identity);
+  return { entries };
 }
 
 export function samePlantHealthIdentities(left: PlantHealthSelections | null | undefined, right: PlantHealthSelections | null | undefined): boolean {
+  if (left == null || right == null) return left == null && right == null;
   const identities = (value: typeof left) => [...new Set(value?.entries.flatMap(entry => entry.catalogue_identity ? [entry.catalogue_identity] : []) ?? [])].sort().join(',');
   return identities(left) === identities(right);
 }
 
 export function mergeOfficialPlantHealth(local: PlantHealthSelections | null | undefined, incoming: PlantHealthSelections | null | undefined): PlantHealthSelections | null {
-  if (local == null && incoming == null) return null;
+  const privateEntries = local?.entries.filter(entry => !entry.catalogue_identity) ?? [];
+  if (incoming == null && !privateEntries.length) return null;
   return { entries: normalizePlantHealthSelections([
-    ...(local?.entries.filter(entry => !entry.catalogue_identity) ?? []),
+    ...privateEntries,
     ...(officialPlantHealth(incoming)?.entries ?? []),
   ]) };
 }

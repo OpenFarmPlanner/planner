@@ -71,17 +71,22 @@ def validate_plant_health_value(value: Any) -> None:
 
 def official_plant_health(value: Any) -> dict[str, list[dict[str, str]]] | None:
     normalized = normalize_plant_health(value)
+    if normalized is None:
+        return None
     entries = [
-        item for item in (normalized or {}).get("entries", []) if "catalogue_identity" in item
+        item for item in normalized["entries"] if "catalogue_identity" in item
     ]
-    return {"entries": entries} if entries else None
+    return {"entries": entries}
 
 
-def plant_health_identities(value: Any) -> tuple[str, ...]:
-    """Comparison keys do not depend on order, translated labels or name snapshots."""
+def plant_health_identities(value: Any) -> tuple[str, ...] | None:
+    """Keep override intent; ignore order, private names and snapshot spelling."""
+    official = official_plant_health(value)
+    if official is None:
+        return None
     return tuple(sorted(
         item["catalogue_identity"]
-        for item in (official_plant_health(value) or {}).get("entries", [])
+        for item in official["entries"]
     ))
 
 
@@ -89,11 +94,11 @@ def merge_official_plant_health(local_value: Any, public_value: Any) -> dict | N
     """Replace only official references; never drop unresolved project names."""
     local = normalize_plant_health(local_value)
     official = official_plant_health(public_value)
-    if local is None and official is None:
-        return None
     private = [
         item for item in (local or {}).get("entries", []) if "catalogue_identity" not in item
     ]
+    if official is None and not private:
+        return None
     return normalize_plant_health({"entries": [*private, *(official or {}).get("entries", [])]})
 
 

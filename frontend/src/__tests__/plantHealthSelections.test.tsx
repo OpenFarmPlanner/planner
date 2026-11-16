@@ -228,3 +228,13 @@ it('offers an explicit general-culture edit link when inherited source data is u
   expect(close).toHaveBeenCalledOnce();
   expect(mapMock).not.toHaveBeenCalled();
 });
+
+it('keeps explicit empty overrides distinct from inheritance while preserving private names on library choices', () => {
+  const empty = { entries: [] };
+  const referenced = { entries: [{ name: 'Snapshot', catalogue_identity: ID }] };
+  const plan = planLibraryLink({ plant_health: empty }, { plant_health: referenced });
+  expect(plan.conflicts).toHaveLength(1);
+  expect(pickLibraryChoices(plan.conflicts, { plant_health: 'mine' })).toEqual({});
+  expect(planLibraryLink({ plant_health: null }, { plant_health: empty }).fills.plant_health).toEqual(empty);
+  expect(planLibraryLink({ plant_health: empty }, { plant_health: empty }).conflicts).toEqual([]);
+});

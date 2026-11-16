@@ -210,5 +210,19 @@ test('public variety resolves a health-only species fallback and honors an expli
     await expect(page.getByRole('heading', { name: 'Allgemeine Informationen', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: de.siteHealth.title, exact: true })).toHaveCount(0);
     await expect(page.getByText(`${name} · ${de.plantHealth.catalogue}`, { exact: true })).toHaveCount(0);
+    const emptyVariety = await apiRequest<Crop>(page, 'POST', '/crops/', {
+      name: speciesName, variety: `Synthetic published empty ${Date.now()}`, crop_species: species.id,
+      plant_health: { entries: [] }, growth_duration_days: 42, harvest_duration_days: 14,
+    });
+    const emptyPublication = await apiRequest<{ public_crop: PublicCrop }>(page, 'POST', `/crops/${emptyVariety.id}/publish-public/`, {
+      accepted_public_library_terms: true, crop_species_id: species.id, original_language_code: 'de',
+    });
+    expect(emptyPublication.public_crop.plant_health).toEqual({ entries: [] });
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.goto(`/app/crop-library?cropId=${emptyPublication.public_crop.id}`);
+    await expect(page.getByRole('heading', { name: 'Allgemeine Informationen', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: de.siteHealth.title, exact: true })).toHaveCount(0);
+    await expect(page.getByText(`${name} · ${de.plantHealth.catalogue}`, { exact: true })).toHaveCount(0);
+    await page.screenshot({ path: info.outputPath('published-empty-override-375.png'), animations: 'disabled' });
   } finally { await resetE2EScenario(request, scenario); }
 });

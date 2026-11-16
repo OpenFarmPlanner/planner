@@ -31,7 +31,7 @@ def same_public_field_value(field: str, value: Any, other: Any) -> bool:
 
 
 def same_snapshot_value(value: Any, snapshot_value: Any, *, field: str | None = None) -> bool:
-    """Equality for snapshots, with every empty spelling counting as the same."""
+    """Legacy empty spellings compare equally; health overrides preserve inheritance intent."""
     if field == 'plant_health':
         return same_public_field_value(field, value, snapshot_value)
     if value in _EMPTY_SNAPSHOT_VALUES and snapshot_value in _EMPTY_SNAPSHOT_VALUES:

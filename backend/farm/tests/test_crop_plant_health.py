@@ -308,7 +308,7 @@ class PrivatePlantHealthTests(ProjectApiTestCase):
     def test_unresolved_private_selections_are_never_published_automatically(self):
         self.crop.plant_health = selections("Unresolved private name")
         self.crop.save()
-        self.assertIsNone(build_public_crop_payload(self.crop)["plant_health"])
+        self.assertEqual(build_public_crop_payload(self.crop)["plant_health"], selections())
 
     def map_name(self, name="Local", **overrides):
         return self.client.post(
@@ -420,26 +420,31 @@ class PrivatePlantHealthTests(ProjectApiTestCase):
             403,
         )
 
-
     def test_inherited_mapping_requires_the_general_crop_and_keeps_live_inheritance(self):
         species = CropSpecies.objects.create(name="Synthetic inherited mapping", status="published")
         self.crop.crop_species = species
         self.crop.plant_health = selections("Inherited private name")
         self.crop.save()
         variety = Crop.objects.create(
-            project=self.project, name=self.crop.name, variety="Synthetic mapped variety",
-            crop_species=species, plant_health=None,
+            project=self.project,
+            name=self.crop.name,
+            variety="Synthetic mapped variety",
+            crop_species=species,
+            plant_health=None,
         )
         url = f"{CROPS_URL}{variety.pk}/"
         blocked = self.client.post(
             url + "plant-health/mappings/",
             {
                 "expected_updated_at": variety.updated_at.isoformat(),
-                "mappings": [{
-                    "local_name": "Inherited private name",
-                    "catalogue_identity": str(self.entry.identity_key),
-                }],
-            }, format="json",
+                "mappings": [
+                    {
+                        "local_name": "Inherited private name",
+                        "catalogue_identity": str(self.entry.identity_key),
+                    }
+                ],
+            },
+            format="json",
         )
         self.assertEqual(blocked.status_code, 409, blocked.data)
         self.assertEqual(blocked.data["code"], "plant_health_mapping_inherited")
@@ -450,7 +455,8 @@ class PrivatePlantHealthTests(ProjectApiTestCase):
         inherited = self.client.get(url)
         self.assertIsNone(inherited.data["plant_health"])
         self.assertEqual(
-            inherited.data["effective_values"]["plant_health"], mapped.data["plant_health"],
+            inherited.data["effective_values"]["plant_health"],
+            mapped.data["plant_health"],
         )
         self.crop.refresh_from_db()
         self.crop.plant_health["entries"].append({"name": "Later general-crop change"})
@@ -744,7 +750,6 @@ class PublicPlantHealthTests(ProjectApiTestCase):
             self.public.translations.get(language_code="fr").description, "French notes stay"
         )
 
-
     def test_moderated_owner_republication_retains_reopened_catalogue_reference(self):
         self.entries[0].status = PlantHealthEntry.STATUS_PROPOSED
         self.entries[0].save()
@@ -768,7 +773,9 @@ class PublicPlantHealthTests(ProjectApiTestCase):
         self.assertEqual(proposal.proposed_data["notes"], "Unrelated owner edit")
         grant_public_library_moderator_access(self.user)
         approved = self.client.post(
-            self.public_url + f"change-proposals/{proposal.pk}/approve/", {}, format="json",
+            self.public_url + f"change-proposals/{proposal.pk}/approve/",
+            {},
+            format="json",
         )
         self.assertEqual(approved.status_code, 200, approved.data)
         self.public.refresh_from_db()
@@ -790,7 +797,9 @@ class PublicPlantHealthTests(ProjectApiTestCase):
         self.assertEqual(proposal.proposed_data["plant_health"], original)
         proposal.delete()
         _, raw_token = ProjectApiToken.create_token(
-            project=self.project, user=self.user, name="Synthetic queued retained identity",
+            project=self.project,
+            user=self.user,
+            name="Synthetic queued retained identity",
             scope=ProjectApiToken.SCOPE_WRITE,
         )
         token_client = APIClient()
@@ -801,3 +810,115 @@ class PublicPlantHealthTests(ProjectApiTestCase):
         self.assertEqual(proposal.proposed_data["plant_health"], original)
         self.public.refresh_from_db()
         self.assertEqual(self.public.plant_health, original)
+
+    def linked_variety_for_override(self, private_value, public_value):
+        self.crop.plant_health = None
+        self.crop.save()
+        public = PublicCrop.objects.create(
+            name=self.species.name,
+            variety="Synthetic override comparison",
+            crop_species=self.species,
+            status="published",
+            original_language_code="de",
+            created_by=self.user,
+            plant_health=public_value,
+        )
+        ensure_public_crop_revision(public)
+        variety = Crop.objects.create(
+            project=self.project,
+            name=self.species.name,
+            crop_species=self.species,
+            variety=public.variety,
+            plant_health=private_value,
+            source_public_crop=public,
+            source_public_version=public.version,
+            origin_type=Crop.ORIGIN_IMPORTED,
+        )
+        return variety, public
+
+    def test_publishing_an_empty_variety_keeps_its_explicit_override(self):
+        variety = Crop.objects.create(
+            project=self.project,
+            name=self.species.name,
+            crop_species=self.species,
+            variety="Synthetic published empty override",
+            plant_health=selections(),
+            growth_duration_days=42,
+            harvest_duration_days=14,
+        )
+        response = self.client.post(
+            f"{CROPS_URL}{variety.pk}/publish-public/",
+            {
+                "crop_species_id": self.species.pk,
+                "original_language_code": "de",
+                "accepted_public_library_terms": True,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data["public_crop"]["plant_health"], selections())
+        self.public.refresh_from_db()
+        self.assertEqual(self.public.plant_health, {"entries": [self.official(self.entries[0])]})
+        variety.refresh_from_db()
+        self.assertEqual(variety.plant_health, selections())
+
+    def test_pull_of_explicit_empty_suppresses_later_parent_changes(self):
+        variety, public = self.linked_variety_for_override(None, selections())
+        url = f"{CROPS_URL}{variety.pk}/public-sync/"
+        preview = self.client.get(url, {"public_crop_id": public.pk})
+        health = next(row for row in preview.data["changes"] if row["field"] == "plant_health")
+        self.assertIsNone(health["local_value"])
+        self.assertEqual(health["public_value"], selections())
+        result = self.client.post(
+            url,
+            {
+                "public_crop_id": public.pk,
+                "base_version": public.version,
+                "pull_fields": ["plant_health"],
+            },
+            format="json",
+        )
+        self.assertEqual(result.status_code, 200, result.data)
+        variety.refresh_from_db()
+        self.assertEqual(variety.plant_health, selections())
+        self.crop.plant_health = self.mixed(self.entries[0])
+        self.crop.save()
+        current = self.client.get(f"{CROPS_URL}{variety.pk}/")
+        self.assertEqual(current.data["effective_values"]["plant_health"], selections())
+
+    def test_pull_of_null_releases_empty_override_and_keeps_live_inheritance(self):
+        variety, public = self.linked_variety_for_override(selections(), None)
+        result = self.client.post(
+            f"{CROPS_URL}{variety.pk}/public-sync/",
+            {
+                "public_crop_id": public.pk,
+                "base_version": public.version,
+                "pull_fields": ["plant_health"],
+            },
+            format="json",
+        )
+        self.assertEqual(result.status_code, 200, result.data)
+        variety.refresh_from_db()
+        self.assertIsNone(variety.plant_health)
+        self.crop.plant_health = self.mixed(self.entries[0])
+        self.crop.save()
+        current = self.client.get(f"{CROPS_URL}{variety.pk}/")
+        self.assertEqual(
+            current.data["effective_values"]["plant_health"],
+            self.crop.plant_health,
+        )
+
+    def test_explicit_empty_can_be_shared_but_cannot_keep_an_empty_library_pin(self):
+        self.crop.plant_health = selections()
+        self.crop.save()
+        preview = self.client.get(
+            self.crop_url + "public-sync/", {"public_crop_id": self.public.pk}
+        )
+        health = next(row for row in preview.data["changes"] if row["field"] == "plant_health")
+        self.assertTrue(health["pushable"])
+        self.assertFalse(health["pinnable"])
+        self.assertEqual(health["pin_blocked_reason"], "empty")
+        response = self.sync(push_fields=["plant_health"])
+        self.assertEqual(response.status_code, 200, response.data)
+        self.public.refresh_from_db()
+        self.assertEqual(self.public.plant_health, selections())

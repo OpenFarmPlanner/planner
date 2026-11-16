@@ -535,6 +535,8 @@ def library_pin_blocked_reason(crop: Crop, field: str, local_value: Any) -> str 
         return PIN_BLOCKED_IDENTITY
     if forces_species_invariant_inheritance(crop, field):
         return PIN_BLOCKED_SPECIES_INVARIANT
+    if field == 'plant_health' and not plant_health_identities(local_value):
+        return PIN_BLOCKED_EMPTY
     if is_unset_crop_value(local_value):
         return PIN_BLOCKED_EMPTY
     return None

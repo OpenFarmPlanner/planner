@@ -94,7 +94,7 @@ export function planLibraryLink(formValues: Partial<Crop>, libraryValues: Partia
       const remote = officialPlantHealth(libraryValues.plant_health);
       const local = formValues.plant_health;
       if (!remote || samePlantHealthIdentities(local, remote)) return;
-      if (!officialPlantHealth(local)) {
+      if (local == null || (local.entries.length > 0 && !local.entries.some(entry => entry.catalogue_identity))) {
         fills.plant_health = mergeOfficialPlantHealth(local, remote);
       } else {
         conflicts.push({ field, local_value: local, public_value: remote, pushable: true });

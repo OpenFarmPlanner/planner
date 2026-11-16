@@ -283,9 +283,13 @@ return 400 without changing the crop. Project tokens still cannot propose or
 read global catalogue entries. There is no automatic retry of a stale mapping.
 
 Publishing skips unresolved/unreviewed entries and reports the count in preview;
-they stay intact in the project. UUID sets, independent of order, language and
+they stay intact in the project. Every non-null selection retains its explicit
+override wrapper even when no approved references remain, so an intentionally
+empty variety never starts inheriting the general culture on publication. UUID sets, independent of order, language and
 snapshot spelling, participate in the existing four-case library comparison.
-Private names alone do not mark a crop as divergent. Both selected-field pulls
+Private-name and snapshot-spelling edits within the same override do not mark a
+crop as divergent. Null inheritance remains distinct from any explicit override,
+including an empty list. Both selected-field pulls
 and full library updates replace only the official segment and preserve all
 private names, IDs, plans and notes. If the combined private/public selection
 would exceed 40 entries, the transaction fails instead of dropping names. An

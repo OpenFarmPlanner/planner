@@ -104,7 +104,7 @@ def publication_plant_health(value: Any, *, existing_value: Any = None) -> tuple
             selected.append({
                 "name": retained.get(identity) or entry.name, "catalogue_identity": identity,
             })
-    return ({"entries": selected} if selected else None), len(entries) - len(selected)
+    return ({"entries": selected} if normalized is not None else None), len(entries) - len(selected)
 
 
 class PlantHealthMappingConflict(APIException):
