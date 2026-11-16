@@ -484,7 +484,10 @@ class CompanionReplaceApiTests(CropCompanionTestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_an_unchanged_list_records_no_history(self):
+        from farm.history.project_restore import ensure_project_checkpoint
+
         self.relate(self.tomato, self.potato)
+        ensure_project_checkpoint(self.project)
         revisions = EntityRevision.objects.count()
 
         response = self.client.put(self.url, {'crop': self.tomato.id, 'relations': [
