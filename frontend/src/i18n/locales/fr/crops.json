@@ -2084,6 +2084,8 @@
     "notes": "Notes sur les ravageurs et maladies",
     "spreadsheetHeader": "Entrées de ravageurs et maladies (JSON)",
     "templateEntry": "Entrée d’exemple synthétique",
-    "validation": "Utilisez au maximum 40 noms individuels de 200 caractères chacun."
+    "validation": "Utilisez au maximum 40 noms individuels de 200 caractères chacun.",
+    "unspecified": "Non renseigné / hériter de la culture",
+    "emptySelection": "Sélection personnelle explicitement vide"
   }
 }

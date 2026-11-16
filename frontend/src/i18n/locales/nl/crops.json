@@ -2033,6 +2033,8 @@
     "notes": "Notities over plagen en ziekten",
     "spreadsheetHeader": "Vermeldingen van plagen en ziekten (JSON)",
     "templateEntry": "Synthetische voorbeeldvermelding",
-    "validation": "Gebruik maximaal 40 afzonderlijke namen van elk maximaal 200 tekens."
+    "validation": "Gebruik maximaal 40 afzonderlijke namen van elk maximaal 200 tekens.",
+    "unspecified": "Niet opgegeven / overnemen van gewas",
+    "emptySelection": "Expliciet lege eigen selectie"
   }
 }

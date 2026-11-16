@@ -2033,6 +2033,8 @@
     "notes": "Pest and disease notes",
     "spreadsheetHeader": "Pest and disease entries (JSON)",
     "templateEntry": "Synthetic example entry",
-    "validation": "Use at most 40 individual names, each up to 200 characters."
+    "validation": "Use at most 40 individual names, each up to 200 characters.",
+    "unspecified": "Unspecified / inherit from culture",
+    "emptySelection": "Explicitly empty selection"
   }
 }

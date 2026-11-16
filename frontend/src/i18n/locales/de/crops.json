@@ -2033,6 +2033,8 @@
     "notes": "Hinweise zu Schädlingen und Krankheiten",
     "spreadsheetHeader": "Schädlings- und Krankheitseinträge (JSON)",
     "templateEntry": "Synthetischer Beispieleintrag",
-    "validation": "Verwende höchstens 40 einzelne Namen mit jeweils bis zu 200 Zeichen."
+    "validation": "Verwende höchstens 40 einzelne Namen mit jeweils bis zu 200 Zeichen.",
+    "unspecified": "Nicht gesetzt / von Kultur übernehmen",
+    "emptySelection": "Leere eigene Auswahl"
   }
 }

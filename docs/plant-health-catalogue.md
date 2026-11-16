@@ -142,7 +142,10 @@ The form displays inherited selections without freezing a copy when saved.
 Removing every chip creates an empty override; **Use culture entries** restores
 live inheritance. Neither an empty list nor missing information means
 resistance or safety. An association is not an observed infestation. Selections
-participate in private entity/project history and restore. A snapshot predating
+participate in private entity/project history and restore. Import previews and
+history show snapshot names, private/catalogue origins and stable catalogue
+references; unspecified inheritance and an explicit empty override have distinct
+labels. A snapshot predating
 the field restores it to `null` while restoring its original prose unchanged.
 Migration `0142_crop_plant_health_selections` adds only a nullable column, with
 no extraction or data seeding. Reversing it preserves existing prose and drops

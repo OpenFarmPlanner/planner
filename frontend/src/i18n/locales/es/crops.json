@@ -2084,6 +2084,8 @@
     "notes": "Notas sobre plagas y enfermedades",
     "spreadsheetHeader": "Entradas de plagas y enfermedades (JSON)",
     "templateEntry": "Entrada de ejemplo sintética",
-    "validation": "Usa un máximo de 40 nombres individuales de hasta 200 caracteres cada uno."
+    "validation": "Usa un máximo de 40 nombres individuales de hasta 200 caracteres cada uno.",
+    "unspecified": "Sin especificar / heredar del cultivo",
+    "emptySelection": "Selección propia explícitamente vacía"
   }
 }

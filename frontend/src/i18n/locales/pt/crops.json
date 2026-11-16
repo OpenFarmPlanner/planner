@@ -2084,6 +2084,8 @@
     "notes": "Notas sobre pragas e doenças",
     "spreadsheetHeader": "Entradas de pragas e doenças (JSON)",
     "templateEntry": "Entrada de exemplo sintética",
-    "validation": "Utilize no máximo 40 nomes individuais com até 200 caracteres cada."
+    "validation": "Utilize no máximo 40 nomes individuais com até 200 caracteres cada.",
+    "unspecified": "Não especificado / herdar da cultura",
+    "emptySelection": "Seleção própria explicitamente vazia"
   }
 }

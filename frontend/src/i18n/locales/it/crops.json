@@ -2084,6 +2084,8 @@
     "notes": "Note su parassiti e malattie",
     "spreadsheetHeader": "Voci di parassiti e malattie (JSON)",
     "templateEntry": "Voce di esempio sintetica",
-    "validation": "Usa al massimo 40 nomi singoli di 200 caratteri ciascuno."
+    "validation": "Usa al massimo 40 nomi singoli di 200 caratteri ciascuno.",
+    "unspecified": "Non specificato / eredita dalla coltura",
+    "emptySelection": "Selezione propria esplicitamente vuota"
   }
 }
