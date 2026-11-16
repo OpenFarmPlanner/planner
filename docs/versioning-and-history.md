@@ -181,6 +181,14 @@ instead of hard-deleting an archived row. Proof of later creation reads the live
 database timestamp at full precision, including creation within the target's
 millisecond.
 
+Lazy season-pattern defaults and implicit season creation retain internal
+creation evidence without advertising incomplete versions from a read. First-run
+season setup records its new season and finishes with a complete checkpoint,
+including assigned plans and generated tasks. Layout PUTs journal changed bed
+and field after-images and one completed version boundary, without a full-project
+snapshot on every move. Their existing partial-write-on-validation-error contract
+is preserved and the committed partial result gets a truthful version boundary.
+
 ## Local acceptance fixtures
 
 `seed_import_history_acceptance` uses the existing development-only database

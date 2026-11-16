@@ -22,7 +22,11 @@ from farm.history import (
     record_entity_revision,
     start_batch_operation,
 )
-from farm.history.project_restore import ensure_project_checkpoint
+from farm.history.project_restore import (
+    capture_project_state,
+    ensure_project_checkpoint,
+    record_project_checkpoint,
+)
 from farm.history.restore import _record_cascade_deletions, restore_season_planting_plans
 from farm.models import BatchOperation, EntityRevision, PlantingPlan, Season, SeasonPattern, Task
 from farm.project_context import get_active_project_or_400
@@ -476,6 +480,7 @@ class SeasonSetupApplyView(APIView):
         pattern_serializer.is_valid(raise_exception=True)
         ensure_project_checkpoint(active_project, user_name=_current_actor_label(request))
         pattern_serializer.instance._history_user_name = _current_actor_label(request)
+        pattern_serializer.instance._history_internal = True
         pattern = pattern_serializer.save()
 
         start_date, end_date = compute_setup_target_period(active_project, pattern)
@@ -484,6 +489,7 @@ class SeasonSetupApplyView(APIView):
             start_date,
             end_date,
             created_by=request.user if request.user.is_authenticated else None,
+            user_name=_current_actor_label(request),
         )
         unassigned = PlantingPlan.objects.filter(project=active_project, season__isnull=True)
         assigned_ids = list(unassigned.values_list('pk', flat=True))
@@ -491,7 +497,8 @@ class SeasonSetupApplyView(APIView):
         for plan in PlantingPlan.objects.filter(pk__in=assigned_ids).select_related('crop', 'bed'):
             record_entity_revision(
                 project=active_project, entity_type='planting_plan', object_id=plan.pk,
-                action=EntityRevision.ACTION_UPDATED, snapshot=_serialize_instance(plan),
+                action=EntityRevision.ACTION_UPDATED,
+                snapshot={**_serialize_instance(plan), '_project_version_internal': True},
                 display_name=_entity_display_name(plan), changed_fields=['season_id'],
                 user_name=_current_actor_label(request),
             )
@@ -499,6 +506,10 @@ class SeasonSetupApplyView(APIView):
         generate_tasks_for_plans(
             PlantingPlan.objects.filter(project=active_project, season=season)
             .select_related('crop', 'season'),
+        )
+        record_project_checkpoint(
+            active_project, capture_project_state(active_project),
+            user_name=_current_actor_label(request), action=EntityRevision.ACTION_UPDATED,
         )
         return Response({
             'season': SeasonSerializer(Season.objects.annotate(planting_plan_count=Count('planting_plans')).get(pk=season.pk)).data,

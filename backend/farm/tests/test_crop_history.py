@@ -1081,6 +1081,94 @@ class ImportOperationHistoryTests(TestCase):
         self.assertEqual(response.status_code, 200, response.content)
         self.assertEqual(SeasonPattern.objects.get(project=self.project).start_month, 2)
 
+    def test_lazy_season_pattern_reads_do_not_advertise_project_versions(self) -> None:
+        from farm.history.project_restore import CHECKPOINT_KEY
+
+        before = self.client.get("/openfarmplanner/api/history/project/").json()
+        for path in ("season-pattern/", "season-pattern/preview/", "season-setup/status/"):
+            response = self.client.get(f"/openfarmplanner/api/{path}")
+            self.assertEqual(response.status_code, 200, response.content)
+            self.assertEqual(
+                self.client.get("/openfarmplanner/api/history/project/").json(), before,
+            )
+        self.assertFalse(EntityRevision.objects.filter(
+            project=self.project, snapshot__has_key=CHECKPOINT_KEY,
+        ).exists())
+        internal = EntityRevision.objects.get(project=self.project, entity_type="season_pattern")
+        self.assertTrue(internal.snapshot["_project_version_internal"])
+        rejected = self.client.post(
+            "/openfarmplanner/api/history/project/restore/",
+            {"history_id": internal.pk}, content_type="application/json",
+        )
+        self.assertEqual(rejected.status_code, 409)
+
+    def test_season_setup_records_a_complete_final_version(self) -> None:
+        from farm.history.project_restore import CHECKPOINT_KEY
+        from farm.models import Bed, Field, PlantingPlan, Season, Task
+
+        location = Location.objects.create(project=self.project, name="Setup location")
+        field = Field.objects.create(project=self.project, location=location, name="Setup field")
+        bed = Bed.objects.create(project=self.project, field=field, name="Setup bed", area_sqm=1)
+        plan = PlantingPlan.objects.create(
+            project=self.project, crop=self.crop, bed=bed, planting_date=date(2026, 4, 1),
+        )
+        response = self.client.post(
+            "/openfarmplanner/api/season-setup/apply/", {"start_day": 1, "start_month": 2},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        season_id = response.json()["season"]["id"]
+        target = EntityRevision.objects.filter(project=self.project).latest("id")
+        self.assertIn(CHECKPOINT_KEY, target.snapshot)
+        self.assertTrue(EntityRevision.objects.filter(
+            project=self.project, entity_type="season", object_id=season_id, action="created",
+        ).exists())
+        task_ids = set(Task.objects.filter(project=self.project).values_list("pk", flat=True))
+        self.assertTrue(task_ids)
+        self.crop.notes = "Later setup edit"
+        self.crop.save()
+        restored = self.client.post(
+            "/openfarmplanner/api/history/project/restore/",
+            {"history_id": target.pk}, content_type="application/json",
+        )
+        self.assertEqual(restored.status_code, 200, restored.content)
+        plan.refresh_from_db()
+        self.assertEqual(plan.season_id, season_id)
+        self.assertTrue(Season.objects.filter(pk=season_id).exists())
+        self.assertEqual(set(Task.objects.filter(project=self.project).values_list(
+            "pk", flat=True,
+        )), task_ids)
+
+    def test_layout_creation_and_updates_are_reconstructible_without_partial_versions(self) -> None:
+        from farm.models import Bed, BedLayout, Field, FieldLayout
+
+        location = Location.objects.create(project=self.project, name="Layout history location")
+        field = Field.objects.create(project=self.project, location=location, name="Layout field")
+        bed = Bed.objects.create(project=self.project, field=field, name="Layout bed", area_sqm=1)
+        targets = []
+        for coordinate in (10, 20, 30):
+            response = self.client.put(
+                f"/openfarmplanner/api/locations/{location.pk}/layouts/",
+                {"bed_layouts": [{"bed": bed.pk, "x": coordinate, "y": 2}],
+                 "field_layouts": [{"field": field.pk, "x": coordinate, "y": 3}]},
+                content_type="application/json",
+            )
+            self.assertEqual(response.status_code, 200, response.content)
+            target = EntityRevision.objects.filter(project=self.project).latest("id")
+            self.assertEqual(target.entity_type, "project")
+            targets.append(target.pk)
+        for target_id, expected in ((targets[1], 20), (targets[0], 10)):
+            restored = self.client.post(
+                "/openfarmplanner/api/history/project/restore/",
+                {"history_id": target_id}, content_type="application/json",
+            )
+            self.assertEqual(restored.status_code, 200, restored.content)
+            self.assertEqual(BedLayout.objects.get(bed=bed).x, expected)
+            self.assertEqual(FieldLayout.objects.get(field=field).x, expected)
+        visible = self.client.get("/openfarmplanner/api/history/project/").json()
+        self.assertFalse(any(entry.get("object_type") in {"bed_layout", "field_layout"}
+                             for entry in visible))
+
     def test_crop_timing_side_effects_are_part_of_the_target_project_state(self) -> None:
         from farm.history.project_restore import capture_project_state, record_project_checkpoint
         from farm.models import Bed, Field, PlantingPlan

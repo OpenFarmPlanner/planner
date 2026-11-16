@@ -39,6 +39,9 @@ class SeasonPattern(TimestampedModel):
         snapshot = json.loads(json.dumps(current, cls=DjangoJSONEncoder))
         before = json.loads(json.dumps(previous, cls=DjangoJSONEncoder)) if previous else None
         changed = _diff_changed_fields(before, snapshot) if before else ["created"]
+        internal = self.__dict__.pop("_history_internal", False)
+        if previous is None or internal:
+            snapshot["_project_version_internal"] = True
         if changed:
             record_entity_revision(
                 project=self.project,
