@@ -1,4 +1,4 @@
-import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Link, TextField, Typography, useMediaQuery } from '@mui/material';
+import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Link, MenuItem, TextField, Typography, useMediaQuery } from '@mui/material';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useOutletContext } from 'react-router';
 import FieldsBedsHierarchy from './FieldsBedsHierarchy';
@@ -26,6 +26,9 @@ import { hasPersistedEntityId } from '../components/hierarchy/utils/hierarchyUti
 import { keywordList } from '../commands/keywordList';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import LoadRetryButton from '../components/LoadRetryButton';
+import { useTopbarWorkspaceControls } from '../hooks/useTopbarWorkspaceControls';
+import type { GraphicalCameraState } from './graphicalFieldsGeometry';
+import { TruncatedTextWithTooltip } from '../components/TruncatedTextWithTooltip';
 
 const VIEW_MODE_STORAGE_KEY = 'fieldsBedsViewMode';
 const ADD_PARCEL_ACTION = 'add-parcel';
@@ -45,6 +48,11 @@ const CONTENT_ALIGNED_EMPTY_STATE_SX: SxProps<Theme> = {
 type ViewMode = 'table' | 'graphical';
 
 export default function FieldsBedsPage() {
+  const { activeProjectId } = useProjectRequirement();
+  return <FieldsBedsWorkspace key={activeProjectId ?? 'no-project'} projectId={activeProjectId} />;
+}
+
+function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   const { t } = useTranslation(['fields', 'hierarchy', 'common']);
   const navigate = useNavigate();
   const location = useLocation();
@@ -91,6 +99,27 @@ export default function FieldsBedsPage() {
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
   const setTopbarContextActions = outletContext?.setTopbarContextActions;
   const setTopbarTitleActions = outletContext?.setTopbarTitleActions;
+  const [locationSelection, setLocationSelection] = useState(() => {
+    let id: number | null = null;
+    try { const stored = Number(sessionStorage.getItem(`graphicalLocation.${projectId}`)); id = stored > 0 ? stored : null; }
+    catch { /* Storage may be disabled. */ }
+    return { locations, id };
+  });
+  const [cameraState, setCameraState] = useState<GraphicalCameraState>({ viewports: {}, rotations: {} });
+  const [isEditingGraphic, setIsEditingGraphic] = useState(false);
+  const graphicalLocations = useMemo(() => locations.filter(item => typeof item.id === 'number' && item.id > 0), [locations]);
+  const selectedLocation = graphicalLocations.find(item => item.id === locationSelection.id) ?? graphicalLocations[0];
+  // Retain the actual selected ID when new/renamed/removed locations change order.
+  if (locationSelection.locations !== locations) {
+    setLocationSelection({ locations, id: selectedLocation?.id ?? null });
+    if (locationSelection.id !== selectedLocation?.id) setIsEditingGraphic(false);
+  }
+  const selectLocation = useCallback((id: number) => {
+    setLocationSelection(current => ({ ...current, id }));
+    setIsEditingGraphic(false);
+    try { sessionStorage.setItem(`graphicalLocation.${projectId}`, String(id)); } catch { /* Storage may be disabled. */ }
+  }, [projectId]);
+
 
   useCommandContextTag('areas');
 
@@ -105,6 +134,7 @@ export default function FieldsBedsPage() {
       contextTags: ['areas'],
       isEnabled: () => viewMode !== 'table',
       action: () => {
+        setIsEditingGraphic(false);
         setViewMode('table');
       },
     },
@@ -252,7 +282,10 @@ export default function FieldsBedsPage() {
     ? 0
     : pendingHierarchyDeletionCount;
   const shouldShowAreasEmptyState = hasAreaDataLoaded && !isAreaDataLoading && !areaDataError && !hasLocations;
-  const shouldShowMissingFieldsState = hasLocations && !hasFields && !hasUnsavedFields && createFieldRequest <= 0;
+  const hasSelectedGraphicalFields = fields.some(field => field.location === selectedLocation?.id && hasPersistedEntityId(field.id));
+  const shouldShowMissingFieldsState = hasLocations
+    && (effectiveViewMode === 'graphical' ? !hasSelectedGraphicalFields : !hasFields)
+    && !hasUnsavedFields && createFieldRequest <= 0;
   const shouldShowMissingBedsHint = hasFields && !hasBeds && !hasUnsavedBeds;
   const shouldRenderHierarchy = hasHierarchyRows || createFieldRequest > 0 || effectivePendingHierarchyDeletionCount > 0;
   const createBedAction = getProjectSetupAction('beds');
@@ -302,18 +335,18 @@ export default function FieldsBedsPage() {
     {
       id: 'fields-view-mode-list',
       label: t('fields:representation.table'),
-      onClick: () => setViewMode('table'),
-      active: viewMode === 'table',
+      onClick: () => { setIsEditingGraphic(false); setViewMode('table'); },
+      active: effectiveViewMode === 'table',
       groupId: 'fields-view-mode',
     },
     {
       id: 'fields-view-mode-graphical',
       label: t('fields:representation.graphical'),
       onClick: () => setViewMode('graphical'),
-      active: viewMode === 'graphical',
+      active: effectiveViewMode === 'graphical',
       groupId: 'fields-view-mode',
     },
-  ]), [t, viewMode]);
+  ]), [effectiveViewMode, t]);
 
   const contextActions = useMemo<TopbarContextAction[]>(() => {
     const globalActions: TopbarContextAction[] = shouldShowProjectRequiredState
@@ -359,6 +392,33 @@ export default function FieldsBedsPage() {
 
   useTopbarContextActions(setTopbarContextActions, contextActions);
   useTopbarTitleActions(setTopbarTitleActions, viewModeActions);
+  const workspaceControls = useMemo(() => !shouldShowProjectRequiredState ? (
+    <>{effectiveViewMode === 'graphical' && selectedLocation ? <>
+      {graphicalLocations.length > 1 ? (
+        <TextField select label={t('fields:graphical.locationSelector')} value={selectedLocation.id}
+          onChange={event => selectLocation(Number(event.target.value))}
+          slotProps={{ select: { renderValue: () => <TruncatedTextWithTooltip text={selectedLocation.name} /> } }}
+          sx={{ width: { xs: 220, sm: 180, md: 220 }, maxWidth: '100%', flexShrink: 0 }}>
+          {graphicalLocations.map(item => (
+            <MenuItem key={item.id} value={item.id} sx={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{item.name}</MenuItem>
+          ))}
+        </TextField>
+      ) : (
+        <Box sx={{ minWidth: 0, maxWidth: 260, typography: 'body2', fontWeight: 600 }}>
+          <TruncatedTextWithTooltip text={t('fields:graphical.locationTitle', { name: selectedLocation.name })} focusable />
+        </Box>
+      )}
+      <DisabledActionTooltip title={!hasSelectedGraphicalFields ? t('fields:graphical.noFields') : ''}>
+      <Button disabled={!hasSelectedGraphicalFields} variant={isEditingGraphic ? 'contained' : 'outlined'} color="success"
+        aria-pressed={isEditingGraphic} onClick={() => setIsEditingGraphic(value => !value)}
+        sx={{ flexShrink: 0, maxWidth: '100%', whiteSpace: 'normal', minHeight: { xs: 44, sm: 40 } }}>
+        {t('fields:graphical.locationEditModeAction')}
+      </Button>
+      </DisabledActionTooltip>
+    </> : null}</>
+  ) : null, [effectiveViewMode, isEditingGraphic, hasSelectedGraphicalFields, graphicalLocations, selectLocation, selectedLocation, shouldShowProjectRequiredState, t]);
+  useTopbarWorkspaceControls(outletContext?.setTopbarWorkspaceControls, workspaceControls);
+
 
   const createActions = useMemo(() => {
     if (shouldShowProjectRequiredState) {
@@ -433,7 +493,7 @@ export default function FieldsBedsPage() {
             <CircularProgress size={24} />
           </Box>
         ) : null}
-        {!shouldShowProjectRequiredState && !isAreaDataLoading && shouldShowMissingBedsHint ? (
+        {!shouldShowProjectRequiredState && !isAreaDataLoading && shouldShowMissingBedsHint && effectiveViewMode !== 'graphical' ? (
           <EmptyStateCard
             title={t('hierarchy:messages.noBedsHintTitle')}
             description={(
@@ -452,24 +512,30 @@ export default function FieldsBedsPage() {
         {!shouldShowProjectRequiredState && !isAreaDataLoading && (shouldShowAreasEmptyState || shouldShowMissingFieldsState) ? (
           <EmptyStateCard
             title={shouldShowMissingFieldsState ? t('hierarchy:emptyAreas.missingFieldTitle') : t('hierarchy:emptyAreas.missingLocationTitle')}
-            description={emptyAreasDescription}
-            actions={emptyAreaActions}
+            description={effectiveViewMode === 'graphical' && hasLocations ? t('fields:graphical.noFields') : emptyAreasDescription}
+            actions={effectiveViewMode === 'graphical' && hasLocations
+              ? [{ label: t('fields:representation.table'), onClick: () => setViewMode('table') }] : emptyAreaActions}
             supplement={emptyAreasSupplement}
             containerSx={CONTENT_ALIGNED_EMPTY_STATE_SX}
           />
         ) : null}
       </PageContainer>
 
-      <PageContainer variant={effectiveViewMode === 'graphical' ? 'full' : 'standard'}>
-        {!shouldShowProjectRequiredState && !isAreaDataLoading && shouldRenderHierarchy && effectiveViewMode === 'graphical' ? (
+      <Box>
+        {!shouldShowProjectRequiredState && !isAreaDataLoading && shouldRenderHierarchy && !shouldShowMissingFieldsState && effectiveViewMode === 'graphical' ? (
           <GraphicalFields
+            selectedLocationId={selectedLocation?.id}
+            cameraState={cameraState}
+            onCameraStateChange={setCameraState}
+            interactionMode={isEditingGraphic ? 'edit' : 'view'}
+            onInteractionModeChange={mode => setIsEditingGraphic(mode === 'edit')}
             showTitle={false}
             showModeToggle={false}
             hierarchyData={hierarchyData}
           />
         ) : null}
         {!shouldShowProjectRequiredState && !isAreaDataLoading && shouldRenderHierarchy && effectiveViewMode !== 'graphical' ? (
-          isMobileHierarchyLayout ? (
+          <PageContainer variant="standard">{isMobileHierarchyLayout ? (
             <FieldsBedsHierarchyMobile
               showTitle={false}
               createFieldRequest={createFieldRequest}
@@ -486,9 +552,9 @@ export default function FieldsBedsPage() {
               onPendingDeletionCountChange={setPendingHierarchyDeletionCount}
               suppressContextMenuHint={shouldShowMissingBedsHint}
             />
-          )
+          )}</PageContainer>
         ) : null}
-      </PageContainer>
+      </Box>
       </Box>
       <Dialog open={addLocationDialogOpen} onClose={() => setAddLocationDialogOpen(false)} fullWidth maxWidth="xs">
         <Box component="form" onSubmit={handleAdditionalLocationSubmit}>

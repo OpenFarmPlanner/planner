@@ -29,6 +29,9 @@
     "graphical": "Gráfico"
   },
   "graphical": {
+    "layoutLoadError": "No se ha podido cargar el gráfico. Vuelve a intentarlo.",
+    "noFields": "Esta ubicación aún no tiene parcelas. Cambia a la lista para añadirlas.",
+    "locationSelector": "Ubicación",
     "title": "Vista gráfica de parcelas",
     "viewMode": "Modo",
     "modeAriaLabel": "Seleccionar modo",

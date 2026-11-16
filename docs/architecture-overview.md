@@ -188,6 +188,42 @@ docs/                  # This documentation
   keyboard-navigation logic; treat the two as parallel, not shared,
   implementations when changing either one.
 
+### Growing-area graphical workspace
+
+`FieldsBedsPage` keys its workspace by the active project, so hierarchy data,
+selection, edit mode and camera state cannot carry over to another project.
+The selected location is remembered in `sessionStorage` under
+`graphicalLocation.<projectId>`; missing/removed locations fall back to the first
+available persisted location and leave edit mode. The page owns per-location
+viewport and rotation maps, retaining them when the graphical component
+unmounts for List mode. Camera changes never write geometry to the backend. The backend normally ensures
+a default location; frontend empty-location rendering is tested with an
+empty-response fixture without changing that backend contract.
+`GraphicalFields` renders only the selected location and loads its layout;
+existing drag/layout APIs and geometry/orientation rules remain in place. The
+canvas waits for its saved layout before displaying a remembered camera; failed
+layout reads show a retry action rather than editable fallback geometry.
+
+Pages can register labelled controls through `setTopbarWorkspaceControls` and
+`useTopbarWorkspaceControls`. RootLayout renders them beside its existing title
+actions when measured content fits; `useResponsiveTopbarControls` moves them
+and the primary action into a shared wrapping row otherwise. Route resets
+clear the slot before the next page's registration. Growing areas uses this
+wrapping in both representations so its view switch stays reachable; the location/edit controls and compact canvas gutter remain
+exclusive to Graphic mode. The same mechanism is available for the remaining
+shared-topbar work in #930, including Cultures; other pages keep their action layouts.
+
+`useGraphicalStageSize` measures the selected canvas width and its actual top
+edge below the rendered header, leaving the main content's bottom gutter.
+ResizeObserver follows the header, container and canvas, so wrapping controls,
+editing banners and viewport changes update the available height. There is no
+45%-of-window height or desktop maximum. Fullscreen measures its own canvas.
+Automatic fit follows the complete field bounds until a user explicitly changes
+the camera; stored manual cameras survive ordinary UI rerenders and resizing.
+Fit to contents remains the explicit way to refit a manually adjusted camera.
+See [the demo walkthrough](demo-project.md#graphical-workspace-walkthrough) and
+`e2e/fields-beds-graphical-layout.spec.ts` for verification.
+
 ## Project, user, and permission model
 
 - A `Project` is the tenant boundary; a `User` gets access only via a

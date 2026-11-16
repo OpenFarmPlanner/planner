@@ -1,71 +1,62 @@
 import { act, renderHook } from '@testing-library/react';
 import { useGraphicalStageSize } from '../pages/useGraphicalStageSize';
-import { MAX_STAGE_HEIGHT, MIN_STAGE_HEIGHT } from '../pages/graphicalFieldsGeometry';
 
 function setViewport(width: number, height: number): void {
-  Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: width });
-  Object.defineProperty(window, 'innerHeight', { writable: true, configurable: true, value: height });
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: height });
 }
-
-function setFullscreenElement(element: Element | null): void {
-  Object.defineProperty(document, 'fullscreenElement', {
-    writable: true,
-    configurable: true,
-    value: element,
-  });
+function fullscreen(element: Element | null): void {
+  Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: element });
+  document.dispatchEvent(new Event('fullscreenchange'));
 }
-
-function canvasNode(width: number, height: number): HTMLDivElement {
+function canvasNode(width: number, height: number, top = 0): HTMLDivElement {
   const node = document.createElement('div');
-  Object.defineProperty(node, 'clientWidth', { configurable: true, value: width });
-  Object.defineProperty(node, 'clientHeight', { configurable: true, value: height });
+  Object.defineProperties(node, {
+    clientWidth: { configurable: true, value: width },
+    clientHeight: { configurable: true, value: height },
+    offsetHeight: { configurable: true, value: height },
+  });
+  node.getBoundingClientRect = () => new DOMRect(0, top, width, height);
   return node;
 }
 
 describe('useGraphicalStageSize', () => {
   const originalWidth = window.innerWidth;
   const originalHeight = window.innerHeight;
+  beforeEach(() => setViewport(1200, 900));
+  afterEach(() => { act(() => { setViewport(originalWidth, originalHeight); fullscreen(null); }); });
 
-  afterEach(() => {
-    setViewport(originalWidth, originalHeight);
-    setFullscreenElement(null);
-  });
-
-  it('measures the viewport on mount when no container is attached yet', () => {
-    setViewport(1200, 900);
+  it('starts with viewport dimensions until a canvas is attached', () => {
     const { result } = renderHook(() => useGraphicalStageSize());
-
-    expect(result.current.stageWidth).toBe(1192);
-    expect(result.current.stageHeight).toBe(405);
-    expect(result.current.fullscreenLocationId).toBeNull();
+    expect(result.current.stageWidth).toBe(1184);
+    expect(result.current.stageHeight).toBe(892);
   });
 
-  it('prefers the container width over the viewport', () => {
-    setViewport(1200, 900);
+  it('uses the inner canvas width and the actual space below its top edge', () => {
+    const { result } = renderHook(() => useGraphicalStageSize(7));
+    result.current.containerRef.current = canvasNode(700, 500);
+    result.current.locationCanvasRefs.current[7] = canvasNode(640, 480, 120);
+    act(() => window.dispatchEvent(new Event('resize')));
+    expect(result.current.stageWidth).toBe(640);
+    expect(result.current.stageHeight).toBe(772);
+  });
+
+  it('fits narrow and short windows without imposing the old 320px minimum', () => {
+    setViewport(200, 375);
+    const { result } = renderHook(() => useGraphicalStageSize(7));
+    result.current.locationCanvasRefs.current[7] = canvasNode(180, 200, 160);
+    act(() => window.dispatchEvent(new Event('resize')));
+    expect(result.current.stageWidth).toBe(180);
+    expect(result.current.stageHeight).toBe(207);
+  });
+
+  it('uses tall windows without the old maximum-height cap', () => {
+    setViewport(1200, 2000);
     const { result } = renderHook(() => useGraphicalStageSize());
-
-    result.current.containerRef.current = canvasNode(640, 480);
-    act(() => { window.dispatchEvent(new Event('resize')); });
-
-    expect(result.current.stageWidth).toBe(632);
+    expect(result.current.stageHeight).toBe(1992);
   });
 
-  it('never draws a stage narrower than the minimum', () => {
-    setViewport(200, 900);
-    const { result } = renderHook(() => useGraphicalStageSize());
-
-    expect(result.current.stageWidth).toBe(320);
-  });
-
-  it('measures the inner location canvas rather than the wider page container', () => {
-    const { result } = renderHook(() => useGraphicalStageSize());
-    result.current.containerRef.current = canvasNode(640, 480);
-    result.current.locationCanvasRefs.current[7] = canvasNode(540, 400);
-    act(() => { window.dispatchEvent(new Event('resize')); });
-    expect(result.current.stageWidth).toBe(532);
-  });
-
-  it('remeasures container reflow without a window resize and disconnects the observer', () => {
+  it('remeasures when the shared header wraps without a window resize', () => {
     let notify: () => void = () => {};
     const observe = vi.fn();
     const disconnect = vi.fn();
@@ -74,94 +65,64 @@ describe('useGraphicalStageSize', () => {
       observe = observe;
       disconnect = disconnect;
     });
+    const header = document.createElement('header');
+    document.body.append(header);
     try {
-      const container = canvasNode(640, 480);
-      const canvas = canvasNode(540, 400);
+      const canvas = canvasNode(640, 480);
+      let top = 100;
+      canvas.getBoundingClientRect = () => new DOMRect(0, top, 640, 480);
       const { result, unmount } = renderHook(() => {
-        const state = useGraphicalStageSize();
-        state.containerRef.current = container;
-        state.locationCanvasRefs.current[7] = canvas;
-        return state;
+        const size = useGraphicalStageSize(7);
+        size.containerRef.current = canvas;
+        size.locationCanvasRefs.current[7] = canvas;
+        return size;
       });
-      expect(observe).toHaveBeenCalledWith(container);
+      expect(observe).toHaveBeenCalledWith(header);
       expect(observe).toHaveBeenCalledWith(canvas);
-      Object.defineProperty(canvas, 'clientWidth', { value: 360 });
+      expect(result.current.stageHeight).toBe(792);
+      top = 180;
       act(() => notify());
-      expect(result.current.stageWidth).toBe(352);
+      expect(result.current.stageHeight).toBe(712);
       unmount();
       expect(disconnect).toHaveBeenCalledOnce();
-    } finally {
-      vi.unstubAllGlobals();
-    }
+    } finally { header.remove(); vi.unstubAllGlobals(); }
   });
 
-  it('clamps the height between the configured bounds', () => {
-    setViewport(1200, 400);
-    const { result: shortViewport } = renderHook(() => useGraphicalStageSize());
-    expect(shortViewport.current.stageHeight).toBe(MIN_STAGE_HEIGHT);
-
-    setViewport(1200, 4000);
-    const { result: tallViewport } = renderHook(() => useGraphicalStageSize());
-    expect(tallViewport.current.stageHeight).toBe(MAX_STAGE_HEIGHT);
+  it('measures the selected canvas rather than a previously selected node', () => {
+    const { result, rerender } = renderHook(({ id }) => {
+      const size = useGraphicalStageSize(id);
+      size.locationCanvasRefs.current[1] = canvasNode(640, 480, 100);
+      size.locationCanvasRefs.current[2] = canvasNode(400, 300, 200);
+      return size;
+    }, { initialProps: { id: 1 } });
+    expect(result.current.stageWidth).toBe(640);
+    rerender({ id: 2 });
+    expect(result.current.stageWidth).toBe(400);
+    expect(result.current.stageHeight).toBe(692);
   });
 
-  it('tracks which location went fullscreen, and lets it exceed the height cap', () => {
-    setViewport(1200, 900);
-    const { result } = renderHook(() => useGraphicalStageSize());
-    const node = canvasNode(1920, 1080);
-    result.current.locationCanvasRefs.current[7] = node;
-
-    act(() => {
-      setFullscreenElement(node);
-      document.dispatchEvent(new Event('fullscreenchange'));
-    });
-
+  it('fills fullscreen and returns to the available page space on Escape', () => {
+    const { result } = renderHook(() => useGraphicalStageSize(7));
+    const canvas = canvasNode(1920, 1080, 100);
+    result.current.locationCanvasRefs.current[7] = canvas;
+    act(() => fullscreen(canvas));
     expect(result.current.fullscreenLocationId).toBe(7);
-    expect(result.current.stageWidth).toBe(1912);
-    // Fullscreen fills the screen instead of the 45% viewport share, so
-    // MAX_STAGE_HEIGHT deliberately does not apply here.
-    expect(result.current.stageHeight).toBe(1072);
-  });
-
-  it('returns to viewport sizing when fullscreen is left from the browser chrome', () => {
-    setViewport(1200, 900);
-    const { result } = renderHook(() => useGraphicalStageSize());
-    const node = canvasNode(1920, 1080);
-    result.current.locationCanvasRefs.current[7] = node;
-
-    act(() => {
-      setFullscreenElement(node);
-      document.dispatchEvent(new Event('fullscreenchange'));
-    });
-    act(() => {
-      setFullscreenElement(null);
-      document.dispatchEvent(new Event('fullscreenchange'));
-    });
-
+    expect(result.current.stageWidth).toBe(1920);
+    expect(result.current.stageHeight).toBe(1080);
+    act(() => fullscreen(null));
     expect(result.current.fullscreenLocationId).toBeNull();
-    expect(result.current.stageHeight).toBe(405);
+    expect(result.current.stageHeight).toBe(792);
   });
 
-  it('ignores a fullscreen element that is not one of the location canvases', () => {
-    const { result } = renderHook(() => useGraphicalStageSize());
-
-    act(() => {
-      setFullscreenElement(document.createElement('section'));
-      document.dispatchEvent(new Event('fullscreenchange'));
-    });
-
+  it('ignores unrelated fullscreen elements and removes its event handlers', () => {
+    const removeWindow = vi.spyOn(window, 'removeEventListener');
+    const removeDocument = vi.spyOn(document, 'removeEventListener');
+    const { result, unmount } = renderHook(() => useGraphicalStageSize());
+    act(() => fullscreen(document.createElement('section')));
     expect(result.current.fullscreenLocationId).toBeNull();
-  });
-
-  it('stops listening once unmounted', () => {
-    const removeWindowListener = vi.spyOn(window, 'removeEventListener');
-    const removeDocumentListener = vi.spyOn(document, 'removeEventListener');
-
-    renderHook(() => useGraphicalStageSize()).unmount();
-
-    expect(removeWindowListener).toHaveBeenCalledWith('resize', expect.any(Function));
-    expect(removeDocumentListener).toHaveBeenCalledWith('fullscreenchange', expect.any(Function));
-    removeWindowListener.mockRestore();
-    removeDocumentListener.mockRestore();
+    unmount();
+    expect(removeWindow).toHaveBeenCalledWith('resize', expect.any(Function));
+    expect(removeDocument).toHaveBeenCalledWith('fullscreenchange', expect.any(Function));
+    removeWindow.mockRestore(); removeDocument.mockRestore();
   });
 });

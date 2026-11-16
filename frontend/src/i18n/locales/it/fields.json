@@ -29,6 +29,9 @@
     "graphical": "Grafica"
   },
   "graphical": {
+    "layoutLoadError": "Impossibile caricare la grafica. Riprova.",
+    "noFields": "Questo sito non ha ancora appezzamenti. Passa all’elenco per aggiungerli.",
+    "locationSelector": "Sito",
     "title": "Vista grafica degli appezzamenti",
     "viewMode": "Modalità",
     "modeAriaLabel": "Seleziona modalità",

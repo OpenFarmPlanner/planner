@@ -78,6 +78,7 @@ import { OPEN_CREATE_PROJECT_EVENT } from '../projects/projectCreationFlow';
 import { useGlobalOverlayKeyboardScroll } from '../hooks/useDialogKeyboardScroll';
 import { useFocusRegion } from '../focus/useFocusManager';
 import { useTopbarActionsRouteReset } from '../hooks/useTopbarActionsRouteReset';
+import { useResponsiveTopbarControls } from '../hooks/useResponsiveTopbarControls';
 import { appRouteUrl } from '../utils/appRouteUrl';
 import { rememberProjectRoute } from '../navigation/lastProjectRoute';
 import { KEYBOARD_NAV_ROUTES, MAIN_NAV_ITEMS, getKeyboardNavigationRouteFromPathname, isProjectIndependentRoute, normalizeMainRoutePath, shouldDisableNavItem } from '../navigation/mainNavigation';
@@ -227,11 +228,14 @@ function RootLayout() {
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [topbarContextActions, setTopbarContextActions] = useState<TopbarContextAction[]>([]);
   const [topbarTitleActions, setTopbarTitleActions] = useState<TopbarContextAction[]>([]);
+  const [topbarWorkspaceControls, setTopbarWorkspaceControls] = useState<React.ReactNode>(null);
+  const { wrapped: workspaceControlsWrapped, toolbarRef: controlsToolbarRef, titleRef: controlsTitleRef,
+    controlsRef: workspaceControlsRef, pageActionsRef, globalControlsRef } = useResponsiveTopbarControls(Boolean(topbarWorkspaceControls), isCompactTopbar);
   const [cropActionsMenuAnchor, setCropActionsMenuAnchor] = useState<null | HTMLElement>(null);
   const [mobileActionsOverflowAnchor, setMobileActionsOverflowAnchor] = useState<null | HTMLElement>(null);
   const [topbarPrimaryActionMenuAnchor, setTopbarPrimaryActionMenuAnchor] = useState<null | HTMLElement>(null);
   const [publicLibraryModerationMenuAnchor, setPublicLibraryModerationMenuAnchor] = useState<null | HTMLElement>(null);
-  useTopbarActionsRouteReset(location.pathname, setTopbarContextActions, setTopbarTitleActions);
+  useTopbarActionsRouteReset(location.pathname, setTopbarContextActions, setTopbarTitleActions, setTopbarWorkspaceControls);
 
   const { hasActiveProject } = useProjectRequirement();
 
@@ -796,6 +800,145 @@ function RootLayout() {
     return <Navigate to="/app/project-selection" replace />;
   }
 
+  const primaryActionButton = (
+    topbarPrimaryAction ? (
+            topbarPrimaryAction.menuActions && topbarPrimaryAction.menuActions.length > 0 ? (
+              <ButtonGroup variant="contained" size="small" sx={{ flexShrink: 0 }}>
+                <Button
+                  startIcon={<AddIcon fontSize="small" />}
+                  onClick={topbarPrimaryAction.onClick}
+                  aria-label={topbarPrimaryAction.tooltip ?? topbarPrimaryAction.label}
+                  sx={{ textTransform: 'none', whiteSpace: 'nowrap', px: 1.25 }}
+                >
+                  {topbarPrimaryAction.label}
+                </Button>
+                <Button
+                  aria-label={t('common:actions.moreOptions')}
+                  aria-controls={topbarPrimaryActionMenuAnchor ? 'topbar-primary-action-menu' : undefined}
+                  aria-haspopup="true"
+                  aria-expanded={Boolean(topbarPrimaryActionMenuAnchor)}
+                  onClick={(event) => setTopbarPrimaryActionMenuAnchor(event.currentTarget)}
+                  sx={{ px: 0.5, minWidth: 28 }}
+                >
+                  <KeyboardArrowDownIcon
+                    fontSize="small"
+                    sx={{
+                      transition: 'transform 0.15s',
+                      transform: topbarPrimaryActionMenuAnchor ? 'rotate(180deg)' : 'none',
+                    }}
+                  />
+                </Button>
+              </ButtonGroup>
+            ) : (
+              <AppTooltip title={topbarPrimaryAction.tooltip ?? topbarPrimaryAction.label}>
+                <Button
+                  size="small"
+                  variant="contained"
+                  onClick={handleTopbarPrimaryAction}
+                  aria-label={topbarPrimaryAction.tooltip ?? topbarPrimaryAction.label}
+                  startIcon={!isPhone ? <AddIcon fontSize="small" /> : undefined}
+                  sx={{ textTransform: 'none', whiteSpace: 'nowrap', minWidth: isPhone ? 44 : 'auto', minHeight: isPhone ? 44 : 'auto', px: isPhone ? 0.75 : 1.25, flexShrink: 0 }}
+                >
+                  {isPhone ? <AddIcon fontSize="small" /> : topbarPrimaryAction.label}
+                </Button>
+              </AppTooltip>
+            )
+          ) : null
+  );
+  const titleActionButtons = (
+    topbarTitleActions.length > 0 ? (
+              isCompactTopbar ? (
+                <ToggleButtonGroup
+                  exclusive
+                  size="small"
+                  value={topbarTitleActions.find((action) => action.active)?.id ?? null}
+                  aria-label={isCalendarPage ? t('ganttChart:modeAriaLabel') : t('fields:representation.ariaLabel')}
+                  sx={{
+                    ml: 0.5,
+                    flexShrink: 0,
+                    '& .MuiToggleButton-root': {
+                      width: COMPACT_TOPBAR_TOGGLE_SIZE,
+                      height: COMPACT_TOPBAR_TOGGLE_SIZE,
+                      p: 0,
+                      borderColor: 'divider',
+                      color: 'text.primary',
+                      visibility: 'visible',
+                      '&.Mui-selected': {
+                        bgcolor: 'success.main',
+                        color: 'success.contrastText',
+                        borderColor: 'success.dark',
+                        borderWidth: 2,
+                        boxShadow: 1,
+                      },
+                      '&.Mui-selected:hover': {
+                        bgcolor: 'success.dark',
+                      },
+                    },
+                  }}
+                >
+                  {topbarTitleActions.map((action) => {
+                    const icon = getCompactTopbarActionIcon(action.id);
+                    if (!icon) {
+                      return null;
+                    }
+                    return (
+                      <AppTooltip key={action.id} title={action.tooltip ?? action.label} describeChild enterTouchDelay={0}>
+                        <ToggleButton
+                          value={action.id}
+                          aria-label={action.ariaLabel ?? action.label}
+                          onClick={action.onClick}
+                          disabled={action.disabled}
+                          sx={action.hidden ? {
+                            visibility: 'hidden',
+                            pointerEvents: 'none',
+                          } : undefined}
+                        >
+                          {icon}
+                        </ToggleButton>
+                      </AppTooltip>
+                    );
+                  })}
+                </ToggleButtonGroup>
+              ) : (
+              <ButtonGroup
+                size="small"
+                variant="outlined"
+                sx={{ ...segmentedButtonGroupSx, ml: 1, flexShrink: 0 }}
+              >
+                {topbarTitleActions.map((action) => {
+                  const button = (
+                    <Button
+                      key={action.id}
+                      size="small"
+                      variant={action.active ? 'contained' : 'outlined'}
+                      color={action.active ? 'success' : 'inherit'}
+                      onClick={action.onClick}
+                      aria-label={action.ariaLabel ?? action.label}
+                      aria-pressed={action.active}
+                      disabled={action.disabled}
+                      sx={getSegmentedActionButtonSx({ active: Boolean(action.active), hidden: Boolean(action.hidden) })}
+                    >
+                      {action.label}
+                    </Button>
+                  );
+                  // A shortened label keeps its full name reachable on hover.
+                  return action.ariaLabel && action.ariaLabel !== action.label ? (
+                    <AppTooltip key={action.id} title={action.ariaLabel}>{button}</AppTooltip>
+                  ) : button;
+                })}
+              </ButtonGroup>
+              )
+            ) : null
+  );
+  const workspaceTitleGroup = topbarWorkspaceControls ? (
+    <Box ref={workspaceControlsRef} role="toolbar" aria-label={currentPageTitle}
+      data-testid="topbar-workspace-controls"
+      sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', width: 'max-content', maxWidth: '100%', minWidth: 0 }}>
+      {titleActionButtons}{topbarWorkspaceControls}
+      {workspaceControlsWrapped && !isCompactTopbar ? primaryActionButton : null}
+    </Box>
+  ) : null;
+
   return (
     <Box sx={{ display: 'flex', width: '100%', maxWidth: '100%', overflowX: 'hidden', minHeight: '100vh', bgcolor: 'surface.appBackground', position: 'relative', isolation: 'isolate', 'body.sticky-app-bar &': { overflowX: 'clip' } }}>
       {isDesktopUp && !hidesProjectSidebar ? (
@@ -911,6 +1054,7 @@ function RootLayout() {
         sx={{ borderBottom: '1px solid', borderColor: 'surface.surfaceBorder', bgcolor: 'surface.topbarBackground', backdropFilter: 'saturate(120%) blur(2px)' }}
       >
         <Toolbar
+          ref={controlsToolbarRef}
           variant="dense"
           sx={{
             minHeight: 56,
@@ -942,11 +1086,13 @@ function RootLayout() {
             [`@media (min-width: 1024px) and (max-width: ${theme.breakpoints.values.lg - 0.05}px)`]: { maxWidth: 500 },
             flex: { xs: '0 1 max-content', md: '0 0 max-content' },
             flexWrap: 'nowrap',
-            overflow: 'hidden',
+            overflow: topbarWorkspaceControls ? 'visible' : 'hidden',
+            ...(topbarWorkspaceControls ? { maxWidth: 'none' } : {}),
  }}>
             {!isDesktopUp ? (
               <OverflowTooltip title={currentPageTitle}>
                 <Typography
+                  ref={controlsTitleRef}
                   component="h1"
                   variant="subtitle1"
                   noWrap={!isCalendarPage}
@@ -968,6 +1114,7 @@ function RootLayout() {
             ) : (
               <OverflowTooltip title={currentPageTitle}>
                 <Typography
+                  ref={controlsTitleRef}
                   component="h1"
                   variant="h5"
                   noWrap
@@ -996,93 +1143,11 @@ function RootLayout() {
                 <PageHelp pageKey={topbarHelpConfig.pageKey} ariaLabel={t('pageHelp.openAria', { label: topbarHelpConfig.label })} tooltip={topbarHelpConfig.label} />
               </Box>
             ) : null}
-            {topbarTitleActions.length > 0 ? (
-              isCompactTopbar ? (
-                <ToggleButtonGroup
-                  exclusive
-                  size="small"
-                  value={topbarTitleActions.find((action) => action.active)?.id ?? null}
-                  aria-label={isCalendarPage ? t('ganttChart:modeAriaLabel') : t('fields:representation.ariaLabel')}
-                  sx={{
-                    ml: 0.5,
-                    flexShrink: 0,
-                    '& .MuiToggleButton-root': {
-                      width: COMPACT_TOPBAR_TOGGLE_SIZE,
-                      height: COMPACT_TOPBAR_TOGGLE_SIZE,
-                      p: 0,
-                      borderColor: 'divider',
-                      color: 'text.primary',
-                      visibility: 'visible',
-                      '&.Mui-selected': {
-                        bgcolor: 'success.main',
-                        color: 'success.contrastText',
-                        borderColor: 'success.dark',
-                        borderWidth: 2,
-                        boxShadow: 1,
-                      },
-                      '&.Mui-selected:hover': {
-                        bgcolor: 'success.dark',
-                      },
-                    },
-                  }}
-                >
-                  {topbarTitleActions.map((action) => {
-                    const icon = getCompactTopbarActionIcon(action.id);
-                    if (!icon) {
-                      return null;
-                    }
-                    return (
-                      <AppTooltip key={action.id} title={action.tooltip ?? action.label} describeChild enterTouchDelay={0}>
-                        <ToggleButton
-                          value={action.id}
-                          aria-label={action.ariaLabel ?? action.label}
-                          onClick={action.onClick}
-                          disabled={action.disabled}
-                          sx={action.hidden ? {
-                            visibility: 'hidden',
-                            pointerEvents: 'none',
-                          } : undefined}
-                        >
-                          {icon}
-                        </ToggleButton>
-                      </AppTooltip>
-                    );
-                  })}
-                </ToggleButtonGroup>
-              ) : (
-              <ButtonGroup
-                size="small"
-                variant="outlined"
-                sx={{ ...segmentedButtonGroupSx, ml: 1, flexShrink: 0 }}
-              >
-                {topbarTitleActions.map((action) => {
-                  const button = (
-                    <Button
-                      key={action.id}
-                      size="small"
-                      variant={action.active ? 'contained' : 'outlined'}
-                      color={action.active ? 'success' : 'inherit'}
-                      onClick={action.onClick}
-                      aria-label={action.ariaLabel ?? action.label}
-                      aria-pressed={action.active}
-                      disabled={action.disabled}
-                      sx={getSegmentedActionButtonSx({ active: Boolean(action.active), hidden: Boolean(action.hidden) })}
-                    >
-                      {action.label}
-                    </Button>
-                  );
-                  // A shortened label keeps its full name reachable on hover.
-                  return action.ariaLabel && action.ariaLabel !== action.label ? (
-                    <AppTooltip key={action.id} title={action.ariaLabel}>{button}</AppTooltip>
-                  ) : button;
-                })}
-              </ButtonGroup>
-              )
-            ) : null}
+            {topbarWorkspaceControls ? (!workspaceControlsWrapped ? workspaceTitleGroup : null) : titleActionButtons}
           </Box>
           {!isCompactTopbar ? (
           <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', minWidth: 0, maxWidth: '100%', flex: 1, position: 'relative', zIndex: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: TOPBAR_ACTION_GROUP_GAP, minWidth: 0, flex: 1, justifyContent: 'flex-end', pr: 0.5 }}>
+            <Box ref={pageActionsRef} sx={{ display: 'flex', alignItems: 'center', gap: TOPBAR_ACTION_GROUP_GAP, minWidth: 0, flex: 1, justifyContent: 'flex-end', pr: 0.5 }}>
           {isCropsPage ? (
             <>
               {showCropImportExportButton || isMobile ? (
@@ -1273,49 +1338,7 @@ function RootLayout() {
               );
             });
           })()}
-          {topbarPrimaryAction ? (
-            topbarPrimaryAction.menuActions && topbarPrimaryAction.menuActions.length > 0 ? (
-              <ButtonGroup variant="contained" size="small" sx={{ flexShrink: 0 }}>
-                <Button
-                  startIcon={<AddIcon fontSize="small" />}
-                  onClick={topbarPrimaryAction.onClick}
-                  aria-label={topbarPrimaryAction.tooltip ?? topbarPrimaryAction.label}
-                  sx={{ textTransform: 'none', whiteSpace: 'nowrap', px: 1.25 }}
-                >
-                  {topbarPrimaryAction.label}
-                </Button>
-                <Button
-                  aria-label={t('common:actions.moreOptions')}
-                  aria-controls={topbarPrimaryActionMenuAnchor ? 'topbar-primary-action-menu' : undefined}
-                  aria-haspopup="true"
-                  aria-expanded={Boolean(topbarPrimaryActionMenuAnchor)}
-                  onClick={(event) => setTopbarPrimaryActionMenuAnchor(event.currentTarget)}
-                  sx={{ px: 0.5, minWidth: 28 }}
-                >
-                  <KeyboardArrowDownIcon
-                    fontSize="small"
-                    sx={{
-                      transition: 'transform 0.15s',
-                      transform: topbarPrimaryActionMenuAnchor ? 'rotate(180deg)' : 'none',
-                    }}
-                  />
-                </Button>
-              </ButtonGroup>
-            ) : (
-              <AppTooltip title={topbarPrimaryAction.tooltip ?? topbarPrimaryAction.label}>
-                <Button
-                  size="small"
-                  variant="contained"
-                  onClick={handleTopbarPrimaryAction}
-                  aria-label={topbarPrimaryAction.tooltip ?? topbarPrimaryAction.label}
-                  startIcon={!isPhone ? <AddIcon fontSize="small" /> : undefined}
-                  sx={{ textTransform: 'none', whiteSpace: 'nowrap', minWidth: isPhone ? 44 : 'auto', minHeight: isPhone ? 44 : 'auto', px: isPhone ? 0.75 : 1.25, flexShrink: 0 }}
-                >
-                  {isPhone ? <AddIcon fontSize="small" /> : topbarPrimaryAction.label}
-                </Button>
-              </AppTooltip>
-            )
-          ) : null}
+          {topbarWorkspaceControls && workspaceControlsWrapped ? null : primaryActionButton}
             </Box>
           {topbarPrimaryAction?.menuActions && topbarPrimaryAction.menuActions.length > 0 ? (
             <Menu
@@ -1351,7 +1374,7 @@ function RootLayout() {
               ))}
             </Menu>
           ) : null}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: TOPBAR_OVERFLOW_MENU_GAP, ml: TOPBAR_ACTION_GROUP_GAP, flexShrink: 0 }}>
+            <Box ref={globalControlsRef} sx={{ display: 'flex', alignItems: 'center', gap: TOPBAR_OVERFLOW_MENU_GAP, ml: TOPBAR_ACTION_GROUP_GAP, flexShrink: 0 }}>
           {/* Season switcher, project switcher, and the notification bell
               read as one "status" cluster — tighter gap than the group's own
               separation from the primary action button before it (this Box's
@@ -1757,6 +1780,11 @@ function RootLayout() {
             </Box>
           )}
         </Toolbar>
+        {topbarWorkspaceControls && workspaceControlsWrapped ? (
+          <Box data-testid="topbar-workspace-row" sx={{ px: { xs: 1, sm: 2, md: 3 }, pb: 1, minWidth: 0 }}>
+            {workspaceTitleGroup}
+          </Box>
+        ) : null}
         {isCompactTopbar && hasMobileSecondaryRow ? (
           <Box
             sx={{
@@ -1987,8 +2015,8 @@ function RootLayout() {
           width: '100%',
           // Global outer page gutter (single source of truth for workspace pages).
           // Uses smaller desktop gutters on wide monitors while keeping clear edge spacing.
-          px: { xs: 0, sm: isLowHeightNarrowViewport ? 0 : 2, md: 2.5, lg: 2.25, xl: 2 },
-          py: { xs: 1.5, md: 2.5 },
+          px: topbarWorkspaceControls && isFieldsBedsGraphicalViewActive ? { xs: 1, md: 2 } : { xs: 0, sm: isLowHeightNarrowViewport ? 0 : 2, md: 2.5, lg: 2.25, xl: 2 },
+          py: topbarWorkspaceControls && isFieldsBedsGraphicalViewActive ? { xs: 1, md: 2 } : { xs: 1.5, md: 2.5 },
           display: 'flex',
           flexDirection: 'column',
           gap: 2,
@@ -2000,6 +2028,7 @@ function RootLayout() {
         {activeSeason.isResolvingActiveSeason && !isProjectIndependentRoute(location.pathname) ? null : <Outlet context={{
           setTopbarContextActions,
           setTopbarTitleActions,
+          setTopbarWorkspaceControls,
           activeSeasonYear,
           activeSeason: activeSeason.activeSeason,
           activeSeasonLoading: activeSeason.loading,

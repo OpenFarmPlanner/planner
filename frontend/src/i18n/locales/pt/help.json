@@ -252,7 +252,7 @@
     },
     "graphical": {
       "title": "Ajuda: áreas de cultivo – vista gráfica",
-      "intro": "Veja aqui a disposição espacial das explorações, parcelas e canteiros. A vista gráfica permite rever e ajustar visualmente a estrutura das áreas.",
+      "intro": "Selecione uma exploração na barra superior, junto a Lista/Gráfico. As suas parcelas e canteiros ocupam uma área de desenho ampla; o zoom e o deslocamento de cada exploração são mantidos ao mudar de exploração ou de vista. Utilize Editar gráfico para alterar a disposição da exploração selecionada.",
       "sections": [
         {
           "title": "Como utilizar",

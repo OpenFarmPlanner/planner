@@ -29,6 +29,9 @@
     "graphical": "Grafisch"
   },
   "graphical": {
+    "layoutLoadError": "De grafische weergave kon niet worden geladen. Probeer het opnieuw.",
+    "noFields": "Deze locatie heeft nog geen percelen. Ga naar de lijst om percelen toe te voegen.",
+    "locationSelector": "Locatie",
     "title": "Grafische perceelweergave",
     "viewMode": "Modus",
     "modeAriaLabel": "Modus kiezen",
