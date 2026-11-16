@@ -188,6 +188,11 @@ including assigned plans and generated tasks. Layout PUTs journal changed bed
 and field after-images and one completed version boundary, without a full-project
 snapshot on every move. Their existing partial-write-on-validation-error contract
 is preserved and the committed partial result gets a truthful version boundary.
+Automatic/template task creation, season backfill and date synchronization write
+internal after-images before the initiating plan/template revision. Those visible
+versions therefore include the committed task state. Both spreadsheet and
+agent draft previews are excluded from baseline creation, including malformed
+preview requests.
 
 ## Local acceptance fixtures
 

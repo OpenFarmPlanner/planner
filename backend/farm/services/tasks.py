@@ -1,12 +1,14 @@
 """Persist dated planting-plan events as independently completable tasks."""
 
+import json
 from collections.abc import Iterable
 from datetime import date, timedelta
 from typing import Any
 
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import transaction
 
-from farm.models import PlantingPlan, Task
+from farm.models import EntityRevision, PlantingPlan, Project, Task
 from farm.services.crop_inheritance import build_general_crop_index, resolve_crop_field
 
 AUTOMATIC_TASK_TITLES = {
@@ -65,9 +67,19 @@ def generate_plan_tasks(
         return []
     if plan.crop_id and plan.crop.project_id != plan.project_id:
         return []
-    Task.objects.filter(
+    unassigned = list(Task.objects.select_for_update().filter(
         project_id=plan.project_id, planting_plan=plan, season__isnull=True,
-    ).update(season_id=plan.season_id)
+    ))
+    if unassigned:
+        Task.objects.filter(pk__in=[task.pk for task in unassigned]).update(
+            season_id=plan.season_id,
+        )
+        for task in unassigned:
+            task.season_id = plan.season_id
+            _record_task_revision(
+                task, plan.project, action=EntityRevision.ACTION_UPDATED,
+                changed_fields=['season_id'],
+            )
     created = []
     events = plan_event_dates(plan, crop_index)
     generate_template_tasks(plan, events)
@@ -84,6 +96,10 @@ def generate_plan_tasks(
             },
         )
         if was_created:
+            _record_task_revision(
+                task, plan.project, action=EntityRevision.ACTION_CREATED,
+                changed_fields=['created'],
+            )
             created.append(task)
     return created
 
@@ -101,19 +117,28 @@ def generate_tasks_for_plans(plans: Iterable[PlantingPlan]) -> int:
 
 def _save_synchronized_task(task: Task, changes: dict[str, Any]) -> None:
     """Record only actual changes, so repeated synchronization adds no history."""
-    from farm.history import _serialize_instance, record_entity_revision
-    from farm.models import EntityRevision
-
     changed = [field for field, value in changes.items() if getattr(task, field) != value]
     if not changed:
         return
     for field in changed:
         setattr(task, field, changes[field])
     task.save(update_fields=[*changed, 'updated_at'])
+    _record_task_revision(
+        task, task.project, action=EntityRevision.ACTION_UPDATED, changed_fields=changed,
+    )
+
+
+def _record_task_revision(
+    task: Task, project: Project, *, action: str, changed_fields: list[str],
+) -> None:
+    from farm.history import record_entity_revision
+
+    values = {field.attname: getattr(task, field.attname) for field in task._meta.concrete_fields}
+    values['_project_version_internal'] = True
     record_entity_revision(
-        project=task.project, entity_type='task', object_id=task.pk,
-        action=EntityRevision.ACTION_UPDATED, snapshot=_serialize_instance(task),
-        display_name=task.title, changed_fields=changed,
+        project=project, entity_type='task', object_id=task.pk, action=action,
+        snapshot=json.loads(json.dumps(values, cls=DjangoJSONEncoder)),
+        display_name=task.title, changed_fields=changed_fields,
     )
 
 
@@ -216,7 +241,7 @@ def generate_template_tasks(plan: PlantingPlan, events: dict[str, date]) -> None
         project_id=plan.project_id, crop_id=plan.crop_id, deleted_at__isnull=True,
     ):
         for index, due in enumerate(template_occurrence_dates(template, events)):
-            Task.objects.get_or_create(
+            task, created = Task.objects.get_or_create(
                 project_id=plan.project_id,
                 source_key=f'plan:{plan.pk}:template:{template.pk}', occurrence_index=index,
                 defaults={
@@ -226,6 +251,11 @@ def generate_template_tasks(plan: PlantingPlan, events: dict[str, date]) -> None
                     'due_date': due, 'calculated_due_date': due,
                 },
             )
+            if created:
+                _record_task_revision(
+                    task, plan.project, action=EntityRevision.ACTION_CREATED,
+                    changed_fields=['created'],
+                )
 
 
 def synchronize_template_tasks(plan: PlantingPlan, events: dict[str, date]) -> None:

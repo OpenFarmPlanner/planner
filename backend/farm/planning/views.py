@@ -296,16 +296,16 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         instance = serializer.save(
             created_by=current_user, updated_by=current_user, project=self.request.active_project, **extra_fields,
         )
-        self.record_revision(instance, EntityRevision.ACTION_CREATED)
         generate_plan_tasks(instance)
+        self.record_revision(instance, EntityRevision.ACTION_CREATED)
 
     @transaction.atomic
     def perform_update(self, serializer: PlantingPlanSerializer) -> None:
         current_user = self.request.user if self.request.user.is_authenticated else None
         previous_snapshot = _serialize_instance(serializer.instance)
         instance = serializer.save(updated_by=current_user)
-        self.record_revision(instance, EntityRevision.ACTION_UPDATED, previous_snapshot=previous_snapshot)
         synchronize_plan_tasks(instance)
+        self.record_revision(instance, EntityRevision.ACTION_UPDATED, previous_snapshot=previous_snapshot)
 
     @transaction.atomic
     def perform_destroy(self, instance: PlantingPlan) -> None:

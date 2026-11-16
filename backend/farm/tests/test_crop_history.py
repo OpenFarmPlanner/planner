@@ -1169,6 +1169,98 @@ class ImportOperationHistoryTests(TestCase):
         self.assertFalse(any(entry.get("object_type") in {"bed_layout", "field_layout"}
                              for entry in visible))
 
+    def test_plan_versions_include_created_and_rescheduled_automatic_tasks(self) -> None:
+        from farm.models import Bed, Field, Season, Task
+
+        location = Location.objects.create(project=self.project, name="Task history location")
+        field = Field.objects.create(project=self.project, location=location, name="Task field")
+        bed = Bed.objects.create(project=self.project, field=field, name="Task bed", area_sqm=1)
+        season = Season.objects.create(
+            project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+        )
+        response = self.client.post(
+            "/openfarmplanner/api/planting-plans/",
+            {"crop": self.crop.pk, "bed": bed.pk, "season": season.pk,
+             "cultivation_type": "direct_sowing", "planting_date": "2026-04-01"},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 201, response.content)
+        plan_id = response.json()["id"]
+        targets = []
+        for planting_date in (None, "2026-05-01"):
+            if planting_date:
+                response = self.client.patch(
+                    f"/openfarmplanner/api/planting-plans/{plan_id}/",
+                    {"planting_date": planting_date}, content_type="application/json",
+                )
+                self.assertEqual(response.status_code, 200, response.content)
+            target = EntityRevision.objects.filter(
+                project=self.project, entity_type="planting_plan", object_id=plan_id,
+            ).latest("id")
+            tasks = dict(Task.objects.filter(planting_plan_id=plan_id).values_list(
+                "pk", "due_date",
+            ))
+            self.assertTrue(tasks)
+            targets.append((target.pk, tasks))
+        self.crop.notes = "Later independent task edit"
+        self.crop.save()
+        for target_id, expected in reversed(targets):
+            response = self.client.post(
+                "/openfarmplanner/api/history/project/restore/",
+                {"history_id": target_id}, content_type="application/json",
+            )
+            self.assertEqual(response.status_code, 200, response.content)
+            self.assertEqual(dict(Task.objects.filter(planting_plan_id=plan_id).values_list(
+                "pk", "due_date",
+            )), expected)
+
+    def test_template_versions_include_created_and_rescheduled_template_tasks(self) -> None:
+        from farm.models import Bed, Field, PlantingPlan, Season, Task
+
+        location = Location.objects.create(project=self.project, name="Template history location")
+        field = Field.objects.create(project=self.project, location=location, name="Template field")
+        bed = Bed.objects.create(project=self.project, field=field, name="Template bed", area_sqm=1)
+        season = Season.objects.create(
+            project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+        )
+        plan = PlantingPlan.objects.create(
+            project=self.project, crop=self.crop, bed=bed, season=season,
+            cultivation_type="direct_sowing", planting_date=date(2026, 4, 1),
+        )
+        response = self.client.post(
+            "/openfarmplanner/api/crop-task-templates/",
+            {"crop": self.crop.pk, "title": "Check before harvest",
+             "reference_event": "harvest_start", "day_offset": -1},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 201, response.content)
+        template_id = response.json()["id"]
+        targets = []
+        for offset in (None, -3):
+            if offset is not None:
+                response = self.client.patch(
+                    f"/openfarmplanner/api/crop-task-templates/{template_id}/",
+                    {"day_offset": offset}, content_type="application/json",
+                )
+                self.assertEqual(response.status_code, 200, response.content)
+            target = EntityRevision.objects.filter(
+                project=self.project, entity_type="croptasktemplate", object_id=template_id,
+            ).latest("id")
+            tasks = dict(Task.objects.filter(planting_plan=plan).values_list("pk", "due_date"))
+            self.assertTrue(Task.objects.filter(planting_plan=plan, origin="template").exists())
+            targets.append((target.pk, tasks))
+        self.crop.notes = "Later independent template edit"
+        self.crop.save()
+        for target_id, expected in reversed(targets):
+            response = self.client.post(
+                "/openfarmplanner/api/history/project/restore/",
+                {"history_id": target_id}, content_type="application/json",
+            )
+            self.assertEqual(response.status_code, 200, response.content)
+            self.assertEqual(dict(Task.objects.filter(planting_plan=plan).values_list(
+                "pk", "due_date",
+            )), expected)
+
     def test_crop_timing_side_effects_are_part_of_the_target_project_state(self) -> None:
         from farm.history.project_restore import capture_project_state, record_project_checkpoint
         from farm.models import Bed, Field, PlantingPlan

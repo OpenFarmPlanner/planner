@@ -86,11 +86,12 @@ class ProjectScopedMixin:
     """Resolve active project from request and hard-scope querysets."""
 
     ensure_default_location = False
+    history_read_only = False
 
     def initial(self, request, *args, **kwargs):
         super().initial(request, *args, **kwargs)
         request.active_project = get_active_project_or_400(request)
-        if request.method in {"POST", "PUT", "PATCH", "DELETE"} and (
+        if not self.history_read_only and request.method in {"POST", "PUT", "PATCH", "DELETE"} and (
             getattr(self, "action", None) != "import_preview"
         ):
             from farm.history.project_restore import ensure_project_checkpoint

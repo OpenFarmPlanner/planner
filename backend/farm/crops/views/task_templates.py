@@ -43,25 +43,25 @@ class CropTaskTemplateViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets
     @transaction.atomic
     def perform_create(self, serializer: CropTaskTemplateSerializer) -> None:
         instance = serializer.save(project=self.request.active_project)
-        self.record_revision(instance, EntityRevision.ACTION_CREATED)
         self._synchronize(instance)
+        self.record_revision(instance, EntityRevision.ACTION_CREATED)
 
     @transaction.atomic
     def perform_update(self, serializer: CropTaskTemplateSerializer) -> None:
         previous_snapshot = _serialize_instance(serializer.instance)
         instance = serializer.save()
+        self._synchronize(instance)
         self.record_revision(
             instance, EntityRevision.ACTION_UPDATED, previous_snapshot=previous_snapshot,
         )
-        self._synchronize(instance)
 
     @transaction.atomic
     def perform_destroy(self, instance: CropTaskTemplate) -> None:
         snapshot = _serialize_instance(instance)
         instance.deleted_at = timezone.now()
         instance.save(update_fields=['deleted_at', 'updated_at'])
+        self._synchronize(instance)
         self.record_revision(
             instance, EntityRevision.ACTION_DELETED, previous_snapshot=snapshot,
             display_name=instance.title, changed_fields=['deleted_at'],
         )
-        self._synchronize(instance)
