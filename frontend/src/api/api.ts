@@ -152,6 +152,8 @@ export const cropAPI = {
   seedRateConstraints: () => http.get<SeedRateConstraintsResponse>('/crops/seed-rate-constraints/'),
   create: (data: Crop) => http.post<Crop>('/crops/', withActiveProject(data)),
   update: (id: number, data: Crop) => http.put<Crop>(`/crops/${id}/`, withActiveProject(data)),
+  mapPlantHealth: (id: number, data: { expected_updated_at: string; mappings: Array<{ local_name: string; catalogue_identity: string }> }) =>
+    http.post<Crop>(`/crops/${id}/plant-health/mappings/`, data),
   updateSupplierData: (id: number, rows: CropSupplierDataInput[]) =>
     http.patch<Crop>(`/crops/${id}/`, { supplier_data_input: rows }),
   deletePreview: (id: number) => http.get<CropDeletePreview>(`/crops/${id}/delete-preview/`),

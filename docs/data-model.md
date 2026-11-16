@@ -366,8 +366,13 @@ name from an explicit stable catalogue UUID; names never imply identity or
 confirmed host evidence. Null inherits on a linked variety, while
 `{"entries": []}` is an explicit empty override. Omission preserves stored
 values. Migration 0142 adds the nullable column without parsing existing prose;
-history and legacy snapshots preserve that distinction. This private field is
-not yet a public library copy field. See
+history and legacy snapshots preserve that distinction.
+`PublicCrop.plant_health` uses the same nullable wrapper but permits only explicit
+catalogue UUID references. Schema-only migration 0143 adds its column; reversing
+it drops public selections while preserving private selections and all prose.
+Library comparisons use official UUID sets rather than labels or private names;
+pull/update replaces only references, retaining unresolved private names and
+unchanged variety inheritance. Private choices do not create official host evidence. See
 [private crop selections](plant-health-catalogue.md#private-crop-selections) for
 validation, portable files, rollback behavior and the guarded local fixture.
 

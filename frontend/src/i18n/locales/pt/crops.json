@@ -2086,6 +2086,21 @@
     "templateEntry": "Entrada de exemplo sintética",
     "validation": "Utilize no máximo 40 nomes individuais com até 200 caracteres cada.",
     "unspecified": "Não especificado / herdar da cultura",
-    "emptySelection": "Seleção própria explicitamente vazia"
+    "emptySelection": "Seleção própria explicitamente vazia",
+    "officialHelper": "Seleciona explicitamente entradas do catálogo. Os nomes livres ficam no projeto.",
+    "officialSearchError": "Não foi possível carregar as sugestões do catálogo. Tenta novamente.",
+    "publishSkipped": "Entradas não publicadas: {{number}}. São mantidas no projeto.",
+    "publication": {
+      "title": "Associar entradas privadas: {{name}}",
+      "helper": "Escolhe no máximo uma entrada aprovada do catálogo para cada nome privado. «Guardar associação» altera imediatamente esta cultura do projeto, mesmo que canceles a publicação. Os nomes não associados continuam privados. As novas propostas ficam disponíveis após moderação.",
+      "map": "Guardar associação",
+      "propose": "Propor nome para revisão",
+      "proposed": "Proposta enviada. O nome continua privado até o associares explicitamente.",
+      "saved": "A associação privada foi guardada. Confirma separadamente a publicação ou a sincronização com a biblioteca.",
+      "error": "Não foi possível concluir a ação. Verifica a seleção e tenta novamente.",
+      "conflict": "A cultura ou a seleção mudou. Fecha a janela e recarrega as culturas antes de voltares a verificar a associação.",
+      "inherited": "Esta variedade herda as entradas de «{{name}}». Guarda a associação nessa cultura; aplica-se a todas as variedades que as herdam. A herança mantém-se ativa.",
+      "editGeneral": "Editar cultura geral"
+    }
   }
 }

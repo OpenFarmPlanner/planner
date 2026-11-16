@@ -2086,6 +2086,21 @@
     "templateEntry": "Entrée d’exemple synthétique",
     "validation": "Utilisez au maximum 40 noms individuels de 200 caractères chacun.",
     "unspecified": "Non renseigné / hériter de la culture",
-    "emptySelection": "Sélection personnelle explicitement vide"
+    "emptySelection": "Sélection personnelle explicitement vide",
+    "officialHelper": "Sélectionnez explicitement des entrées du catalogue. Les noms libres restent dans le projet.",
+    "officialSearchError": "Les suggestions du catalogue n’ont pas pu être chargées. Réessayez.",
+    "publishSkipped": "Entrées non publiées : {{number}}. Elles restent dans le projet.",
+    "publication": {
+      "title": "Associer les entrées privées : {{name}}",
+      "helper": "Choisissez au plus une entrée approuvée du catalogue pour chaque nom privé. « Enregistrer l’association » modifie immédiatement cette culture du projet, même si vous annulez la publication. Les noms non associés restent privés. Les nouvelles propositions sont disponibles après modération.",
+      "map": "Enregistrer l’association",
+      "propose": "Proposer le nom à la modération",
+      "proposed": "Proposition envoyée. Le nom reste privé tant que vous ne l’associez pas explicitement.",
+      "saved": "L’association privée a été enregistrée. Confirmez séparément la publication ou la synchronisation avec la bibliothèque.",
+      "error": "L’action a échoué. Vérifiez votre sélection et réessayez.",
+      "conflict": "La culture ou la sélection a changé. Fermez la boîte de dialogue et rechargez vos cultures avant de vérifier à nouveau l’association.",
+      "inherited": "Cette variété reprend les entrées de « {{name}} ». Enregistrez l’association sur cette culture ; elle s’applique à toutes les variétés qui en héritent. L’héritage reste actif.",
+      "editGeneral": "Modifier la culture générale"
+    }
   }
 }

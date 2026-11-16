@@ -3,6 +3,8 @@ from typing import Any
 
 from django.core.serializers.json import DjangoJSONEncoder
 
+from crops.plant_health_values import plant_health_identities
+
 
 def comparable_copy_fields(payload: dict[str, Any]) -> dict[str, Any]:
     """Comparison-only normalization; never change the payload used for writes.
@@ -22,8 +24,16 @@ def json_safe(value: Any) -> Any:
 _EMPTY_SNAPSHOT_VALUES: tuple[Any, ...] = (None, '', [], {})
 
 
-def same_snapshot_value(value: Any, snapshot_value: Any) -> bool:
-    """Equality for snapshots, with every empty spelling counting as the same."""
+def same_public_field_value(field: str, value: Any, other: Any) -> bool:
+    if field == 'plant_health':
+        return plant_health_identities(value) == plant_health_identities(other)
+    return value == other
+
+
+def same_snapshot_value(value: Any, snapshot_value: Any, *, field: str | None = None) -> bool:
+    """Legacy empty spellings compare equally; health overrides preserve inheritance intent."""
+    if field == 'plant_health':
+        return same_public_field_value(field, value, snapshot_value)
     if value in _EMPTY_SNAPSHOT_VALUES and snapshot_value in _EMPTY_SNAPSHOT_VALUES:
         return True
     return value == snapshot_value

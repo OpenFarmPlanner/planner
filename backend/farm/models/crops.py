@@ -13,7 +13,11 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
-from crops.plant_health_values import validate_plant_health_value
+from crops.plant_health_values import (
+    plant_health_identities,
+    validate_plant_health_value,
+    validate_public_plant_health_value,
+)
 from crops.specific_properties import crop_specific_property_errors
 from farm.germination import (
     LIGHT_REQUIREMENT_CHOICES as GERMINATION_LIGHT_CHOICES,
@@ -854,7 +858,7 @@ class Crop(TimestampedModel):
         'stratification_temperature_min_c',
         'stratification_temperature_max_c',
         'germination_types', 'germination_pretreatment', 'specific_properties',
-        'pests_diseases', 'light_requirement', 'water_requirement', 'life_cycle',
+        'pests_diseases', 'plant_health', 'light_requirement', 'water_requirement', 'life_cycle',
         'winter_hardiness',
         'harvest_method', 'expected_yield', 'distance_within_row_m',
         'row_spacing_m', 'sowing_depth_m', 'sowing_depth_max_m', 'seed_rate_value', 'seed_rate_unit',
@@ -981,7 +985,13 @@ class Crop(TimestampedModel):
 
         pinned = {crop_field_attname(field) for field in effective_library_pinned_fields(self)}
         tracked = self._SOURCE_DIVERGENCE_TRACKED_FIELDS - pinned
-        if any(previous.get(field) != getattr(self, field) for field in tracked):
+        health_changed = 'plant_health' in tracked and (
+            plant_health_identities(previous.get('plant_health'))
+            != plant_health_identities(self.plant_health)
+        )
+        if health_changed or any(
+            previous.get(field) != getattr(self, field) for field in tracked - {'plant_health'}
+        ):
             self.is_modified_from_source = True
 
     @staticmethod
@@ -1373,6 +1383,13 @@ class PublicCrop(TimestampedModel):
     specific_properties = models.JSONField(
         default=dict, blank=True,
         help_text="Typed values for this record, validated against its species property profile.",
+    )
+    plant_health = models.JSONField(
+        null=True, blank=True, default=None,
+        validators=[validate_public_plant_health_value],
+        help_text=(
+            'Explicit catalogue UUID references only; unresolved project names remain private.'
+        ),
     )
     pests_diseases = models.TextField(blank=True)
     light_requirement = models.CharField(

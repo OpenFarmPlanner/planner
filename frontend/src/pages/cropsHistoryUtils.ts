@@ -245,7 +245,7 @@ export function formatSeedRateByCultivation(value: unknown, t: TFunction<'crops'
   return entries.length > 0 ? entries.join('; ') : t('history.emptyValue');
 }
 
-function formatPlantHealthValue(value: unknown, t: TFunction<'crops'>): string {
+export function formatPlantHealthValue(value: unknown, t: TFunction<'crops'>): string {
   if (value == null) return t('plantHealth.unspecified');
   if (typeof value !== 'object' || !('entries' in value) || !Array.isArray(value.entries)) {
     return t('history.complexValue');

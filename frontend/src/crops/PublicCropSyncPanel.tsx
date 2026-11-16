@@ -121,7 +121,7 @@ interface SyncValueColumnProps {
 /**
  * One value column of a diff row. Plain fields render through
  * `formatPublicCropValueInFormUnits` (the crop form's units, the UI locale).
- * Rich-text fields render as Markdown and, while collapsed, clamp to
+ * Rich-text fields render as Markdown. These and structured plant-health values clamp to
  * `COLLAPSED_LINE_CLAMP` lines; truncation is measured via
  * `scrollHeight`/`clientHeight` (the same technique as `OverflowTooltip`), and
  * only while collapsed — once expanded the clamp is removed, so measuring
@@ -149,7 +149,7 @@ function SyncValueColumn({ field, side, value, isRichText, expanded, onTruncated
     return () => observer.disconnect();
   }, [measureElement, expanded, onTruncatedChange]);
 
-  if (!isRichText) {
+  if (!isRichText && field !== 'plant_health') {
     return (
       <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
         {formatPublicCropValueInFormUnits(field, value, t, locale)}
@@ -166,7 +166,11 @@ function SyncValueColumn({ field, side, value, isRichText, expanded, onTruncated
         data-testid={`public-crop-sync-value-content-${side}-${field}`}
         sx={expanded ? undefined : { ...CLAMPED_VALUE_SX, ...(isTruncated ? FADED_VALUE_SX : {}) }}
       >
-        <RichTextViewer value={text} emptyLabel={t('library.publishWizard.comparison.empty')} />
+        {isRichText ? <RichTextViewer value={text} emptyLabel={t('library.publishWizard.comparison.empty')} /> : (
+          <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
+            {formatPublicCropValueInFormUnits(field, value, t, locale)}
+          </Typography>
+        )}
       </Box>
     </Box>
   );
@@ -409,7 +413,7 @@ function SyncFieldRow({ change, choice, disabled, allowLocal, keepMineLocally, t
   const [expanded, setExpanded] = useState(false);
   const [libraryTruncated, setLibraryTruncated] = useState(false);
   const [mineTruncated, setMineTruncated] = useState(false);
-  const showExpandToggle = isRichText && (libraryTruncated || mineTruncated);
+  const showExpandToggle = (isRichText || change.field === 'plant_health') && (libraryTruncated || mineTruncated);
 
   const radioId = useId();
   const radioName = `public-crop-sync-${change.field}-${radioId}`;

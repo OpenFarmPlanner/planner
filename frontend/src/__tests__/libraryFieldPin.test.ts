@@ -41,3 +41,11 @@ describe('library field pins in the crop form', () => {
     expect(isLibraryFieldPinned(crop, 'harvest_duration_days')).toBe(false);
   });
 });
+
+
+it('pins only the official plant-health segment and releases a private-only pin', () => {
+  const value = { plant_health: { entries: [{ name: 'Private' }] }, library_pinned_fields: ['plant_health'] };
+  expect(hasLibraryPinFormValue(value, 'plant_health')).toBe(false);
+  expect(libraryPinnedFieldsForSave(value)).toEqual([]);
+  expect(hasLibraryPinFormValue({ plant_health: { entries: [{ name: 'Same label', catalogue_identity: '00000000-0000-4000-8000-000000000001' }] } }, 'plant_health')).toBe(true);
+});

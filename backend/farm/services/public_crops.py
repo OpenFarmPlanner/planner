@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError as ModelValidationError
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -25,6 +26,11 @@ from crops.permissions import (
     public_library_moderator_users,
 )
 from crops.plant_families import coerce_plant_family_key
+from crops.plant_health_values import (
+    merge_official_plant_health,
+    official_plant_health,
+    plant_health_identities,
+)
 from crops.services import find_species_by_common_name
 from crops.specific_properties import crop_specific_property_errors, specific_property_errors
 from farm.companion_notes import companion_language_patch, merge_library_notes, notes_of
@@ -76,6 +82,7 @@ from farm.services.crop_inheritance import (
     sync_crop_species_across_crop_group,
     validate_general_crop_identity,
 )
+from farm.services.crop_plant_health import canonical_public_plant_health, publication_plant_health
 from farm.services.public_crop_trade_names import (
     find_variety_identity_conflict,
     matched_trade_name,
@@ -84,6 +91,7 @@ from farm.services.public_crop_trade_names import (
 )
 from farm.services.public_crop_values import comparable_copy_fields as _comparable_copy_fields
 from farm.services.public_crop_values import json_safe as _json_safe
+from farm.services.public_crop_values import same_public_field_value as _same_public_field_value
 from farm.services.public_crop_values import same_snapshot_value as _same_snapshot_value
 
 User = get_user_model()
@@ -122,6 +130,7 @@ CROP_COPY_FIELDS = [
     'germination_pretreatment',
     'specific_properties',
     'pests_diseases',
+    'plant_health',
     'light_requirement',
     'water_requirement',
     'life_cycle',
@@ -173,6 +182,7 @@ PUBLIC_CROP_EDITABLE_FIELDS = [
     'germination_pretreatment',
     'specific_properties',
     'pests_diseases',
+    'plant_health',
     'light_requirement',
     'water_requirement',
     'life_cycle',
@@ -240,6 +250,7 @@ class PublishingCheckResult:
     # Neighbours of the crop's Kultur that cannot go into the library (free
     # text, or a neighbouring Kultur without a crop species).
     unpublishable_companion_count: int = 0
+    unpublishable_plant_health_count: int = 0
 
     @property
     def can_publish(self) -> bool:
@@ -407,6 +418,7 @@ def is_species_level_entry(public_crop: PublicCrop) -> bool:
 
 def _copy_fields(instance: Any) -> dict[str, Any]:
     payload = {field: get_crop_field_value(instance, field) for field in CROP_COPY_FIELDS}
+    payload['plant_health'] = official_plant_health(payload['plant_health'])
     payload['specific_properties'] = copy.deepcopy(payload.get('specific_properties') or {})
     payload['cultivation_types'] = list(payload.get('cultivation_types') or [])
     payload['seed_rate_by_cultivation'] = payload.get('seed_rate_by_cultivation') or None
@@ -432,6 +444,19 @@ def _resolved_copy_fields(
     for field in CROP_INHERITABLE_FIELDS:
         if field in payload and field not in CROP_SPECIES_INVARIANT_FIELDS:
             payload[field] = resolve_crop_field(crop, field, index)
+    payload['plant_health'] = official_plant_health(payload['plant_health'])
+    return payload
+
+
+def _resolved_comparison_fields(
+    crop: Crop, index: GeneralCropIndex | None = None,
+) -> dict[str, Any]:
+    """Compare effective UUIDs without mistaking an empty parent for an own override."""
+    payload = _resolved_copy_fields(crop, index)
+    if get_crop_field_value(crop, 'plant_health') is None and not plant_health_identities(
+        payload['plant_health'],
+    ):
+        payload['plant_health'] = None
     return payload
 
 
@@ -522,6 +547,8 @@ def library_pin_blocked_reason(crop: Crop, field: str, local_value: Any) -> str 
         return PIN_BLOCKED_IDENTITY
     if forces_species_invariant_inheritance(crop, field):
         return PIN_BLOCKED_SPECIES_INVARIANT
+    if field == 'plant_health' and not plant_health_identities(local_value):
+        return PIN_BLOCKED_EMPTY
     if is_unset_crop_value(local_value):
         return PIN_BLOCKED_EMPTY
     return None
@@ -530,6 +557,8 @@ def library_pin_blocked_reason(crop: Crop, field: str, local_value: Any) -> str 
 def _has_effective_value(crop: Crop, field: str) -> bool:
     if field == COMPANIONS_FIELD:
         return is_kultur(crop) and bool(kultur_relations(crop))
+    if field == 'plant_health':
+        return bool(plant_health_identities(resolve_crop_field(crop, field)))
     if not is_unset_crop_value(get_crop_field_value(crop, field)):
         return True
     return not is_unset_crop_value(resolve_crop_field(crop, field))
@@ -738,6 +767,13 @@ def find_public_crop_identity_conflict(
     )
 
 
+def _validated_public_plant_health(value: Any, existing_value: Any) -> dict | None:
+    try:
+        return canonical_public_plant_health(value, existing_value=existing_value)
+    except ModelValidationError as error:
+        raise ApiValidationError({'plant_health': error.messages}) from error
+
+
 def update_public_crop_directly(
     *,
     public_crop: PublicCrop,
@@ -773,6 +809,10 @@ def update_public_crop_directly(
                 code='public_crop_identity_admin_required',
             )
         data = dict(data)
+        if 'plant_health' in data:
+            data['plant_health'] = _validated_public_plant_health(
+                data['plant_health'], locked.plant_health,
+            )
         if COMPANIONS_FIELD in data:
             data[COMPANIONS_FIELD] = merge_library_notes(data[COMPANIONS_FIELD], locked.companions, 'de')
         changed_field_names = []
@@ -927,6 +967,7 @@ def build_public_crop_payload(
     source_crop: Crop | None = None,
     include_specific_properties: bool = True,
     companion_note_language: str | None = None,
+    retained_public_crop: PublicCrop | None = None,
 ) -> dict[str, Any]:
     """The public-entry fields taken from ``crop``.
 
@@ -948,6 +989,10 @@ def build_public_crop_payload(
     # entry must carry that, not the blank stored on the Sorte. Species-invariant
     # fields are resolved explicitly further down.
     payload = _resolved_copy_fields(crop)
+    payload['plant_health'] = publication_plant_health(
+        resolve_crop_field(crop, 'plant_health'),
+        existing_value=retained_public_crop.plant_health if retained_public_crop else None,
+    )[0]
     if not include_specific_properties:
         general = source_crop or get_general_crop(crop)
         payload['specific_properties'] = (
@@ -1308,7 +1353,11 @@ def link_project_crop_to_public_reference(
         validate_library_pinned_fields(crop, pin_fields, is_linked=True)
         crop.library_pinned_fields = sorted(set(pin_fields))
         is_modified = any(
-            getattr(crop, field) != source_payload.get(_PAYLOAD_FIELD_BY_ATTNAME.get(field, field))
+            not _same_public_field_value(
+                _PAYLOAD_FIELD_BY_ATTNAME.get(field, field),
+                getattr(crop, field),
+                source_payload.get(_PAYLOAD_FIELD_BY_ATTNAME.get(field, field)),
+            )
             for field in tracked_fields
         )
         crop.source_public_crop = public_crop
@@ -1561,7 +1610,7 @@ PUSH_BLOCKED_EMPTY = 'empty'
 def _sync_local_values(crop: Crop, public_crop: PublicCrop) -> dict[str, Any]:
     """``crop``'s effective value per compared field, exactly as the sync compares it."""
     comparison_crop = _sync_comparison_crop(crop, public_crop)
-    values = _comparable_copy_fields(_resolved_copy_fields(comparison_crop))
+    values = _comparable_copy_fields(_resolved_comparison_fields(comparison_crop))
     if _compares_companions(comparison_crop, public_crop):
         _add_companion_values(values, {}, comparison_crop, public_crop)
     return values
@@ -1679,6 +1728,23 @@ def build_public_crop_sync_preview(
     return preview
 
 
+def _set_project_library_value(crop: Crop, field: str, value: Any) -> None:
+    if field == 'plant_health':
+        if value is None and get_crop_field_value(crop, field) is None:
+            return
+        effective = resolve_crop_field(crop, field)
+        comparison = effective
+        if get_crop_field_value(crop, field) is None and not plant_health_identities(effective):
+            comparison = None
+        if _same_public_field_value(field, comparison, value):
+            return
+        try:
+            value = merge_official_plant_health(effective, value)
+        except ModelValidationError as error:
+            raise ApiValidationError({'plant_health': error.messages}) from error
+    set_crop_field_value(crop, field, value)
+
+
 def _pull_public_crop_fields(
     *, crop: Crop, public_crop: PublicCrop, fields: Sequence[str],
 ) -> list[str]:
@@ -1690,14 +1756,15 @@ def _pull_public_crop_fields(
     A pinned field is never overwritten; releasing the pin comes first.
     """
     remote = _copy_fields(public_crop)
-    effective = _resolved_copy_fields(crop)
+    effective = _resolved_comparison_fields(crop)
     pinned = effective_library_pinned_fields(crop)
     written = [
         field for field in fields
-        if field != COMPANIONS_FIELD and field not in pinned and effective[field] != remote[field]
+        if field != COMPANIONS_FIELD and field not in pinned
+        and not _same_public_field_value(field, effective[field], remote[field])
     ]
     for field in written:
-        set_crop_field_value(crop, field, remote[field])
+        _set_project_library_value(crop, field, remote[field])
     if (
         COMPANIONS_FIELD in fields
         and COMPANIONS_FIELD not in pinned
@@ -1854,7 +1921,9 @@ def sync_crop_with_public_entry(
                 raise ApiValidationError(errors)
             crop.save()
         if push_fields:
-            payload = build_public_crop_payload(crop, companion_note_language=companion_note_language)
+            payload = build_public_crop_payload(
+                crop, companion_note_language=companion_note_language, retained_public_crop=locked,
+            )
             data = {field: payload[field] for field in push_fields if field in payload}
             if require_moderation:
                 proposal = _queue_public_crop_sync_proposal(
@@ -1907,7 +1976,7 @@ def _owned_entry_is_locally_modified(local_crop: Crop, entry: PublicCrop) -> boo
     dropped when the entry is species-level: a specific Sorte linked to the
     general entry is an inherent granularity difference, not a local edit.
     """
-    local = _comparable_copy_fields(_resolved_copy_fields(local_crop))
+    local = _comparable_copy_fields(_resolved_comparison_fields(local_crop))
     remote = _comparable_copy_fields(_copy_fields(entry))
     fields = _compared_public_update_fields(local_crop)
     if is_species_level_entry(entry):
@@ -1920,7 +1989,7 @@ def _owned_entry_is_locally_modified(local_crop: Crop, entry: PublicCrop) -> boo
             _add_companion_values(local, remote, local_crop, entry)
         else:
             fields = [field for field in fields if field != COMPANIONS_FIELD]
-    return any(local[field] != remote[field] for field in fields)
+    return any(not _same_public_field_value(field, local[field], remote[field]) for field in fields)
 
 
 def link_local_crop_to_owned_public_entry(
@@ -2140,6 +2209,10 @@ def build_publishing_check_result(
         unpublishable_companion_count=(
             library_companions(kultur, _linked_entry_companions(kultur))[1] if kultur else 0
         ),
+        unpublishable_plant_health_count=publication_plant_health(
+            resolve_crop_field(crop, 'plant_health'),
+            existing_value=update_target.plant_health if update_target else None,
+        )[1],
     )
 
 
@@ -2381,7 +2454,10 @@ def _update_public_crop_from_project_crop(
     public_crop = PublicCrop.objects.select_for_update().get(pk=public_crop.pk)
     ensure_public_crop_revision(public_crop)
     previous_snapshot = build_public_crop_snapshot(public_crop)
-    payload = build_public_crop_payload(crop, public_variety=public_variety, companion_note_language=companion_note_language)
+    payload = build_public_crop_payload(
+        crop, public_variety=public_variety, companion_note_language=companion_note_language,
+        retained_public_crop=public_crop,
+    )
     if COMPANIONS_FIELD in payload:
         payload[COMPANIONS_FIELD] = merge_library_notes(payload[COMPANIONS_FIELD], public_crop.companions, companion_note_language or 'de')
     payload.pop('published_at', None)
@@ -3465,7 +3541,7 @@ def _apply_public_crop_update(
         payload.pop('origin_type', None)
         payload.pop('derived_from_public_crop', None)
         for field, value in payload.items():
-            set_crop_field_value(crop, field, value)
+            _set_project_library_value(crop, field, value)
         errors = crop_specific_property_errors(crop)
         if errors:
             raise ApiValidationError(errors)
@@ -3567,7 +3643,7 @@ def public_crop_field_changes(
     serializer rendering that entry's rows) compares without dereferencing
     ``crop.source_public_crop`` once per row.
     """
-    local = _comparable_copy_fields(_resolved_copy_fields(crop, index))
+    local = _comparable_copy_fields(_resolved_comparison_fields(crop, index))
     remote = _comparable_copy_fields(_copy_fields(public_crop))
     fields = _compared_public_update_fields(crop, include_pinned=include_pinned)
     if is_species_level_entry(public_crop):
@@ -3580,7 +3656,7 @@ def public_crop_field_changes(
     return [
         (field, local[field], remote[field])
         for field in fields
-        if local[field] != remote[field]
+        if not _same_public_field_value(field, local[field], remote[field])
     ]
 
 
@@ -3714,9 +3790,12 @@ def resolve_public_publish_block(
         return None
 
     pinned = effective_library_pinned_fields(crop)
-    local = _comparable_copy_fields(_resolved_copy_fields(crop, index))
+    local = _comparable_copy_fields(_resolved_comparison_fields(crop, index))
     remote = _comparable_copy_fields(_copy_fields(owned_public_crop))
-    if all(local[field] == remote[field] for field in local if field not in pinned):
+    if all(
+        _same_public_field_value(field, local[field], remote[field])
+        for field in local if field not in pinned
+    ):
         return 'no_local_changes'
     return None
 
@@ -3793,7 +3872,7 @@ def public_update_local_changes(crop: Crop, public_crop: PublicCrop) -> set[str]
     baseline = _public_crop_baseline_snapshot(crop, public_crop)
     if baseline is None:
         return differing
-    local = _resolved_copy_fields(crop)
+    local = _resolved_comparison_fields(crop)
     if COMPANIONS_FIELD in differing:
         _add_companion_values(local, {}, crop, public_crop)
     return {
@@ -3803,7 +3882,7 @@ def public_update_local_changes(crop: Crop, public_crop: PublicCrop) -> set[str]
             _companion_key(local[field])
             != _companion_key(entry_companions_for(crop, baseline[field]))
             if field == COMPANIONS_FIELD
-            else not _same_snapshot_value(_json_safe(local[field]), baseline[field])
+            else not _same_snapshot_value(_json_safe(local[field]), baseline[field], field=field)
         )
     }
 
@@ -3867,7 +3946,7 @@ def _pinned_public_crop_changes(
             previous_value = entry_companions_for(crop, previous_value)
             changed = _companion_key(previous_value) != _companion_key(public_value)
         else:
-            changed = previous_value != public_value
+            changed = not _same_public_field_value(field, previous_value, public_value)
         if changed:
             changes.append(PublicCropPinnedFieldChange(
                 field=field,

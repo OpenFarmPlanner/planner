@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 
+from django.core.exceptions import ValidationError as ModelValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Prefetch, Q
 from django.http import Http404
@@ -32,7 +33,6 @@ from farm.agent_api.schema_serializers import (
     SeedRateConstraintsSerializer,
 )
 from farm.common.mixins import ProjectScopedMixin
-from farm.services.crop_inheritance import lock_crop_project, validate_general_crop_identity
 from farm.companion_notes import note_language
 from farm.crops.moderation import (
     describe_contribution_origin,
@@ -62,6 +62,8 @@ from farm.services.crop_import.spreadsheet import (
     apply_crop_import_companions,
     preview_crop_import,
 )
+from farm.services.crop_inheritance import lock_crop_project, validate_general_crop_identity
+from farm.services.crop_plant_health import map_crop_plant_health
 from farm.services.public_crops import (
     VARIETY_ONLY_COPY_FIELDS,
     CropLinkConflictError,
@@ -95,6 +97,7 @@ from ..serializers import (
     PublicCropSerializer,
 )
 from ..serializers.crops import CropNameConflict
+from ..serializers.plant_health import CropPlantHealthMappingSerializer
 from ..serializers.public import (
     PUBLIC_CROP_PROPOSABLE_FIELDS,
     PublicCropChangeProposalSerializer,
@@ -186,6 +189,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         'create',
         'update',
         'partial_update',
+        'map_plant_health',
         'destroy',
         'delete_preview',
         'duplicate_check',
@@ -198,6 +202,24 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         'undelete',
     }
     api_token_delete_actions = {'destroy', 'undelete'}
+
+    @extend_schema(request=CropPlantHealthMappingSerializer, responses={200: CropSerializer})
+    @action(detail=True, methods=['post'], url_path='plant-health/mappings')
+    def map_plant_health(self, request: Request, pk=None) -> Response:
+        crop = self.get_object()
+        serializer = CropPlantHealthMappingSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            try:
+                map_crop_plant_health(crop, **serializer.validated_data)
+            except ModelValidationError as error:
+                return api_error_response(
+                    code='plant_health_mapping_invalid',
+                    detail='Review the selected catalogue mapping.',
+                    status_code=status.HTTP_400_BAD_REQUEST, errors={'mappings': error.messages},
+                )
+            self._set_latest_revision_actor(crop)
+            return Response(self.get_serializer(self.get_queryset().get(pk=crop.pk)).data)
 
     def _set_latest_revision_actor(self, crop: Crop) -> None:
         actor_label = _current_actor_label(self.request)
@@ -709,6 +731,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 payload = build_public_crop_payload(
                     crop, public_variety=None if publish_as_general else crop.variety,
                     companion_note_language=note_language({'request': request}),
+                    retained_public_crop=public_crop,
                 )
                 proposed_data = {
                     field: value for field, value in payload.items()
@@ -1210,6 +1233,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             ],
             'duplicates': self._serialize_duplicates(result.duplicates),
             'unpublishable_companion_count': result.unpublishable_companion_count,
+            'unpublishable_plant_health_count': result.unpublishable_plant_health_count,
             'can_publish': result.can_publish,
             'blocking_reasons': result.blocking_reasons,
             'general_crop_notice': (

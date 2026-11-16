@@ -1,4 +1,4 @@
-import type { Crop, PlantHealthSelection } from '../api/types';
+import type { Crop, PlantHealthSelection, PlantHealthSelections } from '../api/types';
 
 const cleanName = (name: string) => name.replace(/\s+/g, ' ').trim();
 const localKey = (name: string) => cleanName(name).toLowerCase().replace(/ß/g, 'ss');
@@ -31,4 +31,25 @@ export function normalizePlantHealthSelections(
 export function collectLocalPlantHealth(crops: readonly Partial<Crop>[]): PlantHealthSelection[] {
   return normalizePlantHealthSelections(crops.flatMap(crop => crop.plant_health?.entries ?? [])
     .filter(entry => !entry.catalogue_identity)).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export function officialPlantHealth(value: PlantHealthSelections | null | undefined): PlantHealthSelections | null {
+  if (value == null) return null;
+  const entries = value.entries.filter(entry => entry.catalogue_identity);
+  return { entries };
+}
+
+export function samePlantHealthIdentities(left: PlantHealthSelections | null | undefined, right: PlantHealthSelections | null | undefined): boolean {
+  if (left == null || right == null) return left == null && right == null;
+  const identities = (value: typeof left) => [...new Set(value?.entries.flatMap(entry => entry.catalogue_identity ? [entry.catalogue_identity] : []) ?? [])].sort().join(',');
+  return identities(left) === identities(right);
+}
+
+export function mergeOfficialPlantHealth(local: PlantHealthSelections | null | undefined, incoming: PlantHealthSelections | null | undefined): PlantHealthSelections | null {
+  const privateEntries = local?.entries.filter(entry => !entry.catalogue_identity) ?? [];
+  if (incoming == null && !privateEntries.length) return null;
+  return { entries: normalizePlantHealthSelections([
+    ...privateEntries,
+    ...(officialPlantHealth(incoming)?.entries ?? []),
+  ]) };
 }

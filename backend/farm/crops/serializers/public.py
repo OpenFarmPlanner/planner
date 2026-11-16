@@ -3,6 +3,7 @@
 from typing import Any
 from urllib.parse import urlparse
 
+from django.core.exceptions import ValidationError as ModelValidationError
 from rest_framework import serializers
 
 from accounts.public_identity import get_public_user_label as get_public_user_label
@@ -39,6 +40,7 @@ from farm.models import (
 from farm.project_context import get_active_project_optional
 from farm.services.crop_companions import CompanionRelationIndex, attach_relation_index
 from farm.services.crop_inheritance import GeneralCropIndex, build_general_crop_index
+from farm.services.crop_plant_health import canonical_public_plant_health
 from farm.services.public_crops import (
     PUBLIC_CROP_EDITABLE_FIELDS,
     is_project_crop_up_to_date,
@@ -72,6 +74,7 @@ PUBLIC_CROP_PROPOSABLE_FIELDS = {
     'germination_pretreatment',
     'specific_properties',
     'pests_diseases',
+    'plant_health',
     'light_requirement',
     'water_requirement',
     'life_cycle',
@@ -284,6 +287,7 @@ class PublicCropSerializer(serializers.ModelSerializer):
             'germination_pretreatment',
             'specific_properties',
             'pests_diseases',
+            'plant_health',
             'light_requirement',
             'water_requirement',
             'life_cycle',
@@ -512,6 +516,14 @@ class PublicCropUpdateSerializer(serializers.ModelSerializer):
             'seeding_requirement_type': {'required': False, 'allow_blank': True},
             'display_color': {'required': False, 'allow_blank': True},
         }
+
+    def validate_plant_health(self, value: Any) -> dict | None:
+        try:
+            return canonical_public_plant_health(
+                value, existing_value=getattr(self.instance, 'plant_health', None),
+            )
+        except ModelValidationError as error:
+            raise serializers.ValidationError(error.messages) from error
 
     def validate_companions(self, value: list[dict[str, Any]]) -> list[dict[str, Any]]:
         language = note_language(self.context, self.context.get('companion_legacy_language'))
@@ -1033,6 +1045,8 @@ class PublicCropChangeProposalSerializer(serializers.ModelSerializer):
                 cleaned[field] = typed_serializer.validated_data[field]
         if 'crop_family' in typed_serializer.validated_data:
             cleaned['crop_family'] = typed_serializer.validated_data['crop_family']
+        if 'plant_health' in typed_serializer.validated_data:
+            cleaned['plant_health'] = typed_serializer.validated_data['plant_health']
         if 'seed_packages' in typed_serializer.validated_data:
             cleaned['seed_packages'] = PublicCropSeedPackageSerializer(
                 typed_serializer.validated_data['seed_packages'],

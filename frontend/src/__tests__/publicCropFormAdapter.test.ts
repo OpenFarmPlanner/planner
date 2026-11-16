@@ -187,3 +187,11 @@ describe('buildPublicCropUpdatePayload', () => {
     expect(payload.growth_duration_days).toBe(70);
   });
 });
+
+it('retains official plant-health identities and prose while editing other public fields', () => {
+  const plant_health = { entries: [{ name: 'Synthetic reference', catalogue_identity: '00000000-0000-4000-8000-000000000001' }] };
+  const form = publicCropToCropFormData(buildPublicCrop({ plant_health, pests_diseases: 'Early sowing protects against carrot fly.' }));
+  expect(form.plant_health).toEqual(plant_health);
+  expect(buildPublicCropUpdatePayload({ ...form, notes: 'Other edit' }, 3)).toMatchObject({ plant_health, pests_diseases: 'Early sowing protects against carrot fly.' });
+  expect(buildPublicCropUpdatePayload({ ...form, plant_health: { entries: [] } }, 3).plant_health).toEqual({ entries: [] });
+});

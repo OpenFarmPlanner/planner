@@ -32,7 +32,7 @@ for (const width of [375, 1440]) {
       await input.fill(name);
       await input.press('Enter');
       await input.fill(`Alias ${scenario}`);
-      await page.getByRole('option', { name, exact: true }).click();
+      await page.getByRole('option').filter({ hasText: name }).click();
       await expect(dialog.locator('.MuiAutocomplete-root').filter({ has: page.getByRole('combobox', { name: de.plantHealth.label, exact: true }) }).locator('.MuiChip-root')).toHaveCount(2);
       await input.scrollIntoViewIfNeeded();
       await expectNoHorizontalPageOverflow(page);

@@ -109,6 +109,7 @@ export const buildDraftFromPublicCrop = (publicCrop: PublicCrop): Partial<Crop> 
   water_requirement: publicCrop.water_requirement ?? '',
   life_cycle: publicCrop.life_cycle ?? '',
   winter_hardiness: publicCrop.winter_hardiness ?? '',
+  plant_health: publicCrop.plant_health ?? null,
   harvest_method: publicCrop.harvest_method ?? '',
   expected_yield: publicCrop.expected_yield ?? undefined,
   distance_within_row_cm: metersToRoundedCentimeters(publicCrop.distance_within_row_m),

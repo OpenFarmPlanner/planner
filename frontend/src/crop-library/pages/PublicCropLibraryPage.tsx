@@ -6,6 +6,7 @@ import { loadRetryAlertSx } from '../../components/loadRetryStyles';
 import LoadRetryButton from '../../components/LoadRetryButton';
 import { germinationDetailFields, formatGerminationValue } from '../../crops/germination';
 import { SITE_HEALTH_FIELDS, formatSiteHealthValue } from '../../crops/siteHealth';
+import { PlantHealthChips } from '../../crops/PlantHealthChips';
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type UIEvent } from 'react';
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router';
 import axios from 'axios';
@@ -556,6 +557,7 @@ export default function PublicCropLibraryPage() {
       : []),
     [companionSourceCrop, crops, plantFamilies, t],
   );
+  const publicPlantHealth = selectedCrop ? getPublicFieldValue('plant_health', selectedCrop.plant_health) : null;
   const getPublicFieldSource = useCallback((field: keyof PublicCrop): ValueSource | null => {
     if (isSpeciesView || !selectedCrop?.variety || !selectedSpeciesCrop) {
       return null;
@@ -2065,12 +2067,15 @@ export default function PublicCropLibraryPage() {
                               </DetailGrid>
                             </DetailSection>
                           ) : null,
-                          hasAnyDetailValue(...SITE_HEALTH_FIELDS.map((field) => getPublicFieldValue(field, selectedCrop[field]))) ? (
+                          (publicPlantHealth?.entries.length || hasAnyDetailValue(...SITE_HEALTH_FIELDS.map((field) => getPublicFieldValue(field, selectedCrop[field])))) ? (
                             <DetailSection key="siteHealth" title={t('siteHealth.title')}>
+                              {publicPlantHealth?.entries.length ? <Box sx={{ mb: 2 }}>
+                                <PlantHealthChips value={publicPlantHealth} />
+                              </Box> : null}
                               <DetailGrid>
                                 {SITE_HEALTH_FIELDS
                                   .filter((field) => hasDetailValue(getPublicFieldValue(field, selectedCrop[field])))
-                                  .map((field) => <DetailRow key={field} label={t(`siteHealth.fields.${field}`)} value={formatSiteHealthValue(field, getPublicFieldValue(field, selectedCrop[field]), t)} source={getPublicFieldSource(field)} />)}
+                                  .map((field) => <DetailRow key={field} label={t(field === 'pests_diseases' ? 'plantHealth.notes' : `siteHealth.fields.${field}`)} value={formatSiteHealthValue(field, getPublicFieldValue(field, selectedCrop[field]), t)} source={getPublicFieldSource(field)} />)}
                               </DetailGrid>
                             </DetailSection>
                           ) : null,

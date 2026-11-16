@@ -64,3 +64,13 @@ class PublicCropValuesTest(TestCase):
             cwd=Path(__file__).resolve().parents[2], capture_output=True, text=True, check=False,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
+
+
+    def test_health_comparison_keeps_null_distinct_from_explicit_empty_overrides(self):
+        same = public_crop_values.same_public_field_value
+        self.assertFalse(same("plant_health", None, {"entries": []}))
+        self.assertFalse(public_crop_values.same_snapshot_value(
+            None, {"entries": []}, field="plant_health",
+        ))
+        self.assertTrue(same("plant_health", {"entries": [{"name": "Private"}]}, {"entries": []}))
+        self.assertFalse(same("plant_health", {"entries": [{"name": "Private"}]}, None))

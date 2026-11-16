@@ -2480,14 +2480,19 @@ Explicit new pins survive compatibility pulls. Opposite pull/share decisions
 through overlapping legacy and canonical fields are rejected atomically, so
 normalization cannot overwrite a confirmed share or leak a private pinned value.
 
-## Plant-health catalogue foundation (#1011)
+## Plant-health catalogue and crop selections (#1011)
 
 The global, moderated plant-health catalogue uses separate entry, translation,
 host-evidence and revision models in `crops/plant_health_models.py`. It reuses
 the crop-library moderator role and platform token surface, with session-only
 approval. Its seven-language editor is below the existing moderation queue.
-This foundation does not alter private crop fields, public-crop synchronization
-or legacy `pests_diseases` notes; those are subsequent #1011 parts. See
+Private structured crop selections preserve free names and explicit catalogue
+UUIDs. Public selections contain only UUID references; publication offers
+explicit private mapping and one-language proposals while unresolved names stay
+private. Library comparison, pins, history and full/selected-field updates use
+official UUID sets and retain private names and unchanged variety inheritance.
+Legacy `pests_diseases` prose and omitted public language versions are preserved.
+Filters and a confirmed shared-pathogen view remain a subsequent #1011 part. See
 [Plant-health catalogue](./plant-health-catalogue.md) for evidence, identity,
 partial-name writes, archival, API and migration contracts.
 
