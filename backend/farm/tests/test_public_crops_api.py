@@ -2440,6 +2440,34 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             after_history = list(EntityRevision.objects.filter(project=self.project).values())
             self.assertEqual(after_history, history)
 
+    def test_import_rejects_same_variety_under_different_species_but_new_copy_is_unique(self):
+        from farm.history.project_restore import ensure_project_checkpoint
+
+        species = CropSpecies.objects.create(name='Different library species')
+        entry = PublicCrop.objects.create(
+            name=self.crop.name, variety=self.crop.variety, crop_species=species,
+            status='published', created_by=self.user,
+        )
+        ensure_project_checkpoint(self.project)
+        models = (Crop, EntityRevision, PublicCrop, PublicCropRevision,
+                  PublicCropChangeProposal, CropCompanion, SeedPackage)
+        before = {model: list(model._base_manager.order_by('pk').values()) for model in models}
+        url = f'/openfarmplanner/api/public-crops/{entry.pk}/import/'
+        for establish_link in (True, False):
+            with self.subTest(establish_link=establish_link):
+                response = self.client.post(url, {
+                    'link_to_library': establish_link, 'base_version': entry.version,
+                }, format='json')
+                self.assertEqual(response.status_code, 409, response.data)
+                self.assertEqual(response.data['code'], 'crop_variety_conflict')
+                self.assertEqual({
+                    model: list(model._base_manager.order_by('pk').values()) for model in models
+                }, before)
+        response = self.client.post(url, {'mode': 'new'}, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertTrue(Crop.objects.filter(project=self.project, name='Lettuce (2)',
+                                            variety=self.crop.variety).exists())
+
     def test_import_public_crop_creates_project_local_copy(self):
         public_crop = PublicCrop.objects.create(
             name='Bean',

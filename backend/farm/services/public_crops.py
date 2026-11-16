@@ -3441,7 +3441,9 @@ def _create_crop_from_public(
                 variety=payload.get('variety') or '',
                 project=project,
             )
-        crop = Crop.objects.create(project=project, **crop_model_kwargs(payload))
+        values = crop_model_kwargs(payload)
+        validate_crop_identity(Crop(project=project, **values))
+        crop = Crop.objects.create(project=project, **values)
         if not (crop.variety or '').strip():
             if public_crop.companions:
                 apply_library_companions(crop, public_crop.companions)
