@@ -377,9 +377,19 @@ CROP_FIELD_SPECS: tuple[FieldSpec, ...] = (
     FieldSpec(name='germination_pretreatment', kind=KIND_STRING,
               description='Seed pre-treatment instructions.', example='Chill for four weeks.'),
     FieldSpec(name='pests_diseases', kind=KIND_STRING,
-              description='Pests and diseases to watch for, as free text.',
+              description=(
+                  'Explanatory pest/disease prose; never interpreted as individual selections.'
+              ),
               example='Carrot fly; cover with insect netting.',
               input_aliases={'pests_diseases': None}),
+    FieldSpec(name='plant_health', kind=KIND_OBJECT,
+              description=(
+                  'Individual selections: {entries: [{name: local name} or '
+                  '{catalogue_identity: UUID}]}. Null inherits; {entries: []} explicitly clears. '
+                  'Omission preserves existing selections.'
+              ),
+              example={'entries': [{'name': 'Synthetic leaf spot'}]},
+              input_aliases={'plant_health': None}),
     FieldSpec(name='light_requirement', kind=KIND_ENUM,
               description='Light the crop needs on its site.', example='full_sun',
               enum_values=LIGHT_REQUIREMENT_VALUES,

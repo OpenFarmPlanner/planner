@@ -378,6 +378,17 @@ def analyze_field(
 
     if spec.kind == KIND_STRING:
         _analyze_string(spec, analysis, raw_value)
+    elif spec.name == 'plant_health':
+        from django.core.exceptions import ValidationError
+
+        from crops.plant_health_values import normalize_plant_health
+
+        try:
+            analysis.api_value = normalize_plant_health(raw_value)
+            analysis.confidence = CONFIDENCE_EXACT
+        except ValidationError as error:
+            analysis.confidence = CONFIDENCE_INVALID
+            analysis.errors.append(_issue('plant_health_invalid', '; '.join(error.messages)))
     elif spec.kind == KIND_OBJECT:
         if isinstance(raw_value, dict):
             analysis.api_value = raw_value
@@ -680,6 +691,20 @@ def analyze_item(
             seen_identities[identity_key] = index
 
     _warn_unused_cultivation_types(analyses, existing)
+    health = analyses.get('plant_health')
+    if health is not None and not health.errors:
+        from django.core.exceptions import ValidationError
+
+        from farm.services.crop_plant_health import canonical_plant_health
+
+        try:
+            health.api_value = canonical_plant_health(
+                health.api_value, project.pk,
+                existing_value=getattr(existing, 'plant_health', None),
+            )
+        except ValidationError as error:
+            health.confidence = CONFIDENCE_INVALID
+            health.errors.append(_issue('plant_health_invalid', '; '.join(error.messages)))
     from .specific_properties import SpecificPropertyImportError, apply_specific_property_cells
 
     property_payload = {

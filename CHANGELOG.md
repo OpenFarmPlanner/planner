@@ -6,6 +6,8 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
 
 ## Unreleased
 
+- Add private structured pest/disease selections with explicit catalogue references, live variety inheritance, history and compatible JSON/CSV/XLSX/ODS exchange while preserving explanatory prose.
+
 - Give each selected growing-area location a full graphical workspace with shared topbar controls and retained per-location cameras.
 
 - Shorten Portuguese, Italian and Spanish planting-plan date headers and allow two-line table headings while preserving explicit form and export labels.

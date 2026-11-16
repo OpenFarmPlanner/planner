@@ -5,7 +5,7 @@ import type { PlantHealthEntry, PlantHealthEntryWrite, PlantHealthHost, PlantHea
 const entries = '/plant-health/entries/';
 const hosts = '/plant-health/hosts/';
 export const plantHealthAPI = {
-  list: (params: { q?: string; status?: string; include_proposed?: boolean; page?: number; page_size?: number }, signal?: AbortSignal) =>
+  list: (params: { q?: string; identities?: string; status?: string; include_proposed?: boolean; page?: number; page_size?: number }, signal?: AbortSignal) =>
     http.get<PaginatedResponse<PlantHealthEntry>>(entries, { params, signal }),
   create: (payload: PlantHealthEntryWrite) => http.post<PlantHealthEntry>(entries, payload),
   update: (id: number, payload: PlantHealthEntryWrite) => http.patch<PlantHealthEntry>(`${entries}${id}/`, payload),

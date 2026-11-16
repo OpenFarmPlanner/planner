@@ -2070,5 +2070,20 @@
       "update_host": "Relation avec la plante hôte mise à jour",
       "archive_host": "Relation avec la plante hôte archivée"
     }
+  },
+  "plantHealth": {
+    "label": "Entrées de ravageurs et maladies",
+    "placeholder": "Saisissez un nom ou choisissez une entrée du catalogue",
+    "helper": "Les noms saisis restent privés. Sélectionnez explicitement les entrées du catalogue. Jusqu’à 40 entrées.",
+    "local": "Nom privé",
+    "catalogue": "Entrée du catalogue",
+    "unavailable": "Référence de catalogue indisponible",
+    "searchError": "Les suggestions du catalogue n’ont pas pu être chargées. Vous pouvez toujours ajouter un nom privé.",
+    "inherit": "Utiliser les entrées de la culture",
+    "associationHint": "Une association ne prouve ni une infestation ni une résistance. L’absence d’information reste inconnue.",
+    "notes": "Notes sur les ravageurs et maladies",
+    "spreadsheetHeader": "Entrées de ravageurs et maladies (JSON)",
+    "templateEntry": "Entrée d’exemple synthétique",
+    "validation": "Utilisez au maximum 40 noms individuels de 200 caractères chacun."
   }
 }

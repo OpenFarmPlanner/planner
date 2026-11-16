@@ -2070,5 +2070,20 @@
       "update_host": "Relação com planta hospedeira atualizada",
       "archive_host": "Relação com planta hospedeira arquivada"
     }
+  },
+  "plantHealth": {
+    "label": "Entradas de pragas e doenças",
+    "placeholder": "Introduza um nome ou escolha uma entrada do catálogo",
+    "helper": "Os nomes introduzidos permanecem privados. Selecione explicitamente as entradas do catálogo. Até 40 entradas.",
+    "local": "Nome privado",
+    "catalogue": "Entrada do catálogo",
+    "unavailable": "Referência do catálogo indisponível",
+    "searchError": "Não foi possível carregar as sugestões do catálogo. Pode continuar a adicionar um nome privado.",
+    "inherit": "Usar as entradas da cultura",
+    "associationHint": "Uma associação não comprova uma infestação nem resistência. A informação em falta permanece desconhecida.",
+    "notes": "Notas sobre pragas e doenças",
+    "spreadsheetHeader": "Entradas de pragas e doenças (JSON)",
+    "templateEntry": "Entrada de exemplo sintética",
+    "validation": "Utilize no máximo 40 nomes individuais com até 200 caracteres cada."
   }
 }

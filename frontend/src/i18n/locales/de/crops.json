@@ -2019,5 +2019,20 @@
       "update_host": "Wirtspflanzenbeziehung aktualisiert",
       "archive_host": "Wirtspflanzenbeziehung archiviert"
     }
+  },
+  "plantHealth": {
+    "label": "Schädlings- und Krankheitseinträge",
+    "placeholder": "Einzelnen Namen eingeben oder Katalogeintrag wählen",
+    "helper": "Eingegebene Namen bleiben privat. Wähle Katalogeinträge ausdrücklich aus. Bis zu 40 Einträge.",
+    "local": "Privater Name",
+    "catalogue": "Katalogeintrag",
+    "unavailable": "Nicht verfügbarer Katalogverweis",
+    "searchError": "Katalogvorschläge konnten nicht geladen werden. Du kannst weiterhin einen privaten Namen ergänzen.",
+    "inherit": "Einträge der Kultur verwenden",
+    "associationHint": "Eine Zuordnung belegt weder einen Befall noch eine Resistenz. Fehlende Angaben bedeuten unbekannt.",
+    "notes": "Hinweise zu Schädlingen und Krankheiten",
+    "spreadsheetHeader": "Schädlings- und Krankheitseinträge (JSON)",
+    "templateEntry": "Synthetischer Beispieleintrag",
+    "validation": "Verwende höchstens 40 einzelne Namen mit jeweils bis zu 200 Zeichen."
   }
 }

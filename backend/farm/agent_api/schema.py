@@ -109,6 +109,11 @@ _SPECIES_INVARIANT_NOTE = (
     'it contradicts it; `effective_values` always carries the Kultur value.'
 )
 
+_PLANT_HEALTH_NOTE = (
+    'Null inherits the general Kultur; {"entries": []} is an explicit empty override. '
+    'Omission preserves the stored value. Legacy pests_diseases is separate explanatory prose.'
+)
+
 
 def _inheritance_note_by_api_field() -> dict[str, str]:
     # Imported lazily: this module is DRF's DEFAULT_SCHEMA_CLASS, which DRF
@@ -121,6 +126,8 @@ def _inheritance_note_by_api_field() -> dict[str, str]:
 
     return {
         INHERITABLE_API_FIELD_NAMES.get(field, field): (
+            _PLANT_HEALTH_NOTE
+            if field == 'plant_health' else
             _SPECIES_INVARIANT_NOTE if field in CROP_SPECIES_INVARIANT_FIELDS else _RAW_VALUE_NOTE
         )
         for field in CROP_INHERITABLE_FIELDS

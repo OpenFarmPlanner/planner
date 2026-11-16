@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID
 
 from django.contrib.auth import get_user_model
 from django.db.models import Exists, Min, OuterRef, Q, QuerySet
 from django.shortcuts import get_object_or_404
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -60,6 +62,19 @@ class PlantHealthEntryViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(status=PlantHealthEntry.STATUS_PUBLISHED)
         if self.request.query_params.get("kind"):
             queryset = queryset.filter(kind=self.request.query_params["kind"])
+        identities = self.request.query_params.get('identities')
+        if identities is not None:
+            try:
+                keys = identities.split(',')
+                if not keys or len(keys) > 40 or len(identities) > 1600:
+                    raise ValueError('Invalid identity list')
+                keys = [UUID(key) for key in keys]
+            except ValueError as error:
+                raise ValidationError({
+                    'identities': 'Provide 1–40 comma-separated UUIDs.',
+                }) from error
+            # Selection lookup narrows the ordinary permission-filtered queryset.
+            queryset = queryset.filter(identity_key__in=keys)
         query = normalize_search_text(self.request.query_params.get("q", "")[:200])
         for term in dict.fromkeys(query.split()):
             names = PlantHealthTranslation.objects.filter(

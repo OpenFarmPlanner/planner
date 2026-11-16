@@ -11,6 +11,14 @@ const seedRateUnitConstraints = {
 };
 
 describe('validateCrop', () => {
+  it('allows inheritance and an explicit empty health selection, and rejects oversized names/lists', () => {
+    for (const plant_health of [null, { entries: [] }]) {
+      expect(validateCrop({ name: 'Synthetic', plant_health }, t, 'submit', false).isValid).toBe(true);
+    }
+    for (const entries of [Array.from({ length: 41 }, (_, index) => ({ name: `Name ${index}` })), [{ name: 'x'.repeat(201) }]]) {
+      expect(validateCrop({ name: 'Synthetic', plant_health: { entries } }, t, 'submit', false).errors.plant_health).toBe('plantHealth.validation');
+    }
+  });
   it('returns required field errors for missing mandatory values', () => {
     const result = validateCrop({}, t);
 

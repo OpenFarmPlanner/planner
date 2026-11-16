@@ -70,6 +70,20 @@ class PlantHealthApiTests(TestCase):
         self.assertEqual(response.status_code, 200, response.data)
         return entry_id
 
+    def test_identity_lookup_preserves_visibility_and_rejects_unbounded_or_invalid_keys(self):
+        published = self.published_entry()
+        pending = PlantHealthEntry.objects.create(name='Hidden proposal', proposed_by=self.other)
+        known = PlantHealthEntry.objects.get(pk=published)
+        self.client.force_authenticate(self.user)
+        response = self.client.get(ENTRIES, {
+            'identities': f'{known.identity_key},{pending.identity_key}',
+        })
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual([item['id'] for item in response.data['results']], [published])
+        for value in ['', 'not-a-uuid', ','.join([str(known.identity_key)] * 41)]:
+            with self.subTest(value=value):
+                self.assertEqual(self.client.get(ENTRIES, {'identities': value}).status_code, 400)
+
     def test_proposal_accepts_one_language_and_is_not_published_or_leaked(self) -> None:
         response = self.client.post(
             ENTRIES,

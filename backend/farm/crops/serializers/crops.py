@@ -77,6 +77,7 @@ from farm.services.crop_inheritance import (
     resolve_plants_per_m2,
     validate_general_crop_identity,
 )
+from farm.services.crop_plant_health import canonical_plant_health
 from farm.services.crop_tags import canonical_tags
 from farm.services.public_crops import (
     LibraryPinnedFieldsError,
@@ -1240,6 +1241,15 @@ class CropSerializer(serializers.ModelSerializer):
         self._resolve_supplier_from_name(attrs)
         self._normalize_variety(attrs)
         self._normalize_tags(attrs)
+        if 'plant_health' in attrs:
+            project = self._resolve_project(attrs, instance_first=True)
+            try:
+                attrs['plant_health'] = canonical_plant_health(
+                    attrs['plant_health'], getattr(project, 'id', None),
+                    existing_value=getattr(self.instance, 'plant_health', None),
+                )
+            except ValidationError as error:
+                errors['plant_health'] = error.messages
         if general_name_conflict and set(errors) == {'name'}:
             raise CropNameConflict()
         if errors:

@@ -2019,5 +2019,20 @@
       "update_host": "Host relationship updated",
       "archive_host": "Host relationship archived"
     }
+  },
+  "plantHealth": {
+    "label": "Pest and disease entries",
+    "placeholder": "Enter one name or choose a catalogue entry",
+    "helper": "Typed names stay private. Choose catalogue entries explicitly. Up to 40 entries.",
+    "local": "Private name",
+    "catalogue": "Catalogue entry",
+    "unavailable": "Unavailable catalogue reference",
+    "searchError": "Catalogue suggestions could not be loaded. You can still add a private name.",
+    "inherit": "Use culture entries",
+    "associationHint": "An association does not establish an infestation or resistance. Missing information is unknown.",
+    "notes": "Pest and disease notes",
+    "spreadsheetHeader": "Pest and disease entries (JSON)",
+    "templateEntry": "Synthetic example entry",
+    "validation": "Use at most 40 individual names, each up to 200 characters."
   }
 }

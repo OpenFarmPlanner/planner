@@ -64,6 +64,7 @@ export const VARIETY_INHERITABLE_FIELDS: (keyof Crop)[] = [
   'germination_types',
   'germination_pretreatment',
   'pests_diseases',
+  'plant_health',
   'light_requirement',
   'water_requirement',
   'life_cycle',

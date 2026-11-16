@@ -360,6 +360,17 @@ unknown) and `pests_diseases` (text). Like germination they are inheritable
 and part of library sync; no planning check reads them yet. See
 [crop-library-architecture.md](./crop-library-architecture.md#site-life-cycle-and-plant-health).
 
+`Crop.plant_health` separately holds private structured selections as a nullable
+JSON object with an `entries` array (at most 40). Entries distinguish a local
+name from an explicit stable catalogue UUID; names never imply identity or
+confirmed host evidence. Null inherits on a linked variety, while
+`{"entries": []}` is an explicit empty override. Omission preserves stored
+values. Migration 0142 adds the nullable column without parsing existing prose;
+history and legacy snapshots preserve that distinction. This private field is
+not yet a public library copy field. See
+[private crop selections](plant-health-catalogue.md#private-crop-selections) for
+validation, portable files, rollback behavior and the guarded local fixture.
+
 Task synchronization (#894) retains generated deletion identities in server-owned
 `deleted_at` (hidden from task API reads), and uses SET_NULL for the planting-plan
 relation to preserve completed and manually managed work after plan removal.
