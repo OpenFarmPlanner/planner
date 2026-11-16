@@ -1037,7 +1037,7 @@ export default function GraphicalFields({
                     <Stack spacing={0} sx={{ alignItems: "stretch", }} >
                       <Stack direction={{ xs: "column", sm: "row" }} spacing={0}>
                         {([-1, 1] as const).map(direction => (
-                          <AppTooltip key={direction} title={t(direction === -1 ? "fields:graphical.rotateLeft" : "fields:graphical.rotateRight")} placement="left">
+                          <AppTooltip disableInteractive key={direction} title={t(direction === -1 ? "fields:graphical.rotateLeft" : "fields:graphical.rotateRight")} placement="left">
                             <IconButton
                               size="small"
                               onClick={() => handleRotate(locationId, direction)}
@@ -1051,7 +1051,7 @@ export default function GraphicalFields({
                       </Stack>
                       <Box sx={{ display: { xs: "none", sm: "block" } }}>
                         <Box sx={{ display: "flex", justifyContent: "center" }}>
-                          <AppTooltip title={t("fields:graphical.panUp")} placement="left">
+                          <AppTooltip disableInteractive title={t("fields:graphical.panUp")} placement="left">
                             <IconButton
                               size="small"
                               onClick={() => handlePanByOffset(locationId, 0, PAN_STEP)}
@@ -1064,6 +1064,7 @@ export default function GraphicalFields({
                         </Box>
                         <Stack direction="row" spacing={0}>
                           <AppTooltip
+                            disableInteractive
                             title={t("fields:graphical.panLeft")}
                             placement="left"
                           >
@@ -1085,6 +1086,7 @@ export default function GraphicalFields({
                             </IconButton>
                           </AppTooltip>
                           <AppTooltip
+                            disableInteractive
                             title={t("fields:graphical.panRight")}
                             placement="left"
                           >
@@ -1107,6 +1109,7 @@ export default function GraphicalFields({
                         </Stack>
                         <Box sx={{ display: "flex", justifyContent: "center" }}>
                           <AppTooltip
+                            disableInteractive
                             title={t("fields:graphical.panDown")}
                             placement="left"
                           >
@@ -1128,6 +1131,7 @@ export default function GraphicalFields({
                       </Box>
                       <Stack direction={{ xs: "column", sm: "row" }} spacing={0}>
                         <AppTooltip
+                          disableInteractive
                           title={t("fields:graphical.zoomIn")}
                           placement="left"
                         >
@@ -1141,6 +1145,7 @@ export default function GraphicalFields({
                           </IconButton>
                         </AppTooltip>
                         <AppTooltip
+                          disableInteractive
                           title={t("fields:graphical.zoomOut")}
                           placement="left"
                         >
@@ -1160,6 +1165,7 @@ export default function GraphicalFields({
                         </AppTooltip>
                       </Stack>
                       <AppTooltip
+                        disableInteractive
                         title={t("fields:graphical.fitToView")}
                         placement="left"
                       >
@@ -1178,6 +1184,7 @@ export default function GraphicalFields({
                         </IconButton>
                       </AppTooltip>
                       <AppTooltip
+                        disableInteractive
                         title={
                           fullscreenLocationId === locationId
                             ? t("fields:graphical.exitFullscreen")

@@ -2,6 +2,9 @@ import { expect, test, type Page } from '@playwright/test';
 import type Konva from 'konva';
 import { apiRequest, loginWithDeterministicProject } from './utils';
 
+// Layout failure/delay fixtures must intercept the browser's requests directly.
+test.use({ serviceWorkers: 'block' });
+
 async function canvasRects(page: Page, prefix: string) {
   return page.evaluate(prefix => {
     const konva = (window as unknown as { Konva: { stages: Konva.Stage[] } }).Konva;
@@ -137,6 +140,8 @@ test('fits unsaved plots together and shows readable beds in the schematic view'
   const restored = (await canvasRects(page, `field-rect-${fieldIds[0]}`))[0];
   expect(restored.x).toBe(original.x);
   expect(restored.y).toBe(original.y);
+  await card.getByRole('button', { name: 'Ansicht um 90° nach rechts drehen', exact: true }).hover();
+  await expect(page.getByRole('tooltip')).toHaveText('Ansicht um 90° nach rechts drehen');
   await card.getByRole('button', { name: 'Ansicht um 90° nach links drehen', exact: true }).click();
   await card.getByRole('button', { name: 'Ansicht um 90° nach rechts drehen', exact: true }).click();
   const bed = (await canvasRects(page, `bed-rect-${bedIds[0]}`))[0];
@@ -204,14 +209,17 @@ test('retains selected location, camera and rotation through representation chan
   const resumeLayouts = new Promise<void>(resolve => { releaseLayouts = resolve; });
   let finishLayoutRequest: () => void = () => {};
   const layoutRequestFinished = new Promise<void>(resolve => { finishLayoutRequest = resolve; });
+  let layoutIntercepted = false;
   const layoutUrl = /\/locations\/\d+\/layouts\/$/;
   await page.route(layoutUrl, async route => {
+    layoutIntercepted = true;
     await resumeLayouts;
     await route.continue();
     finishLayoutRequest();
   });
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
   await expect(page.getByRole('combobox', { name: 'Standort', exact: true })).toHaveText('Hofgarten');
+  await expect.poll(() => layoutIntercepted).toBe(true);
   await expect(page.locator('main').getByRole('progressbar')).toBeVisible();
   await expect(page.locator('.konvajs-content')).toHaveCount(0);
   releaseLayouts();
