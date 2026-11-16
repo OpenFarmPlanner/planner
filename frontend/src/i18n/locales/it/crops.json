@@ -2098,7 +2098,7 @@
     }
   },
   "plantHealth": {
-    "label": "Voci di parassiti e malattie",
+    "label": "Parassiti e malattie",
     "placeholder": "Inserisci un nome o scegli una voce del catalogo",
     "helper": "I nomi inseriti restano privati. Seleziona esplicitamente le voci del catalogo. Fino a 40 voci.",
     "local": "Nome privato",

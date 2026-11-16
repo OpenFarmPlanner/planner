@@ -2044,7 +2044,7 @@
     }
   },
   "plantHealth": {
-    "label": "Pest and disease entries",
+    "label": "Pests and diseases",
     "placeholder": "Enter one name or choose a catalogue entry",
     "helper": "Typed names stay private. Choose catalogue entries explicitly. Up to 40 entries.",
     "local": "Private name",

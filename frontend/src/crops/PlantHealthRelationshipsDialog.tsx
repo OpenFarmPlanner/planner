@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import { Alert, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Stack, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { FieldInfoButton } from './FieldInfoButton';
 import { useTranslation } from '../i18n';
 import type { PlantHealthEntry } from '../crop-library/plant-health/types';
 import { SourceLinks } from '../crop-library/plant-health/SourceLinks';
@@ -17,10 +18,13 @@ export function PlantHealthRelationshipsDialog({ entry, name, loading, error, on
   const hosts = specific ? entry.hosts.filter(host => host.is_active && host.is_confirmed
     && host.species_status === 'published' && host.sources.length > 0) : [];
   return <Dialog open fullWidth maxWidth="sm" fullScreen={fullscreen} onClose={onClose} aria-labelledby={titleId}>
-    <DialogTitle id={titleId}>{t('crops:plantHealth.relationshipsTitle')}</DialogTitle>
+    <DialogTitle component="div" id={`${titleId}-container`} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Typography component="h2" variant="h6" id={titleId} sx={{ flex: '0 1 auto', minWidth: 0, overflowWrap: 'anywhere' }}>{t('crops:plantHealth.relationshipsTitle')}</Typography>
+      <FieldInfoButton contextual title={t('crops:plantHealth.relationshipsHint')}
+        ariaLabel={t('crops:form.fieldInfoAriaLabel', { field: t('crops:plantHealth.relationshipsTitle') })} />
+    </DialogTitle>
     <DialogContent dividers><Stack spacing={2}>
       <Typography variant="h6" sx={{ overflowWrap: 'anywhere' }}>{entry?.display_name ?? name}</Typography>
-      <Alert severity="info">{t('crops:plantHealth.relationshipsHint')}</Alert>
       {loading ? <CircularProgress size={24} /> : error ? <Alert severity="error"
         action={<LoadRetryButton onClick={onRetry} />}>{t('crops:plantHealth.relationshipsError')}</Alert>
         : !entry ? <Alert severity="info">{t('crops:plantHealth.unavailable')}</Alert>

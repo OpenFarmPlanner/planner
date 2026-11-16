@@ -14,9 +14,9 @@ it('makes a plant-health import diff reviewable and distinguishes a clear from i
   const identity = '00000000-0000-0000-0000-000000000001';
   expect(formatImportDiffChange({ field: 'plant_health', current: null, new: { entries: [
     { name: 'Private, with; delimiters' }, { name: 'Official snapshot', catalogue_identity: identity },
-  ] } }, translate)).toBe(`Schädlings- und Krankheitseinträge: ${translate('plantHealth.unspecified')} → Private, with; delimiters · Privater Name; Official snapshot · Katalogeintrag (${identity})`);
+  ] } }, translate)).toBe(`Schädlinge und Krankheiten: ${translate('plantHealth.unspecified')} → Private, with; delimiters · Privater Name; Official snapshot · Katalogeintrag (${identity})`);
   expect(formatImportDiffChange({ field: 'plant_health', current: { entries: [] }, new: null }, translate))
-    .toBe(`Schädlings- und Krankheitseinträge: ${translate('plantHealth.emptySelection')} → ${translate('plantHealth.unspecified')}`);
+    .toBe(`Schädlinge und Krankheiten: ${translate('plantHealth.emptySelection')} → ${translate('plantHealth.unspecified')}`);
 });
 
 it('retains original JSON positions through non-record and invalid-name filtering', () => {

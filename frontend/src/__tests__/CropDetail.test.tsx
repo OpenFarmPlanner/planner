@@ -918,9 +918,9 @@ describe('CropDetail Component', () => {
     expect(screen.getByText('Transplanting, Direct sowing')).toBeInTheDocument();
     const seedRateByCultivationLabel = screen.getByText('Seed quantity by cultivation type');
     expect(seedRateByCultivationLabel).toBeInTheDocument();
-    // Cultivation type now lives in the Seed section, directly above the
-    // per-method seed-rate table it used to be disconnected from.
-    expect(seedHeading.compareDocumentPosition(cultivationTypeLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const timingHeading = screen.getByRole('heading', { level: 6, name: 'Timing' });
+    expect(timingHeading.compareDocumentPosition(cultivationTypeLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(cultivationTypeLabel.compareDocumentPosition(seedHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(cultivationTypeLabel.compareDocumentPosition(seedRateByCultivationLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByText('seeds / plant')).toBeInTheDocument();
     expect(screen.getByText('seeds / running m')).toBeInTheDocument();

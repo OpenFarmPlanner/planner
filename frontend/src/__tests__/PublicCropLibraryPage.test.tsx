@@ -459,6 +459,7 @@ describe('PublicCropLibraryPage', () => {
         harvest_method: 'per_sqm',
         expected_yield: 4,
         cultivation_types: ['direct_sowing'],
+        thousand_kernel_weight_g: 1.2,
         germination_days_min: 10,
         light_requirement: 'full_sun',
         notes: 'Gleichmäßig feucht halten.',
@@ -746,9 +747,9 @@ describe('PublicCropLibraryPage', () => {
     renderPage(['/app/crop-library?cropId=1']);
     await user.click(await screen.findByRole('button', { name: 'Kultur auswählen' }));
     await user.click(screen.getByRole('button', { name: 'Erweiterte Filter öffnen' }));
-    expect(screen.getByRole('combobox', { name: 'Schädlings- und Krankheitseinträge' })).toBeVisible();
+    expect(screen.getByRole('combobox', { name: 'Schädlinge und Krankheiten' })).toBeVisible();
     await user.keyboard('{Escape}');
-    await waitFor(() => expect(screen.queryByRole('combobox', { name: 'Schädlings- und Krankheitseinträge' })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole('combobox', { name: 'Schädlinge und Krankheiten' })).not.toBeInTheDocument());
     expect(screen.getByRole('textbox', { name: 'Öffentliche Kulturen durchsuchen' })).toBeVisible();
   });
 

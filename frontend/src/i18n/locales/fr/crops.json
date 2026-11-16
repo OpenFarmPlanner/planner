@@ -2098,7 +2098,7 @@
     }
   },
   "plantHealth": {
-    "label": "Entrées de ravageurs et maladies",
+    "label": "Ravageurs et maladies",
     "placeholder": "Saisissez un nom ou choisissez une entrée du catalogue",
     "helper": "Les noms saisis restent privés. Sélectionnez explicitement les entrées du catalogue. Jusqu’à 40 entrées.",
     "local": "Nom privé",

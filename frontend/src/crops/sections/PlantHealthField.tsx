@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import { Autocomplete, Box, Button, Chip, TextField, Typography, type SxProps, type Theme } from '@mui/material';
 import type { PlantHealthSelection, PlantHealthSelections } from '../../api/types';
 import type { PlantHealthKind } from '../../crop-library/plant-health/types';
@@ -7,6 +7,7 @@ import { useTranslation } from '../../i18n';
 import { textContainsTerm, tokenizeSearchQuery } from '../../search/searchText';
 import { normalizePlantHealthSelections, plantHealthDisplayName, plantHealthKey } from '../plantHealth';
 import { usePlantHealthNames } from '../usePlantHealthNames';
+import { FieldInfoButton } from '../FieldInfoButton';
 import LoadRetryButton from '../../components/LoadRetryButton';
 
 type Option = PlantHealthSelection & { display_name?: string; scientific_name?: string; kind?: PlantHealthKind };
@@ -21,12 +22,16 @@ interface Props {
   allowLocal?: boolean;
   pinButton?: ReactNode;
   selectionLimit?: number;
+  /** Main crop forms use heading help; compact selectors keep their existing layout. */
+  contextualHelp?: boolean;
   /** Filter mode: choose only entries already used in this scoped crop collection. */
   existingOptions?: readonly PlantHealthSelection[];
 }
 
-export function PlantHealthField({ value, localOptions, onChange, canInherit, inheritedValue, sx, error, allowLocal = true, pinButton, selectionLimit = 40, existingOptions }: Props) {
+export function PlantHealthField({ value, localOptions, onChange, canInherit, inheritedValue, sx, error, allowLocal = true, pinButton, selectionLimit = 40, existingOptions, contextualHelp = false }: Props) {
   const { t, i18n } = useTranslation('crops');
+  const fieldId = useId();
+  const contextual = contextualHelp && existingOptions === undefined;
   const entries = (value ?? inheritedValue)?.entries ?? [];
   const names = usePlantHealthNames(existingOptions ?? entries, existingOptions !== undefined);
   const allowNewLocal = allowLocal && existingOptions === undefined;
@@ -67,8 +72,14 @@ export function PlantHealthField({ value, localOptions, onChange, canInherit, in
     ...(current?.options ?? []),
   ];
   return <Box sx={sx}>
+    {contextual ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+      <Typography component="label" htmlFor={fieldId} id={`${fieldId}-label`} variant="body2" color="text.secondary">{t('plantHealth.label')}</Typography>
+      <FieldInfoButton contextual
+        title={`${t(allowLocal ? 'plantHealth.helper' : 'plantHealth.officialHelper')} ${t('plantHealth.associationHint')} ${t('plantHealth.relationshipsActionHint')}`}
+        ariaLabel={t('form.fieldInfoAriaLabel', { field: t('plantHealth.label') })} />
+    </Box> : null}
     <Autocomplete<Option, true, false, boolean>
-      multiple freeSolo={allowNewLocal} loading={names.loading} filterSelectedOptions open={open} onOpen={() => setOpen(true)} onClose={() => setOpen(false)}
+      id={fieldId} multiple freeSolo={allowNewLocal} loading={names.loading} filterSelectedOptions open={open} onOpen={() => setOpen(true)} onClose={() => setOpen(false)}
       value={entries} options={options} inputValue={query}
       onInputChange={(_event, input) => setQuery(input)}
       onBlur={() => {
@@ -101,9 +112,10 @@ export function PlantHealthField({ value, localOptions, onChange, canInherit, in
           label={`${selection.catalogue_identity && names.catalogue.has(selection.catalogue_identity) ? plantHealthDisplayName(selection, entries, names.catalogue) : label(entry)} · ${t(`plantHealth.${origin}`)}`}
           sx={{ maxWidth: '100%', height: 'auto', '& .MuiChip-label': { whiteSpace: 'normal', overflowWrap: 'anywhere', py: 0.5 } }} />;
       })}
-      renderInput={params => <TextField {...params} label={t('plantHealth.label')}
-        slotProps={{ ...params.slotProps, inputLabel: { ...params.slotProps.inputLabel, shrink: true } }}
-        placeholder={t(existingOptions ? 'plantHealth.filterPlaceholder' : 'plantHealth.placeholder')} helperText={error ?? (current?.error || names.error ? t(existingOptions ? 'plantHealth.filterSearchError' : allowLocal ? 'plantHealth.searchError' : 'plantHealth.officialSearchError') : t(existingOptions ? 'plantHealth.filterHelper' : allowLocal ? 'plantHealth.helper' : 'plantHealth.officialHelper'))}
+      renderInput={params => <TextField {...params} label={contextual ? undefined : t('plantHealth.label')}
+        slotProps={{ ...params.slotProps, inputLabel: { ...params.slotProps.inputLabel, shrink: true },
+          htmlInput: { ...params.slotProps.htmlInput, ...(contextual ? { 'aria-labelledby': `${fieldId}-label` } : {}) } }}
+        placeholder={t(existingOptions ? 'plantHealth.filterPlaceholder' : 'plantHealth.placeholder')} helperText={error ?? (current?.error || names.error ? t(existingOptions ? 'plantHealth.filterSearchError' : allowLocal ? 'plantHealth.searchError' : 'plantHealth.officialSearchError') : contextual ? undefined : t(existingOptions ? 'plantHealth.filterHelper' : allowLocal ? 'plantHealth.helper' : 'plantHealth.officialHelper'))}
         error={Boolean(error) || entries.length > 40} />}
     />
     {current?.error || names.error ? <LoadRetryButton onClick={() => { setAttempt(value => value + 1); names.retry(); }} /> : null}
@@ -113,7 +125,7 @@ export function PlantHealthField({ value, localOptions, onChange, canInherit, in
       </Button> : null}
       {pinButton}
     </Box> : null}
-    {existingOptions === undefined ? <Typography variant="caption" color="text.secondary" sx={canInherit || pinButton ? { display: 'block' } : undefined}>
+    {!contextual && existingOptions === undefined ? <Typography variant="caption" color="text.secondary" sx={canInherit || pinButton ? { display: 'block' } : undefined}>
       {t('plantHealth.associationHint')}
     </Typography> : null}
   </Box>;

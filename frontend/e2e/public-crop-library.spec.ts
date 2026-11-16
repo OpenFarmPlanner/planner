@@ -33,6 +33,7 @@ async function publishUniquePublicCrop(page: Page): Promise<PublishResponse['pub
     cultivation_types: ['pre_cultivation'],
     growth_duration_days: 42,
     harvest_duration_days: 14,
+    thousand_kernel_weight_g: 1.2,
     notes: 'Bestehende öffentliche Notiz.',
   });
   const published = await apiRequest<PublishResponse>(page, 'POST', `/crops/${crop.id}/publish-public/`, {

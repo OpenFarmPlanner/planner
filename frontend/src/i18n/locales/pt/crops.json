@@ -2098,7 +2098,7 @@
     }
   },
   "plantHealth": {
-    "label": "Entradas de pragas e doenças",
+    "label": "Pragas e doenças",
     "placeholder": "Introduza um nome ou escolha uma entrada do catálogo",
     "helper": "Os nomes introduzidos permanecem privados. Selecione explicitamente as entradas do catálogo. Até 40 entradas.",
     "local": "Nome privado",

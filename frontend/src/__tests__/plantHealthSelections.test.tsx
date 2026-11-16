@@ -35,6 +35,16 @@ beforeEach(async () => {
 });
 
 describe('private plant-health selections', () => {
+  it('keeps explanations in contextual main-form help without changing the input name', async () => {
+    const user = userEvent.setup();
+    render(<PlantHealthField contextualHelp value={null} localOptions={[]} onChange={vi.fn()} canInherit={false} />);
+    expect(screen.getByRole('combobox', { name: 'Schädlinge und Krankheiten', exact: true })).toBeInTheDocument();
+    expect(screen.queryByText(i18n.t('crops:plantHealth.associationHint'))).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: i18n.t('crops:form.fieldInfoAriaLabel', { field: i18n.t('crops:plantHealth.label') }), exact: true }));
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(i18n.t('crops:plantHealth.associationHint'));
+    expect(screen.getByRole('tooltip')).toHaveTextContent(i18n.t('crops:plantHealth.helper'));
+  });
+
   it('keeps accents, delimiters, local names and separate official identities distinct', () => {
     expect(normalizePlantHealthSelections([
       ' Spot;  A, B ', 'spot; a, b', 'é', 'e',
@@ -51,7 +61,7 @@ describe('private plant-health selections', () => {
     const change = vi.fn();
     const user = userEvent.setup();
     render(<PlantHealthField value={null} localOptions={[]} onChange={change} canInherit={false} />);
-    const input = screen.getByRole('combobox', { name: 'Schädlings- und Krankheitseinträge' });
+    const input = screen.getByRole('combobox', { name: 'Schädlinge und Krankheiten' });
     await user.type(input, 'Bevorzugter Name');
     await screen.findByRole('option', { name: /^Bevorzugter Name/ });
     await user.keyboard('{Enter}');
@@ -63,7 +73,7 @@ describe('private plant-health selections', () => {
     const change = vi.fn();
     const user = userEvent.setup();
     render(<PlantHealthField value={null} localOptions={[]} onChange={change} canInherit={false} />);
-    await user.type(screen.getByRole('combobox', { name: 'Schädlings- und Krankheitseinträge' }), 'Synonym');
+    await user.type(screen.getByRole('combobox', { name: 'Schädlinge und Krankheiten' }), 'Synonym');
     await user.click(await screen.findByRole('option', { name: /^Bevorzugter Name/ }));
     expect(change).toHaveBeenLastCalledWith({ entries: [{ name: 'Canonical name', catalogue_identity: ID }] });
     expect(listMock).toHaveBeenCalledWith(expect.objectContaining({ q: 'Synonym', status: 'published' }), expect.any(AbortSignal));
@@ -73,7 +83,7 @@ describe('private plant-health selections', () => {
     const change = vi.fn();
     const user = userEvent.setup();
     render(<><PlantHealthField value={null} localOptions={[{ name: 'Known spelling' }]} onChange={change} canInherit={false} /><button>Outside</button></>);
-    await user.type(screen.getByRole('combobox', { name: 'Schädlings- und Krankheitseinträge' }), 'known  SPELLING');
+    await user.type(screen.getByRole('combobox', { name: 'Schädlinge und Krankheiten' }), 'known  SPELLING');
     await user.click(screen.getByRole('button', { name: 'Outside' }));
     expect(change).toHaveBeenLastCalledWith({ entries: [{ name: 'Known spelling' }] });
   });
@@ -302,6 +312,7 @@ describe('plant-health filters and sourced host inspection', () => {
       { ...host, id: 4, species_name: 'Unpublished host', species_status: 'proposed' },
       { ...host, id: 5, species_name: 'Unsourced host', sources: [] }] };
     const { rerender } = render(<PlantHealthRelationshipsDialog entry={entry} name="Snapshot" loading={false} error={false} onRetry={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.getByRole('dialog', { name: i18n.t('crops:plantHealth.relationshipsTitle'), exact: true })).toBeInTheDocument();
     expect(screen.getByText('Documented host')).toBeInTheDocument();
     expect(screen.getByText(/Sortenbezogener Beleg: Qualified variety/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Synthetic source' })).toHaveAttribute('href', host.sources[0].url);
