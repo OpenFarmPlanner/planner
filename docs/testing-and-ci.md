@@ -212,8 +212,7 @@ links and rotation statuses.
 
 The plant-family list is also restored before a class when a flush removed it.
 A transactional test that needs it between its own tests still calls
-`ensure_seeded_plant_families()` itself (see
-`test_migrations_crop_family_plant_family_reference.py`).
+`ensure_seeded_plant_families()` itself.
 
 The backend job installs GNU gettext with `scripts/ci/install-gettext.sh`.
 A working `msgfmt` avoids package-network access; otherwise the installer
