@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -39,7 +42,7 @@
     "date-fns": "^4.4.0",
     "fflate": "^0.8.3",
     "html2canvas": "^1.4.1",
-    "i18next": "^26.7.2",
+    "i18next": "^27.1.1",
     "jspdf": "^4.1.0",
     "konva": "^10.9.1",
     "lucide-react": "^1.72.0",
