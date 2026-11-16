@@ -448,6 +448,18 @@ def _resolved_copy_fields(
     return payload
 
 
+def _resolved_comparison_fields(
+    crop: Crop, index: GeneralCropIndex | None = None,
+) -> dict[str, Any]:
+    """Compare effective UUIDs without mistaking an empty parent for an own override."""
+    payload = _resolved_copy_fields(crop, index)
+    if get_crop_field_value(crop, 'plant_health') is None and not plant_health_identities(
+        payload['plant_health'],
+    ):
+        payload['plant_health'] = None
+    return payload
+
+
 # Compared fields that can never be kept locally: ``name`` and ``variety`` are
 # the entry's identity, ``display_color`` is never compared in the first place.
 _NEVER_PINNABLE_FIELDS = frozenset({'name', 'variety', 'display_color'})
@@ -1598,7 +1610,7 @@ PUSH_BLOCKED_EMPTY = 'empty'
 def _sync_local_values(crop: Crop, public_crop: PublicCrop) -> dict[str, Any]:
     """``crop``'s effective value per compared field, exactly as the sync compares it."""
     comparison_crop = _sync_comparison_crop(crop, public_crop)
-    values = _comparable_copy_fields(_resolved_copy_fields(comparison_crop))
+    values = _comparable_copy_fields(_resolved_comparison_fields(comparison_crop))
     if _compares_companions(comparison_crop, public_crop):
         _add_companion_values(values, {}, comparison_crop, public_crop)
     return values
@@ -1721,7 +1733,10 @@ def _set_project_library_value(crop: Crop, field: str, value: Any) -> None:
         if value is None and get_crop_field_value(crop, field) is None:
             return
         effective = resolve_crop_field(crop, field)
-        if _same_public_field_value(field, effective, value):
+        comparison = effective
+        if get_crop_field_value(crop, field) is None and not plant_health_identities(effective):
+            comparison = None
+        if _same_public_field_value(field, comparison, value):
             return
         try:
             value = merge_official_plant_health(effective, value)
@@ -1741,7 +1756,7 @@ def _pull_public_crop_fields(
     A pinned field is never overwritten; releasing the pin comes first.
     """
     remote = _copy_fields(public_crop)
-    effective = _resolved_copy_fields(crop)
+    effective = _resolved_comparison_fields(crop)
     pinned = effective_library_pinned_fields(crop)
     written = [
         field for field in fields
@@ -1961,7 +1976,7 @@ def _owned_entry_is_locally_modified(local_crop: Crop, entry: PublicCrop) -> boo
     dropped when the entry is species-level: a specific Sorte linked to the
     general entry is an inherent granularity difference, not a local edit.
     """
-    local = _comparable_copy_fields(_resolved_copy_fields(local_crop))
+    local = _comparable_copy_fields(_resolved_comparison_fields(local_crop))
     remote = _comparable_copy_fields(_copy_fields(entry))
     fields = _compared_public_update_fields(local_crop)
     if is_species_level_entry(entry):
@@ -3628,7 +3643,7 @@ def public_crop_field_changes(
     serializer rendering that entry's rows) compares without dereferencing
     ``crop.source_public_crop`` once per row.
     """
-    local = _comparable_copy_fields(_resolved_copy_fields(crop, index))
+    local = _comparable_copy_fields(_resolved_comparison_fields(crop, index))
     remote = _comparable_copy_fields(_copy_fields(public_crop))
     fields = _compared_public_update_fields(crop, include_pinned=include_pinned)
     if is_species_level_entry(public_crop):
@@ -3775,7 +3790,7 @@ def resolve_public_publish_block(
         return None
 
     pinned = effective_library_pinned_fields(crop)
-    local = _comparable_copy_fields(_resolved_copy_fields(crop, index))
+    local = _comparable_copy_fields(_resolved_comparison_fields(crop, index))
     remote = _comparable_copy_fields(_copy_fields(owned_public_crop))
     if all(
         _same_public_field_value(field, local[field], remote[field])
@@ -3857,7 +3872,7 @@ def public_update_local_changes(crop: Crop, public_crop: PublicCrop) -> set[str]
     baseline = _public_crop_baseline_snapshot(crop, public_crop)
     if baseline is None:
         return differing
-    local = _resolved_copy_fields(crop)
+    local = _resolved_comparison_fields(crop)
     if COMPANIONS_FIELD in differing:
         _add_companion_values(local, {}, crop, public_crop)
     return {

@@ -991,6 +991,47 @@ class PublicPlantHealthTests(ProjectApiTestCase):
                         current.data["effective_values"]["plant_health"], self.crop.plant_health
                     )
 
+    def test_explicit_empty_pull_does_not_mistake_an_empty_parent_for_a_variety_override(self):
+        variety, public = self.linked_variety_for_override(None, selections())
+        for mode in ("full", "selected"):
+            for parent_value in (selections(), selections("Unresolved parent name")):
+                with self.subTest(mode=mode, parent_value=parent_value):
+                    self.crop.plant_health = parent_value
+                    self.crop.save()
+                    variety.plant_health = None
+                    variety.save()
+                    url = f"{CROPS_URL}{variety.pk}/public-sync/"
+                    preview = self.client.get(url, {"public_crop_id": public.pk})
+                    self.assertEqual(preview.status_code, 200, preview.data)
+                    health = next(
+                        (row for row in preview.data["changes"] if row["field"] == "plant_health"),
+                        None,
+                    )
+                    self.assertIsNotNone(health)
+                    self.assertIsNone(health["local_value"])
+                    if mode == "full":
+                        _apply_public_crop_update(crop=variety, public_crop=public)
+                    else:
+                        result = self.client.post(
+                            url,
+                            {
+                                "public_crop_id": public.pk,
+                                "base_version": public.version,
+                                "pull_fields": ["plant_health"],
+                            },
+                            format="json",
+                        )
+                        self.assertEqual(result.status_code, 200, result.data)
+                    variety.refresh_from_db()
+                    self.assertIsNotNone(variety.plant_health)
+                    self.assertEqual(plant_health_identities(variety.plant_health), ())
+                    self.crop.plant_health = self.mixed(self.entries[1], "Later parent name")
+                    self.crop.save()
+                    current = self.client.get(f"{CROPS_URL}{variety.pk}/")
+                    self.assertEqual(
+                        current.data["effective_values"]["plant_health"], variety.plant_health
+                    )
+
     def test_explicit_empty_can_be_shared_but_cannot_keep_an_empty_library_pin(self):
         self.crop.plant_health = selections()
         self.crop.save()

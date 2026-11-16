@@ -297,6 +297,9 @@ unchanged inherited official segment leaves the variety's raw null intact.
 A null public value also preserves an already-inheriting variety's raw null,
 including when the parent contains private names; those names are not copied
 into a frozen variety override.
+An explicitly empty public selection still creates a variety override when
+its current inherited official selection is empty. Comparison previews retain
+this distinction, so later parent changes cannot undo the user's pull choice.
 Official references can be pinned locally; private names are always retained,
 and a private-only/empty official segment cannot keep a library pin.
 Public proposals, revision snapshots and revert include this field while partial
