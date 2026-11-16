@@ -226,6 +226,13 @@ export function extractApiErrorMessage(
       );
     }
 
+    if (
+      status === 409 && data && typeof data === 'object'
+      && 'code' in data && data.code === 'crop_variety_conflict'
+    ) {
+      return translatedOrFallback(t, 'crops:form.duplicateNameVariety', fallbackMessage);
+    }
+
     // Check if it's a 400 validation error
     if (status === 400) {
       if (data && typeof data === 'object' && isErrorEnvelope(data)) {

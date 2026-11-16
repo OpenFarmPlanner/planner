@@ -80,7 +80,7 @@ from farm.services.crop_inheritance import (
     lock_crop_project,
     resolve_crop_field,
     sync_crop_species_across_crop_group,
-    validate_general_crop_identity,
+    validate_crop_identity,
 )
 from farm.services.crop_plant_health import canonical_public_plant_health, publication_plant_health
 from farm.services.public_crop_trade_names import (
@@ -1370,7 +1370,7 @@ def link_project_crop_to_public_reference(
         errors = crop_specific_property_errors(crop)
         if errors:
             raise ApiValidationError(errors)
-        validate_general_crop_identity(crop)
+        validate_crop_identity(crop)
         crop.save()
         # Crop.save() flags divergence against the pre-link row; the link sets
         # its own baseline flag instead (queryset update: no second revision).
@@ -1790,7 +1790,7 @@ def _validate_crop_identity_pull(
         normalize_text(getattr(prospective, field)) != normalize_text(getattr(crop, field))
         for field in identity_fields
     ):
-        validate_general_crop_identity(prospective)
+        validate_crop_identity(prospective)
 
 
 def _queue_public_crop_sync_proposal(
@@ -2507,7 +2507,7 @@ def _link_crop_to_crop_species(
         if errors:
             raise ApiValidationError({'specific_properties': errors})
     crop.crop_species = crop_species
-    validate_general_crop_identity(crop)
+    validate_crop_identity(crop)
     crop.save(update_fields=['crop_species', 'updated_at'])
     sync_crop_species_across_crop_group(crop, previous_species_id=previous_species_id)
 
@@ -3441,7 +3441,9 @@ def _create_crop_from_public(
                 variety=payload.get('variety') or '',
                 project=project,
             )
-        crop = Crop.objects.create(project=project, **crop_model_kwargs(payload))
+        values = crop_model_kwargs(payload)
+        validate_crop_identity(Crop(project=project, **values))
+        crop = Crop.objects.create(project=project, **values)
         if not (crop.variety or '').strip():
             if public_crop.companions:
                 apply_library_companions(crop, public_crop.companions)
@@ -3545,7 +3547,7 @@ def _apply_public_crop_update(
         errors = crop_specific_property_errors(crop)
         if errors:
             raise ApiValidationError(errors)
-        validate_general_crop_identity(crop)
+        validate_crop_identity(crop)
         crop.save()
         if COMPANIONS_FIELD not in remaining_pins and _compares_companions(crop, public_crop):
             replace_library_companions(crop, public_crop.companions)

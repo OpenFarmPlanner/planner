@@ -291,3 +291,9 @@ deletions replay the schema's cascade/nullable-FK effects without inventing
 absence for untracked rows. If deleting a newer parent cascades into a row that
 belongs in the target, the restore recreates it with its original ID and stored
 creation timestamp.
+
+Crop revision restore and grouped undelete reject active normalized name/variety
+conflicts with HTTP 409 (`crop_variety_conflict`), including crops without a
+supplier. A rejected group restores no rows or history. Full project restoration
+and selective import undo validate the final projected identities rather than
+intermediate replay order; unchanged legacy duplicates remain permitted.

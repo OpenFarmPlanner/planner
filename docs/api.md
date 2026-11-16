@@ -328,3 +328,30 @@ pending proposals, as above.
   the app's account settings; these functions are not available with a token.
 - The privacy policy and terms of use shown in the app apply to API use.
 
+
+### Conflicts during crop identity changes
+
+Undelete, per-crop revision restore, sibling rename cascades and library
+link/update/sync validate prospective active identities under the project lock.
+A nonempty variety is identified by normalized name plus variety within its
+project, regardless of supplier. Conflicting direct writes return HTTP 409 with
+`code: crop_variety_conflict`; ordinary serializer validation retains its HTTP
+400 field error. Unchanged legacy variety duplicates remain editable.
+
+The complete operation rolls back on conflict, including earlier sibling saves,
+revisions, companion changes, library proposals, pins and source metadata.
+Only recognized identity database constraints are translated after rollback;
+unrelated integrity failures remain errors. A full project restore and selective
+import undo also reject newly introduced variety duplicates in their projected
+final state, while preserving unchanged legacy duplicates.
+
+For local acceptance, preview `seed_variety_conflict_acceptance --username <local-user>
+--database-name <exact-local-database>` with `OFP_LOCAL_TEST_DATA=1` and
+`DJANGO_ENV=development`; inspect the printed database target, then repeat with
+`--apply`. The command requires this checkout's migrations, a local database and
+an existing active user. It creates one private synthetic project and never
+resets existing fixtures or touches the public library. In that project, rename
+general Source to Target, restore Beet/Boltardy's creation revision, and undelete
+the old Carrot/Nantes (with/without supplier). Each action must keep correction
+or cancel available and leave all rows unchanged after its conflict. Repeating
+the command preserves manual edits. No production execution is permitted.

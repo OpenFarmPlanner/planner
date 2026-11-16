@@ -2440,6 +2440,34 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             after_history = list(EntityRevision.objects.filter(project=self.project).values())
             self.assertEqual(after_history, history)
 
+    def test_import_rejects_same_variety_under_different_species_but_new_copy_is_unique(self):
+        from farm.history.project_restore import ensure_project_checkpoint
+
+        species = CropSpecies.objects.create(name='Different library species')
+        entry = PublicCrop.objects.create(
+            name=self.crop.name, variety=self.crop.variety, crop_species=species,
+            status='published', created_by=self.user,
+        )
+        ensure_project_checkpoint(self.project)
+        models = (Crop, EntityRevision, PublicCrop, PublicCropRevision,
+                  PublicCropChangeProposal, CropCompanion, SeedPackage)
+        before = {model: list(model._base_manager.order_by('pk').values()) for model in models}
+        url = f'/openfarmplanner/api/public-crops/{entry.pk}/import/'
+        for establish_link in (True, False):
+            with self.subTest(establish_link=establish_link):
+                response = self.client.post(url, {
+                    'link_to_library': establish_link, 'base_version': entry.version,
+                }, format='json')
+                self.assertEqual(response.status_code, 409, response.data)
+                self.assertEqual(response.data['code'], 'crop_variety_conflict')
+                self.assertEqual({
+                    model: list(model._base_manager.order_by('pk').values()) for model in models
+                }, before)
+        response = self.client.post(url, {'mode': 'new'}, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertTrue(Crop.objects.filter(project=self.project, name='Lettuce (2)',
+                                            variety=self.crop.variety).exists())
+
     def test_import_public_crop_creates_project_local_copy(self):
         public_crop = PublicCrop.objects.create(
             name='Bean',
@@ -3000,11 +3028,12 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
     def test_editing_imported_crop_with_supplier_name_and_null_supplier_id_keeps_supplier_null(self):
         public_crop = PublicCrop.objects.create(
             name='Lettuce',
-            variety='Bijella',
+            variety='Winter Density',
             status='published',
             created_by=self.user,
         )
         import_response = self.client.post(f'/openfarmplanner/api/public-crops/{public_crop.id}/import/', {}, format='json')
+        self.assertEqual(import_response.status_code, status.HTTP_201_CREATED, import_response.data)
         imported_id = import_response.data['crop']['id']
 
         # Public crops no longer carry supplier data, so seed this
@@ -6272,6 +6301,60 @@ class PublicCropFieldSyncApiTest(DRFAPITestCase):
             },
             format='json',
         )
+
+    def test_variety_pull_and_initial_link_reject_duplicates_without_any_writes(self):
+        from farm.history.project_restore import ensure_project_checkpoint
+        from farm.models import Supplier
+
+        self.entry.variety = "New"
+        self.entry.save()
+        supplier = Supplier.objects.create(project=self.project, name="Identity supplier")
+        for supplier_value in (supplier, None):
+            with self.subTest(supplier=supplier_value):
+                name = f'Spinach {supplier_value.pk if supplier_value else "none"}'
+                self.entry.name = name
+                self.entry.save()
+                crop = Crop.objects.create(
+                    project=self.project,
+                    name=name,
+                    variety="Old",
+                    supplier=supplier_value,
+                    library_pinned_fields=["notes"],
+                    notes="Keep private",
+                    harvest_duration_days=27,
+                )
+                Crop.objects.create(
+                    project=self.project, name=name, variety="New", supplier=supplier_value
+                )
+                models = (
+                    Crop,
+                    EntityRevision,
+                    PublicCrop,
+                    PublicCropRevision,
+                    PublicCropChangeProposal,
+                    CropCompanion,
+                )
+                ensure_project_checkpoint(self.project)
+                for operation in ('link', 'sync'):
+                    if operation == 'sync':
+                        crop.source_public_crop = self.entry
+                        crop.source_public_version = self.entry.version
+                        crop.save()
+                    before = {
+                        model: list(model._base_manager.order_by('pk').values()) for model in models
+                    }
+                    response = (
+                        self._link(crop, ['variety', 'growth_duration_days'])
+                        if operation == 'link' else self._sync(
+                            crop, pull_fields=['variety', 'growth_duration_days'],
+                            push_fields=['harvest_duration_days'],
+                        )
+                    )
+                    self.assertEqual(response.status_code, 409, response.data)
+                    self.assertEqual(response.data['code'], 'crop_variety_conflict')
+                    self.assertEqual({
+                        model: list(model._base_manager.order_by('pk').values()) for model in models
+                    }, before)
 
     def test_sync_rejects_general_name_conflict_without_mutating_either_crop(self):
         imported = Crop.objects.create(

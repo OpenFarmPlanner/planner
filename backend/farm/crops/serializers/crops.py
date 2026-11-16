@@ -68,14 +68,15 @@ from farm.services.crop_inheritance import (
     ensure_general_crop_for_variety,
     find_general_crop,
     get_general_crop,
+    has_variety_identity_conflict,
     is_unset_crop_value,
     lock_crop_project,
     promote_species_invariant_values,
-    raise_general_crop_name_conflict,
+    raise_crop_identity_conflict,
     resolve_effective_rotation_break_years,
     resolve_effective_timing_windows,
     resolve_plants_per_m2,
-    validate_general_crop_identity,
+    validate_crop_identity,
 )
 from farm.services.crop_plant_health import canonical_plant_health
 from farm.services.crop_tags import canonical_tags
@@ -1058,7 +1059,7 @@ class CropSerializer(serializers.ModelSerializer):
         try:
             crop = self._create_crop_row(validated_data, copy_values_to_crop, link_public_crop)
         except IntegrityError as exc:
-            self._raise_name_conflict_if_general_name_constraint(exc)
+            self._raise_identity_conflict_if_named_constraint(exc)
             raise
         self._link_free_text_companions(crop, getattr(crop, '_auto_general_crop', None))
         if isinstance(supplier_data_input, list):
@@ -1092,7 +1093,7 @@ class CropSerializer(serializers.ModelSerializer):
         """Create the crop, its implicit general Kultur and its library link atomically."""
         with transaction.atomic():
             lock_crop_project(validated_data['project'].pk)
-            validate_general_crop_identity(Crop(**validated_data))
+            validate_crop_identity(Crop(**validated_data))
             crop = super().create(validated_data)
             promote_fields = self._promotable_species_invariant_fields
             crop._auto_general_crop = ensure_general_crop_for_variety(
@@ -1129,14 +1130,14 @@ class CropSerializer(serializers.ModelSerializer):
                         getattr(prospective, field) != getattr(instance, field)
                         for field in ('name', 'variety', 'crop_species_id', 'deleted_at')
                     ):
-                        validate_general_crop_identity(prospective)
+                        validate_crop_identity(prospective)
                 crop = super().update(instance, validated_data)
                 promote_species_invariant_values(
                     crop,
                     self._promotable_species_invariant_fields,
                 )
         except IntegrityError as exc:
-            self._raise_name_conflict_if_general_name_constraint(exc)
+            self._raise_identity_conflict_if_named_constraint(exc)
             raise
         if supplier_data_input is not None:
             self._sync_supplier_data_rows(crop, supplier_data_input)
@@ -1495,21 +1496,16 @@ class CropSerializer(serializers.ModelSerializer):
             if existing_general_query.exists():
                 errors['name'] = 'A general crop with this name already exists in this project.'
                 return True
-        existing_name_query = Crop.all_objects.filter(
-            project=project,
-            deleted_at__isnull=True,
-            name_normalized=normalized_name,
-            variety_normalized=normalized_variety,
-        )
-        if self.instance is not None:
-            existing_name_query = existing_name_query.exclude(pk=self.instance.pk)
-        if existing_name_query.exists():
+        if has_variety_identity_conflict(
+            project.pk, raw_name, raw_variety,
+            exclude_pk=self.instance.pk if self.instance is not None else None,
+        ):
             errors['name'] = 'A crop with this name and variety already exists.'
         return False
 
     @staticmethod
-    def _raise_name_conflict_if_general_name_constraint(exc: IntegrityError) -> None:
-        raise_general_crop_name_conflict(exc)
+    def _raise_identity_conflict_if_named_constraint(exc: IntegrityError) -> None:
+        raise_crop_identity_conflict(exc)
 
     def _creates_inheriting_variety(self, attrs: dict[str, Any]) -> bool:
         return (
