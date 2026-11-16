@@ -14,7 +14,7 @@ export type SpreadsheetColumnDef = {
    * `timingWindows`: the windows of one kind as text ("Anfang März bis Ende
    *   April; KW 30"); exported canonically, parsed by the backend import.
    */
-  type: 'string' | 'number' | 'boolean' | 'list' | 'companions' | 'timingWindows' | 'range';
+  type: 'string' | 'number' | 'boolean' | 'list' | 'companions' | 'timingWindows' | 'range' | 'plantHealth';
   /**
    * `range` only: the lower and upper field the cell is exported from
    * ("18–25", or "2" when both are equal). The backend import splits it.
@@ -266,7 +266,8 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
   { key: 'water_requirement', headerKey: 'siteHealth.fields.water_requirement', aliases: ['wasser', 'wasserbedarf', 'water_requirement'], type: 'string', enumImport: SITE_HEALTH_IMPORT.water_requirement },
   { key: 'life_cycle', headerKey: 'siteHealth.fields.life_cycle', aliases: ['lebenszyklus', 'lebensdauer', 'life_cycle'], type: 'string', enumImport: SITE_HEALTH_IMPORT.life_cycle },
   { key: 'winter_hardiness', headerKey: 'siteHealth.fields.winter_hardiness', aliases: ['winterhärte', 'winterhart', 'winter_hardiness'], type: 'string', enumImport: SITE_HEALTH_IMPORT.winter_hardiness },
-  { key: 'pests_diseases', headerKey: 'siteHealth.fields.pests_diseases', aliases: ['schädlinge', 'krankheiten', 'schädlinge und krankheiten', 'pests_diseases'], type: 'string' },
+  { key: 'pests_diseases', headerKey: 'plantHealth.notes', aliases: ["schädlinge", "krankheiten", "pests_diseases", "Pests and diseases", "Schädlinge und Krankheiten", "Ravageurs et maladies", "Plagas y enfermedades", "Parassiti e malattie", "Pragas e doenças", "Plagen en ziekten"], type: 'string' },
+  { key: 'plant_health', headerKey: 'plantHealth.spreadsheetHeader', aliases: ['plant_health'], type: 'plantHealth' },
   { key: 'germination_temperature_optimal', headerKey: 'germination.optimalTemperature', aliases: ['keimtemperatur', 'keim-temperatur (°C)'], type: 'range', rangeFields: ['germination_temperature_optimal_min_c', 'germination_temperature_optimal_max_c'] },
   { key: 'germination_days', headerKey: 'germination.days', aliases: ['keimdauer', 'keim-dauer (Tage)'], type: 'range', rangeFields: ['germination_days_min', 'germination_days_max'] },
   { key: 'germination_types', headerKey: 'germination.fields.germination_types', aliases: ['keimverhalten', 'germination_types'], type: 'list', enumImport: { kaltkeimer: 'cold', frostkeimer: 'frost', lichtkeimer: 'light', dunkelkeimer: 'dark' } },

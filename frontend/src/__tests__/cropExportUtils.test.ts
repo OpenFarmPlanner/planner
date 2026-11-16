@@ -22,6 +22,16 @@ describe('crop export mapping', () => {
     notes: 'Freiland',
   };
 
+  it.each([null, { entries: [] }, { entries: [
+    { name: 'Name; with, delimiters' },
+    { name: 'Official snapshot', catalogue_identity: '00000000-0000-4000-8000-000000000001' },
+  ] }])('round-trips explicit health inheritance, clearing and stable identities through JSON (%j)', (plant_health) => {
+    const exported = buildSingleCropExport({ ...crop, plant_health });
+    const imported = parseCropImportJson(JSON.stringify(exported));
+    expect(imported.entries[0].plant_health).toEqual(plant_health);
+    expect(parseCropImportJson(JSON.stringify(buildSingleCropExport(crop))).entries[0]).not.toHaveProperty('plant_health');
+  });
+
   it('removes ids and timestamps from portable crop data', () => {
     const portable = toPortableCrop(crop) as Record<string, unknown>;
 

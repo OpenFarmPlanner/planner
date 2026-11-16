@@ -279,6 +279,10 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         family names and default breaks come from the family list, loaded once
         (two queries: families and their translations)."""
         for crop in self.crops:
+            crop.plant_health = {'entries': [
+                {'name': f'Local health selection {crop.pk}'},
+            ]}
+            crop.save(update_fields=['plant_health'])
             Crop.objects.create(
                 project=self.project, name=crop.name, variety='Rename sibling',
                 crop_species=crop.crop_species,

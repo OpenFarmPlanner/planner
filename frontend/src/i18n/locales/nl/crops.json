@@ -2019,5 +2019,22 @@
       "update_host": "Waardplantrelatie bijgewerkt",
       "archive_host": "Waardplantrelatie gearchiveerd"
     }
+  },
+  "plantHealth": {
+    "label": "Vermeldingen van plagen en ziekten",
+    "placeholder": "Voer een naam in of kies een catalogusvermelding",
+    "helper": "Ingevoerde namen blijven privé. Kies catalogusvermeldingen uitdrukkelijk. Maximaal 40 vermeldingen.",
+    "local": "Privénaam",
+    "catalogue": "Catalogusvermelding",
+    "unavailable": "Catalogusverwijzing niet beschikbaar",
+    "searchError": "Catalogussuggesties konden niet worden geladen. Je kunt nog steeds een privénaam toevoegen.",
+    "inherit": "Vermeldingen van het gewas gebruiken",
+    "associationHint": "Een koppeling bewijst geen aantasting of resistentie. Ontbrekende informatie blijft onbekend.",
+    "notes": "Notities over plagen en ziekten",
+    "spreadsheetHeader": "Vermeldingen van plagen en ziekten (JSON)",
+    "templateEntry": "Synthetische voorbeeldvermelding",
+    "validation": "Gebruik maximaal 40 afzonderlijke namen van elk maximaal 200 tekens.",
+    "unspecified": "Niet opgegeven / overnemen van gewas",
+    "emptySelection": "Expliciet lege eigen selectie"
   }
 }

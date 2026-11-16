@@ -64,6 +64,7 @@ export const VARIETY_INHERITABLE_FIELDS: (keyof Crop)[] = [
   'germination_types',
   'germination_pretreatment',
   'pests_diseases',
+  'plant_health',
   'light_requirement',
   'water_requirement',
   'life_cycle',
@@ -96,6 +97,8 @@ export const VARIETY_INHERITABLE_FIELDS: (keyof Crop)[] = [
 export function buildVarietyInheritanceBaseline(cropCrop: Crop): Partial<Crop> {
   const baseline: Partial<Crop> = {};
   for (const field of VARIETY_INHERITABLE_FIELDS) {
+    // The selection control renders inheritance from raw null itself.
+    if (field === 'plant_health') continue;
     const value = cropCrop[field];
     if (!isEmptyCropValue(value)) {
       (baseline as Record<string, unknown>)[field] = value;
@@ -118,6 +121,8 @@ export function stripValuesMatchingBaseline<TDraft extends Partial<Crop>>(
 ): TDraft {
   const stripped: Record<string, unknown> = { ...draft };
   for (const field of VARIETY_INHERITABLE_FIELDS) {
+    // An explicit selection stays an override even when it equals the parent.
+    if (field === 'plant_health') continue;
     if (!(field in baseline)) {
       continue;
     }
@@ -150,6 +155,7 @@ export function buildInheritedValueBaseline(
   }
   const baseline: Partial<Crop> = {};
   for (const field of crop.inherited_fields ?? []) {
+    if (field === 'plant_health') continue;
     const value = effectiveValues[field];
     if (!isEmptyCropValue(value)) {
       (baseline as Record<string, unknown>)[field] = value;
@@ -188,6 +194,7 @@ export function getVarietyOwnValueSource(
   if (isEmptyCropValue(ownValue)) {
     return null;
   }
+  if (field === 'plant_health') return 'ownValue';
   const cropValue = speciesCrop[field];
   return areCropValuesEqual(ownValue, cropValue) ? null : 'ownValue';
 }

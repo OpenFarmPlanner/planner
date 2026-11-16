@@ -4,6 +4,7 @@ import {
   buildDisplayedTimingWindows,
   buildInheritedTimingWindows,
   buildVarietyInheritanceBaseline,
+  buildInheritedValueBaseline,
   buildVarietyTimingWindowBaseline,
   getVarietyOwnTimingWindowSource,
   stripTimingWindowsMatchingBaseline,
@@ -135,6 +136,18 @@ describe('buildVarietyInheritanceBaseline', () => {
 
 describe('stripValuesMatchingBaseline', () => {
   const emptyValueFor = (): undefined => undefined;
+
+  it('preserves an explicit health selection even when it currently equals the parent', () => {
+    const selection = { entries: [{ name: 'Parent entry' }] };
+    const parent: Crop = { name: 'Synthetic', variety: '', plant_health: selection };
+    const variety: Crop = { name: 'Synthetic', variety: 'Own selection', plant_health: selection };
+    expect(buildVarietyInheritanceBaseline(parent).plant_health).toBeUndefined();
+    expect(buildInheritedValueBaseline({ ...variety, general_crop: 1, plant_health: null,
+      inherited_fields: ['plant_health'], effective_values: { plant_health: selection } }).plant_health).toBeUndefined();
+    expect(stripValuesMatchingBaseline(variety, { plant_health: selection }, emptyValueFor).plant_health).toEqual(selection);
+    expect(getVarietyOwnValueSource(variety, parent, 'plant_health')).toBe('ownValue');
+    expect(getVarietyOwnValueSource({ ...variety, plant_health: null }, parent, 'plant_health')).toBeNull();
+  });
 
   it('clears a field that still matches the baseline', () => {
     const draft = { name: 'Karotte', variety: 'Nantaise', row_spacing_cm: 30 };

@@ -41,6 +41,10 @@ export const buildSheetData = (
     // The JSON format names the supplier `supplierName`; the sheet column is `supplier_name`.
     const portable: Record<string, unknown> = { ...portableCrop, supplier_name: portableCrop.supplierName };
     return cropColumns.map((col) => {
+      if (col.type === 'plantHealth') {
+        if (crop.plant_health === undefined) return null;
+        return JSON.stringify(crop.plant_health === null ? null : crop.plant_health.entries);
+      }
       if (col.type === 'timingWindows') return formatWindowCell(crop, col.key, t);
       if (col.type === 'range' && col.rangeFields) {
         const [lowerField, upperField] = col.rangeFields;

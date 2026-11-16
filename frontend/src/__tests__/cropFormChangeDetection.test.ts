@@ -17,6 +17,14 @@ describe('hasEffectiveCropFormChanges', () => {
     expect(unchanged({ name: 'Salat' }, { name: 'Spinat' })).toBe(true);
   });
 
+  it('saves health-only edits and distinguishes inheritance from an empty override', () => {
+    const selected = { entries: [{ name: 'Explicit local name' }] };
+    expect(unchanged({}, { plant_health: selected })).toBe(true);
+    expect(unchanged({ plant_health: selected }, { plant_health: null })).toBe(true);
+    expect(unchanged({ plant_health: null }, { plant_health: { entries: [] } })).toBe(true);
+    expect(unchanged({ plant_health: selected }, { plant_health: { entries: [{ name: ' Explicit  local name ' }] } })).toBe(false);
+  });
+
   it('reports an edit of only the groups', () => {
     expect(unchanged({ name: 'Dill' }, { name: 'Dill', tags: ['Kräuter'] })).toBe(true);
     expect(unchanged({ tags: ['Kräuter'] }, { tags: [] })).toBe(true);

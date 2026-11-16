@@ -2070,5 +2070,22 @@
       "update_host": "Relazione con pianta ospite aggiornata",
       "archive_host": "Relazione con pianta ospite archiviata"
     }
+  },
+  "plantHealth": {
+    "label": "Voci di parassiti e malattie",
+    "placeholder": "Inserisci un nome o scegli una voce del catalogo",
+    "helper": "I nomi inseriti restano privati. Seleziona esplicitamente le voci del catalogo. Fino a 40 voci.",
+    "local": "Nome privato",
+    "catalogue": "Voce del catalogo",
+    "unavailable": "Riferimento al catalogo non disponibile",
+    "searchError": "Non è stato possibile caricare i suggerimenti del catalogo. Puoi comunque aggiungere un nome privato.",
+    "inherit": "Usa le voci della coltura",
+    "associationHint": "Un’associazione non dimostra un’infestazione né una resistenza. Le informazioni mancanti restano sconosciute.",
+    "notes": "Note su parassiti e malattie",
+    "spreadsheetHeader": "Voci di parassiti e malattie (JSON)",
+    "templateEntry": "Voce di esempio sintetica",
+    "validation": "Usa al massimo 40 nomi singoli di 200 caratteri ciascuno.",
+    "unspecified": "Non specificato / eredita dalla coltura",
+    "emptySelection": "Selezione propria esplicitamente vuota"
   }
 }

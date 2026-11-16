@@ -5,6 +5,16 @@ export type GerminationLightRequirement = '' | 'none' | 'light' | 'dark';
 import type { LifeCycle, LightRequirement, WaterRequirement, WinterHardiness } from '../crops/siteHealth';
 export type GerminationType = 'cold' | 'frost' | 'light' | 'dark';
 
+export interface PlantHealthSelection {
+  name: string;
+  catalogue_identity?: string;
+}
+
+/** Null inherits; an empty entries array is an explicit empty override. */
+export interface PlantHealthSelections {
+  entries: PlantHealthSelection[];
+}
+
 export interface SeedPackage {
   id?: number;
   crop?: number;
@@ -234,6 +244,7 @@ export interface Crop {
   germination_pretreatment?: string;
   specific_properties?: SpecificProperties;
   specific_property_profile?: string;
+  plant_health?: PlantHealthSelections | null;
   pests_diseases?: string;
   light_requirement?: LightRequirement | '';
   water_requirement?: WaterRequirement | '';
@@ -343,6 +354,7 @@ export type CropInheritableField =
   | 'germination_types'
   | 'germination_pretreatment'
   | 'pests_diseases'
+  | 'plant_health'
   | 'light_requirement'
   | 'water_requirement'
   | 'life_cycle'

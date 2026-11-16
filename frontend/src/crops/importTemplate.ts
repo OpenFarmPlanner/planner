@@ -24,6 +24,7 @@ const buildTemplateCrops = (t: TemplateT, potatoSpecies: TemplateSpecies): Crop[
     germination_pretreatment: t('import.template.pretreatment'),
     light_requirement: 'full_sun', water_requirement: 'high', life_cycle: 'annual', winter_hardiness: 'not_hardy',
     pests_diseases: t('import.template.pestsDiseases'),
+    plant_health: { entries: [{ name: t('plantHealth.templateEntry') }] },
     harvest_method: 'per_plant', expected_yield: 4,
     distance_within_row_cm: 50, row_spacing_cm: 80, sowing_depth_cm: 0.5, sowing_depth_max_cm: 1,
     thousand_kernel_weight_g: 3,

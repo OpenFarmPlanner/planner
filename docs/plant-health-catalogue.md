@@ -2,10 +2,10 @@
 
 The catalogue foundation for #1011 lives in `crops/plant_health_*.py` and in
 **Crop library → Moderation**, below the existing change-proposal queue.
-It manages global identities and sourced host relationships. Private crop tags,
-public crop mappings, shared-pathogen views and import/export integration are
-subsequent parts of #1011; this foundation does not change crop records or their
-existing `pests_diseases` prose. No initial catalogue data is seeded. The separate
+It manages global identities and sourced host relationships. Project crops can
+also store the private selections described below. Public crop mappings,
+library synchronization, filters and shared-pathogen views remain the next part
+of #1011. Existing `pests_diseases` prose is preserved. No initial catalogue data is seeded. The separate
 crop-data #8 work owns researching and populating the initial entries.
 
 ## Identity and evidence
@@ -105,6 +105,111 @@ The project-token generated schema intentionally excludes these routes. See
 platform credential and its session-only issuance.
 
 This change contains no deployment, remote source crawling or paid API calls.
+
+## Private crop selections
+
+`Crop.plant_health` stores individual names separately from the existing
+`pests_diseases` explanatory text. It is a bounded portable JSON object, following
+the existing project-tag storage pattern, with at most 40 selections and names
+up to 200 characters. A selection is either `{"name": "Private name"}` or an
+explicit `{"catalogue_identity": "UUID", "name": "Reference-name snapshot"}`.
+The UUID refers to the catalogue's stable identity, never its integer database
+ID or a translated label. Two catalogue identities with the same label remain
+separate; a typed matching name remains a private name. Local spelling reuse
+only inspects active crops of the current project and normalizes whitespace
+and case. It does not infer an organism, strip accents or split one name at
+commas/semicolons. No private write proposes or publishes a global record.
+
+The project crop form offers current published catalogue names and synonyms
+alongside that project's existing private names. Selecting a catalogue result
+is explicit. Chips distinguish private names, catalogue references and
+unavailable references. Selected references use one bounded, permission-filtered
+`entries/?identities=UUID,UUID` lookup for translated names; the parameter accepts
+at most 40 UUIDs and cannot expand ordinary catalogue visibility. Failed lookups
+retain the selection and offer retry. Archived references remain portable;
+other unpublished identities may only be retained on a crop that already held
+them. A new unknown or unreviewed UUID is rejected instead of silently becoming
+a local name. A reference-name snapshot does not establish host evidence.
+
+| Write | Meaning |
+|---|---|
+| Field omitted | Preserve the stored selections |
+| `"plant_health": null` | Unspecified; a linked variety uses its general culture's live selections |
+| `"plant_health": {"entries": []}` | Explicit empty override, including on a variety |
+| Nonempty `entries` | Replace this crop's own selections |
+
+The form displays inherited selections without freezing a copy when saved.
+Removing every chip creates an empty override; **Use culture entries** restores
+live inheritance. Neither an empty list nor missing information means
+resistance or safety. An explicitly selected own value remains an override even
+when it currently matches the culture; later culture edits do not replace it.
+An association is not an observed infestation. Selections
+participate in private entity/project history and restore. Import previews and
+history show snapshot names, private/catalogue origins and stable catalogue
+references; unspecified inheritance and an explicit empty override have distinct
+labels. A snapshot predating the field restores it to `null` while restoring its
+original prose unchanged.
+Migration `0142_crop_plant_health_selections` adds only a nullable column, with
+no extraction or data seeding. Reversing it preserves existing prose and drops
+the new selections column and its values.
+
+### Portable files and compatibility
+
+JSON exchange carries the same object/null API value and stable UUIDs. The new
+localized **Pest and disease entries (JSON)** spreadsheet column uses a JSON
+array of names or reference objects; `[]` explicitly clears, `null` restores
+inheritance, and an empty/absent cell leaves selections unspecified. JSON
+escaping preserves delimiters and quotes inside individual names. The backend
+also accepts the full selections object in that column. Invalid JSON and
+unavailable identities are reported in preview before writes.
+
+**Pest and disease notes** is the existing `pests_diseases` column under a more
+explicit label. All seven former translated headers, including **Schädlinge und
+Krankheiten**, still map only to explanatory prose. A legacy row such as
+“early sowing protects against carrot fly; repels aphids” stays one note and
+leaves structured selections unspecified. Companion comments and untouched
+language versions are not reinterpreted. Agent import previews validate the
+new field, and a confirmed import preserves explicit `null` rather than dropping
+it as an omitted value.
+
+Private selections are currently project data, outside the public library copy
+fields. Explicit publication mapping/proposals, preservation of unresolved
+private entries during official updates, local pins and four-case library sync
+are part of the remaining public integration in #1011.
+
+### Local private-selection acceptance data
+
+After checking the actual local database and applying this checkout's migrations,
+use an existing active user, published species and published catalogue entry.
+The command creates no catalogue/species records and grants no global role.
+The catalogue fixture below can supply an explicitly synthetic approved entry
+when an existing moderator has prepared it on that same verified local database.
+
+```bash
+cd backend
+DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py seed_private_plant_health_acceptance \
+  --username LOCAL_USER --species-id LOCAL_SPECIES_ID \
+  --catalogue-entry-id LOCAL_PUBLISHED_ENTRY_ID --database-name EXACT_LOCAL_DATABASE
+# Inspect the target and preview; repeat the same command with --apply.
+```
+
+The command reuses the local-only database, explicit target, migration and
+routing guards of `seed_library_import_acceptance`. It creates a new isolated
+**Private plant-health acceptance** project: a general culture with one private
+name, one catalogue reference and unchanged prevention prose; three varieties
+with inherited, empty and independent selections; and a plan referencing the
+inheriting variety. Repeated runs keep manual edits. Slug/ownership collisions
+abort without changing existing data. Cloud verification uses a separate
+disposable database and has not seeded the owner's localhost.
+
+Open that project → Crops. Change the general culture's entries and check the
+inheriting variety, the explicit empty variety and the independent variety.
+Add a free name, explicitly select a catalogue synonym, clear all chips, then
+restore inheritance. Check the separate prose and retained crop/plan IDs.
+Restore an earlier crop history entry. Export/reimport CSV, XLSX, ODS and JSON;
+inspect the preview and try delimiters/quotes and explicit clearing. Repeat at
+phone and desktop sizes and with another UI language. Public mapping/sync and
+filter acceptance remain pending until the next part.
 
 ## Local manual acceptance data
 

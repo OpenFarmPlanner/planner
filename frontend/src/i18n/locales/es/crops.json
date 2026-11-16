@@ -2070,5 +2070,22 @@
       "update_host": "Relación con planta hospedante actualizada",
       "archive_host": "Relación con planta hospedante archivada"
     }
+  },
+  "plantHealth": {
+    "label": "Entradas de plagas y enfermedades",
+    "placeholder": "Escribe un nombre o elige una entrada del catálogo",
+    "helper": "Los nombres escritos siguen siendo privados. Selecciona las entradas del catálogo de forma explícita. Hasta 40 entradas.",
+    "local": "Nombre privado",
+    "catalogue": "Entrada del catálogo",
+    "unavailable": "Referencia del catálogo no disponible",
+    "searchError": "No se pudieron cargar las sugerencias del catálogo. Puedes seguir añadiendo un nombre privado.",
+    "inherit": "Usar las entradas del cultivo",
+    "associationHint": "Una asociación no demuestra una infestación ni resistencia. La falta de información significa que se desconoce.",
+    "notes": "Notas sobre plagas y enfermedades",
+    "spreadsheetHeader": "Entradas de plagas y enfermedades (JSON)",
+    "templateEntry": "Entrada de ejemplo sintética",
+    "validation": "Usa un máximo de 40 nombres individuales de hasta 200 caracteres cada uno.",
+    "unspecified": "Sin especificar / heredar del cultivo",
+    "emptySelection": "Selección propia explícitamente vacía"
   }
 }
