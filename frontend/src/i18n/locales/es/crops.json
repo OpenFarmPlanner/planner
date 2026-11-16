@@ -2086,6 +2086,19 @@
     "templateEntry": "Entrada de ejemplo sintética",
     "validation": "Usa un máximo de 40 nombres individuales de hasta 200 caracteres cada uno.",
     "unspecified": "Sin especificar / heredar del cultivo",
-    "emptySelection": "Selección propia explícitamente vacía"
+    "emptySelection": "Selección propia explícitamente vacía",
+    "officialHelper": "Selecciona explícitamente entradas del catálogo. Los nombres libres se quedan en el proyecto.",
+    "officialSearchError": "No se pudieron cargar las sugerencias del catálogo. Inténtalo de nuevo.",
+    "publishSkipped": "Entradas sin publicar: {{number}}. Se conservan en el proyecto.",
+    "publication": {
+      "title": "Vincular entradas privadas: {{name}}",
+      "helper": "Elige como máximo una entrada aprobada del catálogo para cada nombre privado. «Guardar vínculo» modifica inmediatamente este cultivo del proyecto, aunque canceles la publicación. Los nombres sin vincular siguen siendo privados. Las nuevas propuestas estarán disponibles tras la moderación.",
+      "map": "Guardar vínculo",
+      "propose": "Proponer el nombre para revisión",
+      "proposed": "Propuesta enviada. El nombre sigue siendo privado hasta que lo vincules expresamente.",
+      "saved": "Se ha guardado el vínculo privado. Confirma por separado la publicación o la sincronización con la biblioteca.",
+      "error": "No se pudo completar la acción. Comprueba la selección e inténtalo de nuevo.",
+      "conflict": "El cultivo o la selección ha cambiado. Cierra el diálogo y vuelve a cargar los cultivos antes de revisar el vínculo."
+    }
   }
 }

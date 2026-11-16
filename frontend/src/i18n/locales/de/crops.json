@@ -2035,6 +2035,19 @@
     "templateEntry": "Synthetischer Beispieleintrag",
     "validation": "Verwende höchstens 40 einzelne Namen mit jeweils bis zu 200 Zeichen.",
     "unspecified": "Nicht gesetzt / von Kultur übernehmen",
-    "emptySelection": "Leere eigene Auswahl"
+    "emptySelection": "Leere eigene Auswahl",
+    "officialHelper": "Wähle Katalogeinträge ausdrücklich aus. Freie Namen bleiben im Projekt.",
+    "officialSearchError": "Katalogvorschläge konnten nicht geladen werden. Versuche es erneut.",
+    "publishSkipped": "Nicht veröffentlichte Einträge: {{number}}. Sie bleiben im Projekt erhalten.",
+    "publication": {
+      "title": "Private Einträge zuordnen: {{name}}",
+      "helper": "Wähle für jeden privaten Namen höchstens einen freigegebenen Katalogeintrag. „Zuordnung speichern“ ändert sofort diese Projektkultur, auch wenn du die Veröffentlichung abbrichst. Ungelöste Namen bleiben privat. Neue Vorschläge werden erst nach Moderation verfügbar.",
+      "map": "Zuordnung speichern",
+      "propose": "Namen zur Prüfung vorschlagen",
+      "proposed": "Vorschlag eingereicht. Der Name bleibt bis zur ausdrücklichen Zuordnung privat.",
+      "saved": "Die private Zuordnung wurde gespeichert. Bestätige die Veröffentlichung oder den Bibliotheksabgleich separat.",
+      "error": "Die Aktion konnte nicht abgeschlossen werden. Prüfe die Auswahl und versuche es erneut.",
+      "conflict": "Die Kultur oder Auswahl hat sich geändert. Schließe den Dialog und lade die Kulturen neu, bevor du die Zuordnung erneut prüfst."
+    }
   }
 }

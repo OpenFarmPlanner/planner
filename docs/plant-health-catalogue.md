@@ -3,9 +3,9 @@
 The catalogue foundation for #1011 lives in `crops/plant_health_*.py` and in
 **Crop library → Moderation**, below the existing change-proposal queue.
 It manages global identities and sourced host relationships. Project crops can
-also store the private selections described below. Public crop mappings,
-library synchronization, filters and shared-pathogen views remain the next part
-of #1011. Existing `pests_diseases` prose is preserved. No initial catalogue data is seeded. The separate
+also store the private selections described below. Explicit mappings, publication,
+library synchronization and pins are implemented. Filters and shared-pathogen
+views remain the next part of #1011. Existing `pests_diseases` prose is preserved. No initial catalogue data is seeded. The separate
 crop-data #8 work owns researching and populating the initial entries.
 
 ## Identity and evidence
@@ -243,3 +243,55 @@ sources. Inspect the approved host's variety/scope, search a synonym, then archi
 and reopen an entry and inspect its history. The two broad labels must remain
 separate, and broad host editors must not allow confirmed-pathogen evidence.
 Repeat at phone and desktop widths. This exercises only the catalogue foundation.
+
+## Public selections, explicit mapping and synchronization
+
+`PublicCrop.plant_health` contains only stable catalogue UUID references and
+reference-name snapshots, never unresolved project names. New selections use
+published identities; archived references remain portable as in private crops.
+Other unpublished references can only be retained on the same public entry.
+Public chips and form selections use translated visible catalogue names, with
+an unavailable snapshot fallback. Autocomplete options show the identity kind
+and scientific/reference name so equal vernacular labels remain distinguishable.
+The public explanatory `pests_diseases` prose and its translations remain separate.
+
+The publication and linked-entry sync dialog offers an explicit mapping panel
+for each crop's unresolved names, including selected varieties. **Save mapping**
+is a separate private write: it persists immediately even if publication is later
+cancelled, and the panel states this before the action. It replaces only the
+chosen local name on that project crop with a currently published stable UUID.
+It never infers a match from typed text, changes other crops, publishes a library
+entry or creates sourced host evidence. Inherited names become an explicit own
+selection on the mapped variety. New catalogue proposals use the existing
+one-language moderation endpoint, start as broad pending concepts and keep the
+private name unresolved until moderation and a later explicit mapping.
+
+`POST /api/crops/{id}/plant-health/mappings/` accepts `expected_updated_at` and
+`mappings: [{local_name, catalogue_identity}]` (1–40 unique local names). Project
+permissions and token write scope apply. The action locks the project, verifies
+the timestamp and effective source names, locks published targets and records
+normal private history/actor attribution. Stale timestamps or disappeared source
+names return 409 `plant_health_mapping_conflict`; invalid/unapproved targets
+return 400 without changing the crop. Project tokens still cannot propose or
+read global catalogue entries. There is no automatic retry of a stale mapping.
+
+Publishing skips unresolved/unreviewed entries and reports the count in preview;
+they stay intact in the project. UUID sets, independent of order, language and
+snapshot spelling, participate in the existing four-case library comparison.
+Private names alone do not mark a crop as divergent. Both selected-field pulls
+and full library updates replace only the official segment and preserve all
+private names, IDs, plans and notes. If the combined private/public selection
+would exceed 40 entries, the transaction fails instead of dropping names. An
+unchanged inherited official segment leaves the variety's raw null intact.
+Official references can be pinned locally; private names are always retained,
+and a private-only/empty official segment cannot keep a library pin.
+Public proposals, revision snapshots and revert include this field while partial
+translation edits preserve omitted languages. Old snapshots have no references.
+
+Migration `0143_public_crop_plant_health_selections` only adds the nullable public
+column. It seeds no catalogue rows and parses no prose; reversing it drops only
+the new public selections and leaves legacy notes and private selections intact.
+The existing guarded `seed_private_plant_health_acceptance` fixture can be reused
+to inspect private mapping/proposal controls with existing published catalogue
+and species IDs. Preview/apply only on a verified disposable local database;
+the command never writes shared library/catalogue entries or changes roles.

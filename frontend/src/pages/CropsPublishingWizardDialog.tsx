@@ -47,6 +47,7 @@ import {
   type PublishVarietySelection,
 } from '../crops/publishVarieties';
 import { CropSpeciesPicker } from '../crops/CropSpeciesPicker';
+import { PlantHealthPublicationPanel } from '../crops/PlantHealthPublicationPanel';
 import { describePublishBlockingReasons } from '../crops/publishChecks';
 import { useCropSpeciesSearch } from '../crops/useCropSpeciesSearch';
 import {
@@ -66,6 +67,7 @@ interface CropsPublishingWizardDialogProps {
   termsAlreadyAccepted: boolean;
   publishing: boolean;
   onClose: () => void;
+  onCropMapped?: (crop: Crop) => void;
   onPublish: (data: {
     acceptedPublicLibraryTerms: boolean;
     cropSpeciesId?: number;
@@ -139,6 +141,7 @@ export function CropsPublishingWizardDialog({
   termsAlreadyAccepted,
   publishing,
   onClose,
+  onCropMapped,
   onPublish,
   onLinkPublicCrop,
   onSyncPublicCrop,
@@ -153,6 +156,8 @@ export function CropsPublishingWizardDialog({
   const [acceptedLicense, setAcceptedLicense] = useState(false);
   const [validationResult, setValidationResult] = useState<PublishPublicCropPreview | null>(null);
   const [validationLoading, setValidationLoading] = useState(false);
+  const [healthMappingBusy, setHealthMappingBusy] = useState(false);
+  const [healthMappingSaved, setHealthMappingSaved] = useState(false);
   const [showLicenseConfirmation, setShowLicenseConfirmation] = useState(false);
   const [speciesInputValue, setSpeciesInputValue] = useState('');
   // What the species field searches for. Follows the user's typing only:
@@ -216,6 +221,7 @@ export function CropsPublishingWizardDialog({
     if (!open) return;
     queueMicrotask(() => {
       setAcceptedLicense(false);
+      setHealthMappingSaved(false);
       setShowLicenseConfirmation(false);
       // Prefilled with the local crop's own name so the field never starts
       // empty and its results show right away — but nothing is auto-selected
@@ -703,9 +709,24 @@ export function CropsPublishingWizardDialog({
     <PublicLibraryTermsConsent checked={acceptedLicense} onChange={setAcceptedLicense} />
   ) : null;
 
+  const healthMappingPanel = crop && onCropMapped ? <>
+    {healthMappingSaved ? <Alert severity="success">{t('plantHealth.publication.saved')}</Alert> : null}
+    {[crop, ...varieties.filter(variety => selectedVarieties.some(item => item.cropId === variety.id))].map(item => (
+      <PlantHealthPublicationPanel key={item.id} crop={item}
+        disabled={healthMappingBusy || publishing || syncSubmitting || linkConfirmSubmitting}
+        onBusyChange={setHealthMappingBusy}
+        onMapped={saved => {
+          onCropMapped(saved);
+          setHealthMappingSaved(true);
+          setValidationResult(null);
+          syncPreview.reload();
+        }} />
+    ))}
+  </> : null;
+
   if (showLinkConfirmation && selectedPublicCrop) {
     return (
-      <Dialog open={open} onClose={linkConfirmSubmitting ? undefined : onClose} maxWidth="sm" fullWidth>
+      <Dialog open={open} onClose={linkConfirmSubmitting || healthMappingBusy ? undefined : onClose} maxWidth="sm" fullWidth>
         <DialogTitle>{t('library.linkExisting.title')}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2.25} sx={{ pt: 0.5 }}>
@@ -721,6 +742,7 @@ export function CropsPublishingWizardDialog({
               </Typography>
             </Box>
 
+            {healthMappingPanel}
             {syncPanel}
 
             <Alert severity="info">{t('library.linkExisting.inheritance')}</Alert>
@@ -739,6 +761,7 @@ export function CropsPublishingWizardDialog({
             variant="contained"
             disabled={
               linkConfirmSubmitting
+              || healthMappingBusy
               || publishing
               || !syncPreviewLoaded
               || (showLicenseConfirmation && !termsAlreadyAccepted && !acceptedLicense)
@@ -755,7 +778,7 @@ export function CropsPublishingWizardDialog({
 
   if (isSyncFlow) {
     const hasNoDifferences = syncPreview.preview !== null && syncPreview.preview.changes.length === 0;
-    const syncDisabledReason = syncSubmitting
+    const syncDisabledReason = syncSubmitting || healthMappingBusy
       ? t('common:disabledReasons.busy')
       : hasNoDifferences
         ? t('library.sync.noChanges')
@@ -776,6 +799,7 @@ export function CropsPublishingWizardDialog({
             </Typography>
 
             {syncError ? <Alert severity="error">{syncError}</Alert> : null}
+            {healthMappingPanel}
             {syncPanel}
 
             {licenseBox}
@@ -811,6 +835,7 @@ export function CropsPublishingWizardDialog({
             )}
           </Typography>
 
+          {healthMappingPanel}
           <Stack spacing={2}>
             <CropSpeciesPicker
               species={species}
@@ -952,6 +977,9 @@ export function CropsPublishingWizardDialog({
               {t('companions.publishSkipped', { count: validationResult.unpublishable_companion_count })}
             </Alert>
           ) : null}
+          {validationResult?.unpublishable_plant_health_count ? <Alert severity="info">
+            {t('plantHealth.publishSkipped', { number: validationResult.unpublishable_plant_health_count })}
+          </Alert> : null}
 
           {otherBlockingMessages.map((message) => (
             <Alert key={message} severity="warning">{message}</Alert>
@@ -1028,6 +1056,7 @@ export function CropsPublishingWizardDialog({
               || !originalLanguageCode
               || publishing
               || validationLoading
+              || healthMappingBusy
               || proposingSpecies
               || varietyConflictsPending
               || isBlockedByValidation

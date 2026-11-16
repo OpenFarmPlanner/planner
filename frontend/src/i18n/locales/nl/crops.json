@@ -2035,6 +2035,19 @@
     "templateEntry": "Synthetische voorbeeldvermelding",
     "validation": "Gebruik maximaal 40 afzonderlijke namen van elk maximaal 200 tekens.",
     "unspecified": "Niet opgegeven / overnemen van gewas",
-    "emptySelection": "Expliciet lege eigen selectie"
+    "emptySelection": "Expliciet lege eigen selectie",
+    "officialHelper": "Kies catalogusvermeldingen uitdrukkelijk. Vrije namen blijven in het project.",
+    "officialSearchError": "Catalogussuggesties konden niet worden geladen. Probeer het opnieuw.",
+    "publishSkipped": "Niet-gepubliceerde vermeldingen: {{number}}. Ze blijven in het project.",
+    "publication": {
+      "title": "Privénamen koppelen: {{name}}",
+      "helper": "Kies per privénaam maximaal één goedgekeurd catalogusitem. ‘Koppeling opslaan’ wijzigt dit projectgewas direct, ook als je de publicatie annuleert. Niet-gekoppelde namen blijven privé. Nieuwe voorstellen komen beschikbaar na moderatie.",
+      "map": "Koppeling opslaan",
+      "propose": "Naam ter beoordeling voorstellen",
+      "proposed": "Voorstel ingediend. De naam blijft privé totdat je deze uitdrukkelijk koppelt.",
+      "saved": "De privékoppeling is opgeslagen. Bevestig de publicatie of bibliotheeksynchronisatie apart.",
+      "error": "De actie kon niet worden voltooid. Controleer de selectie en probeer het opnieuw.",
+      "conflict": "Het gewas of de selectie is gewijzigd. Sluit het venster en laad je gewassen opnieuw voordat je de koppeling opnieuw controleert."
+    }
   }
 }

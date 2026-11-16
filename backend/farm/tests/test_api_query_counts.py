@@ -116,19 +116,19 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         self.client.get(entries_url)
         self.client.get(hosts_url)
         with CaptureQueriesContext(connection) as initial_entries:
-            self.client.get(entries_url)
+            initial_entry_response = self.client.get(entries_url)
         with CaptureQueriesContext(connection) as initial_hosts:
-            self.client.get(hosts_url)
+            initial_host_response = self.client.get(hosts_url)
         for index in range(1, ROW_COUNT + 1):
             add_identity(index)
         with self.assertNumQueries(len(initial_entries)):
             response = self.client.get(entries_url)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['count'], ROW_COUNT + 1)
+        self.assertEqual(response.data['count'], initial_entry_response.data['count'] + ROW_COUNT)
         with self.assertNumQueries(len(initial_hosts)):
             response = self.client.get(hosts_url)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['count'], ROW_COUNT + 1)
+        self.assertEqual(response.data['count'], initial_host_response.data['count'] + ROW_COUNT)
 
     def setUp(self):
         super().setUp()
@@ -216,11 +216,17 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 season=season, crop=crop, assigned_to=self.user, field=self.fields[index],
             )
 
+            health_entry = PlantHealthEntry.objects.create(
+                name=f'Synthetic linked identity {index}', kind='group', status='published',
+            )
             public_crop = PublicCrop.objects.create(
                 name=f'Public crop {index}', variety='Sorte',
                 status=PublicCrop.STATUS_PUBLISHED, crop_species=species, created_by=self.user,
                 original_language_code='en', crop_family_id=PLANT_FAMILY_KEYS[index],
                 specific_properties={'cooking_type': 'waxy', 'maturity_group': 'early'},
+                plant_health={'entries': [{
+                    'name': health_entry.name, 'catalogue_identity': str(health_entry.identity_key),
+                }]},
             )
             self.public_crops.append(public_crop)
             # Two trade names per entry, so `variety_display`/`trade_names`

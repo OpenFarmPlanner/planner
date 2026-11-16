@@ -940,6 +940,7 @@ function Crops() {
         termsAlreadyAccepted={Boolean(user?.public_library_terms_accepted)}
         publishing={Boolean(selectedCrop && publishingCropId === selectedCrop.id)}
         onClose={() => setPublishWizardOpen(false)}
+        onCropMapped={saved => setCrops(previous => previous.map(crop => crop.id === saved.id ? saved : crop))}
         onPublish={handlePublishingWizardPublish}
         onLinkPublicCrop={handleLinkPublicCropSubmit}
         onSyncPublicCrop={handleSyncPublicCropSubmit}

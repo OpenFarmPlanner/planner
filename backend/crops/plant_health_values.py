@@ -67,3 +67,39 @@ def normalize_plant_health(value: Any) -> dict[str, list[dict[str, str]]] | None
 def validate_plant_health_value(value: Any) -> None:
     """Model-field validator shared with serializer and import validation."""
     normalize_plant_health(value)
+
+
+def official_plant_health(value: Any) -> dict[str, list[dict[str, str]]] | None:
+    normalized = normalize_plant_health(value)
+    entries = [
+        item for item in (normalized or {}).get("entries", []) if "catalogue_identity" in item
+    ]
+    return {"entries": entries} if entries else None
+
+
+def plant_health_identities(value: Any) -> tuple[str, ...]:
+    """Comparison keys do not depend on order, translated labels or name snapshots."""
+    return tuple(sorted(
+        item["catalogue_identity"]
+        for item in (official_plant_health(value) or {}).get("entries", [])
+    ))
+
+
+def merge_official_plant_health(local_value: Any, public_value: Any) -> dict | None:
+    """Replace only official references; never drop unresolved project names."""
+    local = normalize_plant_health(local_value)
+    official = official_plant_health(public_value)
+    if local is None and official is None:
+        return None
+    private = [
+        item for item in (local or {}).get("entries", []) if "catalogue_identity" not in item
+    ]
+    return normalize_plant_health({"entries": [*private, *(official or {}).get("entries", [])]})
+
+
+def validate_public_plant_health_value(value: Any) -> None:
+    normalized = normalize_plant_health(value)
+    if any("catalogue_identity" not in item for item in (normalized or {}).get("entries", [])):
+        raise ValidationError(
+            "Public plant-health selections require explicit catalogue identities."
+        )

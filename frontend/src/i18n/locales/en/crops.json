@@ -2035,6 +2035,19 @@
     "templateEntry": "Synthetic example entry",
     "validation": "Use at most 40 individual names, each up to 200 characters.",
     "unspecified": "Unspecified / inherit from culture",
-    "emptySelection": "Explicitly empty selection"
+    "emptySelection": "Explicitly empty selection",
+    "officialHelper": "Choose catalogue entries explicitly. Free names stay in the project.",
+    "officialSearchError": "Catalogue suggestions could not be loaded. Try again.",
+    "publishSkipped": "Unpublished selections: {{number}}. They remain in the project.",
+    "publication": {
+      "title": "Map private entries: {{name}}",
+      "helper": "Choose at most one approved catalogue entry for each private name. “Save mapping” immediately changes this project crop, even if you cancel publication. Unresolved names stay private. New proposals become available after moderation.",
+      "map": "Save mapping",
+      "propose": "Propose name for review",
+      "proposed": "Proposal submitted. The name stays private until you explicitly map it.",
+      "saved": "The private mapping was saved. Confirm publication or library synchronization separately.",
+      "error": "The action could not be completed. Check your selection and try again.",
+      "conflict": "The crop or selection changed. Close the dialog and reload your crops before reviewing the mapping again."
+    }
   }
 }

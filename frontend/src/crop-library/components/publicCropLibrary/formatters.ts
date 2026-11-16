@@ -10,7 +10,7 @@ import type {
 import { getLanguageDisplayName, normalizeLanguageTag } from '../../../i18n/languages';
 import { stripCitationMarkers } from '../../../components/data-grid/markdown';
 import { getPublicCropTitle } from '../../publicCropDisplay';
-import { formatSeedRateByCultivation } from '../../../pages/cropsHistoryUtils';
+import { formatPlantHealthValue, formatSeedRateByCultivation } from '../../../pages/cropsHistoryUtils';
 import { getSeedTypeLabel } from '../../../crops/seedType';
 import { readWithLegacyKey } from '../../../compat/legacyCropNames';
 
@@ -313,7 +313,8 @@ export function getPublicCropFieldLabel(field: string, t: (key: string, options?
     germination_types: 'germination.fields.germination_types',
     germination_pretreatment: 'germination.fields.germination_pretreatment',
     specific_properties: 'specificProperties.title',
-    pests_diseases: 'siteHealth.fields.pests_diseases',
+    pests_diseases: 'plantHealth.notes',
+    plant_health: 'plantHealth.label',
     light_requirement: 'siteHealth.fields.light_requirement',
     water_requirement: 'siteHealth.fields.water_requirement',
     life_cycle: 'siteHealth.fields.life_cycle',
@@ -348,6 +349,7 @@ export function getPublicCropComparisonFieldLabel(field: string, t: TFunction): 
  * values, booleans and empty values identically.
  */
 export function formatPublicCropValue(field: string, value: unknown, t: TFunction): string {
+  if (field === 'plant_health') return value == null ? t('library.publishWizard.comparison.empty') : formatPlantHealthValue(value, t);
   if (field === 'specific_properties' && value && typeof value === 'object' && Object.keys(value).length > 0) return formatSpecificProperties(value as SpecificProperties, t);
   if (field === 'companions' && Array.isArray(value) && value.length > 0) {
     return formatCompanionsValue(value as PublicCropCompanion[], t);

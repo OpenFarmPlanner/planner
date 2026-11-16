@@ -17,7 +17,7 @@ import { SpecificPropertiesSection } from './sections/SpecificPropertiesSection'
 import { GerminationSection } from './sections/GerminationSection';
 import { SiteHealthSection } from './sections/SiteHealthSection';
 import { PlantHealthField } from './sections/PlantHealthField';
-import { collectLocalPlantHealth } from './plantHealth';
+import { collectLocalPlantHealth, mergeOfficialPlantHealth } from './plantHealth';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from '../i18n';
@@ -90,7 +90,7 @@ import {
   stripTimingWindowsMatchingBaseline,
   stripValuesMatchingBaseline,
 } from './varietyValueSource';
-import { varietySpecificFieldHighlightSx, type GetVarietyFieldHighlightSx } from './varietyValueAccent';
+import { mergeVarietyFieldSx, varietySpecificFieldHighlightSx, type GetVarietyFieldHighlightSx } from './varietyValueAccent';
 import { VarietyValueLegend } from './VarietyValueLegend';
 import { describeLibraryPinError, libraryPinnedFieldsForSave } from './libraryFieldPin';
 import { getCropDisplayName } from './cropDisplay';
@@ -768,6 +768,7 @@ export function CropForm({
       const updated = {
         ...prev,
         ...draft,
+        plant_health: mergeOfficialPlantHealth(prev.plant_health, draft.plant_health),
         ...(preserveVariety ? { variety: prev.variety } : {}),
         ...(preserveSpecificProperties ? { specific_properties: prev.specific_properties } : {}),
       };
@@ -1146,7 +1147,10 @@ export function CropForm({
         return;
       }
       await saveCrop(libraryPinnableFields.length > 0
-        ? { ...dataToSave, library_pinned_fields: libraryPinnedFieldsForSave(formData) }
+        ? { ...dataToSave, library_pinned_fields: libraryPinnedFieldsForSave({
+          ...formData,
+          plant_health: formData.plant_health ?? (isSpeciesLinkedVariety ? selectedSpeciesCrop?.plant_health : null),
+        }) }
         : dataToSave);
       setSaveError('');
       setIsDirty(false);
@@ -1508,15 +1512,17 @@ export function CropForm({
               />
             ) : null}
             <GerminationSection {...sectionProps} />
-            <SiteHealthSection {...sectionProps} plantHealthField={isProjectForm ? <PlantHealthField
+            <SiteHealthSection {...sectionProps} plantHealthField={<PlantHealthField
               value={formData.plant_health ?? null}
-              localOptions={healthLocalOptions}
+              localOptions={isProjectForm ? healthLocalOptions : []}
+              allowLocal={isProjectForm}
               onChange={value => handleChange('plant_health', value)}
               canInherit={isSpeciesLinkedVariety && Boolean(selectedSpeciesCrop)}
               inheritedValue={isSpeciesLinkedVariety ? selectedSpeciesCrop?.plant_health : undefined}
-              sx={getFieldHighlightSx('plant_health')}
+              sx={mergeVarietyFieldSx({}, getFieldHighlightSx('plant_health'), getFieldPinProps('plant_health')?.fieldSx)}
+              pinButton={getFieldPinProps('plant_health')?.button}
               error={errors.plant_health}
-            /> : null} />
+            />} />
             {isProjectForm
               ? crop ? <CropCompanionsSection crop={crop} crops={(crops ?? []) as Crop[]} onEdit={isSaving ? undefined : onEditCompanions} /> : null
               : <CompanionsSection state={companionRows} disabled={isSaving} />}

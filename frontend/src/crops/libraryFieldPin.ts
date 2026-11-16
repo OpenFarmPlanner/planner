@@ -39,6 +39,7 @@ export const LIBRARY_PIN_FORM_FIELDS = {
   germination_pretreatment: ['germination_pretreatment'],
   specific_properties: ['specific_properties'],
   pests_diseases: ['pests_diseases'],
+  plant_health: ['plant_health'],
   light_requirement: ['light_requirement'],
   water_requirement: ['water_requirement'],
   life_cycle: ['life_cycle'],
@@ -76,6 +77,7 @@ export function setLibraryPinGroup(
 
 /** Whether the form currently holds a value for `field` — only a value can be pinned. */
 export function hasLibraryPinFormValue(formData: Partial<Crop>, field: LibraryPinFormField): boolean {
+  if (field === 'plant_health') return Boolean(formData.plant_health?.entries.some(entry => entry.catalogue_identity));
   if (field === 'cultivation_types') {
     return Boolean(formData.cultivation_types?.length || formData.cultivation_type);
   }
