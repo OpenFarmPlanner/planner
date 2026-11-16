@@ -207,6 +207,7 @@ describe('crop spreadsheet export → import round trip', () => {
     life_cycle: 'biennial',
     winter_hardiness: 'with_protection',
     pests_diseases: 'Carrot fly; cover with netting.',
+    plant_health: { entries: [{ name: 'Synthetic explicit entry' }] },
     seed_type: 'f1_hybrid',
     harvest_method: 'per_plant',
     expected_yield: 4.2,
@@ -260,6 +261,7 @@ describe('crop spreadsheet export → import round trip', () => {
 
   const EXPECTED_IMPORT: Record<string, unknown> = {
     ...(FULL_CROP as unknown as Record<string, unknown>),
+    plant_health: JSON.stringify(FULL_CROP.plant_health?.entries),
     ...windowCells(i18n.getFixedT('de', 'crops')),
     supplier_name: 'Bingenheimer Saatgut',
     'specific_properties.cooking_type': 'waxy',
@@ -343,6 +345,26 @@ describe('crop spreadsheet export → import round trip', () => {
 });
 
 describe('germination spreadsheet round trip', () => {
+  it.each(SUPPORTED_LANGUAGES.flatMap(({ code }) => ['csv', 'xlsx', 'ods'].map(format => [code, format] as const)))(
+    'preserves explicit health identities, escaped names and separate notes in %s %s', async (language, format) => {
+      const crop = { name: 'Synthetic structured-health crop', plant_health: { entries: [
+        { name: 'Name; with, delimiters and "quotes"' },
+        { name: 'Official snapshot', catalogue_identity: '00000000-0000-4000-8000-000000000001' },
+      ] }, pests_diseases: 'Early sowing protects against carrot fly. Repels aphids.' } as Crop;
+      const data = buildSpreadsheetFile(buildSheetData([crop], i18n.getFixedT(language, 'crops')), format as 'csv' | 'xlsx' | 'ods');
+      const file = new File([data as BlobPart], `synthetic-health.${format}`);
+      const parsed = await parseSpreadsheetFile(file);
+      expect(parsed.warnings).toEqual([]);
+      expect(JSON.parse(parsed.entries[0].plant_health as string)).toEqual(crop.plant_health?.entries);
+      expect(parsed.entries[0].pests_diseases).toBe(crop.pests_diseases);
+    },
+  );
+
+  it('keeps a legacy free-text health header as notes with no inferred selections', async () => {
+    const parsed = await parseSpreadsheetFile(csvFile('Name;Schädlinge und Krankheiten\nSynthetic;"Early sowing protects against carrot fly; repels aphids"'));
+    expect(parsed.entries[0]).toEqual({ name: 'Synthetic', pests_diseases: 'Early sowing protects against carrot fly; repels aphids' });
+  });
+
   it.each(['de', 'en', 'fr', 'es'])('preserves site, life cycle and plant health in %s', async (language) => {
     const original = i18n.language;
     try {

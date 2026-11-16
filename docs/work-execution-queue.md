@@ -161,6 +161,18 @@ DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py seed_libra
 # After inspecting the preview, repeat the same command with --apply.
 ```
 
+For variety-selection acceptance, add `--include-variety-selection` to that
+preview/apply command. Under the same local-only guards it creates **new,
+isolated synthetic** Carrot library rows (general plus Nantaise 2,
+Nantaise 2/Milan and Rodelika) and two dedicated projects. It never changes
+existing library entries. The empty project exercises all/subset/parent-only
+selection; the partial project has a linked parent and first variety, a missing
+second variety, and an unlinked Rodelika with private notes, a duration override
+and a planting plan. The output prints project and general-entry IDs. Use
+**Import varieties**, cancel a comparison, then explicitly retain local values
+and complete it: IDs, plan references and the already linked parent must stay
+unchanged. Repeating the command preserves the fixtures and manual decisions.
+
 Cloud provides the exact command and expected test outcome, or a short handoff
 prompt asking the local agent to inspect setup, preview and apply that command.
 It does not claim to have accessed localhost. The local agent uses the installed
@@ -181,8 +193,11 @@ merge after required checks pass, then continue automatically. Standing queue
 authorization covers that sequence without routine per-PR confirmation, not
 production deployment or selecting metered APIs.
 
-Use the configured independent PR review workflow first. Inspect exact-head
-completion evidence and fix findings; a delivered native review request, ordinary
+Use the configured independent PR review workflow first. Completed native Codex
+Security Reviews with base-policy-verified GitHub app provenance, exact PR/head
+and a matching clean receipt plus trusted event-bound base/scope context require
+no additional human confirmation. Inspect
+exact-head completion evidence and fix findings; a delivered native review request, ordinary
 code-review summary or reaction is not security completion. After a provider
 allowance becomes available, a full review retry including Triage is needed when
 an inherited triage artifact belongs to an earlier run attempt. Keep triage and

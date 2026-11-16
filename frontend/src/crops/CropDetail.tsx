@@ -7,6 +7,7 @@ import { CropTaskTemplatesSection } from './CropTaskTemplatesSection';
 
 import { germinationDetailFields, formatGerminationValue } from './germination';
 import { SITE_HEALTH_FIELDS, formatSiteHealthValue } from './siteHealth';
+import { PlantHealthChips } from './PlantHealthChips';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Ref } from 'react';
 import { useMediaQuery, useTheme } from '@mui/material';
@@ -1384,13 +1385,16 @@ const detailSectionGridSx = {
             </Box>
             ) : null}
 
+            {getCropValue('plant_health', selectedCrop.plant_health)?.entries.length ? (
+              <Box sx={{ mb: 3 }}><PlantHealthChips value={getCropValue('plant_health', selectedCrop.plant_health)!} /></Box>
+            ) : null}
             {hasAnyDetailValue(...SITE_HEALTH_FIELDS.map((field) => getCropValue(field, selectedCrop[field]))) ? (
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom>{t('siteHealth.title')}</Typography>
               <Box sx={detailSectionGridSx}>
                 {SITE_HEALTH_FIELDS.filter((field) => hasDetailValue(getCropValue(field, selectedCrop[field]))).map((field) => (
                   <Box key={field} sx={{ minWidth: 0 }}>
-                    <Typography variant="body2" color="text.secondary">{t(`siteHealth.fields.${field}`)}</Typography>
+                    <Typography variant="body2" color="text.secondary">{t(field === 'pests_diseases' ? 'plantHealth.notes' : `siteHealth.fields.${field}`)}</Typography>
                     <ValueWithLibraryPin pin={getLibraryPin(field)}>
                       <Typography sx={[getOwnValueSx(field) ?? {}, { whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }]}>
                         {formatSiteHealthValue(field, getCropValue(field, selectedCrop[field]), t)}

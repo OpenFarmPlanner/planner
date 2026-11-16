@@ -95,9 +95,11 @@ describe('RootLayout fields-beds topbar "add location" action', () => {
     });
     render(<FocusManagerProvider><CommandProvider><App /></CommandProvider></FocusManagerProvider>);
 
-    await screen.findByRole('button', { name: /Parzelle hinzufügen/ }, { timeout: 10000 });
+    const topbar = within(screen.getByRole('banner'));
+    await topbar.findByRole('button', { name: /Parzelle hinzufügen/ }, { timeout: 10000 });
+    expect(topbar.getAllByRole('button', { name: /Parzelle hinzufügen/ })).toHaveLength(1);
 
-    await user.click(screen.getByRole('button', { name: 'Weitere Optionen' }));
+    await user.click(topbar.getByRole('button', { name: 'Weitere Optionen' }));
     const menu = await screen.findByRole('menu');
     await user.click(within(menu).getByRole('menuitem', { name: 'Standort hinzufügen' }));
 

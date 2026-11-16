@@ -29,6 +29,9 @@
     "graphical": "Grafica"
   },
   "graphical": {
+    "layoutLoadError": "Impossibile caricare la grafica. Riprova.",
+    "noFields": "Questo sito non ha ancora appezzamenti. Passa all’elenco per aggiungerli.",
+    "locationSelector": "Sito",
     "title": "Vista grafica degli appezzamenti",
     "viewMode": "Modalità",
     "modeAriaLabel": "Seleziona modalità",
@@ -52,6 +55,8 @@
     "panDown": "Sposta in basso",
     "panLeft": "Sposta a sinistra",
     "panRight": "Sposta a destra",
+    "rotateLeft": "Ruota la vista di 90° a sinistra",
+    "rotateRight": "Ruota la vista di 90° a destra",
     "fitToView": "Adatta tutto",
     "enterFullscreen": "Apri a schermo intero",
     "exitFullscreen": "Esci dallo schermo intero",

@@ -391,5 +391,11 @@
     "propagation_shorter_than_germination": "Propagation duration is shorter than germination time.",
     "emergence": "Expected emergence around {{from}}–{{to}}",
     "hints": "Germination hints"
+  },
+  "tableHeaders": {
+    "sowingDate": "Sowing date",
+    "plantingDate": "Planting date",
+    "harvestStartDate": "Harvest start",
+    "harvestEndDate": "Harvest end"
   }
 }

@@ -224,3 +224,68 @@ class LocalLibraryImportSeedTests(TestCase):
                          set(self.project_ids_before + [occupied.pk]))
         self.assertEqual(Crop.objects.count(), 0)
         self.assertEqual(PlantingPlan.objects.count(), 0)
+
+
+    def test_name_conflict_fixtures_preview_guard_and_repeat_preserve_local_values(self):
+        self.seed(include_name_conflicts=True)
+        self.assertIn('5 projects', self.arguments['stdout'].getvalue())
+        self.assertEqual(Crop.objects.count(), 0)
+        with override_settings(DJANGO_ENV='production'), self.assertRaises(CommandError):
+            self.seed(apply=True, include_name_conflicts=True)
+        self.seed(apply=True, include_name_conflicts=True)
+        for mode in ('unclassified-picker', 'unclassified-page', 'legacy-sync'):
+            project = Project.objects.get(
+                slug=f'local-library-import-{self.user.pk}-{self.entry.pk}-{mode}',
+            )
+            manual = Crop.objects.get(project=project, name=self.entry.name, variety='')
+            self.assertIsNone(manual.crop_species_id)
+            self.assertIsNone(manual.source_public_crop_id)
+            self.assertEqual(PlantingPlan.objects.filter(project=project).count(), 12)
+            if mode == 'legacy-sync':
+                imported = Crop.objects.get(project=project, source_public_crop=self.entry)
+                self.assertEqual(imported.name, f'{self.entry.name} (2)')
+                self.assertEqual(imported.crop_species_id, self.species.pk)
+            else:
+                self.assertEqual(Crop.objects.filter(project=project).count(), 13)
+        manual.notes = 'Preserved manual acceptance edits'
+        manual.save()
+        before = list(Crop.objects.order_by('pk').values())
+        public_before = list(PublicCrop.objects.values())
+        self.seed(apply=True, include_name_conflicts=True)
+        self.assertEqual(list(Crop.objects.order_by('pk').values()), before)
+        self.assertEqual(list(PublicCrop.objects.values()), public_before)
+
+    def test_variety_selection_fixture_is_isolated_previewed_and_idempotent(self):
+        before_public = list(PublicCrop.objects.values())
+        self.seed(include_variety_selection=True)
+        self.assertEqual(list(PublicCrop.objects.values()), before_public)
+        self.seed(apply=True, include_variety_selection=True)
+        projects = Project.objects.filter(
+            slug__startswith=f"local-variety-selection-{self.user.pk}-"
+        )
+        self.assertEqual(projects.count(), 2)
+        empty = projects.get(slug__endswith="-empty")
+        partial = projects.get(slug__endswith="-partial")
+        self.assertEqual(Crop.objects.filter(project=empty).count(), 0)
+        self.assertEqual(
+            Crop.objects.filter(project=partial, source_public_crop__isnull=False).count(), 2
+        )
+        local = Crop.objects.get(project=partial, variety="Rodelika")
+        self.assertIsNone(local.source_public_crop_id)
+        self.assertEqual(local.growth_duration_days, 105)
+        self.assertEqual(PlantingPlan.objects.get(project=partial).crop_id, local.pk)
+        self.assertEqual(PublicCrop.objects.filter(crop_species=local.crop_species).count(), 4)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.name, self.species.name)
+        snapshot = list(Crop.objects.filter(project=partial).values())
+        public_snapshot = list(PublicCrop.objects.values())
+        self.seed(apply=True, include_variety_selection=True)
+        self.assertEqual(list(Crop.objects.filter(project=partial).values()), snapshot)
+        self.assertEqual(list(PublicCrop.objects.values()), public_snapshot)
+
+    def test_variety_selection_fixture_rolls_back_an_occupied_synthetic_identity(self):
+        CropSpecies.objects.create(name=f"Carrot (local variety selection {self.user.pk})")
+        before = list(Project.objects.values_list("pk", flat=True))
+        with self.assertRaisesMessage(CommandError, "identity is occupied"):
+            self.seed(apply=True, include_variety_selection=True)
+        self.assertEqual(list(Project.objects.values_list("pk", flat=True)), before)

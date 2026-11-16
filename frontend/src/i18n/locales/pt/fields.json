@@ -29,6 +29,9 @@
     "graphical": "Gráfico"
   },
   "graphical": {
+    "layoutLoadError": "Não foi possível carregar o gráfico. Tente novamente.",
+    "noFields": "Esta exploração ainda não tem parcelas. Mude para a lista para adicionar parcelas.",
+    "locationSelector": "Exploração",
     "title": "Vista gráfica das parcelas",
     "viewMode": "Modo",
     "modeAriaLabel": "Selecionar modo",
@@ -52,6 +55,8 @@
     "panDown": "Deslocar para baixo",
     "panLeft": "Deslocar para a esquerda",
     "panRight": "Deslocar para a direita",
+    "rotateLeft": "Rodar a vista 90° para a esquerda",
+    "rotateRight": "Rodar a vista 90° para a direita",
     "fitToView": "Enquadrar tudo",
     "enterFullscreen": "Entrar em ecrã inteiro",
     "exitFullscreen": "Sair do ecrã inteiro",

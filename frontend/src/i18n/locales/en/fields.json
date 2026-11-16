@@ -29,6 +29,9 @@
     "graphical": "Graphic"
   },
   "graphical": {
+    "layoutLoadError": "The graphic could not be loaded. Try again.",
+    "noFields": "This location has no fields yet. Switch to List to add fields.",
+    "locationSelector": "Location",
     "title": "Graphical field view",
     "viewMode": "Mode",
     "modeAriaLabel": "Select mode",
@@ -52,6 +55,8 @@
     "panDown": "Pan down",
     "panLeft": "Pan left",
     "panRight": "Pan right",
+    "rotateLeft": "Rotate view 90° left",
+    "rotateRight": "Rotate view 90° right",
     "fitToView": "Fit all",
     "enterFullscreen": "Enter fullscreen",
     "exitFullscreen": "Exit fullscreen",

@@ -34,6 +34,7 @@ const EMPTY_CROP: Partial<Crop> = {
   specific_properties: {},
   specific_property_profile: '',
   pests_diseases: '',
+  plant_health: null,
   light_requirement: '',
   water_requirement: '',
   life_cycle: '',

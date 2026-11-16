@@ -14,13 +14,16 @@ from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from accounts.consent import has_accepted_current, record_acceptance
 from accounts.demo_access import guest_demo_forbidden_response, is_active_guest_demo_user
+from accounts.models import DocumentConsent
 from config.responses import api_error_response
 from crops import services as crop_services
 from crops.permissions import is_public_library_moderator
 from crops.services import build_public_crop_search_query, find_exact_crop_match
 from farm.agent_api.permissions import ApiTokenAccessPermission
 from farm.agent_api.schema_serializers import ApiErrorSerializer
+from farm.companion_notes import note_language
 from farm.crops.moderation import (
     describe_contribution_origin,
     pending_queue_limit_exceeded,
@@ -35,6 +38,7 @@ from farm.models import (
     format_crop_display_name,
 )
 from farm.project_context import get_active_project_optional, get_active_project_or_400
+from farm.services.public_crop_import_selection import import_public_crop_selection
 from farm.services.public_crop_trade_names import (
     TradeNameConflictError,
     TradeNameEditConflictError,
@@ -56,6 +60,7 @@ from farm.services.public_crops import (
     PublicCropRevisionNotFoundError,
     PublicCropSpeciesRelinkError,
     PublicCropStatusTransitionError,
+    PublicCropSyncFieldsError,
     UnsupportedPublicCropFieldsError,
     approve_new_publish_proposal,
     hard_delete_public_crop,
@@ -82,6 +87,7 @@ from ..serializers.public import (
     PublicCropChangeProposalSerializer,
     PublicCropDiscussionCommentSerializer,
     PublicCropDiscussionTopicSerializer,
+    PublicCropImportSelectionSerializer,
     PublicCropReportResolveSerializer,
     PublicCropReportSerializer,
     PublicCropRevertSerializer,
@@ -756,6 +762,74 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         serializer = CropSerializer(imported, context={'request': request})
         response_status = status.HTTP_201_CREATED if operation == 'created' else status.HTTP_200_OK
         return Response({'crop': serializer.data, 'operation': operation}, status=response_status)
+
+    @staticmethod
+    def _selection_sharing_error(request, data, sharing, has_consent):
+        if not sharing:
+            return None
+        if is_active_guest_demo_user(request.user):
+            return guest_demo_forbidden_response()
+        if requires_moderation_queue(request):
+            return api_error_response(
+                code="public_library_direct_edit_required",
+                detail="Direct contribution access is required.",
+                status_code=403,
+            )
+        if not has_consent and not data["accepted_public_library_terms"]:
+            return api_error_response(
+                code="public_library_terms_required",
+                detail="Accept contribution terms before sharing.",
+                status_code=400,
+            )
+        return None
+
+    @action(detail=True, methods=["post"], url_path="import-selection")
+    def import_selection(self, request, pk=None):
+        parent = self.get_object()
+        project = get_active_project_or_400(request)
+        serializer = PublicCropImportSelectionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        if data["expected_project_id"] != project.pk:
+            return api_error_response(
+                code="public_crop_import_project_changed",
+                detail="Preview the active project again.",
+                status_code=409,
+            )
+        sharing = any(item["push_fields"] for item in data["decisions"])
+        has_consent = has_accepted_current(request.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY)
+        if (
+            error := self._selection_sharing_error(request, data, sharing, has_consent)
+        ) is not None:
+            return error
+        try:
+            with transaction.atomic():
+                entries = import_public_crop_selection(
+                    parent=parent,
+                    project=project,
+                    decisions=data["decisions"],
+                    user=request.user,
+                    language=note_language({"request": request}),
+                )
+                if sharing and not has_consent:
+                    record_acceptance(request.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY)
+        except PublicCropEditConflictError as error:
+            return self._edit_conflict_response(error)
+        except (CropLinkConflictError, PublicCropImportConfirmationRequiredError) as error:
+            return api_error_response(
+                code=error.code, detail=getattr(error, "message", str(error)), status_code=409
+            )
+        except (LibraryPinnedFieldsError, PublicCropSyncFieldsError) as error:
+            return api_error_response(
+                code=error.code, detail=getattr(error, "message", str(error)), status_code=400
+            )
+        except PublicCropPermissionError as error:
+            return api_error_response(
+                code="public_library_permission_denied", detail=str(error), status_code=403
+            )
+        except PublicCropIdentityConflictError as error:
+            return api_error_response(code=error.code, detail=str(error), status_code=409)
+        return Response({"entries": entries})
 
     @action(detail=True, methods=['get', 'post'], url_path='discussion-topics')
     def discussion_topics(self, request: Request, pk: int | None = None) -> Response:

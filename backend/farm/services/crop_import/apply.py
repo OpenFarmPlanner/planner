@@ -59,7 +59,7 @@ def build_serializer_payload(item: dict[str, Any]) -> dict[str, Any]:
             continue
         name = field_entry['field']
         value = field_entry['api_value']
-        if value is None:
+        if value is None and name != 'plant_health':
             continue
         centimeter_field = LENGTH_FIELD_TO_CENTIMETER_FIELD.get(name)
         if centimeter_field is not None:

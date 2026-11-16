@@ -77,6 +77,325 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         )
         SeedPackage.objects.create(crop=self.crop, project=self.project, size_value='25.0', size_unit='g')
 
+    def selection_fixture(self):
+        species = CropSpecies.objects.create(name="Synthetic selection carrot")
+        parent = PublicCrop.objects.create(
+            name=species.name, crop_species=species, status="published"
+        )
+        varieties = [
+            PublicCrop.objects.create(
+                name=species.name,
+                crop_species=species,
+                variety=name,
+                status="published",
+                growth_duration_days=80,
+            )
+            for name in ("Nantaise 2", "Nantaise 2/Milan", "Rodelika")
+        ]
+        return parent, varieties
+
+    def selection_import(self, parent, entries, **overrides):
+        data = {
+            "expected_project_id": self.project.pk,
+            "decisions": [
+                {"public_crop_id": entry.pk, "base_version": entry.version} for entry in entries
+            ],
+        }
+        data.update(overrides)
+        return self.client.post(
+            f"/openfarmplanner/api/public-crops/{parent.pk}/import-selection/", data, format="json"
+        )
+
+    def test_selection_import_all_subset_parent_only_and_repeat(self):
+        parent, varieties = self.selection_fixture()
+        for selected in ([], varieties[:1], varieties):
+            with self.subTest(selected=len(selected)):
+                response = self.selection_import(parent, [parent, *selected])
+                self.assertEqual(response.status_code, 200, response.data)
+                self.assertEqual(len(response.data["entries"]), len(selected) + 1)
+                local = Crop.objects.get(project=self.project, source_public_crop=parent)
+                before = local.updated_at
+                repeat = self.selection_import(parent, [parent, *selected])
+                self.assertEqual(repeat.status_code, 200, repeat.data)
+                self.assertTrue(
+                    all(row["operation"] == "unchanged" for row in repeat.data["entries"])
+                )
+                local.refresh_from_db()
+                self.assertEqual(local.updated_at, before)
+                self.assertEqual(
+                    Crop.objects.filter(
+                        project=self.project, crop_species=parent.crop_species
+                    ).count(),
+                    len(selected) + 1,
+                )
+        self.assertEqual(
+            Crop.objects.filter(project=self.project, source_public_crop__in=varieties).count(), 3
+        )
+
+    def test_selection_import_rolls_back_every_row_and_history_on_last_failure(self):
+        parent, varieties = self.selection_fixture()
+        existing = Crop.objects.create(
+            project=self.project,
+            name=parent.name,
+            variety=varieties[-1].variety,
+            crop_species=parent.crop_species,
+        )
+        before = list(Crop.objects.filter(project=self.project).values())
+        history = list(EntityRevision.objects.filter(project=self.project).values())
+        for _ in range(2):
+            response = self.selection_import(parent, [parent, *varieties])
+            self.assertEqual(response.status_code, 409, response.data)
+            self.assertEqual(response.data["code"], "existing_crop_requires_link")
+            self.assertEqual(list(Crop.objects.filter(project=self.project).values()), before)
+            self.assertEqual(
+                list(EntityRevision.objects.filter(project=self.project).values()), history
+            )
+        existing.delete()
+        self.assertEqual(self.selection_import(parent, [parent, *varieties]).status_code, 200)
+
+    def test_selection_import_rejects_unrelated_duplicate_hidden_and_stale_entries(self):
+        parent, varieties = self.selection_fixture()
+        unrelated = PublicCrop.objects.create(name="Other selection", status="published")
+        for selected in ([parent, varieties[0], varieties[0]], [parent, unrelated], [varieties[0]]):
+            response = self.selection_import(parent, selected)
+            self.assertIn(response.status_code, (400, 409), response.data)
+            self.assertFalse(
+                Crop.objects.filter(project=self.project, crop_species=parent.crop_species).exists()
+            )
+        varieties[-1].version += 1
+        varieties[-1].save(update_fields=["version"])
+        varieties[-1].version -= 1
+        response = self.selection_import(parent, [parent, *varieties])
+        self.assertEqual(response.status_code, 409, response.data)
+        self.assertEqual(response.data["code"], "stale_public_crop_version")
+        self.assertFalse(
+            Crop.objects.filter(project=self.project, crop_species=parent.crop_species).exists()
+        )
+        varieties[-1].status = "withdrawn"
+        varieties[-1].save(update_fields=["status"])
+        self.assertEqual(self.selection_import(parent, [parent, *varieties]).status_code, 409)
+
+    def test_selection_import_preserves_existing_ids_plans_private_pins_and_inheritance(self):
+        from datetime import date
+
+        from farm.models import PlantingPlan
+
+        parent, varieties = self.selection_fixture()
+        general = Crop.objects.create(
+            project=self.project,
+            name=parent.name,
+            growth_duration_days=99,
+            notes="Private general notes",
+        )
+        local = Crop.objects.create(
+            project=self.project,
+            name=parent.name,
+            variety=varieties[0].variety,
+            notes="Private variety notes",
+        )
+        plan = PlantingPlan.objects.create(
+            project=self.project,
+            crop=local,
+            planting_date=date(2026, 5, 1),
+            quantity=8,
+            cultivation_type="direct_sowing",
+            created_by=self.user,
+        )
+        decisions = [
+            dict(public_crop_id=entry.pk, base_version=entry.version)
+            for entry in [parent, *varieties]
+        ]
+        for entry, target in [(parent, general), (varieties[0], local)]:
+            decisions[[parent, *varieties].index(entry)].update(
+                target_id=target.pk,
+                expected_updated_at=target.updated_at.isoformat(),
+                pull_fields=[],
+                pin_fields=["notes"],
+                link_to_library=True,
+            )
+        response = self.selection_import(parent, [], decisions=decisions)
+        self.assertEqual(response.status_code, 200, response.data)
+        general.refresh_from_db()
+        local.refresh_from_db()
+        plan.refresh_from_db()
+        self.assertEqual(plan.crop_id, local.pk)
+        self.assertEqual(general.source_public_crop_id, parent.pk)
+        self.assertEqual(local.source_public_crop_id, varieties[0].pk)
+        self.assertEqual(local.crop_species_id, parent.crop_species_id)
+        self.assertEqual(local.notes, "Private variety notes")
+        self.assertEqual(general.notes, "Private general notes")
+        self.assertIsNone(local.growth_duration_days)
+        self.assertEqual(get_general_crop(local).pk, general.pk)
+        self.assertEqual(general.growth_duration_days, 99)
+        self.assertEqual(local.library_pinned_fields, ["notes"])
+        repeated = self.selection_import(parent, [], decisions=decisions)
+        self.assertEqual(repeated.status_code, 200, repeated.data)
+        self.assertTrue(all(row['operation'] == 'unchanged' for row in repeated.data['entries']))
+
+    def test_selection_import_rejects_changed_local_snapshot_and_foreign_project_target(self):
+        parent, varieties = self.selection_fixture()
+        other = Project.objects.create(
+            name="Other selection project", slug="other-selection-project"
+        )
+        target = Crop.objects.create(
+            project=other, name=parent.name, crop_species=parent.crop_species
+        )
+        decision = dict(
+            public_crop_id=parent.pk,
+            base_version=parent.version,
+            target_id=target.pk,
+            expected_updated_at=target.updated_at.isoformat(),
+        )
+        for target_id, timestamp in [
+            (target.pk, target.updated_at.isoformat()),
+            (self.crop.pk, "stale"),
+        ]:
+            decision.update(target_id=target_id, expected_updated_at=timestamp)
+            response = self.selection_import(parent, [], decisions=[decision])
+            self.assertEqual(response.status_code, 409, response.data)
+        response = self.selection_import(parent, [parent], expected_project_id=other.pk)
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.data["code"], "public_crop_import_project_changed")
+        self.assertFalse(
+            Crop.objects.filter(project=self.project, crop_species=parent.crop_species).exists()
+        )
+
+    def test_selection_import_never_updates_an_already_linked_parent(self):
+        parent, varieties = self.selection_fixture()
+        self.assertEqual(self.selection_import(parent, [parent, varieties[0]]).status_code, 200)
+        local = Crop.objects.get(project=self.project, source_public_crop=parent)
+        local.notes = "Private changed parent"
+        local.save()
+        before = local.updated_at
+        parent.version += 1
+        parent.save(update_fields=["version"])
+        result = self.selection_import(parent, [parent, *varieties])
+        self.assertEqual(result.status_code, 200, result.data)
+        local.refresh_from_db()
+        self.assertEqual(local.notes, "Private changed parent")
+        self.assertEqual(local.updated_at, before)
+        self.assertEqual(
+            Crop.objects.filter(project=self.project, source_public_crop=parent).count(), 1
+        )
+
+    def test_selection_import_validates_shapes_and_forbids_unconsented_or_moderated_sharing(self):
+        parent, varieties = self.selection_fixture()
+        target = Crop.objects.create(
+            project=self.project,
+            name=parent.name,
+            crop_species=parent.crop_species,
+            notes="Never shared implicitly",
+        )
+        decision = dict(
+            public_crop_id=parent.pk,
+            base_version=parent.version,
+            target_id=target.pk,
+            expected_updated_at=target.updated_at.isoformat(),
+            push_fields=["notes"],
+        )
+        result = self.selection_import(parent, [], decisions=[decision])
+        self.assertEqual(result.status_code, 400, result.data)
+        self.assertEqual(result.data["code"], "public_library_terms_required")
+        for changes in [
+            dict(target_id=None),
+            dict(expected_updated_at=""),
+            dict(base_version=True),
+            dict(push_fields="notes"),
+        ]:
+            result = self.selection_import(parent, [], decisions=[{**decision, **changes}])
+            self.assertEqual(result.status_code, 400, result.data)
+        parent.refresh_from_db()
+        target.refresh_from_db()
+        self.assertEqual(parent.notes, "")
+        self.assertIsNone(target.source_public_crop_id)
+
+    def test_selection_sharing_and_consent_roll_back_with_a_later_conflict(self):
+        from accounts.consent import has_accepted_current
+
+        parent, varieties = self.selection_fixture()
+        target = Crop.objects.create(
+            project=self.project,
+            name=parent.name,
+            crop_species=parent.crop_species,
+            notes="Explicit shared note",
+        )
+        blocker = Crop.objects.create(
+            project=self.project,
+            name=parent.name,
+            crop_species=parent.crop_species,
+            variety=varieties[-1].variety,
+        )
+        decisions = [
+            dict(public_crop_id=entry.pk, base_version=entry.version)
+            for entry in [parent, *varieties]
+        ]
+        decisions[0].update(
+            target_id=target.pk,
+            expected_updated_at=target.updated_at.isoformat(),
+            push_fields=["notes"],
+            pull_fields=[],
+            link_to_library=True,
+        )
+        for _ in range(2):
+            result = self.selection_import(
+                parent, [], decisions=decisions, accepted_public_library_terms=True
+            )
+            self.assertEqual(result.status_code, 409, result.data)
+            parent.refresh_from_db()
+            target.refresh_from_db()
+            self.assertEqual(parent.notes, "")
+            self.assertIsNone(target.source_public_crop_id)
+            self.assertFalse(
+                has_accepted_current(self.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY)
+            )
+        blocker.delete()
+        result = self.selection_import(
+            parent, [], decisions=decisions, accepted_public_library_terms=True
+        )
+        self.assertEqual(result.status_code, 200, result.data)
+        parent.refresh_from_db()
+        target.refresh_from_db()
+        self.assertEqual(parent.notes, "Explicit shared note")
+        self.assertEqual(target.source_public_crop_id, parent.pk)
+        self.assertTrue(has_accepted_current(self.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY))
+
+    def test_selection_import_disallows_api_tokens_and_new_account_sharing(self):
+        from farm.models import ProjectApiToken
+
+        parent, varieties = self.selection_fixture()
+        _, token = ProjectApiToken.create_token(
+            user=self.user, project=self.project, name="Selection token", scope="write"
+        )
+        client = APIClient()
+        result = client.post(
+            f"/openfarmplanner/api/public-crops/{parent.pk}/import-selection/",
+            {"expected_project_id": self.project.pk, "decisions": []},
+            format="json",
+            HTTP_AUTHORIZATION=f"Bearer {token}",
+        )
+        self.assertEqual(result.status_code, 403, result.data)
+        newcomer = User.objects.create_user(username="new-selection-user", is_active=True)
+        ProjectMembership.objects.create(user=newcomer, project=self.project, role="admin")
+        self.client.force_authenticate(user=newcomer)
+        target = Crop.objects.create(
+            project=self.project,
+            name=parent.name,
+            crop_species=parent.crop_species,
+            notes="Private note",
+        )
+        decision = dict(
+            public_crop_id=parent.pk,
+            base_version=parent.version,
+            target_id=target.pk,
+            expected_updated_at=target.updated_at.isoformat(),
+            push_fields=["notes"],
+        )
+        result = self.selection_import(
+            parent, [], decisions=[decision], accepted_public_library_terms=True
+        )
+        self.assertEqual(result.status_code, 403, result.data)
+        self.assertEqual(result.data["code"], "public_library_direct_edit_required")
+
     def publish_current_crop(self):
         return self.client.post(
             f'/openfarmplanner/api/crops/{self.crop.id}/publish-public/',
@@ -1880,6 +2199,75 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertFalse(Crop.objects.filter(project=other).exists())
         self.assertFalse(Crop.objects.filter(project=self.project, name=entry.name).exists())
 
+    def test_unclassified_manual_general_import_requires_choice_and_preserves_references(self):
+        from farm.models import PlantingPlan
+
+        for establish_link in (False, True):
+            with self.subTest(establish_link=establish_link):
+                name = f'Synthetic manual general {establish_link}'
+                species = CropSpecies.objects.create(name=name)
+                general = Crop.objects.create(
+                    project=self.project, name=name, growth_duration_days=90, notes='Private notes',
+                )
+                varieties = [Crop.objects.create(
+                    project=self.project, name=name, variety=f'Private variety {index}',
+                    notes=f'Private variety note {index}',
+                ) for index in range(2)]
+                plans = [PlantingPlan.objects.create(
+                    project=self.project, crop=crop, notes='Preserved plan reference',
+                ) for crop in [general, *varieties]]
+                references = [(plan.pk, plan.crop_id, plan.notes) for plan in plans]
+                entry = PublicCrop.objects.create(
+                    name=name, crop_species=species, status='published', created_by=self.user,
+                    growth_duration_days=110, notes='Library notes',
+                )
+                url = f'/openfarmplanner/api/public-crops/{entry.pk}/'
+                count = Crop.objects.filter(project=self.project).count()
+                preview = self.client.get(url + 'import-preview/')
+                self.assertEqual(preview.status_code, 200, preview.data)
+                self.assertEqual(preview.data['candidates'], [{
+                    'id': general.pk, 'name': name, 'variety': '',
+                    'source_public_crop': None, 'species_match': False,
+                }])
+                response = self.client.post(url + 'import/', {
+                    'base_version': entry.version, 'expected_project_id': self.project.pk,
+                }, format='json')
+                self.assertEqual(response.status_code, 409, response.data)
+                self.assertEqual(response.data['code'], 'existing_crop_requires_link')
+                general.refresh_from_db()
+                self.assertIsNone(general.crop_species_id)
+                if establish_link:
+                    response = self.client.post(
+                        f'/openfarmplanner/api/crops/{general.pk}/link-public-crop/', {
+                            'public_crop_id': entry.pk, 'pull_fields': ['growth_duration_days'],
+                            'base_version': entry.version,
+                            'expected_updated_at': general.updated_at.isoformat(),
+                        }, format='json',
+                    )
+                else:
+                    response = self._copy_library_values(general, entry)
+                self.assertEqual(response.status_code, 200, response.data)
+                general.refresh_from_db()
+                self.assertEqual(
+                    (general.growth_duration_days, general.notes), (110, 'Private notes'),
+                )
+                self.assertEqual(general.crop_species_id, species.pk)
+                self.assertEqual(
+                    general.source_public_crop_id, entry.pk if establish_link else None,
+                )
+                self.assertEqual(Crop.objects.filter(project=self.project).count(), count)
+                self.assertEqual(
+                    list(PlantingPlan.objects.filter(pk__in=[p.pk for p in plans])
+                         .order_by('pk').values_list('pk', 'crop_id', 'notes')), references,
+                )
+                for crop in varieties:
+                    crop.refresh_from_db()
+                    self.assertIsNone(crop.source_public_crop_id)
+                    self.assertTrue(crop.notes.startswith('Private variety note'))
+                entry.refresh_from_db()
+                self.assertEqual((entry.version, entry.notes), (1, 'Library notes'))
+                self.assertFalse(PublicCropChangeProposal.objects.filter(public_crop=entry).exists())
+
     def test_general_import_requires_explicit_link_and_preserves_twelve_varieties(self):
         species = CropSpecies.objects.create(name='Synthetic Tomato')
         general = Crop.objects.create(project=self.project, name=species.name, crop_species=species,
@@ -2011,6 +2399,46 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual([row['id'] for row in response.data['candidates']], [local.pk])
         local.refresh_from_db()
         self.assertIsNone(local.source_public_crop_id)
+
+    def test_new_import_translates_only_general_name_constraint_after_rollback(self):
+        from unittest.mock import patch
+
+        from django.db import IntegrityError
+
+        entry = PublicCrop.objects.create(
+            name='Synthetic raced import', status='published', created_by=self.user,
+        )
+        before = list(Crop.objects.filter(project=self.project).values())
+        history = list(EntityRevision.objects.filter(project=self.project).values())
+        save = Crop.save
+        for recognized in (True, False):
+            failure = IntegrityError(
+                'duplicate key violates constraint "unique_general_crop_name_per_project"'
+                if recognized else 'Unrelated synthetic import integrity failure'
+            )
+
+            def fail_after_save(crop, *args, failure=failure, **kwargs):
+                result = save(crop, *args, **kwargs)
+                if crop.source_public_crop_id == entry.pk:
+                    raise failure
+                return result
+
+            with self.subTest(recognized=recognized), patch.object(Crop, 'save', fail_after_save):
+                if recognized:
+                    response = self.client.post(
+                        f'/openfarmplanner/api/public-crops/{entry.pk}/import/', {}, format='json',
+                    )
+                    self.assertEqual(response.status_code, 409, response.data)
+                    self.assertEqual(response.data['code'], 'crop_name_conflict')
+                else:
+                    with self.assertRaises(IntegrityError):
+                        self.client.post(
+                            f'/openfarmplanner/api/public-crops/{entry.pk}/import/',
+                            {}, format='json',
+                        )
+            self.assertEqual(list(Crop.objects.filter(project=self.project).values()), before)
+            after_history = list(EntityRevision.objects.filter(project=self.project).values())
+            self.assertEqual(after_history, history)
 
     def test_import_public_crop_creates_project_local_copy(self):
         public_crop = PublicCrop.objects.create(
@@ -5844,6 +6272,93 @@ class PublicCropFieldSyncApiTest(DRFAPITestCase):
             },
             format='json',
         )
+
+    def test_sync_rejects_general_name_conflict_without_mutating_either_crop(self):
+        imported = Crop.objects.create(
+            project=self.project, name='Spinat (2)', variety='', crop_species=self.species,
+            source_public_crop=self.entry, source_public_version=self.entry.version,
+            derived_from_public_crop=self.entry, origin_type=Crop.ORIGIN_IMPORTED,
+            notes='Preserved private import notes', growth_duration_days=55,
+            harvest_duration_days=27, library_pinned_fields=['notes'],
+        )
+        package = SeedPackage.objects.create(
+            crop=imported, project=self.project, size_value='25.0', size_unit='g',
+        )
+        crops_before = list(Crop.objects.filter(project=self.project).order_by('id').values())
+        entry_before = PublicCrop.objects.filter(pk=self.entry.pk).values().get()
+        revisions_before = list(EntityRevision.objects.filter(project=self.project).values())
+        public_revisions_before = list(PublicCropRevision.objects.values())
+        for _ in range(2):
+            response = self._sync(
+                imported, pull_fields=['name', 'growth_duration_days'],
+                push_fields=['harvest_duration_days'],
+            )
+            self.assertEqual(response.status_code, 409, response.data)
+            self.assertEqual(response.data['code'], 'crop_name_conflict')
+            self.assertEqual(
+                list(Crop.objects.filter(project=self.project).order_by('id').values()),
+                crops_before,
+            )
+            self.assertEqual(
+                PublicCrop.objects.filter(pk=self.entry.pk).values().get(), entry_before,
+            )
+            history_after = list(EntityRevision.objects.filter(project=self.project).values())
+            self.assertEqual(history_after, revisions_before)
+            self.assertEqual(list(PublicCropRevision.objects.values()), public_revisions_before)
+            self.assertFalse(PublicCropChangeProposal.objects.exists())
+            package.refresh_from_db()
+            self.assertEqual(package.crop_id, imported.pk)
+
+    def test_sync_constraint_fallback_rolls_back_public_and_private_writes(self):
+        from unittest.mock import patch
+
+        from django.db import IntegrityError
+        from django.db.models import QuerySet
+
+        self.kultur.source_public_crop = self.entry
+        self.kultur.source_public_version = self.entry.version
+        self.kultur.harvest_duration_days = 27
+        self.kultur.library_pinned_fields = ['notes']
+        self.kultur.save()
+        crops_before = list(Crop.objects.filter(project=self.project).values())
+        entries_before = list(PublicCrop.objects.values())
+        revisions_before = list(EntityRevision.objects.filter(project=self.project).values())
+        public_revisions_before = list(PublicCropRevision.objects.values())
+        update = QuerySet.update
+        for recognized in (True, False):
+            failure = IntegrityError(
+                'duplicate key violates constraint "unique_general_crop_name_per_project"'
+                if recognized else 'Unrelated synthetic integrity failure'
+            )
+
+            def fail_final_metadata(queryset, failure=failure, **kwargs):
+                if queryset.model is Crop and {
+                    'source_public_crop', 'source_public_version',
+                    'is_modified_from_source', 'rejected_public_version',
+                }.issubset(kwargs):
+                    raise failure
+                return update(queryset, **kwargs)
+
+            with self.subTest(recognized=recognized), patch.object(
+                QuerySet, 'update', new=fail_final_metadata,
+            ):
+                if recognized:
+                    response = self._sync(
+                        self.kultur, pull_fields=['growth_duration_days'],
+                        push_fields=['harvest_duration_days'],
+                    )
+                    self.assertEqual(response.status_code, 409, response.data)
+                    self.assertEqual(response.data['code'], 'crop_name_conflict')
+                else:
+                    with self.assertRaises(IntegrityError):
+                        self._sync(self.kultur, pull_fields=['growth_duration_days'],
+                                   push_fields=['harvest_duration_days'])
+            self.assertEqual(list(Crop.objects.filter(project=self.project).values()), crops_before)
+            self.assertEqual(list(PublicCrop.objects.values()), entries_before)
+            history_after = list(EntityRevision.objects.filter(project=self.project).values())
+            self.assertEqual(history_after, revisions_before)
+            self.assertEqual(list(PublicCropRevision.objects.values()), public_revisions_before)
+            self.assertFalse(PublicCropChangeProposal.objects.exists())
 
     def test_link_with_pulled_fields_changes_only_those_fields(self):
         response = self._link(self.kultur, ['growth_duration_days'])

@@ -1,3 +1,4 @@
+import { PublicCropVarietyImportDialog } from '../components/PublicCropVarietyImportDialog';
 import { ExistingCropLinkDialog, type CropLinkCandidate } from '../../crops/ExistingCropLinkDialog';
 import { SpecificPropertiesDetails } from '../../crops/SpecificPropertiesDetails';
 import { hasSpecificPropertyValues } from '../../crops/specificProperties';
@@ -529,6 +530,7 @@ export default function PublicCropLibraryPage() {
     () => findSpeciesCrop(selectedCrop, crops),
     [crops, selectedCrop],
   );
+  const varietyImportParent = isSelectedSpeciesEntry ? selectedCrop : selectedSpeciesCrop;
   const getPublicFieldValue = useCallback(<TValue,>(field: keyof PublicCrop, value: TValue): TValue => {
     if (
       selectedCrop?.variety
@@ -1057,13 +1059,19 @@ export default function PublicCropLibraryPage() {
     }
   }, [loadCrops, markProjectImport, t]);
 
+  const [varietyImport, setVarietyImport] = useState<PublicCrop | null>(null);
+
   const handleImport = useCallback(async (): Promise<void> => {
     if (!selectedCrop) {
       return;
     }
+    if (!selectedCrop.variety?.trim() && selectedCrop.crop_species && !selectedCrop.project_import_status) {
+      setVarietyImport(selectedCrop);
+      return;
+    }
     await performImport(selectedCrop.id, getCropTitle(selectedCrop, t, language),
       undefined, selectedCrop.project_import_status ? undefined : selectedCrop);
-  }, [language, performImport, selectedCrop, t]);
+  }, [language, performImport, selectedCrop, setVarietyImport, t]);
 
   const closeImportConflictDialog = useCallback((): void => {
     if (importingId !== null) {
@@ -1520,6 +1528,7 @@ export default function PublicCropLibraryPage() {
   const cropActions = useMemo(() => (selectedCrop ? (
     <DetailPageActions
       compact={useCompactLibraryLayout}
+      suppressTooltips={Boolean(varietyImport)}
       primaryActions={[
         {
           label: t('library.page.edit.open'),
@@ -1564,6 +1573,7 @@ export default function PublicCropLibraryPage() {
     selectedCrop,
     t,
     useCompactLibraryLayout,
+    varietyImport,
   ]);
   return (
     <PageContainer variant="xwide">
@@ -1924,6 +1934,8 @@ export default function PublicCropLibraryPage() {
                             <CropVarietiesOverview
                               key="varieties"
                               varieties={publicVarietyRows}
+                              action={publicVarietyRows.length && varietyImportParent && !varietyImportParent.variety?.trim() ? <Button startIcon={<DownloadOutlinedIcon />} disabled={Boolean(varietyImport) || importingId !== null}
+                                onClick={() => setVarietyImport(varietyImportParent)}>{t('library.varietyImport.action')}</Button> : undefined}
                               cropCrop={editFormCrop}
                               onSelect={(crop) => {
                                 if (crop.id !== undefined) {
@@ -2455,6 +2467,18 @@ export default function PublicCropLibraryPage() {
           </DisabledActionTooltip>
         </DialogActions>
       </Dialog>
+      {varietyImport ? <PublicCropVarietyImportDialog key={varietyImport.id} parent={varietyImport}
+        termsAlreadyAccepted={Boolean(user?.public_library_terms_accepted)} onClose={() => setVarietyImport(null)}
+        onWithoutVarieties={() => {
+          setVarietyImport(null);
+          void performImport(varietyImport.id, getCropTitle(varietyImport, t, language), undefined,
+            varietyImport.project_import_status ? undefined : varietyImport);
+        }}
+        onComplete={async result => {
+          showGlobalSnackbar({ message: t('library.varietyImport.success', { count: result.entries.filter(entry => entry.operation !== 'unchanged').length }), severity: 'success' });
+          await loadCrops({ preserveExisting: true });
+          await refreshUser();
+        }} /> : null}
       {linkImport ? <ExistingCropLinkDialog key={linkImport.publicCrop.id} publicCrop={linkImport.publicCrop}
         candidates={linkImport.candidates} termsAlreadyAccepted={Boolean(user?.public_library_terms_accepted)} onTermsAccepted={refreshUser}
         onClose={() => setLinkImport(null)} onLinked={(importedCrop) => {

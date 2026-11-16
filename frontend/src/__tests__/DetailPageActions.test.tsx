@@ -110,6 +110,23 @@ describe('DetailPageActions', () => {
     expect(button).toHaveFocus();
   });
 
+  it('closes and suppresses tooltips behind an overlay without remounting its trigger', async () => {
+    mockLabelsCollapsed(true);
+    const user = userEvent.setup();
+    const actions = [{ label: 'Bearbeiten', icon: <EditIcon />, onClick: vi.fn() }];
+    const { rerender } = renderActions({ primaryActions: actions });
+    const button = screen.getByRole('button', { name: 'Bearbeiten' });
+    await user.hover(button);
+    expect(await screen.findByRole('tooltip')).toBeVisible();
+    rerender(<DetailPageActions primaryActions={actions} suppressTooltips />);
+    await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'Bearbeiten' })).toBe(button);
+    await user.unhover(button);
+    rerender(<DetailPageActions primaryActions={actions} />);
+    await user.hover(button);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Bearbeiten');
+  });
+
   it('always renders the labels so they can be revealed by CSS alone, without a re-render', () => {
     mockLabelsCollapsed(true);
     renderActions();

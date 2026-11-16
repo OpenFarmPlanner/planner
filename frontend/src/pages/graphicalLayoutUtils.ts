@@ -12,6 +12,50 @@ export interface Position {
 
 export interface Rect extends Position, RectSize {}
 
+export type GraphicalRotation = 0 | 90 | 180 | 270;
+export const DEFAULT_GRAPHICAL_ROTATION: GraphicalRotation = 90;
+
+export function turnRotation(rotation: GraphicalRotation, direction: -1 | 1): GraphicalRotation {
+  return ((rotation + direction * 90 + 360) % 360) as GraphicalRotation;
+}
+
+/** Rotate display geometry while keeping persisted layout coordinates unchanged. */
+export function rotateRect<T extends Rect>(rect: T, parent: RectSize, rotation: GraphicalRotation): T {
+  switch (rotation) {
+    case 90:
+      return { ...rect, x: parent.height - rect.y - rect.height, y: rect.x, width: rect.height, height: rect.width };
+    case 180:
+      return { ...rect, x: parent.width - rect.x - rect.width, y: parent.height - rect.y - rect.height };
+    case 270:
+      return { ...rect, x: rect.y, y: parent.width - rect.x - rect.width, width: rect.height, height: rect.width };
+    default:
+      return { ...rect };
+  }
+}
+
+/** Keep the title strip at the top as the usable bed area changes orientation. */
+export function rotateRectBetweenSizes<T extends Rect>(
+  rect: T,
+  source: RectSize,
+  target: RectSize,
+  rotation: GraphicalRotation,
+): T {
+  const normalized = rotateRect({
+    ...rect,
+    x: rect.x / source.width,
+    y: rect.y / source.height,
+    width: rect.width / source.width,
+    height: rect.height / source.height,
+  }, { width: 1, height: 1 }, rotation);
+  return {
+    ...normalized,
+    x: normalized.x * target.width,
+    y: normalized.y * target.height,
+    width: normalized.width * target.width,
+    height: normalized.height * target.height,
+  };
+}
+
 /**
  * Default gap (in world pixels) to keep between graphical objects when
  * searching for a collision-free placement position.

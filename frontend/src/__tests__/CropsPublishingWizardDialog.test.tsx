@@ -1,3 +1,4 @@
+import type { PublicCropSyncSubmitResult } from '../crops/publicCropSync';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -61,9 +62,10 @@ const renderWizard = (
   crop: Crop = CROP,
   options: {
     varieties?: Crop[];
+    onClose?: () => void;
     onPublish?: (data: unknown) => void;
     onLinkPublicCrop?: (data: unknown) => Promise<boolean>;
-    onSyncPublicCrop?: (data: unknown) => Promise<boolean>;
+    onSyncPublicCrop?: (data: unknown) => Promise<PublicCropSyncSubmitResult>;
     termsAlreadyAccepted?: boolean;
   } = {},
 ) => render(
@@ -74,10 +76,10 @@ const renderWizard = (
       varieties={options.varieties}
       termsAlreadyAccepted={options.termsAlreadyAccepted ?? true}
       publishing={false}
-      onClose={vi.fn()}
+      onClose={options.onClose ?? vi.fn()}
       onPublish={options.onPublish ?? vi.fn()}
       onLinkPublicCrop={options.onLinkPublicCrop ?? vi.fn().mockResolvedValue(true)}
-      onSyncPublicCrop={options.onSyncPublicCrop ?? vi.fn().mockResolvedValue(true)}
+      onSyncPublicCrop={options.onSyncPublicCrop ?? vi.fn().mockResolvedValue({ success: true })}
     />
   </MemoryRouter>,
 );
@@ -591,7 +593,7 @@ describe('CropsPublishingWizardDialog', () => {
           onClose={vi.fn()}
           onPublish={vi.fn()}
           onLinkPublicCrop={vi.fn().mockResolvedValue(true)}
-          onSyncPublicCrop={vi.fn().mockResolvedValue(true)}
+          onSyncPublicCrop={vi.fn().mockResolvedValue({ success: true })}
         />
       </MemoryRouter>
     );
@@ -905,6 +907,45 @@ describe('CropsPublishingWizardDialog', () => {
       });
     });
 
+    it('keeps decisions and the dialog after a name conflict, allowing correction and cancellation', async () => {
+      const message = 'Diese Kultur existiert bereits in diesem Projekt.';
+      const onClose = vi.fn();
+      const onSyncPublicCrop = vi.fn().mockResolvedValue({
+        success: false, code: 'crop_name_conflict', error: message,
+      });
+      renderWizard(ownedGeneralCrop, { onSyncPublicCrop, onClose });
+      fireEvent.click(await screen.findByRole('button', { name: 'Alle teilen' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Abgleichen' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(message);
+      expect(onClose).not.toHaveBeenCalled();
+      expect(publicSyncPreviewMock).toHaveBeenCalledTimes(1);
+      expect(onSyncPublicCrop).toHaveBeenLastCalledWith(expect.objectContaining({
+        pullFields: [], pushFields: ['thousand_kernel_weight_g', 'harvest_duration_days'],
+      }));
+      fireEvent.click(screen.getByRole('button', { name: 'Abgleichen' }));
+      await waitFor(() => expect(onSyncPublicCrop).toHaveBeenCalledTimes(2));
+      expect(onSyncPublicCrop.mock.calls[1][0]).toEqual(onSyncPublicCrop.mock.calls[0][0]);
+      fireEvent.click(screen.getByRole('button', { name: 'Alle aus Bibliothek' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Abgleichen' }));
+      await waitFor(() => expect(onSyncPublicCrop).toHaveBeenCalledTimes(3));
+      expect(onSyncPublicCrop).toHaveBeenLastCalledWith(expect.objectContaining({
+        pullFields: ['thousand_kernel_weight_g', 'harvest_duration_days'], pushFields: [],
+      }));
+      fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+      expect(onClose).toHaveBeenCalledOnce();
+    });
+
+    it('refreshes only a stale public version after a rejected sync', async () => {
+      const onSyncPublicCrop = vi.fn().mockResolvedValue({
+        success: false, code: 'stale_public_crop_version', error: 'The library entry changed.',
+      });
+      renderWizard(ownedGeneralCrop, { onSyncPublicCrop });
+      fireEvent.click(await screen.findByRole('button', { name: 'Alle aus Bibliothek' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Abgleichen' }));
+      await waitFor(() => expect(publicSyncPreviewMock).toHaveBeenCalledTimes(2));
+      expect(screen.getByRole('alert')).toHaveTextContent('The library entry changed.');
+    });
+
     it('keeps an already pinned field locally and sends it as a pin', async () => {
       publicSyncPreviewMock.mockResolvedValue({
         data: {
@@ -920,7 +961,7 @@ describe('CropsPublishingWizardDialog', () => {
           ],
         },
       });
-      const onSyncPublicCrop = vi.fn().mockResolvedValue(true);
+      const onSyncPublicCrop = vi.fn().mockResolvedValue({ success: true });
       renderWizard(ownedGeneralCrop, { onSyncPublicCrop });
 
       expect(await screen.findByText('bisher lokal fixiert')).toBeInTheDocument();
@@ -936,7 +977,7 @@ describe('CropsPublishingWizardDialog', () => {
     });
 
     it('offers the field-by-field sync instead of pushing every difference', async () => {
-      const onSyncPublicCrop = vi.fn().mockResolvedValue(true);
+      const onSyncPublicCrop = vi.fn().mockResolvedValue({ success: true });
       renderWizard(ownedGeneralCrop, { onSyncPublicCrop });
 
       expect(await screen.findByText('Mit Kulturbibliothek abgleichen')).toBeInTheDocument();
@@ -960,7 +1001,7 @@ describe('CropsPublishingWizardDialog', () => {
     });
 
     it('syncs a crop imported from someone else\'s entry the same way', async () => {
-      const onSyncPublicCrop = vi.fn().mockResolvedValue(true);
+      const onSyncPublicCrop = vi.fn().mockResolvedValue({ success: true });
       renderWizard({ ...CROP, variety: '', source_public_crop: 55 }, { onSyncPublicCrop });
 
       fireEvent.click(await screen.findByRole('button', { name: 'Alle teilen' }));
@@ -975,7 +1016,7 @@ describe('CropsPublishingWizardDialog', () => {
     });
 
     it('asks for the license before pushing values, preselecting the one-sided local value', async () => {
-      const onSyncPublicCrop = vi.fn().mockResolvedValue(true);
+      const onSyncPublicCrop = vi.fn().mockResolvedValue({ success: true });
       renderWizard(ownedGeneralCrop, { onSyncPublicCrop, termsAlreadyAccepted: false });
 
       const submit = await screen.findByRole('button', { name: 'Abgleichen' });

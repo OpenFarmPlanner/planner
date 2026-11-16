@@ -114,11 +114,23 @@ The public Crop Library follows an open-data model:
   edits (the 409 response there also flags `variety_changed` so the frontend
   can call the identity change out explicitly instead of blending it into a
   generic warning).
-- A first import never collides with the project's names: a project holds
-  one general crop per name, whatever its species, so a general entry whose
-  name is already taken is created under a free name ("Paprika (2)"), as the
-  conflict dialog's "import as new" does. Importing a variety leaves out its
-  general crop in that case and imports the variety alone.
+- Initial imports first check project identities and unclassified name/alias
+  suggestions. A name-only match requires explicit target selection and
+  confirmation; it never silently links or merges rows. An explicit new-copy
+  choice can use a free name ("Paprika (2)"). Importing a variety leaves out
+  its general crop when that name belongs to another general culture.
+- Library sync, initial link/copy and library updates use the same project
+  identity lock and general-name conflict recognition as ordinary editing.
+  Sync validates the prospective name/variety before companion or crop writes.
+  Taking a library name already held by another active general culture returns
+  HTTP 409 `crop_name_conflict`, preserving both cultures and their references.
+  Only that recognized constraint is translated after the transaction rolls
+  back; unrelated integrity errors remain errors. Public revisions/proposals,
+  private revisions, companions, pins and source metadata commit or roll back
+  together. No automatic rename, merge or deletion repairs legacy numbered copies.
+- A rejected sync stays open with its selected values and a localized inline
+  error. Name conflicts retain the comparison and allow correction or cancel;
+  only `stale_public_crop_version` reloads the differences for a fresh decision.
 - Nothing about that model is automatic, but it is no longer invisible.
   `CropSerializer.public_update_available` is true when the linked entry's
   `version` moved past the copy's `source_public_version` **and**
@@ -465,6 +477,12 @@ The public Crop Library follows an open-data model:
   so they do not reset an already used direct-import project to empty. The guard
   accepts the application’s fixed SQLite concurrency options; other connection
   options and PostgreSQL routing overrides remain unsupported.
+  Add `--include-name-conflicts` for separate unclassified picker/page targets
+  and a `legacy-sync` project with both an unclassified manual general culture
+  and a numbered linked copy. The former require an explicit existing target;
+  taking the library name in the latter must return a conflict with both rows
+  unchanged. These scenarios have twelve private varieties and twelve plan
+  references, preserve manual edits on repeat, and never repair legacy data.
 - **Pulling never breaks live inheritance.** `_pull_public_crop_fields()` (used
   by the link's and the sync's pull) writes a raw value only when the entry's
   value differs from the crop's *effective* one. A Sorte that inherits a field
@@ -1276,9 +1294,13 @@ so the stored reference *is* the stable name (`"Brassicaceae"`). Display
 names live in `PlantFamilyTranslation` (one row per language, same pattern as
 `CropSpeciesTranslation`; `PlantFamily.localized_name()` uses the standard
 fallback chain). The list is seeded by migration `crops.0019_plant_family`
-from `backend/crops/plant_families.py` and is **not user-editable**: changes
-go through the Django admin only, where the botanical name is read-only once
-created because every crop references it.
+from `backend/crops/plant_families.py` and is **not user-editable**: structural
+changes go through the Django admin, where the botanical name is read-only once
+created because every crop references it. Platform admins can maintain only
+language labels through `PATCH /api/plant-families/<botanical_name>/translations/`
+with a session or write-scoped crop-library token. Omitted languages are kept;
+the complete request is validated before an atomic upsert. See
+[`crop-library-api-tokens.md`](crop-library-api-tokens.md#plant-family-translations).
 
 | Botanical name | German name | `default_rotation_break_years` |
 |---|---|---|
@@ -1328,8 +1350,9 @@ it.
 other unknown value is a `400` naming `/api/plant-families/`). Responses add
 `crop_family_display_name` (the row's own family in the request language).
 `GET /api/plant-families/` lists every family with `display_name`,
-`translations` and `default_rotation_break_years`; it is read-only,
-unpaginated, and on both API-token allowlists. The crop serializers load the
+`translations` and `default_rotation_break_years`; the list remains read-only,
+unpaginated, and on both API-token allowlists. The separate translation action
+does not accept project tokens or non-admin accounts. The crop serializers load the
 list once per response (`get_plant_families_by_key`), so the list endpoints
 pay two constant queries for it. Imports are more lenient than the plain API:
 the agent import (`crop_import/analysis.py`) and the crops-page spreadsheet
@@ -2456,3 +2479,34 @@ also protects its legacy projection, without pinning the other canonical axis.
 Explicit new pins survive compatibility pulls. Opposite pull/share decisions
 through overlapping legacy and canonical fields are rejected atomically, so
 normalization cannot overwrite a confirmed share or leak a private pinned value.
+
+## Plant-health catalogue foundation (#1011)
+
+The global, moderated plant-health catalogue uses separate entry, translation,
+host-evidence and revision models in `crops/plant_health_models.py`. It reuses
+the crop-library moderator role and platform token surface, with session-only
+approval. Its seven-language editor is below the existing moderation queue.
+This foundation does not alter private crop fields, public-crop synchronization
+or legacy `pests_diseases` notes; those are subsequent #1011 parts. See
+[Plant-health catalogue](./plant-health-catalogue.md) for evidence, identity,
+partial-name writes, archival, API and migration contracts.
+
+## Selecting a culture's varieties during import
+
+The library page and compact picker share `PublicCropVarietyImportDialog`.
+It loads every published entry for the selected species independently of search,
+preselects missing varieties, and stages existing-culture decisions through
+`ExistingCropLinkDialog` without issuing its normal individual writes. The
+original direct flow remains for cultures without varieties and for individual
+variety imports. The varieties-section action can complete an already linked
+culture without updating its parent.
+
+The scoped `import-selection` action validates an explicit parent and at most
+500 varieties, then `public_crop_import_selection` reuses the ordinary import
+and initial link/copy services inside one project-locked transaction. All local
+snapshots are validated before writes; existing variety decisions are applied
+before changing their parent's inherited values, while new varieties follow the
+parent. Already linked rows are read without updating them. Authorization,
+explicit sharing, private pins, terms, public versions and rollback retain the
+existing service boundaries. See the [state matrix](crop-library-state-matrix.md#selecting-varieties-during-import-1141)
+for cancellation, retry and concurrency behavior.

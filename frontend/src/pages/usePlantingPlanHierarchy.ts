@@ -61,8 +61,8 @@ const CULTIVATION_TYPE_OPTIONS = [
   },
 ] as const;
 
-// Every German and English date title (at most 13 characters) fits the base
-// width; longer French and Spanish titles widen the column.
+// Size dates from their visible table labels; form/export labels stay explicit.
+// German and English retain their existing widths.
 const DATE_COLUMN_WIDTH_OPTIONS = { baseWidth: 142, allowance: 38, maxWidth: 200 } as const;
 
 const estimateColumnWidth = (values: string[], min: number, max: number): number => {
@@ -93,8 +93,11 @@ export const estimateCultivationTypeColumnWidth = (headerName: string, shortLabe
   return Math.max(110, Math.min(150, longest * 8 + 52));
 };
 
-const estimateDateColumnWidth = (headerName: string): number => (
-  widthForHeaderTitles([headerName], DATE_COLUMN_WIDTH_OPTIONS)
+const estimateDateColumnWidth = (headerName: string, allowance: number): number => (
+  widthForHeaderTitles([headerName], {
+    ...DATE_COLUMN_WIDTH_OPTIONS,
+    allowance,
+  })
 );
 
 export function usePlantingPlanHierarchy(shouldShowProjectRequiredState: boolean) {
@@ -273,6 +276,8 @@ export function usePlantingPlanHierarchy(shouldShowProjectRequiredState: boolean
   );
 
   const dynamicWidths = useMemo(() => {
+    // Keep the other locales' widths; compact PT/IT/ES headings reserve both controls.
+    const dateHeaderAllowance = /^(pt|it|es)(-|$)/i.test(i18n.language) ? 72 : DATE_COLUMN_WIDTH_OPTIONS.allowance;
     const cropWidth = estimateColumnWidth(
       [t('plantingPlans:columns.crop'), ...cropOptions.map((option) => option.label)],
       170,
@@ -294,10 +299,10 @@ export function usePlantingPlanHierarchy(shouldShowProjectRequiredState: boolean
         t('plantingPlans:columns.cultivationType'),
         cultivationTypeOptions.map((option) => option.shortLabel),
       ),
-      sowingDate: estimateDateColumnWidth(t('plantingPlans:columns.sowingDate')),
-      plantingDate: estimateDateColumnWidth(t('plantingPlans:columns.plantingDate')),
-      harvestDate: estimateDateColumnWidth(t('plantingPlans:columns.harvestStartDate')),
-      harvestEndDate: estimateDateColumnWidth(t('plantingPlans:columns.harvestEndDate')),
+      sowingDate: estimateDateColumnWidth(t('plantingPlans:tableHeaders.sowingDate'), dateHeaderAllowance),
+      plantingDate: estimateDateColumnWidth(t('plantingPlans:tableHeaders.plantingDate'), dateHeaderAllowance),
+      harvestDate: estimateDateColumnWidth(t('plantingPlans:tableHeaders.harvestStartDate'), dateHeaderAllowance),
+      harvestEndDate: estimateDateColumnWidth(t('plantingPlans:tableHeaders.harvestEndDate'), dateHeaderAllowance),
       area: estimateColumnWidth(
         [
           t('plantingPlans:columns.areaM2'),
@@ -311,7 +316,7 @@ export function usePlantingPlanHierarchy(shouldShowProjectRequiredState: boolean
       plants: estimateColumnWidth([t('plantingPlans:columns.plantsCount'), '≈ 9999'], 96, 122),
       notes: 220,
     };
-  }, [bedOptions, beds, cultivationTypeOptions, cropOptions, hasMultipleLocationsWithBeds, numberLocale, t]);
+  }, [bedOptions, beds, cultivationTypeOptions, cropOptions, hasMultipleLocationsWithBeds, i18n.language, numberLocale, t]);
 
   return {
     crops,

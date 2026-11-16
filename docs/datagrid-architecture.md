@@ -1227,3 +1227,22 @@ grid," that's new work, not exposing something that already half-exists.
   in `dialogEditFields`, not in a `renderEditCell`. Don't reintroduce a
   cell-level edit mode whose only purpose is to reveal a button that opens
   the real editor — that costs the user a click for nothing.
+
+### Planting-plan date headings
+
+The planting-plan table displays the context-specific
+`plantingPlans.tableHeaders` date labels and measures date columns from those
+visible labels. `GridColDef.headerName` stays explicit for the column chooser,
+filter controls and sort/menu accessible names; form, mobile-card and export labels also
+retain `plantingPlans.columns` wording. The remaining column terminology stays
+unchanged. Portuguese, Italian and Spanish short forms are recorded in the
+[glossary](i18n-glossary.md#planting-plan-table-date-headings).
+
+`plantingPlanHeaderStyles.ts` scopes two-line label wrapping to this table's
+header text. Labels can shrink beside non-shrinking sort/menu controls, with
+full text retained in the DOM and existing overflow/help tooltips. This table
+opts into an 80px requested header height (56px at desktop compact density),
+allowing two lines even at 150% text size. `EditableDataGrid.columnHeaderHeight`
+forwards the MUI option; other callers retain the existing default. Scroll
+sizing continues to measure the rendered header. Field identifiers and column
+settings stay unchanged.

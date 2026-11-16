@@ -152,6 +152,8 @@ export interface EditableDataGridProps<T extends EditableRow> {
   paginationPageSizeOptions?: number[];
   initialPageSize?: number;
   scrollMode?: 'autoHeight' | 'continuous';
+  /** Requested MUI header height before density scaling; defaults stay unchanged. */
+  columnHeaderHeight?: number;
   /**
    * Column visibility model. Pass `columnVisibilityModel` from
    * `useColumnVisibility`.

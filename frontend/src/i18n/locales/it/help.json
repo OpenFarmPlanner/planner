@@ -252,7 +252,7 @@
     },
     "graphical": {
       "title": "Guida: superfici coltivate - vista grafica",
-      "intro": "Vedi qui siti, appezzamenti e aiuole disposti nello spazio. La vista grafica ti aiuta a esaminare e modificare visivamente la struttura delle superfici.",
+      "intro": "Scegli un sito nella barra superiore, accanto a Elenco/Grafica. I suoi appezzamenti e le sue aiuole occupano un’ampia area di disegno; zoom e spostamento di ogni sito vengono mantenuti quando cambi sito o vista. Usa Modifica grafica per cambiare la disposizione del sito selezionato.",
       "sections": [
         {
           "title": "Come usarlo",

@@ -252,7 +252,7 @@
     },
     "graphical": {
       "title": "Hulp: Teeltoppervlakken - grafische weergave",
-      "intro": "Bekijk hier locaties, percelen en bedden in hun ruimtelijke indeling. De grafische weergave helpt je om de oppervlakstructuur visueel te beoordelen en aan te passen.",
+      "intro": "Kies een locatie in de bovenbalk naast Lijst/Grafisch. De percelen en bedden gebruiken één groot tekenvlak; zoom en verschuiving blijven per locatie behouden wanneer je van locatie of weergave wisselt. Gebruik Grafische weergave bewerken om de indeling van de gekozen locatie te wijzigen.",
       "sections": [
         {
           "title": "Zo gebruik je het",

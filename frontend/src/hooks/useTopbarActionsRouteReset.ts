@@ -1,4 +1,4 @@
-import { useLayoutEffect } from 'react';
+import { useLayoutEffect, type ReactNode } from 'react';
 import type { TopbarContextAction } from '../navigation/topbarTypes';
 
 // Must run as a layout effect: passive effects fire child-before-parent, so a
@@ -12,9 +12,11 @@ export function useTopbarActionsRouteReset(
   pathname: string,
   setTopbarContextActions: (actions: TopbarContextAction[]) => void,
   setTopbarTitleActions: (actions: TopbarContextAction[]) => void,
+  setTopbarWorkspaceControls?: (controls: ReactNode) => void,
 ): void {
   useLayoutEffect(() => {
     setTopbarContextActions([]);
     setTopbarTitleActions([]);
-  }, [pathname, setTopbarContextActions, setTopbarTitleActions]);
+    setTopbarWorkspaceControls?.(null);
+  }, [pathname, setTopbarContextActions, setTopbarTitleActions, setTopbarWorkspaceControls]);
 }

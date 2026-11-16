@@ -1,3 +1,4 @@
+import type { PublicCropSyncSubmitResult } from '../crops/publicCropSync';
 import type { CropLinkCandidate } from '../crops/ExistingCropLinkDialog';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
@@ -41,6 +42,7 @@ export function usePublicCropLibrary({
   const location = useLocation();
   const navigate = useNavigate();
 
+  const [varietyImport, setVarietyImport] = useState<PublicCrop | null>(null);
   const [importLink, setImportLink] = useState<{ publicCrop: PublicCrop; candidates: CropLinkCandidate[] } | null>(null);
   const [publicLibraryOpen, setPublicLibraryOpen] = useState(false);
   const [publicLibraryLoading, setPublicLibraryLoading] = useState(false);
@@ -100,7 +102,11 @@ export function usePublicCropLibrary({
       ? withProjectImportStatus(entry, crop) : entry));
   }, []);
 
-  const handleImportPublicCrop = async (publicCrop: PublicCrop, mode?: 'new') => {
+  const handleImportPublicCrop = async (publicCrop: PublicCrop, mode?: 'new', skipVarieties = false) => {
+    if (!skipVarieties && !mode && !publicCrop.variety?.trim() && publicCrop.crop_species && !publicCrop.project_import_status) {
+      setVarietyImport(publicCrop);
+      return;
+    }
     if (importInFlight.current) return;
     importInFlight.current = true;
     const name = getPublicCropTitle(publicCrop, language, t('library.translation.missingName'));
@@ -231,6 +237,9 @@ export function usePublicCropLibrary({
 
   const describePublicSyncError = (error: unknown): string => {
     const code = extractApiErrorCode(error);
+    if (code === 'crop_name_conflict') {
+      return extractApiErrorMessage(error, t, t('library.sync.error'));
+    }
     if (code === 'stale_public_crop_version') {
       return t('library.sync.staleError');
     }
@@ -337,9 +346,9 @@ export function usePublicCropLibrary({
     pullFields: string[];
     pushFields: string[];
     pinFields: string[];
-  }): Promise<boolean> => {
+  }): Promise<PublicCropSyncSubmitResult> => {
     if (!selectedCrop?.id) {
-      return false;
+      return { success: false, error: t('library.sync.error') };
     }
     const name = formatCropDisplayName(selectedCrop);
     try {
@@ -350,11 +359,13 @@ export function usePublicCropLibrary({
         'success',
       );
       await refreshPublicCropStatusContext();
-      return true;
+      return { success: true };
     } catch (error) {
       console.error('Error syncing crop with the library:', error);
-      showSnackbar(describePublicSyncError(error), 'error');
-      return false;
+      return {
+        success: false, error: describePublicSyncError(error),
+        code: extractApiErrorCode(error) ?? undefined,
+      };
     } finally {
       setPublishingCropId(null);
     }
@@ -465,6 +476,15 @@ export function usePublicCropLibrary({
   }, [handleOpenPublicLibrary, location.pathname, location.search, navigate, publicLibraryOpen, shouldShowProjectRequiredState]);
 
   return {
+    varietyImport,
+    setVarietyImport,
+    handleVarietyImportSuccess: async (result: import('../api/types').PublicCropSelectionImportResult) => {
+      showSnackbar(t('library.varietyImport.success', { count: result.entries.filter(entry => entry.operation !== 'unchanged').length }), 'success');
+      const response = await cropAPI.get(result.entries[0].crop_id);
+      await onImportSuccess(response.data);
+      await fetchPublicCrops(librarySearch.current.query, librarySearch.current.exactMatch);
+      await refreshUser();
+    },
     importLink,
     setImportLink,
     handleImportLinkSuccess: async (crop: Crop) => {

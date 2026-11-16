@@ -252,7 +252,7 @@
     },
     "graphical": {
       "title": "Aide : Surfaces de culture - vue graphique",
-      "intro": "Voyez ici les sites, parcelles et planches disposés dans l'espace. La vue graphique vous aide à vérifier et à ajuster visuellement la structure des surfaces.",
+      "intro": "Choisissez un site dans la barre supérieure, à côté de Liste/Graphique. Ses parcelles et planches occupent une grande zone de dessin ; le zoom et le déplacement sont conservés pour chaque site lors des changements de site ou de vue. Utilisez Modifier le graphique pour modifier la disposition du site sélectionné.",
       "sections": [
         {
           "title": "Utilisation",

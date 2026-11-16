@@ -66,6 +66,13 @@ code: the guest-demo import block and the long preference/session-creation lines
 The current baseline contains **1,601 Ruff findings** (32 I001 occurrences) and
 zero cycles. Only those exact retired entries were removed; no allowance was added.
 
+The #1145 name-conflict fix retires eight exact allowances, leaving **1,593
+Ruff findings** and zero cycles. Five were already obsolete in main before
+#1145. The other three belong to the shared name-error
+helper/import block and the local seed command, whose population and preview
+steps now have separate bounded functions. No allowance or scanner exemption
+was added; the original evidence above remains historical.
+
 The issue's historical successful CI runs #43588107346 and #43583411084
 demonstrate the old exit-code acceptance. Their archived scanner reports
 could not be downloaded through this Cloud environment's permitted hosts.

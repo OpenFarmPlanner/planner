@@ -367,7 +367,9 @@ or changing a public page:
 ## Crop Data Rules
 - `crop_family` (on `Crop` and `PublicCrop`) references the curated, global
   plant-family list `crops.PlantFamily` by botanical name. The list is seeded
-  by migration and edited in the Django admin only; never reintroduce free text.
+  by migration; structural edits stay in the Django admin. Platform admins may
+  maintain language labels through the translation-only family API action.
+  Never reintroduce free text for crop-family references.
   It stays a species-invariant field (Kultur-level, locked on linked Sorten).
 - `rotation_break_years` is the number of calendar years **without** that plant
   family on the same bed in between: a family grown last in year Y may be grown
@@ -628,6 +630,11 @@ content patterns live, commented, in the triage step's `env` block.
   structured terminal report naming the final SHA and changed files.
   Setup and follow-up expectations live in
   `docs/security-automation.md`.
+- **Native completion:** a completed clean native Codex Security Review needs no
+  additional human confirmation when the base-policy reader authenticates the
+  pinned GitHub app/bot, exact PR/full head, matching recent clean receipt,
+  last-editor provenance and trusted event-bound base/scope context. Code-review comments, reactions and request delivery
+  remain insufficient. See `docs/security-automation.md` for accepted evidence.
 - **Local fallback:** when cloud providers cannot complete a review, prepare a
   signed result with the trusted `scripts/ci/run_codex_review.cjs` launcher.
   Validated fresh independent Codex execution covering the exact head/base and

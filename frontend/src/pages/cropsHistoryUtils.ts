@@ -61,7 +61,8 @@ const HISTORY_FIELD_LABEL_KEYS: Record<string, string> = {
   germination_types: 'germination.fields.germination_types',
   germination_pretreatment: 'germination.fields.germination_pretreatment',
     specific_properties: 'specificProperties.title',
-  pests_diseases: 'siteHealth.fields.pests_diseases',
+  pests_diseases: 'plantHealth.notes',
+  plant_health: 'plantHealth.label',
   light_requirement: 'siteHealth.fields.light_requirement',
   water_requirement: 'siteHealth.fields.water_requirement',
   life_cycle: 'siteHealth.fields.life_cycle',
@@ -244,11 +245,29 @@ export function formatSeedRateByCultivation(value: unknown, t: TFunction<'crops'
   return entries.length > 0 ? entries.join('; ') : t('history.emptyValue');
 }
 
+function formatPlantHealthValue(value: unknown, t: TFunction<'crops'>): string {
+  if (value == null) return t('plantHealth.unspecified');
+  if (typeof value !== 'object' || !('entries' in value) || !Array.isArray(value.entries)) {
+    return t('history.complexValue');
+  }
+  if (value.entries.length === 0) return t('plantHealth.emptySelection');
+  const labels: string[] = [];
+  for (const entry of value.entries) {
+    if (!entry || typeof entry !== 'object' || typeof entry.name !== 'string') {
+      return t('history.complexValue');
+    }
+    const identity = typeof entry.catalogue_identity === 'string' ? entry.catalogue_identity : null;
+    labels.push(`${entry.name} · ${t(identity ? 'plantHealth.catalogue' : 'plantHealth.local')}${identity ? ` (${identity})` : ''}`);
+  }
+  return labels.join('; ');
+}
+
 export function formatHistoryChangeValue(
   value: unknown,
   field: string,
   t: TFunction<'crops'>,
 ): string {
+  if (field === 'plant_health') return formatPlantHealthValue(value, t);
   if (field === 'specific_properties' && value && typeof value === 'object' && Object.keys(value).length > 0) return formatSpecificProperties(value as SpecificProperties, t);
   if (value === null || value === undefined || value === '') {
     return t('history.emptyValue');

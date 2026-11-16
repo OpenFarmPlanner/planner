@@ -29,6 +29,7 @@ from farm.services.timing_windows import (
 from farm.utils import normalize_supplier_name, normalize_text
 
 from .germination import apply_germination_cells
+from .plant_health import apply_plant_health_cell
 from .specific_properties import SpecificPropertyImportError, apply_specific_property_cells
 from .timing_windows import (
     ERROR_HARVEST_NOT_IMPORTED,
@@ -143,7 +144,8 @@ _COMPARABLE_FIELDS = [
     'stratification_temperature_min_c',
     'stratification_temperature_max_c',
     'germination_types', 'germination_pretreatment', 'specific_properties',
-    'pests_diseases', 'light_requirement', 'water_requirement', 'life_cycle', 'winter_hardiness',
+    'pests_diseases', 'plant_health', 'light_requirement', 'water_requirement',
+    'life_cycle', 'winter_hardiness',
     'harvest_method', 'expected_yield',
     'distance_within_row_cm', 'row_spacing_cm', 'sowing_depth_cm', 'sowing_depth_max_cm',
     'seed_rate_value', 'seed_rate_unit', 'sowing_calculation_safety_percent',
@@ -435,6 +437,7 @@ def preview_crop_import(
             germination_issues = apply_germination_cells(crop_data)
             _normalize_crop_family(crop_data)
             _supplier, matching_crop = _match_import_row(project, crop_data, create_supplier=False)
+            apply_plant_health_cell(crop_data, project.pk, matching_crop)
             apply_specific_property_cells(crop_data, matching_crop)
             companions = preview_row_companions(resolver, crop_data)
             timing_window_issues = [
@@ -511,6 +514,7 @@ def apply_crop_import(
             germination_issues = apply_germination_cells(crop_data)
             _normalize_crop_family(crop_data)
             supplier, matching_crop = _match_import_row(project, crop_data)
+            apply_plant_health_cell(crop_data, project.pk, matching_crop)
             apply_specific_property_cells(crop_data, matching_crop)
             if supplier:
                 crop_data['supplier'] = supplier.id

@@ -49,12 +49,13 @@ describe('PageHelp', () => {
     expect(screen.queryByText(/•/)).not.toBeInTheDocument();
   });
 
-  it('renders graphical fields help with the per-location edit toggle instead of the obsolete global mode switch', async () => {
+  it('renders graphical fields help for the selected-location workspace and topbar editing action', async () => {
     render(<PageHelp pageKey="graphical" />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Hilfe anzeigen' }));
 
-    expect(await screen.findByText('Aktiviere „Grafik bearbeiten“ bei einem Standort, um dessen Beete und Parzellen zu verschieben und anzuordnen.', { exact: false })).toBeInTheDocument();
+    expect(await screen.findByText('Wähle in der Kopfleiste neben Liste/Grafik einen Standort.', { exact: false })).toBeInTheDocument();
+    expect(screen.getByText('Mit „Grafik bearbeiten“ änderst du die Anordnung des gewählten Standorts.', { exact: false })).toBeInTheDocument();
     expect(screen.getByText('Grafik bearbeiten: Beete und Parzellen eines Standorts per Drag-and-Drop verschieben und anordnen')).toBeInTheDocument();
     expect(screen.getByTestId('EditOutlinedIcon')).toBeInTheDocument();
     expect(screen.queryByText('Modus')).not.toBeInTheDocument();

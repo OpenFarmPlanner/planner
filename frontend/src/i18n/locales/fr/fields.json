@@ -29,6 +29,9 @@
     "graphical": "Graphique"
   },
   "graphical": {
+    "layoutLoadError": "Le graphique n’a pas pu être chargé. Veuillez réessayer.",
+    "noFields": "Ce site ne contient pas encore de parcelles. Passez à la liste pour en ajouter.",
+    "locationSelector": "Site",
     "title": "Vue graphique des parcelles",
     "viewMode": "Mode",
     "modeAriaLabel": "Choisir le mode",
@@ -52,6 +55,8 @@
     "panDown": "Déplacer vers le bas",
     "panLeft": "Déplacer vers la gauche",
     "panRight": "Déplacer vers la droite",
+    "rotateLeft": "Tourner la vue de 90° vers la gauche",
+    "rotateRight": "Tourner la vue de 90° vers la droite",
     "fitToView": "Tout afficher",
     "enterFullscreen": "Plein écran",
     "exitFullscreen": "Quitter le plein écran",

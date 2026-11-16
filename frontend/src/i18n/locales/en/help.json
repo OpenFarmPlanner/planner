@@ -252,7 +252,7 @@
     },
     "graphical": {
       "title": "Help: Growing areas - graphical view",
-      "intro": "See locations, fields, and beds arranged spatially here. The graphical view helps you review and adjust the area structure visually.",
+      "intro": "Choose a location in the topbar beside List/Graphic. Its fields and beds use one large canvas; each location retains its zoom and pan when you switch locations or representations. Use Edit graphic there to change the selected location’s layout.",
       "sections": [
         {
           "title": "How to use it",

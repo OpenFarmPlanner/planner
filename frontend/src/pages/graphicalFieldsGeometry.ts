@@ -4,7 +4,9 @@
  */
 
 import type { HierarchyDataState } from "../components/hierarchy/hooks/useHierarchyData";
-import type { ViewportPadding } from "./graphicalViewport";
+import type { ViewportPadding, ViewportState } from "./graphicalViewport";
+import type { Dispatch, SetStateAction } from "react";
+import type { GraphicalRotation } from "./graphicalLayoutUtils";
 
 export interface Point {
   x: number;
@@ -57,6 +59,14 @@ export interface GraphicalFieldsProps {
   onInteractionModeChange?: (mode: InteractionMode) => void;
   showModeToggle?: boolean;
   hierarchyData?: HierarchyDataState;
+  selectedLocationId?: number | null;
+  cameraState?: GraphicalCameraState;
+  onCameraStateChange?: Dispatch<SetStateAction<GraphicalCameraState>>;
+}
+
+export interface GraphicalCameraState {
+  viewports: Record<number, ViewportState>;
+  rotations: Record<number, GraphicalRotation>;
 }
 
 export type InteractionMode = "view" | "edit";
@@ -106,7 +116,7 @@ export const FIELD_WORLD_MAX_WIDTH = 920;
 export const FIELD_WORLD_MIN_HEIGHT = 220;
 export const FIELD_WORLD_SCALE_FACTOR = 12;
 
-export const getFitViewportPadding = (stageWidth: number): ViewportPadding => ({
+export const getFitViewportPadding = (stageWidth: number, stageHeight = Number.POSITIVE_INFINITY): ViewportPadding => ({
   // Leave the top-left zoom readout clear of field names in fit-to-view.
   top: 48,
   right:
@@ -114,7 +124,7 @@ export const getFitViewportPadding = (stageWidth: number): ViewportPadding => ({
     (stageWidth < 600
       ? MOBILE_VIEWPORT_CONTROL_SAFE_AREA_RIGHT
       : VIEWPORT_CONTROL_SAFE_AREA_RIGHT),
-  bottom: 48,
+  bottom: Math.min(48, stageHeight * 0.08),
   left: stageWidth < 600 ? MOBILE_VIEWPORT_PADDING : VIEWPORT_PADDING,
 });
 export const snapToNeighbors = (

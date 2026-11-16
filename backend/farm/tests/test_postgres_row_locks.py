@@ -230,3 +230,206 @@ def test_concurrent_one_time_copies_only_accept_one_preview_confirmation():
     entry.refresh_from_db()
     assert entry.growth_duration_days == 110
     assert entry.version == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_library_sync_refuses_a_concurrent_project_identity_write():
+    from concurrent.futures import ThreadPoolExecutor
+
+    from django.db import close_old_connections, connection, transaction
+    from rest_framework.test import APIClient
+
+    from farm.models import Crop, Project, ProjectMembership, PublicCrop
+    from farm.tests.api_base import User
+
+    if connection.vendor != 'postgresql':
+        pytest.skip('PostgreSQL row-lock regression')
+    user = User.objects.create_user(username='sync-project-race')
+    project = Project.objects.create(name='Sync project race', slug='sync-project-race')
+    ProjectMembership.objects.create(project=project, user=user, role='admin')
+    entry = PublicCrop.objects.create(name='Synthetic sync', status='published', created_by=user)
+    crop = Crop.objects.create(project=project, name='Synthetic local',
+                               source_public_crop=entry, source_public_version=entry.version)
+
+    def sync():
+        close_old_connections()
+        try:
+            client = APIClient()
+            client.force_authenticate(user=user)
+            return client.post(f'/api/crops/{crop.pk}/public-sync/', {
+                'public_crop_id': entry.pk, 'base_version': entry.version,
+                'pull_fields': ['name'], 'push_fields': [],
+            }, format='json', HTTP_X_PROJECT_ID=str(project.pk))
+        finally:
+            close_old_connections()
+
+    with transaction.atomic():
+        Project.objects.select_for_update().get(pk=project.pk)
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            response = executor.submit(sync).result(timeout=15)
+    assert response.status_code == 409
+    assert response.data['code'] == 'crop_name_conflict'
+    crop.refresh_from_db()
+    assert crop.name == 'Synthetic local'
+
+
+@pytest.mark.django_db(transaction=True)
+def test_library_sync_translates_a_real_postgres_name_race_after_rollback():
+    from concurrent.futures import ThreadPoolExecutor
+    from unittest.mock import patch
+
+    from django.db import close_old_connections, connection
+    from rest_framework.test import APIClient
+
+    from farm.models import Crop, EntityRevision, Project, ProjectMembership, PublicCrop
+    from farm.tests.api_base import User
+
+    if connection.vendor != 'postgresql':
+        pytest.skip('PostgreSQL constraint-race regression')
+    user = User.objects.create_user(username='sync-constraint-race')
+    project = Project.objects.create(name='Sync constraint race', slug='sync-constraint-race')
+    ProjectMembership.objects.create(project=project, user=user, role='admin')
+    entry = PublicCrop.objects.create(
+        name='Synthetic conflict', status='published', created_by=user,
+    )
+    target = Crop.objects.create(project=project, name='Synthetic conflict (2)',
+                                 source_public_crop=entry, source_public_version=entry.version)
+    other = Crop.objects.create(project=project, name='Synthetic unclaimed')
+    before = Crop.objects.filter(pk=target.pk).values().get()
+    revisions = list(EntityRevision.objects.filter(object_id=target.pk).values())
+    save = Crop.save
+
+    def competing_write():
+        close_old_connections()
+        try:
+            # An older writer bypasses the cooperative project lock. Updating an
+            # existing row does not need to recheck its unchanged project FK.
+            Crop.objects.filter(pk=other.pk).update(
+                name='Synthetic conflict', name_normalized='synthetic conflict',
+            )
+        finally:
+            close_old_connections()
+
+    def save_after_race(instance, *args, **kwargs):
+        if instance.pk == target.pk:
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                executor.submit(competing_write).result(timeout=15)
+        return save(instance, *args, **kwargs)
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+    with patch.object(Crop, 'save', new=save_after_race):
+        response = client.post(f'/api/crops/{target.pk}/public-sync/', {
+            'public_crop_id': entry.pk, 'base_version': entry.version,
+            'pull_fields': ['name'], 'push_fields': [],
+        }, format='json', HTTP_X_PROJECT_ID=str(project.pk))
+    assert response.status_code == 409
+    assert response.data['code'] == 'crop_name_conflict'
+    assert Crop.objects.filter(pk=target.pk).values().get() == before
+    assert list(EntityRevision.objects.filter(object_id=target.pk).values()) == revisions
+    other.refresh_from_db()
+    assert other.name == 'Synthetic conflict'
+
+
+@pytest.mark.django_db(transaction=True)
+def test_new_library_import_translates_a_real_postgres_general_name_race():
+    from concurrent.futures import ThreadPoolExecutor
+    from unittest.mock import patch
+
+    from django.db import close_old_connections, connection
+    from rest_framework.test import APIClient
+
+    from farm.models import Crop, Project, ProjectMembership, PublicCrop
+    from farm.tests.api_base import User
+
+    if connection.vendor != 'postgresql':
+        pytest.skip('PostgreSQL import constraint-race regression')
+    user = User.objects.create_user(username='import-constraint-race')
+    project = Project.objects.create(name='Import constraint race', slug='import-constraint-race')
+    ProjectMembership.objects.create(project=project, user=user, role='admin')
+    entry = PublicCrop.objects.create(
+        name='Synthetic raced import', status='published', created_by=user,
+    )
+    other = Crop.objects.create(project=project, name='Synthetic unclaimed import')
+    save = Crop.save
+
+    def competing_write():
+        close_old_connections()
+        try:
+            Crop.objects.filter(pk=other.pk).update(
+                name=entry.name, name_normalized='synthetic raced import',
+            )
+        finally:
+            close_old_connections()
+
+    def save_after_race(crop, *args, **kwargs):
+        if crop.pk is None and crop.project_id == project.pk:
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                executor.submit(competing_write).result(timeout=15)
+        return save(crop, *args, **kwargs)
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+    with patch.object(Crop, 'save', new=save_after_race):
+        response = client.post(f'/api/public-crops/{entry.pk}/import/', {
+            'base_version': entry.version, 'expected_project_id': project.pk,
+        }, format='json', HTTP_X_PROJECT_ID=str(project.pk))
+    assert response.status_code == 409
+    assert response.data['code'] == 'crop_name_conflict'
+    assert list(Crop.objects.filter(project=project).values_list('pk', flat=True)) == [other.pk]
+    other.refresh_from_db()
+    assert other.name == entry.name
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_selected_variety_imports_commit_one_complete_scope():
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    from django.db import close_old_connections, connection
+
+    from crops.models import CropSpecies
+    from farm.models import Crop, Project, PublicCrop
+    from farm.services.public_crop_import_selection import import_public_crop_selection
+    from farm.tests.api_base import User
+
+    if connection.vendor != "postgresql":
+        pytest.skip("PostgreSQL row-lock regression")
+    user = User.objects.create_user(username="concurrent-selection-user")
+    project = Project.objects.create(name="Concurrent selection", slug="concurrent-selection")
+    species = CropSpecies.objects.create(name="Concurrent selection carrot")
+    entries = [
+        PublicCrop.objects.create(
+            name=species.name, crop_species=species, variety=variety, status="published"
+        )
+        for variety in ("", "One", "Two", "Three")
+    ]
+    decisions = [
+        {
+            "public_crop_id": entry.pk,
+            "base_version": entry.version,
+            "link_to_library": True,
+            "mode": "auto",
+        }
+        for entry in entries
+    ]
+    barrier = Barrier(2)
+
+    def import_once():
+        close_old_connections()
+        try:
+            barrier.wait(timeout=10)
+            return import_public_crop_selection(
+                parent=entries[0], project=project, decisions=decisions, user=user, language="en"
+            )
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [executor.submit(import_once) for _ in range(2)]
+        results = [future.result(timeout=30) for future in futures]
+    assert {entry["crop_id"] for entry in results[0]} == {entry["crop_id"] for entry in results[1]}
+    assert sorted(entry["operation"] for result in results for entry in result) == (
+        ["created"] * 4 + ["unchanged"] * 4
+    )
+    assert Crop.objects.filter(project=project).count() == 4

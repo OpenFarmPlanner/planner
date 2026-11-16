@@ -1,3 +1,5 @@
+import { PublicCropVarietyImportDialog } from '../crop-library/components/PublicCropVarietyImportDialog';
+import type { PublicCropSyncSubmitResult } from '../crops/publicCropSync';
 import { ExistingCropLinkDialog } from '../crops/ExistingCropLinkDialog';
 /**
  * Crops (Kulturen) page component.
@@ -293,6 +295,7 @@ function Crops() {
     publishingCropId,
     fetchPublicCrops,
     handleOpenPublicLibrary,
+    varietyImport, setVarietyImport, handleVarietyImportSuccess,
     importLink,
     setImportLink,
     handleImportLinkSuccess,
@@ -439,12 +442,12 @@ function Crops() {
 
   const handleSyncPublicCropSubmit = useCallback(async (
     data: Parameters<typeof handleSyncPublicCrop>[0],
-  ): Promise<boolean> => {
-    const success = await handleSyncPublicCrop(data);
-    if (success) {
+  ): Promise<PublicCropSyncSubmitResult> => {
+    const result = await handleSyncPublicCrop(data);
+    if (result.success) {
       setPublishWizardOpen(false);
     }
-    return success;
+    return result;
   }, [handleSyncPublicCrop]);
 
   // Fetch crops on mount
@@ -872,15 +875,22 @@ function Crops() {
         importingId={publicLibraryImportingId}
         initialSelectedId={publicLibraryInitialSelectedId}
         initialQuery={publicLibraryInitialQuery}
-        onClose={() => setPublicLibraryOpen(false)}
+        onClose={() => { setPublicLibraryOpen(false); setVarietyImport(null); }}
         onSearch={(query) => {
           void fetchPublicCrops(query);
         }}
+        onImportVarieties={crop => setVarietyImport(crop)}
         onImport={(crop) => {
           void handleImportPublicCrop(crop);
         }}
       />
 
+      {varietyImport ? <PublicCropVarietyImportDialog key={varietyImport.id} parent={varietyImport}
+        termsAlreadyAccepted={Boolean(user?.public_library_terms_accepted)} onClose={() => setVarietyImport(null)}
+        onComplete={handleVarietyImportSuccess} onWithoutVarieties={() => {
+          setVarietyImport(null);
+          void handleImportPublicCrop(varietyImport, undefined, true);
+        }} /> : null}
       {importLink ? <ExistingCropLinkDialog publicCrop={importLink.publicCrop} candidates={importLink.candidates}
         termsAlreadyAccepted={Boolean(user?.public_library_terms_accepted)} onTermsAccepted={refreshUser}
         onClose={() => setImportLink(null)} onLinked={(crop) => void handleImportLinkSuccess(crop)} /> : null}

@@ -1,5 +1,6 @@
 import type { NotificationsController } from '../notifications/useNotifications';
 import type { Season } from '../api/types';
+import type { ReactNode } from 'react';
 
 /**
  * Shared types for the topbar action contract between the root layout and pages.
@@ -36,6 +37,8 @@ export interface TopbarContextAction {
 export interface RootLayoutOutletContext {
   setTopbarContextActions: (actions: TopbarContextAction[]) => void;
   setTopbarTitleActions: (actions: TopbarContextAction[]) => void;
+  /** Extra labelled controls placed beside title actions, or together in a shared wrapped row. */
+  setTopbarWorkspaceControls?: (controls: ReactNode) => void;
   /** Start year of the currently active season, once loaded; null while loading or without a project/season. */
   activeSeasonYear: number | null;
   /** The currently active season, once loaded; null while loading or without a project/season. */

@@ -16,6 +16,8 @@ import { SpecificPropertiesSection } from './sections/SpecificPropertiesSection'
 
 import { GerminationSection } from './sections/GerminationSection';
 import { SiteHealthSection } from './sections/SiteHealthSection';
+import { PlantHealthField } from './sections/PlantHealthField';
+import { collectLocalPlantHealth } from './plantHealth';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from '../i18n';
@@ -288,6 +290,10 @@ export function CropForm({
   // Groups are the project's own labels; the library form has none.
   const tagOptions = useMemo(
     () => (isProjectForm ? collectProjectTags(crops ?? []) : undefined),
+    [crops, isProjectForm],
+  );
+  const healthLocalOptions = useMemo(
+    () => isProjectForm ? collectLocalPlantHealth(crops ?? []) : [],
     [crops, isProjectForm],
   );
   const showSupplierDataSection = isProjectForm && section === 'supplierData';
@@ -1502,7 +1508,15 @@ export function CropForm({
               />
             ) : null}
             <GerminationSection {...sectionProps} />
-            <SiteHealthSection {...sectionProps} />
+            <SiteHealthSection {...sectionProps} plantHealthField={isProjectForm ? <PlantHealthField
+              value={formData.plant_health ?? null}
+              localOptions={healthLocalOptions}
+              onChange={value => handleChange('plant_health', value)}
+              canInherit={isSpeciesLinkedVariety && Boolean(selectedSpeciesCrop)}
+              inheritedValue={isSpeciesLinkedVariety ? selectedSpeciesCrop?.plant_health : undefined}
+              sx={getFieldHighlightSx('plant_health')}
+              error={errors.plant_health}
+            /> : null} />
             {isProjectForm
               ? crop ? <CropCompanionsSection crop={crop} crops={(crops ?? []) as Crop[]} onEdit={isSaving ? undefined : onEditCompanions} /> : null
               : <CompanionsSection state={companionRows} disabled={isSaving} />}

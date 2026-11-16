@@ -60,6 +60,7 @@ from farm.services.crop_display import resolve_crop_display_name
 from farm.services.crop_inheritance import (
     CROP_INHERITABLE_FIELDS,
     CROP_SPECIES_INVARIANT_FIELDS,
+    CropNameConflict,
     build_effective_crop_values,
     build_general_crop_index,
     build_inherited_crop_values,
@@ -70,11 +71,13 @@ from farm.services.crop_inheritance import (
     is_unset_crop_value,
     lock_crop_project,
     promote_species_invariant_values,
+    raise_general_crop_name_conflict,
     resolve_effective_rotation_break_years,
     resolve_effective_timing_windows,
     resolve_plants_per_m2,
     validate_general_crop_identity,
 )
+from farm.services.crop_plant_health import canonical_plant_health
 from farm.services.crop_tags import canonical_tags
 from farm.services.public_crops import (
     LibraryPinnedFieldsError,
@@ -123,17 +126,6 @@ class MediaFileReferenceSerializer(serializers.Serializer):
 
     id = serializers.IntegerField()
     storage_path = serializers.CharField()
-
-
-class CropNameConflict(APIException):
-    status_code = 409
-    default_code = 'crop_name_conflict'
-
-    def __init__(self) -> None:
-        super().__init__({
-            'code': self.default_code,
-            'detail': 'A general crop with this name already exists in this project.',
-        })
 
 
 class LibraryPinnedFieldsInvalid(APIException):
@@ -1249,6 +1241,15 @@ class CropSerializer(serializers.ModelSerializer):
         self._resolve_supplier_from_name(attrs)
         self._normalize_variety(attrs)
         self._normalize_tags(attrs)
+        if 'plant_health' in attrs:
+            project = self._resolve_project(attrs, instance_first=True)
+            try:
+                attrs['plant_health'] = canonical_plant_health(
+                    attrs['plant_health'], getattr(project, 'id', None),
+                    existing_value=getattr(self.instance, 'plant_health', None),
+                )
+            except ValidationError as error:
+                errors['plant_health'] = error.messages
         if general_name_conflict and set(errors) == {'name'}:
             raise CropNameConflict()
         if errors:
@@ -1454,14 +1455,7 @@ class CropSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def _raise_name_conflict_if_general_name_constraint(exc: IntegrityError) -> None:
-        constraint = getattr(getattr(exc.__cause__, 'diag', None), 'constraint_name', None)
-        message = str(exc)
-        if (
-            constraint == 'unique_general_crop_name_per_project'
-            or 'unique_general_crop_name_per_project' in message
-            or message == 'UNIQUE constraint failed: farm_crop.project_id, farm_crop.name_normalized'
-        ):
-            raise CropNameConflict() from exc
+        raise_general_crop_name_conflict(exc)
 
     def _creates_inheriting_variety(self, attrs: dict[str, Any]) -> bool:
         return (

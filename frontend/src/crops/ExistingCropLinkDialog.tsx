@@ -1,3 +1,4 @@
+import type { PublicCropImportDecision } from '../api/types';
 import { useRef, useState } from 'react';
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Radio, RadioGroup, Stack, TextField, Typography } from '@mui/material';
 import { cropAPI, publicCropAPI, type Crop, type PublicCrop } from '../api/api';
@@ -12,7 +13,9 @@ import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 
 export type CropLinkCandidate = Pick<Crop, 'id' | 'name' | 'variety' | 'source_public_crop'> & { species_match?: boolean };
 
-export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLinked, termsAlreadyAccepted = false, onTermsAccepted }: {
+export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLinked, termsAlreadyAccepted = false, onTermsAccepted, onDecision, decisionProgress }: {
+  decisionProgress?: string;
+  onDecision?: (decision: PublicCropImportDecision, acceptedTerms: boolean) => void;
   publicCrop: PublicCrop;
   candidates: CropLinkCandidate[];
   onClose: () => void;
@@ -25,7 +28,7 @@ export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLink
   const onlyCandidate = candidates.length === 1 && candidates[0].species_match && !candidates[0].source_public_crop
     ? candidates[0].id : undefined;
   const [target, setTarget] = useState<number | 'new' | undefined>(candidates.length ? onlyCandidate : 'new');
-  const [mode, setMode] = useState<'copy' | 'link'>(candidates.some(candidate => !candidate.source_public_crop) ? 'link' : 'copy');
+  const [mode, setMode] = useState<'copy' | 'link'>(onDecision || candidates.some(candidate => !candidate.source_public_crop) ? 'link' : 'copy');
   const [explicitShares, setExplicitShares] = useState<Set<string>>(new Set());
   const [shareSnapshot, setShareSnapshot] = useState('');
   const [acceptedLicense, setAcceptedLicense] = useState(false);
@@ -74,7 +77,23 @@ export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLink
     setSubmitting(true);
     setFailed(null);
     try {
-      if (target === 'new') {
+      if (onDecision) {
+        onDecision({
+          public_crop_id: publicCrop.id,
+          base_version: targetId && preview.preview ? preview.preview.public_version : publicCrop.version,
+          link_to_library: mode === 'link',
+          ...(target === 'new' ? { mode: candidates.length ? 'new' : 'auto' } : {
+            target_id: targetId,
+            expected_updated_at: preview.preview?.crop_updated_at,
+            pull_fields: mode === 'copy'
+              ? (changes ?? []).filter(change => choices[change.field] !== 'mine'
+                && choices[change.field] !== 'local').map(change => change.field)
+              : selection.pullFields,
+            pin_fields: mode === 'link' ? selection.pinFields : [],
+            push_fields: mode === 'link' ? selection.pushFields : [],
+          }),
+        }, needsConsent && acceptedLicense);
+      } else if (target === 'new') {
         const response = await publicCropAPI.importToProject(publicCrop.id, candidates.length ? 'new' : undefined, {
           linkToLibrary: mode === 'link', baseVersion: publicCrop.version, expectedProjectId: projectId,
         });
@@ -106,6 +125,7 @@ export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLink
       <DialogTitle>{t('library.importDecision.title')}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
+          {decisionProgress ? <Typography role="status">{decisionProgress}</Typography> : null}
           <Typography variant="subtitle2">{getPublicCropTitle(publicCrop, i18n.resolvedLanguage ?? i18n.language, t('library.translation.missingName'))}</Typography>
           <Typography variant="body2">{t(candidates.length ? 'library.importDecision.existing' : 'library.importDecision.newCrop')}</Typography>
           {candidates.length ? <TextField select fullWidth label={t('library.linkExisting.localTarget')} value={target ?? ''}
@@ -136,7 +156,7 @@ export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLink
           : needsConsent && !acceptedLicense ? t('library.sync.acceptLicenseFirst')
             : !ready ? t('library.importDecision.selectTarget') : ''}>
         <Button variant="contained" disabled={submitting || !ready || (needsConsent && !acceptedLicense)} onClick={() => void confirm()}>
-          {t(mode === 'copy' ? 'library.importDecision.copy' : 'library.importDecision.link')}
+          {t(onDecision ? 'library.varietyImport.continue' : mode === 'copy' ? 'library.importDecision.copy' : 'library.importDecision.link')}
         </Button>
         </DisabledActionTooltip>
       </DialogActions>

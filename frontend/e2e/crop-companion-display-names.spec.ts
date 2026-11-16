@@ -99,7 +99,7 @@ for (const { language, width, height } of viewports) {
     });
     await expect(dialog.getByRole('combobox', { name: text.companions.form.neighbor, exact: true })).toHaveCount(0);
     await expect(dialog.getByTestId('crop-companions-section')).toContainText(neighbor.crop_display_name);
-    await dialog.getByRole('textbox', { name: text.siteHealth.fields.pests_diseases, exact: true }).fill('Updated health note');
+    await dialog.getByRole('textbox', { name: text.plantHealth.notes, exact: true }).fill('Updated health note');
     await dialog.getByRole('button', { name: text.form.save, exact: true }).click();
     await expect(dialog).toBeHidden();
     expect(companionWrites).toEqual([]);

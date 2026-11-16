@@ -41,6 +41,7 @@ export interface PortableCrop {
   specific_properties?: SpecificProperties;
   specific_property_profile?: string;
   pests_diseases?: Crop['pests_diseases'];
+  plant_health?: Crop['plant_health'];
   light_requirement?: Crop['light_requirement'];
   water_requirement?: Crop['water_requirement'];
   life_cycle?: Crop['life_cycle'];
@@ -140,6 +141,7 @@ export const toPortableCrop = (crop: Crop, companions?: CompanionItemsByKind): P
     specific_properties: { ...(crop.specific_properties ?? {}) },
     specific_property_profile: crop.specific_property_profile ?? '',
     pests_diseases: crop.pests_diseases ?? '',
+    plant_health: crop.plant_health === undefined ? undefined : crop.plant_health,
     light_requirement: crop.light_requirement ?? '',
     water_requirement: crop.water_requirement ?? '',
     life_cycle: crop.life_cycle ?? '',

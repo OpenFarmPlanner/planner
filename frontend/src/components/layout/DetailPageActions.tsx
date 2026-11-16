@@ -39,6 +39,7 @@ interface DetailPageActionsProps {
   overflowLabel?: string;
   onOpenOverflow?: (event: MouseEvent<HTMLElement>) => void;
   compact?: boolean;
+  suppressTooltips?: boolean;
 }
 
 export const DetailPageActions = memo(function DetailPageActions({
@@ -46,6 +47,7 @@ export const DetailPageActions = memo(function DetailPageActions({
   overflowLabel,
   onOpenOverflow,
   compact = false,
+  suppressTooltips = false,
 }: DetailPageActionsProps) {
   const theme = useTheme();
   // Decides the tooltip *text* only — never the layout. Whether a label is on
@@ -97,13 +99,16 @@ export const DetailPageActions = memo(function DetailPageActions({
         // element type at the breakpoint, remounting the Button and dropping
         // keyboard focus on a resize. MUI renders no tooltip for an empty title.
         return (
-          <AppTooltip key={action.label} title={buildActionTooltip(action, iconOnly)}>
+          <AppTooltip key={action.label} title={buildActionTooltip(action, iconOnly)}
+            open={suppressTooltips ? false : undefined}
+            disableHoverListener={suppressTooltips} disableFocusListener={suppressTooltips} disableTouchListener={suppressTooltips}>
             <span>{button}</span>
           </AppTooltip>
         );
       })}
       {overflowLabel && onOpenOverflow ? (
-        <AppTooltip title={overflowLabel}>
+        <AppTooltip title={overflowLabel} open={suppressTooltips ? false : undefined}
+          disableHoverListener={suppressTooltips} disableFocusListener={suppressTooltips} disableTouchListener={suppressTooltips}>
           <Button
             aria-label={overflowLabel}
             onClick={onOpenOverflow}

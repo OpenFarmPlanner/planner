@@ -9,6 +9,13 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
+from .plant_health_models import (  # noqa: F401
+    PlantHealthEntry,
+    PlantHealthHost,
+    PlantHealthRevision,
+    PlantHealthTranslation,
+)
+
 SUPPORTED_REGIONAL_NAME_KEYS = {'austria', 'switzerland'}
 
 
@@ -294,7 +301,8 @@ class PlantFamily(models.Model):
     """One entry of the curated, global plant-family list used for crop rotation.
 
     Not project-scoped and not user-editable: the list is seeded by migration
-    from :mod:`crops.plant_families` and maintained in the Django admin only.
+    from :mod:`crops.plant_families`. Admins maintain translated labels through
+    the Django admin or the translation-only family API action.
     The botanical name is the primary key, so every crop that references a
     family stores that stable name (e.g. ``"Brassicaceae"``) as its key.
     Display names live in :class:`PlantFamilyTranslation`.

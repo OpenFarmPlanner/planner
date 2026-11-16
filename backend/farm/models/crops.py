@@ -13,12 +13,16 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
-from farm.germination import (
-    TEMPERATURE_REQUIREMENT_CHOICES, LIGHT_REQUIREMENT_CHOICES as GERMINATION_LIGHT_CHOICES,
-    germination_errors, sync_germination_requirements,
-)
+from crops.plant_health_values import validate_plant_health_value
 from crops.specific_properties import crop_specific_property_errors
-from farm.sowing_depth import fill_missing_depth_bound, sowing_depth_errors
+from farm.germination import (
+    LIGHT_REQUIREMENT_CHOICES as GERMINATION_LIGHT_CHOICES,
+)
+from farm.germination import (
+    TEMPERATURE_REQUIREMENT_CHOICES,
+    germination_errors,
+    sync_germination_requirements,
+)
 from farm.seed_units import (
     SEED_PACKAGE_UNIT_GRAMS,
     SEED_PACKAGE_UNIT_SEEDS,
@@ -29,6 +33,7 @@ from farm.seed_units import (
     SEED_RATE_UNIT_SEEDS_PER_PLANT,
     SEED_RATE_UNITS,
 )
+from farm.sowing_depth import fill_missing_depth_bound, sowing_depth_errors
 
 from .base import TimestampedModel
 from .history import EntityRevision
@@ -540,6 +545,13 @@ class Crop(TimestampedModel):
     )
 
     # Site, life cycle and plant health (descriptive; inherited by Sorten).
+    plant_health = models.JSONField(
+        null=True, blank=True, default=None, validators=[validate_plant_health_value],
+        help_text=(
+            'Explicit individual selections. Null inherits; {"entries": []} is an empty override. '
+            'Legacy pests_diseases remains explanatory prose.'
+        ),
+    )
     pests_diseases = models.TextField(
         blank=True,
         help_text='Pests and diseases to watch for, as free text (e.g. carrot fly, late blight).',

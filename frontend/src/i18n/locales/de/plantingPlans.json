@@ -391,5 +391,11 @@
     "propagation_shorter_than_germination": "Anzuchtdauer kürzer als die Keimdauer.",
     "emergence": "Auflaufen ca. {{from}}–{{to}}",
     "hints": "Hinweise zur Keimung"
+  },
+  "tableHeaders": {
+    "sowingDate": "Aussaattermin",
+    "plantingDate": "Pflanztermin",
+    "harvestStartDate": "Erntebeginn",
+    "harvestEndDate": "Ernteende"
   }
 }

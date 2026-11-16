@@ -70,6 +70,322 @@ async function verifiedCodexReview({ github, context, comments, head, base, scop
     comment.html_url);
 }
 
+// GitHub supplies these immutable numeric identities; display names alone are not provenance.
+const NATIVE_CODEX_APP = 1144995;
+const NATIVE_CODEX_BOT = 199175422;
+const nativeCodexAuthor = comment => comment.user?.type === 'Bot' &&
+  comment.user.id === NATIVE_CODEX_BOT && comment.performed_via_github_app?.id === NATIVE_CODEX_APP;
+const visibleNativeRunning = (body, head) => {
+  const row = (typeof body === 'string' ? body : '').match(/^\|[^\n]*Security Review[^\n]*\bRunning\b[^\n]*\| `([0-9a-f]{7,40})` \|/m);
+  return Boolean(row && head.startsWith(row[1]));
+};
+
+async function nativeEvidenceProvenance({ github, context, checked, history = false, historyCursor = null,
+  verified = () => {}, onSnapshotChange = () => {} }) {
+  if (checked.length > 100) return 'Too many native records to verify in one snapshot.';
+  const prefix = `https://github.com/${context.repo.owner}/${context.repo.repo}/pull/${context.payload.pull_request.number}#issuecomment-`;
+  for (const comment of checked) {
+    if (comment.html_url !== `${prefix}${comment.id}` || !comment.node_id) {
+      return 'Native security evidence is not bound to this PR.';
+    }
+  }
+  // Maintainers can edit comments. Verify the actual last editor as well as the creating app,
+  // and compare the independently read body/version to avoid trusting a changing snapshot.
+  let nodes;
+  try {
+    ({ nodes } = await github.graphql(`query($ids:[ID!]!${history ? ', $cursor:String' : ''}) {
+    nodes(ids:$ids) { ... on IssueComment {
+      id body updatedAt lastEditedAt
+      ${history ? 'userContentEdits(first:100,after:$cursor) { pageInfo { hasNextPage endCursor } nodes { diff editedAt deletedAt editor { __typename ... on Bot { databaseId } } } }' : ''}
+      author { __typename ... on Bot { databaseId } }
+      editor { __typename ... on Bot { databaseId } }
+    } }
+  }`, { ids: checked.map(item => item.node_id), ...(history ? { cursor: historyCursor } : {}) }));
+  } catch {
+    return 'Native provenance could not be read from GitHub.';
+  }
+  const trustedActor = actor => actor?.__typename === 'Bot' && actor.databaseId === NATIVE_CODEX_BOT;
+  for (const comment of checked) {
+    const node = nodes?.find(item => item?.id === comment.node_id);
+    if (!node || typeof node.body !== 'string' || typeof node.updatedAt !== 'string' ||
+        !trustedActor(node.author) || !Object.hasOwn(node, 'lastEditedAt') || !Object.hasOwn(node, 'editor') ||
+        (node.lastEditedAt != null ? !trustedActor(node.editor) : node.editor != null && !trustedActor(node.editor))) {
+      return 'Native evidence changed or was edited outside the trusted Codex app.';
+    }
+    if (node.body !== comment.body || node.updatedAt !== comment.updated_at) {
+      onSnapshotChange();
+      return 'The authenticated native evidence changed during this snapshot.';
+    }
+  }
+  verified(nodes);
+  return null;
+}
+
+async function verifiedNativeCodexReview({ github, context, comments, head, now = Date.now() }) {
+  const marker = /^<!-- codex-security-review:v1 (\{[^\n]+\}) -->$/m;
+  const invalid = reason => blocked('codex_native_invalid', reason);
+  const ambiguous = reason => blocked('codex_native_ambiguous', reason);
+  let snapshotChanged = false;
+  const prove = (checked, options = {}) => nativeEvidenceProvenance({ github, context, checked, ...options,
+    onSnapshotChange: () => { snapshotChanged = true; } });
+  const changing = () => blocked('codex_native_pending', 'Authenticated native evidence changed; waiting for a consistent fresh snapshot.');
+  const summaries = [];
+  let summaryProblem;
+  let visiblePending = false;
+  for (const comment of comments.filter(item => nativeCodexAuthor(item) && visibleNativeRunning(item.body, head))) {
+    const problem = await prove([comment]);
+    if (problem) summaryProblem = problem;
+    else visiblePending = true;
+  }
+  for (const comment of comments.filter(item => nativeCodexAuthor(item) && marker.test(item.body ?? ''))) {
+    let evidence;
+    try { evidence = JSON.parse(comment.body.match(marker)[1]); }
+    catch { summaryProblem = 'The native security summary is malformed.'; continue; }
+    if (evidence.headSha === head) summaries.push({ comment, evidence });
+  }
+  const pending = item => ['running', 'queued', 'pending'].includes(item.evidence.status);
+  summaries.sort((a, b) => Number(pending(b)) - Number(pending(a)) ||
+    String(b.comment.updated_at).localeCompare(String(a.comment.updated_at)) || Number(b.comment.id) - Number(a.comment.id));
+  const authenticated = [];
+  for (const item of summaries) {
+    const problem = await prove([item.comment]);
+    if (problem) summaryProblem = problem;
+    else if (item.evidence.repository !== `${context.repo.owner}/${context.repo.repo}` ||
+        item.evidence.pullRequestNumber !== context.payload.pull_request.number) {
+      summaryProblem = 'The native security review belongs to another PR.';
+    } else authenticated.push(item);
+  }
+  const securityState = comment => {
+    const match = comment.body.match(/^<!-- codex-review-state:v1 (\{[^\n]+\}) -->$/m);
+    try { return match ? JSON.parse(match[1]).security_review : null; } catch { return null; }
+  };
+  for (const item of authenticated) {
+    const state = securityState(item.comment);
+    if (state?.commit_sha === head && (state.has_any_findings === true || state.has_unresolved_findings === true)) {
+      return blocked('codex_native_incomplete', 'The trusted native summary reports security findings for this head.');
+    }
+  }
+  const receipts = comments.filter(comment => nativeCodexAuthor(comment) &&
+    /^### 🛡️ Codex Security Review$/m.test(comment.body ?? '') &&
+    comment.body.startsWith('<!-- codex-review-receipt:v1 -->\n'))
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  const relevant = receipts.filter(item => {
+    const ref = item.body.match(/^\*\*Reviewed commit:\*\* `([0-9a-f]{10,40})`$/m)?.[1];
+    return ref && head.startsWith(ref);
+  });
+  for (const candidate of relevant) {
+    const problem = await prove([candidate]);
+    if (!problem && candidate.body.split('\n').some(line => line.startsWith('Security review completed. ') &&
+        line !== 'Security review completed. No security issues were found in this pull request.')) {
+      return blocked('codex_native_incomplete', 'An authenticated current-head native receipt reports a nonclean result.');
+    }
+  }
+  if (snapshotChanged) return changing();
+  if (visiblePending || authenticated.some(pending)) return blocked('codex_native_pending', 'The native security review is still in progress.');
+  if (summaryProblem) return invalid(summaryProblem);
+  if (!authenticated.length) return null;
+  if (authenticated.length !== 1) return ambiguous('Multiple native summaries make task correlation ambiguous; a fresh head is required.');
+  const { comment: summary, evidence } = authenticated[0];
+  if (evidence.repository !== `${context.repo.owner}/${context.repo.repo}` ||
+      evidence.pullRequestNumber !== context.payload.pull_request.number) {
+    return invalid('The latest native security review belongs to another PR or head.');
+  }
+  if (['running', 'queued', 'pending'].includes(evidence.status)) {
+    return blocked('codex_native_pending', 'The native security review is still in progress.');
+  }
+  if (evidence.status !== 'completed') return invalid('The latest native security review has not completed.');
+  const state = securityState(summary);
+  if (state?.commit_sha !== head || state.status !== 'completed') {
+    return invalid('The native security result summary is missing or inconsistent.');
+  }
+
+  // A summary does not carry a task ID. Never infer a clean outcome by pairing
+  // two independent "latest" records: every observed receipt for this head must
+  // be clean, regardless of overlapping tasks or their completion order.
+  const receipt = relevant[0];
+  if (!receipt) {
+    const age = now - Date.parse(summary.updated_at);
+    return Number.isFinite(age) && age >= -300_000 && age <= 300_000
+      ? blocked('codex_native_pending', 'The completed native review is still publishing its result receipt.')
+      : invalid('No recent native security result receipt for the current head is available.');
+  }
+  const checked = [summary, ...relevant];
+  if (checked.length > 100) return invalid('Too many native receipts to verify in one consistent snapshot.');
+
+  let verifiedNodes;
+  const problem = await prove(checked, { history: true,
+    verified: nodes => { verifiedNodes = nodes; } });
+  if (problem) return snapshotChanged ? changing() : invalid(problem);
+  const finished = Date.parse(summary.updated_at), issued = Date.parse(receipt.created_at);
+  if (!Number.isFinite(finished) || !Number.isFinite(issued) || Math.abs(finished - issued) > 300_000 ||
+      now - finished < -300_000 || now - finished > 7 * 24 * 60 * 60_000) {
+    return invalid('The native receipt is stale or does not match the latest review completion.');
+  }
+  let history = verifiedNodes?.find(node => node.id === summary.node_id)?.userContentEdits;
+  const initialHistory = JSON.stringify(history);
+  const revisions = [], cursors = new Set();
+  while (true) {
+    if (!Array.isArray(history?.nodes) || typeof history.pageInfo?.hasNextPage !== 'boolean') {
+      return invalid('The complete native task history is unavailable.');
+    }
+    revisions.push(...history.nodes);
+    if (revisions.length > 1000) return invalid('The native task history exceeds the verification bound.');
+    if (!history.pageInfo.hasNextPage) break;
+    const cursor = history.pageInfo.endCursor;
+    if (!cursor || cursors.has(cursor) || revisions.length >= 1000) return invalid('Native task history is truncated.');
+    cursors.add(cursor);
+    const problem = await prove([summary], { history: true,
+      historyCursor: cursor, verified: nodes => { history = nodes[0]?.userContentEdits; } });
+    if (problem) return snapshotChanged ? changing() : invalid(problem);
+  }
+  if (revisions.some(edit => edit.deletedAt !== null) ||
+      Math.min(...revisions.map(edit => Date.parse(edit.editedAt))) !== Date.parse(summary.created_at)) {
+    return invalid('Native task history is deleted or missing its original revision.');
+  }
+  const starts = [];
+  for (const edit of revisions) {
+    if (edit.deletedAt !== null || edit.editor?.__typename !== 'Bot' || edit.editor.databaseId !== NATIVE_CODEX_BOT ||
+        typeof edit.diff !== 'string') continue;
+    let previous;
+    try { previous = JSON.parse(edit.diff.match(marker)?.[1]); } catch { previous = null; }
+    const previousState = securityState({ body: edit.diff });
+    if (!(previous?.headSha === head && previous.status === 'running') &&
+        !(previousState?.commit_sha === head && previousState.status === 'running') &&
+        !visibleNativeRunning(edit.diff, head)) continue;
+    if (previous?.repository !== evidence.repository || previous.pullRequestNumber !== evidence.pullRequestNumber ||
+        previous.headSha !== head || previous.status !== 'running' ||
+        previousState?.commit_sha !== head || previousState.status !== 'running') {
+      return ambiguous('A current-head running revision has inconsistent task metadata; a fresh head is required.');
+    }
+    const row = edit.diff.match(/^\| 🔒 \*\*Security Review\*\* \| 🔄 \*\*Running\*\* since <relative-time datetime="([^"]+)">[^<]+<\/relative-time> \| `([0-9a-f]{7,40})` \|/m);
+    const start = Date.parse(row?.[1]), edited = Date.parse(edit.editedAt);
+    if (!row || !head.startsWith(row[2]) || !Number.isFinite(start) || !Number.isFinite(edited) ||
+        start > edited || edited - start > 300_000) {
+      return ambiguous('A current-head running revision has unsupported task-start evidence; a fresh head is required.');
+    }
+    starts.push({ start, edited });
+  }
+  if (!starts.length) return invalid('The native task start is unavailable.');
+  if (starts.length !== 1 || starts.some(item => item.edited + 1000 > issued)) {
+    return ambiguous('Native task history may hide another pending task; a fresh head is required.');
+  }
+  const started = starts[0].start;
+  const tasks = new Set(relevant.map(candidate => candidate.body.match(
+    /^\[View security finding report\]\(https:\/\/chatgpt\.com\/codex\/(?:cloud\/)?tasks\/([a-zA-Z0-9_-]+)\)$/m)?.[1]));
+  if (tasks.size !== 1 || relevant.some(candidate => Date.parse(candidate.created_at) < starts[0].edited + 1000)) {
+    return ambiguous('Native receipts cannot be correlated to one task start; a fresh head is required.');
+  }
+  if (tasks.has(undefined)) return invalid('The native receipt task identity is unavailable.');
+  for (const candidate of relevant) {
+    const sha = candidate.body.match(/^\*\*Reviewed commit:\*\* `([0-9a-f]{10,40})`$/m)?.[1];
+    const task = candidate.body.match(/^\[View security finding report\]\((https:\/\/chatgpt\.com\/codex\/(?:cloud\/)?tasks\/[a-zA-Z0-9_-]+)\)$/m)?.[1];
+    if (!sha || !head.startsWith(sha) || !task) {
+      return invalid('The native security receipt does not establish a clean review for this head.');
+    }
+    // Resolve the provider's abbreviation through GitHub's commit object API. A prefix
+    // collision must fail closed; startsWith alone would bind only 40 bits of the SHA.
+    if (sha.length < 40) {
+      // The commit endpoint also accepts named refs. Do not let a hex-named branch/tag
+      // shadow an ambiguous object abbreviation (including Git's other DWIM namespaces).
+      const refs = [sha, `tags/${sha}`, `heads/${sha}`, `remotes/${sha}`, `remotes/${sha}/HEAD`];
+      try {
+        const named = await Promise.all(refs.map(async ref => {
+          try { await github.rest.git.getRef({ ...context.repo, ref }); return true; }
+          catch (error) { if (error.status === 404) return false; throw error; }
+        }));
+        if (named.some(Boolean)) return invalid('The abbreviated reviewed SHA is shadowed by a named Git reference.');
+      } catch {
+        return invalid('Named-reference ambiguity could not be checked.');
+      }
+    }
+    let reviewed;
+    try {
+      ({ data: reviewed } = await github.rest.repos.getCommit({ ...context.repo, ref: sha }));
+    } catch {
+      return invalid('The reviewed commit is missing, ambiguous or could not be resolved.');
+    }
+    if (reviewed.sha !== head) return invalid('The reviewed commit does not resolve to the full current head.');
+    if (!candidate.body.split('\n').includes('Security review completed. No security issues were found in this pull request.')) {
+      return candidate.body.split('\n').some(line => line.startsWith('Security review completed. '))
+        ? blocked('codex_native_incomplete', 'The completed native review does not report a clean result.')
+        : invalid('The native security receipt format is unsupported.');
+    }
+  }
+  // Commit/ref resolution can take several API calls. Reauthenticate after it,
+  // including history, so an intervening task cannot retain the earlier result.
+  const finalProblem = await prove(checked, { history: true, verified: nodes => {
+    if (JSON.stringify(nodes.find(node => node.id === summary.node_id)?.userContentEdits) !== initialHistory) {
+      snapshotChanged = true;
+    }
+  } });
+  if (snapshotChanged) return changing();
+  if (finalProblem) return invalid(finalProblem);
+  if (!relevant.includes(receipt)) return invalid('The latest receipt is not bound to the current head.');
+  return { ...passed('codex_native_completed',
+    'The trusted Codex GitHub app reports a completed, clean security review for this exact PR/head. No human attestation is required.',
+    receipt.html_url), receipt_created_at: receipt.created_at, review_started_at: new Date(started).toISOString() };
+}
+
+const NATIVE_CONTEXT_WORKFLOW = '.github/workflows/native-security-context.yml';
+
+async function verifiedNativeContext({ github, context, head, base, scope, reviewStartTime, artifactReader = readArtifact }) {
+  const invalid = reason => blocked('codex_native_context_invalid', reason);
+  const unavailable = reason => blocked('codex_native_context_unavailable', reason);
+  if (!SHA.test(base ?? '') || !Array.isArray(scope)) return invalid('Native review context is incomplete.');
+  let repository;
+  try {
+    ({ repository } = await github.graphql(`query NativeContext($owner:String!,$repo:String!,$number:Int!) {
+      repository(owner:$owner,name:$repo) { pullRequest(number:$number) {
+        baseRefName baseRefOid headRefOid baseRef { target { oid } }
+        timelineItems(first:100,itemTypes:[BASE_REF_CHANGED_EVENT,BASE_REF_FORCE_PUSHED_EVENT]) {
+          nodes { __typename } pageInfo { hasNextPage }
+        }
+      } }
+    }`, { owner: context.repo.owner, repo: context.repo.repo, number: context.payload.pull_request.number }));
+  } catch { return unavailable('The native review base history could not be verified.'); }
+  const pr = repository?.pullRequest;
+  if (!SHA.test(pr?.baseRef?.target?.oid ?? '')) return unavailable('The actual base branch could not be verified.');
+  if (pr?.baseRef?.target?.oid !== base) return blocked('stale_base', 'The actual base branch changed; refresh the PR head and review context.');
+  if (pr?.baseRefName !== 'main' || pr.baseRefOid !== base || pr.headRefOid !== head ||
+      !Array.isArray(pr.timelineItems?.nodes) || pr.timelineItems.nodes.length !== 0 ||
+      pr.timelineItems?.pageInfo?.hasNextPage !== false) {
+    return invalid('Native completion requires an unchanged main target and no retarget/force-push history.');
+  }
+  const name = `native-review-context-${context.payload.pull_request.number}-${head}`;
+  let artifacts;
+  try { artifacts = await github.paginate('GET /repos/{owner}/{repo}/actions/artifacts', { ...context.repo, name, per_page: 100 }); }
+  catch { return unavailable('Trusted native review context artifacts could not be read.'); }
+  let earliest = Infinity, count = 0;
+  for (const artifact of artifacts) {
+    if (artifact.name !== name || artifact.expired || !artifact.workflow_run?.id) continue;
+    let run;
+    try { ({ data: run } = await github.rest.actions.getWorkflowRun({ ...context.repo, run_id: artifact.workflow_run.id })); }
+    catch { return unavailable('The context producer run could not be verified.'); }
+    if (run.path !== NATIVE_CONTEXT_WORKFLOW || run.event !== 'workflow_dispatch' || run.head_branch !== 'main' ||
+        run.head_repository?.full_name !== `${context.repo.owner}/${context.repo.repo}`) continue;
+    if (run.head_sha !== base) continue;
+    let report;
+    try { report = await artifactReader({ github, coordinates: context.repo, run, name, filename: 'native-review-context.json' }); }
+    catch { return unavailable('The trusted context record could not be read.'); }
+    if (!report && ['queued', 'in_progress', 'requested', 'waiting', 'pending'].includes(run.status)) {
+      return blocked('codex_native_context_pending', 'The trusted context producer is still publishing its current attempt.');
+    }
+    if (!report || report.pull_request !== context.payload.pull_request.number || report.head_sha !== head ||
+        report.base_sha !== base || report.base_ref !== 'main' || report.workflow_sha !== run.head_sha ||
+        !sameScope(report.scope, scope)) {
+      return invalid('The native review context belongs to another base or changed-file scope.');
+    }
+    const created = Date.parse(artifact.created_at);
+    if (!Number.isFinite(created)) return invalid('The native context timestamp is unavailable.');
+    earliest = Math.min(earliest, created); count++;
+  }
+  if (!count) return blocked('codex_native_context_pending', 'Waiting for the trusted base/scope context producer.');
+  if (!Number.isFinite(Date.parse(reviewStartTime)) || earliest + 1000 > Date.parse(reviewStartTime)) {
+    return invalid('The native task started before its trusted review context.');
+  }
+  return null;
+}
+
 function evaluate({ head, scope, triage, claude, approval, request, rejection, failed, providerPending }) {
   if (approval) return passed(approval.mode === 'codex' ? 'codex_completed_attested' : 'manual_review_approved',
     'A maintainer explicitly attested the exact-head review; this is not automated verification.', approval.url);
@@ -114,14 +430,15 @@ function parseApproval(comment, head) {
     if (url.username || url.password || url.search) return null;
     if (match[1] === 'codex' && (url.hostname !== 'chatgpt.com' ||
         !/^\/codex\/(?:cloud\/)?tasks\/[^/]+\/?$/.test(url.pathname))) return null;
-    return { mode: match[1], report: url, url: comment.html_url };
+    return { mode: match[1], report: url, url: comment.html_url,
+      base_sha: body.match(/^Reviewed base: ([0-9a-f]{40})$/m)?.[1] ?? null };
   } catch { return null; }
 }
 
-async function approvedReview({ github, coordinates, comments, head, scope }) {
+async function approvedReview({ github, coordinates, comments, head, scope, base }) {
   for (const comment of [...comments].reverse()) {
     const approval = parseApproval(comment, head);
-    if (!approval) continue;
+    if (!approval || !SHA.test(base ?? '') || approval.base_sha !== base) continue;
     let permission;
     try {
       ({ data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
@@ -143,6 +460,7 @@ async function approvedReview({ github, coordinates, comments, head, scope }) {
       const marker = `<!-- manual-security-review:${head} -->`;
       if (!(report.body ?? '').includes(marker) || !(report.body ?? '').includes('Result: No unresolved findings')) continue;
       if (!scope.every(file => (report.body ?? '').includes(`\`${file}\``))) continue;
+      if (!(report.body ?? '').split('\n').includes(`Reviewed base: ${base}`)) continue;
     }
     return approval;
   }
@@ -179,6 +497,8 @@ async function snapshot({ github, context, expectedHead, artifactReader = readAr
   if (!SHA.test(expectedHead) || pr.head.sha !== expectedHead) {
     return blocked('stale_head', 'A new push invalidated this run; the new head needs its own checks and review.');
   }
+  const eventBase = context.payload.pull_request.base?.sha;
+  if (eventBase && pr.base.sha !== eventBase) return blocked('stale_base', 'The PR base changed; its new context needs fresh checks.');
   const exemption = pr.draft ? 'draft' : pr.state !== 'open' ? 'closed' :
     pr.head.repo?.full_name !== `${coordinates.owner}/${coordinates.repo}` ? 'fork' :
       pr.user.login === 'dependabot[bot]' ? 'Dependabot' :
@@ -191,11 +511,69 @@ async function snapshot({ github, context, expectedHead, artifactReader = readAr
   const scope = [...new Set(files.flatMap(file => file.status === 'renamed'
     ? [file.filename, file.previous_filename] : [file.filename]))].sort();
   const comments = await github.paginate(github.rest.issues.listComments, { ...coordinates, per_page: 100 });
-  const approval = await approvedReview({ github, coordinates, comments, head: expectedHead, scope });
-  // Approval is explicit, head-bound and recorded separately from provider completion.
-  if (approval) return evaluate({ head: expectedHead, scope, approval });
-  const codex = await codexVerifier({ github, context, comments, head: expectedHead,
-    base: pr.base.sha, scope });
+  const commentVersion = items => JSON.stringify(items.map(item => ({
+    id: item.id, node_id: item.node_id, body: item.body, updated_at: item.updated_at,
+    created_at: item.created_at, html_url: item.html_url, user: item.user && {
+      id: item.user.id, login: item.user.login, type: item.user.type,
+    }, app: item.performed_via_github_app?.id,
+  })).sort((a, b) => String(a.id).localeCompare(String(b.id))));
+  const initialComments = commentVersion(comments);
+  const initialBase = pr.base.sha, initialBaseRef = pr.base.ref;
+  let native = await verifiedNativeCodexReview({ github, context, comments, head: expectedHead });
+  const initialNative = native;
+  const finish = async result => {
+    if (!result.allowed) return result;
+    const changing = () => blocked('codex_native_pending',
+      'Review evidence changed during verification; waiting for a consistent fresh snapshot.');
+    // Context, artifacts, permissions and signed-source verification all perform
+    // asynchronous reads. Every successful route must finish with fresh evidence.
+    const fresh = await github.paginate(github.rest.issues.listComments, { ...coordinates, per_page: 100 });
+    if (commentVersion(fresh) !== initialComments) return changing();
+    if (initialNative?.allowed) {
+      const current = await verifiedNativeCodexReview({ github, context, comments: fresh, head: expectedHead });
+      if (!current?.allowed) return current ?? changing();
+      if (current.evidence !== initialNative.evidence ||
+          current.review_started_at !== initialNative.review_started_at ||
+          current.receipt_created_at !== initialNative.receipt_created_at) return changing();
+    }
+    const { data: live } = await github.rest.pulls.get({ ...context.repo, pull_number: coordinates.issue_number });
+    if (live.head.sha !== expectedHead) return blocked('stale_head', 'The PR head changed during review verification.');
+    if (live.base.sha !== initialBase || live.base.ref !== initialBaseRef) {
+      return blocked('stale_base', 'The PR base changed during review verification.');
+    }
+    const finalComments = await github.paginate(github.rest.issues.listComments, { ...coordinates, per_page: 100 });
+    return commentVersion(finalComments) === initialComments ? result : changing();
+  };
+  if (native?.allowed) {
+    const contextResult = await verifiedNativeContext({ github, context, head: expectedHead,
+      base: pr.base.sha, scope, reviewStartTime: native.review_started_at, artifactReader });
+    if (contextResult) native = contextResult;
+  }
+  let codex;
+  try {
+    codex = await codexVerifier({ github, context, comments, head: expectedHead,
+      base: pr.base.sha, scope });
+  } catch {
+    codex = blocked('codex_evidence_invalid', 'Signed provider evidence could not be verified.');
+  }
+  // Known incomplete/finding results remain blocked. Invalid/unavailable provider
+  // evidence can still use an explicitly verified independent human contingency.
+  if (codex?.state === 'codex_local_incomplete') return codex;
+  if (['codex_native_incomplete', 'codex_native_ambiguous', 'stale_base'].includes(native?.state)) return native;
+  if (native?.state === 'codex_native_context_invalid') return finish(codex?.allowed ? codex : native);
+  if (['codex_native_context_pending', 'codex_native_context_unavailable'].includes(native?.state)) {
+    if (codex?.allowed) return finish(codex);
+    const contingency = await approvedReview({ github, coordinates, comments, head: expectedHead,
+      scope, base: pr.base.sha });
+    return finish(contingency ? evaluate({ head: expectedHead, scope, approval: contingency }) : native);
+  }
+  if (native?.allowed) return finish(native);
+  if (native?.state === 'codex_native_pending') return native;
+  const approval = await approvedReview({ github, coordinates, comments, head: expectedHead,
+    scope, base: pr.base.sha });
+  if (approval) return finish(evaluate({ head: expectedHead, scope, approval }));
+  if (codex?.allowed) return finish(codex);
+  if (native) return native;
   if (codex) return codex;
   // A PR can change the triage script embedded in this workflow. Preserve
   // the provider's self-change guard without trusting its edited skip output.
@@ -255,7 +633,7 @@ async function snapshot({ github, context, expectedHead, artifactReader = readAr
   const rejection = request && comments.find(comment => comment.user?.login === 'chatgpt-codex-connector[bot]' &&
     comment.user?.type === 'Bot' && comment.created_at >= request.created_at &&
     /(?:create a Codex account|connect to github|unable to|could not|not authorized|not enabled)/i.test(comment.body ?? ''));
-  return evaluate({ head: expectedHead, scope, triage, claude, approval, request, rejection, failed, providerPending });
+  return finish(evaluate({ head: expectedHead, scope, triage, claude, approval, request, rejection, failed, providerPending }));
 }
 
 async function enforce({ github, context, core, expectedHead, timeoutMs = 20 * 60_000,
@@ -270,22 +648,22 @@ async function enforce({ github, context, core, expectedHead, timeoutMs = 20 * 6
     }
     if (result.state !== previous) core.info(`Security review: ${result.state}. ${result.reason}`);
     previous = result.state;
-    if (result.allowed || ['stale_head', 'codex_rejected', 'codex_local_incomplete', 'codex_evidence_invalid', 'manual_review_required', 'claude_failed', 'triage_failed', 'scope_unavailable', 'evidence_unavailable'].includes(result.state)) break;
+    if (result.allowed || ['stale_head', 'codex_rejected', 'codex_local_incomplete', 'codex_evidence_invalid', 'manual_review_required', 'claude_failed', 'triage_failed', 'scope_unavailable', 'evidence_unavailable', 'codex_native_incomplete', 'codex_native_ambiguous', 'codex_native_invalid', 'codex_native_context_invalid', 'codex_native_context_unavailable', 'stale_base'].includes(result.state)) break;
     if (now() >= deadline) { result = blocked('timed_out', `Timed out while ${result.state}: ${result.reason}`); break; }
     await wait(Math.min(intervalMs, deadline - now()));
   } while (true);
   await core.summary.addHeading('Security review completion').addRaw(
     `State: **${result.state}**\n\nHead: \`${expectedHead}\`\n\n${result.reason}\n\n` +
     (result.evidence ? `Evidence: ${result.evidence}\n` : '') +
-    (!result.allowed ? '\nRecovery: publish fresh signed evidence from the trusted local Codex launcher, ' +
-      'or obtain explicit maintainer approval of an independent manual report. No Claude allowance is required. ' +
+    (!result.allowed ? '\nRecovery: obtain verified native completion with its trusted current context, publish fresh signed evidence from the trusted local Codex launcher, ' +
+      'or use the optional base-bound independent human contingency when provider evidence is unavailable. Verified native and signed-local completion need no human confirmation. ' +
       'See [review recovery](https://github.com/' + context.repo.owner + '/' + context.repo.repo +
       '/blob/main/docs/security-automation.md#recovery-and-explicit-human-contingency). ' +
-      'After approval, rerun all failed jobs in this CI run together.\n' : '')).write();
+      'After completion or optional approval, rerun all failed jobs in this CI run together.\n' : '')).write();
   core.setOutput('security_review_state', result.state);
   if (!result.allowed) core.setFailed(`Security review gate blocked: ${result.state}. ${result.reason}`);
   return result;
 }
 
 module.exports = { evaluate, parseApproval, approvedReview, readArtifact, snapshot, enforce,
-  signedCodexPayload, verifiedCodexReview, CODEX_SIGNERS, CODEX_SOURCES };
+  signedCodexPayload, verifiedCodexReview, verifiedNativeCodexReview, verifiedNativeContext, CODEX_SIGNERS, CODEX_SOURCES };

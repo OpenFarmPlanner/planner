@@ -29,6 +29,9 @@
     "graphical": "Gráfico"
   },
   "graphical": {
+    "layoutLoadError": "No se ha podido cargar el gráfico. Vuelve a intentarlo.",
+    "noFields": "Esta ubicación aún no tiene parcelas. Cambia a la lista para añadirlas.",
+    "locationSelector": "Ubicación",
     "title": "Vista gráfica de parcelas",
     "viewMode": "Modo",
     "modeAriaLabel": "Seleccionar modo",
@@ -52,6 +55,8 @@
     "panDown": "Desplazar hacia abajo",
     "panLeft": "Desplazar a la izquierda",
     "panRight": "Desplazar a la derecha",
+    "rotateLeft": "Girar la vista 90° a la izquierda",
+    "rotateRight": "Girar la vista 90° a la derecha",
     "fitToView": "Ajustar todo",
     "enterFullscreen": "Pantalla completa",
     "exitFullscreen": "Salir de pantalla completa",

@@ -12,6 +12,7 @@ import {
 } from '../pages/cropsHistoryUtils';
 import i18n from '../i18n';
 import type { CropHistoryEntry } from '../api/types';
+import { SUPPORTED_LANGUAGES } from '../i18n/languages';
 
 const t = i18n.getFixedT('de', 'crops');
 
@@ -159,6 +160,26 @@ describe('isCurrentHistoryEntry', () => {
 
 describe('formatHistoryChangeValue', () => {
   const value = (raw: unknown, field: string): string => formatHistoryChangeValue(raw, field, t);
+
+  it.each(SUPPORTED_LANGUAGES.map(({ code }) => code))('shows plant-health names, origins and distinct catalogue identities in %s', code => {
+    const translate = i18n.getFixedT(code, 'crops');
+    const first = '00000000-0000-0000-0000-000000000001';
+    const second = '00000000-0000-0000-0000-000000000002';
+    const display = formatHistoryChangeValue({ entries: [
+      { name: 'Same name' }, { name: 'Same name', catalogue_identity: first }, { name: 'Same name', catalogue_identity: second },
+    ] }, 'plant_health', translate);
+    expect(display).toBe(`Same name · ${translate('plantHealth.local')}; Same name · ${translate('plantHealth.catalogue')} (${first}); Same name · ${translate('plantHealth.catalogue')} (${second})`);
+    expect(getHistoryChangeFieldLabel({ field: 'plant_health', old_value: null, new_value: null }, translate)).toBe(translate('plantHealth.label'));
+    expect(formatHistoryChangeValue(null, 'plant_health', translate)).toBe(translate('plantHealth.unspecified'));
+    expect(formatHistoryChangeValue({ entries: [] }, 'plant_health', translate)).toBe(translate('plantHealth.emptySelection'));
+    expect(translate('plantHealth.unspecified')).not.toBe(translate('plantHealth.emptySelection'));
+  });
+
+  it('handles malformed historical plant-health objects without rendering raw JSON', () => {
+    for (const raw of [{ entries: [null] }, { entries: [{}] }, { entries: 3 }, {}]) {
+      expect(value(raw, 'plant_health')).toBe(t('history.complexValue'));
+    }
+  });
 
   it('renders every kind of empty as the same placeholder', () => {
     expect(value(null, 'name')).toBe('Nicht gesetzt');

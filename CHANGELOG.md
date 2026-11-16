@@ -6,7 +6,22 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
 
 ## Unreleased
 
+- Add private structured pest/disease selections with explicit catalogue references, live variety inheritance, history and compatible JSON/CSV/XLSX/ODS exchange while preserving explanatory prose.
+
+- Give each selected growing-area location a full graphical workspace with shared topbar controls and retained per-location cameras.
+
+- Shorten Portuguese, Italian and Spanish planting-plan date headers and allow two-line table headings while preserving explicit form and export labels.
+
+- Select which library varieties to import with a culture, and add missing varieties later with explicit comparisons and atomic rollback.
+
 ### Features
+
+- Add the plant-health catalogue foundation (#1011): stable identities, seven-language
+  names, sourced and qualified host relationships, auditable moderation, and a
+  platform-token maintenance API. Private crop tags and sharing follow separately.
+- Platform admins can update plant-family language labels through the
+  translation-only API using a write-scoped crop-library token. Existing
+  languages, family identities, crop links and rotation defaults are preserved.
 
 - Add Dutch UI, public/legal pages, emails and crop-library translation support,
   with nl-NL formatting for Dutch and Belgian browser variants. Preserve legal
@@ -80,6 +95,10 @@ The format is based on Conventional Commits and is managed by Python Semantic Re
   screens keep tap-to-edit.
 
 ### Fixes
+
+- Crops: library synchronization returns an actionable name conflict instead of
+  HTTP 500, preserves both cultures and their references, and keeps comparison
+  decisions open for correction or cancellation (#1145).
 
 - Anbauflächen: clicking a cell in another row while a row was being edited
   no longer makes the focus jump back to the saved row; the clicked cell

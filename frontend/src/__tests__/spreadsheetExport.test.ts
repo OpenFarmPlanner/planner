@@ -86,7 +86,7 @@ describe('exportCropsToSpreadsheet', () => {
   it('exports the declared column kinds, including germination ranges and flags', () => {
     const types = new Set(getLocalizedCropColumns(t).map((column) => column.type));
     expect(types).toEqual(new Set([
-      'string', 'number', 'list', 'companions', 'timingWindows', 'range', 'boolean',
+      'string', 'number', 'list', 'companions', 'timingWindows', 'range', 'boolean', 'plantHealth',
     ]));
     const rows = buildSheetData([crop({
       germination_temperature_optimal_min_c: 18,

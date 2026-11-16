@@ -115,9 +115,15 @@ erDiagram
   position do fields use compact schematic rows fitted to the viewport.
   Stored positions and world sizes are preserved; dimensions determine aspect
   ratio, while area-only records use approximate rectangles, not georeferencing.
-  Beds remain visible in the overview. Their single-line labels follow the
-  longer edge (vertical for tall beds), use an ellipsis within the bed and hide
-  only when there is insufficient screen space; clicking opens the full details.
+  The default display turns the stored layout 90° so length runs horizontally
+  and width vertically. Each location has left/right 90° view controls; rotating
+  refits the view and does not write layouts or change physical dimensions.
+  The angle is local to the mounted view. Field title strips stay at the top;
+  beds are projected between the stored and displayed usable areas, and dragging
+  is inversely projected before saving so existing positions remain compatible.
+  Beds remain visible in the overview. Their single-line labels always stay
+  horizontal, use an ellipsis within the bed and hide only when there is
+  insufficient horizontal screen space; clicking opens the full details.
   Task indicators and quick actions are separate work (#975).
   For local acceptance, `seed_graphical_layout_acceptance --username USER
   --database-name LOCAL_DATABASE` previews an isolated project with three plots
@@ -354,6 +360,17 @@ unknown) and `pests_diseases` (text). Like germination they are inheritable
 and part of library sync; no planning check reads them yet. See
 [crop-library-architecture.md](./crop-library-architecture.md#site-life-cycle-and-plant-health).
 
+`Crop.plant_health` separately holds private structured selections as a nullable
+JSON object with an `entries` array (at most 40). Entries distinguish a local
+name from an explicit stable catalogue UUID; names never imply identity or
+confirmed host evidence. Null inherits on a linked variety, while
+`{"entries": []}` is an explicit empty override. Omission preserves stored
+values. Migration 0142 adds the nullable column without parsing existing prose;
+history and legacy snapshots preserve that distinction. This private field is
+not yet a public library copy field. See
+[private crop selections](plant-health-catalogue.md#private-crop-selections) for
+validation, portable files, rollback behavior and the guarded local fixture.
+
 Task synchronization (#894) retains generated deletion identities in server-owned
 `deleted_at` (hidden from task API reads), and uses SET_NULL for the planting-plan
 relation to preserve completed and manually managed work after plan removal.
@@ -377,3 +394,27 @@ remain shared and language independent. The compatibility `note` field is
 resolved to the requested language in API responses, without fallback. See
 [Companion planting](./crop-companions.md) for locale patches, migration,
 reciprocal pairs and reversible ordinary spreadsheet cells.
+
+## Plant-health identities and evidence
+
+The global catalogue is independent of project crops and their legacy plant-health
+notes. No farm row or public crop is modified by the catalogue schema migration.
+See [Plant-health catalogue](./plant-health-catalogue.md) for moderation and API contracts.
+
+```mermaid
+erDiagram
+    PlantHealthEntry ||--o{ PlantHealthTranslation : names
+    PlantHealthEntry ||--o{ PlantHealthHost : evidence
+    CropSpecies ||--o{ PlantHealthHost : official_species
+    PlantHealthEntry ||--o{ PlantHealthRevision : snapshots
+    User o|--o{ PlantHealthEntry : proposes_reviews
+    User o|--o{ PlantHealthRevision : actor
+```
+
+`PlantHealthEntry` has an immutable UUID, kind, status, scientific identity and
+source metadata. Each language has one `PlantHealthTranslation` with preferred
+name, synonyms, regional names and explicit documented scientific fallback.
+`PlantHealthHost` records sourced, optionally variety-qualified relationships;
+confirmation requires a specific pest/pathogen identity. `PlantHealthRevision`
+retains complete snapshots, including archived host links. Protected entry/species
+references and API archival prevent deletion of historical evidence.
