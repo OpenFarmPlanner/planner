@@ -40,6 +40,7 @@ EXPECTED_OPERATIONS = {
     ('/api/crops/{id}/', 'delete'),
     ('/api/crops/{id}/delete-preview/', 'get'),
     ('/api/crops/{id}/history/', 'get'),
+    ('/api/crops/{id}/plant-health/mappings/', 'post'),
     ('/api/crops/{id}/publish-public/', 'post'),
     ('/api/crops/{id}/undelete/', 'post'),
     ('/api/crops/duplicate-check/', 'get'),
@@ -124,6 +125,10 @@ class PublishedSurfaceTests(APITestCase):
         paths = self.schema['paths']
 
         self.assertIn('X-Project-Id', _header_names(paths['/api/crops/']['get']))
+        self.assertIn(
+            'X-Project-Id',
+            _header_names(paths['/api/crops/{id}/plant-health/mappings/']['post']),
+        )
         self.assertIn('X-Project-Id', _header_names(paths['/api/crop-imports/preview/']['post']))
         self.assertNotIn('X-Project-Id', _header_names(paths['/api/agent/context/']['get']))
 

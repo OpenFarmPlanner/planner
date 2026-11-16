@@ -114,6 +114,7 @@ Reachable endpoints (everything else returns 403 for tokens):
 |---|---|---|---|
 | `GET /api/crops/`, `GET /api/crops/{id}/` | ✅ | ✅ | ✅ |
 | `POST /api/crops/`, `PATCH`/`PUT /api/crops/{id}/` | ❌ | ✅ | ✅ |
+| `POST /api/crops/{id}/plant-health/mappings/` (explicit private mapping, optimistic timestamp) | ❌ | ✅ | ✅ |
 | `DELETE /api/crops/{id}/`, `POST /api/crops/{id}/undelete/` | ❌ | ❌ | ✅ |
 | `GET /api/crops/duplicate-check/`, `GET /api/crops/{id}/history/` | ✅ | ✅ | ✅ |
 | `GET /api/crops/{id}/delete-preview/`, `GET /api/crops/seed-rate-constraints/` | ✅ | ✅ | ✅ |
