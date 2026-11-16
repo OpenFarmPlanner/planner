@@ -14,6 +14,7 @@ from rest_framework import serializers
 from config.languages import SUPPORTED_LANGUAGE_CODES
 
 from .models import CropSpecies
+from .permissions import is_public_library_moderator
 from .plant_health_models import (
     PlantHealthEntry,
     PlantHealthHost,
@@ -249,7 +250,9 @@ def write_entry(
                 entry=entry, language_code=language, defaults=row
             )
         record_revision(entry, actor, action)
-    return catalogue_queryset().get(pk=entry.pk)
+    return catalogue_queryset(
+        include_unpublished_hosts=is_public_library_moderator(actor)
+    ).get(pk=entry.pk)
 
 
 def write_host(

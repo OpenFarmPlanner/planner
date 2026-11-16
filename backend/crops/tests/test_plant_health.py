@@ -558,6 +558,11 @@ class PlantHealthApiTests(TestCase):
         row = self.client.get(f"{ENTRIES}{entry_id}/").data
         self.assertEqual({host["id"] for host in row["hosts"]}, {visible.pk, hidden.pk})
         self.assertEqual(self.client.get(f"{HOSTS}{hidden.pk}/").data["species_status"], "proposed")
+        response = self.client.patch(
+            f"{ENTRIES}{entry_id}/", {"eppo_code": ""}, format="json"
+        )
+        if response.status_code == 200:
+            self.assertEqual({host["id"] for host in response.data["hosts"]}, {visible.pk, hidden.pk})
 
     def token_client(self, user: Any, scope: str = "write") -> APIClient:
         _, raw = CropLibraryApiToken.create_token(
