@@ -8,7 +8,7 @@ from django.test import SimpleTestCase
 from rest_framework.test import APIClient
 
 from accounts.consent import record_acceptance
-from accounts.models import DocumentConsent
+from accounts.models import AccountTrustProfile, DocumentConsent
 from accounts.trust import grant_established_trust
 from crops.models import CropSpecies
 from crops.permissions import grant_public_library_moderator_access
@@ -701,3 +701,35 @@ class PublicPlantHealthTests(ProjectApiTestCase):
         self.assertEqual(
             self.public.translations.get(language_code="fr").description, "French notes stay"
         )
+
+
+    def test_moderated_owner_republication_retains_reopened_catalogue_reference(self):
+        self.entries[0].status = PlantHealthEntry.STATUS_PROPOSED
+        self.entries[0].save()
+        self.crop.notes = "Unrelated owner edit"
+        self.crop.save()
+        AccountTrustProfile.objects.filter(user=self.user).update(trust_level="new")
+        original = self.public.plant_health
+        response = self.client.post(
+            self.crop_url + "publish-public/",
+            {
+                "accepted_public_library_terms": True,
+                "crop_species_id": self.species.pk,
+                "original_language_code": "de",
+                "publish_as_general": True,
+            },
+            format="json",
+        )
+        self.assertIn(response.status_code, (201, 202), response.data)
+        proposal = PublicCropChangeProposal.objects.get(public_crop=self.public)
+        self.assertEqual(proposal.proposed_data["plant_health"], original)
+        self.assertEqual(proposal.proposed_data["notes"], "Unrelated owner edit")
+        grant_public_library_moderator_access(self.user)
+        approved = self.client.post(
+            self.public_url + f"change-proposals/{proposal.pk}/approve/", {}, format="json",
+        )
+        self.assertEqual(approved.status_code, 200, approved.data)
+        self.public.refresh_from_db()
+        self.crop.refresh_from_db()
+        self.assertEqual(self.public.plant_health, original)
+        self.assertIn({"name": "Unresolved private name"}, self.crop.plant_health["entries"])

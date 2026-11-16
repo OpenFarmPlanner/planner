@@ -731,6 +731,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 payload = build_public_crop_payload(
                     crop, public_variety=None if publish_as_general else crop.variety,
                     companion_note_language=note_language({'request': request}),
+                    retained_public_crop=public_crop,
                 )
                 proposed_data = {
                     field: value for field, value in payload.items()
