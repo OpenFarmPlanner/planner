@@ -132,7 +132,7 @@ describe('AccountSettingsPage', () => {
     expect(screen.getByRole('heading', { level: 3, name: 'Kulturbibliothek' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: 'Zugangsdaten' })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { level: 3, name: 'Anmeldemethoden' })).toBeInTheDocument();
-    expect(screen.getByText('Diese Anmeldemethoden sind mit deinem Konto verknüpft.')).toBeInTheDocument();
+    expect(await screen.findByText('Diese Anmeldemethoden sind mit deinem Konto verknüpft.')).toBeInTheDocument();
     expect(screen.getByText('E-Mail & Passwort · Aktiv')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'E-Mail-Adresse ändern' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Passwort ändern' })).toBeInTheDocument();

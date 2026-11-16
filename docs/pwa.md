@@ -15,7 +15,7 @@ directly rather than discovering it through a failing save.
 | --- | --- |
 | Build tool | **Vite 8** (`frontend/vite.config.ts`) |
 | Package manager | **npm** (`package-lock.json`; see [Backend Rules](../CLAUDE.md) for the backend's PDM) |
-| Node.js | **22 LTS** — CI pins `lts/*` (`.github/workflows/ci.yml`) and `'22'` (`frontend-build.yml`); the README's floor is Node 20 with npm 10 |
+| Node.js | **22 LTS** — CI pins `lts/*` (`.github/workflows/ci.yml`) and `'22'` (`frontend-build.yml`); the README's floor is Node 22 with npm 10 (i18next 27 requires Node ≥22) |
 | PWA plugin | `vite-plugin-pwa` in `generateSW` mode, wrapping Workbox |
 
 There is no Webpack anywhere in the repository.

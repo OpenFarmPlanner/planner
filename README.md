@@ -163,7 +163,7 @@ update to the privacy policy before implementation.
 
 - Python 3.12+
 - [PDM](https://pdm-project.org/)
-- Node.js 20+
+- Node.js 22+
 - npm 10+
 
 ## AI Agent Setup
@@ -175,7 +175,7 @@ Copilot and Codex agents work best when the local development environment includ
 - `git`
 - GitHub CLI (`gh`)
 - Python 3.12+ with PDM
-- Node.js 20+ with npm 10+
+- Node.js 22+ with npm 10+
 
 ### GitHub CLI setup
 
