@@ -33,12 +33,12 @@ form's headings:
 2. Allgemeine Informationen
 3. Kulturspezifische Eigenschaften (only supported species, filled own values)
 4. Fruchtfolge-Eigenschaften
-5. Zeitplanung
+5. Zeitplanung (cultivation type, growth duration, harvest duration)
 6. Pflanzabstände
 7. Ertrag
-8. Saatgutbedarf (the cultivation type lives here, as in the form)
+8. Saatgutbedarf (direct-sowing quantities, transplanting quantities, thousand-kernel weight)
 9. Zeiträume (crops page only: timing windows are project data)
-10. Keimung
+10. Keimung (including propagation duration)
 11. Standort und Pflanzengesundheit
 12. Mischkultur
 13. Notizen
@@ -46,7 +46,31 @@ form's headings:
 15. Lieferantendaten (crops page only; edited in its own form)
 16. Bibliotheksdaten (library only: original language, publication dates)
 
-Hiding empty sections never reorders the remaining ones.
+Hiding empty sections never reorders the remaining ones. The shared
+`CropTimingDetails` keeps cultivation type before the two durations in both read
+views, matching `TimingSection`; method labels still identify seed-rate rows.
+A cultivation method alone does not create an empty seed-demand section. Existing
+seed quantities, project safety margins, legacy quantities and local pin/variety
+markers remain in their respective groups.
+
+Within Site and plant health, both forms and both read views use the same order:
+light, water, life cycle, winter hardiness, pest/disease assignments, then the
+existing prevention/general notes. The assignments are a subordinate field label,
+not a peer section. They also keep the main heading when they are the only filled
+site/health field. Identity, spacing, yield and germination retain their shared
+form order; project tags, rotation breaks, timing windows, tasks and supplier data
+and library metadata remain in their own contexts. Display colour remains an
+identity/header control in read views and an editable form section.
+
+The assignment label and documented-host dialog title have contextual info
+buttons. Existing help text opens on hover or keyboard focus; click/tap keeps it
+open until another activation, Escape, blur or click-away. Escape dismisses help
+before the enclosing dialog, retaining trigger focus. The larger targets and
+viewport-bounded, scrollable help support narrow screens and enlarged text.
+Catalogue chips show a document icon and open the documented relationships;
+private-name chips are plain labels. Relationship evidence, source links and
+variety qualifications stay directly visible. Loading, unavailable-reference and
+error feedback remain inline.
 
 ## Empty values
 

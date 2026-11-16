@@ -1,6 +1,5 @@
 /**
- * TimingSection: cultivation type, then propagation, growth and harvest
- * duration in one row.
+ * TimingSection: cultivation type, growth and harvest duration.
  * @remarks Presentational, no internal state
  */
 import { Box, Typography, FormControl, InputLabel, MenuItem, TextField, Checkbox, ListItemText } from '@mui/material';

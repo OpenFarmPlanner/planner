@@ -220,6 +220,44 @@ inspect the preview and try delimiters/quotes and explicit clearing. Repeat at
 phone and desktop sizes and with another UI language. Public mapping/sync and
 filter acceptance remain pending until the next part.
 
+## Contextual crop help and ordering
+
+In private crops and the public library, **Site and plant health** is a main
+section and **Pests and diseases** is its smaller field label. Light, water, life
+cycle and winter hardiness come first, assignments next, then general prevention
+notes, matching the shared edit form. Cultivation type belongs to Timing, before
+growth/harvest duration; seed quantities remain in Seed demand. Empty read-only
+fields are omitted without changing the relative order. Editing still offers
+all fields. See [crop-detail.md](./crop-detail.md) for context-specific sections.
+
+The info button beside the assignment label contains the existing private-name,
+explicit-catalogue-selection and unknown/infestation/resistance explanations.
+The documented-host dialog's title info button explains catalogue evidence and
+variety/source qualifications. Hover and keyboard focus reveal help; click/tap
+keeps it open. Escape, repeated activation, blur or click-away dismisses it.
+Help uses the existing shared tooltip, a larger touch target and viewport bounds
+with scrolling for enlarged text. Blocking validation errors remain inline.
+The dialog's accessible name stays its title. Actual sources, qualifications and
+host evidence remain directly visible. Catalogue chips have an actionable
+document icon; private-name chips do not open unavailable catalogue details.
+
+For local acceptance, reuse the guarded catalogue and private-selection fixture
+commands documented above/below; first verify the real local database, existing
+moderator/user, species and catalogue IDs, and inspect the preview. In **Private
+plant-health acceptance**, compare the general crop and its inherited, empty and
+own-selection varieties in details and Edit. For a fully populated comparison,
+fill optional timing, seed, germination and site values in that isolated project;
+shared fields must stay in the edit form's order. Use the normal publish UI for a
+synthetic variety and explicit catalogue mapping to compare the same fields in
+public-library details and Edit with an existing local moderator. Do this only on
+the verified local test database. Check empty details against complete editors,
+private versus catalogue chips, hover, keyboard, touch, Escape and 200% text at
+375px, short landscape and desktop. Repeat a long help message in French. Sources
+and variety qualifications must remain visible without opening help. Fixture
+commands preserve manual edits on repeat; Cloud has not seeded localhost.
+The demo has no catalogue assignment fixture to rewrite; its shared form/detail
+renderers receive the same presentation changes without fabricated health data.
+
 ## Local manual acceptance data
 
 Cloud tests use disposable synthetic databases. They do not seed the owner's

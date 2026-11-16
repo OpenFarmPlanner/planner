@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { CropTimingDetails } from '../crops/CropTimingDetails';
 import { CropSeedDetails, type CropSeedRateRow, type ValueSource } from '../crops/CropSeedDetails';
 import i18n from '../i18n';
 import type { CultivationType } from '../api/types';
@@ -23,9 +24,11 @@ interface RenderOptions {
 
 const renderDetails = (options: RenderOptions = {}) =>
   render(
+    <>
+    <CropTimingDetails cultivationTypes={options.activeCultivationTypes ?? []} cultivationSource={options.cultivationTypeSource}
+      value={() => undefined} locale="de-DE" t={t} />
     <CropSeedDetails
       activeCultivationTypes={options.activeCultivationTypes ?? []}
-      cultivationTypeSource={options.cultivationTypeSource}
       seedRateRows={options.seedRateRows ?? []}
       showSeedSafetyMargin={options.showSeedSafetyMargin}
       sowingSafetyPercent={options.sowingSafetyPercent}
@@ -38,7 +41,7 @@ const renderDetails = (options: RenderOptions = {}) =>
       thousandKernelWeightSource={options.thousandKernelWeightSource}
       locale="de-DE"
       t={t}
-    />,
+    /></>,
   );
 
 const row = (overrides: Partial<CropSeedRateRow> = {}): CropSeedRateRow => ({

@@ -2098,7 +2098,7 @@
     }
   },
   "plantHealth": {
-    "label": "Entradas de plagas y enfermedades",
+    "label": "Plagas y enfermedades",
     "placeholder": "Escribe un nombre o elige una entrada del catálogo",
     "helper": "Los nombres escritos siguen siendo privados. Selecciona las entradas del catálogo de forma explícita. Hasta 40 entradas.",
     "local": "Nombre privado",

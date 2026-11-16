@@ -2044,7 +2044,7 @@
     }
   },
   "plantHealth": {
-    "label": "Schädlings- und Krankheitseinträge",
+    "label": "Schädlinge und Krankheiten",
     "placeholder": "Einzelnen Namen eingeben oder Katalogeintrag wählen",
     "helper": "Eingegebene Namen bleiben privat. Wähle Katalogeinträge ausdrücklich aus. Bis zu 40 Einträge.",
     "local": "Privater Name",

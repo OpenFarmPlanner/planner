@@ -31,9 +31,6 @@ export type ValueSource = 'fromCrop' | 'ownValue';
 
 interface CropSeedDetailsProps {
   activeCultivationTypes: CultivationType[];
-  cultivationTypeSource?: ValueSource | null;
-  /** The locally-pinned marker after the value (crop detail read view only). */
-  cultivationTypePin?: ReactNode;
   seedRateRows: CropSeedRateRow[];
   /**
    * The seed safety margin is a farm-specific planning decision, so views on
@@ -90,8 +87,6 @@ function ValueWithSource({
 /** The seed values of a crop detail read view; only filled-in values are shown. */
 export function CropSeedDetails({
   activeCultivationTypes,
-  cultivationTypeSource = null,
-  cultivationTypePin,
   seedRateRows,
   showSeedSafetyMargin = true,
   sowingSafetyPercent,
@@ -116,22 +111,6 @@ export function CropSeedDetails({
 
   return (
     <Box sx={seedDetailGridSx}>
-      {activeCultivationTypes.length > 0 && (
-        <Box sx={{ gridColumn: '1 / -1' }}>
-          <Typography variant="body2" color="text.secondary">
-            {t('form.cultivationType')}
-          </Typography>
-          <ValueWithSource source={cultivationTypeSource} pin={cultivationTypePin}>
-            {activeCultivationTypes
-              .map((item) => (
-                item === 'pre_cultivation'
-                  ? t('form.cultivationTypePreCultivation')
-                  : t('form.cultivationTypeDirectSowing')
-              ))
-              .join(', ')}
-          </ValueWithSource>
-        </Box>
-      )}
       {hasSingleSeedRate && (
         <Box>
           <Typography variant="body2" color="text.secondary">

@@ -94,6 +94,7 @@ import {
 import { applySavedCrops, withProjectImportStatus } from '../publicCropListMerge';
 import { MultilingualTextFieldSection } from '../components/MultilingualTextFieldSection';
 import { AppTooltip } from '../../components/AppTooltip';
+import { CropTimingDetails } from '../../crops/CropTimingDetails';
 import { CropSeedDetails, type CropSeedRateRow, type ValueSource } from '../../crops/CropSeedDetails';
 import { hasAnyDetailValue, hasDetailValue } from '../../crops/cropDetailFieldVisibility';
 import { VarietyValueLegend } from '../../crops/VarietyValueLegend';
@@ -133,7 +134,6 @@ import {
   arePublicValuesEqual,
   buildPublicCropDescriptionDrafts,
   buildThreadCommentTree,
-  formatDays,
   formatDiscussionPreview,
   getPublicAuthorLabel,
   formatLocalizedNumber,
@@ -154,12 +154,6 @@ import {
 } from '../components/publicCropLibrary/formatters';
 
 type PublicCropLoadStatus = 'loading' | 'success' | 'error';
-
-/** The timing values of a library entry, in the crop form's order. */
-const PUBLIC_TIMING_FIELDS = [
-  ['growth_duration_days', 'library.page.fields.growthDurationDays'],
-  ['harvest_duration_days', 'library.page.fields.harvestDurationDays'],
-] as const;
 
 export default function PublicCropLibraryPage() {
   const { user, refreshUser } = useAuth();
@@ -1975,15 +1969,12 @@ export default function PublicCropLibraryPage() {
                               </DetailGrid>
                             </DetailSection>
                           ) : null,
-                          hasAnyDetailValue(...PUBLIC_TIMING_FIELDS.map(([field]) => getPublicFieldValue(field, selectedCrop[field]))) ? (
+                          hasAnyDetailValue(publicActiveCultivationTypes, getPublicFieldValue('growth_duration_days', selectedCrop.growth_duration_days), getPublicFieldValue('harvest_duration_days', selectedCrop.harvest_duration_days)) ? (
                             <DetailSection key="timing" title={t('form.sectionTiming')}>
-                              <DetailGrid>
-                                {PUBLIC_TIMING_FIELDS
-                                  .filter(([field]) => hasDetailValue(getPublicFieldValue(field, selectedCrop[field])))
-                                  .map(([field, labelKey]) => (
-                                    <DetailRow key={field} label={t(labelKey)} value={formatDays(getPublicFieldValue(field, selectedCrop[field]), locale, t('library.page.notSpecified'), t('library.page.units.days'))} source={getPublicFieldSource(field)} />
-                                  ))}
-                              </DetailGrid>
+                              <CropTimingDetails cultivationTypes={publicActiveCultivationTypes}
+                                cultivationSource={getPublicFieldSource('cultivation_types') ?? getPublicFieldSource('cultivation_type')}
+                                value={field => getPublicFieldValue(field, selectedCrop[field])} source={getPublicFieldSource}
+                                locale={locale} t={t} />
                             </DetailSection>
                           ) : null,
                           hasAnyDetailValue(
@@ -2025,7 +2016,6 @@ export default function PublicCropLibraryPage() {
                             </DetailSection>
                           ) : null,
                           hasAnyDetailValue(
-                            publicActiveCultivationTypes,
                             publicSeedRateRows,
                             getPublicFieldValue('seeding_requirement', selectedCrop.seeding_requirement),
                             getPublicFieldValue('thousand_kernel_weight_g', selectedCrop.thousand_kernel_weight_g),
@@ -2033,7 +2023,6 @@ export default function PublicCropLibraryPage() {
                             <DetailSection key="seed" title={t('form.seedRateSectionTitle')}>
                               <CropSeedDetails
                                 activeCultivationTypes={publicActiveCultivationTypes}
-                                cultivationTypeSource={getPublicFieldSource('cultivation_types') ?? getPublicFieldSource('cultivation_type')}
                                 seedRateRows={publicSeedRateRows}
                                 showSeedSafetyMargin={false}
                                 seedingRequirement={getPublicFieldValue('seeding_requirement', selectedCrop.seeding_requirement)}
@@ -2058,13 +2047,15 @@ export default function PublicCropLibraryPage() {
                           ) : null,
                           (publicPlantHealth?.entries.length || hasAnyDetailValue(...SITE_HEALTH_FIELDS.map((field) => getPublicFieldValue(field, selectedCrop[field])))) ? (
                             <DetailSection key="siteHealth" title={t('siteHealth.title')}>
-                              {publicPlantHealth?.entries.length ? <Box sx={{ mb: 2 }}>
-                                <PlantHealthChips value={publicPlantHealth} />
-                              </Box> : null}
                               <DetailGrid>
-                                {SITE_HEALTH_FIELDS
-                                  .filter((field) => hasDetailValue(getPublicFieldValue(field, selectedCrop[field])))
-                                  .map((field) => <DetailRow key={field} label={t(field === 'pests_diseases' ? 'plantHealth.notes' : `siteHealth.fields.${field}`)} value={formatSiteHealthValue(field, getPublicFieldValue(field, selectedCrop[field]), t)} source={getPublicFieldSource(field)} />)}
+                                {SITE_HEALTH_FIELDS.filter(field => field !== 'pests_diseases' && hasDetailValue(getPublicFieldValue(field, selectedCrop[field])))
+                                  .map(field => <DetailRow key={field} label={t(`siteHealth.fields.${field}`)} value={formatSiteHealthValue(field, getPublicFieldValue(field, selectedCrop[field]), t)} source={getPublicFieldSource(field)} />)}
+                                {publicPlantHealth?.entries.length ? <Box sx={{ gridColumn: '1 / -1' }}>
+                                  <PlantHealthChips value={publicPlantHealth} />
+                                </Box> : null}
+                                {hasDetailValue(getPublicFieldValue('pests_diseases', selectedCrop.pests_diseases)) ? <Box sx={{ gridColumn: '1 / -1' }}>
+                                  <DetailRow label={t('plantHealth.notes')} value={formatSiteHealthValue('pests_diseases', getPublicFieldValue('pests_diseases', selectedCrop.pests_diseases), t)} source={getPublicFieldSource('pests_diseases')} />
+                                </Box> : null}
                               </DetailGrid>
                             </DetailSection>
                           ) : null,

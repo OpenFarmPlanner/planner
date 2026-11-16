@@ -63,12 +63,13 @@ test('hides empty crop details on the crops page at every viewport', async ({ pa
       'Sorten',
       'Fruchtfolge-Eigenschaften',
       'Zeitplanung',
-      'Saatgutbedarf',
       'Mischkultur',
       'Aufgabenvorlagen',
       'Lieferantendaten',
     ]);
     await expect(sections.getByText('0 Jahre')).toBeVisible();
+    await expect(sections.getByText('Anbauart', { exact: true })).toBeVisible();
+    await expect(sections.getByRole('heading', { name: 'Saatgutbedarf', exact: true })).toHaveCount(0);
     await expect(sections.getByText('Keine Angabe')).toHaveCount(0);
     await expect(page.getByRole('switch')).toHaveCount(0);
     await expect(page.getByText('Um einen Anbauplan zu erstellen, brauchst du mindestens eine Parzelle.', { exact: true })).toHaveCount(0);
@@ -107,7 +108,9 @@ test('hides empty details in the crop library and keeps the crop form order', as
     await expect(page.getByRole('heading', { level: 6, name: 'Zeitplanung' })).toBeVisible();
 
     const titles = await sectionTitles(page);
-    expect(titles).toEqual(expect.arrayContaining(['Allgemeine Informationen', 'Zeitplanung', 'Saatgutbedarf', 'Notizen']));
+    expect(titles).toEqual(expect.arrayContaining(['Allgemeine Informationen', 'Zeitplanung', 'Notizen']));
+    await expect(page.getByRole('main').getByText('Anbauart', { exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Saatgutbedarf', exact: true })).toHaveCount(0);
     expectFormOrder(titles, viewport.key);
     await expect(page.getByRole('main').getByText('Keine Angabe', { exact: true })).toHaveCount(0);
     await expectNoHorizontalOverflow(page, viewport.key);
