@@ -95,7 +95,9 @@ Before a project's first ordinary create/update/delete request,
 import-preview requests do not create that baseline. Mutating custom actions
 (including undelete, library import/link/sync, season transitions and layout or
 attachment writes) establish it too. Lazy creation of a default
-location gets its own creation revision. Later ordinary mutations continue to
+location gets its own creation revision. Every mutating request keeps the project
+write lock until its request transaction finishes, including after a baseline
+already exists, so it cannot enter an import capture window. Later ordinary mutations continue to
 write per-entity revisions, without serializing the whole project again.
 
 `history/import_operations.py` owns grouping and selective undo:
@@ -177,7 +179,10 @@ readable but cannot be destructively reconstructed by guessing.
 
 Crop timing edits record recalculated plan after-images inside the crop save's
 transaction, followed by the crop revision as the completed version boundary.
-Those derived plan rows remain in the audit trail and reconstruction, but cannot
+Nested supplier rows and seed packages also record their after-images/deletions
+before a final crop revision. Intermediate crop and child revisions remain
+internal, so selecting the completed action includes the entire committed nested
+write. Those derived plan rows remain in the audit trail and reconstruction, but cannot
 be selected as intermediate project versions. Ambiguous legacy season, template
 and generated-task deletion snapshots without a soft-delete after-state conflict
 instead of hard-deleting an archived row. Proof of later creation reads the live
@@ -262,6 +267,8 @@ cutoff per project. These anchors are required to reconstruct a recent target
 when an entity changes both before and after it. Timestamp ties use the ID.
 Keeping only the newest revision overall would discard the pre-target state.
 
+Explicit note-attachment deletion retains its bytes instead of deleting storage
+immediately, allowing its pre-delete baseline to recover the original file.
 Full restore, selective import undo and legacy batch revert retain cleanup metadata for media and
 note-attachment paths removed from the domain state, including cascades and
 replaced paths. `RetainedUpload` is cleanup metadata outside project versions;

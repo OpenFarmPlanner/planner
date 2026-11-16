@@ -33,6 +33,19 @@ from farm.models import (
     format_crop_display_name,
 )
 
+_internal_versions: ContextVar[bool] = ContextVar('internal_project_versions', default=False)
+
+
+@contextmanager
+def internal_project_versions() -> Iterator[None]:
+    """Hide intermediate revisions until their enclosing action has completed."""
+    token = _internal_versions.set(True)
+    try:
+        yield
+    finally:
+        _internal_versions.reset(token)
+
+
 _active_batch: ContextVar[BatchOperation | None] = ContextVar('history_batch', default=None)
 
 
@@ -178,6 +191,8 @@ def record_entity_revision(
         if candidate is not None and candidate.project_id == project.pk:
             batch_operation = candidate
             user_name = user_name or candidate.user_name
+    if _internal_versions.get():
+        snapshot = {**snapshot, "_project_version_internal": True}
     EntityRevision.objects.create(
         project=project,
         entity_type=entity_type,

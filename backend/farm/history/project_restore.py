@@ -1,6 +1,7 @@
 """Atomic project restoration with explicit absence and restorable checkpoints."""
 
 import json
+from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
@@ -53,6 +54,15 @@ CHECKPOINT_KEY = "project_state_v1"
 _TIMESTAMPS = {"created_at", "updated_at"}
 
 
+class ProjectStateEncoder(DjangoJSONEncoder):
+    """Preserve creation-time evidence through backup/restore round trips."""
+
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
+
+
 class ProjectRestoreConflict(Exception):
     """The historical state cannot be reconstructed or applied without guessing."""
 
@@ -70,7 +80,7 @@ def capture_project_state(project: Project, *, lock: bool = False) -> ProjectSta
             for row in rows:
                 row["timing_windows"] = [window.as_dict() for window in windows.get(row["id"], [])]
         state[label] = {str(row["id"]): row for row in rows}
-    return json.loads(json.dumps(state, cls=DjangoJSONEncoder))
+    return json.loads(json.dumps(state, cls=ProjectStateEncoder))
 
 
 def record_project_checkpoint(
@@ -101,8 +111,6 @@ def ensure_project_checkpoint(project: Project, *, user_name: str = "") -> None:
         entity_type="project",
         snapshot__has_key=CHECKPOINT_KEY,
     )
-    if checkpoints.exists():
-        return
     with transaction.atomic():
         lock_crop_project(project.pk)
         if not checkpoints.exists():
@@ -422,11 +430,16 @@ def _retain_removed_uploads(project: Project, state: ProjectState, current: Proj
             if row.get(field)
         }
 
+    retain_upload_paths(project, paths(current) - paths(state))
+
+
+def retain_upload_paths(project: Project, paths: set[str]) -> None:
+    """Keep removed bytes recoverable until the history retention window expires."""
     removed_at = timezone.now()
     RetainedUpload.objects.bulk_create(
         [
             RetainedUpload(project=project, storage_path=path, removed_at=removed_at)
-            for path in paths(current) - paths(state)
+            for path in paths
         ],
         update_conflicts=True,
         unique_fields=["storage_path"],

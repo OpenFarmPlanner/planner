@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 from accounts.demo_access import guest_demo_forbidden_response, is_active_guest_demo_user
 from config.responses import api_error_response
 from farm.history import _current_actor_label, _serialize_instance, record_entity_revision
-from farm.history.project_restore import ensure_project_checkpoint
+from farm.history.project_restore import ensure_project_checkpoint, retain_upload_paths
 from farm.image_processing import (
     ImageProcessingBackendUnavailableError,
     ImageProcessingError,
@@ -192,12 +192,13 @@ class NoteAttachmentDeleteView(APIView):
 
     def delete(self, request, attachment_id: int):
         active_project = get_active_project_or_400(request)
+        ensure_project_checkpoint(active_project, user_name=_current_actor_label(request))
         attachment = get_object_or_404(NoteAttachment, pk=attachment_id, project=active_project)
         attachment_id = attachment.pk
         attachment_project = attachment.project
         snapshot = _serialize_instance(attachment)
-        ensure_project_checkpoint(active_project, user_name=_current_actor_label(request))
-        attachment.image.delete(save=False)
+        paths = {attachment.image.name} if attachment.image.name else set()
+        retain_upload_paths(active_project, paths)
         attachment.delete()
         record_entity_revision(
             project=attachment_project,

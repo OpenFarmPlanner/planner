@@ -501,3 +501,58 @@ def test_concurrent_selected_variety_imports_commit_one_complete_scope():
         ["created"] * 4 + ["unchanged"] * 4
     )
     assert Crop.objects.filter(project=project).count() == 4
+
+
+@pytest.mark.django_db(transaction=True)
+def test_existing_baseline_mutations_cannot_enter_an_import_capture_window():
+    from concurrent.futures import ThreadPoolExecutor
+    from uuid import uuid4
+
+    from django.db import close_old_connections, connection, transaction
+    from rest_framework.test import APIClient
+
+    from farm.history.import_operations import execute_import_request
+    from farm.history.project_restore import ensure_project_checkpoint
+    from farm.models import BatchOperation, Crop, Project, ProjectMembership, Task
+    from farm.tests.api_base import User
+
+    if connection.vendor != 'postgresql':
+        pytest.skip('PostgreSQL import capture isolation regression')
+    user = User.objects.create_user(username='import-window-user')
+    project = Project.objects.create(name='Import window', slug='import-window')
+    ProjectMembership.objects.create(project=project, user=user, role='admin')
+    task = Task.objects.create(project=project, title='Independent original task')
+    ensure_project_checkpoint(project)
+
+    def update_task():
+        close_old_connections()
+        try:
+            client = APIClient()
+            client.force_authenticate(user=user)
+            return client.patch(f'/api/tasks/{task.pk}/', {'title': 'Independent later edit'},
+                                format='json', HTTP_X_PROJECT_ID=str(project.pk))
+        finally:
+            close_old_connections()
+
+    def run():
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            response = pool.submit(update_task).result(timeout=15)
+        assert response.status_code == 409
+        crop = Crop.objects.create(project=project, name='Import-owned crop')
+        return {'results': [{'status': 'created', 'crop_id': crop.pk}]}
+
+    with transaction.atomic():
+        execute_import_request(project, request_id=str(uuid4()), actor_id=user.pk,
+                               actor_label=user.username, phase='finalize', run=run)
+    task.refresh_from_db()
+    assert task.title == 'Independent original task'
+    batch = BatchOperation.objects.get(project=project, operation_type='crop_import')
+    assert 'task' not in batch.context['_import_changes']
+    assert update_task().status_code == 200
+    client = APIClient()
+    client.force_authenticate(user=user)
+    response = client.post(f'/api/history/batch/{batch.pk}/revert/',
+                           HTTP_X_PROJECT_ID=str(project.pk))
+    assert response.status_code == 200
+    task.refresh_from_db()
+    assert task.title == 'Independent later edit'
