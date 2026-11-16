@@ -51,6 +51,7 @@ for (const width of [375, 1440]) {
       const picker = varietyDialog.locator('.MuiAutocomplete-root').filter({ has: page.getByRole('combobox', { name: de.plantHealth.label, exact: true }) });
       await inheritedInput.scrollIntoViewIfNeeded();
       await expect(picker.locator('.MuiChip-root')).toHaveCount(2);
+      await expect(varietyDialog.getByRole('button', { name: de.plantHealth.inherit, exact: true })).toBeDisabled();
       await inheritedInput.click();
       await picker.getByRole('button', { name: 'Leeren', exact: true }).click();
       await inheritedInput.press('Escape');
@@ -71,6 +72,20 @@ for (const width of [375, 1440]) {
       const inherited = await apiRequest<Crop>(page, 'GET', `/crops/${variety.id}/`);
       expect(inherited.plant_health).toBeNull();
       expect(inherited.effective_values?.plant_health).toEqual({ entries: [{ name: 'Synthetic changed parent' }] });
+
+      await page.goto(`/app/crops?cropId=${variety.id}&action=edit`);
+      await inheritedInput.click();
+      await picker.getByRole('button', { name: 'Leeren', exact: true }).click();
+      await inheritedInput.fill('Synthetic changed parent');
+      await inheritedInput.press('Enter');
+      await expect(varietyDialog.getByRole('button', { name: de.plantHealth.inherit, exact: true })).toBeEnabled();
+      await varietyDialog.getByRole('button', { name: 'Speichern', exact: true }).click();
+      await expect(varietyDialog).toBeHidden();
+      expect((await apiRequest<Crop>(page, 'GET', `/crops/${variety.id}/`)).plant_health)
+        .toEqual({ entries: [{ name: 'Synthetic changed parent' }] });
+      await apiRequest(page, 'PATCH', `/crops/${parent.id}/`, { plant_health: { entries: [{ name: 'Synthetic later parent' }] } });
+      expect((await apiRequest<Crop>(page, 'GET', `/crops/${variety.id}/`)).effective_values?.plant_health)
+        .toEqual({ entries: [{ name: 'Synthetic changed parent' }] });
     } finally { await resetE2EScenario(request, scenario); }
   });
 }

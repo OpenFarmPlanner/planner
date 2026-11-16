@@ -68,6 +68,14 @@ describe('crop form draft calculations', () => {
     expect(crop.seed_rate_unit).toBe('g/m²');
   });
 
+  it('keeps raw plant-health inheritance for its control instead of materializing a frozen selection', () => {
+    const crop: Crop = { name: 'Synthetic', variety: 'Inherited', general_crop: 3,
+      plant_health: null, inherited_fields: ['plant_health'],
+      effective_values: { plant_health: { entries: [{ name: 'Parent entry' }] } } };
+    expect(buildInitialFormData(crop).plant_health).toBeNull();
+    expect(buildInitialFormData({ ...crop, plant_health: { entries: [] }, inherited_fields: [] }).plant_health).toEqual({ entries: [] });
+  });
+
   it('uses the served library name with the established fallback order', () => {
     const entry = { name: 'Canonical', crop_species_name: 'Species', display_name: 'Localized' } as PublicCrop;
     expect(getPublicCropDraftName(entry)).toBe('Localized');

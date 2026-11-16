@@ -77,6 +77,7 @@ export function PlantHealthField({ value, localOptions, onChange, canInherit, in
           sx={{ maxWidth: '100%', height: 'auto', '& .MuiChip-label': { whiteSpace: 'normal', overflowWrap: 'anywhere', py: 0.5 } }} />;
       })}
       renderInput={params => <TextField {...params} label={t('plantHealth.label')}
+        slotProps={{ ...params.slotProps, inputLabel: { ...params.slotProps.inputLabel, shrink: true } }}
         placeholder={t('plantHealth.placeholder')} helperText={error ?? (current?.error || names.error ? t('plantHealth.searchError') : t('plantHealth.helper'))}
         error={Boolean(error) || entries.length > 40} />}
     />
@@ -84,6 +85,8 @@ export function PlantHealthField({ value, localOptions, onChange, canInherit, in
     {canInherit ? <Button size="small" onClick={() => onChange(null)} disabled={value === null}>
       {t('plantHealth.inherit')}
     </Button> : null}
-    <Typography variant="caption" color="text.secondary">{t('plantHealth.associationHint')}</Typography>
+    <Typography variant="caption" color="text.secondary" sx={canInherit ? { display: 'block' } : undefined}>
+      {t('plantHealth.associationHint')}
+    </Typography>
   </Box>;
 }

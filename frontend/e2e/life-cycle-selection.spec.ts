@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { apiRequest, loginWithDeterministicProject } from './utils';
+import de from '../src/i18n/locales/de/crops.json' with { type: 'json' };
 
 for (const viewport of [
   { width: 375, height: 800 }, { width: 768, height: 900 }, { width: 1024, height: 900 },
@@ -24,7 +25,7 @@ for (const viewport of [
     await dialog.getByText('Dieser vorhandene Wert bleibt erhalten, solange du keine andere Lebensdauer wählst.').scrollIntoViewIfNeeded();
     expect(await dialog.evaluate(element => element.scrollWidth > element.clientWidth + 1)).toBe(false);
     await page.screenshot({ path: testInfo.outputPath(`legacy-life-cycle-${viewport.width}.png`), animations: 'disabled' });
-    await dialog.getByRole('textbox', { name: 'Schädlinge und Krankheiten', exact: true }).fill('Updated plant health notes');
+    await dialog.getByRole('textbox', { name: de.plantHealth.notes, exact: true }).fill('Updated plant health notes');
     const save = dialog.getByRole('button', { name: 'Speichern', exact: true });
     const [saved] = await Promise.all([
       page.waitForResponse(response => response.request().method() === 'PUT' && response.url().endsWith(`/crops/${crop.id}/`)),
@@ -94,7 +95,7 @@ test('public library edits preserve a legacy life cycle', async ({ page, request
   await expect(lifeCycle).toHaveText('Zweijährig');
   await lifeCycle.scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath('library-legacy-life-cycle.png'), animations: 'disabled' });
-  await dialog.getByRole('textbox', { name: 'Schädlinge und Krankheiten', exact: true }).fill('Updated library health notes');
+  await dialog.getByRole('textbox', { name: de.plantHealth.notes, exact: true }).fill('Updated library health notes');
   await dialog.getByRole('button', { name: /Speichern/ }).click();
   await expect(dialog).toBeHidden();
   const saved = await apiRequest<{ life_cycle: string; pests_diseases: string }>(page, 'GET', `/public-crops/${published.public_crop.id}/`);

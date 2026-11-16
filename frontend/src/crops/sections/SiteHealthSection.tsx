@@ -67,7 +67,7 @@ export function SiteHealthSection({ formData, onChange, t, getFieldHighlightSx, 
           minRows={2}
           value={formData.pests_diseases ?? ''}
           onChange={(event) => onChange('pests_diseases', event.target.value)}
-          slotProps={{ input: { endAdornment: pestsPin?.endAdornment } }}
+          slotProps={{ inputLabel: { shrink: true }, input: { endAdornment: pestsPin?.endAdornment } }}
         />
       </Box>
     </>
