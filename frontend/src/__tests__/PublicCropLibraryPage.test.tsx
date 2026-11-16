@@ -81,6 +81,8 @@ vi.mock('../components/data-grid/RichTextEditor', () => ({
   ),
 }));
 
+vi.mock('../crop-library/plant-health/api', () => ({ plantHealthAPI: { list: vi.fn().mockResolvedValue({ data: { results: [] } }) } }));
+
 vi.mock('../api/api', async () => {
   const actual = await vi.importActual<typeof import('../api/api')>('../api/api');
   return {
@@ -331,6 +333,24 @@ describe('PublicCropLibraryPage', () => {
     publicCropApiMocks.remove.mockResolvedValue({
       data: { ...publicCrops[0], status: 'removed' },
     });
+  });
+
+  it.each([null, { entries: [] }])('shows inherited health-only sections while respecting an empty variety override: %j', async value => {
+    const identity = '00000000-0000-4000-8000-000000000001';
+    const general = { ...publicCrops[0], id: 10, name: 'Tomate', variety: '', crop_species: 77,
+      plant_health: { entries: [{ name: 'Synthetic inherited pathogen', catalogue_identity: identity }] } };
+    const variety = { ...publicCrops[0], id: 11, crop_species: 77, plant_health: value };
+    publicCropApiMocks.list.mockResolvedValue(paginated([general, variety]));
+    publicCropApiMocks.get.mockResolvedValue({ data: variety });
+    renderPage(['/app/crop-library?cropId=11']);
+    await screen.findByRole('heading', { name: 'Allgemeine Informationen' });
+    if (value === null) {
+      expect(await screen.findByRole('heading', { name: 'Standort und Pflanzengesundheit' })).toBeInTheDocument();
+      expect(await screen.findByText(/Synthetic inherited pathogen/)).toBeInTheDocument();
+    } else {
+      expect(screen.queryByRole('heading', { name: 'Standort und Pflanzengesundheit' })).not.toBeInTheDocument();
+      expect(screen.queryByText(/Synthetic inherited pathogen/)).not.toBeInTheDocument();
+    }
   });
 
   it('hides the global moderation action completely for users without moderation rights', async () => {

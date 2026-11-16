@@ -162,3 +162,53 @@ for (const width of [375, 1440]) {
     } finally { await resetE2EScenario(request, scenario); }
   });
 }
+
+test('public variety resolves a health-only species fallback and honors an explicit empty override', async ({ page, request }, info) => {
+  test.setTimeout(120_000);
+  const scenario = `health-public-fallback-${Date.now()}`;
+  try {
+    await loginWithDeterministicProject(page, request, scenario, { demoProject: true, loginAsAdmin: true, libraryModerator: true });
+    const speciesName = `Synthetic fallback species ${Date.now()}`;
+    const species = await apiRequest<{ id: number }>(page, 'POST', '/crop-species/', { name: speciesName });
+    await apiRequest(page, 'POST', `/crop-species/${species.id}/approve/`, {
+      translations: SUPPORTED_LANGUAGES.map(({ code }) => ({ language_code: code, common_name: speciesName })),
+    });
+    const name = `Synthetic inherited public entry ${Date.now()}`;
+    const entry = await apiRequest<PlantHealthEntry>(page, 'POST', '/plant-health/entries/', {
+      name, kind: 'group', sources: [{ url: 'https://example.org/synthetic-public-fallback', title: 'Synthetic test only' }],
+      translations: SUPPORTED_LANGUAGES.map(({ code }) => ({ language_code: code, preferred_name: name })),
+    });
+    await apiRequest(page, 'POST', `/plant-health/entries/${entry.id}/approve/`, {});
+    const general = await apiRequest<Crop>(page, 'POST', '/crops/', {
+      name: speciesName, crop_species: species.id, growth_duration_days: 42, harvest_duration_days: 14,
+      plant_health: { entries: [{ name, catalogue_identity: entry.identity_key }] },
+    });
+    await apiRequest(page, 'POST', `/crops/${general.id}/publish-public/`, {
+      accepted_public_library_terms: true, crop_species_id: species.id, original_language_code: 'de', publish_as_general: true,
+    });
+    const variety = await apiRequest<Crop>(page, 'POST', '/crops/', {
+      name: speciesName, variety: `Synthetic variety ${Date.now()}`, crop_species: species.id, plant_health: null,
+      growth_duration_days: 42, harvest_duration_days: 14,
+    });
+    const published = await apiRequest<{ public_crop: PublicCrop }>(page, 'POST', `/crops/${variety.id}/publish-public/`, {
+      accepted_public_library_terms: true, crop_species_id: species.id, original_language_code: 'de',
+    });
+    const id = published.public_crop.id;
+    await apiRequest(page, 'PATCH', `/public-crops/${id}/`, { plant_health: null });
+    for (const size of [{ width: 375, height: 800 }, { width: 768, height: 900 }, { width: 1024, height: 900 }, { width: 1440, height: 900 }, { width: 800, height: 375 }]) {
+      await page.setViewportSize(size);
+      await page.goto(`/app/crop-library?cropId=${id}`);
+      const chip = page.getByText(`${name} · ${de.plantHealth.catalogue}`, { exact: true });
+      await chip.scrollIntoViewIfNeeded();
+      await expect(chip).toBeVisible();
+      await expect(page.getByRole('heading', { name: de.siteHealth.title, exact: true })).toBeVisible();
+      await expectNoHorizontalPageOverflow(page);
+      await page.screenshot({ path: info.outputPath(`public-health-fallback-${size.width}.png`), animations: 'disabled' });
+    }
+    await apiRequest(page, 'PATCH', `/public-crops/${id}/`, { plant_health: { entries: [] } });
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Allgemeine Informationen', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: de.siteHealth.title, exact: true })).toHaveCount(0);
+    await expect(page.getByText(`${name} · ${de.plantHealth.catalogue}`, { exact: true })).toHaveCount(0);
+  } finally { await resetE2EScenario(request, scenario); }
+});

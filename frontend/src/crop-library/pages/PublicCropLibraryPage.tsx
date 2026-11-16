@@ -557,6 +557,7 @@ export default function PublicCropLibraryPage() {
       : []),
     [companionSourceCrop, crops, plantFamilies, t],
   );
+  const publicPlantHealth = selectedCrop ? getPublicFieldValue('plant_health', selectedCrop.plant_health) : null;
   const getPublicFieldSource = useCallback((field: keyof PublicCrop): ValueSource | null => {
     if (isSpeciesView || !selectedCrop?.variety || !selectedSpeciesCrop) {
       return null;
@@ -2066,10 +2067,10 @@ export default function PublicCropLibraryPage() {
                               </DetailGrid>
                             </DetailSection>
                           ) : null,
-                          (selectedCrop.plant_health?.entries.length || hasAnyDetailValue(...SITE_HEALTH_FIELDS.map((field) => getPublicFieldValue(field, selectedCrop[field])))) ? (
+                          (publicPlantHealth?.entries.length || hasAnyDetailValue(...SITE_HEALTH_FIELDS.map((field) => getPublicFieldValue(field, selectedCrop[field])))) ? (
                             <DetailSection key="siteHealth" title={t('siteHealth.title')}>
-                              {selectedCrop.plant_health?.entries.length ? <Box sx={{ mb: 2 }}>
-                                <PlantHealthChips value={selectedCrop.plant_health} />
+                              {publicPlantHealth?.entries.length ? <Box sx={{ mb: 2 }}>
+                                <PlantHealthChips value={publicPlantHealth} />
                               </Box> : null}
                               <DetailGrid>
                                 {SITE_HEALTH_FIELDS

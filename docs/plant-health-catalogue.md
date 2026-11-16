@@ -254,6 +254,10 @@ Public chips and form selections use translated visible catalogue names, with
 an unavailable snapshot fallback. Autocomplete options show the identity kind
 and scientific/reference name so equal vernacular labels remain distinguishable.
 The public explanatory `pests_diseases` prose and its translations remain separate.
+Public variety details resolve a null selection through the species-level entry,
+including a section containing only inherited selections. An explicit empty
+wrapper suppresses that fallback. Moderated edits validate retained references
+against the same existing public entry as direct edits.
 
 The publication and linked-entry sync dialog offers an explicit mapping panel
 for each crop's unresolved names, including selected varieties. **Save mapping**
