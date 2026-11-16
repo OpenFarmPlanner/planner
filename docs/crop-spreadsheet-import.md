@@ -63,7 +63,13 @@ Phases:
    after every submitted companion row. This preserves explicit row precedence.
 
 All phases retain the existing crop-action authentication and permissions.
-There is no import session, new persistence model or global taxonomy write.
+The current browser sends one `import_operation_id` UUID across every apply
+phase/batch. `BatchOperation` binds it to the initiating user and project and
+retains the server-owned before/after evidence for one grouped history entry
+and selective undo. Legacy requests without this additive field remain
+compatible and ungrouped. There is no global taxonomy write. See
+[Versioning and History](./versioning-and-history.md#grouped-operations-and-imports)
+for checkpoints, preview/revalidation, conflicts and restore semantics.
 
 ## Interrupted imports
 

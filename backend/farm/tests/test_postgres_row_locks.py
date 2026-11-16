@@ -18,10 +18,68 @@ from farm.tests.test_task_generation import TaskTimingFixture
 pytestmark = pytest.mark.postgres
 
 
+@pytest.mark.django_db(transaction=True)
+def test_two_projects_cannot_claim_the_same_import_uuid_concurrently():
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    from unittest.mock import patch
+    from uuid import uuid4
+
+    from django.db import close_old_connections, connection
+    from rest_framework.test import APIClient
+
+    from farm.history.records import start_batch_operation
+    from farm.models import BatchOperation, Crop, Project, ProjectMembership
+    from farm.tests.api_base import User
+
+    if connection.vendor != "postgresql":
+        pytest.skip("PostgreSQL unique-key race regression")
+    user = User.objects.create_user(username="import-uuid-race-owner")
+    projects = [
+        Project.objects.create(name=f"Import race {n}", slug=f"import-race-{n}") for n in range(2)
+    ]
+    for project in projects:
+        ProjectMembership.objects.create(project=project, user=user, role="admin")
+    identifier = str(uuid4())
+    barrier = Barrier(2)
+
+    def synchronized_start(**kwargs):
+        barrier.wait(timeout=10)
+        return start_batch_operation(**kwargs)
+
+    def import_once(project_id):
+        close_old_connections()
+        try:
+            client = APIClient()
+            client.force_authenticate(User.objects.get(pk=user.pk))
+            client.credentials(HTTP_X_PROJECT_ID=str(project_id))
+            return client.post(
+                "/openfarmplanner/api/crops/import/apply/",
+                {
+                    "items": [{"name": "UUID race crop"}],
+                    "phase": "crops",
+                    "import_operation_id": identifier,
+                },
+                format="json",
+            ).status_code
+        finally:
+            close_old_connections()
+
+    with patch(
+        "farm.history.import_operations.start_batch_operation", side_effect=synchronized_start
+    ):
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [pool.submit(import_once, project.pk) for project in projects]
+            outcomes = [future.result(timeout=30) for future in futures]
+    assert sorted(outcomes) == [200, 409]
+    assert BatchOperation.objects.filter(request_id=identifier).count() == 1
+    assert Crop.objects.filter(project__in=projects).count() == 1
+
+
 class PlanTaskSynchronizationLockTest(TaskTimingFixture):
     def setUp(self) -> None:
         super().setUp()
-        self.client.defaults['HTTP_X_SEASON_ID'] = str(self.season.pk)
+        self.client.defaults["HTTP_X_SEASON_ID"] = str(self.season.pk)
 
     def test_updating_plan_dates_synchronizes_automatic_and_template_tasks(self) -> None:
         CropTaskTemplate.objects.create(
@@ -295,6 +353,9 @@ def test_library_sync_translates_a_real_postgres_name_race_after_rollback():
     target = Crop.objects.create(project=project, name='Synthetic conflict (2)',
                                  source_public_crop=entry, source_public_version=entry.version)
     other = Crop.objects.create(project=project, name='Synthetic unclaimed')
+    from farm.history.project_restore import ensure_project_checkpoint
+
+    ensure_project_checkpoint(project)
     before = Crop.objects.filter(pk=target.pk).values().get()
     revisions = list(EntityRevision.objects.filter(object_id=target.pk).values())
     save = Crop.save
@@ -302,6 +363,8 @@ def test_library_sync_translates_a_real_postgres_name_race_after_rollback():
     def competing_write():
         close_old_connections()
         try:
+            with connection.cursor() as cursor:
+                cursor.execute("SET lock_timeout = '5s'")
             # An older writer bypasses the cooperative project lock. Updating an
             # existing row does not need to recheck its unchanged project FK.
             Crop.objects.filter(pk=other.pk).update(
@@ -351,11 +414,16 @@ def test_new_library_import_translates_a_real_postgres_general_name_race():
         name='Synthetic raced import', status='published', created_by=user,
     )
     other = Crop.objects.create(project=project, name='Synthetic unclaimed import')
+    from farm.history.project_restore import ensure_project_checkpoint
+
+    ensure_project_checkpoint(project)
     save = Crop.save
 
     def competing_write():
         close_old_connections()
         try:
+            with connection.cursor() as cursor:
+                cursor.execute("SET lock_timeout = '5s'")
             Crop.objects.filter(pk=other.pk).update(
                 name=entry.name, name_normalized='synthetic raced import',
             )
@@ -433,3 +501,58 @@ def test_concurrent_selected_variety_imports_commit_one_complete_scope():
         ["created"] * 4 + ["unchanged"] * 4
     )
     assert Crop.objects.filter(project=project).count() == 4
+
+
+@pytest.mark.django_db(transaction=True)
+def test_existing_baseline_mutations_cannot_enter_an_import_capture_window():
+    from concurrent.futures import ThreadPoolExecutor
+    from uuid import uuid4
+
+    from django.db import close_old_connections, connection, transaction
+    from rest_framework.test import APIClient
+
+    from farm.history.import_operations import execute_import_request
+    from farm.history.project_restore import ensure_project_checkpoint
+    from farm.models import BatchOperation, Crop, Project, ProjectMembership, Task
+    from farm.tests.api_base import User
+
+    if connection.vendor != 'postgresql':
+        pytest.skip('PostgreSQL import capture isolation regression')
+    user = User.objects.create_user(username='import-window-user')
+    project = Project.objects.create(name='Import window', slug='import-window')
+    ProjectMembership.objects.create(project=project, user=user, role='admin')
+    task = Task.objects.create(project=project, title='Independent original task')
+    ensure_project_checkpoint(project)
+
+    def update_task():
+        close_old_connections()
+        try:
+            client = APIClient()
+            client.force_authenticate(user=user)
+            return client.patch(f'/api/tasks/{task.pk}/', {'title': 'Independent later edit'},
+                                format='json', HTTP_X_PROJECT_ID=str(project.pk))
+        finally:
+            close_old_connections()
+
+    def run():
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            response = pool.submit(update_task).result(timeout=15)
+        assert response.status_code == 409
+        crop = Crop.objects.create(project=project, name='Import-owned crop')
+        return {'results': [{'status': 'created', 'crop_id': crop.pk}]}
+
+    with transaction.atomic():
+        execute_import_request(project, request_id=str(uuid4()), actor_id=user.pk,
+                               actor_label=user.username, phase='finalize', run=run)
+    task.refresh_from_db()
+    assert task.title == 'Independent original task'
+    batch = BatchOperation.objects.get(project=project, operation_type='crop_import')
+    assert 'task' not in batch.context['_import_changes']
+    assert update_task().status_code == 200
+    client = APIClient()
+    client.force_authenticate(user=user)
+    response = client.post(f'/api/history/batch/{batch.pk}/revert/',
+                           HTTP_X_PROJECT_ID=str(project.pk))
+    assert response.status_code == 200
+    task.refresh_from_db()
+    assert task.title == 'Independent later edit'

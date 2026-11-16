@@ -87,7 +87,9 @@ it('writes general crops first, links companions in original order, and counts c
     { name: 'B', bad_companions: [{ name: 'A' }] }, { name: 'A' }];
   const result = await applyCropImportBatches(payload, previews(payload), options, progress);
   expect(applyAPI.mock.calls.map(([body]) => body.phase)).toEqual(['crops', 'companions', 'finalize']);
-  expect(applyAPI.mock.calls[0][0]).toEqual({ items: [{ name: 'B' }, { name: 'A' }, { name: 'A', variety: 'Variety' }], ...options, phase: 'crops' });
+  expect(applyAPI.mock.calls[0][0]).toEqual({ items: [{ name: 'B' }, { name: 'A' }, { name: 'A', variety: 'Variety' }], ...options, phase: 'crops', import_operation_id: expect.any(String) });
+  const ids = applyAPI.mock.calls.map(([body]) => body.import_operation_id);
+  expect(new Set(ids).size).toBe(1);
   expect(applyAPI.mock.calls[1][0].items).toEqual([
     { crop_id: 3, good_companions: [{ name: 'B' }] }, { crop_id: 1, bad_companions: [{ name: 'A' }] },
   ]);

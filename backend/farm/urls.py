@@ -1,6 +1,6 @@
-from .crops.views.task_templates import CropTaskTemplateViewSet
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter, SimpleRouter
+
 from .agent_api.views import (
     AgentContextView,
     AgentOpenApiSchemaView,
@@ -9,10 +9,49 @@ from .agent_api.views import (
     CropImportPreviewView,
     ProjectApiTokenViewSet,
 )
+from .common.views import VersionView
+from .crops.views import (
+    CropCompanionViewSet,
+    CropSupplierDataViewSet,
+    CropViewSet,
+    PublicCropViewSet,
+    SeedDemandListView,
+    SeedPackageViewSet,
+    SupplierViewSet,
+    YoungPlantDemandListView,
+)
+from .crops.views.task_templates import CropTaskTemplateViewSet
+from .feedback.views import FeedbackView
+from .history.views import (
+    BatchOperationRevertView,
+    GlobalHistoryListView,
+    GlobalHistoryRestoreView,
+    ImportUndoPreviewView,
+    ProjectHistoryListView,
+    ProjectHistoryRestoreView,
+)
+from .notes.views import (
+    MediaFileUploadView,
+    NoteAttachmentDeleteView,
+    NoteAttachmentListCreateView,
+)
 from .planning.views import (
     PlantingPlanViewSet,
     TaskViewSet,
     YieldCalendarListView,
+)
+from .projects.views import (
+    AcceptPendingProjectInvitationView,
+    AcceptProjectInvitationByTokenView,
+    AcceptProjectInvitationView,
+    MyProjectsView,
+    PendingProjectInvitationView,
+    ProjectInvitationView,
+    ProjectMembersView,
+    ProjectSwitchView,
+    ProjectViewSet,
+    PublicProjectInvitationView,
+    RevokeProjectInvitationView,
 )
 from .seasons.views import (
     SeasonPatternPreviewView,
@@ -26,43 +65,6 @@ from .structure.views import (
     BedViewSet,
     FieldViewSet,
     LocationViewSet,
-)
-from .crops.views import (
-    CropCompanionViewSet,
-    CropSupplierDataViewSet,
-    CropViewSet,
-    PublicCropViewSet,
-    SeedDemandListView,
-    SeedPackageViewSet,
-    SupplierViewSet,
-    YoungPlantDemandListView,
-)
-from .history.views import (
-    BatchOperationRevertView,
-    GlobalHistoryListView,
-    GlobalHistoryRestoreView,
-    ProjectHistoryListView,
-    ProjectHistoryRestoreView,
-)
-from .notes.views import (
-    MediaFileUploadView,
-    NoteAttachmentDeleteView,
-    NoteAttachmentListCreateView,
-)
-from .common.views import VersionView
-from .feedback.views import FeedbackView
-from .projects.views import (
-    AcceptPendingProjectInvitationView,
-    AcceptProjectInvitationByTokenView,
-    AcceptProjectInvitationView,
-    MyProjectsView,
-    PendingProjectInvitationView,
-    ProjectInvitationView,
-    ProjectMembersView,
-    ProjectSwitchView,
-    ProjectViewSet,
-    PublicProjectInvitationView,
-    RevokeProjectInvitationView,
 )
 
 router = DefaultRouter()
@@ -115,6 +117,10 @@ urlpatterns = [
     path('history/project/', ProjectHistoryListView.as_view(), name='project-history-list'),
     path('history/project/restore/', ProjectHistoryRestoreView.as_view(), name='project-history-restore'),
     path('history/batch/<int:batch_id>/revert/', BatchOperationRevertView.as_view(), name='batch-operation-revert'),
+    path(
+        'history/batch/<int:batch_id>/undo-preview/',
+        ImportUndoPreviewView.as_view(), name='import-undo-preview',
+    ),
     path('history/global/', GlobalHistoryListView.as_view(), name='global-history-list'),
     path('history/global/restore/', GlobalHistoryRestoreView.as_view(), name='global-history-restore'),
     path('media-files/upload/', MediaFileUploadView.as_view(), name='media-file-upload'),

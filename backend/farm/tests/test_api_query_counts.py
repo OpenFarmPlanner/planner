@@ -71,23 +71,77 @@ PAGE_SIZE = 100
 class ListEndpointQueryCountTest(ProjectApiTestCase):
     """Each list endpoint must cost the same number of queries for every row."""
 
+    def test_project_history_groups_do_not_add_per_row_queries(self):
+        from farm.models import BatchOperation
+
+        url = "/openfarmplanner/api/history/project/"
+        self.client.get(url)
+        for size in (3, 12):
+            for _ in range(size):
+                batch = BatchOperation.objects.create(
+                    project=self.project,
+                    operation_type=BatchOperation.TYPE_CROP_IMPORT,
+                    context={"created_count": 1, "_import_changes": {"private": "not exposed"}},
+                )
+                EntityRevision.objects.create(
+                    project=self.project,
+                    entity_type="crop",
+                    object_id=self.crop.pk,
+                    action="created",
+                    snapshot={},
+                    batch_operation=batch,
+                )
+            with self.assertNumQueries(5):
+                response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertNotIn("_import_changes", response.content.decode())
+
+    def test_project_restore_reference_reads_do_not_grow_for_unchanged_rows(self):
+        from farm.history.project_restore import capture_project_state, record_project_checkpoint
+
+        initial_count = None
+        for size in (0, 5):
+            for index in range(size):
+                Crop.objects.create(project=self.project, name=f"Unchanged restore crop {index}")
+            record_project_checkpoint(self.project, capture_project_state(self.project))
+            target = EntityRevision.objects.filter(project=self.project).latest("id")
+            self.crop.notes = f"Changed after checkpoint {size}"
+            self.crop.save()
+            if initial_count is None:
+                with CaptureQueriesContext(connection) as queries:
+                    response = self.client.post(
+                        "/openfarmplanner/api/history/project/restore/", {"history_id": target.pk}
+                    )
+                initial_count = len(queries)
+            else:
+                with self.assertNumQueries(initial_count):
+                    response = self.client.post(
+                        "/openfarmplanner/api/history/project/restore/", {"history_id": target.pk}
+                    )
+            self.assertEqual(response.status_code, 200, response.data)
+
     def test_plant_health_history_actor_queries_do_not_grow_with_rows(self):
         self.user.is_staff = True
-        self.user.save(update_fields=['is_staff'])
-        entry = PlantHealthEntry.objects.create(name='Synthetic history identity')
-        history_url = f'/openfarmplanner/api/plant-health/entries/{entry.pk}/history/'
+        self.user.save(update_fields=["is_staff"])
+        entry = PlantHealthEntry.objects.create(name="Synthetic history identity")
+        history_url = f"/openfarmplanner/api/plant-health/entries/{entry.pk}/history/"
         PlantHealthRevision.objects.create(
-            entry=entry, actor=self.user, action='create', snapshot={},
+            entry=entry,
+            actor=self.user,
+            action="create",
+            snapshot={},
         )
         self.client.get(history_url)
         with CaptureQueriesContext(connection) as initial:
             self.client.get(history_url)
         for index in range(2):
-            actor = User.objects.create_user(username=f'synthetic-history-curator-{index}')
-            PlantHealthRevision.objects.bulk_create([
-                PlantHealthRevision(entry=entry, actor=actor, action='update', snapshot={})
-                for _ in range(ROW_COUNT)
-            ])
+            actor = User.objects.create_user(username=f"synthetic-history-curator-{index}")
+            PlantHealthRevision.objects.bulk_create(
+                [
+                    PlantHealthRevision(entry=entry, actor=actor, action="update", snapshot={})
+                    for _ in range(ROW_COUNT)
+                ]
+            )
         with self.assertNumQueries(len(initial)):
             response = self.client.get(history_url)
         self.assertEqual(response.status_code, 200)
@@ -964,7 +1018,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
 
     def test_project_history_list_query_count(self):
         """`/history/project/` groups revisions by `batch_operation`; the FK is
-        `select_related`, so the cost stays constant no matter how many batches
+        loaded once in bulk, so the cost stays constant no matter how many batches
         (here: three deleted seasons, each cascading to three plans)."""
         for index in range(ROW_COUNT):
             season = Season.objects.create(
@@ -979,7 +1033,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 )
             self.client.delete(f'/openfarmplanner/api/seasons/{season.pk}/')
 
-        with self.assertNumQueries(4):
+        with self.assertNumQueries(5):
             response = self.client.get('/openfarmplanner/api/history/project/')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(sum(1 for entry in response.data if entry.get('is_batch')), ROW_COUNT)

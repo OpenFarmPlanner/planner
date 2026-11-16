@@ -582,7 +582,9 @@
       "fallback": "Entrada",
       "openTarget": "Abrir",
       "season": "Temporada",
-      "cropCompanion": "Vecino (asociación de cultivos)"
+      "cropCompanion": "Vecino (asociación de cultivos)",
+      "cropTaskTemplate": "Plantilla de tareas",
+      "seasonPattern": "Ajustes de temporada"
     },
     "batch": {
       "seasonCreate": "Temporada {{season}} creada",
@@ -602,7 +604,30 @@
       "countUpdated_one": "{{count}} serie actualizada",
       "countUpdated_other": "{{count}} series actualizadas",
       "countUpdated_many": "{{count}} series actualizadas",
-      "reverted": "Restaurado: {{what}}"
+      "reverted": "Restaurado: {{what}}",
+      "undo": "Deshacer esta acción"
+    },
+    "import": {
+      "summary_one": "{{count}} cultivo importado",
+      "summary_other": "{{count}} cultivos importados",
+      "actions": "Acciones de importación",
+      "details": "Registros afectados",
+      "undo": "Deshacer solo esta importación",
+      "selectiveNotice": "Solo se desharán los cambios de esta importación. Los demás cambios posteriores se conservarán. La operación se guardará como una nueva entrada del historial.",
+      "loading": "Comprobando la operación",
+      "previewError": "No se pudo comprobar esta operación. Cierra el diálogo e inténtalo de nuevo.",
+      "removeCreated_one": "Se eliminará {{count}} cultivo recién creado.",
+      "removeCreated_other": "Se eliminarán {{count}} cultivos recién creados.",
+      "restoreUpdated_one": "{{count}} cultivo existente volverá a su estado anterior a la importación.",
+      "restoreUpdated_other": "{{count}} cultivos existentes volverán a su estado anterior a la importación.",
+      "laterEdit": "Los registros afectados se editaron después. La operación está bloqueada para conservar esos cambios.",
+      "dependentData": "Otros registros hacen referencia a esta importación. La operación está bloqueada para proteger los vínculos y los datos.",
+      "summary_many": "{{count}} cultivos importados",
+      "removeCreated_many": "Se eliminarán {{count}} cultivos recién creados.",
+      "restoreUpdated_many": "{{count}} cultivos existentes volverán a su estado anterior a la importación.",
+      "undone": "Importación deshecha",
+      "alreadyUndone": "Esta importación ya se ha deshecho. Usa «Restaurar esta versión» para elegir un estado anterior del proyecto.",
+      "unavailableState": "El estado anterior ya no está completo o entra en conflicto con otros registros. La operación está bloqueada; no se ha cambiado nada."
     }
   },
   "shortcuts": {
@@ -1701,7 +1726,7 @@
   "restoreDialog": {
     "title": "¿Restaurar la versión?",
     "batchDescription": "Se deshará esta acción y todos los cambios relacionados.",
-    "versionDescription": "Estás restaurando una versión anterior.",
+    "versionDescription": "Restauras todo el proyecto a esta versión. Se desharán todos los cambios posteriores, incluidos los cultivos y bancales creados después.",
     "batchNotice": "Se restaurará el estado anterior. La acción permanece en el historial y se puede volver a realizar.",
     "versionNotice": "La versión actual se conserva. Antes de restaurar se crea automáticamente una nueva versión, para que puedas volver en cualquier momento.",
     "cancel": "Cancelar",

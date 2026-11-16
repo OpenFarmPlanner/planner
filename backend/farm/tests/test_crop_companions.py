@@ -484,7 +484,10 @@ class CompanionReplaceApiTests(CropCompanionTestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_an_unchanged_list_records_no_history(self):
+        from farm.history.project_restore import ensure_project_checkpoint
+
         self.relate(self.tomato, self.potato)
+        ensure_project_checkpoint(self.project)
         revisions = EntityRevision.objects.count()
 
         response = self.client.put(self.url, {'crop': self.tomato.id, 'relations': [
@@ -906,12 +909,14 @@ class LocalizedCompanionNotesTests(CompanionLibraryTestCase):
         self.assertEqual(relation.notes, {'de': 'Private source', 'fr': 'Source française'})
 
     def test_restoring_an_old_private_snapshot_resets_newer_note_versions(self) -> None:
+        from farm.history.project_restore import capture_project_state, record_project_checkpoint
         from farm.history.records import _serialize_instance
         from farm.history.restore import _restore_project_state_at
 
         relation = self.relate(self.tomato, self.potato)
         relation.note = 'Legacy source'
         relation.save()
+        record_project_checkpoint(self.project, capture_project_state(self.project))
         snapshot = _serialize_instance(relation)
         snapshot.pop('notes')
         revision = EntityRevision.objects.create(project=self.project, entity_type='crop_companion', object_id=relation.pk, action='created', snapshot=snapshot)
@@ -934,7 +939,10 @@ class LocalizedCompanionNotesTests(CompanionLibraryTestCase):
 
     def test_old_public_revision_recovers_its_original_note_language(self) -> None:
         from farm.models import PublicCropRevision
-        from farm.services.public_crops import build_public_crop_snapshot, restore_public_crop_version
+        from farm.services.public_crops import (
+            build_public_crop_snapshot,
+            restore_public_crop_version,
+        )
 
         self.publish(self.tomato)
         entry = PublicCrop.objects.get(variety='')

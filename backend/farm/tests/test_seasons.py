@@ -630,6 +630,60 @@ class SeasonApiTest(ProjectApiTestCase):
         self.assertTrue(Season.objects.filter(pk=season_id).exists())
         self.assertTrue(PlantingPlan.objects.filter(pk=plan_id, season_id=season_id).exists())
 
+    def test_reverted_season_and_later_versions_have_complete_restore_boundaries(self):
+        from farm.models import NoteAttachment, RetainedUpload, Task
+
+        create = self.client.post('/openfarmplanner/api/seasons/', {
+            'start_date': '2026-01-01', 'end_date': '2026-12-31',
+        })
+        season_id = create.data['id']
+        plan = PlantingPlan.objects.create(
+            crop=self.crop, bed=self.bed, project=self.project,
+            season_id=season_id, planting_date=date(2026, 4, 1),
+        )
+        task = Task.objects.create(
+            project=self.project, planting_plan=plan, season_id=season_id,
+            title='Generated task', origin='automatic', source_key='sowing:fixture',
+        )
+        attachment = NoteAttachment.objects.create(
+            project=self.project, planting_plan=plan, image='notes/reverted-season.jpg',
+        )
+        batch = BatchOperation.objects.get(project=self.project, operation_type='season_create')
+        reverted = self.client.post(f'/openfarmplanner/api/history/batch/{batch.pk}/revert/')
+        self.assertEqual(reverted.status_code, 200, reverted.data)
+        entries = self.client.get('/openfarmplanner/api/history/project/').json()
+        target = entries[0]
+        self.assertEqual(target['batch_operation_type'], 'batch_reverted')
+        self.assertTrue(target['is_current_version'])
+        self.assertFalse(any(row['object_type'] == 'project' for row in target['children']))
+        self.assertTrue(RetainedUpload.objects.filter(storage_path=attachment.image.name).exists())
+        backup_id = entries[1]['history_id']
+
+        self.client.patch(f'/openfarmplanner/api/crops/{self.crop.pk}/', {'notes': 'After undo'})
+        later = EntityRevision.objects.filter(project=self.project, entity_type='crop').latest('id')
+        self.client.patch(f'/openfarmplanner/api/crops/{self.crop.pk}/', {'notes': 'Newest'})
+        for target_id, expected_notes in ((later.pk, 'After undo'), (target['history_id'], '')):
+            restored = self.client.post('/openfarmplanner/api/history/project/restore/', {
+                'history_id': target_id,
+            })
+            self.assertEqual(restored.status_code, 200, restored.data)
+            self.assertFalse(Season.all_objects.filter(pk=season_id).exists())
+            self.assertFalse(PlantingPlan.objects.filter(pk=plan.pk).exists())
+            self.assertFalse(Task.objects.filter(pk=task.pk).exists())
+            self.crop.refresh_from_db()
+            self.assertEqual(self.crop.notes, expected_notes)
+
+        restored = self.client.post('/openfarmplanner/api/history/project/restore/', {
+            'history_id': backup_id,
+        })
+        self.assertEqual(restored.status_code, 200, restored.data)
+        self.assertTrue(Season.objects.filter(pk=season_id).exists())
+        self.assertTrue(PlantingPlan.objects.filter(pk=plan.pk, season_id=season_id).exists())
+        self.assertTrue(Task.objects.filter(pk=task.pk, planting_plan=plan).exists())
+        self.assertEqual(
+            NoteAttachment.objects.get(pk=attachment.pk).image.name, attachment.image.name,
+        )
+
     def test_undelete_nulls_a_planting_plan_fk_whose_target_is_gone(self):
         from farm.models import Bed
         bed = Bed.objects.create(project=self.project, field=self.field, name='Doomed', area_sqm=5)
@@ -805,7 +859,8 @@ class SeasonApiTest(ProjectApiTestCase):
         entries = self.client.get('/openfarmplanner/api/history/project/').json()
 
         self.assertTrue(entries[0]['is_batch'])
-        self.assertFalse(any(entry.get('is_current_version') for entry in entries))
+        self.assertTrue(entries[0].get('is_current_version'))
+        self.assertFalse(any(entry.get('is_current_version') for entry in entries[1:]))
 
     def test_reverting_a_season_create_batch_deletes_the_season(self):
         create = self.client.post('/openfarmplanner/api/seasons/', {

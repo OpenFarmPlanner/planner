@@ -431,33 +431,65 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         language = note_language({'request': request}, request.data.get('companion_note_language'))
-        if phase == 'companions':
-            summary = apply_crop_import_companions(
-                request.active_project, items, language=language,
-                replace_notes=request.data.get('replace_companion_notes') is True,
+        if phase == 'finalize' and items:
+            return api_error_response(
+                code="invalid_crop_import_items",
+                detail="Finalization does not accept crop rows.",
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
-            return Response(summary, status=status.HTTP_200_OK)
-        if phase == 'finalize':
-            if items:
-                return api_error_response(
-                    code='invalid_crop_import_items',
-                    detail='Finalization does not accept crop rows.',
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                )
+        from farm.history.import_operations import ImportOperationConflict, execute_import_request
+
+        try:
+            summary = execute_import_request(
+                request.active_project,
+                request_id=request.data.get("import_operation_id"),
+                actor_id=request.user.pk,
+                actor_label=_current_actor_label(request),
+                phase=phase,
+                run=lambda: self._apply_import_phase(request, items, phase, language),
+            )
+        except ImportOperationConflict:
+            return api_error_response(
+                code="crop_import_operation_unavailable",
+                detail=(
+                    "This import operation is unavailable. "
+                    "Inspect the saved crops before starting another import."
+                ),
+                status_code=status.HTTP_409_CONFLICT,
+            )
+        return Response(summary, status=status.HTTP_200_OK)
+
+    @staticmethod
+    def _apply_import_phase(
+        request: Request, items: list, phase: str | None, language: str
+    ) -> dict:
+        if phase == "companions":
+            summary = apply_crop_import_companions(
+                request.active_project,
+                items,
+                language=language,
+                replace_notes=request.data.get("replace_companion_notes") is True,
+            )
+            return summary
+        if phase == "finalize":
             link_free_text_companions(request.active_project.pk)
-            return Response({
-                'created_count': 0, 'updated_count': 0, 'skipped_count': 0,
-                'duplicate_count': 0, 'errors': [], 'results': [],
-            })
+            return {
+                "created_count": 0,
+                "updated_count": 0,
+                "skipped_count": 0,
+                "duplicate_count": 0,
+                "errors": [],
+                "results": [],
+            }
         summary = apply_crop_import(
             request.active_project,
             items,
-            confirm_updates=request.data.get('confirm_updates', False),
+            confirm_updates=request.data.get("confirm_updates", False),
             companion_note_language=language,
-            replace_companion_notes=request.data.get('replace_companion_notes') is True,
-            defer_companions=phase == 'crops',
+            replace_companion_notes=request.data.get("replace_companion_notes") is True,
+            defer_companions=phase == "crops",
         )
-        return Response(summary, status=status.HTTP_200_OK)
+        return summary
 
     @staticmethod
     def _import_project_error(request: Request) -> Response | None:

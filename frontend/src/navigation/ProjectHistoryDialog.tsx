@@ -2,12 +2,16 @@ import {
   Box,
   Button,
   Chip,
+  Collapse,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Divider,
   Link,
+  IconButton,
+  Menu,
+  MenuItem,
   List,
   ListItem,
   ListItemText,
@@ -16,6 +20,8 @@ import {
   Typography,
 } from '@mui/material';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutlineOutlined';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import { useState } from 'react';
 import { Link as RouterLink } from 'react-router';
 import type { TFunction } from 'i18next';
 
@@ -41,15 +47,7 @@ interface ProjectHistoryDialogProps {
   tCrops: TFunction<'crops'>;
 }
 
-/**
- * Presentational project version-history dialog. A cascading action (season
- * create/delete/undelete/data-copy) arrives from the API as one `is_batch`
- * entry that renders as a single row with a single "rückgängig machen"; every
- * other revision renders flat with its restore action, except the one the
- * backend flags `is_current_version`, which shows a badge instead. State, data
- * loading and the action handlers live in RootLayout.tsx. German-only copy is
- * intentional, matching RestoreVersionDialog.
- */
+/** Grouped history retains a full-version action and secondary operation undo. */
 export function ProjectHistoryDialog({
   open,
   items,
@@ -62,6 +60,8 @@ export function ProjectHistoryDialog({
   t,
   tCrops,
 }: ProjectHistoryDialogProps) {
+  const [expanded, setExpanded] = useState<number[]>([]);
+  const [menu, setMenu] = useState<{ element: HTMLElement; entry: CropHistoryEntry } | null>(null);
   const actorOf = (entry: CropHistoryEntry): string => (
     entry.actor_label?.trim()
     || entry.history_user?.trim()
@@ -69,13 +69,15 @@ export function ProjectHistoryDialog({
     || t('commandPalette.unknownUser')
   );
 
-  const renderBatchMeta = (entry: CropHistoryEntry) => (
-    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
-      <PersonOutlineIcon sx={{ fontSize: 14, color: 'text.secondary', flexShrink: 0 }} />
-      <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-        {t('commandPalette.historyBy', { actor: actorOf(entry) })}
-      </Typography>
-      <Typography variant="caption" color="text.secondary">
+  const renderEntryMeta = (entry: CropHistoryEntry) => (
+    <Box component="span" sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, minWidth: 0, width: '100%' }}>
+      <Box component="span" sx={{ display: 'inline-flex', alignItems: 'flex-start', gap: 0.5, flex: '1 1 160px', minWidth: 0 }}>
+        <PersonOutlineIcon sx={{ fontSize: 14, mt: 0.5, color: 'text.secondary', flexShrink: 0 }} />
+        <Typography component="span" variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', minWidth: 0, overflowWrap: 'anywhere' }}>
+          {t('commandPalette.historyBy', { actor: actorOf(entry) })}
+        </Typography>
+      </Box>
+      <Typography component="span" variant="caption" color="text.secondary" sx={{ maxWidth: '100%', overflowWrap: 'anywhere' }}>
         · {formatTimestamp(entry.history_date)}
       </Typography>
     </Box>
@@ -115,14 +117,69 @@ export function ProjectHistoryDialog({
 
   const renderBatchGroup = (entry: CropHistoryEntry) => {
     const summary = getBatchSummary(entry, tCrops);
-    const action = restoreButton(() => onRevertBatch(entry));
+    const isImport = entry.batch_operation_type === 'crop_import';
+    const action = entryAction(entry);
+    const menuButton = entry.batch_operation_type === 'batch_reverted'
+      && entry.batch_context?.reverted_operation_type === 'crop_import' ? null : (
+        <IconButton aria-label={isImport ? tCrops('history.import.actions') : t('globalMenu.moreActions')}
+          sx={{ minWidth: { xs: 48, sm: 40 }, minHeight: { xs: 48, sm: 40 } }}
+          onClick={event => setMenu({ element: event.currentTarget, entry })}>
+          <MoreVertIcon />
+        </IconButton>
+      );
+    if (isImport) {
+      const children = [...new Map((entry.children ?? []).map(child => [
+        `${child.object_type}-${child.object_id}`, child,
+      ])).values()];
+      const isExpanded = expanded.includes(entry.batch_id!);
+      return (
+        <Paper variant="outlined" sx={{ width: '100%', p: 1.5 }}>
+          <Stack spacing={1}>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>{summary}</Typography>
+                <Typography variant="caption" color="text.secondary" component="div">
+                  {tCrops('import.created', { count: Number(entry.batch_context?.created_count ?? 0) })}
+                  {' · '}
+                  {tCrops('import.updated', { count: Number(entry.batch_context?.updated_count ?? 0) })}
+                </Typography>
+                {renderEntryMeta(entry)}
+              </Box>
+              {menuButton}
+            </Stack>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}
+              sx={{ flexWrap: 'wrap', '& .MuiButton-root': { minHeight: { xs: 48, sm: 40 } } }} useFlexGap>
+              {action}
+              <Button size="small" aria-expanded={isExpanded} onClick={() => setExpanded(previous => isExpanded ? previous.filter(id => id !== entry.batch_id) : [...previous, entry.batch_id!])}>
+                {tCrops('history.import.details')}
+              </Button>
+            </Stack>
+            <Collapse in={isExpanded}>
+              <List disablePadding aria-label={tCrops('history.import.details')}>
+                {children.map(child => <ListItem key={`${child.object_type}-${child.object_id}`} disableGutters>
+                  <ListItemText primary={getHistoryEntryTarget(child) ? (
+                    <Link component={RouterLink} to={getHistoryEntryTarget(child)!} onClick={onClose}
+                      underline="hover" sx={{ display: 'block', py: 0.5 }}>
+                      {getHistoryEntryTitle(child, tCrops)}
+                    </Link>
+                  ) : getHistoryEntryTitle(child, tCrops)} sx={{ overflowWrap: 'anywhere' }} />
+                </ListItem>)}
+              </List>
+            </Collapse>
+          </Stack>
+        </Paper>
+      );
+    }
 
     if (isPhonePortrait) {
       return (
         <Paper variant="outlined" sx={{ width: '100%', p: 1.25, borderRadius: 1.5 }}>
           <Stack spacing={1}>
-            <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.35 }}>{summary}</Typography>
-            {renderBatchMeta(entry)}
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
+              <Typography variant="body2" sx={{ flex: 1, fontWeight: 600, lineHeight: 1.35 }}>{summary}</Typography>
+              {menuButton}
+            </Stack>
+            {renderEntryMeta(entry)}
             {action}
           </Stack>
         </Paper>
@@ -134,9 +191,10 @@ export function ProjectHistoryDialog({
           sx={{ mr: 1 }}
           disableTypography
           primary={<Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.35 }}>{summary}</Typography>}
-          secondary={renderBatchMeta(entry)}
+          secondary={renderEntryMeta(entry)}
         />
         {action}
+        {menuButton}
       </Stack>
     );
   };
@@ -144,8 +202,6 @@ export function ProjectHistoryDialog({
   const renderEntry = (entry: CropHistoryEntry) => {
     const historyTarget = getHistoryEntryTarget(entry);
     const title = getHistoryEntryTitle(entry, tCrops);
-    const actorLabel = actorOf(entry);
-    const timestampLabel = formatTimestamp(entry.history_date);
     const targetLink = historyTarget ? (
       <Link
         component={RouterLink}
@@ -181,15 +237,7 @@ export function ProjectHistoryDialog({
             >
               {title}
             </Typography>
-            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
-              <PersonOutlineIcon sx={{ fontSize: 14, color: 'text.secondary', flexShrink: 0 }} />
-              <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-                {t('commandPalette.historyBy', { actor: actorLabel })}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                · {timestampLabel}
-              </Typography>
-            </Box>
+            {renderEntryMeta(entry)}
             {entryAction(entry)}
           </Stack>
         </Paper>
@@ -211,17 +259,7 @@ export function ProjectHistoryDialog({
               ) : null}
             </>
           )}
-          secondary={(
-            <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
-              <PersonOutlineIcon sx={{ fontSize: 14, color: 'text.secondary', flexShrink: 0 }} />
-              <Typography component="span" variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-                {t('commandPalette.historyBy', { actor: actorLabel })}
-              </Typography>
-              <Typography component="span" variant="caption" color="text.secondary">
-                · {timestampLabel}
-              </Typography>
-            </Box>
-          )}
+          secondary={renderEntryMeta(entry)}
         />
         {entryAction(entry)}
       </Stack>
@@ -252,6 +290,12 @@ export function ProjectHistoryDialog({
       <DialogActions>
         <Button onClick={onClose}>{t('common:actions.close')}</Button>
       </DialogActions>
+      <Menu anchorEl={menu?.element} open={Boolean(menu)} onClose={() => setMenu(null)}>
+        <MenuItem sx={{ whiteSpace: 'normal', maxWidth: 'calc(100vw - 32px)' }} onClick={() => {
+          if (menu) onRevertBatch(menu.entry);
+          setMenu(null);
+        }}>{tCrops(menu?.entry.batch_operation_type === 'crop_import' ? 'history.import.undo' : 'history.batch.undo')}</MenuItem>
+      </Menu>
     </Dialog>
   );
 }
