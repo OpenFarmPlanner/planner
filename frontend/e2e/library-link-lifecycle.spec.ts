@@ -170,7 +170,7 @@ test('correcting the crop species to one that already has the variety shows the 
   await expect(dialog.getByRole('button', { name: 'Kulturart ändern' })).toBeDisabled();
   await expect(dialog.getByLabel('Wähle eine andere Kulturart oder Sorte aus.')).toBeVisible();
 
-  const field = dialog.getByLabel(/Offizielle Kulturart/i);
+  const field = dialog.getByRole('combobox', { name: /Offizielle Kulturart/i });
   await field.click();
   await field.fill(first.name);
   await page.getByRole('option', { name: new RegExp(first.name) }).first().click();
