@@ -5,6 +5,15 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+    # Not a required check: a PR can only change the audit result through the
+    # dependency manifests. Pushes to main and the weekly schedule still scan
+    # unchanged lockfiles against updated advisory databases.
+    paths:
+      - 'backend/pyproject.toml'
+      - 'backend/pdm.lock'
+      - 'frontend/package.json'
+      - 'frontend/package-lock.json'
+      - '.github/workflows/**'
   schedule:
     # Re-scan unchanged lockfiles after vulnerability databases are updated.
     - cron: '23 5 * * 1'

@@ -67,3 +67,17 @@ test('rejects malformed shard ranges and timing data instead of silently droppin
   }
   assert.throws(() => partition([group('a', 1)], profile, 3));
 });
+
+test('the committed timing profile measures every current spec file', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const measured = JSON.parse(fs.readFileSync(path.join(__dirname, '../scripts/ci/e2e_timings.json'), 'utf8'));
+  const specs = fs.readdirSync(path.join(__dirname, '../frontend/e2e'))
+    .filter(name => name.endsWith('.spec.ts')).map(name => `e2e/${name}`);
+  const missing = specs.filter(file => !measured.files[file]);
+  assert.deepEqual(missing, [], 'Add each new spec to scripts/ci/e2e_timings.json: refresh the profile from '
+    + 'a successful run (docs/testing-and-ci.md, "Duration-aware file partitions"), or add an estimate '
+    + '{ tests, duration_ms } until the next refresh. Unmeasured files are balanced by the average only.');
+  assert.deepEqual(Object.keys(measured.files).filter(file => !specs.includes(file)), [],
+    'Remove deleted spec files from scripts/ci/e2e_timings.json.');
+});

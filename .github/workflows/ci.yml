@@ -6,6 +6,18 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, edited]
 
+# A new push (or a base change) to a PR cancels its superseded run. Title/body
+# edits keep a group of their own: they must neither cancel nor be cancelled by
+# the run that produces the exact-head review evidence (#1140). Pushes to main
+# are never cancelled.
+concurrency:
+  group: >-
+    ci-${{ github.event_name == 'pull_request'
+    && (github.event.action != 'edited' || github.event.changes.base)
+    && format('pr-{0}', github.event.pull_request.number)
+    || format('run-{0}', github.run_id) }}
+  cancel-in-progress: true
+
 jobs:
   frontend-tests:
     # Keep each frontend test process comfortably below the shell and job hard
