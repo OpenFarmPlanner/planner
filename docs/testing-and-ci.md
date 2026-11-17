@@ -31,6 +31,30 @@ response of the failed test before calling a failure flaky.
 
 All jobs run concurrently, so the pipeline is as long as its slowest job.
 
+**Metadata-only pull requests (#1206).** A PR whose changed files are all
+metadata skips the heavy jobs, which saves runner time on PRs such as release
+version bumps. Metadata here means root-level `*.md`, `.claude/**/*.md`,
+`docs/**` except `docs/api.md` (the backend serves it as the API guide), and the
+two release version files `backend/config/version.py` and
+`backend/pyproject.toml`. The version files count only when their diff changes
+nothing but the single version line; `pyproject.toml` also declares the
+dependencies. `scripts/ci/classify_changes.cjs` decides this, and the reusable
+`.github/workflows/classify-changes.yml` runs it from the PR's **base**, so a PR
+cannot change the rule for its own tests. It fails closed: any other path
+(application code, workflows, `scripts/ci/**`, lockfiles), an undeterminable
+diff, a missing base classifier, a failed classification job, or a push,
+schedule or dispatch event runs everything.
+
+Required checks must still report, so they are skipped with `if:`, never with
+trigger-level `paths:`. A skipped job counts as passing, but a skipped matrix job
+would not report its expanded names (`frontend-tests (1)`, `e2e (shard 1/3)`),
+so those matrix jobs still start and skip only their steps. `backend-tests`,
+`backend-postgres-tests`, cross-browser, ZAP and both dependency audits are
+skipped as whole jobs. `security-review-completion`, `quality` (which also
+checks that the two version declarations agree), CodeQL and dependency review
+always run. `tests/test_classify_changes.cjs` covers the classifier and runs in
+`quality`.
+
 **Superseded runs and non-required workflows (#1210).** `ci.yml` has a
 per-PR `concurrency` group: a new push, reopen, ready-for-review or base change
 cancels the PR's run that is still in progress, as `e2e.yml` and

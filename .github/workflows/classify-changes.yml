@@ -1,0 +1,50 @@
+name: Classify changes
+
+# Reusable: tells callers whether a pull request changes only metadata (docs,
+# Markdown, release version numbers), so they can skip heavy jobs. Required
+# checks must still report, so callers skip jobs or steps with `if:`, never with
+# trigger-level `paths:`. An empty or failed result means "run everything".
+# The classifier is taken from the PR's base, never from the PR itself, so a PR
+# cannot change the rule that decides whether its own tests run.
+on:
+  workflow_call:
+    outputs:
+      metadata_only:
+        description: "'true' only for a pull request whose changes are all metadata"
+        value: ${{ jobs.classify.outputs.metadata_only }}
+
+permissions:
+  contents: read
+
+jobs:
+  classify:
+    name: classify changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      metadata_only: ${{ steps.classify.outputs.metadata_only }}
+    steps:
+      - name: Checkout the PR merge commit and its base
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Classify changed files with the base's classifier
+        id: classify
+        if: github.event_name == 'pull_request'
+        run: |
+          set -u
+          if ! git rev-parse --verify --quiet HEAD^2 >/dev/null; then
+            echo "Not a PR merge commit; running everything."
+            echo "metadata_only=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          classifier="$RUNNER_TEMP/classify_changes.cjs"
+          if ! git show HEAD^1:scripts/ci/classify_changes.cjs > "$classifier" 2>/dev/null; then
+            echo "The base has no classifier yet; running everything."
+            echo "metadata_only=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          node "$classifier" "$(git rev-parse HEAD^1)" "$(git rev-parse HEAD)"

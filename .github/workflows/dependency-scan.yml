@@ -20,7 +20,13 @@ on:
   workflow_dispatch:
 
 jobs:
+  changes:
+    # Metadata-only PRs (docs, release version bumps) skip the heavy jobs below.
+    uses: ./.github/workflows/classify-changes.yml
+
   pip-audit:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.metadata_only != 'true' }}
     name: pip-audit (backend)
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -73,6 +79,8 @@ jobs:
           exit "$exit_code"
 
   npm-audit:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.metadata_only != 'true' }}
     name: npm audit (frontend)
     runs-on: ubuntu-latest
     timeout-minutes: 10

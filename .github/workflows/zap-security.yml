@@ -22,7 +22,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    # Metadata-only PRs (docs, release version bumps) skip the heavy jobs below.
+    uses: ./.github/workflows/classify-changes.yml
+
   baseline:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.metadata_only != 'true' }}
     name: ZAP passive baseline
     runs-on: ubuntu-latest
     timeout-minutes: 20

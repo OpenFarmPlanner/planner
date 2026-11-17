@@ -9,6 +9,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    # Metadata-only PRs (docs, release version bumps) skip the heavy jobs below.
+    uses: ./.github/workflows/classify-changes.yml
+
   e2e:
     # Balance whole files across three runners using measured E2E durations.
     # Each runner is a fresh VM that starts its own Django backend against its own SQLite file
@@ -16,6 +20,8 @@ jobs:
     # database and no fixture users - the isolation the suite needs comes from
     # the split itself, and `workers: 1` still holds inside a shard.
     # Keep the runner script's INDEX/TOTAL in step with the matrix.
+    needs: changes
+    if: ${{ !cancelled() }}
     name: e2e (shard ${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -25,9 +31,11 @@ jobs:
         shard: [1, 2, 3]
     steps:
       - name: Checkout
+        if: needs.changes.outputs.metadata_only != 'true'
         uses: actions/checkout@v7
 
       - name: Setup Node (LTS)
+        if: needs.changes.outputs.metadata_only != 'true'
         id: setup-node
         uses: actions/setup-node@v7
         with:
@@ -36,11 +44,13 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Setup Python 3.12
+        if: needs.changes.outputs.metadata_only != 'true'
         uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
       - name: Install uv
+        if: needs.changes.outputs.metadata_only != 'true'
         run: python -m pip install --upgrade pip uv
 
       # `npm ci` costs anywhere from 20s to 5 minutes on an identical lockfile
@@ -52,6 +62,7 @@ jobs:
       # (npm reports core-js's postinstall as *not* run under this project's
       # allow-scripts policy, so no install-script side effect is lost.)
       - name: Cache frontend node_modules
+        if: needs.changes.outputs.metadata_only != 'true'
         id: node-modules-cache
         uses: actions/cache@v6
         with:
@@ -59,7 +70,7 @@ jobs:
           key: node-modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('frontend/package-lock.json') }}
 
       - name: Install frontend dependencies
-        if: steps.node-modules-cache.outputs.cache-hit != 'true'
+        if: needs.changes.outputs.metadata_only != 'true' && (steps.node-modules-cache.outputs.cache-hit != 'true')
         run: npm ci
         working-directory: frontend
 
@@ -68,6 +79,7 @@ jobs:
       # the browser needs to already be installed by the time `npm run build`
       # runs, not just before `playwright test`.
       - name: Install Playwright browser (Chrome)
+        if: needs.changes.outputs.metadata_only != 'true'
         # PLAYWRIGHT_DOWNLOAD_HOST forces the direct storage-bucket mirror instead
         # of the default Azure-routed ones (both prefixed /dbazure/), which is where
         # the download stalls were observed. The retry/lock handling lives in the
@@ -79,19 +91,22 @@ jobs:
         run: "$GITHUB_WORKSPACE/scripts/ci/install-playwright-chrome.sh"
 
       - name: Test E2E timing and partition tools
+        if: needs.changes.outputs.metadata_only != 'true'
         run: node --test tests/test_playwright_timings.cjs tests/test_e2e_sharding.cjs
 
       - name: Build frontend (production build)
+        if: needs.changes.outputs.metadata_only != 'true'
         run: npm run build
         working-directory: frontend
         env:
           VITE_WS_BASE_URL: ws://127.0.0.1:8000
 
       - name: Run E2E tests against the production build
+        if: needs.changes.outputs.metadata_only != 'true'
         run: node scripts/ci/run_e2e_shard.cjs ${{ matrix.shard }}/3
 
       - name: Upload E2E timings
-        if: always()
+        if: always() && needs.changes.outputs.metadata_only != 'true'
         uses: actions/upload-artifact@v7
         with:
           name: e2e-timings-shard-${{ matrix.shard }}
@@ -100,7 +115,7 @@ jobs:
           retention-days: 7
 
       - name: Upload localization review screenshots
-        if: always()
+        if: always() && needs.changes.outputs.metadata_only != 'true'
         uses: actions/upload-artifact@v7
         with:
           name: localization-review-shard-${{ matrix.shard }}

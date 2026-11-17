@@ -18,9 +18,15 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    # Metadata-only PRs (docs, release version bumps) skip the heavy jobs below.
+    uses: ./.github/workflows/classify-changes.yml
+
   cross-browser:
     # Functional and layout assertions in Chromium, Firefox and WebKit,
     # desktop and mobile. Each project has its own backend and SQLite file.
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.metadata_only != 'true' }}
     name: cross-browser (${{ matrix.project }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
