@@ -52,6 +52,11 @@ Choose an appropriate existing `Epic: ...` parent and existing priority label.
 Declare `Parent epic: #N`; verify that existing parent-link automation establishes
 the native parent, without replacing an unrelated parent. Keep one issue per
 coherent change; creating an issue does not authorize implementing it.
+For UI/UX-facing issue creation or backlog refinement, apply the lightweight
+[product UX preflight](../../../docs/ux-principles.md#ux-issue-preflight),
+checking existing defaults, cross-issue consistency and unnecessary controls.
+Only refine confirmed decisions; escalate true product ambiguity rather than
+inventing settings or changing an in-flight implementation contract.
 
 ### Bugs discovered during implementation or QA
 

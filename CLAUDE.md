@@ -209,6 +209,7 @@ Deploy scripts, cron/scheduling config, and infra are **not** in this repo — t
   `slotProps.htmlInput` instead of `inputProps`.
 
 ### OpenFarmPlanner UI Style
+- Read [`docs/ux-principles.md`](docs/ux-principles.md) when drafting or implementing user-facing changes. Prefer established product defaults and avoid redundant choices (including unnecessary per-flow language pickers); flag conflicts with explicit requirements instead of silently changing scope.
 - Follow the existing OpenFarmPlanner design language for UI elements,
   especially info boxes, warning boxes, validation messages, confirmation
   dialogs, empty states, snackbars, undo messages, context menus, hover
