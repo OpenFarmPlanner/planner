@@ -357,6 +357,47 @@ The job runs only the marked tests, not the whole suite on PostgreSQL:
 that is a separate decision (it would double the backend CI time and
 surface unrelated backend differences).
 
+### History-completeness guard
+
+Every completed project version must restore exactly (see
+[versioning-and-history.md](./versioning-and-history.md#what-to-check-before-changing-this)).
+`backend/farm/tests/conftest.py` enforces this for every farm test through the
+autouse fixture `history_completeness_guard` (`farm/tests/history_guard.py`).
+It wraps the Django/DRF test client. Around each `POST`/`PUT`/`PATCH`/`DELETE`
+that returns 2xx for a project (via the `X-Project-Id` header), it reconstructs
+the latest selectable version with `reconstruct_project_state` and compares it
+with `capture_project_state()`. Preview paths, failed requests and requests
+outside a project are skipped.
+
+- **Comparison.** Rows are compared field by field after normalization:
+  `updated_at` and the derived `name_normalized`/`variety_normalized` are
+  ignored, timestamps are compared at millisecond precision (snapshot JSON
+  precision), and soft-deleted rows count as absent on both sides. A refused
+  reconstruction is reported together with the live rows that no revision or
+  checkpoint covers.
+- **Attribution.** The check runs before and after the request, and only gaps the
+  request introduced fail the test. Rows a test writes through the ORM, or a
+  project without any history yet, therefore do not count against a later API
+  call. Write fixtures through the ORM as usual.
+- **Opt-out.** `@pytest.mark.history_guard_exempt(reason='...')` for a test
+  that deliberately builds untracked or legacy history. The reason is required.
+- **Known gaps.** `@pytest.mark.history_gap(issue=N, reason='...')` (or
+  `issue=(N, M)`) marks a test that hits a tracked defect. The test's own
+  assertions still run and the gap is expected. The test fails once no gap
+  occurs, so the fix must remove its markers. Add `match=<regex>` to tolerate
+  only the gap lines of that issue, and let any other gap still fail. Open gap
+  issues when this was introduced: #1192, #1196, #1201, #1202, #1203, #1204,
+  #1205.
+
+The guard adds a few seconds to the farm suite (about 77 s → 80–85 s on four
+local workers). `farm/tests/test_history_invariants.py` adds the permanent
+round-trip scenario (about 13 s on one worker): every model in
+`PROJECT_STATE_MODELS` is created, updated and deleted through the API. Each
+version and its automatic backup is restored and compared, as are import undo
+and legacy batch revert followed by their backups. Refusals are checked for
+atomicity, and per-crop restore is compared with full project restore. Expected
+failures name their issue (#1194, #1195, #1196) and fail once fixed.
+
 ### Retiring migration tests
 
 A migration test guards a data migration until production has run it. After

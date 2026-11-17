@@ -3,6 +3,7 @@
 import json
 from decimal import Decimal
 
+import pytest
 from django.utils import timezone
 from rest_framework import status
 
@@ -147,6 +148,9 @@ class SupplierApiTest(ProjectApiTestCase):
         self.assertEqual(restored.name, self.supplier.name)
         self.assertEqual(restored.homepage_url, self.supplier.homepage_url)
 
+    @pytest.mark.history_gap(
+        issue=1204, reason='copied beds or restored supplier data record no revision',
+    )
     def test_restore_ignores_invalid_seed_status_values_in_undo_payload(self):
         """Client-supplied undo payloads must not store values outside the seed status choices."""
         delete_response = self.client.delete(f'/openfarmplanner/api/suppliers/{self.supplier.id}/')
@@ -479,6 +483,9 @@ class SupplierUnlinkAndRestoreTest(ProjectApiTestCase):
 
         self.assertEqual(other_crop.supplier_id, other_supplier.id)
 
+    @pytest.mark.history_gap(
+        issue=1204, reason='copied beds or restored supplier data record no revision',
+    )
     def test_the_endpoint_round_trip_restores_the_links_and_the_data_row(self):
         undo_payload = self.client.post(
             f'/openfarmplanner/api/suppliers/{self.supplier.id}/unlink-and-delete/'
@@ -503,6 +510,9 @@ class SupplierUnlinkAndRestoreTest(ProjectApiTestCase):
         self.assertEqual(restored_row.seed_exemption_status, 'approved')
         self.assertEqual(restored_row.germination_rate, 85)
 
+    @pytest.mark.history_gap(
+        issue=1204, reason='copied beds or restored supplier data record no revision',
+    )
     def test_legacy_undo_payload_defaults_seed_statuses(self) -> None:
         response = self.client.post(
             f'/openfarmplanner/api/suppliers/{self.supplier.id}/unlink-and-delete/'

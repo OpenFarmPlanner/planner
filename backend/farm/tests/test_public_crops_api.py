@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from datetime import timezone as datetime_timezone
 from decimal import Decimal
 
+import pytest
 from django.db import connection
 from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
@@ -407,6 +408,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             format='json',
         )
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publish_project_crop_creates_separate_public_crop(self):
         response = self.publish_current_crop()
 
@@ -492,6 +496,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertNotIn('sowing_calculation_safety_percent_direct', public_crop)
         self.assertNotIn('sowing_calculation_safety_percent_pre_cultivation', public_crop)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publish_keeps_the_seed_safety_margin_out_of_the_public_entry(self):
         self.crop.sowing_calculation_safety_percent = 15
         self.crop.save()
@@ -608,6 +615,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertIsNone(response.data['checks']['crop_species'])
         self.assertEqual(response.data['checks']['blocking_reasons'], ['crop_species_unavailable'])
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publish_allows_a_freshly_proposed_crop_species(self):
         proposed_species = CropSpecies.objects.create(
             name='Zzz Testonly Kohlrabusch', status=CropSpecies.STATUS_PROPOSED, proposed_by=self.user,
@@ -679,6 +689,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(response.data['blocking_reasons'], ['missing_required_fields'])
         self.assertEqual(response.data['missing_required_fields'][0]['field'], 'variety')
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publish_as_general_crop_allows_empty_public_variety(self):
         response = self.client.post(
             f'/openfarmplanner/api/crops/{self.crop.id}/publish-public/',
@@ -710,6 +723,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertTrue(response.data['can_publish'])
         self.assertEqual(response.data['missing_required_fields'], [])
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publish_preview_accepts_required_fields_inherited_from_general_crop(self):
         general_crop = Crop.objects.create(
             name='Lettuce',
@@ -815,6 +831,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(len(response.data['duplicates']), 1)
         self.assertFalse(response.data['duplicates'][0]['is_mine'])
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_second_publish_updates_own_linked_public_crop_and_increments_version(self):
         first_publish = self.publish_current_crop()
         self.assertEqual(first_publish.status_code, status.HTTP_201_CREATED)
@@ -835,6 +854,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(updated_public.version, 2)
         self.assertEqual(updated_public.notes, 'Updated local notes')
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publish_links_local_crop_to_its_owned_public_entry(self):
         response = self.publish_current_crop()
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -851,6 +873,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertFalse(self.crop.is_modified_from_source)
         self.assertNotEqual(self.crop.origin_type, Crop.ORIGIN_IMPORTED)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publish_updates_own_imported_public_crop(self):
         own_public = PublicCrop.objects.create(
             name='Carrot',
@@ -922,6 +947,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(len(response.data['duplicates']), 1)
         self.assertEqual(PublicCrop.objects.count(), 1)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publish_allows_new_public_crop_for_different_normalized_identity(self):
         other_crop = Crop.objects.create(
             name='Lettuce',
@@ -947,6 +975,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         # existing 'Bijella' duplicate + new 'Other Variety' + auto-created general entry
         self.assertEqual(PublicCrop.objects.count(), 3)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publish_does_not_touch_an_existing_general_public_crop(self):
         existing_general = PublicCrop.objects.create(
             name='Lettuce',
@@ -966,6 +997,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(existing_general.growth_duration_days, 99)
         self.assertEqual(existing_general.version, 1)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_general_kultur_uses_existing_owned_general_public_entry_from_another_project(self):
         """Publishing a Sorte should connect the local Kultur to the user's general entry."""
         other_project = Project.objects.create(name='Previous Project', slug='previous-project')
@@ -1006,6 +1040,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(general_row['owned_public_crop_role'], 'contributor')
         self.assertIsNone(general_row['public_publish_blocked_reason'])
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publishing_general_kultur_updates_existing_owned_general_public_entry(
         self,
     ):
@@ -1065,6 +1102,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             **overrides,
         )
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publishing_a_sorte_records_the_general_kultur_as_the_entry_owner(self):
         """The species-level entry belongs to the Kultur, not to the Sorte.
 
@@ -1086,6 +1126,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             self.crop,
         )
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publishing_a_sorte_keeps_the_general_kultur_name_for_the_species_entry(self):
         general_kultur = self._create_general_kultur(name='t')
         self.crop.name = 'PublishCopy 1787901718647'
@@ -1102,12 +1145,18 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             'PublishCopy 1787901718647',
         )
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publishing_a_sorte_without_a_general_kultur_keeps_the_sorte_as_owner(self):
         """Nothing else can own the entry when the project has no general Kultur."""
         self.publish_current_crop()
 
         self.assertEqual(PublicCrop.objects.get(variety='').source_project_crop, self.crop)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publishing_a_sorte_keeps_species_invariant_fields_off_the_variety_entry(self):
         """crop_family / nutrient_demand describe the species: the Sorte's public
         variety entry never carries them, and the species-level entry takes them
@@ -1130,6 +1179,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(general_entry.crop_family_id, 'Asteraceae')
         self.assertEqual(general_entry.nutrient_demand, 'high')
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_updating_a_sorte_entry_does_not_wipe_a_curated_species_invariant_value(self):
         """The project-side update omits these fields, so a value curated on the
         public variety entry survives."""
@@ -1149,6 +1201,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(variety_entry.crop_family_id, 'Lamiaceae')
         self.assertEqual(variety_entry.nutrient_demand, 'medium')
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_general_kultur_published_through_a_sorte_offers_the_pull_for_differing_values(self):
         """The entry carries the Sorte's values, which the Kultur never had.
 
@@ -1187,6 +1242,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         general_public_crop.refresh_from_db()
         self.assertEqual(general_public_crop.growth_duration_days, 50)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_general_kultur_matching_the_created_entry_gets_the_baseline(self):
         general_kultur = self._create_general_kultur(
             growth_duration_days=self.crop.growth_duration_days,
@@ -1201,6 +1259,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(general_kultur.source_public_version, general_public_crop.version)
         self.assertFalse(has_pending_public_crop_update(general_kultur))
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publishing_a_sorte_never_links_the_general_kultur_to_a_foreign_entry(self):
         publisher = User.objects.create_user(
             username='other-publisher', email='other@example.com', password='testpass',
@@ -1225,6 +1286,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(foreign_general.version, 1)
         self.assertEqual(foreign_general.growth_duration_days, 99)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publishing_a_sorte_keeps_an_existing_general_kultur_link(self):
         publisher = User.objects.create_user(
             username='other-publisher', email='other@example.com', password='testpass',
@@ -1262,6 +1326,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(before['source_public_crop_id'], linked_entry.id)
         self.assertEqual(before['source_public_version'], 3)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_republishing_a_sorte_links_the_general_kultur_to_its_own_entry(self):
         """An entry the Kultur already owns is linked on a later Sorte publish."""
         general_kultur = self._create_general_kultur(
@@ -1284,6 +1351,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(general_kultur.source_public_crop, general_public_crop)
         self.assertEqual(general_kultur.source_public_version, general_public_crop.version)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_published_crop_stays_in_sync_on_create_update_and_republish(self):
         """The published row itself is always baselined: its values are the entry's."""
         self._create_general_kultur()
@@ -1315,6 +1385,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         assert_in_sync('updated')
         self.assertEqual(PublicCrop.objects.get(pk=entry.pk).status, PublicCrop.STATUS_PUBLISHED)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_general_kultur_published_through_a_sorte_reports_no_local_changes(self):
         """With identical values there is nothing to contribute, exactly as for a Sorte."""
         # Same values as the Sorte the entry was published from, so the
@@ -1330,6 +1403,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         rows = {row['id']: row for row in self.client.get('/openfarmplanner/api/crops/').data['results']}
         self.assertEqual(rows[general_kultur.id]['public_publish_blocked_reason'], 'no_local_changes')
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_sorte_that_only_inherits_timing_reports_no_local_changes(self):
         """A Sorte whose timing comes from its general Kultur has nothing extra to
         contribute after publishing: the published entry already carries the
@@ -1349,6 +1425,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         rows = {row['id']: row for row in self.client.get('/openfarmplanner/api/crops/').data['results']}
         self.assertEqual(rows[self.crop.id]['public_publish_blocked_reason'], 'no_local_changes')
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publishing_the_general_kultur_updates_the_entry_created_by_the_sorte(self):
         general_kultur = self._create_general_kultur(
             growth_duration_days=self.crop.growth_duration_days,
@@ -1379,6 +1458,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(general_public_crop.growth_duration_days, 60)
         self.assertEqual(general_public_crop.version, 2)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publishing_one_sorte_keeps_the_local_kultur_group_together(self):
         """Publishing must link the whole Kultur group, not fork off the published Sorte.
 
@@ -1432,6 +1514,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(get_general_crop(published_sorte), kultur)
         self.assertEqual(get_general_crop(unpublished_sorte), kultur)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_linking_a_sorte_to_a_public_entry_keeps_the_local_kultur_group_together(self):
         species = CropSpecies.objects.create(name='Cucurbita pepo')
         public_entry = PublicCrop.objects.create(
@@ -1470,6 +1555,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         # diverges and must not be recorded as already synced.
         self.assertIsNone(linked_sorte.source_public_version)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_link_public_crop_links_general_kultur_to_foreign_general_entry(self):
         # The blocking-duplicate case the publishing wizard's "Mit diesem
         # Eintrag verknüpfen" action resolves: a general Kultur collides with
@@ -1660,6 +1748,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(response.data.get('code'), 'crop_name_conflict')
         self.assertEqual(Crop.objects.filter(project=self.project, name='Lauch').count(), 1)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_link_public_crop_records_the_entry_version_when_content_already_matches(self):
         # The complementary case: nothing diverges, so the link is already
         # fully in sync and must not falsely report a pending pull update.
@@ -2021,6 +2112,7 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
 
     def test_failed_direct_import_rolls_back_creation(self):
         from unittest.mock import patch
+
         from rest_framework.exceptions import ValidationError
 
         entry = PublicCrop.objects.create(
@@ -2199,6 +2291,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertFalse(Crop.objects.filter(project=other).exists())
         self.assertFalse(Crop.objects.filter(project=self.project, name=entry.name).exists())
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_unclassified_manual_general_import_requires_choice_and_preserves_references(self):
         from farm.models import PlantingPlan
 
@@ -2468,6 +2563,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertTrue(Crop.objects.filter(project=self.project, name='Lettuce (2)',
                                             variety=self.crop.variety).exists())
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_import_public_crop_creates_project_local_copy(self):
         public_crop = PublicCrop.objects.create(
             name='Bean',
@@ -2492,6 +2590,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(imported.seed_packages.count(), 1)
         self.assertEqual(float(imported.seed_packages.first().size_value), 15.0)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_import_does_not_overwrite_the_project_seed_safety_margin(self):
         public_crop = PublicCrop.objects.create(
             name='Lettuce',
@@ -3081,6 +3182,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             revision_count_after_first_import,
         )
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_reimporting_after_library_update_with_no_local_changes_syncs_automatically(self):
         public_crop = PublicCrop.objects.create(
             name='Carrot',
@@ -3337,6 +3441,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             f'/openfarmplanner/api/crops/{crop_id}/public-update/reject/', {}, format='json',
         )
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_rejecting_a_public_update_silences_the_notice_without_touching_the_copy(self):
         _, imported = self._import_and_rename_variety()
 
@@ -3350,6 +3457,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(imported.source_public_version, 1)
         self.assertFalse(imported.is_modified_from_source)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_rejected_update_keeps_the_diff_reachable_for_a_later_change_of_mind(self):
         """The user must be able to reopen the diff without waiting for a new public edit."""
         _, imported = self._import_and_rename_variety()
@@ -3367,6 +3477,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             }],
         )
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_a_newer_public_version_surfaces_the_notice_again_after_a_rejection(self):
         public_crop, imported = self._import_and_rename_variety()
         self._reject_public_update(imported.id)
@@ -3382,6 +3495,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertTrue(row['public_update_available'])
         self.assertFalse(row['public_update_rejected'])
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_applying_the_update_clears_an_earlier_rejection(self):
         public_crop, imported = self._import_and_rename_variety()
         self._reject_public_update(imported.id)
@@ -3409,6 +3525,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['code'], 'no_pending_public_update')
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publish_block_reason_tracks_the_update_decision_states(self):
         public_crop, imported = self._import_and_rename_variety()
         rows = {row['id']: row for row in self.client.get('/openfarmplanner/api/crops/').data['results']}
@@ -3438,6 +3557,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         rows = {row['id']: row for row in response.data['results']}
         self.assertIsNone(rows[self.crop.id]['public_publish_blocked_reason'])
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_owner_publish_block_reason_tracks_local_changes_without_an_import_link(self):
         """A crop published straight from local data (never imported) has no
         `source_public_crop`, so the block reason must be derived by comparing
@@ -3453,6 +3575,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         rows = {row['id']: row for row in self.client.get('/openfarmplanner/api/crops/').data['results']}
         self.assertIsNone(rows[self.crop.id]['public_publish_blocked_reason'])
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publishing_over_a_rejected_public_version_is_refused(self):
         """The lock exists so a declined public change cannot be silently overwritten."""
         public_crop, imported = self._import_and_rename_variety()
@@ -3476,6 +3601,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         public_crop.refresh_from_db()
         self.assertEqual(public_crop.variety, 'Nantes II')
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_confirming_the_update_applies_the_variety_rename_to_an_unmodified_copy(self):
         public_crop, imported = self._import_and_rename_variety()
 
@@ -4967,6 +5095,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         public_crop.refresh_from_db()
         self.assertEqual(public_crop.status, PublicCrop.STATUS_PUBLISHED)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_contributor_can_republish_a_crop_removed_from_the_library(self):
         public_crop = PublicCrop.objects.create(
             name='Lettuce',
@@ -5631,6 +5762,9 @@ class PublicCropSpeciesRelinkApiTest(DRFAPITestCase):
         self.client.force_authenticate(user=user)
         self.client.defaults['HTTP_X_PROJECT_ID'] = str(self.project.id)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_moderator_relinks_a_published_entry_to_another_species(self):
         self.authenticate(self.moderator)
 
@@ -5642,6 +5776,9 @@ class PublicCropSpeciesRelinkApiTest(DRFAPITestCase):
         self.assertEqual(self.entry.crop_species_id, self.correct_species.id)
         self.assertEqual(response.data['crop']['id'], self.entry.id)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_the_locked_identity_fields_are_left_alone(self):
         self.authenticate(self.moderator)
 
@@ -5651,6 +5788,9 @@ class PublicCropSpeciesRelinkApiTest(DRFAPITestCase):
         self.assertEqual(self.entry.name, 'Bean')
         self.assertEqual(self.entry.variety, 'Neckarkoenigin')
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_the_old_species_is_neither_deleted_nor_renamed(self):
         other_entry = PublicCrop.objects.create(
             name='Bean', variety='Borlotto', status=PublicCrop.STATUS_PUBLISHED, crop_species=self.broad_species,
@@ -5665,6 +5805,9 @@ class PublicCropSpeciesRelinkApiTest(DRFAPITestCase):
         self.assertEqual(self.broad_species.status, CropSpecies.STATUS_PUBLISHED)
         self.assertEqual(other_entry.crop_species_id, self.broad_species.id)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_the_relink_is_audited_as_a_revision_with_both_species(self):
         self.authenticate(self.moderator)
 
@@ -5685,6 +5828,9 @@ class PublicCropSpeciesRelinkApiTest(DRFAPITestCase):
             revision.changed_fields,
         )
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_no_status_event_is_recorded_because_the_status_does_not_change(self):
         self.authenticate(self.moderator)
 
@@ -5694,6 +5840,9 @@ class PublicCropSpeciesRelinkApiTest(DRFAPITestCase):
         self.assertEqual(self.entry.status, PublicCrop.STATUS_PUBLISHED)
         self.assertFalse(PublicCropStatusEvent.objects.filter(public_crop=self.entry).exists())
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_the_owned_private_crop_group_moves_with_the_entry(self):
         self.authenticate(self.moderator)
 
@@ -5704,6 +5853,9 @@ class PublicCropSpeciesRelinkApiTest(DRFAPITestCase):
         self.assertEqual(self.source_crop.crop_species_id, self.correct_species.id)
         self.assertEqual(self.sibling_crop.crop_species_id, self.correct_species.id)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_a_crop_group_of_another_species_is_not_dragged_along(self):
         unrelated_species = CropSpecies.objects.create(name='Soybean')
         unrelated_crop = Crop.objects.create(
@@ -5796,6 +5948,9 @@ class PublicCropSpeciesRelinkApiTest(DRFAPITestCase):
         self.assertEqual(self.entry.crop_species_id, self.broad_species.id)
         self.assertEqual(self.entry.variety, 'Neckarkoenigin')
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_a_plain_moderator_can_still_relink_the_species_alone(self):
         self.authenticate(self.moderator)
 
@@ -5806,6 +5961,9 @@ class PublicCropSpeciesRelinkApiTest(DRFAPITestCase):
         self.assertEqual(self.entry.crop_species_id, self.correct_species.id)
         self.assertEqual(self.entry.variety, 'Neckarkoenigin')
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_the_species_and_variety_can_change_together(self):
         self.authenticate(self.admin)
 
@@ -5842,6 +6000,9 @@ class PublicCropSpeciesRelinkApiTest(DRFAPITestCase):
         self.assertEqual(self.entry.crop_species_id, self.broad_species.id)
         self.assertEqual(self.entry.variety, 'Neckarkoenigin')
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_the_name_stays_locked_even_when_the_variety_changes(self):
         self.authenticate(self.admin)
 
@@ -5863,6 +6024,9 @@ class PublicCropSpeciesRelinkApiTest(DRFAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['code'], 'crop_species_rejected')
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_the_moderator_note_is_recorded_even_when_the_relink_applies_at_once(self):
         self.authenticate(self.moderator)
 
@@ -6850,6 +7014,9 @@ class PublicCropFieldSyncApiTest(DRFAPITestCase):
         self.assertFalse(sorte.is_modified_from_source)
         self.assertEqual(response.data['public_publish_blocked_reason'], 'no_local_changes')
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_sync_pulls_and_pushes_in_one_step_and_resolves_to_up_to_date(self):
         self._link(self.kultur, [])
         self.entry.refresh_from_db()
@@ -6876,6 +7043,9 @@ class PublicCropFieldSyncApiTest(DRFAPITestCase):
         self.assertEqual(crop_data['public_publish_blocked_reason'], 'no_local_changes')
         self.assertFalse(crop_data['public_change_proposal_pending'])
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_sync_with_everything_from_the_library_creates_no_public_version(self):
         self._link(self.kultur, [])
         self.entry.refresh_from_db()
@@ -6918,6 +7088,9 @@ class PublicCropFieldSyncApiTest(DRFAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertEqual(response.data['code'], 'stale_public_crop_version')
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_sync_refuses_a_variety_rename_on_a_foreign_entry(self):
         variety_entry = PublicCrop.objects.create(
             name='Spinat',
@@ -7652,6 +7825,9 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
 
     # --- validation ---------------------------------------------------------
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_germination_fields_import_sync_diff_and_local_pins(self) -> None:
         self._library_edit(
             germination_temperature_optimal_min_c=18,
@@ -7874,6 +8050,9 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
         response = self.client.get(self._crop_url(self.kultur, 'public-update/'))
         self.assertEqual(response.data, {'available': False})
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_pull_never_overwrites_pinned_fields(self):
         self._pin(self.kultur, ['growth_duration_days'])
         self._library_edit(growth_duration_days=90, harvest_duration_days=40)
@@ -7905,6 +8084,9 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
         self.assertEqual(self.kultur.source_public_version, self.entry.version)
         self.assertEqual(response.data['crop']['public_publish_blocked_reason'], 'no_local_changes')
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_pull_can_release_a_pin_and_take_the_new_value(self):
         self._pin(self.kultur, ['growth_duration_days', 'expected_yield'])
         self._library_edit(growth_duration_days=90, harvest_duration_days=40)
@@ -8066,6 +8248,9 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
         self.assertTrue(changes['growth_duration_days']['pinnable'])
         self.assertFalse(changes['harvest_duration_days']['pinned'])
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_sync_pins_fields_against_an_owned_but_unlinked_entry(self):
         # A general Kultur of another project reaches the user's own species
         # entry through the owner lookup, without a link. The sync links it,
@@ -8097,6 +8282,9 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
 
     # --- sync -----------------------------------------------------------------
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_sync_pins_fields_in_the_same_transaction(self):
         Crop.objects.filter(pk=self.kultur.pk).update(
             growth_duration_days=75, harvest_duration_days=45, is_modified_from_source=True,
@@ -8125,6 +8313,9 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
         )
         self.assertEqual(latest.snapshot['library_pinned_fields'], ['growth_duration_days'])
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_sync_releases_a_pin_chosen_for_the_library_value(self):
         self._pin(self.kultur, ['growth_duration_days'])
         self._patch(self.kultur, {'growth_duration_days': 75})
@@ -8136,6 +8327,9 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
         self.assertEqual(self.kultur.growth_duration_days, 60)
         self.assertEqual(self.kultur.library_pinned_fields, [])
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_sync_shares_a_pinned_value_only_when_its_pin_is_released_explicitly(self):
         self._pin(self.kultur, ['growth_duration_days'])
         self._patch(self.kultur, {'growth_duration_days': 75})
@@ -8148,6 +8342,9 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
         self.assertEqual(self.entry.growth_duration_days, 75)
         self.assertEqual(self.kultur.library_pinned_fields, [])
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_sync_keeps_pins_the_decision_does_not_name(self):
         self._pin(self.kultur, ['growth_duration_days'])
         Crop.objects.filter(pk=self.kultur.pk).update(harvest_duration_days=45)
@@ -8253,6 +8450,9 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
         self.assertEqual(self.entry.notes, 'Public notes')
         self.assertEqual(self.entry.propagation_duration_days, 14)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_sync_takes_the_library_value_for_an_empty_local_value(self):
         self._clear_local_notes_and_propagation()
 
@@ -8263,6 +8463,9 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
         self.assertEqual(self.kultur.notes, 'Public notes')
         self.assertEqual(self.kultur.propagation_duration_days, 14)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_sync_pins_every_field_but_the_identity_on_a_kultur(self):
         self._local_kultur_edits()
         fields = sorted(set(self._sync_preview(self.kultur)) - {'name'})

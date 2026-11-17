@@ -3,6 +3,7 @@
 import json
 from uuid import uuid4
 
+import pytest
 from django.core.exceptions import ValidationError
 from django.test import SimpleTestCase
 from rest_framework.test import APIClient
@@ -583,6 +584,9 @@ class PublicPlantHealthTests(ProjectApiTestCase):
         self.assertEqual(self.crop.plant_health, before)
         self.assertEqual(EntityRevision.objects.filter(entity_type="crop").count(), revisions)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_staged_mappings_commit_with_the_final_sync(self):
         response = self.sync(push_fields=["plant_health"], **self.staged_mapping())
         self.assertEqual(response.status_code, 200, response.data)
@@ -647,6 +651,10 @@ class PublicPlantHealthTests(ProjectApiTestCase):
             )
         )
 
+    @pytest.mark.history_gap(
+        issue=(1192, 1201),
+        reason='library companion and provenance writes record no revision',
+    )
     def test_library_only_change_is_reviewable_and_pull_preserves_private_values(self):
         original_id, prose = self.crop.pk, self.crop.pests_diseases
         self.edit_public(self.entries[1])
@@ -664,6 +672,9 @@ class PublicPlantHealthTests(ProjectApiTestCase):
         self.assertEqual(self.crop.pests_diseases, prose)
         self.assertFalse(self.crop.is_modified_from_source)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_local_only_and_conflicting_changes_keep_distinct_same_label_identities(self):
         response = self.client.patch(
             self.crop_url, {"plant_health": self.mixed(self.entries[1])}, format="json"
@@ -695,6 +706,9 @@ class PublicPlantHealthTests(ProjectApiTestCase):
         self.crop.refresh_from_db()
         self.assertEqual(self.crop.plant_health, self.mixed(self.entries[1]))
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_pins_keep_official_choices_and_unpin_pull_still_preserves_private_names(self):
         response = self.client.patch(
             self.crop_url,
@@ -739,6 +753,9 @@ class PublicPlantHealthTests(ProjectApiTestCase):
         _apply_public_crop_update(crop=variety, public_crop=entry)
         self.assertIsNone(variety.plant_health)
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_merge_preserves_more_than_forty_private_and_official_entries(self):
         self.crop.plant_health = selections(*(f"Private {index}" for index in range(100)))
         self.crop.save()
@@ -961,6 +978,9 @@ class PublicPlantHealthTests(ProjectApiTestCase):
         )
         return variety, public
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publishing_an_empty_variety_keeps_its_explicit_override(self):
         variety = Crop.objects.create(
             project=self.project,
@@ -1033,6 +1053,9 @@ class PublicPlantHealthTests(ProjectApiTestCase):
             self.crop.plant_health,
         )
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_null_public_pull_never_copies_inherited_private_names_onto_the_variety(self):
         variety, public = self.linked_variety_for_override(None, None)
         for mode in ("full", "selected"):
@@ -1109,6 +1132,9 @@ class PublicPlantHealthTests(ProjectApiTestCase):
                         current.data["effective_values"]["plant_health"], variety.plant_health
                     )
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_explicit_empty_can_be_shared_but_cannot_keep_an_empty_library_pin(self):
         self.crop.plant_health = selections()
         self.crop.save()

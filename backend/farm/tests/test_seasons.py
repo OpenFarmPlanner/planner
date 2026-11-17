@@ -2,6 +2,8 @@
 
 from datetime import date
 
+import pytest
+
 from farm.models import BatchOperation, EntityRevision, PlantingPlan, Season, SeasonPattern
 from farm.services.demo_project import demo_current_year, populate_demo_project
 from farm.services.hint_test_project import populate_hint_test_project
@@ -319,6 +321,9 @@ class SeasonGapDecisionApiTest(ProjectApiTestCase):
         # Every source plan landed in exactly one of the two seasons.
         self.assertEqual(len(transition_dates) + len(followup_dates), len(months))
 
+    @pytest.mark.history_gap(
+        issue=1205, reason='season deletion records no soft-delete after-state',
+    )
     def test_create_transition_resurrecting_seasons_restores_their_planting_plans(self):
         self._set_pattern(1, 1)
         last_season = Season.objects.create(
