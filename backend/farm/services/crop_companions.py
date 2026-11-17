@@ -32,9 +32,11 @@ from rest_framework.exceptions import ValidationError
 from crops.plant_families import coerce_plant_family_key
 from crops.services import find_species_by_common_name
 from farm.companion_notes import legacy_note, merge_notes, notes_of, validate_notes
-from farm.models import Crop, CropCompanion, PlantingPlan
+from farm.models import Crop, CropCompanion, EntityRevision, PlantingPlan
 from farm.services.crop_inheritance import (
-    ensure_general_crop_for_variety, find_general_crop, lock_crop_project,
+    ensure_general_crop_for_variety,
+    find_general_crop,
+    lock_crop_project,
 )
 from farm.utils import normalize_text
 
@@ -711,15 +713,99 @@ def replace_library_companions(kultur: Crop, entry_items: Iterable[Any] | None) 
                 existing = CropCompanion.objects.select_for_update().get(pk=existing.pk)
                 keep_ids.add(existing.pk)
                 notes = {**notes_of(existing), **notes_of(item)}
-                existing.kind = item['kind']
-                existing.reason = item['reason']
-                existing.notes = notes
-                existing.note = legacy_note(notes)
-                existing.save(update_fields=['kind', 'reason', 'notes', 'note', 'updated_at'])
-        CropCompanion.objects.filter(pk__in=view.relation_ids).exclude(pk__in=keep_ids).delete()
+                _save_relation(existing, kind=item['kind'], reason=item['reason'], notes=notes)
+        removed = CropCompanion.objects.filter(pk__in=view.relation_ids).exclude(pk__in=keep_ids)
+        for relation in removed:
+            _delete_relation(relation)
         apply_library_companions(kultur, entry)
         _touch_companion_crops(touched)
     return True
+
+
+def _record_relation(
+    relation: CropCompanion,
+    action: str,
+    *,
+    previous: dict[str, Any] | None = None,
+    snapshot: dict[str, Any] | None = None,
+    display_name: str | None = None,
+) -> None:
+    """Record a library-driven relation write as an internal after-image.
+
+    The completed version boundary is the Kultur's crop revision that follows
+    (``record_library_companion_boundary``), as for other nested crop writes
+    (docs/versioning-and-history.md).
+    """
+    from farm.history import (
+        _diff_changed_fields,
+        _entity_display_name,
+        _serialize_instance,
+        record_entity_revision,
+    )
+
+    current = snapshot if snapshot is not None else _serialize_instance(relation)
+    if action == EntityRevision.ACTION_CREATED:
+        changed = [EntityRevision.ACTION_CREATED]
+    elif action == EntityRevision.ACTION_DELETED:
+        changed = []
+    else:
+        changed = _diff_changed_fields(previous or {}, current)
+    record_entity_revision(
+        project=relation.project,
+        entity_type='crop_companion',
+        object_id=relation.pk,
+        action=action,
+        snapshot={**current, '_project_version_internal': True},
+        display_name=display_name if display_name is not None else _entity_display_name(relation),
+        changed_fields=changed,
+    )
+
+
+def _save_relation(relation: CropCompanion, **values: Any) -> None:
+    """Save changed relation values (notes keep their legacy ``note`` copy) with history."""
+    from farm.history import _serialize_instance
+
+    if 'notes' in values:
+        values['note'] = legacy_note(values['notes'])
+    changed = [name for name, value in values.items() if getattr(relation, name) != value]
+    if not changed:
+        return
+    previous = _serialize_instance(relation)
+    for name in changed:
+        setattr(relation, name, values[name])
+    relation.save(update_fields=[*changed, 'updated_at'])
+    _record_relation(relation, EntityRevision.ACTION_UPDATED, previous=previous)
+
+
+def _delete_relation(relation: CropCompanion) -> None:
+    from farm.history import _entity_display_name, _serialize_instance
+
+    relation_id, snapshot = relation.pk, _serialize_instance(relation)
+    display_name = _entity_display_name(relation)
+    relation.delete()
+    relation.pk = relation_id
+    _record_relation(
+        relation, EntityRevision.ACTION_DELETED, snapshot=snapshot, display_name=display_name,
+    )
+
+
+def record_library_companion_boundary(kultur: Crop) -> None:
+    """Close a library write whose relations changed after the Kultur's own save.
+
+    Relation after-images are internal; this visible crop revision makes the
+    completed action selectable and restorable with its neighbours.
+    """
+    from farm.history import _entity_display_name, _serialize_instance, record_entity_revision
+
+    record_entity_revision(
+        project=kultur.project,
+        entity_type='crop',
+        object_id=kultur.pk,
+        action=EntityRevision.ACTION_UPDATED,
+        snapshot=_serialize_instance(kultur),
+        display_name=_entity_display_name(kultur),
+        changed_fields=[],
+    )
 
 
 def _touch_companion_crops(kultur_ids: Iterable[int | None]) -> None:
@@ -767,12 +853,10 @@ def apply_library_companions(kultur: Crop, items: Iterable[dict[str, Any]]) -> i
                     existing = CropCompanion.objects.select_for_update().get(pk=existing.pk)
                     notes = {**notes_of(item), **notes_of(existing)}
                     if notes != notes_of(existing):
-                        existing.notes = notes
-                        existing.note = legacy_note(notes)
-                        existing.save(update_fields=['notes', 'note', 'updated_at'])
+                        _save_relation(existing, notes=notes)
                         touched.update((existing.crop_id, existing.companion_crop_id))
             continue
-        CropCompanion.objects.create(
+        relation = CropCompanion.objects.create(
             project_id=kultur.project_id,
             kind=kind,
             reason=item['reason'] if item.get('reason') in REASONS else CropCompanion.REASON_OTHER,
@@ -780,6 +864,7 @@ def apply_library_companions(kultur: Crop, items: Iterable[dict[str, Any]]) -> i
             notes=notes_of(item),
             **relation_kwargs(kultur, target),
         )
+        _record_relation(relation, EntityRevision.ACTION_CREATED)
         touched.update((kultur.pk, target.crop.pk if target.crop is not None else None))
         added += 1
     _touch_companion_crops(touched)

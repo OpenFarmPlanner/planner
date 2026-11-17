@@ -336,6 +336,13 @@ so a published neighbour names a **crop species** or a **plant family**:
   The crop and library list serializers attach one `CompanionRelationIndex`
   per request, so the comparison costs one query per list (pinned in
   `farm/tests/test_api_query_counts.py`).
+- **History.** Import, link and sync record every neighbour they create,
+  update or delete (`crop_companions._record_relation`) as an internal
+  after-image. The completed action ends with a visible crop revision of the
+  Kultur, so selecting it restores the neighbours too (#1192). Where the
+  Kultur's own save comes first (importing an entry, applying a library
+  update), `record_library_companion_boundary` records that closing revision.
+  See [versioning-and-history.md](./versioning-and-history.md).
 - **The library page** shows the neighbours of the species entry, also on its
   varieties (`buildLibraryCompanionRows`). A species neighbour links to that
   species' published entry. The other side of a pair is shown too: an entry

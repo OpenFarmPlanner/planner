@@ -64,6 +64,7 @@ from farm.services.crop_companions import (
     library_companion_view,
     library_companions,
     link_free_text_companions,
+    record_library_companion_boundary,
     replace_library_companions,
 )
 from farm.services.crop_inheritance import (
@@ -3445,8 +3446,8 @@ def _create_crop_from_public(
         validate_crop_identity(Crop(project=project, **values))
         crop = Crop.objects.create(project=project, **values)
         if not (crop.variety or '').strip():
-            if public_crop.companions:
-                apply_library_companions(crop, public_crop.companions)
+            if public_crop.companions and apply_library_companions(crop, public_crop.companions):
+                record_library_companion_boundary(crop)
             link_free_text_companions(project.id, [crop.name])
         for package in public_crop.seed_packages or []:
             crop.seed_packages.create(
@@ -3549,8 +3550,11 @@ def _apply_public_crop_update(
             raise ApiValidationError(errors)
         validate_crop_identity(crop)
         crop.save()
-        if COMPANIONS_FIELD not in remaining_pins and _compares_companions(crop, public_crop):
-            replace_library_companions(crop, public_crop.companions)
+        companions_changed = (
+            COMPANIONS_FIELD not in remaining_pins
+            and _compares_companions(crop, public_crop)
+            and replace_library_companions(crop, public_crop.companions)
+        )
         # Crop._flag_source_divergence() runs inside save() and, seeing the tracked
         # fields differ from the pre-update row, may have just flipped this back to True —
         # wrong here, since syncing to a newer library version isn't a local edit. A
@@ -3558,6 +3562,8 @@ def _apply_public_crop_update(
         # doesn't trigger another divergence pass or a second EntityRevision.
         Crop.objects.filter(pk=crop.pk).update(is_modified_from_source=False)
         crop.is_modified_from_source = False
+        if companions_changed:
+            record_library_companion_boundary(crop)
         return crop
 
 

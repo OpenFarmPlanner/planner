@@ -652,8 +652,7 @@ class PublicPlantHealthTests(ProjectApiTestCase):
         )
 
     @pytest.mark.history_gap(
-        issue=(1192, 1201),
-        reason='library companion and provenance writes record no revision',
+        issue=1201, reason='library provenance writes record no crop revision',
     )
     def test_library_only_change_is_reviewable_and_pull_preserves_private_values(self):
         original_id, prose = self.crop.pk, self.crop.pests_diseases
