@@ -24,11 +24,12 @@ interface Props {
   selectionLimit?: number;
   /** Main crop forms use heading help; compact selectors keep their existing layout. */
   contextualHelp?: boolean;
+  showHelp?: boolean;
   /** Filter mode: choose only entries already used in this scoped crop collection. */
   existingOptions?: readonly PlantHealthSelection[];
 }
 
-export function PlantHealthField({ value, localOptions, onChange, canInherit, inheritedValue, sx, error, allowLocal = true, pinButton, selectionLimit = Infinity, existingOptions, contextualHelp = false }: Props) {
+export function PlantHealthField({ value, localOptions, onChange, canInherit, inheritedValue, sx, error, allowLocal = true, pinButton, selectionLimit = Infinity, existingOptions, contextualHelp = false, showHelp = true }: Props) {
   const { t, i18n } = useTranslation('crops');
   const fieldId = useId();
   const contextual = contextualHelp && existingOptions === undefined;
@@ -74,9 +75,9 @@ export function PlantHealthField({ value, localOptions, onChange, canInherit, in
   return <Box sx={sx}>
     {contextual ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
       <Typography component="label" htmlFor={fieldId} id={`${fieldId}-label`} variant="body2" color="text.secondary">{t('plantHealth.label')}</Typography>
-      <FieldInfoButton contextual
+      {showHelp ? <FieldInfoButton contextual
         title={t(allowLocal ? 'plantHealth.helper' : 'plantHealth.officialHelper')}
-        ariaLabel={t('form.fieldInfoAriaLabel', { field: t('plantHealth.label') })} />
+        ariaLabel={t('form.fieldInfoAriaLabel', { field: t('plantHealth.label') })} /> : null}
     </Box> : null}
     <Autocomplete<Option, true, false, boolean>
       id={fieldId} multiple freeSolo={allowNewLocal} loading={names.loading} filterSelectedOptions open={open} onOpen={() => setOpen(true)} onClose={() => setOpen(false)}

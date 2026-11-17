@@ -229,8 +229,8 @@ growth/harvest duration; seed quantities remain in Seed demand. Empty read-only
 fields are omitted without changing the relative order. Editing still offers
 all fields. See [crop-detail.md](./crop-detail.md) for context-specific sections.
 
-The info button beside the assignment label contains the existing private-name,
-explicit-catalogue-selection and unknown/infestation/resistance explanations.
+Project crop forms and details show the plant-health label without an info
+button or tooltip. Library forms and details retain their contextual help.
 The documented-host dialog's title info button explains catalogue evidence and
 variety/source qualifications. Hover and keyboard focus reveal help; click/tap
 keeps it open. Escape, repeated activation, blur or click-away dismisses it.

@@ -1391,7 +1391,7 @@ const detailSectionGridSx = {
                   </Box>
                 ))}
                 {getCropValue('plant_health', selectedCrop.plant_health)?.entries.length ? <Box sx={{ gridColumn: '1 / -1' }}>
-                  <PlantHealthChips value={getCropValue('plant_health', selectedCrop.plant_health)!} />
+                  <PlantHealthChips value={getCropValue('plant_health', selectedCrop.plant_health)!} showHelp={false} />
                 </Box> : null}
                 {hasDetailValue(getCropValue('pests_diseases', selectedCrop.pests_diseases)) ? <Box sx={{ gridColumn: '1 / -1', minWidth: 0 }}>
                   <Typography variant="body2" color="text.secondary">{t('plantHealth.notes')}</Typography>

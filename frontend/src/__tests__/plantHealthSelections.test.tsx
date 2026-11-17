@@ -58,13 +58,15 @@ describe('private plant-health selections', () => {
     expect(listMock.mock.calls.every(([params]) => params.identities.split(',').length <= 40)).toBe(true);
   });
 
-  it('keeps contextual main-form help focused on entering selections', async () => {
+  it('keeps the project input accessible without an info button or tooltip', async () => {
     const user = userEvent.setup();
-    render(<PlantHealthField contextualHelp value={null} localOptions={[]} onChange={vi.fn()} canInherit={false} />);
+    render(<PlantHealthField contextualHelp showHelp={false} value={null} localOptions={[]} onChange={vi.fn()} canInherit={false} />);
     expect(screen.getByRole('combobox', { name: 'Schädlinge und Krankheiten', exact: true })).toBeInTheDocument();
     expect(screen.queryByText(i18n.t('crops:plantHealth.associationHint'))).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: i18n.t('crops:form.fieldInfoAriaLabel', { field: i18n.t('crops:plantHealth.label') }), exact: true }));
-    expect((await screen.findByRole('tooltip')).textContent).toBe(i18n.t('crops:plantHealth.helper'));
+    expect(screen.queryByRole('button', { name: i18n.t('crops:form.fieldInfoAriaLabel', { field: i18n.t('crops:plantHealth.label') }), exact: true })).not.toBeInTheDocument();
+    await user.click(screen.getByText('Schädlinge und Krankheiten', { exact: true }));
+    expect(screen.getByRole('combobox')).toHaveFocus();
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 
   it('keeps accents, delimiters, local names and separate official identities distinct', () => {
