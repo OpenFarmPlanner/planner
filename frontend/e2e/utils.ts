@@ -190,7 +190,7 @@ export async function tabSaveHierarchyRow(page: Page): Promise<void> {
  */
 export async function apiRequest<T>(
   page: Page,
-  method: 'GET' | 'POST' | 'PATCH' | 'PUT',
+  method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE',
   path: string,
   data?: Record<string, unknown>,
 ): Promise<T> {
@@ -207,7 +207,7 @@ export async function apiRequest<T>(
         'X-CSRFToken': requestCsrfToken,
         'X-Project-Id': String(requestProjectId),
       },
-      body: requestMethod === 'GET' ? undefined : JSON.stringify(requestData ?? {}),
+      body: requestMethod === 'GET' || requestMethod === 'DELETE' ? undefined : JSON.stringify(requestData ?? {}),
     });
     const text = await response.text();
     return {
@@ -224,7 +224,7 @@ export async function apiRequest<T>(
   });
 
   expect(result.ok, `${method} ${path} -> ${result.status}: ${result.text}`).toBeTruthy();
-  return JSON.parse(result.text) as T;
+  return (result.text ? JSON.parse(result.text) : undefined) as T;
 }
 
 export async function setViewportPreset(page: Page, preset: (typeof VIEWPORTS)[number]): Promise<void> {

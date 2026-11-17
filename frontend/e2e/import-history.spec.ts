@@ -117,3 +117,52 @@ for (const [width, height] of [[375, 800], [768, 900], [1024, 900], [1440, 900],
     }
   });
 }
+
+for (const [width, height] of [[375, 800], [1440, 900]]) {
+  test(`full restore and restoring its automatic backup at ${width}x${height}`, async ({ page, request }, info) => {
+    // The backup of a restore that re-created a deleted row is refused today.
+    test.fail(true, 'Restoring the automatic backup is refused until #1194 is fixed.');
+    test.setTimeout(120_000);
+    const scenario = `history-backup-${width}-${Date.now()}`;
+    try {
+      await page.setViewportSize({ width, height });
+      await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
+      await page.goto('/app/crops');
+      const name = `Doomed history location ${width}`;
+      const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', { name });
+      await apiRequest(page, 'DELETE', `/locations/${location.id}/`);
+      const locationIds = async () => {
+        const data = await apiRequest<Array<{ id: number }> | { results: Array<{ id: number }> }>(page, 'GET', '/locations/');
+        return (Array.isArray(data) ? data : data.results).map(item => item.id);
+      };
+
+      let dialog = await history(page);
+      await dialog.getByRole('listitem').filter({ hasText: name }).last()
+        .getByRole('button', { name: navigation.commandPalette.restoreVersion, exact: true }).click();
+      let confirmation = page.getByRole('dialog', { name: de.restoreDialog.title, exact: true });
+      await page.screenshot({ path: info.outputPath('restore-confirmation.png'), animations: 'disabled' });
+      const [restored] = await Promise.all([
+        page.waitForResponse(response => response.url().includes('/history/project/restore/')),
+        confirmation.getByRole('button', { name: de.restoreDialog.confirm, exact: true }).click(),
+      ]);
+      expect(restored.status()).toBe(200);
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      expect(await locationIds()).toContain(location.id);
+
+      // The newest entry is the restore result; the automatic backup sits directly below it.
+      dialog = await history(page);
+      await dialog.getByRole('listitem').nth(1)
+        .getByRole('button', { name: navigation.commandPalette.restoreVersion, exact: true }).click();
+      confirmation = page.getByRole('dialog', { name: de.restoreDialog.title, exact: true });
+      const [backup] = await Promise.all([
+        page.waitForResponse(response => response.url().includes('/history/project/restore/')),
+        confirmation.getByRole('button', { name: de.restoreDialog.confirm, exact: true }).click(),
+      ]);
+      await page.screenshot({ path: info.outputPath('backup-restore-result.png'), animations: 'disabled' });
+      expect(backup.status()).toBe(200);
+      expect(await locationIds()).not.toContain(location.id);
+    } finally {
+      await resetE2EScenario(request, scenario);
+    }
+  });
+}

@@ -237,6 +237,21 @@ verification uses its own synthetic database and never seeds localhost.
   there's no DB-level referential-integrity guarantee tying a revision back
   to its live entity table; this is an intentional generic-relation-like
   pattern, not an oversight.
+- **Invariant:** after every completed API write, the latest selectable version
+  reconstructs exactly the live project. Every completed version can be
+  restored, and so can the automatic backup of each restore, import undo and
+  batch revert. Any write to a restorable row (including queryset `update()`,
+  derived writes and library or import side effects) needs a revision. The
+  history-completeness guard enforces this for all farm API tests and names
+  the uncovered row and field. See
+  [testing-and-ci.md](./testing-and-ci.md#history-completeness-guard) for the
+  normalization rules and the `history_guard_exempt`/`history_gap` markers.
+- A new model in `PROJECT_STATE_MODELS` must also be created, updated and
+  deleted by the round-trip scenario in
+  `backend/farm/tests/test_history_invariants.py`
+  (`HistoryRoundTripScenarioTests.build_scenario`). The registry check fails
+  otherwise. When fixing a listed known gap (#1194, #1195, #1196), remove its
+  expectation there; the test fails until you do.
 
 ## What participates in whole-project restore
 

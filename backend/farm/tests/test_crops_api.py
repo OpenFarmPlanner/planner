@@ -2,6 +2,7 @@
 
 from datetime import date
 
+import pytest
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from rest_framework import status
@@ -204,6 +205,9 @@ class CropApiTest(ProjectApiTestCase):
             for model in (Crop, EntityRevision, PlantingPlan, Task, CropTimingWindow, SeedPackage)
         }
 
+    @pytest.mark.history_gap(
+        issue=1203, reason='implicit crop-save side effects record no revision',
+    )
     def test_variety_undelete_conflict_is_atomic_with_and_without_supplier(self):
         for supplier in (self.supplier, None):
             with self.subTest(supplier=supplier):
@@ -372,6 +376,9 @@ class CropApiTest(ProjectApiTestCase):
         self.assertIsNotNone(nantaise.deleted_at)
         self.assertIsNone(milan.deleted_at)
 
+    @pytest.mark.history_gap(
+        issue=1203, reason='implicit crop-save side effects record no revision',
+    )
     def test_creating_linked_variety_copies_species_fields_only_by_default(self):
         species = CropSpecies.objects.create(name='Solanum lycopersicum')
 
@@ -410,6 +417,9 @@ class CropApiTest(ProjectApiTestCase):
         self.assertEqual(general.nutrient_demand, 'high')
         self.assertEqual(general.rotation_break_years, 4)
 
+    @pytest.mark.history_gap(
+        issue=1203, reason='implicit crop-save side effects record no revision',
+    )
     def test_creating_linked_variety_can_fill_empty_general_crop_fields(self):
         species = CropSpecies.objects.create(name='Solanum lycopersicum')
 
@@ -455,6 +465,9 @@ class CropApiTest(ProjectApiTestCase):
         self.assertEqual(variety.nutrient_demand, '')
         self.assertIsNone(variety.rotation_break_years)
 
+    @pytest.mark.history_gap(
+        issue=1203, reason='implicit crop-save side effects record no revision',
+    )
     def test_copying_variety_values_never_overwrites_general_crop_fields(self):
         species = CropSpecies.objects.create(name='Solanum lycopersicum')
         general = Crop.objects.create(
@@ -597,6 +610,9 @@ class CropApiTest(ProjectApiTestCase):
         self.assertIsNotNone(revision)
         self.assertTrue(revision.user_name)
 
+    @pytest.mark.history_gap(
+        issue=1203, reason='implicit crop-save side effects record no revision',
+    )
     def test_updating_linked_variety_copies_species_fields_only(self):
         species = CropSpecies.objects.create(name='Solanum lycopersicum')
         general = Crop.objects.create(
@@ -875,6 +891,9 @@ class CropApiTest(ProjectApiTestCase):
         self.assertTrue(response.data['exists'])
         self.assertEqual(response.data['crop']['name'], 'Tomate')
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_link_public_crop_updates_private_reference_without_creating_public_entry(self):
         species = CropSpecies.objects.get(name_normalized='tomate')
         public_crop = PublicCrop.objects.create(

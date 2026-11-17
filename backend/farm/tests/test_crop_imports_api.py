@@ -1,6 +1,7 @@
 """API tests for the public-crop import preview/apply endpoints."""
 
 
+import pytest
 from rest_framework.test import APITestCase as DRFAPITestCase
 
 from farm.crops.serializers import CropSerializer
@@ -65,6 +66,9 @@ class CropImportAPITest(DRFAPITestCase):
                 self.assertEqual(response.status_code, 400)
                 self.assertEqual(response.data['code'], 'invalid_crop_import_context')
 
+    @pytest.mark.history_gap(
+        issue=1202, reason='import/free-text companion writes record no revision',
+    )
     def test_crops_phase_receipts_and_deferred_companions(self) -> None:
         first = self.client.post('/openfarmplanner/api/crops/import/apply/', {
             'phase': 'crops', 'items': [
@@ -113,6 +117,9 @@ class CropImportAPITest(DRFAPITestCase):
         self.assertTrue(all(row['status'] == 'error' for row in response.data['results']))
         self.assertFalse(CropCompanion.objects.exists())
 
+    @pytest.mark.history_gap(
+        issue=1202, reason='import/free-text companion writes record no revision',
+    )
     def test_finalize_links_old_free_text_only_after_crop_batches(self) -> None:
         owner = Crop.objects.create(project=self.project, name='Previous owner')
         CropCompanion.objects.create(
@@ -142,6 +149,9 @@ class CropImportAPITest(DRFAPITestCase):
                          ['skipped', 'created', 'duplicate', 'error'])
         self.assertEqual(response.data['results'][0]['crop_id'], self.existing_crop.pk)
 
+    @pytest.mark.history_gap(
+        issue=1202, reason='import/free-text companion writes record no revision',
+    )
     def test_explicit_companions_precede_older_free_text_when_finalizing(self) -> None:
         owner = Crop.objects.create(project=self.project, name='Existing neighbour')
         CropCompanion.objects.create(
@@ -330,6 +340,9 @@ class CropImportAPITest(DRFAPITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['results'][0]['diff'], [])
 
+    @pytest.mark.history_gap(
+        issue=1203, reason='implicit crop-save side effects record no revision',
+    )
     def test_a_row_naming_another_supplier_updates_the_variety(self):
         """One crop per name and variety: another supplier is a change, not a new crop
         (which the serializer would reject as a duplicate)."""
@@ -756,6 +769,9 @@ class CropSpreadsheetRoundTripTest(DRFAPITestCase):
             rows.append(row)
         return rows
 
+    @pytest.mark.history_gap(
+        issue=1203, reason='implicit crop-save side effects record no revision',
+    )
     def test_a_json_export_imports_like_a_sheet(self) -> None:
         rows = self._export_json_rows()
 
@@ -774,6 +790,9 @@ class CropSpreadsheetRoundTripTest(DRFAPITestCase):
             HTTP_X_PROJECT_ID=str(project.id),
         )
 
+    @pytest.mark.history_gap(
+        issue=1203, reason='implicit crop-save side effects record no revision',
+    )
     def test_exported_demo_crops_import_into_an_empty_project_without_errors(self) -> None:
         rows = self._export_rows()
         self.assertGreater(len(rows), 20)
@@ -807,12 +826,18 @@ class CropSpreadsheetRoundTripTest(DRFAPITestCase):
         }
         return {crop: diff for crop, diff in differences.items() if diff}
 
+    @pytest.mark.history_gap(
+        issue=1203, reason='implicit crop-save side effects record no revision',
+    )
     def test_imported_varieties_keep_what_they_inherit_from_their_species(self) -> None:
         rows = self._export_rows()
         self._post(self.target, 'apply', {'items': rows, 'confirm_updates': False})
 
         self.assertEqual(self._differences(self.source, self.target), {})
 
+    @pytest.mark.history_gap(
+        issue=1203, reason='implicit crop-save side effects record no revision',
+    )
     def test_re_importing_into_an_imported_project_changes_nothing(self) -> None:
         """Second import of the same sheet: the first one moved the Sorten's
         family and nutrient demand onto their Kultur, which must not read as a change."""

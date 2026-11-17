@@ -2,6 +2,8 @@
 
 from datetime import date
 
+import pytest
+
 from farm.models import Crop, CropTaskTemplate, EntityRevision, PlantingPlan, Project, Season, Task
 from farm.tests.test_task_generation import TaskTimingFixture
 
@@ -11,6 +13,9 @@ class TaskWorkflowTest(TaskTimingFixture):
         super().setUp()
         self.client.defaults['HTTP_X_SEASON_ID'] = str(self.season.pk)
 
+    @pytest.mark.history_gap(
+        issue=1205, reason='season deletion records no soft-delete after-state',
+    )
     def test_recurrence_override_completion_deletion_and_season_recovery(self) -> None:
         template = self.client.post('/api/crop-task-templates/', {
             'crop': self.crop.pk, 'title': 'Water', 'reference_event': 'planting',

@@ -1,5 +1,7 @@
 """The Latin (botanical) name of a crop: API, inheritance, import and crop library."""
 
+import pytest
+
 from accounts.trust import grant_established_trust
 from crops.models import CropSpecies
 from farm.models import Crop, Project, ProjectMembership, PublicCrop, PublicCropRevision
@@ -54,6 +56,9 @@ class CropBotanicalNameTests(ProjectApiTestCase):
         self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(Crop.objects.get(project=self.project, name='Bartnelke').botanical_name, 'Dianthus barbatus')
 
+    @pytest.mark.history_gap(
+        issue=1201, reason='library provenance writes record no crop revision',
+    )
     def test_publishing_and_importing_carry_it_through_the_library(self):
         grant_established_trust(self.user)
         publish = self.client.post(f'{CROPS_URL}{self.kultur.id}/publish-public/', {
