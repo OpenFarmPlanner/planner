@@ -752,7 +752,9 @@ jobs:
 
             After any fix, review the FINAL diff again and record the final
             `git rev-parse HEAD`; a pre-fix SHA does not certify the fixes.
-            Your final response must be a standalone JSON object (no Markdown):
+            Post the summary comment first. Then end the session with one more
+            message that contains nothing but this JSON object (no prose, no
+            Markdown fence, nothing after it); it is the completion evidence:
             {"security_review_completed": true, "reviewed_sha": "FULL_FINAL_SHA",
              "scope": ["sorted", "changed/file/paths"], "result": "no_issues",
              "unfixed_findings": []}
