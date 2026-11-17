@@ -17,7 +17,7 @@ from farm.history import (
 )
 from farm.models import EntityRevision, Location
 from farm.project_context import get_active_project_or_400
-from farm.services.default_location import default_location_name_for_request
+from farm.services.default_location import initial_location_name
 
 
 class ProjectRevisionMixin:
@@ -122,7 +122,7 @@ class ProjectScopedMixin:
         it.
         """
         project = self.request.active_project
-        name = default_location_name_for_request(self.request)
+        name = initial_location_name(project)
         attempts = 8
         for attempt in range(attempts):
             try:
