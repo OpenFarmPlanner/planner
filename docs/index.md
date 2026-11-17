@@ -49,6 +49,9 @@ for step-by-step procedures of recurring tasks, see the skills in
 - **[Design System](./design-system.md)** — where a style belongs (theme vs.
   `sx` vs. shared style module), the spacing/colour/breakpoint conventions,
   the two remaining stylesheets, and the RTL rules.
+- **[Product UX Principles](./ux-principles.md)** — product-level defaults,
+  avoiding redundant decisions, progressive disclosure, consistent interactions,
+  and a lightweight backlog issue-review procedure.
 - **[Form Layout](./form-layout.md)** — responsive field-width roles and the
   exceptions for grid editors, narrow popovers, and search controls.
 - **[Occupancy Tree / Gantt Hierarchy](./occupancy-tree-hierarchy.md)** —
