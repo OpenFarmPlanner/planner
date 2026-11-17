@@ -3,6 +3,15 @@ name: ZAP passive baseline
 on:
   pull_request:
     branches: [main]
+    # Not a required check: skip PRs that change neither the scanned app nor
+    # the scan itself. Keep workflows and the ZAP scripts in the filter.
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
+      - 'scripts/ci/zap/**'
+      - 'scripts/ci/install-playwright-chrome.sh'
+      - 'tests/test_zap_baseline.cjs'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 permissions:

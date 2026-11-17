@@ -31,6 +31,22 @@ response of the failed test before calling a failure flaky.
 
 All jobs run concurrently, so the pipeline is as long as its slowest job.
 
+**Superseded runs and non-required workflows (#1210).** `ci.yml` has a
+per-PR `concurrency` group: a new push, reopen, ready-for-review or base change
+cancels the PR's run that is still in progress, as `e2e.yml` and
+`e2e-cross-browser.yml` already did. The `edited` trigger exists so that a base
+change re-runs the review-completion gate against the new base (#1140). Title
+and body edits therefore get a group of their own and neither cancel nor are
+cancelled by the run that supplies the exact-head evidence. Pushes to `main`
+are never cancelled. Required jobs are never skipped by a condition, because a
+skipped required check counts as passing. The three workflows that are not
+required checks only start on PRs that can affect them:
+`e2e-cross-browser.yml` (`frontend/**`, `backend/**`), `zap-security.yml`
+(app code plus its own `scripts/ci/zap/**` and test), and `dependency-scan.yml`
+(the dependency manifests and lockfiles). Each filter also keeps
+`.github/workflows/**`, and the push, schedule and dispatch triggers are
+unchanged, so `main` and the weekly scan still cover everything.
+
 **Distinguish the test step from the job.** The two time columns above
 tell different stories, and only the first is about the tests. Four
 consecutive runs, test step against whole job:
@@ -617,6 +633,16 @@ or shorter assertion timeout. `E2E_PARTITION` log records show the assignment;
 timing reports identify the logical partition separately from Playwright's
 native count-based `shard` configuration. Unit tests cover partition coverage,
 new/changed files, project variants, literal filters and fail-closed inputs.
+
+`tests/test_e2e_sharding.cjs` (run by `e2e.yml`) fails when a
+`frontend/e2e/*.spec.ts` file has no entry in the profile, or when the profile
+lists a deleted file. A new spec therefore lands with either a refreshed
+profile or an estimated `{ tests, duration_ms }` entry until the next refresh.
+The profile was last refreshed in #1210 from run
+[44085890583](https://github.com/OpenFarmPlanner/planner/actions/runs/44085890583)
+(65 files, 392 tests, no retries). That run, still scheduled with the old
+weights, measured 641 / 821 / 733 seconds of test time per shard. The new
+weights predict about 733 seconds for each shard.
 
 To refresh the profile, combine `E2E_TIMING_FILE` durations and counts from
 all three successful, retry-free jobs of one comparable run. Use the selected

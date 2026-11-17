@@ -3,6 +3,12 @@ name: E2E cross-browser (Docker)
 on:
   pull_request:
     branches: [main]
+    # Not a required check: skip PRs that touch neither the app nor CI
+    # (e.g. docs-only or release metadata). Keep workflows in the filter.
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
+      - '.github/workflows/**'
 
 concurrency:
   group: e2e-cross-browser-${{ github.workflow }}-${{ github.event.pull_request.number }}
