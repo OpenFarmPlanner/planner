@@ -22,9 +22,13 @@ test.describe('planting plan crop rotation in the table', () => {
   test('flags a conflict in the growing-area cell and opens "Anbaufläche ändern" from it', async ({ page }) => {
     await expect(page.getByRole('columnheader', { name: 'FF' })).toHaveCount(0);
     await searchBox(page).fill('Lauch');
-    await expect(rows(page)).toHaveCount(1);
+    // The carrots beside the leek share its bed "Knoblauch & Lauch" (#1189).
+    const leek = rows(page).filter({
+      has: page.locator('[data-field="crop"]').getByText('Lauch', { exact: true }),
+    });
+    await expect(leek).toHaveCount(1);
 
-    await rows(page).getByRole('button', { name: 'Fruchtfolge-Konflikt, Anbaufläche ändern' }).click();
+    await leek.getByRole('button', { name: 'Fruchtfolge-Konflikt, Anbaufläche ändern' }).click();
 
     const dialog = page.getByRole('dialog', { name: 'Anbaufläche ändern' });
     await expect(dialog).toBeVisible();
