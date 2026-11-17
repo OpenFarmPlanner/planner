@@ -73,11 +73,45 @@ class ClaudeReviewFallbackTests(unittest.TestCase):
                 self.assertEqual(report["state"], "claude_failed")
                 self.assertEqual(report["reason"], "scope does not match the changed files")
 
+    def test_report_may_end_a_fenced_or_prose_final_message(self) -> None:
+        report = completed_messages()[0]["result"]
+        nested = json.dumps({**json.loads(report), "note": {"kind": "extra"}})
+        for text in (
+            f"```json\n{report}\n```",
+            f"```\n{report}\n```\n",
+            f"Posted the summary comment.\n\n{report}",
+            f"Example: {{\"a\": 1}} and more.\n```json\n{report}\n```",
+            f"Done.\n{nested}",
+        ):
+            with self.subTest(text=text):
+                messages = [{**completed_messages()[0], "result": text}]
+                self.assertEqual(
+                    completion_report("success", messages, HEAD, SCOPE)["state"],
+                    "claude_completed",
+                )
+
+    def test_report_must_be_the_end_of_the_final_message(self) -> None:
+        report = completed_messages()[0]["result"]
+        for text in (
+            f"{report}\nAll done.",
+            f"```json\n{report}\n```\nAll done.",
+            "No issues.",
+            f"[{report}]",
+            "",
+        ):
+            with self.subTest(text=text):
+                messages = [{**completed_messages()[0], "result": text}]
+                result = completion_report("success", messages, HEAD, SCOPE)
+                self.assertEqual(result["state"], "claude_failed")
+                self.assertEqual(
+                    result["reason"], "terminal result does not end with a JSON object"
+                )
+
     def test_rejections_name_a_fixed_reason_without_review_text(self) -> None:
         prose = [{**completed_messages()[0], "result": "Review done. PRIVATE notes"}]
         cases = (
             (None, "no execution report"),
-            (prose, "terminal result is not JSON"),
+            (prose, "terminal result does not end with a JSON object"),
             (completed_messages(reviewed_sha="b" * 40), "reviewed_sha does not match the head"),
             (completed_messages(unfixed_findings=["x"]), "unfixed_findings is not empty"),
         )
