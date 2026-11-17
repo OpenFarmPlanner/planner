@@ -1759,7 +1759,7 @@
     "languageHelp": {
       "edit": "You are editing only notes in this language. Other language versions are preserved."
     },
-    "cellHelp": "One group per line: Tomato; Cucumber | Pest control. Names alone are valid. Exported quotes and escape sequences preserve delimiters and line breaks in notes. Legacy dash comments are linked only when names resolve unambiguously."
+    "cellHelp": "An entry is a name or \"Name | Note\"; a note always belongs only to the name directly before it. Separate entries with ; or a line break, names without a note also with a comma: Tomato | Pest control; Cucumber | Source 2025; Basil. \"Tomato; Cucumber | Comment\" means Tomato without a note and Cucumber with \"Comment\". A note runs to the next ; and may contain commas. Exported quotes and escape sequences preserve delimiters and line breaks in notes. Legacy dash comments (Tomato - A; Cucumber - B) are linked only when names resolve unambiguously, and only to the name directly before the dash."
   },
   "timingWindows": {
     "sectionTitle": "Time windows",

@@ -797,13 +797,40 @@ class LocalizedCompanionNotesTests(CompanionLibraryTestCase):
         self.assertEqual(response.data['results'][0]['companions']['count'], 2)
         response = self.client.post(APPLY_URL, {'items': [row], 'companion_note_language': 'fr'}, format='json')
         self.assertEqual(response.data['companions']['created'], 2)
-        self.assertEqual(list(CropCompanion.objects.values_list('notes', flat=True)), [{'fr': 'Quelle 2025'}] * 2)
+        notes = {
+            relation.companion_crop_id if relation.crop_id == self.cucumber_id() else relation.crop_id: relation.notes
+            for relation in CropCompanion.objects.all()
+        }
+        self.assertEqual(notes, {self.tomato.pk: {}, self.potato.pk: {'fr': 'Quelle 2025'}})
         Crop.objects.create(project=self.project, name='Tomate - Foo')
         ambiguous = {'name': 'Zucchini', 'good_companions': [{'name': 'Tomate - Foo - Bar', 'legacy': True}]}
         preview = self.client.post(PREVIEW_URL, [ambiguous], format='json').data['results'][0]
         self.assertEqual(preview['companions']['warnings'], ['Tomate - Foo - Bar'])
         response = self.client.post(APPLY_URL, {'items': [ambiguous]}, format='json')
         self.assertTrue(CropCompanion.objects.filter(companion_text='Tomate - Foo - Bar').exists())
+
+    def cucumber_id(self) -> int:
+        return Crop.objects.get(project=self.project, name='Gurke', variety='').pk
+
+    def test_legacy_dash_entries_each_keep_their_own_note(self) -> None:
+        row = {'name': 'Gurke', 'good_companions': [{'name': 'Tomate - A, mit Komma; # – /; Kartoffel - B', 'legacy': True}]}
+        preview = self.client.post(PREVIEW_URL, [row], format='json').data['results'][0]
+        self.assertEqual(preview['companions'].get('warnings', []), [])
+        response = self.client.post(APPLY_URL, {'items': [row], 'companion_note_language': 'de'}, format='json')
+        self.assertEqual(response.data['companions']['created'], 2, response.data)
+        notes = {
+            relation.companion_crop_id if relation.crop_id == self.cucumber_id() else relation.crop_id: relation.notes
+            for relation in CropCompanion.objects.all()
+        }
+        self.assertEqual(notes, {self.tomato.pk: {'de': 'A, mit Komma'}, self.potato.pk: {'de': 'B'}})
+
+    def test_unresolved_legacy_entry_stays_text_without_swallowing_its_siblings(self) -> None:
+        row = {'name': 'Gurke', 'good_companions': [{'name': 'Unbekannt - X; Tomate - A', 'legacy': True}]}
+        preview = self.client.post(PREVIEW_URL, [row], format='json').data['results'][0]
+        self.assertEqual(preview['companions']['warnings'], ['Unbekannt - X'])
+        self.client.post(APPLY_URL, {'items': [row], 'companion_note_language': 'de'}, format='json')
+        self.assertTrue(CropCompanion.objects.filter(companion_text='Unbekannt - X', notes={}).exists())
+        self.assertEqual(CropCompanion.objects.get(companion_text='').notes, {'de': 'A'})
 
     def test_known_spaced_dash_name_wins_over_legacy_suffix(self) -> None:
         named = Crop.objects.create(project=self.project, name='Salat - Pflücksalat')

@@ -10,9 +10,10 @@ import { sameCompanionRows, type CompanionFormRow } from '../companions';
 afterEach(async () => { await i18n.changeLanguage('de'); });
 
 describe('localized companion cells', () => {
-  it('assigns a group note to every name without inferring a reason from prose', () => {
+  it('assigns a note only to the neighbor directly before it without inferring a reason from prose', () => {
     expect(parseCompanionCell('Tomate, Gurke; Bohne | Schutz vor Schädlingen\nSellerie')).toEqual([
-      ...['Tomate', 'Gurke', 'Bohne'].map((name) => ({ name, reason: 'other', note: 'Schutz vor Schädlingen' })),
+      ...['Tomate', 'Gurke'].map((name) => ({ name, reason: 'other', note: '' })),
+      { name: 'Bohne', reason: 'other', note: 'Schutz vor Schädlingen' },
       { name: 'Sellerie', reason: 'other', note: '' },
     ]);
   });
@@ -61,7 +62,7 @@ describe('localized companion cells', () => {
   });
 
   for (const language of ['de', 'en', 'fr', 'es'] as const) {
-    it.each(['csv', 'xlsx', 'ods'] as const)(`preserves grouped multiline notes in ${language} through %s`, async (format) => {
+    it.each(['csv', 'xlsx', 'ods'] as const)(`preserves shared multiline notes per neighbor in ${language} through %s`, async (format) => {
       await i18n.changeLanguage(language);
       const note = `Source ${language}: "A | B"\n2025; p. 12\\annex`;
       const items: CompanionImportItem[] = ['Pak-Choi', 'Kraut; Spezial', 'Salat - Pflücksalat'].map((name) => ({

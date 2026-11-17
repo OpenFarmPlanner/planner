@@ -1811,7 +1811,7 @@
     "languageHelp": {
       "edit": "Solo editas las notas en este idioma. Las demás versiones se conservan."
     },
-    "cellHelp": "Un grupo por línea: Tomate; Pepino | Control de plagas. También se admiten solo nombres. Las comillas y secuencias de escape exportadas conservan los separadores y saltos de línea de las notas. Los comentarios antiguos con guion solo se vinculan cuando los nombres se reconocen sin ambigüedad."
+    "cellHelp": "Una entrada es un nombre o «Nombre | Nota»; una nota pertenece siempre solo al nombre que la precede directamente. Separe las entradas con ; o un salto de línea, y los nombres sin nota también con una coma: Tomate | Control de plagas; Pepino | Fuente 2025; Albahaca. «Tomate; Pepino | Comentario» significa: Tomate sin nota y Pepino con «Comentario». Una nota llega hasta el siguiente ; y puede contener comas. Las comillas y secuencias de escape exportadas conservan los separadores y saltos de línea de las notas. Los comentarios antiguos con guion (Tomate - A; Pepino - B) solo se vinculan cuando los nombres se reconocen sin ambigüedad, y solo al nombre situado justo antes del guion."
   },
   "timingWindows": {
     "sectionTitle": "Periodos",

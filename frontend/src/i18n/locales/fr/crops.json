@@ -1811,7 +1811,7 @@
     "languageHelp": {
       "edit": "Vous modifiez uniquement les notes dans cette langue. Les autres versions sont conservées."
     },
-    "cellHelp": "Un groupe par ligne : Tomate ; Concombre | Protection contre les ravageurs. Les noms seuls sont acceptés. Les guillemets et séquences d’échappement exportés préservent les séparateurs et retours à la ligne des notes. Les anciens commentaires avec tiret ne sont liés que si les noms sont reconnus sans ambiguïté."
+    "cellHelp": "Une entrée est un nom ou « Nom | Note » ; une note appartient toujours uniquement au nom qui la précède directement. Séparez les entrées par ; ou un retour à la ligne, les noms sans note aussi par une virgule : Tomate | Protection contre les ravageurs ; Concombre | Source 2025 ; Basilic. « Tomate ; Concombre | Commentaire » signifie : Tomate sans note, Concombre avec « Commentaire ». Une note va jusqu’au prochain ; et peut contenir des virgules. Les guillemets et séquences d’échappement exportés préservent les séparateurs et retours à la ligne des notes. Les anciens commentaires avec tiret (Tomate - A ; Concombre - B) ne sont liés que si les noms sont reconnus sans ambiguïté, et uniquement au nom placé juste avant le tiret."
   },
   "timingWindows": {
     "sectionTitle": "Périodes",

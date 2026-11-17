@@ -285,28 +285,45 @@ def resolve_import_items(raw: Any, resolver: CompanionNameResolver) -> tuple[lis
         if not item.pop('legacy', False):
             resolved.append(item)
             continue
-        names = _legacy_names(item['name'])
-        if names and all(resolver.resolve(name, create=False).type != TARGET_TEXT for name in names):
-            resolved.extend({**item, 'name': name} for name in names)
-            continue
-        candidates = []
-        for match in re.finditer(r'\s+[-–]\s+', item['name']):
-            prefix = _legacy_names(item['name'][:match.start()])
-            if prefix and all(resolver.resolve(name, create=False).type != TARGET_TEXT for name in prefix):
-                candidates.append((prefix, item['name'][match.end():]))
-        if len(candidates) == 1:
-            prefix, note = candidates[0]
-            reason, note = _legacy_reason(note)
-            reason = reason or item['reason']
-            if len(note) > 500:
-                raise ValidationError('Companion notes allow at most 500 characters.', code='companion_notes_invalid')
-            resolved.extend({**item, 'name': name, 'note': note, 'reason': reason} for name in prefix)
-        else:
-            if len(item['name']) > 200:
-                raise ValidationError('The unresolved companion name exceeds 200 characters; split or correct the group.', code='companion_notes_invalid')
-            warnings.append(item['name'])
-            resolved.append(item)
+        for entry in _legacy_names(item['name'], separators=';'):
+            if not any(character.isalnum() for character in entry):
+                continue
+            entry_items, warning = _resolve_legacy_entry(item, entry, resolver)
+            resolved.extend(entry_items)
+            if warning:
+                warnings.append(warning)
     return resolved, warnings
+
+
+def _resolve_legacy_entry(
+    item: dict[str, Any], entry: str, resolver: CompanionNameResolver,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """One ``;``-separated entry of a legacy dash cell: ``Name``, ``A, B`` or ``A, B - Note``.
+
+    The note after the dash belongs only to the name directly before it.
+    """
+    def resolves(names: list[str]) -> bool:
+        return bool(names) and all(resolver.resolve(name, create=False).type != TARGET_TEXT for name in names)
+
+    plain = {**item, 'note': ''}
+    names = _legacy_names(entry)
+    if resolves(names):
+        return [{**plain, 'name': name} for name in names], None
+    candidates = []
+    for match in re.finditer(r'\s+[-–]\s+', entry):
+        prefix = _legacy_names(entry[:match.start()])
+        if resolves(prefix):
+            candidates.append((prefix, entry[match.end():]))
+    if len(candidates) == 1:
+        prefix, note = candidates[0]
+        reason, note = _legacy_reason(note)
+        if len(note) > 500:
+            raise ValidationError('Companion notes allow at most 500 characters.', code='companion_notes_invalid')
+        noted = {**item, 'name': prefix[-1], 'note': note, 'reason': reason or item['reason']}
+        return [*({**plain, 'name': name} for name in prefix[:-1]), noted], None
+    if len(entry) > 200:
+        raise ValidationError('The unresolved companion name exceeds 200 characters; split or correct the group.', code='companion_notes_invalid')
+    return [{**plain, 'name': entry}], entry
 
 
 def _legacy_reason(note: str) -> tuple[str | None, str]:
@@ -318,7 +335,7 @@ def _legacy_reason(note: str) -> tuple[str | None, str]:
     return None, note
 
 
-def _legacy_names(value: str) -> list[str]:
+def _legacy_names(value: str, separators: str = ',;') -> list[str]:
     names: list[str] = []
     current = ''
     depth = 0
@@ -327,7 +344,7 @@ def _legacy_names(value: str) -> list[str]:
             depth += 1
         elif character in ')]' and depth:
             depth -= 1
-        if character in ',;' and not depth:
+        if character in separators and not depth:
             if current.strip():
                 names.append(current.strip())
             current = ''
