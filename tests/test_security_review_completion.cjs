@@ -758,9 +758,19 @@ test('base and metadata edits both run the normal required CI jobs', () => {
     const block = workflow.slice(workflow.indexOf(`  ${id}:\n`)).split(/\n  [a-z][a-z-]+:\n/)[0];
     assert.doesNotMatch(block, /Ignored metadata edit|github\.event\.action|github\.event\.changes\.base/);
     const condition = block.match(/^    if: (.+)$/m)?.[1];
-    assert.equal(condition, id === 'quality' ? 'always()'
-      : id === 'security-review-completion' ? "github.event_name == 'pull_request'" : undefined);
+    // Only the file-based metadata-only classification (#1206) may skip work; it
+    // never depends on the event action, so edits run exactly what a push runs.
+    const gated = "${{ !cancelled() && needs.changes.outputs.metadata_only != 'true' }}";
+    assert.equal(condition, {
+      quality: 'always()',
+      'security-review-completion': "github.event_name == 'pull_request'",
+      'frontend-tests': '${{ !cancelled() }}',
+      'backend-tests': gated,
+      'backend-postgres-tests': gated,
+    }[id]);
   }
+  const classifier = fs.readFileSync('.github/workflows/classify-changes.yml', 'utf8');
+  assert.doesNotMatch(classifier, /github\.event\.action|github\.event\.changes|pull_request\.title|pull_request\.body/);
   assert.match(workflow, /current\.base\.sha !== pr\.base\.sha/);
 });
 
