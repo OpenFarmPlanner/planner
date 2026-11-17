@@ -1,3 +1,4 @@
+import type { StagedPlantHealthMapping } from './types';
 import http from './httpClient';
 import { getCurrentUiLanguage } from '../i18n';
 import type {
@@ -201,9 +202,9 @@ export const cropAPI = {
     expected_project_id?: number;
     import_operation_id?: string;
   }) => http.post<CropImportApplyResult>('/crops/import/apply/', data),
-  publishPreview: (id: number, params: { crop_species_id?: number | null; original_language_code?: string; publish_as_general?: boolean }) =>
-    http.get<PublishPublicCropPreview>(`/crops/${id}/publish-public/preview/`, { params }),
-  publishPublic: (id: number, data: { accepted_public_library_terms: boolean; crop_species_id?: number | null; original_language_code?: string; publish_as_general?: boolean }) =>
+  publishPreview: (id: number, params: { crop_species_id?: number | null; original_language_code?: string; publish_as_general?: boolean; plant_health_mappings?: StagedPlantHealthMapping[]; expected_updated_at?: string }) =>
+    params.plant_health_mappings?.length ? http.post<PublishPublicCropPreview>(`/crops/${id}/publish-public/preview/`, params) : http.get<PublishPublicCropPreview>(`/crops/${id}/publish-public/preview/`, { params }),
+  publishPublic: (id: number, data: { accepted_public_library_terms: boolean; crop_species_id?: number | null; original_language_code?: string; publish_as_general?: boolean; plant_health_mappings?: StagedPlantHealthMapping[]; expected_updated_at?: string }) =>
     http.post<PublishPublicCropResponse>(`/crops/${id}/publish-public/`, data),
   copyPublicCrop: (id: number, publicCropId: number, fields: string[], baseVersion: number, cropUpdatedAt?: string) =>
     http.post<Crop>(`/crops/${id}/copy-public-crop/`, {
@@ -212,9 +213,10 @@ export const cropAPI = {
     }),
   // `pullFields` (link confirmation) take the entry's values in the same
   // transaction as the link; omitted, no local value changes.
-  linkPublicCrop: (id: number, publicCropId: number, pullFields?: string[], baseVersion?: number, cropUpdatedAt?: string, pinFields?: string[], contribution?: { pushFields: string[]; acceptedPublicLibraryTerms: boolean }) =>
+  linkPublicCrop: (id: number, publicCropId: number, pullFields?: string[], baseVersion?: number, cropUpdatedAt?: string, pinFields?: string[], contribution?: { pushFields: string[]; acceptedPublicLibraryTerms: boolean }, healthMappings?: StagedPlantHealthMapping[]) =>
     http.post<Crop>(`/crops/${id}/link-public-crop/`, {
       public_crop_id: publicCropId,
+      ...(healthMappings?.length ? { plant_health_mappings: healthMappings } : {}),
       ...(baseVersion !== undefined ? { base_version: baseVersion } : {}),
       ...(cropUpdatedAt ? { expected_updated_at: cropUpdatedAt } : {}),
       ...(pullFields ? { pull_fields: pullFields } : {}),
@@ -225,8 +227,8 @@ export const cropAPI = {
   // Removes the sync link to somebody else's entry; values and provenance stay.
   unlinkPublicCrop: (id: number) => http.post<Crop>(`/crops/${id}/unlink-public-crop/`),
   // Field-by-field differences to an entry (linked, or a link candidate).
-  publicSyncPreview: (id: number, publicCropId: number) =>
-    http.get<CropPublicSyncPreview>(`/crops/${id}/public-sync/`, { params: { public_crop_id: publicCropId } }),
+  publicSyncPreview: (id: number, publicCropId: number, healthMappings?: StagedPlantHealthMapping[], expectedUpdatedAt?: string) =>
+    healthMappings?.length ? http.post<CropPublicSyncPreview>(`/crops/${id}/public-sync/`, { public_crop_id: publicCropId, preview_only: true, plant_health_mappings: healthMappings, expected_updated_at: expectedUpdatedAt }) : http.get<CropPublicSyncPreview>(`/crops/${id}/public-sync/`, { params: { public_crop_id: publicCropId } }),
   // Applies the per-field decision: pull fields locally, push the rest into the entry.
   publicSync: (id: number, data: CropPublicSyncRequest) =>
     http.post<CropPublicSyncResponse>(`/crops/${id}/public-sync/`, data),

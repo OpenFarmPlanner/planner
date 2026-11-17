@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { cropAPI } from '../api/api';
-import type { Crop, PublicCrop } from '../api/types';
+import type { Crop, PublicCrop, StagedPlantHealthMapping } from '../api/types';
 import { getCropDisplayName, getCropVariety } from './cropDisplay';
 import { normalizeCropIdentityValue } from './cropIdentity';
 
@@ -22,6 +22,8 @@ export interface PublishVarietyCandidate {
 }
 
 export interface PublishVarietySelection {
+  healthMappings?: StagedPlantHealthMapping[];
+  cropUpdatedAt?: string;
   cropId: number;
   /** Set when the Sorte matches an existing public entry and is only linked to it. */
   publicCropId: number | null;
@@ -113,7 +115,7 @@ export const publishSelectedVarieties = async ({
   for (const variety of varieties) {
     try {
       if (variety.publicCropId) {
-        await cropAPI.linkPublicCrop(variety.cropId, variety.publicCropId);
+        await cropAPI.linkPublicCrop(variety.cropId, variety.publicCropId, undefined, undefined, variety.cropUpdatedAt, undefined, undefined, variety.healthMappings);
         result.linked += 1;
         continue;
       }
@@ -123,6 +125,7 @@ export const publishSelectedVarieties = async ({
         // collects it on every path that publishes a Sorte, including the one
         // that only links the Kultur to an existing public entry.
         accepted_public_library_terms: acceptedPublicLibraryTerms,
+        ...(variety.healthMappings?.length ? { plant_health_mappings: variety.healthMappings, expected_updated_at: variety.cropUpdatedAt } : {}),
         crop_species_id: cropSpeciesId,
         original_language_code: originalLanguageCode,
       });

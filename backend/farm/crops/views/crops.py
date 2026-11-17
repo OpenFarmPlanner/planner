@@ -92,6 +92,8 @@ from farm.services.public_crops import (
     unpublished_reason_for_status,
 )
 
+from .plant_health_publication import with_staged_health_mappings
+
 from ..serializers import (
     CropSerializer,
     PublicCropSerializer,
@@ -678,6 +680,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         },
     )
     @action(detail=True, methods=['post'], url_path='publish-public')
+    @with_staged_health_mappings()
     def publish_public(self, request, pk=None):
         if is_active_guest_demo_user(request.user):
             return guest_demo_forbidden_response()
@@ -812,6 +815,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         }, status=response_status)
 
     @action(detail=True, methods=['post'], url_path='link-public-crop')
+    @with_staged_health_mappings()
     def link_public_crop(self, request: Request, pk: str | None = None) -> Response:
         """Link with explicit pull/share/pin decisions in a single transaction.
 
@@ -1036,6 +1040,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         )
 
     @action(detail=True, methods=['get', 'post'], url_path='public-sync')
+    @with_staged_health_mappings()
     def public_sync(self, request: Request, pk: str | None = None) -> Response:
         """Field-by-field sync of a linked crop with its public entry.
 
@@ -1051,7 +1056,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         public version.
         """
         crop = self.get_object()
-        if request.method == 'GET':
+        if request.method == 'GET' or request.data.get('preview_only') is True:
             return self._public_sync_preview(request, crop)
         if is_active_guest_demo_user(request.user):
             return guest_demo_forbidden_response()
@@ -1059,7 +1064,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
 
     def _public_sync_preview(self, request: Request, crop: Crop) -> Response:
         target = self._resolve_public_sync_target(
-            request, crop, request.query_params.get('public_crop_id'), require_link=False,
+            request, crop, (request.data if request.method == 'POST' else request.query_params).get('public_crop_id'), require_link=False,
         )
         if isinstance(target, Response):
             return target
@@ -1218,10 +1223,12 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         serializer = self.get_serializer(crop)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['get'], url_path='publish-public/preview')
+    @action(detail=True, methods=['get', 'post'], url_path='publish-public/preview')
+    @with_staged_health_mappings(preview=True)
     def publish_public_preview(self, request, pk=None):
         crop = self.get_object()
-        crop_species_id = request.query_params.get('crop_species_id')
+        params = request.data if request.method == 'POST' else request.query_params
+        crop_species_id = params.get('crop_species_id')
         try:
             crop_species_id = int(crop_species_id) if crop_species_id else None
         except (TypeError, ValueError):
@@ -1229,9 +1236,9 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         result = build_publishing_check_result(
             crop=crop,
             crop_species_id=crop_species_id,
-            original_language_code=request.query_params.get('original_language_code'),
+            original_language_code=params.get('original_language_code'),
             user=request.user,
-            publish_as_general=_request_boolean(request.query_params.get('publish_as_general')),
+            publish_as_general=_request_boolean(params.get('publish_as_general')),
         )
         return Response(self._serialize_publishing_check_result(result))
 

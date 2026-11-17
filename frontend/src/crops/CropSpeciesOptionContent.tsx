@@ -81,8 +81,7 @@ export function CropSpeciesOptionContent({
         components={{ synonym: <MatchHighlight text={match.synonym} query={query} /> }}
       />,
     });
-  } else if (match?.source === 'fuzzy') {
-    secondaryParts.push({ key: 'fuzzy', content: t('library.speciesPicker.matchFuzzy') });
+
   }
   const botanicalName = scientificName?.trim();
   if (botanicalName) {

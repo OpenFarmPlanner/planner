@@ -73,7 +73,7 @@ export function matchesPlantHealthFilter(value: PlantHealthSelections | null | u
 
 export function readPlantHealthFilter(value: unknown): PlantHealthSelection[] {
   if (!Array.isArray(value)) return [];
-  const valid = value.slice(0, 40).filter((entry): entry is PlantHealthSelection => {
+  const valid = value.filter((entry): entry is PlantHealthSelection => {
     if (!entry || typeof entry !== 'object' || typeof entry.name !== 'string' || !entry.name.trim() || entry.name.length > 200) return false;
     return entry.catalogue_identity === undefined || (typeof entry.catalogue_identity === 'string'
       && /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(entry.catalogue_identity));

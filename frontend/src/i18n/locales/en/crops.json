@@ -2046,7 +2046,7 @@
   "plantHealth": {
     "label": "Pests and diseases",
     "placeholder": "Enter one name or choose a catalogue entry",
-    "helper": "Typed names stay private. Choose catalogue entries explicitly. Up to 40 entries.",
+    "helper": "Select catalogue entries or enter your own names. Your own names stay private.",
     "local": "Private name",
     "catalogue": "Catalogue entry",
     "unavailable": "Unavailable catalogue reference",
@@ -2056,10 +2056,10 @@
     "notes": "Pest and disease notes",
     "spreadsheetHeader": "Pest and disease entries (JSON)",
     "templateEntry": "Synthetic example entry",
-    "validation": "Use at most 40 individual names, each up to 200 characters.",
+    "validation": "Enter individual names of up to 200 characters each.",
     "unspecified": "Unspecified / inherit from culture",
     "emptySelection": "Explicitly empty selection",
-    "officialHelper": "Choose catalogue entries explicitly. Free names stay in the project.",
+    "officialHelper": "Select entries from the catalogue. Your own names stay in the project and are not published.",
     "officialSearchError": "Catalogue suggestions could not be loaded. Try again.",
     "publishSkipped": "Unpublished selections: {{number}}. They remain in the project.",
     "publication": {

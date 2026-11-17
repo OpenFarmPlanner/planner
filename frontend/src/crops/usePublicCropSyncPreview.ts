@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { cropAPI } from '../api/api';
-import type { CropPublicSyncPreview } from '../api/types';
+import type { CropPublicSyncPreview, StagedPlantHealthMapping } from '../api/types';
 import { useTranslation } from '../i18n';
 import {
   buildDefaultSyncChoices,
@@ -29,13 +29,16 @@ export function usePublicCropSyncPreview(
   publicCropId: number | null | undefined,
   enabled: boolean,
   allowLocal = false,
+  healthMappings?: StagedPlantHealthMapping[],
+  expectedUpdatedAt?: string,
 ): PublicCropSyncPreviewState {
   const { t } = useTranslation('crops');
   const [preview, setPreview] = useState<CropPublicSyncPreview | null>(null);
   const [choices, setChoices] = useState<PublicCropSyncChoices>({});
   const [loadError, setLoadError] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
-  const requestKey = `${cropId}:${publicCropId}:${reloadToken}`;
+  const mappingKey = JSON.stringify(healthMappings ?? []);
+  const requestKey = `${cropId}:${publicCropId}:${reloadToken}:${mappingKey}:${expectedUpdatedAt}`;
   const [loadedKey, setLoadedKey] = useState('');
 
   useEffect(() => {
@@ -46,7 +49,7 @@ export function usePublicCropSyncPreview(
     });
     if (!enabled || !cropId || !publicCropId) return undefined;
     let cancelled = false;
-    cropAPI.publicSyncPreview(cropId, publicCropId)
+    cropAPI.publicSyncPreview(cropId, publicCropId, JSON.parse(mappingKey) as StagedPlantHealthMapping[], expectedUpdatedAt)
       .then((response) => {
         if (cancelled) return;
         setPreview(response.data);
@@ -59,7 +62,7 @@ export function usePublicCropSyncPreview(
     return () => {
       cancelled = true;
     };
-  }, [allowLocal, cropId, enabled, publicCropId, reloadToken, requestKey, t]);
+  }, [allowLocal, cropId, enabled, publicCropId, reloadToken, requestKey, mappingKey, expectedUpdatedAt, t]);
 
   const reload = useCallback(() => setReloadToken((token) => token + 1), []);
 

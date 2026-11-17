@@ -64,7 +64,7 @@ class PlantHealthValueTests(SimpleTestCase):
             },
         )
 
-    def test_rejects_malformed_or_unbounded_values_instead_of_guessing_from_prose(self):
+    def test_rejects_malformed_values_instead_of_guessing_from_prose(self):
         for value in [
             "repels aphids",
             [],
@@ -72,7 +72,6 @@ class PlantHealthValueTests(SimpleTestCase):
             {"entries": "aphids"},
             selections(""),
             selections("x" * 201),
-            selections(*["x"] * 41),
             {"entries": [{"name": "x", "is_confirmed": True}]},
             {"entries": [{"catalogue_identity": "not-a-uuid"}]},
         ]:
@@ -127,6 +126,14 @@ class PrivatePlantHealthTests(ProjectApiTestCase):
                 {"name": self.entry.name, "catalogue_identity": identity},
             ],
         )
+
+    def test_saves_more_than_forty_selections_without_truncation(self):
+        value = selections(*(f"Private {index}" for index in range(100)))
+        response = self.patch({"plant_health": value})
+        self.assertEqual(response.status_code, 200, response.data)
+        self.crop.refresh_from_db()
+        self.assertEqual(self.crop.plant_health, value)
+        self.assertEqual(response.data["plant_health"], value)
 
     def test_unavailable_catalogue_identity_rejects_the_entire_update(self):
         for entry in [None, PlantHealthEntry.objects.create(name="Unreviewed proposal")]:
@@ -322,6 +329,20 @@ class PrivatePlantHealthTests(ProjectApiTestCase):
             },
             format="json",
         )
+
+    def test_maps_more_than_forty_private_names_in_one_request(self):
+        names = [f"Private {index}" for index in range(100)]
+        self.crop.plant_health = selections(*names)
+        self.crop.save()
+        response = self.map_name(mappings=[
+            {"local_name": name, "catalogue_identity": str(self.entry.identity_key)}
+            for name in names
+        ])
+        self.assertEqual(response.status_code, 200, response.data)
+        self.crop.refresh_from_db()
+        self.assertEqual(self.crop.plant_health, {"entries": [
+            {"name": self.entry.name, "catalogue_identity": str(self.entry.identity_key)}
+        ]})
 
     def test_explicit_mapping_preserves_other_private_values_and_records_private_history(self):
         self.crop.plant_health = selections("Local", "Keep private")
@@ -665,16 +686,19 @@ class PublicPlantHealthTests(ProjectApiTestCase):
         _apply_public_crop_update(crop=variety, public_crop=entry)
         self.assertIsNone(variety.plant_health)
 
-    def test_oversized_merge_fails_atomically_instead_of_dropping_private_names(self):
-        self.crop.plant_health = selections(*(f"Private {index}" for index in range(40)))
+    def test_merge_preserves_more_than_forty_private_and_official_entries(self):
+        self.crop.plant_health = selections(*(f"Private {index}" for index in range(100)))
         self.crop.save()
         before = self.crop.plant_health
         self.edit_public(self.entries[1])
         response = self.sync(pull_fields=["plant_health"])
-        self.assertEqual(response.status_code, 400, response.data)
+        self.assertEqual(response.status_code, 200, response.data)
         self.crop.refresh_from_db()
-        self.assertEqual(self.crop.plant_health, before)
-        self.assertEqual(self.crop.source_public_version, 1)
+        self.assertEqual(self.crop.plant_health["entries"], [
+            *before["entries"],
+            {"name": self.entries[1].name, "catalogue_identity": str(self.entries[1].identity_key)},
+        ])
+        self.assertEqual(self.crop.source_public_version, self.public.version)
 
     def test_public_writes_require_official_references_and_preserve_other_languages(self):
         PublicCropTranslation.objects.create(

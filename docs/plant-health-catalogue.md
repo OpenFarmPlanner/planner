@@ -118,9 +118,8 @@ This change contains no deployment, remote source crawling or paid API calls.
 ## Private crop selections
 
 `Crop.plant_health` stores individual names separately from the existing
-`pests_diseases` explanatory text. It is a bounded portable JSON object, following
-the existing project-tag storage pattern, with at most 40 selections and names
-up to 200 characters. A selection is either `{"name": "Private name"}` or an
+`pests_diseases` explanatory text. It is a portable JSON object with no fixed
+selection-count limit and names up to 200 characters. A selection is either `{"name": "Private name"}` or an
 explicit `{"catalogue_identity": "UUID", "name": "Reference-name snapshot"}`.
 The UUID refers to the catalogue's stable identity, never its integer database
 ID or a translated label. Two catalogue identities with the same label remain
@@ -132,8 +131,8 @@ commas/semicolons. No private write proposes or publishes a global record.
 The project crop form offers current published catalogue names and synonyms
 alongside that project's existing private names. Selecting a catalogue result
 is explicit. Chips distinguish private names, catalogue references and
-unavailable references. Selected references use one bounded, permission-filtered
-`entries/?identities=UUID,UUID` lookup for translated names; the parameter accepts
+unavailable references. Selected references use batched, permission-filtered
+`entries/?identities=UUID,UUID` lookups for translated names; the parameter accepts
 at most 40 UUIDs and cannot expand ordinary catalogue visibility. Failed lookups
 retain the selection and offer retry. Archived references remain portable;
 other unpublished identities may only be retained on a crop that already held
@@ -326,7 +325,7 @@ one-language moderation endpoint, start as broad pending concepts and keep the
 private name unresolved until moderation and a later explicit mapping.
 
 `POST /api/crops/{id}/plant-health/mappings/` accepts `expected_updated_at` and
-`mappings: [{local_name, catalogue_identity}]` (1–40 unique local names). Project
+`mappings: [{local_name, catalogue_identity}]` (one or more unique local names). Project
 permissions and token write scope apply. The action locks the project, verifies
 the timestamp and effective source names, locks published targets and records
 normal private history/actor attribution. Stale timestamps or disappeared source
@@ -344,8 +343,8 @@ Private-name and snapshot-spelling edits within the same override do not mark a
 crop as divergent. Null inheritance remains distinct from any explicit override,
 including an empty list. Both selected-field pulls
 and full library updates replace only the official segment and preserve all
-private names, IDs, plans and notes. If the combined private/public selection
-would exceed 40 entries, the transaction fails instead of dropping names. An
+private names, IDs, plans and notes. The combined private/public selection
+has no fixed entry-count limit; all private names are retained. An
 unchanged inherited official segment leaves the variety's raw null intact.
 A null public value also preserves an already-inheriting variety's raw null,
 including when the parent contains private names; those names are not copied

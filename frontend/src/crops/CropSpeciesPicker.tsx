@@ -2,12 +2,11 @@ import { useCallback, useEffect, useRef, type RefObject } from 'react';
 import {
   Autocomplete,
   type AutocompleteInputChangeReason,
-  Box,
   CircularProgress,
   TextField,
   Typography,
 } from '@mui/material';
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutlineOutlined';
+import { AutocompleteActionPaper, AutocompleteActionProvider } from '../components/AutocompleteActionPaper';
 
 import type { CropSpecies } from '../api/types';
 import { useTranslation } from '../i18n';
@@ -23,35 +22,6 @@ import {
   hasStrongCropSpeciesIdentityMatch,
   normalizeCropSpeciesSearchValue,
 } from './cropSpeciesMatching';
-
-/**
- * Sentinel option that lets the user propose their own typed name as a new
- * crop species. It is appended to the species dropdown as the last entry
- * only when the typed value does not match any official species name,
- * synonym, or regional name. Matches must be explicit instead of silent:
- * every option says why it matched (`CropSpeciesOptionContent`).
- *
- * Picking it does not talk to the server. It puts the picker into
- * "propose a new species" mode and reports the name through
- * `onProposalNameChange`; the owning dialog decides when the proposal is
- * actually filed — so a browsed-away dialog never leaves a stray proposal
- * behind.
- */
-interface ProposeSpeciesOption {
-  proposeName: string;
-  /** Separates the action from the regular hits above it; false when it stands alone. */
-  dividerAbove: boolean;
-}
-
-type SpeciesPickerOption = CropSpecies | ProposeSpeciesOption;
-
-const isProposeSpeciesOption = (option: SpeciesPickerOption): option is ProposeSpeciesOption => (
-  'proposeName' in option
-);
-
-const getSpeciesPickerOptionLabel = (option: SpeciesPickerOption): string => (
-  isProposeSpeciesOption(option) ? option.proposeName : getCropSpeciesOptionLabel(option)
-);
 
 /** Options matching `searchValue`, ordered official name → synonym → botanical → similar name. */
 const rankSpeciesOptions = (
@@ -142,7 +112,7 @@ export function CropSpeciesPicker({
   disabled = false,
 }: CropSpeciesPickerProps) {
   const { t } = useTranslation(['crops', 'common']);
-  const highlightedOptionRef = useRef<SpeciesPickerOption | null>(null);
+  const proposalButtonRef = useRef<HTMLButtonElement | null>(null);
   // MUI fires the 'reset' input update in the same tick as onChange, before
   // React has re-rendered with the new prop, so that handler cannot read
   // `proposalName` from its closure. This mirror is written by the picker
@@ -179,75 +149,43 @@ export function CropSpeciesPicker({
     );
   }, [allowProposal, loading, species]);
 
+  const proposeName = inputValue.trim();
+  const canPropose = canUseProposalName(proposeName);
+  const chooseProposal = () => {
+    if (!canPropose || disabled || proposing) return;
+    reportProposalName(proposeName);
+    onInputValueChange(proposeName);
+  };
+
   return (
-    <Autocomplete<SpeciesPickerOption>
+    <AutocompleteActionProvider action={canPropose ? {
+      label: t('library.speciesPicker.proposeInlineLabel', { name: proposeName }),
+      name: `${t('library.speciesPicker.proposeInline')} · ${proposeName}`,
+      disabled: disabled || proposing,
+      onClick: chooseProposal,
+      buttonRef: proposalButtonRef,
+      testId: 'propose-species-option',
+    } : null}>
+    <Autocomplete<CropSpecies>
       options={species}
       disabled={disabled}
       value={value}
       inputValue={inputValue}
       loading={loading}
-      getOptionLabel={getSpeciesPickerOptionLabel}
+      getOptionLabel={getCropSpeciesOptionLabel}
       isOptionEqualToValue={(option, optionValue) => (
-        !isProposeSpeciesOption(option) && !isProposeSpeciesOption(optionValue) && option.id === optionValue.id
+        option.id === optionValue.id
       )}
-      getOptionDisabled={(option) => isProposeSpeciesOption(option) && proposing}
+      slots={{ paper: AutocompleteActionPaper }}
       // Server-searched mode wants results visible the moment the field is
       // focused (the publishing wizard autofocuses it on open, prefilled
       // with the crop's own name) rather than only once the user types —
       // uncontrolled, so it doesn't fight MUI's own open/close timing the
       // way a controlled `open` prop toggled from mount did.
       openOnFocus={serverSearched}
-      filterOptions={(options, params) => {
-        const proposeName = params.inputValue.trim();
-        const knownOptions = options.filter((option): option is CropSpecies => !isProposeSpeciesOption(option));
-        // Server-searched mode: `options` is already the ranked result set
-        // for this query (see `useCropSpeciesSearch`) — re-running the
-        // client-side substring/fuzzy filter here would drop fuzzy hits
-        // that don't literally contain the typed text.
-        const filtered: SpeciesPickerOption[] = serverSearched
-          ? knownOptions
-          : rankSpeciesOptions(knownOptions, proposeName, getOfficialName);
-        const hasStrongExistingSpeciesMatch = hasStrongCropSpeciesIdentityMatch(
-          proposeName,
-          knownOptions.map((option) => ({ searchNames: getCropSpeciesSearchNames(option) })),
-        );
-        if (!allowProposal || !proposeName || loading || hasStrongExistingSpeciesMatch) {
-          return filtered;
-        }
-        return [...filtered, { proposeName, dividerAbove: filtered.length > 0 }];
-      }}
+      filterOptions={(options, params) => serverSearched ? options : rankSpeciesOptions(options, params.inputValue.trim(), getOfficialName)}
       renderOption={(props, option) => {
         const { key, ...optionProps } = props;
-        if (isProposeSpeciesOption(option)) {
-          return (
-            <Box
-              component="li"
-              {...optionProps}
-              key="propose-species"
-              data-testid="propose-species-option"
-              aria-label={t('library.speciesPicker.proposeInlineLabel', { name: option.proposeName })}
-              sx={{
-                gap: 1.5,
-                py: 1.5,
-                bgcolor: 'surface.surfaceSubtleBackground',
-                ...(option.dividerAbove
-                  ? { borderTop: '1px solid', borderColor: 'divider' }
-                  : {}),
-              }}
-            >
-              <AddCircleOutlineIcon color="success" fontSize="small" aria-hidden />
-              <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Typography variant="body2" color="primary.main" sx={{ fontWeight: 600 }}>
-                  {t('library.speciesPicker.proposeInline')}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', overflowWrap: 'anywhere' }}>
-                  {t('library.speciesPicker.proposeInlineName', { name: option.proposeName })}
-                </Typography>
-              </Box>
-              {proposing ? <CircularProgress color="inherit" size={16} /> : null}
-            </Box>
-          );
-        }
         const officialName = getOfficialName(option);
         // A species prepended outside the search (the wizard's own fresh
         // proposal) has no server `search_match`; classify it locally.
@@ -265,26 +203,13 @@ export function CropSpeciesPicker({
           </li>
         );
       }}
-      onHighlightChange={(_, option) => {
-        highlightedOptionRef.current = option;
-      }}
       onKeyDown={(event) => {
-        if (event.key !== 'Tab') return;
-        const highlightedOption = highlightedOptionRef.current;
-        const nextProposalName = highlightedOption && isProposeSpeciesOption(highlightedOption)
-          ? highlightedOption.proposeName
-          : inputValue.trim();
-        if (!canUseProposalName(nextProposalName)) return;
-
-        reportProposalName(nextProposalName);
-        onInputValueChange(nextProposalName);
+        if (event.key === 'Tab' && !event.shiftKey && canPropose && proposalButtonRef.current) {
+          event.preventDefault();
+          proposalButtonRef.current.focus();
+        }
       }}
       onChange={(_, option) => {
-        if (option && isProposeSpeciesOption(option)) {
-          // Deliberately no request here — see ProposeSpeciesOption.
-          reportProposalName(option.proposeName);
-          return;
-        }
         onChange(option);
         reportProposalName(null);
       }}
@@ -347,5 +272,6 @@ export function CropSpeciesPicker({
         />
       )}
     />
+    </AutocompleteActionProvider>
   );
 }

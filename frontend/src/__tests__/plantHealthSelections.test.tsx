@@ -9,7 +9,7 @@ import { PlantHealthField } from '../crops/sections/PlantHealthField';
 import { planLibraryLink, pickLibraryChoices } from '../crops/libraryLink';
 import { PlantHealthPublicationPanel } from '../crops/PlantHealthPublicationPanel';
 import { PlantHealthChips } from '../crops/PlantHealthChips';
-import { normalizePlantHealthSelections, collectLocalPlantHealth, matchesPlantHealthFilter } from '../crops/plantHealth';
+import { normalizePlantHealthSelections, collectLocalPlantHealth, matchesPlantHealthFilter, readPlantHealthFilter } from '../crops/plantHealth';
 import { PlantHealthRelationshipsDialog } from '../crops/PlantHealthRelationshipsDialog';
 import i18n from '../i18n/config';
 
@@ -35,14 +35,36 @@ beforeEach(async () => {
 });
 
 describe('private plant-health selections', () => {
-  it('keeps explanations in contextual main-form help without changing the input name', async () => {
+  it('allows selecting another catalogue entry after forty selections', async () => {
+    listMock.mockResolvedValue(response(catalogueEntry()));
+    const entries = Array.from({ length: 40 }, (_, index) => ({ name: `Private ${index}` }));
+    const change = vi.fn();
+    render(<PlantHealthField value={{ entries }} localOptions={[]} onChange={change} canInherit={false} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('combobox'));
+    await user.click(await screen.findByRole('option', { name: /^Bevorzugter Name/ }));
+    expect(change).toHaveBeenLastCalledWith({ entries: [...entries, { name: 'Canonical name', catalogue_identity: ID }] });
+  });
+
+  it('loads translated names for every selected chip beyond the first forty', async () => {
+    const entries = Array.from({ length: 45 }, (_, index) => ({ name: `Snapshot ${index}`,
+      catalogue_identity: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}` }));
+    listMock.mockImplementation((params: { identities: string }) => Promise.resolve(response(
+      ...params.identities.split(',').map(identity => catalogueEntry(identity, `Translated ${identity}`)),
+    )));
+    render(<PlantHealthChips value={{ entries }} />);
+    expect(await screen.findByText(`Translated ${entries[44].catalogue_identity} · Katalogeintrag`)).toBeInTheDocument();
+    expect(listMock).toHaveBeenCalledTimes(2);
+    expect(listMock.mock.calls.every(([params]) => params.identities.split(',').length <= 40)).toBe(true);
+  });
+
+  it('keeps contextual main-form help focused on entering selections', async () => {
     const user = userEvent.setup();
     render(<PlantHealthField contextualHelp value={null} localOptions={[]} onChange={vi.fn()} canInherit={false} />);
     expect(screen.getByRole('combobox', { name: 'Schädlinge und Krankheiten', exact: true })).toBeInTheDocument();
     expect(screen.queryByText(i18n.t('crops:plantHealth.associationHint'))).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: i18n.t('crops:form.fieldInfoAriaLabel', { field: i18n.t('crops:plantHealth.label') }), exact: true }));
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(i18n.t('crops:plantHealth.associationHint'));
-    expect(screen.getByRole('tooltip')).toHaveTextContent(i18n.t('crops:plantHealth.helper'));
+    expect((await screen.findByRole('tooltip')).textContent).toBe(i18n.t('crops:plantHealth.helper'));
   });
 
   it('keeps accents, delimiters, local names and separate official identities distinct', () => {
@@ -251,6 +273,11 @@ it('keeps explicit empty overrides distinct from inheritance while preserving pr
 });
 
 describe('plant-health filters and sourced host inspection', () => {
+  it('restores all selected filters beyond forty without truncation', () => {
+    const selected = Array.from({ length: 100 }, (_, index) => ({ name: `Private ${index}` }));
+    expect(readPlantHealthFilter(selected)).toEqual(selected);
+  });
+
   it('combines exact local keys and stable UUIDs with AND without inferring identity from prose', () => {
     const value = { entries: [{ name: 'Private  name' }, { name: 'Original', catalogue_identity: ID }] };
     expect(matchesPlantHealthFilter(value, [{ name: ' private NAME ' }, { name: 'Translated', catalogue_identity: ID }])).toBe(true);

@@ -10,6 +10,12 @@ export interface PlantHealthSelection {
   catalogue_identity?: string;
 }
 
+export interface StagedPlantHealthMapping {
+  crop_id: number;
+  expected_updated_at: string;
+  mappings: Array<{ local_name: string; catalogue_identity: string; catalogue_name?: string }>;
+}
+
 /** Null inherits; an empty entries array is an explicit empty override. */
 export interface PlantHealthSelections {
   entries: PlantHealthSelection[];
@@ -591,6 +597,8 @@ export interface CropPublicSyncPreview {
 }
 
 export interface CropPublicSyncRequest {
+  plant_health_mappings?: StagedPlantHealthMapping[];
+  expected_updated_at?: string;
   public_crop_id: number;
   base_version: number;
   /** Fields that take the library's value locally. */

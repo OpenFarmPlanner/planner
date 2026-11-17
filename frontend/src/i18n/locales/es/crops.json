@@ -2100,7 +2100,7 @@
   "plantHealth": {
     "label": "Plagas y enfermedades",
     "placeholder": "Escribe un nombre o elige una entrada del catálogo",
-    "helper": "Los nombres escritos siguen siendo privados. Selecciona las entradas del catálogo de forma explícita. Hasta 40 entradas.",
+    "helper": "Selecciona entradas del catálogo o introduce tus propios nombres. Tus propios nombres siguen siendo privados.",
     "local": "Nombre privado",
     "catalogue": "Entrada del catálogo",
     "unavailable": "Referencia del catálogo no disponible",
@@ -2110,10 +2110,10 @@
     "notes": "Notas sobre plagas y enfermedades",
     "spreadsheetHeader": "Entradas de plagas y enfermedades (JSON)",
     "templateEntry": "Entrada de ejemplo sintética",
-    "validation": "Usa un máximo de 40 nombres individuales de hasta 200 caracteres cada uno.",
+    "validation": "Introduce nombres individuales de hasta 200 caracteres cada uno.",
     "unspecified": "Sin especificar / heredar del cultivo",
     "emptySelection": "Selección propia explícitamente vacía",
-    "officialHelper": "Selecciona explícitamente entradas del catálogo. Los nombres libres se quedan en el proyecto.",
+    "officialHelper": "Selecciona entradas del catálogo. Tus propios nombres se quedan en el proyecto y no se publican.",
     "officialSearchError": "No se pudieron cargar las sugerencias del catálogo. Inténtalo de nuevo.",
     "publishSkipped": "Entradas sin publicar: {{number}}. Se conservan en el proyecto.",
     "publication": {

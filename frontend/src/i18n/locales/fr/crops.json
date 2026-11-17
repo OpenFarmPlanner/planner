@@ -2100,7 +2100,7 @@
   "plantHealth": {
     "label": "Ravageurs et maladies",
     "placeholder": "Saisissez un nom ou choisissez une entrée du catalogue",
-    "helper": "Les noms saisis restent privés. Sélectionnez explicitement les entrées du catalogue. Jusqu’à 40 entrées.",
+    "helper": "Sélectionnez des entrées du catalogue ou saisissez vos propres noms. Vos propres noms restent privés.",
     "local": "Nom privé",
     "catalogue": "Entrée du catalogue",
     "unavailable": "Référence de catalogue indisponible",
@@ -2110,10 +2110,10 @@
     "notes": "Notes sur les ravageurs et maladies",
     "spreadsheetHeader": "Entrées de ravageurs et maladies (JSON)",
     "templateEntry": "Entrée d’exemple synthétique",
-    "validation": "Utilisez au maximum 40 noms individuels de 200 caractères chacun.",
+    "validation": "Saisissez des noms individuels de 200 caractères maximum chacun.",
     "unspecified": "Non renseigné / hériter de la culture",
     "emptySelection": "Sélection personnelle explicitement vide",
-    "officialHelper": "Sélectionnez explicitement des entrées du catalogue. Les noms libres restent dans le projet.",
+    "officialHelper": "Sélectionnez des entrées du catalogue. Vos propres noms restent dans le projet et ne sont pas publiés.",
     "officialSearchError": "Les suggestions du catalogue n’ont pas pu être chargées. Réessayez.",
     "publishSkipped": "Entrées non publiées : {{number}}. Elles restent dans le projet.",
     "publication": {

@@ -2046,7 +2046,7 @@
   "plantHealth": {
     "label": "Plagen en ziekten",
     "placeholder": "Voer een naam in of kies een catalogusvermelding",
-    "helper": "Ingevoerde namen blijven privé. Kies catalogusvermeldingen uitdrukkelijk. Maximaal 40 vermeldingen.",
+    "helper": "Kies catalogusvermeldingen of voer eigen namen in. Eigen namen blijven privé.",
     "local": "Privénaam",
     "catalogue": "Catalogusvermelding",
     "unavailable": "Catalogusverwijzing niet beschikbaar",
@@ -2056,10 +2056,10 @@
     "notes": "Notities over plagen en ziekten",
     "spreadsheetHeader": "Vermeldingen van plagen en ziekten (JSON)",
     "templateEntry": "Synthetische voorbeeldvermelding",
-    "validation": "Gebruik maximaal 40 afzonderlijke namen van elk maximaal 200 tekens.",
+    "validation": "Voer afzonderlijke namen van maximaal 200 tekens in.",
     "unspecified": "Niet opgegeven / overnemen van gewas",
     "emptySelection": "Expliciet lege eigen selectie",
-    "officialHelper": "Kies catalogusvermeldingen uitdrukkelijk. Vrije namen blijven in het project.",
+    "officialHelper": "Kies vermeldingen uit de catalogus. Eigen namen blijven in het project en worden niet gepubliceerd.",
     "officialSearchError": "Catalogussuggesties konden niet worden geladen. Probeer het opnieuw.",
     "publishSkipped": "Niet-gepubliceerde vermeldingen: {{number}}. Ze blijven in het project.",
     "publication": {

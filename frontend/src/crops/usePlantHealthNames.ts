@@ -5,10 +5,10 @@ import type { PlantHealthEntry } from '../crop-library/plant-health/types';
 import { useTranslation } from '../i18n';
 
 /** Bounded, cancellable identity lookups with ordinary catalogue visibility. */
-export function usePlantHealthNames(entries: readonly PlantHealthSelection[], lookupAll = false) {
+export function usePlantHealthNames(entries: readonly PlantHealthSelection[]) {
   const { i18n } = useTranslation('crops');
   const allIdentities = [...new Set(entries.flatMap(entry => entry.catalogue_identity ? [entry.catalogue_identity] : []))];
-  const identities = (lookupAll ? allIdentities : allIdentities.slice(0, 40)).sort().join(',');
+  const identities = allIdentities.sort().join(',');
   const language = i18n?.resolvedLanguage ?? i18n?.language ?? 'de';
   const [attempt, setAttempt] = useState(0);
   const key = `${language}:${identities}:${attempt}`;

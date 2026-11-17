@@ -2046,7 +2046,7 @@
   "plantHealth": {
     "label": "Schädlinge und Krankheiten",
     "placeholder": "Einzelnen Namen eingeben oder Katalogeintrag wählen",
-    "helper": "Eingegebene Namen bleiben privat. Wähle Katalogeinträge ausdrücklich aus. Bis zu 40 Einträge.",
+    "helper": "Wähle Katalogeinträge aus oder gib eigene Namen ein. Eigene Namen bleiben privat.",
     "local": "Privater Name",
     "catalogue": "Katalogeintrag",
     "unavailable": "Nicht verfügbarer Katalogverweis",
@@ -2056,10 +2056,10 @@
     "notes": "Hinweise zu Schädlingen und Krankheiten",
     "spreadsheetHeader": "Schädlings- und Krankheitseinträge (JSON)",
     "templateEntry": "Synthetischer Beispieleintrag",
-    "validation": "Verwende höchstens 40 einzelne Namen mit jeweils bis zu 200 Zeichen.",
+    "validation": "Gib einzelne Namen mit jeweils bis zu 200 Zeichen ein.",
     "unspecified": "Nicht gesetzt / von Kultur übernehmen",
     "emptySelection": "Leere eigene Auswahl",
-    "officialHelper": "Wähle Katalogeinträge ausdrücklich aus. Freie Namen bleiben im Projekt.",
+    "officialHelper": "Wähle Einträge aus dem Katalog. Eigene Namen bleiben im Projekt und werden nicht veröffentlicht.",
     "officialSearchError": "Katalogvorschläge konnten nicht geladen werden. Versuche es erneut.",
     "publishSkipped": "Nicht veröffentlichte Einträge: {{number}}. Sie bleiben im Projekt erhalten.",
     "publication": {
