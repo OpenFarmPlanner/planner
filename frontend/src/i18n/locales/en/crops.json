@@ -747,18 +747,52 @@
       "templateButtonXlsx": "or as Excel (.xlsx)",
       "toggle": "Which values are allowed?",
       "valuesTitle": "Allowed values",
-      "rules": {
-        "required": "Only the “{{name}}” column is required. All other columns may be empty or missing, and their order does not matter.",
-        "varietyRows": "A row without a “{{variety}}” describes the crop itself. A row with a variety belongs to that crop and takes everything it leaves empty from it, e.g. “{{nutrient}}” or “{{cultivation}}”.",
-        "numbers": "Numbers with a comma or a point, e.g. 1,5 or 1.5.",
+      "exportTip": "Easiest: export your crops and use the file as a template.",
+      "sections": {
+        "basics": "Basics",
+        "varieties": "Crop and variety",
+        "quantities": "Quantities and yields",
+        "timing": "Time windows",
+        "notes": "Lists with notes"
+      },
+      "basics": {
+        "required": "Only the “{{name}}” column is required. All other columns may be empty or missing entirely. The column order does not matter.",
+        "numbers": "Write numbers with a comma or a point, e.g. 1,5 or 1.5.",
         "cultivationTypes": "Separate several cultivation types with commas, e.g. “{{example}}”.",
-        "wholeSeeds": "For “{{unit}}” only whole numbers are allowed.",
-        "color": "“{{column}}” as a hex code, e.g. #2E7D32. Without one, a color is chosen.",
-        "matching": "A row with the same name, variety and supplier as an existing crop updates it only after “{{confirm}}”.",
-        "exportTip": "Easiest: export your crops and use the file as a template.",
-        "timingWindows": "“{{columns}}”: time windows in thirds of a month or calendar weeks, for example “{{decadeExample}}”, “{{monthExample}}” or “{{weekExample}}”. Separate several windows with “;”. Day dates are not possible. You can write time windows in full (“early March to late April”), as calendar weeks (“week 10 to 14”) or using the month and third (“03a-04c”). Here a means the first, b the second and c the last third of the month. The preview shows how we read each value.",
-        "catalogColumns": "Use “{{directSowing}}” for timing windows; “{{cultivation}}” describes the cultivation method.",
+        "color": "Enter “{{column}}” as a hex code, e.g. #2E7D32. Without one, a color is assigned automatically."
+      },
+      "varieties": {
+        "withoutVariety": "A row without “{{variety}}” describes the crop itself.",
+        "withVariety": "A row with “{{variety}}” belongs to that crop. Everything you leave empty (e.g. “{{nutrient}}” or “{{cultivation}}”) is taken from the crop.",
+        "matching": "A row with the same name, variety and supplier as an existing crop updates it only after “{{confirm}}”."
+      },
+      "quantities": {
+        "wholeSeeds": "If the unit is “{{unit}}”, only whole numbers are possible.",
         "yield": "Enter “{{yield}}” in kg. “{{unit}}” determines whether the value is per plant or per m²."
+      },
+      "timing": {
+        "intro": "Applies to the columns {{columns}}. “{{cultivation}}” only determines which methods are possible.",
+        "written": "Written out: “{{decadeExample}}”, or a whole month such as “{{monthExample}}”",
+        "weeks": "Calendar weeks: “{{weekExample}}”",
+        "short": "Short form with thirds of a month: “03a-04c” (a = first, b = second, c = last third of the month)",
+        "several": "Separate several time windows with “;”.",
+        "noDates": "Day dates are not possible.",
+        "preview": "The preview shows how each value was read."
+      },
+      "notes": {
+        "intro": "Applies to “{{good}}” and “{{bad}}”. An entry is a name or “Name | Note”. The note belongs only to the name directly before it.",
+        "separators": "Separate entries with “;” or a line break. Names without a note can also be separated with commas.",
+        "noteEnds": "A note runs to the next “;” and may contain commas.",
+        "example": "Example: Tomato | Pest control; Cucumber | Source 2025; Basil",
+        "meaning": "“Tomato; Cucumber | Comment” means Tomato without a note and Cucumber with “Comment”.",
+        "legacy": "Older notes with a dash (“Tomato - A; Cucumber - B”) are only taken over if the name is recognized unambiguously. They then belong to the name directly before the dash.",
+        "keepQuotes": "In exported files, keep quotes and escaping as they are. They make sure that separators and line breaks in notes are preserved."
+      },
+      "valueGroups": {
+        "seed": "Seeds and germination",
+        "site": "Site and care",
+        "cultivation": "Cultivation and yield",
+        "other": "Other properties"
       },
       "templateSamples": "Replace or delete the three example rows before importing your data.",
       "templateError": "The template could not be loaded."
@@ -1758,8 +1792,7 @@
     "noteLanguage": "Companion note language",
     "languageHelp": {
       "edit": "You are editing only notes in this language. Other language versions are preserved."
-    },
-    "cellHelp": "An entry is a name or \"Name | Note\"; a note always belongs only to the name directly before it. Separate entries with ; or a line break, names without a note also with a comma: Tomato | Pest control; Cucumber | Source 2025; Basil. \"Tomato; Cucumber | Comment\" means Tomato without a note and Cucumber with \"Comment\". A note runs to the next ; and may contain commas. Exported quotes and escape sequences preserve delimiters and line breaks in notes. Legacy dash comments (Tomato - A; Cucumber - B) are linked only when names resolve unambiguously, and only to the name directly before the dash."
+    }
   },
   "timingWindows": {
     "sectionTitle": "Time windows",

@@ -773,18 +773,52 @@
       "templateButtonXlsx": "o como Excel (.xlsx)",
       "toggle": "¿Qué valores se permiten?",
       "valuesTitle": "Valores permitidos",
-      "rules": {
-        "required": "Solo la columna «{{name}}» es obligatoria. Las demás columnas pueden quedar vacías o faltar, y su orden no importa.",
-        "varietyRows": "Una fila sin «{{variety}}» describe el cultivo en sí. Una fila con variedad pertenece a ese cultivo y toma de él todo lo que deja vacío, p. ej. «{{nutrient}}» o «{{cultivation}}».",
-        "numbers": "Números con coma o punto, p. ej. 1,5 o 1.5.",
+      "exportTip": "Lo más fácil: exporta tus cultivos y usa el archivo como plantilla.",
+      "sections": {
+        "basics": "Reglas básicas",
+        "varieties": "Cultivo y variedad",
+        "quantities": "Cantidades y rendimientos",
+        "timing": "Periodos",
+        "notes": "Listas con notas"
+      },
+      "basics": {
+        "required": "Solo la columna «{{name}}» es obligatoria. Las demás columnas pueden quedar vacías o faltar. El orden de las columnas no importa.",
+        "numbers": "Escribe los números con coma o punto, p. ej. 1,5 o 1.5.",
         "cultivationTypes": "Separa varios tipos de cultivo con comas, p. ej. «{{example}}».",
-        "wholeSeeds": "Para «{{unit}}» solo se permiten números enteros.",
-        "color": "«{{column}}» como código hexadecimal, p. ej. #2E7D32. Si falta, se elige un color.",
-        "matching": "Una fila con el mismo nombre, variedad y proveedor que un cultivo existente solo lo actualiza tras «{{confirm}}».",
-        "exportTip": "Lo más fácil: exporta tus cultivos y usa el archivo como plantilla.",
-        "timingWindows": "«{{columns}}»: periodos en decenas del mes o en semanas, por ejemplo «{{decadeExample}}», «{{monthExample}}» o «{{weekExample}}». Separa varios periodos con «;». No se admiten fechas concretas. Puedes escribir los periodos con palabras («principios de marzo a finales de abril»), como semanas («semanas 10 a 14») o con el mes y la decena («03a-04c»). La letra a indica la primera decena, b la segunda y c la última. En la vista previa verás cómo hemos interpretado cada valor.",
-        "catalogColumns": "Usa «{{directSowing}}» para los periodos; «{{cultivation}}» describe el método de cultivo.",
+        "color": "Indica «{{column}}» como código hexadecimal, p. ej. #2E7D32. Si no indicas ninguno, se asigna un color automáticamente."
+      },
+      "varieties": {
+        "withoutVariety": "Una fila sin «{{variety}}» describe el propio cultivo.",
+        "withVariety": "Una fila con «{{variety}}» pertenece a ese cultivo. Todo lo que dejes vacío (p. ej. «{{nutrient}}» o «{{cultivation}}») se toma del cultivo.",
+        "matching": "Una fila con el mismo nombre, variedad y proveedor que un cultivo existente solo lo actualiza tras «{{confirm}}»."
+      },
+      "quantities": {
+        "wholeSeeds": "Si la unidad es «{{unit}}», solo se admiten números enteros.",
         "yield": "Indica «{{yield}}» en kg. «{{unit}}» determina si el valor es por planta o por m²."
+      },
+      "timing": {
+        "intro": "Se aplica a las columnas {{columns}}. «{{cultivation}}» solo determina qué métodos son posibles.",
+        "written": "Escrito: «{{decadeExample}}», o un mes entero como «{{monthExample}}»",
+        "weeks": "Semanas: «{{weekExample}}»",
+        "short": "Forma corta con decenas: «03a-04c» (a = primera, b = segunda, c = última decena del mes)",
+        "several": "Separa varios periodos con «;».",
+        "noDates": "No se admiten fechas concretas.",
+        "preview": "En la vista previa ves cómo se interpretó cada valor."
+      },
+      "notes": {
+        "intro": "Se aplica a «{{good}}» y «{{bad}}». Una entrada es un nombre o «Nombre | Nota». La nota pertenece solo al nombre que la precede directamente.",
+        "separators": "Separa las entradas con «;» o un salto de línea. Los nombres sin nota también se pueden separar con comas.",
+        "noteEnds": "Una nota llega hasta el siguiente «;» y puede contener comas.",
+        "example": "Ejemplo: Tomate | Control de plagas; Pepino | Fuente 2025; Albahaca",
+        "meaning": "«Tomate; Pepino | Comentario» significa: Tomate sin nota y Pepino con «Comentario».",
+        "legacy": "Las notas antiguas con guion («Tomate - A; Pepino - B») solo se adoptan si el nombre se reconoce sin ambigüedad. Entonces pertenecen al nombre situado justo antes del guion.",
+        "keepQuotes": "En los archivos exportados, conserva las comillas y los caracteres de escape. Garantizan que los separadores y los saltos de línea de las notas se mantengan."
+      },
+      "valueGroups": {
+        "seed": "Semillas y germinación",
+        "site": "Ubicación y cuidados",
+        "cultivation": "Cultivo y rendimiento",
+        "other": "Otras propiedades"
       },
       "templateSamples": "Sustituye o elimina las tres filas de ejemplo antes de importar tus datos.",
       "templateError": "No se ha podido cargar la plantilla."
@@ -1810,8 +1844,7 @@
     "noteLanguage": "Idioma de las notas de asociación",
     "languageHelp": {
       "edit": "Solo editas las notas en este idioma. Las demás versiones se conservan."
-    },
-    "cellHelp": "Una entrada es un nombre o «Nombre | Nota»; una nota pertenece siempre solo al nombre que la precede directamente. Separe las entradas con ; o un salto de línea, y los nombres sin nota también con una coma: Tomate | Control de plagas; Pepino | Fuente 2025; Albahaca. «Tomate; Pepino | Comentario» significa: Tomate sin nota y Pepino con «Comentario». Una nota llega hasta el siguiente ; y puede contener comas. Las comillas y secuencias de escape exportadas conservan los separadores y saltos de línea de las notas. Los comentarios antiguos con guion (Tomate - A; Pepino - B) solo se vinculan cuando los nombres se reconocen sin ambigüedad, y solo al nombre situado justo antes del guion."
+    }
   },
   "timingWindows": {
     "sectionTitle": "Periodos",

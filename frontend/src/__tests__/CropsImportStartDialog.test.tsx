@@ -4,6 +4,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CropsImportStartDialog } from '../pages/CropsImportStartDialog';
 import { downloadCropImportTemplate } from '../crops/importTemplate';
+import { getLocalizedCropColumns } from '../crops/spreadsheetColumns';
 import i18n from '../i18n';
 import theme from '../theme';
 
@@ -76,7 +77,7 @@ describe('CropsImportStartDialog', () => {
       renderDialog();
       expect(screen.getByText('Ersetze oder lösche die drei Beispielzeilen vor dem Import deiner Daten.')).toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'Welche Werte sind erlaubt?' }));
-      expect(screen.getByText('Nutze „Direktsaatzeitraum“ für Zeiträume; „Anbauart“ beschreibt die Anbauart.')).toBeInTheDocument();
+      expect(screen.getByText(/^Gilt für die Spalten .*Direktsaatzeitraum.*„Anbauart“ legt nur fest/)).toBeInTheDocument();
       expect(screen.queryByText(/Aussaat Freiland/)).not.toBeInTheDocument();
     });
 
@@ -347,11 +348,46 @@ describe('CropsImportStartDialog', () => {
 
       expect(toggle).toHaveAttribute('aria-expanded', 'true');
       expect(screen.getByText('Schwachzehrer, Mittelzehrer, Starkzehrer')).toBeInTheDocument();
-      expect(screen.getByText('Bei „Korn / Pflanze“ sind nur ganze Zahlen möglich.')).toBeInTheDocument();
+      expect(screen.getByText('Ist die Einheit „Korn / Pflanze“, sind nur ganze Zahlen möglich.')).toBeInTheDocument();
+      expect(screen.getByText('Eine Zeile ohne „Sorte“ beschreibt die Kultur selbst.')).toBeInTheDocument();
       expect(screen.getByText(
-        'Eine Zeile ohne „Sorte“ beschreibt die Kultur selbst. Eine Zeile mit Sorte gehört zu dieser Kultur '
-        + 'und übernimmt alles, was sie leer lässt, von ihr, z. B. „Nährstoffbedarf“ oder „Anbauart“.',
+        'Eine Zeile mit „Sorte“ gehört zu dieser Kultur. Alles, was du leer lässt '
+        + '(z. B. „Nährstoffbedarf“ oder „Anbauart“), übernimmt sie von der Kultur.',
       )).toBeInTheDocument();
+      expect(screen.getByText(/^Gilt für „Gute Nachbarn“ und „Schlechte Nachbarn“\./)).toBeInTheDocument();
+    });
+
+    it.each([
+      ['de', ['Grundregeln', 'Kultur und Sorte', 'Mengen und Erträge', 'Zeiträume', 'Listen mit Notizen',
+        'Erlaubte Werte', 'Saatgut und Keimung', 'Standort und Pflege', 'Anbau und Ertrag', 'Weitere Eigenschaften']],
+      ['en', ['Basics', 'Crop and variety', 'Quantities and yields', 'Time windows', 'Lists with notes',
+        'Allowed values', 'Seeds and germination', 'Site and care', 'Cultivation and yield', 'Other properties']],
+    ])('structures the help into section headings in %s, export tip first', async (language, headings) => {
+      const localized = i18n.getFixedT(language, 'crops') as unknown as typeof t;
+      render(
+        <ThemeProvider theme={theme}>
+          <CropsImportStartDialog open onClose={vi.fn()} onFileSelected={vi.fn()} preparing={false} t={localized} />
+        </ThemeProvider>,
+      );
+      await userEvent.click(screen.getByRole('button', { name: localized('import.help.toggle') }));
+      expect(screen.getAllByRole('heading').map((heading) => heading.textContent))
+        .toEqual(expect.arrayContaining(headings));
+      const collapse = screen.getByText(localized('import.help.exportTip'));
+      expect(collapse.compareDocumentPosition(screen.getByText(headings[0])) & Node.DOCUMENT_POSITION_FOLLOWING)
+        .toBeTruthy();
+    });
+
+    it('lists every importable enum column exactly once, with the values the import accepts', async () => {
+      renderDialog();
+      await userEvent.click(screen.getByRole('button', { name: 'Welche Werte sind erlaubt?' }));
+      const enumColumns = getLocalizedCropColumns(t).filter((column) => column.enumExport);
+      for (const column of enumColumns) {
+        const values = Object.values(column.enumExport ?? {}).join(', ');
+        expect(screen.getAllByText(values).length, column.key).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText(column.header).length, column.key).toBeGreaterThanOrEqual(1);
+      }
+      expect(screen.getAllByRole('listitem').filter((item) => item.querySelector('.MuiListItemText-secondary')))
+        .toHaveLength(enumColumns.length);
     });
   });
 });

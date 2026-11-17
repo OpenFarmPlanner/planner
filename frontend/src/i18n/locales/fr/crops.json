@@ -773,18 +773,52 @@
       "templateButtonXlsx": "ou en Excel (.xlsx)",
       "toggle": "Quelles valeurs sont autorisées ?",
       "valuesTitle": "Valeurs autorisées",
-      "rules": {
-        "required": "Seule la colonne « {{name}} » est obligatoire. Toutes les autres colonnes peuvent rester vides ou manquer, et leur ordre n’a pas d’importance.",
-        "varietyRows": "Une ligne sans « {{variety}} » décrit la culture elle-même. Une ligne avec une variété appartient à cette culture et en reprend tout ce qu’elle laisse vide, par ex. « {{nutrient}} » ou « {{cultivation}} ».",
-        "numbers": "Nombres avec une virgule ou un point, par ex. 1,5 ou 1.5.",
+      "exportTip": "Le plus simple : exportez vos cultures et utilisez le fichier comme modèle.",
+      "sections": {
+        "basics": "Règles de base",
+        "varieties": "Culture et variété",
+        "quantities": "Quantités et rendements",
+        "timing": "Périodes",
+        "notes": "Listes avec notes"
+      },
+      "basics": {
+        "required": "Seule la colonne « {{name}} » est obligatoire. Toutes les autres colonnes peuvent rester vides ou manquer. L’ordre des colonnes n’a pas d’importance.",
+        "numbers": "Écrivez les nombres avec une virgule ou un point, par ex. 1,5 ou 1.5.",
         "cultivationTypes": "Séparez plusieurs modes de culture par des virgules, par ex. « {{example}} ».",
-        "wholeSeeds": "Pour « {{unit}} », seuls les nombres entiers sont acceptés.",
-        "color": "« {{column}} » en code hexadécimal, par ex. #2E7D32. Sans valeur, une couleur est choisie.",
-        "matching": "Une ligne avec le même nom, la même variété et le même fournisseur qu’une culture existante ne la met à jour qu’après « {{confirm}} ».",
-        "exportTip": "Le plus simple : exportez vos cultures et utilisez le fichier comme modèle.",
-        "timingWindows": "« {{columns}} » : périodes en décades ou en semaines, par exemple « {{decadeExample}} », « {{monthExample}} » ou « {{weekExample}} ». Séparez plusieurs périodes par « ; ». Les dates précises ne sont pas possibles. Vous pouvez écrire les périodes en toutes lettres (« début mars à fin avril »), en semaines (« semaines 10 à 14 ») ou avec le mois et la décade (« 03a-04c »). La lettre a désigne la première décade, b la deuxième et c la dernière. L’aperçu montre comment nous avons interprété chaque valeur.",
-        "catalogColumns": "Utilisez « {{directSowing}} » pour les périodes ; « {{cultivation}} » décrit le mode de culture.",
-        "yield": "Indiquez « {{yield}} » en kg. « {{unit}} » précise si la valeur est par plante ou par m²."
+        "color": "Indiquez « {{column}} » en code hexadécimal, par ex. #2E7D32. Sans valeur, une couleur est attribuée automatiquement."
+      },
+      "varieties": {
+        "withoutVariety": "Une ligne sans « {{variety}} » décrit la culture elle-même.",
+        "withVariety": "Une ligne avec « {{variety}} » appartient à cette culture. Tout ce que vous laissez vide (par ex. « {{nutrient}} » ou « {{cultivation}} ») est repris de la culture.",
+        "matching": "Une ligne avec le même nom, la même variété et le même fournisseur qu’une culture existante ne la met à jour qu’après « {{confirm}} »."
+      },
+      "quantities": {
+        "wholeSeeds": "Si l’unité est « {{unit}} », seuls les nombres entiers sont possibles.",
+        "yield": "Indiquez « {{yield}} » en kg. « {{unit}} » précise si la valeur s’entend par plante ou par m²."
+      },
+      "timing": {
+        "intro": "S’applique aux colonnes {{columns}}. « {{cultivation}} » indique seulement quels modes sont possibles.",
+        "written": "En toutes lettres : « {{decadeExample}} », ou un mois entier comme « {{monthExample}} »",
+        "weeks": "Semaines : « {{weekExample}} »",
+        "short": "Forme courte avec décades : « 03a-04c » (a = première, b = deuxième, c = dernière décade du mois)",
+        "several": "Séparez plusieurs périodes par « ; ».",
+        "noDates": "Les dates précises ne sont pas possibles.",
+        "preview": "L’aperçu montre comment chaque valeur a été interprétée."
+      },
+      "notes": {
+        "intro": "S’applique à « {{good}} » et « {{bad}} ». Une entrée est un nom ou « Nom | Note ». La note appartient uniquement au nom qui la précède directement.",
+        "separators": "Séparez les entrées par « ; » ou un retour à la ligne. Les noms sans note peuvent aussi être séparés par une virgule.",
+        "noteEnds": "Une note va jusqu’au prochain « ; » et peut contenir des virgules.",
+        "example": "Exemple : Tomate | Protection contre les ravageurs ; Concombre | Source 2025 ; Basilic",
+        "meaning": "« Tomate ; Concombre | Commentaire » signifie : Tomate sans note, Concombre avec « Commentaire ».",
+        "legacy": "Les anciennes notes avec tiret (« Tomate - A ; Concombre - B ») ne sont reprises que si le nom est reconnu sans ambiguïté. Elles appartiennent alors au nom placé juste avant le tiret.",
+        "keepQuotes": "Dans les fichiers exportés, conservez les guillemets et les caractères d’échappement. Ils garantissent que les séparateurs et les retours à la ligne des notes sont préservés."
+      },
+      "valueGroups": {
+        "seed": "Semences et germination",
+        "site": "Emplacement et entretien",
+        "cultivation": "Culture et rendement",
+        "other": "Autres propriétés"
       },
       "templateSamples": "Remplacez ou supprimez les trois lignes d’exemple avant d’importer vos données.",
       "templateError": "Impossible de charger le modèle."
@@ -1810,8 +1844,7 @@
     "noteLanguage": "Langue des notes de voisinage",
     "languageHelp": {
       "edit": "Vous modifiez uniquement les notes dans cette langue. Les autres versions sont conservées."
-    },
-    "cellHelp": "Une entrée est un nom ou « Nom | Note » ; une note appartient toujours uniquement au nom qui la précède directement. Séparez les entrées par ; ou un retour à la ligne, les noms sans note aussi par une virgule : Tomate | Protection contre les ravageurs ; Concombre | Source 2025 ; Basilic. « Tomate ; Concombre | Commentaire » signifie : Tomate sans note, Concombre avec « Commentaire ». Une note va jusqu’au prochain ; et peut contenir des virgules. Les guillemets et séquences d’échappement exportés préservent les séparateurs et retours à la ligne des notes. Les anciens commentaires avec tiret (Tomate - A ; Concombre - B) ne sont liés que si les noms sont reconnus sans ambiguïté, et uniquement au nom placé juste avant le tiret."
+    }
   },
   "timingWindows": {
     "sectionTitle": "Périodes",

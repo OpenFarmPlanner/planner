@@ -747,18 +747,52 @@
       "templateButtonXlsx": "of als Excel (.xlsx)",
       "toggle": "Welke waarden zijn toegestaan?",
       "valuesTitle": "Toegestane waarden",
-      "rules": {
-        "required": "Alleen de kolom ‘{{name}}’ is verplicht. Alle andere kolommen mogen leeg zijn of ontbreken en hun volgorde maakt niet uit.",
-        "varietyRows": "Een rij zonder ‘{{variety}}’ beschrijft het gewas zelf. Een rij met een ras hoort bij dat gewas en neemt alle leeggelaten waarden ervan over, bijvoorbeeld ‘{{nutrient}}’ of ‘{{cultivation}}’.",
-        "numbers": "Getallen met een komma of punt, bijvoorbeeld 1,5 of 1.5.",
+      "exportTip": "Het eenvoudigst: exporteer je gewassen en gebruik het bestand als sjabloon.",
+      "sections": {
+        "basics": "Basisregels",
+        "varieties": "Gewas en ras",
+        "quantities": "Hoeveelheden en opbrengsten",
+        "timing": "Perioden",
+        "notes": "Lijsten met notities"
+      },
+      "basics": {
+        "required": "Alleen de kolom ‘{{name}}’ is verplicht. Alle andere kolommen mogen leeg zijn of helemaal ontbreken. De volgorde van de kolommen maakt niet uit.",
+        "numbers": "Schrijf getallen met een komma of een punt, bijvoorbeeld 1,5 of 1.5.",
         "cultivationTypes": "Scheid meerdere teeltwijzen met komma's, bijvoorbeeld ‘{{example}}’.",
-        "wholeSeeds": "Voor ‘{{unit}}’ zijn alleen gehele getallen toegestaan.",
-        "color": "‘{{column}}’ als hexcode, bijvoorbeeld #2E7D32. Zonder code wordt een kleur gekozen.",
-        "matching": "Een rij met dezelfde naam, hetzelfde ras en dezelfde leverancier als een bestaand gewas werkt dat pas bij na ‘{{confirm}}’.",
-        "exportTip": "Het eenvoudigst: exporteer je gewassen en gebruik het bestand als sjabloon.",
-        "timingWindows": "‘{{columns}}’: periodes in derde delen van een maand of kalenderweken, bijvoorbeeld ‘{{decadeExample}}’, ‘{{monthExample}}’ of ‘{{weekExample}}’. Scheid meerdere periodes met ‘;’. Dagdatums zijn niet mogelijk. Je kunt periodes voluit schrijven (‘begin maart tot eind april’), als kalenderweken (‘week 10 tot 14’) of met maand en derde deel (‘03a-04c’). Daarbij staat a voor het eerste, b voor het tweede en c voor het laatste derde deel van de maand. Het voorbeeld toont hoe we elke waarde lezen.",
-        "catalogColumns": "Gebruik ‘{{directSowing}}’ voor periodes. ‘{{cultivation}}’ beschrijft de teeltwijze.",
-        "yield": "Voer ‘{{yield}}’ in kg in. ‘{{unit}}’ bepaalt of de waarde per plant of per m² geldt."
+        "color": "Geef ‘{{column}}’ op als hexcode, bijvoorbeeld #2E7D32. Zonder code wordt automatisch een kleur toegewezen."
+      },
+      "varieties": {
+        "withoutVariety": "Een rij zonder ‘{{variety}}’ beschrijft het gewas zelf.",
+        "withVariety": "Een rij met ‘{{variety}}’ hoort bij dat gewas. Alles wat je leeg laat (bijvoorbeeld ‘{{nutrient}}’ of ‘{{cultivation}}’) wordt van het gewas overgenomen.",
+        "matching": "Een rij met dezelfde naam, hetzelfde ras en dezelfde leverancier als een bestaand gewas werkt dat pas bij na ‘{{confirm}}’."
+      },
+      "quantities": {
+        "wholeSeeds": "Is de eenheid ‘{{unit}}’, dan zijn alleen gehele getallen mogelijk.",
+        "yield": "Geef ‘{{yield}}’ op in kg. ‘{{unit}}’ bepaalt of de waarde per plant of per m² geldt."
+      },
+      "timing": {
+        "intro": "Geldt voor de kolommen {{columns}}. ‘{{cultivation}}’ bepaalt alleen welke methoden mogelijk zijn.",
+        "written": "Uitgeschreven: ‘{{decadeExample}}’, of een hele maand zoals ‘{{monthExample}}’",
+        "weeks": "Weken: ‘{{weekExample}}’",
+        "short": "Korte vorm met maanddelen: ‘03a-04c’ (a = eerste, b = tweede, c = laatste deel van de maand)",
+        "several": "Scheid meerdere perioden met ‘;’.",
+        "noDates": "Exacte data zijn niet mogelijk.",
+        "preview": "In het voorbeeld zie je hoe elke waarde is gelezen."
+      },
+      "notes": {
+        "intro": "Geldt voor ‘{{good}}’ en ‘{{bad}}’. Een invoer is een naam of ‘Naam | Notitie’. De notitie hoort alleen bij de naam direct ervoor.",
+        "separators": "Scheid invoeren met ‘;’ of een regeleinde. Namen zonder notitie kun je ook met een komma scheiden.",
+        "noteEnds": "Een notitie loopt tot de volgende ‘;’ en mag komma’s bevatten.",
+        "example": "Voorbeeld: Tomaat | Plaagbestrijding; Komkommer | Bron 2025; Basilicum",
+        "meaning": "‘Tomaat; Komkommer | Opmerking’ betekent: Tomaat zonder notitie, Komkommer met ‘Opmerking’.",
+        "legacy": "Oudere notities met een streepje (‘Tomaat - A; Komkommer - B’) worden alleen overgenomen als de naam eenduidig wordt herkend. Ze horen dan bij de naam direct vóór het streepje.",
+        "keepQuotes": "Laat in geëxporteerde bestanden aanhalingstekens en escape-tekens staan. Daardoor blijven scheidingstekens en regeleinden in notities behouden."
+      },
+      "valueGroups": {
+        "seed": "Zaad en kieming",
+        "site": "Standplaats en verzorging",
+        "cultivation": "Teelt en opbrengst",
+        "other": "Overige eigenschappen"
       },
       "templateSamples": "Vervang of verwijder de drie voorbeeldrijen voordat je je gegevens importeert.",
       "templateError": "Het sjabloon kon niet worden geladen."
@@ -1758,8 +1792,7 @@
     "noteLanguage": "Taal van combinatieteeltnotities",
     "languageHelp": {
       "edit": "Je bewerkt alleen notities in deze taal. Andere taalversies blijven behouden."
-    },
-    "cellHelp": "Een invoer is een naam of ‘Naam | Notitie’; een notitie hoort altijd alleen bij de naam direct ervoor. Scheid invoeren met ; of een regeleinde, namen zonder notitie ook met een komma: Tomaat | Plaagbestrijding; Komkommer | Bron 2025; Basilicum. ‘Tomaat; Komkommer | Opmerking’ betekent: Tomaat zonder notitie, Komkommer met ‘Opmerking’. Een notitie loopt tot de volgende ; en mag komma’s bevatten. Geëxporteerde aanhalingstekens en escape-reeksen behouden scheidingstekens en regeleinden in notities. Oude opmerkingen met streepjes (Tomaat - A; Komkommer - B) worden alleen gekoppeld als namen eenduidig worden herkend, en alleen aan de naam direct vóór het streepje."
+    }
   },
   "timingWindows": {
     "sectionTitle": "Periodes",
