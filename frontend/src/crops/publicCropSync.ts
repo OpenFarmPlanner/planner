@@ -7,13 +7,15 @@ import { isEmptyPublicValue } from '../crop-library/components/publicCropLibrary
  * value into the entry, `local` keeps the local value without sharing it — the
  * field is pinned (`Crop.library_pinned_fields`) and drops out of every later
  * library diff, so it never leaves a pull or push action standing. `local` is
- * only offered for an already linked crop ("Mit Kulturbibliothek abgleichen").
+ * is available during initial linking and later library synchronization.
  */
 export type PublicCropSyncChoice = 'library' | 'mine' | 'local';
 
 export interface PublicCropSyncChoiceOptions {
-  /** The flow offers "Nur lokal" (the sync of a linked crop, not a link confirmation). */
+  /** Offer "Nur lokal" to pin values during linking or synchronization. */
   allowLocal?: boolean;
+  /** Initial linking keeps private-only values pinned instead of leaving an open contribution. */
+  keepPrivateValuesLocally?: boolean;
 }
 
 /**
@@ -67,7 +69,7 @@ export type PublicCropSyncChoices = Record<string, PublicCropSyncChoice>;
  */
 export function getDefaultSyncChoice(
   change: PublicCropSyncFieldChange,
-  { allowLocal = false }: PublicCropSyncChoiceOptions = {},
+  { allowLocal = false, keepPrivateValuesLocally = false }: PublicCropSyncChoiceOptions = {},
 ): PublicCropSyncChoice {
   // A field the user already pinned stays pinned unless they release it here.
   if (allowLocal && change.pinned && canKeepSyncFieldLocally(change)) return 'local';
@@ -75,7 +77,9 @@ export function getDefaultSyncChoice(
   const hasPublicValue = !isEmptyPublicValue(change.public_value);
   const hasLocalValue = !isEmptyPublicValue(change.local_value);
   if (!hasLocalValue) return 'library';
-  if (!hasPublicValue) return 'mine';
+  if (!hasPublicValue) {
+    return allowLocal && keepPrivateValuesLocally && canKeepSyncFieldLocally(change) ? 'local' : 'mine';
+  }
   return 'library';
 }
 

@@ -286,6 +286,7 @@ export function CropsPublishingWizardDialog({
     true,
     currentHealthMappings,
     crop?.updated_at,
+    !isSyncFlow,
   );
 
   useEffect(() => {
@@ -676,7 +677,7 @@ export function CropsPublishingWizardDialog({
 
   const syncPanel = (
     <PublicCropSyncPanel
-      changes={syncPreview.preview?.changes.map((change) => isSyncFlow ? change : { ...change, pushable: true }) ?? null}
+      changes={syncPreview.preview?.changes ?? null}
       choices={syncPreview.choices}
       onChoicesChange={syncPreview.setChoices}
       requiresModeration={Boolean(syncPreview.preview?.requires_moderation)}

@@ -300,6 +300,7 @@ for (const entryPoint of ['publish', 'import', 'copy', 'resolve', 'resolve-brows
     const source = await apiRequest<CropRow>(page, 'POST', '/crops/', {
       name: species.name, variety: '', crop_species: species.id,
       growth_duration_days: 80, harvest_duration_days: 20,
+      ...(entryPoint === 'publish' ? { crop_family: 'Brassicaceae' } : {}),
       ...(resolvesDifferences ? { germination_temperature_requirement: 'cold_stratification', germination_light_requirement: 'light' } : {}),
     });
     const published = await apiRequest<PublishResponse>(page, 'POST', `/crops/${source.id}/publish-public/`, {
@@ -377,9 +378,16 @@ for (const entryPoint of ['publish', 'import', 'copy', 'resolve', 'resolve-brows
     const confirm = page.getByRole('button', { name: entryPoint === 'publish' ? labels.library.linkExisting.confirm : entryPoint === 'copy' ? labels.library.importDecision.copy : labels.library.importDecision.link });
     await expect(confirm).toBeEnabled();
     const localChoice = page.getByTestId('public-crop-sync-row-notes').getByRole('radio', { name: entryPoint === 'copy' ? labels.library.linkExisting.keepLocal : labels.library.sync.chooseLocal });
-    await localChoice.focus();
-    await localChoice.press('Space');
-    await expect(localChoice).toBeChecked();
+    if (entryPoint === 'publish') {
+      await expect(localChoice).toBeChecked();
+      const family = page.getByTestId('public-crop-sync-row-crop_family');
+      await expect(family.getByRole('radio', { name: labels.library.linkExisting.keepLocal, exact: true })).toBeDisabled();
+      await expect(family.getByRole('radio', { name: labels.library.linkExisting.takeLibrary, exact: true })).toBeChecked();
+    } else {
+      await localChoice.focus();
+      await localChoice.press('Space');
+      await expect(localChoice).toBeChecked();
+    }
     if (entryPoint === 'copy') {
       const choose = async (field: string, label: string) => {
         const option = page.getByTestId(`public-crop-sync-row-${field}`).getByRole('radio', { name: label, exact: true });
@@ -438,6 +446,13 @@ for (const entryPoint of ['publish', 'import', 'copy', 'resolve', 'resolve-brows
     if (entryPoint === 'publish') {
       const unchanged = await apiRequest<{ original_language_code: string }>(page, 'GET', `/public-crops/${published.public_crop.id}/`);
       expect(unchanged.original_language_code).toBe('en');
+      await expect(page.getByTestId('crop-detail-library-status')).toContainText(labels.library.publicUpdate.markerUpToDateLabel);
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await expect(page.getByTestId('crop-list-library-status').first()).toHaveAttribute('data-status', 'upToDate');
+      for (const viewport of [{ width: 375, height: 800 }, { width: 1440, height: 900 }, { width: 800, height: 375 }]) {
+        await page.setViewportSize(viewport);
+        await page.screenshot({ path: testInfo.outputPath(`publish-up-to-date-${viewport.width}.png`), animations: 'disabled' });
+      }
     }
     if (resolvesDifferences) {
       await expect(page.getByRole('button', { name: labels.library.linkExisting.alreadyLinked, exact: true })).toBeDisabled();

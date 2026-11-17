@@ -736,6 +736,32 @@ describe('CropsPublishingWizardDialog', () => {
     })));
   });
 
+  it('keeps initial private notes pinned and cannot retain empty local values as unresolved differences', async () => {
+    publicCropListMock.mockResolvedValue({ data: { results: [
+      { id: 40, status: 'published', name: 'Tomate', variety: '', crop_species: 1, version: 2 },
+    ] } });
+    publicSyncPreviewMock.mockResolvedValue({ data: {
+      public_crop_id: 40, public_version: 2, requires_moderation: false,
+      changes: [
+        { field: 'notes', local_value: 'Private note', public_value: '', pushable: true, pinnable: true },
+        { field: 'crop_family', local_value: null, public_value: 'Brassicaceae', pushable: false,
+          push_blocked_reason: 'empty', pinnable: false, pin_blocked_reason: 'empty' },
+      ],
+    } });
+    const onLinkPublicCrop = vi.fn().mockResolvedValue(true);
+    renderWizard(GENERAL_CROP, { onLinkPublicCrop });
+    const notes = await screen.findByTestId('public-crop-sync-row-notes');
+    expect(within(notes).getByRole('radio', { name: 'Nur lokal behalten' })).toBeChecked();
+    const family = screen.getByTestId('public-crop-sync-row-crop_family');
+    expect(within(family).getByRole('radio', { name: 'Eigenen Wert behalten' })).toBeDisabled();
+    expect(within(family).getByRole('radio', { name: 'Nur lokal behalten' })).toBeDisabled();
+    expect(within(family).getByRole('radio', { name: 'Aus Bibliothek übernehmen' })).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Verknüpfen und Werte übernehmen' }));
+    await waitFor(() => expect(onLinkPublicCrop).toHaveBeenCalledWith(expect.objectContaining({
+      pullFields: ['crop_family'], pinFields: ['notes'], pushFields: [],
+    })));
+  });
+
   it('opens the comparison directly for a unique existing variety and saves only on confirmation', async () => {
     publicCropListMock.mockResolvedValue({ data: { results: [
       { id: 40, status: 'published', name: 'Tomate', variety: 'Roma', crop_species: 1, version: 2, original_language_code: 'it' },
@@ -905,9 +931,9 @@ describe('CropsPublishingWizardDialog', () => {
         .toBeInTheDocument();
       await waitFor(() => expect(publicSyncPreviewMock).toHaveBeenCalledWith(cropLevelCrop.id, 77));
       expect(screen.getByText(/Wähle für jeden abweichenden Wert, welcher gelten soll/)).toBeInTheDocument();
-      // Both set and different -> library; only the local value set -> mine.
+      // Conflicts use the library; private-only values stay pinned locally.
       expect(await screen.findByTestId('public-crop-sync-summary')).toHaveTextContent(
-        '1 Wert wird in deine Kultur übernommen, 1 eigener Wert bleibt erhalten.',
+        '1 Wert wird in deine Kultur übernommen, 1 Wert bleibt nur lokal.',
       );
 
       fireEvent.click(within(screen.getByTestId('public-crop-sync-row-notes')).getByRole('radio', { name: 'Nur lokal behalten' }));

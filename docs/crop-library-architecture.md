@@ -1821,6 +1821,14 @@ granularity and variety, the existing field comparison opens directly instead. A
 aliases and incomplete species-search pages still require an explicit species
 choice; multiple matching library entries never choose a link target automatically. Typing or choosing manually stops this shortcut
 for that opening; returning from the comparison keeps the explicit choice.
+Initial linking preselects "Nur lokal" for private-only, pinnable values such
+as notes, so confirmation preserves them without publishing them or leaving a
+pending contribution. Empty local values keep the library choice; the picker
+respects the preview's disabled keep/share and pin choices. The explicit
+"keep now, compare later" choice still leaves a real outstanding difference
+and therefore a push indicator. A fully resolved comparison, including local
+pins, returns the crop and its list icon to "Aktuell".
+
 These lookups and comparisons do not write the crop. Only final confirmation
 links it and applies the chosen values atomically; cancel discards staged
 mappings. A new publication records its library link through the existing

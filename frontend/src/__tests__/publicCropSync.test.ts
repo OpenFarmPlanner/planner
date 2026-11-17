@@ -30,6 +30,16 @@ describe('getDefaultSyncChoice', () => {
       .toBe('mine');
   });
 
+  it('pins private-only values by default during initial linking', () => {
+    const privateNotes = change({ field: 'notes', local_value: 'Private note', public_value: '', pinnable: true });
+    expect(getDefaultSyncChoice(privateNotes, { allowLocal: true, keepPrivateValuesLocally: true })).toBe('local');
+    expect(getDefaultSyncChoice(privateNotes, { allowLocal: true })).toBe('mine');
+    expect(getDefaultSyncChoice(privateNotes, { keepPrivateValuesLocally: true })).toBe('mine');
+    expect(getDefaultSyncChoice(change({ local_value: null, public_value: 50, pushable: false }), {
+      allowLocal: true, keepPrivateValuesLocally: true,
+    })).toBe('library');
+  });
+
   it('prefers the library value when both are set and differ, when linking and when syncing a linked crop', () => {
     expect(getDefaultSyncChoice(change({ local_value: 60, public_value: 50 }))).toBe('library');
     expect(getDefaultSyncChoice(change({ local_value: 60, public_value: 50, pinnable: true }), { allowLocal: true }))
