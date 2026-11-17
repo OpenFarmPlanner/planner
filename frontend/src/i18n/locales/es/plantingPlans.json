@@ -397,8 +397,10 @@
   "germination": {
     "cold_period_required": "Las semillas necesitan un periodo de frío.",
     "propagation_shorter_than_germination": "La duración en semillero es más corta que el tiempo de germinación.",
-    "emergence": "Emergencia prevista hacia {{from}}–{{to}}",
-    "hints": "Consejos de germinación"
+    "emergence": "Plántulas visibles hacia {{from}}–{{to}}",
+    "emergenceWithBasis_one": "Plántulas visibles hacia {{from}}–{{to}} (siembra {{sowing}} + {{days}} día de tiempo de germinación)",
+    "emergenceWithBasis_many": "Plántulas visibles hacia {{from}}–{{to}} (siembra {{sowing}} + {{days}} días de tiempo de germinación)",
+    "emergenceWithBasis_other": "Plántulas visibles hacia {{from}}–{{to}} (siembra {{sowing}} + {{days}} días de tiempo de germinación)"
   },
   "tableHeaders": {
     "sowingDate": "Siembra",

@@ -389,8 +389,9 @@
   "germination": {
     "cold_period_required": "Das Saatgut benötigt eine Kälteperiode.",
     "propagation_shorter_than_germination": "Anzuchtdauer kürzer als die Keimdauer.",
-    "emergence": "Auflaufen ca. {{from}}–{{to}}",
-    "hints": "Hinweise zur Keimung"
+    "emergence": "Keimlinge sichtbar ca. {{from}}–{{to}}",
+    "emergenceWithBasis_one": "Keimlinge sichtbar ca. {{from}}–{{to}} (Aussaat {{sowing}} + {{days}} Tag Keimdauer)",
+    "emergenceWithBasis_other": "Keimlinge sichtbar ca. {{from}}–{{to}} (Aussaat {{sowing}} + {{days}} Tage Keimdauer)"
   },
   "tableHeaders": {
     "sowingDate": "Aussaattermin",

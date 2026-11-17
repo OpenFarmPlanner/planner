@@ -397,8 +397,10 @@
   "germination": {
     "cold_period_required": "Il seme richiede un periodo di freddo.",
     "propagation_shorter_than_germination": "La durata in vivaio è inferiore al tempo di germinazione.",
-    "emergence": "Emergenza prevista tra {{from}} e {{to}}",
-    "hints": "Suggerimenti per la germinazione"
+    "emergence": "Piantine visibili tra {{from}} e {{to}}",
+    "emergenceWithBasis_one": "Piantine visibili tra {{from}} e {{to}} (semina {{sowing}} + {{days}} giorno di tempo di germinazione)",
+    "emergenceWithBasis_many": "Piantine visibili tra {{from}} e {{to}} (semina {{sowing}} + {{days}} giorni di tempo di germinazione)",
+    "emergenceWithBasis_other": "Piantine visibili tra {{from}} e {{to}} (semina {{sowing}} + {{days}} giorni di tempo di germinazione)"
   },
   "tableHeaders": {
     "sowingDate": "Semina",

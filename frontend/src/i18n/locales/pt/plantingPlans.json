@@ -397,8 +397,10 @@
   "germination": {
     "cold_period_required": "A semente necessita de um período de frio.",
     "propagation_shorter_than_germination": "A duração em viveiro é inferior ao tempo de germinação.",
-    "emergence": "Emergência esperada por volta de {{from}}–{{to}}",
-    "hints": "Sugestões de germinação"
+    "emergence": "Plântulas visíveis por volta de {{from}}–{{to}}",
+    "emergenceWithBasis_one": "Plântulas visíveis por volta de {{from}}–{{to}} (sementeira {{sowing}} + {{days}} dia de tempo de germinação)",
+    "emergenceWithBasis_many": "Plântulas visíveis por volta de {{from}}–{{to}} (sementeira {{sowing}} + {{days}} dias de tempo de germinação)",
+    "emergenceWithBasis_other": "Plântulas visíveis por volta de {{from}}–{{to}} (sementeira {{sowing}} + {{days}} dias de tempo de germinação)"
   },
   "tableHeaders": {
     "sowingDate": "Sementeira",

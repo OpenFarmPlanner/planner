@@ -397,8 +397,10 @@
   "germination": {
     "cold_period_required": "Les semences ont besoin d’une période de froid.",
     "propagation_shorter_than_germination": "La durée en pépinière est plus courte que la durée de germination.",
-    "emergence": "Levée prévue vers le {{from}}–{{to}}",
-    "hints": "Conseils de germination"
+    "emergence": "Plantules visibles vers le {{from}}–{{to}}",
+    "emergenceWithBasis_one": "Plantules visibles vers le {{from}}–{{to}} (semis le {{sowing}} + {{days}} jour de durée de germination)",
+    "emergenceWithBasis_many": "Plantules visibles vers le {{from}}–{{to}} (semis le {{sowing}} + {{days}} jours de durée de germination)",
+    "emergenceWithBasis_other": "Plantules visibles vers le {{from}}–{{to}} (semis le {{sowing}} + {{days}} jours de durée de germination)"
   },
   "tableHeaders": {
     "sowingDate": "Date de semis",

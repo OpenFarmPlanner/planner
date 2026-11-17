@@ -6,22 +6,36 @@ import type { TimingWindowFinding, TimingWindowKind } from '../../api/types';
 import { useTranslation } from '../../i18n';
 import { AppTooltip } from '../AppTooltip';
 import { FullCellTooltip } from '../data-grid/FullCellTooltip';
+import { type GerminationFindings, useGerminationFindingLines } from './useGerminationFindingLines';
 import { useTimingWindowLines } from './useTimingWindowLines';
 
 const linesTitle = (lines: string[]): ReactNode => lines.map((line, index) => (
   <Box component="span" key={index} sx={{ display: 'block' }}>{line}</Box>
 ));
 
+/** Timing-window hints plus the sowing-related germination hints, as one list. */
+function useDateHintLines(
+  findings: readonly TimingWindowFinding[] | null | undefined,
+  germinationFindings: GerminationFindings | null | undefined,
+  kinds?: readonly TimingWindowKind[],
+): string[] {
+  const timing = useTimingWindowLines(findings, kinds);
+  const germination = useGerminationFindingLines(germinationFindings);
+  return germination.length ? [...timing, ...germination] : timing;
+}
+
 interface TimingWindowIconProps {
   findings: readonly TimingWindowFinding[] | null | undefined;
+  /** Germination hints shown with the timing-window hints (mobile cards). */
+  germinationFindings?: GerminationFindings | null;
   fontSize?: 'inherit' | 'small';
   sx?: SxProps<Theme>;
 }
 
 /** The mobile cards' small icon; the tooltip lists the hints. Renders nothing without any. */
-export function TimingWindowIcon({ findings, fontSize = 'small', sx }: TimingWindowIconProps) {
+export function TimingWindowIcon({ findings, germinationFindings, fontSize = 'small', sx }: TimingWindowIconProps) {
   const { t } = useTranslation('plantingPlans');
-  const lines = useTimingWindowLines(findings);
+  const lines = useDateHintLines(findings, germinationFindings);
   if (lines.length === 0) {
     return null;
   }
@@ -52,16 +66,19 @@ interface TimingWindowDateCellProps {
   findings: readonly TimingWindowFinding[] | null | undefined;
   /** The window kinds this date column shows hints for. */
   kinds: readonly TimingWindowKind[];
+  /** Germination hints that belong to this date (the sowing date). */
+  germinationFindings?: GerminationFindings | null;
   cellHasFocus: boolean;
   children: ReactNode;
 }
 
 /**
- * A table date outside the crop's windows: the same dotted info underline and
- * full-cell tooltip as a harvest overlap. Needs FULL_CELL_TOOLTIP_CELL_CLASS.
+ * A table date outside the crop's windows, or a sowing date with germination
+ * hints: the same dotted info underline and full-cell tooltip as a harvest
+ * overlap. Needs FULL_CELL_TOOLTIP_CELL_CLASS.
  */
-export function TimingWindowDateCell({ findings, kinds, cellHasFocus, children }: TimingWindowDateCellProps) {
-  const lines = useTimingWindowLines(findings, kinds);
+export function TimingWindowDateCell({ findings, kinds, germinationFindings, cellHasFocus, children }: TimingWindowDateCellProps) {
+  const lines = useDateHintLines(findings, germinationFindings, kinds);
   if (lines.length === 0) {
     return <>{children}</>;
   }
