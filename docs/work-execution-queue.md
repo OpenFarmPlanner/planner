@@ -203,6 +203,17 @@ allowance becomes available, a full review retry including Triage is needed when
 an inherited triage artifact belongs to an earlier run attempt. Keep triage and
 completion evidence bound to the same attempt; do not weaken the verifier.
 
+**Code-review fallback (owner decision, 2026-11-17).** When the Codex code
+review cannot complete, for example because its usage limit is reached, a
+completed Claude code review from `.github/workflows/claude-pr.yml` on the
+exact PR head is a sufficient independent code review. Start it by adding the
+`claude-review` label (keep the PR's other labels, such as its `release:*`
+label), fix its findings and let it re-run on the fix head; a review of an
+earlier head does not count after a new push. The authoring session's own
+self-review never counts. This fallback covers the code review only: the
+required `security-review-completion` gate and its accepted evidence are
+unchanged.
+
 If Cloud providers cannot finish, use the existing trusted subscription launcher
 through a preconfigured constrained review service. The Cloud authoring identity
 must have no general shell, file-transfer, forwarding or filesystem access on the

@@ -498,6 +498,9 @@ build a throwaway local integration branch; never a shared branch:
   Read the live queue execution mode first and follow the review handoff in
   `docs/work-execution-queue.md`. Use the existing commissioned subscription
   session when that mode is selected; do not start the optional API worker.
+  If the Codex code review cannot complete (e.g. usage limit), a completed
+  Claude code review (`claude-pr.yml`, `claude-review` label) on the exact head
+  is sufficient; the security-review gate is unchanged.
   Cloud/manual implementers claim `queue:active`
   before coding and open a PR with `Fixes #<issue>`. Queue insertion alone does
   not launch another agent. Production deployment, signing-policy changes and
