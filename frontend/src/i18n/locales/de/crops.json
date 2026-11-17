@@ -747,18 +747,52 @@
       "templateButtonXlsx": "oder als Excel (.xlsx)",
       "toggle": "Welche Werte sind erlaubt?",
       "valuesTitle": "Erlaubte Werte",
-      "rules": {
-        "required": "Nur die Spalte „{{name}}“ ist Pflicht. Alle anderen Spalten können leer bleiben oder fehlen, die Reihenfolge ist egal.",
-        "varietyRows": "Eine Zeile ohne „{{variety}}“ beschreibt die Kultur selbst. Eine Zeile mit Sorte gehört zu dieser Kultur und übernimmt alles, was sie leer lässt, von ihr, z. B. „{{nutrient}}“ oder „{{cultivation}}“.",
-        "numbers": "Zahlen mit Komma oder Punkt, z. B. 1,5 oder 1.5.",
-        "cultivationTypes": "Mehrere Anbauarten durch Komma trennen, z. B. „{{example}}“.",
-        "wholeSeeds": "Bei „{{unit}}“ sind nur ganze Zahlen möglich.",
-        "color": "„{{column}}“ als Hex-Code, z. B. #2E7D32. Ohne Angabe wird eine Farbe gewählt.",
-        "matching": "Eine Zeile mit gleichem Namen, gleicher Sorte und gleichem Lieferanten wie eine vorhandene Kultur aktualisiert diese erst nach „{{confirm}}“.",
-        "exportTip": "Am einfachsten: Exportiere deine Kulturen und nutze die Datei als Vorlage.",
-        "timingWindows": "„{{columns}}“: Zeiträume in Monatsdritteln oder Kalenderwochen, zum Beispiel „{{decadeExample}}“, „{{monthExample}}“ oder „{{weekExample}}“. Mehrere Zeiträume mit „;“ trennen. Tagesdaten sind nicht möglich. Zeitangaben kannst du ausschreiben („Anfang März bis Ende April“), als Kalenderwochen („KW 10 bis 14“) oder kurz mit Monat und Drittel schreiben („03a-04c“). Dabei steht a für das erste, b für das zweite und c für das letzte Drittel des Monats. In der Vorschau siehst du, wie wir jeden Wert gelesen haben.",
-        "catalogColumns": "Nutze „{{directSowing}}“ für Zeiträume; „{{cultivation}}“ beschreibt die Anbauart.",
-        "yield": "„{{yield}}“ in kg angeben. „{{unit}}“ bestimmt, ob der Wert pro Pflanze oder pro m² gilt."
+      "exportTip": "Am einfachsten: Exportiere deine Kulturen und nutze die Datei als Vorlage.",
+      "sections": {
+        "basics": "Grundregeln",
+        "varieties": "Kultur und Sorte",
+        "quantities": "Mengen und Erträge",
+        "timing": "Zeiträume",
+        "notes": "Listen mit Notizen"
+      },
+      "basics": {
+        "required": "Pflicht ist nur die Spalte „{{name}}“. Alle anderen Spalten dürfen leer sein oder ganz fehlen. Die Reihenfolge der Spalten ist egal.",
+        "numbers": "Zahlen schreibst du mit Komma oder Punkt, z. B. 1,5 oder 1.5.",
+        "cultivationTypes": "Mehrere Anbauarten trennst du mit Komma, z. B. „{{example}}“.",
+        "color": "„{{column}}“ gibst du als Hex-Code an, z. B. #2E7D32. Ohne Angabe wird automatisch eine Farbe vergeben."
+      },
+      "varieties": {
+        "withoutVariety": "Eine Zeile ohne „{{variety}}“ beschreibt die Kultur selbst.",
+        "withVariety": "Eine Zeile mit „{{variety}}“ gehört zu dieser Kultur. Alles, was du leer lässt (z. B. „{{nutrient}}“ oder „{{cultivation}}“), übernimmt sie von der Kultur.",
+        "matching": "Eine Zeile mit gleichem Namen, gleicher Sorte und gleichem Lieferanten wie eine vorhandene Kultur aktualisiert diese erst nach „{{confirm}}“."
+      },
+      "quantities": {
+        "wholeSeeds": "Ist die Einheit „{{unit}}“, sind nur ganze Zahlen möglich.",
+        "yield": "„{{yield}}“ gibst du in kg an. „{{unit}}“ legt fest, ob der Wert pro Pflanze oder pro m² gilt."
+      },
+      "timing": {
+        "intro": "Gilt für die Spalten {{columns}}. „{{cultivation}}“ legt nur fest, welche Verfahren möglich sind.",
+        "written": "Ausgeschrieben: „{{decadeExample}}“, oder ein ganzer Monat wie „{{monthExample}}“",
+        "weeks": "Kalenderwochen: „{{weekExample}}“",
+        "short": "Kurzform mit Monatsdritteln: „03a-04c“ (a = erstes, b = zweites, c = letztes Drittel des Monats)",
+        "several": "Mehrere Zeiträume trennst du mit „;“.",
+        "noDates": "Tagesdaten sind nicht möglich.",
+        "preview": "In der Vorschau siehst du, wie jeder Wert erkannt wurde."
+      },
+      "notes": {
+        "intro": "Gilt für „{{good}}“ und „{{bad}}“. Ein Eintrag ist ein Name oder „Name | Notiz“. Die Notiz gehört nur zum Namen direkt davor.",
+        "separators": "Trenne Einträge mit „;“ oder Zeilenumbruch. Namen ohne Notiz kannst du auch mit Komma trennen.",
+        "noteEnds": "Eine Notiz reicht bis zum nächsten „;“ und darf Kommas enthalten.",
+        "example": "Beispiel: Tomate | Schutz vor Schädlingen; Gurke | Quelle 2025; Basilikum",
+        "meaning": "„Tomate; Gurke | Kommentar“ bedeutet: Tomate ohne Notiz, Gurke mit „Kommentar“.",
+        "legacy": "Ältere Notizen mit Gedankenstrich („Tomate - A; Gurke - B“) werden nur übernommen, wenn der Name eindeutig erkannt wird. Sie gehören dann zum Namen direkt vor dem Strich.",
+        "keepQuotes": "In exportierten Dateien lässt du Anführungszeichen und Maskierungen stehen. Sie sorgen dafür, dass Trennzeichen und Zeilenumbrüche in Notizen erhalten bleiben."
+      },
+      "valueGroups": {
+        "seed": "Saatgut und Keimung",
+        "site": "Standort und Pflege",
+        "cultivation": "Anbau und Ertrag",
+        "other": "Weitere Eigenschaften"
       },
       "templateSamples": "Ersetze oder lösche die drei Beispielzeilen vor dem Import deiner Daten.",
       "templateError": "Die Vorlage konnte nicht geladen werden."
@@ -1758,8 +1792,7 @@
     "noteLanguage": "Sprache der Nachbarnotizen",
     "languageHelp": {
       "edit": "Du bearbeitest nur Notizen in dieser Sprache. Andere Sprachversionen bleiben erhalten."
-    },
-    "cellHelp": "Ein Eintrag ist ein Name oder „Name | Notiz“; eine Notiz gehört immer nur zum Namen direkt davor. Einträge mit ; oder Zeilenumbruch trennen, Namen ohne Notiz auch mit Komma: Tomate | Schutz vor Schädlingen; Gurke | Quelle 2025; Basilikum. „Tomate; Gurke | Kommentar“ heißt: Tomate ohne Notiz, Gurke mit „Kommentar“. Eine Notiz reicht bis zum nächsten ; und darf Kommas enthalten. Exportierte Anführungszeichen und Escape-Sequenzen erhalten Trennzeichen und Zeilenumbrüche in Notizen. Alte Gedankenstrich-Kommentare (Tomate - A; Gurke - B) werden nur bei eindeutiger Namensauflösung und nur dem Namen direkt vor dem Strich zugeordnet."
+    }
   },
   "timingWindows": {
     "sectionTitle": "Zeiträume",

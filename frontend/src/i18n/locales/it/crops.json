@@ -764,18 +764,52 @@
       "templateButtonXlsx": "oppure come Excel (.xlsx)",
       "toggle": "Quali valori sono consentiti?",
       "valuesTitle": "Valori consentiti",
-      "rules": {
-        "required": "È obbligatoria solo la colonna «{{name}}». Le altre colonne possono essere vuote o assenti e il loro ordine non conta.",
-        "varietyRows": "Una riga senza «{{variety}}» descrive la coltura stessa. Una riga con una varietà appartiene a quella coltura ed eredita i valori lasciati vuoti, ad esempio «{{nutrient}}» o «{{cultivation}}».",
-        "numbers": "Numeri con virgola o punto, es. 1,5 o 1.5.",
+      "exportTip": "Il modo più semplice: esporta le tue colture e usa il file come modello.",
+      "sections": {
+        "basics": "Regole di base",
+        "varieties": "Coltura e varietà",
+        "quantities": "Quantità e rese",
+        "timing": "Periodi",
+        "notes": "Elenchi con note"
+      },
+      "basics": {
+        "required": "È obbligatoria solo la colonna «{{name}}». Tutte le altre colonne possono restare vuote o mancare del tutto. L’ordine delle colonne non conta.",
+        "numbers": "Scrivi i numeri con la virgola o il punto, es. 1,5 o 1.5.",
         "cultivationTypes": "Separa più tipi di coltivazione con virgole, es. «{{example}}».",
-        "wholeSeeds": "Per «{{unit}}» sono consentiti solo numeri interi.",
-        "color": "«{{column}}» come codice esadecimale, es. #2E7D32. Se manca, viene scelto un colore.",
-        "matching": "Una riga con nome, varietà e fornitore uguali a una coltura esistente la aggiorna solo dopo «{{confirm}}».",
-        "exportTip": "Il modo più semplice: esporta le tue colture e usa il file come modello.",
-        "timingWindows": "«{{columns}}»: periodi in decadi del mese o settimane, ad esempio «{{decadeExample}}», «{{monthExample}}» o «{{weekExample}}». Separa più periodi con «;». Le date con giorno non sono possibili. Puoi scrivere i periodi per esteso («inizio marzo a fine aprile»), come settimane («settimana 10 a 14») o usando mese e decade («03a-04c»). Qui a indica la prima, b la seconda e c l'ultima decade del mese. L'anteprima mostra come leggiamo ogni valore.",
-        "catalogColumns": "Usa «{{directSowing}}» per i periodi; «{{cultivation}}» descrive il metodo di coltivazione.",
-        "yield": "Inserisci «{{yield}}» in kg. «{{unit}}» determina se il valore è per pianta o per m²."
+        "color": "Indica «{{column}}» come codice esadecimale, es. #2E7D32. Se manca, viene assegnato automaticamente un colore."
+      },
+      "varieties": {
+        "withoutVariety": "Una riga senza «{{variety}}» descrive la coltura stessa.",
+        "withVariety": "Una riga con «{{variety}}» appartiene a quella coltura. Tutto ciò che lasci vuoto (es. «{{nutrient}}» o «{{cultivation}}») viene ripreso dalla coltura.",
+        "matching": "Una riga con nome, varietà e fornitore uguali a una coltura esistente la aggiorna solo dopo «{{confirm}}»."
+      },
+      "quantities": {
+        "wholeSeeds": "Se l’unità è «{{unit}}», sono possibili solo numeri interi.",
+        "yield": "Indica «{{yield}}» in kg. «{{unit}}» stabilisce se il valore vale per pianta o per m²."
+      },
+      "timing": {
+        "intro": "Vale per le colonne {{columns}}. «{{cultivation}}» stabilisce solo quali metodi sono possibili.",
+        "written": "Per esteso: «{{decadeExample}}», oppure un mese intero come «{{monthExample}}»",
+        "weeks": "Settimane: «{{weekExample}}»",
+        "short": "Forma breve con decadi: «03a-04c» (a = prima, b = seconda, c = ultima decade del mese)",
+        "several": "Separa più periodi con «;».",
+        "noDates": "Le date precise non sono possibili.",
+        "preview": "Nell’anteprima vedi come è stato interpretato ogni valore."
+      },
+      "notes": {
+        "intro": "Vale per «{{good}}» e «{{bad}}». Una voce è un nome o «Nome | Nota». La nota appartiene solo al nome che la precede direttamente.",
+        "separators": "Separa le voci con «;» o un a capo. I nomi senza nota si possono separare anche con la virgola.",
+        "noteEnds": "Una nota arriva fino al «;» successivo e può contenere virgole.",
+        "example": "Esempio: Pomodoro | Controllo dei parassiti; Cetriolo | Fonte 2025; Basilico",
+        "meaning": "«Pomodoro; Cetriolo | Commento» significa: Pomodoro senza nota, Cetriolo con «Commento».",
+        "legacy": "Le vecchie note con trattino («Pomodoro - A; Cetriolo - B») vengono riprese solo se il nome viene riconosciuto senza ambiguità. Appartengono allora al nome subito prima del trattino.",
+        "keepQuotes": "Nei file esportati lascia invariate le virgolette e i caratteri di escape. Servono a conservare i separatori e le interruzioni di riga nelle note."
+      },
+      "valueGroups": {
+        "seed": "Sementi e germinazione",
+        "site": "Posizione e cura",
+        "cultivation": "Coltivazione e resa",
+        "other": "Altre proprietà"
       },
       "templateSamples": "Sostituisci o elimina le tre righe di esempio prima di importare i tuoi dati.",
       "templateError": "Impossibile caricare il modello."
@@ -1809,7 +1843,6 @@
     "languageHelp": {
       "edit": "Stai modificando solo le note in questa lingua. Le altre versioni linguistiche vengono conservate."
     },
-    "cellHelp": "Una voce è un nome o «Nome | Nota»; una nota appartiene sempre solo al nome che la precede direttamente. Separa le voci con ; o un a capo, i nomi senza nota anche con una virgola: Pomodoro | Controllo dei parassiti; Cetriolo | Fonte 2025; Basilico. «Pomodoro; Cetriolo | Commento» significa: Pomodoro senza nota, Cetriolo con «Commento». Una nota arriva fino al ; successivo e può contenere virgole. Le virgolette e le sequenze di escape esportate conservano delimitatori e interruzioni di riga nelle note. I vecchi commenti con trattino (Pomodoro - A; Cetriolo - B) vengono collegati solo quando i nomi sono risolti senza ambiguità, e solo al nome subito prima del trattino.",
     "publishSkipped_many": "{{count}} vicini restano nel progetto: sono testo libero o colture senza specie coltivata."
   },
   "timingWindows": {

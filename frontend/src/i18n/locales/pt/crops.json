@@ -764,18 +764,52 @@
       "templateButtonXlsx": "ou em Excel (.xlsx)",
       "toggle": "Quais os valores permitidos?",
       "valuesTitle": "Valores permitidos",
-      "rules": {
-        "required": "Apenas a coluna «{{name}}» é obrigatória. As restantes colunas podem estar vazias ou em falta e a ordem é indiferente.",
-        "varietyRows": "Uma linha sem «{{variety}}» descreve a própria cultura. Uma linha com variedade pertence a essa cultura e herda os valores que deixa vazios, por exemplo «{{nutrient}}» ou «{{cultivation}}».",
-        "numbers": "Números com vírgula ou ponto, por exemplo 1,5 ou 1.5.",
+      "exportTip": "A forma mais simples: exportar as culturas e utilizar o ficheiro como modelo.",
+      "sections": {
+        "basics": "Regras básicas",
+        "varieties": "Cultura e variedade",
+        "quantities": "Quantidades e rendimentos",
+        "timing": "Períodos",
+        "notes": "Listas com notas"
+      },
+      "basics": {
+        "required": "Apenas a coluna «{{name}}» é obrigatória. Todas as outras colunas podem ficar vazias ou faltar por completo. A ordem das colunas não importa.",
+        "numbers": "Os números escrevem-se com vírgula ou ponto, por exemplo 1,5 ou 1.5.",
         "cultivationTypes": "Separe vários tipos de cultivo com vírgulas, por exemplo «{{example}}».",
-        "wholeSeeds": "Para «{{unit}}» apenas são permitidos números inteiros.",
-        "color": "«{{column}}» como código hexadecimal, por exemplo #2E7D32. Se não for indicado, é escolhida uma cor.",
-        "matching": "Uma linha com o mesmo nome, variedade e fornecedor de uma cultura existente apenas a atualiza após «{{confirm}}».",
-        "exportTip": "A forma mais simples: exportar as culturas e utilizar o ficheiro como modelo.",
-        "timingWindows": "«{{columns}}»: períodos em decêndios ou semanas de calendário, por exemplo «{{decadeExample}}», «{{monthExample}}» ou «{{weekExample}}». Separe vários períodos com «;». Não são possíveis datas com dia. É possível escrever os períodos por extenso («início de março a fim de abril»), como semanas de calendário («semana 10 a 14») ou com o mês e o decêndio («03a-04c»). a indica o primeiro, b o segundo e c o último decêndio do mês. A pré-visualização mostra a interpretação de cada valor.",
-        "catalogColumns": "Utilize «{{directSowing}}» para os períodos; «{{cultivation}}» descreve o método de cultivo.",
-        "yield": "Introduza «{{yield}}» em kg. «{{unit}}» determina se o valor é por planta ou por m²."
+        "color": "«{{column}}» indica-se como código hexadecimal, por exemplo #2E7D32. Sem indicação, é atribuída automaticamente uma cor."
+      },
+      "varieties": {
+        "withoutVariety": "Uma linha sem «{{variety}}» descreve a própria cultura.",
+        "withVariety": "Uma linha com «{{variety}}» pertence a essa cultura. Tudo o que ficar vazio (por exemplo «{{nutrient}}» ou «{{cultivation}}») é herdado da cultura.",
+        "matching": "Uma linha com o mesmo nome, variedade e fornecedor de uma cultura existente apenas a atualiza após «{{confirm}}»."
+      },
+      "quantities": {
+        "wholeSeeds": "Se a unidade for «{{unit}}», só são possíveis números inteiros.",
+        "yield": "«{{yield}}» indica-se em kg. «{{unit}}» define se o valor é por planta ou por m²."
+      },
+      "timing": {
+        "intro": "Aplica-se às colunas {{columns}}. «{{cultivation}}» define apenas que métodos são possíveis.",
+        "written": "Por extenso: «{{decadeExample}}», ou um mês inteiro como «{{monthExample}}»",
+        "weeks": "Semanas: «{{weekExample}}»",
+        "short": "Forma curta com decêndios: «03a-04c» (a = primeiro, b = segundo, c = último decêndio do mês)",
+        "several": "Vários períodos separam-se com «;».",
+        "noDates": "Não são possíveis datas exatas.",
+        "preview": "A pré-visualização mostra como cada valor foi interpretado."
+      },
+      "notes": {
+        "intro": "Aplica-se a «{{good}}» e «{{bad}}». Uma entrada é um nome ou «Nome | Nota». A nota pertence apenas ao nome imediatamente anterior.",
+        "separators": "As entradas separam-se com «;» ou com uma quebra de linha. Os nomes sem nota também se podem separar com vírgulas.",
+        "noteEnds": "Uma nota vai até ao «;» seguinte e pode conter vírgulas.",
+        "example": "Exemplo: Tomate | Controlo de pragas; Pepino | Fonte 2025; Manjericão",
+        "meaning": "«Tomate; Pepino | Comentário» significa: Tomate sem nota e Pepino com «Comentário».",
+        "legacy": "As notas antigas com traço («Tomate - A; Pepino - B») só são aceites se o nome for reconhecido de forma inequívoca. Pertencem então ao nome imediatamente antes do traço.",
+        "keepQuotes": "Nos ficheiros exportados, as aspas e os caracteres de escape devem manter-se. Garantem que os separadores e as quebras de linha nas notas são preservados."
+      },
+      "valueGroups": {
+        "seed": "Sementes e germinação",
+        "site": "Localização e cuidados",
+        "cultivation": "Cultivo e rendimento",
+        "other": "Outras propriedades"
       },
       "templateSamples": "Substitua ou elimine as três linhas de exemplo antes de importar os dados.",
       "templateError": "Não foi possível carregar o modelo."
@@ -1809,7 +1843,6 @@
     "languageHelp": {
       "edit": "Apenas são editadas as notas neste idioma. As outras versões linguísticas são mantidas."
     },
-    "cellHelp": "Uma entrada é um nome ou «Nome | Nota»; uma nota pertence sempre apenas ao nome imediatamente anterior. Separe as entradas com ; ou uma quebra de linha e os nomes sem nota também com uma vírgula: Tomate | Controlo de pragas; Pepino | Fonte 2025; Manjericão. «Tomate; Pepino | Comentário» significa: Tomate sem nota e Pepino com «Comentário». Uma nota vai até ao ; seguinte e pode conter vírgulas. As aspas e sequências de escape exportadas preservam os delimitadores e as quebras de linha nas notas. Os comentários antigos separados por traço (Tomate - A; Pepino - B) apenas são ligados quando os nomes são resolvidos de forma inequívoca, e apenas ao nome imediatamente antes do traço.",
     "publishSkipped_many": "{{count}} vizinhos permanecem no projeto: são texto livre ou culturas sem espécie cultivada."
   },
   "timingWindows": {
