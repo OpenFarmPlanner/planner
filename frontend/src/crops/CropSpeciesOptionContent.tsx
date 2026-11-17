@@ -54,8 +54,8 @@ export interface CropSpeciesOptionContentProps {
 
 /**
  * One "Offizielle Kulturart" option: the official name on the first line and,
- * on a second, smaller line, why it matched ("Synonym: Porree", "Ähnlicher
- * Name") plus the botanical name. Both lines are plain text content of the
+ * on a second, smaller line, the matched synonym (when applicable) and
+ * the botanical name. Both lines are plain text content of the
  * option, so they are part of its accessible name.
  */
 export function CropSpeciesOptionContent({
@@ -81,8 +81,7 @@ export function CropSpeciesOptionContent({
         components={{ synonym: <MatchHighlight text={match.synonym} query={query} /> }}
       />,
     });
-  } else if (match?.source === 'fuzzy') {
-    secondaryParts.push({ key: 'fuzzy', content: t('library.speciesPicker.matchFuzzy') });
+
   }
   const botanicalName = scientificName?.trim();
   if (botanicalName) {

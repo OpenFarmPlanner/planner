@@ -9,7 +9,7 @@ import LoadRetryButton from '../components/LoadRetryButton';
 import { useState } from 'react';
 import { PlantHealthRelationshipsDialog } from './PlantHealthRelationshipsDialog';
 
-export function PlantHealthChips({ value }: { value: PlantHealthSelections }) {
+export function PlantHealthChips({ value, showHelp = true }: { value: PlantHealthSelections; showHelp?: boolean }) {
   const { t } = useTranslation('crops');
   const names = usePlantHealthNames(value.entries);
   const [selectedIdentity, setSelectedIdentity] = useState<string | null>(null);
@@ -17,8 +17,8 @@ export function PlantHealthChips({ value }: { value: PlantHealthSelections }) {
   return <Box>
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
       <Typography variant="body2" color="text.secondary">{t('plantHealth.label')}</Typography>
-      <FieldInfoButton contextual title={`${t('plantHealth.associationHint')} ${t('plantHealth.relationshipsActionHint')}`}
-        ariaLabel={t('form.fieldInfoAriaLabel', { field: t('plantHealth.label') })} />
+      {showHelp ? <FieldInfoButton contextual title={`${t('plantHealth.associationHint')} ${t('plantHealth.relationshipsActionHint')}`}
+        ariaLabel={t('form.fieldInfoAriaLabel', { field: t('plantHealth.label') })} /> : null}
     </Box>
     <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mt: 0.5 }}>
       {value.entries.map(entry => {

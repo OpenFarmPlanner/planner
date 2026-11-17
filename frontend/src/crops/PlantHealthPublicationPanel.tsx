@@ -1,67 +1,57 @@
 import { useState } from 'react';
-import { Alert, Box, Button, Link, Stack, Typography } from '@mui/material';
+import { Alert, Box, Link, Stack, Typography } from '@mui/material';
 import { Link as RouterLink } from 'react-router';
-import { isAxiosError } from 'axios';
-import { cropAPI, type Crop } from '../api/api';
-import type { PlantHealthSelections } from '../api/types';
+import type { Crop, StagedPlantHealthMapping } from '../api/types';
+import type { PlantHealthEntry } from '../crop-library/plant-health/types';
 import { plantHealthAPI } from '../crop-library/plant-health/api';
 import { useTranslation } from '../i18n';
 import { FALLBACK_LANGUAGE, normalizeLanguageTag } from '../i18n/languages';
-import { PlantHealthField } from './sections/PlantHealthField';
+import { PlantHealthMappingPicker } from './PlantHealthMappingPicker';
+import { FieldInfoButton } from './FieldInfoButton';
 
 interface Props {
   crop: Crop;
   inheritedSource?: Crop;
   onNavigate?: () => void;
   disabled: boolean;
-  onMapped: (crop: Crop) => void;
+  drafts: StagedPlantHealthMapping[];
+  onChange: (mapping: StagedPlantHealthMapping) => void;
   onBusyChange: (busy: boolean) => void;
 }
 
-function MappingRow({ name, crop, disabled, onMapped, onBusyChange }: Props & { name: string }) {
+function MappingRow({ name, crop, drafts, disabled, onChange, onBusyChange }: Props & { name: string }) {
   const { t, i18n } = useTranslation('crops');
-  const [selection, setSelection] = useState<PlantHealthSelections | null>(null);
+  const draft = drafts.find(item => item.crop_id === crop.id)?.mappings.find(item => item.local_name === name);
+  const selection = draft ? { identity_key: draft.catalogue_identity, name: draft.catalogue_name || name, display_name: draft.catalogue_name || name } : null;
   const [proposed, setProposed] = useState(false);
   const [error, setError] = useState('');
-  const identity = selection?.entries[0]?.catalogue_identity;
-  const submit = async (action: 'map' | 'propose') => {
-    if (!crop.id || disabled || (action === 'map' && (!identity || !crop.updated_at))) return;
+  const propose = async (proposalName: string): Promise<PlantHealthEntry | null> => {
+    if (disabled) return null;
     setError('');
     onBusyChange(true);
     try {
-      if (action === 'map' && identity && crop.updated_at) {
-        const response = await cropAPI.mapPlantHealth(crop.id, {
-          expected_updated_at: crop.updated_at,
-          mappings: [{ local_name: name, catalogue_identity: identity }],
-        });
-        onMapped(response.data);
-      } else {
-        await plantHealthAPI.create({
-          name, scientific_name: '', kind: 'group', eppo_code: '', sources: [],
-          translations: [{ language_code: normalizeLanguageTag(i18n.resolvedLanguage ?? i18n.language) ?? FALLBACK_LANGUAGE, preferred_name: name }],
-        });
-        setProposed(true);
-      }
-    } catch (failure) {
-      setError(isAxiosError(failure) && failure.response?.status === 409
-        ? 'plantHealth.publication.conflict' : 'plantHealth.publication.error');
+      const response = await plantHealthAPI.create({
+        name: proposalName, scientific_name: '', kind: 'group', eppo_code: '', sources: [],
+        translations: [{ language_code: normalizeLanguageTag(i18n.resolvedLanguage ?? i18n.language) ?? FALLBACK_LANGUAGE, preferred_name: proposalName }],
+      });
+      setProposed(true);
+      return response.data;
+    } catch {
+      setError('plantHealth.publication.error');
+      return null;
     } finally {
       onBusyChange(false);
     }
   };
   return <Stack role="group" aria-label={name} spacing={1} sx={{ minWidth: 0 }}>
-    <Typography variant="body2" sx={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{name}</Typography>
-    <Box inert={disabled}>
-      <PlantHealthField value={selection} onChange={setSelection} localOptions={[]} canInherit={false} allowLocal={false} selectionLimit={1} />
-    </Box>
-    <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
-      <Button size="small" variant="outlined" disabled={disabled || !identity || !crop.updated_at} onClick={() => void submit('map')}>
-        {t('plantHealth.publication.map')}
-      </Button>
-      <Button size="small" disabled={disabled || proposed} onClick={() => void submit('propose')}>
-        {t('plantHealth.publication.propose')}
-      </Button>
-    </Stack>
+    <PlantHealthMappingPicker name={name} value={selection} disabled={disabled || !crop.updated_at}
+      onChange={entry => {
+        if (!crop.id || !crop.updated_at) return;
+        const previous = drafts.find(draft => draft.crop_id === crop.id)?.mappings ?? [];
+        onChange({ crop_id: crop.id, expected_updated_at: crop.updated_at,
+          mappings: [...previous.filter(mapping => mapping.local_name !== name),
+            ...(entry ? [{ local_name: name, catalogue_identity: entry.identity_key, catalogue_name: entry.display_name || entry.name }] : [])] });
+      }} onPropose={propose} />
     {proposed ? <Alert severity="success">{t('plantHealth.publication.proposed')}</Alert> : null}
     {error ? <Alert severity="error">{t(error)}</Alert> : null}
   </Stack>;
@@ -85,10 +75,13 @@ export function PlantHealthPublicationPanel(props: Props) {
     </Stack>;
   }
   return <Stack spacing={2} data-testid="plant-health-publication">
-    <Typography variant="subtitle2" sx={{ overflowWrap: 'anywhere' }}>
-      {t('plantHealth.publication.title', { name: props.crop.variety || props.crop.name })}
-    </Typography>
-    <Typography variant="body2" color="text.secondary">{t('plantHealth.publication.helper')}</Typography>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+      <Typography variant="subtitle2" sx={{ overflowWrap: 'anywhere' }}>
+        {t('plantHealth.publication.title', { name: props.crop.variety || props.crop.name })}
+      </Typography>
+      <FieldInfoButton contextual title={t('plantHealth.publication.helper')}
+        ariaLabel={t('form.fieldInfoAriaLabel', { field: t('plantHealth.label') })} />
+    </Box>
     {names.map(name => <MappingRow key={name} {...props} name={name} />)}
   </Stack>;
 }

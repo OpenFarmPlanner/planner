@@ -118,9 +118,8 @@ This change contains no deployment, remote source crawling or paid API calls.
 ## Private crop selections
 
 `Crop.plant_health` stores individual names separately from the existing
-`pests_diseases` explanatory text. It is a bounded portable JSON object, following
-the existing project-tag storage pattern, with at most 40 selections and names
-up to 200 characters. A selection is either `{"name": "Private name"}` or an
+`pests_diseases` explanatory text. It is a portable JSON object with no fixed
+selection-count limit and names up to 200 characters. A selection is either `{"name": "Private name"}` or an
 explicit `{"catalogue_identity": "UUID", "name": "Reference-name snapshot"}`.
 The UUID refers to the catalogue's stable identity, never its integer database
 ID or a translated label. Two catalogue identities with the same label remain
@@ -132,8 +131,8 @@ commas/semicolons. No private write proposes or publishes a global record.
 The project crop form offers current published catalogue names and synonyms
 alongside that project's existing private names. Selecting a catalogue result
 is explicit. Chips distinguish private names, catalogue references and
-unavailable references. Selected references use one bounded, permission-filtered
-`entries/?identities=UUID,UUID` lookup for translated names; the parameter accepts
+unavailable references. Selected references use batched, permission-filtered
+`entries/?identities=UUID,UUID` lookups for translated names; the parameter accepts
 at most 40 UUIDs and cannot expand ordinary catalogue visibility. Failed lookups
 retain the selection and offer retry. Archived references remain portable;
 other unpublished identities may only be retained on a crop that already held
@@ -230,8 +229,8 @@ growth/harvest duration; seed quantities remain in Seed demand. Empty read-only
 fields are omitted without changing the relative order. Editing still offers
 all fields. See [crop-detail.md](./crop-detail.md) for context-specific sections.
 
-The info button beside the assignment label contains the existing private-name,
-explicit-catalogue-selection and unknown/infestation/resistance explanations.
+Project crop forms and details show the plant-health label without an info
+button or tooltip. Library forms and details retain their contextual help.
 The documented-host dialog's title info button explains catalogue evidence and
 variety/source qualifications. Hover and keyboard focus reveal help; click/tap
 keeps it open. Escape, repeated activation, blur or click-away dismisses it.
@@ -299,6 +298,9 @@ Repeat at phone and desktop widths. This exercises only the catalogue foundation
 
 ## Public selections, explicit mapping and synchronization
 
+Publication and name-proposal dialogs use the current UI language automatically.
+They do not offer a language selector or translate existing catalogue content.
+
 `PublicCrop.plant_health` contains only stable catalogue UUID references and
 reference-name snapshots, never unresolved project names. New selections use
 published identities; archived references remain portable as in private crops.
@@ -312,21 +314,31 @@ including a section containing only inherited selections. An explicit empty
 wrapper suppresses that fallback. Moderated edits validate retained references
 against the same existing public entry as direct edits.
 
-The publication and linked-entry sync dialog offers an explicit mapping panel
-for each crop's unresolved names, including selected varieties. **Save mapping**
-is a separate private write: it persists immediately even if publication is later
-cancelled, and the panel states this before the action. It replaces only the
-chosen local name on that project crop with a currently published stable UUID.
-It never infers a match from typed text, publishes a library entry or creates
-sourced host evidence. A variety's inherited names are mapped explicitly on its
-general culture instead: the dialog names that culture and explains the effect
-on every inheriting variety. The variety keeps its stored null and live inheritance;
-it is never silently frozen into an override. New catalogue proposals use the existing
-one-language moderation endpoint, start as broad pending concepts and keep the
-private name unresolved until moderation and a later explicit mapping.
+The publication and linked-entry sync dialog only offers mapping rows for private
+names without a catalogue UUID, including selected varieties. Choosing a catalogue
+entry stages a mapping in dialog state; there is no separate save button. Cancel
+leaves the project's selections unchanged. The final publish, link or sync action
+sends the relevant mappings with the crop's expected timestamp. The existing
+mapping service and the final library action run in one transaction; validation,
+version conflicts and failed actions roll back the mappings and their crop history.
+Mapping previews use a rolled-back transaction and never persist the previewed
+selection or emit commit notifications.
+
+An inherited variety stages its mapping on the general culture, with that
+culture's expected timestamp, preserving the variety's stored null and live
+inheritance. Co-published varieties retain the existing per-variety result report;
+each variety's own mappings commit only with its successful library action.
+Mappings do not infer an identity from typed text or create host evidence.
+
+Species and plant-health pickers keep their proposal action outside the scrollable
+result list. Tab reaches the action, and Enter or Space activates it. Plant-health
+suggestions use the existing one-language moderation endpoint in the UI language;
+a visible pending proposal cannot be selected as a published mapping target. The
+success notice explains that cancellation does not withdraw an explicitly submitted
+proposal and that the name stays private until approval and explicit mapping.
 
 `POST /api/crops/{id}/plant-health/mappings/` accepts `expected_updated_at` and
-`mappings: [{local_name, catalogue_identity}]` (1–40 unique local names). Project
+`mappings: [{local_name, catalogue_identity}]` (one or more unique local names). Project
 permissions and token write scope apply. The action locks the project, verifies
 the timestamp and effective source names, locks published targets and records
 normal private history/actor attribution. Stale timestamps or disappeared source
@@ -344,8 +356,8 @@ Private-name and snapshot-spelling edits within the same override do not mark a
 crop as divergent. Null inheritance remains distinct from any explicit override,
 including an empty list. Both selected-field pulls
 and full library updates replace only the official segment and preserve all
-private names, IDs, plans and notes. If the combined private/public selection
-would exceed 40 entries, the transaction fails instead of dropping names. An
+private names, IDs, plans and notes. The combined private/public selection
+has no fixed entry-count limit; all private names are retained. An
 unchanged inherited official segment leaves the variety's raw null intact.
 A null public value also preserves an already-inheriting variety's raw null,
 including when the parent contains private names; those names are not copied

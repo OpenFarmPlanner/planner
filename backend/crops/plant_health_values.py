@@ -7,7 +7,6 @@ from uuid import UUID
 
 from django.core.exceptions import ValidationError
 
-MAX_HEALTH_ENTRIES = 40
 MAX_HEALTH_NAME_LENGTH = 200
 
 
@@ -47,8 +46,8 @@ def normalize_plant_health(value: Any) -> dict[str, list[dict[str, str]]] | None
     if not isinstance(value, dict) or set(value) != {"entries"}:
         raise ValidationError("Expected an object containing only an entries list, or null.")
     entries = value["entries"]
-    if not isinstance(entries, list) or len(entries) > MAX_HEALTH_ENTRIES:
-        raise ValidationError(f"Provide a list of at most {MAX_HEALTH_ENTRIES} entries.")
+    if not isinstance(entries, list):
+        raise ValidationError("Provide a list of entries.")
     normalized: list[dict[str, str]] = []
     seen: set[tuple[str, str]] = set()
     for item in entries:

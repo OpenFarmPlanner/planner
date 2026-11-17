@@ -1513,6 +1513,7 @@ export function CropForm({
             ) : null}
             <GerminationSection {...sectionProps} />
             <SiteHealthSection {...sectionProps} plantHealthField={<PlantHealthField contextualHelp
+              showHelp={!isProjectForm}
               value={formData.plant_health ?? null}
               localOptions={isProjectForm ? healthLocalOptions : []}
               allowLocal={isProjectForm}

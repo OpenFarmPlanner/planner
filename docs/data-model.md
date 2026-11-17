@@ -361,7 +361,7 @@ and part of library sync; no planning check reads them yet. See
 [crop-library-architecture.md](./crop-library-architecture.md#site-life-cycle-and-plant-health).
 
 `Crop.plant_health` separately holds private structured selections as a nullable
-JSON object with an `entries` array (at most 40). Entries distinguish a local
+JSON object with an `entries` array (no fixed count limit). Entries distinguish a local
 name from an explicit stable catalogue UUID; names never imply identity or
 confirmed host evidence. Null inherits on a linked variety, while
 `{"entries": []}` is an explicit empty override. Omission preserves stored

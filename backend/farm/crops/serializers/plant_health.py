@@ -8,10 +8,14 @@ class PlantHealthMappingSerializer(serializers.Serializer):
 
 class CropPlantHealthMappingSerializer(serializers.Serializer):
     expected_updated_at = serializers.DateTimeField()
-    mappings = PlantHealthMappingSerializer(many=True, allow_empty=False, max_length=40)
+    mappings = PlantHealthMappingSerializer(many=True, allow_empty=False)
 
     def validate_mappings(self, values):
         names = [" ".join(item["local_name"].split()).casefold() for item in values]
         if len(names) != len(set(names)):
             raise serializers.ValidationError("Map each local name only once.")
         return values
+
+
+class StagedCropPlantHealthMappingSerializer(CropPlantHealthMappingSerializer):
+    crop_id = serializers.IntegerField(min_value=1)

@@ -172,8 +172,7 @@ export function validateCrop(
   for (const key of invalidSpecificPropertyKeys(draft.specific_property_profile, draft.specific_properties)) {
     errors[`specific_properties.${key}`] = t('specificProperties.invalidValue');
   }
-  if (draft.plant_health && (draft.plant_health.entries.length > 40
-    || draft.plant_health.entries.some(entry => !entry.name.trim() || entry.name.length > 200))) {
+  if (draft.plant_health?.entries.some(entry => !entry.name.trim() || entry.name.length > 200)) {
     errors.plant_health = t('plantHealth.validation');
   }
 

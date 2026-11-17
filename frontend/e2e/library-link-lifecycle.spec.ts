@@ -170,7 +170,7 @@ test('correcting the crop species to one that already has the variety shows the 
   await expect(dialog.getByRole('button', { name: 'Kulturart ändern' })).toBeDisabled();
   await expect(dialog.getByLabel('Wähle eine andere Kulturart oder Sorte aus.')).toBeVisible();
 
-  const field = dialog.getByLabel(/Offizielle Kulturart/i);
+  const field = dialog.getByRole('combobox', { name: /Offizielle Kulturart/i });
   await field.click();
   await field.fill(first.name);
   await page.getByRole('option', { name: new RegExp(first.name) }).first().click();
@@ -180,6 +180,112 @@ test('correcting the crop species to one that already has the variety shows the 
     'Unter dieser Kulturart gibt es bereits einen veröffentlichten Eintrag mit dieser Sorte.',
   );
   await expect(dialog).toBeVisible();
+});
+
+test('an exact species is preselected for a new publication without another dropdown click', async ({ page, request }, testInfo) => {
+  test.setTimeout(90_000);
+  const scenario = `library-preselected-species-${Date.now()}`;
+  try {
+    await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true, libraryModerator: true });
+    const species = await apiRequest<CropSpecies>(page, 'POST', '/crop-species/', { name: `Synthetic preselected species ${scenario}` });
+    await apiRequest(page, 'POST', `/crop-species/${species.id}/approve/`, {
+      translations: ['de', 'en', 'fr', 'es', 'it', 'pt', 'nl'].map((language_code) => ({ language_code, common_name: species.name })),
+    });
+    const crop = await apiRequest<CropRow & { crop_species: number | null }>(page, 'POST', '/crops/', {
+      name: species.name, variety: '', growth_duration_days: 40, harvest_duration_days: 20,
+    });
+    await page.goto(`/app/crops?cropId=${crop.id}`);
+    await page.getByTestId('crop-detail-publish-action').click();
+    const dialog = page.getByRole('dialog', { name: germanCrops.library.publishWizard.title, exact: true });
+    const selected = dialog.getByRole('combobox', { name: /Offizielle Kulturart/i });
+    const publish = dialog.getByRole('button', { name: germanCrops.library.publishWizard.publishNow, exact: true });
+    await expect(publish).toBeEnabled();
+    await expect(selected).toHaveValue(species.name);
+    await expect(selected).toHaveAttribute('aria-expanded', 'false');
+    await expect(dialog.getByRole('listbox')).toHaveCount(0);
+    const unchanged = await apiRequest<{ crop_species: number | null; source_public_crop: number | null }>(page, 'GET', `/crops/${crop.id}/`);
+    expect(unchanged.crop_species).toBe(crop.crop_species);
+    expect(unchanged.source_public_crop).toBeNull();
+    for (const viewport of [{ width: 375, height: 800 }, { width: 768, height: 900 },
+      { width: 1024, height: 900 }, { width: 1440, height: 900 }, { width: 800, height: 375 }]) {
+      await page.setViewportSize(viewport);
+      await expect(publish).toBeInViewport();
+      await expectNoHorizontalPageOverflow(page);
+      await page.screenshot({ path: testInfo.outputPath(`preselected-species-${viewport.width}.png`), animations: 'disabled' });
+    }
+    await selected.focus();
+    await selected.press('Escape');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await expect(publish).toBeFocused();
+    await publish.press('Space');
+    const consent = dialog.getByRole('checkbox', { name: germanCrops.library.publishConfirm.acceptLicense, exact: true });
+    await expect(async () => {
+      expect((await dialog.isVisible()) ? await consent.isVisible() : true).toBe(true);
+    }).toPass({ timeout: 10_000 });
+    if (await consent.isVisible()) {
+      await consent.check();
+      await publish.click();
+    }
+    await expect(dialog).toBeHidden();
+    const published = await apiRequest<{ crop_species: number; source_public_crop: number | null }>(page, 'GET', `/crops/${crop.id}/`);
+    expect(published.crop_species).toBe(species.id);
+    expect(published.source_public_crop).not.toBeNull();
+  } finally {
+    await resetE2EScenario(request, scenario);
+  }
+});
+
+test('the publishing picker has one selector and fixed keyboard proposal actions on mobile and desktop', async ({ page, request }, testInfo) => {
+  test.setTimeout(90_000);
+  const scenario = `library-single-picker-${Date.now()}`;
+  try {
+    await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
+    const crop = await apiRequest<CropRow>(page, 'POST', '/crops/', {
+      name: `Synthetic missing species ${scenario}`, variety: '',
+      growth_duration_days: 40, harvest_duration_days: 20,
+    });
+    await page.goto(`/app/crops?cropId=${crop.id}`);
+    await page.getByTestId('crop-detail-publish-action').click();
+    const dialog = page.getByRole('dialog', { name: germanCrops.library.publishWizard.title, exact: true });
+    const species = dialog.getByRole('combobox');
+    await expect(species).toHaveValue(crop.name);
+    await expect(dialog.getByRole('combobox')).toHaveCount(1);
+    await expect(dialog.getByText(/Originalsprache/)).toHaveCount(0);
+    const propose = dialog.getByRole('button', {
+      name: germanCrops.library.speciesPicker.proposeInlineLabel.replace('{{name}}', crop.name), exact: true,
+    });
+    for (const viewport of [{ width: 375, height: 800 }, { width: 768, height: 900 },
+      { width: 1024, height: 900 }, { width: 1440, height: 900 }, { width: 800, height: 375 }]) {
+      await page.setViewportSize(viewport);
+      await expect(propose).toBeInViewport();
+      await expectNoHorizontalPageOverflow(page);
+      await page.screenshot({ path: testInfo.outputPath(`single-picker-${viewport.width}.png`), animations: 'disabled' });
+    }
+    await species.focus();
+    await species.press('Tab');
+    await expect(propose).toBeFocused();
+    await propose.press('Enter');
+    await expect(dialog.getByRole('button', { name: germanCrops.library.publishWizard.proposeSpeciesSubmit, exact: true })).toBeEnabled();
+    await dialog.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+    const unchanged = await apiRequest<{ source_public_crop: number | null; crop_species: number | null }>(page, 'GET', `/crops/${crop.id}/`);
+    expect(unchanged.source_public_crop).toBeNull();
+    expect(unchanged.crop_species).toBeNull();
+
+    await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'fr' });
+    await page.evaluate(() => localStorage.setItem('ui.language', 'fr'));
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.reload();
+    await page.getByTestId('crop-detail-publish-action').click();
+    const translated = page.getByRole('dialog', { name: frenchCrops.library.publishWizard.title, exact: true });
+    await expect(translated.getByRole('combobox')).toHaveValue(crop.name);
+    await expect(translated.getByRole('button', {
+      name: frenchCrops.library.speciesPicker.proposeInlineLabel.replace('{{name}}', crop.name), exact: true,
+    })).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath('single-picker-fr-375.png'), animations: 'disabled' });
+  } finally {
+    await resetE2EScenario(request, scenario);
+  }
 });
 
 for (const entryPoint of ['publish', 'import', 'copy', 'resolve', 'resolve-browser', 'unclassified-picker', 'unclassified-page'] as const) {
@@ -194,11 +300,12 @@ for (const entryPoint of ['publish', 'import', 'copy', 'resolve', 'resolve-brows
     const source = await apiRequest<CropRow>(page, 'POST', '/crops/', {
       name: species.name, variety: '', crop_species: species.id,
       growth_duration_days: 80, harvest_duration_days: 20,
+      ...(entryPoint === 'publish' ? { crop_family: 'Brassicaceae' } : {}),
       ...(resolvesDifferences ? { germination_temperature_requirement: 'cold_stratification', germination_light_requirement: 'light' } : {}),
     });
     const published = await apiRequest<PublishResponse>(page, 'POST', `/crops/${source.id}/publish-public/`, {
       accepted_public_library_terms: true, crop_species_id: species.id, publish_as_general: true,
-      original_language_code: 'de',
+      original_language_code: entryPoint === 'publish' ? 'en' : 'de',
     });
     // The target grower is a different contributor in a different project.
     // Their existing culture must link to this foreign library entry.
@@ -257,16 +364,30 @@ for (const entryPoint of ['publish', 'import', 'copy', 'resolve', 'resolve-brows
     } else {
       await page.goto(`/app/crops?cropId=${local.id}`);
       await page.getByTestId('crop-detail-publish-action').click();
-      await page.getByRole('combobox', { name: 'Eintrag der Kulturbibliothek' }).click();
-      await page.getByRole('option', { name: species.name, exact: true }).click();
-      await page.getByRole('button', { name: 'Mit vorhandenem Eintrag verknüpfen', exact: true }).click();
+      await expect(page.getByRole('dialog', { name: labels.library.linkExisting.title, exact: true })).toBeVisible();
+      await expect(page.getByRole('combobox')).toHaveCount(0);
+      await expect(page.getByText(/Originalsprache:/)).toHaveCount(0);
+      const before = await apiRequest<{ source_public_crop: number | null }>(page, 'GET', `/crops/${local.id}/`);
+      expect(before.source_public_crop).toBeNull();
+      await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+      const cancelled = await apiRequest<{ source_public_crop: number | null }>(page, 'GET', `/crops/${local.id}/`);
+      expect(cancelled.source_public_crop).toBeNull();
+      await page.getByTestId('crop-detail-publish-action').click();
+      await expect(page.getByRole('dialog', { name: labels.library.linkExisting.title, exact: true })).toBeVisible();
     }
     const confirm = page.getByRole('button', { name: entryPoint === 'publish' ? labels.library.linkExisting.confirm : entryPoint === 'copy' ? labels.library.importDecision.copy : labels.library.importDecision.link });
     await expect(confirm).toBeEnabled();
     const localChoice = page.getByTestId('public-crop-sync-row-notes').getByRole('radio', { name: entryPoint === 'copy' ? labels.library.linkExisting.keepLocal : labels.library.sync.chooseLocal });
-    await localChoice.focus();
-    await localChoice.press('Space');
-    await expect(localChoice).toBeChecked();
+    if (entryPoint === 'publish') {
+      await expect(localChoice).toBeChecked();
+      const family = page.getByTestId('public-crop-sync-row-crop_family');
+      await expect(family.getByRole('radio', { name: labels.library.linkExisting.keepLocal, exact: true })).toBeDisabled();
+      await expect(family.getByRole('radio', { name: labels.library.linkExisting.takeLibrary, exact: true })).toBeChecked();
+    } else {
+      await localChoice.focus();
+      await localChoice.press('Space');
+      await expect(localChoice).toBeChecked();
+    }
     if (entryPoint === 'copy') {
       const choose = async (field: string, label: string) => {
         const option = page.getByTestId(`public-crop-sync-row-${field}`).getByRole('radio', { name: label, exact: true });
@@ -322,6 +443,17 @@ for (const entryPoint of ['publish', 'import', 'copy', 'resolve', 'resolve-brows
     }
     await confirm.click();
     await expect(confirm).not.toBeVisible();
+    if (entryPoint === 'publish') {
+      const unchanged = await apiRequest<{ original_language_code: string }>(page, 'GET', `/public-crops/${published.public_crop.id}/`);
+      expect(unchanged.original_language_code).toBe('en');
+      await expect(page.getByTestId('crop-detail-library-status')).toContainText(labels.library.publicUpdate.markerUpToDateLabel);
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await expect(page.getByTestId('crop-list-library-status').first()).toHaveAttribute('data-status', 'upToDate');
+      for (const viewport of [{ width: 375, height: 800 }, { width: 1440, height: 900 }, { width: 800, height: 375 }]) {
+        await page.setViewportSize(viewport);
+        await page.screenshot({ path: testInfo.outputPath(`publish-up-to-date-${viewport.width}.png`), animations: 'disabled' });
+      }
+    }
     if (resolvesDifferences) {
       await expect(page.getByRole('button', { name: labels.library.linkExisting.alreadyLinked, exact: true })).toBeDisabled();
       await page.setViewportSize({ width: 1440, height: 900 });

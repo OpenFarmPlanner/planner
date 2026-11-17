@@ -25,7 +25,8 @@ for (const width of [375, 1440]) {
       expect(parent).toBeTruthy();
       expect(variety).toBeTruthy();
       const notes = 'Early sowing protects against carrot fly. Repels aphids.';
-      await apiRequest(page, 'PATCH', `/crops/${parent.id}/`, { plant_health: null, pests_diseases: notes });
+      const privateEntries = Array.from({ length: 45 }, (_, index) => ({ name: `Synthetic private ${index}` }));
+      await apiRequest(page, 'PATCH', `/crops/${parent.id}/`, { plant_health: { entries: privateEntries }, pests_diseases: notes });
       await page.goto(`/app/crops?cropId=${parent.id}&action=edit`);
       const dialog = page.getByRole('dialog', { name: 'Kultur bearbeiten', exact: true });
       const input = dialog.getByRole('combobox', { name: de.plantHealth.label, exact: true });
@@ -33,7 +34,7 @@ for (const width of [375, 1440]) {
       await input.press('Enter');
       await input.fill(`Alias ${scenario}`);
       await page.getByRole('option').filter({ hasText: name }).click();
-      await expect(dialog.locator('.MuiAutocomplete-root').filter({ has: page.getByRole('combobox', { name: de.plantHealth.label, exact: true }) }).locator('.MuiChip-root')).toHaveCount(2);
+      await expect(dialog.locator('.MuiAutocomplete-root').filter({ has: page.getByRole('combobox', { name: de.plantHealth.label, exact: true }) }).locator('.MuiChip-root')).toHaveCount(47);
       await input.scrollIntoViewIfNeeded();
       await expectNoHorizontalPageOverflow(page);
       await page.mouse.move(1, 1);
@@ -41,7 +42,7 @@ for (const width of [375, 1440]) {
       await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
       await expect(dialog).toBeHidden();
       const saved = await apiRequest<Crop>(page, 'GET', `/crops/${parent.id}/`);
-      expect(saved.plant_health).toEqual({ entries: [{ name }, { name, catalogue_identity: entry.identity_key }] });
+      expect(saved.plant_health).toEqual({ entries: [...privateEntries, { name }, { name, catalogue_identity: entry.identity_key }] });
       expect(saved.pests_diseases).toBe(notes);
 
       await apiRequest(page, 'PATCH', `/crops/${variety.id}/`, { plant_health: null });
@@ -50,7 +51,7 @@ for (const width of [375, 1440]) {
       const inheritedInput = varietyDialog.getByRole('combobox', { name: de.plantHealth.label, exact: true });
       const picker = varietyDialog.locator('.MuiAutocomplete-root').filter({ has: page.getByRole('combobox', { name: de.plantHealth.label, exact: true }) });
       await inheritedInput.scrollIntoViewIfNeeded();
-      await expect(picker.locator('.MuiChip-root')).toHaveCount(2);
+      await expect(picker.locator('.MuiChip-root')).toHaveCount(47);
       await expect(varietyDialog.getByRole('button', { name: de.plantHealth.inherit, exact: true })).toBeDisabled();
       await inheritedInput.click();
       await picker.getByRole('button', { name: 'Leeren', exact: true }).click();

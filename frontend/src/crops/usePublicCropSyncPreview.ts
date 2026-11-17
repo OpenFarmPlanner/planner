@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { cropAPI } from '../api/api';
-import type { CropPublicSyncPreview } from '../api/types';
+import type { CropPublicSyncPreview, StagedPlantHealthMapping } from '../api/types';
 import { useTranslation } from '../i18n';
 import {
   buildDefaultSyncChoices,
@@ -22,20 +22,25 @@ export interface PublicCropSyncPreviewState {
 /**
  * Loads the field-by-field differences between `cropId` and `publicCropId`
  * and keeps the user's per-field choices, starting from the default
- * preselection. `allowLocal` offers "Nur lokal" (the sync of a linked crop).
+ * preselection. `allowLocal` offers "Nur lokal" for linking or synchronization;
+ * `keepPrivateValuesLocally` pins private-only defaults during initial linking.
  */
 export function usePublicCropSyncPreview(
   cropId: number | undefined,
   publicCropId: number | null | undefined,
   enabled: boolean,
   allowLocal = false,
+  healthMappings?: StagedPlantHealthMapping[],
+  expectedUpdatedAt?: string,
+  keepPrivateValuesLocally = false,
 ): PublicCropSyncPreviewState {
   const { t } = useTranslation('crops');
   const [preview, setPreview] = useState<CropPublicSyncPreview | null>(null);
   const [choices, setChoices] = useState<PublicCropSyncChoices>({});
   const [loadError, setLoadError] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
-  const requestKey = `${cropId}:${publicCropId}:${reloadToken}`;
+  const mappingKey = JSON.stringify(healthMappings ?? []);
+  const requestKey = `${cropId}:${publicCropId}:${reloadToken}:${mappingKey}:${expectedUpdatedAt}:${keepPrivateValuesLocally}`;
   const [loadedKey, setLoadedKey] = useState('');
 
   useEffect(() => {
@@ -46,12 +51,16 @@ export function usePublicCropSyncPreview(
     });
     if (!enabled || !cropId || !publicCropId) return undefined;
     let cancelled = false;
-    cropAPI.publicSyncPreview(cropId, publicCropId)
+    const mappings = JSON.parse(mappingKey) as StagedPlantHealthMapping[];
+    const request = mappings.length
+      ? cropAPI.publicSyncPreview(cropId, publicCropId, mappings, expectedUpdatedAt)
+      : cropAPI.publicSyncPreview(cropId, publicCropId);
+    request
       .then((response) => {
         if (cancelled) return;
         setPreview(response.data);
         setLoadedKey(requestKey);
-        setChoices(buildDefaultSyncChoices(response.data.changes, { allowLocal }));
+        setChoices(buildDefaultSyncChoices(response.data.changes, { allowLocal, keepPrivateValuesLocally }));
       })
       .catch(() => {
         if (!cancelled) setLoadError(t('library.sync.loadError'));
@@ -59,7 +68,7 @@ export function usePublicCropSyncPreview(
     return () => {
       cancelled = true;
     };
-  }, [allowLocal, cropId, enabled, publicCropId, reloadToken, requestKey, t]);
+  }, [allowLocal, keepPrivateValuesLocally, cropId, enabled, publicCropId, reloadToken, requestKey, mappingKey, expectedUpdatedAt, t]);
 
   const reload = useCallback(() => setReloadToken((token) => token + 1), []);
 

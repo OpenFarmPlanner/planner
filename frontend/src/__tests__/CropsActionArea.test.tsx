@@ -189,15 +189,6 @@ function renderCrops(initialPath = '/crops'): ReturnType<typeof render> {
   );
 }
 
-// The "Offizielle Kulturart" field prefills with the crop's name and shows
-// results immediately, but nothing is auto-selected any more (not even an
-// exact name match) — every test that publishes now has to pick the option
-// explicitly first.
-// MUI's Autocomplete listbox is portaled to `document.body`, not nested
-// inside the dialog's DOM subtree, so the option is found via `screen`
-// rather than `within(dialog)` — the `dialog` param is unused for the
-// lookup but keeps this call site self-documenting about which dialog it
-// belongs to.
 function renderCropsWithoutSeason(): ReturnType<typeof render> {
   const outletContext = { activeSeason: null, activeSeasonLoaded: true, requestSeasonCreation: vi.fn() };
   return render(
@@ -217,7 +208,7 @@ function renderCropsWithoutSeason(): ReturnType<typeof render> {
 }
 
 const selectSpeciesOption = async (_dialog: HTMLElement, name: string): Promise<void> => {
-  const input = within(_dialog).getByRole('combobox', { name: /Offizielle Kulturart/ });
+  const input = await within(_dialog).findByRole('combobox', { name: /Offizielle Kulturart/ });
   if (input.getAttribute('aria-expanded') !== 'true') fireEvent.mouseDown(input);
   fireEvent.click(await screen.findByRole('option', { name }));
   await waitFor(() => expect(within(_dialog).getByRole('button', { name: 'Jetzt veröffentlichen' })).toBeEnabled());
@@ -410,22 +401,16 @@ describe('Crops action area', () => {
 
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText('Kultur verknüpfen oder veröffentlichen')).toBeInTheDocument();
-    expect(within(dialog).getByLabelText(/Offizielle Kulturart/)).toBeInTheDocument();
-    // "Original language" is collapsed to a summary + change link by
-    // default (it's pre-set to the app's current language), not an
-    // always-visible required field.
+    expect(await within(dialog).findByRole('combobox', { name: /Offizielle Kulturart/ })).toBeInTheDocument();
     expect(within(dialog).queryByLabelText('Originalsprache')).not.toBeInTheDocument();
-    expect(within(dialog).getByText(/Originalsprache: /)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/Originalsprache: /)).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: 'Ändern' })).not.toBeInTheDocument();
     expect(within(dialog).queryByText('Zusammenfassung')).not.toBeInTheDocument();
     expect(within(dialog).queryByText('Pflichtfelder')).not.toBeInTheDocument();
     expect(within(dialog).queryByText('Dublettenprüfung')).not.toBeInTheDocument();
     expect(within(dialog).queryByRole('checkbox', { name: /CC BY-SA 4\.0/ })).not.toBeInTheDocument();
-    // Nothing is auto-selected, not even an exact name match — the button
-    // stays disabled until the user actively picks a result.
-    expect(within(dialog).getByRole('button', { name: 'Jetzt veröffentlichen' })).toBeDisabled();
-
-    await selectSpeciesOption(dialog, 'Tomate');
-    expect(within(dialog).getByRole('button', { name: 'Jetzt veröffentlichen' })).toBeEnabled();
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Jetzt veröffentlichen' })).toBeEnabled());
+    expect(within(dialog).getByRole('combobox')).toHaveAttribute('aria-expanded', 'false');
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Jetzt veröffentlichen' }));
     expect(await within(dialog).findByRole('checkbox', { name: /CC BY-SA 4\.0/ })).toBeInTheDocument();
@@ -540,7 +525,7 @@ describe('Crops action area', () => {
     expect(screen.getByTestId('crop-row-1')).toBeInTheDocument();
   });
 
-  it('prefills the crop name as search text and finds the matching species, without preselecting it', async () => {
+  it('preselects an exact species so a new entry can be published without picking it again', async () => {
     authUser.public_library_terms_accepted = true;
     listMock.mockResolvedValue({
       data: {
@@ -573,15 +558,11 @@ describe('Crops action area', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Veröffentlichen' }));
 
     const dialog = await screen.findByRole('dialog');
-    // The search text is prefilled with the crop's own name and the
-    // matching result shows up, but nothing is selected yet — the button
-    // stays disabled until the user actively picks it.
     await waitFor(() => {
       expect(within(dialog).getByRole('combobox', { name: /Offizielle Kulturart/ })).toHaveValue('Gurke');
     });
-    expect(within(dialog).getByRole('button', { name: 'Jetzt veröffentlichen' })).toBeDisabled();
-
-    await selectSpeciesOption(dialog, 'Gurke');
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Jetzt veröffentlichen' })).toBeEnabled());
+    expect(within(dialog).getByRole('combobox')).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Jetzt veröffentlichen' }));
 
     await waitFor(() => {
@@ -754,7 +735,7 @@ describe('Crops action area', () => {
 
     const dialog = await screen.findByRole('dialog');
     expect(await within(dialog).findByText('Mit Kulturbibliothek abgleichen')).toBeInTheDocument();
-    expect(within(dialog).queryByLabelText(/Offizielle Kulturart/)).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('combobox', { name: /Offizielle Kulturart/ })).not.toBeInTheDocument();
     expect(within(dialog).queryByLabelText('Originalsprache')).not.toBeInTheDocument();
     expect(publicCropListMock).not.toHaveBeenCalled();
 

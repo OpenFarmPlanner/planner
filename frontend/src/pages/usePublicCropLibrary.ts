@@ -1,3 +1,4 @@
+import type { StagedPlantHealthMapping } from '../api/types';
 import type { PublicCropSyncSubmitResult } from '../crops/publicCropSync';
 import type { CropLinkCandidate } from '../crops/ExistingCropLinkDialog';
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -258,10 +259,13 @@ export function usePublicCropLibrary({
       pushFields: string[];
       pinFields?: string[];
       acceptedPublicLibraryTerms: boolean;
+      healthMappings?: StagedPlantHealthMapping[];
+      cropUpdatedAt?: string;
     },
   ) => {
     const response = await cropAPI.publicSync(cropId, {
       public_crop_id: data.publicCropId,
+      ...(data.healthMappings?.length ? { plant_health_mappings: data.healthMappings, expected_updated_at: data.cropUpdatedAt } : {}),
       base_version: data.baseVersion,
       pull_fields: data.pullFields,
       push_fields: data.pushFields,
@@ -285,6 +289,7 @@ export function usePublicCropLibrary({
     pinFields?: string[];
     pushFields: string[];
     varieties?: PublishVarietySelection[];
+    healthMappings?: StagedPlantHealthMapping[];
   }): Promise<boolean> => {
     if (!selectedCrop?.id) {
       return false;
@@ -293,7 +298,9 @@ export function usePublicCropLibrary({
     try {
       setPublishingCropId(selectedCrop.id);
       try {
-        const linked = await cropAPI.linkPublicCrop(selectedCrop.id, data.publicCropId, data.pullFields, data.baseVersion, data.cropUpdatedAt, data.pinFields);
+        const linked = data.healthMappings?.length
+          ? await cropAPI.linkPublicCrop(selectedCrop.id, data.publicCropId, data.pullFields, data.baseVersion, data.cropUpdatedAt, data.pinFields, undefined, data.healthMappings)
+          : await cropAPI.linkPublicCrop(selectedCrop.id, data.publicCropId, data.pullFields, data.baseVersion, data.cropUpdatedAt, data.pinFields);
         await onImportSuccess(linked.data);
       } catch (error) {
         console.error('Error linking crop:', error);
@@ -346,6 +353,8 @@ export function usePublicCropLibrary({
     pullFields: string[];
     pushFields: string[];
     pinFields: string[];
+    healthMappings?: StagedPlantHealthMapping[];
+    cropUpdatedAt?: string;
   }): Promise<PublicCropSyncSubmitResult> => {
     if (!selectedCrop?.id) {
       return { success: false, error: t('library.sync.error') };
@@ -379,6 +388,8 @@ export function usePublicCropLibrary({
       publicCropId?: number | null;
       publishAsGeneral?: boolean;
       varieties?: PublishVarietySelection[];
+      healthMappings?: StagedPlantHealthMapping[];
+      cropUpdatedAt?: string;
     },
   ): Promise<boolean> => {
     if (!selectedCrop?.id) {
@@ -402,6 +413,7 @@ export function usePublicCropLibrary({
         accepted_public_library_terms: acceptedPublicLibraryTerms,
         ...(publishingData ? {
           crop_species_id: publishingData.cropSpeciesId,
+          ...(publishingData.healthMappings?.length ? { plant_health_mappings: publishingData.healthMappings, expected_updated_at: publishingData.cropUpdatedAt } : {}),
           original_language_code: publishingData.originalLanguageCode,
           ...(publishingData.publishAsGeneral !== undefined ? { publish_as_general: publishingData.publishAsGeneral } : {}),
         } : {}),
