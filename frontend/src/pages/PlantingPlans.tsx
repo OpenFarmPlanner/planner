@@ -748,7 +748,6 @@ function PlantingPlans() {
         renderCell: (params) => (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
             <PlantingPlanCropLabel planId={Number(params.id)} text={String(params.formattedValue ?? "")} truncate />
-            <GerminationInfo {...params.row} icon />
           </Box>
         ),
         valueSetter: (value, row) => {
@@ -928,6 +927,7 @@ function PlantingPlans() {
         cellClassName: (params) => [
           getRowSowingSchedule(params.row as PlantingPlanRow)?.sowingDate
             && !hasTimingWindowFinding(params.row as PlantingPlanRow, "sowing_date")
+            && !(params.row as PlantingPlanRow).germination_findings?.length
             ? ""
             : FULL_CELL_TOOLTIP_CELL_CLASS,
           getLinkedPartnerHighlightClassName(params),
@@ -948,6 +948,7 @@ function PlantingPlans() {
             <TimingWindowDateCell
               findings={getRowTimingWindowFindings(params.row as PlantingPlanRow)}
               kinds={TIMING_WINDOW_KINDS_BY_DATE_FIELD.sowing_date}
+              germinationFindings={(params.row as PlantingPlanRow).germination_findings}
               cellHasFocus={params.hasFocus}
             >
               <SearchHighlightedText text={typeof params.formattedValue === "string" ? params.formattedValue : ""} />
@@ -2240,9 +2241,9 @@ function PlantingPlans() {
                       fontSize="inherit"
                       sx={{ ml: 0.5, verticalAlign: "middle" }}
                     />
-                    <GerminationInfo {...item} icon />
                     <TimingWindowIcon
                       findings={getRowTimingWindowFindings(item)}
+                      germinationFindings={item.germination_findings}
                       fontSize="inherit"
                       sx={{ ml: 0.5, verticalAlign: "middle" }}
                     />
@@ -2268,7 +2269,7 @@ function PlantingPlans() {
               )}
               renderDetails={(item) => (
                 <Stack spacing={0.75}>
-                  <GerminationInfo {...item} />
+                  <GerminationInfo {...item} sowingDate={getRowSowingSchedule(item)?.sowingDate} />
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.cultivationType")}:</strong> <SearchHighlightedText text={getCultivationTypeLabel(item) || "—"} /></Typography>
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.bed")}:</strong> <SearchHighlightedText text={getBedLabelForRow(item)} /></Typography>
                   {getRowSowingSchedule(item)?.sowingDate ? (

@@ -107,6 +107,31 @@ describe('germination plan information', () => {
     const { GerminationInfo } = await import('../components/planting-plans/GerminationInfo');
     render(<GerminationInfo germination_findings={[{ code: 'cold_period_required' }]} expected_emergence={{ min: '2026-06-03', max: '2026-06-10' }} />);
     expect(screen.getByRole('alert')).toHaveTextContent('Kälteperiode');
-    expect(screen.getByText(/Auflaufen ca\./)).toHaveTextContent('2026');
+    expect(screen.getByText(/Keimlinge sichtbar ca\./)).toHaveTextContent('2026');
+  });
+
+  it('names the sowing date and germination days the emergence is counted from', async () => {
+    const { GerminationInfo } = await import('../components/planting-plans/GerminationInfo');
+    const { rerender } = render(<GerminationInfo expected_emergence={{ min: '2026-01-29', max: '2026-02-05' }} sowingDate="2026-01-22" />);
+    expect(screen.getByText(/Keimlinge sichtbar ca\./)).toHaveTextContent(/\(Aussaat .*22.*2026 \+ 7–14 Tage Keimdauer\)/);
+    rerender(<GerminationInfo expected_emergence={{ min: '2026-01-23', max: '2026-01-23' }} sowingDate="2026-01-22" />);
+    expect(screen.getByText(/Keimlinge sichtbar ca\./)).toHaveTextContent('+ 1 Tag Keimdauer)');
+    rerender(<GerminationInfo germination_findings={[]} expected_emergence={null} sowingDate="2026-01-22" />);
+    expect(screen.queryByText(/Keimlinge/)).not.toBeInTheDocument();
+  });
+
+  it('shows germination findings on the sowing date hint, not as a separate icon', async () => {
+    const { TimingWindowDateCell, TimingWindowIcon } = await import('../components/planting-plans/TimingWindowInfo');
+    const { unmount } = render(
+      <TimingWindowDateCell findings={[]} kinds={['pre_cultivation', 'direct_sowing']} cellHasFocus={false} germinationFindings={[{ code: 'propagation_shorter_than_germination' }]}>
+        22.01.2026
+      </TimingWindowDateCell>,
+    );
+    expect(screen.getByTestId('timing-window-date')).toHaveTextContent('22.01.2026');
+    unmount();
+    render(<TimingWindowDateCell findings={[]} kinds={['pre_cultivation']} cellHasFocus={false} germinationFindings={[]}>22.01.2026</TimingWindowDateCell>);
+    expect(screen.queryByTestId('timing-window-date')).not.toBeInTheDocument();
+    render(<TimingWindowIcon findings={[]} germinationFindings={[{ code: 'cold_period_required' }]} />);
+    expect(screen.getByTestId('timing-window-icon')).toBeInTheDocument();
   });
 });

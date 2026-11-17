@@ -122,8 +122,9 @@ test('germination hints and emergence appear in the plan dialog and published li
   await dialog.getByRole('textbox', { name: 'Pflanztermin', exact: true }).fill('1.6.2026');
   await expect(dialog.getByText('Das Saatgut benötigt eine Kälteperiode.', { exact: true })).toBeVisible();
   await expect(dialog.getByText('Anzuchtdauer kürzer als die Keimdauer.', { exact: true })).toBeVisible();
-  const emergence = dialog.getByText(/Auflaufen ca\./);
+  const emergence = dialog.getByText(/Keimlinge sichtbar ca\./);
   await expect(emergence).toBeVisible();
+  await expect(emergence).toContainText('+ 7–14 Tage Keimdauer)');
   await emergence.scrollIntoViewIfNeeded();
   await page.screenshot({ animations: 'disabled', path: '../work/germination-plan-375.png' });
   await dialog.getByRole('button', { name: 'Abbrechen', exact: true }).click();
@@ -131,12 +132,41 @@ test('germination hints and emergence appear in the plan dialog and published li
     const key = Object.keys(localStorage).find((name) => name.startsWith('activeSeasonId:'));
     return key ? Number(localStorage.getItem(key)) : null;
   });
-  await apiRequest(page, 'POST', '/planting-plans/', {
+  const plan = await apiRequest<{ id: number }>(page, 'POST', '/planting-plans/', {
     crop: crop.id, season, planting_date: '2026-06-01', cultivation_type: 'pre_cultivation',
     area_usage_sqm: 1,
   });
+  // The findings sit on the sowing date (desktop) or the cards' date hint (mobile);
+  // there is no germination icon next to the crop name any more (#1188).
+  const variety = published.public_crop.variety;
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.reload();
-  await expect(page.getByRole('img', { name: 'Hinweise zur Keimung' }).first()).toBeVisible();
+  const search = page.getByRole('searchbox', { name: 'Anbaupläne durchsuchen' });
+  await search.fill(variety);
+  const row = page.locator(`[role="row"][data-id="${plan.id}"]`);
+  await expect(row).toBeVisible();
+  const sowingHint = row.locator('[data-field="sowing_date"] [data-testid="timing-window-date"]');
+  await expect(sowingHint).toBeVisible();
+  await expect(row.locator('[data-field="crop"] svg[data-testid="SpaOutlinedIcon"]')).toHaveCount(0);
+  await row.locator('[data-field="sowing_date"]').click();
+  await expect(page.getByRole('tooltip')).toContainText('Anzuchtdauer kürzer als die Keimdauer.');
+  await expect(page.getByRole('tooltip')).toContainText('Das Saatgut benötigt eine Kälteperiode.');
   await page.screenshot({ animations: 'disabled', path: '../work/germination-plan-table-1440.png' });
+
+  for (const viewport of [{ width: 375, height: 800 }, { width: 800, height: 375 }]) {
+    await page.setViewportSize(viewport);
+    await page.reload();
+    await page.getByRole('searchbox', { name: 'Anbaupläne durchsuchen' }).fill(variety);
+    await expect(page.getByTestId('planting-plan-search-count')).toHaveText(/^1 von \d+/);
+    const card = page.locator(`[data-mobile-card-id="${plan.id}"]`);
+    const desktopRow = page.locator(`[role="row"][data-id="${plan.id}"]`);
+    await expect(card.or(desktopRow).filter({ visible: true }).first()).toBeVisible();
+    if (viewport.width < 600 || await card.isVisible()) {
+      await expect(card.getByTestId('timing-window-icon')).toBeVisible();
+      await card.getByRole('button', { expanded: false }).first().click();
+      await expect(card.getByText(/Keimlinge sichtbar ca\./)).toContainText('+ 7–14 Tage Keimdauer)');
+    }
+    await expect(page.locator('svg[data-testid="SpaOutlinedIcon"]')).toHaveCount(0);
+    await page.screenshot({ animations: 'disabled', path: `../work/germination-plan-cards-${viewport.width}x${viewport.height}.png` });
+  }
 });

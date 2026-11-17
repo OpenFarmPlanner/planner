@@ -389,8 +389,9 @@
   "germination": {
     "cold_period_required": "The seed needs a cold period.",
     "propagation_shorter_than_germination": "Propagation duration is shorter than germination time.",
-    "emergence": "Expected emergence around {{from}}–{{to}}",
-    "hints": "Germination hints"
+    "emergence": "Seedlings visible around {{from}}–{{to}}",
+    "emergenceWithBasis_one": "Seedlings visible around {{from}}–{{to}} (sown {{sowing}} + {{days}} day germination time)",
+    "emergenceWithBasis_other": "Seedlings visible around {{from}}–{{to}} (sown {{sowing}} + {{days}} days germination time)"
   },
   "tableHeaders": {
     "sowingDate": "Sowing date",

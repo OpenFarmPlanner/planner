@@ -438,7 +438,7 @@ export function MobilePlanFormDialog({
             />
           </Box>
           <HarvestOverlapAlert overlaps={harvestOverlapCheck.data?.harvest_overlaps} />
-          <GerminationInfo germination_findings={timingWindowCheck.data?.germination_findings} expected_emergence={timingWindowCheck.data?.expected_emergence} />
+          <GerminationInfo germination_findings={timingWindowCheck.data?.germination_findings} expected_emergence={timingWindowCheck.data?.expected_emergence} sowingDate={sowingPickerValue || null} />
           <TimingWindowAlert findings={timingWindowCheck.data?.timing_window_findings} />
           {rotation ? (
             <RotationCheckPanel

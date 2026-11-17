@@ -1,22 +1,47 @@
-import SpaOutlinedIcon from '@mui/icons-material/SpaOutlined';
 import { Alert, Box, Typography } from '@mui/material';
+
 import type { PlantingPlan } from '../../api/types';
 import { useTranslation } from '../../i18n';
-import { AppTooltip } from '../AppTooltip';
+import { useGerminationFindingLines } from './useGerminationFindingLines';
 
-type Props = Pick<PlantingPlan, 'germination_findings' | 'expected_emergence'> & { icon?: boolean };
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** The same non-blocking hints and emergence dates in the dialog, table and cards. */
-export function GerminationInfo({ germination_findings, expected_emergence, icon = false }: Props) {
+function daysBetween(fromIso: string, toIso: string): number {
+  return Math.round((Date.parse(`${toIso}T12:00:00Z`) - Date.parse(`${fromIso}T12:00:00Z`)) / DAY_MS);
+}
+
+type Props = Pick<PlantingPlan, 'germination_findings' | 'expected_emergence'> & {
+  /** The sowing date the emergence window is counted from (ISO), when known. */
+  sowingDate?: string | null;
+};
+
+/** The plan dialog's and expanded card's germination hints and expected emergence. */
+export function GerminationInfo({ germination_findings, expected_emergence, sowingDate }: Props) {
   const { t, i18n } = useTranslation('plantingPlans');
-  const lines = (germination_findings ?? []).map((finding) => t(`germination.${finding.code}`));
+  const findings = useGerminationFindingLines(germination_findings);
+  let emergence: string | null = null;
   if (expected_emergence) {
-    const format = (iso: string) => new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' }).format(new Date(`${iso}T12:00:00`));
-    lines.push(t('germination.emergence', { from: format(expected_emergence.min), to: format(expected_emergence.max) }));
+    const format = (iso: string) => new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' })
+      .format(new Date(`${iso}T12:00:00`));
+    const window = { from: format(expected_emergence.min), to: format(expected_emergence.max) };
+    if (sowingDate) {
+      const minimum = daysBetween(sowingDate, expected_emergence.min);
+      const maximum = daysBetween(sowingDate, expected_emergence.max);
+      emergence = t('plantingPlans:germination.emergenceWithBasis', {
+        ...window,
+        sowing: format(sowingDate),
+        days: minimum === maximum ? String(maximum) : `${minimum}–${maximum}`,
+        count: maximum,
+      });
+    } else {
+      emergence = t('plantingPlans:germination.emergence', window);
+    }
   }
-  if (!lines.length) return null;
-  if (icon) return <AppTooltip title={lines.map((line) => <Box key={line}>{line}</Box>)}><SpaOutlinedIcon fontSize="small" color="info" role="img" aria-label={t('germination.hints')} aria-hidden={false} /></AppTooltip>;
-  return <Box sx={{ display: 'grid', gap: 1 }}>{lines.map((line, index) => index < (germination_findings?.length ?? 0)
-    ? <Alert severity="info" key={line}>{line}</Alert>
-    : <Typography key={line} variant="body2">{line}</Typography>)}</Box>;
+  if (!findings.length && !emergence) return null;
+  return (
+    <Box sx={{ display: 'grid', gap: 1 }}>
+      {findings.map((line) => <Alert severity="info" key={line}>{line}</Alert>)}
+      {emergence && <Typography variant="body2">{emergence}</Typography>}
+    </Box>
+  );
 }

@@ -91,8 +91,22 @@ live check expose `germination_findings` and `expected_emergence`.
 For direct sowing, planting date is sowing date. For own propagation, subtract
 its effective propagation duration (zero is valid); without a duration no
 sowing/emergence date can be computed. Bought-in plants have neither these
-hints nor expected emergence. Hints never block saving. The plan dialog
-shows hints and emergence, and table/card icons expose the same information.
+hints nor expected emergence. Hints never block saving.
+
+Where they are shown (#1188):
+
+- **Table:** the findings sit on the Aussaattermin cell, with the dotted
+  underline and full-cell tooltip that timing-window findings use
+  (`TimingWindowDateCell` with `germinationFindings`). One tooltip lists both
+  kinds of hints. A plan without findings shows nothing, and there is no icon
+  next to the crop name.
+- **Mobile cards:** the findings join the timing-window hint icon in the card
+  header (`TimingWindowIcon`).
+- **Plan dialog and expanded card:** the findings and the expected emergence
+  (`GerminationInfo`), worded with its basis: "Keimlinge sichtbar ca.
+  29.01.–05.02.2026 (Aussaat 22.01.2026 + 7–14 Tage Keimdauer)". The days are
+  the distance from the sowing date to the emergence dates. Without a known
+  sowing date, the line omits the parenthesis.
 No temperature suitability check is performed; that needs weather/location
 data and belongs to #872.
 

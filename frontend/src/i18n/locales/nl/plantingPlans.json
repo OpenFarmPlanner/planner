@@ -389,8 +389,9 @@
   "germination": {
     "cold_period_required": "Het zaad heeft een koudeperiode nodig.",
     "propagation_shorter_than_germination": "De opkweekduur is korter dan de kiemtijd.",
-    "emergence": "Verwachte opkomst rond {{from}}–{{to}}",
-    "hints": "Kiemtips"
+    "emergence": "Kiemplanten zichtbaar rond {{from}}–{{to}}",
+    "emergenceWithBasis_one": "Kiemplanten zichtbaar rond {{from}}–{{to}} (gezaaid {{sowing}} + {{days}} dag kiemtijd)",
+    "emergenceWithBasis_other": "Kiemplanten zichtbaar rond {{from}}–{{to}} (gezaaid {{sowing}} + {{days}} dagen kiemtijd)"
   },
   "tableHeaders": {
     "sowingDate": "Zaaidatum",
