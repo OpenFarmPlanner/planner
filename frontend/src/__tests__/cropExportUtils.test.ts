@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { buildAllCropsExport, buildSingleCropExport, buildSingleCropFilename, slugifyFilenamePart, toPortableCrop } from '../crops/exportUtils';
+import i18n from '../i18n';
+
+const de = i18n.getFixedT('de') as unknown as (key: string) => string;
 import type { Crop } from '../api/types';
 import { buildCompanionItemsByCrop } from '../crops/companions';
 import { parseCropImportJson } from '../crops/importUtils';
@@ -65,18 +68,19 @@ describe('crop export mapping', () => {
 
   it('buildSingleCropFilename uses crop name and variety, not supplier', () => {
     const date = new Date('2026-06-29T00:00:00Z');
-    expect(buildSingleCropFilename(crop, date)).toBe('kultur_tomate_roma_2026-06-29.json');
+    expect(buildSingleCropFilename(crop, de, date)).toBe('kultur_tomate_roma_2026-06-29.json');
   });
 
   it('buildSingleCropFilename uses "unbekannt" for empty variety but never for the name itself', () => {
     const noVariety: Crop = { ...crop, variety: undefined };
     const date = new Date('2026-06-29T00:00:00Z');
-    expect(buildSingleCropFilename(noVariety, date)).toBe('kultur_tomate_unbekannt_2026-06-29.json');
+    expect(buildSingleCropFilename(noVariety, de, date)).toBe('kultur_tomate_unbekannt_2026-06-29.json');
   });
 
   it('slugifyFilenamePart handles german umlauts and special chars', () => {
     expect(slugifyFilenamePart('Möhre & Kohl')).toBe('mohre_kohl');
-    expect(slugifyFilenamePart('')).toBe('unbekannt');
+    expect(slugifyFilenamePart('')).toBe('');
+    expect(slugifyFilenamePart('', 'unbekannt')).toBe('unbekannt');
     expect(slugifyFilenamePart('Anbau-Salat')).toBe('anbau_salat');
   });
 

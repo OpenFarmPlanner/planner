@@ -272,5 +272,12 @@
   },
   "settingsNavigation": {
     "label": "Sections"
+  },
+  "downloadFilenames": {
+    "cropTemplate": "modèle_cultures",
+    "cropExport": "export_cultures",
+    "crop": "culture",
+    "unknown": "inconnu",
+    "accountDataExport": "openfarmplanner-export-données"
   }
 }

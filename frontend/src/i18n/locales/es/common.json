@@ -272,5 +272,12 @@
   },
   "settingsNavigation": {
     "label": "Secciones"
+  },
+  "downloadFilenames": {
+    "cropTemplate": "plantilla_cultivos",
+    "cropExport": "exportación_cultivos",
+    "crop": "cultivo",
+    "unknown": "desconocido",
+    "accountDataExport": "openfarmplanner-exportación-datos"
   }
 }

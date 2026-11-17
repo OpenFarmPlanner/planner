@@ -252,16 +252,16 @@ export function useCropImportExport({
       if (format === 'json') {
         if (exportsSingleCrop) {
           const exportPayload = buildSingleCropExport(selectedCrop, undefined, companionsByCrop);
-          const filename = buildSingleCropFilename(selectedCrop);
+          const filename = buildSingleCropFilename(selectedCrop, t);
           downloadJsonFile(exportPayload, filename);
         } else {
           const exportPayload = buildAllCropsExport(allCrops, undefined, companionsByCrop);
-          const filename = buildAllCropsFilename();
+          const filename = buildAllCropsFilename(t);
           downloadJsonFile(exportPayload, filename);
         }
       } else {
         const cropsToExport: Crop[] = exportsSingleCrop ? [selectedCrop] : allCrops;
-        const filename = buildSpreadsheetFilename(format, scope === 'current' ? 'single' : 'all', selectedCrop ?? undefined);
+        const filename = buildSpreadsheetFilename(format, scope === 'current' ? 'single' : 'all', t, selectedCrop ?? undefined);
         exportCropsToSpreadsheet(cropsToExport, format, filename, exportT, companionsByCrop, exportLanguage);
       }
       showSnackbar(t('export.success'), 'success');

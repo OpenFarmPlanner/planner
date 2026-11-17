@@ -272,5 +272,12 @@
   },
   "settingsNavigation": {
     "label": "Sezioni"
+  },
+  "downloadFilenames": {
+    "cropTemplate": "modello_colture",
+    "cropExport": "esportazione_colture",
+    "crop": "coltura",
+    "unknown": "sconosciuto",
+    "accountDataExport": "openfarmplanner-esportazione-dati"
   }
 }

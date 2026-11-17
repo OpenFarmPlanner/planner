@@ -1,6 +1,7 @@
 import { SPECIFIC_PROPERTY_PREFIX, specificPropertyDefinitions } from './specificProperties';
 import type { Crop } from '../api/types';
 import { toPortableCrop, slugifyFilenamePart } from './exportUtils';
+import { buildDownloadFilename, downloadFilenameWord } from '../utils/downloadFilename';
 import { formatCompanionCell, type CompanionItemsByKind } from './companions';
 import { getLocalizedCropColumns } from './spreadsheetColumns';
 import { formatTimingWindows, windowsOfKind } from './timingWindows';
@@ -109,13 +110,14 @@ export const exportCropsToSpreadsheet = (
 export const buildSpreadsheetFilename = (
   format: SpreadsheetExportFormat,
   scope: 'single' | 'all',
+  t: (key: string) => string,
   crop?: Crop,
 ): string => {
-  const ext = format;
   if (scope === 'single' && crop) {
-    const supplier = slugifyFilenamePart(crop.supplier?.name ?? crop.seed_supplier ?? '');
-    const variety = slugifyFilenamePart(crop.variety ?? '');
-    return `kultur_${supplier}_${variety}_${formatIsoDate()}.${ext}`;
+    const unknown = downloadFilenameWord(t, 'unknown');
+    const supplier = slugifyFilenamePart(crop.supplier?.name ?? crop.seed_supplier ?? '', unknown);
+    const variety = slugifyFilenamePart(crop.variety ?? '', unknown);
+    return buildDownloadFilename(t, 'crop', format, [supplier, variety, formatIsoDate()]);
   }
-  return `kulturen_export_${formatIsoDate()}.${ext}`;
+  return buildDownloadFilename(t, 'cropExport', format, [formatIsoDate()]);
 };

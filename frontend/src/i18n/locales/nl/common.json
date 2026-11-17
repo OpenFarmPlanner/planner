@@ -271,5 +271,12 @@
   },
   "settingsNavigation": {
     "label": "Secties"
+  },
+  "downloadFilenames": {
+    "cropTemplate": "gewassen_sjabloon",
+    "cropExport": "gewassen_export",
+    "crop": "gewas",
+    "unknown": "onbekend",
+    "accountDataExport": "openfarmplanner-gegevensexport"
   }
 }
