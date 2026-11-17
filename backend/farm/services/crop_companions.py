@@ -303,7 +303,9 @@ def _resolve_legacy_entry(
     The note after the dash belongs only to the name directly before it.
     """
     def resolves(names: list[str]) -> bool:
-        return bool(names) and all(resolver.resolve(name, create=False).type != TARGET_TEXT for name in names)
+        return bool(names) and all(
+            resolver.resolve(name, create=False).type != TARGET_TEXT for name in names
+        )
 
     plain = {**item, 'note': ''}
     names = _legacy_names(entry)
@@ -318,11 +320,16 @@ def _resolve_legacy_entry(
         prefix, note = candidates[0]
         reason, note = _legacy_reason(note)
         if len(note) > 500:
-            raise ValidationError('Companion notes allow at most 500 characters.', code='companion_notes_invalid')
+            raise ValidationError(
+                'Companion notes allow at most 500 characters.', code='companion_notes_invalid',
+            )
         noted = {**item, 'name': prefix[-1], 'note': note, 'reason': reason or item['reason']}
         return [*({**plain, 'name': name} for name in prefix[:-1]), noted], None
     if len(entry) > 200:
-        raise ValidationError('The unresolved companion name exceeds 200 characters; split or correct the group.', code='companion_notes_invalid')
+        raise ValidationError(
+            'The unresolved companion name exceeds 200 characters; split or correct the group.',
+            code='companion_notes_invalid',
+        )
     return [{**plain, 'name': entry}], entry
 
 
