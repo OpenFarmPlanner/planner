@@ -108,8 +108,7 @@ const findSettledOptions = async (expectedCount: number) => {
   return screen.getAllByRole('option');
 };
 
-// Nothing is auto-selected any more (not even an exact name match) — every
-// test that publishes now has to pick the species option explicitly first.
+// Explicit selection for tests that exercise a manual choice or a species change.
 const selectSpeciesOption = async (name: string): Promise<void> => {
   const input = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
   if (input.getAttribute('aria-expanded') !== 'true') fireEvent.mouseDown(input);
@@ -203,7 +202,7 @@ describe('CropsPublishingWizardDialog', () => {
     const speciesInput = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
     await waitFor(() => expect(speciesInput).toHaveValue('Tomate'));
     const user = userEvent.setup();
-    fireEvent.click(await screen.findByRole('option', { name: 'Tomate' }));
+    await findEnabledPublishButton();
     expect(await screen.findByDisplayValue('Tomate')).toBeInTheDocument();
 
     await user.clear(speciesInput);
@@ -553,11 +552,11 @@ describe('CropsPublishingWizardDialog', () => {
 
     renderWizard({ ...CROP, name: 'Porree', variety: '' });
 
-    const option = await screen.findByRole('option', { name: 'Lauch Synonym: Porree · Allium ampeloprasum' });
-    expect(screen.queryByText(/wird als/)).not.toBeInTheDocument();
-    fireEvent.click(option);
-
+    const input = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
+    await waitFor(() => expect(input).toHaveValue('Lauch'));
     expect(await screen.findByText('Deine Kultur „Porree“ wird als „Lauch“ veröffentlicht.')).toBeInTheDocument();
+    fireEvent.mouseDown(input);
+    expect(await screen.findByRole('option', { name: 'Lauch Synonym: Porree · Allium ampeloprasum' })).toBeInTheDocument();
   });
 
   describe('picking an official species after typing', () => {
@@ -642,6 +641,7 @@ describe('CropsPublishingWizardDialog', () => {
       ));
       render(renderOpenable(true));
       const speciesInput = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
+      fireEvent.mouseDown(speciesInput);
       expect(await screen.findByRole('option', { name: /^Futtererbse/ })).toBeInTheDocument();
       const user = userEvent.setup();
       // Typing over the selected prefill, as users do: the field never goes
@@ -673,10 +673,12 @@ describe('CropsPublishingWizardDialog', () => {
 
       const reopenedInput = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
       await waitFor(() => expect(reopenedInput).toHaveValue('Zuckererbse'));
-      // The prefilled crop name is not a pick: nothing is selected, so the
-      // field and the publish button agree.
-      expect(await screen.findByRole('button', { name: 'Jetzt veröffentlichen' })).toBeDisabled();
+      await waitFor(() => expect(searchedQueries().at(-1)).toBe('Zuckererbse'));
+      expect(await findEnabledPublishButton()).toBeEnabled();
+      const currentInput = screen.getByRole('combobox', { name: /Offizielle Kulturart/i });
+      expect(currentInput).toHaveAttribute('aria-expanded', 'false');
       expect(screen.queryByText(/wird als/)).not.toBeInTheDocument();
+      await user.click(currentInput);
       const options = await findSettledOptions(2);
       expect(options.map((option) => option.textContent)).toEqual(['Zuckererbse', 'Futtererbse']);
     });
@@ -708,6 +710,30 @@ describe('CropsPublishingWizardDialog', () => {
     // A failed proposal must not publish the variety under a species that
     // does not exist.
     expect(publishPreviewMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { name: 'Brokkoli', variety: '' },
+    { name: 'Brokkoli', variety: 'Calabrese' },
+    { name: 'Asparagus broccoli', variety: '' },
+  ])('preselects an exact species without an existing library entry for $name / $variety', async ({ name, variety }) => {
+    cropSpeciesListMock.mockResolvedValue({ data: { count: 1, next: null, results: [
+      { id: 42, name: 'Brokkoli', status: 'published', search_names: ['Brokkoli', 'Asparagus broccoli'] },
+    ] } });
+    const onPublish = vi.fn();
+    const crop = { ...CROP, name, variety };
+    renderWizard(crop, { onPublish });
+    const submit = await findEnabledPublishButton();
+    const input = screen.getByRole('combobox', { name: /Offizielle Kulturart/i });
+    expect(input).toHaveValue('Brokkoli');
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(onPublish).not.toHaveBeenCalled();
+    expect(crop.crop_species).toBeUndefined();
+    fireEvent.click(submit);
+    await waitFor(() => expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
+      cropSpeciesId: 42, originalLanguageCode: 'de', ...(variety ? {} : { publishAsGeneral: true }),
+    })));
   });
 
   it('opens the comparison directly for a unique existing variety and saves only on confirmation', async () => {
@@ -772,6 +798,7 @@ describe('CropsPublishingWizardDialog', () => {
     await waitFor(() => expect(publicCropListMock).toHaveBeenCalled());
     expect(screen.getByRole('dialog', { name: 'Kultur verknüpfen oder veröffentlichen' })).toBeVisible();
     expect(screen.getAllByRole('combobox')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Jetzt veröffentlichen' })).toBeDisabled();
     expect(publicSyncPreviewMock).not.toHaveBeenCalled();
   });
 

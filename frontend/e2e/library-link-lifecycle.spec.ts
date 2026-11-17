@@ -182,6 +182,60 @@ test('correcting the crop species to one that already has the variety shows the 
   await expect(dialog).toBeVisible();
 });
 
+test('an exact species is preselected for a new publication without another dropdown click', async ({ page, request }, testInfo) => {
+  test.setTimeout(90_000);
+  const scenario = `library-preselected-species-${Date.now()}`;
+  try {
+    await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true, libraryModerator: true });
+    const species = await apiRequest<CropSpecies>(page, 'POST', '/crop-species/', { name: `Synthetic preselected species ${scenario}` });
+    await apiRequest(page, 'POST', `/crop-species/${species.id}/approve/`, {
+      translations: ['de', 'en', 'fr', 'es', 'it', 'pt', 'nl'].map((language_code) => ({ language_code, common_name: species.name })),
+    });
+    const crop = await apiRequest<CropRow & { crop_species: number | null }>(page, 'POST', '/crops/', {
+      name: species.name, variety: '', growth_duration_days: 40, harvest_duration_days: 20,
+    });
+    await page.goto(`/app/crops?cropId=${crop.id}`);
+    await page.getByTestId('crop-detail-publish-action').click();
+    const dialog = page.getByRole('dialog', { name: germanCrops.library.publishWizard.title, exact: true });
+    const selected = dialog.getByRole('combobox', { name: /Offizielle Kulturart/i });
+    const publish = dialog.getByRole('button', { name: germanCrops.library.publishWizard.publishNow, exact: true });
+    await expect(publish).toBeEnabled();
+    await expect(selected).toHaveValue(species.name);
+    await expect(selected).toHaveAttribute('aria-expanded', 'false');
+    await expect(dialog.getByRole('listbox')).toHaveCount(0);
+    const unchanged = await apiRequest<{ crop_species: number | null; source_public_crop: number | null }>(page, 'GET', `/crops/${crop.id}/`);
+    expect(unchanged.crop_species).toBe(crop.crop_species);
+    expect(unchanged.source_public_crop).toBeNull();
+    for (const viewport of [{ width: 375, height: 800 }, { width: 768, height: 900 },
+      { width: 1024, height: 900 }, { width: 1440, height: 900 }, { width: 800, height: 375 }]) {
+      await page.setViewportSize(viewport);
+      await expect(publish).toBeInViewport();
+      await expectNoHorizontalPageOverflow(page);
+      await page.screenshot({ path: testInfo.outputPath(`preselected-species-${viewport.width}.png`), animations: 'disabled' });
+    }
+    await selected.focus();
+    await selected.press('Escape');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await expect(publish).toBeFocused();
+    await publish.press('Space');
+    const consent = dialog.getByRole('checkbox', { name: germanCrops.library.publishConfirm.acceptLicense, exact: true });
+    await expect(async () => {
+      expect((await dialog.isVisible()) ? await consent.isVisible() : true).toBe(true);
+    }).toPass({ timeout: 10_000 });
+    if (await consent.isVisible()) {
+      await consent.check();
+      await publish.click();
+    }
+    await expect(dialog).toBeHidden();
+    const published = await apiRequest<{ crop_species: number; source_public_crop: number | null }>(page, 'GET', `/crops/${crop.id}/`);
+    expect(published.crop_species).toBe(species.id);
+    expect(published.source_public_crop).not.toBeNull();
+  } finally {
+    await resetE2EScenario(request, scenario);
+  }
+});
+
 test('the publishing picker has one selector and fixed keyboard proposal actions on mobile and desktop', async ({ page, request }, testInfo) => {
   test.setTimeout(90_000);
   const scenario = `library-single-picker-${Date.now()}`;

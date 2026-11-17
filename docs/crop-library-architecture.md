@@ -826,8 +826,9 @@ reason the wizard searches for what the user *types* only
 (`speciesSearchQuery`, fed by the picker's `'input'`/`'clear'` changes):
 picking an option writes its canonical `name` into the field, and searching
 for that would replace the list the user just picked from. Every opening of
-the wizard resolves the crop's own name afresh. A unique existing identity can
-open the comparison directly; otherwise the picker starts without a selection.
+the wizard resolves the crop's own name afresh. A unique exact species match is
+preselected, even if no library entry exists yet. The picker starts without a
+selection only when that species identity is unresolved.
 A manual pick is never carried over from an earlier opening.
 
 The match source comes from the search itself. `GET /api/crop-species/?q=…`
@@ -1811,12 +1812,14 @@ main action then reads "Weiter zum Abgleich" instead of offering a new
 publication. Failed lookups block publication and offer retry; an in-flight or
 stale lookup cannot be interpreted as absence of an entry.
 
-On opening, a unique exact species name or alias match can bypass that initial
-picker and open the existing field comparison directly when exactly one
-published entry matches the crop's granularity and variety. An existing
+On opening, a unique exact species name or alias match is preselected without
+requiring the user to pick the same name again. The selected species dropdown
+starts closed; the user can publish a new entry with the final action or change
+the species explicitly. When exactly one published entry matches the crop's
+granularity and variety, the existing field comparison opens directly instead. An existing
 `crop_species` identity takes precedence over names. Similar names, ambiguous
-aliases, incomplete species-search pages, and multiple matching entries never
-choose an identity silently. Typing or choosing manually stops this shortcut
+aliases and incomplete species-search pages still require an explicit species
+choice; multiple matching library entries never choose a link target automatically. Typing or choosing manually stops this shortcut
 for that opening; returning from the comparison keeps the explicit choice.
 These lookups and comparisons do not write the crop. Only final confirmation
 links it and applies the chosen values atomically; cancel discards staged

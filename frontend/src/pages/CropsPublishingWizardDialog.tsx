@@ -228,8 +228,8 @@ export function CropsPublishingWizardDialog({
       setAcceptedLicense(false);
       setHealthMappings([]);
       setShowLicenseConfirmation(false);
-      // Only a unique existing entry can bypass the picker. New publications
-      // still require an explicit species choice and final confirmation.
+      // Resolve the species afresh on each opening; publication and linking
+      // still require final confirmation.
       setSelectedSpecies(null);
       setManualSpeciesChoice(false);
       setEntryLookupKey('');
@@ -356,12 +356,12 @@ export function CropsPublishingWizardDialog({
   }, [crop?.name, crop?.crop_species, crop?.variety, isSyncFlow, open, lookupSpecies, entryRequestKey]);
 
   useEffect(() => {
-    if (!open || !automaticSpecies || !selectedPublicCrop || entryLookupKey !== entryRequestKey) return;
+    if (!open || !automaticSpecies || entryLookupKey !== entryRequestKey) return;
     queueMicrotask(() => {
       setManualSpeciesChoice(true);
       setSelectedSpecies(automaticSpecies);
       setSpeciesInputValue(getCropSpeciesResultLabel(automaticSpecies, originalLanguageCode).label);
-      setShowLinkConfirmation(true);
+      setShowLinkConfirmation(Boolean(selectedPublicCrop));
     });
   }, [automaticSpecies, entryLookupKey, entryRequestKey, open, originalLanguageCode, selectedPublicCrop]);
 
@@ -899,7 +899,7 @@ export function CropsPublishingWizardDialog({
               inputRef={speciesInputRef}
               required
               serverSearched
-              autoFocus={!hasOpenHealthMappings}
+              autoFocus={!hasOpenHealthMappings && !selectedSpecies && !automaticSpecies}
             />
 
             {varietySelectionBox}
