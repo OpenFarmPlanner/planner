@@ -311,18 +311,28 @@ including a section containing only inherited selections. An explicit empty
 wrapper suppresses that fallback. Moderated edits validate retained references
 against the same existing public entry as direct edits.
 
-The publication and linked-entry sync dialog offers an explicit mapping panel
-for each crop's unresolved names, including selected varieties. **Save mapping**
-is a separate private write: it persists immediately even if publication is later
-cancelled, and the panel states this before the action. It replaces only the
-chosen local name on that project crop with a currently published stable UUID.
-It never infers a match from typed text, publishes a library entry or creates
-sourced host evidence. A variety's inherited names are mapped explicitly on its
-general culture instead: the dialog names that culture and explains the effect
-on every inheriting variety. The variety keeps its stored null and live inheritance;
-it is never silently frozen into an override. New catalogue proposals use the existing
-one-language moderation endpoint, start as broad pending concepts and keep the
-private name unresolved until moderation and a later explicit mapping.
+The publication and linked-entry sync dialog only offers mapping rows for private
+names without a catalogue UUID, including selected varieties. Choosing a catalogue
+entry stages a mapping in dialog state; there is no separate save button. Cancel
+leaves the project's selections unchanged. The final publish, link or sync action
+sends the relevant mappings with the crop's expected timestamp. The existing
+mapping service and the final library action run in one transaction; validation,
+version conflicts and failed actions roll back the mappings and their crop history.
+Mapping previews use a rolled-back transaction and never persist the previewed
+selection or emit commit notifications.
+
+An inherited variety stages its mapping on the general culture, with that
+culture's expected timestamp, preserving the variety's stored null and live
+inheritance. Co-published varieties retain the existing per-variety result report;
+each variety's own mappings commit only with its successful library action.
+Mappings do not infer an identity from typed text or create host evidence.
+
+Species and plant-health pickers keep their proposal action outside the scrollable
+result list. Tab reaches the action, and Enter or Space activates it. Plant-health
+suggestions use the existing one-language moderation endpoint in the UI language;
+a visible pending proposal cannot be selected as a published mapping target. The
+success notice explains that cancellation does not withdraw an explicitly submitted
+proposal and that the name stays private until approval and explicit mapping.
 
 `POST /api/crops/{id}/plant-health/mappings/` accepts `expected_updated_at` and
 `mappings: [{local_name, catalogue_identity}]` (one or more unique local names). Project

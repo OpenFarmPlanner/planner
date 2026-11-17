@@ -19,6 +19,7 @@ const {
   publicCropGetMock,
   publishPreviewMock,
   publicSyncPreviewMock,
+  healthListMock,
 } = vi.hoisted(() => ({
   cropSpeciesListMock: vi.fn(),
   cropSpeciesProposeMock: vi.fn(),
@@ -26,7 +27,10 @@ const {
   publicCropGetMock: vi.fn(),
   publishPreviewMock: vi.fn(),
   publicSyncPreviewMock: vi.fn(),
+  healthListMock: vi.fn(),
 }));
+
+vi.mock('../crop-library/plant-health/api', () => ({ plantHealthAPI: { list: healthListMock } }));
 
 vi.mock('../api/api', async () => {
   const actual = await vi.importActual<typeof import('../api/api')>('../api/api');
@@ -163,7 +167,7 @@ describe('CropsPublishingWizardDialog', () => {
     const user = userEvent.setup();
     await user.type(speciesInput, 'Kürbis');
 
-    const proposeOption = await screen.findByRole('option', { name: /Kürbis.*als neue Kulturart vorschlagen/i });
+    const proposeOption = await screen.findByRole('button', { name: /Kürbis.*als neue Kulturart vorschlagen/i });
     fireEvent.click(proposeOption);
 
     // Picking the option only arms the dialog: no request yet, the typed text
@@ -204,7 +208,7 @@ describe('CropsPublishingWizardDialog', () => {
     await user.clear(speciesInput);
     await user.type(speciesInput, 'Ackerbohne test');
 
-    const proposeOption = await screen.findByRole('option', { name: /Ackerbohne test.*als neue Kulturart vorschlagen/i });
+    const proposeOption = await screen.findByRole('button', { name: /Ackerbohne test.*als neue Kulturart vorschlagen/i });
     fireEvent.click(proposeOption);
 
     expect(await screen.findByDisplayValue('Ackerbohne test')).toBeInTheDocument();
@@ -231,9 +235,10 @@ describe('CropsPublishingWizardDialog', () => {
     const user = userEvent.setup();
     await user.type(speciesInput, 'teste DE');
 
-    expect(await screen.findByRole('option', { name: /teste DE.*als neue Kulturart vorschlagen/i })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /teste DE.*als neue Kulturart vorschlagen/i })).toBeInTheDocument();
 
     await user.tab();
+    await user.keyboard('{Enter}');
 
     expect(await screen.findByDisplayValue('teste DE')).toBeInTheDocument();
     expect(screen.getByText(/Deine Sorte wird vorläufig unter „teste DE“ veröffentlicht/)).toBeInTheDocument();
@@ -264,7 +269,7 @@ describe('CropsPublishingWizardDialog', () => {
     const user = userEvent.setup();
     await user.type(speciesInput, 'sdfsd');
 
-    fireEvent.click(await screen.findByRole('option', { name: /sdfsd.*als neue Kulturart vorschlagen/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /sdfsd.*als neue Kulturart vorschlagen/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Kulturart vorschlagen' }));
 
     await waitFor(() => expect(cropSpeciesProposeMock).toHaveBeenCalledWith('sdfsd', 'de'));
@@ -367,11 +372,10 @@ describe('CropsPublishingWizardDialog', () => {
     await user.clear(speciesInput);
     await user.type(speciesInput, 'Kürb');
 
-    const options = await findSettledOptions(3);
+    const options = await findSettledOptions(2);
     expect(options.map((option) => option.textContent)).toEqual([
       'Kürbis',
       'Kürbis Butternut',
-      'Neue Kulturart vorschlagen„Kürb“',
     ]);
   });
 
@@ -383,7 +387,7 @@ describe('CropsPublishingWizardDialog', () => {
     await user.clear(speciesInput);
     await user.click(speciesInput);
 
-    expect(screen.queryByRole('option', { name: /als neue Kulturart vorschlagen/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /als neue Kulturart vorschlagen/i })).not.toBeInTheDocument();
   });
 
   it('hides the proposal entry when the typed text already names an existing species', async () => {
@@ -414,7 +418,7 @@ describe('CropsPublishingWizardDialog', () => {
     await user.type(speciesInput, 'kürbis');
 
     expect(await screen.findByRole('option', { name: 'Kürbis' })).toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: /als neue Kulturart vorschlagen/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /als neue Kulturart vorschlagen/i })).not.toBeInTheDocument();
   });
 
   it('matches regional species aliases and hides the proposal option', async () => {
@@ -447,7 +451,7 @@ describe('CropsPublishingWizardDialog', () => {
     await user.type(speciesInput, 'Paradeiser');
 
     expect(await screen.findByRole('option', { name: 'Tomate Synonym: Paradeiser' })).toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: /Paradeiser.*als neue Kulturart vorschlagen/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Paradeiser.*als neue Kulturart vorschlagen/i })).not.toBeInTheDocument();
   });
 
   it('offers every species an ambiguous alias can mean', async () => {
@@ -521,10 +525,9 @@ describe('CropsPublishingWizardDialog', () => {
     await user.clear(speciesInput);
     await user.type(speciesInput, 'Paradei');
 
-    const options = await findSettledOptions(2);
+    const options = await findSettledOptions(1);
     expect(options.map((option) => option.textContent)).toEqual([
       'Tomate Synonym: Paradeis',
-      'Neue Kulturart vorschlagen„Paradei“',
     ]);
   });
 
@@ -647,7 +650,7 @@ describe('CropsPublishingWizardDialog', () => {
 
       await waitFor(() => expect(searchedQueries()).toContain('zuck'));
       expect(screen.queryByRole('option', { name: /^Futtererbse/ })).not.toBeInTheDocument();
-      expect(screen.queryByRole('option', { name: /als neue Kulturart vorschlagen/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /als neue Kulturart vorschlagen/ })).not.toBeInTheDocument();
       expect(screen.getByText('Lädt...')).toBeInTheDocument();
 
       resolvePending(page(resultsByQuery.zuck));
@@ -674,7 +677,7 @@ describe('CropsPublishingWizardDialog', () => {
       expect(screen.getByRole('button', { name: 'Jetzt veröffentlichen' })).toBeDisabled();
       expect(screen.queryByText(/wird als/)).not.toBeInTheDocument();
       const options = await findSettledOptions(2);
-      expect(options.map((option) => option.textContent)).toEqual(['Zuckererbse', 'Futtererbse Ähnlicher Name']);
+      expect(options.map((option) => option.textContent)).toEqual(['Zuckererbse', 'Futtererbse']);
     });
   });
 
@@ -694,7 +697,7 @@ describe('CropsPublishingWizardDialog', () => {
     const user = userEvent.setup();
     await user.type(speciesInput, 'Kürbis');
 
-    const proposeOption = await screen.findByRole('option', { name: /Kürbis.*als neue Kulturart vorschlagen/i });
+    const proposeOption = await screen.findByRole('button', { name: /Kürbis.*als neue Kulturart vorschlagen/i });
     fireEvent.click(proposeOption);
     fireEvent.click(await screen.findByRole('button', { name: 'Kulturart vorschlagen' }));
 
@@ -1054,6 +1057,34 @@ describe('CropsPublishingWizardDialog', () => {
     expect(await screen.findByLabelText(/Offizielle Kulturart/i)).toBeInTheDocument();
     expect(screen.queryByText('Mit Kulturbibliothek abgleichen')).not.toBeInTheDocument();
     expect(publicSyncPreviewMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps staged health mappings on a failed publication and discards them on cancellation', async () => {
+    const identity = '00000000-0000-4000-8000-000000000123';
+    healthListMock.mockResolvedValue({ data: { results: [{ id: 123, identity_key: identity,
+      name: 'Official pathogen', display_name: 'Official pathogen', status: 'published',
+      kind: 'pathogen', scientific_name: '', translations: [] }] } });
+    const original = { ...CROP, updated_at: '2026-11-17T01:00:00Z',
+      plant_health: { entries: [{ name: 'Private pathogen' }] } };
+    const onPublish = vi.fn().mockResolvedValue(false);
+    const onClose = vi.fn();
+    renderWizard(original, { onPublish, onClose });
+    await userEvent.setup().click(await screen.findByRole('option', { name: 'Tomate', exact: true }));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('combobox', { name: 'Katalogeintrag für „Private pathogen“' }));
+    await user.click(await screen.findByRole('option', { name: /^Official pathogen/ }));
+    expect(onPublish).not.toHaveBeenCalled();
+    await user.click(await findEnabledPublishButton());
+    await waitFor(() => expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
+      cropUpdatedAt: original.updated_at,
+      healthMappings: [{ crop_id: CROP.id, expected_updated_at: original.updated_at,
+        mappings: [{ local_name: 'Private pathogen', catalogue_identity: identity, catalogue_name: 'Official pathogen' }] }],
+    })));
+    expect(screen.getByRole('dialog')).toBeVisible();
+    expect(original.plant_health.entries).toEqual([{ name: 'Private pathogen' }]);
+    expect(onClose).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Abbrechen', exact: true }));
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it('prefills the species field with the local crop name on open, for crop-level and variety crops', async () => {

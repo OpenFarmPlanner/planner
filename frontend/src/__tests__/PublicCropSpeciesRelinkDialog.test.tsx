@@ -64,7 +64,7 @@ const pickSpecies = async (typed: string, optionName: RegExp) => {
   // be cleared before typing a replacement search term.
   await user.clear(field);
   await user.type(field, typed);
-  await user.click(await screen.findByRole('option', { name: optionName }));
+  await user.click(await screen.findByRole(optionName.source.includes('vorschlagen') ? 'button' : 'option', { name: optionName }));
   return user;
 };
 

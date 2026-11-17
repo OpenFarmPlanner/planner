@@ -49,7 +49,11 @@ export function usePublicCropSyncPreview(
     });
     if (!enabled || !cropId || !publicCropId) return undefined;
     let cancelled = false;
-    cropAPI.publicSyncPreview(cropId, publicCropId, JSON.parse(mappingKey) as StagedPlantHealthMapping[], expectedUpdatedAt)
+    const mappings = JSON.parse(mappingKey) as StagedPlantHealthMapping[];
+    const request = mappings.length
+      ? cropAPI.publicSyncPreview(cropId, publicCropId, mappings, expectedUpdatedAt)
+      : cropAPI.publicSyncPreview(cropId, publicCropId);
+    request
       .then((response) => {
         if (cancelled) return;
         setPreview(response.data);

@@ -8,6 +8,22 @@ import fr from '../src/i18n/locales/fr/crops.json' with { type: 'json' };
 
 test.use({ serviceWorkers: 'block' });
 
+async function finishPublication(page: Page, dialog: Locator, speciesName: string) {
+  await dialog.getByRole('combobox', { name: /Offizielle Kulturart/ }).fill(speciesName);
+  await page.getByRole('option', { name: speciesName, exact: true }).click();
+  const submit = dialog.getByRole('button', { name: de.library.publishWizard.publishNow, exact: true });
+  await submit.click();
+  const consent = dialog.getByRole('checkbox', { name: de.library.publishConfirm.acceptLicense, exact: true });
+  await expect(async () => {
+    expect((await dialog.isVisible()) ? await consent.isVisible() : true).toBe(true);
+  }).toPass({ timeout: 10_000 });
+  if (await consent.isVisible()) {
+    await consent.check();
+    await submit.click();
+  }
+  await expect(dialog).toBeHidden();
+}
+
 for (const width of [375, 1440]) {
   test(`explicit plant-health mapping, public editing and local pins at ${width}px`, async ({ page, request }, info) => {
     test.setTimeout(180_000);
@@ -39,7 +55,8 @@ for (const width of [375, 1440]) {
       const mapping = dialog.getByRole('group', { name: privateName, exact: true });
       await expect(mapping).toBeVisible();
       const retained = dialog.getByRole('group', { name: retainedName, exact: true });
-      await retained.getByRole('button', { name: de.plantHealth.publication.propose, exact: true }).click();
+      await retained.getByRole('combobox').click();
+      await page.getByRole('button', { name: de.plantHealth.publication.proposeName.replace('{{name}}', retainedName), exact: true }).click();
       await expect(retained).toContainText(de.plantHealth.publication.proposed);
       expect((await apiRequest<Crop>(page, 'GET', `/crops/${crop.id}/`)).plant_health).toEqual(crop.plant_health);
       await mapping.getByRole('combobox').fill(scenario);
@@ -48,20 +65,22 @@ for (const width of [375, 1440]) {
       await expect(page.getByRole('option', { name: new RegExp(`Syntheticus first ${scenario}`) })).toBeVisible();
       await page.screenshot({ path: info.outputPath(`mapping-options-${width}.png`), animations: 'disabled' });
       await option.click();
-      await mapping.getByRole('button', { name: de.plantHealth.publication.map, exact: true }).click();
-      await expect(dialog).toContainText(de.plantHealth.publication.saved);
-      await expect(mapping).toHaveCount(0);
+      await expect(mapping.getByRole('button', { name: de.plantHealth.publication.map, exact: true })).toHaveCount(0);
+      expect((await apiRequest<Crop>(page, 'GET', `/crops/${crop.id}/`)).plant_health).toEqual(crop.plant_health);
       await expectNoHorizontalPageOverflow(page);
       await page.screenshot({ path: info.outputPath(`mapping-saved-${width}.png`), animations: 'disabled' });
       await dialog.getByRole('button', { name: 'Abbrechen', exact: true }).click();
       const mapped = await apiRequest<Crop>(page, 'GET', `/crops/${crop.id}/`);
       expect(mapped.source_public_crop).toBeNull();
-      expect(mapped.plant_health?.entries).toEqual(expect.arrayContaining([{ name: retainedName }, { name: second.name, catalogue_identity: second.identity_key }]));
+      expect(mapped.plant_health).toEqual(crop.plant_health);
       expect(mapped.pests_diseases).toBe(notes);
-      const published = await apiRequest<{ public_crop: PublicCrop }>(page, 'POST', `/crops/${crop.id}/publish-public/`, {
-        accepted_public_library_terms: true, crop_species_id: species.id, original_language_code: 'de',
-      });
-      const publicCrop = published.public_crop;
+      await page.getByTestId('crop-detail-badge-row').getByRole('button', { name: de.library.libraryAction.publish, exact: true }).click();
+      await mapping.getByRole('combobox').fill(scenario);
+      await page.getByRole('option', { name: new RegExp(`Syntheticus second ${scenario}`) }).click();
+      await finishPublication(page, dialog, species.name);
+      const committed = await apiRequest<Crop>(page, 'GET', `/crops/${crop.id}/`);
+      expect(committed.plant_health?.entries).toEqual(expect.arrayContaining([{ name: retainedName }, { name: second.name, catalogue_identity: second.identity_key }]));
+      const publicCrop = await apiRequest<PublicCrop>(page, 'GET', `/public-crops/${committed.source_public_crop}/`);
       expect(publicCrop.plant_health?.entries).toHaveLength(2);
       expect(publicCrop.plant_health?.entries.every(entry => entry.catalogue_identity)).toBe(true);
       await page.goto(`/app/crop-library?cropId=${publicCrop.id}`);
@@ -143,16 +162,19 @@ for (const width of [375, 1440]) {
       await page.getByTestId('crop-detail-badge-row').getByRole('button', { name: de.library.libraryAction.publish, exact: true }).click();
       const dialog = page.getByRole('dialog');
       await expect(dialog).toContainText(`Diese Sorte übernimmt die Einträge von „${parent.name}“.`);
-      await expect(dialog).toContainText('sie gilt für alle erbenden Sorten');
+      await expect(dialog).toContainText('gilt für alle erbenden Sorten');
       const row = dialog.getByRole('group', { name: privateName, exact: true });
       await row.getByRole('combobox').fill(name);
       await page.getByRole('option').filter({ hasText: name }).click();
       await page.screenshot({ path: info.outputPath(`inherited-mapping-${width}.png`), animations: 'disabled' });
-      const requestMapping = page.waitForRequest(request => request.method() === 'POST' && request.url().includes('/plant-health/mappings/'));
-      await row.getByRole('button', { name: de.plantHealth.publication.map, exact: true }).click();
-      expect((await requestMapping).url()).toContain(`/crops/${parent.id}/plant-health/mappings/`);
-      await expect(dialog).toContainText(de.plantHealth.publication.saved);
       await dialog.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+      expect((await apiRequest<Crop>(page, 'GET', `/crops/${parent.id}/`)).plant_health?.entries).toEqual([{ name: privateName }]);
+      await page.getByTestId('crop-detail-badge-row').getByRole('button', { name: de.library.libraryAction.publish, exact: true }).click();
+      await row.getByRole('combobox').fill(name);
+      await page.getByRole('option').filter({ hasText: name }).click();
+      const finalRequest = page.waitForRequest(request => request.method() === 'POST' && request.url().includes(`/crops/${child.id}/publish-public/`));
+      await finishPublication(page, dialog, parent.name);
+      expect((await finalRequest).postDataJSON().plant_health_mappings[0].crop_id).toBe(parent.id);
       const mapped = await apiRequest<Crop>(page, 'GET', `/crops/${child.id}/`);
       expect(mapped.plant_health).toBeNull();
       expect(mapped.effective_values?.plant_health?.entries).toContainEqual({ name, catalogue_identity: entry.identity_key });

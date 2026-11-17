@@ -92,8 +92,6 @@ from farm.services.public_crops import (
     unpublished_reason_for_status,
 )
 
-from .plant_health_publication import with_staged_health_mappings
-
 from ..serializers import (
     CropSerializer,
     PublicCropSerializer,
@@ -104,6 +102,7 @@ from ..serializers.public import (
     PUBLIC_CROP_PROPOSABLE_FIELDS,
     PublicCropChangeProposalSerializer,
 )
+from .plant_health_publication import with_staged_health_mappings
 
 
 def _request_field_list(value: object) -> list[str] | None:
@@ -1063,8 +1062,9 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         return self._apply_public_sync(request, crop)
 
     def _public_sync_preview(self, request: Request, crop: Crop) -> Response:
+        params = request.data if request.method == 'POST' else request.query_params
         target = self._resolve_public_sync_target(
-            request, crop, (request.data if request.method == 'POST' else request.query_params).get('public_crop_id'), require_link=False,
+            request, crop, params.get('public_crop_id'), require_link=False,
         )
         if isinstance(target, Response):
             return target

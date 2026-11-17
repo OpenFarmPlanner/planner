@@ -1,13 +1,14 @@
-import { createContext, forwardRef, useContext, type ReactNode, type RefObject } from 'react';
-import { Box, Button, Paper, type PaperProps } from '@mui/material';
+import { createContext, forwardRef, useContext, type ReactNode } from 'react';
+import { Box, Button, CircularProgress, Paper, type PaperProps } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutlineOutlined';
 
 interface Action {
   label: string;
   name: string;
   disabled?: boolean;
+  busy?: boolean;
   onClick: () => void;
-  buttonRef?: RefObject<HTMLButtonElement | null>;
+  id: string;
   testId?: string;
 }
 
@@ -24,10 +25,12 @@ export const AutocompleteActionPaper = forwardRef<HTMLDivElement, PaperProps>(fu
     {children}
     {action ? <Box sx={{ borderTop: '1px solid', borderColor: 'divider', p: 1 }}>
       <Button fullWidth startIcon={<AddCircleOutlineIcon />} aria-label={action.label}
-        disabled={action.disabled} ref={action.buttonRef} data-testid={action.testId}
+        disabled={action.disabled} id={action.id} data-testid={action.testId}
         onMouseDown={event => event.preventDefault()} onClick={action.onClick}
+        onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); }}
         sx={{ justifyContent: 'flex-start', whiteSpace: 'normal', overflowWrap: 'anywhere', textAlign: 'left' }}>
         {action.name}
+        {action.busy ? <CircularProgress size={16} sx={{ ml: 1 }} /> : null}
       </Button>
     </Box> : null}
   </Paper>;

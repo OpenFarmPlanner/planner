@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type RefObject } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type RefObject } from 'react';
 import {
   Autocomplete,
   type AutocompleteInputChangeReason,
@@ -112,7 +112,9 @@ export function CropSpeciesPicker({
   disabled = false,
 }: CropSpeciesPickerProps) {
   const { t } = useTranslation(['crops', 'common']);
-  const proposalButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const proposalActionId = useId();
+  const inputId = useId();
   // MUI fires the 'reset' input update in the same tick as onChange, before
   // React has re-rendered with the new prop, so that handler cannot read
   // `proposalName` from its closure. This mirror is written by the picker
@@ -155,6 +157,7 @@ export function CropSpeciesPicker({
     if (!canPropose || disabled || proposing) return;
     reportProposalName(proposeName);
     onInputValueChange(proposeName);
+    setOpen(false);
   };
 
   return (
@@ -162,11 +165,24 @@ export function CropSpeciesPicker({
       label: t('library.speciesPicker.proposeInlineLabel', { name: proposeName }),
       name: `${t('library.speciesPicker.proposeInline')} · ${proposeName}`,
       disabled: disabled || proposing,
+      busy: proposing,
       onClick: chooseProposal,
-      buttonRef: proposalButtonRef,
+      id: proposalActionId,
       testId: 'propose-species-option',
     } : null}>
     <Autocomplete<CropSpecies>
+      id={inputId}
+      slotProps={{ popper: {
+        container: () => document.getElementById(inputId)?.closest('[role="dialog"]') ?? document.body,
+        popperOptions: { strategy: 'fixed' },
+        modifiers: [{ name: 'preventOverflow', options: { altAxis: true, padding: 8 } }],
+      } }}
+      open={open} onOpen={() => setOpen(true)} clearOnBlur={false}
+      onClose={(event, reason) => {
+        const target = event && 'relatedTarget' in event ? event.relatedTarget : document.activeElement;
+        if (reason === 'blur' && target instanceof HTMLElement && target.id === proposalActionId) return;
+        setOpen(false);
+      }}
       options={species}
       disabled={disabled}
       value={value}
@@ -204,9 +220,10 @@ export function CropSpeciesPicker({
         );
       }}
       onKeyDown={(event) => {
-        if (event.key === 'Tab' && !event.shiftKey && canPropose && proposalButtonRef.current) {
+        const button = document.getElementById(proposalActionId);
+        if (event.key === 'Tab' && !event.shiftKey && canPropose && !proposing && !disabled && button) {
           event.preventDefault();
-          proposalButtonRef.current.focus();
+          button.focus();
         }
       }}
       onChange={(_, option) => {
@@ -235,7 +252,7 @@ export function CropSpeciesPicker({
       // it is true it renders `loadingText`, whose default is an
       // untranslated "Loading…". The German string has to go there.
       loadingText={<Typography variant="body2" color="text.secondary">{t('common:messages.loading')}</Typography>}
-      noOptionsText={t('library.speciesPicker.noOptions')}
+      noOptionsText={canPropose ? null : t('library.speciesPicker.noOptions')}
       renderInput={(params) => (
         <TextField
           {...params}

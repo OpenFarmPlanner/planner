@@ -560,6 +560,59 @@ class PublicPlantHealthTests(ProjectApiTestCase):
             format="json",
         )
 
+    def staged_mapping(self):
+        return {
+            "expected_updated_at": self.crop.updated_at.isoformat(),
+            "plant_health_mappings": [{
+                "crop_id": self.crop.pk,
+                "expected_updated_at": self.crop.updated_at.isoformat(),
+                "mappings": [{
+                    "local_name": "Unresolved private name",
+                    "catalogue_identity": str(self.entries[1].identity_key),
+                }],
+            }],
+        }
+
+    def test_staged_sync_preview_does_not_save_mappings_or_history(self):
+        before = self.crop.plant_health
+        revisions = EntityRevision.objects.filter(entity_type="crop").count()
+        response = self.sync(preview_only=True, **self.staged_mapping())
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertIn(str(self.entries[1].identity_key), json.dumps(response.data))
+        self.crop.refresh_from_db()
+        self.assertEqual(self.crop.plant_health, before)
+        self.assertEqual(EntityRevision.objects.filter(entity_type="crop").count(), revisions)
+
+    def test_staged_mappings_commit_with_the_final_sync(self):
+        response = self.sync(push_fields=["plant_health"], **self.staged_mapping())
+        self.assertEqual(response.status_code, 200, response.data)
+        self.crop.refresh_from_db()
+        self.public.refresh_from_db()
+        expected = {"entries": [self.official(self.entries[1]), self.official(self.entries[0])]}
+        self.assertEqual(self.crop.plant_health, expected)
+        self.assertEqual(self.public.plant_health, expected)
+
+    def test_failed_sync_rolls_back_staged_mappings_and_history(self):
+        before = self.crop.plant_health
+        revisions = EntityRevision.objects.filter(entity_type="crop").count()
+        response = self.sync(base_version=self.public.version + 1,
+                             push_fields=["plant_health"], **self.staged_mapping())
+        self.assertEqual(response.status_code, 409, response.data)
+        self.crop.refresh_from_db()
+        self.assertEqual(self.crop.plant_health, before)
+        self.assertEqual(EntityRevision.objects.filter(entity_type="crop").count(), revisions)
+
+    def test_staged_publication_preview_is_read_only(self):
+        before = self.crop.plant_health
+        response = self.client.post(self.crop_url + "publish-public/preview/", {
+            "crop_species_id": self.species.pk, "original_language_code": "de",
+            **self.staged_mapping(),
+        }, format="json")
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["unpublishable_plant_health_count"], 0)
+        self.crop.refresh_from_db()
+        self.assertEqual(self.crop.plant_health, before)
+
     def test_public_projection_never_publishes_private_names_or_infers_mapping(self):
         self.crop.plant_health = self.mixed(self.entries[0], "Same label", "Repels aphids")
         self.crop.save()

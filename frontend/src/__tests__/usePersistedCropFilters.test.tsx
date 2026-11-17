@@ -333,13 +333,13 @@ describe('project-scoped plant-health filter state', () => {
     const reopened = renderHook(() => usePersistedCropFilters(new URLSearchParams(), setter, 1));
     expect(reopened.result.current.filters.selectedPlantHealthFilter).toEqual([]);
   });
-  it('restores only matching project metadata and bounds malformed stored selections', () => {
+  it('restores all valid selections for the matching project and rejects malformed entries', () => {
     window.sessionStorage.setItem(CROP_FILTERS_STORAGE_KEY, JSON.stringify({ plantHealthProjectId: 1,
       selectedPlantHealthFilter: [null, 42, { name: 'Private project name' }, { name: 'Forged', catalogue_identity: 'invalid' }, ...Array.from({ length: 45 }, (_, n) => ({ name: `Local ${n}` }))],
     }));
     const { result } = renderHook(() => usePersistedCropFilters(new URLSearchParams(), vi.fn(), 1));
     expect(result.current.filters.selectedPlantHealthFilter[0]).toEqual(selected[0]);
-    expect(result.current.filters.selectedPlantHealthFilter.length).toBeLessThanOrEqual(40);
+    expect(result.current.filters.selectedPlantHealthFilter).toHaveLength(46);
     expect(result.current.filters.selectedPlantHealthFilter.some(row => row.name === 'Forged')).toBe(false);
   });
 });

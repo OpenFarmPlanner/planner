@@ -73,7 +73,7 @@ const setup = (overrides: Overrides = {}) => {
 const field = () => screen.getByRole('combobox');
 const listbox = () => screen.getByRole('listbox');
 const proposeOption = (name: string) =>
-  screen.getByRole('option', { name: `„${name}“ als neue Kulturart vorschlagen` });
+  screen.getByRole('button', { name: `„${name}“ als neue Kulturart vorschlagen` });
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -144,7 +144,7 @@ describe('CropSpeciesPicker', () => {
       expect(options.map((option) => option.textContent)).toEqual([
         'Porreblatt',
         'Lauch Synonym: Porree · Allium ampeloprasum',
-        'Porrie Ähnlicher Name',
+        'Porrie',
       ]);
       // The typed part is bold where it matched: in the official name for a
       // name hit, in the synonym for a synonym hit, nowhere for a fuzzy hit.
@@ -186,8 +186,7 @@ describe('CropSpeciesPicker', () => {
       const options = await within(listbox()).findAllByRole('option');
       expect(options.map((option) => option.textContent)).toEqual([
         'Lauch Synonym: Porree',
-        'Portulak Ähnlicher Name',
-        'Neue Kulturart vorschlagen„Porr“',
+        'Portulak',
       ]);
     });
 
@@ -220,7 +219,7 @@ describe('CropSpeciesPicker', () => {
 
       await user.type(field(), 'Yacon');
 
-      expect(await screen.findByRole('option', { name: /als neue Kulturart vorschlagen/ }))
+      expect(await screen.findByRole('button', { name: /als neue Kulturart vorschlagen/ }))
         .toBeInTheDocument();
     });
 
@@ -231,8 +230,7 @@ describe('CropSpeciesPicker', () => {
       await user.type(field(), 'Yacon');
 
       const option = await screen.findByTestId('propose-species-option');
-      expect(within(option).getByText('Neue Kulturart vorschlagen')).toBeInTheDocument();
-      expect(within(option).getByText('„Yacon“')).toBeInTheDocument();
+      expect(option).toHaveTextContent('Neue Kulturart vorschlagen · Yacon');
       expect(within(option).getByTestId('AddCircleOutlineOutlinedIcon')).toBeInTheDocument();
     });
 
@@ -245,7 +243,7 @@ describe('CropSpeciesPicker', () => {
       // Proposing a species that exists would create a duplicate for a
       // moderator to reject.
       await waitFor(() => expect(screen.getByRole('option', { name: /Tomate/ })).toBeInTheDocument());
-      expect(screen.queryByRole('option', { name: /vorschlagen/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /vorschlagen/ })).not.toBeInTheDocument();
     });
 
     it('stays away when the name matches only through an alias', async () => {
@@ -259,7 +257,7 @@ describe('CropSpeciesPicker', () => {
       await waitFor(() =>
         expect(screen.getByRole('option', { name: 'Karotte Synonym: Möhre' })).toBeInTheDocument(),
       );
-      expect(screen.queryByRole('option', { name: /vorschlagen/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /vorschlagen/ })).not.toBeInTheDocument();
     });
 
     it('stays away while the catalogue is still loading', async () => {
@@ -270,7 +268,7 @@ describe('CropSpeciesPicker', () => {
 
       // Offering to propose against an empty list would invite a duplicate
       // of something not yet loaded.
-      expect(screen.queryByRole('option', { name: /vorschlagen/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /vorschlagen/ })).not.toBeInTheDocument();
     });
 
     it('stays away for an empty field', async () => {
@@ -279,7 +277,7 @@ describe('CropSpeciesPicker', () => {
 
       await user.click(field());
 
-      expect(screen.queryByRole('option', { name: /vorschlagen/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /vorschlagen/ })).not.toBeInTheDocument();
     });
 
     it('sits below the near misses it did not match', async () => {
@@ -291,8 +289,10 @@ describe('CropSpeciesPicker', () => {
       // A partial name both surfaces hits and offers the proposal; the
       // proposal comes last so the existing species are seen first.
       const options = within(await screen.findByRole('listbox')).getAllByRole('option');
-      expect(options[options.length - 1]).toHaveAccessibleName(/vorschlagen/);
-      expect(options.length).toBeGreaterThan(1);
+      expect(options).toHaveLength(1);
+      const action = screen.getByRole('button', { name: /als neue Kulturart vorschlagen/ });
+      expect(listbox().contains(action)).toBe(false);
+      expect(listbox().compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
   });
 
@@ -316,7 +316,7 @@ describe('CropSpeciesPicker', () => {
 
       await user.type(field(), 'Yacon');
       await screen.findByTestId('propose-species-option');
-      await user.keyboard('{ArrowDown}{Enter}');
+      await user.keyboard('{Tab}{Enter}');
 
       expect(onProposalNameChange).toHaveBeenLastCalledWith('Yacon');
     });
@@ -385,8 +385,8 @@ describe('CropSpeciesPicker', () => {
       // only carries the value once the field has been typed into.
       await user.type(field(), 'Yacon');
 
-      expect(await screen.findByRole('option', { name: /vorschlagen/ }))
-        .toHaveAttribute('aria-disabled', 'true');
+      expect(await screen.findByRole('button', { name: /vorschlagen/ }))
+        .toBeDisabled();
     });
 
     it('shows that filing is under way', async () => {
@@ -395,7 +395,7 @@ describe('CropSpeciesPicker', () => {
 
       await user.type(field(), 'Yacon');
 
-      const option = await screen.findByRole('option', { name: /vorschlagen/ });
+      const option = await screen.findByRole('button', { name: /vorschlagen/ });
       expect(option.querySelector('.MuiCircularProgress-root')).not.toBeNull();
     });
   });
@@ -406,10 +406,11 @@ describe('CropSpeciesPicker', () => {
       const { onProposalNameChange } = setup();
 
       await user.type(field(), 'Yacon');
-      await screen.findByRole('option', { name: /vorschlagen/ });
+      await screen.findByRole('button', { name: /vorschlagen/ });
       // Arrow down onto the propose entry, then leave the field.
-      await user.keyboard('{ArrowDown}');
       await user.tab();
+      expect(proposeOption('Yacon')).toHaveFocus();
+      await user.keyboard('{Enter}');
 
       expect(onProposalNameChange).toHaveBeenCalledWith('Yacon');
     });
@@ -420,8 +421,10 @@ describe('CropSpeciesPicker', () => {
 
       await user.type(field(), 'Yacon');
       await user.tab();
+      expect(onProposalNameChange).not.toHaveBeenCalledWith('Yacon');
+      await user.keyboard('{Enter}');
 
-      // Tabbing out of a field holding an unmatched name is a commit, not a
+      // Activating the fixed action of a field holding an unmatched name is a commit, not a
       // discard.
       expect(onProposalNameChange).toHaveBeenCalledWith('Yacon');
     });
@@ -432,6 +435,7 @@ describe('CropSpeciesPicker', () => {
 
       await user.type(field(), '  Yacon  ');
       await user.tab();
+      await user.keyboard('{Enter}');
 
       expect(onProposalNameChange).toHaveBeenCalledWith('Yacon');
     });
@@ -498,7 +502,7 @@ describe('CropSpeciesPicker', () => {
 
       await user.type(field(), 'Yacon');
 
-      expect(await screen.findByRole('option', { name: /vorschlagen/ })).toBeInTheDocument();
+      expect(await screen.findByRole('button', { name: /vorschlagen/ })).toBeInTheDocument();
     });
 
     it('arrives focused with its results already open', async () => {
@@ -631,7 +635,7 @@ describe('CropSpeciesPicker', () => {
 
       // An empty catalogue plus a typed name is the propose case, not a dead
       // end -- the "nothing found" message only stands for an empty query.
-      expect(await screen.findByRole('option', { name: /vorschlagen/ })).toBeInTheDocument();
+      expect(await screen.findByRole('button', { name: /vorschlagen/ })).toBeInTheDocument();
       expect(screen.queryByText('Keine passende offizielle Kulturart gefunden.'))
         .not.toBeInTheDocument();
     });

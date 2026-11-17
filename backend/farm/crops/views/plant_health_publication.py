@@ -1,5 +1,6 @@
 """Apply dialog mappings atomically with the existing library action."""
 
+from datetime import datetime
 from functools import wraps
 
 from django.core.exceptions import ValidationError as ModelValidationError
@@ -12,6 +13,15 @@ from config.responses import api_error_response
 from farm.crops.serializers.plant_health import StagedCropPlantHealthMappingSerializer
 from farm.services.crop_inheritance import crop_identity_write
 from farm.services.crop_plant_health import PlantHealthMappingConflict, map_crop_plant_health
+
+
+def _expected_timestamp(value: object) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        return parse_datetime(value)
+    except ValueError:
+        return None
 
 
 def with_staged_health_mappings(*, preview=False):
@@ -33,13 +43,15 @@ def with_staged_health_mappings(*, preview=False):
                 with transaction.atomic(), crop_identity_write(crop.project_id):
                     crop.refresh_from_db()
                     original_updated_at = crop.updated_at.isoformat()
-                    if not isinstance(original_expected, str) or parse_datetime(original_expected) != crop.updated_at:
+                    expected = _expected_timestamp(original_expected)
+                    if expected != crop.updated_at:
                         raise PlantHealthMappingConflict()
                     for item in sorted(mappings, key=lambda item: item['crop_id']):
                         target = get_object_or_404(view.get_queryset(), pk=item['crop_id'])
                         view.check_object_permissions(request, target)
                         map_crop_plant_health(
-                            target, expected_updated_at=item['expected_updated_at'], mappings=item['mappings'],
+                            target, expected_updated_at=item['expected_updated_at'],
+                            mappings=item['mappings'],
                         )
                         view._set_latest_revision_actor(target)
                     crop.refresh_from_db()
@@ -48,12 +60,14 @@ def with_staged_health_mappings(*, preview=False):
                     response = action(view, request, *args, **kwargs)
                     if isinstance(response.data, dict) and 'crop_updated_at' in response.data:
                         response.data['crop_updated_at'] = original_updated_at
-                    if preview or request.data.get('preview_only') is True or response.status_code >= 400:
+                    if (preview or request.data.get('preview_only') is True
+                            or response.status_code >= 400):
                         transaction.set_rollback(True)
                     return response
             except ModelValidationError as error:
                 return api_error_response(
-                    code='plant_health_mapping_invalid', detail='Review the selected catalogue mapping.',
+                    code='plant_health_mapping_invalid',
+                    detail='Review the selected catalogue mapping.',
                     status_code=400, errors={'mappings': error.messages},
                 )
             finally:

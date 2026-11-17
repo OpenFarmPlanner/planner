@@ -115,7 +115,11 @@ export const publishSelectedVarieties = async ({
   for (const variety of varieties) {
     try {
       if (variety.publicCropId) {
-        await cropAPI.linkPublicCrop(variety.cropId, variety.publicCropId, undefined, undefined, variety.cropUpdatedAt, undefined, undefined, variety.healthMappings);
+        if (variety.healthMappings?.length) {
+          await cropAPI.linkPublicCrop(variety.cropId, variety.publicCropId, undefined, undefined, variety.cropUpdatedAt, undefined, undefined, variety.healthMappings);
+        } else {
+          await cropAPI.linkPublicCrop(variety.cropId, variety.publicCropId);
+        }
         result.linked += 1;
         continue;
       }

@@ -29,6 +29,7 @@ import { AppTooltip } from '../components/AppTooltip';
 import { cropSpeciesAPI, cropAPI, publicCropAPI, type Crop } from '../api/api';
 import type {
   CropSpecies,
+  StagedPlantHealthMapping,
   PublicCrop,
   PublicCropDuplicateCandidate,
   PublishBlockingReason,
@@ -76,7 +77,9 @@ interface CropsPublishingWizardDialogProps {
     publicCropId?: number | null;
     publishAsGeneral?: boolean;
     varieties?: PublishVarietySelection[];
-  }) => void;
+    healthMappings?: StagedPlantHealthMapping[];
+    cropUpdatedAt?: string;
+  }) => void | Promise<boolean>;
   /**
    * Confirms linking a general Kultur to a foreign duplicate candidate found
    * by the blocking duplicate check. Unlike `onPublish`, this is awaited: the
@@ -98,6 +101,7 @@ interface CropsPublishingWizardDialogProps {
     /** Legacy payload field; initial linking always sends an empty list. */
     pushFields: string[];
     varieties?: PublishVarietySelection[];
+    healthMappings?: StagedPlantHealthMapping[];
   }) => Promise<boolean>;
   /**
    * Syncs an already linked crop with its entry ("Mit Kulturbibliothek
@@ -112,6 +116,8 @@ interface CropsPublishingWizardDialogProps {
     pushFields: string[];
     /** Fields kept locally ("Nur lokal"). */
     pinFields: string[];
+    healthMappings?: StagedPlantHealthMapping[];
+    cropUpdatedAt?: string;
   }) => Promise<PublicCropSyncSubmitResult>;
 }
 
@@ -143,7 +149,6 @@ export function CropsPublishingWizardDialog({
   termsAlreadyAccepted,
   publishing,
   onClose,
-  onCropMapped,
   onPublish,
   onLinkPublicCrop,
   onSyncPublicCrop,
@@ -159,7 +164,7 @@ export function CropsPublishingWizardDialog({
   const [validationResult, setValidationResult] = useState<PublishPublicCropPreview | null>(null);
   const [validationLoading, setValidationLoading] = useState(false);
   const [healthMappingBusy, setHealthMappingBusy] = useState(false);
-  const [healthMappingSaved, setHealthMappingSaved] = useState(false);
+  const [healthMappings, setHealthMappings] = useState<StagedPlantHealthMapping[]>([]);
   const [showLicenseConfirmation, setShowLicenseConfirmation] = useState(false);
   const [speciesInputValue, setSpeciesInputValue] = useState('');
   // What the species field searches for. Follows the user's typing only:
@@ -223,7 +228,7 @@ export function CropsPublishingWizardDialog({
     if (!open) return;
     queueMicrotask(() => {
       setAcceptedLicense(false);
-      setHealthMappingSaved(false);
+      setHealthMappings([]);
       setShowLicenseConfirmation(false);
       // Prefilled with the local crop's own name so the field never starts
       // empty and its results show right away — but nothing is auto-selected
@@ -279,11 +284,20 @@ export function CropsPublishingWizardDialog({
     };
   }, [linkedPublicCropId, open]);
 
+  const mappingSourceId = crop?.plant_health == null && crop?.general_crop ? crop.general_crop : crop?.id;
+  const currentHealthMappings = useMemo(() => healthMappings.filter(item => item.crop_id === mappingSourceId), [healthMappings, mappingSourceId]);
+  const updateHealthMapping = useCallback((mapping: StagedPlantHealthMapping) => {
+    setHealthMappings(previous => [...previous.filter(item => item.crop_id !== mapping.crop_id), ...(mapping.mappings.length ? [mapping] : [])]);
+    setValidationResult(null);
+  }, []);
+
   const syncPreview = usePublicCropSyncPreview(
     crop?.id,
     isSyncFlow ? linkedPublicCropId : selectedPublicCrop?.id,
     open && (isSyncFlow || (showLinkConfirmation && Boolean(selectedPublicCrop))),
     true,
+    currentHealthMappings,
+    crop?.updated_at,
   );
 
   useEffect(() => {
@@ -386,9 +400,13 @@ export function CropsPublishingWizardDialog({
         .map((candidate) => ({
           cropId: candidate.cropId,
           publicCropId: candidate.existingPublicCrop?.id ?? null,
+          ...(healthMappings.some(mapping => mapping.crop_id === candidate.cropId) ? {
+            healthMappings: healthMappings.filter(mapping => mapping.crop_id === candidate.cropId),
+            cropUpdatedAt: candidate.crop.updated_at,
+          } : {}),
         }))
       : []),
-    [deselectedVarietyIds, showVarietySelection, varietyCandidates],
+    [deselectedVarietyIds, showVarietySelection, varietyCandidates, healthMappings],
   );
   const toggleVariety = useCallback((cropId: number) => {
     setDeselectedVarietyIds((previous) => {
@@ -476,6 +494,7 @@ export function CropsPublishingWizardDialog({
         crop_species_id: cropSpeciesId,
         original_language_code: originalLanguageCode,
         ...(isCropLevelPublish ? { publish_as_general: true } : {}),
+        ...(currentHealthMappings.length ? { plant_health_mappings: currentHealthMappings, expected_updated_at: crop.updated_at } : {}),
       });
       setValidationResult(response.data);
       return response.data;
@@ -485,7 +504,7 @@ export function CropsPublishingWizardDialog({
     } finally {
       setValidationLoading(false);
     }
-  }, [crop, isCropLevelPublish, originalLanguageCode]);
+  }, [crop, isCropLevelPublish, originalLanguageCode, currentHealthMappings]);
 
   const handleLinkDuplicate = useCallback(async (candidate: PublicCropDuplicateCandidate) => {
     setLinkConfirmError('');
@@ -528,6 +547,7 @@ export function CropsPublishingWizardDialog({
         pushFields: [],
         pinFields: syncPreview.selection.pinFields,
         varieties: [],
+        ...(currentHealthMappings.length ? { healthMappings: currentHealthMappings } : {}),
       });
       if (!success) {
         // The candidate may have been withdrawn between preview and confirm —
@@ -543,7 +563,7 @@ export function CropsPublishingWizardDialog({
       setLinkConfirmSubmitting(false);
     }
   }, [crop, onLinkPublicCrop, originalLanguageCode, runPublishPreview,
-    selectedPublicCrop, selectedSpecies, syncPreview.preview, syncPreview.choices, syncPreview.selection.pinFields]);
+    selectedPublicCrop, selectedSpecies, syncPreview.preview, syncPreview.choices, syncPreview.selection.pinFields, currentHealthMappings]);
 
   const handleConfirmSync = useCallback(async () => {
     if (!crop?.id || !linkedPublicCropId || !syncPreview.preview) return;
@@ -562,6 +582,7 @@ export function CropsPublishingWizardDialog({
         pullFields: syncSelection.pullFields,
         pushFields: syncSelection.pushFields,
         pinFields: syncSelection.pinFields,
+        ...(currentHealthMappings.length ? { healthMappings: currentHealthMappings, cropUpdatedAt: crop.updated_at } : {}),
       });
       if (!result.success) {
         setSyncError(result.error);
@@ -578,6 +599,7 @@ export function CropsPublishingWizardDialog({
     showLicenseConfirmation,
     syncPreview,
     syncSelection,
+    currentHealthMappings,
     termsAlreadyAccepted,
   ]);
 
@@ -619,16 +641,20 @@ export function CropsPublishingWizardDialog({
       return;
     }
 
-    onPublish({
+    const success = await onPublish({
       acceptedPublicLibraryTerms: !termsAlreadyAccepted && acceptedLicense,
       cropSpeciesId,
       originalLanguageCode,
       varieties: selectedVarieties,
+      ...(currentHealthMappings.length ? { healthMappings: currentHealthMappings, cropUpdatedAt: crop.updated_at } : {}),
       ...(isCropLevelPublish ? { publishAsGeneral: true } : {}),
     });
+    if (success === false) setSyncError(t('library.publishError'));
   }, [
     acceptedLicense,
     crop,
+    t,
+    currentHealthMappings,
     handleProposeSpecies,
     isCropLevelPublish,
     licenseAccepted,
@@ -711,8 +737,7 @@ export function CropsPublishingWizardDialog({
     <PublicLibraryTermsConsent checked={acceptedLicense} onChange={setAcceptedLicense} />
   ) : null;
 
-  const healthMappingPanel = crop && onCropMapped ? <>
-    {healthMappingSaved ? <Alert severity="success">{t('plantHealth.publication.saved')}</Alert> : null}
+  const healthMappingPanel = open && crop ? <>
     {[crop, ...varieties.filter(variety => selectedVarieties.some(item => item.cropId === variety.id)
       && !(variety.plant_health == null && variety.general_crop === crop.id))].map(item => (
       <PlantHealthPublicationPanel key={item.id} crop={item}
@@ -720,18 +745,13 @@ export function CropsPublishingWizardDialog({
         onNavigate={onClose}
         disabled={healthMappingBusy || publishing || syncSubmitting || linkConfirmSubmitting}
         onBusyChange={setHealthMappingBusy}
-        onMapped={saved => {
-          onCropMapped(saved);
-          setHealthMappingSaved(true);
-          setValidationResult(null);
-          syncPreview.reload();
-        }} />
+        drafts={healthMappings} onChange={updateHealthMapping} />
     ))}
   </> : null;
 
   if (showLinkConfirmation && selectedPublicCrop) {
     return (
-      <Dialog open={open} onClose={linkConfirmSubmitting || healthMappingBusy ? undefined : onClose} maxWidth="sm" fullWidth>
+      <Dialog open={open} onClose={linkConfirmSubmitting || publishing || healthMappingBusy ? undefined : onClose} maxWidth="sm" fullWidth>
         <DialogTitle>{t('library.linkExisting.title')}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2.25} sx={{ pt: 0.5 }}>
@@ -758,7 +778,7 @@ export function CropsPublishingWizardDialog({
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2, flexWrap: 'wrap', gap: 1 }}>
-          <Button onClick={handleCancelLinkConfirmation} variant="outlined" disabled={linkConfirmSubmitting}>
+          <Button onClick={handleCancelLinkConfirmation} variant="outlined" disabled={linkConfirmSubmitting || publishing || healthMappingBusy}>
             {t('library.publishWizard.linkConfirm.back')}
           </Button>
           <Button
@@ -785,7 +805,7 @@ export function CropsPublishingWizardDialog({
     const hasNoDifferences = syncPreview.preview !== null && syncPreview.preview.changes.length === 0;
     const syncDisabledReason = syncSubmitting || healthMappingBusy
       ? t('common:disabledReasons.busy')
-      : hasNoDifferences
+      : hasNoDifferences && !currentHealthMappings.length
         ? t('library.sync.noChanges')
         : !syncPreviewLoaded
           ? t('library.sync.loading')
@@ -793,7 +813,7 @@ export function CropsPublishingWizardDialog({
             ? t('library.sync.acceptLicenseFirst')
             : '';
     return (
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <Dialog open={open} onClose={publishing || syncSubmitting || healthMappingBusy ? undefined : onClose} maxWidth="sm" fullWidth>
         <DialogTitle>{t('library.sync.dialogTitle')}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2.25} sx={{ pt: 0.5 }}>
@@ -811,7 +831,7 @@ export function CropsPublishingWizardDialog({
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2, flexWrap: 'wrap', gap: 1 }}>
-          <Button onClick={onClose} variant="outlined">{t('common:actions.cancel')}</Button>
+          <Button onClick={onClose} variant="outlined" disabled={publishing || syncSubmitting || healthMappingBusy}>{t('common:actions.cancel')}</Button>
           <DisabledActionTooltip title={syncDisabledReason}>
             <Button
               onClick={() => void handleConfirmSync()}
@@ -827,7 +847,7 @@ export function CropsPublishingWizardDialog({
   }
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={publishing || syncSubmitting || healthMappingBusy ? undefined : onClose} maxWidth="sm" fullWidth>
       <DialogTitle>{t('library.publishWizard.title')}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2.25} sx={{ pt: 0.5 }}>
@@ -840,6 +860,7 @@ export function CropsPublishingWizardDialog({
             )}
           </Typography>
 
+          {syncError ? <Alert severity="error">{syncError}</Alert> : null}
           {healthMappingPanel}
           <Stack spacing={2}>
             <CropSpeciesPicker
@@ -1047,7 +1068,7 @@ export function CropsPublishingWizardDialog({
             {t('library.publishWizard.proposeSpeciesPublishHint', { name: pendingSpeciesProposalName })}
           </Typography>
         ) : null}
-        <Button onClick={onClose} variant="outlined">{t('common:actions.cancel')}</Button>
+        <Button onClick={onClose} variant="outlined" disabled={publishing || syncSubmitting || healthMappingBusy}>{t('common:actions.cancel')}</Button>
         <AppTooltip
           title={isBlockedByValidation ? t('library.publishWizard.resolveBlockingIssuesTooltip') : ''}
           disableHoverListener={!isBlockedByValidation}

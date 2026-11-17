@@ -804,8 +804,9 @@ name. Each option instead has two lines (`CropSpeciesOptionContent`):
 - **Primary:** the official name only, in the UI language
   (`getCropSpeciesResultLabel`; the backend's `official_species_name`).
 - **Secondary** (caption, secondary text colour), by match source:
-  `Synonym: Porree`, `Ähnlicher Name`, or nothing for a name hit — followed by
-  the botanical name in italics after ` · `, or the botanical name alone.
+  `Synonym: Porree` for a synonym hit, followed by the botanical name in
+  italics after ` · `, or the botanical name alone. Fuzzy matching still ranks
+  results, without repeating a generic similar-name caption.
 - The typed text is bold where it matched: in the name for a name hit, in the
   synonym for a synonym hit, in the botanical name for a scientific-name hit,
   nowhere for a fuzzy hit. Both lines are plain option text, so they are part
@@ -1796,25 +1797,17 @@ up as an empty duplicate list. The same `checks` object travels in the 400
 into German sentences in `crops/publishChecks.ts` and never displays the
 English `detail`.
 
-The species `Autocomplete` offers the proposal inline in the dropdown instead
-of as a separate always-visible link: a sentinel option
-(`ProposeSpeciesOption` in `CropsPublishingWizardDialog.tsx`) is appended
-by `filterOptions` as the **last** entry whenever the field holds text —
-including when official species *do* match. Hiding it behind `noOptionsText`
-(the earlier behaviour) meant a partial match such as "Kürbis" matching
-"Kürbisgewächse" silently removed the escape hatch, leaving no way to propose
-the name the user actually typed. The single exception is an exact
-(case-insensitive) hit on an existing name — proposing that can only be
-rejected server-side, so the entry disappears. Being a real option rather
-than a button in the empty-state slot also makes it keyboard-reachable, and a
-divider separates it from the regular hits above it. It is styled as an action
-rather than a hit: a green add icon, the short bold label "Neue Kulturart
-vorschlagen" with the typed name on a second line, on the subtle surface
-background. Its accessible name is the full sentence ("„Yacon“ als neue
-Kulturart vorschlagen"), so a screen reader announces the name in context. A failed proposal
-surfaces as the field's `error`/`helperText`.
+The species `Autocomplete` keeps its proposal button in a fixed footer outside
+its scrollable results (`AutocompleteActionPaper`, shared with plant-health
+mapping). Partial matches leave it available; an exact existing name or alias
+suppresses a duplicate proposal. The action uses the typed name and is reached
+with Tab, then activated with Enter or Space. Tabbing alone does not submit or
+select a proposal. Its accessible name names the proposed species. The popup
+stays inside the dialog's focus boundary while fixed positioning and viewport
+constraints prevent the dialog's scroll container from clipping the action,
+including in short phone landscape. Proposal errors remain at the input.
 
-The proposal is **not** sent when that entry is picked. Picking it only puts
+The proposal is **not** sent when that footer action is activated. It only puts
 the wizard into "propose a new species" mode: the typed name stays in the
 field, a hint explains what will happen, and the dialog's main button changes
 to "Kulturart vorschlagen". Pressing it files the proposal *and* publishes the

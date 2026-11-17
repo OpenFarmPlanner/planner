@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
 import { MemoryRouter } from 'react-router';
-import type { Crop, PlantHealthSelections } from '../api/types';
+import type { Crop, PlantHealthSelections, StagedPlantHealthMapping } from '../api/types';
 import type { PlantHealthEntry } from '../crop-library/plant-health/types';
 import { PlantHealthField } from '../crops/sections/PlantHealthField';
 import { planLibraryLink, pickLibraryChoices } from '../crops/libraryLink';
@@ -147,57 +147,69 @@ describe('private plant-health selections', () => {
 });
 
 
+function ControlledMappingPanel({ crop, inheritedSource, onChange = vi.fn() }: { crop: Crop; inheritedSource?: Crop; onChange?: (mapping: StagedPlantHealthMapping) => void }) {
+  const [drafts, setDrafts] = useState<StagedPlantHealthMapping[]>([]);
+  const [busy, setBusy] = useState(false);
+  return <PlantHealthPublicationPanel crop={crop} inheritedSource={inheritedSource} drafts={drafts} disabled={busy}
+    onBusyChange={setBusy} onChange={mapping => {
+      setDrafts(previous => [...previous.filter(item => item.crop_id !== mapping.crop_id), mapping]);
+      onChange(mapping);
+    }} />;
+}
+
 describe('explicit publication mappings', () => {
   const crop = { id: 12, name: 'Synthetic culture', updated_at: '2026-11-16T01:00:00Z',
     plant_health: { entries: [{ name: 'Private name' }] } } as Crop;
-  const renderPanel = () => {
-    const onMapped = vi.fn();
-    render(<PlantHealthPublicationPanel crop={crop} disabled={false} onMapped={onMapped} onBusyChange={vi.fn()} />);
-    return onMapped;
-  };
 
-  it('does not map typed names and saves only an explicitly selected stable identity', async () => {
+  it('stages only explicitly selected identities without saving the crop', async () => {
     listMock.mockResolvedValue(response(catalogueEntry()));
-    mapMock.mockResolvedValue({ data: { ...crop, plant_health: { entries: [{ name: 'Canonical name', catalogue_identity: ID }] } } });
-    const mapped = renderPanel();
+    const changed = vi.fn();
+    render(<ControlledMappingPanel crop={crop} onChange={changed} />);
     const user = userEvent.setup();
-    const input = screen.getByRole('combobox');
-    await user.type(input, 'Bevorzugter Name');
-    await user.keyboard('{Enter}');
-    expect(screen.getByRole('button', { name: 'Zuordnung speichern' })).toBeDisabled();
-    expect(mapMock).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('combobox'));
+    expect(changed).not.toHaveBeenCalled();
     await user.click(await screen.findByRole('option', { name: /^Bevorzugter Name/ }));
-    await user.click(screen.getByRole('button', { name: 'Zuordnung speichern' }));
-    await waitFor(() => expect(mapped).toHaveBeenCalledWith(expect.objectContaining({ id: 12 })));
-    expect(mapMock).toHaveBeenCalledWith(12, { expected_updated_at: crop.updated_at,
-      mappings: [{ local_name: 'Private name', catalogue_identity: ID }] });
+    expect(changed).toHaveBeenLastCalledWith({ crop_id: 12, expected_updated_at: crop.updated_at,
+      mappings: [{ local_name: 'Private name', catalogue_identity: ID, catalogue_name: 'Bevorzugter Name' }] });
+    expect(mapMock).not.toHaveBeenCalled();
     expect(createMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Zuordnung speichern' })).not.toBeInTheDocument();
   });
 
-  it('creates only a one-language pending broad proposal without mapping the private crop', async () => {
-    createMock.mockResolvedValue({ data: { id: 3, status: 'proposed' } });
-    const mapped = renderPanel();
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Namen zur Prüfung vorschlagen' }));
-    await screen.findByText('Vorschlag eingereicht. Der Name bleibt bis zur ausdrücklichen Zuordnung privat.');
+  it('submits a one-language pending proposal from the fixed action without mapping the crop', async () => {
+    let complete!: (value: { data: PlantHealthEntry }) => void;
+    createMock.mockImplementation(() => new Promise(resolve => { complete = resolve; }));
+    const changed = vi.fn();
+    render(<ControlledMappingPanel crop={crop} onChange={changed} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('combobox'));
+    await user.click(await screen.findByRole('button', { name: '„Private name“ vorschlagen' }));
+    expect(screen.getByRole('combobox')).toBeDisabled();
+    await act(async () => complete({ data: { ...catalogueEntry(), id: 3, name: 'Private name', status: 'proposed' } }));
+    await screen.findByText(/Vorschlag eingereicht. Er bleibt auch bei Abbrechen eingereicht/);
     expect(createMock).toHaveBeenCalledWith({ name: 'Private name', kind: 'group', scientific_name: '', eppo_code: '', sources: [],
       translations: [{ language_code: 'de', preferred_name: 'Private name' }] });
     expect(mapMock).not.toHaveBeenCalled();
-    expect(mapped).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Namen zur Prüfung vorschlagen' })).toBeDisabled();
+    expect(changed).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Namen zur Prüfung vorschlagen' })).not.toBeInTheDocument();
   });
 
-  it('keeps stale mappings unsaved and gives a localized reload instruction', async () => {
-    listMock.mockResolvedValue(response(catalogueEntry()));
-    mapMock.mockRejectedValue({ isAxiosError: true, response: { status: 409 } });
-    const mapped = renderPanel();
+  it('uses the current UI language for a standalone proposal', async () => {
+    await i18n.changeLanguage('fr');
+    createMock.mockResolvedValue({ data: { ...catalogueEntry(), name: 'Private name', status: 'proposed' } });
+    render(<ControlledMappingPanel crop={crop} />);
     const user = userEvent.setup();
     await user.click(screen.getByRole('combobox'));
-    await user.click(await screen.findByRole('option', { name: /^Bevorzugter Name/ }));
-    await user.click(screen.getByRole('button', { name: 'Zuordnung speichern' }));
-    await screen.findByText(/Die Kultur oder Auswahl hat sich geändert/);
-    expect(mapped).not.toHaveBeenCalled();
-    expect(mapMock).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Private name')).toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: /Private name/ }));
+    await waitFor(() => expect(createMock).toHaveBeenCalledWith(expect.objectContaining({
+      translations: [{ language_code: 'fr', preferred_name: 'Private name' }],
+    })));
+  });
+
+  it('hides the entire panel when no private name needs mapping', () => {
+    render(<ControlledMappingPanel crop={{ ...crop, plant_health: { entries: [{ name: 'Canonical name', catalogue_identity: ID }] } }} />);
+    expect(screen.queryByTestId('plant-health-publication')).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   });
 
   it('distinguishes same-label identities by scientific name and permits only one mapping target', async () => {
@@ -237,16 +249,15 @@ it('maps inherited names explicitly on the named general culture without writing
   listMock.mockResolvedValue(response(catalogueEntry()));
   mapMock.mockResolvedValue({ data: { ...general, plant_health: { entries: [{ name: 'Canonical name', catalogue_identity: ID }] } } });
   const onMapped = vi.fn();
-  render(<PlantHealthPublicationPanel crop={variety} inheritedSource={general} disabled={false} onMapped={onMapped} onBusyChange={vi.fn()} />);
+  render(<ControlledMappingPanel crop={variety} inheritedSource={general} onChange={onMapped} />);
   expect(screen.getByRole('alert')).toHaveTextContent('Diese Sorte übernimmt die Einträge von „Synthetic general culture“.');
-  expect(screen.getByRole('alert')).toHaveTextContent('sie gilt für alle erbenden Sorten');
+  expect(screen.getByRole('alert')).toHaveTextContent('gilt für alle erbenden Sorten');
   const user = userEvent.setup();
   await user.click(screen.getByRole('combobox'));
   await user.click(await screen.findByRole('option', { name: /^Bevorzugter Name/ }));
-  await user.click(screen.getByRole('button', { name: 'Zuordnung speichern' }));
-  await waitFor(() => expect(onMapped).toHaveBeenCalledWith(expect.objectContaining({ id: 24 })));
-  expect(mapMock).toHaveBeenCalledWith(24, { expected_updated_at: general.updated_at,
-    mappings: [{ local_name: 'Inherited local name', catalogue_identity: ID }] });
+  expect(onMapped).toHaveBeenCalledWith({ crop_id: 24, expected_updated_at: general.updated_at,
+    mappings: [{ local_name: 'Inherited local name', catalogue_identity: ID, catalogue_name: 'Bevorzugter Name' }] });
+  expect(mapMock).not.toHaveBeenCalled();
   expect(variety.plant_health).toBeNull();
 });
 
@@ -255,7 +266,7 @@ it('offers an explicit general-culture edit link when inherited source data is u
   const crop = { id: 25, name: 'Synthetic culture', variety: 'Child', general_crop: 24, plant_health: null,
     effective_values: { plant_health: { entries: [{ name: 'Inherited name' }] } } } as Crop;
   const close = vi.fn();
-  render(<MemoryRouter><PlantHealthPublicationPanel crop={crop} disabled={false} onMapped={vi.fn()} onBusyChange={vi.fn()} onNavigate={close} /></MemoryRouter>);
+  render(<MemoryRouter><PlantHealthPublicationPanel crop={crop} disabled={false} drafts={[]} onChange={vi.fn()} onBusyChange={vi.fn()} onNavigate={close} /></MemoryRouter>);
   const link = screen.getByRole('link', { name: 'Übergeordnete Kultur bearbeiten' });
   expect(link).toHaveAttribute('href', '/app/crops?cropId=24&action=edit');
   expect(screen.queryByRole('button', { name: 'Zuordnung speichern' })).not.toBeInTheDocument();

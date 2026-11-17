@@ -54,8 +54,8 @@ export interface CropSpeciesOptionContentProps {
 
 /**
  * One "Offizielle Kulturart" option: the official name on the first line and,
- * on a second, smaller line, why it matched ("Synonym: Porree", "Ähnlicher
- * Name") plus the botanical name. Both lines are plain text content of the
+ * on a second, smaller line, the matched synonym (when applicable) and
+ * the botanical name. Both lines are plain text content of the
  * option, so they are part of its accessible name.
  */
 export function CropSpeciesOptionContent({

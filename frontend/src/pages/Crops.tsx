@@ -1,3 +1,4 @@
+import type { StagedPlantHealthMapping } from '../api/types';
 import { PublicCropVarietyImportDialog } from '../crop-library/components/PublicCropVarietyImportDialog';
 import type { PublicCropSyncSubmitResult } from '../crops/publicCropSync';
 import { ExistingCropLinkDialog } from '../crops/ExistingCropLinkDialog';
@@ -408,22 +409,26 @@ function Crops() {
     user?.public_library_terms_accepted,
   ]);
 
-  const handlePublishingWizardPublish = useCallback((data: {
+  const handlePublishingWizardPublish = useCallback(async (data: {
     acceptedPublicLibraryTerms: boolean;
     cropSpeciesId?: number;
     originalLanguageCode: string;
     publicCropId?: number | null;
     publishAsGeneral?: boolean;
     varieties?: PublishVarietySelection[];
+    healthMappings?: StagedPlantHealthMapping[];
+    cropUpdatedAt?: string;
   }) => {
-    setPublishWizardOpen(false);
-    void handlePublishCurrentCrop(data.acceptedPublicLibraryTerms, {
+    const success = await handlePublishCurrentCrop(data.acceptedPublicLibraryTerms, {
       cropSpeciesId: data.cropSpeciesId,
       originalLanguageCode: data.originalLanguageCode,
       publicCropId: data.publicCropId,
       publishAsGeneral: data.publishAsGeneral,
       varieties: data.varieties,
+      ...(data.healthMappings?.length ? { healthMappings: data.healthMappings, cropUpdatedAt: data.cropUpdatedAt } : {}),
     });
+    if (success) setPublishWizardOpen(false);
+    return success;
   }, [handlePublishCurrentCrop]);
 
   // Unlike handlePublishingWizardPublish, this is awaited: the wizard's
