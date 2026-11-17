@@ -20,6 +20,7 @@ from django.test import override_settings
 from PIL import Image
 from rest_framework.test import APITestCase
 
+from crops.models import CropSpecies
 from farm.history.project_restore import (
     CHECKPOINT_KEY,
     PROJECT_STATE_MODELS,
@@ -28,10 +29,12 @@ from farm.history.project_restore import (
 )
 from farm.models import (
     BatchOperation,
+    CropCompanion,
     CropSupplierData,
     EntityRevision,
     Project,
     ProjectMembership,
+    PublicCrop,
     RetainedUpload,
 )
 from farm.tests.history_guard import latest_selectable_revision, state_diff
@@ -585,3 +588,88 @@ class HistoryRestorePathConsistencyTests(HistoryInvariantTestCase):
         self.assertEqual(differences, CROP_RESTORE_PATH_DIFFERENCES_1195)
         self.assertEqual(project_row['crop_species_id'], first_species.pk)
         self.assertEqual(project_row['image_file_id'], media)
+
+
+class HistoryLibraryCompanionRoundTripTests(HistoryInvariantTestCase):
+    """Library import, update and link write neighbours with their history (#1192)."""
+
+    def library_entry(self, name: str, species: CropSpecies, companions: list[dict]) -> PublicCrop:
+        return PublicCrop.objects.create(
+            name=name,
+            variety='',
+            status=PublicCrop.STATUS_PUBLISHED,
+            created_by=self.user,
+            crop_species=species,
+            growth_duration_days=90,
+            harvest_duration_days=30,
+            companions=companions,
+        )
+
+    @staticmethod
+    def neighbour(species: CropSpecies, kind: str, name: str) -> dict:
+        return {
+            'species': species.pk, 'species_name': name, 'family': None,
+            'kind': kind, 'reason': 'other', 'note': '',
+        }
+
+    def library_state(self) -> list[tuple]:
+        return list(
+            PublicCrop.objects.order_by('pk')
+            .values_list('pk', 'version', 'companions', 'updated_at')
+        )
+
+    def test_library_neighbour_writes_restore_exactly(self) -> None:
+        potato = CropSpecies.objects.create(name='History companion potato')
+        pepper = CropSpecies.objects.create(name='History companion pepper')
+        tomato = CropSpecies.objects.create(name='History companion tomato')
+        sage = CropSpecies.objects.create(name='History companion sage')
+        cabbages = {
+            'species': None, 'species_name': '', 'family': 'Brassicaceae',
+            'kind': 'good', 'reason': 'other', 'note': '',
+        }
+        pepper_entry = self.library_entry(
+            'Paprika', pepper, [self.neighbour(potato, 'bad', 'Kartoffel'), cabbages],
+        )
+        tomato_entry = self.library_entry(
+            'Tomate', tomato, [self.neighbour(potato, 'bad', 'Kartoffel')],
+        )
+        crop = {'variety': '', 'growth_duration_days': 90, 'harvest_duration_days': 30}
+        potato_id = self.write(
+            'create potato Kultur', 'post', '/crops/',
+            {**crop, 'name': 'Kartoffel', 'crop_species': potato.pk},
+        )['id']
+        tomato_id = self.write(
+            'create tomato Kultur', 'post', '/crops/',
+            {**crop, 'name': 'Tomate', 'crop_species': tomato.pk},
+        )['id']
+        self.write(
+            'import pepper with neighbours', 'post', f'/public-crops/{pepper_entry.pk}/import/', {},
+        )
+        self.write('edit potato', 'patch', f'/crops/{potato_id}/', {'notes': 'early'})
+
+        pepper_entry.companions = [
+            self.neighbour(potato, 'good', 'Kartoffel'), self.neighbour(sage, 'good', 'Salbei'),
+        ]
+        pepper_entry.version += 1
+        pepper_entry.save()
+        self.write(
+            'update pepper from the library', 'post', f'/public-crops/{pepper_entry.pk}/import/',
+            {'mode': 'update'},
+        )
+        self.write(
+            'link tomato taking neighbours', 'post', f'/crops/{tomato_id}/link-public-crop/',
+            {
+                'public_crop_id': tomato_entry.pk, 'base_version': tomato_entry.version,
+                'pull_fields': ['companions'],
+            },
+        )
+        self.write('edit tomato', 'patch', f'/crops/{tomato_id}/', {'notes': 'staked'})
+
+        relations = CropCompanion.objects.filter(project=self.project)
+        self.assertEqual(relations.filter(companion_family__isnull=False).count(), 0)
+        self.assertEqual(relations.filter(companion_text='Salbei', kind='good').count(), 1)
+        self.assertEqual(relations.filter(companion_crop__isnull=False, kind='good').count(), 1)
+        self.assertEqual(relations.filter(companion_crop__isnull=False, kind='bad').count(), 1)
+        library = self.library_state()
+        self.round_trip_every_version()
+        self.assertEqual(self.library_state(), library, 'restoring changed library records')

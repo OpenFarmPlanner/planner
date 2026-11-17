@@ -180,7 +180,11 @@ readable but cannot be destructively reconstructed by guessing.
 Crop timing edits record recalculated plan after-images inside the crop save's
 transaction, followed by the crop revision as the completed version boundary.
 Nested supplier rows and seed packages also record their after-images/deletions
-before a final crop revision. Intermediate crop and child revisions remain
+before a final crop revision. Neighbours taken from the crop library on import,
+link, sync or a library update follow the same rule: each created, updated or
+deleted `CropCompanion` gets an internal after-image, and the Kultur's crop
+revision closes the action (after the relation writes when the crop save came
+first; see [crop-companions.md](./crop-companions.md#crop-library), #1192). Intermediate crop and child revisions remain
 internal, so selecting the completed action includes the entire committed nested
 write. Those derived plan rows remain in the audit trail and reconstruction, but cannot
 be selected as intermediate project versions. Ambiguous legacy season, template

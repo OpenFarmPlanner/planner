@@ -395,9 +395,6 @@ class CompanionLibraryTests(CompanionLibraryTestCase):
              'kind': 'good', 'reason': 'other', 'note': ''},
         ])
 
-    @pytest.mark.history_gap(
-        issue=1192, reason='library companion writes record no revision',
-    )
     def test_importing_maps_species_to_the_projects_kultur_and_keeps_others_as_text(self):
         sage_species = CropSpecies.objects.create(name='Companion test sage')
         entry = PublicCrop.objects.create(
