@@ -37,10 +37,40 @@ def needs_codex_fallback(outcome: str, messages: object) -> bool:
     )
 
 
+def _scope_matches(reported: object, scope: list[str]) -> bool:
+    """Same set of paths, each listed once; the order the reviewer used does not matter."""
+    return (
+        isinstance(reported, list)
+        and all(isinstance(path, str) for path in reported)
+        and len(reported) == len(set(reported))
+        and sorted(reported) == sorted(scope)
+    )
+
+
+def _evidence_problem(evidence: object, head: str, scope: list[str]) -> str | None:
+    if not isinstance(evidence, dict):
+        return "terminal result is not a JSON object"
+    if evidence.get("security_review_completed") is not True:
+        return "security_review_completed is not true"
+    if evidence.get("reviewed_sha") != head:
+        return "reviewed_sha does not match the head"
+    if not _scope_matches(evidence.get("scope"), scope):
+        return "scope does not match the changed files"
+    if evidence.get("result") not in ("no_issues", "issues_fixed"):
+        return "result is not no_issues or issues_fixed"
+    if evidence.get("unfixed_findings") != []:
+        return "unfixed_findings is not empty"
+    return None
+
+
 def completion_report(
     outcome: str, messages: object, head: str, scope: list[str]
 ) -> dict[str, object]:
-    """Routing success is distinct from a validated, exact-head security review."""
+    """Routing success is distinct from a validated, exact-head security review.
+
+    A rejected report carries a fixed, non-sensitive ``reason`` and never any of
+    the reviewer's text.
+    """
     report: dict[str, object] = {
         "schema": 1,
         "provider": "claude",
@@ -48,15 +78,19 @@ def completion_report(
         "scope": sorted(scope),
         "state": "claude_failed",
     }
+
+    def failed(reason: str) -> dict[str, object]:
+        return {**report, "reason": reason}
+
     if not re.fullmatch(r"[0-9a-f]{40}", head) or not scope:
-        return report
+        return failed("invalid head SHA or empty scope")
     try:
         if needs_codex_fallback(outcome, messages):
             return {**report, "state": "claude_allowance_exhausted"}
     except ValueError:
-        return report
-    if outcome != "success" or not isinstance(messages, list) or not messages:
-        return report
+        return failed(f"review step outcome is {outcome or 'unknown'}")
+    if not isinstance(messages, list) or not messages:
+        return failed("no execution report")
     terminal = messages[-1]
     if (
         not isinstance(terminal, dict)
@@ -66,20 +100,14 @@ def completion_report(
         or not isinstance(terminal.get("num_turns"), int)
         or terminal["num_turns"] < 1
     ):
-        return report
+        return failed("last message is not a successful result")
     try:
         evidence = json.loads(terminal.get("result", ""))
     except (TypeError, ValueError):
-        return report
-    if (
-        not isinstance(evidence, dict)
-        or evidence.get("reviewed_sha") != head
-        or evidence.get("security_review_completed") is not True
-        or evidence.get("scope") != sorted(scope)
-        or evidence.get("result") not in ("no_issues", "issues_fixed")
-        or evidence.get("unfixed_findings") != []
-    ):
-        return report
+        return failed("terminal result is not JSON")
+    problem = _evidence_problem(evidence, head, scope)
+    if problem:
+        return failed(problem)
     return {**report, "state": "claude_completed", "result": evidence["result"]}
 
 
@@ -106,6 +134,8 @@ def main() -> None:
         output.write(f"codex_fallback={str(fallback).lower()}\n")
         output.write(f"review_completed={str(completed).lower()}\n")
     print(f"Security review state: {report['state']}")
+    if "reason" in report:
+        print(f"Reason: {report['reason']}")
     if fallback:
         print(
             "::warning::Claude allowance exhausted; security review did not complete. "

@@ -226,7 +226,7 @@ malformed, wrong-PR, old-attempt and stale-head evidence never passes.
 | `claude_completed` | Validated successful execution and exact-head/scope evidence; quality may pass. |
 | `codex_local_completed` | Trusted signature and launcher hashes verify fresh independent local Codex completion; no per-PR human approval. |
 | `codex_local_incomplete` / `codex_evidence_invalid` | Signed result has findings, incomplete coverage or invalid execution/base/scope/freshness; quality fails. |
-| `claude_failed` / `claude_allowance_exhausted` | No completed review. Claude's security job fails; only a real allowance error routes to Codex. |
+| `claude_failed` / `claude_allowance_exhausted` | No completed review. Claude's security job fails; only a real allowance error routes to Codex. A `claude_failed` report and the job log name a fixed reason (e.g. `terminal result is not JSON`, `scope does not match the changed files`), never the reviewer's text. The reported scope must list exactly the changed files, each once; its order does not matter (#1217). |
 | Codex request delivered | Delivery job may succeed, explicitly named **not review completion**; this grants no completion. |
 | `codex_rejected` | The trusted connector bot rejected the delivered current-head request; quality fails. |
 | `codex_pending` / `review_pending` | No verified completion; the completion job waits up to 20 minutes, then fails as `timed_out`. |
