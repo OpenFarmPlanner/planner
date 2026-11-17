@@ -234,6 +234,9 @@ def _populate_companions(
     for key, other, kind, reason in [
         ("tomate-art", "kartoffel", "bad", "shared_pests_diseases"),
         ("karotte-art", "lauch", "good", "pest_control"),
+        # Planned side by side on the "Bohnen" bed, so the planning check shows
+        # a bad neighbour on the same bed (#1189).
+        ("buschbohne", "knoblauch", "bad", "allelopathy"),
     ]:
         CropCompanion.objects.create(
             project=project,

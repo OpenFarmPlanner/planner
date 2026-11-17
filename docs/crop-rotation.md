@@ -286,6 +286,8 @@ the same cases).
 | Bed without plans in the relevant years | Karotte | Karotten 2 (Acker am Bach) | Passt: "auf diesem Beet sind keine früheren Anbaupläne erfasst" |
 | Ok with a different family as previous crop | Mangold | Kräuter & Mangold (Hofgarten) | Passt, Vorkultur Salat |
 | Ok with the same family outside the break | Zucchini | Kürbisbeet (Pachtacker Lindenhof) | Passt: zucchini three seasons ago |
+| Ok, companion demo (bad neighbour) | Knoblauch (planted last October) | Bohnen (Pachtacker Lindenhof) | Passt; beside the bush beans, see [crop-companions.md](./crop-companions.md#demo-cases) |
+| Ok, companion demo (good neighbour) | Karotte | Knoblauch & Lauch (Pachtacker Lindenhof) | Passt; beside the leek |
 | Conflict whose suggestions include another location | Lauch | Knoblauch & Lauch | "Passende Beete" lists beds in Hofgarten / Acker am Bach |
 | Partly occupied bed with enough room | (dialog of the Lauch row) | Zuckermais | Selectable, "12 von 24 m² frei im Zeitraum" |
 | Bed without enough room | (dialog of the Lauch row) | Bohnen | Disabled, "Nur 4 m² frei im Zeitraum (Buschbohne bis 10.08.<Jahr>), benötigt 8 m²" |

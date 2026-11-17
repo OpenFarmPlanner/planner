@@ -11,6 +11,11 @@ const VIEWPORTS = [
 
 const searchBox = (page: Page) => page.getByRole('searchbox', { name: 'Anbaupläne durchsuchen' });
 const searchCount = (page: Page) => page.getByTestId('planting-plan-search-count');
+// The season's plan count from the label; the virtualized grid may still be
+// rendering rows when a test starts, so a DOM count can come up short.
+const planTotal = async (page: Page): Promise<number> => (
+  Number((await searchCount(page).innerText()).match(/\d+/)![0])
+);
 
 for (const viewport of VIEWPORTS) {
   test.describe(`planting plan search (${viewport.key})`, () => {
@@ -31,7 +36,8 @@ for (const viewport of VIEWPORTS) {
     });
 
     test('searches live, finds synonyms and notes, and clears with Escape', async ({ page }) => {
-      const total = await results(page).count();
+      const total = await planTotal(page);
+      await expect(results(page)).toHaveCount(total);
 
       await searchBox(page).fill('PARADEISER');
       await expect(results(page)).toHaveCount(2);
@@ -57,7 +63,8 @@ for (const viewport of VIEWPORTS) {
     });
 
     test('sets and removes a filter', async ({ page }) => {
-      const total = await results(page).count();
+      const total = await planTotal(page);
+      await expect(results(page)).toHaveCount(total);
 
       if (viewport.isMobile) {
         await page.getByRole('button', { name: 'Filter', exact: true }).click();
@@ -89,7 +96,8 @@ for (const viewport of VIEWPORTS) {
     });
 
     test('finds plans by date and filters by harvest start', async ({ page }) => {
-      const total = await results(page).count();
+      const total = await planTotal(page);
+      await expect(results(page)).toHaveCount(total);
 
       // Tomatenreihe 1 is planted on 25 April of the current season in the demo project.
       const tomatoPlantingDate = `25.4.${new Date().getFullYear()}`;
@@ -123,7 +131,8 @@ for (const viewport of VIEWPORTS) {
     });
 
     test('shows the empty state and recovers from it', async ({ page }) => {
-      const total = await results(page).count();
+      const total = await planTotal(page);
+      await expect(results(page)).toHaveCount(total);
 
       await searchBox(page).fill('xyzkultur');
       const emptyState = page.getByTestId('planting-plan-search-empty');

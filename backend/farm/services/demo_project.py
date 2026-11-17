@@ -1700,6 +1700,9 @@ def _create_planting_plans(
         # Garlic planted in October and harvested next July: it occupies the
         # bed in both years.
         PlanSpec('knoblauch', 'lauch', 'direct_sowing', date(last, 10, 12), Decimal('18.0')),
+        # Companion check, bad neighbours: garlic overwinters beside this
+        # season's bush beans and is harvested in July (docs/crop-companions.md).
+        PlanSpec('knoblauch', 'bohnen', 'direct_sowing', date(last, 10, 14), Decimal('4.0')),
         PlanSpec('erbse', 'mais', 'direct_sowing', date(last, 3, 22), Decimal('20.0')),
         PlanSpec('buschbohne', 'kuerbis', 'direct_sowing', date(last, 5, 6), Decimal('18.0')),
         # Current season.
@@ -1742,6 +1745,8 @@ def _create_planting_plans(
         PlanSpec('buschbohne', 'bohnen', 'direct_sowing', date(current, 5, 12), Decimal('20.0')),
         # Conflict through the garlic planted last October and harvested in July.
         PlanSpec('lauch', 'lauch', 'pre_cultivation', date(current, 7, 25), Decimal('8.0'), 190),
+        # Companion check, good neighbours: carrots beside that leek. Rotation ok.
+        PlanSpec('karotte', 'lauch', 'direct_sowing', date(current, 6, 20), Decimal('6.0')),
         # Not checkable: Poaceae have no rotation break. Copied into next
         # season, it follows itself (heavy feeder after heavy feeder).
         PlanSpec('zuckermais', 'mais', 'direct_sowing', date(current, 5, 15), Decimal('12.0')),

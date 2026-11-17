@@ -350,6 +350,22 @@ so a published neighbour names a **crop species** or a **plant family**:
   that species. Family neighbours are not mirrored, or every crop of the
   family would list them.
 
+## Demo cases
+
+The demo project (every demo language) seeds one bad and one good pair on the
+same bed with overlapping periods, so the planning check, the leaf icon and
+the note in "Anbaufläche ändern" can be shown (#1189). German names:
+
+| Pair | Relation | Bed | Expected |
+| --- | --- | --- | --- |
+| Buschbohne (this season) and Knoblauch (planted last October, harvested in July) | bad, `allelopathy` | Bohnen (Pachtacker Lindenhof) | Bad-neighbour warning and leaf icon on both plans |
+| Lauch (planted 25 July) and Karotte Nantaise 2 (sown 20 June) | good, `pest_control` | Knoblauch & Lauch (Pachtacker Lindenhof) | Good-neighbour note on both plans |
+
+Both added plans fit the crop rotation (`ok`); the other demo cases in
+[crop-rotation.md](./crop-rotation.md#demo-cases) are unchanged.
+`test_same_bed_neighbours_show_bad_and_good_findings_in_every_language` pins
+this.
+
 ## Known limits
 
 - Neighbouring beds are not checked (beds have no position).
