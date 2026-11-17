@@ -37,6 +37,37 @@ def needs_codex_fallback(outcome: str, messages: object) -> bool:
     )
 
 
+_FENCE = re.compile(r"```(?:json)?\s*(\{.*\})\s*```\s*\Z", re.DOTALL)
+
+
+def _trailing_json_object(text: object) -> object:
+    """Return the JSON object that ends the reviewer's final message, if any.
+
+    Accepts the bare object the prompt asks for, the same object in a closing
+    ```json fence, or prose followed by the object. Only an object that runs to
+    the very end of the message counts; everything it contains is validated
+    separately and no other text is used.
+    """
+    if not isinstance(text, str):
+        return None
+    text = text.strip()
+    fenced = _FENCE.search(text)
+    if fenced:
+        text = fenced.group(1)
+    decoder = json.JSONDecoder()
+    start = text.rfind("{")
+    while start != -1:
+        try:
+            value, end = decoder.raw_decode(text, start)
+        except ValueError:
+            pass
+        else:
+            if end == len(text) and isinstance(value, dict):
+                return value
+        start = text.rfind("{", 0, start)
+    return None
+
+
 def _scope_matches(reported: object, scope: list[str]) -> bool:
     """Same set of paths, each listed once; the order the reviewer used does not matter."""
     return (
@@ -101,10 +132,9 @@ def completion_report(
         or terminal["num_turns"] < 1
     ):
         return failed("last message is not a successful result")
-    try:
-        evidence = json.loads(terminal.get("result", ""))
-    except (TypeError, ValueError):
-        return failed("terminal result is not JSON")
+    evidence = _trailing_json_object(terminal.get("result"))
+    if evidence is None:
+        return failed("terminal result does not end with a JSON object")
     problem = _evidence_problem(evidence, head, scope)
     if problem:
         return failed(problem)
