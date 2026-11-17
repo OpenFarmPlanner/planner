@@ -27,6 +27,7 @@ import { useAuth } from '../auth/useAuth';
 import { useGuestDemoGuard } from '../auth/useGuestDemoGuard';
 import { GuestDemoNotice } from '../components/GuestDemoNotice';
 import { useTranslation } from '../i18n';
+import { buildDownloadFilename } from '../utils/downloadFilename';
 import { useNavigationBlocker } from '../hooks/useNavigationBlocker';
 import { enableDevOnboardingPreview } from '../projects/devOnboardingPreview';
 import { clearContextMenuHintDismissals } from '../components/data-grid';
@@ -212,7 +213,7 @@ export default function AccountSettingsPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'openfarmplanner-data-export.json';
+      link.download = buildDownloadFilename(t, 'accountDataExport', 'json');
       document.body.appendChild(link);
       link.click();
       link.remove();

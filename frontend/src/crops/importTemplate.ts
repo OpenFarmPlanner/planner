@@ -3,11 +3,11 @@ import { fetchAllPaginated } from '../api/api';
 import { buildSheetData, downloadSpreadsheet, type SpreadsheetExportFormat } from './spreadsheetExport';
 import { CROP_COLUMNS } from './spreadsheetColumns';
 import { emptyTimingWindow } from './timingWindows';
+import { buildDownloadFilename } from '../utils/downloadFilename';
 
 type TemplateT = (key: string, options?: Record<string, unknown>) => string;
 type TemplateSpecies = Pick<CropSpecies, 'name' | 'display_name' | 'specific_property_profile'>;
 
-const TEMPLATE_FILENAME_STEM = 'kulturen_vorlage';
 
 /** Examples share the export schema; coverage tests require a value in every column. */
 const buildTemplateCrops = (t: TemplateT, potatoSpecies: TemplateSpecies): Crop[] => [
@@ -91,5 +91,5 @@ export const buildCropImportTemplateRows = (t: TemplateT, species: readonly Temp
 
 export const downloadCropImportTemplate = async (t: TemplateT, format: SpreadsheetExportFormat = 'ods'): Promise<void> => {
   const catalog = await fetchAllPaginated<CropSpecies>('/crop-species/');
-  downloadSpreadsheet(buildCropImportTemplateRows(t, catalog.results), format, `${TEMPLATE_FILENAME_STEM}.${format}`);
+  downloadSpreadsheet(buildCropImportTemplateRows(t, catalog.results), format, buildDownloadFilename(t, 'cropTemplate', format));
 };

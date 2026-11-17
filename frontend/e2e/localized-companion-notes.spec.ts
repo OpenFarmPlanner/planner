@@ -226,6 +226,9 @@ for (const format of ['csv', 'xlsx', 'ods'] as const) {
     const [download] = await Promise.all([
       page.waitForEvent('download'), dialog.getByRole('button', { name: fr.export.submit, exact: true }).click(),
     ]);
+    expect(download.suggestedFilename()).toMatch(
+      new RegExp(`^${frCommon.downloadFilenames.cropExport}_\\d{4}-\\d{2}-\\d{2}\\.${format}$`),
+    );
     const path = testInfo.outputPath(`export.${format}`);
     await download.saveAs(path);
     await expect(dialog).toBeHidden();

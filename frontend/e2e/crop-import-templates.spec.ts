@@ -9,12 +9,21 @@ import deNavigation from '../src/i18n/locales/de/navigation.json' with { type: '
 import enNavigation from '../src/i18n/locales/en/navigation.json' with { type: 'json' };
 import frNavigation from '../src/i18n/locales/fr/navigation.json' with { type: 'json' };
 import esNavigation from '../src/i18n/locales/es/navigation.json' with { type: 'json' };
+import deCommon from '../src/i18n/locales/de/common.json' with { type: 'json' };
+import enCommon from '../src/i18n/locales/en/common.json' with { type: 'json' };
+import frCommon from '../src/i18n/locales/fr/common.json' with { type: 'json' };
+import esCommon from '../src/i18n/locales/es/common.json' with { type: 'json' };
 import { apiRequest, loginWithDeterministicProject } from './utils';
 
-const languages = { de: { text: de, navigation: deNavigation }, en: { text: en, navigation: enNavigation },
-  fr: { text: fr, navigation: frNavigation }, es: { text: es, navigation: esNavigation } };
+const languages = {
+  de: { text: de, navigation: deNavigation, common: deCommon }, en: { text: en, navigation: enNavigation, common: enCommon },
+  fr: { text: fr, navigation: frNavigation, common: frCommon }, es: { text: es, navigation: esNavigation, common: esCommon },
+};
 
-for (const [language, { text, navigation }] of Object.entries(languages)) {
+// The app strips accents from download names; Chromium drops non-ASCII ones (#1185).
+const asciiFilename = (value: string): string => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+for (const [language, { text, navigation, common }] of Object.entries(languages)) {
   for (const format of ['ods', 'xlsx'] as const) {
     test(`${language} ${format} template previews and imports every example without silently overwriting`, async ({ page, request }, testInfo) => {
       test.setTimeout(120_000);
@@ -46,7 +55,8 @@ for (const [language, { text, navigation }] of Object.entries(languages)) {
       const button = start.getByRole('button', { name: format === 'ods' ? text.import.help.templateButton : text.import.help.templateButtonXlsx, exact: true });
       await button.scrollIntoViewIfNeeded();
       const [download] = await Promise.all([page.waitForEvent('download'), button.click()]);
-      expect(download.suggestedFilename()).toBe(`kulturen_vorlage.${format}`);
+      // The browser-suggested name follows the UI language (#1185).
+      expect(download.suggestedFilename()).toBe(`${asciiFilename(common.downloadFilenames.cropTemplate)}.${format}`);
       const path = testInfo.outputPath(`template-${language}.${format}`);
       await download.saveAs(path);
       const hint = start.getByText(text.import.help.templateSamples, { exact: true });
@@ -170,7 +180,7 @@ test('a catalog failure stays readable on a French phone and the download can be
   const [download] = await Promise.all([
     page.waitForEvent('download'), error.getByRole('button', { name: 'Réessayer', exact: true }).click(),
   ]);
-  expect(download.suggestedFilename()).toBe('kulturen_vorlage.ods');
+  expect(download.suggestedFilename()).toBe(`${asciiFilename(frCommon.downloadFilenames.cropTemplate)}.ods`);
   await expect(error).toBeHidden();
 });
 

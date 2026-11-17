@@ -3,6 +3,9 @@ import type { CompanionImportItem, Crop, CropTimingWindow } from '../api/types';
 import { toTimingWindowPayload } from './timingWindows';
 import type { CompanionItemsByKind } from './companions';
 import { formatIsoDate } from '../utils/isoDate';
+import { buildDownloadFilename, downloadFilenameWord } from '../utils/downloadFilename';
+
+type FilenameT = (key: string) => string;
 
 interface ExportEnvelopeBase {
   schemaVersion: 1;
@@ -84,7 +87,8 @@ export interface AllCropsExport extends ExportEnvelopeBase {
   crops: PortableCrop[];
 }
 
-export const slugifyFilenamePart = (value: string): string => {
+/** ASCII slug of a user-provided name part; `fallback` stands in for an empty one. */
+export const slugifyFilenamePart = (value: string, fallback = ''): string => {
   const normalized = value
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -92,7 +96,7 @@ export const slugifyFilenamePart = (value: string): string => {
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '');
 
-  return normalized || 'unbekannt';
+  return normalized || fallback;
 };
 
 /**
@@ -211,10 +215,13 @@ export const downloadJsonFile = (data: object, filename: string): void => {
   URL.revokeObjectURL(url);
 };
 
-export const buildSingleCropFilename = (crop: Crop, date = new Date()): string => {
-  const name = slugifyFilenamePart(crop.name);
-  const variety = slugifyFilenamePart(crop.variety ?? '');
-  return `kultur_${name}_${variety}_${formatIsoDate(date)}.json`;
+export const buildSingleCropFilename = (crop: Crop, t: FilenameT, date = new Date()): string => {
+  const unknown = downloadFilenameWord(t, 'unknown');
+  const name = slugifyFilenamePart(crop.name, unknown);
+  const variety = slugifyFilenamePart(crop.variety ?? '', unknown);
+  return buildDownloadFilename(t, 'crop', 'json', [name, variety, formatIsoDate(date)]);
 };
 
-export const buildAllCropsFilename = (date = new Date()): string => `kulturen_export_${formatIsoDate(date)}.json`;
+export const buildAllCropsFilename = (t: FilenameT, date = new Date()): string => (
+  buildDownloadFilename(t, 'cropExport', 'json', [formatIsoDate(date)])
+);

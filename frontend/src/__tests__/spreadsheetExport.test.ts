@@ -3,6 +3,7 @@ import {
   buildSpreadsheetFilename,
   exportCropsToSpreadsheet,
 } from '../crops/spreadsheetExport';
+import i18n from '../i18n';
 import { getLocalizedCropColumns } from '../crops/spreadsheetColumns';
 import type { Crop } from '../api/types';
 
@@ -163,21 +164,22 @@ describe('exportCropsToSpreadsheet', () => {
 });
 
 describe('buildSpreadsheetFilename', () => {
+  const de = i18n.getFixedT('de') as unknown as (key: string) => string;
   const today = new Date().toISOString().slice(0, 10);
 
   it('names an all-crops export by date', () => {
-    expect(buildSpreadsheetFilename('csv', 'all')).toBe(`kulturen_export_${today}.csv`);
+    expect(buildSpreadsheetFilename('csv', 'all', de)).toBe(`kulturen_export_${today}.csv`);
   });
 
   it('uses the chosen format as the extension', () => {
-    expect(buildSpreadsheetFilename('xlsx', 'all')).toBe(`kulturen_export_${today}.xlsx`);
-    expect(buildSpreadsheetFilename('ods', 'all')).toBe(`kulturen_export_${today}.ods`);
+    expect(buildSpreadsheetFilename('xlsx', 'all', de)).toBe(`kulturen_export_${today}.xlsx`);
+    expect(buildSpreadsheetFilename('ods', 'all', de)).toBe(`kulturen_export_${today}.ods`);
   });
 
   it('names a single-crop export after its supplier and variety', () => {
     const single = crop({ supplier: { id: 1, name: 'Bingenheimer' }, variety: 'Roma' } as Partial<Crop>);
 
-    expect(buildSpreadsheetFilename('csv', 'single', single)).toBe(
+    expect(buildSpreadsheetFilename('csv', 'single', de, single)).toBe(
       `kultur_bingenheimer_roma_${today}.csv`,
     );
   });
@@ -187,7 +189,7 @@ describe('buildSpreadsheetFilename', () => {
       supplier: { id: 1, name: 'Müller & Söhne GmbH' }, variety: 'Grüner Zwerg',
     } as Partial<Crop>);
 
-    expect(buildSpreadsheetFilename('csv', 'single', single)).toBe(
+    expect(buildSpreadsheetFilename('csv', 'single', de, single)).toBe(
       `kultur_muller_sohne_gmbh_gruner_zwerg_${today}.csv`,
     );
   });
@@ -195,7 +197,7 @@ describe('buildSpreadsheetFilename', () => {
   it('falls back to the free-text supplier when no supplier record is linked', () => {
     const single = crop({ seed_supplier: 'Sativa', variety: 'Roma' } as Partial<Crop>);
 
-    expect(buildSpreadsheetFilename('csv', 'single', single)).toBe(
+    expect(buildSpreadsheetFilename('csv', 'single', de, single)).toBe(
       `kultur_sativa_roma_${today}.csv`,
     );
   });
@@ -205,18 +207,18 @@ describe('buildSpreadsheetFilename', () => {
       supplier: { id: 1, name: 'Bingenheimer' }, seed_supplier: 'Sativa', variety: 'Roma',
     } as Partial<Crop>);
 
-    expect(buildSpreadsheetFilename('csv', 'single', single)).toContain('bingenheimer');
+    expect(buildSpreadsheetFilename('csv', 'single', de, single)).toContain('bingenheimer');
   });
 
   it('uses a placeholder rather than an empty segment when a part is missing', () => {
     const single = crop({ variety: undefined } as Partial<Crop>);
 
-    expect(buildSpreadsheetFilename('csv', 'single', single)).toBe(
+    expect(buildSpreadsheetFilename('csv', 'single', de, single)).toBe(
       `kultur_unbekannt_unbekannt_${today}.csv`,
     );
   });
 
   it('falls back to the all-crops name when single scope has no crop', () => {
-    expect(buildSpreadsheetFilename('csv', 'single')).toBe(`kulturen_export_${today}.csv`);
+    expect(buildSpreadsheetFilename('csv', 'single', de)).toBe(`kulturen_export_${today}.csv`);
   });
 });
