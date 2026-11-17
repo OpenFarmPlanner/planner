@@ -72,20 +72,37 @@ describe('parseCompanionCell', () => {
     },
   );
 
+  it('gives each note to exactly one neighbor, several entries per line', () => {
+    expect(parseCompanionCell('Tomate | A; Gurke | B, mit Komma; Basilikum')).toEqual([
+      { name: 'Tomate', reason: 'other', note: 'A' },
+      { name: 'Gurke', reason: 'other', note: 'B, mit Komma' },
+      ...names('Basilikum'),
+    ]);
+    expect(parseCompanionCell('Tomate; Gurke | Kommentar')).toEqual([...names('Tomate'), { name: 'Gurke', reason: 'other', note: 'Kommentar' }]);
+    expect(parseCompanionCell('Tomate, Gurke | Kommentar')).toEqual([...names('Tomate'), { name: 'Gurke', reason: 'other', note: 'Kommentar' }]);
+    expect(parseCompanionCell('Tomate | (siehe Quelle; Dill')).toEqual([{ name: 'Tomate', reason: 'other', note: '(siehe Quelle' }, ...names('Dill')]);
+    expect(parseCompanionCell('Tomate | "A; B | C"; Dill')).toEqual([{ name: 'Tomate', reason: 'other', note: 'A; B | C' }, ...names('Dill')]);
+  });
+
   it('defers spaced-dash groups for exact backend name resolution', () => {
     expect(parseCompanionCell('Salat - Pflücksalat; Tomate – Roma')).toEqual([{ name: 'Salat - Pflücksalat; Tomate – Roma', reason: 'other', note: '', legacy: true }]);
   });
 
-  it('writes one note group per line and reads neighbors and notes back', () => {
+  it('writes one neighbor per line and reads neighbors and notes back in order', () => {
     const items = [
       { name: 'Basilikum', reason: 'pest_control', note: '' },
-      { name: 'Tagetes', reason: 'other', note: 'lockt Schnecken ab' },
+      { name: 'Tagetes', reason: 'other', note: 'lockt Schnecken ab, laut Quelle - S. 3' },
       { name: 'Kräuter (Dill, Basilikum)', reason: 'other', note: '' },
+      { name: 'Ringelblume', reason: 'other', note: 'lockt Schnecken ab, laut Quelle - S. 3' },
     ] as const;
 
-    expect(formatCompanionCell(items)).toBe('Basilikum; "Kräuter (Dill, Basilikum)"\nTagetes | lockt Schnecken ab');
-    expect(parseCompanionCell(formatCompanionCell(items)))
-      .toEqual([...names('Basilikum', 'Kräuter (Dill, Basilikum)'), { name: 'Tagetes', reason: 'other', note: 'lockt Schnecken ab' }]);
+    expect(formatCompanionCell(items)).toBe([
+      'Basilikum',
+      'Tagetes | lockt Schnecken ab, laut Quelle - S. 3',
+      '"Kräuter (Dill, Basilikum)"',
+      'Ringelblume | lockt Schnecken ab, laut Quelle - S. 3',
+    ].join('\n'));
+    expect(parseCompanionCell(formatCompanionCell(items))).toEqual(items.map((item) => ({ ...item, reason: 'other' })));
     expect(formatCompanionCell([])).toBeNull();
   });
 });

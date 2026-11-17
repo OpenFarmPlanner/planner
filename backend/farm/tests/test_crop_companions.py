@@ -1,6 +1,7 @@
 """Companion planting: neighbour relations, the planning check and the spreadsheet import."""
 
 from datetime import date
+from typing import Any
 
 from django.utils import timezone
 
@@ -797,13 +798,50 @@ class LocalizedCompanionNotesTests(CompanionLibraryTestCase):
         self.assertEqual(response.data['results'][0]['companions']['count'], 2)
         response = self.client.post(APPLY_URL, {'items': [row], 'companion_note_language': 'fr'}, format='json')
         self.assertEqual(response.data['companions']['created'], 2)
-        self.assertEqual(list(CropCompanion.objects.values_list('notes', flat=True)), [{'fr': 'Quelle 2025'}] * 2)
+        self.assertEqual(
+            self.notes_by_neighbour(), {self.tomato.pk: {}, self.potato.pk: {'fr': 'Quelle 2025'}},
+        )
         Crop.objects.create(project=self.project, name='Tomate - Foo')
         ambiguous = {'name': 'Zucchini', 'good_companions': [{'name': 'Tomate - Foo - Bar', 'legacy': True}]}
         preview = self.client.post(PREVIEW_URL, [ambiguous], format='json').data['results'][0]
         self.assertEqual(preview['companions']['warnings'], ['Tomate - Foo - Bar'])
         response = self.client.post(APPLY_URL, {'items': [ambiguous]}, format='json')
         self.assertTrue(CropCompanion.objects.filter(companion_text='Tomate - Foo - Bar').exists())
+
+    def notes_by_neighbour(self) -> dict[int, dict[str, str]]:
+        cucumber = Crop.objects.get(project=self.project, name='Gurke', variety='').pk
+        notes: dict[int, dict[str, str]] = {}
+        for relation in CropCompanion.objects.all():
+            own = relation.crop_id == cucumber
+            neighbour = relation.companion_crop_id if own else relation.crop_id
+            notes[neighbour] = relation.notes
+        return notes
+
+    @staticmethod
+    def legacy_row(cell: str) -> dict[str, Any]:
+        return {'name': 'Gurke', 'good_companions': [{'name': cell, 'legacy': True}]}
+
+    def test_legacy_dash_entries_each_keep_their_own_note(self) -> None:
+        row = self.legacy_row('Tomate - A, mit Komma; # – /; Kartoffel - B')
+        preview = self.client.post(PREVIEW_URL, [row], format='json').data['results'][0]
+        self.assertEqual(preview['companions'].get('warnings', []), [])
+        payload = {'items': [row], 'companion_note_language': 'de'}
+        response = self.client.post(APPLY_URL, payload, format='json')
+        self.assertEqual(response.data['companions']['created'], 2, response.data)
+        self.assertEqual(
+            self.notes_by_neighbour(),
+            {self.tomato.pk: {'de': 'A, mit Komma'}, self.potato.pk: {'de': 'B'}},
+        )
+
+    def test_unresolved_legacy_entry_stays_text_without_swallowing_its_siblings(self) -> None:
+        row = self.legacy_row('Unbekannt - X; Tomate - A')
+        preview = self.client.post(PREVIEW_URL, [row], format='json').data['results'][0]
+        self.assertEqual(preview['companions']['warnings'], ['Unbekannt - X'])
+        payload = {'items': [row], 'companion_note_language': 'de'}
+        self.client.post(APPLY_URL, payload, format='json')
+        unresolved = CropCompanion.objects.filter(companion_text='Unbekannt - X', notes={})
+        self.assertTrue(unresolved.exists())
+        self.assertEqual(CropCompanion.objects.get(companion_text='').notes, {'de': 'A'})
 
     def test_known_spaced_dash_name_wins_over_legacy_suffix(self) -> None:
         named = Crop.objects.create(project=self.project, name='Salat - Pflücksalat')

@@ -1759,7 +1759,7 @@
     "languageHelp": {
       "edit": "Du bearbeitest nur Notizen in dieser Sprache. Andere Sprachversionen bleiben erhalten."
     },
-    "cellHelp": "Eine Gruppe pro Zeile: Tomate; Gurke | Schutz vor Schädlingen. Ohne Notiz genügen Namen. Exportierte Anführungszeichen und Escape-Sequenzen erhalten Trennzeichen und Zeilenumbrüche in Notizen. Alte Gedankenstrich-Kommentare werden nur bei eindeutiger Namensauflösung zugeordnet."
+    "cellHelp": "Ein Eintrag ist ein Name oder „Name | Notiz“; eine Notiz gehört immer nur zum Namen direkt davor. Einträge mit ; oder Zeilenumbruch trennen, Namen ohne Notiz auch mit Komma: Tomate | Schutz vor Schädlingen; Gurke | Quelle 2025; Basilikum. „Tomate; Gurke | Kommentar“ heißt: Tomate ohne Notiz, Gurke mit „Kommentar“. Eine Notiz reicht bis zum nächsten ; und darf Kommas enthalten. Exportierte Anführungszeichen und Escape-Sequenzen erhalten Trennzeichen und Zeilenumbrüche in Notizen. Alte Gedankenstrich-Kommentare (Tomate - A; Gurke - B) werden nur bei eindeutiger Namensauflösung und nur dem Namen direkt vor dem Strich zugeordnet."
   },
   "timingWindows": {
     "sectionTitle": "Zeiträume",

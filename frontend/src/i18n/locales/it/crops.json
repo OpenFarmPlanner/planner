@@ -1809,7 +1809,7 @@
     "languageHelp": {
       "edit": "Stai modificando solo le note in questa lingua. Le altre versioni linguistiche vengono conservate."
     },
-    "cellHelp": "Un gruppo per riga: Pomodoro; Cetriolo | Controllo dei parassiti. Sono validi anche solo i nomi. Le virgolette e le sequenze di escape esportate conservano delimitatori e interruzioni di riga nelle note. I vecchi commenti con trattino vengono collegati solo quando i nomi sono risolti senza ambiguità.",
+    "cellHelp": "Una voce è un nome o «Nome | Nota»; una nota appartiene sempre solo al nome che la precede direttamente. Separa le voci con ; o un a capo, i nomi senza nota anche con una virgola: Pomodoro | Controllo dei parassiti; Cetriolo | Fonte 2025; Basilico. «Pomodoro; Cetriolo | Commento» significa: Pomodoro senza nota, Cetriolo con «Commento». Una nota arriva fino al ; successivo e può contenere virgole. Le virgolette e le sequenze di escape esportate conservano delimitatori e interruzioni di riga nelle note. I vecchi commenti con trattino (Pomodoro - A; Cetriolo - B) vengono collegati solo quando i nomi sono risolti senza ambiguità, e solo al nome subito prima del trattino.",
     "publishSkipped_many": "{{count}} vicini restano nel progetto: sono testo libero o colture senza specie coltivata."
   },
   "timingWindows": {
