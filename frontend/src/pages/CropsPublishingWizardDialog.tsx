@@ -2,7 +2,6 @@ import type { PublicCropSyncSubmitResult } from '../crops/publicCropSync';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  Autocomplete,
   type AutocompleteInputChangeReason,
   Box,
   Button,
@@ -12,15 +11,10 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControl,
   FormControlLabel,
   FormGroup,
-  InputLabel,
   Link,
-  MenuItem,
-  Select,
   Stack,
-  TextField,
   Typography,
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router';
@@ -37,8 +31,7 @@ import type {
 } from '../api/types';
 import { extractApiErrorMessage } from '../api/errors';
 import { useTranslation } from '../i18n';
-import i18n from '../i18n/config';
-import { FALLBACK_LANGUAGE, getLanguageDisplayName, normalizeLanguageTag, SUPPORTED_LANGUAGES } from '../i18n/languages';
+import { FALLBACK_LANGUAGE, normalizeLanguageTag } from '../i18n/languages';
 import { PublicCropSyncPanel } from '../crops/PublicCropSyncPanel';
 import { usePublicCropSyncPreview } from '../crops/usePublicCropSyncPreview';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
@@ -53,6 +46,8 @@ import { describePublishBlockingReasons } from '../crops/publishChecks';
 import { useCropSpeciesSearch } from '../crops/useCropSpeciesSearch';
 import {
   getCropSpeciesOptionLabel,
+  getCropSpeciesResultLabel,
+  getCropSpeciesSearchNames,
   normalizeCropSpeciesSearchValue,
 } from '../crops/cropSpeciesMatching';
 
@@ -121,25 +116,15 @@ interface CropsPublishingWizardDialogProps {
   }) => Promise<PublicCropSyncSubmitResult>;
 }
 
-const LANGUAGE_CODES = SUPPORTED_LANGUAGES.map(({ code }) => code);
 const EMPTY_REQUIRED_FIELDS: PublishPublicCropPreview['missing_required_fields'] = [];
 const EMPTY_DUPLICATES: PublishPublicCropPreview['duplicates'] = [];
 const EMPTY_VARIETIES: Crop[] = [];
 const DETAILED_BLOCKING_REASONS: ReadonlySet<PublishBlockingReason> = new Set(['missing_required_fields', 'duplicates']);
 
-const getDefaultLanguageCode = (): string => (
-  normalizeLanguageTag(i18n.resolvedLanguage ?? i18n.language) ?? FALLBACK_LANGUAGE
-);
-
 const getPublicCropOptionLabel = (option: PublicCrop): string => {
   const name = option.display_name || option.crop_species_name || option.name;
   return option.variety ? `${name} · ${option.variety}` : name;
 };
-
-// The "Existing variety" field is already scoped to the chosen species (it's
-// right below that field), so repeating the species name in every option
-// would just be noise — only the variety name itself is shown/typed there.
-const getExistingVarietyOptionLabel = (option: PublicCrop): string => option.variety || getPublicCropOptionLabel(option);
 
 export function CropsPublishingWizardDialog({
   open,
@@ -153,25 +138,26 @@ export function CropsPublishingWizardDialog({
   onLinkPublicCrop,
   onSyncPublicCrop,
 }: CropsPublishingWizardDialogProps) {
-  const { t } = useTranslation(['crops', 'common']);
+  const { t, i18n } = useTranslation(['crops', 'common']);
+  const originalLanguageCode = normalizeLanguageTag(i18n.resolvedLanguage ?? i18n.language) ?? FALLBACK_LANGUAGE;
   const [selectedSpecies, setSelectedSpecies] = useState<CropSpecies | null>(null);
   const [publicCropOptions, setPublicCropOptions] = useState<PublicCrop[]>([]);
-  const [publicCropLoading, setPublicCropLoading] = useState(false);
   const [selectedPublicCrop, setSelectedPublicCrop] = useState<PublicCrop | null>(null);
   const [publicCropInput, setPublicCropInput] = useState('');
-  const [originalLanguageCode, setOriginalLanguageCode] = useState(getDefaultLanguageCode());
+  const [manualSpeciesChoice, setManualSpeciesChoice] = useState(false);
+  const [entryLookupKey, setEntryLookupKey] = useState('');
+  const [entryLookupRetry, setEntryLookupRetry] = useState(0);
   const [acceptedLicense, setAcceptedLicense] = useState(false);
   const [validationResult, setValidationResult] = useState<PublishPublicCropPreview | null>(null);
   const [validationLoading, setValidationLoading] = useState(false);
   const [healthMappingBusy, setHealthMappingBusy] = useState(false);
   const [healthMappings, setHealthMappings] = useState<StagedPlantHealthMapping[]>([]);
   const [showLicenseConfirmation, setShowLicenseConfirmation] = useState(false);
-  const [speciesInputValue, setSpeciesInputValue] = useState('');
+  const [speciesInputValue, setSpeciesInputValue] = useState(crop?.name ?? '');
   // What the species field searches for. Follows the user's typing only:
   // picking an option writes its label into the field, and searching for
   // that label would replace the list the user just picked from.
-  const [speciesSearchQuery, setSpeciesSearchQuery] = useState('');
-  const [existingVarietyInputValue, setExistingVarietyInputValue] = useState('');
+  const [speciesSearchQuery, setSpeciesSearchQuery] = useState(crop?.name ?? '');
   const [proposedSpeciesName, setProposedSpeciesName] = useState<string | null>(null);
   // Set while the user picked "propose this as a new species" but nothing has
   // been sent yet — the dialog's main button submits it (see handlePublish).
@@ -179,7 +165,6 @@ export function CropsPublishingWizardDialog({
   const [proposingSpecies, setProposingSpecies] = useState(false);
   const [proposeSpeciesError, setProposeSpeciesError] = useState('');
   const [generalNoticeDismissed, setGeneralNoticeDismissed] = useState(false);
-  const [showLanguageOverride, setShowLanguageOverride] = useState(false);
   // Sorten are published along by default, so only the exceptions are tracked.
   const [deselectedVarietyIds, setDeselectedVarietyIds] = useState<Set<number>>(new Set());
   // Whether the public entries the Sorten are matched against have arrived.
@@ -196,7 +181,6 @@ export function CropsPublishingWizardDialog({
   // `publishing` (which the parent also uses for the ordinary publish flow).
   const [linkConfirmSubmitting, setLinkConfirmSubmitting] = useState(false);
   const speciesInputRef = useRef<HTMLInputElement | null>(null);
-  const languageInputRef = useRef<HTMLInputElement | null>(null);
   const [syncSubmitting, setSyncSubmitting] = useState(false);
   const [syncError, setSyncError] = useState('');
   const ownedPublicCropId = crop?.owned_public_crop_id ?? null;
@@ -208,6 +192,7 @@ export function CropsPublishingWizardDialog({
   const {
     results: speciesSearchResults,
     loading: speciesLoading,
+    hasMore: speciesSearchHasMore,
   } = useCropSpeciesSearch(speciesSearchQuery, open && !isSyncFlow);
   // A species the user just proposed is `status=proposed`, so a non-moderator's
   // own search never finds it again (the search endpoint only surfaces
@@ -223,6 +208,19 @@ export function CropsPublishingWizardDialog({
   }, [proposedSpeciesOverride, speciesSearchResults]);
   const isCropLevelPublish = !crop?.variety?.trim();
   const publishableVarieties = useMemo(() => getPublishableVarieties(varieties), [varieties]);
+  const automaticSpecies = useMemo(() => {
+    if (manualSpeciesChoice || selectedSpecies || speciesLoading || isSyncFlow) return null;
+    const assigned = speciesSearchResults.find((item) => item.id === crop?.crop_species && item.status === 'published');
+    if (assigned) return assigned;
+    if (speciesSearchHasMore || crop?.crop_species) return null;
+    const name = normalizeCropSpeciesSearchValue(crop?.name);
+    const matches = speciesSearchResults.filter((item) => item.status === 'published'
+      && getCropSpeciesSearchNames(item).some((alias) => normalizeCropSpeciesSearchValue(alias) === name));
+    return matches.length === 1 ? matches[0] : null;
+  }, [crop?.crop_species, crop?.name, isSyncFlow, manualSpeciesChoice, selectedSpecies,
+    speciesLoading, speciesSearchHasMore, speciesSearchResults]);
+  const lookupSpecies = selectedSpecies ?? automaticSpecies;
+  const entryRequestKey = JSON.stringify([crop?.id, crop?.updated_at, lookupSpecies?.id, crop?.variety, entryLookupRetry]);
 
   useEffect(() => {
     if (!open) return;
@@ -230,31 +228,21 @@ export function CropsPublishingWizardDialog({
       setAcceptedLicense(false);
       setHealthMappings([]);
       setShowLicenseConfirmation(false);
-      // Prefilled with the local crop's own name so the field never starts
-      // empty and its results show right away — but nothing is auto-selected
-      // from them (not even "propose as new species"): the user always picks
-      // deliberately, and "Jetzt veröffentlichen" stays disabled until they do.
-      // Every opening starts this way; a pick from an earlier opening is
-      // deliberately not carried over.
+      // Only a unique existing entry can bypass the picker. New publications
+      // still require an explicit species choice and final confirmation.
       setSelectedSpecies(null);
+      setManualSpeciesChoice(false);
+      setEntryLookupKey('');
       setProposedSpeciesOverride(null);
       setSpeciesInputValue(crop?.name ?? '');
       setSpeciesSearchQuery(crop?.name ?? '');
-      // The field autofocuses itself (`autoFocus` + `openOnFocus` in
-      // CropSpeciesPicker), which shows its results immediately for
-      // whatever `speciesInputValue` already holds.
-      // Same idea for the variety field: pre-fill with the local variety's
-      // own name. If a matching public entry is found once the search
-      // results load (see the publicCropOptions effect), it's also
-      // auto-selected there.
-      setExistingVarietyInputValue(crop?.variety ?? '');
+      // Unless earlier health mappings need attention, focus opens the
+      // picker with results for the crop's own name.
       setProposedSpeciesName(null);
       setPendingSpeciesProposalName(null);
       setProposeSpeciesError('');
       setGeneralNoticeDismissed(false);
-      setShowLanguageOverride(false);
       setValidationResult(null);
-      setOriginalLanguageCode(getDefaultLanguageCode());
       setPublicCropInput(crop?.name ?? '');
       setSelectedPublicCrop(null);
       setDeselectedVarietyIds(new Set());
@@ -267,7 +255,7 @@ export function CropsPublishingWizardDialog({
       setSyncSubmitting(false);
       setSyncError('');
     });
-  }, [crop?.name, crop?.variety, open]);
+  }, [crop?.id, crop?.name, crop?.variety, open]);
 
   useEffect(() => {
     if (!open || !linkedPublicCropId) return;
@@ -305,7 +293,7 @@ export function CropsPublishingWizardDialog({
     // still need the species' public entries to spot name conflicts.
     if (isSyncFlow) return undefined;
     if (!open) return undefined;
-    const searchTerm = selectedSpecies?.name.trim() || crop?.name.trim() || '';
+    const searchTerm = lookupSpecies?.name.trim() || crop?.name.trim() || '';
     if (!searchTerm) {
       queueMicrotask(() => setPublicCropOptions([]));
       return undefined;
@@ -321,39 +309,42 @@ export function CropsPublishingWizardDialog({
     let cancelled = false;
     const abortController = new AbortController();
     const timeoutId = window.setTimeout(() => {
-      setPublicCropLoading(true);
-      publicCropAPI.list(selectedSpecies || crop?.crop_species
-        ? { crop_species: selectedSpecies?.id ?? crop?.crop_species ?? undefined, page_size: 200 }
-        : { q: searchTerm, page_size: 200 }, abortController.signal)
-        .then((response) => {
+      const loadEntries = async () => {
+        const entries: PublicCrop[] = [];
+        for (let page = 1; ; page += 1) {
+          const response = await publicCropAPI.list({
+            ...(lookupSpecies || crop?.crop_species
+              ? { crop_species: lookupSpecies?.id ?? crop?.crop_species ?? undefined }
+              : { q: searchTerm }),
+            page_size: 200,
+            ...(page > 1 ? { page } : {}),
+          }, abortController.signal);
+          if (cancelled) return [];
+          entries.push(...response.data.results);
+          if (!response.data.next) return entries;
+        }
+      };
+      loadEntries()
+        .then((entries) => {
           if (cancelled) return;
-          const filtered = response.data.results.filter((entry) => (
-            !selectedSpecies || entry.crop_species === selectedSpecies.id
+          const filtered = entries.filter((entry) => (
+            !lookupSpecies || entry.crop_species === lookupSpecies.id
           ));
           setPublicCropOptions(filtered);
           setVarietyLookupSettled(true);
-          // If the local variety already has a matching public entry,
-          // recognize it immediately instead of leaving the field empty —
-          // mirrors the species field's own-name prefill above.
-          const normalizedLocalVariety = normalizeCropSpeciesSearchValue(crop?.variety);
-          const match = normalizedLocalVariety
-            ? filtered.find((entry) => normalizeCropSpeciesSearchValue(entry.variety) === normalizedLocalVariety)
-            : undefined;
-          if (match) {
-            setSelectedPublicCrop((prevSelected) => prevSelected ?? match);
-            setExistingVarietyInputValue((prevInput) => (
-              prevInput === (crop?.variety ?? '') ? getExistingVarietyOptionLabel(match) : prevInput
-            ));
-          }
+          setEntryLookupKey(entryRequestKey);
+          const variety = normalizeCropSpeciesSearchValue(crop?.variety);
+          const matches = lookupSpecies ? filtered.filter((entry) => entry.status === 'published'
+            && normalizeCropSpeciesSearchValue(entry.variety) === variety) : [];
+          setSelectedPublicCrop(matches.length === 1 ? matches[0] : null);
         })
         .catch(() => {
           if (cancelled || abortController.signal.aborted) return;
           setPublicCropOptions([]);
           setVarietyLookupSettled(true);
           setVarietyLookupFailed(true);
-        })
-        .finally(() => {
-          if (!cancelled) setPublicCropLoading(false);
+          setSelectedPublicCrop(null);
+          setEntryLookupKey(entryRequestKey);
         });
     }, 250);
 
@@ -362,7 +353,20 @@ export function CropsPublishingWizardDialog({
       window.clearTimeout(timeoutId);
       abortController.abort();
     };
-  }, [crop?.name, crop?.crop_species, crop?.variety, isSyncFlow, open, selectedSpecies]);
+  }, [crop?.name, crop?.crop_species, crop?.variety, isSyncFlow, open, lookupSpecies, entryRequestKey]);
+
+  useEffect(() => {
+    if (!open || !automaticSpecies || !selectedPublicCrop || entryLookupKey !== entryRequestKey) return;
+    queueMicrotask(() => {
+      setManualSpeciesChoice(true);
+      setSelectedSpecies(automaticSpecies);
+      setSpeciesInputValue(getCropSpeciesResultLabel(automaticSpecies, originalLanguageCode).label);
+      setShowLinkConfirmation(true);
+    });
+  }, [automaticSpecies, entryLookupKey, entryRequestKey, open, originalLanguageCode, selectedPublicCrop]);
+
+  const entryLookupPending = Boolean(selectedSpecies) && entryLookupKey !== entryRequestKey;
+  const entryLookupBlocked = Boolean(selectedSpecies) && (entryLookupPending || varietyLookupFailed);
 
   const missingRequiredFields = validationResult?.missing_required_fields ?? EMPTY_REQUIRED_FIELDS;
   const duplicates = validationResult?.duplicates ?? EMPTY_DUPLICATES;
@@ -382,7 +386,6 @@ export function CropsPublishingWizardDialog({
       )
       : []
   ), [isBlockedByValidation, t, validationResult]);
-  const existingVarietyOptions = publicCropOptions.filter((option) => (option.variety || '').trim());
   const varietyCandidates = useMemo(
     () => buildPublishVarietyCandidates(publishableVarieties, publicCropOptions),
     [publicCropOptions, publishableVarieties],
@@ -427,7 +430,9 @@ export function CropsPublishingWizardDialog({
   }, []);
 
   const handleSpeciesChange = useCallback((value: CropSpecies | null) => {
+    setManualSpeciesChoice(true);
     setSelectedSpecies(value);
+    setEntryLookupRetry((retry) => retry + 1);
     setSelectedPublicCrop(null);
     setProposedSpeciesName(null);
     resetValidationResult();
@@ -437,6 +442,7 @@ export function CropsPublishingWizardDialog({
   // the picker also reports `null` on every keystroke, which must not keep
   // wiping the validation result while the user is still typing.
   const handleSpeciesProposalNameChange = useCallback((name: string | null) => {
+    setManualSpeciesChoice(true);
     setPendingSpeciesProposalName(name);
     if (!name) return;
     setSelectedSpecies(null);
@@ -446,12 +452,14 @@ export function CropsPublishingWizardDialog({
   }, [resetValidationResult]);
 
   const handleSpeciesInputChange = useCallback((value: string, reason?: AutocompleteInputChangeReason) => {
+    if (reason === 'reset' && !value && !selectedSpecies) return;
     setProposeSpeciesError('');
     setSpeciesInputValue(value);
     if (reason === 'input' || reason === 'clear') {
+      setManualSpeciesChoice(true);
       setSpeciesSearchQuery(value);
     }
-  }, []);
+  }, [selectedSpecies]);
 
   const handleProposeSpecies = useCallback(async (name: string): Promise<CropSpecies | null> => {
     const trimmedName = name.trim();
@@ -522,10 +530,11 @@ export function CropsPublishingWizardDialog({
 
   const handleCancelLinkConfirmation = useCallback(() => {
     setShowLinkConfirmation(false);
-    setSelectedPublicCrop(null);
+    setManualSpeciesChoice(true);
+    if (validationResult?.duplicates.length) setSelectedPublicCrop(null);
     setLinkConfirmError('');
     setShowLicenseConfirmation(false);
-  }, []);
+  }, [validationResult]);
 
   const { selection: syncSelection } = syncPreview;
   const syncPreviewLoaded = syncPreview.preview !== null;
@@ -625,10 +634,6 @@ export function CropsPublishingWizardDialog({
       speciesInputRef.current?.focus();
       return;
     }
-    if (!originalLanguageCode) {
-      languageInputRef.current?.focus();
-      return;
-    }
     const previewResult = await runPublishPreview(cropSpeciesId);
     if (!previewResult?.can_publish) return;
 
@@ -698,11 +703,6 @@ export function CropsPublishingWizardDialog({
           </Typography>
         </Stack>
       ) : null}
-      {varietyLookupFailed ? (
-        <Alert severity="warning" sx={{ mt: 1 }}>
-          {t('library.publishWizard.varieties.checkFailed')}
-        </Alert>
-      ) : null}
       <FormGroup sx={{ mt: 0.5 }}>
         {varietyCandidates.map((candidate) => (
           <FormControlLabel
@@ -737,9 +737,13 @@ export function CropsPublishingWizardDialog({
     <PublicLibraryTermsConsent checked={acceptedLicense} onChange={setAcceptedLicense} />
   ) : null;
 
+  const healthMappingCrops = crop ? [crop, ...varieties.filter(variety => selectedVarieties.some(item => item.cropId === variety.id)
+    && !(variety.plant_health == null && variety.general_crop === crop.id))] : [];
+  const hasOpenHealthMappings = healthMappingCrops.some(item => (
+    (item.plant_health ?? item.effective_values?.plant_health)?.entries.some(entry => !entry.catalogue_identity)
+  ));
   const healthMappingPanel = open && crop ? <>
-    {[crop, ...varieties.filter(variety => selectedVarieties.some(item => item.cropId === variety.id)
-      && !(variety.plant_health == null && variety.general_crop === crop.id))].map(item => (
+    {healthMappingCrops.map(item => (
       <PlantHealthPublicationPanel key={item.id} crop={item}
         inheritedSource={projectCrops.find(source => source.id === item.general_crop)}
         onNavigate={onClose}
@@ -780,6 +784,9 @@ export function CropsPublishingWizardDialog({
         <DialogActions sx={{ px: 3, py: 2, flexWrap: 'wrap', gap: 1 }}>
           <Button onClick={handleCancelLinkConfirmation} variant="outlined" disabled={linkConfirmSubmitting || publishing || healthMappingBusy}>
             {t('library.publishWizard.linkConfirm.back')}
+          </Button>
+          <Button onClick={onClose} variant="outlined" disabled={linkConfirmSubmitting || publishing || healthMappingBusy}>
+            {t('common:actions.cancel')}
           </Button>
           <Button
             onClick={() => void handleConfirmLink()}
@@ -846,18 +853,32 @@ export function CropsPublishingWizardDialog({
     );
   }
 
+  const checkingAutomaticLink = !manualSpeciesChoice
+    && (speciesLoading || (automaticSpecies && entryLookupKey !== entryRequestKey));
+  if (checkingAutomaticLink) {
+    return (
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <DialogTitle>{t('library.publishWizard.title')}</DialogTitle>
+        <DialogContent dividers>
+          <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }} role="status">
+            <CircularProgress size={24} />
+            <Typography>{t('common:messages.loading')}</Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={onClose} variant="outlined">{t('common:actions.cancel')}</Button>
+        </DialogActions>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onClose={publishing || syncSubmitting || healthMappingBusy ? undefined : onClose} maxWidth="sm" fullWidth>
       <DialogTitle>{t('library.publishWizard.title')}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2.25} sx={{ pt: 0.5 }}>
           <Typography variant="body2" color="text.secondary">
-            {t(
-              isCropLevelPublish
-                ? 'library.linkExisting.intro'
-                : 'library.publishWizard.intro',
-              { name: crop?.name ?? '' },
-            )}
+            {t('library.publishWizard.intro', { name: crop?.name ?? '' })}
           </Typography>
 
           {syncError ? <Alert severity="error">{syncError}</Alert> : null}
@@ -878,98 +899,18 @@ export function CropsPublishingWizardDialog({
               inputRef={speciesInputRef}
               required
               serverSearched
+              autoFocus={!hasOpenHealthMappings}
             />
 
             {varietySelectionBox}
 
-            {isCropLevelPublish ? (
-              <Stack spacing={1}>
-                <Autocomplete
-                  options={publicCropOptions.filter((entry) => !entry.variety?.trim())}
-                  value={selectedPublicCrop}
-                  loading={publicCropLoading}
-                  getOptionLabel={getPublicCropOptionLabel}
-                  isOptionEqualToValue={(option, value) => option.id === value.id}
-                  onChange={(_, value) => setSelectedPublicCrop(value)}
-                  renderInput={(params) => <TextField {...params} label={t('library.linkExisting.publicTarget')} />}
-                />
-                <Button variant="outlined" disabled={!selectedPublicCrop} onClick={() => setShowLinkConfirmation(true)}>
-                  {t('library.linkExisting.title')}
+            {selectedSpecies && varietyLookupFailed ? (
+              <Alert severity="error" action={
+                <Button color="inherit" onClick={() => setEntryLookupRetry((value) => value + 1)}>
+                  {t('common:runtime.retryAction')}
                 </Button>
-              </Stack>
-            ) : (
-              <Autocomplete
-                options={existingVarietyOptions}
-                value={selectedPublicCrop}
-                inputValue={existingVarietyInputValue}
-                loading={publicCropLoading}
-                getOptionLabel={getExistingVarietyOptionLabel}
-                isOptionEqualToValue={(option, value) => option.id === value.id}
-                filterOptions={(options) => options}
-                onChange={(_, value) => {
-                  setSelectedPublicCrop(value);
-                  setExistingVarietyInputValue(value ? getExistingVarietyOptionLabel(value) : '');
-                  resetValidationResult();
-                }}
-                onInputChange={(_, value, reason) => {
-                  if (reason === 'reset') return;
-                  setExistingVarietyInputValue(value);
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label={t('library.publishWizard.existingVarietyLabel')}
-                    helperText={crop?.variety?.trim()
-                      ? t('library.publishWizard.existingVarietyHelp')
-                      : t('library.publishWizard.publicCropHelp')}
-                    slotProps={{
-                      ...params.slotProps,
-
-                      input: {
-                        ...params.slotProps.input,
-                        endAdornment: (
-                          <>
-                            {publicCropLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                            {params.slotProps.input.endAdornment}
-                          </>
-                        ),
-                      }
-                    }}
-                  />
-                )}
-              />
-            )}
-
-            {showLanguageOverride ? (
-                <FormControl fullWidth>
-                  <InputLabel id="publishing-original-language-label">{t('library.publishWizard.originalLanguageLabel')}</InputLabel>
-                  <Select
-                    labelId="publishing-original-language-label"
-                    label={t('library.publishWizard.originalLanguageLabel')}
-                    value={originalLanguageCode}
-                    inputRef={languageInputRef}
-                    onChange={(event) => {
-                      setOriginalLanguageCode(event.target.value);
-                      resetValidationResult();
-                    }}
-                  >
-                    {LANGUAGE_CODES.map((code) => (
-                      <MenuItem key={code} value={code}>{getLanguageDisplayName(code, i18n.resolvedLanguage ?? i18n.language)}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              ) : (
-                <Stack direction="row" spacing={1} sx={{ alignItems: "center", }} >
-                  <Typography variant="body2" color="text.secondary">
-                    {t('library.publishWizard.originalLanguageSummary', {
-                      language: getLanguageDisplayName(originalLanguageCode, i18n.resolvedLanguage ?? i18n.language),
-                    })}
-                  </Typography>
-                  <Button size="small" onClick={() => setShowLanguageOverride(true)}>
-                    {t('library.publishWizard.changeLanguageLink')}
-                  </Button>
-                </Stack>
-              )}
+              }>{t('library.publishWizard.entryLookupFailed')}</Alert>
+            ) : null}
           </Stack>
 
           {shouldShowProposedSpeciesNotice ? (
@@ -1079,12 +1020,12 @@ export function CropsPublishingWizardDialog({
             variant="contained"
             disabled={
               (!selectedSpecies && !isProposingNewSpecies)
-              || !originalLanguageCode
               || publishing
               || validationLoading
               || healthMappingBusy
               || proposingSpecies
               || varietyConflictsPending
+              || entryLookupBlocked
               || isBlockedByValidation
               || (showLicenseConfirmation && !termsAlreadyAccepted && !acceptedLicense)
             }
@@ -1096,7 +1037,7 @@ export function CropsPublishingWizardDialog({
                 : isProposingNewSpecies
                     ? t('library.publishWizard.proposeSpeciesSubmit')
                     : selectedPublicCrop
-                      ? t('library.publishWizard.linkExisting')
+                      ? t('library.publishWizard.continueToComparison')
                       : t('library.publishWizard.publishNow')}
           </Button>
           </span>

@@ -81,6 +81,7 @@ export interface CropSpeciesPickerProps {
    * full-list mode.
    */
   serverSearched?: boolean;
+  autoFocus?: boolean;
   /** Restrict callers such as sourced host links to an existing approved species. */
   allowProposal?: boolean;
   disabled?: boolean;
@@ -108,6 +109,7 @@ export function CropSpeciesPicker({
   required = false,
   inputRef,
   serverSearched = false,
+  autoFocus = serverSearched,
   allowProposal = true,
   disabled = false,
 }: CropSpeciesPickerProps) {
@@ -257,12 +259,9 @@ export function CropSpeciesPicker({
         <TextField
           {...params}
           inputRef={inputRef}
-          // Server-searched mode (the publishing wizard) wants results
-          // visible the moment the dialog opens, with no extra click —
-          // `autoFocus` plus `openOnFocus` above gets there without an
-          // imperative `.focus()` call racing the dialog's own mount/open
-          // transition.
-          autoFocus={serverSearched}
+          // Callers with earlier mapping fields can keep the popup closed
+          // on mount so it does not cover the first required decision.
+          autoFocus={autoFocus}
           label={label ?? t('library.speciesPicker.label')}
           required={required}
           error={Boolean(errorText)}

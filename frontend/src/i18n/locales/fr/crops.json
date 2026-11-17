@@ -1309,7 +1309,7 @@
     },
     "publishWizard": {
       "title": "Associer ou publier une culture",
-      "intro": "Choisissez d'abord l'espèce cultivée publique correspondante. Votre variété est publiée sous celle-ci ; si l'espèce n'a pas encore de fiche générale, celle-ci est créée automatiquement à partir de vos valeurs actuelles.",
+      "intro": "Choisissez l’espèce cultivée pour « {{name}} ». Vous pourrez ensuite comparer et lier les entrées existantes.",
       "introGeneral": "Choisissez l'espèce cultivée publique correspondante. Seules ses données générales sont publiées, pas de variété.",
       "introGeneralWithVarieties": "Les données générales de cette espèce cultivée sont publiées. Les variétés sélectionnées sont publiées en même temps.",
       "varieties": {
@@ -1321,6 +1321,8 @@
       },
       "updateHeading": "Mettre à jour {{name}}",
       "publishNow": "Publier maintenant",
+      "continueToComparison": "Comparer les valeurs",
+      "entryLookupFailed": "Impossible de trouver l’entrée de la bibliothèque. Veuillez réessayer.",
       "linkExisting": "Lier la culture publique",
       "updateExisting": "Mettre à jour la version publique",
       "resolveBlockingIssues": "Résoudre d'abord les avertissements",
@@ -1404,9 +1406,6 @@
       "proposedSpeciesNotice": "Votre proposition de nouvelle espèce cultivée « {{name}} » a été soumise à examen. Vous pouvez dès maintenant publier votre variété — elle apparaîtra provisoirement sous « {{name}} » jusqu'à son approbation.",
       "proposeSpeciesError": "La proposition n'a pas pu être enregistrée. Veuillez réessayer.",
       "speciesAlreadyExists": "Cette espèce cultivée existe déjà ou a déjà été proposée — peut-être sous un autre nom. Veuillez la rechercher dans la liste.",
-      "originalLanguageLabel": "Langue d'origine",
-      "originalLanguageSummary": "Langue d'origine : {{language}}",
-      "changeLanguageLink": "Modifier",
       "translationsOptional": "Les traductions manquantes peuvent être ajoutées plus tard.",
       "translationAvailable": "Disponible",
       "translationMissingOptional": "Manquante, facultative",

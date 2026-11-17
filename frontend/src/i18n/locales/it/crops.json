@@ -1304,7 +1304,7 @@
     },
     "publishWizard": {
       "title": "Collega o pubblica una coltura",
-      "intro": "Scegli prima la specie coltivata pubblica corrispondente. La tua varietà viene pubblicata sotto di essa; se la specie non ha ancora una voce generale, ne viene creata una automaticamente dai valori attuali.",
+      "intro": "Scegli la specie coltivata per «{{name}}». Potrai poi confrontare e collegare le voci esistenti.",
       "introGeneral": "Scegli la specie coltivata pubblica corrispondente. Vengono pubblicati solo i suoi dati generali, non una varietà.",
       "introGeneralWithVarieties": "Vengono pubblicati i dati generali di questa specie coltivata. Le varietà selezionate vengono pubblicate insieme.",
       "varieties": {
@@ -1316,6 +1316,8 @@
       },
       "updateHeading": "Aggiorna {{name}}",
       "publishNow": "Pubblica ora",
+      "continueToComparison": "Confronta i valori",
+      "entryLookupFailed": "Impossibile individuare la voce della biblioteca. Riprova.",
       "linkExisting": "Collega coltura pubblica",
       "updateExisting": "Aggiorna versione pubblica",
       "resolveBlockingIssues": "Risolvi prima gli avvisi",
@@ -1399,9 +1401,6 @@
       "proposedSpeciesNotice": "La tua proposta per la nuova specie coltivata «{{name}}» è stata inviata per l'esame. Puoi già pubblicare la varietà: apparirà provvisoriamente sotto «{{name}}» fino all'approvazione.",
       "proposeSpeciesError": "Impossibile salvare la proposta. Riprova.",
       "speciesAlreadyExists": "Questa specie coltivata esiste già o è già stata proposta, forse con un altro nome. Cercala nell'elenco.",
-      "originalLanguageLabel": "Lingua originale",
-      "originalLanguageSummary": "Lingua originale: {{language}}",
-      "changeLanguageLink": "Cambia",
       "translationsOptional": "Puoi aggiungere in seguito le traduzioni mancanti.",
       "translationAvailable": "Disponibile",
       "translationMissingOptional": "Mancante, facoltativa",

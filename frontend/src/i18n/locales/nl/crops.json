@@ -1271,7 +1271,7 @@
     },
     "publishWizard": {
       "title": "Gewas koppelen of publiceren",
-      "intro": "Kies eerst de passende openbare gewassoort. Je ras wordt daaronder gepubliceerd. Als de soort nog geen algemeen item heeft, wordt dit automatisch uit je huidige waarden gemaakt.",
+      "intro": "Kies de gewassoort voor ‘{{name}}’. Daarna kun je bestaande vermeldingen vergelijken en koppelen.",
       "introGeneral": "Kies de passende openbare gewassoort. Alleen de algemene gegevens worden gepubliceerd, geen ras.",
       "introGeneralWithVarieties": "De algemene gegevens van deze gewassoort worden gepubliceerd. Geselecteerde rassen worden meegepubliceerd.",
       "varieties": {
@@ -1283,6 +1283,8 @@
       },
       "updateHeading": "{{name}} bijwerken",
       "publishNow": "Nu publiceren",
+      "continueToComparison": "Waarden vergelijken",
+      "entryLookupFailed": "De bibliotheekvermelding kon niet worden bepaald. Probeer het opnieuw.",
       "linkExisting": "Openbaar gewas koppelen",
       "updateExisting": "Openbare versie bijwerken",
       "resolveBlockingIssues": "Los eerst de waarschuwingen op",
@@ -1366,9 +1368,6 @@
       "proposedSpeciesNotice": "Je voorstel voor de nieuwe gewassoort ‘{{name}}’ is ter beoordeling ingediend. Je kunt je ras nu al publiceren. Het verschijnt voorlopig onder ‘{{name}}’ totdat het is goedgekeurd.",
       "proposeSpeciesError": "Het voorstel kon niet worden opgeslagen. Probeer het opnieuw.",
       "speciesAlreadyExists": "Deze gewassoort bestaat al of is al voorgesteld, mogelijk onder een andere naam. Zoek deze in de lijst.",
-      "originalLanguageLabel": "Oorspronkelijke taal",
-      "originalLanguageSummary": "Oorspronkelijke taal: {{language}}",
-      "changeLanguageLink": "Wijzigen",
       "translationsOptional": "Ontbrekende vertalingen kunnen later worden toegevoegd.",
       "translationAvailable": "Beschikbaar",
       "translationMissingOptional": "Ontbreekt, optioneel",

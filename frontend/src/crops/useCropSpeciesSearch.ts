@@ -12,6 +12,8 @@ export interface CropSpeciesSearchResult {
   results: CropSpecies[];
   /** True from the moment the query changes until its results (or failure) arrive. */
   loading: boolean;
+  /** More results exist, so this page alone cannot establish an unambiguous identity. */
+  hasMore: boolean;
   /**
    * True once a search for the current query has settled (success, failure,
    * or an empty query) — mirrors `useCropSpeciesOptions`'s `loaded` so
@@ -23,6 +25,7 @@ export interface CropSpeciesSearchResult {
 interface SettledSearch {
   query: string;
   results: CropSpecies[];
+  hasMore: boolean;
 }
 
 /**
@@ -56,10 +59,11 @@ export function useCropSpeciesSearch(query: string, enabled: boolean): CropSpeci
     const timeoutId = window.setTimeout(() => {
       cropSpeciesAPI.list({ q: trimmedQuery, page_size: SEARCH_PAGE_SIZE }, abortController.signal)
         .then((response) => {
-          if (!cancelled) setSettledSearch({ query: trimmedQuery, results: response.data.results });
+          if (!cancelled) setSettledSearch({ query: trimmedQuery, results: response.data.results,
+            hasMore: Boolean(response.data.next) || response.data.count > response.data.results.length });
         })
         .catch(() => {
-          if (!cancelled) setSettledSearch({ query: trimmedQuery, results: [] });
+          if (!cancelled) setSettledSearch({ query: trimmedQuery, results: [], hasMore: false });
         });
     }, SEARCH_DEBOUNCE_MS);
 
@@ -71,12 +75,13 @@ export function useCropSpeciesSearch(query: string, enabled: boolean): CropSpeci
   }, [active, trimmedQuery]);
 
   if (!active) {
-    return { results: EMPTY_RESULTS, loading: false, settled: true };
+    return { results: EMPTY_RESULTS, loading: false, settled: true, hasMore: false };
   }
   const settled = settledSearch?.query === trimmedQuery;
   return {
     results: settled ? settledSearch.results : EMPTY_RESULTS,
     loading: !settled,
+    hasMore: settled ? settledSearch.hasMore : false,
     settled,
   };
 }

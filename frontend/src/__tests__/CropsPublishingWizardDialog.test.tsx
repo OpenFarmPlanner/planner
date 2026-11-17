@@ -1,4 +1,5 @@
 import type { PublicCropSyncSubmitResult } from '../crops/publicCropSync';
+import i18n from '../i18n/config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -151,7 +152,7 @@ describe('CropsPublishingWizardDialog', () => {
   it('does not render a general-crop vs. variety toggle', async () => {
     renderWizard();
 
-    await waitFor(() => expect(screen.getByLabelText(/Offizielle Kulturart/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /Offizielle Kulturart/i })).toBeInTheDocument());
 
     expect(screen.queryByText('Veröffentlichen als')).not.toBeInTheDocument();
     expect(screen.queryByText('Allgemeine Kultur')).not.toBeInTheDocument();
@@ -163,7 +164,7 @@ describe('CropsPublishingWizardDialog', () => {
 
     renderWizard();
 
-    const speciesInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+    const speciesInput = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
     const user = userEvent.setup();
     await user.type(speciesInput, 'Kürbis');
 
@@ -199,7 +200,7 @@ describe('CropsPublishingWizardDialog', () => {
     // the proposed name afterward, not go blank.
     renderWizard();
 
-    const speciesInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+    const speciesInput = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
     await waitFor(() => expect(speciesInput).toHaveValue('Tomate'));
     const user = userEvent.setup();
     fireEvent.click(await screen.findByRole('option', { name: 'Tomate' }));
@@ -231,7 +232,7 @@ describe('CropsPublishingWizardDialog', () => {
 
     renderWizard();
 
-    const speciesInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+    const speciesInput = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
     const user = userEvent.setup();
     await user.type(speciesInput, 'teste DE');
 
@@ -265,7 +266,7 @@ describe('CropsPublishingWizardDialog', () => {
 
     renderWizard();
 
-    const speciesInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+    const speciesInput = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
     const user = userEvent.setup();
     await user.type(speciesInput, 'sdfsd');
 
@@ -330,7 +331,7 @@ describe('CropsPublishingWizardDialog', () => {
 
     renderWizard();
 
-    const speciesInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+    const speciesInput = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
     const user = userEvent.setup();
     await user.clear(speciesInput);
     await user.type(speciesInput, 'Kürbis');
@@ -367,7 +368,7 @@ describe('CropsPublishingWizardDialog', () => {
 
     renderWizard();
 
-    const speciesInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+    const speciesInput = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
     const user = userEvent.setup();
     await user.clear(speciesInput);
     await user.type(speciesInput, 'Kürb');
@@ -382,7 +383,7 @@ describe('CropsPublishingWizardDialog', () => {
   it('hides the proposal entry while the species field is empty', async () => {
     renderWizard();
 
-    const speciesInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+    const speciesInput = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
     const user = userEvent.setup();
     await user.clear(speciesInput);
     await user.click(speciesInput);
@@ -412,7 +413,7 @@ describe('CropsPublishingWizardDialog', () => {
 
     renderWizard();
 
-    const speciesInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+    const speciesInput = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
     const user = userEvent.setup();
     await user.clear(speciesInput);
     await user.type(speciesInput, 'kürbis');
@@ -445,7 +446,7 @@ describe('CropsPublishingWizardDialog', () => {
 
     renderWizard();
 
-    const speciesInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+    const speciesInput = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
     const user = userEvent.setup();
     await user.clear(speciesInput);
     await user.type(speciesInput, 'Paradeiser');
@@ -483,7 +484,7 @@ describe('CropsPublishingWizardDialog', () => {
 
     renderWizard();
 
-    const speciesInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+    const speciesInput = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
     const user = userEvent.setup();
     await user.clear(speciesInput);
     await user.type(speciesInput, 'Peperoni');
@@ -520,7 +521,7 @@ describe('CropsPublishingWizardDialog', () => {
 
     renderWizard();
 
-    const speciesInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+    const speciesInput = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
     const user = userEvent.setup();
     await user.clear(speciesInput);
     await user.type(speciesInput, 'Paradei');
@@ -611,7 +612,7 @@ describe('CropsPublishingWizardDialog', () => {
       // Regression: the click used to land on nothing, leaving the typed text
       // in the field and the publish button disabled.
       render(renderOpenable(true));
-      const speciesInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+      const speciesInput = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
       const user = userEvent.setup();
       await user.clear(speciesInput);
       await user.type(speciesInput, 'zuck');
@@ -621,7 +622,7 @@ describe('CropsPublishingWizardDialog', () => {
       fireEvent.click(option);
 
       expect(speciesInput).toHaveValue('Zuckererbse');
-      expect(screen.getByRole('button', { name: 'Jetzt veröffentlichen' })).toBeEnabled();
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Jetzt veröffentlichen' })).toBeEnabled());
       // Writing the picked label into the field is not a new search: one
       // would replace the options the user just picked from.
       await new Promise((resolve) => setTimeout(resolve, 400));
@@ -640,7 +641,7 @@ describe('CropsPublishingWizardDialog', () => {
           : Promise.resolve(page(resultsByQuery[params.q] ?? []))
       ));
       render(renderOpenable(true));
-      const speciesInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+      const speciesInput = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
       expect(await screen.findByRole('option', { name: /^Futtererbse/ })).toBeInTheDocument();
       const user = userEvent.setup();
       // Typing over the selected prefill, as users do: the field never goes
@@ -659,22 +660,22 @@ describe('CropsPublishingWizardDialog', () => {
 
     it('starts from the crop name again when reopened, without a stale selection', async () => {
       const view = render(renderOpenable(true));
-      const speciesInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+      const speciesInput = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
       const user = userEvent.setup();
       await user.clear(speciesInput);
       await user.type(speciesInput, 'zuck');
       fireEvent.click(await screen.findByRole('option', { name: 'Zuckererbse Synonym: Zuckerschote' }));
-      expect(screen.getByRole('button', { name: 'Jetzt veröffentlichen' })).toBeEnabled();
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Jetzt veröffentlichen' })).toBeEnabled());
 
       view.rerender(renderOpenable(false));
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
       view.rerender(renderOpenable(true));
 
-      const reopenedInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+      const reopenedInput = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
       await waitFor(() => expect(reopenedInput).toHaveValue('Zuckererbse'));
       // The prefilled crop name is not a pick: nothing is selected, so the
       // field and the publish button agree.
-      expect(screen.getByRole('button', { name: 'Jetzt veröffentlichen' })).toBeDisabled();
+      expect(await screen.findByRole('button', { name: 'Jetzt veröffentlichen' })).toBeDisabled();
       expect(screen.queryByText(/wird als/)).not.toBeInTheDocument();
       const options = await findSettledOptions(2);
       expect(options.map((option) => option.textContent)).toEqual(['Zuckererbse', 'Futtererbse']);
@@ -693,7 +694,7 @@ describe('CropsPublishingWizardDialog', () => {
 
     renderWizard();
 
-    const speciesInput = await screen.findByLabelText(/Offizielle Kulturart/i);
+    const speciesInput = await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
     const user = userEvent.setup();
     await user.type(speciesInput, 'Kürbis');
 
@@ -709,22 +710,89 @@ describe('CropsPublishingWizardDialog', () => {
     expect(publishPreviewMock).not.toHaveBeenCalled();
   });
 
-  it('pre-selects the existing public variety that already matches the local variety name', async () => {
-    publicCropListMock.mockResolvedValue({
-      data: {
-        results: [
-          { id: 40, status: 'published', name: 'Tomate', display_name: 'Tomate', variety: 'Roma', crop_species: 1, version: 2 },
-          { id: 41, status: 'published', name: 'Tomate', display_name: 'Tomate', variety: 'Ochsenherz', crop_species: 1, version: 1 },
-        ],
-      },
-    });
+  it('opens the comparison directly for a unique existing variety and saves only on confirmation', async () => {
+    publicCropListMock.mockResolvedValue({ data: { results: [
+      { id: 40, status: 'published', name: 'Tomate', variety: 'Roma', crop_species: 1, version: 2, original_language_code: 'it' },
+      { id: 41, status: 'published', name: 'Tomate', variety: 'Ochsenherz', crop_species: 1, version: 1 },
+    ] } });
+    const onLinkPublicCrop = vi.fn().mockResolvedValue(true);
+    const onPublish = vi.fn();
+    const onClose = vi.fn();
+    renderWizard(CROP, { onLinkPublicCrop, onPublish, onClose });
+    expect(await screen.findByRole('dialog', { name: 'Mit vorhandenem Eintrag verknüpfen' })).toBeVisible();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(publicSyncPreviewMock).toHaveBeenCalledWith(CROP.id, 40);
+    expect(onLinkPublicCrop).not.toHaveBeenCalled();
+    expect(onPublish).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole('button', { name: 'Verknüpfen und Werte übernehmen' }));
+    await waitFor(() => expect(onLinkPublicCrop).toHaveBeenCalledWith(expect.objectContaining({ publicCropId: 40 })));
+    expect(onPublish).not.toHaveBeenCalled();
+  });
 
-    renderWizard();
+  it('skips the picker for a unique general entry, cancels without writes and keeps its target on back', async () => {
+    publicCropListMock.mockResolvedValue({ data: { results: [
+      { id: 40, status: 'published', name: 'Tomate', variety: '', crop_species: 1, version: 2 },
+    ] } });
+    const onLinkPublicCrop = vi.fn();
+    const onPublish = vi.fn();
+    const onClose = vi.fn();
+    renderWizard(GENERAL_CROP, { onLinkPublicCrop, onPublish, onClose });
+    await screen.findByRole('dialog', { name: 'Mit vorhandenem Eintrag verknüpfen' });
+    fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
+    expect(screen.getAllByRole('combobox')).toHaveLength(1);
+    fireEvent.click(await findEnabledPublishButton('Weiter zum Abgleich'));
+    await screen.findByRole('dialog', { name: 'Mit vorhandenem Eintrag verknüpfen' });
+    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen', exact: true }));
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(onLinkPublicCrop).not.toHaveBeenCalled();
+    expect(onPublish).not.toHaveBeenCalled();
+  });
 
-    await screen.findByLabelText(/Offizielle Kulturart/i);
-    // The species is already selected in the field above, so this field
-    // shows only the variety name — not a redundant "Species · Variety".
-    await waitFor(() => expect(screen.getByDisplayValue('Roma')).toBeInTheDocument());
+  it.each([false, true])('resolves an existing entry by %s assigned identity or an exact alias', async (assigned) => {
+    cropSpeciesListMock.mockResolvedValue({ data: { count: 1, next: null, results: [
+      { id: 1, name: 'Tomate', status: 'published', search_names: ['Tomate', 'Paradeiser'] },
+    ] } });
+    publicCropListMock.mockResolvedValue({ data: { results: [
+      { id: 40, status: 'published', name: 'Tomate', variety: '', crop_species: 1, version: 2 },
+    ] } });
+    renderWizard({ ...GENERAL_CROP, name: assigned ? 'My local name' : 'Paradeiser', crop_species: assigned ? 1 : null });
+    await screen.findByRole('dialog', { name: 'Mit vorhandenem Eintrag verknüpfen' });
+    expect(publicSyncPreviewMock).toHaveBeenCalledWith(GENERAL_CROP.id, 40);
+  });
+
+  it.each(['similar', 'ambiguous', 'incomplete'])('keeps the picker for a %s species match', async (kind) => {
+    const results = [{ id: 1, name: kind === 'similar' ? 'Tomat' : 'Tomate', status: 'published' },
+      ...(kind === 'ambiguous' ? [{ id: 2, name: 'Other species', status: 'published', search_names: ['Tomate'] }] : [])];
+    cropSpeciesListMock.mockResolvedValue({ data: { count: kind === 'incomplete' ? 50 : results.length,
+      results, next: kind === 'incomplete' ? '/next' : null } });
+    publicCropListMock.mockResolvedValue({ data: { results: [
+      { id: 40, status: 'published', name: 'Tomate', variety: '', crop_species: 1, version: 2 },
+    ] } });
+    renderWizard(GENERAL_CROP);
+    await waitFor(() => expect(publicCropListMock).toHaveBeenCalled());
+    expect(screen.getByRole('dialog', { name: 'Kultur verknüpfen oder veröffentlichen' })).toBeVisible();
+    expect(screen.getAllByRole('combobox')).toHaveLength(1);
+    expect(publicSyncPreviewMock).not.toHaveBeenCalled();
+  });
+
+  it('does not pick one of several entries with the same identity', async () => {
+    publicCropListMock.mockResolvedValue({ data: { results: [40, 41].map(id => (
+      { id, status: 'published', name: 'Tomate', variety: '', crop_species: 1, version: 2 }
+    )) } });
+    renderWizard(GENERAL_CROP);
+    await waitFor(() => expect(publicCropListMock).toHaveBeenCalledWith({ crop_species: 1, page_size: 200 }, expect.any(AbortSignal)));
+    expect(screen.getByRole('dialog', { name: 'Kultur verknüpfen oder veröffentlichen' })).toBeVisible();
+    expect(publicSyncPreviewMock).not.toHaveBeenCalled();
+  });
+
+  it('loads subsequent library pages before deciding that an entry is unique', async () => {
+    publicCropListMock.mockImplementation((params) => Promise.resolve({ data: params.page === 2
+      ? { results: [{ id: 40, status: 'published', name: 'Tomate', variety: '', crop_species: 1, version: 2 }], next: null }
+      : { results: [], next: '/api/public-crops/?page=2' } }));
+    renderWizard(GENERAL_CROP);
+    await screen.findByRole('dialog', { name: 'Mit vorhandenem Eintrag verknüpfen' });
+    expect(publicCropListMock).toHaveBeenCalledWith({ crop_species: 1, page_size: 200, page: 2 }, expect.any(AbortSignal));
+    expect(publicSyncPreviewMock).toHaveBeenCalledWith(GENERAL_CROP.id, 40);
   });
 
   it('shows a link to view foreign duplicates instead of blocking on plain text', async () => {
@@ -741,10 +809,10 @@ describe('CropsPublishingWizardDialog', () => {
     });
 
     renderWizard();
-    await screen.findByLabelText(/Offizielle Kulturart/i);
+    await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
     await selectSpeciesOption('Tomate');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Jetzt veröffentlichen' }));
+    fireEvent.click(await findEnabledPublishButton());
 
     const viewLink = await screen.findByRole('link', { name: 'Eintrag ansehen' });
     expect(viewLink).toHaveAttribute('href', '/app/crop-library?cropId=55');
@@ -792,11 +860,11 @@ describe('CropsPublishingWizardDialog', () => {
       const cropLevelCrop: Crop = { ...GENERAL_CROP, name: 'Tomate' };
 
       renderWizard(cropLevelCrop, { onLinkPublicCrop });
-      await screen.findByLabelText(/Offizielle Kulturart/i);
+      await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
       await selectSpeciesOption('Tomate');
 
       // Disabled while the warning is unresolved, with a tooltip explaining why.
-      const blockedButton = await screen.findByRole('button', { name: 'Jetzt veröffentlichen' });
+      const blockedButton = await findEnabledPublishButton();
       fireEvent.click(blockedButton);
       const resolveButton = await screen.findByRole('button', { name: 'Warnungen zuerst lösen' });
       expect(resolveButton).toBeDisabled();
@@ -837,7 +905,7 @@ describe('CropsPublishingWizardDialog', () => {
       const cropLevelCrop: Crop = { ...GENERAL_CROP, name: 'Tomate' };
 
       renderWizard(cropLevelCrop, { varieties: [sorte] });
-      await screen.findByLabelText(/Offizielle Kulturart/i);
+      await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
       await selectSpeciesOption('Tomate');
 
       fireEvent.click(await findEnabledPublishButton());
@@ -853,10 +921,10 @@ describe('CropsPublishingWizardDialog', () => {
       const cropLevelCrop: Crop = { ...GENERAL_CROP, name: 'Tomate' };
 
       renderWizard(cropLevelCrop);
-      await screen.findByLabelText(/Offizielle Kulturart/i);
+      await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
       await selectSpeciesOption('Tomate');
 
-      fireEvent.click(await screen.findByRole('button', { name: 'Jetzt veröffentlichen' }));
+      fireEvent.click(await findEnabledPublishButton());
       fireEvent.click(await screen.findByRole('button', { name: 'Mit diesem Eintrag verknüpfen' }));
       await screen.findByText('Mit bestehendem Eintrag verknüpfen');
 
@@ -871,11 +939,11 @@ describe('CropsPublishingWizardDialog', () => {
     const cropLevelCrop: Crop = { ...CROP, variety: '' };
     renderWizard(cropLevelCrop);
 
-    await screen.findByLabelText(/Offizielle Kulturart/i);
+    await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
     expect(screen.queryByLabelText('Vorhandene Sorte')).not.toBeInTheDocument();
     await selectSpeciesOption('Tomate');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Jetzt veröffentlichen' }));
+    fireEvent.click(await findEnabledPublishButton());
 
     await waitFor(() => expect(publishPreviewMock).toHaveBeenCalledWith(
       cropLevelCrop.id,
@@ -985,7 +1053,7 @@ describe('CropsPublishingWizardDialog', () => {
 
       expect(await screen.findByText('Mit Kulturbibliothek abgleichen')).toBeInTheDocument();
       await waitFor(() => expect(publicSyncPreviewMock).toHaveBeenCalledWith(ownedGeneralCrop.id, 55));
-      expect(screen.queryByLabelText(/Offizielle Kulturart/i)).not.toBeInTheDocument();
+      expect(screen.queryByRole('combobox', { name: /Offizielle Kulturart/i })).not.toBeInTheDocument();
 
       fireEvent.click(await screen.findByRole('button', { name: 'Alle aus Bibliothek' }));
       const submit = screen.getByRole('button', { name: 'Abgleichen' });
@@ -1054,7 +1122,7 @@ describe('CropsPublishingWizardDialog', () => {
     // Provenance survives the unlink, but only the sync link decides the flow.
     renderWizard({ ...CROP, variety: '', derived_from_public_crop: 55, origin_type: 'imported' });
 
-    expect(await screen.findByLabelText(/Offizielle Kulturart/i)).toBeInTheDocument();
+    expect(await screen.findByRole('combobox', { name: /Offizielle Kulturart/i })).toBeInTheDocument();
     expect(screen.queryByText('Mit Kulturbibliothek abgleichen')).not.toBeInTheDocument();
     expect(publicSyncPreviewMock).not.toHaveBeenCalled();
   });
@@ -1069,7 +1137,7 @@ describe('CropsPublishingWizardDialog', () => {
     const onPublish = vi.fn().mockResolvedValue(false);
     const onClose = vi.fn();
     renderWizard(original, { onPublish, onClose });
-    await userEvent.setup().click(await screen.findByRole('option', { name: 'Tomate', exact: true }));
+    await selectSpeciesOption('Tomate');
     const user = userEvent.setup();
     await user.click(screen.getByRole('combobox', { name: 'Katalogeintrag für „Private pathogen“' }));
     await user.click(await screen.findByRole('option', { name: /^Official pathogen/ }));
@@ -1092,15 +1160,27 @@ describe('CropsPublishingWizardDialog', () => {
     expect(await screen.findByDisplayValue('Tomate')).toBeInTheDocument();
   });
 
-  it('keeps "Original language" collapsed to a summary with a change link by default', async () => {
+  it('has no language summary or language controls', async () => {
     renderWizard();
-    await screen.findByLabelText(/Offizielle Kulturart/i);
-
+    await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
+    expect(screen.queryByText(/Originalsprache/)).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Originalsprache')).not.toBeInTheDocument();
-    expect(screen.getByText(/Originalsprache: /)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ändern' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('combobox')).toHaveLength(1);
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ändern' }));
-    expect(screen.getByLabelText('Originalsprache')).toBeInTheDocument();
+  it.each(['de', 'en', 'fr', 'es', 'it', 'pt', 'nl'])('uses UI language %s for a new species proposal and publication', async (language) => {
+    await i18n.changeLanguage(language);
+    cropSpeciesListMock.mockResolvedValue({ data: { count: 0, results: [] } });
+    const onPublish = vi.fn();
+    renderWizard(CROP, { onPublish });
+    const input = await screen.findByRole('combobox');
+    fireEvent.change(input, { target: { value: 'New species' } });
+    fireEvent.click(await screen.findByRole('button', { name: i18n.t('crops:library.speciesPicker.proposeInlineLabel', { name: 'New species' }) }));
+    fireEvent.click(await screen.findByRole('button', { name: i18n.t('crops:library.publishWizard.proposeSpeciesSubmit') }));
+    await waitFor(() => expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({ originalLanguageCode: language })));
+    expect(cropSpeciesProposeMock).toHaveBeenCalledWith('New species', language);
+    expect(publishPreviewMock).toHaveBeenCalledWith(CROP.id, expect.objectContaining({ original_language_code: language }));
   });
 
   it('shows a dismissible notice when the general crop data looks stale', async () => {
@@ -1117,10 +1197,10 @@ describe('CropsPublishingWizardDialog', () => {
     });
 
     renderWizard();
-    await screen.findByLabelText(/Offizielle Kulturart/i);
+    await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
     await selectSpeciesOption('Tomate');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Jetzt veröffentlichen' }));
+    fireEvent.click(await findEnabledPublishButton());
 
     const notice = await screen.findByText(/wurden lange nicht aktualisiert/);
     expect(notice).toBeInTheDocument();
@@ -1134,8 +1214,8 @@ describe('CropsPublishingWizardDialog', () => {
     it('keeps the dialog unchanged for a Kultur without Sorten', async () => {
       renderWizard(GENERAL_CROP);
 
-      await screen.findByLabelText(/Offizielle Kulturart/i);
-      expect(screen.getByText(/Verknüpfe .* mit einem bestehenden Bibliothekseintrag/)).toBeInTheDocument();
+      await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
+      expect(screen.getByText(/Wähle die passende Kulturart für/)).toBeInTheDocument();
       expect(screen.queryByText('Sorten mitveröffentlichen')).not.toBeInTheDocument();
       expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     });
@@ -1144,8 +1224,8 @@ describe('CropsPublishingWizardDialog', () => {
       const onPublish = vi.fn();
       renderWizard(GENERAL_CROP, { varieties: [VARIETY_ROMA, VARIETY_OCHSENHERZ], onPublish });
 
-      await screen.findByLabelText(/Offizielle Kulturart/i);
-      expect(screen.getByText(/Verknüpfe .* mit einem bestehenden Bibliothekseintrag/)).toBeInTheDocument();
+      await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
+      expect(screen.getByText(/Wähle die passende Kulturart für/)).toBeInTheDocument();
       // The Sorten-matching lookup only runs once a species is selected.
       await selectSpeciesOption('Tomate');
 
@@ -1169,7 +1249,7 @@ describe('CropsPublishingWizardDialog', () => {
       const onPublish = vi.fn();
       renderWizard(GENERAL_CROP, { varieties: [VARIETY_ROMA, VARIETY_OCHSENHERZ], onPublish });
 
-      await screen.findByLabelText(/Offizielle Kulturart/i);
+      await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
       await selectSpeciesOption('Tomate');
       fireEvent.click(screen.getByRole('checkbox', { name: /^Ochsenherz/ }));
       expect(screen.getByRole('checkbox', { name: /^Ochsenherz/ })).not.toBeChecked();
@@ -1192,7 +1272,7 @@ describe('CropsPublishingWizardDialog', () => {
       const onPublish = vi.fn();
       renderWizard(GENERAL_CROP, { varieties: [VARIETY_ROMA, VARIETY_OCHSENHERZ], onPublish });
 
-      await screen.findByLabelText(/Offizielle Kulturart/i);
+      await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
       await selectSpeciesOption('Tomate');
       await waitFor(() => expect(publicCropListMock).toHaveBeenLastCalledWith(
         { crop_species: 1, page_size: 200 }, expect.any(AbortSignal),
@@ -1213,18 +1293,18 @@ describe('CropsPublishingWizardDialog', () => {
       const onPublish = vi.fn();
       renderWizard(GENERAL_CROP, { varieties: [VARIETY_ROMA, VARIETY_OCHSENHERZ], onPublish });
 
-      await screen.findByLabelText(/Offizielle Kulturart/i);
+      await screen.findByRole('combobox', { name: /Offizielle Kulturart/i });
       await selectSpeciesOption('Tomate');
-      await waitFor(() => expect(screen.getByText(/Abgleich mit der Kulturbibliothek fehlgeschlagen/)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText(/Der Bibliothekseintrag konnte nicht ermittelt werden/)).toBeInTheDocument());
 
-      // A failed lookup must not block publishing — the backend's own
-      // duplicate gate still catches a Sorte that is public already.
+      expect(await screen.findByRole('button', { name: 'Jetzt veröffentlichen' })).toBeDisabled();
+      expect(onPublish).not.toHaveBeenCalled();
+      const retry = await screen.findByRole('button', { name: 'Erneut versuchen' });
+      publicCropListMock.mockResolvedValue({ data: { results: [] } });
+      await userEvent.setup().click(retry);
       fireEvent.click(await findEnabledPublishButton());
       await waitFor(() => expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
-        varieties: [
-          { cropId: 2, publicCropId: null },
-          { cropId: 3, publicCropId: null },
-        ],
+        varieties: [{ cropId: 2, publicCropId: null }, { cropId: 3, publicCropId: null }],
       })));
     });
   });

@@ -217,7 +217,7 @@ function renderCropsWithoutSeason(): ReturnType<typeof render> {
 }
 
 const selectSpeciesOption = async (_dialog: HTMLElement, name: string): Promise<void> => {
-  const input = within(_dialog).getByRole('combobox', { name: /Offizielle Kulturart/ });
+  const input = await within(_dialog).findByRole('combobox', { name: /Offizielle Kulturart/ });
   if (input.getAttribute('aria-expanded') !== 'true') fireEvent.mouseDown(input);
   fireEvent.click(await screen.findByRole('option', { name }));
   await waitFor(() => expect(within(_dialog).getByRole('button', { name: 'Jetzt veröffentlichen' })).toBeEnabled());
@@ -410,12 +410,10 @@ describe('Crops action area', () => {
 
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText('Kultur verknüpfen oder veröffentlichen')).toBeInTheDocument();
-    expect(within(dialog).getByLabelText(/Offizielle Kulturart/)).toBeInTheDocument();
-    // "Original language" is collapsed to a summary + change link by
-    // default (it's pre-set to the app's current language), not an
-    // always-visible required field.
+    expect(await within(dialog).findByRole('combobox', { name: /Offizielle Kulturart/ })).toBeInTheDocument();
     expect(within(dialog).queryByLabelText('Originalsprache')).not.toBeInTheDocument();
-    expect(within(dialog).getByText(/Originalsprache: /)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/Originalsprache: /)).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: 'Ändern' })).not.toBeInTheDocument();
     expect(within(dialog).queryByText('Zusammenfassung')).not.toBeInTheDocument();
     expect(within(dialog).queryByText('Pflichtfelder')).not.toBeInTheDocument();
     expect(within(dialog).queryByText('Dublettenprüfung')).not.toBeInTheDocument();
@@ -754,7 +752,7 @@ describe('Crops action area', () => {
 
     const dialog = await screen.findByRole('dialog');
     expect(await within(dialog).findByText('Mit Kulturbibliothek abgleichen')).toBeInTheDocument();
-    expect(within(dialog).queryByLabelText(/Offizielle Kulturart/)).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('combobox', { name: /Offizielle Kulturart/ })).not.toBeInTheDocument();
     expect(within(dialog).queryByLabelText('Originalsprache')).not.toBeInTheDocument();
     expect(publicCropListMock).not.toHaveBeenCalled();
 

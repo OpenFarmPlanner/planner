@@ -1271,7 +1271,7 @@
     },
     "publishWizard": {
       "title": "Link or publish a crop",
-      "intro": "First choose the matching public crop species. Your variety is published under it; if the species has no general entry yet, one is created automatically from your current values.",
+      "intro": "Choose the crop species for “{{name}}”. You can then compare and link existing entries.",
       "introGeneral": "Choose the matching public crop species. Only its general data is published, not a variety.",
       "introGeneralWithVarieties": "The general data of this crop species is published. Selected varieties are published along with it.",
       "varieties": {
@@ -1283,6 +1283,8 @@
       },
       "updateHeading": "Update {{name}}",
       "publishNow": "Publish now",
+      "continueToComparison": "Continue to comparison",
+      "entryLookupFailed": "The library entry could not be determined. Please try again.",
       "linkExisting": "Link public crop",
       "updateExisting": "Update public version",
       "resolveBlockingIssues": "Resolve warnings first",
@@ -1366,9 +1368,6 @@
       "proposedSpeciesNotice": "Your suggestion for the new crop species \"{{name}}\" has been submitted for review. You can go ahead and publish your variety now — it will appear provisionally under \"{{name}}\" until it's approved.",
       "proposeSpeciesError": "The suggestion could not be saved. Please try again.",
       "speciesAlreadyExists": "This crop species already exists or has already been suggested — possibly under a different name. Please search for it in the list.",
-      "originalLanguageLabel": "Original language",
-      "originalLanguageSummary": "Original language: {{language}}",
-      "changeLanguageLink": "Change",
       "translationsOptional": "Missing translations can be added later.",
       "translationAvailable": "Available",
       "translationMissingOptional": "Missing, optional",

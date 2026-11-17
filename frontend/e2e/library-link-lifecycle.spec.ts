@@ -182,6 +182,58 @@ test('correcting the crop species to one that already has the variety shows the 
   await expect(dialog).toBeVisible();
 });
 
+test('the publishing picker has one selector and fixed keyboard proposal actions on mobile and desktop', async ({ page, request }, testInfo) => {
+  test.setTimeout(90_000);
+  const scenario = `library-single-picker-${Date.now()}`;
+  try {
+    await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
+    const crop = await apiRequest<CropRow>(page, 'POST', '/crops/', {
+      name: `Synthetic missing species ${scenario}`, variety: '',
+      growth_duration_days: 40, harvest_duration_days: 20,
+    });
+    await page.goto(`/app/crops?cropId=${crop.id}`);
+    await page.getByTestId('crop-detail-publish-action').click();
+    const dialog = page.getByRole('dialog', { name: germanCrops.library.publishWizard.title, exact: true });
+    const species = dialog.getByRole('combobox');
+    await expect(species).toHaveValue(crop.name);
+    await expect(dialog.getByRole('combobox')).toHaveCount(1);
+    await expect(dialog.getByText(/Originalsprache/)).toHaveCount(0);
+    const propose = dialog.getByRole('button', {
+      name: germanCrops.library.speciesPicker.proposeInlineLabel.replace('{{name}}', crop.name), exact: true,
+    });
+    for (const viewport of [{ width: 375, height: 800 }, { width: 768, height: 900 },
+      { width: 1024, height: 900 }, { width: 1440, height: 900 }, { width: 800, height: 375 }]) {
+      await page.setViewportSize(viewport);
+      await expect(propose).toBeInViewport();
+      await expectNoHorizontalPageOverflow(page);
+      await page.screenshot({ path: testInfo.outputPath(`single-picker-${viewport.width}.png`), animations: 'disabled' });
+    }
+    await species.focus();
+    await species.press('Tab');
+    await expect(propose).toBeFocused();
+    await propose.press('Enter');
+    await expect(dialog.getByRole('button', { name: germanCrops.library.publishWizard.proposeSpeciesSubmit, exact: true })).toBeEnabled();
+    await dialog.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+    const unchanged = await apiRequest<{ source_public_crop: number | null; crop_species: number | null }>(page, 'GET', `/crops/${crop.id}/`);
+    expect(unchanged.source_public_crop).toBeNull();
+    expect(unchanged.crop_species).toBeNull();
+
+    await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'fr' });
+    await page.evaluate(() => localStorage.setItem('ui.language', 'fr'));
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.reload();
+    await page.getByTestId('crop-detail-publish-action').click();
+    const translated = page.getByRole('dialog', { name: frenchCrops.library.publishWizard.title, exact: true });
+    await expect(translated.getByRole('combobox')).toHaveValue(crop.name);
+    await expect(translated.getByRole('button', {
+      name: frenchCrops.library.speciesPicker.proposeInlineLabel.replace('{{name}}', crop.name), exact: true,
+    })).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath('single-picker-fr-375.png'), animations: 'disabled' });
+  } finally {
+    await resetE2EScenario(request, scenario);
+  }
+});
+
 for (const entryPoint of ['publish', 'import', 'copy', 'resolve', 'resolve-browser', 'unclassified-picker', 'unclassified-page'] as const) {
   test(`existing culture imports through ${entryPoint} without replacing IDs or publishing local notes`, async ({ page, request }, testInfo) => {
     const unclassified = entryPoint.startsWith('unclassified-');
@@ -198,7 +250,7 @@ for (const entryPoint of ['publish', 'import', 'copy', 'resolve', 'resolve-brows
     });
     const published = await apiRequest<PublishResponse>(page, 'POST', `/crops/${source.id}/publish-public/`, {
       accepted_public_library_terms: true, crop_species_id: species.id, publish_as_general: true,
-      original_language_code: 'de',
+      original_language_code: entryPoint === 'publish' ? 'en' : 'de',
     });
     // The target grower is a different contributor in a different project.
     // Their existing culture must link to this foreign library entry.
@@ -257,9 +309,16 @@ for (const entryPoint of ['publish', 'import', 'copy', 'resolve', 'resolve-brows
     } else {
       await page.goto(`/app/crops?cropId=${local.id}`);
       await page.getByTestId('crop-detail-publish-action').click();
-      await page.getByRole('combobox', { name: 'Eintrag der Kulturbibliothek' }).click();
-      await page.getByRole('option', { name: species.name, exact: true }).click();
-      await page.getByRole('button', { name: 'Mit vorhandenem Eintrag verknüpfen', exact: true }).click();
+      await expect(page.getByRole('dialog', { name: labels.library.linkExisting.title, exact: true })).toBeVisible();
+      await expect(page.getByRole('combobox')).toHaveCount(0);
+      await expect(page.getByText(/Originalsprache:/)).toHaveCount(0);
+      const before = await apiRequest<{ source_public_crop: number | null }>(page, 'GET', `/crops/${local.id}/`);
+      expect(before.source_public_crop).toBeNull();
+      await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+      const cancelled = await apiRequest<{ source_public_crop: number | null }>(page, 'GET', `/crops/${local.id}/`);
+      expect(cancelled.source_public_crop).toBeNull();
+      await page.getByTestId('crop-detail-publish-action').click();
+      await expect(page.getByRole('dialog', { name: labels.library.linkExisting.title, exact: true })).toBeVisible();
     }
     const confirm = page.getByRole('button', { name: entryPoint === 'publish' ? labels.library.linkExisting.confirm : entryPoint === 'copy' ? labels.library.importDecision.copy : labels.library.importDecision.link });
     await expect(confirm).toBeEnabled();
@@ -322,6 +381,10 @@ for (const entryPoint of ['publish', 'import', 'copy', 'resolve', 'resolve-brows
     }
     await confirm.click();
     await expect(confirm).not.toBeVisible();
+    if (entryPoint === 'publish') {
+      const unchanged = await apiRequest<{ original_language_code: string }>(page, 'GET', `/public-crops/${published.public_crop.id}/`);
+      expect(unchanged.original_language_code).toBe('en');
+    }
     if (resolvesDifferences) {
       await expect(page.getByRole('button', { name: labels.library.linkExisting.alreadyLinked, exact: true })).toBeDisabled();
       await page.setViewportSize({ width: 1440, height: 900 });

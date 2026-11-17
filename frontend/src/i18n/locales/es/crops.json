@@ -1309,7 +1309,7 @@
     },
     "publishWizard": {
       "title": "Vincular o publicar un cultivo",
-      "intro": "Elige primero la especie de cultivo pública correspondiente. Tu variedad se publica dentro de ella; si la especie todavía no tiene una ficha general, se crea automáticamente a partir de tus valores actuales.",
+      "intro": "Elige la especie de cultivo de «{{name}}». Después podrás comparar y vincular las entradas existentes.",
       "introGeneral": "Elige la especie de cultivo pública correspondiente. Solo se publican sus datos generales, no una variedad.",
       "introGeneralWithVarieties": "Se publican los datos generales de esta especie de cultivo. Las variedades seleccionadas se publican también.",
       "varieties": {
@@ -1321,6 +1321,8 @@
       },
       "updateHeading": "Actualizar {{name}}",
       "publishNow": "Publicar ahora",
+      "continueToComparison": "Comparar valores",
+      "entryLookupFailed": "No se ha podido determinar la entrada de la biblioteca. Inténtalo de nuevo.",
       "linkExisting": "Vincular cultivo público",
       "updateExisting": "Actualizar la versión pública",
       "resolveBlockingIssues": "Resuelve primero los avisos",
@@ -1404,9 +1406,6 @@
       "proposedSpeciesNotice": "Tu propuesta de nueva especie de cultivo «{{name}}» se ha enviado a revisión. Ya puedes publicar tu variedad: aparecerá provisionalmente dentro de «{{name}}» hasta que se apruebe.",
       "proposeSpeciesError": "No se ha podido guardar la propuesta. Inténtalo de nuevo.",
       "speciesAlreadyExists": "Esta especie de cultivo ya existe o ya se ha propuesto, quizá con otro nombre. Búscala en la lista.",
-      "originalLanguageLabel": "Idioma original",
-      "originalLanguageSummary": "Idioma original: {{language}}",
-      "changeLanguageLink": "Cambiar",
       "translationsOptional": "Las traducciones que falten se pueden añadir más adelante.",
       "translationAvailable": "Disponible",
       "translationMissingOptional": "Falta, opcional",

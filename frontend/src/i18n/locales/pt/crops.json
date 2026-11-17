@@ -1304,7 +1304,7 @@
     },
     "publishWizard": {
       "title": "Ligar ou publicar cultura",
-      "intro": "Escolha primeiro a espécie cultivada pública correspondente. A variedade é publicada nessa espécie. Se a espécie ainda não tiver um registo geral, é criado automaticamente a partir dos valores atuais.",
+      "intro": "Escolhe a espécie de cultura de «{{name}}». Depois podes comparar e associar as entradas existentes.",
       "introGeneral": "Escolha a espécie cultivada pública correspondente. Apenas são publicados os dados gerais, não uma variedade.",
       "introGeneralWithVarieties": "São publicados os dados gerais desta espécie cultivada. As variedades selecionadas são publicadas em conjunto.",
       "varieties": {
@@ -1316,6 +1316,8 @@
       },
       "updateHeading": "Atualizar {{name}}",
       "publishNow": "Publicar agora",
+      "continueToComparison": "Comparar valores",
+      "entryLookupFailed": "Não foi possível identificar a entrada da biblioteca. Tenta novamente.",
       "linkExisting": "Ligar cultura pública",
       "updateExisting": "Atualizar versão pública",
       "resolveBlockingIssues": "Resolver primeiro os avisos",
@@ -1399,9 +1401,6 @@
       "proposedSpeciesNotice": "A sugestão da nova espécie cultivada «{{name}}» foi enviada para análise. Já é possível publicar a variedade: aparecerá provisoriamente em «{{name}}» até à aprovação.",
       "proposeSpeciesError": "Não foi possível guardar a sugestão. Tente novamente.",
       "speciesAlreadyExists": "Esta espécie cultivada já existe ou já foi sugerida, possivelmente com outro nome. Pesquise-a na lista.",
-      "originalLanguageLabel": "Idioma original",
-      "originalLanguageSummary": "Idioma original: {{language}}",
-      "changeLanguageLink": "Alterar",
       "translationsOptional": "As traduções em falta podem ser adicionadas mais tarde.",
       "translationAvailable": "Disponível",
       "translationMissingOptional": "Em falta, opcional",

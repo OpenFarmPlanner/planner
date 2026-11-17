@@ -298,6 +298,9 @@ Repeat at phone and desktop widths. This exercises only the catalogue foundation
 
 ## Public selections, explicit mapping and synchronization
 
+Publication and name-proposal dialogs use the current UI language automatically.
+They do not offer a language selector or translate existing catalogue content.
+
 `PublicCrop.plant_health` contains only stable catalogue UUID references and
 reference-name snapshots, never unresolved project names. New selections use
 published identities; archived references remain portable as in private crops.

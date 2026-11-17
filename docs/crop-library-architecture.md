@@ -826,8 +826,9 @@ reason the wizard searches for what the user *types* only
 (`speciesSearchQuery`, fed by the picker's `'input'`/`'clear'` changes):
 picking an option writes its canonical `name` into the field, and searching
 for that would replace the list the user just picked from. Every opening of
-the wizard starts from the crop's own name in the field with nothing selected
-— a pick is never carried over from an earlier opening.
+the wizard resolves the crop's own name afresh. A unique existing identity can
+open the comparison directly; otherwise the picker starts without a selection.
+A manual pick is never carried over from an earlier opening.
 
 The match source comes from the search itself. `GET /api/crop-species/?q=…`
 (`crops.services.search_crop_species`) returns every result with a
@@ -972,10 +973,10 @@ publication is published from its own page.
 
 Because that match is only as good as the public entries the wizard has, the
 publish button stays disabled while the species' entries are still loading, and
-a failed lookup is stated in the section instead of silently offering every
-Sorte as new. Publishing then still works: the backend's duplicate gate answers
-409 for a Sorte that is public already, and the wizard counts that as "was
-already in the library" rather than as a failure. The license acceptance is
+a failed lookup blocks publication with an explicit retry instead of silently
+offering every Sorte as new. The backend's duplicate gate also answers 409 for
+a Sorte created concurrently; the wizard counts that as "was already in the
+library" rather than as a failure. The license acceptance is
 collected on every path that publishes a Sorte — including the one that only
 *links* the Kultur to an existing public entry, which needs no acceptance for
 itself but whose Sorten would otherwise be rejected with
@@ -1767,16 +1768,21 @@ but it is the one rename in this set that a stale client cannot detect.
 Publishing a project-owned `Crop` is no longer a direct copy action from
 the project Crop Library page. The frontend opens `CropsPublishingWizardDialog`,
 which keeps the normal path intentionally small: the user selects the
-official `CropSpecies`, confirms the original language, and clicks publish.
-The wizard always publishes the crop's variety — there is no separate
+official `CropSpecies` and clicks publish. New publications and species or
+plant-health name proposals automatically use the current UI language; these
+dialogs have no language selector or original-language summary. Linking and
+synchronizing an existing entry preserve its language metadata and stored
+content without automatic translation.
+The wizard follows the project crop's granularity: a crop without a variety
+publishes a general entry; a Sorte publishes its variety. There is no separate
 "general crop or variety" choice in the UI. The dialog calls
 `/api/crops/<id>/publish-public/preview/` only as a background validation
 step when the user attempts publication, then shows only actionable problems:
 
 - official `CropSpecies` selected;
-- exactly one original language selected (defaulted from the UI language);
-- public-library required fields complete (including `variety`, since a
-  crop without a variety cannot be published from this dialog). Required
+- a supported original language supplied automatically from the current UI language;
+- public-library required fields complete (`variety` is required only for a
+  variety-level publication). Required
   fields are checked against the crop's *effective* value, so a Sorte that
   inherits e.g. `harvest_duration_days` from its general Kultur passes the
   gate and the published entry stores the resolved value
@@ -1797,6 +1803,27 @@ up as an empty duplicate list. The same `checks` object travels in the 400
 into German sentences in `crops/publishChecks.ts` and never displays the
 English `detail`.
 
+The initial wizard has one species dropdown, without a second library-target
+or existing-variety selector. Once a species is chosen, its published entries
+are loaded through all result pages. A unique entry with the project's exact
+normalized variety (blank for a general crop) becomes the link target. The
+main action then reads "Weiter zum Abgleich" instead of offering a new
+publication. Failed lookups block publication and offer retry; an in-flight or
+stale lookup cannot be interpreted as absence of an entry.
+
+On opening, a unique exact species name or alias match can bypass that initial
+picker and open the existing field comparison directly when exactly one
+published entry matches the crop's granularity and variety. An existing
+`crop_species` identity takes precedence over names. Similar names, ambiguous
+aliases, incomplete species-search pages, and multiple matching entries never
+choose an identity silently. Typing or choosing manually stops this shortcut
+for that opening; returning from the comparison keeps the explicit choice.
+These lookups and comparisons do not write the crop. Only final confirmation
+links it and applies the chosen values atomically; cancel discards staged
+mappings. A new publication records its library link through the existing
+publication service. Existing duplicate checks and version/timestamp conflict
+handling remain authoritative if an entry changes after discovery.
+
 The species `Autocomplete` keeps its proposal button in a fixed footer outside
 its scrollable results (`AutocompleteActionPaper`, shared with plant-health
 mapping). Partial matches leave it available; an exact existing name or alias
@@ -1805,7 +1832,9 @@ with Tab, then activated with Enter or Space. Tabbing alone does not submit or
 select a proposal. Its accessible name names the proposed species. The popup
 stays inside the dialog's focus boundary while fixed positioning and viewport
 constraints prevent the dialog's scroll container from clipping the action,
-including in short phone landscape. Proposal errors remain at the input.
+including in short phone landscape. When private health mappings precede the
+species field, the species popup opens on explicit focus instead of covering
+those mappings on mount. Proposal errors remain at the input.
 
 The proposal is **not** sent when that footer action is activated. It only puts
 the wizard into "propose a new species" mode: the typed name stays in the

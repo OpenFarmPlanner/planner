@@ -1271,7 +1271,7 @@
     },
     "publishWizard": {
       "title": "Kultur verknüpfen oder veröffentlichen",
-      "intro": "Wähle zuerst die passende öffentliche Kulturart. Deine Sorte wird darunter veröffentlicht; falls es zu dieser Kulturart noch keinen allgemeinen Eintrag gibt, wird er automatisch aus deinen aktuellen Werten angelegt.",
+      "intro": "Wähle die passende Kulturart für „{{name}}“. Vorhandene Einträge kannst du anschließend vergleichen und verknüpfen.",
       "introGeneral": "Wähle die passende öffentliche Kulturart. Es werden die allgemeinen Daten dieser Kulturart veröffentlicht, keine Sorte.",
       "introGeneralWithVarieties": "Es werden die allgemeinen Daten dieser Kulturart veröffentlicht. Zusätzlich ausgewählte Sorten werden mitveröffentlicht.",
       "varieties": {
@@ -1283,6 +1283,8 @@
       },
       "updateHeading": "{{name}} aktualisieren",
       "publishNow": "Jetzt veröffentlichen",
+      "continueToComparison": "Weiter zum Abgleich",
+      "entryLookupFailed": "Der Bibliothekseintrag konnte nicht ermittelt werden. Bitte versuche es erneut.",
       "linkExisting": "Mit öffentlicher Kultur verknüpfen",
       "updateExisting": "Öffentliche Version aktualisieren",
       "resolveBlockingIssues": "Warnungen zuerst lösen",
@@ -1366,9 +1368,6 @@
       "proposedSpeciesNotice": "Dein Vorschlag für die neue Kulturart „{{name}}“ wurde zur Prüfung eingereicht. Du kannst deine Sorte jetzt trotzdem veröffentlichen — sie erscheint vorläufig unter „{{name}}“, bis der Vorschlag bestätigt ist.",
       "proposeSpeciesError": "Der Vorschlag konnte nicht gespeichert werden. Bitte versuche es erneut.",
       "speciesAlreadyExists": "Diese Kulturart existiert bereits oder wurde schon vorgeschlagen — möglicherweise unter einem anderen Namen. Bitte in der Liste danach suchen.",
-      "originalLanguageLabel": "Originalsprache",
-      "originalLanguageSummary": "Originalsprache: {{language}}",
-      "changeLanguageLink": "Ändern",
       "translationsOptional": "Fehlende Übersetzungen können später ergänzt werden.",
       "translationAvailable": "Vorhanden",
       "translationMissingOptional": "Fehlt, optional",

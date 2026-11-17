@@ -310,7 +310,7 @@ export const publicLibraryModeratorRequestAPI = {
 type PublicCropListFilters = { q?: string; name?: string; variety?: string; crop_species?: number; status?: 'removed' };
 
 export const publicCropAPI = {
-  list: (params?: PublicCropListFilters & { page_size?: number }, signal?: AbortSignal) =>
+  list: (params?: PublicCropListFilters & { page_size?: number; page?: number }, signal?: AbortSignal) =>
     http.get<PaginatedResponse<PublicCrop>>('/public-crops/', { params, signal }),
   listAll: (params?: PublicCropListFilters) => {
     const query = new URLSearchParams(
