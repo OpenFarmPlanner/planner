@@ -19,10 +19,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    # Metadata-only PRs (docs, release version bumps) skip the heavy jobs below.
+    uses: ./.github/workflows/classify-changes.yml
+
   frontend-tests:
     # Keep each frontend test process comfortably below the shell and job hard
     # timeouts as the suite grows. The shard count and the Vitest denominator
     # below must remain in sync.
+    needs: changes
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -31,9 +37,11 @@ jobs:
         shard: [1, 2, 3]
     steps:
       - name: Checkout
+        if: needs.changes.outputs.metadata_only != 'true'
         uses: actions/checkout@v7
 
       - name: Setup Node (LTS)
+        if: needs.changes.outputs.metadata_only != 'true'
         id: setup-node
         uses: actions/setup-node@v7
         with:
@@ -44,6 +52,7 @@ jobs:
       # See e2e.yml for why node_modules is cached wholesale: `npm ci` swings
       # between 20s and 5 minutes on an identical lockfile purely by runner.
       - name: Cache frontend node_modules
+        if: needs.changes.outputs.metadata_only != 'true'
         id: node-modules-cache
         uses: actions/cache@v6
         with:
@@ -51,7 +60,7 @@ jobs:
           key: node-modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('frontend/package-lock.json') }}
 
       - name: Install frontend dependencies
-        if: steps.node-modules-cache.outputs.cache-hit != 'true'
+        if: needs.changes.outputs.metadata_only != 'true' && (steps.node-modules-cache.outputs.cache-hit != 'true')
         run: |
           set -euxo pipefail
           cd frontend
@@ -59,6 +68,7 @@ jobs:
           npm ci
 
       - name: Run frontend tests with hard timeout
+        if: needs.changes.outputs.metadata_only != 'true'
         run: |
           set -euxo pipefail
           cd frontend
@@ -84,6 +94,8 @@ jobs:
           exit "$exit_code"
 
   backend-tests:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.metadata_only != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -133,6 +145,8 @@ jobs:
   # PostgreSQL raises are pinned by tests marked `postgres` and run here
   # against a real PostgreSQL server. See docs/testing-and-ci.md.
   backend-postgres-tests:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.metadata_only != 'true' }}
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -301,7 +315,13 @@ jobs:
         run: make quality
 
       - name: Test quality finding and scanner failure handling
-        run: node --test tests/test_quality_findings.cjs
+        run: node --test tests/test_quality_findings.cjs tests/test_classify_changes.cjs
+
+      # Runs on every PR, metadata-only ones included: a release version bump
+      # skips the heavy jobs, but its two version declarations must agree.
+      - name: Check backend version declarations agree
+        run: |
+          python3 -c "import sys; sys.path.insert(0, 'scripts/ci'); from pathlib import Path; from release_pr import versions; print('Backend version', versions(Path('backend/config/version.py').read_bytes(), Path('backend/pyproject.toml').read_bytes()))"
 
       - name: Test security review completion policy
         run: |
