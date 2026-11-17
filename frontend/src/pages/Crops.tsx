@@ -18,6 +18,7 @@ import { useTranslation } from '../i18n';
 import { FALLBACK_LANGUAGE, normalizeLanguageTag } from '../i18n/languages';
 import PageContainer from '../components/layout/PageContainer';
 import { bedAPI, cropAPI, fieldAPI, type Crop } from '../api/api';
+import { extractApiErrorMessage } from '../api/errors';
 import type { CropHistoryEntry } from '../api/types';
 import { CropDetail } from '../crops/CropDetail';
 import { CropForm, type FirstVarietyDraft } from '../crops/CropForm';
@@ -619,8 +620,9 @@ function Crops() {
       await fetchCrops();
       setHistoryOpen(false);
       showSnackbar(t('messages.restoreSuccess'), 'success');
-    } catch {
-      showSnackbar(t('messages.restoreError'), 'error');
+    } catch (error) {
+      // A mapped API error (e.g. crop_variety_conflict) says what to fix.
+      showSnackbar(extractApiErrorMessage(error, t, t('messages.restoreError')), 'error');
     }
   };
 
