@@ -56,6 +56,40 @@ class ClaudeReviewFallbackTests(unittest.TestCase):
                     "claude_failed",
                 )
 
+    def test_scope_order_does_not_matter_but_the_set_does(self) -> None:
+        scope = [".github/workflows/e2e-cross-browser.yml", ".github/workflows/e2e.yml"]
+        natural_order = list(reversed(scope))
+        self.assertEqual(
+            completion_report("success", completed_messages(scope=natural_order), HEAD, scope)[
+                "state"
+            ],
+            "claude_completed",
+        )
+        for reported in (scope[:1], [*scope, scope[0]], [*scope, "extra.py"], [1, 2], "x"):
+            with self.subTest(reported=reported):
+                report = completion_report(
+                    "success", completed_messages(scope=reported), HEAD, scope
+                )
+                self.assertEqual(report["state"], "claude_failed")
+                self.assertEqual(report["reason"], "scope does not match the changed files")
+
+    def test_rejections_name_a_fixed_reason_without_review_text(self) -> None:
+        prose = [{**completed_messages()[0], "result": "Review done. PRIVATE notes"}]
+        cases = (
+            (None, "no execution report"),
+            (prose, "terminal result is not JSON"),
+            (completed_messages(reviewed_sha="b" * 40), "reviewed_sha does not match the head"),
+            (completed_messages(unfixed_findings=["x"]), "unfixed_findings is not empty"),
+        )
+        for messages, reason in cases:
+            with self.subTest(reason=reason):
+                report = completion_report("success", messages, HEAD, SCOPE)
+                self.assertEqual(report["reason"], reason)
+                self.assertNotIn("PRIVATE", json.dumps(report))
+        self.assertNotIn(
+            "reason", completion_report("success", completed_messages(), HEAD, SCOPE)
+        )
+
     def test_successful_step_or_is_error_true_does_not_prove_completion(self) -> None:
         for changes in (
             {"is_error": True},
