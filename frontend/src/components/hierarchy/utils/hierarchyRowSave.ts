@@ -288,9 +288,17 @@ async function saveLocationRow(
   }
 
   // Optional outer dimensions (#1190): empty clears, a value must be > 0.
-  const lengthM = parseDimensionValue(row.length_m) ?? null;
-  const widthM = parseDimensionValue(row.width_m) ?? null;
-  if ((lengthM !== null && lengthM <= 0) || (widthM !== null && widthM <= 0)) {
+  const existingDimensions = locations.find((locationItem) => locationItem.id === row.locationId);
+  const lengthM = row.length_m === undefined
+    ? existingDimensions?.length_m ?? null
+    : parseDimensionValue(row.length_m);
+  const widthM = row.width_m === undefined
+    ? existingDimensions?.width_m ?? null
+    : parseDimensionValue(row.width_m);
+  if (
+    lengthM === undefined || widthM === undefined
+    || (lengthM !== null && lengthM <= 0) || (widthM !== null && widthM <= 0)
+  ) {
     throw new Error(t("validation.locationDimensionPositive"));
   }
 
