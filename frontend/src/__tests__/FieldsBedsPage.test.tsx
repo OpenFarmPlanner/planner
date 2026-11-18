@@ -205,7 +205,7 @@ describe('FieldsBedsPage', () => {
     expect(screen.queryByText('Hierarchieansicht')).not.toBeInTheDocument();
   });
 
-  it('shows missing field requirement when location exists but no fields exist', async () => {
+  it('shows the only location row with plot guidance when no fields exist', async () => {
     const user = userEvent.setup();
     locationListMock.mockResolvedValue({ data: { results: [{ id: 1, name: 'Hofstelle' }] } });
     fieldListMock.mockResolvedValue({ data: { results: [] } });
@@ -213,18 +213,19 @@ describe('FieldsBedsPage', () => {
 
     renderPage();
     expect(await screen.findByText('Parzelle fehlt')).toBeInTheDocument();
-    expect(screen.getByText('Lege eine Parzelle an, um zu starten.')).toBeInTheDocument();
-    expect(screen.getByText((content) => content.includes('Falls du Flächen an mehreren Orten bewirtschaftest, kannst du auch'))).toBeInTheDocument();
-    const addLocationLink = screen.getByRole('link', { name: 'zusätzliche Standorte anlegen' });
-    expect(addLocationLink).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'Parzelle hinzufügen' })).toHaveLength(1);
-    expect(registeredUiState.topbarActions.find((action) => action.id === 'fields-global-add-field')?.menuActions?.map((action) => action.label))
-      .toEqual(['Standort hinzufügen']);
-    expect(registeredUiState.topbarActions.find((action) => action.id === 'fields-global-add-location')?.hidden).toBe(true);
-    expect(screen.queryByText('Tipp: Rechtsklick auf eine Tabellenzeile öffnet weitere Aktionen.')).not.toBeInTheDocument();
-    expect(screen.queryByText('Hierarchieansicht')).not.toBeInTheDocument();
+    // The location row is always listed; its add icon is how plots are added.
+    expect(screen.getByText('Hierarchieansicht')).toBeInTheDocument();
+    expect(screen.getByText((content) => content.includes('Füge beim gewünschten Standort über das') && content.includes('Symbol oder das Kontextmenü eine Parzelle hinzu.'))).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Parzelle hinzufügen' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'zusätzliche Standorte anlegen' })).not.toBeInTheDocument();
+    expect(registeredUiState.topbarActions.find((action) => action.id === 'fields-global-add-field')).toBeUndefined();
+    const addLocationAction = registeredUiState.topbarActions.find((action) => action.id === 'fields-global-add-location');
+    expect(addLocationAction?.hidden).toBeFalsy();
+    expect(addLocationAction?.menuActions).toBeUndefined();
 
-    await user.click(addLocationLink);
+    act(() => {
+      addLocationAction?.onClick?.();
+    });
     expect(screen.getByRole('dialog', { name: 'Weiteren Standort hinzufügen' })).toBeInTheDocument();
     const addLocationButton = screen.getByRole('button', { name: 'Standort anlegen' });
     expect(addLocationButton).toBeDisabled();
@@ -240,10 +241,6 @@ describe('FieldsBedsPage', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'Weiteren Standort hinzufügen' })).not.toBeInTheDocument();
     });
-    await user.click(screen.getByRole('button', { name: 'Parzelle hinzufügen' }));
-
-    expect(await screen.findByText('Hierarchieansicht')).toBeInTheDocument();
-    expect(screen.getByTestId('create-field-request')).toHaveTextContent('1');
   });
 
   it('inserts a newly created location first, near the "Standort hinzufügen" action, without a full reload', async () => {
@@ -254,14 +251,10 @@ describe('FieldsBedsPage', () => {
     await waitFor(() => expect(screen.getByTestId('location-order')).toHaveTextContent('Hofstelle'));
     expect(locationListMock).toHaveBeenCalledTimes(1);
 
-    // The hierarchy is fully populated here (a location, a field, a bed),
-    // so "Standort hinzufügen" lives in the global add-field topbar
-    // dropdown's menu, not as an inline empty-state link.
-    const addFieldAction = registeredUiState.topbarActions.find((action) => action.id === 'fields-global-add-field');
-    const addLocationMenuItem = addFieldAction?.menuActions?.find((action) => action.id === 'fields-global-add-location-menu-item');
-    expect(addLocationMenuItem?.label).toBe('Standort hinzufügen');
+    const addLocationAction = registeredUiState.topbarActions.find((action) => action.id === 'fields-global-add-location');
+    expect(addLocationAction?.label).toBe('Standort hinzufügen');
     act(() => {
-      addLocationMenuItem?.onClick?.();
+      addLocationAction?.onClick?.();
     });
 
     await user.type(await screen.findByLabelText('Name des Standorts'), 'Nebenstelle');
@@ -288,7 +281,7 @@ describe('FieldsBedsPage', () => {
     expect(screen.getByTestId('AddIcon')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Parzelle hinzufügen' })).not.toBeInTheDocument();
     expect(registeredUiState.topbarActions.find((action) => action.id === 'fields-global-add-field')).toBeUndefined();
-    expect(registeredUiState.topbarActions.find((action) => action.id === 'fields-global-add-location')?.hidden).toBe(false);
+    expect(registeredUiState.topbarActions.find((action) => action.id === 'fields-global-add-location')?.hidden).toBeFalsy();
     expect(screen.getByText('Hierarchieansicht')).toBeInTheDocument();
   });
 

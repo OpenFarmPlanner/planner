@@ -1,4 +1,4 @@
-import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Link, MenuItem, TextField, Typography, useMediaQuery } from '@mui/material';
+import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField, useMediaQuery } from '@mui/material';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useOutletContext } from 'react-router';
 import FieldsBedsHierarchy from './FieldsBedsHierarchy';
@@ -277,7 +277,9 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   const hasUnsavedFields = fields.some((field) => !hasPersistedEntityId(field.id));
   const hasUnsavedBeds = beds.some((bed) => !hasPersistedEntityId(bed.id));
   const hasBeds = beds.some((bed) => hasPersistedEntityId(bed.id) && persistedFieldIds.has(bed.field));
-  const hasHierarchyRows = locations.length > 1 || fields.length > 0 || beds.length > 0;
+  // Every location has a row, even the only one without plots: its add
+  // action is how plots are added.
+  const hasHierarchyRows = locations.length > 0 || fields.length > 0 || beds.length > 0;
   const effectivePendingHierarchyDeletionCount = shouldShowProjectRequiredState
     ? 0
     : pendingHierarchyDeletionCount;
@@ -290,46 +292,21 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   const shouldRenderHierarchy = hasHierarchyRows || createFieldRequest > 0 || effectivePendingHierarchyDeletionCount > 0;
   const createBedAction = getProjectSetupAction('beds');
   const emptyAreasDescription = shouldShowMissingFieldsState
-    ? (locations.length === 1
-      ? t('hierarchy:emptyAreas.missingFieldSingleLocationDescription')
-      : (
-          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', justifyContent: 'center' }}>
-            {t('hierarchy:emptyAreas.missingFieldMultipleLocationsBeforeIcon')}
-            <HierarchyAddIcon interactive={false} ariaHidden sx={{ bgcolor: 'transparent' }} />
-            {t('hierarchy:emptyAreas.missingFieldMultipleLocationsAfterIcon')}
-          </Box>
-        ))
-    : t('hierarchy:emptyAreas.missingLocationDescription');
-  const emptyAreasSupplement = shouldShowMissingFieldsState && isSingleLocationMode
     ? (
-        <Typography variant="body2" color="text.secondary">
-          {t('hierarchy:emptyAreas.additionalLocationHint')}{' '}
-          <Link
-            href="#add-location"
-            onClick={(event) => {
-              event.preventDefault();
-              openAddLocationDialog();
-            }}
-            underline="hover"
-          >
-            {t('hierarchy:emptyAreas.additionalLocationLink')}
-          </Link>
-          .
-        </Typography>
+        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {t('hierarchy:emptyAreas.missingFieldMultipleLocationsBeforeIcon')}
+          <HierarchyAddIcon interactive={false} ariaHidden sx={{ bgcolor: 'transparent' }} />
+          {t('hierarchy:emptyAreas.missingFieldMultipleLocationsAfterIcon')}
+        </Box>
       )
-    : undefined;
-  const emptyAreaActions = useMemo<EmptyStateAction[]>(() => {
-    if (shouldShowMissingFieldsState) {
-      return locations.length === 1
-        ? [{
-            label: t('hierarchy:actions.addField'),
-            onClick: requestInlineFieldCreation,
-            icon: <HierarchyAddIcon interactive={false} ariaHidden sx={{ bgcolor: 'transparent' }} />,
-          }]
-        : [];
-    }
-    return [{ label: t('hierarchy:actions.createLocation'), onClick: openAddLocationDialog, icon: <AddIcon fontSize="small" /> }];
-  }, [locations.length, openAddLocationDialog, requestInlineFieldCreation, shouldShowMissingFieldsState, t]);
+    : t('hierarchy:emptyAreas.missingLocationDescription');
+  // Plots are added from the location row's add action, so the card only
+  // points there; it offers a button only while no location exists.
+  const emptyAreaActions = useMemo<EmptyStateAction[]>(() => (
+    shouldShowMissingFieldsState
+      ? []
+      : [{ label: t('hierarchy:actions.createLocation'), onClick: openAddLocationDialog, icon: <AddIcon fontSize="small" /> }]
+  ), [openAddLocationDialog, shouldShowMissingFieldsState, t]);
 
   const viewModeActions = useMemo<TopbarContextAction[]>(() => ([
     {
@@ -352,41 +329,19 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
     const globalActions: TopbarContextAction[] = shouldShowProjectRequiredState
       ? []
       : [
-        ...(canUseGlobalAddField ? [{
-          id: 'fields-global-add-field',
-          label: t('hierarchy:actions.addFieldDropdown'),
-          onClick: requestInlineFieldCreation,
-          ariaLabel: t('hierarchy:actions.addFieldDropdown'),
-          menuActions: [
-            {
-              id: 'fields-global-add-location-menu-item',
-              label: t('hierarchy:actions.createLocation'),
-              onClick: openAddLocationDialog,
-            },
-          ],
-        }] : []),
+        // Plots are added from their location's row, so the topbar only
+        // adds locations.
         {
           id: 'fields-global-add-location',
           label: t('hierarchy:actions.createLocation'),
           onClick: openAddLocationDialog,
           ariaLabel: t('hierarchy:actions.createLocation'),
-          hidden: isSingleLocationMode,
-          menuActions: [
-            {
-              id: 'fields-global-add-location-menu-add-field',
-              label: t('hierarchy:actions.addFieldDropdown'),
-              onClick: requestInlineFieldCreation,
-            },
-          ],
         },
       ];
     return globalActions;
   }, [
-    canUseGlobalAddField,
-    requestInlineFieldCreation,
     openAddLocationDialog,
     shouldShowProjectRequiredState,
-    isSingleLocationMode,
     t,
   ]);
 
@@ -515,7 +470,6 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             description={effectiveViewMode === 'graphical' && hasLocations ? t('fields:graphical.noFields') : emptyAreasDescription}
             actions={effectiveViewMode === 'graphical' && hasLocations
               ? [{ label: t('fields:representation.table'), onClick: () => setViewMode('table') }] : emptyAreaActions}
-            supplement={emptyAreasSupplement}
             containerSx={CONTENT_ALIGNED_EMPTY_STATE_SX}
           />
         ) : null}

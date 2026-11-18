@@ -126,8 +126,10 @@ erDiagram
   Imports, project copies and the demo create their own locations and get no
   extra one.
 - The Growing Areas list always shows a row for every location, including the
-  only one of a single-location project, so its name, dimensions and row
-  actions stay reachable; the graphic view names the location as well (#1190).
+  only one of a single-location project and one without plots, so its name,
+  dimensions and row actions stay reachable; the graphic view names the
+  location as well (#1190). Plots are added from the location row's add action
+  (or context menu); the topbar only offers "Add location".
 - A location may carry optional outer dimensions (`length_m`, `width_m`, in
   metres, both > 0). Its `area_sqm` is read-only: their product when both are
   set, otherwise none; there is no stored location area and the dimensions are

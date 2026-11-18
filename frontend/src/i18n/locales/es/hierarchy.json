@@ -192,9 +192,6 @@
     "missingLocationTitle": "Falta la ubicación",
     "missingLocationDescription": "La ubicación principal todavía no está disponible para este proyecto.",
     "missingFieldTitle": "Falta la parcela",
-    "missingFieldSingleLocationDescription": "Crea una parcela para empezar.",
-    "additionalLocationHint": "Si gestionas superficies en varios lugares, también puedes",
-    "additionalLocationLink": "crear más ubicaciones",
     "missingFieldMultipleLocationsBeforeIcon": "Añade una parcela en la ubicación deseada con el icono",
     "missingFieldMultipleLocationsAfterIcon": "o el menú contextual.",
     "actions": {

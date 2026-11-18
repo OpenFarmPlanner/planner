@@ -192,9 +192,6 @@
     "missingLocationTitle": "Exploração em falta",
     "missingLocationDescription": "A exploração principal ainda não está disponível neste projeto.",
     "missingFieldTitle": "Parcela em falta",
-    "missingFieldSingleLocationDescription": "Crie uma parcela para começar.",
-    "additionalLocationHint": "Se gerir áreas em vários locais, também é possível",
-    "additionalLocationLink": "criar explorações adicionais",
     "missingFieldMultipleLocationsBeforeIcon": "Adicione uma parcela à exploração pretendida através do",
     "missingFieldMultipleLocationsAfterIcon": "ícone ou do menu de contexto.",
     "actions": {

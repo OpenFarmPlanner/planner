@@ -180,9 +180,6 @@
     "missingLocationTitle": "Locatie ontbreekt",
     "missingLocationDescription": "De hoofdlocatie is nog niet beschikbaar voor dit project.",
     "missingFieldTitle": "Perceel ontbreekt",
-    "missingFieldSingleLocationDescription": "Maak een perceel om te beginnen.",
-    "additionalLocationHint": "Als je oppervlakken op meerdere plaatsen beheert, kun je ook",
-    "additionalLocationLink": "extra locaties maken",
     "missingFieldMultipleLocationsBeforeIcon": "Voeg op de gewenste locatie een perceel toe met het",
     "missingFieldMultipleLocationsAfterIcon": "pictogram of het contextmenu.",
     "actions": {
