@@ -43,8 +43,11 @@ test('fits unsaved plots together and shows readable beds in the schematic view'
     bedIds.push(bed.id);
   }
   await page.goto('/app/fields-beds');
+  // The project's own first location (named after the project, #1190) is
+  // preselected, so pick the one this test fills.
   const layouts = page.waitForResponse(response => response.url().endsWith(`/locations/${location.id}/layouts/`));
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+  await selectLocation(page, 'Grafik913');
   await layouts;
   await page.waitForLoadState('networkidle');
   await page.getByRole('region', { name: 'Standort: Grafik913', exact: true }).scrollIntoViewIfNeeded();

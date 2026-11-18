@@ -107,6 +107,18 @@ erDiagram
   [`archive/FIELD_BED_AREA_IMPLEMENTATION.md`](./archive/FIELD_BED_AREA_IMPLEMENTATION.md)
   for the historical rationale and the intended future geometry extension
   path.
+- Every project gets one location when it is created (or, for a legacy
+  project without one, on the first request to the locations API). It is named
+  after the project (`farm/services/default_location.py`, #1190). The name is
+  user content: never translated, and renaming the project does not rename the
+  location. Before #1190 the name was generated in the request's language
+  ("Hauptstandort", "Main location", ...); migration
+  `0146_name_single_default_locations_after_project` renamed a project's only
+  location from one of those exact names to the project name and recorded a
+  location revision. It cannot tell a generated name from the same name typed
+  by hand, so such a manually named single location was renamed as well.
+  Imports, project copies and the demo create their own locations and get no
+  extra one.
 - `BedLayout`/`FieldLayout` hold persisted x/y coordinates for the
   graphical/map layout view (`GraphicalFields.tsx`) — they're optional,
   separate rows from `Bed`/`Field` themselves, not embedded fields. A field

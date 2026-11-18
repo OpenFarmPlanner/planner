@@ -366,29 +366,38 @@ class ProjectsApiTests(APITestCase):
         self.assertEqual(response.data['region'], Project.REGION_GERMANY)
         self.assertTrue(response.data['slug'])
 
-    def test_create_project_names_default_location_in_request_language(self) -> None:
-        expected_names = {
-            'de': 'Hauptstandort',
-            'en': 'Main location',
-            'fr': 'Site principal',
-            'es': 'Ubicación principal',
-            'it': 'Sito principale',
-            'pt': 'Exploração principal',
-            'nl': 'Hoofdlocatie',
-        }
-        for language, expected_name in expected_names.items():
+    def test_create_project_names_its_first_location_after_the_project(self) -> None:
+        """#1190: the first location takes the project name, in every UI language."""
+        for language in ('de', 'en', 'fr', 'nl'):
             with self.subTest(language=language):
                 response = self.client.post(
                     '/openfarmplanner/api/projects/',
-                    {'name': f'Projekt {language}', 'description': ''},
+                    {'name': f'Solawi Lindenhof {language}', 'description': ''},
                     format='json',
                     HTTP_ACCEPT_LANGUAGE=language,
                 )
                 self.assertEqual(response.status_code, status.HTTP_201_CREATED)
                 locations = Location.objects.filter(project_id=response.data['id'])
-                self.assertEqual(list(locations.values_list('name', flat=True)), [expected_name])
+                self.assertEqual(
+                    list(locations.values_list('name', flat=True)),
+                    [f'Solawi Lindenhof {language}'],
+                )
 
-    def test_legacy_project_default_location_uses_user_language(self) -> None:
+    def test_renaming_the_project_keeps_the_location_name(self) -> None:
+        response = self.client.post(
+            '/openfarmplanner/api/projects/', {'name': 'Hof Alt', 'description': ''}, format='json',
+        )
+        project_id = response.data['id']
+        self.client.patch(
+            f'/openfarmplanner/api/projects/{project_id}/', {'name': 'Hof Neu'}, format='json',
+            HTTP_X_PROJECT_ID=str(project_id),
+        )
+        self.assertEqual(
+            list(Location.objects.filter(project_id=project_id).values_list('name', flat=True)),
+            ['Hof Alt'],
+        )
+
+    def test_legacy_project_default_location_takes_the_project_name(self) -> None:
         settings_row = UserProjectSettings.objects.get(user=self.user)
         settings_row.ui_language = 'fr'
         settings_row.save(update_fields=['ui_language'])
@@ -402,7 +411,7 @@ class ProjectsApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
             list(Location.objects.filter(project=self.project).values_list('name', flat=True)),
-            ['Site principal'],
+            [self.project.name],
         )
 
     def test_updates_project_region_and_exposes_it_on_auth_memberships(self) -> None:

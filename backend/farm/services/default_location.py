@@ -1,32 +1,17 @@
 """Name of the location every new project gets automatically.
 
-Location names are user content and are stored exactly as created, so the
-default is written once in the language of the request that creates it and
-never re-translated afterwards.
+The first location takes the project's name (#1190). Both are user content:
+the name is stored as written, never translated, and a later rename of the
+project does not touch the location. Projects created before #1190 got a
+generated, translated name ("Hauptstandort", "Main location", ...); migration
+``0146_name_single_default_locations_after_project`` renamed those.
 """
 
-from rest_framework.request import Request
+from farm.models import Location, Project
 
-from config.languages import resolve_language_tag, resolve_request_language
-
-DEFAULT_LOCATION_NAMES: dict[str, str] = {
-    'de': 'Hauptstandort',
-    'en': 'Main location',
-    'fr': 'Site principal',
-    'es': 'Ubicación principal',
-    'it': 'Sito principale',
-    'pt': 'Exploração principal',
-    'nl': 'Hoofdlocatie',
-}
+_LOCATION_NAME_MAX_LENGTH = Location._meta.get_field('name').max_length
 
 
-def default_location_name(language_code: str | None) -> str:
-    """Return the default location name for a language (English fallback)."""
-    return DEFAULT_LOCATION_NAMES.get(
-        resolve_language_tag(language_code), DEFAULT_LOCATION_NAMES['en'],
-    )
-
-
-def default_location_name_for_request(request: Request) -> str:
-    """Return the default location name in the requesting user's language."""
-    return default_location_name(resolve_request_language(request))
+def initial_location_name(project: Project) -> str:
+    """Return the name of a project's first, automatically created location."""
+    return project.name[:_LOCATION_NAME_MAX_LENGTH]
