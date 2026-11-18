@@ -1,7 +1,6 @@
 import { useId } from 'react';
-import { Box, Chip, MenuItem, Stack, Typography } from '@mui/material';
+import { Box, MenuItem, Stack, Typography } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material';
-import CheckIcon from '@mui/icons-material/Check';
 
 import { useTranslation } from '../../../i18n';
 import {
@@ -11,13 +10,13 @@ import {
   ROTATION_FILTER_STATUSES,
   TIMING_FILTER_OPTIONS,
   withMonthRange,
-  type FilterOption,
   type MonthRange,
   type PlantingPlanSortKey,
 } from '../../../pages/plantingPlanSearch';
 import type { PlantingPlanSearchControls } from '../../../pages/usePlantingPlanSearch';
 import { TypeaheadSelect } from '../../inputs/TypeaheadSelect';
 import { MONTH_KEYS } from './months';
+import { FilterChipGroup } from '../../filters/FilterChipGroup';
 
 interface PlantingPlanFilterFieldsProps {
   search: PlantingPlanSearchControls;
@@ -26,57 +25,6 @@ interface PlantingPlanFilterFieldsProps {
 }
 
 const fieldLabelSx: SxProps<Theme> = { mb: 0.75, fontWeight: 600 };
-
-interface ChipGroupProps<T extends string | number> {
-  label: string;
-  options: readonly FilterOption<T>[];
-  selected: readonly T[];
-  onChange: (selected: T[]) => void;
-  hint?: string;
-}
-
-/** A multi-select as toggle chips; selected values combine with OR. */
-function ChipGroup<T extends string | number>({ label, options, selected, onChange, hint }: ChipGroupProps<T>) {
-  const labelId = useId();
-  const toggle = (value: T): void => {
-    onChange(selected.includes(value) ? selected.filter((entry) => entry !== value) : [...selected, value]);
-  };
-
-  return (
-    <Box role="group" aria-labelledby={labelId}>
-      <Typography id={labelId} variant="body2" component="div" sx={fieldLabelSx}>
-        {label}
-      </Typography>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-        {options.map((option) => {
-          const isSelected = selected.includes(option.value);
-          return (
-            <Chip
-              key={String(option.value)}
-              label={option.label}
-              size="small"
-              clickable
-              color={isSelected ? 'primary' : 'default'}
-              variant={isSelected ? 'filled' : 'outlined'}
-              icon={isSelected ? <CheckIcon fontSize="small" /> : undefined}
-              aria-pressed={isSelected}
-              onClick={() => toggle(option.value)}
-              sx={{ maxWidth: '100%' }}
-            />
-          );
-        })}
-        {options.length === 0 ? (
-          <Typography variant="body2" color="text.disabled" aria-hidden="true">—</Typography>
-        ) : null}
-      </Box>
-      {hint ? (
-        <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.75 }}>
-          {hint}
-        </Typography>
-      ) : null}
-    </Box>
-  );
-}
 
 interface MonthRangeFieldProps {
   label: string;
@@ -165,32 +113,32 @@ export function PlantingPlanFilterFields({ search, showSort = false }: PlantingP
           </TypeaheadSelect>
         </Box>
       ) : null}
-      <ChipGroup
+      <FilterChipGroup
         label={t('plantingPlans:search.fields.location')}
         options={options.locations}
         selected={filters.locationIds}
         onChange={setLocationIds}
       />
-      <ChipGroup
+      <FilterChipGroup
         label={t('plantingPlans:search.fields.field')}
         options={options.fields}
         selected={filters.fieldIds}
         onChange={(fieldIds) => setFilters({ ...filters, fieldIds })}
         hint={filters.locationIds.length === 0 ? t('plantingPlans:search.fieldHint') : undefined}
       />
-      <ChipGroup
+      <FilterChipGroup
         label={t('plantingPlans:search.fields.cultivationType')}
         options={options.cultivationTypes}
         selected={filters.cultivationTypes}
         onChange={(cultivationTypes) => setFilters({ ...filters, cultivationTypes })}
       />
-      <ChipGroup
+      <FilterChipGroup
         label={t('plantingPlans:search.fields.crop')}
         options={options.crops}
         selected={filters.cropKeys}
         onChange={(cropKeys) => setFilters({ ...filters, cropKeys })}
       />
-      <ChipGroup
+      <FilterChipGroup
         label={t('plantingPlans:search.fields.rotation')}
         options={ROTATION_FILTER_STATUSES.map((status) => ({
           value: status,
@@ -199,7 +147,7 @@ export function PlantingPlanFilterFields({ search, showSort = false }: PlantingP
         selected={filters.rotationStatuses}
         onChange={(rotationStatuses) => setFilters({ ...filters, rotationStatuses })}
       />
-      <ChipGroup
+      <FilterChipGroup
         label={t('plantingPlans:search.fields.occupancy')}
         options={OCCUPANCY_FILTER_OPTIONS.map((option) => ({
           value: option,
@@ -208,7 +156,7 @@ export function PlantingPlanFilterFields({ search, showSort = false }: PlantingP
         selected={filters.occupancy}
         onChange={(occupancy) => setFilters({ ...filters, occupancy })}
       />
-      <ChipGroup
+      <FilterChipGroup
         label={t('plantingPlans:search.fields.timing')}
         options={TIMING_FILTER_OPTIONS.map((option) => ({
           value: option,

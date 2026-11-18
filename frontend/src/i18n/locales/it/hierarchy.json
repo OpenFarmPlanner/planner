@@ -213,8 +213,10 @@
     "keywords": {
       "create": "nuovo, superfici coltivate, crea",
       "edit": "modifica",
-      "delete": "elimina"
-    }
+      "delete": "elimina",
+      "search": "cerca, filtra, trova"
+    },
+    "focusSearch": "Metti il focus sulla ricerca delle superfici (/)"
   },
   "mobile": {
     "expand": "Espandi: {{name}}",
@@ -242,6 +244,118 @@
       "location": "Sito",
       "field": "Appezzamento",
       "bed": "Aiuola"
+    }
+  },
+  "search": {
+    "placeholder": "Cerca nelle superfici",
+    "ariaLabel": "Cerca nelle superfici coltivate",
+    "clear": "Cancella ricerca",
+    "filterButton": "Filtra",
+    "filterButtonActiveAria_one": "Filtri, {{count}} filtro attivo",
+    "filterButtonActiveAria_other": "Filtri, {{count}} filtri attivi",
+    "filterButtonActiveAria_many": "Filtri, {{count}} filtri attivi",
+    "columnsButton": "Colonne",
+    "panelTitle": "Filtri",
+    "reset": "Reimposta",
+    "resetAll": "Reimposta tutto",
+    "matches_one": "{{count}} risultato",
+    "matches_other": "{{count}} risultati",
+    "matches_many": "{{count}} risultati",
+    "count_one": "{{count}} voce",
+    "count_other": "{{count}} voci",
+    "count_many": "{{count}} voci",
+    "filteredCount": "{{shown}} di {{total}} voci",
+    "activeFiltersAria": "Filtri attivi",
+    "removeChip": "Rimuovi filtro {{filter}}",
+    "chip": "{{filter}}: {{values}}",
+    "fields": {
+      "location": "Sito",
+      "field": "Appezzamento"
+    },
+    "fieldHint": "Suggerimento: scegli prima un sito per vedere solo i suoi appezzamenti.",
+    "empty": {
+      "title": "Nessuna superficie trovata",
+      "titleWithQuery": "Nessuna superficie trovata per «{{query}}»",
+      "hint": "Controlla l’ortografia o reimposta i filtri. Le righe superiori dei risultati restano visibili.",
+      "clearSearch": "Cancella ricerca",
+      "resetFilters": "Reimposta filtri"
+    }
+  },
+  "siteConditions": {
+    "labels": {
+      "light_condition": "Luce",
+      "soil_moisture": "Umidità del suolo",
+      "irrigation": "Irrigazione disponibile",
+      "soil_type": "Tipo di suolo",
+      "soil_description": "Descrizione del suolo",
+      "wind_exposure": "Protezione dal vento / esposizione al vento",
+      "water_supply": "Approvvigionamento idrico",
+      "cultivation_environment": "Ambiente di coltivazione",
+      "exposure": "Esposizione del pendio"
+    },
+    "values": {
+      "light_condition": {
+        "sunny": "Pieno sole",
+        "partial_shade": "Mezz’ombra",
+        "shade": "Ombra"
+      },
+      "soil_moisture": {
+        "dry": "Secco",
+        "normal": "Normale",
+        "moist": "Umido"
+      },
+      "irrigation": {
+        "available": "Disponibile",
+        "unavailable": "Non disponibile"
+      },
+      "cultivation_environment": {
+        "open_field": "Pieno campo",
+        "polytunnel": "Tunnel",
+        "greenhouse": "Serra"
+      }
+    },
+    "notSpecified": "Non indicato",
+    "inheritOption": "Eredita ({{value}})",
+    "inheritedFrom": {
+      "location": "Ereditato dal sito «{{name}}»",
+      "field": "Ereditato dall’appezzamento «{{name}}»",
+      "bed": "Ereditato dall’aiuola «{{name}}»"
+    },
+    "resetToInherited": "Ripristina il valore ereditato"
+  },
+  "details": {
+    "open": {
+      "location": "Dettagli del sito",
+      "field": "Dettagli dell’appezzamento",
+      "bed": "Dettagli dell’aiuola"
+    },
+    "sections": {
+      "general": "Generale",
+      "geometry": "Dimensioni",
+      "siteConditions": "Condizioni del sito",
+      "siteDetails": "Suolo e posizione",
+      "plantingPlans": "Piani colturali",
+      "children": {
+        "location": "Appezzamenti",
+        "field": "Aiuole"
+      }
+    },
+    "fields": {
+      "description": "Descrizione",
+      "address": "Indirizzo"
+    },
+    "entityType": {
+      "location": "Sito",
+      "field": "Appezzamento",
+      "bed": "Aiuola"
+    },
+    "backToList": "Torna alle superfici coltivate",
+    "breadcrumbAria": "Percorso di navigazione",
+    "unsavedChanges": "Hai modifiche non salvate. Andranno perse se lasci la pagina.",
+    "unnamedPlan": "Piano colturale senza coltura",
+    "notFound": {
+      "title": "Voce non trovata",
+      "description": "Questo sito, appezzamento o aiuola non esiste (più) nel progetto attivo."
     }
   }
 }

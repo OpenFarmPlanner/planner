@@ -84,8 +84,11 @@ describe('useBedOperations', () => {
     }]);
   });
 
-  it('duplicates a bed with only its dimensions and adds it to the state', async () => {
-    const source: Bed = { id: 4, name: 'B-3', field: 2, length_m: 8, width_m: 1.2, area_sqm: 9.6, notes: 'Do not copy' };
+  it('duplicates a bed with its dimensions and structured conditions and adds it to the state', async () => {
+    const source: Bed = {
+      id: 4, name: 'B-3', field: 2, length_m: 8, width_m: 1.2, area_sqm: 9.6, notes: 'Do not copy',
+      light_condition: 'shade', soil_description: 'Do not copy either',
+    };
     const harness = createStateHarness([source]);
     const created: Bed = { id: 40, name: 'B-4', field: 2, length_m: 8, width_m: 1.2, area_sqm: 9.6, notes: '' };
     createBedMock.mockResolvedValue({ data: created });
@@ -95,7 +98,17 @@ describe('useBedOperations', () => {
 
     const response = await result.current.duplicateBed(source, 'B-4');
 
-    expect(createBedMock).toHaveBeenCalledWith({ name: 'B-4', field: 2, length_m: 8, width_m: 1.2, notes: '' });
+    expect(createBedMock).toHaveBeenCalledWith({
+      name: 'B-4',
+      field: 2,
+      length_m: 8,
+      width_m: 1.2,
+      light_condition: 'shade',
+      soil_moisture: null,
+      irrigation: null,
+      soil_type: null,
+      notes: '',
+    });
     expect(response).toEqual(created);
     expect(harness.getBeds()).toEqual([created, source]);
   });

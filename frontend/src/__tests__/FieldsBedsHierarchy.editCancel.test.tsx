@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import type { GridColDef } from '@mui/x-data-grid';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, useLocation } from 'react-router';
 import FieldsBedsHierarchy from '../pages/FieldsBedsHierarchy';
 import {
   isCompletelyEmptyNewHierarchyRow,
@@ -324,10 +324,16 @@ vi.mock('@mui/x-data-grid', async () => {
   };
 });
 
+function LocationProbe() {
+  const currentLocation = useLocation();
+  return <span data-testid="location-probe">{currentLocation.pathname}</span>;
+}
+
 const renderHierarchy = (initialPath = '/app/fields-beds') => (
   render(
     <MemoryRouter initialEntries={[initialPath]}>
       <FieldsBedsHierarchy showTitle={false} />
+      <LocationProbe />
     </MemoryRouter>,
   )
 );
@@ -955,6 +961,46 @@ describe('FieldsBedsHierarchy edit cancellation', () => {
     expect(screen.getAllByRole('button', { name: 'Löschen' }).length).toBeGreaterThan(0);
   });
 
+  it('filters rows by search and inherited conditions while keeping parent rows', async () => {
+    locationListMock.mockResolvedValue({
+      data: { results: [{ id: 1, name: 'Hofstelle', light_condition: 'sunny' }, { id: 2, name: 'Außenfläche' }] },
+    });
+    fieldListMock.mockResolvedValue({
+      data: { results: [
+        { id: 10, name: 'Nordfeld', location: 1, area_sqm: 20 },
+        { id: 20, name: 'Südfeld', location: 2, area_sqm: 20 },
+      ] },
+    });
+    bedListMock.mockResolvedValue({
+      data: { results: [
+        { id: 21, name: 'Beet A', field: 10 },
+        { id: 22, name: 'Beet B', field: 10, light_condition: 'shade' },
+        { id: 31, name: 'Beet C', field: 20 },
+      ] },
+    });
+    renderHierarchy();
+    await screen.findByTestId('row-31');
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'hierarchy:search.ariaLabel' }), { target: { value: 'nordfeld beet a' } });
+
+    await waitFor(() => expect(screen.queryByTestId('row-31')).not.toBeInTheDocument());
+    expect(screen.getByTestId('row-21')).toBeInTheDocument();
+    expect(screen.queryByTestId('row-22')).not.toBeInTheDocument();
+    expect(screen.getByTestId('row-location-1')).toBeInTheDocument();
+    expect(screen.getByTestId('row-field-10')).toBeInTheDocument();
+    expect(screen.queryByTestId('row-location-2')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'hierarchy:search.clear' }));
+    await waitFor(() => expect(screen.getByTestId('row-31')).toBeInTheDocument());
+
+    // "Sunny" is inherited from Hofstelle; Beet B overrides it with shade.
+    fireEvent.click(screen.getByRole('button', { name: 'hierarchy:search.filterButton' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'hierarchy:siteConditions.values.light_condition.sunny' }));
+    await waitFor(() => expect(screen.queryByTestId('row-22')).not.toBeInTheDocument());
+    expect(screen.getByTestId('row-21')).toBeInTheDocument();
+    expect(screen.queryByTestId('row-31')).not.toBeInTheDocument();
+  });
+
   it('opens hierarchy actions from the right-click context menu', async () => {
     useMultipleLocations();
     bedListMock.mockResolvedValue({ data: { results: [{ id: 21, name: 'Beet A', field: 10 }] } });
@@ -964,13 +1010,15 @@ describe('FieldsBedsHierarchy edit cancellation', () => {
     fireEvent.contextMenu(locationRow);
 
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'Standortdetails',
       'Parzelle hinzufügenEinfg',
       'Löschen',
       'actions.copyRow',
       'actions.copyTable',
     ]);
     expect(screen.getByRole('menuitem', { name: /^Parzelle hinzufügen/ })).toBeInTheDocument();
-    expect(screen.getAllByRole('separator')).toHaveLength(2);
+    // Details sits on top, separated from the create actions (#1075).
+    expect(screen.getAllByRole('separator')).toHaveLength(3);
 
     fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
@@ -979,6 +1027,7 @@ describe('FieldsBedsHierarchy edit cancellation', () => {
     fireEvent.contextMenu(fieldRow);
 
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'Parzellendetails',
       'Beet hinzufügenEinfg',
       'Mehrere Beete anlegen',
       'Parzelle duplizieren',
@@ -988,7 +1037,7 @@ describe('FieldsBedsHierarchy edit cancellation', () => {
     ]);
     expect(screen.getByRole('menuitem', { name: /^Beet hinzufügen/ })).toBeInTheDocument();
     expect(screen.queryByRole('menuitem', { name: 'Beet' })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('separator')).toHaveLength(2);
+    expect(screen.getAllByRole('separator')).toHaveLength(3);
 
     fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
@@ -996,6 +1045,7 @@ describe('FieldsBedsHierarchy edit cancellation', () => {
     fireEvent.contextMenu(fieldRow);
 
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'Parzellendetails',
       'Beet hinzufügenEinfg',
       'Mehrere Beete anlegen',
       'Parzelle duplizieren',
@@ -1005,7 +1055,7 @@ describe('FieldsBedsHierarchy edit cancellation', () => {
     ]);
     expect(screen.getByRole('menuitem', { name: /^Beet hinzufügen/ })).toBeInTheDocument();
     expect(screen.queryByRole('menuitem', { name: 'Beet' })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('separator')).toHaveLength(2);
+    expect(screen.getAllByRole('separator')).toHaveLength(3);
 
     fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
@@ -1017,12 +1067,16 @@ describe('FieldsBedsHierarchy edit cancellation', () => {
     expect(createPlanMenuItem).toBeInTheDocument();
     expect(createPlanMenuItem.querySelector('svg')).not.toBeNull();
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'Beetdetails',
       'Beet duplizierenStrg+D',
       'Pflanzplan erstellen',
       'Löschen',
       'actions.copyRow',
       'actions.copyTable',
     ]);
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Beetdetails' }));
+    await waitFor(() => expect(screen.getByTestId('location-probe')).toHaveTextContent('/app/fields-beds/beds/21'));
   });
 
   it('prefills "Beet hinzufügen" from the last bed of the field and counts its name up', async () => {
@@ -1073,6 +1127,10 @@ describe('FieldsBedsHierarchy edit cancellation', () => {
       field: 10,
       length_m: 8,
       width_m: 1.2,
+      light_condition: null,
+      soil_moisture: null,
+      irrigation: null,
+      soil_type: null,
       notes: '',
     }));
     expect(await screen.findByTestId('row-101')).toBeInTheDocument();

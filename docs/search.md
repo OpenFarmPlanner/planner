@@ -152,6 +152,29 @@ the visible crop name is not reported as a synonym hit.
   [design-system.md](./design-system.md#5-the-two-remaining-stylesheets)); by
   default the app-wide `overflow-x` clamp disables `position: sticky`.
 
+## Growing areas
+
+The Growing Areas list (`frontend/src/components/hierarchy/utils/growingAreaSearch.ts`,
+state in `hooks/useGrowingAreaSearch.ts`, tests in `growingAreaSearch.test.ts`)
+follows the same normalization, AND/OR rules, debounce and toolbar
+(`components/data-grid/DataGridSearchToolbar.tsx`). Differences:
+
+- Searched texts of a row: its own name, the names of its parent field and
+  location, and its notes (plain text). A term in a location name therefore
+  finds the whole location.
+- Filters: **Standort, Parzelle, Licht, Bodenfeuchte, Bewässerung verfügbar**
+  (multi-select). Parzelle depends on Standort as above. The condition filters
+  match the **effective (inherited) value**, also while the columns are hidden,
+  and offer **"Nicht angegeben"**, which is distinct from "Nicht verfügbar".
+  Their options are the fixed choices, not derived from the records.
+- A match keeps its parent rows visible (the tree needs them for context);
+  unsaved draft rows are never hidden. The count is the number of matching
+  rows of all levels.
+- The state is kept in `sessionStorage` per project (`growingAreaSearch.<id>`)
+  for the tab's session, so returning from a location/field/bed detail page
+  restores it. It is never put into the URL or `localStorage`, and it never
+  filters the graphical view.
+
 ## Why page search is not in the topbar
 
 The topbar is **reserved for a future app-wide search** across all record

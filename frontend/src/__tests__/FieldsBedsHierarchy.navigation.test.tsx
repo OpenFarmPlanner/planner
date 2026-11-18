@@ -141,7 +141,8 @@ vi.mock('@mui/x-data-grid', async () => {
 
   const DataGrid = ({
     apiRef,
-    columns,
+    columns: allColumns,
+    columnVisibilityModel,
     isCellEditable,
     onCellClick,
     onCellDoubleClick,
@@ -155,6 +156,7 @@ vi.mock('@mui/x-data-grid', async () => {
       current?: Record<string, unknown>;
     };
     columns: Array<{ field: string; renderCell?: (p: unknown) => unknown; editable?: boolean }>;
+    columnVisibilityModel?: Record<string, boolean>;
     isCellEditable?: (p: { row: Record<string, unknown>; field: string }) => boolean;
     onCellClick?: (
       p: { id: string | number; field: string; isEditable: boolean; row: Record<string, unknown> },
@@ -170,6 +172,8 @@ vi.mock('@mui/x-data-grid', async () => {
     rowModesModel: Record<string, { mode: string }>;
     rows: Array<Record<string, unknown> & { id: string | number }>;
   }) => {
+    // Like the real grid, hidden columns are neither rendered nor navigable.
+    const columns = allColumns.filter((column) => columnVisibilityModel?.[column.field] !== false);
     const [selectedIds, setSelectedIds] = ReactModule.useState(new Set<string | number>());
     const [focusedCell, setFocusedCell] = ReactModule.useState<{ id: string | number; field: string } | null>(null);
     // Register state updater on every render so gridApiRef.current.selectRow() can
@@ -1222,8 +1226,8 @@ describe('FieldsBedsHierarchy keyboard navigation', () => {
       await singleClick('select-101-name');
       expect(screen.queryByText('messages.tableEditHint')).not.toBeInTheDocument();
 
-      expect(await screen.findByText('messages.tableEditHint')).toBeInTheDocument();
-      expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
+      const hint = await screen.findByText('messages.tableEditHint');
+      expect(hint.closest('[role="status"]')).toHaveAttribute('aria-live', 'polite');
     });
 
     it('does not show the edit hint on group rows', async () => {

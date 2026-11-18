@@ -32,6 +32,11 @@ import { useFieldDuplication } from "../components/hierarchy/hooks/useFieldDupli
 import type { Bed, BulkBedCreatePayload } from "../api/api";
 import { BulkBedCreateDialog } from "../components/hierarchy/BulkBedCreateDialog";
 import { showGlobalSnackbar } from "../utils/globalSnackbar";
+import { useGrowingAreaSearch } from "../components/hierarchy/hooks/useGrowingAreaSearch";
+import {
+  GrowingAreaSearchEmptyState,
+  GrowingAreaSearchToolbar,
+} from "../components/hierarchy/search/GrowingAreaSearchToolbar";
 
 interface FieldsBedsHierarchyMobileProps {
   showTitle?: boolean;
@@ -39,6 +44,8 @@ interface FieldsBedsHierarchyMobileProps {
   onCreateFieldRequestHandled?: () => void;
   hierarchyData?: HierarchyDataState;
   onPendingDeletionCountChange?: (count: number) => void;
+  /** Scopes the session-kept search and filters; null keeps them in memory only. */
+  projectId?: number | null;
 }
 
 type SheetState =
@@ -51,6 +58,7 @@ function FieldsBedsHierarchyMobile({
   onCreateFieldRequestHandled,
   hierarchyData,
   onPendingDeletionCountChange,
+  projectId = null,
 }: FieldsBedsHierarchyMobileProps) {
   const { t } = useTranslation(["hierarchy", "common"]);
   const navigate = useNavigate();
@@ -95,7 +103,23 @@ function FieldsBedsHierarchyMobile({
     return { field: firstSort.field, direction: firstSort.sort };
   }, [sortModel]);
 
-  const rows = useMobileHierarchyRows(locations, fields, beds, hierarchySortConfig, expandedRows);
+  const growingAreaSearch = useGrowingAreaSearch(projectId, { locations, fields, beds });
+  const filterButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const { isActive: isSearchActive, visibleRowKeys, ancestorRowKeys } = growingAreaSearch;
+  useEffect(() => {
+    if (!isSearchActive) return;
+    ancestorRowKeys.forEach((key) => ensureExpanded(key));
+    // Only when the matches change; a parent collapsed afterwards stays collapsed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSearchActive, ancestorRowKeys]);
+  const allRows = useMobileHierarchyRows(locations, fields, beds, hierarchySortConfig, expandedRows);
+  const rows = useMemo(
+    () => (isSearchActive
+      ? allRows.filter((row) => row.isNew === true || visibleRowKeys.has(row.id))
+      : allRows),
+    [allRows, isSearchActive, visibleRowKeys],
+  );
 
   const getFieldBedsByName = useCallback(
     (fieldId: number): Bed[] => beds
@@ -299,6 +323,18 @@ function FieldsBedsHierarchyMobile({
     <Box>
       {error ? (
         <Box sx={{ color: "error.main", mb: 2 }}>{error}</Box>
+      ) : null}
+
+      <GrowingAreaSearchToolbar
+        search={growingAreaSearch}
+        locations={locations}
+        fields={fields}
+        filterButtonRef={filterButtonRef}
+        isFilterPanelOpen={isFilterPanelOpen}
+        onFilterPanelOpenChange={setIsFilterPanelOpen}
+      />
+      {!loading && isSearchActive && rows.length === 0 ? (
+        <GrowingAreaSearchEmptyState search={growingAreaSearch} />
       ) : null}
 
       {loading ? (

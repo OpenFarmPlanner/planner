@@ -201,8 +201,10 @@
     "keywords": {
       "create": "neu, anbauflächen, erstellen",
       "edit": "bearbeiten",
-      "delete": "löschen"
-    }
+      "delete": "löschen",
+      "search": "suchen, filter, finden"
+    },
+    "focusSearch": "Anbauflächensuche fokussieren (/)"
   },
   "mobile": {
     "expand": "Aufklappen: {{name}}",
@@ -229,6 +231,115 @@
       "location": "Standort",
       "field": "Parzelle",
       "bed": "Beet"
+    }
+  },
+  "search": {
+    "placeholder": "Anbauflächen durchsuchen",
+    "ariaLabel": "Anbauflächen durchsuchen",
+    "clear": "Suche löschen",
+    "filterButton": "Filter",
+    "filterButtonActiveAria_one": "Filter, {{count}} Filter aktiv",
+    "filterButtonActiveAria_other": "Filter, {{count}} Filter aktiv",
+    "columnsButton": "Spalten",
+    "panelTitle": "Filter",
+    "reset": "Zurücksetzen",
+    "resetAll": "Alle zurücksetzen",
+    "matches_one": "{{count}} Treffer",
+    "matches_other": "{{count}} Treffer",
+    "count_one": "{{count}} Eintrag",
+    "count_other": "{{count}} Einträge",
+    "filteredCount": "{{shown}} von {{total}} Einträgen",
+    "activeFiltersAria": "Aktive Filter",
+    "removeChip": "Filter {{filter}} entfernen",
+    "chip": "{{filter}}: {{values}}",
+    "fields": {
+      "location": "Standort",
+      "field": "Parzelle"
+    },
+    "fieldHint": "Tipp: Wähle zuerst einen Standort, dann siehst du nur dessen Parzellen.",
+    "empty": {
+      "title": "Keine Anbauflächen gefunden",
+      "titleWithQuery": "Keine Anbauflächen gefunden für „{{query}}“",
+      "hint": "Prüfe die Schreibweise oder setze Filter zurück. Übergeordnete Zeilen von Treffern bleiben sichtbar.",
+      "clearSearch": "Suche löschen",
+      "resetFilters": "Filter zurücksetzen"
+    }
+  },
+  "siteConditions": {
+    "labels": {
+      "light_condition": "Licht",
+      "soil_moisture": "Bodenfeuchte",
+      "irrigation": "Bewässerung verfügbar",
+      "soil_type": "Bodenart",
+      "soil_description": "Bodenbeschreibung",
+      "wind_exposure": "Windschutz / Windlage",
+      "water_supply": "Wasserversorgung",
+      "cultivation_environment": "Anbauumgebung",
+      "exposure": "Hangausrichtung"
+    },
+    "values": {
+      "light_condition": {
+        "sunny": "Sonnig",
+        "partial_shade": "Halbschattig",
+        "shade": "Schattig"
+      },
+      "soil_moisture": {
+        "dry": "Trocken",
+        "normal": "Normal",
+        "moist": "Feucht"
+      },
+      "irrigation": {
+        "available": "Verfügbar",
+        "unavailable": "Nicht verfügbar"
+      },
+      "cultivation_environment": {
+        "open_field": "Freiland",
+        "polytunnel": "Folientunnel",
+        "greenhouse": "Gewächshaus"
+      }
+    },
+    "notSpecified": "Nicht angegeben",
+    "inheritOption": "Übernehmen ({{value}})",
+    "inheritedFrom": {
+      "location": "Übernommen vom Standort „{{name}}“",
+      "field": "Übernommen von der Parzelle „{{name}}“",
+      "bed": "Übernommen vom Beet „{{name}}“"
+    },
+    "resetToInherited": "Auf übernommenen Wert zurücksetzen"
+  },
+  "details": {
+    "open": {
+      "location": "Standortdetails",
+      "field": "Parzellendetails",
+      "bed": "Beetdetails"
+    },
+    "sections": {
+      "general": "Allgemein",
+      "geometry": "Abmessungen",
+      "siteConditions": "Standortbedingungen",
+      "siteDetails": "Boden und Lage",
+      "plantingPlans": "Anbaupläne",
+      "children": {
+        "location": "Parzellen",
+        "field": "Beete"
+      }
+    },
+    "fields": {
+      "description": "Beschreibung",
+      "address": "Adresse"
+    },
+    "entityType": {
+      "location": "Standort",
+      "field": "Parzelle",
+      "bed": "Beet"
+    },
+    "backToList": "Zurück zu den Anbauflächen",
+    "breadcrumbAria": "Navigationspfad",
+    "unsavedChanges": "Du hast ungespeicherte Änderungen. Beim Verlassen der Seite gehen sie verloren.",
+    "unnamedPlan": "Anbauplan ohne Kultur",
+    "notFound": {
+      "title": "Eintrag nicht gefunden",
+      "description": "Dieser Standort, diese Parzelle oder dieses Beet existiert nicht (mehr) im aktiven Projekt."
     }
   }
 }

@@ -38,6 +38,17 @@ import AgricultureIcon from "@mui/icons-material/Agriculture";
 import ControlPointDuplicateIcon from "@mui/icons-material/ControlPointDuplicate";
 import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd";
 import DeleteIcon from "@mui/icons-material/Delete";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import { GridPreferencePanelsValue } from "@mui/x-data-grid";
+import { useColumnVisibility } from "../hooks/useColumnVisibility";
+import { useGrowingAreaSearch } from "../components/hierarchy/hooks/useGrowingAreaSearch";
+import {
+  GrowingAreaSearchEmptyState,
+  GrowingAreaSearchToolbar,
+} from "../components/hierarchy/search/GrowingAreaSearchToolbar";
+import { createSiteConditionColumns } from "../components/hierarchy/SiteConditionColumns";
+import { INLINE_SITE_CONDITION_FIELDS as SITE_CONDITION_COLUMN_FIELDS } from "../components/hierarchy/utils/siteConditions";
+import { getHierarchyDetailPath } from "../components/hierarchy/details/hierarchyDetailRoutes";
 import { ContextMenuActionItem } from "../components/contextMenu/ContextMenuActionItem";
 import { CustomContextMenu } from "../components/contextMenu/CustomContextMenu";
 import { renderGroupedContextMenuActions } from "../components/contextMenu/contextMenuGroups";
@@ -135,12 +146,14 @@ interface FieldsBedsHierarchyProps {
   hierarchyData?: HierarchyDataState;
   onPendingDeletionCountChange?: (count: number) => void;
   suppressContextMenuHint?: boolean;
+  /** Scopes the session-kept search and filters; null keeps them in memory only. */
+  projectId?: number | null;
 }
 
 interface HierarchyRowAction {
   id: string;
   label: string;
-  group: "create" | "destructive";
+  group: "details" | "create" | "destructive";
   color?: "default" | "error";
   onClick: () => void;
   emphasized?: boolean;
@@ -156,6 +169,7 @@ function FieldsBedsHierarchy({
   hierarchyData,
   onPendingDeletionCountChange,
   suppressContextMenuHint = false,
+  projectId = null,
 }: FieldsBedsHierarchyProps) {
   const LOCATION_ROW_HEIGHT = 46;
   const FIELD_ROW_HEIGHT = 42;
@@ -225,6 +239,20 @@ function FieldsBedsHierarchy({
     fetchData,
     fetchGeneration,
   } = hierarchyData ?? internalHierarchyData;
+  const growingAreaSearch = useGrowingAreaSearch(projectId, { locations, fields, beds });
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const filterButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [columnsAnchorEl, setColumnsAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const [isColumnsPanelOpen, setIsColumnsPanelOpen] = useState(false);
+  const { columnVisibilityModel, setColumnVisibilityModel } = useColumnVisibility({
+    tableKey: "fieldsBedsHierarchy",
+    defaultHiddenFields: SITE_CONDITION_COLUMN_FIELDS,
+  });
+  const columnVisibilityModelRef = useRef(columnVisibilityModel);
+  useLayoutEffect(() => {
+    columnVisibilityModelRef.current = columnVisibilityModel;
+  }, [columnVisibilityModel]);
 
   // Expansion state
   const {
@@ -325,10 +353,51 @@ function FieldsBedsHierarchy({
     [hierarchyIndex],
   );
 
-  const rows = useMemo<GridRowsProp<HierarchyRow>>(
-    () => projectRows(expandedRows),
-    [projectRows, expandedRows],
-  );
+  // Search/filter matches keep their parent rows (docs/search.md); unsaved
+  // draft rows always stay so an edit in progress never disappears.
+  const { isActive: isSearchActive, visibleRowKeys: searchVisibleRowKeys } = growingAreaSearch;
+  const rows = useMemo<GridRowsProp<HierarchyRow>>(() => {
+    const projected = projectRows(expandedRows);
+    if (!isSearchActive) {
+      return projected;
+    }
+    return projected.filter((row) => row.isNew === true || searchVisibleRowKeys.has(row.id));
+  }, [projectRows, expandedRows, isSearchActive, searchVisibleRowKeys]);
+
+  const { ancestorRowKeys: searchAncestorRowKeys } = growingAreaSearch;
+  useEffect(() => {
+    if (!isSearchActive) {
+      return;
+    }
+    searchAncestorRowKeys.forEach((key) => {
+      if (!expandedRows.has(key)) {
+        ensureExpanded(key);
+      }
+    });
+    // Only when the matches change: a parent the user collapses afterwards
+    // stays collapsed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSearchActive, searchAncestorRowKeys]);
+
+  useEffect(() => {
+    const api = gridApiRef.current;
+    if (!api) {
+      return;
+    }
+    if (isColumnsPanelOpen) {
+      api.showPreferences?.(GridPreferencePanelsValue.columns);
+    } else {
+      api.hidePreferences?.();
+    }
+  }, [gridApiRef, isColumnsPanelOpen]);
+
+  useEffect(() => {
+    const api = gridApiRef.current;
+    if (!api || typeof api.subscribeEvent !== "function") {
+      return undefined;
+    }
+    return api.subscribeEvent("preferencePanelClose", () => setIsColumnsPanelOpen(false));
+  }, [gridApiRef]);
 
   const hierarchyRowWindow = useHierarchyRowWindow(
     rows.length,
@@ -942,6 +1011,9 @@ function FieldsBedsHierarchy({
   ), []);
 
   const isCellEditable = useCallback((params: { row: HierarchyRow; field: string }) => {
+    if ((SITE_CONDITION_COLUMN_FIELDS as readonly string[]).includes(params.field)) {
+      return !params.row.isNew;
+    }
     if (params.row.type === "location") {
       return (
         params.field === "name" ||
@@ -978,9 +1050,12 @@ function FieldsBedsHierarchy({
       return null;
     }
 
+    const visibleConditionFields = row.isNew
+      ? []
+      : SITE_CONDITION_COLUMN_FIELDS.filter((field) => columnVisibilityModelRef.current[field] !== false);
     const focusableFields = row.type === "location"
-      ? ["name", "notes"]
-      : ["name", "length_m", "width_m", "notes"];
+      ? ["name", ...visibleConditionFields, "notes"]
+      : ["name", "length_m", "width_m", ...visibleConditionFields, "notes"];
     return focusableFields.includes(preferredField) ? preferredField : focusableFields[0] ?? null;
   }, []);
 
@@ -1364,6 +1439,14 @@ function FieldsBedsHierarchy({
 
   const getHierarchyRowActions = useCallback((row: HierarchyRow): HierarchyRowAction[] => {
     const createActions: HierarchyRowAction[] = [];
+    const detailPath = row.isNew ? null : getHierarchyDetailPath(row);
+    const detailActions: HierarchyRowAction[] = detailPath ? [{
+      id: "details",
+      label: t(`details.open.${row.type}`),
+      group: "details",
+      icon: <InfoOutlinedIcon fontSize="small" />,
+      onClick: () => navigate(detailPath),
+    }] : [];
 
     if (row.type === "location" && row.locationId) {
       createActions.push({
@@ -1436,8 +1519,9 @@ function FieldsBedsHierarchy({
       },
     }];
 
-    return [...createActions, ...destructiveActions];
+    return [...detailActions, ...createActions, ...destructiveActions];
   }, [
+    navigate,
     deleteHierarchyRowWithUndo,
     handleAddBed,
     handleAddField,
@@ -1449,6 +1533,17 @@ function FieldsBedsHierarchy({
 
   const areaCommands = useMemo<CommandSpec[]>(
     () => [
+      {
+        id: "areas.focusSearch",
+        label: t("hierarchy:commands.focusSearch"),
+        group: 'navigation',
+        keywords: keywordList(t, "hierarchy:commands.keywords.search"),
+        shortcutHint: "/",
+        keys: { key: "/" },
+        contextTags: ["areas"],
+        isEnabled: () => searchInputRef.current !== null,
+        action: () => searchInputRef.current?.focus(),
+      },
       {
         id: "areas.create",
         label: t("hierarchy:commands.create"),
@@ -1624,7 +1719,7 @@ function FieldsBedsHierarchy({
    * Create columns with callbacks
    */
   const columns = useMemo(() => {
-    return createHierarchyColumns(
+    const baseColumns = createHierarchyColumns(
       toggleExpand,
       handleAddBed,
       (bedId) => {
@@ -1674,6 +1769,13 @@ function FieldsBedsHierarchy({
         },
       },
     );
+    // The optional site-condition columns sit before the notes (#1075).
+    const notesIndex = baseColumns.findIndex((column) => column.field === "notes");
+    return [
+      ...baseColumns.slice(0, notesIndex),
+      ...createSiteConditionColumns(t),
+      ...baseColumns.slice(notesIndex),
+    ];
   }, [
     toggleExpand,
     handleAddBed,
@@ -1956,12 +2058,33 @@ function FieldsBedsHierarchy({
         )}
 
         {shouldShowHierarchyTable ? (
+          <GrowingAreaSearchToolbar
+            search={growingAreaSearch}
+            locations={locations}
+            fields={fields}
+            searchInputRef={searchInputRef}
+            filterButtonRef={filterButtonRef}
+            isFilterPanelOpen={isFilterPanelOpen}
+            onFilterPanelOpenChange={setIsFilterPanelOpen}
+            columnsPanelOpen={isColumnsPanelOpen}
+            onColumnsPanelOpenChange={setIsColumnsPanelOpen}
+            columnsButtonRef={setColumnsAnchorEl}
+          />
+        ) : null}
+
+        {shouldShowHierarchyTable && isSearchActive && rows.length === 0 ? (
+          <GrowingAreaSearchEmptyState search={growingAreaSearch} />
+        ) : null}
+
+        {shouldShowHierarchyTable ? (
           <Box
             ref={tableWrapperRef}
             sx={{
               position: "relative",
               width: "100%",
               maxWidth: "100%",
+              // Kept mounted (grid state, focus helpers) while nothing matches.
+              display: isSearchActive && rows.length === 0 ? "none" : undefined,
               '& [role="row"][data-id]': {
                 WebkitTouchCallout: "none",
               },
@@ -1979,6 +2102,14 @@ function FieldsBedsHierarchy({
             <DataGrid
               rows={rows}
               columns={columns}
+              columnVisibilityModel={columnVisibilityModel}
+              onColumnVisibilityModelChange={setColumnVisibilityModel}
+              slotProps={{
+                columnsManagement: { disableResetButton: true },
+                ...(columnsAnchorEl
+                  ? { panel: { target: columnsAnchorEl, placement: "bottom-start" as const } }
+                  : {}),
+              }}
               columnHeaderHeight={HEADER_ROW_HEIGHT}
               getRowHeight={getRowHeight}
               // Without this, MUI falls back to the density-default row

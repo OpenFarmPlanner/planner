@@ -1,6 +1,6 @@
-import { Box, Chip, IconButton, Link } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
+
+import { ActiveFilterChips } from '../../filters/ActiveFilterChips';
 
 import { useTranslation } from '../../../i18n';
 import {
@@ -88,58 +88,17 @@ interface PlantingPlanActiveFilterChipsProps {
 export function PlantingPlanActiveFilterChips({ search, scrollable = false, sx }: PlantingPlanActiveFilterChipsProps) {
   const { t } = useTranslation('plantingPlans');
   const chips = useActiveFilterChips(search);
-  if (chips.length === 0) {
-    return null;
-  }
 
   return (
-    <Box
-      role="group"
-      aria-label={t('search.activeFiltersAria')}
-      sx={[
-        {
-          display: 'flex',
-          alignItems: 'center',
-          gap: 0.75,
-          flexWrap: scrollable ? 'nowrap' : 'wrap',
-          overflowX: scrollable ? 'auto' : 'visible',
-          scrollbarWidth: scrollable ? 'none' : undefined,
-          py: 0.25,
-        },
-        ...(Array.isArray(sx) ? sx : [sx]),
-      ]}
-    >
-      {chips.map((chip) => (
-        <Chip
-          key={chip.group}
-          size={scrollable ? 'medium' : 'small'}
-          color="primary"
-          variant="outlined"
-          sx={{ flexShrink: 0, maxWidth: scrollable ? 'none' : '100%', pr: 0.25 }}
-          label={(
-            <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
-              <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{chip.label}</Box>
-              <IconButton
-                size="small"
-                aria-label={t('search.removeChip', { filter: chip.filterLabel })}
-                onClick={() => search.clearFilterGroup(chip.group)}
-                sx={{ p: scrollable ? 0.5 : 0.25, mr: -0.5, color: 'inherit' }}
-              >
-                <CloseIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-            </Box>
-          )}
-        />
-      ))}
-      <Link
-        component="button"
-        type="button"
-        variant="body2"
-        onClick={search.resetFilters}
-        sx={{ flexShrink: 0, whiteSpace: 'nowrap', ml: 0.5, minHeight: scrollable ? 32 : undefined }}
-      >
-        {t('search.resetAll')}
-      </Link>
-    </Box>
+    <ActiveFilterChips
+      chips={chips.map((chip) => ({ key: chip.group, filterLabel: chip.filterLabel, label: chip.label }))}
+      onRemove={(group) => search.clearFilterGroup(group as PlantingPlanFilterGroup)}
+      onResetAll={search.resetFilters}
+      groupAriaLabel={t('search.activeFiltersAria')}
+      resetAllLabel={t('search.resetAll')}
+      removeAriaLabel={(filter) => t('search.removeChip', { filter })}
+      scrollable={scrollable}
+      sx={sx}
+    />
   );
 }

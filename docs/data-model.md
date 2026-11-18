@@ -107,6 +107,12 @@ erDiagram
   [`archive/FIELD_BED_AREA_IMPLEMENTATION.md`](./archive/FIELD_BED_AREA_IMPLEMENTATION.md)
   for the historical rationale and the intended future geometry extension
   path.
+- Locations, fields and beds carry optional site conditions (#1075): light,
+  soil moisture, irrigation availability and soil type are inherited
+  location → field → bed (nearest explicit value, `null` = not specified
+  here); soil description, wind exposure and water supply are per-entity
+  texts, and a field also records its cultivation environment. See
+  [growing-area-site-conditions.md](./growing-area-site-conditions.md).
 - Every project gets one location when it is created (or, for a legacy
   project without one, on the first request to the locations API). It is named
   after the project (`farm/services/default_location.py`, #1190). The name is

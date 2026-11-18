@@ -58,6 +58,7 @@ const InvitationAcceptPage = React.lazy(() => import('./pages/InvitationAcceptPa
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const Locations = React.lazy(() => import('./pages/Locations'));
 const FieldsBedsPage = React.lazy(() => import('./pages/FieldsBedsPage'));
+const GrowingAreaDetailPage = React.lazy(() => import('./pages/GrowingAreaDetailPage'));
 const Crops = React.lazy(() => import('./pages/Crops'));
 const PublicCropLibraryPage = React.lazy(() => import('./crop-library/pages/PublicCropLibraryPage'));
 const PublicLibraryModerationPage = React.lazy(() => import('./crop-library/pages/PublicLibraryModerationPage'));
@@ -272,6 +273,10 @@ function createAppRouter(basename: string) {
                 { path: 'dashboard', element: withLazyFallback(<Dashboard />) },
                 { path: 'locations', element: withLazyFallback(<Locations />) },
                 { path: 'fields-beds', element: withLazyFallback(<FieldsBedsPage />) },
+                {
+                  path: 'fields-beds/:entityType/:entityId',
+                  element: withLazyFallback(<GrowingAreaDetailPage />),
+                },
                 { path: 'crops', element: withLazyFallback(<Crops />) },
                 // Deprecated pre-"Crop" route. Bookmarks and pasted links to
                 // it are out in the wild; without this they would fall through

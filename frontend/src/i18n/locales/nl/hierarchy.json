@@ -201,8 +201,10 @@
     "keywords": {
       "create": "nieuw, teeltoppervlakken, maken",
       "edit": "bewerken",
-      "delete": "verwijderen"
-    }
+      "delete": "verwijderen",
+      "search": "zoeken, filteren, vinden"
+    },
+    "focusSearch": "Zoeken in teeltoppervlakken focussen (/)"
   },
   "mobile": {
     "expand": "Uitklappen: {{name}}",
@@ -229,6 +231,115 @@
       "location": "Locatie",
       "field": "Perceel",
       "bed": "Bed"
+    }
+  },
+  "search": {
+    "placeholder": "Teeltoppervlakken doorzoeken",
+    "ariaLabel": "Teeltoppervlakken doorzoeken",
+    "clear": "Zoekopdracht wissen",
+    "filterButton": "Filteren",
+    "filterButtonActiveAria_one": "Filteren, {{count}} actief filter",
+    "filterButtonActiveAria_other": "Filteren, {{count}} actieve filters",
+    "columnsButton": "Kolommen",
+    "panelTitle": "Filters",
+    "reset": "Herstellen",
+    "resetAll": "Alles herstellen",
+    "matches_one": "{{count}} resultaat",
+    "matches_other": "{{count}} resultaten",
+    "count_one": "{{count}} item",
+    "count_other": "{{count}} items",
+    "filteredCount": "{{shown}} van {{total}} items",
+    "activeFiltersAria": "Actieve filters",
+    "removeChip": "Filter {{filter}} verwijderen",
+    "chip": "{{filter}}: {{values}}",
+    "fields": {
+      "location": "Locatie",
+      "field": "Perceel"
+    },
+    "fieldHint": "Tip: kies eerst een locatie om alleen de bijbehorende percelen te zien.",
+    "empty": {
+      "title": "Geen teeltoppervlakken gevonden",
+      "titleWithQuery": "Geen teeltoppervlakken gevonden voor ‘{{query}}’",
+      "hint": "Controleer de spelling of herstel de filters. Bovenliggende rijen van resultaten blijven zichtbaar.",
+      "clearSearch": "Zoekopdracht wissen",
+      "resetFilters": "Filters herstellen"
+    }
+  },
+  "siteConditions": {
+    "labels": {
+      "light_condition": "Licht",
+      "soil_moisture": "Bodemvocht",
+      "irrigation": "Beregening beschikbaar",
+      "soil_type": "Grondsoort",
+      "soil_description": "Bodembeschrijving",
+      "wind_exposure": "Windbescherming / windligging",
+      "water_supply": "Watervoorziening",
+      "cultivation_environment": "Teeltomgeving",
+      "exposure": "Hellingsoriëntatie"
+    },
+    "values": {
+      "light_condition": {
+        "sunny": "Volle zon",
+        "partial_shade": "Halfschaduw",
+        "shade": "Schaduw"
+      },
+      "soil_moisture": {
+        "dry": "Droog",
+        "normal": "Normaal",
+        "moist": "Vochtig"
+      },
+      "irrigation": {
+        "available": "Beschikbaar",
+        "unavailable": "Niet beschikbaar"
+      },
+      "cultivation_environment": {
+        "open_field": "Vollegrond",
+        "polytunnel": "Foliekas",
+        "greenhouse": "Kas"
+      }
+    },
+    "notSpecified": "Niet opgegeven",
+    "inheritOption": "Overnemen ({{value}})",
+    "inheritedFrom": {
+      "location": "Overgenomen van locatie ‘{{name}}’",
+      "field": "Overgenomen van perceel ‘{{name}}’",
+      "bed": "Overgenomen van bed ‘{{name}}’"
+    },
+    "resetToInherited": "Terugzetten op overgenomen waarde"
+  },
+  "details": {
+    "open": {
+      "location": "Locatiedetails",
+      "field": "Perceeldetails",
+      "bed": "Beddetails"
+    },
+    "sections": {
+      "general": "Algemeen",
+      "geometry": "Afmetingen",
+      "siteConditions": "Standplaatsomstandigheden",
+      "siteDetails": "Bodem en ligging",
+      "plantingPlans": "Teeltplannen",
+      "children": {
+        "location": "Percelen",
+        "field": "Bedden"
+      }
+    },
+    "fields": {
+      "description": "Beschrijving",
+      "address": "Adres"
+    },
+    "entityType": {
+      "location": "Locatie",
+      "field": "Perceel",
+      "bed": "Bed"
+    },
+    "backToList": "Terug naar de teeltoppervlakken",
+    "breadcrumbAria": "Kruimelpad",
+    "unsavedChanges": "Je hebt niet-opgeslagen wijzigingen. Die gaan verloren als je de pagina verlaat.",
+    "unnamedPlan": "Teeltplan zonder gewas",
+    "notFound": {
+      "title": "Item niet gevonden",
+      "description": "Deze locatie, dit perceel of dit bed bestaat niet (meer) in het actieve project."
     }
   }
 }

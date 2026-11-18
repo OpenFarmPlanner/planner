@@ -101,4 +101,22 @@ describe('useColumnVisibility', () => {
     expect(window.localStorage.getItem('tableColumns.plantingPlans')).toBeNull();
     expect(JSON.parse(window.localStorage.getItem('tableColumns.otherTable') ?? '{}')).toEqual({ x: false });
   });
+
+  it('keeps always-hidden optional columns hidden under an older saved model', () => {
+    window.localStorage.setItem('tableColumns.fieldsBedsHierarchy', JSON.stringify({ notes: false }));
+    const hidden = ['light_condition', 'irrigation'];
+
+    const { result } = renderHook(() =>
+      useColumnVisibility({ tableKey: 'fieldsBedsHierarchy', defaultHiddenFields: hidden }),
+    );
+
+    expect(result.current.columnVisibilityModel).toEqual({ light_condition: false, irrigation: false, notes: false });
+
+    act(() => {
+      result.current.setColumnVisibilityModel({ ...result.current.columnVisibilityModel, irrigation: true });
+    });
+
+    expect(result.current.columnVisibilityModel.irrigation).toBe(true);
+    expect(result.current.columnVisibilityModel.light_condition).toBe(false);
+  });
 });

@@ -213,8 +213,10 @@
     "keywords": {
       "create": "novo, áreas de cultivo, criar",
       "edit": "editar",
-      "delete": "eliminar"
-    }
+      "delete": "eliminar",
+      "search": "pesquisar, filtrar, encontrar"
+    },
+    "focusSearch": "Colocar o foco na pesquisa de áreas (/)"
   },
   "mobile": {
     "expand": "Expandir: {{name}}",
@@ -242,6 +244,118 @@
       "location": "Exploração",
       "field": "Parcela",
       "bed": "Canteiro"
+    }
+  },
+  "search": {
+    "placeholder": "Pesquisar áreas de cultivo",
+    "ariaLabel": "Pesquisar áreas de cultivo",
+    "clear": "Limpar pesquisa",
+    "filterButton": "Filtrar",
+    "filterButtonActiveAria_one": "Filtrar, {{count}} filtro ativo",
+    "filterButtonActiveAria_other": "Filtrar, {{count}} filtros ativos",
+    "filterButtonActiveAria_many": "Filtrar, {{count}} filtros ativos",
+    "columnsButton": "Colunas",
+    "panelTitle": "Filtros",
+    "reset": "Repor",
+    "resetAll": "Repor tudo",
+    "matches_one": "{{count}} resultado",
+    "matches_other": "{{count}} resultados",
+    "matches_many": "{{count}} resultados",
+    "count_one": "{{count}} entrada",
+    "count_other": "{{count}} entradas",
+    "count_many": "{{count}} entradas",
+    "filteredCount": "{{shown}} de {{total}} entradas",
+    "activeFiltersAria": "Filtros ativos",
+    "removeChip": "Remover filtro {{filter}}",
+    "chip": "{{filter}}: {{values}}",
+    "fields": {
+      "location": "Exploração",
+      "field": "Parcela"
+    },
+    "fieldHint": "Sugestão: escolher primeiro uma exploração para ver apenas as respetivas parcelas.",
+    "empty": {
+      "title": "Nenhuma área encontrada",
+      "titleWithQuery": "Nenhuma área encontrada para «{{query}}»",
+      "hint": "Verificar a ortografia ou repor os filtros. As linhas superiores dos resultados continuam visíveis.",
+      "clearSearch": "Limpar pesquisa",
+      "resetFilters": "Repor filtros"
+    }
+  },
+  "siteConditions": {
+    "labels": {
+      "light_condition": "Luz",
+      "soil_moisture": "Humidade do solo",
+      "irrigation": "Rega disponível",
+      "soil_type": "Tipo de solo",
+      "soil_description": "Descrição do solo",
+      "wind_exposure": "Proteção contra o vento / exposição ao vento",
+      "water_supply": "Abastecimento de água",
+      "cultivation_environment": "Ambiente de cultivo",
+      "exposure": "Orientação da encosta"
+    },
+    "values": {
+      "light_condition": {
+        "sunny": "Pleno sol",
+        "partial_shade": "Meia-sombra",
+        "shade": "Sombra"
+      },
+      "soil_moisture": {
+        "dry": "Seco",
+        "normal": "Normal",
+        "moist": "Húmido"
+      },
+      "irrigation": {
+        "available": "Disponível",
+        "unavailable": "Não disponível"
+      },
+      "cultivation_environment": {
+        "open_field": "Ar livre",
+        "polytunnel": "Túnel",
+        "greenhouse": "Estufa"
+      }
+    },
+    "notSpecified": "Não indicado",
+    "inheritOption": "Herdar ({{value}})",
+    "inheritedFrom": {
+      "location": "Herdado da exploração «{{name}}»",
+      "field": "Herdado da parcela «{{name}}»",
+      "bed": "Herdado do canteiro «{{name}}»"
+    },
+    "resetToInherited": "Repor o valor herdado"
+  },
+  "details": {
+    "open": {
+      "location": "Detalhes da exploração",
+      "field": "Detalhes da parcela",
+      "bed": "Detalhes do canteiro"
+    },
+    "sections": {
+      "general": "Geral",
+      "geometry": "Dimensões",
+      "siteConditions": "Condições do local",
+      "siteDetails": "Solo e situação",
+      "plantingPlans": "Planos de cultivo",
+      "children": {
+        "location": "Parcelas",
+        "field": "Canteiros"
+      }
+    },
+    "fields": {
+      "description": "Descrição",
+      "address": "Morada"
+    },
+    "entityType": {
+      "location": "Exploração",
+      "field": "Parcela",
+      "bed": "Canteiro"
+    },
+    "backToList": "Voltar às áreas de cultivo",
+    "breadcrumbAria": "Caminho de navegação",
+    "unsavedChanges": "Existem alterações não guardadas. Serão perdidas ao sair da página.",
+    "unnamedPlan": "Plano de cultivo sem cultura",
+    "notFound": {
+      "title": "Entrada não encontrada",
+      "description": "Esta exploração, parcela ou canteiro não existe (ou já não existe) no projeto ativo."
     }
   }
 }

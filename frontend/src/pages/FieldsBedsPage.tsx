@@ -542,6 +542,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
               onCreateFieldRequestHandled={() => setCreateFieldRequest(0)}
               hierarchyData={hierarchyData}
               onPendingDeletionCountChange={setPendingHierarchyDeletionCount}
+              projectId={projectId}
             />
           ) : (
             <FieldsBedsHierarchy
@@ -551,6 +552,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
               hierarchyData={hierarchyData}
               onPendingDeletionCountChange={setPendingHierarchyDeletionCount}
               suppressContextMenuHint={shouldShowMissingBedsHint}
+              projectId={projectId}
             />
           )}</PageContainer>
         ) : null}

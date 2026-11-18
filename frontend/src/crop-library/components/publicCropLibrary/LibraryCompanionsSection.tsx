@@ -3,7 +3,7 @@ import { CompanionKindColumns } from '../../../crops/CompanionKindColumns';
 import { companionReasonLabelKey, type LibraryCompanionRow } from '../../../crops/companions';
 import { normalizeLanguageTag } from '../../../i18n/languages';
 import { useTranslation } from '../../../i18n';
-import { DetailSection } from './DetailPrimitives';
+import { DetailSection } from '../../../components/layout/DetailPrimitives';
 
 interface LibraryCompanionsSectionProps {
   rows: readonly LibraryCompanionRow[];

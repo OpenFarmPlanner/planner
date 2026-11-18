@@ -201,8 +201,10 @@
     "keywords": {
       "create": "new, growing areas, create",
       "edit": "edit",
-      "delete": "delete"
-    }
+      "delete": "delete",
+      "search": "search, filter, find"
+    },
+    "focusSearch": "Focus fields & beds search (/)"
   },
   "mobile": {
     "expand": "Expand: {{name}}",
@@ -229,6 +231,115 @@
       "location": "Site",
       "field": "Field",
       "bed": "Bed"
+    }
+  },
+  "search": {
+    "placeholder": "Search fields & beds",
+    "ariaLabel": "Search fields & beds",
+    "clear": "Clear search",
+    "filterButton": "Filter",
+    "filterButtonActiveAria_one": "Filter, {{count}} filter active",
+    "filterButtonActiveAria_other": "Filter, {{count}} filters active",
+    "columnsButton": "Columns",
+    "panelTitle": "Filter",
+    "reset": "Reset",
+    "resetAll": "Reset all",
+    "matches_one": "{{count}} match",
+    "matches_other": "{{count}} matches",
+    "count_one": "{{count}} entry",
+    "count_other": "{{count}} entries",
+    "filteredCount": "{{shown}} of {{total}} entries",
+    "activeFiltersAria": "Active filters",
+    "removeChip": "Remove filter {{filter}}",
+    "chip": "{{filter}}: {{values}}",
+    "fields": {
+      "location": "Location",
+      "field": "Field"
+    },
+    "fieldHint": "Tip: choose a location first to see only its fields.",
+    "empty": {
+      "title": "No fields or beds found",
+      "titleWithQuery": "No fields or beds found for “{{query}}”",
+      "hint": "Check the spelling or reset the filters. Parent rows of matches stay visible.",
+      "clearSearch": "Clear search",
+      "resetFilters": "Reset filters"
+    }
+  },
+  "siteConditions": {
+    "labels": {
+      "light_condition": "Light",
+      "soil_moisture": "Soil moisture",
+      "irrigation": "Irrigation available",
+      "soil_type": "Soil type",
+      "soil_description": "Soil description",
+      "wind_exposure": "Wind protection / exposure",
+      "water_supply": "Water supply",
+      "cultivation_environment": "Cultivation environment",
+      "exposure": "Slope orientation"
+    },
+    "values": {
+      "light_condition": {
+        "sunny": "Full sun",
+        "partial_shade": "Partial shade",
+        "shade": "Shade"
+      },
+      "soil_moisture": {
+        "dry": "Dry",
+        "normal": "Normal",
+        "moist": "Moist"
+      },
+      "irrigation": {
+        "available": "Available",
+        "unavailable": "Not available"
+      },
+      "cultivation_environment": {
+        "open_field": "Open field",
+        "polytunnel": "Polytunnel",
+        "greenhouse": "Greenhouse"
+      }
+    },
+    "notSpecified": "Not specified",
+    "inheritOption": "Inherit ({{value}})",
+    "inheritedFrom": {
+      "location": "Inherited from location “{{name}}”",
+      "field": "Inherited from field “{{name}}”",
+      "bed": "Inherited from bed “{{name}}”"
+    },
+    "resetToInherited": "Reset to inherited"
+  },
+  "details": {
+    "open": {
+      "location": "Location details",
+      "field": "Field details",
+      "bed": "Bed details"
+    },
+    "sections": {
+      "general": "General",
+      "geometry": "Dimensions",
+      "siteConditions": "Site conditions",
+      "siteDetails": "Soil and site",
+      "plantingPlans": "Planting plans",
+      "children": {
+        "location": "Fields",
+        "field": "Beds"
+      }
+    },
+    "fields": {
+      "description": "Description",
+      "address": "Address"
+    },
+    "entityType": {
+      "location": "Location",
+      "field": "Field",
+      "bed": "Bed"
+    },
+    "backToList": "Back to Fields & Beds",
+    "breadcrumbAria": "Breadcrumb",
+    "unsavedChanges": "You have unsaved changes. They will be lost if you leave this page.",
+    "unnamedPlan": "Planting plan without crop",
+    "notFound": {
+      "title": "Entry not found",
+      "description": "This location, field or bed does not exist (any more) in the active project."
     }
   }
 }

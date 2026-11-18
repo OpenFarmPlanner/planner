@@ -30,7 +30,7 @@ import { PublicCropHierarchyList } from '../../crops/PublicCropHierarchyList';
 import { CropLibraryStatusCircle } from '../../crops/CropLibraryStatusIcon';
 import { usePlantFamilies } from '../../crops/plantFamilies';
 import { getPublicCropDescription, getPublicCropTitle } from '../publicCropDisplay';
-import { DetailSection } from './publicCropLibrary/DetailPrimitives';
+import { DetailSection } from '../../components/layout/DetailPrimitives';
 import { LocalizedMarkdownNotes } from './LocalizedMarkdownNotes';
 import { PublicCropFiltersPopover } from './PublicCropFiltersPopover';
 import {
