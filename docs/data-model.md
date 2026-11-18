@@ -119,6 +119,15 @@ erDiagram
   by hand, so such a manually named single location was renamed as well.
   Imports, project copies and the demo create their own locations and get no
   extra one.
+- A location may carry optional outer dimensions (`length_m`, `width_m`, in
+  metres, both > 0). Its `area_sqm` is read-only: their product when both are
+  set, otherwise none; there is no stored location area and the dimensions are
+  not checked against the fields inside (#1190). The list view edits them on
+  the location row. The graphical view draws them as a dashed, labelled outer
+  boundary at the layout origin (width horizontal, length vertical, like a
+  field) and includes it when fitting the view. Fields keep their own layout
+  positions; one that crosses the boundary gets a warning-coloured outline and
+  the canvas shows a hint. Without both dimensions nothing is drawn.
 - `BedLayout`/`FieldLayout` hold persisted x/y coordinates for the
   graphical/map layout view (`GraphicalFields.tsx`) — they're optional,
   separate rows from `Bed`/`Field` themselves, not embedded fields. A field

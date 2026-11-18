@@ -41,6 +41,14 @@ class Location(TimestampedModel):
     exposure = models.CharField(max_length=20, choices=EXPOSURE_CHOICES, null=True, blank=True)
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
+    # Optional outer dimensions in metres (#1190): a schematic rectangle for
+    # the graphical view, including paths and free space, not a survey.
+    length_m = models.FloatField(
+        null=True, blank=True, help_text='Outer length of the location in metres (gross).',
+    )
+    width_m = models.FloatField(
+        null=True, blank=True, help_text='Outer width of the location in metres (gross).',
+    )
     notes = models.TextField(blank=True)
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='locations')
 
@@ -55,6 +63,13 @@ class Location(TimestampedModel):
     def __str__(self) -> str:
         """Return the location name."""
         return self.name
+
+    @property
+    def area_sqm(self) -> float | None:
+        """Gross area in m² (length × width), or None while either is unknown."""
+        if self.length_m is None or self.width_m is None:
+            return None
+        return round(self.length_m * self.width_m, 2)
 
     class Meta:
         ordering = ['name']

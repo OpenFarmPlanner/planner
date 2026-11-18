@@ -275,6 +275,8 @@ export function buildHierarchyRowsFromIndex(
         locationId: location.id,
         expanded: isExpanded,
         hasChildren: locationFields.length > 0,
+        length_m: location.length_m,
+        width_m: location.width_m,
         notes: location.notes,
       });
 
@@ -404,6 +406,8 @@ export function createHierarchyRowsProjector(hierarchyIndex: HierarchyIndex) {
       locationId: location.id,
       expanded,
       hasChildren,
+      length_m: location.length_m,
+      width_m: location.width_m,
       notes: location.notes,
     };
     locationRows.set(key, row);

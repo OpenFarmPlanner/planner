@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { rotateRect, rotateRectBetweenSizes, turnRotation, type GraphicalRotation } from '../pages/graphicalLayoutUtils';
-import { arrangeFieldRects, areaToRectSize, clampInsideParent, findFreePlacementPosition, getBedRectSize, getBedRectSizeWithinField, getBedScaleFromField, getFieldRectSize, initialAutoLayout, placeFieldRects, rectsOverlap, FIELD_PLACEMENT_SPACING, type Rect } from '../pages/graphicalLayoutUtils';
+import { arrangeFieldRects, areaToRectSize, clampInsideParent, findFreePlacementPosition, getBedRectSize, getBedRectSizeWithinField, getBedScaleFromField, getFieldRectSize, getLocationBoundaryRect, initialAutoLayout, isRectOutsideBoundary, placeFieldRects, rectsOverlap, FIELD_PLACEMENT_SPACING, type Rect } from '../pages/graphicalLayoutUtils';
 
 describe('graphicalLayoutUtils', () => {
   it('rotates positions and dimensions clockwise through all four orientations', () => {
@@ -282,5 +282,22 @@ describe('compact schematic field arrangement', () => {
     expect(arrangeFieldRects([], 2)).toEqual({ positions: [], width: 0, height: 0 });
     expect(arrangeFieldRects([sizes[0]], 2)).toEqual({ positions: [{ x: 0, y: 0 }], ...sizes[0] });
     expect(arrangeFieldRects(sizes, NaN)).toEqual(arrangeFieldRects(sizes, 1));
+  });
+
+  it('sizes a location boundary only when both dimensions are set (#1190)', () => {
+    const origin = { x: 20, y: 30 };
+    expect(getLocationBoundaryRect({ length_m: 50, width_m: 20 }, 18, origin)).toEqual({ x: 20, y: 30, width: 360, height: 900 });
+    expect(getLocationBoundaryRect({ length_m: 50, width_m: null }, 18, origin)).toBeNull();
+    expect(getLocationBoundaryRect({ length_m: undefined, width_m: 20 }, 18, origin)).toBeNull();
+    expect(getLocationBoundaryRect({ length_m: 0, width_m: 20 }, 18, origin)).toBeNull();
+  });
+
+  it('flags a rect that crosses any side of the location boundary', () => {
+    const boundary = { x: 0, y: 0, width: 100, height: 50 };
+    expect(isRectOutsideBoundary({ x: 0, y: 0, width: 100, height: 50 }, boundary)).toBe(false);
+    expect(isRectOutsideBoundary({ x: 90, y: 0, width: 11, height: 10 }, boundary)).toBe(true);
+    expect(isRectOutsideBoundary({ x: 0, y: 45, width: 10, height: 6 }, boundary)).toBe(true);
+    expect(isRectOutsideBoundary({ x: -1, y: 0, width: 10, height: 10 }, boundary)).toBe(true);
+    expect(isRectOutsideBoundary({ x: 0, y: -1, width: 10, height: 10 }, boundary)).toBe(true);
   });
 });

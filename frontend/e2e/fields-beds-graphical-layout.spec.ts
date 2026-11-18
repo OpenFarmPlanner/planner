@@ -305,3 +305,52 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
 
   }
 });
+
+test('draws a sized location boundary and flags plots that cross it', async ({ page, request }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await loginWithDeterministicProject(page, request, `graphical-boundary-${testInfo.workerIndex}`, { loginAsAdmin: true });
+  const location = await apiRequest<{ id: number; area_sqm: number }>(page, 'POST', '/locations/', {
+    name: 'Grenzhof', length_m: 30, width_m: 12.5,
+  });
+  expect(location.area_sqm).toBe(375);
+  const inside = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
+    name: 'Innen', location: location.id, width_m: 10, length_m: 10,
+  });
+  const outside = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
+    name: 'Zu groß', location: location.id, width_m: 20, length_m: 40,
+  });
+  await page.goto('/app/fields-beds');
+  await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+  await selectLocation(page, 'Grenzhof');
+  await expect.poll(async () => (await canvasRects(page, `location-boundary-${location.id}`)).length).toBe(1);
+  const label = await page.evaluate(id => {
+    const konva = (window as unknown as { Konva: { stages: Konva.Stage[] } }).Konva;
+    const stage = konva.stages.find(item => item.container()?.isConnected)!;
+    return stage.find('Text').find(node => node.getAttr('data-testid') === `location-boundary-label-${id}`)?.getAttr('text');
+  }, location.id);
+  expect(label).toBe('Grenzhof · 12,5 × 30 m');
+  const outsideFlags = await page.evaluate(ids => {
+    const konva = (window as unknown as { Konva: { stages: Konva.Stage[] } }).Konva;
+    const stage = konva.stages.find(item => item.container()?.isConnected)!;
+    return ids.map(id => Boolean(stage.find('Rect').find(node => node.getAttr('data-testid') === `field-rect-${id}`)?.getAttr('data-outside-location')));
+  }, [inside.id, outside.id]);
+  expect(outsideFlags).toEqual([false, true]);
+  const hint = page.getByTestId('location-boundary-overflow-hint');
+  await expect(hint).toHaveText('Mindestens eine Parzelle ragt über die Standortgrenze hinaus.');
+  for (const viewport of [
+    { width: 1440, height: 900 }, { width: 1024, height: 900 },
+    { width: 768, height: 900 }, { width: 375, height: 800 }, { width: 800, height: 375 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.getByRole('button', { name: 'Alles einpassen', exact: true }).click();
+    const card = page.getByRole('region', { name: 'Standort: Grenzhof', exact: true });
+    await card.scrollIntoViewIfNeeded();
+    await expect(hint).toBeVisible();
+    const [hintBox, cardBox] = [await hint.boundingBox(), await card.boundingBox()];
+    expect(hintBox!.x + hintBox!.width).toBeLessThanOrEqual(cardBox!.x + cardBox!.width + 1);
+    const boundary = (await canvasRects(page, `location-boundary-${location.id}`))[0];
+    expect(boundary.bounds.x).toBeGreaterThanOrEqual(0);
+    expect(boundary.bounds.x + boundary.bounds.width).toBeLessThanOrEqual(boundary.stage.width + 1);
+    await page.screenshot({ path: testInfo.outputPath(`boundary-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
+  }
+});

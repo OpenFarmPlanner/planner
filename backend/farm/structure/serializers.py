@@ -50,6 +50,20 @@ class LocationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Longitude must be between -180 and 180.')
         return value
 
+    area_sqm = serializers.FloatField(read_only=True)
+
+    @staticmethod
+    def _validate_positive_dimension(value: float | None, label: str) -> float | None:
+        if value is not None and value <= 0:
+            raise serializers.ValidationError(f'{label} must be greater than 0.')
+        return value
+
+    def validate_length_m(self, value: float | None) -> float | None:
+        return self._validate_positive_dimension(value, 'Length')
+
+    def validate_width_m(self, value: float | None) -> float | None:
+        return self._validate_positive_dimension(value, 'Width')
+
     def get_image_file(self, obj):
         if not obj.image_file_id:
             return None

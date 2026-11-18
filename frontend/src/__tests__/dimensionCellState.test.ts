@@ -15,8 +15,10 @@ const row = (overrides: Partial<HierarchyRow>): HierarchyRow =>
   }) as HierarchyRow);
 
 describe('calculateAreaValue', () => {
-  it('returns undefined for location rows', () => {
+  it('gives a location its gross area only from both dimensions', () => {
     expect(calculateAreaValue(row({ type: 'location', area_sqm: 5 }))).toBeUndefined();
+    expect(calculateAreaValue(row({ type: 'location', length_m: 40 }))).toBeUndefined();
+    expect(calculateAreaValue(row({ type: 'location', length_m: 42.5, width_m: 18.4 }))).toBe(782);
   });
 
   it('multiplies length and width, rounded to one decimal', () => {

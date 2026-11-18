@@ -33,7 +33,8 @@
     "lengthNotANumber": "La longueur doit être un nombre valide.",
     "widthNotANumber": "La largeur doit être un nombre valide.",
     "duplicateFieldName": "Une parcelle portant ce nom existe déjà sur ce site.",
-    "duplicateBedName": "Une planche portant ce nom existe déjà dans cette parcelle."
+    "duplicateBedName": "Une planche portant ce nom existe déjà dans cette parcelle.",
+    "locationDimensionPositive": "La longueur et la largeur du site doivent être supérieures à 0."
   },
   "confirmDelete": "Voulez-vous vraiment supprimer cette entrée ?",
   "footer": {

@@ -931,7 +931,11 @@ function FieldsBedsHierarchy({
 
   const isCellEditable = useCallback((params: { row: HierarchyRow; field: string }) => {
     if (params.row.type === "location") {
-      return params.field === "name";
+      return (
+        params.field === "name" ||
+        params.field === "length_m" ||
+        params.field === "width_m"
+      );
     }
     if (params.row.type === "field" || params.row.type === "bed") {
       return (

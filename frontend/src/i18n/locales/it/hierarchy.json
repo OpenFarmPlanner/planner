@@ -33,7 +33,8 @@
     "lengthNotANumber": "La lunghezza deve essere un numero valido.",
     "widthNotANumber": "La larghezza deve essere un numero valido.",
     "duplicateFieldName": "In questo sito esiste già un appezzamento con questo nome.",
-    "duplicateBedName": "In questo appezzamento esiste già un'aiuola con questo nome."
+    "duplicateBedName": "In questo appezzamento esiste già un'aiuola con questo nome.",
+    "locationDimensionPositive": "Lunghezza e larghezza del sito devono essere maggiori di 0."
   },
   "confirmDelete": "Vuoi davvero eliminare questa voce?",
   "footer": {

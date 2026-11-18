@@ -62,6 +62,8 @@
     "exitFullscreen": "Exit fullscreen",
     "zoomLevel": "Zoom: {{value}}×",
     "locationTitle": "Location: {{name}}",
+    "locationBoundaryLabel": "{{name}} · {{width}} × {{length}} m",
+    "fieldsOutsideLocation": "At least one plot extends beyond the location boundary.",
     "details": {
       "field": "Field details",
       "bed": "Bed details"

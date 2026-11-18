@@ -12,19 +12,16 @@ export interface DimensionRowState {
 }
 
 /** Computed area for a row: length × width (rounded to 0.1) when both are set,
- * otherwise the stored area value. Locations have no area. */
+ * otherwise the stored area value. A location has no stored area: its gross
+ * area exists only when both optional dimensions do (#1190). */
 export const calculateAreaValue = (row: HierarchyRow): number | string | undefined => {
-  if (row.type === 'location') {
-    return undefined;
-  }
-
   const length = typeof row.length_m === 'number' ? row.length_m : null;
   const width = typeof row.width_m === 'number' ? row.width_m : null;
   if (length !== null && width !== null) {
     return Math.round(length * width * 10) / 10;
   }
 
-  return row.area_sqm;
+  return row.type === 'location' ? undefined : row.area_sqm;
 };
 
 const parseNumericValue = (value: unknown): number | undefined => {

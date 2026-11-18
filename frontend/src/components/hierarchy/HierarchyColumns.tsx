@@ -100,15 +100,20 @@ const renderDecimalEditInputCell = (
 );
 
 /** Returns true when a dimension edit cell value is non-empty but invalid (non-numeric or negative). */
-export const isDimensionEditValueInvalid = (value: unknown): boolean => {
+/** Empty clears the value; a location's optional dimensions must be positive. */
+export const isDimensionEditValueInvalid = (value: unknown, requirePositive = false): boolean => {
   if (value === null || value === undefined) return false;
   const str = typeof value === 'string' ? value.trim() : String(value);
   if (str === '') return false;
   const parsed = Number.parseFloat(str.replace(',', '.'));
-  return !Number.isFinite(parsed) || parsed < 0;
+  return !Number.isFinite(parsed) || parsed < 0 || (requirePositive && parsed === 0);
 };
 
 const getDimensionCellClassName = (row: HierarchyRow, type: DimensionCellType): string => {
+  if (row.type === 'location') {
+    // Optional, so an empty location dimension is not flagged as missing.
+    return '';
+  }
   const rowState = getDimensionRowState(row);
   if (!rowState) {
     return CALCULATED_COLUMN_CELL_CLASS;
@@ -290,12 +295,12 @@ export function createHierarchyColumns(
       type: 'string',
       editable: true,
       renderEditCell: renderDecimalEditInputCell,
-      valueGetter: (_value, row: HierarchyRow) => row.type === 'location' ? undefined : row.length_m,
+      valueGetter: (_value, row: HierarchyRow) => row.length_m,
       cellClassName: (params) => getDimensionCellClassName(params.row, 'length'),
       renderCell: (params) => renderDimensionCell(params, 'length', t),
       preProcessEditCellProps: (params) => ({
         ...params.props,
-        error: params.row.type !== 'location' && isDimensionEditValueInvalid(params.props.value),
+        error: isDimensionEditValueInvalid(params.props.value, params.row.type === 'location'),
       }),
     },
     {
@@ -311,12 +316,12 @@ export function createHierarchyColumns(
       type: 'string',
       editable: true,
       renderEditCell: renderDecimalEditInputCell,
-      valueGetter: (_value, row: HierarchyRow) => row.type === 'location' ? undefined : row.width_m,
+      valueGetter: (_value, row: HierarchyRow) => row.width_m,
       cellClassName: (params) => getDimensionCellClassName(params.row, 'width'),
       renderCell: (params) => renderDimensionCell(params, 'width', t),
       preProcessEditCellProps: (params) => ({
         ...params.props,
-        error: params.row.type !== 'location' && isDimensionEditValueInvalid(params.props.value),
+        error: isDimensionEditValueInvalid(params.props.value, params.row.type === 'location'),
       }),
     },
     {

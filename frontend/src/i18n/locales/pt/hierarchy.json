@@ -33,7 +33,8 @@
     "lengthNotANumber": "O comprimento tem de ser um número válido.",
     "widthNotANumber": "A largura tem de ser um número válido.",
     "duplicateFieldName": "Já existe uma parcela com este nome nesta exploração.",
-    "duplicateBedName": "Já existe um canteiro com este nome nesta parcela."
+    "duplicateBedName": "Já existe um canteiro com este nome nesta parcela.",
+    "locationDimensionPositive": "O comprimento e a largura da exploração têm de ser superiores a 0."
   },
   "confirmDelete": "Pretende eliminar este registo?",
   "footer": {

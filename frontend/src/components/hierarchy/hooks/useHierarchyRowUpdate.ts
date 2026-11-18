@@ -513,11 +513,28 @@ export function useHierarchyRowUpdate({
         const existingLocation = locations.find(
           (locationItem) => locationItem.id === newRow.locationId,
         );
+        // A row without a dimension value keeps the stored one.
+        const lengthM = newRow.length_m === undefined
+          ? existingLocation?.length_m ?? null
+          : parseDimensionValue(newRow.length_m);
+        const widthM = newRow.width_m === undefined
+          ? existingLocation?.width_m ?? null
+          : parseDimensionValue(newRow.width_m);
+        if (
+          lengthM === undefined || widthM === undefined
+          || (lengthM !== null && lengthM <= 0) || (widthM !== null && widthM <= 0)
+        ) {
+          const message = t("validation.locationDimensionPositive");
+          setError(message);
+          throw new Error(message);
+        }
         const updated = await locationAPI.update(newRow.locationId!, {
           ...(existingLocation ?? {}),
           id: newRow.locationId!,
           name: newRow.name,
           notes: newRow.notes,
+          length_m: lengthM,
+          width_m: widthM,
         });
 
         setLocations((previousLocations) =>
@@ -527,7 +544,13 @@ export function useHierarchyRowUpdate({
               : locationItem,
           ),
         );
-        return { ...newRow, name: updated.data.name, notes: updated.data.notes };
+        return {
+          ...newRow,
+          name: updated.data.name,
+          notes: updated.data.notes,
+          length_m: updated.data.length_m,
+          width_m: updated.data.width_m,
+        };
       }
 
       return newRow;

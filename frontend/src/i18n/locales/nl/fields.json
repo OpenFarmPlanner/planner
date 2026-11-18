@@ -62,6 +62,8 @@
     "exitFullscreen": "Volledig scherm sluiten",
     "zoomLevel": "Zoom: {{value}}×",
     "locationTitle": "Locatie: {{name}}",
+    "locationBoundaryLabel": "{{name}} · {{width}} × {{length}} m",
+    "fieldsOutsideLocation": "Minstens één perceel steekt buiten de grens van de locatie uit.",
     "details": {
       "field": "Perceeldetails",
       "bed": "Beddetails"
