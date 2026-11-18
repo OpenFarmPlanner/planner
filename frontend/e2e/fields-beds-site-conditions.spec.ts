@@ -97,7 +97,7 @@ test.describe('growing areas site conditions', () => {
     const toolbar = page.getByTestId('growing-area-search-toolbar');
     await toolbar.getByRole('button', { name: 'Spalten' }).click();
     await page.getByRole('checkbox', { name: 'Licht' }).check();
-    await page.getByRole('checkbox', { name: 'Bodenfeuchte' }).check();
+    await page.getByRole('checkbox', { name: 'Feuchtigkeit' }).check();
     await page.getByRole('checkbox', { name: 'Bewässerung verfügbar' }).check();
     await page.keyboard.press('Escape');
 
@@ -154,7 +154,7 @@ test.describe('growing areas site conditions', () => {
       .toBe('partial_shade');
   });
   test('closes an open select menu on a click in the same row without saving it', async ({ page, request }) => {
-    // Wide enough that the Bodenfeuchte column is not scrolled out of view.
+    // Wide enough that the Feuchtigkeit column is not scrolled out of view.
     await page.setViewportSize({ width: 1600, height: 900 });
     await loginWithDeterministicProject(page, request, 'fields-site-conditions-menu-row', { loginAsAdmin: true });
     const { sunnyBed } = await seedConditions(page, 'SC Menu Row');
@@ -165,7 +165,7 @@ test.describe('growing areas site conditions', () => {
     const toolbar = page.getByTestId('growing-area-search-toolbar');
     await toolbar.getByRole('button', { name: 'Spalten' }).click();
     await page.getByRole('checkbox', { name: 'Licht' }).check();
-    await page.getByRole('checkbox', { name: 'Bodenfeuchte' }).check();
+    await page.getByRole('checkbox', { name: 'Feuchtigkeit' }).check();
     await page.keyboard.press('Escape');
 
     const lightCell = row.locator('[data-field="light_condition"]');
