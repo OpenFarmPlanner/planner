@@ -758,7 +758,7 @@
       "basics": {
         "required": "Alleen de kolom ‘{{name}}’ is verplicht. Alle andere kolommen mogen leeg zijn of helemaal ontbreken. De volgorde van de kolommen maakt niet uit.",
         "numbers": "Schrijf getallen met een komma of een punt, bijvoorbeeld 1,5 of 1.5.",
-        "cultivationTypes": "Scheid meerdere teeltwijzen met komma's, bijvoorbeeld ‘{{example}}’.",
+        "multipleValues": "Scheid meerdere waarden in één cel met ‘;’, bijvoorbeeld teeltwijzen ‘{{example}}’.",
         "color": "Geef ‘{{column}}’ op als hexcode, bijvoorbeeld #2E7D32. Zonder code wordt automatisch een kleur toegewezen."
       },
       "varieties": {
@@ -781,7 +781,7 @@
       },
       "notes": {
         "intro": "Geldt voor ‘{{good}}’ en ‘{{bad}}’. Een invoer is een naam of ‘Naam | Notitie’. De notitie hoort alleen bij de naam direct ervoor.",
-        "separators": "Scheid invoeren met ‘;’ of een regeleinde. Namen zonder notitie kun je ook met een komma scheiden.",
+        "separators": "Scheid invoeren met ‘;’.",
         "noteEnds": "Een notitie loopt tot de volgende ‘;’ en mag komma’s bevatten.",
         "example": "Voorbeeld: Tomaat | Plaagbestrijding; Komkommer | Bron 2025; Basilicum",
         "meaning": "‘Tomaat; Komkommer | Opmerking’ betekent: Tomaat zonder notitie, Komkommer met ‘Opmerking’.",

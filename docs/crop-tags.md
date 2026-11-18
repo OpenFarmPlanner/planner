@@ -60,8 +60,10 @@ user's list, Kamille is tagged "Kräuter" and "Blumen").
 ## Import and export
 
 The spreadsheet column "Tags" (in French and Spanish exports "Étiquettes" /
-"Etiquetas"; alias "Tag") holds several names separated by commas, semicolons
-or line breaks; the export writes them comma-separated. The JSON export writes
+"Etiquetas"; alias "Tag") holds several names. The export separates them with
+`; `, like every multi-value culture cell (see
+[crop-spreadsheet-import.md](crop-spreadsheet-import.md#multi-value-cells));
+the import also reads commas and line breaks from older files. The JSON export writes
 a list. The agent import accepts `tags` (or `tag`) as a list or as one
 separated text (`KIND_STRING_LIST` in `crop_import/field_specs.py`).
 

@@ -3,7 +3,7 @@ import type { Crop } from '../api/types';
 import { toPortableCrop, slugifyFilenamePart } from './exportUtils';
 import { buildDownloadFilename, downloadFilenameWord } from '../utils/downloadFilename';
 import { formatCompanionCell, type CompanionItemsByKind } from './companions';
-import { getLocalizedCropColumns } from './spreadsheetColumns';
+import { getLocalizedCropColumns, LIST_CELL_SEPARATOR } from './spreadsheetColumns';
 import { formatTimingWindows, windowsOfKind } from './timingWindows';
 import type { TimingWindowKind } from '../api/types';
 import { formatIsoDate } from '../utils/isoDate';
@@ -65,7 +65,7 @@ export const buildSheetData = (
       if (raw === undefined || raw === null) return null;
       if (col.type === 'companions') return formatCompanionCell(raw as CompanionItemsByKind['good'], companionNoteLanguage);
       if (Array.isArray(raw)) {
-        return raw.length > 0 ? raw.map((item) => col.enumExport?.[item] ?? String(item)).join(', ') : null;
+        return raw.length > 0 ? raw.map((item) => col.enumExport?.[item] ?? String(item)).join(LIST_CELL_SEPARATOR) : null;
       }
       if (col.enumExport && typeof raw === 'string') return col.enumExport[raw] ?? raw;
       if (typeof raw === 'number') return raw;

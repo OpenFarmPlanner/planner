@@ -7,10 +7,11 @@ export type SpreadsheetColumnDef = {
   key: string;
   aliases: string[];
   /**
-   * `list`: several values in one cell, separated by commas, semicolons or
-   *   line breaks; with `enumExport`/`enumImport` they are enum values.
-   * `companions`: neighbour names, separated like `list`; read into
-   *   `{name, reason, note}` items (see crops/companions.ts).
+   * `list`: several values in one cell, exported separated by `; `
+   *   (`LIST_CELL_SEPARATOR`); import also reads older commas and line breaks.
+   *   With `enumExport`/`enumImport` they are enum values.
+   * `companions`: neighbour entries, exported separated by `; ` like `list`;
+   *   read into `{name, reason, note}` items (see crops/companionCells.ts).
    * `timingWindows`: the windows of one kind as text ("Anfang März bis Ende
    *   April; KW 30"); exported canonically, parsed by the backend import.
    */
@@ -23,6 +24,9 @@ export type SpreadsheetColumnDef = {
   enumExport?: Record<string, string>;
   enumImport?: Record<string, string>;
 };
+
+/** The one separator between several values inside a culture spreadsheet cell. */
+export const LIST_CELL_SEPARATOR = '; ';
 
 type LocalizedSpreadsheetColumnDef = SpreadsheetColumnDef & { header: string };
 type SpreadsheetT = (key: string) => string;

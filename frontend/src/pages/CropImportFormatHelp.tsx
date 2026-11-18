@@ -2,7 +2,7 @@ import { Alert, Box, Button, Collapse, List, ListItem, ListItemText, Typography 
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import { useState } from 'react';
 import { downloadCropImportTemplate } from '../crops/importTemplate';
-import { getLocalizedCropColumns } from '../crops/spreadsheetColumns';
+import { getLocalizedCropColumns, LIST_CELL_SEPARATOR } from '../crops/spreadsheetColumns';
 import { emptyTimingWindow, formatTimingWindow } from '../crops/timingWindows';
 import type { SpreadsheetExportFormat } from '../crops/spreadsheetExport';
 import LoadRetryButton from '../components/LoadRetryButton';
@@ -74,7 +74,7 @@ export function CropImportFormatHelp({ t }: { t: Translator }) {
     { key: 'basics', rules: [
       t('import.help.basics.required', { name: header('name') }),
       t('import.help.basics.numbers'),
-      t('import.help.basics.cultivationTypes', { example: cultivationLabels.join(', ') }),
+      t('import.help.basics.multipleValues', { example: cultivationLabels.join(LIST_CELL_SEPARATOR) }),
       t('import.help.basics.color', { column: header('display_color') }),
     ] },
     { key: 'varieties', rules: [

@@ -217,14 +217,16 @@ optional and preserves the entire `notes` language map.
 
 The canonical cell grammar is a list of **entries**, each `Name` or
 `Name | Note`. A note always belongs to exactly one neighbour, the name
-directly before the spaced delimiter ` | `. Entries are separated by `;` or a
-line break; between names without a note `,` works too. Several entries may
-share a line:
+directly before the spaced delimiter ` | `. Entries are separated by `;`, the
+separator of every multi-value culture cell
+([crop-spreadsheet-import.md](crop-spreadsheet-import.md#multi-value-cells)):
 
 ```text
 Tomate | Schutz vor Schädlingen; Gurke | Quelle: Gartenversuch 2025, S. 3; Basilikum
-Sellerie, Dill
 ```
+
+Older files remain readable: entries may also be on separate lines, and names
+without a note may be separated by `,` (`Sellerie, Dill`).
 
 A note runs until the next unquoted `;` or the end of the line, so a `,` or a
 dash inside a note is part of the note. `Tomate; Gurke | Kommentar` therefore
@@ -233,8 +235,10 @@ format, where a note applied to every name on the line, is no longer read that
 way (it shipped only briefly, so there is no compatibility mode). A plain list
 is still valid. Separators inside parentheses do not split a name; unspaced
 hyphens, as in `Pak-Choi`, never split names. Export never groups neighbours
-by note: it writes one neighbour per line, `Name | Note` or just `Name`, which
-re-imports to the same relations and notes. Language
+by note: it writes one entry per neighbour, `Name | Note` or just `Name`,
+joined with `; ` in one line, which re-imports to the same relations and
+notes. Before the `;` standard it wrote one neighbour per line; such files
+still import unchanged. Language
 maps are authoritative: a missing or explicitly empty selected version does
 not fall back to another map language. As in project details, older records
 without a language map fall back to their scalar note. Re-importing such a
@@ -242,13 +246,13 @@ fallback note assigns it to the UI language captured at file selection; JSON
 preserves all stored language versions without resolving them for the UI.
 
 **Reserved characters and line breaks.** Export quotes names containing
-commas, semicolons, pipes, quotes, backslashes, spaced dashes or line breaks, or
-surrounding whitespace, and notes containing semicolons, pipes, quotes,
+commas, semicolons, pipes, quotes, backslashes, spaced dashes, line breaks or
+an unclosed bracket (which would otherwise keep the next `;` from ending the
+entry), or surrounding whitespace, and notes containing semicolons, pipes, quotes,
 backslashes, line breaks or surrounding whitespace. Within these quoted text tokens, `\"` represents a quote, `\\`
 a backslash and `\n` a line break. These are quoted text strings, not JSON
-objects in cells. The outer CSV writer independently quotes the entire cell,
-including the real line breaks between entries; XLSX/ODS preserve the same cell
-text. For example, the following is two neighbours, the second with a
+objects in cells. The outer CSV writer independently quotes the entire cell;
+XLSX/ODS preserve the same cell text. For example, the following is two neighbours, the second with a
 multiline note:
 
 ```text
