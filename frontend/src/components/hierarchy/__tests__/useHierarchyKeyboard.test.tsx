@@ -589,6 +589,86 @@ describe('pointer outside the table', () => {
     expect(setTreeActive).not.toHaveBeenCalled();
   });
 
+  const mountSelectMenu = (id: string) => {
+    const root = document.createElement('div');
+    root.className = 'MuiPopover-root MuiModal-root';
+    const backdrop = document.createElement('div');
+    backdrop.className = 'MuiBackdrop-root';
+    const listbox = document.createElement('ul');
+    listbox.setAttribute('role', 'listbox');
+    listbox.id = id;
+    const option = document.createElement('li');
+    option.setAttribute('role', 'option');
+    listbox.append(option);
+    root.append(backdrop, listbox);
+    document.body.append(root);
+    return { option, backdrop };
+  };
+
+  const mountEditedRowSelect = (tableWrapper: HTMLElement, listboxId: string) => {
+    const row = document.createElement('div');
+    row.setAttribute('role', 'row');
+    row.getBoundingClientRect = () => ({
+      left: 0, top: 100, width: 800, height: 40,
+      right: 800, bottom: 140, x: 0, y: 100, toJSON: () => ({}),
+    });
+    const combobox = document.createElement('div');
+    combobox.setAttribute('role', 'combobox');
+    combobox.setAttribute('aria-controls', listboxId);
+    row.append(combobox);
+    tableWrapper.append(row);
+  };
+
+  const pointerDown = (target: Element, type: 'mousedown' | 'touchstart', clientX: number, clientY: number) => {
+    const event = type === 'mousedown'
+      ? new MouseEvent(type, { bubbles: true, clientX, clientY })
+      : Object.assign(new Event(type, { bubbles: true }), { touches: [{ clientX, clientY }] });
+    act(() => { target.dispatchEvent(event); });
+  };
+
+  it.each(['mousedown', 'touchstart'] as const)('keeps the edit on %s on an option of a select in the table', (type) => {
+    const { discardActiveRowEdit, setTreeActive, tableWrapper } = setup();
+    mountEditedRowSelect(tableWrapper, 'site-condition-options');
+    const { option } = mountSelectMenu('site-condition-options');
+
+    pointerDown(option, type, 400, 300);
+
+    expect(discardActiveRowEdit).not.toHaveBeenCalled();
+    expect(setTreeActive).not.toHaveBeenCalled();
+  });
+
+  it.each(['mousedown', 'touchstart'] as const)('keeps the edit on %s on the menu backdrop over the edited row', (type) => {
+    const { discardActiveRowEdit, tableWrapper } = setup();
+    mountEditedRowSelect(tableWrapper, 'site-condition-options');
+    const { backdrop } = mountSelectMenu('site-condition-options');
+
+    pointerDown(backdrop, type, 400, 120);
+
+    expect(discardActiveRowEdit).not.toHaveBeenCalled();
+  });
+
+  it.each(['mousedown', 'touchstart'] as const)('ends the edit on %s on the menu backdrop outside the edited row', (type) => {
+    const { discardActiveRowEdit, tableWrapper } = setup();
+    mountEditedRowSelect(tableWrapper, 'site-condition-options');
+    const { backdrop } = mountSelectMenu('site-condition-options');
+
+    pointerDown(backdrop, type, 400, 500);
+
+    expect(discardActiveRowEdit).toHaveBeenCalledTimes(1);
+  });
+
+  it('discards the edit on a select menu opened from elsewhere', () => {
+    const { discardActiveRowEdit } = setup();
+    const foreignCombobox = document.createElement('div');
+    foreignCombobox.setAttribute('aria-controls', 'toolbar-options');
+    document.body.append(foreignCombobox);
+    const { option } = mountSelectMenu('toolbar-options');
+
+    pointerDown(option, 'mousedown', 400, 120);
+
+    expect(discardActiveRowEdit).toHaveBeenCalledTimes(1);
+  });
+
   it('treats a pointer down with no mounted wrapper as outside', () => {
     const { discardActiveRowEdit } = setup();
 

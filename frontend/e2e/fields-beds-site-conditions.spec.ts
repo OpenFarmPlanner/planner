@@ -20,6 +20,23 @@ async function seedConditions(page: Page, prefix: string): Promise<{ location: E
   return { location, field, sunnyBed, shadyBed };
 }
 
+/**
+ * Picks an option of a row's site-condition edit cell with the mouse (#1237) and
+ * saves the row by clicking outside the grid; Enter on the select reopens its menu.
+ */
+async function pickWithMouse(page: Page, rowId: string, field: string, option: string): Promise<void> {
+  const row = page.locator(`[role="row"][data-id="${rowId}"]`);
+  const cell = row.locator(`[data-field="${field}"]`);
+  await cell.dblclick();
+  const combobox = cell.getByRole('combobox');
+  await combobox.click();
+  await page.getByRole('option', { name: option, exact: true }).click();
+  await expect(combobox).toHaveText(option);
+  await expect(row).toHaveClass(/MuiDataGrid-row--editing/);
+  await page.getByRole('heading', { level: 1 }).click();
+  await expect(row).not.toHaveClass(/MuiDataGrid-row--editing/);
+}
+
 test.describe('growing areas site conditions', () => {
   test('filters on inherited light and shows the optional column', async ({ page, request }) => {
     await loginWithDeterministicProject(page, request, 'fields-site-conditions-filter', { loginAsAdmin: true });
@@ -67,5 +84,115 @@ test.describe('growing areas site conditions', () => {
     await page.getByRole('button', { name: 'Zurück zu den Anbauflächen' }).click();
     await expect(page).toHaveURL(/\/app\/fields-beds/);
     await expect(row).toBeVisible();
+  });
+
+  test('keeps a value picked with the mouse in the inline select', async ({ page, request }) => {
+    await loginWithDeterministicProject(page, request, 'fields-site-conditions-inline', { loginAsAdmin: true });
+    const { field, sunnyBed, shadyBed } = await seedConditions(page, 'SC Inline');
+    await page.goto('/app/fields-beds');
+    await expect(page.locator(`[role="row"][data-id="${shadyBed.id}"]`)).toBeVisible();
+
+    const toolbar = page.getByTestId('growing-area-search-toolbar');
+    await toolbar.getByRole('button', { name: 'Spalten' }).click();
+    await page.getByRole('checkbox', { name: 'Licht' }).check();
+    await page.getByRole('checkbox', { name: 'Bodenfeuchte' }).check();
+    await page.getByRole('checkbox', { name: 'Bewässerung verfügbar' }).check();
+    await page.keyboard.press('Escape');
+
+    await pickWithMouse(page, String(sunnyBed.id), 'irrigation', 'Verfügbar');
+    await expect(page.locator(`[role="row"][data-id="${sunnyBed.id}"] [data-field="irrigation"]`)).toHaveText('Verfügbar');
+    await expect.poll(async () => (await apiRequest<{ irrigation: string | null }>(page, 'GET', `/beds/${sunnyBed.id}/`)).irrigation)
+      .toBe('available');
+
+    await pickWithMouse(page, `field-${field.id}`, 'soil_moisture', 'Feucht');
+    await expect.poll(async () => (await apiRequest<{ soil_moisture: string | null }>(page, 'GET', `/fields/${field.id}/`)).soil_moisture)
+      .toBe('moist');
+
+    // "Übernehmen (…)" clears the bed's own override, so the location's value shows again.
+    await pickWithMouse(page, String(shadyBed.id), 'light_condition', 'Übernehmen (Sonnig)');
+    const shadyLight = page.locator(`[role="row"][data-id="${shadyBed.id}"] [data-field="light_condition"]`);
+    await expect(shadyLight).toHaveText('Sonnig');
+    await expect(shadyLight.getByTestId('site-condition-light_condition')).toHaveAttribute('data-inherited', 'true');
+    await expect.poll(async () => (await apiRequest<{ light_condition: string | null }>(page, 'GET', `/beds/${shadyBed.id}/`)).light_condition)
+      .toBeNull();
+  });
+  test('opens the inline select on Enter without saving the row', async ({ page, request }) => {
+    await loginWithDeterministicProject(page, request, 'fields-site-conditions-enter', { loginAsAdmin: true });
+    const { sunnyBed } = await seedConditions(page, 'SC Enter');
+    await page.goto('/app/fields-beds');
+    const row = page.locator(`[role="row"][data-id="${sunnyBed.id}"]`);
+    await expect(row).toBeVisible();
+
+    const toolbar = page.getByTestId('growing-area-search-toolbar');
+    await toolbar.getByRole('button', { name: 'Spalten' }).click();
+    await page.getByRole('checkbox', { name: 'Licht' }).check();
+    await page.keyboard.press('Escape');
+
+    const lightCell = row.locator('[data-field="light_condition"]');
+    await lightCell.dblclick();
+    await expect(row).toHaveClass(/MuiDataGrid-row--editing/);
+    await expect(page.getByRole('listbox')).toHaveCount(0);
+    await lightCell.getByRole('combobox').focus();
+
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('listbox')).toBeVisible();
+    await page.waitForTimeout(500);
+    await expect(row).toHaveClass(/MuiDataGrid-row--editing/);
+
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('listbox')).toHaveCount(0);
+    await expect(lightCell.getByRole('combobox')).toHaveText('Halbschattig');
+    await expect(row).toHaveClass(/MuiDataGrid-row--editing/);
+
+    await page.getByRole('heading', { level: 1 }).click();
+    await expect(row).not.toHaveClass(/MuiDataGrid-row--editing/);
+    await expect.poll(async () => (await apiRequest<{ light_condition: string | null }>(page, 'GET', `/beds/${sunnyBed.id}/`)).light_condition)
+      .toBe('partial_shade');
+  });
+  test('closes an open select menu on a click in the same row without saving it', async ({ page, request }) => {
+    // Wide enough that the Bodenfeuchte column is not scrolled out of view.
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await loginWithDeterministicProject(page, request, 'fields-site-conditions-menu-row', { loginAsAdmin: true });
+    const { sunnyBed } = await seedConditions(page, 'SC Menu Row');
+    await page.goto('/app/fields-beds');
+    const row = page.locator(`[role="row"][data-id="${sunnyBed.id}"]`);
+    await expect(row).toBeVisible();
+
+    const toolbar = page.getByTestId('growing-area-search-toolbar');
+    await toolbar.getByRole('button', { name: 'Spalten' }).click();
+    await page.getByRole('checkbox', { name: 'Licht' }).check();
+    await page.getByRole('checkbox', { name: 'Bodenfeuchte' }).check();
+    await page.keyboard.press('Escape');
+
+    const lightCell = row.locator('[data-field="light_condition"]');
+    const moistureCell = row.locator('[data-field="soil_moisture"]');
+    await lightCell.dblclick();
+    await lightCell.getByRole('combobox').click();
+    await expect(page.getByRole('listbox')).toBeVisible();
+
+    // The menu's backdrop covers the next select; this click only closes the menu (as in the planting plans).
+    const moistureBox = await moistureCell.boundingBox();
+    if (!moistureBox) throw new Error('soil moisture cell not rendered');
+    await page.mouse.click(moistureBox.x + moistureBox.width / 2, moistureBox.y + moistureBox.height / 2);
+    await expect(page.getByRole('listbox')).toHaveCount(0);
+    await expect(row).toHaveClass(/MuiDataGrid-row--editing/);
+
+    await moistureCell.getByRole('combobox').click();
+    await page.getByRole('option', { name: 'Feucht', exact: true }).click();
+    await expect(row).toHaveClass(/MuiDataGrid-row--editing/);
+
+    // A click outside the row while a menu is open still saves the row. The open
+    // menu's backdrop covers the page (and hides it from role queries), so click
+    // the heading's position like a user would.
+    const headingBox = await page.getByRole('heading', { level: 1 }).boundingBox();
+    if (!headingBox) throw new Error('page heading not rendered');
+    await lightCell.getByRole('combobox').click();
+    await expect(page.getByRole('listbox')).toBeVisible();
+    await page.mouse.click(headingBox.x + headingBox.width / 2, headingBox.y + headingBox.height / 2);
+    await expect(row).not.toHaveClass(/MuiDataGrid-row--editing/);
+    await expect.poll(async () => (await apiRequest<{ soil_moisture: string | null }>(page, 'GET', `/beds/${sunnyBed.id}/`)).soil_moisture)
+      .toBe('moist');
   });
 });

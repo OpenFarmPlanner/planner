@@ -34,6 +34,18 @@ blur, and its save handler reconciles that target with the returned ID.
 Otherwise the replacement discards the click and touch users have to tap the
 target cell twice. This does not delay or replay the pointer event.
 
+The hierarchy ends a row edit on any pointer down outside its table wrapper
+(`useHierarchyKeyboard.ts`). A select edit cell renders its options in a portal
+outside that wrapper, so a pointer down on an option of a menu whose opener in
+the table controls it (`aria-controls`, `findListboxPopupOpener` in
+`domEventTargets.ts`) counts as inside; otherwise the row edit ends before the
+picked option is applied (#1237). A pointer down on that menu's backdrop over
+the edited row only closes the menu and keeps the row in edit mode; one outside
+the row ends the edit — the same as `EditableDataGrid`'s
+`handleSelectEditMenuClose`. As in `EditableDataGrid`, Enter on a
+closed select editor only opens its menu and does not save the row
+(`useHierarchyGridKeyboard.ts`); Enter in the open menu picks the option.
+
 ## File map
 
 ```text
