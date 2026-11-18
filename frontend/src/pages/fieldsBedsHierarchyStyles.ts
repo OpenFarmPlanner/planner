@@ -43,8 +43,10 @@ export const HIERARCHY_DATA_GRID_SX = {
   // is designed to absorb whatever width is left over. Letting the grid fill
   // its container lets notes do that job, so a horizontal scrollbar only
   // shows up when the fixed columns genuinely don't fit (narrow viewports).
-  "& .MuiDataGrid-filler": {
-    display: "none",
+  // The filler reserves the horizontal scrollbar's height below the last row
+  // and is otherwise empty; only its trailing row border line is hidden.
+  "& .MuiDataGrid-filler > div": {
+    borderTop: "none",
   },
   "& .MuiDataGrid-scrollbarFiller": {
     display: "none",
@@ -123,8 +125,33 @@ export const HIERARCHY_DATA_GRID_SX = {
   // Replaced by the custom track/thumb rendered alongside the grid (see
   // useHierarchyStableScrollbar) — MUI's own floating scrollbar sizes itself
   // from only the currently-loaded ~100-row page, which visibly jumps on
-  // every internal page transition (see useHierarchyRowWindow).
+  // every internal page transition (see useHierarchyRowWindow). Hidden with
+  // visibility, not display: MUI measures the scrollbar size on this element,
+  // and a collapsed one measures 0, so no room would be left for the
+  // horizontal scrollbar below the last row.
   "& .MuiDataGrid-scrollbar--vertical": {
-    display: "none",
+    visibility: "hidden",
   },
 };
+
+// MUI sets these on the grid root; their product is the horizontal
+// scrollbar's height while the columns overflow, otherwise 0.
+const HORIZONTAL_SCROLLBAR_HEIGHT = "var(--DataGrid-hasScrollX, 0) * var(--DataGrid-scrollbarSize, 0px)";
+
+/**
+ * CSS height of the desktop hierarchy grid: its rows (the tallest internal
+ * page), plus room for the horizontal scrollbar when the columns overflow so
+ * it does not cover the last row, capped at the available viewport height.
+ * MUI's filler reserves the same room inside the scroll area.
+ */
+export function getHierarchyGridHeight(
+  maxPageContentHeight: number,
+  tableContentHeight: number,
+  availableTableHeight: number | null | undefined,
+): string {
+  const rowsHeight = `${Math.min(maxPageContentHeight, tableContentHeight)}px`;
+  const withScrollbar = `calc(${rowsHeight} + ${HORIZONTAL_SCROLLBAR_HEIGHT})`;
+  return availableTableHeight == null
+    ? withScrollbar
+    : `min(${withScrollbar}, ${availableTableHeight}px)`;
+}

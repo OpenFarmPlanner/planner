@@ -15,7 +15,9 @@ import { apiRequest, loginWithDeterministicProject, waitForPageStable } from './
  *
  * Runs in the `chromium-scrollbars` project, which keeps the classic scrollbar
  * that the default headless run hides — without it there is no scrollbar to
- * compensate and the regression is invisible. See playwright.config.ts.
+ * compensate and the regression is invisible. See playwright.config.ts. The
+ * same holds for the data-grid checks below, which depend on a real scrollbar
+ * size.
  */
 
 const AUTH_ROUTES = [
@@ -193,3 +195,42 @@ test('fits the crop split view without document scrolling and keeps both panes s
   await expect(details.getByRole('heading', { name: 'Lieferantendaten', exact: true })).toBeVisible();
   expect(await details.evaluate(element => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(1);
 });
+
+// The growing-areas list hides MUI's vertical scrollbar for its own track. Hidden
+// with display: none, MUI measured a 0px scrollbar and reserved no room for the
+// horizontal one, which then covered the last row once the columns overflowed.
+for (const bedCount of [4, 30]) {
+  test(`keeps the last growing-area row above the horizontal scrollbar (${bedCount} beds)`, async ({ page, request }) => {
+    await page.setViewportSize({ width: 1350, height: 810 });
+    await loginWithDeterministicProject(page, request, `scrollbar-hierarchy-last-row-${bedCount}`, { loginAsAdmin: true });
+    const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', { name: 'Acker' });
+    const field = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
+      name: 'Feld', location: location.id, length_m: 100, width_m: 50,
+    });
+    for (let index = 1; index <= bedCount; index += 1) {
+      await apiRequest(page, 'POST', '/beds/', { name: `Beet ${index}`, field: field.id, length_m: 2, width_m: 1 });
+    }
+    await page.goto('/app/fields-beds');
+    await expect(page.getByText('Beet 1', { exact: true })).toBeVisible();
+
+    // The optional site-condition columns make the columns wider than the table.
+    const toolbar = page.getByTestId('growing-area-search-toolbar');
+    await toolbar.getByRole('button', { name: 'Spalten' }).click();
+    for (const column of ['Licht', 'Bodenfeuchte', 'Bewässerung verfügbar']) {
+      await page.getByRole('checkbox', { name: column }).check();
+    }
+    await page.keyboard.press('Escape');
+
+    const scroller = page.locator('.MuiDataGrid-virtualScroller');
+    await expect.poll(() => scroller.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+    await scroller.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+
+    await expect.poll(() => page.evaluate(() => {
+      const scrollbar = document.querySelector('.MuiDataGrid-scrollbar--horizontal');
+      const rowBottoms = Array.from(document.querySelectorAll('[role="row"][data-id]'))
+        .map((row) => row.getBoundingClientRect().bottom);
+      if (!scrollbar || rowBottoms.length === 0) return Number.NaN;
+      return Math.round(Math.max(...rowBottoms) - scrollbar.getBoundingClientRect().top);
+    })).toBeLessThanOrEqual(0);
+  });
+}

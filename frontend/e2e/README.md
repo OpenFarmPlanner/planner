@@ -33,8 +33,9 @@ npm run test:e2e
 - Two Playwright projects exist. `chromium` runs everything except
   `scrollbar-layout.spec.ts`; `chromium-scrollbars` runs only that spec, with headless
   Chrome's `--hide-scrollbars` flag dropped so the page actually renders a classic
-  scrollbar. That spec is about MUI's modal scroll lock compensating the scrollbar
-  width, which is unobservable without one. Keep the rest of the suite on the default, scrollbar-free rendering.
+  scrollbar. That spec is about layout that depends on the scrollbar width (MUI's
+  modal scroll lock compensation, room reserved for a data grid's scrollbar),
+  which is unobservable without one. Keep the rest of the suite on the default, scrollbar-free rendering.
 
 See `frontend/playwright.config.ts` for exact runtime settings. In CI, the
 `E2E (production build)` workflow (`.github/workflows/e2e.yml`) runs this same build+test
