@@ -116,7 +116,7 @@ import {
 } from '../publicCropFilters';
 import { buildLibraryCompanionRows, formRowsToLibraryItems, type CompanionFormRow } from '../../crops/companions';
 import { LibraryCompanionsSection } from '../components/publicCropLibrary/LibraryCompanionsSection';
-import { DetailGrid, DetailRow, DetailSection } from '../components/publicCropLibrary/DetailPrimitives';
+import { DetailGrid, DetailRow, DetailSection } from '../../components/layout/DetailPrimitives';
 import { VersionCard } from '../components/publicCropLibrary/VersionCard';
 import { CommentForm } from '../components/publicCropLibrary/CommentForm';
 import { AnonymousPostingNotice } from '../components/publicCropLibrary/AnonymousPostingNotice';

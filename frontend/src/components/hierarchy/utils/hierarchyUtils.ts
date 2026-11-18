@@ -5,6 +5,7 @@
 import type { Location, Field, Bed } from '../../../api/api';
 
 import type { HierarchyRow } from './types';
+import { buildSiteConditionChain, resolveEffectiveConditions, type SiteConditionChainNode } from './siteConditions';
 
 export interface HierarchySortConfig {
   field: string;
@@ -21,6 +22,21 @@ export interface HierarchyIndex {
   fieldsByLocation: Map<number, Field[]>;
   bedsByField: Map<number, Bed[]>;
 }
+
+const ownSiteConditions = (entity: Location | Field | Bed): Pick<
+  HierarchyRow, 'light_condition' | 'soil_moisture' | 'irrigation'
+> => ({
+  light_condition: entity.light_condition ?? null,
+  soil_moisture: entity.soil_moisture ?? null,
+  irrigation: entity.irrigation ?? null,
+});
+
+const resolveRowSiteConditions = (chain: SiteConditionChainNode[]): Pick<
+  HierarchyRow, 'effectiveSiteConditions' | 'inheritedSiteConditions'
+> => ({
+  effectiveSiteConditions: resolveEffectiveConditions(chain),
+  inheritedSiteConditions: resolveEffectiveConditions(chain.slice(1)),
+});
 
 export const hasPersistedEntityId = (id: number | undefined): id is number => (
   typeof id === 'number' && Number.isInteger(id) && id > 0
@@ -390,6 +406,17 @@ export function createHierarchyRowsProjector(hierarchyIndex: HierarchyIndex) {
   const locationRows = new Map<string, HierarchyRow>();
   const fieldRows = new Map<string, HierarchyRow>();
   const bedRows = new Map<number, HierarchyRow>();
+  const locationsById = new Map<number, Location>();
+  hierarchyIndex.sortedLocations.forEach((location) => {
+    if (location.id !== undefined) locationsById.set(location.id, location);
+  });
+  const fieldsById = new Map<number, Field>();
+  hierarchyIndex.fieldsByLocation.forEach((fields) => fields.forEach((field) => {
+    if (field.id !== undefined) fieldsById.set(field.id, field);
+  }));
+  hierarchyIndex.sortedTopLevelFields.forEach((field) => {
+    if (field.id !== undefined) fieldsById.set(field.id, field);
+  });
 
   const getLocationRow = (
     location: Location,
@@ -413,6 +440,8 @@ export function createHierarchyRowsProjector(hierarchyIndex: HierarchyIndex) {
       length_m: location.length_m,
       width_m: location.width_m,
       notes: location.notes,
+      ...ownSiteConditions(location),
+      ...resolveRowSiteConditions(buildSiteConditionChain({ location })),
     };
     locationRows.set(key, row);
     return row;
@@ -444,6 +473,11 @@ export function createHierarchyRowsProjector(hierarchyIndex: HierarchyIndex) {
       length_m: field.length_m,
       width_m: field.width_m,
       notes: field.notes,
+      ...ownSiteConditions(field),
+      ...resolveRowSiteConditions(buildSiteConditionChain({
+        field,
+        location: locationsById.get(field.location),
+      })),
       isNew: field.id! < 0,
       ...(parentId ? { parentId } : {}),
       ...(locationId !== undefined ? { locationId } : {}),
@@ -478,6 +512,15 @@ export function createHierarchyRowsProjector(hierarchyIndex: HierarchyIndex) {
       length_m: bed.length_m,
       width_m: bed.width_m,
       notes: bed.notes,
+      ...ownSiteConditions(bed),
+      ...(() => {
+        const parentField = fieldsById.get(bed.field);
+        return resolveRowSiteConditions(buildSiteConditionChain({
+          bed,
+          field: parentField,
+          location: parentField ? locationsById.get(parentField.location) : undefined,
+        }));
+      })(),
       fieldId,
       bedId,
       hasChildren: false,

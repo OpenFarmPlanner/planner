@@ -1,0 +1,60 @@
+{
+  "description": "Cases for the inherited growing-area site conditions (#1075), shared by backend/farm/services/site_conditions.py and frontend/src/components/hierarchy/utils/siteConditions.ts. A chain lists the entity first, then its ancestors; null means not specified on that level.",
+  "cases": [
+    {
+      "name": "nothing set anywhere is unknown",
+      "chain": [
+        {"level": "bed", "id": 3, "name": "Bed", "values": {}},
+        {"level": "field", "id": 2, "name": "Field", "values": {}},
+        {"level": "location", "id": 1, "name": "Garden", "values": {}}
+      ],
+      "expected": {
+        "light_condition": {"value": null, "source": null, "source_id": null, "source_name": null},
+        "soil_moisture": {"value": null, "source": null, "source_id": null, "source_name": null},
+        "irrigation": {"value": null, "source": null, "source_id": null, "source_name": null},
+        "soil_type": {"value": null, "source": null, "source_id": null, "source_name": null}
+      }
+    },
+    {
+      "name": "location default is inherited by field and bed",
+      "chain": [
+        {"level": "bed", "id": 3, "name": "Bed", "values": {"light_condition": null}},
+        {"level": "field", "id": 2, "name": "Field", "values": {}},
+        {"level": "location", "id": 1, "name": "Garden", "values": {"light_condition": "sunny", "soil_type": "loam"}}
+      ],
+      "expected": {
+        "light_condition": {"value": "sunny", "source": "location", "source_id": 1, "source_name": "Garden"},
+        "soil_moisture": {"value": null, "source": null, "source_id": null, "source_name": null},
+        "irrigation": {"value": null, "source": null, "source_id": null, "source_name": null},
+        "soil_type": {"value": "loam", "source": "location", "source_id": 1, "source_name": "Garden"}
+      }
+    },
+    {
+      "name": "the nearest explicit value wins and unavailable is not unknown",
+      "chain": [
+        {"level": "bed", "id": 3, "name": "Bed", "values": {"light_condition": "shade"}},
+        {"level": "field", "id": 2, "name": "Field", "values": {"light_condition": "partial_shade", "irrigation": "unavailable"}},
+        {"level": "location", "id": 1, "name": "Garden", "values": {"light_condition": "sunny", "irrigation": "available", "soil_moisture": "dry"}}
+      ],
+      "expected": {
+        "light_condition": {"value": "shade", "source": "bed", "source_id": 3, "source_name": "Bed"},
+        "soil_moisture": {"value": "dry", "source": "location", "source_id": 1, "source_name": "Garden"},
+        "irrigation": {"value": "unavailable", "source": "field", "source_id": 2, "source_name": "Field"},
+        "soil_type": {"value": null, "source": null, "source_id": null, "source_name": null}
+      }
+    },
+    {
+      "name": "a field override is inherited by its beds",
+      "chain": [
+        {"level": "field", "id": 2, "name": "Field", "values": {"soil_moisture": "moist"}},
+        {"level": "location", "id": 1, "name": "Garden", "values": {"soil_moisture": "normal"}}
+      ],
+      "expected": {
+        "light_condition": {"value": null, "source": null, "source_id": null, "source_name": null},
+        "soil_moisture": {"value": "moist", "source": "field", "source_id": 2, "source_name": "Field"},
+        "irrigation": {"value": null, "source": null, "source_id": null, "source_name": null},
+        "soil_type": {"value": null, "source": null, "source_id": null, "source_name": null}
+      }
+    }
+  ]
+}

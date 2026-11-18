@@ -9,17 +9,73 @@ from django.db import models
 from .base import TimestampedModel
 from .projects import Project
 
+SOIL_TYPE_CHOICES = [
+    ('sand', 'Sand'),
+    ('loam', 'Loam'),
+    ('clay', 'Clay'),
+]
+LIGHT_CONDITION_CHOICES = [
+    ('sunny', 'Sunny'),
+    ('partial_shade', 'Partial shade'),
+    ('shade', 'Shade'),
+]
+SOIL_MOISTURE_CHOICES = [
+    ('dry', 'Dry'),
+    ('normal', 'Normal'),
+    ('moist', 'Moist'),
+]
+IRRIGATION_CHOICES = [
+    ('available', 'Available'),
+    ('unavailable', 'Unavailable'),
+]
+CULTIVATION_ENVIRONMENT_CHOICES = [
+    ('open_field', 'Open field'),
+    ('polytunnel', 'Polytunnel'),
+    ('greenhouse', 'Greenhouse'),
+]
 
-class Location(TimestampedModel):
+
+class SiteConditionsMixin(models.Model):
+    """Optional site conditions shared by locations, fields and beds (#1075).
+
+    The structured values (light, soil moisture, irrigation and, on fields
+    and beds, soil type) are inherited location -> field -> bed: an empty
+    value means "not specified here", and the effective value is the nearest
+    explicitly set one (see ``farm/services/site_conditions.py``). The
+    descriptive texts belong to the entity they were entered on and are never
+    inherited.
+    """
+
+    light_condition = models.CharField(
+        max_length=20, choices=LIGHT_CONDITION_CHOICES, null=True, blank=True,
+        help_text='Typical light; empty means not specified here (inherited).',
+    )
+    soil_moisture = models.CharField(
+        max_length=20, choices=SOIL_MOISTURE_CHOICES, null=True, blank=True,
+        help_text='Typical soil moisture, not irrigation; empty means inherited.',
+    )
+    irrigation = models.CharField(
+        max_length=20, choices=IRRIGATION_CHOICES, null=True, blank=True,
+        help_text=(
+            'Whether irrigation is available (not whether it is used); empty means inherited.'
+        ),
+    )
+    soil_description = models.TextField(
+        blank=True, help_text='Observed soil peculiarities, e.g. stony or compacted ground.',
+    )
+    wind_exposure = models.TextField(blank=True, help_text='Wind protection or exposure.')
+    water_supply = models.TextField(blank=True, help_text='Water supply details.')
+
+    class Meta:
+        abstract = True
+
+
+class Location(SiteConditionsMixin, TimestampedModel):
     """A physical farm location that can contain multiple fields."""
     SOIL_TYPE_SAND = 'sand'
     SOIL_TYPE_LOAM = 'loam'
     SOIL_TYPE_CLAY = 'clay'
-    SOIL_TYPE_CHOICES = [
-        (SOIL_TYPE_SAND, 'Sand'),
-        (SOIL_TYPE_LOAM, 'Loam'),
-        (SOIL_TYPE_CLAY, 'Clay'),
-    ]
+    SOIL_TYPE_CHOICES = SOIL_TYPE_CHOICES
 
     EXPOSURE_NORTH = 'north'
     EXPOSURE_SOUTH = 'south'
@@ -75,7 +131,7 @@ class Location(TimestampedModel):
         ordering = ['name']
 
 
-class Field(TimestampedModel):
+class Field(SiteConditionsMixin, TimestampedModel):
     """A field within a location that can contain multiple beds."""
     # Validation constants.
     MIN_AREA_SQM = Decimal('0.01')  # Minimum 0.01 sqm (10cm x 10cm)
@@ -88,6 +144,14 @@ class Field(TimestampedModel):
     length_m = models.FloatField(null=True, blank=True)
     width_m = models.FloatField(null=True, blank=True)
     notes = models.TextField(blank=True)
+    soil_type = models.CharField(
+        max_length=20, choices=SOIL_TYPE_CHOICES, null=True, blank=True,
+        help_text='Overrides the location soil type; empty means inherited.',
+    )
+    cultivation_environment = models.CharField(
+        max_length=20, choices=CULTIVATION_ENVIRONMENT_CHOICES, null=True, blank=True,
+        help_text='Recorded only; no climate adjustment is derived from it.',
+    )
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='fields')
 
     def clean(self) -> None:
@@ -131,7 +195,7 @@ class Field(TimestampedModel):
         ]
 
 
-class Bed(TimestampedModel):
+class Bed(SiteConditionsMixin, TimestampedModel):
     """A bed within a field that stores optional area in square meters."""
     # Validation constants.
     MIN_AREA_SQM = Decimal('0.01')  # Minimum 0.01 sqm (10cm x 10cm)
@@ -143,6 +207,10 @@ class Bed(TimestampedModel):
     length_m = models.FloatField(null=True, blank=True)
     width_m = models.FloatField(null=True, blank=True)
     notes = models.TextField(blank=True)
+    soil_type = models.CharField(
+        max_length=20, choices=SOIL_TYPE_CHOICES, null=True, blank=True,
+        help_text='Overrides the field/location soil type; empty means inherited.',
+    )
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='beds')
 
     def clean(self) -> None:

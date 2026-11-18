@@ -54,6 +54,10 @@ for step-by-step procedures of recurring tasks, see the skills in
   and a lightweight backlog issue-review procedure.
 - **[Form Layout](./form-layout.md)** — responsive field-width roles and the
   exceptions for grid editors, narrow popovers, and search controls.
+- **[Growing-area site conditions](./growing-area-site-conditions.md)** —
+  inherited light/soil moisture/irrigation/soil type of locations, fields and
+  beds, the Growing Areas Search/Filter/Columns toolbar, and the location,
+  field and bed detail pages.
 - **[Occupancy Tree / Gantt Hierarchy](./occupancy-tree-hierarchy.md)** —
   the Standort → Parzelle → Beet tree in the bed-occupancy calendar, plus
   the Gantt calendar's context menu, drag-and-drop, and row-height model.

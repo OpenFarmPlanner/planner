@@ -213,8 +213,10 @@
     "keywords": {
       "create": "nouveau, surfaces de culture, créer",
       "edit": "modifier",
-      "delete": "supprimer"
-    }
+      "delete": "supprimer",
+      "search": "rechercher, filtrer, trouver"
+    },
+    "focusSearch": "Placer le curseur dans la recherche des surfaces (/)"
   },
   "mobile": {
     "expand": "Déplier : {{name}}",
@@ -242,6 +244,118 @@
       "location": "Site",
       "field": "Parcelle",
       "bed": "Planche"
+    }
+  },
+  "search": {
+    "placeholder": "Rechercher dans les surfaces",
+    "ariaLabel": "Rechercher dans les surfaces de culture",
+    "clear": "Effacer la recherche",
+    "filterButton": "Filtrer",
+    "filterButtonActiveAria_one": "Filtrer, {{count}} filtre actif",
+    "filterButtonActiveAria_other": "Filtrer, {{count}} filtres actifs",
+    "filterButtonActiveAria_many": "Filtrer, {{count}} filtres actifs",
+    "columnsButton": "Colonnes",
+    "panelTitle": "Filtres",
+    "reset": "Réinitialiser",
+    "resetAll": "Tout réinitialiser",
+    "matches_one": "{{count}} résultat",
+    "matches_other": "{{count}} résultats",
+    "matches_many": "{{count}} résultats",
+    "count_one": "{{count}} entrée",
+    "count_other": "{{count}} entrées",
+    "count_many": "{{count}} entrées",
+    "filteredCount": "{{shown}} sur {{total}} entrées",
+    "activeFiltersAria": "Filtres actifs",
+    "removeChip": "Retirer le filtre {{filter}}",
+    "chip": "{{filter}} : {{values}}",
+    "fields": {
+      "location": "Site",
+      "field": "Parcelle"
+    },
+    "fieldHint": "Astuce : choisissez d’abord un site pour n’afficher que ses parcelles.",
+    "empty": {
+      "title": "Aucune surface trouvée",
+      "titleWithQuery": "Aucune surface trouvée pour « {{query}} »",
+      "hint": "Vérifiez l’orthographe ou réinitialisez les filtres. Les lignes parentes des résultats restent visibles.",
+      "clearSearch": "Effacer la recherche",
+      "resetFilters": "Réinitialiser les filtres"
+    }
+  },
+  "siteConditions": {
+    "labels": {
+      "light_condition": "Lumière",
+      "soil_moisture": "Humidité du sol",
+      "irrigation": "Irrigation disponible",
+      "soil_type": "Type de sol",
+      "soil_description": "Description du sol",
+      "wind_exposure": "Protection contre le vent / exposition au vent",
+      "water_supply": "Approvisionnement en eau",
+      "cultivation_environment": "Environnement de culture",
+      "exposure": "Orientation de la pente"
+    },
+    "values": {
+      "light_condition": {
+        "sunny": "Plein soleil",
+        "partial_shade": "Mi-ombre",
+        "shade": "Ombre"
+      },
+      "soil_moisture": {
+        "dry": "Sec",
+        "normal": "Normal",
+        "moist": "Humide"
+      },
+      "irrigation": {
+        "available": "Disponible",
+        "unavailable": "Non disponible"
+      },
+      "cultivation_environment": {
+        "open_field": "Plein champ",
+        "polytunnel": "Tunnel",
+        "greenhouse": "Serre"
+      }
+    },
+    "notSpecified": "Non renseigné",
+    "inheritOption": "Hériter ({{value}})",
+    "inheritedFrom": {
+      "location": "Hérité du site « {{name}} »",
+      "field": "Hérité de la parcelle « {{name}} »",
+      "bed": "Hérité de la planche « {{name}} »"
+    },
+    "resetToInherited": "Rétablir la valeur héritée"
+  },
+  "details": {
+    "open": {
+      "location": "Détails du site",
+      "field": "Détails de la parcelle",
+      "bed": "Détails de la planche"
+    },
+    "sections": {
+      "general": "Général",
+      "geometry": "Dimensions",
+      "siteConditions": "Conditions du site",
+      "siteDetails": "Sol et situation",
+      "plantingPlans": "Plans de culture",
+      "children": {
+        "location": "Parcelles",
+        "field": "Planches"
+      }
+    },
+    "fields": {
+      "description": "Description",
+      "address": "Adresse"
+    },
+    "entityType": {
+      "location": "Site",
+      "field": "Parcelle",
+      "bed": "Planche"
+    },
+    "backToList": "Retour aux surfaces de culture",
+    "breadcrumbAria": "Fil d’Ariane",
+    "unsavedChanges": "Vous avez des modifications non enregistrées. Elles seront perdues si vous quittez la page.",
+    "unnamedPlan": "Plan de culture sans culture",
+    "notFound": {
+      "title": "Entrée introuvable",
+      "description": "Ce site, cette parcelle ou cette planche n’existe pas (ou plus) dans le projet actif."
     }
   }
 }

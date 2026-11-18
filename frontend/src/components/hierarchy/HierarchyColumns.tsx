@@ -257,6 +257,8 @@ export function createHierarchyColumns(
       field: 'name',
       headerName: t('hierarchy:columns.name'),
       width: widths.name,
+      // The tree and its row actions live in this column: never hideable.
+      hideable: false,
       editable: true,
       renderEditCell: renderNameEditInputCell,
       renderCell: (params) => renderNameCell(params, callbacks, t, options),

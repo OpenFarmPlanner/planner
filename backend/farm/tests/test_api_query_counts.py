@@ -327,6 +327,19 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         """`field_name` needs `field`, and the layout code needs `field__location`."""
         self.assert_list_query_count('/openfarmplanner/api/beds/', 5)
 
+    def test_structure_lists_resolve_inherited_site_conditions_without_extra_queries(self):
+        """`effective_site_conditions` reads the parent chain already joined by the list."""
+        Location.objects.filter(project=self.project).update(light_condition='sunny')
+        Field.objects.filter(project=self.project).update(soil_moisture='moist')
+        self.assert_list_query_count('/openfarmplanner/api/fields/', 5)
+        with self.assertNumQueries(5):
+            response = self.client.get('/openfarmplanner/api/beds/')
+        effective = response.data['results'][0]['effective_site_conditions']
+        self.assertEqual(effective['light_condition']['value'], 'sunny')
+        self.assertEqual(effective['light_condition']['source'], 'location')
+        self.assertEqual(effective['soil_moisture']['source'], 'field')
+        self.assertIsNone(effective['irrigation']['value'])
+
     def test_suppliers_list_query_count(self):
         self.assert_list_query_count('/openfarmplanner/api/suppliers/', 5)
 

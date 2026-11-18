@@ -3,6 +3,8 @@ export interface MainNavigationItem {
   labelKey: string;
   keywords: string[];
   activeAliases?: string[];
+  /** Nested routes that keep the item active, e.g. detail pages below its list. */
+  activePathPrefixes?: string[];
   /**
    * Whether this destination requires an active project to be usable. Drives
    * the sidebar's disabled state during onboarding (no project yet) — see
@@ -13,7 +15,7 @@ export interface MainNavigationItem {
 }
 
 export const MAIN_NAV_ITEMS: MainNavigationItem[] = [
-  { to: '/app/fields-beds', labelKey: 'fieldsAndBeds', keywords: ['anbauflächen', 'felder', 'beete'], requiresProject: true },
+  { to: '/app/fields-beds', labelKey: 'fieldsAndBeds', activePathPrefixes: ['/app/fields-beds/'], keywords: ['anbauflächen', 'felder', 'beete'], requiresProject: true },
   { to: '/app/crops', labelKey: 'crops', keywords: ['kulturen', 'kultur'], requiresProject: true },
   { to: '/app/crop-library', labelKey: 'cropLibrary', keywords: ['kulturbibliothek', 'öffentliche kulturen', 'crop library'], requiresProject: true },
   { to: '/app/planting-plans', labelKey: 'plantingPlans', activeAliases: ['/app/anbauplaene'], keywords: ['anbaupläne', 'pläne', 'planung'], requiresProject: true },
@@ -23,6 +25,14 @@ export const MAIN_NAV_ITEMS: MainNavigationItem[] = [
   { to: '/app/young-plant-demand', labelKey: 'youngPlantDemand', keywords: ['jungpflanzenbedarf', 'jungpflanzen', 'zukauf'], requiresProject: true },
   { to: '/app/suppliers', labelKey: 'suppliers', keywords: ['lieferanten', 'einkauf'], requiresProject: true },
 ];
+
+/** Whether a nav item is the current page (its route, an alias or a nested detail route). */
+export const isNavItemActive = (
+  item: { to: string; activeAliases: readonly string[]; activePathPrefixes?: readonly string[] },
+  pathname: string,
+): boolean => pathname === item.to
+  || item.activeAliases.includes(pathname)
+  || (item.activePathPrefixes ?? []).some((prefix) => pathname.startsWith(prefix));
 
 /** Whether a nav item should render disabled given the current project state. */
 export const shouldDisableNavItem = (

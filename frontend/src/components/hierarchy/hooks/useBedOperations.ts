@@ -2,6 +2,7 @@
  * Custom hook for bed operations (CRUD)
  */
 
+import { pickInlineSiteConditions } from '../utils/siteConditions';
 import { useCallback, useRef, useState } from 'react';
 import { bedAPI, type Bed, type BulkBedCreatePayload } from '../../../api/api';
 import type { TFunction } from 'i18next';
@@ -61,6 +62,7 @@ export function useBedOperations(
         length_m: bedData.length_m ?? null,
         width_m: bedData.width_m ?? null,
         notes: bedData.notes || '',
+        ...pickInlineSiteConditions(bedData),
       };
 
       if (isNew) {
@@ -96,8 +98,9 @@ export function useBedOperations(
   };
 
   /**
-   * Creates a copy of `source` right away: only length and width are copied
-   * (no notes, planting plans or layout), under the given unique name. The
+   * Creates a copy of `source` right away: only length, width and the
+   * structured site conditions are copied (no notes, descriptive texts,
+   * planting plans or layout), under the given unique name. The
    * backend derives the area from the dimensions. Returns null without
    * creating anything while a previous duplicate is still being saved (e.g.
    * a held Ctrl+D), since both would compute the same next name.
@@ -113,6 +116,11 @@ export function useBedOperations(
         field: source.field,
         length_m: source.length_m ?? null,
         width_m: source.width_m ?? null,
+        // Structured conditions describe the spot, like the dimensions (#1075).
+        light_condition: source.light_condition ?? null,
+        soil_moisture: source.soil_moisture ?? null,
+        irrigation: source.irrigation ?? null,
+        soil_type: source.soil_type ?? null,
         notes: '',
       });
       setError('');

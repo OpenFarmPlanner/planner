@@ -6,6 +6,8 @@ import AgricultureIcon from "@mui/icons-material/Agriculture";
 import ControlPointDuplicateIcon from "@mui/icons-material/ControlPointDuplicate";
 import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd";
 import DeleteIcon from "@mui/icons-material/Delete";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import { getHierarchyDetailPath } from "../details/hierarchyDetailRoutes";
 import type { Bed, Field, Location } from "../../../api/api";
 import { HierarchyAddIcon } from "../HierarchyAddIcon";
 import { useBedOperations } from "./useBedOperations";
@@ -16,7 +18,7 @@ import type { MobileHierarchyRow } from "./useMobileHierarchyRows";
 export interface HierarchyRowAction {
   id: string;
   label: string;
-  group: "create" | "destructive";
+  group: "details" | "create" | "destructive";
   color?: "default" | "error";
   onClick: () => void;
   emphasized?: boolean;
@@ -109,6 +111,14 @@ export function useMobileHierarchyRowOperations({
       openCreateSheet: (request: MobileCreateSheetRequest) => void,
     ): HierarchyRowAction[] => {
       const createActions: HierarchyRowAction[] = [];
+      const detailPath = row.isNew ? null : getHierarchyDetailPath(row);
+      const detailActions: HierarchyRowAction[] = detailPath ? [{
+        id: "details",
+        label: t(`details.open.${row.type}`),
+        group: "details",
+        icon: <InfoOutlinedIcon fontSize="small" />,
+        onClick: () => navigate(detailPath),
+      }] : [];
 
       if (row.type === "location" && row.locationId) {
         createActions.push({
@@ -169,9 +179,9 @@ export function useMobileHierarchyRowOperations({
         },
       }];
 
-      return [...createActions, ...destructiveActions];
+      return [...detailActions, ...createActions, ...destructiveActions];
     },
-    [deleteHierarchyRowWithUndo, handleCreatePlantingPlan, onBulkCreateBeds, onDuplicateField, t],
+    [deleteHierarchyRowWithUndo, handleCreatePlantingPlan, navigate, onBulkCreateBeds, onDuplicateField, t],
   );
 
   return {

@@ -1,3 +1,4 @@
+import { pickInlineSiteConditions } from "../utils/siteConditions";
 import { useCallback } from "react";
 import type { GridRowId, GridRowModesModel } from "@mui/x-data-grid";
 import { GridRowModes } from "@mui/x-data-grid";
@@ -346,6 +347,7 @@ export function useHierarchyRowUpdate({
           length_m: parsedLength,
           width_m: parsedWidth,
           notes: newRow.notes,
+          ...pickInlineSiteConditions(newRow),
         });
         return {
           ...newRow,
@@ -408,6 +410,7 @@ export function useHierarchyRowUpdate({
               length_m: parsedLength,
               width_m: parsedWidth,
               notes: newRow.notes,
+              ...pickInlineSiteConditions(newRow),
             });
 
             setFields((prevFields) => {
@@ -467,6 +470,7 @@ export function useHierarchyRowUpdate({
             length_m: parsedLength,
             width_m: parsedWidth,
             notes: newRow.notes,
+            ...pickInlineSiteConditions(newRow),
           });
           const updatedArea = normalizeAreaValue(parseAreaValue(updated.data.area_sqm));
 
@@ -535,6 +539,7 @@ export function useHierarchyRowUpdate({
           notes: newRow.notes,
           length_m: lengthM,
           width_m: widthM,
+          ...pickInlineSiteConditions(newRow),
         });
 
         setLocations((previousLocations) =>

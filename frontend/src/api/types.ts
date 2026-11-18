@@ -1062,12 +1062,50 @@ export interface SeedDemand {
   warning: string | null;
 }
 
-export interface Location {
+export type LightCondition = 'sunny' | 'partial_shade' | 'shade';
+export type SoilMoisture = 'dry' | 'normal' | 'moist';
+export type IrrigationAvailability = 'available' | 'unavailable';
+export type SoilType = 'sand' | 'loam' | 'clay';
+export type CultivationEnvironment = 'open_field' | 'polytunnel' | 'greenhouse';
+export type SiteConditionLevel = 'location' | 'field' | 'bed';
+
+/** One inherited property resolved by the backend (`farm/services/site_conditions.py`). */
+export interface EffectiveSiteCondition<V extends string = string> {
+  value: V | null;
+  source: SiteConditionLevel | null;
+  source_id: number | null;
+  source_name: string | null;
+}
+
+export interface EffectiveSiteConditions {
+  light_condition: EffectiveSiteCondition<LightCondition>;
+  soil_moisture: EffectiveSiteCondition<SoilMoisture>;
+  irrigation: EffectiveSiteCondition<IrrigationAvailability>;
+  soil_type: EffectiveSiteCondition<SoilType>;
+}
+
+/**
+ * Optional site conditions of locations, fields and beds (#1075). The
+ * structured values are inherited location → field → bed (null means "not
+ * specified here"); the texts belong to their own entity only.
+ */
+export interface SiteConditionFields {
+  light_condition?: LightCondition | null;
+  soil_moisture?: SoilMoisture | null;
+  irrigation?: IrrigationAvailability | null;
+  soil_type?: SoilType | null;
+  soil_description?: string;
+  wind_exposure?: string;
+  water_supply?: string;
+  /** Read-only, as of the last response; the UI recomputes it locally. */
+  effective_site_conditions?: EffectiveSiteConditions;
+}
+
+export interface Location extends SiteConditionFields {
   id?: number;
   name: string;
   address?: string;
   description?: string;
-  soil_type?: 'sand' | 'loam' | 'clay' | null;
   exposure?: 'north' | 'south' | 'east' | 'west' | 'flat' | null;
   latitude?: number;
   longitude?: number;
@@ -1080,7 +1118,7 @@ export interface Location {
   updated_at?: string;
 }
 
-export interface Field {
+export interface Field extends SiteConditionFields {
   id?: number;
   name: string;
   location: number;
@@ -1089,11 +1127,12 @@ export interface Field {
   length_m?: number | null;
   width_m?: number | null;
   notes?: string;
+  cultivation_environment?: CultivationEnvironment | null;
   created_at?: string;
   updated_at?: string;
 }
 
-export interface Bed {
+export interface Bed extends SiteConditionFields {
   id?: number;
   name: string;
   field: number;

@@ -1,7 +1,8 @@
 """Duplicate a field ("Parzelle duplizieren") with its beds in one transaction.
 
-Only the structure is copied: the field's location and dimensions and, on
-request, each bed's name and dimensions. Notes, layouts, planting plans and
+Only the structure is copied: the field's location, dimensions and
+structured site conditions and, on request, each bed's name, dimensions and
+structured site conditions. Notes, layouts, planting plans and
 everything hanging off them stay with the source.
 """
 
@@ -11,6 +12,18 @@ from dataclasses import dataclass
 from django.db import IntegrityError, transaction
 
 from farm.models import Bed, Field
+from farm.services.site_conditions import INHERITED_SITE_CONDITION_FIELDS
+
+# Structured site conditions describe the physical spot and are copied with
+# the dimensions; descriptive texts and notes stay with their original (#1075).
+BED_COPIED_CONDITIONS: tuple[str, ...] = INHERITED_SITE_CONDITION_FIELDS
+FIELD_COPIED_CONDITIONS: tuple[str, ...] = (
+    *INHERITED_SITE_CONDITION_FIELDS, 'cultivation_environment',
+)
+
+
+def _structured_conditions(source: Field | Bed, names: tuple[str, ...]) -> dict[str, str | None]:
+    return {name: getattr(source, name) for name in names}
 
 
 class FieldNameTakenError(Exception):
@@ -99,6 +112,7 @@ def duplicate_field(
                     width_m=source.width_m,
                     # Recomputed by Field.save() whenever both dimensions are set.
                     area_sqm=source.area_sqm,
+                    **_structured_conditions(source, FIELD_COPIED_CONDITIONS),
                 )
         except IntegrityError as exc:
             # A concurrent create took the name between the check and the insert.
@@ -114,6 +128,7 @@ def duplicate_field(
                 length_m=bed.length_m,
                 width_m=bed.width_m,
                 area_sqm=bed.area_sqm,
+                **_structured_conditions(bed, BED_COPIED_CONDITIONS),
             )
             if on_created:
                 on_created(new_bed)

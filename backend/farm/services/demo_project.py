@@ -796,6 +796,9 @@ def _create_area_hierarchy(
             description=text['locations']['hofgarten'][1],
             soil_type='loam',
             exposure='south',
+            light_condition='sunny',
+            soil_moisture='normal',
+            irrigation='available',
             length_m=42.0,
             width_m=24.0,
             project=project,
@@ -805,6 +808,9 @@ def _create_area_hierarchy(
             description=text['locations']['bachacker'][1],
             soil_type='loam',
             exposure='flat',
+            light_condition='sunny',
+            soil_moisture='moist',
+            irrigation='unavailable',
             length_m=50.0,
             width_m=20.0,
             project=project,
@@ -828,6 +834,14 @@ def _create_area_hierarchy(
         ('schlag-nord', text['fields']['schlag-nord'], 'lindenhof', 48.0, 8.0),
         ('schlag-sued', text['fields']['schlag-sued'], 'lindenhof', 48.0, 8.0),
     ]
+    # Site conditions (#1075): every field inherits its location's defaults;
+    # the tunnel records its environment and overrides irrigation, and the
+    # cabbage field overrides the soil type.
+    field_conditions: dict[str, dict[str, str]] = {
+        'fruehbeete': {'cultivation_environment': 'open_field'},
+        'tunnel': {'cultivation_environment': 'polytunnel', 'soil_moisture': 'dry'},
+        'kohl': {'soil_type': 'clay'},
+    }
     fields = {
         key: Field.objects.create(
             name=name,
@@ -835,6 +849,7 @@ def _create_area_hierarchy(
             length_m=length_m,
             width_m=width_m,
             project=project,
+            **field_conditions.get(key, {}),
         )
         for key, name, location_key, length_m, width_m in field_specs
     }
@@ -862,6 +877,8 @@ def _create_area_hierarchy(
         ('mais', text['beds']['mais'], 'schlag-sued', 20.0, 1.20),
         ('kuerbis', text['beds']['kuerbis'], 'schlag-sued', 20.0, 1.20),
     ]
+    # One explicit bed override: the herb bed lies in the hedge's shadow.
+    bed_conditions: dict[str, dict[str, str]] = {'kraeuter': {'light_condition': 'partial_shade'}}
     beds = {
         key: Bed.objects.create(
             name=name,
@@ -870,6 +887,7 @@ def _create_area_hierarchy(
             width_m=width_m,
             notes=bed_notes.get(key, ''),
             project=project,
+            **bed_conditions.get(key, {}),
         )
         for key, name, field_key, length_m, width_m in bed_specs
     }

@@ -7,6 +7,12 @@ from rest_framework import serializers
 
 from farm.common.serializer_fields import _resolve_active_project_from_serializer
 from farm.models import Bed, BedLayout, Field, FieldLayout, Location
+from farm.services.site_conditions import (
+    EffectiveCondition,
+    effective_conditions_for_bed,
+    effective_conditions_for_field,
+    effective_conditions_for_location,
+)
 
 MAX_LOCATION_DIMENSION_M = 100_000.0
 
@@ -14,6 +20,16 @@ FIELD_NAME_DUPLICATE_MESSAGE = 'Eine Parzelle mit diesem Namen existiert in dies
 
 
 BED_NAME_DUPLICATE_MESSAGE = 'Ein Beet mit diesem Namen existiert in dieser Parzelle bereits.'
+
+EFFECTIVE_SITE_CONDITIONS_HELP = (
+    'Read-only inherited site conditions: for light_condition, soil_moisture, irrigation and '
+    'soil_type the nearest explicitly set value (bed -> field -> location) with its source '
+    'level, id and name; value null means not specified anywhere.'
+)
+
+
+def _serialize_effective(conditions: dict[str, EffectiveCondition]) -> dict[str, dict]:
+    return {name: condition.as_dict() for name, condition in conditions.items()}
 
 
 class LocationSerializer(serializers.ModelSerializer):
@@ -54,6 +70,10 @@ class LocationSerializer(serializers.ModelSerializer):
         return value
 
     area_sqm = serializers.FloatField(read_only=True)
+    effective_site_conditions = serializers.SerializerMethodField(help_text=EFFECTIVE_SITE_CONDITIONS_HELP)
+
+    def get_effective_site_conditions(self, obj: Location) -> dict[str, dict]:
+        return _serialize_effective(effective_conditions_for_location(obj))
 
     @staticmethod
     def _validate_positive_dimension(value: float | None, label: str) -> float | None:
@@ -91,6 +111,10 @@ class LocationSerializer(serializers.ModelSerializer):
 
 class FieldSerializer(serializers.ModelSerializer):
     location_name = serializers.CharField(source='location.name', read_only=True)
+    effective_site_conditions = serializers.SerializerMethodField(help_text=EFFECTIVE_SITE_CONDITIONS_HELP)
+
+    def get_effective_site_conditions(self, obj: Field) -> dict[str, dict]:
+        return _serialize_effective(effective_conditions_for_field(obj))
 
     def get_image_file(self, obj):
         if not obj.image_file_id:
@@ -153,6 +177,10 @@ class FieldSerializer(serializers.ModelSerializer):
 
 class BedSerializer(serializers.ModelSerializer):
     field_name = serializers.CharField(source='field.name', read_only=True)
+    effective_site_conditions = serializers.SerializerMethodField(help_text=EFFECTIVE_SITE_CONDITIONS_HELP)
+
+    def get_effective_site_conditions(self, obj: Bed) -> dict[str, dict]:
+        return _serialize_effective(effective_conditions_for_bed(obj))
 
     def get_image_file(self, obj):
         if not obj.image_file_id:

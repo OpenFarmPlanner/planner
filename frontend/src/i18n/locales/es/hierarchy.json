@@ -213,8 +213,10 @@
     "keywords": {
       "create": "nuevo, superficies de cultivo, crear",
       "edit": "editar",
-      "delete": "eliminar"
-    }
+      "delete": "eliminar",
+      "search": "buscar, filtrar, encontrar"
+    },
+    "focusSearch": "Enfocar la búsqueda de superficies (/)"
   },
   "mobile": {
     "expand": "Desplegar: {{name}}",
@@ -242,6 +244,118 @@
       "location": "Ubicación",
       "field": "Parcela",
       "bed": "Bancal"
+    }
+  },
+  "search": {
+    "placeholder": "Buscar en las superficies",
+    "ariaLabel": "Buscar en las superficies de cultivo",
+    "clear": "Borrar búsqueda",
+    "filterButton": "Filtrar",
+    "filterButtonActiveAria_one": "Filtrar, {{count}} filtro activo",
+    "filterButtonActiveAria_other": "Filtrar, {{count}} filtros activos",
+    "filterButtonActiveAria_many": "Filtrar, {{count}} filtros activos",
+    "columnsButton": "Columnas",
+    "panelTitle": "Filtros",
+    "reset": "Restablecer",
+    "resetAll": "Restablecer todo",
+    "matches_one": "{{count}} coincidencia",
+    "matches_other": "{{count}} coincidencias",
+    "matches_many": "{{count}} coincidencias",
+    "count_one": "{{count}} entrada",
+    "count_other": "{{count}} entradas",
+    "count_many": "{{count}} entradas",
+    "filteredCount": "{{shown}} de {{total}} entradas",
+    "activeFiltersAria": "Filtros activos",
+    "removeChip": "Quitar el filtro {{filter}}",
+    "chip": "{{filter}}: {{values}}",
+    "fields": {
+      "location": "Ubicación",
+      "field": "Parcela"
+    },
+    "fieldHint": "Consejo: elige primero una ubicación para ver solo sus parcelas.",
+    "empty": {
+      "title": "No se encontraron superficies",
+      "titleWithQuery": "No se encontraron superficies para «{{query}}»",
+      "hint": "Revisa la ortografía o restablece los filtros. Las filas superiores de las coincidencias siguen visibles.",
+      "clearSearch": "Borrar búsqueda",
+      "resetFilters": "Restablecer filtros"
+    }
+  },
+  "siteConditions": {
+    "labels": {
+      "light_condition": "Luz",
+      "soil_moisture": "Humedad del suelo",
+      "irrigation": "Riego disponible",
+      "soil_type": "Tipo de suelo",
+      "soil_description": "Descripción del suelo",
+      "wind_exposure": "Protección contra el viento / exposición al viento",
+      "water_supply": "Suministro de agua",
+      "cultivation_environment": "Entorno de cultivo",
+      "exposure": "Orientación de la pendiente"
+    },
+    "values": {
+      "light_condition": {
+        "sunny": "Pleno sol",
+        "partial_shade": "Semisombra",
+        "shade": "Sombra"
+      },
+      "soil_moisture": {
+        "dry": "Seco",
+        "normal": "Normal",
+        "moist": "Húmedo"
+      },
+      "irrigation": {
+        "available": "Disponible",
+        "unavailable": "No disponible"
+      },
+      "cultivation_environment": {
+        "open_field": "Campo abierto",
+        "polytunnel": "Túnel",
+        "greenhouse": "Invernadero"
+      }
+    },
+    "notSpecified": "Sin especificar",
+    "inheritOption": "Heredar ({{value}})",
+    "inheritedFrom": {
+      "location": "Heredado de la ubicación «{{name}}»",
+      "field": "Heredado de la parcela «{{name}}»",
+      "bed": "Heredado del bancal «{{name}}»"
+    },
+    "resetToInherited": "Restablecer el valor heredado"
+  },
+  "details": {
+    "open": {
+      "location": "Detalles de la ubicación",
+      "field": "Detalles de la parcela",
+      "bed": "Detalles del bancal"
+    },
+    "sections": {
+      "general": "General",
+      "geometry": "Dimensiones",
+      "siteConditions": "Condiciones del lugar",
+      "siteDetails": "Suelo y situación",
+      "plantingPlans": "Planes de cultivo",
+      "children": {
+        "location": "Parcelas",
+        "field": "Bancales"
+      }
+    },
+    "fields": {
+      "description": "Descripción",
+      "address": "Dirección"
+    },
+    "entityType": {
+      "location": "Ubicación",
+      "field": "Parcela",
+      "bed": "Bancal"
+    },
+    "backToList": "Volver a las superficies de cultivo",
+    "breadcrumbAria": "Ruta de navegación",
+    "unsavedChanges": "Tienes cambios sin guardar. Se perderán si sales de la página.",
+    "unnamedPlan": "Plan de cultivo sin cultivo",
+    "notFound": {
+      "title": "Entrada no encontrada",
+      "description": "Esta ubicación, parcela o bancal no existe (ya) en el proyecto activo."
     }
   }
 }

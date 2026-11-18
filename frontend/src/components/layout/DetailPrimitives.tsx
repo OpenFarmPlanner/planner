@@ -1,24 +1,33 @@
 import type { ReactNode } from 'react';
 import { Box, Divider, Stack, Typography } from '@mui/material';
-import { varietySpecificValueHighlightSx } from '../../../crops/varietyValueAccent';
+import { varietySpecificValueHighlightSx } from '../../crops/varietyValueAccent';
 
 export interface DetailRowProps {
   label: string;
   value: string;
   source?: 'fromCrop' | 'ownValue' | null;
+  /** Secondary line under the value, e.g. where an inherited value comes from. */
+  caption?: string | null;
+  testId?: string;
 }
 
-export function DetailRow({ label, value, source = null }: DetailRowProps) {
+/** Label/value pair of a detail section (crop library, growing-area details). */
+export function DetailRow({ label, value, source = null, caption = null, testId }: DetailRowProps) {
   const ownValueSx = source === 'ownValue' ? varietySpecificValueHighlightSx : undefined;
 
   return (
-    <Box>
+    <Box data-testid={testId}>
       <Typography variant="body2" color="text.secondary" sx={{ display: 'block' }}>
         {label}
       </Typography>
       <Typography variant="body1" sx={[{ overflowWrap: 'anywhere' }, ...(ownValueSx ? [ownValueSx] : [])]}>
         {value}
       </Typography>
+      {caption ? (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+          {caption}
+        </Typography>
+      ) : null}
     </Box>
   );
 }

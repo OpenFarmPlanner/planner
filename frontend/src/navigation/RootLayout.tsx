@@ -82,7 +82,7 @@ import { useTopbarActionsRouteReset } from '../hooks/useTopbarActionsRouteReset'
 import { useResponsiveTopbarControls } from '../hooks/useResponsiveTopbarControls';
 import { appRouteUrl } from '../utils/appRouteUrl';
 import { rememberProjectRoute } from '../navigation/lastProjectRoute';
-import { KEYBOARD_NAV_ROUTES, MAIN_NAV_ITEMS, getKeyboardNavigationRouteFromPathname, isProjectIndependentRoute, normalizeMainRoutePath, shouldDisableNavItem } from '../navigation/mainNavigation';
+import { KEYBOARD_NAV_ROUTES, MAIN_NAV_ITEMS, getKeyboardNavigationRouteFromPathname, isProjectIndependentRoute, normalizeMainRoutePath, isNavItemActive, shouldDisableNavItem } from '../navigation/mainNavigation';
 import { useProjectRequirement } from '../hooks/useProjectRequirement';
 import NavListItem from '../navigation/NavListItem';
 import {
@@ -250,6 +250,7 @@ function RootLayout() {
       label: t(item.labelKey),
       shortLabel: t(`short.${item.labelKey}`),
       activeAliases: item.activeAliases ?? [],
+      activePathPrefixes: item.activePathPrefixes ?? [],
       keywords: item.keywords,
       requiresProject: item.requiresProject,
       icon: <NavEmojiIcon emoji={getNavItemEmoji(item.to)} />,
@@ -708,7 +709,7 @@ function RootLayout() {
     rememberProjectRoute(location.pathname, location.search, location.hash);
   }, [location.hash, location.pathname, location.search]);
   const currentPageTitle = useMemo(() => {
-    const activeItem = navItems.find((item) => location.pathname === item.to || item.activeAliases.includes(location.pathname));
+    const activeItem = navItems.find((item) => isNavItemActive(item, location.pathname));
     if (!activeItem && location.pathname.startsWith('/app/locations')) {
       return t('locations');
     }
@@ -1011,7 +1012,7 @@ function RootLayout() {
             )}
             <List sx={{ px: 1, pt: 0.5, pb: 1, flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
               {navItems.map((item) => {
-                const isActive = location.pathname === item.to || item.activeAliases.includes(location.pathname);
+                const isActive = isNavItemActive(item, location.pathname);
                 const disabled = shouldDisableNavItem(item, hasActiveProject);
                 return (
                   <NavListItem
@@ -1986,7 +1987,7 @@ function RootLayout() {
             <AppLogo size={26} showText to="/app/dashboard" />
           </ListItem>
           {navItems.map((item) => {
-            const isActive = location.pathname === item.to || item.activeAliases.includes(location.pathname);
+            const isActive = isNavItemActive(item, location.pathname);
             const disabled = shouldDisableNavItem(item, hasActiveProject);
             return (
               <ListItem key={item.to} disablePadding>

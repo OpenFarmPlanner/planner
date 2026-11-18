@@ -37,12 +37,21 @@ export interface UseColumnVisibilityOptions {
    */
   defaultHiddenFieldsOnSmallScreen?: string[];
   isSmallScreen?: boolean;
+  /**
+   * Optional columns hidden on every screen size until the user shows them.
+   * Unlike the small-screen defaults these stay hidden under a saved model
+   * that predates them (it has no entry for them yet).
+   */
+  defaultHiddenFields?: readonly string[];
 }
+
+const NO_FIELDS: readonly string[] = [];
 
 export function useColumnVisibility({
   tableKey,
   defaultHiddenFieldsOnSmallScreen = [],
   isSmallScreen = false,
+  defaultHiddenFields = NO_FIELDS,
 }: UseColumnVisibilityOptions): {
   columnVisibilityModel: GridColumnVisibilityModel;
   /** Call this whenever the user changes visibility (native panel, column menu, ...). */
@@ -67,8 +76,17 @@ export function useColumnVisibility({
     return Object.fromEntries(defaultHiddenFieldsOnSmallScreen.map((field) => [field, false]));
   }, [isSmallScreen, defaultHiddenFieldsOnSmallScreen]);
 
+  const columnVisibilityModel = useMemo<GridColumnVisibilityModel>(() => {
+    const base = savedModel ?? defaultModel;
+    if (defaultHiddenFields.length === 0) return base;
+    return {
+      ...Object.fromEntries(defaultHiddenFields.map((field) => [field, false])),
+      ...base,
+    };
+  }, [defaultHiddenFields, defaultModel, savedModel]);
+
   return {
-    columnVisibilityModel: savedModel ?? defaultModel,
+    columnVisibilityModel,
     setColumnVisibilityModel,
   };
 }

@@ -48,6 +48,15 @@ All three locations carry outer dimensions (Hofgarten 24 × 42 m, Acker am Bach
 dashed boundary with free space around the saved plot positions and the list
 shows their gross area (#1190).
 
+Site conditions (#1075) are language-independent choices, so every demo
+language shows the same values. Hofgarten is sunny, normal moisture, irrigation
+available; Acker am Bach is sunny and moist without irrigation; Lindenhof
+specifies nothing (shows "Not specified" in the filters). The polytunnel field
+records its environment and overrides the soil moisture with dry, the
+Frühbeete field is open field, the cabbage field overrides the soil type with
+clay, and the herb bed overrides the inherited light with partial shade. Open
+a bed's row menu → "Bed details" to see an inherited value and an override.
+
 The location selector and editing action are absent in List mode. At narrower
 widths the shared topbar places graphical controls and the add action in a
 wrapping row, and the canvas uses the remaining height. For manual review,

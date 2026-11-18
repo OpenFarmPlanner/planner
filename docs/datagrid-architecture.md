@@ -1097,13 +1097,17 @@ supports a `defaultHiddenFieldsOnSmallScreen` list that only applies until
 the user makes their *first* explicit visibility choice — after that, the
 user's choice always wins regardless of screen size.
 
-`FieldsBedsHierarchy.tsx` (raw `<DataGrid>`) has **no column-visibility
-feature at all** today — this was an explicit scope cut when the feature
-was migrated to the native panel elsewhere, not an oversight to "fix" as a
-drive-by change.
+`FieldsBedsHierarchy.tsx` (raw `<DataGrid>`) uses the same hook and native
+panel since #1075, for its optional site-condition columns. They are listed
+in `defaultHiddenFields`, which, unlike the small-screen defaults, keeps a
+column hidden under a saved model that predates it. The grid wires the panel
+itself (the same `showPreferences`/`preferencePanelClose` pair as
+`EditableDataGrid`), and the "Name" column is `hideable: false`. See
+[growing-area-site-conditions.md](./growing-area-site-conditions.md).
 
 A table's toolbar can additionally offer a dedicated "Spalten"/"Columns"
-button (today: Anbaupläne's `PlantingPlanSearchToolbar`, next to "Filter")
+button (today: the shared `DataGridSearchToolbar`, used by Anbaupläne and
+Anbauflächen, next to "Filter")
 that opens the same native panel from outside the grid. This still isn't a
 bespoke visibility UI — it only drives the real `GridColumnsManagement`
 panel via two new generic `EditableDataGrid` props,
