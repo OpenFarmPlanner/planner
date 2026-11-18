@@ -1192,9 +1192,24 @@ export interface FieldLayoutEntry {
   updated_at?: string;
 }
 
+/** Fixed top-left corner of a location's drawn boundary, in unrotated canvas units. */
+export interface LocationBoundaryOrigin {
+  x: number;
+  y: number;
+}
+
 export interface LocationLayoutsResponse {
   bed_layouts: BedLayoutEntry[];
   field_layouts: FieldLayoutEntry[];
+  /** Null until the origin is saved; the boundary then starts at the plots' top-left corner. */
+  location_boundary?: LocationBoundaryOrigin | null;
+}
+
+export interface LocationLayoutsPayload {
+  bed_layouts: BedLayoutEntry[];
+  field_layouts: FieldLayoutEntry[];
+  /** Omit to keep the stored origin; null clears it. */
+  location_boundary?: LocationBoundaryOrigin | null;
 }
 export interface PlantingPlan {
   id?: number;

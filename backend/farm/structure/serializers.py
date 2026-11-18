@@ -108,7 +108,8 @@ class LocationSerializer(serializers.ModelSerializer):
         fields = '__all__'
         # Server-assigned from the active project on create; never client-settable
         # (prevents cross-tenant record reassignment via update).
-        read_only_fields = ['project']
+        # The boundary origin is written only by the graphical layouts endpoint.
+        read_only_fields = ['project', 'boundary_x', 'boundary_y']
 
 
 class FieldSerializer(serializers.ModelSerializer):

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { rotateRect, rotateRectBetweenSizes, turnRotation, type GraphicalRotation } from '../pages/graphicalLayoutUtils';
-import { arrangeFieldRects, areaToRectSize, clampInsideParent, findFreePlacementPosition, getBedRectSize, getBedRectSizeWithinField, getBedScaleFromField, getFieldRectSize, getLocationBoundaryRect, initialAutoLayout, isRectOutsideBoundary, placeFieldRects, rectsOverlap, FIELD_PLACEMENT_SPACING, type Rect } from '../pages/graphicalLayoutUtils';
+import { arrangeFieldRects, areaToRectSize, clampInsideBoundary, clampInsideParent, findFreePlacementPosition, getBedRectSize, getBedRectSizeWithinField, getBedScaleFromField, getFieldRectSize, getLocationBoundaryRect, initialAutoLayout, isRectOutsideBoundary, placeFieldRects, rectsOverlap, FIELD_PLACEMENT_SPACING, type Rect } from '../pages/graphicalLayoutUtils';
 
 describe('graphicalLayoutUtils', () => {
   it('rotates positions and dimensions clockwise through all four orientations', () => {
@@ -299,5 +299,36 @@ describe('compact schematic field arrangement', () => {
     expect(isRectOutsideBoundary({ x: 0, y: 45, width: 10, height: 6 }, boundary)).toBe(true);
     expect(isRectOutsideBoundary({ x: -1, y: 0, width: 10, height: 10 }, boundary)).toBe(true);
     expect(isRectOutsideBoundary({ x: 0, y: -1, width: 10, height: 10 }, boundary)).toBe(true);
+  });
+
+  describe('clampInsideBoundary', () => {
+    const boundary = { x: 100, y: 200, width: 300, height: 400 };
+    const size = { width: 100, height: 50 };
+
+    it('keeps a position that already fits', () => {
+      expect(clampInsideBoundary({ x: 150, y: 250 }, size, boundary)).toEqual({ x: 150, y: 250 });
+    });
+
+    it('moves a rect past any side to the nearest position inside', () => {
+      expect(clampInsideBoundary({ x: 50, y: 250 }, size, boundary)).toEqual({ x: 100, y: 250 });
+      expect(clampInsideBoundary({ x: 350, y: 250 }, size, boundary)).toEqual({ x: 300, y: 250 });
+      expect(clampInsideBoundary({ x: 150, y: 0 }, size, boundary)).toEqual({ x: 150, y: 200 });
+      expect(clampInsideBoundary({ x: 150, y: 590 }, size, boundary)).toEqual({ x: 150, y: 550 });
+      expect(clampInsideBoundary({ x: -1e6, y: 1e6 }, size, boundary)).toEqual({ x: 100, y: 550 });
+    });
+
+    it('allows a rect exactly as large as the boundary only at its origin', () => {
+      expect(clampInsideBoundary({ x: 120, y: 180 }, { width: 300, height: 400 }, boundary)).toEqual({ x: 100, y: 200 });
+    });
+
+    it('lets a rect larger than the boundary slide only while it still covers it', () => {
+      const wide = { width: 500, height: 50 };
+      // Allowed x range: [100 + 300 - 500, 100] = [-100, 100].
+      expect(clampInsideBoundary({ x: 0, y: 250 }, wide, boundary)).toEqual({ x: 0, y: 250 });
+      expect(clampInsideBoundary({ x: 150, y: 250 }, wide, boundary)).toEqual({ x: 100, y: 250 });
+      expect(clampInsideBoundary({ x: -400, y: 250 }, wide, boundary)).toEqual({ x: -100, y: 250 });
+      // The other axis still fits and is clamped normally.
+      expect(clampInsideBoundary({ x: 0, y: 900 }, wide, boundary)).toEqual({ x: 0, y: 550 });
+    });
   });
 });

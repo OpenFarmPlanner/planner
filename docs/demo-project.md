@@ -46,7 +46,9 @@ available through the existing add action/menu. Fullscreen stays optional.
 All three locations carry outer dimensions (Hofgarten 24 × 42 m, Acker am Bach
 20 × 50 m, Pachtacker Lindenhof 24 × 55 m), so the graphic draws each location's
 dashed boundary with free space around the saved plot positions and the list
-shows their gross area (#1190).
+shows their gross area (#1190). Each boundary origin is seeded 1 m above and
+left of the plots, so in Edit graphic every plot can be dragged within its site
+but not past the dashed line.
 
 Site conditions (#1075) are language-independent choices, so every demo
 language shows the same values. Hofgarten is sunny, normal moisture, irrigation

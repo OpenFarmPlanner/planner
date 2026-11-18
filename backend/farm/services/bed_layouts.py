@@ -8,6 +8,7 @@ validation error mid-list returns normally from inside `transaction.atomic()`,
 so entries upserted before the invalid one stay committed.
 """
 
+import math
 from dataclasses import dataclass, field
 
 from django.db import transaction
@@ -38,6 +39,52 @@ def extract_layout_payloads(data: object) -> tuple[object, object]:
         bed_payload = data.get('layouts', data)
         field_payload = []
     return bed_payload, field_payload
+
+
+def serialize_location_boundary(location: Location) -> dict[str, float] | None:
+    """The stored boundary origin of the graphical view, or None while unset."""
+    if location.boundary_x is None or location.boundary_y is None:
+        return None
+    return {'x': location.boundary_x, 'y': location.boundary_y}
+
+
+def parse_location_boundary(data: object) -> tuple[bool, dict[str, float] | None, str | None]:
+    """Read the optional `location_boundary` entry of a layouts PUT body.
+
+    Returns (present, origin, error): `present` is False when the key is
+    missing, so the stored origin stays untouched; an explicit null clears it.
+    """
+    if not isinstance(data, dict) or 'location_boundary' not in data:
+        return False, None, None
+    payload = data['location_boundary']
+    if payload is None:
+        return True, None, None
+    if not isinstance(payload, dict):
+        return True, None, 'The location boundary must be an object with x and y.'
+    origin: dict[str, float] = {}
+    for axis in ('x', 'y'):
+        value = payload.get(axis)
+        is_number = isinstance(value, int | float) and not isinstance(value, bool)
+        if not is_number or not math.isfinite(value):
+            return True, None, f'The location boundary {axis} must be a finite number.'
+        origin[axis] = float(value)
+    return True, origin, None
+
+
+def save_location_boundary(
+    location: Location, origin: dict[str, float] | None, *, user_name: str = '',
+) -> bool:
+    """Store the boundary origin; returns whether anything changed."""
+    new_x = origin['x'] if origin else None
+    new_y = origin['y'] if origin else None
+    if location.boundary_x == new_x and location.boundary_y == new_y:
+        return False
+    previous = _serialize_instance(location)
+    location.boundary_x = new_x
+    location.boundary_y = new_y
+    location.save(update_fields=['boundary_x', 'boundary_y', 'updated_at'])
+    _record_layout_revision(location, previous, user_name=user_name)
+    return True
 
 
 @dataclass
@@ -112,7 +159,7 @@ def save_location_layouts(
 
 
 def _record_layout_revision(
-    layout: BedLayout | FieldLayout, previous: dict | None, *, user_name: str,
+    layout: BedLayout | FieldLayout | Location, previous: dict | None, *, user_name: str,
 ) -> tuple[dict, bool]:
     snapshot = _serialize_instance(layout)
     changed = _diff_changed_fields(previous or {}, snapshot)

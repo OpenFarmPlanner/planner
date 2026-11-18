@@ -105,6 +105,17 @@ class Location(SiteConditionsMixin, TimestampedModel):
     width_m = models.FloatField(
         null=True, blank=True, help_text='Outer width of the location in metres (gross).',
     )
+    # Fixed top-left corner of the drawn outer boundary, in the same unrotated
+    # canvas coordinates as FieldLayout.x/y. Unset until a plot is first moved;
+    # until then the boundary starts at the plots' top-left corner.
+    boundary_x = models.FloatField(
+        null=True, blank=True,
+        help_text='Graphical view: x of the boundary top-left corner (canvas units, not metres).',
+    )
+    boundary_y = models.FloatField(
+        null=True, blank=True,
+        help_text='Graphical view: y of the boundary top-left corner (canvas units, not metres).',
+    )
     notes = models.TextField(blank=True)
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='locations')
 

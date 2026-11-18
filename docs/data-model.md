@@ -133,11 +133,20 @@ erDiagram
   set, otherwise none; there is no stored location area and the dimensions are
   not checked against the fields inside (#1190). The list view edits them on
   the location row. The graphical view draws them as a dashed, labelled outer
-  boundary starting at the top-left corner of the plots' bounding box (width
-  horizontal, length vertical, like a field), so it keeps its place relative to
-  saved plot positions, and includes it when fitting the view. Fields keep their own layout
-  positions; one that crosses the boundary gets a warning-coloured outline and
-  the canvas shows a hint. Without both dimensions nothing is drawn.
+  boundary (width horizontal, length vertical, like a field) and includes it
+  when fitting the view. Its top-left corner is `Location.boundary_x/y`, in the
+  same unrotated canvas units as `FieldLayout.x/y`; these are written only by
+  the `locations/<id>/layouts/` endpoint (`location_boundary: {x, y}`, null
+  clears) and are read-only in the location API. While unset, the boundary
+  starts at the top-left corner of the plots' bounding box; the first plot drop
+  saves that corner, so from then on the site stays fixed while plots move.
+  Dragging a plot clamps it inside the boundary (`clampInsideBoundary`) during
+  the drag and on drop; a plot larger than the site can only slide while it
+  still covers the site on that axis. Overlap between plots stays allowed and
+  beds keep their field-relative positions. Nothing is moved automatically: a
+  plot that lies outside (e.g. after the dimensions shrank) keeps its position,
+  gets a warning-coloured outline and the canvas shows a hint until it is moved
+  in. Without both dimensions nothing is drawn or clamped.
 - `BedLayout`/`FieldLayout` hold persisted x/y coordinates for the
   graphical/map layout view (`GraphicalFields.tsx`) — they're optional,
   separate rows from `Bed`/`Field` themselves, not embedded fields. A field

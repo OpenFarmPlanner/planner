@@ -858,3 +858,84 @@ class CropLayoutApiTest(DRFAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertTrue(BedLayout.objects.filter(bed=bed).exists())
+
+    def test_layouts_return_no_boundary_origin_until_one_is_saved(self):
+        location, _, _ = self._location_with_bed('Unanchored location')
+
+        response = self.client.get(f'/openfarmplanner/api/locations/{location.id}/layouts/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data['location_boundary'])
+
+    def test_layouts_save_and_return_the_boundary_origin(self):
+        location, field, _ = self._location_with_bed('Anchored location')
+
+        response = self._put_layouts(location, {
+            'bed_layouts': [],
+            'field_layouts': [{'field': field.id, 'x': 120.0, 'y': 80.0}],
+            'location_boundary': {'x': 100, 'y': 60.5},
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['location_boundary'], {'x': 100.0, 'y': 60.5})
+        location.refresh_from_db()
+        self.assertEqual((location.boundary_x, location.boundary_y), (100.0, 60.5))
+        get_response = self.client.get(f'/openfarmplanner/api/locations/{location.id}/layouts/')
+        self.assertEqual(get_response.data['location_boundary'], {'x': 100.0, 'y': 60.5})
+        self.assertTrue(EntityRevision.objects.filter(
+            project=self.project, entity_type='location', object_id=location.id,
+            action=EntityRevision.ACTION_UPDATED,
+        ).exists())
+
+    def test_layouts_keep_the_boundary_origin_when_the_key_is_omitted(self):
+        location, field, _ = self._location_with_bed('Kept anchor location')
+        Location.objects.filter(pk=location.pk).update(boundary_x=10.0, boundary_y=20.0)
+
+        response = self._put_layouts(location, {
+            'bed_layouts': [],
+            'field_layouts': [{'field': field.id, 'x': 1.0, 'y': 2.0}],
+        })
+
+        self.assertEqual(response.data['location_boundary'], {'x': 10.0, 'y': 20.0})
+
+    def test_layouts_clear_the_boundary_origin_with_null(self):
+        location, _, _ = self._location_with_bed('Cleared anchor location')
+        Location.objects.filter(pk=location.pk).update(boundary_x=10.0, boundary_y=20.0)
+
+        response = self._put_layouts(
+            location, {'bed_layouts': [], 'field_layouts': [], 'location_boundary': None},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data['location_boundary'])
+        location.refresh_from_db()
+        self.assertIsNone(location.boundary_x)
+
+    def test_layouts_reject_an_invalid_boundary_origin_without_saving(self):
+        location, field, _ = self._location_with_bed('Invalid anchor location')
+
+        for boundary in ({'x': 'left', 'y': 1}, {'x': 1}, [1, 2], {'x': True, 'y': 1}):
+            with self.subTest(boundary=boundary):
+                response = self._put_layouts(location, {
+                    'bed_layouts': [],
+                    'field_layouts': [{'field': field.id, 'x': 1.0, 'y': 2.0}],
+                    'location_boundary': boundary,
+                })
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertEqual(response.data['code'], 'invalid_location_boundary')
+        self.assertFalse(FieldLayout.objects.filter(field=field).exists())
+        location.refresh_from_db()
+        self.assertIsNone(location.boundary_x)
+
+    def test_location_api_does_not_accept_the_boundary_origin(self):
+        location, _, _ = self._location_with_bed('Read-only anchor location')
+
+        response = self.client.patch(
+            f'/openfarmplanner/api/locations/{location.id}/',
+            {'boundary_x': 5.0, 'boundary_y': 6.0},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        location.refresh_from_db()
+        self.assertIsNone(location.boundary_x)
