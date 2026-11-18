@@ -68,7 +68,14 @@ describe('GrowingAreaDetailPage', () => {
     const light = screen.getByTestId('detail-light_condition');
     expect(light).toHaveTextContent('Schattig');
     expect(light).not.toHaveTextContent('Übernommen');
-    expect(screen.getByTestId('detail-soil_moisture')).toHaveTextContent('Übernommen von der Parzelle „Tunnel“');
+    const moisture = screen.getByTestId('detail-soil_moisture');
+    expect(moisture).toHaveTextContent('Feuchtigkeit');
+    expect(moisture).toHaveTextContent('Trocken');
+    expect(moisture).toHaveTextContent('Übernommen von der Parzelle „Tunnel“');
+    // The label explains that it is the typical long-term moisture, not a measurement.
+    expect(within(moisture).getByRole('img', { name: /langfristig üblicherweise/ })).toBeInTheDocument();
+    // Fields without an explanation get no info icon.
+    expect(within(light).queryByRole('img')).not.toBeInTheDocument();
     expect(screen.getByTestId('detail-irrigation')).toHaveTextContent('Nicht verfügbar');
     expect(screen.getByTestId('detail-irrigation')).toHaveTextContent('Übernommen vom Standort „Hofgarten“');
     // Nothing set anywhere: no soil type row, no notes and no site-detail section.

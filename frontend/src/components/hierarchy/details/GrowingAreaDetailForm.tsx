@@ -9,7 +9,12 @@ import {
   SITE_CONDITION_OPTIONS,
   type InheritedSiteConditionField,
 } from '../utils/siteConditions';
-import { getSiteConditionFieldLabel, getSiteConditionValueLabel } from '../siteConditionLabels';
+import {
+  getSiteConditionFieldHelp,
+  getSiteConditionFieldLabel,
+  getSiteConditionValueLabel,
+} from '../siteConditionLabels';
+import { FieldInfoIcon } from '../../../crops/FieldInfoIcon';
 import type { HierarchyEntityType } from './hierarchyDetailRoutes';
 
 const EXPOSURE_OPTIONS = ['north', 'south', 'east', 'west', 'flat'] as const;
@@ -62,13 +67,16 @@ export function GrowingAreaDetailForm({ type, draft, onChange, inherited, nameEr
     const inheritLabel = type === 'location'
       ? t('hierarchy:siteConditions.notSpecified')
       : t('hierarchy:siteConditions.inheritOption', { value: getSiteConditionValueLabel(t, field, inheritedValue) });
+    const help = getSiteConditionFieldHelp(t, field);
     return (
       <Stack key={field} spacing={0.5}>
         <TextField
           select
           fullWidth
           size="small"
-          label={getSiteConditionFieldLabel(t, field)}
+          label={help
+            ? <>{getSiteConditionFieldLabel(t, field)} <FieldInfoIcon title={help} /></>
+            : getSiteConditionFieldLabel(t, field)}
           value={draft[field]}
           onChange={(event) => set(field)(event.target.value)}
           slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}

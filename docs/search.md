@@ -162,7 +162,7 @@ follows the same normalization, AND/OR rules, debounce and toolbar
 - Searched texts of a row: its own name, the names of its parent field and
   location, and its notes (plain text). A term in a location name therefore
   finds the whole location.
-- Filters: **Standort, Parzelle, Licht, Bodenfeuchte, Bewässerung verfügbar**
+- Filters: **Standort, Parzelle, Licht, Feuchtigkeit, Bewässerung verfügbar**
   (multi-select). Parzelle depends on Standort as above. The condition filters
   match the **effective (inherited) value**, also while the columns are hidden,
   and offer **"Nicht angegeben"**, which is distinct from "Nicht verfügbar".

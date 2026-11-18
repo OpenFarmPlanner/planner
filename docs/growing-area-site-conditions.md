@@ -21,6 +21,14 @@ All values are optional. Legacy rows without them stay valid and unchanged.
 | `cultivation_environment` | field only | `open_field`, `polytunnel`, `greenhouse` | no |
 | `exposure` (slope orientation) | location only (existing field) | `north`, `south`, `east`, `west`, `flat` | no |
 
+`soil_moisture` is the soil's **typical long-term** moisture, not a measured
+current value. Its UI label is just "Feuchtigkeit" / "Moisture" (the site
+context already says it is about the soil), with the values Trocken / Frisch /
+Feucht (en: Dry / Moderately moist / Moist); the stored values stay `dry`,
+`normal`, `moist`. Wherever the label appears (column header, filter, detail
+form and page) an info tooltip states the long-term meaning
+(`hierarchy:siteConditions.help.soil_moisture`).
+
 Decisions:
 
 - **Empty means "not specified here", never a value.** `irrigation = null`
@@ -82,7 +90,7 @@ logic stays separate: `components/hierarchy/utils/growingAreaSearch.ts` here,
   are never filtered out.
 - The filters apply only to the list (desktop grid and mobile list), never to
   the graphical view.
-- Light, Soil moisture and Irrigation available are optional grid columns,
+- Light, Moisture and Irrigation available are optional grid columns,
   hidden by default (`useColumnVisibility`'s `defaultHiddenFields`, persisted
   under `tableColumns.fieldsBedsHierarchy`). They show the effective value;
   an inherited value is grey with an "Inherited from …" tooltip. They edit

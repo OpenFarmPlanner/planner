@@ -268,7 +268,7 @@
   "siteConditions": {
     "labels": {
       "light_condition": "Light",
-      "soil_moisture": "Soil moisture",
+      "soil_moisture": "Moisture",
       "irrigation": "Irrigation available",
       "soil_type": "Soil type",
       "soil_description": "Soil description",
@@ -285,7 +285,7 @@
       },
       "soil_moisture": {
         "dry": "Dry",
-        "normal": "Normal",
+        "normal": "Moderately moist",
         "moist": "Moist"
       },
       "irrigation": {
@@ -305,7 +305,10 @@
       "field": "Inherited from field “{{name}}”",
       "bed": "Inherited from bed “{{name}}”"
     },
-    "resetToInherited": "Reset to inherited"
+    "resetToInherited": "Reset to inherited",
+    "help": {
+      "soil_moisture": "How moist the soil here typically is over the long term, not its currently measured moisture."
+    }
   },
   "details": {
     "open": {
