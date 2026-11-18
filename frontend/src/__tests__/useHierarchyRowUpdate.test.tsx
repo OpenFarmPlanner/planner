@@ -531,6 +531,38 @@ describe('processRowUpdate — location rows', () => {
   });
 });
 
+describe('processRowUpdate — location dimensions', () => {
+  it('saves optional positive dimensions and clears them with an empty value', async () => {
+    const { result, harness } = setup({
+      locations: [{ id: 1, name: 'Hof', length_m: 30, width_m: 20 } as Location],
+    });
+    locationUpdateMock.mockResolvedValue({ data: { id: 1, name: 'Hof', length_m: 42.5, width_m: null } });
+
+    await act(async () => {
+      await result.current.processRowUpdate({
+        id: 'location-1', type: 'location', level: 0, locationId: 1, name: 'Hof',
+        length_m: '42,5' as unknown as number, width_m: '' as unknown as number,
+      });
+    });
+
+    expect(locationUpdateMock).toHaveBeenCalledWith(
+      1, expect.objectContaining({ length_m: 42.5, width_m: null }),
+    );
+    expect(harness.locations[0]).toMatchObject({ length_m: 42.5, width_m: null });
+  });
+
+  it('rejects a zero dimension without saving', async () => {
+    const { result } = setup({ locations: [{ id: 1, name: 'Hof' } as Location] });
+
+    await expect(act(async () => {
+      await result.current.processRowUpdate({
+        id: 'location-1', type: 'location', level: 0, locationId: 1, name: 'Hof', length_m: 0,
+      });
+    })).rejects.toThrow();
+    expect(locationUpdateMock).not.toHaveBeenCalled();
+  });
+});
+
 describe('discardRowEdit', () => {
   it('removes a new field row outright', () => {
     const { result, harness } = setup({ fields: [field({ id: -1 })] });

@@ -86,18 +86,20 @@ describe('buildHierarchyRows', () => {
     expect(result).toEqual([]);
   });
 
-  it('should build single-location hierarchy with fields as top level', () => {
+  it('shows the only location of a single-location project as its own row (#1190)', () => {
     const singleLocation = [mockLocations[0]];
+    expandedRows.add(`location-${mockLocations[0].id}`);
     expandedRows.add(`field-${mockFields[0].id}`);
     expandedRows.add(`field-${mockFields[1].id}`);
 
     const result = buildHierarchyRows(singleLocation, mockFields.slice(0, 2), mockBeds, expandedRows);
 
-    // Should have fields at level 0
-    const topLevelFields = result.filter((r) => r.level === 0 && r.type === 'field');
-    expect(topLevelFields).toHaveLength(2);
-    expect(topLevelFields[0].name).toBe('Field 1');
-    expect(topLevelFields[1].name).toBe('Field 2');
+    expect(result[0]).toMatchObject({ type: 'location', level: 0, name: 'Location 1' });
+    const fieldRows = result.filter((r) => r.type === 'field');
+    expect(fieldRows.map((r) => [r.name, r.level, r.parentId])).toEqual([
+      ['Field 1', 1, 'location-1'],
+      ['Field 2', 1, 'location-1'],
+    ]);
   });
 
   it('should build multi-location hierarchy with locations as top level', () => {
@@ -314,20 +316,14 @@ describe('buildHierarchyRows', () => {
     expect(fieldRows).toHaveLength(1);
   });
 
-  it('should handle locations with no fields', () => {
-    const locationWithNoFields = [mockLocations[1]]; // Location 2
+  it('shows a single location row even when it is collapsed', () => {
+    const singleLocation = [mockLocations[1]];
     const fieldsForLocation2 = mockFields.filter((f) => f.location === 2);
 
-    expandedRows.add(`field-3`);
+    const result = buildHierarchyRows(singleLocation, fieldsForLocation2, mockBeds, expandedRows);
 
-    const result = buildHierarchyRows(locationWithNoFields, fieldsForLocation2, mockBeds, expandedRows);
-
-    // With only 1 location, fields are shown at top level (not locations)
-    const fieldRows = result.filter((r) => r.type === 'field');
-    expect(fieldRows).toHaveLength(1); // Field 3 at top level
-
-    const locationRows = result.filter((r) => r.type === 'location');
-    expect(locationRows).toHaveLength(0); // No location rows when single location
+    expect(result.map((r) => r.type)).toEqual(['location']);
+    expect(result[0]).toMatchObject({ expanded: false, hasChildren: true });
   });
 
   it('should set expanded state based on expandedRows Set', () => {

@@ -62,6 +62,8 @@
     "exitFullscreen": "Vollbild schließen",
     "zoomLevel": "Zoom: {{value}}×",
     "locationTitle": "Standort: {{name}}",
+    "locationBoundaryLabel": "{{name}} · {{width}} × {{length}} m",
+    "fieldsOutsideLocation": "Mindestens eine Parzelle ragt über die Standortgrenze hinaus.",
     "details": {
       "field": "Parzellendetails",
       "bed": "Beetdetails"

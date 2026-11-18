@@ -39,6 +39,8 @@ import {
   DEFAULT_PLACEMENT_SPACING,
   getBedRectSizeWithinField,
   getFieldRectSize,
+  getLocationBoundaryRect,
+  isRectOutsideBoundary,
   arrangeFieldRects,
   placeFieldRects,
   initialAutoLayout,
@@ -98,6 +100,7 @@ import {
   type SelectedElement,
 } from "./graphicalFieldsGeometry";
 import { useGraphicalStageSize } from "./useGraphicalStageSize";
+import { formatLocalizedNumber, getActiveFormattingLocale } from "../utils/numberLocalization";
 import { AppTooltip } from '../components/AppTooltip';
 import LoadRetryButton from '../components/LoadRetryButton';
 
@@ -375,32 +378,57 @@ export default function GraphicalFields({
       defaultY: originY + arrangement.positions[index].y,
     }));
 
-    const contentHeight = Math.max(
-      WORKSPACE_MIN_HEIGHT,
-      DEFAULT_STAGE_HEIGHT,
-      originY + arrangement.height + LOCATION_LAYOUT_PADDING,
+    const fieldsContentSize = {
+      width: Math.max(
+        WORKSPACE_MIN_WIDTH,
+        ...defaultFieldRects.map(
+          (rect) =>
+            rect.width + rect.defaultX + LOCATION_LAYOUT_PADDING,
+        ),
+      ),
+      height: Math.max(
+        WORKSPACE_MIN_HEIGHT,
+        DEFAULT_STAGE_HEIGHT,
+        originY + arrangement.height + LOCATION_LAYOUT_PADDING,
+      ),
+    };
+    const storedFieldRects = placeFieldRects(
+      defaultFieldRects,
+      layoutsByField,
+      fieldsContentSize,
+    );
+    // The boundary starts at the plots' top-left corner, so it stays put
+    // relative to saved plot positions (#1190).
+    const storedFieldBounds = getContentBoundsFromRects(storedFieldRects);
+    const storedBoundary = getLocationBoundaryRect(
+      location,
+      FIELD_WORLD_PX_PER_METER,
+      storedFieldBounds
+        ? { x: storedFieldBounds.minX, y: storedFieldBounds.minY }
+        : { x: originX, y: originY },
     );
     const contentWidth = Math.max(
-      WORKSPACE_MIN_WIDTH,
-      ...defaultFieldRects.map(
-        (rect) =>
-          rect.width + rect.defaultX + LOCATION_LAYOUT_PADDING,
-      ),
+      fieldsContentSize.width,
+      storedBoundary ? storedBoundary.x + storedBoundary.width + LOCATION_LAYOUT_PADDING : 0,
+    );
+    const contentHeight = Math.max(
+      fieldsContentSize.height,
+      storedBoundary ? storedBoundary.y + storedBoundary.height + LOCATION_LAYOUT_PADDING : 0,
     );
     const rotation = rotationByLocation[location.id] ?? DEFAULT_GRAPHICAL_ROTATION;
     const storedContentSize = { width: contentWidth, height: contentHeight };
     const rotatedContent = rotateRect({ x: 0, y: 0, ...storedContentSize }, storedContentSize, rotation);
-    const fieldViewModels = placeFieldRects(
-      defaultFieldRects,
-      layoutsByField,
-      { width: contentWidth, height: contentHeight },
-    ).map(rect => rotateRect(rect, storedContentSize, rotation));
+    const fieldViewModels = storedFieldRects.map(rect => rotateRect(rect, storedContentSize, rotation));
+    const boundary = storedBoundary
+      ? rotateRect(storedBoundary, storedContentSize, rotation)
+      : null;
 
     return [
       {
         location,
         defaultFieldRects,
         fieldViewModels,
+        boundary,
         contentWidth: rotatedContent.width,
         contentHeight: rotatedContent.height,
         rotation,
@@ -414,7 +442,9 @@ export default function GraphicalFields({
       return toContentBounds({ width: stageWidth, height: stageHeight });
     }
 
-    const fieldBounds = getContentBoundsFromRects(layout.fieldViewModels);
+    const fieldBounds = getContentBoundsFromRects(
+      layout.boundary ? [layout.boundary, ...layout.fieldViewModels] : layout.fieldViewModels,
+    );
     return (
       fieldBounds ??
       toContentBounds({
@@ -974,6 +1004,7 @@ export default function GraphicalFields({
           location,
           defaultFieldRects,
           fieldViewModels,
+          boundary,
           contentWidth,
           contentHeight,
           rotation,
@@ -981,6 +1012,13 @@ export default function GraphicalFields({
           if (!location.id) {
             return null;
           }
+          const fieldsOutsideBoundary = boundary
+            ? new Set(
+                fieldViewModels
+                  .filter((fieldRect) => isRectOutsideBoundary(fieldRect, boundary))
+                  .map((fieldRect) => fieldRect.id),
+              )
+            : new Set<number>();
 
           const locationId = location.id;
           const contentBounds = getContentBoundsForLocation(locationId);
@@ -1237,6 +1275,29 @@ export default function GraphicalFields({
                       value: viewport.scale.toFixed(2),
                     })}
                   </Typography>
+                  {fieldsOutsideBoundary.size > 0 ? (
+                    <Typography
+                      variant="caption"
+                      color="warning.dark"
+                      data-testid="location-boundary-overflow-hint"
+                      sx={{
+                        position: "absolute",
+                        left: 12,
+                        bottom: 12,
+                        right: 12,
+                        zIndex: 2,
+                        px: 1,
+                        py: 0.5,
+                        borderRadius: 2,
+                        width: "fit-content",
+                        maxWidth: "calc(100% - 24px)",
+                        bgcolor: (theme) => alpha(theme.palette.common.white, 0.78),
+                        backdropFilter: "blur(2px)",
+                      }}
+                    >
+                      {t("fields:graphical.fieldsOutsideLocation")}
+                    </Typography>
+                  ) : null}
                   <Stage
                     key={`stage-${locationId}-${interactionMode}-${locationIsEditable ? "edit" : "view"}`}
                     width={stageWidth}
@@ -1269,6 +1330,33 @@ export default function GraphicalFields({
                     }}
                   >
                     <Layer>
+                      {boundary ? (
+                        <Group listening={false}>
+                          <Rect
+                            {...boundary}
+                            stroke={theme.palette.text.secondary}
+                            strokeWidth={2}
+                            strokeScaleEnabled={false}
+                            dash={[8, 6]}
+                            cornerRadius={4}
+                            data-testid={`location-boundary-${locationId}`}
+                          />
+                          <Text
+                            x={boundary.x}
+                            y={boundary.y - (FIELD_LABEL_SCREEN_PADDING + 14) / viewport.scale}
+                            text={t("fields:graphical.locationBoundaryLabel", {
+                              name: location.name,
+                              width: formatLocalizedNumber(location.width_m ?? 0, getActiveFormattingLocale(), { maximumFractionDigits: 2 }),
+                              length: formatLocalizedNumber(location.length_m ?? 0, getActiveFormattingLocale(), { maximumFractionDigits: 2 }),
+                            })}
+                            fill={theme.palette.text.secondary}
+                            wrap="none"
+                            scaleX={1 / viewport.scale}
+                            scaleY={1 / viewport.scale}
+                            data-testid={`location-boundary-label-${locationId}`}
+                          />
+                        </Group>
+                      ) : null}
                       {defaultFieldRects.map((storedBaseRect) => {
                         const baseRect = {
                           ...storedBaseRect,
@@ -1394,11 +1482,16 @@ export default function GraphicalFields({
                               y={currentFieldRect.y}
                               width={baseRect.width}
                               height={baseRect.height}
-                              stroke={theme.palette.primary.main}
+                              stroke={
+                                fieldsOutsideBoundary.has(fieldId)
+                                  ? theme.palette.warning.main
+                                  : theme.palette.primary.main
+                              }
                               strokeWidth={2}
                               cornerRadius={4}
                               name="graphical-editable"
                               data-testid={`field-rect-${fieldId}`}
+                              data-outside-location={fieldsOutsideBoundary.has(fieldId) || undefined}
                               {...getFieldInteractionProps(
                                 fieldId,
                                 baseRect,

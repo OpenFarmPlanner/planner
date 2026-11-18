@@ -13,6 +13,9 @@ export interface HierarchySortConfig {
 
 export interface HierarchyIndex {
   hasMultipleLocations: boolean;
+  /** Location rows are shown whenever a location exists, including the
+   * only one of a single-location project (#1190). */
+  showsLocationRows: boolean;
   sortedLocations: Location[];
   sortedTopLevelFields: Field[];
   fieldsByLocation: Map<number, Field[]>;
@@ -245,6 +248,7 @@ export function buildHierarchyIndex(
 
   return {
     hasMultipleLocations: sortedLocations.length > 1,
+    showsLocationRows: sortedLocations.length > 0,
     sortedLocations,
     sortedTopLevelFields,
     fieldsByLocation,
@@ -257,11 +261,11 @@ export function buildHierarchyRowsFromIndex(
   expandedRows: Set<string | number>,
 ): HierarchyRow[] {
   const hierarchyRows: HierarchyRow[] = [];
-  const singleLocationId = !hierarchyIndex.hasMultipleLocations
+  const singleLocationId = !hierarchyIndex.showsLocationRows
     ? hierarchyIndex.sortedLocations[0]?.id
     : undefined;
 
-  if (hierarchyIndex.hasMultipleLocations) {
+  if (hierarchyIndex.showsLocationRows) {
     hierarchyIndex.sortedLocations.forEach((location) => {
       const locationKey = `location-${location.id}`;
       const isExpanded = expandedRows.has(locationKey);
@@ -275,6 +279,8 @@ export function buildHierarchyRowsFromIndex(
         locationId: location.id,
         expanded: isExpanded,
         hasChildren: locationFields.length > 0,
+        length_m: location.length_m,
+        width_m: location.width_m,
         notes: location.notes,
       });
 
@@ -404,6 +410,8 @@ export function createHierarchyRowsProjector(hierarchyIndex: HierarchyIndex) {
       locationId: location.id,
       expanded,
       hasChildren,
+      length_m: location.length_m,
+      width_m: location.width_m,
       notes: location.notes,
     };
     locationRows.set(key, row);
@@ -482,11 +490,11 @@ export function createHierarchyRowsProjector(hierarchyIndex: HierarchyIndex) {
 
   return (expandedRows: Set<string | number>): HierarchyRow[] => {
     const hierarchyRows: HierarchyRow[] = [];
-    const singleLocationId = !hierarchyIndex.hasMultipleLocations
+    const singleLocationId = !hierarchyIndex.showsLocationRows
       ? hierarchyIndex.sortedLocations[0]?.id
       : undefined;
 
-    if (hierarchyIndex.hasMultipleLocations) {
+    if (hierarchyIndex.showsLocationRows) {
       hierarchyIndex.sortedLocations.forEach((location) => {
         const locationKey = `location-${location.id}`;
         const isExpanded = expandedRows.has(locationKey);

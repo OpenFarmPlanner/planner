@@ -639,9 +639,8 @@ function FieldsBedsHierarchy({
    * long-standing default. Above it, only locations are expanded, leaving
    * fields (and their beds) collapsed, so opening a very large project shows
    * a scannable top-level overview instead of a wall of thousands of rows.
-   * Single-location projects render fields as root rows (see
-   * hierarchyTreeNodes below), so they're always visible regardless of this
-   * threshold — only their bed children are affected.
+   * Locations are always expanded, so a single-location project still shows
+   * its fields; only their bed children depend on the threshold.
    */
   useEffect(() => {
     if (
@@ -671,18 +670,31 @@ function FieldsBedsHierarchy({
     }
   }, [beds.length, expandAll, fields, hasPersistedState, locations]);
 
+  // Before #1190 a single location had no row, so an expansion state saved
+  // then lacks its key; open it once so its fields don't vanish behind it.
+  const hasCheckedSingleLocationExpansionRef = useRef(false);
+  useEffect(() => {
+    if (hasCheckedSingleLocationExpansionRef.current || locations.length === 0) {
+      return;
+    }
+    hasCheckedSingleLocationExpansionRef.current = true;
+    const onlyLocationId = locations.length === 1 ? locations[0].id : undefined;
+    if (hasPersistedState && hasPersistedEntityId(onlyLocationId)
+      && !expandedRows.has(`location-${onlyLocationId}`)) {
+      ensureExpanded(`location-${onlyLocationId}`);
+    }
+  }, [ensureExpanded, expandedRows, hasPersistedState, locations]);
+
   // Flat {id, parentId} view of the tree for the shared expand/collapse-one-
   // level toggle, embedded in the "Name" column header below (see
   // HierarchyLevelButtons / useHierarchyLevelToggle).
-  // Single-location projects render without a location row at all (see
-  // buildHierarchyRowsFromIndex), so the location level is only included
-  // here when there's more than one — the control then offers 2 levels
-  // (Parzelle/Beet) instead of 3.
-  const hasMultipleLocations = locations.length > 1;
+  // Every location has its own row, including the only one of a
+  // single-location project (#1190), so the control offers all three levels.
+  const showsLocationRows = locations.length > 0;
   const hierarchyTreeNodes = useMemo<TreeRowNode[]>(() => {
     const nodes: TreeRowNode[] = [];
 
-    if (hasMultipleLocations) {
+    if (showsLocationRows) {
       locations.forEach((location) => {
         if (!hasPersistedEntityId(location.id)) return;
         nodes.push({ id: `location-${location.id}`, parentId: null });
@@ -693,7 +705,7 @@ function FieldsBedsHierarchy({
       if (!hasPersistedEntityId(field.id)) return;
       nodes.push({
         id: `field-${field.id}`,
-        parentId: hasMultipleLocations ? `location-${field.location}` : null,
+        parentId: showsLocationRows ? `location-${field.location}` : null,
       });
     });
 
@@ -703,7 +715,7 @@ function FieldsBedsHierarchy({
     });
 
     return nodes;
-  }, [beds, fields, hasMultipleLocations, locations]);
+  }, [beds, fields, showsLocationRows, locations]);
 
   const hierarchyLevelToggle = useHierarchyLevelToggle(hierarchyTreeNodes, expandedRows, expandAll);
 
@@ -931,7 +943,11 @@ function FieldsBedsHierarchy({
 
   const isCellEditable = useCallback((params: { row: HierarchyRow; field: string }) => {
     if (params.row.type === "location") {
-      return params.field === "name";
+      return (
+        params.field === "name" ||
+        params.field === "length_m" ||
+        params.field === "width_m"
+      );
     }
     if (params.row.type === "field" || params.row.type === "bed") {
       return (
@@ -1556,7 +1572,7 @@ function FieldsBedsHierarchy({
 
   const nameColumnWidth = useMemo(() => {
     const hierarchyEntries: HierarchyNameMeasureEntry[] = [];
-    if (hierarchyIndex.hasMultipleLocations) {
+    if (hierarchyIndex.showsLocationRows) {
       hierarchyIndex.sortedLocations.forEach((location) => {
         hierarchyEntries.push({ name: location.name, level: 0, type: "location" });
         const locationFields =

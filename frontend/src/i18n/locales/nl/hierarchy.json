@@ -33,7 +33,8 @@
     "lengthNotANumber": "De lengte moet een geldig getal zijn.",
     "widthNotANumber": "De breedte moet een geldig getal zijn.",
     "duplicateFieldName": "Er bestaat al een perceel met deze naam op deze locatie.",
-    "duplicateBedName": "Er bestaat al een bed met deze naam in dit perceel."
+    "duplicateBedName": "Er bestaat al een bed met deze naam in dit perceel.",
+    "locationDimensionPositive": "Lengte en breedte van de locatie moeten groter zijn dan 0."
   },
   "confirmDelete": "Wil je dit item echt verwijderen?",
   "footer": {
@@ -218,7 +219,6 @@
       "topLevel": "Hoogste niveau",
       "editTitle": "{{type}} bewerken",
       "createTitle": "{{type}} toevoegen",
-      "locationNoDimensions": "Locaties hebben geen eigen afmetingen.",
       "calculatedArea": "Oppervlakte (berekend)",
       "discardTitle": "Wijzigingen verwerpen?",
       "discardMessage": "Je hebt niet-opgeslagen wijzigingen. Wil je ze verwerpen of verder bewerken?",

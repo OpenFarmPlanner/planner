@@ -33,7 +33,8 @@
     "lengthNotANumber": "La longueur doit être un nombre valide.",
     "widthNotANumber": "La largeur doit être un nombre valide.",
     "duplicateFieldName": "Une parcelle portant ce nom existe déjà sur ce site.",
-    "duplicateBedName": "Une planche portant ce nom existe déjà dans cette parcelle."
+    "duplicateBedName": "Une planche portant ce nom existe déjà dans cette parcelle.",
+    "locationDimensionPositive": "La longueur et la largeur du site doivent être supérieures à 0."
   },
   "confirmDelete": "Voulez-vous vraiment supprimer cette entrée ?",
   "footer": {
@@ -231,7 +232,6 @@
       "topLevel": "Niveau supérieur",
       "editTitle": "Modifier : {{type}}",
       "createTitle": "Ajouter : {{type}}",
-      "locationNoDimensions": "Les sites n'ont pas de dimensions propres.",
       "calculatedArea": "Surface (calculée)",
       "discardTitle": "Abandonner les modifications ?",
       "discardMessage": "Vous avez des modifications non enregistrées. Les abandonner ou continuer la modification ?",

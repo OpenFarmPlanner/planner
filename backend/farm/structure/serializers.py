@@ -1,11 +1,14 @@
 """DRF serializers for the farm structure domain (locations, fields, beds, layouts)."""
 
+import math
 from decimal import Decimal
 
 from rest_framework import serializers
 
 from farm.common.serializer_fields import _resolve_active_project_from_serializer
 from farm.models import Bed, BedLayout, Field, FieldLayout, Location
+
+MAX_LOCATION_DIMENSION_M = 100_000.0
 
 FIELD_NAME_DUPLICATE_MESSAGE = 'Eine Parzelle mit diesem Namen existiert in diesem Standort bereits.'
 
@@ -49,6 +52,26 @@ class LocationSerializer(serializers.ModelSerializer):
         if not (-180 <= value <= 180):
             raise serializers.ValidationError('Longitude must be between -180 and 180.')
         return value
+
+    area_sqm = serializers.FloatField(read_only=True)
+
+    @staticmethod
+    def _validate_positive_dimension(value: float | None, label: str) -> float | None:
+        if value is not None and not math.isfinite(value):
+            raise serializers.ValidationError(f'{label} must be a finite number.')
+        if value is not None and value <= 0:
+            raise serializers.ValidationError(f'{label} must be greater than 0.')
+        if value is not None and value > MAX_LOCATION_DIMENSION_M:
+            raise serializers.ValidationError(
+                f'{label} must not exceed {MAX_LOCATION_DIMENSION_M:g} m.'
+            )
+        return value
+
+    def validate_length_m(self, value: float | None) -> float | None:
+        return self._validate_positive_dimension(value, 'Length')
+
+    def validate_width_m(self, value: float | None) -> float | None:
+        return self._validate_positive_dimension(value, 'Width')
 
     def get_image_file(self, obj):
         if not obj.image_file_id:

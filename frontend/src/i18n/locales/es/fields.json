@@ -62,6 +62,8 @@
     "exitFullscreen": "Salir de pantalla completa",
     "zoomLevel": "Zoom: {{value}}×",
     "locationTitle": "Ubicación: {{name}}",
+    "locationBoundaryLabel": "{{name}} · {{width}} × {{length}} m",
+    "fieldsOutsideLocation": "Al menos una parcela sobrepasa el límite de la ubicación.",
     "details": {
       "field": "Detalles de la parcela",
       "bed": "Detalles del bancal"

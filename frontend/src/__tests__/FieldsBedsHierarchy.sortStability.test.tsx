@@ -299,7 +299,7 @@ describe('FieldsBedsHierarchy row order stability', () => {
   // With only 4 total entities (well below HIERARCHY_AUTO_EXPAND_ALL_THRESHOLD),
   // the page auto-expands every row by default, so beds are visible from the
   // start without an explicit expand click.
-  const INITIAL_ORDER = ['Ackerfeld', 'Beet A', 'Beet C', 'Bergfeld'];
+  const INITIAL_ORDER = ['Hofstelle', 'Ackerfeld', 'Beet A', 'Beet C', 'Bergfeld'];
 
   it('loads rows sorted by name ascending on initial load', async () => {
     renderHierarchy();
@@ -317,7 +317,7 @@ describe('FieldsBedsHierarchy row order stability', () => {
     await renameRow(user, 'field-11', 'Edit field-11');
 
     await waitFor(() => expect(fieldUpdateMock).toHaveBeenCalled());
-    expect(readOrder()).toEqual(['Ackerfeld', 'Beet A', 'Beet C', 'Aaa']);
+    expect(readOrder()).toEqual(['Hofstelle', 'Ackerfeld', 'Beet A', 'Beet C', 'Aaa']);
   });
 
   it('keeps a renamed bed in place within its field even when the new name would sort earlier', async () => {
@@ -330,7 +330,7 @@ describe('FieldsBedsHierarchy row order stability', () => {
     await renameRow(user, '22', 'Edit 22');
 
     await waitFor(() => expect(bedUpdateMock).toHaveBeenCalled());
-    expect(readOrder()).toEqual(['Ackerfeld', 'Beet A', 'Aaa', 'Bergfeld']);
+    expect(readOrder()).toEqual(['Hofstelle', 'Ackerfeld', 'Beet A', 'Aaa', 'Bergfeld']);
   });
 
   it('inserts a newly created bed as the first child of its group, right next to the "add" action, and keeps it there after saving', async () => {
@@ -345,7 +345,7 @@ describe('FieldsBedsHierarchy row order stability', () => {
     // The new draft (name prefilled from the group's last bed, "Beet C") is
     // expected to render as the first bed under Ackerfeld right away, next
     // to the action that created it — not below the existing beds.
-    expect(readOrder()).toEqual(['Ackerfeld', 'Beet C 2', 'Beet A', 'Beet C', 'Bergfeld']);
+    expect(readOrder()).toEqual(['Hofstelle', 'Ackerfeld', 'Beet C 2', 'Beet A', 'Beet C', 'Bergfeld']);
 
     await user.click(screen.getByRole('button', { name: 'Rename -1700000000000' }));
     await user.click(screen.getByRole('button', { name: 'Blur -1700000000000' }));
@@ -354,7 +354,7 @@ describe('FieldsBedsHierarchy row order stability', () => {
     // "Aaa" would sort first alphabetically among beds anyway here, but the
     // point is it stays at its insertion position (first in the group)
     // since the order snapshot wasn't refreshed by the save.
-    expect(readOrder()).toEqual(['Ackerfeld', 'Aaa', 'Beet A', 'Beet C', 'Bergfeld']);
+    expect(readOrder()).toEqual(['Hofstelle', 'Ackerfeld', 'Aaa', 'Beet A', 'Beet C', 'Bergfeld']);
   });
 
   it('inserts a newly created field as the first child of its location', async () => {
@@ -410,7 +410,7 @@ describe('FieldsBedsHierarchy row order stability', () => {
     await waitFor(() => expect(fieldUpdateMock).toHaveBeenCalled());
     // Not resorted immediately after save — "Zeta" stays in Ackerfeld's old
     // (first) position together with its beds.
-    expect(readOrder()).toEqual(['Zeta', 'Beet A', 'Beet C', 'Bergfeld']);
+    expect(readOrder()).toEqual(['Hofstelle', 'Zeta', 'Beet A', 'Beet C', 'Bergfeld']);
 
     fieldListMock.mockResolvedValue({
       data: {
@@ -425,6 +425,6 @@ describe('FieldsBedsHierarchy row order stability', () => {
 
     // A fresh load re-sorts by the current values: "Bergfeld" now comes
     // first, with "Zeta" and its beds grouped after it.
-    await waitFor(() => expect(readOrder()).toEqual(['Bergfeld', 'Zeta', 'Beet A', 'Beet C']));
+    await waitFor(() => expect(readOrder()).toEqual(['Hofstelle', 'Bergfeld', 'Zeta', 'Beet A', 'Beet C']));
   });
 });

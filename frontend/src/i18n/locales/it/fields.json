@@ -62,6 +62,8 @@
     "exitFullscreen": "Esci dallo schermo intero",
     "zoomLevel": "Zoom: {{value}}×",
     "locationTitle": "Sito: {{name}}",
+    "locationBoundaryLabel": "{{name}} · {{width}} × {{length}} m",
+    "fieldsOutsideLocation": "Almeno un appezzamento supera il confine del sito.",
     "details": {
       "field": "Dettagli dell'appezzamento",
       "bed": "Dettagli dell'aiuola"

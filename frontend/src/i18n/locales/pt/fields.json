@@ -62,6 +62,8 @@
     "exitFullscreen": "Sair do ecrã inteiro",
     "zoomLevel": "Ampliação: {{value}}×",
     "locationTitle": "Exploração: {{name}}",
+    "locationBoundaryLabel": "{{name}} · {{width}} × {{length}} m",
+    "fieldsOutsideLocation": "Pelo menos uma parcela ultrapassa o limite da exploração.",
     "details": {
       "field": "Detalhes da parcela",
       "bed": "Detalhes do canteiro"

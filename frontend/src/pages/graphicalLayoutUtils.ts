@@ -1,4 +1,4 @@
-import type { Bed, Field } from '../api/types';
+import type { Bed, Field, Location } from '../api/types';
 
 export interface RectSize {
   width: number;
@@ -118,6 +118,36 @@ export function getFieldRectSize(
   }
 
   return areaToRectSize(Number(field.area_sqm ?? 1), options);
+}
+
+/** The location's outer boundary at the layout origin, or null unless both
+ * optional dimensions are set (#1190). Width runs horizontally and length
+ * vertically, like a field's rect. */
+export function getLocationBoundaryRect(
+  location: Pick<Location, 'length_m' | 'width_m'>,
+  pxPerMeter: number,
+  origin: Position,
+): Rect | null {
+  const { length_m: length, width_m: width } = location;
+  if (typeof length !== 'number' || typeof width !== 'number' || length <= 0 || width <= 0) {
+    return null;
+  }
+  return {
+    x: origin.x,
+    y: origin.y,
+    width: Math.max(1, Math.round(width * pxPerMeter)),
+    height: Math.max(1, Math.round(length * pxPerMeter)),
+  };
+}
+
+/** True when `rect` extends past any side of `boundary`. */
+export function isRectOutsideBoundary(rect: Rect, boundary: Rect): boolean {
+  return (
+    rect.x < boundary.x ||
+    rect.y < boundary.y ||
+    rect.x + rect.width > boundary.x + boundary.width ||
+    rect.y + rect.height > boundary.y + boundary.height
+  );
 }
 
 export function getBedRectSize(bed: Pick<Bed, 'area_sqm' | 'length_m' | 'width_m'>, pxPerMeter: number): RectSize {

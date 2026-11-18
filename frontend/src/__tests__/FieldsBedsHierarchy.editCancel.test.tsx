@@ -430,7 +430,7 @@ describe('FieldsBedsHierarchy edit cancellation', () => {
 
     await waitFor(() => expect(screen.getByTestId('row-field--1700000000000')).toBeInTheDocument());
     await waitFor(() => expect(screen.getByTestId('mode-field--1700000000000')).toHaveTextContent('edit'));
-    expect(screen.getByTestId('row-count')).toHaveTextContent('1');
+    expect(screen.getByTestId('row-count')).toHaveTextContent('2'); // the location row plus the new parcel
     expect(onCreateFieldRequestHandled).toHaveBeenCalledTimes(1);
 
     rerender(
@@ -443,8 +443,8 @@ describe('FieldsBedsHierarchy edit cancellation', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByTestId('row-count')).toHaveTextContent('1');
-    expect(screen.getAllByRole('row')).toHaveLength(1);
+    expect(screen.getByTestId('row-count')).toHaveTextContent('2');
+    expect(screen.getAllByRole('row')).toHaveLength(2);
   });
 
   it('discards a completely empty new parcel row on blur without showing a validation error', async () => {

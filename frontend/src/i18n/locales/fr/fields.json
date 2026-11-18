@@ -62,6 +62,8 @@
     "exitFullscreen": "Quitter le plein écran",
     "zoomLevel": "Zoom : {{value}}×",
     "locationTitle": "Site : {{name}}",
+    "locationBoundaryLabel": "{{name}} · {{width}} × {{length}} m",
+    "fieldsOutsideLocation": "Au moins une parcelle dépasse la limite du site.",
     "details": {
       "field": "Détails de la parcelle",
       "bed": "Détails de la planche"

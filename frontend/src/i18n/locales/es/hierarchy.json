@@ -33,7 +33,8 @@
     "lengthNotANumber": "La longitud debe ser un número válido.",
     "widthNotANumber": "La anchura debe ser un número válido.",
     "duplicateFieldName": "Ya existe una parcela con este nombre en esta ubicación.",
-    "duplicateBedName": "Ya existe un bancal con este nombre en esta parcela."
+    "duplicateBedName": "Ya existe un bancal con este nombre en esta parcela.",
+    "locationDimensionPositive": "El largo y el ancho de la ubicación deben ser mayores que 0."
   },
   "confirmDelete": "¿Seguro que quieres eliminar esta entrada?",
   "footer": {
@@ -231,7 +232,6 @@
       "topLevel": "Nivel superior",
       "editTitle": "Editar: {{type}}",
       "createTitle": "Añadir: {{type}}",
-      "locationNoDimensions": "Las ubicaciones no tienen dimensiones propias.",
       "calculatedArea": "Superficie (calculada)",
       "discardTitle": "¿Descartar los cambios?",
       "discardMessage": "Tienes cambios sin guardar. ¿Descartarlos o seguir editando?",

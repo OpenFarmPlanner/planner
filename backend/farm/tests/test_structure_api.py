@@ -100,6 +100,35 @@ class StructureApiTest(ProjectApiTestCase):
         self.assertIsNone(update_response.data['soil_type'])
         self.assertIsNone(update_response.data['exposure'])
 
+    def test_location_dimensions_persist_validate_clear_and_give_gross_area(self):
+        """#1190: optional outer dimensions in metres; area is length × width."""
+        url = f'/openfarmplanner/api/locations/{self.location.id}/'
+        response = self.client.patch(url, {'length_m': 42.5, 'width_m': '18,4'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        response = self.client.patch(url, {'length_m': 42.5, 'width_m': 18.4}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data['length_m'], 42.5)
+        self.assertEqual(response.data['width_m'], 18.4)
+        self.assertEqual(response.data['area_sqm'], 782.0)
+
+        for invalid in (0, -3, 'nan', 'inf', 1e308, 200000):
+            with self.subTest(length=invalid):
+                response = self.client.patch(url, {'length_m': invalid}, format='json')
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertIn('length_m', response.data)
+        self.location.refresh_from_db()
+        self.assertEqual(self.location.length_m, 42.5)
+
+        response = self.client.patch(url, {'width_m': None}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data['width_m'])
+        self.assertIsNone(response.data['area_sqm'])
+        listed = self.client.get('/openfarmplanner/api/locations/').data
+        rows = listed['results'] if isinstance(listed, dict) else listed
+        row = next(item for item in rows if item['id'] == self.location.id)
+        self.assertEqual((row['length_m'], row['width_m'], row['area_sqm']), (42.5, None, None))
+
     def test_field_update_with_length_and_width_overwrites_area(self):
         response = self.client.put(
             f'/openfarmplanner/api/fields/{self.field.id}/',

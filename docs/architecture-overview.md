@@ -203,6 +203,9 @@ empty-response fixture without changing that backend contract.
 existing drag/layout APIs and geometry/orientation rules remain in place. The
 canvas waits for its saved layout before displaying a remembered camera; failed
 layout reads show a retry action rather than editable fallback geometry.
+A location with both outer dimensions also gets a non-interactive boundary
+rect (`getLocationBoundaryRect` / `isRectOutsideBoundary` in
+`graphicalLayoutUtils.ts`), see [`data-model.md`](./data-model.md).
 
 Pages can register labelled controls through `setTopbarWorkspaceControls` and
 `useTopbarWorkspaceControls`. RootLayout renders them beside its existing title

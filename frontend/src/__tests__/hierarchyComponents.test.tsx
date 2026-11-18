@@ -76,7 +76,7 @@ describe('hierarchy components and behaviors', () => {
       createBed({ id: 102, field: 12, name: 'Ebene Tief 2' }),
     ];
 
-    const rows = buildHierarchyRows(locations, fields, beds, new Set(['field-11', 'field-12']));
+    const rows = buildHierarchyRows(locations, fields, beds, new Set(['location-1', 'field-11', 'field-12']));
 
     expect(rows.filter((row) => row.type === 'field')).toHaveLength(2);
     expect(rows.filter((row) => row.name === 'Duplikat')).toHaveLength(2);
@@ -87,7 +87,7 @@ describe('hierarchy components and behaviors', () => {
     expect(buildHierarchyRows([], [], [], new Set())).toEqual([]);
 
     const rows = buildHierarchyRows([createLocation({ id: 5 })], [], [], new Set());
-    expect(rows).toHaveLength(0);
+    expect(rows).toMatchObject([{ id: 'location-5', type: 'location', hasChildren: false }]);
   });
 
   it('marks expandability only for rows with real children', () => {

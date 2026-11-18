@@ -33,7 +33,8 @@
     "lengthNotANumber": "Länge muss eine gültige Zahl sein.",
     "widthNotANumber": "Breite muss eine gültige Zahl sein.",
     "duplicateFieldName": "Eine Parzelle mit diesem Namen existiert in diesem Standort bereits.",
-    "duplicateBedName": "Ein Beet mit diesem Namen existiert in dieser Parzelle bereits."
+    "duplicateBedName": "Ein Beet mit diesem Namen existiert in dieser Parzelle bereits.",
+    "locationDimensionPositive": "Länge und Breite des Standorts müssen größer als 0 sein."
   },
   "confirmDelete": "Möchten Sie diesen Eintrag wirklich löschen?",
   "footer": {
@@ -218,7 +219,6 @@
       "topLevel": "Oberste Ebene",
       "editTitle": "{{type}} bearbeiten",
       "createTitle": "{{type}} hinzufügen",
-      "locationNoDimensions": "Standorte haben keine eigenen Maße.",
       "calculatedArea": "Fläche (berechnet)",
       "discardTitle": "Änderungen verwerfen?",
       "discardMessage": "Du hast ungespeicherte Änderungen. Möchtest du sie verwerfen oder weiter bearbeiten?",

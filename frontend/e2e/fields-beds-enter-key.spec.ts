@@ -88,10 +88,10 @@ test.describe('fields-beds Enter key behavior', () => {
     await page.waitForTimeout(800);
     await expect(page.getByText('TestBeet')).toBeVisible({ timeout: 5000 });
 
-    // Confirm the hierarchy: 2 data rows (field + bed)
+    // Confirm the hierarchy: 3 data rows (location + field + bed, #1190)
     const totalRows = await page.locator('[role="row"][data-id]').count();
     console.log('Total data rows:', totalRows);
-    expect(totalRows).toBe(2);
+    expect(totalRows).toBe(3);
 
     // Double-click the field's name cell to enter edit mode
     await page.locator('[role="row"][data-id]').filter({ hasText: 'FeldMitMasse' }).first()

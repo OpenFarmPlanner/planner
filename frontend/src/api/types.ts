@@ -1071,6 +1071,10 @@ export interface Location {
   exposure?: 'north' | 'south' | 'east' | 'west' | 'flat' | null;
   latitude?: number;
   longitude?: number;
+  /** Optional outer dimensions in metres; area_sqm is their read-only product (#1190). */
+  length_m?: number | null;
+  width_m?: number | null;
+  area_sqm?: number | null;
   notes?: string;
   created_at?: string;
   updated_at?: string;

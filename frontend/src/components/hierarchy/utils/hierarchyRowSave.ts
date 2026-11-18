@@ -287,12 +287,29 @@ async function saveLocationRow(
     throw new Error(t("validation.nameRequired"));
   }
 
+  // Optional outer dimensions (#1190): empty clears, a value must be > 0.
+  const existingDimensions = locations.find((locationItem) => locationItem.id === row.locationId);
+  const lengthM = row.length_m === undefined
+    ? existingDimensions?.length_m ?? null
+    : parseDimensionValue(row.length_m);
+  const widthM = row.width_m === undefined
+    ? existingDimensions?.width_m ?? null
+    : parseDimensionValue(row.width_m);
+  if (
+    lengthM === undefined || widthM === undefined
+    || (lengthM !== null && lengthM <= 0) || (widthM !== null && widthM <= 0)
+  ) {
+    throw new Error(t("validation.locationDimensionPositive"));
+  }
+
   const existingLocation = locations.find((locationItem) => locationItem.id === row.locationId);
   const updated = await locationAPI.update(row.locationId!, {
     ...(existingLocation ?? {}),
     id: row.locationId!,
     name: row.name,
     notes: row.notes,
+    length_m: lengthM,
+    width_m: widthM,
   });
 
   setLocations((previousLocations) =>
@@ -303,7 +320,13 @@ async function saveLocationRow(
     ),
   );
 
-  return { ...row, name: updated.data.name, notes: updated.data.notes };
+  return {
+    ...row,
+    name: updated.data.name,
+    notes: updated.data.notes,
+    length_m: updated.data.length_m,
+    width_m: updated.data.width_m,
+  };
 }
 
 export async function validateAndSaveHierarchyRow(

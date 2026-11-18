@@ -340,6 +340,13 @@ class DemoProjectServiceTests(TestCase):
         self.assertEqual(result.project.slug, DEMO_PROJECT_SLUG)
         self.assertTrue(ProjectMembership.objects.filter(user=result.user, project=result.project, role='admin').exists())
         self.assertEqual(Location.objects.filter(project=result.project).count(), 3)
+        # Every demo location is sized, with room for its plots and paths (#1190).
+        for location in Location.objects.filter(project=result.project).prefetch_related('fields'):
+            self.assertIsNotNone(location.area_sqm)
+            self.assertGreater(
+                location.area_sqm,
+                sum(field.length_m * field.width_m for field in location.fields.all()),
+            )
         self.assertEqual(Bed.objects.filter(project=result.project).count(), 20)
         self.assertEqual(Crop.objects.filter(project=result.project).count(), 30)
         self.assertEqual(PlantingPlan.objects.filter(project=result.project).count(), 67)
