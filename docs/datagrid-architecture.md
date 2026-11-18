@@ -34,6 +34,13 @@ blur, and its save handler reconciles that target with the returned ID.
 Otherwise the replacement discards the click and touch users have to tap the
 target cell twice. This does not delay or replay the pointer event.
 
+The hierarchy ends a row edit on any pointer down outside its table wrapper
+(`useHierarchyKeyboard.ts`). A select edit cell renders its options in a portal
+outside that wrapper, so a pointer down inside a listbox whose opener in the
+table controls it (`aria-controls`, `isInListboxControlledFrom` in
+`domEventTargets.ts`) counts as inside; otherwise the row edit ends before the
+picked option is applied (#1237).
+
 ## File map
 
 ```text

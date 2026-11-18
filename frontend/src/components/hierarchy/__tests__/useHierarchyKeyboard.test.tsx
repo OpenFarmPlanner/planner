@@ -589,6 +589,43 @@ describe('pointer outside the table', () => {
     expect(setTreeActive).not.toHaveBeenCalled();
   });
 
+  const mountListbox = (id: string) => {
+    const listbox = document.createElement('ul');
+    listbox.setAttribute('role', 'listbox');
+    listbox.id = id;
+    const option = document.createElement('li');
+    option.setAttribute('role', 'option');
+    listbox.append(option);
+    document.body.append(listbox);
+    return option;
+  };
+
+  it.each(['mousedown', 'touchstart'])('keeps the edit on %s in a listbox opened from the table', (type) => {
+    const { discardActiveRowEdit, setTreeActive, tableWrapper } = setup();
+    const combobox = document.createElement('div');
+    combobox.setAttribute('role', 'combobox');
+    combobox.setAttribute('aria-controls', 'site-condition-options');
+    tableWrapper.append(combobox);
+    const option = mountListbox('site-condition-options');
+
+    act(() => { option.dispatchEvent(new Event(type, { bubbles: true })); });
+
+    expect(discardActiveRowEdit).not.toHaveBeenCalled();
+    expect(setTreeActive).not.toHaveBeenCalled();
+  });
+
+  it('discards the edit on a listbox opened from elsewhere', () => {
+    const { discardActiveRowEdit } = setup();
+    const foreignCombobox = document.createElement('div');
+    foreignCombobox.setAttribute('aria-controls', 'toolbar-options');
+    document.body.append(foreignCombobox);
+    const option = mountListbox('toolbar-options');
+
+    act(() => { option.dispatchEvent(new Event('mousedown', { bubbles: true })); });
+
+    expect(discardActiveRowEdit).toHaveBeenCalledTimes(1);
+  });
+
   it('treats a pointer down with no mounted wrapper as outside', () => {
     const { discardActiveRowEdit } = setup();
 

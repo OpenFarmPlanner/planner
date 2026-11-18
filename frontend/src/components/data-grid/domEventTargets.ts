@@ -23,3 +23,22 @@ export const getRowIdFromElement = (target: EventTarget | null): GridRowId | nul
   const rowElement = closestContextMenuElement(target, '[role="row"][data-id]');
   return rowElement?.dataset.id ?? null;
 };
+
+/**
+ * Whether the target lies in a listbox popup (a select's or autocomplete's
+ * option list, which MUI renders in a portal outside the grid) whose opener
+ * inside `container` controls it via `aria-controls`. Click-outside handlers
+ * treat such targets as inside, so picking an option does not end the edit.
+ */
+export const isInListboxControlledFrom = (target: EventTarget | null, container: Element): boolean => {
+  if (!(target instanceof Element)) {
+    return false;
+  }
+  const listboxId = target.closest('[role="listbox"][id]')?.id;
+  if (!listboxId) {
+    return false;
+  }
+  return Array.from(container.querySelectorAll('[aria-controls]')).some((opener) =>
+    opener.getAttribute('aria-controls')?.split(/\s+/).includes(listboxId),
+  );
+};

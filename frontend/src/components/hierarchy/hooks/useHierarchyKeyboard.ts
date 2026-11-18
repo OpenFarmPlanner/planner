@@ -4,6 +4,7 @@ import type { HierarchyRow } from "../utils/types";
 import { getHierarchyKeyboardAction } from "../utils/hierarchyKeyboardNavigation";
 import { isTypingInEditableElement } from "../../../hooks/useKeyboardShortcuts";
 import { isPrimaryModifierOnly } from "../../../utils/platform";
+import { isInListboxControlledFrom } from "../../data-grid/domEventTargets";
 
 interface UseHierarchyKeyboardParams {
   contextMenuState: { row: HierarchyRow } | null;
@@ -49,10 +50,13 @@ export function useHierarchyKeyboard({
   // keyboard shortcuts so its dependency array stays minimal.
   useEffect(() => {
     const handleDocumentPointerDown = (event: MouseEvent | TouchEvent) => {
-      if (!tableWrapperRef.current?.contains(event.target as Node)) {
-        discardActiveRowEdit();
-        setTreeActive(false);
-      }
+      const tableWrapper = tableWrapperRef.current;
+      if (tableWrapper?.contains(event.target as Node)) return;
+      // An edit cell's select renders its options in a portal outside the
+      // table; picking one must not end the row edit before the value is set.
+      if (tableWrapper && isInListboxControlledFrom(event.target, tableWrapper)) return;
+      discardActiveRowEdit();
+      setTreeActive(false);
     };
 
     // Insert mirrors the row's primary, highlighted "create" context menu
