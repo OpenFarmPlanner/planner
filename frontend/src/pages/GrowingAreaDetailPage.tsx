@@ -57,6 +57,7 @@ import {
 import { INHERITED_SITE_CONDITION_FIELDS } from '../components/hierarchy/utils/siteConditions';
 import {
   getInheritedSourceLabel,
+  getSiteConditionFieldHelp,
   getSiteConditionFieldLabel,
   getSiteConditionValueLabel,
 } from '../components/hierarchy/siteConditionLabels';
@@ -355,6 +356,7 @@ function GrowingAreaReadView({
         key={field}
         testId={`detail-${field}`}
         label={getSiteConditionFieldLabel(t, field)}
+        info={getSiteConditionFieldHelp(t, field)}
         value={getSiteConditionValueLabel(t, field, condition.value)}
         caption={getInheritedSourceLabel(t, condition, type)}
       />

@@ -2,6 +2,7 @@ import { useId } from 'react';
 import { Box, Chip, Typography } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material';
 import CheckIcon from '@mui/icons-material/Check';
+import { FieldInfoIcon } from '../../crops/FieldInfoIcon';
 
 export interface FilterChipOption<T extends string | number> {
   value: T;
@@ -14,6 +15,8 @@ interface FilterChipGroupProps<T extends string | number> {
   selected: readonly T[];
   onChange: (selected: T[]) => void;
   hint?: string;
+  /** Short explanation of the group, shown in an info tooltip next to its label. */
+  info?: string;
 }
 
 const fieldLabelSx: SxProps<Theme> = { mb: 0.75, fontWeight: 600 };
@@ -25,6 +28,7 @@ export function FilterChipGroup<T extends string | number>({
   selected,
   onChange,
   hint,
+  info,
 }: FilterChipGroupProps<T>) {
   const labelId = useId();
   const toggle = (value: T): void => {
@@ -33,9 +37,20 @@ export function FilterChipGroup<T extends string | number>({
 
   return (
     <Box role="group" aria-labelledby={labelId}>
-      <Typography id={labelId} variant="body2" component="div" sx={fieldLabelSx}>
-        {label}
-      </Typography>
+      {info ? (
+        // The icon stays outside the labelling element, so the help text is
+        // not part of the group's accessible name.
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.75 }}>
+          <Typography id={labelId} variant="body2" component="div" sx={{ fontWeight: 600 }}>
+            {label}
+          </Typography>
+          <FieldInfoIcon title={info} />
+        </Box>
+      ) : (
+        <Typography id={labelId} variant="body2" component="div" sx={fieldLabelSx}>
+          {label}
+        </Typography>
+      )}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
         {options.map((option) => {
           const isSelected = selected.includes(option.value);

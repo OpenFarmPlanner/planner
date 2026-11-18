@@ -50,6 +50,8 @@ test.describe('growing areas site conditions', () => {
     await expect(page.getByRole('columnheader', { name: 'Licht' })).toHaveCount(0);
 
     await toolbar.getByRole('button', { name: 'Filter' }).click();
+    // The moisture filter explains that it means the typical long-term moisture.
+    await expect(page.getByRole('dialog').getByRole('img', { name: /langfristig üblicherweise/ })).toBeVisible();
     await page.getByRole('dialog').getByRole('button', { name: 'Sonnig' }).click();
     await page.keyboard.press('Escape');
 

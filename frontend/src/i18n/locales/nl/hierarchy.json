@@ -268,7 +268,7 @@
   "siteConditions": {
     "labels": {
       "light_condition": "Licht",
-      "soil_moisture": "Bodemvocht",
+      "soil_moisture": "Vochtigheid",
       "irrigation": "Beregening beschikbaar",
       "soil_type": "Grondsoort",
       "soil_description": "Bodembeschrijving",
@@ -305,7 +305,10 @@
       "field": "Overgenomen van perceel ‘{{name}}’",
       "bed": "Overgenomen van bed ‘{{name}}’"
     },
-    "resetToInherited": "Terugzetten op overgenomen waarde"
+    "resetToInherited": "Terugzetten op overgenomen waarde",
+    "help": {
+      "soil_moisture": "Hoe vochtig de bodem hier op lange termijn gewoonlijk is, niet het actueel gemeten vochtgehalte."
+    }
   },
   "details": {
     "open": {

@@ -284,7 +284,7 @@
   "siteConditions": {
     "labels": {
       "light_condition": "Luce",
-      "soil_moisture": "Umidità del suolo",
+      "soil_moisture": "Umidità",
       "irrigation": "Irrigazione disponibile",
       "soil_type": "Tipo di suolo",
       "soil_description": "Descrizione del suolo",
@@ -301,7 +301,7 @@
       },
       "soil_moisture": {
         "dry": "Secco",
-        "normal": "Normale",
+        "normal": "Fresco",
         "moist": "Umido"
       },
       "irrigation": {
@@ -321,7 +321,10 @@
       "field": "Ereditato dall’appezzamento «{{name}}»",
       "bed": "Ereditato dall’aiuola «{{name}}»"
     },
-    "resetToInherited": "Ripristina il valore ereditato"
+    "resetToInherited": "Ripristina il valore ereditato",
+    "help": {
+      "soil_moisture": "L’umidità abituale del suolo nel lungo periodo in questo punto, non quella misurata al momento."
+    }
   },
   "details": {
     "open": {

@@ -284,7 +284,7 @@
   "siteConditions": {
     "labels": {
       "light_condition": "Lumière",
-      "soil_moisture": "Humidité du sol",
+      "soil_moisture": "Humidité",
       "irrigation": "Irrigation disponible",
       "soil_type": "Type de sol",
       "soil_description": "Description du sol",
@@ -301,7 +301,7 @@
       },
       "soil_moisture": {
         "dry": "Sec",
-        "normal": "Normal",
+        "normal": "Frais",
         "moist": "Humide"
       },
       "irrigation": {
@@ -321,7 +321,10 @@
       "field": "Hérité de la parcelle « {{name}} »",
       "bed": "Hérité de la planche « {{name}} »"
     },
-    "resetToInherited": "Rétablir la valeur héritée"
+    "resetToInherited": "Rétablir la valeur héritée",
+    "help": {
+      "soil_moisture": "L’humidité habituelle du sol à long terme à cet endroit, et non l’humidité mesurée actuellement."
+    }
   },
   "details": {
     "open": {

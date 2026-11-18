@@ -268,7 +268,7 @@
   "siteConditions": {
     "labels": {
       "light_condition": "Licht",
-      "soil_moisture": "Bodenfeuchte",
+      "soil_moisture": "Feuchtigkeit",
       "irrigation": "Bewässerung verfügbar",
       "soil_type": "Bodenart",
       "soil_description": "Bodenbeschreibung",
@@ -285,7 +285,7 @@
       },
       "soil_moisture": {
         "dry": "Trocken",
-        "normal": "Normal",
+        "normal": "Frisch",
         "moist": "Feucht"
       },
       "irrigation": {
@@ -305,7 +305,10 @@
       "field": "Übernommen von der Parzelle „{{name}}“",
       "bed": "Übernommen vom Beet „{{name}}“"
     },
-    "resetToInherited": "Auf übernommenen Wert zurücksetzen"
+    "resetToInherited": "Auf übernommenen Wert zurücksetzen",
+    "help": {
+      "soil_moisture": "Wie feucht der Boden hier langfristig üblicherweise ist, nicht die aktuell gemessene Feuchtigkeit."
+    }
   },
   "details": {
     "open": {

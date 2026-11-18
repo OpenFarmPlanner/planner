@@ -23,6 +23,14 @@ export function getSiteConditionFieldLabel(t: TFunction, field: string): string 
   return t(`hierarchy:siteConditions.labels.${field}`);
 }
 
+/** Site conditions whose label needs an explanation (`siteConditions.help`). */
+const FIELDS_WITH_HELP: ReadonlySet<string> = new Set(['soil_moisture']);
+
+/** Tooltip text explaining a site-condition field, or undefined when it needs none. */
+export function getSiteConditionFieldHelp(t: TFunction, field: string): string | undefined {
+  return FIELDS_WITH_HELP.has(field) ? t(`hierarchy:siteConditions.help.${field}`) : undefined;
+}
+
 /** "Inherited from parcel „North“" for an inherited value, otherwise null. */
 export function getInheritedSourceLabel(
   t: TFunction,

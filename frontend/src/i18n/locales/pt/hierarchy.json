@@ -284,7 +284,7 @@
   "siteConditions": {
     "labels": {
       "light_condition": "Luz",
-      "soil_moisture": "Humidade do solo",
+      "soil_moisture": "Humidade",
       "irrigation": "Rega disponível",
       "soil_type": "Tipo de solo",
       "soil_description": "Descrição do solo",
@@ -301,7 +301,7 @@
       },
       "soil_moisture": {
         "dry": "Seco",
-        "normal": "Normal",
+        "normal": "Fresco",
         "moist": "Húmido"
       },
       "irrigation": {
@@ -321,7 +321,10 @@
       "field": "Herdado da parcela «{{name}}»",
       "bed": "Herdado do canteiro «{{name}}»"
     },
-    "resetToInherited": "Repor o valor herdado"
+    "resetToInherited": "Repor o valor herdado",
+    "help": {
+      "soil_moisture": "A humidade habitual do solo a longo prazo neste local, não a humidade medida atualmente."
+    }
   },
   "details": {
     "open": {

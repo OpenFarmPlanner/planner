@@ -10,7 +10,11 @@ import { ActiveFilterChips, type ActiveFilterChip } from '../../filters/ActiveFi
 import type { GrowingAreaSearchControls } from '../hooks/useGrowingAreaSearch';
 import { NOT_SPECIFIED_FILTER_VALUE, type GrowingAreaFilterGroup } from '../utils/growingAreaSearch';
 import { INLINE_SITE_CONDITION_FIELDS, SITE_CONDITION_OPTIONS, type InlineSiteConditionField } from '../utils/siteConditions';
-import { getSiteConditionFieldLabel, getSiteConditionValueLabel } from '../siteConditionLabels';
+import {
+  getSiteConditionFieldHelp,
+  getSiteConditionFieldLabel,
+  getSiteConditionValueLabel,
+} from '../siteConditionLabels';
 
 interface FilterOptions {
   locations: FilterChipOption<number>[];
@@ -74,6 +78,7 @@ function GrowingAreaFilterFields({ search, options }: { search: GrowingAreaSearc
         <FilterChipGroup
           key={field}
           label={getSiteConditionFieldLabel(t, field)}
+          info={getSiteConditionFieldHelp(t, field)}
           options={options.conditions[field]}
           selected={filters[field]}
           onChange={(selected) => setFilters({ ...filters, [field]: selected })}

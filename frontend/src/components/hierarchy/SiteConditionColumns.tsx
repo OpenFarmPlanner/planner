@@ -10,6 +10,7 @@ import {
 } from './utils/siteConditions';
 import {
   getInheritedSourceLabel,
+  getSiteConditionFieldHelp,
   getSiteConditionFieldLabel,
   getSiteConditionValueLabel,
 } from './siteConditionLabels';
@@ -82,6 +83,7 @@ export function createSiteConditionColumns(t: TFunction): GridColDef<HierarchyRo
   return INLINE_SITE_CONDITION_FIELDS.map((field) => ({
     field,
     headerName: getSiteConditionFieldLabel(t, field),
+    description: getSiteConditionFieldHelp(t, field),
     width: 150,
     editable: true,
     sortable: false,
