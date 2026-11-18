@@ -119,13 +119,17 @@ erDiagram
   by hand, so such a manually named single location was renamed as well.
   Imports, project copies and the demo create their own locations and get no
   extra one.
+- The Growing Areas list always shows a row for every location, including the
+  only one of a single-location project, so its name, dimensions and row
+  actions stay reachable; the graphic view names the location as well (#1190).
 - A location may carry optional outer dimensions (`length_m`, `width_m`, in
   metres, both > 0). Its `area_sqm` is read-only: their product when both are
   set, otherwise none; there is no stored location area and the dimensions are
   not checked against the fields inside (#1190). The list view edits them on
   the location row. The graphical view draws them as a dashed, labelled outer
-  boundary at the layout origin (width horizontal, length vertical, like a
-  field) and includes it when fitting the view. Fields keep their own layout
+  boundary starting at the top-left corner of the plots' bounding box (width
+  horizontal, length vertical, like a field), so it keeps its place relative to
+  saved plot positions, and includes it when fitting the view. Fields keep their own layout
   positions; one that crosses the boundary gets a warning-coloured outline and
   the canvas shows a hint. Without both dimensions nothing is drawn.
 - `BedLayout`/`FieldLayout` hold persisted x/y coordinates for the

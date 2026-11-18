@@ -219,7 +219,6 @@
       "topLevel": "Hoogste niveau",
       "editTitle": "{{type}} bewerken",
       "createTitle": "{{type}} toevoegen",
-      "locationNoDimensions": "Locaties hebben geen eigen afmetingen.",
       "calculatedArea": "Oppervlakte (berekend)",
       "discardTitle": "Wijzigingen verwerpen?",
       "discardMessage": "Je hebt niet-opgeslagen wijzigingen. Wil je ze verwerpen of verder bewerken?",

@@ -232,7 +232,6 @@
       "topLevel": "Livello superiore",
       "editTitle": "Modifica {{type}}",
       "createTitle": "Aggiungi {{type}}",
-      "locationNoDimensions": "I siti non hanno dimensioni proprie.",
       "calculatedArea": "Superficie (calcolata)",
       "discardTitle": "Scartare le modifiche?",
       "discardMessage": "Ci sono modifiche non salvate. Vuoi scartarle o continuare a modificare?",

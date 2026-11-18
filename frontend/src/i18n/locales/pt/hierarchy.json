@@ -232,7 +232,6 @@
       "topLevel": "Nível superior",
       "editTitle": "Editar {{type}}",
       "createTitle": "Adicionar {{type}}",
-      "locationNoDimensions": "As explorações não têm dimensões próprias.",
       "calculatedArea": "Área (calculada)",
       "discardTitle": "Descartar alterações?",
       "discardMessage": "Existem alterações não guardadas. Descartar ou continuar a editar?",

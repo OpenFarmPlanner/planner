@@ -796,6 +796,8 @@ def _create_area_hierarchy(
             description=text['locations']['hofgarten'][1],
             soil_type='loam',
             exposure='south',
+            length_m=42.0,
+            width_m=24.0,
             project=project,
         ),
         'bachacker': Location.objects.create(
@@ -803,6 +805,8 @@ def _create_area_hierarchy(
             description=text['locations']['bachacker'][1],
             soil_type='loam',
             exposure='flat',
+            length_m=50.0,
+            width_m=20.0,
             project=project,
         ),
         'lindenhof': Location.objects.create(
@@ -810,6 +814,8 @@ def _create_area_hierarchy(
             description=text['locations']['lindenhof'][1],
             soil_type='loam',
             exposure='flat',
+            length_m=55.0,
+            width_m=24.0,
             project=project,
         ),
     }

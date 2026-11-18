@@ -354,3 +354,35 @@ test('draws a sized location boundary and flags plots that cross it', async ({ p
     await page.screenshot({ path: testInfo.outputPath(`boundary-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
   }
 });
+
+test('shows the only location with its name and gross area in the list and the graphic', async ({ page, request }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await loginWithDeterministicProject(page, request, `single-location-${testInfo.workerIndex}`, { loginAsAdmin: true });
+  const { results: [location] } = await apiRequest<{ results: { id: number; name: string }[] }>(page, 'GET', '/locations/');
+  await apiRequest(page, 'PATCH', `/locations/${location.id}/`, { length_m: 20, width_m: 12.5 });
+  await apiRequest(page, 'POST', '/fields/', { name: 'Einzige Parzelle', location: location.id, width_m: 8, length_m: 15 });
+  await page.goto('/app/fields-beds');
+  for (const viewport of [
+    { width: 1440, height: 900 }, { width: 1024, height: 900 },
+    { width: 768, height: 900 }, { width: 375, height: 800 }, { width: 800, height: 375 },
+  ]) {
+    await page.setViewportSize(viewport);
+    const locationRow = page.locator(`[role="row"][data-id="location-${location.id}"]`);
+    const locationCard = page.locator(`[data-hierarchy-mobile-row-id="location-${location.id}"]`);
+    const visibleLocation = locationRow.or(locationCard).filter({ visible: true }).first();
+    await expect(visibleLocation).toBeVisible();
+    await expect(visibleLocation).toContainText(location.name);
+    await expect(page.getByText('Einzige Parzelle', { exact: true }).filter({ visible: true }).first()).toBeVisible();
+    if (await locationRow.isVisible()) {
+      await expect(locationRow.locator('[data-field="area_sqm"]')).toContainText('250');
+    }
+    await page.screenshot({ path: testInfo.outputPath(`single-location-list-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+  await expect(page.getByRole('combobox', { name: 'Standort', exact: true })).toHaveCount(0);
+  await expect(page.getByText(`Standort: ${location.name}`, { exact: true }).first()).toBeVisible();
+  await expect.poll(async () => (await canvasRects(page, `location-boundary-${location.id}`)).length).toBe(1);
+  await expect(page.getByTestId('location-boundary-overflow-hint')).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('single-location-graphic-1440.png'), animations: 'disabled' });
+});

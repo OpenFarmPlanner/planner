@@ -378,32 +378,47 @@ export default function GraphicalFields({
       defaultY: originY + arrangement.positions[index].y,
     }));
 
-    const storedBoundary = getLocationBoundaryRect(location, FIELD_WORLD_PX_PER_METER, {
-      x: originX,
-      y: originY,
-    });
-    const contentHeight = Math.max(
-      WORKSPACE_MIN_HEIGHT,
-      DEFAULT_STAGE_HEIGHT,
-      originY + arrangement.height + LOCATION_LAYOUT_PADDING,
-      storedBoundary ? storedBoundary.y + storedBoundary.height + LOCATION_LAYOUT_PADDING : 0,
+    const fieldsContentSize = {
+      width: Math.max(
+        WORKSPACE_MIN_WIDTH,
+        ...defaultFieldRects.map(
+          (rect) =>
+            rect.width + rect.defaultX + LOCATION_LAYOUT_PADDING,
+        ),
+      ),
+      height: Math.max(
+        WORKSPACE_MIN_HEIGHT,
+        DEFAULT_STAGE_HEIGHT,
+        originY + arrangement.height + LOCATION_LAYOUT_PADDING,
+      ),
+    };
+    const storedFieldRects = placeFieldRects(
+      defaultFieldRects,
+      layoutsByField,
+      fieldsContentSize,
+    );
+    // The boundary starts at the plots' top-left corner, so it stays put
+    // relative to saved plot positions (#1190).
+    const storedFieldBounds = getContentBoundsFromRects(storedFieldRects);
+    const storedBoundary = getLocationBoundaryRect(
+      location,
+      FIELD_WORLD_PX_PER_METER,
+      storedFieldBounds
+        ? { x: storedFieldBounds.minX, y: storedFieldBounds.minY }
+        : { x: originX, y: originY },
     );
     const contentWidth = Math.max(
-      WORKSPACE_MIN_WIDTH,
-      ...defaultFieldRects.map(
-        (rect) =>
-          rect.width + rect.defaultX + LOCATION_LAYOUT_PADDING,
-      ),
+      fieldsContentSize.width,
       storedBoundary ? storedBoundary.x + storedBoundary.width + LOCATION_LAYOUT_PADDING : 0,
+    );
+    const contentHeight = Math.max(
+      fieldsContentSize.height,
+      storedBoundary ? storedBoundary.y + storedBoundary.height + LOCATION_LAYOUT_PADDING : 0,
     );
     const rotation = rotationByLocation[location.id] ?? DEFAULT_GRAPHICAL_ROTATION;
     const storedContentSize = { width: contentWidth, height: contentHeight };
     const rotatedContent = rotateRect({ x: 0, y: 0, ...storedContentSize }, storedContentSize, rotation);
-    const fieldViewModels = placeFieldRects(
-      defaultFieldRects,
-      layoutsByField,
-      { width: contentWidth, height: contentHeight },
-    ).map(rect => rotateRect(rect, storedContentSize, rotation));
+    const fieldViewModels = storedFieldRects.map(rect => rotateRect(rect, storedContentSize, rotation));
     const boundary = storedBoundary
       ? rotateRect(storedBoundary, storedContentSize, rotation)
       : null;

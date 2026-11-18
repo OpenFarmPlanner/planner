@@ -448,12 +448,13 @@ describe('FieldsBedsHierarchy keyboard navigation', () => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'T', altKey: true, bubbles: true }));
     });
 
+    // The location row is the first row, also for a single location (#1190).
     await waitFor(() =>
-      expect(screen.getByTestId('row-field-1')).toHaveAttribute('data-focused', 'true'),
+      expect(screen.getByTestId('row-location-1')).toHaveAttribute('data-focused', 'true'),
     );
-    expect(screen.getByTestId('row-field-1')).toHaveAttribute('data-selected', 'false');
+    expect(screen.getByTestId('row-location-1')).toHaveAttribute('data-selected', 'false');
     expect(screen.getByTestId('row-field-2')).toHaveAttribute('data-focused', 'false');
-    expect(getSetCellFocusMock()).toHaveBeenLastCalledWith('field-1', 'name');
+    expect(getSetCellFocusMock()).toHaveBeenLastCalledWith('location-1', 'name');
   });
 
   it('does not select or edit calculated area cells on click', async () => {
@@ -505,21 +506,20 @@ describe('FieldsBedsHierarchy keyboard navigation', () => {
 
   it('ArrowUp does not move past the first row', async () => {
     renderHierarchy();
-    // With a single location the hierarchy renders fields directly without a location header,
-    // so field-1 is the first row in the flat list.
-    await waitFor(() => expect(screen.getByTestId('row-field-1')).toBeInTheDocument());
+    // The only location has its own row (#1190), so it is the first row.
+    await waitFor(() => expect(screen.getByTestId('row-location-1')).toBeInTheDocument());
 
-    // Focus the first field.
     await act(async () => { fireEvent.click(screen.getByTestId('select-field-1-name')); });
 
-    // Pressing up multiple times should keep field-1 focused without selecting it.
+    // The first press reaches the location row, further presses keep it focused.
+    await pressArrowUp();
     await pressArrowUp();
     await pressArrowUp();
 
     await waitFor(() =>
-      expect(screen.getByTestId('row-field-1')).toHaveAttribute('data-focused', 'true'),
+      expect(screen.getByTestId('row-location-1')).toHaveAttribute('data-focused', 'true'),
     );
-    expect(screen.getByTestId('row-field-1')).toHaveAttribute('data-selected', 'false');
+    expect(screen.getByTestId('row-location-1')).toHaveAttribute('data-selected', 'false');
   });
 
   it(`${FIELD_COUNT} rapid ArrowDown presses cause at most ${FIELD_COUNT} React updates`, async () => {
@@ -914,6 +914,12 @@ describe('FieldsBedsHierarchy keyboard navigation', () => {
     await act(async () => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'T', altKey: true, bubbles: true }));
     });
+
+    // Alt+T lands on the location row; move down to field-1.
+    await waitFor(() =>
+      expect(screen.getByTestId('row-location-1')).toHaveAttribute('data-focused', 'true'),
+    );
+    await pressArrowDown();
 
     // field-1 is focused but NOT selected and NOT in edit mode.
     await waitFor(() =>

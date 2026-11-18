@@ -43,6 +43,10 @@ fills the available canvas. Select another, zoom/pan/rotate, then switch between
 List and Graphic: the selected location and its camera stay intact. Edit graphic
 in the same topbar applies to the selected location only; Add location remains
 available through the existing add action/menu. Fullscreen stays optional.
+All three locations carry outer dimensions (Hofgarten 24 × 42 m, Acker am Bach
+20 × 50 m, Pachtacker Lindenhof 24 × 55 m), so the graphic draws each location's
+dashed boundary with free space around the saved plot positions and the list
+shows their gross area (#1190).
 
 The location selector and editing action are absent in List mode. At narrower
 widths the shared topbar places graphical controls and the add action in a

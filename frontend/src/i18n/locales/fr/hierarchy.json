@@ -232,7 +232,6 @@
       "topLevel": "Niveau supérieur",
       "editTitle": "Modifier : {{type}}",
       "createTitle": "Ajouter : {{type}}",
-      "locationNoDimensions": "Les sites n'ont pas de dimensions propres.",
       "calculatedArea": "Surface (calculée)",
       "discardTitle": "Abandonner les modifications ?",
       "discardMessage": "Vous avez des modifications non enregistrées. Les abandonner ou continuer la modification ?",

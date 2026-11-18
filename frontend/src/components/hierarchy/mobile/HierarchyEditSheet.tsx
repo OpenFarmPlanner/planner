@@ -143,9 +143,6 @@ export function HierarchyEditSheet({
   useOverlayHistory({ open, onClose: requestClose, historyKey: "hierarchyEditSheet" });
 
   const liveArea = useMemo(() => {
-    if (nodeType !== "field" && nodeType !== "bed") {
-      return undefined;
-    }
     const parsedLength = parseLocalizedNumber(values.length, locale);
     const parsedWidth = parseLocalizedNumber(values.width, locale);
     const probeRow: HierarchyRow = {
@@ -295,43 +292,35 @@ export function HierarchyEditSheet({
               autoFocus={mode === "create"}
             />
 
-            {nodeType === "field" || nodeType === "bed" ? (
-              <>
-                <Stack direction="row" spacing={2}>
-                  <TextField
-                    sx={{ flex: 1 }}
-                    label={t("hierarchy:columns.length")}
-                    value={values.length}
-                    onChange={(event) => setValues((prev) => ({ ...prev, length: event.target.value }))}
-                    error={Boolean(fieldErrors.length)}
-                    helperText={fieldErrors.length}
-                    slotProps={{ htmlInput: { inputMode: "decimal" } }}
-                  />
-                  <TextField
-                    sx={{ flex: 1 }}
-                    label={t("hierarchy:columns.width")}
-                    value={values.width}
-                    onChange={(event) => setValues((prev) => ({ ...prev, width: event.target.value }))}
-                    error={Boolean(fieldErrors.width)}
-                    helperText={fieldErrors.width}
-                    slotProps={{ htmlInput: { inputMode: "decimal" } }}
-                  />
-                </Stack>
-                <Typography variant="body2" color={fieldErrors.area ? "error" : "text.secondary"}>
-                  {t("hierarchy:mobile.sheet.calculatedArea")}:{" "}
-                  {liveArea !== undefined
-                    ? `${formatLocalizedNumberForInput(liveArea, locale)} ${t("common:units.squareMeters")}`
-                    : "—"}
-                </Typography>
-                {fieldErrors.area ? (
-                  <Typography variant="body2" color="error">{fieldErrors.area}</Typography>
-                ) : null}
-              </>
-            ) : (
-              <Typography color="text.secondary">
-                {t("hierarchy:mobile.sheet.locationNoDimensions")}
-              </Typography>
-            )}
+            <Stack direction="row" spacing={2}>
+              <TextField
+                sx={{ flex: 1 }}
+                label={t("hierarchy:columns.length")}
+                value={values.length}
+                onChange={(event) => setValues((prev) => ({ ...prev, length: event.target.value }))}
+                error={Boolean(fieldErrors.length)}
+                helperText={fieldErrors.length}
+                slotProps={{ htmlInput: { inputMode: "decimal" } }}
+              />
+              <TextField
+                sx={{ flex: 1 }}
+                label={t("hierarchy:columns.width")}
+                value={values.width}
+                onChange={(event) => setValues((prev) => ({ ...prev, width: event.target.value }))}
+                error={Boolean(fieldErrors.width)}
+                helperText={fieldErrors.width}
+                slotProps={{ htmlInput: { inputMode: "decimal" } }}
+              />
+            </Stack>
+            <Typography variant="body2" color={fieldErrors.area ? "error" : "text.secondary"}>
+              {t("hierarchy:mobile.sheet.calculatedArea")}:{" "}
+              {liveArea !== undefined
+                ? `${formatLocalizedNumberForInput(liveArea, locale)} ${t("common:units.squareMeters")}`
+                : "—"}
+            </Typography>
+            {fieldErrors.area ? (
+              <Typography variant="body2" color="error">{fieldErrors.area}</Typography>
+            ) : null}
 
             <TextField
               fullWidth

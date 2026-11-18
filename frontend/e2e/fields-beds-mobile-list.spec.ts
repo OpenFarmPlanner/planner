@@ -12,10 +12,8 @@ interface SeededHierarchy {
 }
 
 /**
- * Seeds a second location (so the hierarchy renders a Standort level at
- * all - a single location collapses straight to Parzelle as the top level,
- * same as desktop) plus a Parzelle/Beet pair with known dimensions under the
- * first one.
+ * Seeds two locations next to the project's own first one, plus a
+ * Parzelle/Beet pair with known dimensions under the first seeded one.
  */
 async function seedHierarchy(page: Page, prefix: string): Promise<SeededHierarchy> {
   const location = await apiRequest<LocationResponse>(page, 'POST', '/locations/', { name: `${prefix} Standort` });
@@ -77,6 +75,21 @@ test.describe('fields-beds mobile list', () => {
     await expect(dialog).toBeVisible();
     await expect(dialog.getByText('Oberste Ebene')).toBeVisible();
     await expect(dialog.getByRole('heading', { name: 'Standort bearbeiten' })).toBeVisible();
+
+    // Locations have optional outer dimensions (#1190): positive values only.
+    const length = dialog.getByLabel('Länge (m)', { exact: true });
+    const width = dialog.getByLabel('Breite (m)', { exact: true });
+    await length.fill('0');
+    await width.fill('12');
+    await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
+    await expect(dialog.getByText('Länge und Breite des Standorts müssen größer als 0 sein.')).toBeVisible();
+    await length.fill('30,5');
+    await expect(dialog.getByText(/366/)).toBeVisible();
+    await page.screenshot({ path: test.info().outputPath('location-sheet-dimensions.png'), animations: 'disabled' });
+    await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
+    await expect(dialog).toBeHidden();
+    const saved = await apiRequest<{ length_m: number; width_m: number; area_sqm: number }>(page, 'GET', `/locations/${location.id}/`);
+    expect([saved.length_m, saved.width_m, saved.area_sqm]).toEqual([30.5, 12, 366]);
   });
 
   test('tapping a Parzelle row opens the sheet with the right breadcrumb and title', async ({ page, request }) => {
