@@ -62,7 +62,9 @@ class LocationSerializer(serializers.ModelSerializer):
         if value is not None and value <= 0:
             raise serializers.ValidationError(f'{label} must be greater than 0.')
         if value is not None and value > MAX_LOCATION_DIMENSION_M:
-            raise serializers.ValidationError(f'{label} must not exceed {MAX_LOCATION_DIMENSION_M:g} m.')
+            raise serializers.ValidationError(
+                f'{label} must not exceed {MAX_LOCATION_DIMENSION_M:g} m.'
+            )
         return value
 
     def validate_length_m(self, value: float | None) -> float | None:
