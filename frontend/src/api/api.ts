@@ -58,6 +58,8 @@ import type {
   BedLayoutEntry,
   FieldLayoutEntry,
   LocationLayoutsResponse,
+  LocationLayoutsPayload,
+  LocationBoundaryOrigin,
   CompanionImportPreview,
   CropImportApplyResult,
   CropImportIdentity,
@@ -518,7 +520,7 @@ export const seasonSetupAPI = {
 
 export const layoutAPI = {
   listByLocation: (locationId: number) => http.get<LocationLayoutsResponse>(`/locations/${locationId}/layouts/`),
-  saveByLocation: (locationId: number, payload: { bed_layouts: BedLayoutEntry[]; field_layouts: FieldLayoutEntry[] }) =>
+  saveByLocation: (locationId: number, payload: LocationLayoutsPayload) =>
     http.put<LocationLayoutsResponse>(`/locations/${locationId}/layouts/`, payload),
 };
 
@@ -794,6 +796,8 @@ export type {
   BedLayoutEntry,
   FieldLayoutEntry,
   LocationLayoutsResponse,
+  LocationLayoutsPayload,
+  LocationBoundaryOrigin,
   CropCompanion,
   CropSupplierData,
 };

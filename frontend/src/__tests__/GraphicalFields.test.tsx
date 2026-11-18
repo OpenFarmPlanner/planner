@@ -3,12 +3,13 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { act, useState, type ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import GraphicalFields from "../pages/GraphicalFields";
-import type { BedLayoutEntry, FieldLayoutEntry } from "../api/api";
+import type { BedLayoutEntry, FieldLayoutEntry, LocationBoundaryOrigin } from "../api/api";
 import type { GraphicalCameraState } from "../pages/graphicalFieldsGeometry";
 
 interface LayoutData {
   bed_layouts: BedLayoutEntry[];
   field_layouts: FieldLayoutEntry[];
+  location_boundary?: LocationBoundaryOrigin | null;
 }
 
 const mockUseHierarchyData = vi.fn();
@@ -888,6 +889,173 @@ describe("GraphicalFields", async () => {
       expect(Number(moved.getAttribute("data-y"))).not.toBe(startPosition.y);
     });
   }, 15000);
+
+  describe("location boundary", () => {
+    // Field 10 is 20 × 40 m, i.e. 360 × 720 stored canvas units at 18 per metre.
+    const FIELD_SIZE = { width: 360, height: 720 };
+    const withLocationSize = (width_m: number, length_m: number) => {
+      const data = mockUseHierarchyData();
+      mockUseHierarchyData.mockReturnValue({
+        ...data,
+        locations: [{ id: 1, name: "Hof Nord", width_m, length_m }],
+      });
+    };
+    const dragField = (dx: number, dy: number) => {
+      const node = mockKonvaNodes["field-rect-10"];
+      const start = node.getPosition();
+      const target = { current: { x: start.x + dx, y: start.y + dy } };
+      act(() => {
+        node.handlers.onDragMove?.({ evt: new Event("drag"), target: createKonvaTarget(target) });
+        node.handlers.onDragEnd?.({ evt: new Event("dragend"), target: createKonvaTarget(target) });
+      });
+    };
+    const lastSavedField = async (): Promise<FieldLayoutEntry> => {
+      await waitFor(() =>
+        expect(saveByLocationMock.mock.calls.some(([, body]) => body.field_layouts.length > 0)).toBe(true),
+      );
+      return saveByLocationMock.mock.calls.findLast(([, body]) => body.field_layouts.length > 0)![1].field_layouts[0];
+    };
+    const enterEditMode = () => fireEvent.click(screen.getByRole("button", { name: "Bearbeiten" }));
+
+    it.each([0, 90] as const)("keeps a dragged plot inside the fixed boundary at %s degrees", async (rotation) => {
+      withLocationSize(30, 60);
+      listByLocationMock.mockResolvedValueOnce({ data: {
+        field_layouts: [{ field: 10, location: 1, x: 1100, y: 800, version: 1 }],
+        bed_layouts: [{ bed: 100, location: 1, x: 40, y: 40, version: 1 }],
+        location_boundary: { x: 1000, y: 700 },
+      } });
+      await renderGraphic(<GraphicalFields />);
+      await screen.findByTestId("location-boundary-1");
+      if (rotation === 0) fireEvent.click(screen.getByRole("button", { name: "Ansicht um 90° nach links drehen" }));
+      const boundaryBefore = screen.getByTestId("location-boundary-1").outerHTML;
+      enterEditMode();
+
+      // Boundary 540 × 1080 at (1000, 700): x may run 1000..1180, y 700..1060.
+      for (const [dx, dy] of [[5000, 5000], [-5000, -5000], [5000, -5000], [-5000, 5000]] as const) {
+        saveByLocationMock.mockClear();
+        dragField(dx, dy);
+        const saved = await lastSavedField();
+        expect([1000, 1180]).toContain(Math.round(saved.x));
+        expect([700, 1060]).toContain(Math.round(saved.y));
+      }
+      // A saved origin is never re-sent and the boundary does not move.
+      expect(saveByLocationMock.mock.calls.some(([, body]) => "location_boundary" in body)).toBe(false);
+      expect(screen.getByTestId("location-boundary-1").outerHTML).toBe(boundaryBefore);
+      expect(screen.queryByTestId("location-boundary-overflow-hint")).not.toBeInTheDocument();
+    });
+
+    it("moves the beds with their plot", async () => {
+      withLocationSize(30, 60);
+      listByLocationMock.mockResolvedValueOnce({ data: {
+        field_layouts: [{ field: 10, location: 1, x: 1100, y: 800, version: 1 }],
+        bed_layouts: [{ bed: 100, location: 1, x: 40, y: 40, version: 1 }],
+        location_boundary: { x: 1000, y: 700 },
+      } });
+      await renderGraphic(<GraphicalFields />);
+      await screen.findByTestId("location-boundary-1");
+      const offset = () => {
+        const field = mockKonvaNodes["field-rect-10"].getPosition();
+        const bed = mockKonvaNodes["bed-rect-100"].getPosition();
+        return { x: bed.x - field.x, y: bed.y - field.y };
+      };
+      const before = offset();
+      enterEditMode();
+      dragField(5000, 5000);
+      await lastSavedField();
+      await waitFor(() => expect(offset()).toEqual(before));
+      expect(saveByLocationMock.mock.calls.every(([, body]) => body.bed_layouts.length === 0)).toBe(true);
+    });
+
+    it("fixes the boundary where it is drawn the first time a plot moves", async () => {
+      withLocationSize(30, 60);
+      listByLocationMock.mockResolvedValueOnce({ data: {
+        field_layouts: [{ field: 10, location: 1, x: 1100, y: 800, version: 1 }],
+        bed_layouts: [],
+      } });
+      await renderGraphic(<GraphicalFields />);
+      await screen.findByTestId("location-boundary-1");
+      enterEditMode();
+
+      // Without a saved origin the boundary starts at the plot (1100, 800).
+      dragField(5000, 5000);
+      await waitFor(() => expect(saveByLocationMock).toHaveBeenCalledWith(1, {
+        bed_layouts: [], field_layouts: [], location_boundary: { x: 1100, y: 800 },
+      }));
+      // At the default quarter turn view +x/+y is stored -y/+x; boundary 540 × 1080.
+      const saved = await lastSavedField();
+      expect([Math.round(saved.x), Math.round(saved.y)]).toEqual([1280, 800]);
+
+      // The plot left the corner, yet the boundary stays put: it can reach x 1100 again.
+      saveByLocationMock.mockClear();
+      dragField(-5000, -5000);
+      const back = await lastSavedField();
+      expect([Math.round(back.x), Math.round(back.y)]).toEqual([1100, 1160]);
+      expect(saveByLocationMock.mock.calls.some(([, body]) => "location_boundary" in body)).toBe(false);
+    });
+
+    it("flags but does not move a plot that lies outside, and pulls it in once dragged", async () => {
+      withLocationSize(30, 60);
+      listByLocationMock.mockResolvedValueOnce({ data: {
+        field_layouts: [{ field: 10, location: 1, x: 3000, y: 3000, version: 1 }],
+        bed_layouts: [],
+        location_boundary: { x: 1000, y: 700 },
+      } });
+      await renderGraphic(<GraphicalFields />);
+      const field = await screen.findByTestId("field-rect-10");
+      expect(field).toHaveAttribute("data-outside-location", "true");
+      expect(screen.getByTestId("location-boundary-overflow-hint")).toBeInTheDocument();
+      expect(saveByLocationMock).not.toHaveBeenCalled();
+
+      enterEditMode();
+      dragField(1, 1);
+      const saved = await lastSavedField();
+      expect(saved.x).toBeGreaterThanOrEqual(1000);
+      expect(saved.x + FIELD_SIZE.width).toBeLessThanOrEqual(1000 + 540);
+      expect(saved.y).toBeGreaterThanOrEqual(700);
+      expect(saved.y + FIELD_SIZE.height).toBeLessThanOrEqual(700 + 1080);
+      await waitFor(() => expect(screen.queryByTestId("location-boundary-overflow-hint")).not.toBeInTheDocument());
+    });
+
+    it("lets a plot larger than the site slide only while it covers the site", async () => {
+      // 10 m wide (180 units) is narrower than the 360-unit plot.
+      withLocationSize(10, 60);
+      listByLocationMock.mockResolvedValueOnce({ data: {
+        field_layouts: [{ field: 10, location: 1, x: 1000, y: 800, version: 1 }],
+        bed_layouts: [],
+        location_boundary: { x: 1000, y: 700 },
+      } });
+      await renderGraphic(<GraphicalFields />);
+      await screen.findByTestId("location-boundary-1");
+      expect(screen.getByTestId("field-rect-10")).toHaveAttribute("data-outside-location", "true");
+      fireEvent.click(screen.getByRole("button", { name: "Ansicht um 90° nach links drehen" }));
+      enterEditMode();
+
+      for (const dx of [5000, -5000]) {
+        saveByLocationMock.mockClear();
+        dragField(dx, 0);
+        const saved = await lastSavedField();
+        // Allowed x: 1000 + 180 - 360 = 820 up to 1000.
+        expect([820, 1000]).toContain(Math.round(saved.x));
+      }
+      expect(screen.getByTestId("location-boundary-overflow-hint")).toBeInTheDocument();
+    });
+
+    it("keeps the free workspace when the location has no dimensions", async () => {
+      listByLocationMock.mockResolvedValueOnce({ data: {
+        field_layouts: [{ field: 10, location: 1, x: 1100, y: 800, version: 1 }],
+        bed_layouts: [],
+      } });
+      await renderGraphic(<GraphicalFields />);
+      await screen.findByTestId("field-rect-10");
+      expect(screen.queryByTestId("location-boundary-1")).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Ansicht um 90° nach links drehen" }));
+      enterEditMode();
+      dragField(3000, 2000);
+      const saved = await lastSavedField();
+      expect([Math.round(saved.x), Math.round(saved.y)]).toEqual([4100, 2800]);
+      expect(saveByLocationMock.mock.calls.some(([, body]) => "location_boundary" in body)).toBe(false);
+    });
+  });
 
   it("supports large horizontal and vertical placement range without early boundary clipping", async () => {
     await renderGraphic(<GraphicalFields />);

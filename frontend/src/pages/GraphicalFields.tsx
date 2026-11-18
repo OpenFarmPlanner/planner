@@ -29,12 +29,14 @@ import {
   layoutAPI,
   type BedLayoutEntry,
   type FieldLayoutEntry,
+  type LocationBoundaryOrigin,
 } from "../api/api";
 import { isTypingInEditableElement, useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useTranslation } from "../i18n";
 import { GraphicalFieldDetailsDialog } from "./GraphicalFieldDetailsDialog";
 import ModeToggle from "../components/ModeToggle";
 import {
+  clampInsideBoundary,
   clampInsideParent,
   DEFAULT_PLACEMENT_SPACING,
   getBedRectSizeWithinField,
@@ -131,6 +133,9 @@ export default function GraphicalFields({
   const [layoutsByField, setLayoutsByField] = useState<
     Record<number, FieldLayoutEntry>
   >({});
+  const [boundaryOriginByLocation, setBoundaryOriginByLocation] = useState<
+    Record<number, LocationBoundaryOrigin | null>
+  >({});
   const [layoutAttempt, setLayoutAttempt] = useState(0);
   const [layoutLoad, setLayoutLoad] = useState({ locationId: null as number | null, attempt: -1, error: false });
   const layoutReady = activeLocationId === null || (layoutLoad.locationId === activeLocationId && layoutLoad.attempt === layoutAttempt);
@@ -226,6 +231,14 @@ export default function GraphicalFields({
           });
           return next;
         });
+
+        setBoundaryOriginByLocation((prev) => {
+          const next = { ...prev };
+          results.forEach((response, index) => {
+            next[locationIds[index]] = response.data.location_boundary ?? null;
+          });
+          return next;
+        });
         setLayoutLoad({ locationId: activeLocationId, attempt: layoutAttempt, error: false });
       } catch (layoutError) {
         if (!active) return;
@@ -305,6 +318,16 @@ export default function GraphicalFields({
         console.error("Failed to save bed layout", saveError);
       }
     }, 250);
+  };
+
+  /** Fix a location's boundary at its current place the first time a plot moves. */
+  const saveBoundaryOrigin = (locationId: number, origin: LocationBoundaryOrigin): void => {
+    setBoundaryOriginByLocation((prev) => ({ ...prev, [locationId]: origin }));
+    layoutAPI
+      .saveByLocation(locationId, { bed_layouts: [], field_layouts: [], location_boundary: origin })
+      .catch((saveError: unknown) => {
+        console.error("Failed to save location boundary", saveError);
+      });
   };
 
   const saveFieldLayout = (
@@ -397,15 +420,18 @@ export default function GraphicalFields({
       layoutsByField,
       fieldsContentSize,
     );
-    // The boundary starts at the plots' top-left corner, so it stays put
-    // relative to saved plot positions (#1190).
+    // A saved origin keeps the boundary fixed while plots move inside it.
+    // Until one is saved the boundary starts at the plots' top-left corner
+    // (#1190); the first plot move saves that corner as the origin.
+    const savedBoundaryOrigin = boundaryOriginByLocation[location.id] ?? null;
     const storedFieldBounds = getContentBoundsFromRects(storedFieldRects);
     const storedBoundary = getLocationBoundaryRect(
       location,
       FIELD_WORLD_PX_PER_METER,
-      storedFieldBounds
-        ? { x: storedFieldBounds.minX, y: storedFieldBounds.minY }
-        : { x: originX, y: originY },
+      savedBoundaryOrigin ??
+        (storedFieldBounds
+          ? { x: storedFieldBounds.minX, y: storedFieldBounds.minY }
+          : { x: originX, y: originY }),
     );
     const contentWidth = Math.max(
       fieldsContentSize.width,
@@ -429,6 +455,10 @@ export default function GraphicalFields({
         defaultFieldRects,
         fieldViewModels,
         boundary,
+        unsavedBoundaryOrigin:
+          storedBoundary && !savedBoundaryOrigin
+            ? { x: storedBoundary.x, y: storedBoundary.y }
+            : null,
         contentWidth: rotatedContent.width,
         contentHeight: rotatedContent.height,
         rotation,
@@ -705,6 +735,8 @@ export default function GraphicalFields({
     locationName: string,
     locationId: number,
     rotation: GraphicalRotation,
+    boundary: PlacementRect | null,
+    unsavedBoundaryOrigin: LocationBoundaryOrigin | null,
   ) => {
     if (!isLocationEditMode(locationId)) {
       return {
@@ -728,48 +760,40 @@ export default function GraphicalFields({
       };
     }
 
+    const fieldSize = { width: baseRect.width, height: baseRect.height };
+    // Plots stay on the workspace and, when the location has a boundary,
+    // inside it; plots without a boundary keep the workspace-only clamp.
+    const constrain = (position: Point): Point => {
+      const onWorkspace = clampInsideParent(position, fieldSize, contentBounds);
+      return boundary ? clampInsideBoundary(onWorkspace, fieldSize, boundary) : onWorkspace;
+    };
+
     return {
       draggable: true,
       onDragMove: (event: KonvaEventObject<Event>) => {
         const raw = { x: event.target.x(), y: event.target.y() };
-        const clampedRaw = clampInsideParent(
-          raw,
-          { width: baseRect.width, height: baseRect.height },
-          contentBounds,
-        );
+        const clampedRaw = constrain(raw);
         const snapped = snapToNeighbors(
           fieldId,
           clampedRaw,
-          { width: baseRect.width, height: baseRect.height },
+          fieldSize,
           fieldViewModels,
           FIELD_SNAP_THRESHOLD,
         );
-        const finalClamped = clampInsideParent(
-          { x: snapped.x, y: snapped.y },
-          { width: baseRect.width, height: baseRect.height },
-          contentBounds,
-        );
+        const finalClamped = constrain(snapped);
         event.target.position(finalClamped);
         setActiveGuides(snapped.guides);
       },
       onDragEnd: (event: KonvaEventObject<Event>) => {
-        const next = clampInsideParent(
-          { x: event.target.x(), y: event.target.y() },
-          { width: baseRect.width, height: baseRect.height },
-          contentBounds,
-        );
+        const next = constrain({ x: event.target.x(), y: event.target.y() });
         const snapped = snapToNeighbors(
           fieldId,
           next,
-          { width: baseRect.width, height: baseRect.height },
+          fieldSize,
           fieldViewModels,
           FIELD_SNAP_THRESHOLD,
         );
-        const finalClamped = clampInsideParent(
-          { x: snapped.x, y: snapped.y },
-          { width: baseRect.width, height: baseRect.height },
-          contentBounds,
-        );
+        const finalClamped = constrain(snapped);
         event.target.position(finalClamped);
         const stored = rotateRect({ ...baseRect, ...finalClamped }, contentBounds, ((360 - rotation) % 360) as GraphicalRotation);
         const nextLayout: FieldLayoutEntry = {
@@ -780,6 +804,9 @@ export default function GraphicalFields({
           version: 1,
         };
         setActiveGuides([]);
+        if (unsavedBoundaryOrigin) {
+          saveBoundaryOrigin(locationId, unsavedBoundaryOrigin);
+        }
         setLayoutsByField((prev) => ({ ...prev, [fieldId]: nextLayout }));
         saveFieldLayout(locationId, nextLayout);
       },
@@ -1005,6 +1032,7 @@ export default function GraphicalFields({
           defaultFieldRects,
           fieldViewModels,
           boundary,
+          unsavedBoundaryOrigin,
           contentWidth,
           contentHeight,
           rotation,
@@ -1500,6 +1528,8 @@ export default function GraphicalFields({
                                 location.name,
                                 locationId,
                                 rotation,
+                                boundary,
+                                unsavedBoundaryOrigin,
                               )}
                             />
                             {shouldShowFieldLabel(

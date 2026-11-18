@@ -355,6 +355,69 @@ test('draws a sized location boundary and flags plots that cross it', async ({ p
   }
 });
 
+test('keeps a dragged plot inside the location boundary at any zoom and viewport', async ({ page, request }, testInfo) => {
+  await loginWithDeterministicProject(page, request, `graphical-boundary-drag-${testInfo.workerIndex}`, { loginAsAdmin: true });
+  const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', {
+    name: 'Klemmhof', length_m: 30, width_m: 20,
+  });
+  const field = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
+    name: 'Schiebeparzelle', location: location.id, width_m: 8, length_m: 10,
+  });
+  const fieldRect = async () => (await canvasRects(page, `field-rect-${field.id}`))[0];
+  const boundaryRect = async () => (await canvasRects(page, `location-boundary-${location.id}`))[0];
+  const expectInside = async () => {
+    const [plot, site] = [(await fieldRect()).bounds, (await boundaryRect()).bounds];
+    expect(plot.x).toBeGreaterThanOrEqual(site.x - 1);
+    expect(plot.y).toBeGreaterThanOrEqual(site.y - 1);
+    expect(plot.x + plot.width).toBeLessThanOrEqual(site.x + site.width + 1);
+    expect(plot.y + plot.height).toBeLessThanOrEqual(site.y + site.height + 1);
+  };
+  const dragPlotBy = async (dx: number, dy: number) => {
+    const plot = await fieldRect();
+    const start = { x: plot.container.x + plot.bounds.x + plot.bounds.width / 2, y: plot.container.y + plot.bounds.y + plot.bounds.height / 2 };
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(start.x + dx, start.y + dy, { steps: 12 });
+    const saved = page.waitForResponse(response => response.url().endsWith(`/locations/${location.id}/layouts/`)
+      && response.request().method() === 'PUT'
+      && (response.request().postDataJSON() as { field_layouts: unknown[] }).field_layouts.length > 0);
+    await page.mouse.up();
+    await saved;
+  };
+
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 375, height: 800 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/app/fields-beds');
+    await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+    await selectLocation(page, 'Klemmhof');
+    await expect.poll(async () => (await canvasRects(page, `location-boundary-${location.id}`)).length).toBe(1);
+    await page.getByRole('button', { name: 'Grafik bearbeiten', exact: true }).click();
+    for (const zoomClicks of [0, 2]) {
+      for (let i = 0; i < zoomClicks; i += 1) {
+        await page.getByRole('button', { name: 'Herauszoomen', exact: true }).first().click();
+      }
+      const site = (await boundaryRect()).bounds;
+      for (const [fx, fy] of [[1, 1], [-1, -1], [1, -1]] as const) {
+        await dragPlotBy(fx * site.width, fy * site.height);
+        await expectInside();
+      }
+    }
+    await expect(page.getByTestId('location-boundary-overflow-hint')).toHaveCount(0);
+    await page.screenshot({ path: testInfo.outputPath(`boundary-drag-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
+    await page.waitForLoadState('networkidle');
+  }
+
+  // After a reload the boundary and the plot are still where they were left.
+  const [plotBefore, siteBefore] = [(await fieldRect()), (await boundaryRect())];
+  await page.goto('/app/fields-beds');
+  await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+  await selectLocation(page, 'Klemmhof');
+  await expect.poll(async () => (await canvasRects(page, `location-boundary-${location.id}`)).length).toBe(1);
+  const [plotAfter, siteAfter] = [(await fieldRect()), (await boundaryRect())];
+  expect([plotAfter.x - siteAfter.x, plotAfter.y - siteAfter.y]).toEqual([plotBefore.x - siteBefore.x, plotBefore.y - siteBefore.y]);
+  await expectInside();
+});
+
 test('shows the only location with its name and gross area in the list and the graphic', async ({ page, request }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await loginWithDeterministicProject(page, request, `single-location-${testInfo.workerIndex}`, { loginAsAdmin: true });

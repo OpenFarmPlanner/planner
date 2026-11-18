@@ -16,7 +16,13 @@ from farm.history import _current_actor_label, _serialize_instance, record_entit
 from farm.history.project_restore import ensure_project_checkpoint
 from farm.models import Bed, BedLayout, EntityRevision, Field, FieldLayout, Location
 from farm.project_context import get_active_project_or_400
-from farm.services.bed_layouts import extract_layout_payloads, save_location_layouts
+from farm.services.bed_layouts import (
+    extract_layout_payloads,
+    parse_location_boundary,
+    save_location_boundary,
+    save_location_layouts,
+    serialize_location_boundary,
+)
 from farm.services.field_duplication import (
     BedNameConflictError,
     FieldNameTakenError,
@@ -50,6 +56,7 @@ class BedLayoutByLocationView(APIView):
             {
                 'bed_layouts': BedLayoutSerializer(bed_layouts, many=True).data,
                 'field_layouts': FieldLayoutSerializer(field_layouts, many=True).data,
+                'location_boundary': serialize_location_boundary(location),
             }
         )
 
@@ -65,10 +72,22 @@ class BedLayoutByLocationView(APIView):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
+        boundary_present, boundary_origin, boundary_error = parse_location_boundary(request.data)
+        if boundary_error:
+            return api_error_response(
+                code='invalid_location_boundary',
+                detail=boundary_error,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
         ensure_project_checkpoint(active_project)
         outcome = save_location_layouts(
             location, bed_payload, field_payload, user_name=_current_actor_label(request)
         )
+        if boundary_present and not outcome.error_detail and save_location_boundary(
+            location, boundary_origin, user_name=_current_actor_label(request)
+        ):
+            outcome.changed_count += 1
         if outcome.changed_count:
             record_entity_revision(
                 project=active_project, entity_type='project', object_id=active_project.pk,
@@ -86,6 +105,7 @@ class BedLayoutByLocationView(APIView):
             {
                 'bed_layouts': BedLayoutSerializer(outcome.bed_layouts, many=True).data,
                 'field_layouts': FieldLayoutSerializer(outcome.field_layouts, many=True).data,
+                'location_boundary': serialize_location_boundary(location),
             },
             status=status.HTTP_200_OK,
         )

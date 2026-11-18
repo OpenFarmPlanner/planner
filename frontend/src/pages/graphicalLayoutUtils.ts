@@ -150,6 +150,22 @@ export function isRectOutsideBoundary(rect: Rect, boundary: Rect): boolean {
   );
 }
 
+/**
+ * The position nearest to `position` that keeps a rect of `size` inside
+ * `boundary`. On an axis where the rect is larger than the boundary it can
+ * only slide as far as it still covers the boundary on that axis.
+ */
+export function clampInsideBoundary(position: Position, size: RectSize, boundary: Rect): Position {
+  const clampAxis = (value: number, start: number, length: number, extent: number): number => {
+    const farStart = start + length - extent;
+    return Math.min(Math.max(value, Math.min(start, farStart)), Math.max(start, farStart));
+  };
+  return {
+    x: clampAxis(position.x, boundary.x, boundary.width, size.width),
+    y: clampAxis(position.y, boundary.y, boundary.height, size.height),
+  };
+}
+
 export function getBedRectSize(bed: Pick<Bed, 'area_sqm' | 'length_m' | 'width_m'>, pxPerMeter: number): RectSize {
   if (
     typeof bed.length_m === 'number' &&

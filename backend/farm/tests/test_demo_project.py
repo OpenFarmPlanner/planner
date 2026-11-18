@@ -334,6 +334,23 @@ class DemoProjectServiceTests(TestCase):
         with_packages = [row for row in rows if row['package_suggestion']]
         self.assertGreaterEqual(len(with_packages), 3)
 
+    def test_demo_plots_lie_inside_their_fixed_location_boundary(self) -> None:
+        # Canvas units per metre of the graphical view (FIELD_WORLD_PX_PER_METER).
+        px_per_m = 18
+        result = create_or_reset_demo_project()
+
+        for location in Location.objects.filter(project=result.project):
+            self.assertIsNotNone(location.boundary_x)
+            self.assertIsNotNone(location.boundary_y)
+            right = location.boundary_x + location.width_m * px_per_m
+            bottom = location.boundary_y + location.length_m * px_per_m
+            for layout in FieldLayout.objects.filter(location=location).select_related('field'):
+                with self.subTest(location=location.name, field=layout.field.name):
+                    self.assertGreaterEqual(layout.x, location.boundary_x)
+                    self.assertGreaterEqual(layout.y, location.boundary_y)
+                    self.assertLessEqual(layout.x + layout.field.width_m * px_per_m, right)
+                    self.assertLessEqual(layout.y + layout.field.length_m * px_per_m, bottom)
+
     def test_create_or_reset_demo_project_replaces_project_data(self) -> None:
         result = create_or_reset_demo_project()
 

@@ -895,6 +895,9 @@ def _create_area_hierarchy(
     return locations, fields, beds
 
 
+DEMO_BOUNDARY_ORIGIN = 22.0
+
+
 def _create_layouts(
     project: Project,
     fields: dict[str, Field],
@@ -911,6 +914,11 @@ def _create_layouts(
     for key, field in fields.items():
         x, y = field_positions[key]
         FieldLayout.objects.create(field=field, location=field.location, project=project, x=x, y=y)
+    # Each location's boundary starts 1 m (18 canvas units) above and left of
+    # its plots, so the plots sit inside the site with free space all around.
+    Location.objects.filter(project=project).update(
+        boundary_x=DEMO_BOUNDARY_ORIGIN, boundary_y=DEMO_BOUNDARY_ORIGIN,
+    )
 
     bed_positions = {
         'salat-1': (12, 12),
