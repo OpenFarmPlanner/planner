@@ -36,6 +36,10 @@ not persist checkout credentials.
 The version PR goes through the existing required CI and review policy. A
 small metadata-only change may receive the normal deterministic review
 exemption; there is no release-specific exemption or weakened verifier.
+Its heavy test jobs (`backend-tests`, `backend-postgres-tests`, …) are skipped
+because the PR is metadata-only (see `docs/testing-and-ci.md`). Branch protection
+counts a skipped required check as passed, and so does publication: each required
+check's latest run must have completed with `success` or `skipped`.
 New main changes regenerate the version PR from the latest main, invalidating
 its previous head/checks rather than releasing stale metadata. A closed,
 unmerged version PR stops new preparation until deliberately reopened. Keep

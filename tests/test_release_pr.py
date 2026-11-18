@@ -30,16 +30,19 @@ class ReleaseValidationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             release.parse_plan(body + '\n' + body)
 
-    def test_publication_requires_latest_successful_checks_from_the_required_app(self):
+    def test_publication_requires_latest_passed_or_skipped_checks_from_the_required_app(self):
         rules = {'strict': True, 'checks': [{'context': 'quality', 'app_id': 10}]}
         success = {'id': 1, 'name': 'quality', 'app': {'id': 10},
                    'status': 'completed', 'conclusion': 'success'}
-        for checks in [[success], [], [dict(success, app={'id': 11})],
+        skipped = dict(success, conclusion='skipped')
+        for checks in [[success], [skipped], [], [dict(success, app={'id': 11})],
                        [success, dict(success, id=2, status='in_progress')],
-                       [success, dict(success, id=2, conclusion='failure')]]:
+                       [success, dict(success, id=2, conclusion='failure')],
+                       [success, dict(success, id=2, conclusion='neutral')],
+                       [success, dict(success, id=2, conclusion='cancelled')]]:
             with patch.object(release, 'api', return_value=rules), \
                  patch.object(release, 'run', return_value='\n'.join(map(json.dumps, checks))):
-                if checks == [success]:
+                if checks in ([success], [skipped]):
                     release.require_checks({'head': {'sha': 'a' * 40}})
                 else:
                     with self.assertRaises(ValueError):
