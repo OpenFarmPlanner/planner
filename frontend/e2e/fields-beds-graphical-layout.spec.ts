@@ -373,7 +373,8 @@ test('shows the only location with its name and gross area in the list and the g
     await expect(visibleLocation).toBeVisible();
     await expect(visibleLocation).toContainText(location.name);
     await expect(page.getByText('Einzige Parzelle', { exact: true }).filter({ visible: true }).first()).toBeVisible();
-    if (await locationRow.isVisible()) {
+    // Narrower grids virtualise columns, so the area cell is checked where all fit.
+    if (viewport.width === 1440) {
       await expect(locationRow.locator('[data-field="area_sqm"]')).toContainText('250');
     }
     await page.screenshot({ path: testInfo.outputPath(`single-location-list-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
