@@ -775,7 +775,7 @@
       "basics": {
         "required": "È obbligatoria solo la colonna «{{name}}». Tutte le altre colonne possono restare vuote o mancare del tutto. L’ordine delle colonne non conta.",
         "numbers": "Scrivi i numeri con la virgola o il punto, es. 1,5 o 1.5.",
-        "cultivationTypes": "Separa più tipi di coltivazione con virgole, es. «{{example}}».",
+        "multipleValues": "Separa più valori in una cella con «;», es. tipi di coltivazione «{{example}}».",
         "color": "Indica «{{column}}» come codice esadecimale, es. #2E7D32. Se manca, viene assegnato automaticamente un colore."
       },
       "varieties": {
@@ -798,7 +798,7 @@
       },
       "notes": {
         "intro": "Vale per «{{good}}» e «{{bad}}». Una voce è un nome o «Nome | Nota». La nota appartiene solo al nome che la precede direttamente.",
-        "separators": "Separa le voci con «;» o un a capo. I nomi senza nota si possono separare anche con la virgola.",
+        "separators": "Separa le voci con «;».",
         "noteEnds": "Una nota arriva fino al «;» successivo e può contenere virgole.",
         "example": "Esempio: Pomodoro | Controllo dei parassiti; Cetriolo | Fonte 2025; Basilico",
         "meaning": "«Pomodoro; Cetriolo | Commento» significa: Pomodoro senza nota, Cetriolo con «Commento».",

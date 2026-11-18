@@ -18,6 +18,38 @@ describe('localized companion cells', () => {
     ]);
   });
 
+  it('exports neighbours in one canonical "; "-separated cell with notes kept as written', () => {
+    const items: CompanionImportItem[] = [
+      { name: 'Tomate', reason: 'other', note: 'Schutz vor Schädlingen' },
+      { name: 'Gurke', reason: 'other', note: 'Quelle 2025, S. 3 - Versuch' },
+      { name: 'Basilikum', reason: 'other', note: '' },
+    ];
+    const cell = formatCompanionCell(items);
+    expect(cell).toBe('Tomate | Schutz vor Schädlingen; Gurke | Quelle 2025, S. 3 - Versuch; Basilikum');
+    expect(parseCompanionCell(cell)).toEqual(items);
+  });
+
+  it('quotes a name with an open bracket so it cannot swallow the next entry', () => {
+    const items: CompanionImportItem[] = [
+      { name: 'Kräuter (Dill', reason: 'other', note: '' },
+      { name: 'Kräuter (Dill; Basilikum)', reason: 'other', note: 'A' },
+      { name: 'Gurke', reason: 'other', note: '' },
+    ];
+    const cell = formatCompanionCell(items);
+    expect(cell).toBe('"Kräuter (Dill"; "Kräuter (Dill; Basilikum)" | A; Gurke');
+    expect(parseCompanionCell(cell)).toEqual(items);
+  });
+
+  it('still reads legacy line-separated entries and comma-separated names', () => {
+    expect(parseCompanionCell('Tomate | Schutz, Quelle\nGurke\nSellerie, Dill')).toEqual([
+      { name: 'Tomate', reason: 'other', note: 'Schutz, Quelle' },
+      ...['Gurke', 'Sellerie', 'Dill'].map((name) => ({ name, reason: 'other', note: '' })),
+    ]);
+    expect(parseCompanionCell('Tomate - A; Gurke - B')).toEqual([
+      { name: 'Tomate - A; Gurke - B', reason: 'other', note: '', legacy: true },
+    ]);
+  });
+
   it('quotes reserved delimiters and multiline notes reversibly', () => {
     const items: CompanionImportItem[] = [
       { name: 'Kraut; "Spezial" | A', reason: 'pest_control', note: 'Quelle: "A | B"\nZeile 2\\Pfad' },

@@ -1,5 +1,6 @@
 import type { CompanionImportItem } from '../api/types';
 import { normalizeLanguageTag } from '../i18n/languages';
+import { LIST_CELL_SEPARATOR } from './spreadsheetColumns';
 
 function isNoteSeparator(text: string, index: number): boolean {
   return text[index] === '|' && text[index - 1] === ' ' && text[index + 1] === ' ';
@@ -50,8 +51,19 @@ function decode(value: string): string {
   return trimmed;
 }
 
+/** An open bracket would keep the following `;` from ending the entry. */
+function hasUnbalancedBrackets(value: string): boolean {
+  let depth = 0;
+  for (const char of value) {
+    if ('(['.includes(char)) depth += 1;
+    if (')]'.includes(char) && depth) depth -= 1;
+  }
+  return depth > 0;
+}
+
 function encode(value: string): string {
   return /[,;|"\\\r\n\u2028\u2029]/.test(value) || value.trim() !== value || /\s[-–]\s/.test(value)
+    || hasUnbalancedBrackets(value)
     ? JSON.stringify(value) : value;
 }
 
@@ -68,18 +80,22 @@ export function getCompanionNote(item: Pick<CompanionImportItem, 'note' | 'notes
   return item.notes ? (selectedLanguage ? item.notes[selectedLanguage] ?? '' : '') : item.note;
 }
 
-/** One neighbour per line (`Name` or `Name | Note`); quoted JSON strings escape reserved delimiters and line breaks. */
+/**
+ * Entries `Name` or `Name | Note`, separated by `; ` like every multi-value
+ * culture cell; quoted JSON strings escape reserved delimiters and line breaks.
+ */
 export function formatCompanionCell(items: readonly CompanionImportItem[], language = 'de'): string | null {
   if (!items.length) return null;
   return items.map((item) => {
     const note = getCompanionNote(item, language);
     return `${encode(item.name)}${note ? ` | ${encodeNote(note)}` : ''}`;
-  }).join('\n');
+  }).join(LIST_CELL_SEPARATOR);
 }
 
 /**
- * Entries are separated by `;` (or `,` between names); a note after ` | ` belongs
- * only to the name directly before it: `Tomate | A; Gurke | B; Basilikum`.
+ * Entries are separated by `;`; older files may also use line breaks, or `,`
+ * between names. A note after ` | ` belongs only to the name directly before
+ * it: `Tomate | A; Gurke | B; Basilikum`.
  */
 export function parseCompanionCell(text: unknown): CompanionImportItem[] {
   if (typeof text !== 'string') return [];

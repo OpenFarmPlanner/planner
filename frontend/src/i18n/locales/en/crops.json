@@ -758,7 +758,7 @@
       "basics": {
         "required": "Only the “{{name}}” column is required. All other columns may be empty or missing entirely. The column order does not matter.",
         "numbers": "Write numbers with a comma or a point, e.g. 1,5 or 1.5.",
-        "cultivationTypes": "Separate several cultivation types with commas, e.g. “{{example}}”.",
+        "multipleValues": "Separate several values in one cell with “;”, e.g. cultivation types “{{example}}”.",
         "color": "Enter “{{column}}” as a hex code, e.g. #2E7D32. Without one, a color is assigned automatically."
       },
       "varieties": {
@@ -781,7 +781,7 @@
       },
       "notes": {
         "intro": "Applies to “{{good}}” and “{{bad}}”. An entry is a name or “Name | Note”. The note belongs only to the name directly before it.",
-        "separators": "Separate entries with “;” or a line break. Names without a note can also be separated with commas.",
+        "separators": "Separate entries with “;”.",
         "noteEnds": "A note runs to the next “;” and may contain commas.",
         "example": "Example: Tomato | Pest control; Cucumber | Source 2025; Basil",
         "meaning": "“Tomato; Cucumber | Comment” means Tomato without a note and Cucumber with “Comment”.",

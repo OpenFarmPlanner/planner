@@ -775,7 +775,7 @@
       "basics": {
         "required": "Apenas a coluna «{{name}}» é obrigatória. Todas as outras colunas podem ficar vazias ou faltar por completo. A ordem das colunas não importa.",
         "numbers": "Os números escrevem-se com vírgula ou ponto, por exemplo 1,5 ou 1.5.",
-        "cultivationTypes": "Separe vários tipos de cultivo com vírgulas, por exemplo «{{example}}».",
+        "multipleValues": "Separe vários valores numa célula com «;», por exemplo tipos de cultivo «{{example}}».",
         "color": "«{{column}}» indica-se como código hexadecimal, por exemplo #2E7D32. Sem indicação, é atribuída automaticamente uma cor."
       },
       "varieties": {
@@ -798,7 +798,7 @@
       },
       "notes": {
         "intro": "Aplica-se a «{{good}}» e «{{bad}}». Uma entrada é um nome ou «Nome | Nota». A nota pertence apenas ao nome imediatamente anterior.",
-        "separators": "As entradas separam-se com «;» ou com uma quebra de linha. Os nomes sem nota também se podem separar com vírgulas.",
+        "separators": "As entradas separam-se com «;».",
         "noteEnds": "Uma nota vai até ao «;» seguinte e pode conter vírgulas.",
         "example": "Exemplo: Tomate | Controlo de pragas; Pepino | Fonte 2025; Manjericão",
         "meaning": "«Tomate; Pepino | Comentário» significa: Tomate sem nota e Pepino com «Comentário».",

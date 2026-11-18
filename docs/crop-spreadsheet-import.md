@@ -16,6 +16,25 @@ of writing into the new project. Legacy requests may omit this additive guard.
 This is the crops page's stateless import, distinct from the external agent
 API's draft-based preview/apply protocol.
 
+## Multi-value cells
+
+Inside a CSV, XLSX or ODS culture cell, `;` is the one separator between
+several values (`LIST_CELL_SEPARATOR` in `crops/spreadsheetColumns.ts`). Export
+and template write `; ` in every list-valued column:
+
+- cultivation types: `Direktsaat; Pflanzung`;
+- tags: `Kräuter; Blumen`;
+- several timing windows of one kind: `Mitte März bis Mitte April; KW 20 bis 24`;
+- good/bad neighbours: `Tomate | Schutz vor Schädlingen; Gurke | Quelle 2025; Basilikum`
+  (grammar and quoting in [crop-companions.md](crop-companions.md)).
+
+This is a separator *within* a cell. It does not change the CSV column
+delimiter, decimal commas or JSON, and the help's comma-joined lists of
+allowed enum labels are not list syntax. Older files stay importable: list
+columns also split at `,` and line breaks, and neighbour cells keep reading
+line-separated entries, comma-separated names without a note and the legacy
+dash form. The help describes only the canonical `;`.
+
 ## Preview and identity
 
 `POST /crops/import/preview/` still accepts the legacy array. The optional

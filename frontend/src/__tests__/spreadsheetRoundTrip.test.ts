@@ -112,6 +112,71 @@ describe('crop spreadsheet export → import round trip', () => {
     });
   });
 
+  describe('multi-value cells', () => {
+    const multiValueCrop = {
+      id: 1,
+      name: 'Kohl',
+      cultivation_types: ['direct_sowing', 'pre_cultivation'],
+      tags: ['Kräuter', 'Blumen'],
+      timing_windows: [
+        { ...emptyTimingWindow('direct_sowing', 'decade'), start_month: 3, start_decade: 'mid', end_month: 4, end_decade: 'mid' },
+        { ...emptyTimingWindow('direct_sowing', 'iso_week'), start_week: 20, end_week: 24 },
+      ],
+    } as unknown as Crop;
+    const companions = {
+      good: [
+        { name: 'Tomate', reason: 'other' as const, note: 'Schutz vor Schädlingen' },
+        { name: 'Gurke', reason: 'other' as const, note: 'Quelle 2025, S. 3' },
+        { name: 'Basilikum', reason: 'other' as const, note: '' },
+      ],
+      bad: [
+        { name: 'Kartoffel', reason: 'other' as const, note: '' },
+        { name: 'Fenchel', reason: 'other' as const, note: '' },
+      ],
+    };
+    const column = (key: string) => CROP_COLUMNS.findIndex((col) => col.key === key);
+
+    it('separates the values of every multi-value cell with "; "', () => {
+      const [, row] = buildSheetData([multiValueCrop], i18n.getFixedT('de', 'crops'), new Map([[1, companions]]), 'de');
+
+      expect(row[column('cultivation_types')]).toBe('Direktsaat; Pflanzung');
+      expect(row[column('tags')]).toBe('Kräuter; Blumen');
+      expect(row[column('direct_sowing_windows')]).toBe('Mitte März bis Mitte April; KW 20 bis 24');
+      expect(row[column('good_companions')]).toBe('Tomate | Schutz vor Schädlingen; Gurke | Quelle 2025, S. 3; Basilikum');
+      expect(row[column('bad_companions')]).toBe('Kartoffel; Fenchel');
+    });
+
+    it.each(['csv', 'xlsx', 'ods'] as const)('reads the canonical export back unchanged from %s', async (format) => {
+      await i18n.changeLanguage('de');
+      const t = i18n.getFixedT('de', 'crops');
+      const data = buildSpreadsheetFile(buildSheetData([multiValueCrop], t, new Map([[1, companions]]), 'de'), format);
+
+      const result = await parseSpreadsheetFile(new File([data as BlobPart], `kulturen.${format}`));
+
+      expect(result.warnings).toEqual([]);
+      expect(result.entries[0]).toMatchObject({
+        cultivation_types: ['direct_sowing', 'pre_cultivation'],
+        tags: ['Kräuter', 'Blumen'],
+        direct_sowing_windows: 'Mitte März bis Mitte April; KW 20 bis 24',
+        good_companions: companions.good,
+        bad_companions: companions.bad,
+      });
+    });
+
+    it.each(['csv', 'xlsx', 'ods'] as const)('reads canonical and legacy cultivation-type separators from %s', async (format) => {
+      await i18n.changeLanguage('de');
+      const rows = [['Name', 'Anbauart'], ['Kohl', 'Direktsaat; Pflanzung'], ['Rübe', 'Direktsaat, Pflanzung'], ['Mais', 'Direktsaat\nPflanzung']];
+      const data = buildSpreadsheetFile(rows, format);
+
+      const result = await parseSpreadsheetFile(new File([data as BlobPart], `kulturen.${format}`));
+
+      expect(result.warnings).toEqual([]);
+      expect(result.entries.map((entry) => entry.cultivation_types)).toEqual(
+        Array.from({ length: 3 }, () => ['direct_sowing', 'pre_cultivation']),
+      );
+    });
+  });
+
   it("reads a user's own Latin-name column (\"Lateinische Bezeichnung\")", async () => {
     await i18n.changeLanguage('de');
     const csv = 'Name;Sorte;Lateinische Bezeichnung\nMangold;Glatter Silber;Beta vulgaris var. flavescens';

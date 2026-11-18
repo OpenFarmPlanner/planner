@@ -784,7 +784,7 @@
       "basics": {
         "required": "Solo la columna «{{name}}» es obligatoria. Las demás columnas pueden quedar vacías o faltar. El orden de las columnas no importa.",
         "numbers": "Escribe los números con coma o punto, p. ej. 1,5 o 1.5.",
-        "cultivationTypes": "Separa varios tipos de cultivo con comas, p. ej. «{{example}}».",
+        "multipleValues": "Separa varios valores de una celda con «;», p. ej. tipos de cultivo «{{example}}».",
         "color": "Indica «{{column}}» como código hexadecimal, p. ej. #2E7D32. Si no indicas ninguno, se asigna un color automáticamente."
       },
       "varieties": {
@@ -807,7 +807,7 @@
       },
       "notes": {
         "intro": "Se aplica a «{{good}}» y «{{bad}}». Una entrada es un nombre o «Nombre | Nota». La nota pertenece solo al nombre que la precede directamente.",
-        "separators": "Separa las entradas con «;» o un salto de línea. Los nombres sin nota también se pueden separar con comas.",
+        "separators": "Separa las entradas con «;».",
         "noteEnds": "Una nota llega hasta el siguiente «;» y puede contener comas.",
         "example": "Ejemplo: Tomate | Control de plagas; Pepino | Fuente 2025; Albahaca",
         "meaning": "«Tomate; Pepino | Comentario» significa: Tomate sin nota y Pepino con «Comentario».",
