@@ -70,7 +70,9 @@ class LocationSerializer(serializers.ModelSerializer):
         return value
 
     area_sqm = serializers.FloatField(read_only=True)
-    effective_site_conditions = serializers.SerializerMethodField(help_text=EFFECTIVE_SITE_CONDITIONS_HELP)
+    effective_site_conditions = serializers.SerializerMethodField(
+        help_text=EFFECTIVE_SITE_CONDITIONS_HELP,
+    )
 
     def get_effective_site_conditions(self, obj: Location) -> dict[str, dict]:
         return _serialize_effective(effective_conditions_for_location(obj))
@@ -111,7 +113,9 @@ class LocationSerializer(serializers.ModelSerializer):
 
 class FieldSerializer(serializers.ModelSerializer):
     location_name = serializers.CharField(source='location.name', read_only=True)
-    effective_site_conditions = serializers.SerializerMethodField(help_text=EFFECTIVE_SITE_CONDITIONS_HELP)
+    effective_site_conditions = serializers.SerializerMethodField(
+        help_text=EFFECTIVE_SITE_CONDITIONS_HELP,
+    )
 
     def get_effective_site_conditions(self, obj: Field) -> dict[str, dict]:
         return _serialize_effective(effective_conditions_for_field(obj))
@@ -177,7 +181,9 @@ class FieldSerializer(serializers.ModelSerializer):
 
 class BedSerializer(serializers.ModelSerializer):
     field_name = serializers.CharField(source='field.name', read_only=True)
-    effective_site_conditions = serializers.SerializerMethodField(help_text=EFFECTIVE_SITE_CONDITIONS_HELP)
+    effective_site_conditions = serializers.SerializerMethodField(
+        help_text=EFFECTIVE_SITE_CONDITIONS_HELP,
+    )
 
     def get_effective_site_conditions(self, obj: Bed) -> dict[str, dict]:
         return _serialize_effective(effective_conditions_for_bed(obj))
