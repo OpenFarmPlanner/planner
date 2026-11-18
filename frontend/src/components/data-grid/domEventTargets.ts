@@ -24,21 +24,24 @@ export const getRowIdFromElement = (target: EventTarget | null): GridRowId | nul
   return rowElement?.dataset.id ?? null;
 };
 
+const LISTBOX_POPUP_ROOT_SELECTOR = '.MuiModal-root, .MuiPopover-root, .MuiPopper-root';
+
 /**
- * Whether the target lies in a listbox popup (a select's or autocomplete's
- * option list, which MUI renders in a portal outside the grid) whose opener
- * inside `container` controls it via `aria-controls`. Click-outside handlers
- * treat such targets as inside, so picking an option does not end the edit.
+ * The element inside `container` whose listbox popup (a select's or
+ * autocomplete's option list, rendered by MUI in a portal outside the grid)
+ * contains the target, through its `aria-controls`. The target may be the
+ * list itself or the popup's backdrop around it; null for anything else.
  */
-export const isInListboxControlledFrom = (target: EventTarget | null, container: Element): boolean => {
+export const findListboxPopupOpener = (target: EventTarget | null, container: Element): HTMLElement | null => {
   if (!(target instanceof Element)) {
-    return false;
+    return null;
   }
-  const listboxId = target.closest('[role="listbox"][id]')?.id;
-  if (!listboxId) {
-    return false;
+  const popup = target.closest('[role="listbox"][id]') ?? target.closest(LISTBOX_POPUP_ROOT_SELECTOR);
+  const listbox = popup?.matches('[role="listbox"][id]') ? popup : popup?.querySelector('[role="listbox"][id]');
+  if (!listbox) {
+    return null;
   }
-  return Array.from(container.querySelectorAll('[aria-controls]')).some((opener) =>
-    opener.getAttribute('aria-controls')?.split(/\s+/).includes(listboxId),
-  );
+  return Array.from(container.querySelectorAll<HTMLElement>('[aria-controls]')).find((opener) =>
+    opener.getAttribute('aria-controls')?.split(/\s+/).includes(listbox.id),
+  ) ?? null;
 };

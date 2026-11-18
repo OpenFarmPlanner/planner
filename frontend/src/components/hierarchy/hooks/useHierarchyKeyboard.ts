@@ -4,7 +4,28 @@ import type { HierarchyRow } from "../utils/types";
 import { getHierarchyKeyboardAction } from "../utils/hierarchyKeyboardNavigation";
 import { isTypingInEditableElement } from "../../../hooks/useKeyboardShortcuts";
 import { isPrimaryModifierOnly } from "../../../utils/platform";
-import { isInListboxControlledFrom } from "../../data-grid/domEventTargets";
+import { findListboxPopupOpener } from "../../data-grid/domEventTargets";
+import { isSelectEditMenuCloseOutsideElement } from "../../data-grid/selectEditMenuClose";
+
+/**
+ * An edit cell's select renders its menu in a portal outside the table. A
+ * pointer down on an option must not end the row edit before the value is
+ * set, and one on the menu's backdrop over the same row only closes the menu,
+ * as in the planting plans grid; a backdrop press outside the row still ends it.
+ */
+function isInsideOwnSelectMenu(event: MouseEvent | TouchEvent, tableWrapper: HTMLElement): boolean {
+  const opener = findListboxPopupOpener(event.target, tableWrapper);
+  if (!opener) return false;
+  if (event.target instanceof Element && event.target.closest('[role="listbox"]')) return true;
+  const row = opener.closest<HTMLElement>('[role="row"]');
+  if (!row) return false;
+  const point = "touches" in event ? event.touches[0] : event;
+  if (!point) return false;
+  return !isSelectEditMenuCloseOutsideElement(
+    { target: event.target, clientX: point.clientX, clientY: point.clientY },
+    row,
+  );
+}
 
 interface UseHierarchyKeyboardParams {
   contextMenuState: { row: HierarchyRow } | null;
@@ -52,9 +73,7 @@ export function useHierarchyKeyboard({
     const handleDocumentPointerDown = (event: MouseEvent | TouchEvent) => {
       const tableWrapper = tableWrapperRef.current;
       if (tableWrapper?.contains(event.target as Node)) return;
-      // An edit cell's select renders its options in a portal outside the
-      // table; picking one must not end the row edit before the value is set.
-      if (tableWrapper && isInListboxControlledFrom(event.target, tableWrapper)) return;
+      if (tableWrapper && isInsideOwnSelectMenu(event, tableWrapper)) return;
       discardActiveRowEdit();
       setTreeActive(false);
     };

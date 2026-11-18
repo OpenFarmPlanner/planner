@@ -151,4 +151,48 @@ test.describe('growing areas site conditions', () => {
     await expect.poll(async () => (await apiRequest<{ light_condition: string | null }>(page, 'GET', `/beds/${sunnyBed.id}/`)).light_condition)
       .toBe('partial_shade');
   });
+  test('closes an open select menu on a click in the same row without saving it', async ({ page, request }) => {
+    // Wide enough that the Bodenfeuchte column is not scrolled out of view.
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await loginWithDeterministicProject(page, request, 'fields-site-conditions-menu-row', { loginAsAdmin: true });
+    const { sunnyBed } = await seedConditions(page, 'SC Menu Row');
+    await page.goto('/app/fields-beds');
+    const row = page.locator(`[role="row"][data-id="${sunnyBed.id}"]`);
+    await expect(row).toBeVisible();
+
+    const toolbar = page.getByTestId('growing-area-search-toolbar');
+    await toolbar.getByRole('button', { name: 'Spalten' }).click();
+    await page.getByRole('checkbox', { name: 'Licht' }).check();
+    await page.getByRole('checkbox', { name: 'Bodenfeuchte' }).check();
+    await page.keyboard.press('Escape');
+
+    const lightCell = row.locator('[data-field="light_condition"]');
+    const moistureCell = row.locator('[data-field="soil_moisture"]');
+    await lightCell.dblclick();
+    await lightCell.getByRole('combobox').click();
+    await expect(page.getByRole('listbox')).toBeVisible();
+
+    // The menu's backdrop covers the next select; this click only closes the menu (as in the planting plans).
+    const moistureBox = await moistureCell.boundingBox();
+    if (!moistureBox) throw new Error('soil moisture cell not rendered');
+    await page.mouse.click(moistureBox.x + moistureBox.width / 2, moistureBox.y + moistureBox.height / 2);
+    await expect(page.getByRole('listbox')).toHaveCount(0);
+    await expect(row).toHaveClass(/MuiDataGrid-row--editing/);
+
+    await moistureCell.getByRole('combobox').click();
+    await page.getByRole('option', { name: 'Feucht', exact: true }).click();
+    await expect(row).toHaveClass(/MuiDataGrid-row--editing/);
+
+    // A click outside the row while a menu is open still saves the row. The open
+    // menu's backdrop covers the page (and hides it from role queries), so click
+    // the heading's position like a user would.
+    const headingBox = await page.getByRole('heading', { level: 1 }).boundingBox();
+    if (!headingBox) throw new Error('page heading not rendered');
+    await lightCell.getByRole('combobox').click();
+    await expect(page.getByRole('listbox')).toBeVisible();
+    await page.mouse.click(headingBox.x + headingBox.width / 2, headingBox.y + headingBox.height / 2);
+    await expect(row).not.toHaveClass(/MuiDataGrid-row--editing/);
+    await expect.poll(async () => (await apiRequest<{ soil_moisture: string | null }>(page, 'GET', `/beds/${sunnyBed.id}/`)).soil_moisture)
+      .toBe('moist');
+  });
 });
