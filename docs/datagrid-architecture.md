@@ -39,7 +39,9 @@ The hierarchy ends a row edit on any pointer down outside its table wrapper
 outside that wrapper, so a pointer down inside a listbox whose opener in the
 table controls it (`aria-controls`, `isInListboxControlledFrom` in
 `domEventTargets.ts`) counts as inside; otherwise the row edit ends before the
-picked option is applied (#1237).
+picked option is applied (#1237). As in `EditableDataGrid`, Enter on a
+closed select editor only opens its menu and does not save the row
+(`useHierarchyGridKeyboard.ts`); Enter in the open menu picks the option.
 
 ## File map
 

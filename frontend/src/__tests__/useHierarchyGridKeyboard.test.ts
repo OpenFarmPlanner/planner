@@ -420,6 +420,32 @@ describe('useHierarchyGridKeyboard', () => {
     expect(setRowModesModel).not.toHaveBeenCalled();
   });
 
+  it('lets Enter on a closed select editor open its menu without saving the row', () => {
+    const { result } = renderKeyboardHook({ 101: { mode: GridRowModes.Edit } });
+    const combobox = document.createElement('div');
+    combobox.setAttribute('role', 'combobox');
+    const event = makeKeyboardEvent('Enter', { target: combobox });
+
+    act(() => {
+      result.current.handleCellKeyDown(makeCellParams(101, 'light_condition'), event);
+    });
+
+    // MUI's row-edit Enter (save) is suppressed; the Select's own handler opens the menu.
+    expect(event.defaultMuiPrevented).toBe(true);
+    expect(event.preventDefault).not.toHaveBeenCalled();
+  });
+
+  it('keeps the grid default Enter save on a text editor in an edited row', () => {
+    const { result } = renderKeyboardHook({ 101: { mode: GridRowModes.Edit } });
+    const event = makeKeyboardEvent('Enter', { target: document.createElement('input') });
+
+    act(() => {
+      result.current.handleCellKeyDown(makeCellParams(101, 'length_m'), event);
+    });
+
+    expect(event.defaultMuiPrevented).toBe(false);
+  });
+
   it('opens notes from the keyboard without starting row edit mode', () => {
     const { result, notesOpen, setRowModesModel } = renderKeyboardHook();
     const event = makeKeyboardEvent('Enter');

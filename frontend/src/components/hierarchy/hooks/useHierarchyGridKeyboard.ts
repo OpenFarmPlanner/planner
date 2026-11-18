@@ -16,6 +16,7 @@ import {
   useSpreadsheetCellEditing,
   type SpreadsheetCellEditing,
 } from "../../data-grid/useSpreadsheetCellEditing";
+import { isComboboxInteractionTarget } from "../../data-grid/domEventTargets";
 import type { HierarchyRow } from "../utils/types";
 
 type HierarchyKeyboardEvent = React.KeyboardEvent & {
@@ -380,6 +381,21 @@ export function useHierarchyGridKeyboard({
       keyboardEvent.preventDefault();
       keyboardEvent.defaultMuiPrevented = true;
       discardRowEdit(params.id);
+      return;
+    }
+
+    // Enter on a closed select editor opens its menu (the Select's own
+    // handler); it must not also save the row, as in EditableDataGrid.
+    if (
+      keyboardEvent.key === "Enter"
+      && !keyboardEvent.shiftKey
+      && !keyboardEvent.ctrlKey
+      && !keyboardEvent.metaKey
+      && !keyboardEvent.altKey
+      && isRowEditing(rowModesModel, params.id)
+      && isComboboxInteractionTarget(keyboardEvent.target)
+    ) {
+      keyboardEvent.defaultMuiPrevented = true;
       return;
     }
 
