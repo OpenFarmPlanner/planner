@@ -112,7 +112,7 @@ class StructureApiTest(ProjectApiTestCase):
         self.assertEqual(response.data['width_m'], 18.4)
         self.assertEqual(response.data['area_sqm'], 782.0)
 
-        for invalid in (0, -3):
+        for invalid in (0, -3, 'nan', 'inf', 1e308, 200000):
             with self.subTest(length=invalid):
                 response = self.client.patch(url, {'length_m': invalid}, format='json')
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
