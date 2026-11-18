@@ -193,6 +193,16 @@ which scales that requested height down (56px becomes ~39px), and the track
 follows the same measurement. The hierarchy grid passes its own
 `HEADER_ROW_HEIGHT`, which is likewise the offset its track is drawn at.
 
+The hierarchy hides MUI's own vertical scrollbar with `visibility: hidden`,
+never `display: none`: MUI measures the scrollbar size on that element, and a
+collapsed one measures 0, so MUI's bottom filler would reserve no room and the
+horizontal scrollbar would cover the last row whenever the columns overflow.
+The grid's desktop height (`getHierarchyGridHeight` in
+`fieldsBedsHierarchyStyles.ts`) adds that scrollbar's height through MUI's own
+`--DataGrid-hasScrollX` and `--DataGrid-scrollbarSize` variables. Headless
+Chrome hides scrollbars, so the regression test lives in
+`e2e/scrollbar-layout.spec.ts` (the `chromium-scrollbars` project).
+
 `useScrollDrivenRowWindow` exports `getBalancedPageSize`, which both grids use
 to size that internal window: it searches down from the 100-row cap for a page
 size whose last page is full or holds at least 60 rows (209 rows become

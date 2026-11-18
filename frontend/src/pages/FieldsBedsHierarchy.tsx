@@ -62,6 +62,7 @@ import { isApplePlatform } from "../utils/platform";
 import EmptyStateCard from '../components/project/EmptyStateCard';
 import { PAGE_CONTAINER_SX } from '../components/layout/pageContainerStyles';
 import {
+  getHierarchyGridHeight,
   HIERARCHY_AUTO_EXPAND_ALL_THRESHOLD,
   HIERARCHY_DATA_GRID_SX,
   HIERARCHY_GRID_PAGE_SIZE,
@@ -2151,7 +2152,7 @@ function FieldsBedsHierarchy({
                   ? HIERARCHY_DATA_GRID_SX
                   : {
                     ...HIERARCHY_DATA_GRID_SX,
-                    height: `${Math.min(maxPageContentHeight, availableTableHeight ?? tableContentHeight)}px`,
+                    height: getHierarchyGridHeight(maxPageContentHeight, tableContentHeight, availableTableHeight),
                   }
               }
               disableRowSelectionOnClick
