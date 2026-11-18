@@ -216,7 +216,7 @@ for (const bedCount of [4, 30]) {
     // The optional site-condition columns make the columns wider than the table.
     const toolbar = page.getByTestId('growing-area-search-toolbar');
     await toolbar.getByRole('button', { name: 'Spalten' }).click();
-    for (const column of ['Licht', 'Bodenfeuchte', 'Bewässerung verfügbar']) {
+    for (const column of ['Licht', 'Feuchtigkeit', 'Bewässerung verfügbar']) {
       await page.getByRole('checkbox', { name: column }).check();
     }
     await page.keyboard.press('Escape');
