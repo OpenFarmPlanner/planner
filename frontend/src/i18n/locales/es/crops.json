@@ -2041,6 +2041,7 @@
     "repeatUntilEvent": "Hasta {{event}}"
   },
   "supplierData": {
+    "price": "Precio",
     "title": "Datos de proveedores",
     "editNamed": "Editar datos del proveedor: {{supplier}}",
     "deleteNamed": "Eliminar datos del proveedor: {{supplier}}",

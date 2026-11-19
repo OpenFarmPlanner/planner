@@ -1988,6 +1988,7 @@
     "repeatUntilEvent": "Tot {{event}}"
   },
   "supplierData": {
+    "price": "Prijs",
     "title": "Leveranciersgegevens",
     "editNamed": "Leveranciersgegevens bewerken: {{supplier}}",
     "deleteNamed": "Leveranciersgegevens verwijderen: {{supplier}}",

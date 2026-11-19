@@ -1,7 +1,7 @@
 import { useId, useMemo, useRef, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import { Alert, Box, Button, Divider, Link, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, Link, Stack, Typography } from '@mui/material';
 import { cropAPI } from '../api/api';
 import type { Crop, CropSupplierData } from '../api/types';
 import { AppTooltip } from '../components/AppTooltip';
@@ -10,7 +10,8 @@ import { useTranslation } from '../i18n';
 import { buildCropSavePayload, mapSupplierDataRowToInput } from '../pages/cropsSaveUtils';
 import { resolveLocaleFromLanguage } from '../utils/numberLocalization';
 import { CropForm } from './CropForm';
-import { formatPackageSizes } from './cropDetailFormatters';
+import { formatNumber, formatPackageSizes } from './cropDetailFormatters';
+import { CropDetailList, CropDetailListRow } from './CropDetailList';
 
 interface CropSupplierDataSectionProps {
   crop: Crop;
@@ -112,23 +113,36 @@ export function CropSupplierDataSection({ crop, crops, onSaved }: CropSupplierDa
         onClick={() => openEditor()}>{t('crops:form.addSupplierData')}</Button>
     </Stack>
     {rows.length === 0 && <Typography variant="body2" color="text.secondary">{t('crops:form.noSupplierDataRows')}</Typography>}
-    <Stack divider={<Divider />} spacing={1.5}>
-      {rows.map((row, index) => <Stack key={row.id ?? `${row.supplier?.id ?? row.supplier_id ?? 'supplier'}-${index}`} spacing={1} sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', gap: 0.5 }}>
-          <Typography variant="subtitle2">{supplierName(row)}</Typography>
-          <Stack direction="row" spacing={0.5}>
-            <Button disabled={crop.id === undefined || row.id === undefined} onClick={() => openEditor(row)}
-              aria-label={t('crops:supplierData.editNamed', { supplier: supplierName(row) })}>{t('common:actions.edit')}</Button>
-            <Button color="error" disabled={crop.id === undefined || row.id === undefined}
-              onClick={() => { setDeleteError(false); setDeleting(row); }}
-              aria-label={t('crops:supplierData.deleteNamed', { supplier: supplierName(row) })}>{t('common:actions.delete')}</Button>
-          </Stack>
-        </Stack>
-        {row.supplier_product_name && <Typography variant="body2">{row.supplier_product_name}</Typography>}
-        {row.supplier_product_url && <Link href={row.supplier_product_url} target="_blank" rel="noopener noreferrer" underline="hover">{row.supplier_product_url}</Link>}
-        <Typography variant="body2" color="text.secondary">{t('crops:form.seedPackagesLabel')}: <Box component="span">{formatPackageSizes(row.packaging_sizes, (key) => t(`crops:${key}`), locale)}</Box></Typography>
-      </Stack>)}
-    </Stack>
+    {rows.length > 0 && <CropDetailList>
+      {rows.map((row, index) => {
+        const name = supplierName(row);
+        return <CropDetailListRow
+          key={row.id ?? `${row.supplier?.id ?? row.supplier_id ?? 'supplier'}-${index}`}
+          name={name}
+          description={row.notes}
+          metadata={<>
+            {(row.supplier_product_name || row.supplier_product_url) && <Box sx={{ minWidth: 0 }}>
+              {row.supplier_product_name && <Typography variant="body2">{row.supplier_product_name}</Typography>}
+              {row.supplier_product_url && <Link variant="body2" href={row.supplier_product_url}
+                target="_blank" rel="noopener noreferrer" underline="hover">{row.supplier_product_url}</Link>}
+            </Box>}
+            <Typography variant="body2" color="text.secondary">
+              {t('crops:form.seedPackagesLabel')}: <Box component="span">
+                {formatPackageSizes(row.packaging_sizes, (key) => t(`crops:${key}`), locale)}
+              </Box>
+            </Typography>
+            {row.price != null && <Typography variant="body2" color="text.secondary">
+              {t('crops:supplierData.price')}: {formatNumber(row.price, key => t(`crops:${key}`), locale)}
+            </Typography>}
+          </>}
+          disabled={crop.id === undefined || row.id === undefined}
+          editLabel={t('crops:supplierData.editNamed', { supplier: name })}
+          deleteLabel={t('crops:supplierData.deleteNamed', { supplier: name })}
+          onEdit={() => openEditor(row)}
+          onDelete={() => { setDeleteError(false); setDeleting(row); }}
+        />;
+      })}
+    </CropDetailList>}
     {editing && <CropForm crop={editing.crop} crops={crops} section="supplierData"
       saveErrorOverride={editError}
       formKind={crop.variety?.trim() ? 'variety' : 'crop'}

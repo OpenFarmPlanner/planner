@@ -10,6 +10,12 @@ async function openCreateCropDialog(page: Page): Promise<Locator> {
   return dialog;
 }
 
+async function selectSupplierOfferAction(page: Page, supplierName: string, actionLabel: string) {
+  const offer = page.getByRole('listitem').filter({ has: page.getByText(supplierName, { exact: true }) });
+  await offer.getByRole('button').click();
+  await page.getByRole('menuitem', { name: actionLabel, exact: true }).click();
+}
+
 async function inputBox(input: Locator) {
   const box = await input.boundingBox();
   expect(box).not.toBeNull();
@@ -292,7 +298,7 @@ test('supplier seed statuses persist and fit the existing responsive editor', as
   await cropDialog.getByRole('button', { name: 'Abbrechen', exact: true }).click();
   await expect(cropDialog).not.toBeVisible();
   await expect(page.locator('#root')).not.toHaveAttribute('aria-hidden', 'true');
-  await page.getByRole('button', { name: 'Lieferantendaten bearbeiten' }).click();
+  await selectSupplierOfferAction(page, 'Status supplier', 'Lieferantendaten bearbeiten: Status supplier');
   const dialog = page.getByRole('dialog', { name: 'Kulturspezifische Lieferantendaten' });
   const seedStatus = dialog.getByRole('combobox', { name: 'Saatgutstatus', exact: true });
   await expect(seedStatus).toHaveText('Unbekannt');
@@ -308,7 +314,7 @@ test('supplier seed statuses persist and fit the existing responsive editor', as
   await expect(dialog).not.toBeVisible();
   const saved = await apiRequest<{ supplier_data: Array<{ seed_status: string; seed_exemption_status: string }> }>(page, 'GET', `/crops/${crop.id}/`);
   expect(saved.supplier_data[0]).toMatchObject({ seed_status: 'conventional', seed_exemption_status: 'approved' });
-  await page.getByRole('button', { name: 'Lieferantendaten bearbeiten' }).click();
+  await selectSupplierOfferAction(page, 'Status supplier', 'Lieferantendaten bearbeiten: Status supplier');
   await expect(seedStatus).toHaveText('Konventionell');
   for (const width of [375, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
@@ -322,7 +328,7 @@ test('supplier seed statuses persist and fit the existing responsive editor', as
   }
   await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'fr' });
   await page.goto(`/app/crops?cropId=${crop.id}`);
-  await page.getByRole('button', { name: 'Modifier les données fournisseur' }).click();
+  await selectSupplierOfferAction(page, 'Status supplier', 'Modifier les données fournisseur : Status supplier');
   await page.setViewportSize({ width: 375, height: 800 });
   const frenchStatus = page.getByRole('combobox', { name: 'Statut des semences', exact: true });
   await frenchStatus.scrollIntoViewIfNeeded();
@@ -340,7 +346,7 @@ test('supplier editor retains failed drafts and explicitly clears all supplier r
     supplier_data_input: [{ supplier_id: supplier.id, supplier_product_name: 'Old' }],
   });
   await page.goto(`/app/crops?cropId=${crop.id}`);
-  await page.getByRole('button', { name: 'Lieferantendaten bearbeiten' }).click();
+  await selectSupplierOfferAction(page, 'Draft supplier', 'Lieferantendaten bearbeiten: Draft supplier');
   const dialog = page.getByRole('dialog', { name: 'Kulturspezifische Lieferantendaten' });
   const product = dialog.getByRole('textbox', { name: 'Artikelbezeichnung beim Lieferanten' });
   await product.fill('Retained draft');
@@ -381,12 +387,12 @@ test('supplier section adds, edits and deletes one offer without changing other 
   await expect(dialog).not.toBeVisible();
   await expect(section.getByText('New C', { exact: true })).toBeVisible();
 
-  await section.getByRole('button', { name: 'Lieferantendaten bearbeiten: Offer B', exact: true }).click();
+  await selectSupplierOfferAction(page, 'Offer B', 'Lieferantendaten bearbeiten: Offer B');
   await expect(dialog.getByTestId('crop-supplier-data-row')).toHaveCount(1);
   await dialog.getByRole('textbox', { name: 'Artikelbezeichnung beim Lieferanten' }).fill('Updated B');
   await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
   await expect(dialog).not.toBeVisible();
-  await section.getByRole('button', { name: 'Lieferantendaten löschen: Offer C', exact: true }).click();
+  await selectSupplierOfferAction(page, 'Offer C', 'Lieferantendaten löschen: Offer C');
   const confirm = page.getByRole('dialog', { name: 'Lieferantendaten löschen', exact: true });
   await confirm.getByRole('button', { name: 'Löschen', exact: true }).focus();
   await page.keyboard.press('Enter');

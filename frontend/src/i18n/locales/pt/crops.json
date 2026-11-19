@@ -2040,6 +2040,7 @@
     "occurrences_many": "{{count}} tarefas"
   },
   "supplierData": {
+    "price": "Preço",
     "title": "Dados do fornecedor",
     "editNamed": "Editar dados do fornecedor: {{supplier}}",
     "deleteNamed": "Eliminar dados do fornecedor: {{supplier}}",

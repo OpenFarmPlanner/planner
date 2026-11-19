@@ -29,8 +29,12 @@ function Harness({ crop = initial }: { crop?: Crop }) {
   const [current, setCurrent] = useState(crop);
   return <CropSupplierDataSection crop={current} crops={[current]} onSaved={setCurrent} />;
 }
+async function openSupplierAction(name: string) {
+  fireEvent.click(screen.getByRole('button', { name: 'Weitere Aktionen — First supplier' }));
+  fireEvent.click(await screen.findByRole('menuitem', { name }));
+}
 async function editFirst() {
-  fireEvent.click(screen.getByRole('button', { name: 'Lieferantendaten bearbeiten: First supplier' }));
+  await openSupplierAction('Lieferantendaten bearbeiten: First supplier');
   const dialog = screen.getByRole('dialog');
   await waitFor(() => expect(within(dialog).getByRole('combobox', { name: 'Saatgutlieferant' })).toHaveTextContent('First supplier'));
   fireEvent.change(within(dialog).getByRole('textbox', { name: 'Artikelbezeichnung beim Lieferanten' }), { target: { value: 'Updated article' } });
@@ -103,7 +107,7 @@ describe('CropSupplierDataSection', () => {
   it('confirms deletion, retains the offer on failure and preserves the remaining offer on retry', async () => {
     api.patch.mockRejectedValueOnce(new Error('offline'));
     render(<Harness />);
-    fireEvent.click(screen.getByRole('button', { name: 'Lieferantendaten löschen: First supplier' }));
+    await openSupplierAction('Lieferantendaten löschen: First supplier');
     const dialog = screen.getByRole('dialog');
     expect(api.patch).not.toHaveBeenCalled();
     expect(within(dialog).getByRole('button', { name: 'Abbrechen' })).toHaveFocus();
@@ -114,5 +118,14 @@ describe('CropSupplierDataSection', () => {
     await waitFor(() => expect(dialog).not.toBeInTheDocument());
     expect(screen.queryByText('First article')).not.toBeInTheDocument();
     expect(api.patch).toHaveBeenLastCalledWith(8, [expect.objectContaining({ id: 72, supplier_id: 2, notes: 'Keep offer notes' })]);
+  });
+
+  it('keeps the offer product, package units, price and notes visible within its own row', () => {
+    render(<Harness />);
+    const row = screen.getAllByRole('listitem').find(item => item.textContent?.includes('Second supplier'))!;
+    expect(within(row).getByText('Second article')).toBeVisible();
+    expect(within(row).getByText(/250 Korn/)).toBeVisible();
+    expect(within(row).getByText('Preis: 3,5')).toBeVisible();
+    expect(within(row).getByText('Keep offer notes')).toBeVisible();
   });
 });

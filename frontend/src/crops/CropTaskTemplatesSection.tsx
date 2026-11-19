@@ -9,6 +9,7 @@ import { useTranslation } from '../i18n';
 import { ConfirmationDialog } from '../components/feedback/ConfirmationDialog';
 import LoadRetryButton from '../components/LoadRetryButton';
 import { formGridSx, formGridFieldSx, formGridFullRowSx } from '../components/forms/formLayout';
+import { CropDetailList, CropDetailListRow } from './CropDetailList';
 
 const EVENTS: TaskReferenceEvent[] = ['propagation_start', 'sowing', 'planting', 'harvest_start', 'harvest_end'];
 
@@ -72,14 +73,22 @@ export function CropTaskTemplatesSection({ cropId }: { cropId: number }) {
     {!loaded && !failed && <CircularProgress size={20} aria-label={t('common:messages.loading')} />}
     {failed && <Alert severity="error" action={<LoadRetryButton onClick={() => setRetry((value) => value + 1)} />}>{t('crops:taskTemplates.loadError')}</Alert>}
     {loaded && rows.length === 0 && <Typography variant="body2" color="text.secondary">{t('crops:taskTemplates.empty')}</Typography>}
-    {loaded && rows.map((row) => <Box key={row.id} sx={{ py: 1, borderBottom: 1, borderColor: 'divider', overflowWrap: 'anywhere' }}>
-      <Typography sx={{ fontWeight: 600 }}>{row.title}</Typography>
-      {row.description && <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{row.description}</Typography>}
-      <Typography variant="body2" color="text.secondary">{t(`dashboard:events.${row.reference_event}`)} · {t('crops:taskTemplates.offsetValue', { days: row.day_offset })}</Typography>
-      <Typography variant="body2" color="text.secondary">{recurrenceSummary(row)}</Typography>
-      <Button onClick={() => setEditing(row)} aria-label={t('crops:taskTemplates.editNamed', { title: row.title })}>{t('common:actions.edit')}</Button>
-      <Button color="error" onClick={() => { setDeleteError(false); setDeleting(row); }} aria-label={t('crops:taskTemplates.deleteNamed', { title: row.title })}>{t('common:actions.delete')}</Button>
-    </Box>)}
+    {loaded && rows.length > 0 && <CropDetailList>
+      {rows.map((row) => <CropDetailListRow
+        key={row.id}
+        name={row.title}
+        description={row.description}
+        metadata={<>
+          <Typography variant="body2" color="text.secondary">{t(`dashboard:events.${row.reference_event}`)}</Typography>
+          <Typography variant="body2" color="text.secondary">{t('crops:taskTemplates.offsetValue', { days: row.day_offset })}</Typography>
+          <Typography variant="body2" color="text.secondary">{recurrenceSummary(row)}</Typography>
+        </>}
+        editLabel={t('crops:taskTemplates.editNamed', { title: row.title })}
+        deleteLabel={t('crops:taskTemplates.deleteNamed', { title: row.title })}
+        onEdit={() => setEditing(row)}
+        onDelete={() => { setDeleteError(false); setDeleting(row); }}
+      />)}
+    </CropDetailList>}
     {editing !== undefined && <TemplateEditor key={editing?.id ?? 'new'} template={editing} cropId={cropId}
       onClose={() => setEditing(undefined)} onSaved={(saved) => {
         setRows((previous) => editing ? previous.map((row) => row.id === saved.id ? saved : row) : [...previous, saved]);
