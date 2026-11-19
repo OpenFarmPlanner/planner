@@ -207,6 +207,14 @@ readable but cannot be destructively reconstructed by guessing.
 
 Crop timing edits record recalculated plan after-images inside the crop save's
 transaction, followed by the crop revision as the completed version boundary.
+When a linked variety fills species fields on its general crop, the general
+crop's after-image is internal and the completed variety revision records its
+final stored values. A variety update also lists the fields it changed on the
+general crop. Restoring that entry from crop history restores those values on
+the same general crop and refuses if the recorded parent is no longer linked.
+Suppliers created by name are recorded before the crop
+revision in the same transaction. Import preview, skipped rows and rejected
+rows leave no new suppliers behind.
 Nested supplier rows and seed packages also record their after-images/deletions
 before a final crop revision. Neighbours taken from the crop library on import,
 link, sync or a library update follow the same rule: each created, updated or

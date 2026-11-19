@@ -27,6 +27,7 @@ from farm.germination import REQUIREMENT_LEGACY_VALUES, project_legacy_requireme
 from farm.models import Crop, Project
 from farm.models.crops import (
     compute_plants_per_m2,
+    crop_field_attname,
     crop_model_kwargs,
     get_crop_field_value,
     set_crop_field_value,
@@ -176,6 +177,7 @@ def find_general_crop(
     crop_species_id: int | None,
     *,
     exclude_pk: int | None = None,
+    for_update: bool = False,
 ) -> Crop | None:
     """The project's general Kultur for a crop species, looked up by ids.
 
@@ -191,6 +193,8 @@ def find_general_crop(
     )
     if exclude_pk is not None:
         queryset = queryset.exclude(pk=exclude_pk)
+    if for_update:
+        queryset = queryset.select_for_update()
     return queryset.order_by('pk').first()
 
 
@@ -425,7 +429,7 @@ def clear_species_invariant_overrides(
 def promote_species_invariant_values(
     variety: Crop,
     fields: Sequence[str],
-) -> Crop | None:
+) -> dict[str, Any]:
     """Move the species-invariant values this write sent onto the general Kultur.
 
     The three species-invariant fields describe the species, not the Sorte, so a
@@ -435,11 +439,11 @@ def promote_species_invariant_values(
     Sorte value before it ever gets here.
 
     Does nothing for a linked orphan (no general Kultur): its raw column is the
-    only copy of the value. Returns the general Kultur the values landed on, or
-    ``None``.
+    only copy of the value. Returns the changes actually recorded on the
+    general Kultur so the initiating variety's history can show them.
     """
     if not fields or not inherits_from_general_crop(variety):
-        return None
+        return {}
     # Same lookup the serializer validated against, so a row this write was
     # checked against is also the row the values land on.
     general = find_general_crop(
@@ -448,19 +452,27 @@ def promote_species_invariant_values(
         exclude_pk=variety.pk,
     )
     if general is None:
-        return None
-    changed_fields = [
-        field
+        return {}
+    changes = {
+        field: {
+            'old_value': get_crop_field_value(general, field),
+            'new_value': get_crop_field_value(variety, field),
+        }
         for field in fields
         if not is_unset_crop_value(get_crop_field_value(variety, field))
         and is_unset_crop_value(get_crop_field_value(general, field))
-    ]
-    for field in changed_fields:
-        set_crop_field_value(general, field, get_crop_field_value(variety, field))
-    if changed_fields:
-        general.save(update_fields=changed_fields)
+    }
+    for field, change in changes.items():
+        set_crop_field_value(general, field, change['new_value'])
+    if changes:
+        general.save(update_fields=changes)
     clear_species_invariant_overrides(variety, fields=fields)
-    return general
+    if not changes:
+        return {}
+    return {
+        'general_crop_id': general.pk,
+        'fields': {crop_field_attname(field): change for field, change in changes.items()},
+    }
 
 
 @transaction.atomic

@@ -29,6 +29,7 @@ from farm.history.project_restore import (
 )
 from farm.models import (
     BatchOperation,
+    Crop,
     CropCompanion,
     CropSupplierData,
     EntityRevision,
@@ -610,6 +611,81 @@ class HistoryRestorePathConsistencyTests(HistoryInvariantTestCase):
         self.assertEqual(project_row['image_file_id'], media)
         self.assertEqual(project_row['supplier_id'], first_supplier['id'])
         self.assertEqual(project_row['selected_seed_demand_supplier_id'], second_supplier['id'])
+
+
+class HistoryImplicitCropSaveTests(HistoryInvariantTestCase):
+    def test_completed_crop_version_includes_implicit_supplier_and_general_changes(self) -> None:
+        species = CropSpecies.objects.create(name='Crop history promotion species')
+        general = self.write('general crop', 'post', '/crops/', {
+            'name': 'History bean', 'crop_species': species.pk,
+        })['id']
+        prior_version = self.versions[-1].revision.pk
+        variety = self.write('create linked variety', 'post', '/crops/', {
+            'name': 'History bean', 'variety': 'Sample variety', 'crop_species': species.pk,
+            'crop_family': 'Fabaceae', 'cultivation_types': ['pre_cultivation'],
+            'supplier_name': 'Implicit history supplier',
+        })
+        supplier = variety['supplier']['id']
+        completed = self.versions[-1]
+        self.assertEqual((completed.revision.entity_type, completed.revision.object_id), (
+            'crop', variety['id'],
+        ))
+        revisions = EntityRevision.objects.filter(project=self.project, pk__gt=prior_version)
+        visible = revisions.exclude(snapshot__has_key='_project_version_internal')
+        self.assertEqual(list(visible.values_list('pk', flat=True)), [completed.revision.pk])
+        internal = revisions.filter(snapshot__has_key='_project_version_internal')
+        self.assertTrue(internal.filter(entity_type='supplier', object_id=supplier).exists())
+        self.assertTrue(internal.filter(entity_type='crop', object_id=general).exists())
+        history = self.client.get(f"{API}/crops/{variety['id']}/history/")
+        self.assertEqual(history.status_code, 200)
+        self.assertEqual([row['history_id'] for row in history.json()], [completed.revision.pk])
+
+        variety_url = f"/crops/{variety['id']}/"
+        self.write('fill linked general field', 'patch', variety_url, {'nutrient_demand': 'high'})
+        saved_edit = self.versions[-1].revision
+        self.assertEqual(saved_edit.snapshot['nutrient_demand'], '')
+        history = self.client.get(f'{API}{variety_url}history/').json()
+        self.assertEqual(history[0]['history_id'], saved_edit.pk)
+        self.assertEqual(history[0]['changes'], [
+            {'field': 'nutrient_demand', 'old_value': '', 'new_value': 'high'},
+        ])
+        general_url = f'/crops/{general}/'
+        for restore_url in (f'{variety_url}restore/', '/history/global/restore/'):
+            with self.subTest(restore_url=restore_url):
+                self.write('change shared nutrient demand', 'patch', general_url, {
+                    'nutrient_demand': 'low',
+                })
+                self.write('restore promoted value', 'post', restore_url, {
+                    'history_id': saved_edit.pk,
+                })
+                self.assertEqual(Crop.objects.get(pk=general).nutrient_demand, 'high')
+                restored = self.versions[-1].revision
+                self.assertEqual(restored.action, EntityRevision.ACTION_RESTORED)
+                self.assertEqual(restored.object_id, variety['id'])
+                self.assertEqual(restored.snapshot['nutrient_demand'], '')
+
+        self.write(
+            'remove supplier link', 'patch', variety_url, {'supplier_id': None},
+        )
+        self.write('delete unused supplier', 'delete', f'/suppliers/{supplier}/')
+        self.write(
+            'later general crop edit', 'patch', f'/crops/{general}/', {'rotation_break_years': 6},
+        )
+
+        self.assertEqual(self.restore(completed.revision), 200)
+        self.assert_state(completed.state, 'implicit crop save restores its completed version')
+
+        self.write('delete original general crop', 'delete', general_url)
+        self.write('new general for the same species', 'post', '/crops/', {
+            'name': 'History bean', 'crop_species': species.pk, 'nutrient_demand': 'low',
+        })
+        before = capture_project_state(self.project)
+        counts = self.history_counts()
+        conflict = self.client.post(f'{API}{variety_url}restore/', {
+            'history_id': saved_edit.pk,
+        }, format='json')
+        self.assertEqual(conflict.json()['field'], 'general_crop')
+        self.assert_refusal_is_atomic(conflict.status_code, before, counts)
 
 
 class HistoryLibraryCompanionRoundTripTests(HistoryInvariantTestCase):

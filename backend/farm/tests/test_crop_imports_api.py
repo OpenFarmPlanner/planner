@@ -1,7 +1,6 @@
 """API tests for the public-crop import preview/apply endpoints."""
 
 
-import pytest
 from rest_framework.test import APITestCase as DRFAPITestCase
 
 from farm.crops.serializers import CropSerializer
@@ -345,9 +344,6 @@ class CropImportAPITest(DRFAPITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['results'][0]['diff'], [])
 
-    @pytest.mark.history_gap(
-        issue=1203, reason='implicit crop-save side effects record no revision',
-    )
     def test_a_row_naming_another_supplier_updates_the_variety(self):
         """One crop per name and variety: another supplier is a change, not a new crop
         (which the serializer would reject as a duplicate)."""
@@ -390,6 +386,20 @@ class CropImportAPITest(DRFAPITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['results'][0]['status'], 'create')
         self.assertFalse(Supplier.objects.filter(project=self.project, name='Neuer Lieferant').exists())
+
+    def test_skipped_and_invalid_rows_leave_no_suppliers(self):
+        names = ['Supplier for skipped row', 'Supplier for invalid row']
+        response = self.client.post('/api/crops/import/apply/', {
+            'items': [
+                {'name': 'Tomato', 'variety': 'Cherry', 'supplier_name': names[0]},
+                {'name': 'New crop', 'supplier_name': names[1], 'display_color': 'invalid'},
+            ],
+            'confirm_updates': False,
+        }, format='json')
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual([row['status'] for row in response.data['results']], ['skipped', 'error'])
+        self.assertFalse(Supplier.objects.filter(project=self.project, name__in=names).exists())
 
     def test_import_preview_supplier_by_name(self):
         """Test preview resolves supplier by name."""
@@ -774,9 +784,6 @@ class CropSpreadsheetRoundTripTest(DRFAPITestCase):
             rows.append(row)
         return rows
 
-    @pytest.mark.history_gap(
-        issue=1203, reason='implicit crop-save side effects record no revision',
-    )
     def test_a_json_export_imports_like_a_sheet(self) -> None:
         rows = self._export_json_rows()
 
@@ -795,9 +802,6 @@ class CropSpreadsheetRoundTripTest(DRFAPITestCase):
             HTTP_X_PROJECT_ID=str(project.id),
         )
 
-    @pytest.mark.history_gap(
-        issue=1203, reason='implicit crop-save side effects record no revision',
-    )
     def test_exported_demo_crops_import_into_an_empty_project_without_errors(self) -> None:
         rows = self._export_rows()
         self.assertGreater(len(rows), 20)
@@ -831,18 +835,12 @@ class CropSpreadsheetRoundTripTest(DRFAPITestCase):
         }
         return {crop: diff for crop, diff in differences.items() if diff}
 
-    @pytest.mark.history_gap(
-        issue=1203, reason='implicit crop-save side effects record no revision',
-    )
     def test_imported_varieties_keep_what_they_inherit_from_their_species(self) -> None:
         rows = self._export_rows()
         self._post(self.target, 'apply', {'items': rows, 'confirm_updates': False})
 
         self.assertEqual(self._differences(self.source, self.target), {})
 
-    @pytest.mark.history_gap(
-        issue=1203, reason='implicit crop-save side effects record no revision',
-    )
     def test_re_importing_into_an_imported_project_changes_nothing(self) -> None:
         """Second import of the same sheet: the first one moved the Sorten's
         family and nutrient demand onto their Kultur, which must not read as a change."""

@@ -34,6 +34,7 @@ from farm.models import (
 )
 
 _internal_versions: ContextVar[bool] = ContextVar('internal_project_versions', default=False)
+PROMOTED_CROP_FIELD_CHANGES = '_promoted_crop_field_changes'
 
 
 @contextmanager
@@ -222,6 +223,25 @@ def record_entity_revision(
     )
 
 
+def record_completed_crop_revision(
+    crop: Crop, *, action: str, before: dict[str, Any] | None = None,
+    promoted: dict[str, Any] | None = None,
+) -> None:
+    snapshot = _serialize_instance(crop)
+    changed_fields = None if before is None else _diff_changed_fields(before, snapshot)
+    if promoted:
+        snapshot[PROMOTED_CROP_FIELD_CHANGES] = promoted
+        promoted_fields = [
+            field for field, values in promoted['fields'].items()
+            if values['old_value'] != values['new_value']
+        ]
+        changed_fields = list(dict.fromkeys([*(changed_fields or []), *promoted_fields]))
+    record_entity_revision(
+        project=crop.project, entity_type='crop', object_id=crop.pk, action=action,
+        snapshot=snapshot, display_name=_entity_display_name(crop), changed_fields=changed_fields,
+    )
+
+
 _ENTITY_HISTORY_IGNORED_FIELDS = {
     'id',
     'created_at',
@@ -247,6 +267,7 @@ def _build_entity_revision_changes(
     if not isinstance(changed_fields, list):
         changed_fields = []
 
+    promoted = snapshot.get(PROMOTED_CROP_FIELD_CHANGES, {}).get('fields', {})
     changes: list[dict[str, Any]] = []
     for field in changed_fields:
         if field in _ENTITY_HISTORY_IGNORED_FIELDS:
@@ -259,6 +280,10 @@ def _build_entity_revision_changes(
             })
             continue
         if field not in snapshot:
+            continue
+
+        if field in promoted:
+            changes.append({'field': field, **promoted[field]})
             continue
 
         old_value = previous_snapshot.get(field) if isinstance(previous_snapshot, dict) else None
