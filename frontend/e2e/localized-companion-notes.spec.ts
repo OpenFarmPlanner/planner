@@ -62,6 +62,53 @@ async function openProjectCompanions(page: Page, cropId: number, language: 'de' 
   return dialog;
 }
 
+test('a reason edit from another open editor preserves the newer reciprocal note', async ({ page, request }) => {
+  test.setTimeout(90_000);
+  await loginWithDeterministicProject(page, request, 'companion-notes-two-editors', { loginAsAdmin: true });
+  const crop = await apiRequest<Crop>(page, 'POST', '/crops/', { name: 'Companion note owner' });
+  const neighbour = await apiRequest<Crop>(page, 'POST', '/crops/', { name: 'Companion note neighbour' });
+  const relation = await apiRequest<Relation>(page, 'POST', '/crop-companions/', {
+    crop: crop.id, companion_crop: neighbour.id, kind: 'bad', reason: 'competition',
+    notes: { de: 'Deutsche Notiz', fr: 'Ancienne note', en: 'English note' },
+  });
+
+  const firstEditor = await openProjectCompanions(page, crop.id);
+  await chooseLanguage(page, de.companions.noteLanguage, 'Français');
+  await expect(firstEditor.getByRole('textbox', { name: de.companions.form.note, exact: true })).toHaveValue('Ancienne note');
+  await expect(firstEditor.getByRole('button', { name: deCommon.actions.save, exact: true })).toBeDisabled();
+
+  const otherPage = await page.context().newPage();
+  try {
+    const secondEditor = await openProjectCompanions(otherPage, neighbour.id);
+    await chooseLanguage(otherPage, de.companions.noteLanguage, 'Français');
+    await secondEditor.getByRole('textbox', { name: de.companions.form.note, exact: true }).fill('Nouvelle note');
+    await secondEditor.getByRole('button', { name: deCommon.actions.save, exact: true }).click();
+    await expect(secondEditor).toBeHidden();
+
+    await firstEditor.getByRole('combobox', { name: de.companions.form.reason, exact: true }).click();
+    await page.getByRole('option', { name: de.companions.reasons.allelopathy, exact: true }).click();
+    const [saved] = await Promise.all([
+      page.waitForResponse(response => response.request().method() === 'PUT' && response.url().endsWith('/crop-companions/replace/')),
+      firstEditor.getByRole('button', { name: deCommon.actions.save, exact: true }).click(),
+    ]);
+    expect(saved.ok()).toBe(true);
+    expect(saved.request().postDataJSON().relations).toEqual([{
+      companion_crop: neighbour.id, companion_family: null, companion_text: '', kind: 'bad', reason: 'allelopathy',
+    }]);
+    await expect(firstEditor).toBeHidden();
+
+    for (const id of [crop.id, neighbour.id]) {
+      const stored = await apiRequest<(Relation & { reason: string })[]>(page, 'GET', `/crop-companions/?crop=${id}`);
+      expect(stored).toHaveLength(1);
+      expect(stored[0]).toMatchObject({
+        id: relation.id, notes: { de: 'Deutsche Notiz', fr: 'Nouvelle note', en: 'English note' }, reason: 'allelopathy',
+      });
+    }
+  } finally {
+    await otherPage.close();
+  }
+});
+
 for (const viewport of [
   { width: 375, height: 800 }, { width: 768, height: 900 },
   { width: 1024, height: 900 }, { width: 1440, height: 900 }, { width: 800, height: 375 },

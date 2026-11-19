@@ -63,6 +63,9 @@ describe('CompanionsSection in the crop form', () => {
     fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Sprache der Nachbarnotizen' }));
     fireEvent.click(screen.getByRole('option', { name: 'English' }));
     expect(screen.getByLabelText('Notiz')).toHaveValue('Source');
+    expect(screen.getByTestId('dirty')).toHaveTextContent('false');
+    expect(payload()[0]).not.toHaveProperty('note');
+    expect(payload()[0]).not.toHaveProperty('notes');
     fireEvent.change(screen.getByLabelText('Notiz'), { target: { value: 'Updated source' } });
     fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Sprache der Nachbarnotizen' }));
     fireEvent.click(screen.getByRole('option', { name: 'Deutsch' }));
@@ -125,7 +128,7 @@ describe('CompanionsSection in the crop form', () => {
 
     expect(screen.getByTestId('dirty')).toHaveTextContent('true');
     expect(payload()).toEqual([{
-      companion_crop: 3, companion_family: null, companion_text: '', kind: 'good', reason: 'other', note: '', note_language_code: 'de',
+      companion_crop: 3, companion_family: null, companion_text: '', kind: 'good', reason: 'other',
     }]);
   });
 
@@ -201,11 +204,13 @@ describe('CompanionsSection in the crop form', () => {
     rerender({ crops: initial.map(crop => ({ ...crop, crop_display_name: crop.id === 2 ? 'Updated potato' : 'Tomato' })) });
     expect(result.current.rows[0].target?.label).toBe('Updated potato');
     expect(result.current.dirty).toBe(false);
-    act(() => result.current.setRows(result.current.rows.map(row => ({ ...row, note: 'Unsaved note' }))));
+    act(() => result.current.setRows(result.current.rows.map(row => ({
+      ...row, note: 'Unsaved note', noteChanges: { de: 'Unsaved note' },
+    }))));
     rerender({ crops: initial });
     expect(result.current.rows[0].target?.label).toBe('Potato');
     expect(result.current.rows[0].note).toBe('Unsaved note');
-    expect(formRowsToReplaceItems(result.current.rows)[0]).toMatchObject({ companion_crop: 2, note: 'Unsaved note' });
+    expect(formRowsToReplaceItems(result.current.rows)[0]).toMatchObject({ companion_crop: 2, notes: { de: 'Unsaved note' } });
     expect(result.current.dirty).toBe(true);
     expect(api.listForCrop).toHaveBeenCalledTimes(1);
   });
