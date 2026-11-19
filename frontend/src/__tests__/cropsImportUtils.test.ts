@@ -4,10 +4,26 @@ import {
   partitionImportEntries,
   formatImportRowRanges,
   formatImportDiffChange,
+  formatImportFailure,
 } from '../pages/cropsImportUtils';
-import { buildTimingWindowPreviewWarnings } from '../pages/cropsPageUtils';
+import { buildCompanionPreviewErrors, buildTimingWindowPreviewWarnings } from '../pages/cropsPageUtils';
 
 const t = (key: string): string => key;
+
+it('localizes legacy companion limits separately from note validation', () => {
+  const translate = i18n.getFixedT('de', 'crops');
+  const row = {
+    index: 0, status: 'create' as const, import_data: { name: 'Mint' },
+    error: 'Import limit', error_code: 'legacy_companion_import_limit',
+  };
+  expect(buildCompanionPreviewErrors([row], () => 7, translate)).toEqual([
+    translate('companions.import.legacyLimitRow', { row: 7 }),
+  ]);
+  expect(formatImportFailure(row, translate)).toBe(translate('companions.import.legacyLimit'));
+  expect(buildCompanionPreviewErrors([
+    { ...row, error_code: 'companion_notes_invalid' },
+  ], () => 7, translate)).toEqual([translate('companions.import.invalidRow', { row: 7 })]);
+});
 
 it('makes a plant-health import diff reviewable and distinguishes a clear from inheritance', () => {
   const translate = i18n.getFixedT('de', 'crops');

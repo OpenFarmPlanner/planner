@@ -1832,6 +1832,8 @@
       "conflicts_other": "{{count}} vizinhos já constam da lista com o outro tipo e permanecem inalterados.",
       "invalid": "Os nomes de vizinhos permitem até 200 caracteres e as notas até 500. Verifique também os códigos de idioma das notas.",
       "invalidRow": "Linha {{row}}: nome ou nota de vizinho inválidos. Verifique a resolução dos nomes, os códigos de idioma e os comprimentos dos textos.",
+      "legacyLimit": "Divide as entradas de plantas vizinhas no formato antigo ou importa menos linhas de cada vez.",
+      "legacyLimitRow": "Linha {{row}}: Divide as entradas de plantas vizinhas no formato antigo ou importa menos linhas de cada vez.",
       "legacyWarning": "Os comentários antigos não podem ser resolvidos de forma inequívoca e são mantidos como texto: {{names}}",
       "created_many": "{{count}} vizinhos importados.",
       "unresolved_many": "{{count}} vizinhos não correspondem a nenhuma cultura nem família botânica e são importados como texto: {{names}}",

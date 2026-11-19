@@ -1785,6 +1785,8 @@
       "conflicts_other": "{{count}} Nachbarn sind bereits mit der anderen Art erfasst und bleiben unverändert.",
       "invalid": "Nachbarnamen dürfen höchstens 200 Zeichen und Notizen höchstens 500 Zeichen lang sein. Prüfe auch die Sprachcodes der Notizen.",
       "invalidRow": "Zeile {{row}}: Ungültiger Nachbarname oder ungültige Notiz. Prüfe die Namensauflösung, Sprachcodes und Textlängen.",
+      "legacyLimit": "Teile Nachbareinträge im alten Format auf oder importiere weniger Zeilen auf einmal.",
+      "legacyLimitRow": "Zeile {{row}}: Teile Nachbareinträge im alten Format auf oder importiere weniger Zeilen auf einmal.",
       "legacyWarning": "Alte Kommentare sind nicht eindeutig zuordenbar und bleiben als Text erhalten: {{names}}"
     },
     "publishSkipped_one": "{{count}} Nachbar bleibt im Projekt: Er ist freier Text oder eine Kultur ohne Kulturart.",

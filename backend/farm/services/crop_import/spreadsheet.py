@@ -14,6 +14,7 @@ from crops.services import find_species_by_common_name
 from farm.crops.serializers import CropSerializer
 from farm.models import Crop, Project, Supplier
 from farm.services.crop_companions import (
+    LEGACY_COMPANION_LIMIT_CODE,
     CompanionNameResolver,
     apply_import_companions,
     link_free_text_companions,
@@ -392,8 +393,12 @@ def _import_error_details(error: Exception) -> dict[str, Any]:
     if isinstance(error, SpecificPropertyImportError):
         details['error_code'] = 'specific_properties_invalid'
     code_reader = getattr(error, 'get_codes', None)
-    if callable(code_reader) and 'companion_notes_invalid' in str(code_reader()):
-        details['error_code'] = 'companion_notes_invalid'
+    if callable(code_reader):
+        codes = str(code_reader())
+        for code in ('companion_notes_invalid', LEGACY_COMPANION_LIMIT_CODE):
+            if code in codes:
+                details['error_code'] = code
+                break
     return details
 
 

@@ -1785,6 +1785,8 @@
       "conflicts_other": "{{count}} neighbors are already listed with the other type and stay unchanged.",
       "invalid": "Neighbor names allow up to 200 characters and notes up to 500. Also check the note language codes.",
       "invalidRow": "Row {{row}}: Invalid neighbor name or note. Check name resolution, language codes and text lengths.",
+      "legacyLimit": "Split legacy companion entries or import fewer rows at once.",
+      "legacyLimitRow": "Row {{row}}: Split legacy companion entries or import fewer rows at once.",
       "legacyWarning": "Legacy comments cannot be resolved unambiguously and are preserved as text: {{names}}"
     },
     "publishSkipped_one": "{{count}} neighbor stays in the project: it is free text or a crop without a crop species.",

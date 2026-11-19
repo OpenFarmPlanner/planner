@@ -182,8 +182,15 @@ export const buildSpecificPropertyPreviewErrors = (
 ): string[] => results.filter((result) => result.error_code === 'specific_properties_invalid')
   .map((result) => t('specificProperties.importRowInvalid', { row: rowNumber(result.index) }));
 
-export const buildCompanionNotePreviewErrors = (
+export const buildCompanionPreviewErrors = (
   results: ImportPreviewResult[], rowNumber: (index: number) => number,
   t: (key: string, options?: Record<string, unknown>) => string,
-): string[] => results.filter((result) => result.error_code === 'companion_notes_invalid')
-  .map((result) => t('companions.import.invalidRow', { row: rowNumber(result.index) }));
+): string[] => results.flatMap((result) => {
+  if (result.error_code === 'companion_notes_invalid') {
+    return [t('companions.import.invalidRow', { row: rowNumber(result.index) })];
+  }
+  if (result.error_code === 'legacy_companion_import_limit') {
+    return [t('companions.import.legacyLimitRow', { row: rowNumber(result.index) })];
+  }
+  return [];
+});

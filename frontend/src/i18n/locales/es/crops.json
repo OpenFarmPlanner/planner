@@ -1836,6 +1836,8 @@
       "conflicts_other": "{{count}} vecinos ya están registrados con el otro tipo y no cambian.",
       "invalid": "Los nombres de vecinos admiten hasta 200 caracteres y las notas hasta 500. Comprueba también los códigos de idioma.",
       "invalidRow": "Fila {{row}}: nombre de vecino o nota no válidos. Comprueba los nombres, códigos de idioma y longitudes de texto.",
+      "legacyLimit": "Divide las entradas de plantas vecinas en formato antiguo o importa menos filas a la vez.",
+      "legacyLimitRow": "Fila {{row}}: Divide las entradas de plantas vecinas en formato antiguo o importa menos filas a la vez.",
       "legacyWarning": "Estos comentarios antiguos no se pueden reconocer sin ambigüedad y se conservan como texto: {{names}}"
     },
     "publishSkipped_one": "{{count}} vecino se queda en el proyecto: es texto libre o un cultivo sin especie de cultivo.",

@@ -1785,6 +1785,8 @@
       "conflicts_other": "{{count}} buren staan al onder het andere type en blijven ongewijzigd.",
       "invalid": "Namen van buren mogen maximaal 200 tekens bevatten en notities maximaal 500. Controleer ook de taalcodes van de notities.",
       "invalidRow": "Rij {{row}}: ongeldige naam van buur of notitie. Controleer de naamherkenning, taalcodes en tekstlengtes.",
+      "legacyLimit": "Splits vermeldingen van buurgewassen in het oude formaat of importeer minder rijen tegelijk.",
+      "legacyLimitRow": "Rij {{row}}: Splits vermeldingen van buurgewassen in het oude formaat of importeer minder rijen tegelijk.",
       "legacyWarning": "Oude opmerkingen kunnen niet eenduidig worden herkend en blijven als tekst behouden: {{names}}"
     },
     "publishSkipped_one": "{{count}} buur blijft in het project: het is vrije tekst of een gewas zonder gewassoort.",
