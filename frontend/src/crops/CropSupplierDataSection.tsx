@@ -127,7 +127,9 @@ export function CropSupplierDataSection({ crop, crops, onSaved }: CropSupplierDa
                 target="_blank" rel="noopener noreferrer" underline="hover">{row.supplier_product_url}</Link>}
             </Box>}
             <Typography variant="body2" color="text.secondary">
-              {t('crops:form.seedPackagesLabel')}: {formatPackageSizes(row.packaging_sizes, (key) => t(`crops:${key}`), locale)}
+              {t('crops:form.seedPackagesLabel')}: <Box component="span">
+                {formatPackageSizes(row.packaging_sizes, (key) => t(`crops:${key}`), locale)}
+              </Box>
             </Typography>
             {row.price != null && <Typography variant="body2" color="text.secondary">
               {t('crops:supplierData.price')}: {formatNumber(row.price, key => t(`crops:${key}`), locale)}
