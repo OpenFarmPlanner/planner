@@ -1365,8 +1365,8 @@ export interface CropCompanion {
 /** One neighbour of `PUT /crop-companions/replace/`, named from the Kultur's side. */
 export type CompanionReplaceItem = Pick<
   CropCompanion,
-  'companion_crop' | 'companion_family' | 'companion_text' | 'kind' | 'reason' | 'note' | 'note_language_code' | 'notes'
->;
+  'companion_crop' | 'companion_family' | 'companion_text' | 'kind' | 'reason' | 'note_language_code' | 'notes'
+> & Partial<Pick<CropCompanion, 'note'>> & { initial_notes?: CropCompanion['notes'] };
 
 export interface CompanionImportPreview {
   warnings?: string[];

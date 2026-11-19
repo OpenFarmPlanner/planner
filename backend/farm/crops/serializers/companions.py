@@ -169,7 +169,8 @@ class CropCompanionReplaceSerializer(serializers.Serializer):
     ``companion_family`` or ``companion_text``). An item whose neighbour is
     already listed updates that relation, a new one is created, and every
     relation of the Kultur the list leaves out is deleted, a shared pair
-    included.
+    included. ``initial_notes`` are defaults used only when the target creates
+    a relation, with explicit ``notes`` taking precedence.
     """
 
     crop = serializers.PrimaryKeyRelatedField(queryset=Crop.objects.all())
@@ -205,8 +206,16 @@ class CropCompanionReplaceSerializer(serializers.Serializer):
                 continue
             if key is not None:
                 seen.add(key)
+            instance = existing.get(key) if key is not None else None
+            if instance is None and 'initial_notes' in item:
+                try:
+                    defaults = validate_notes(item['initial_notes'])
+                    data['notes'] = {**defaults, **validate_notes(data.get('notes', {}))}
+                except serializers.ValidationError as error:
+                    errors[position] = {'notes': error.detail}
+                    continue
             child = CropCompanionSerializer(
-                instance=existing.get(key) if key is not None else None,
+                instance=instance,
                 data=data,
                 context=self.context,
             )

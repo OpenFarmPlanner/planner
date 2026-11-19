@@ -128,6 +128,7 @@ export interface CompanionFormRow {
   key: string;
   kind: CompanionKind;
   target: CompanionFormTarget | null;
+  originalTargetKey?: string;
   reason: CompanionReason;
   note: string;
   noteLanguage?: string;
@@ -214,7 +215,11 @@ export const relationToFormRow = (
     : partner.type === 'family'
       ? { type: 'family', familyKey: partner.familyKey, label: familyName(partner.familyKey) }
       : { type: 'text', text: partner.text, label: partner.text };
-  return { key: newCompanionRowKey(), kind: relation.kind, target, reason: relation.reason, note: relation.note, notes: relation.notes ?? (relation.note ? { de: relation.note } : {}), noteLanguage: relation.note_language_code };
+  return {
+    key: newCompanionRowKey(), kind: relation.kind, target, originalTargetKey: companionTargetKey(target),
+    reason: relation.reason, note: relation.note,
+    notes: relation.notes ?? (relation.note ? { de: relation.note } : {}), noteLanguage: relation.note_language_code,
+  };
 };
 
 export const libraryItemToFormRow = (
@@ -255,15 +260,18 @@ export const formRowsToReplaceItems = (rows: readonly CompanionFormRow[]): Compa
   .flatMap((row) => {
     const { target } = row;
     if (!target || target.type === 'species') return [];
+    const replacedTarget = row.originalTargetKey !== undefined
+      && row.originalTargetKey !== companionTargetKey(target);
+    const initialNotes = replacedTarget && row.note && row.noteLanguage
+      ? { [row.noteLanguage]: row.note } : undefined;
     return [{
       companion_crop: target.type === 'crop' ? target.cropId : null,
       companion_family: target.type === 'family' ? target.familyKey : null,
       companion_text: target.type === 'text' ? target.text.trim() : '',
       kind: row.kind,
       reason: row.reason,
-      note: row.note,
-      ...(row.noteLanguage ? { note_language_code: row.noteLanguage } : {}),
       ...(row.noteChanges ? { notes: row.noteChanges } : {}),
+      ...(initialNotes ? { initial_notes: initialNotes } : {}),
     }];
   });
 

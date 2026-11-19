@@ -393,9 +393,15 @@ note version so publication, import, pins, sync and JSON backup do not discard
 translations. No translation is generated automatically. The existing form's
 language selector switches note text independently of neighbor identity and
 reason; saving sends only the languages actually edited. Switching languages
-retains unsaved changes. Library and project details show only the current UI
-language's note and continue to show translated structured reasons. Newline
-and citation text is rendered as escaped plain text with preserved line breaks.
+retains unsaved changes. The project companion editor sends those changes as
+a `notes` map, including an empty value when an edited note is cleared. Viewing
+a language and then changing a reason or another neighbour leaves the current
+stored note versions intact, even if a different editor saved them in the
+meantime. When replacing a neighbour, the displayed note serves as a default
+for a newly created relation. Existing targets receive only explicit note edits.
+Library and project details show only the current UI language's note and
+continue to show translated structured reasons. Newline and citation text is
+rendered as escaped plain text with preserved line breaks.
 
 API writes may send `note` plus `note_language_code`, or an explicit `notes`
 map. Language maps and text lengths are validated. Library note patches merge

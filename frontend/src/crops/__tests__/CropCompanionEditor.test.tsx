@@ -18,7 +18,7 @@ const crops = [
 ] as Crop[];
 const pair: CropCompanion = {
   id: 10, crop: 2, companion_crop: 1, companion_family: null, companion_text: '',
-  kind: 'bad', reason: 'competition', note: 'Quelle DE', notes: { de: 'Quelle DE', en: 'Source EN' },
+  kind: 'bad', reason: 'competition', note: 'Quelle DE', notes: { de: 'Quelle DE', en: 'Source EN', fr: 'Source FR' },
 };
 const open = (crop = crops[0]) => {
   const onClose = vi.fn();
@@ -27,6 +27,10 @@ const open = (crop = crops[0]) => {
   return { onClose, onSaved };
 };
 const editPotato = async () => fireEvent.click(await screen.findByRole('button', { name: 'Kartoffel bearbeiten' }));
+const chooseLanguage = (name: string) => {
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Sprache der Nachbarnotizen' }));
+  fireEvent.click(screen.getByRole('option', { name }));
+};
 
 describe('CropCompanionEditor', () => {
   beforeEach(() => {
@@ -47,21 +51,53 @@ describe('CropCompanionEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Zu den guten Nachbarn verschieben' }));
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
     await waitFor(() => expect(api.replace).toHaveBeenCalledWith(1, [{
-      companion_crop: 2, companion_family: null, companion_text: '', kind: 'good', reason: 'competition', note: 'Neue Quelle DE', note_language_code: 'de', notes: { de: 'Neue Quelle DE' },
+      companion_crop: 2, companion_family: null, companion_text: '', kind: 'good', reason: 'competition',
+      notes: { de: 'Neue Quelle DE' },
     }]));
     expect(onSaved).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  it('keeps a deliberate deletion when switching back to an untouched language', async () => {
+    open();
+    await editPotato();
+    chooseLanguage('Français');
+    const note = screen.getByRole('textbox', { name: 'Notiz' });
+    expect(note).toHaveValue('Source FR');
+    fireEvent.change(note, { target: { value: '' } });
+    chooseLanguage('English');
+    expect(note).toHaveValue('Source EN');
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    await waitFor(() => expect(api.replace).toHaveBeenCalledWith(1, [{
+      companion_crop: 2, companion_family: null, companion_text: '', kind: 'bad', reason: 'competition',
+      notes: { fr: '' },
+    }]));
+  });
+
+  it('uses the visible note as a default when replacing the target', async () => {
+    open();
+    await editPotato();
+    chooseLanguage('English');
+    fireEvent.change(screen.getByRole('combobox', { name: 'Nachbar' }), { target: { value: 'Basilikum' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    await waitFor(() => expect(api.replace).toHaveBeenCalledWith(1, [{
+      companion_crop: 3, companion_family: null, companion_text: '', kind: 'bad', reason: 'competition',
+      initial_notes: { en: 'Source EN' },
+    }]));
+  });
+
   it('adds a free-text neighbour without modifying existing pairs', async () => {
     open();
+    await screen.findByRole('button', { name: 'Kartoffel bearbeiten' });
+    chooseLanguage('Français');
     fireEvent.click(await screen.findByRole('button', { name: 'Guten Nachbarn hinzufügen' }));
     fireEvent.change(screen.getByRole('combobox', { name: 'Nachbar' }), { target: { value: 'Dill' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Notiz' }), { target: { value: 'Note pour aneth' } });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
-    await waitFor(() => expect(api.replace).toHaveBeenCalledWith(1, expect.arrayContaining([
-      expect.objectContaining({ companion_crop: 2, kind: 'bad', note: 'Quelle DE' }),
-      expect.objectContaining({ companion_text: 'Dill', kind: 'good' }),
-    ])));
+    await waitFor(() => expect(api.replace).toHaveBeenCalledWith(1, [
+      { companion_crop: 2, companion_family: null, companion_text: '', kind: 'bad', reason: 'competition' },
+      { companion_crop: null, companion_family: null, companion_text: 'Dill', kind: 'good', reason: 'other', notes: { fr: 'Note pour aneth' } },
+    ]));
   });
 
   it('prevents a conflicting duplicate across good and bad groups', async () => {
@@ -135,7 +171,7 @@ describe('CropCompanionEditor', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Notiz' }), { target: { value: 'Updated only this note' } });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
     await waitFor(() => expect(api.replace).toHaveBeenCalledWith(1, expect.arrayContaining([
-      expect.objectContaining({ companion_text: prose, kind: 'bad', note: '', reason: 'other' }),
+      expect.objectContaining({ companion_text: prose, kind: 'bad', reason: 'other' }),
     ])));
   });
 

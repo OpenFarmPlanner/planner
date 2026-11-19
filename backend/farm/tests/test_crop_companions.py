@@ -485,6 +485,24 @@ class CompanionReplaceApiTests(CropCompanionTestCase):
         pair.refresh_from_db()
         self.assertEqual(pair.kind, 'good')
 
+    def test_note_defaults_only_apply_when_creating_a_relation(self):
+        response = self.client.put(self.url, {'crop': self.tomato.id, 'relations': [
+            {'companion_crop': self.potato.id, 'kind': 'good',
+             'initial_notes': {'de': 'Copied note', 'fr': 'Old source'},
+             'notes': {'fr': 'Explicit source'}},
+        ]}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        pair = response.data[0]
+        self.assertEqual(pair['notes'], {'de': 'Copied note', 'fr': 'Explicit source'})
+
+        response = self.client.put(self.url, {'crop': self.potato.id, 'relations': [
+            {'companion_crop': self.tomato.id, 'kind': 'bad',
+             'initial_notes': {'fr': 'Another target’s note'}, 'notes': {'de': ''}},
+        ]}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data[0]['id'], pair['id'])
+        self.assertEqual(response.data[0]['notes'], {'de': '', 'fr': 'Explicit source'})
+
     def test_a_neighbour_listed_twice_is_rejected_at_its_position(self):
         response = self.client.put(self.url, {'crop': self.tomato.id, 'relations': [
             {'companion_text': 'Salbei', 'kind': 'good'},
