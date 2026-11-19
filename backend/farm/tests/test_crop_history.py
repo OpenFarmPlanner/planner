@@ -29,8 +29,12 @@ User = get_user_model()
 
 
 def legacy_crop_snapshot(snapshot):
-    """Represent a crop written before seed type, germination axes and properties."""
-    added_fields = {*GERMINATION_FIELDS, 'seed_type', 'specific_properties'}
+    """Represent a crop written before farm.0137."""
+    added_fields = {
+        *GERMINATION_FIELDS, 'seed_type', 'life_cycle', 'light_requirement',
+        'pests_diseases', 'water_requirement', 'winter_hardiness', 'specific_properties',
+        'plant_health',
+    }
     return {
         **{key: value for key, value in snapshot.items() if key not in added_fields},
         'germination_types': ['cold'],
@@ -89,7 +93,8 @@ class CropHistoryTests(TestCase):
         )
         Crop.objects.filter(pk=self.crop.pk).update(
             seed_type='f1_hybrid', germination_temperature_requirement='none',
-            germination_days_min=12, stratification_days_min=21,
+            germination_days_min=12, stratification_days_min=21, life_cycle='annual',
+            pests_diseases='Later pest note', water_requirement='high', winter_hardiness='hardy',
         )
 
         response = self.client.post(
@@ -120,7 +125,7 @@ class CropHistoryTests(TestCase):
             project=self.project, name='Current snapshot crop', variety='Current variety',
             crop_species=potato, seed_type='open_pollinated',
             germination_temperature_requirement='none',
-            specific_properties={'cooking_type': 'waxy'},
+            specific_properties={'cooking_type': 'waxy'}, life_cycle='perennial',
         )
         return existing, removed, current, old_species, potato
 
@@ -130,10 +135,13 @@ class CropHistoryTests(TestCase):
             variety='Later variety', variety_normalized='later variety', crop_species=potato,
             seed_type='f1_hybrid', germination_temperature_requirement='none',
             germination_days_min=16, germination_days_max=25, stratification_days_min=21,
-            specific_properties={'cooking_type': 'floury'},
+            specific_properties={'cooking_type': 'floury'}, life_cycle='annual',
+            pests_diseases='Later pest note', water_requirement='high', winter_hardiness='hardy',
         )
         Crop.all_objects.filter(pk=removed.pk).delete()
-        Crop.objects.filter(pk=current.pk).update(seed_type='', specific_properties={})
+        Crop.objects.filter(pk=current.pk).update(
+            seed_type='', specific_properties={}, life_cycle='',
+        )
 
     def assert_legacy_crop_values(self, crop, *, light_requirement=''):
         self.assertEqual(crop.seed_type, '')
@@ -144,6 +152,10 @@ class CropHistoryTests(TestCase):
         self.assertIsNone(crop.germination_days_max)
         self.assertIsNone(crop.stratification_days_min)
         self.assertEqual(crop.specific_properties, {})
+        self.assertEqual(
+            (crop.life_cycle, crop.pests_diseases, crop.water_requirement, crop.winter_hardiness),
+            ('', '', '', ''),
+        )
 
     def assert_legacy_crop_restore_rows(self, existing, removed, current, old_species):
         for crop, light_requirement in ((existing, ''), (removed, 'none')):
@@ -156,6 +168,7 @@ class CropHistoryTests(TestCase):
         self.assertEqual(current.seed_type, 'open_pollinated')
         self.assertEqual(current.germination_temperature_requirement, 'none')
         self.assertEqual(current.specific_properties, {'cooking_type': 'waxy'})
+        self.assertEqual(current.life_cycle, 'perennial')
 
     def test_project_restore_normalizes_existing_and_recreated_legacy_crops(self):
         from farm.history.project_restore import capture_project_state, record_project_checkpoint
@@ -745,7 +758,11 @@ class ImportOperationHistoryTests(TestCase):
         batch = self.batch()
         change = batch.context['_import_changes']['crop'][str(self.crop.pk)]
         change['before'] = legacy_crop_snapshot(change['before'])
-        for field in ('seed_type', 'specific_properties', 'stratification_days_min'):
+        for field in (
+            'seed_type', 'specific_properties', 'stratification_days_min',
+            'life_cycle', 'light_requirement', 'pests_diseases',
+            'water_requirement', 'winter_hardiness',
+        ):
             change['after'].pop(field)
         batch.save(update_fields=['context'])
 

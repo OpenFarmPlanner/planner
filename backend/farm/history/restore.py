@@ -191,7 +191,10 @@ def _with_legacy_snapshot_fields(model: type, snapshot: dict) -> dict:
         snapshot = upgrade_germination_snapshot(snapshot)
         snapshot.setdefault('plant_health', None)
         snapshot.setdefault('specific_properties', {})
-        snapshot.setdefault('seed_type', '')
+        for field in (
+            'seed_type', 'life_cycle', 'pests_diseases', 'water_requirement', 'winter_hardiness',
+        ):
+            snapshot.setdefault(field, '')
         snapshot['light_requirement'] = normalize_crop_light(snapshot.get('light_requirement'))
         if 'crop_family_id' not in snapshot and 'crop_family' in snapshot:
             snapshot['crop_family_id'] = coerce_plant_family_key(snapshot['crop_family'])
