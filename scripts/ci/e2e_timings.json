@@ -75,6 +75,10 @@
       "tests": 9,
       "duration_ms": 61615
     },
+    "e2e/crop-version-restore.spec.ts": {
+      "tests": 1,
+      "duration_ms": 9000
+    },
     "e2e/data-grid-resize-container.spec.ts": {
       "tests": 2,
       "duration_ms": 6706
