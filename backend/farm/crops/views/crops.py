@@ -3,7 +3,7 @@
 from datetime import timedelta
 
 from django.core.exceptions import ValidationError as ModelValidationError
-from django.db import IntegrityError, transaction
+from django.db import transaction
 from django.db.models import Prefetch, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
@@ -565,23 +565,22 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         return Response(self.get_serializer(crop).data, status=status.HTTP_200_OK)
 
     def perform_update(self, serializer):
-        instance = self.get_object()
-        previous_media_id = instance.image_file_id
-        old_name = instance.name
-        old_crop_species_id = instance.crop_species_id
-        try:
-            with transaction.atomic():
-                self._validate_crop_group_rename(instance, serializer.validated_data.get('name', old_name))
-                updated = serializer.save()
-                self._set_latest_revision_actor(updated)
-                auto_general_crop = getattr(updated, '_auto_general_crop', None)
-                if auto_general_crop is not None:
-                    self._set_latest_revision_actor(auto_general_crop)
-                if updated.name != old_name:
-                    self._rename_sibling_crops(updated, old_name, old_crop_species_id)
-        except IntegrityError as error:
-            CropSerializer._raise_identity_conflict_if_named_constraint(error)
-            raise
+        with crop_identity_write(serializer.instance.project_id):
+            # Another rename can commit between DRF loading the crop and this lock.
+            instance = self.get_object()
+            serializer.instance = instance
+            previous_media_id = instance.image_file_id
+            old_name = instance.name
+            source_group = self._crop_group_q(instance)
+            requested_name = serializer.validated_data.get('name', old_name)
+            self._validate_crop_group_rename(instance, requested_name)
+            updated = serializer.save()
+            self._set_latest_revision_actor(updated)
+            auto_general_crop = getattr(updated, '_auto_general_crop', None)
+            if auto_general_crop is not None:
+                self._set_latest_revision_actor(auto_general_crop)
+            if updated.name != old_name:
+                self._rename_sibling_crops(updated, source_group)
         if previous_media_id and previous_media_id != updated.image_file_id:
             MediaFile.objects.filter(id=previous_media_id, orphaned_at__isnull=True).update(orphaned_at=timezone.now())
         if updated.image_file_id:
@@ -607,9 +606,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         if conflict:
             raise CropNameConflict()
 
-    def _rename_sibling_crops(
-        self, updated: Crop, old_name: str, old_crop_species_id: int | None,
-    ) -> None:
+    def _rename_sibling_crops(self, updated: Crop, source_group: Q) -> None:
         """Cascade a Crop's name change to its crop siblings.
 
         A "crop" has no dedicated table - it's just every Crop row that
@@ -618,17 +615,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         row leaves its siblings behind under the old name, which visually
         looks like a brand new crop was created instead of a rename.
         """
-        from farm.utils import normalize_text
-
-        siblings_qs = Crop.objects.filter(project_id=updated.project_id).exclude(pk=updated.pk)
-        if old_crop_species_id:
-            siblings_qs = siblings_qs.filter(crop_species_id=old_crop_species_id)
-        else:
-            siblings_qs = siblings_qs.filter(
-                crop_species_id__isnull=True, name_normalized=normalize_text(old_name),
-            )
-
-        for sibling in siblings_qs:
+        for sibling in Crop.objects.filter(source_group).exclude(pk=updated.pk):
             sibling.name = updated.name
             validate_crop_identity(sibling)
             sibling.save(update_fields=['name', 'name_normalized', 'updated_at'])
