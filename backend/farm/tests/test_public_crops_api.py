@@ -5737,6 +5737,19 @@ class PublicCropSpeciesRelinkApiTest(DRFAPITestCase):
                 crop == self.sibling_crop,
             )
 
+    def test_a_moved_variety_sibling_snapshot_carries_the_new_species(self):
+        variety_sibling = Crop.objects.create(
+            name='Bean', variety='Borlotto', crop_species=self.broad_species, project=self.project,
+        )
+        self.authenticate(self.moderator)
+
+        self.client.post(self.url, {'crop_species': self.correct_species.id}, format='json')
+
+        revision = EntityRevision.objects.filter(
+            project=self.project, entity_type='crop', object_id=variety_sibling.pk,
+        ).latest('id')
+        self.assertEqual(revision.snapshot['crop_species_id'], self.correct_species.pk)
+
     def test_a_crop_group_of_another_species_is_not_dragged_along(self):
         unrelated_species = CropSpecies.objects.create(name='Soybean')
         unrelated_crop = Crop.objects.create(

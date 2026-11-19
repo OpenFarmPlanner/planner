@@ -518,6 +518,8 @@ def sync_crop_species_across_crop_group(
         validate_general_crop_identity(general)
     if not members:
         return 0
+    for member in members:
+        member.crop_species_id = crop.crop_species_id
     updated = Crop.objects.filter(pk__in=[member.pk for member in members]).update(
         crop_species_id=crop.crop_species_id, updated_at=timezone.now(),
     )
