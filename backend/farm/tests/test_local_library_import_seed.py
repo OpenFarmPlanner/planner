@@ -10,7 +10,7 @@ from django.db import connection
 from django.test import TestCase, override_settings
 
 from crops.models import CropSpecies
-from farm.models import Crop, PlantingPlan, Project, ProjectMembership, PublicCrop
+from farm.models import Crop, CropCompanion, PlantingPlan, Project, ProjectMembership, PublicCrop
 
 
 @override_settings(DJANGO_ENV="development")
@@ -41,6 +41,25 @@ class LocalLibraryImportSeedTests(TestCase):
 
     def seed(self, **options):
         call_command("seed_library_import_acceptance", **{**self.arguments, **options})
+
+    def test_companion_history_fixture_is_previewed_and_repeat_safe(self):
+        command = 'seed_companion_history_acceptance'
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        call_command(command, **arguments)
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before))
+        call_command(command, apply=True, **arguments)
+        project = Project.objects.get(slug=f'ofp-local-companion-history-{self.user.pk}')
+        relation = CropCompanion.objects.get(project=project)
+        self.assertEqual(relation.crop.name, 'Companion history owner')
+        self.assertEqual(relation.companion_text, 'Companion history later')
+        self.assertEqual(Crop.objects.filter(project=project).count(), 2)
+        relation.note = 'Keep the manual edit'
+        relation.save(update_fields=['note'])
+
+        call_command(command, apply=True, **arguments)
+        relation.refresh_from_db()
+        self.assertEqual(relation.note, 'Keep the manual edit')
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before) + 1)
 
     def test_crop_library_history_fixture_requires_packages_and_preserves_local_edits(self):
         command = 'seed_crop_library_history_acceptance'

@@ -66,9 +66,6 @@ class CropImportAPITest(DRFAPITestCase):
                 self.assertEqual(response.status_code, 400)
                 self.assertEqual(response.data['code'], 'invalid_crop_import_context')
 
-    @pytest.mark.history_gap(
-        issue=1202, reason='import/free-text companion writes record no revision',
-    )
     def test_crops_phase_receipts_and_deferred_companions(self) -> None:
         first = self.client.post('/openfarmplanner/api/crops/import/apply/', {
             'phase': 'crops', 'items': [
@@ -117,12 +114,10 @@ class CropImportAPITest(DRFAPITestCase):
         self.assertTrue(all(row['status'] == 'error' for row in response.data['results']))
         self.assertFalse(CropCompanion.objects.exists())
 
-    @pytest.mark.history_gap(
-        issue=1202, reason='import/free-text companion writes record no revision',
-    )
     def test_finalize_links_old_free_text_only_after_crop_batches(self) -> None:
+        history_url = '/openfarmplanner/api/history/project/'
         owner = Crop.objects.create(project=self.project, name='Previous owner')
-        CropCompanion.objects.create(
+        relation = CropCompanion.objects.create(
             project=self.project, crop=owner, companion_text='Future target', kind='good',
         )
         response = self.client.post('/openfarmplanner/api/crops/import/apply/', {
@@ -130,12 +125,25 @@ class CropImportAPITest(DRFAPITestCase):
         }, format='json')
         self.assertEqual(response.status_code, 200)
         self.assertTrue(CropCompanion.objects.filter(companion_text='Future target').exists())
+        before = self.client.get(history_url).data[0]['history_id']
         finished = self.client.post('/openfarmplanner/api/crops/import/apply/', {
             'phase': 'finalize', 'items': [],
         }, format='json')
         self.assertEqual(finished.status_code, 200)
         self.assertFalse(CropCompanion.objects.filter(companion_text='Future target').exists())
         self.assertTrue(CropCompanion.objects.filter(companion_crop__isnull=False).exists())
+        completed = self.client.get(history_url).data[0]
+        self.assertEqual(completed['object_id'], relation.pk)
+        self.assertEqual(completed['actor_label'], self.user.email)
+
+        for history_id, linked in ((before, False), (completed['history_id'], True)):
+            restored = self.client.post(
+                f'{history_url}restore/', {'history_id': history_id}, format='json',
+            )
+            self.assertEqual(restored.status_code, 200, restored.data)
+            relation.refresh_from_db()
+            self.assertEqual(relation.companion_text, '' if linked else 'Future target')
+            self.assertEqual(relation.companion_crop_id is not None, linked)
 
     def test_receipts_include_skips_errors_and_duplicates(self) -> None:
         response = self.client.post('/openfarmplanner/api/crops/import/apply/', {
@@ -149,9 +157,6 @@ class CropImportAPITest(DRFAPITestCase):
                          ['skipped', 'created', 'duplicate', 'error'])
         self.assertEqual(response.data['results'][0]['crop_id'], self.existing_crop.pk)
 
-    @pytest.mark.history_gap(
-        issue=1202, reason='import/free-text companion writes record no revision',
-    )
     def test_explicit_companions_precede_older_free_text_when_finalizing(self) -> None:
         owner = Crop.objects.create(project=self.project, name='Existing neighbour')
         CropCompanion.objects.create(
