@@ -843,12 +843,13 @@ The match source comes from the search itself. `GET /api/crop-species/?q=…`
 | `botanical` | Query is part of `scientific_name` | `''` |
 | `fuzzy` | Similarity only (`"Porr"` → `Portulak`) | `''` |
 
-Results are ordered by that source — name, synonym, botanical, fuzzy — and
-within a group exact matches first, then by similarity. An exact synonym hit
-therefore ranks below a partial hit on an official name: the name is what the
-user recognises. The literal query is checked before its alias/plural/token
-variants (`build_crop_search_terms`), so `Paradeiser` reports the synonym the
-user typed rather than the `Tomate` it also expands to. The moderators'
+Results normally follow source order, with name first, followed by synonym,
+botanical and fuzzy matches. Within a group, exact matches lead, then higher
+similarity. If the result limit would hide an exact name or synonym, the list
+starts with the exact names and synonyms, in that order. Each match still shows
+its official name in the requested language. The literal query precedes its alias,
+plural and token variants (`build_crop_search_terms`). Typing `Paradeiser` shows
+the matching synonym `Paradeiser`. The moderators'
 "Kulturart korrigieren" dialog filters the full catalogue client-side instead;
 `getCropSpeciesSearchMatch` applies the same rules there, and also covers a
 species the wizard prepends outside the search (the user's own fresh proposal).

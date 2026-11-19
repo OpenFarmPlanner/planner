@@ -269,6 +269,53 @@ class CropViewSetTest(DRFAPITestCase):
             ],
         )
 
+    def test_exact_synonyms_survive_the_cap_on_partial_display_names(self):
+        self.client.force_authenticate(user=self.user)
+        url = '/openfarmplanner/api/crop-species/'
+        for language, query, official_name in (
+            ('it', 'Cavolo di Milano Campione', 'Cavolo verza campione'),
+            ('it', 'Spinacio di Giava Campione', 'Spinacio di Suriname campione'),
+            ('pt', 'Tomate de carne Exemplo', 'Tomate carnudo amostra'),
+        ):
+            with self.subTest(language=language, query=query):
+                for index in range(24):
+                    species = CropSpecies.objects.create(name=f'{query} partial {index:02}')
+                    CropSpeciesTranslation.objects.create(
+                        species=species, language_code=language,
+                        common_name=f'{query} extra {index:02}',
+                    )
+
+                official = CropSpecies.objects.create(name=f'{query} official')
+                CropSpeciesTranslation.objects.create(
+                    species=official, language_code=language, common_name=query,
+                )
+                aliases = []
+                for label in (official_name, f'{official_name} alternativo'):
+                    alias = CropSpecies.objects.create(name=f'{query} alias {label}')
+                    CropSpeciesTranslation.objects.create(
+                        species=alias, language_code=language, common_name=label, synonyms=[query],
+                    )
+                    aliases.append((alias, label))
+
+                for page_size, expected_count in ((500, 20), (3, 3)):
+                    response = self.client.get(url, {
+                        'q': query, 'language': language, 'page_size': page_size,
+                    })
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.data['count'], expected_count)
+                    self.assertIsNone(response.data['next'])
+                    rows = response.data['results']
+                    self.assertEqual(len(rows), expected_count)
+                    self.assertEqual(rows[0]['id'], official.pk)
+                    self.assertEqual(rows[0]['search_match'], {'source': 'name', 'synonym': ''})
+                    for alias, label in aliases:
+                        matched = next((row for row in rows if row['id'] == alias.pk), None)
+                        self.assertIsNotNone(matched, f'{query}, missing {label}, cap {page_size}')
+                        self.assertEqual(matched['display_name'], label)
+                        self.assertEqual(matched['search_match'], {
+                            'source': 'synonym', 'synonym': query,
+                        })
+
     def test_species_search_reports_the_synonym_behind_a_partial_query(self):
         """"Porr" finds Lauch through its synonym "Porree", ahead of the merely
         similar "Portulak" — the case the publishing wizard must explain."""

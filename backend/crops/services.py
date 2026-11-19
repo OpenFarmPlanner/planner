@@ -78,9 +78,8 @@ SPECIES_SEARCH_RANK_EXACT = 2
 SPECIES_SEARCH_RANK_PREFIX = 1
 
 SpeciesMatchSource = Literal['name', 'synonym', 'botanical', 'fuzzy']
-# Result order of `search_crop_species`: a hit on the displayed official name
-# always beats one that only came from an alias, which in turn beats a
-# scientific-name hit and a merely similar-looking name.
+# Default result order of `search_crop_species`. Exact identities take priority
+# if the result limit would otherwise hide one.
 SPECIES_MATCH_SOURCE_ORDER: tuple[SpeciesMatchSource, ...] = (
     'name', 'synonym', 'botanical', 'fuzzy',
 )
@@ -347,7 +346,9 @@ def search_crop_species(
     Results are grouped by match source (see `SPECIES_MATCH_SOURCE_ORDER`):
     hits on the official name in ``language_code`` first, then synonym hits,
     then scientific-name hits, then similarity-only hits; within a group
-    exact matches lead, then higher similarity. Results with neither a
+    exact matches lead, then higher similarity. When this order would cut off
+    an exact name or synonym, keep exact identities before partial matches.
+    Results with neither a
     substring hit nor at least `MIN_SPECIES_SEARCH_SIMILARITY` are dropped as
     irrelevant. Backs the publishing wizard's "Offizielle Kulturart" field
     and the moderation page's synonym-alias search (both via
@@ -360,7 +361,7 @@ def search_crop_species(
     normalized = normalize_text(value) or ''
     search_terms = build_crop_search_terms(value)
     fuzzy_allowed = len(normalized) >= MIN_SPECIES_SEARCH_FUZZY_QUERY_LENGTH
-    ranked: list[tuple[tuple[int, int, float, str], CropSpeciesSearchHit]] = []
+    ranked: list[tuple[tuple[int, int, float, str], bool, CropSpeciesSearchHit]] = []
     for species, rank, similarity in scored:
         if rank > 0:
             official_name = official_species_name(species, language_code, region)
@@ -373,9 +374,14 @@ def search_crop_species(
             continue
         source_index = SPECIES_MATCH_SOURCE_ORDER.index(source)
         sort_key = (source_index, 0 if exact else 1, -similarity, species.name)
-        ranked.append((sort_key, CropSpeciesSearchHit(species, source, synonym)))
+        exact_identity = exact and source in {'name', 'synonym'}
+        ranked.append((sort_key, exact_identity, CropSpeciesSearchHit(species, source, synonym)))
     ranked.sort(key=lambda item: item[0])
-    return [hit for _key, hit in ranked[:limit]]
+    if any(exact_identity for _key, exact_identity, _hit in ranked[limit:]):
+        # Python's stable sort keeps localized names ahead of synonyms among
+        # the exact identities and leaves the other matches in their usual order.
+        ranked.sort(key=lambda item: not item[1])
+    return [hit for _key, _exact_identity, hit in ranked[:limit]]
 
 
 def is_discouraged_public_species(species: CropSpecies) -> bool:
