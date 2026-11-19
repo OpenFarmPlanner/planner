@@ -24,6 +24,7 @@ from farm.models import (
     CropCompanion,
     EntityRevision,
     Project,
+    ProjectApiToken,
     ProjectMembership,
     PublicCrop,
     PublicCropChangeProposal,
@@ -7182,6 +7183,124 @@ class PublicCropSeedTypeTest(DRFAPITestCase):
         )
         self.sorte.refresh_from_db()
         return self.sorte
+
+    @staticmethod
+    def _submit_proposal(client, entry, data, *, explicit=False, **headers):
+        url = f'/openfarmplanner/api/public-crops/{entry.pk}/'
+        if explicit:
+            return client.post(f'{url}change-proposals/', {
+                'summary': 'Cultivation update', 'proposed_data': data,
+            }, format='json', **headers)
+        return client.patch(url, data, format='json', **headers)
+
+    def _new_account_client(self):
+        user = User.objects.create_user(
+            username='new-seed-contributor', email='new-seed@example.com',
+            password='testpass', is_active=True,
+        )
+        client = APIClient()
+        client.force_login(user)
+        return user, client
+
+    def _token_client(self, scope):
+        _token, raw_token = ProjectApiToken.create_token(
+            user=self.user, project=self.project, name=f'Seed proposal {scope}', scope=scope,
+        )
+        client = APIClient()
+        client.credentials(
+            HTTP_AUTHORIZATION=f'Bearer {raw_token}', HTTP_X_CLIENT_DECLARED_TYPE='agent',
+        )
+        return client
+
+    def test_seed_type_proposals_from_a_new_session_require_moderator_approval(self):
+        new_user, session = self._new_account_client()
+        grant_public_library_moderator_access(self.user)
+        for explicit, expected_status in ((False, 202), (True, 201)):
+            with self.subTest(explicit=explicit):
+                entry = self._entry(variety=f'Sacher {explicit}', seed_type='open_pollinated')
+                original_version = entry.version
+                response = self._submit_proposal(
+                    session, entry, {'seed_type': 'f1_hybrid'}, explicit=explicit,
+                )
+                self.assertEqual(response.status_code, expected_status, response.data)
+                proposal = entry.change_proposals.get()
+                self.assertEqual(proposal.proposed_by, new_user)
+                self.assertEqual(proposal.status, PublicCropChangeProposal.STATUS_PENDING)
+                self.assertEqual(proposal.proposed_data, {'seed_type': 'f1_hybrid'})
+                self.assertFalse(proposal.origin_api)
+                entry.refresh_from_db()
+                self.assertEqual(entry.seed_type, 'open_pollinated')
+                self.assertEqual(entry.version, original_version)
+
+                approve = (
+                    f'/openfarmplanner/api/public-crops/{entry.pk}/'
+                    f'change-proposals/{proposal.pk}/approve/'
+                )
+                denied = session.post(approve, {}, format='json')
+                self.assertEqual(denied.status_code, 403, denied.data)
+                approved = self.client.post(approve, {}, format='json')
+                self.assertEqual(approved.status_code, 200, approved.data)
+                entry.refresh_from_db()
+                self.assertEqual(entry.seed_type, 'f1_hybrid')
+                self.assertEqual(entry.version, original_version + 1)
+
+    def test_seed_type_proposal_on_token_surface_requires_write_scope(self):
+        entry = self._entry(variety='Roma', seed_type='open_pollinated')
+        change = {'seed_type': 'f1_hybrid'}
+        original_version = entry.version
+        read_client = self._token_client(ProjectApiToken.SCOPE_READ)
+        write_client = self._token_client(ProjectApiToken.SCOPE_WRITE)
+        self.assertEqual(self._submit_proposal(read_client, entry, change).status_code, 403)
+        self.assertEqual(self._submit_proposal(
+            write_client, entry, change, explicit=True,
+        ).status_code, 403)
+        self.assertFalse(entry.change_proposals.exists())
+
+        response = self._submit_proposal(write_client, entry, change)
+        self.assertEqual(response.status_code, 202, response.data)
+        proposal = entry.change_proposals.get()
+        self.assertEqual(proposal.status, PublicCropChangeProposal.STATUS_PENDING)
+        self.assertEqual(proposal.proposed_data, change)
+        self.assertEqual(proposal.proposed_by, self.user)
+        self.assertTrue(proposal.origin_api)
+        self.assertTrue(proposal.origin_declared_agent)
+        entry.refresh_from_db()
+        self.assertEqual((entry.seed_type, entry.version), ('open_pollinated', original_version))
+
+    def test_proposals_validate_existing_entry_and_keep_identity_fields_out(self):
+        _user, session = self._new_account_client()
+        general = self._entry()
+        variety = self._entry(variety='Sacher', germination_days_min=10, germination_days_max=20)
+        for explicit in (False, True):
+            for entry, changes, error in (
+                (general, {'seed_type': 'f1_hybrid'}, 'seed_type'),
+                (variety, {'seed_type': 'f1_hybrid', 'variety': 'Renamed'}, 'Unsupported proposal'),
+                (variety, {'germination_days_max': 5}, 'germination_days_max'),
+            ):
+                with self.subTest(explicit=explicit, changes=changes):
+                    rejected = self._submit_proposal(session, entry, changes, explicit=explicit)
+                    self.assertEqual(rejected.status_code, 400, rejected.data)
+                    self.assertIn(error, str(rejected.data['proposed_data']))
+            anonymous = self._submit_proposal(
+                APIClient(), variety, {'seed_type': 'f1_hybrid'}, explicit=explicit,
+            )
+            self.assertEqual(anonymous.status_code, status.HTTP_403_FORBIDDEN, anonymous.data)
+            self.assertEqual(anonymous.data['detail'].code, 'not_authenticated')
+        self.assertFalse(PublicCropChangeProposal.objects.exists())
+
+    def test_proposal_paths_preserve_the_request_language_for_a_legacy_companion_note(self):
+        _user, session = self._new_account_client()
+        neighbour = CropSpecies.objects.create(name='Synthetic companion')
+        for explicit, expected_status in ((False, 202), (True, 201)):
+            with self.subTest(explicit=explicit):
+                entry = self._entry(variety=f'Note {explicit}')
+                response = self._submit_proposal(session, entry, {'companions': [{
+                    'species': neighbour.pk, 'kind': 'good', 'reason': 'other',
+                    'note': 'Observation du jardin',
+                }]}, explicit=explicit, HTTP_ACCEPT_LANGUAGE='fr')
+                self.assertEqual(response.status_code, expected_status, response.data)
+                note = entry.change_proposals.get().proposed_data['companions'][0]
+                self.assertEqual(note['note_language_code'], 'fr')
 
     def test_variety_payload_carries_the_seed_type(self):
         self.assertEqual(build_public_crop_payload(self.sorte)['seed_type'], 'f1_hybrid')
