@@ -130,11 +130,7 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
     audit timestamps. `_history_action` tags the resulting save as a restore
     rather than a plain update (see `Crop.save`).
     """
-    from farm.germination import upgrade_germination_snapshot
-
-    snapshot = _with_legacy_snapshot_fields(Crop, upgrade_germination_snapshot(revision.snapshot))
-    snapshot.setdefault('specific_properties', {})
-    snapshot.setdefault('plant_health', None)
+    snapshot = _with_legacy_snapshot_fields(Crop, revision.snapshot)
     restorable_fields = {
         field.name for field in Crop._meta.fields
         if field.name not in {'id', 'created_at', 'updated_at', 'crop_family'}
@@ -187,21 +183,24 @@ def _restore_snapshot_children(model: type, object_id: int, snapshot: dict) -> N
 
 
 def _with_legacy_snapshot_fields(model: type, snapshot: dict) -> dict:
-    """Upgrade legacy family keys and companion note maps before restoring a snapshot.
-
-    Those snapshots hold the free text under ``crop_family``, which is no
-    longer a column; without this the family would be dropped on restore.
-    """
+    """Interpret historical crop and companion fields without rewriting the snapshot."""
     if model is Crop:
         from farm.crop_light import normalize_crop_light
+        from farm.germination import upgrade_germination_snapshot
 
-        snapshot = {'plant_health': None, **snapshot}
+        snapshot = upgrade_germination_snapshot(snapshot)
+        snapshot.setdefault('plant_health', None)
+        snapshot.setdefault('specific_properties', {})
+        for field in (
+            'seed_type', 'life_cycle', 'pests_diseases', 'water_requirement', 'winter_hardiness',
+        ):
+            snapshot.setdefault(field, '')
         snapshot['light_requirement'] = normalize_crop_light(snapshot.get('light_requirement'))
+        if 'crop_family_id' not in snapshot and 'crop_family' in snapshot:
+            snapshot['crop_family_id'] = coerce_plant_family_key(snapshot['crop_family'])
     if model is CropCompanion and 'notes' not in snapshot:
         return {**snapshot, 'notes': {'de': snapshot['note']} if snapshot.get('note') else {}}
-    if model is not Crop or 'crop_family_id' in snapshot or 'crop_family' not in snapshot:
-        return snapshot
-    return {**snapshot, 'crop_family_id': coerce_plant_family_key(snapshot['crop_family'])}
+    return snapshot
 
 
 def _restore_crop_family_from_snapshot(crop: Crop, snapshot: dict) -> None:

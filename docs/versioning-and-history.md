@@ -73,6 +73,14 @@ write path — it just creates an `EntityRevision` row. It's called:
   `restore_crop_from_revision` (`backend/farm/history/restore.py`), which
   skips `id`/`created_at`/`updated_at` and clears `deleted_at`, so restoring an
   old version keeps the row's identity and undeletes it in one step.
+- Crop, project, and batch restores use the same legacy crop defaults for
+  existing and recreated rows. Old germination flags map to the current
+  requirement fields, missing ranges are unset, and snapshots from before seed
+  type and species-specific properties restore a blank seed type and `{}`.
+  Missing site requirements, life cycle and pest notes restore to their blank
+  migration defaults. Fields explicitly recorded in a current snapshot retain
+  their historical values. Selective import undo uses those defaults to check
+  whether a crop has changed since its import.
 - On the frontend this surfaces as the per-crop/global history **dialog**
   on `Crops.tsx` (see
   [datagrid-architecture.md](./datagrid-architecture.md#row-history--versioning--not-a-grid-feature))

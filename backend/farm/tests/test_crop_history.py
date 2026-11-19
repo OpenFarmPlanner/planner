@@ -8,7 +8,11 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.utils import timezone
 
+from crops.models import CropSpecies
+from farm.germination import GERMINATION_FIELDS
+from farm.history.records import _serialize_instance
 from farm.models import (
+    BatchOperation,
     Crop,
     CropRevision,
     EntityRevision,
@@ -22,6 +26,20 @@ from farm.models import (
 from farm.tests.api_base import record_later_revision
 
 User = get_user_model()
+
+
+def legacy_crop_snapshot(snapshot):
+    """Represent a crop written before farm.0137."""
+    added_fields = {
+        *GERMINATION_FIELDS, 'seed_type', 'life_cycle', 'light_requirement',
+        'pests_diseases', 'water_requirement', 'winter_hardiness', 'specific_properties',
+        'plant_health',
+    }
+    return {
+        **{key: value for key, value in snapshot.items() if key not in added_fields},
+        'germination_types': ['cold'],
+        'germination_days_min': 7,
+    }
 
 
 class CropHistoryTests(TestCase):
@@ -65,6 +83,146 @@ class CropHistoryTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.crop.refresh_from_db()
         self.assertEqual(self.crop.name, 'Carrot')
+
+    def test_single_crop_restores_legacy_values_and_clears_variety_only_seed_type(self):
+        historical = legacy_crop_snapshot(_serialize_instance(self.crop))
+        historical.update(variety='', variety_normalized=None)
+        version = EntityRevision.objects.create(
+            project=self.project, entity_type='crop', object_id=self.crop.pk,
+            snapshot=historical, action=EntityRevision.ACTION_UPDATED,
+        )
+        Crop.objects.filter(pk=self.crop.pk).update(
+            seed_type='f1_hybrid', germination_temperature_requirement='none',
+            germination_days_min=12, stratification_days_min=21, life_cycle='annual',
+            pests_diseases='Later pest note', water_requirement='high', winter_hardiness='hardy',
+        )
+
+        response = self.client.post(
+            f'/api/crops/{self.crop.pk}/restore/', {'history_id': version.pk},
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.crop.refresh_from_db()
+        self.assertEqual(self.crop.variety, '')
+        self.assert_legacy_crop_values(self.crop)
+        version.refresh_from_db()
+        self.assertEqual(version.snapshot, historical)
+
+    def legacy_crop_restore_rows(self):
+        old_species = CropSpecies.objects.create(name='Historical snapshot species')
+        potato = CropSpecies.objects.create(
+            name='Historical snapshot potato', specific_property_profile='solanum_tuberosum',
+        )
+        existing = Crop.objects.create(
+            project=self.project, name='Legacy existing crop', crop_species=old_species,
+        )
+        removed = Crop.objects.create(
+            project=self.project, name='Legacy removed crop', variety='Old variety',
+            crop_species=old_species,
+        )
+        current = Crop.objects.create(
+            project=self.project, name='Current snapshot crop', variety='Current variety',
+            crop_species=potato, seed_type='open_pollinated',
+            germination_temperature_requirement='none',
+            specific_properties={'cooking_type': 'waxy'}, life_cycle='perennial',
+        )
+        return existing, removed, current, old_species, potato
+
+    @staticmethod
+    def change_legacy_crop_restore_rows(existing, removed, current, potato):
+        Crop.objects.filter(pk=existing.pk).update(
+            variety='Later variety', variety_normalized='later variety', crop_species=potato,
+            seed_type='f1_hybrid', germination_temperature_requirement='none',
+            germination_days_min=16, germination_days_max=25, stratification_days_min=21,
+            specific_properties={'cooking_type': 'floury'}, life_cycle='annual',
+            pests_diseases='Later pest note', water_requirement='high', winter_hardiness='hardy',
+        )
+        Crop.all_objects.filter(pk=removed.pk).delete()
+        Crop.objects.filter(pk=current.pk).update(
+            seed_type='', specific_properties={}, life_cycle='',
+        )
+
+    def assert_legacy_crop_values(self, crop, *, light_requirement=''):
+        self.assertEqual(crop.seed_type, '')
+        self.assertEqual(crop.germination_types, ['cold'])
+        self.assertEqual(crop.germination_temperature_requirement, 'cold_stratification')
+        self.assertEqual(crop.germination_light_requirement, light_requirement)
+        self.assertEqual(crop.germination_days_min, 7)
+        self.assertIsNone(crop.germination_days_max)
+        self.assertIsNone(crop.stratification_days_min)
+        self.assertEqual(crop.specific_properties, {})
+        self.assertEqual(
+            (crop.life_cycle, crop.pests_diseases, crop.water_requirement, crop.winter_hardiness),
+            ('', '', '', ''),
+        )
+
+    def assert_legacy_crop_restore_rows(self, existing, removed, current, old_species):
+        for crop, light_requirement in ((existing, ''), (removed, 'none')):
+            crop.refresh_from_db()
+            self.assert_legacy_crop_values(crop, light_requirement=light_requirement)
+            self.assertEqual(crop.crop_species_id, old_species.pk)
+        self.assertEqual(existing.variety, '')
+        self.assertEqual(removed.variety, 'Old variety')
+        current.refresh_from_db()
+        self.assertEqual(current.seed_type, 'open_pollinated')
+        self.assertEqual(current.germination_temperature_requirement, 'none')
+        self.assertEqual(current.specific_properties, {'cooking_type': 'waxy'})
+        self.assertEqual(current.life_cycle, 'perennial')
+
+    def test_project_restore_normalizes_existing_and_recreated_legacy_crops(self):
+        from farm.history.project_restore import capture_project_state, record_project_checkpoint
+
+        existing, removed, current, old_species, potato = self.legacy_crop_restore_rows()
+        other_project = Project.objects.create(name='Unrelated legacy snapshot project')
+        other = Crop.objects.create(project=other_project, name='Unrelated crop', notes='Unchanged')
+        state = capture_project_state(self.project)
+        for crop in (existing, removed):
+            key = str(crop.pk)
+            state['crop'][key] = legacy_crop_snapshot(state['crop'][key])
+        record_project_checkpoint(self.project, state)
+        version = EntityRevision.objects.filter(project=self.project).latest('pk')
+        self.change_legacy_crop_restore_rows(existing, removed, current, potato)
+        record_project_checkpoint(self.project, capture_project_state(self.project))
+
+        response = self.client.post(
+            '/api/history/project/restore/', {'history_id': version.pk},
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assert_legacy_crop_restore_rows(existing, removed, current, old_species)
+        other.refresh_from_db()
+        self.assertEqual(other.notes, 'Unchanged')
+
+    def test_batch_revert_normalizes_existing_and_recreated_legacy_crops(self):
+        existing, removed, current, old_species, potato = self.legacy_crop_restore_rows()
+        batch = BatchOperation.objects.create(
+            project=self.project, operation_type=BatchOperation.TYPE_REVERTED,
+        )
+        for crop in (existing, current):
+            snapshot = _serialize_instance(crop)
+            EntityRevision.objects.create(
+                project=self.project, entity_type='crop', object_id=crop.pk,
+                snapshot=legacy_crop_snapshot(snapshot) if crop is existing else snapshot,
+                action=EntityRevision.ACTION_UPDATED,
+            )
+        EntityRevision.objects.create(
+            project=self.project, entity_type='crop', object_id=removed.pk, batch_operation=batch,
+            snapshot=legacy_crop_snapshot(_serialize_instance(removed)),
+            action=EntityRevision.ACTION_DELETED,
+        )
+        self.change_legacy_crop_restore_rows(existing, removed, current, potato)
+        for crop in (existing, current):
+            EntityRevision.objects.create(
+                project=self.project, entity_type='crop', object_id=crop.pk, batch_operation=batch,
+                snapshot=_serialize_instance(crop), action=EntityRevision.ACTION_UPDATED,
+            )
+
+        response = self.client.post(f'/api/history/batch/{batch.pk}/revert/')
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assert_legacy_crop_restore_rows(existing, removed, current, old_species)
 
     def test_restore_brings_back_the_plant_family(self):
         Crop.objects.filter(pk=self.crop.pk).update(crop_family_id='Apiaceae')
@@ -589,6 +747,34 @@ class ImportOperationHistoryTests(TestCase):
     def undo(self, *, preview: bool = False):
         suffix = "undo-preview" if preview else "revert"
         return self.client.post(f"/openfarmplanner/api/history/batch/{self.batch().pk}/{suffix}/")
+
+    def test_selective_undo_interprets_legacy_crop_snapshots(self):
+        result = self.apply([
+            {'name': self.crop.name, 'variety': self.crop.variety, 'notes': 'Imported'},
+        ])
+        self.assertEqual(result.status_code, 200, result.content)
+        finalize = self.apply([], phase='finalize')
+        self.assertEqual(finalize.status_code, 200, finalize.content)
+        batch = self.batch()
+        change = batch.context['_import_changes']['crop'][str(self.crop.pk)]
+        change['before'] = legacy_crop_snapshot(change['before'])
+        for field in (
+            'seed_type', 'specific_properties', 'stratification_days_min',
+            'life_cycle', 'light_requirement', 'pests_diseases',
+            'water_requirement', 'winter_hardiness',
+        ):
+            change['after'].pop(field)
+        batch.save(update_fields=['context'])
+
+        preview = self.undo(preview=True)
+        self.assertEqual(preview.status_code, 200, preview.content)
+        self.assertEqual(preview.json()['conflicts'], [])
+        reverted = self.undo()
+        self.assertEqual(reverted.status_code, 200, reverted.content)
+        self.crop.refresh_from_db()
+        self.assertEqual(self.crop.germination_temperature_requirement, 'cold_stratification')
+        self.assertEqual(self.crop.germination_days_min, 7)
+        self.assertEqual(self.crop.notes, '')
 
     def test_nested_crop_children_survive_exact_and_later_version_restore(self) -> None:
         from farm.models import CropSupplierData, SeedPackage, Supplier
