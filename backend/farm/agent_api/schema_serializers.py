@@ -92,6 +92,39 @@ class CropDeletePreviewSerializer(serializers.Serializer):
     ambiguous_general_group = serializers.BooleanField()
 
 
+class VarietyParentPublicationSerializer(serializers.Serializer):
+    crop_id = serializers.IntegerField(min_value=1)
+    public_crop_id = serializers.IntegerField(allow_null=True, min_value=1)
+    already_linked = serializers.BooleanField()
+    expected_updated_at = serializers.CharField(max_length=64)
+    base_version = serializers.IntegerField(required=False, min_value=1)
+    pull_fields = serializers.ListField(child=serializers.CharField(max_length=80), default=list)
+    pin_fields = serializers.ListField(child=serializers.CharField(max_length=80), default=list)
+
+    def validate(self, attrs):
+        has_entry = attrs['public_crop_id'] is not None
+        if has_entry != ('base_version' in attrs) or (attrs['already_linked'] and not has_entry):
+            raise serializers.ValidationError('Confirm the parent and the public entry version.')
+        if (
+            (not has_entry or attrs['already_linked'])
+            and (attrs['pull_fields'] or attrs['pin_fields'])
+        ):
+            raise serializers.ValidationError('Field choices require an unlinked parent and entry.')
+        return attrs
+
+
+class CoPublishedVarietySerializer(serializers.Serializer):
+    crop_id = serializers.IntegerField(min_value=1)
+    expected_updated_at = serializers.DateTimeField()
+    public_crop_id = serializers.IntegerField(allow_null=True, min_value=1)
+    base_version = serializers.IntegerField(required=False, min_value=1)
+
+    def validate(self, attrs):
+        if (attrs['public_crop_id'] is not None) != ('base_version' in attrs):
+            raise serializers.ValidationError('Confirm the version of the existing variety.')
+        return attrs
+
+
 class PublishPublicRequestSerializer(serializers.Serializer):
     """Body fields ``CropViewSet.publish_public`` reads."""
 
@@ -99,6 +132,8 @@ class PublishPublicRequestSerializer(serializers.Serializer):
     publish_as_general = serializers.BooleanField(required=False)
     crop_species_id = serializers.IntegerField(required=False, allow_null=True)
     original_language_code = serializers.CharField(required=False)
+    variety_parent = VarietyParentPublicationSerializer(required=False)
+    varieties = CoPublishedVarietySerializer(many=True, required=False)
 
 
 class PublishPublicResponseSerializer(serializers.Serializer):
@@ -113,3 +148,4 @@ class PublishPublicResponseSerializer(serializers.Serializer):
     public_crop = serializers.DictField(required=False)
     change_proposal = serializers.DictField(required=False)
     duplicates = serializers.ListField(child=serializers.DictField())
+    varieties = serializers.DictField(required=False)

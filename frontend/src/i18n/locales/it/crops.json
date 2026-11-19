@@ -1162,12 +1162,11 @@
     "linkPublicCropSuccess": "«{{name}}» è stata collegata alla biblioteca.",
     "publishVarietiesSuccess_one": "È stata pubblicata anche 1 varietà.",
     "publishVarietiesSuccess_other": "Sono state pubblicate anche {{count}} varietà.",
-    "publishVarietiesAlreadyPublic_one": "1 varietà era già nella biblioteca.",
-    "publishVarietiesAlreadyPublic_other": "{{count}} varietà erano già nella biblioteca.",
+    "publishVarietiesLinked_one": "Una varietà è stata collegata a una voce della biblioteca.",
+    "publishVarietiesLinked_other": "{{count}} varietà sono state collegate a voci della biblioteca.",
+    "publishVarietiesLinked_many": "{{count}} varietà sono state collegate a voci della biblioteca.",
     "publishVarietiesPendingModeration_one": "1 varietà è stata inviata per l'esame.",
     "publishVarietiesPendingModeration_other": "{{count}} varietà sono state inviate per l'esame.",
-    "publishVarietiesPartialError_one": "Impossibile pubblicare 1 varietà.",
-    "publishVarietiesPartialError_other": "Impossibile pubblicare {{count}} varietà.",
     "publishDuplicateError": "Questa coltura esiste già nella biblioteca.",
     "publishDuplicateErrorWithCandidates": "Questa coltura esiste già pubblicamente: {{duplicates}}",
     "publishError": "Impossibile pubblicare la coltura.",
@@ -1348,11 +1347,28 @@
       "confirmButton": "Pubblica"
     },
     "publishWizard": {
-      "title": "Collega o pubblica una coltura",
+      "title": "Pubblica la coltura",
+      "varietyTitle": "Pubblica la varietà «{{variety}}»",
+      "submitForReview": "Invia per la revisione",
+      "reviewNotice": "Il tuo contributo sarà esaminato prima della pubblicazione.",
+      "parent": {
+        "chooseSpecies": "Scegli la specie coltivata della tua varietà.",
+        "linkedIntro": "La tua varietà sarà pubblicata nella voce collegata della biblioteca.",
+        "linkedSpecies": "Specie coltivata: {{name}}",
+        "linkedHint": "Collegata alla voce della tua coltura nella biblioteca",
+        "linkExisting": "Pubblicando la varietà collegherai anche la tua coltura «{{name}}» a questa voce della biblioteca.",
+        "create": "Non c’è ancora una voce generale per questa specie coltivata. La creeremo a partire dai dati della tua coltura «{{name}}» e collegheremo la tua coltura alla nuova voce.",
+        "unavailable": "La voce collegata non è disponibile. Controlla il collegamento nella tua coltura.",
+        "linkedVarietiesConflict": "Controlla la tua coltura e le varietà collegate prima di cambiare la specie coltivata.",
+        "loadError": "Non siamo riusciti a verificare il collegamento della tua coltura.",
+        "changed": "La tua coltura o la sua voce nella biblioteca è cambiata. Controlla di nuovo la selezione."
+      },
       "intro": "Scegli la specie coltivata per «{{name}}». Potrai poi confrontare e collegare le voci esistenti.",
       "introGeneral": "Scegli la specie coltivata pubblica corrispondente. Vengono pubblicati solo i suoi dati generali, non una varietà.",
       "introGeneralWithVarieties": "Vengono pubblicati i dati generali di questa specie coltivata. Le varietà selezionate vengono pubblicate insieme.",
       "varieties": {
+        "changed": "Una varietà selezionata è cambiata. Controlla di nuovo le varietà scelte.",
+        "failure": "Non è stato possibile includere «{{variety}}». {{message}}",
         "title": "Pubblica anche le varietà",
         "description": "Le varietà selezionate vengono pubblicate insieme alla specie coltivata.",
         "alreadyPublic": "già esistente: verrà collegata",
@@ -1367,7 +1383,6 @@
       "updateExisting": "Aggiorna versione pubblica",
       "resolveBlockingIssues": "Risolvi prima gli avvisi",
       "existingVarietyLabel": "Varietà esistente",
-      "existingVarietyHelp": "Scegli una varietà pubblica esistente oppure pubblica la varietà della coltura del tuo progetto come nuova voce.",
       "newVarietyOption": "Pubblica nuova varietà: {{variety}}",
       "comparison": {
         "ariaLabel": "Confronto tra coltura pubblica e privata",
@@ -1716,9 +1731,7 @@
       "projectChanged": "Il progetto attivo è cambiato. Chiudi questa finestra e riavvia l'importazione nel progetto desiderato."
     },
     "publishVarietiesSuccess_many": "Sono state pubblicate anche {{count}} varietà.",
-    "publishVarietiesAlreadyPublic_many": "{{count}} varietà erano già nella biblioteca.",
     "publishVarietiesPendingModeration_many": "{{count}} varietà sono state inviate per l'esame.",
-    "publishVarietiesPartialError_many": "Impossibile pubblicare {{count}} varietà.",
     "varietyImport": {
       "action": "Importa varietà",
       "title": "Scegli le varietà",

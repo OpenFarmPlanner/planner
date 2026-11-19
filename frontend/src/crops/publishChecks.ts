@@ -47,6 +47,10 @@ function describeReason(
       return t('library.publishWizard.blockingReasons.missingCropSpecies');
     case 'crop_species_unavailable':
       return t('library.publishWizard.blockingReasons.cropSpeciesUnavailable');
+    case 'linked_parent_species_mismatch':
+    case 'linked_parent_entry_unavailable':
+    case 'linked_parent_variety_required':
+      return t('library.publishWizard.parent.unavailable');
     case 'missing_original_language':
       return t('library.publishWizard.blockingReasons.missingOriginalLanguage');
     case 'missing_required_fields':

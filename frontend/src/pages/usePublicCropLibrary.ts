@@ -1,4 +1,4 @@
-import type { StagedPlantHealthMapping } from '../api/types';
+import type { StagedPlantHealthMapping, VarietyParentPublicationDecision } from '../api/types';
 import type { PublicCropSyncSubmitResult } from '../crops/publicCropSync';
 import type { CropLinkCandidate } from '../crops/ExistingCropLinkDialog';
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -13,7 +13,7 @@ import { extractApiErrorCode, extractApiErrorMessage } from '../api/errors';
 import { dedupePublicCrops } from './publicCropUtils';
 import { formatCropDisplayName } from '../crops/cropDisplay';
 import { getPublicCropTitle } from '../crop-library/publicCropDisplay';
-import { publishSelectedVarieties, type PublishVarietySelection } from '../crops/publishVarieties';
+import type { PublishVarietySelection } from '../crops/publishVarieties';
 import { describePublishChecksFailure, extractPublishChecks } from '../crops/publishChecks';
 import { describeLibraryPinError } from '../crops/libraryFieldPin';
 import { withProjectImportStatus } from '../crop-library/publicCropListMerge';
@@ -202,40 +202,6 @@ export function usePublicCropLibrary({
   // snackbar holds one message at a time, so a second call would replace the
   // confirmation the user has not read yet. Everything that happened is
   // reported in a single sentence instead.
-  const publishCropVarieties = async (
-    cropMessage: string,
-    varieties: PublishVarietySelection[] | undefined,
-    publishingData: { cropSpeciesId?: number; originalLanguageCode: string } | undefined,
-    acceptedPublicLibraryTerms: boolean,
-    cropSeverity: 'success' | 'error' = 'success',
-  ): Promise<void> => {
-    if (!varieties?.length || !publishingData) {
-      showSnackbar(cropMessage, cropSeverity);
-      return;
-    }
-    const result = await publishSelectedVarieties({
-      varieties,
-      cropSpeciesId: publishingData.cropSpeciesId,
-      originalLanguageCode: publishingData.originalLanguageCode,
-      acceptedPublicLibraryTerms,
-    });
-    const succeeded = result.published + result.linked;
-    const messages = [cropMessage];
-    if (succeeded > 0) {
-      messages.push(t('library.publishVarietiesSuccess', { count: succeeded }));
-    }
-    if (result.alreadyPublic > 0) {
-      messages.push(t('library.publishVarietiesAlreadyPublic', { count: result.alreadyPublic }));
-    }
-    if (result.pendingModeration > 0) {
-      messages.push(t('library.publishVarietiesPendingModeration', { count: result.pendingModeration }));
-    }
-    if (result.failed > 0) {
-      messages.push(t('library.publishVarietiesPartialError', { count: result.failed }));
-    }
-    showSnackbar(messages.join(' '), result.failed > 0 || cropSeverity === 'error' ? 'error' : 'success');
-  };
-
   const describePublicSyncError = (error: unknown): string => {
     const code = extractApiErrorCode(error);
     if (code === 'crop_name_conflict') {
@@ -385,81 +351,89 @@ export function usePublicCropLibrary({
     publishingData?: {
       cropSpeciesId?: number;
       originalLanguageCode: string;
-      publicCropId?: number | null;
       publishAsGeneral?: boolean;
       varieties?: PublishVarietySelection[];
+      varietyParent?: VarietyParentPublicationDecision;
       healthMappings?: StagedPlantHealthMapping[];
       cropUpdatedAt?: string;
+      onError?: (message: string, code?: string) => void;
     },
   ): Promise<boolean> => {
-    if (!selectedCrop?.id) {
-      return false;
-    }
+    if (!selectedCrop?.id) return false;
 
+    const reportError = (message: string, code?: string) => {
+      if (publishingData?.onError) publishingData.onError(message, code);
+      else showSnackbar(message, 'error');
+    };
     try {
       setPublishingCropId(selectedCrop.id);
-      if (publishingData?.publicCropId) {
-        await cropAPI.linkPublicCrop(selectedCrop.id, publishingData.publicCropId);
-        await publishCropVarieties(
-          t('library.linkPublicCropSuccess', { name: formatCropDisplayName(selectedCrop) }),
-          publishingData.varieties,
-          publishingData,
-          acceptedPublicLibraryTerms,
-        );
-        await refreshPublicCropStatusContext();
-        return true;
-      }
+      const varieties = publishingData?.varieties ?? [];
+      const healthMappings = [...new Map([
+        ...(publishingData?.healthMappings ?? []), ...varieties.flatMap(variety => variety.healthMappings ?? []),
+      ].map(mapping => [mapping.crop_id, mapping])).values()];
       const response = await cropAPI.publishPublic(selectedCrop.id, {
         accepted_public_library_terms: acceptedPublicLibraryTerms,
         ...(publishingData ? {
           crop_species_id: publishingData.cropSpeciesId,
-          ...(publishingData.healthMappings?.length ? { plant_health_mappings: publishingData.healthMappings, expected_updated_at: publishingData.cropUpdatedAt } : {}),
+          ...(healthMappings.length ? {
+            plant_health_mappings: healthMappings,
+            expected_updated_at: publishingData.cropUpdatedAt ?? selectedCrop.updated_at,
+          } : {}),
           original_language_code: publishingData.originalLanguageCode,
           ...(publishingData.publishAsGeneral !== undefined ? { publish_as_general: publishingData.publishAsGeneral } : {}),
+          ...(publishingData.varietyParent ? { variety_parent: publishingData.varietyParent } : {}),
+          ...(varieties.length ? { varieties: varieties.map(variety => ({
+            crop_id: variety.cropId,
+            expected_updated_at: variety.cropUpdatedAt ?? '',
+            public_crop_id: variety.publicCropId,
+            ...(variety.baseVersion !== undefined ? { base_version: variety.baseVersion } : {}),
+          })) } : {}),
         } : {}),
       });
       const publishMessageKeys = {
         updated: 'library.updateSuccess',
-        // Queued for moderation: the entry is not in the library yet, so the
-        // message must not read as a completed publish.
         pending_moderation: 'library.publishPendingModeration',
         created: 'library.publishSuccess',
       } as const;
-      const cropMessage = t(
-        publishMessageKeys[response.data.operation] ?? publishMessageKeys.created,
-        { name: formatCropDisplayName(selectedCrop) },
-      );
-      if (acceptedPublicLibraryTerms) {
-        await refreshUser();
-      }
-      await publishCropVarieties(
-        cropMessage,
-        publishingData?.varieties,
-        publishingData,
-        acceptedPublicLibraryTerms,
-      );
+      const messages = [t(publishMessageKeys[response.data.operation] ?? publishMessageKeys.created, {
+        name: formatCropDisplayName(selectedCrop),
+      })];
+      const outcomes = response.data.varieties;
+      if (outcomes?.published) messages.push(t('library.publishVarietiesSuccess', { count: outcomes.published }));
+      if (outcomes?.linked) messages.push(t('library.publishVarietiesLinked', { count: outcomes.linked }));
+      if (outcomes?.pending_moderation) messages.push(t('library.publishVarietiesPendingModeration', { count: outcomes.pending_moderation }));
+      showSnackbar(messages.join(' '), 'success');
+      if (acceptedPublicLibraryTerms) await refreshUser();
       await refreshPublicCropStatusContext();
       return true;
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 409) {
-        const duplicateError = error.response.data as PublishPublicCropDuplicateError | undefined;
-        const duplicateNames = (duplicateError?.duplicates || [])
-          .map((entry) => entry.variety ? `${entry.name} (${entry.variety})` : entry.name)
-          .join(', ');
-        if (duplicateNames) {
-          showSnackbar(t('library.publishDuplicateErrorWithCandidates', { duplicates: duplicateNames }), 'info');
-        } else {
-          showSnackbar(t('library.publishDuplicateError'), 'info');
-        }
-        return false;
+      const code = extractApiErrorCode(error) ?? undefined;
+      const errorData = axios.isAxiosError(error)
+        ? error.response?.data as (PublishPublicCropDuplicateError & { variety?: string }) | undefined
+        : undefined;
+      const checks = extractPublishChecks(error);
+      let message: string;
+      if (code === 'duplicate_public_crop') {
+        const duplicates = (errorData?.duplicates ?? [])
+          .map((entry) => entry.variety ? `${entry.name} (${entry.variety})` : entry.name).join(', ');
+        message = duplicates ? t('library.publishDuplicateErrorWithCandidates', { duplicates }) : t('library.publishDuplicateError');
+      } else if (checks) {
+        message = describePublishChecksFailure(checks, t);
+      } else if (code === 'variety_parent_changed' || code === 'stale_public_crop_version') {
+        message = t('library.publishWizard.parent.changed');
+      } else if (
+        code === 'linked_parent_species_mismatch' || code === 'linked_parent_entry_unavailable'
+        || code === 'linked_parent_variety_required'
+      ) {
+        message = t('library.publishWizard.parent.unavailable');
+      } else if (code === 'copublished_variety_changed') {
+        message = t('library.publishWizard.varieties.changed');
+      } else if (code === 'linked_variety_parent_species_conflict') {
+        message = t('library.publishWizard.parent.linkedVarietiesConflict');
+      } else {
+        message = extractApiErrorMessage(error, t, t('library.publishError'));
       }
-      const publishChecks = extractPublishChecks(error);
-      if (publishChecks) {
-        showSnackbar(describePublishChecksFailure(publishChecks, t), 'error');
-        return false;
-      }
-      console.error('Error publishing crop:', error);
-      showSnackbar(extractApiErrorMessage(error, t, t('library.publishError')), 'error');
+      reportError(errorData?.variety ? t('library.publishWizard.varieties.failure', { variety: errorData.variety, message }) : message, code);
       return false;
     } finally {
       setPublishingCropId(null);

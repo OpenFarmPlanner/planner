@@ -218,20 +218,27 @@ The public Crop Library follows an open-data model:
   the row stays the user's own and the "Importiert" chip must not appear.
   `_apply_public_crop_update` therefore also pops `origin_type` from the pull
   payload. The published (or pushed) row always gets the entry's version as
-  its baseline, on create, update and republish alike: its values are the
-  entry's values by definition. On a variety publish the project's general
-  Kultur is linked to the species-level entry as well, but only when it has
-  no library link yet and the entry is its own — the one
-  `ensure_general_public_crop()` created in this same publish, or one whose
-  `source_project_crop` is that Kultur and whose `created_by` is the
-  publishing user. Every other general entry of the species, above all
-  another contributor's, is never linked implicitly (the user can still link
-  it with "Mit diesem Eintrag verknüpfen"), and an existing link is never
-  overwritten. The general Kultur only gets the baseline when its values
-  match the entry; otherwise the link is recorded without one — the same
-  rule as a link without `pull_fields` — so `public_update_available` offers
-  the pull for values the Kultur never had in common with the entry instead
-  of reading them as local changes to push. Migration
+  its baseline on create, update and republish. A newly published variety uses
+  its parent's existing library entry when the parent is linked. The API
+  checks that species under the project lock and returns
+  `linked_parent_species_mismatch` for a different selection. The wizard can
+  link an unlinked parent to an existing general entry using the ordinary
+  versioned field comparison. If the species has no general library entry,
+  `ensure_general_public_crop()` creates one from the private parent's own
+  values and links that parent. Legacy varieties with no private parent still
+  supply the species-level values themselves. The private parent link, field
+  decisions and variety publication commit together.
+
+  The general-crop wizard sends its selected varieties in the same publish
+  request. A stale version, duplicate or failed selected variety rolls back
+  the general entry and the entire selection. The response distinguishes
+  newly published varieties, varieties linked to existing entries, and
+  proposals queued for review. New accounts and API tokens queue new entries
+  through the regular review flow. A variety in a co-published set can be
+  approved once its general entry is published. An explicit parent decision
+  on a queued variety is rechecked and applied on approval.
+
+  Migration
   `0103_link_published_crops_to_owned_entries` backfills the link for
   entries published before this change (skipping rows already linked or
   imported), taking the entry's current `version` as the new baseline.

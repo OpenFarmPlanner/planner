@@ -936,6 +936,9 @@ export type PublishBlockingReason =
   | 'crop_species_unavailable'
   | 'missing_original_language'
   | 'missing_required_fields'
+  | 'linked_parent_species_mismatch'
+  | 'linked_parent_entry_unavailable'
+  | 'linked_parent_variety_required'
   | 'duplicates';
 
 /** A neighbour in the crop library: a crop species (with its name at publishing) or a family. */
@@ -948,6 +951,37 @@ export interface PublicCropCompanion {
   note: string;
   notes?: Partial<Record<SupportedLanguage, string>>;
   note_language_code?: string;
+}
+
+export interface VarietyPublicationParent {
+  id: number;
+  name: string;
+  updated_at: string;
+  already_linked: boolean;
+  library_entry: {
+    id: number;
+    name: string;
+    crop_species: number | null;
+    version: number;
+    available: boolean;
+  } | null;
+}
+
+export interface VarietyParentPublicationDecision {
+  crop_id: number;
+  public_crop_id: number | null;
+  already_linked: boolean;
+  expected_updated_at: string;
+  base_version?: number;
+  pull_fields?: string[];
+  pin_fields?: string[];
+}
+
+export interface CoPublishedVariety {
+  crop_id: number;
+  expected_updated_at: string;
+  public_crop_id: number | null;
+  base_version?: number;
 }
 
 export interface PublishPublicCropPreview {
@@ -963,6 +997,8 @@ export interface PublishPublicCropPreview {
   /** Neighbours of the crop's Kultur that stay in the project (free text, or no crop species). */
   unpublishable_companion_count?: number;
   unpublishable_plant_health_count?: number;
+  requires_moderation?: boolean;
+  variety_parent?: VarietyPublicationParent | null;
 }
 
 export interface PublishPublicCropResponse {
@@ -975,6 +1011,7 @@ export interface PublishPublicCropResponse {
   public_crop?: PublicCrop;
   change_proposal?: PublicCropChangeProposal;
   duplicates: PublicCropDuplicateCandidate[];
+  varieties?: { published: number; linked: number; pending_moderation: number };
 }
 
 export type YoungPlantDemandBlocker = 'missing_area' | 'missing_plant_spacing';

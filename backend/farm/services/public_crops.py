@@ -48,6 +48,7 @@ from farm.models import (
     Crop,
     EntityRevision,
     Project,
+    ProjectMembership,
     PublicCrop,
     PublicCropChangeProposal,
     PublicCropRevision,
@@ -88,6 +89,7 @@ from farm.services.crop_inheritance import (
     forces_species_invariant_inheritance,
     get_general_crop,
     is_unset_crop_value,
+    is_variety_crop,
     lock_crop_project,
     resolve_crop_field,
     sync_crop_species_across_crop_group,
@@ -251,6 +253,9 @@ PUBLISH_BLOCKER_MISSING_ORIGINAL_LANGUAGE = 'missing_original_language'
 PUBLISH_BLOCKER_MISSING_REQUIRED_FIELDS = 'missing_required_fields'
 PUBLISH_BLOCKER_DUPLICATES = 'duplicates'
 PUBLISH_BLOCKER_SPECIFIC_PROPERTIES = 'invalid_specific_properties'
+PUBLISH_BLOCKER_PARENT_SPECIES_MISMATCH = 'linked_parent_species_mismatch'
+PUBLISH_BLOCKER_PARENT_ENTRY_UNAVAILABLE = 'linked_parent_entry_unavailable'
+PUBLISH_BLOCKER_LINKED_PARENT_REQUIRES_VARIETY = 'linked_parent_variety_required'
 
 
 @dataclass(frozen=True)
@@ -262,6 +267,7 @@ class PublishingCheckResult:
     duplicates: list[DuplicateCandidate]
     blocking_reasons: list[str]
     general_crop_notice: GeneralCropNotice | None = None
+    variety_parent: VarietyPublicationParent | None = None
     # Neighbours of the crop's Kultur that cannot go into the library (free
     # text, or a neighbouring Kultur without a crop species).
     unpublishable_companion_count: int = 0
@@ -270,6 +276,12 @@ class PublishingCheckResult:
     @property
     def can_publish(self) -> bool:
         return not self.blocking_reasons
+
+
+@dataclass(frozen=True)
+class VarietyPublicationParent:
+    crop: Crop
+    entry: PublicCrop | None
 
 
 @dataclass(frozen=True)
@@ -1321,6 +1333,15 @@ class CropLinkConflictError(APIException):
         return self.message
 
 
+class VarietyPublicationParentConflict(APIException):
+    """The private parent or its public entry changed before publication."""
+
+    status_code = 409
+
+    def __init__(self, code: str, detail: str) -> None:
+        super().__init__({'code': code, 'detail': detail})
+
+
 def public_crop_import_candidates(*, public_crop: PublicCrop, project: Project) -> list[Crop]:
     """Identity matches first; names/aliases only suggest unclassified rows."""
     from farm.utils import normalize_text
@@ -2298,6 +2319,161 @@ def _resolve_public_variety(publish_as_general: bool) -> str | None:
     return '' if publish_as_general else None
 
 
+def find_variety_publication_parent(crop: Crop) -> Crop | None:
+    if not is_variety_crop(crop):
+        return None
+    if crop.crop_species_id:
+        return get_general_crop(crop)
+    return Crop.objects.filter(
+        project_id=crop.project_id, crop_species__isnull=True,
+        name_normalized=crop.name_normalized, variety_normalized__isnull=True,
+    ).order_by('pk').first()
+
+
+def _linked_parent_publication_species(
+    parent: Crop | None, requested_species_id: int | None,
+) -> tuple[CropSpecies | None, str | None]:
+    if parent is None or not parent.source_public_crop_id:
+        return None, None
+    entry = parent.source_public_crop
+    if (
+        entry.status != PublicCrop.STATUS_PUBLISHED or entry.variety_normalized
+        or not entry.crop_species_id
+        or entry.crop_species.status not in PUBLISHABLE_CROP_SPECIES_STATUSES
+    ):
+        return None, PUBLISH_BLOCKER_PARENT_ENTRY_UNAVAILABLE
+    if requested_species_id and requested_species_id != entry.crop_species_id:
+        return entry.crop_species, PUBLISH_BLOCKER_PARENT_SPECIES_MISMATCH
+    return entry.crop_species, None
+
+
+def _lock_variety_publication_parent(crop: Crop, requested_species_id: int | None) -> Crop | None:
+    parent = find_variety_publication_parent(crop)
+    if parent is not None and parent.source_public_crop_id:
+        species_id = parent.source_public_crop.crop_species_id
+    else:
+        species_id = requested_species_id or crop.crop_species_id
+    if species_id:
+        # Both direct general publications and varieties that create one use
+        # this lock before looking for an existing library entry.
+        CropSpecies.objects.select_for_update().filter(pk=species_id).first()
+
+    if parent is not None and parent.source_public_crop_id:
+        entry = PublicCrop.objects.select_for_update().filter(
+            pk=parent.source_public_crop_id,
+        ).first()
+        if entry is None:
+            raise VarietyPublicationParentConflict(
+                PUBLISH_BLOCKER_PARENT_ENTRY_UNAVAILABLE,
+                "The parent's linked library entry is unavailable.",
+            )
+        parent.source_public_crop = entry
+    _species, blocker = _linked_parent_publication_species(parent, requested_species_id)
+    if blocker:
+        detail = (
+            "Choose the crop species of the parent's library entry."
+            if blocker == PUBLISH_BLOCKER_PARENT_SPECIES_MISMATCH
+            else "The parent's linked library entry is unavailable."
+        )
+        raise VarietyPublicationParentConflict(blocker, detail)
+    return parent
+
+
+def _variety_publication_parent(
+    parent: Crop | None, species: CropSpecies | None,
+) -> VarietyPublicationParent | None:
+    if parent is None:
+        return None
+    linked_entry = parent.source_public_crop if parent.source_public_crop_id else None
+    return VarietyPublicationParent(
+        crop=parent,
+        entry=linked_entry or (find_general_public_crop(species) if species else None),
+    )
+
+
+def _check_variety_parent_selection(
+    target: VarietyPublicationParent | None, decision: dict[str, Any], species: CropSpecies,
+) -> VarietyPublicationParent:
+    if target and target.entry:
+        entry = PublicCrop.objects.select_for_update().filter(pk=target.entry.pk).first()
+        if (
+            entry is None or entry.status != PublicCrop.STATUS_PUBLISHED
+            or entry.crop_species_id != species.pk or entry.variety_normalized
+        ):
+            raise VarietyPublicationParentConflict(
+                'variety_parent_changed', 'The parent library entry changed.',
+            )
+        target = VarietyPublicationParent(target.crop, entry)
+    if (
+        target is None
+        or target.crop.pk != decision['crop_id']
+        or target.crop.source_public_crop_id != (
+            decision['public_crop_id'] if decision['already_linked'] else None
+        )
+        or (target.entry.pk if target.entry else None) != decision['public_crop_id']
+        or target.crop.updated_at.isoformat() != decision['expected_updated_at']
+        or (target.entry.version if target.entry else None) != decision.get('base_version')
+    ):
+        raise VarietyPublicationParentConflict(
+            'variety_parent_changed',
+            'The project crop or its library entry changed. Review the parent selection again.',
+        )
+    return target
+
+
+def _apply_variety_parent_link(
+    target: VarietyPublicationParent, decision: dict[str, Any], user: User | None,
+) -> None:
+    if target.entry is None or target.crop.source_public_crop_id:
+        return
+    link_project_crop_to_public_reference(
+        crop=target.crop, public_crop=target.entry,
+        base_version=decision['base_version'],
+        expected_updated_at=decision['expected_updated_at'],
+        pull_fields=decision['pull_fields'], pin_fields=decision['pin_fields'], user=user,
+    )
+
+
+def _prepare_variety_publication(
+    crop: Crop, species: CropSpecies, target: VarietyPublicationParent | None,
+    decision: dict[str, Any] | None, user: User | None,
+) -> None:
+    if decision is not None and target is not None:
+        parent = target.crop
+        siblings_to_move = _varieties_of_reclassified_parent(crop, parent, species)
+        if target.entry is not None:
+            _apply_variety_parent_link(target, decision, user)
+        elif parent.crop_species_id != species.pk:
+            _link_crop_to_crop_species(
+                crop=parent, crop_species=species, previous_species_id=parent.crop_species_id,
+            )
+        with internal_project_versions():
+            for sibling in siblings_to_move:
+                sibling.refresh_from_db()
+                if sibling.crop_species_id != species.pk:
+                    before = _serialize_instance(sibling)
+                    _link_crop_to_crop_species(crop=sibling, crop_species=species)
+                    _record_library_crop_revision(sibling, before)
+        crop.refresh_from_db()
+        crop.__dict__.pop('_resolved_general_crop', None)
+    _link_crop_to_crop_species(crop=crop, crop_species=species)
+
+
+def _varieties_of_reclassified_parent(crop: Crop, parent: Crop, species: CropSpecies) -> list[Crop]:
+    if parent.crop_species_id is None or parent.crop_species_id == species.pk:
+        return []
+    siblings = list(Crop.objects.filter(
+        project_id=parent.project_id, crop_species_id=parent.crop_species_id,
+        variety_normalized__isnull=False,
+    ).exclude(pk=crop.pk).order_by('pk'))
+    if any(sibling.source_public_crop_id for sibling in siblings):
+        raise VarietyPublicationParentConflict(
+            'linked_variety_parent_species_conflict',
+            'Review the parent and its linked varieties before changing crop species.',
+        )
+    return siblings
+
+
 def build_publishing_check_result(
     *,
     crop: Crop,
@@ -2306,7 +2482,13 @@ def build_publishing_check_result(
     user: User | None = None,
     publish_as_general: bool = False,
 ) -> PublishingCheckResult:
-    crop_species = resolve_publishing_crop_species(crop=crop, crop_species_id=crop_species_id)
+    parent = find_variety_publication_parent(crop)
+    parent_species, parent_blocker = _linked_parent_publication_species(parent, crop_species_id)
+    if parent_species and publish_as_general:
+        parent_blocker = PUBLISH_BLOCKER_LINKED_PARENT_REQUIRES_VARIETY
+    crop_species = parent_species or resolve_publishing_crop_species(
+        crop=crop, crop_species_id=crop_species_id,
+    )
     language_code = normalize_language_code(original_language_code)
     available_language_codes = detect_available_language_codes(crop)
     if language_code and language_code not in available_language_codes:
@@ -2330,10 +2512,12 @@ def build_publishing_check_result(
         missing_required_fields=missing_required_fields,
         duplicates=duplicates,
     )
+    if parent_blocker:
+        blocking_reasons.insert(0, parent_blocker)
     general_crop_notice = (
         build_general_crop_notice(crop_species) if crop_species and not publish_as_general else None
     )
-    kultur = crop if not (crop.variety or '').strip() else get_general_crop(crop)
+    kultur = parent if is_variety_crop(crop) else crop
     return PublishingCheckResult(
         crop_species=crop_species,
         original_language_code=language_code,
@@ -2342,6 +2526,7 @@ def build_publishing_check_result(
         duplicates=duplicates,
         blocking_reasons=blocking_reasons,
         general_crop_notice=general_crop_notice,
+        variety_parent=_variety_publication_parent(parent, crop_species),
         unpublishable_companion_count=(
             library_companions(kultur, _linked_entry_companions(kultur))[1] if kultur else 0
         ),
@@ -2426,6 +2611,7 @@ def ensure_general_public_crop(
     crop: Crop,
     original_language_code: str,
     user: User | None,
+    parent: Crop | None = None,
 ) -> PublicCrop | None:
     """Create the species-level public entry from `crop`'s values if it doesn't exist yet.
 
@@ -2433,14 +2619,15 @@ def ensure_general_public_crop(
     contributors may already have curated it — so this is a no-op whenever one
     is found, regardless of how different `crop`'s own values are.
 
-    The entry's values come from the Sorte, but it is recorded as originating
-    from the project's general Kultur when there is one: that row is what the
-    user sees as the published Kultur afterwards, so it must be the row that
-    owns and updates the entry.
+    The general Kultur owns the entry and supplies its values. A legacy
+    variety without a private general row keeps its existing fallback.
     """
     if find_general_public_crop(crop_species) is not None:
         return None
 
+    parent = parent or find_variety_publication_parent(crop)
+    if parent is not None:
+        parent.refresh_from_db()
     public_crop = PublicCrop.objects.create(
         created_by=user,
         status=PublicCrop.STATUS_PUBLISHED,
@@ -2448,9 +2635,9 @@ def ensure_general_public_crop(
         crop_species=crop_species,
         original_language_code=original_language_code,
         **crop_model_kwargs(build_public_crop_payload(
-            crop,
+            parent or crop,
             public_variety='',
-            source_crop=get_general_crop(crop),
+            source_crop=parent,
             include_specific_properties=False,
         )),
     )
@@ -3212,7 +3399,18 @@ def publish_crop_to_public_library(
     publish_as_general: bool = False,
     require_moderation: bool = False,
     companion_note_language: str | None = None,
+    parent_decision: dict[str, Any] | None = None,
 ) -> tuple[PublicCrop, list[DuplicateCandidate], str]:
+    # Resolve the private group and its link after the project lock, before any
+    # species change can move the variety to another group.
+    lock_crop_project(crop.project_id)
+    crop = Crop.objects.get(pk=crop.pk, project_id=crop.project_id)
+    parent = _lock_variety_publication_parent(crop, crop_species_id)
+    if publish_as_general and parent is not None and parent.source_public_crop_id:
+        raise VarietyPublicationParentConflict(
+            PUBLISH_BLOCKER_LINKED_PARENT_REQUIRES_VARIETY,
+            'Publish this variety under the linked parent entry.',
+        )
     # Checked before the quality gate: a copy that has not taken over the current
     # public version must not overwrite it, however complete its own fields are.
     update_target = find_owned_public_crop_for_update(crop=crop, user=user)
@@ -3236,52 +3434,21 @@ def publish_crop_to_public_library(
     # update of the caller's own entry), so only the other blockers fail here.
     if any(reason != PUBLISH_BLOCKER_DUPLICATES for reason in check_result.blocking_reasons):
         raise PublicCropPublishingValidationError(check_result=check_result)
-
-    public_variety = _resolve_public_variety(publish_as_general)
-    duplicates = check_result.duplicates
-    if update_target and require_moderation:
-        # Must come before any mutation below: an untrusted contributor who
-        # already owns a published entry would otherwise overwrite the live
-        # library row, which is exactly what the moderation queue exists to
-        # prevent (and what CropViewSet.api_token_actions assumes cannot
-        # happen). The caller queues this as a KIND_EDIT proposal instead.
-        return (
-            update_target,
-            [item for item in duplicates if item.id != update_target.id],
-            'pending_moderation_edit',
-        )
-    if update_target:
-        previous_status = update_target.status
-        with revision_actor(user):
-            before = _serialize_instance(crop)
-            _link_crop_to_crop_species(crop=crop, crop_species=check_result.crop_species)
-        updated_public_crop = _update_public_crop_from_project_crop(
-            public_crop=update_target,
-            crop=crop,
-            public_variety=public_variety,
-            companion_note_language=companion_note_language,
-        )
-        updated_public_crop.crop_species = check_result.crop_species
-        updated_public_crop.original_language_code = check_result.original_language_code
-        updated_public_crop.status_changed_by = user if previous_status != PublicCrop.STATUS_PUBLISHED else updated_public_crop.status_changed_by
-        updated_public_crop.save(update_fields=['crop_species', 'original_language_code', 'status_changed_by', 'updated_at'])
-        if previous_status != PublicCrop.STATUS_PUBLISHED and updated_public_crop.status == PublicCrop.STATUS_PUBLISHED:
-            _record_public_crop_status_event(
-                public_crop=updated_public_crop,
-                from_status=previous_status,
-                to_status=PublicCrop.STATUS_PUBLISHED,
-                user=user,
+    target = check_result.variety_parent
+    if parent_decision is not None:
+        if publish_as_general or update_target:
+            raise VarietyPublicationParentConflict(
+                'variety_parent_changed',
+                'The parent selection belongs to a new variety publication.',
             )
-        sync_original_language_translation(updated_public_crop)
-        _link_owned_entry_to_project_rows(
-            crop=crop,
-            entry=updated_public_crop,
-            publish_as_general=publish_as_general,
-            user=user,
-            before=before,
+        target = _check_variety_parent_selection(target, parent_decision, check_result.crop_species)
+
+    duplicates = check_result.duplicates
+    if update_target:
+        return _publish_existing_crop(
+            crop, user, check_result, update_target,
+            publish_as_general, require_moderation, companion_note_language,
         )
-        non_target_duplicates = [item for item in duplicates if item.id != update_target.id]
-        return updated_public_crop, non_target_duplicates, 'updated'
 
     if duplicates:
         raise DuplicatePublicCropError(
@@ -3292,13 +3459,43 @@ def publish_crop_to_public_library(
                 'crop_species': str(check_result.crop_species.id),
             },
         )
-    with revision_actor(user):
-        before = _serialize_instance(crop)
-        _link_crop_to_crop_species(crop=crop, crop_species=check_result.crop_species)
+    return _publish_new_crop(
+        crop=crop, user=user, checks=check_result, target=target,
+        parent_decision=parent_decision, publish_as_general=publish_as_general,
+        require_moderation=require_moderation,
+    )
+
+
+def _publish_new_crop(
+    *,
+    crop: Crop,
+    user: User | None,
+    checks: PublishingCheckResult,
+    target: VarietyPublicationParent | None,
+    parent_decision: dict[str, Any] | None,
+    publish_as_general: bool,
+    require_moderation: bool,
+) -> tuple[PublicCrop, list[DuplicateCandidate], str]:
+    public_variety = _resolve_public_variety(publish_as_general)
+    before = _serialize_instance(crop)
+    if require_moderation and parent_decision is not None:
+        # The draft reflects the reviewed field choices. The private link
+        # and the species move are applied only when the proposal is approved.
+        with transaction.atomic(), revision_actor(user):
+            _prepare_variety_publication(crop, checks.crop_species, target, parent_decision, user)
+            draft_payload = build_public_crop_payload(crop, public_variety=public_variety)
+            transaction.set_rollback(True)
+    else:
+        with revision_actor(user):
+            _prepare_variety_publication(crop, checks.crop_species, target, parent_decision, user)
+        draft_payload = (
+            build_public_crop_payload(crop, public_variety=public_variety)
+            if require_moderation else None
+        )
     created_general_entry: PublicCrop | None = None
     if not publish_as_general and not require_moderation:
         # Publishing a variety always needs a species-level entry for the crop
-        # to hang off; create it from this crop's own values if the
+        # to hang off; create it from the parent crop's values if the
         # species doesn't have one yet. An existing general entry is never
         # touched here (see ensure_general_public_crop's docstring).
         #
@@ -3308,10 +3505,11 @@ def publish_crop_to_public_library(
         # is still waiting for review. `approve_new_publish_proposal` creates
         # it on approval instead.
         created_general_entry = ensure_general_public_crop(
-            crop_species=check_result.crop_species,
+            crop_species=checks.crop_species,
             crop=crop,
-            original_language_code=check_result.original_language_code,
+            original_language_code=checks.original_language_code,
             user=user,
+            parent=target.crop if target else None,
         )
     if require_moderation:
         # A new-account/API-token/declared-agent contributor: create the entry
@@ -3325,20 +3523,21 @@ def publish_crop_to_public_library(
             created_by=user,
             status=PublicCrop.STATUS_DRAFT,
             version=1,
-            crop_species=check_result.crop_species,
-            original_language_code=check_result.original_language_code,
-            **crop_model_kwargs(build_public_crop_payload(crop, public_variety=public_variety)),
+            crop_species=checks.crop_species,
+            original_language_code=checks.original_language_code,
+            **crop_model_kwargs(draft_payload),
         )
-        with revision_actor(user):
-            _record_library_crop_revision(crop, before, force=True)
-        return draft_public_crop, duplicates, 'pending_moderation'
+        if parent_decision is None:
+            with revision_actor(user):
+                _record_library_crop_revision(crop, before, force=True)
+        return draft_public_crop, checks.duplicates, 'pending_moderation'
 
     public_crop = PublicCrop.objects.create(
         created_by=user,
         status=PublicCrop.STATUS_PUBLISHED,
         version=1,
-        crop_species=check_result.crop_species,
-        original_language_code=check_result.original_language_code,
+        crop_species=checks.crop_species,
+        original_language_code=checks.original_language_code,
         **crop_model_kwargs(build_public_crop_payload(crop, public_variety=public_variety)),
     )
     sync_original_language_translation(public_crop)
@@ -3361,15 +3560,73 @@ def publish_crop_to_public_library(
         before=before,
         created_general_entry=created_general_entry,
     )
-    return public_crop, duplicates, 'created'
+    return public_crop, checks.duplicates, 'created'
 
 
+def _publish_existing_crop(
+    crop: Crop, user: User | None, checks: PublishingCheckResult,
+    update_target: PublicCrop, publish_as_general: bool, require_moderation: bool,
+    companion_note_language: str | None,
+) -> tuple[PublicCrop, list[DuplicateCandidate], str]:
+    public_variety = _resolve_public_variety(publish_as_general)
+    duplicates = checks.duplicates
+    if require_moderation:
+        # Must come before any mutation below: an untrusted contributor who
+        # already owns a published entry would otherwise overwrite the live
+        # library row, which is exactly what the moderation queue exists to
+        # prevent (and what CropViewSet.api_token_actions assumes cannot
+        # happen). The caller queues this as a KIND_EDIT proposal instead.
+        return (
+            update_target,
+            [item for item in duplicates if item.id != update_target.id],
+            'pending_moderation_edit',
+        )
+    previous_status = update_target.status
+    with revision_actor(user):
+        before = _serialize_instance(crop)
+        _link_crop_to_crop_species(crop=crop, crop_species=checks.crop_species)
+    updated_public_crop = _update_public_crop_from_project_crop(
+        public_crop=update_target,
+        crop=crop,
+        public_variety=public_variety,
+        companion_note_language=companion_note_language,
+    )
+    updated_public_crop.crop_species = checks.crop_species
+    updated_public_crop.original_language_code = checks.original_language_code
+    was_published = previous_status == PublicCrop.STATUS_PUBLISHED
+    if not was_published:
+        updated_public_crop.status_changed_by = user
+    updated_public_crop.save(update_fields=[
+        'crop_species', 'original_language_code', 'status_changed_by', 'updated_at',
+    ])
+    if not was_published and updated_public_crop.status == PublicCrop.STATUS_PUBLISHED:
+        _record_public_crop_status_event(
+            public_crop=updated_public_crop,
+            from_status=previous_status,
+            to_status=PublicCrop.STATUS_PUBLISHED,
+            user=user,
+        )
+    sync_original_language_translation(updated_public_crop)
+    _link_owned_entry_to_project_rows(
+        crop=crop,
+        entry=updated_public_crop,
+        publish_as_general=publish_as_general,
+        user=user,
+        before=before,
+    )
+    non_target_duplicates = [item for item in duplicates if item.id != update_target.id]
+    return updated_public_crop, non_target_duplicates, 'updated'
+
+
+@transaction.atomic
 def approve_new_publish_proposal(
     *,
     public_crop: PublicCrop,
     source_crop: Crop | None,
     publish_as_general: bool,
     user: User | None,
+    parent_decision: dict[str, Any] | None = None,
+    expected_source_version: str | None = None,
 ) -> PublicCrop:
     """Publish a draft PublicCrop created for a `KIND_NEW_PUBLISH` proposal.
 
@@ -3379,13 +3636,48 @@ def approve_new_publish_proposal(
     that — including the species-level entry a variety hangs off, which the
     publish path deliberately skips while the contribution is only queued.
     """
+    if source_crop is not None:
+        lock_crop_project(source_crop.project_id)
+        source_crop.refresh_from_db()
+    if parent_decision is not None and (
+        source_crop is None or source_crop.source_public_crop_id is not None
+        or not public_crop.crop_species_id or not is_variety_crop(source_crop)
+        or source_crop.updated_at.isoformat() != expected_source_version
+        or not ProjectMembership.objects.filter(
+            project_id=source_crop.project_id, user_id=public_crop.created_by_id,
+        ).exists()
+    ):
+        raise VarietyPublicationParentConflict(
+            'variety_parent_changed', 'The project variety changed before it was reviewed.',
+        )
+    parent = None
+    if source_crop is not None:
+        parent = _lock_variety_publication_parent(source_crop, public_crop.crop_species_id)
+    elif public_crop.crop_species_id:
+        CropSpecies.objects.select_for_update().filter(pk=public_crop.crop_species_id).first()
+    if public_crop.crop_species_id and _publication_identity_is_taken(public_crop):
+        raise VarietyPublicationParentConflict(
+            'duplicate_public_crop', 'Another published library entry already has this identity.',
+        )
     created_general_entry: PublicCrop | None = None
+    before = _serialize_instance(source_crop) if source_crop is not None else {}
     if not publish_as_general and source_crop is not None and public_crop.crop_species is not None:
+        if parent_decision is not None:
+            target = _variety_publication_parent(parent, public_crop.crop_species)
+            target = _check_variety_parent_selection(
+                target, parent_decision, public_crop.crop_species,
+            )
+            with revision_actor(public_crop.created_by):
+                _prepare_variety_publication(
+                    source_crop, public_crop.crop_species, target, parent_decision,
+                    public_crop.created_by,
+                )
         created_general_entry = ensure_general_public_crop(
             crop_species=public_crop.crop_species,
             crop=source_crop,
             original_language_code=public_crop.original_language_code,
-            user=user,
+            user=public_crop.created_by or user,
+            parent=parent,
         )
     _set_public_crop_status(public_crop=public_crop, status=PublicCrop.STATUS_PUBLISHED, user=user)
     sync_original_language_translation(public_crop)
@@ -3403,11 +3695,19 @@ def approve_new_publish_proposal(
             entry=public_crop,
             publish_as_general=publish_as_general,
             user=public_crop.created_by,
-            before=_serialize_instance(source_crop),
+            before=before,
             actor_label=get_public_user_label(user) or _LIBRARY_MODERATION_LABEL,
             created_general_entry=created_general_entry,
         )
     return public_crop
+
+
+def _publication_identity_is_taken(public_crop: PublicCrop) -> bool:
+    if is_species_level_entry(public_crop):
+        return find_general_public_crop(public_crop.crop_species) is not None
+    return find_variety_identity_conflict(
+        public_crop, names=[public_crop.variety], crop_species_id=public_crop.crop_species_id,
+    ) is not None
 
 
 def reject_new_publish_proposal(*, public_crop: PublicCrop, user: User | None) -> PublicCrop:

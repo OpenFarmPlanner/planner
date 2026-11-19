@@ -19,7 +19,6 @@ import {
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router';
 import { PublicLibraryTermsConsent } from '../crops/PublicLibraryTermsConsent';
-import { AppTooltip } from '../components/AppTooltip';
 import { cropSpeciesAPI, cropAPI, publicCropAPI, type Crop } from '../api/api';
 import type {
   CropSpecies,
@@ -28,6 +27,7 @@ import type {
   PublicCropDuplicateCandidate,
   PublishBlockingReason,
   PublishPublicCropPreview,
+  VarietyParentPublicationDecision,
 } from '../api/types';
 import { extractApiErrorMessage } from '../api/errors';
 import { useTranslation } from '../i18n';
@@ -44,6 +44,7 @@ import { CropSpeciesPicker } from '../crops/CropSpeciesPicker';
 import { PlantHealthPublicationPanel } from '../crops/PlantHealthPublicationPanel';
 import { describePublishBlockingReasons } from '../crops/publishChecks';
 import { useCropSpeciesSearch } from '../crops/useCropSpeciesSearch';
+import { normalizeCropIdentityValue } from '../crops/cropIdentity';
 import {
   getCropSpeciesOptionLabel,
   getCropSpeciesResultLabel,
@@ -69,11 +70,12 @@ interface CropsPublishingWizardDialogProps {
     acceptedPublicLibraryTerms: boolean;
     cropSpeciesId?: number;
     originalLanguageCode: string;
-    publicCropId?: number | null;
     publishAsGeneral?: boolean;
     varieties?: PublishVarietySelection[];
+    varietyParent?: VarietyParentPublicationDecision;
     healthMappings?: StagedPlantHealthMapping[];
     cropUpdatedAt?: string;
+    onError?: (message: string, code?: string) => void;
   }) => void | Promise<boolean>;
   /**
    * Confirms linking a general Kultur to a foreign duplicate candidate found
@@ -183,17 +185,54 @@ export function CropsPublishingWizardDialog({
   const speciesInputRef = useRef<HTMLInputElement | null>(null);
   const [syncSubmitting, setSyncSubmitting] = useState(false);
   const [syncError, setSyncError] = useState('');
+  const [parentContext, setParentContext] = useState<{ key: string; preview: PublishPublicCropPreview | null }>();
+  const [parentContextRetry, setParentContextRetry] = useState(0);
   const ownedPublicCropId = crop?.owned_public_crop_id ?? null;
   // A crop connected to an entry (its own, or one it was imported from or
   // linked to) is not published again: the wizard becomes the field-by-field
   // sync with that entry ("Mit Kulturbibliothek abgleichen").
   const linkedPublicCropId = ownedPublicCropId ?? crop?.source_public_crop ?? null;
   const isSyncFlow = Boolean(linkedPublicCropId);
+  const isCropLevelPublish = !crop?.variety?.trim();
+  const localParent = isCropLevelPublish ? undefined : projectCrops.find(candidate => (
+    crop?.general_crop ? candidate.id === crop.general_crop
+      : !crop?.crop_species && !candidate.crop_species && !candidate.variety?.trim()
+        && normalizeCropIdentityValue(candidate.name) === normalizeCropIdentityValue(crop?.name)
+  ));
+  const hasProjectParent = Boolean(!isCropLevelPublish && (crop?.general_crop || localParent));
+  const contextSpeciesId = selectedSpecies?.id;
+  const parentContextKey = JSON.stringify([crop?.id, crop?.updated_at, contextSpeciesId, originalLanguageCode, parentContextRetry]);
+  const currentParentContext = parentContext?.key === parentContextKey ? parentContext : undefined;
+  const publicationParent = currentParentContext?.preview?.variety_parent;
+  const parentEntry = publicationParent?.library_entry;
+  const parentAlreadyLinked = publicationParent?.already_linked ?? Boolean(localParent?.source_public_crop);
+  const parentSpeciesId = parentAlreadyLinked ? parentEntry?.crop_species : undefined;
+  const verifyingParent = hasProjectParent && !currentParentContext;
+  const parentContextFailed = hasProjectParent && currentParentContext?.preview === null;
+
+  useEffect(() => {
+    if (!open) {
+      queueMicrotask(() => setParentContext(undefined));
+      return;
+    }
+    if (isSyncFlow || !crop?.id || !hasProjectParent) return;
+    let current = true;
+    cropAPI.publishPreview(crop.id, {
+      crop_species_id: contextSpeciesId,
+      original_language_code: originalLanguageCode,
+    }).then(({ data }) => {
+      if (current) setParentContext({ key: parentContextKey, preview: data });
+    }).catch(() => {
+      if (current) setParentContext({ key: parentContextKey, preview: null });
+    });
+    return () => { current = false; };
+  }, [contextSpeciesId, crop?.id, hasProjectParent, isSyncFlow, open, originalLanguageCode, parentContextKey]);
+
   const {
     results: speciesSearchResults,
     loading: speciesLoading,
     hasMore: speciesSearchHasMore,
-  } = useCropSpeciesSearch(speciesSearchQuery, open && !isSyncFlow);
+  } = useCropSpeciesSearch(speciesSearchQuery, open && !isSyncFlow && !parentAlreadyLinked);
   // A species the user just proposed is `status=proposed`, so a non-moderator's
   // own search never finds it again (the search endpoint only surfaces
   // published species to non-moderators) — this keeps it selectable for the
@@ -206,18 +245,17 @@ export function CropsPublishingWizardDialog({
       ? speciesSearchResults
       : [proposedSpeciesOverride, ...speciesSearchResults];
   }, [proposedSpeciesOverride, speciesSearchResults]);
-  const isCropLevelPublish = !crop?.variety?.trim();
   const publishableVarieties = useMemo(() => getPublishableVarieties(varieties), [varieties]);
   const automaticSpecies = useMemo(() => {
-    if (manualSpeciesChoice || selectedSpecies || speciesLoading || isSyncFlow) return null;
+    if (manualSpeciesChoice || selectedSpecies || speciesLoading || isSyncFlow || parentAlreadyLinked) return null;
     const assigned = speciesSearchResults.find((item) => item.id === crop?.crop_species && item.status === 'published');
-    if (assigned) return assigned;
-    if (speciesSearchHasMore || crop?.crop_species) return null;
-    const name = normalizeCropSpeciesSearchValue(crop?.name);
+    if (assigned && !hasProjectParent) return assigned;
+    if (speciesSearchHasMore || (crop?.crop_species && !hasProjectParent)) return null;
+    const name = normalizeCropSpeciesSearchValue(localParent?.name ?? crop?.name);
     const matches = speciesSearchResults.filter((item) => item.status === 'published'
       && getCropSpeciesSearchNames(item).some((alias) => normalizeCropSpeciesSearchValue(alias) === name));
     return matches.length === 1 ? matches[0] : null;
-  }, [crop?.crop_species, crop?.name, isSyncFlow, manualSpeciesChoice, selectedSpecies,
+  }, [crop?.crop_species, crop?.name, hasProjectParent, isSyncFlow, localParent?.name, manualSpeciesChoice, parentAlreadyLinked, selectedSpecies,
     speciesLoading, speciesSearchHasMore, speciesSearchResults]);
   const lookupSpecies = selectedSpecies ?? automaticSpecies;
   const entryRequestKey = JSON.stringify([crop?.id, crop?.updated_at, lookupSpecies?.id, crop?.variety, entryLookupRetry]);
@@ -234,8 +272,8 @@ export function CropsPublishingWizardDialog({
       setManualSpeciesChoice(false);
       setEntryLookupKey('');
       setProposedSpeciesOverride(null);
-      setSpeciesInputValue(crop?.name ?? '');
-      setSpeciesSearchQuery(crop?.name ?? '');
+      setSpeciesInputValue(localParent?.name ?? crop?.name ?? '');
+      setSpeciesSearchQuery(localParent?.name ?? crop?.name ?? '');
       // Unless earlier health mappings need attention, focus opens the
       // picker with results for the crop's own name.
       setProposedSpeciesName(null);
@@ -255,7 +293,7 @@ export function CropsPublishingWizardDialog({
       setSyncSubmitting(false);
       setSyncError('');
     });
-  }, [crop?.id, crop?.name, crop?.variety, open]);
+  }, [crop?.id, crop?.name, crop?.variety, localParent?.name, open]);
 
   useEffect(() => {
     if (!open || !linkedPublicCropId) return;
@@ -288,11 +326,24 @@ export function CropsPublishingWizardDialog({
     crop?.updated_at,
     !isSyncFlow,
   );
+  const compareParent = Boolean(
+    open && !isSyncFlow && selectedSpecies && publicationParent && !parentAlreadyLinked && parentEntry?.available,
+  );
+  const parentComparison = usePublicCropSyncPreview(
+    publicationParent?.id,
+    parentEntry?.id,
+    compareParent,
+    true,
+    currentHealthMappings.filter(mapping => mapping.crop_id === publicationParent?.id),
+    publicationParent?.updated_at,
+    true,
+    open,
+  );
 
   useEffect(() => {
     // A crop-level publish has no variety field of its own, but its Sorten
     // still need the species' public entries to spot name conflicts.
-    if (isSyncFlow) return undefined;
+    if (isSyncFlow || parentAlreadyLinked) return undefined;
     if (!open) return undefined;
     const searchTerm = lookupSpecies?.name.trim() || crop?.name.trim() || '';
     if (!searchTerm) {
@@ -354,17 +405,18 @@ export function CropsPublishingWizardDialog({
       window.clearTimeout(timeoutId);
       abortController.abort();
     };
-  }, [crop?.name, crop?.crop_species, crop?.variety, isSyncFlow, open, lookupSpecies, entryRequestKey]);
+  }, [crop?.name, crop?.crop_species, crop?.variety, isSyncFlow, open, lookupSpecies, entryRequestKey, parentAlreadyLinked]);
 
   useEffect(() => {
     if (!open || !automaticSpecies || entryLookupKey !== entryRequestKey) return;
+    if (hasProjectParent && publicCropOptions.filter((entry) => entry.status === 'published' && !entry.variety?.trim()).length !== 1) return;
     queueMicrotask(() => {
       setManualSpeciesChoice(true);
       setSelectedSpecies(automaticSpecies);
       setSpeciesInputValue(getCropSpeciesResultLabel(automaticSpecies, originalLanguageCode).label);
       setShowLinkConfirmation(Boolean(selectedPublicCrop));
     });
-  }, [automaticSpecies, entryLookupKey, entryRequestKey, open, originalLanguageCode, selectedPublicCrop]);
+  }, [automaticSpecies, entryLookupKey, entryRequestKey, hasProjectParent, open, originalLanguageCode, publicCropOptions, selectedPublicCrop]);
 
   const entryLookupPending = Boolean(selectedSpecies) && entryLookupKey !== entryRequestKey;
   const entryLookupBlocked = Boolean(selectedSpecies) && (entryLookupPending || varietyLookupFailed);
@@ -404,9 +456,10 @@ export function CropsPublishingWizardDialog({
         .map((candidate) => ({
           cropId: candidate.cropId,
           publicCropId: candidate.existingPublicCrop?.id ?? null,
+          ...(candidate.crop.updated_at ? { cropUpdatedAt: candidate.crop.updated_at } : {}),
+          ...(candidate.existingPublicCrop ? { baseVersion: candidate.existingPublicCrop.version } : {}),
           ...(healthMappings.some(mapping => mapping.crop_id === candidate.cropId) ? {
             healthMappings: healthMappings.filter(mapping => mapping.crop_id === candidate.cropId),
-            cropUpdatedAt: candidate.crop.updated_at,
           } : {}),
         }))
       : []),
@@ -508,12 +561,12 @@ export function CropsPublishingWizardDialog({
       setValidationResult(response.data);
       return response.data;
     } catch (error) {
-      console.error('Error checking publishing readiness:', error);
+      setSyncError(extractApiErrorMessage(error, t, t('library.publishError')));
       return null;
     } finally {
       setValidationLoading(false);
     }
-  }, [crop, isCropLevelPublish, originalLanguageCode, currentHealthMappings]);
+  }, [crop, isCropLevelPublish, originalLanguageCode, currentHealthMappings, t]);
 
   const handleLinkDuplicate = useCallback(async (candidate: PublicCropDuplicateCandidate) => {
     setLinkConfirmError('');
@@ -615,6 +668,7 @@ export function CropsPublishingWizardDialog({
 
   const handlePublish = useCallback(async () => {
     if (!crop?.id) return;
+    setSyncError('');
     if (selectedPublicCrop) {
       setShowLinkConfirmation(true);
       return;
@@ -630,13 +684,29 @@ export function CropsPublishingWizardDialog({
         return;
       }
     }
-    const cropSpeciesId = proposedSpecies?.id ?? selectedSpecies?.id;
+    const cropSpeciesId = parentSpeciesId ?? proposedSpecies?.id ?? selectedSpecies?.id;
     if (!cropSpeciesId) {
       speciesInputRef.current?.focus();
       return;
     }
     const previewResult = await runPublishPreview(cropSpeciesId);
     if (!previewResult?.can_publish) return;
+    const checkedParent = previewResult.variety_parent;
+    const checkedEntry = checkedParent?.library_entry;
+    const sameParent = !publicationParent || (
+      publicationParent.id === checkedParent?.id
+      && publicationParent.already_linked === checkedParent.already_linked
+      && publicationParent.library_entry?.id === checkedEntry?.id
+      && publicationParent.updated_at === checkedParent.updated_at
+    );
+    const comparison = parentComparison.preview;
+    if (!sameParent || (checkedParent && checkedEntry && !checkedParent.already_linked && (
+      !comparison || comparison.public_version !== checkedEntry.version || comparison.crop_updated_at !== checkedParent.updated_at
+    ))) {
+      setSyncError(t('library.publishWizard.parent.changed'));
+      setParentContextRetry(previous => previous + 1);
+      return;
+    }
 
     if (!termsAlreadyAccepted && !showLicenseConfirmation) {
       setShowLicenseConfirmation(true);
@@ -647,15 +717,37 @@ export function CropsPublishingWizardDialog({
       return;
     }
 
-    const success = await onPublish({
+    let varietyParent: VarietyParentPublicationDecision | undefined;
+    if (checkedParent) {
+      varietyParent = {
+        crop_id: checkedParent.id,
+        public_crop_id: checkedEntry?.id ?? null,
+        already_linked: checkedParent.already_linked,
+        expected_updated_at: checkedParent.updated_at,
+        ...(checkedEntry ? { base_version: checkedEntry.version } : {}),
+        ...(checkedEntry && !checkedParent.already_linked ? {
+          pull_fields: parentComparison.selection.pullFields,
+          pin_fields: parentComparison.selection.pinFields,
+        } : {}),
+      };
+    }
+    await onPublish({
       acceptedPublicLibraryTerms: !termsAlreadyAccepted && acceptedLicense,
       cropSpeciesId,
       originalLanguageCode,
       varieties: selectedVarieties,
+      ...(varietyParent ? { varietyParent } : {}),
       ...(currentHealthMappings.length ? { healthMappings: currentHealthMappings, cropUpdatedAt: crop.updated_at } : {}),
       ...(isCropLevelPublish ? { publishAsGeneral: true } : {}),
+      onError: (message, code) => {
+        setSyncError(message);
+        if (code === 'variety_parent_changed' || code === 'stale_public_crop_version') {
+          setParentContextRetry(previous => previous + 1);
+        } else if (code === 'duplicate_public_crop' || code === 'copublished_variety_changed') {
+          setEntryLookupRetry(previous => previous + 1);
+        }
+      },
     });
-    if (success === false) setSyncError(t('library.publishError'));
   }, [
     acceptedLicense,
     crop,
@@ -666,8 +758,13 @@ export function CropsPublishingWizardDialog({
     licenseAccepted,
     onPublish,
     originalLanguageCode,
+    parentComparison.preview,
+    parentComparison.selection.pinFields,
+    parentComparison.selection.pullFields,
+    parentSpeciesId,
     pendingSpeciesProposalName,
     runPublishPreview,
+    publicationParent,
     selectedPublicCrop,
     selectedSpecies,
     selectedVarieties,
@@ -753,6 +850,29 @@ export function CropsPublishingWizardDialog({
         drafts={healthMappings} onChange={updateHealthMapping} />
     ))}
   </> : null;
+  const publicationTitle = isCropLevelPublish
+    ? t('library.publishWizard.title')
+    : t('library.publishWizard.varietyTitle', { variety: crop?.variety?.trim() });
+  const parentUnavailable = parentAlreadyLinked && !verifyingParent && (!parentEntry?.available || !parentSpeciesId);
+  const requiresReview = currentParentContext?.preview?.requires_moderation ?? validationResult?.requires_moderation;
+  const waitingToPublish = publishing || validationLoading || healthMappingBusy || proposingSpecies;
+  const publishDisabledReason = waitingToPublish
+    ? t('common:disabledReasons.busy')
+    : parentUnavailable
+      ? t('library.publishWizard.parent.unavailable')
+      : parentContextFailed
+        ? t('library.publishWizard.parent.loadError')
+        : verifyingParent || (compareParent && !parentComparison.preview)
+          ? t('library.sync.loading')
+          : !parentSpeciesId && !selectedSpecies && !isProposingNewSpecies
+            ? t('library.publishWizard.blockingReasons.missingCropSpecies')
+            : isBlockedByValidation
+              ? t('library.publishWizard.resolveBlockingIssuesTooltip')
+              : entryLookupBlocked || varietyConflictsPending
+                ? t(varietyLookupFailed ? 'library.publishWizard.entryLookupFailed' : 'library.publishWizard.varieties.checking')
+                : showLicenseConfirmation && !termsAlreadyAccepted && !acceptedLicense
+                  ? t('library.sync.acceptLicenseFirst')
+                  : '';
 
   if (showLinkConfirmation && selectedPublicCrop) {
     return (
@@ -859,7 +979,7 @@ export function CropsPublishingWizardDialog({
   if (checkingAutomaticLink) {
     return (
       <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-        <DialogTitle>{t('library.publishWizard.title')}</DialogTitle>
+        <DialogTitle>{publicationTitle}</DialogTitle>
         <DialogContent dividers>
           <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }} role="status">
             <CircularProgress size={24} />
@@ -875,17 +995,38 @@ export function CropsPublishingWizardDialog({
 
   return (
     <Dialog open={open} onClose={publishing || syncSubmitting || healthMappingBusy ? undefined : onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{t('library.publishWizard.title')}</DialogTitle>
+      <DialogTitle>{publicationTitle}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2.25} sx={{ pt: 0.5 }}>
-          <Typography variant="body2" color="text.secondary">
-            {t('library.publishWizard.intro', { name: crop?.name ?? '' })}
-          </Typography>
+          {(!publicationParent || !parentAlreadyLinked) && (
+            <Typography variant="body2" color="text.secondary">
+              {publicationParent
+                ? t('library.publishWizard.parent.chooseSpecies')
+                : t('library.publishWizard.intro', { name: crop?.name ?? '' })}
+            </Typography>
+          )}
 
           {syncError ? <Alert severity="error">{syncError}</Alert> : null}
+          {parentContextFailed ? <Alert severity="error" action={
+            <Button color="inherit" onClick={() => setParentContextRetry(previous => previous + 1)}>
+              {t('common:runtime.retryAction')}
+            </Button>
+          }>{t('library.publishWizard.parent.loadError')}</Alert> : null}
+          {parentUnavailable ? <Alert severity="error">{t('library.publishWizard.parent.unavailable')}</Alert> : null}
+          {requiresReview ? <Typography variant="body2" color="text.secondary">
+            {t('library.publishWizard.reviewNotice')}
+          </Typography> : null}
           {healthMappingPanel}
           <Stack spacing={2}>
-            <CropSpeciesPicker
+            {parentAlreadyLinked ? (parentEntry?.available && (
+              <Box>
+                <Typography variant="body2">{t('library.publishWizard.parent.linkedIntro')}</Typography>
+                <Typography variant="subtitle2" sx={{ mt: 1 }}>
+                  {t('library.publishWizard.parent.linkedSpecies', { name: parentEntry.name })}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">{t('library.publishWizard.parent.linkedHint')}</Typography>
+              </Box>
+            )) : <CropSpeciesPicker
               species={species}
               loading={speciesLoading}
               value={selectedSpecies}
@@ -901,7 +1042,26 @@ export function CropsPublishingWizardDialog({
               required
               serverSearched
               autoFocus={!hasOpenHealthMappings && !selectedSpecies && !automaticSpecies}
-            />
+            />}
+
+            {publicationParent && !parentAlreadyLinked && (selectedSpecies || isProposingNewSpecies) && (
+              <Typography variant="body2" color="text.secondary">
+                {t(parentEntry ? 'library.publishWizard.parent.linkExisting' : 'library.publishWizard.parent.create',
+                  { name: publicationParent.name })}
+              </Typography>
+            )}
+            {compareParent && (parentComparison.loadError ? <Alert severity="error" action={
+              <Button color="inherit" onClick={parentComparison.reload}>{t('common:runtime.retryAction')}</Button>
+            }>{parentComparison.loadError}</Alert> : <PublicCropSyncPanel
+              changes={parentComparison.preview?.changes ?? null}
+              choices={parentComparison.choices}
+              onChoicesChange={parentComparison.setChoices}
+              requiresModeration={false}
+              disabled={publishing || validationLoading}
+              allowLocal
+              keepMineLocally
+              libraryOrOwn
+            />)}
 
             {varietySelectionBox}
 
@@ -920,7 +1080,7 @@ export function CropsPublishingWizardDialog({
             </Alert>
           ) : null}
 
-          {validationResult?.general_crop_notice && !generalNoticeDismissed ? (
+          {validationResult?.general_crop_notice && !publicationParent && !generalNoticeDismissed ? (
             <Alert severity="info" onClose={() => setGeneralNoticeDismissed(true)}>
               {t(
                 validationResult.general_crop_notice.is_stale
@@ -1011,25 +1171,11 @@ export function CropsPublishingWizardDialog({
           </Typography>
         ) : null}
         <Button onClick={onClose} variant="outlined" disabled={publishing || syncSubmitting || healthMappingBusy}>{t('common:actions.cancel')}</Button>
-        <AppTooltip
-          title={isBlockedByValidation ? t('library.publishWizard.resolveBlockingIssuesTooltip') : ''}
-          disableHoverListener={!isBlockedByValidation}
-        >
-          <span>
+        <DisabledActionTooltip title={publishDisabledReason}>
           <Button
             onClick={() => void handlePublish()}
             variant="contained"
-            disabled={
-              (!selectedSpecies && !isProposingNewSpecies)
-              || publishing
-              || validationLoading
-              || healthMappingBusy
-              || proposingSpecies
-              || varietyConflictsPending
-              || entryLookupBlocked
-              || isBlockedByValidation
-              || (showLicenseConfirmation && !termsAlreadyAccepted && !acceptedLicense)
-            }
+            disabled={Boolean(publishDisabledReason)}
           >
             {publishing || validationLoading || proposingSpecies
               ? t('library.publishing')
@@ -1039,10 +1185,9 @@ export function CropsPublishingWizardDialog({
                     ? t('library.publishWizard.proposeSpeciesSubmit')
                     : selectedPublicCrop
                       ? t('library.publishWizard.continueToComparison')
-                      : t('library.publishWizard.publishNow')}
+                      : t(requiresReview ? 'library.publishWizard.submitForReview' : 'library.publishWizard.publishNow')}
           </Button>
-          </span>
-        </AppTooltip>
+        </DisabledActionTooltip>
       </DialogActions>
     </Dialog>
   );
