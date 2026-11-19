@@ -1,12 +1,14 @@
 """Inherited growing-area site conditions (#1075)."""
 
 import json
+from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
 
 from django.test import SimpleTestCase
 
-from farm.models import Bed, Field, Location
+from crops.models import CropSpecies
+from farm.models import Bed, Crop, Field, Location, Project, Season
 from farm.services.field_duplication import duplicate_field
 from farm.services.site_conditions import (
     INHERITED_SITE_CONDITION_FIELDS,
@@ -134,3 +136,76 @@ class FieldDuplicationSiteConditionsTest(ProjectApiTestCase):
         self.assertTrue(Bed.objects.filter(pk=result.beds[0].pk).exists())
         self.assertEqual(Location.objects.count(), 1)
         self.assertEqual(Field.objects.count(), 2)
+
+
+class CropSiteSuitabilityApiTest(ProjectApiTestCase):
+    check_url = f'{API}/planting-plans/rotation-check/'
+
+    def setUp(self) -> None:
+        super().setUp()
+        species = CropSpecies.objects.create(name='Synthetic site suitability species')
+        self.crop.crop_species = species
+        self.crop.light_requirement = ['full_sun', 'partial_shade']
+        self.crop.water_requirement = 'high'
+        self.crop.save()
+        self.variety = Crop.objects.create(
+            project=self.project, crop_species=species, name=self.crop.name, variety='Variety',
+        )
+        self.location.light_condition = 'shade'
+        self.location.save()
+        self.field.soil_moisture = 'dry'
+        self.field.save()
+
+    def test_only_known_mismatches_are_returned_with_effective_sources(self) -> None:
+        self.location.irrigation = 'unavailable'
+        self.location.save()
+        params = {
+            'crop_id': self.variety.pk, 'bed_id': self.bed.pk, 'planting_date': '2026-05-01',
+        }
+        response = self.client.get(self.check_url, params)
+        self.assertEqual(response.status_code, 200, response.data)
+        light, water = response.data['site_suitability_findings']
+        self.assertEqual(light['crop_light'], ['full_sun', 'partial_shade'])
+        self.assertEqual(light['light']['value'], 'shade')
+        self.assertEqual(light['light']['source'], 'location')
+        self.assertEqual(water['soil_moisture']['source'], 'field')
+        self.assertEqual(water['irrigation']['value'], 'unavailable')
+
+        self.bed.light_condition = 'sunny'
+        self.bed.irrigation = 'available'
+        self.bed.save()
+        response = self.client.get(self.check_url, params)
+        self.assertEqual(response.data['site_suitability_findings'], [])
+        self.variety.light_requirement = ['shade']
+        self.variety.save()
+        response = self.client.get(self.check_url, params)
+        self.assertEqual(response.data['site_suitability_findings'][0]['light']['source'], 'bed')
+
+    def test_warnings_keep_saved_plans_valid_and_ignore_unknown_irrigation(self) -> None:
+        season = Season.objects.create(
+            project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+        )
+        response = self.client.post(f'{API}/planting-plans/', {
+            'crop': self.variety.pk, 'bed': self.bed.pk, 'season': season.pk,
+            'planting_date': '2026-05-01', 'area_usage_sqm': 2,
+        }, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(
+            [finding['code'] for finding in response.data['site_suitability_findings']],
+            ['light_mismatch'],
+        )
+        self.location.light_condition = None
+        self.location.exposure = 'north'
+        self.location.save()
+        saved = self.client.get(f'{API}/planting-plans/{response.data["id"]}/')
+        self.assertEqual(saved.data['site_suitability_findings'], [])
+
+    def test_rotation_check_does_not_load_a_foreign_bed(self) -> None:
+        foreign = Project.objects.create(name='Other project', slug='other-site-project')
+        location = Location.objects.create(project=foreign, name='Foreign location')
+        field = Field.objects.create(project=foreign, location=location, name='Foreign field')
+        bed = Bed.objects.create(project=foreign, field=field, name='Foreign bed', area_sqm=2)
+        response = self.client.get(self.check_url, {
+            'crop_id': self.crop.pk, 'bed_id': bed.pk, 'planting_date': '2026-05-01',
+        })
+        self.assertEqual(response.status_code, 404, response.data)

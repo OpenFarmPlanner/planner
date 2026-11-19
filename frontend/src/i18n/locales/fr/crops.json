@@ -1944,10 +1944,11 @@
     }
   },
   "siteHealth": {
+    "inheritedLight": "Héritée de la culture ({{value}})",
     "title": "Exposition et santé des plantes",
     "pestsPlaceholder": "p. ex. mouche de la carotte : couvrir d'un filet anti-insectes",
     "fields": {
-      "light_requirement": "Besoin en lumière",
+      "light_requirement": "Exposition adaptée",
       "water_requirement": "Besoin en eau",
       "life_cycle": "Cycle de vie",
       "winter_hardiness": "Rusticité",

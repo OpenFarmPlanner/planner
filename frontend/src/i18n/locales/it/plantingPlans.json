@@ -272,6 +272,11 @@
     "matches_many": "{{count}} risultati",
     "showResults_many": "Mostra {{count}} serie"
   },
+  "siteSuitability": {
+    "title": "Condizioni di coltivazione",
+    "lightMismatch": "La coltura è adatta a {{crop}}. L’esposizione dell’aiuola è registrata come {{bed}}.",
+    "waterMismatch": "La coltura ha un fabbisogno idrico elevato. L’umidità del suolo risulta {{moisture}} e l’irrigazione {{irrigation}}."
+  },
   "rotation": {
     "iconAria": {
       "conflict": "Conflitto di rotazione colturale, cambia superficie coltivata",

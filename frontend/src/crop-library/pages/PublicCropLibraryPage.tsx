@@ -572,6 +572,9 @@ export default function PublicCropLibraryPage() {
     if (isEmptyPublicValue(ownValue)) {
       return null;
     }
+    if (field === 'light_requirement') {
+      return 'ownValue';
+    }
     const cropValue = selectedSpeciesCrop[field];
     return arePublicValuesEqual(ownValue, cropValue) ? null : 'ownValue';
   }, [isSpeciesView, selectedCrop, selectedSpeciesCrop]);

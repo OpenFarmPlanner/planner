@@ -17,7 +17,7 @@ from crops.models import CropSpecies
 from crops.permissions import is_public_library_moderator
 from crops.plant_family_serializers import PlantFamilyField, plant_family_display_name
 from crops.specific_properties import crop_specific_property_errors
-from farm.common.serializer_fields import CentimetersField, LocalizedDecimalField
+from farm.common.serializer_fields import CentimetersField, CropLightField, LocalizedDecimalField
 from farm.companion_notes import (
     localize_companions,
     note_language,
@@ -168,6 +168,7 @@ class PublicCropSerializer(serializers.ModelSerializer):
 
     created_by_label = serializers.SerializerMethodField()
     crop_family = PlantFamilyField(read_only=True)
+    light_requirement = CropLightField(read_only=True)
     crop_family_display_name = serializers.SerializerMethodField(
         help_text='Name of crop_family in the request language, or null.',
     )
@@ -497,6 +498,7 @@ class PublicCropUpdateSerializer(serializers.ModelSerializer):
     seed_packages = PublicCropSeedPackageSerializer(many=True, required=False)
     companions = PublicCropCompanionSerializer(many=True, required=False)
     crop_family = PlantFamilyField()
+    light_requirement = CropLightField(required=False)
 
     class Meta:
         model = PublicCrop
@@ -508,7 +510,6 @@ class PublicCropUpdateSerializer(serializers.ModelSerializer):
             'cultivation_type': {'required': False, 'allow_blank': True},
             'harvest_method': {'required': False, 'allow_blank': True},
             'pests_diseases': {'required': False, 'allow_blank': True},
-            'light_requirement': {'required': False, 'allow_blank': True},
             'water_requirement': {'required': False, 'allow_blank': True},
             'life_cycle': {'required': False, 'allow_blank': True},
             'winter_hardiness': {'required': False, 'allow_blank': True},

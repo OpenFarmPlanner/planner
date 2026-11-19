@@ -19,6 +19,7 @@ from crops.plant_health_values import (
     validate_public_plant_health_value,
 )
 from crops.specific_properties import crop_specific_property_errors
+from farm.crop_light import CROP_LIGHT_CHOICES, normalize_crop_light, validate_crop_light
 from farm.germination import (
     LIGHT_REQUIREMENT_CHOICES as GERMINATION_LIGHT_CHOICES,
 )
@@ -67,13 +68,16 @@ def crop_field_attname(field: str) -> str:
 
 def get_crop_field_value(instance: Any, field: str) -> Any:
     """Raw value of a crop field; a plant family comes back as its botanical name."""
-    return getattr(instance, crop_field_attname(field))
+    value = getattr(instance, crop_field_attname(field))
+    return normalize_crop_light(value) if field == 'light_requirement' else value
 
 
 def set_crop_field_value(instance: Any, field: str, value: Any) -> None:
     """Assign a raw crop-field value; a plant family accepts its botanical name or row."""
     if field in PLANT_FAMILY_REFERENCE_FIELDS:
         value = getattr(value, 'pk', value) or None
+    elif field == 'light_requirement':
+        value = normalize_crop_light(value)
     setattr(instance, crop_field_attname(field), value)
 
 
@@ -302,11 +306,7 @@ class Crop(TimestampedModel):
         ('per_sqm', 'Per m²'),
     ]
 
-    LIGHT_REQUIREMENT_CHOICES = [
-        ('full_sun', 'Full sun'),
-        ('partial_shade', 'Partial shade'),
-        ('shade', 'Shade'),
-    ]
+    LIGHT_REQUIREMENT_CHOICES = CROP_LIGHT_CHOICES
     WATER_REQUIREMENT_CHOICES = [
         ('low', 'Low water need'),
         ('medium', 'Medium water need'),
@@ -560,9 +560,9 @@ class Crop(TimestampedModel):
         blank=True,
         help_text='Pests and diseases to watch for, as free text (e.g. carrot fly, late blight).',
     )
-    light_requirement = models.CharField(
-        max_length=20, choices=LIGHT_REQUIREMENT_CHOICES, blank=True,
-        help_text='Light the crop needs on its site. Blank means unknown.',
+    light_requirement = models.JSONField(
+        default=list, blank=True, validators=[validate_crop_light],
+        help_text='Suitable site light conditions. An empty list means unspecified.',
     )
     water_requirement = models.CharField(
         max_length=20, choices=WATER_REQUIREMENT_CHOICES, blank=True,
@@ -886,6 +886,7 @@ class Crop(TimestampedModel):
             previous = Crop.all_objects.filter(pk=self.pk).values().first()
         previous_windows = self.timing_window_snapshot() if previous else []
 
+        self.light_requirement = normalize_crop_light(self.light_requirement)
         germination_changes = sync_germination_requirements(self, previous, kwargs.get('update_fields'))
         if germination_changes and kwargs.get('update_fields') is not None:
             kwargs['update_fields'] = set(kwargs['update_fields']) | germination_changes
@@ -1433,8 +1434,8 @@ class PublicCrop(TimestampedModel):
         ),
     )
     pests_diseases = models.TextField(blank=True)
-    light_requirement = models.CharField(
-        max_length=20, choices=Crop.LIGHT_REQUIREMENT_CHOICES, blank=True,
+    light_requirement = models.JSONField(
+        default=list, blank=True, validators=[validate_crop_light],
     )
     water_requirement = models.CharField(
         max_length=20, choices=Crop.WATER_REQUIREMENT_CHOICES, blank=True,
@@ -1487,6 +1488,7 @@ class PublicCrop(TimestampedModel):
 
         self.name_normalized = normalize_text(self.name) or ''
         self.variety_normalized = normalize_text(self.variety) or ''
+        self.light_requirement = normalize_crop_light(self.light_requirement)
         previous = PublicCrop.objects.filter(pk=self.pk).values(
             'germination_types', 'germination_temperature_requirement', 'germination_light_requirement',
         ).first() if self.pk else None

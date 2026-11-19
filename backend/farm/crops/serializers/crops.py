@@ -22,6 +22,7 @@ from crops.plant_family_serializers import (
 )
 from farm.common.serializer_fields import (
     CentimetersField,
+    CropLightField,
     LocalizedDecimalField,
     _resolve_active_project_from_serializer,
 )
@@ -207,6 +208,7 @@ class CropSerializer(serializers.ModelSerializer):
         help_text='Crop variety; blank or null for species-level general data'
     )
     crop_family = PlantFamilyField()
+    light_requirement = CropLightField(required=False)
     crop_family_display_name = serializers.SerializerMethodField(
         read_only=True,
         help_text=(

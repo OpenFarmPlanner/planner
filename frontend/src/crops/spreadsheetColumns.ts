@@ -266,7 +266,12 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
   { key: 'stratification_temperature_max_c', headerKey: 'germination.fields.stratification_temperature_max_c', aliases: ['stratification_temperature_max_c'], type: 'number' },
   { key: 'germination_light_requirement', headerKey: 'germination.fields.germination_light_requirement', aliases: ['germination_light_requirement'], type: 'string', enumImport: GERMINATION_REQUIREMENT_IMPORT.germination_light_requirement },
   { key: 'germination_pretreatment', headerKey: 'germination.fields.germination_pretreatment', aliases: ['germination_pretreatment'], type: 'string' },
-  { key: 'light_requirement', headerKey: 'siteHealth.fields.light_requirement', aliases: ['licht', 'standort licht', 'light_requirement'], type: 'string', enumImport: SITE_HEALTH_IMPORT.light_requirement },
+  {
+    key: 'light_requirement', headerKey: 'siteHealth.fields.light_requirement', type: 'list',
+    aliases: ['licht', 'standort licht', 'light_requirement', 'Lichtbedarf', 'Light requirement',
+      'Besoin en lumière', 'Necesidad de luz', 'Fabbisogno di luce', 'Necessidades de luz', 'Lichtbehoefte'],
+    enumImport: SITE_HEALTH_IMPORT.light_requirement,
+  },
   { key: 'water_requirement', headerKey: 'siteHealth.fields.water_requirement', aliases: ['wasser', 'wasserbedarf', 'water_requirement'], type: 'string', enumImport: SITE_HEALTH_IMPORT.water_requirement },
   { key: 'life_cycle', headerKey: 'siteHealth.fields.life_cycle', aliases: ['lebenszyklus', 'lebensdauer', 'life_cycle'], type: 'string', enumImport: SITE_HEALTH_IMPORT.life_cycle },
   { key: 'winter_hardiness', headerKey: 'siteHealth.fields.winter_hardiness', aliases: ['winterhärte', 'winterhart', 'winter_hardiness'], type: 'string', enumImport: SITE_HEALTH_IMPORT.winter_hardiness },

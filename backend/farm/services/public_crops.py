@@ -35,6 +35,7 @@ from crops.plant_health_values import (
 from crops.services import find_species_by_common_name
 from crops.specific_properties import crop_specific_property_errors, specific_property_errors
 from farm.companion_notes import companion_language_patch, merge_library_notes, notes_of
+from farm.crop_light import normalize_crop_light
 from farm.history.records import (
     _diff_changed_fields,
     _entity_display_name,
@@ -688,7 +689,9 @@ def build_public_crop_changed_fields(
     for field in sorted(current_snapshot):
         old_value = previous_snapshot.get(field)
         new_value = current_snapshot.get(field)
-        if old_value == new_value:
+        if old_value == new_value or (
+            field == 'light_requirement' and _same_snapshot_value(new_value, old_value, field=field)
+        ):
             continue
         changes.append({
             'field': field,
@@ -900,6 +903,7 @@ def restore_public_crop_version(
         from farm.germination import upgrade_germination_snapshot
 
         snapshot = upgrade_germination_snapshot(revision.snapshot)
+        snapshot['light_requirement'] = normalize_crop_light(snapshot.get('light_requirement'))
         if isinstance(snapshot.get('companions'), list):
             legacy_language = snapshot.get('original_language_code') or locked.original_language_code or 'de'
             snapshot['companions'] = [
@@ -913,7 +917,7 @@ def restore_public_crop_version(
                 # Versions saved before the plant-family list hold free text.
                 value = coerce_plant_family_key(value)
             if field in {
-                'botanical_name', 'seed_type', 'pests_diseases', 'light_requirement',
+                'botanical_name', 'seed_type', 'pests_diseases',
                 'water_requirement', 'life_cycle', 'winter_hardiness',
             } and value is None:
                 # Versions saved before the field existed carry no key; the

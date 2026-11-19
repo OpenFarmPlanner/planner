@@ -51,6 +51,25 @@ describe('RotationCheckPanel', () => {
     expect(screen.queryByText('Fruchtfolge wird geprüft …')).not.toBeInTheDocument();
   });
 
+  it('explains light and water mismatches with inherited sources and no acceptance requirement', async () => {
+    respond({ site_suitability_findings: [
+      {
+        code: 'light_mismatch', crop_light: ['full_sun', 'partial_shade'],
+        light: { value: 'shade', source: 'location', source_id: 1, source_name: 'Nordhang' },
+      },
+      {
+        code: 'water_mismatch', crop_water: 'high',
+        soil_moisture: { value: 'dry', source: 'field', source_id: 2, source_name: 'Westparzelle' },
+        irrigation: { value: 'unavailable', source: 'bed', source_id: 3, source_name: 'Beet 3' },
+      },
+    ] });
+    renderPanel();
+    const hint = await screen.findByTestId('site-suitability-hints');
+    expect(hint).toHaveTextContent(/Sonnig, Halbschattig.*Nordhang/);
+    expect(hint).toHaveTextContent(/hohen Wasserbedarf.*Westparzelle.*Nicht verfügbar/i);
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+
   it('explains a conflict from the family default and offers acceptance', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

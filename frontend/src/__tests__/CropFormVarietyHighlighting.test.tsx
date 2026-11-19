@@ -276,6 +276,30 @@ describe('CropForm variety override highlighting', () => {
     expect(onSave.mock.calls[0][0].tags).toEqual([]);
   });
 
+  it.each(['project', 'publicLibrary'] as const)('keeps a variety’s explicitly selected light choices when they equal the culture (%s)', async (variant) => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const light: Crop['light_requirement'] = ['full_sun', 'partial_shade'];
+    const general = { ...LINKED_SPECIES_CROP, light_requirement: light };
+    const variety: Crop = {
+      ...INHERITING_VARIETY_CROP,
+      inherited_fields: [...(INHERITING_VARIETY_CROP.inherited_fields ?? []), 'light_requirement'],
+      effective_values: { ...INHERITING_VARIETY_CROP.effective_values, light_requirement: light },
+    };
+    render(<CropForm crop={variety} crops={[general, variety]} variant={variant} onSave={onSave} onCancel={() => {}} />);
+
+    const field = screen.getByRole('combobox', { name: 'siteHealth.fields.light_requirement' });
+    expect(field).toHaveAccessibleDescription('siteHealth.inheritedLight');
+    fireEvent.mouseDown(field);
+    fireEvent.click(screen.getByRole('option', { name: 'siteHealth.values.light_requirement.full_sun' }));
+    fireEvent.click(screen.getByRole('option', { name: 'siteHealth.values.light_requirement.partial_shade' }));
+    fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Escape' });
+    const save = await screen.findByRole('button', { name: 'form.save' });
+    await waitFor(() => expect(save).toBeEnabled());
+    fireEvent.click(save);
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][0].light_requirement).toEqual(light);
+  });
+
   it('keeps an edited non-invariant inherited field as the variety\'s own value', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
 

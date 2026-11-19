@@ -272,6 +272,11 @@
     "matches_many": "{{count}} resultados",
     "showResults_many": "Mostrar {{count}} séries"
   },
+  "siteSuitability": {
+    "title": "Condições de cultivo",
+    "lightMismatch": "A cultura adapta-se a {{crop}}. A exposição do canteiro está registada como {{bed}}.",
+    "waterMismatch": "A cultura tem necessidades de água elevadas. A humidade do solo está registada como {{moisture}} e a rega como {{irrigation}}."
+  },
   "rotation": {
     "iconAria": {
       "conflict": "Conflito de rotação de culturas, alterar área de cultivo",

@@ -301,7 +301,7 @@ variety, seed status describes one supplier's offer.
 | DE | EN | FR | ES | IT | PT (pt-PT) | NL |
 | --- | --- | --- | --- | --- | --- | --- |
 | Standort und Pflanzengesundheit | Site and plant health | Exposition et santé des plantes | Ubicación y sanidad vegetal | sito e salute delle piante | local e saúde das plantas | standplaats en plantgezondheid |
-| Lichtbedarf | Light requirement | Besoin en lumière | Necesidad de luz | fabbisogno di luce | necessidade de luz | lichtbehoefte |
+| Geeignete Lichtverhältnisse | Suitable light conditions | Exposition adaptée | Exposición solar adecuada | esposizione alla luce | exposição solar adequada | geschikte lichtomstandigheden |
 | Sonnig / Halbschattig / Schattig | Full sun / Partial shade / Shade | Plein soleil / Mi-ombre / Ombre | Pleno sol / Semisombra / Sombra | pieno sole / mezz'ombra / ombra | pleno sol / meia-sombra / sombra | volle zon / halfschaduw / schaduw |
 | Feuchtigkeit (Standort): Trocken / Frisch / Feucht | Moisture: Dry / Moderately moist / Moist | Humidité : Sec / Frais / Humide | Humedad: Seco / Fresco / Húmedo | umidità: secco / fresco / umido | humidade: seco / fresco / húmido | vochtigheid: droog / normaal / vochtig |
 | Bewässerung verfügbar / Nicht verfügbar / Nicht angegeben | Irrigation available / Not available / Not specified | Irrigation disponible / Non disponible / Non renseigné | Riego disponible / No disponible / Sin especificar | irrigazione disponibile / non disponibile / non indicato | rega disponível / não disponível / não indicado | beregening beschikbaar / niet beschikbaar / niet opgegeven |
@@ -314,6 +314,12 @@ variety, seed status describes one supplier's offer.
 | Winterhärte | Winter hardiness | Rusticité | Resistencia al frío | resistenza al freddo | resistência ao frio | winterhardheid |
 | Winterhart / Mit Winterschutz / Nicht winterhart | Hardy / Hardy with winter protection / Not hardy | Rustique / Rustique avec protection hivernale / Non rustique | Resistente / Resistente con protección invernal / No resistente | resistente al freddo / con protezione invernale / non resistente al freddo | resistente ao frio / com proteção de inverno / não resistente ao frio | winterhard / met winterbescherming / niet winterhard |
 | Schädlinge und Krankheiten | Pests and diseases | Ravageurs et maladies | Plagas y enfermedades | parassiti e malattie | pragas e doenças | plagen en ziekten |
+
+The crop field describes suitable exposure and can carry several choices.
+Horticultural usage was checked in French, Portuguese and Dutch.
+[Promesse de Fleurs](https://www.promessedefleurs.com/conseil-plantes-jardin/fichefamille/epinard-semer-cultiver/),
+[SIRO](https://www.siro.pt/pt/programs/nwwwview.aspx?stamp=%21%21%21c4947g72f473ed7%3Ag7b557),
+[Wageningen University & Research](https://edepot.wur.nl/164960).
 
 Biennial labels remain valid for existing data and import/export. They are not
 new choices in the life-cycle selector. Existing values use the localized

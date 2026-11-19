@@ -1892,10 +1892,11 @@
     }
   },
   "siteHealth": {
+    "inheritedLight": "Inherited from the crop ({{value}})",
     "title": "Site and plant health",
     "pestsPlaceholder": "e.g. carrot fly: cover with insect netting",
     "fields": {
-      "light_requirement": "Light requirement",
+      "light_requirement": "Suitable light conditions",
       "water_requirement": "Water requirement",
       "life_cycle": "Life cycle",
       "winter_hardiness": "Winter hardiness",

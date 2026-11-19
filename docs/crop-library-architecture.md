@@ -1427,12 +1427,14 @@ supplier's offer.
 
 ### Site, life cycle and plant health
 
-Five descriptive crop fields on `Crop` and `PublicCrop` (#838):
-`light_requirement` (`full_sun` / `partial_shade` / `shade`),
+Site fields are shared by `Crop` and `PublicCrop` (#838). `light_requirement`
+stores any selection of `full_sun`, `partial_shade` and `shade`.
+The single-choice fields remain
 `water_requirement` (`low` / `medium` / `high`), `life_cycle` (`annual` /
 `biennial` / `perennial`), `winter_hardiness` (`hardy` / `with_protection` /
-`not_hardy`) and the free text `pests_diseases`. Blank means unknown for all of
-them.
+`not_hardy`). `pests_diseases` is free text. Blank means unspecified. Clearing
+all light choices on a variety restores inheritance. Selecting even the same
+choices as the parent stores an explicit override.
 
 - **Life-cycle selection and legacy data (#1008).** The shared project/library
   form offers Annual and Perennial (blank still means unknown). Existing
@@ -1453,15 +1455,13 @@ them.
   `PUBLIC_CROP_EDITABLE_FIELDS`, proposable), so publish, import, diff, pull,
   push, pinning and revisions follow the 4-case update model. Older revisions
   without the keys restore as blank.
-- **Spreadsheet and API.** One column each, with localized values in every UI
-  language and German/English synonyms on import (`enum_normalization.py`,
-  `spreadsheetColumns.ts`); described in the agent API field specs.
-- **Not planning checks (yet).** The checks sketched in #838 need data that does
-  not exist: bed neighbours (shared pests across adjacent beds), frost dates per
-  location (#872, winter hardiness), and light/water attributes of beds or
-  fields (site). A perennial occupying its bed beyond the season is a change to
-  the occupancy and rotation model. Each is a follow-up; the fields only
-  describe the crop for now.
+- **Spreadsheet and API.** The existing light column accepts localized choices
+  separated by the canonical in-cell list delimiter `;`. Legacy headers and
+  single values are still accepted. JSON accepts a scalar or a list. The crop
+  and library endpoints keep a string for zero or one choice and use an array
+  for several. Existing scalar snapshots restore to a one-choice list.
+- **Planning.** [Site suitability](./growing-area-site-conditions.md#site-suitability-in-planning)
+  compares the effective crop light and water choices with the selected bed.
 
 ### Project-only crop data
 

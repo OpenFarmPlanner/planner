@@ -30,6 +30,7 @@ from farm.services.crop_companions import CompanionService
 from farm.services.crop_display import format_crop_label
 from farm.services.crop_rotation import RotationService, suggest_beds
 from farm.services.germination_check import check_germination
+from farm.services.site_suitability import check_site_suitability
 from farm.services.tasks import (
     detach_plan_tasks,
     generate_plan_tasks,
@@ -269,7 +270,8 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
     queryset = (
         PlantingPlan.objects
         .select_related(
-            'crop', 'crop__crop_species', 'crop__project', 'bed', 'created_by', 'updated_by',
+            'crop', 'crop__crop_species', 'crop__project', 'bed__field__location',
+            'created_by', 'updated_by',
             'rotation_conflict_accepted_by',
         )
         .prefetch_related('crop__crop_species__translations')
@@ -473,7 +475,10 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         params, crop, service = context
         if params['bed_id'] is None:
             return api_error_response(code='invalid_rotation_parameters', detail='bed_id is required.', status_code=status.HTTP_400_BAD_REQUEST)
-        if not Bed.objects.filter(pk=params['bed_id'], project=request.active_project).exists():
+        bed = Bed.objects.select_related('field__location').filter(
+            pk=params['bed_id'], project=request.active_project,
+        ).first()
+        if bed is None:
             return api_error_response(code='bed_not_found', detail='Bed not found.', status_code=status.HTTP_404_NOT_FOUND)
         candidate = service.occupancy(
             crop=crop,
@@ -493,6 +498,9 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             **service.check(candidate).as_dict(),
             'bed_history': service.bed_history(params['bed_id'], exclude_plan_id=params['exclude_plan_id']),
             'companion_findings': [finding.as_dict() for finding in companion_findings],
+            'site_suitability_findings': check_site_suitability(
+                crop, bed, service.general_crop_index,
+            ),
         })
 
     @action(detail=False, methods=['get'], url_path='bed-suggestions')

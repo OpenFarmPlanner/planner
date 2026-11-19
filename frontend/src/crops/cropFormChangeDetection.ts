@@ -9,6 +9,7 @@ import { normalizeCropTags } from './cropTags';
 import { normalizePlantHealthSelections } from './plantHealth';
 import { toTimingWindowPayload } from './timingWindows';
 import { isEmptySupplierDataRow } from './supplierDataRows';
+import { normalizeLightRequirements } from './siteHealth';
 
 type SupplierDataDraft = CropSupplierData | CropSupplierDataInput;
 
@@ -26,7 +27,6 @@ const textFields = [
 
 const enumFields = [
   'seed_type',
-  'light_requirement',
   'water_requirement',
   'life_cycle',
   'winter_hardiness',
@@ -190,6 +190,7 @@ export function normalizeCropFormData(crop: Partial<Crop>): Record<string, unkno
   normalized.supplier_data = normalizeSupplierRows(crop.supplier_data);
   normalized.specific_properties = Object.fromEntries(Object.entries(crop.specific_properties ?? {}).sort(([a], [b]) => a.localeCompare(b)));
   normalized.germination_types = [...(crop.germination_types ?? [])].sort();
+  normalized.light_requirement = normalizeLightRequirements(crop.light_requirement);
   normalized.tags = normalizeCropTags(crop.tags ?? []);
   normalized.plant_health = crop.plant_health == null ? null
     : { entries: normalizePlantHealthSelections(crop.plant_health.entries) };

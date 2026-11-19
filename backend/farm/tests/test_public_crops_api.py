@@ -7698,6 +7698,33 @@ class LibraryPinnedFieldsApiTest(DRFAPITestCase):
 
     # --- validation ---------------------------------------------------------
 
+    def test_site_light_accepts_legacy_input_and_keeps_multi_value_pins_and_history(self) -> None:
+        self._library_edit(light_requirement='full_sun')
+        legacy_version = self.entry.version
+        legacy = self.entry.revisions.get(version=legacy_version)
+        legacy.snapshot['light_requirement'] = 'full_sun'
+        legacy.save(update_fields=['snapshot'])
+        response = self._patch(self.kultur, {'light_requirement': 'full_sun'})
+        self.assertEqual(response.data['light_requirement'], 'full_sun')
+        invalid = self._patch(self.kultur, {'light_requirement': ['sunny']})
+        self.assertEqual(invalid.status_code, 400)
+
+        self._library_edit(light_requirement=['shade', 'partial_shade'])
+        response = self._sync(self.kultur, pull_fields=['light_requirement'])
+        self.assertEqual(response.status_code, 200, response.data)
+        self.kultur.refresh_from_db()
+        self.assertEqual(self.kultur.light_requirement, ['partial_shade', 'shade'])
+        self._pin(self.kultur, ['light_requirement'])
+
+        self.entry = restore_public_crop_version(
+            public_crop=self.entry, user=self.other_user, version=legacy_version,
+        )
+        self.assertEqual(self.entry.light_requirement, ['full_sun'])
+        change = self._sync_preview(self.kultur)['light_requirement']
+        self.assertTrue(change['pinned'])
+        self.assertEqual(change['local_value'], ['partial_shade', 'shade'])
+        self.assertEqual(change['public_value'], ['full_sun'])
+
     def test_germination_fields_import_sync_diff_and_local_pins(self) -> None:
         self._library_edit(
             germination_temperature_optimal_min_c=18,

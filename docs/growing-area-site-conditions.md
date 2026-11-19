@@ -59,9 +59,8 @@ The rule lives in exactly one backend service,
 the read-only `effective_site_conditions` (value, source level, source id and
 name per property); the list endpoints read the parent chain from their
 existing `select_related`, so the query count is flat
-(`test_api_query_counts.py`). Later crop-to-bed hints (#838) must read
-effective conditions from this service and stay advisory: missing conditions
-produce no warning.
+(`test_api_query_counts.py`). Crop-to-bed hints read the same effective
+conditions from this service.
 
 The frontend recomputes the same values locally in
 `frontend/src/components/hierarchy/utils/siteConditions.ts`, so a changed
@@ -70,6 +69,29 @@ are pinned to the same cases by `tests/fixtures/site_conditions.json`.
 
 Duplicating a field or a bed copies the structured conditions (like the
 dimensions) but not the texts or notes.
+
+## Site suitability in planning
+
+The planting plan's site hints use `check_site_suitability` for both saved plans
+and the rotation-check preview. A known effective light value outside the
+crop's suitable choices produces an advisory hint. `sunny` on the bed maps to
+`full_sun` on the crop. The water hint requires high crop water needs, dry soil
+and explicit unavailability of irrigation. A missing required input suppresses
+its hint. The explanation shows inherited sources, and plans remain saveable.
+
+For a local check, preview this fixture from `backend/`, then repeat with
+`--apply` after confirming the printed database target.
+
+```bash
+DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py \
+  seed_crop_site_acceptance --username LOCAL_ACCOUNT --database-name EXACT_LOCAL_DATABASE
+```
+
+In **Crop site suitability acceptance**, edit **Site suitability crop** and
+confirm that Full sun and Partial shade are selected. In Planting Plans, open
+the saved plan's area assignment. **Inherited bed** shows light and water hints
+with their sources. Selecting **Sunny override bed** removes both hints and
+the plan can still be saved. Re-running the fixture preserves manual edits.
 
 ## Growing Areas list: Search / Filter / Columns
 

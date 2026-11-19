@@ -266,6 +266,11 @@
       "outsideWindow": "Buiten de periodes"
     }
   },
+  "siteSuitability": {
+    "title": "Geschiktheid van de standplaats",
+    "lightMismatch": "Het gewas is geschikt voor {{crop}}. Het licht op het bed staat geregistreerd als {{bed}}.",
+    "waterMismatch": "Het gewas heeft veel water nodig. Het bodemvocht staat geregistreerd als {{moisture}} en irrigatie als {{irrigation}}."
+  },
   "rotation": {
     "iconAria": {
       "conflict": "Vruchtwisselingsconflict, teeltoppervlak wijzigen",

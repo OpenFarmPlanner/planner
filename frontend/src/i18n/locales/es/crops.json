@@ -1944,10 +1944,11 @@
     }
   },
   "siteHealth": {
+    "inheritedLight": "Heredada del cultivo ({{value}})",
     "title": "Ubicación y sanidad vegetal",
     "pestsPlaceholder": "p. ej. mosca de la zanahoria: cubrir con malla antiinsectos",
     "fields": {
-      "light_requirement": "Necesidad de luz",
+      "light_requirement": "Exposición solar adecuada",
       "water_requirement": "Necesidad de agua",
       "life_cycle": "Ciclo de vida",
       "winter_hardiness": "Resistencia al frío",

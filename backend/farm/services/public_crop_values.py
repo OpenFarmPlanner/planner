@@ -4,6 +4,7 @@ from typing import Any
 from django.core.serializers.json import DjangoJSONEncoder
 
 from crops.plant_health_values import plant_health_identities
+from farm.crop_light import normalize_crop_light
 
 
 def comparable_copy_fields(payload: dict[str, Any]) -> dict[str, Any]:
@@ -27,12 +28,14 @@ _EMPTY_SNAPSHOT_VALUES: tuple[Any, ...] = (None, '', [], {})
 def same_public_field_value(field: str, value: Any, other: Any) -> bool:
     if field == 'plant_health':
         return plant_health_identities(value) == plant_health_identities(other)
+    if field == 'light_requirement':
+        return normalize_crop_light(value) == normalize_crop_light(other)
     return value == other
 
 
 def same_snapshot_value(value: Any, snapshot_value: Any, *, field: str | None = None) -> bool:
     """Legacy empty spellings compare equally; health overrides preserve inheritance intent."""
-    if field == 'plant_health':
+    if field in {'plant_health', 'light_requirement'}:
         return same_public_field_value(field, value, snapshot_value)
     if value in _EMPTY_SNAPSHOT_VALUES and snapshot_value in _EMPTY_SNAPSHOT_VALUES:
         return True

@@ -3,6 +3,7 @@ import { normalizeSeedRateUnit } from './enumNormalization';
 import { stripCitationMarkers } from '../components/data-grid/markdown';
 import { buildDisplayedTimingWindows, buildInheritedValueBaseline } from './varietyValueSource';
 import { getCropDisplayName } from './cropDisplay';
+import { normalizeLightRequirements } from './siteHealth';
 import { metersToCentimeters, metersToRoundedCentimeters } from '../utils/measurementConversion';
 
 const EMPTY_CROP: Partial<Crop> = {
@@ -35,7 +36,7 @@ const EMPTY_CROP: Partial<Crop> = {
   specific_property_profile: '',
   pests_diseases: '',
   plant_health: null,
-  light_requirement: '',
+  light_requirement: [],
   water_requirement: '',
   life_cycle: '',
   winter_hardiness: '',
@@ -105,7 +106,7 @@ export const buildDraftFromPublicCrop = (publicCrop: PublicCrop): Partial<Crop> 
   specific_properties: { ...(publicCrop.specific_properties ?? {}) },
   specific_property_profile: publicCrop.specific_property_profile ?? '',
   pests_diseases: publicCrop.pests_diseases ?? '',
-  light_requirement: publicCrop.light_requirement ?? '',
+  light_requirement: normalizeLightRequirements(publicCrop.light_requirement),
   water_requirement: publicCrop.water_requirement ?? '',
   life_cycle: publicCrop.life_cycle ?? '',
   winter_hardiness: publicCrop.winter_hardiness ?? '',
@@ -146,6 +147,7 @@ export const buildInitialFormData = (crop?: Crop, initialDraft?: Partial<Crop>):
   const displayedCrop: Crop = {
     ...crop,
     ...buildInheritedValueBaseline(crop),
+    light_requirement: normalizeLightRequirements(crop.light_requirement),
     timing_windows: buildDisplayedTimingWindows(crop),
   };
 

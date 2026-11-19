@@ -252,7 +252,7 @@ export interface Crop {
   specific_property_profile?: string;
   plant_health?: PlantHealthSelections | null;
   pests_diseases?: string;
-  light_requirement?: LightRequirement | '';
+  light_requirement?: LightRequirement | LightRequirement[] | '';
   water_requirement?: WaterRequirement | '';
   life_cycle?: LifeCycle | '';
   winter_hardiness?: WinterHardiness | '';
@@ -485,7 +485,7 @@ export interface PublicCrop {
   specific_property_profile?: string;
   plant_health?: PlantHealthSelections | null;
   pests_diseases?: string;
-  light_requirement?: LightRequirement | '';
+  light_requirement?: LightRequirement | LightRequirement[] | '';
   water_requirement?: WaterRequirement | '';
   life_cycle?: LifeCycle | '';
   winter_hardiness?: WinterHardiness | '';
@@ -1084,6 +1084,17 @@ export interface EffectiveSiteConditions {
   soil_type: EffectiveSiteCondition<SoilType>;
 }
 
+export type SiteSuitabilityFinding = {
+  code: 'light_mismatch';
+  crop_light: LightRequirement[];
+  light: EffectiveSiteCondition<LightCondition>;
+} | {
+  code: 'water_mismatch';
+  crop_water: 'high';
+  soil_moisture: EffectiveSiteCondition<SoilMoisture>;
+  irrigation: EffectiveSiteCondition<IrrigationAvailability>;
+};
+
 /**
  * Optional site conditions of locations, fields and beds (#1075). The
  * structured values are inherited location → field → bed (null means "not
@@ -1248,6 +1259,7 @@ export interface PlantingPlan {
   // Read-only companion-planting check (see docs/crop-companions.md): other
   // plans on the same bed in an overlapping period that are listed neighbours.
   companion_findings?: CompanionFinding[];
+  site_suitability_findings?: SiteSuitabilityFinding[];
   // Read-only, calculated: allowed overlaps with a follow-up crop during a
   // harvest phase (see docs/bed-occupancy.md). Infos, never errors.
   harvest_overlaps?: HarvestOverlap[];
@@ -1316,6 +1328,7 @@ export interface RotationCheckResponse {
   findings: RotationFinding[];
   bed_history: RotationBedHistoryEntry[];
   companion_findings?: CompanionFinding[];
+  site_suitability_findings?: SiteSuitabilityFinding[];
 }
 
 export type CompanionKind = 'good' | 'bad';

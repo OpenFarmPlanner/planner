@@ -407,6 +407,11 @@ export function CropForm({
   const isSpeciesLinkedVariety = isProjectForm
     && formKind === 'variety'
     && Boolean(formData.crop_species);
+  const inheritedLight = !isProjectForm || isSpeciesLinkedVariety
+    ? selectedSpeciesCrop?.light_requirement ?? (
+      crop?.inherited_fields?.includes('light_requirement') ? crop.effective_values?.light_requirement : undefined
+    )
+    : undefined;
   const getFieldHighlightSx: GetVarietyFieldHighlightSx = useCallback((fields) => {
     if (!selectedSpeciesCrop) {
       return undefined;
@@ -1512,7 +1517,9 @@ export function CropForm({
               />
             ) : null}
             <GerminationSection {...sectionProps} />
-            <SiteHealthSection {...sectionProps} plantHealthField={<PlantHealthField contextualHelp
+            <SiteHealthSection {...sectionProps}
+              inheritedLight={inheritedLight}
+              plantHealthField={<PlantHealthField contextualHelp
               showHelp={!isProjectForm}
               value={formData.plant_health ?? null}
               localOptions={isProjectForm ? healthLocalOptions : []}

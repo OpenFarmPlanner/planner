@@ -1,4 +1,4 @@
-import { Box, FormControl, FormHelperText, InputLabel, MenuItem, TextField, Typography } from '@mui/material';
+import { Box, Checkbox, Chip, FormControl, FormHelperText, InputLabel, ListItemText, MenuItem, TextField, Typography } from '@mui/material';
 import type { TFunction } from 'i18next';
 import type { ReactNode } from 'react';
 import type { Crop } from '../../api/types';
@@ -6,7 +6,7 @@ import { TypeaheadSelect as Select } from '../../components/inputs/TypeaheadSele
 import type { GetLibraryFieldPinProps } from '../libraryFieldPinProps';
 import { libraryPinSelectSx } from '../libraryFieldPin';
 import { mergeVarietyFieldSx, type GetVarietyFieldHighlightSx } from '../varietyValueAccent';
-import { selectableSiteHealthChoices, SITE_HEALTH_CHOICE_FIELDS, type SiteHealthChoiceField } from '../siteHealth';
+import { formatSiteHealthValue, normalizeLightRequirements, selectableSiteHealthChoices, SITE_HEALTH_CHOICE_FIELDS, SITE_HEALTH_CHOICES, type SiteHealthChoiceField } from '../siteHealth';
 import { formGridFieldSx, formGridFullRowSx, formGridSx } from './styles';
 
 interface Props {
@@ -16,11 +16,12 @@ interface Props {
   getFieldHighlightSx?: GetVarietyFieldHighlightSx;
   getFieldPinProps?: GetLibraryFieldPinProps;
   plantHealthField?: ReactNode;
+  inheritedLight?: Crop['light_requirement'];
 }
 
 /** Site, life cycle and plant health: light, water, life cycle, winter hardiness, pests and diseases. */
-export function SiteHealthSection({ formData, onChange, t, getFieldHighlightSx, getFieldPinProps, plantHealthField }: Props) {
-  const choiceField = (field: SiteHealthChoiceField) => {
+export function SiteHealthSection({ formData, onChange, t, getFieldHighlightSx, getFieldPinProps, plantHealthField, inheritedLight }: Props) {
+  const choiceField = (field: Exclude<SiteHealthChoiceField, 'light_requirement'>) => {
     const pin = getFieldPinProps?.(field);
     const labelId = `crop-${field}-label`;
     const legacyLifeCycle = field === 'life_cycle' && formData.life_cycle === 'biennial';
@@ -52,12 +53,46 @@ export function SiteHealthSection({ formData, onChange, t, getFieldHighlightSx, 
       </FormControl>
     );
   };
+  const light = normalizeLightRequirements(formData.light_requirement);
+  const lightPin = getFieldPinProps?.('light_requirement');
+  const showInheritedLight = light.length === 0 && normalizeLightRequirements(inheritedLight).length > 0;
+  const lightLabel = t('siteHealth.fields.light_requirement');
   const pestsPin = getFieldPinProps?.('pests_diseases');
   return (
     <>
       <Typography variant="h6" sx={{ mt: 1 }}>{t('siteHealth.title')}</Typography>
       <Box sx={formGridSx}>
-        {SITE_HEALTH_CHOICE_FIELDS.map(choiceField)}
+        <FormControl sx={mergeVarietyFieldSx(formGridFieldSx, getFieldHighlightSx?.('light_requirement'), lightPin?.fieldSx)}>
+          <InputLabel id="crop-light-requirement-label">{lightLabel}</InputLabel>
+          <Select
+            labelId="crop-light-requirement-label"
+            label={lightLabel}
+            multiple
+            value={light}
+            endAdornment={lightPin?.endAdornment}
+            sx={lightPin ? libraryPinSelectSx : undefined}
+            aria-describedby={showInheritedLight ? 'crop-light-requirement-inherited' : undefined}
+            onChange={(event) => onChange('light_requirement', normalizeLightRequirements(event.target.value))}
+            renderValue={() => (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                {light.map((value) => <Chip key={value} size="small" label={t(`siteHealth.values.light_requirement.${value}`)} />)}
+              </Box>
+            )}
+          >
+            {SITE_HEALTH_CHOICES.light_requirement.map((value) => (
+              <MenuItem key={value} value={value}>
+                <Checkbox checked={light.includes(value)} />
+                <ListItemText primary={t(`siteHealth.values.light_requirement.${value}`)} />
+              </MenuItem>
+            ))}
+          </Select>
+          {showInheritedLight ? (
+            <FormHelperText id="crop-light-requirement-inherited">
+              {t('siteHealth.inheritedLight', { value: formatSiteHealthValue('light_requirement', inheritedLight, t) })}
+            </FormHelperText>
+          ) : null}
+        </FormControl>
+        {SITE_HEALTH_CHOICE_FIELDS.filter((field) => field !== 'light_requirement').map(choiceField)}
         {plantHealthField ? <Box sx={formGridFullRowSx}>{plantHealthField}</Box> : null}
         <TextField
           sx={mergeVarietyFieldSx(formGridFullRowSx, getFieldHighlightSx?.('pests_diseases'), pestsPin?.fieldSx)}

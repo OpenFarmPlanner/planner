@@ -18,6 +18,7 @@ from config.languages import (
     normalize_language_tag,
     resolve_request_language,
 )
+from farm.common.serializer_fields import CropLightField
 from farm.companion_notes import localize_companions, note_language
 from farm.models import PublicCrop
 
@@ -451,6 +452,7 @@ class CropSerializer(serializers.ModelSerializer):
 
     created_by_label = serializers.SerializerMethodField()
     crop_family = PlantFamilyField(read_only=True)
+    light_requirement = CropLightField(read_only=True)
     crop_family_display_name = serializers.SerializerMethodField()
     display_name = serializers.SerializerMethodField()
     companions = serializers.SerializerMethodField()

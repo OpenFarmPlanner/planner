@@ -396,10 +396,11 @@ never stored. See [Germination](./germination.md) for the field contract.
 
 ## Site, life cycle and plant health
 
-`Crop` and `PublicCrop` also store optional, descriptive `light_requirement`,
-`water_requirement`, `life_cycle`, `winter_hardiness` (choice fields, blank =
-unknown) and `pests_diseases` (text). Like germination they are inheritable
-and part of library sync; no planning check reads them yet. See
+`Crop` and `PublicCrop` store optional `light_requirement` as a list of suitable
+conditions. An empty list leaves the value unspecified and allows a variety to
+inherit. `water_requirement`, `life_cycle` and `winter_hardiness` retain their
+single choices, and `pests_diseases` is text. These fields take part in library
+sync. Planning checks compare light and water with effective bed conditions. See
 [crop-library-architecture.md](./crop-library-architecture.md#site-life-cycle-and-plant-health).
 
 `Crop.plant_health` separately holds private structured selections as a nullable

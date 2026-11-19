@@ -1943,10 +1943,11 @@
     }
   },
   "siteHealth": {
+    "inheritedLight": "Ereditata dalla coltura ({{value}})",
     "title": "Sito e salute delle piante",
     "pestsPlaceholder": "es. mosca della carota: copri con rete antinsetto",
     "fields": {
-      "light_requirement": "Fabbisogno di luce",
+      "light_requirement": "Esposizione alla luce",
       "water_requirement": "Fabbisogno idrico",
       "life_cycle": "Ciclo di vita",
       "winter_hardiness": "Resistenza al freddo",

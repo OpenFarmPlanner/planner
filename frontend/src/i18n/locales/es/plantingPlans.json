@@ -272,6 +272,11 @@
       "outsideWindow": "Fuera de los periodos"
     }
   },
+  "siteSuitability": {
+    "title": "Condiciones de cultivo",
+    "lightMismatch": "El cultivo se adapta a {{crop}}. La exposición del bancal figura como {{bed}}.",
+    "waterMismatch": "El cultivo necesita mucha agua. La humedad del suelo figura como {{moisture}} y el riego como {{irrigation}}."
+  },
   "rotation": {
     "iconAria": {
       "conflict": "Conflicto de rotación de cultivos, cambiar superficie de cultivo",
