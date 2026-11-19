@@ -44,6 +44,7 @@ from farm.services.crop_plant_health import canonical_public_plant_health
 from farm.services.public_crops import (
     PUBLIC_CROP_EDITABLE_FIELDS,
     is_project_crop_up_to_date,
+    public_crop_proposed_restore_version,
 )
 from farm.services.public_pseudonyms import has_public_name, number_topic_authors
 from farm.sowing_depth import SOWING_DEPTH_FIELDS, complete_single_depth_write, sowing_depth_errors
@@ -983,6 +984,7 @@ class PublicCropDiscussionTopicSerializer(serializers.ModelSerializer):
 class PublicCropChangeProposalSerializer(serializers.ModelSerializer):
     proposed_by_label = serializers.SerializerMethodField()
     reviewed_by_label = serializers.SerializerMethodField()
+    restore_version = serializers.SerializerMethodField()
     # The moderation queue lists proposals across crops, so a row has to name
     # its entry without a second request per row. Reads a FK, so the listing
     # queryset must `select_related('public_crop')` — see
@@ -1003,6 +1005,7 @@ class PublicCropChangeProposalSerializer(serializers.ModelSerializer):
             'status',
             'proposed_by_label',
             'reviewed_by_label',
+            'restore_version',
             'review_note',
             'reviewed_at',
             'created_at',
@@ -1018,6 +1021,7 @@ class PublicCropChangeProposalSerializer(serializers.ModelSerializer):
             'status',
             'proposed_by_label',
             'reviewed_by_label',
+            'restore_version',
             'review_note',
             'reviewed_at',
             'created_at',
@@ -1026,6 +1030,9 @@ class PublicCropChangeProposalSerializer(serializers.ModelSerializer):
 
     def get_public_crop_label(self, obj: PublicCropChangeProposal) -> str:
         return format_crop_display_name(obj.public_crop.name, obj.public_crop.variety)
+
+    def get_restore_version(self, obj: PublicCropChangeProposal) -> int | None:
+        return public_crop_proposed_restore_version(obj)
 
     def validate_proposed_data(self, value: Any) -> dict[str, Any]:
         if not isinstance(value, dict):

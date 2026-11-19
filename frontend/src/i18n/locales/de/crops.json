@@ -976,6 +976,7 @@
         "current": "Aktuelle Version",
         "revert": "Wiederherstellen",
         "reverting": "Stelle wieder her…",
+        "revertQueued": "Die Wiederherstellung wartet auf Freigabe.",
         "revertSuccess": "Die Version wurde wiederhergestellt.",
         "revertError": "Die Version konnte nicht wiederhergestellt werden.",
         "discuss": "Diskutieren",
@@ -1236,6 +1237,8 @@
           "agentTooltip": "Selbstauskunft des Clients – nicht überprüfbar."
         },
         "dialogTitle": "Beitrag prüfen",
+        "restoreStale": "Der Bibliothekseintrag wurde geändert. Lehne diese Wiederherstellung ab und lass sie erneut anfragen.",
+        "dialogIntroRestore": "Version {{version}} von „{{name}}“ soll wiederhergestellt werden.",
         "dialogIntroEdit": "Vorgeschlagene Änderungen an „{{name}}“.",
         "dialogIntroNewPublish": "„{{name}}“ soll neu in die Kulturbibliothek aufgenommen werden. Der Eintrag ist bis zur Freigabe unsichtbar.",
         "proposedBy": "Eingereicht von {{name}} am {{date}}",

@@ -56,6 +56,18 @@ const openReview = async (user: ReturnType<typeof userEvent.setup>) => {
  */
 describe('ChangeProposalQueue', () => {
   describe('the queue itself', () => {
+    it('shows the requested restore version without exposing approval metadata as fields', async () => {
+      const user = userEvent.setup();
+      renderQueue({ proposals: [proposal({
+        restore_version: 3,
+        proposed_data: { notes: 'Frühere Notiz', _restore_version: 3, _restore_base_version: 7 } as Partial<PublicCrop>,
+      })] });
+      const reviewDialog = await openReview(user);
+      expect(within(reviewDialog).getByText(/Version 3 von.*soll wiederhergestellt werden/)).toBeVisible();
+      expect(within(reviewDialog).getByText('Frühere Notiz')).toBeVisible();
+      expect(within(reviewDialog).queryByText('_restore_base_version')).not.toBeInTheDocument();
+    });
+
     it('shows a spinner rather than claiming the queue is empty', () => {
       renderQueue({ loading: true, proposals: [] });
 

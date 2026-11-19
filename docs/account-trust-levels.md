@@ -122,6 +122,14 @@ edit/publish behavior.
 | API token, any trust level | Queued as a `PublicCropChangeProposal` |
 | Anonymous | Rejected earlier by authentication, never reaches this check |
 
+Restoring an earlier version of a published crop follows the same session
+trust rule. The `revert/` action returns the updated crop for an immediate
+restore, or `202` with an edit proposal for a restore awaiting moderation.
+The proposal is bound to the reviewed current version. Approval checks its
+version and identity again and records a new restore revision with the source
+version. The `revert/` action remains session-only. Reinstating a removed
+entry remains a moderator action.
+
 **Exception: variety trade names are never queued.** Adding, changing,
 removing or reverting a trade name
 (`/api/public-crops/{id}/trade-names/`) applies live for every signed-in

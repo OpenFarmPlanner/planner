@@ -1003,6 +1003,7 @@
         "current": "Versión actual",
         "revert": "Restaurar",
         "reverting": "Restaurando…",
+        "revertQueued": "La restauración está pendiente de aprobación.",
         "revertSuccess": "Se ha restaurado la versión.",
         "revertError": "No se ha podido restaurar la versión.",
         "discuss": "Debatir",
@@ -1274,6 +1275,8 @@
           "agentTooltip": "Declarado por el propio cliente; no verificable."
         },
         "dialogTitle": "Revisar contribución",
+        "restoreStale": "La ficha de la biblioteca ha cambiado. Rechaza esta restauración y pide una nueva solicitud.",
+        "dialogIntroRestore": "Revisa la solicitud para restaurar la versión {{version}} de «{{name}}».",
         "dialogIntroEdit": "Cambios propuestos para «{{name}}».",
         "dialogIntroNewPublish": "«{{name}}» se propone como nueva ficha de la biblioteca de cultivos. Permanece invisible hasta que se apruebe.",
         "proposedBy": "Enviada por {{name}} el {{date}}",

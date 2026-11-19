@@ -31,9 +31,8 @@ import type { TFunction } from 'i18next';
 import { formatHistoryChangeValue, getCropFieldLabel } from '../../pages/cropsHistoryUtils';
 
 /**
- * Keys the backend stores on a `new_publish` proposal to carry the approval
- * forward (which project crop it came from). They are plumbing, not proposed
- * values, so they never belong in the moderator's diff.
+ * Approval metadata for new publications and version restores. These keys
+ * describe how to apply the proposal and stay out of the moderator's diff.
  */
 const INTERNAL_PROPOSED_DATA_PREFIX = '_';
 
@@ -103,6 +102,7 @@ export default function ChangeProposalQueue({
   );
 
   const isNewPublish = reviewing?.kind === 'new_publish';
+  const restoreVersion = reviewing?.restore_version;
 
   return (
     <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 1 }}>
@@ -196,7 +196,11 @@ export default function ChangeProposalQueue({
               <Typography variant="body2">
                 {isNewPublish
                   ? t('library.moderation.contributions.dialogIntroNewPublish', { name: entryLabel(reviewing) })
-                  : t('library.moderation.contributions.dialogIntroEdit', { name: entryLabel(reviewing) })}
+                  : typeof restoreVersion === 'number'
+                    ? t('library.moderation.contributions.dialogIntroRestore', {
+                      name: entryLabel(reviewing), version: restoreVersion,
+                    })
+                    : t('library.moderation.contributions.dialogIntroEdit', { name: entryLabel(reviewing) })}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 {t('library.moderation.contributions.proposedBy', {

@@ -1002,6 +1002,7 @@
         "current": "Versão atual",
         "revert": "Restaurar",
         "reverting": "A restaurar…",
+        "revertQueued": "O restauro aguarda aprovação.",
         "revertSuccess": "A versão foi restaurada.",
         "revertError": "Não foi possível restaurar a versão.",
         "discuss": "Discutir",
@@ -1269,6 +1270,8 @@
           "agentTooltip": "Autodeclarado pelo cliente; não verificável."
         },
         "dialogTitle": "Rever contribuição",
+        "restoreStale": "A ficha da biblioteca mudou. Rejeita este restauro e pede um novo pedido.",
+        "dialogIntroRestore": "Revê o pedido de restauro da versão {{version}} de «{{name}}».",
         "dialogIntroEdit": "Alterações propostas a «{{name}}».",
         "dialogIntroNewPublish": "«{{name}}» é proposta como novo registo da biblioteca. Permanece invisível até ser aprovada.",
         "proposedBy": "Enviado por {{name}} em {{date}}",

@@ -108,6 +108,8 @@ from farm.services.public_crop_values import same_snapshot_value as _same_snapsh
 User = get_user_model()
 
 _LIBRARY_MODERATION_LABEL = 'Crop library moderation'
+_RESTORE_VERSION_KEY = '_restore_version'
+_RESTORE_BASE_VERSION_KEY = '_restore_base_version'
 
 # Crop._SOURCE_DIVERGENCE_TRACKED_FIELDS names a plant-family reference by its
 # attname; payloads built here key it by the field name.
@@ -875,81 +877,162 @@ def _save_edited_public_crop(
         sync_original_language_translation(public_crop)
 
 
+def _lock_public_crop_for_version_restore(
+    public_crop: PublicCrop, base_version: int | None,
+) -> PublicCrop:
+    locked = PublicCrop.objects.select_for_update().get(pk=public_crop.pk)
+    _validate_base_version(locked, base_version)
+    if locked.status != PublicCrop.STATUS_PUBLISHED:
+        raise PublicCropStatusTransitionError(
+            'Only a published crop can receive a version restore.',
+            code='public_crop_not_published',
+        )
+    return locked
+
+
+def _public_crop_version_changes(
+    public_crop: PublicCrop,
+    version: int,
+    previous_snapshot: dict[str, Any],
+    actors: tuple[User | None, ...],
+) -> dict[str, Any]:
+    from farm.germination import upgrade_germination_snapshot
+
+    revision = public_crop.revisions.filter(version=version).first()
+    if revision is None:
+        raise PublicCropRevisionNotFoundError()
+    if (
+        revision.snapshot.get('variety') != previous_snapshot.get('variety')
+        and not all(is_public_library_admin(actor) for actor in actors)
+    ):
+        raise PublicCropPermissionError(
+            'Administrator privileges are required to restore a public crop variety.',
+            code='public_crop_identity_admin_required',
+        )
+
+    snapshot = upgrade_germination_snapshot(revision.snapshot)
+    snapshot['light_requirement'] = normalize_crop_light(snapshot.get('light_requirement'))
+    if isinstance(snapshot.get('companions'), list):
+        language = (
+            snapshot.get('original_language_code') or public_crop.original_language_code or 'de'
+        )
+        snapshot['companions'] = [
+            {**item, 'notes': notes_of(item, language)} if isinstance(item, dict) else item
+            for item in snapshot['companions']
+        ]
+    changes = {}
+    for field in PUBLIC_CROP_EDITABLE_FIELDS:
+        value = snapshot.get(field, {} if field == 'specific_properties' else None)
+        if field in PLANT_FAMILY_REFERENCE_FIELDS:
+            value = coerce_plant_family_key(value)
+        if field in {
+            'botanical_name', 'seed_type', 'pests_diseases',
+            'water_requirement', 'life_cycle', 'winter_hardiness',
+        } and value is None:
+            value = ''
+        if previous_snapshot.get(field) != value:
+            changes[field] = value
+    if 'variety' in changes:
+        conflict = find_public_crop_identity_conflict(public_crop, variety=changes['variety'])
+        if conflict is not None:
+            raise PublicCropIdentityConflictError(conflicting_public_crop=conflict)
+    return changes
+
+
+@transaction.atomic
 def restore_public_crop_version(
     *,
     public_crop: PublicCrop,
     user: User | None,
     version: int,
     base_version: int | None = None,
+    proposal: PublicCropChangeProposal | None = None,
 ) -> PublicCrop:
     _validate_public_crop_edit_user(user)
-
-    with transaction.atomic():
-        locked = PublicCrop.objects.select_for_update().get(pk=public_crop.pk)
-        _validate_base_version(locked, base_version)
-        ensure_public_crop_revision(locked)
-        revision = locked.revisions.filter(version=version).first()
-        if revision is None:
-            raise PublicCropRevisionNotFoundError()
-        previous_snapshot = build_public_crop_snapshot(locked)
-        if (
-            revision.snapshot.get('variety') != previous_snapshot.get('variety')
-            and not is_public_library_admin(user)
-        ):
-            raise PublicCropPermissionError(
-                'Administrator privileges are required to restore a public crop variety.',
-                code='public_crop_identity_admin_required',
+    locked = _lock_public_crop_for_version_restore(public_crop, base_version)
+    ensure_public_crop_revision(locked)
+    previous_snapshot = build_public_crop_snapshot(locked)
+    actors = (user, proposal.proposed_by) if proposal is not None else (user,)
+    changes = _public_crop_version_changes(locked, version, previous_snapshot, actors)
+    if proposal is not None:
+        reviewed_changes = {
+            field: value for field, value in proposal.proposed_data.items()
+            if field not in {_RESTORE_VERSION_KEY, _RESTORE_BASE_VERSION_KEY}
+        }
+        if _json_safe(changes) != reviewed_changes:
+            raise PublicCropEditConflictError(
+                'The requested version no longer matches the proposal.',
+                current_version=locked.version,
             )
-        from farm.germination import upgrade_germination_snapshot
-
-        snapshot = upgrade_germination_snapshot(revision.snapshot)
-        snapshot['light_requirement'] = normalize_crop_light(snapshot.get('light_requirement'))
-        if isinstance(snapshot.get('companions'), list):
-            legacy_language = snapshot.get('original_language_code') or locked.original_language_code or 'de'
-            snapshot['companions'] = [
-                {**item, 'notes': notes_of(item, legacy_language)} if isinstance(item, dict) else item
-                for item in snapshot['companions']
-            ]
-        update_fields = []
-        for field in PUBLIC_CROP_EDITABLE_FIELDS:
-            value = snapshot.get(field, {} if field == 'specific_properties' else None)
-            if field in PLANT_FAMILY_REFERENCE_FIELDS:
-                # Versions saved before the plant-family list hold free text.
-                value = coerce_plant_family_key(value)
-            if field in {
-                'botanical_name', 'seed_type', 'pests_diseases',
-                'water_requirement', 'life_cycle', 'winter_hardiness',
-            } and value is None:
-                # Versions saved before the field existed carry no key; the
-                # column is a non-null blank-able string.
-                value = ''
-            if previous_snapshot.get(field) == value:
-                continue
-            set_crop_field_value(locked, field, value)
-            update_fields.append(field)
-        if not update_fields:
-            return locked
-
-        errors = crop_specific_property_errors(locked)
-        if errors:
-            raise ApiValidationError(errors)
-        locked.version = max(locked.version, 1) + 1
-        locked.save(update_fields=[*update_fields, 'version', 'updated_at'])
-        if 'variety' in update_fields:
-            prune_trade_names_for_variety(locked, user=user)
-        if 'notes' in update_fields:
-            # Restoring an old version rewrites `notes`; the original-language
-            # translation has to follow, or the entry would keep rendering the
-            # description of the version that was just rolled back.
-            sync_original_language_translation(locked)
-        create_public_crop_revision(
-            public_crop=locked,
-            user=user,
-            action=PublicCropRevision.ACTION_RESTORED,
-            previous_snapshot=previous_snapshot,
-            restored_from_version=version,
-        )
+    if not changes:
         return locked
+    for field, value in changes.items():
+        set_crop_field_value(locked, field, value)
+    _save_edited_public_crop(locked, list(changes), user=user)
+    create_public_crop_revision(
+        public_crop=locked,
+        user=user,
+        action=PublicCropRevision.ACTION_RESTORED,
+        previous_snapshot=previous_snapshot,
+        restored_from_version=version,
+    )
+    return locked
+
+
+@transaction.atomic
+def queue_public_crop_version_restore(
+    *,
+    public_crop: PublicCrop,
+    user: User,
+    version: int,
+    base_version: int | None,
+    origin_api: bool,
+    origin_declared_agent: bool,
+) -> PublicCrop | PublicCropChangeProposal:
+    _validate_public_crop_edit_user(user)
+    locked = _lock_public_crop_for_version_restore(public_crop, base_version)
+    if version == locked.version:
+        return locked
+    previous_snapshot = build_public_crop_snapshot(locked)
+    changes = _public_crop_version_changes(locked, version, previous_snapshot, (user,))
+    if not changes:
+        return locked
+
+    candidate = copy.copy(locked)
+    for field, value in changes.items():
+        set_crop_field_value(candidate, field, value)
+    if errors := crop_specific_property_errors(candidate):
+        raise ApiValidationError(errors)
+    return _queue_public_crop_edit_proposal(
+        public_crop=locked,
+        user=user,
+        data={**changes, _RESTORE_VERSION_KEY: version, _RESTORE_BASE_VERSION_KEY: locked.version},
+        origin_api=origin_api,
+        origin_declared_agent=origin_declared_agent,
+    )
+
+
+def public_crop_proposed_restore_version(proposal: PublicCropChangeProposal) -> int | None:
+    # Client proposal serializers exclude private approval metadata.
+    if proposal.kind != PublicCropChangeProposal.KIND_EDIT:
+        return None
+    return proposal.proposed_data.get(_RESTORE_VERSION_KEY)
+
+
+def approve_public_crop_version_restore(
+    proposal: PublicCropChangeProposal, user: User,
+) -> PublicCrop:
+    if not is_public_library_moderator(user):
+        raise PublicCropPermissionError(
+            'Moderator privileges are required.', code='moderator_required',
+        )
+    return restore_public_crop_version(
+        public_crop=proposal.public_crop,
+        user=user,
+        version=proposal.proposed_data[_RESTORE_VERSION_KEY],
+        base_version=proposal.proposed_data[_RESTORE_BASE_VERSION_KEY],
+        proposal=proposal,
+    )
 
 
 def _seed_packages_payload_from_crop(crop: Crop) -> list[dict[str, Any]]:
@@ -1826,7 +1909,7 @@ def _validate_crop_identity_pull(
         validate_crop_identity(prospective)
 
 
-def _queue_public_crop_sync_proposal(
+def _queue_public_crop_edit_proposal(
     *,
     public_crop: PublicCrop,
     user: User | None,
@@ -1960,7 +2043,7 @@ def sync_crop_with_public_entry(
             )
             data = {field: payload[field] for field in push_fields if field in payload}
             if require_moderation:
-                proposal = _queue_public_crop_sync_proposal(
+                proposal = _queue_public_crop_edit_proposal(
                     public_crop=locked,
                     user=user,
                     data=data,

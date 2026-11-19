@@ -384,7 +384,7 @@ export const publicCropAPI = {
     http.delete(`/public-crops/${id}/discussion-comments/${commentId}/`),
   versions: (id: number) => http.get<PublicCropRevision[]>(`/public-crops/${id}/versions/`),
   revert: (id: number, data: { version: number; base_version?: number }) =>
-    http.post<PublicCrop>(`/public-crops/${id}/revert/`, data),
+    http.post<PublicCrop | PublicCropChangeProposal>(`/public-crops/${id}/revert/`, data),
   getTranslations: (id: number) =>
     http.get<PublicCropTranslations>(`/public-crops/${id}/translations/`),
   updateTranslations: (id: number, translations: Record<string, string>) =>

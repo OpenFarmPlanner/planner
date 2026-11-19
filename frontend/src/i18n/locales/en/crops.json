@@ -976,6 +976,7 @@
         "current": "Current version",
         "revert": "Restore",
         "reverting": "Restoring…",
+        "revertQueued": "The restore is awaiting approval.",
         "revertSuccess": "The version was restored.",
         "revertError": "The version could not be restored.",
         "discuss": "Discuss",
@@ -1236,6 +1237,8 @@
           "agentTooltip": "Self-declared by the client — not verifiable."
         },
         "dialogTitle": "Review contribution",
+        "restoreStale": "The library entry changed. Reject this restore and ask for a new request.",
+        "dialogIntroRestore": "Review the request to restore version {{version}} of “{{name}}”.",
         "dialogIntroEdit": "Proposed changes to \"{{name}}\".",
         "dialogIntroNewPublish": "\"{{name}}\" is proposed as a new crop library entry. It stays invisible until approved.",
         "proposedBy": "Submitted by {{name}} on {{date}}",
