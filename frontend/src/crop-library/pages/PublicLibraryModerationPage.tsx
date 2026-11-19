@@ -360,8 +360,15 @@ export default function PublicLibraryModerationPage() {
         severity: 'success',
       });
       await loadQueues();
-    } catch {
-      showGlobalSnackbar({ message: t('library.moderation.actionError'), severity: 'error' });
+    } catch (error) {
+      const code = (error as { response?: { data?: { code?: string } } }).response?.data?.code;
+      const staleRestore = proposal.restore_version != null && code === 'stale_public_crop_version';
+      showGlobalSnackbar({
+        message: t(staleRestore
+          ? 'library.moderation.contributions.restoreStale'
+          : 'library.moderation.actionError'),
+        severity: 'error',
+      });
     } finally {
       setBusyAction(null);
     }

@@ -1340,6 +1340,11 @@ export default function PublicCropLibraryPage() {
         version,
         base_version: selectedCrop.version,
       });
+      if ('proposed_data' in response.data) {
+        await reloadCollaboration(selectedCrop.id);
+        showGlobalSnackbar({ message: t('library.page.versions.revertQueued'), severity: 'success' });
+        return;
+      }
       upsertCropInList(response.data);
       await reloadCollaboration(response.data.id);
       showGlobalSnackbar({ message: t('library.page.versions.revertSuccess'), severity: 'success' });

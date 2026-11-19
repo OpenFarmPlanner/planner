@@ -653,6 +653,7 @@ export interface PublicCropChangeProposal {
   origin_declared_agent?: boolean;
   summary: string;
   proposed_data: Partial<PublicCrop>;
+  restore_version?: number | null;
   status: PublicCropChangeProposalStatus;
   proposed_by_label?: string;
   reviewed_by_label?: string;

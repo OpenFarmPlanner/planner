@@ -650,8 +650,9 @@ The public Crop Library follows an open-data model:
   shown as clearing the public value (`privateValue` "Nicht angegeben"). This
   mirrors `build_public_crop_payload` server-side, which resolves the same
   fields through `resolve_crop_field`.
-- Reverting a public entry restores an older snapshot by creating another new
-  version. It never deletes existing revisions.
+- Reverting a public entry restores an older snapshot as a new version.
+  A new account submits the restore to moderation first. The approval checks
+  the version the proposal was based on before appending a restore revision.
 - Public crop data is intended to be reusable through the app, future
   public APIs, future downloads/exports, and external open-source or
   commercial projects.

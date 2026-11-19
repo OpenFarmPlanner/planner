@@ -1003,6 +1003,7 @@
         "current": "Version actuelle",
         "revert": "Restaurer",
         "reverting": "Restauration…",
+        "revertQueued": "La restauration est en attente d’approbation.",
         "revertSuccess": "La version a été restaurée.",
         "revertError": "La version n'a pas pu être restaurée.",
         "discuss": "Discuter",
@@ -1274,6 +1275,8 @@
           "agentTooltip": "Déclaré par le client lui-même — non vérifiable."
         },
         "dialogTitle": "Examiner la contribution",
+        "restoreStale": "La fiche a changé. Refusez cette restauration et demandez une nouvelle proposition.",
+        "dialogIntroRestore": "Examinez la demande de restauration de la version {{version}} de « {{name}} ».",
         "dialogIntroEdit": "Modifications proposées pour « {{name}} ».",
         "dialogIntroNewPublish": "« {{name}} » est proposée comme nouvelle fiche de la bibliothèque de cultures. Elle reste invisible jusqu'à son approbation.",
         "proposedBy": "Soumise par {{name}} le {{date}}",

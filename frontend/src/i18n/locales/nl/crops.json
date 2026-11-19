@@ -976,6 +976,7 @@
         "current": "Huidige versie",
         "revert": "Herstellen",
         "reverting": "Herstellen…",
+        "revertQueued": "Het herstel wacht op goedkeuring.",
         "revertSuccess": "De versie is hersteld.",
         "revertError": "De versie kon niet worden hersteld.",
         "discuss": "Bespreken",
@@ -1236,6 +1237,8 @@
           "agentTooltip": "Zelf opgegeven door de client, niet verifieerbaar."
         },
         "dialogTitle": "Bijdrage beoordelen",
+        "restoreStale": "De bibliotheekvermelding is gewijzigd. Wijs dit herstel af en vraag om een nieuw verzoek.",
+        "dialogIntroRestore": "Beoordeel het verzoek om versie {{version}} van ‘{{name}}’ te herstellen.",
         "dialogIntroEdit": "Voorgestelde wijzigingen aan ‘{{name}}’.",
         "dialogIntroNewPublish": "‘{{name}}’ is als nieuw bibliotheekitem voorgesteld. Het blijft onzichtbaar tot het is goedgekeurd.",
         "proposedBy": "Ingediend door {{name}} op {{date}}",

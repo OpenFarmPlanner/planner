@@ -64,11 +64,14 @@ from farm.services.public_crops import (
     PublicCropSyncFieldsError,
     UnsupportedPublicCropFieldsError,
     approve_new_publish_proposal,
+    approve_public_crop_version_restore,
     hard_delete_public_crop,
     import_public_crop_into_project,
     notify_change_proposal_reviewed,
     notify_moderators_of_change_proposal,
     public_crop_import_candidates,
+    public_crop_proposed_restore_version,
+    queue_public_crop_version_restore,
     reinstate_removed_public_crop,
     reject_new_publish_proposal,
     relink_public_crop_species,
@@ -976,6 +979,26 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         )
         return Response(serializer.data)
 
+    def _version_restore_error_response(self, error: Exception) -> Response:
+        if isinstance(error, PublicCropPermissionError):
+            return self._transition_error_response(error, status.HTTP_403_FORBIDDEN)
+        if isinstance(error, PublicCropEditConflictError):
+            return self._edit_conflict_response(error)
+        if isinstance(error, PublicCropIdentityConflictError):
+            return api_error_response(
+                code=error.code, detail=str(error), status_code=status.HTTP_409_CONFLICT,
+                conflicting_public_crop_id=error.conflicting_public_crop.id,
+            )
+        response_status = (
+            status.HTTP_404_NOT_FOUND if isinstance(error, PublicCropRevisionNotFoundError)
+            else status.HTTP_409_CONFLICT
+        )
+        return self._transition_error_response(error, response_status)
+
+    @extend_schema(
+        request=PublicCropRevertSerializer,
+        responses={200: PublicCropSerializer, 202: PublicCropChangeProposalSerializer},
+    )
     @action(detail=True, methods=['post'], url_path='revert')
     def revert(self, request: Request, pk: int | None = None) -> Response:
         if (forbidden := self._guest_demo_write_forbidden(request)) is not None:
@@ -983,19 +1006,34 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         public_crop = self.get_object()
         serializer = PublicCropRevertSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        recovery = {
+            'public_crop': public_crop,
+            'user': request.user,
+            'version': serializer.validated_data['version'],
+            'base_version': serializer.validated_data.get('base_version'),
+        }
         try:
-            updated = restore_public_crop_version(
-                public_crop=public_crop,
-                user=request.user,
-                version=serializer.validated_data['version'],
-                base_version=serializer.validated_data.get('base_version'),
-            )
-        except PublicCropPermissionError as error:
-            return self._transition_error_response(error, status.HTTP_403_FORBIDDEN)
-        except PublicCropEditConflictError as error:
-            return self._edit_conflict_response(error)
-        except PublicCropRevisionNotFoundError as error:
-            return api_error_response(code=error.code, detail=str(error), status_code=status.HTTP_404_NOT_FOUND)
+            if requires_moderation_queue(request):
+                if (forbidden := self._crop_species_pending_forbidden(public_crop)) is not None:
+                    return forbidden
+                if pending_queue_limit_exceeded(request):
+                    return self._pending_queue_limit_response()
+                origin_api, origin_declared_agent = describe_contribution_origin(request)
+                updated = queue_public_crop_version_restore(
+                    **recovery, origin_api=origin_api, origin_declared_agent=origin_declared_agent,
+                )
+                if isinstance(updated, PublicCropChangeProposal):
+                    return Response(
+                        PublicCropChangeProposalSerializer(updated).data,
+                        status=status.HTTP_202_ACCEPTED,
+                    )
+            else:
+                updated = restore_public_crop_version(**recovery)
+        except (
+            PublicCropPermissionError, PublicCropEditConflictError, PublicCropIdentityConflictError,
+            PublicCropStatusTransitionError, PublicCropRevisionNotFoundError,
+        ) as error:
+            return self._version_restore_error_response(error)
         return self._public_crop_response(updated)
 
     @action(detail=False, methods=['get'], url_path='pending-change-proposals')
@@ -1044,6 +1082,15 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         proposal = serializer.save(public_crop=public_crop, proposed_by=request.user)
         return Response(PublicCropChangeProposalSerializer(proposal).data, status=status.HTTP_201_CREATED)
 
+    @staticmethod
+    def _lock_change_proposal(
+        public_crop: PublicCrop, proposal_id: str | None,
+    ) -> PublicCropChangeProposal:
+        proposals = public_crop.change_proposals.select_for_update(of=('self',)).select_related(
+            'proposed_by__public_profile', 'reviewed_by__public_profile',
+        )
+        return get_object_or_404(proposals, pk=proposal_id)
+
     @action(detail=True, methods=['post'], url_path=r'change-proposals/(?P<proposal_id>[^/.]+)/approve')
     def approve_change_proposal(self, request: Request, pk: int | None = None, proposal_id: str | None = None) -> Response:
         if (forbidden := self._guest_demo_write_forbidden(request)) is not None:
@@ -1052,16 +1099,12 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             return api_error_response(code='moderator_required', detail='Moderator privileges are required.', status_code=status.HTTP_403_FORBIDDEN)
 
         public_crop = self.get_object()
-        proposal = get_object_or_404(
-            public_crop.change_proposals.select_related('proposed_by__public_profile', 'reviewed_by__public_profile'),
-            pk=proposal_id,
-        )
-        if proposal.status != PublicCropChangeProposal.STATUS_PENDING:
-            return self._proposal_status_error()
-
         review_note = (request.data.get('review_note') or '').strip()
 
         with transaction.atomic():
+            proposal = self._lock_change_proposal(public_crop, proposal_id)
+            if proposal.status != PublicCropChangeProposal.STATUS_PENDING:
+                return self._proposal_status_error()
             if proposal.kind == PublicCropChangeProposal.KIND_NEW_PUBLISH:
                 source_crop_id = proposal.proposed_data.get('_source_crop_id')
                 source_crop = Crop.objects.filter(pk=source_crop_id).first() if source_crop_id else None
@@ -1071,6 +1114,17 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                     publish_as_general=bool(proposal.proposed_data.get('_publish_as_general')),
                     user=request.user,
                 )
+            elif public_crop_proposed_restore_version(proposal) is not None:
+                if (forbidden := self._crop_species_pending_forbidden(public_crop)) is not None:
+                    return forbidden
+                try:
+                    approve_public_crop_version_restore(proposal, request.user)
+                except (
+                    PublicCropPermissionError, PublicCropEditConflictError,
+                    PublicCropIdentityConflictError, PublicCropStatusTransitionError,
+                    PublicCropRevisionNotFoundError,
+                ) as error:
+                    return self._version_restore_error_response(error)
             else:
                 update_serializer = PublicCropUpdateSerializer(
                     public_crop, data=proposal.proposed_data, partial=True,
@@ -1104,14 +1158,10 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             return api_error_response(code='moderator_required', detail='Moderator privileges are required.', status_code=status.HTTP_403_FORBIDDEN)
 
         public_crop = self.get_object()
-        proposal = get_object_or_404(
-            public_crop.change_proposals.select_related('proposed_by__public_profile', 'reviewed_by__public_profile'),
-            pk=proposal_id,
-        )
-        if proposal.status != PublicCropChangeProposal.STATUS_PENDING:
-            return self._proposal_status_error()
-
         with transaction.atomic():
+            proposal = self._lock_change_proposal(public_crop, proposal_id)
+            if proposal.status != PublicCropChangeProposal.STATUS_PENDING:
+                return self._proposal_status_error()
             if proposal.kind == PublicCropChangeProposal.KIND_NEW_PUBLISH:
                 reject_new_publish_proposal(public_crop=public_crop, user=request.user)
             proposal.status = PublicCropChangeProposal.STATUS_REJECTED

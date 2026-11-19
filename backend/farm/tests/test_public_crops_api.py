@@ -4256,6 +4256,111 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(public_crop.crop_family_id, 'Solanaceae')
         self.assertEqual(response.data['crop_family'], 'Solanaceae')
 
+    def _published_crop_for_restore(self):
+        crop = PublicCrop.objects.create(
+            name='Synthetic restoration crop', variety='Roma', status=PublicCrop.STATUS_PUBLISHED,
+            created_by=self.user, notes='Earlier note', original_language_code='en',
+        )
+        return update_public_crop_directly(public_crop=crop, user=self.user, data={
+            'notes': 'Current note',
+        })
+
+    def _request_new_account_restore(self, crop, *, version=1, base_version=2):
+        new_user = User.objects.create_user(username='new-restore-contributor', is_active=True)
+        self.client.force_authenticate(user=new_user)
+        return self.client.post(
+            f'/openfarmplanner/api/public-crops/{crop.pk}/revert/',
+            {'version': version, 'base_version': base_version}, format='json',
+        )
+
+    def test_new_account_restore_waits_for_a_moderator_and_records_the_source_version(self):
+        crop = self._published_crop_for_restore()
+        response = self._request_new_account_restore(crop)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED, response.data)
+        proposal = crop.change_proposals.get()
+        self.assertEqual(response.data['restore_version'], 1)
+        self.assertEqual(proposal.status, PublicCropChangeProposal.STATUS_PENDING)
+        self.assertEqual(proposal.proposed_data['notes'], 'Earlier note')
+        crop.refresh_from_db()
+        self.assertEqual((crop.notes, crop.version, crop.revisions.count()), ('Current note', 2, 2))
+
+        url = f'/openfarmplanner/api/public-crops/{crop.pk}/change-proposals/{proposal.pk}/approve/'
+        self.assertEqual(self.client.post(url, {}, format='json').status_code, 403)
+        moderator = self._make_moderator('restore-moderator')
+        self.client.force_authenticate(user=moderator)
+        approved = self.client.post(url, {'review_note': 'Reviewed note'}, format='json')
+        self.assertEqual(approved.status_code, status.HTTP_200_OK, approved.data)
+        proposal.refresh_from_db()
+        crop.refresh_from_db()
+        self.assertEqual((proposal.status, proposal.reviewed_by), ('approved', moderator))
+        self.assertEqual((crop.notes, crop.version), ('Earlier note', 3))
+        revision = crop.revisions.get(version=3)
+        self.assertEqual(revision.action, PublicCropRevision.ACTION_RESTORED)
+        self.assertEqual(revision.restored_from_version, 1)
+        self.assertEqual(revision.created_by, moderator)
+        self.assertEqual(crop.revisions.count(), 3)
+
+    def test_moderator_cannot_approve_a_restore_after_a_newer_edit(self):
+        crop = self._published_crop_for_restore()
+        queued = self._request_new_account_restore(crop)
+        self.assertEqual(queued.status_code, status.HTTP_202_ACCEPTED, queued.data)
+        proposal = crop.change_proposals.get()
+        update_public_crop_directly(public_crop=crop, user=self.user, data={'notes': 'Later note'})
+        self.client.force_authenticate(user=self._make_moderator('stale-restore-moderator'))
+        url = f'/openfarmplanner/api/public-crops/{crop.pk}/change-proposals/{proposal.pk}/approve/'
+
+        response = self.client.post(url, {}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT, response.data)
+        self.assertEqual(response.data['code'], 'stale_public_crop_version')
+        proposal.refresh_from_db()
+        crop.refresh_from_db()
+        self.assertEqual(proposal.status, PublicCropChangeProposal.STATUS_PENDING)
+        self.assertEqual((crop.notes, crop.version, crop.revisions.count()), ('Later note', 3, 3))
+
+    def test_new_account_restore_rejects_an_outdated_base_before_creating_a_proposal(self):
+        crop = self._published_crop_for_restore()
+        response = self._request_new_account_restore(crop, base_version=1)
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT, response.data)
+        self.assertEqual(response.data['code'], 'stale_public_crop_version')
+        self.assertFalse(crop.change_proposals.exists())
+
+    def test_new_account_cannot_queue_a_restore_that_changes_variety_identity(self):
+        crop = self._published_crop_for_restore()
+        admin = User.objects.create_user(username='restore-admin', is_staff=True, is_active=True)
+        crop = update_public_crop_directly(
+            public_crop=crop, user=admin, data={'variety': 'Roma VF'},
+        )
+
+        response = self._request_new_account_restore(crop, base_version=3)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN, response.data)
+        self.assertEqual(response.data['code'], 'public_crop_identity_admin_required')
+        self.assertFalse(crop.change_proposals.exists())
+
+    def test_version_restore_remains_unavailable_to_guest_and_token_clients(self):
+        from farm.models import ProjectApiToken
+
+        crop = self._published_crop_for_restore()
+        guest = create_guest_demo_session(language_code='en')
+        guest_client = APIClient()
+        guest_client.force_authenticate(user=guest.user)
+        _token, secret = ProjectApiToken.create_token(
+            user=self.user, project=self.project, name='Test token',
+            scope=ProjectApiToken.SCOPE_WRITE,
+        )
+        token_client = APIClient()
+        token_client.credentials(HTTP_AUTHORIZATION=f'Bearer {secret}')
+        url = f'/openfarmplanner/api/public-crops/{crop.pk}/revert/'
+        payload = {'version': 1, 'base_version': 2}
+
+        for client in (guest_client, token_client):
+            response = client.post(url, payload, format='json')
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN, response.data)
+        self.assertFalse(crop.change_proposals.exists())
+        crop.refresh_from_db()
+        self.assertEqual(crop.version, 2)
+
     def test_direct_edit_writes_crop_family_as_botanical_name(self):
         public_crop = PublicCrop.objects.create(
             name='Tomato', variety='', status='published', created_by=self.user, version=1,

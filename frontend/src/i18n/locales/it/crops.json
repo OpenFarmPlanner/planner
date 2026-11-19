@@ -1002,6 +1002,7 @@
         "current": "Versione attuale",
         "revert": "Ripristina",
         "reverting": "Ripristino…",
+        "revertQueued": "Il ripristino è in attesa di approvazione.",
         "revertSuccess": "Versione ripristinata.",
         "revertError": "Impossibile ripristinare la versione.",
         "discuss": "Discuti",
@@ -1269,6 +1270,8 @@
           "agentTooltip": "Autodichiarato dal client: non verificabile."
         },
         "dialogTitle": "Esamina contributo",
+        "restoreStale": "La scheda della biblioteca è cambiata. Rifiuta questo ripristino e chiedi una nuova richiesta.",
+        "dialogIntroRestore": "Esamina la richiesta di ripristino della versione {{version}} di «{{name}}».",
         "dialogIntroEdit": "Modifiche proposte a «{{name}}».",
         "dialogIntroNewPublish": "«{{name}}» è proposta come nuova voce della biblioteca. Rimane invisibile fino all'approvazione.",
         "proposedBy": "Inviata da {{name}} il {{date}}",
