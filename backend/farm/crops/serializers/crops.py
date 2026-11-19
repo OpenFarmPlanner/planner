@@ -29,6 +29,7 @@ from farm.common.serializer_fields import (
 from farm.enum_normalization import normalize_seed_rate_unit
 from farm.germination import complete_germination_write
 from farm.history.records import (
+    PROMOTED_CROP_FIELD_CHANGES,
     _diff_changed_fields,
     _entity_display_name,
     _serialize_instance,
@@ -1052,11 +1053,19 @@ class CropSerializer(serializers.ModelSerializer):
                             snapshot=new or old, display_name=crop.name,
                         )
             snapshot = _serialize_instance(crop)
+            changed_fields = None
+            if not creating:
+                changed_fields = _diff_changed_fields(previous_crop, snapshot)
+                if self._promoted_species_changes:
+                    snapshot[PROMOTED_CROP_FIELD_CHANGES] = self._promoted_species_changes
+                    changed_fields = list(dict.fromkeys([
+                        *changed_fields, *self._promoted_species_changes,
+                    ]))
             record_entity_revision(
                 project=project, entity_type='crop', object_id=crop.pk,
                 action=EntityRevision.ACTION_CREATED if creating else EntityRevision.ACTION_UPDATED,
                 snapshot=snapshot, display_name=_entity_display_name(crop),
-                changed_fields=None if creating else _diff_changed_fields(previous_crop, snapshot),
+                changed_fields=changed_fields,
             )
             return crop
 
@@ -1155,7 +1164,7 @@ class CropSerializer(serializers.ModelSerializer):
                     setattr(instance, field, value)
                 instance.save(record_history=record_history)
                 crop = instance
-                promote_species_invariant_values(
+                self._promoted_species_changes = promote_species_invariant_values(
                     crop,
                     self._promotable_species_invariant_fields,
                 )

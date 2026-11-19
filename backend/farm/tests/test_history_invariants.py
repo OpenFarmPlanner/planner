@@ -621,7 +621,7 @@ class HistoryImplicitCropSaveTests(HistoryInvariantTestCase):
         prior_version = self.versions[-1].revision.pk
         variety = self.write('create linked variety', 'post', '/crops/', {
             'name': 'History bean', 'variety': 'Sample variety', 'crop_species': species.pk,
-            'crop_family': 'Fabaceae', 'nutrient_demand': 'high', 'rotation_break_years': 4,
+            'crop_family': 'Fabaceae', 'cultivation_types': ['pre_cultivation'],
             'supplier_name': 'Implicit history supplier',
         })
         supplier = variety['supplier']['id']
@@ -639,8 +639,17 @@ class HistoryImplicitCropSaveTests(HistoryInvariantTestCase):
         self.assertEqual(history.status_code, 200)
         self.assertEqual([row['history_id'] for row in history.json()], [completed.revision.pk])
 
+        variety_url = f"/crops/{variety['id']}/"
+        self.write('fill linked general field', 'patch', variety_url, {'nutrient_demand': 'high'})
+        saved_edit = self.versions[-1].revision
+        self.assertEqual(saved_edit.snapshot['nutrient_demand'], '')
+        history = self.client.get(f'{API}{variety_url}history/').json()
+        self.assertEqual(history[0]['history_id'], saved_edit.pk)
+        self.assertEqual(history[0]['changes'], [
+            {'field': 'nutrient_demand', 'old_value': '', 'new_value': 'high'},
+        ])
         self.write(
-            'remove supplier link', 'patch', f"/crops/{variety['id']}/", {'supplier_id': None},
+            'remove supplier link', 'patch', variety_url, {'supplier_id': None},
         )
         self.write('delete unused supplier', 'delete', f'/suppliers/{supplier}/')
         self.write(

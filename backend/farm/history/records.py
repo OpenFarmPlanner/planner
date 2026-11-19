@@ -34,6 +34,7 @@ from farm.models import (
 )
 
 _internal_versions: ContextVar[bool] = ContextVar('internal_project_versions', default=False)
+PROMOTED_CROP_FIELD_CHANGES = '_promoted_crop_field_changes'
 
 
 @contextmanager
@@ -247,6 +248,7 @@ def _build_entity_revision_changes(
     if not isinstance(changed_fields, list):
         changed_fields = []
 
+    promoted = snapshot.get(PROMOTED_CROP_FIELD_CHANGES, {})
     changes: list[dict[str, Any]] = []
     for field in changed_fields:
         if field in _ENTITY_HISTORY_IGNORED_FIELDS:
@@ -259,6 +261,10 @@ def _build_entity_revision_changes(
             })
             continue
         if field not in snapshot:
+            continue
+
+        if field in promoted:
+            changes.append({'field': field, **promoted[field]})
             continue
 
         old_value = previous_snapshot.get(field) if isinstance(previous_snapshot, dict) else None
