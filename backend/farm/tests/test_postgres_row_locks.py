@@ -782,6 +782,59 @@ def test_crop_restore_locks_shared_references_until_save(monkeypatch):
 
 
 @pytest.mark.django_db(transaction=True)
+def test_crop_delete_reads_image_under_the_restore_project_lock(monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+
+    from django.contrib.sessions.middleware import SessionMiddleware
+    from django.db import OperationalError, close_old_connections, connection, transaction
+    from rest_framework.test import APIRequestFactory, force_authenticate
+
+    from farm.crops.views.crops import CropViewSet
+    from farm.models import Crop, MediaFile, Project, ProjectMembership
+    from farm.tests.api_base import User
+
+    if connection.vendor != 'postgresql':
+        pytest.skip('PostgreSQL image deletion and restore serialization')
+    user = User.objects.create_user(username='crop-delete-image-owner')
+    project = Project.objects.create(name='Crop image deletion', slug='crop-image-deletion')
+    ProjectMembership.objects.create(project=project, user=user, role='admin')
+    image = MediaFile.objects.create(project=project, storage_path='synthetic-delete-image.png')
+    crop = Crop.objects.create(project=project, name='Crop with image', image_file=image)
+
+    def check_project_lock():
+        close_old_connections()
+        try:
+            with pytest.raises(OperationalError) as locked, transaction.atomic():
+                Project.objects.select_for_update(nowait=True).get(pk=project.pk)
+            cause = locked.value.__cause__
+            sqlstate = getattr(cause, 'sqlstate', None) or getattr(cause, 'pgcode', None)
+            assert sqlstate == '55P03'
+        finally:
+            close_old_connections()
+
+    get_object = CropViewSet.get_object
+
+    def get_crop_after_lock(view):
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            executor.submit(check_project_lock).result(timeout=15)
+        return get_object(view)
+
+    monkeypatch.setattr(CropViewSet, 'get_object', get_crop_after_lock)
+    # The view's own lock matters even without the request-wide transaction.
+    delete_crop = CropViewSet.as_view({'delete': 'destroy'})
+    request = APIRequestFactory().delete(
+        f'/api/crops/{crop.pk}/', HTTP_X_PROJECT_ID=str(project.pk),
+    )
+    SessionMiddleware(delete_crop).process_request(request)
+    force_authenticate(request, user=user)
+    response = delete_crop(request, pk=crop.pk)
+
+    assert response.status_code == 204
+    image.refresh_from_db()
+    assert image.orphaned_at is not None
+
+
+@pytest.mark.django_db(transaction=True)
 def test_supplierless_undeletes_cannot_create_duplicate_varieties_concurrently():
     from concurrent.futures import ThreadPoolExecutor
     from threading import Barrier

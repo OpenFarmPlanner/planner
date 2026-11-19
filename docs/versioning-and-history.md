@@ -78,7 +78,8 @@ write path — it just creates an `EntityRevision` row. It's called:
   crop's project and the image must still exist in storage. An unavailable
   reference or conflicting crop identity returns 409 before any crop or
   history changes. Restoring an image clears its orphan marker in the same
-  transaction and marks the replaced image if no active crop uses it.
+  transaction and marks the replaced image if no active crop uses it. Crop
+  edits, deletion, undelete and orphan cleanup use the same project lock.
 - Crop, project, and batch restores use the same legacy crop defaults for
   existing and recreated rows. Old germination flags map to the current
   requirement fields, missing ranges are unset, and snapshots from before seed
