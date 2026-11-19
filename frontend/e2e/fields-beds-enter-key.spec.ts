@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loginWithDeterministicProject, tabSaveHierarchyRow as tabSaveRow } from './utils';
+import { loginWithDeterministicProject, startNewFieldFromLocationRow, tabSaveHierarchyRow as tabSaveRow } from './utils';
 
 test.describe('fields-beds Enter key behavior', () => {
   test.beforeEach(async ({ page, request }) => {
@@ -10,7 +10,7 @@ test.describe('fields-beds Enter key behavior', () => {
   });
 
   test('Enter on new field (no beds, no dimensions) saves without opening next row', async ({ page }) => {
-    await page.getByRole('button', { name: 'Parzelle hinzufügen' }).first().click();
+    await startNewFieldFromLocationRow(page);
     await page.waitForTimeout(400);
 
     const nameInput = page.locator('.MuiDataGrid-row--editing input[type="text"]').first();
@@ -29,7 +29,7 @@ test.describe('fields-beds Enter key behavior', () => {
 
   test('Enter on existing field (no dimensions) saves without staying in edit mode', async ({ page }) => {
     // Create field with no dimensions using Tab-save
-    await page.getByRole('button', { name: 'Parzelle hinzufügen' }).first().click();
+    await startNewFieldFromLocationRow(page);
     await page.waitForTimeout(400);
     const createInput = page.locator('.MuiDataGrid-row--editing input[type="text"]').first();
     await expect(createInput).toBeVisible({ timeout: 5000 });
@@ -53,7 +53,7 @@ test.describe('fields-beds Enter key behavior', () => {
 
   test('Enter on field with dimensions and a bed below does not reopen field (ping-pong bug)', async ({ page }) => {
     // Create a field with dimensions using Tab-save
-    await page.getByRole('button', { name: 'Parzelle hinzufügen' }).first().click();
+    await startNewFieldFromLocationRow(page);
     await page.waitForTimeout(400);
     const fieldInput = page.locator('.MuiDataGrid-row--editing input[type="text"]').first();
     await expect(fieldInput).toBeVisible({ timeout: 5000 });

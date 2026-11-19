@@ -184,6 +184,16 @@ export async function tabSaveHierarchyRow(page: Page): Promise<void> {
 }
 
 /**
+ * Starts a new plot (Parzelle) the way users do: from the add action of the
+ * first location row in the Growing Areas list. The topbar only adds locations.
+ */
+export async function startNewFieldFromLocationRow(page: Page): Promise<void> {
+  const locationRow = page.locator('[role="row"][data-id^="location-"]').first();
+  await locationRow.hover();
+  await locationRow.getByRole('button', { name: 'Parzelle', exact: true }).click();
+}
+
+/**
  * Calls the project API from inside the page, reusing the logged-in session,
  * its CSRF cookie and the active project - the shortest way for a spec to set
  * up domain data that has no dedicated E2E fixture action.

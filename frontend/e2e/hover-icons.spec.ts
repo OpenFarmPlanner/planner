@@ -8,7 +8,7 @@
  * so the overlay is not in the DOM at all during editing (naturally hidden).
  */
 import { expect, test, type Page } from '@playwright/test';
-import { loginWithDeterministicProject, tabSaveHierarchyRow } from './utils';
+import { loginWithDeterministicProject, startNewFieldFromLocationRow, tabSaveHierarchyRow } from './utils';
 
 async function getOverlayOpacity(locator: ReturnType<Page['locator']>): Promise<number> {
   return locator.evaluate((el: HTMLElement) => parseFloat(window.getComputedStyle(el).opacity));
@@ -25,7 +25,7 @@ test.describe('hover icons – keyboard must not trigger visibility', () => {
 
     test('hierarchy name overlay: hover shows, mouse-leave hides, keyboard Tab never shows', async ({ page }) => {
       // Create a field so there's at least one row
-      await page.getByRole('button', { name: 'Parzelle hinzufügen' }).first().click();
+      await startNewFieldFromLocationRow(page);
       await page.waitForTimeout(400);
       const input = page.locator('.MuiDataGrid-row--editing input[type="text"]').first();
       await expect(input).toBeVisible({ timeout: 5000 });

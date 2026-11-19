@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { loginWithDeterministicProject } from './utils';
+import { loginWithDeterministicProject, startNewFieldFromLocationRow } from './utils';
 
 // "Beet hinzufügen" prefills a new bed from the field's last bed (name
 // counted up, length and width). These specs are about empty/nameless
@@ -25,7 +25,7 @@ test.describe('fields-beds row edit exit behavior', () => {
   test('Escape on an empty new field removes it immediately, no reload needed', async ({ page }) => {
     const rowCountBefore = await page.locator('[role="row"][data-id]').count();
 
-    await page.getByRole('button', { name: 'Parzelle hinzufügen' }).first().click();
+    await startNewFieldFromLocationRow(page);
     await page.waitForTimeout(400);
     await expect(page.locator('.MuiDataGrid-row--editing')).toHaveCount(1);
 
@@ -35,7 +35,7 @@ test.describe('fields-beds row edit exit behavior', () => {
   });
 
   test('clicking outside the grid commits a valid new field instead of discarding it', async ({ page }) => {
-    await page.getByRole('button', { name: 'Parzelle hinzufügen' }).first().click();
+    await startNewFieldFromLocationRow(page);
     await page.waitForTimeout(400);
 
     const nameInput = page.locator('.MuiDataGrid-row--editing input[type="text"]').first();
@@ -61,7 +61,7 @@ test.describe('fields-beds row edit exit behavior', () => {
   test('clicking outside the grid on a completely empty new field discards it', async ({ page }) => {
     const rowCountBefore = await page.locator('[role="row"][data-id]').count();
 
-    await page.getByRole('button', { name: 'Parzelle hinzufügen' }).first().click();
+    await startNewFieldFromLocationRow(page);
     await page.waitForTimeout(400);
     await expect(page.locator('.MuiDataGrid-row--editing')).toHaveCount(1);
 
@@ -73,7 +73,7 @@ test.describe('fields-beds row edit exit behavior', () => {
   test('clicking outside the grid on a partially filled, nameless new field shows a confirm dialog', async ({ page }) => {
     const rowCountBefore = await page.locator('[role="row"][data-id]').count();
 
-    await page.getByRole('button', { name: 'Parzelle hinzufügen' }).first().click();
+    await startNewFieldFromLocationRow(page);
     await page.waitForTimeout(400);
 
     const lengthCell = page.locator('.MuiDataGrid-row--editing [role="gridcell"][data-field="length_m"]');
