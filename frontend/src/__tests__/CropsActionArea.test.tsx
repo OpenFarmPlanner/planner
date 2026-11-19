@@ -8,6 +8,7 @@ import { CommandProvider } from '../commands/CommandProvider';
 import { FocusManagerProvider } from '../focus/FocusManager';
 import { AuthContext, type AuthContextValue } from '../auth/authContextShared';
 import { GLOBAL_SNACKBAR_EVENT, type GlobalSnackbarDetail } from '../utils/globalSnackbar';
+import { mockPopupLayout } from '../test-utils/mockPopupLayout';
 
 const {
   detailLoadingHistory,
@@ -223,6 +224,7 @@ const waitForDeleteDialogToClose = async (): Promise<void> => {
 describe('Crops action area', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPopupLayout();
     window.localStorage.setItem('activeProjectId', '42');
     detailLoadingHistory.length = 0;
     authUser.public_library_terms_accepted = false;

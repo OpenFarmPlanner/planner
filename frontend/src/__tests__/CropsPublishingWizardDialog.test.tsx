@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { CropsPublishingWizardDialog } from '../pages/CropsPublishingWizardDialog';
 import type { Crop, PublicCrop } from '../api/types';
+import { mockPopupLayout } from '../test-utils/mockPopupLayout';
 
 // The species field now searches the (mocked) server on every keystroke with
 // a real 250ms debounce (see `useCropSpeciesSearch`) instead of filtering an
@@ -121,6 +122,7 @@ const VARIETY_OCHSENHERZ: Crop = { ...CROP, id: 3, variety: 'Ochsenherz' };
 
 describe('CropsPublishingWizardDialog', () => {
   beforeEach(() => {
+    mockPopupLayout();
     cropSpeciesListMock.mockReset();
     cropSpeciesListMock.mockResolvedValue({
       data: { count: 1, next: null, previous: null, results: [{ id: 1, name: 'Tomate', status: 'published' }] },
