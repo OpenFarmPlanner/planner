@@ -29,6 +29,7 @@ from farm.history.project_restore import (
 )
 from farm.models import (
     BatchOperation,
+    Crop,
     CropCompanion,
     CropSupplierData,
     EntityRevision,
@@ -648,6 +649,21 @@ class HistoryImplicitCropSaveTests(HistoryInvariantTestCase):
         self.assertEqual(history[0]['changes'], [
             {'field': 'nutrient_demand', 'old_value': '', 'new_value': 'high'},
         ])
+        general_url = f'/crops/{general}/'
+        for restore_url in (f'{variety_url}restore/', '/history/global/restore/'):
+            with self.subTest(restore_url=restore_url):
+                self.write('change shared nutrient demand', 'patch', general_url, {
+                    'nutrient_demand': 'low',
+                })
+                self.write('restore promoted value', 'post', restore_url, {
+                    'history_id': saved_edit.pk,
+                })
+                self.assertEqual(Crop.objects.get(pk=general).nutrient_demand, 'high')
+                restored = self.versions[-1].revision
+                self.assertEqual(restored.action, EntityRevision.ACTION_RESTORED)
+                self.assertEqual(restored.object_id, variety['id'])
+                self.assertEqual(restored.snapshot['nutrient_demand'], '')
+
         self.write(
             'remove supplier link', 'patch', variety_url, {'supplier_id': None},
         )
@@ -658,6 +674,18 @@ class HistoryImplicitCropSaveTests(HistoryInvariantTestCase):
 
         self.assertEqual(self.restore(completed.revision), 200)
         self.assert_state(completed.state, 'implicit crop save restores its completed version')
+
+        self.write('delete original general crop', 'delete', general_url)
+        self.write('new general for the same species', 'post', '/crops/', {
+            'name': 'History bean', 'crop_species': species.pk, 'nutrient_demand': 'low',
+        })
+        before = capture_project_state(self.project)
+        counts = self.history_counts()
+        conflict = self.client.post(f'{API}{variety_url}restore/', {
+            'history_id': saved_edit.pk,
+        }, format='json')
+        self.assertEqual(conflict.json()['field'], 'general_crop')
+        self.assert_refusal_is_atomic(conflict.status_code, before, counts)
 
 
 class HistoryLibraryCompanionRoundTripTests(HistoryInvariantTestCase):

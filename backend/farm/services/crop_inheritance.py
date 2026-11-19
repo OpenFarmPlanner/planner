@@ -177,6 +177,7 @@ def find_general_crop(
     crop_species_id: int | None,
     *,
     exclude_pk: int | None = None,
+    for_update: bool = False,
 ) -> Crop | None:
     """The project's general Kultur for a crop species, looked up by ids.
 
@@ -192,6 +193,8 @@ def find_general_crop(
     )
     if exclude_pk is not None:
         queryset = queryset.exclude(pk=exclude_pk)
+    if for_update:
+        queryset = queryset.select_for_update()
     return queryset.order_by('pk').first()
 
 
@@ -426,7 +429,7 @@ def clear_species_invariant_overrides(
 def promote_species_invariant_values(
     variety: Crop,
     fields: Sequence[str],
-) -> dict[str, dict[str, Any]]:
+) -> dict[str, Any]:
     """Move the species-invariant values this write sent onto the general Kultur.
 
     The three species-invariant fields describe the species, not the Sorte, so a
@@ -464,7 +467,12 @@ def promote_species_invariant_values(
     if changes:
         general.save(update_fields=changes)
     clear_species_invariant_overrides(variety, fields=fields)
-    return {crop_field_attname(field): change for field, change in changes.items()}
+    if not changes:
+        return {}
+    return {
+        'general_crop_id': general.pk,
+        'fields': {crop_field_attname(field): change for field, change in changes.items()},
+    }
 
 
 @transaction.atomic

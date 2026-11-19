@@ -29,11 +29,10 @@ from farm.common.serializer_fields import (
 from farm.enum_normalization import normalize_seed_rate_unit
 from farm.germination import complete_germination_write
 from farm.history.records import (
-    PROMOTED_CROP_FIELD_CHANGES,
-    _diff_changed_fields,
     _entity_display_name,
     _serialize_instance,
     internal_project_versions,
+    record_completed_crop_revision,
     record_entity_revision,
     revision_actor,
 )
@@ -1024,7 +1023,7 @@ class CropSerializer(serializers.ModelSerializer):
             project = self.instance.project
         with transaction.atomic():
             lock_crop_project(project.pk)
-            previous_crop = _serialize_instance(self.instance) if self.instance is not None else {}
+            before_crop = _serialize_instance(self.instance) if self.instance is not None else None
             children = (
                 (CropSupplierData, 'crop_supplier_data'), (SeedPackage, 'seed_package'),
             ) if has_children else ()
@@ -1052,20 +1051,10 @@ class CropSerializer(serializers.ModelSerializer):
                                     'deleted' if new is None else 'updated'),
                             snapshot=new or old, display_name=crop.name,
                         )
-            snapshot = _serialize_instance(crop)
-            changed_fields = None
-            if not creating:
-                changed_fields = _diff_changed_fields(previous_crop, snapshot)
-                if self._promoted_species_changes:
-                    snapshot[PROMOTED_CROP_FIELD_CHANGES] = self._promoted_species_changes
-                    changed_fields = list(dict.fromkeys([
-                        *changed_fields, *self._promoted_species_changes,
-                    ]))
-            record_entity_revision(
-                project=project, entity_type='crop', object_id=crop.pk,
+            record_completed_crop_revision(
+                crop, before=before_crop,
                 action=EntityRevision.ACTION_CREATED if creating else EntityRevision.ACTION_UPDATED,
-                snapshot=snapshot, display_name=_entity_display_name(crop),
-                changed_fields=changed_fields,
+                promoted=None if creating else self._promoted_species_changes,
             )
             return crop
 

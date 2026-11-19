@@ -22,9 +22,17 @@ from farm.models import (
     Supplier,
     Task,
 )
-from farm.models.crops import is_supplier_domain
+from farm.models.crops import (
+    crop_field_attname,
+    get_crop_field_value,
+    is_supplier_domain,
+    set_crop_field_value,
+)
 from farm.services.crop_inheritance import (
+    CROP_SPECIES_INVARIANT_FIELDS,
     crop_identity_write,
+    find_general_crop,
+    inherits_from_general_crop,
     lock_crop_project,
     validate_crop_identity,
 )
@@ -32,9 +40,11 @@ from farm.services.crop_inheritance import (
 from .records import (
     _ENTITY_TYPE_LABELS,
     _RESTORABLE_ENTITY_TYPES,
+    PROMOTED_CROP_FIELD_CHANGES,
     _entity_display_name,
     _serialize_instance,
     internal_project_versions,
+    record_completed_crop_revision,
     record_entity_revision,
     start_batch_operation,
 )
@@ -155,8 +165,10 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
     rather than a plain update (see `Crop.save`).
     """
     snapshot = _with_legacy_snapshot_fields(Crop, revision.snapshot)
+    promoted = revision.snapshot.get(PROMOTED_CROP_FIELD_CHANGES)
     with crop_identity_write(crop.project_id):
         crop.refresh_from_db()
+        before = _serialize_instance(crop) if promoted else None
         old_image_id = crop.image_file_id
         _apply_crop_snapshot_fields(crop, snapshot)
         if 'timing_windows' in revision.snapshot:
@@ -167,10 +179,50 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
         validate_crop_identity(crop)
         if 'image_file_id' in snapshot:
             _restore_crop_image_markers(crop, old_image_id)
-        crop._history_action = EntityRevision.ACTION_RESTORED
-        crop.save()
+        if promoted:
+            general_changes = _restore_promoted_crop_fields(crop, promoted)
+            crop.save(record_history=False)
+            record_completed_crop_revision(
+                crop, action=EntityRevision.ACTION_RESTORED, before=before,
+                promoted=general_changes,
+            )
+        else:
+            crop._history_action = EntityRevision.ACTION_RESTORED
+            crop.save()
 
     return crop
+
+
+def _restore_promoted_crop_fields(crop: Crop, promoted: dict[str, Any]) -> dict[str, Any]:
+    if not inherits_from_general_crop(crop):
+        raise CropRestoreReferenceConflict('general_crop')
+    general = find_general_crop(
+        crop.project_id, crop.crop_species_id, exclude_pk=crop.pk, for_update=True,
+    )
+    if general is None or general.pk != promoted['general_crop_id']:
+        raise CropRestoreReferenceConflict('general_crop')
+
+    changes = {}
+    update_fields = []
+    for field in CROP_SPECIES_INVARIANT_FIELDS:
+        attname = crop_field_attname(field)
+        if attname not in promoted['fields']:
+            continue
+        value = promoted['fields'][attname]['new_value']
+        old_value = get_crop_field_value(general, field)
+        changes[attname] = {'old_value': old_value, 'new_value': value}
+        if value == old_value:
+            continue
+        model_field = Crop._meta.get_field(field)
+        if model_field.remote_field and value is not None:
+            value = _crop_restore_reference(crop, attname, model_field.remote_field.model, value)
+        set_crop_field_value(general, field, value)
+        update_fields.append(field)
+
+    if update_fields:
+        with internal_project_versions():
+            general.save(update_fields=update_fields)
+    return {'general_crop_id': general.pk, 'fields': changes}
 
 
 def _apply_crop_snapshot_fields(crop: Crop, snapshot: dict) -> None:
