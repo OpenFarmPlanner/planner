@@ -241,11 +241,11 @@ export function CropSpeciesPicker({
         );
       }}
       onKeyDown={(event) => {
+        if (event.key !== 'Tab' || event.shiftKey || !canPropose || proposing || disabled) return;
         const button = document.getElementById(proposalActionId);
-        if (event.key === 'Tab' && !event.shiftKey && canPropose && !proposing && !disabled && button) {
-          event.preventDefault();
-          button.focus();
-        }
+        if (!button || button.closest('[data-popper-reference-hidden]')) return;
+        event.preventDefault();
+        button.focus();
       }}
       onChange={(_, option) => {
         onChange(option);

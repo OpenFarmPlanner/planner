@@ -448,6 +448,21 @@ describe('CropSpeciesPicker', () => {
       expect(onProposalNameChange).not.toHaveBeenCalledWith('Yacon');
     });
 
+    it('leaves the field normally when the popup anchor is clipped', async () => {
+      const user = userEvent.setup();
+      const { onProposalNameChange } = setup();
+      render(<button>Continue</button>);
+      await user.type(field(), 'Yacon');
+      const popup = proposeOption('Yacon').closest('.MuiAutocomplete-popper')!;
+      popup.setAttribute('data-popper-reference-hidden', '');
+      await user.tab();
+
+      expect(screen.getByRole('button', { name: 'Continue' })).toHaveFocus();
+      expect(popup).not.toBeInTheDocument();
+      expect(field()).toHaveValue('Yacon');
+      expect(onProposalNameChange).not.toHaveBeenCalledWith('Yacon');
+    });
+
     it('returns focus to the field when Escape closes the proposal popup', async () => {
       const user = userEvent.setup();
       const { onProposalNameChange } = setup({ serverSearched: true });
