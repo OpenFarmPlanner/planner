@@ -42,6 +42,33 @@ class LocalLibraryImportSeedTests(TestCase):
     def seed(self, **options):
         call_command("seed_library_import_acceptance", **{**self.arguments, **options})
 
+    def test_crop_library_history_fixture_requires_packages_and_preserves_local_edits(self):
+        command = 'seed_crop_library_history_acceptance'
+        with self.assertRaisesMessage(CommandError, 'with seed packages'):
+            call_command(command, **self.arguments)
+        self.entry.seed_packages = [{'size_value': 25, 'size_unit': 'g'}]
+        self.entry.save()
+
+        call_command(command, **self.arguments)
+        self.assertEqual(
+            list(Project.objects.values_list('pk', flat=True)), self.project_ids_before,
+        )
+        call_command(command, apply=True, **self.arguments)
+        project = Project.objects.get(
+            slug=f'ofp-local-crop-library-history-{self.user.pk}-{self.entry.pk}',
+        )
+        self.assertTrue(ProjectMembership.objects.filter(
+            project=project, user=self.user, role='admin',
+        ).exists())
+        self.assertFalse(Crop.objects.filter(project=project).exists())
+        crop = Crop.objects.create(project=project, name='My test crop', notes='Keep this edit')
+
+        call_command(command, apply=True, **self.arguments)
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before) + 1)
+        self.assertEqual(Crop.objects.get(pk=crop.pk).notes, 'Keep this edit')
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.seed_packages, [{'size_value': 25, 'size_unit': 'g'}])
+
     def test_import_history_fixture_is_previewed_and_repeat_safe(self):
         arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
         before = Project.objects.count()

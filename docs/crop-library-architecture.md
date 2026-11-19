@@ -2471,6 +2471,13 @@ Project-wide history recovery also advances crop timestamps, including crops who
 shared relations changed without their own snapshot being restored.
 Older clients may omit these optional preconditions.
 
+Project history records the resulting private crop link, applied or rejected
+library version, divergence and species after publish, link, copy, sync,
+import, decline or species correction. A completed project version includes
+the seed packages copied on import and any private sibling crops that adopted
+the species. The shared entry and its revisions stay in the library's own
+history during a project restore. See [Versioning and History](./versioning-and-history.md).
+
 Ordinary crop CRUD, implicit general creation, library species changes and
 history/undelete restores share the project lock and validate prospective general
 identities. These writers use a non-waiting project lock and return 409 when busy,

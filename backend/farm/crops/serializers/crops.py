@@ -1109,6 +1109,7 @@ class CropSerializer(serializers.ModelSerializer):
                 # becomes the baseline (see link_project_crop_to_public_reference).
                 link_project_crop_to_public_reference(
                     crop=crop, public_crop=link_public_crop, pull_fields=[],
+                    user=getattr(self.context.get('request'), 'user', None),
                 )
         return crop
 

@@ -891,9 +891,6 @@ class CropApiTest(ProjectApiTestCase):
         self.assertTrue(response.data['exists'])
         self.assertEqual(response.data['crop']['name'], 'Tomate')
 
-    @pytest.mark.history_gap(
-        issue=1201, reason='library provenance writes record no crop revision',
-    )
     def test_link_public_crop_updates_private_reference_without_creating_public_entry(self):
         species = CropSpecies.objects.get(name_normalized='tomate')
         public_crop = PublicCrop.objects.create(

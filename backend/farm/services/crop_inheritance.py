@@ -490,11 +490,17 @@ def sync_crop_species_across_crop_group(
     separate group and stay untouched either way.
 
     Returns the number of rows that adopted the species. They are written
-    through the queryset instead of ``save()`` on purpose: adopting the species
-    keeps the group's existing identity intact rather than editing those rows,
-    so it should neither record a history revision nor flag them as diverged
-    from their public source.
+    through the queryset so adopting the species preserves their divergence
+    flags. Their after-images are internal to the initiating crop action.
     """
+    from farm.history.records import (
+        _entity_display_name,
+        _serialize_instance,
+        internal_project_versions,
+        record_entity_revision,
+    )
+    from farm.models import EntityRevision
+
     if not crop.crop_species_id or not crop.name_normalized:
         return 0
     lock_crop_project(crop.project_id)
@@ -503,13 +509,27 @@ def sync_crop_species_across_crop_group(
         target_species_id=crop.crop_species_id,
         previous_species_id=previous_species_id,
     )
-    general_rows = list(rows.filter(GENERAL_CROP_ROW_Q))
+    members = list(rows.order_by('pk'))
+    general_rows = [member for member in members if not member.variety_normalized]
     if len(general_rows) > 1:
         raise GeneralCropIdentityConflict()
     for general in general_rows:
         general.crop_species_id = crop.crop_species_id
         validate_general_crop_identity(general)
-    return rows.update(crop_species_id=crop.crop_species_id, updated_at=timezone.now())
+    if not members:
+        return 0
+    changed_members = Crop.objects.filter(pk__in=[member.pk for member in members])
+    updated = changed_members.update(
+        crop_species_id=crop.crop_species_id, updated_at=timezone.now(),
+    )
+    with internal_project_versions():
+        for member in changed_members.order_by('pk'):
+            record_entity_revision(
+                project=crop.project, entity_type='crop', object_id=member.pk,
+                action=EntityRevision.ACTION_UPDATED, snapshot=_serialize_instance(member),
+                display_name=_entity_display_name(member), changed_fields=['crop_species_id'],
+            )
+    return updated
 
 
 def crop_group_rows_to_sync(

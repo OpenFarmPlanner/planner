@@ -9,7 +9,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from farm.common.mixins import ProjectRevisionMixin, ProjectScopedMixin
-from farm.history.records import _serialize_instance
+from farm.history.records import _current_actor_label, _serialize_instance
 from farm.models import CropCompanion, EntityRevision
 from farm.services.crop_companions import active_relations, mark_library_copies_modified
 from farm.services.crop_inheritance import lock_crop_project
@@ -51,26 +51,32 @@ class CropCompanionViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mo
             queryset = queryset.filter(Q(crop_id=crop_id) | Q(companion_crop_id=crop_id))
         return queryset
 
+    def _mark_library_copies_modified(self, kultur_ids: tuple[int | None, ...]) -> None:
+        mark_library_copies_modified(kultur_ids, user_name=_current_actor_label(self.request))
+
     @transaction.atomic
     def perform_create(self, serializer):
         lock_crop_project(self.request.active_project.pk)
         instance = serializer.save(project=self.request.active_project)
+        self._mark_library_copies_modified(_kultur_ids(instance))
         self.record_revision(instance, EntityRevision.ACTION_CREATED)
-        mark_library_copies_modified(_kultur_ids(instance))
 
     @transaction.atomic
     def perform_update(self, serializer):
         lock_crop_project(self.request.active_project.pk)
         before = _kultur_ids(serializer.instance)
-        super().perform_update(serializer)
-        mark_library_copies_modified((*before, *_kultur_ids(serializer.instance)))
+        previous_snapshot = _serialize_instance(serializer.instance)
+        instance = serializer.save()
+        self._mark_library_copies_modified((*before, *_kultur_ids(instance)))
+        self.record_revision(
+            instance, EntityRevision.ACTION_UPDATED, previous_snapshot=previous_snapshot,
+        )
 
     @transaction.atomic
     def perform_destroy(self, instance):
         lock_crop_project(self.request.active_project.pk)
-        kultur_ids = _kultur_ids(instance)
+        self._mark_library_copies_modified(_kultur_ids(instance))
         super().perform_destroy(instance)
-        mark_library_copies_modified(kultur_ids)
 
     @extend_schema(
         request=CropCompanionReplaceSerializer,
@@ -84,28 +90,24 @@ class CropCompanionViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mo
         )
         serializer.is_valid(raise_exception=True)
         kultur = serializer.validated_data['crop']
-        touched: set[int | None] = set()
         with transaction.atomic():
             lock_crop_project(self.request.active_project.pk)
             for relation in serializer.validated_data['removed']:
-                touched.update(_kultur_ids(relation))
                 self.perform_destroy(relation)
             for child in serializer.validated_data['children']:
                 if child.instance is None:
                     instance = child.save(project=self.request.active_project)
+                    self._mark_library_copies_modified(_kultur_ids(instance))
                     self.record_revision(instance, EntityRevision.ACTION_CREATED)
                 elif _changes_relation(child):
                     previous_snapshot = _serialize_instance(child.instance)
                     instance = child.save()
+                    self._mark_library_copies_modified(_kultur_ids(instance))
                     self.record_revision(
                         instance,
                         EntityRevision.ACTION_UPDATED,
                         previous_snapshot=previous_snapshot,
                     )
-                else:
-                    continue
-                touched.update(_kultur_ids(instance))
-            mark_library_copies_modified(touched)
         relations = self.get_queryset().filter(Q(crop=kultur) | Q(companion_crop=kultur))
         return Response(
             CropCompanionSerializer(relations, many=True, context=self.get_serializer_context()).data, status=status.HTTP_200_OK,

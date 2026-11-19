@@ -39,6 +39,14 @@ write path — it just creates an `EntityRevision` row. It's called:
   assignments before `.save()` calls in the farm domain view packages; this is
   how a save is tagged as a delete/restore action rather than a plain
   update for history purposes.
+- **Explicitly** at the end of crop-library operations that write project
+  fields through a queryset. Publish, link, copy, sync, import, decline and
+  species correction capture the final link, baseline, divergence, rejection
+  and species fields as applicable. The project's crop revision follows any
+  internal revisions for sibling crops, seed packages and library companions.
+  A moderator's library action establishes a baseline in the affected project
+  when needed. Project history uses the moderator's public display name when
+  available and a library moderation label otherwise.
 - **Through `ProjectRevisionMixin`** (`backend/farm/common/mixins.py`) for the
   project-scoped viewsets: its `record_revision` helper wraps
   `record_entity_revision` with the active project and actor, and its default
@@ -228,6 +236,23 @@ preview must explain the conflict and disable undo. In **full**, restore the
 import version: later crop/bed data disappear; select the automatic backup to
 bring them back. Repeat at phone/desktop sizes and in another language. Cloud
 verification uses its own synthetic database and never seeds localhost.
+
+`seed_crop_library_history_acceptance` prepares a private project for verifying
+the project history of a linked import. Use an existing published entry in the
+local database that lists at least one seed package. From `backend/`, preview
+the exact database target, then repeat with `--apply` to create the project:
+
+```bash
+DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py \
+  seed_crop_library_history_acceptance --username LOCAL_ACCOUNT \
+  --database-name EXACT_LOCAL_DATABASE --public-crop-id ENTRY_ID
+```
+
+In **Crop library history acceptance**, import that entry with linking. Delete
+an imported seed package from the local crop and restore the import version
+from Project history. The same crop is still linked and the deleted package is
+back. The fixture command preserves edits on repeat and leaves the local
+library entry untouched.
 
 ## What to check before changing this
 
