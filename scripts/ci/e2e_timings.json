@@ -176,8 +176,8 @@
       "duration_ms": 8276
     },
     "e2e/library-link-lifecycle.spec.ts": {
-      "tests": 24,
-      "duration_ms": 141266
+      "tests": 25,
+      "duration_ms": 163000
     },
     "e2e/life-cycle-selection.spec.ts": {
       "tests": 8,

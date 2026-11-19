@@ -306,6 +306,7 @@ function Crops() {
     publicLibraryInitialQuery,
     publishingCropId,
     fetchPublicCrops,
+    refreshPublicCrops,
     handleOpenPublicLibrary,
     varietyImport, setVarietyImport, handleVarietyImportSuccess,
     importLink,
@@ -891,6 +892,8 @@ function Crops() {
 
       <PublicCropLibraryDialog
         open={publicLibraryOpen}
+        activeProjectId={activeProjectId}
+        onBatchComplete={async () => { await Promise.all([fetchCrops(), refreshPublicCrops()]); }}
         loading={publicLibraryLoading}
         error={publicLibraryError}
         crops={publicCrops}

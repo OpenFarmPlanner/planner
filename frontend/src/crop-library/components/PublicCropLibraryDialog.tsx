@@ -4,7 +4,7 @@ import { Link as RouterLink } from 'react-router';
 import { Trans } from 'react-i18next';
 import { useTranslation } from '../../i18n';
 import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
-import type { PublicCrop } from '../../api/types';
+import type { PublicCrop, PublicCropBatchImportResult } from '../../api/types';
 import {
   Alert,
   Badge,
@@ -33,6 +33,9 @@ import { getPublicCropDescription, getPublicCropTitle } from '../publicCropDispl
 import { DetailSection } from '../../components/layout/DetailPrimitives';
 import { LocalizedMarkdownNotes } from './LocalizedMarkdownNotes';
 import { PublicCropFiltersPopover } from './PublicCropFiltersPopover';
+import { PublicCropBatchImportDialog } from './PublicCropBatchImportDialog';
+import { PublicCropBatchActions, PublicCropBatchSelectButton } from './PublicCropBatchSelection';
+import { usePublicCropBatchSelection } from '../hooks/usePublicCropBatchSelection';
 import {
   EMPTY_PUBLIC_CROP_FILTERS,
   countActivePublicCropFilters,
@@ -53,6 +56,8 @@ interface PublicCropLibraryDialogProps {
   onSearch: (query: string) => void;
   onImport: (crop: PublicCrop) => void;
   onImportVarieties?: (crop: PublicCrop) => void;
+  activeProjectId?: number | null;
+  onBatchComplete?: (result: PublicCropBatchImportResult) => Promise<void>;
 }
 
 const previewBadgeSx = {
@@ -142,6 +147,8 @@ export function PublicCropLibraryDialog({
   onSearch,
   onImport,
   onImportVarieties,
+  activeProjectId,
+  onBatchComplete,
 }: PublicCropLibraryDialogProps) {
   const { t, i18n } = useTranslation('crops');
   const plantFamilies = usePlantFamilies();
@@ -157,17 +164,6 @@ export function PublicCropLibraryDialog({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const useMobileFilterLayout = useMediaQuery(theme.breakpoints.down('md'));
-  const closeDialog = useCallback((): void => {
-    onClose();
-  }, [onClose]);
-
-  useOverlayHistory({
-    open,
-    onClose,
-    historyKey: PUBLIC_CROP_LIBRARY_HISTORY_KEY,
-    enabled: useMobileFilterLayout,
-  });
-
   useEffect(() => {
     if (open) {
       let cancelled = false;
@@ -217,6 +213,20 @@ export function PublicCropLibraryDialog({
     const matchesQuery = normalizedQuery.length === 0 || label.includes(normalizedQuery);
     return matchesQuery && matchesPublicCropFilters(entry, filters, filterOptions.plantHealthValues);
   }), [crops, filters, filterOptions.plantHealthValues, language, normalizedQuery, plantFamilies, t]);
+
+  const batch = usePublicCropBatchSelection(open && onBatchComplete ? activeProjectId : null, filteredCrops);
+  const clearBatchSelection = batch.clear;
+  const closeDialog = useCallback((): void => {
+    clearBatchSelection();
+    onClose();
+  }, [clearBatchSelection, onClose]);
+
+  useOverlayHistory({
+    open,
+    onClose: closeDialog,
+    historyKey: PUBLIC_CROP_LIBRARY_HISTORY_KEY,
+    enabled: useMobileFilterLayout,
+  });
 
   useEffect(() => {
     if (loading || (initialSelectedId && selectedId === initialSelectedId && crops.length === 0)) {
@@ -298,7 +308,7 @@ export function PublicCropLibraryDialog({
     : undefined;
 
   return (
-    <Dialog
+    <><Dialog
     open={open}
     onClose={handleDialogClose}
     maxWidth={useMobileFilterLayout ? false : 'md'}
@@ -341,6 +351,7 @@ export function PublicCropLibraryDialog({
             input: {
               startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />,
               endAdornment: (
+                <>
                 <IconButton
                   size="small"
                   onClick={(event) => setFilterAnchorEl(event.currentTarget)}
@@ -354,10 +365,13 @@ export function PublicCropLibraryDialog({
                     <TuneIcon fontSize="small" />
                   </Badge>
                 </IconButton>
+                <PublicCropBatchSelectButton batch={batch} disabled={importingId !== null} onEnter={() => setMobileStep('list')} />
+                </>
               ),
             }
           }}
         />
+        <PublicCropBatchActions batch={batch} loading={loading || Boolean(error)} />
 
         <PublicCropFiltersPopover
           anchorEl={filterAnchorEl}
@@ -383,6 +397,7 @@ export function PublicCropLibraryDialog({
             <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, height: useMobileFilterLayout ? '100%' : 420, minHeight: 0, overflowY: 'auto', scrollbarGutter: 'stable' }}>
               <PublicCropHierarchyList
                 crops={filteredCrops}
+                batchSelection={batch.selection}
                 selectedCropId={selectedId}
                 isSpeciesView={isSpeciesView}
                 storageKey="publicCropLibraryDialog"
@@ -483,5 +498,11 @@ export function PublicCropLibraryDialog({
         </DisabledActionTooltip>
       </DialogActions>
     </Dialog>
+    {batch.preview && onBatchComplete && <PublicCropBatchImportDialog projectId={batch.preview.projectId}
+      initialParents={batch.preview.parents} onComplete={onBatchComplete} onClose={completed => {
+        if (completed) batch.cancel();
+        else batch.closePreview();
+      }} />}
+    </>
   );
 }

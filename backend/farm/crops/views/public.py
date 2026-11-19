@@ -2,6 +2,8 @@
 
 
 from collections.abc import Mapping
+from hashlib import sha256
+from json import dumps
 from typing import Any
 
 from django.db import transaction
@@ -29,7 +31,9 @@ from farm.crops.moderation import (
     pending_queue_limit_exceeded,
     requires_moderation_queue,
 )
+from farm.history.import_operations import ImportOperationConflict, execute_import_request
 from farm.history.project_restore import ensure_project_checkpoint
+from farm.history.records import _current_actor_label
 from farm.models import (
     Crop,
     PublicCrop,
@@ -39,7 +43,10 @@ from farm.models import (
     format_crop_display_name,
 )
 from farm.project_context import get_active_project_optional, get_active_project_or_400
-from farm.services.public_crop_import_selection import import_public_crop_selection
+from farm.services.public_crop_import_selection import (
+    import_public_crop_batch,
+    import_public_crop_selection,
+)
 from farm.services.public_crop_trade_names import (
     TradeNameConflictError,
     TradeNameEditConflictError,
@@ -88,6 +95,7 @@ from ..serializers import (
     PublicCropSerializer,
 )
 from ..serializers.public import (
+    PublicCropBatchImportSerializer,
     PublicCropChangeProposalSerializer,
     PublicCropDiscussionCommentSerializer,
     PublicCropDiscussionTopicSerializer,
@@ -845,6 +853,36 @@ class PublicCropViewSet(viewsets.ModelViewSet):
         except PublicCropIdentityConflictError as error:
             return api_error_response(code=error.code, detail=str(error), status_code=409)
         return Response({"entries": entries})
+
+    @action(detail=False, methods=['post'], url_path='import-batch')
+    def import_batch(self, request):
+        project = get_active_project_or_400(request)
+        serializer = PublicCropBatchImportSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        if data['expected_project_id'] != project.pk:
+            return api_error_response(
+                code='public_crop_import_project_changed',
+                detail='Preview the active project again.', status_code=409,
+            )
+        language = note_language({'request': request})
+        groups = data['groups']
+        fingerprint = sha256(dumps([language, groups], sort_keys=True).encode()).hexdigest()
+        try:
+            summary = execute_import_request(
+                project, request_id=data['request_id'], actor_id=request.user.pk,
+                actor_label=_current_actor_label(request), phase=None,
+                request_fingerprint=fingerprint,
+                run=lambda: import_public_crop_batch(
+                    project=project, groups=groups, user=request.user, language=language,
+                ),
+            )
+        except ImportOperationConflict:
+            return api_error_response(
+                code='crop_import_operation_unavailable',
+                detail='Inspect the saved crops before starting another import.', status_code=409,
+            )
+        return Response({'groups': summary['groups']})
 
     @action(detail=True, methods=['get', 'post'], url_path='discussion-topics')
     def discussion_topics(self, request: Request, pk: int | None = None) -> Response:

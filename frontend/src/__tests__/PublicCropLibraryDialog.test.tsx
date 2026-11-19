@@ -82,6 +82,43 @@ function renderDialog(props: Parameters<typeof PublicCropLibraryDialog>[0]): Ret
 }
 
 describe('PublicCropLibraryDialog', () => {
+  it('selects only eligible visible cultures and retains hidden selections through filter changes', async () => {
+    mockDesktopViewport();
+    const tomato = { ...crop, id: 20, variety: '', crop_species: 101 };
+    const carrot = { ...carrotCrop, id: 21, variety: '', crop_species: 102 };
+    const pending: PublicCrop = { ...lettuceCrop, id: 22, variety: '', crop_species: 103, crop_species_status: 'proposed' };
+    const onBatchComplete = vi.fn();
+    const onImport = vi.fn();
+    renderDialog({ open: true, loading: false, error: null, importingId: null, activeProjectId: 57,
+      crops: [tomato, carrot, pending, { ...crop, crop_species: 101 }],
+      onClose: vi.fn(), onSearch: vi.fn(), onImport, onBatchComplete });
+    const user = userEvent.setup();
+    const mode = screen.getByRole('button', { name: 'Kulturen auswählen', exact: true });
+    await user.click(mode);
+    expect(screen.getAllByRole('checkbox')).toHaveLength(2);
+    expect(screen.queryByRole('checkbox', { name: /Roma|Salat/ })).not.toBeInTheDocument();
+    await user.type(screen.getByRole('textbox'), 'Tomate');
+    await user.click(screen.getByRole('button', { name: 'Sichtbare Kulturen auswählen (1)' }));
+    expect(screen.getByRole('checkbox', { name: 'Tomate auswählen' })).toBeChecked();
+    await user.clear(screen.getByRole('textbox'));
+    await user.click(screen.getByRole('button', { name: i18n.t('filters.openAdvanced', { ns: 'crops' }) }));
+    await user.type(screen.getByLabelText(i18n.t('filters.growthDaysMin', { ns: 'crops' })), '80');
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('checkbox', { name: 'Tomate auswählen' })).not.toBeInTheDocument();
+    expect(screen.getByText('Ausgewählt (1)', { exact: true })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Sichtbare Kulturen auswählen (1)' }));
+    expect(screen.getByRole('checkbox', { name: 'Möhre auswählen' })).toBeChecked();
+    expect(screen.getByText('Ausgewählt (2)', { exact: true })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Sichtbare Kulturen abwählen (1)' }));
+    expect(screen.getByText('Ausgewählt (1)', { exact: true })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Auswahl abbrechen' }));
+    await waitFor(() => expect(mode).toHaveFocus());
+    expect(mode).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(onImport).not.toHaveBeenCalled();
+    expect(onBatchComplete).not.toHaveBeenCalled();
+  });
+
   it('preserves search and the selected entry when a comparison crosses a responsive breakpoint', async () => {
     mockDesktopViewport();
     const props = { open: true, loading: false, error: null, crops: [crop], importingId: null,

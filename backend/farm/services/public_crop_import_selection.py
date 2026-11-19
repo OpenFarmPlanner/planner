@@ -1,14 +1,20 @@
-"""Commit a culture and its explicitly selected varieties as one import."""
+"""Commit selected cultures and their explicitly selected varieties."""
 
 from typing import Any
 
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
+from crops.models import CropSpecies
 from farm.models import Crop, Project, PublicCrop
 from farm.services.public_crops import (
     CropLinkConflictError,
+    LibraryPinnedFieldsError,
     PublicCropEditConflictError,
+    PublicCropIdentityConflictError,
+    PublicCropImportConfirmationRequiredError,
+    PublicCropPermissionError,
+    PublicCropSyncFieldsError,
     import_public_crop_into_project,
     link_project_crop_to_public_reference,
     public_crop_import_candidates,
@@ -94,6 +100,7 @@ def import_public_crop_selection(
     decisions: list[dict[str, Any]],
     user,
     language: str,
+    allow_legacy_parent: bool = False,
 ) -> list[dict[str, Any]]:
     Project.objects.select_for_update().get(pk=project.pk)
     ids = {decision["public_crop_id"] for decision in decisions}
@@ -106,9 +113,12 @@ def import_public_crop_selection(
     parent = entries.get(parent.pk)
     if parent is None:
         raise CropLinkConflictError()
-    if parent.variety_normalized or not parent.crop_species_id:
+    legacy_entry = allow_legacy_parent and len(ids) == 1
+    if parent.variety_normalized or (not parent.crop_species_id and not legacy_entry):
         raise ValidationError("A general culture with a crop species is required.")
-    if parent.status != PublicCrop.STATUS_PUBLISHED or parent.crop_species.is_pending:
+    if parent.status != PublicCrop.STATUS_PUBLISHED or (
+        parent.crop_species_id and parent.crop_species.is_pending
+    ):
         raise CropLinkConflictError()
     if len(ids) != len(decisions) or parent.pk not in ids or len(entries) != len(ids):
         raise ValidationError("Select the parent once and each variety at most once.")
@@ -139,3 +149,56 @@ def import_public_crop_selection(
         for entry in ordered
     }
     return [results[parent.pk], *(results[entry.pk] for entry in varieties)]
+
+
+def import_public_crop_batch(
+    *, project: Project, groups: list[dict[str, Any]], user, language: str,
+) -> dict[str, Any]:
+    """Apply each parent and its selected varieties together within the history transaction."""
+    public_ids = [item['public_crop_id'] for group in groups for item in group['decisions']]
+    # The outer transaction retains locks across groups. Lock every entry in a
+    # consistent order even when different projects submit the reverse order.
+    library = {
+        entry.pk: entry
+        for entry in PublicCrop.objects.select_for_update().filter(pk__in=public_ids).order_by('pk')
+    }
+    outcomes = []
+    revisions = []
+    skipped_count = 0
+    for group in groups:
+        parent_id = group['parent_id']
+        parent = library.get(parent_id)
+        if (
+            parent is None
+            or parent.status != PublicCrop.STATUS_PUBLISHED
+            or (
+                parent.crop_species_id
+                and parent.crop_species.status != CropSpecies.STATUS_PUBLISHED
+            )
+        ):
+            outcomes.append({'parent_id': parent_id, 'error_code': 'library_entry_unavailable'})
+            continue
+        try:
+            entries = import_public_crop_selection(
+                parent=parent, project=project, decisions=group['decisions'], user=user,
+                language=language, allow_legacy_parent=True,
+            )
+        except (
+            CropLinkConflictError, LibraryPinnedFieldsError, PublicCropEditConflictError,
+            PublicCropIdentityConflictError, PublicCropImportConfirmationRequiredError,
+            PublicCropPermissionError, PublicCropSyncFieldsError, ValidationError,
+        ) as error:
+            outcomes.append({
+                'parent_id': parent_id, 'error_code': getattr(error, 'code', 'crop_link_conflict'),
+            })
+            continue
+        outcomes.append({'parent_id': parent_id, 'entries': entries})
+        for entry in entries:
+            if entry['operation'] == 'unchanged':
+                skipped_count += 1
+            else:
+                revisions.append({
+                    'crop_id': entry['crop_id'],
+                    'status': 'created' if entry['operation'] == 'created' else 'updated',
+                })
+    return {'groups': outcomes, 'results': revisions, 'skipped_count': skipped_count}

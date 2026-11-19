@@ -13,6 +13,9 @@ import { CropSpeciesPendingChip } from './CropSpeciesPendingChip';
 import { isCropSpeciesPending } from './cropSpeciesPending';
 import { getSearchMatchedHierarchyGroupRowIds } from './cropGroupSearch';
 import { normalizePublicCropSearchQuery } from './publicCropSearchMatch';
+import { isBatchImportParent } from '../crop-library/batchImport';
+import { PublicCropBatchRow } from '../crop-library/components/PublicCropBatchSelection';
+import type { PublicCropBatchSelection } from '../crop-library/hooks/usePublicCropBatchSelection';
 
 interface PublicCropHierarchyListProps {
   crops: PublicCrop[];
@@ -30,6 +33,7 @@ interface PublicCropHierarchyListProps {
   sx?: SxProps<Theme>;
   listRef?: Ref<HTMLUListElement>;
   onScroll?: (event: UIEvent<HTMLUListElement>) => void;
+  batchSelection?: PublicCropBatchSelection;
 }
 
 /**
@@ -51,6 +55,7 @@ export function PublicCropHierarchyList({
   sx,
   listRef,
   onScroll,
+  batchSelection,
 }: PublicCropHierarchyListProps) {
   const { t, i18n } = useTranslation('crops');
   const language = i18n.resolvedLanguage ?? i18n.language;
@@ -137,9 +142,9 @@ export function PublicCropHierarchyList({
   return (
     <List
       ref={listRef}
-      {...listNavigation.getListProps()}
+      {...(!batchSelection ? listNavigation.getListProps() : undefined)}
       dense={dense}
-      role="listbox"
+      role={batchSelection ? 'list' : 'listbox'}
       aria-label={ariaLabel}
       onScroll={onScroll}
       sx={sx}
@@ -165,7 +170,7 @@ export function PublicCropHierarchyList({
           && crop.id === selectedCropId
           && (node.kind === 'species' ? isSpeciesView : !isSpeciesView),
         );
-        return (
+        const row = (
           <CropHierarchyRow
             key={node.id}
             itemProps={itemProps}
@@ -177,6 +182,7 @@ export function PublicCropHierarchyList({
             collapseLabel={t('hierarchy.collapseCrop')}
             isSelected={isRowSelected}
             isClickable={isClickable}
+            detailsButton={Boolean(batchSelection)}
             ariaLabel={node.kind === 'species'
               ? node.label
               : crop ? getPublicCropTitle(crop, language, t('library.translation.missingName')) : undefined}
@@ -189,7 +195,7 @@ export function PublicCropHierarchyList({
             endAdornment={showPendingMarker ? <CropSpeciesPendingChip iconOnly /> : undefined}
             isPendingSuggestion={showPendingMarker}
             onKeyboardActivate={() => {
-              if (node.kind !== 'species' || !hasChildren) {
+              if (batchSelection || node.kind !== 'species' || !hasChildren) {
                 return false;
               }
               toggleRow(node.id);
@@ -213,6 +219,10 @@ export function PublicCropHierarchyList({
             }}
           />
         );
+        return batchSelection ? (
+          <PublicCropBatchRow key={node.id} selection={batchSelection}
+            crop={node.kind === 'species' && isBatchImportParent(crop) ? crop : undefined}>{row}</PublicCropBatchRow>
+        ) : row;
       })}
     </List>
   );

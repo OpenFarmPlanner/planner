@@ -1,4 +1,7 @@
 import { PublicCropVarietyImportDialog } from '../components/PublicCropVarietyImportDialog';
+import { PublicCropBatchImportDialog } from '../components/PublicCropBatchImportDialog';
+import { PublicCropBatchActions, PublicCropBatchSelectButton } from '../components/PublicCropBatchSelection';
+import { usePublicCropBatchSelection } from '../hooks/usePublicCropBatchSelection';
 import { ExistingCropLinkDialog, type CropLinkCandidate } from '../../crops/ExistingCropLinkDialog';
 import { SpecificPropertiesDetails } from '../../crops/SpecificPropertiesDetails';
 import { hasSpecificPropertyValues } from '../../crops/specificProperties';
@@ -156,7 +159,7 @@ import {
 type PublicCropLoadStatus = 'loading' | 'success' | 'error';
 
 export default function PublicCropLibraryPage() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, activeProjectId } = useAuth();
   const { isGuestDemo, restrictionMessage, blockInGuestDemo } = useGuestDemoGuard();
   const { t, i18n } = useTranslation('crops');
   const plantFamilies = usePlantFamilies();
@@ -483,6 +486,7 @@ export default function PublicCropLibraryPage() {
     }).filteredCrops,
     [crops, filterMatchingLibraryCrops, normalizedSearchQuery],
   );
+  const batch = usePublicCropBatchSelection(activeProjectId, filteredLibraryCrops);
   const selectedCropSpeciesKey = selectedCrop ? getCropSpeciesKey(selectedCrop) : null;
   const isSelectedSpeciesEntry = Boolean(selectedCrop && !(selectedCrop.variety || '').trim());
   const isSpeciesView = Boolean(
@@ -1652,12 +1656,14 @@ export default function PublicCropLibraryPage() {
                               </AppTooltip>
                             ) : null}
                             {libraryFilterButton}
+                            <PublicCropBatchSelectButton batch={batch} disabled={importingId !== null} />
                           </>
                         ),
                       }
                     }}
                 />
               </Box>
+              <PublicCropBatchActions batch={batch} loading={isCropLoading || loadStatus === 'error'} />
               {isCropLoading ? (
                 <Box sx={{ minHeight: 220, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Stack spacing={1} sx={{ alignItems: "center", }} >
@@ -1682,6 +1688,7 @@ export default function PublicCropLibraryPage() {
                 <PublicCropHierarchyList
                   listRef={cropListRef}
                   crops={filteredLibraryCrops}
+                  batchSelection={batch.selection}
                   selectedCropId={selectedCropId}
                   isSpeciesView={isSpeciesView}
                   storageKey="publicCropLibrary"
@@ -2349,7 +2356,9 @@ export default function PublicCropLibraryPage() {
         onReset={() => { setLibraryFilters(EMPTY_PUBLIC_CROP_FILTERS); setLibraryFilterAnchorEl(null); }}
       />
       <PublicCropMobileSelectorDialog
-          filterControl={libraryFilterButton}
+          filterControl={<>{libraryFilterButton}<PublicCropBatchSelectButton batch={batch} disabled={importingId !== null} /></>}
+          batchActions={<PublicCropBatchActions batch={batch} loading={isCropLoading || loadStatus === 'error'} />}
+          batchSelection={batch.selection}
           open={mobileSelectorOpen}
           query={query}
           crops={filteredLibraryCrops}
@@ -2359,12 +2368,17 @@ export default function PublicCropLibraryPage() {
         selectedCropId={selectedCropId}
         selectedSpeciesViewKey={selectedSpeciesViewKey}
         listRef={cropListRef}
-        onClose={() => setMobileSelectorOpen(false)}
+        onClose={() => { batch.clear(); setMobileSelectorOpen(false); }}
         onQueryChange={setQuery}
         onSearchSubmit={handleSearchSubmit}
         onSelect={selectMobileCrop}
         onListScroll={handleCropListScroll}
       />
+      {batch.preview && <PublicCropBatchImportDialog projectId={batch.preview.projectId} initialParents={batch.preview.parents}
+        onComplete={() => loadCrops({ preserveExisting: true })} onClose={completed => {
+          if (completed) batch.cancel();
+          else batch.closePreview();
+        }} />}
       {editDialogOpen && selectedCrop ? (
         <CropForm
           crop={editFormCrop}

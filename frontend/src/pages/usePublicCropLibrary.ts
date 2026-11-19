@@ -464,6 +464,7 @@ export function usePublicCropLibrary({
   return {
     varietyImport,
     setVarietyImport,
+    refreshPublicCrops: () => fetchPublicCrops(librarySearch.current.query, librarySearch.current.exactMatch),
     handleVarietyImportSuccess: async (result: import('../api/types').PublicCropSelectionImportResult) => {
       showSnackbar(t('library.varietyImport.success', { count: result.entries.filter(entry => entry.operation !== 'unchanged').length }), 'success');
       const response = await cropAPI.get(result.entries[0].crop_id);

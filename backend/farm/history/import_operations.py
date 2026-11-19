@@ -33,6 +33,8 @@ from .restore import _validate_restored_general_identities, _with_legacy_snapsho
 
 _MODELS = dict((label, model) for model, label in PROJECT_STATE_MODELS)
 _INTERNAL = "_import_changes"
+_REQUEST_FINGERPRINT = "_request_fingerprint"
+_RESPONSE = "_request_response"
 
 
 class ImportOperationConflict(Exception):
@@ -123,6 +125,55 @@ def _create_import_batch(
         raise ImportOperationConflict("import identifier is already in use") from exc
 
 
+def _existing_import_response(
+    batch: BatchOperation, project: Project, actor_id: int, request_fingerprint: str | None,
+) -> dict[str, Any] | None:
+    if (
+        batch.project_id != project.pk
+        or batch.initiated_by_id != actor_id
+        or batch.operation_type != BatchOperation.TYPE_CROP_IMPORT
+        or batch.reverted_at is not None
+        or batch.created_at < timezone.now() - timedelta(days=1)
+        or batch.context.get(_REQUEST_FINGERPRINT) != request_fingerprint
+    ):
+        raise ImportOperationConflict("import operation is unavailable")
+    if batch.completed_at is None:
+        return None
+    if request_fingerprint is None or _RESPONSE not in batch.context:
+        raise ImportOperationConflict("import operation is unavailable")
+    return batch.context[_RESPONSE]
+
+
+def _record_import_request(
+    project: Project, batch: BatchOperation, run: Callable[[], dict[str, Any]], *, keep_empty: bool,
+) -> dict[str, Any]:
+    before = capture_project_state(project, lock=True)
+    with revision_batch(batch):
+        record_project_checkpoint(
+            project, before, batch_operation=batch, action=EntityRevision.ACTION_UPDATED
+        )
+        summary = run()
+        after = capture_project_state(project)
+        _record_changes(project, before, after, batch)
+        if keep_empty or batch.context[_INTERNAL]:
+            record_project_checkpoint(project, after, batch_operation=batch)
+        else:
+            # Keep a replayable receipt for a no-op without showing an empty history group.
+            batch.revisions.filter(entity_type="project").delete()
+    statuses = batch.context.setdefault("_crop_statuses", {})
+    for receipt in summary.get("results", []):
+        if receipt["status"] in ("created", "updated"):
+            key = str(receipt["crop_id"])
+            if statuses.get(key) != "created":
+                statuses[key] = receipt["status"]
+    batch.context["created_count"] = sum(status == "created" for status in statuses.values())
+    batch.context["updated_count"] = sum(status == "updated" for status in statuses.values())
+    batch.context["skipped_count"] = batch.context.get("skipped_count", 0) + summary.get(
+        "skipped_count", 0
+    )
+    return summary
+
+
 def execute_import_request(
     project: Project,
     *,
@@ -131,6 +182,7 @@ def execute_import_request(
     actor_label: str,
     phase: str | None,
     run: Callable[[], dict[str, Any]],
+    request_fingerprint: str | None = None,
 ) -> dict[str, Any]:
     """One logical client UUID groups all HTTP batches without timestamp heuristics."""
     if request_id is None:
@@ -146,37 +198,19 @@ def execute_import_request(
             if phase not in (None, "crops", "finalize"):
                 raise ImportOperationConflict("unknown import operation")
             batch = _create_import_batch(project, identifier, actor_id, actor_label)
-        elif (
-            batch.project_id != project.pk
-            or batch.initiated_by_id != actor_id
-            or batch.operation_type != BatchOperation.TYPE_CROP_IMPORT
-            or batch.completed_at is not None
-            or batch.reverted_at is not None
-            or batch.created_at < timezone.now() - timedelta(days=1)
-        ):
-            raise ImportOperationConflict("import operation is unavailable")
-        before = capture_project_state(project, lock=True)
-        with revision_batch(batch):
-            record_project_checkpoint(
-                project, before, batch_operation=batch, action=EntityRevision.ACTION_UPDATED
-            )
-            summary = run()
-            after = capture_project_state(project)
-            _record_changes(project, before, after, batch)
-            record_project_checkpoint(project, after, batch_operation=batch)
-        statuses = batch.context.setdefault("_crop_statuses", {})
-        for receipt in summary.get("results", []):
-            if receipt["status"] in ("created", "updated"):
-                key = str(receipt["crop_id"])
-                if statuses.get(key) != "created":
-                    statuses[key] = receipt["status"]
-        batch.context["created_count"] = sum(status == "created" for status in statuses.values())
-        batch.context["updated_count"] = sum(status == "updated" for status in statuses.values())
-        batch.context["skipped_count"] = batch.context.get("skipped_count", 0) + summary.get(
-            "skipped_count", 0
+            if request_fingerprint is not None:
+                batch.context[_REQUEST_FINGERPRINT] = request_fingerprint
+        else:
+            existing = _existing_import_response(batch, project, actor_id, request_fingerprint)
+            if existing is not None:
+                return existing
+        summary = _record_import_request(
+            project, batch, run, keep_empty=request_fingerprint is None,
         )
         if phase in (None, "finalize"):
             batch.completed_at = timezone.now()
+            if request_fingerprint is not None:
+                batch.context[_RESPONSE] = summary
         batch.save()
         return summary
 

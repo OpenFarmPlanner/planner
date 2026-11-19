@@ -1961,3 +1961,17 @@ export interface PublicCropImportDecision {
 export interface PublicCropSelectionImportResult {
   entries: { public_crop_id: number; crop_id: number; operation: 'created' | 'linked' | 'copied' | 'unchanged' }[];
 }
+
+export interface PublicCropBatchImportRequest {
+  expected_project_id: number;
+  request_id: string;
+  groups: { parent_id: number; decisions: PublicCropImportDecision[] }[];
+}
+
+export type PublicCropBatchImportOutcome = { parent_id: number } & (
+  PublicCropSelectionImportResult | { error_code: string }
+);
+
+export interface PublicCropBatchImportResult {
+  groups: PublicCropBatchImportOutcome[];
+}
