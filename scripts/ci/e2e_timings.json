@@ -67,6 +67,10 @@
       "tests": 2,
       "duration_ms": 22092
     },
+    "e2e/crop-species-autocomplete.spec.ts": {
+      "tests": 2,
+      "duration_ms": 25000
+    },
     "e2e/crop-rename-conflict.spec.ts": {
       "tests": 2,
       "duration_ms": 10445
