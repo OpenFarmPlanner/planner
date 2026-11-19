@@ -9,7 +9,10 @@ import { useTranslation } from '../i18n';
 const wideList = '@container (min-width: 38rem)';
 
 export function CropDetailList({ children }: { children: ReactNode }) {
-  return <Box component="ul" role="list" sx={{ m: 0, p: 0, listStyle: 'none', containerType: 'inline-size' }}>
+  return <Box component="ul" role="list" sx={{
+    m: 0, p: 0, listStyle: 'none', containerType: 'inline-size',
+    '& > li + li': { borderTop: '1px solid', borderColor: 'divider' },
+  }}>
     {children}
   </Box>;
 }
@@ -45,7 +48,6 @@ export function CropDetailListRow({
       minWidth: 0,
       py: 0.75,
       overflowWrap: 'anywhere',
-      '& + &': { borderTop: '1px solid', borderColor: 'divider' },
       [wideList]: {
         gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 2fr) auto',
         gridTemplateAreas: showDescription ? '"name metadata actions" "description description ."' : '"name metadata actions"',

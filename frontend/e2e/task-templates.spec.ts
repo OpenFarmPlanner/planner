@@ -30,6 +30,7 @@ test('crop detail lists keep localized values and actions usable at narrow width
   test.setTimeout(120_000);
   const scenario = 'crop-detail-list-layout-' + Date.now();
   const taskName = 'Préparer les équipements pour la prochaine intervention et vérifier les instructions';
+  const shortTaskName = 'Vérifier le stock';
   const supplierName = 'Cooperativa portuguesa de fornecimento hortícola e variedades tradicionais';
   const product = 'Zeer lange productomschrijving voor regionale groentezaden en bereiding';
   const description = 'Vérifier le matériel et les pièces de rechange.\nNoter le lot et confirmer la date de la prochaine intervention.';
@@ -51,6 +52,9 @@ test('crop detail lists keep localized values and actions usable at narrow width
       crop: crop.id, title: taskName, description, reference_event: 'planting', day_offset: -3,
       repeat_interval_days: 7, repeat_until: 'count', repeat_count: 3,
     });
+    await apiRequest(page, 'POST', '/crop-task-templates/', {
+      crop: crop.id, title: shortTaskName, reference_event: 'planting', day_offset: 0,
+    });
     for (const [language, text, titleField] of [
       ['de', de, 'Titel'], ['en', en, 'Title'], ['fr', fr, 'Titre'], ['es', es, 'Título'],
       ['it', it, 'Titolo'], ['pt', pt, 'Título'], ['nl', nl, 'Titel'],
@@ -71,6 +75,10 @@ test('crop detail lists keep localized values and actions usable at narrow width
       await expect(task.getByText(taskName, { exact: true })).toBeVisible();
       await expect(task.getByText(description)).toHaveCSS('white-space', 'pre-wrap');
       await expect(recurrence).toContainText(text.taskTemplates.occurrences_other.replace('{{count}}', '3'));
+      const taskRows = taskSection.getByRole('listitem');
+      await expect(taskRows).toHaveCount(2);
+      await expect(taskRows.first()).toHaveCSS('border-top-width', '0px');
+      await expect(taskRows.last()).toHaveCSS('border-top-width', '1px');
       await expect(offer.getByText(supplierName, { exact: true })).toBeVisible();
       await expect(offer.getByText(product, { exact: true })).toBeVisible();
       await expect(offer.getByText(notes)).toHaveCSS('white-space', 'pre-wrap');
