@@ -208,10 +208,8 @@ test('keeps every variety form row on the shared three-column grid', async ({ pa
 });
 
 /**
- * The "Zeiträume" section: a row of unit switch, "Von"/"Bis" selects and the
- * remove button must fit the full-screen phone dialog (wrapping "Bis" below
- * "Von") and stay on one line on desktop. Functional layout assertions, no
- * screenshot baseline: the rows are dynamic and the risk is overflow.
+ * The "Zeiträume" categories share the form width while each row keeps its
+ * controls inside its own category. Empty categories keep their add action.
  */
 test.describe('crop form timing windows section', () => {
   test.beforeEach(async ({ page, request }, testInfo) => {
@@ -248,20 +246,35 @@ test.describe('crop form timing windows section', () => {
     await page.screenshot({ path: test.info().outputPath('timing-windows-375.png'), fullPage: false });
   });
 
-  test('keeps switch, "Von", "Bis" and remove button on one line at 1440px', async ({ page }) => {
+  test('keeps three category columns as a row is added and wraps the categories on a tablet', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const dialog = await openEditCropDialog(page);
-    const group = await addDirectSowingRow(dialog);
+    const categories = ['Anzuchtzeitraum', 'Direktsaatzeitraum', 'Pflanzzeitraum'].map((name) => (
+      dialog.getByRole('group', { name, exact: true })
+    ));
+    const empty = await Promise.all(categories.map(inputBox));
+    await expectOneRow(empty);
+    expect(empty[1].x).toBeGreaterThanOrEqual(empty[0].x + empty[0].width);
+    expect(empty[2].x).toBeGreaterThanOrEqual(empty[1].x + empty[1].width);
 
-    // Compare vertical centres: the switch is shorter than the selects.
-    const centre = (box: { y: number; height: number }) => ({ y: box.y + box.height / 2 });
-    await expectOneRow([
-      centre(await inputBox(group.getByRole('button', { name: 'Monat', exact: true }))),
-      centre(await inputBox(group.getByLabel('Von: Monat', { exact: true }))),
-      centre(await inputBox(group.getByLabel('Bis: Monat', { exact: true }))),
-      centre(await inputBox(group.getByRole('button', { name: 'Zeitraum entfernen' }))),
-    ]);
+    const group = await addDirectSowingRow(dialog);
+    const populated = await Promise.all(categories.map(inputBox));
+    await expectOneRow(populated);
+    expect(populated.map(({ x, width }) => ({ x, width })))
+      .toEqual(empty.map(({ x, width }) => ({ x, width })));
+    const sowing = populated[1];
+    for (const control of await group.getByTestId('timing-window-row').locator('button, select').all()) {
+      const box = await inputBox(control);
+      expect(box.x).toBeGreaterThanOrEqual(sowing.x);
+      expect(box.x + box.width).toBeLessThanOrEqual(sowing.x + sowing.width + 1);
+    }
     await page.screenshot({ path: test.info().outputPath('timing-windows-1440.png'), fullPage: false });
+
+    await page.setViewportSize({ width: 768, height: 900 });
+    const tablet = await Promise.all(categories.map(inputBox));
+    await expectOneRow(tablet.slice(0, 2));
+    expect(tablet[2].y).toBeGreaterThanOrEqual(tablet[1].y + tablet[1].height);
+    await expect(group.getByLabel('Von: Monat', { exact: true })).toHaveValue('11');
   });
 });
 

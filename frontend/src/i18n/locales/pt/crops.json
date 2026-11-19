@@ -1848,6 +1848,11 @@
   "timingWindows": {
     "sectionTitle": "Períodos",
     "sectionHelp": "Quando ocorrem habitualmente o viveiro, a sementeira direta e a transplantação, em decêndios ou semanas de calendário. O planeamento das culturas assinala datas fora destes períodos.",
+    "categoryHeadings": {
+      "pre_cultivation": "Viveiro",
+      "direct_sowing": "Sementeira direta",
+      "planting": "Transplantação"
+    },
     "kinds": {
       "pre_cultivation": "Período de sementeira em viveiro",
       "direct_sowing": "Período de sementeira direta",

@@ -60,6 +60,25 @@ class LocalLibraryImportSeedTests(TestCase):
         self.assertEqual(plan.crop.notes, 'Preserve my edit')
         self.assertEqual(Project.objects.count(), len(self.project_ids_before) + 1)
 
+    def test_timing_windows_fixture_previews_and_preserves_manual_edits(self):
+        command = 'seed_timing_windows_acceptance'
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        call_command(command, **arguments)
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before))
+        call_command(command, apply=True, **arguments)
+        project = Project.objects.get(slug=f'ofp-local-timing-windows-{self.user.pk}')
+        crops = {crop.name: crop for crop in Crop.objects.filter(project=project)}
+        self.assertEqual(crops['Timing windows empty'].timing_windows.count(), 0)
+        self.assertEqual(crops['Timing windows partial'].timing_windows.count(), 2)
+        full = crops['Timing windows full']
+        self.assertEqual(set(full.timing_windows.values_list('kind', flat=True)), {
+            'pre_cultivation', 'direct_sowing', 'planting',
+        })
+        full.timing_windows.all().delete()
+        call_command(command, apply=True, **arguments)
+        self.assertFalse(full.timing_windows.exists())
+        self.assertEqual(Crop.objects.filter(project=project).count(), 3)
+
     def test_companion_history_fixture_is_previewed_and_repeat_safe(self):
         command = 'seed_companion_history_acceptance'
         arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}

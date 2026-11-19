@@ -1848,6 +1848,11 @@
   "timingWindows": {
     "sectionTitle": "Periodi",
     "sectionHelp": "Quando avvengono abitualmente vivaio, semina diretta e trapianto, in decadi del mese o settimane. La pianificazione colturale segnala le date fuori da questi periodi.",
+    "categoryHeadings": {
+      "pre_cultivation": "Vivaio",
+      "direct_sowing": "Semina diretta",
+      "planting": "Trapianto"
+    },
     "kinds": {
       "pre_cultivation": "Periodo di semina in vivaio",
       "direct_sowing": "Periodo di semina diretta",

@@ -65,6 +65,11 @@ async function loginViaUi(page: Page, email: string, password: string): Promise<
   await page.getByRole('button', { name: 'Anmelden' }).click();
 }
 
+async function expectActiveProject(page: Page, projectName: string): Promise<void> {
+  const switcher = page.getByRole('button', { name: 'Aktives Projekt wechseln', exact: true });
+  await expect(switcher.getByText(projectName, { exact: true })).toBeVisible();
+}
+
 test.describe('project invitation flow', () => {
   test('continues invite context through login and accepts the invitation', async ({ page, request }, testInfo) => {
     const scenarioId = `invite-login-${testInfo.workerIndex}`;
@@ -76,7 +81,7 @@ test.describe('project invitation flow', () => {
     await loginViaUi(page, fixture.invitee.email, fixture.invitee.password);
 
     await expect(page).toHaveURL(/\/app\/fields-beds/);
-    await expect(page.getByText(fixture.projectName)).toBeVisible();
+    await expectActiveProject(page, fixture.projectName);
   });
 
   test('keeps the new login when an anonymous request sent before it is answered after it', async ({ page, request }, testInfo) => {
@@ -110,7 +115,7 @@ test.describe('project invitation flow', () => {
     await loginViaUi(page, fixture.invitee.email, fixture.invitee.password);
 
     await expect(page).toHaveURL(/\/app\/fields-beds/);
-    await expect(page.getByText(fixture.projectName)).toBeVisible();
+    await expectActiveProject(page, fixture.projectName);
   });
 
   test('rejects a second use of the same invitation link with a clear error state', async ({ page, request }, testInfo) => {
@@ -120,7 +125,7 @@ test.describe('project invitation flow', () => {
     await page.goto(fixture.inviteUrl);
     await loginViaUi(page, fixture.invitee.email, fixture.invitee.password);
     await expect(page).toHaveURL(/\/app\/fields-beds/);
-    await expect(page.getByText(fixture.projectName)).toBeVisible();
+    await expectActiveProject(page, fixture.projectName);
 
     await page.goto(fixture.inviteUrl);
     await expect(page.getByText('Diese Einladung wurde bereits verwendet.')).toBeVisible();
@@ -133,7 +138,7 @@ test.describe('project invitation flow', () => {
     await page.goto(fixture.inviteUrl);
     await loginViaUi(page, fixture.invitee.email, fixture.invitee.password);
     await expect(page).toHaveURL(/\/app\/fields-beds/);
-    await expect(page.getByText(fixture.projectName)).toBeVisible();
+    await expectActiveProject(page, fixture.projectName);
 
     await removeInviteeMembership(request, scenarioId);
 

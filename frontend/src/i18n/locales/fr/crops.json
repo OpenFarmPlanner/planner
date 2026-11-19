@@ -1849,6 +1849,11 @@
   "timingWindows": {
     "sectionTitle": "Périodes",
     "sectionHelp": "Quand la pépinière, le semis direct et la plantation ont lieu d’habitude, en décades ou en semaines. La planification signale les dates en dehors de ces périodes.",
+    "categoryHeadings": {
+      "pre_cultivation": "Pépinière",
+      "direct_sowing": "Semis direct",
+      "planting": "Plantation"
+    },
     "kinds": {
       "pre_cultivation": "Période de semis en pépinière",
       "direct_sowing": "Période de semis direct",

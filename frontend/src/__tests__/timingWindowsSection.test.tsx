@@ -33,9 +33,11 @@ const group = (name: string): HTMLElement => screen.getByRole('group', { name })
 describe('TimingWindowsSection', () => {
   it('shows the three kinds in order, each with an add button, and no harvest group', () => {
     render(<Harness initial={[]} />);
-    expect(screen.getAllByRole('group').filter((element) => element.getAttribute('aria-labelledby'))
-      .map((element) => element.textContent?.split('Zeitraum hinzufügen')[0]))
+    const groups = screen.getAllByRole('group');
+    expect(groups.map((element) => element.getAttribute('aria-label')))
       .toEqual(['Anzuchtzeitraum', 'Direktsaatzeitraum', 'Pflanzzeitraum']);
+    expect(groups.map((element) => element.textContent?.split('Zeitraum hinzufügen')[0]))
+      .toEqual(['Anzucht', 'Direktsaat', 'Pflanzung']);
     expect(screen.getAllByRole('button', { name: 'Zeitraum hinzufügen' })).toHaveLength(3);
   });
 
@@ -114,6 +116,27 @@ describe('TimingWindowsSection', () => {
     render(<Harness initial={[decade('planting', { start_month: 5, start_decade: 'mid', end_month: 6, end_decade: 'early' })]} />);
     fireEvent.click(screen.getByRole('button', { name: 'Zeitraum entfernen' }));
     expect(currentWindows()).toEqual([]);
+  });
+
+  it('keeps the same input and draft value when earlier rows are removed or inserted', () => {
+    const first = decade('direct_sowing', { start_month: 3, start_decade: 'early' });
+    const second = decade('direct_sowing', { start_month: 9, start_decade: 'late' });
+    render(<Harness initial={[first, second]} />);
+    const sowing = within(group('Direktsaatzeitraum'));
+    const secondStart = sowing.getAllByLabelText('Von: Monat')[1];
+    secondStart.focus();
+    fireEvent.change(secondStart, { target: { value: '10' } });
+
+    fireEvent.click(sowing.getAllByRole('button', { name: 'Zeitraum entfernen' })[0]);
+    expect(sowing.getByLabelText('Von: Monat')).toBe(secondStart);
+    expect(secondStart).toHaveFocus();
+
+    fireEvent.click(within(group('Anzuchtzeitraum')).getByRole('button', { name: 'Zeitraum hinzufügen' }));
+    expect(sowing.getByLabelText('Von: Monat')).toBe(secondStart);
+    expect(secondStart).toHaveFocus();
+    expect(currentWindows()).toEqual([
+      emptyTimingWindow('pre_cultivation', 'decade'), { ...second, start_month: 10 },
+    ]);
   });
 
   it('shows the field message of an incomplete row', () => {

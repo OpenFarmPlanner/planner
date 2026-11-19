@@ -1797,6 +1797,11 @@
   "timingWindows": {
     "sectionTitle": "Zeiträume",
     "sectionHelp": "Wann Anzucht, Direktsaat und Pflanzung üblich sind, in Monatsdritteln oder Kalenderwochen. Die Anbauplanung weist auf Termine außerhalb dieser Zeiträume hin.",
+    "categoryHeadings": {
+      "pre_cultivation": "Anzucht",
+      "direct_sowing": "Direktsaat",
+      "planting": "Pflanzung"
+    },
     "kinds": {
       "pre_cultivation": "Anzuchtzeitraum",
       "direct_sowing": "Direktsaatzeitraum",

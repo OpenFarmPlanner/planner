@@ -1849,6 +1849,11 @@
   "timingWindows": {
     "sectionTitle": "Periodos",
     "sectionHelp": "Cuándo se suelen hacer el semillero, la siembra directa y el trasplante, en decenas del mes o en semanas. La planificación señala las fechas fuera de estos periodos.",
+    "categoryHeadings": {
+      "pre_cultivation": "Semillero",
+      "direct_sowing": "Siembra directa",
+      "planting": "Trasplante"
+    },
     "kinds": {
       "pre_cultivation": "Periodo de siembra en semillero",
       "direct_sowing": "Periodo de siembra directa",
