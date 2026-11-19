@@ -46,7 +46,8 @@ test.describe('first-project onboarding', () => {
     await page.goto(`/app/crops?cropId=${tomato!.crop}`);
     await expect(page.getByText('Tomaten anbinden', { exact: true })).toBeVisible();
     await expect(page.getByText('Solanum lycopersicum', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Lieferantendaten bearbeiten' }).first().click();
+    await page.getByRole('button', { name: 'Weitere Aktionen — Bingenheimer Saatgut', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Lieferantendaten bearbeiten: Bingenheimer Saatgut', exact: true }).click();
     const suppliers = page.getByRole('dialog', { name: 'Kulturspezifische Lieferantendaten' });
     await expect(suppliers).toBeVisible();
     await expect(suppliers.getByRole('combobox', { name: 'Saatgutstatus' })).toHaveCount(1);
