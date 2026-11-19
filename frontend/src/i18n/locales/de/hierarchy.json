@@ -180,9 +180,6 @@
     "missingLocationTitle": "Standort fehlt",
     "missingLocationDescription": "Der Hauptstandort ist für dieses Projekt noch nicht verfügbar.",
     "missingFieldTitle": "Parzelle fehlt",
-    "missingFieldSingleLocationDescription": "Lege eine Parzelle an, um zu starten.",
-    "additionalLocationHint": "Falls du Flächen an mehreren Orten bewirtschaftest, kannst du auch",
-    "additionalLocationLink": "zusätzliche Standorte anlegen",
     "missingFieldMultipleLocationsBeforeIcon": "Füge beim gewünschten Standort über das",
     "missingFieldMultipleLocationsAfterIcon": "Symbol oder das Kontextmenü eine Parzelle hinzu.",
     "actions": {

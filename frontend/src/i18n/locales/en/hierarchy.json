@@ -180,9 +180,6 @@
     "missingLocationTitle": "Location missing",
     "missingLocationDescription": "The main location isn't available for this project yet.",
     "missingFieldTitle": "Field missing",
-    "missingFieldSingleLocationDescription": "Create a field to get started.",
-    "additionalLocationHint": "If you manage areas in multiple places, you can also",
-    "additionalLocationLink": "create additional locations",
     "missingFieldMultipleLocationsBeforeIcon": "Add a field at the desired location using the",
     "missingFieldMultipleLocationsAfterIcon": "icon or the context menu.",
     "actions": {

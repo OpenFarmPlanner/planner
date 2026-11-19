@@ -192,9 +192,6 @@
     "missingLocationTitle": "Site manquant",
     "missingLocationDescription": "Le site principal n'est pas encore disponible pour ce projet.",
     "missingFieldTitle": "Parcelle manquante",
-    "missingFieldSingleLocationDescription": "Créez une parcelle pour commencer.",
-    "additionalLocationHint": "Si vous gérez des surfaces à plusieurs endroits, vous pouvez aussi",
-    "additionalLocationLink": "créer d'autres sites",
     "missingFieldMultipleLocationsBeforeIcon": "Ajoutez une parcelle sur le site souhaité avec l'icône",
     "missingFieldMultipleLocationsAfterIcon": "ou le menu contextuel.",
     "actions": {

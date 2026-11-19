@@ -475,15 +475,11 @@ function RootLayout() {
     () => topbarContextActions.filter((action) => action.id !== 'crops-open-library'),
     [topbarContextActions],
   );
-  // The fields-beds topbar has exactly one non-hidden "add" action at a
-  // time: 'fields-global-add-field' (single-location mode) or
-  // HIERARCHY_CREATE_LOCATION_ACTION_ID (multi-/zero-location mode). Each
-  // carries the other level as a `menuActions` entry, restoring the split
-  // button (main action + dropdown for the other level).
+  // The fields-beds topbar has one "add" action, which adds a location;
+  // plots are added from their location's row.
   const fieldsGlobalAddAction = useMemo(
     () => topbarContextActions.find((action) => (
-      (action.id === 'fields-global-add-field' || action.id === HIERARCHY_CREATE_LOCATION_ACTION_ID)
-      && !action.hidden
+      action.id === HIERARCHY_CREATE_LOCATION_ACTION_ID && !action.hidden
     )) ?? null,
     [topbarContextActions],
   );
@@ -495,12 +491,11 @@ function RootLayout() {
     () => (isCropsPage
       ? []
       : topbarContextActions.filter((action) => (
-        action.id !== 'fields-global-add-field'
         // Already rendered via fieldsGlobalAddAction/mobileFieldsAddLocationAction
         // above — without this exclusion it also flows into topbarModeControls/
         // topbarOverflowActions and renders a second (or, on very narrow mobile,
         // third) "Standort hinzufügen" button.
-        && action.id !== HIERARCHY_CREATE_LOCATION_ACTION_ID
+        action.id !== HIERARCHY_CREATE_LOCATION_ACTION_ID
         && action.id !== 'public-crop-library-moderation'
         && action.id !== 'public-crop-library-remove'
       ))),

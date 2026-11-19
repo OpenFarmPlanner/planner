@@ -192,9 +192,6 @@
     "missingLocationTitle": "Sito mancante",
     "missingLocationDescription": "Il sito principale non è ancora disponibile per questo progetto.",
     "missingFieldTitle": "Appezzamento mancante",
-    "missingFieldSingleLocationDescription": "Crea un appezzamento per iniziare.",
-    "additionalLocationHint": "Se gestisci superfici in più luoghi, puoi anche",
-    "additionalLocationLink": "creare altri siti",
     "missingFieldMultipleLocationsBeforeIcon": "Aggiungi un appezzamento al sito desiderato usando l'icona",
     "missingFieldMultipleLocationsAfterIcon": "o il menu contestuale.",
     "actions": {

@@ -68,27 +68,19 @@ describe('RootLayout fields-beds topbar "add location" action', () => {
     window.history.pushState({}, '', '/app/fields-beds');
   });
 
-  it('renders a single split "Standort hinzufügen" button offering "Parzelle hinzufügen" when multiple locations exist', async () => {
-    const user = userEvent.setup();
+  it('renders a single plain "Standort hinzufügen" button when multiple locations exist', async () => {
     render(<FocusManagerProvider><CommandProvider><App /></CommandProvider></FocusManagerProvider>);
 
     await screen.findByText('Hofgarten', {}, { timeout: 10000 });
 
-    expect(screen.getAllByRole('button', { name: /Standort hinzufügen/ })).toHaveLength(1);
-
-    await user.click(screen.getByRole('button', { name: 'Weitere Optionen' }));
-    const menu = await screen.findByRole('menu');
-    await user.click(within(menu).getByRole('menuitem', { name: 'Parzelle hinzufügen' }));
-
-    // The menu item's onClick (requestInlineFieldCreation) ran without
-    // throwing and closed the menu; the resulting inline DataGrid draft row
-    // is exercised separately by FieldsBedsHierarchy's own tests.
-    await vi.waitFor(() => {
-      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-    });
+    const topbar = within(screen.getByRole('banner'));
+    expect(topbar.getAllByRole('button', { name: /Standort hinzufügen/ })).toHaveLength(1);
+    // Plots are added from the location rows, not from a topbar dropdown.
+    expect(topbar.queryByRole('button', { name: 'Weitere Optionen' })).not.toBeInTheDocument();
+    expect(topbar.queryByRole('button', { name: /Parzelle hinzufügen/ })).not.toBeInTheDocument();
   });
 
-  it('offers "Standort hinzufügen" from the split-button dropdown in single-location mode and opens the add-location dialog', async () => {
+  it('offers only "Standort hinzufügen" in single-location mode and opens the add-location dialog', async () => {
     const user = userEvent.setup();
     locationListMock.mockResolvedValue({
       data: { results: [{ id: 1, name: 'Hofstelle' }] },
@@ -96,12 +88,11 @@ describe('RootLayout fields-beds topbar "add location" action', () => {
     render(<FocusManagerProvider><CommandProvider><App /></CommandProvider></FocusManagerProvider>);
 
     const topbar = within(screen.getByRole('banner'));
-    await topbar.findByRole('button', { name: /Parzelle hinzufügen/ }, { timeout: 10000 });
-    expect(topbar.getAllByRole('button', { name: /Parzelle hinzufügen/ })).toHaveLength(1);
+    const addLocation = await topbar.findByRole('button', { name: /Standort hinzufügen/ }, { timeout: 10000 });
+    expect(topbar.queryByRole('button', { name: /Parzelle hinzufügen/ })).not.toBeInTheDocument();
+    expect(topbar.queryByRole('button', { name: 'Weitere Optionen' })).not.toBeInTheDocument();
 
-    await user.click(topbar.getByRole('button', { name: 'Weitere Optionen' }));
-    const menu = await screen.findByRole('menu');
-    await user.click(within(menu).getByRole('menuitem', { name: 'Standort hinzufügen' }));
+    await user.click(addLocation);
 
     expect(await screen.findByText('Weiteren Standort hinzufügen')).toBeInTheDocument();
   });
