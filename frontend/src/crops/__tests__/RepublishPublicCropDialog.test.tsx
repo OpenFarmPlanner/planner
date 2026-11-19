@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { configure, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import type { Crop } from '../../api/types';
+import { mockPopupLayout } from '../../test-utils/mockPopupLayout';
 import { RepublishPublicCropDialog } from '../RepublishPublicCropDialog';
 
 // The species field searches the (mocked) server with a real debounce.
@@ -61,6 +62,7 @@ const confirmButton = () => screen.getByRole('button', { name: 'Wieder veröffen
 
 describe('RepublishPublicCropDialog', () => {
   beforeEach(() => {
+    mockPopupLayout();
     publishPreviewMock.mockReset();
     cropSpeciesListMock.mockReset();
     cropSpeciesListMock.mockResolvedValue({

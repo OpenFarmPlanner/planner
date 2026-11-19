@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CropSpeciesPicker, type CropSpeciesPickerProps } from '../crops/CropSpeciesPicker';
 import type { CropSpecies } from '../api/types';
+import { mockPopupLayout } from '../test-utils/mockPopupLayout';
 
 const species = (overrides: Partial<CropSpecies> = {}): CropSpecies => ({
   id: 1,
@@ -75,12 +76,7 @@ const listbox = () => screen.getByRole('listbox');
 const proposeOption = (name: string) =>
   screen.getByRole('button', { name: `„${name}“ als neue Kulturart vorschlagen` });
 
-beforeEach(() => {
-  // jsdom has no layout. Give Popper a visible anchor and viewport.
-  vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(1024);
-  vi.spyOn(document.documentElement, 'clientHeight', 'get').mockReturnValue(768);
-  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(16, 24, 320, 40));
-});
+beforeEach(mockPopupLayout);
 
 afterEach(() => {
   vi.restoreAllMocks();

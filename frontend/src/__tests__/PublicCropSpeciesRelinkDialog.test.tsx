@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 
 import { PublicCropSpeciesRelinkDialog } from '../crop-library/components/PublicCropSpeciesRelinkDialog';
 import type { PublicCrop } from '../api/types';
+import { mockPopupLayout } from '../test-utils/mockPopupLayout';
 
 const {
   cropSpeciesListMock,
@@ -91,6 +92,7 @@ const approvalPayload = (de: string, en: string, fr: string, es: string) => [
 
 describe('PublicCropSpeciesRelinkDialog', () => {
   beforeEach(() => {
+    mockPopupLayout();
     cropSpeciesListMock.mockReset();
     cropSpeciesListMock.mockResolvedValue({
       data: {
