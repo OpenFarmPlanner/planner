@@ -716,6 +716,72 @@ def test_crop_rename_reads_the_current_sibling_group_after_locking():
 
 
 @pytest.mark.django_db(transaction=True)
+def test_crop_restore_locks_shared_references_until_save(monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+
+    from django.db import OperationalError, close_old_connections, connection, transaction
+    from rest_framework.test import APIClient
+
+    from crops.models import CropSpecies, PlantFamily
+    from farm.history.records import _serialize_instance
+    from farm.models import Crop, EntityRevision, Project, ProjectMembership, PublicCrop
+    from farm.tests.api_base import User
+
+    if connection.vendor != 'postgresql':
+        pytest.skip('PostgreSQL crop restore reference locks')
+    user = User.objects.create_user(username='crop-restore-reference-owner')
+    project = Project.objects.create(name='Restore references', slug='restore-references')
+    ProjectMembership.objects.create(project=project, user=user, role='admin')
+    crop = Crop.objects.create(project=project, name='Restore reference crop')
+    species = CropSpecies.objects.create(name='Restore reference species')
+    family = PlantFamily.objects.create(botanical_name='Restore-testaceae')
+    entry = PublicCrop.objects.create(
+        name=species.name, crop_species=species, status='published', created_by=user,
+    )
+    version = EntityRevision.objects.create(
+        project=project, entity_type='crop', object_id=crop.pk,
+        action=EntityRevision.ACTION_UPDATED,
+        snapshot={
+            **_serialize_instance(crop), 'crop_species_id': species.pk, 'crop_family_id': family.pk,
+            'source_public_crop_id': entry.pk, 'derived_from_public_crop_id': entry.pk,
+        },
+    )
+
+    def check_reference_locks():
+        close_old_connections()
+        try:
+            for reference in (species, family, entry):
+                with pytest.raises(OperationalError) as locked, transaction.atomic():
+                    type(reference).objects.select_for_update(nowait=True).get(pk=reference.pk)
+                cause = locked.value.__cause__
+                sqlstate = getattr(cause, 'sqlstate', None) or getattr(cause, 'pgcode', None)
+                assert sqlstate == '55P03'
+        finally:
+            close_old_connections()
+
+    original_save = Crop.save
+
+    def save_with_lock_check(instance, *args, **kwargs):
+        if instance.pk == crop.pk:
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                executor.submit(check_reference_locks).result(timeout=15)
+        return original_save(instance, *args, **kwargs)
+
+    monkeypatch.setattr(Crop, 'save', save_with_lock_check)
+    client = APIClient()
+    client.force_authenticate(user=user)
+    response = client.post(
+        f'/api/crops/{crop.pk}/restore/', {'history_id': version.pk}, format='json',
+        HTTP_X_PROJECT_ID=str(project.pk),
+    )
+    assert response.status_code == 200, response.data
+    crop.refresh_from_db()
+    assert (crop.crop_species_id, crop.crop_family_id, crop.source_public_crop_id) == (
+        species.pk, family.pk, entry.pk,
+    )
+
+
+@pytest.mark.django_db(transaction=True)
 def test_supplierless_undeletes_cannot_create_duplicate_varieties_concurrently():
     from concurrent.futures import ThreadPoolExecutor
     from threading import Barrier

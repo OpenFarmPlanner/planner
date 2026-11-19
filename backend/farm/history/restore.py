@@ -174,14 +174,26 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
 
 
 def _apply_crop_snapshot_fields(crop: Crop, snapshot: dict) -> None:
-    for field in Crop._meta.concrete_fields:
-        key = field.attname
-        if key not in snapshot or key in _SKIP_ON_UPDATE or key == 'project_id':
-            continue
-        value = snapshot[key]
-        if field.remote_field is not None:
-            value = _crop_restore_reference(crop, key, field.remote_field.model, value)
-        setattr(crop, field.name, value)
+    fields = [
+        field for field in Crop._meta.concrete_fields
+        if field.attname in snapshot and field.attname not in {*_SKIP_ON_UPDATE, 'project_id'}
+    ]
+    # Two crops can use the same library entries in opposite roles. Lock all
+    # references in the same order before modifying the crop or image markers.
+    references = sorted(
+        (field for field in fields if field.remote_field and snapshot[field.attname] is not None),
+        key=lambda field: (
+            field.remote_field.model._meta.label_lower, str(snapshot[field.attname]),
+        ),
+    )
+    resolved = {
+        field.attname: _crop_restore_reference(
+            crop, field.attname, field.remote_field.model, snapshot[field.attname],
+        )
+        for field in references
+    }
+    for field in fields:
+        setattr(crop, field.name, resolved.get(field.attname, snapshot[field.attname]))
     if crop_specific_property_errors(crop):
         raise CropRestoreReferenceConflict('specific_properties')
     product_url = crop.supplier_product_url
@@ -191,16 +203,14 @@ def _apply_crop_snapshot_fields(crop: Crop, snapshot: dict) -> None:
 
 def _crop_restore_reference(
     crop: Crop, field: str, model: type[Model], value: Any,
-) -> Model | None:
-    if value is None:
-        return None
+) -> Model:
     try:
         choices = model._base_manager.filter(pk=value)
     except (TypeError, ValueError) as error:
         raise CropRestoreReferenceConflict(field) from error
     if model in (MediaFile, Supplier):
-        choices = choices.filter(project_id=crop.project_id).select_for_update()
-    reference = choices.first()
+        choices = choices.filter(project_id=crop.project_id)
+    reference = choices.select_for_update().first()
     if reference is None:
         raise CropRestoreReferenceConflict(field)
     if isinstance(reference, MediaFile) and (
