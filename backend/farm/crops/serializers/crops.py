@@ -1023,8 +1023,6 @@ class CropSerializer(serializers.ModelSerializer):
             project = self.instance.project
         with transaction.atomic():
             lock_crop_project(project.pk)
-            if self.instance is not None:
-                self.instance.refresh_from_db()
             previous_crop = _serialize_instance(self.instance) if self.instance is not None else {}
             children = (
                 (CropSupplierData, 'crop_supplier_data'), (SeedPackage, 'seed_package'),
@@ -1037,7 +1035,7 @@ class CropSerializer(serializers.ModelSerializer):
                 for model, _label in children
             }
             with internal_project_versions():
-                crop = super().save(**kwargs)
+                crop = super().save(_record_crop_history=False, **kwargs)
                 for model, label in children:
                     after = {
                         row.pk: _serialize_instance(row)
@@ -1063,12 +1061,16 @@ class CropSerializer(serializers.ModelSerializer):
             return crop
 
     def create(self, validated_data):
+        record_history = validated_data.pop('_record_crop_history', True)
         copy_values_to_crop = validated_data.pop('copy_values_to_crop', False)
         link_public_crop = validated_data.pop('link_public_crop', None)
         supplier_data_input = validated_data.pop('supplier_data_input', [])
         seed_packages = validated_data.pop('seed_packages', [])
         try:
-            crop = self._create_crop_row(validated_data, copy_values_to_crop, link_public_crop)
+            crop = self._create_crop_row(
+                validated_data, copy_values_to_crop, link_public_crop,
+                record_history=record_history,
+            )
         except IntegrityError as exc:
             self._raise_identity_conflict_if_named_constraint(exc)
             raise
@@ -1100,13 +1102,16 @@ class CropSerializer(serializers.ModelSerializer):
         validated_data: dict[str, Any],
         copy_values_to_crop: bool,
         link_public_crop: PublicCrop | None,
+        *,
+        record_history: bool,
     ) -> Crop:
         """Create the crop, its implicit general Kultur and its library link atomically."""
         with transaction.atomic():
             lock_crop_project(validated_data['project'].pk)
-            validate_crop_identity(Crop(**validated_data))
             self._save_implicit_supplier(validated_data)
-            crop = super().create(validated_data)
+            crop = Crop(**validated_data)
+            validate_crop_identity(crop)
+            crop.save(force_insert=True, record_history=record_history)
             promote_fields = self._promotable_species_invariant_fields
             crop._auto_general_crop = ensure_general_crop_for_variety(
                 crop,
@@ -1126,6 +1131,7 @@ class CropSerializer(serializers.ModelSerializer):
         return crop
 
     def update(self, instance, validated_data):
+        record_history = validated_data.pop('_record_crop_history', True)
         supplier_data_input = validated_data.pop('supplier_data_input', None)
         seed_packages = validated_data.pop('seed_packages', None)
         previous_identity = (instance.name_normalized, instance.variety_normalized)
@@ -1145,7 +1151,10 @@ class CropSerializer(serializers.ModelSerializer):
                     ):
                         validate_crop_identity(prospective)
                 self._save_implicit_supplier(validated_data)
-                crop = super().update(instance, validated_data)
+                for field, value in validated_data.items():
+                    setattr(instance, field, value)
+                instance.save(record_history=record_history)
+                crop = instance
                 promote_species_invariant_values(
                     crop,
                     self._promotable_species_invariant_fields,

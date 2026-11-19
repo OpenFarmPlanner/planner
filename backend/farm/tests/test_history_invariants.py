@@ -635,6 +635,9 @@ class HistoryImplicitCropSaveTests(HistoryInvariantTestCase):
         internal = revisions.filter(snapshot__has_key='_project_version_internal')
         self.assertTrue(internal.filter(entity_type='supplier', object_id=supplier).exists())
         self.assertTrue(internal.filter(entity_type='crop', object_id=general).exists())
+        history = self.client.get(f"{API}/crops/{variety['id']}/history/")
+        self.assertEqual(history.status_code, 200)
+        self.assertEqual([row['history_id'] for row in history.json()], [completed.revision.pk])
 
         self.write(
             'remove supplier link', 'patch', f"/crops/{variety['id']}/", {'supplier_id': None},
