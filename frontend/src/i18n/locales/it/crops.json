@@ -2040,6 +2040,7 @@
     "occurrences_many": "{{count}} attività"
   },
   "supplierData": {
+    "price": "Prezzo",
     "title": "Dati del fornitore",
     "editNamed": "Modifica dati del fornitore: {{supplier}}",
     "deleteNamed": "Elimina dati del fornitore: {{supplier}}",

@@ -2041,6 +2041,7 @@
     "repeatUntilEvent": "Jusqu’à {{event}}"
   },
   "supplierData": {
+    "price": "Prix",
     "title": "Données fournisseurs",
     "editNamed": "Modifier les données fournisseur : {{supplier}}",
     "deleteNamed": "Supprimer les données fournisseur : {{supplier}}",

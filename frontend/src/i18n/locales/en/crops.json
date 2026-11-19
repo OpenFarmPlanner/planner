@@ -1988,6 +1988,7 @@
     "repeatUntilEvent": "Until {{event}}"
   },
   "supplierData": {
+    "price": "Price",
     "title": "Supplier data",
     "editNamed": "Edit supplier data: {{supplier}}",
     "deleteNamed": "Delete supplier data: {{supplier}}",

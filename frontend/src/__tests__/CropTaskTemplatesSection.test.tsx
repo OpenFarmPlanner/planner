@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CropTaskTemplatesSection } from '../crops/CropTaskTemplatesSection';
 import type { CropTaskTemplate } from '../api/types';
@@ -6,6 +7,12 @@ import type { CropTaskTemplate } from '../api/types';
 const api = vi.hoisted(() => ({ list: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() }));
 vi.mock('../api/api', () => ({ cropTaskTemplateAPI: api }));
 const template: CropTaskTemplate = { id: 1, project: 1, crop: 2, title: 'Beet vorbereiten', description: 'Werkzeug prüfen', reference_event: 'planting', day_offset: -3 };
+
+const templateActions = () => screen.findByRole('button', { name: 'Weitere Aktionen — Beet vorbereiten' });
+const openTemplateAction = async (name: string) => {
+  fireEvent.click(await templateActions());
+  fireEvent.click(await screen.findByRole('menuitem', { name }));
+};
 
 describe('CropTaskTemplatesSection', () => {
   beforeEach(() => {
@@ -30,14 +37,14 @@ describe('CropTaskTemplatesSection', () => {
   it('retains edits on failure and requires explicit confirmation for deletion', async () => {
     api.update.mockRejectedValue(new Error('offline'));
     render(<CropTaskTemplatesSection cropId={2} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Vorlage bearbeiten: Beet vorbereiten' }));
+    await openTemplateAction('Vorlage bearbeiten: Beet vorbereiten');
     const dialog = screen.getByRole('dialog', { name: 'Vorlage bearbeiten' });
     fireEvent.change(within(dialog).getByRole('textbox', { name: 'Titel' }), { target: { value: 'Entwurf' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Speichern' }));
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('Die Vorlage konnte nicht gespeichert werden.');
     expect(within(dialog).getByRole('textbox', { name: 'Titel' })).toHaveValue('Entwurf');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Abbrechen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Vorlage löschen: Beet vorbereiten' }));
+    await openTemplateAction('Vorlage löschen: Beet vorbereiten');
     expect(api.delete).not.toHaveBeenCalled();
     const confirmation = screen.getByRole('dialog');
     expect(within(confirmation).getByRole('button', { name: 'Abbrechen' })).toHaveFocus();
@@ -49,7 +56,7 @@ describe('CropTaskTemplatesSection', () => {
     api.delete.mockRejectedValue(new Error('offline'));
     render(<CropTaskTemplatesSection cropId={2} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Erneut versuchen' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Vorlage löschen: Beet vorbereiten' }));
+    await openTemplateAction('Vorlage löschen: Beet vorbereiten');
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Löschen' }));
     expect(await within(screen.getByRole('dialog')).findByRole('alert')).toBeInTheDocument();
     expect(screen.getByText('Beet vorbereiten')).toBeInTheDocument();
@@ -77,6 +84,18 @@ describe('CropTaskTemplatesSection', () => {
     render(<CropTaskTemplatesSection cropId={2} />);
     expect(await screen.findByText('Intervall: 7 Tage · 3 Aufgaben')).toBeInTheDocument();
     expect(screen.getByText('Intervall: 30 Tage · Bis Ernte abschließen')).toBeInTheDocument();
+  });
+
+  it('exposes edit first in the keyboard menu and restores focus on Escape', async () => {
+    const user = userEvent.setup();
+    render(<CropTaskTemplatesSection cropId={2} />);
+    const actions = await templateActions();
+    actions.focus();
+    await user.keyboard('{Enter}');
+    expect(await screen.findByRole('menuitem', { name: 'Vorlage bearbeiten: Beet vorbereiten' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+    expect(actions).toHaveFocus();
   });
 
   it('disables creation while loading and offers an empty-state Add action afterwards', async () => {
