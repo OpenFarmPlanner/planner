@@ -1,5 +1,5 @@
 import type { PublicCropSyncSubmitResult } from '../crops/publicCropSync';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   type AutocompleteInputChangeReason,
@@ -312,10 +312,10 @@ export function CropsPublishingWizardDialog({
 
   const mappingSourceId = crop?.plant_health == null && crop?.general_crop ? crop.general_crop : crop?.id;
   const currentHealthMappings = useMemo(() => healthMappings.filter(item => item.crop_id === mappingSourceId), [healthMappings, mappingSourceId]);
-  const updateHealthMapping = useCallback((mapping: StagedPlantHealthMapping) => {
+  const updateHealthMapping = (mapping: StagedPlantHealthMapping) => {
     setHealthMappings(previous => [...previous.filter(item => item.crop_id !== mapping.crop_id), ...(mapping.mappings.length ? [mapping] : [])]);
     setValidationResult(null);
-  }, []);
+  };
 
   const syncPreview = usePublicCropSyncPreview(
     crop?.id,
@@ -465,7 +465,7 @@ export function CropsPublishingWizardDialog({
       : []),
     [deselectedVarietyIds, showVarietySelection, varietyCandidates, healthMappings],
   );
-  const toggleVariety = useCallback((cropId: number) => {
+  const toggleVariety = (cropId: number) => {
     setDeselectedVarietyIds((previous) => {
       const next = new Set(previous);
       if (next.has(cropId)) {
@@ -475,27 +475,27 @@ export function CropsPublishingWizardDialog({
       }
       return next;
     });
-  }, []);
+  };
   const isProposingNewSpecies = Boolean(pendingSpeciesProposalName);
   const shouldShowProposedSpeciesNotice = Boolean(proposedSpeciesName) && !validationLoading && !isBlockedByValidation;
 
-  const resetValidationResult = useCallback(() => {
+  const resetValidationResult = () => {
     setValidationResult(null);
-  }, []);
+  };
 
-  const handleSpeciesChange = useCallback((value: CropSpecies | null) => {
+  const handleSpeciesChange = (value: CropSpecies | null) => {
     setManualSpeciesChoice(true);
     setSelectedSpecies(value);
     setEntryLookupRetry((retry) => retry + 1);
     setSelectedPublicCrop(null);
     setProposedSpeciesName(null);
     resetValidationResult();
-  }, [resetValidationResult]);
+  };
 
   // Only entering propose mode resets the wizard's species-derived state:
   // the picker also reports `null` on every keystroke, which must not keep
   // wiping the validation result while the user is still typing.
-  const handleSpeciesProposalNameChange = useCallback((name: string | null) => {
+  const handleSpeciesProposalNameChange = (name: string | null) => {
     setManualSpeciesChoice(true);
     setPendingSpeciesProposalName(name);
     if (!name) return;
@@ -503,9 +503,9 @@ export function CropsPublishingWizardDialog({
     setSelectedPublicCrop(null);
     setProposedSpeciesName(null);
     resetValidationResult();
-  }, [resetValidationResult]);
+  };
 
-  const handleSpeciesInputChange = useCallback((value: string, reason?: AutocompleteInputChangeReason) => {
+  const handleSpeciesInputChange = (value: string, reason?: AutocompleteInputChangeReason) => {
     if (reason === 'reset' && !value && !selectedSpecies) return;
     setProposeSpeciesError('');
     setSpeciesInputValue(value);
@@ -513,9 +513,9 @@ export function CropsPublishingWizardDialog({
       setManualSpeciesChoice(true);
       setSpeciesSearchQuery(value);
     }
-  }, [selectedSpecies]);
+  };
 
-  const handleProposeSpecies = useCallback(async (name: string): Promise<CropSpecies | null> => {
+  const handleProposeSpecies = async (name: string): Promise<CropSpecies | null> => {
     const trimmedName = name.trim();
     if (!trimmedName) return null;
     setProposingSpecies(true);
@@ -542,11 +542,11 @@ export function CropsPublishingWizardDialog({
     } finally {
       setProposingSpecies(false);
     }
-  }, [originalLanguageCode, resetValidationResult, t]);
+  };
 
   // Shared with the link-confirmation flow's "back to warning" path, which
   // re-runs this after a rejected link so a withdrawn candidate disappears.
-  const runPublishPreview = useCallback(async (
+  const runPublishPreview = async (
     cropSpeciesId: number,
   ): Promise<PublishPublicCropPreview | null> => {
     if (!crop?.id) return null;
@@ -566,9 +566,9 @@ export function CropsPublishingWizardDialog({
     } finally {
       setValidationLoading(false);
     }
-  }, [crop, isCropLevelPublish, originalLanguageCode, currentHealthMappings, t]);
+  };
 
-  const handleLinkDuplicate = useCallback(async (candidate: PublicCropDuplicateCandidate) => {
+  const handleLinkDuplicate = async (candidate: PublicCropDuplicateCandidate) => {
     setLinkConfirmError('');
     setLinkConfirmLoadingId(candidate.id);
     try {
@@ -580,20 +580,20 @@ export function CropsPublishingWizardDialog({
     } finally {
       setLinkConfirmLoadingId(null);
     }
-  }, [t]);
+  };
 
-  const handleCancelLinkConfirmation = useCallback(() => {
+  const handleCancelLinkConfirmation = () => {
     setShowLinkConfirmation(false);
     setManualSpeciesChoice(true);
     if (validationResult?.duplicates.length) setSelectedPublicCrop(null);
     setLinkConfirmError('');
     setShowLicenseConfirmation(false);
-  }, [validationResult]);
+  };
 
   const { selection: syncSelection } = syncPreview;
   const syncPreviewLoaded = syncPreview.preview !== null;
 
-  const handleConfirmLink = useCallback(async () => {
+  const handleConfirmLink = async () => {
     if (!crop?.id || !selectedPublicCrop || !syncPreview.preview) return;
     setLinkConfirmError('');
     setLinkConfirmSubmitting(true);
@@ -625,10 +625,9 @@ export function CropsPublishingWizardDialog({
     } finally {
       setLinkConfirmSubmitting(false);
     }
-  }, [crop, onLinkPublicCrop, originalLanguageCode, runPublishPreview,
-    selectedPublicCrop, selectedSpecies, syncPreview.preview, syncPreview.choices, syncPreview.selection.pinFields, currentHealthMappings]);
+  };
 
-  const handleConfirmSync = useCallback(async () => {
+  const handleConfirmSync = async () => {
     if (!crop?.id || !linkedPublicCropId || !syncPreview.preview) return;
     const needsLicense = syncSelection.pushFields.length > 0 && !termsAlreadyAccepted;
     if (needsLicense && (!showLicenseConfirmation || !acceptedLicense)) {
@@ -654,19 +653,9 @@ export function CropsPublishingWizardDialog({
     } finally {
       setSyncSubmitting(false);
     }
-  }, [
-    acceptedLicense,
-    crop,
-    linkedPublicCropId,
-    onSyncPublicCrop,
-    showLicenseConfirmation,
-    syncPreview,
-    syncSelection,
-    currentHealthMappings,
-    termsAlreadyAccepted,
-  ]);
+  };
 
-  const handlePublish = useCallback(async () => {
+  const handlePublish = async () => {
     if (!crop?.id) return;
     setSyncError('');
     if (selectedPublicCrop) {
@@ -748,29 +737,7 @@ export function CropsPublishingWizardDialog({
         }
       },
     });
-  }, [
-    acceptedLicense,
-    crop,
-    t,
-    currentHealthMappings,
-    handleProposeSpecies,
-    isCropLevelPublish,
-    licenseAccepted,
-    onPublish,
-    originalLanguageCode,
-    parentComparison.preview,
-    parentComparison.selection.pinFields,
-    parentComparison.selection.pullFields,
-    parentSpeciesId,
-    pendingSpeciesProposalName,
-    runPublishPreview,
-    publicationParent,
-    selectedPublicCrop,
-    selectedSpecies,
-    selectedVarieties,
-    showLicenseConfirmation,
-    termsAlreadyAccepted,
-  ]);
+  };
 
   const syncPanel = (
     <PublicCropSyncPanel
