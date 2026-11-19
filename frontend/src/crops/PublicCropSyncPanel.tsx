@@ -57,6 +57,8 @@ interface PublicCropSyncPanelProps {
    * name the direction of each choice.
    */
   allowLocal?: boolean;
+  /** Parent linking offers the library value and one choice to keep the project value. */
+  libraryOrOwn?: boolean;
 }
 
 /** Fields whose value is free-form Markdown and may need a collapse toggle when long. */
@@ -402,12 +404,13 @@ interface SyncFieldRowProps {
   disabled: boolean;
   allowLocal: boolean;
   keepMineLocally: boolean;
+  libraryOrOwn: boolean;
   t: TFunction;
   locale: string;
   onChoiceChange: (choice: PublicCropSyncChoice) => void;
 }
 
-function SyncFieldRow({ change, choice, disabled, allowLocal, keepMineLocally, t, locale, onChoiceChange }: SyncFieldRowProps) {
+function SyncFieldRow({ change, choice, disabled, allowLocal, keepMineLocally, libraryOrOwn, t, locale, onChoiceChange }: SyncFieldRowProps) {
   const label = getPublicCropFormUnitFieldLabel(change.field, t);
   const isRichText = isRichTextSyncField(change.field);
   const [expanded, setExpanded] = useState(false);
@@ -454,15 +457,17 @@ function SyncFieldRow({ change, choice, disabled, allowLocal, keepMineLocally, t
     </SyncOption>
   );
   const canKeepLocally = canKeepSyncFieldLocally(change);
+  const showPin = allowLocal && (!libraryOrOwn || canKeepLocally);
+  const showMine = !libraryOrOwn || !showPin;
   const pinBlockedReasonKey = getSyncPinBlockedReasonKey(change);
   const pushBlockedReasonKey = getSyncPushBlockedReasonKey(change);
-  const localOption = allowLocal ? (
+  const localOption = showPin ? (
     <SyncOption
       name={radioName}
       value="local"
       checked={choice === 'local'}
       disabled={disabled || !canKeepLocally}
-      label={t('library.sync.chooseLocal')}
+      label={t(libraryOrOwn ? 'library.linkExisting.keepLocal' : 'library.sync.chooseLocal')}
       onSelect={() => onChoiceChange('local')}
     >
       <SyncValueColumn
@@ -498,7 +503,7 @@ function SyncFieldRow({ change, choice, disabled, allowLocal, keepMineLocally, t
         component="dd"
         role="radiogroup"
         aria-label={t('library.sync.choiceAriaLabel', { field: label })}
-        sx={{ ...(allowLocal ? THREE_VALUE_COLUMNS_SX : VALUE_COLUMNS_SX), m: 0 }}
+        sx={{ ...(allowLocal && !libraryOrOwn ? THREE_VALUE_COLUMNS_SX : VALUE_COLUMNS_SX), m: 0 }}
       >
         <SyncOption
           name={radioName}
@@ -510,11 +515,11 @@ function SyncFieldRow({ change, choice, disabled, allowLocal, keepMineLocally, t
         >
           {libraryValue}
         </SyncOption>
-        {pushBlockedReasonKey ? (
+        {showMine && (pushBlockedReasonKey ? (
           <DisabledActionTooltip fullWidth title={t(pushBlockedReasonKey)}>
             {mineOption}
           </DisabledActionTooltip>
-        ) : mineOption}
+        ) : mineOption)}
         {localOption && pinBlockedReasonKey ? (
           <DisabledActionTooltip fullWidth title={t(pinBlockedReasonKey)}>
             {localOption}
@@ -569,6 +574,7 @@ export function PublicCropSyncPanel({
   disabled = false,
   keepMineLocally = false,
   allowLocal = false,
+  libraryOrOwn = false,
 }: PublicCropSyncPanelProps) {
   const { t } = useTranslation(['crops', 'common']);
   const locale = getActiveFormattingLocale();
@@ -608,6 +614,10 @@ export function PublicCropSyncPanel({
       : t('library.sync.summarySingle', { part: summaryParts[0] });
 
   const setAll = (choice: PublicCropSyncChoice) => onChoicesChange(buildUniformSyncChoices(changes, choice));
+  const keepOwnValues = () => onChoicesChange(Object.fromEntries(changes.map((change) => [
+    change.field,
+    canKeepSyncFieldLocally(change) ? 'local' : change.pushable ? 'mine' : 'library',
+  ])));
 
   return (
     <Stack spacing={1}>
@@ -620,7 +630,7 @@ export function PublicCropSyncPanel({
         <Box
           data-testid="public-crop-sync-headings"
           sx={{
-            ...(allowLocal ? THREE_VALUE_COLUMNS_SX : VALUE_COLUMNS_SX),
+            ...(allowLocal && !libraryOrOwn ? THREE_VALUE_COLUMNS_SX : VALUE_COLUMNS_SX),
             px: allowLocal ? { xs: 0.5, sm: 1 } : 1,
             py: 0.75,
             position: 'sticky',
@@ -649,7 +659,7 @@ export function PublicCropSyncPanel({
               testId: 'public-crop-sync-heading-library',
             } : {})}
           />
-          <SyncColumnHeading
+          {!libraryOrOwn && <SyncColumnHeading
             column="mine"
             label={t(keepMineLocally ? 'library.linkExisting.keepLocal' : 'library.sync.columnMine')}
             actionLabel={t(allowLocal && !keepMineLocally ? 'library.sync.allShare' : 'library.sync.allMine')}
@@ -660,16 +670,16 @@ export function PublicCropSyncPanel({
               description: t(keepMineLocally ? 'library.linkExisting.keepLocalDescription' : 'library.sync.columnMineDescription'),
               testId: 'public-crop-sync-heading-mine',
             } : {})}
-          />
+          />}
           {allowLocal ? (
             <SyncColumnHeading
               column="local"
-              label={t('library.sync.columnLocal')}
-              actionLabel={t('library.sync.allLocal')}
+              label={t(libraryOrOwn ? 'library.linkExisting.keepLocal' : 'library.sync.columnLocal')}
+              actionLabel={t(libraryOrOwn ? 'library.sync.allMine' : 'library.sync.allLocal')}
               disabled={disabled}
-              onAction={() => setAll('local')}
+              onAction={libraryOrOwn ? keepOwnValues : () => setAll('local')}
               icon={PushPinOutlinedIcon}
-              description={t('library.sync.columnLocalDescription')}
+              description={t(libraryOrOwn ? 'library.linkExisting.keepLocalDescription' : 'library.sync.columnLocalDescription')}
               testId="public-crop-sync-heading-local"
             />
           ) : null}
@@ -683,6 +693,7 @@ export function PublicCropSyncPanel({
               disabled={disabled}
               allowLocal={allowLocal}
               keepMineLocally={keepMineLocally}
+              libraryOrOwn={libraryOrOwn}
               t={t}
               locale={locale}
               onChoiceChange={(choice) => setChoice(change.field, choice)}

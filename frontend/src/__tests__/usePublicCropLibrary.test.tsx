@@ -87,44 +87,56 @@ describe('usePublicCropLibrary co-publishing Sorten', () => {
     // the Kultur's confirmation before the user has read it.
     const showSnackbar = vi.fn();
     const { result } = renderLibraryHook(showSnackbar);
+    publishPublicMock.mockResolvedValueOnce({
+      data: { operation: 'created', varieties: { published: 1, linked: 1, pending_moderation: 0 } },
+    });
+    const updatedAt = '2026-11-19T18:00:00Z';
 
     await result.current.handlePublishCurrentCrop(false, {
       cropSpeciesId: 1,
       originalLanguageCode: 'de',
       publishAsGeneral: true,
       varieties: [
-        { cropId: 2, publicCropId: null },
-        { cropId: 3, publicCropId: 40 },
+        { cropId: 2, publicCropId: null, cropUpdatedAt: updatedAt },
+        { cropId: 3, publicCropId: 40, baseVersion: 7, cropUpdatedAt: updatedAt },
       ],
     });
 
     await waitFor(() => expect(showSnackbar).toHaveBeenCalledTimes(1));
     const [message, severity] = showSnackbar.mock.calls[0];
     expect(message).toContain('„Tomate“ wurde in die Kulturbibliothek veröffentlicht.');
-    expect(message).toContain('2 Sorten wurden mitveröffentlicht.');
+    expect(message).toContain('1 Sorte wurde mitveröffentlicht.');
+    expect(message).toContain('1 Sorte wurde mit einem Bibliothekseintrag verknüpft.');
     expect(severity).toBe('success');
+    expect(linkPublicCropMock).not.toHaveBeenCalled();
+    expect(publishPublicMock).toHaveBeenCalledExactlyOnceWith(1, expect.objectContaining({
+      varieties: [
+        { crop_id: 2, public_crop_id: null, expected_updated_at: updatedAt },
+        { crop_id: 3, public_crop_id: 40, base_version: 7, expected_updated_at: updatedAt },
+      ],
+    }));
   });
 
-  it('keeps the Kultur confirmation visible when a Sorte fails', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    publishPublicMock
-      .mockResolvedValueOnce({ data: { operation: 'created' } })
-      .mockRejectedValueOnce(new Error('nope'));
+  it('keeps a rejected batch in the dialog with the failed variety', async () => {
+    publishPublicMock.mockRejectedValueOnce({
+      isAxiosError: true,
+      response: { status: 409, data: { code: 'duplicate_public_crop', variety: 'Roma' } },
+    });
     const showSnackbar = vi.fn();
+    const onError = vi.fn();
     const { result } = renderLibraryHook(showSnackbar);
 
-    await result.current.handlePublishCurrentCrop(false, {
+    const published = await result.current.handlePublishCurrentCrop(false, {
       cropSpeciesId: 1,
       originalLanguageCode: 'de',
       publishAsGeneral: true,
       varieties: [{ cropId: 2, publicCropId: null }],
+      onError,
     });
 
-    await waitFor(() => expect(showSnackbar).toHaveBeenCalledTimes(1));
-    const [message, severity] = showSnackbar.mock.calls[0];
-    expect(message).toContain('„Tomate“ wurde in die Kulturbibliothek veröffentlicht.');
-    expect(message).toContain('1 Sorte konnte nicht mitveröffentlicht werden.');
-    expect(severity).toBe('error');
+    expect(published).toBe(false);
+    expect(onError).toHaveBeenCalledWith(expect.stringContaining('Roma'), 'duplicate_public_crop');
+    expect(showSnackbar).not.toHaveBeenCalled();
   });
 
   it('shows the plain Kultur message when no Sorte was selected', async () => {

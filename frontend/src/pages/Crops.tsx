@@ -424,18 +424,20 @@ function Crops() {
     acceptedPublicLibraryTerms: boolean;
     cropSpeciesId?: number;
     originalLanguageCode: string;
-    publicCropId?: number | null;
     publishAsGeneral?: boolean;
     varieties?: PublishVarietySelection[];
     healthMappings?: StagedPlantHealthMapping[];
     cropUpdatedAt?: string;
+    varietyParent?: import('../api/types').VarietyParentPublicationDecision;
+    onError?: (message: string, code?: string) => void;
   }) => {
     const success = await handlePublishCurrentCrop(data.acceptedPublicLibraryTerms, {
       cropSpeciesId: data.cropSpeciesId,
       originalLanguageCode: data.originalLanguageCode,
-      publicCropId: data.publicCropId,
       publishAsGeneral: data.publishAsGeneral,
       varieties: data.varieties,
+      varietyParent: data.varietyParent,
+      onError: data.onError,
       ...(data.healthMappings?.length ? { healthMappings: data.healthMappings, cropUpdatedAt: data.cropUpdatedAt } : {}),
     });
     if (success) setPublishWizardOpen(false);

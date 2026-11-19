@@ -68,6 +68,7 @@ const renderWizard = (
   crop: Crop = CROP,
   options: {
     varieties?: Crop[];
+    projectCrops?: Crop[];
     onClose?: () => void;
     onPublish?: (data: unknown) => void;
     onLinkPublicCrop?: (data: unknown) => Promise<boolean>;
@@ -80,6 +81,7 @@ const renderWizard = (
       open
       crop={crop}
       varieties={options.varieties}
+      projectCrops={options.projectCrops}
       termsAlreadyAccepted={options.termsAlreadyAccepted ?? true}
       publishing={false}
       onClose={options.onClose ?? vi.fn()}
@@ -814,6 +816,60 @@ describe('CropsPublishingWizardDialog', () => {
     expect(publicSyncPreviewMock).toHaveBeenCalledWith(GENERAL_CROP.id, 40);
   });
 
+  it.each([false, true])('uses the linked parent and reports review-required=%s', async (requiresModeration) => {
+    const updatedAt = '2026-11-19T18:00:00+00:00';
+    const parent = { ...GENERAL_CROP, id: 9, source_public_crop: 40 };
+    const libraryEntry = { id: 40, name: 'Öffentliche Tomate', crop_species: 1, version: 2, available: true };
+    publishPreviewMock.mockResolvedValue({ data: {
+      can_publish: true, requires_moderation: requiresModeration,
+      variety_parent: { id: 9, name: 'Tomate', already_linked: true, updated_at: updatedAt, library_entry: libraryEntry },
+    } });
+    const onPublish = vi.fn();
+    renderWizard({ ...CROP, general_crop: 9 }, { projectCrops: [parent], onPublish });
+
+    const dialog = await screen.findByRole('dialog', { name: 'Sorte „Roma“ veröffentlichen' });
+    expect(await within(dialog).findByText('Kulturart: Öffentliche Tomate')).toBeVisible();
+    expect(within(dialog).queryByRole('combobox')).not.toBeInTheDocument();
+    if (requiresModeration) expect(within(dialog).getByText('Dein Beitrag wird vor der Veröffentlichung geprüft.')).toBeVisible();
+    fireEvent.click(await findEnabledPublishButton(requiresModeration ? 'Zur Prüfung einreichen' : 'Jetzt veröffentlichen'));
+
+    await waitFor(() => expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
+      cropSpeciesId: 1,
+      varietyParent: {
+        crop_id: 9, public_crop_id: 40, already_linked: true, expected_updated_at: updatedAt, base_version: 2,
+      },
+    })));
+  });
+
+  it('replaces the existing-parent comparison when the selected species needs a new entry', async () => {
+    const updatedAt = '2026-11-19T18:00:00+00:00';
+    const parent = { ...GENERAL_CROP, id: 9, crop_species: 1 };
+    const libraryEntry = { id: 40, name: 'Tomate', crop_species: 1, version: 2, available: true };
+    cropSpeciesListMock.mockResolvedValue({ data: { count: 2, next: null, results: [
+      { id: 1, name: 'Tomate', status: 'published' }, { id: 2, name: 'Kürbis', status: 'published' },
+    ] } });
+    publicCropListMock.mockImplementation(({ crop_species: species }) => Promise.resolve({ data: { results: species === 1
+      ? [{ ...libraryEntry, status: 'published', variety: '' }] : [] } }));
+    publishPreviewMock.mockImplementation((_id, { crop_species_id: species }) => Promise.resolve({ data: {
+      can_publish: true, requires_moderation: false,
+      variety_parent: { id: 9, name: 'Tomate', already_linked: false, updated_at: updatedAt, library_entry: species === 2 ? null : libraryEntry },
+    } }));
+    publicSyncPreviewMock.mockResolvedValue({ data: { public_version: 2, crop_updated_at: updatedAt, changes: [] } });
+    const onPublish = vi.fn();
+    renderWizard({ ...CROP, crop_species: 1, general_crop: 9 }, { projectCrops: [parent], onPublish });
+
+    expect(await screen.findByText(/wird bei der Veröffentlichung mit diesem Bibliothekseintrag verknüpft/)).toBeVisible();
+    expect(await screen.findByText('Keine Abweichungen zum öffentlichen Eintrag.')).toBeVisible();
+    await selectSpeciesOption('Kürbis');
+    expect(await screen.findByText(/noch keinen allgemeinen Eintrag/)).toBeVisible();
+    expect(screen.queryByText(/wird bei der Veröffentlichung mit diesem Bibliothekseintrag verknüpft/)).not.toBeInTheDocument();
+    fireEvent.click(await findEnabledPublishButton());
+    await waitFor(() => expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
+      cropSpeciesId: 2,
+      varietyParent: { crop_id: 9, public_crop_id: null, already_linked: false, expected_updated_at: updatedAt },
+    })));
+  });
+
   it.each(['similar', 'ambiguous', 'incomplete'])('keeps the picker for a %s species match', async (kind) => {
     const results = [{ id: 1, name: kind === 'similar' ? 'Tomat' : 'Tomate', status: 'published' },
       ...(kind === 'ambiguous' ? [{ id: 2, name: 'Other species', status: 'published', search_names: ['Tomate'] }] : [])];
@@ -824,7 +880,7 @@ describe('CropsPublishingWizardDialog', () => {
     ] } });
     renderWizard(GENERAL_CROP);
     await waitFor(() => expect(publicCropListMock).toHaveBeenCalled());
-    expect(screen.getByRole('dialog', { name: 'Kultur verknüpfen oder veröffentlichen' })).toBeVisible();
+    expect(screen.getByRole('dialog', { name: 'Kultur veröffentlichen' })).toBeVisible();
     expect(screen.getAllByRole('combobox')).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'Jetzt veröffentlichen' })).toBeDisabled();
     expect(publicSyncPreviewMock).not.toHaveBeenCalled();
@@ -836,7 +892,7 @@ describe('CropsPublishingWizardDialog', () => {
     )) } });
     renderWizard(GENERAL_CROP);
     await waitFor(() => expect(publicCropListMock).toHaveBeenCalledWith({ crop_species: 1, page_size: 200 }, expect.any(AbortSignal)));
-    expect(screen.getByRole('dialog', { name: 'Kultur verknüpfen oder veröffentlichen' })).toBeVisible();
+    expect(screen.getByRole('dialog', { name: 'Kultur veröffentlichen' })).toBeVisible();
     expect(publicSyncPreviewMock).not.toHaveBeenCalled();
   });
 
@@ -1338,7 +1394,7 @@ describe('CropsPublishingWizardDialog', () => {
 
       await waitFor(() => expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
         varieties: [
-          { cropId: 2, publicCropId: 40 },
+          { cropId: 2, publicCropId: 40, baseVersion: 2 },
           { cropId: 3, publicCropId: null },
         ],
       })));

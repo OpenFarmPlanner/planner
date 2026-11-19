@@ -379,7 +379,7 @@ describe('Crops action area', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Veröffentlichen' }));
 
     const dialog = await screen.findByRole('dialog');
-    await within(dialog).findByText('Kultur verknüpfen oder veröffentlichen');
+    await within(dialog).findByText('Sorte „Roma“ veröffentlichen');
     await selectSpeciesOption(dialog, 'Tomate');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Jetzt veröffentlichen' }));
     fireEvent.click(await within(dialog).findByRole('checkbox', { name: /CC BY-SA 4\.0/ }));
@@ -402,7 +402,7 @@ describe('Crops action area', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Veröffentlichen' }));
 
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByText('Kultur verknüpfen oder veröffentlichen')).toBeInTheDocument();
+    expect(within(dialog).getByText('Sorte „Roma“ veröffentlichen')).toBeInTheDocument();
     expect(await within(dialog).findByRole('combobox', { name: /Offizielle Kulturart/ })).toBeInTheDocument();
     expect(within(dialog).queryByLabelText('Originalsprache')).not.toBeInTheDocument();
     expect(within(dialog).queryByText(/Originalsprache: /)).not.toBeInTheDocument();

@@ -8,6 +8,7 @@ from django.db.models import Prefetch, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     OpenApiParameter,
@@ -26,11 +27,13 @@ from accounts.models import DocumentConsent
 from config.responses import api_error_response
 from farm.agent_api.schema_serializers import (
     ApiErrorSerializer,
+    CoPublishedVarietySerializer,
     CropDeletePreviewSerializer,
     CropDuplicateCheckSerializer,
     PublishPublicRequestSerializer,
     PublishPublicResponseSerializer,
     SeedRateConstraintsSerializer,
+    VarietyParentPublicationSerializer,
 )
 from farm.common.mixins import ProjectScopedMixin
 from farm.companion_notes import note_language
@@ -63,8 +66,13 @@ from farm.services.crop_import.spreadsheet import (
     apply_crop_import_companions,
     preview_crop_import,
 )
-from farm.services.crop_inheritance import crop_identity_write, validate_crop_identity
+from farm.services.crop_inheritance import (
+    crop_identity_write,
+    is_variety_crop,
+    validate_crop_identity,
+)
 from farm.services.crop_plant_health import map_crop_plant_health
+from farm.services.public_crop_trade_names import matched_trade_name
 from farm.services.public_crops import (
     VARIETY_ONLY_COPY_FIELDS,
     CropLinkConflictError,
@@ -78,13 +86,16 @@ from farm.services.public_crops import (
     PublicCropSyncFieldsError,
     PublicCropUnlinkError,
     PublicCropUpdateBlockedError,
+    VarietyPublicationParentConflict,
     build_public_crop_payload,
     build_public_crop_sync_preview,
     build_public_crop_update_status,
     build_publishing_check_result,
     find_owned_public_crop_for_update,
+    find_variety_publication_parent,
     is_species_level_entry,
     link_project_crop_to_public_reference,
+    normalize_identity_value,
     notify_moderators_of_change_proposal,
     publish_crop_to_public_library,
     reject_public_crop_update,
@@ -676,42 +687,146 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         if is_active_guest_demo_user(request.user):
             return guest_demo_forbidden_response()
         crop = self.get_object()
-        if not crop.name.strip():
-            return api_error_response(
-                code='crop_name_required',
-                detail='Name is required for publishing.',
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
-        has_library_consent = has_accepted_current(request.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY)
-        accepted_library_terms = request.data.get('accepted_public_library_terms') is True
-        if not has_library_consent and not accepted_library_terms:
-            return api_error_response(
-                code='public_library_terms_required',
-                detail='Public library contribution terms must be accepted before publishing.',
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
-        if requires_moderation_queue(request) and pending_queue_limit_exceeded(request):
-            return api_error_response(
-                code='pending_proposal_limit_exceeded',
-                detail='Too many contributions are already awaiting moderation for this account.',
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            )
-
         publish_as_general = _request_boolean(request.data.get('publish_as_general'))
+        parent_decision = None
+        if 'variety_parent' in request.data:
+            parent_serializer = VarietyParentPublicationSerializer(
+                data=request.data['variety_parent'],
+            )
+            parent_serializer.is_valid(raise_exception=True)
+            parent_decision = parent_serializer.validated_data
+            parent_id = parent_decision['crop_id']
+            staged_versions = getattr(request, '_staged_crop_versions', {})
+            if staged_versions.get(parent_id) == parent_decision['expected_updated_at']:
+                mapped_parent = get_object_or_404(self.get_queryset(), pk=parent_id)
+                parent_decision['expected_updated_at'] = mapped_parent.updated_at.isoformat()
+        selection_serializer = CoPublishedVarietySerializer(
+            data=request.data.get('varieties', []), many=True,
+        )
+        selection_serializer.is_valid(raise_exception=True)
+        selection = selection_serializer.validated_data
+        crop_species_id = _optional_integer(request.data.get('crop_species_id'))
+        if not selection:
+            with transaction.atomic():
+                return self._publish_crop_response(
+                    request, crop, crop_species_id, publish_as_general,
+                    parent_decision=parent_decision,
+                )
+        if (
+            not publish_as_general or is_variety_crop(crop)
+            or len({row['crop_id'] for row in selection}) != len(selection)
+        ):
+            return api_error_response(
+                code='invalid_copublished_varieties',
+                detail='Choose distinct varieties of the general crop being published.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        with crop_identity_write(crop.project_id):
+            selected_varieties = self._resolve_copublished_varieties(request, crop, selection)
+            response = self._publish_crop_response(
+                request, crop, crop_species_id, publish_as_general, parent_decision=parent_decision,
+            )
+            if response.status_code >= 400:
+                transaction.set_rollback(True)
+                return response
+            entry = response.data.get('public_crop')
+            pending_parent_id = None
+            if entry is None:
+                pending_parent_id = response.data['change_proposal']['public_crop']
+                entry = PublicCrop.objects.values('crop_species').get(pk=pending_parent_id)
+            batches = self._publish_selected_varieties(
+                request, selected_varieties, entry['crop_species'], pending_parent_id,
+            )
+            if isinstance(batches, Response):
+                transaction.set_rollback(True)
+                return batches
+            response.data['varieties'] = batches
+            return response
+
+    def _resolve_copublished_varieties(self, request, general, selection):
+        selected = []
+        staged_versions = getattr(request, '_staged_crop_versions', {})
+        for item in selection:
+            variety = get_object_or_404(self.get_queryset(), pk=item['crop_id'])
+            self.check_object_permissions(request, variety)
+            parent = find_variety_publication_parent(variety)
+            original_updated_at = (
+                parse_datetime(staged_versions[variety.pk])
+                if variety.pk in staged_versions else variety.updated_at
+            )
+            if (
+                parent is None or parent.pk != general.pk or variety.source_public_crop_id
+                or original_updated_at != item['expected_updated_at']
+            ):
+                raise VarietyPublicationParentConflict(
+                    'copublished_variety_changed',
+                    'A selected variety changed. Review the selections again.',
+                )
+            selected.append((variety, item))
+        return selected
+
+    def _publish_selected_varieties(self, request, selection, species_id, pending_parent_id):
+        result = {'published': 0, 'linked': 0, 'pending_moderation': 0}
+        for variety, item in selection:
+            variety.refresh_from_db()
+            if item['public_crop_id'] is not None:
+                entry = PublicCrop.objects.select_for_update().filter(
+                    pk=item['public_crop_id'], crop_species_id=species_id,
+                    status=PublicCrop.STATUS_PUBLISHED,
+                ).first()
+                if (
+                    entry is None or not entry.variety_normalized
+                    or entry.version != item['base_version']
+                    or not (
+                        entry.variety_normalized == normalize_identity_value(variety.variety)
+                        or matched_trade_name(entry, variety.variety)
+                    )
+                ):
+                    raise VarietyPublicationParentConflict(
+                        'copublished_variety_changed',
+                        'A selected library variety changed. Review the selections again.',
+                    )
+                link_project_crop_to_public_reference(
+                    crop=variety, public_crop=entry, base_version=item['base_version'],
+                    user=request.user,
+                )
+                result['linked'] += 1
+                continue
+            response = self._publish_crop_response(
+                request, variety, species_id, False, pending_parent_id=pending_parent_id,
+            )
+            if response.status_code >= 400:
+                response.data['variety'] = variety.variety
+                return response
+            key = (
+                'pending_moderation' if response.status_code == status.HTTP_202_ACCEPTED
+                else 'published'
+            )
+            result[key] += 1
+        return result
+
+    def _publish_crop_response(
+        self, request, crop, crop_species_id, publish_as_general, *,
+        parent_decision=None, pending_parent_id=None,
+    ):
+        has_library_consent = has_accepted_current(
+            request.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY,
+        )
+        moderated = requires_moderation_queue(request)
+        if (error := self._crop_publication_precondition_error(
+            request, crop, has_library_consent, moderated,
+        )) is not None:
+            return error
         try:
-            crop_species_id = request.data.get('crop_species_id')
-            try:
-                crop_species_id = int(crop_species_id) if crop_species_id else None
-            except (TypeError, ValueError):
-                crop_species_id = None
             public_crop, duplicates, operation = publish_crop_to_public_library(
                 crop=crop,
                 user=request.user,
                 crop_species_id=crop_species_id,
                 original_language_code=request.data.get('original_language_code'),
                 publish_as_general=publish_as_general,
-                require_moderation=requires_moderation_queue(request),
+                require_moderation=moderated,
                 companion_note_language=note_language({'request': request}),
+                parent_decision=parent_decision,
             )
         except PublicCropPublishingValidationError as error:
             return api_error_response(
@@ -729,6 +844,12 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 status_code=status.HTTP_409_CONFLICT,
                 reason=error.reason,
             )
+        except (
+            PublicCropEditConflictError, LibraryPinnedFieldsError, PublicCropPermissionError,
+        ) as error:
+            return self._public_sync_error_response(error)
+        except PublicCropSyncFieldsError as error:
+            return _invalid_sync_fields_response(error.fields, code=error.code)
         except DuplicatePublicCropError as error:
             return api_error_response(
                 code='duplicate_public_crop',
@@ -741,57 +862,11 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             record_acceptance(request.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY)
 
         if operation in ('pending_moderation', 'pending_moderation_edit'):
-            origin_api, origin_declared_agent = describe_contribution_origin(request)
-            # `summary` is a CharField(max_length=240) and a crop's name and
-            # variety are 200 characters each, so the composed label has to be
-            # truncated: PostgreSQL rejects an over-long value outright.
-            is_edit = operation == 'pending_moderation_edit'
-            if is_edit:
-                # The contributor owns this published entry but may not write
-                # to it directly, so the values their crop would have pushed
-                # become an edit proposal against the live row. Restricted to
-                # the proposable fields, which is what the approval path
-                # re-validates before applying.
-                label = format_crop_display_name(public_crop.name, public_crop.variety)
-                summary = truncate_proposal_summary(f'Update awaiting moderation: {label}')
-                payload = build_public_crop_payload(
-                    crop, public_variety=None if publish_as_general else crop.variety,
-                    companion_note_language=note_language({'request': request}),
-                    retained_public_crop=public_crop,
-                )
-                proposed_data = {
-                    field: value for field, value in payload.items()
-                    if field in PUBLIC_CROP_PROPOSABLE_FIELDS
-                    and not (
-                        is_species_level_entry(public_crop)
-                        and field in VARIETY_ONLY_COPY_FIELDS
-                    )
-                }
-            else:
-                summary = truncate_proposal_summary(
-                    f'New publish awaiting moderation: {format_crop_display_name(crop.name, crop.variety)}',
-                )
-                proposed_data = {'_source_crop_id': crop.id, '_publish_as_general': publish_as_general}
-            proposal = PublicCropChangeProposal.objects.create(
-                public_crop=public_crop,
-                kind=(
-                    PublicCropChangeProposal.KIND_EDIT if is_edit
-                    else PublicCropChangeProposal.KIND_NEW_PUBLISH
-                ),
-                summary=summary,
-                proposed_data=proposed_data,
-                proposed_by=request.user,
-                origin_api=origin_api,
-                origin_declared_agent=origin_declared_agent,
+            return self._pending_crop_publication_response(
+                request, crop, public_crop, duplicates, operation,
+                publish_as_general=publish_as_general, parent_decision=parent_decision,
+                pending_parent_id=pending_parent_id,
             )
-            notify_moderators_of_change_proposal(proposal)
-            return Response({
-                # One operation on the wire: the client's concern is "queued,
-                # not live", and it already has `change_proposal.kind`.
-                'operation': 'pending_moderation',
-                'change_proposal': PublicCropChangeProposalSerializer(proposal).data,
-                'duplicates': self._serialize_duplicates(duplicates),
-            }, status=status.HTTP_202_ACCEPTED)
 
         serializer = PublicCropSerializer(public_crop, context={'request': request})
         response_status = (
@@ -804,6 +879,90 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             'public_crop': serializer.data,
             'duplicates': self._serialize_duplicates(duplicates),
         }, status=response_status)
+
+    @staticmethod
+    def _crop_publication_precondition_error(request, crop, has_library_consent, moderated):
+        if not crop.name.strip():
+            return api_error_response(
+                code='crop_name_required',
+                detail='Name is required for publishing.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        accepted_library_terms = request.data.get('accepted_public_library_terms') is True
+        if not has_library_consent and not accepted_library_terms:
+            return api_error_response(
+                code='public_library_terms_required',
+                detail='Public library contribution terms must be accepted before publishing.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        if moderated and pending_queue_limit_exceeded(request):
+            return api_error_response(
+                code='pending_proposal_limit_exceeded',
+                detail='Too many contributions are already awaiting moderation for this account.',
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        return None
+
+    def _pending_crop_publication_response(
+        self, request, crop, public_crop, duplicates, operation, *,
+        publish_as_general, parent_decision, pending_parent_id,
+    ):
+        origin_api, origin_declared_agent = describe_contribution_origin(request)
+        # `summary` is a CharField(max_length=240) and a crop's name and
+        # variety are 200 characters each, so the composed label has to be
+        # truncated: PostgreSQL rejects an over-long value outright.
+        is_edit = operation == 'pending_moderation_edit'
+        if is_edit:
+            # The contributor owns this published entry but may not write
+            # to it directly, so the values their crop would have pushed
+            # become an edit proposal against the live row. Restricted to
+            # the proposable fields, which is what the approval path
+            # re-validates before applying.
+            label = format_crop_display_name(public_crop.name, public_crop.variety)
+            summary = truncate_proposal_summary(f'Update awaiting moderation: {label}')
+            payload = build_public_crop_payload(
+                crop, public_variety=None if publish_as_general else crop.variety,
+                companion_note_language=note_language({'request': request}),
+                retained_public_crop=public_crop,
+            )
+            proposed_data = {
+                field: value for field, value in payload.items()
+                if field in PUBLIC_CROP_PROPOSABLE_FIELDS
+                and not (
+                    is_species_level_entry(public_crop)
+                    and field in VARIETY_ONLY_COPY_FIELDS
+                )
+            }
+        else:
+            label = format_crop_display_name(crop.name, crop.variety)
+            summary = truncate_proposal_summary(f'New publish awaiting moderation: {label}')
+            proposed_data = {'_source_crop_id': crop.id, '_publish_as_general': publish_as_general}
+            if parent_decision is not None:
+                proposed_data['_variety_parent'] = parent_decision
+                proposed_data['_source_updated_at'] = crop.updated_at.isoformat()
+            if pending_parent_id is not None:
+                proposed_data['_batch_public_parent_id'] = pending_parent_id
+        proposal = PublicCropChangeProposal.objects.create(
+            public_crop=public_crop,
+            kind=(
+                PublicCropChangeProposal.KIND_EDIT if is_edit
+                else PublicCropChangeProposal.KIND_NEW_PUBLISH
+            ),
+            summary=summary,
+            proposed_data=proposed_data,
+            proposed_by=request.user,
+            origin_api=origin_api,
+            origin_declared_agent=origin_declared_agent,
+        )
+        notify_moderators_of_change_proposal(proposal)
+        return Response({
+            # One operation on the wire: the client's concern is "queued,
+            # not live", and it already has `change_proposal.kind`.
+            'operation': 'pending_moderation',
+            'change_proposal': PublicCropChangeProposalSerializer(proposal).data,
+            'duplicates': self._serialize_duplicates(duplicates),
+        }, status=status.HTTP_202_ACCEPTED)
 
     @action(detail=True, methods=['post'], url_path='link-public-crop')
     @with_staged_health_mappings()
@@ -1232,7 +1391,9 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             user=request.user,
             publish_as_general=_request_boolean(params.get('publish_as_general')),
         )
-        return Response(self._serialize_publishing_check_result(result))
+        payload = self._serialize_publishing_check_result(result)
+        payload['requires_moderation'] = requires_moderation_queue(request)
+        return Response(payload)
 
     def _serialize_duplicates(self, duplicates):
         return [
@@ -1250,6 +1411,8 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         ]
 
     def _serialize_publishing_check_result(self, result):
+        parent = result.variety_parent
+        entry = parent.entry if parent else None
         return {
             'crop_species': (
                 {'id': result.crop_species.id, 'name': result.crop_species.name}
@@ -1267,6 +1430,22 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             'unpublishable_plant_health_count': result.unpublishable_plant_health_count,
             'can_publish': result.can_publish,
             'blocking_reasons': result.blocking_reasons,
+            'variety_parent': ({
+                'id': parent.crop.pk,
+                'name': parent.crop.name,
+                'updated_at': parent.crop.updated_at.isoformat(),
+                'already_linked': bool(parent.crop.source_public_crop_id),
+                'library_entry': ({
+                    'id': entry.pk,
+                    'name': entry.name,
+                    'crop_species': entry.crop_species_id,
+                    'version': entry.version,
+                    'available': (
+                        entry.status == PublicCrop.STATUS_PUBLISHED
+                        and is_species_level_entry(entry)
+                    ),
+                } if entry else None),
+            } if parent else None),
             'general_crop_notice': (
                 {
                     'public_crop_id': result.general_crop_notice.public_crop_id,

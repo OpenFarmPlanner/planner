@@ -1,5 +1,3 @@
-import axios from 'axios';
-import { cropAPI } from '../api/api';
 import type { Crop, PublicCrop, StagedPlantHealthMapping } from '../api/types';
 import { getCropDisplayName, getCropVariety } from './cropDisplay';
 import { normalizeCropIdentityValue } from './cropIdentity';
@@ -27,16 +25,7 @@ export interface PublishVarietySelection {
   cropId: number;
   /** Set when the Sorte matches an existing public entry and is only linked to it. */
   publicCropId: number | null;
-}
-
-export interface PublishVarietiesResult {
-  published: number;
-  linked: number;
-  /** Rejected by the backend's duplicate gate — the Sorte is public already. */
-  alreadyPublic: number;
-  /** Queued for moderator review instead of published (see docs/account-trust-levels.md). */
-  pendingModeration: number;
-  failed: number;
+  baseVersion?: number;
 }
 
 export const getPublishVarietyLabel = (crop: Crop): string => (
@@ -92,66 +81,3 @@ export const buildPublishVarietyCandidates = (
       existingPublicCrop: findExistingPublicVariety(crop, publicCrops),
     }))
 );
-
-/**
- * Publish (or link) the Sorten the user kept selected in the publishing wizard.
- *
- * Runs after the general Kultur itself was published, one Sorte at a time: the
- * backend derives the species-level entry from the first publication, and a
- * failing Sorte must not abort the remaining ones.
- */
-export const publishSelectedVarieties = async ({
-  varieties,
-  cropSpeciesId,
-  originalLanguageCode,
-  acceptedPublicLibraryTerms = false,
-}: {
-  varieties: readonly PublishVarietySelection[];
-  cropSpeciesId?: number;
-  originalLanguageCode: string;
-  acceptedPublicLibraryTerms?: boolean;
-}): Promise<PublishVarietiesResult> => {
-  const result: PublishVarietiesResult = { published: 0, linked: 0, alreadyPublic: 0, pendingModeration: 0, failed: 0 };
-  for (const variety of varieties) {
-    try {
-      if (variety.publicCropId) {
-        if (variety.healthMappings?.length) {
-          await cropAPI.linkPublicCrop(variety.cropId, variety.publicCropId, undefined, undefined, variety.cropUpdatedAt, undefined, undefined, variety.healthMappings);
-        } else {
-          await cropAPI.linkPublicCrop(variety.cropId, variety.publicCropId);
-        }
-        result.linked += 1;
-        continue;
-      }
-      const response = await cropAPI.publishPublic(variety.cropId, {
-        // The backend only records an acceptance while none exists, so
-        // repeating the flag from the Kultur publish costs nothing. The wizard
-        // collects it on every path that publishes a Sorte, including the one
-        // that only links the Kultur to an existing public entry.
-        accepted_public_library_terms: acceptedPublicLibraryTerms,
-        ...(variety.healthMappings?.length ? { plant_health_mappings: variety.healthMappings, expected_updated_at: variety.cropUpdatedAt } : {}),
-        crop_species_id: cropSpeciesId,
-        original_language_code: originalLanguageCode,
-      });
-      // A queued contribution is not in the library yet, so counting it as
-      // published would report a co-publish that did not happen.
-      if (response.data.operation === 'pending_moderation') {
-        result.pendingModeration += 1;
-      } else {
-        result.published += 1;
-      }
-    } catch (error) {
-      // A duplicate is not a failure the user has to act on: the Sorte the
-      // conflict check did not see (a stale or failed lookup) is in the
-      // library already, which is what co-publishing wanted.
-      if (axios.isAxiosError(error) && error.response?.status === 409
-        && (error.response.data as { code?: string } | undefined)?.code === 'duplicate_public_crop') {
-        result.alreadyPublic += 1;
-        continue;
-      }
-      console.error('Error publishing variety:', error);
-      result.failed += 1;
-    }
-  }
-  return result;
-};

@@ -1149,43 +1149,195 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(variety_entry.crop_family_id, 'Lamiaceae')
         self.assertEqual(variety_entry.nutrient_demand, 'medium')
 
-    def test_general_kultur_published_through_a_sorte_offers_the_pull_for_differing_values(self):
-        """The entry carries the Sorte's values, which the Kultur never had.
-
-        Linking records no baseline then, so the differences surface as a pull
-        ("Kultur aktualisieren") instead of a push of values nobody edited.
-        """
+    def test_general_kultur_published_through_a_sorte_uses_the_general_rows_own_values(self):
         general_kultur = self._create_general_kultur()
         self.publish_current_crop()
 
         general_kultur.refresh_from_db()
         general_public_crop = PublicCrop.objects.get(variety='')
         self.assertEqual(general_kultur.source_public_crop, general_public_crop)
-        self.assertIsNone(general_kultur.source_public_version)
+        self.assertEqual(general_kultur.source_public_version, general_public_crop.version)
         self.assertEqual(general_kultur.origin_type, Crop.ORIGIN_MANUAL)
-        self.assertEqual(general_kultur.growth_duration_days, 60)
-        self.assertTrue(has_pending_public_crop_update(general_kultur))
-
+        self.assertEqual(general_public_crop.growth_duration_days, 60)
+        self.assertEqual(general_public_crop.notes, general_kultur.notes)
+        self.assertFalse(has_pending_public_crop_update(general_kultur))
+        self.assertEqual(PublicCrop.objects.get(variety=self.crop.variety).growth_duration_days, 50)
         rows = {row['id']: row for row in self.client.get('/openfarmplanner/api/crops/').data['results']}
         general_row = rows[general_kultur.id]
         self.assertEqual(general_row['owned_public_crop_id'], general_public_crop.id)
         self.assertEqual(general_row['owned_public_crop_role'], 'contributor')
-        self.assertEqual(general_row['public_publish_blocked_reason'], 'update_pending')
-        self.assertTrue(general_row['public_update_available'])
-        # Pushing values the entry never had is not offered before the pull.
-        response = self.client.post(
-            f'/openfarmplanner/api/crops/{general_kultur.id}/publish-public/',
-            {
-                'accepted_public_library_terms': True,
-                'crop_species_id': self.species.id,
-                'original_language_code': 'en',
-                'publish_as_general': True,
-            },
-            format='json',
+        self.assertEqual(general_row['public_publish_blocked_reason'], 'no_local_changes')
+        self.assertFalse(general_row['public_update_available'])
+
+    def test_linked_variety_parent_fixes_the_species_in_preview_and_publish(self):
+        entry = PublicCrop.objects.create(
+            name='Public lettuce', crop_species=self.species, status=PublicCrop.STATUS_PUBLISHED,
         )
-        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
-        general_public_crop.refresh_from_db()
-        self.assertEqual(general_public_crop.growth_duration_days, 50)
+        parent = self._create_general_kultur(source_public_crop=entry)
+        other = CropSpecies.objects.create(name='Other crop')
+        url = f'/openfarmplanner/api/crops/{self.crop.pk}/publish-public/'
+        preview = self.client.get(f'{url}preview/', {'original_language_code': 'en'})
+        self.assertEqual(preview.data['variety_parent']['id'], parent.pk)
+        self.assertTrue(preview.data['variety_parent']['already_linked'])
+        self.assertEqual(preview.data['variety_parent']['library_entry']['id'], entry.pk)
+        payload = {'accepted_public_library_terms': True, 'original_language_code': 'en'}
+        mismatch = self.client.post(url, {**payload, 'crop_species_id': other.pk}, format='json')
+        self.assertEqual(mismatch.status_code, 409, mismatch.data)
+        self.assertEqual(mismatch.data['code'], 'linked_parent_species_mismatch')
+        general = self.client.post(url, {**payload, 'publish_as_general': True}, format='json')
+        self.assertEqual(general.status_code, 409, general.data)
+        self.assertEqual(general.data['code'], 'linked_parent_variety_required')
+        self.assertEqual(PublicCrop.objects.count(), 1)
+        published = self.client.post(url, payload, format='json')
+        self.assertEqual(published.status_code, 201, published.data)
+        self.assertEqual(published.data['public_crop']['crop_species'], self.species.pk)
+        parent.refresh_from_db()
+        self.assertEqual(parent.source_public_crop_id, entry.pk)
+
+    def test_variety_publication_applies_explicit_parent_choices_atomically(self):
+        parent = self._create_general_kultur(notes='Local parent notes')
+        entry = PublicCrop.objects.create(
+            name='Public lettuce', crop_species=self.species, status=PublicCrop.STATUS_PUBLISHED,
+            version=2, growth_duration_days=77, notes='Public parent notes',
+        )
+        url = f'/openfarmplanner/api/crops/{self.crop.pk}/publish-public/'
+        decision = {
+            'crop_id': parent.pk, 'public_crop_id': entry.pk, 'already_linked': False,
+            'expected_updated_at': parent.updated_at.isoformat(), 'base_version': 1,
+            'pull_fields': ['growth_duration_days'], 'pin_fields': ['notes'],
+        }
+        body = {
+            'accepted_public_library_terms': True, 'original_language_code': 'en',
+            'crop_species_id': self.species.pk, 'variety_parent': decision,
+        }
+        stale = self.client.post(url, body, format='json')
+        self.assertEqual(stale.status_code, 409, stale.data)
+        self.assertEqual(stale.data['code'], 'variety_parent_changed')
+        parent.refresh_from_db()
+        self.assertIsNone(parent.source_public_crop_id)
+        self.assertEqual(parent.growth_duration_days, 60)
+        self.assertFalse(PublicCrop.objects.filter(variety=self.crop.variety).exists())
+
+        decision['base_version'] = entry.version
+        published = self.client.post(url, body, format='json')
+        self.assertEqual(published.status_code, 201, published.data)
+        parent.refresh_from_db()
+        entry.refresh_from_db()
+        self.assertEqual(parent.source_public_crop_id, entry.pk)
+        self.assertEqual(parent.growth_duration_days, 77)
+        self.assertEqual(parent.notes, 'Local parent notes')
+        self.assertEqual(parent.library_pinned_fields, ['notes'])
+        self.assertEqual(entry.notes, 'Public parent notes')
+        self.assertEqual(published.data['public_crop']['growth_duration_days'], 50)
+
+    def test_new_parent_entry_keeps_varieties_in_the_same_private_inheritance_group(self):
+        parent = self._create_general_kultur(notes='Private parent values')
+        other = CropSpecies.objects.create(name='Other official crop species')
+        sibling = Crop.objects.create(
+            name='Alternate local crop name', variety='Sibling', crop_species=self.species,
+            project=self.project,
+        )
+        response = self.client.post(f'/openfarmplanner/api/crops/{self.crop.pk}/publish-public/', {
+            'accepted_public_library_terms': True, 'original_language_code': 'en',
+            'crop_species_id': other.pk, 'variety_parent': {
+                'crop_id': parent.pk, 'public_crop_id': None, 'already_linked': False,
+                'expected_updated_at': parent.updated_at.isoformat(),
+            },
+        }, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        parent.refresh_from_db()
+        sibling.refresh_from_db()
+        self.assertEqual(parent.crop_species_id, other.pk)
+        self.assertEqual(parent.source_public_crop.notes, 'Private parent values')
+        self.assertEqual(sibling.crop_species_id, other.pk)
+        result = self.client.get(f'/openfarmplanner/api/crops/{sibling.pk}/')
+        self.assertEqual(result.data['general_crop'], parent.pk)
+
+    def test_copublishing_rolls_back_the_general_entry_and_prior_varieties_on_failure(self):
+        parent = self._create_general_kultur()
+        second = Crop.objects.create(
+            name=self.crop.name, variety='Second', project=self.project, crop_species=self.species,
+        )
+        duplicate = PublicCrop.objects.create(
+            name=self.crop.name, variety=second.variety, crop_species=self.species,
+            status=PublicCrop.STATUS_PUBLISHED,
+        )
+        selections = [
+            {
+                'crop_id': crop.pk, 'expected_updated_at': crop.updated_at.isoformat(),
+                'public_crop_id': None,
+            }
+            for crop in (self.crop, second)
+        ]
+        url = f'/openfarmplanner/api/crops/{parent.pk}/publish-public/'
+        payload = {
+            'accepted_public_library_terms': True, 'original_language_code': 'en',
+            'crop_species_id': self.species.pk, 'publish_as_general': True,
+            'varieties': selections,
+        }
+        denied = self.client.post(url, payload, format='json')
+        self.assertEqual(denied.status_code, 409, denied.data)
+        self.assertEqual(denied.data['code'], 'duplicate_public_crop')
+        self.assertEqual(denied.data['variety'], second.variety)
+        self.assertEqual(list(PublicCrop.objects.values_list('pk', flat=True)), [duplicate.pk])
+        for crop in (parent, self.crop, second):
+            crop.refresh_from_db()
+            self.assertIsNone(crop.source_public_crop_id)
+
+        selections[1].update(public_crop_id=duplicate.pk, base_version=duplicate.version)
+        published = self.client.post(url, payload, format='json')
+        self.assertEqual(published.status_code, 201, published.data)
+        self.assertEqual(
+            published.data['varieties'], {'published': 1, 'linked': 1, 'pending_moderation': 0},
+        )
+        second.refresh_from_db()
+        self.assertEqual(second.source_public_crop_id, duplicate.pk)
+
+    def test_moderated_parent_choices_wait_for_approval(self):
+        parent = self._create_general_kultur(notes='Private notes')
+        entry = PublicCrop.objects.create(
+            name='Public lettuce', crop_species=self.species, status=PublicCrop.STATUS_PUBLISHED,
+            version=1, growth_duration_days=77,
+        )
+        contributor = User.objects.create_user(
+            username='variety-parent-review', email='parent-review@example.com', password='pw',
+        )
+        ProjectMembership.objects.create(user=contributor, project=self.project, role='admin')
+        self.client.force_authenticate(contributor)
+        url = f'/openfarmplanner/api/crops/{self.crop.pk}/publish-public/'
+        preview = self.client.get(f'{url}preview/', {'original_language_code': 'en'})
+        self.assertTrue(preview.data['requires_moderation'])
+        queued = self.client.post(url, {
+            'accepted_public_library_terms': True, 'original_language_code': 'en',
+            'crop_species_id': self.species.pk, 'variety_parent': {
+                'crop_id': parent.pk, 'public_crop_id': entry.pk, 'already_linked': False,
+                'expected_updated_at': parent.updated_at.isoformat(), 'base_version': 1,
+                'pull_fields': ['growth_duration_days'], 'pin_fields': ['notes'],
+            },
+        }, format='json')
+        self.assertEqual(queued.status_code, 202, queued.data)
+        parent.refresh_from_db()
+        self.assertIsNone(parent.source_public_crop_id)
+        self.assertEqual(parent.growth_duration_days, 60)
+        self.assertFalse(PublicCrop.objects.filter(
+            variety=self.crop.variety, status=PublicCrop.STATUS_PUBLISHED,
+        ).exists())
+
+        proposal = queued.data['change_proposal']
+        self.client.force_authenticate(self._make_moderator('variety-parent-moderator'))
+        moderation_url = (
+            f"/openfarmplanner/api/public-crops/{proposal['public_crop']}"
+            f"/change-proposals/{proposal['id']}/approve/"
+        )
+        approved = self.client.post(moderation_url, {}, format='json')
+        self.assertEqual(approved.status_code, 200, approved.data)
+        parent.refresh_from_db()
+        self.crop.refresh_from_db()
+        self.assertEqual(parent.source_public_crop_id, entry.pk)
+        self.assertEqual(parent.growth_duration_days, 77)
+        self.assertEqual(parent.notes, 'Private notes')
+        self.assertEqual(parent.library_pinned_fields, ['notes'])
+        self.assertEqual(self.crop.source_public_crop_id, proposal['public_crop'])
 
     def test_general_kultur_matching_the_created_entry_gets_the_baseline(self):
         general_kultur = self._create_general_kultur(

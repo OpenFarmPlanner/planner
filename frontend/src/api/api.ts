@@ -54,6 +54,8 @@ import type {
   PublicLibraryModeratorRequestMine,
   PublishPublicCropPreview,
   PublishPublicCropResponse,
+  CoPublishedVariety,
+  VarietyParentPublicationDecision,
   RemainingAreaResponse,
   BedLayoutEntry,
   FieldLayoutEntry,
@@ -206,7 +208,7 @@ export const cropAPI = {
   }) => http.post<CropImportApplyResult>('/crops/import/apply/', data),
   publishPreview: (id: number, params: { crop_species_id?: number | null; original_language_code?: string; publish_as_general?: boolean; plant_health_mappings?: StagedPlantHealthMapping[]; expected_updated_at?: string }) =>
     params.plant_health_mappings?.length ? http.post<PublishPublicCropPreview>(`/crops/${id}/publish-public/preview/`, params) : http.get<PublishPublicCropPreview>(`/crops/${id}/publish-public/preview/`, { params }),
-  publishPublic: (id: number, data: { accepted_public_library_terms: boolean; crop_species_id?: number | null; original_language_code?: string; publish_as_general?: boolean; plant_health_mappings?: StagedPlantHealthMapping[]; expected_updated_at?: string }) =>
+  publishPublic: (id: number, data: { accepted_public_library_terms: boolean; crop_species_id?: number | null; original_language_code?: string; publish_as_general?: boolean; plant_health_mappings?: StagedPlantHealthMapping[]; expected_updated_at?: string; variety_parent?: VarietyParentPublicationDecision; varieties?: CoPublishedVariety[] }) =>
     http.post<PublishPublicCropResponse>(`/crops/${id}/publish-public/`, data),
   copyPublicCrop: (id: number, publicCropId: number, fields: string[], baseVersion: number, cropUpdatedAt?: string) =>
     http.post<Crop>(`/crops/${id}/copy-public-crop/`, {

@@ -1110,6 +1110,16 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             if proposal.status != PublicCropChangeProposal.STATUS_PENDING:
                 return self._proposal_status_error()
             if proposal.kind == PublicCropChangeProposal.KIND_NEW_PUBLISH:
+                batch_parent_id = proposal.proposed_data.get('_batch_public_parent_id')
+                if batch_parent_id and not PublicCrop.objects.filter(
+                    pk=batch_parent_id, crop_species_id=public_crop.crop_species_id,
+                    status=PublicCrop.STATUS_PUBLISHED, variety_normalized='',
+                ).exists():
+                    return api_error_response(
+                        code='copublished_parent_not_approved',
+                        detail='Review the general crop publication before this variety.',
+                        status_code=status.HTTP_409_CONFLICT,
+                    )
                 source_crop_id = proposal.proposed_data.get('_source_crop_id')
                 source_crop = Crop.objects.filter(pk=source_crop_id).first() if source_crop_id else None
                 approve_new_publish_proposal(
@@ -1117,6 +1127,8 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                     source_crop=source_crop,
                     publish_as_general=bool(proposal.proposed_data.get('_publish_as_general')),
                     user=request.user,
+                    parent_decision=proposal.proposed_data.get('_variety_parent'),
+                    expected_source_version=proposal.proposed_data.get('_source_updated_at'),
                 )
             elif public_crop_proposed_restore_version(proposal) is not None:
                 if (forbidden := self._crop_species_pending_forbidden(public_crop)) is not None:
