@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { AxiosError, AxiosHeaders, type AxiosResponse } from 'axios';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import type { ReactElement } from 'react';
 import Crops from '../pages/Crops';
 import { CommandProvider } from '../commands/CommandProvider';
 import { FocusManagerProvider } from '../focus/FocusManager';
+import de from '../i18n/locales/de/crops.json';
 
 const { historyMock, listAllMock, listMock, restoreMock } = vi.hoisted(() => ({
   historyMock: vi.fn(),
@@ -34,12 +35,6 @@ vi.mock('../crops/CropDetail', () => ({
   ),
 }));
 
-vi.mock('../pages/CropsHistoryDialog', () => ({
-  CropsHistoryDialog: ({ open, onRestore }: { open: boolean; onRestore: (id: number) => void }): ReactElement | null => (
-    open ? <button type="button" onClick={() => onRestore(7)}>restore-version</button> : null
-  ),
-}));
-
 vi.mock('../auth/useAuth', () => ({
   useAuth: () => ({ user: { id: 1, email: 'tester@example.com', display_name: 'Tester' } }),
 }));
@@ -63,11 +58,12 @@ function renderCrops(): void {
   );
 }
 
-async function restoreAndReadSnackbar(): Promise<HTMLElement> {
+async function restoreAndReadAlert(): Promise<HTMLElement> {
   renderCrops();
   fireEvent.click(await screen.findByRole('button', { name: 'open-history' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'restore-version' }));
-  return screen.findByRole('alert');
+  const dialog = await screen.findByRole('dialog', { name: de.history.titles.crop });
+  fireEvent.click(within(dialog).getByRole('button', { name: de.history.restoreButton }));
+  return within(dialog).findByRole('alert');
 }
 
 describe('crop version restore errors', () => {
@@ -77,19 +73,22 @@ describe('crop version restore errors', () => {
     const crops = { count: 1, next: null, previous: null, results: [{ id: 1, name: 'Beet', variety: 'Boltardy', growth_duration_days: 1, harvest_duration_days: 1 }] };
     listMock.mockResolvedValue({ data: crops });
     listAllMock.mockResolvedValue(crops);
-    historyMock.mockResolvedValue({ data: [{ history_id: 7 }] });
+    historyMock.mockResolvedValue({ data: [
+      { history_id: 8, history_date: '2026-11-18T10:00:00Z', is_current_version: true },
+      { history_id: 7, history_date: '2026-11-17T10:00:00Z', is_current_version: false },
+    ] });
   });
 
   it('shows the localized conflict when the restore would duplicate a name and variety', async () => {
     restoreMock.mockRejectedValue(apiError(409, { code: 'crop_variety_conflict', detail: 'conflict' }));
-    const alert = await restoreAndReadSnackbar();
+    const alert = await restoreAndReadAlert();
     expect(alert).toHaveTextContent('Eine Kultur mit diesem Namen und dieser Sorte existiert in diesem Projekt bereits.');
     expect(restoreMock).toHaveBeenCalledWith(1, 7);
   });
 
   it('keeps the generic message for unmapped failures', async () => {
     restoreMock.mockRejectedValue(new Error('network'));
-    const alert = await restoreAndReadSnackbar();
+    const alert = await restoreAndReadAlert();
     expect(alert).toHaveTextContent('Version konnte nicht wiederhergestellt werden');
   });
 });
