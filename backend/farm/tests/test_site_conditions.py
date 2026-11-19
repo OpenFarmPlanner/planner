@@ -165,9 +165,13 @@ class CropSiteSuitabilityApiTest(ProjectApiTestCase):
         }
         response = self.client.get(self.check_url, params)
         self.assertEqual(response.status_code, 200, response.data)
-        preview = self.client.get(self.undated_check_url, {'crop_id': self.variety.pk, 'bed_id': self.bed.pk})
+        preview = self.client.get(
+            self.undated_check_url, {'crop_id': self.variety.pk, 'bed_id': self.bed.pk},
+        )
         self.assertEqual(preview.status_code, 200, preview.data)
-        self.assertEqual(preview.data['site_suitability_findings'], response.data['site_suitability_findings'])
+        self.assertEqual(
+            preview.data['site_suitability_findings'], response.data['site_suitability_findings'],
+        )
         light, water = response.data['site_suitability_findings']
         self.assertEqual(light['crop_light'], ['full_sun', 'partial_shade'])
         self.assertEqual(light['light']['value'], 'shade')
@@ -213,6 +217,9 @@ class CropSiteSuitabilityApiTest(ProjectApiTestCase):
             'crop_id': self.crop.pk, 'bed_id': bed.pk, 'planting_date': '2026-05-01',
         })
         self.assertEqual(response.status_code, 404, response.data)
-        preview = self.client.get(self.undated_check_url, {'crop_id': self.crop.pk, 'bed_id': bed.pk})
+        preview = self.client.get(
+            self.undated_check_url, {'crop_id': self.crop.pk, 'bed_id': bed.pk},
+        )
         self.assertEqual(preview.status_code, 404, preview.data)
-        self.assertEqual(self.client.get(self.undated_check_url, {'crop_id': self.crop.pk}).status_code, 400)
+        missing_bed = self.client.get(self.undated_check_url, {'crop_id': self.crop.pk})
+        self.assertEqual(missing_bed.status_code, 400)

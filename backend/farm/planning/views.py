@@ -469,17 +469,28 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         bed_id, bed_error = _parse_optional_int(request.query_params.get('bed_id'), 'bed_id')
         if crop_id is None or bed_id is None or crop_error or bed_error:
             return api_error_response(
-                code='invalid_site_suitability_parameters', detail=crop_error or bed_error or 'crop_id and bed_id are required.',
+                code='invalid_site_suitability_parameters',
+                detail=crop_error or bed_error or 'crop_id and bed_id are required.',
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         project = request.active_project
         crop = Crop.objects.filter(pk=crop_id, project=project).first()
         if crop is None:
-            return api_error_response(code='crop_not_found', detail='Crop not found.', status_code=status.HTTP_404_NOT_FOUND)
-        bed = Bed.objects.select_related('field__location').filter(pk=bed_id, project=project).first()
+            return api_error_response(
+                code='crop_not_found', detail='Crop not found.',
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        bed = (
+            Bed.objects.select_related('field__location')
+            .filter(pk=bed_id, project=project).first()
+        )
         if bed is None:
-            return api_error_response(code='bed_not_found', detail='Bed not found.', status_code=status.HTTP_404_NOT_FOUND)
-        return Response({'site_suitability_findings': check_site_suitability(crop, bed, build_general_crop_index(project.pk))})
+            return api_error_response(
+                code='bed_not_found', detail='Bed not found.',
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        findings = check_site_suitability(crop, bed, build_general_crop_index(project.pk))
+        return Response({'site_suitability_findings': findings})
 
     @action(detail=False, methods=['get'], url_path='rotation-check')
     def rotation_check(self, request):
