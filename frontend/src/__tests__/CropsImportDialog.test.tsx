@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { CropsImportDialog } from '../pages/CropsImportDialog';
-import type { CropImportState } from '../pages/useCropImportState';
+import type { CropImportResult, CropImportState } from '../pages/useCropImportState';
 
 const t = (key: string): string => key;
 
@@ -12,8 +12,16 @@ const buildState = (overrides: Partial<CropImportState>): CropImportState => ({
   payload: [{ name: 'Carrot' }],
   previewResults: [{ index: 0, status: 'create', import_data: { name: 'Carrot' } }],
   status: 'ready',
+  previewError: null,
+  result: null,
+  ...overrides,
+});
+
+const buildResult = (overrides: Partial<CropImportResult>): CropImportResult => ({
+  outcome: 'partial',
   error: null,
-  success: null,
+  savedSummary: '',
+  details: '',
   failedEntries: [],
   confirmedRows: [],
   seedRateConstraints: null,
@@ -23,7 +31,8 @@ const buildState = (overrides: Partial<CropImportState>): CropImportState => ({
 describe('CropsImportDialog', () => {
   it('does not report zero entries when preview failed before results were available', () => {
     render(<CropsImportDialog open importState={buildState({
-      previewCount: 0, validCount: 0, previewResults: [], payload: [], status: 'error', error: 'Body limit',
+      previewCount: 0, validCount: 0, previewResults: [], payload: [],
+      status: 'preview_error', previewError: 'Body limit',
     })} hasImportableEntries={false} confirmUpdates={false} onConfirmUpdatesChange={vi.fn()}
     onClose={vi.fn()} onImportStart={vi.fn()} t={t} />);
     expect(screen.getByText('Body limit')).toBeVisible();
@@ -87,7 +96,7 @@ describe('CropsImportDialog', () => {
     render(
       <CropsImportDialog
         open
-        importState={buildState({ status: 'uploading' })}
+        importState={buildState({ status: 'applying' })}
         hasImportableEntries
         confirmUpdates={false}
         onConfirmUpdatesChange={vi.fn()}
@@ -104,25 +113,25 @@ describe('CropsImportDialog', () => {
     expect(screen.getByText('import.newCrops (1)')).toBeInTheDocument();
   });
 
-  it('offers a retry with the same entries after a failed import', () => {
-    const onImportStart = vi.fn();
+  it('lets the user close a preview error and choose a corrected file', () => {
+    const onClose = vi.fn();
     render(
       <CropsImportDialog
         open
-        importState={buildState({ status: 'error', error: 'import.errors.network' })}
-        hasImportableEntries
+        importState={buildState({ status: 'preview_error', previewError: 'import.errors.network' })}
+        hasImportableEntries={false}
         confirmUpdates={false}
         onConfirmUpdatesChange={vi.fn()}
-        onClose={vi.fn()}
-        onImportStart={onImportStart}
+        onClose={onClose}
+        onImportStart={vi.fn()}
         t={t}
       />,
     );
 
     expect(screen.getByRole('alert')).toHaveTextContent('import.errors.network');
-    expect(screen.getByText('import.newCrops (1)')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'import.start' }));
-    expect(onImportStart).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'import.start' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'import.close' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('propagates update-confirmation checkbox changes', () => {
@@ -189,8 +198,8 @@ describe('CropsImportDialog', () => {
       <CropsImportDialog
         open
         importState={buildState({
-          status: 'error',
-          failedEntries: [
+          status: 'finished',
+          result: buildResult({ failedEntries: [
             {
               index: 0,
               name: 'Brokkoli',
@@ -198,7 +207,7 @@ describe('CropsImportDialog', () => {
               importData: { name: 'Brokkoli', nutrient_demand: 'Sehr hoch' },
             },
             { index: 1, name: 'Senf', error: 'Unexpected failure' },
-          ],
+          ] }),
         })}
         hasImportableEntries={false}
         confirmUpdates={false}
@@ -214,15 +223,18 @@ describe('CropsImportDialog', () => {
     expect(screen.queryByText(/is not a valid choice/)).not.toBeInTheDocument();
   });
 
-  it('offers only "close" once the import has a result, with the result above the list', () => {
+  it('offers only "close" once the import has a result, with the result above the list', async () => {
     render(
       <CropsImportDialog
         open
         importState={buildState({
-          status: 'error',
-          error: 'import.errors.someFailures',
-          success: 'import.created',
-          failedEntries: [{ index: 0, name: 'Senf', error: 'boom' }],
+          status: 'finished',
+          result: buildResult({
+            error: 'import.errors.someFailures',
+            savedSummary: 'import.created',
+            confirmedRows: [2, 3, 5],
+            failedEntries: [{ index: 0, name: 'Senf', error: 'boom' }],
+          }),
         })}
         hasImportableEntries
         confirmUpdates={false}
@@ -235,9 +247,37 @@ describe('CropsImportDialog', () => {
 
     expect(screen.queryByRole('button', { name: 'import.start' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'import.close' })).toBeEnabled();
-    const alert = screen.getByText('import.errors.someFailures');
-    const list = screen.getByText('import.newCrops', { exact: false });
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('import.errors.someFailures');
+    await waitFor(() => expect(alert).toHaveFocus());
+    expect(screen.getByRole('status')).toHaveTextContent('import.created');
+    const list = screen.getByText('import.incompleteEntries', { exact: false });
     expect(alert.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText('import.newCrops', { exact: false })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['unknown', 'import.errors.unconfirmed'],
+    ['complete', 'import.errors.refresh'],
+  ] as const)('finishes a %s result with no confirmed rows or row details', async (outcome, error) => {
+    const onClose = vi.fn();
+    render(<CropsImportDialog
+      open
+      importState={buildState({ status: 'finished', result: buildResult({ outcome, error }) })}
+      hasImportableEntries={false}
+      confirmUpdates={false}
+      onConfirmUpdatesChange={vi.fn()}
+      onClose={onClose}
+      onImportStart={vi.fn()}
+      t={t}
+    />);
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent(error);
+    await waitFor(() => expect(alert).toHaveFocus());
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'import.start' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'import.close' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('explains a fractional seeds-per-plant value with the crop form\'s rule', () => {
@@ -245,14 +285,16 @@ describe('CropsImportDialog', () => {
       <CropsImportDialog
         open
         importState={buildState({
-          status: 'error',
-          failedEntries: [{
-            index: 0,
-            name: 'Gurke',
-            error: { seed_rate_pre_cultivation_value: ['Seed rate value must be a whole number for this unit.'] },
-            importData: { name: 'Gurke', seed_rate_pre_cultivation_value: 1.2, seed_rate_pre_cultivation_unit: 'seeds_per_plant' },
-          }],
-          seedRateConstraints: { seeds_per_plant: { value_type: 'integer', step: 1, minimum: 1 } },
+          status: 'finished',
+          result: buildResult({
+            failedEntries: [{
+              index: 0,
+              name: 'Gurke',
+              error: { seed_rate_pre_cultivation_value: ['Seed rate value must be a whole number for this unit.'] },
+              importData: { name: 'Gurke', seed_rate_pre_cultivation_value: 1.2, seed_rate_pre_cultivation_unit: 'seeds_per_plant' },
+            }],
+            seedRateConstraints: { seeds_per_plant: { value_type: 'integer', step: 1, minimum: 1 } },
+          }),
         })}
         hasImportableEntries={false}
         confirmUpdates={false}

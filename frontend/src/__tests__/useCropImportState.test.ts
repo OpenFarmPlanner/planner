@@ -11,7 +11,7 @@ describe('useCropImportState', () => {
     expect(result.current.hasImportableEntries).toBe(false);
   });
 
-  it('handles preview ready -> uploading -> partial failure transitions', () => {
+  it('keeps a partial result terminal after applying', () => {
     const { result } = renderHook(() => useCropImportState());
 
     act(() => {
@@ -32,22 +32,24 @@ describe('useCropImportState', () => {
     expect(result.current.hasImportableEntries).toBe(true);
 
     act(() => {
-      result.current.setUploading();
+      result.current.startApply();
     });
 
-    expect(result.current.state.status).toBe('uploading');
-    expect(result.current.state.error).toBeNull();
+    expect(result.current.state.status).toBe('applying');
+    expect(result.current.hasImportableEntries).toBe(false);
 
     act(() => {
-      result.current.setPartialFailure({
-        error: 'Some items failed',
+      result.current.finishApply({
+        outcome: 'partial', error: 'Some items failed',
         failedEntries: [{ index: 1, error: 'duplicate' }],
+        confirmedRows: [1], savedSummary: '1 crop saved', details: '', seedRateConstraints: null,
       });
     });
 
-    expect(result.current.state.status).toBe('error');
-    expect(result.current.state.failedEntries).toHaveLength(1);
-    expect(result.current.state.error).toBe('Some items failed');
+    expect(result.current.state.status).toBe('finished');
+    expect(result.current.state.result?.failedEntries).toHaveLength(1);
+    expect(result.current.state.result?.error).toBe('Some items failed');
+    expect(result.current.hasImportableEntries).toBe(false);
   });
 
   it('resets state after success', () => {
@@ -65,11 +67,16 @@ describe('useCropImportState', () => {
           import_data: { name: 'Bean' },
         }],
       });
-      result.current.setSuccessState('Imported');
+      result.current.startApply();
+      result.current.finishApply({
+        outcome: 'complete', error: null,
+        failedEntries: [], confirmedRows: [1], savedSummary: 'Imported',
+        details: '', seedRateConstraints: null,
+      });
     });
 
-    expect(result.current.state.status).toBe('success');
-    expect(result.current.state.success).toBe('Imported');
+    expect(result.current.state.status).toBe('finished');
+    expect(result.current.state.result?.savedSummary).toBe('Imported');
 
     act(() => {
       result.current.reset();

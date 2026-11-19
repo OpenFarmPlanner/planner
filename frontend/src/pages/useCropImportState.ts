@@ -2,7 +2,18 @@ import { useCallback, useMemo, useReducer } from 'react';
 import type { SeedRateUnitConstraints } from '../api/types';
 import type { ImportFailedEntry, ImportPreviewResult } from './cropsPageUtils';
 
-type ImportStatus = 'idle' | 'ready' | 'uploading' | 'success' | 'error';
+type ImportStatus = 'idle' | 'ready' | 'preview_error' | 'applying' | 'finished';
+
+type CropImportResult = {
+  outcome: 'complete' | 'partial' | 'unknown';
+  error: string | null;
+  savedSummary: string;
+  details: string;
+  failedEntries: ImportFailedEntry[];
+  confirmedRows: number[];
+  /** The seed-rate rules, to explain a failed row like the crop form would. */
+  seedRateConstraints: Partial<SeedRateUnitConstraints> | null;
+};
 
 type CropImportState = {
   previewCount: number;
@@ -11,12 +22,8 @@ type CropImportState = {
   payload: Record<string, unknown>[];
   previewResults: ImportPreviewResult[];
   status: ImportStatus;
-  error: string | null;
-  success: string | null;
-  failedEntries: ImportFailedEntry[];
-  confirmedRows: number[];
-  /** The seed-rate rules, to explain a failed row like the crop form would. */
-  seedRateConstraints: Partial<SeedRateUnitConstraints> | null;
+  previewError: string | null;
+  result: CropImportResult | null;
 };
 
 type SetErrorPayload = {
@@ -34,22 +41,12 @@ type SetPreviewReadyPayload = {
   previewResults: ImportPreviewResult[];
 };
 
-type SetPartialFailurePayload = {
-  error: string;
-  failedEntries: ImportFailedEntry[];
-  confirmedRows?: number[];
-  /** What did go through ("21 neue Kulturen erstellt"), if anything. */
-  summary?: string;
-  seedRateConstraints?: Partial<SeedRateUnitConstraints> | null;
-};
-
 type ImportAction =
   | { type: 'reset' }
   | { type: 'set_error'; payload: SetErrorPayload }
   | { type: 'set_preview_ready'; payload: SetPreviewReadyPayload }
-  | { type: 'set_uploading' }
-  | { type: 'set_partial_failure'; payload: SetPartialFailurePayload }
-  | { type: 'set_success'; payload: { message: string } };
+  | { type: 'start_apply' }
+  | { type: 'finish_apply'; payload: CropImportResult };
 
 const INITIAL_IMPORT_STATE: CropImportState = {
   previewCount: 0,
@@ -58,11 +55,8 @@ const INITIAL_IMPORT_STATE: CropImportState = {
   payload: [],
   previewResults: [],
   status: 'idle',
-  error: null,
-  success: null,
-  failedEntries: [],
-  confirmedRows: [],
-  seedRateConstraints: null,
+  previewError: null,
+  result: null,
 };
 
 const cropImportReducer = (state: CropImportState, action: ImportAction): CropImportState => {
@@ -72,10 +66,9 @@ const cropImportReducer = (state: CropImportState, action: ImportAction): CropIm
     case 'set_error':
       return {
         ...state,
-        status: 'error',
-        error: action.payload.error,
-        success: null,
-        failedEntries: [],
+        status: 'preview_error',
+        previewError: action.payload.error,
+        result: null,
         previewCount: action.payload.previewCount ?? state.previewCount,
         validCount: action.payload.validCount ?? state.validCount,
         invalidEntries: action.payload.invalidEntries ?? state.invalidEntries,
@@ -84,41 +77,18 @@ const cropImportReducer = (state: CropImportState, action: ImportAction): CropIm
       return {
         ...state,
         status: 'ready',
-        error: null,
-        success: null,
-        failedEntries: [],
+        previewError: null,
+        result: null,
         previewCount: action.payload.previewCount,
         validCount: action.payload.validCount,
         invalidEntries: action.payload.invalidEntries,
         payload: action.payload.payload,
         previewResults: action.payload.previewResults,
       };
-    case 'set_uploading':
-      return {
-        ...state,
-        status: 'uploading',
-        error: null,
-        success: null,
-        failedEntries: [],
-      };
-    case 'set_partial_failure':
-      return {
-        ...state,
-        status: 'error',
-        error: action.payload.error,
-        success: action.payload.summary || null,
-        failedEntries: action.payload.failedEntries,
-        confirmedRows: action.payload.confirmedRows ?? [],
-        seedRateConstraints: action.payload.seedRateConstraints ?? null,
-      };
-    case 'set_success':
-      return {
-        ...state,
-        status: 'success',
-        success: action.payload.message,
-        error: null,
-        failedEntries: [],
-      };
+    case 'start_apply':
+      return { ...state, status: 'applying', previewError: null, result: null };
+    case 'finish_apply':
+      return { ...state, status: 'finished', result: action.payload };
     default:
       return state;
   }
@@ -139,19 +109,15 @@ export const useCropImportState = () => {
     dispatch({ type: 'set_preview_ready', payload });
   }, []);
 
-  const setUploading = useCallback(() => {
-    dispatch({ type: 'set_uploading' });
+  const startApply = useCallback(() => {
+    dispatch({ type: 'start_apply' });
   }, []);
 
-  const setPartialFailure = useCallback((payload: SetPartialFailurePayload) => {
-    dispatch({ type: 'set_partial_failure', payload });
+  const finishApply = useCallback((payload: CropImportResult) => {
+    dispatch({ type: 'finish_apply', payload });
   }, []);
 
-  const setSuccessState = useCallback((message: string) => {
-    dispatch({ type: 'set_success', payload: { message } });
-  }, []);
-
-  const hasImportableEntries = state.validCount > 0 && state.payload.length > 0;
+  const hasImportableEntries = state.status === 'ready' && state.validCount > 0 && state.payload.length > 0;
 
   return useMemo(() => ({
     state,
@@ -159,10 +125,9 @@ export const useCropImportState = () => {
     reset,
     setErrorState,
     setPreviewReadyState,
-    setUploading,
-    setPartialFailure,
-    setSuccessState,
-  }), [hasImportableEntries, reset, setErrorState, setPartialFailure, setPreviewReadyState, setSuccessState, setUploading, state]);
+    startApply,
+    finishApply,
+  }), [hasImportableEntries, reset, setErrorState, setPreviewReadyState, startApply, finishApply, state]);
 };
 
-export type { CropImportState, ImportStatus };
+export type { CropImportResult, CropImportState, ImportStatus };

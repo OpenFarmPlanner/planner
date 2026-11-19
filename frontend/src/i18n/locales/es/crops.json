@@ -757,7 +757,8 @@
       "companionsUnknown": "Cultivo guardado; se desconoce si se añadieron sus vecinos. Revisa los vecinos antes de volver a importar.",
       "invalidReference": "El cultivo ya no está disponible en el proyecto actual.",
       "finalize": "No se pudo confirmar la vinculación final de los vecinos existentes. Los cultivos ya guardados se conservan.",
-      "refresh": "No se pudieron volver a cargar los cultivos. Recarga la página; las entradas ya confirmadas siguen guardadas.",
+      "refresh": "No se pudo actualizar la lista de cultivos. Recarga la página para ver la lista actual.",
+      "unconfirmed": "No se ha confirmado el resultado de la importación. Recarga la página y revisa los cultivos antes de volver a importar.",
       "incomplete": "La importación no está confirmada por completo. Revisa los detalles de cada fila antes de volver a importar.",
       "projectChanged": "El proyecto activo ha cambiado y la importación se ha detenido. Las filas ya confirmadas pertenecen al proyecto original. Vuelve a ese proyecto y revisa sus cultivos antes de volver a importar."
     },

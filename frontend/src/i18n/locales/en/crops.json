@@ -731,7 +731,8 @@
       "companionsUnknown": "Crop saved; whether its neighbours were added is unknown. Check the neighbours before importing again.",
       "invalidReference": "The crop is no longer available in the current project.",
       "finalize": "The final linking of existing neighbours could not be confirmed. Already saved crops remain saved.",
-      "refresh": "The crops could not be reloaded. Reload the page; already confirmed entries remain saved.",
+      "refresh": "The crop list could not be refreshed. Reload the page to see the latest crops.",
+      "unconfirmed": "The import outcome is unknown. Reload the page and check the crops before importing again.",
       "incomplete": "The import is not fully confirmed. Check the details for each row before importing again.",
       "projectChanged": "The active project changed and the import stopped. Already confirmed rows belong to the original project. Switch back and check its crops before importing again."
     },

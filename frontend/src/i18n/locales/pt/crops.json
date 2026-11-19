@@ -747,7 +747,8 @@
       "companionsUnknown": "Cultura guardada; não se sabe se os vizinhos foram adicionados. Verifique os vizinhos antes de voltar a importar.",
       "invalidReference": "A cultura já não está disponível no projeto atual.",
       "finalize": "Não foi possível confirmar a ligação final dos vizinhos existentes. As culturas já guardadas permanecem guardadas.",
-      "refresh": "Não foi possível recarregar as culturas. Recarregue a página; os registos já confirmados permanecem guardados.",
+      "refresh": "Não foi possível atualizar a lista de culturas. Recarregue a página para ver a lista atualizada.",
+      "unconfirmed": "O resultado da importação não foi confirmado. Recarregue a página e verifique as culturas antes de voltar a importar.",
       "incomplete": "A importação não está totalmente confirmada. Verifique os detalhes de cada linha antes de voltar a importar.",
       "projectChanged": "O projeto ativo mudou e a importação foi interrompida. As linhas já confirmadas pertencem ao projeto original. Regresse a esse projeto e verifique as culturas antes de voltar a importar.",
       "someFailures_many": "Não foi possível importar {{count}} registos."

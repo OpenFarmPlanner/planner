@@ -757,7 +757,8 @@
       "companionsUnknown": "Culture enregistrée ; l’ajout de ses voisins est incertain. Vérifiez les voisins avant de réimporter.",
       "invalidReference": "La culture n’est plus disponible dans le projet actuel.",
       "finalize": "L’association finale des voisins existants n’a pas pu être confirmée. Les cultures déjà enregistrées sont conservées.",
-      "refresh": "Les cultures n’ont pas pu être rechargées. Rechargez la page ; les entrées déjà confirmées restent enregistrées.",
+      "refresh": "La liste des cultures n’a pas pu être actualisée. Rechargez la page pour voir la liste à jour.",
+      "unconfirmed": "Le résultat de l’import est incertain. Rechargez la page et vérifiez les cultures avant de réimporter.",
       "incomplete": "L’import n’est pas entièrement confirmé. Vérifiez les détails de chaque ligne avant de réimporter.",
       "projectChanged": "Le projet actif a changé et l’import a été arrêté. Les lignes déjà confirmées appartiennent au projet initial. Revenez à ce projet et vérifiez ses cultures avant de réimporter."
     },

@@ -177,16 +177,20 @@ export function CropsImportDialog({
 }: CropsImportDialogProps) {
   const { t: cropsT, i18n } = useTranslation('crops');
   const contentRef = useRef<HTMLDivElement>(null);
-  const hasResult = importState.success !== null || importState.failedEntries.length > 0;
-  const isFinished = importState.status === 'success' || hasResult;
-  const isImporting = importState.status === 'uploading';
+  const resultAlertRef = useRef<HTMLDivElement>(null);
+  const result = importState.result;
+  const isFinished = importState.status === 'finished';
+  const isImporting = importState.status === 'applying';
 
   // The result sits at the top; bring it into view after an import.
   useEffect(() => {
-    if (hasResult) {
+    if (!open || !isFinished) return;
+    const frame = window.requestAnimationFrame(() => {
       contentRef.current?.scrollTo?.({ top: 0 });
-    }
-  }, [hasResult]);
+      resultAlertRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [isFinished, open]);
 
   const newCrops = importState.previewResults.filter((result) => result.status === 'create');
   const duplicates = importState.previewResults.filter((result) => result.status === 'duplicate');
@@ -197,25 +201,27 @@ export function CropsImportDialog({
       <DialogTitle>{t('import.title')}</DialogTitle>
       <DialogContent ref={contentRef}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-          {importState.error && <Alert severity="error">{importState.error}</Alert>}
-          {importState.success && <Alert severity="success">{importState.success}</Alert>}
+          {importState.previewError && <Alert severity="error">{importState.previewError}</Alert>}
+          {result?.error && <Alert severity="error" ref={resultAlertRef} tabIndex={-1}>{result.error}</Alert>}
+          {result?.savedSummary && <Alert severity="success" role="status">{result.savedSummary}</Alert>}
+          {result?.details && <Typography>{result.details}</Typography>}
           {isImporting && progressLabel && <Typography role="status">{progressLabel}</Typography>}
-          {importState.confirmedRows?.length > 0 && <Typography sx={{ overflowWrap: 'anywhere' }}>
-            {t('import.confirmedRows', { rows: formatImportRowRanges(importState.confirmedRows, i18n.language) })}
+          {result && result.confirmedRows.length > 0 && <Typography sx={{ overflowWrap: 'anywhere' }}>
+            {t('import.confirmedRows', { rows: formatImportRowRanges(result.confirmedRows, i18n.language) })}
           </Typography>}
-          {importState.failedEntries.length > 0 && (
+          {result && result.failedEntries.length > 0 && (
             <Box>
               <Typography variant="h6" color="error.main">
-                {t('import.incompleteEntries')} ({importState.failedEntries.length})
+                {t('import.incompleteEntries')} ({result.failedEntries.length})
               </Typography>
               <List dense>
-                {importState.failedEntries.map((entry, index) => (
+                {result.failedEntries.map((entry, index) => (
                   <ListItem key={index}>
                     <ListItemText
                       primary={`${t('import.rowLabel', { row: entry.row_number ?? entry.index + 1 })}: ${entry.name ? `${entry.name}${entry.variety ? ` (${entry.variety})` : ''}` : t('import.invalidEntry')}`}
                       secondary={entry.companionPhase
-                        ? t('import.companionFailure', { message: formatImportFailure(entry, cropsT, importState.seedRateConstraints) })
-                        : formatImportFailure(entry, cropsT, importState.seedRateConstraints)}
+                        ? t('import.companionFailure', { message: formatImportFailure(entry, cropsT, result.seedRateConstraints) })
+                        : formatImportFailure(entry, cropsT, result.seedRateConstraints)}
                     />
                   </ListItem>
                 ))}
@@ -223,46 +229,48 @@ export function CropsImportDialog({
             </Box>
           )}
 
-          {importState.previewCount > 0 && <Typography variant="body1">
-            {t('import.foundCount', { count: importState.validCount || importState.previewCount })}
-          </Typography>}
-          {importState.previewCount !== importState.validCount && (
-            <Typography variant="body2" color="warning.main">
-              {t('import.invalidCount', {
-                count: importState.previewCount - importState.validCount,
-              })}
-            </Typography>
-          )}
-
-          <NewCropsSection entries={newCrops} t={t} />
-          {duplicates.length > 0 && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="h6" color="warning.main">
-                {t('import.duplicateRows', { count: duplicates.length })}
+          {!isFinished && <>
+            {importState.previewCount > 0 && <Typography variant="body1">
+              {t('import.foundCount', { count: importState.validCount || importState.previewCount })}
+            </Typography>}
+            {importState.previewCount !== importState.validCount && (
+              <Typography variant="body2" color="warning.main">
+                {t('import.invalidCount', {
+                  count: importState.previewCount - importState.validCount,
+                })}
               </Typography>
-              <Typography variant="body2">{t('import.duplicatePolicy')}</Typography>
-              <List dense>
-                {duplicates.map((result) => (
-                  <ListItem key={result.index}>
-                    <ListItemText
-                      primary={renderCropLabel(result)}
-                      secondary={t('import.duplicateRow', {
-                        row: result.row_number ?? result.index + 1,
-                        firstRow: result.duplicate_of_row_number ?? (result.duplicate_of_index ?? 0) + 1,
-                      })}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
-          )}
-          <UpdateCandidatesSection
-            entries={updateCandidates}
-            confirmUpdates={confirmUpdates}
-            onConfirmUpdatesChange={onConfirmUpdatesChange}
-            disabled={isImporting || isFinished}
-            t={t}
-          />
+            )}
+
+            <NewCropsSection entries={newCrops} t={t} />
+            {duplicates.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="h6" color="warning.main">
+                  {t('import.duplicateRows', { count: duplicates.length })}
+                </Typography>
+                <Typography variant="body2">{t('import.duplicatePolicy')}</Typography>
+                <List dense>
+                  {duplicates.map((result) => (
+                    <ListItem key={result.index}>
+                      <ListItemText
+                        primary={renderCropLabel(result)}
+                        secondary={t('import.duplicateRow', {
+                          row: result.row_number ?? result.index + 1,
+                          firstRow: result.duplicate_of_row_number ?? (result.duplicate_of_index ?? 0) + 1,
+                        })}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+            )}
+            <UpdateCandidatesSection
+              entries={updateCandidates}
+              confirmUpdates={confirmUpdates}
+              onConfirmUpdatesChange={onConfirmUpdatesChange}
+              disabled={isImporting}
+              t={t}
+            />
+          </>}
 
           {importState.invalidEntries.length > 0 && (
             <Box sx={{ mt: 2 }}>

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import de from '../src/i18n/locales/de/crops.json' with { type: 'json' };
 import en from '../src/i18n/locales/en/crops.json' with { type: 'json' };
 import fr from '../src/i18n/locales/fr/crops.json' with { type: 'json' };
@@ -9,10 +9,141 @@ import frNavigation from '../src/i18n/locales/fr/navigation.json' with { type: '
 import esNavigation from '../src/i18n/locales/es/navigation.json' with { type: 'json' };
 import { apiRequest, loginWithDeterministicProject } from './utils';
 
+test.use({ serviceWorkers: 'block' });
+
 const languages = {
   de: { text: de, navigation: deNavigation }, en: { text: en, navigation: enNavigation },
   fr: { text: fr, navigation: frNavigation }, es: { text: es, navigation: esNavigation },
 };
+
+async function chooseImportFile(page: Page, language: keyof typeof languages, payload: unknown) {
+  const { text, navigation } = languages[language];
+  await page.getByRole('button', { name: navigation.cropActions.openImportExport, exact: true }).click();
+  await page.getByRole('menuitem', { name: text.import.menuLabel, exact: true }).click();
+  await page.getByRole('dialog', { name: text.import.selectFileTitle }).locator('input[type=file]').setInputFiles({
+    name: 'recovery-crops.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(payload)),
+  });
+  return page.getByRole('dialog', { name: text.import.title, exact: true });
+}
+
+for (const [language, width, height] of [
+  ['en', 1440, 900], ['en', 1024, 900], ['de', 768, 900], ['fr', 375, 800], ['es', 800, 375],
+] as const) {
+  test(`refresh failure after saved import ${language} ${width}x${height}`, async ({ page, request }, testInfo) => {
+    const { text, navigation } = languages[language];
+    const scenario = `import-refresh-${language}-${width}`;
+    const cropName = 'Confirmed recovery carrot';
+    await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
+    await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: language });
+    await page.evaluate(choice => {
+      localStorage.setItem('ui.language', choice);
+      localStorage.setItem('ui.language.pendingChoice', choice);
+    }, language);
+    await apiRequest(page, 'POST', '/crops/', { name: 'Existing recovery crop' });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/app/crops');
+    await expect(page.getByRole('button', { name: navigation.projectSwitcher.ariaLabel, exact: true }))
+      .toContainText(`E2E Project ${scenario}`);
+    await expect(page.getByText('Existing recovery crop', { exact: true }).first()).toBeVisible();
+    await expect(page.locator('header').getByRole('button', { name: text.buttons.addNew })).toBeVisible();
+
+    let finalizationCompleted = false;
+    let cropListReads = 0;
+    const phases: string[] = [];
+    await page.route('**/crops/import/apply/**', async route => {
+      const { phase } = route.request().postDataJSON();
+      phases.push(phase);
+      if (phase !== 'finalize') {
+        await route.fallback();
+        return;
+      }
+      const response = await route.fetch();
+      expect(response.ok()).toBe(true);
+      finalizationCompleted = true;
+      await route.fulfill({ response });
+    });
+    await page.route(/\/api\/crops\/(?:\?.*)?$/, async route => {
+      if (finalizationCompleted && route.request().method() === 'GET' && ++cropListReads === 1) {
+        await route.fulfill({ status: 503, json: { detail: 'Synthetic crop list failure' } });
+        return;
+      }
+      await route.fallback();
+    });
+
+    const dialog = await chooseImportFile(page, language, [null, { name: cropName }, { name: 'Confirmed recovery bean' }]);
+    await expect(dialog).toBeVisible();
+    await page.setViewportSize({ width, height });
+    await dialog.getByRole('button', { name: text.import.start, exact: true }).click();
+
+    const warning = dialog.getByRole('alert');
+    await expect(warning).toHaveText(text.import.errors.refresh);
+    await expect(warning).toBeFocused();
+    await expect(warning).toBeInViewport();
+    const savedSummary = text.import.created_other.replace('{{count}}', '2');
+    await expect(dialog.getByRole('status')).toHaveText(savedSummary);
+    await expect(dialog.getByText(text.import.confirmedRows.replace('{{rows}}', '2–3'))).toBeInViewport();
+    await expect(dialog.getByRole('button', { name: text.import.start, exact: true })).toHaveCount(0);
+    await expect(page.locator('.MuiSnackbar-root')).toHaveCount(0);
+    expect(cropListReads).toBe(1);
+    expect(phases).toEqual(['crops', 'finalize']);
+    expect(await dialog.evaluate(element => element.scrollWidth > element.clientWidth + 1)).toBe(false);
+    await page.screenshot({ path: testInfo.outputPath('refresh-failure.png'), animations: 'disabled' });
+
+    const close = dialog.getByRole('button', { name: text.import.close, exact: true });
+    await page.keyboard.press('Tab');
+    await expect(close).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(dialog).toBeHidden();
+    const usesCropPicker = width === 375 || height === 375;
+    const cropPicker = page.getByRole('button', { name: text.selectCrop, exact: true });
+    if (usesCropPicker) await cropPicker.click();
+    await expect(page.getByText(cropName, { exact: true })).toHaveCount(0);
+    await page.reload();
+    if (usesCropPicker) await cropPicker.click();
+    await expect(page.getByText(cropName, { exact: true }).first()).toBeVisible();
+    expect(cropListReads).toBeGreaterThan(1);
+    expect(phases).toEqual(['crops', 'finalize']);
+  });
+}
+
+test('a preview correction can proceed, and an unknown first apply cannot be replayed', async ({ page, request }, testInfo) => {
+  const { text } = languages.en;
+  await loginWithDeterministicProject(page, request, 'import-unknown-first-apply', { loginAsAdmin: true });
+  await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'en' });
+  await page.evaluate(() => {
+    localStorage.setItem('ui.language', 'en');
+    localStorage.setItem('ui.language.pendingChoice', 'en');
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/app/crops');
+  await expect(page.locator('header').getByRole('button', { name: text.buttons.addNew })).toBeVisible();
+  const dialog = await chooseImportFile(page, 'en', [null]);
+  await expect(dialog.getByRole('alert')).toHaveText(text.import.errors.noValidEntries);
+  await expect(dialog.getByRole('button', { name: text.import.start, exact: true })).toBeDisabled();
+  await dialog.getByRole('button', { name: text.import.close, exact: true }).click();
+  await expect(dialog).toBeHidden();
+
+  const phases: string[] = [];
+  await page.route('**/crops/import/apply/**', async route => {
+    phases.push(route.request().postDataJSON().phase);
+    await route.abort('failed');
+  });
+  await chooseImportFile(page, 'en', [{ name: 'Unknown recovery crop' }]);
+  await expect(dialog).toBeVisible();
+  await page.setViewportSize({ width: 375, height: 800 });
+  await dialog.getByRole('button', { name: text.import.start, exact: true }).click();
+  const alert = dialog.getByRole('alert');
+  await expect(alert).toHaveText(text.import.errors.unconfirmed);
+  await expect(alert).toBeFocused();
+  await expect(dialog.getByText(text.import.errors.unknown, { exact: true })).toBeVisible();
+  await expect(dialog.getByRole('status')).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: text.import.start, exact: true })).toHaveCount(0);
+  await expect(page.locator('.MuiSnackbar-root')).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('unknown-first-apply.png'), animations: 'disabled' });
+  await dialog.getByRole('button', { name: text.import.close, exact: true }).click();
+  await expect(dialog).toBeHidden();
+  expect(phases).toEqual(['crops']);
+});
 
 for (const [language, width, height, interrupted] of [
   ['en', 1440, 900, false], ['en', 768, 900, true], ['en', 1024, 900, true],

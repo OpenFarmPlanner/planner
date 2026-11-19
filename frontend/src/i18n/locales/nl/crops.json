@@ -731,7 +731,8 @@
       "companionsUnknown": "Gewas opgeslagen; het is onbekend of de buurgewassen zijn toegevoegd. Controleer de buurgewassen voordat je opnieuw importeert.",
       "invalidReference": "Het gewas is niet meer beschikbaar in het huidige project.",
       "finalize": "Het definitief koppelen van bestaande buurgewassen kon niet worden bevestigd. Al opgeslagen gewassen blijven opgeslagen.",
-      "refresh": "De gewassen konden niet opnieuw worden geladen. Laad de pagina opnieuw. Al bevestigde items blijven opgeslagen.",
+      "refresh": "De gewassenlijst kon niet worden vernieuwd. Laad de pagina opnieuw om de actuele lijst te zien.",
+      "unconfirmed": "De uitkomst van de import is niet bevestigd. Laad de pagina opnieuw en controleer de gewassen voordat je opnieuw importeert.",
       "incomplete": "De import is niet volledig bevestigd. Controleer de details per rij voordat je opnieuw importeert.",
       "projectChanged": "Het actieve project is veranderd en de import is gestopt. Al bevestigde rijen horen bij het oorspronkelijke project. Schakel terug en controleer de gewassen voordat je opnieuw importeert."
     },

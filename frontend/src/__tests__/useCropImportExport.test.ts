@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
+import * as batches from '../pages/cropImportBatches';
 import { useCropImportExport } from '../pages/useCropImportExport';
 import type { Crop } from '../api/api';
 
@@ -51,14 +52,14 @@ const file = (name: string) => new File(['x'], name);
  * default parameter and silently give the hook a selection after all.
  */
 function setup(selectedCrop: Crop | null = CROP) {
-  const fetchCrops = vi.fn().mockResolvedValue(undefined);
+  const refreshCropsAfterImport = vi.fn().mockResolvedValue(true);
   const showSnackbar = vi.fn();
   const view = renderHook(() => useCropImportExport({
     selectedCrop: selectedCrop ?? undefined,
-    fetchCrops,
+    refreshCropsAfterImport,
     showSnackbar,
   }));
-  return { ...view, fetchCrops, showSnackbar };
+  return { ...view, refreshCropsAfterImport, showSnackbar };
 }
 
 describe('useCropImportExport', () => {
@@ -140,7 +141,7 @@ describe('useCropImportExport', () => {
       await act(async () => { await view.result.current.handleImportFileSelected(file('c.csv')); });
       expect(api.importPreview).not.toHaveBeenCalled();
       expect(spreadsheet.parse).not.toHaveBeenCalled();
-      expect(view.result.current.importState.error).toBe('import.errors.projectChanged');
+      expect(view.result.current.importState.previewError).toBe('import.errors.projectChanged');
     });
     it.each([['xlsx'], ['ods'], ['csv']])('parses a .%s file as a spreadsheet', async (ext) => {
       const view = setup();
@@ -175,7 +176,7 @@ describe('useCropImportExport', () => {
 
       expect(spreadsheet.parse).not.toHaveBeenCalled();
       expect(json.readFileAsText).not.toHaveBeenCalled();
-      expect(view.result.current.importState.status).toBe('error');
+      expect(view.result.current.importState.status).toBe('preview_error');
       expect(view.result.current.importDialogOpen).toBe(true);
     });
 
@@ -184,7 +185,7 @@ describe('useCropImportExport', () => {
 
       await act(async () => { await view.result.current.handleImportFileSelected(file('crops')); });
 
-      expect(view.result.current.importState.status).toBe('error');
+      expect(view.result.current.importState.status).toBe('preview_error');
     });
   });
 
@@ -230,7 +231,7 @@ describe('useCropImportExport', () => {
       await act(async () => { await view.result.current.handleImportFileSelected(file('c.csv')); });
 
       expect(view.result.current.importPreparing).toBe(false);
-      expect(view.result.current.importState.error).toBe('import.errors.network');
+      expect(view.result.current.importState.previewError).toBe('import.errors.network');
     });
 
     it('opens the dialog with a preview when the file has entries', async () => {
@@ -250,8 +251,8 @@ describe('useCropImportExport', () => {
       await act(async () => { await view.result.current.handleImportFileSelected(file('c.csv')); });
 
       expect(api.importPreview).not.toHaveBeenCalled();
-      expect(view.result.current.importState.status).toBe('error');
-      expect(view.result.current.importState.error).toContain('unbekannte Spalte');
+      expect(view.result.current.importState.status).toBe('preview_error');
+      expect(view.result.current.importState.previewError).toContain('unbekannte Spalte');
     });
 
     it('counts skipped rows alongside the imported ones', async () => {
@@ -270,7 +271,7 @@ describe('useCropImportExport', () => {
 
       await act(async () => { await view.result.current.handleImportFileSelected(file('c.csv')); });
 
-      expect(view.result.current.importState.status).toBe('error');
+      expect(view.result.current.importState.status).toBe('preview_error');
       expect(view.result.current.importDialogOpen).toBe(true);
     });
 
@@ -280,7 +281,7 @@ describe('useCropImportExport', () => {
 
       await act(async () => { await view.result.current.handleImportFileSelected(file('c.csv')); });
 
-      expect(view.result.current.importState.status).toBe('error');
+      expect(view.result.current.importState.status).toBe('preview_error');
     });
 
     it('stops before the preview when the JSON is rejected', async () => {
@@ -292,7 +293,7 @@ describe('useCropImportExport', () => {
       await act(async () => { await view.result.current.handleImportFileSelected(file('c.json')); });
 
       expect(api.importPreview).not.toHaveBeenCalled();
-      expect(view.result.current.importState.status).toBe('error');
+      expect(view.result.current.importState.status).toBe('preview_error');
       expect(view.result.current.importState.invalidEntries).toEqual(['Zeile 1']);
     });
   });
@@ -318,6 +319,8 @@ describe('useCropImportExport', () => {
       window.localStorage.setItem('activeProjectId', '43');
       await act(async () => { await view.result.current.handleImportStart(); });
       for (const [body] of api.importApply.mock.calls) expect(body.expected_project_id).toBe(42);
+      expect(view.refreshCropsAfterImport).not.toHaveBeenCalled();
+      expect(view.result.current.importState.result?.error).toContain('import.errors.projectChanged');
     });
 
     it('blocks concurrent clicks and another file while apply is in flight', async () => {
@@ -338,18 +341,42 @@ describe('useCropImportExport', () => {
           errors: [], results: [{ index: 0, status: 'created', crop_id: 5 }] } });
         await pending;
       });
-      expect(view.result.current.importState.status).toBe('success');
+      expect(view.result.current.importState.result?.outcome).toBe('complete');
     });
 
     it('retains confirmed writes when refreshing the crop list fails', async () => {
       const view = setup();
-      view.fetchCrops.mockRejectedValueOnce(new Error('offline'));
+      view.refreshCropsAfterImport.mockResolvedValueOnce(false);
       await reachPreview(view);
       await act(async () => { await view.result.current.handleImportStart(); });
-      expect(view.result.current.importState.confirmedRows).toEqual([2]);
-      expect(view.result.current.importState.success).toBe('import.created');
-      expect(view.result.current.importState.error).toBe('import.errors.refresh');
+      expect(view.result.current.importState.result?.confirmedRows).toEqual([2]);
+      expect(view.result.current.importState.result?.savedSummary).toBe('import.created');
+      expect(view.result.current.importState.result?.error).toBe('import.errors.refresh');
       expect(view.result.current.importDialogOpen).toBe(true);
+      expect(view.showSnackbar).not.toHaveBeenCalled();
+      expect(view.refreshCropsAfterImport).toHaveBeenCalledWith(42);
+    });
+
+    it('shows a terminal reload error even with zero counts and no row details', async () => {
+      const apply = vi.spyOn(batches, 'applyCropImportBatches').mockResolvedValueOnce({
+        attempted: true, created_count: 0, updated_count: 0, skipped_count: 0, duplicate_count: 0,
+        outcomes: [], errors: [],
+      });
+      try {
+        const view = setup();
+        view.refreshCropsAfterImport.mockResolvedValueOnce(false);
+        await reachPreview(view);
+        await act(async () => { await view.result.current.handleImportStart(); });
+        expect(view.result.current.importState.status).toBe('finished');
+        expect(view.result.current.importState.result).toMatchObject({
+          outcome: 'complete', error: 'import.errors.refresh',
+          savedSummary: '', confirmedRows: [], failedEntries: [],
+        });
+        expect(view.result.current.hasImportableEntries).toBe(false);
+        expect(view.showSnackbar).not.toHaveBeenCalled();
+      } finally {
+        apply.mockRestore();
+      }
     });
 
     it('sends the previewed entries and the confirm flag', async () => {
@@ -374,8 +401,8 @@ describe('useCropImportExport', () => {
 
       await act(async () => { await view.result.current.handleImportStart(); });
 
-      expect(view.fetchCrops).toHaveBeenCalled();
-      expect(view.result.current.importState.status).toBe('success');
+      expect(view.refreshCropsAfterImport).toHaveBeenCalled();
+      expect(view.result.current.importState.result?.outcome).toBe('complete');
     });
 
     it('closes the dialog and reports the result in a snackbar once everything went through', async () => {
@@ -396,11 +423,11 @@ describe('useCropImportExport', () => {
       const view = setup();
       await reachPreview(view);
       await act(async () => { await view.result.current.handleImportStart(); });
-      expect(view.fetchCrops).toHaveBeenCalledTimes(1);
+      expect(view.refreshCropsAfterImport).toHaveBeenCalledTimes(1);
       expect(view.result.current.importDialogOpen).toBe(true);
-      expect(view.result.current.importState.success).toBeTruthy();
-      expect(view.result.current.importState.confirmedRows).toEqual([5]);
-      expect(view.result.current.importState.failedEntries).toMatchObject([{ index: 1, row_number: 12 }]);
+      expect(view.result.current.importState.result?.savedSummary).toBeTruthy();
+      expect(view.result.current.importState.result?.confirmedRows).toEqual([5]);
+      expect(view.result.current.importState.result?.failedEntries).toMatchObject([{ index: 1, row_number: 12 }]);
       expect(view.showSnackbar).not.toHaveBeenCalled();
       const attempts = api.importApply.mock.calls.length;
       await act(async () => { await view.result.current.handleImportStart(); });
@@ -418,8 +445,8 @@ describe('useCropImportExport', () => {
       await act(async () => { await view.result.current.handleImportStart(); });
 
       expect(api.seedRateConstraints).toHaveBeenCalled();
-      expect(view.result.current.importState.failedEntries).toHaveLength(1);
-      expect(view.result.current.importState.seedRateConstraints).toBeNull();
+      expect(view.result.current.importState.result?.failedEntries).toHaveLength(1);
+      expect(view.result.current.importState.result?.seedRateConstraints).toBeNull();
     });
 
     it('reloads after an apply attempt even when rows failed', async () => {
@@ -431,8 +458,8 @@ describe('useCropImportExport', () => {
 
       await act(async () => { await view.result.current.handleImportStart(); });
 
-      expect(view.fetchCrops).toHaveBeenCalledTimes(1);
-      expect(view.result.current.importState.status).not.toBe('success');
+      expect(view.refreshCropsAfterImport).toHaveBeenCalledTimes(1);
+      expect(view.result.current.importState.result?.outcome).not.toBe('complete');
     });
 
     it('reloads after a failed request to surface potentially saved rows', async () => {
@@ -442,10 +469,33 @@ describe('useCropImportExport', () => {
 
       await act(async () => { await view.result.current.handleImportStart(); });
 
-      expect(view.fetchCrops).toHaveBeenCalledTimes(1);
-      expect(view.result.current.importState.status).toBe('error');
-      expect(view.result.current.importState.error).toBe('import.errors.incomplete');
-      expect(view.result.current.importState.failedEntries[0].error_code).toBe('unknown');
+      expect(view.refreshCropsAfterImport).toHaveBeenCalledTimes(1);
+      expect(view.result.current.importState.status).toBe('finished');
+      expect(view.result.current.importState.result?.outcome).toBe('unknown');
+      expect(view.result.current.importState.result?.error).toBe('import.errors.unconfirmed');
+      expect(view.result.current.importState.result?.savedSummary).toBe('');
+      expect(view.showSnackbar).not.toHaveBeenCalled();
+      expect(view.result.current.importState.result?.failedEntries[0].error_code).toBe('unknown');
+      await act(async () => { await view.result.current.handleImportStart(); });
+      expect(api.importApply).toHaveBeenCalledTimes(1);
+    });
+
+    it('finishes unexpectedly rejected apply with uncertainty and no success feedback', async () => {
+      const apply = vi.spyOn(batches, 'applyCropImportBatches').mockRejectedValueOnce(new Error('offline'));
+      try {
+        const view = setup();
+        await reachPreview(view);
+        await act(async () => { await view.result.current.handleImportStart(); });
+        expect(view.result.current.importState.status).toBe('finished');
+        expect(view.result.current.importState.result).toMatchObject({
+          outcome: 'unknown', error: 'import.errors.unconfirmed', savedSummary: '',
+          confirmedRows: [], failedEntries: [],
+        });
+        expect(view.result.current.hasImportableEntries).toBe(false);
+        expect(view.showSnackbar).not.toHaveBeenCalled();
+      } finally {
+        apply.mockRestore();
+      }
     });
 
     it('does nothing when there is nothing to import', async () => {
