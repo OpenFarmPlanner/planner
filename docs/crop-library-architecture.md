@@ -2605,7 +2605,9 @@ project lock, with one savepoint per culture and its selected varieties. The
 response lists each group's entry operations or an error code for that culture.
 
 Confirmed changes share one selectively undoable history operation. If the
-response is lost, retrying the original request retrieves its receipt. After a
+response is lost, retrying the original request retrieves its receipt. Closing
+the confirmation leaves **Check import result** available in the same library
+view for the current project. After a
 confirmed partial result, the browser previews only the failed cultures for a
 new request. It refreshes project link indicators while retaining search and
 filters. [Import history and receipt replay](versioning-and-history.md#grouped-operations-and-imports)

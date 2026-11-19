@@ -867,6 +867,12 @@ test.describe('bulk library import', () => {
       await confirmation.getByRole('button', { name: text.import, exact: true }).click();
       await expect(confirmation.getByText(text.errors.request, { exact: true })).toBeVisible();
       expect((await localRows()).filter(crop => crop.source_public_crop === fresh.id)).toHaveLength(1);
+      await confirmation.getByRole('button', { name: 'Schließen', exact: true }).click();
+      await expect(confirmation).toBeHidden();
+      const recovery = page.getByRole('button', { name: text.resumePending, exact: true });
+      await expect(recovery).toBeFocused();
+      await expect(search).toHaveValue(scenario);
+      await recovery.click();
       await confirmation.getByRole('button', { name: 'Erneut versuchen', exact: true }).click();
       const result = page.getByRole('dialog', { name: text.results, exact: true });
       await expect(result.getByText(text.failedCount.replace('{{count}}', '1'), { exact: true })).toBeVisible();

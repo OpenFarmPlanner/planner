@@ -1753,6 +1753,7 @@
       "skip": "Salta",
       "skipNamed": "Salta {{name}}",
       "linkHelp": "Scegli i valori della biblioteca o mantieni quelli del progetto in locale. Potrai esaminare le modifiche future della biblioteca.",
+      "resumePending": "Verifica l’esito dell’importazione",
       "results": "Esito dell’importazione",
       "importedCount": "Importate ({{count}})",
       "linkedCount": "Voci esistenti collegate ({{count}})",

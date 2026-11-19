@@ -1754,6 +1754,7 @@
       "skip": "Omitir",
       "skipNamed": "Omitir {{name}}",
       "linkHelp": "Elige los valores de la biblioteca o conserva los del proyecto de forma local. Podrás revisar los cambios futuros de la biblioteca.",
+      "resumePending": "Comprobar el resultado de la importación",
       "results": "Resultado de la importación",
       "importedCount": "Importados ({{count}})",
       "linkedCount": "Entradas existentes vinculadas ({{count}})",

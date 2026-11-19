@@ -17,11 +17,13 @@ import { getPublicCropTitle } from '../publicCropDisplay';
 type EntryResult = PublicCropSelectionImportResult['entries'][number]['operation'] | 'skipped';
 type ImportError = 'project' | 'preview' | 'limit' | 'request' | 'receipt';
 
-export function PublicCropBatchImportDialog({ projectId, initialParents, onClose, onComplete }: {
+export function PublicCropBatchImportDialog({ open, projectId, initialParents, onClose, onComplete, onRequestStarted }: {
+  open: boolean;
   projectId: number;
   initialParents: PublicCrop[];
-  onClose: (completed: boolean) => void;
+  onClose: (state: 'cancelled' | 'finished' | 'pending') => void;
   onComplete: (result: PublicCropBatchImportResult) => Promise<void>;
+  onRequestStarted: () => void;
 }) {
   const { t, i18n } = useTranslation(['crops', 'common']);
   const titleId = useId();
@@ -95,6 +97,7 @@ export function PublicCropBatchImportDialog({ projectId, initialParents, onClose
       if (groups.length) {
         pendingRequest.current ??= { expected_project_id: projectId, request_id: crypto.randomUUID(), groups };
         setRequestStarted(true);
+        onRequestStarted();
         result = (await publicCropAPI.importBatch(pendingRequest.current)).data;
       }
       if (!mounted.current) return;
@@ -142,8 +145,9 @@ export function PublicCropBatchImportDialog({ projectId, initialParents, onClose
     onClose={() => setComparison(null)} onLinked={() => undefined}
     onDecision={decision => { rememberChoice(comparison.id, decision); setComparison(null); }} />;
 
-  const close = () => onClose(resultOpen || results.size > 0 || requestStarted);
-  return <Dialog open fullWidth maxWidth="sm" onClose={applying ? undefined : close} aria-labelledby={titleId}>
+  const close = () => onClose(requestStarted && error === 'request' ? 'pending'
+    : resultOpen || results.size > 0 || requestStarted ? 'finished' : 'cancelled');
+  return <Dialog open={open} fullWidth maxWidth="sm" onClose={applying ? undefined : close} aria-labelledby={titleId}>
     <DialogTitle id={titleId}>{t(resultOpen ? 'library.batchImport.results' : 'library.batchImport.confirmTitle', { count: parents.length })}</DialogTitle>
     <DialogContent dividers>
       <Stack spacing={1.5}>

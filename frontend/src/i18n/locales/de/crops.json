@@ -1711,6 +1711,7 @@
       "skip": "Überspringen",
       "skipNamed": "{{name}} überspringen",
       "linkHelp": "Wähle Bibliothekswerte oder behalte Projektwerte lokal. Spätere Bibliotheksänderungen werden zur Prüfung angeboten.",
+      "resumePending": "Importergebnis prüfen",
       "results": "Importergebnis",
       "importedCount": "Importiert ({{count}})",
       "linkedCount": "Bestehende Einträge verknüpft ({{count}})",

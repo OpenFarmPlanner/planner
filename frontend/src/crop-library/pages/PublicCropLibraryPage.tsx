@@ -2374,9 +2374,11 @@ export default function PublicCropLibraryPage() {
         onSelect={selectMobileCrop}
         onListScroll={handleCropListScroll}
       />
-      {batch.preview && <PublicCropBatchImportDialog projectId={batch.preview.projectId} initialParents={batch.preview.parents}
-        onComplete={() => loadCrops({ preserveExisting: true })} onClose={completed => {
-          if (completed) batch.cancel();
+      {batch.preview && <PublicCropBatchImportDialog open={batch.preview.open} projectId={batch.preview.projectId}
+        initialParents={batch.preview.parents} onComplete={() => loadCrops({ preserveExisting: true })}
+        onRequestStarted={batch.markPending} onClose={state => {
+          if (state === 'pending') batch.deferPending();
+          else if (state === 'finished') batch.cancel();
           else batch.closePreview();
         }} />}
       {editDialogOpen && selectedCrop ? (

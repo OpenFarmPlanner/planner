@@ -1754,6 +1754,7 @@
       "skip": "Ignorer",
       "skipNamed": "Ignorer {{name}}",
       "linkHelp": "Choisissez les valeurs de la bibliothèque ou gardez celles du projet en local. Les futures modifications de la bibliothèque vous seront proposées pour examen.",
+      "resumePending": "Vérifier le résultat de l’importation",
       "results": "Résultat de l’importation",
       "importedCount": "Importées ({{count}})",
       "linkedCount": "Entrées existantes associées ({{count}})",

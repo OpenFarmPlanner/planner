@@ -214,7 +214,7 @@ export function PublicCropLibraryDialog({
     return matchesQuery && matchesPublicCropFilters(entry, filters, filterOptions.plantHealthValues);
   }), [crops, filters, filterOptions.plantHealthValues, language, normalizedQuery, plantFamilies, t]);
 
-  const batch = usePublicCropBatchSelection(open && onBatchComplete ? activeProjectId : null, filteredCrops);
+  const batch = usePublicCropBatchSelection(onBatchComplete ? activeProjectId : null, filteredCrops);
   const clearBatchSelection = batch.clear;
   const closeDialog = useCallback((): void => {
     clearBatchSelection();
@@ -498,9 +498,11 @@ export function PublicCropLibraryDialog({
         </DisabledActionTooltip>
       </DialogActions>
     </Dialog>
-    {batch.preview && onBatchComplete && <PublicCropBatchImportDialog projectId={batch.preview.projectId}
-      initialParents={batch.preview.parents} onComplete={onBatchComplete} onClose={completed => {
-        if (completed) batch.cancel();
+    {batch.preview && onBatchComplete && <PublicCropBatchImportDialog open={open && batch.preview.open}
+      projectId={batch.preview.projectId} initialParents={batch.preview.parents} onComplete={onBatchComplete}
+      onRequestStarted={batch.markPending} onClose={state => {
+        if (state === 'pending') batch.deferPending();
+        else if (state === 'finished') batch.cancel();
         else batch.closePreview();
       }} />}
     </>

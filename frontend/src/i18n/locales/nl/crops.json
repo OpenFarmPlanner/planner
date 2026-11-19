@@ -1711,6 +1711,7 @@
       "skip": "Overslaan",
       "skipNamed": "{{name}} overslaan",
       "linkHelp": "Kies bibliotheekwaarden of houd projectwaarden lokaal. Latere bibliotheekwijzigingen kun je beoordelen.",
+      "resumePending": "Importresultaat controleren",
       "results": "Importresultaat",
       "importedCount": "Geïmporteerd ({{count}})",
       "linkedCount": "Bestaande items gekoppeld ({{count}})",
