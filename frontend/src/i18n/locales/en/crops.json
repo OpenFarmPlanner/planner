@@ -1797,6 +1797,11 @@
   "timingWindows": {
     "sectionTitle": "Time windows",
     "sectionHelp": "When propagation, direct sowing and transplanting usually happen, in thirds of a month or calendar weeks. Crop planning points out dates outside these windows.",
+    "categoryHeadings": {
+      "pre_cultivation": "Propagation",
+      "direct_sowing": "Direct sowing",
+      "planting": "Transplanting"
+    },
     "kinds": {
       "pre_cultivation": "Propagation window",
       "direct_sowing": "Direct sowing window",

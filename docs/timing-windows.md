@@ -28,9 +28,10 @@ spreadsheet column aliases; `spreadsheetColumns.test.ts` checks that no alias
 belongs to two columns. A kind holds any
 number of windows (e.g. a spring and a late-summer sowing).
 
-The form, details and spreadsheet use the same window labels above (#1017),
-separate from cultivation-method labels such as Direktsaat. The former
-spreadsheet header "Aussaat Freiland" is deliberately no longer recognized;
+The form's accessible group names, details and spreadsheet use the window
+labels above (#1017). The editor's visible column headings use the short
+activity names from the [glossary](i18n-glossary.md). The former spreadsheet
+header "Aussaat Freiland" is deliberately no longer recognized;
 users must change it to "Direktsaatzeitraum". Other documented catalogue
 aliases and prior canonical labels remain accepted. The backend kind and
 `direct_sowing_windows` key are unchanged.
@@ -144,8 +145,10 @@ country, so months copied from someone else's farm would mislead. See
 
 - Section "Zeiträume", explained by an info icon with tooltip after the
   heading (the shared `crops/FieldInfoIcon.tsx`: focusable, opens on tap),
-  with the groups Anzuchtzeitraum, Direktsaatzeitraum, Pflanzzeitraum, each with its rows and
-  "+ Zeitraum hinzufügen". A row has a "Monat"/"KW" switch, native selects for
+  with the groups Anzucht, Direktsaat and Pflanzung. The available content
+  width determines whether the groups use three, two or one column. An empty
+  group shows its heading and "+ Zeitraum hinzufügen". Configured windows
+  stack within their group. A row has a "Monat"/"KW" switch, native selects for
   "Von"/"Bis" (third before month, reading like "Anfang April", or week 1–52) and a
   remove button ("Zeitraum entfernen"). Switching the unit clears the row; a
   new row starts in the unit of the row added last in this form, else
@@ -169,6 +172,24 @@ country, so months copied from someone else's farm would mislead. See
   in the previous and the current year, so a harvest reaching into January
   from last autumn's sowing shows too. Without a growth duration there is no
   lane; without a harvest duration it shows only the harvest start.
+
+### Local editor acceptance
+
+From `backend/`, preview the fixture against the exact local database, then
+repeat with `--apply` after verifying the printed target.
+
+```bash
+DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py \
+  seed_timing_windows_acceptance --username LOCAL_ACCOUNT --database-name EXACT_LOCAL_DATABASE
+```
+
+In **Timing window editor acceptance**, open **Timing windows empty**,
+**Timing windows partial** and **Timing windows full** for editing. The three
+categories align across the wide dialog and stack as the available width
+shrinks. On the partial crop, edit the second propagation row, remove the
+first and add a row to another category. The edited value remains in the
+same row. Switch that row between Month and Week to verify it clears only
+its own values. Repeating the seed preserves edits.
 
 ## Spreadsheet import and export
 
