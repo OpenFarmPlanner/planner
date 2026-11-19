@@ -349,6 +349,15 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         )
 
+    def _validated_change_proposal(
+        self, public_crop: PublicCrop, data: Any,
+    ) -> PublicCropChangeProposalSerializer:
+        serializer = PublicCropChangeProposalSerializer(
+            data=data, context={**self.get_serializer_context(), 'public_crop': public_crop},
+        )
+        serializer.is_valid(raise_exception=True)
+        return serializer
+
     def _queue_edit_proposal(self, request: Request, public_crop: PublicCrop) -> Response:
         """Route an edit into the moderation queue instead of applying it live.
 
@@ -371,14 +380,12 @@ class PublicCropViewSet(viewsets.ModelViewSet):
             )
         proposed_data = {key: value for key, value in request.data.items() if key != 'base_version'}
         origin_api, origin_declared_agent = describe_contribution_origin(request)
-        serializer = PublicCropChangeProposalSerializer(
-            data={
+        serializer = self._validated_change_proposal(
+            public_crop, {
                 'summary': f'Direct edit awaiting moderation ({len(proposed_data)} field(s) changed)',
                 'proposed_data': proposed_data,
             },
-            context={'request': request, 'public_crop': public_crop},
         )
-        serializer.is_valid(raise_exception=True)
         proposal = serializer.save(
             public_crop=public_crop,
             proposed_by=request.user,
@@ -1075,10 +1082,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
 
         if (forbidden := self._guest_demo_write_forbidden(request)) is not None:
             return forbidden
-        serializer = PublicCropChangeProposalSerializer(
-            data=request.data, context={'public_crop': public_crop},
-        )
-        serializer.is_valid(raise_exception=True)
+        serializer = self._validated_change_proposal(public_crop, request.data)
         proposal = serializer.save(public_crop=public_crop, proposed_by=request.user)
         return Response(PublicCropChangeProposalSerializer(proposal).data, status=status.HTTP_201_CREATED)
 

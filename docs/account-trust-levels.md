@@ -122,6 +122,12 @@ edit/publish behavior.
 | API token, any trust level | Queued as a `PublicCropChangeProposal` |
 | Anonymous | Rejected earlier by authentication, never reaches this check |
 
+Queued edits and explicit change proposals both validate the proposed fields
+against the published target and use the submitting request's language for
+legacy companion notes. An existing variety accepts a `seed_type`-only edit.
+General entries reject a nonblank seed type, and both routes reject identity
+fields in the proposal. The live entry changes only after approval.
+
 Restoring an earlier version of a published crop follows the same session
 trust rule. The `revert/` action returns the updated crop for an immediate
 restore, or `202` with an edit proposal for a restore awaiting moderation.
