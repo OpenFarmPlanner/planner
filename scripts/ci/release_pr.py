@@ -99,6 +99,9 @@ def approved_plan(pr: dict[str, Any]) -> dict[str, Any]:
     return plan
 
 
+PASSING_CONCLUSIONS = frozenset({'success', 'skipped'})
+
+
 def require_checks(pr: dict[str, Any], rules: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
     if rules is None:
         protection = api('branches/main/protection/required_status_checks')
@@ -115,7 +118,9 @@ def require_checks(pr: dict[str, Any], rules: list[dict[str, Any]] | None = None
         candidates = [check for check in checks if check['name'] == rule['context'] and
                       (rule.get('app_id') in (None, -1) or check.get('app', {}).get('id') == rule['app_id'])]
         latest = max(candidates, key=lambda check: check['id'], default={})
-        if latest.get('status') != 'completed' or latest.get('conclusion') != 'success':
+        # Branch protection counts a skipped required check as passed; metadata-only
+        # PRs such as the release PR itself skip the heavy test jobs (see ci.yml).
+        if latest.get('status') != 'completed' or latest.get('conclusion') not in PASSING_CONCLUSIONS:
             raise ValueError(f'Release check has not passed: {rule["context"]}')
     return rules
 
