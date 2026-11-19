@@ -518,13 +518,12 @@ def sync_crop_species_across_crop_group(
         validate_general_crop_identity(general)
     if not members:
         return 0
-    for member in members:
-        member.crop_species_id = crop.crop_species_id
-    updated = Crop.objects.filter(pk__in=[member.pk for member in members]).update(
+    changed_members = Crop.objects.filter(pk__in=[member.pk for member in members])
+    updated = changed_members.update(
         crop_species_id=crop.crop_species_id, updated_at=timezone.now(),
     )
     with internal_project_versions():
-        for member in members:
+        for member in changed_members.order_by('pk'):
             record_entity_revision(
                 project=crop.project, entity_type='crop', object_id=member.pk,
                 action=EntityRevision.ACTION_UPDATED, snapshot=_serialize_instance(member),
