@@ -10,7 +10,6 @@ from django.db import IntegrityError, transaction
 from django.db.models.deletion import Collector, ProtectedError
 from django.utils import timezone
 
-from farm.crop_light import normalize_crop_light
 from farm.models import BatchOperation, Crop, EntityRevision, Project
 from farm.services.crop_inheritance import GeneralCropIdentityConflict, lock_crop_project
 
@@ -30,7 +29,7 @@ from .records import (
     revision_batch,
     start_batch_operation,
 )
-from .restore import _validate_restored_general_identities
+from .restore import _validate_restored_general_identities, _with_legacy_snapshot_fields
 
 _MODELS = dict((label, model) for model, label in PROJECT_STATE_MODELS)
 _INTERNAL = "_import_changes"
@@ -221,10 +220,7 @@ def _matches_after_image(
     model: type, recorded: dict[str, Any] | None, current: dict[str, Any] | None,
 ) -> bool:
     if recorded is not None and model is Crop:
-        recorded = {
-            **recorded,
-            'light_requirement': normalize_crop_light(recorded.get('light_requirement')),
-        }
+        recorded = _with_legacy_snapshot_fields(model, recorded)
     return recorded == current
 
 
