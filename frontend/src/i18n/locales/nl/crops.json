@@ -1892,10 +1892,11 @@
     }
   },
   "siteHealth": {
+    "inheritedLight": "Overgenomen van het gewas ({{value}})",
     "title": "Standplaats en plantgezondheid",
     "pestsPlaceholder": "bijv. wortelvlieg: afdekken met insectengaas",
     "fields": {
-      "light_requirement": "Lichtbehoefte",
+      "light_requirement": "Geschikte lichtomstandigheden",
       "water_requirement": "Waterbehoefte",
       "life_cycle": "Levenscyclus",
       "winter_hardiness": "Winterhardheid",

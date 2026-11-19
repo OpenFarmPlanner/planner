@@ -1892,10 +1892,11 @@
     }
   },
   "siteHealth": {
+    "inheritedLight": "Von der Kultur übernommen ({{value}})",
     "title": "Standort und Pflanzengesundheit",
     "pestsPlaceholder": "z. B. Möhrenfliege: mit Kulturschutznetz abdecken",
     "fields": {
-      "light_requirement": "Lichtbedarf",
+      "light_requirement": "Geeignete Lichtverhältnisse",
       "water_requirement": "Wasserbedarf",
       "life_cycle": "Lebensdauer",
       "winter_hardiness": "Winterhärte",

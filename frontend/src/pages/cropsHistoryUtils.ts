@@ -1,6 +1,7 @@
 import { formatSpecificProperties, type SpecificProperties } from '../crops/specificProperties';
 import type { TFunction } from 'i18next';
 import type { CropHistoryChange, CropHistoryEntry, CropTimingWindow } from '../api/types';
+import { formatSiteHealthValue, normalizeLightRequirements } from '../crops/siteHealth';
 import { getSeedTypeLabel } from '../crops/seedType';
 import { TIMING_WINDOW_KINDS, formatTimingWindows, windowsOfKind } from '../crops/timingWindows';
 import { getActiveFormattingLocale } from '../utils/numberLocalization';
@@ -272,6 +273,11 @@ export function formatHistoryChangeValue(
   t: TFunction<'crops'>,
 ): string {
   if (field === 'plant_health') return formatPlantHealthValue(value, t);
+  if (field === 'light_requirement') {
+    return normalizeLightRequirements(value).length
+      ? formatSiteHealthValue(field, value, t)
+      : t('history.emptyValue');
+  }
   if (field === 'specific_properties' && value && typeof value === 'object' && Object.keys(value).length > 0) return formatSpecificProperties(value as SpecificProperties, t);
   if (value === null || value === undefined || value === '') {
     return t('history.emptyValue');

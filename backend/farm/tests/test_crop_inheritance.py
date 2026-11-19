@@ -69,7 +69,7 @@ class CropInheritanceTest(TestCase):
         )
         variety = self._variety(winter_hardiness='hardy')
 
-        self.assertEqual(resolve_crop_field(variety, 'light_requirement'), 'full_sun')
+        self.assertEqual(resolve_crop_field(variety, 'light_requirement'), ['full_sun'])
         self.assertEqual(resolve_crop_field(variety, 'life_cycle'), 'annual')
         self.assertEqual(resolve_crop_field(variety, 'pests_diseases'), 'Late blight')
         self.assertEqual(resolve_crop_field(variety, 'winter_hardiness'), 'hardy')

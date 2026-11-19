@@ -32,6 +32,7 @@ from farm.services.crop_rotation import RotationResult, RotationService
 from farm.services.demo_project import find_demo_crop_species, is_demo_project_description
 from farm.services.germination_check import check_germination
 from farm.services.plant_count import compute_plan_plant_count
+from farm.services.site_suitability import check_site_suitability
 from farm.services.timing_window_check import TimingWindowChecker
 
 
@@ -81,6 +82,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         ),
     )
     germination_findings = serializers.SerializerMethodField(read_only=True)
+    site_suitability_findings = serializers.SerializerMethodField(read_only=True)
     expected_emergence = serializers.SerializerMethodField(read_only=True)
     timing_window_findings = serializers.SerializerMethodField(
         read_only=True,
@@ -187,6 +189,9 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
 
     def get_germination_findings(self, obj: PlantingPlan) -> list[dict[str, str]]:
         return self._germination_result(obj)['germination_findings']
+
+    def get_site_suitability_findings(self, obj: PlantingPlan) -> list[dict[str, Any]]:
+        return check_site_suitability(obj.crop, obj.bed, self._general_crop_index(obj))
 
     def get_expected_emergence(self, obj: PlantingPlan) -> dict[str, str] | None:
         return self._germination_result(obj)['expected_emergence']

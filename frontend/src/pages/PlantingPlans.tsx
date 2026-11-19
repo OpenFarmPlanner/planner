@@ -138,6 +138,7 @@ import { CropSpacingEditAction } from "../components/planting-plans/CropSpacingE
 import { MobilePlanActionsMenu } from "../components/planting-plans/MobilePlanActionsMenu";
 import { RotationStatusIcon } from "../components/planting-plans/rotation/RotationStatusIcon";
 import { CompanionWarningIcon } from "../components/planting-plans/rotation/CompanionCheckAlert";
+import { SiteSuitabilityHints } from "../components/planting-plans/rotation/SiteSuitabilityHints";
 import { HarvestOverlapDateCell, HarvestOverlapIcon } from "../components/planting-plans/HarvestOverlapInfo";
 import { TimingWindowDateCell, TimingWindowIcon } from "../components/planting-plans/TimingWindowInfo";
 import { TIMING_WINDOW_KINDS_BY_DATE_FIELD } from "../components/planting-plans/useTimingWindowLines";
@@ -2269,6 +2270,7 @@ function PlantingPlans() {
               )}
               renderDetails={(item) => (
                 <Stack spacing={0.75}>
+                  <SiteSuitabilityHints findings={item.site_suitability_findings} />
                   <GerminationInfo {...item} sowingDate={getRowSowingSchedule(item)?.sowingDate} />
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.cultivationType")}:</strong> <SearchHighlightedText text={getCultivationTypeLabel(item) || "—"} /></Typography>
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.bed")}:</strong> <SearchHighlightedText text={getBedLabelForRow(item)} /></Typography>

@@ -2,9 +2,31 @@
 
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from farm.crop_light import CROP_LIGHT_VALUES, normalize_crop_light, validate_crop_light
 from farm.models import Project
+
+
+@extend_schema_field({'oneOf': [
+    {'type': 'string', 'enum': ['', *CROP_LIGHT_VALUES]},
+    {'type': 'array', 'items': {'type': 'string', 'enum': list(CROP_LIGHT_VALUES)}, 'maxItems': 3},
+]})
+class CropLightField(serializers.Field):
+    """Accept legacy scalar inputs and keep their representation for one choice."""
+
+    def to_internal_value(self, data: object) -> list[str]:
+        try:
+            validate_crop_light(data)
+        except ValidationError as error:
+            raise serializers.ValidationError(error.messages) from error
+        return normalize_crop_light(data)
+
+    def to_representation(self, value: object) -> str | list[str]:
+        choices = normalize_crop_light(value)
+        return choices if len(choices) > 1 else ''.join(choices)
 
 
 def _resolve_active_project_from_serializer(serializer) -> Project | None:

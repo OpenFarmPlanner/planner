@@ -10,7 +10,8 @@ from django.db import IntegrityError, transaction
 from django.db.models.deletion import Collector, ProtectedError
 from django.utils import timezone
 
-from farm.models import BatchOperation, EntityRevision, Project
+from farm.crop_light import normalize_crop_light
+from farm.models import BatchOperation, Crop, EntityRevision, Project
 from farm.services.crop_inheritance import GeneralCropIdentityConflict, lock_crop_project
 
 from .project_restore import (
@@ -69,7 +70,7 @@ def _record_changes(
             old, new = before[label].get(pk), after[label].get(pk)
             previous = changes.get(label, {}).get(pk)
             if previous is not None and old != new:
-                if previous["after"] != old:
+                if not _matches_after_image(model, previous["after"], old):
                     previous["interleaved_edit"] = True
                 previous["after"] = new
             if _content(old) == _content(new):
@@ -200,7 +201,9 @@ def import_undo_preview(project: Project, batch: BatchOperation) -> dict[str, An
             if label == "crop":
                 created += int(is_created)
                 updated += int(not is_created)
-            if change.get("interleaved_edit") or current[label].get(pk) != change["after"]:
+            if change.get("interleaved_edit") or not _matches_after_image(
+                _MODELS[label], change["after"], current[label].get(pk),
+            ):
                 conflicts.append({"code": "later_edit", "object_type": label, "object_id": int(pk)})
             if is_created:
                 deleting.add((_MODELS[label], int(pk)))
@@ -214,11 +217,20 @@ def import_undo_preview(project: Project, batch: BatchOperation) -> dict[str, An
     return {"created_count": created, "updated_count": updated, "conflicts": conflicts}
 
 
+def _matches_after_image(
+    model: type, recorded: dict[str, Any] | None, current: dict[str, Any] | None,
+) -> bool:
+    if recorded is not None and model is Crop:
+        recorded = {
+            **recorded,
+            'light_requirement': normalize_crop_light(recorded.get('light_requirement')),
+        }
+    return recorded == current
+
+
 def _inverse_is_compatible(
     project: Project, current: ProjectState, changes: dict[str, Any]
 ) -> bool:
-    from farm.models import Crop
-
     try:
         target = _validated_rows(project, _inverse_state(current, changes))
         _validate_restored_general_identities(

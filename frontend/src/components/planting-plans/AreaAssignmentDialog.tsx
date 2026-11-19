@@ -728,14 +728,16 @@ function AreaAssignmentDialogComponent({
                     </FormHelperText>
                   ) : null}
                 </FormControl>
+                {rotation ? (
+                  <RotationCheckPanel
+                    input={rotationInput}
+                    bedLabel={draftBed?.name ?? ''}
+                    cultureLabel={rotation.cultureLabel}
+                    acceptance={hasRotationContext ? getAcceptanceControls(toAcceptanceKey(activeDraft.bedId)) : undefined}
+                  />
+                ) : null}
                 {hasRotationContext && rotation ? (
                   <>
-                    <RotationCheckPanel
-                      input={rotationInput}
-                      bedLabel={draftBed?.name ?? ''}
-                      cultureLabel={rotation.cultureLabel}
-                      acceptance={getAcceptanceControls(toAcceptanceKey(activeDraft.bedId))}
-                    />
                     <Link
                       component="button"
                       type="button"

@@ -215,9 +215,12 @@ def _analyze_enum_list(spec: FieldSpec, analysis: FieldAnalysis, raw_value: Any)
         analysis.confidence = CONFIDENCE_INVALID
         return
 
+    choice_field = 'light_requirement' if spec.name == 'light_requirement' else 'cultivation_type'
+    if spec.name == 'light_requirement' and raw_value == '':
+        raw_items = []
     normalized_items: list[str] = []
     for item in raw_items:
-        normalized = normalize_choice_value('cultivation_type', item)
+        normalized = normalize_choice_value(choice_field, item)
         if normalized not in (spec.enum_values or ()):
             analysis.errors.append(
                 _issue('enum_unknown', f'Allowed: {", ".join(spec.enum_values or ())}.')

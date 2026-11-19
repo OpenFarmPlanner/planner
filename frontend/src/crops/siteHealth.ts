@@ -3,7 +3,7 @@ import type { TFunction } from 'i18next';
 /**
  * Site, life cycle and plant health of a crop: descriptive values a Sorte
  * inherits from its Kultur and the crop library carries like any copy field.
- * They are not planning checks (yet): see docs/crop-library-architecture.md.
+ * Light and water also inform advisory checks against the selected bed.
  */
 export const SITE_HEALTH_CHOICES = {
   light_requirement: ['full_sun', 'partial_shade', 'shade'],
@@ -22,6 +22,11 @@ export type WaterRequirement = typeof SITE_HEALTH_CHOICES.water_requirement[numb
 export type LifeCycle = typeof SITE_HEALTH_CHOICES.life_cycle[number];
 export type WinterHardiness = typeof SITE_HEALTH_CHOICES.winter_hardiness[number];
 
+export function normalizeLightRequirements(value: unknown): LightRequirement[] {
+  const choices = Array.isArray(value) ? value : [value];
+  return SITE_HEALTH_CHOICES.light_requirement.filter((choice) => choices.includes(choice));
+}
+
 /** Stored and portable values include biennial; new UI selections do not. */
 export function selectableSiteHealthChoices(field: SiteHealthChoiceField): readonly string[] {
   return field === 'life_cycle'
@@ -32,6 +37,10 @@ export function selectableSiteHealthChoices(field: SiteHealthChoiceField): reado
 export function formatSiteHealthValue(field: SiteHealthField, value: unknown, t: TFunction): string {
   if (value == null || value === '') return t('noData');
   if (field === 'pests_diseases') return String(value);
+  if (field === 'light_requirement') {
+    return normalizeLightRequirements(value)
+      .map((choice) => t(`siteHealth.values.light_requirement.${choice}`)).join(', ') || t('noData');
+  }
   const choices: readonly string[] = SITE_HEALTH_CHOICES[field];
   return choices.includes(String(value)) ? t(`siteHealth.values.${field}.${String(value)}`) : String(value);
 }

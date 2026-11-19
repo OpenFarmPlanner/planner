@@ -1943,10 +1943,11 @@
     }
   },
   "siteHealth": {
+    "inheritedLight": "Herdada da cultura ({{value}})",
     "title": "Local e saúde das plantas",
     "pestsPlaceholder": "por exemplo mosca-da-cenoura: cobrir com rede anti-insetos",
     "fields": {
-      "light_requirement": "Necessidades de luz",
+      "light_requirement": "Exposição solar adequada",
       "water_requirement": "Necessidades de água",
       "life_cycle": "Ciclo de vida",
       "winter_hardiness": "Resistência ao frio",

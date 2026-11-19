@@ -272,6 +272,11 @@
       "outsideWindow": "En dehors des périodes"
     }
   },
+  "siteSuitability": {
+    "title": "Conditions de culture",
+    "lightMismatch": "La culture convient à {{crop}}. L’exposition de la planche est indiquée comme {{bed}}.",
+    "waterMismatch": "La culture a des besoins élevés en eau. Le sol est indiqué comme {{moisture}} et l’irrigation comme {{irrigation}}."
+  },
   "rotation": {
     "iconAria": {
       "conflict": "Conflit de rotation des cultures, modifier la surface de culture",

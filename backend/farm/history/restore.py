@@ -132,7 +132,7 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
     """
     from farm.germination import upgrade_germination_snapshot
 
-    snapshot = upgrade_germination_snapshot(revision.snapshot)
+    snapshot = _with_legacy_snapshot_fields(Crop, upgrade_germination_snapshot(revision.snapshot))
     snapshot.setdefault('specific_properties', {})
     snapshot.setdefault('plant_health', None)
     restorable_fields = {
@@ -193,7 +193,10 @@ def _with_legacy_snapshot_fields(model: type, snapshot: dict) -> dict:
     longer a column; without this the family would be dropped on restore.
     """
     if model is Crop:
+        from farm.crop_light import normalize_crop_light
+
         snapshot = {'plant_health': None, **snapshot}
+        snapshot['light_requirement'] = normalize_crop_light(snapshot.get('light_requirement'))
     if model is CropCompanion and 'notes' not in snapshot:
         return {**snapshot, 'notes': {'de': snapshot['note']} if snapshot.get('note') else {}}
     if model is not Crop or 'crop_family_id' in snapshot or 'crop_family' not in snapshot:

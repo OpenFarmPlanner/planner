@@ -17,6 +17,7 @@ import type { RotationBedHistoryEntry, RotationCheckResponse, RotationFinding } 
 import { CompanionCheckAlert } from './CompanionCheckAlert';
 import { useTranslation } from '../../../i18n';
 import { RotationStatusIcon } from './RotationStatusIcon';
+import { SiteSuitabilityHints } from './SiteSuitabilityHints';
 import {
   formatIsoDate,
   getConflictText,
@@ -27,7 +28,7 @@ import {
   type FamilyNameResolver,
 } from './rotationCopy';
 import { useFamilyNameResolver } from './useFamilyNameResolver';
-import { useRotationCheck, type RotationInput } from './useRotationQueries';
+import { useRotationCheck, useUndatedSiteSuitabilityCheck, type RotationInput } from './useRotationQueries';
 
 export interface RotationAcceptanceControls {
   /** Current (possibly unsaved) acceptance in the form. */
@@ -116,9 +117,13 @@ export function RotationCheckPanel(props: RotationCheckPanelProps) {
   const { input } = props;
   const { t } = useTranslation('plantingPlans');
   const { data, isLoading, isError } = useRotationCheck(input);
+  const undatedSiteCheck = useUndatedSiteSuitabilityCheck(input);
 
-  if (!input.cropId || !input.bedId || !input.plantingDate) {
+  if (!input.cropId || !input.bedId) {
     return null;
+  }
+  if (!input.plantingDate) {
+    return <SiteSuitabilityHints findings={undatedSiteCheck.data?.site_suitability_findings} />;
   }
   if (isLoading) {
     return (
@@ -137,13 +142,14 @@ export function RotationCheckPanel(props: RotationCheckPanelProps) {
 
   const companionFindings = data.companion_findings ?? [];
   const rotation = <RotationResult {...props} data={data} />;
-  if (companionFindings.length === 0) {
+  if (companionFindings.length === 0 && !data.site_suitability_findings?.length) {
     return rotation;
   }
   return (
     <Stack spacing={1}>
       {rotation}
       <CompanionCheckAlert findings={companionFindings} />
+      <SiteSuitabilityHints findings={data.site_suitability_findings} />
     </Stack>
   );
 }

@@ -266,6 +266,11 @@
       "outsideWindow": "Outside the time windows"
     }
   },
+  "siteSuitability": {
+    "title": "Site suitability",
+    "lightMismatch": "The crop is suited to {{crop}}. The bed’s light is recorded as {{bed}}.",
+    "waterMismatch": "The crop has high water needs. Soil moisture is recorded as {{moisture}}, and irrigation as {{irrigation}}."
+  },
   "rotation": {
     "iconAria": {
       "conflict": "Crop rotation conflict, change growing area",

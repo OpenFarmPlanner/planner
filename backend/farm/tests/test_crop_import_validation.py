@@ -79,7 +79,7 @@ class SiteHealthImportTest(TestCase):
         )
 
         self.assertEqual(item['errors'], [])
-        self.assertEqual(self._value(item, 'light_requirement'), 'partial_shade')
+        self.assertEqual(self._value(item, 'light_requirement'), ['partial_shade'])
         self.assertEqual(self._value(item, 'water_requirement'), 'high')
         self.assertEqual(self._value(item, 'life_cycle'), 'biennial')
         self.assertEqual(self._value(item, 'winter_hardiness'), 'with_protection')

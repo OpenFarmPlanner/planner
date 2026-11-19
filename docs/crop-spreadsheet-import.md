@@ -23,6 +23,7 @@ several values (`LIST_CELL_SEPARATOR` in `crops/spreadsheetColumns.ts`). Export
 and template write `; ` in every list-valued column:
 
 - cultivation types: `Direktsaat; Pflanzung`;
+- suitable light conditions: `Sonnig; Halbschattig` (historical one-value rows and column headers still import);
 - tags: `Kräuter; Blumen`;
 - several timing windows of one kind: `Mitte März bis Mitte April; KW 20 bis 24`;
 - good/bad neighbours: `Tomate | Schutz vor Schädlingen; Gurke | Quelle 2025; Basilikum`

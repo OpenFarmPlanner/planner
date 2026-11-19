@@ -326,6 +326,7 @@ describe('crop spreadsheet export → import round trip', () => {
 
   const EXPECTED_IMPORT: Record<string, unknown> = {
     ...(FULL_CROP as unknown as Record<string, unknown>),
+    light_requirement: ['partial_shade'],
     plant_health: JSON.stringify(FULL_CROP.plant_health?.entries),
     ...windowCells(i18n.getFixedT('de', 'crops')),
     supplier_name: 'Bingenheimer Saatgut',
@@ -430,17 +431,23 @@ describe('germination spreadsheet round trip', () => {
     expect(parsed.entries[0]).toEqual({ name: 'Synthetic', pests_diseases: 'Early sowing protects against carrot fly; repels aphids' });
   });
 
-  it.each(['de', 'en', 'fr', 'es'])('preserves site, life cycle and plant health in %s', async (language) => {
+  it('accepts a historical one-choice light column', async () => {
+    const parsed = await parseSpreadsheetFile(csvFile('Name;Lichtbedarf\nSynthetic;Halbschattig'));
+    expect(parsed.entries[0]).toMatchObject({ light_requirement: ['partial_shade'] });
+  });
+
+  it.each(SUPPORTED_LANGUAGES.flatMap(({ code }) => (['csv', 'xlsx', 'ods'] as const).map(format => [code, format] as const)))(
+    'preserves site, life cycle and plant health in %s %s', async (language, format) => {
     const original = i18n.language;
     try {
-      const crop = { name: 'Site crop', light_requirement: 'shade', water_requirement: 'low',
+      const crop = { name: 'Site crop', light_requirement: ['partial_shade', 'shade'], water_requirement: 'low',
         life_cycle: 'perennial', winter_hardiness: 'not_hardy', pests_diseases: 'Slugs' } as Crop;
-      const csv = buildSpreadsheetFile(buildSheetData([crop], i18n.getFixedT(language, 'crops')), 'csv') as string;
+      const data = buildSpreadsheetFile(buildSheetData([crop], i18n.getFixedT(language, 'crops')), format);
       await i18n.changeLanguage('en');
-      const parsed = await parseSpreadsheetFile(csvFile(csv));
+      const parsed = await parseSpreadsheetFile(new File([data as BlobPart], `site.${format}`));
       expect(parsed.warnings).toEqual([]);
       expect(parsed.entries[0]).toMatchObject({
-        light_requirement: 'shade', water_requirement: 'low', life_cycle: 'perennial',
+        light_requirement: ['partial_shade', 'shade'], water_requirement: 'low', life_cycle: 'perennial',
         winter_hardiness: 'not_hardy', pests_diseases: 'Slugs',
       });
     } finally {

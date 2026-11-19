@@ -602,6 +602,24 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         flagged = [row for row in response.data['results'] if row['timing_window_findings']]
         self.assertEqual(len(flagged), ROW_COUNT)
 
+    def test_planting_plan_site_suitability_uses_the_joined_bed_ancestry(self) -> None:
+        Crop.objects.filter(project=self.project).update(light_requirement=['full_sun'])
+        Location.objects.filter(project=self.project).update(light_condition='shade')
+        url = '/openfarmplanner/api/planting-plans/'
+        for size in (ROW_COUNT, 2 * ROW_COUNT):
+            with self.assertNumQueries(15):
+                response = self.client.get(url)
+            self.assertEqual(response.status_code, 200, response.data)
+            found = [row for row in response.data['results'] if row['site_suitability_findings']]
+            self.assertEqual(len(found), size)
+            if size == ROW_COUNT:
+                for index in range(ROW_COUNT):
+                    PlantingPlan.objects.create(
+                        crop=self.crops[index], bed=self.beds[index],
+                        planting_date=date(2027, 8, 1),
+                        area_usage_sqm=5, project=self.project, season=self.seasons[index],
+                    )
+
     def test_planting_plans_list_query_count_with_harvest_overlaps(self):
         """A follow-up crop in the harvest phase of a full-bed plan on every bed
         must cost the same queries as plans without overlaps."""

@@ -42,6 +42,24 @@ class LocalLibraryImportSeedTests(TestCase):
     def seed(self, **options):
         call_command("seed_library_import_acceptance", **{**self.arguments, **options})
 
+    def test_crop_site_fixture_is_previewed_and_preserves_manual_edits(self):
+        command = 'seed_crop_site_acceptance'
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        call_command(command, **arguments)
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before))
+        call_command(command, apply=True, **arguments)
+        project = Project.objects.get(slug=f'ofp-local-crop-site-{self.user.pk}')
+        plan = PlantingPlan.objects.get(project=project)
+        self.assertEqual(plan.bed.name, 'Inherited bed')
+        self.assertEqual(plan.crop.light_requirement, ['full_sun', 'partial_shade'])
+        self.assertEqual(project.beds.get(name='Sunny override bed').irrigation, 'available')
+        plan.crop.notes = 'Preserve my edit'
+        plan.crop.save()
+        call_command(command, apply=True, **arguments)
+        plan.crop.refresh_from_db()
+        self.assertEqual(plan.crop.notes, 'Preserve my edit')
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before) + 1)
+
     def test_companion_history_fixture_is_previewed_and_repeat_safe(self):
         command = 'seed_companion_history_acceptance'
         arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
