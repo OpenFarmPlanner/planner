@@ -7,6 +7,7 @@ from django.test.utils import CaptureQueriesContext
 from rest_framework import status
 
 from crops.models import CropSpecies, PlantFamily
+from farm.crops.serializers.crops import CropSerializer
 from farm.models import (
     Crop,
     CropSupplierData,
@@ -654,6 +655,30 @@ class CropApiTest(ProjectApiTestCase):
         self.assertEqual(final_revision.entity_type, 'crop')
         self.assertEqual(final_revision.object_id, variety.pk)
         self.assertLess(plan_revision.pk, final_revision.pk)
+
+    def test_linked_variety_revision_uses_the_locked_crop_as_its_before_image(self):
+        species = CropSpecies.objects.create(name='History before image species')
+        Crop.objects.create(name='Tomato', crop_species=species, project=self.project)
+        stale_variety = Crop.objects.create(
+            name='Tomato', variety='Matina', crop_species=species, project=self.project,
+            cultivation_types=['pre_cultivation'], cultivation_type='pre_cultivation',
+        )
+        serializer = CropSerializer(
+            stale_variety, data={'nutrient_demand': 'high'}, partial=True,
+            context={'project': self.project},
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        response = self.client.patch(f'/openfarmplanner/api/crops/{stale_variety.pk}/', {
+            'notes': 'Notes saved by another edit',
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        serializer.save()
+        revision = EntityRevision.objects.filter(
+            project=self.project, entity_type='crop', object_id=stale_variety.pk,
+        ).latest('pk')
+        self.assertEqual(revision.snapshot['notes'], 'Notes saved by another edit')
+        self.assertEqual(revision.changed_fields, ['nutrient_demand'])
 
     def test_crop_create_allows_same_name_with_different_variety(self):
         data = {

@@ -1023,7 +1023,6 @@ class CropSerializer(serializers.ModelSerializer):
             project = self.instance.project
         with transaction.atomic():
             lock_crop_project(project.pk)
-            before_crop = _serialize_instance(self.instance) if self.instance is not None else None
             children = (
                 (CropSupplierData, 'crop_supplier_data'), (SeedPackage, 'seed_package'),
             ) if has_children else ()
@@ -1052,7 +1051,7 @@ class CropSerializer(serializers.ModelSerializer):
                             snapshot=new or old, display_name=crop.name,
                         )
             record_completed_crop_revision(
-                crop, before=before_crop,
+                crop, before=None if creating else self._before_crop,
                 action=EntityRevision.ACTION_CREATED if creating else EntityRevision.ACTION_UPDATED,
                 promoted=None if creating else self._promoted_species_changes,
             )
@@ -1137,6 +1136,8 @@ class CropSerializer(serializers.ModelSerializer):
             with transaction.atomic():
                 lock_crop_project(instance.project_id)
                 instance.refresh_from_db()
+                if not record_history:
+                    self._before_crop = _serialize_instance(instance)
                 previous_identity = (instance.name_normalized, instance.variety_normalized)
                 identity_fields = {'name', 'variety', 'crop_species', 'deleted_at'}
                 if identity_fields.intersection(validated_data):
