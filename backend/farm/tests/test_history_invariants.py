@@ -612,6 +612,42 @@ class HistoryRestorePathConsistencyTests(HistoryInvariantTestCase):
         self.assertEqual(project_row['selected_seed_demand_supplier_id'], second_supplier['id'])
 
 
+class HistoryImplicitCropSaveTests(HistoryInvariantTestCase):
+    def test_completed_crop_version_includes_implicit_supplier_and_general_changes(self) -> None:
+        species = CropSpecies.objects.create(name='Crop history promotion species')
+        general = self.write('general crop', 'post', '/crops/', {
+            'name': 'History bean', 'crop_species': species.pk,
+        })['id']
+        prior_version = self.versions[-1].revision.pk
+        variety = self.write('create linked variety', 'post', '/crops/', {
+            'name': 'History bean', 'variety': 'Sample variety', 'crop_species': species.pk,
+            'crop_family': 'Fabaceae', 'nutrient_demand': 'high', 'rotation_break_years': 4,
+            'supplier_name': 'Implicit history supplier',
+        })
+        supplier = variety['supplier']['id']
+        completed = self.versions[-1]
+        self.assertEqual((completed.revision.entity_type, completed.revision.object_id), (
+            'crop', variety['id'],
+        ))
+        revisions = EntityRevision.objects.filter(project=self.project, pk__gt=prior_version)
+        visible = revisions.exclude(snapshot__has_key='_project_version_internal')
+        self.assertEqual(list(visible.values_list('pk', flat=True)), [completed.revision.pk])
+        internal = revisions.filter(snapshot__has_key='_project_version_internal')
+        self.assertTrue(internal.filter(entity_type='supplier', object_id=supplier).exists())
+        self.assertTrue(internal.filter(entity_type='crop', object_id=general).exists())
+
+        self.write(
+            'remove supplier link', 'patch', f"/crops/{variety['id']}/", {'supplier_id': None},
+        )
+        self.write('delete unused supplier', 'delete', f'/suppliers/{supplier}/')
+        self.write(
+            'later general crop edit', 'patch', f'/crops/{general}/', {'rotation_break_years': 6},
+        )
+
+        self.assertEqual(self.restore(completed.revision), 200)
+        self.assert_state(completed.state, 'implicit crop save restores its completed version')
+
+
 class HistoryLibraryCompanionRoundTripTests(HistoryInvariantTestCase):
     """Library import, update and link write neighbours with their history (#1192)."""
 

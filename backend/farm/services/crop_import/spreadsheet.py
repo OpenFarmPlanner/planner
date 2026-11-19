@@ -187,12 +187,8 @@ def _resolve_crop_species(crop_data: dict) -> None:
         crop_data['crop_species'] = species.pk
 
 
-def resolve_supplier(project: Project, crop_data: dict, *, create: bool = True) -> Supplier | None:
-    """Resolve the row's supplier from `supplier_id`, or by name (created when `create`).
-
-    The preview passes ``create=False``: it only reports what an import would
-    do, so it must not leave suppliers behind when the user cancels.
-    """
+def resolve_supplier(project: Project, crop_data: dict) -> Supplier | None:
+    """Resolve an existing supplier for matching without changing the project."""
     supplier_id = crop_data.get('supplier_id')
     supplier_name = crop_data.get('supplier_name')
 
@@ -205,19 +201,8 @@ def resolve_supplier(project: Project, crop_data: dict, *, create: bool = True) 
             return None
     elif supplier_name:
         normalized = normalize_supplier_name(supplier_name)
-        if normalized and not create:
-            return Supplier.objects.filter(name_normalized=normalized, project=project).first()
         if normalized:
-            supplier, _ = Supplier.objects.get_or_create(
-                name_normalized=normalized,
-                project=project,
-                defaults={
-                    'name': supplier_name,
-                    'homepage_url': 'https://example.invalid',
-                    'project': project,
-                },
-            )
-            return supplier
+            return Supplier.objects.filter(name_normalized=normalized, project=project).first()
 
     return None
 
@@ -338,18 +323,12 @@ def _supplier_diff(existing_crop: Crop, import_data: dict) -> dict | None:
     return {'field': 'supplier_name', 'current': current or None, 'new': import_supplier}
 
 
-def _match_import_row(
-    project: Project,
-    crop_data: dict,
-    *,
-    create_supplier: bool = True,
-) -> tuple[Supplier | None, Crop | None]:
-    supplier = resolve_supplier(project, crop_data, create=create_supplier)
-    return supplier, find_matching_crop(
+def _match_import_row(project: Project, crop_data: dict) -> Crop | None:
+    return find_matching_crop(
         project,
         crop_data['name'],
         crop_data.get('variety', ''),
-        supplier,
+        resolve_supplier(project, crop_data),
         crop_data.get('supplier_name') or crop_data.get('seed_supplier'),
     )
 
@@ -441,7 +420,7 @@ def preview_crop_import(
         try:
             germination_issues = apply_germination_cells(crop_data)
             _normalize_crop_family(crop_data)
-            _supplier, matching_crop = _match_import_row(project, crop_data, create_supplier=False)
+            matching_crop = _match_import_row(project, crop_data)
             apply_plant_health_cell(crop_data, project.pk, matching_crop)
             apply_specific_property_cells(crop_data, matching_crop)
             companions = preview_row_companions(resolver, crop_data)
@@ -480,6 +459,23 @@ def preview_crop_import(
     return results
 
 
+def _save_import_row(
+    project: Project, crop_data: dict, matching_crop: Crop | None,
+) -> tuple[Crop | None, dict]:
+    if matching_crop is None:
+        _resolve_crop_species(crop_data)
+    # Resolve project-scoped references from trusted context; any project
+    # supplied by the file is ignored by the read-only serializer field.
+    serializer = CropSerializer(
+        matching_crop, data=crop_data, partial=matching_crop is not None,
+        context={'project': project, 'defer_companion_linking': True},
+    )
+    if not serializer.is_valid():
+        return None, serializer.errors
+    defaults = {'project': project} if matching_crop is None else {}
+    return serializer.save(**defaults), {}
+
+
 def apply_crop_import(
     project: Project, rows: list, *, confirm_updates: bool,
     companion_note_language: str = 'de', replace_companion_notes: bool = False,
@@ -495,9 +491,6 @@ def apply_crop_import(
         if _is_importable_row(row) and isinstance(row.get('name'), str)
     ])
     duplicates = _duplicate_row_indices(rows)
-    created_count = 0
-    updated_count = 0
-    skipped_count = len(duplicates)
     errors: list[dict] = []
     timing_window_issues: list[dict[str, Any]] = []
     companion_rows: list[tuple[Crop, dict[str, Any]]] = []
@@ -518,64 +511,25 @@ def apply_crop_import(
             preview_row_companions(companion_resolver, {} if defer_companions else companions)
             germination_issues = apply_germination_cells(crop_data)
             _normalize_crop_family(crop_data)
-            supplier, matching_crop = _match_import_row(project, crop_data)
+            matching_crop = _match_import_row(project, crop_data)
             apply_plant_health_cell(crop_data, project.pk, matching_crop)
             apply_specific_property_cells(crop_data, matching_crop)
-            if supplier:
-                crop_data['supplier'] = supplier.id
-
-            if matching_crop:
-                if not confirm_updates:
-                    skipped_count += 1
-                    results.append({'index': idx, 'status': 'skipped', 'crop_id': matching_crop.pk})
-                    continue
-                timing_window_issues.extend(
-                    {'index': idx, **issue}
-                    for issue in [
-                        *germination_issues, *apply_timing_window_cells(crop_data, matching_crop),
-                    ]
-                )
-                serializer = CropSerializer(
-                    matching_crop, data=crop_data, partial=True,
-                    context={'project': project, 'defer_companion_linking': True},
-                )
-                if serializer.is_valid():
-                    saved = serializer.save()
-                    updated_count += 1
-                    results.append({'index': idx, 'status': 'updated', 'crop_id': saved.pk})
-                    if companions:
-                        companion_rows.append((saved, companions))
-                else:
-                    errors.append({'index': idx, 'error': serializer.errors})
-                    results.append({'index': idx, 'status': 'error'})
-            else:
-                # `project` is read-only on the serializer, so it is assigned
-                # server-side from the active project here; any client-supplied
-                # project in the payload is intentionally ignored to keep
-                # imports project-scoped.
-                #
-                # The project also goes into the context: this runs outside a
-                # request cycle, and without it the serializer's cross-project
-                # checks on `image_file_id`/`supplier_id`/
-                # `selected_seed_demand_supplier` have no project to compare
-                # against on a create (there is no bound instance either).
-                _resolve_crop_species(crop_data)
-                timing_window_issues.extend(
-                    {'index': idx, **issue}
-                    for issue in [*germination_issues, *apply_timing_window_cells(crop_data, None)]
-                )
-                serializer = CropSerializer(
-                    data=crop_data, context={'project': project, 'defer_companion_linking': True},
-                )
-                if serializer.is_valid():
-                    saved = serializer.save(project=project)
-                    created_count += 1
-                    results.append({'index': idx, 'status': 'created', 'crop_id': saved.pk})
-                    if companions:
-                        companion_rows.append((saved, companions))
-                else:
-                    errors.append({'index': idx, 'error': serializer.errors})
-                    results.append({'index': idx, 'status': 'error'})
+            if matching_crop and not confirm_updates:
+                results.append({'index': idx, 'status': 'skipped', 'crop_id': matching_crop.pk})
+                continue
+            row_timing_issues = apply_timing_window_cells(crop_data, matching_crop)
+            timing_window_issues.extend(
+                {'index': idx, **issue} for issue in [*germination_issues, *row_timing_issues]
+            )
+            saved, validation_errors = _save_import_row(project, crop_data, matching_crop)
+            if saved is None:
+                errors.append({'index': idx, 'error': validation_errors})
+                results.append({'index': idx, 'status': 'error'})
+                continue
+            result_status = 'updated' if matching_crop else 'created'
+            results.append({'index': idx, 'status': result_status, 'crop_id': saved.pk})
+            if companions:
+                companion_rows.append((saved, companions))
         except Exception as error:
             errors.append({
                 'index': idx, **_import_error_details(error),
@@ -583,9 +537,9 @@ def apply_crop_import(
             results.append({'index': idx, 'status': 'error'})
 
     summary: dict[str, Any] = {
-        'created_count': created_count,
-        'updated_count': updated_count,
-        'skipped_count': skipped_count,
+        'created_count': sum(row['status'] == 'created' for row in results),
+        'updated_count': sum(row['status'] == 'updated' for row in results),
+        'skipped_count': sum(row['status'] in ('duplicate', 'skipped') for row in results),
         'duplicate_count': len(duplicates),
         'errors': errors,
         'results': sorted(results, key=lambda result: result['index']),

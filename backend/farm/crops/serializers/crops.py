@@ -28,7 +28,14 @@ from farm.common.serializer_fields import (
 )
 from farm.enum_normalization import normalize_seed_rate_unit
 from farm.germination import complete_germination_write
-from farm.history.records import revision_actor
+from farm.history.records import (
+    _diff_changed_fields,
+    _entity_display_name,
+    _serialize_instance,
+    internal_project_versions,
+    record_entity_revision,
+    revision_actor,
+)
 from farm.models import (
     Crop,
     CropSupplierData,
@@ -1001,14 +1008,13 @@ class CropSerializer(serializers.ModelSerializer):
         return normalized_packages
 
     def save(self, **kwargs):
-        if not {'supplier_data_input', 'seed_packages'}.intersection(self.validated_data):
-            return super().save(**kwargs)
-        from farm.history.records import (
-            _entity_display_name,
-            _serialize_instance,
-            internal_project_versions,
-            record_entity_revision,
+        has_children = {'supplier_data_input', 'seed_packages'}.intersection(self.validated_data)
+        changes_general = (
+            self._promotable_species_invariant_fields
+            or self._creates_inheriting_variety(self.validated_data)
         )
+        if not has_children and not changes_general:
+            return super().save(**kwargs)
         from farm.models import EntityRevision
 
         creating = self.instance is None
@@ -1017,18 +1023,22 @@ class CropSerializer(serializers.ModelSerializer):
             project = self.instance.project
         with transaction.atomic():
             lock_crop_project(project.pk)
-            children = (CropSupplierData, SeedPackage)
+            if self.instance is not None:
+                self.instance.refresh_from_db()
+            previous_crop = _serialize_instance(self.instance) if self.instance is not None else {}
+            children = (
+                (CropSupplierData, 'crop_supplier_data'), (SeedPackage, 'seed_package'),
+            ) if has_children else ()
             before = {
                 model: {
                     row.pk: _serialize_instance(row)
                     for row in model.objects.filter(crop=self.instance)
                 } if self.instance is not None else {}
-                for model in children
+                for model, _label in children
             }
             with internal_project_versions():
                 crop = super().save(**kwargs)
-                for model, label in ((CropSupplierData, 'crop_supplier_data'),
-                                     (SeedPackage, 'seed_package')):
+                for model, label in children:
                     after = {
                         row.pk: _serialize_instance(row)
                         for row in model.objects.filter(crop=crop)
@@ -1043,14 +1053,12 @@ class CropSerializer(serializers.ModelSerializer):
                                     'deleted' if new is None else 'updated'),
                             snapshot=new or old, display_name=crop.name,
                         )
-            latest = EntityRevision.objects.filter(
-                project=project, entity_type='crop', object_id=crop.pk,
-            ).latest('id')
+            snapshot = _serialize_instance(crop)
             record_entity_revision(
                 project=project, entity_type='crop', object_id=crop.pk,
                 action=EntityRevision.ACTION_CREATED if creating else EntityRevision.ACTION_UPDATED,
-                snapshot=_serialize_instance(crop), display_name=_entity_display_name(crop),
-                changed_fields=latest.changed_fields,
+                snapshot=snapshot, display_name=_entity_display_name(crop),
+                changed_fields=None if creating else _diff_changed_fields(previous_crop, snapshot),
             )
             return crop
 
@@ -1097,6 +1105,7 @@ class CropSerializer(serializers.ModelSerializer):
         with transaction.atomic():
             lock_crop_project(validated_data['project'].pk)
             validate_crop_identity(Crop(**validated_data))
+            self._save_implicit_supplier(validated_data)
             crop = super().create(validated_data)
             promote_fields = self._promotable_species_invariant_fields
             crop._auto_general_crop = ensure_general_crop_for_variety(
@@ -1135,6 +1144,7 @@ class CropSerializer(serializers.ModelSerializer):
                         for field in ('name', 'variety', 'crop_species_id', 'deleted_at')
                     ):
                         validate_crop_identity(prospective)
+                self._save_implicit_supplier(validated_data)
                 crop = super().update(instance, validated_data)
                 promote_species_invariant_values(
                     crop,
@@ -1278,7 +1288,7 @@ class CropSerializer(serializers.ModelSerializer):
         return value
     
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
-        """Validate cross-field rules and supplier get-or-create.
+        """Validate cross-field rules and resolve the supplier candidate.
 
         Split into one helper per field group. The intermediate error gates
         (raise-before-continuing) mirror the original monolithic method:
@@ -1856,7 +1866,7 @@ class CropSerializer(serializers.ModelSerializer):
             errors['supplier_data_input'] = supplier_data_errors
 
     def _resolve_supplier_from_name(self, attrs):
-        """Handle supplier_name via get-or-create to keep imports ergonomic.
+        """Prepare supplier_name without writing until the crop is saved.
 
         If supplier_id was explicitly provided (including null), respect it and
         do not implicitly override from supplier_name.
@@ -1879,22 +1889,49 @@ class CropSerializer(serializers.ModelSerializer):
                 {'supplier_name': 'project_scope_unresolved'}
             )
         normalized = normalize_supplier_name(supplier_name) or ''
+        supplier = Supplier.objects.filter(project=project, name_normalized=normalized).first()
+        if supplier is None:
+            supplier = Supplier(
+                name=supplier_name, name_normalized=normalized, project=project,
+                homepage_url='https://example.invalid',
+            )
+            supplier.clean()
+        attrs['supplier'] = supplier
+
+    def _save_implicit_supplier(self, attrs: dict[str, Any]) -> None:
+        candidate = attrs.get('supplier')
+        if candidate is None or candidate.pk is not None:
+            return
+        from farm.models import EntityRevision
+
+        project = candidate.project
         try:
             with transaction.atomic():
-                supplier, _created = Supplier.objects.get_or_create(
-                    name_normalized=normalized,
-                    project=project,
-                    defaults={
-                        'name': supplier_name,
-                        'homepage_url': 'https://example.invalid',
-                        'project': project,
-                    },
+                supplier, created = Supplier.objects.get_or_create(
+                    name_normalized=candidate.name_normalized, project=project,
+                    defaults={'name': candidate.name, 'homepage_url': candidate.homepage_url},
                 )
         except IntegrityError as exc:
-            supplier = Supplier.objects.filter(project=project, name_normalized=normalized).first()
+            supplier = Supplier.objects.filter(
+                project=project, name_normalized=candidate.name_normalized,
+            ).first()
             if supplier is None:
-                raise serializers.ValidationError({'supplier': 'Lieferant konnte nicht gespeichert werden.'}) from exc
+                raise serializers.ValidationError(
+                    {'supplier': 'Lieferant konnte nicht gespeichert werden.'},
+                ) from exc
+            created = False
         attrs['supplier'] = supplier
+        errors: dict[str, Any] = {}
+        self._validate_supplier_consistency(attrs, errors)
+        if errors:
+            raise serializers.ValidationError(errors)
+        if created:
+            with internal_project_versions():
+                record_entity_revision(
+                    project=project, entity_type='supplier', object_id=supplier.pk,
+                    action=EntityRevision.ACTION_CREATED, snapshot=_serialize_instance(supplier),
+                    display_name=_entity_display_name(supplier),
+                )
 
     def _normalize_variety(self, attrs):
         """Keep variety optional for compatibility with existing API/tests."""

@@ -1,8 +1,7 @@
 """API tests for crops, supplier data, and seed demand."""
 
-from datetime import date
+from datetime import date, timedelta
 
-import pytest
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from rest_framework import status
@@ -205,10 +204,9 @@ class CropApiTest(ProjectApiTestCase):
             for model in (Crop, EntityRevision, PlantingPlan, Task, CropTimingWindow, SeedPackage)
         }
 
-    @pytest.mark.history_gap(
-        issue=1203, reason='implicit crop-save side effects record no revision',
-    )
     def test_variety_undelete_conflict_is_atomic_with_and_without_supplier(self):
+        from farm.history.records import _serialize_instance, record_entity_revision
+
         for supplier in (self.supplier, None):
             with self.subTest(supplier=supplier):
                 name = f'Carrot {supplier.pk if supplier else "none"}'
@@ -216,12 +214,19 @@ class CropApiTest(ProjectApiTestCase):
                 old = Crop.objects.create(
                     project=self.project, name=name, variety="Nantes", supplier=supplier
                 )
-                PlantingPlan.objects.create(
+                plan = PlantingPlan.objects.create(
                     project=self.project, crop=old, bed=self.bed, planting_date=date(2026, 3, 1),
+                )
+                # The setup writes through the ORM instead of the history-aware plan API.
+                plan_snapshot = _serialize_instance(plan)
+                record_entity_revision(
+                    project=self.project, entity_type='planting_plan', object_id=plan.pk,
+                    action=EntityRevision.ACTION_CREATED, snapshot=plan_snapshot,
                 )
                 self.assertEqual(
                     self.client.delete(f"/openfarmplanner/api/crops/{general.pk}/").status_code, 204
                 )
+                self.assertEqual(_serialize_instance(plan), plan_snapshot)
                 Crop.objects.create(
                     project=self.project, name=name, variety="Nantes", supplier=supplier
                 )
@@ -376,9 +381,6 @@ class CropApiTest(ProjectApiTestCase):
         self.assertIsNotNone(nantaise.deleted_at)
         self.assertIsNone(milan.deleted_at)
 
-    @pytest.mark.history_gap(
-        issue=1203, reason='implicit crop-save side effects record no revision',
-    )
     def test_creating_linked_variety_copies_species_fields_only_by_default(self):
         species = CropSpecies.objects.create(name='Solanum lycopersicum')
 
@@ -417,9 +419,6 @@ class CropApiTest(ProjectApiTestCase):
         self.assertEqual(general.nutrient_demand, 'high')
         self.assertEqual(general.rotation_break_years, 4)
 
-    @pytest.mark.history_gap(
-        issue=1203, reason='implicit crop-save side effects record no revision',
-    )
     def test_creating_linked_variety_can_fill_empty_general_crop_fields(self):
         species = CropSpecies.objects.create(name='Solanum lycopersicum')
 
@@ -465,9 +464,6 @@ class CropApiTest(ProjectApiTestCase):
         self.assertEqual(variety.nutrient_demand, '')
         self.assertIsNone(variety.rotation_break_years)
 
-    @pytest.mark.history_gap(
-        issue=1203, reason='implicit crop-save side effects record no revision',
-    )
     def test_copying_variety_values_never_overwrites_general_crop_fields(self):
         species = CropSpecies.objects.create(name='Solanum lycopersicum')
         general = Crop.objects.create(
@@ -610,9 +606,6 @@ class CropApiTest(ProjectApiTestCase):
         self.assertIsNotNone(revision)
         self.assertTrue(revision.user_name)
 
-    @pytest.mark.history_gap(
-        issue=1203, reason='implicit crop-save side effects record no revision',
-    )
     def test_updating_linked_variety_copies_species_fields_only(self):
         species = CropSpecies.objects.create(name='Solanum lycopersicum')
         general = Crop.objects.create(
@@ -626,7 +619,13 @@ class CropApiTest(ProjectApiTestCase):
             variety='Matina',
             project=self.project,
             crop_species=species,
+            growth_duration_days=45,
+            harvest_duration_days=7,
         )
+        plan = PlantingPlan.objects.create(
+            project=self.project, crop=variety, bed=self.bed, planting_date=date(2026, 3, 1),
+        )
+        earlier_harvest = plan.harvest_date
 
         response = self.client.patch(
             f'/openfarmplanner/api/crops/{variety.id}/',
@@ -645,6 +644,16 @@ class CropApiTest(ProjectApiTestCase):
         self.assertEqual(general.crop_family_id, 'Solanaceae')
         self.assertEqual(general.nutrient_demand, 'high')
         self.assertEqual(general.rotation_break_years, 4)
+        plan.refresh_from_db()
+        self.assertEqual(plan.harvest_date, earlier_harvest + timedelta(days=20))
+        project_revisions = EntityRevision.objects.filter(project=self.project)
+        plan_revision = project_revisions.get(entity_type='planting_plan', object_id=plan.pk)
+        self.assertTrue(plan_revision.snapshot['_project_version_internal'])
+        self.assertEqual(plan_revision.snapshot['harvest_date'], plan.harvest_date.isoformat())
+        final_revision = project_revisions.latest('pk')
+        self.assertEqual(final_revision.entity_type, 'crop')
+        self.assertEqual(final_revision.object_id, variety.pk)
+        self.assertLess(plan_revision.pk, final_revision.pk)
 
     def test_crop_create_allows_same_name_with_different_variety(self):
         data = {

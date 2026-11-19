@@ -450,9 +450,6 @@ def test_seed_demand_single_supplier_selection_does_not_write_on_get(api_client:
     assert crop.selected_seed_demand_supplier_id is None
 
 
-@pytest.mark.history_gap(
-    issue=1203, reason='implicit crop-save side effects record no revision',
-)
 @pytest.mark.django_db
 def test_seed_rate_unit_legacy_value_is_normalized(api_client: APIClient, project_context):
     payload = {
