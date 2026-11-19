@@ -38,7 +38,6 @@ from farm.models import (
 )
 from farm.services.crop_inheritance import get_general_crop
 from farm.services.public_crops import (
-    _apply_public_crop_update,
     build_public_crop_payload,
     build_public_crop_snapshot,
     ensure_general_public_crop,
@@ -5960,6 +5959,8 @@ class PublicCropSpeciesRelinkApiTest(DRFAPITestCase):
 
     def test_the_species_and_variety_can_change_together(self):
         self.authenticate(self.admin)
+        self.entry.seed_type = 'f1_hybrid'
+        self.entry.save(update_fields=['seed_type'])
 
         response = self.client.post(
             self.url,
@@ -5971,6 +5972,80 @@ class PublicCropSpeciesRelinkApiTest(DRFAPITestCase):
         self.entry.refresh_from_db()
         self.assertEqual(self.entry.crop_species_id, self.correct_species.id)
         self.assertEqual(self.entry.variety, 'Kelvedon Marvel')
+        self.assertEqual(self.entry.seed_type, 'f1_hybrid')
+
+    def test_conversion_to_general_clears_seed_type_and_allows_edits_and_import(self):
+        grant_established_trust(self.admin)
+        self.authenticate(self.admin)
+        self.entry.seed_type = 'f1_hybrid'
+        self.entry.save(update_fields=['seed_type'])
+        self.source_crop.seed_type = 'f1_hybrid'
+        self.source_crop.save(update_fields=['seed_type'])
+        before = ensure_public_crop_revision(self.entry)
+
+        response = self.client.post(self.url, {
+            'crop_species': self.correct_species.pk, 'variety': ' ',
+        }, format='json')
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.entry.refresh_from_db()
+        self.assertEqual((self.entry.variety, self.entry.seed_type), ('', ''))
+        self.assertEqual(self.entry.version, before.version + 1)
+        revision = self.entry.revisions.get(version=self.entry.version)
+        self.assertEqual(revision.action, PublicCropRevision.ACTION_SPECIES_RELINKED)
+        self.assertEqual(revision.snapshot['seed_type'], '')
+        self.assertIn({
+            'field': 'seed_type', 'old_value': 'f1_hybrid', 'new_value': '',
+        }, revision.changed_fields)
+        before.refresh_from_db()
+        self.assertEqual(before.snapshot['seed_type'], 'f1_hybrid')
+        self.source_crop.refresh_from_db()
+        self.assertEqual(self.source_crop.variety, 'Neckarkoenigin')
+        self.assertEqual(self.source_crop.seed_type, 'f1_hybrid')
+
+        entry_url = f'/openfarmplanner/api/public-crops/{self.entry.pk}/'
+        edited = self.client.patch(entry_url, {'notes': 'General culture note'}, format='json')
+        self.assertEqual(edited.status_code, 200, edited.data)
+        self.assertEqual(edited.data['seed_type'], '')
+
+        receiving = Project.objects.create(name='General import', slug='general-import')
+        ProjectMembership.objects.create(user=self.contributor, project=receiving, role='admin')
+        self.client.force_authenticate(user=self.contributor)
+        imported = self.client.post(f'{entry_url}import/', {}, format='json',
+                                    HTTP_X_PROJECT_ID=str(receiving.pk))
+        self.assertEqual(imported.status_code, 201, imported.data)
+        crop = Crop.objects.get(pk=imported.data['crop']['id'], project=receiving)
+        self.assertEqual((crop.variety, crop.seed_type), ('', ''))
+        self.assertEqual(crop.notes, 'General culture note')
+
+    def test_conversion_to_general_conflict_keeps_seed_type_version_and_history(self):
+        self.authenticate(self.admin)
+        self.entry.seed_type = 'f1_hybrid'
+        self.entry.save(update_fields=['seed_type'])
+        before = ensure_public_crop_revision(self.entry)
+        Crop.objects.create(
+            name='Runner bean', variety='', project=self.project, crop_species=self.correct_species,
+        )
+        previous_project_revisions = EntityRevision.objects.filter(project=self.project).count()
+
+        response = self.client.post(self.url, {
+            'crop_species': self.correct_species.pk, 'variety': '',
+        }, format='json')
+
+        self.assertEqual(response.status_code, 409, response.data)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.variety, 'Neckarkoenigin')
+        self.assertEqual(self.entry.crop_species_id, self.broad_species.pk)
+        self.assertEqual(self.entry.seed_type, 'f1_hybrid')
+        self.assertEqual(self.entry.version, before.version)
+        self.assertEqual(list(self.entry.revisions.all()), [before])
+        self.assertFalse(self.entry.species_relink_requests.exists())
+        for crop in (self.source_crop, self.sibling_crop):
+            crop.refresh_from_db()
+            self.assertEqual(crop.crop_species_id, self.broad_species.pk)
+        self.assertEqual(
+            EntityRevision.objects.filter(project=self.project).count(), previous_project_revisions,
+        )
 
     def test_a_variety_change_that_collides_is_rejected_with_the_same_409_shape(self):
         conflicting = PublicCrop.objects.create(
@@ -6148,6 +6223,38 @@ class PublicCropSpeciesRelinkProposalTest(DRFAPITestCase):
         self.entry.refresh_from_db()
         self.assertEqual(self.entry.crop_species_id, self.proposed_species.id)
         self.assertEqual(self.entry.variety, 'Vertus (Winter)')
+
+    def test_approved_conversion_to_general_clears_seed_type_in_the_new_revision(self):
+        self.moderator.is_staff = True
+        self.moderator.save(update_fields=['is_staff'])
+        self.entry.seed_type = 'f1_hybrid'
+        self.entry.save(update_fields=['seed_type'])
+        before = ensure_public_crop_revision(self.entry)
+
+        parked = self.client.post(self.url, {
+            'crop_species': self.proposed_species.pk, 'variety': '',
+        }, format='json')
+        self.assertEqual(parked.status_code, 200, parked.data)
+        self.assertEqual(parked.data['relink_status'], 'pending_species_proposal')
+        self.entry.refresh_from_db()
+        self.assertEqual((self.entry.seed_type, self.entry.version), ('f1_hybrid', before.version))
+        self.assertEqual(self.entry.variety, 'Vertus')
+
+        approval = self.approve_proposed_species()
+
+        self.assertEqual(approval.status_code, 200, approval.data)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.crop_species_id, self.proposed_species.pk)
+        self.assertEqual((self.entry.variety, self.entry.seed_type), ('', ''))
+        self.assertEqual(self.entry.version, before.version + 1)
+        revision = self.entry.revisions.get(version=self.entry.version)
+        self.assertEqual(revision.snapshot['seed_type'], '')
+        self.assertEqual(
+            self.entry.species_relink_requests.get().status,
+            PublicCropSpeciesRelinkRequest.STATUS_COMPLETED,
+        )
+        before.refresh_from_db()
+        self.assertEqual(before.snapshot['seed_type'], 'f1_hybrid')
 
     def test_rejecting_the_species_drops_the_parked_relink_and_keeps_the_entry(self):
         self.client.post(self.url, {'crop_species': self.proposed_species.id}, format='json')
@@ -7320,7 +7427,8 @@ class PublicCropSeedTypeTest(DRFAPITestCase):
     def test_sorte_on_a_species_level_entry_shows_no_seed_type_diff(self):
         sorte = self._linked_to(self._entry())
 
-        self.assertNotIn('seed_type', [change[0] for change in public_crop_update_changes(sorte)])
+        changed_fields = {change[0] for change in public_crop_update_changes(sorte)}
+        self.assertTrue({'seed_type', 'variety'}.isdisjoint(changed_fields))
         preview = self.client.get(
             f'/openfarmplanner/api/crops/{sorte.id}/public-sync/',
             {'public_crop_id': sorte.source_public_crop_id},
@@ -7341,12 +7449,39 @@ class PublicCropSeedTypeTest(DRFAPITestCase):
         self.assertEqual(sorte.source_public_crop.seed_type, '')
 
     def test_update_from_a_species_level_entry_keeps_the_sorte_seed_type(self):
-        sorte = self._linked_to(self._entry())
+        entry = self._entry()
+        sorte = self._linked_to(entry)
 
-        _apply_public_crop_update(crop=sorte, public_crop=sorte.source_public_crop)
+        response = self.client.post(f'/openfarmplanner/api/public-crops/{entry.pk}/import/', {
+            'mode': 'update', 'base_version': entry.version,
+            'expected_project_id': self.project.pk,
+        }, format='json')
 
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['operation'], 'updated')
         sorte.refresh_from_db()
         self.assertEqual(sorte.seed_type, 'f1_hybrid')
+        self.assertEqual(sorte.variety, 'Sacher')
+
+    def test_legacy_general_seed_type_is_ignored_on_import_and_can_be_cleared_audited(self):
+        entry = self._entry(seed_type='f1_hybrid')
+        before = ensure_public_crop_revision(entry)
+        url = f'/openfarmplanner/api/public-crops/{entry.pk}/'
+
+        imported = self.client.post(f'{url}import/', {}, format='json')
+
+        self.assertEqual(imported.status_code, 201, imported.data)
+        self.assertEqual(imported.data['crop']['seed_type'], '')
+        entry.refresh_from_db()
+        self.assertEqual((entry.seed_type, entry.version), ('f1_hybrid', before.version))
+
+        repaired = self.client.patch(url, {'seed_type': ''}, format='json')
+
+        self.assertEqual(repaired.status_code, 200, repaired.data)
+        entry.refresh_from_db()
+        self.assertEqual((entry.seed_type, entry.version), ('', before.version + 1))
+        before.refresh_from_db()
+        self.assertEqual(before.snapshot['seed_type'], 'f1_hybrid')
 
     def test_variety_entry_difference_is_a_normal_update(self):
         entry = self._entry(variety='Sacher', seed_type='open_pollinated')
