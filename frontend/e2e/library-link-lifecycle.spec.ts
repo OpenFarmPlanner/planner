@@ -775,6 +775,176 @@ async function prepareSelectedVarietyParent(page: Page, scenario: string): Promi
   return apiRequest<CarrotEntry>(page, 'GET', `/public-crops/${published.public_crop.id}/`);
 }
 
+test.describe('bulk library import', () => {
+  test.use({ serviceWorkers: 'block', hasTouch: true });
+
+  test('keeps scope and private values through a partial import and safe retry', async ({ page, request, browser, baseURL }, testInfo) => {
+    test.setTimeout(120_000);
+    const scenario = `batch-library-${Date.now()}`;
+    const source = await browser.newPage({ baseURL, locale: 'de-DE', serviceWorkers: 'block' });
+    const text = germanCrops.library.batchImport;
+    try {
+      await loginWithDeterministicProject(source, request, `${scenario}-source`, { loginAsAdmin: true, libraryModerator: true });
+      const fresh = await prepareSelectedVarietyParent(source, `${scenario} Neu`);
+      const existing = await prepareSelectedVarietyParent(source, `${scenario} Vorhanden`);
+      const linked = await prepareSelectedVarietyParent(source, `${scenario} Verknüpft`);
+      const stale = await prepareSelectedVarietyParent(source, `${scenario} Geändert`);
+      const variety = await publishVariety(source, { id: fresh.crop_species, name: fresh.name }, `Frühe Sorte ${scenario}`);
+      await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
+      interface LocalCrop extends CropRow { source_public_crop: number | null; notes: string }
+      const local = await apiRequest<LocalCrop>(page, 'POST', '/crops/', {
+        name: existing.name, crop_species: existing.crop_species, notes: 'Private Notiz behalten', growth_duration_days: 95,
+      });
+      await apiRequest(page, 'POST', `/public-crops/${linked.id}/import/`, {});
+      const localRows = async () => (await apiRequest<{ results: LocalCrop[] }>(page, 'GET', '/crops/?page_size=50')).results;
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto('/app/crop-library');
+      const search = page.getByLabel(germanCrops.library.searchLabel, { exact: true });
+      const mode = page.getByRole('button', { name: text.selectCultures, exact: true });
+      const selectName = (name: string) => text.selectNamed.replace('{{name}}', name);
+      await search.fill(fresh.name);
+      await expect(page.getByRole('option', { name: fresh.name, exact: true })).toBeVisible();
+      await expect(page.getByRole('checkbox', { name: selectName(fresh.name), exact: true })).toHaveCount(0);
+      expect((await mode.boundingBox())!.y).toBeLessThan((await search.boundingBox())!.y + (await search.boundingBox())!.height);
+      await mode.focus();
+      await page.keyboard.press('Enter');
+      await page.getByRole('button', { name: text.selectVisible.replace('{{count}}', '1'), exact: true }).click();
+      await expect(page.getByRole('checkbox', { name: selectName(fresh.name), exact: true })).toBeChecked();
+      await expect(page.getByRole('checkbox', { name: new RegExp(variety.crop.variety) })).toHaveCount(0);
+      await search.fill(existing.name);
+      await page.getByRole('checkbox', { name: selectName(existing.name), exact: true }).focus();
+      await page.keyboard.press('Space');
+      await expect(page.getByRole('status').filter({ hasText: text.selected.replace('{{count}}', '2') })).toBeVisible();
+      await search.fill(scenario);
+      await page.getByRole('button', { name: text.selectVisible.replace('{{count}}', '4'), exact: true }).click();
+      await page.getByRole('button', { name: text.clearVisible.replace('{{count}}', '4'), exact: true }).click();
+      await expect(page.getByRole('status').filter({ hasText: text.selected.replace('{{count}}', '0') })).toBeVisible();
+      await page.getByRole('button', { name: text.selectVisible.replace('{{count}}', '4'), exact: true }).click();
+      await page.getByRole('button', { name: fresh.name, exact: true }).click();
+      await expect(page.getByRole('checkbox', { name: selectName(fresh.name), exact: true })).toBeChecked();
+      await expectNoHorizontalPageOverflow(page);
+      await page.screenshot({ path: testInfo.outputPath('batch-library-desktop.png'), animations: 'disabled' });
+      await page.setViewportSize({ width: 1024, height: 900 });
+      await expect(mode).toBeVisible();
+      await expectNoHorizontalPageOverflow(page);
+      await page.screenshot({ path: testInfo.outputPath('batch-library-1024.png'), animations: 'disabled' });
+
+      await page.getByRole('button', { name: text.import, exact: true }).click();
+      const confirmation = page.getByRole('dialog', { name: text.confirmTitle_other.replace('{{count}}', '4') });
+      const include = confirmation.getByRole('checkbox', { name: text.includeVarieties, exact: true });
+      await expect(include).toBeChecked();
+      await expect(confirmation.getByText(text.varieties.replace('{{count}}', '1'), { exact: true })).toBeVisible();
+      await page.setViewportSize({ width: 375, height: 800 });
+      await expect(confirmation.getByRole('button', { name: text.import, exact: true })).toBeInViewport();
+      await expectNoHorizontalPageOverflow(page);
+      await page.screenshot({ path: testInfo.outputPath('batch-preview-mobile.png'), animations: 'disabled' });
+      await page.setViewportSize({ width: 1024, height: 900 });
+      await include.uncheck();
+      await expect(confirmation.getByText(text.varieties.replace('{{count}}', '1'), { exact: true })).toBeHidden();
+      await include.check();
+      await expect(confirmation.getByText(text.varieties.replace('{{count}}', '1'), { exact: true })).toBeVisible();
+      await expect(confirmation.getByRole('button', { name: text.import, exact: true })).toBeDisabled();
+      await confirmation.getByRole('button', { name: text.reviewNamed.replace('{{name}}', existing.name), exact: true }).click();
+      const comparison = page.getByRole('dialog', { name: germanCrops.library.importDecision.title });
+      await comparison.getByRole('button', { name: germanCrops.library.sync.allMine, exact: true }).click();
+      await comparison.getByRole('button', { name: germanCrops.library.varietyImport.continue, exact: true }).click();
+      await expect(confirmation.getByRole('button', { name: text.import, exact: true })).toBeEnabled();
+      expect((await localRows())).toHaveLength(2);
+
+      await apiRequest(source, 'PATCH', `/public-crops/${stale.id}/`, { base_version: stale.version, growth_duration_days: 119 });
+      const writes: { request_id: string; groups: { parent_id: number }[] }[] = [];
+      await page.route('**/api/public-crops/import-batch/', async route => {
+        writes.push(route.request().postDataJSON());
+        if (writes.length === 1) {
+          // The database commits; the client must safely recover its receipt.
+          const saved = await route.fetch();
+          expect(saved.ok()).toBe(true);
+          await route.abort('failed');
+          return;
+        }
+        await route.continue();
+      });
+      await confirmation.getByRole('button', { name: text.import, exact: true }).click();
+      await expect(confirmation.getByText(text.errors.request, { exact: true })).toBeVisible();
+      expect((await localRows()).filter(crop => crop.source_public_crop === fresh.id)).toHaveLength(1);
+      await confirmation.getByRole('button', { name: 'Schließen', exact: true }).click();
+      await expect(confirmation).toBeHidden();
+      const recovery = page.getByRole('button', { name: text.resumePending, exact: true });
+      await expect(recovery).toBeFocused();
+      await expect(search).toHaveValue(scenario);
+      await recovery.click();
+      await confirmation.getByRole('button', { name: 'Erneut versuchen', exact: true }).click();
+      const result = page.getByRole('dialog', { name: text.results, exact: true });
+      await expect(result.getByText(text.failedCount.replace('{{count}}', '1'), { exact: true })).toBeVisible();
+      await expect(result.getByText(text.importedCount.replace('{{count}}', '2'), { exact: true })).toBeVisible();
+      expect(writes[0]).toEqual(writes[1]);
+      await page.setViewportSize({ width: 800, height: 375 });
+      await expect(result.getByRole('button', { name: text.retryFailed, exact: true })).toBeInViewport();
+      await expectNoHorizontalPageOverflow(page);
+      await page.screenshot({ path: testInfo.outputPath('batch-result-landscape.png'), animations: 'disabled' });
+      await page.setViewportSize({ width: 1024, height: 900 });
+      await result.getByRole('button', { name: text.retryFailed, exact: true }).click();
+      const retry = page.getByRole('dialog', { name: text.confirmTitle_one.replace('{{count}}', '1'), exact: true });
+      await retry.getByRole('button', { name: text.import, exact: true }).click();
+      await expect(result.getByText(text.failedCount.replace('{{count}}', '0'), { exact: true })).toBeVisible();
+      await expect(result.getByText(text.importedCount.replace('{{count}}', '3'), { exact: true })).toBeVisible();
+      await expect(result.getByText(text.linkedCount.replace('{{count}}', '1'), { exact: true })).toBeVisible();
+      await expect(result.getByText(text.skippedCount.replace('{{count}}', '1'), { exact: true })).toBeVisible();
+      expect(writes[2].groups.map(group => group.parent_id)).toEqual([stale.id]);
+      const rows = await localRows();
+      expect(rows).toHaveLength(5);
+      expect(rows.find(row => row.id === local.id)).toMatchObject({ source_public_crop: existing.id, notes: local.notes });
+      expect(rows.find(row => row.source_public_crop === variety.publicCropId)).toBeTruthy();
+      await result.getByRole('button', { name: 'Schließen', exact: true }).click();
+      await expect(mode).toBeFocused();
+      await expect(search).toHaveValue(scenario);
+      await expect(page.getByRole('button', { name: 'Bereits verknüpft', exact: true })).toBeDisabled();
+
+      for (const viewport of [{ width: 375, height: 800 }, { width: 768, height: 900 }, { width: 800, height: 375 }]) {
+        await page.setViewportSize(viewport);
+        await page.getByRole('button', { name: germanCrops.selectCrop, exact: true }).click();
+        const mobile = page.getByRole('dialog', { name: germanCrops.selectCrop });
+        await mobile.getByRole('button', { name: text.selectCultures, exact: true }).tap();
+        await mobile.getByRole('checkbox', { name: selectName(fresh.name), exact: true }).tap();
+        await expect(mobile.getByRole('checkbox', { name: selectName(fresh.name), exact: true })).toBeChecked();
+        await expect(mobile.getByRole('button', { name: text.import, exact: true })).toBeInViewport();
+        await expectNoHorizontalPageOverflow(page);
+        await page.screenshot({ path: testInfo.outputPath(`batch-library-${viewport.width}-${viewport.height}.png`), animations: 'disabled' });
+        await mobile.getByRole('button', { name: 'Abbrechen', exact: true }).last().click();
+      }
+      expect(await localRows()).toHaveLength(5);
+
+      await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'fr' });
+      await page.evaluate(() => {
+        localStorage.setItem('ui.language', 'fr');
+        localStorage.setItem('ui.language.pendingChoice', 'fr');
+      });
+      await page.setViewportSize({ width: 375, height: 800 });
+      await page.goto('/app/crops?library=true');
+      const browserDialog = page.getByRole('dialog', { name: frenchCrops.library.dialogTitle, exact: true });
+      const french = frenchCrops.library.batchImport;
+      const dialogSearch = browserDialog.getByLabel(frenchCrops.library.searchLabel, { exact: true });
+      await dialogSearch.fill(fresh.name);
+      await browserDialog.getByRole('button', { name: french.selectCultures, exact: true }).tap();
+      await browserDialog.getByRole('checkbox', { name: french.selectNamed.replace('{{name}}', fresh.name), exact: true }).tap();
+      await browserDialog.getByRole('button', { name: french.import, exact: true }).tap();
+      const frenchPreview = page.getByRole('dialog', { name: french.confirmTitle_one.replace('{{count}}', '1'), exact: true });
+      await frenchPreview.getByRole('checkbox', { name: french.includeVarieties, exact: true }).uncheck();
+      await frenchPreview.getByRole('button', { name: french.import, exact: true }).tap();
+      const frenchResult = page.getByRole('dialog', { name: french.results, exact: true });
+      await expect(frenchResult.getByText(french.skippedCount.replace('{{count}}', '1'), { exact: true })).toBeVisible();
+      await frenchResult.getByRole('button', { name: 'Fermer', exact: true }).tap();
+      await expect(browserDialog).toBeVisible();
+      await expect(dialogSearch).toHaveValue(fresh.name);
+      expect(await localRows()).toHaveLength(5);
+    } finally {
+      await source.close();
+      await resetE2EScenario(request, scenario);
+      await resetE2EScenario(request, `${scenario}-source`);
+    }
+  });
+});
+
 test.describe('selected library varieties', () => {
   test.use({ serviceWorkers: 'block' });
   for (const { width, surface } of [{ width: 375, surface: 'dialog' }, { width: 1440, surface: 'page' }] as const) {

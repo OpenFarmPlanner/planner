@@ -16,6 +16,7 @@ interface CropHierarchyRowProps {
   collapseLabel: string;
   isSelected: boolean;
   isClickable: boolean;
+  detailsButton?: boolean;
   primary: string;
   isPrimaryEmphasized: boolean;
   secondary?: string;
@@ -74,6 +75,7 @@ export function CropHierarchyRow({
   collapseLabel,
   isSelected,
   isClickable,
+  detailsButton = false,
   primary,
   isPrimaryEmphasized,
   secondary,
@@ -113,9 +115,10 @@ export function CropHierarchyRow({
   return (
     <ListItemButton
       {...listItemProps}
-      role={isClickable ? 'option' : 'presentation'}
+      role={isClickable ? (detailsButton ? 'button' : 'option') : 'presentation'}
       aria-label={ariaLabel}
-      aria-selected={isClickable ? isSelected : undefined}
+      aria-selected={isClickable && !detailsButton ? isSelected : undefined}
+      aria-current={detailsButton && isSelected ? 'true' : undefined}
       aria-expanded={hasChildren ? isExpanded : undefined}
       selected={isSelected}
       disabled={!isClickable}

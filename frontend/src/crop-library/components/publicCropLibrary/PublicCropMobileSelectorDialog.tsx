@@ -34,6 +34,9 @@ import { getPublicCropTitle } from '../../publicCropDisplay';
 import { useSearchExpandedGroups } from '../../../crops/useSearchExpandedGroups';
 import { getSearchMatchedHierarchyGroupRowIds } from '../../../crops/cropGroupSearch';
 import { normalizePublicCropSearchQuery } from '../../../crops/publicCropSearchMatch';
+import { isBatchImportParent } from '../../batchImport';
+import { PublicCropBatchRow } from '../PublicCropBatchSelection';
+import type { PublicCropBatchSelection } from '../../hooks/usePublicCropBatchSelection';
 
 export interface PublicCropMobileSelectorDialogProps {
   open: boolean;
@@ -51,6 +54,8 @@ export interface PublicCropMobileSelectorDialogProps {
   onSelect: (crop: PublicCrop, itemKind: CropHierarchyItemKind, speciesKey: string) => void;
   onListScroll: (event: UIEvent<HTMLUListElement>) => void;
   filterControl?: ReactNode;
+  batchActions?: ReactNode;
+  batchSelection?: PublicCropBatchSelection;
 }
 
 export function PublicCropMobileSelectorDialog({
@@ -69,6 +74,8 @@ export function PublicCropMobileSelectorDialog({
   onSelect,
   onListScroll,
   filterControl,
+  batchActions,
+  batchSelection,
 }: PublicCropMobileSelectorDialogProps) {
   const { t, i18n } = useTranslation('crops');
   const language = i18n.resolvedLanguage ?? i18n.language;
@@ -131,6 +138,7 @@ export function PublicCropMobileSelectorDialog({
             slotProps={{ input: { endAdornment: filterControl } }}
           />
         </Box>
+        {batchActions}
         {loading ? (
           <Box sx={{ minHeight: 220, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Stack spacing={1} sx={{ alignItems: "center", }} >
@@ -154,7 +162,7 @@ export function PublicCropMobileSelectorDialog({
             ref={listRef}
             dense
             disablePadding
-            role="listbox"
+            role={batchSelection ? 'list' : 'listbox'}
             aria-label={t('library.page.title')}
             onScroll={onListScroll}
             sx={{ py: 0.5, px: 0.25, overflowY: 'auto' }}
@@ -176,14 +184,15 @@ export function PublicCropMobileSelectorDialog({
                   ? selectedSpeciesViewKey === node.speciesKey || !(crop.variety || '').trim()
                   : selectedSpeciesViewKey !== node.speciesKey),
               );
-              return (
+              const row = (
                 <ListItemButton
                   key={`mobile-public-${node.id}`}
-                  role={isClickable ? 'option' : 'presentation'}
+                  role={isClickable ? (batchSelection ? 'button' : 'option') : 'presentation'}
                   aria-label={node.kind === 'species'
                     ? node.label
                     : crop ? getPublicCropTitle(crop, language, t('library.translation.missingName')) : undefined}
-                  aria-selected={isClickable ? isRowSelected : undefined}
+                  aria-selected={isClickable && !batchSelection ? isRowSelected : undefined}
+                  aria-current={batchSelection && isRowSelected ? 'true' : undefined}
                   selected={isRowSelected}
                   disabled={!isClickable}
                   onClick={() => {
@@ -236,6 +245,10 @@ export function PublicCropMobileSelectorDialog({
                   />
                 </ListItemButton>
               );
+              return batchSelection ? (
+                <PublicCropBatchRow key={node.id} selection={batchSelection}
+                  crop={node.kind === 'species' && isBatchImportParent(crop) ? crop : undefined}>{row}</PublicCropBatchRow>
+              ) : row;
             })}
           </List>
         )}

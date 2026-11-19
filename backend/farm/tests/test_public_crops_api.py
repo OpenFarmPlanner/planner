@@ -4,6 +4,7 @@
 from datetime import datetime, timedelta
 from datetime import timezone as datetime_timezone
 from decimal import Decimal
+from uuid import uuid4
 
 from django.db import connection
 from django.test import override_settings
@@ -20,6 +21,7 @@ from accounts.trust import grant_established_trust
 from crops.models import CropSpecies, CropSpeciesTranslation
 from crops.permissions import grant_public_library_moderator_access
 from farm.models import (
+    BatchOperation,
     Crop,
     CropCompanion,
     EntityRevision,
@@ -104,6 +106,139 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         data.update(overrides)
         return self.client.post(
             f"/openfarmplanner/api/public-crops/{parent.pk}/import-selection/", data, format="json"
+        )
+
+    @staticmethod
+    def batch_group(parent, *varieties):
+        return {
+            'parent_id': parent.pk,
+            'decisions': [
+                {'public_crop_id': entry.pk, 'base_version': entry.version}
+                for entry in (parent, *varieties)
+            ],
+        }
+
+    def batch_import(self, groups, *, request_id=None, project_id=None):
+        return self.client.post('/openfarmplanner/api/public-crops/import-batch/', {
+            'expected_project_id': project_id or self.project.pk,
+            'request_id': str(request_id or uuid4()),
+            'groups': groups,
+        }, format='json')
+
+    def test_batch_import_groups_creates_links_and_selective_undo(self):
+        parent, varieties = self.selection_fixture()
+        linked = PublicCrop.objects.create(name='Already linked crop', status='published')
+        prior = Crop.objects.create(
+            name=linked.name, project=self.project, source_public_crop=linked,
+            source_public_version=linked.version,
+        )
+        existing = PublicCrop.objects.create(
+            name='Batch match', growth_duration_days=50, status='published',
+        )
+        local = Crop.objects.create(
+            name=existing.name, project=self.project, growth_duration_days=75,
+        )
+        comparison = self.batch_group(existing)
+        comparison['decisions'][0].update({
+            'target_id': local.pk, 'expected_updated_at': local.updated_at.isoformat(),
+            'pin_fields': ['growth_duration_days'],
+        })
+        groups = [self.batch_group(parent, *varieties), comparison, self.batch_group(linked)]
+        request_id = uuid4()
+        response = self.batch_import(groups, request_id=request_id)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(
+            [
+                [entry['operation'] for entry in group['entries']]
+                for group in response.data['groups']
+            ],
+            [['created'] * 4, ['linked'], ['unchanged']],
+        )
+        local.refresh_from_db()
+        self.assertEqual(local.source_public_crop_id, existing.pk)
+        self.assertEqual(local.growth_duration_days, 75)
+        self.assertIn('growth_duration_days', local.library_pinned_fields)
+        existing.refresh_from_db()
+        self.assertEqual(existing.growth_duration_days, 50)
+        batch = BatchOperation.objects.get(project=self.project, request_id=request_id)
+        self.assertEqual(batch.context['created_count'], 4)
+        self.assertEqual(batch.context['updated_count'], 1)
+        self.assertEqual(batch.context['skipped_count'], 1)
+        self.assertEqual(batch.revisions.filter(entity_type='crop').count(), 5)
+        second = self.batch_import(groups, request_id=request_id)
+        self.assertEqual(second.data, response.data)
+        self.assertEqual(batch.revisions.filter(entity_type='crop').count(), 5)
+
+        later = Crop.objects.create(project=self.project, name='Unrelated later crop')
+        undo = self.client.post(f'/openfarmplanner/api/history/batch/{batch.pk}/revert/')
+        self.assertEqual(undo.status_code, 200, undo.data)
+        self.assertFalse(
+            Crop.objects.filter(
+                project=self.project, crop_species_id=parent.crop_species_id,
+            ).exists()
+        )
+        self.assertEqual(Crop.objects.filter(pk__in=[later.pk, prior.pk]).count(), 2)
+        local.refresh_from_db()
+        self.assertIsNone(local.source_public_crop_id)
+        self.assertEqual(local.growth_duration_days, 75)
+
+    def test_batch_import_rolls_back_one_family_and_retry_keeps_successes(self):
+        parent, varieties = self.selection_fixture()
+        ready = PublicCrop.objects.create(name='Batch success', status='published')
+        failing = self.batch_group(parent, varieties[0])
+        failing['decisions'][1]['base_version'] += 1
+        payload = [self.batch_group(ready), failing]
+        request_id = uuid4()
+        response = self.batch_import(payload, request_id=request_id)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['groups'][0]['entries'][0]['operation'], 'created')
+        self.assertEqual(response.data['groups'][1]['error_code'], 'stale_public_crop_version')
+        self.assertFalse(
+            Crop.objects.filter(
+                project=self.project, crop_species_id=parent.crop_species_id,
+            ).exists()
+        )
+        self.assertEqual(self.batch_import(payload, request_id=request_id).data, response.data)
+        retry = self.batch_import([self.batch_group(parent, varieties[0])])
+        self.assertEqual(retry.status_code, 200, retry.data)
+        self.assertEqual(
+            [entry['operation'] for entry in retry.data['groups'][0]['entries']],
+            ['created', 'created'],
+        )
+        self.assertEqual(
+            Crop.objects.filter(project=self.project, source_public_crop=ready).count(), 1,
+        )
+        self.assertEqual(BatchOperation.objects.filter(project=self.project).count(), 2)
+
+    def test_batch_import_requires_a_decision_for_existing_crop(self):
+        parent, varieties = self.selection_fixture()
+        local = Crop.objects.create(project=self.project, name=parent.name, notes='Local crop')
+        result = self.batch_import([self.batch_group(parent, varieties[0])])
+        self.assertEqual(result.data['groups'][0]['error_code'], 'existing_crop_requires_link')
+        local.refresh_from_db()
+        self.assertIsNone(local.source_public_crop_id)
+        self.assertEqual(local.notes, 'Local crop')
+        self.assertFalse(
+            Crop.objects.filter(project=self.project, source_public_crop=varieties[0])
+        )
+        self.assertFalse(BatchOperation.objects.get(project=self.project).revisions.exists())
+
+    def test_batch_import_receipt_keeps_the_confirmed_project_and_selection(self):
+        parent, varieties = self.selection_fixture()
+        group = self.batch_group(parent)
+        request_id = uuid4()
+        mismatch = self.batch_import(
+            [group], request_id=request_id, project_id=self.project.pk + 1,
+        )
+        self.assertEqual(mismatch.status_code, 409, mismatch.data)
+        self.assertEqual(mismatch.data['code'], 'public_crop_import_project_changed')
+        self.assertFalse(BatchOperation.objects.filter(project=self.project).exists())
+        first = self.batch_import([group], request_id=request_id)
+        self.assertEqual(first.status_code, 200, first.data)
+        changed = self.batch_import([self.batch_group(parent, varieties[0])], request_id=request_id)
+        self.assertEqual(changed.status_code, 409, changed.data)
+        self.assertFalse(
+            Crop.objects.filter(project=self.project, source_public_crop=varieties[0])
         )
 
     def test_selection_import_all_subset_parent_only_and_repeat(self):

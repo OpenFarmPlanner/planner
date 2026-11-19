@@ -1096,3 +1096,35 @@ class PublicCropImportSelectionSerializer(serializers.Serializer):
     expected_project_id = serializers.IntegerField(min_value=1)
     decisions = PublicCropImportDecisionSerializer(many=True, allow_empty=False, max_length=501)
     accepted_public_library_terms = serializers.BooleanField(default=False)
+
+
+class PublicCropBatchImportGroupSerializer(serializers.Serializer):
+    parent_id = serializers.IntegerField(min_value=1)
+    decisions = PublicCropImportDecisionSerializer(many=True, allow_empty=False, max_length=501)
+
+
+class PublicCropBatchImportSerializer(serializers.Serializer):
+    expected_project_id = serializers.IntegerField(min_value=1)
+    request_id = serializers.UUIDField()
+    groups = PublicCropBatchImportGroupSerializer(many=True, allow_empty=False, max_length=2000)
+
+    def validate_groups(self, groups):
+        seen = set()
+        for group in groups:
+            entries = {decision['public_crop_id'] for decision in group['decisions']}
+            if (
+                group['parent_id'] not in entries
+                or len(entries) != len(group['decisions'])
+                or entries & seen
+            ):
+                raise serializers.ValidationError(
+                    'Include each library entry only once, with its parent.'
+                )
+            if any(decision['push_fields'] for decision in group['decisions']):
+                raise serializers.ValidationError(
+                    'A batch import cannot share project fields to the library.'
+                )
+            seen.update(entries)
+        if len(seen) > 2000:
+            raise serializers.ValidationError('Choose up to 2000 library entries.')
+        return groups

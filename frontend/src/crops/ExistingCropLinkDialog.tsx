@@ -13,7 +13,7 @@ import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 
 export type CropLinkCandidate = Pick<Crop, 'id' | 'name' | 'variety' | 'source_public_crop'> & { species_match?: boolean };
 
-export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLinked, termsAlreadyAccepted = false, onTermsAccepted, onDecision, decisionProgress }: {
+export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLinked, termsAlreadyAccepted = false, onTermsAccepted, onDecision, decisionProgress, allowSharing = true }: {
   decisionProgress?: string;
   onDecision?: (decision: PublicCropImportDecision, acceptedTerms: boolean) => void;
   publicCrop: PublicCrop;
@@ -22,6 +22,7 @@ export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLink
   onLinked: (crop: Crop) => void;
   termsAlreadyAccepted?: boolean;
   onTermsAccepted?: () => Promise<unknown>;
+  allowSharing?: boolean;
 }) {
   const { t, i18n } = useTranslation(['crops', 'common']);
   const canCreate = Boolean(publicCrop.variety?.trim() || !candidates.some(candidate => candidate.species_match));
@@ -40,7 +41,7 @@ export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLink
   const targetId = typeof target === 'number' ? target : undefined;
   const preview = usePublicCropSyncPreview(targetId, publicCrop.id, Boolean(targetId), true);
   const snapshot = preview.preview ? `${targetId}:${preview.preview.public_version}:${preview.preview.crop_updated_at}` : '';
-  const directSharingAllowed = !preview.preview?.requires_moderation;
+  const directSharingAllowed = allowSharing && !preview.preview?.requires_moderation;
   const changes = preview.preview?.changes.map(change => ({
     ...change, pushable: mode === 'copy' || (change.pushable && directSharingAllowed),
   })) ?? null;
@@ -140,11 +141,13 @@ export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLink
             <FormControlLabel disabled={submitting} value="link" control={<Radio />} label={t('library.importDecision.link')} />
             <FormControlLabel disabled={submitting} value="copy" control={<Radio />} label={t('library.importDecision.copy')} />
           </RadioGroup>
-          <Alert severity="info">{t(mode === 'copy' ? 'library.importDecision.copyHelp' : 'library.importDecision.linkHelp')}</Alert>
-          {targetId && mode === 'link' && !directSharingAllowed ? <Alert severity="info">{t('library.importDecision.shareUnavailable')}</Alert> : null}
+          <Alert severity="info">{t(mode === 'copy' ? 'library.importDecision.copyHelp' : allowSharing
+            ? 'library.importDecision.linkHelp' : 'library.batchImport.linkHelp')}</Alert>
+          {targetId && mode === 'link' && allowSharing && !directSharingAllowed ? <Alert severity="info">{t('library.importDecision.shareUnavailable')}</Alert> : null}
           {targetId ? <PublicCropSyncPanel changes={changes}
             choices={choices} onChoicesChange={updateChoices} requiresModeration={false}
-            keepMineLocally={mode === 'copy'} allowLocal={mode === 'link'} disabled={submitting} loadError={preview.loadError} /> : null}
+            keepMineLocally={mode === 'copy'} allowLocal={mode === 'link'} libraryOrOwn={!allowSharing && mode === 'link'}
+            disabled={submitting} loadError={preview.loadError} /> : null}
           {needsConsent ? <PublicLibraryTermsConsent checked={acceptedLicense} onChange={setAcceptedLicense} disabled={submitting} /> : null}
           {target === 'new' && !hasProject ? <Alert severity="warning">{t('library.importDecision.projectChanged')}</Alert> : null}
           {failed ? <Alert severity="error">{t(`library.importDecision.${failed}`)}</Alert> : null}

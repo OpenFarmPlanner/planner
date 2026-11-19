@@ -337,6 +337,8 @@ export const publicCropAPI = {
     decisions: import('./types').PublicCropImportDecision[];
     accepted_public_library_terms: boolean;
   }) => http.post<import('./types').PublicCropSelectionImportResult>(`/public-crops/${id}/import-selection/`, data),
+  importBatch: (data: import('./types').PublicCropBatchImportRequest) =>
+    http.post<import('./types').PublicCropBatchImportResult>('/public-crops/import-batch/', data),
   importPreview: (id: number) => http.get<{ candidates: (Pick<Crop, 'id' | 'name' | 'variety' | 'source_public_crop'> & { species_match: boolean })[] }>(`/public-crops/${id}/import-preview/`),
   importToProject: (
     id: number,

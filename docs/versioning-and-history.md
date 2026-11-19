@@ -148,6 +148,16 @@ write per-entity revisions, without serializing the whole project again.
   and checkpoints are never included in list responses. The list defers revision
   snapshots and loads each batch context once, with a constant query count.
 
+Bulk public-library imports use the same history group and selective undo. A
+culture and its selected varieties use a savepoint, so a failed culture rolls
+back its own writes while successful cultures share one before/after history
+group. An all-skipped or all-failed request records a receipt without a timeline
+entry. For one day, the same request UUID, project, actor, and fingerprint of
+the confirmed decisions and note language can retrieve a completed receipt.
+An undone group cannot replay its receipt. A separately confirmed retry of
+failed cultures creates its own history group if it changes project data.
+[Bulk library import contract](crop-library-architecture.md#bulk-import-across-cultures)
+
 The primary **Restore this version** action selects the group's last revision,
 just like a flat entry. The newest flat/grouped entry gets the current-version
 badge. **Undo only this import** is an additional overflow-menu action, including
