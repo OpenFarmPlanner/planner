@@ -820,6 +820,7 @@ def mark_library_copies_modified(kultur_ids: Iterable[int | None], *, user_name:
         )
         with internal_project_versions():
             for crop in crops:
+                crop.is_modified_from_source = True
                 record_entity_revision(
                     project=crop.project, entity_type='crop', object_id=crop.pk,
                     action=EntityRevision.ACTION_UPDATED, snapshot=_serialize_instance(crop),
