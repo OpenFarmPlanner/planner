@@ -57,6 +57,7 @@ def _apply_decision(
             base_version=decision["base_version"],
             mode=decision["mode"],
             establish_link=decision["link_to_library"],
+            user=user,
         )
     return {"public_crop_id": entry.pk, "crop_id": crop.pk, "operation": operation}
 

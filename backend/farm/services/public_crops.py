@@ -18,6 +18,7 @@ from django.utils import timezone
 from rest_framework.exceptions import APIException
 from rest_framework.exceptions import ValidationError as ApiValidationError
 
+from accounts.public_identity import get_public_user_label
 from config.languages import SUPPORTED_LANGUAGE_CODES, normalize_language_tag
 from crops.models import CropSpecies
 from crops.permissions import (
@@ -34,8 +35,17 @@ from crops.plant_health_values import (
 from crops.services import find_species_by_common_name
 from crops.specific_properties import crop_specific_property_errors, specific_property_errors
 from farm.companion_notes import companion_language_patch, merge_library_notes, notes_of
+from farm.history.records import (
+    _diff_changed_fields,
+    _entity_display_name,
+    _serialize_instance,
+    internal_project_versions,
+    record_entity_revision,
+    revision_actor,
+)
 from farm.models import (
     Crop,
+    EntityRevision,
     Project,
     PublicCrop,
     PublicCropChangeProposal,
@@ -64,7 +74,6 @@ from farm.services.crop_companions import (
     library_companion_view,
     library_companions,
     link_free_text_companions,
-    record_library_companion_boundary,
     replace_library_companions,
 )
 from farm.services.crop_inheritance import (
@@ -96,6 +105,8 @@ from farm.services.public_crop_values import same_public_field_value as _same_pu
 from farm.services.public_crop_values import same_snapshot_value as _same_snapshot_value
 
 User = get_user_model()
+
+_LIBRARY_MODERATION_LABEL = 'Crop library moderation'
 
 # Crop._SOURCE_DIVERGENCE_TRACKED_FIELDS names a plant-family reference by its
 # attname; payloads built here key it by the field name.
@@ -1243,6 +1254,21 @@ def public_crop_import_candidates(*, public_crop: PublicCrop, project: Project) 
     )
 
 
+def _record_library_crop_revision(
+    crop: Crop, before: dict[str, Any] | None, *, force: bool = False,
+) -> None:
+    """Make the final crop and its preceding derived writes selectable together."""
+    snapshot = _serialize_instance(crop)
+    action = EntityRevision.ACTION_CREATED if before is None else EntityRevision.ACTION_UPDATED
+    changed = _diff_changed_fields(before, snapshot) if before is not None else ['created']
+    if changed or force:
+        record_entity_revision(
+            project=crop.project, entity_type='crop', object_id=crop.pk,
+            action=action,
+            snapshot=snapshot, display_name=_entity_display_name(crop), changed_fields=changed,
+        )
+
+
 def link_project_crop_to_public_reference(
     *,
     crop: Crop,
@@ -1293,7 +1319,7 @@ def link_project_crop_to_public_reference(
         raise CropLinkConflictError('invalid_copy_confirmation')
     if pull_fields is not None:
         _validate_sync_fields(crop, public_crop, pull_fields)
-    with crop_identity_write(crop.project_id, nowait=False):
+    with crop_identity_write(crop.project_id, nowait=False), revision_actor(user):
         public_crop = PublicCrop.objects.select_for_update().get(pk=public_crop.pk)
         _validate_base_version(public_crop, base_version)
         Crop.objects.select_for_update().get(pk=crop.pk, project_id=crop.project_id)
@@ -1319,6 +1345,7 @@ def link_project_crop_to_public_reference(
             # anything relative to the source it's being linked to.
             tracked_fields = tracked_fields - {'variety'} - VARIETY_ONLY_COPY_FIELDS
 
+        before = _serialize_instance(crop)
         crop.crop_species = public_crop.crop_species
         if not establish_link:
             crop.library_pinned_fields = []
@@ -1336,8 +1363,9 @@ def link_project_crop_to_public_reference(
             errors = crop_specific_property_errors(crop)
             if errors:
                 raise ApiValidationError(errors)
-            crop.save()
+            crop.save(record_history=False)
             sync_crop_species_across_crop_group(crop)
+            _record_library_crop_revision(crop, before, force=True)
             return crop
         if pull_fields is not None:
             # Explicit initial decisions use the same validation, normalization,
@@ -1349,7 +1377,6 @@ def link_project_crop_to_public_reference(
                 base_version=base_version, initial_link=True,
                 companion_note_language=companion_note_language,
             )
-            sync_crop_species_across_crop_group(result.crop)
             return result.crop
         validate_library_pinned_fields(crop, pin_fields, is_linked=True)
         crop.library_pinned_fields = sorted(set(pin_fields))
@@ -1372,12 +1399,13 @@ def link_project_crop_to_public_reference(
         if errors:
             raise ApiValidationError(errors)
         validate_crop_identity(crop)
-        crop.save()
+        crop.save(record_history=False)
         # Crop.save() flags divergence against the pre-link row; the link sets
-        # its own baseline flag instead (queryset update: no second revision).
+        # its own baseline flag instead of running the divergence pass again.
         Crop.objects.filter(pk=crop.pk).update(is_modified_from_source=is_modified)
         crop.is_modified_from_source = is_modified
         sync_crop_species_across_crop_group(crop)
+        _record_library_crop_revision(crop, before, force=True)
     return crop
 
 
@@ -1906,7 +1934,8 @@ def sync_crop_with_public_entry(
         raise PublicCropSyncFieldsError(not_pushable, code='public_crop_sync_field_not_pushable')
 
     proposal: PublicCropChangeProposal | None = None
-    with crop_identity_write(crop.project_id):
+    with crop_identity_write(crop.project_id), revision_actor(user):
+        before = _serialize_instance(crop)
         locked = PublicCrop.objects.select_for_update().get(pk=public_crop.pk)
         _validate_base_version(locked, base_version)
         pins_changed = next_pins != previous_pins
@@ -1920,7 +1949,7 @@ def sync_crop_with_public_entry(
             errors = crop_specific_property_errors(crop)
             if errors:
                 raise ApiValidationError(errors)
-            crop.save()
+            crop.save(record_history=False)
         if push_fields:
             payload = build_public_crop_payload(
                 crop, companion_note_language=companion_note_language, retained_public_crop=locked,
@@ -1949,10 +1978,14 @@ def sync_crop_with_public_entry(
         if initial_link:
             # Normalization precedes publication; history must also capture the
             # resulting version and divergence state as the completed link.
-            crop.save(update_fields=[
-                'source_public_crop', 'source_public_version', 'is_modified_from_source',
-                'rejected_public_version', 'updated_at',
-            ])
+            crop.save(
+                record_history=False,
+                update_fields=[
+                    'source_public_crop', 'source_public_version', 'is_modified_from_source',
+                    'rejected_public_version', 'updated_at',
+                ],
+            )
+            sync_crop_species_across_crop_group(crop)
         else:
             Crop.objects.filter(pk=crop.pk).update(
                 source_public_crop=locked,
@@ -1960,6 +1993,9 @@ def sync_crop_with_public_entry(
                 is_modified_from_source=is_modified,
                 rejected_public_version=None,
             )
+        _record_library_crop_revision(
+            crop, before, force=bool(pull_fields or pins_changed or initial_link),
+        )
     return PublicCropSyncResult(
         crop=crop,
         public_crop=locked,
@@ -2006,7 +2042,7 @@ def link_local_crop_to_owned_public_entry(
     user *published*, not only for one they imported. Unlike an import it never
     sets ``origin_type='imported'``: the row stays the user's own and the
     "Importiert" chip must not appear. A queryset ``update`` keeps
-    ``Crop.save``'s divergence pass and revision recording out of it.
+    ``Crop.save``'s divergence pass out of it. The caller records the after-image.
 
     ``is_published_row`` is true for the row whose values were just written
     into ``entry``: they are the entry's values by definition, so the entry's
@@ -2064,25 +2100,35 @@ def _link_owned_entry_to_project_rows(
     entry: PublicCrop,
     publish_as_general: bool,
     user: User | None,
+    before: dict[str, Any],
+    actor_label: str = '',
     created_general_entry: PublicCrop | None = None,
 ) -> None:
     """Link the local rows that own ``entry`` to it: the published crop, and —
     for a variety publish — its general Kultur against the species-level entry
     it owns, so a later library change to either surfaces as a pull on the
     right row. A general Kultur that already has a library link keeps it."""
-    link_local_crop_to_owned_public_entry(crop, entry)
-    if publish_as_general or not (crop.variety or '').strip():
-        return
-    general_crop = get_general_crop(crop)
-    if general_crop is None or general_crop.pk == crop.pk or general_crop.source_public_crop_id:
-        return
-    general_entry = _owned_general_entry_for_link(
-        general_crop=general_crop,
-        created_general_entry=created_general_entry,
-        user=user,
-    )
-    if general_entry is not None:
-        link_local_crop_to_owned_public_entry(general_crop, general_entry, is_published_row=False)
+    with revision_actor(user, public_label=actor_label):
+        link_local_crop_to_owned_public_entry(crop, entry)
+        if not publish_as_general and (crop.variety or '').strip():
+            general_crop = get_general_crop(crop)
+            if (
+                general_crop is not None and general_crop.pk != crop.pk
+                and not general_crop.source_public_crop_id
+            ):
+                general_entry = _owned_general_entry_for_link(
+                    general_crop=general_crop,
+                    created_general_entry=created_general_entry,
+                    user=user,
+                )
+                if general_entry is not None:
+                    general_before = _serialize_instance(general_crop)
+                    with internal_project_versions():
+                        link_local_crop_to_owned_public_entry(
+                            general_crop, general_entry, is_published_row=False,
+                        )
+                        _record_library_crop_revision(general_crop, general_before)
+        _record_library_crop_revision(crop, before, force=True)
 
 
 def detect_public_crop_duplicates(
@@ -2509,7 +2555,7 @@ def _link_crop_to_crop_species(
             raise ApiValidationError({'specific_properties': errors})
     crop.crop_species = crop_species
     validate_crop_identity(crop)
-    crop.save(update_fields=['crop_species', 'updated_at'])
+    crop.save(update_fields=['crop_species', 'updated_at'], record_history=False)
     sync_crop_species_across_crop_group(crop, previous_species_id=previous_species_id)
 
 
@@ -2671,17 +2717,28 @@ def _sync_owned_crop_group_species(
     crop = public_crop.source_project_crop
     if crop is None or crop.deleted_at is not None:
         return
+    from farm.history.project_restore import ensure_project_checkpoint
+
+    # The public action does not pass through a project-scoped API view.
+    ensure_project_checkpoint(crop.project)
+    crop.refresh_from_db()
+    if crop.deleted_at is not None:
+        return
     moved_crop_ids = _crop_group_member_ids(
         crop,
         target_species_id=crop_species.pk,
         previous_species_id=previous_species_id,
     )
     values_before = _effective_values_by_crop(moved_crop_ids, project_id=crop.project_id)
-    _link_crop_to_crop_species(
-        crop=crop,
-        crop_species=crop_species,
-        previous_species_id=previous_species_id,
-    )
+    actor_label = get_public_user_label(user) or _LIBRARY_MODERATION_LABEL
+    with revision_actor(user, public_label=actor_label):
+        before = _serialize_instance(crop)
+        _link_crop_to_crop_species(
+            crop=crop,
+            crop_species=crop_species,
+            previous_species_id=previous_species_id,
+        )
+        _record_library_crop_revision(crop, before, force=True)
     notify_project_of_crop_species_reassignment(
         project_id=crop.project_id,
         values_before=values_before,
@@ -3051,6 +3108,7 @@ def cancel_public_crop_species_relinks(*, crop_species: CropSpecies) -> int:
     return len(pending)
 
 
+@transaction.atomic
 def publish_crop_to_public_library(
     *,
     crop: Crop,
@@ -3100,7 +3158,9 @@ def publish_crop_to_public_library(
         )
     if update_target:
         previous_status = update_target.status
-        _link_crop_to_crop_species(crop=crop, crop_species=check_result.crop_species)
+        with revision_actor(user):
+            before = _serialize_instance(crop)
+            _link_crop_to_crop_species(crop=crop, crop_species=check_result.crop_species)
         updated_public_crop = _update_public_crop_from_project_crop(
             public_crop=update_target,
             crop=crop,
@@ -3124,6 +3184,7 @@ def publish_crop_to_public_library(
             entry=updated_public_crop,
             publish_as_general=publish_as_general,
             user=user,
+            before=before,
         )
         non_target_duplicates = [item for item in duplicates if item.id != update_target.id]
         return updated_public_crop, non_target_duplicates, 'updated'
@@ -3137,7 +3198,9 @@ def publish_crop_to_public_library(
                 'crop_species': str(check_result.crop_species.id),
             },
         )
-    _link_crop_to_crop_species(crop=crop, crop_species=check_result.crop_species)
+    with revision_actor(user):
+        before = _serialize_instance(crop)
+        _link_crop_to_crop_species(crop=crop, crop_species=check_result.crop_species)
     created_general_entry: PublicCrop | None = None
     if not publish_as_general and not require_moderation:
         # Publishing a variety always needs a species-level entry for the crop
@@ -3172,6 +3235,8 @@ def publish_crop_to_public_library(
             original_language_code=check_result.original_language_code,
             **crop_model_kwargs(build_public_crop_payload(crop, public_variety=public_variety)),
         )
+        with revision_actor(user):
+            _record_library_crop_revision(crop, before, force=True)
         return draft_public_crop, duplicates, 'pending_moderation'
 
     public_crop = PublicCrop.objects.create(
@@ -3199,6 +3264,7 @@ def publish_crop_to_public_library(
         entry=public_crop,
         publish_as_general=publish_as_general,
         user=user,
+        before=before,
         created_general_entry=created_general_entry,
     )
     return public_crop, duplicates, 'created'
@@ -3235,11 +3301,16 @@ def approve_new_publish_proposal(
         action=PublicCropRevision.ACTION_CREATED,
     )
     if source_crop is not None and public_crop.crop_species is not None:
+        from farm.history.project_restore import ensure_project_checkpoint
+
+        ensure_project_checkpoint(source_crop.project)
         _link_owned_entry_to_project_rows(
             crop=source_crop,
             entry=public_crop,
             publish_as_general=publish_as_general,
             user=public_crop.created_by,
+            before=_serialize_instance(source_crop),
+            actor_label=get_public_user_label(user) or _LIBRARY_MODERATION_LABEL,
             created_general_entry=created_general_entry,
         )
     return public_crop
@@ -3443,19 +3514,25 @@ def _create_crop_from_public(
                 project=project,
             )
         values = crop_model_kwargs(payload)
-        validate_crop_identity(Crop(project=project, **values))
-        crop = Crop.objects.create(project=project, **values)
+        crop = Crop(project=project, **values)
+        validate_crop_identity(crop)
+        crop.save(force_insert=True, record_history=False)
         if not (crop.variety or '').strip():
-            if public_crop.companions and apply_library_companions(crop, public_crop.companions):
-                record_library_companion_boundary(crop)
+            if public_crop.companions:
+                apply_library_companions(crop, public_crop.companions)
             link_free_text_companions(project.id, [crop.name])
         for package in public_crop.seed_packages or []:
-            crop.seed_packages.create(
+            seed_package = crop.seed_packages.create(
                 project=project,
                 size_value=package.get('size_value'),
                 size_unit=package.get('size_unit') or 'g',
                 evidence_text=package.get('evidence_text') or '',
                 last_seen_at=package.get('last_seen_at') or None,
+            )
+            record_entity_revision(
+                project=project, entity_type='seed_package', object_id=seed_package.pk,
+                action=EntityRevision.ACTION_CREATED, snapshot=_serialize_instance(seed_package),
+                display_name=_entity_display_name(seed_package),
             )
         return crop
 
@@ -3499,9 +3576,10 @@ def _ensure_local_general_crop(
     ).exists()
     if name_taken:
         return
-    _create_crop_from_public(
+    crop = _create_crop_from_public(
         public_crop=general_public, project=project, establish_link=establish_link,
     )
+    _record_library_crop_revision(crop, None)
 
 
 def _apply_public_crop_update(
@@ -3521,6 +3599,7 @@ def _apply_public_crop_update(
     the crop's value. Both are part of the same, history-recorded save.
     """
     with crop_identity_write(crop.project_id):
+        before = _serialize_instance(crop)
         pinned = get_library_pinned_fields(crop)
         not_pinned = set(unpin_fields) - pinned
         if not_pinned:
@@ -3549,21 +3628,16 @@ def _apply_public_crop_update(
         if errors:
             raise ApiValidationError(errors)
         validate_crop_identity(crop)
-        crop.save()
-        companions_changed = (
-            COMPANIONS_FIELD not in remaining_pins
-            and _compares_companions(crop, public_crop)
-            and replace_library_companions(crop, public_crop.companions)
-        )
+        crop.save(record_history=False)
+        if COMPANIONS_FIELD not in remaining_pins and _compares_companions(crop, public_crop):
+            replace_library_companions(crop, public_crop.companions)
         # Crop._flag_source_divergence() runs inside save() and, seeing the tracked
         # fields differ from the pre-update row, may have just flipped this back to True —
         # wrong here, since syncing to a newer library version isn't a local edit. A
-        # queryset .update() (not .save()) bypasses Crop.save() entirely, so this
-        # doesn't trigger another divergence pass or a second EntityRevision.
+        # queryset update avoids triggering the divergence pass again.
         Crop.objects.filter(pk=crop.pk).update(is_modified_from_source=False)
         crop.is_modified_from_source = False
-        if companions_changed:
-            record_library_companion_boundary(crop)
+        _record_library_crop_revision(crop, before, force=True)
         return crop
 
 
@@ -3808,19 +3882,21 @@ def resolve_public_publish_block(
     return None
 
 
-def reject_public_crop_update(crop: Crop) -> Crop:
+def reject_public_crop_update(crop: Crop, *, user: User | None = None) -> Crop:
     """Record that the user declined the pending public version for this copy.
 
     Deliberately does not touch a single library-sourced field: rejecting is a
-    decision about the *notice*, not an edit of the local copy. The write uses a
-    queryset update so it never runs :meth:`Crop.save`'s divergence pass or
-    records a revision for what is not a content change.
+    decision about the notice. The write skips the divergence pass, and history
+    captures the rejected version so restoring the crop preserves that decision.
     """
     public_crop = crop.source_public_crop
-    if public_crop is None:
+    if public_crop is None or crop.rejected_public_version == public_crop.version:
         return crop
-    Crop.objects.filter(pk=crop.pk).update(rejected_public_version=public_crop.version)
-    crop.rejected_public_version = public_crop.version
+    with crop_identity_write(crop.project_id), revision_actor(user):
+        before = _serialize_instance(crop)
+        Crop.objects.filter(pk=crop.pk).update(rejected_public_version=public_crop.version)
+        crop.rejected_public_version = public_crop.version
+        _record_library_crop_revision(crop, before)
     return crop
 
 
@@ -3987,6 +4063,7 @@ def import_public_crop_into_project(
     pin_fields: Sequence[str] = (),
     base_version: int | None = None,
     establish_link: bool = True,
+    user: User | None = None,
 ) -> tuple[Crop, str]:
     """Import a public crop into a project, or resolve a re-import.
 
@@ -4043,40 +4120,30 @@ def import_public_crop_into_project(
         or (mode != 'new' and candidates and not linked.exists())
     ):
         raise CropLinkConflictError('existing_crop_requires_link')
-    if mode == 'new':
-        crop = _create_crop_from_public(
-            public_crop=public_crop, project=project, unique_name=True,
-            establish_link=establish_link,
-        )
-        _ensure_local_general_crop(
-            public_crop=public_crop, project=project, establish_link=establish_link,
-        )
-        return crop, 'created'
-
     # Duplicates can already exist from before this check existed; picking the
     # most recent is a defensive choice, not a guarantee only one exists.
-    existing = Crop.objects.filter(
-        project=project,
-        source_public_crop=public_crop,
-    ).order_by('-id').first()
+    existing = None if mode == 'new' else linked.order_by('-id').first()
 
     if existing is None:
         # A project holds one general crop per name, whatever its species: a
         # general entry whose name is already taken (by an own crop, or one of
         # another species) is imported under a free name, as with mode 'new'.
-        crop = _create_crop_from_public(
-            public_crop=public_crop,
-            project=project,
-            unique_name=not public_crop.variety_normalized,
-            establish_link=establish_link,
-        )
-        _ensure_local_general_crop(
-            public_crop=public_crop, project=project, establish_link=establish_link,
-        )
+        with revision_actor(user):
+            with internal_project_versions():
+                crop = _create_crop_from_public(
+                    public_crop=public_crop,
+                    project=project,
+                    unique_name=mode == 'new' or not public_crop.variety_normalized,
+                    establish_link=establish_link,
+                )
+                _ensure_local_general_crop(
+                    public_crop=public_crop, project=project, establish_link=establish_link,
+                )
+            _record_library_crop_revision(crop, None)
         return crop, 'created'
 
     if mode == 'update':
-        with transaction.atomic():
+        with transaction.atomic(), revision_actor(user):
             locked = PublicCrop.objects.select_for_update().get(pk=public_crop.pk)
             _validate_base_version(locked, base_version)
             validate_public_update_pin_fields(existing, locked, pin_fields)
@@ -4101,7 +4168,8 @@ def import_public_crop_into_project(
     if is_project_crop_up_to_date(existing, public_crop) and not unpin_fields:
         return existing, 'unchanged'
 
-    crop = _apply_public_crop_update(
-        crop=existing, public_crop=public_crop, unpin_fields=unpin_fields,
-    )
+    with revision_actor(user):
+        crop = _apply_public_crop_update(
+            crop=existing, public_crop=public_crop, unpin_fields=unpin_fields,
+        )
     return crop, 'updated'

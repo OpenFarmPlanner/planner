@@ -1219,7 +1219,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 detail='There is no pending public update for this crop.',
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        reject_public_crop_update(crop)
+        reject_public_crop_update(crop, user=request.user)
         serializer = self.get_serializer(crop)
         return Response(serializer.data)
 

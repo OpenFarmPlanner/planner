@@ -3,7 +3,6 @@ from datetime import date
 from types import SimpleNamespace
 from unittest.mock import patch
 
-import pytest
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase
@@ -129,9 +128,6 @@ class E2EFixtureUserTrustLevelTest(APITestCase):
         user = User.objects.get(email=f'{self.scenario}-starter@{TEST_EMAIL_DOMAIN}')
         self.assertEqual(resolve_trust_level(user), AccountTrustProfile.TRUST_ESTABLISHED)
 
-    @pytest.mark.history_gap(
-        issue=1201, reason='library provenance writes record no crop revision',
-    )
     def test_fixture_admin_publishes_to_the_library_directly(self) -> None:
         """The end-to-end shape the failing spec depends on: a publish by a
         fixture user returns the created `public_crop`, not a moderation

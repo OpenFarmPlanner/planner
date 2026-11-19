@@ -872,8 +872,13 @@ class Crop(TimestampedModel):
     }
 
     @transaction.atomic
-    def save(self, *args: Any, **kwargs: Any) -> None:
-        """Save the crop and auto-generate display color and normalized fields."""
+    def save(self, *args: Any, record_history: bool = True, **kwargs: Any) -> None:
+        """Save the crop, with an optional caller-owned completed revision.
+
+        A library action that still has derived writes to do records the final
+        crop snapshot itself in the same transaction. Plan changes are always
+        recorded here.
+        """
         from farm.utils import normalize_text
 
         previous = None
@@ -912,7 +917,8 @@ class Crop(TimestampedModel):
         ]
         if timing_changed_fields:
             self._recalculate_related_planting_plan_dates(timing_changed_fields)
-        self._record_save_revision(current, previous, changed_fields)
+        if record_history:
+            self._record_save_revision(current, previous, changed_fields)
 
     @property
     def pending_timing_windows(self) -> list[Any] | None:

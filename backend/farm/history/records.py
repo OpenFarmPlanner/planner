@@ -47,6 +47,7 @@ def internal_project_versions() -> Iterator[None]:
 
 
 _active_batch: ContextVar[BatchOperation | None] = ContextVar('history_batch', default=None)
+_revision_actor: ContextVar[str] = ContextVar('history_actor', default='')
 
 
 @contextmanager
@@ -57,6 +58,18 @@ def revision_batch(batch: BatchOperation) -> Iterator[None]:
         yield
     finally:
         _active_batch.reset(token)
+
+
+@contextmanager
+def revision_actor(user: Any, *, public_label: str = '') -> Iterator[None]:
+    """Attribute nested history writes to the action's authenticated user."""
+    label = public_label or _user_actor_label(user) or _revision_actor.get()
+    token = _revision_actor.set(label[:EntityRevision._meta.get_field('user_name').max_length])
+    try:
+        yield
+    finally:
+        _revision_actor.reset(token)
+
 
 # Entity types that participate in per-entity revision history and whole-project
 # point-in-time restore, in FK-dependency order (parents before children).
@@ -97,7 +110,10 @@ def _entity_type_for(instance) -> str:
 
 
 def _current_actor_label(request) -> str:
-    user = getattr(request, 'user', None)
+    return _user_actor_label(getattr(request, 'user', None))
+
+
+def _user_actor_label(user: Any) -> str:
     if not user or not getattr(user, 'is_authenticated', False):
         return ''
     display_name = (getattr(user, 'display_name', '') or '').strip()
@@ -201,7 +217,7 @@ def record_entity_revision(
         display_name=display_name or '',
         snapshot=snapshot,
         changed_fields=changed_fields if changed_fields is not None else ([EntityRevision.ACTION_CREATED] if action == EntityRevision.ACTION_CREATED else []),
-        user_name=user_name or '',
+        user_name=user_name or _revision_actor.get(),
         batch_operation=batch_operation,
     )
 

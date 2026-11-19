@@ -732,9 +732,8 @@ def _record_relation(
 ) -> None:
     """Record a library-driven relation write as an internal after-image.
 
-    The completed version boundary is the Kultur's crop revision that follows
-    (``record_library_companion_boundary``), as for other nested crop writes
-    (docs/versioning-and-history.md).
+    The library action finishes with the Kultur's crop revision, as for other
+    nested crop writes (docs/versioning-and-history.md).
     """
     from farm.history import (
         _diff_changed_fields,
@@ -789,25 +788,6 @@ def _delete_relation(relation: CropCompanion) -> None:
     )
 
 
-def record_library_companion_boundary(kultur: Crop) -> None:
-    """Close a library write whose relations changed after the Kultur's own save.
-
-    Relation after-images are internal; this visible crop revision makes the
-    completed action selectable and restorable with its neighbours.
-    """
-    from farm.history import _entity_display_name, _serialize_instance, record_entity_revision
-
-    record_entity_revision(
-        project=kultur.project,
-        entity_type='crop',
-        object_id=kultur.pk,
-        action=EntityRevision.ACTION_UPDATED,
-        snapshot=_serialize_instance(kultur),
-        display_name=_entity_display_name(kultur),
-        changed_fields=[],
-    )
-
-
 def _touch_companion_crops(kultur_ids: Iterable[int | None]) -> None:
     """Companion-only changes invalidate a crop's comparison timestamp too."""
     Crop.objects.filter(pk__in={pk for pk in kultur_ids if pk is not None}).update(
@@ -815,18 +795,37 @@ def _touch_companion_crops(kultur_ids: Iterable[int | None]) -> None:
     )
 
 
-def mark_library_copies_modified(kultur_ids: Iterable[int | None]) -> None:
+def mark_library_copies_modified(kultur_ids: Iterable[int | None], *, user_name: str = '') -> None:
     """Flag linked Kulturen whose neighbours were edited as changed locally.
 
     Neighbours are rows of their own, so ``Crop.save``'s divergence check never
     sees them; without the flag a publish would report "nothing to contribute".
     """
+    from farm.history.records import (
+        _entity_display_name,
+        _serialize_instance,
+        internal_project_versions,
+        record_entity_revision,
+    )
+
     ids = {kultur_id for kultur_id in kultur_ids if kultur_id is not None}
     if ids:
         _touch_companion_crops(ids)
-        Crop.objects.filter(
+        crops = list(Crop.objects.filter(
             pk__in=ids, source_public_crop__isnull=False, variety_normalized__isnull=True,
-        ).update(is_modified_from_source=True)
+            is_modified_from_source=False,
+        ).select_related('project').order_by('pk'))
+        Crop.objects.filter(pk__in=[crop.pk for crop in crops]).update(
+            is_modified_from_source=True,
+        )
+        with internal_project_versions():
+            for crop in crops:
+                record_entity_revision(
+                    project=crop.project, entity_type='crop', object_id=crop.pk,
+                    action=EntityRevision.ACTION_UPDATED, snapshot=_serialize_instance(crop),
+                    display_name=_entity_display_name(crop),
+                    changed_fields=['is_modified_from_source'], user_name=user_name,
+                )
 
 
 @transaction.atomic

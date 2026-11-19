@@ -737,6 +737,7 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                 pin_fields=field_lists['pin_fields'],
                 base_version=base_version,
                 establish_link=establish_link,
+                user=request.user,
             )
         except PublicCropEditConflictError as error:
             return self._edit_conflict_response(error)
