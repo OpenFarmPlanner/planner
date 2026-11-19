@@ -3,6 +3,9 @@
 from datetime import date
 
 import pytest
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+from django.test import override_settings
 
 from farm.models import BatchOperation, EntityRevision, PlantingPlan, Season, SeasonPattern
 from farm.services.demo_project import demo_current_year, populate_demo_project
@@ -635,6 +638,9 @@ class SeasonApiTest(ProjectApiTestCase):
         self.assertTrue(Season.objects.filter(pk=season_id).exists())
         self.assertTrue(PlantingPlan.objects.filter(pk=plan_id, season_id=season_id).exists())
 
+    @override_settings(STORAGES={
+        'default': {'BACKEND': 'django.core.files.storage.InMemoryStorage'},
+    })
     def test_reverted_season_and_later_versions_have_complete_restore_boundaries(self):
         from farm.models import NoteAttachment, RetainedUpload, Task
 
@@ -650,8 +656,10 @@ class SeasonApiTest(ProjectApiTestCase):
             project=self.project, planting_plan=plan, season_id=season_id,
             title='Generated task', origin='automatic', source_key='sowing:fixture',
         )
+        content = b'reverted season attachment fixture'
+        path = default_storage.save('notes/reverted-season.jpg', ContentFile(content))
         attachment = NoteAttachment.objects.create(
-            project=self.project, planting_plan=plan, image='notes/reverted-season.jpg',
+            project=self.project, planting_plan=plan, image=path,
         )
         batch = BatchOperation.objects.get(project=self.project, operation_type='season_create')
         reverted = self.client.post(f'/openfarmplanner/api/history/batch/{batch.pk}/revert/')
@@ -688,6 +696,8 @@ class SeasonApiTest(ProjectApiTestCase):
         self.assertEqual(
             NoteAttachment.objects.get(pk=attachment.pk).image.name, attachment.image.name,
         )
+        with default_storage.open(path) as restored_attachment:
+            self.assertEqual(restored_attachment.read(), content)
 
     def test_undelete_nulls_a_planting_plan_fk_whose_target_is_gone(self):
         from farm.models import Bed
