@@ -219,27 +219,20 @@ def link_free_text_companions(project_id: int, names: Iterable[str] | None = Non
         kulturen = kulturen.filter(name_normalized__in=wanted)
     kultur_by_name = {kultur.name_normalized: kultur for kultur in kulturen.order_by('-pk')}
     changed = 0
-    touched: set[int] = set()
-    with transaction.atomic():
-        for relation in text_relations:
-            previous_owner_id = relation.crop_id
-            neighbour = kultur_by_name.get(normalize_text(relation.companion_text))
-            if neighbour is None or neighbour.id == relation.crop_id:
-                continue
-            target = CompanionTarget(type=TARGET_CROP, crop=neighbour)
-            if find_relation(relation.crop, target) is not None:
-                relation.delete()
-            else:
-                pair = relation_kwargs(relation.crop, target)
-                relation.crop = pair['crop']
-                relation.companion_crop = pair['companion_crop']
-                relation.companion_text = ''
-                relation.save(
-                    update_fields=['crop', 'companion_crop', 'companion_text', 'updated_at'],
-                )
-            touched.update((previous_owner_id, relation.crop_id, neighbour.id))
-            changed += 1
-        mark_library_copies_modified(touched)
+    for relation in text_relations:
+        neighbour = kultur_by_name.get(normalize_text(relation.companion_text))
+        if neighbour is None or neighbour.id == relation.crop_id:
+            continue
+        target = CompanionTarget(type=TARGET_CROP, crop=neighbour)
+        mark_library_copies_modified((relation.crop_id, neighbour.id))
+        if find_relation(relation.crop, target) is not None:
+            _delete_relation(relation, internal=False)
+        else:
+            _save_relation(
+                relation, internal=False, companion_text='',
+                **relation_kwargs(relation.crop, target),
+            )
+        changed += 1
     return changed
 
 
@@ -506,10 +499,8 @@ def _apply_import_item(
                 patch.pop('note', None)
             notes = merge_notes(notes_of(existing), patch, language)
             if notes != notes_of(existing):
-                existing.notes = notes
-                existing.note = legacy_note(notes)
-                existing.save(update_fields=['notes', 'note', 'updated_at'])
                 mark_library_copies_modified([existing.crop_id, existing.companion_crop_id])
+                _save_relation(existing, internal=False, notes=notes)
         return
     patch = dict(item)
     if not patch.get('note') and not replace_notes:
@@ -524,6 +515,7 @@ def _apply_import_item(
         **relation_kwargs(kultur, target),
     )
     _touch_companion_crops((relation.crop_id, relation.companion_crop_id))
+    _record_relation(relation, EntityRevision.ACTION_CREATED, internal=False)
     report.created += 1
 
 
@@ -729,11 +721,12 @@ def _record_relation(
     previous: dict[str, Any] | None = None,
     snapshot: dict[str, Any] | None = None,
     display_name: str | None = None,
+    internal: bool = True,
 ) -> None:
-    """Record a library-driven relation write as an internal after-image.
+    """Record the relation after-image or, for a deletion, its prior state.
 
-    The library action finishes with the Kultur's crop revision, as for other
-    nested crop writes (docs/versioning-and-history.md).
+    Library writes are internal to the closing crop revision. Direct import
+    and relinking writes can serve as the latest project version themselves.
     """
     from farm.history import (
         _diff_changed_fields,
@@ -754,13 +747,13 @@ def _record_relation(
         entity_type='crop_companion',
         object_id=relation.pk,
         action=action,
-        snapshot={**current, '_project_version_internal': True},
+        snapshot={**current, '_project_version_internal': True} if internal else current,
         display_name=display_name if display_name is not None else _entity_display_name(relation),
         changed_fields=changed,
     )
 
 
-def _save_relation(relation: CropCompanion, **values: Any) -> None:
+def _save_relation(relation: CropCompanion, *, internal: bool = True, **values: Any) -> None:
     """Save changed relation values (notes keep their legacy ``note`` copy) with history."""
     from farm.history import _serialize_instance
 
@@ -773,10 +766,10 @@ def _save_relation(relation: CropCompanion, **values: Any) -> None:
     for name in changed:
         setattr(relation, name, values[name])
     relation.save(update_fields=[*changed, 'updated_at'])
-    _record_relation(relation, EntityRevision.ACTION_UPDATED, previous=previous)
+    _record_relation(relation, EntityRevision.ACTION_UPDATED, previous=previous, internal=internal)
 
 
-def _delete_relation(relation: CropCompanion) -> None:
+def _delete_relation(relation: CropCompanion, *, internal: bool = True) -> None:
     from farm.history import _entity_display_name, _serialize_instance
 
     relation_id, snapshot = relation.pk, _serialize_instance(relation)
@@ -785,6 +778,7 @@ def _delete_relation(relation: CropCompanion) -> None:
     relation.pk = relation_id
     _record_relation(
         relation, EntityRevision.ACTION_DELETED, snapshot=snapshot, display_name=display_name,
+        internal=internal,
     )
 
 

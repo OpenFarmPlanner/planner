@@ -45,6 +45,7 @@ from farm.history import (
     build_crop_history_payload,
     restore_crop_from_revision,
 )
+from farm.history.records import revision_actor
 from farm.history.serializers import CropHistoryEntrySerializer, CropRestoreSerializer
 from farm.models import (
     Crop,
@@ -441,14 +442,15 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         from farm.history.import_operations import ImportOperationConflict, execute_import_request
 
         try:
-            summary = execute_import_request(
-                request.active_project,
-                request_id=request.data.get("import_operation_id"),
-                actor_id=request.user.pk,
-                actor_label=_current_actor_label(request),
-                phase=phase,
-                run=lambda: self._apply_import_phase(request, items, phase, language),
-            )
+            with revision_actor(request.user):
+                summary = execute_import_request(
+                    request.active_project,
+                    request_id=request.data.get("import_operation_id"),
+                    actor_id=request.user.pk,
+                    actor_label=_current_actor_label(request),
+                    phase=phase,
+                    run=lambda: self._apply_import_phase(request, items, phase, language),
+                )
         except ImportOperationConflict:
             return api_error_response(
                 code="crop_import_operation_unavailable",

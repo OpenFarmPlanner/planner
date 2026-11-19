@@ -16,6 +16,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from farm.crops.serializers import CropSerializer
+from farm.history.records import revision_actor
 from farm.models import CropImportDraft
 from farm.services.crop_companions import link_free_text_companions
 
@@ -190,7 +191,8 @@ def apply_import_draft(
 
         if not errors:
             # Once for the whole draft instead of once per row.
-            link_free_text_companions(project.id)
+            with revision_actor(getattr(request, 'user', None)):
+                link_free_text_companions(project.id)
         if errors:
             # Partial imports are worse than none: the user reviewed the batch
             # as a whole, so the whole batch is rolled back.

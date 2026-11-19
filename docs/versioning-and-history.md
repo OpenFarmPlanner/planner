@@ -97,6 +97,11 @@ active project and initiating user under the existing project write lock.
 Closed/reverted, foreign-user/project and expired (24-hour) IDs cannot accept
 more batches. Old requests without an ID keep the previous ungrouped behavior;
 timestamps are never used to guess which old revisions belong together.
+Both grouped and legacy imports record each companion creation, note merge,
+free-text relink and redundant-text deletion. An ordinary crop create or
+rename records those same relink/deletion revisions. Derived library divergence
+flags are recorded before the relation revision, so the completed version
+contains the relation and the affected crop states.
 
 Before a project's first ordinary create/update/delete request,
 `ensure_project_checkpoint` establishes a complete baseline once. Read-only and
@@ -253,6 +258,35 @@ an imported seed package from the local crop and restore the import version
 from Project history. The same crop is still linked and the deleted package is
 back. The fixture command preserves edits on repeat and leaves the local
 library entry untouched.
+
+`seed_companion_history_acceptance` prepares two private crops and a free-text
+neighbour for a third crop that has yet to be imported. From `backend/`,
+preview the target and then repeat with `--apply`:
+
+```bash
+DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py \
+  seed_companion_history_acceptance --username LOCAL_ACCOUNT \
+  --database-name EXACT_LOCAL_DATABASE
+```
+
+In **Companion history acceptance**, import the following JSON from the Crops
+page and allow updates to the existing crop:
+
+```json
+[
+  {
+    "name": "Companion history owner",
+    "good_companions": [{"name": "Companion history neighbour", "notes": {"en": "Imported note"}}]
+  },
+  {"name": "Companion history later"}
+]
+```
+
+The owner's neighbours now include the imported note and the former free-text
+entry links to the new crop. Edit the owner's crop notes and save. In Project
+History, restore the completed import. Both neighbours remain linked and the
+imported companion note remains. Repeating the fixture command preserves
+manual changes in the fixture project.
 
 ## What to check before changing this
 

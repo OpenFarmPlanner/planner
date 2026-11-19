@@ -27,6 +27,7 @@ from farm.common.serializer_fields import (
 )
 from farm.enum_normalization import normalize_seed_rate_unit
 from farm.germination import complete_germination_write
+from farm.history.records import revision_actor
 from farm.models import (
     Crop,
     CropSupplierData,
@@ -1158,7 +1159,8 @@ class CropSerializer(serializers.ModelSerializer):
             return
         kulturen = [crop for crop in crops if crop is not None and is_kultur(crop)]
         if kulturen:
-            link_free_text_companions(kulturen[0].project_id, [crop.name for crop in kulturen])
+            with revision_actor(getattr(self.context.get('request'), 'user', None)):
+                link_free_text_companions(kulturen[0].project_id, [crop.name for crop in kulturen])
 
     def _sync_supplier_data_rows(self, crop, supplier_data_input):
         """Upsert the supplied supplier-data rows and delete rows no longer present."""

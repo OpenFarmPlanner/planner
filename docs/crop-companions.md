@@ -81,6 +81,9 @@ file, not one per row). If that pair already exists, the free-text entry is
 removed instead. Only names are matched, not crop species, and a Sorte never
 takes over a free-text neighbour, since neighbours belong to the Kultur. A linked
 Kultur affected by the change is flagged as changed locally for the library sync.
+Project history records a changed pair under its existing relation ID and
+records a deletion when an already-linked pair makes the free text redundant.
+Restoring a version before the change brings back the free-text entry.
 
 ## Planning check
 
@@ -284,6 +287,11 @@ its supplied language keys, with `""` clearing that version; omitted keys are
 preserved. A derived `note` alongside a full map is not copied into another
 language.
 
+Creating a neighbour or merging its notes also writes an entity revision.
+The import operation groups these changes with the crop batches and final
+relinking. Legacy imports without a group ID still record each relation in
+project history. See [Versioning and History](./versioning-and-history.md).
+
 Both the cell parser and backend import normalization ignore names without any
 Unicode letter or number (e.g. `#`, `-`, `?`); the backend does so even when an
 item carries a reason or note. These placeholders do not count as neighbours, unresolved names or
@@ -343,9 +351,8 @@ so a published neighbour names a **crop species** or a **plant family**:
 - **History.** Import, link and sync record every neighbour they create,
   update or delete (`crop_companions._record_relation`) as an internal
   after-image. The completed action ends with a visible crop revision of the
-  Kultur, so selecting it restores the neighbours too (#1192). Where the
-  Kultur's own save comes first (importing an entry, applying a library
-  update), `record_library_companion_boundary` records that closing revision.
+  Kultur, so selecting it restores the neighbours too (#1192). The library
+  service records that closing revision after the last relation write.
   See [versioning-and-history.md](./versioning-and-history.md).
 - **The library page** shows the neighbours of the species entry, also on its
   varieties (`buildLibraryCompanionRows`). A species neighbour links to that

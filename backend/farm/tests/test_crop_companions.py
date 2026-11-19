@@ -3,7 +3,6 @@
 from datetime import date
 from typing import Any
 
-import pytest
 from django.utils import timezone
 
 from accounts.trust import grant_established_trust
@@ -223,9 +222,6 @@ class CompanionImportTests(CropCompanionTestCase):
         })
         self.assertFalse(CropCompanion.objects.exists())
 
-    @pytest.mark.history_gap(
-        issue=1202, reason='import/free-text companion writes record no revision',
-    )
     def test_placeholders_are_filtered_without_changing_real_neighbours(self) -> None:
         names = ['Pak-Choi', 'Épinard', '小白菜', '123']
         items = [
@@ -252,9 +248,6 @@ class CompanionImportTests(CropCompanionTestCase):
             [(name, 'competition', 'Wurzelraum') for name in names],
         )
 
-    @pytest.mark.history_gap(
-        issue=1202, reason='import/free-text companion writes record no revision',
-    )
     def test_apply_links_names_to_kulturen_families_or_free_text(self):
         rows = [
             {
@@ -321,9 +314,6 @@ class CompanionImportTests(CropCompanionTestCase):
             [('bad', 'shared_pests_diseases', 'Krautfäule'), ('good', 'pest_control', 'Duft')],
         )
 
-    @pytest.mark.history_gap(
-        issue=1202, reason='import/free-text companion writes record no revision',
-    )
     def test_a_variety_row_gets_its_neighbours_on_the_kultur(self):
         response = self.client.post(APPLY_URL, {
             'items': [{'name': 'Paprika', 'variety': 'Frühzauber', 'bad_companions': [{'name': 'Kartoffel'}]}],
@@ -643,9 +633,6 @@ class FreeTextLinkingTests(CropCompanionTestCase):
             crop.refresh_from_db()
             self.assertNotEqual(crop.updated_at, before[crop.pk])
 
-    @pytest.mark.history_gap(
-        issue=1202, reason='import/free-text companion writes record no revision',
-    )
     def test_creating_a_kultur_links_free_text_with_its_name(self):
         entry = self.text(self.tomato, 'salbei ', kind='good')
 
@@ -658,9 +645,6 @@ class FreeTextLinkingTests(CropCompanionTestCase):
         self.assertEqual({entry.crop_id, entry.companion_crop_id}, {self.tomato.id, sage.id})
         self.assertLess(entry.crop_id, entry.companion_crop_id)
 
-    @pytest.mark.history_gap(
-        issue=1202, reason='import/free-text companion writes record no revision',
-    )
     def test_renaming_a_kultur_links_free_text_with_the_new_name(self):
         entry = self.text(self.tomato, 'Erdäpfel')
 
@@ -688,9 +672,6 @@ class FreeTextLinkingTests(CropCompanionTestCase):
         entry.refresh_from_db()
         self.assertEqual(entry.companion_text, 'Kartoffel Linda')
 
-    @pytest.mark.history_gap(
-        issue=1202, reason='import/free-text companion writes record no revision',
-    )
     def test_the_import_links_once_for_the_whole_file(self):
         entry = self.text(self.tomato, 'Ringelblume')
 
@@ -759,9 +740,6 @@ class LocalizedCompanionNotesTests(CompanionLibraryTestCase):
         self.assertNotIn(diagnostic, str(applied.data))
         self.assertFalse(Crop.objects.filter(project=self.project, name='Gurke').exists())
 
-    @pytest.mark.history_gap(
-        issue=1202, reason='import/free-text companion writes record no revision',
-    )
     def test_import_note_merge_and_explicit_empty_replacement(self) -> None:
         relation = self.relate(self.tomato, self.potato)
         relation.notes = {'de': 'Quelle', 'fr': 'Ancienne source'}
@@ -776,9 +754,6 @@ class LocalizedCompanionNotesTests(CompanionLibraryTestCase):
             self.assertEqual(relation.notes, {'de': 'Quelle', 'fr': expected})
             self.assertEqual(relation.reason, 'shared_pests_diseases')
 
-    @pytest.mark.history_gap(
-        issue=1202, reason='import/free-text companion writes record no revision',
-    )
     def test_import_defaults_update_only_nonempty_notes_in_the_selected_language(self) -> None:
         relation = self.relate(self.tomato, self.potato)
         original = {'de': 'Quelle', 'en': 'Source', 'fr': 'Ancienne source', 'es': 'Fuente'}
@@ -808,9 +783,6 @@ class LocalizedCompanionNotesTests(CompanionLibraryTestCase):
                             relation.notes, {**original, language: 'Updated source'}
                         )
 
-    @pytest.mark.history_gap(
-        issue=1202, reason='import/free-text companion writes record no revision',
-    )
     def test_import_defaults_preserve_json_map_merge_and_explicit_empty(self) -> None:
         relation = self.relate(self.tomato, self.potato)
         relation.notes = {'de': 'Quelle', 'en': 'Old source', 'es': 'Fuente'}
@@ -829,9 +801,6 @@ class LocalizedCompanionNotesTests(CompanionLibraryTestCase):
             relation.notes, {'de': 'Quelle', 'en': 'New source', 'fr': 'Source FR', 'es': ''}
         )
 
-    @pytest.mark.history_gap(
-        issue=1202, reason='import/free-text companion writes record no revision',
-    )
     def test_legacy_group_resolution_is_exact_and_ambiguous_input_stays_text(self) -> None:
         row = {'name': 'Gurke', 'good_companions': [{'name': 'Tomate, Kartoffel – Quelle 2025', 'legacy': True}]}
         response = self.client.post(PREVIEW_URL, [row], format='json')
@@ -861,9 +830,6 @@ class LocalizedCompanionNotesTests(CompanionLibraryTestCase):
     def legacy_row(cell: str) -> dict[str, Any]:
         return {'name': 'Gurke', 'good_companions': [{'name': cell, 'legacy': True}]}
 
-    @pytest.mark.history_gap(
-        issue=1202, reason='import/free-text companion writes record no revision',
-    )
     def test_legacy_dash_entries_each_keep_their_own_note(self) -> None:
         row = self.legacy_row('Tomate - A, mit Komma; # – /; Kartoffel - B')
         preview = self.client.post(PREVIEW_URL, [row], format='json').data['results'][0]
@@ -876,9 +842,6 @@ class LocalizedCompanionNotesTests(CompanionLibraryTestCase):
             {self.tomato.pk: {'de': 'A, mit Komma'}, self.potato.pk: {'de': 'B'}},
         )
 
-    @pytest.mark.history_gap(
-        issue=1202, reason='import/free-text companion writes record no revision',
-    )
     def test_unresolved_legacy_entry_stays_text_without_swallowing_its_siblings(self) -> None:
         row = self.legacy_row('Unbekannt - X; Tomate - A')
         preview = self.client.post(PREVIEW_URL, [row], format='json').data['results'][0]
@@ -889,9 +852,6 @@ class LocalizedCompanionNotesTests(CompanionLibraryTestCase):
         self.assertTrue(unresolved.exists())
         self.assertEqual(CropCompanion.objects.get(companion_text='').notes, {'de': 'A'})
 
-    @pytest.mark.history_gap(
-        issue=1202, reason='import/free-text companion writes record no revision',
-    )
     def test_known_spaced_dash_name_wins_over_legacy_suffix(self) -> None:
         named = Crop.objects.create(project=self.project, name='Salat - Pflücksalat')
         Crop.objects.create(project=self.project, name='Salat')
@@ -901,9 +861,6 @@ class LocalizedCompanionNotesTests(CompanionLibraryTestCase):
         self.assertIn(named.pk, (relation.crop_id, relation.companion_crop_id))
         self.assertEqual(relation.notes, {})
 
-    @pytest.mark.history_gap(
-        issue=1202, reason='import/free-text companion writes record no revision',
-    )
     def test_json_language_maps_are_authoritative_and_do_not_copy_derived_note(self) -> None:
         response = self.client.post(APPLY_URL, {'items': [{'name': 'Gurke', 'good_companions': [{'name': 'Tomate', 'notes': {'fr': 'Source FR'}, 'note': 'Source FR'}]}], 'companion_note_language': 'de'}, format='json')
         self.assertEqual(response.status_code, 200, response.data)
@@ -1016,9 +973,6 @@ class LocalizedCompanionNotesTests(CompanionLibraryTestCase):
         relation.refresh_from_db()
         self.assertEqual(relation.notes, {'de': 'Legacy source'})
 
-    @pytest.mark.history_gap(
-        issue=1202, reason='import/free-text companion writes record no revision',
-    )
     def test_known_legacy_reason_labels_remain_structured(self) -> None:
         from farm.services.crop_companions import LEGACY_REASON_LABELS
 
