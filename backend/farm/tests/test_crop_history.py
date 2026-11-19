@@ -755,6 +755,34 @@ class MediaCleanupTests(TestCase):
         call_command("cleanup_orphaned_media")
         self.assertFalse(MediaFile.objects.filter(id=media.id).exists())
 
+    def test_cleanup_preserves_stale_markers_with_live_crop_or_attachment_references(self):
+        from farm.models import NoteAttachment, PlantingPlan
+
+        with self.settings(STORAGES={
+            'default': {'BACKEND': 'django.core.files.storage.InMemoryStorage'},
+        }):
+            project = Project.objects.create(name='Media owner', slug='media-owner')
+            other = Project.objects.create(name='Other', slug='other-media-user')
+            crop_path = default_storage.save('crop-media/live-crop.jpg', ContentFile(b'crop'))
+            note_path = default_storage.save('crop-media/live-note.jpg', ContentFile(b'note'))
+            crop_media = MediaFile.objects.create(project=project, storage_path=crop_path)
+            note_media = MediaFile.objects.create(project=project, storage_path=note_path)
+            crop = Crop.objects.create(project=project, name='Live crop', image_file=crop_media)
+            other_crop = Crop.objects.create(project=other, name='Other crop')
+            plan = PlantingPlan.objects.create(project=other, crop=other_crop)
+            NoteAttachment.objects.create(project=other, planting_plan=plan, image=note_path)
+            MediaFile.objects.filter(pk__in=[crop_media.pk, note_media.pk]).update(
+                orphaned_at=timezone.now() - timedelta(days=40),
+            )
+
+            call_command('cleanup_orphaned_media')
+
+            crop.refresh_from_db()
+            self.assertEqual(crop.image_file_id, crop_media.pk)
+            self.assertTrue(MediaFile.objects.filter(pk=note_media.pk).exists())
+            self.assertTrue(default_storage.exists(crop_path))
+            self.assertTrue(default_storage.exists(note_path))
+
     def test_retained_cleanup_preserves_live_files_and_survives_project_deletion(self):
         from farm.models import NoteAttachment, PlantingPlan
 

@@ -9,14 +9,18 @@ pre-restore state. See docs/versioning-and-history.md#what-to-check-before-chang
 
 import io
 from dataclasses import dataclass
+from datetime import timedelta
 from itertools import pairwise
 from typing import Any
+from unittest.mock import patch
 from uuid import uuid4
 
-import pytest
 from django.contrib.auth import get_user_model
+from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from django.test import override_settings
+from django.utils import timezone
 from PIL import Image
 from rest_framework.test import APITestCase
 
@@ -26,7 +30,9 @@ from farm.history.project_restore import (
     PROJECT_STATE_MODELS,
     ProjectState,
     capture_project_state,
+    record_project_checkpoint,
 )
+from farm.history.records import revision_batch
 from farm.models import (
     BatchOperation,
     Crop,
@@ -47,11 +53,6 @@ IN_MEMORY_STORAGE = {
     'default': {'BACKEND': 'django.core.files.storage.InMemoryStorage'},
     'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
 }
-
-# Clearing a crop image marks its media orphaned with a plain queryset update
-# that records no revision (#1196); versions therefore disagree on this field.
-ORPHAN_MARKER_GAP_1196 = r'media_file#\d+\.orphaned_at'
-KNOWN_DIFF_FIELDS_1196 = frozenset({'media_file.orphaned_at'})
 
 # #1194: the backup of a restore is refused whenever the restore re-created a
 # row that is absent from the pre-restore state (a row deleted later in the
@@ -124,12 +125,7 @@ class HistoryInvariantTestCase(APITestCase):
         ).latest('created_at', 'id')
 
     def assert_state(self, expected: ProjectState, message: str) -> None:
-        diff = [
-            line
-            for line in state_diff(expected, capture_project_state(self.project))
-            if f"{line.split('#', 1)[0]}.{line.split(':', 1)[0].rsplit('.', 1)[-1]}"
-            not in KNOWN_DIFF_FIELDS_1196
-        ]
+        diff = state_diff(expected, capture_project_state(self.project))
         self.assertEqual(diff, [], f'{message}:\n  ' + '\n  '.join(diff))
 
     def assert_refusal_is_atomic(
@@ -180,11 +176,6 @@ class HistoryInvariantTestCase(APITestCase):
             )
 
 
-@pytest.mark.history_gap(
-    issue=1196,
-    match=ORPHAN_MARKER_GAP_1196,
-    reason='clearing a crop image updates the media orphan marker without a revision',
-)
 class HistoryRoundTripScenarioTests(HistoryInvariantTestCase):
     def build_scenario(self) -> dict[str, int]:
         """Create, update and delete rows of every restorable model through the API."""
@@ -527,14 +518,131 @@ class HistoryGroupedOperationRoundTripTests(HistoryInvariantTestCase):
 CROP_RESTORE_PATH_DIFFERENCES_1195 = frozenset()
 
 
-@pytest.mark.history_gap(
-    issue=1196,
-    match=ORPHAN_MARKER_GAP_1196,
-    reason='clearing a crop image updates the media orphan marker without a revision',
-)
 class HistoryRestorePathConsistencyTests(HistoryInvariantTestCase):
     def crop_row(self, crop_id: int) -> dict[str, Any]:
         return capture_project_state(self.project)['crop'][str(crop_id)]
+
+    def upload_image(self, name: str) -> MediaFile:
+        receipt = self.write(
+            'upload image', 'post', '/media-files/upload/', {'file': _png(name)}, multipart=True,
+        )
+        return MediaFile.objects.get(pk=receipt['id'])
+
+    def assert_orphan(self, image: MediaFile, expected: bool) -> None:
+        image.refresh_from_db()
+        self.assertEqual(image.orphaned_at is not None, expected)
+
+    def test_restore_reconciles_shared_images_and_retains_bytes_until_cleanup(self) -> None:
+        now = timezone.now()
+        with patch('django.utils.timezone.now', return_value=now - timedelta(days=45)):
+            replaced = self.upload_image('replaced.png')
+            shared = self.upload_image('shared.png')
+            first = self.write('attach first', 'post', '/crops/', {
+                'name': 'First crop', 'image_file_id': shared.pk,
+            })['id']
+            second = self.write('attach second', 'post', '/crops/', {
+                'name': 'Second crop', 'image_file_id': shared.pk,
+            })['id']
+            self.write('replace one reference', 'patch', f'/crops/{first}/', {
+                'image_file_id': replaced.pk,
+            })
+            self.assert_orphan(shared, False)
+            self.write('clear replacement', 'patch', f'/crops/{first}/', {'image_file_id': None})
+            orphan_version = self.versions[-1]
+        self.write('reattach replacement', 'patch', f'/crops/{first}/', {
+            'image_file_id': replaced.pk,
+        })
+        self.assert_orphan(replaced, False)
+
+        other = Project.objects.create(name='Other project', slug='other-media-project')
+        other_path = default_storage.save('other.png', _png('other.png'))
+        other_media = MediaFile.objects.create(project=other, storage_path=other_path)
+        Crop.objects.create(project=other, name='Other crop', image_file=other_media)
+
+        self.assertEqual(self.restore(orphan_version.revision), 200)
+        self.assert_state(orphan_version.state, 'restoring a detached image changed its marker')
+        backup = self.latest_backup()
+        call_command('cleanup_orphaned_media')
+        self.assertTrue(default_storage.exists(replaced.storage_path))
+        self.assertEqual(self.restore(backup), 200)
+        self.assert_orphan(replaced, False)
+        self.assertEqual(self.restore(orphan_version.revision), 200)
+        self.assert_orphan(replaced, True)
+        self.assert_orphan(shared, False)
+
+        with patch('django.utils.timezone.now', return_value=now + timedelta(days=31)):
+            call_command('cleanup_orphaned_media')
+        self.assertFalse(MediaFile.objects.filter(pk=replaced.pk).exists())
+        self.assertFalse(default_storage.exists(replaced.storage_path))
+        self.assertTrue(default_storage.exists(shared.storage_path))
+        self.assertTrue(default_storage.exists(other_path))
+        self.assert_orphan(other_media, False)
+        self.assertEqual(Crop.objects.get(pk=second).image_file_id, shared.pk)
+        before, counts = capture_project_state(self.project), self.history_counts()
+        self.assert_refusal_is_atomic(self.restore(backup), before, counts)
+        self.assert_refusal_is_atomic(self.restore(orphan_version.revision), before, counts)
+
+    def test_batch_revert_reconciles_images_after_reverting_a_legacy_group(self) -> None:
+        old = self.upload_image('before-batch.png')
+        introduced = self.upload_image('introduced-in-batch.png')
+        crop_id = self.write('attach old', 'post', '/crops/', {
+            'name': 'Batch crop', 'image_file_id': old.pk,
+        })['id']
+        batch = BatchOperation.objects.create(
+            project=self.project, operation_type=BatchOperation.TYPE_SEASON_COPY_DATA,
+        )
+        # Legacy grouped revisions could include crop fields without a media revision.
+        with revision_batch(batch):
+            self.write('replace image in group', 'patch', f'/crops/{crop_id}/', {
+                'image_file_id': introduced.pk,
+            })
+        batch.revisions.filter(entity_type='media_file').update(batch_operation=None)
+        self.assert_orphan(old, True)
+        self.assert_orphan(introduced, False)
+        self.write('revert image group', 'post', f'/history/batch/{batch.pk}/revert/')
+        self.assertEqual(Crop.objects.get(pk=crop_id).image_file_id, old.pk)
+        self.assert_orphan(old, False)
+        self.assert_orphan(introduced, True)
+        self.assertEqual(self.restore(self.latest_backup()), 200)
+        self.assert_orphan(old, True)
+        self.assert_orphan(introduced, False)
+
+    def test_full_restore_repairs_a_legacy_snapshot_with_an_unrecorded_orphan(self) -> None:
+        media = self.upload_image('legacy-orphan.png')
+        crop_id = self.write('create crop', 'post', '/crops/', {'name': 'Legacy crop'})['id']
+        state = capture_project_state(self.project)
+        state['media_file'][str(media.pk)]['orphaned_at'] = None
+        record_project_checkpoint(self.project, state)
+        legacy = latest_selectable_revision(self.project)
+        self.write('attach image', 'patch', f'/crops/{crop_id}/', {'image_file_id': media.pk})
+
+        self.assertEqual(self.restore(legacy), 200)
+        self.assertIsNone(Crop.objects.get(pk=crop_id).image_file_id)
+        self.assert_orphan(media, True)
+        self.assertTrue(default_storage.exists(media.storage_path))
+
+    def test_import_undo_reconciles_restored_and_detached_images(self) -> None:
+        old = self.upload_image('before-import.png')
+        introduced = self.upload_image('introduced-in-import.png')
+        crop_id = self.write('attach old', 'post', '/crops/', {
+            'name': 'Import crop', 'image_file_id': old.pk,
+        })['id']
+        import_id = str(uuid4())
+        self.write('import crop image', 'post', '/crops/import/apply/', {
+            'items': [{'name': 'Import crop', 'image_file_id': introduced.pk}],
+            'confirm_updates': True, 'import_operation_id': import_id,
+        })
+        self.assert_orphan(old, True)
+        self.assert_orphan(introduced, False)
+        batch = BatchOperation.objects.get(request_id=import_id)
+        self.write('undo import', 'post', f'/history/batch/{batch.pk}/revert/')
+        self.assertEqual(Crop.objects.get(pk=crop_id).image_file_id, old.pk)
+        self.assert_orphan(old, False)
+        self.assert_orphan(introduced, True)
+        self.assertEqual(self.restore(self.latest_backup()), 200)
+        self.assertEqual(Crop.objects.get(pk=crop_id).image_file_id, introduced.pk)
+        self.assert_orphan(old, True)
+        self.assert_orphan(introduced, False)
 
     def test_per_crop_and_full_project_restore_agree_on_a_crop_version(self) -> None:
         first_species = CropSpecies.objects.create(name='Earlier restore species')

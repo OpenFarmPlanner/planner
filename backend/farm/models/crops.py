@@ -912,6 +912,17 @@ class Crop(TimestampedModel):
         if previous:
             previous['timing_windows'] = previous_windows
         changed_fields = self._compute_changed_fields(previous, current)
+        previous_image = (
+            previous.get('image_file_id') if previous and previous['deleted_at'] is None else None
+        )
+        current_image = current.get('image_file_id') if current.get('deleted_at') is None else None
+        if previous_image != current_image:
+            from farm.services.crop_media import reconcile_media_orphans
+
+            reconcile_media_orphans(
+                self.project_id, media_ids={key for key in (previous_image, current_image) if key},
+                record_history=True,
+            )
         timing_changed_fields = [
             field for field in ('growth_duration_days', 'harvest_duration_days')
             if field in changed_fields

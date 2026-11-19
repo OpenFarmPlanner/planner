@@ -3,9 +3,11 @@ from datetime import timedelta
 from django.core.files.storage import default_storage
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.db.models import Exists, OuterRef
 from django.utils import timezone
 
 from farm.models import MediaFile, NoteAttachment, Project, RetainedUpload
+from farm.services.crop_media import with_live_media_reference
 
 
 class Command(BaseCommand):
@@ -13,15 +15,19 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         cutoff = timezone.now() - timedelta(days=30)
-        queryset = MediaFile.objects.filter(orphaned_at__isnull=False, orphaned_at__lt=cutoff)
+        retained = RetainedUpload.objects.filter(
+            storage_path=OuterRef('storage_path'), removed_at__gte=cutoff,
+        )
+        queryset = MediaFile.objects.filter(orphaned_at__lt=cutoff).filter(~Exists(retained))
         deleted = 0
         for pk, project_id in queryset.values_list('pk', 'project_id').iterator():
             with transaction.atomic():
                 # A crop restore locks its project before checking the image and marker.
                 if project_id is not None:
                     list(Project.objects.select_for_update().filter(pk=project_id))
-                media = queryset.select_for_update().filter(pk=pk).first()
-                if media is None:
+                candidates = queryset.select_for_update().filter(pk=pk)
+                media = with_live_media_reference(candidates).first()
+                if media is None or media.has_live_reference:
                     continue
                 if media.storage_path and default_storage.exists(media.storage_path):
                     default_storage.delete(media.storage_path)

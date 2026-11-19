@@ -2,6 +2,7 @@
 
 from django.core.files.storage import default_storage
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import parsers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -93,7 +94,9 @@ class MediaFileUploadView(APIView):
         ensure_project_checkpoint(active_project, user_name=_current_actor_label(request))
         rel_path = crop_media_upload_path(None, f'image.{extension}')
         saved_path = default_storage.save(rel_path, upload)
-        media = MediaFile.objects.create(project=active_project, storage_path=saved_path)
+        media = MediaFile.objects.create(
+            project=active_project, storage_path=saved_path, orphaned_at=timezone.now(),
+        )
         record_entity_revision(
             project=active_project,
             entity_type='media_file',
