@@ -117,6 +117,16 @@ export function CropSpeciesPicker({
   const [open, setOpen] = useState(false);
   const proposalActionId = useId();
   const inputId = useId();
+  const initialFocusPending = useRef(autoFocus && !disabled);
+  useEffect(() => {
+    if (!initialFocusPending.current || !autoFocus || disabled) return;
+    // The dialog's focus trap can restore focus after a native mount autofocus.
+    const frame = window.requestAnimationFrame(() => {
+      initialFocusPending.current = false;
+      document.getElementById(inputId)?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [autoFocus, disabled, inputId]);
   // MUI fires the 'reset' input update in the same tick as onChange, before
   // React has re-rendered with the new prop, so that handler cannot read
   // `proposalName` from its closure. This mirror is written by the picker
@@ -178,6 +188,19 @@ export function CropSpeciesPicker({
         container: () => document.getElementById(inputId)?.closest('[role="dialog"]') ?? document.body,
         popperOptions: { strategy: 'fixed' },
         modifiers: [{ name: 'preventOverflow', options: { altAxis: true, padding: 8 } }],
+        // A clipped anchor can leave its fixed popup over the dialog actions.
+        sx: { '&[data-popper-reference-hidden]': { visibility: 'hidden', pointerEvents: 'none' } },
+        onBlur: (event) => {
+          const next = event.relatedTarget;
+          if (next?.id !== inputId && !event.currentTarget.contains(next)) setOpen(false);
+        },
+        onKeyDown: (event) => {
+          if (event.key !== 'Escape') return;
+          event.preventDefault();
+          event.stopPropagation();
+          document.getElementById(inputId)?.focus();
+          setOpen(false);
+        },
       } }}
       open={open} onOpen={() => setOpen(true)} clearOnBlur={false}
       onClose={(event, reason) => {
@@ -195,11 +218,7 @@ export function CropSpeciesPicker({
         option.id === optionValue.id
       )}
       slots={{ paper: AutocompleteActionPaper }}
-      // Server-searched mode wants results visible the moment the field is
-      // focused (the publishing wizard autofocuses it on open, prefilled
-      // with the crop's own name) rather than only once the user types —
-      // uncontrolled, so it doesn't fight MUI's own open/close timing the
-      // way a controlled `open` prop toggled from mount did.
+      // Server-searched mode shows its results as soon as the input is focused.
       openOnFocus={serverSearched}
       filterOptions={(options, params) => serverSearched ? options : rankSpeciesOptions(options, params.inputValue.trim(), getOfficialName)}
       renderOption={(props, option) => {
@@ -259,9 +278,6 @@ export function CropSpeciesPicker({
         <TextField
           {...params}
           inputRef={inputRef}
-          // Callers with earlier mapping fields can keep the popup closed
-          // on mount so it does not cover the first required decision.
-          autoFocus={autoFocus}
           label={label ?? t('library.speciesPicker.label')}
           required={required}
           error={Boolean(errorText)}

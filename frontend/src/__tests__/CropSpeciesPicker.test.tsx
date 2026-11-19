@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CropSpeciesPicker, type CropSpeciesPickerProps } from '../crops/CropSpeciesPicker';
 import type { CropSpecies } from '../api/types';
 
@@ -74,6 +74,13 @@ const field = () => screen.getByRole('combobox');
 const listbox = () => screen.getByRole('listbox');
 const proposeOption = (name: string) =>
   screen.getByRole('button', { name: `„${name}“ als neue Kulturart vorschlagen` });
+
+beforeEach(() => {
+  // jsdom has no layout. Give Popper a visible anchor and viewport.
+  vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(1024);
+  vi.spyOn(document.documentElement, 'clientHeight', 'get').mockReturnValue(768);
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(16, 24, 320, 40));
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -429,6 +436,36 @@ describe('CropSpeciesPicker', () => {
       expect(onProposalNameChange).toHaveBeenCalledWith('Yacon');
     });
 
+    it('closes the proposal popup when focus leaves its action', async () => {
+      const user = userEvent.setup();
+      const { onProposalNameChange } = setup();
+      render(<button>Continue</button>);
+      await user.type(field(), 'Yacon');
+      await user.tab();
+      expect(proposeOption('Yacon')).toHaveFocus();
+      const continueButton = screen.getByRole('button', { name: 'Continue' });
+      await user.click(continueButton);
+
+      expect(continueButton).toHaveFocus();
+      expect(screen.queryByRole('button', { name: /vorschlagen/ })).not.toBeInTheDocument();
+      expect(field()).toHaveValue('Yacon');
+      expect(onProposalNameChange).not.toHaveBeenCalledWith('Yacon');
+    });
+
+    it('returns focus to the field when Escape closes the proposal popup', async () => {
+      const user = userEvent.setup();
+      const { onProposalNameChange } = setup({ serverSearched: true });
+      await user.type(field(), 'Yacon');
+      await user.tab();
+      expect(proposeOption('Yacon')).toHaveFocus();
+      await user.keyboard('{Escape}');
+
+      expect(field()).toHaveFocus();
+      expect(field()).toHaveValue('Yacon');
+      expect(screen.queryByRole('button', { name: /vorschlagen/ })).not.toBeInTheDocument();
+      expect(onProposalNameChange).not.toHaveBeenCalledWith('Yacon');
+    });
+
     it('trims what it commits', async () => {
       const user = userEvent.setup();
       const { onProposalNameChange } = setup();
@@ -508,12 +545,9 @@ describe('CropSpeciesPicker', () => {
     it('arrives focused with its results already open', async () => {
       setup({ serverSearched: true });
 
-      // No interaction at all: the wizard opens this field prefilled with
-      // the crop's own name, and `autoFocus` plus `openOnFocus` get the
-      // results on screen without an imperative focus call racing the
-      // dialog's own mount transition.
-      expect(field()).toHaveFocus();
+      // The wizard shows results before any interaction.
       expect(await screen.findByRole('listbox')).toBeInTheDocument();
+      expect(field()).toHaveFocus();
     });
 
     it('waits to be opened when the catalogue was loaded whole', () => {
