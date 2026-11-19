@@ -811,16 +811,14 @@ def mark_library_copies_modified(kultur_ids: Iterable[int | None], *, user_name:
     ids = {kultur_id for kultur_id in kultur_ids if kultur_id is not None}
     if ids:
         _touch_companion_crops(ids)
-        crops = list(Crop.objects.filter(
+        changed_ids = list(Crop.objects.filter(
             pk__in=ids, source_public_crop__isnull=False, variety_normalized__isnull=True,
             is_modified_from_source=False,
-        ).select_related('project').order_by('pk'))
-        Crop.objects.filter(pk__in=[crop.pk for crop in crops]).update(
-            is_modified_from_source=True,
-        )
+        ).values_list('pk', flat=True))
+        changed_crops = Crop.objects.filter(pk__in=changed_ids)
+        changed_crops.update(is_modified_from_source=True)
         with internal_project_versions():
-            for crop in crops:
-                crop.is_modified_from_source = True
+            for crop in changed_crops.select_related('project').order_by('pk'):
                 record_entity_revision(
                     project=crop.project, entity_type='crop', object_id=crop.pk,
                     action=EntityRevision.ACTION_UPDATED, snapshot=_serialize_instance(crop),

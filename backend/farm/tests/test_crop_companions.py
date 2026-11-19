@@ -579,6 +579,11 @@ class CompanionLibrarySyncTests(CompanionLibraryTestCase):
         self.assertEqual(response.status_code, 201, response.data)
         self.tomato.refresh_from_db()
         self.assertTrue(self.tomato.is_modified_from_source)
+        divergence_revision = EntityRevision.objects.filter(
+            project=self.project, entity_type='crop', object_id=self.tomato.pk,
+        ).latest('id')
+        self.assertTrue(divergence_revision.snapshot['is_modified_from_source'])
+        self.assertTrue(divergence_revision.snapshot['_project_version_internal'])
 
         self.assertTrue(self.preview_fields()['companions']['pushable'])
         response = self.sync(push_fields=['companions'])
