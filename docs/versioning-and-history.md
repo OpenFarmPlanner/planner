@@ -346,7 +346,7 @@ manual changes in the fixture project.
   deleted by the round-trip scenario in
   `backend/farm/tests/test_history_invariants.py`
   (`HistoryRoundTripScenarioTests.build_scenario`). The registry check fails
-  otherwise. When fixing a listed known gap (#1194, #1195, #1196), remove its
+  otherwise. When fixing the remaining listed gap (#1194), remove its
   expectation there; the test fails until you do.
 
 ## What participates in whole-project restore
@@ -380,13 +380,20 @@ Keeping only the newest revision overall would discard the pre-target state.
 
 Explicit note-attachment deletion retains its bytes instead of deleting storage
 immediately, allowing its pre-delete baseline to recover the original file.
-Full restore, selective import undo and legacy batch revert retain cleanup metadata for media and
-note-attachment paths removed from the domain state, including cascades and
-replaced paths. `RetainedUpload` is cleanup metadata outside project versions;
-it survives project deletion. File bytes remain available to restore backups
-for 30 days after the latest removal. `cleanup_orphaned_media` then removes
-unreferenced bytes and the metadata, checking live media and attachment paths
-across all projects first. A file restored in the meantime remains available.
+New crop uploads start with an orphan timestamp. Crop writes clear the marker
+when an image is attached and record a new timestamp when the last reference
+is removed. These marker revisions are recorded before the completed crop
+revision. Full restore, selective import undo and legacy batch revert reconcile
+markers against live references after applying their restored rows. Existing
+orphan timestamps remain available as historical evidence.
+
+Restore operations check the storage paths for recreated and newly attached images and
+retain paths they detach, including cascades and replacements. `RetainedUpload`
+records the latest removal outside project versions and survives project
+deletion. The 30-day window protects the pre-restore backup even when a
+restored media row carries an older orphan timestamp. `cleanup_orphaned_media`
+checks both live crop references and attachment paths across projects before
+deleting expired files and their metadata.
 Cleanup and restore use the same project-first lock order. History anchors do
 not extend the file-byte retention window indefinitely.
 

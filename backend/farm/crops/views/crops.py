@@ -53,7 +53,6 @@ from farm.history.serializers import CropHistoryEntrySerializer, CropRestoreSeri
 from farm.models import (
     Crop,
     EntityRevision,
-    MediaFile,
     PlantingPlan,
     PublicCrop,
     PublicCropChangeProposal,
@@ -536,11 +535,6 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 affected_crop._history_action = EntityRevision.ACTION_DELETED
                 affected_crop.save(update_fields=['deleted_at', 'updated_at'])
                 self._set_latest_revision_actor(affected_crop)
-                if affected_crop.image_file_id:
-                    MediaFile.objects.filter(
-                        id=affected_crop.image_file_id,
-                        orphaned_at__isnull=True,
-                    ).update(orphaned_at=deleted_at)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -572,8 +566,6 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 restored_crop._history_action = EntityRevision.ACTION_RESTORED
                 restored_crop.save(update_fields=['deleted_at', 'updated_at'])
                 self._set_latest_revision_actor(restored_crop)
-                if restored_crop.image_file_id:
-                    MediaFile.objects.filter(id=restored_crop.image_file_id).update(orphaned_at=None)
         return Response(self.get_serializer(crop).data, status=status.HTTP_200_OK)
 
     def perform_update(self, serializer):
@@ -581,7 +573,6 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             # Another rename can commit between DRF loading the crop and this lock.
             instance = self.get_object()
             serializer.instance = instance
-            previous_media_id = instance.image_file_id
             old_name = instance.name
             source_group = self._crop_group_q(instance)
             requested_name = serializer.validated_data.get('name', old_name)
@@ -593,12 +584,6 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 self._set_latest_revision_actor(auto_general_crop)
             if updated.name != old_name:
                 self._rename_sibling_crops(updated, source_group)
-            if previous_media_id and previous_media_id != updated.image_file_id:
-                MediaFile.objects.filter(
-                    id=previous_media_id, orphaned_at__isnull=True,
-                ).update(orphaned_at=timezone.now())
-            if updated.image_file_id:
-                MediaFile.objects.filter(id=updated.image_file_id).update(orphaned_at=None)
 
     def _has_ambiguous_general_group(self, crop: Crop) -> bool:
         return self._active_crop_group(crop).filter(variety_normalized__isnull=True).count() > 1

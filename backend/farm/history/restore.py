@@ -36,6 +36,7 @@ from farm.services.crop_inheritance import (
     lock_crop_project,
     validate_crop_identity,
 )
+from farm.services.crop_media import reconcile_media_orphans
 
 from .records import (
     _ENTITY_TYPE_LABELS,
@@ -168,8 +169,7 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
     promoted = revision.snapshot.get(PROMOTED_CROP_FIELD_CHANGES)
     with crop_identity_write(crop.project_id):
         crop.refresh_from_db()
-        before = _serialize_instance(crop) if promoted else None
-        old_image_id = crop.image_file_id
+        before = _serialize_instance(crop)
         _apply_crop_snapshot_fields(crop, snapshot)
         if 'timing_windows' in revision.snapshot:
             crop._pending_timing_windows = revision.snapshot['timing_windows'] or []
@@ -177,18 +177,12 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
             crop.library_pinned_fields = []
         crop.deleted_at = None
         validate_crop_identity(crop)
-        if 'image_file_id' in snapshot:
-            _restore_crop_image_markers(crop, old_image_id)
-        if promoted:
-            general_changes = _restore_promoted_crop_fields(crop, promoted)
-            crop.save(record_history=False)
-            record_completed_crop_revision(
-                crop, action=EntityRevision.ACTION_RESTORED, before=before,
-                promoted=general_changes,
-            )
-        else:
-            crop._history_action = EntityRevision.ACTION_RESTORED
-            crop.save()
+        general_changes = _restore_promoted_crop_fields(crop, promoted) if promoted else None
+        crop.save(record_history=False)
+        reconcile_media_orphans(crop.project_id, record_history=True)
+        record_completed_crop_revision(
+            crop, action=EntityRevision.ACTION_RESTORED, before=before, promoted=general_changes,
+        )
 
     return crop
 
@@ -273,29 +267,6 @@ def _crop_restore_reference(
             detail='The historical image is no longer available in storage.',
         )
     return reference
-
-
-def _restore_crop_image_markers(crop: Crop, previous_id: int | None) -> None:
-    media = MediaFile.objects.filter(project_id=crop.project_id)
-    if previous_id and previous_id != crop.image_file_id and not Crop.objects.filter(
-        project_id=crop.project_id, image_file_id=previous_id,
-    ).exclude(pk=crop.pk).exists():
-        previous = media.filter(pk=previous_id, orphaned_at__isnull=True).first()
-        if previous is not None:
-            _record_crop_image_marker(previous, timezone.now())
-    if crop.image_file_id and crop.image_file.orphaned_at is not None:
-        _record_crop_image_marker(crop.image_file, None)
-
-
-def _record_crop_image_marker(media: MediaFile, orphaned_at) -> None:
-    media.orphaned_at = orphaned_at
-    media.save(update_fields=['orphaned_at'])
-    with internal_project_versions():
-        record_entity_revision(
-            project=media.project, entity_type='media_file', object_id=media.pk,
-            action=EntityRevision.ACTION_UPDATED, snapshot=_serialize_instance(media),
-            changed_fields=['orphaned_at'],
-        )
 
 
 def _restore_snapshot_children(model: type, object_id: int, snapshot: dict) -> None:
@@ -575,7 +546,7 @@ def revert_batch_operation(project: Project, batch, *, user_name: str = '') -> N
     """
     from .project_restore import (
         CHECKPOINT_KEY,
-        _retain_removed_uploads,
+        _prepare_restored_uploads,
         capture_project_state,
         record_project_checkpoint,
     )
@@ -681,10 +652,11 @@ def revert_batch_operation(project: Project, batch, *, user_name: str = '') -> N
                 changed_fields=[], user_name=user_name, batch_operation=revert_batch,
             )
 
+        reconcile_media_orphans(project.pk)
         batch.reverted_at = timezone.now()
         batch.save(update_fields=['reverted_at'])
         result = capture_project_state(project)
-        _retain_removed_uploads(project, result, current)
+        _prepare_restored_uploads(project, result, current)
         record_project_checkpoint(
             project, result,
             user_name=user_name, batch_operation=revert_batch,

@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
+from django.core.files.storage import default_storage
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import IntegrityError, models, transaction
 from django.db.models import Q
@@ -25,6 +26,7 @@ from farm.models import (
     SeedPackage,
 )
 from farm.services.crop_inheritance import lock_crop_project
+from farm.services.crop_media import reconcile_media_orphans
 from farm.services.timing_windows import load_timing_window_index
 
 from .records import _RESTORABLE_ENTITY_TYPES, _canonical_entity_type, record_entity_revision
@@ -402,7 +404,7 @@ def apply_project_state(project: Project, state: ProjectState, current: ProjectS
         {int(pk): row for pk, row in current["crop"].items()},
         {pk: row for pk, row in crop_rows.items() if row.get("deleted_at") is None},
     )
-    _retain_removed_uploads(project, state, current)
+    _prepare_restored_uploads(project, state, current)
     for model, label in reversed(PROJECT_STATE_MODELS):
         removed = set(map(int, current[label])) - set(target[model])
         queryset = _model_manager(model).filter(project=project, pk__in=removed)
@@ -419,9 +421,10 @@ def apply_project_state(project: Project, state: ProjectState, current: ProjectS
         if state["crop"][str(pk)] != current["crop"][str(pk)]:
             Crop.all_objects.filter(project=project, pk=pk).update(name_normalized=f"{prefix}{pk}")
     _write_target_rows(project, target, state, current)
+    reconcile_media_orphans(project.pk)
 
 
-def _retain_removed_uploads(project: Project, state: ProjectState, current: ProjectState) -> None:
+def _prepare_restored_uploads(project: Project, state: ProjectState, current: ProjectState) -> None:
     def paths(snapshot: ProjectState) -> set[str]:
         return {
             row[field]
@@ -430,7 +433,54 @@ def _retain_removed_uploads(project: Project, state: ProjectState, current: Proj
             if row.get(field)
         }
 
-    retain_upload_paths(project, paths(current) - paths(state))
+    restored_images = _live_crop_image_ids(state)
+    current_images = _live_crop_image_ids(current)
+    legacy_ids = (
+        (set(restored_images.values()) - state['media_file'].keys())
+        | (set(current_images.values()) - current['media_file'].keys())
+    )
+    legacy_paths = {
+        str(pk): path
+        for pk, path in MediaFile.objects.select_for_update()
+        .filter(pk__in=legacy_ids, project__isnull=True)
+        .order_by('pk')
+        .values_list('pk', 'storage_path')
+    }
+    restored = _live_upload_references(state, restored_images, legacy_paths)
+    before = _live_upload_references(current, current_images, legacy_paths)
+    restored_paths, current_paths = paths(state), paths(current)
+    added_paths = (restored_paths - current_paths) | {
+        path for reference, path in restored.items() if before.get(reference) != path
+    }
+    if any(not path or not default_storage.exists(path) for path in added_paths):
+        raise ProjectRestoreConflict("historical image is no longer available in storage")
+
+    # A restore can keep the media row and its historical orphan timestamp while
+    # disconnecting an image the automatic backup still needs.
+    detached = set(filter(None, before.values())) - set(restored.values())
+    retain_upload_paths(project, (current_paths - restored_paths) | detached)
+
+
+def _live_crop_image_ids(state: ProjectState) -> dict[str, str]:
+    return {
+        key: str(row['image_file_id']) for key, row in state['crop'].items()
+        if row.get('image_file_id') is not None and row.get('deleted_at') is None
+    }
+
+
+def _live_upload_references(
+    state: ProjectState, crop_images: dict[str, str], legacy_paths: dict[str, str],
+) -> dict[tuple[str, str], str]:
+    paths = {
+        **legacy_paths, **{key: row['storage_path'] for key, row in state['media_file'].items()},
+    }
+    return {
+        **{('crop', key): paths[media] for key, media in crop_images.items() if media in paths},
+        **{
+            ('note_attachment', key): row['image'] for key, row in state['note_attachment'].items()
+            if row.get('image')
+        },
+    }
 
 
 def retain_upload_paths(project: Project, paths: set[str]) -> None:
