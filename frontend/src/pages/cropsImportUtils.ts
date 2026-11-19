@@ -185,6 +185,7 @@ export const formatImportFailure = (
   };
   if (entry.error_code && outcomeKeys[entry.error_code]) return t(outcomeKeys[entry.error_code]);
   if (entry.error_code === 'companion_notes_invalid') return t('companions.import.invalid');
+  if (entry.error_code === 'legacy_companion_import_limit') return t('companions.import.legacyLimit');
   if (entry.error_code === 'specific_properties_invalid') return t('specificProperties.importInvalid');
   const importData = entry.importData ?? {};
   const fieldErrors = typeof entry.error === 'object' && entry.error !== null ? Object.keys(entry.error) : [];

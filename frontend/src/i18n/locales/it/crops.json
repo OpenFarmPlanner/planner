@@ -1832,6 +1832,8 @@
       "conflicts_other": "{{count}} vicini sono già elencati con l'altro tipo e rimangono invariati.",
       "invalid": "I nomi dei vicini ammettono fino a 200 caratteri e le note fino a 500. Verifica anche i codici lingua delle note.",
       "invalidRow": "Riga {{row}}: nome del vicino o nota non validi. Verifica riconoscimento dei nomi, codici lingua e lunghezza dei testi.",
+      "legacyLimit": "Suddividi le voci delle consociazioni in formato precedente o importa meno righe alla volta.",
+      "legacyLimitRow": "Riga {{row}}: Suddividi le voci delle consociazioni in formato precedente o importa meno righe alla volta.",
       "legacyWarning": "I commenti precedenti non possono essere risolti in modo univoco e vengono conservati come testo: {{names}}",
       "created_many": "{{count}} vicini importati.",
       "unresolved_many": "{{count}} vicini non corrispondono a colture né famiglie botaniche e vengono importati come testo: {{names}}",

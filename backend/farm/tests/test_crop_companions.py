@@ -192,6 +192,36 @@ class CompanionPlanningCheckTests(CropCompanionTestCase):
 
 
 class CompanionImportTests(CropCompanionTestCase):
+    def test_legacy_import_limit_is_a_row_error_in_preview_and_apply(self) -> None:
+        from unittest.mock import patch
+
+        from farm.services.crop_companions import (
+            LEGACY_COMPANION_LIMIT_CODE,
+            LegacyCompanionImportBudget,
+        )
+
+        rows = [
+            {'name': 'Mint', 'good_companions': [{'name': 'Tomate – Source', 'legacy': True}]},
+            {'name': 'Basil', 'good_companions': [{'name': 'Kartoffel – Source', 'legacy': True}]},
+        ]
+        with patch(
+            'farm.services.crop_companions.LegacyCompanionImportBudget',
+            side_effect=lambda: LegacyCompanionImportBudget(work_remaining=3),
+        ):
+            preview = self.client.post(PREVIEW_URL, rows, format='json')
+            self.assertEqual(preview.status_code, 200)
+            self.assertEqual(preview.data['results'][0]['companions']['count'], 1)
+            self.assertEqual(preview.data['results'][1]['error_code'], LEGACY_COMPANION_LIMIT_CODE)
+            applied = self.client.post(
+                APPLY_URL, {'items': rows, 'companion_note_language': 'fr'}, format='json',
+            )
+
+        self.assertEqual(applied.status_code, 200)
+        self.assertEqual(applied.data['errors'][0]['error_code'], LEGACY_COMPANION_LIMIT_CODE)
+        self.assertEqual(applied.data['created_count'], 1)
+        self.assertFalse(Crop.objects.filter(project=self.project, name='Basil').exists())
+        self.assertEqual(CropCompanion.objects.get(project=self.project).notes, {'fr': 'Source'})
+
     def test_adding_an_imported_pair_invalidates_both_comparison_timestamps(self):
         from farm.services.crop_companions import apply_import_companions
 

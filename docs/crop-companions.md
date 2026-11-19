@@ -275,6 +275,8 @@ reason enum. Unresolved/ambiguous legacy entries remain intact as free text and
 are called out in preview; the importer never searches arbitrary name prefixes.
 Names are limited to 200 characters and notes to 500; oversized unresolved
 input is rejected rather than truncated.
+Legacy entries that exceed the validation limits are reported in preview and
+apply. Split the entries or use smaller import batches.
 
 **Merge and replacement.** Import adds relations without deleting others.
 Existing structured reasons are retained on re-import. Nonempty notes update

@@ -68,6 +68,13 @@ TARGET_CROP = 'crop'
 TARGET_FAMILY = 'family'
 TARGET_TEXT = 'text'
 
+MAX_LEGACY_COMPANION_LENGTH = 8_192
+MAX_LEGACY_COMPANION_ITEM_WORK = 128
+MAX_LEGACY_COMPANION_PASS_LENGTH = 131_072
+MAX_LEGACY_COMPANION_PASS_WORK = 2_048
+LEGACY_COMPANION_LIMIT_CODE = 'legacy_companion_import_limit'
+_LEGACY_DASH = re.compile(r'(?<!\s)\s+[-–]\s+')
+
 
 def active_relations(project_id: int) -> QuerySet[CropCompanion]:
     """The project's relations whose Kulturen are not soft-deleted."""
@@ -238,7 +245,37 @@ def link_free_text_companions(project_id: int, names: Iterable[str] | None = Non
 
 # --- Spreadsheet import ---------------------------------------------------------
 
-def normalize_import_items(raw: Any) -> list[dict[str, Any]]:
+def _legacy_companion_limit() -> ValidationError:
+    return ValidationError(
+        'Split legacy companion entries or use a smaller import batch.',
+        code=LEGACY_COMPANION_LIMIT_CODE,
+    )
+
+
+@dataclass
+class LegacyCompanionImportBudget:
+    """Shared across rows and both kinds for one preview or apply pass.
+
+    A request that previews and then applies has at most two passes. Reserve
+    lookup work from the syntax before using the resolver so both passes have
+    the same charge even if their available crop names differ.
+    """
+
+    text_remaining: int = MAX_LEGACY_COMPANION_PASS_LENGTH
+    work_remaining: int = MAX_LEGACY_COMPANION_PASS_WORK
+
+    def reserve_text(self, length: int) -> None:
+        if length > MAX_LEGACY_COMPANION_LENGTH or length > self.text_remaining:
+            raise _legacy_companion_limit()
+        self.text_remaining -= length
+
+    def reserve_work(self, work: int) -> None:
+        if work > self.work_remaining:
+            raise _legacy_companion_limit()
+        self.work_remaining -= work
+
+
+def normalize_import_items(raw: Any, budget: LegacyCompanionImportBudget) -> list[dict[str, Any]]:
     """Validated ``{name, reason, note}`` items from an import row's companion field.
 
     The frontend parses spreadsheet cells into these items
@@ -246,12 +283,18 @@ def normalize_import_items(raw: Any) -> list[dict[str, Any]]:
     """
     if not isinstance(raw, list):
         return []
-    items: list[dict[str, str]] = []
+    items: list[dict[str, Any]] = []
     for item in raw:
         if not isinstance(item, dict):
             continue
-        name = str(item.get('name') or '').strip()
-        if (len(name) > 200 and item.get('legacy') is not True) or len(str(item.get('note') or '')) > 500:
+        name = item.get('name') or ''
+        legacy = item.get('legacy') is True
+        if legacy:
+            if not isinstance(name, str):
+                raise _legacy_companion_limit()
+            budget.reserve_text(len(name))
+        name = str(name).strip()
+        if (len(name) > 200 and not legacy) or len(str(item.get('note') or '')) > 500:
             raise ValidationError('Companion names allow 200 characters and notes allow 500 characters.', code='companion_notes_invalid')
         if not any(char.isalnum() for char in name):
             continue
@@ -261,7 +304,7 @@ def normalize_import_items(raw: Any) -> list[dict[str, Any]]:
             'reason': reason if reason in REASONS else CropCompanion.REASON_OTHER,
             'note': str(item.get('note') or ''),
             **({'notes': _import_notes_map(item['notes'])} if 'notes' in item else {}),
-            **({'legacy': True} if item.get('legacy') is True else {}),
+            **({'legacy': True} if legacy else {}),
         })
     return items
 
@@ -276,13 +319,12 @@ def _import_notes_map(value: Any) -> dict[str, str]:
 def resolve_import_items(raw: Any, resolver: CompanionNameResolver) -> tuple[list[dict[str, Any]], list[str]]:
     resolved: list[dict[str, Any]] = []
     warnings: list[str] = []
-    for item in normalize_import_items(raw):
+    budget = resolver.legacy_import_budget
+    for item in normalize_import_items(raw, budget):
         if not item.pop('legacy', False):
             resolved.append(item)
             continue
-        for entry in _legacy_names(item['name'], separators=';'):
-            if not any(character.isalnum() for character in entry):
-                continue
+        for entry in _prepare_legacy_entries(item['name'], budget):
             entry_items, warning = _resolve_legacy_entry(item, entry, resolver)
             resolved.extend(entry_items)
             if warning:
@@ -290,8 +332,42 @@ def resolve_import_items(raw: Any, resolver: CompanionNameResolver) -> tuple[lis
     return resolved, warnings
 
 
+@dataclass
+class LegacyCompanionEntry:
+    text: str
+    plain_names: list[str]
+    dash_options: list[tuple[list[str], str]]
+
+
+def _prepare_legacy_entries(
+    name: str, budget: LegacyCompanionImportBudget,
+) -> list[LegacyCompanionEntry]:
+    entries = []
+    work = 0
+    limit = min(MAX_LEGACY_COMPANION_ITEM_WORK, budget.work_remaining)
+    for entry in _legacy_names(name, separators=';'):
+        if not any(character.isalnum() for character in entry):
+            continue
+        plain_names = _legacy_names(entry)
+        max_neighbours = max(1, len(plain_names))
+        work += 2 * max_neighbours  # Whole entry, then final name resolution.
+        dash_options = []
+        for match in _LEGACY_DASH.finditer(entry):
+            if work >= limit:
+                raise _legacy_companion_limit()
+            names = _legacy_names(entry[:match.start()])
+            # Count alternatives that require parsing even when they have no names.
+            work += max(1, len(names))
+            dash_options.append((names, entry[match.end():]))
+        if work > limit:
+            raise _legacy_companion_limit()
+        entries.append(LegacyCompanionEntry(entry, plain_names, dash_options))
+    budget.reserve_work(work)
+    return entries
+
+
 def _resolve_legacy_entry(
-    item: dict[str, Any], entry: str, resolver: CompanionNameResolver,
+    item: dict[str, Any], entry: LegacyCompanionEntry, resolver: CompanionNameResolver,
 ) -> tuple[list[dict[str, Any]], str | None]:
     """One ``;``-separated entry of a legacy dash cell: ``Name``, ``A, B`` or ``A, B - Note``.
 
@@ -303,14 +379,9 @@ def _resolve_legacy_entry(
         )
 
     plain = {**item, 'note': ''}
-    names = _legacy_names(entry)
-    if resolves(names):
-        return [{**plain, 'name': name} for name in names], None
-    candidates = []
-    for match in re.finditer(r'\s+[-–]\s+', entry):
-        prefix = _legacy_names(entry[:match.start()])
-        if resolves(prefix):
-            candidates.append((prefix, entry[match.end():]))
+    if resolves(entry.plain_names):
+        return [{**plain, 'name': name} for name in entry.plain_names], None
+    candidates = [(prefix, note) for prefix, note in entry.dash_options if resolves(prefix)]
     if len(candidates) == 1:
         prefix, note = candidates[0]
         reason, note = _legacy_reason(note)
@@ -320,12 +391,12 @@ def _resolve_legacy_entry(
             )
         noted = {**item, 'name': prefix[-1], 'note': note, 'reason': reason or item['reason']}
         return [*({**plain, 'name': name} for name in prefix[:-1]), noted], None
-    if len(entry) > 200:
+    if len(entry.text) > 200:
         raise ValidationError(
             'The unresolved companion name exceeds 200 characters; split or correct the group.',
             code='companion_notes_invalid',
         )
-    return [{**plain, 'name': entry}], entry
+    return [{**plain, 'name': entry.text}], entry.text
 
 
 def _legacy_reason(note: str) -> tuple[str | None, str]:
@@ -339,21 +410,21 @@ def _legacy_reason(note: str) -> tuple[str | None, str]:
 
 def _legacy_names(value: str, separators: str = ',;') -> list[str]:
     names: list[str] = []
-    current = ''
+    start = 0
     depth = 0
-    for character in value:
+    for index, character in enumerate(value):
         if character in '([':
             depth += 1
         elif character in ')]' and depth:
             depth -= 1
         if character in separators and not depth:
-            if current.strip():
-                names.append(current.strip())
-            current = ''
-        else:
-            current += character
-    if current.strip():
-        names.append(current.strip())
+            name = value[start:index].strip()
+            if name:
+                names.append(name)
+            start = index + 1
+    name = value[start:].strip()
+    if name:
+        names.append(name)
     return names
 
 
@@ -370,6 +441,7 @@ class CompanionNameResolver:
     def __init__(self, project_id: int, *, extra_names: Iterable[str] = ()) -> None:
         self.project_id = project_id
         self._cache: dict[str, CompanionTarget] = {}
+        self.legacy_import_budget = LegacyCompanionImportBudget()
         # Names of rows the import is about to create count as resolvable in
         # the preview, so a neighbour named later in the same file is not
         # reported as unknown.
@@ -432,17 +504,17 @@ def preview_row_companions(
     row: dict[str, Any],
 ) -> dict[str, Any] | None:
     """Which neighbours of an import row would stay free text."""
-    names = [
-        item['name']
-        for kind in KINDS
-        for item in resolve_import_items(row.get(f'{kind}_companions'), resolver)[0]
-    ]
+    names: list[str] = []
+    warnings: list[str] = []
+    for kind in KINDS:
+        items, kind_warnings = resolve_import_items(row.get(f'{kind}_companions'), resolver)
+        names.extend(item['name'] for item in items)
+        warnings.extend(kind_warnings)
     if not names:
         return None
     unresolved = [
         name for name in names if resolver.resolve(name, create=False).type == TARGET_TEXT
     ]
-    warnings = [warning for kind in KINDS for warning in resolve_import_items(row.get(f'{kind}_companions'), resolver)[1]]
     return {'count': len(names), 'unresolved': unresolved, **({'warnings': warnings} if warnings else {})}
 
 

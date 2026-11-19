@@ -1836,6 +1836,8 @@
       "conflicts_other": "{{count}} voisins sont déjà enregistrés avec l'autre type et restent inchangés.",
       "invalid": "Les noms des voisins sont limités à 200 caractères et les notes à 500. Vérifiez aussi les codes de langue des notes.",
       "invalidRow": "Ligne {{row}} : nom de voisin ou note non valide. Vérifiez les noms, les codes de langue et la longueur des textes.",
+      "legacyLimit": "Divisez les entrées de voisinage au format ancien ou importez moins de lignes à la fois.",
+      "legacyLimitRow": "Ligne {{row}} : Divisez les entrées de voisinage au format ancien ou importez moins de lignes à la fois.",
       "legacyWarning": "Ces anciens commentaires ne peuvent pas être reconnus sans ambiguïté et sont conservés comme texte : {{names}}"
     },
     "publishSkipped_one": "{{count}} voisin reste dans le projet : c'est du texte libre ou une culture sans espèce cultivée.",
