@@ -731,7 +731,8 @@
       "companionsUnknown": "Kultur gespeichert; ob die Nachbarn übernommen wurden, ist unklar. Prüfe die Nachbarn vor einem erneuten Import.",
       "invalidReference": "Die Kultur ist im aktuellen Projekt nicht mehr verfügbar.",
       "finalize": "Die abschließende Verknüpfung bestehender Nachbarn konnte nicht bestätigt werden. Bereits gespeicherte Kulturen bleiben erhalten.",
-      "refresh": "Die Kulturen konnten nicht neu geladen werden. Lade die Seite neu; bereits bestätigte Einträge bleiben gespeichert.",
+      "refresh": "Die Kulturliste konnte nicht aktualisiert werden. Lade die Seite neu, um die aktuelle Liste zu sehen.",
+      "unconfirmed": "Das Ergebnis des Imports ist unklar. Lade die Seite neu und prüfe die Kulturen, bevor du erneut importierst.",
       "incomplete": "Der Import ist nicht vollständig bestätigt. Prüfe die Hinweise zu den einzelnen Zeilen vor einem erneuten Import.",
       "projectChanged": "Das aktive Projekt wurde geändert. Der Import wurde gestoppt. Bereits bestätigte Zeilen gehören zum ursprünglichen Projekt. Wechsle dorthin zurück und prüfe die Kulturen vor einem erneuten Import."
     },

@@ -100,8 +100,11 @@ error or invalid response leaves that request's write outcomes unknown.
 Companion failures distinguish saved crops from incomplete neighbours.
 Finalization and list-refresh failures never erase acknowledged crop writes.
 
-The result names source rows and confirmed row ranges. It offers Close rather
-than replaying uncertain writes. Users must inspect existing crops before a
-new import; each new file requires fresh update confirmation and there are no
-automatic retries. The crop list refreshes once after
-an apply attempt, including uncertain outcomes.
+The result names source rows and confirmed row ranges. Once apply finishes,
+the dialog offers Close. For an unconfirmed outcome, reload the page and check
+the crops before importing again. Each new file requires fresh update
+confirmation. The crop list refreshes once after a submitted apply in the
+same project, including uncertain outcomes. If that read fails, the dialog
+keeps the confirmed counts and ranges visible with a localized reload message.
+Closing the result and reloading the page reads the current crops without
+resubmitting the import.

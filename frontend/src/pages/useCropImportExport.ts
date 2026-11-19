@@ -31,13 +31,13 @@ export type ExportScope = 'current' | 'all';
 
 interface UseCropImportExportConfig {
   selectedCrop: Crop | undefined;
-  fetchCrops: () => Promise<void>;
+  refreshCropsAfterImport: (projectId: number) => Promise<boolean>;
   showSnackbar: (message: string, severity: 'success' | 'error' | 'info') => void;
 }
 
 export function useCropImportExport({
   selectedCrop,
-  fetchCrops,
+  refreshCropsAfterImport,
   showSnackbar,
 }: UseCropImportExportConfig) {
   const { t, i18n } = useTranslation(['crops', 'common']);
@@ -71,9 +71,8 @@ export function useCropImportExport({
     reset: resetImportState,
     setErrorState: setImportErrorState,
     setPreviewReadyState,
-    setUploading: setImportUploading,
-    setPartialFailure: setImportPartialFailure,
-    setSuccessState: setImportSuccessState,
+    startApply,
+    finishApply,
   } = useCropImportState();
 
   const handleImportFileTrigger = useCallback(() => {
@@ -111,7 +110,6 @@ export function useCropImportExport({
           return;
         }
 
-        setImportUploading();
         try {
           const results = await previewCropImportBatches(entries, importLanguageRef.current, setImportProgress, importProjectRef.current);
           const invalidEntries: string[] = [];
@@ -169,7 +167,6 @@ export function useCropImportExport({
           return;
         }
 
-        setImportUploading();
         try {
           const results = await previewCropImportBatches(importAnalysis.validEntries, importLanguageRef.current, setImportProgress, importProjectRef.current);
           const companionWarning = buildCompanionPreviewWarning(results, t);
@@ -206,7 +203,7 @@ export function useCropImportExport({
 
     setImportErrorState({ error: t('import.errors.unsupportedFormat') });
     setImportDialogOpen(true);
-  }, [resetImportState, t, setImportErrorState, setImportUploading, setPreviewReadyState, currentLanguage, previewError]);
+  }, [resetImportState, t, setImportErrorState, setPreviewReadyState, currentLanguage, previewError]);
 
   const handleImportFileSelected = useCallback(async (file: File) => {
     if (importPreparingRef.current || applyingRef.current) return;
@@ -274,26 +271,25 @@ export function useCropImportExport({
   }, [loadCompanionsByCrop, selectedCrop, showSnackbar, t, i18n]);
 
   const handleImportStart = async () => {
-    if (!hasImportableEntries || applyingRef.current || attemptedRef.current) return;
+    const projectId = importProjectRef.current;
+    if (!hasImportableEntries || applyingRef.current || attemptedRef.current || projectId === undefined) return;
     applyingRef.current = true;
     attemptedRef.current = true;
-    setImportUploading();
+    startApply();
     try {
       const result = await applyCropImportBatches(importState.payload, importState.previewResults, {
         confirm_updates: confirmUpdates,
         companion_note_language: importLanguageRef.current,
-        ...(importProjectRef.current !== undefined ? { expected_project_id: importProjectRef.current } : {}),
+        expected_project_id: projectId,
       }, setImportProgress);
       const { created_count, updated_count, skipped_count, duplicate_count, errors, companions } = result;
-      const summary = [
-        buildImportSuccessMessage(created_count, updated_count, skipped_count, t, duplicate_count),
-        ...buildCompanionImportMessages(companions, t),
-      ].filter(Boolean).join(' ');
-      let refreshFailed = false;
-      if (result.attempted) {
-        try { await fetchCrops(); }
-        catch { refreshFailed = true; }
-      }
+      const sourceRows = new Map(importState.previewResults.map(row => [row.index, row.row_number]));
+      const confirmedRows = result.outcomes.filter(row => ['created', 'updated'].includes(row.status))
+        .map(row => sourceRows.get(row.index) ?? row.index + 1);
+      const inOriginalProject = () => Number(window.localStorage.getItem('activeProjectId')) === projectId;
+      const refreshFailed = result.attempted && inOriginalProject()
+        && !await refreshCropsAfterImport(projectId).catch(() => false);
+      const projectChanged = !inOriginalProject() || result.interrupted?.kind === 'project_changed';
       const failedEntries = mapImportErrors(errors, importState.payload);
       for (const outcome of result.outcomes) {
         const pending = ['not_sent', 'unknown'].includes(outcome.status) ? outcome.status
@@ -305,35 +301,47 @@ export function useCropImportExport({
         });
       }
       failedEntries.forEach(entry => {
-        entry.row_number = importState.previewResults.find(row => row.index === entry.index)?.row_number ?? entry.index + 1;
+        entry.row_number = sourceRows.get(entry.index) ?? entry.index + 1;
         entry.companionPhase = result.outcomes[entry.index]?.companions === 'error';
       });
-      if (failedEntries.length || result.interrupted || refreshFailed) {
-        const seedRateConstraints = errors.length ? await cropAPI.seedRateConstraints()
-          .then(response => response.data.units).catch(() => null) : null;
-        const messages = [
-          failedEntries.length ? (result.interrupted ? t('import.errors.incomplete')
-            : t('import.errors.someFailures', { count: failedEntries.length })) : '',
-          result.interrupted?.kind === 'too_large' ? t('import.errors.bodyLimit') : '',
-          result.interrupted?.kind === 'invalid_response' ? t('import.errors.invalidResponse') : '',
-          result.interrupted?.kind === 'project_changed' ? t('import.errors.projectChanged') : '',
-          result.interrupted?.stage === 'finalize' ? t('import.errors.finalize') : '',
-          refreshFailed ? t('import.errors.refresh') : '',
-        ].filter(Boolean);
-        setImportPartialFailure({
-          failedEntries: failedEntries.sort((a, b) => a.index - b.index),
-          confirmedRows: result.outcomes.filter(row => ['created', 'updated'].includes(row.status))
-            .map(row => importState.previewResults.find(preview => preview.index === row.index)?.row_number ?? row.index + 1),
-          error: messages.join(' '), summary, seedRateConstraints,
-        });
-        return;
-      }
-      setImportSuccessState(summary || t('import.success'));
+      const unknown = confirmedRows.length === 0 && result.outcomes.some(row => row.status === 'unknown');
+      const outcome = unknown ? 'unknown' : failedEntries.length || result.interrupted ? 'partial' : 'complete';
+      const messages = [
+        unknown ? t('import.errors.unconfirmed') : '',
+        !unknown && failedEntries.length ? (result.interrupted ? t('import.errors.incomplete')
+          : t('import.errors.someFailures', { count: failedEntries.length })) : '',
+        result.interrupted?.kind === 'too_large' ? t('import.errors.bodyLimit') : '',
+        result.interrupted?.kind === 'invalid_response' ? t('import.errors.invalidResponse') : '',
+        projectChanged ? t('import.errors.projectChanged') : '',
+        result.interrupted?.stage === 'finalize' ? t('import.errors.finalize') : '',
+        refreshFailed && !projectChanged ? t('import.errors.refresh') : '',
+      ].filter(Boolean);
+      const seedRateConstraints = errors.length && !projectChanged ? await cropAPI.seedRateConstraints()
+        .then(response => response.data.units).catch(() => null) : null;
+      const companionMessages = buildCompanionImportMessages(companions, t);
+      finishApply({
+        outcome,
+        failedEntries: failedEntries.sort((a, b) => a.index - b.index),
+        confirmedRows,
+        error: messages.join(' ') || null,
+        savedSummary: buildImportSuccessMessage(created_count, updated_count, 0, t),
+        details: [buildImportSuccessMessage(0, 0, skipped_count, t, duplicate_count), ...companionMessages]
+          .filter(Boolean).join(' '),
+        seedRateConstraints,
+      });
+      if (messages.length) return;
+      const summary = [
+        buildImportSuccessMessage(created_count, updated_count, skipped_count, t, duplicate_count),
+        ...companionMessages,
+      ].filter(Boolean).join(' ');
       setImportDialogOpen(false);
-      showSnackbar(summary || t('import.success'), 'success');
+      showSnackbar(summary || t('import.noChanges'), confirmedRows.length ? 'success' : 'info');
     } catch (error) {
       console.error('Error importing crops:', error);
-      setImportPartialFailure({ failedEntries: [], error: t('import.errors.network'), summary: t('import.errors.unknown') });
+      finishApply({
+        outcome: 'unknown', error: t('import.errors.unconfirmed'), failedEntries: [],
+        confirmedRows: [], savedSummary: '', details: '', seedRateConstraints: null,
+      });
     } finally {
       applyingRef.current = false;
     }

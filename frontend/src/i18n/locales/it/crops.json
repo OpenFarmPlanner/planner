@@ -747,7 +747,8 @@
       "companionsUnknown": "Coltura salvata; non è noto se i suoi vicini siano stati aggiunti. Controlla i vicini prima di importare di nuovo.",
       "invalidReference": "La coltura non è più disponibile nel progetto attuale.",
       "finalize": "Impossibile confermare il collegamento finale dei vicini esistenti. Le colture già salvate restano salvate.",
-      "refresh": "Impossibile ricaricare le colture. Ricarica la pagina; le voci già confermate restano salvate.",
+      "refresh": "Impossibile aggiornare l’elenco delle colture. Ricarica la pagina per vedere l’elenco aggiornato.",
+      "unconfirmed": "L’esito dell’importazione non è confermato. Ricarica la pagina e controlla le colture prima di importare di nuovo.",
       "incomplete": "L'importazione non è completamente confermata. Controlla i dettagli di ogni riga prima di importare di nuovo.",
       "projectChanged": "Il progetto attivo è cambiato e l'importazione è stata interrotta. Le righe già confermate appartengono al progetto originale. Torna a quel progetto e controlla le colture prima di importare di nuovo.",
       "someFailures_many": "Impossibile importare {{count}} voci."

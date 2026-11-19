@@ -202,7 +202,10 @@ function Crops() {
     });
   }, []);
 
-  const fetchCrops = useCallback(async (preservedCrop?: Crop) => {
+  const loadCrops = useCallback(async (preservedCrop?: Crop, importProjectId?: number) => {
+    const inRequestedProject = () => importProjectId === undefined
+      || Number(window.localStorage.getItem('activeProjectId')) === importProjectId;
+    if (!inRequestedProject()) return false;
     // Only the first load swaps the page for the loading card. A refetch that
     // runs while crops are already on screen (save, import, publish to the
     // public library) would otherwise unmount the detail area including the
@@ -214,10 +217,11 @@ function Crops() {
     }
     try {
       const { results: fetchedCrops } = await cropAPI.listAll();
+      if (!inRequestedProject()) return false;
       hasLoadedCropsRef.current = true;
       if (!preservedCrop?.id) {
         setCrops(fetchedCrops);
-        return;
+        return true;
       }
 
       const preservedCropId = preservedCrop.id;
@@ -232,19 +236,25 @@ function Crops() {
           ? nextCrops
           : [...nextCrops, preservedCrop],
       );
+      return true;
     } catch (error) {
       console.error('Error fetching crops:', error);
       if (isInitialLoad) {
         setInitialLoadFailed(true);
-      } else {
+      } else if (importProjectId === undefined) {
         showSnackbar(t('messages.fetchError'), 'error');
       }
+      return false;
     } finally {
       if (isInitialLoad) {
         setIsCropsLoading(false);
       }
     }
   }, [showSnackbar, t]);
+
+  const fetchCrops = useCallback(async (preservedCrop?: Crop) => {
+    await loadCrops(preservedCrop);
+  }, [loadCrops]);
 
   const {
     importDialogOpen,
@@ -269,7 +279,7 @@ function Crops() {
     setExportDialogOpen,
   } = useCropImportExport({
     selectedCrop,
-    fetchCrops,
+    refreshCropsAfterImport: (projectId) => loadCrops(undefined, projectId),
     showSnackbar,
   });
 
