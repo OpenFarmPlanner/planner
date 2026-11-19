@@ -28,6 +28,7 @@ from farm.services.bed_capacity import (
 )
 from farm.services.crop_companions import CompanionService
 from farm.services.crop_display import format_crop_label
+from farm.services.crop_inheritance import build_general_crop_index
 from farm.services.crop_rotation import RotationService, suggest_beds
 from farm.services.germination_check import check_germination
 from farm.services.site_suitability import check_site_suitability
@@ -460,6 +461,25 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             'timing_window_findings': [finding.as_dict() for finding in findings],
             **check_germination(candidate, checker),
         })
+
+    @action(detail=False, methods=['get'], url_path='site-suitability-check')
+    def site_suitability_check(self, request):
+        """Preview site hints while a draft has a crop and bed but no date."""
+        crop_id, crop_error = _parse_optional_int(request.query_params.get('crop_id'), 'crop_id')
+        bed_id, bed_error = _parse_optional_int(request.query_params.get('bed_id'), 'bed_id')
+        if crop_id is None or bed_id is None or crop_error or bed_error:
+            return api_error_response(
+                code='invalid_site_suitability_parameters', detail=crop_error or bed_error or 'crop_id and bed_id are required.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        project = request.active_project
+        crop = Crop.objects.filter(pk=crop_id, project=project).first()
+        if crop is None:
+            return api_error_response(code='crop_not_found', detail='Crop not found.', status_code=status.HTTP_404_NOT_FOUND)
+        bed = Bed.objects.select_related('field__location').filter(pk=bed_id, project=project).first()
+        if bed is None:
+            return api_error_response(code='bed_not_found', detail='Bed not found.', status_code=status.HTTP_404_NOT_FOUND)
+        return Response({'site_suitability_findings': check_site_suitability(crop, bed, build_general_crop_index(project.pk))})
 
     @action(detail=False, methods=['get'], url_path='rotation-check')
     def rotation_check(self, request):

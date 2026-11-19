@@ -6,8 +6,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RotationCheckResponse, RotationFinding } from '../api/types';
 import { RotationCheckPanel } from '../components/planting-plans/rotation/RotationCheckPanel';
 
-const { rotationCheckMock } = vi.hoisted(() => ({ rotationCheckMock: vi.fn() }));
-vi.mock('../api/api', () => ({ plantingPlanAPI: { rotationCheck: rotationCheckMock } }));
+const { rotationCheckMock, siteCheckMock } = vi.hoisted(() => ({ rotationCheckMock: vi.fn(), siteCheckMock: vi.fn() }));
+vi.mock('../api/api', () => ({
+  plantingPlanAPI: { rotationCheck: rotationCheckMock, siteSuitabilityCheck: siteCheckMock },
+}));
 
 const conflictFinding: RotationFinding = {
   kind: 'family_conflict',
@@ -42,13 +44,27 @@ const renderPanel = (props: Partial<Parameters<typeof RotationCheckPanel>[0]> = 
 describe('RotationCheckPanel', () => {
   beforeEach(() => {
     rotationCheckMock.mockReset();
+    siteCheckMock.mockReset();
   });
 
-  it('renders nothing until crop, bed and planting date are known', () => {
+  it('renders nothing without a crop and bed', () => {
     renderPanel({ input: { ...input, bedId: null } });
 
     expect(rotationCheckMock).not.toHaveBeenCalled();
+    expect(siteCheckMock).not.toHaveBeenCalled();
     expect(screen.queryByText('Fruchtfolge wird geprüft …')).not.toBeInTheDocument();
+  });
+
+  it('shows site hints while a plan has no planting date', async () => {
+    siteCheckMock.mockResolvedValue({ data: { site_suitability_findings: [{
+      code: 'light_mismatch', crop_light: ['full_sun'],
+      light: { value: 'shade', source: 'bed', source_id: 3, source_name: 'Beet 3' },
+    }] } });
+    renderPanel({ input: { ...input, plantingDate: null } });
+
+    expect(await screen.findByTestId('site-suitability-hints')).toHaveTextContent(/Sonnig.*Schattig/);
+    expect(siteCheckMock).toHaveBeenCalledWith({ crop_id: 12, bed_id: 3 });
+    expect(rotationCheckMock).not.toHaveBeenCalled();
   });
 
   it('explains light and water mismatches with inherited sources and no acceptance requirement', async () => {
@@ -68,6 +84,7 @@ describe('RotationCheckPanel', () => {
     expect(hint).toHaveTextContent(/Sonnig, Halbschattig.*Nordhang/);
     expect(hint).toHaveTextContent(/hohen Wasserbedarf.*Westparzelle.*Nicht verfügbar/i);
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(siteCheckMock).not.toHaveBeenCalled();
   });
 
   it('explains a conflict from the family default and offers acceptance', async () => {

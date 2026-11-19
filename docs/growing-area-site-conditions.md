@@ -72,9 +72,10 @@ dimensions) but not the texts or notes.
 
 ## Site suitability in planning
 
-The planting plan's site hints use `check_site_suitability` for both saved plans
-and the rotation-check preview. A known effective light value outside the
-crop's suitable choices produces an advisory hint. `sunny` on the bed maps to
+The planting plan's site hints use `check_site_suitability` for saved plans
+and for previews, including drafts with a crop and bed but no date. A known
+effective light value outside the crop's suitable choices produces an
+advisory hint. `sunny` on the bed maps to
 `full_sun` on the crop. The water hint requires high crop water needs, dry soil
 and explicit unavailability of irrigation. A missing required input suppresses
 its hint. The explanation shows inherited sources, and plans remain saveable.

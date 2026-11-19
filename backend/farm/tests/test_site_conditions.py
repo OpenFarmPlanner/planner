@@ -140,6 +140,7 @@ class FieldDuplicationSiteConditionsTest(ProjectApiTestCase):
 
 class CropSiteSuitabilityApiTest(ProjectApiTestCase):
     check_url = f'{API}/planting-plans/rotation-check/'
+    undated_check_url = f'{API}/planting-plans/site-suitability-check/'
 
     def setUp(self) -> None:
         super().setUp()
@@ -164,6 +165,9 @@ class CropSiteSuitabilityApiTest(ProjectApiTestCase):
         }
         response = self.client.get(self.check_url, params)
         self.assertEqual(response.status_code, 200, response.data)
+        preview = self.client.get(self.undated_check_url, {'crop_id': self.variety.pk, 'bed_id': self.bed.pk})
+        self.assertEqual(preview.status_code, 200, preview.data)
+        self.assertEqual(preview.data['site_suitability_findings'], response.data['site_suitability_findings'])
         light, water = response.data['site_suitability_findings']
         self.assertEqual(light['crop_light'], ['full_sun', 'partial_shade'])
         self.assertEqual(light['light']['value'], 'shade')
@@ -200,7 +204,7 @@ class CropSiteSuitabilityApiTest(ProjectApiTestCase):
         saved = self.client.get(f'{API}/planting-plans/{response.data["id"]}/')
         self.assertEqual(saved.data['site_suitability_findings'], [])
 
-    def test_rotation_check_does_not_load_a_foreign_bed(self) -> None:
+    def test_previews_do_not_load_a_foreign_bed(self) -> None:
         foreign = Project.objects.create(name='Other project', slug='other-site-project')
         location = Location.objects.create(project=foreign, name='Foreign location')
         field = Field.objects.create(project=foreign, location=location, name='Foreign field')
@@ -209,3 +213,6 @@ class CropSiteSuitabilityApiTest(ProjectApiTestCase):
             'crop_id': self.crop.pk, 'bed_id': bed.pk, 'planting_date': '2026-05-01',
         })
         self.assertEqual(response.status_code, 404, response.data)
+        preview = self.client.get(self.undated_check_url, {'crop_id': self.crop.pk, 'bed_id': bed.pk})
+        self.assertEqual(preview.status_code, 404, preview.data)
+        self.assertEqual(self.client.get(self.undated_check_url, {'crop_id': self.crop.pk}).status_code, 400)

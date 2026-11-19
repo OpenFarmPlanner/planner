@@ -77,6 +77,9 @@ function useDebouncedRotationQuery<P extends object, T>(
 }
 
 const fetchRotationCheck = (params: RotationQueryParams & { bed_id: number }) => plantingPlanAPI.rotationCheck(params);
+const fetchSiteSuitabilityCheck = (params: Parameters<typeof plantingPlanAPI.siteSuitabilityCheck>[0]) => (
+  plantingPlanAPI.siteSuitabilityCheck(params)
+);
 const fetchBedSuggestions = (params: RotationQueryParams) => plantingPlanAPI.bedSuggestions(params);
 const fetchRemainingArea = (params: Parameters<typeof plantingPlanAPI.remainingArea>[0]) => (
   plantingPlanAPI.remainingArea(params)
@@ -146,6 +149,12 @@ export function useRotationCheck(input: RotationInput): RotationQueryResult<Rota
     return base && bedId ? { ...base, bed_id: bedId } : null;
   }, [bedId, cropId, endDate, planId, plantingDate]);
   return useDebouncedRotationQuery(request, fetchRotationCheck);
+}
+
+export function useUndatedSiteSuitabilityCheck(input: RotationInput) {
+  const { cropId, bedId, plantingDate } = input;
+  const request = !plantingDate && cropId && bedId ? { crop_id: cropId, bed_id: bedId } : null;
+  return useDebouncedRotationQuery(request, fetchSiteSuitabilityCheck);
 }
 
 /**

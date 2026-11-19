@@ -28,7 +28,7 @@ import {
   type FamilyNameResolver,
 } from './rotationCopy';
 import { useFamilyNameResolver } from './useFamilyNameResolver';
-import { useRotationCheck, type RotationInput } from './useRotationQueries';
+import { useRotationCheck, useUndatedSiteSuitabilityCheck, type RotationInput } from './useRotationQueries';
 
 export interface RotationAcceptanceControls {
   /** Current (possibly unsaved) acceptance in the form. */
@@ -117,9 +117,13 @@ export function RotationCheckPanel(props: RotationCheckPanelProps) {
   const { input } = props;
   const { t } = useTranslation('plantingPlans');
   const { data, isLoading, isError } = useRotationCheck(input);
+  const undatedSiteCheck = useUndatedSiteSuitabilityCheck(input);
 
-  if (!input.cropId || !input.bedId || !input.plantingDate) {
+  if (!input.cropId || !input.bedId) {
     return null;
+  }
+  if (!input.plantingDate) {
+    return <SiteSuitabilityHints findings={undatedSiteCheck.data?.site_suitability_findings} />;
   }
   if (isLoading) {
     return (

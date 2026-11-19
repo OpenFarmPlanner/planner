@@ -471,6 +471,8 @@ export const plantingPlanAPI = {
     http.get<RemainingAreaResponse>('/planting-plans/remaining-area/', { params }),
   rotationCheck: (params: RotationQueryParams & { bed_id: number }) =>
     http.get<RotationCheckResponse>('/planting-plans/rotation-check/', { params }),
+  siteSuitabilityCheck: (params: { crop_id: number; bed_id: number }) =>
+    http.get<Pick<PlantingPlan, 'site_suitability_findings'>>('/planting-plans/site-suitability-check/', { params }),
   bedSuggestions: (params: RotationQueryParams) =>
     http.get<BedSuggestionsResponse>('/planting-plans/bed-suggestions/', { params }),
   timingWindowCheck: (params: { crop_id: number; planting_date: string; cultivation_type?: string }) =>
