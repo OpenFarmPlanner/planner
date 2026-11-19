@@ -32,6 +32,7 @@ from farm.models import (
     CropCompanion,
     CropSupplierData,
     EntityRevision,
+    MediaFile,
     Project,
     ProjectMembership,
     PublicCrop,
@@ -522,10 +523,7 @@ class HistoryGroupedOperationRoundTripTests(HistoryInvariantTestCase):
         )
 
 
-# #1195: per-crop restore keeps the current foreign keys while full project
-# restore restores them. The test requires exactly these fields to differ, so
-# the fix for #1195 has to empty the set.
-CROP_RESTORE_PATH_DIFFERENCES_1195 = frozenset({'crop_species_id', 'image_file_id'})
+CROP_RESTORE_PATH_DIFFERENCES_1195 = frozenset()
 
 
 @pytest.mark.history_gap(
@@ -538,12 +536,17 @@ class HistoryRestorePathConsistencyTests(HistoryInvariantTestCase):
         return capture_project_state(self.project)['crop'][str(crop_id)]
 
     def test_per_crop_and_full_project_restore_agree_on_a_crop_version(self) -> None:
-        from crops.models import CropSpecies
-
-        first_species, second_species = CropSpecies.objects.order_by('pk')[:2]
+        first_species = CropSpecies.objects.create(name='Earlier restore species')
+        second_species = CropSpecies.objects.create(name='Later restore species')
         media = self.write(
             'upload image', 'post', '/media-files/upload/', {'file': _png('a.png')}, multipart=True
         )['id']
+        newer_media = self.write(
+            'upload replacement', 'post', '/media-files/upload/', {'file': _png('b.png')},
+            multipart=True,
+        )['id']
+        first_supplier = self.write('first supplier', 'post', '/suppliers/', {'name': 'First'})
+        second_supplier = self.write('second supplier', 'post', '/suppliers/', {'name': 'Second'})
         crop_id = self.write(
             'create crop',
             'post',
@@ -555,6 +558,8 @@ class HistoryRestorePathConsistencyTests(HistoryInvariantTestCase):
                 'notes': 'old',
                 'crop_species': first_species.pk,
                 'image_file_id': media,
+                'supplier_id': first_supplier['id'],
+                'selected_seed_demand_supplier': second_supplier['id'],
             },
         )['id']
         created = self.versions[-1].revision
@@ -565,7 +570,9 @@ class HistoryRestorePathConsistencyTests(HistoryInvariantTestCase):
             {
                 'notes': 'new',
                 'crop_species': second_species.pk,
-                'image_file_id': None,
+                'image_file_id': newer_media,
+                'supplier_id': second_supplier['id'],
+                'selected_seed_demand_supplier': first_supplier['id'],
             },
         )
         edited = self.versions[-1]
@@ -575,6 +582,15 @@ class HistoryRestorePathConsistencyTests(HistoryInvariantTestCase):
         )
         self.assertEqual(per_crop.status_code, 200, per_crop.content)
         per_crop_row = self.crop_row(crop_id)
+        self.assertIsNone(MediaFile.objects.get(pk=media).orphaned_at)
+        self.assertIsNotNone(MediaFile.objects.get(pk=newer_media).orphaned_at)
+
+        self.assertEqual(self.restore(edited.revision), 200)
+        global_restore = self.client.post(
+            f'{API}/history/global/restore/', {'history_id': created.pk}, format='json'
+        )
+        self.assertEqual(global_restore.status_code, 200, global_restore.content)
+        global_row = self.crop_row(crop_id)
         self.assertEqual(self.restore(edited.revision), 200)
         self.assertEqual(self.restore(created), 200)
         project_row = self.crop_row(crop_id)
@@ -586,8 +602,14 @@ class HistoryRestorePathConsistencyTests(HistoryInvariantTestCase):
             if name not in ignored and per_crop_row.get(name) != project_row.get(name)
         }
         self.assertEqual(differences, CROP_RESTORE_PATH_DIFFERENCES_1195)
+        self.assertEqual(
+            {key: value for key, value in project_row.items() if key not in ignored},
+            {key: value for key, value in global_row.items() if key not in ignored},
+        )
         self.assertEqual(project_row['crop_species_id'], first_species.pk)
         self.assertEqual(project_row['image_file_id'], media)
+        self.assertEqual(project_row['supplier_id'], first_supplier['id'])
+        self.assertEqual(project_row['selected_seed_demand_supplier_id'], second_supplier['id'])
 
 
 class HistoryLibraryCompanionRoundTripTests(HistoryInvariantTestCase):

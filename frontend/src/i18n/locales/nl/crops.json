@@ -546,7 +546,14 @@
       "deleted": "verwijderd",
       "restored": "hersteld"
     },
+    "restoreErrors": {
+      "reference": "De opgeslagen waarde voor ‘{{field}}’ is niet meer beschikbaar. Kies een andere versie.",
+      "image": "De afbeelding van deze versie is niet meer beschikbaar in de opslag. Kies een andere versie."
+    },
     "fieldLabels": {
+      "cropSpecies": "Gewassoort",
+      "libraryLink": "Bibliotheekkoppeling",
+      "libraryOrigin": "Herkomst uit de bibliotheek",
       "created": "Gewas",
       "fallback": "Perceel",
       "sowingCalculationSafetyPercentDirect": "Veiligheidstoeslag bij directe zaai",

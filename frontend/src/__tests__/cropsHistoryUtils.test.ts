@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   formatHistoryChangeValue,
   getBatchSummary,
+  getCropHistoryRestoreError,
   getHistoryChangeFieldLabel,
   getHistoryActorLabel,
   getHistoryEntryMeta,
@@ -28,6 +29,23 @@ function buildEntry(partial: Partial<CropHistoryEntry>): CropHistoryEntry {
 }
 
 describe('cropsHistoryUtils', () => {
+  it.each(SUPPORTED_LANGUAGES.map(({ code }) => code))('names a missing history reference in %s', (language) => {
+    const translate = i18n.getFixedT(language, 'crops');
+    const field = translate('history.fieldLabels.cropSpecies');
+    const error = {
+      isAxiosError: true,
+      response: { status: 409, data: { code: 'crop_restore_reference_unavailable', field: 'crop_species_id' } },
+    };
+    expect(getCropHistoryRestoreError(error, translate)).toBe(
+      translate('history.restoreErrors.reference', { field }),
+    );
+    expect(getCropHistoryRestoreError(error, translate)).toContain(field);
+    expect(getCropHistoryRestoreError({
+      isAxiosError: true,
+      response: { status: 409, data: { code: 'crop_restore_image_unavailable' } },
+    }, translate)).toBe(translate('history.restoreErrors.image'));
+  });
+
   it('builds a localized title with object label and display name', () => {
     const entry = buildEntry({
       object_type: 'crop',

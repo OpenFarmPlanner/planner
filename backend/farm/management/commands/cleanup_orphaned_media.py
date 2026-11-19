@@ -15,11 +15,18 @@ class Command(BaseCommand):
         cutoff = timezone.now() - timedelta(days=30)
         queryset = MediaFile.objects.filter(orphaned_at__isnull=False, orphaned_at__lt=cutoff)
         deleted = 0
-        for media in queryset:
-            if media.storage_path and default_storage.exists(media.storage_path):
-                default_storage.delete(media.storage_path)
-            media.delete()
-            deleted += 1
+        for pk, project_id in queryset.values_list('pk', 'project_id').iterator():
+            with transaction.atomic():
+                # A crop restore locks its project before checking the image and marker.
+                if project_id is not None:
+                    list(Project.objects.select_for_update().filter(pk=project_id))
+                media = queryset.select_for_update().filter(pk=pk).first()
+                if media is None:
+                    continue
+                if media.storage_path and default_storage.exists(media.storage_path):
+                    default_storage.delete(media.storage_path)
+                media.delete()
+                deleted += 1
         self.stdout.write(self.style.SUCCESS(f'Deleted {deleted} orphaned media files.'))
         retained = RetainedUpload.objects.filter(removed_at__lt=cutoff)
         removed = 0

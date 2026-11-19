@@ -18,7 +18,6 @@ import { useTranslation } from '../i18n';
 import { FALLBACK_LANGUAGE, normalizeLanguageTag } from '../i18n/languages';
 import PageContainer from '../components/layout/PageContainer';
 import { bedAPI, cropAPI, fieldAPI, type Crop } from '../api/api';
-import { extractApiErrorMessage } from '../api/errors';
 import type { CropHistoryEntry } from '../api/types';
 import { CropDetail } from '../crops/CropDetail';
 import { CropForm, type FirstVarietyDraft } from '../crops/CropForm';
@@ -39,7 +38,7 @@ import {
   buildGeneralCropDraftForFirstVariety,
   omitInheritedLibraryValues,
 } from './cropsSaveUtils';
-import { type HistoryScope } from './cropsHistoryUtils';
+import { getCropHistoryRestoreError, type HistoryScope } from './cropsHistoryUtils';
 import { useSelectedCropSync } from './useSelectedCropSync';
 import { useAuth } from '../auth/useAuth';
 import { useGuestDemoGuard } from '../auth/useGuestDemoGuard';
@@ -104,6 +103,7 @@ function Crops() {
   const [initialFormDraft, setInitialFormDraft] = useState<Partial<Crop> | undefined>(undefined);
   const [snackbar, setSnackbar] = useState<SnackbarState>({ open: false, message: '', severity: 'success' });
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyRestoreError, setHistoryRestoreError] = useState<string | null>(null);
   const [historyItems, setHistoryItems] = useState<CropHistoryEntry[]>([]);
   const [historyScope, setHistoryScope] = useState<HistoryScope>('crop');
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -604,10 +604,12 @@ function Crops() {
     }
     setHistoryItems(response.data);
     setHistoryScope('crop');
+    setHistoryRestoreError(null);
     setHistoryOpen(true);
   };
 
   const handleRestoreVersion = async (historyId: number) => {
+    setHistoryRestoreError(null);
     try {
       if (historyScope === 'project') {
         await cropAPI.projectRestore(historyId);
@@ -621,8 +623,7 @@ function Crops() {
       setHistoryOpen(false);
       showSnackbar(t('messages.restoreSuccess'), 'success');
     } catch (error) {
-      // A mapped API error (e.g. crop_variety_conflict) says what to fix.
-      showSnackbar(extractApiErrorMessage(error, t, t('messages.restoreError')), 'error');
+      setHistoryRestoreError(getCropHistoryRestoreError(error, t));
     }
   };
 
@@ -1013,6 +1014,7 @@ function Crops() {
         items={historyItems}
         isMobile={isMobile}
         fallbackActorLabel={fallbackHistoryActorLabel}
+        restoreError={historyRestoreError}
         onClose={() => setHistoryOpen(false)}
         onRestore={handleRestoreVersion}
         t={t}

@@ -4,12 +4,25 @@ entity revisions."""
 from collections.abc import Callable
 from typing import Any
 
+from django.core.files.storage import default_storage
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import Model, Q
 from django.utils import timezone
+from rest_framework.exceptions import APIException
 
 from crops.plant_families import coerce_plant_family_key
-from farm.models import Crop, CropCompanion, EntityRevision, PlantingPlan, Project, PublicCrop, Task
+from crops.specific_properties import crop_specific_property_errors
+from farm.models import (
+    Crop,
+    CropCompanion,
+    EntityRevision,
+    MediaFile,
+    PlantingPlan,
+    Project,
+    Supplier,
+    Task,
+)
+from farm.models.crops import is_supplier_domain
 from farm.services.crop_inheritance import (
     crop_identity_write,
     lock_crop_project,
@@ -21,6 +34,7 @@ from .records import (
     _RESTORABLE_ENTITY_TYPES,
     _entity_display_name,
     _serialize_instance,
+    internal_project_versions,
     record_entity_revision,
     start_batch_operation,
 )
@@ -34,6 +48,16 @@ def _model_manager(model):
 
 
 _SKIP_ON_UPDATE = {'id', 'created_at', 'updated_at'}
+
+
+class CropRestoreReferenceConflict(APIException):
+    status_code = 409
+
+    def __init__(
+        self, field: str, *, code: str = 'crop_restore_reference_unavailable',
+        detail: str = 'This version contains a field that is unavailable in the current project.',
+    ) -> None:
+        super().__init__({'code': code, 'detail': detail, 'field': field})
 
 
 def is_latest_project_revision(project: Project, revision: EntityRevision) -> bool:
@@ -131,38 +155,85 @@ def restore_crop_from_revision(crop: Crop, revision: EntityRevision) -> Crop:
     rather than a plain update (see `Crop.save`).
     """
     snapshot = _with_legacy_snapshot_fields(Crop, revision.snapshot)
-    restorable_fields = {
-        field.name for field in Crop._meta.fields
-        if field.name not in {'id', 'created_at', 'updated_at', 'crop_family'}
-    }
-    # Snapshots store foreign keys under their `_id` attname. The library link
-    # is restored too (so undoing an unlink works), but only while the entry
-    # still exists; other relations keep their established behaviour.
-    link_attnames = {'source_public_crop_id', 'derived_from_public_crop_id'}
-    linked_ids = {revision.snapshot.get(key) for key in link_attnames} - {None}
-    existing_public_ids = set(
-        PublicCrop.objects.filter(pk__in=linked_ids).values_list('pk', flat=True)
-    ) if linked_ids else set()
-
     with crop_identity_write(crop.project_id):
-        for key, value in snapshot.items():
-            if key in restorable_fields:
-                setattr(crop, key, value)
-            elif key in link_attnames and (value is None or value in existing_public_ids):
-                setattr(crop, key, value)
-        _restore_crop_family_from_snapshot(crop, revision.snapshot)
+        crop.refresh_from_db()
+        old_image_id = crop.image_file_id
+        _apply_crop_snapshot_fields(crop, snapshot)
         if 'timing_windows' in revision.snapshot:
             crop._pending_timing_windows = revision.snapshot['timing_windows'] or []
-        # A snapshot from before local pins existed had none; Crop.save() drops
-        # restored pins again when the snapshot's link could not be restored.
         if 'library_pinned_fields' not in revision.snapshot:
             crop.library_pinned_fields = []
         crop.deleted_at = None
         validate_crop_identity(crop)
+        if 'image_file_id' in snapshot:
+            _restore_crop_image_markers(crop, old_image_id)
         crop._history_action = EntityRevision.ACTION_RESTORED
         crop.save()
 
     return crop
+
+
+def _apply_crop_snapshot_fields(crop: Crop, snapshot: dict) -> None:
+    for field in Crop._meta.concrete_fields:
+        key = field.attname
+        if key not in snapshot or key in _SKIP_ON_UPDATE or key == 'project_id':
+            continue
+        value = snapshot[key]
+        if field.remote_field is not None:
+            value = _crop_restore_reference(crop, key, field.remote_field.model, value)
+        setattr(crop, field.name, value)
+    if crop_specific_property_errors(crop):
+        raise CropRestoreReferenceConflict('specific_properties')
+    product_url = crop.supplier_product_url
+    if product_url and not is_supplier_domain(product_url, crop.supplier):
+        raise CropRestoreReferenceConflict('supplier_product_url')
+
+
+def _crop_restore_reference(
+    crop: Crop, field: str, model: type[Model], value: Any,
+) -> Model | None:
+    if value is None:
+        return None
+    try:
+        choices = model._base_manager.filter(pk=value)
+    except (TypeError, ValueError) as error:
+        raise CropRestoreReferenceConflict(field) from error
+    if model in (MediaFile, Supplier):
+        choices = choices.filter(project_id=crop.project_id).select_for_update()
+    reference = choices.first()
+    if reference is None:
+        raise CropRestoreReferenceConflict(field)
+    if isinstance(reference, MediaFile) and (
+        not reference.storage_path or not default_storage.exists(reference.storage_path)
+    ):
+        raise CropRestoreReferenceConflict(
+            field, code='crop_restore_image_unavailable',
+            detail='The historical image is no longer available in storage.',
+        )
+    return reference
+
+
+def _restore_crop_image_markers(crop: Crop, previous_id: int | None) -> None:
+    media = MediaFile.objects.filter(project_id=crop.project_id)
+    if previous_id and previous_id != crop.image_file_id and not Crop.objects.filter(
+        project_id=crop.project_id, image_file_id=previous_id,
+    ).exclude(pk=crop.pk).exists():
+        previous = media.filter(pk=previous_id, orphaned_at__isnull=True).first()
+        if previous is not None:
+            _record_crop_image_marker(previous, timezone.now())
+    if crop.image_file_id and crop.image_file.orphaned_at is not None:
+        _record_crop_image_marker(crop.image_file, None)
+
+
+def _record_crop_image_marker(media: MediaFile, orphaned_at) -> None:
+    media.orphaned_at = orphaned_at
+    media.save(update_fields=['orphaned_at'])
+    with internal_project_versions():
+        record_entity_revision(
+            project=media.project, entity_type='media_file', object_id=media.pk,
+            action=EntityRevision.ACTION_UPDATED, snapshot=_serialize_instance(media),
+            changed_fields=['orphaned_at'],
+        )
 
 
 def _restore_snapshot_children(model: type, object_id: int, snapshot: dict) -> None:
@@ -201,20 +272,6 @@ def _with_legacy_snapshot_fields(model: type, snapshot: dict) -> dict:
     if model is CropCompanion and 'notes' not in snapshot:
         return {**snapshot, 'notes': {'de': snapshot['note']} if snapshot.get('note') else {}}
     return snapshot
-
-
-def _restore_crop_family_from_snapshot(crop: Crop, snapshot: dict) -> None:
-    """Restore the plant-family reference a crop snapshot recorded.
-
-    Current snapshots store the botanical-name key under ``crop_family_id``;
-    snapshots taken before migration 0112 hold the old free text under
-    ``crop_family``, which is mapped with the same rule the migration used.
-    A key that no longer names a stored family is cleared, not restored.
-    """
-    if 'crop_family_id' in snapshot:
-        crop.crop_family_id = coerce_plant_family_key(snapshot['crop_family_id'])
-    elif 'crop_family' in snapshot:
-        crop.crop_family_id = coerce_plant_family_key(snapshot['crop_family'])
 
 
 def _latest_revision_per_object(project: Project, entity_type: str, since) -> list[EntityRevision]:
