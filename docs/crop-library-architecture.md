@@ -2483,7 +2483,9 @@ Ordinary crop CRUD, implicit general creation, library species changes and
 history/undelete restores share the project lock and validate prospective general
 identities. These writers use a non-waiting project lock and return 409 when busy,
 so callers already holding a library lock cannot deadlock with an import holding
-the project lock. A conflicting restore rolls back the entire operation, including
+the project lock. A crop rename reloads its current group identity after taking
+the lock, then validates and renames the crop and its active siblings together.
+A conflicting restore rolls back the entire operation, including
 varieties, history and media state. Project-wide history recovery retains its
 established skip for a hard-deleted ghost snapshot whose general-crop name is
 already occupied; no second row is inserted. Existing legacy rows remain representable;

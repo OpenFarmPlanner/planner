@@ -635,6 +635,87 @@ def test_variety_constraint_race_rolls_back_restore_and_sync(operation):
 
 
 @pytest.mark.django_db(transaction=True)
+def test_crop_rename_reads_the_current_sibling_group_after_locking():
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+
+    from django.contrib.sessions.middleware import SessionMiddleware
+    from django.db import close_old_connections, connection
+    from rest_framework.test import APIRequestFactory, force_authenticate
+
+    from farm.crops.views.crops import CropViewSet
+    from farm.history.project_restore import ensure_project_checkpoint
+    from farm.models import Crop, Project, ProjectMembership
+    from farm.tests.api_base import User
+
+    if connection.vendor != 'postgresql':
+        pytest.skip('PostgreSQL crop rename lock regression')
+    user = User.objects.create_user(username='crop-rename-lock-owner')
+    project = Project.objects.create(name='Rename ordering', slug='rename-ordering')
+    ProjectMembership.objects.create(project=project, user=user, role='admin')
+    general, first, second = [
+        Crop.objects.create(project=project, name='Original crop', variety=variety)
+        for variety in ('', 'First variety', 'Second variety')
+    ]
+    ensure_project_checkpoint(project)
+    second_at_lock = Event()
+    first_finished = Event()
+    # Dispatch the normal DRF action without Django's request-wide transaction.
+    # The checkpoint's separate lock can then complete before the rename races.
+    update_crop = CropViewSet.as_view({'patch': 'partial_update'})
+
+    def rename(pk, name):
+        request = APIRequestFactory().patch(
+            f'/api/crops/{pk}/', {'name': name}, format='json',
+            HTTP_X_PROJECT_ID=str(project.pk),
+        )
+        SessionMiddleware(update_crop).process_request(request)
+        force_authenticate(request, user=user)
+        return update_crop(request, pk=pk)
+
+    def rename_second():
+        close_old_connections()
+        read_crop = False
+
+        def wait_before_project_lock(execute, sql, params, many, context):
+            nonlocal read_crop
+            if 'FROM "farm_crop"' in sql and sql.startswith('SELECT'):
+                read_crop = True
+            if (
+                read_crop and not second_at_lock.is_set()
+                and 'FROM "farm_project"' in sql and 'FOR UPDATE' in sql
+            ):
+                second_at_lock.set()
+                assert first_finished.wait(timeout=15)
+            return execute(sql, params, many, context)
+
+        try:
+            with connection.execute_wrapper(wait_before_project_lock):
+                return rename(second.pk, 'Final crop')
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        pending = executor.submit(rename_second)
+        try:
+            if not second_at_lock.wait(timeout=15):
+                outcome = pending.result(timeout=5)
+                pytest.fail(f'The second request did not reach its rename lock: {outcome.data}')
+            first_response = rename(first.pk, 'Intermediate crop')
+            assert first_response.status_code == 200, first_response.data
+            assert Crop.objects.filter(project=project, name='Intermediate crop').count() == 3
+        finally:
+            first_finished.set()
+        second_response = pending.result(timeout=15)
+
+    assert second_response.status_code == 200, second_response.data
+    stored = Crop.objects.filter(project=project).values_list('pk', 'name', 'name_normalized')
+    assert set(stored) == {
+        (crop.pk, 'Final crop', 'final crop') for crop in (general, first, second)
+    }
+
+
+@pytest.mark.django_db(transaction=True)
 def test_supplierless_undeletes_cannot_create_duplicate_varieties_concurrently():
     from concurrent.futures import ThreadPoolExecutor
     from threading import Barrier
