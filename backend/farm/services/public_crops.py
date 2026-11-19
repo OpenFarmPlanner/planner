@@ -1294,6 +1294,8 @@ def resolve_publishing_crop_species(*, crop: Crop, crop_species_id: int | None) 
 
 def build_project_crop_payload(public_crop: PublicCrop) -> dict[str, Any]:
     payload = _copy_fields(public_crop)
+    if is_species_level_entry(public_crop):
+        payload.update(dict.fromkeys(VARIETY_ONLY_COPY_FIELDS, ''))
     payload['crop_species'] = public_crop.crop_species
     payload['source_public_crop'] = public_crop
     payload['derived_from_public_crop'] = public_crop
@@ -2763,11 +2765,16 @@ def _apply_public_crop_species_relink(
         previous_snapshot = build_public_crop_snapshot(locked)
         locked.crop_species = crop_species
         locked.variety = target_variety
+        update_fields = ['crop_species', 'variety', 'variety_normalized', 'version', 'updated_at']
+        if is_species_level_entry(locked):
+            for field in VARIETY_ONLY_COPY_FIELDS:
+                set_crop_field_value(locked, field, '')
+            update_fields.extend(VARIETY_ONLY_COPY_FIELDS)
         errors = crop_specific_property_errors(locked)
         if errors:
             raise ApiValidationError(errors)
         locked.version = max(locked.version, 1) + 1
-        locked.save(update_fields=['crop_species', 'variety', 'variety_normalized', 'version', 'updated_at'])
+        locked.save(update_fields=update_fields)
         prune_trade_names_for_variety(locked, user=user)
         create_public_crop_revision(
             public_crop=locked,
@@ -3701,6 +3708,7 @@ def _apply_public_crop_update(
         # overwrite it either.
         payload.pop('display_color', None)
         if is_species_level_entry(public_crop):
+            payload.pop('variety', None)
             for field in VARIETY_ONLY_COPY_FIELDS:
                 payload.pop(field, None)
         # A crop the user *published* is linked to its own entry the same way an
@@ -3816,7 +3824,10 @@ def public_crop_field_changes(
     remote = _comparable_copy_fields(_copy_fields(public_crop))
     fields = _compared_public_update_fields(crop, include_pinned=include_pinned)
     if is_species_level_entry(public_crop):
-        fields = [field for field in fields if field not in VARIETY_ONLY_COPY_FIELDS]
+        fields = [
+            field for field in fields
+            if field != 'variety' and field not in VARIETY_ONLY_COPY_FIELDS
+        ]
     if COMPANIONS_FIELD in fields:
         if _compares_companions(crop, public_crop):
             _add_companion_values(local, remote, crop, public_crop)

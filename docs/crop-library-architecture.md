@@ -1421,10 +1421,19 @@ supplier's offer.
   payload blanks it there, and against such an entry it is neither compared,
   pushed, proposed nor overwritten by an update. A Sorte linked to a general
   entry therefore keeps its value and shows no permanent difference.
+- **Identity correction.** A relink that makes an entry general clears its
+  seed type in the relink revision. The preceding revisions keep their original
+  values. Fresh project copies ignore a stray seed type on a legacy general
+  entry, and linked local varieties keep their name and seed type when synced.
 - **Filter.** A plain select in the crop list and library filter menus, not the
   trait filter of [the RFC](rfc-variety-trade-names.md#71-variety-list-with-trait-filter),
   which is not built. "Unbekannt" is its own option, so a Sorte without a value
   is never treated as a different type. Only rows with a variety match.
+
+To inventory older general entries that stored a seed type, use the read-only
+query `PublicCrop.objects.filter(variety_normalized='').exclude(seed_type='')`.
+For a published entry, an authorized edit that explicitly sets `seed_type`
+to `''` records the correction as a new revision.
 
 ### Site, life cycle and plant health
 
