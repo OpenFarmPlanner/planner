@@ -1,5 +1,7 @@
 import { formatSpecificProperties, type SpecificProperties } from '../crops/specificProperties';
+import { isAxiosError } from 'axios';
 import type { TFunction } from 'i18next';
+import { extractApiErrorMessage } from '../api/errors';
 import type { CropHistoryChange, CropHistoryEntry, CropTimingWindow } from '../api/types';
 import { formatSiteHealthValue, normalizeLightRequirements } from '../crops/siteHealth';
 import { getSeedTypeLabel } from '../crops/seedType';
@@ -45,6 +47,9 @@ const HISTORY_FIELD_LABEL_KEYS: Record<string, string> = {
   crop_family: 'form.cropFamily',
   // Revisions store the plant-family reference under its attname.
   crop_family_id: 'form.cropFamily',
+  crop_species_id: 'history.fieldLabels.cropSpecies',
+  source_public_crop_id: 'history.fieldLabels.libraryLink',
+  derived_from_public_crop_id: 'history.fieldLabels.libraryOrigin',
   seed_type: 'form.seedType',
   nutrient_demand: 'form.nutrientDemand',
   cultivation_type: 'form.cultivationType',
@@ -210,6 +215,17 @@ export function getCropFieldLabel(field: string, t: TFunction<'crops'>): string 
 
 export function getHistoryChangeFieldLabel(change: CropHistoryChange, t: TFunction<'crops'>): string {
   return getCropFieldLabel(change.field, t);
+}
+
+export function getCropHistoryRestoreError(error: unknown, t: TFunction<'crops'>): string {
+  const data: unknown = isAxiosError(error) ? error.response?.data : undefined;
+  if (data && typeof data === 'object' && 'code' in data) {
+    if (data.code === 'crop_restore_image_unavailable') return t('history.restoreErrors.image');
+    if (data.code === 'crop_restore_reference_unavailable' && 'field' in data && typeof data.field === 'string') {
+      return t('history.restoreErrors.reference', { field: getCropFieldLabel(data.field, t) });
+    }
+  }
+  return extractApiErrorMessage(error, t, t('messages.restoreError'));
 }
 
 function formatNumberValue(value: number): string {

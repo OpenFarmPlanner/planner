@@ -556,7 +556,14 @@
       "deleted": "Suppression",
       "restored": "Restauration"
     },
+    "restoreErrors": {
+      "reference": "La valeur enregistrée pour « {{field}} » est indisponible. Choisissez une autre version.",
+      "image": "L’image de cette version n’est plus disponible dans le stockage. Choisissez une autre version."
+    },
     "fieldLabels": {
+      "cropSpecies": "Espèce cultivée",
+      "libraryLink": "Lien vers la bibliothèque",
+      "libraryOrigin": "Origine dans la bibliothèque",
       "created": "Culture",
       "fallback": "Champ",
       "sowingCalculationSafetyPercentDirect": "Supplément de sécurité pour le semis direct",

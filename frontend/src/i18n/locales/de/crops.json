@@ -546,7 +546,14 @@
       "deleted": "gelöscht",
       "restored": "wiederhergestellt"
     },
+    "restoreErrors": {
+      "reference": "Der gespeicherte Wert für „{{field}}“ ist nicht mehr verfügbar. Wähle eine andere Version.",
+      "image": "Das Bild dieser Version ist nicht mehr im Speicher verfügbar. Wähle eine andere Version."
+    },
     "fieldLabels": {
+      "cropSpecies": "Kulturart",
+      "libraryLink": "Bibliotheksverknüpfung",
+      "libraryOrigin": "Herkunft aus der Bibliothek",
       "created": "Kultur",
       "fallback": "Feld",
       "sowingCalculationSafetyPercentDirect": "Sicherheitszuschlag Direktsaat",

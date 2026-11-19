@@ -509,16 +509,17 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         return None
 
     def destroy(self, request, *args, **kwargs):
-        crop = self.get_object()
-        if crop.deleted_at is not None:
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
-        if self._has_ambiguous_general_group(crop):
-            return api_error_response(code='duplicate_general_crop',
-                                      detail='Multiple general crops make deletion ambiguous.',
-                                      status_code=409)
-        deleted_at = timezone.now()
-        with transaction.atomic():
+        with crop_identity_write(request.active_project.pk):
+            crop = self.get_object()
+            if crop.deleted_at is not None:
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            if self._has_ambiguous_general_group(crop):
+                return api_error_response(
+                    code='duplicate_general_crop',
+                    detail='Multiple general crops make deletion ambiguous.',
+                    status_code=status.HTTP_409_CONFLICT,
+                )
+            deleted_at = timezone.now()
             for affected_crop in self._crops_affected_by_delete(crop):
                 affected_crop.deleted_at = deleted_at
                 affected_crop._history_action = EntityRevision.ACTION_DELETED
@@ -541,19 +542,19 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
     @extend_schema(request=None)
     @action(detail=True, methods=['post'], url_path='undelete')
     def undelete(self, request, pk=None):
-        crop = get_object_or_404(
-            Crop.all_objects.filter(project=self.request.active_project),
-            pk=pk,
-        )
-        deleted_at = crop.deleted_at
-        crops_to_restore = [crop]
-        if deleted_at is not None:
-            crops_to_restore = list(
-                Crop.all_objects
-                .filter(self._crop_group_q(crop), deleted_at=deleted_at)
-                .order_by('id')
+        with crop_identity_write(request.active_project.pk):
+            crop = get_object_or_404(
+                Crop.all_objects.filter(project=request.active_project),
+                pk=pk,
             )
-        with crop_identity_write(crop.project_id):
+            deleted_at = crop.deleted_at
+            crops_to_restore = [crop]
+            if deleted_at is not None:
+                crops_to_restore = list(
+                    Crop.all_objects
+                    .filter(self._crop_group_q(crop), deleted_at=deleted_at)
+                    .order_by('id')
+                )
             for restored_crop in crops_to_restore:
                 restored_crop.deleted_at = None
                 validate_crop_identity(restored_crop)
@@ -581,10 +582,12 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
                 self._set_latest_revision_actor(auto_general_crop)
             if updated.name != old_name:
                 self._rename_sibling_crops(updated, source_group)
-        if previous_media_id and previous_media_id != updated.image_file_id:
-            MediaFile.objects.filter(id=previous_media_id, orphaned_at__isnull=True).update(orphaned_at=timezone.now())
-        if updated.image_file_id:
-            MediaFile.objects.filter(id=updated.image_file_id).update(orphaned_at=None)
+            if previous_media_id and previous_media_id != updated.image_file_id:
+                MediaFile.objects.filter(
+                    id=previous_media_id, orphaned_at__isnull=True,
+                ).update(orphaned_at=timezone.now())
+            if updated.image_file_id:
+                MediaFile.objects.filter(id=updated.image_file_id).update(orphaned_at=None)
 
     def _has_ambiguous_general_group(self, crop: Crop) -> bool:
         return self._active_crop_group(crop).filter(variety_normalized__isnull=True).count() > 1

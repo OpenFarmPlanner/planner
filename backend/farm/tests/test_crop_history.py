@@ -22,6 +22,7 @@ from farm.models import (
     ProjectMembership,
     ProjectRevision,
     RetainedUpload,
+    Supplier,
 )
 from farm.tests.api_base import record_later_revision
 
@@ -83,6 +84,82 @@ class CropHistoryTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.crop.refresh_from_db()
         self.assertEqual(self.crop.name, 'Carrot')
+
+    def assert_rejected_crop_restore(self, fields, code, *, field=None):
+        from farm.history.project_restore import capture_project_state
+
+        version = EntityRevision.objects.create(
+            project=self.project, entity_type='crop', object_id=self.crop.pk,
+            action=EntityRevision.ACTION_UPDATED,
+            snapshot={**_serialize_instance(self.crop), 'notes': 'Historical notes', **fields},
+        )
+        before = capture_project_state(self.project)
+        history = list(EntityRevision.objects.filter(project=self.project).order_by('pk').values())
+        for url in (f'/api/crops/{self.crop.pk}/restore/', '/api/history/global/restore/'):
+            with self.subTest(url=url, code=code, field=field):
+                response = self.client.post(
+                    url, {'history_id': version.pk}, content_type='application/json',
+                )
+                self.assertEqual(response.status_code, 409, response.content)
+                self.assertEqual(response.json()['code'], code)
+                if field is not None:
+                    self.assertEqual(response.json()['field'], field)
+                self.assertEqual(capture_project_state(self.project), before)
+                self.assertEqual(
+                    list(EntityRevision.objects.filter(project=self.project).order_by('pk').values()),
+                    history,
+                )
+
+    def test_crop_restore_rejects_unavailable_references_without_changing_history(self):
+        species = CropSpecies.objects.create(name='Deleted historical crop species')
+        species_id = species.pk
+        species.delete()
+        supplier = Supplier.objects.create(project=self.project, name='Deleted historical supplier')
+        supplier_id = supplier.pk
+        supplier.delete()
+        media = MediaFile.objects.create(
+            project=self.project, storage_path='crop-media/deleted.png',
+        )
+        media_id = media.pk
+        media.delete()
+        for field, pk in (
+            ('crop_species_id', species_id), ('supplier_id', supplier_id),
+            ('selected_seed_demand_supplier_id', supplier_id), ('image_file_id', media_id),
+        ):
+            self.assert_rejected_crop_restore(
+                {field: pk}, 'crop_restore_reference_unavailable', field=field,
+            )
+
+    def test_crop_restore_rejects_foreign_supplier_and_image_references(self):
+        other = Project.objects.create(name='Foreign history references')
+        supplier = Supplier.objects.create(project=other, name='Foreign supplier')
+        media = MediaFile.objects.create(project=other, storage_path='crop-media/foreign.png')
+        for field, pk in (
+            ('supplier_id', supplier.pk), ('selected_seed_demand_supplier_id', supplier.pk),
+            ('image_file_id', media.pk),
+        ):
+            self.assert_rejected_crop_restore(
+                {field: pk}, 'crop_restore_reference_unavailable', field=field,
+            )
+
+    def test_crop_restore_rejects_an_image_without_stored_content(self):
+        media = MediaFile.objects.create(
+            project=self.project, storage_path='crop-media/missing-history-image.png',
+        )
+        self.assert_rejected_crop_restore(
+            {'image_file_id': media.pk}, 'crop_restore_image_unavailable', field='image_file_id',
+        )
+
+    def test_crop_restore_revalidates_species_and_variety_identity(self):
+        species = CropSpecies.objects.create(name='Conflicting historical crop species')
+        Crop.objects.create(project=self.project, name='Another crop', crop_species=species)
+        Crop.objects.create(project=self.project, name=self.crop.name, variety='Historical variety')
+        self.assert_rejected_crop_restore(
+            {'crop_species_id': species.pk, 'variety': ''}, 'crop_name_conflict',
+        )
+        self.assert_rejected_crop_restore(
+            {'variety': 'Historical variety'}, 'crop_variety_conflict',
+        )
 
     def test_single_crop_restores_legacy_values_and_clears_variety_only_seed_type(self):
         historical = legacy_crop_snapshot(_serialize_instance(self.crop))

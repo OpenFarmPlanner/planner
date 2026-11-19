@@ -546,7 +546,14 @@
       "deleted": "deleted",
       "restored": "restored"
     },
+    "restoreErrors": {
+      "reference": "The saved value for “{{field}}” is unavailable. Choose a different version.",
+      "image": "The image for this version is missing from storage. Choose a different version."
+    },
     "fieldLabels": {
+      "cropSpecies": "Crop species",
+      "libraryLink": "Library link",
+      "libraryOrigin": "Library origin",
       "created": "Crop",
       "fallback": "Field",
       "sowingCalculationSafetyPercentDirect": "Direct sowing safety surcharge",

@@ -1,4 +1,5 @@
 import {
+  Alert,
   Box,
   Button,
   Chip,
@@ -15,6 +16,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
+import { useEffect, useRef } from 'react';
 import { Link as RouterLink } from 'react-router';
 
 import type { TFunction } from 'i18next';
@@ -36,6 +38,7 @@ type CropsHistoryDialogProps = {
   items: CropHistoryEntry[];
   isMobile: boolean;
   fallbackActorLabel: string | undefined;
+  restoreError?: string | null;
   onClose: () => void;
   onRestore: (historyId: number) => void;
   t: TFunction<'crops'>;
@@ -52,10 +55,15 @@ export function CropsHistoryDialog({
   items,
   isMobile,
   fallbackActorLabel,
+  restoreError,
   onClose,
   onRestore,
   t,
 }: CropsHistoryDialogProps) {
+  const restoreErrorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (open && restoreError) restoreErrorRef.current?.focus();
+  }, [open, restoreError]);
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>
@@ -66,6 +74,11 @@ export function CropsHistoryDialog({
             : t('history.titles.crop')}
       </DialogTitle>
       <DialogContent sx={{ pt: items.length === 0 ? 1 : 2, pb: items.length === 0 ? 1 : 2 }}>
+        {restoreError ? (
+          <Alert severity="error" tabIndex={-1} ref={restoreErrorRef} sx={{ mb: 1 }}>
+            {restoreError}
+          </Alert>
+        ) : null}
         {items.length === 0 ? (
           <Box sx={{ py: isMobile ? 0.5 : 1 }}>
             <Typography variant="body2" color="text.secondary">

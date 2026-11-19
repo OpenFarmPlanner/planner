@@ -556,7 +556,14 @@
       "deleted": "Eliminación",
       "restored": "Restauración"
     },
+    "restoreErrors": {
+      "reference": "El valor guardado para «{{field}}» ya no está disponible. Elige otra versión.",
+      "image": "La imagen de esta versión ya no está en el almacenamiento. Elige otra versión."
+    },
     "fieldLabels": {
+      "cropSpecies": "Especie de cultivo",
+      "libraryLink": "Vínculo con la biblioteca",
+      "libraryOrigin": "Origen en la biblioteca",
       "created": "Cultivo",
       "fallback": "Campo",
       "sowingCalculationSafetyPercentDirect": "Recargo de seguridad para siembra directa",

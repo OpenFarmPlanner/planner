@@ -73,6 +73,13 @@ write path — it just creates an `EntityRevision` row. It's called:
   `restore_crop_from_revision` (`backend/farm/history/restore.py`), which
   skips `id`/`created_at`/`updated_at` and clears `deleted_at`, so restoring an
   old version keeps the row's identity and undeletes it in one step.
+  Stored species, supplier, seed-demand supplier and image references are
+  restored using their IDs. Supplier and image records must belong to the
+  crop's project and the image must still exist in storage. An unavailable
+  reference or conflicting crop identity returns 409 before any crop or
+  history changes. Restoring an image clears its orphan marker in the same
+  transaction and marks the replaced image if no active crop uses it. Crop
+  edits, deletion, undelete and orphan cleanup use the same project lock.
 - Crop, project, and batch restores use the same legacy crop defaults for
   existing and recreated rows. Old germination flags map to the current
   requirement fields, missing ranges are unset, and snapshots from before seed

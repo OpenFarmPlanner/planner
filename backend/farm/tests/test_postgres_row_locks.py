@@ -716,6 +716,125 @@ def test_crop_rename_reads_the_current_sibling_group_after_locking():
 
 
 @pytest.mark.django_db(transaction=True)
+def test_crop_restore_locks_shared_references_until_save(monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+
+    from django.db import OperationalError, close_old_connections, connection, transaction
+    from rest_framework.test import APIClient
+
+    from crops.models import CropSpecies, PlantFamily
+    from farm.history.records import _serialize_instance
+    from farm.models import Crop, EntityRevision, Project, ProjectMembership, PublicCrop
+    from farm.tests.api_base import User
+
+    if connection.vendor != 'postgresql':
+        pytest.skip('PostgreSQL crop restore reference locks')
+    user = User.objects.create_user(username='crop-restore-reference-owner')
+    project = Project.objects.create(name='Restore references', slug='restore-references')
+    ProjectMembership.objects.create(project=project, user=user, role='admin')
+    crop = Crop.objects.create(project=project, name='Restore reference crop')
+    species = CropSpecies.objects.create(name='Restore reference species')
+    family = PlantFamily.objects.create(botanical_name='Restore-testaceae')
+    entry = PublicCrop.objects.create(
+        name=species.name, crop_species=species, status='published', created_by=user,
+    )
+    version = EntityRevision.objects.create(
+        project=project, entity_type='crop', object_id=crop.pk,
+        action=EntityRevision.ACTION_UPDATED,
+        snapshot={
+            **_serialize_instance(crop), 'crop_species_id': species.pk, 'crop_family_id': family.pk,
+            'source_public_crop_id': entry.pk, 'derived_from_public_crop_id': entry.pk,
+        },
+    )
+
+    def check_reference_locks():
+        close_old_connections()
+        try:
+            for reference in (species, family, entry):
+                with pytest.raises(OperationalError) as locked, transaction.atomic():
+                    type(reference).objects.select_for_update(nowait=True).get(pk=reference.pk)
+                cause = locked.value.__cause__
+                sqlstate = getattr(cause, 'sqlstate', None) or getattr(cause, 'pgcode', None)
+                assert sqlstate == '55P03'
+        finally:
+            close_old_connections()
+
+    original_save = Crop.save
+
+    def save_with_lock_check(instance, *args, **kwargs):
+        if instance.pk == crop.pk:
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                executor.submit(check_reference_locks).result(timeout=15)
+        return original_save(instance, *args, **kwargs)
+
+    monkeypatch.setattr(Crop, 'save', save_with_lock_check)
+    client = APIClient()
+    client.force_authenticate(user=user)
+    response = client.post(
+        f'/api/crops/{crop.pk}/restore/', {'history_id': version.pk}, format='json',
+        HTTP_X_PROJECT_ID=str(project.pk),
+    )
+    assert response.status_code == 200, response.data
+    crop.refresh_from_db()
+    assert (crop.crop_species_id, crop.crop_family_id, crop.source_public_crop_id) == (
+        species.pk, family.pk, entry.pk,
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_crop_delete_reads_image_under_the_restore_project_lock(monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+
+    from django.contrib.sessions.middleware import SessionMiddleware
+    from django.db import OperationalError, close_old_connections, connection, transaction
+    from rest_framework.test import APIRequestFactory, force_authenticate
+
+    from farm.crops.views.crops import CropViewSet
+    from farm.models import Crop, MediaFile, Project, ProjectMembership
+    from farm.tests.api_base import User
+
+    if connection.vendor != 'postgresql':
+        pytest.skip('PostgreSQL image deletion and restore serialization')
+    user = User.objects.create_user(username='crop-delete-image-owner')
+    project = Project.objects.create(name='Crop image deletion', slug='crop-image-deletion')
+    ProjectMembership.objects.create(project=project, user=user, role='admin')
+    image = MediaFile.objects.create(project=project, storage_path='synthetic-delete-image.png')
+    crop = Crop.objects.create(project=project, name='Crop with image', image_file=image)
+
+    def check_project_lock():
+        close_old_connections()
+        try:
+            with pytest.raises(OperationalError) as locked, transaction.atomic():
+                Project.objects.select_for_update(nowait=True).get(pk=project.pk)
+            cause = locked.value.__cause__
+            sqlstate = getattr(cause, 'sqlstate', None) or getattr(cause, 'pgcode', None)
+            assert sqlstate == '55P03'
+        finally:
+            close_old_connections()
+
+    get_object = CropViewSet.get_object
+
+    def get_crop_after_lock(view):
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            executor.submit(check_project_lock).result(timeout=15)
+        return get_object(view)
+
+    monkeypatch.setattr(CropViewSet, 'get_object', get_crop_after_lock)
+    # The view's own lock matters even without the request-wide transaction.
+    delete_crop = CropViewSet.as_view({'delete': 'destroy'})
+    request = APIRequestFactory().delete(
+        f'/api/crops/{crop.pk}/', HTTP_X_PROJECT_ID=str(project.pk),
+    )
+    SessionMiddleware(delete_crop).process_request(request)
+    force_authenticate(request, user=user)
+    response = delete_crop(request, pk=crop.pk)
+
+    assert response.status_code == 204
+    image.refresh_from_db()
+    assert image.orphaned_at is not None
+
+
+@pytest.mark.django_db(transaction=True)
 def test_supplierless_undeletes_cannot_create_duplicate_varieties_concurrently():
     from concurrent.futures import ThreadPoolExecutor
     from threading import Barrier

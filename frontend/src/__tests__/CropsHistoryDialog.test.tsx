@@ -35,7 +35,7 @@ const renderDialog = ({
 }: RenderOptions = {}) => {
   const onClose = vi.fn();
   const onRestore = vi.fn();
-  const view = render(
+  const renderHistory = (restoreError?: string) => (
     <MemoryRouter>
       <CropsHistoryDialog
         open={open}
@@ -43,13 +43,15 @@ const renderDialog = ({
         items={items}
         isMobile={isMobile}
         fallbackActorLabel={fallbackActorLabel}
+        restoreError={restoreError}
         onClose={onClose}
         onRestore={onRestore}
         t={t}
       />
-    </MemoryRouter>,
+    </MemoryRouter>
   );
-  return { ...view, onClose, onRestore };
+  const view = render(renderHistory());
+  return { ...view, onClose, onRestore, showError: (message: string) => view.rerender(renderHistory(message)) };
 };
 
 /**
@@ -63,6 +65,24 @@ const renderDialog = ({
  * several of these branches differ only in which sentence they produce.
  */
 describe('CropsHistoryDialog', () => {
+  it('focuses a restore error inside the still-open mobile dialog', async () => {
+    const user = userEvent.setup();
+    const message = 'Der gespeicherte Lieferant ist nicht mehr verfügbar.';
+    const { onRestore, showError } = renderDialog({
+      isMobile: true, items: [entry(), entry({ history_id: 2 })],
+    });
+    const dialog = screen.getByRole('dialog');
+    showError(message);
+    const alert = within(dialog).getByRole('alert');
+    expect(alert).toHaveTextContent(message);
+    expect(alert).toHaveFocus();
+    const retry = within(dialog).getByRole('button', { name: t('history.restoreButton') });
+    await user.tab();
+    expect(retry).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(onRestore).toHaveBeenCalledWith(2);
+  });
+
   describe('scope titles', () => {
     it('names the crop scope as versions of one crop', () => {
       renderDialog({ scope: 'crop' });
