@@ -112,6 +112,25 @@ class PerennialPlanningTest(ProjectApiTestCase):
         self.assertEqual(later.status_code, 200, later.data)
         self.assertEqual(later.json()['harvest_end_date'], '2024-03-27')
 
+        changed_lifespan = self.client.patch(
+            f'{CROPS}{perennial.pk}/', {'standing_time_years': 6},
+        )
+        self.assertEqual(changed_lifespan.status_code, 200, changed_lifespan.data)
+        reloaded = self.client.get(url)
+        self.assertEqual(reloaded.data['clearing_date'], '2028-06-01')
+        self.assertEqual(reloaded.json()['suggested_clearing_date'], '2030-02-28')
+
+        candidate = {'crop_id': perennial.pk, 'exclude_plan_id': plan_id}
+        preflight = self.client.get(f'{PLANS}remaining-area/', {
+            **candidate, 'start_date': '2024-02-29', 'bed_id': self.bed.pk,
+        })
+        suggestions = self.client.get(f'{PLANS}bed-suggestions/', {
+            **candidate, 'planting_date': '2024-02-29',
+        })
+        for response in (preflight, suggestions):
+            self.assertEqual(response.status_code, 200, response.data)
+            self.assertEqual(response.data['end_date'], '2028-06-01')
+
         scope = {'HTTP_X_SEASON_ID': str(self.next_season.pk)}
         carried = self.client.get(PLANS, **scope).data['results']
         self.assertEqual([(row['id'], row['carried_over']) for row in carried], [(plan_id, True)])
