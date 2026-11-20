@@ -69,7 +69,7 @@
     "settingsLink": "Modifier le modèle de saison dans les paramètres du projet",
     "menu": {
       "openAria": "Ouvrir les actions de la saison",
-      "copyDataFrom": "Copier les données de…",
+      "copyData": "Copier les données",
       "rename": "Renommer",
       "editPeriod": "Modifier la période",
       "delete": "Supprimer"
@@ -142,7 +142,8 @@
     },
     "copyDialog": {
       "title": "Copier les données",
-      "sourceLabel": "Source",
+      "sourceLabel": "Saison précédente",
+      "targetLabel": "Saison de destination",
       "warning_one": "La saison {{target}} contient déjà {{count}} série. La copie ajoute en plus les séries de la saison {{source}} — les séries existantes de {{target}} ne seront ni modifiées ni remplacées.",
       "warning_other": "La saison {{target}} contient déjà {{count}} séries. La copie ajoute en plus les séries de la saison {{source}} — les séries existantes de {{target}} ne seront ni modifiées ni remplacées.",
       "warning_many": "La saison {{target}} contient déjà {{count}} séries. La copie ajoute en plus les séries de la saison {{source}} — les séries existantes de {{target}} ne seront ni modifiées ni remplacées.",
@@ -151,7 +152,11 @@
       "summary_many": "→ {{count}} séries de la saison {{source}} seront ajoutées à la saison {{target}} (total ensuite : {{total}}).",
       "confirm": "Copier",
       "error": "Impossible de copier les données.",
-      "confirmDisabledTooltip": "Choisissez d'abord une saison source.",
+      "noPrecedingSource": "Aucune saison ne précède immédiatement cette saison. Créez d’abord la saison manquante pour copier ses données.",
+      "sourceChanged": "La saison précédente a changé. Rouvrez la boîte de dialogue pour actualiser l’aperçu.",
+      "previewError": "Impossible de charger l’aperçu de la copie.",
+      "success": "Les séries ont été copiées dans la saison {{target}}.",
+      "noCopies": "Aucune série n’a été copiée dans la saison {{target}}.",
       "rotation": {
         "checking": "Vérification de la rotation des cultures dans la saison cible…",
         "checkError": "La rotation des cultures n'a pas pu être vérifiée. Vous pouvez tout de même copier.",

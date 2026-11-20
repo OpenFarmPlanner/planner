@@ -134,6 +134,21 @@ def latest_existing_season(project: Project) -> Season | None:
     return Season.objects.filter(project=project).order_by('-start_date').first()
 
 
+def is_preceding_copy_period(source: Season, target_start: date) -> bool:
+    """Allow a pattern transition while ruling out a gap of a full annual period."""
+    previous_year_start = add_months(target_start, -12) if target_start.year > 1 else date.min
+    return previous_year_start <= source.end_date < target_start
+
+
+def preceding_season_copy_source(project: Project, target_start: date) -> Season | None:
+    candidate = Season.objects.filter(
+        project=project, start_date__lt=target_start,
+    ).order_by('-start_date').first()
+    if candidate is not None and is_preceding_copy_period(candidate, target_start):
+        return candidate
+    return None
+
+
 def compute_first_future_pattern_period(
     pattern: SeasonPattern, latest_season: Season,
 ) -> tuple[date, date]:
@@ -570,7 +585,8 @@ def build_season_creation_options(
         'seamless_period': None,
         'manual_period': None,
         'manual_residual': None,
-        'copy_source_label': latest_season.label if latest_season is not None else None,
+        'copy_source_season_id': None,
+        'copy_source_label': None,
         'copy_preview': {'adopt': None, 'transition': None, 'transition_followup': None, 'manual': None},
     }
 
@@ -595,10 +611,11 @@ def build_season_creation_options(
         }
         if due_period is not None:
             due_start, due_end = due_period
-            payload['copy_preview']['adopt'] = preview_copy_counts(
-                source_planting_dates=last_planting_dates,
-                target_start=due_start, target_end=due_end,
-            )
+            if is_preceding_copy_period(latest_season, due_start):
+                payload['copy_preview']['adopt'] = preview_copy_counts(
+                    source_planting_dates=last_planting_dates,
+                    target_start=due_start, target_end=due_end,
+                )
             raw_transition = analyze_period_transition(latest_season.end_date, due_start)
             if raw_transition is not None:
                 payload['transition'] = serialize_period_transition(raw_transition)
@@ -608,9 +625,8 @@ def build_season_creation_options(
                     'start_date': seamless_start.isoformat(),
                     'end_date': seamless_end.isoformat(),
                 }
-                # Choosing "transition season" creates the transition season
-                # AND the regular follow-up season; every source plan is
-                # shifted once and routed to whichever of the two it lands in.
+                # The transition starts right after the source ends. Each plan
+                # is shifted once and routed across the two new seasons.
                 bridged = preview_bridged_copy_counts(
                     source_planting_dates=last_planting_dates,
                     source_start_year=latest_season.start_date.year,
@@ -639,10 +655,15 @@ def build_season_creation_options(
             payload['manual_residual'] = (
                 serialize_period_transition(raw_residual) if raw_residual is not None else None
             )
-            payload['copy_preview']['manual'] = preview_copy_counts(
-                source_planting_dates=last_planting_dates,
-                target_start=manual_start, target_end=manual_end,
-            )
+            if is_preceding_copy_period(latest_season, manual_start):
+                payload['copy_preview']['manual'] = preview_copy_counts(
+                    source_planting_dates=last_planting_dates,
+                    target_start=manual_start, target_end=manual_end,
+                )
+
+    if latest_season is not None and any(payload['copy_preview'].values()):
+        payload['copy_source_season_id'] = latest_season.pk
+        payload['copy_source_label'] = latest_season.label
 
     return payload
 

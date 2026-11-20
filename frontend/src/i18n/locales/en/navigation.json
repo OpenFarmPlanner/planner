@@ -68,7 +68,7 @@
     "settingsLink": "Change season pattern in project settings",
     "menu": {
       "openAria": "Open season actions",
-      "copyDataFrom": "Copy data from…",
+      "copyData": "Copy season data",
       "rename": "Rename",
       "editPeriod": "Edit period",
       "delete": "Delete"
@@ -139,15 +139,20 @@
       "save": "Save"
     },
     "copyDialog": {
-      "title": "Copy data",
-      "sourceLabel": "Source",
+      "title": "Copy season data",
+      "sourceLabel": "Previous season",
+      "targetLabel": "Target season",
       "warning_one": "Season {{target}} already contains 1 planting plan. Copying will additionally add the planting plans from season {{source}} — existing planting plans in {{target}} will not be changed or replaced.",
       "warning_other": "Season {{target}} already contains {{count}} planting plans. Copying will additionally add the planting plans from season {{source}} — existing planting plans in {{target}} will not be changed or replaced.",
       "summary_one": "→ 1 planting plan from season {{source}} will be added to season {{target}} (total afterwards: {{total}}).",
       "summary_other": "→ {{count}} planting plans from season {{source}} will be added to season {{target}} (total afterwards: {{total}}).",
       "confirm": "Copy",
       "error": "Data could not be copied.",
-      "confirmDisabledTooltip": "Select a source season first.",
+      "noPrecedingSource": "There is no immediately preceding season. Create the missing season first to copy its data.",
+      "sourceChanged": "The preceding season has changed. Reopen the dialog to refresh the preview.",
+      "previewError": "The copy preview could not be loaded.",
+      "success": "Planting plans were copied to {{target}}.",
+      "noCopies": "No planting plans were copied to {{target}}.",
       "rotation": {
         "checking": "Checking the crop rotation in the target season …",
         "checkError": "The crop rotation could not be checked. You can still copy.",

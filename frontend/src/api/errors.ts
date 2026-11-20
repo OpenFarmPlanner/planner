@@ -85,6 +85,8 @@ const backendMessageMap: Record<string, string> = {
   'selected supplier does not belong to the active project.': 'errors.selectedSupplierProjectMismatch',
   'crop_project_mismatch': 'errors.cropProjectMismatch',
   'crop does not belong to the active project.': 'errors.cropProjectMismatch',
+  'season_copy_no_preceding_source': 'navigation:seasonSwitcher.copyDialog.noPrecedingSource',
+  'season_copy_source_not_preceding': 'navigation:seasonSwitcher.copyDialog.sourceChanged',
   'this crop species already exists or has already been proposed.': 'library.publishWizard.speciesAlreadyExists',
   'please enter a valid numeric value, e.g. 3.9.': 'validation.invalidNumberExample',
   // Namespaced explicitly: callers resolve `t` in their page namespace, which

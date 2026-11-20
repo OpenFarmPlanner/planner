@@ -68,7 +68,7 @@
     "settingsLink": "Seizoenspatroon in de projectinstellingen wijzigen",
     "menu": {
       "openAria": "Seizoensacties openen",
-      "copyDataFrom": "Gegevens kopiëren uit…",
+      "copyData": "Gegevens kopiëren",
       "rename": "Hernoemen",
       "editPeriod": "Periode bewerken",
       "delete": "Verwijderen"
@@ -140,14 +140,19 @@
     },
     "copyDialog": {
       "title": "Gegevens kopiëren",
-      "sourceLabel": "Bron",
+      "sourceLabel": "Vorig seizoen",
+      "targetLabel": "Doelseizoen",
       "warning_one": "Seizoen {{target}} bevat al 1 teelt. Bij het kopiëren worden de teelten uit seizoen {{source}} extra toegevoegd. Bestaande teelten in {{target}} worden niet gewijzigd of vervangen.",
       "warning_other": "Seizoen {{target}} bevat al {{count}} teelten. Bij het kopiëren worden de teelten uit seizoen {{source}} extra toegevoegd. Bestaande teelten in {{target}} worden niet gewijzigd of vervangen.",
       "summary_one": "→ 1 teelt uit seizoen {{source}} wordt aan seizoen {{target}} toegevoegd (totaal daarna: {{total}}).",
       "summary_other": "→ {{count}} teelten uit seizoen {{source}} worden aan seizoen {{target}} toegevoegd (totaal daarna: {{total}}).",
       "confirm": "Kopiëren",
       "error": "De gegevens konden niet worden gekopieerd.",
-      "confirmDisabledTooltip": "Kies eerst een bronseizoen.",
+      "noPrecedingSource": "Er is geen direct voorafgaand seizoen. Maak eerst het ontbrekende seizoen aan om de gegevens te kopiëren.",
+      "sourceChanged": "Het voorafgaande seizoen is gewijzigd. Open het venster opnieuw om het voorbeeld te vernieuwen.",
+      "previewError": "Het kopieervoorbeeld kon niet worden geladen.",
+      "success": "De teeltplannen zijn gekopieerd naar seizoen {{target}}.",
+      "noCopies": "Er zijn geen teeltplannen gekopieerd naar seizoen {{target}}.",
       "rotation": {
         "checking": "Vruchtwisseling in het doelseizoen controleren…",
         "checkError": "De vruchtwisseling kon niet worden gecontroleerd. Je kunt toch kopiëren.",

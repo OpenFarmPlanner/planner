@@ -502,14 +502,14 @@ export const seasonAPI = {
       source_season_id: sourceSeasonId,
       ...(rotationConflicts ? { rotation_conflicts: rotationConflicts } : {}),
     }),
-  copyPreview: (targetId: number, sourceSeasonId: number) =>
+  copyPreview: (targetId: number, sourceSeasonId?: number) =>
     http.get<SeasonCopyPreview>(`/seasons/${targetId}/copy-preview/`, {
-      params: { source_season_id: sourceSeasonId },
+      params: sourceSeasonId === undefined ? { resolve_source: 'true' } : { source_season_id: sourceSeasonId },
     }),
   dueSuggestion: () => http.get<SeasonDueSuggestion>('/seasons/due-suggestion/'),
   creationOptions: (params?: { manual_start_date?: string }) =>
     http.get<SeasonCreationOptions>('/seasons/creation-options/', { params }),
-  createTransition: (data: { copy: boolean }) =>
+  createTransition: (data: { copy: boolean; source_season_id?: number }) =>
     http.post<SeasonCreateTransitionResponse>('/seasons/create-transition/', data),
 };
 

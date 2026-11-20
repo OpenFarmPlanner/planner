@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,6 +14,7 @@ const emptyPreview: SeasonCopyPreview = {
   hint_count: 0,
   conflict_free_count: 3,
   skipped_count: 0,
+  source_season_id: 1,
   source_season_label: '2025',
   items: [],
 };
@@ -47,37 +48,32 @@ const targetSeason: Season = {
   updated_at: '2026-01-01T00:00:00Z',
 };
 
-const sourceSeason: Season = {
-  ...targetSeason,
-  id: 1,
-  start_date: '2025-01-01',
-  end_date: '2025-12-31',
-  label: '2025',
-  computed_label: '2025',
-};
-
 describe('SeasonCopyDataDialog', () => {
   beforeEach(() => {
     copyPreviewMock.mockReset();
     copyPreviewMock.mockResolvedValue({ data: emptyPreview });
   });
 
-  it('explains why confirmation is disabled before a source is selected', async () => {
-    const user = userEvent.setup();
+  it('waits for the preceding season and explains when it is missing', async () => {
+    copyPreviewMock.mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 400, data: { code: 'season_copy_no_preceding_source' } },
+    });
     render(
       <SeasonCopyDataDialog
         open
         targetSeason={targetSeason}
-        seasons={[sourceSeason, targetSeason]}
         onClose={vi.fn()}
         onConfirm={vi.fn()}
       />,
     );
 
-    const confirmButton = screen.getByRole('button', { name: 'Übernehmen' });
-    await user.hover(confirmButton.parentElement as HTMLElement);
-
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Bitte zuerst eine Quellsaison auswählen.');
+    expect(screen.getByRole('status')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeDisabled();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Lege zuerst die fehlende Saison an');
+    expect(screen.getByText('Zielsaison')).toBeVisible();
+    expect(screen.getByText('2026')).toBeVisible();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   });
 
   it('explains the busy state on both actions while copying', async () => {
@@ -87,14 +83,12 @@ describe('SeasonCopyDataDialog', () => {
       <SeasonCopyDataDialog
         open
         targetSeason={targetSeason}
-        seasons={[sourceSeason, targetSeason]}
         onClose={vi.fn()}
         onConfirm={onConfirm}
       />,
     );
 
-    await user.click(screen.getByLabelText('Quelle'));
-    await user.click(screen.getByRole('option', { name: '2025' }));
+    await screen.findByText('Vorherige Saison', { exact: true });
     await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
 
     const cancelButton = screen.getByRole('button', { name: 'Abbrechen' });
@@ -130,14 +124,10 @@ describe('SeasonCopyDataDialog', () => {
       <SeasonCopyDataDialog
         open
         targetSeason={targetSeason}
-        seasons={[sourceSeason, targetSeason]}
         onClose={vi.fn()}
         onConfirm={onConfirm}
       />,
     );
-
-    await user.click(screen.getByLabelText('Quelle'));
-    await user.click(screen.getByRole('option', { name: '2025' }));
 
     expect(await screen.findByText('3 Anbaupläne aus Saison 2025 werden auf dieselben Beete übernommen.')).toBeInTheDocument();
     expect(screen.getByText(
@@ -160,18 +150,38 @@ describe('SeasonCopyDataDialog', () => {
       <SeasonCopyDataDialog
         open
         targetSeason={targetSeason}
-        seasons={[sourceSeason, targetSeason]}
         onClose={vi.fn()}
         onConfirm={onConfirm}
       />,
     );
 
-    await user.click(screen.getByLabelText('Quelle'));
-    await user.click(screen.getByRole('option', { name: '2025' }));
-    await waitFor(() => expect(copyPreviewMock).toHaveBeenCalledWith(2, 1));
+    await screen.findByText('Vorherige Saison', { exact: true });
+    expect(copyPreviewMock).toHaveBeenCalledWith(2);
     await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
 
     expect(screen.queryByTestId('season-copy-rotation-summary')).not.toBeInTheDocument();
     expect(onConfirm).toHaveBeenCalledWith(2, 1);
+  });
+
+  it('uses the server’s labels and invalidates a preview if the preceding season changes', async () => {
+    const user = userEvent.setup();
+    const sourceLabel = 'Saison vor dem Umbau des Bewässerungssystems im Gemeinschaftsgarten';
+    const targetLabel = 'Lange Zielsaison für die neue Versuchsfläche und den Gemeinschaftsgarten';
+    copyPreviewMock.mockResolvedValue({ data: { ...emptyPreview, source_season_label: sourceLabel } });
+    const onConfirm = vi.fn().mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 400, data: { code: 'season_copy_source_not_preceding' } },
+    });
+    render(
+      <SeasonCopyDataDialog open targetSeason={{ ...targetSeason, label: targetLabel }}
+        onClose={vi.fn()} onConfirm={onConfirm} />,
+    );
+
+    expect(await screen.findByText(sourceLabel, { exact: true })).toBeVisible();
+    expect(screen.getByText(targetLabel, { exact: true })).toBeVisible();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Die vorherige Saison hat sich geändert.');
+    expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeDisabled();
   });
 });

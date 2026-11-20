@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AxiosError } from 'axios';
 import { SeasonCreateSuggestionDialog, SeasonSwitcher } from '../SeasonSwitcher';
-import type { Season } from '../../api/types';
+import type { Season, SeasonCreationOptions } from '../../api/types';
 import type { UseActiveSeasonReturn } from '../useActiveSeason';
 
 const { creationOptionsMock } = vi.hoisted(() => ({ creationOptionsMock: vi.fn() }));
@@ -42,6 +42,20 @@ const seasons: Season[] = [
   },
 ];
 
+const consecutiveCreationOptions: SeasonCreationOptions = {
+  start_day: 1,
+  start_month: 9,
+  last_season: seasons[0],
+  due_period: { start_date: '2026-09-01', end_date: '2027-08-31' },
+  transition: null,
+  seamless_period: null,
+  manual_period: null,
+  manual_residual: null,
+  copy_source_season_id: 2,
+  copy_source_label: '25/26',
+  copy_preview: { adopt: { total: 0, copied: 0, skipped: 0 }, transition: null, transition_followup: null, manual: null },
+};
+
 describe('SeasonSwitcher', () => {
   it('offers and creates the season following the latest existing season', async () => {
     const user = userEvent.setup();
@@ -49,12 +63,13 @@ describe('SeasonSwitcher', () => {
     const switchSeason = vi.fn();
     const controller = {
       seasons,
-      activeSeason: seasons[0],
+      activeSeason: seasons[1],
       dueSuggestion: {
         due: true,
         start_date: '2026-09-01',
         end_date: '2027-08-31',
       },
+      seasonCreationOptions: consecutiveCreationOptions,
       pendingDeletions: [],
       createSeason,
       switchSeason,
@@ -109,6 +124,7 @@ describe('SeasonSwitcher', () => {
         start_date: '2026-09-01',
         end_date: '2027-08-31',
       },
+      seasonCreationOptions: consecutiveCreationOptions,
       pendingDeletions: [],
       createSeason,
       switchSeason: vi.fn(),
@@ -185,6 +201,31 @@ describe('SeasonSwitcher', () => {
     expect(switchSeason).not.toHaveBeenCalled();
   });
 
+  it('can create a season without offering a copy across a missing annual period', async () => {
+    const user = userEvent.setup();
+    const createSeason = vi.fn().mockResolvedValue({ ...seasons[0], id: 5 });
+    const controller = {
+      seasons,
+      activeSeason: seasons[0],
+      dueSuggestion: { due: true, start_date: '2027-09-01', end_date: '2028-08-31' },
+      seasonCreationOptions: {
+        ...consecutiveCreationOptions,
+        due_period: { start_date: '2027-09-01', end_date: '2028-08-31' },
+        copy_source_season_id: null,
+        copy_source_label: null,
+        copy_preview: { adopt: null, transition: null, transition_followup: null, manual: null },
+      },
+      createSeason,
+      switchSeason: vi.fn(),
+    } as unknown as UseActiveSeasonReturn;
+    render(<SeasonCreateSuggestionDialog controller={controller} open onClose={vi.fn()} onEditSeasonPattern={vi.fn()} />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Es gibt keine unmittelbar vorherige Saison');
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Anlegen' }));
+    expect(createSeason).toHaveBeenCalledWith('2027-09-01', '2028-08-31', undefined);
+  });
+
   it('requires an explicit gap decision and creates two seasons for the transition option', async () => {
     const user = userEvent.setup();
     const createSeason = vi.fn();
@@ -210,6 +251,7 @@ describe('SeasonSwitcher', () => {
         seamless_period: { start_date: '2026-09-01', end_date: '2026-12-31' },
         manual_period: null,
         manual_residual: null,
+        copy_source_season_id: 2,
         copy_source_label: '25/26',
         copy_preview: {
           adopt: { total: 3, copied: 2, skipped: 1 },
@@ -246,7 +288,7 @@ describe('SeasonSwitcher', () => {
 
     await user.click(screen.getByRole('button', { name: 'Anlegen' }));
 
-    expect(createTransitionSeasons).toHaveBeenCalledWith(true);
+    expect(createTransitionSeasons).toHaveBeenCalledWith(true, 2);
     expect(createSeason).not.toHaveBeenCalled();
     expect(switchSeason).toHaveBeenCalledWith(4);
   });
@@ -254,7 +296,11 @@ describe('SeasonSwitcher', () => {
   it('previews the copy split for a manually chosen start date and creates one season', async () => {
     const user = userEvent.setup();
     creationOptionsMock.mockResolvedValue({
-      data: { copy_preview: { manual: { total: 4, copied: 1, skipped: 3 } } },
+      data: {
+        copy_source_season_id: 2,
+        copy_source_label: '25/26',
+        copy_preview: { manual: { total: 4, copied: 1, skipped: 3 } },
+      },
     });
     const createSeason = vi.fn().mockResolvedValue({ ...seasons[0], id: 9, label: '2026' });
     const switchSeason = vi.fn();
@@ -271,6 +317,7 @@ describe('SeasonSwitcher', () => {
         seamless_period: { start_date: '2026-09-01', end_date: '2026-12-31' },
         manual_period: null,
         manual_residual: null,
+        copy_source_season_id: 2,
         copy_source_label: '25/26',
         copy_preview: { adopt: null, transition: null, transition_followup: null, manual: null },
       },
@@ -329,7 +376,11 @@ describe('SeasonSwitcher', () => {
   }) => {
     const user = userEvent.setup();
     creationOptionsMock.mockResolvedValue({
-      data: { copy_preview: { manual: { total: 3, copied: 3, skipped: 0 } } },
+      data: {
+        copy_source_season_id: 2,
+        copy_source_label: '25/26',
+        copy_preview: { manual: { total: 3, copied: 3, skipped: 0 } },
+      },
     });
     const createSeason = vi.fn().mockResolvedValue({ ...seasons[0], id: 9, label: '2026' });
     const controller = {
@@ -345,6 +396,7 @@ describe('SeasonSwitcher', () => {
         seamless_period: { start_date: '2026-09-01', end_date: '2026-12-31' },
         manual_period: null,
         manual_residual: null,
+        copy_source_season_id: 2,
         copy_source_label: '25/26',
         copy_preview: { adopt: null, transition: null, transition_followup: null, manual: null },
       },

@@ -1552,6 +1552,7 @@ export interface SeasonCopyPreview {
   hint_count: number;
   conflict_free_count: number;
   skipped_count: number;
+  source_season_id: number;
   source_season_label: string;
   items: SeasonCopyPreviewItem[];
 }
@@ -1620,6 +1621,7 @@ export interface SeasonCreationOptions {
   seamless_period: SeasonPeriodRange | null;
   manual_period: SeasonPeriodRange | null;
   manual_residual: SeasonPeriodTransition | null;
+  copy_source_season_id: number | null;
   copy_source_label: string | null;
   copy_preview: {
     adopt: SeasonCopyCounts | null;

@@ -68,7 +68,7 @@
     "settingsLink": "Cambia modello di stagione nelle impostazioni progetto",
     "menu": {
       "openAria": "Apri azioni stagione",
-      "copyDataFrom": "Copia dati da…",
+      "copyData": "Copia dati",
       "rename": "Rinomina",
       "editPeriod": "Modifica periodo",
       "delete": "Elimina"
@@ -141,14 +141,19 @@
     },
     "copyDialog": {
       "title": "Copia dati",
-      "sourceLabel": "Origine",
+      "sourceLabel": "Stagione precedente",
+      "targetLabel": "Stagione di destinazione",
       "warning_one": "La stagione {{target}} contiene già 1 serie. La copia aggiungerà le serie della stagione {{source}}; le serie esistenti in {{target}} non verranno modificate né sostituite.",
       "warning_other": "La stagione {{target}} contiene già {{count}} serie. La copia aggiungerà le serie della stagione {{source}}; le serie esistenti in {{target}} non verranno modificate né sostituite.",
       "summary_one": "→ 1 serie dalla stagione {{source}} verrà aggiunta alla stagione {{target}} (totale successivo: {{total}}).",
       "summary_other": "→ {{count}} serie dalla stagione {{source}} verranno aggiunte alla stagione {{target}} (totale successivo: {{total}}).",
       "confirm": "Copia",
       "error": "Impossibile copiare i dati.",
-      "confirmDisabledTooltip": "Seleziona prima una stagione di origine.",
+      "noPrecedingSource": "Non c’è una stagione immediatamente precedente. Crea prima la stagione mancante per copiarne i dati.",
+      "sourceChanged": "La stagione precedente è cambiata. Riapri la finestra per aggiornare l’anteprima.",
+      "previewError": "Impossibile caricare l’anteprima della copia.",
+      "success": "I piani di coltivazione sono stati copiati nella stagione {{target}}.",
+      "noCopies": "Nessun piano di coltivazione è stato copiato nella stagione {{target}}.",
       "rotation": {
         "checking": "Verifica della rotazione colturale nella stagione di destinazione…",
         "checkError": "Impossibile verificare la rotazione colturale. Puoi comunque copiare.",

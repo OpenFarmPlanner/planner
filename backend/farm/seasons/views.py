@@ -30,6 +30,7 @@ from farm.history.project_restore import (
 from farm.history.restore import _record_cascade_deletions, restore_season_planting_plans
 from farm.models import BatchOperation, EntityRevision, PlantingPlan, Season, SeasonPattern, Task
 from farm.project_context import get_active_project_or_400
+from farm.services.crop_inheritance import lock_crop_project
 from farm.services.crop_rotation import RotationService, preview_season_copy
 from farm.services.seasons import (
     analyze_period_transition,
@@ -47,6 +48,7 @@ from farm.services.seasons import (
     get_or_create_season_for_period,
     get_or_create_season_pattern,
     latest_existing_season,
+    preceding_season_copy_source,
     resurrect_season,
     serialize_period_transition,
 )
@@ -193,13 +195,34 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             return api_error_response(code='source_season_not_found', detail='Source season not found.', status_code=status.HTTP_404_NOT_FOUND)
         if source_season.pk == target_season.pk:
             return api_error_response(code='same_source_and_target_season', detail='Source and target season must be different.', status_code=status.HTTP_400_BAD_REQUEST)
-        return source_season
+        preceding = preceding_season_copy_source(
+            self.request.active_project, target_season.start_date,
+        )
+        if preceding is None or preceding.pk != source_season.pk:
+            return api_error_response(
+                code='season_copy_source_not_preceding',
+                detail='Season data can only be copied from the immediately preceding season.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        return preceding
 
     @action(detail=True, methods=['get'], url_path='copy-preview')
     def copy_preview(self, request, pk=None):
-        """Crop rotation check of a copy from ``?source_season_id=`` into this season."""
+        """Preview this season's eligible source, or check an explicitly supplied source."""
         target_season = self.get_object()
-        source_season = self._resolve_copy_source(target_season, request.query_params.get('source_season_id'))
+        source_id = request.query_params.get('source_season_id')
+        if source_id is None and request.query_params.get('resolve_source') == 'true':
+            source_season = preceding_season_copy_source(
+                request.active_project, target_season.start_date,
+            )
+            if source_season is None:
+                return api_error_response(
+                    code='season_copy_no_preceding_source',
+                    detail='There is no immediately preceding season to copy from.',
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            source_season = self._resolve_copy_source(target_season, source_id)
         if isinstance(source_season, Response):
             return source_season
         pairs, skipped_count = build_planting_plan_copies(
@@ -213,46 +236,60 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
         return Response({
             **preview_season_copy(service, pairs),
             'skipped_count': skipped_count,
+            'source_season_id': source_season.pk,
             'source_season_label': source_season.label,
         })
 
-    @action(detail=True, methods=['post'], url_path='copy-from')
+    @action(detail=True, methods=['post'], url_path='copy-from', history_read_only=True)
+    @transaction.atomic
     def copy_from(self, request, pk=None):
+        # Ordinary project mutations already take this lock with their history
+        # checkpoint. Validate under that lock before creating any checkpoint.
+        lock_crop_project(request.active_project.pk)
         target_season = self.get_object()
         serializer = SeasonCopyFromSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        source_season = self._resolve_copy_source(target_season, serializer.validated_data['source_season_id'])
+        if not serializer.is_valid():
+            if 'source_season_id' in serializer.errors:
+                return api_error_response(
+                    code='invalid_source_season_id', detail='source_season_id must be an integer.',
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+            return api_error_response(
+                code='invalid_season_copy_options', detail='Invalid season copy options.',
+                status_code=status.HTTP_400_BAD_REQUEST, fields=serializer.errors,
+            )
+        source_season = self._resolve_copy_source(
+            target_season, serializer.validated_data['source_season_id'],
+        )
         if isinstance(source_season, Response):
             return source_season
 
-        with transaction.atomic():
-            created_plans, skipped_count = copy_planting_plans(
-                source_season=source_season,
-                target_season=target_season,
-                rotation_conflicts=serializer.validated_data['rotation_conflicts'],
-                language_code=resolve_request_language(request),
+        ensure_project_checkpoint(request.active_project, user_name=_current_actor_label(request))
+        created_plans, skipped_count = copy_planting_plans(
+            source_season=source_season,
+            target_season=target_season,
+            rotation_conflicts=serializer.validated_data['rotation_conflicts'],
+            language_code=resolve_request_language(request),
+        )
+        if created_plans:
+            # Group the created revisions while keeping each copy individually restorable.
+            batch = start_batch_operation(
+                project=self.request.active_project,
+                operation_type=BatchOperation.TYPE_SEASON_COPY_DATA,
+                context={
+                    'source_season_label': source_season.label,
+                    'target_season_label': target_season.label,
+                },
+                user_name=_current_actor_label(request),
             )
-            if created_plans:
-                # Copied plans are new rows — record a `created` revision per
-                # plan (so each is individually restorable) and group them
-                # under one BatchOperation.
-                batch = start_batch_operation(
-                    project=self.request.active_project,
-                    operation_type=BatchOperation.TYPE_SEASON_COPY_DATA,
-                    context={
-                        'source_season_label': source_season.label,
-                        'target_season_label': target_season.label,
-                    },
-                    user_name=_current_actor_label(request),
+            for plan in (
+                PlantingPlan.objects
+                .filter(pk__in=[plan.pk for plan in created_plans])
+                .select_related('crop', 'bed')
+            ):
+                self.record_revision(
+                    plan, EntityRevision.ACTION_CREATED, batch_operation=batch,
                 )
-                for plan in (
-                    PlantingPlan.objects
-                    .filter(pk__in=[plan.pk for plan in created_plans])
-                    .select_related('crop', 'bed')
-                ):
-                    self.record_revision(
-                        plan, EntityRevision.ACTION_CREATED, batch_operation=batch,
-                    )
         total_count = PlantingPlan.objects.filter(season=target_season).count()
         return Response({
             'copied_count': len(created_plans),
@@ -306,6 +343,12 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             pattern, latest_season.end_date + timedelta(days=1),
         )
         copy_requested = bool(request.data.get('copy'))
+        if copy_requested and 'source_season_id' in request.data:
+            source = self._resolve_copy_source(
+                Season(start_date=seamless_start), request.data['source_season_id'],
+            )
+            if isinstance(source, Response):
+                return source
         user = request.user if request.user.is_authenticated else None
 
         transition_label = Season(start_date=seamless_start, end_date=seamless_end).computed_label

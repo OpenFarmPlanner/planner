@@ -142,8 +142,11 @@ export function useActiveSeason() {
     return created;
   }, [reload]);
 
-  const createTransitionSeasons = useCallback(async (copy: boolean) => {
-    const response = await seasonAPI.createTransition({ copy });
+  const createTransitionSeasons = useCallback(async (copy: boolean, expectedSourceId?: number) => {
+    const response = await seasonAPI.createTransition({
+      copy,
+      ...(expectedSourceId === undefined ? {} : { source_season_id: expectedSourceId }),
+    });
     await reload();
     return response.data;
   }, [reload]);

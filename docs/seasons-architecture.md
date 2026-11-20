@@ -195,8 +195,11 @@ Anbaukalender Gantt):
 
 ## Copy-data action
 
-"Daten übernehmen" (copy planting plans from one season into another) is a
-single reusable action, not a per-entry-point special case:
+"Daten übernehmen" copies planting plans from the immediately preceding
+season. Eligibility uses the project's persisted periods. The most recent
+active period starting before the target must also end before it. A gap of a
+full annual period makes the copy unavailable. A shorter gap can occur when
+a season pattern changes and keeps the previous period eligible.
 
 - `farm/services/seasons.py::copy_planting_plans(source_season, target_season)`
   copies a fixed tuple of `PlantingPlan` fields (`PLANTING_PLAN_COPY_FIELDS` —
@@ -216,17 +219,19 @@ single reusable action, not a per-entry-point special case:
   is not a leap year (`add_months`). Plans with no `planting_date` fall back to
   the whole-year gap between the two seasons' start dates. The shift is always
   whole years, so it works for any season pattern, calendar-year or not.
-- `SeasonViewSet.copy_from` (`backend/farm/seasons/views.py`) is the API
-  surface both entry points call: the "Daten aus Saison X übernehmen"
-  checkbox when creating a suggested season, and "Daten übernehmen von…" on
-  any existing season's row menu. Both go through
-  `frontend/src/seasons/useActiveSeason.ts::copyDataInto`.
+- `SeasonViewSet.copy_from` validates the requested source again before any
+  write. The creation suggestion uses the eligible source returned by
+  `GET /seasons/creation-options/`, independent of the season currently open.
+  When creating a transition and follow-up together, the eligible source for
+  the transition is copied once across the pair.
 - `frontend/src/seasons/SeasonCopyDataDialog.tsx` is the shared dialog
-  component for the second entry point; it shows a warning (not error)
-  `Alert` when the target already has planting plans, since the copy adds to
-  them rather than replacing them.
-- Crop rotation: once a source is chosen, the dialog loads
-  `GET /seasons/{id}/copy-preview/` and, when a copy would break the rotation
+  opened from an existing season's row menu. It names the source and target
+  and warns when the target already has planting plans. The copies are added
+  alongside any existing plans.
+- The dialog loads `GET /seasons/{id}/copy-preview/?resolve_source=true` to
+  resolve the preceding season and calculate the crop rotation preview.
+  Explicit `source_season_id` requests use the same eligibility check.
+  When a copy would break the rotation
   on its bed (or gets a nutrient hint), shows a summary and lets the user copy
   the conflicting plans without a bed, onto the same beds anyway, or not at
   all (`rotation_conflicts` on `copy-from`, API default `keep`). The copies
