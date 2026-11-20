@@ -8,6 +8,7 @@ from django.db.models import Count
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -31,7 +32,7 @@ from farm.history.restore import _record_cascade_deletions, restore_season_plant
 from farm.models import BatchOperation, EntityRevision, PlantingPlan, Season, SeasonPattern, Task
 from farm.project_context import get_active_project_or_400
 from farm.services.crop_inheritance import lock_crop_project
-from farm.services.crop_rotation import RotationService, preview_season_copy
+from farm.services.crop_rotation import COPY_CONFLICTS_KEEP, RotationService, preview_season_copy
 from farm.services.seasons import (
     analyze_period_transition,
     build_planting_plan_copies,
@@ -54,7 +55,12 @@ from farm.services.seasons import (
 )
 from farm.services.tasks import generate_tasks_for_plans
 
-from .serializers import SeasonCopyFromSerializer, SeasonPatternSerializer, SeasonSerializer
+from .serializers import (
+    SeasonCopyFromSerializer,
+    SeasonCreateAndCopySerializer,
+    SeasonPatternSerializer,
+    SeasonSerializer,
+)
 
 
 class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet):
@@ -184,12 +190,19 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
                 )
         return Response(SeasonSerializer(season).data)
 
+    @staticmethod
+    def _invalid_copy_source_id() -> Response:
+        return api_error_response(
+            code='invalid_source_season_id', detail='source_season_id must be an integer.',
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
     def _resolve_copy_source(self, target_season: Season, source_season_id: object) -> Season | Response:
         """The copy's source season, or the error response to return instead."""
         try:
             source_pk = int(source_season_id)
         except (TypeError, ValueError):
-            return api_error_response(code='invalid_source_season_id', detail='source_season_id must be an integer.', status_code=status.HTTP_400_BAD_REQUEST)
+            return self._invalid_copy_source_id()
         source_season = Season.objects.filter(project=self.request.active_project, pk=source_pk).first()
         if source_season is None:
             return api_error_response(code='source_season_not_found', detail='Source season not found.', status_code=status.HTTP_404_NOT_FOUND)
@@ -250,10 +263,7 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
         serializer = SeasonCopyFromSerializer(data=request.data)
         if not serializer.is_valid():
             if 'source_season_id' in serializer.errors:
-                return api_error_response(
-                    code='invalid_source_season_id', detail='source_season_id must be an integer.',
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                )
+                return self._invalid_copy_source_id()
             return api_error_response(
                 code='invalid_season_copy_options', detail='Invalid season copy options.',
                 status_code=status.HTTP_400_BAD_REQUEST, fields=serializer.errors,
@@ -265,11 +275,45 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             return source_season
 
         ensure_project_checkpoint(request.active_project, user_name=_current_actor_label(request))
+        return Response(self._copy_plans(
+            source_season, target_season, serializer.validated_data['rotation_conflicts'],
+        ))
+
+    @action(
+        detail=False, methods=['post'], url_path='create-and-copy',
+        history_read_only=True, serializer_class=SeasonCreateAndCopySerializer,
+    )
+    @transaction.atomic
+    def create_and_copy(self, request):
+        """Create a suggested season and copy from the source the user confirmed."""
+        lock_crop_project(request.active_project.pk)
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            if 'source_season_id' in serializer.errors:
+                return self._invalid_copy_source_id()
+            raise ValidationError(serializer.errors)
+        source_season = self._resolve_copy_source(
+            Season(start_date=serializer.validated_data['start_date']),
+            serializer.validated_data['source_season_id'],
+        )
+        if isinstance(source_season, Response):
+            return source_season
+
+        ensure_project_checkpoint(request.active_project, user_name=_current_actor_label(request))
+        self.perform_create(serializer)
+        result = self._copy_plans(source_season, serializer.instance)
+        serializer.instance.planting_plan_count = result['target_planting_plan_count']
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def _copy_plans(
+        self, source_season: Season, target_season: Season,
+        rotation_conflicts: str = COPY_CONFLICTS_KEEP,
+    ) -> dict[str, int]:
         created_plans, skipped_count = copy_planting_plans(
             source_season=source_season,
             target_season=target_season,
-            rotation_conflicts=serializer.validated_data['rotation_conflicts'],
-            language_code=resolve_request_language(request),
+            rotation_conflicts=rotation_conflicts,
+            language_code=resolve_request_language(self.request),
         )
         if created_plans:
             # Group the created revisions while keeping each copy individually restorable.
@@ -280,7 +324,7 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
                     'source_season_label': source_season.label,
                     'target_season_label': target_season.label,
                 },
-                user_name=_current_actor_label(request),
+                user_name=_current_actor_label(self.request),
             )
             for plan in (
                 PlantingPlan.objects
@@ -291,11 +335,11 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
                     plan, EntityRevision.ACTION_CREATED, batch_operation=batch,
                 )
         total_count = PlantingPlan.objects.filter(season=target_season).count()
-        return Response({
+        return {
             'copied_count': len(created_plans),
             'skipped_count': skipped_count,
             'target_planting_plan_count': total_count,
-        })
+        }
 
     @action(detail=False, methods=['get'], url_path='creation-options')
     def creation_options(self, request):

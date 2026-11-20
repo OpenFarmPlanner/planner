@@ -66,7 +66,8 @@ export function SeasonCopyDataDialog({ open, targetSeason, onClose, onConfirm }:
   const result = previewState?.targetId === targetSeasonId ? previewState : null;
   const preview = result && 'data' in result ? result.data : null;
   const previewFailure = result && 'error' in result ? result : null;
-  const noPrecedingSource = extractApiErrorCode(previewFailure?.error) === 'season_copy_no_preceding_source';
+  const previewErrorCode = extractApiErrorCode(previewFailure?.error);
+  const noPrecedingSource = previewErrorCode === 'season_copy_no_preceding_source';
   const hasRotationFindings = Boolean(preview && (preview.conflict_count > 0 || preview.hint_count > 0));
 
   const handleClose = () => {
@@ -113,7 +114,7 @@ export function SeasonCopyDataDialog({ open, targetSeason, onClose, onConfirm }:
     <Dialog open={open} onClose={submitting ? undefined : handleClose} fullWidth maxWidth="sm">
       <DialogTitle>{t('navigation:seasonSwitcher.copyDialog.title')}</DialogTitle>
       <DialogContent>
-        <Stack component="dl" spacing={0.5} sx={{ mt: 1, mb: 2, overflowWrap: 'anywhere' }}>
+        <Stack component="dl" spacing={0.5} sx={{ mt: 0, mb: 2, overflowWrap: 'anywhere' }}>
           {preview && (
             <>
               <Typography component="dt" variant="subtitle2">{t('navigation:seasonSwitcher.copyDialog.sourceLabel')}</Typography>
@@ -127,10 +128,9 @@ export function SeasonCopyDataDialog({ open, targetSeason, onClose, onConfirm }:
         {!result && <Typography role="status" variant="body2">{t('common:actions.loading')}</Typography>}
         {previewFailure && (
           <Alert severity={noPrecedingSource ? 'info' : 'error'}>
-            {extractApiErrorMessage(previewFailure.error, t, t(
-              extractApiErrorCode(previewFailure.error) === 'source_season_not_found'
-                ? 'navigation:seasonSwitcher.copyDialog.sourceChanged' : 'navigation:seasonSwitcher.copyDialog.previewError',
-            ))}
+            {previewErrorCode === 'source_season_not_found'
+              ? t('navigation:seasonSwitcher.copyDialog.sourceChanged')
+              : extractApiErrorMessage(previewFailure.error, t, t('navigation:seasonSwitcher.copyDialog.previewError'))}
           </Alert>
         )}
 
@@ -148,8 +148,6 @@ export function SeasonCopyDataDialog({ open, targetSeason, onClose, onConfirm }:
           <Typography variant="body2" color="text.secondary">
             {t('navigation:seasonSwitcher.copyDialog.summary', {
               count: preview.total,
-              source: preview.source_season_label,
-              target: targetSeason.label,
               total: preview.total + targetSeason.planting_plan_count,
             })}
           </Typography>

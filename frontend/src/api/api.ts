@@ -493,6 +493,8 @@ export const seasonAPI = {
   list: () => http.get<PaginatedResponse<Season>>('/seasons/', { params: { page_size: 1000 } }),
   create: (data: { start_date: string; end_date: string; custom_label?: string }) =>
     http.post<Season>('/seasons/', data),
+  createAndCopy: (data: { start_date: string; end_date: string; source_season_id: number }) =>
+    http.post<Season>('/seasons/create-and-copy/', data),
   update: (id: number, data: Partial<{ custom_label: string; start_date: string; end_date: string }>) =>
     http.patch<Season>(`/seasons/${id}/`, data),
   delete: (id: number) => http.delete(`/seasons/${id}/`),

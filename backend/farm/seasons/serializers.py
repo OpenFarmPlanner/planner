@@ -163,6 +163,17 @@ class SeasonPatternSerializer(serializers.ModelSerializer):
         return value
 
 
+class SeasonCreateAndCopySerializer(SeasonSerializer):
+    source_season_id = serializers.IntegerField(write_only=True)
+
+    class Meta(SeasonSerializer.Meta):
+        fields = [*SeasonSerializer.Meta.fields, 'source_season_id']
+
+    def create(self, validated_data):
+        validated_data.pop('source_season_id')
+        return super().create(validated_data)
+
+
 class SeasonCopyFromSerializer(serializers.Serializer):
     source_season_id = serializers.IntegerField()
     rotation_conflicts = serializers.ChoiceField(

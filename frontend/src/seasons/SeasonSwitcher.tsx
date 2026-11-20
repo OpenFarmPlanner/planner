@@ -43,7 +43,7 @@ import { addDaysIso, analyzePeriodTransition, computeManualSeasonEnd } from './s
 import { SEASON_SWITCHER_EMOJI } from '../navigation/navigationIconEmoji';
 import { NavEmojiIcon } from '../navigation/NavEmojiIcon';
 import { DeleteUndoSnackbar } from '../components/data-grid';
-import { extractApiErrorMessage } from '../api/errors';
+import { extractApiErrorCode, extractApiErrorMessage } from '../api/errors';
 import { TruncatedTextWithTooltip } from '../components/TruncatedTextWithTooltip';
 
 interface SeasonSwitcherProps {
@@ -80,6 +80,9 @@ function getSeasonCreateErrorMessage(
   if (axios.isAxiosError(error)) {
     const data = error.response?.data as SeasonConflictPayload | undefined;
     const code = data ? (Array.isArray(data.code) ? data.code[0] : data.code) : undefined;
+    if (code === 'source_season_not_found') {
+      return t('navigation:seasonSwitcher.copyDialog.sourceChanged');
+    }
     if (data && code === 'season_unassigned_data_outside_period') {
       const examples = data.conflicts
         ?.map((conflict) => conflict.label)
@@ -108,7 +111,7 @@ export function SeasonCreateSuggestionDialog({
   const locale = resolveSeasonDateLocale(i18n);
   const {
     dueSuggestion, seasonCreationOptions,
-    switchSeason, createSeason, createTransitionSeasons,
+    switchSeason, createSeason, createTransitionSeasons, reload,
   } = controller;
   const [copyFromPrevious, setCopyFromPrevious] = useState(true);
   const [creatingSuggested, setCreatingSuggested] = useState(false);
@@ -280,6 +283,12 @@ export function SeasonCreateSuggestionDialog({
       onClose();
       switchSeason(seasonToActivate.id);
     } catch (error) {
+      const code = extractApiErrorCode(error);
+      if (code === 'season_copy_source_not_preceding' || code === 'source_season_not_found') {
+        setGapChoice('');
+        setManualCopyOptions(null);
+        void reload();
+      }
       setCreateError(getSeasonCreateErrorMessage(
         error,
         t('navigation:seasonSwitcher.suggestion.createError'),
@@ -621,7 +630,9 @@ export function SeasonSwitcher({
             <MenuItem key={season.id} selected={isActive} onClick={() => { closeMenu(); switchSeason(season.id); }}>
               <Stack sx={{ flex: 1, minWidth: 0 }}>
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                  <Typography sx={{ fontWeight: isActive ? 700 : 500 }}>{season.label}</Typography>
+                  <Typography sx={{ fontWeight: isActive ? 700 : 500, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
+                    {season.label}
+                  </Typography>
                   {isActive ? <CheckIcon fontSize="small" color="primary" /> : null}
                 </Stack>
                 <Typography variant="caption" color="text.secondary" noWrap>
@@ -704,7 +715,12 @@ export function SeasonSwitcher({
       <SeasonRowActionsMenu
         anchorEl={rowMenuAnchor}
         onClose={() => { setRowMenuAnchor(null); setRowMenuSeasonId(null); }}
-        onCopyDataFrom={() => { if (rowMenuSeason) { setCopyDialogTarget(rowMenuSeason); } }}
+        onCopyDataFrom={() => {
+          if (rowMenuSeason) {
+            closeMenu();
+            setCopyDialogTarget(rowMenuSeason);
+          }
+        }}
         onRename={() => { if (rowMenuSeason) { setRenameSeasonTarget(rowMenuSeason); } }}
         onEditPeriod={() => { if (rowMenuSeason) { setPeriodEditTarget(rowMenuSeason); } }}
         onDelete={() => { if (rowMenuSeason) { void deleteSeason(rowMenuSeason); closeMenu(); } }}

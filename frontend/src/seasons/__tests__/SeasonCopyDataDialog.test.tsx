@@ -163,14 +163,17 @@ describe('SeasonCopyDataDialog', () => {
     expect(onConfirm).toHaveBeenCalledWith(2, 1);
   });
 
-  it('uses the server’s labels and invalidates a preview if the preceding season changes', async () => {
+  it.each([
+    [400, 'season_copy_source_not_preceding'],
+    [404, 'source_season_not_found'],
+  ])('uses the server’s labels and invalidates a preview if the predecessor changes (%i)', async (status, code) => {
     const user = userEvent.setup();
     const sourceLabel = 'Saison vor dem Umbau des Bewässerungssystems im Gemeinschaftsgarten';
     const targetLabel = 'Lange Zielsaison für die neue Versuchsfläche und den Gemeinschaftsgarten';
     copyPreviewMock.mockResolvedValue({ data: { ...emptyPreview, source_season_label: sourceLabel } });
     const onConfirm = vi.fn().mockRejectedValue({
       isAxiosError: true,
-      response: { status: 400, data: { code: 'season_copy_source_not_preceding' } },
+      response: { status, data: { code } },
     });
     render(
       <SeasonCopyDataDialog open targetSeason={{ ...targetSeason, label: targetLabel }}

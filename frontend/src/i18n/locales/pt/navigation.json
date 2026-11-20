@@ -145,8 +145,8 @@
       "targetLabel": "Época de destino",
       "warning_one": "A época {{target}} já contém 1 série. A cópia adiciona as séries da época {{source}}. As séries existentes em {{target}} não são alteradas nem substituídas.",
       "warning_other": "A época {{target}} já contém {{count}} séries. A cópia adiciona as séries da época {{source}}. As séries existentes em {{target}} não são alteradas nem substituídas.",
-      "summary_one": "→ Será adicionada 1 série da época {{source}} à época {{target}} (total final: {{total}}).",
-      "summary_other": "→ Serão adicionadas {{count}} séries da época {{source}} à época {{target}} (total final: {{total}}).",
+      "summary_one": "Será adicionado {{count}} plano de cultivo. A época ficará com {{total}} no total.",
+      "summary_other": "Serão adicionados {{count}} planos de cultivo. A época ficará com {{total}} no total.",
       "confirm": "Copiar",
       "error": "Não foi possível copiar os dados.",
       "noPrecedingSource": "Não existe uma época imediatamente anterior. Cria primeiro a época em falta para copiar os seus dados.",
@@ -186,7 +186,7 @@
         "summary_many": "Serão copiadas {{count}} séries da época {{source}} para os mesmos canteiros."
       },
       "warning_many": "A época {{target}} já contém {{count}} séries. A cópia adiciona as séries da época {{source}}. As séries existentes em {{target}} não são alteradas nem substituídas.",
-      "summary_many": "→ Serão adicionadas {{count}} séries da época {{source}} à época {{target}} (total final: {{total}})."
+      "summary_many": "Serão adicionados {{count}} planos de cultivo. A época ficará com {{total}} no total."
     },
     "planCount_many": "{{count}} séries"
   },

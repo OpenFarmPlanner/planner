@@ -145,8 +145,8 @@
       "targetLabel": "Stagione di destinazione",
       "warning_one": "La stagione {{target}} contiene già 1 serie. La copia aggiungerà le serie della stagione {{source}}; le serie esistenti in {{target}} non verranno modificate né sostituite.",
       "warning_other": "La stagione {{target}} contiene già {{count}} serie. La copia aggiungerà le serie della stagione {{source}}; le serie esistenti in {{target}} non verranno modificate né sostituite.",
-      "summary_one": "→ 1 serie dalla stagione {{source}} verrà aggiunta alla stagione {{target}} (totale successivo: {{total}}).",
-      "summary_other": "→ {{count}} serie dalla stagione {{source}} verranno aggiunte alla stagione {{target}} (totale successivo: {{total}}).",
+      "summary_one": "Verrà aggiunto {{count}} piano di coltivazione. Il totale sarà di {{total}}.",
+      "summary_other": "Verranno aggiunti {{count}} piani di coltivazione. Il totale sarà di {{total}}.",
       "confirm": "Copia",
       "error": "Impossibile copiare i dati.",
       "noPrecedingSource": "Non c’è una stagione immediatamente precedente. Crea prima la stagione mancante per copiarne i dati.",
@@ -186,7 +186,7 @@
         "summary_many": "{{count}} serie dalla stagione {{source}} verranno copiate nelle stesse aiuole."
       },
       "warning_many": "La stagione {{target}} contiene già {{count}} serie. La copia aggiungerà le serie della stagione {{source}}; le serie esistenti in {{target}} non verranno modificate né sostituite.",
-      "summary_many": "→ {{count}} serie dalla stagione {{source}} verranno aggiunte alla stagione {{target}} (totale successivo: {{total}})."
+      "summary_many": "Verranno aggiunti {{count}} piani di coltivazione. Il totale sarà di {{total}}."
     },
     "planCount_many": "{{count}} serie"
   },

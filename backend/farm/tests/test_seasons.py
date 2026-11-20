@@ -956,6 +956,44 @@ class SeasonApiTest(ProjectApiTestCase):
         self.assertEqual(response.data['copied_count'], 1)
         self.assertEqual(response.data['target_planting_plan_count'], 1)
 
+    def test_create_and_copy_revalidates_the_source_before_writing_either_result(self):
+        earlier = Season.objects.create(
+            project=self.project, start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
+        )
+        interim = Season.objects.create(
+            project=self.project, start_date=date(2026, 9, 1), end_date=date(2026, 12, 31),
+        )
+        original = PlantingPlan.objects.create(
+            crop=self.crop, bed=self.bed, project=self.project, season=interim,
+            planting_date=date(2026, 10, 1),
+        )
+        revisions = EntityRevision.objects.filter(project=self.project).count()
+        url = '/openfarmplanner/api/seasons/create-and-copy/'
+        period = {'start_date': '2027-01-01', 'end_date': '2027-12-31'}
+
+        rejected = self.client.post(url, {**period, 'source_season_id': earlier.pk})
+
+        self.assertEqual(rejected.status_code, 400)
+        self.assertEqual(rejected.data['code'], 'season_copy_source_not_preceding')
+        self.assertEqual(Season.objects.filter(project=self.project).count(), 2)
+        self.assertEqual(PlantingPlan.objects.filter(project=self.project).count(), 1)
+        self.assertFalse(BatchOperation.objects.filter(project=self.project).exists())
+        self.assertEqual(EntityRevision.objects.filter(project=self.project).count(), revisions)
+
+        created = self.client.post(url, {**period, 'source_season_id': interim.pk})
+
+        self.assertEqual(created.status_code, 201)
+        self.assertEqual(created.data['planting_plan_count'], 1)
+        copied = PlantingPlan.objects.get(season_id=created.data['id'])
+        self.assertEqual(copied.planting_date, date(2027, 10, 1))
+        self.assertNotEqual(copied.pk, original.pk)
+        self.assertEqual(PlantingPlan.objects.get(pk=original.pk).season_id, interim.pk)
+        self.assertEqual(
+            BatchOperation.objects.filter(project=self.project, operation_type='season_copy_data')
+            .get().context['source_season_label'],
+            interim.label,
+        )
+
     def test_copy_uses_real_non_calendar_periods_and_preserves_existing_plans(self):
         source = Season.objects.create(
             project=self.project, start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),

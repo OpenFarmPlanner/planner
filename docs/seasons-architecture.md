@@ -222,6 +222,8 @@ a season pattern changes and keeps the previous period eligible.
 - `SeasonViewSet.copy_from` validates the requested source again before any
   write. The creation suggestion uses the eligible source returned by
   `GET /seasons/creation-options/`, independent of the season currently open.
+  `POST /seasons/create-and-copy/` rechecks the source and saves the new season
+  and the copied plans in one transaction.
   When creating a transition and follow-up together, the eligible source for
   the transition is copied once across the pair.
 - `frontend/src/seasons/SeasonCopyDataDialog.tsx` is the shared dialog

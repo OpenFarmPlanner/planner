@@ -91,11 +91,13 @@ test('the suggested season copies from the predecessor when an older season is a
   const dialog = page.getByRole('dialog', { name: 'Saison 26/27 anlegen?' });
   await expect(dialog.getByRole('checkbox', { name: /Daten aus Saison Unmittelbar vorherige Saison übernehmen/ })).toBeChecked();
 
-  const copying = page.waitForResponse(response => response.url().endsWith('/copy-from/'));
+  const copying = page.waitForResponse(response => response.url().endsWith('/seasons/create-and-copy/'));
   await dialog.getByRole('button', { name: 'Anlegen', exact: true }).click();
   const response = await copying;
-  expect(response.request().postDataJSON()).toEqual({ source_season_id: source.id });
-  expect(await response.json()).toMatchObject({ copied_count: 1 });
+  expect(response.request().postDataJSON()).toEqual({
+    start_date: '2026-09-01', end_date: '2027-08-31', source_season_id: source.id,
+  });
+  expect(await response.json()).toMatchObject({ planting_plan_count: 1 });
   await expect(switcher).toContainText('26/27');
   const { results } = await apiRequest<{ results: Array<{ id: number; planting_plan_count: number }> }>(page, 'GET', '/seasons/');
   expect(results.find(season => season.id === older.id)?.planting_plan_count).toBe(0);
