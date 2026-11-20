@@ -460,7 +460,7 @@
       "versionRestoreError": "Não foi possível restaurar a versão do projeto.",
       "leaveDemoError": "Não foi possível sair da demonstração. Tente novamente.",
       "logoutError": "Não foi possível terminar sessão. Tente novamente.",
-      "versionRestoreConflict": "Esta versão está incompleta ou em conflito com dados relacionados. Nada foi alterado."
+      "versionRestoreConflict": "Esta versão está incompleta ou em conflito com dados relacionados. Nada foi alterado. Escolha outra versão no histórico."
     },
     "shortcutHint": "Sugestão: premir Alt+K para abrir a paleta de comandos.",
     "historyBy": "Por {{actor}}",

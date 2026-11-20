@@ -675,7 +675,7 @@ def revert_batch_operation(project: Project, batch, *, user_name: str = '') -> N
         current = capture_project_state(project, lock=True)
         record_project_checkpoint(
             project, current,
-            user_name=user_name, action=EntityRevision.ACTION_UPDATED,
+            user_name=user_name, action=EntityRevision.ACTION_UPDATED, automatic_backup=True,
         )
         revert_batch = start_batch_operation(
             project=project,
