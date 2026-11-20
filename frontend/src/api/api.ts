@@ -107,9 +107,9 @@ export async function fetchAllPaginated<T>(
   let count = 0;
 
   while (nextPath) {
-    const response: { data: PaginatedResponse<T> } = await http.get<
-      PaginatedResponse<T>
-    >(nextPath, { signal });
+    const response: { data: PaginatedResponse<T> } = signal
+      ? await http.get<PaginatedResponse<T>>(nextPath, { signal })
+      : await http.get<PaginatedResponse<T>>(nextPath);
     results.push(...response.data.results);
     count = response.data.count;
     // DRF returns an absolute URL for `next`, built from the backend's own host.
