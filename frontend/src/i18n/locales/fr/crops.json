@@ -829,7 +829,7 @@
         "cultivation": "Culture et rendement",
         "other": "Autres propriétés"
       },
-      "templateSamples": "Remplacez ou supprimez les trois lignes d’exemple avant d’importer vos données.",
+      "templateSamples": "Remplacez ou supprimez les lignes d’exemple avant d’importer vos données.",
       "templateError": "Impossible de charger le modèle."
     },
     "timingWindowIssue": "Ligne {{row}}, {{column}} : {{message}} La valeur n’est pas importée.",

@@ -820,7 +820,7 @@
         "cultivation": "Coltivazione e resa",
         "other": "Altre proprietà"
       },
-      "templateSamples": "Sostituisci o elimina le tre righe di esempio prima di importare i tuoi dati.",
+      "templateSamples": "Sostituisci o elimina le righe di esempio prima di importare i tuoi dati.",
       "templateError": "Impossibile caricare il modello."
     },
     "timingWindowIssue": "Riga {{row}}, {{column}}: {{message}} Il valore non viene importato.",

@@ -803,7 +803,7 @@
         "cultivation": "Anbau und Ertrag",
         "other": "Weitere Eigenschaften"
       },
-      "templateSamples": "Ersetze oder lösche die drei Beispielzeilen vor dem Import deiner Daten.",
+      "templateSamples": "Ersetze oder lösche die Beispielzeilen vor dem Import deiner Daten.",
       "templateError": "Die Vorlage konnte nicht geladen werden."
     },
     "timingWindowIssue": "Zeile {{row}}, {{column}}: {{message}} Der Wert wird nicht übernommen.",

@@ -803,7 +803,7 @@
         "cultivation": "Teelt en opbrengst",
         "other": "Overige eigenschappen"
       },
-      "templateSamples": "Vervang of verwijder de drie voorbeeldrijen voordat je je gegevens importeert.",
+      "templateSamples": "Vervang of verwijder de voorbeeldrijen voordat je je gegevens importeert.",
       "templateError": "Het sjabloon kon niet worden geladen."
     },
     "timingWindowIssue": "Rij {{row}}, {{column}}: {{message}} De waarde wordt niet geïmporteerd.",

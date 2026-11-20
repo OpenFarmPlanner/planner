@@ -829,7 +829,7 @@
         "cultivation": "Cultivo y rendimiento",
         "other": "Otras propiedades"
       },
-      "templateSamples": "Sustituye o elimina las tres filas de ejemplo antes de importar tus datos.",
+      "templateSamples": "Sustituye o elimina las filas de ejemplo antes de importar tus datos.",
       "templateError": "No se ha podido cargar la plantilla."
     },
     "timingWindowIssue": "Fila {{row}}, {{column}}: {{message}} El valor no se importa.",

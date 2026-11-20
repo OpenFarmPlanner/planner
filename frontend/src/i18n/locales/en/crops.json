@@ -803,7 +803,7 @@
         "cultivation": "Cultivation and yield",
         "other": "Other properties"
       },
-      "templateSamples": "Replace or delete the three example rows before importing your data.",
+      "templateSamples": "Replace or delete the example rows before importing your data.",
       "templateError": "The template could not be loaded."
     },
     "timingWindowIssue": "Row {{row}}, {{column}}: {{message}} The value is not imported.",

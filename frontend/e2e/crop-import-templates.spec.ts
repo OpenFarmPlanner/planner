@@ -70,7 +70,7 @@ for (const [language, { text, navigation, common }] of Object.entries(languages)
       ]);
       expect(preview.ok()).toBe(true);
       const body = await preview.json() as { results: ImportPreviewResult[] };
-      expect(body.results).toHaveLength(3);
+      expect(body.results).toHaveLength(4);
       for (const result of body.results) {
         expect(result.error).toBeUndefined();
         expect(result.timing_window_issues ?? []).toEqual([]);
@@ -110,13 +110,15 @@ for (const [language, { text, navigation, common }] of Object.entries(languages)
       const variety = crops.results.find(crop => crop.name === text.import.template.directSownName && crop.variety === text.import.template.varietyName);
       expect(variety).toBeDefined();
       // Only a catalog-linked variety creates an automatic general crop.
-      expect(crops.count).toBe(variety?.crop_species ? 4 : 3);
+      expect(crops.count).toBe(variety?.crop_species ? 5 : 4);
       if (variety?.crop_species) {
         expect(crops.results.some(crop => crop.crop_species === variety.crop_species && !crop.variety)).toBe(true);
       }
       const potato = crops.results.find(crop => crop.specific_property_profile === 'solanum_tuberosum');
       expect(potato?.specific_properties).toEqual({ cooking_type: 'waxy', maturity_group: 'early' });
       expect(potato?.stratification_days_min).toBe(28);
+      const rhubarb = crops.results.find(crop => crop.name === text.import.template.perennialName);
+      expect(rhubarb).toMatchObject({ life_cycle: 'perennial', standing_time_years: 6 });
       await page.goto(`/app/crops?cropId=${existing.id}`);
       const timing = page.getByTestId('crop-timing-windows-detail');
       await expect(timing).toBeVisible();
