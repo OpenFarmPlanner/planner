@@ -256,6 +256,7 @@ erDiagram
     PlantingPlan ||--o{ CropLoss : "dated incident"
     Bed ||--o{ PlantingPlan : "scheduled on"
     Season ||--o{ PlantingPlan : "scoped to (nullable)"
+    PlantingPlan |o--o{ PlantingPlan : "copied from plan"
     Project ||--o| SeasonPattern : "1:1 start day/month"
     Project ||--o{ Season : has
     PlantingPlan ||--o{ Task : "optional related task"
@@ -298,6 +299,10 @@ erDiagram
   only a consciously accepted conflict is stored on the plan
   (`rotation_conflict_accepted_by`/`_at`) — see
   [crop-rotation.md](./crop-rotation.md).
+  Season copy stores the direct source in the optional `copied_from_plan_id`
+  field. The identity follows the copy through bed changes and stays available
+  for lookup if the original season is restored. The detail API resolves the
+  source within the same project. Project history captures the source identity.
 - **`HarvestRecord`** stores one project's crop, picking date, positive
   quantity, unit and optional note. Pieces and bunches can carry a saved
   grams-per-unit factor and its source. Reference weights can come from the

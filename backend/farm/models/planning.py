@@ -134,6 +134,10 @@ class PlantingPlan(TimestampedModel):
         blank=True,
         help_text="Season this planting plan is scheduled in. Nullable only until a project's first season setup runs.",
     )
+    copied_from_plan_id = models.PositiveBigIntegerField(
+        null=True, blank=True, editable=False,
+        help_text='Source plan identity, retained while the original is deleted or unavailable.',
+    )
 
     # Changing any of these moves the plan in the crop rotation, so a
     # previously accepted rotation conflict no longer describes it.

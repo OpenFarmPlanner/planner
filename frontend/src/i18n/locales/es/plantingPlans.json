@@ -437,6 +437,14 @@
     "tasksLoadFailed": "No se pudieron cargar las tareas.",
     "taskCancelled": "Cancelada"
   },
+  "previousSeason": {
+    "title": "Temporada anterior: {{season}}",
+    "titleWithoutSeason": "Temporada anterior",
+    "reference": "Referencia",
+    "empty": "El plan de cultivo de origen no tiene datos reales registrados.",
+    "unavailable": "La referencia de la temporada anterior no está disponible.",
+    "openSource": "Abrir el plan de cultivo de origen"
+  },
   "cropLosses": {
     "title": "Pérdidas del cultivo",
     "historyType": "Pérdida del cultivo",

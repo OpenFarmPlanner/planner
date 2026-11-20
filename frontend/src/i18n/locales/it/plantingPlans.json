@@ -437,6 +437,14 @@
     "tasksLoadFailed": "Impossibile caricare le attività.",
     "taskCancelled": "Annullata"
   },
+  "previousSeason": {
+    "title": "Stagione precedente: {{season}}",
+    "titleWithoutSeason": "Stagione precedente",
+    "reference": "Riferimento",
+    "empty": "Il piano di coltivazione di origine non contiene dati effettivi registrati.",
+    "unavailable": "Il riferimento alla stagione precedente non è disponibile.",
+    "openSource": "Apri il piano di coltivazione di origine"
+  },
   "cropLosses": {
     "title": "Perdite colturali",
     "historyType": "Perdita colturale",

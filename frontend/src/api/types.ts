@@ -1350,7 +1350,18 @@ export interface PlantingPlanDetail extends PlantingPlan {
   field_name: string | null;
   location_name: string | null;
   crop_available: boolean;
+  previous_season_reference?: PlantingPlanPreviousSeasonReference | null;
 }
+
+export type PlantingPlanPreviousSeasonReference = { available: false } | {
+  available: true;
+  source_plan_id: number;
+  source_season_id: number;
+  source_season_label: string;
+  actual_dates: PlantingPlanActualDates;
+  harvest_quantities: HarvestQuantity[];
+  crop_loss_count: number;
+};
 
 export type RotationStatus = 'conflict' | 'accepted' | 'hint' | 'info' | 'ok';
 

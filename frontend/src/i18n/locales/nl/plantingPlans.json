@@ -428,6 +428,14 @@
     "tasksLoadFailed": "De taken konden niet worden geladen.",
     "taskCancelled": "Geannuleerd"
   },
+  "previousSeason": {
+    "title": "Vorig seizoen: {{season}}",
+    "titleWithoutSeason": "Vorig seizoen",
+    "reference": "Referentie",
+    "empty": "Voor het oorspronkelijke teeltplan zijn geen werkelijke gegevens geregistreerd.",
+    "unavailable": "De referentie voor het vorige seizoen is niet beschikbaar.",
+    "openSource": "Open het oorspronkelijke teeltplan"
+  },
   "cropLosses": {
     "title": "Teeltuitval",
     "historyType": "Teeltuitval",

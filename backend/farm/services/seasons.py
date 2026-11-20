@@ -325,7 +325,7 @@ def build_planting_plan_copies(
 
     source_plans = (
         PlantingPlan.objects
-        .filter(season=source_season)
+        .filter(season=source_season, project_id=target_season.project_id)
         .select_related('crop', 'crop__crop_species', 'bed')
         .prefetch_related('crop__crop_species__translations')
         .order_by('pk')
@@ -422,6 +422,10 @@ def copy_planting_plans(
         restrict_to_target_period=restrict_to_target_period,
         use_actual_dates=use_actual_dates,
     )
+    predecessor = preceding_season_copy_source(target_season.project, target_season.start_date)
+    if source_season == predecessor:
+        for source, copy in pairs:
+            copy.copied_from_plan_id = source.pk
     new_plans = [copy for _, copy in pairs]
     if rotation_conflicts != 'keep' and pairs:
         from farm.services.crop_rotation import (
@@ -560,7 +564,13 @@ def distribute_planting_plans(
     continuing_count = 0
     unconfigured_count = 0
     crop_index = build_general_crop_index(source_season.project_id)
-    for plan in PlantingPlan.objects.filter(season=source_season).select_related('crop'):
+    predecessor = preceding_season_copy_source(
+        transition_season.project, transition_season.start_date,
+    )
+    source_plans = PlantingPlan.objects.filter(
+        season=source_season, project_id=transition_season.project_id,
+    ).select_related('crop')
+    for plan in source_plans:
         fields = {field: getattr(plan, field) for field in PLANTING_PLAN_COPY_FIELDS}
         for date_field in PLANTING_PLAN_SHIFTED_DATE_FIELDS:
             fields[date_field] = shifted(fields[date_field])
@@ -579,6 +589,8 @@ def distribute_planting_plans(
             continuing_count += 1
             continue
         copy = PlantingPlan(project=season.project, season=season, **fields)
+        if source_season == predecessor and plan.project_id == season.project_id:
+            copy.copied_from_plan_id = plan.pk
         copy.crop = plan.crop
         if not _prepare_perennial_copy(copy, crop_index):
             unconfigured_count += 1

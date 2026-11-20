@@ -595,6 +595,7 @@ def populate_demo_project(
         assign_unassigned_planting_plans(project, owner=owner)
         _create_demo_harvests(project, crops, beds, language, year)
         _create_demo_crop_losses(project, crops, beds, language, year)
+        _create_demo_previous_season_reference(project, crops, beds, year)
         populate_demo_tasks(
             project, owner=owner, fields=fields, crops=crops, language_code=language,
             today=reference_date,
@@ -1963,3 +1964,30 @@ def _create_demo_crop_losses(project: Project, crops, beds, language: str, year:
             extent_value=Decimal('1.5'), extent_unit=CropLossUnit.SQUARE_METRES,
         ),
     ])
+
+
+def _create_demo_previous_season_reference(project: Project, crops, beds, year: int) -> None:
+    carrot = crops['karotte']
+    plans = PlantingPlan.objects.filter(project=project, crop=carrot)
+    source = plans.get(bed=beds['salat-2'], planting_date__year=year - 1)
+    plans.filter(bed=beds['karotte-2'], planting_date__year=year).update(
+        copied_from_plan_id=source.pk,
+    )
+    plans.filter(pk=source.pk).update(
+        actual_harvest_start_date=date(year - 1, 6, 28),
+        recorded_harvest_end_date=date(year - 1, 7, 15),
+    )
+    for day, quantity, unit in (
+        (28, 2, HarvestUnit.KILOGRAM), (29, 750, HarvestUnit.GRAM), (30, 6, HarvestUnit.BUNCH),
+    ):
+        harvest = HarvestRecord.objects.create(
+            project=project, crop=carrot, date=date(year - 1, 6, day), quantity=quantity, unit=unit,
+        )
+        HarvestAllocation.objects.create(
+            project=project, harvest=harvest, planting_plan=source, quantity=quantity,
+        )
+    CropLoss.objects.create(
+        project=project, planting_plan=source, date=date(year - 1, 4, 8),
+        loss_type=CropLossType.PARTIAL, cause=CropLossCause.DROUGHT,
+        extent_value=10, extent_unit=CropLossUnit.PERCENT,
+    )
