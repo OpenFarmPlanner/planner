@@ -12,7 +12,7 @@ from typing import Any
 
 from farm.models import EntityRevision, PlantingPlan, Project, Season, SeasonPattern
 from farm.services.crop_inheritance import GeneralCropIndex, build_general_crop_index
-from farm.services.tasks import generate_tasks_for_plans, plan_cultivation_type, plan_event_dates
+from farm.services.tasks import generate_tasks_for_plans, plan_cultivation_type
 
 # Fields copied from a source PlantingPlan onto a new one in the target
 # season. Excludes the primary key, timestamps, audit fields, and the
@@ -236,22 +236,23 @@ def _season_copy_fields(plan: PlantingPlan, crop_index: GeneralCropIndex | None)
     if crop_index is None:
         return fields
 
-    planned = plan_event_dates(plan, crop_index)
-    sowing = plan.actual_sowing_date or planned.get('sowing')
-    transplanting = plan.actual_transplanting_date or planned.get('planting')
+    # Only recorded dates replace the plan's own values; computed dates stay
+    # computed so the copy keeps following its crop timing.
+    sowing = plan.actual_sowing_date or plan.planned_sowing_date
+    transplanting = plan.actual_transplanting_date or plan.planned_transplanting_date
     if plan_cultivation_type(plan, crop_index) in ('pre_cultivation', 'purchased_transplant'):
-        fields['planting_date'] = transplanting or plan.planting_date
+        fields['planting_date'] = plan.actual_transplanting_date or plan.planting_date
         fields['planned_sowing_date'] = sowing
         fields['planned_transplanting_date'] = None
     else:
-        fields['planting_date'] = sowing or plan.planting_date
+        fields['planting_date'] = plan.actual_sowing_date or plan.planting_date
         fields['planned_sowing_date'] = None
         fields['planned_transplanting_date'] = transplanting
     fields['planned_propagation_start_date'] = (
-        plan.actual_propagation_start_date or planned.get('propagation_start')
+        plan.actual_propagation_start_date or plan.planned_propagation_start_date
     )
-    fields['harvest_date'] = plan.actual_harvest_start_date or planned.get('harvest_start')
-    fields['harvest_end_date'] = plan.recorded_harvest_end_date or planned.get('harvest_end')
+    fields['harvest_date'] = plan.actual_harvest_start_date or plan.harvest_date
+    fields['harvest_end_date'] = plan.recorded_harvest_end_date or plan.harvest_end_date
     return fields
 
 

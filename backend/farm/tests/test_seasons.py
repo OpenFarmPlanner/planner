@@ -1029,6 +1029,27 @@ class SeasonApiTest(ProjectApiTestCase):
         self.assertEqual(copy.harvest_end_date, date(2027, 5, 2))
         self.assertIsNone(copy.actual_sowing_date)
 
+    def test_actual_basis_keeps_computed_dates_computed_without_recorded_values(self):
+        source = Season.objects.create(
+            project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+        )
+        target = Season.objects.create(
+            project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
+        )
+        original = PlantingPlan.objects.create(
+            crop=self.crop, project=self.project, season=source,
+            cultivation_type='direct_sowing', planting_date=date(2026, 3, 1),
+        )
+        PlantingPlan.objects.filter(pk=original.pk).update(harvest_date=None, harvest_end_date=None)
+        result = self.client.post(
+            f'/openfarmplanner/api/seasons/{target.pk}/copy-from/',
+            {'source_season_id': source.pk, 'use_actual_dates': True},
+        )
+        self.assertEqual(result.status_code, 200)
+        copy = PlantingPlan.objects.get(season=target)
+        self.assertIsNone(copy.planned_propagation_start_date)
+        self.assertEqual(copy.planting_date, date(2027, 3, 1))
+
     def test_create_and_copy_revalidates_the_source_before_writing_either_result(self):
         earlier = Season.objects.create(
             project=self.project, start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
