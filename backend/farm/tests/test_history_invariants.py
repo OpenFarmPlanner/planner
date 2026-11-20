@@ -50,6 +50,7 @@ from farm.models import (
     ProjectMembership,
     PublicCrop,
     RetainedUpload,
+    Task,
 )
 from farm.tests.history_guard import latest_selectable_revision, state_diff
 
@@ -250,6 +251,94 @@ class CompositeMutationHistoryTests(HistoryInvariantTestCase):
             'name': 'New name',
         })
         self.round_trip_every_version()
+
+
+class SeasonTaskDeletionHistoryTests(HistoryInvariantTestCase):
+    def test_generated_task_tombstones_survive_full_restore_and_batch_redo(self) -> None:
+        season = self.write('create season', 'post', '/seasons/', {
+            'start_date': '2026-01-01', 'end_date': '2026-12-31',
+        })
+        other = self.write('create other season', 'post', '/seasons/', {
+            'start_date': '2027-01-01', 'end_date': '2027-12-31',
+        })
+        other_task = self.write('unrelated work', 'post', '/tasks/', {
+            'season': other['id'], 'title': 'Next year', 'status': 'in_progress',
+        })
+        self.client.defaults['HTTP_X_SEASON_ID'] = str(season['id'])
+        crop = self.write('create crop', 'post', '/crops/', {
+            'name': 'Lettuce', 'growth_duration_days': 40,
+        })
+        template = self.write('create recurring rule', 'post', '/crop-task-templates/', {
+            'crop': crop['id'], 'title': 'Check soil', 'reference_event': 'planting',
+            'repeat_interval_days': 7, 'repeat_until': 'count', 'repeat_count': 3,
+        })
+        plan = self.write('create plan', 'post', '/planting-plans/', {
+            'crop': crop['id'], 'season': season['id'], 'planting_date': '2026-04-07',
+            'cultivation_type': 'pre_cultivation',
+        })
+        manual = self.write('create linked manual task', 'post', '/tasks/', {
+            'title': 'Manual check', 'planting_plan': plan['id'], 'status': 'completed',
+        })
+        first, second, third = Task.objects.filter(
+            project=self.project, template_id=template['id'],
+        ).order_by('occurrence_index')
+        self.write('complete occurrence', 'patch', f'/tasks/{first.pk}/', {'status': 'completed'})
+        self.write('override occurrence', 'patch', f'/tasks/{second.pk}/', {'due_date': None})
+        self.write('remove occurrence', 'delete', f'/tasks/{third.pk}/')
+        before = self.versions[-1]
+        path = f"/seasons/{season['id']}/"
+
+        self.write('delete season', 'delete', path)
+        deleted = self.versions[-1]
+        self.assertEqual(deleted.revision.entity_type, 'season')
+        child = deleted.revision.batch_operation.revisions.get(
+            entity_type='task', object_id=first.pk,
+        )
+        counts = self.history_counts()
+        self.assert_refusal_is_atomic(self.restore(child), deleted.state, counts)
+        self.assertNotIn(str(manual['id']), deleted.state['task'])
+        self.assertNotIn(str(plan['id']), deleted.state['planting_plan'])
+        unrelated_id = str(other_task['id'])
+        self.assertEqual(deleted.state['task'][unrelated_id], before.state['task'][unrelated_id])
+        protected_fields = (
+            'source_key', 'occurrence_index', 'status', 'due_date', 'due_date_overridden',
+        )
+        for task in (first, second, third):
+            original = before.state['task'][str(task.pk)]
+            tombstone = deleted.state['task'][str(task.pk)]
+            self.assertIsNone(tombstone['planting_plan_id'])
+            self.assertIsNotNone(tombstone['deleted_at'])
+            for field in protected_fields:
+                self.assertEqual(tombstone[field], original[field])
+        self.assertEqual(
+            deleted.state['task'][str(third.pk)]['deleted_at'],
+            before.state['task'][str(third.pk)]['deleted_at'],
+        )
+
+        self.write('later edit', 'post', '/locations/', {'name': 'After deletion'})
+        self.assertEqual(self.restore(before.revision), 200)
+        self.assert_state(before.state, 'restore before the deletion')
+        self.assertEqual(self.restore(deleted.revision), 200)
+        self.assert_state(deleted.state, 'restore the completed deletion')
+        self.assertEqual(self.restore(self.latest_backup()), 200)
+        self.assert_state(before.state, 'undo restoring the deleted version')
+
+        self.write('delete the restored season again', 'delete', path)
+        second_deletion = self.versions[-1]
+        batch = second_deletion.revision.batch_operation
+        self.write('undo the deletion batch', 'post', f'/history/batch/{batch.pk}/revert/')
+        tasks = Task.objects.filter(project=self.project, planting_plan_id=plan['id'])
+        self.assertCountEqual(
+            tasks.filter(template_id=template['id']).values_list('pk', flat=True),
+            [first.pk, second.pk, third.pk],
+        )
+        self.assertEqual(tasks.get(pk=first.pk).status, 'completed')
+        self.assertTrue(tasks.get(pk=second.pk).due_date_overridden)
+        self.assertIsNotNone(tasks.get(pk=third.pk).deleted_at)
+        self.assertTrue(tasks.filter(pk=manual['id']).exists())
+        revert = self.versions[-1].revision.batch_operation
+        self.write('redo the deletion batch', 'post', f'/history/batch/{revert.pk}/revert/')
+        self.assert_state(second_deletion.state, 'redo the complete deletion')
 
 
 class ProjectRestorePreviewTests(HistoryInvariantTestCase):
