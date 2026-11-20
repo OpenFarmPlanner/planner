@@ -586,6 +586,24 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             '/openfarmplanner/api/planting-plans/', 15, expected_rows=2 * ROW_COUNT,
         )
 
+    def test_planting_plans_list_query_count_with_perennial_plans(self):
+        """Perennial plans resolve life cycle, standing time and the suggested
+        removal date from the shared crop index, never per row."""
+        for index in range(ROW_COUNT):
+            crop = self.crops[index]
+            crop.life_cycle = 'perennial'
+            crop.standing_time_years = 3 + index
+            crop.save()
+            PlantingPlan.objects.create(
+                crop=crop, bed=self.beds[index], planting_date=date(2027, 4, 1),
+                clearing_date=date(2030, 4, 1) if index % 2 else None,
+                area_usage_sqm=5, project=self.project, season=self.seasons[index],
+            )
+
+        self.assert_list_query_count(
+            '/openfarmplanner/api/planting-plans/', 13, expected_rows=2 * ROW_COUNT,
+        )
+
     def test_planting_plans_list_query_count_with_carried_over_plans(self):
         """Carried-over plans resolve their origin season label from the joined
         `season`, so their count must not grow the queries."""
