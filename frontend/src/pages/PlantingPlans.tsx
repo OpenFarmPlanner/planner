@@ -167,10 +167,12 @@ import {
 import {
   areRowsSemanticallyEqual,
   buildMobileCreateForm,
+  clearSupplementalPlannedDates,
   createEmptyMobileCreateForm,
   BED_COLUMN_MAX_WIDTH,
   CROP_COLUMN_MAX_WIDTH,
   getPlanOccupancyEndIso,
+  getSupplementalPlannedDates,
   toPlanIsoDate,
   getVisibleMobileRows,
   isAutoAreaRequest,
@@ -824,6 +826,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
 
           return {
             ...nextRow,
+            ...(numericValue !== nextRow.crop ? clearSupplementalPlannedDates : {}),
             crop: numericValue,
             cultivation_type: currentCultivationType && availableTypes.includes(currentCultivationType)
               ? currentCultivationType
@@ -886,12 +889,12 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           const allowedTypes =
             getAllowedCultivationTypesForCrop(selectedCrop);
           const nextType = normalizeCultivationType(value);
+          const acceptedType = nextType && allowedTypes.includes(nextType) ? nextType : "";
 
           return {
             ...row,
-            cultivation_type: nextType && allowedTypes.includes(nextType)
-              ? nextType
-              : "",
+            ...(acceptedType !== nextRow.cultivation_type ? clearSupplementalPlannedDates : {}),
+            cultivation_type: acceptedType,
           };
         },
         preProcessEditCellProps: (params) => ({
@@ -1513,6 +1516,13 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     return formatDateAsGerman(getPlantingDateFromSowingDate(sowingDateIso, form, crop));
   };
 
+  const getMobilePropagationChange = (form: MobileCreateFormState): Partial<PlantingPlan> => {
+    const crop = crops.find(item => item.id === Number(form.crop));
+    const previous = getExplicitPropagationStart(form, crop);
+    const next = previous && toIsoDateString(parseGermanDateText(form.sowing_date));
+    return next && next !== previous ? { planned_propagation_start_date: next } : {};
+  };
+
   const getDisplayArea = (row: PlantingPlanRow): string => {
     const explicitArea = toNumericValue(row.area_m2);
     if (explicitArea !== null) {
@@ -2045,6 +2055,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         crop: Number(mobileCreateForm.crop),
         bed: Number(mobileCreateForm.bed),
         planting_date: plantingDateIso,
+        ...getSupplementalPlannedDates(mobileCreateForm),
+        ...getMobilePropagationChange(mobileCreateForm),
         cultivation_type: mobileCreateForm.cultivation_type,
         notes: mobileCreateForm.notes || "",
         ...areaPayload,
@@ -2074,7 +2086,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       bed: String(row.bed ?? ""),
       cultivation_type: (row.cultivation_type as PlanCultivationType) || "",
       sowing_date: formatDateAsGerman(getRowSowingSchedule(row)?.sowingDate ?? null),
-      planned_propagation_start_date: row.planned_propagation_start_date,
+      ...getSupplementalPlannedDates(row),
       planting_date: formatDateAsGerman(row.planting_date),
       area_m2:
         derivedArea !== null
@@ -2154,6 +2166,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       bed: String(row.bed ?? ""),
       cultivation_type: (row.cultivation_type as PlanCultivationType) || "",
       sowing_date: formatDateAsGerman(getRowSowingSchedule(row)?.sowingDate ?? null),
+      ...getSupplementalPlannedDates(row),
       planting_date: formatDateAsGerman(row.planting_date),
       area_m2:
         derivedArea !== null
@@ -2193,16 +2206,12 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     }
 
     const updateDateIso = toIsoDateString(parseGermanDateText(mobileCreateForm.planting_date)) ?? mobileCreateForm.planting_date;
-    const crop = crops.find(item => item.id === Number(mobileCreateForm.crop));
-    const propagationStart = getExplicitPropagationStart(mobileCreateForm, crop)
-      ? toIsoDateString(parseGermanDateText(mobileCreateForm.sowing_date)) : undefined;
-
     try {
       await plantingPlanAPI.update(mobileEditId, {
         crop: Number(mobileCreateForm.crop),
         bed: Number(mobileCreateForm.bed),
         planting_date: updateDateIso,
-        ...(propagationStart ? { planned_propagation_start_date: propagationStart } : {}),
+        ...getMobilePropagationChange(mobileCreateForm),
         cultivation_type: mobileCreateForm.cultivation_type,
         notes: mobileCreateForm.notes || "",
         ...areaPayload,
@@ -2671,7 +2680,9 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               crop: cropId,
               bed: bedId,
               planting_date: plantingDate,
-              ...(propagationStart ? { planned_propagation_start_date: propagationStart } : {}),
+              ...(row.isNew ? getSupplementalPlannedDates(row) : {}),
+              ...(propagationStart && propagationStart !== explicitPropagationStart
+                ? { planned_propagation_start_date: propagationStart } : {}),
               quantity: row.quantity,
               notes: row.notes || "",
               cultivation_type: row.cultivation_type ?? "",

@@ -30,7 +30,7 @@ import type { SearchableSelectOption } from "../data-grid";
 import { formatDateAsGerman, parseGermanDateText } from "../data-grid/dateEditCellUtils";
 import { toIsoDateString } from "../data-grid/dateEditCellUtils";
 import type { MobileCreateFormState } from "../../pages/plantingPlansUtils";
-import { toAreaNumericValue } from "../../pages/plantingPlansUtils";
+import { clearSupplementalPlannedDates, toAreaNumericValue } from "../../pages/plantingPlansUtils";
 import type { CultivationTypeSelectOption } from "../../pages/usePlantingPlanHierarchy";
 import { TypeaheadSelect as Select } from "../inputs/TypeaheadSelect";
 import {
@@ -220,7 +220,12 @@ export function MobilePlanFormDialog({
               label={t("plantingPlans:columns.crop")}
               onChange={(event) =>
                 setForm((previous) => {
-                  const next = { ...previous, crop: String(event.target.value) };
+                  const crop = String(event.target.value);
+                  const next = {
+                    ...previous,
+                    ...(crop !== previous.crop ? clearSupplementalPlannedDates : {}),
+                    crop,
+                  };
                   return { ...next, sowing_date: getSowingDateFromPlantingDate(next) };
                 })
               }
@@ -267,7 +272,12 @@ export function MobilePlanFormDialog({
               label={t("plantingPlans:columns.cultivationType")}
               onChange={(event) =>
                 setForm((previous) => {
-                  const next = { ...previous, cultivation_type: event.target.value as PlanCultivationType };
+                  const cultivationType = event.target.value as PlanCultivationType;
+                  const next = {
+                    ...previous,
+                    ...(cultivationType !== previous.cultivation_type ? clearSupplementalPlannedDates : {}),
+                    cultivation_type: cultivationType,
+                  };
                   return { ...next, sowing_date: getSowingDateFromPlantingDate(next) };
                 })
               }

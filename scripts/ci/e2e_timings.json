@@ -240,8 +240,8 @@
       "duration_ms": 5474
     },
     "e2e/planting-plans-sowing-date-edit.spec.ts": {
-      "tests": 3,
-      "duration_ms": 10513
+      "tests": 5,
+      "duration_ms": 17522
     },
     "e2e/planting-plans-spacing-missing-alert.spec.ts": {
       "tests": 2,
