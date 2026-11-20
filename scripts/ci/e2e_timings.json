@@ -164,8 +164,8 @@
       "duration_ms": 7914
     },
     "e2e/import-history.spec.ts": {
-      "tests": 7,
-      "duration_ms": 48070
+      "tests": 8,
+      "duration_ms": 63070
     },
     "e2e/invitation-flow.spec.ts": {
       "tests": 6,
