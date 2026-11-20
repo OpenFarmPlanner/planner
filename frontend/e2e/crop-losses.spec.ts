@@ -45,12 +45,20 @@ test('records and edits separate crop losses from an empty plan on mobile', asyn
   await form.getByRole('combobox', { name: 'Ursache' }).click();
   await page.getByRole('option', { name: 'Frost', exact: true }).click();
   await form.getByRole('textbox', { name: 'Notiz (optional)' }).fill('Abgedeckte Reihe');
-  await form.getByRole('combobox', { name: 'Art des Ausfalls' }).click();
+  await extent.fill('15');
+  const lossType = form.getByRole('combobox', { name: 'Art des Ausfalls' });
+  await lossType.click();
   await page.getByRole('option', { name: 'Totalausfall' }).click();
   await expect(extent).toHaveCount(0);
   await expect(form.getByRole('combobox', { name: 'Einheit' })).toHaveCount(0);
+  await expect(form.getByLabel('Ausfalldatum')).toHaveValue('2026-06-11');
   await expect(form.getByRole('combobox', { name: 'Ursache' })).toHaveText('Frost');
   await expect(form.getByRole('textbox', { name: 'Notiz (optional)' })).toHaveValue('Abgedeckte Reihe');
+  await lossType.click();
+  await page.getByRole('option', { name: 'Teilausfall' }).click();
+  await expect(extent).toHaveValue('15');
+  await lossType.click();
+  await page.getByRole('option', { name: 'Totalausfall' }).click();
   await save.click();
   await expect(form).toBeHidden();
   await expect(incidents.getByRole('listitem')).toHaveCount(2);
@@ -74,6 +82,12 @@ test('records and edits separate crop losses from an empty plan on mobile', asyn
   await page.getByRole('dialog', { name: 'Ausfall löschen' }).getByRole('button', { name: 'Löschen', exact: true }).click();
   await expect(incidents.getByRole('listitem')).toHaveCount(1);
   await expect(incidents.getByText('Teilausfall · Staunässe · 2 Pflanzen')).toBeVisible();
+
+  await incidents.getByRole('button', { name: /Staunässe/ }).click();
+  await page.getByRole('menuitem', { name: 'Ausfall bearbeiten' }).click();
+  await edit.getByRole('textbox', { name: 'Ausmaß (optional)' }).fill('0');
+  await edit.getByRole('button', { name: 'Speichern' }).click();
+  await expect(incidents.getByText('Teilausfall · Staunässe · 0 Pflanzen')).toBeVisible();
 });
 
 test('shows an optional count while preserving planting-plan grid navigation', async ({ page, request }) => {
