@@ -5,6 +5,7 @@ import {
   CONTINUOUS_SCROLL_COMPACT_ROW_HEIGHT_PX,
   CONTINUOUS_SCROLL_FIT_EPSILON_PX,
   CONTINUOUS_SCROLL_PAGE_SIZE,
+  CONTINUOUS_SCROLL_REQUESTED_ROW_HEIGHT_PX,
   DEFAULT_CONTINUOUS_SCROLL_LAYOUT_HEIGHTS as DEFAULTS,
 } from '../components/data-grid/continuousScrollLayout';
 
@@ -63,6 +64,14 @@ describe('useContinuousScrollSizing', () => {
     const { result } = setup({ currentWindowRowCount: 10, totalRowCount: 10 });
 
     expect(result.current.resolvedHeight).toBe(expectedHeightFor(10));
+  });
+
+  it('leaves a readable body for the empty overlay below the header', () => {
+    const { result } = setup({ currentWindowRowCount: 0, totalRowCount: 0 });
+
+    expect(result.current.resolvedBodyHeight).toBe(
+      DEFAULTS.header + CONTINUOUS_SCROLL_REQUESTED_ROW_HEIGHT_PX + CONTINUOUS_SCROLL_FIT_EPSILON_PX,
+    );
   });
 
   it('sizes a multi-page grid to a full page, not to the current window', () => {
