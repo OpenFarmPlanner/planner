@@ -151,6 +151,26 @@
       "done": "Série disponível"
     }
   },
+  "capacity": {
+    "show": "Mostrar áreas livres",
+    "details": "Área disponível em {{bed}}",
+    "estimate": "Estimativa baseada na área do canteiro e nos períodos de ocupação previstos.",
+    "available": "{{free}} m² livres de {{total}} m² · {{used}} m² ocupados",
+    "overallocated": "Capacidade excedida. {{used}} m² ocupados num canteiro de {{total}} m².",
+    "minimumOverallocated": "Capacidade excedida. Pelo menos {{used}} m² ocupados num canteiro de {{total}} m².",
+    "used": "{{used}} m² ocupados",
+    "minimumUsed": "Pelo menos {{used}} m² ocupados",
+    "total": "Canteiro de {{total}} m²",
+    "unknownBed": "Área do canteiro desconhecida",
+    "incomplete": "Área livre desconhecida · {{total}} · {{used}}",
+    "status": {
+      "free": "Totalmente livre",
+      "partial": "Parcialmente livre",
+      "occupied": "Totalmente ocupado",
+      "unknown": "Desconhecida",
+      "overallocated": "Capacidade excedida"
+    }
+  },
   "emptyStates": {
     "requirementsTitle": "Ainda não é possível planear culturas",
     "requirementsDescription": "Abra Parcelas e canteiros e adicione uma parcela à exploração adequada. Depois será possível registar canteiros, culturas e séries.",

@@ -79,6 +79,28 @@ test('the Crop Calendar follows the selected season and includes carried plans',
     expect(scopeHeaders.every(scope => scope === String(later.id))).toBe(true);
     await expect(add).toHaveAttribute('href', '/app/planting-plans?create=true');
     await page.screenshot({ path: info.outputPath('empty-season-desktop.png'), animations: 'disabled' });
+    const freeAreas = page.getByRole('checkbox', { name: calendar.capacity.show, exact: true });
+    await expect(freeAreas).not.toBeChecked();
+    await freeAreas.check();
+    await expect(timeline).toBeVisible();
+    await expect(timeline.locator('[data-capacity-status="free"]')).toHaveCount(1);
+    await expect(add).toBeVisible();
+    const propagation = page.getByRole('button', { name: calendar.modes.seedlings, exact: true });
+    const occupancy = page.getByRole('button', { name: calendar.modes.occupancy, exact: true });
+    await propagation.click();
+    await expect(timeline).toHaveCount(0);
+    await expect(add).toBeVisible();
+    await occupancy.click();
+    await expect(timeline).toBeVisible();
+    await propagation.click();
+    await page.reload();
+    await expect(propagation).toHaveAttribute('aria-pressed', 'true');
+    await occupancy.click();
+    await expect(freeAreas).not.toBeChecked();
+    await freeAreas.check();
+    await expect(timeline).toBeVisible();
+    await freeAreas.uncheck();
+    await expect(timeline).toHaveCount(0);
 
     const switchSeason = async (label: string) => {
       await page.getByRole('button', { name: navigation.seasonSwitcher.ariaLabel }).click();

@@ -18,6 +18,8 @@ import {
   Box,
   Button,
   ButtonGroup,
+  Checkbox,
+  FormControlLabel,
   MenuItem,
   Stack,
   Typography,
@@ -39,6 +41,7 @@ import {
   type PlantingPlan,
 } from '../api/api';
 import GanttChart, { ViewMode } from '../gantt-chart/src';
+import { toLocalCalendarDate } from '../gantt-chart/src/utils/timelineDatePosition';
 import './GanttChart.css';
 import { useCommandContextTag, useRegisterCommands } from '../commands/useCommandContext';
 import PageContainer from '../components/layout/PageContainer';
@@ -121,8 +124,11 @@ import { OccupancyFilterRow } from '../components/gantt/OccupancyFilterRow';
 import { SeedlingFilters } from '../components/gantt/SeedlingFilters';
 import { OccupancyMobileFilterBar } from '../components/gantt/OccupancyMobileFilterBar';
 import { AppTooltip } from '../components/AppTooltip';
+import { BED_CAPACITY_EXTRA_ROW_HEIGHT, BedCapacityBand, BedCapacityDetails, BedCapacityLegend } from '../components/gantt/BedCapacityBand';
 import { OverflowTooltip } from '../components/OverflowTooltip';
 import { resolveLocaleFromLanguage } from '../utils/numberLocalization';
+import { buildBedCapacityTimelines } from './bedCapacityIntervals';
+import type { TaskGroup } from '../gantt-chart/src/types';
 
 /** Longest smooth-scroll animation a timeline step continues from (see stepTimeline). */
 const TIMELINE_STEP_ANIMATION_MS = 600;
@@ -164,6 +170,7 @@ function GanttChartPage() {
   const { t, i18n } = useTranslation(['ganttChart', 'common', 'plantingPlans']);
   const theme = useTheme();
   const useMobileFilterLayout = useMediaQuery(theme.breakpoints.down('md'));
+  const putFreeAreasInHeaderRow = useMediaQuery(theme.breakpoints.up('lg'));
   // Narrower than useMobileFilterLayout on purpose: the level-toggle buttons
   // embedded in the "Anbauflächen" header should still show on tablets, only
   // hidden on phone-sized viewports where there isn't room for them.
@@ -302,6 +309,33 @@ function GanttChartPage() {
   const [timelineViewMode, setTimelineViewMode] = useState<ViewMode>(() => (
     getStoredTimelineViewModeFromState(storedGanttState) ?? DEFAULT_TIMELINE_VIEW_MODE
   ));
+  const [showFreeAreas, setShowFreeAreas] = useState(false);
+  const [capacityDetails, setCapacityDetails] = useState<{ bedId: number; selectedDay: number | null } | null>(null);
+  const seasonStartText = outletContext?.activeSeason?.start_date;
+  const seasonEndText = outletContext?.activeSeason?.end_date;
+  const hasBedCapacityInputs = Boolean(seasonStartText && seasonEndText) && beds.length > 0;
+  const canShowFreeAreas = calendarMode === 'occupancy' && hasBedCapacityInputs;
+  const showFreeAreasInHeader = canShowFreeAreas && plantingPlans.length > 0;
+  const showBedCapacity = canShowFreeAreas && showFreeAreas;
+  const capacityTimelines = useMemo(() => (
+    showBedCapacity && seasonStartText && seasonEndText
+      ? buildBedCapacityTimelines(beds, plantingPlans, seasonStartText, seasonEndText)
+      : null
+  ), [beds, plantingPlans, seasonEndText, seasonStartText, showBedCapacity]);
+  const selectedCapacity = capacityDetails ? capacityTimelines?.get(capacityDetails.bedId) : undefined;
+  const toggleFreeAreas = useCallback((checked: boolean) => {
+    setShowFreeAreas(checked);
+    if (!checked) setCapacityDetails(null);
+    // The default occupied-only filter would hide every bed in a new season.
+    if (checked && plantingPlans.length === 0) setOnlyOccupiedBeds(false);
+  }, [plantingPlans.length, setOnlyOccupiedBeds]);
+  const freeAreasControl = useMemo(() => (
+    <FormControlLabel
+      control={<Checkbox checked={showFreeAreas} onChange={(_, checked) => toggleFreeAreas(checked)} />}
+      label={t('ganttChart:capacity.show')}
+      sx={{ ml: 0, mr: 0, minWidth: 0, flexShrink: 0, '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
+    />
+  ), [showFreeAreas, t, toggleFreeAreas]);
 
   // The visible time axis follows the actual data range of the season's plans
   // rather than the season's calendar year: it starts at the earliest planting
@@ -313,18 +347,27 @@ function GanttChartPage() {
   const calendarDataRange = useMemo<CalendarDateRange | null>(
     () => (calendarMode === 'seedlings'
       ? getSeedlingCalendarRange(plantingPlans.filter(plan => !plan.carried_over), crops)
-      : getOccupancyCalendarRange(plantingPlans, outletContext?.activeSeason?.start_date, outletContext?.activeSeason?.end_date)),
-    [calendarMode, plantingPlans, crops, outletContext?.activeSeason?.start_date, outletContext?.activeSeason?.end_date],
+      : getOccupancyCalendarRange(plantingPlans, seasonStartText, seasonEndText)),
+    [calendarMode, plantingPlans, crops, seasonStartText, seasonEndText],
   );
-  const seasonEnd = useMemo(() => parseIsoDate(outletContext?.activeSeason?.end_date), [outletContext?.activeSeason?.end_date]);
-  const startDate = useMemo(
-    () => calendarDataRange?.start ?? new Date(displayYear, 0, 1),
-    [calendarDataRange, displayYear],
-  );
-  const endDate = useMemo(
-    () => calendarDataRange?.end ?? new Date(displayYear, 11, 31),
-    [calendarDataRange, displayYear],
-  );
+  const seasonEnd = useMemo(() => parseIsoDate(seasonEndText), [seasonEndText]);
+  const taskRangeStart = useMemo(() => {
+    const dataStart = calendarDataRange?.start;
+    const seasonStart = showBedCapacity ? parseIsoDate(seasonStartText) : null;
+    const start = seasonStart && (!dataStart || seasonStart < dataStart) ? seasonStart : dataStart;
+    return start ?? new Date(displayYear, 0, 1);
+  }, [calendarDataRange, displayYear, seasonStartText, showBedCapacity]);
+  const taskRangeEnd = useMemo(() => {
+    const dataEnd = calendarDataRange?.end;
+    const capacityEnd = showBedCapacity ? seasonEnd : null;
+    const end = capacityEnd && (!dataEnd || capacityEnd > dataEnd) ? capacityEnd : dataEnd;
+    return end ?? new Date(displayYear, 11, 31);
+  }, [calendarDataRange, displayYear, seasonEnd, showBedCapacity]);
+  // The scroll helpers use local column dates while tasks retain their UTC dates.
+  const startDate = useMemo(() => showBedCapacity ? toLocalCalendarDate(taskRangeStart) : taskRangeStart,
+    [showBedCapacity, taskRangeStart]);
+  const endDate = useMemo(() => showBedCapacity ? toLocalCalendarDate(taskRangeEnd) : taskRangeEnd,
+    [showBedCapacity, taskRangeEnd]);
   const {
     width: activeGanttLeftColumnWidth,
     widthRef: activeGanttLeftColumnWidthRef,
@@ -424,11 +467,11 @@ function GanttChartPage() {
     }
     storeGanttState(ganttStateStorageKey, {
       timelineViewMode: nextViewMode,
-      referenceDate: formatDateToAPI(currentReferenceDate ?? getInitialTimelineReferenceDate(storedGanttState, startDate, endDate)),
+      referenceDate: formatDateToAPI(currentReferenceDate ?? getInitialTimelineReferenceDate(storedGanttState, startDate, endDate, showBedCapacity)),
     });
     hasRestoredTimelineRef.current = false;
     applyViewModeChange(nextViewMode);
-  }, [activeGanttLeftColumnWidth, endDate, ganttStateStorageKey, startDate, storedGanttState, timelineViewMode, timelineViewModeStorageKey]);
+  }, [activeGanttLeftColumnWidth, endDate, ganttStateStorageKey, showBedCapacity, startDate, storedGanttState, timelineViewMode, timelineViewModeStorageKey]);
 
   const getCurrentTimelineReferenceDate = useCallback((): Date => {
     const scrollContainer = ganttViewportRef.current?.querySelector<HTMLElement>('.rmg-container') ?? null;
@@ -444,8 +487,8 @@ function GanttChartPage() {
     }
 
     return latestReferenceDateRef.current
-      ?? getInitialTimelineReferenceDate(getStoredGanttState(ganttStateStorageKey), startDate, endDate);
-  }, [activeGanttLeftColumnWidth, endDate, ganttStateStorageKey, startDate, timelineViewMode]);
+      ?? getInitialTimelineReferenceDate(getStoredGanttState(ganttStateStorageKey), startDate, endDate, showBedCapacity);
+  }, [activeGanttLeftColumnWidth, endDate, ganttStateStorageKey, showBedCapacity, startDate, timelineViewMode]);
 
   const scrollToTimelineReferenceDate = useCallback((date: Date): void => {
     const referenceDate = clampDate(date, startDate, endDate);
@@ -712,7 +755,7 @@ function GanttChartPage() {
         const inSeason = task.clearingDate && seasonEnd && task.endDate > seasonEnd
           ? { ...task, endDate: seasonEnd } : task;
         if (!task.readOnly) return [inSeason];
-        const visible = clipCarriedOverOccupancyTask(inSeason, startDate);
+        const visible = clipCarriedOverOccupancyTask(inSeason, taskRangeStart);
         if (!visible) return [];
         const season = task.originSeasonLabel;
         const badge = season ? t('plantingPlans:carriedOver.badge', { season })
@@ -734,7 +777,7 @@ function GanttChartPage() {
       occupancySearchText,
       onlyOccupiedBeds,
       seasonEnd,
-      startDate,
+      taskRangeStart,
       t,
     ],
   );
@@ -921,6 +964,7 @@ function GanttChartPage() {
               </Button>
             </AppTooltip>
           ) : null}
+          {showFreeAreasInHeader && putFreeAreasInHeaderRow && freeAreasControl}
         </Box>
         {showViewModeSelector ? (
           <Box sx={{ ml: 'auto', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
@@ -975,18 +1019,27 @@ function GanttChartPage() {
           </Box>
         ) : null}
       </Box>
+      {showFreeAreasInHeader && !putFreeAreasInHeaderRow && freeAreasControl}
+      {showBedCapacity && <BedCapacityLegend />}
     </Box>
   ), [
     calendarMode,
     editMode,
+    freeAreasControl,
     handleTimelineViewModeChange,
+    putFreeAreasInHeaderRow,
+    showBedCapacity,
+    showFreeAreasInHeader,
     t,
   ]);
 
   const activeTaskGroups = calendarMode === 'occupancy' ? occupancyTaskGroups : seedlingTaskGroups;
   const getActiveGanttRowHeight = useCallback(
-    (group: GanttTaskGroup): number => getCalendarGanttRowHeight(group, timelineViewMode, activeGanttLeftColumnWidth),
-    [activeGanttLeftColumnWidth, timelineViewMode],
+    (group: GanttTaskGroup): number => (
+      getCalendarGanttRowHeight(group, timelineViewMode, activeGanttLeftColumnWidth)
+      + (group.bedId !== undefined && capacityTimelines?.has(group.bedId) ? BED_CAPACITY_EXTRA_ROW_HEIGHT : 0)
+    ),
+    [activeGanttLeftColumnWidth, capacityTimelines, timelineViewMode],
   );
   const renderWindow = useMemo(
     () => (useWindowedGanttRows
@@ -1005,7 +1058,25 @@ function GanttChartPage() {
       }),
     [activeTaskGroups, ganttChartHeaderHeight, ganttScrollTop, ganttViewportHeight, getActiveGanttRowHeight, useWindowedGanttRows],
   );
-  const renderedTaskGroups = renderWindow.groups;
+  const renderedTaskGroups = useMemo(() => (
+    capacityTimelines ? renderWindow.groups.map(group => (
+      group.bedId !== undefined && capacityTimelines.has(group.bedId)
+        ? { ...group, rowHeightOverride: getActiveGanttRowHeight(group) }
+        : group
+    )) : renderWindow.groups
+  ), [capacityTimelines, getActiveGanttRowHeight, renderWindow.groups]);
+  const renderCapacityRow = useCallback((group: TaskGroup, positionDate: (date: Date) => number) => {
+    const bedId = (group as GanttTaskGroup).bedId;
+    const timeline = bedId === undefined ? undefined : capacityTimelines?.get(bedId);
+    if (bedId === undefined || !timeline) return null;
+    return (
+      <BedCapacityBand
+        timeline={timeline}
+        positionDate={positionDate}
+        onOpenDetails={selectedDay => setCapacityDetails({ bedId, selectedDay })}
+      />
+    );
+  }, [capacityTimelines]);
   const isGanttRenderWindowVirtualized = useWindowedGanttRows
     && (renderWindow.startIndex > 0 || renderWindow.endIndex < activeTaskGroups.length);
 
@@ -1037,7 +1108,11 @@ function GanttChartPage() {
     hasCrops,
   });
   const firstMissingRequirement = noSelectedSeason ? null : firstMissingPrerequisite ?? (hasPlantingPlans ? null : 'plans');
-  const hasCalendarRequirements = canLoadCalendar && firstMissingRequirement === null;
+  const showEmptyCapacity = firstMissingRequirement === 'plans' && showBedCapacity;
+  const hasCalendarRequirements = canLoadCalendar && (firstMissingRequirement === null || showEmptyCapacity);
+  const canSwitchCalendarMode = canLoadCalendar && (
+    firstMissingRequirement === null || (firstMissingRequirement === 'plans' && hasBedCapacityInputs)
+  );
   const requirementActions = firstMissingRequirement
     ? getTranslatedProjectSetupActions(firstMissingRequirement, t)
     : [];
@@ -1242,6 +1317,7 @@ function GanttChartPage() {
           getStoredGanttState(ganttStateStorageKey),
           startDate,
           endDate,
+          showBedCapacity,
         );
         const nextScrollLeft = getTimelineScrollLeftForDate(
           referenceDate,
@@ -1290,6 +1366,7 @@ function GanttChartPage() {
     ganttStateStorageKey,
     hasCalendarRequirements,
     loading,
+    showBedCapacity,
     startDate,
     timelineViewMode,
   ]);
@@ -1550,7 +1627,7 @@ function GanttChartPage() {
     renderedTimelineItems,
     totalTimelineItems,
   ]);
-  const viewModeActions = useMemo<TopbarContextAction[]>(() => (hasCalendarRequirements ? [
+  const viewModeActions = useMemo<TopbarContextAction[]>(() => (canSwitchCalendarMode ? [
     {
       id: 'calendar-view-mode-occupancy',
       label: t('ganttChart:modesShort.occupancy'),
@@ -1569,7 +1646,7 @@ function GanttChartPage() {
       groupId: 'calendar-view-mode',
       tooltip: t('ganttChart:modeTooltips.seedlings'),
     },
-  ] : []), [calendarMode, handleCalendarModeChange, hasCalendarRequirements, t]);
+  ] : []), [calendarMode, canSwitchCalendarMode, handleCalendarModeChange, t]);
   const requirementEmptyStateTitleKey = firstMissingRequirement === 'crops'
     ? 'ganttChart:emptyStates.states.crops.title'
     : firstMissingRequirement === 'plans'
@@ -1654,8 +1731,8 @@ function GanttChartPage() {
         viewMode={timelineViewMode}
         leftColumnWidth={activeGanttLeftColumnWidth}
         rowHeight={GANTT_ROW_HEIGHT}
-        startDate={startDate}
-        endDate={endDate}
+        startDate={taskRangeStart}
+        endDate={taskRangeEnd}
         focusMode={false}
         editMode={calendarMode === 'occupancy' ? editMode : false}
         allowTaskResize={false}
@@ -1668,6 +1745,7 @@ function GanttChartPage() {
         onTaskContextMenu={handleTaskContextMenu}
         onGroupContextMenu={calendarMode === 'occupancy' ? handleGroupContextMenu : undefined}
         renderHeader={renderGanttHeader}
+        renderTimelineRow={capacityTimelines ? renderCapacityRow : undefined}
         renderTooltip={({ task }: { task: GanttTask }) => (calendarMode === 'seedlings'
           ? renderSeedlingTooltip({ task })
           : renderOccupancyTooltip({ task }))}
@@ -1740,7 +1818,7 @@ function GanttChartPage() {
     <PageContainer variant="workspacePage">
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-        {!hasCalendarRequirements ? (
+        {(!hasCalendarRequirements || showEmptyCapacity) && (
           <PageSurface variant="fullWorkspace" sx={{ mt: 0.5 }}>
           <Box className="gantt-container-wrapper" sx={{ width: '100%', minWidth: 0, overflow: 'hidden', mt: 2, border: '1px solid', borderColor: 'surface.surfaceSoftBorder', borderRadius: 2, bgcolor: 'surface.surfaceBackground' }}>
             <Box sx={{ p: 2 }}>
@@ -1752,11 +1830,14 @@ function GanttChartPage() {
                   ...(firstMissingRequirement === 'crops' ? [{ label: t('ganttChart:requirements.crop.label'), done: false, missingLabel: t('ganttChart:requirements.crop.missing') }] : []),
                 ]}
                 actions={seasonSetup?.actions ?? requirementActions}
+                supplement={firstMissingRequirement === 'plans' && canShowFreeAreas
+                  ? freeAreasControl : undefined}
               />
             </Box>
           </Box>
           </PageSurface>
-        ) : (
+        )}
+        {hasCalendarRequirements && (
           <PageSurface variant="fullWorkspace" sx={{ mt: 0.5 }}>
           {calendarMode === 'occupancy' && (
             <Box
@@ -2019,6 +2100,13 @@ function GanttChartPage() {
           </MenuItem>
         ))}
       </CustomContextMenu>
+      {selectedCapacity && capacityDetails && (
+        <BedCapacityDetails
+          timeline={selectedCapacity}
+          selectedDay={capacityDetails.selectedDay}
+          onClose={() => setCapacityDetails(null)}
+        />
+      )}
     </PageContainer>
   );
 }
