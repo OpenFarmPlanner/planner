@@ -112,6 +112,14 @@ test.describe('gantt calendar context-menu smoke test', () => {
     await expect(page).toHaveURL(/\/app\/planting-plans\?planId=\d+&edit=true/, { timeout: 10_000 });
     await expect(page.locator('.MuiDataGrid-row--editing')).toHaveCount(1, { timeout: 5_000 });
 
+    await page.goto('/app/gantt-chart');
+    await expect(page.getByText('Testhof')).toBeVisible({ timeout: 10_000 });
+    await taskBar.click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Anbauplan-Details' }).click();
+    await expect(page).toHaveURL(`/app/planting-plans/${plan.id}`);
+    await expect(page.getByRole('heading', { name: 'Testkultur (Sorte A)' })).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
     // --- Mobile context menu links: the selected plan opens expanded, and
     // related crop/area links still land on the intended target. ---
     await page.setViewportSize({ width: 390, height: 844 });

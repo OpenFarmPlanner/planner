@@ -54,6 +54,16 @@ describe('buildGanttContextMenuActions - task target', () => {
     expect(withCrop.map((a) => a.id)).toContain('open-crop');
   });
 
+  it('offers a separate detail action when the task represents a plan', () => {
+    const callbacks = makeCallbacks();
+    const planTask = task({ plantingPlanId: 42 });
+    const actions = buildGanttContextMenuActions({ type: 'task', task: planTask, group: group() }, callbacks, t);
+
+    expect(actions.slice(0, 2).map(action => action.id)).toEqual(['open-plan', 'plan-details']);
+    actions[1].onClick();
+    expect(callbacks.openPlantingPlanFromTask).toHaveBeenCalledWith(planTask, { details: true });
+  });
+
   it('adds bed/field/location navigation when the group carries those ids', () => {
     const actions = buildGanttContextMenuActions(
       { type: 'task', task: task(), group: group({ bedId: 5, fieldId: 8, locationId: 2 }) },

@@ -3,6 +3,7 @@
 from datetime import date
 from unittest.mock import patch
 
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.test import APITestCase as DRFAPITestCase
@@ -33,6 +34,55 @@ class PlantingPlanApiTest(ProjectApiTestCase):
             end_date=date(2024, 12, 31),
         )
         self.client.defaults['HTTP_X_SEASON_ID'] = str(self.season.id)
+
+    def test_detail_can_read_prior_season_without_changing_list_or_write_scope(self):
+        prior = Season.objects.create(
+            project=self.project, start_date=date(2023, 1, 1), end_date=date(2023, 12, 31),
+        )
+        plan = PlantingPlan.objects.create(
+            project=self.project, season=prior, crop=self.crop, bed=self.bed,
+        )
+        list_url = '/openfarmplanner/api/planting-plans/'
+        detail_url = f'{list_url}{plan.pk}/'
+
+        self.assertEqual(self.client.get(detail_url).status_code, 404)
+        detail = self.client.get(detail_url, {'across_seasons': 'true'})
+        self.assertEqual(detail.status_code, 200, detail.data)
+        self.assertEqual(detail.data['season'], prior.pk)
+        self.assertEqual(detail.data['field_name'], self.field.name)
+        self.assertEqual(detail.data['location_name'], self.field.location.name)
+        self.assertTrue(detail.data['crop_available'])
+        self.assertEqual(self.client.get(list_url, {'across_seasons': 'true'}).data['count'], 0)
+        write = self.client.patch(f'{detail_url}?across_seasons=true', {'notes': 'New note'})
+        self.assertEqual(write.status_code, 404)
+
+        other = Project.objects.create(name='Another project', slug='other-plan-details')
+        foreign_crop = Crop.objects.create(project=other, name='Foreign crop')
+        foreign_plan = PlantingPlan.objects.create(project=other, crop=foreign_crop)
+        foreign = self.client.get(f'{list_url}{foreign_plan.pk}/', {'across_seasons': 'true'})
+        self.assertEqual(foreign.status_code, 404)
+
+        Season.objects.filter(pk=prior.pk).update(deleted_at=timezone.now())
+        self.assertEqual(self.client.get(detail_url, {'across_seasons': 'true'}).status_code, 404)
+
+    def test_area_filters_keep_project_and_season_scope(self):
+        matching = PlantingPlan.objects.create(
+            project=self.project, season=self.season, bed=self.bed,
+        )
+        sibling = Bed.objects.create(project=self.project, field=self.field, name='Another bed')
+        sibling_plan = PlantingPlan.objects.create(
+            project=self.project, season=self.season, bed=sibling,
+        )
+        PlantingPlan.objects.create(project=self.project, season=self.season, crop=self.crop)
+        PlantingPlan.objects.create(project=self.project, bed=self.bed)
+
+        for filters, expected in [({'bed': self.bed.pk}, {matching.pk}),
+                                  ({'field': self.field.pk}, {matching.pk, sibling_plan.pk}),
+                                  ({'bed': 'invalid'}, set())]:
+            with self.subTest(filters=filters):
+                response = self.client.get('/openfarmplanner/api/planting-plans/', filters)
+                self.assertEqual(response.status_code, 200, response.data)
+                self.assertEqual({row['id'] for row in response.data['results']}, expected)
 
     def test_planting_plan_create_rejects_bed_from_other_project(self):
         other_project = Project.objects.create(name='Other project 2', slug='other-project-2')
@@ -666,6 +716,31 @@ class TaskApiTest(ProjectApiTestCase):
         self.plan = PlantingPlan.objects.create(
             project=self.project, crop=self.crop, season=self.season,
         )
+
+    def test_cross_season_tasks_require_a_specific_plan_and_are_read_only(self):
+        prior = Season.objects.create(
+            project=self.project, start_date=date(2025, 1, 1), end_date=date(2025, 12, 31),
+        )
+        plan = PlantingPlan.objects.create(project=self.project, season=prior, crop=self.crop)
+        linked = Task.objects.create(
+            project=self.project, season=prior, planting_plan=plan, title='Linked task',
+        )
+        Task.objects.create(project=self.project, season=prior, title='Unrelated task')
+        other = Project.objects.create(name='Another project', slug='other-plan-task-details')
+        foreign_crop = Crop.objects.create(project=other, name='Foreign crop')
+        foreign_plan = PlantingPlan.objects.create(project=other, crop=foreign_crop)
+        Task.objects.create(project=other, planting_plan=foreign_plan, title='Foreign task')
+
+        self.assertEqual(self.client.get(self.url, {'planting_plan': plan.pk}).data['count'], 0)
+        self.assertEqual(self.client.get(self.url, {'across_seasons': 'true'}).data['count'], 0)
+        response = self.client.get(self.url, {'planting_plan': plan.pk, 'across_seasons': 'true'})
+        self.assertEqual([row['id'] for row in response.data['results']], [linked.pk])
+        response = self.client.get(self.url, {
+            'planting_plan': foreign_plan.pk, 'across_seasons': 'true',
+        })
+        self.assertEqual(response.data['count'], 0)
+        detail = f'{self.url}{linked.pk}/?planting_plan={plan.pk}&across_seasons=true'
+        self.assertEqual(self.client.patch(detail, {'status': 'completed'}).status_code, 404)
 
     def test_manual_crud_and_revision(self) -> None:
         response = self.client.post(self.url, {

@@ -159,7 +159,7 @@ class GanttRenderBoundary extends React.Component<
 
 
 function GanttChartPage() {
-  const { t, i18n } = useTranslation(['ganttChart', 'common']);
+  const { t, i18n } = useTranslation(['ganttChart', 'common', 'plantingPlans']);
   const theme = useTheme();
   const useMobileFilterLayout = useMediaQuery(theme.breakpoints.down('md'));
   // Narrower than useMobileFilterLayout on purpose: the level-toggle buttons

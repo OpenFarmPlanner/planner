@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Divider, Menu } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -7,10 +8,19 @@ import { useTranslation } from "../../i18n";
 import { ContextMenuActionItem } from "../contextMenu/ContextMenuActionItem";
 import type { PlantingPlanRow } from "../../pages/plantingPlansUtils";
 
+export interface PlanMenuNavigationAction {
+  id: string;
+  label: string;
+  icon: ReactNode;
+  disabledReason?: string;
+  activate: (anchor?: HTMLElement | null) => void;
+}
+
 interface MobilePlanActionsMenuProps {
   anchorEl: HTMLElement | null;
   /** The row the menu was opened for; actions are no-ops while it is null. */
   row: PlantingPlanRow | null;
+  navigationActions?: PlanMenuNavigationAction[];
   onClose: () => void;
   onEdit: (row: PlantingPlanRow) => void;
   onDuplicate: (row: PlantingPlanRow) => void;
@@ -26,6 +36,7 @@ interface MobilePlanActionsMenuProps {
 export function MobilePlanActionsMenu({
   anchorEl,
   row,
+  navigationActions = [],
   onClose,
   onEdit,
   onDuplicate,
@@ -40,7 +51,12 @@ export function MobilePlanActionsMenu({
       anchorEl={anchorEl}
       open={Boolean(anchorEl)}
       onClose={onClose}
+      slotProps={{ list: { disabledItemsFocusable: true } }}
     >
+      {navigationActions.map(action => <ContextMenuActionItem key={action.id} label={action.label}
+        icon={action.icon} disabled={Boolean(action.disabledReason)} disabledReason={action.disabledReason}
+        onClick={() => { onClose(); action.activate(anchorEl); }} />)}
+      {navigationActions.length > 0 && <Divider role="separator" />}
       <ContextMenuActionItem
         label={t("common:actions.edit")}
         icon={<EditIcon fontSize="small" />}

@@ -35,6 +35,9 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import NotesIcon from "@mui/icons-material/Notes";
 import PhotoCameraOutlinedIcon from "@mui/icons-material/PhotoCameraOutlined";
+import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
+import GrassOutlinedIcon from "@mui/icons-material/GrassOutlined";
+import GridViewOutlinedIcon from "@mui/icons-material/GridViewOutlined";
 import { useTranslation } from "../i18n";
 import {
   normalizeCultivationType,
@@ -135,7 +138,9 @@ import { useAreaValidationDialog, type AreaValidationDialogState } from "./useAr
 import { AreaValidationDialog } from "../components/planting-plans/AreaValidationDialog";
 import { MobilePlanFormDialog } from "../components/planting-plans/MobilePlanFormDialog";
 import { CropSpacingEditAction } from "../components/planting-plans/CropSpacingEditAction";
-import { MobilePlanActionsMenu } from "../components/planting-plans/MobilePlanActionsMenu";
+import { MobilePlanActionsMenu, type PlanMenuNavigationAction } from "../components/planting-plans/MobilePlanActionsMenu";
+import { getEntityDetailPath } from "../components/hierarchy/details/hierarchyDetailRoutes";
+import { plantingPlanDetailPath } from "../planting-plans/plantingPlanDetailRoutes";
 import { RotationStatusIcon } from "../components/planting-plans/rotation/RotationStatusIcon";
 import { CompanionWarningIcon } from "../components/planting-plans/rotation/CompanionCheckAlert";
 import { SiteSuitabilityHints } from "../components/planting-plans/rotation/SiteSuitabilityHints";
@@ -192,7 +197,11 @@ const PLANTING_PLAN_DIALOG_EDIT_FIELDS = ["bed"];
  */
 const DEFAULT_HIDDEN_FIELDS_ON_SMALL_SCREEN = ["harvest_date", "harvest_end_date"];
 
-function PlantingPlans() {
+function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0 }: {
+  onOpenDetails?: (id: number, anchor?: HTMLElement | null) => void;
+  detailOpen?: boolean;
+  detailRevision?: number;
+} = {}) {
   const { t, i18n } = useTranslation(["plantingPlans", "common"]);
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
   const activeSeason = outletContext?.activeSeason ?? null;
@@ -309,6 +318,12 @@ function PlantingPlans() {
     setHarvestOverlapsById(null);
     await gridCommandApiRef.current?.reload();
   }, []);
+  const loadedDetailRevision = useRef(detailRevision);
+  useEffect(() => {
+    if (detailRevision === loadedDetailRevision.current) return;
+    loadedDetailRevision.current = detailRevision;
+    void reloadPlans();
+  }, [detailRevision, reloadPlans]);
   const plantingPlanGridAPI = useMemo<DataGridAPI<PlantingPlanRow>>(() => {
     const withOverlapRefresh = <A extends unknown[], R>(write: (...args: A) => Promise<R>) =>
       async (...args: A): Promise<R> => {
@@ -1658,6 +1673,33 @@ function PlantingPlans() {
     setMobileActionMenuRow(null);
   };
 
+  const getPlanNavigationActions = (row: PlantingPlanRow): PlanMenuNavigationAction[] => {
+    const planId = typeof row.id === 'number' && row.id > 0 && !row.isNew ? row.id : null;
+    const cropId = crops.some(crop => crop.id === row.crop) ? row.crop : null;
+    const bedId = row.bed && bedById.has(row.bed) ? row.bed : null;
+    return [
+      {
+        id: 'plan-details', label: t('plantingPlans:details.title'), icon: <ArticleOutlinedIcon fontSize="small" />,
+        disabledReason: planId ? undefined : t('plantingPlans:details.saveFirst'),
+        activate: anchor => {
+          if (!planId) return;
+          if (onOpenDetails) onOpenDetails(planId, anchor);
+          else void navigate(plantingPlanDetailPath(planId));
+        },
+      },
+      {
+        id: 'plan-crop', label: t('plantingPlans:details.openCrop'), icon: <GrassOutlinedIcon fontSize="small" />,
+        disabledReason: cropId ? undefined : t('plantingPlans:details.missingCrop'),
+        activate: () => { if (cropId) void navigate(`/app/crops?cropId=${cropId}`); },
+      },
+      {
+        id: 'plan-bed', label: t('plantingPlans:details.openBed'), icon: <GridViewOutlinedIcon fontSize="small" />,
+        disabledReason: bedId ? undefined : t('plantingPlans:details.missingBed'),
+        activate: () => { if (bedId) void navigate(getEntityDetailPath('bed', bedId)); },
+      },
+    ];
+  };
+
   const getDerivedAreaFromRow = (row: PlantingPlanRow): number | null => {
     const explicitArea = toNumericValue(row.area_m2);
     if (explicitArea !== null) {
@@ -2334,6 +2376,7 @@ function PlantingPlans() {
             <MobilePlanActionsMenu
               anchorEl={mobileActionMenuAnchor}
               row={mobileActionMenuRow}
+              navigationActions={mobileActionMenuRow ? getPlanNavigationActions(mobileActionMenuRow) : undefined}
               onClose={closeMobileActionMenu}
               onEdit={openMobileEditDialog}
               onDuplicate={openMobileDuplicateDialog}
@@ -2662,9 +2705,19 @@ function PlantingPlans() {
           showRowEditActions={false}
           inlineRowActionField="crop"
           showInlineRowActionMenu
-          getRowActions={() => [
+          suspendNavigationGuard={detailOpen}
+          getRowActions={row => [
+            ...getPlanNavigationActions(row).map(action => ({
+              id: action.id,
+              label: action.label,
+              icon: action.icon,
+              disabled: Boolean(action.disabledReason),
+              disabledReason: action.disabledReason,
+              onClick: (_row: PlantingPlanRow, _helpers: unknown, anchor?: HTMLElement | null) => action.activate(anchor),
+            })),
             {
               id: "create-planting-plan",
+              separatorBefore: true,
               label: t("plantingPlans:actions.createPlantingPlan"),
               icon: <AddIcon fontSize="small" />,
               color: "primary",

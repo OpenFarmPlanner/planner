@@ -403,5 +403,28 @@
     "plantingDate": "Planting date",
     "harvestStartDate": "Harvest start",
     "harvestEndDate": "Harvest end"
+  },
+  "details": {
+    "title": "Plan details",
+    "openNamed": "Plan details for {{name}}",
+    "openCrop": "Open crop",
+    "openBed": "Open bed",
+    "missingCrop": "The crop is missing or was deleted.",
+    "missingBed": "The bed is missing or was deleted.",
+    "saveFirst": "Save the plan first.",
+    "back": "Back to the table",
+    "expand": "Open full page",
+    "notFound": "This planting plan is unavailable.",
+    "context": "Growing area and season",
+    "season": "Season",
+    "openSeason": "Open original season",
+    "planned": "Planned dates",
+    "notesAndPhotos": "Notes and photos",
+    "addNoteOrPhoto": "Add note or photo",
+    "editNotesAndPhotos": "Edit notes and photos",
+    "photosLoadFailed": "Could not load photos.",
+    "tasks": "Tasks",
+    "tasksLoadFailed": "Could not load tasks.",
+    "taskCancelled": "Cancelled"
   }
 }

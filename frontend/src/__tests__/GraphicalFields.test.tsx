@@ -2,6 +2,7 @@ import { FIELD_INNER_OFFSET_X, FIELD_INNER_OFFSET_Y, getFieldUsableArea } from '
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { act, useState, type ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from 'react-router';
 import GraphicalFields from "../pages/GraphicalFields";
 import type { BedLayoutEntry, FieldLayoutEntry, LocationBoundaryOrigin } from "../api/api";
 import type { GraphicalCameraState } from "../pages/graphicalFieldsGeometry";
@@ -13,6 +14,7 @@ interface LayoutData {
 }
 
 const mockUseHierarchyData = vi.fn();
+const listAreaPlansMock = vi.hoisted(() => vi.fn());
 const { listByLocationMock, saveByLocationMock } = vi.hoisted(() => ({
   listByLocationMock: vi.fn(async (): Promise<{ data: LayoutData }> => ({
     data: { bed_layouts: [], field_layouts: [] },
@@ -96,6 +98,7 @@ vi.mock("../api/api", async () => {
     await vi.importActual<typeof import("../api/api")>("../api/api");
   return {
     ...actual,
+    plantingPlanAPI: { ...actual.plantingPlanAPI, listForArea: listAreaPlansMock },
     layoutAPI: {
       ...actual.layoutAPI,
       listByLocation: listByLocationMock,
@@ -315,6 +318,7 @@ describe("GraphicalFields", async () => {
     mockStageApi.setPointer(0, 0);
     mockStageApi.handlers = {};
     listByLocationMock.mockClear();
+    listAreaPlansMock.mockReset().mockResolvedValue({ results: [] });
     saveByLocationMock.mockClear();
     Object.keys(mockKonvaNodes).forEach((key) => delete mockKonvaNodes[key]);
     mockUseHierarchyData.mockReturnValue({
@@ -342,6 +346,17 @@ describe("GraphicalFields", async () => {
         },
       ],
     });
+  });
+
+  it('links the selected bed’s plans to their standalone details', async () => {
+    listAreaPlansMock.mockResolvedValue({ results: [{
+      id: 42, crop: 15, crop_name: 'Testkohl', bed: 100, planting_date: null,
+    }] });
+    await renderGraphic(<MemoryRouter><GraphicalFields /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('bed-rect-100'));
+
+    expect(await screen.findByRole('link', { name: 'Testkohl' })).toHaveAttribute('href', '/app/planting-plans/42');
+    expect(listAreaPlansMock).toHaveBeenCalledWith('bed', 100);
   });
 
   it("keeps field world geometry identical between desktop and mobile viewport sizes", async () => {

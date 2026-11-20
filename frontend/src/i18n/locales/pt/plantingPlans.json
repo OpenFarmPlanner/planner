@@ -412,5 +412,28 @@
     "plantingDate": "Transplantação",
     "harvestStartDate": "Início da colheita",
     "harvestEndDate": "Fim da colheita"
+  },
+  "details": {
+    "title": "Detalhes do plano",
+    "openNamed": "Detalhes do plano de {{name}}",
+    "openCrop": "Ir para a cultura",
+    "openBed": "Ir para o canteiro",
+    "missingCrop": "A cultura não foi atribuída ou foi eliminada.",
+    "missingBed": "O canteiro não foi atribuído ou foi eliminado.",
+    "saveFirst": "Guarde primeiro o plano.",
+    "back": "Voltar à tabela",
+    "expand": "Abrir em página inteira",
+    "notFound": "Este plano de cultivo não está disponível.",
+    "context": "Área de cultivo e época",
+    "season": "Época",
+    "openSeason": "Abrir a época de origem",
+    "planned": "Datas previstas",
+    "notesAndPhotos": "Notas e fotografias",
+    "addNoteOrPhoto": "Adicionar nota ou fotografia",
+    "editNotesAndPhotos": "Editar notas e fotografias",
+    "photosLoadFailed": "Não foi possível carregar as fotografias.",
+    "tasks": "Tarefas",
+    "tasksLoadFailed": "Não foi possível carregar as tarefas.",
+    "taskCancelled": "Cancelada"
   }
 }

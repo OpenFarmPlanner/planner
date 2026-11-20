@@ -60,8 +60,10 @@ export interface EditableDataGridRowAction<T extends EditableRow> {
   label: string;
   icon?: ReactNode;
   color?: 'default' | 'error' | 'primary';
-  onClick: (row: T, helpers: EditableDataGridRowActionHelpers<T>) => void;
+  onClick: (row: T, helpers: EditableDataGridRowActionHelpers<T>, anchor?: HTMLElement | null) => void;
   disabled?: boolean;
+  disabledReason?: string;
+  separatorBefore?: boolean;
 }
 
 export interface DeleteUndoOptions {
@@ -117,6 +119,8 @@ export interface EditableDataGridProps<T extends EditableRow> {
   dialogEditFields?: string[];
   commandApiRef?: MutableRefObject<EditableDataGridCommandApi | null>;
   onSelectedRowChange?: (row: T | null) => void;
+  /** Allow a routed detail overlay to own the blocker while the grid stays mounted. */
+  suspendNavigationGuard?: boolean;
   getRowValidationErrors?: (row: T) => Record<string, string>;
   showAddAction?: boolean;
   showFooterEditControls?: boolean;

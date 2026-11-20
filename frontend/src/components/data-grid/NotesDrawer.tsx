@@ -43,6 +43,8 @@ export interface NotesDrawerProps {
   hasUnsavedChanges?: boolean;
   loading?: boolean;
   noteId?: number;
+  onAttachmentsChanged?: () => void;
+  saveError?: string;
   focusAttachments?: boolean;
   focusRequestId?: number;
 }
@@ -90,7 +92,7 @@ async function renderProcessedFile(file: File, cropRect?: CropRect): Promise<Fil
   return new File([jpeg], `${file.name.replace(/\.[^.]+$/, '')}.jpg`, { type: 'image/jpeg' });
 }
 
-export function NotesDrawer({ open, title, value, onChange, onSave, onClose, hasUnsavedChanges = false, loading = false, noteId, focusAttachments = false, focusRequestId = 0 }: NotesDrawerProps) {
+export function NotesDrawer({ open, title, value, onChange, onSave, onClose, hasUnsavedChanges = false, loading = false, noteId, onAttachmentsChanged, saveError, focusAttachments = false, focusRequestId = 0 }: NotesDrawerProps) {
   const { t } = useTranslation('common');
   const { blockInGuestDemo } = useGuestDemoGuard();
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
@@ -344,6 +346,7 @@ export function NotesDrawer({ open, title, value, onChange, onSave, onClose, has
       const processed = await renderProcessedFile(pendingFile, sourceCrop);
       await noteAttachmentAPI.upload(noteId, processed, '', setUploadProgress);
       invalidateNoteAttachmentsCache(noteId);
+      onAttachmentsChanged?.();
       await loadAttachments();
       clearPendingSelection();
     } catch (error) {
@@ -434,6 +437,7 @@ export function NotesDrawer({ open, title, value, onChange, onSave, onClose, has
     >
       <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 3 }} onKeyDown={handleKeyDown}>
         <Typography variant="h6" gutterBottom>{title}</Typography>
+        {saveError && <Alert severity="error" sx={{ mb: 1 }}>{saveError}</Alert>}
         <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)} sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
           <Tab label={t('notesDrawer.tabs.edit')} value="edit" />
           <Tab label={t('notesDrawer.tabs.preview')} value="preview" />
@@ -498,6 +502,7 @@ export function NotesDrawer({ open, title, value, onChange, onSave, onClose, has
                   <IconButton size="small" aria-label={t('actions.delete')} sx={{ position: 'absolute', right: 2, top: 2, bgcolor: (theme) => alpha(theme.palette.common.black, 0.4), color: 'common.white' }} onClick={async () => {
                     await noteAttachmentAPI.delete(attachment.id);
                     if (noteId) invalidateNoteAttachmentsCache(noteId);
+                    onAttachmentsChanged?.();
                     await loadAttachments();
  }}>
                     <DeleteIcon fontSize="small" />

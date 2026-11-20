@@ -412,5 +412,28 @@
     "plantingDate": "Trasplante",
     "harvestStartDate": "Inicio de cosecha",
     "harvestEndDate": "Fin de cosecha"
+  },
+  "details": {
+    "title": "Detalles del plan",
+    "openNamed": "Detalles del plan de {{name}}",
+    "openCrop": "Ir al cultivo",
+    "openBed": "Ir al bancal",
+    "missingCrop": "El cultivo no está asignado o se eliminó.",
+    "missingBed": "El bancal no está asignado o se eliminó.",
+    "saveFirst": "Guarda primero el plan.",
+    "back": "Volver a la tabla",
+    "expand": "Abrir en página completa",
+    "notFound": "Este plan de cultivo no está disponible.",
+    "context": "Zona de cultivo y temporada",
+    "season": "Temporada",
+    "openSeason": "Abrir temporada de origen",
+    "planned": "Fechas planificadas",
+    "notesAndPhotos": "Notas y fotos",
+    "addNoteOrPhoto": "Añadir nota o foto",
+    "editNotesAndPhotos": "Editar notas y fotos",
+    "photosLoadFailed": "No se pudieron cargar las fotos.",
+    "tasks": "Tareas",
+    "tasksLoadFailed": "No se pudieron cargar las tareas.",
+    "taskCancelled": "Cancelada"
   }
 }

@@ -14,6 +14,7 @@ import { BOARD_STATUSES } from './taskBoard';
 
 interface Props {
   task: Task | null;
+  initialPlan?: PlantingPlan;
   seasonId: number | undefined;
   crops: Crop[];
   fields: Field[];
@@ -24,7 +25,7 @@ interface Props {
   onClose: () => void;
 }
 
-export default function TaskFormDialog({ task, seasonId, crops, fields, beds, plans, members, onSave, onClose }: Props) {
+export default function TaskFormDialog({ task, initialPlan, seasonId, crops, fields, beds, plans, members, onSave, onClose }: Props) {
   const { t, i18n } = useTranslation(['dashboard', 'common']);
   const theme = useTheme();
   const compact = useMediaQuery(theme.breakpoints.down('md'));
@@ -33,8 +34,8 @@ export default function TaskFormDialog({ task, seasonId, crops, fields, beds, pl
   const [initialTitle] = useState(() => task ? taskDisplayTitle(task, t) : '');
   const [draft, setDraft] = useState<TaskWritePayload>({
     title: initialTitle, description: task?.description ?? '', due_date: task?.due_date ?? null,
-    status: task?.status ?? 'pending', planting_plan: task?.planting_plan ?? null,
-    crop: task?.crop ?? null,
+    status: task?.status ?? 'pending', planting_plan: task?.planting_plan ?? initialPlan?.id ?? null,
+    crop: task?.crop ?? initialPlan?.crop ?? null,
     field: task?.field ?? beds.find((bed) => bed.id === plans.find((plan) => plan.id === task?.planting_plan)?.bed)?.field ?? null, assigned_to: task?.assigned_to ?? null,
   });
   const [saving, setSaving] = useState(false);

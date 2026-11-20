@@ -16,6 +16,7 @@ interface ContextMenuActionItemProps extends Omit<MenuItemProps, 'children'> {
   color?: ContextMenuActionColor;
   emphasized?: boolean;
   shortcutHint?: ReactNode;
+  disabledReason?: string;
   renderPlainWhenUnadorned?: boolean;
 }
 
@@ -40,6 +41,7 @@ export function ContextMenuActionItem({
   color,
   emphasized = false,
   shortcutHint,
+  disabledReason,
   renderPlainWhenUnadorned = false,
   sx,
   ...menuItemProps
@@ -49,7 +51,7 @@ export function ContextMenuActionItem({
     : color === 'primary'
       ? 'primary.main'
       : undefined;
-  const shouldRenderPlain = renderPlainWhenUnadorned && !icon && !shortcutHint && !emphasized;
+  const shouldRenderPlain = renderPlainWhenUnadorned && !icon && !shortcutHint && !emphasized && !disabledReason;
 
   if (shouldRenderPlain) {
     return (
@@ -65,6 +67,8 @@ export function ContextMenuActionItem({
   return (
     <MenuItem
       {...menuItemProps}
+      aria-label={typeof label === 'string' && disabledReason ? label : menuItemProps['aria-label']}
+      aria-description={disabledReason ?? menuItemProps['aria-description']}
       sx={mergeSx(resolvedColor ? { color: resolvedColor } : undefined, sx)}
     >
       {icon ? (
@@ -74,6 +78,7 @@ export function ContextMenuActionItem({
       ) : null}
       <ListItemText
         primary={label}
+        secondary={disabledReason}
         slotProps={{
           primary: {
             sx: {

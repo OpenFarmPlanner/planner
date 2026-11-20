@@ -5,6 +5,7 @@ import { plantingPlanAPI, type PlantingPlan } from '../api/api';
 import { extractApiErrorMessage } from '../api/errors';
 import { confirmAction } from '../utils/confirmAction';
 import { copyTextToClipboardSilently } from '../components/data-grid';
+import { plantingPlanDetailPath } from '../planting-plans/plantingPlanDetailRoutes';
 import {
   formatCropDisplayLabel,
   formatGanttDate,
@@ -32,8 +33,12 @@ export function useGanttTaskActions({
   setError,
   t,
 }: UseGanttTaskActionsParams) {
-  const openPlantingPlanFromTask = useCallback((task: GanttTask, options?: { edit?: boolean }) => {
+  const openPlantingPlanFromTask = useCallback((task: GanttTask, options?: { edit?: boolean; details?: boolean }) => {
     if (task.plantingPlanId) {
+      if (options?.details) {
+        void navigate(plantingPlanDetailPath(task.plantingPlanId));
+        return;
+      }
       const query = options?.edit ? `planId=${task.plantingPlanId}&edit=true` : `planId=${task.plantingPlanId}`;
       navigate(`/app/planting-plans?${query}`);
       return;

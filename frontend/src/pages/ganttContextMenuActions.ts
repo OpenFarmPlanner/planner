@@ -13,7 +13,7 @@ export interface GanttContextMenuAction {
 }
 
 export interface GanttContextMenuCallbacks {
-  openPlantingPlanFromTask: (task: GanttTask, options?: { edit?: boolean }) => void;
+  openPlantingPlanFromTask: (task: GanttTask, options?: { edit?: boolean; details?: boolean }) => void;
   openCropFromTask: (task: GanttTask) => void;
   openAreasPage: (highlight?: { type: "location" | "field" | "bed"; id: number }) => void;
   copyTaskSummary: (task: GanttTask, group: GanttTaskGroup) => void;
@@ -45,6 +45,9 @@ export function buildGanttContextMenuActions(
     const actions: GanttContextMenuAction[] = [
       { id: "open-plan", label: t("ganttChart:contextMenu.openPlan"), group: "navigate", onClick: () => openPlantingPlanFromTask(task) },
     ];
+    if (task.plantingPlanId) {
+      actions.push({ id: "plan-details", label: t("plantingPlans:details.title"), group: "navigate", onClick: () => openPlantingPlanFromTask(task, { details: true }) });
+    }
     if (task.cropName) {
       actions.push({ id: "open-crop", label: t("ganttChart:contextMenu.openCrop"), group: "navigate", onClick: () => openCropFromTask(task) });
     }

@@ -2028,6 +2028,8 @@ function RootLayout() {
           setTopbarWorkspaceControls,
           activeSeasonYear,
           activeSeason: activeSeason.activeSeason,
+          projectSeasons: activeSeason.seasons,
+          switchActiveSeason: activeSeason.switchSeason,
           activeSeasonLoading: activeSeason.loading,
           activeSeasonLoaded: activeSeason.loaded,
           hasSeasons: activeSeason.seasons.length > 0,

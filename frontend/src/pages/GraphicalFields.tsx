@@ -744,6 +744,7 @@ export default function GraphicalFields({
         onClick: () => {
           setSelectedElement({
             type: "field",
+            id: fieldId,
             name: baseRect.field.name,
             area: Number(baseRect.field.area_sqm ?? 0),
             locationName,
@@ -752,6 +753,7 @@ export default function GraphicalFields({
         onTap: () => {
           setSelectedElement({
             type: "field",
+            id: fieldId,
             name: baseRect.field.name,
             area: Number(baseRect.field.area_sqm ?? 0),
             locationName,
@@ -830,6 +832,7 @@ export default function GraphicalFields({
         onClick: () => {
           setSelectedElement({
             type: "bed",
+            id: bedVm.id,
             name: bedVm.name,
             area: bedVm.area,
             locationName,
@@ -839,6 +842,7 @@ export default function GraphicalFields({
         onTap: () => {
           setSelectedElement({
             type: "bed",
+            id: bedVm.id,
             name: bedVm.name,
             area: bedVm.area,
             locationName,
