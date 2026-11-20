@@ -7,6 +7,7 @@ import {
   CONTINUOUS_SCROLL_FIT_EPSILON_PX,
   CONTINUOUS_SCROLL_MIN_HEIGHT_PX,
   CONTINUOUS_SCROLL_PAGE_SIZE,
+  CONTINUOUS_SCROLL_REQUESTED_ROW_HEIGHT_PX,
   DATA_GRID_CONTINUOUS_SCROLL_FOOTER_CLASS,
   DATA_GRID_MAIN_SELECTOR,
   DATA_GRID_ROOT_SELECTOR,
@@ -96,14 +97,18 @@ export function useContinuousScrollSizing({
   // scrolled to the end. getBalancedPageSize keeps that last page well filled,
   // and this keeps the height identical on every page even when it isn't.
   const rowCountForHeight = totalRowCount > windowPageSize ? windowPageSize : currentWindowRowCount;
+  // The no-rows overlay needs room below the header even with no row cells.
+  const contentHeight = rowCountForHeight === 0
+    ? CONTINUOUS_SCROLL_REQUESTED_ROW_HEIGHT_PX
+    : rowCountForHeight * CONTINUOUS_SCROLL_COMPACT_ROW_HEIGHT_PX;
 
   const measuredContentHeight = useMemo(() => Math.ceil(
     layoutHeights.header
     + layoutHeights.footer
     + layoutHeights.border
-    + rowCountForHeight * CONTINUOUS_SCROLL_COMPACT_ROW_HEIGHT_PX
+    + contentHeight
     + CONTINUOUS_SCROLL_FIT_EPSILON_PX,
-  ), [layoutHeights, rowCountForHeight]);
+  ), [contentHeight, layoutHeights]);
 
   const resolvedHeight = isContinuousScroll && !isMobile
     ? Math.min(measuredContentHeight, availableGridHeight ?? measuredContentHeight)
