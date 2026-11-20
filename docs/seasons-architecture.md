@@ -40,6 +40,13 @@ that predate this feature.
   A plan's detail view lists its incidents across seasons. The optional table
   count follows the currently selected season, including incidents recorded for
   carried-over plans. A copied plan starts with an empty incident log.
+- A season copy records the direct source plan. The detail view reads the
+  source's recorded activity dates and the harvest allocations and crop-loss
+  incidents dated in its season. The source link opens the original plan in its
+  season. Pattern transitions can distribute one copy operation across two new
+  periods, retaining the original source for each resulting plan. Each later
+  copy records its own direct source. The [actual-date copy option](#copy-data-action)
+  controls how new planned dates are set.
 
 ## Deleting a season
 

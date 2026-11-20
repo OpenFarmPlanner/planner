@@ -428,6 +428,14 @@
     "tasksLoadFailed": "Could not load tasks.",
     "taskCancelled": "Cancelled"
   },
+  "previousSeason": {
+    "title": "Previous season: {{season}}",
+    "titleWithoutSeason": "Previous season",
+    "reference": "Reference",
+    "empty": "The source planting plan has no recorded actuals.",
+    "unavailable": "The previous-season reference is unavailable.",
+    "openSource": "Open source planting plan"
+  },
   "cropLosses": {
     "title": "Crop losses",
     "historyType": "Crop loss",

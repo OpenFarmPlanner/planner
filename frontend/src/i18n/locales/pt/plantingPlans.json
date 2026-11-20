@@ -437,6 +437,14 @@
     "tasksLoadFailed": "Não foi possível carregar as tarefas.",
     "taskCancelled": "Cancelada"
   },
+  "previousSeason": {
+    "title": "Época anterior: {{season}}",
+    "titleWithoutSeason": "Época anterior",
+    "reference": "Referência",
+    "empty": "O plano de cultivo de origem não tem dados reais registados.",
+    "unavailable": "A referência da época anterior não está disponível.",
+    "openSource": "Abrir o plano de cultivo de origem"
+  },
   "cropLosses": {
     "title": "Perdas na cultura",
     "historyType": "Perda na cultura",

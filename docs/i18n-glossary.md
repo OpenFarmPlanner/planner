@@ -430,6 +430,19 @@ include [LfL](https://lfl.bayern.de/ips/kleingarten/066433/index.php),
 [CCDR Norte](https://agrodigital.ccdr-n.pt/sia/Informa%C3%A7%C3%A3o-Agr%C3%A1ria/Estado-das-Culturas),
 and [Wageningen University & Research](https://edepot.wur.nl/640935).
 
+### Previous-season reference
+
+A copied plan shows its original season by label, including custom labels.
+The **Reference** caption identifies the recorded dates, harvest quantities
+and loss count shown together. The original planting plan has its own link.
+The separate continuation label identifies a planting that is still occupying
+its bed across a season boundary.
+
+| DE | EN | FR | ES | IT | PT (pt-PT) | NL |
+| --- | --- | --- | --- | --- | --- | --- |
+| Vorherige Saison | Previous season | Saison précédente | Temporada anterior | Stagione precedente | Época anterior | Vorig seizoen |
+| Referenz | Reference | Référence | Referencia | Riferimento | Referência | Referentie |
+
 ### Planting-plan table date headings
 
 `plantingPlans.tableHeaders` is table-specific. In Portuguese, Italian and

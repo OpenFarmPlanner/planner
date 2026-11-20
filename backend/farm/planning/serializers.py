@@ -356,7 +356,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PlantingPlan
-        fields = '__all__'
+        exclude = ['copied_from_plan', 'is_season_copy']
         read_only_fields = [
             'project', 'harvest_date', 'harvest_end_date', 'created_by', 'updated_by',
             'rotation_conflict_accepted_by', 'rotation_conflict_accepted_at',
@@ -663,9 +663,45 @@ class PlantingPlanDetailSerializer(PlantingPlanSerializer):
         source='bed.field.location.name', read_only=True, allow_null=True,
     )
     crop_available = serializers.SerializerMethodField()
+    previous_season_reference = serializers.SerializerMethodField()
 
     def get_crop_available(self, obj: PlantingPlan) -> bool:
         return bool(obj.crop and obj.crop.deleted_at is None)
+
+    def get_previous_season_reference(self, obj: PlantingPlan) -> dict | None:
+        if not obj.is_season_copy:
+            return None
+        source = obj.copied_from_plan
+        if source is None or source.project_id != obj.project_id or source.season is None:
+            return {'available': False}
+        season = source.season
+        if season.project_id != obj.project_id or season.deleted_at is not None:
+            return {'available': False}
+
+        period = (season.start_date, season.end_date)
+        allocations = source.harvest_allocations.filter(
+            project_id=obj.project_id, harvest__project_id=obj.project_id,
+            harvest__date__range=period,
+        ).values_list('quantity', 'harvest__unit')
+        totals = HarvestTotals()
+        for quantity, unit in allocations.iterator():
+            totals.add(quantity, unit, None)
+
+        return {
+            'available': True,
+            'source_plan_id': source.pk,
+            'source_season_id': season.pk,
+            'source_season_label': season.label,
+            'actual_dates': {
+                field: value.isoformat()
+                for field in PlantingPlan.ACTUAL_DATE_FIELDS
+                if (value := getattr(source, field)) is not None
+            },
+            'harvest_quantities': totals.quantities_payload(),
+            'crop_loss_count': source.crop_losses.filter(
+                project_id=obj.project_id, date__range=period,
+            ).count(),
+        }
 
 
 class TaskSerializer(serializers.ModelSerializer):

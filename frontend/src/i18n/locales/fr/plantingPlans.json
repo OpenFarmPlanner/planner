@@ -437,6 +437,14 @@
     "tasksLoadFailed": "Impossible de charger les tâches.",
     "taskCancelled": "Annulée"
   },
+  "previousSeason": {
+    "title": "Saison précédente : {{season}}",
+    "titleWithoutSeason": "Saison précédente",
+    "reference": "Référence",
+    "empty": "Aucune donnée réelle n’a été saisie pour le plan de culture d’origine.",
+    "unavailable": "La référence de la saison précédente est indisponible.",
+    "openSource": "Ouvrir le plan de culture d’origine"
+  },
   "cropLosses": {
     "title": "Pertes de culture",
     "historyType": "Perte de culture",

@@ -287,7 +287,7 @@ def _restore_snapshot_children(model: type, object_id: int, snapshot: dict) -> N
 
 
 def _with_legacy_snapshot_fields(model: type, snapshot: dict) -> dict:
-    """Interpret historical crop and companion fields without rewriting the snapshot."""
+    """Apply historical field defaults without rewriting the stored snapshot."""
     if model is Crop:
         from farm.crop_light import normalize_crop_light
         from farm.germination import upgrade_germination_snapshot
@@ -304,6 +304,8 @@ def _with_legacy_snapshot_fields(model: type, snapshot: dict) -> dict:
             snapshot['crop_family_id'] = coerce_plant_family_key(snapshot['crop_family'])
     if model is CropCompanion and 'notes' not in snapshot:
         return {**snapshot, 'notes': {'de': snapshot['note']} if snapshot.get('note') else {}}
+    if model is PlantingPlan and 'is_season_copy' not in snapshot:
+        return {**snapshot, 'is_season_copy': False, 'copied_from_plan_id': None}
     return snapshot
 
 

@@ -30,6 +30,7 @@ import { formatLocalizedNumber } from '../utils/numberLocalization';
 import { PlantingPlanExecutionDates } from './PlantingPlanExecutionDates';
 import { PerennialPlanDates } from './PerennialPlanDates';
 import { CropLosses } from './CropLosses';
+import { PreviousSeasonReference } from './PreviousSeasonReference';
 
 interface PlantingPlanDetailsProps {
   planId: number | null;
@@ -206,6 +207,9 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
             {contextRows.length > 0 && <DetailSection title={t('details.context')} outlined>
               <DetailGrid>{contextRows.map(row => <DetailRow key={row.label} label={row.label} value={row.value!} />)}</DetailGrid>
             </DetailSection>}
+            {loadedPlan.previous_season_reference && <PreviousSeasonReference
+              reference={loadedPlan.previous_season_reference} activeSeasonId={context?.activeSeason?.id}
+              switchSeason={context?.switchActiveSeason} />}
             <PerennialPlanDates key={loadedPlan.id} plan={loadedPlan} editable={canEditNotes}
               onDirtyChange={setClearingDateDirty} onSaved={updated => {
                 setResult(current => current && 'plan' in current ? { plan: { ...current.plan, ...updated } } : current);

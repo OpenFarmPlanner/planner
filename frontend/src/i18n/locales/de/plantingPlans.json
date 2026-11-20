@@ -428,6 +428,14 @@
     "tasksLoadFailed": "Aufgaben konnten nicht geladen werden.",
     "taskCancelled": "Abgebrochen"
   },
+  "previousSeason": {
+    "title": "Vorherige Saison: {{season}}",
+    "titleWithoutSeason": "Vorherige Saison",
+    "reference": "Referenz",
+    "empty": "Für den ursprünglichen Anbauplan sind keine Ist-Daten erfasst.",
+    "unavailable": "Die Referenzdaten sind nicht verfügbar.",
+    "openSource": "Ursprünglichen Anbauplan öffnen"
+  },
   "cropLosses": {
     "title": "Ausfälle",
     "historyType": "Ausfall",

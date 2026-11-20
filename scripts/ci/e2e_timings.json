@@ -263,6 +263,10 @@
       "tests": 5,
       "duration_ms": 35899
     },
+    "e2e/previous-season-reference.spec.ts": {
+      "tests": 2,
+      "duration_ms": 12900
+    },
     "e2e/public-crop-library.spec.ts": {
       "tests": 1,
       "duration_ms": 12168
