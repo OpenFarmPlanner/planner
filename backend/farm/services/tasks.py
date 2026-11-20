@@ -48,15 +48,14 @@ def plan_event_dates(
     plan: PlantingPlan, crop_index: dict[int, Any] | None = None,
 ) -> dict[str, date]:
     """Resolve known events from the same effective timing values as the plan."""
-    events = {
-        event: value for event, value in (
-            ('propagation_start', plan.planned_propagation_start_date),
-            ('sowing', plan.planned_sowing_date),
-            ('planting', plan.planned_transplanting_date),
-        ) if value is not None
-    }
     crop = plan.crop
     cultivation_type = plan_cultivation_type(plan, crop_index)
+    events = {}
+    if cultivation_type == 'pre_cultivation':
+        if plan.planned_propagation_start_date is not None:
+            events['propagation_start'] = plan.planned_propagation_start_date
+        if plan.planned_sowing_date is not None:
+            events['sowing'] = plan.planned_sowing_date
     if plan.planting_date:
         if cultivation_type == 'direct_sowing':
             events['sowing'] = plan.planting_date

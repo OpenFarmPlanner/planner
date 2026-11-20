@@ -1043,20 +1043,26 @@ class SeasonApiTest(ProjectApiTestCase):
         self.assertEqual(copy.harvest_end_date, date(2027, 5, 2))
         self.assertIsNone(copy.actual_sowing_date)
 
-    def test_actual_basis_for_bought_in_transplants_copies_only_applicable_activities(self):
+    def test_actual_basis_copies_only_applicable_activities(self):
         source = Season.objects.create(
             project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
         )
         target = Season.objects.create(
             project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
         )
-        original = PlantingPlan.objects.create(
-            crop=self.crop, project=self.project, season=source,
-            cultivation_type=PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT,
-            planting_date=date(2026, 4, 1), actual_transplanting_date=date(2026, 4, 3),
-            actual_propagation_start_date=date(2026, 3, 1), actual_sowing_date=date(2026, 3, 2),
-            actual_harvest_start_date=date(2026, 4, 12),
+        methods = (
+            (PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT, date(2027, 4, 3), 'Transplant'),
+            ('direct_sowing', date(2027, 3, 2), 'Direct sowing'),
         )
+        for cultivation_type, _, _ in methods:
+            PlantingPlan.objects.create(
+                crop=self.crop, project=self.project, season=source,
+                cultivation_type=cultivation_type,
+                planting_date=date(2026, 4, 1), actual_transplanting_date=date(2026, 4, 3),
+                actual_propagation_start_date=date(2026, 3, 1), actual_sowing_date=date(2026, 3, 2),
+                actual_harvest_start_date=date(2026, 4, 12),
+            )
+        original_dates = list(PlantingPlan.objects.filter(season=source).order_by('pk').values())
 
         response = self.client.post(
             f'/openfarmplanner/api/seasons/{target.pk}/copy-from/',
@@ -1064,17 +1070,22 @@ class SeasonApiTest(ProjectApiTestCase):
         )
 
         self.assertEqual(response.status_code, 200, response.data)
-        copy = PlantingPlan.objects.get(season=target)
-        self.assertEqual(copy.planting_date, date(2027, 4, 3))
-        self.assertEqual(copy.harvest_date, date(2027, 4, 12))
-        self.assertIsNone(copy.planned_sowing_date)
-        self.assertIsNone(copy.planned_propagation_start_date)
+        self.assertEqual(response.data['copied_count'], 2)
+        for cultivation_type, field_date, field_task in methods:
+            with self.subTest(cultivation_type=cultivation_type):
+                copy = PlantingPlan.objects.get(season=target, cultivation_type=cultivation_type)
+                self.assertEqual(copy.planting_date, field_date)
+                self.assertEqual(copy.harvest_date, date(2027, 4, 12))
+                self.assertIsNone(copy.planned_sowing_date)
+                self.assertIsNone(copy.planned_propagation_start_date)
+                self.assertEqual(
+                    set(Task.objects.filter(planting_plan=copy).values_list('title', flat=True)),
+                    {field_task, 'Start harvesting'},
+                )
         self.assertEqual(
-            set(Task.objects.filter(planting_plan=copy).values_list('title', flat=True)),
-            {'Transplant', 'Start harvesting'},
+            list(PlantingPlan.objects.filter(season=source).order_by('pk').values()),
+            original_dates,
         )
-        original.refresh_from_db()
-        self.assertEqual(original.actual_sowing_date, date(2026, 3, 2))
 
     def test_actual_basis_preview_query_count_is_constant_per_plan(self):
         source = Season.objects.create(

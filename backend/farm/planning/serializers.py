@@ -33,6 +33,7 @@ from farm.services.demo_project import find_demo_crop_species, is_demo_project_d
 from farm.services.germination_check import check_germination
 from farm.services.plant_count import compute_plan_plant_count
 from farm.services.site_suitability import check_site_suitability
+from farm.services.tasks import plan_cultivation_type
 from farm.services.timing_window_check import TimingWindowChecker
 
 
@@ -313,6 +314,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
             return attrs
         self._validate_create_has_active_season(attrs)
         self._validate_planting_date_within_season(attrs)
+        self._apply_planned_propagation_dates(attrs)
         self._apply_area_input_conversion(attrs)
         self._apply_rotation_acceptance(attrs)
         self._run_model_clean(attrs)
@@ -323,6 +325,18 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         fields = attrs.keys() - {'updated_by'}
         return bool(fields) and fields <= PlantingPlan.ACTUAL_DATE_FIELDS
 
+    def _apply_planned_propagation_dates(self, attrs: dict[str, Any]) -> None:
+        fields = attrs.keys() & {'planned_propagation_start_date', 'planned_sowing_date'}
+        if not any(attrs[field] is not None for field in fields):
+            return
+        crop = attrs.get('crop', getattr(self.instance, 'crop', None))
+        cultivation = attrs.get('cultivation_type', getattr(self.instance, 'cultivation_type', ''))
+        plan = PlantingPlan(
+            crop=crop, project_id=crop.project_id if crop else None, cultivation_type=cultivation,
+        )
+        if plan_cultivation_type(plan, self._general_crop_index(plan)) != 'pre_cultivation':
+            attrs.update(dict.fromkeys(fields))
+
     def update(self, instance: PlantingPlan, validated_data: dict[str, Any]) -> PlantingPlan:
         if not self.is_actual_date_update(validated_data):
             cultivation = validated_data.get('cultivation_type', instance.cultivation_type)
@@ -332,22 +346,9 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
                     harvest_date_is_explicit=False, harvest_end_date_is_explicit=False,
                 )
             if crop_changed or cultivation != instance.cultivation_type:
-                # Keep new dates supplied for an activity of the new method.
-                own_propagation = cultivation == 'pre_cultivation'
-                direct_sowing = cultivation == 'direct_sowing'
-                validated_data.update(
-                    planned_propagation_start_date=(
-                        validated_data.get('planned_propagation_start_date')
-                        if own_propagation else None
-                    ),
-                    planned_sowing_date=(
-                        validated_data.get('planned_sowing_date') if own_propagation else None
-                    ),
-                    planned_transplanting_date=(
-                        validated_data.get('planned_transplanting_date')
-                        if direct_sowing else None
-                    ),
-                )
+                # Only retain applicable dates explicitly supplied with this change.
+                validated_data.setdefault('planned_propagation_start_date', None)
+                validated_data.setdefault('planned_sowing_date', None)
             return super().update(instance, validated_data)
         for field, value in validated_data.items():
             setattr(instance, field, value)

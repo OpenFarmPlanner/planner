@@ -30,9 +30,4 @@ class Migration(migrations.Migration):
             name='planned_sowing_date',
             field=models.DateField(blank=True, null=True),
         ),
-        migrations.AddField(
-            model_name='plantingplan',
-            name='planned_transplanting_date',
-            field=models.DateField(blank=True, null=True),
-        ),
     ]

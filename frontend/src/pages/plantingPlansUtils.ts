@@ -134,20 +134,18 @@ export interface PlantingPlanRow extends PlantingPlan, EditableRow {
 }
 
 type SupplementalPlannedDates = Pick<
-  PlantingPlan, 'planned_propagation_start_date' | 'planned_sowing_date' | 'planned_transplanting_date'
+  PlantingPlan, 'planned_propagation_start_date' | 'planned_sowing_date'
 >;
 
 export const clearSupplementalPlannedDates: SupplementalPlannedDates = {
   planned_propagation_start_date: undefined,
   planned_sowing_date: undefined,
-  planned_transplanting_date: undefined,
 };
 
 export function getSupplementalPlannedDates(plan: SupplementalPlannedDates): SupplementalPlannedDates {
   return {
     planned_propagation_start_date: plan.planned_propagation_start_date,
     planned_sowing_date: plan.planned_sowing_date,
-    planned_transplanting_date: plan.planned_transplanting_date,
   };
 }
 
@@ -406,7 +404,6 @@ export const areRowsSemanticallyEqual = (
       previousRow.planting_date === nextRow.planting_date &&
       previousRow.planned_propagation_start_date === nextRow.planned_propagation_start_date &&
       previousRow.planned_sowing_date === nextRow.planned_sowing_date &&
-      previousRow.planned_transplanting_date === nextRow.planned_transplanting_date &&
       previousRow.harvest_date === nextRow.harvest_date &&
       previousRow.harvest_end_date === nextRow.harvest_end_date &&
       Object.values(ACTUAL_DATE_FIELDS).every(field => previousRow[field] === nextRow[field]) &&

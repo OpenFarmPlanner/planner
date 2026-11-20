@@ -63,7 +63,6 @@ class PlantingPlan(TimestampedModel):
     # Extra planned activities can be independent of the bed-start date.
     planned_propagation_start_date = models.DateField(null=True, blank=True)
     planned_sowing_date = models.DateField(null=True, blank=True)
-    planned_transplanting_date = models.DateField(null=True, blank=True)
     harvest_date = models.DateField(
         blank=True,
         null=True,

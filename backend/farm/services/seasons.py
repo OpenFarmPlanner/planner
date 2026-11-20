@@ -24,7 +24,6 @@ PLANTING_PLAN_COPY_FIELDS = (
     'planting_date',
     'planned_propagation_start_date',
     'planned_sowing_date',
-    'planned_transplanting_date',
     'harvest_date',
     'harvest_date_is_explicit',
     'harvest_end_date',
@@ -38,7 +37,7 @@ PLANTING_PLAN_COPY_FIELDS = (
 # lands in the target season's own period instead of the source season's.
 PLANTING_PLAN_SHIFTED_DATE_FIELDS = (
     'planting_date', 'planned_propagation_start_date', 'planned_sowing_date',
-    'planned_transplanting_date', 'harvest_date', 'harvest_end_date',
+    'harvest_date', 'harvest_end_date',
 )
 
 COMPUTED_COPY_DATE_FIELDS = (
@@ -248,21 +247,19 @@ def _season_copy_fields(plan: PlantingPlan, crop_index: GeneralCropIndex | None)
         return fields
 
     planned = plan_event_dates(plan, crop_index)
-    sowing = plan.actual_sowing_date or planned.get('sowing')
-    transplanting = plan.actual_transplanting_date or planned.get('planting')
     cultivation = plan_cultivation_type(plan, crop_index)
-    bought_in = cultivation == PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT
-    if bought_in or cultivation == 'pre_cultivation':
-        fields['planting_date'] = transplanting or plan.planting_date
-        fields['planned_sowing_date'] = None if bought_in else sowing
-        fields['planned_transplanting_date'] = None
+    if cultivation in ('pre_cultivation', PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT):
+        fields['planting_date'] = plan.actual_transplanting_date or plan.planting_date
     else:
-        fields['planting_date'] = sowing or plan.planting_date
-        fields['planned_sowing_date'] = None
-        fields['planned_transplanting_date'] = transplanting
+        fields['planting_date'] = plan.actual_sowing_date or plan.planting_date
+    fields['planned_propagation_start_date'] = None
+    fields['planned_sowing_date'] = None
+    if cultivation == 'pre_cultivation':
+        fields['planned_propagation_start_date'] = (
+            plan.actual_propagation_start_date or planned.get('propagation_start')
+        )
+        fields['planned_sowing_date'] = plan.actual_sowing_date or planned.get('sowing')
     planned_start, planned_end = plan.planned_harvest_dates(crop_index)
-    propagation_start = plan.actual_propagation_start_date or planned.get('propagation_start')
-    fields['planned_propagation_start_date'] = None if bought_in else propagation_start
     fields['harvest_date'] = plan.actual_harvest_start_date or planned_start
     fields['harvest_end_date'] = plan.recorded_harvest_end_date or planned_end
     return fields
