@@ -187,7 +187,7 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
           }}
           onKeyDown={handleInputKey}
           startAdornment={<SearchIcon fontSize="small" sx={{ mr: 0.5, color: 'text.secondary' }} />}
-          inputProps={{
+          slotProps={{ input: {
             role: 'combobox',
             'aria-label': t('bedPicker.search'),
             'aria-autocomplete': 'list',
@@ -195,7 +195,7 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
             'aria-controls': listId,
             'aria-activedescendant': activeOptionId,
             readOnly: submitting,
-          }}
+          } }}
         />
         <Popper
           anchorEl={anchor}
