@@ -328,11 +328,12 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
             cultivation = validated_data.get('cultivation_type', instance.cultivation_type)
             if cultivation != instance.cultivation_type:
                 # The supplemental dates describe the former cultivation method.
-                validated_data.update(
-                    planned_propagation_start_date=None,
-                    planned_sowing_date=None,
-                    planned_transplanting_date=None,
-                )
+                # Dates sent in the same request describe the new method and are kept.
+                for field in (
+                    'planned_propagation_start_date', 'planned_sowing_date',
+                    'planned_transplanting_date',
+                ):
+                    validated_data.setdefault(field, None)
             return super().update(instance, validated_data)
         for field, value in validated_data.items():
             setattr(instance, field, value)

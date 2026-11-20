@@ -153,6 +153,24 @@ class PlantingPlanApiTest(ProjectApiTestCase):
         plan.refresh_from_db()
         self.assertEqual((plan.planting_date, plan.harvest_date, plan.harvest_end_date), planned)
 
+    def test_changing_cultivation_keeps_supplemental_dates_sent_with_the_change(self):
+        self.crop.cultivation_type = 'pre_cultivation'
+        self.crop.cultivation_types = ['pre_cultivation', 'direct_sowing']
+        self.crop.save(update_fields=['cultivation_type', 'cultivation_types'])
+        created = self.client.post('/openfarmplanner/api/planting-plans/', {
+            'crop': self.crop.pk, 'cultivation_type': 'pre_cultivation',
+            'planting_date': '2024-03-01', 'planned_propagation_start_date': '2024-02-10',
+        })
+        self.assertEqual(created.status_code, 201, created.data)
+
+        changed = self.client.patch(f'/openfarmplanner/api/planting-plans/{created.data["id"]}/', {
+            'cultivation_type': 'direct_sowing', 'planned_transplanting_date': '2024-03-20',
+        })
+
+        self.assertEqual(changed.status_code, 200, changed.data)
+        self.assertIsNone(changed.data['planned_propagation_start_date'])
+        self.assertEqual(changed.data['planned_transplanting_date'], '2024-03-20')
+
     def test_changing_cultivation_clears_the_previous_supplemental_dates(self):
         self.crop.cultivation_type = 'pre_cultivation'
         self.crop.cultivation_types = ['pre_cultivation', 'direct_sowing']
