@@ -28,6 +28,7 @@ from .history.views import (
     GlobalHistoryRestoreView,
     ImportUndoPreviewView,
     ProjectHistoryListView,
+    ProjectHistoryRestorePreviewView,
     ProjectHistoryRestoreView,
 )
 from .notes.views import (
@@ -121,6 +122,11 @@ urlpatterns = [
     path('culture-imports/<uuid:draft_id>/apply/', CropImportApplyView.as_view(), name='legacy-crop-import-apply'),
     path('history/project/', ProjectHistoryListView.as_view(), name='project-history-list'),
     path('history/project/restore/', ProjectHistoryRestoreView.as_view(), name='project-history-restore'),
+    path(
+        'history/project/restore-preview/',
+        ProjectHistoryRestorePreviewView.as_view(),
+        name='project-history-restore-preview',
+    ),
     path('history/batch/<int:batch_id>/revert/', BatchOperationRevertView.as_view(), name='batch-operation-revert'),
     path(
         'history/batch/<int:batch_id>/undo-preview/',

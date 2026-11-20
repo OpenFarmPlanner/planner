@@ -1834,11 +1834,46 @@
   "restoreDialog": {
     "title": "Restaurer la version ?",
     "batchDescription": "Cette action et toutes les modifications associées seront annulées.",
-    "versionDescription": "Vous rétablissez tout le projet dans cette version. Toutes les modifications ultérieures seront annulées, y compris les cultures et les planches créées ensuite.",
+    "versionDescription": "Cette action restaure l’ensemble du projet à cette version et annule toutes les modifications ultérieures.",
     "batchNotice": "L'état précédent sera restauré. L'action reste dans l'historique et peut être effectuée à nouveau.",
-    "versionNotice": "La version actuelle est conservée. Une nouvelle version est créée automatiquement avant la restauration, afin que vous puissiez revenir en arrière à tout moment.",
+    "versionNotice": "Avant la restauration, l’état actuel du projet est automatiquement enregistré dans l’historique des versions.",
     "cancel": "Annuler",
-    "confirm": "Restaurer la version"
+    "confirm": "Restaurer la version",
+    "preview": {
+      "title": "Effets de la restauration",
+      "counting": "Chaque élément actif est compté individuellement. Les cultures générales et les variétés sont comptées séparément.",
+      "unchanged": "Cette version présente les mêmes éléments actifs que le projet actuel.",
+      "loading": "Vérification des changements…",
+      "unavailable": "L’aperçu est indisponible. Actualisez-le pour vérifier à nouveau le projet.",
+      "conflict": "Cette version ne peut pas être restaurée en toute sécurité. Choisissez une autre version ou actualisez l’aperçu.",
+      "stale": "Le projet ou la version sélectionnée a changé. Actualisez l’aperçu et vérifiez les changements avant de restaurer.",
+      "too_large": "Ce projet dépasse la taille maximale pour l’aperçu de restauration. Contactez l’assistance.",
+      "throttled": "Trop de demandes d’aperçu. Patientez un instant, puis actualisez l’aperçu.",
+      "refresh": "Actualiser l’aperçu",
+      "restoring": "Restauration en cours…",
+      "scope": "Les comptes, les adhésions au projet et la bibliothèque de cultures partagée sont en dehors du périmètre de la restauration.",
+      "sample": "{{shown}} sur {{total}} affichés",
+      "categories": {
+        "crops": "Cultures générales",
+        "varieties": "Variétés",
+        "planting_plans": "Plans de culture",
+        "locations": "Sites",
+        "fields": "Parcelles",
+        "beds": "Planches",
+        "other": "Autres éléments du projet"
+      },
+      "actions": {
+        "removed_one": "Suppression ({{count}})",
+        "removed_other": "Suppressions ({{count}})",
+        "removed_many": "Suppressions ({{count}})",
+        "restored_one": "Rétablissement ({{count}})",
+        "restored_other": "Rétablissements ({{count}})",
+        "restored_many": "Rétablissements ({{count}})",
+        "changed_one": "Modification ({{count}})",
+        "changed_other": "Modifications ({{count}})",
+        "changed_many": "Modifications ({{count}})"
+      }
+    }
   },
   "disabledReasons": {
     "requiredSpeciesNames": "Saisissez d’abord un nom dans chaque langue requise.",

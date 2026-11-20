@@ -1,9 +1,23 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { cropAPI } from '../api/api';
-import type { CropHistoryEntry } from '../api/types';
+import type { CropHistoryEntry, ProjectRestorePreview } from '../api/types';
 import { useTranslation } from '../i18n';
 
 type ShowSnackbar = (message: string, severity: 'success' | 'error' | 'info') => void;
+type RestorePreviewFailure = 'unavailable' | 'conflict' | 'stale' | 'too_large' | 'throttled';
+
+export type RestorePreviewState =
+  | { status: 'ready'; data: ProjectRestorePreview }
+  | { status: 'loading' | RestorePreviewFailure };
+
+function restoreErrorStatus(error: unknown): RestorePreviewFailure {
+  const status = (error as { response?: { status?: number; data?: { code?: string } } })?.response;
+  if (status?.data?.code === 'project_restore_preview_changed') return 'stale';
+  if (status?.data?.code === 'project_restore_preview_too_large') return 'too_large';
+  if (status?.status === 429) return 'throttled';
+  if (status?.status === 409 || status?.status === 404) return 'conflict';
+  return 'unavailable';
+}
 
 export interface ProjectHistory {
   open: boolean;
@@ -11,9 +25,12 @@ export interface ProjectHistory {
   loading: boolean;
   /** The entry the user picked, awaiting confirmation in the restore dialog. */
   pendingRestoreEntry: CropHistoryEntry | null;
+  restorePreview: RestorePreviewState;
+  restoreBusy: boolean;
   openHistory: () => Promise<void>;
   closeHistory: () => void;
-  requestRestore: (entry: CropHistoryEntry) => void;
+  requestRestore: (entry: CropHistoryEntry) => Promise<void>;
+  refreshRestorePreview: () => void;
   cancelRestore: () => void;
   restoreVersion: (historyId: number) => Promise<void>;
   revertBatch: (batchId: number) => Promise<void>;
@@ -40,6 +57,10 @@ export function useProjectHistory(showSnackbar: ShowSnackbar): ProjectHistory {
   const [items, setItems] = useState<CropHistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [pendingRestoreEntry, setPendingRestoreEntry] = useState<CropHistoryEntry | null>(null);
+  const [restorePreview, setRestorePreview] = useState<RestorePreviewState>({ status: 'loading' });
+  const [restoreBusy, setRestoreBusy] = useState(false);
+  const restoreRequest = useRef<AbortController | null>(null);
+  const restoring = useRef(false);
   const [pendingBatchRevert, requestBatchRevert] = useState<CropHistoryEntry | null>(null);
   const [pendingImportUndo, setPendingImportUndo] = useState<CropHistoryEntry | null>(null);
   const [importUndoPreview, setImportUndoPreview] = useState<ProjectHistory['importUndoPreview']>(null);
@@ -103,55 +124,89 @@ export function useProjectHistory(showSnackbar: ShowSnackbar): ProjectHistory {
     setOpen(false);
   }, []);
 
-  const requestRestore = useCallback((entry: CropHistoryEntry): void => {
-    setPendingRestoreEntry(entry);
+  useEffect(() => () => restoreRequest.current?.abort(), []);
+
+  const clearRestore = useCallback((): void => {
+    restoreRequest.current?.abort();
+    setPendingRestoreEntry(null);
+    setRestorePreview({ status: 'loading' });
   }, []);
+
+  const requestRestore = useCallback(async (entry: CropHistoryEntry): Promise<void> => {
+    if (restoring.current) return;
+    restoreRequest.current?.abort();
+    const request = new AbortController();
+    restoreRequest.current = request;
+    setPendingRestoreEntry(entry);
+    setRestorePreview({ status: 'loading' });
+    try {
+      const { data } = await cropAPI.projectRestorePreview(entry.history_id, request.signal);
+      if (!request.signal.aborted) {
+        setRestorePreview(data.token && Array.isArray(data.impact)
+          ? { status: 'ready', data }
+          : { status: 'unavailable' });
+      }
+    } catch (error) {
+      if (!request.signal.aborted) setRestorePreview({ status: restoreErrorStatus(error) });
+    }
+  }, []);
+
+  const refreshRestorePreview = useCallback((): void => {
+    if (pendingRestoreEntry) void requestRestore(pendingRestoreEntry);
+  }, [pendingRestoreEntry, requestRestore]);
 
   const cancelRestore = useCallback((): void => {
-    setPendingRestoreEntry(null);
-  }, []);
+    if (!restoring.current) clearRestore();
+  }, [clearRestore]);
 
   const restoreVersion = useCallback(async (historyId: number): Promise<void> => {
+    if (
+      restoring.current || pendingRestoreEntry?.history_id !== historyId
+      || restorePreview.status !== 'ready' || !restorePreview.data.token
+    ) return;
+    restoring.current = true;
+    setRestoreBusy(true);
     try {
-      await cropAPI.projectRestore(historyId);
+      await cropAPI.projectRestore(historyId, restorePreview.data.token);
       showSnackbar(t('commandPalette.feedback.versionRestoredWithBackup'), 'success');
       setOpen(false);
-      setPendingRestoreEntry(null);
+      clearRestore();
       window.location.reload();
     } catch (error) {
-      console.error('Error restoring project version:', error);
-      setPendingRestoreEntry(null);
-      const code = (error as { response?: { data?: { code?: string } } })?.response?.data?.code;
-      showSnackbar(t(code === 'project_restore_conflict'
-        ? 'commandPalette.feedback.versionRestoreConflict'
-        : 'commandPalette.feedback.versionRestoreError'), 'error');
+      setRestorePreview({ status: restoreErrorStatus(error) });
+    } finally {
+      restoring.current = false;
+      setRestoreBusy(false);
     }
-  }, [showSnackbar, t]);
+  }, [clearRestore, pendingRestoreEntry, restorePreview, showSnackbar, t]);
 
   const revertBatch = useCallback(async (batchId: number): Promise<void> => {
     try {
       await cropAPI.revertBatch(batchId);
       showSnackbar(t('commandPalette.feedback.versionRestored'), 'success');
       setOpen(false);
-      setPendingRestoreEntry(null);
+      clearRestore();
       requestBatchRevert(null);
       window.location.reload();
     } catch (error) {
       console.error('Error reverting batch operation:', error);
-      setPendingRestoreEntry(null);
+      clearRestore();
       requestBatchRevert(null);
       showSnackbar(t('commandPalette.feedback.versionRestoreError'), 'error');
     }
-  }, [showSnackbar, t]);
+  }, [clearRestore, showSnackbar, t]);
 
   return {
     open,
     items,
     loading,
     pendingRestoreEntry,
+    restorePreview,
+    restoreBusy,
     openHistory,
     closeHistory,
     requestRestore,
+    refreshRestorePreview,
     cancelRestore,
     restoreVersion,
     revertBatch,

@@ -30,3 +30,7 @@ class CropHistoryEntrySerializer(serializers.Serializer):
 
 class CropRestoreSerializer(serializers.Serializer):
     history_id = serializers.IntegerField()
+
+
+class ProjectRestoreSerializer(CropRestoreSerializer):
+    preview_token = serializers.CharField(required=False, max_length=256, trim_whitespace=False)

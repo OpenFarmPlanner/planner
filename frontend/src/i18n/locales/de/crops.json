@@ -1786,11 +1786,43 @@
   "restoreDialog": {
     "title": "Version wiederherstellen?",
     "batchDescription": "Du machst diese Aktion mit allen zugehörigen Änderungen rückgängig.",
-    "versionDescription": "Du setzt das gesamte Projekt auf diese Version zurück. Alle späteren Änderungen werden rückgängig gemacht; später angelegte Kulturen und Beete werden entfernt.",
+    "versionDescription": "Du setzt das gesamte Projekt auf diese Version zurück. Dadurch werden alle späteren Änderungen rückgängig gemacht.",
     "batchNotice": "Der vorherige Stand wird wiederhergestellt. Die Aktion selbst bleibt im Verlauf und kann erneut ausgeführt werden.",
-    "versionNotice": "Die aktuelle Version bleibt erhalten. Vor der Wiederherstellung wird automatisch eine neue Version erstellt, sodass du jederzeit wieder zurückwechseln kannst.",
+    "versionNotice": "Der aktuelle Stand wird vor der Wiederherstellung automatisch im Versionsverlauf gesichert.",
     "cancel": "Abbrechen",
-    "confirm": "Version wiederherstellen"
+    "confirm": "Version wiederherstellen",
+    "preview": {
+      "title": "Änderungen bei der Wiederherstellung",
+      "counting": "Gezählt werden einzelne aktive Einträge. Allgemeine Kulturen und Sorten werden getrennt gezählt.",
+      "unchanged": "Bei dieser Version gibt es keine Unterschiede bei den aktiven Projekteinträgen.",
+      "loading": "Die Änderungen werden ermittelt …",
+      "unavailable": "Die Vorschau ist nicht verfügbar. Aktualisiere sie, um das Projekt erneut zu prüfen.",
+      "conflict": "Diese Version kann nicht sicher wiederhergestellt werden. Wähle eine andere Version oder aktualisiere die Vorschau.",
+      "stale": "Das Projekt oder die ausgewählte Version hat sich geändert. Aktualisiere die Vorschau und prüfe die Änderungen vor der Wiederherstellung.",
+      "too_large": "Dieses Projekt überschreitet die Größenbegrenzung für die Vorschau. Wende dich an den Support.",
+      "throttled": "Zu viele Anfragen für die Vorschau. Warte kurz und aktualisiere sie dann.",
+      "refresh": "Vorschau aktualisieren",
+      "restoring": "Version wird wiederhergestellt …",
+      "scope": "Konten, Projektmitgliedschaften und die gemeinsame Kulturbibliothek bleiben von der Wiederherstellung unberührt.",
+      "sample": "{{shown}} von {{total}} angezeigt",
+      "categories": {
+        "crops": "Allgemeine Kulturen",
+        "varieties": "Sorten",
+        "planting_plans": "Anbaupläne",
+        "locations": "Standorte",
+        "fields": "Parzellen",
+        "beds": "Beete",
+        "other": "Weitere Projekteinträge"
+      },
+      "actions": {
+        "removed_one": "Entfernung ({{count}})",
+        "removed_other": "Entfernungen ({{count}})",
+        "restored_one": "Wiederherstellung ({{count}})",
+        "restored_other": "Wiederherstellungen ({{count}})",
+        "changed_one": "Änderung ({{count}})",
+        "changed_other": "Änderungen ({{count}})"
+      }
+    }
   },
   "disabledReasons": {
     "requiredSpeciesNames": "Bitte zuerst in jeder erforderlichen Sprache einen Namen eingeben.",

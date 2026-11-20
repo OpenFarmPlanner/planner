@@ -312,6 +312,14 @@ class ProjectsApiTests(APITestCase):
         history_id = next(entry['history_id'] for entry in history if not entry.get('is_batch'))
         record_later_revision(self.project)
         revision_count = EntityRevision.objects.filter(project=self.project).count()
+        preview = self.client.get(
+            '/openfarmplanner/api/history/project/restore-preview/',
+            {'history_id': history_id}, **headers,
+        )
+        self.assertEqual(preview.status_code, status.HTTP_409_CONFLICT, preview.data)
+        self.assertEqual(preview.data['code'], 'crop_name_conflict')
+        self.assertNotIn('token', preview.data)
+        self.assertNotIn('impact', preview.data)
         response = self.client.post(
             '/openfarmplanner/api/history/project/restore/',
             {'history_id': history_id}, format='json', **headers,

@@ -1786,11 +1786,43 @@
   "restoreDialog": {
     "title": "Restore version?",
     "batchDescription": "This action and all related changes will be undone.",
-    "versionDescription": "Restore the whole project to this version. All later changes will be undone, including removing crops and beds created afterward.",
+    "versionDescription": "This rolls back the entire project to this version and reverses all later changes.",
     "batchNotice": "The previous state will be restored. The action remains in the history and can be performed again.",
-    "versionNotice": "The current version is retained. A new version is created automatically before restoring, so you can switch back at any time.",
+    "versionNotice": "Before restoring, the current project state is automatically saved in version history.",
     "cancel": "Cancel",
-    "confirm": "Restore version"
+    "confirm": "Restore version",
+    "preview": {
+      "title": "Changes in this restore",
+      "counting": "Counts show individual active records. General crops and varieties are counted separately.",
+      "unchanged": "This version has no differences in active project records.",
+      "loading": "Checking what will change…",
+      "unavailable": "The preview is unavailable. Refresh it to check the project again.",
+      "conflict": "This version can’t be restored safely. Choose another version or refresh the preview to check again.",
+      "stale": "The project or selected version changed. Refresh the preview and review the changes before restoring.",
+      "too_large": "This project exceeds the size limit for a restore preview. Contact support for help.",
+      "throttled": "Too many preview requests. Wait a moment and refresh the preview.",
+      "refresh": "Refresh preview",
+      "restoring": "Restoring…",
+      "scope": "Accounts, project memberships and the shared crop library are outside the restore.",
+      "sample": "Showing {{shown}} of {{total}}",
+      "categories": {
+        "crops": "General crops",
+        "varieties": "Varieties",
+        "planting_plans": "Planting plans",
+        "locations": "Locations",
+        "fields": "Fields",
+        "beds": "Beds",
+        "other": "Other project records"
+      },
+      "actions": {
+        "removed_one": "{{count}} removed",
+        "removed_other": "{{count}} removed",
+        "restored_one": "{{count}} restored",
+        "restored_other": "{{count}} restored",
+        "changed_one": "{{count}} changed",
+        "changed_other": "{{count}} changed"
+      }
+    }
   },
   "disabledReasons": {
     "requiredSpeciesNames": "Enter a name in every required language first.",

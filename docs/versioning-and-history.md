@@ -184,6 +184,18 @@ The owner clarified in #1061 that **Restore this version means the complete
 historical domain state, including removing later-created crops and beds**.
 This deliberately replaces the old retain-later-created-rows behavior.
 
+The confirmation dialog requests `GET /api/history/project/restore-preview/?history_id=…`.
+The project administrator's preview reconstructs and validates the historical
+target without writing data, history, or retained uploads. Each count represents
+an individual active record removed, restored, or changed, with general crops
+and varieties counted separately. A group can show up to five affected names
+per action. A change to a bed or field's visual layout counts toward that
+growing area. Internal timestamps and derived normalization fields are ignored
+in the counts. Unsafe or incomplete targets cannot be confirmed. Preview
+requests have per-user and per-IP rate limits. The synchronous preview also
+bounds project rows, stored revision data and storage checks. Projects beyond
+those limits display a size error and cannot be confirmed through the dialog.
+
 `ProjectHistoryRestoreView` and the timestamp compatibility helper delegate to
 `history/project_restore.py`:
 
@@ -200,7 +212,12 @@ This deliberately replaces the old retain-later-created-rows behavior.
 3. Validate ownership, historical parents, external references and final general
    crop identities. Refuse untracked/external cascades. Missing optional global
    references retain the established nulling behavior; required missing parents
-   cannot be silently skipped.
+   cannot be silently skipped. The dialog sends the preview's signed token with
+   the restore request. The server compares the complete current and reconstructed
+   target states under the project lock before saving a backup. If either state
+   changes, the dialog requires a fresh preview and confirmation. This
+   confirmation applies the same project size limits as the preview. Existing
+   project-administrator API callers can still send a history ID alone.
 4. Save a complete current-state backup, remove absent rows in reverse dependency
    order and restore targets in forward order. Crops use soft deletion to retain
    identity, library provenance and the drain-only legacy crop audit rows. No

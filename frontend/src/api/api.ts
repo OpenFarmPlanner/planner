@@ -37,6 +37,7 @@ import type {
   YieldCalendarWeek,
   NoteAttachment,
   CropHistoryEntry,
+  ProjectRestorePreview,
   CropDuplicateCheckResponse,
   CropPublicSyncPreview,
   CropPublicSyncRequest,
@@ -178,7 +179,10 @@ export const cropAPI = {
   globalHistory: () => http.get<CropHistoryEntry[]>('/history/global/'),
   globalRestore: (history_id: number) => http.post<Crop>('/history/global/restore/', { history_id }),
   projectHistory: () => http.get<CropHistoryEntry[]>('/history/project/'),
-  projectRestore: (history_id: number) => http.post<{ detail: string }>('/history/project/restore/', { history_id }),
+  projectRestorePreview: (history_id: number, signal: AbortSignal) =>
+    http.get<ProjectRestorePreview>('/history/project/restore-preview/', { params: { history_id }, signal }),
+  projectRestore: (history_id: number, preview_token?: string) =>
+    http.post<{ detail: string }>('/history/project/restore/', { history_id, preview_token }),
   revertBatch: (batch_id: number) => http.post<{ detail: string }>(`/history/batch/${batch_id}/revert/`, {}),
   importUndoPreview: (batchId: number) => http.post<{
     created_count: number; updated_count: number;

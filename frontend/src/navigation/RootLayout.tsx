@@ -2097,6 +2097,9 @@ function RootLayout() {
       />
       <RestoreVersionDialog
         entry={projectHistory.pendingRestoreEntry}
+        preview={projectHistory.restorePreview}
+        busy={projectHistory.restoreBusy}
+        onRefreshPreview={projectHistory.refreshRestorePreview}
         getEntryTitle={(entry) => getHistoryEntryTitle(entry, tCrops)}
         formatTimestamp={formatHistoryTimestamp}
         tCrops={tCrops}

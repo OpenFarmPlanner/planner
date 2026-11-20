@@ -1834,11 +1834,46 @@
   "restoreDialog": {
     "title": "¿Restaurar la versión?",
     "batchDescription": "Se deshará esta acción y todos los cambios relacionados.",
-    "versionDescription": "Restauras todo el proyecto a esta versión. Se desharán todos los cambios posteriores, incluidos los cultivos y bancales creados después.",
+    "versionDescription": "Esto devuelve todo el proyecto a esta versión y revierte todos los cambios posteriores.",
     "batchNotice": "Se restaurará el estado anterior. La acción permanece en el historial y se puede volver a realizar.",
-    "versionNotice": "La versión actual se conserva. Antes de restaurar se crea automáticamente una nueva versión, para que puedas volver en cualquier momento.",
+    "versionNotice": "Antes de restaurar, el estado actual del proyecto se guarda automáticamente en el historial de versiones.",
     "cancel": "Cancelar",
-    "confirm": "Restaurar versión"
+    "confirm": "Restaurar versión",
+    "preview": {
+      "title": "Cambios de la restauración",
+      "counting": "Se cuenta cada registro activo. Los cultivos generales y las variedades se agrupan por separado.",
+      "unchanged": "Esta versión tiene los mismos registros activos que el proyecto actual.",
+      "loading": "Comprobando los cambios…",
+      "unavailable": "La vista previa no está disponible. Actualízala para volver a comprobar el proyecto.",
+      "conflict": "Esta versión no se puede restaurar de forma segura. Elige otra versión o actualiza la vista previa.",
+      "stale": "El proyecto o la versión seleccionada ha cambiado. Actualiza la vista previa y revisa los cambios antes de restaurar.",
+      "too_large": "Este proyecto supera el tamaño máximo para la vista previa. Contacta con el equipo de soporte.",
+      "throttled": "Hay demasiadas solicitudes de vista previa. Espera un momento y actualízala.",
+      "refresh": "Actualizar vista previa",
+      "restoring": "Restaurando…",
+      "scope": "Las cuentas, las pertenencias al proyecto y la biblioteca de cultivos compartida quedan fuera de la restauración.",
+      "sample": "Se muestran {{shown}} de {{total}}",
+      "categories": {
+        "crops": "Cultivos generales",
+        "varieties": "Variedades",
+        "planting_plans": "Planes de cultivos",
+        "locations": "Ubicaciones",
+        "fields": "Parcelas",
+        "beds": "Bancales",
+        "other": "Otros registros del proyecto"
+      },
+      "actions": {
+        "removed_one": "Eliminación ({{count}})",
+        "removed_other": "Eliminaciones ({{count}})",
+        "removed_many": "Eliminaciones ({{count}})",
+        "restored_one": "Restauración ({{count}})",
+        "restored_other": "Restauraciones ({{count}})",
+        "restored_many": "Restauraciones ({{count}})",
+        "changed_one": "Modificación ({{count}})",
+        "changed_other": "Modificaciones ({{count}})",
+        "changed_many": "Modificaciones ({{count}})"
+      }
+    }
   },
   "disabledReasons": {
     "requiredSpeciesNames": "Introduce primero un nombre en cada idioma obligatorio.",
