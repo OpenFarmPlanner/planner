@@ -287,6 +287,14 @@ class Crop(TimestampedModel):
         (ORIGIN_MANUAL, 'Manual'),
         (ORIGIN_IMPORTED, 'Imported'),
     ]
+    CREATION_MANUAL = 'manual'
+    CREATION_FILE_IMPORT = 'file_import'
+    CREATION_LIBRARY_IMPORT = 'library_import'
+    CREATION_ORIGIN_CHOICES = [
+        (CREATION_MANUAL, 'Manual'),
+        (CREATION_FILE_IMPORT, 'File import'),
+        (CREATION_LIBRARY_IMPORT, 'Crop library import'),
+    ]
     NUTRIENT_DEMAND_CHOICES = [
         ('low', 'Low'),
         ('medium', 'Medium'),
@@ -422,6 +430,9 @@ class Crop(TimestampedModel):
         ),
     )
     origin_type = models.CharField(max_length=50, choices=ORIGIN_TYPE_CHOICES, default=ORIGIN_MANUAL)
+    creation_origin = models.CharField(
+        max_length=20, choices=CREATION_ORIGIN_CHOICES, null=True, blank=True, editable=False,
+    )
     is_modified_from_source = models.BooleanField(default=False)
     library_pinned_fields = models.JSONField(
         default=list,

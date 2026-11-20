@@ -130,6 +130,8 @@ export interface SeedRequirementEntry {
 
 export type SeedRequirements = Partial<Record<CultivationType, SeedRequirementEntry>>;
 
+export type CropCreationOrigin = 'manual' | 'file_import' | 'library_import';
+
 export interface Crop {
   /** Explicitly seed empty general-crop fields when creating this variety. */
   copy_values_to_crop?: boolean;
@@ -140,6 +142,7 @@ export interface Crop {
   derived_from_public_crop?: number | null;
   source_public_version?: number | null;
   origin_type?: 'manual' | 'imported';
+  creation_origin?: CropCreationOrigin | null;
   owned_public_crop_id?: number | null;
   owned_public_crop_role?: PublicCropOwnershipRole | null;
   is_modified_from_source?: boolean;
@@ -830,6 +833,47 @@ export interface CropDeletePreview {
   deletes_general_crop: boolean;
   group_without_general: boolean;
   ambiguous_general_group?: boolean;
+}
+
+export interface CropBulkDeleteSelection {
+  expected_project_id: number;
+  scope: 'selected' | 'all';
+  crop_ids?: number[];
+  delete_varieties: boolean;
+}
+
+export interface CropBulkDeleteSample {
+  id: number;
+  name: string;
+}
+
+export interface CropBulkDeletePreview {
+  scope: CropBulkDeleteSelection['scope'];
+  selected_count: number;
+  affected_count: number;
+  variety_count: number;
+  general_count: number;
+  additional_count: number;
+  missing_count: number;
+  blocked_count: number;
+  planting_plan_count: number;
+  seed_package_count: number;
+  supplier_offer_count: number;
+  samples: CropBulkDeleteSample[];
+  blockers: Array<{
+    code: 'varieties_required' | 'ambiguous_group' | 'planting_plans';
+    count: number;
+    samples: CropBulkDeleteSample[];
+  }>;
+  token: string | null;
+}
+
+export interface CropBulkDeleteResult {
+  batch_id: number;
+  deleted_count: number;
+  skipped_count: number;
+  blocked_count: number;
+  failed_count: number;
 }
 
 export interface PublicCropMatchResponse {

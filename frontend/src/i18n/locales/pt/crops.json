@@ -1830,6 +1830,63 @@
       "next": "seguinte, cultura"
     }
   },
+  "bulkDelete": {
+    "menu": "Ações das culturas",
+    "allAction": "Eliminar todas as culturas do projeto",
+    "title": "Eliminar culturas selecionadas",
+    "scopeAll": "A ação inclui todas as culturas ativas do projeto, mesmo as ocultas pelos filtros.",
+    "scopeSelected": "Revê as culturas selecionadas e as variedades incluídas.",
+    "trashNotice": "As culturas e os dados de sementes passam para o lixo. As entradas da biblioteca partilhada são conservadas.",
+    "deleteVarieties": "Eliminar também as variedades",
+    "confirmAll": "Confirmo a eliminação de todas as culturas ativas deste projeto.",
+    "showCrops": "Mostrar culturas afetadas",
+    "empty": "Esta seleção não contém culturas ativas.",
+    "missing": "Algumas culturas selecionadas já não estão disponíveis. Atualiza a seleção.",
+    "outcomeUnknown": "O resultado não está disponível. Repete o mesmo pedido para o verificar.",
+    "retry": "Voltar a tentar eliminar",
+    "confirm": "Mover para o lixo",
+    "recovered": "Culturas recuperadas do lixo.",
+    "recoveryFailed": "Não foi possível recuperar todas as culturas em conjunto.",
+    "archived_one": "{{count}} cultura movida para o lixo",
+    "archived_other": "{{count}} culturas movidas para o lixo",
+    "archived_many": "{{count}} culturas movidas para o lixo",
+    "recoveredCount_one": "{{count}} cultura recuperada do lixo",
+    "recoveredCount_other": "{{count}} culturas recuperadas do lixo",
+    "recoveredCount_many": "{{count}} culturas recuperadas do lixo",
+    "counts": {
+      "selected": "Registos selecionados",
+      "affected": "Registos afetados",
+      "general": "Culturas gerais",
+      "varieties": "Variedades",
+      "additional": "Adicionados dos grupos",
+      "plans": "Planos de cultivo associados",
+      "packages": "Embalagens de sementes",
+      "offers": "Ofertas de fornecedores",
+      "blocked": "Registos bloqueados",
+      "missing": "Registos indisponíveis",
+      "skipped": "Registos ignorados",
+      "failed": "Registos com erros"
+    },
+    "blockers": {
+      "varieties_required": "Estas variedades precisam da cultura geral. Inclui-as para eliminar o grupo.",
+      "ambiguous_group": "O grupo tem mais do que uma cultura geral. Corrige o grupo antes de o eliminar.",
+      "planting_plans": "Há planos de cultivo que usam estas culturas. Altera os planos antes de as eliminar."
+    },
+    "origin": {
+      "label": "Origem da cultura",
+      "manual": "Criada manualmente",
+      "file_import": "Importada de um ficheiro",
+      "library_import": "Importada da biblioteca",
+      "unknown": "Origem desconhecida ou antiga"
+    },
+    "errors": {
+      "unavailable": "A pré-visualização não está disponível. Tenta novamente.",
+      "changed": "A seleção ou o projeto mudou. Consulta uma nova pré-visualização.",
+      "limit": "A seleção é demasiado grande. Seleciona menos culturas de cada vez.",
+      "throttled": "Demasiados pedidos. Aguarda um momento e tenta novamente.",
+      "writeFailed": "Não foi possível mover as culturas para o lixo. Continuam no projeto."
+    }
+  },
   "restoreDialog": {
     "title": "Restaurar versão?",
     "batchDescription": "Esta ação e todas as alterações relacionadas serão anuladas.",

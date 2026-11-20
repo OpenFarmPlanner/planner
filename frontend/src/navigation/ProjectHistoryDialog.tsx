@@ -119,8 +119,11 @@ export function ProjectHistoryDialog({
     const summary = getBatchSummary(entry, tCrops);
     const isImport = entry.batch_operation_type === 'crop_import';
     const action = entryAction(entry);
-    const menuButton = entry.batch_operation_type === 'batch_reverted'
-      && entry.batch_context?.reverted_operation_type === 'crop_import' ? null : (
+    const hideRevert = entry.batch_operation_type === 'crop_bulk_undelete'
+      || (entry.batch_operation_type === 'crop_bulk_delete' && entry.batch_context?.is_reverted)
+      || (entry.batch_operation_type === 'batch_reverted'
+        && entry.batch_context?.reverted_operation_type === 'crop_import');
+    const menuButton = hideRevert ? null : (
         <IconButton aria-label={isImport ? tCrops('history.import.actions') : t('globalMenu.moreActions')}
           sx={{ minWidth: { xs: 48, sm: 40 }, minHeight: { xs: 48, sm: 40 } }}
           onClick={event => setMenu({ element: event.currentTarget, entry })}>

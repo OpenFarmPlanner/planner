@@ -497,6 +497,14 @@ class CropSerializer(serializers.ModelSerializer):
         rows = obj.supplier_data.all()
         return CropSupplierDataSerializer(rows, many=True).data
 
+    creation_origin = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_creation_origin(self, obj: Crop) -> str | None:
+        if obj.creation_origin is None and getattr(obj, '_recorded_file_import', False):
+            return Crop.CREATION_FILE_IMPORT
+        return obj.creation_origin
+
     class Meta:
         model = Crop
         fields = '__all__'
@@ -1059,6 +1067,7 @@ class CropSerializer(serializers.ModelSerializer):
             return crop
 
     def create(self, validated_data):
+        validated_data.setdefault('creation_origin', Crop.CREATION_MANUAL)
         record_history = validated_data.pop('_record_crop_history', True)
         copy_values_to_crop = validated_data.pop('copy_values_to_crop', False)
         link_public_crop = validated_data.pop('link_public_crop', None)
@@ -1115,6 +1124,7 @@ class CropSerializer(serializers.ModelSerializer):
                 crop,
                 copy_values=copy_values_to_crop,
                 promote_fields=promote_fields,
+                creation_origin=crop.creation_origin,
             )
             if crop._auto_general_crop is not None:
                 clear_species_invariant_overrides(crop, fields=promote_fields)

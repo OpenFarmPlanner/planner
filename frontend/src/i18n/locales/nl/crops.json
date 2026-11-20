@@ -1783,6 +1783,61 @@
       "next": "volgend, gewas"
     }
   },
+  "bulkDelete": {
+    "menu": "Gewasacties",
+    "allAction": "Alle projectgewassen verwijderen",
+    "title": "Geselecteerde gewassen verwijderen",
+    "scopeAll": "Dit omvat alle actieve gewassen in het project, ook de gewassen die door filters verborgen zijn.",
+    "scopeSelected": "Controleer de geselecteerde gewassen en de rassen die worden meegenomen.",
+    "trashNotice": "De gewassen en hun zaadgegevens gaan naar de prullenbak. Vermeldingen in de gedeelde gewassenbibliotheek blijven behouden.",
+    "deleteVarieties": "Ook de rassen verwijderen",
+    "confirmAll": "Ik bevestig dat alle actieve gewassen in dit project worden verwijderd.",
+    "showCrops": "Betrokken gewassen tonen",
+    "empty": "Deze selectie bevat geen actieve gewassen.",
+    "missing": "Sommige geselecteerde gewassen zijn niet meer beschikbaar. Werk de selectie bij.",
+    "outcomeUnknown": "Het resultaat is niet beschikbaar. Herhaal hetzelfde verzoek om het resultaat te controleren.",
+    "retry": "Verwijderen opnieuw proberen",
+    "confirm": "Naar de prullenbak verplaatsen",
+    "recovered": "Gewassen teruggezet uit de prullenbak.",
+    "recoveryFailed": "De gewassen konden niet samen worden teruggezet.",
+    "archived_one": "{{count}} gewas naar de prullenbak verplaatst",
+    "archived_other": "{{count}} gewassen naar de prullenbak verplaatst",
+    "recoveredCount_one": "{{count}} gewas teruggezet uit de prullenbak",
+    "recoveredCount_other": "{{count}} gewassen teruggezet uit de prullenbak",
+    "counts": {
+      "selected": "Geselecteerde items",
+      "affected": "Betrokken items",
+      "general": "Algemene gewassen",
+      "varieties": "Rassen",
+      "additional": "Toegevoegd uit gewasgroepen",
+      "plans": "Gekoppelde teeltplannen",
+      "packages": "Zaadverpakkingen",
+      "offers": "Aanbiedingen van leveranciers",
+      "blocked": "Geblokkeerde items",
+      "missing": "Onbeschikbare items",
+      "skipped": "Overgeslagen items",
+      "failed": "Mislukte items"
+    },
+    "blockers": {
+      "varieties_required": "Deze rassen hebben hun algemene gewas nodig. Neem de rassen mee om de groep te verwijderen.",
+      "ambiguous_group": "Deze groep bevat meerdere algemene gewassen. Corrigeer de groep voordat je deze verwijdert.",
+      "planting_plans": "Teeltplannen gebruiken deze gewassen. Wijzig de plannen voordat je de gewassen verwijdert."
+    },
+    "origin": {
+      "label": "Herkomst van het gewas",
+      "manual": "Handmatig aangemaakt",
+      "file_import": "Geïmporteerd uit een bestand",
+      "library_import": "Geïmporteerd uit de gewassenbibliotheek",
+      "unknown": "Onbekende of oudere herkomst"
+    },
+    "errors": {
+      "unavailable": "Het overzicht is niet beschikbaar. Probeer het opnieuw.",
+      "changed": "De selectie of het project is gewijzigd. Controleer een nieuw overzicht.",
+      "limit": "De selectie is te groot. Selecteer minder gewassen tegelijk.",
+      "throttled": "Te veel verzoeken. Wacht even en probeer het opnieuw.",
+      "writeFailed": "De gewassen konden niet naar de prullenbak. Ze staan nog in het project."
+    }
+  },
   "restoreDialog": {
     "title": "Versie herstellen?",
     "batchDescription": "Deze actie en alle bijbehorende wijzigingen worden ongedaan gemaakt.",

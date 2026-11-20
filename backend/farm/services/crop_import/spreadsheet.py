@@ -473,7 +473,10 @@ def _save_import_row(
     )
     if not serializer.is_valid():
         return None, serializer.errors
-    defaults = {'project': project} if matching_crop is None else {}
+    defaults = (
+        {'project': project, 'creation_origin': Crop.CREATION_FILE_IMPORT}
+        if matching_crop is None else {}
+    )
     return serializer.save(**defaults), {}
 
 

@@ -17,6 +17,8 @@ import { useTranslation } from '../i18n';
 import { AppTooltip } from '../components/AppTooltip';
 import { CropFiltersPopover } from './CropFiltersPopover';
 import { CropMobileSelectorDialog } from './CropMobileSelectorDialog';
+import { CropBulkSelectionActions, CropBulkSelectionRow, CropBulkSelectionToolbar } from './CropBulkSelectionControls';
+import type { ProjectCropSelection } from './useProjectCropSelection';
 import { CropHeaderActionsMenu } from './CropHeaderActionsMenu';
 import { CropTitleSelectorButton } from './CropTitleSelectorButton';
 import TuneIcon from '@mui/icons-material/Tune';
@@ -116,6 +118,7 @@ interface CropDetailProps {
   createPlanDisabledTooltip?: string;
   isPublishingCrop?: boolean;
   searchInputRef?: Ref<HTMLInputElement>;
+  bulkSelection?: ProjectCropSelection;
 }
 
 import {
@@ -156,6 +159,7 @@ export function CropDetail({
   createPlanDisabledTooltip,
   isPublishingCrop = false,
   searchInputRef,
+  bulkSelection,
 }: CropDetailProps) {
   const { t, i18n } = useTranslation('crops');
   const currentLanguage = i18n.resolvedLanguage ?? i18n.language;
@@ -249,6 +253,7 @@ const detailSectionGridSx = {
         filters.selectedNutrientFilter,
         filters.selectedSeedTypeFilter,
         filters.selectedSupplierFilter,
+        filters.selectedOriginFilter ?? '',
         filters.growthDaysMin,
         filters.growthDaysMax,
         filters.yieldMin,
@@ -366,6 +371,8 @@ const detailSectionGridSx = {
         || supplierIds.some((supplierId) => supplierId === selectedSupplierId);
       const sowingMatches = canBeSownInMonth(crop, filters.sowingMonth);
       const seedTypeMatches = matchesSeedTypeFilter(crop, filters.selectedSeedTypeFilter);
+      const originMatches = !filters.selectedOriginFilter
+        || (crop.creation_origin ?? 'unknown') === filters.selectedOriginFilter;
 
       return familyMatches
         && tagMatches
@@ -374,6 +381,7 @@ const detailSectionGridSx = {
         && growthMatches
         && nutrientMatches
         && seedTypeMatches
+        && originMatches
         && yieldMatches
         && supplierMatches
         && sowingMatches;
@@ -714,9 +722,10 @@ const detailSectionGridSx = {
     return [];
   }, [activeCultivationTypes, getCropValue, getCropValueSource, selectedCrop]);
 
+  const bulkSelecting = Boolean(bulkSelection?.selected);
   const selectorControl = crops.length > 0 ? (
       <Box sx={{ width: '100%', p: 1.25, borderBottom: '1px solid', borderColor: 'surface.surfaceBorder', bgcolor: 'surface.surfaceSubtleBackground' }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ alignItems: { xs: 'stretch', sm: 'center' }, }} >
+        <Stack direction="row" spacing={0.25} sx={{ alignItems: 'center' }}>
           <Box sx={{ flexGrow: 1, minWidth: 0 }}>
             <TextField
               label={t('searchPlaceholder')}
@@ -763,6 +772,12 @@ const detailSectionGridSx = {
               }}
             />
           </Box>
+          {bulkSelection ? (
+            <CropBulkSelectionToolbar
+              selection={bulkSelection}
+              onOpenPreview={useUnifiedMobileLayout ? () => setMobileSelectorOpen(false) : undefined}
+            />
+          ) : null}
         </Stack>
 
         <CropFiltersPopover
@@ -816,6 +831,9 @@ const detailSectionGridSx = {
             }}
           >
             {selectorControl}
+            {bulkSelection ? <CropBulkSelectionActions selection={bulkSelection} visibleIds={
+              visibleCropRows.flatMap(({ node }) => node.crop?.id === undefined ? [] : [node.crop.id])
+            } /> : null}
             {visibleCropRows.length === 0 ? (
               // Rendered instead of the listbox, not inside it: a plain <li>
               // in there carries no role of its own and gets pruned, and an
@@ -830,7 +848,7 @@ const detailSectionGridSx = {
               ref={cropListScrollableRef}
               onScroll={handleCropListScroll}
               dense
-              role="listbox"
+              role={bulkSelecting ? 'list' : 'listbox'}
               aria-label={t('title')}
               sx={{
                 py: { xs: 0.5, lg: 0.75 },
@@ -860,64 +878,66 @@ const detailSectionGridSx = {
                 );
 
                 return (
-                  <CropHierarchyRow
-                    key={node.id}
-                    itemProps={itemProps}
-                    depth={depth}
-                    hasChildren={hasChildren}
-                    isExpanded={expandedCropRows.has(node.id)}
-                    onToggleExpand={() => toggleCropRow(node.id)}
-                    expandLabel={t('hierarchy.expandCrop')}
-                    collapseLabel={t('hierarchy.collapseCrop')}
-                    isSelected={isRowSelected}
-                    isClickable={isClickable}
-                    ariaLabel={node.kind === 'species' ? node.label : undefined}
-                    primary={node.label}
-                    isPrimaryEmphasized={node.kind === 'species'}
-                    secondary={undefined}
-                    varietyCount={node.kind === 'species' ? node.varietyCount : undefined}
-                    showZeroVarietyCount={node.kind === 'species'}
-                    highlightQuery={normalizedSearchQuery}
-                    statusAdornment={onPublishCrop ? (
-                      crop ? (
-                        <CropLibraryStatusIcon
-                          crop={crop}
-                          onActivate={(trigger) => handleListLibraryAction(node, trigger)}
-                        />
-                      ) : (
-                        // A Kultur header without its own entry has nothing to
-                        // publish; the empty slot keeps its count in the column.
-                        <Box component="span" />
-                      )
-                    ) : undefined}
-                    onKeyboardActivate={() => {
-                      // Enter on a Kultur group header opens or closes the
-                      // group and leaves the selection alone; the Sorte rows
-                      // keep Enter as "select this Sorte".
-                      if (node.kind !== 'species' || !hasChildren) {
-                        return false;
-                      }
-                      toggleCropRow(node.id);
-                      return true;
-                    }}
-                    onClick={() => {
-                      if (crop) {
-                        cropListNavigation.selectItem(node);
-                        return;
-                      }
-                      if (firstVariety) {
-                        cropListNavigation.selectItem(firstVariety);
-                      }
-                    }}
-                    onDoubleClick={(event) => {
-                      if (!hasChildren) {
-                        return;
-                      }
-                      event.preventDefault();
-                      event.stopPropagation();
-                      toggleCropRow(node.id);
-                    }}
-                  />
+                  <CropBulkSelectionRow key={node.id} selection={bulkSelection} crop={crop}>
+                    <CropHierarchyRow
+                      itemProps={itemProps}
+                      depth={depth}
+                      hasChildren={hasChildren}
+                      isExpanded={expandedCropRows.has(node.id)}
+                      onToggleExpand={() => toggleCropRow(node.id)}
+                      expandLabel={t('hierarchy.expandCrop')}
+                      collapseLabel={t('hierarchy.collapseCrop')}
+                      isSelected={isRowSelected}
+                      isClickable={isClickable}
+                      detailsButton={bulkSelecting}
+                      ariaLabel={node.kind === 'species' ? node.label : undefined}
+                      primary={node.label}
+                      isPrimaryEmphasized={node.kind === 'species'}
+                      secondary={undefined}
+                      varietyCount={node.kind === 'species' ? node.varietyCount : undefined}
+                      showZeroVarietyCount={node.kind === 'species'}
+                      highlightQuery={normalizedSearchQuery}
+                      statusAdornment={onPublishCrop ? (
+                        crop ? (
+                          <CropLibraryStatusIcon
+                            crop={crop}
+                            onActivate={(trigger) => handleListLibraryAction(node, trigger)}
+                          />
+                        ) : (
+                          // A Kultur header without its own entry has nothing to
+                          // publish; the empty slot keeps its count in the column.
+                          <Box component="span" />
+                        )
+                      ) : undefined}
+                      onKeyboardActivate={() => {
+                        // Enter on a Kultur group header opens or closes the
+                        // group and leaves the selection alone; the Sorte rows
+                        // keep Enter as "select this Sorte".
+                        if (node.kind !== 'species' || !hasChildren) {
+                          return false;
+                        }
+                        toggleCropRow(node.id);
+                        return true;
+                      }}
+                      onClick={() => {
+                        if (crop) {
+                          cropListNavigation.selectItem(node);
+                          return;
+                        }
+                        if (firstVariety) {
+                          cropListNavigation.selectItem(firstVariety);
+                        }
+                      }}
+                      onDoubleClick={(event) => {
+                        if (!hasChildren) {
+                          return;
+                        }
+                        event.preventDefault();
+                        event.stopPropagation();
+                        toggleCropRow(node.id);
+                      }}
+                    />
+                  </CropBulkSelectionRow>
                 );
               })}
             </List>
@@ -1502,6 +1522,7 @@ const detailSectionGridSx = {
           selectedSpeciesViewKey={selectedSpeciesViewKey}
           highlightQuery={normalizedSearchQuery}
           matchedGroupRowIds={matchedGroupRowIds}
+          bulkSelection={bulkSelection}
           onSelect={(crop, itemKind, speciesKey) => {
             setSelectedSpeciesViewKey(itemKind === 'species' ? speciesKey : null);
             onCropSelect(crop);

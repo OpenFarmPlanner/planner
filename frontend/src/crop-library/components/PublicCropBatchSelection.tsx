@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react';
-import { Box, Button, Checkbox, IconButton, Stack, Typography } from '@mui/material';
-import ChecklistOutlinedIcon from '@mui/icons-material/ChecklistOutlined';
+import { Box, Button, Checkbox, Stack, Typography } from '@mui/material';
 import type { PublicCrop } from '../../api/types';
-import { AppTooltip } from '../../components/AppTooltip';
+import { CropSelectionButton } from '../../crops/CropSelectionButton';
 import { useTranslation } from '../../i18n';
 import type { PublicCropBatchSelection, PublicCropBatchSelectionControls } from '../hooks/usePublicCropBatchSelection';
 import { getPublicCropTitle } from '../publicCropDisplay';
@@ -15,16 +14,14 @@ export function PublicCropBatchSelectButton({ batch: { attachIcon, canSelect, co
   const { t } = useTranslation('crops');
   if (!canSelect) return null;
   const label = t(preview?.pending ? 'library.batchImport.resumePending' : 'library.batchImport.selectCultures');
-  return <AppTooltip title={label}>
-    <span><IconButton ref={attachIcon} size="small" disabled={disabled} aria-label={label}
-      aria-pressed={Boolean(selection)} aria-controls={selection ? controlsId : undefined}
-      color={preview?.pending ? 'warning' : selection ? 'primary' : 'default'} sx={{ width: 40, height: 40 }} onClick={() => {
-        if (!selection && !preview?.pending) onEnter?.();
-        toggleMode();
-      }}>
-      <ChecklistOutlinedIcon fontSize="small" />
-    </IconButton></span>
-  </AppTooltip>;
+  return <CropSelectionButton
+    label={label} buttonRef={attachIcon} disabled={disabled} active={Boolean(selection)}
+    controlsId={controlsId} pending={preview?.pending}
+    onClick={() => {
+      if (!selection && !preview?.pending) onEnter?.();
+      toggleMode();
+    }}
+  />;
 }
 
 export function PublicCropBatchActions({ batch, loading }: { batch: PublicCropBatchSelectionControls; loading?: boolean }) {

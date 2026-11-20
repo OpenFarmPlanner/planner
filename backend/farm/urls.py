@@ -20,6 +20,11 @@ from .crops.views import (
     SupplierViewSet,
     YoungPlantDemandListView,
 )
+from .crops.views.bulk_deletion import (
+    BulkCropDeletionPreviewView,
+    BulkCropDeletionView,
+    BulkCropRecoveryView,
+)
 from .crops.views.task_templates import CropTaskTemplateViewSet
 from .feedback.views import FeedbackView
 from .history.views import (
@@ -106,6 +111,13 @@ legacy_router.register(r'public-cultures', PublicCropViewSet, basename='legacy-p
 urlpatterns = [
     path('version/', VersionView.as_view(), name='api-version'),
     path('feedback/', FeedbackView.as_view(), name='feedback'),
+    path('crops/bulk-delete/', BulkCropDeletionView.as_view(), name='crop-bulk-delete'),
+    path(
+        'crops/bulk-delete/preview/',
+        BulkCropDeletionPreviewView.as_view(),
+        name='crop-bulk-delete-preview',
+    ),
+    path('crops/bulk-delete/undo/', BulkCropRecoveryView.as_view(), name='crop-bulk-delete-undo'),
     # Agent API: OpenAPI description plus the two-step crop import.
     # Registered before the router so the fixed `preview/` segment is not
     # swallowed by the draft-id route.
