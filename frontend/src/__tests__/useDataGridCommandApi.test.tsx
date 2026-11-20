@@ -19,6 +19,7 @@ const createDeps = () => ({
   applyDraftValues: vi.fn().mockResolvedValue(undefined),
   commitDraftValues: vi.fn().mockResolvedValue(undefined),
   applyDialogEditValues: vi.fn().mockResolvedValue(undefined),
+  applySavedRowValues: vi.fn(),
   reload: vi.fn().mockResolvedValue(undefined),
   focusTable: vi.fn(),
   openRowById: vi.fn(),
@@ -74,6 +75,7 @@ describe('publishing the api', () => {
     expect(Object.keys(published(ref)).sort()).toEqual([
       'addRow',
       'applyDialogEditValues',
+      'applySavedRowValues',
       'commitDraftValues',
       'deleteRow',
       'deleteSelectedRow',
@@ -167,6 +169,15 @@ describe('the plain pass-through commands', () => {
     act(() => { published(ref).openRowById(7, { startEdit: true }); });
 
     expect(deps.openRowById).toHaveBeenCalledWith(7, { startEdit: true });
+  });
+
+  it('forwards saved values without setting an edit mode', () => {
+    setup(deps, { commandApiRef: ref, selectedRowIds: [] });
+
+    act(() => { published(ref).applySavedRowValues?.(7, { name: 'Möhre' }); });
+
+    expect(deps.applySavedRowValues).toHaveBeenCalledWith(7, { name: 'Möhre' });
+    expect(deps.setRowModesModel).not.toHaveBeenCalled();
   });
 });
 

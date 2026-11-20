@@ -1,7 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { apiRequest, loginWithDeterministicProject } from './utils';
 
-test.use({ serviceWorkers: 'block' });
+test.use({ serviceWorkers: 'block', timezoneId: 'America/Los_Angeles' });
 
 const table = '/app/planting-plans';
 
@@ -30,6 +30,14 @@ async function seedPlans(page: Page, request: APIRequestContext, scenario: strin
 test('the grid sorts, filters and edits the displayed dates without writing planned values', async ({ page, request }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const { first, second, third } = await seedPlans(page, request, 'actual-dates-grid');
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: (text: string) => window.sessionStorage.setItem('copiedPlan', text),
+      },
+    });
+  });
   await page.goto(table);
   const modes = page.getByRole('group', { name: 'Terminanzeige' });
   const grid = page.getByRole('grid');
@@ -49,6 +57,10 @@ test('the grid sorts, filters and edits the displayed dates without writing plan
   await modes.getByRole('button', { name: 'Ist', exact: true }).click();
   await expect(cell(third.id)).toHaveText('');
   await expect(cell(first.id)).toHaveText('11.7.2026');
+  await cell(first.id).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Zeile kopieren' }).click();
+  const copiedDates = await page.evaluate(() => sessionStorage.getItem('copiedPlan')?.split('\t').slice(4, 6));
+  expect(copiedDates).toEqual(['11.7.2026', '7.9.2026']);
 
   await page.getByRole('button', { name: 'Filter', exact: true }).click();
   const filter = page.getByRole('dialog', { name: 'Filter', exact: true });

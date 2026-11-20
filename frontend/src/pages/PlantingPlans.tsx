@@ -702,11 +702,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     if (!value) {
       return "—";
     }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return value;
-    }
-    return date.toLocaleDateString(resolveLocaleFromLanguage(i18n.resolvedLanguage ?? i18n.language));
+    const locale = resolveLocaleFromLanguage(i18n.resolvedLanguage ?? i18n.language);
+    return formatSeasonDate(value, locale);
   }, [i18n.language, i18n.resolvedLanguage]);
 
   const getRowSowingSchedule = useCallback(
