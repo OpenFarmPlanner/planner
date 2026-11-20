@@ -452,6 +452,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   useCommandContextTag("plans");
 
   useEffect(() => {
+    if (detailOpen) return;
     const handleAltT = (event: KeyboardEvent) => {
       if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
       if (event.key !== "t" && event.key !== "T") return;
@@ -462,7 +463,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     };
     window.addEventListener("keydown", handleAltT);
     return () => window.removeEventListener("keydown", handleAltT);
-  }, [isMobile]);
+  }, [detailOpen, isMobile]);
 
   // Track which field was last edited (for determining API payload)
   const lastEditedFieldRef = useRef<"area_m2" | "plants_count" | null>(null);
@@ -647,7 +648,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
    * Recalculates when crops or beds change to update dropdown options
    */
   const commands = useMemo<CommandSpec[]>(
-    () => [
+    () => detailOpen ? [] : [
       {
         id: "plans.focusSearch",
         label: t("plantingPlans:commands.focusSearch"),
@@ -682,7 +683,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         action: () => gridCommandApiRef.current?.deleteSelectedRow(),
       },
     ],
-    [selectedPlan, t],
+    [detailOpen, selectedPlan, t],
   );
 
   useRegisterCommands("plans-page", commands);
@@ -2147,7 +2148,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     gridCommandApiRef.current?.addRow();
   }, [isMissingActiveSeason, isMobile, openMobileCreateDialog]);
 
-  const createActions = useMemo(() => [
+  const createActions = useMemo(() => detailOpen ? [] : [
     {
       id: "create-planting-plan",
       label: t("plantingPlans:addButton"),
@@ -2155,12 +2156,12 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       disabled: !canCreatePlan || shouldShowProjectRequiredState,
       handler: handleCreatePlan,
     },
-  ], [canCreatePlan, handleCreatePlan, shouldShowProjectRequiredState, t]);
+  ], [canCreatePlan, detailOpen, handleCreatePlan, shouldShowProjectRequiredState, t]);
 
   useRegisterCreateActions("plans-page", createActions);
 
   useEffect(() => {
-    if (createIntentHandledRef.current || !canCreatePlan) {
+    if (detailOpen || createIntentHandledRef.current || !canCreatePlan) {
       return;
     }
     if (searchParams.get("create") !== "true") {
@@ -2176,7 +2177,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     nextParams.delete("create");
     replacePlantingPlanSearchParams(nextParams);
     createIntentHandledRef.current = true;
-  }, [canCreatePlan, handleCreatePlan, initialSelection, isMobile, replacePlantingPlanSearchParams, searchParams]);
+  }, [canCreatePlan, detailOpen, handleCreatePlan, initialSelection, isMobile, replacePlantingPlanSearchParams, searchParams]);
 
   if (shouldShowProjectRequiredState && missingProjectReason) {
     return (

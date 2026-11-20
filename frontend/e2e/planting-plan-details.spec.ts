@@ -115,6 +115,9 @@ test('desktop details preserve the table, restoring row focus on Escape, Close a
   await expect(drawer).toHaveCount(0);
   await expect(page.getByRole('heading', { name: cropName })).toBeVisible();
   await expect(page.getByRole('grid')).toBeHidden();
+  await expect(page.getByRole('button', { name: /^Anbauplan hinzufügen/ })).toHaveCount(0);
+  await page.keyboard.press('Alt+Shift+n');
+  await expect(page.locator('.MuiDataGrid-row--editing')).toHaveCount(0);
   await page.getByRole('button', { name: 'Zurück zur Tabelle' }).click();
   await expect(search).toHaveValue('Details-Kohl');
   await expect(menuButton).toBeFocused();
