@@ -145,6 +145,7 @@ DEMO_TEXT = {
             'phacelia': ('Phacelia', '', 'Boraginaceae'),
             # Rosaceae is not in the curated family list yet.
             'erdbeere': ('Erdbeere', '', None),
+            'rhabarber': ('Rhabarber', '', 'Polygonaceae'),
         },
         'plan_notes': {
             'salat_frueh': 'Fr\u00fcher Satz f\u00fcr die erste Abo-Kiste.',
@@ -217,6 +218,7 @@ DEMO_TEXT = {
             'zuckermais': ('Sweetcorn', '', 'Poaceae'),
             'phacelia': ('Phacelia', '', 'Boraginaceae'),
             'erdbeere': ('Strawberry', '', None),
+            'rhabarber': ('Rhubarb', '', 'Polygonaceae'),
         },
         'plan_notes': {
             'salat_frueh': 'Early succession for the first CSA box.',
@@ -285,6 +287,7 @@ DEMO_TEXT = {
             'zuckermais': ('Maïs doux', '', 'Poaceae'),
             'phacelia': ('Phacélie', '', 'Boraginaceae'),
             'erdbeere': ('Fraise', '', None),
+            'rhabarber': ('Rhubarbe', '', 'Polygonaceae'),
         },
         'plan_notes': {
             'salat_frueh': "Série précoce pour le premier panier de l'AMAP.",
@@ -354,6 +357,7 @@ DEMO_TEXT = {
             'zuckermais': ('Maíz dulce', '', 'Poaceae'),
             'phacelia': ('Facelia', '', 'Boraginaceae'),
             'erdbeere': ('Fresa', '', None),
+            'rhabarber': ('Ruibarbo', '', 'Polygonaceae'),
         },
         'plan_notes': {
             'salat_frueh': 'Serie temprana para la primera cesta de la huerta comunitaria.',
@@ -414,6 +418,7 @@ class CropSpec:
     is_species: bool = False
     # The culture's own rotation break; None falls back to the family default.
     rotation_break_years: int | None = None
+    standing_time_years: int | None = None
 
 
 @dataclass(frozen=True)
@@ -620,6 +625,8 @@ def populate_public_demo_library_from_project(project: Project, *, owner: Any | 
                 source_project=project,
                 crop_family_id=crop.crop_family_id,
                 nutrient_demand=crop.nutrient_demand,
+                life_cycle=crop.life_cycle,
+                standing_time_years=crop.standing_time_years,
                 cultivation_types=crop.cultivation_types or [],
                 cultivation_type=crop.cultivation_type,
                 growth_duration_days=crop.growth_duration_days,
@@ -1525,6 +1532,24 @@ def _create_crops(project: Project, suppliers: dict[str, Supplier], *, language_
             is_species=True,
         ),
         CropSpec(
+            key='rhabarber',
+            name=crop_text['rhabarber'][0],
+            variety=crop_text['rhabarber'][1],
+            color='#8f3656',
+            cultivation_types=['pre_cultivation'],
+            growth_days=365,
+            harvest_days=28,
+            propagation_days=None,
+            crop_family=crop_text['rhabarber'][2],
+            nutrient_demand='medium',
+            row_spacing_m=1.20,
+            distance_within_row_m=1.00,
+            expected_yield=Decimal('2.50'),
+            harvest_method='per_sqm',
+            is_species=True,
+            standing_time_years=6,
+        ),
+        CropSpec(
             key='senf',
             name=crop_text['senf'][0],
             variety=crop_text['senf'][1],
@@ -1614,6 +1639,8 @@ def _create_crops(project: Project, suppliers: dict[str, Supplier], *, language_
             crop_species=find_demo_crop_species(spec.name),
             crop_family_id=spec.crop_family,
             rotation_break_years=spec.rotation_break_years,
+            life_cycle='perennial' if spec.standing_time_years else '',
+            standing_time_years=spec.standing_time_years,
             nutrient_demand=spec.nutrient_demand,
             cultivation_types=spec.cultivation_types,
             cultivation_type=spec.cultivation_types[0] if spec.cultivation_types else '',
@@ -1810,16 +1837,23 @@ def _create_planting_plans(
         PlanSpec('phacelia', 'reserve', 'direct_sowing', date(current, 4, 18), Decimal('18.0')),
         # Not checkable: no plant family recorded for strawberries.
         PlanSpec('erdbeere', 'reserve', 'pre_cultivation', date(current, 8, 10), Decimal('16.0'), 88),
+        # A small perennial strip stays in the same bed across multiple seasons.
+        PlanSpec(
+            'rhabarber', 'reserve', 'purchased_transplant', date(last - 1, 3, 12), Decimal('3.0'),
+        ),
     ]
 
     author = owner if owner and getattr(owner, 'pk', None) else None
     for spec in plan_specs:
         season = get_or_create_season_for_date(project, spec.planting_date, created_by=author)
+        crop = crops[spec.crop_key]
+        draft = PlantingPlan(crop=crop, planting_date=spec.planting_date)
         PlantingPlan.objects.create(
-            crop=crops[spec.crop_key],
+            crop=crop,
             bed=beds[spec.bed_key],
             cultivation_type=spec.cultivation_type,
             planting_date=spec.planting_date,
+            clearing_date=draft.suggested_clearing_date() if crop.standing_time_years else None,
             area_usage_sqm=spec.area_usage_sqm,
             quantity=spec.quantity,
             notes=spec.notes,

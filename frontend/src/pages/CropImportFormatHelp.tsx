@@ -28,6 +28,7 @@ const VALUE_GROUP_BY_COLUMN: Record<string, ValueGroupKey> = {
   water_requirement: 'site',
   nutrient_demand: 'site',
   life_cycle: 'site',
+  standing_time_years: 'site',
   winter_hardiness: 'site',
   cultivation_types: 'cultivation',
   seed_rate_direct_unit: 'cultivation',

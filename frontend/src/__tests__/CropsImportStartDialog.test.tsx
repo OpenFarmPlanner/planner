@@ -75,7 +75,7 @@ describe('CropsImportStartDialog', () => {
 
     it('marks template rows as examples and documents the canonical timing header', () => {
       renderDialog();
-      expect(screen.getByText('Ersetze oder lösche die drei Beispielzeilen vor dem Import deiner Daten.')).toBeInTheDocument();
+      expect(screen.getByText('Ersetze oder lösche die Beispielzeilen vor dem Import deiner Daten.')).toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'Welche Werte sind erlaubt?' }));
       expect(screen.getByText(/^Gilt für die Spalten .*Direktsaatzeitraum.*„Anbauart“ legt nur fest/)).toBeInTheDocument();
       expect(screen.queryByText(/Aussaat Freiland/)).not.toBeInTheDocument();

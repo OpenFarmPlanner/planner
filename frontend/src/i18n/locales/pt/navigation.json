@@ -194,7 +194,10 @@
       "summary_many": "Serão adicionados {{count}} planos de cultivo. A época ficará com {{total}} no total.",
       "continuingPlans_one": "{{count}} série continua e permanece na sua época de origem.",
       "continuingPlans_other": "{{count}} séries continuam e permanecem nas respetivas épocas de origem.",
-      "continuingPlans_many": "{{count}} séries continuam e permanecem nas respetivas épocas de origem."
+      "continuingPlans_many": "{{count}} séries continuam e permanecem nas respetivas épocas de origem.",
+      "unconfiguredPerennials_one": "Será ignorada uma cultura perene com datas ou vida útil em falta ou inválidas.",
+      "unconfiguredPerennials_other": "Serão ignoradas {{count, number}} culturas perenes com datas ou vida útil em falta ou inválidas.",
+      "unconfiguredPerennials_many": "Serão ignoradas {{count, number}} culturas perenes com datas ou vida útil em falta ou inválidas."
     },
     "planCount_many": "{{count}} séries"
   },

@@ -194,7 +194,10 @@
       "summary_many": "Verranno aggiunti {{count}} piani di coltivazione. Il totale sarà di {{total}}.",
       "continuingPlans_one": "{{count}} serie prosegue e rimane nella sua stagione di origine.",
       "continuingPlans_other": "{{count}} serie proseguono e rimangono nelle loro stagioni di origine.",
-      "continuingPlans_many": "{{count}} serie proseguono e rimangono nelle loro stagioni di origine."
+      "continuingPlans_many": "{{count}} serie proseguono e rimangono nelle loro stagioni di origine.",
+      "unconfiguredPerennials_one": "Verrà saltata una coltura perenne con date o durata produttiva mancanti o non valide.",
+      "unconfiguredPerennials_other": "Verranno saltate {{count, number}} colture perenni con date o durata produttiva mancanti o non valide.",
+      "unconfiguredPerennials_many": "Verranno saltate {{count, number}} colture perenni con date o durata produttiva mancanti o non valide."
     },
     "planCount_many": "{{count}} serie"
   },

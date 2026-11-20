@@ -747,7 +747,8 @@
       "sampleNote": "Voorbeeldrij: vervang of verwijder deze vóór het importeren.",
       "potatoSeedNote": "Dit voorbeeld beschrijft opkweek uit echt aardappelzaad in plaats van het planten van knollen.",
       "pretreatment": "Gelijkmatig vochtig houden.",
-      "pestsDiseases": "Aardappelziekte: houd het blad droog."
+      "pestsDiseases": "Aardappelziekte: houd het blad droog.",
+      "perennialName": "Rabarber"
     },
     "help": {
       "templateHint": "Nog geen geschikt bestand?",
@@ -802,7 +803,7 @@
         "cultivation": "Teelt en opbrengst",
         "other": "Overige eigenschappen"
       },
-      "templateSamples": "Vervang of verwijder de drie voorbeeldrijen voordat je je gegevens importeert.",
+      "templateSamples": "Vervang of verwijder de voorbeeldrijen voordat je je gegevens importeert.",
       "templateError": "Het sjabloon kon niet worden geladen."
     },
     "timingWindowIssue": "Rij {{row}}, {{column}}: {{message}} De waarde wordt niet geïmporteerd.",
@@ -1466,7 +1467,8 @@
       "fields": {
         "variety": "Ras",
         "growth_duration_days": "Groeiduur",
-        "harvest_duration_days": "Oogstduur"
+        "harvest_duration_days": "Oogstduur",
+        "standing_time_years": "Productieve levensduur (jaren)"
       },
       "blockingReasons": {
         "missingCropSpecies": "Kies een officiële gewassoort.",
@@ -1968,7 +1970,8 @@
       "water_requirement": "Waterbehoefte",
       "life_cycle": "Levenscyclus",
       "winter_hardiness": "Winterhardheid",
-      "pests_diseases": "Plagen en ziekten"
+      "pests_diseases": "Plagen en ziekten",
+      "standing_time_years": "Productieve levensduur (jaren)"
     },
     "values": {
       "light_requirement": {
@@ -1993,7 +1996,9 @@
       }
     },
     "legacyLifeCycleOption": "{{value}} (bestaande waarde)",
-    "legacyLifeCycleHint": "Deze opgeslagen waarde blijft behouden, tenzij je een andere levenscyclus kiest."
+    "legacyLifeCycleHint": "Deze opgeslagen waarde blijft behouden, tenzij je een andere levenscyclus kiest.",
+    "standingTimeHelp": "Gebruikelijke productieve levensduur van dit meerjarige gewas. Hiermee wordt de einddatum van de teelt voorgesteld.",
+    "standingTimeRequired": "Voer een geheel getal van minstens 1 in."
   },
   "taskTemplates": {
     "title": "Taaksjablonen",

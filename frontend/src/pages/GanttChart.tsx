@@ -87,7 +87,7 @@ import {
 } from './ganttChartState';
 import { useGanttResizeHandleTop } from './useGanttResizeHandleTop';
 import { useGanttSidebarResize } from './useGanttSidebarResize';
-import { formatDateToAPI } from '../utils/isoDate';
+import { formatDateToAPI, parseIsoDate } from '../utils/isoDate';
 import {
   buildOccupancyTooltipDetails,
   buildSeedlingTaskGroups,
@@ -308,9 +308,10 @@ function GanttChartPage() {
   const calendarDataRange = useMemo<CalendarDateRange | null>(
     () => (calendarMode === 'seedlings'
       ? getSeedlingCalendarRange(plantingPlans.filter(plan => !plan.carried_over), crops)
-      : getOccupancyCalendarRange(plantingPlans, outletContext?.activeSeason?.start_date)),
-    [calendarMode, plantingPlans, crops, outletContext?.activeSeason?.start_date],
+      : getOccupancyCalendarRange(plantingPlans, outletContext?.activeSeason?.start_date, outletContext?.activeSeason?.end_date)),
+    [calendarMode, plantingPlans, crops, outletContext?.activeSeason?.start_date, outletContext?.activeSeason?.end_date],
   );
+  const seasonEnd = useMemo(() => parseIsoDate(outletContext?.activeSeason?.end_date), [outletContext?.activeSeason?.end_date]);
   const startDate = useMemo(
     () => calendarDataRange?.start ?? new Date(displayYear, 0, 1),
     [calendarDataRange, displayYear],
@@ -604,10 +605,11 @@ function GanttChartPage() {
         return;
       }
 
-      // Only the planting date is sent; the backend derives the harvest dates.
+      // The backend derives the harvest dates. A standing crop's explicit removal date moves with it.
       const updatedPlan: Partial<PlantingPlan> = {
         ...plan,
         planting_date: movedDates.planting_date,
+        ...(movedDates.clearing_date ? { clearing_date: movedDates.clearing_date } : {}),
       };
 
       // Apply the new dates optimistically before awaiting the API response.
@@ -702,8 +704,10 @@ function GanttChartPage() {
     }).map(group => ({
       ...group,
       tasks: group.tasks.flatMap(task => {
-        if (!task.readOnly) return [task];
-        const visible = clipCarriedOverOccupancyTask(task, startDate);
+        const inSeason = task.clearingDate && seasonEnd && task.endDate > seasonEnd
+          ? { ...task, endDate: seasonEnd } : task;
+        if (!task.readOnly) return [inSeason];
+        const visible = clipCarriedOverOccupancyTask(inSeason, startDate);
         if (!visible) return [];
         const season = task.originSeasonLabel;
         const badge = season ? t('plantingPlans:carriedOver.badge', { season })
@@ -724,6 +728,7 @@ function GanttChartPage() {
       occupancyLocationFilter,
       occupancySearchText,
       onlyOccupiedBeds,
+      seasonEnd,
       startDate,
       t,
     ],

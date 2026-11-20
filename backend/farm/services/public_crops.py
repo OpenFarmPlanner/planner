@@ -151,6 +151,7 @@ CROP_COPY_FIELDS = [
     'light_requirement',
     'water_requirement',
     'life_cycle',
+    'standing_time_years',
     'winter_hardiness',
     'harvest_method',
     'expected_yield',
@@ -203,6 +204,7 @@ PUBLIC_CROP_EDITABLE_FIELDS = [
     'light_requirement',
     'water_requirement',
     'life_cycle',
+    'standing_time_years',
     'winter_hardiness',
     'harvest_method',
     'expected_yield',
@@ -1277,6 +1279,14 @@ def get_public_required_field_gaps(crop: Crop, *, require_variety: bool = True) 
         value = resolve_crop_field(crop, field)
         if value is None or (isinstance(value, str) and not value.strip()):
             gaps.append(MissingRequiredField(field=field, label_key=f'library.publishWizard.fields.{field}'))
+    if (
+        resolve_crop_field(crop, 'life_cycle') == 'perennial'
+        and not resolve_crop_field(crop, 'standing_time_years')
+    ):
+        gaps.append(MissingRequiredField(
+            field='standing_time_years',
+            label_key='library.publishWizard.fields.standing_time_years',
+        ))
     return gaps
 
 

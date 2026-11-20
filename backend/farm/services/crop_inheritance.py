@@ -85,6 +85,7 @@ CROP_INHERITABLE_FIELDS: tuple[str, ...] = (
     'light_requirement',
     'water_requirement',
     'life_cycle',
+    'standing_time_years',
     'winter_hardiness',
     'harvest_method',
     'expected_yield',
@@ -142,6 +143,7 @@ CROP_OPTIONAL_GENERAL_COPY_FIELDS: tuple[str, ...] = (
     'light_requirement',
     'water_requirement',
     'life_cycle',
+    'standing_time_years',
     'winter_hardiness',
     'harvest_method',
     'expected_yield',
@@ -675,6 +677,11 @@ def resolve_crop_field(
     """
     if crop is None:
         return None
+    if (
+        field == 'standing_time_years'
+        and resolve_crop_field(crop, 'life_cycle', index) != 'perennial'
+    ):
+        return None
     own_value = get_crop_field_value(crop, field)
     if field in REQUIREMENT_LEGACY_VALUES and not own_value:
         flags = crop.germination_types or []
@@ -725,7 +732,8 @@ def build_inherited_crop_values(
         general_value = get_crop_field_value(general_crop, field)
         if is_unset_crop_value(general_value):
             continue
-        if field in REQUIREMENT_LEGACY_VALUES and resolve_crop_field(crop, field, index) != general_value:
+        verify_effective = field == 'standing_time_years' or field in REQUIREMENT_LEGACY_VALUES
+        if verify_effective and resolve_crop_field(crop, field, index) != general_value:
             continue
         inherited[field] = general_value
     return inherited

@@ -22,6 +22,15 @@ for (const viewport of VIEWPORTS) {
     const results = (page: Page) => (viewport.isMobile
       ? page.locator('[data-mobile-card-id]')
       : page.locator('[role="row"][data-id]'));
+    const expectAllResults = async (page: Page, total: number) => {
+      await expect(searchCount(page)).toHaveText(`${total} Anbaupläne`);
+      if (viewport.isMobile) {
+        await expect(results(page)).toHaveCount(total);
+      } else {
+        // The grid reports all data rows plus the header even when only a subset is mounted.
+        await expect(page.getByRole('grid')).toHaveAttribute('aria-rowcount', String(total + 1));
+      }
+    };
 
     test.beforeEach(async ({ page, request }) => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
@@ -37,7 +46,7 @@ for (const viewport of VIEWPORTS) {
 
     test('searches live, finds synonyms and notes, and clears with Escape', async ({ page }) => {
       const total = await planTotal(page);
-      await expect(results(page)).toHaveCount(total);
+      await expectAllResults(page, total);
 
       await searchBox(page).fill('PARADEISER');
       await expect(results(page)).toHaveCount(2);
@@ -59,12 +68,12 @@ for (const viewport of VIEWPORTS) {
 
       await searchBox(page).press('Escape');
       await expect(searchBox(page)).toHaveValue('');
-      await expect(results(page)).toHaveCount(total);
+      await expectAllResults(page, total);
     });
 
     test('sets and removes a filter', async ({ page }) => {
       const total = await planTotal(page);
-      await expect(results(page)).toHaveCount(total);
+      await expectAllResults(page, total);
 
       if (viewport.isMobile) {
         await page.getByRole('button', { name: 'Filter', exact: true }).click();
@@ -92,12 +101,12 @@ for (const viewport of VIEWPORTS) {
 
       await page.getByRole('button', { name: 'Filter Standort entfernen' }).click();
       await expect(page.getByText('Standort: Acker am Bach')).toHaveCount(0);
-      await expect(results(page)).toHaveCount(total);
+      await expectAllResults(page, total);
     });
 
     test('finds plans by date and filters by harvest start', async ({ page }) => {
       const total = await planTotal(page);
-      await expect(results(page)).toHaveCount(total);
+      await expectAllResults(page, total);
 
       // Tomatenreihe 1 is planted on 25 April of the current season in the demo project.
       const tomatoPlantingDate = `25.4.${new Date().getFullYear()}`;
@@ -108,7 +117,7 @@ for (const viewport of VIEWPORTS) {
       await searchBox(page).fill('25.04.');
       await expect(results(page)).toHaveCount(1);
       await searchBox(page).press('Escape');
-      await expect(results(page)).toHaveCount(total);
+      await expectAllResults(page, total);
 
       await page.getByRole('button', { name: 'Filter', exact: true }).click();
       const dialog = page.getByRole('dialog', { name: viewport.isMobile ? 'Filter und Sortierung' : 'Filter' });
@@ -127,12 +136,12 @@ for (const viewport of VIEWPORTS) {
       expect(filteredCount).toBeLessThan(total);
 
       await page.getByRole('button', { name: 'Filter Erntebeginn entfernen' }).click();
-      await expect(results(page)).toHaveCount(total);
+      await expectAllResults(page, total);
     });
 
     test('shows the empty state and recovers from it', async ({ page }) => {
       const total = await planTotal(page);
-      await expect(results(page)).toHaveCount(total);
+      await expectAllResults(page, total);
 
       await searchBox(page).fill('xyzkultur');
       const emptyState = page.getByTestId('planting-plan-search-empty');
@@ -142,7 +151,7 @@ for (const viewport of VIEWPORTS) {
 
       await emptyState.getByRole('button', { name: 'Suche löschen' }).click();
       await expect(emptyState).toHaveCount(0);
-      await expect(results(page)).toHaveCount(total);
+      await expectAllResults(page, total);
     });
 
     if (!viewport.isMobile) {

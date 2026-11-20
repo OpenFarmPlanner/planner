@@ -68,6 +68,7 @@ export const VARIETY_INHERITABLE_FIELDS: (keyof Crop)[] = [
   'light_requirement',
   'water_requirement',
   'life_cycle',
+  'standing_time_years',
   'winter_hardiness',
   'harvest_method',
   'expected_yield',

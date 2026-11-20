@@ -24,10 +24,13 @@ across all seasons of the project. A plan without a bed, crop or planting date
 cannot be checked yet (status `info`, finding `incomplete`); the table does
 not flag it, since there is nothing to fix in the crop data.
 
-**Year occupancy.** A plan occupies every calendar year from its planting date
-to its last date: the harvest end, else the harvest start, else the effective
-harvest dates from the crop's timing, else the planting date itself. Garlic
+**Year occupancy.** A plan occupies every calendar year from its planting
+date through its removal date when one is recorded. The ordinary fallback is
+the harvest end, then the harvest start, the effective harvest dates from
+crop timing, and finally the planting date. Garlic
 planted in October 2025 and harvested in July 2026 occupies 2025 *and* 2026.
+Perennial plantings do not receive rotation warnings. Their occupied years
+remain in the bed's history and count when checking a later annual planting.
 
 **Definition of the break.** `rotation_break_years` is the number of calendar
 years **without** the family on the bed in between. A family whose last year

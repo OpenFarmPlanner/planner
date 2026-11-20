@@ -200,6 +200,8 @@ export function SeasonCreateSuggestionDialog({
     || (gapChoice === 'manual' && manualValid);
   const followupCopyPreview = seasonCreationOptions?.copy_preview?.transition_followup ?? null;
   const continuingCopyCount = activeCopyPreview?.continuing_count ?? 0;
+  const unconfiguredCopyCount = activeCopyPreview?.unconfigured_perennial_count ?? 0;
+  const excludedFromCopyCount = continuingCopyCount + unconfiguredCopyCount;
 
   const resetTransientState = () => {
     setCreateError(null);
@@ -465,7 +467,7 @@ export function SeasonCreateSuggestionDialog({
                   </Stack>
                 )}
               />
-              {copyFromPrevious && activeCopyPreview && activeCopyPreview.total > continuingCopyCount ? (
+              {copyFromPrevious && activeCopyPreview && activeCopyPreview.total > excludedFromCopyCount ? (
                 <Typography
                   variant="caption"
                   color={activeCopyPreview.skipped > 0 ? 'warning.dark' : 'text.secondary'}
@@ -477,7 +479,7 @@ export function SeasonCreateSuggestionDialog({
                       : 'navigation:seasonSwitcher.suggestion.gap.copyPreviewAll',
                     {
                       ...activeCopyPreview,
-                      total: activeCopyPreview.total - continuingCopyCount,
+                      total: activeCopyPreview.total - excludedFromCopyCount,
                       label: copyFromLabel,
                     },
                   )}
@@ -488,8 +490,13 @@ export function SeasonCreateSuggestionDialog({
                   {t('navigation:seasonSwitcher.copyDialog.continuingPlans', { count: continuingCopyCount })}
                 </Typography>
               ) : null}
+              {copyFromPrevious && unconfiguredCopyCount > 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  {t('navigation:seasonSwitcher.copyDialog.unconfiguredPerennials', { count: unconfiguredCopyCount })}
+                </Typography>
+              ) : null}
               {copyFromPrevious && isTransitionTwoSeason && followupCopyPreview
-                && followupCopyPreview.total > continuingCopyCount ? (
+                && followupCopyPreview.total > excludedFromCopyCount ? (
                 <Typography
                   variant="caption"
                   color={followupCopyPreview.skipped > 0 ? 'warning.dark' : 'text.secondary'}
@@ -497,7 +504,7 @@ export function SeasonCreateSuggestionDialog({
                 >
                   {t('navigation:seasonSwitcher.suggestion.gap.copyPreviewFollowup', {
                     ...followupCopyPreview,
-                    total: followupCopyPreview.total - continuingCopyCount,
+                    total: followupCopyPreview.total - excludedFromCopyCount,
                     label: followupLabel,
                   })}
                 </Typography>

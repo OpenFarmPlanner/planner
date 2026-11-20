@@ -48,6 +48,7 @@ export interface PortableCrop {
   light_requirement?: Crop['light_requirement'];
   water_requirement?: Crop['water_requirement'];
   life_cycle?: Crop['life_cycle'];
+  standing_time_years?: Crop['standing_time_years'];
   winter_hardiness?: Crop['winter_hardiness'];
 
   harvest_method?: Crop['harvest_method'];
@@ -149,6 +150,7 @@ export const toPortableCrop = (crop: Crop, companions?: CompanionItemsByKind): P
     light_requirement: crop.light_requirement ?? '',
     water_requirement: crop.water_requirement ?? '',
     life_cycle: crop.life_cycle ?? '',
+    standing_time_years: crop.standing_time_years ?? null,
     winter_hardiness: crop.winter_hardiness ?? '',
     harvest_method: crop.harvest_method,
     expected_yield: crop.expected_yield,

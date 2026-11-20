@@ -54,9 +54,11 @@
     "notes": "Nota",
     "phase": {
       "growth": "Fase di crescita",
-      "harvest": "Fase di raccolta"
+      "harvest": "Fase di raccolta",
+      "occupancy": "Occupazione dell’aiuola"
     },
-    "actualHarvestEnd": "La raccolta termina al più tardi"
+    "actualHarvestEnd": "La raccolta termina al più tardi",
+    "clearingDate": "Data di fine coltivazione"
   },
   "noData": "Nessuna serie disponibile",
   "modeLabel": "Modalità",

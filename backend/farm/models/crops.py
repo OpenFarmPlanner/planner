@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
+from django.core.validators import MinValueValidator
 from django.db import models, transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -576,6 +577,10 @@ class Crop(TimestampedModel):
         max_length=20, choices=LIFE_CYCLE_CHOICES, blank=True,
         help_text='Annual, biennial or perennial. Blank means unknown.',
     )
+    standing_time_years = models.PositiveIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1)],
+        help_text='Typical productive lifespan of a perennial crop, in whole years.',
+    )
     winter_hardiness = models.CharField(
         max_length=20, choices=WINTER_HARDINESS_CHOICES, blank=True,
         help_text='Whether the crop survives winter outdoors. Blank means unknown.',
@@ -863,7 +868,7 @@ class Crop(TimestampedModel):
         'stratification_temperature_max_c',
         'germination_types', 'germination_pretreatment', 'specific_properties',
         'pests_diseases', 'plant_health', 'light_requirement', 'water_requirement', 'life_cycle',
-        'winter_hardiness',
+        'standing_time_years', 'winter_hardiness',
         'harvest_method', 'expected_yield', 'distance_within_row_m',
         'row_spacing_m', 'sowing_depth_m', 'sowing_depth_max_m', 'seed_rate_value', 'seed_rate_unit',
         'seed_rate_by_cultivation',
@@ -1456,6 +1461,10 @@ class PublicCrop(TimestampedModel):
         max_length=20, choices=Crop.WATER_REQUIREMENT_CHOICES, blank=True,
     )
     life_cycle = models.CharField(max_length=20, choices=Crop.LIFE_CYCLE_CHOICES, blank=True)
+    standing_time_years = models.PositiveIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1)],
+        help_text='Typical productive lifespan of a perennial crop, in whole years.',
+    )
     winter_hardiness = models.CharField(
         max_length=20, choices=Crop.WINTER_HARDINESS_CHOICES, blank=True,
     )

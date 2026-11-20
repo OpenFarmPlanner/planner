@@ -54,9 +54,11 @@
     "notes": "Notitie",
     "phase": {
       "growth": "Groeifase",
-      "harvest": "Oogstfase"
+      "harvest": "Oogstfase",
+      "occupancy": "Bedbezetting"
     },
-    "actualHarvestEnd": "Oogst eindigt uiterlijk"
+    "actualHarvestEnd": "Oogst eindigt uiterlijk",
+    "clearingDate": "Einddatum teelt"
   },
   "noData": "Geen teelten beschikbaar",
   "modeLabel": "Modus",

@@ -174,6 +174,7 @@ import {
   BED_COLUMN_MAX_WIDTH,
   CROP_COLUMN_MAX_WIDTH,
   getPlanOccupancyEndIso,
+  getSeasonOccupancyStatus,
   getSupplementalPlannedDates,
   toPlanIsoDate,
   getVisibleMobileRows,
@@ -185,6 +186,7 @@ import {
   toOptionalString,
   type MobileCreateFormState,
   type PlantingPlanRow,
+  type SeasonOccupancyStatus,
 } from './plantingPlansUtils';
 import { AppTooltip } from '../components/AppTooltip';
 import { dataGridHeaderLabelSx } from "../components/data-grid/dataGridHeaderLabelSx";
@@ -208,6 +210,7 @@ const PLANTING_PLAN_DIALOG_EDIT_FIELDS = ["bed"];
  * render — visible as the header/toolbar jitter this constant fixes.
  */
 const DEFAULT_HIDDEN_FIELDS_ON_SMALL_SCREEN = ["harvest_date", "harvest_end_date"];
+const DEFAULT_HIDDEN_FIELDS = ["season_status"];
 
 const isCarriedOverPlan = (row: PlantingPlanRow): boolean => Boolean(row.carried_over);
 
@@ -251,6 +254,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   const { columnVisibilityModel, setColumnVisibilityModel } = useColumnVisibility({
     tableKey: "plantingPlans",
     defaultHiddenFieldsOnSmallScreen: DEFAULT_HIDDEN_FIELDS_ON_SMALL_SCREEN,
+    defaultHiddenFields: DEFAULT_HIDDEN_FIELDS,
     isSmallScreen,
   });
   const [searchParams] = useSearchParams();
@@ -1312,6 +1316,28 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         headerClassName: getCoupledFieldHeaderClassName("end", isPlantsPartnerVisible),
       },
       {
+        field: "season_status",
+        headerName: t("plantingPlans:seasonStatus.column"),
+        width: 156,
+        editable: false,
+        valueGetter: (_value, row: PlantingPlanRow) => {
+          const start = toPlanIsoDate(row.planting_date);
+          const end = row.occupancy_end_date ?? getPlanOccupancyEndIso(row) ?? start;
+          return seasonBounds && row.bed && start && end
+            ? getSeasonOccupancyStatus(start, end, seasonBounds) : null;
+        },
+        valueFormatter: (value: SeasonOccupancyStatus | null) => (
+          value ? t(`plantingPlans:seasonStatus.labels.${value}`) : "—"
+        ),
+        renderCell: ({ value, formattedValue, hasFocus }) => value && (
+          <AppTooltip title={t(`plantingPlans:seasonStatus.descriptions.${value as SeasonOccupancyStatus}`)} describeChild>
+            <Typography component="span" variant="inherit" noWrap tabIndex={hasFocus ? 0 : -1}>
+              {formattedValue}
+            </Typography>
+          </AppTooltip>
+        ),
+      },
+      {
         field: "notes",
         headerName: t("common:fields.notes"),
         width: 72,
@@ -1612,6 +1638,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       harvestEndDate: getDisplayedDate(row, 'harvest_end_date'),
       rotationStatus: row.isNew ? null : getTableRotationStatus(row.rotation_status, row.rotation_findings),
       hasHarvestOverlap: (getRowHarvestOverlaps(row)?.length ?? 0) > 0,
+      carriedOver: row.carried_over,
       hasTimingWindowFinding: (getRowTimingWindowFindings(row)?.length ?? 0) > 0,
     };
   }, [bedById, cropById, cropOptions, cultivationTypeOptions, fieldById, locationById, getDisplayedDate, getRowHarvestOverlaps, getRowTimingWindowFindings]);

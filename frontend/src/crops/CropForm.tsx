@@ -412,6 +412,9 @@ export function CropForm({
       crop?.inherited_fields?.includes('light_requirement') ? crop.effective_values?.light_requirement : undefined
     )
     : undefined;
+  const lifecycleParent = !isProjectForm || isSpeciesLinkedVariety ? selectedSpeciesCrop : null;
+  const inheritedLifeCycle = lifecycleParent?.life_cycle;
+  const inheritedStandingTime = lifecycleParent?.standing_time_years;
   const getFieldHighlightSx: GetVarietyFieldHighlightSx = useCallback((fields) => {
     if (!selectedSpeciesCrop) {
       return undefined;
@@ -598,10 +601,22 @@ export function CropForm({
       return true;
     }
     const result = validateCrop(draft, t, mode, requireVariety, seedRateUnitConstraints);
+    const lifeCycle = draft.life_cycle || inheritedLifeCycle;
+    const standingTime = draft.standing_time_years ?? inheritedStandingTime;
+    const previousCycle = crop?.effective_values?.life_cycle ?? crop?.life_cycle;
+    const previousStandingTime = crop?.effective_values?.standing_time_years ?? crop?.standing_time_years;
+    const lifecycleChanged = !crop || lifeCycle !== previousCycle || standingTime !== previousStandingTime;
+    if (lifeCycle === 'perennial' && (
+      standingTime != null ? !Number.isInteger(standingTime) || standingTime < 1
+        : mode === 'submit' && lifecycleChanged
+    )) {
+      result.errors.standing_time_years = t('siteHealth.standingTimeRequired');
+      result.isValid = false;
+    }
     setErrors(result.errors);
     setIsValid(result.isValid);
     return result.isValid;
-  }, [hasSubmitted, requireVariety, seedRateUnitConstraints, showSupplierDataSection, t]);
+  }, [crop, hasSubmitted, inheritedLifeCycle, inheritedStandingTime, requireVariety, seedRateUnitConstraints, showSupplierDataSection, t]);
 
   useEffect(() => {
     if (!isProjectForm) {
@@ -1519,6 +1534,8 @@ export function CropForm({
             <GerminationSection {...sectionProps} />
             <SiteHealthSection {...sectionProps}
               inheritedLight={inheritedLight}
+              inheritedLifeCycle={inheritedLifeCycle}
+              inheritedStandingTime={inheritedStandingTime}
               plantHealthField={<PlantHealthField contextualHelp
               showHelp={!isProjectForm}
               value={formData.plant_health ?? null}

@@ -54,6 +54,7 @@ const numberFields = [
 
 
   'rotation_break_years',
+  'standing_time_years',
   'expected_yield',
   'distance_within_row_cm',
   'row_spacing_cm',

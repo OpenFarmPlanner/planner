@@ -274,6 +274,7 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
   },
   { key: 'water_requirement', headerKey: 'siteHealth.fields.water_requirement', aliases: ['wasser', 'wasserbedarf', 'water_requirement'], type: 'string', enumImport: SITE_HEALTH_IMPORT.water_requirement },
   { key: 'life_cycle', headerKey: 'siteHealth.fields.life_cycle', aliases: ['lebenszyklus', 'lebensdauer', 'life_cycle'], type: 'string', enumImport: SITE_HEALTH_IMPORT.life_cycle },
+  { key: 'standing_time_years', headerKey: 'siteHealth.fields.standing_time_years', aliases: ['standzeit', 'standzeit (jahre)', 'standing_time_years'], type: 'number' },
   { key: 'winter_hardiness', headerKey: 'siteHealth.fields.winter_hardiness', aliases: ['winterhärte', 'winterhart', 'winter_hardiness'], type: 'string', enumImport: SITE_HEALTH_IMPORT.winter_hardiness },
   { key: 'pests_diseases', headerKey: 'plantHealth.notes', aliases: ["schädlinge", "krankheiten", "pests_diseases", "Pests and diseases", "Schädlinge und Krankheiten", "Ravageurs et maladies", "Plagas y enfermedades", "Parassiti e malattie", "Pragas e doenças", "Plagen en ziekten"], type: 'string' },
   { key: 'plant_health', headerKey: 'plantHealth.spreadsheetHeader', aliases: ['plant_health'], type: 'plantHealth' },

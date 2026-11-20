@@ -773,7 +773,8 @@
       "sampleNote": "Ligne d’exemple : à remplacer ou supprimer avant l’import.",
       "potatoSeedNote": "Cet exemple décrit la culture à partir de graines botaniques de pomme de terre, et non la plantation de tubercules.",
       "pretreatment": "Maintenir une humidité régulière.",
-      "pestsDiseases": "Mildiou : garder les feuilles sèches."
+      "pestsDiseases": "Mildiou : garder les feuilles sèches.",
+      "perennialName": "Rhubarbe"
     },
     "help": {
       "templateHint": "Pas encore de fichier adapté ?",
@@ -828,7 +829,7 @@
         "cultivation": "Culture et rendement",
         "other": "Autres propriétés"
       },
-      "templateSamples": "Remplacez ou supprimez les trois lignes d’exemple avant d’importer vos données.",
+      "templateSamples": "Remplacez ou supprimez les lignes d’exemple avant d’importer vos données.",
       "templateError": "Impossible de charger le modèle."
     },
     "timingWindowIssue": "Ligne {{row}}, {{column}} : {{message}} La valeur n’est pas importée.",
@@ -1503,7 +1504,8 @@
       "fields": {
         "variety": "Variété",
         "growth_duration_days": "Durée de culture",
-        "harvest_duration_days": "Durée de récolte"
+        "harvest_duration_days": "Durée de récolte",
+        "standing_time_years": "Durée productive (années)"
       },
       "blockingReasons": {
         "missingCropSpecies": "Veuillez choisir une espèce cultivée officielle.",
@@ -2020,7 +2022,8 @@
       "water_requirement": "Besoin en eau",
       "life_cycle": "Cycle de vie",
       "winter_hardiness": "Rusticité",
-      "pests_diseases": "Ravageurs et maladies"
+      "pests_diseases": "Ravageurs et maladies",
+      "standing_time_years": "Durée productive (années)"
     },
     "values": {
       "light_requirement": {
@@ -2045,7 +2048,9 @@
       }
     },
     "legacyLifeCycleOption": "{{value}} (valeur existante)",
-    "legacyLifeCycleHint": "Cette valeur enregistrée est conservée tant que vous ne choisissez pas un autre cycle de vie."
+    "legacyLifeCycleHint": "Cette valeur enregistrée est conservée tant que vous ne choisissez pas un autre cycle de vie.",
+    "standingTimeHelp": "Durée habituelle de production de cette culture vivace. Elle sert à proposer une date de fin de culture.",
+    "standingTimeRequired": "Saisissez un nombre entier supérieur ou égal à 1."
   },
   "taskTemplates": {
     "title": "Modèles de tâches",

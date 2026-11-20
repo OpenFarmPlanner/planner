@@ -262,7 +262,8 @@
       "info": "Não verificável"
     },
     "occupancyOptions": {
-      "harvestOverlap": "Sobreposição de colheitas"
+      "harvestOverlap": "Sobreposição de colheitas",
+      "continued": "Culturas que continuam"
     },
     "timingOptions": {
       "outsideWindow": "Fora dos períodos"
@@ -481,5 +482,35 @@
     "count_one": "{{own}} iniciadas nesta época · {{count}} continua",
     "count_other": "{{own}} iniciadas nesta época · {{count}} continuam",
     "count_many": "{{own}} iniciadas nesta época · {{count}} continuam"
+  },
+  "perennial": {
+    "title": "Cultura perene",
+    "productiveLifespan": "Vida útil da cultura",
+    "clearingDate": "Data de fim da cultura",
+    "clearingDateHelp": "O canteiro mantém-se ocupado até esta data, inclusive.",
+    "editClearingDate": "Editar a data de fim da cultura",
+    "invalidDate": "Introduza uma data igual ou posterior à plantação.",
+    "plantingDateRequired": "Introduza primeiro a data de plantação.",
+    "saveFailed": "Não foi possível guardar a data de fim da cultura.",
+    "years_one": "{{count, number}} ano",
+    "years_other": "{{count, number}} anos",
+    "years_many": "{{count, number}} anos",
+    "insufficientArea": "O canteiro não tem área livre suficiente até esta data.",
+    "unsaved": "A alteração à data de fim da cultura ainda não foi guardada."
+  },
+  "seasonStatus": {
+    "column": "Estado na época",
+    "labels": {
+      "only": "Só nesta época",
+      "starts": "Começa",
+      "continues": "Continua",
+      "ends": "Termina"
+    },
+    "descriptions": {
+      "only": "Ocupa o canteiro apenas nesta época.",
+      "starts": "Começa nesta época e ocupa o canteiro para além dela.",
+      "continues": "Ocupa o canteiro antes, durante e depois desta época.",
+      "ends": "Começou antes desta época e termina durante a época."
+    }
   }
 }

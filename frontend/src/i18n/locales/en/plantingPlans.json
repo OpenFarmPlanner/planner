@@ -260,7 +260,8 @@
       "info": "Not checkable"
     },
     "occupancyOptions": {
-      "harvestOverlap": "Harvest overlap"
+      "harvestOverlap": "Harvest overlap",
+      "continued": "Continued crops"
     },
     "timingOptions": {
       "outsideWindow": "Outside the time windows"
@@ -469,5 +470,34 @@
     "openOrigin": "Open in originating season",
     "count_one": "{{own}} planted this season · {{count}} continues",
     "count_other": "{{own}} planted this season · {{count}} continue"
+  },
+  "perennial": {
+    "title": "Perennial planting",
+    "productiveLifespan": "Productive lifespan",
+    "clearingDate": "Crop removal date",
+    "clearingDateHelp": "The bed stays occupied through this date.",
+    "editClearingDate": "Edit crop removal date",
+    "invalidDate": "Enter a date on or after planting.",
+    "plantingDateRequired": "Enter the planting date first.",
+    "saveFailed": "The crop removal date could not be saved.",
+    "years_one": "{{count, number}} year",
+    "years_other": "{{count, number}} years",
+    "insufficientArea": "There is insufficient free bed area through this removal date.",
+    "unsaved": "Your change to the crop removal date is unsaved."
+  },
+  "seasonStatus": {
+    "column": "Season status",
+    "labels": {
+      "only": "Only this season",
+      "starts": "Starts",
+      "continues": "Continues",
+      "ends": "Ends"
+    },
+    "descriptions": {
+      "only": "Occupies the bed only in this season.",
+      "starts": "Starts this season and occupies the bed beyond it.",
+      "continues": "Occupies the bed before, during and after this season.",
+      "ends": "Started before this season and ends in this season."
+    }
   }
 }

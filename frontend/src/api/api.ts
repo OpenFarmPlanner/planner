@@ -472,6 +472,7 @@ export const plantingPlanAPI = {
     bed_id: number;
     start_date: string;
     end_date?: string;
+    clearing_date?: string;
     harvest_start_date?: string;
     crop_id?: number;
     exclude_plan_id?: number;

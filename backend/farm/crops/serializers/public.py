@@ -43,6 +43,7 @@ from farm.services.crop_inheritance import GeneralCropIndex, build_general_crop_
 from farm.services.crop_plant_health import canonical_public_plant_health
 from farm.services.public_crops import (
     PUBLIC_CROP_EDITABLE_FIELDS,
+    find_general_public_crop,
     is_project_crop_up_to_date,
     public_crop_proposed_restore_version,
 )
@@ -79,6 +80,7 @@ PUBLIC_CROP_PROPOSABLE_FIELDS = {
     'light_requirement',
     'water_requirement',
     'life_cycle',
+    'standing_time_years',
     'winter_hardiness',
     'harvest_method',
     'expected_yield',
@@ -293,6 +295,7 @@ class PublicCropSerializer(serializers.ModelSerializer):
             'light_requirement',
             'water_requirement',
             'life_cycle',
+            'standing_time_years',
             'winter_hardiness',
             'harvest_method',
             'expected_yield',
@@ -547,6 +550,7 @@ class PublicCropUpdateSerializer(serializers.ModelSerializer):
         variety = attrs.get('variety', getattr(self.instance, 'variety', ''))
         if seed_type and not (variety or '').strip():
             errors['seed_type'] = 'Seed type can only be set on a variety.'
+        self._validate_standing_time(attrs, errors)
         if errors:
             raise serializers.ValidationError(errors)
         incoming_fields = set(getattr(self, 'initial_data', {}) or {})
@@ -561,6 +565,32 @@ class PublicCropUpdateSerializer(serializers.ModelSerializer):
             # the botanical-name key rather than the PlantFamily row.
             attrs['crop_family'] = getattr(attrs['crop_family'], 'pk', None)
         return attrs
+
+    def _validate_standing_time(self, attrs: dict[str, Any], errors: dict) -> None:
+        fields = ('variety', 'life_cycle', 'standing_time_years')
+        if self.instance is not None and not any(
+            field in attrs and attrs[field] != getattr(self.instance, field) for field in fields
+        ):
+            return
+        variety, life_cycle, standing_time = (
+            attrs.get(field, getattr(self.instance, field, None)) for field in fields
+        )
+        species = getattr(self.instance, 'crop_species', None)
+        needs_parent_value = not life_cycle or (life_cycle == 'perennial' and not standing_time)
+        general = None
+        if variety and species and needs_parent_value:
+            general = find_general_public_crop(species)
+        effective_life_cycle = life_cycle or getattr(general, 'life_cycle', '')
+        if effective_life_cycle == 'perennial':
+            effective_standing_time = standing_time or getattr(general, 'standing_time_years', None)
+            if not effective_standing_time:
+                errors['standing_time_years'] = (
+                    'A productive lifespan is required for a perennial crop.'
+                )
+            elif standing_time is None:
+                attrs['standing_time_years'] = effective_standing_time
+        elif standing_time is not None:
+            attrs['standing_time_years'] = None
 
 
 class PublicCropTranslationsUpdateSerializer(serializers.Serializer):

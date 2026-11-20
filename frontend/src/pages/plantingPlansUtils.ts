@@ -447,9 +447,21 @@ export const toPlanIsoDate = (value: unknown): string | null => {
  * ask the shared capacity rule about the same period.
  */
 export const getPlanOccupancyEndIso = (
-  row: { planting_date?: unknown; harvest_end_date?: unknown; harvest_date?: unknown },
+  row: { planting_date?: unknown; clearing_date?: unknown; harvest_end_date?: unknown; harvest_date?: unknown },
 ): string | null => {
-  const end = toPlanIsoDate(row.harvest_end_date) ?? toPlanIsoDate(row.harvest_date);
+  const end = toPlanIsoDate(row.clearing_date) ?? toPlanIsoDate(row.harvest_end_date) ?? toPlanIsoDate(row.harvest_date);
   const start = toPlanIsoDate(row.planting_date);
   return end && start && end < start ? null : end;
 };
+
+export type SeasonOccupancyStatus = 'only' | 'starts' | 'continues' | 'ends';
+
+export function getSeasonOccupancyStatus(
+  plantingDate: string, endDate: string, season: { minDate: string; maxDate: string },
+): SeasonOccupancyStatus | null {
+  if (plantingDate > season.maxDate || endDate < season.minDate) return null;
+  const startsHere = plantingDate >= season.minDate;
+  const endsHere = endDate <= season.maxDate;
+  if (startsHere) return endsHere ? 'only' : 'starts';
+  return endsHere ? 'ends' : 'continues';
+}

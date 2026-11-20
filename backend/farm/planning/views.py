@@ -28,7 +28,11 @@ from farm.services.bed_capacity import (
 )
 from farm.services.crop_companions import CompanionService
 from farm.services.crop_display import format_crop_label
-from farm.services.crop_inheritance import build_general_crop_index
+from farm.services.crop_inheritance import (
+    GeneralCropIndex,
+    build_general_crop_index,
+    resolve_crop_field,
+)
 from farm.services.crop_rotation import RotationService, suggest_beds
 from farm.services.germination_check import check_germination
 from farm.services.site_suitability import check_site_suitability
@@ -53,11 +57,10 @@ logger = logging.getLogger(__name__)
 def _parse_remaining_area_params(query_params) -> tuple[dict | None, str | None]:
     """Parse/validate the remaining-area query parameters.
 
-    ``bed_id`` and ``start_date`` are required. Without ``end_date`` the period
-    ends where a saved plan of ``crop_id`` would end (its effective harvest
-    end), else on ``start_date``; without ``harvest_start_date`` the harvest
-    starts where it would for ``crop_id``. ``area_sqm`` (the plan's area) is
-    only needed for the harvest overlaps.
+    ``bed_id`` and ``start_date`` are required. Without ``end_date`` an annual
+    plan uses its effective harvest end. A perennial uses ``clearing_date``,
+    its saved removal date, or the suggested removal date from its lifespan.
+    ``area_sqm`` (the plan's area) is only needed for harvest overlaps.
 
     Returns (params, None) on success or (None, error_detail) on failure.
     """
@@ -78,6 +81,10 @@ def _parse_remaining_area_params(query_params) -> tuple[dict | None, str | None]
     if start_date is None or (end_date_param and end_date is None):
         return None, 'start_date and end_date must use YYYY-MM-DD format.'
 
+    clearing_date, error = _parse_clearing_date(query_params)
+    if error:
+        return None, error
+
     harvest_start_param = query_params.get('harvest_start_date')
     harvest_start_date = parse_date(harvest_start_param) if harvest_start_param else None
     if harvest_start_param and harvest_start_date is None:
@@ -97,6 +104,7 @@ def _parse_remaining_area_params(query_params) -> tuple[dict | None, str | None]
         'bed_id': bed_id,
         'start_date': start_date,
         'end_date': end_date,
+        'clearing_date': clearing_date,
         'harvest_start_date': harvest_start_date,
         'exclude_plan_id': exclude_plan_id,
         'crop_id': crop_id,
@@ -116,30 +124,42 @@ def _parse_optional_decimal(value: str | None, name: str) -> tuple[Decimal | Non
     return parsed, None
 
 
-def _derive_harvest_dates(
-    crop: Crop | None,
-    planting_date: date,
-    project,
-    general_crop_index=None,
-) -> tuple[date | None, date | None]:
-    """Harvest start and end of a saved plan of ``crop`` planted on ``planting_date``."""
-    if crop is None:
+def _parse_clearing_date(query_params) -> tuple[date | None, str | None]:
+    value = query_params.get('clearing_date')
+    if not value:
         return None, None
-    draft = PlantingPlan(crop=crop, planting_date=planting_date, project=project)
-    return draft.calculate_effective_harvest_dates(general_crop_index)
+    try:
+        parsed = parse_date(value)
+    except ValueError:
+        parsed = None
+    return (parsed, None) if parsed else (None, 'clearing_date must use YYYY-MM-DD format.')
 
 
-def _derive_plan_end(
-    crop: Crop | None,
-    planting_date: date,
-    project,
-    general_crop_index=None,
-) -> date | None:
-    """Where a saved plan of ``crop`` planted on ``planting_date`` would end."""
-    harvest_start, harvest_end = _derive_harvest_dates(
-        crop, planting_date, project, general_crop_index,
+def _capacity_interval(
+    draft: PlantingPlan,
+    crop_index: GeneralCropIndex | None,
+    *,
+    existing_plan: PlantingPlan | None,
+    end_date: date | None,
+    clearing_date: date | None,
+) -> tuple[date | None, date | None, bool]:
+    """Return the occupancy end, any soft-phase harvest start, and perennial status."""
+    saved_clearing_date = (
+        existing_plan.clearing_date
+        if existing_plan is not None and draft.crop_id == existing_plan.crop_id else None
     )
-    return harvest_end or harvest_start
+    perennial = saved_clearing_date is not None or (
+        resolve_crop_field(draft.crop, 'life_cycle', crop_index) == 'perennial'
+    )
+    if perennial:
+        removal = clearing_date or saved_clearing_date or draft.suggested_clearing_date(crop_index)
+        if removal is not None:
+            return removal, None, True
+    harvest_start, harvest_end = draft.calculate_effective_harvest_dates(crop_index)
+    derived_end = harvest_end or harvest_start
+    if perennial:
+        return derived_end, None, True
+    return end_date or derived_end, harvest_start, False
 
 
 def _succession_limit_payload(
@@ -197,9 +217,8 @@ def _parse_optional_int(value: str | None, name: str) -> tuple[int | None, str |
 def _parse_rotation_params(query_params) -> tuple[dict | None, str | None]:
     """Parse the crop/date parameters shared by the rotation endpoints.
 
-    ``crop_id`` and ``planting_date`` are required; ``end_date`` falls back to
-    the crop's effective harvest end, ``bed_id`` and ``exclude_plan_id`` are
-    optional.
+    ``crop_id`` and ``planting_date`` are required. The optional ``end_date``
+    is the harvest boundary; ``clearing_date`` is the perennial removal date.
     """
     crop_id, error = _parse_optional_int(query_params.get('crop_id'), 'crop_id')
     if error:
@@ -211,6 +230,9 @@ def _parse_rotation_params(query_params) -> tuple[dict | None, str | None]:
     end_date = parse_date(end_date_param) if end_date_param else None
     if end_date_param and end_date is None:
         return None, 'end_date must use YYYY-MM-DD format.'
+    clearing_date, error = _parse_clearing_date(query_params)
+    if error:
+        return None, error
     bed_id, error = _parse_optional_int(query_params.get('bed_id'), 'bed_id')
     if error:
         return None, error
@@ -221,6 +243,7 @@ def _parse_rotation_params(query_params) -> tuple[dict | None, str | None]:
         'crop_id': crop_id,
         'planting_date': planting_date,
         'end_date': end_date,
+        'clearing_date': clearing_date,
         'bed_id': bed_id,
         'exclude_plan_id': exclude_plan_id,
     }, None
@@ -400,7 +423,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         capacity rule (farm/services/bed_capacity.py) as the bed options and
         suggestions of ``bed-suggestions``.
 
-        :param request: DRF request with bed_id, start_date and optional end_date, crop_id and exclude_plan_id.
+        :param request: DRF request with a bed, start date and optional harvest or removal dates.
         :return: Remaining area payload for the requested bed and interval.
         """
         active_project = request.active_project
@@ -412,9 +435,12 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         if bed is None:
             return api_error_response(code='bed_not_found', detail='Bed not found.', status_code=status.HTTP_404_NOT_FOUND)
 
+        existing_plan = None
         if params['exclude_plan_id'] is not None:
-            plan_exists = PlantingPlan.objects.filter(id=params['exclude_plan_id'], project=active_project).exists()
-            if not plan_exists:
+            existing_plan = PlantingPlan.objects.filter(
+                id=params['exclude_plan_id'], project=active_project,
+            ).only('crop_id', 'clearing_date').first()
+            if existing_plan is None:
                 return api_error_response(code='exclude_plan_not_found', detail='exclude_plan_id not found in active project.', status_code=status.HTTP_400_BAD_REQUEST)
 
         crop = None
@@ -423,13 +449,23 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             if crop is None:
                 return api_error_response(code='crop_not_found', detail='Crop not found.', status_code=status.HTTP_404_NOT_FOUND)
         start_date = params['start_date']
-        derived_harvest_start, derived_harvest_end = _derive_harvest_dates(crop, start_date, active_project)
-        end_date = params['end_date'] or derived_harvest_end or derived_harvest_start or start_date
+        crop_index = build_general_crop_index(active_project.pk) if crop is not None else None
+        end_date, harvest_start, perennial = _capacity_interval(
+            PlantingPlan(crop=crop, planting_date=start_date), crop_index,
+            existing_plan=existing_plan, end_date=params['end_date'],
+            clearing_date=params['clearing_date'],
+        )
+        end_date = end_date or start_date
         if end_date < start_date:
-            if params['end_date'] is not None:
-                return api_error_response(code='invalid_remaining_area_interval', detail='end_date must be greater than or equal to start_date.', status_code=status.HTTP_400_BAD_REQUEST)
+            field = 'clearing_date' if perennial else 'end_date'
+            if params[field] is not None:
+                return api_error_response(
+                    code='invalid_remaining_area_interval',
+                    detail=f'{field} must be greater than or equal to start_date.',
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
             end_date = start_date
-        harvest_start_date = params['harvest_start_date'] or derived_harvest_start
+        harvest_start_date = None if perennial else params['harvest_start_date'] or harvest_start
 
         language_code = resolve_request_language(request)
         region = getattr(active_project, 'region', '') or ''
@@ -495,9 +531,24 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             language_code=resolve_request_language(request),
             region=getattr(active_project, 'region', '') or '',
         )
-        if params['end_date'] is None:
-            params['end_date'] = _derive_plan_end(
-                crop, params['planting_date'], active_project, service.general_crop_index,
+        existing_plan = None
+        if params['exclude_plan_id'] is not None:
+            existing_plan = PlantingPlan.objects.filter(
+                pk=params['exclude_plan_id'], project=active_project,
+            ).only('crop_id', 'clearing_date').first()
+        draft = PlantingPlan(crop=crop, planting_date=params['planting_date'])
+        params['end_date'], _, params['perennial'] = _capacity_interval(
+            draft, service.general_crop_index, existing_plan=existing_plan,
+            end_date=params['end_date'], clearing_date=params['clearing_date'],
+        )
+        if (
+            params['perennial'] and params['clearing_date']
+            and params['clearing_date'] < params['planting_date']
+        ):
+            return api_error_response(
+                code='invalid_rotation_parameters',
+                detail='clearing_date must be greater than or equal to planting_date.',
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
         return params, crop, service
 
@@ -644,6 +695,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             end=end_date,
             exclude_plan_id=params['exclude_plan_id'],
             needed_area_sqm=params['area_sqm'],
+            firm_occupancy=params['perennial'],
         )
         return Response({
             'count': len(results),

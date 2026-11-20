@@ -54,9 +54,11 @@
     "notes": "Nota",
     "phase": {
       "growth": "Fase de crescimento",
-      "harvest": "Fase de colheita"
+      "harvest": "Fase de colheita",
+      "occupancy": "Ocupação do canteiro"
     },
-    "actualHarvestEnd": "Fim de colheita mais tardio"
+    "actualHarvestEnd": "Fim de colheita mais tardio",
+    "clearingDate": "Data de fim da cultura"
   },
   "noData": "Sem séries disponíveis",
   "modeLabel": "Modo",

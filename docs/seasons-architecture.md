@@ -95,8 +95,9 @@ description), one level down:
 - `PlantingPlanViewSet.get_queryset()` (`backend/farm/planning/views.py`)
   scopes writes to `season_id` when the header is present. For reads in the
   selected season, it also includes a plan planted before the first day if
-  it occupies an assigned bed on or after that day. Occupancy uses the stored
-  harvest end, falling back to the harvest date and then the planting date.
+  it occupies an assigned bed on or after that day. The recorded perennial
+  removal date takes precedence over the stored harvest end, harvest date,
+  and planting date.
   A read returns `carried_over` and the originating season label. The plan's
   ID and season assignment stay the same. Attachment writes use the same
   season boundary. `perform_create` assigns new plans to the active season
@@ -110,13 +111,18 @@ description), one level down:
   cross-season state. The originating-season action opens the same plan in
   its own season. The list keeps carried-over plans selectable and includes
   them in search and filters, with a separate count for newly planted plans.
+  The Continued crops filter includes every carried-over planting. The
+  optional Season status column describes which part of the occupancy period
+  falls in the selected season.
 - The Anbaukalender's Gantt/occupancy timeline
   (`frontend/src/pages/GanttChart.tsx`) does **not** anchor its visible time
   axis to a calendar year. The axis follows the actual data range of the
   season's plans: `startDate` = the earliest `planting_date`, `endDate` = the
   latest relevant date (harvest end, falling back to the harvest date), even
   when that reaches past the season's end. Carried-over bars begin at the
-  first visible day and label their source season. Own-season edits keep
+  first visible day and label their source season. The perennial occupancy bar
+  is clipped to the selected season and its tooltip includes the full removal
+  date. Own-season edits keep
   the planting date within that season's period. The range is computed
   globally across every Fläche/Standort/Parzelle so all rows share the same
   columns and stay comparable, and gaps in the middle of the range are never
@@ -139,7 +145,8 @@ description), one level down:
   to the season's date range, including both its first and last day. An
   explicit ISO year further limits that range. A week crossing a season
   boundary contributes only its share on each side, including for plans
-  still awaiting a bed assignment. The active season's dates
+  still awaiting a bed assignment. Carrying a perennial forward never creates
+  another harvest forecast. The active season's dates
   also determine whether the chart draws a year-boundary marker.
 - `farm.services.yield_calendar.compute_plan_expected_yield` calculates the
   plan's forecast in kilograms from the effective crop rate and unit. Use the
@@ -226,6 +233,8 @@ a season pattern changes and keeps the previous period eligible.
   these plans in `continuing_count`, independent of date basis or rotation
   choices. The copy dialog and season creation suggestion explain the skip.
   Drafts without an assigned bed remain eligible for copying.
+  A perennial copy also needs a valid planting date and effective productive
+  lifespan. A legacy perennial that cannot be copied is counted separately.
 - `planting_date`, `harvest_date` and `harvest_end_date`
   (`PLANTING_PLAN_SHIFTED_DATE_FIELDS`) are shifted by a **whole number of
   years, chosen per plan** so the `planting_date` keeps its month and day but

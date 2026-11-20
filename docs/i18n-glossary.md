@@ -189,6 +189,9 @@ FR/ES/IT: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Aussaat / Aussaattermin | Sowing / sowing date | Semis / date de semis | Siembra / fecha de siembra | semina / data di semina | sementeira / data de sementeira | zaai / zaaidatum |
 | Erntebeginn | Harvest start | Début de récolte | Inicio de cosecha | inizio della raccolta | início da colheita | begin oogst |
 | Ernteende | Harvest end | Fin de récolte | Fin de cosecha | fine della raccolta | fim da colheita | einde oogst |
+| Räumungsdatum † | Crop removal date | Date de fin de culture | Fecha de fin del cultivo | Data di fine coltivazione | Data de fim da cultura | Einddatum teelt |
+| Saisonstatus | Season status | Statut dans la saison | Estado en la temporada | Stato nella stagione | Estado na época | Seizoensstatus |
+| Weiterlaufende Kulturen | Continued crops | Cultures en cours depuis une autre saison | Cultivos que continúan | Colture che proseguono | Culturas que continuam | Doorlopende teelten |
 | Plan / Ist / Beides (Terminanzeige) | Planned / Actual / Both | Prévu / Réalisé / Les deux | Previsto / Realizado / Ambos | Previsto / Effettivo / Entrambi | Planeado / Realizado / Ambos | Gepland / Werkelijk / Beide |
 | Ist-Aussaattermin | Actual sowing date | Date réelle de semis | Fecha real de siembra | Data effettiva di semina | Data efetiva de sementeira | Werkelijke zaaidatum |
 | Ist-Termine als Plantermine verwenden | Use actual dates as planned dates | Utiliser les dates réelles pour la planification | Usar las fechas reales para planificar | Usa le date effettive per pianificare | Usar datas efetivas no planeamento | Werkelijke datums gebruiken voor de planning |
@@ -313,6 +316,7 @@ variety, seed status describes one supplier's offer.
 | Übernommen vom Standort / Auf übernommenen Wert zurücksetzen | Inherited from location / Reset to inherited | Hérité du site / Rétablir la valeur héritée | Heredado de la ubicación / Restablecer el valor heredado | ereditato dal sito / ripristina il valore ereditato | herdado da exploração / repor o valor herdado | overgenomen van locatie / terugzetten op overgenomen waarde |
 | Wasserbedarf | Water requirement | Besoin en eau | Necesidad de agua | fabbisogno idrico | necessidade de água | waterbehoefte |
 | Lebensdauer | Life cycle | Cycle de vie | Ciclo de vida | ciclo di vita | ciclo de vida | levenscyclus |
+| Standzeit (Jahre) † | Productive lifespan (years) | Durée productive (années) | Vida útil del cultivo (años) | Durata produttiva (anni) | Vida útil da cultura (anos) | Productieve levensduur (jaren) |
 | Einjährig / Zweijährig / Mehrjährig | Annual / Biennial / Perennial | Annuelle / Bisannuelle / Vivace | Anual / Bienal / Perenne | annuale / biennale / perenne | anual / bienal / perene | eenjarig / tweejarig / meerjarig |
 | Winterhärte | Winter hardiness | Rusticité | Resistencia al frío | resistenza al freddo | resistência ao frio | winterhardheid |
 | Winterhart / Mit Winterschutz / Nicht winterhart | Hardy / Hardy with winter protection / Not hardy | Rustique / Rustique avec protection hivernale / Non rustique | Resistente / Resistente con protección invernal / No resistente | resistente al freddo / con protezione invernale / non resistente al freddo | resistente ao frio / com proteção de inverno / não resistente ao frio | winterhard / met winterbescherming / niet winterhard |
@@ -328,6 +332,12 @@ Biennial labels remain valid for existing data and import/export. They are not
 new choices in the life-cycle selector. Existing values use the localized
 suffix “Bestandswert” / “existing value” / “valeur existante” / “valor existente”
 and a hint explaining that other edits preserve the value.
+
+The productive lifespan describes typical productive use in whole years.
+The crop removal date is the last occupied day of a particular planting.
+Season status describes that planting's relationship to the selected season.
+The labels for these planning concepts follow the terminology reviewed in
+[issue #1009](https://github.com/OpenFarmPlanner/planner/issues/1009).
 
 ## Supplier seed status
 

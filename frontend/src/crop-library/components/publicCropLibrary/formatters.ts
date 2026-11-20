@@ -318,6 +318,7 @@ export function getPublicCropFieldLabel(field: string, t: (key: string, options?
     light_requirement: 'siteHealth.fields.light_requirement',
     water_requirement: 'siteHealth.fields.water_requirement',
     life_cycle: 'siteHealth.fields.life_cycle',
+    standing_time_years: 'siteHealth.fields.standing_time_years',
     winter_hardiness: 'siteHealth.fields.winter_hardiness',
   };
   const key = fieldLabelKeys[field];

@@ -209,6 +209,9 @@ erDiagram
   Renaming a crop group is atomic; a conflicting active general name in the
   same project returns 409 `crop_name_conflict` without partial saves. See
   [crop-library-architecture.md](./crop-library-architecture.md#sorte--kultur-value-inheritance).
+  Perennials have a positive whole-year `standing_time_years`. Varieties
+  can inherit the value from their general crop. Existing perennial crops
+  keep an unknown value until it is explicitly configured.
 - **`PublicCrop`** is the shared, cross-project "crop library" — it has
   no owning `Project`, only optional *provenance* links back to the project
   and crop it was published from. Published rows are intended to be
@@ -218,6 +221,8 @@ erDiagram
   status events) are in [§5](#5-public-crop-library); see
   [crop-library-architecture.md](./crop-library-architecture.md) for the
   full story of how this split is formalized into the `crops` Django app.
+  Published perennial entries carry the productive lifespan along with
+  the life-cycle category.
 - **`CropSupplierData`** is the join between one `Crop` and one
   `Supplier`: supplier-specific product data (price, packaging sizes,
   germination rate, thousand-kernel-weight, `seed_status` and
@@ -276,6 +281,11 @@ erDiagram
   These fields start unset for existing plans.
   The API's read-only `actual_harvest_end_date` is the calculated bed
   succession boundary. See [bed occupancy](./bed-occupancy.md).
+  A perennial plan stores its own `clearing_date`. The first save suggests
+  the planting anniversary from the effective productive lifespan. The
+  editable stored date controls bed occupancy, regardless of later changes
+  to the crop's typical lifespan or to its first harvest window. Existing
+  plans without a clearing date retain their original occupancy dates.
   Its `cultivation_type` is `direct_sowing`,
   `pre_cultivation` or the plan-only `purchased_transplant` (bought-in
   plants: no Anzucht, no seed demand — see

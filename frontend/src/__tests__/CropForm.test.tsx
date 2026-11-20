@@ -1482,8 +1482,15 @@ describe('CropForm', () => {
     fireEvent.click(screen.getByRole('option', { name: 'siteHealth.values.life_cycle.perennial' }));
     expect(screen.queryByText('siteHealth.legacyLifeCycleHint')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
+    expect(screen.getByText('siteHealth.standingTimeRequired')).toBeVisible();
+    expect(onSave).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'siteHealth.fields.standing_time_years' }), {
+      target: { value: '6' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(onSave.mock.calls[0][0].life_cycle).toBe('perennial');
+    expect(onSave.mock.calls[0][0].standing_time_years).toBe(6);
   });
 
   it('treats trim-only text edits as unchanged when saving an edited crop', () => {

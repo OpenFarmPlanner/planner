@@ -40,6 +40,7 @@ export const LIBRARY_LINK_FIELDS = [
   'light_requirement',
   'water_requirement',
   'life_cycle',
+  'standing_time_years',
   'winter_hardiness',
   'harvest_method',
   'expected_yield',

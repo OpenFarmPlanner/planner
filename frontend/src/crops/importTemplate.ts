@@ -62,7 +62,14 @@ const buildTemplateCrops = (t: TemplateT, potatoSpecies: TemplateSpecies): Crop[
     germination_temperature_requirement: 'cold_stratification', germination_light_requirement: 'light', germination_types: ['cold', 'light'],
     stratification_days_min: 28, stratification_days_max: 56,
     stratification_temperature_min_c: 3, stratification_temperature_max_c: 5,
-    life_cycle: 'perennial', notes: `${t('import.template.sampleNote')} ${t('import.template.potatoSeedNote')}`,
+    life_cycle: 'annual', notes: `${t('import.template.sampleNote')} ${t('import.template.potatoSeedNote')}`,
+  },
+  {
+    name: t('import.template.perennialName'), variety: '',
+    botanical_name: 'Rheum rhabarbarum', crop_family: 'Polygonaceae',
+    cultivation_type: 'pre_cultivation', cultivation_types: ['pre_cultivation'],
+    growth_duration_days: 365, harvest_duration_days: 28,
+    life_cycle: 'perennial', standing_time_years: 6, notes: t('import.template.sampleNote'),
   },
 ] as Crop[];
 
