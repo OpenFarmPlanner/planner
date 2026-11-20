@@ -74,6 +74,8 @@ class PlantingPlan(TimestampedModel):
         null=True,
         help_text="Harvest end date (Ernteende)",
     )
+    harvest_date_is_explicit = models.BooleanField(default=False, editable=False)
+    harvest_end_date_is_explicit = models.BooleanField(default=False, editable=False)
     actual_propagation_start_date = models.DateField(null=True, blank=True)
     actual_sowing_date = models.DateField(null=True, blank=True)
     actual_transplanting_date = models.DateField(null=True, blank=True)
@@ -178,6 +180,17 @@ class PlantingPlan(TimestampedModel):
 
         return harvest_date, harvest_date + timedelta(days=harvest_duration_days)
 
+    def planned_harvest_dates(
+        self, general_crop_index: dict[int, Crop] | None = None,
+    ) -> tuple[date | None, date | None]:
+        """Return planned harvest dates, including independent dates set by a copy."""
+        start, end = self.calculate_effective_harvest_dates(general_crop_index)
+        if start is not None or self.harvest_date_is_explicit:
+            start = self.harvest_date or start
+        if end is not None or self.harvest_end_date_is_explicit:
+            end = self.harvest_end_date or end
+        return start, end
+
     def _get_active_period(self) -> tuple[date, date] | None:
         """Return inclusive active period used for overlap validations."""
         if self.planting_date is None:
@@ -266,7 +279,11 @@ class PlantingPlan(TimestampedModel):
         stay a snapshot taken at save time: already-stored plans are not
         recalculated just because a value became resolvable.
         """
-        self.harvest_date, self.harvest_end_date = self.calculate_effective_harvest_dates()
+        start, end = self.calculate_effective_harvest_dates()
+        if not self.harvest_date_is_explicit:
+            self.harvest_date = start
+        if not self.harvest_end_date_is_explicit:
+            self.harvest_end_date = end
 
     def __str__(self) -> str:
         """Return a string combining crop, bed, and planting date."""

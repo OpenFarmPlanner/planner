@@ -1139,6 +1139,40 @@ class SeasonApiTest(ProjectApiTestCase):
         self.assertEqual(copy.harvest_date, date(2027, 3, 8))
         self.assertEqual(copy.harvest_end_date, date(2027, 3, 10))
 
+    def test_actual_based_harvest_dates_are_visible_without_crop_timing(self):
+        self.crop.growth_duration_days = None
+        self.crop.harvest_duration_days = None
+        self.crop.save(update_fields=['growth_duration_days', 'harvest_duration_days'])
+        source = Season.objects.create(
+            project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+        )
+        target = Season.objects.create(
+            project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
+        )
+        PlantingPlan.objects.create(
+            crop=self.crop, project=self.project, season=source,
+            cultivation_type='direct_sowing', planting_date=date(2026, 3, 1),
+            actual_harvest_start_date=date(2026, 6, 1), recorded_harvest_end_date=date(2026, 6, 10),
+        )
+        copied = self.client.post(
+            f'/openfarmplanner/api/seasons/{target.pk}/copy-from/',
+            {'source_season_id': source.pk, 'use_actual_dates': True},
+        )
+        self.assertEqual(copied.status_code, 200, copied.data)
+        copy = PlantingPlan.objects.get(season=target)
+        url = f'/openfarmplanner/api/planting-plans/{copy.pk}/'
+
+        original_dates = self.client.get(url)
+        edited = self.client.patch(url, {'planting_date': '2027-03-02'})
+
+        for response in (original_dates, edited):
+            self.assertEqual(response.status_code, 200, response.data)
+            plan = response.json()
+            self.assertEqual(plan['harvest_date'], '2027-06-01')
+            self.assertEqual(plan['harvest_end_date'], '2027-06-10')
+            self.assertIsNone(plan['actual_harvest_start_date'])
+            self.assertIsNone(plan['recorded_harvest_end_date'])
+
     def test_create_and_copy_revalidates_the_source_before_writing_either_result(self):
         earlier = Season.objects.create(
             project=self.project, start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),

@@ -12,6 +12,16 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddField(
             model_name='plantingplan',
+            name='harvest_date_is_explicit',
+            field=models.BooleanField(default=False, editable=False),
+        ),
+        migrations.AddField(
+            model_name='plantingplan',
+            name='harvest_end_date_is_explicit',
+            field=models.BooleanField(default=False, editable=False),
+        ),
+        migrations.AddField(
+            model_name='plantingplan',
             name='planned_propagation_start_date',
             field=models.DateField(blank=True, null=True),
         ),

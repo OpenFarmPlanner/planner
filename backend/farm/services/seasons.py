@@ -26,7 +26,9 @@ PLANTING_PLAN_COPY_FIELDS = (
     'planned_sowing_date',
     'planned_transplanting_date',
     'harvest_date',
+    'harvest_date_is_explicit',
     'harvest_end_date',
+    'harvest_end_date_is_explicit',
     'quantity',
     'area_usage_sqm',
     'notes',
@@ -40,9 +42,12 @@ PLANTING_PLAN_SHIFTED_DATE_FIELDS = (
 )
 
 COMPUTED_COPY_DATE_FIELDS = (
-    ('planned_propagation_start_date', 'actual_propagation_start_date', 'propagation_start'),
-    ('harvest_date', 'actual_harvest_start_date', 'harvest_start'),
-    ('harvest_end_date', 'recorded_harvest_end_date', 'harvest_end'),
+    ('planned_propagation_start_date', 'actual_propagation_start_date', 'propagation_start', None),
+    ('harvest_date', 'actual_harvest_start_date', 'harvest_start', 'harvest_date_is_explicit'),
+    (
+        'harvest_end_date', 'recorded_harvest_end_date',
+        'harvest_end', 'harvest_end_date_is_explicit',
+    ),
 )
 
 
@@ -253,8 +258,12 @@ def _season_copy_fields(plan: PlantingPlan, crop_index: GeneralCropIndex | None)
         fields['planting_date'] = sowing or plan.planting_date
         fields['planned_sowing_date'] = None
         fields['planned_transplanting_date'] = transplanting
-    for field, actual_field, event in COMPUTED_COPY_DATE_FIELDS:
-        fields[field] = getattr(plan, actual_field) or planned.get(event)
+    planned_start, planned_end = plan.planned_harvest_dates(crop_index)
+    fields['planned_propagation_start_date'] = (
+        plan.actual_propagation_start_date or planned.get('propagation_start')
+    )
+    fields['harvest_date'] = plan.actual_harvest_start_date or planned_start
+    fields['harvest_end_date'] = plan.recorded_harvest_end_date or planned_end
     return fields
 
 
@@ -265,10 +274,16 @@ def _keep_equivalent_dates_computed(
     derived = plan_event_dates(PlantingPlan(
         crop=copy.crop, cultivation_type=copy.cultivation_type, planting_date=copy.planting_date,
     ), crop_index)
-    for field, actual_field, event in COMPUTED_COPY_DATE_FIELDS:
-        if getattr(source, field) is None and getattr(source, actual_field) is None:
-            if getattr(copy, field) == derived.get(event):
-                setattr(copy, field, None)
+    for field, actual_field, event, flag_field in COMPUTED_COPY_DATE_FIELDS:
+        actual = getattr(source, actual_field)
+        value = getattr(copy, field)
+        if getattr(source, field) is None and actual is None and value == derived.get(event):
+            setattr(copy, field, None)
+        if flag_field is not None:
+            explicit = (
+                getattr(source, flag_field) or actual is not None or value != derived.get(event)
+            )
+            setattr(copy, flag_field, value is not None and explicit)
 
 
 def build_planting_plan_copies(

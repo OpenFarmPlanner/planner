@@ -265,7 +265,10 @@ erDiagram
   `planned_sowing_date`, and `planned_transplanting_date` preserve planned
   activities independent of that anchor, including dates created by an
   actual-date season copy. Ordinary propagation timing still falls back to
-  the crop's duration. The nullable fields `actual_propagation_start_date`, `actual_sowing_date`,
+  the crop's duration. `harvest_date_is_explicit` and
+  `harvest_end_date_is_explicit` mark independently planned harvest dates
+  that remain valid without a crop timing estimate. The nullable fields
+  `actual_propagation_start_date`, `actual_sowing_date`,
   `actual_transplanting_date`, `actual_harvest_start_date`, and
   `recorded_harvest_end_date` capture execution independently of that schedule.
   These fields start unset for existing plans.
