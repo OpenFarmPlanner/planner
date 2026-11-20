@@ -113,7 +113,7 @@ import {
 } from "../components/planting-plans/AreaAssignmentDialog";
 import EmptyStateCard from "../components/project/EmptyStateCard";
 import { formatCropDisplayName, getCropDisplayName } from "../crops/cropDisplay";
-import { usePlantingPlanSearch } from "./usePlantingPlanSearch";
+import { usePlantingPlanSearch, type PlantingPlanSearchSnapshot } from "./usePlantingPlanSearch";
 import { useCreatedPlanPin, withPinnedRowFirst } from "./useCreatedPlanPin";
 import type { PlantingPlanSearchRecordInput } from "./plantingPlanSearch";
 import { SearchHighlightContext } from "../search/SearchHighlightContext";
@@ -197,10 +197,11 @@ const PLANTING_PLAN_DIALOG_EDIT_FIELDS = ["bed"];
  */
 const DEFAULT_HIDDEN_FIELDS_ON_SMALL_SCREEN = ["harvest_date", "harvest_end_date"];
 
-function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0 }: {
-  onOpenDetails?: (id: number, anchor?: HTMLElement | null) => void;
+function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, restoredView }: {
+  onOpenDetails?: (id: number, view: PlantingPlanSearchSnapshot, anchor?: HTMLElement | null) => void;
   detailOpen?: boolean;
   detailRevision?: number;
+  restoredView?: PlantingPlanSearchSnapshot;
 } = {}) {
   const { t, i18n } = useTranslation(["plantingPlans", "common"]);
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
@@ -1491,6 +1492,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0 }
     rows: persistedRows,
     toRecordInput: toSearchRecordInput,
     projectId: activeProjectId ?? null,
+    restoredView,
   });
   // The column menu closes itself on click; open the panel once it is gone
   // so the menu's focus restore does not fight the panel for focus.
@@ -1683,7 +1685,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0 }
         disabledReason: planId ? undefined : t('plantingPlans:details.saveFirst'),
         activate: anchor => {
           if (!planId) return;
-          if (onOpenDetails) onOpenDetails(planId, anchor);
+          if (onOpenDetails) onOpenDetails(planId, { query: search.query, filters: search.filters, sortKey: search.sortKey }, anchor);
           else void navigate(plantingPlanDetailPath(planId));
         },
       },

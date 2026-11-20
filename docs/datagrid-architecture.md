@@ -167,7 +167,10 @@ action. A mobile or direct visit uses the same detail component as a full page.
 Returning to the table restores focus to the invoking row action. The mounted
 grid retains its search, sorting, filters, selection and scroll position. The
 grid's navigation guard applies when opening details, and the detail view owns
-the notes guard while open.
+the notes guard while open. Browser history carries the originating table's
+search, filters and sort so a return from a linked crop or growing area can
+reconstruct the drawer and its table. The selected presentation is retained
+when the window resizes so an open notes editor keeps its draft.
 
 The calendar has separate actions to show details, select the grid row, and
 edit the row. Growing Areas links also distinguish the existing grid selection

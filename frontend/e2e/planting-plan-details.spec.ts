@@ -83,6 +83,16 @@ test('desktop details preserve the table, restoring row focus on Escape, Close a
   await expect(drawer.getByText('0', { exact: true })).toBeVisible();
   await expect(drawer.getByRole('button', { name: 'Notiz oder Foto hinzufügen' })).toBeVisible();
 
+  await drawer.getByRole('button', { name: 'Notiz oder Foto hinzufügen' }).click();
+  const notesEditor = page.getByRole('textbox', { name: 'Notizen' });
+  await notesEditor.fill('Offene Notiz beim Größenwechsel');
+  await page.setViewportSize({ width: 850, height: 900 });
+  await expect(notesEditor).toHaveText('Offene Notiz beim Größenwechsel');
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+  await page.getByRole('button', { name: 'Verwerfen', exact: true }).click();
+  await expect(drawer.getByRole('heading', { name: cropName })).toBeVisible();
+
   await page.keyboard.press('Escape');
   await expect(drawer).toHaveCount(0);
   await expect(menuButton).toBeFocused();
@@ -108,6 +118,16 @@ test('desktop details preserve the table, restoring row focus on Escape, Close a
   await page.getByRole('button', { name: 'Zurück zur Tabelle' }).click();
   await expect(search).toHaveValue('Details-Kohl');
   await expect(menuButton).toBeFocused();
+
+  await openMenu();
+  await menuItems.first().click();
+  await drawer.getByRole('link', { name: 'Zur Kultur' }).click();
+  await expect(page).toHaveURL(url => url.pathname === '/app/crops');
+  await page.goBack();
+  await expect(drawer.getByRole('heading', { name: cropName })).toBeVisible();
+  await drawer.getByRole('button', { name: 'Schließen' }).click();
+  await expect(search).toHaveValue('Details-Kohl');
+  await expect(cropHeader).toHaveAttribute('aria-sort', 'ascending');
 });
 
 test('direct links retain the original season and reuse the notes, task and area workflows', async ({ page, request }) => {

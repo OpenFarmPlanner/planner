@@ -51,13 +51,18 @@ export function ContextMenuActionItem({
     : color === 'primary'
       ? 'primary.main'
       : undefined;
+  const itemSx: SxProps<Theme> | undefined = disabledReason ? {
+    whiteSpace: 'normal',
+    '&.Mui-disabled': { opacity: 1 },
+    '& .MuiListItemIcon-root': { color: 'text.disabled' },
+  } : resolvedColor ? { color: resolvedColor } : undefined;
   const shouldRenderPlain = renderPlainWhenUnadorned && !icon && !shortcutHint && !emphasized && !disabledReason;
 
   if (shouldRenderPlain) {
     return (
       <MenuItem
         {...menuItemProps}
-        sx={mergeSx(resolvedColor ? { color: resolvedColor } : undefined, sx)}
+        sx={mergeSx(itemSx, sx)}
       >
         {label}
       </MenuItem>
@@ -69,7 +74,7 @@ export function ContextMenuActionItem({
       {...menuItemProps}
       aria-label={typeof label === 'string' && disabledReason ? label : menuItemProps['aria-label']}
       aria-description={disabledReason ?? menuItemProps['aria-description']}
-      sx={mergeSx(resolvedColor ? { color: resolvedColor } : undefined, sx)}
+      sx={mergeSx(itemSx, sx)}
     >
       {icon ? (
         <ListItemIcon sx={resolvedColor ? { color: resolvedColor } : undefined}>
@@ -82,10 +87,11 @@ export function ContextMenuActionItem({
         slotProps={{
           primary: {
             sx: {
-              color: resolvedColor,
+              color: disabledReason ? 'text.disabled' : resolvedColor,
               fontWeight: emphasized ? 600 : undefined,
             },
           },
+          secondary: { sx: { overflowWrap: 'anywhere' } },
         }}
       />
       {shortcutHint ? (
