@@ -146,6 +146,32 @@ class PerennialPlanningTest(ProjectApiTestCase):
         self.assertEqual(conflict.status, STATUS_CONFLICT)
         self.assertEqual(conflict.findings[0].earliest_year, 2032)
 
+    def test_capacity_preflight_uses_the_perennial_interval_after_a_crop_change(self):
+        original = self.plant(self.crop)
+        self.assertEqual(original.status_code, 201, original.data)
+        occupant = self.plant(self.crop, planting_date='2025-04-01', season=self.next_season.pk)
+        self.assertEqual(occupant.status_code, 201, occupant.data)
+        crop = self.perennial()
+        url = f'{PLANS}remaining-area/'
+        params = {
+            'bed_id': self.bed.pk, 'start_date': '2024-02-29', 'crop_id': crop.pk,
+            'exclude_plan_id': original.data['id'], 'end_date': '2024-03-10',
+        }
+        retargeted = self.client.get(url, params)
+        self.assertEqual(retargeted.status_code, 200, retargeted.data)
+        self.assertEqual(retargeted.data['end_date'], '2027-02-28')
+        self.assertEqual(retargeted.data['remaining_area_sqm'], 0)
+
+        edited = self.client.get(url, {**params, 'clearing_date': '2025-03-31'})
+        self.assertEqual(edited.status_code, 200, edited.data)
+        self.assertEqual(edited.data['end_date'], '2025-03-31')
+        self.assertEqual(edited.data['remaining_area_sqm'], 20)
+
+        for invalid_date in ('2024-02-28', '2024-02-31'):
+            with self.subTest(invalid_date=invalid_date):
+                invalid = self.client.get(url, {**params, 'clearing_date': invalid_date})
+                self.assertEqual(invalid.status_code, 400, invalid.data)
+
     def test_running_perennial_is_not_copied_or_forecast_again(self):
         response = self.plant(self.perennial())
         self.assertEqual(response.status_code, 201, response.data)

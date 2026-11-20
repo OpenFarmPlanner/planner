@@ -41,7 +41,7 @@ export function PerennialPlanDates({ plan, editable, onSaved, onDirtyChange }: P
       const area = Number(plan.area_usage_sqm);
       if (plan.bed && plan.planting_date && area > 0) {
         const { data: capacity } = await plantingPlanAPI.remainingArea({
-          bed_id: plan.bed, start_date: plan.planting_date, end_date: draft,
+          bed_id: plan.bed, start_date: plan.planting_date, clearing_date: draft,
           crop_id: plan.crop ?? undefined, exclude_plan_id: plan.id,
         });
         if (capacity.has_bed_area && capacity.remaining_area_sqm < area) {

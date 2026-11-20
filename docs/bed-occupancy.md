@@ -95,9 +95,12 @@ Only project admins can change it, like the other general project settings.
   bed occupancies (with species translations for the crop labels) are loaded
   with a constant number of queries, pinned in
   `farm/tests/test_api_query_counts.py`.
-- `GET /planting-plans/remaining-area/?bed_id&start_date[&end_date][&harvest_start_date][&crop_id][&exclude_plan_id][&area_sqm]`
+- `GET /planting-plans/remaining-area/?bed_id&start_date[&end_date][&clearing_date][&harvest_start_date][&crop_id][&exclude_plan_id][&area_sqm]`
   is the save check. Without `end_date`/`harvest_start_date` the backend
-  derives them from the crop's timing. It returns the free area in the plan's
+  derives them from the crop's timing. Perennials use `clearing_date` for a
+  proposed removal date, then the matching plan's saved removal date or the
+  date suggested by its lifespan. `end_date` remains the annual harvest
+  boundary. The response includes the free area in the plan's
   firm stage (`remaining_area_sqm`), the plan's `harvest_overlaps` (needs
   `area_sqm`) and `succession_limit` — the previous crop's label, harvest
   start, the minimum gap and the earliest follow-up date — for the error

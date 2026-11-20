@@ -53,17 +53,17 @@ logger = logging.getLogger(__name__)
 def _parse_remaining_area_params(query_params) -> tuple[dict | None, str | None]:
     """Parse/validate the remaining-area query parameters.
 
-    ``bed_id`` and ``start_date`` are required. Without ``end_date`` the period
-    ends where a saved plan of ``crop_id`` would end (its effective harvest
-    end), else on ``start_date``; without ``harvest_start_date`` the harvest
-    starts where it would for ``crop_id``. ``area_sqm`` (the plan's area) is
-    only needed for the harvest overlaps.
+    ``bed_id`` and ``start_date`` are required. Without ``end_date`` an annual
+    plan uses its effective harvest end. A perennial uses ``clearing_date``,
+    its saved removal date, or the suggested removal date from its lifespan.
+    ``area_sqm`` (the plan's area) is only needed for harvest overlaps.
 
     Returns (params, None) on success or (None, error_detail) on failure.
     """
     bed_id_param = query_params.get('bed_id')
     start_date_param = query_params.get('start_date')
     end_date_param = query_params.get('end_date')
+    clearing_date_param = query_params.get('clearing_date')
 
     if not bed_id_param or not start_date_param:
         return None, 'bed_id and start_date are required.'
@@ -77,6 +77,13 @@ def _parse_remaining_area_params(query_params) -> tuple[dict | None, str | None]
     end_date = parse_date(end_date_param) if end_date_param else None
     if start_date is None or (end_date_param and end_date is None):
         return None, 'start_date and end_date must use YYYY-MM-DD format.'
+
+    try:
+        clearing_date = parse_date(clearing_date_param) if clearing_date_param else None
+    except ValueError:
+        clearing_date = None
+    if clearing_date_param and clearing_date is None:
+        return None, 'clearing_date must use YYYY-MM-DD format.'
 
     harvest_start_param = query_params.get('harvest_start_date')
     harvest_start_date = parse_date(harvest_start_param) if harvest_start_param else None
@@ -97,6 +104,7 @@ def _parse_remaining_area_params(query_params) -> tuple[dict | None, str | None]
         'bed_id': bed_id,
         'start_date': start_date,
         'end_date': end_date,
+        'clearing_date': clearing_date,
         'harvest_start_date': harvest_start_date,
         'exclude_plan_id': exclude_plan_id,
         'crop_id': crop_id,
@@ -405,7 +413,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         capacity rule (farm/services/bed_capacity.py) as the bed options and
         suggestions of ``bed-suggestions``.
 
-        :param request: DRF request with bed_id, start_date and optional end_date, crop_id and exclude_plan_id.
+        :param request: DRF request with a bed, start date and optional harvest or removal dates.
         :return: Remaining area payload for the requested bed and interval.
         """
         active_project = request.active_project
@@ -441,14 +449,19 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         perennial = bool(saved_end) or (
             resolve_crop_field(crop, 'life_cycle', crop_index) == 'perennial'
         )
-        suggested_end = draft.suggested_clearing_date(crop_index) if perennial else None
-        end_date = (
-            params['end_date'] or saved_end or suggested_end or harvest_end
-            or harvest_start or start_date
-        )
+        requested_end = params['end_date']
+        if perennial:
+            requested_end = params['clearing_date']
+            saved_end = saved_end or draft.suggested_clearing_date(crop_index)
+        end_date = requested_end or saved_end or harvest_end or harvest_start or start_date
         if end_date < start_date:
-            if params['end_date'] is not None:
-                return api_error_response(code='invalid_remaining_area_interval', detail='end_date must be greater than or equal to start_date.', status_code=status.HTTP_400_BAD_REQUEST)
+            if requested_end is not None:
+                field = 'clearing_date' if perennial else 'end_date'
+                return api_error_response(
+                    code='invalid_remaining_area_interval',
+                    detail=f'{field} must be greater than or equal to start_date.',
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
             end_date = start_date
         harvest_start_date = None if perennial else params['harvest_start_date'] or harvest_start
 
