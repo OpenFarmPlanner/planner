@@ -151,6 +151,26 @@
       "done": "Planting plan available"
     }
   },
+  "capacity": {
+    "show": "Show free areas",
+    "details": "Bed capacity for {{bed}}",
+    "estimate": "Estimate based on the bed area and planned occupancy dates.",
+    "available": "{{free}} m² free of {{total}} m² · {{used}} m² used",
+    "overallocated": "Bed capacity exceeded. {{used}} m² used on a {{total}} m² bed.",
+    "minimumOverallocated": "Bed capacity exceeded. At least {{used}} m² used on a {{total}} m² bed.",
+    "used": "{{used}} m² used",
+    "minimumUsed": "At least {{used}} m² used",
+    "total": "{{total}} m² bed area",
+    "unknownBed": "Bed area unknown",
+    "incomplete": "Free area unknown · {{total}} · {{used}}",
+    "status": {
+      "free": "Fully free",
+      "partial": "Partly free",
+      "occupied": "Fully occupied",
+      "unknown": "Unknown",
+      "overallocated": "Over capacity"
+    }
+  },
   "emptyStates": {
     "requirementsTitle": "No crop planning possible yet",
     "requirementsDescription": "Open Fields & Beds and add a field to the appropriate location there. Afterwards you can record beds, crops, and planting plans.",

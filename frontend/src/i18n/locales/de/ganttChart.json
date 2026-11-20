@@ -151,6 +151,26 @@
       "done": "Anbauplan vorhanden"
     }
   },
+  "capacity": {
+    "show": "Freie Flächen anzeigen",
+    "details": "Flächenverfügbarkeit für {{bed}}",
+    "estimate": "Schätzung anhand der Beetfläche und der geplanten Belegungszeiträume.",
+    "available": "{{free}} m² frei von {{total}} m² · {{used}} m² belegt",
+    "overallocated": "Beetfläche überschritten. {{used}} m² belegt bei {{total}} m² Beetfläche.",
+    "minimumOverallocated": "Beetfläche überschritten. Mindestens {{used}} m² belegt bei {{total}} m² Beetfläche.",
+    "used": "{{used}} m² belegt",
+    "minimumUsed": "Mindestens {{used}} m² belegt",
+    "total": "{{total}} m² Beetfläche",
+    "unknownBed": "Beetfläche unbekannt",
+    "incomplete": "Freie Fläche unbekannt · {{total}} · {{used}}",
+    "status": {
+      "free": "Ganz frei",
+      "partial": "Teilweise frei",
+      "occupied": "Voll belegt",
+      "unknown": "Unbekannt",
+      "overallocated": "Fläche überschritten"
+    }
+  },
   "emptyStates": {
     "requirementsTitle": "Noch keine Anbauplanung möglich",
     "requirementsDescription": "Öffne die Anbauflächen und füge dort eine Parzelle beim passenden Standort hinzu. Danach kannst du Beete, Kulturen und Anbaupläne erfassen.",

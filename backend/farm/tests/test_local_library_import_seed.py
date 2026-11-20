@@ -10,6 +10,7 @@ from django.db import connection
 from django.test import TestCase, override_settings
 
 from crops.models import CropSpecies
+from farm.history.project_restore import CHECKPOINT_KEY
 from farm.models import Crop, CropCompanion, PlantingPlan, Project, ProjectMembership, PublicCrop
 
 
@@ -41,6 +42,37 @@ class LocalLibraryImportSeedTests(TestCase):
 
     def seed(self, **options):
         call_command("seed_library_import_acceptance", **{**self.arguments, **options})
+
+    def test_bed_capacity_fixture_previews_and_preserves_manual_edits(self):
+        command = 'seed_bed_capacity_acceptance'
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        call_command(command, **arguments)
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before))
+        with self.assertRaisesMessage(CommandError, 'does not match'):
+            call_command(command, apply=True, **{**arguments, 'database_name': 'wrong-target'})
+
+        call_command(command, apply=True, **arguments)
+        project = Project.objects.get(slug=f'ofp-local-bed-capacity-{self.user.pk}')
+        bed = project.beds.get(name='Carrot and lettuce')
+        first, second = project.planting_plans.filter(bed=bed).order_by('planting_date')
+        self.assertEqual((bed.area_sqm, first.area_usage_sqm, second.area_usage_sqm), (10, 5, 3))
+        self.assertGreater(first.occupancy_end_date, second.planting_date)
+        unmeasured = project.planting_plans.get(bed__name='Unmeasured planting')
+        self.assertIsNone(unmeasured.area_usage_sqm)
+        self.assertFalse(project.beds.get(name='Unused bed').planting_plans.exists())
+        checkpoints = project.entity_revisions.filter(
+            entity_type='project', snapshot__has_key=CHECKPOINT_KEY,
+        )
+        self.assertEqual(checkpoints.count(), 1)
+
+        first.notes = 'Keep the manual edit'
+        first.save(update_fields=['notes'])
+        call_command(command, apply=True, **arguments)
+        first.refresh_from_db()
+        self.assertEqual(first.notes, 'Keep the manual edit')
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before) + 1)
+        self.assertEqual(project.planting_plans.count(), 3)
+        self.assertEqual(checkpoints.count(), 1)
 
     def test_crop_site_fixture_is_previewed_and_preserves_manual_edits(self):
         command = 'seed_crop_site_acceptance'

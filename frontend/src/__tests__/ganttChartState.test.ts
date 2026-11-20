@@ -209,6 +209,10 @@ describe('dates', () => {
       .toEqual(new Date(Date.UTC(2026, 5, 1)));
   });
 
+  it('restores the first calendar day against local column boundaries', () => {
+    expect(getStoredReferenceDate({ referenceDate: '2026-01-01' }, start, end, true)).toEqual(start);
+  });
+
   it('falls back to today, clamped into the season', () => {
     const initial = getInitialTimelineReferenceDate(null, start, end);
     expect(initial >= start && initial <= end).toBe(true);

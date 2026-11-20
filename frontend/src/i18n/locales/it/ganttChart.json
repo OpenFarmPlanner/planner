@@ -151,6 +151,26 @@
       "done": "Serie disponibile"
     }
   },
+  "capacity": {
+    "show": "Mostra superfici libere",
+    "details": "Superficie disponibile per {{bed}}",
+    "estimate": "Stima basata sulla superficie dell’aiuola e sui periodi di occupazione previsti.",
+    "available": "{{free}} m² liberi su {{total}} m² · {{used}} m² occupati",
+    "overallocated": "Capacità superata. {{used}} m² occupati in un’aiuola di {{total}} m².",
+    "minimumOverallocated": "Capacità superata. Almeno {{used}} m² occupati in un’aiuola di {{total}} m².",
+    "used": "{{used}} m² occupati",
+    "minimumUsed": "Almeno {{used}} m² occupati",
+    "total": "Aiuola di {{total}} m²",
+    "unknownBed": "Superficie dell’aiuola sconosciuta",
+    "incomplete": "Superficie libera sconosciuta · {{total}} · {{used}}",
+    "status": {
+      "free": "Del tutto libera",
+      "partial": "Parzialmente libera",
+      "occupied": "Del tutto occupata",
+      "unknown": "Sconosciuta",
+      "overallocated": "Capacità superata"
+    }
+  },
   "emptyStates": {
     "requirementsTitle": "Pianificazione colturale non ancora possibile",
     "requirementsDescription": "Apri Superfici coltivate e aggiungi un appezzamento al sito appropriato. Potrai poi inserire aiuole, colture e serie.",

@@ -1,26 +1,16 @@
 import type { TFunction } from 'i18next';
 import type { Bed, Crop, Field, Location, PlantingPlan } from '../api/types';
+import type { Task } from '../gantt-chart/src/types';
 import { formatLocalizedNumber, getActiveFormattingLocale } from '../utils/numberLocalization';
 import { addUtcDays, formatIsoDate, parseIsoDate } from '../utils/isoDate';
 import { formatCropDisplayName, getCropDisplayName } from '../crops/cropDisplay';
 import { getGanttPhaseColors } from '../utils/colorContrast';
 import { getPlanSowingSchedule } from './planSowingDate';
 
-export interface GanttTask {
-  id: string;
-  name: string;
-  startDate: Date;
-  endDate: Date;
-  color?: string;
-  percent?: number;
-  dependencies?: string[];
+export interface GanttTask extends Task {
   plantingPlanId?: number;
-  readOnly?: boolean;
-  accessibleLabel?: string;
   originSeasonId?: number;
   originSeasonLabel?: string | null;
-  /** Shared by all phase bars of one planting plan so they are dragged as one unit. */
-  linkGroupId?: string;
   cropName?: string;
   cropVariety?: string;
   areaUsage?: number;
@@ -32,8 +22,6 @@ export interface GanttTask {
   clearingDate?: Date;
   /** The day a follow-up crop takes over the bed, before the planned harvest end. */
   actualHarvestEndDate?: Date;
-  /** Share of the bar drawn faded from its end; see the Gantt library's `Task`. */
-  fadedTailFraction?: number;
   propagationStartDate?: Date;
   propagationDurationDays?: number;
   transplantDate?: Date;
@@ -784,6 +772,7 @@ export function buildFieldOccupancyHierarchy({
         name: cropLabel,
         startDate: plantingDate,
         endDate: harvestStartDate,
+        endDateIsExclusive: harvestEndDate > harvestStartDate,
         color: phaseColors.growth,
         percent: 100,
         plantingPlanId: plan.id,
