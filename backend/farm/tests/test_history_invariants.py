@@ -461,6 +461,72 @@ class HistoryRoundTripScenarioTests(HistoryInvariantTestCase):
 
 
 class HistoryGroupedOperationRoundTripTests(HistoryInvariantTestCase):
+    def test_restore_before_spreadsheet_and_library_imports_replays_complete_state(self) -> None:
+        season = self.write('existing season', 'post', '/seasons/', {
+            'start_date': '2026-01-01', 'end_date': '2026-12-31',
+        })['id']
+        existing = self.write('existing crop', 'post', '/crops/', {'name': 'Lettuce'})['id']
+        location = self.write('existing location', 'post', '/locations/', {'name': 'Garden'})['id']
+        field = self.write('existing field', 'post', '/fields/', {
+            'name': 'Field', 'location': location,
+        })['id']
+        bed = self.write('existing bed', 'post', '/beds/', {
+            'name': 'Bed', 'field': field, 'area_sqm': 20,
+        })['id']
+        self.write('existing planting plan', 'post', '/planting-plans/', {
+            'crop': existing, 'bed': bed, 'season': season,
+            'planting_date': '2026-03-15', 'area_usage_sqm': 5,
+        })
+        target = self.versions[-1]
+
+        import_id = str(uuid4())
+        for phase, items in (
+            ('crops', [
+                {'name': 'Spreadsheet basil'}, {'name': 'Spreadsheet basil', 'variety': 'Green'},
+            ]),
+            ('finalize', []),
+        ):
+            self.write(f'spreadsheet {phase}', 'post', '/crops/import/apply/', {
+                'items': items, 'phase': phase, 'import_operation_id': import_id,
+            })
+        sheet = Crop.objects.filter(project=self.project, name='Spreadsheet basil').order_by('pk')
+        self.assertEqual(list(sheet.values_list('variety', flat=True)), ['', 'Green'])
+        species = CropSpecies.objects.create(name='History library herb')
+        public_ids, imported = [], []
+        for variety in ('', 'Purple'):
+            public = PublicCrop.objects.create(
+                name='History library herb', variety=variety, crop_species=species,
+                status=PublicCrop.STATUS_PUBLISHED, created_by=self.user,
+            )
+            public_ids.append(public.pk)
+            result = self.write('library import', 'post', f'/public-crops/{public.pk}/import/', {})
+            imported.append(result['crop']['id'])
+
+        later_bed = self.write('later bed', 'post', '/beds/', {
+            'name': 'Later bed', 'field': field, 'area_sqm': 20,
+        })['id']
+        for crop in (sheet.last().pk, imported[-1]):
+            self.write('later planting plan', 'post', '/planting-plans/', {
+                'crop': crop, 'bed': later_bed, 'season': season,
+                'planting_date': '2026-04-15', 'area_usage_sqm': 5,
+            })
+
+        batch = BatchOperation.objects.get(request_id=import_id)
+        before_counts = self.history_counts()
+        refused = self.client.post(f'{API}/history/batch/{batch.pk}/revert/')
+        self.assert_refusal_is_atomic(refused.status_code, self.versions[-1].state, before_counts)
+        originals = PublicCrop.objects.filter(pk__in=public_ids).order_by('pk')
+        public_state = list(originals.values())
+        revisions = EntityRevision.objects.filter(project=self.project).values_list('pk', flat=True)
+        audit_ids = set(revisions)
+
+        self.assertEqual(self.restore(target.revision), 200)
+        self.assert_state(target.state, 'full restore did not match the pre-import version')
+        active_crops = Crop.objects.filter(project=self.project).values_list('pk', flat=True)
+        self.assertEqual(list(active_crops), [existing])
+        self.assertEqual(list(originals.values()), public_state)
+        self.assertEqual(EntityRevision.objects.filter(pk__in=audit_ids).count(), len(audit_ids))
+
     def test_import_undo_and_its_backup_restore_exactly(self) -> None:
         self.write(
             'create existing crop',
