@@ -191,9 +191,10 @@ class PlantingPlanApiTest(ProjectApiTestCase):
                     planting_plan_id=plan_id, source_key__endswith=':event:sowing',
                 )
 
-                changed = self.client.patch(f'/openfarmplanner/api/planting-plans/{plan_id}/', {
-                    'cultivation_type': cultivation,
-                })
+                data = {'cultivation_type': cultivation}
+                if cultivation == PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT:
+                    data['planned_sowing_date'] = '2024-02-11'
+                changed = self.client.patch(f'/openfarmplanner/api/planting-plans/{plan_id}/', data)
 
                 self.assertEqual(changed.status_code, 200, changed.data)
                 self.assertIsNone(changed.data['planned_propagation_start_date'])

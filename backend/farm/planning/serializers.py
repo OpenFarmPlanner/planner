@@ -326,14 +326,28 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
     def update(self, instance: PlantingPlan, validated_data: dict[str, Any]) -> PlantingPlan:
         if not self.is_actual_date_update(validated_data):
             cultivation = validated_data.get('cultivation_type', instance.cultivation_type)
-            if cultivation != instance.cultivation_type:
-                # The supplemental dates describe the former cultivation method.
-                # Dates sent in the same request describe the new method and are kept.
-                for field in (
-                    'planned_propagation_start_date', 'planned_sowing_date',
-                    'planned_transplanting_date',
-                ):
-                    validated_data.setdefault(field, None)
+            crop_changed = 'crop' in validated_data and validated_data['crop'] != instance.crop
+            if crop_changed:
+                validated_data.update(
+                    harvest_date_is_explicit=False, harvest_end_date_is_explicit=False,
+                )
+            if crop_changed or cultivation != instance.cultivation_type:
+                # Keep new dates supplied for an activity of the new method.
+                own_propagation = cultivation == 'pre_cultivation'
+                direct_sowing = cultivation == 'direct_sowing'
+                validated_data.update(
+                    planned_propagation_start_date=(
+                        validated_data.get('planned_propagation_start_date')
+                        if own_propagation else None
+                    ),
+                    planned_sowing_date=(
+                        validated_data.get('planned_sowing_date') if own_propagation else None
+                    ),
+                    planned_transplanting_date=(
+                        validated_data.get('planned_transplanting_date')
+                        if direct_sowing else None
+                    ),
+                )
             return super().update(instance, validated_data)
         for field, value in validated_data.items():
             setattr(instance, field, value)

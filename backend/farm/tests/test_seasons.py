@@ -11,6 +11,7 @@ from django.test.utils import CaptureQueriesContext
 
 from farm.models import (
     BatchOperation,
+    Crop,
     EntityRevision,
     PlantingPlan,
     Project,
@@ -1172,6 +1173,15 @@ class SeasonApiTest(ProjectApiTestCase):
             self.assertEqual(plan['harvest_end_date'], '2027-06-10')
             self.assertIsNone(plan['actual_harvest_start_date'])
             self.assertIsNone(plan['recorded_harvest_end_date'])
+
+        replacement = Crop.objects.create(
+            project=self.project, name='New crop', cultivation_type='direct_sowing',
+            growth_duration_days=10, harvest_duration_days=3,
+        )
+        changed_crop = self.client.patch(url, {'crop': replacement.pk})
+        self.assertEqual(changed_crop.status_code, 200, changed_crop.data)
+        self.assertEqual(changed_crop.json()['harvest_date'], '2027-03-12')
+        self.assertEqual(changed_crop.json()['harvest_end_date'], '2027-03-15')
 
     def test_create_and_copy_revalidates_the_source_before_writing_either_result(self):
         earlier = Season.objects.create(
