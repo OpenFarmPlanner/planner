@@ -27,6 +27,7 @@ from farm.models import (
     Season,
     SeasonPattern,
     SeedPackage,
+    Supplier,
 )
 from farm.services.crop_inheritance import lock_crop_project
 from farm.services.crop_media import reconcile_media_orphans
@@ -573,6 +574,9 @@ def _write_target_rows(
                 values = {
                     key: value for key, value in row.items() if key not in {"id", *_TIMESTAMPS}
                 }
+                # Supplier unlink undo can recreate these IDs with a different creation time.
+                if model in (Supplier, CropSupplierData) and "created_at" in row:
+                    values["created_at"] = row["created_at"]
                 if "updated_at" in row:
                     values["updated_at"] = timezone.now()
                 manager.filter(project=project, pk=pk).update(**values)

@@ -3,13 +3,13 @@
 import json
 from decimal import Decimal
 
-import pytest
 from django.utils import timezone
 from rest_framework import status
 
 from farm.models import (
     Crop,
     CropSupplierData,
+    EntityRevision,
     Project,
     ProjectMembership,
     Supplier,
@@ -148,9 +148,6 @@ class SupplierApiTest(ProjectApiTestCase):
         self.assertEqual(restored.name, self.supplier.name)
         self.assertEqual(restored.homepage_url, self.supplier.homepage_url)
 
-    @pytest.mark.history_gap(
-        issue=1204, reason='copied beds or restored supplier data record no revision',
-    )
     def test_restore_ignores_invalid_seed_status_values_in_undo_payload(self):
         """Client-supplied undo payloads must not store values outside the seed status choices."""
         delete_response = self.client.delete(f'/openfarmplanner/api/suppliers/{self.supplier.id}/')
@@ -483,9 +480,6 @@ class SupplierUnlinkAndRestoreTest(ProjectApiTestCase):
 
         self.assertEqual(other_crop.supplier_id, other_supplier.id)
 
-    @pytest.mark.history_gap(
-        issue=1204, reason='copied beds or restored supplier data record no revision',
-    )
     def test_the_endpoint_round_trip_restores_the_links_and_the_data_row(self):
         undo_payload = self.client.post(
             f'/openfarmplanner/api/suppliers/{self.supplier.id}/unlink-and-delete/'
@@ -510,9 +504,6 @@ class SupplierUnlinkAndRestoreTest(ProjectApiTestCase):
         self.assertEqual(restored_row.seed_exemption_status, 'approved')
         self.assertEqual(restored_row.germination_rate, 85)
 
-    @pytest.mark.history_gap(
-        issue=1204, reason='copied beds or restored supplier data record no revision',
-    )
     def test_legacy_undo_payload_defaults_seed_statuses(self) -> None:
         response = self.client.post(
             f'/openfarmplanner/api/suppliers/{self.supplier.id}/unlink-and-delete/'
@@ -528,6 +519,45 @@ class SupplierUnlinkAndRestoreTest(ProjectApiTestCase):
         restored = CropSupplierData.objects.get(supplier_id=self.supplier.id)
         self.assertEqual(restored.seed_status, 'unknown')
         self.assertEqual(restored.seed_exemption_status, 'unknown')
+
+    def test_undo_keeps_a_skipped_offer_absent_in_the_completed_version(self) -> None:
+        foreign_project = Project.objects.create(name='Other', slug='other-supplier-restore')
+        foreign_crop = Crop.objects.create(name='Foreign', project=foreign_project)
+        deleted = self.client.post(
+            f'/openfarmplanner/api/suppliers/{self.supplier.id}/unlink-and-delete/',
+        )
+        payload = deleted.data['undo_payload']
+        payload['crop_ids'].append(foreign_crop.pk)
+        payload['supplier_data'][0]['crop_id'] = foreign_crop.pk
+
+        result = self.client.post(
+            '/openfarmplanner/api/suppliers/restore-unlinked-delete/', payload, format='json',
+        )
+        self.assertEqual(result.status_code, status.HTTP_200_OK)
+        self.assertEqual(result.data['restored_crop_count'], 1)
+        self.assertEqual(result.data['restored_supplier_data_count'], 0)
+        self.assertFalse(CropSupplierData.objects.filter(pk=self.data_row.pk).exists())
+        foreign_crop.refresh_from_db()
+        self.assertIsNone(foreign_crop.supplier_id)
+
+    def test_failed_undo_rolls_back_links_offers_and_history(self) -> None:
+        deleted = self.client.post(
+            f'/openfarmplanner/api/suppliers/{self.supplier.id}/unlink-and-delete/',
+        )
+        payload = deleted.data['undo_payload']
+        payload['supplier_data'].append(payload['supplier_data'][0].copy())
+        history_count = EntityRevision.objects.filter(project=self.project).count()
+
+        result = self.client.post(
+            '/openfarmplanner/api/suppliers/restore-unlinked-delete/', payload, format='json',
+        )
+        self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Supplier.objects.filter(pk=self.supplier.pk).exists())
+        self.assertFalse(CropSupplierData.objects.filter(pk=self.data_row.pk).exists())
+        self.linked_crop.refresh_from_db()
+        self.assertIsNone(self.linked_crop.supplier_id)
+        self.assertIsNone(self.linked_crop.selected_seed_demand_supplier_id)
+        self.assertEqual(EntityRevision.objects.filter(project=self.project).count(), history_count)
 
 
 class NormalizeNewSupplierPayloadTests(ProjectApiTestCase):

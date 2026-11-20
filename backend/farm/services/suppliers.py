@@ -4,15 +4,17 @@ Business logic for the supplier endpoints; the viewset only parses requests,
 wraps transactions/revision recording, and maps domain errors to responses.
 """
 
+from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+from typing import Protocol
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import URLValidator
 from django.db import IntegrityError, models, transaction
 
-from farm.models import Crop, CropSupplierData, Supplier
+from farm.models import Crop, CropSupplierData, EntityRevision, Project, Supplier
 from farm.utils import normalize_supplier_name
 
 SUPPLIER_NAME_REQUIRED_MESSAGE = 'Dieses Feld ist erforderlich.'
@@ -131,14 +133,48 @@ def build_delete_undo_payload(supplier: Supplier) -> dict[str, object]:
     }
 
 
-def unlink_supplier_references(supplier: Supplier) -> None:
+class SupplierRelationRecorder(Protocol):
+    def __call__(
+        self, instance: Crop | CropSupplierData, action: str, /, *,
+        changed_fields: list[str] | None = None,
+    ) -> None: ...
+
+
+def _set_crop_supplier_references(
+    project: Project,
+    references: dict[str, models.QuerySet[Crop]],
+    supplier: Supplier | None,
+    record_related: SupplierRelationRecorder | None,
+) -> int:
+    changed_fields: dict[int, list[str]] = defaultdict(list)
+    for field, crops in references.items():
+        changed_ids = list(crops.values_list('pk', flat=True))
+        if changed_ids:
+            crops.update(**{field: supplier})
+        for pk in changed_ids:
+            changed_fields[pk].append(f'{field}_id')
+    if record_related and changed_fields:
+        for crop in Crop.all_objects.filter(project=project, pk__in=changed_fields).iterator():
+            record_related(
+                crop, EntityRevision.ACTION_UPDATED, changed_fields=changed_fields[crop.pk],
+            )
+    return len(changed_fields)
+
+
+def unlink_supplier_references(
+    supplier: Supplier, *, record_related: SupplierRelationRecorder | None = None,
+) -> None:
     """Detach all crop references to the supplier and drop its data rows."""
-    Crop.all_objects.filter(project=supplier.project, supplier=supplier).update(supplier=None)
-    Crop.all_objects.filter(
-        project=supplier.project,
-        selected_seed_demand_supplier=supplier,
-    ).update(selected_seed_demand_supplier=None)
-    CropSupplierData.objects.filter(project=supplier.project, supplier=supplier).delete()
+    crops = Crop.all_objects.filter(project=supplier.project)
+    _set_crop_supplier_references(supplier.project, {
+        'supplier': crops.filter(supplier=supplier),
+        'selected_seed_demand_supplier': crops.filter(selected_seed_demand_supplier=supplier),
+    }, None, record_related)
+    offers = CropSupplierData.objects.filter(project=supplier.project, supplier=supplier)
+    if record_related:
+        for offer in offers.select_related('crop').iterator():
+            record_related(offer, EntityRevision.ACTION_DELETED)
+    offers.delete()
 
 
 @dataclass
@@ -150,9 +186,10 @@ class SupplierRestoreResult:
 
 def restore_unlinked_supplier(
     *,
-    project,
+    project: Project,
     payload: dict,
     record_restore: Callable[[Supplier], None],
+    record_related: SupplierRelationRecorder | None = None,
 ) -> SupplierRestoreResult:
     """Recreate a supplier (with its original id) from an unlink-and-delete undo payload.
 
@@ -188,24 +225,32 @@ def restore_unlinked_supplier(
                 slug=str(supplier_payload.get('slug') or ''),
                 allowed_domains=supplier_payload.get('allowed_domains') or [],
             )
-            Crop.all_objects.filter(project=project, id__in=crop_ids).update(supplier=supplier)
-            Crop.all_objects.filter(
-                project=project,
-                id__in=seed_demand_crop_ids,
-            ).update(selected_seed_demand_supplier=supplier)
+            crops = Crop.all_objects.filter(project=project)
+            restored_crop_count = _set_crop_supplier_references(project, {
+                'supplier': crops.filter(pk__in=crop_ids),
+                'selected_seed_demand_supplier': crops.filter(pk__in=seed_demand_crop_ids),
+            }, supplier, record_related)
 
             restored_supplier_data_count = 0
             for row_payload in supplier_data_rows:
-                if _restore_supplier_data_row(project, supplier, row_payload):
-                    restored_supplier_data_count += 1
+                offer = _restore_supplier_data_row(project, supplier, row_payload)
+                if offer is None:
+                    continue
+                restored_supplier_data_count += 1
+                if record_related:
+                    action = (
+                        EntityRevision.ACTION_CREATED if row_payload.get('id') is None
+                        else EntityRevision.ACTION_RESTORED
+                    )
+                    record_related(offer, action)
 
             record_restore(supplier)
-    except (IntegrityError, ValueError) as exc:
+    except (IntegrityError, InvalidOperation, ValueError) as exc:
         raise SupplierRestoreFailedError() from exc
 
     return SupplierRestoreResult(
         supplier=supplier,
-        restored_crop_count=len(set(crop_ids) | set(seed_demand_crop_ids)),
+        restored_crop_count=restored_crop_count,
         restored_supplier_data_count=restored_supplier_data_count,
     )
 
@@ -215,17 +260,22 @@ def _choice_or_unknown(value: object, choices: type[models.TextChoices]) -> str:
     return value if isinstance(value, str) and value in choices.values else 'unknown'
 
 
-def _restore_supplier_data_row(project, supplier: Supplier, row_payload: object) -> bool:
+def _restore_supplier_data_row(
+    project: Project, supplier: Supplier, row_payload: object,
+) -> CropSupplierData | None:
     """Recreate one CropSupplierData row from the undo payload; skip invalid rows."""
     if not isinstance(row_payload, dict):
-        return False
+        return None
+    row_id = row_payload.get('id')
+    if row_id is not None and (type(row_id) is not int or row_id <= 0):
+        return None
     crop_id = row_payload.get('crop_id')
     if not isinstance(crop_id, int):
-        return False
+        return None
     if not Crop.all_objects.filter(project=project, pk=crop_id).exists():
-        return False
-    CropSupplierData.objects.create(
-        id=row_payload.get('id') if isinstance(row_payload.get('id'), int) else None,
+        return None
+    return CropSupplierData.objects.create(
+        id=row_id,
         crop_id=crop_id,
         supplier=supplier,
         project=project,
@@ -252,7 +302,6 @@ def _restore_supplier_data_row(project, supplier: Supplier, row_payload: object)
         notes=str(row_payload.get('notes') or ''),
         source_url=str(row_payload.get('source_url') or ''),
     )
-    return True
 
 
 def normalize_new_supplier_payload(

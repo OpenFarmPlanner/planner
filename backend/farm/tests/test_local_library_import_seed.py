@@ -74,6 +74,37 @@ class LocalLibraryImportSeedTests(TestCase):
         self.assertEqual(project.planting_plans.count(), 3)
         self.assertEqual(checkpoints.count(), 1)
 
+    def test_structure_supplier_fixture_has_a_complete_repeat_safe_baseline(self):
+        command = 'seed_structure_supplier_history_acceptance'
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        call_command(command, **arguments)
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before))
+        with self.assertRaisesMessage(CommandError, 'does not match'):
+            call_command(command, apply=True, **{**arguments, 'database_name': 'wrong-target'})
+
+        call_command(command, apply=True, **arguments)
+        project = Project.objects.get(slug=f'ofp-local-structure-supplier-history-{self.user.pk}')
+        field = project.fields.get(name='North field')
+        self.assertEqual(set(field.beds.values_list('name', flat=True)), {'North 1', 'North 2'})
+        crop = project.crops.get(name='Lettuce')
+        offer = crop.supplier_data.get()
+        self.assertEqual(offer.supplier_id, crop.selected_seed_demand_supplier_id)
+        self.assertEqual(
+            (offer.seed_status, offer.seed_exemption_status), ('conventional', 'approved'),
+        )
+        checkpoints = project.entity_revisions.filter(
+            entity_type='project', snapshot__has_key=CHECKPOINT_KEY,
+        )
+        self.assertEqual(checkpoints.count(), 1)
+
+        field.notes = 'Keep my edit'
+        field.save(update_fields=['notes'])
+        call_command(command, apply=True, **arguments)
+        field.refresh_from_db()
+        self.assertEqual(field.notes, 'Keep my edit')
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before) + 1)
+        self.assertEqual(checkpoints.count(), 1)
+
     def test_crop_site_fixture_is_previewed_and_preserves_manual_edits(self):
         command = 'seed_crop_site_acceptance'
         arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
