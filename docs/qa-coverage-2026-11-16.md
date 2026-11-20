@@ -81,3 +81,36 @@ why catching the database exception alone cannot enforce logical identity.
 
 Detailed reproduction and commands are in
 [the audit report](qa-archive/qa-report-2026-11-16.md).
+
+## Targeted library restore acceptance — 2026-11-20
+
+Tested #1099 / merged PR #1285 on main
+`b8b45bb615f5bb715029a17b22fdb676e04cd85f` using real Chrome through
+Playwright on localhost. This narrow acceptance test does not advance the full
+sweep baseline or satisfy #1232; the outstanding backlog above remains.
+
+- Isolated file-backed SQLite database, backend `127.0.0.1:8299`, Vite frontend
+  `127.0.0.1:5299`; existing servers and user data were not changed.
+- Created three synthetic accounts: established editor, new contributor and a
+  separate moderator with the library moderator permission. Recorded Terms
+  acceptance and explicit established trust for the editor/moderator only.
+- Previewed the actual database target, then applied the guarded
+  `seed_library_import_acceptance --include-variety-selection` command. Used
+  its synthetic Nantaise 2 published variety and recorded its initial revision.
+- **Pass:** established editor saved a Notes edit through the UI, producing
+  version 2 (PATCH 200). The new contributor selected version 1 under Versions;
+  the UI confirmed pending approval and POST revert returned 202. A fresh GET
+  still showed version 2 and the editor's Notes.
+- **Pass:** moderator opened the contribution review, which identified source
+  version 1 and the proposed Notes. Approval returned 200. A fresh GET showed
+  the original Notes and version 3; a browser reload showed
+  “Aus Version 1 wiederhergestellt” on the current version.
+- Inspected screenshots at 1440×900, 375×800 and 800×375. The restore history is
+  visible at each size. Found clipped phone history actions and raw cultivation
+  field names/enum values; reproduced both on two fresh page navigations and
+  filed [#1346](https://github.com/OpenFarmPlanner/planner/issues/1346), P3.
+  These presentation issues do not invalidate the restore acceptance result.
+- Local evidence: `/tmp/ofp-1099-acceptance/` contains the throwaway Playwright
+  scripts, result JSON, proposal response, screenshots and three role traces.
+  Credentials and database contents are not committed. No application changes,
+  deployment, full test suite or owner acceptance checkbox changes were made.
