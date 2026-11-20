@@ -26,7 +26,7 @@ from farm.models import (
     SeasonPattern,
     SeedPackage,
 )
-from farm.services.crop_inheritance import GeneralCropIdentityConflict, lock_crop_project
+from farm.services.crop_inheritance import lock_crop_project
 from farm.services.crop_media import reconcile_media_orphans
 from farm.services.timing_windows import (
     TimingWindow,
@@ -633,7 +633,7 @@ def preview_project_restore(project: Project, revision: EntityRevision) -> dict:
                 "token": restore_preview_token(project.pk, revision.pk, current, effective),
                 "impact": summarize_restore(current, effective),
             }
-    except (ValueError, TypeError, KeyError, AttributeError, GeneralCropIdentityConflict) as exc:
+    except (ValueError, TypeError, KeyError, AttributeError) as exc:
         raise ProjectRestoreConflict("incompatible historical state") from exc
 
 
@@ -663,8 +663,5 @@ def restore_project_version(
             )
             apply_project_state(project, state, current, validated_target=target)
             record_project_checkpoint(project, capture_project_state(project), user_name=user_name)
-    except (
-        IntegrityError, ValueError, TypeError, KeyError, AttributeError,
-        GeneralCropIdentityConflict,
-    ) as exc:
+    except (IntegrityError, ValueError, TypeError, KeyError, AttributeError) as exc:
         raise ProjectRestoreConflict("incompatible historical state") from exc
