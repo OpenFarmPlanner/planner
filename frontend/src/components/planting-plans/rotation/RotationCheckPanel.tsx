@@ -46,7 +46,7 @@ interface RotationCheckPanelProps {
   input: RotationInput;
   bedLabel: string;
   cultureLabel: string;
-  /** Omitted where the flow cannot store an acceptance (e.g. "Anbaufläche ändern"). */
+  /** Optional controls for flows that can store an acceptance. */
   acceptance?: RotationAcceptanceControls;
   onShowSuggestions?: () => void;
   /** The grid popover keeps both actions available for accepted conflicts. */
