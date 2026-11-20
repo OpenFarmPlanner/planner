@@ -68,7 +68,12 @@ deleted for real, but `_delete_planting_plans_with_season` records an
   `planting_plan` whose latest revision at/after that timestamp is a deletion
   with `snapshot['season_id']` pointing at this season — keeping the original
   primary keys and skipping any plan a user had already deleted individually
-  beforehand — and then the `task` rows that DB-cascaded away with those plans.
+  beforehand. The same operation restores their tasks and recorded crop-loss
+  incidents. It restores a harvest's deleted allocations when the harvest still
+  has the recorded crop, date and unit, and enough quantity for all those shares.
+  Older deletion records without the harvest metadata require an untouched
+  harvest. Recorded dates, restored allocations and losses become visible
+  again in copies that reference the recovered plan.
   Creating a season over a deleted one's period is the same undelete, so
   `POST /seasons/`, `POST /seasons/create-transition/` and `undelete` all go
   through `farm/services/seasons.py::resurrect_season` rather than repeating

@@ -6,6 +6,7 @@ from farm.history.project_restore import apply_project_state, capture_project_st
 from farm.models import (
     Crop,
     CropLoss,
+    EntityRevision,
     HarvestAllocation,
     HarvestRecord,
     PlantingPlan,
@@ -16,6 +17,7 @@ from farm.tests.api_base import ProjectApiTestCase
 
 PLANS = "/openfarmplanner/api/planting-plans/"
 SEASONS = "/openfarmplanner/api/seasons/"
+HARVESTS = "/openfarmplanner/api/harvests/"
 
 
 class PlantingPlanCopyReferenceTest(ProjectApiTestCase):
@@ -77,6 +79,7 @@ class PlantingPlanCopyReferenceTest(ProjectApiTestCase):
                 planting_plan=self.source,
                 quantity=amount,
             )
+        return record
 
     def test_source_actuals_are_live_and_dates_and_units_stay_separate(self):
         self.harvest(date(2026, 3, 21), "kg", 2)
@@ -181,18 +184,69 @@ class PlantingPlanCopyReferenceTest(ProjectApiTestCase):
         )
 
     def test_restoring_a_source_season_recovers_the_existing_copied_plan_reference(self):
+        harvest = self.harvest(date(2026, 3, 21), "kg", 4)
+        other_harvest = self.harvest(date(2026, 3, 22), "g", 750)
+        incident = CropLoss.objects.create(
+            project=self.project,
+            planting_plan=self.source,
+            date=date(2026, 3, 18),
+            loss_type="partial",
+            cause="frost",
+            extent_value=20,
+            extent_unit="percent",
+        )
         copied = self.copy(self.source_season, self.target_season)
         url = f"{SEASONS}{self.source_season.pk}/"
         removed = self.client.delete(url)
         self.assertEqual(removed.status_code, 204, removed.data)
         self.assertFalse(PlantingPlan.objects.filter(pk=self.source.pk).exists())
         self.assertEqual(self.details(copied)["previous_season_reference"], {"available": False})
+        self.assertFalse(harvest.allocations.exists())
+        self.assertFalse(CropLoss.objects.filter(pk=incident.pk).exists())
+        legacy_deletion = EntityRevision.objects.get(
+            project=self.project,
+            entity_type="harvest_allocation",
+            action="deleted",
+            snapshot__harvest_id=harvest.pk,
+        )
+        legacy_deletion.snapshot.pop("_harvest_reference")
+        legacy_deletion.save(update_fields=["snapshot"])
+        changed = self.client.patch(
+            f"{HARVESTS}{other_harvest.pk}/",
+            {"note": "Corrected storage location"},
+            format="json",
+        )
+        self.assertEqual(changed.status_code, 200, changed.data)
 
         restored = self.client.post(f"{url}undelete/")
         self.assertEqual(restored.status_code, 200, restored.data)
         reference = self.details(copied)["previous_season_reference"]
         self.assertEqual(reference["source_plan_id"], self.source.pk)
         self.assertEqual(reference["actual_dates"]["actual_sowing_date"], "2026-02-23")
+        self.assertEqual(reference["harvest_quantities"], [{"unit": "kg", "quantity": "4.75"}])
+        self.assertEqual(reference["crop_loss_count"], 1)
+        self.assertTrue(
+            CropLoss.objects.filter(pk=incident.pk, planting_plan_id=self.source.pk).exists()
+        )
+        self.assertEqual(
+            HarvestRecord.objects.get(pk=other_harvest.pk).note, "Corrected storage location"
+        )
+
+    def test_source_restore_does_not_reattach_an_incompatible_or_overallocated_harvest(self):
+        converted = self.harvest(date(2026, 3, 21), "kg", 4)
+        reduced = self.harvest(date(2026, 3, 22), "kg", 4)
+        copied = self.copy(self.source_season, self.target_season)
+        season_url = f"{SEASONS}{self.source_season.pk}/"
+        self.assertEqual(self.client.delete(season_url).status_code, 204)
+        for harvest, change in ((converted, {"unit": "piece"}), (reduced, {"quantity": "2"})):
+            response = self.client.patch(f"{HARVESTS}{harvest.pk}/", change, format="json")
+            self.assertEqual(response.status_code, 200, response.data)
+        restored = self.client.post(f"{season_url}undelete/")
+        self.assertEqual(restored.status_code, 200, restored.data)
+        self.assertEqual(
+            self.details(copied)["previous_season_reference"]["harvest_quantities"], []
+        )
+        self.assertFalse(HarvestAllocation.objects.filter(planting_plan_id=self.source.pk).exists())
 
     def test_api_cannot_supply_lineage_and_cross_project_source_is_unavailable(self):
         created = self.client.post(
