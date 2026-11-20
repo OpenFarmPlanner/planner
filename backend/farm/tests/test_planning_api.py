@@ -153,7 +153,7 @@ class PlantingPlanApiTest(ProjectApiTestCase):
         plan.refresh_from_db()
         self.assertEqual((plan.planting_date, plan.harvest_date, plan.harvest_end_date), planned)
 
-    def test_changing_cultivation_clears_the_previous_planned_propagation(self):
+    def test_changing_cultivation_clears_the_previous_supplemental_dates(self):
         self.crop.cultivation_type = 'pre_cultivation'
         self.crop.cultivation_types = ['pre_cultivation', 'direct_sowing']
         self.crop.save(update_fields=['cultivation_type', 'cultivation_types'])
@@ -162,11 +162,15 @@ class PlantingPlanApiTest(ProjectApiTestCase):
                 created = self.client.post('/openfarmplanner/api/planting-plans/', {
                     'crop': self.crop.pk, 'cultivation_type': 'pre_cultivation',
                     'planting_date': '2024-03-01', 'planned_propagation_start_date': '2024-02-10',
+                    'planned_sowing_date': '2024-02-11',
                 })
                 self.assertEqual(created.status_code, 201, created.data)
                 plan_id = created.data['id']
                 task = Task.objects.get(
                     planting_plan_id=plan_id, source_key__endswith=':event:propagation_start',
+                )
+                sowing_task = Task.objects.get(
+                    planting_plan_id=plan_id, source_key__endswith=':event:sowing',
                 )
 
                 changed = self.client.patch(f'/openfarmplanner/api/planting-plans/{plan_id}/', {
@@ -175,9 +179,16 @@ class PlantingPlanApiTest(ProjectApiTestCase):
 
                 self.assertEqual(changed.status_code, 200, changed.data)
                 self.assertIsNone(changed.data['planned_propagation_start_date'])
+                self.assertIsNone(changed.data['planned_sowing_date'])
                 self.assertIsNone(PlantingPlan.objects.get(pk=plan_id).planned_propagation_start_date)
                 task.refresh_from_db()
                 self.assertEqual(task.status, 'cancelled')
+                sowing_task.refresh_from_db()
+                if cultivation == 'direct_sowing':
+                    self.assertEqual(sowing_task.title, 'Direct sowing')
+                    self.assertEqual(sowing_task.due_date, date(2024, 3, 1))
+                else:
+                    self.assertEqual(sowing_task.status, 'cancelled')
 
     def test_planting_plan_area_validation_success(self):
         """Test API allows a single planting plan within bed capacity."""

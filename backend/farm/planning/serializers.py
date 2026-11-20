@@ -325,10 +325,14 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
 
     def update(self, instance: PlantingPlan, validated_data: dict[str, Any]) -> PlantingPlan:
         if not self.is_actual_date_update(validated_data):
-            cultivation = validated_data.get('cultivation_type')
-            if cultivation in ('direct_sowing', PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT):
-                if cultivation != instance.cultivation_type:
-                    validated_data['planned_propagation_start_date'] = None
+            cultivation = validated_data.get('cultivation_type', instance.cultivation_type)
+            if cultivation != instance.cultivation_type:
+                # The supplemental dates describe the former cultivation method.
+                validated_data.update(
+                    planned_propagation_start_date=None,
+                    planned_sowing_date=None,
+                    planned_transplanting_date=None,
+                )
             return super().update(instance, validated_data)
         for field, value in validated_data.items():
             setattr(instance, field, value)
