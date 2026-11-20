@@ -151,7 +151,7 @@ import {
 } from "../planting-plans/plantingPlanActualDates";
 import { InlinePlanDateEditor, PlantingPlanDateModeToggle, RecordedPlanDateCell, RecordedPlanDateValue } from "../planting-plans/PlantingPlanDateCells";
 import { PlanDateComparisonText, PlantingPlanExecutionDates } from "../planting-plans/PlantingPlanExecutionDates";
-import { RotationStatusIcon } from "../components/planting-plans/rotation/RotationStatusIcon";
+import { ReadOnlyRotationWarning, RotationStatusIcon } from "../components/planting-plans/rotation/RotationStatusIcon";
 import { CompanionWarningIcon } from "../components/planting-plans/rotation/CompanionCheckAlert";
 import { SiteSuitabilityHints } from "../components/planting-plans/rotation/SiteSuitabilityHints";
 import { HarvestOverlapDateCell, HarvestOverlapIcon } from "../components/planting-plans/HarvestOverlapInfo";
@@ -947,10 +947,11 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
                   <SearchHighlightedText text={label} />
                 </Typography>
                 {isFlaggedRotationStatus(rotationStatus) && (
-                  <RotationStatusIcon
+                  <ReadOnlyRotationWarning
                     status={rotationStatus}
-                    fontSize="inherit"
-                    titleAccess={t(`plantingPlans:rotation.status.${rotationStatus}`)}
+                    findings={row.rotation_findings}
+                    cultureLabel={row.crop_display_name ?? row.crop_name ?? ""}
+                    tabIndex={params.hasFocus ? 0 : -1}
                   />
                 )}
                 <HarvestOverlapIcon overlaps={getRowHarvestOverlaps(row)} fontSize="inherit" />
@@ -2434,14 +2435,22 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
                       {" · "}
                     </>}
                     <SearchHighlightedText text={getBedLabelForRow(item)} />
-                    {isFlaggedRotationStatus(rotationStatus) ? (
-                      <RotationStatusIcon
-                        status={rotationStatus}
-                        fontSize="inherit"
-                        titleAccess={t(`plantingPlans:rotation.status.${rotationStatus}`)}
-                        sx={{ ml: 0.5, verticalAlign: "middle" }}
-                      />
-                    ) : null}
+                    {isFlaggedRotationStatus(rotationStatus) && (
+                      item.carried_over ? (
+                        <ReadOnlyRotationWarning
+                          status={rotationStatus}
+                          findings={item.rotation_findings}
+                          cultureLabel={getCropLabel(item)}
+                        />
+                      ) : (
+                        <RotationStatusIcon
+                          status={rotationStatus}
+                          fontSize="inherit"
+                          titleAccess={t(`plantingPlans:rotation.status.${rotationStatus}`)}
+                          sx={{ ml: 0.5, verticalAlign: "middle" }}
+                        />
+                      )
+                    )}
                     <HarvestOverlapIcon
                       overlaps={getRowHarvestOverlaps(item)}
                       fontSize="inherit"

@@ -311,6 +311,7 @@ export function EditableDataGrid<T extends EditableRow>({
   });
   const initialRowProcessedRef = useRef<boolean>(false);
   const initialFetchDoneRef = useRef<boolean>(false);
+  const pendingNewRowFocusRef = useRef<GridRowId | null>(null);
   const [selectedRowIds, setSelectedRowIds] = useState<GridRowId[]>([]);
   const {
     dirtyRowIds,
@@ -896,20 +897,17 @@ export function EditableDataGrid<T extends EditableRow>({
       // Set row to edit mode after a small delay to ensure row is added first
       setTimeout(() => {
         const fieldToFocus = columns.find((column) => column.editable !== false)?.field ?? columns[0]?.field;
+        pendingNewRowFocusRef.current = newRow.id;
         setRowModesModel((oldModel) => ({
           ...oldModel,
           [newRow.id]: { mode: GridRowModes.Edit, fieldToFocus },
         }));
-        if (fieldToFocus) {
-          gridApiRef.current?.setCellFocus(newRow.id, fieldToFocus);
-        }
       }, 0);
     }
   }, [
     columns,
     createNewRow,
     dataFetched,
-    gridApiRef,
     initialRow,
     isContinuousScroll,
     loading,
@@ -923,6 +921,7 @@ export function EditableDataGrid<T extends EditableRow>({
    */
   const handleAddClick = useCallback((): void => {
     const newRow = createNewRow();
+    pendingNewRowFocusRef.current = newRow.id;
     setRows((oldRows) => [...oldRows, newRow]);
     setStableRowOrder((previousOrder) => [...previousOrder, newRow.id]);
     setRowModesModel((oldModel) => ({
@@ -938,6 +937,21 @@ export function EditableDataGrid<T extends EditableRow>({
       }));
     }
   }, [columns, createNewRow, isContinuousScroll, rows.length, scrollDrivenRowWindow, showPaginationControls]);
+
+  useEffect(() => {
+    const id = pendingNewRowFocusRef.current;
+    if (id === null) return;
+    const mode = rowModesModel[id];
+    if (mode?.mode !== GridRowModes.Edit || !mode.fieldToFocus) return;
+    const field = mode.fieldToFocus;
+
+    // The new row can sit outside the rendered viewport even on the same page.
+    const frame = requestAnimationFrame(() => {
+      pendingNewRowFocusRef.current = null;
+      focusKeyboardNavigableCell(id, field, { startEdit: false });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusKeyboardNavigableCell, rowModesModel]);
 
   const handleDiscardRowChanges = useCallback((rowId: GridRowId): void => {
     const rowKey = String(rowId);
