@@ -26,6 +26,12 @@ export interface HierarchyRowAction {
   emphasized?: boolean;
   icon?: React.ReactNode;
   shortcutHint?: string;
+  /**
+   * The sheet must close before this action runs. The sheet itself decides
+   * how: immediately when the form is clean, otherwise after the usual
+   * save/discard confirmation (same as Cancel and the close button).
+   */
+  closeSheetBeforeRun?: boolean;
 }
 
 export interface MobileCreateSheetRequest {

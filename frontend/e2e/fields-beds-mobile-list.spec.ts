@@ -209,4 +209,46 @@ test.describe('fields-beds mobile list', () => {
     await expect(editDialog.getByLabel('Breite (m)', { exact: true })).toHaveValue('3');
     await page.screenshot({ path: test.info().outputPath('duplicate-bed-dimensions.png'), animations: 'disabled' });
   });
+
+  test('duplicating a bed with unsaved sheet edits asks before discarding them', async ({ page, request }) => {
+    await loginWithDeterministicProject(page, request, 'fields-mobile-list-duplicate-dirty', { loginAsAdmin: true });
+    const { location, field, bed } = await seedHierarchy(page, 'Mobile List Duplicate Dirty');
+    await page.goto('/app/fields-beds');
+
+    const locationRow = page.locator(`[data-hierarchy-mobile-row-id="location-${location.id}"]`);
+    await locationRow.getByRole('button', { name: /^Aufklappen:/ }).click();
+    const fieldRow = page.locator(`[data-hierarchy-mobile-row-id="field-${field.id}"]`);
+    await fieldRow.getByRole('button', { name: /^Aufklappen:/ }).click();
+    await page.locator(`[data-hierarchy-mobile-row-id="${bed.id}"]`).getByRole('button', { name: new RegExp(`^${bed.name}`) }).click();
+
+    const dialog = page.getByRole('dialog');
+    await dialog.getByLabel('Länge (m)', { exact: true }).fill('4');
+
+    const openDuplicate = async (): Promise<void> => {
+      await dialog.getByRole('button', { name: 'Weitere Aktionen' }).click();
+      await page.getByRole('menuitem', { name: /^Beet duplizieren/ }).click();
+    };
+
+    // Keeping the edits cancels the duplicate and leaves the sheet open.
+    await openDuplicate();
+    const discardDialog = page.getByRole('dialog', { name: 'Änderungen verwerfen?' });
+    await expect(discardDialog).toBeVisible();
+    await discardDialog.getByRole('button', { name: 'Weiter bearbeiten' }).click();
+    await expect(page.getByRole('dialog', { name: 'Änderungen verwerfen?' })).toHaveCount(0);
+    await expect(dialog.getByLabel('Länge (m)', { exact: true })).toHaveValue('4');
+    await expect(page.locator(`[data-hierarchy-mobile-row-id="${bed.id}"]`)).toHaveCount(1);
+    await expect(page.locator('[data-hierarchy-mobile-row-id]').filter({ hasText: `${bed.name} 2` })).toHaveCount(0);
+
+    // Discarding closes the sheet and duplicates the saved bed (2 × 3, not 4 × 3).
+    const createResponsePromise = page.waitForResponse((response) => (
+      response.url().includes('/api/beds/') && response.request().method() === 'POST' && response.status() === 201
+    ));
+    await openDuplicate();
+    await page.getByRole('dialog', { name: 'Änderungen verwerfen?' }).getByRole('button', { name: 'Verwerfen' }).click();
+    const created = await (await createResponsePromise).json() as { id: number; length_m: number; width_m: number };
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.getByText(`Beet „${bed.name} 2“ angelegt`)).toBeVisible();
+    expect(created.length_m).toBe(2);
+    expect(created.width_m).toBe(3);
+  });
 });

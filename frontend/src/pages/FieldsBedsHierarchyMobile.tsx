@@ -301,20 +301,15 @@ function FieldsBedsHierarchyMobile({
     if (sheetState?.mode !== "edit") {
       return [];
     }
-    // Deleting closes the sheet, and so do the actions whose dialog takes
-    // over or whose created bed should be visible in the list.
+    // Actions that take over the view (a dialog, a delete, a created row)
+    // set closeSheetBeforeRun: the sheet closes them itself, and asks for the
+    // usual discard confirmation first when the form has unsaved edits.
     return getHierarchyRowActions(sheetState.row, openCreateSheet).map((action) =>
       action.group === "destructive" || action.id === "duplicate-bed" || action.id === "duplicate-field" || action.id === "bulk-create-beds"
-        ? {
-            ...action,
-            onClick: () => {
-              handleSheetClose();
-              action.onClick();
-            },
-          }
+        ? { ...action, closeSheetBeforeRun: true }
         : action,
     );
-  }, [sheetState, getHierarchyRowActions, openCreateSheet, handleSheetClose]);
+  }, [sheetState, getHierarchyRowActions, openCreateSheet]);
 
   const handleSaved = useCallback((): void => {
     setError("");

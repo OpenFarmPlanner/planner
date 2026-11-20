@@ -106,6 +106,7 @@ export function HierarchyEditSheet({
   const [initialValues, setInitialValues] = useState<SheetFormValues>(() => buildInitialValues(mode, row, locale));
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<HierarchyValidationErrorField, string>>>({});
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
+  const [pendingCloseAction, setPendingCloseAction] = useState<HierarchyRowAction | null>(null);
   const [saving, setSaving] = useState(false);
   const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
 
@@ -137,6 +138,26 @@ export function HierarchyEditSheet({
       onClose();
       return;
     }
+    setConfirmDiscardOpen(true);
+  };
+
+  /**
+   * Runs a row action that needs the sheet closed first. With unsaved edits
+   * (including an unchanged name but changed dimensions), the action waits
+   * for the same discard confirmation as Cancel and the close button, so
+   * edits are never dropped silently before a duplicate or delete.
+   */
+  const runAction = (action: HierarchyRowAction): void => {
+    if (!action.closeSheetBeforeRun) {
+      action.onClick();
+      return;
+    }
+    if (!isDirty) {
+      onClose();
+      action.onClick();
+      return;
+    }
+    setPendingCloseAction(action);
     setConfirmDiscardOpen(true);
   };
 
@@ -216,10 +237,16 @@ export function HierarchyEditSheet({
     }
   };
 
-  const handleDiscardKeep = (): void => setConfirmDiscardOpen(false);
+  const handleDiscardKeep = (): void => {
+    setConfirmDiscardOpen(false);
+    setPendingCloseAction(null);
+  };
   const handleDiscardConfirm = (): void => {
     setConfirmDiscardOpen(false);
     onClose();
+    const action = pendingCloseAction;
+    setPendingCloseAction(null);
+    action?.onClick();
   };
 
   return (
@@ -362,7 +389,7 @@ export function HierarchyEditSheet({
             renderPlainWhenUnadorned
             onClick={() => {
               setMenuAnchorEl(null);
-              action.onClick();
+              runAction(action);
             }}
           />
         ))}
