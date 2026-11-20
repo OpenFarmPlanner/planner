@@ -1971,7 +1971,7 @@ def _create_demo_previous_season_reference(project: Project, crops, beds, year: 
     plans = PlantingPlan.objects.filter(project=project, crop=carrot)
     source = plans.get(bed=beds['salat-2'], planting_date__year=year - 1)
     plans.filter(bed=beds['karotte-2'], planting_date__year=year).update(
-        copied_from_plan=source, is_season_copy=True,
+        copied_from_plan_id=source.pk,
     )
     plans.filter(pk=source.pk).update(
         actual_harvest_start_date=date(year - 1, 6, 28),

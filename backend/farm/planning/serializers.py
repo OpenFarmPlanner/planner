@@ -356,7 +356,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PlantingPlan
-        exclude = ['copied_from_plan', 'is_season_copy']
+        exclude = ['copied_from_plan_id']
         read_only_fields = [
             'project', 'harvest_date', 'harvest_end_date', 'created_by', 'updated_by',
             'rotation_conflict_accepted_by', 'rotation_conflict_accepted_at',
@@ -669,15 +669,16 @@ class PlantingPlanDetailSerializer(PlantingPlanSerializer):
         return bool(obj.crop and obj.crop.deleted_at is None)
 
     def get_previous_season_reference(self, obj: PlantingPlan) -> dict | None:
-        if not obj.is_season_copy:
+        if obj.copied_from_plan_id is None:
             return None
-        source = obj.copied_from_plan
-        if source is None or source.project_id != obj.project_id or source.season is None:
-            return {'available': False}
-        season = source.season
-        if season.project_id != obj.project_id or season.deleted_at is not None:
+        source = PlantingPlan.objects.select_related('season').filter(
+            pk=obj.copied_from_plan_id, project_id=obj.project_id,
+            season__project_id=obj.project_id, season__deleted_at__isnull=True,
+        ).first()
+        if source is None:
             return {'available': False}
 
+        season = source.season
         period = (season.start_date, season.end_date)
         allocations = source.harvest_allocations.filter(
             project_id=obj.project_id, harvest__project_id=obj.project_id,

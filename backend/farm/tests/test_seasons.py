@@ -337,7 +337,7 @@ class SeasonGapDecisionApiTest(ProjectApiTestCase):
         self.assertEqual(len(transition_dates) + len(followup_dates), len(months))
         source_ids = set(last_season.planting_plans.values_list('pk', flat=True))
         copied_source_ids = set(PlantingPlan.objects.filter(
-            season__in=[transition, followup], is_season_copy=True,
+            season__in=[transition, followup], copied_from_plan_id__isnull=False,
         ).values_list('copied_from_plan_id', flat=True))
         self.assertEqual(copied_source_ids, source_ids)
 
@@ -506,7 +506,6 @@ class SeasonCopyServiceTest(ProjectApiTestCase):
         self.assertEqual(copied.harvest_date, add_months(original.harvest_date, 24))
         self.assertEqual(copied.harvest_end_date, add_months(original.harvest_end_date, 24))
         self.assertIsNone(copied.copied_from_plan_id)
-        self.assertFalse(copied.is_season_copy)
 
     def test_copy_clamps_leap_day_when_shifted_year_is_not_a_leap_year(self):
         source = Season.objects.create(project=self.project, start_date=date(2024, 1, 1), end_date=date(2024, 12, 31))

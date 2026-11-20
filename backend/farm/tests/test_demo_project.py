@@ -458,8 +458,8 @@ class DemoProjectServiceTests(TestCase):
         self.assertEqual(
             losses.filter(planting_plan__season__start_date__year=current_year - 1).count(), 2,
         )
-        copied = PlantingPlan.objects.get(project=result.project, is_season_copy=True)
-        source = copied.copied_from_plan
+        copied = PlantingPlan.objects.get(project=result.project, copied_from_plan_id__isnull=False)
+        source = PlantingPlan.objects.get(pk=copied.copied_from_plan_id)
         self.assertEqual(source.season.start_date.year, current_year - 1)
         self.assertNotEqual(copied.bed_id, source.bed_id)
         self.assertTrue(

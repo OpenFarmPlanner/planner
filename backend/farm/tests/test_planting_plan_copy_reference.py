@@ -166,20 +166,33 @@ class PlantingPlanCopyReferenceTest(ProjectApiTestCase):
         self.assertEqual(latest_reference["harvest_quantities"], [])
         self.assertEqual(latest_reference["crop_loss_count"], 0)
 
-    def test_deleted_source_has_an_unavailable_marker_and_history_recovers_link(self):
+    def test_deleted_source_is_unavailable_and_history_recovers_link(self):
         copied = self.copy(self.source_season, self.target_season)
         baseline = capture_project_state(self.project)
         removed = self.client.delete(f"{PLANS}{self.source.pk}/")
         self.assertEqual(removed.status_code, 204, removed.data)
         copied.refresh_from_db()
-        self.assertTrue(copied.is_season_copy)
-        self.assertIsNone(copied.copied_from_plan_id)
+        self.assertEqual(copied.copied_from_plan_id, self.source.pk)
         self.assertEqual(self.details(copied)["previous_season_reference"], {"available": False})
         apply_project_state(self.project, baseline, capture_project_state(self.project))
         self.assertEqual(
             self.details(copied)["previous_season_reference"]["source_plan_id"],
             self.source.pk,
         )
+
+    def test_restoring_a_source_season_recovers_the_existing_copied_plan_reference(self):
+        copied = self.copy(self.source_season, self.target_season)
+        url = f"{SEASONS}{self.source_season.pk}/"
+        removed = self.client.delete(url)
+        self.assertEqual(removed.status_code, 204, removed.data)
+        self.assertFalse(PlantingPlan.objects.filter(pk=self.source.pk).exists())
+        self.assertEqual(self.details(copied)["previous_season_reference"], {"available": False})
+
+        restored = self.client.post(f"{url}undelete/")
+        self.assertEqual(restored.status_code, 200, restored.data)
+        reference = self.details(copied)["previous_season_reference"]
+        self.assertEqual(reference["source_plan_id"], self.source.pk)
+        self.assertEqual(reference["actual_dates"]["actual_sowing_date"], "2026-02-23")
 
     def test_api_cannot_supply_lineage_and_cross_project_source_is_unavailable(self):
         created = self.client.post(
@@ -188,8 +201,7 @@ class PlantingPlanCopyReferenceTest(ProjectApiTestCase):
                 "crop": self.crop.pk,
                 "season": self.target_season.pk,
                 "planting_date": "2027-03-10",
-                "copied_from_plan": self.source.pk,
-                "is_season_copy": True,
+                "copied_from_plan_id": self.source.pk,
             },
             format="json",
         )
@@ -212,7 +224,7 @@ class PlantingPlanCopyReferenceTest(ProjectApiTestCase):
             actual_sowing_date=date(2026, 5, 1),
         )
         copied = self.copy(self.source_season, self.target_season)
-        PlantingPlan.objects.filter(pk=copied.pk).update(copied_from_plan=foreign)
+        PlantingPlan.objects.filter(pk=copied.pk).update(copied_from_plan_id=foreign.pk)
         details = self.details(copied)
         self.assertEqual(details["previous_season_reference"], {"available": False})
-        self.assertNotIn("copied_from_plan", details)
+        self.assertNotIn("copied_from_plan_id", details)

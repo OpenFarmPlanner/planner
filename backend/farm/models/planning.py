@@ -134,14 +134,9 @@ class PlantingPlan(TimestampedModel):
         blank=True,
         help_text="Season this planting plan is scheduled in. Nullable only until a project's first season setup runs.",
     )
-    copied_from_plan = models.ForeignKey(
-        'self', on_delete=models.SET_NULL, null=True, blank=True, editable=False,
-        related_name='season_copies',
-        help_text='Source planting plan selected by the season-copy operation.',
-    )
-    is_season_copy = models.BooleanField(
-        default=False, editable=False,
-        help_text='Retains the unavailable-reference state if the original plan is deleted.',
+    copied_from_plan_id = models.PositiveBigIntegerField(
+        null=True, blank=True, editable=False,
+        help_text='Source plan identity, retained while the original is deleted or unavailable.',
     )
 
     # Changing any of these moves the plan in the crop rotation, so a
@@ -333,12 +328,6 @@ class PlantingPlan(TimestampedModel):
 
     class Meta:
         ordering = ['-planting_date']
-        constraints = [
-            models.CheckConstraint(
-                condition=models.Q(copied_from_plan__isnull=True) | models.Q(is_season_copy=True),
-                name='plan_copy_lineage_has_marker',
-            ),
-        ]
         indexes = [
             models.Index(fields=['project', '-planting_date']),
             models.Index(fields=['project', 'bed', 'planting_date', 'harvest_end_date']),

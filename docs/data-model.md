@@ -299,11 +299,10 @@ erDiagram
   only a consciously accepted conflict is stored on the plan
   (`rotation_conflict_accepted_by`/`_at`) — see
   [crop-rotation.md](./crop-rotation.md).
-  Season copy sets the optional `copied_from_plan` link to the direct source.
-  It follows the planting plan through bed changes. If the source is deleted,
-  its link clears and `is_season_copy` keeps the unavailable-reference state.
-  Copy lineage is captured by project history. Copies made before the lineage
-  fields were added have an empty link.
+  Season copy stores the direct source in the optional `copied_from_plan_id`
+  field. The identity follows the copy through bed changes and stays available
+  for lookup if the original season is restored. The detail API resolves the
+  source within the same project. Project history captures the source identity.
 - **`HarvestRecord`** stores one project's crop, picking date, positive
   quantity, unit and optional note. Pieces and bunches can carry a saved
   grams-per-unit factor and its source. Reference weights can come from the

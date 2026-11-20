@@ -304,8 +304,8 @@ def _with_legacy_snapshot_fields(model: type, snapshot: dict) -> dict:
             snapshot['crop_family_id'] = coerce_plant_family_key(snapshot['crop_family'])
     if model is CropCompanion and 'notes' not in snapshot:
         return {**snapshot, 'notes': {'de': snapshot['note']} if snapshot.get('note') else {}}
-    if model is PlantingPlan and 'is_season_copy' not in snapshot:
-        return {**snapshot, 'is_season_copy': False, 'copied_from_plan_id': None}
+    if model is PlantingPlan and 'copied_from_plan_id' not in snapshot:
+        return {**snapshot, 'copied_from_plan_id': None}
     return snapshot
 
 

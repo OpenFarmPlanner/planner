@@ -396,27 +396,22 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
                     except ValueError:
                         return queryset.none()
         if self.action in {'list', 'retrieve'}:
-            return self._with_plan_read_details(queryset)
-        return queryset
-
-    def _with_plan_read_details(self, queryset: QuerySet[PlantingPlan]) -> QuerySet[PlantingPlan]:
-        if self.action == 'retrieve':
-            queryset = queryset.select_related('copied_from_plan__season')
-        allocations = HarvestAllocation.objects.filter(
-            project=self.request.active_project,
-        ).select_related('harvest').only(
-            'planting_plan_id', 'quantity', 'harvest__crop_id',
-            'harvest__unit', 'harvest__grams_per_unit',
-        )
-        season = getattr(self, '_harvest_season', None)
-        if season is not None:
-            allocations = allocations.filter(
-                harvest__date__range=(season.start_date, season.end_date),
+            allocations = HarvestAllocation.objects.filter(
+                project=self.request.active_project,
+            ).select_related('harvest').only(
+                'planting_plan_id', 'quantity', 'harvest__crop_id',
+                'harvest__unit', 'harvest__grams_per_unit',
             )
-        queryset = queryset.prefetch_related(Prefetch(
-            'harvest_allocations', queryset=allocations, to_attr='visible_harvest_allocations',
-        ))
-        return self._with_crop_loss_count(queryset, season)
+            season = getattr(self, '_harvest_season', None)
+            if season is not None:
+                allocations = allocations.filter(
+                    harvest__date__range=(season.start_date, season.end_date),
+                )
+            queryset = queryset.prefetch_related(Prefetch(
+                'harvest_allocations', queryset=allocations, to_attr='visible_harvest_allocations',
+            ))
+            queryset = self._with_crop_loss_count(queryset, season)
+        return queryset
 
     def _with_crop_loss_count(
         self, queryset: QuerySet[PlantingPlan], season: Season | None,
