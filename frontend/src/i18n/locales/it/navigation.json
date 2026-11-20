@@ -460,7 +460,7 @@
       "versionRestoreError": "Impossibile ripristinare la versione del progetto.",
       "leaveDemoError": "Impossibile uscire dalla demo. Riprova.",
       "logoutError": "Uscita non riuscita. Riprova.",
-      "versionRestoreConflict": "Questa versione è incompleta o in conflitto con dati collegati. Nessuna modifica effettuata."
+      "versionRestoreConflict": "Questa versione è incompleta o in conflitto con dati collegati. Nessuna modifica effettuata. Scegli un’altra versione nella cronologia."
     },
     "shortcutHint": "Suggerimento: premi Alt+K per la tavolozza dei comandi.",
     "historyBy": "Di {{actor}}",

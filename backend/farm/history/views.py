@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 
+from django.db.models import BooleanField, Case, Q, When
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
@@ -16,6 +17,8 @@ from farm.project_context import get_active_project_or_400, require_project_admi
 from .import_operations import ImportOperationConflict, import_undo_preview, undo_crop_import
 from .payloads import build_crop_history_payload
 from .project_restore import (
+    AUTOMATIC_BACKUP_KEY,
+    CHECKPOINT_KEY,
     ProjectRestoreConflict,
     ensure_project_checkpoint,
     restore_project_version,
@@ -48,6 +51,18 @@ class ProjectHistoryListView(APIView):
             .exclude(
                 batch_operation_id__isnull=True, snapshot__has_key="_project_version_internal"
             )
+            .annotate(is_automatic_backup=Case(
+                When(
+                    Q(entity_type='project', action=EntityRevision.ACTION_UPDATED,
+                      snapshot__has_key=CHECKPOINT_KEY)
+                    & (Q(snapshot__has_key=AUTOMATIC_BACKUP_KEY) | Q(
+                        batch_operation__operation_type=BatchOperation.TYPE_REVERTED,
+                        batch_operation__context__reverted_operation_type=BatchOperation.TYPE_CROP_IMPORT,
+                    )),
+                    then=True,
+                ),
+                default=False, output_field=BooleanField(),
+            ))
             .defer('snapshot')
             .order_by('-created_at', '-id')
         )
@@ -57,7 +72,7 @@ class ProjectHistoryListView(APIView):
         current_revision_id = rows[0].id if rows else None
 
         def revision_payload(row):
-            return {
+            entry = {
                 'history_id': row.id,
                 'history_date': row.created_at,
                 'history_type': 'project_snapshot',
@@ -70,12 +85,15 @@ class ProjectHistoryListView(APIView):
                 'actor_label': row.user_name or None,
                 'is_current_version': row.id == current_revision_id,
             }
+            if row.is_automatic_backup:
+                entry['is_automatic_backup'] = True
+            return entry
 
         payload = []
         groups_by_batch = {}
         for row in rows:
             batch = batches.get(row.batch_operation_id)
-            if batch is None:
+            if batch is None or row.is_automatic_backup:
                 payload.append(revision_payload(row))
                 continue
             group = groups_by_batch.get(batch.id)

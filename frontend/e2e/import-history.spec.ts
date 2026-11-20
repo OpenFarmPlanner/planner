@@ -3,7 +3,8 @@ import { expect, test, type Page } from '@playwright/test';
 import { apiRequest, loginWithDeterministicProject, resetE2EScenario } from './utils';
 import de from '../src/i18n/locales/de/crops.json' with { type: 'json' };
 import navigation from '../src/i18n/locales/de/navigation.json' with { type: 'json' };
-import type { Crop, CropHistoryEntry } from '../src/api/types';
+import type { Crop, CropHistoryEntry, CropSpecies, PublicCrop, PublishPublicCropResponse } from '../src/api/types';
+import { SUPPORTED_LANGUAGES } from '../src/i18n/languages';
 
 async function history(page: Page) {
   await page.getByRole('button', { name: navigation.globalMenu.moreActions, exact: true }).click();
@@ -118,27 +119,119 @@ for (const [width, height] of [[375, 800], [768, 900], [1024, 900], [1440, 900],
   });
 }
 
+test('full restore before spreadsheet and library imports refreshes the crop grid', async ({ baseURL, browser, page, request }) => {
+  test.setTimeout(120_000);
+  const scenario = `history-restore-imports-${randomUUID().slice(0, 12)}`;
+  const publisherScenario = `${scenario}-publisher`;
+  const publisher = await browser.newPage({ baseURL, locale: 'de-DE' });
+
+  try {
+    await loginWithDeterministicProject(publisher, request, publisherScenario, {
+      loginAsAdmin: true, libraryModerator: true,
+    });
+    const libraryName = `Synthetic library crop ${scenario}`;
+    const species = await apiRequest<CropSpecies>(publisher, 'POST', '/crop-species/', { name: libraryName });
+    await apiRequest(publisher, 'POST', `/crop-species/${species.id}/approve/`, {
+      translations: SUPPORTED_LANGUAGES.map(({ code }) => ({ language_code: code, common_name: libraryName })),
+    });
+    const publicIds: number[] = [];
+    for (const variety of ['', 'Synthetic library variety']) {
+      const source = await apiRequest<Crop>(publisher, 'POST', '/crops/', {
+        name: libraryName, crop_species: species.id, variety, growth_duration_days: 60, harvest_duration_days: 20,
+      });
+      const receipt = await apiRequest<PublishPublicCropResponse>(publisher, 'POST', `/crops/${source.id}/publish-public/`, {
+        accepted_public_library_terms: true, crop_species_id: species.id, original_language_code: 'de',
+        publish_as_general: variety === '',
+      });
+      expect(receipt.operation).toBe('created');
+      publicIds.push(receipt.public_crop!.id!);
+    }
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
+    const marker = await apiRequest<Crop>(page, 'POST', '/crops/', { name: 'Synthetic before-import target' });
+    const target = (await apiRequest<CropHistoryEntry[]>(page, 'GET', '/history/project/'))
+      .find(entry => entry.object_type === 'crop' && entry.object_id === marker.id && !entry.is_batch);
+    expect(target).toBeTruthy();
+    const original = (await crops(page)).map(crop => crop.id);
+    const operation = randomUUID();
+    for (const [phase, items] of [
+      ['crops', [{ name: 'Synthetic spreadsheet crop' }, { name: 'Synthetic spreadsheet crop', variety: 'Synthetic sheet variety' }]],
+      ['finalize', []],
+    ] as const) {
+      await apiRequest(page, 'POST', '/crops/import/apply/', { items, phase, import_operation_id: operation });
+    }
+    for (const id of publicIds) await apiRequest(page, 'POST', `/public-crops/${id}/import/`, {});
+    const readLibrary = () => Promise.all(publicIds.map(async id => {
+      const { name, variety, version } = await apiRequest<PublicCrop>(page, 'GET', `/public-crops/${id}/`);
+      return { id, name, variety, version };
+    }));
+    const libraryBeforeRestore = await readLibrary();
+    const imported = await crops(page);
+    expect(imported.filter(crop => crop.crop_species === species.id)).toHaveLength(2);
+    expect(imported.filter(crop => crop.name === 'Synthetic spreadsheet crop')).toHaveLength(2);
+
+    await page.goto('/app/crops');
+    const cropList = page.getByRole('listbox', { name: 'Kulturen' });
+    const sheetRow = cropList.getByText('Synthetic spreadsheet crop', { exact: true });
+    const libraryRow = cropList.getByText(libraryName, { exact: true });
+    await expect(sheetRow).toBeVisible();
+    await expect(libraryRow).toBeVisible();
+    const dialog = await history(page);
+    await dialog.getByRole('listitem').filter({ hasText: marker.name })
+      .getByRole('button', { name: navigation.commandPalette.restoreVersion, exact: true }).click();
+    const confirmation = page.getByRole('dialog', { name: de.restoreDialog.title, exact: true });
+    const [response] = await Promise.all([
+      page.waitForResponse(result => result.url().includes('/history/project/restore/')),
+      confirmation.getByRole('button', { name: de.restoreDialog.confirm, exact: true }).click(),
+    ]);
+    expect(response.request().postDataJSON()).toEqual({ history_id: target!.history_id });
+    expect(response.status()).toBe(200);
+    await expect(dialog).toHaveCount(0);
+    await expect(cropList.getByText(marker.name, { exact: true })).toBeVisible();
+    await expect(sheetRow).toHaveCount(0);
+    await expect(libraryRow).toHaveCount(0);
+    expect((await crops(page)).map(crop => crop.id)).toEqual(original);
+    expect(await readLibrary()).toEqual(libraryBeforeRestore);
+  } finally {
+    await publisher.close();
+    await resetE2EScenario(request, scenario);
+    await resetE2EScenario(request, publisherScenario);
+  }
+});
+
 for (const [width, height] of [[375, 800], [1440, 900]]) {
   test(`full restore and restoring its automatic backup at ${width}x${height}`, async ({ page, request }, info) => {
-    // The backup of a restore that re-created a deleted row is refused today.
-    test.fail(true, 'Restoring the automatic backup is refused until #1194 is fixed.');
     test.setTimeout(120_000);
     const scenario = `history-backup-${width}-${Date.now()}`;
     try {
       await page.setViewportSize({ width, height });
       await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
       await page.goto('/app/crops');
-      const name = `Doomed history location ${width}`;
-      const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', { name });
+      const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', {
+        name: `Doomed history location ${width}`,
+      });
+      const field = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
+        name: `Doomed history field ${width}`, location: location.id,
+      });
+      const bedName = `Doomed history bed ${width}`;
+      const bed = await apiRequest<{ id: number }>(page, 'POST', '/beds/', {
+        name: bedName, field: field.id, area_sqm: 5,
+      });
       await apiRequest(page, 'DELETE', `/locations/${location.id}/`);
-      const locationIds = async () => {
-        const data = await apiRequest<Array<{ id: number }> | { results: Array<{ id: number }> }>(page, 'GET', '/locations/');
+      const getIds = async (path: string) => {
+        const data = await apiRequest<Array<{ id: number }> | { results: Array<{ id: number }> }>(page, 'GET', path);
         return (Array.isArray(data) ? data : data.results).map(item => item.id);
       };
+      const geometry = () => Promise.all(['/locations/', '/fields/', '/beds/'].map(getIds));
+      const before = await geometry();
+      for (const [index, item] of [location, field, bed].entries()) {
+        expect(before[index]).not.toContain(item.id);
+      }
 
       let dialog = await history(page);
-      await dialog.getByRole('listitem').filter({ hasText: name }).last()
-        .getByRole('button', { name: navigation.commandPalette.restoreVersion, exact: true }).click();
+      await dialog.getByRole('listitem').filter({ hasText: bedName }).last()
+        .getByRole('button', { name: navigation.commandPalette.restoreVersion, exact: true }).press('Enter');
       let confirmation = page.getByRole('dialog', { name: de.restoreDialog.title, exact: true });
       await page.screenshot({ path: info.outputPath('restore-confirmation.png'), animations: 'disabled' });
       const [restored] = await Promise.all([
@@ -147,20 +240,26 @@ for (const [width, height] of [[375, 800], [1440, 900]]) {
       ]);
       expect(restored.status()).toBe(200);
       await expect(page.getByRole('dialog')).toHaveCount(0);
-      expect(await locationIds()).toContain(location.id);
+      const restoredGeometry = await geometry();
+      for (const [index, item] of [location, field, bed].entries()) {
+        expect(restoredGeometry[index]).toContain(item.id);
+      }
 
-      // The newest entry is the restore result; the automatic backup sits directly below it.
       dialog = await history(page);
-      await dialog.getByRole('listitem').nth(1)
-        .getByRole('button', { name: navigation.commandPalette.restoreVersion, exact: true }).click();
+      const backupEntry = dialog.getByRole('listitem').filter({ hasText: de.history.automaticBackup });
+      await expect(backupEntry).toHaveCount(1);
+      await page.screenshot({ path: info.outputPath('history-list.png'), animations: 'disabled' });
+      await backupEntry.getByRole('button', { name: navigation.commandPalette.restoreVersion, exact: true }).press('Enter');
       confirmation = page.getByRole('dialog', { name: de.restoreDialog.title, exact: true });
+      await expect(confirmation.getByText(de.history.automaticBackup, { exact: true })).toBeVisible();
+      await page.screenshot({ path: info.outputPath('backup-confirmation.png'), animations: 'disabled' });
       const [backup] = await Promise.all([
         page.waitForResponse(response => response.url().includes('/history/project/restore/')),
-        confirmation.getByRole('button', { name: de.restoreDialog.confirm, exact: true }).click(),
+        confirmation.getByRole('button', { name: de.restoreDialog.confirm, exact: true }).press('Enter'),
       ]);
-      await page.screenshot({ path: info.outputPath('backup-restore-result.png'), animations: 'disabled' });
       expect(backup.status()).toBe(200);
-      expect(await locationIds()).not.toContain(location.id);
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      expect(await geometry()).toEqual(before);
     } finally {
       await resetE2EScenario(request, scenario);
     }

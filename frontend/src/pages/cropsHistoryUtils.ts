@@ -171,6 +171,9 @@ export function getHistoryActionLabel(action: string | undefined, t: TFunction<'
 }
 
 export function getHistoryEntryTitle(entry: CropHistoryEntry, t: TFunction<'crops'>): string {
+  if (entry.is_automatic_backup) {
+    return t('history.automaticBackup');
+  }
   const objectTypeLabel = getHistoryObjectTypeLabel(entry.object_type, t);
   const actionLabel = getHistoryActionLabel(entry.action, t);
   const objectDisplayName = entry.object_display_name?.trim();

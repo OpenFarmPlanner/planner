@@ -16,6 +16,7 @@ class CropHistoryEntrySerializer(serializers.Serializer):
     action = serializers.CharField(required=False, allow_blank=True)
     actor_label = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     is_current_version = serializers.BooleanField(required=False)
+    is_automatic_backup = serializers.BooleanField(required=False)
     changes = serializers.ListField(child=serializers.DictField(), required=False)
     # Batch-operation grouping (project history only): a `is_batch` entry
     # stands for one cascading action and carries the individual revision
