@@ -356,6 +356,10 @@ def undo_crop_import(project: Project, batch: BatchOperation, *, user_name: str)
         if preview["conflicts"]:
             return preview
         target = _inverse_state(current, batch.context[_INTERNAL])
+        record_project_checkpoint(
+            project, current, user_name=user_name,
+            action=EntityRevision.ACTION_UPDATED, automatic_backup=True,
+        )
         revert = start_batch_operation(
             project=project,
             operation_type=BatchOperation.TYPE_REVERTED,
@@ -367,7 +371,6 @@ def undo_crop_import(project: Project, batch: BatchOperation, *, user_name: str)
             user_name=user_name,
         )
         with revision_batch(revert):
-            record_project_checkpoint(project, current, action=EntityRevision.ACTION_UPDATED)
             apply_project_state(project, target, current)
             record_project_checkpoint(project, capture_project_state(project))
         batch.reverted_at = timezone.now()

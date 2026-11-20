@@ -53,6 +53,7 @@ for _model, _label in _RESTORABLE_ENTITY_TYPES:
 _MODELS = dict((label, model) for model, label in PROJECT_STATE_MODELS)
 ProjectState = dict[str, dict[str, dict[str, Any]]]
 CHECKPOINT_KEY = "project_state_v1"
+AUTOMATIC_BACKUP_KEY = "_automatic_restore_backup"
 _TIMESTAMPS = {"created_at", "updated_at"}
 
 
@@ -92,14 +93,18 @@ def record_project_checkpoint(
     user_name: str = "",
     batch_operation: Any = None,
     action: str = EntityRevision.ACTION_RESTORED,
+    automatic_backup: bool = False,
 ) -> None:
     """A complete checkpoint makes a restore result and its backup selectable again."""
+    snapshot = {CHECKPOINT_KEY: state}
+    if automatic_backup:
+        snapshot[AUTOMATIC_BACKUP_KEY] = True
     record_entity_revision(
         project=project,
         entity_type="project",
         object_id=project.pk,
         action=action,
-        snapshot={CHECKPOINT_KEY: state},
+        snapshot=snapshot,
         display_name=project.name,
         user_name=user_name,
         batch_operation=batch_operation,
@@ -132,7 +137,7 @@ def _through_revision(revision: EntityRevision) -> Q:
 
 def _checkpoint_state(snapshot: dict[str, Any]) -> ProjectState | None:
     state = snapshot.get(CHECKPOINT_KEY)
-    if state is None:
+    if CHECKPOINT_KEY not in snapshot:
         return None
     if not isinstance(state, dict):
         raise ProjectRestoreConflict("incompatible checkpoint")
@@ -158,7 +163,12 @@ def reconstruct_project_state(
                 {pk: snapshot for pk, snapshot in objects.items() if (label, pk) not in seen}
             )
     _apply_recorded_parent_deletions(state, seen)
-    _require_legacy_evidence(project, revision, current, seen, state)
+    # A complete checkpoint records every managed row at one instant. Its
+    # omissions are authoritative even if a later restore recreated a row
+    # with an older creation timestamp. Replays to other revisions still
+    # need the conservative evidence checks.
+    if revision.entity_type != "project" or CHECKPOINT_KEY not in revision.snapshot:
+        _require_legacy_evidence(project, revision, current, seen, state)
     return state
 
 
@@ -543,7 +553,8 @@ def restore_project_version(
             current = capture_project_state(project, lock=True)
             target = reconstruct_project_state(project, revision, current)
             record_project_checkpoint(
-                project, current, user_name=user_name, action=EntityRevision.ACTION_UPDATED
+                project, current, user_name=user_name,
+                action=EntityRevision.ACTION_UPDATED, automatic_backup=True,
             )
             apply_project_state(project, target, current)
             record_project_checkpoint(project, capture_project_state(project), user_name=user_name)

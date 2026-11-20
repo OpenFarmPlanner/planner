@@ -531,6 +531,7 @@
       "project": "Projekt-Snapshots"
     },
     "restoreButton": "Zu dieser Version wechseln",
+    "automaticBackup": "Automatische Sicherung",
     "currentVersion": "Aktuelle Version",
     "changedFields": "Geändert:",
     "emptyValue": "Nicht gesetzt",

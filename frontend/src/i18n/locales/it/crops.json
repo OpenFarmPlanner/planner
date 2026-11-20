@@ -540,6 +540,7 @@
       "project": "Istantanee del progetto"
     },
     "restoreButton": "Passa a questa versione",
+    "automaticBackup": "Backup automatico",
     "currentVersion": "Versione attuale",
     "changedFields": "Modificato:",
     "emptyValue": "Non impostato",

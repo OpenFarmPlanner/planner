@@ -189,12 +189,14 @@ This deliberately replaces the old retain-later-created-rows behavior.
 
 1. Lock the project and current domain rows. Resolve the selected revision by
    `(created_at, id)`, so equal timestamps cannot include a later revision.
-2. Start with the latest complete checkpoint at/before that revision and overlay
-   its subsequent entity revisions. With older history, require positive
-   evidence: snapshots establish presence, deletion revisions establish absence,
-   and a database creation time after the target establishes later creation.
-   Unknown/pruned pre-change history, incompatible checkpoints and old restore
-   markers without resulting state return `409 project_restore_conflict`.
+2. Start with the latest complete checkpoint at or before that revision and overlay
+   its subsequent entity revisions. A complete checkpoint establishes both
+   presence and absence at its timestamp. A row recreated after that checkpoint
+   can keep its original creation date. Replays to other revisions still require
+   positive evidence. Snapshots establish presence, deletion revisions establish
+   absence, and a creation time after the target establishes later creation.
+   Unknown or pruned history, incompatible checkpoints and old restore markers
+   without resulting state return `409 project_restore_conflict`.
 3. Validate ownership, historical parents, external references and final general
    crop identities. Refuse untracked/external cascades. Missing optional global
    references retain the established nulling behavior; required missing parents
@@ -206,6 +208,10 @@ This deliberately replaces the old retain-later-created-rows behavior.
    backup entries.
 5. Record the resulting state as a new complete checkpoint. Both this result and
    the preceding backup can be selected later; old historical entries remain.
+   Full restores, legacy batch reverts and import undos mark their before-state
+   entries as automatic backups. History displays the label in the list and in
+   the confirmation dialog using that marker. Older import-undo groups expose
+   their before-checkpoint when the group records that operation explicitly.
 
 This versions farm domain data, not accounts, memberships, API tokens, shared
 public-library records or project access/lifecycle settings. The ordered domain
@@ -346,8 +352,8 @@ manual changes in the fixture project.
   deleted by the round-trip scenario in
   `backend/farm/tests/test_history_invariants.py`
   (`HistoryRoundTripScenarioTests.build_scenario`). The registry check fails
-  otherwise. When fixing the remaining listed gap (#1194), remove its
-  expectation there; the test fails until you do.
+  otherwise. The round trip compares both the restored version and its automatic
+  backup against their captured domain states.
 
 ## What participates in whole-project restore
 
