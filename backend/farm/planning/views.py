@@ -352,6 +352,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             return queryset if across_seasons else queryset.none()
         queryset = queryset.alias(occupied_until=PlantingPlan.occupancy_end_expression())
         starts_before = Q(
+            bed__isnull=False,
             planting_date__lt=active_season.start_date,
             occupied_until__gte=active_season.start_date,
         )

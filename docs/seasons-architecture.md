@@ -94,8 +94,8 @@ description), one level down:
   header itself.
 - `PlantingPlanViewSet.get_queryset()` (`backend/farm/planning/views.py`)
   scopes writes to `season_id` when the header is present. For reads in the
-  selected season, it also includes a plan planted before the first day
-  whose occupancy ends on or after that day. Occupancy uses the stored
+  selected season, it also includes a plan planted before the first day if
+  it occupies an assigned bed on or after that day. Occupancy uses the stored
   harvest end, falling back to the harvest date and then the planting date.
   A read returns `carried_over` and the originating season label. The plan's
   ID and season assignment stay the same. Attachment writes use the same
@@ -138,7 +138,8 @@ description), one level down:
   misleading. `YieldCalendarListView` clips the weekly harvest contributions
   to the season's date range, including both its first and last day. An
   explicit ISO year further limits that range. A week crossing a season
-  boundary contributes only its share on each side. The active season's dates
+  boundary contributes only its share on each side, including for plans
+  still awaiting a bed assignment. The active season's dates
   also determine whether the chart draws a year-boundary marker.
 - `farm.services.yield_calendar.compute_plan_expected_yield` calculates the
   plan's forecast in kilograms from the effective crop rate and unit. Use the
@@ -224,6 +225,7 @@ a season pattern changes and keeps the previous period eligible.
   occupies its bed on the first day of its destination. The response reports
   these plans in `continuing_count`, independent of date basis or rotation
   choices. The copy dialog and season creation suggestion explain the skip.
+  Drafts without an assigned bed remain eligible for copying.
 - `planting_date`, `harvest_date` and `harvest_end_date`
   (`PLANTING_PLAN_SHIFTED_DATE_FIELDS`) are shifted by a **whole number of
   years, chosen per plan** so the `planting_date` keeps its month and day but

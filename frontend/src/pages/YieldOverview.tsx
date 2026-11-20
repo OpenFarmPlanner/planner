@@ -163,8 +163,8 @@ export default function YieldOverviewPage() {
     );
   }
 
-  const hasPlantingPlans = plantingPlans.length > 0;
   const hasYieldData = weeklyYield.length > 0;
+  const hasRelevantPlans = plantingPlans.length > 0 || hasYieldData || incompletePlans.length > 0;
   const dateFormatter = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeZone: 'UTC' });
 
   return (
@@ -211,7 +211,7 @@ export default function YieldOverviewPage() {
             </Alert>
           )}
 
-          {!hasPlantingPlans ? (
+          {!hasRelevantPlans ? (
             <EmptyStateCard
               title={t("empty.noPlansTitle")}
               description={t("empty.description")}

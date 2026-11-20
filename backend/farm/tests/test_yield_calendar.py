@@ -227,6 +227,9 @@ class YieldCalendarAPITest(TestCase):
         self.assertEqual(forecast(target, {'year': 2026}), {'2026-W36': 30})
         self.assertEqual(forecast(target, {'year': 2027}), {})
 
+        PlantingPlan.objects.filter(pk=plan.pk).update(bed=None)
+        self.assertEqual(forecast(target), {'2026-W36': 30})
+
     def test_yield_calendar_localizes_linked_crop_species_name(self):
         species = CropSpecies.objects.create(name='Yield Calendar Localized Species')
         CropSpeciesTranslation.objects.create(species=species, language_code='de', common_name='Ackerbohne')

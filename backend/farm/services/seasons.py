@@ -218,11 +218,11 @@ def planting_date_fits_period(planting_date: date | None, start_date: date, end_
 
 
 def plan_continues_into_period(
-    planting_date: date | None, occupancy_end: date | None, period_start: date,
+    bed_id: int | None, planting_date: date | None, occupancy_end: date | None, period_start: date,
 ) -> bool:
-    """An older planting still occupies its place on the first day of the period."""
+    """An older planting still occupies its bed on the first day of the period."""
     return (
-        planting_date is not None and occupancy_end is not None
+        bed_id is not None and planting_date is not None and occupancy_end is not None
         and planting_date < period_start <= occupancy_end
     )
 
@@ -331,7 +331,7 @@ def build_planting_plan_copies(
     crop_index = build_general_crop_index(source_season.project_id) if use_actual_dates else None
     for plan in source_plans:
         if plan_continues_into_period(
-            plan.planting_date, plan.occupancy_end_date, target_season.start_date,
+            plan.bed_id, plan.planting_date, plan.occupancy_end_date, target_season.start_date,
         ):
             continuing_count += 1
             continue
@@ -429,15 +429,15 @@ def _season_copy_count_summary(
 
 def preview_copy_counts(
     *,
-    source_periods: list[tuple[date | None, date | None]],
+    source_periods: list[tuple[int | None, date | None, date | None]],
     target_start: date,
     target_end: date,
 ) -> dict:
     """Count eligible, out-of-period, and continuing plans for a suggested season."""
     copied = 0
     continuing = 0
-    for planting_date, occupancy_end in source_periods:
-        if plan_continues_into_period(planting_date, occupancy_end, target_start):
+    for bed_id, planting_date, occupancy_end in source_periods:
+        if plan_continues_into_period(bed_id, planting_date, occupancy_end, target_start):
             continuing += 1
             continue
         if planting_date is None:
@@ -470,7 +470,7 @@ def _route_shifted_planting_date(
 
 def preview_bridged_copy_counts(
     *,
-    source_periods: list[tuple[date | None, date | None]],
+    source_periods: list[tuple[int | None, date | None, date | None]],
     source_start_year: int,
     transition_start: date, transition_end: date,
     followup_start: date, followup_end: date,
@@ -481,7 +481,7 @@ def preview_bridged_copy_counts(
     month_offset = (transition_start.year - source_start_year) * 12
     counts = {'transition': 0, 'followup': 0, 'skipped': 0, 'continuing_count': 0}
     bucket = {'first': ('transition', transition_start), 'second': ('followup', followup_start)}
-    for planting_date, occupancy_end in source_periods:
+    for bed_id, planting_date, occupancy_end in source_periods:
         shifted = None if planting_date is None else add_months(planting_date, month_offset)
         target = _route_shifted_planting_date(
             shifted, transition_start, transition_end, followup_start, followup_end,
@@ -490,7 +490,7 @@ def preview_bridged_copy_counts(
             counts['skipped'] += 1
             continue
         key, start = bucket[target]
-        if plan_continues_into_period(planting_date, occupancy_end, start):
+        if plan_continues_into_period(bed_id, planting_date, occupancy_end, start):
             counts['continuing_count'] += 1
         else:
             counts[key] += 1
@@ -534,7 +534,7 @@ def distribute_planting_plans(
             continue
         season = target_season[route]
         if plan_continues_into_period(
-            plan.planting_date, plan.occupancy_end_date, season.start_date,
+            plan.bed_id, plan.planting_date, plan.occupancy_end_date, season.start_date,
         ):
             continuing_count += 1
             continue
@@ -704,13 +704,13 @@ def build_season_creation_options(
             'end_date': due_end.isoformat(),
         }
 
-    last_plan_periods: list[tuple[date | None, date | None]] = []
+    last_plan_periods: list[tuple[int | None, date | None, date | None]] = []
     if latest_season is not None:
         last_plan_periods = list(
             PlantingPlan.objects
             .filter(season=latest_season)
             .annotate(occupied_until=PlantingPlan.occupancy_end_expression())
-            .values_list('planting_date', 'occupied_until')
+            .values_list('bed_id', 'planting_date', 'occupied_until')
         )
         payload['last_season'] = {
             'start_date': latest_season.start_date.isoformat(),
