@@ -250,18 +250,19 @@ def _season_copy_fields(plan: PlantingPlan, crop_index: GeneralCropIndex | None)
     planned = plan_event_dates(plan, crop_index)
     sowing = plan.actual_sowing_date or planned.get('sowing')
     transplanting = plan.actual_transplanting_date or planned.get('planting')
-    if plan_cultivation_type(plan, crop_index) in ('pre_cultivation', 'purchased_transplant'):
+    cultivation = plan_cultivation_type(plan, crop_index)
+    bought_in = cultivation == PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT
+    if bought_in or cultivation == 'pre_cultivation':
         fields['planting_date'] = transplanting or plan.planting_date
-        fields['planned_sowing_date'] = sowing
+        fields['planned_sowing_date'] = None if bought_in else sowing
         fields['planned_transplanting_date'] = None
     else:
         fields['planting_date'] = sowing or plan.planting_date
         fields['planned_sowing_date'] = None
         fields['planned_transplanting_date'] = transplanting
     planned_start, planned_end = plan.planned_harvest_dates(crop_index)
-    fields['planned_propagation_start_date'] = (
-        plan.actual_propagation_start_date or planned.get('propagation_start')
-    )
+    propagation_start = plan.actual_propagation_start_date or planned.get('propagation_start')
+    fields['planned_propagation_start_date'] = None if bought_in else propagation_start
     fields['harvest_date'] = plan.actual_harvest_start_date or planned_start
     fields['harvest_end_date'] = plan.recorded_harvest_end_date or planned_end
     return fields

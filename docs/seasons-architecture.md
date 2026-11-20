@@ -241,6 +241,7 @@ a season pattern changes and keeps the previous period eligible.
   shift for the plan, and the remaining dates receive that same shift.
   A crop-derived fallback stays calculated when the new plan yields the same
   shifted date. Otherwise the copy stores the shifted source date explicitly.
+  Bought-in plants use transplant and harvest dates.
   Copies always start with their own actual dates unset.
   When a copy would break the rotation
   on its bed (or gets a nutrient hint), shows a summary and lets the user copy
