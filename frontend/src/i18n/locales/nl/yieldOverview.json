@@ -32,7 +32,20 @@
     "description": "Opbrengstprognoses zijn beschikbaar zodra er teelten met oogstperiodes bestaan.",
     "createPlanAction": "Teelt toevoegen",
     "noYieldTitle": "Geen verwachte opbrengsten in dit seizoen",
-    "noYieldDescription": "Er zijn geen oogstgegevens voor het actieve seizoen. Controleer of bij je gewassen verwachte opbrengsten zijn ingevoerd.",
+    "noYieldDescription": "Voor elke prognose zijn een oogstperiode, een verwachte opbrengst met eenheid en een teeltoppervlak of aantal planten nodig.",
     "openPlansAction": "Teeltplan openen"
+  },
+  "diagnostics": {
+    "title": "Teelten zonder prognose ({{count}})",
+    "unnamedPlan": "Teelt zonder gewas",
+    "blockers": {
+      "missing_crop": "Gewas ontbreekt",
+      "missing_yield_rate": "Verwachte opbrengst ontbreekt of is ongeldig",
+      "missing_yield_unit": "Opbrengsteenheid ontbreekt",
+      "missing_area": "Teeltoppervlak ontbreekt of is ongeldig",
+      "missing_plant_spacing": "Plantafstand ontbreekt of is ongeldig",
+      "zero_plant_count": "Het berekende aantal planten is nul",
+      "missing_harvest_period": "Oogstperiode ontbreekt of is ongeldig"
+    }
   }
 }

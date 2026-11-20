@@ -32,7 +32,20 @@
     "description": "Les prévisions de rendement sont disponibles dès qu'il existe des séries avec des périodes de récolte.",
     "createPlanAction": "Ajouter une série",
     "noYieldTitle": "Aucun rendement prévu pour cette saison",
-    "noYieldDescription": "Aucune donnée de récolte n'existe pour la saison active. Vérifiez que des rendements prévus sont saisis pour vos cultures.",
+    "noYieldDescription": "Chaque prévision nécessite une période de récolte, un rendement prévu avec son unité et une surface cultivée ou un nombre de plants.",
     "openPlansAction": "Ouvrir le plan de culture"
+  },
+  "diagnostics": {
+    "title": "Séries sans prévision ({{count}})",
+    "unnamedPlan": "Série sans culture",
+    "blockers": {
+      "missing_crop": "Culture manquante",
+      "missing_yield_rate": "Rendement prévu manquant ou invalide",
+      "missing_yield_unit": "Unité de rendement manquante",
+      "missing_area": "Surface cultivée manquante ou invalide",
+      "missing_plant_spacing": "Espacement des plants manquant ou invalide",
+      "zero_plant_count": "Le nombre de plants calculé est nul",
+      "missing_harvest_period": "Période de récolte manquante ou invalide"
+    }
   }
 }

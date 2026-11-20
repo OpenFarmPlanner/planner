@@ -32,7 +32,20 @@
     "description": "Yield forecasts become available once planting plans with harvest periods exist.",
     "createPlanAction": "Add planting plan",
     "noYieldTitle": "No expected yields in this season",
-    "noYieldDescription": "No harvest data exists for the active season. Make sure your crops have expected yields entered.",
+    "noYieldDescription": "Each forecast needs a harvest period, an expected yield with a unit, and a planted area or plant count.",
     "openPlansAction": "Open planting plans"
+  },
+  "diagnostics": {
+    "title": "Plans excluded from the forecast ({{count}})",
+    "unnamedPlan": "Plan without a crop",
+    "blockers": {
+      "missing_crop": "Crop is missing",
+      "missing_yield_rate": "Expected yield is missing or invalid",
+      "missing_yield_unit": "Yield unit is missing",
+      "missing_area": "Planted area is missing or invalid",
+      "missing_plant_spacing": "Plant spacing is missing or invalid",
+      "zero_plant_count": "Calculated plant count is zero",
+      "missing_harvest_period": "Harvest period is missing or invalid"
+    }
   }
 }

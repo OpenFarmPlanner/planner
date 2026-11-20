@@ -32,7 +32,20 @@
     "description": "As previsões de rendimentos ficam disponíveis quando existirem séries com períodos de colheita.",
     "createPlanAction": "Adicionar série",
     "noYieldTitle": "Sem rendimentos esperados nesta época",
-    "noYieldDescription": "Não existem dados de colheita para a época ativa. Verifique se as culturas têm rendimentos esperados definidos.",
+    "noYieldDescription": "Cada previsão requer um período de colheita, um rendimento esperado com unidade e uma área cultivada ou um número de plantas.",
     "openPlansAction": "Abrir plano de cultivo"
+  },
+  "diagnostics": {
+    "title": "Séries sem previsão ({{count}})",
+    "unnamedPlan": "Série sem cultura",
+    "blockers": {
+      "missing_crop": "Falta a cultura",
+      "missing_yield_rate": "O rendimento esperado está em falta ou é inválido",
+      "missing_yield_unit": "Falta a unidade de rendimento",
+      "missing_area": "A área cultivada está em falta ou é inválida",
+      "missing_plant_spacing": "O espaçamento entre plantas está em falta ou é inválido",
+      "zero_plant_count": "O número de plantas calculado é zero",
+      "missing_harvest_period": "O período de colheita está em falta ou é inválido"
+    }
   }
 }

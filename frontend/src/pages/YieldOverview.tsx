@@ -2,9 +2,11 @@ import { loadRetryAlertSx } from '../components/loadRetryStyles';
 import LoadRetryButton from "../components/LoadRetryButton";
 import { useEffect, useMemo, useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
-import { useOutletContext } from "react-router";
+import { Link as RouterLink, useOutletContext } from "react-router";
 import {
   Alert,
+  Box,
+  Link,
   Stack,
   Typography,
 } from "@mui/material";
@@ -12,8 +14,8 @@ import {
   plantingPlanAPI,
   yieldCalendarAPI,
   type PlantingPlan,
-  type YieldCalendarWeek,
 } from "../api/api";
+import type { YieldCalendarForecast } from "../api/types";
 import PageContainer from "../components/layout/PageContainer";
 import PageSurface from "../components/layout/PageSurface";
 import EmptyStateCard from "../components/project/EmptyStateCard";
@@ -21,6 +23,7 @@ import ProjectRequiredState from "../components/project/ProjectRequiredState";
 import { useProjectRequirement } from "../hooks/useProjectRequirement";
 import { useTranslation } from "../i18n";
 import type { RootLayoutOutletContext } from "../navigation/topbarTypes";
+import { plantingPlanDetailPath } from "../planting-plans/plantingPlanDetailRoutes";
 import { YieldFilterBar } from "./YieldFilterBar";
 import { YieldDistributionChart } from "./YieldDistributionChart";
 import {
@@ -28,28 +31,33 @@ import {
   type ChartPeriod,
   type YieldCropMeta,
 } from "./yieldOverviewUtils";
-import { getCropDisplayName } from "../crops/cropDisplay";
+import { formatCropDisplayName, getCropDisplayName } from "../crops/cropDisplay";
+
+const EMPTY_FORECAST: YieldCalendarForecast = { weeks: [], incomplete_plans: [] };
 
 export default function YieldOverviewPage() {
   const { t, i18n } = useTranslation("yieldOverview");
-  const { shouldShowProjectRequiredState, missingProjectReason } =
+  const { activeProjectId, shouldShowProjectRequiredState, missingProjectReason } =
     useProjectRequirement();
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
   const activeSeason = outletContext?.activeSeason ?? null;
+  const scope = `${activeProjectId ?? ''}:${activeSeason?.id ?? ''}`;
   const [selectedCropId, setSelectedCropId] = useState(ALL_CROPS);
   const [period, setPeriod] = useState<ChartPeriod>("week");
   const [isFetching, setLoading] = useState(true);
   const [fetchError, setError] = useState<string | null>(null);
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [plantingPlans, setPlantingPlans] = useState<PlantingPlan[]>([]);
-  const [weeklyYield, setWeeklyYield] = useState<YieldCalendarWeek[]>([]);
+  const [forecast, setForecast] = useState(EMPTY_FORECAST);
+  const [loadedScope, setLoadedScope] = useState<string | null>(null);
+  const { weeks: weeklyYield, incomplete_plans: incompletePlans } = forecast;
 
   // Without a project there is nothing to fetch, so the page is neither
   // loading nor in error. Derived rather than pushed into state from the
   // effect below — the fetched collections do not need clearing either,
   // because the project-required branch renders before they are read and
   // `loading` is back to true by the time a project appears.
-  const loading = shouldShowProjectRequiredState ? false : isFetching;
+  const loading = !shouldShowProjectRequiredState && (isFetching || scope !== loadedScope);
   const error = shouldShowProjectRequiredState ? null : fetchError;
 
   useEffect(() => {
@@ -66,15 +74,15 @@ export default function YieldOverviewPage() {
       try {
         setLoading(true);
         setError(null);
-        const [plansRes, weeklyYieldRes] = await Promise.all([
+        const [plansRes, forecastRes] = await Promise.all([
           plantingPlanAPI.listAll(),
-          yieldCalendarAPI.list(),
+          yieldCalendarAPI.forecast(),
         ]);
         if (ignore) {
           return;
         }
         setPlantingPlans(plansRes.results);
-        setWeeklyYield(weeklyYieldRes.data);
+        setForecast(forecastRes.data);
       } catch (err) {
         if (ignore) {
           return;
@@ -83,6 +91,7 @@ export default function YieldOverviewPage() {
         setError(t("errors.load"));
       } finally {
         if (!ignore) {
+          setLoadedScope(scope);
           setLoading(false);
         }
       }
@@ -92,7 +101,7 @@ export default function YieldOverviewPage() {
     return () => {
       ignore = true;
     };
-  }, [shouldShowProjectRequiredState, t, retryAttempt]);
+  }, [scope, shouldShowProjectRequiredState, t, retryAttempt]);
 
   const crops = useMemo(() => {
     const cropMap = new Map<number, YieldCropMeta>();
@@ -156,6 +165,7 @@ export default function YieldOverviewPage() {
 
   const hasPlantingPlans = plantingPlans.length > 0;
   const hasYieldData = weeklyYield.length > 0;
+  const dateFormatter = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeZone: 'UTC' });
 
   return (
     <PageContainer variant="workspacePage">
@@ -168,6 +178,38 @@ export default function YieldOverviewPage() {
             onCropChange={setSelectedCropId}
             onPeriodChange={setPeriod}
           />
+
+          {incompletePlans.length > 0 && (
+            <Alert severity="warning" sx={{ '& .MuiAlert-message': { minWidth: 0 }, overflowWrap: 'anywhere' }}>
+              <details>
+                <Box component="summary" sx={{ cursor: 'pointer', minHeight: 44, alignContent: 'center' }}>
+                  {t('diagnostics.title', { count: incompletePlans.length })}
+                </Box>
+                <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+                  {incompletePlans.map(plan => {
+                    const date = plan.planting_date
+                      ? dateFormatter.format(new Date(`${plan.planting_date}T00:00:00Z`))
+                      : null;
+                    const planLabel = [
+                      formatCropDisplayName(plan) || t('diagnostics.unnamedPlan'),
+                      plan.bed_name,
+                      date,
+                    ].filter(Boolean).join(' · ');
+                    return (
+                      <Box component="li" key={plan.plan_id} sx={{ mb: 0.75 }}>
+                        <Link component={RouterLink} to={plantingPlanDetailPath(plan.plan_id)}>
+                          {planLabel}
+                        </Link>
+                        <Typography variant="body2">
+                          {plan.calculation_blockers.map(blocker => t(`diagnostics.blockers.${blocker}`)).join(' · ')}
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+                </Box>
+              </details>
+            </Alert>
+          )}
 
           {!hasPlantingPlans ? (
             <EmptyStateCard

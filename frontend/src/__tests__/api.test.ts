@@ -597,6 +597,11 @@ describe('untested endpoint groups', () => {
     expect(getMock).toHaveBeenCalledWith('/yield-calendar/', { params: { year: 2026 } });
   });
 
+  it('requests the active season forecast with omitted-plan diagnostics', () => {
+    yieldCalendarAPI.forecast();
+    expect(getMock).toHaveBeenCalledWith('/yield-calendar/', { params: { include_incomplete: true } });
+  });
+
   it('sends no supplier filter when none is selected', () => {
     // Same shape-versus-equality point as the yield calendar above.
     seedDemandAPI.list();

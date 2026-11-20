@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase, TestCase
@@ -18,6 +19,7 @@ from farm.models import (
 from farm.services.yield_calendar import (
     build_yield_calendar,
     build_yield_calendar_for_season,
+    compute_plan_expected_yield,
     iso_week_key,
     week_start_for_iso_year,
 )
@@ -37,11 +39,15 @@ class YieldCalendarAPITest(TestCase):
         field = Field.objects.create(name='Field', location=location, project=self.project)
         self.bed = Bed.objects.create(name='Bed', field=field, area_sqm=100, project=self.project)
 
-    def _create_plan(self, *, crop: Crop, harvest_start: date, harvest_end: date):
+    def _create_plan(
+        self, *, crop: Crop, harvest_start: date, harvest_end: date, area_usage_sqm=1,
+        quantity=None,
+    ):
         plan = PlantingPlan.objects.create(
             crop=crop,
             bed=self.bed,
             planting_date=harvest_start,
+            area_usage_sqm=area_usage_sqm, quantity=quantity,
             project=self.project,
         )
         PlantingPlan.objects.filter(id=plan.id).update(harvest_date=harvest_start, harvest_end_date=harvest_end)
@@ -61,7 +67,10 @@ class YieldCalendarAPITest(TestCase):
         self.assertEqual(response.data['code'], 'year_out_of_range')
 
     def test_harvest_inside_single_week_goes_to_one_week(self):
-        carrot = Crop.objects.create(name='Karotte', expected_yield=70, display_color='#F4A261', project=self.project)
+        carrot = Crop.objects.create(
+            name='Karotte', harvest_method='per_sqm', expected_yield=70, display_color='#F4A261',
+            project=self.project,
+        )
         self._create_plan(crop=carrot, harvest_start=date(2026, 3, 3), harvest_end=date(2026, 3, 6))
 
         response = self.client.get('/openfarmplanner/api/yield-calendar/?year=2026')
@@ -73,6 +82,121 @@ class YieldCalendarAPITest(TestCase):
         self.assertEqual(payload[0]['crops'][0]['crop_name'], 'Karotte')
         self.assertAlmostEqual(payload[0]['crops'][0]['yield'], 70.0, places=2)
 
+    def test_area_rates_scale_each_plan_before_weekly_distribution(self):
+        crop = Crop.objects.create(
+            name='Carrot', harvest_method='per_sqm', expected_yield=3, project=self.project,
+        )
+        for day, area in ((2, 2), (9, 10)):
+            self._create_plan(
+                crop=crop, harvest_start=date(2026, 3, day), harvest_end=date(2026, 3, day + 3),
+                area_usage_sqm=area, quantity=44,
+            )
+
+        response = self.client.get('/openfarmplanner/api/yield-calendar/?year=2026')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([week['crops'][0]['yield'] for week in response.json()], [6, 30])
+
+    def test_per_plant_forecast_uses_inherited_rate_unit_and_canonical_count(self):
+        species = CropSpecies.objects.create(name='Yield inheritance fixture')
+        Crop.objects.create(
+            name='General squash', crop_species=species, project=self.project,
+            harvest_method='per_plant', expected_yield=2,
+            row_spacing_m=0.5, distance_within_row_m=0.2,
+        )
+        variety = Crop.objects.create(
+            name='Squash', variety='Early', crop_species=species, project=self.project,
+        )
+        plan = self._create_plan(
+            crop=variety, harvest_start=date(2026, 3, 2), harvest_end=date(2026, 3, 5),
+            area_usage_sqm=Decimal('5.03'), quantity=99,
+        )
+
+        response = self.client.get('/openfarmplanner/api/yield-calendar/?year=2026')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()[0]['crops'][0]['yield'], 100)
+        expected = compute_plan_expected_yield(plan)
+        self.assertEqual(expected.kilograms, Decimal('100'))
+        self.assertFalse(expected.blockers)
+
+    def test_missing_or_invalid_inputs_are_reported_within_the_active_season(self):
+        season = Season.objects.create(
+            project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+        )
+        later = Season.objects.create(
+            project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
+        )
+        expected = []
+        for rate, method, area, blockers in (
+            (3, '', 10, ['missing_yield_unit']),
+            (None, 'per_sqm', 10, ['missing_yield_rate']),
+            (3, 'per_sqm', 0, ['missing_area']),
+            (2, 'per_plant', None, ['missing_area', 'missing_plant_spacing']),
+        ):
+            crop = Crop.objects.create(
+                name=f'Crop {len(expected)}', expected_yield=rate, harvest_method=method,
+                project=self.project,
+            )
+            plan = self._create_plan(
+                crop=crop, harvest_start=date(2026, 3, 2), harvest_end=date(2026, 3, 5),
+                area_usage_sqm=area, quantity=44,
+            )
+            PlantingPlan.objects.filter(pk=plan.pk).update(season=season)
+            expected.append((plan.pk, blockers))
+        draft = PlantingPlan.objects.create(bed=self.bed, season=season, project=self.project)
+        expected.append((draft.pk, ['missing_crop', 'missing_harvest_period']))
+        PlantingPlan.objects.create(bed=self.bed, season=later, project=self.project)
+        foreign_project = Project.objects.create(name='Other', slug='yield-foreign-diagnostics')
+        foreign_crop = Crop.objects.create(name='Private crop', project=foreign_project)
+        PlantingPlan.objects.create(
+            crop=foreign_crop, project=foreign_project, planting_date=date(2026, 3, 2),
+        )
+        url = '/openfarmplanner/api/yield-calendar/'
+
+        response = self.client.get(url, {'include_incomplete': 'true'}, HTTP_X_SEASON_ID=season.pk)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['weeks'], [])
+        self.assertEqual([
+            (plan['plan_id'], plan['calculation_blockers'])
+            for plan in response.json()['incomplete_plans']
+        ], expected)
+        self.assertEqual(self.client.get(url, HTTP_X_SEASON_ID=season.pk).json(), [])
+        explicit_year = self.client.get(url, {'include_incomplete': 'true', 'year': 2026})
+        self.assertEqual(
+            [plan['plan_id'] for plan in explicit_year.json()['incomplete_plans']],
+            [plan_id for plan_id, _ in expected if plan_id != draft.id],
+        )
+
+    def test_independent_year_slices_preserve_the_same_rounded_plan_total(self):
+        season = Season.objects.create(
+            project=self.project, start_date=date(2026, 9, 1), end_date=date(2027, 8, 31),
+        )
+        crop = Crop.objects.create(
+            name='Leek', harvest_method='per_sqm', expected_yield=Decimal('0.37'),
+            project=self.project,
+        )
+        plan = self._create_plan(
+            crop=crop, area_usage_sqm=Decimal('1.27'),
+            harvest_start=date(2026, 12, 24), harvest_end=date(2027, 1, 8),
+        )
+        PlantingPlan.objects.filter(pk=plan.pk).update(season=season)
+        url = '/openfarmplanner/api/yield-calendar/'
+        scope = {'HTTP_X_SEASON_ID': str(season.pk)}
+
+        all_weeks = self.client.get(url, **scope).json()
+        year_slices = (
+            self.client.get(url, {'year': 2026}, **scope).json()
+            + self.client.get(url, {'year': 2027}, **scope).json()
+        )
+
+        self.assertEqual(all_weeks, year_slices)
+        self.assertEqual(len(all_weeks), 3)
+        self.assertEqual(
+            sum(Decimal(str(week['crops'][0]['yield'])) for week in all_weeks), Decimal('0.47'),
+        )
+
     def test_yield_calendar_localizes_linked_crop_species_name(self):
         species = CropSpecies.objects.create(name='Yield Calendar Localized Species')
         CropSpeciesTranslation.objects.create(species=species, language_code='de', common_name='Ackerbohne')
@@ -80,7 +204,7 @@ class YieldCalendarAPITest(TestCase):
         bean = Crop.objects.create(
             name='Ackerbohne',
             crop_species=species,
-            expected_yield=70,
+            harvest_method='per_sqm', expected_yield=70,
             display_color='#6D597A',
             project=self.project,
         )
@@ -96,7 +220,10 @@ class YieldCalendarAPITest(TestCase):
         self.assertEqual(crop['crop_display_language_code'], 'en')
 
     def test_harvest_spanning_multiple_weeks_splits_proportionally(self):
-        leek = Crop.objects.create(name='Lauch', expected_yield=100, display_color='#2A9D8F', project=self.project)
+        leek = Crop.objects.create(
+            name='Lauch', harvest_method='per_sqm', expected_yield=100, display_color='#2A9D8F',
+            project=self.project,
+        )
         self._create_plan(crop=leek, harvest_start=date(2026, 3, 5), harvest_end=date(2026, 3, 17))
 
         response = self.client.get('/openfarmplanner/api/yield-calendar/?year=2026')
@@ -104,11 +231,14 @@ class YieldCalendarAPITest(TestCase):
 
         rows = {row['iso_week']: row for row in response.json()}
         self.assertAlmostEqual(rows['2026-W10']['crops'][0]['yield'], 33.33, places=2)
-        self.assertAlmostEqual(rows['2026-W11']['crops'][0]['yield'], 58.33, places=2)
+        self.assertAlmostEqual(rows['2026-W11']['crops'][0]['yield'], 58.34, places=2)
         self.assertAlmostEqual(rows['2026-W12']['crops'][0]['yield'], 8.33, places=2)
 
     def test_iso_year_boundary_uses_iso_week_keys(self):
-        spinach = Crop.objects.create(name='Spinat', expected_yield=80, display_color='#90BE6D', project=self.project)
+        spinach = Crop.objects.create(
+            name='Spinat', harvest_method='per_sqm', expected_yield=80, display_color='#90BE6D',
+            project=self.project,
+        )
         self._create_plan(crop=spinach, harvest_start=date(2024, 12, 30), harvest_end=date(2025, 1, 6))
 
         response = self.client.get('/openfarmplanner/api/yield-calendar/?year=2025')
@@ -122,7 +252,10 @@ class YieldCalendarAPITest(TestCase):
         self.assertAlmostEqual(payload[0]['crops'][0]['yield'], 80.0, places=2)
 
     def test_multiple_plans_same_crop_same_week_sum(self):
-        onion = Crop.objects.create(name='Zwiebel', expected_yield=10, display_color='#E9C46A', project=self.project)
+        onion = Crop.objects.create(
+            name='Zwiebel', harvest_method='per_sqm', expected_yield=10, display_color='#E9C46A',
+            project=self.project,
+        )
         self._create_plan(crop=onion, harvest_start=date(2026, 3, 2), harvest_end=date(2026, 3, 9))
         self._create_plan(crop=onion, harvest_start=date(2026, 3, 2), harvest_end=date(2026, 3, 9))
 
@@ -134,8 +267,14 @@ class YieldCalendarAPITest(TestCase):
         self.assertAlmostEqual(payload[0]['crops'][0]['yield'], 20.0, places=2)
 
     def test_multiple_crops_are_separate_stack_segments(self):
-        tomato = Crop.objects.create(name='Tomate', expected_yield=30, display_color='#E63946', project=self.project)
-        carrot = Crop.objects.create(name='Karotte', expected_yield=20, display_color='#F4A261', project=self.project)
+        tomato = Crop.objects.create(
+            name='Tomate', harvest_method='per_sqm', expected_yield=30, display_color='#E63946',
+            project=self.project,
+        )
+        carrot = Crop.objects.create(
+            name='Karotte', harvest_method='per_sqm', expected_yield=20, display_color='#F4A261',
+            project=self.project,
+        )
 
         self._create_plan(crop=tomato, harvest_start=date(2026, 3, 2), harvest_end=date(2026, 3, 9))
         self._create_plan(crop=carrot, harvest_start=date(2026, 3, 2), harvest_end=date(2026, 3, 9))
@@ -153,7 +292,10 @@ class YieldCalendarAPITest(TestCase):
     def test_scoped_to_the_active_season_when_the_header_is_present(self):
         """Without X-Season-Id, plans from every season still aggregate together
         (backward-compatible); with it, only the active season's plans count."""
-        carrot = Crop.objects.create(name='Karotte', expected_yield=70, display_color='#F4A261', project=self.project)
+        carrot = Crop.objects.create(
+            name='Karotte', harvest_method='per_sqm', expected_yield=70, display_color='#F4A261',
+            project=self.project,
+        )
         season_a = Season.objects.create(project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31))
         season_b = Season.objects.create(project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31))
         plan_a = self._create_plan(crop=carrot, harvest_start=date(2026, 3, 3), harvest_end=date(2026, 3, 6))
@@ -173,7 +315,10 @@ class YieldCalendarAPITest(TestCase):
         """A non-calendar-aligned season returns weeks from both of its ISO
         years in one response, instead of only the single year that would
         otherwise default from today's date."""
-        carrot = Crop.objects.create(name='Karotte', expected_yield=70, display_color='#F4A261', project=self.project)
+        carrot = Crop.objects.create(
+            name='Karotte', harvest_method='per_sqm', expected_yield=70, display_color='#F4A261',
+            project=self.project,
+        )
         season = Season.objects.create(
             project=self.project, start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
         )
@@ -197,7 +342,10 @@ class YieldCalendarAPITest(TestCase):
         yields no overlapping days for either shape, so removing both leaves
         this test passing. Pinned as behaviour, not as a guard on those lines.
         """
-        crop = Crop.objects.create(name='Punkt', expected_yield=50, project=self.project)
+        crop = Crop.objects.create(
+            name='Punkt', harvest_method='per_sqm', expected_yield=50,
+            project=self.project,
+        )
         self._create_plan(crop=crop, harvest_start=date(2026, 3, 3), harvest_end=date(2026, 3, 3))
 
         response = self.client.get('/openfarmplanner/api/yield-calendar/?year=2026')
@@ -206,7 +354,10 @@ class YieldCalendarAPITest(TestCase):
         self.assertEqual(response.json(), [])
 
     def test_an_inverted_harvest_window_contributes_nothing(self):
-        crop = Crop.objects.create(name='Rückwärts', expected_yield=50, project=self.project)
+        crop = Crop.objects.create(
+            name='Rückwärts', harvest_method='per_sqm', expected_yield=50,
+            project=self.project,
+        )
         self._create_plan(crop=crop, harvest_start=date(2026, 3, 10), harvest_end=date(2026, 3, 3))
 
         response = self.client.get('/openfarmplanner/api/yield-calendar/?year=2026')
@@ -217,7 +368,10 @@ class YieldCalendarAPITest(TestCase):
     def test_a_crop_with_a_zero_expected_yield_is_left_out(self):
         """The calendar charts kilograms; a crop with no figure has nothing to
         chart and would otherwise draw a zero-height segment in the legend."""
-        no_yield = Crop.objects.create(name='Ohne Ertrag', expected_yield=0, project=self.project)
+        no_yield = Crop.objects.create(
+            name='Ohne Ertrag', harvest_method='per_sqm', expected_yield=0,
+            project=self.project,
+        )
         self._create_plan(
             crop=no_yield, harvest_start=date(2026, 3, 2), harvest_end=date(2026, 3, 9),
         )
@@ -230,7 +384,10 @@ class YieldCalendarAPITest(TestCase):
         """`expected_yield` is nullable, and the accumulator feeds it straight
         into `Decimal(...)` — so the queryset filter is what keeps a NULL from
         reaching it, not a check further down."""
-        unknown = Crop.objects.create(name='Unbekannt', expected_yield=None, project=self.project)
+        unknown = Crop.objects.create(
+            name='Unbekannt', harvest_method='per_sqm', expected_yield=None,
+            project=self.project,
+        )
         self._create_plan(
             crop=unknown, harvest_start=date(2026, 3, 2), harvest_end=date(2026, 3, 9),
         )
@@ -241,7 +398,10 @@ class YieldCalendarAPITest(TestCase):
         self.assertEqual(response.json(), [])
 
     def test_a_plan_without_harvest_dates_is_left_out(self):
-        crop = Crop.objects.create(name='Ungeplant', expected_yield=50, project=self.project)
+        crop = Crop.objects.create(
+            name='Ungeplant', harvest_method='per_sqm', expected_yield=50,
+            project=self.project,
+        )
         PlantingPlan.objects.create(
             crop=crop, bed=self.bed, planting_date=date(2026, 3, 2), project=self.project,
         )
@@ -260,7 +420,10 @@ class YieldCalendarAPITest(TestCase):
         other_bed = Bed.objects.create(
             name='Fremd Bed', field=other_field, area_sqm=100, project=other_project,
         )
-        other_crop = Crop.objects.create(name='Fremd', expected_yield=99, project=other_project)
+        other_crop = Crop.objects.create(
+            name='Fremd', harvest_method='per_sqm', expected_yield=99,
+            project=other_project,
+        )
         plan = PlantingPlan.objects.create(
             crop=other_crop, bed=other_bed, planting_date=date(2026, 3, 2), project=other_project,
         )
@@ -274,7 +437,8 @@ class YieldCalendarAPITest(TestCase):
 
     def test_serves_the_colour_the_crop_was_given(self):
         crop = Crop.objects.create(
-            name='Bunt', expected_yield=10, display_color='#123456', project=self.project,
+            name='Bunt', harvest_method='per_sqm', expected_yield=10, display_color='#123456',
+            project=self.project,
         )
         self._create_plan(crop=crop, harvest_start=date(2026, 3, 2), harvest_end=date(2026, 3, 9))
 
@@ -286,7 +450,10 @@ class YieldCalendarAPITest(TestCase):
         """`Crop.save` generates a colour on create, so this branch is only
         reachable for a row cleared afterwards — a migration or a data fix.
         The chart still needs *some* colour for the segment."""
-        crop = Crop.objects.create(name='Farblos', expected_yield=10, project=self.project)
+        crop = Crop.objects.create(
+            name='Farblos', harvest_method='per_sqm', expected_yield=10,
+            project=self.project,
+        )
         Crop.objects.filter(pk=crop.pk).update(display_color='')
         self._create_plan(crop=crop, harvest_start=date(2026, 3, 2), harvest_end=date(2026, 3, 9))
 
@@ -295,7 +462,10 @@ class YieldCalendarAPITest(TestCase):
         self.assertEqual(response.json()[0]['crops'][0]['color'], '#3b82f6')
 
     def test_weeks_come_back_in_chronological_order(self):
-        crop = Crop.objects.create(name='Lauch', expected_yield=10, project=self.project)
+        crop = Crop.objects.create(
+            name='Lauch', harvest_method='per_sqm', expected_yield=10,
+            project=self.project,
+        )
         for start in (date(2026, 6, 1), date(2026, 3, 2), date(2026, 4, 6)):
             self._create_plan(crop=crop, harvest_start=start, harvest_end=start + timedelta(days=7))
 
@@ -307,7 +477,10 @@ class YieldCalendarAPITest(TestCase):
 
     def test_crops_within_a_week_come_back_in_name_order(self):
         for name in ('Zucchini', 'Aubergine', 'Mangold'):
-            crop = Crop.objects.create(name=name, expected_yield=10, project=self.project)
+            crop = Crop.objects.create(
+                name=name, harvest_method='per_sqm', expected_yield=10,
+                project=self.project,
+            )
             self._create_plan(
                 crop=crop, harvest_start=date(2026, 3, 2), harvest_end=date(2026, 3, 9),
             )
@@ -320,7 +493,10 @@ class YieldCalendarAPITest(TestCase):
     def test_a_contribution_that_rounds_to_zero_drops_its_whole_week(self):
         """One day out of a very long window rounds to 0.00 kg. Charting an
         empty week would draw a gap in the axis, so the week is dropped."""
-        crop = Crop.objects.create(name='Winzig', expected_yield=1, project=self.project)
+        crop = Crop.objects.create(
+            name='Winzig', harvest_method='per_sqm', expected_yield=1,
+            project=self.project,
+        )
         # Sun 2026-03-01 is the last day of ISO week 9; the rest falls in later
         # weeks, so week 9 receives 1/365 kg and rounds away.
         self._create_plan(crop=crop, harvest_start=date(2026, 3, 1), harvest_end=date(2027, 3, 1))
@@ -336,7 +512,10 @@ class YieldCalendarAPITest(TestCase):
         """Weeks are attributed by the ISO year of their Monday, so a harvest
         crossing the boundary shows up split across the two yearly requests
         rather than being counted twice or lost."""
-        crop = Crop.objects.create(name='Grünkohl', expected_yield=70, project=self.project)
+        crop = Crop.objects.create(
+            name='Grünkohl', harvest_method='per_sqm', expected_yield=70,
+            project=self.project,
+        )
         self._create_plan(crop=crop, harvest_start=date(2025, 12, 22), harvest_end=date(2026, 1, 5))
 
         weeks_2025 = [row['iso_week'] for row in self.client.get(
@@ -414,7 +593,8 @@ class YieldCalendarServiceTest(TestCase):
         approach as ``YieldCalendarAPITest``.
         """
         plan = PlantingPlan.objects.create(
-            crop=crop, planting_date=harvest_start, project=self.project, season=season,
+            crop=crop, planting_date=harvest_start, area_usage_sqm=1,
+            project=self.project, season=season,
         )
         PlantingPlan.objects.filter(id=plan.id).update(
             harvest_date=harvest_start, harvest_end_date=harvest_end,
@@ -433,7 +613,8 @@ class YieldCalendarServiceTest(TestCase):
             species=species, language_code='en', common_name=english_name,
         )
         return Crop.objects.create(
-            name=name, expected_yield=100, crop_species=species, project=self.project,
+            name=name, harvest_method='per_sqm', expected_yield=100, crop_species=species,
+            project=self.project,
         )
 
     def test_the_requested_language_decides_the_display_name(self):
@@ -475,7 +656,10 @@ class YieldCalendarServiceTest(TestCase):
         season = Season.objects.create(
             project=self.project, start_date=date(2026, 9, 1), end_date=date(2027, 8, 31),
         )
-        crop = Crop.objects.create(name='Grünkohl', expected_yield=100, project=self.project)
+        crop = Crop.objects.create(
+            name='Grünkohl', harvest_method='per_sqm', expected_yield=100,
+            project=self.project,
+        )
         self._create_plan(
             crop=crop,
             harvest_start=date(2026, 10, 5),
@@ -498,7 +682,10 @@ class YieldCalendarServiceTest(TestCase):
         season = Season.objects.create(
             project=self.project, start_date=date(2026, 9, 1), end_date=date(2027, 12, 31),
         )
-        crop = Crop.objects.create(name='Grünkohl', expected_yield=100, project=self.project)
+        crop = Crop.objects.create(
+            name='Grünkohl', harvest_method='per_sqm', expected_yield=100,
+            project=self.project,
+        )
         # Derived from the week numbers rather than written as dates, since
         # deliberately picking the same week in two different years is the
         # whole point and the calendar dates for it do not line up.
@@ -529,7 +716,10 @@ class YieldCalendarServiceTest(TestCase):
         # their own, since SQL comparisons against NULL are never true. Removing
         # either alone changes nothing, so this pins the outcome rather than the
         # mechanism.
-        crop = Crop.objects.create(name='Grünkohl', expected_yield=100, project=self.project)
+        crop = Crop.objects.create(
+            name='Grünkohl', harvest_method='per_sqm', expected_yield=100,
+            project=self.project,
+        )
         PlantingPlan.objects.create(
             crop=crop, planting_date=date(2026, 3, 2), project=self.project,
         )
@@ -537,7 +727,10 @@ class YieldCalendarServiceTest(TestCase):
         self.assertEqual(build_yield_calendar(self.project, 2026, 'de'), [])
 
     def test_a_plan_with_only_a_harvest_start_is_left_out(self):
-        crop = Crop.objects.create(name='Grünkohl', expected_yield=100, project=self.project)
+        crop = Crop.objects.create(
+            name='Grünkohl', harvest_method='per_sqm', expected_yield=100,
+            project=self.project,
+        )
         plan = PlantingPlan.objects.create(
             crop=crop, planting_date=date(2026, 3, 2), project=self.project,
         )
@@ -551,7 +744,10 @@ class YieldCalendarServiceTest(TestCase):
         # One day of an eight-day window is an eighth of the yield, which lands
         # exactly on two decimals and needs no rounding at all. This pins the
         # split itself; the rounding mode is separated out below.
-        crop = Crop.objects.create(name='Grünkohl', expected_yield=100, project=self.project)
+        crop = Crop.objects.create(
+            name='Grünkohl', harvest_method='per_sqm', expected_yield=100,
+            project=self.project,
+        )
         self._create_plan(crop=crop, harvest_start=date(2026, 3, 1), harvest_end=date(2026, 3, 9))
 
         rows = build_yield_calendar(self.project, 2026, 'de')
@@ -568,7 +764,10 @@ class YieldCalendarServiceTest(TestCase):
         # rounding would pull it down to 0.12 because 2 is even. The scale the
         # user reads is kilograms, where rounding down a value that sits
         # exactly on the boundary reads as the chart losing weight.
-        crop = Crop.objects.create(name='Grünkohl', expected_yield=1, project=self.project)
+        crop = Crop.objects.create(
+            name='Grünkohl', harvest_method='per_sqm', expected_yield=1,
+            project=self.project,
+        )
         self._create_plan(crop=crop, harvest_start=date(2026, 3, 1), harvest_end=date(2026, 3, 9))
 
         rows = build_yield_calendar(self.project, 2026, 'de')
@@ -581,7 +780,10 @@ class YieldCalendarServiceTest(TestCase):
         # is out of range. The view rejects anything above 9999 before it gets
         # here, so this is the one year that reaches the service at the very
         # top of the supported range.
-        crop = Crop.objects.create(name='Grünkohl', expected_yield=100, project=self.project)
+        crop = Crop.objects.create(
+            name='Grünkohl', harvest_method='per_sqm', expected_yield=100,
+            project=self.project,
+        )
         self._create_plan(crop=crop, harvest_start=date(2026, 3, 2), harvest_end=date(2026, 3, 9))
 
         self.assertEqual(build_yield_calendar(self.project, 9999, 'de'), [])
@@ -592,7 +794,10 @@ class YieldCalendarServiceTest(TestCase):
         # checks the ISO year of every week anyway, so removing either filter
         # changes only how many rows are read -- never the answer. The two
         # entry points below are the same harvest seen from both years.
-        crop = Crop.objects.create(name='Grünkohl', expected_yield=100, project=self.project)
+        crop = Crop.objects.create(
+            name='Grünkohl', harvest_method='per_sqm', expected_yield=100,
+            project=self.project,
+        )
         self._create_plan(
             crop=crop, harvest_start=date(2026, 12, 21), harvest_end=date(2027, 1, 11),
         )

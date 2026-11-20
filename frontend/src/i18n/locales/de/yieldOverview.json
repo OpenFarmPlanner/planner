@@ -32,7 +32,20 @@
     "description": "Ertragsprognosen werden verfügbar, sobald Anbaupläne mit Erntezeiträumen vorhanden sind.",
     "createPlanAction": "Anbauplan hinzufügen",
     "noYieldTitle": "Keine erwarteten Erträge in dieser Saison",
-    "noYieldDescription": "Für die aktive Saison sind keine Erntedaten vorhanden. Stelle sicher, dass deine Kulturen erwartete Erträge eingetragen haben.",
+    "noYieldDescription": "Für die Prognose braucht jeder Anbauplan einen Erntezeitraum, einen erwarteten Ertrag mit Einheit und eine Anbaufläche oder Pflanzenzahl.",
     "openPlansAction": "Anbaupläne öffnen"
+  },
+  "diagnostics": {
+    "title": "Anbaupläne ohne Prognose ({{count}})",
+    "unnamedPlan": "Anbauplan ohne Kultur",
+    "blockers": {
+      "missing_crop": "Kultur fehlt",
+      "missing_yield_rate": "Erwarteter Ertrag fehlt oder ist ungültig",
+      "missing_yield_unit": "Ertragseinheit fehlt",
+      "missing_area": "Anbaufläche fehlt oder ist ungültig",
+      "missing_plant_spacing": "Pflanzabstand fehlt oder ist ungültig",
+      "zero_plant_count": "Berechnete Pflanzenzahl ist null",
+      "missing_harvest_period": "Erntezeitraum fehlt oder ist ungültig"
+    }
   }
 }

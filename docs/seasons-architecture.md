@@ -136,11 +136,25 @@ description), one level down:
   "Jahr" filter with the same season-start-year default. It was removed: the
   page is fully season-scoped through `X-Season-Id`, and for a
   non-calendar-aligned season the calendar-year filter was actively
-  misleading. `YieldCalendarListView` now returns every ISO year the active
-  season spans (`build_yield_calendar_for_season`) instead of a single year,
-  so a Sep–Aug season is shown whole. `RootLayoutOutletContext.activeSeason`
-  carries the full season down to the page, which uses it only to decide
-  whether to draw the year-boundary marker on the chart (see below).
+  misleading. `YieldCalendarListView` returns the ISO-year range covered by the
+  active season, so a Sep–Aug season is shown whole. The page reloads the
+  forecast when the active project or season changes. The active season's
+  dates also determine whether the chart draws a year-boundary marker.
+- `farm.services.yield_calendar.compute_plan_expected_yield` calculates the
+  plan's forecast in kilograms from the effective crop rate and unit. Use the
+  plan's planted square metres for a per-m² rate and its canonical calculated
+  plant count for a per-plant rate. Crop varieties inherit these inputs through
+  the same resolver as the planting-plans API. The generic plan quantity can
+  also represent seeds, so it does not participate. Missing or invalid inputs
+  yield calculation blockers.
+- The calendar distributes a plan's forecast by days in the half-open interval
+  from harvest start to harvest end. Each weekly contribution is the
+  difference between the cumulative values at its boundaries, rounded to
+  0.01 kg. The same weeks then have the same values in separate ISO-year
+  requests and in the season response. The optional `include_incomplete=true`
+  response has `weeks` and `incomplete_plans`. It gives the yield overview the
+  scoped plan IDs and their calculation blockers. The default response is the
+  array of weeks.
 
 There is no server-persisted "last active season" (unlike
 `UserProjectSettings.last_project`); it is a client-only, per-project

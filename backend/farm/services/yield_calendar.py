@@ -1,15 +1,61 @@
-"""Weekly yield-distribution calculation for the yield calendar endpoint.
-
-Aggregates each planting plan's expected yield across the ISO weeks its
-harvest window overlaps, proportional to the overlapping days.
-"""
+"""Plan-level yield forecasts and their allocation across ISO harvest weeks."""
 
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
+from django.db.models import F, Q
+from django.db.models.functions import Coalesce
+
 from farm.models import PlantingPlan, Project, Season
 from farm.services.crop_display import resolve_crop_display_name
+from farm.services.crop_inheritance import (
+    GeneralCropIndex,
+    build_general_crop_index,
+    resolve_crop_field,
+)
+from farm.services.plant_count import PLANT_COUNT_BLOCKER_MISSING_AREA, compute_plan_plant_count
+
+_YIELD_PRECISION = Decimal('0.01')
+
+
+@dataclass(frozen=True)
+class PlanExpectedYield:
+    kilograms: Decimal | None
+    blockers: tuple[str, ...] = ()
+
+
+def compute_plan_expected_yield(
+    plan: PlantingPlan,
+    general_crop_index: GeneralCropIndex | None = None,
+) -> PlanExpectedYield:
+    """Return the plan's expected weight in kg using its crop's effective rate and unit."""
+    if plan.crop is None:
+        return PlanExpectedYield(None, ('missing_crop',))
+    crop_rate = resolve_crop_field(plan.crop, 'expected_yield', general_crop_index)
+    rate = Decimal(str(crop_rate)) if crop_rate is not None else None
+    method = resolve_crop_field(plan.crop, 'harvest_method', general_crop_index)
+    blockers: list[str] = []
+    if rate is None or not rate.is_finite() or rate <= 0:
+        blockers.append('missing_yield_rate')
+    if method == 'per_sqm':
+        area = plan.area_usage_sqm
+        quantity = Decimal(str(area)) if area is not None else None
+        if quantity is None or not quantity.is_finite() or quantity <= 0:
+            blockers.append(PLANT_COUNT_BLOCKER_MISSING_AREA)
+    elif method == 'per_plant':
+        count = compute_plan_plant_count(plan, general_crop_index)
+        quantity = count.count
+        blockers.extend(count.blockers)
+        if quantity == 0:
+            blockers.append('zero_plant_count')
+    else:
+        quantity = None
+        blockers.append('missing_yield_unit')
+    if blockers:
+        return PlanExpectedYield(None, tuple(blockers))
+    return PlanExpectedYield(rate * quantity)
 
 
 def week_start_for_iso_year(iso_year: int) -> date:
@@ -23,159 +69,175 @@ def iso_week_key(day: date) -> str:
     return f"{iso_year}-W{iso_week:02d}"
 
 
+def _iso_year_end(iso_year: int) -> date:
+    return week_start_for_iso_year(iso_year + 1) if iso_year < date.max.year else date.max
+
+
 def build_yield_calendar(
     project: Project,
     iso_year: int,
     language_code: str,
     season_id: int | None = None,
-) -> list[dict[str, object]]:
-    """Return the per-week, per-crop expected yield rows for one ISO year.
-
-    Scoped to `season_id` when given, matching the active-season header the
-    planting-plans list endpoint scopes by — see
-    docs/seasons-architecture.md.
-    """
-    year_start = week_start_for_iso_year(iso_year)
-    year_end = week_start_for_iso_year(iso_year + 1) if iso_year < 9999 else date.max
-
-    plans = (
-        PlantingPlan.objects
-        .select_related('crop', 'crop__crop_species')
-        .prefetch_related('crop__crop_species__translations')
-        .filter(
-            project=project,
-            harvest_date__isnull=False,
-            harvest_end_date__isnull=False,
-            crop__expected_yield__gt=0,
-            harvest_date__lt=year_end,
-            harvest_end_date__gt=year_start,
-        )
-    )
-    if season_id is not None:
-        plans = plans.filter(season_id=season_id)
-
-    weekly_data: dict[str, dict[str, object]] = {}
-    for plan in plans:
-        _accumulate_plan_yield(weekly_data, plan, iso_year, language_code, project.region)
-
-    return _build_response_rows(weekly_data)
+) -> list[dict]:
+    """Return one ISO year's weekly yield rows, optionally scoped to a season."""
+    return build_yield_forecast(
+        project, language_code, iso_year=iso_year, season_id=season_id, include_incomplete=False,
+    )['weeks']
 
 
 def build_yield_calendar_for_season(
-    project: Project,
-    season: Season,
-    language_code: str,
-) -> list[dict[str, object]]:
-    """Return the weekly yield rows spanning every ISO year the season touches.
+    project: Project, season: Season, language_code: str,
+) -> list[dict]:
+    """Return the weekly yield rows across the active season's ISO years."""
+    return build_yield_forecast(
+        project, language_code, iso_year=None, season=season, include_incomplete=False,
+    )['weeks']
 
-    A season that does not align with the calendar year (e.g. Sep–Aug) covers
-    weeks in two ISO years; the single-year `build_yield_calendar` would only
-    ever show half of it. Weeks are keyed by ISO year+week, so concatenating
-    per-year results never collides.
-    """
-    rows: list[dict[str, object]] = []
-    for iso_year in range(season.start_date.year, season.end_date.year + 1):
-        rows.extend(
-            build_yield_calendar(project, iso_year, language_code, season_id=season.id)
+
+def build_yield_forecast(
+    project: Project,
+    language_code: str,
+    *,
+    iso_year: int | None,
+    season: Season | None = None,
+    season_id: int | None = None,
+    include_incomplete: bool = True,
+) -> dict[str, list[dict]]:
+    """Build weekly yield rows and, if requested, explain omitted planting plans."""
+    full_season = season is not None and iso_year is None
+    if full_season:
+        start_year = min(season.start_date.year, season.start_date.isocalendar().year)
+        end_year = max(season.end_date.year, season.end_date.isocalendar().year)
+        season_id = season.pk
+    else:
+        start_year = end_year = iso_year if iso_year is not None else date.today().year
+    start = week_start_for_iso_year(start_year)
+    end = _iso_year_end(end_year)
+
+    overlaps = Q(harvest_date__lt=end, harvest_end_date__gt=start)
+    invalid_period = (
+        Q(harvest_date__isnull=True)
+        | Q(harvest_end_date__isnull=True)
+        | Q(harvest_end_date__lte=F('harvest_date'))
+    )
+    plans = (
+        PlantingPlan.objects.filter(project=project)
+        .select_related('crop', 'crop__crop_species', 'bed')
+        .prefetch_related('crop__crop_species__translations')
+        .order_by('pk')
+    )
+    if season_id is not None:
+        plans = plans.filter(season_id=season_id)
+    if include_incomplete:
+        if not full_season:
+            plans = plans.alias(
+                diagnostic_date=Coalesce('harvest_date', 'planting_date', 'harvest_end_date'),
+            )
+            invalid_period &= Q(diagnostic_date__gte=start, diagnostic_date__lt=end)
+        plans = plans.filter(overlaps | invalid_period)
+    else:
+        plans = plans.filter(overlaps & ~invalid_period)
+
+    general_crops = build_general_crop_index(project.pk)
+    weekly_data: dict[date, dict[tuple, Decimal]] = defaultdict(lambda: defaultdict(Decimal))
+    incomplete_plans = []
+    for plan in plans:
+        expected = compute_plan_expected_yield(plan, general_crops)
+        harvest_start, harvest_end = plan.harvest_date, plan.harvest_end_date
+        has_window = (
+            harvest_start is not None and harvest_end is not None and harvest_end > harvest_start
         )
-    return rows
+        if expected.kilograms is not None and has_window:
+            _accumulate_plan_yield(
+                weekly_data, plan, expected.kilograms, start, end, language_code, project.region,
+            )
+        elif include_incomplete:
+            blockers = expected.blockers + (() if has_window else ('missing_harvest_period',))
+            incomplete_plans.append(_incomplete_plan(plan, blockers, language_code, project.region))
+
+    return {'weeks': _build_response_rows(weekly_data), 'incomplete_plans': incomplete_plans}
+
+
+def _incomplete_plan(
+    plan: PlantingPlan, blockers: tuple[str, ...], language_code: str, region: str,
+) -> dict:
+    crop = plan.crop
+    display_name, display_language = (
+        resolve_crop_display_name(crop, language_code, region) if crop else (None, '')
+    )
+    return {
+        'plan_id': plan.pk,
+        'crop_name': crop.name if crop else '',
+        'crop_display_name': display_name,
+        'crop_display_language_code': display_language,
+        'crop_variety': crop.variety if crop else '',
+        'bed_name': plan.bed.name if plan.bed else '',
+        'planting_date': plan.planting_date,
+        'calculation_blockers': list(blockers),
+    }
+
+
+def _next_week(week_start: date) -> date:
+    return week_start + timedelta(days=min(7, (date.max - week_start).days))
 
 
 def _accumulate_plan_yield(
-    weekly_data: dict[str, dict[str, object]],
+    weekly_data: dict[date, dict[tuple, Decimal]],
     plan: PlantingPlan,
-    iso_year: int,
+    kilograms: Decimal,
+    start: date,
+    end: date,
     language_code: str,
-    project_region: str,
+    region: str,
 ) -> None:
-    """Distribute one plan's expected yield over the ISO weeks it overlaps."""
+    """Allocate the rounded cumulative yield between each pair of week boundaries."""
     harvest_start = plan.harvest_date
     harvest_end = plan.harvest_end_date
-    if harvest_end <= harvest_start:
-        return
-
     total_days = (harvest_end - harvest_start).days
-    if total_days <= 0:
-        return
+    overlap_start = max(harvest_start, start)
+    overlap_limit = min(harvest_end, end)
+    week_start = overlap_start - timedelta(days=overlap_start.weekday())
+    display_name, display_language = resolve_crop_display_name(plan.crop, language_code, region)
+    crop_key = (
+        plan.crop_id, plan.crop.name, display_name, display_language,
+        plan.crop.display_color or '#3b82f6',
+    )
 
-    expected_yield = Decimal(plan.crop.expected_yield)
-    first_week_start = harvest_start - timedelta(days=harvest_start.weekday())
-    week_start = first_week_start
-
-    while week_start < harvest_end:
-        week_end = week_start + timedelta(days=7)
-        overlap_start = max(harvest_start, week_start)
-        overlap_end = min(harvest_end, week_end)
-        overlap_days = (overlap_end - overlap_start).days
-
-        if overlap_days > 0:
-            iso_year_of_week, _, _ = week_start.isocalendar()
-            if iso_year_of_week == iso_year:
-                iso_week = iso_week_key(week_start)
-                week_entry = weekly_data.setdefault(
-                    iso_week,
-                    {
-                        'iso_week': iso_week,
-                        'week_start': week_start,
-                        'week_end': week_end,
-                        'crops': defaultdict(Decimal),
-                    },
-                )
-                crop_display_name, crop_display_language_code = resolve_crop_display_name(
-                    plan.crop,
-                    language_code,
-                    project_region,
-                )
-                crop_key = (
-                    plan.crop_id,
-                    plan.crop.name,
-                    crop_display_name,
-                    crop_display_language_code,
-                    plan.crop.display_color or '#3b82f6',
-                )
-                contribution = expected_yield * Decimal(overlap_days) / Decimal(total_days)
-                week_entry['crops'][crop_key] += contribution
-
-        week_start += timedelta(days=7)
-
-
-def _build_response_rows(weekly_data: dict[str, dict[str, object]]) -> list[dict[str, object]]:
-    """Round and serialize the accumulated weekly data, dropping empty weeks."""
-    response_data = []
-    for iso_week in sorted(weekly_data.keys()):
-        week_entry = weekly_data[iso_week]
-        crops_payload = []
-        for (
-            crop_id,
-            crop_name,
-            crop_display_name,
-            crop_display_language_code,
-            color,
-        ), value in sorted(week_entry['crops'].items(), key=lambda c: c[0][2] or c[0][1]):
-            rounded_yield = value.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-            if rounded_yield <= 0:
-                continue
-            crops_payload.append(
-                {
-                    'crop_id': crop_id,
-                    'crop_name': crop_name,
-                    'crop_display_name': crop_display_name,
-                    'crop_display_language_code': crop_display_language_code,
-                    'color': color,
-                    'yield': float(rounded_yield),
-                }
-            )
-
-        if not crops_payload:
-            continue
-
-        response_data.append(
-            {
-                'iso_week': week_entry['iso_week'],
-                'week_start': week_entry['week_start'].isoformat(),
-                'week_end': week_entry['week_end'].isoformat(),
-                'crops': crops_payload,
-            }
+    def allocated_through(day: date) -> Decimal:
+        return (kilograms * (day - harvest_start).days / total_days).quantize(
+            _YIELD_PRECISION, rounding=ROUND_HALF_UP,
         )
 
+    allocated = allocated_through(overlap_start)
+    while overlap_start < overlap_limit:
+        week_end = _next_week(week_start)
+        overlap_end = min(week_end, overlap_limit)
+        next_allocated = allocated_through(overlap_end)
+        if next_allocated > allocated:
+            weekly_data[week_start][crop_key] += next_allocated - allocated
+        allocated = next_allocated
+        week_start = week_end
+        overlap_start = overlap_end
+
+
+def _build_response_rows(weekly_data: dict[date, dict[tuple, Decimal]]) -> list[dict]:
+    response_data = []
+    for week_start, crops in sorted(weekly_data.items()):
+        crops_payload = []
+        for key, kilograms in sorted(crops.items(), key=lambda item: item[0][2] or item[0][1]):
+            crop_id, crop_name, display_name, display_language, color = key
+            crops_payload.append({
+                'crop_id': crop_id,
+                'crop_name': crop_name,
+                'crop_display_name': display_name,
+                'crop_display_language_code': display_language,
+                'color': color,
+                'yield': float(kilograms),
+            })
+        response_data.append({
+            'iso_week': iso_week_key(week_start),
+            'week_start': week_start.isoformat(),
+            'week_end': _next_week(week_start).isoformat(),
+            'crops': crops_payload,
+        })
     return response_data

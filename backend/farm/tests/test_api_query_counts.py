@@ -988,13 +988,14 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         assertion over nothing would pass while measuring nothing."""
         for crop in self.crops:
             crop.expected_yield = 2
-            crop.save(update_fields=['expected_yield'])
+            crop.harvest_method = 'per_sqm'
+            crop.save(update_fields=['expected_yield', 'harvest_method'])
         for plan in PlantingPlan.objects.filter(project=self.project):
             plan.harvest_date = date(2026, 6, 1)
             plan.harvest_end_date = date(2026, 6, 21)
             plan.save(update_fields=['harvest_date', 'harvest_end_date'])
 
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(6):
             response = self.client.get('/openfarmplanner/api/yield-calendar/?year=2026')
         self.assertEqual(response.status_code, 200)
         self.assertGreater(len(response.data), 0)

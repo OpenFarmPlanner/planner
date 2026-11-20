@@ -32,7 +32,20 @@
     "description": "Le previsioni delle rese sono disponibili quando esistono serie con periodi di raccolta.",
     "createPlanAction": "Aggiungi serie",
     "noYieldTitle": "Nessuna resa prevista in questa stagione",
-    "noYieldDescription": "Non ci sono dati di raccolta per la stagione attiva. Verifica di aver inserito le rese previste delle colture.",
+    "noYieldDescription": "Ogni previsione richiede un periodo di raccolta, una resa prevista con unità e una superficie coltivata o un numero di piante.",
     "openPlansAction": "Apri piano colturale"
+  },
+  "diagnostics": {
+    "title": "Serie senza previsione ({{count}})",
+    "unnamedPlan": "Serie senza coltura",
+    "blockers": {
+      "missing_crop": "Coltura mancante",
+      "missing_yield_rate": "Resa prevista mancante o non valida",
+      "missing_yield_unit": "Unità di resa mancante",
+      "missing_area": "Superficie coltivata mancante o non valida",
+      "missing_plant_spacing": "Distanza tra le piante mancante o non valida",
+      "zero_plant_count": "Il numero di piante calcolato è zero",
+      "missing_harvest_period": "Periodo di raccolta mancante o non valido"
+    }
   }
 }

@@ -69,19 +69,27 @@ class ProjectsApiTests(APITestCase):
 
         from farm.models import Crop, PlantingPlan
 
-        crop1 = Crop.objects.create(name='Karotte', expected_yield=12, project=self.project)
-        crop2 = Crop.objects.create(name='Tomate', expected_yield=99, project=self.project2)
+        crop1 = Crop.objects.create(
+            name='Karotte', harvest_method='per_sqm', expected_yield=12,
+            project=self.project,
+        )
+        crop2 = Crop.objects.create(
+            name='Tomate', harvest_method='per_sqm', expected_yield=99,
+            project=self.project2,
+        )
 
         plan1 = PlantingPlan.objects.create(
             crop=crop1,
             bed=bed1,
             planting_date='2026-03-01',
+            area_usage_sqm=1,
             project=self.project,
         )
         plan2 = PlantingPlan.objects.create(
             crop=crop2,
             bed=bed2,
             planting_date='2026-03-01',
+            area_usage_sqm=1,
             project=self.project2,
         )
         PlantingPlan.objects.filter(id=plan1.id).update(harvest_date='2026-03-03', harvest_end_date='2026-03-06')
