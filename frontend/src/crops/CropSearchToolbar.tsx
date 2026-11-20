@@ -21,7 +21,8 @@ export function CropSearchToolbar({ search: { endAdornment, ...search }, actions
           sx={{ '& .MuiInputBase-input': {
             px: 1,
             fontSize: '0.875rem',
-            '&::placeholder': { opacity: 1, color: 'text.secondary', textOverflow: 'ellipsis' },
+            '&:placeholder-shown': { textOverflow: 'ellipsis' },
+            '&::placeholder': { opacity: 1, color: 'text.secondary' },
           } }}
         />
       </Box>

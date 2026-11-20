@@ -83,7 +83,7 @@ async function publishVariety(
 
 async function openCrop(page: Page, variety: string): Promise<void> {
   await page.goto('/app/crops');
-  await page.getByLabel('Kultur suchen').first().fill(variety);
+  await page.getByLabel(germanCrops.searchPlaceholder, { exact: true }).fill(variety);
   await page.getByText(variety, { exact: true }).first().click();
 }
 
