@@ -160,11 +160,16 @@
         "description": "Create your first crop now or import one from the crop library. Afterwards you can create planting plans."
       },
       "plans": {
-        "title": "No planting plans yet",
-        "description": "No planting plans have been created for the existing growing areas yet. Create a planting plan to show crops and dates in the crop calendar."
+        "title": "No planting plans for this season yet",
+        "description": "Add a planting plan to show crops and dates in the crop calendar."
+      },
+      "selectSeason": {
+        "title": "No season selected",
+        "description": "Select a season to see its planting plans in the calendar."
       }
     },
     "actions": {
+      "selectSeason": "Select season",
       "createCrop": "Add crop",
       "createField": "Add field",
       "createAreas": "Go to Fields & Beds",

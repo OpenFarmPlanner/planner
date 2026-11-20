@@ -43,6 +43,7 @@ import './GanttChart.css';
 import { useCommandContextTag, useRegisterCommands } from '../commands/useCommandContext';
 import PageContainer from '../components/layout/PageContainer';
 import PageSurface from '../components/layout/PageSurface';
+import LoadRetryButton from '../components/LoadRetryButton';
 import ProjectRequiredState from '../components/project/ProjectRequiredState';
 import type { CommandSpec } from '../commands/types';
 import { useProjectRequirement } from '../hooks/useProjectRequirement';
@@ -226,6 +227,10 @@ function GanttChartPage() {
   const hasRestoredTimelineRef = useRef(false);
   const latestReferenceDateRef = useRef<Date | null>(null);
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
+  const activeSeasonId = outletContext?.activeSeason?.id;
+  const waitingForSeason = outletContext?.activeSeasonLoaded === false && activeSeasonId === undefined;
+  const noSelectedSeason = outletContext?.activeSeasonLoaded === true && activeSeasonId === undefined;
+  const canLoadCalendar = !shouldShowProjectRequiredState && !waitingForSeason && !noSelectedSeason;
   const currentYear = new Date().getFullYear();
   const [displayYear, setDisplayYear] = useState(currentYear);
   // The initial year defaults to today's calendar year before the active
@@ -543,7 +548,7 @@ function GanttChartPage() {
   }, [t]);
 
   useEffect(() => {
-    if (shouldShowProjectRequiredState) {
+    if (!canLoadCalendar) {
       setLoading(false);
       setError(null);
       setLocations([]);
@@ -555,10 +560,10 @@ function GanttChartPage() {
     }
 
     void fetchCalendarData();
-  }, [displayYear, fetchCalendarData, shouldShowProjectRequiredState]);
+  }, [activeSeasonId, canLoadCalendar, displayYear, fetchCalendarData]);
 
   useEffect(() => {
-    if (shouldShowProjectRequiredState) {
+    if (!canLoadCalendar) {
       return undefined;
     }
 
@@ -576,7 +581,7 @@ function GanttChartPage() {
       window.removeEventListener('focus', refreshVisibleCalendar);
       document.removeEventListener('visibilitychange', refreshVisibleCalendar);
     };
-  }, [fetchCalendarData, shouldShowProjectRequiredState]);
+  }, [canLoadCalendar, fetchCalendarData]);
 
   const refreshPlantingPlans = useCallback(async (): Promise<void> => {
     const plans = await plantingPlanAPI.listAll();
@@ -1031,8 +1036,8 @@ function GanttChartPage() {
     hasBeds,
     hasCrops,
   });
-  const firstMissingRequirement = firstMissingPrerequisite ?? (hasPlantingPlans ? null : 'plans');
-  const hasCalendarRequirements = firstMissingRequirement === null;
+  const firstMissingRequirement = noSelectedSeason ? null : firstMissingPrerequisite ?? (hasPlantingPlans ? null : 'plans');
+  const hasCalendarRequirements = canLoadCalendar && firstMissingRequirement === null;
   const requirementActions = firstMissingRequirement
     ? getTranslatedProjectSetupActions(firstMissingRequirement, t)
     : [];
@@ -1575,6 +1580,25 @@ function GanttChartPage() {
     : firstMissingRequirement === 'plans'
       ? 'ganttChart:emptyStates.states.plans.description'
       : 'ganttChart:emptyStates.requirementsDescription';
+  const seasonSetup = noSelectedSeason && outletContext
+    ? outletContext.hasSeasons
+      ? {
+        title: t('ganttChart:emptyStates.states.selectSeason.title'),
+        description: t('ganttChart:emptyStates.states.selectSeason.description'),
+        actions: [{
+          label: t('ganttChart:emptyStates.actions.selectSeason'),
+          onClick: outletContext.requestSeasonSelection,
+        }],
+      }
+      : {
+        title: t('plantingPlans:emptyStates.states.seasons.title'),
+        description: t('plantingPlans:emptyStates.states.seasons.description'),
+        actions: [{
+          label: t('plantingPlans:emptyStates.actions.createSeason'),
+          onClick: outletContext.requestSeasonCreation,
+        }],
+      }
+    : null;
 
   const renderOccupancyTooltip = useCallback(({ task }: { task: GanttTask }) => (
     <Box sx={{ p: 0.5 }}>
@@ -1682,7 +1706,7 @@ function GanttChartPage() {
     </GanttRenderBoundary>
   );
 
-  if (loading) {
+  if (loading || waitingForSeason) {
     return (
       <PageContainer variant="workspacePage">
         <PageSurface variant="fullWorkspace" sx={{ py: 2 }}>
@@ -1702,6 +1726,16 @@ function GanttChartPage() {
     );
   }
 
+  if (noSelectedSeason && outletContext?.activeSeasonError) {
+    return (
+      <PageContainer variant="workspacePage">
+        <Alert severity="error" action={<LoadRetryButton onClick={outletContext.reloadActiveSeason} />}>
+          {outletContext.activeSeasonError}
+        </Alert>
+      </PageContainer>
+    );
+  }
+
   return (
     <PageContainer variant="workspacePage">
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -1711,13 +1745,13 @@ function GanttChartPage() {
           <Box className="gantt-container-wrapper" sx={{ width: '100%', minWidth: 0, overflow: 'hidden', mt: 2, border: '1px solid', borderColor: 'surface.surfaceSoftBorder', borderRadius: 2, bgcolor: 'surface.surfaceBackground' }}>
             <Box sx={{ p: 2 }}>
               <EmptyStateCard
-                title={t(requirementEmptyStateTitleKey)}
-                description={t(requirementEmptyStateDescriptionKey)}
+                title={seasonSetup?.title ?? t(requirementEmptyStateTitleKey)}
+                description={seasonSetup?.description ?? t(requirementEmptyStateDescriptionKey)}
                 checklist={[
                   ...(firstMissingRequirement === 'beds' ? [{ label: t('ganttChart:requirements.bed.label'), done: false, missingLabel: t('ganttChart:requirements.bed.missing') }] : []),
                   ...(firstMissingRequirement === 'crops' ? [{ label: t('ganttChart:requirements.crop.label'), done: false, missingLabel: t('ganttChart:requirements.crop.missing') }] : []),
                 ]}
-                actions={requirementActions}
+                actions={seasonSetup?.actions ?? requirementActions}
               />
             </Box>
           </Box>
