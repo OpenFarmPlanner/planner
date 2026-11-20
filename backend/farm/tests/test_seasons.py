@@ -2,7 +2,6 @@
 
 from datetime import date
 
-import pytest
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import connection
@@ -341,9 +340,6 @@ class SeasonGapDecisionApiTest(ProjectApiTestCase):
         ).values_list('copied_from_plan_id', flat=True))
         self.assertEqual(copied_source_ids, source_ids)
 
-    @pytest.mark.history_gap(
-        issue=1205, reason='season deletion records no soft-delete after-state',
-    )
     def test_create_transition_resurrecting_seasons_restores_their_planting_plans(self):
         self._set_pattern(1, 1)
         last_season = Season.objects.create(

@@ -4,7 +4,8 @@ the first-run setup that migrates a project's unassigned planting plans."""
 from datetime import date, timedelta
 
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Count, Value
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -28,7 +29,12 @@ from farm.history.project_restore import (
     ensure_project_checkpoint,
     record_project_checkpoint,
 )
-from farm.history.restore import _record_cascade_deletions, restore_season_planting_plans
+from farm.history.records import internal_project_versions
+from farm.history.restore import (
+    SEASON_TASK_BEFORE,
+    _record_cascade_deletions,
+    restore_season_planting_plans,
+)
 from farm.models import BatchOperation, EntityRevision, PlantingPlan, Season, SeasonPattern, Task
 from farm.project_context import get_active_project_or_400
 from farm.services.crop_inheritance import lock_crop_project
@@ -129,6 +135,8 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             )
             season.deleted_at = timezone.now()
             season.save(update_fields=["deleted_at", "updated_at"])
+            with internal_project_versions():
+                self._delete_planting_plans_with_season(season, batch)
             self.record_revision(
                 season,
                 EntityRevision.ACTION_DELETED,
@@ -137,13 +145,11 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
                 changed_fields=["deleted_at"],
                 batch_operation=batch,
             )
-            self._delete_planting_plans_with_season(season, batch)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def _delete_planting_plans_with_season(self, season: Season, batch: BatchOperation) -> None:
-        plans = list(
-            PlantingPlan.objects.filter(season=season).select_related('crop', 'bed')
-        )
+        plan_rows = PlantingPlan.objects.filter(project_id=season.project_id, season=season)
+        plans = list(plan_rows.select_related('crop', 'bed'))
         for plan in plans:
             self.record_revision(
                 plan, EntityRevision.ACTION_DELETED,
@@ -151,20 +157,33 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
                 display_name=_entity_display_name(plan), changed_fields=[],
                 batch_operation=batch,
             )
-        # Record linked tasks explicitly: plan removal now preserves tasks.
-        # Season restoration replays these snapshots with their original IDs.
-        tasks = list(Task.objects.filter(planting_plan__in=plans))
+        # Preserve generated source identities while the plans are absent.
+        task_rows = Task.objects.filter(project_id=season.project_id, planting_plan__in=plans)
+        tasks = list(task_rows)
+        generated_ids = [task.pk for task in tasks if task.source_key]
+        Task.objects.filter(project_id=season.project_id, pk__in=generated_ids).update(
+            planting_plan=None,
+            deleted_at=Coalesce('deleted_at', Value(season.deleted_at)),
+            updated_at=season.deleted_at,
+        )
         for task in tasks:
+            snapshot = _serialize_instance(task)
+            if task.source_key:
+                # The Task instance still holds the two values changed by the bulk update.
+                snapshot[SEASON_TASK_BEFORE] = {
+                    'deleted_at': task.deleted_at.isoformat() if task.deleted_at else None,
+                    'planting_plan_id': task.planting_plan_id,
+                }
             self.record_revision(
                 task, EntityRevision.ACTION_DELETED,
-                object_id=task.pk, snapshot=_serialize_instance(task),
+                object_id=task.pk, snapshot=snapshot,
                 display_name=task.title, changed_fields=[], batch_operation=batch,
             )
         _record_cascade_deletions(
             self.request.active_project, plans, batch, _current_actor_label(self.request),
         )
-        Task.objects.filter(pk__in=[task.pk for task in tasks]).delete()
-        PlantingPlan.objects.filter(season=season).delete()
+        task_rows.filter(source_key='').delete()
+        plan_rows.delete()
 
     @action(detail=True, methods=['post'], url_path='undelete')
     def undelete(self, request, pk=None):

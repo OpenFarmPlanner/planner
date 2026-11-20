@@ -105,6 +105,34 @@ class LocalLibraryImportSeedTests(TestCase):
         self.assertEqual(Project.objects.count(), len(self.project_ids_before) + 1)
         self.assertEqual(checkpoints.count(), 1)
 
+    def test_season_task_history_fixture_previews_and_preserves_manual_edits(self):
+        command = 'seed_season_task_history_acceptance'
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        call_command(command, **arguments)
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before))
+        with self.assertRaisesMessage(CommandError, 'does not match'):
+            call_command(command, apply=True, **{**arguments, 'database_name': 'wrong-target'})
+
+        call_command(command, apply=True, **arguments)
+        project = Project.objects.get(slug=f'ofp-local-season-task-history-{self.user.pk}')
+        first, second, third = project.tasks.filter(template__isnull=False).order_by(
+            'occurrence_index',
+        )
+        self.assertEqual(first.status, 'completed')
+        self.assertTrue(second.due_date_overridden)
+        self.assertIsNone(second.due_date)
+        self.assertIsNotNone(third.deleted_at)
+        self.assertIsNotNone(project.tasks.get(title='Manual check').planting_plan_id)
+        self.assertIsNone(project.tasks.get(title='Unrelated task').planting_plan_id)
+        self.assertTrue(project.entity_revisions.filter(snapshot__has_key=CHECKPOINT_KEY).exists())
+
+        first.title = 'Keep my edited task title'
+        first.save(update_fields=['title'])
+        call_command(command, apply=True, **arguments)
+        first.refresh_from_db()
+        self.assertEqual(first.title, 'Keep my edited task title')
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before) + 1)
+
     def test_crop_site_fixture_is_previewed_and_preserves_manual_edits(self):
         command = 'seed_crop_site_acceptance'
         arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
