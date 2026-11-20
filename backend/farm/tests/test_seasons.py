@@ -956,6 +956,79 @@ class SeasonApiTest(ProjectApiTestCase):
         self.assertEqual(response.data['copied_count'], 1)
         self.assertEqual(response.data['target_planting_plan_count'], 1)
 
+    def test_actual_dates_become_planned_with_mixed_fallbacks_and_a_leap_day(self):
+        source = Season.objects.create(
+            project=self.project, start_date=date(2023, 9, 1), end_date=date(2024, 8, 31),
+        )
+        target = Season.objects.create(
+            project=self.project, start_date=date(2024, 9, 1), end_date=date(2025, 8, 31),
+        )
+        original = PlantingPlan.objects.create(
+            crop=self.crop, bed=self.bed, project=self.project, season=source,
+            cultivation_type='pre_cultivation', planting_date=date(2024, 3, 5),
+            planned_sowing_date=date(2024, 3, 1),
+            actual_propagation_start_date=date(2024, 2, 29),
+            actual_transplanting_date=date(2024, 3, 8),
+            actual_harvest_start_date=date(2024, 3, 13),
+        )
+        original.refresh_from_db()
+        previous = PlantingPlan.objects.values().get(pk=original.pk)
+        url = f'/openfarmplanner/api/seasons/{target.pk}/copy-from/'
+
+        planned = self.client.post(url, {'source_season_id': source.pk})
+        self.assertEqual(planned.status_code, 200)
+        planned_copy = PlantingPlan.objects.get(season=target)
+        self.assertEqual(planned_copy.planting_date, date(2025, 3, 5))
+        self.assertEqual(planned_copy.harvest_date, date(2025, 3, 12))
+        self.assertIsNone(planned_copy.planned_propagation_start_date)
+
+        actual = self.client.post(url, {'source_season_id': source.pk, 'use_actual_dates': True})
+        self.assertEqual(actual.status_code, 200)
+        self.assertEqual(actual.data['copied_count'], 1)
+        actual_copy = PlantingPlan.objects.filter(season=target).exclude(pk=planned_copy.pk).get()
+        self.assertEqual(actual_copy.planned_propagation_start_date, date(2025, 2, 28))
+        self.assertEqual(actual_copy.planned_sowing_date, date(2025, 3, 1))
+        self.assertEqual(actual_copy.planting_date, date(2025, 3, 8))
+        self.assertEqual(actual_copy.harvest_date, date(2025, 3, 13))
+        self.assertEqual(actual_copy.harvest_end_date, date(2025, 3, 14))
+        for copy in (planned_copy, actual_copy):
+            for field in PlantingPlan.ACTUAL_DATE_FIELDS:
+                self.assertIsNone(getattr(copy, field))
+        self.assertEqual(PlantingPlan.objects.values().get(pk=original.pk), previous)
+
+    def test_actual_basis_preview_matches_copy_into_a_short_season(self):
+        source = Season.objects.create(
+            project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+        )
+        target = Season.objects.create(
+            project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 4, 30),
+        )
+        for day, actual_sowing in ((1, date(2026, 3, 10)), (2, date(2026, 7, 10))):
+            PlantingPlan.objects.create(
+                crop=self.crop, project=self.project, season=source,
+                cultivation_type='direct_sowing', planting_date=date(2026, 3, day),
+                actual_sowing_date=actual_sowing, recorded_harvest_end_date=date(2026, 5, 2),
+            )
+        url = f'/openfarmplanner/api/seasons/{target.pk}/'
+        source_payload = {'source_season_id': source.pk}
+        planned = self.client.get(f'{url}copy-preview/', source_payload)
+        self.assertEqual((planned.data['total'], planned.data['skipped_count']), (2, 0))
+
+        preview = self.client.get(
+            f'{url}copy-preview/', {**source_payload, 'use_actual_dates': 'true'},
+        )
+        self.assertEqual(preview.status_code, 200)
+        self.assertEqual((preview.data['total'], preview.data['skipped_count']), (1, 1))
+
+        result = self.client.post(f'{url}copy-from/', {**source_payload, 'use_actual_dates': True})
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.data['copied_count'], preview.data['total'])
+        self.assertEqual(result.data['skipped_count'], preview.data['skipped_count'])
+        copy = PlantingPlan.objects.get(season=target)
+        self.assertEqual(copy.planting_date, date(2027, 3, 10))
+        self.assertEqual(copy.harvest_end_date, date(2027, 5, 2))
+        self.assertIsNone(copy.actual_sowing_date)
+
     def test_create_and_copy_revalidates_the_source_before_writing_either_result(self):
         earlier = Season.objects.create(
             project=self.project, start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
@@ -1060,7 +1133,9 @@ class SeasonApiTest(ProjectApiTestCase):
             ('invalid', 400, 'invalid_source_season_id'),
             (None, 400, 'invalid_source_season_id'),
         ):
-            payload = {} if source is None else {'source_season_id': source}
+            payload = {'use_actual_dates': True}
+            if source is not None:
+                payload['source_season_id'] = source
             with self.subTest(source=source):
                 for response in (
                     self.client.get(f'{url}copy-preview/', payload),

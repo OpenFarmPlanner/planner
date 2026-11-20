@@ -494,7 +494,7 @@ export function SeasonCreateSuggestionDialog({
           ) : choosingCopy && lastSeason && copyOptions ? (
             <Alert severity="info">{t('navigation:seasonSwitcher.copyDialog.noPrecedingSource')}</Alert>
           ) : checkingManualCopy ? (
-            <Typography role="status" variant="body2">{t('common:actions.loading')}</Typography>
+            <Typography role="status" variant="body2">{t('common:messages.loading')}</Typography>
           ) : choosingCopy && gapChoice === 'manual' && manualCopyResult?.options === null ? (
             <Alert severity="error">{t('navigation:seasonSwitcher.copyDialog.previewError')}</Alert>
           ) : null}

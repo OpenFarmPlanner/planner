@@ -11,12 +11,13 @@ function createSeason(page: Page, start: string, end: string, label: string) {
   });
 }
 
-async function createPlan(page: Page, season: number, plantingDate: string) {
+async function createPlan(page: Page, season: number, plantingDate: string, actualSowingDate?: string) {
   const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
     name: 'Kopiersalat', cultivation_type: 'direct_sowing', growth_duration_days: 30,
   });
   return apiRequest<{ id: number }>(page, 'POST', '/planting-plans/', {
     season, crop: crop.id, planting_date: plantingDate, cultivation_type: 'direct_sowing',
+    actual_sowing_date: actualSowingDate,
   });
 }
 
@@ -48,7 +49,7 @@ test.describe('season copy on a French phone', () => {
     await expect(dialog).toHaveCount(0);
 
     const source = await createSeason(page, '2025-09-01', '2026-08-31', sourceLabel);
-    const original = await createPlan(page, source.id, '2026-04-01');
+    const original = await createPlan(page, source.id, '2026-04-01', '2026-04-06');
     await page.goto(plansPage);
     dialog = await openCopyDialog();
     await expect(dialog.getByText(sourceLabel, { exact: true })).toBeVisible();
@@ -56,20 +57,35 @@ test.describe('season copy on a French phone', () => {
     await expect(dialog.getByRole('combobox')).toHaveCount(0);
     expect(await dialog.evaluate(node => node.scrollWidth)).toBeLessThanOrEqual(375);
 
+    const dateBasis = dialog.getByRole('checkbox', { name: 'Utiliser les dates réelles pour la planification' });
+    await expect(dateBasis).not.toBeChecked();
+    await expect(dateBasis).toHaveAccessibleDescription(/saison précédente.*date prévue/);
+    const freshPreview = page.waitForResponse(response => (
+      response.url().includes(`/seasons/${target.id}/copy-preview/`) && response.url().includes('use_actual_dates=true')
+    ));
+    await dateBasis.tap();
+    expect((await freshPreview).ok()).toBeTruthy();
+    await expect(dialog.getByRole('button', { name: 'Copier', exact: true })).toBeEnabled();
     const copying = page.waitForResponse(response => (
       response.url().endsWith(`/seasons/${target.id}/copy-from/`) && response.request().method() === 'POST'
     ));
     await dialog.getByRole('button', { name: 'Copier', exact: true }).focus();
     await page.keyboard.press('Enter');
     const response = await copying;
-    expect(response.request().postDataJSON()).toEqual({ source_season_id: source.id });
+    expect(response.request().postDataJSON()).toEqual({ source_season_id: source.id, use_actual_dates: true });
     expect(await response.json()).toMatchObject({ copied_count: 1, target_planting_plan_count: 1 });
     await expect(dialog).toHaveCount(0);
-    const { results } = await apiRequest<{ results: Array<{ id: number; season: number; planting_date: string }> }>(
+    const { results } = await apiRequest<{ results: Array<{
+      id: number; season: number; planting_date: string; actual_sowing_date: string | null;
+    }> }>(
       page, 'GET', '/planting-plans/',
     );
-    expect(results.find(plan => plan.id === original.id)).toMatchObject({ season: source.id, planting_date: '2026-04-01' });
-    expect(results.filter(plan => plan.season === target.id)).toMatchObject([{ planting_date: '2027-04-01' }]);
+    expect(results.find(plan => plan.id === original.id)).toMatchObject({
+      season: source.id, planting_date: '2026-04-01', actual_sowing_date: '2026-04-06',
+    });
+    expect(results.filter(plan => plan.season === target.id)).toMatchObject([{
+      planting_date: '2027-04-06', actual_sowing_date: null,
+    }]);
   });
 });
 

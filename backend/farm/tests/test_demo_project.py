@@ -449,6 +449,13 @@ class DemoProjectServiceTests(TestCase):
         self.assertTrue(plans.filter(
             planting_date=date(2031, 5, 18), actual_transplanting_date=date(2031, 5, 21),
         ).exists())
+        self.assertTrue(plans.filter(
+            planting_date=date(2030, 3, 15), actual_sowing_date=date(2030, 3, 17),
+        ).exists())
+        self.assertTrue(plans.filter(
+            planting_date=date(2030, 4, 28), actual_transplanting_date=date(2030, 5, 2),
+            actual_harvest_start_date=date(2030, 7, 10), recorded_harvest_end_date__isnull=True,
+        ).exists())
 
     def test_only_the_new_bed_has_no_planting_history(self) -> None:
         result = create_or_reset_demo_project()

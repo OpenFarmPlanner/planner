@@ -11,7 +11,8 @@ from datetime import date, timedelta
 from typing import Any
 
 from farm.models import EntityRevision, PlantingPlan, Project, Season, SeasonPattern
-from farm.services.tasks import generate_tasks_for_plans
+from farm.services.crop_inheritance import GeneralCropIndex, build_general_crop_index
+from farm.services.tasks import generate_tasks_for_plans, plan_cultivation_type, plan_event_dates
 
 # Fields copied from a source PlantingPlan onto a new one in the target
 # season. Excludes the primary key, timestamps, audit fields, and the
@@ -21,6 +22,9 @@ PLANTING_PLAN_COPY_FIELDS = (
     'bed_id',
     'cultivation_type',
     'planting_date',
+    'planned_propagation_start_date',
+    'planned_sowing_date',
+    'planned_transplanting_date',
     'harvest_date',
     'harvest_end_date',
     'quantity',
@@ -30,7 +34,10 @@ PLANTING_PLAN_COPY_FIELDS = (
 
 # Date fields on a copied PlantingPlan that are shifted forward so the copy
 # lands in the target season's own period instead of the source season's.
-PLANTING_PLAN_SHIFTED_DATE_FIELDS = ('planting_date', 'harvest_date', 'harvest_end_date')
+PLANTING_PLAN_SHIFTED_DATE_FIELDS = (
+    'planting_date', 'planned_propagation_start_date', 'planned_sowing_date',
+    'planned_transplanting_date', 'harvest_date', 'harvest_end_date',
+)
 
 
 def get_or_create_season_pattern(project: Project) -> SeasonPattern:
@@ -224,11 +231,36 @@ def whole_year_offset_into_period(reference: date, start_date: date, end_date: d
     return offset_years
 
 
+def _season_copy_fields(plan: PlantingPlan, crop_index: GeneralCropIndex | None) -> dict[str, Any]:
+    fields = {field: getattr(plan, field) for field in PLANTING_PLAN_COPY_FIELDS}
+    if crop_index is None:
+        return fields
+
+    planned = plan_event_dates(plan, crop_index)
+    sowing = plan.actual_sowing_date or planned.get('sowing')
+    transplanting = plan.actual_transplanting_date or planned.get('planting')
+    if plan_cultivation_type(plan, crop_index) in ('pre_cultivation', 'purchased_transplant'):
+        fields['planting_date'] = transplanting or plan.planting_date
+        fields['planned_sowing_date'] = sowing
+        fields['planned_transplanting_date'] = None
+    else:
+        fields['planting_date'] = sowing or plan.planting_date
+        fields['planned_sowing_date'] = None
+        fields['planned_transplanting_date'] = transplanting
+    fields['planned_propagation_start_date'] = (
+        plan.actual_propagation_start_date or planned.get('propagation_start')
+    )
+    fields['harvest_date'] = plan.actual_harvest_start_date or planned.get('harvest_start')
+    fields['harvest_end_date'] = plan.recorded_harvest_end_date or planned.get('harvest_end')
+    return fields
+
+
 def build_planting_plan_copies(
     *,
     source_season: Season,
     target_season: Season,
     restrict_to_target_period: bool = True,
+    use_actual_dates: bool = False,
 ) -> tuple[list[tuple[PlantingPlan, PlantingPlan]], int]:
     """Unsaved copies of `source_season`'s plans, shifted into `target_season`.
 
@@ -255,8 +287,9 @@ def build_planting_plan_copies(
     )
     pairs: list[tuple[PlantingPlan, PlantingPlan]] = []
     skipped_count = 0
+    crop_index = build_general_crop_index(source_season.project_id) if use_actual_dates else None
     for plan in source_plans:
-        fields = {field: getattr(plan, field) for field in PLANTING_PLAN_COPY_FIELDS}
+        fields = _season_copy_fields(plan, crop_index)
         month_offset = month_offset_for(fields['planting_date'])
         for date_field in PLANTING_PLAN_SHIFTED_DATE_FIELDS:
             value = fields[date_field]
@@ -282,6 +315,7 @@ def copy_planting_plans(
     restrict_to_target_period: bool = True,
     rotation_conflicts: str = 'keep',
     language_code: str = 'de',
+    use_actual_dates: bool = False,
 ) -> tuple[list[PlantingPlan], int]:
     """Copy planting plans from `source_season` into `target_season`, additively.
 
@@ -314,6 +348,7 @@ def copy_planting_plans(
         source_season=source_season,
         target_season=target_season,
         restrict_to_target_period=restrict_to_target_period,
+        use_actual_dates=use_actual_dates,
     )
     new_plans = [copy for _, copy in pairs]
     if rotation_conflicts != 'keep' and pairs:

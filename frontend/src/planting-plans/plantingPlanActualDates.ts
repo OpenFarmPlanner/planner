@@ -27,9 +27,11 @@ export function getPlanActivityDates(plan: PlantingPlan, crop?: Crop): PlantingP
   const schedule = getPlanSowingSchedule(plan, crop);
   const propagation = getPlanPropagationInfo(plan, crop);
   const planned = {
-    propagation: propagation.isPreCultivation ? schedule?.sowingDate : null,
-    sowing: !propagation.isPreCultivation && !propagation.isPurchasedTransplant ? schedule?.sowingDate : null,
-    transplanting: propagation.isPreCultivation || propagation.isPurchasedTransplant ? plan.planting_date : null,
+    propagation: plan.planned_propagation_start_date ?? (propagation.isPreCultivation ? schedule?.sowingDate : null),
+    sowing: !propagation.isPreCultivation && !propagation.isPurchasedTransplant
+      ? schedule?.sowingDate ?? plan.planned_sowing_date : plan.planned_sowing_date,
+    transplanting: propagation.isPreCultivation || propagation.isPurchasedTransplant
+      ? plan.planting_date ?? plan.planned_transplanting_date : plan.planned_transplanting_date,
     harvestStart: plan.harvest_date,
     harvestEnd: plan.harvest_end_date,
   };

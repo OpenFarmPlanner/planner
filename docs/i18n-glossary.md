@@ -191,6 +191,7 @@ FR/ES/IT: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Ernteende | Harvest end | Fin de récolte | Fin de cosecha | fine della raccolta | fim da colheita | einde oogst |
 | Plan / Ist / Beides (Terminanzeige) | Planned / Actual / Both | Prévu / Réalisé / Les deux | Previsto / Realizado / Ambos | Previsto / Effettivo / Entrambi | Planeado / Realizado / Ambos | Gepland / Werkelijk / Beide |
 | Ist-Aussaattermin | Actual sowing date | Date réelle de semis | Fecha real de siembra | Data effettiva di semina | Data efetiva de sementeira | Werkelijke zaaidatum |
+| Ist-Termine als Plantermine verwenden | Use actual dates as planned dates | Utiliser les dates réelles pour la planification | Usar las fechas reales para planificar | Usa le date effettive per pianificare | Usar datas efetivas no planeamento | Werkelijke datums gebruiken voor de planning |
 | Ernte | Harvest | Récolte | Cosecha | raccolta | colheita | oogst |
 | Satz (Folgesatz) | Succession | Série | Serie | serie successiva | série sucessiva | opvolgende teelt |
 | Vorkultur | Previous crop | Culture précédente | Cultivo anterior | coltura precedente | cultura anterior | voorteelt |

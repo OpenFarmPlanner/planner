@@ -139,6 +139,7 @@ export interface MobileCreateFormState {
   cultivation_type: PlanCultivationType | "";
   /** Derived from `planting_date`; German-formatted, like `planting_date`. */
   sowing_date: string;
+  planned_propagation_start_date?: string | null;
   planting_date: string;
   area_m2: string;
   plants_count: string;
@@ -386,6 +387,9 @@ export const areRowsSemanticallyEqual = (
       previousRow.crop === nextRow.crop &&
       previousRow.cultivation_type === nextRow.cultivation_type &&
       previousRow.planting_date === nextRow.planting_date &&
+      previousRow.planned_propagation_start_date === nextRow.planned_propagation_start_date &&
+      previousRow.planned_sowing_date === nextRow.planned_sowing_date &&
+      previousRow.planned_transplanting_date === nextRow.planned_transplanting_date &&
       previousRow.harvest_date === nextRow.harvest_date &&
       previousRow.harvest_end_date === nextRow.harvest_end_date &&
       Object.values(ACTUAL_DATE_FIELDS).every(field => previousRow[field] === nextRow[field]) &&

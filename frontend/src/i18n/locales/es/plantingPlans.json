@@ -66,9 +66,9 @@
     "missingHarvestDuration": "No se puede calcular porque este cultivo no tiene duración de la cosecha.",
     "missingGrowthAndHarvestDuration": "No se puede calcular porque este cultivo no tiene ni duración del cultivo ni duración de la cosecha.",
     "sowingDateTitle": "Fecha de siembra",
-    "sowingDateDescription": "Vinculada a la fecha de plantación: fecha de plantación menos la duración en semillero del cultivo. Los cambios actualizan automáticamente el otro valor. Igual a la fecha de plantación en la siembra directa.",
+    "sowingDateDescription": "Para los semilleros, la fecha se calcula a partir de la fecha de plantación y de la duración en semillero, salvo que se planifique un inicio independiente. En siembra directa, ambas fechas coinciden.",
     "plantingDateTitle": "Fecha de plantación",
-    "plantingDateDescription": "Vinculada a la fecha de siembra. En la siembra directa es también la fecha de siembra. Debe estar dentro de la temporada.",
+    "plantingDateDescription": "Fecha de plantación o de siembra directa. Debe estar dentro de la temporada.",
     "missingPropagationDuration": "No se puede calcular porque este cultivo no tiene duración en semillero.",
     "noOwnPropagation": "Sin semillero propio, el plantel se compra."
   },

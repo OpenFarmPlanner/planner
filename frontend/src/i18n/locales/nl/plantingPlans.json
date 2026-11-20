@@ -65,9 +65,9 @@
     "missingHarvestDuration": "Kan niet worden berekend omdat dit gewas geen oogstduur heeft.",
     "missingGrowthAndHarvestDuration": "Kan niet worden berekend omdat dit gewas geen groei- of oogstduur heeft.",
     "sowingDateTitle": "Zaaidatum",
-    "sowingDateDescription": "Gekoppeld aan de plantdatum: plantdatum min de opkweekduur van het gewas. Wijzigingen werken de andere waarde automatisch bij. Bij directe zaai gelijk aan de plantdatum.",
+    "sowingDateDescription": "Voor opkweek wordt de datum berekend uit de plantdatum en de opkweekduur, tenzij er een aparte startdatum is gepland. Bij directe zaai vallen beide datums samen.",
     "plantingDateTitle": "Plantdatum",
-    "plantingDateDescription": "Gekoppeld aan de zaaidatum. Bij directe zaai is dit ook de zaaidatum. Moet binnen het seizoen vallen.",
+    "plantingDateDescription": "Datum voor uitplanten of directe zaai. Deze moet binnen het seizoen vallen.",
     "missingPropagationDuration": "Kan niet worden berekend omdat voor dit gewas geen opkweekduur is ingesteld.",
     "noOwnPropagation": "Geen eigen opkweek, de planten worden ingekocht."
   },

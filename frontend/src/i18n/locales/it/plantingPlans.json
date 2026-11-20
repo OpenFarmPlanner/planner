@@ -66,9 +66,9 @@
     "missingHarvestDuration": "Impossibile calcolare: questa coltura non ha una durata di raccolta.",
     "missingGrowthAndHarvestDuration": "Impossibile calcolare: questa coltura non ha né una durata di crescita né una durata di raccolta.",
     "sowingDateTitle": "Data di semina",
-    "sowingDateDescription": "Collegata alla data di trapianto: data di trapianto meno la durata in vivaio della coltura. Le modifiche aggiornano automaticamente l'altro valore. Coincide con la data di trapianto per la semina diretta.",
+    "sowingDateDescription": "Per la semina in vivaio, la data si calcola dalla data di trapianto e dalla durata in vivaio se manca un inizio pianificato separatamente. Per la semina diretta, le due date coincidono.",
     "plantingDateTitle": "Data di trapianto",
-    "plantingDateDescription": "Collegata alla data di semina. Per la semina diretta coincide con la data di semina. Deve rientrare nella stagione.",
+    "plantingDateDescription": "Data di trapianto o di semina diretta. Deve rientrare nella stagione.",
     "missingPropagationDuration": "Impossibile calcolare: per questa coltura non è impostata una durata in vivaio.",
     "noOwnPropagation": "Nessun vivaio proprio: le piantine vengono acquistate."
   },

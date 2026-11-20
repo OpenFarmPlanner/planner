@@ -65,9 +65,9 @@
     "missingHarvestDuration": "Cannot be calculated because this crop has no harvest duration.",
     "missingGrowthAndHarvestDuration": "Cannot be calculated because this crop has neither a growth duration nor a harvest duration.",
     "sowingDateTitle": "Sowing date",
-    "sowingDateDescription": "Coupled with the planting date: planting date minus the crop's propagation duration. Changes update the other value automatically. Equal to the planting date for direct sowing.",
+    "sowingDateDescription": "For propagation, the date is calculated from the planting date and the crop’s propagation duration unless a separate start is planned. For direct sowing, both dates are the same.",
     "plantingDateTitle": "Planting date",
-    "plantingDateDescription": "Coupled with the sowing date. For direct sowing this is also the sowing date. Must lie within the season.",
+    "plantingDateDescription": "The transplanting or direct sowing date. It must fall within the season.",
     "missingPropagationDuration": "Cannot be calculated because no propagation duration is set for this crop.",
     "noOwnPropagation": "No own propagation, the plants are bought in."
   },

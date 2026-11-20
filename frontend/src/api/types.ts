@@ -1286,6 +1286,9 @@ export interface PlantingPlan extends PlantingPlanActualDates {
   bed_name?: string | null;
   season?: number | null;
   planting_date: string | null;
+  planned_propagation_start_date?: string | null;
+  planned_sowing_date?: string | null;
+  planned_transplanting_date?: string | null;
   // Read-only, computed.
   harvest_date?: string | null;
   // Read-only, computed.

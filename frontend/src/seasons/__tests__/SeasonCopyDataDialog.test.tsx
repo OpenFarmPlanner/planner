@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -140,7 +140,7 @@ describe('SeasonCopyDataDialog', () => {
     await user.click(screen.getByRole('radio', { name: /Nicht übernehmen/ }));
     await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
 
-    expect(onConfirm).toHaveBeenCalledWith(2, 1, 'skip');
+    expect(onConfirm).toHaveBeenCalledWith(2, 1, 'skip', false);
   });
 
   it('leaves the rotation section out when nothing conflicts', async () => {
@@ -156,11 +156,11 @@ describe('SeasonCopyDataDialog', () => {
     );
 
     await screen.findByText('Vorherige Saison', { exact: true });
-    expect(copyPreviewMock).toHaveBeenCalledWith(2);
+    expect(copyPreviewMock).toHaveBeenCalledWith(2, undefined, false);
     await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
 
     expect(screen.queryByTestId('season-copy-rotation-summary')).not.toBeInTheDocument();
-    expect(onConfirm).toHaveBeenCalledWith(2, 1);
+    expect(onConfirm).toHaveBeenCalledWith(2, 1, undefined, false);
   });
 
   it.each([
@@ -186,5 +186,53 @@ describe('SeasonCopyDataDialog', () => {
     await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Die vorherige Saison hat sich geändert.');
     expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeDisabled();
+  });
+
+  it('loads only the latest date basis when the option changes quickly', async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn().mockResolvedValue({ copied_count: 3, target_planting_plan_count: 3 });
+    let respondToActual: (value: { data: SeasonCopyPreview }) => void = () => undefined;
+    copyPreviewMock.mockResolvedValueOnce({ data: emptyPreview });
+    copyPreviewMock.mockImplementationOnce(() => new Promise(resolve => { respondToActual = resolve; }));
+    copyPreviewMock.mockResolvedValueOnce({ data: { ...emptyPreview, total: 5 } });
+    render(<SeasonCopyDataDialog open targetSeason={targetSeason} onClose={vi.fn()} onConfirm={onConfirm} />);
+
+    const checkbox = await screen.findByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' });
+    expect(checkbox).not.toBeChecked();
+    expect(checkbox).toHaveAccessibleDescription(/vorherigen Saison.*bisherige Plantermin/);
+    await user.click(checkbox);
+    expect(copyPreviewMock).toHaveBeenLastCalledWith(2, undefined, true);
+    expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeDisabled();
+    expect(screen.queryByText(/3 Anbaupläne werden übernommen/)).not.toBeInTheDocument();
+    await user.click(checkbox);
+    expect(await screen.findByText(/5 Anbaupläne werden übernommen/)).toBeVisible();
+
+    await act(async () => respondToActual({ data: { ...emptyPreview, total: 2, skipped_count: 1 } }));
+    expect(screen.queryByText(/2 Anbaupläne werden übernommen/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/passt zeitlich nicht/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
+    expect(onConfirm).toHaveBeenCalledOnce();
+    expect(onConfirm).toHaveBeenCalledWith(2, 1, undefined, false);
+  });
+
+  it('preserves the date basis across a recoverable preview error and sends it after retry', async () => {
+    const user = userEvent.setup();
+    copyPreviewMock.mockResolvedValueOnce({ data: emptyPreview });
+    copyPreviewMock.mockRejectedValueOnce(new Error('temporary network error'));
+    copyPreviewMock.mockResolvedValueOnce({ data: { ...emptyPreview, total: 2, skipped_count: 1 } });
+    const onConfirm = vi.fn().mockResolvedValue({ copied_count: 2, target_planting_plan_count: 2 });
+    render(<SeasonCopyDataDialog open targetSeason={targetSeason} onClose={vi.fn()} onConfirm={onConfirm} />);
+
+    const checkbox = await screen.findByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' });
+    await user.click(checkbox);
+    expect(await screen.findByRole('alert')).toBeVisible();
+    expect(checkbox).toBeChecked();
+    expect(screen.getByText('Vorherige Saison')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+    expect(copyPreviewMock).toHaveBeenLastCalledWith(2, undefined, true);
+    expect(await screen.findByText(/1 Anbauplan passt zeitlich nicht/)).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
+    expect(onConfirm).toHaveBeenCalledWith(2, 1, undefined, true);
   });
 });

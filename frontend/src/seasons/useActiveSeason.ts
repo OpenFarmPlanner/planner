@@ -167,10 +167,9 @@ export function useActiveSeason() {
     targetSeasonId: number,
     sourceSeasonId: number,
     rotationConflicts?: SeasonCopyRotationMode,
+    useActualDates?: boolean,
   ) => {
-    const response = rotationConflicts
-      ? await seasonAPI.copyFrom(targetSeasonId, sourceSeasonId, rotationConflicts)
-      : await seasonAPI.copyFrom(targetSeasonId, sourceSeasonId);
+    const response = await seasonAPI.copyFrom(targetSeasonId, sourceSeasonId, rotationConflicts, useActualDates);
     await reload();
     return response.data;
   }, [reload]);

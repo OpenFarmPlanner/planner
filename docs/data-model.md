@@ -260,7 +260,12 @@ erDiagram
 - **`PlantingPlan`** is the central operational record for one crop on one bed.
   Its planned planting date and computed harvest dates drive the Gantt and
   bed occupancy calendar, seed demand, young plant demand, and the yield
-  overview. The nullable fields `actual_propagation_start_date`, `actual_sowing_date`,
+  overview. `planting_date` anchors the main field activity, either direct
+  sowing or transplanting. The nullable `planned_propagation_start_date`,
+  `planned_sowing_date`, and `planned_transplanting_date` preserve planned
+  activities independent of that anchor, including dates created by an
+  actual-date season copy. Ordinary propagation timing still falls back to
+  the crop's duration. The nullable fields `actual_propagation_start_date`, `actual_sowing_date`,
   `actual_transplanting_date`, `actual_harvest_start_date`, and
   `recorded_harvest_end_date` capture execution independently of that schedule.
   These fields start unset for existing plans.

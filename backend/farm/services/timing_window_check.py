@@ -88,6 +88,10 @@ def dates_to_check(
     decides whether own propagation is checked by planting or by sowing date.
     """
     planting_date = plan.planting_date
+    if plan.planned_propagation_start_date and plan_uses_own_propagation(plan, crop, index) and (
+        planting_date is None or KIND_PLANTING not in kinds_with_windows
+    ):
+        return [(KIND_PRE_CULTIVATION, plan.planned_propagation_start_date)]
     if planting_date is None:
         return []
     if plan.cultivation_type == PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT:

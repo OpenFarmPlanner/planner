@@ -499,14 +499,18 @@ export const seasonAPI = {
     http.patch<Season>(`/seasons/${id}/`, data),
   delete: (id: number) => http.delete(`/seasons/${id}/`),
   undelete: (id: number) => http.post<Season>(`/seasons/${id}/undelete/`, {}),
-  copyFrom: (targetId: number, sourceSeasonId: number, rotationConflicts?: SeasonCopyRotationMode) =>
+  copyFrom: (targetId: number, sourceSeasonId: number, rotationConflicts?: SeasonCopyRotationMode, useActualDates = false) =>
     http.post<SeasonCopyFromResponse>(`/seasons/${targetId}/copy-from/`, {
       source_season_id: sourceSeasonId,
       ...(rotationConflicts ? { rotation_conflicts: rotationConflicts } : {}),
+      ...(useActualDates ? { use_actual_dates: true } : {}),
     }),
-  copyPreview: (targetId: number, sourceSeasonId?: number) =>
+  copyPreview: (targetId: number, sourceSeasonId?: number, useActualDates = false) =>
     http.get<SeasonCopyPreview>(`/seasons/${targetId}/copy-preview/`, {
-      params: sourceSeasonId === undefined ? { resolve_source: 'true' } : { source_season_id: sourceSeasonId },
+      params: {
+        ...(sourceSeasonId === undefined ? { resolve_source: 'true' } : { source_season_id: sourceSeasonId }),
+        ...(useActualDates ? { use_actual_dates: 'true' } : {}),
+      },
     }),
   dueSuggestion: () => http.get<SeasonDueSuggestion>('/seasons/due-suggestion/'),
   creationOptions: (params?: { manual_start_date?: string }) =>

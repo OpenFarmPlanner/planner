@@ -66,9 +66,9 @@
     "missingHarvestDuration": "Não é possível calcular porque esta cultura não tem duração de colheita definida.",
     "missingGrowthAndHarvestDuration": "Não é possível calcular porque esta cultura não tem duração de crescimento nem de colheita definida.",
     "sowingDateTitle": "Data de sementeira",
-    "sowingDateDescription": "Associada à data de transplantação: data de transplantação menos a duração em viveiro da cultura. As alterações atualizam automaticamente o outro valor. Igual à data de transplantação na sementeira direta.",
+    "sowingDateDescription": "Para a sementeira em viveiro, a data é calculada a partir da data de transplantação e da duração em viveiro, salvo quando há um início planeado em separado. Na sementeira direta, as duas datas coincidem.",
     "plantingDateTitle": "Data de transplantação",
-    "plantingDateDescription": "Associada à data de sementeira. Na sementeira direta, também corresponde à data de sementeira. Tem de estar dentro da época.",
+    "plantingDateDescription": "Data de transplantação ou de sementeira direta. Tem de estar dentro da época.",
     "missingPropagationDuration": "Não é possível calcular porque esta cultura não tem duração de viveiro definida.",
     "noOwnPropagation": "Sem viveiro próprio: as plantas são compradas."
   },

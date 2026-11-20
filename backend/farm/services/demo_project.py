@@ -1709,9 +1709,19 @@ def _create_planting_plans(
         PlanSpec('karotte', 'kuerbis', 'direct_sowing', date(two_back, 3, 20), Decimal('18.0')),
         # Previous season.
         PlanSpec('kohlrabi', 'salat-1', 'pre_cultivation', date(last, 3, 12), Decimal('8.5'), 110),
-        PlanSpec('karotte', 'salat-2', 'direct_sowing', date(last, 3, 15), Decimal('8.0')),
+        PlanSpec(
+            'karotte', 'salat-2', 'direct_sowing', date(last, 3, 15), Decimal('8.0'),
+            actual_dates={'actual_sowing_date': date(last, 3, 17)},
+        ),
         PlanSpec('salat', 'kraeuter', 'pre_cultivation', date(last, 3, 20), Decimal('8.5'), 95),
-        PlanSpec('tomate', 'tomate-1', 'pre_cultivation', date(last, 4, 28), Decimal('14.0'), 35),
+        PlanSpec(
+            'tomate', 'tomate-1', 'pre_cultivation', date(last, 4, 28), Decimal('14.0'), 35,
+            actual_dates={
+                'actual_propagation_start_date': date(last, 3, 19),
+                'actual_transplanting_date': date(last, 5, 2),
+                'actual_harvest_start_date': date(last, 7, 10),
+            },
+        ),
         PlanSpec('gurke', 'tomate-2', 'pre_cultivation', date(last, 5, 12), Decimal('12.0'), 38),
         # Autumn lettuce after the cucumbers, so the tomatoes that follow on
         # this row do not come straight after another heavy feeder.
