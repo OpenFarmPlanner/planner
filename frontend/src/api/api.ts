@@ -20,6 +20,9 @@ import type {
   CropLoss,
   CropLossWrite,
   CropDeletePreview,
+  CropBulkDeletePreview,
+  CropBulkDeleteResult,
+  CropBulkDeleteSelection,
   Location,
   Field,
   Bed,
@@ -172,6 +175,13 @@ export const cropAPI = {
   updateSupplierData: (id: number, rows: CropSupplierDataInput[]) =>
     http.patch<Crop>(`/crops/${id}/`, { supplier_data_input: rows }),
   deletePreview: (id: number) => http.get<CropDeletePreview>(`/crops/${id}/delete-preview/`),
+  bulkDeletePreview: (selection: CropBulkDeleteSelection, signal: AbortSignal) =>
+    http.post<CropBulkDeletePreview>('/crops/bulk-delete/preview/', selection, { signal }),
+  bulkDelete: (payload: CropBulkDeleteSelection & {
+    request_id: string; preview_token: string; confirm_all: boolean;
+  }) => http.post<CropBulkDeleteResult>('/crops/bulk-delete/', payload),
+  recoverBulkDelete: (expected_project_id: number, batch_id: number) =>
+    http.post<{ restored_count: number }>('/crops/bulk-delete/undo/', { expected_project_id, batch_id }),
   delete: (id: number) => http.delete(`/crops/${id}/`),
   history: (id: number) => http.get<CropHistoryEntry[]>(`/crops/${id}/history/`),
   restore: (id: number, history_id: number) => http.post<Crop>(`/crops/${id}/restore/`, { history_id }),

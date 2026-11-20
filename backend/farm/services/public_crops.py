@@ -3922,7 +3922,7 @@ def _create_crop_from_public(
                 project=project,
             )
         values = crop_model_kwargs(payload)
-        crop = Crop(project=project, **values)
+        crop = Crop(project=project, creation_origin=Crop.CREATION_LIBRARY_IMPORT, **values)
         validate_crop_identity(crop)
         crop.save(force_insert=True, record_history=False)
         if not (crop.variety or '').strip():

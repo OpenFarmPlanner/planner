@@ -9,6 +9,8 @@ import type { PlantHealthSelection } from '../api/types';
 export const CROP_FILTERS_STORAGE_KEY = 'cropsDetailFiltersV1';
 /** Pre-"Crop" spelling, still present in a tab opened before the rename. */
 export const LEGACY_CROP_FILTERS_STORAGE_KEY = 'culturesDetailFiltersV1';
+export const CROP_ORIGIN_FILTER_OPTIONS = ['manual', 'file_import', 'library_import', 'unknown'] as const;
+export type CropOriginFilter = '' | typeof CROP_ORIGIN_FILTER_OPTIONS[number];
 
 export interface PersistedCropFilters {
   searchQuery: string;
@@ -21,6 +23,7 @@ export interface PersistedCropFilters {
   /** 'open_pollinated', 'f1_hybrid', 'unknown', or '' for all. */
   selectedSeedTypeFilter: string;
   selectedSupplierFilter: string;
+  selectedOriginFilter?: CropOriginFilter;
   growthDaysMin: string;
   growthDaysMax: string;
   yieldMin: string;

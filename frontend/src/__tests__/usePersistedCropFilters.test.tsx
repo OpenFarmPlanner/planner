@@ -33,6 +33,7 @@ const FULL_FILTERS: PersistedCropFilters = {
   selectedNutrientFilter: 'low',
   selectedSeedTypeFilter: 'f1_hybrid',
   selectedSupplierFilter: '4',
+  selectedOriginFilter: 'file_import',
   growthDaysMin: '10',
   growthDaysMax: '90',
   yieldMin: '1',
@@ -59,6 +60,13 @@ describe('usePersistedCropFilters — reading what was stored', () => {
     // back out again.
     window.sessionStorage.setItem(CROP_FILTERS_STORAGE_KEY, JSON.stringify(FULL_FILTERS));
     expect(setup().result.current.filters).toEqual(FULL_FILTERS);
+  });
+
+  it('leaves the origin filter open for older sessions and unknown values', () => {
+    window.sessionStorage.setItem(CROP_FILTERS_STORAGE_KEY, JSON.stringify({
+      ...FULL_FILTERS, selectedOriginFilter: 'imported',
+    }));
+    expect(setup().result.current.filters.selectedOriginFilter).toBe('');
   });
 
   it.each([CROP_FILTERS_STORAGE_KEY, LEGACY_CROP_FILTERS_STORAGE_KEY])(

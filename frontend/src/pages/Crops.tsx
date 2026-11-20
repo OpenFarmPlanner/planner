@@ -18,8 +18,10 @@ import { useTranslation } from '../i18n';
 import { FALLBACK_LANGUAGE, normalizeLanguageTag } from '../i18n/languages';
 import PageContainer from '../components/layout/PageContainer';
 import { bedAPI, cropAPI, fieldAPI, type Crop } from '../api/api';
-import type { CropHistoryEntry } from '../api/types';
+import type { CropBulkDeleteResult, CropHistoryEntry } from '../api/types';
 import { CropDetail } from '../crops/CropDetail';
+import { CropBulkDeletionDialog } from '../crops/CropBulkDeletionDialog';
+import { useProjectCropSelection } from '../crops/useProjectCropSelection';
 import { CropForm, type FirstVarietyDraft } from '../crops/CropForm';
 import { PublicCropLibraryDialog } from '../crop-library/components/PublicCropLibraryDialog';
 import {
@@ -87,6 +89,10 @@ function Crops() {
   const activeSeasonLoaded = outletContext?.activeSeasonLoaded ?? true;
   const isMissingActiveSeason = Boolean(outletContext) && activeSeasonLoaded && !outletContext?.activeSeason;
   const { shouldShowProjectRequiredState, missingProjectReason, activeProjectId } = useProjectRequirement();
+  const bulkSelection = useProjectCropSelection(activeProjectId);
+  const bulkTarget = bulkSelection.target;
+  const [bulkUndo, setBulkUndo] = useState<{ projectId: number; result: CropBulkDeleteResult } | null>(null);
+  const recoveringBulk = useRef(false);
   const { selectedCropId, updateSelectedCropId } = useSelectedCropSync();
   const fallbackHistoryActorLabel = user?.display_label || user?.display_name || user?.email || undefined;
 
@@ -255,6 +261,31 @@ function Crops() {
   const fetchCrops = useCallback(async (preservedCrop?: Crop) => {
     await loadCrops(preservedCrop);
   }, [loadCrops]);
+
+  const completeBulkDeletion = (projectId: number, result: CropBulkDeleteResult) => {
+    if (Number(window.localStorage.getItem('activeProjectId')) !== projectId) return;
+    bulkSelection.completeTarget();
+    setBulkUndo({ projectId, result });
+    void loadCrops(undefined, projectId);
+  };
+
+  const recoverBulkDeletion = async () => {
+    if (!bulkUndo || bulkUndo.projectId !== activeProjectId || recoveringBulk.current) return;
+    const { projectId, result } = bulkUndo;
+    recoveringBulk.current = true;
+    try {
+      await cropAPI.recoverBulkDelete(projectId, result.batch_id);
+      if (Number(window.localStorage.getItem('activeProjectId')) !== projectId) return;
+      setBulkUndo(current => current?.result.batch_id === result.batch_id ? null : current);
+      if (await loadCrops(undefined, projectId)) showSnackbar(t('bulkDelete.recovered'), 'success');
+    } catch {
+      if (Number(window.localStorage.getItem('activeProjectId')) === projectId) {
+        showSnackbar(t('bulkDelete.recoveryFailed'), 'error');
+      }
+    } finally {
+      recoveringBulk.current = false;
+    }
+  };
 
   const {
     importDialogOpen,
@@ -883,6 +914,7 @@ function Crops() {
             void fetchCrops();
           }}
           onDeleteCrop={handleDelete}
+          bulkSelection={bulkSelection}
           onUnlinkPublicCrop={handleRequestUnlinkPublicCrop}
           canCreatePlan={canCreatePlantingPlan}
           createPlanDisabledTooltip={createPlanDisabledTooltip}
@@ -1034,6 +1066,13 @@ function Crops() {
         onRestore={handleRestoreVersion}
         t={t}
       />
+      {bulkTarget ? (
+        <CropBulkDeletionDialog
+          target={bulkTarget}
+          onClose={bulkSelection.closeTarget}
+          onComplete={result => completeBulkDeletion(bulkTarget.expected_project_id, result)}
+        />
+      ) : null}
 
 
 
@@ -1068,6 +1107,17 @@ function Crops() {
           onUndo={() => undoPendingCropDeletion(deletion.id)}
         />
       ))}
+      {bulkUndo && bulkUndo.projectId === activeProjectId ? (
+        <DeleteUndoSnackbar
+          open
+          message={t('bulkDelete.archived', { count: bulkUndo.result.deleted_count })}
+          undoLabel={t('common:actions.undo')}
+          offsetIndex={pendingCropDeletions.length}
+          testId="bulk-crop-undo-snackbar"
+          onClose={() => setBulkUndo(null)}
+          onUndo={() => void recoverBulkDeletion()}
+        />
+      ) : null}
     </PageContainer>
   );
 }

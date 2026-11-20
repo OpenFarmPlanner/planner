@@ -4,6 +4,7 @@ import type { SetURLSearchParams } from 'react-router';
 import { readWithLegacyKey, removeWithLegacyKey } from '../compat/legacyCropNames';
 import {
   CROP_FILTERS_STORAGE_KEY,
+  CROP_ORIGIN_FILTER_OPTIONS,
   LEGACY_CROP_FILTERS_STORAGE_KEY,
   type PersistedCropFilters,
 } from './cropDetailFormatters';
@@ -21,6 +22,7 @@ export const EMPTY_CROP_FILTERS: PersistedCropFilters = {
   selectedNutrientFilter: '',
   selectedSeedTypeFilter: '',
   selectedSupplierFilter: '',
+  selectedOriginFilter: '',
   growthDaysMin: '',
   growthDaysMax: '',
   yieldMin: '',
@@ -59,6 +61,7 @@ function readStoredFilters(supplierIdFromQuery: string, projectId: number | null
       selectedNutrientFilter: parsed.selectedNutrientFilter ?? '',
       selectedSeedTypeFilter: typeof parsed.selectedSeedTypeFilter === 'string' ? parsed.selectedSeedTypeFilter : '',
       selectedSupplierFilter: supplierIdFromQuery || parsed.selectedSupplierFilter || '',
+      selectedOriginFilter: CROP_ORIGIN_FILTER_OPTIONS.find(origin => origin === parsed.selectedOriginFilter) ?? '',
       growthDaysMin: parsed.growthDaysMin ?? '',
       growthDaysMax: parsed.growthDaysMax ?? '',
       yieldMin: parsed.yieldMin ?? '',

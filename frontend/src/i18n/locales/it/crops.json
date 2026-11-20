@@ -1830,6 +1830,63 @@
       "next": "successiva, coltura"
     }
   },
+  "bulkDelete": {
+    "menu": "Azioni delle colture",
+    "allAction": "Elimina tutte le colture del progetto",
+    "title": "Elimina le colture selezionate",
+    "scopeAll": "L’azione include tutte le colture attive del progetto, comprese quelle nascoste dai filtri.",
+    "scopeSelected": "Controlla le colture selezionate e le varietà incluse.",
+    "trashNotice": "Le colture e i dati delle sementi vengono spostati nel cestino. Le voci della biblioteca condivisa restano disponibili.",
+    "deleteVarieties": "Elimina anche le varietà",
+    "confirmAll": "Confermo l’eliminazione di tutte le colture attive di questo progetto.",
+    "showCrops": "Mostra le colture interessate",
+    "empty": "Questa selezione non contiene colture attive.",
+    "missing": "Alcune colture selezionate non sono più disponibili. Aggiorna la selezione.",
+    "outcomeUnknown": "Il risultato non è disponibile. Riprova con la stessa richiesta per verificarlo.",
+    "retry": "Riprova l’eliminazione",
+    "confirm": "Sposta nel cestino",
+    "recovered": "Colture ripristinate dal cestino.",
+    "recoveryFailed": "Non è stato possibile ripristinare tutte le colture insieme.",
+    "archived_one": "{{count}} coltura spostata nel cestino",
+    "archived_other": "{{count}} colture spostate nel cestino",
+    "archived_many": "{{count}} colture spostate nel cestino",
+    "recoveredCount_one": "{{count}} coltura ripristinata dal cestino",
+    "recoveredCount_other": "{{count}} colture ripristinate dal cestino",
+    "recoveredCount_many": "{{count}} colture ripristinate dal cestino",
+    "counts": {
+      "selected": "Voci selezionate",
+      "affected": "Voci interessate",
+      "general": "Colture generiche",
+      "varieties": "Varietà",
+      "additional": "Voci aggiunte dai gruppi",
+      "plans": "Piani colturali collegati",
+      "packages": "Confezioni di sementi",
+      "offers": "Offerte dei fornitori",
+      "blocked": "Voci bloccate",
+      "missing": "Voci non disponibili",
+      "skipped": "Voci saltate",
+      "failed": "Voci con errori"
+    },
+    "blockers": {
+      "varieties_required": "Queste varietà dipendono dalla coltura generica. Includile per eliminare il gruppo.",
+      "ambiguous_group": "Il gruppo contiene più colture generiche. Correggi il gruppo prima di eliminarlo.",
+      "planting_plans": "Alcuni piani colturali usano queste colture. Modifica i piani prima di eliminarle."
+    },
+    "origin": {
+      "label": "Origine della coltura",
+      "manual": "Creata manualmente",
+      "file_import": "Importata da un file",
+      "library_import": "Importata dalla biblioteca",
+      "unknown": "Origine sconosciuta o precedente"
+    },
+    "errors": {
+      "unavailable": "L’anteprima non è disponibile. Riprova.",
+      "changed": "La selezione o il progetto è cambiato. Controlla una nuova anteprima.",
+      "limit": "La selezione è troppo grande. Seleziona meno colture alla volta.",
+      "throttled": "Troppe richieste. Aspetta un momento e riprova.",
+      "writeFailed": "Non è stato possibile spostare le colture nel cestino. Sono ancora nel progetto."
+    }
+  },
   "restoreDialog": {
     "title": "Ripristinare la versione?",
     "batchDescription": "Questa azione e tutte le modifiche correlate verranno annullate.",

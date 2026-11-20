@@ -178,6 +178,28 @@ Legacy batch reverts also save a separate selectable backup and finish their
 group with a complete checkpoint. Reverting that group still composes using
 its entity revisions; the checkpoint is not treated as another inverse entity.
 
+## Bulk crop deletion
+
+The project crop list previews a selected set or all active crops through
+`POST /api/crops/bulk-delete/preview/`. The preview expands groups according
+to the same rules as single-crop deletion and counts each affected row once.
+It has no project writes. When any affected crop has a planting plan, when a
+group is ambiguous, or when excluding varieties would leave an incomplete
+group, the preview blocks the batch.
+
+Confirmation sends a signed proof of the selected state and a request ID.
+Under the project write lock the server rechecks the active crop identities,
+group membership, and dependencies before archiving the rows. The
+request ID gives the initiating user the same receipt on an exact retry.
+The operation is bounded to 5,000 affected crop rows. Crop, seed, and supplier
+relationships survive the archive. Each deletion or recovery produces one
+history group with the actor and the affected rows.
+
+Undo uses the original batch's crop IDs and deletion timestamp. It restores
+the archived rows together and revalidates identities under the project lock.
+If an intervening change prevents safe recovery, the batch is refused. The
+individual trash and recovery API remains available.
+
 ## Full project restoration
 
 The owner clarified in #1061 that **Restore this version means the complete
