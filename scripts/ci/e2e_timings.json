@@ -55,6 +55,10 @@
       "tests": 9,
       "duration_ms": 58967
     },
+    "e2e/crop-losses.spec.ts": {
+      "tests": 2,
+      "duration_ms": 18100
+    },
     "e2e/crop-plant-health-filters.spec.ts": {
       "tests": 5,
       "duration_ms": 47890

@@ -253,6 +253,7 @@ erDiagram
     Crop ||--o{ HarvestRecord : "picked as"
     HarvestRecord ||--o{ HarvestAllocation : "quantity split"
     PlantingPlan ||--o{ HarvestAllocation : "assigned share"
+    PlantingPlan ||--o{ CropLoss : "dated incident"
     Bed ||--o{ PlantingPlan : "scheduled on"
     Season ||--o{ PlantingPlan : "scoped to (nullable)"
     Project ||--o| SeasonPattern : "1:1 start day/month"
@@ -310,6 +311,14 @@ erDiagram
   fit within the record total. Deleting a plan leaves the original harvest
   and frees its former share for reassignment. Whole-project history includes
   both harvests and allocations.
+- **`CropLoss`** records a dated total or partial loss on one planting plan in
+  the project. The incident has a cause and an optional note. Partial extent
+  may be recorded as a percentage from 0 to 100, a whole plant count or square
+  metres. The amount and unit are stored together, including an explicit zero.
+  The plan details give each incident its own row. The optional table column
+  counts incidents by date in the active season. Incident writes affect the
+  loss log and its project history. Deleting the plan removes its incidents,
+  and restoring the plan through project history restores its incident rows.
 - **`Season`**/**`SeasonPattern`** scope planting plans into successive
   ~12-month periods; the crop library and bed/field structure stay
   season-independent. `PlantingPlan.season` is nullable only until a

@@ -89,7 +89,9 @@ test('opens the shared harvest form from readonly carried plan details', async (
   await expect(actualColumn).not.toBeChecked();
   await actualColumn.check();
   await page.keyboard.press('Escape');
-  await row.getByRole('gridcell').filter({ hasText: '3,5 kg' }).click();
+  const harvestCell = row.getByRole('gridcell').filter({ hasText: '3,5 kg' });
+  await harvestCell.click();
+  await expect.poll(() => harvestCell.evaluate(cell => cell.contains(document.activeElement))).toBe(true);
   await expect(page).toHaveURL(/\/app\/planting-plans$/);
 
   await page.goto(`/app/planting-plans/${id}`);

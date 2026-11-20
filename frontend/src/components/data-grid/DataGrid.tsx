@@ -224,6 +224,7 @@ export function EditableDataGrid<T extends EditableRow>({
   persistSortInUrl = true,
   notes,
   dialogEditFields,
+  focusableReadOnlyFields,
   commandApiRef,
   onSelectedRowChange,
   suspendRouteNavigationGuard = false,
@@ -718,8 +719,8 @@ export function EditableDataGrid<T extends EditableRow>({
   ), [gridApiRef]);
 
   const isActionCellKeyboardNavigable = useCallback((params: GridCellParams<T>): boolean => (
-    hasDedicatedEditor(params.field)
-  ), [hasDedicatedEditor]);
+    hasDedicatedEditor(params.field) || Boolean(focusableReadOnlyFields?.includes(params.field))
+  ), [focusableReadOnlyFields, hasDedicatedEditor]);
 
   const getKeyboardNavigableFieldsForRow = useCallback((rowId: GridRowId): string[] => {
     const api = gridApiRef.current;

@@ -246,7 +246,7 @@ class HarvestApiTest(ProjectApiTestCase):
     def test_project_restore_accepts_pre_harvest_checkpoints_and_retains_their_backup(self):
         plan = self.plan()
         old_state = capture_project_state(self.project)
-        for label in ("harvest_record", "harvest_allocation"):
+        for label in ("harvest_record", "harvest_allocation", "crop_loss"):
             del old_state[label]
         checkpoint = EntityRevision.objects.create(
             project=self.project, entity_type="project", object_id=self.project.pk,

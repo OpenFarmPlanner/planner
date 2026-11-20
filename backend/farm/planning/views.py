@@ -5,7 +5,19 @@ from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
-from django.db.models import BooleanField, Case, Count, Prefetch, Q, QuerySet, Value, When
+from django.db.models import (
+    BooleanField,
+    Case,
+    Count,
+    OuterRef,
+    Prefetch,
+    Q,
+    QuerySet,
+    Subquery,
+    Value,
+    When,
+)
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
@@ -18,7 +30,16 @@ from config.responses import api_error_response
 from farm.agent_api.schema import SEASON_HEADER_PARAMETER
 from farm.common.mixins import ProjectRevisionMixin, ProjectScopedMixin
 from farm.history import _serialize_instance
-from farm.models import Bed, Crop, EntityRevision, HarvestAllocation, PlantingPlan, Season, Task
+from farm.models import (
+    Bed,
+    Crop,
+    CropLoss,
+    EntityRevision,
+    HarvestAllocation,
+    PlantingPlan,
+    Season,
+    Task,
+)
 from farm.project_context import get_active_project_or_400, resolve_season_id_from_request
 from farm.services.bed_capacity import (
     BedCapacity,
@@ -389,7 +410,21 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             queryset = queryset.prefetch_related(Prefetch(
                 'harvest_allocations', queryset=allocations, to_attr='visible_harvest_allocations',
             ))
+            queryset = self._with_crop_loss_count(queryset, season)
         return queryset
+
+    def _with_crop_loss_count(
+        self, queryset: QuerySet[PlantingPlan], season: Season | None,
+    ) -> QuerySet[PlantingPlan]:
+        losses = CropLoss.objects.filter(
+            project=self.request.active_project, planting_plan_id=OuterRef('pk'),
+        )
+        if season is not None:
+            losses = losses.filter(date__range=(season.start_date, season.end_date))
+        counts = (
+            losses.order_by().values('planting_plan_id').annotate(total=Count('pk')).values('total')
+        )
+        return queryset.annotate(crop_loss_count=Coalesce(Subquery(counts), 0))
 
     def _read_season_plans(
         self, queryset: QuerySet[PlantingPlan], season_id: int, across_seasons: bool,

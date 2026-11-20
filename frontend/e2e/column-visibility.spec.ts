@@ -89,6 +89,7 @@ test.describe('planting plans column management', () => {
     const notesColumnCheckbox = page.getByRole('checkbox', { name: 'Notizen' });
     await expect(notesColumnCheckbox).toBeVisible({ timeout: 5_000 });
     await expect(notesColumnCheckbox).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: 'Ausfälle', exact: true })).not.toBeChecked();
     await notesColumnCheckbox.uncheck();
 
     await page.keyboard.press('Escape');
@@ -100,7 +101,9 @@ test.describe('planting plans column management', () => {
     await expect(page.getByRole('columnheader', { name: 'Notizen' })).toHaveCount(0);
 
     const storedModel = await page.evaluate(() => window.localStorage.getItem('tableColumns.plantingPlans'));
-    expect(JSON.parse(storedModel ?? '{}')).toEqual({ notes: false, season_status: false, actual_harvest: false });
+    expect(JSON.parse(storedModel ?? '{}')).toEqual({
+      notes: false, season_status: false, actual_harvest: false, crop_loss_count: false,
+    });
 
     // A saved choice must not be overridden by screen-size changes: shrinking
     // the viewport shouldn't re-apply the small-screen default (which never
@@ -109,6 +112,7 @@ test.describe('planting plans column management', () => {
     // longer applies at all once a manual choice exists.
     await page.setViewportSize({ width: SMALL_SCREEN_WIDTH, height: 900 });
     await expect(page.getByRole('columnheader', { name: 'Notizen' })).toHaveCount(0);
+    await expect(page.locator('[role="columnheader"][data-field="crop_loss_count"]')).toHaveCount(0);
     await expect(page.locator('[role="columnheader"][data-field="harvest_date"]')).toBeVisible();
   });
 

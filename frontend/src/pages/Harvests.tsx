@@ -4,7 +4,7 @@ import PageContainer from '../components/layout/PageContainer';
 import PageSurface from '../components/layout/PageSurface';
 import ProjectRequiredState from '../components/project/ProjectRequiredState';
 import { HarvestRecords } from '../harvests/HarvestRecords';
-import { initialHarvestDate } from '../harvests/harvestDisplay';
+import { initialSeasonRecordDate } from '../seasons/formatSeasonDate';
 import { useProjectRequirement } from '../hooks/useProjectRequirement';
 import { useTranslation } from '../i18n';
 import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
@@ -22,7 +22,7 @@ export default function HarvestsPage() {
         {missingProjectReason ? <ProjectRequiredState reason={missingProjectReason} /> : (
           <Stack spacing={2} sx={{ maxWidth: 900 }}>
             {activeProjectId !== null && (seasonLoaded
-              ? <HarvestRecords key={scope} scope={scope} initialDate={initialHarvestDate(activeSeason)} />
+              ? <HarvestRecords key={scope} scope={scope} initialDate={initialSeasonRecordDate(activeSeason)} />
               : <CircularProgress size={24} aria-label={t('loading')} />)}
           </Stack>
         )}

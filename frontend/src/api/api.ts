@@ -17,6 +17,8 @@ import type {
   AppNotification,
   NotificationListResponse,
   Crop,
+  CropLoss,
+  CropLossWrite,
   CropDeletePreview,
   Location,
   Field,
@@ -472,6 +474,15 @@ export const harvestAPI = {
   create: (data: HarvestWrite) => http.post<HarvestRecord>('/harvests/', data),
   patch: (id: number, data: Partial<HarvestWrite>) => http.patch<HarvestRecord>(`/harvests/${id}/`, data),
   delete: (id: number) => http.delete(`/harvests/${id}/`),
+};
+
+export const cropLossAPI = {
+  listForPlan: (planId: number, signal?: AbortSignal) => fetchAllPaginated<CropLoss>(
+    `/crop-losses/?planting_plan=${planId}`, signal,
+  ),
+  create: (data: CropLossWrite) => http.post<CropLoss>('/crop-losses/', data),
+  patch: (id: number, data: Omit<CropLossWrite, 'planting_plan'>) => http.patch<CropLoss>(`/crop-losses/${id}/`, data),
+  delete: (id: number) => http.delete(`/crop-losses/${id}/`),
 };
 
 export const plantingPlanAPI = {
