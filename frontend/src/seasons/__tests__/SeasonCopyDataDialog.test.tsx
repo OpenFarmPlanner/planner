@@ -201,7 +201,7 @@ describe('SeasonCopyDataDialog', () => {
     expect(checkbox).not.toBeChecked();
     expect(checkbox).toHaveAccessibleDescription(/vorherigen Saison.*bisherige Plantermin/);
     await user.click(checkbox);
-    expect(copyPreviewMock).toHaveBeenLastCalledWith(2, undefined, true);
+    expect(copyPreviewMock).toHaveBeenLastCalledWith(2, 1, true);
     expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeDisabled();
     expect(screen.queryByText(/3 Anbaupläne werden übernommen/)).not.toBeInTheDocument();
     await user.click(checkbox);
@@ -230,9 +230,24 @@ describe('SeasonCopyDataDialog', () => {
     expect(screen.getByText('Vorherige Saison')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeDisabled();
     await user.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
-    expect(copyPreviewMock).toHaveBeenLastCalledWith(2, undefined, true);
+    expect(copyPreviewMock).toHaveBeenLastCalledWith(2, 1, true);
     expect(await screen.findByText(/1 Anbauplan passt zeitlich nicht/)).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
     expect(onConfirm).toHaveBeenCalledWith(2, 1, undefined, true);
+  });
+
+  it('keeps the original source when changing the date basis', async () => {
+    const user = userEvent.setup();
+    copyPreviewMock.mockResolvedValueOnce({ data: emptyPreview });
+    copyPreviewMock.mockRejectedValueOnce({
+      isAxiosError: true,
+      response: { status: 400, data: { code: 'season_copy_source_not_preceding' } },
+    });
+    render(<SeasonCopyDataDialog open targetSeason={targetSeason} onClose={vi.fn()} onConfirm={vi.fn()} />);
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' }));
+    expect(copyPreviewMock).toHaveBeenLastCalledWith(2, 1, true);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Die vorherige Saison hat sich geändert.');
+    expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeDisabled();
   });
 });

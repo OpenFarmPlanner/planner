@@ -64,7 +64,9 @@ test.describe('season copy on a French phone', () => {
       response.url().includes(`/seasons/${target.id}/copy-preview/`) && response.url().includes('use_actual_dates=true')
     ));
     await dateBasis.tap();
-    expect((await freshPreview).ok()).toBeTruthy();
+    const preview = await freshPreview;
+    expect(preview.ok()).toBeTruthy();
+    expect(new URL(preview.url()).searchParams.get('source_season_id')).toBe(String(source.id));
     await expect(dialog.getByRole('button', { name: 'Copier', exact: true })).toBeEnabled();
     const copying = page.waitForResponse(response => (
       response.url().endsWith(`/seasons/${target.id}/copy-from/`) && response.request().method() === 'POST'

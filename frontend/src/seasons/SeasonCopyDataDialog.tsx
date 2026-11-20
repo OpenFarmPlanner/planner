@@ -43,8 +43,10 @@ export function SeasonCopyDataDialog({ open, targetSeason, onClose, onConfirm }:
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewState, setPreviewState] = useState<PreviewState | null>(null);
-  const [source, setSource] = useState<{ targetId: number; label: string } | null>(null);
-  const [dateBasis, setDateBasis] = useState({ useActualDates: false, version: 0 });
+  const [source, setSource] = useState<{ targetId: number; id: number; label: string } | null>(null);
+  const [dateBasis, setDateBasis] = useState<{
+    useActualDates: boolean; version: number; source?: { targetId: number; id: number };
+  }>({ useActualDates: false, version: 0 });
   const [rotationMode, setRotationMode] = useState<SeasonCopyRotationMode>(DEFAULT_ROTATION_MODE);
   const dateBasisHelpId = useId();
   const targetSeasonId = targetSeason?.id ?? null;
@@ -53,10 +55,14 @@ export function SeasonCopyDataDialog({ open, targetSeason, onClose, onConfirm }:
       return undefined;
     }
     let cancelled = false;
-    seasonAPI.copyPreview(targetSeasonId, undefined, dateBasis.useActualDates)
+    const sourceId = dateBasis.source?.targetId === targetSeasonId ? dateBasis.source.id : undefined;
+    seasonAPI.copyPreview(targetSeasonId, sourceId, dateBasis.useActualDates)
       .then((response) => {
         if (!cancelled) {
-          setSource({ targetId: targetSeasonId, label: response.data.source_season_label });
+          setSource({
+            targetId: targetSeasonId, id: response.data.source_season_id,
+            label: response.data.source_season_label,
+          });
           setPreviewState({ targetId: targetSeasonId, version: dateBasis.version, data: response.data });
         }
       })
@@ -78,12 +84,15 @@ export function SeasonCopyDataDialog({ open, targetSeason, onClose, onConfirm }:
   const previewErrorCode = extractApiErrorCode(previewFailure?.error);
   const noPrecedingSource = previewErrorCode === 'season_copy_no_preceding_source';
   const sourceChanged = previewErrorCode === 'source_season_not_found' || previewErrorCode === 'season_copy_source_not_preceding';
-  const sourceLabel = source?.targetId === targetSeasonId ? source.label : null;
+  const sourceForTarget = source?.targetId === targetSeasonId ? source : null;
+  const sourceLabel = sourceForTarget?.label;
   const hasRotationFindings = Boolean(preview && (preview.conflict_count > 0 || preview.hint_count > 0));
 
   const refreshPreview = (useActualDates: boolean) => {
     setError(null);
-    setDateBasis(current => ({ useActualDates, version: current.version + 1 }));
+    setDateBasis(current => ({
+      useActualDates, version: current.version + 1, source: sourceForTarget ?? undefined,
+    }));
   };
 
   const handleClose = () => {

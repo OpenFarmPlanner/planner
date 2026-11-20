@@ -236,6 +236,7 @@ a season pattern changes and keeps the previous period eligible.
   Preview and execution both accept `use_actual_dates`, which defaults to
   false. With it enabled, each recorded date supplies the corresponding new
   planned date, using the source's planned date for activities with no entry.
+  Changing the date basis revalidates the same source season.
   The selected direct sowing or transplanting date determines the whole-year
   shift for the plan, and the remaining dates receive that same shift.
   A crop-derived fallback stays calculated when the new plan yields the same

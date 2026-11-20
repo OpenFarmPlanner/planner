@@ -1068,6 +1068,26 @@ class SeasonApiTest(ProjectApiTestCase):
             self.assertEqual(self.client.get(url, params).status_code, 200)
         self.assertEqual(len(few), len(many))
 
+    def test_copy_rejects_an_invalid_actual_date_basis_in_preview_and_execution(self):
+        source = Season.objects.create(
+            project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+        )
+        target = Season.objects.create(
+            project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
+        )
+        url = f'/openfarmplanner/api/seasons/{target.pk}/'
+        options = {'source_season_id': source.pk, 'use_actual_dates': 'either'}
+        previous_revision_count = EntityRevision.objects.count()
+
+        for response in (
+            self.client.get(f'{url}copy-preview/', options),
+            self.client.post(f'{url}copy-from/', options),
+        ):
+            self.assertEqual(response.status_code, 400)
+            self.assertEqual(response.data['code'], 'invalid_season_copy_options')
+            self.assertIn('use_actual_dates', response.data['fields'])
+        self.assertEqual(EntityRevision.objects.count(), previous_revision_count)
+
     def test_actual_basis_keeps_computed_dates_computed_without_recorded_values(self):
         source = Season.objects.create(
             project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
