@@ -96,6 +96,7 @@
     "deleteError": "De taak kon niet worden verwijderd. Probeer het opnieuw."
   },
   "events": {
+    "generic_sowing": "Zaaien",
     "propagation_start": "Opkweek starten",
     "sowing": "Directe zaai",
     "planting": "Uitplanten",

@@ -96,6 +96,7 @@
     "deleteError": "The task could not be deleted. Please try again."
   },
   "events": {
+    "generic_sowing": "Sowing",
     "propagation_start": "Start propagation",
     "sowing": "Direct sowing",
     "planting": "Transplant",

@@ -12,7 +12,7 @@ from typing import Any
 
 from farm.models import EntityRevision, PlantingPlan, Project, Season, SeasonPattern
 from farm.services.crop_inheritance import GeneralCropIndex, build_general_crop_index
-from farm.services.tasks import generate_tasks_for_plans, plan_cultivation_type
+from farm.services.tasks import generate_tasks_for_plans, plan_cultivation_type, plan_event_dates
 
 # Fields copied from a source PlantingPlan onto a new one in the target
 # season. Excludes the primary key, timestamps, audit fields, and the
@@ -37,6 +37,12 @@ PLANTING_PLAN_COPY_FIELDS = (
 PLANTING_PLAN_SHIFTED_DATE_FIELDS = (
     'planting_date', 'planned_propagation_start_date', 'planned_sowing_date',
     'planned_transplanting_date', 'harvest_date', 'harvest_end_date',
+)
+
+COMPUTED_COPY_DATE_FIELDS = (
+    ('planned_propagation_start_date', 'actual_propagation_start_date', 'propagation_start'),
+    ('harvest_date', 'actual_harvest_start_date', 'harvest_start'),
+    ('harvest_end_date', 'recorded_harvest_end_date', 'harvest_end'),
 )
 
 
@@ -236,24 +242,33 @@ def _season_copy_fields(plan: PlantingPlan, crop_index: GeneralCropIndex | None)
     if crop_index is None:
         return fields
 
-    # Only recorded dates replace the plan's own values; computed dates stay
-    # computed so the copy keeps following its crop timing.
-    sowing = plan.actual_sowing_date or plan.planned_sowing_date
-    transplanting = plan.actual_transplanting_date or plan.planned_transplanting_date
+    planned = plan_event_dates(plan, crop_index)
+    sowing = plan.actual_sowing_date or planned.get('sowing')
+    transplanting = plan.actual_transplanting_date or planned.get('planting')
     if plan_cultivation_type(plan, crop_index) in ('pre_cultivation', 'purchased_transplant'):
-        fields['planting_date'] = plan.actual_transplanting_date or plan.planting_date
+        fields['planting_date'] = transplanting or plan.planting_date
         fields['planned_sowing_date'] = sowing
         fields['planned_transplanting_date'] = None
     else:
-        fields['planting_date'] = plan.actual_sowing_date or plan.planting_date
+        fields['planting_date'] = sowing or plan.planting_date
         fields['planned_sowing_date'] = None
         fields['planned_transplanting_date'] = transplanting
-    fields['planned_propagation_start_date'] = (
-        plan.actual_propagation_start_date or plan.planned_propagation_start_date
-    )
-    fields['harvest_date'] = plan.actual_harvest_start_date or plan.harvest_date
-    fields['harvest_end_date'] = plan.recorded_harvest_end_date or plan.harvest_end_date
+    for field, actual_field, event in COMPUTED_COPY_DATE_FIELDS:
+        fields[field] = getattr(plan, actual_field) or planned.get(event)
     return fields
+
+
+def _keep_equivalent_dates_computed(
+    source: PlantingPlan, copy: PlantingPlan, crop_index: GeneralCropIndex,
+) -> None:
+    """Keep crop-derived dates when they still match the shifted fallback exactly."""
+    derived = plan_event_dates(PlantingPlan(
+        crop=copy.crop, cultivation_type=copy.cultivation_type, planting_date=copy.planting_date,
+    ), crop_index)
+    for field, actual_field, event in COMPUTED_COPY_DATE_FIELDS:
+        if getattr(source, field) is None and getattr(source, actual_field) is None:
+            if getattr(copy, field) == derived.get(event):
+                setattr(copy, field, None)
 
 
 def build_planting_plan_copies(
@@ -305,6 +320,8 @@ def build_planting_plan_copies(
             copy.crop = plan.crop
         if plan.bed_id is not None:
             copy.bed = plan.bed
+        if crop_index is not None:
+            _keep_equivalent_dates_computed(plan, copy, crop_index)
         pairs.append((plan, copy))
     return pairs, skipped_count
 

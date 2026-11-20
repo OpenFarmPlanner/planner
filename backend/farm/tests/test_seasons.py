@@ -7,7 +7,15 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.test import override_settings
 
-from farm.models import BatchOperation, EntityRevision, PlantingPlan, Project, Season, SeasonPattern
+from farm.models import (
+    BatchOperation,
+    EntityRevision,
+    PlantingPlan,
+    Project,
+    Season,
+    SeasonPattern,
+    Task,
+)
 from farm.services.demo_project import demo_current_year, populate_demo_project
 from farm.services.hint_test_project import populate_hint_test_project
 from farm.services.seasons import (
@@ -991,6 +999,9 @@ class SeasonApiTest(ProjectApiTestCase):
         self.assertEqual(actual_copy.planting_date, date(2025, 3, 8))
         self.assertEqual(actual_copy.harvest_date, date(2025, 3, 13))
         self.assertEqual(actual_copy.harvest_end_date, date(2025, 3, 14))
+        sowing = Task.objects.get(planting_plan=actual_copy, source_key__endswith=':event:sowing')
+        self.assertEqual(sowing.title, 'Sowing')
+        self.assertEqual(sowing.due_date, date(2025, 3, 1))
         for copy in (planned_copy, actual_copy):
             for field in PlantingPlan.ACTUAL_DATE_FIELDS:
                 self.assertIsNone(getattr(copy, field))
@@ -1048,7 +1059,37 @@ class SeasonApiTest(ProjectApiTestCase):
         self.assertEqual(result.status_code, 200)
         copy = PlantingPlan.objects.get(season=target)
         self.assertIsNone(copy.planned_propagation_start_date)
+        self.assertIsNone(copy.harvest_date)
+        self.assertIsNone(copy.harvest_end_date)
         self.assertEqual(copy.planting_date, date(2027, 3, 1))
+
+    def test_actual_basis_preserves_shifted_fallbacks_when_the_planting_date_changes(self):
+        self.crop.propagation_duration_days = 14
+        self.crop.save(update_fields=['propagation_duration_days'])
+        source = Season.objects.create(
+            project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+        )
+        target = Season.objects.create(
+            project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
+        )
+        original = PlantingPlan.objects.create(
+            crop=self.crop, project=self.project, season=source,
+            cultivation_type='pre_cultivation', planting_date=date(2026, 3, 1),
+            actual_transplanting_date=date(2026, 3, 3),
+        )
+        PlantingPlan.objects.filter(pk=original.pk).update(harvest_date=None, harvest_end_date=None)
+
+        response = self.client.post(
+            f'/openfarmplanner/api/seasons/{target.pk}/copy-from/',
+            {'source_season_id': source.pk, 'use_actual_dates': True},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        copy = PlantingPlan.objects.get(season=target)
+        self.assertEqual(copy.planting_date, date(2027, 3, 3))
+        self.assertEqual(copy.planned_propagation_start_date, date(2027, 2, 15))
+        self.assertEqual(copy.harvest_date, date(2027, 3, 8))
+        self.assertEqual(copy.harvest_end_date, date(2027, 3, 10))
 
     def test_create_and_copy_revalidates_the_source_before_writing_either_result(self):
         earlier = Season.objects.create(

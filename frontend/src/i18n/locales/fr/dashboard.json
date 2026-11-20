@@ -96,6 +96,7 @@
     "deleteError": "La tâche n’a pas pu être supprimée. Veuillez réessayer."
   },
   "events": {
+    "generic_sowing": "Semis",
     "propagation_start": "Commencer les semis en pépinière",
     "sowing": "Semis direct",
     "planting": "Repiquer",

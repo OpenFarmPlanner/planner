@@ -238,6 +238,8 @@ a season pattern changes and keeps the previous period eligible.
   planned date, using the source's planned date for activities with no entry.
   The selected direct sowing or transplanting date determines the whole-year
   shift for the plan, and the remaining dates receive that same shift.
+  A crop-derived fallback stays calculated when the new plan yields the same
+  shifted date. Otherwise the copy stores the shifted source date explicitly.
   Copies always start with their own actual dates unset.
   When a copy would break the rotation
   on its bed (or gets a nutrient hint), shows a summary and lets the user copy
