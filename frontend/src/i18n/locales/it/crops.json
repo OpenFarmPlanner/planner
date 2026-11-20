@@ -1860,9 +1860,15 @@
         "other": "Altre voci del progetto"
       },
       "actions": {
-        "removed": "Rimozioni ({{count}})",
-        "restored": "Ripristini ({{count}})",
-        "changed": "Modifiche ({{count}})"
+        "removed_one": "Rimozione ({{count}})",
+        "removed_other": "Rimozioni ({{count}})",
+        "removed_many": "Rimozioni ({{count}})",
+        "restored_one": "Ripristino ({{count}})",
+        "restored_other": "Ripristini ({{count}})",
+        "restored_many": "Ripristini ({{count}})",
+        "changed_one": "Modifica ({{count}})",
+        "changed_other": "Modifiche ({{count}})",
+        "changed_many": "Modifiche ({{count}})"
       }
     }
   },

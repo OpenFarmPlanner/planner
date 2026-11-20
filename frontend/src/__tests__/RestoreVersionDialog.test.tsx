@@ -93,6 +93,20 @@ describe('RestoreVersionDialog', () => {
     expect(summary).toHaveTextContent(tCrops('restoreDialog.preview.sample', { shown: 1, total: 12 }));
   });
 
+  it('uses the singular and plural forms for impact counts', () => {
+    renderDialog(entry(), {
+      status: 'ready',
+      data: { token: 'token', impact: [{
+        category: 'beds',
+        removed: { count: 1, names: ['Bed One'] },
+        restored: { count: 2, names: ['Bed Two', 'Bed Three'] },
+        changed: { count: 0, names: [] },
+      }] },
+    });
+    expect(screen.getByText('Entfernung (1)')).toBeVisible();
+    expect(screen.getByText('Wiederherstellungen (2)')).toBeVisible();
+  });
+
   it('confirms a legacy secondary undo by batch ID with its own explanation', async () => {
     const onConfirm = vi.fn();
     render(<RestoreVersionDialog entry={batchEntry({ history_id: 123, batch_id: 42 })}

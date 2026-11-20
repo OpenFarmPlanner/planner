@@ -1813,9 +1813,12 @@
         "other": "Weitere Projekteinträge"
       },
       "actions": {
-        "removed": "Entfernungen ({{count}})",
-        "restored": "Wiederherstellungen ({{count}})",
-        "changed": "Änderungen ({{count}})"
+        "removed_one": "Entfernung ({{count}})",
+        "removed_other": "Entfernungen ({{count}})",
+        "restored_one": "Wiederherstellung ({{count}})",
+        "restored_other": "Wiederherstellungen ({{count}})",
+        "changed_one": "Änderung ({{count}})",
+        "changed_other": "Änderungen ({{count}})"
       }
     }
   },

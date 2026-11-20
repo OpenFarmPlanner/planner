@@ -1861,9 +1861,15 @@
         "other": "Otros registros del proyecto"
       },
       "actions": {
-        "removed": "Eliminaciones ({{count}})",
-        "restored": "Restauraciones ({{count}})",
-        "changed": "Modificaciones ({{count}})"
+        "removed_one": "Eliminación ({{count}})",
+        "removed_other": "Eliminaciones ({{count}})",
+        "removed_many": "Eliminaciones ({{count}})",
+        "restored_one": "Restauración ({{count}})",
+        "restored_other": "Restauraciones ({{count}})",
+        "restored_many": "Restauraciones ({{count}})",
+        "changed_one": "Modificación ({{count}})",
+        "changed_other": "Modificaciones ({{count}})",
+        "changed_many": "Modificaciones ({{count}})"
       }
     }
   },

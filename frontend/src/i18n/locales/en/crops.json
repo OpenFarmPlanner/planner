@@ -1813,9 +1813,12 @@
         "other": "Other project records"
       },
       "actions": {
-        "removed": "{{count}} removed",
-        "restored": "{{count}} restored",
-        "changed": "{{count}} changed"
+        "removed_one": "{{count}} removed",
+        "removed_other": "{{count}} removed",
+        "restored_one": "{{count}} restored",
+        "restored_other": "{{count}} restored",
+        "changed_one": "{{count}} changed",
+        "changed_other": "{{count}} changed"
       }
     }
   },

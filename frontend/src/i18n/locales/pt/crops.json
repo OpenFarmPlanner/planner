@@ -1860,9 +1860,15 @@
         "other": "Outros registos do projeto"
       },
       "actions": {
-        "removed": "Remoções ({{count}})",
-        "restored": "Reposições ({{count}})",
-        "changed": "Alterações ({{count}})"
+        "removed_one": "Remoção ({{count}})",
+        "removed_other": "Remoções ({{count}})",
+        "removed_many": "Remoções ({{count}})",
+        "restored_one": "Reposição ({{count}})",
+        "restored_other": "Reposições ({{count}})",
+        "restored_many": "Reposições ({{count}})",
+        "changed_one": "Alteração ({{count}})",
+        "changed_other": "Alterações ({{count}})",
+        "changed_many": "Alterações ({{count}})"
       }
     }
   },

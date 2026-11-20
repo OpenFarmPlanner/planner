@@ -1813,9 +1813,12 @@
         "other": "Overige projectitems"
       },
       "actions": {
-        "removed": "{{count}} verwijderd",
-        "restored": "{{count}} hersteld",
-        "changed": "{{count}} gewijzigd"
+        "removed_one": "{{count}} verwijderd",
+        "removed_other": "{{count}} verwijderd",
+        "restored_one": "{{count}} hersteld",
+        "restored_other": "{{count}} hersteld",
+        "changed_one": "{{count}} gewijzigd",
+        "changed_other": "{{count}} gewijzigd"
       }
     }
   },

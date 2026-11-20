@@ -1861,9 +1861,15 @@
         "other": "Autres éléments du projet"
       },
       "actions": {
-        "removed": "Suppressions ({{count}})",
-        "restored": "Rétablissements ({{count}})",
-        "changed": "Modifications ({{count}})"
+        "removed_one": "Suppression ({{count}})",
+        "removed_other": "Suppressions ({{count}})",
+        "removed_many": "Suppressions ({{count}})",
+        "restored_one": "Rétablissement ({{count}})",
+        "restored_other": "Rétablissements ({{count}})",
+        "restored_many": "Rétablissements ({{count}})",
+        "changed_one": "Modification ({{count}})",
+        "changed_other": "Modifications ({{count}})",
+        "changed_many": "Modifications ({{count}})"
       }
     }
   },
