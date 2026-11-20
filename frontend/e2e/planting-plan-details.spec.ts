@@ -188,6 +188,6 @@ test.describe('touch details', () => {
 
     await page.goto(`${table}?bedId=${bed.id}&create=true`);
     const create = page.getByRole('dialog', { name: 'Anbauplan hinzufügen' });
-    await expect(create.getByRole('combobox', { name: 'Beet' })).toContainText('Details-Beet');
+    await expect(create.getByRole('combobox').nth(1)).toContainText('Details-Beet');
   });
 });

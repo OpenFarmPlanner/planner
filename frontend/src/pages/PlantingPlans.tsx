@@ -2165,12 +2165,16 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0 }
       return;
     }
 
-    handleCreatePlan();
+    // The mobile prefill effect opens the form once its bed options are ready.
+    // Opening the bare form here could overwrite its selected crop or bed.
+    if (!isMobile || (initialSelection.cropId === null && initialSelection.bedId === null)) {
+      handleCreatePlan();
+    }
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete("create");
     replacePlantingPlanSearchParams(nextParams);
     createIntentHandledRef.current = true;
-  }, [canCreatePlan, handleCreatePlan, replacePlantingPlanSearchParams, searchParams]);
+  }, [canCreatePlan, handleCreatePlan, initialSelection, isMobile, replacePlantingPlanSearchParams, searchParams]);
 
   if (shouldShowProjectRequiredState && missingProjectReason) {
     return (
