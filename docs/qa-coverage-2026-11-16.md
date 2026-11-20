@@ -224,3 +224,27 @@ above remain unchanged.
 
 This was the requested two-tab scenario, not a full rerun of the automated
 companion suite, a broad QA sweep, or a production validation.
+
+## Targeted follow-up — 2026-11-20: exact crop synonyms (#1159)
+
+Tested `b8b45bb615f5bb715029a17b22fdb676e04cd85f`, which includes
+PR #1305 (`c7bbbd786`). This check covers only the requested publishing picker;
+the outstanding full-sweep baseline and backlog above remain unchanged.
+
+- Ran `npm run test:e2e:headed -- e2e/crop-species-autocomplete.spec.ts`
+  from `frontend/`: **2 passed** (Italian desktop and Portuguese touch).
+- Production frontend at `http://127.0.0.1:15359`, disposable Daphne backend
+  at `http://127.0.0.1:18359`, fresh SQLite database outside the checkout;
+  existing local servers and their data were not used.
+- Both cases create 21 partial-name matches and two exact synonym matches.
+  Both exact matches remain visible under their localized official names in
+  the capped list of 20, with the matching synonym explanation.
+- Ambiguous matches require selection: publishing is disabled beforehand,
+  the propose-new action is absent, and selecting with Italian keyboard
+  navigation or Portuguese touch enables publishing with the selected name.
+- Inspected screenshots at 1440x900 (Italian), 375x800 and 800x375
+  (Portuguese): both exact options are visible; no horizontal overflow or
+  picker layout defects observed. Fixture cleanup completed.
+- No application changes or new defects from this targeted run. Local evidence:
+  `/tmp/ofp-1159-Xep6lh/headed-test.log` and
+  `/tmp/ofp-1159-Xep6lh/screenshots/` (temporary artifacts, not committed).
