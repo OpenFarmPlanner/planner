@@ -5,7 +5,9 @@ from datetime import date
 import pytest
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
+from django.db import connection
 from django.test import override_settings
+from django.test.utils import CaptureQueriesContext
 
 from farm.models import (
     BatchOperation,
@@ -1039,6 +1041,32 @@ class SeasonApiTest(ProjectApiTestCase):
         self.assertEqual(copy.planting_date, date(2027, 3, 10))
         self.assertEqual(copy.harvest_end_date, date(2027, 5, 2))
         self.assertIsNone(copy.actual_sowing_date)
+
+    def test_actual_basis_preview_query_count_is_constant_per_plan(self):
+        source = Season.objects.create(
+            project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+        )
+        target = Season.objects.create(
+            project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
+        )
+        url = f'/openfarmplanner/api/seasons/{target.pk}/copy-preview/'
+        params = {'source_season_id': source.pk, 'use_actual_dates': 'true'}
+
+        def add_plans(count: int) -> None:
+            for day in range(1, count + 1):
+                PlantingPlan.objects.create(
+                    crop=self.crop, project=self.project, season=source,
+                    cultivation_type='direct_sowing', planting_date=date(2026, 3, day),
+                    actual_sowing_date=date(2026, 3, day + 1),
+                )
+
+        add_plans(2)
+        with CaptureQueriesContext(connection) as few:
+            self.assertEqual(self.client.get(url, params).status_code, 200)
+        add_plans(5)
+        with CaptureQueriesContext(connection) as many:
+            self.assertEqual(self.client.get(url, params).status_code, 200)
+        self.assertEqual(len(few), len(many))
 
     def test_actual_basis_keeps_computed_dates_computed_without_recorded_values(self):
         source = Season.objects.create(
