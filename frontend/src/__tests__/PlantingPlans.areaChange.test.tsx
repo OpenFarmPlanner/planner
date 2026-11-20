@@ -1,8 +1,8 @@
 /**
- * Regression coverage for the growing-area ("Anbaufläche ändern") dialog on the
+ * Regression coverage for the inline bed picker on the
  * planting plans page. These tests render the real MUI DataGrid instead of the
  * module mock the other PlantingPlans suites use, because the bug they guard
- * lives in what the dialog writes back into the grid's own edit state.
+ * lives in what the picker writes back into the grid's own edit state.
  */
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -95,13 +95,11 @@ const renderPlantingPlans = async (): Promise<void> => {
 const changeGrowingAreaToBedB = async (
   user: ReturnType<typeof userEvent.setup>,
 ): Promise<void> => {
-  await user.click(screen.getAllByLabelText("Anbaufläche bearbeiten")[0]);
-  const dialog = await screen.findByRole("dialog", { name: "Anbaufläche ändern" });
-  await user.click(within(dialog).getByRole("combobox", { name: "Beet" }));
+  await user.dblClick(cellOf("bed")!);
+  await screen.findByRole("combobox", { name: "Beete suchen" });
   await user.click(await screen.findByRole("option", { name: /Beet B/ }));
-  await user.click(within(dialog).getByRole("button", { name: "Übernehmen" }));
   await waitFor(() =>
-    expect(screen.queryByRole("dialog", { name: "Anbaufläche ändern" })).not.toBeInTheDocument());
+    expect(screen.queryByRole("combobox", { name: "Beete suchen" })).not.toBeInTheDocument());
 };
 
 describe("PlantingPlans growing-area change", () => {
@@ -187,7 +185,7 @@ describe("PlantingPlans growing-area change", () => {
 
     await changeGrowingAreaToBedB(user);
 
-    // Before the fix the dialog wrote the row's raw ISO date strings into the
+    // Before the fix the area editor wrote the row's raw ISO date strings into the
     // grid's edit state, and MUI's date column threw while rendering the open
     // editor — taking the whole page down through the error boundary.
     expect(document.querySelector(".MuiDataGrid-row--editing")).toBeTruthy();

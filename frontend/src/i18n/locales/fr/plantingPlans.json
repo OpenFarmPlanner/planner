@@ -113,20 +113,25 @@
     "preCultivation": "Plantation (plants autoproduits)",
     "purchasedTransplant": "Plantation de plants achetés"
   },
-  "areaAssignment": {
-    "title": "Modifier la surface de culture",
-    "editButton": "Modifier la surface de culture",
-    "hierarchyHint": "Le site filtre les parcelles, la parcelle filtre les planches.",
-    "emptyStateTitle": "Aucune surface de culture disponible",
-    "emptyStateDescription": "Créez d'abord des parcelles et des planches avant d'affecter une surface à une série.",
-    "emptyStateAction": "Aller à Surfaces de culture",
-    "apply": "Appliquer",
-    "cancel": "Annuler",
-    "selectLocationFirst": "Choisissez d'abord un site.",
-    "noFieldsForLocation": "Aucune parcelle n'est disponible pour ce site.",
-    "selectFieldFirst": "Choisissez d'abord une parcelle.",
-    "noBedsForField": "Aucune planche n'est disponible pour cette parcelle.",
-    "selectBedFirst": "Choisissez d'abord une planche."
+  "bedPicker": {
+    "emptyTitle": "Aucune surface de culture disponible",
+    "openGrowingAreas": "Aller à Surfaces de culture",
+    "search": "Rechercher une planche",
+    "removeFilter": "Retirer le filtre « {{name}} »",
+    "noScopedMatches": "Aucun résultat dans {{name}}",
+    "noMatches": "Aucune planche ne correspond à la recherche",
+    "showOutside_one": "Afficher {{count}} résultat ailleurs",
+    "showOutside_other": "Afficher {{count}} résultats ailleurs",
+    "searchAll": "Rechercher dans tous les sites",
+    "keyboardHint": "↑ ↓ Naviguer · Entrée Choisir · Échap Annuler · Retour arrière Retirer un filtre",
+    "conflictReason": "{{family}}, au plus tôt en {{year}}",
+    "showOccupancy": "Afficher l’occupation de {{bed}}",
+    "hideOccupancy": "Masquer l’occupation de {{bed}}",
+    "rotation": {
+      "conflict": "Afficher le conflit de rotation",
+      "accepted": "Afficher le conflit de rotation accepté",
+      "info": "Pourquoi la rotation n’a pas pu être vérifiée"
+    }
   },
   "mobile": {
     "showDetails": "Afficher les détails",
@@ -279,10 +284,6 @@
     "waterMismatch": "La culture a des besoins élevés en eau. Le sol est indiqué comme {{moisture}} et l’irrigation comme {{irrigation}}."
   },
   "rotation": {
-    "iconAria": {
-      "conflict": "Conflit de rotation des cultures, modifier la surface de culture",
-      "info": "Rotation des cultures non vérifiable, modifier la surface de culture"
-    },
     "status": {
       "conflict": "Conflit",
       "accepted": "Conflit accepté",

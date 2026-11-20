@@ -6,18 +6,7 @@ import { formatLocalizedNumber, parseLocalizedNumber } from '../utils/numberLoca
 
 export const AREA_LABEL_SEPARATOR = ' | ';
 
-/**
- * Upper bounds for the two flexible planting-plan grid columns. The hierarchy
- * hook sizes the columns to their content and the grid caps them here, so both
- * have to agree on the same number.
- */
 export const CROP_COLUMN_MAX_WIDTH = 280;
-/**
- * Room the growing-area cell keeps for its crop rotation status icon button,
- * so flagged rows do not lose the bed name to truncation.
- */
-export const BED_STATUS_ICON_ALLOWANCE = 32;
-export const BED_COLUMN_MAX_WIDTH = 220 + BED_STATUS_ICON_ALLOWANCE;
 const UNIT_NON_BREAKING_SPACE = '\u00a0';
 
 export const toNumericValue = (value: unknown): number | null => {
@@ -31,16 +20,6 @@ export const toNumericValue = (value: unknown): number | null => {
 
 export const formatAreaM2 = (value: number, locale: string): string =>
   `${formatLocalizedNumber(value, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${UNIT_NON_BREAKING_SPACE}m²`;
-
-export const buildAreaColumnHeaderLabel = (
-  includeLocation: boolean,
-  locationLabel: string,
-  fieldLabel: string,
-  bedLabel: string,
-): string =>
-  includeLocation
-    ? `${locationLabel}${AREA_LABEL_SEPARATOR}${fieldLabel}${AREA_LABEL_SEPARATOR}${bedLabel}`
-    : `${fieldLabel}${AREA_LABEL_SEPARATOR}${bedLabel}`;
 
 export const buildBedDisplayLabel = (
   locationName: string | null | undefined,

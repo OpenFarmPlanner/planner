@@ -113,20 +113,25 @@
     "preCultivation": "Trapianto di piantine autoprodotte",
     "purchasedTransplant": "Trapianto di piantine acquistate"
   },
-  "areaAssignment": {
-    "title": "Cambia superficie coltivata",
-    "editButton": "Modifica superficie coltivata",
-    "hierarchyHint": "Il sito filtra gli appezzamenti; l'appezzamento filtra le aiuole.",
-    "emptyStateTitle": "Nessuna superficie coltivata disponibile",
-    "emptyStateDescription": "Crea prima appezzamenti e aiuole per assegnare una superficie a una serie.",
-    "emptyStateAction": "Vai a Superfici coltivate",
-    "apply": "Applica",
-    "cancel": "Annulla",
-    "selectLocationFirst": "Seleziona prima un sito.",
-    "noFieldsForLocation": "Nessun appezzamento disponibile per questo sito.",
-    "selectFieldFirst": "Seleziona prima un appezzamento.",
-    "noBedsForField": "Nessuna aiuola disponibile per questo appezzamento.",
-    "selectBedFirst": "Seleziona prima un'aiuola."
+  "bedPicker": {
+    "emptyTitle": "Nessuna superficie coltivata disponibile",
+    "openGrowingAreas": "Vai a Superfici coltivate",
+    "search": "Cerca aiuole",
+    "removeFilter": "Rimuovi il filtro «{{name}}»",
+    "noScopedMatches": "Nessun risultato in {{name}}",
+    "noMatches": "Nessuna aiuola corrispondente",
+    "showOutside_one": "Mostra {{count}} risultato fuori dal filtro",
+    "showOutside_other": "Mostra {{count}} risultati fuori dal filtro",
+    "searchAll": "Cerca in tutte le località",
+    "keyboardHint": "↑ ↓ Sposta · Invio Scegli · Esc Annulla · Backspace Rimuovi filtro",
+    "conflictReason": "{{family}}, non prima del {{year}}",
+    "showOccupancy": "Mostra l’occupazione di {{bed}}",
+    "hideOccupancy": "Nascondi l’occupazione di {{bed}}",
+    "rotation": {
+      "conflict": "Mostra il conflitto di rotazione",
+      "accepted": "Mostra il conflitto di rotazione accettato",
+      "info": "Perché non è stato possibile verificare la rotazione"
+    }
   },
   "mobile": {
     "showDetails": "Mostra dettagli",
@@ -279,10 +284,6 @@
     "waterMismatch": "La coltura ha un fabbisogno idrico elevato. L’umidità del suolo risulta {{moisture}} e l’irrigazione {{irrigation}}."
   },
   "rotation": {
-    "iconAria": {
-      "conflict": "Conflitto di rotazione colturale, cambia superficie coltivata",
-      "info": "Rotazione colturale non verificabile, cambia superficie coltivata"
-    },
     "status": {
       "conflict": "Conflitto",
       "accepted": "Conflitto accettato",

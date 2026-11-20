@@ -39,7 +39,7 @@ export const compareRotationStatus = (
 /**
  * Statuses the table flags next to the growing area: only what still needs
  * the user — an open conflict, or culture data that is missing for the check.
- * Accepted conflicts and nutrient hints show only in "Anbaufläche ändern".
+ * Mobile cards flag these two statuses. The desktop grid also shows accepted conflicts.
  */
 export const isFlaggedRotationStatus = (
   status: RotationStatus | null | undefined,

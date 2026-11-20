@@ -114,9 +114,9 @@ export interface EditableDataGridProps<T extends EditableRow> {
   /**
    * Fields whose value is only ever picked in a popover/dialog that the
    * column's own `renderCell` owns (e.g. the Standort → Parzelle → Beet
-   * picker). Like notes cells these never open the inline row-edit mode: a
-   * single left click — or Enter/Space on the focused cell — opens the real
-   * editor, while Tab/arrow navigation still treats the cell as a stop.
+   * picker). These keep the grid's row-edit mode separate from the cell's
+   * own editor. Double click, Enter, F2, typing and touch taps open the editor.
+   * Tab, arrows and single mouse clicks move focus to the cell.
    * Columns listed here must stay `editable: false` and write their result
    * back through `EditableDataGridCommandApi.applyDialogEditValues`.
    */

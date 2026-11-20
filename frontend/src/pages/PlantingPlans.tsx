@@ -111,10 +111,8 @@ import {
   getTranslatedProjectSetupAction,
   getTranslatedProjectSetupActions,
 } from "./requirementFlow";
-import {
-  AreaAssignmentDialog,
-  type AreaAssignmentApplyDetails,
-} from "../components/planting-plans/AreaAssignmentDialog";
+import { PlantingPlanBedCell } from "../components/planting-plans/PlantingPlanBedCell";
+import { BED_PATH_SEPARATOR, buildBedPickerOptions } from "../components/planting-plans/bedPickerOptions";
 import EmptyStateCard from "../components/project/EmptyStateCard";
 import { formatCropDisplayName, getCropDisplayName } from "../crops/cropDisplay";
 import { usePlantingPlanSearch, type PlantingPlanSearchSnapshot } from "./usePlantingPlanSearch";
@@ -173,7 +171,6 @@ import {
   buildMobileCreateForm,
   clearSupplementalPlannedDates,
   createEmptyMobileCreateForm,
-  BED_COLUMN_MAX_WIDTH,
   CROP_COLUMN_MAX_WIDTH,
   getPlanOccupancyEndIso,
   getSeasonOccupancyStatus,
@@ -279,11 +276,12 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     bedLabelById,
     cultivationTypeOptions,
     hasMultipleLocationsWithBeds,
-    fieldBedColumnLabel,
-    areaColumnLabel,
+    bedColumnLabel,
     getCultivationTypeOptionsForRow,
     dynamicWidths,
   } = usePlantingPlanHierarchy(shouldShowProjectRequiredState);
+  const bedPickerOptions = useMemo(() => buildBedPickerOptions(beds, fields, locations, numberLocale), [beds, fields, locations, numberLocale]);
+  const bedPickerOptionsById = useMemo(() => new Map(bedPickerOptions.map((option) => [option.id, option])), [bedPickerOptions]);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const filterButtonRef = useRef<HTMLButtonElement | null>(null);
   // State (not a ref) because it feeds EditableDataGrid's slotProps during
@@ -298,9 +296,6 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   } | null>(null);
   const urlParamProcessedRef = useRef<boolean>(false);
   const gridCommandApiRef = useRef<EditableDataGridCommandApi | null>(null);
-  // Rotation acceptances chosen in "Anbaufläche ändern", sent with the row's
-  // next save only (an acceptance holds for the bed it was given for).
-  const pendingRotationAcceptanceRef = useRef<Map<string, boolean>>(new Map());
   // A write can add or remove harvest overlaps on other plans of the same bed
   // (docs/bed-occupancy.md), which the grid's rows do not refetch. After every
   // grid write the overlaps of all plans are reloaded into this map, which
@@ -568,30 +563,34 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     ],
   );
 
-  /**
-   * Writes a growing-area selection made in the AreaAssignmentDialog back into
-   * the grid. The bed cell has no inline edit mode, so the column's former
-   * `valueSetter` side effects (hierarchy sync, area autofill for new rows)
-   * live here instead.
-   */
+  const getBedPath = useCallback((row: PlantingPlanRow) => (
+    bedPickerOptionsById.get(resolveBedCellValue(row.bed, row)) ?? {
+      locationName: toOptionalString(row.location_name) ?? "",
+      fieldName: toOptionalString(row.field_name) ?? "",
+      name: toOptionalString(row.bed_name) ?? "",
+    }
+  ), [bedPickerOptionsById]);
+
+  const getGridBedLabel = useCallback((row: PlantingPlanRow | null | undefined): string => {
+    if (!row) return "—";
+    const { locationName, fieldName, name } = getBedPath(row);
+    return [locationName, fieldName, name].filter(Boolean).join(BED_PATH_SEPARATOR) || "—";
+  }, [getBedPath]);
+
   const applyBedSelection = useCallback(
     async (
       rowId: GridRowId,
       row: PlantingPlanRow,
       nextBedId: number,
-      details?: AreaAssignmentApplyDetails,
+      freeAreaSqm: number | null,
     ): Promise<void> => {
       const selectedBed = bedById.get(nextBedId);
       const shouldAutofillArea = Boolean(row.isNew)
         && (row.area_m2 === undefined || row.area_m2 === null);
       // A new row takes the area that is still free in its period, so the
-      // save check never rejects a bed the dialog offered; with nothing free,
+      // save check accepts the picked bed; with nothing free,
       // the area stays empty.
-      const freeArea = details?.freeAreaSqm ?? null;
-      const autofillArea = freeArea !== null ? freeArea : selectedBed?.area_sqm;
-      if (details?.rotationConflictAccepted !== undefined) {
-        pendingRotationAcceptanceRef.current.set(String(rowId), details.rotationConflictAccepted);
-      }
+      const autofillArea = freeAreaSqm ?? selectedBed?.area_sqm;
       // Only the hierarchy fields the selection actually changes are written
       // back. `normalizeSelectionAfterBedChange` returns a whole row, and
       // handing that to the grid would push every other field of a
@@ -616,6 +615,17 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     },
     [bedById, beds, fields],
   );
+
+  const saveRotationAcceptance = useCallback(async (id: number, accepted: boolean): Promise<void> => {
+    const { data } = await plantingPlanAPI.patch(id, { rotation_conflict_accepted: accepted });
+    gridCommandApiRef.current?.applySavedRowValues?.(id, {
+      rotation_conflict_accepted: data.rotation_conflict_accepted,
+      rotation_conflict_accepted_at: data.rotation_conflict_accepted_at,
+      rotation_conflict_accepted_by_user: data.rotation_conflict_accepted_by_user,
+      rotation_status: data.rotation_status,
+      rotation_findings: data.rotation_findings,
+    });
+  }, []);
 
   /**
    * Check for cropId or bedId parameter in URL and set as initial values
@@ -924,64 +934,39 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       },
       {
         field: "bed",
-        headerName: areaColumnLabel,
+        headerName: bedColumnLabel,
         flex: 0,
         minWidth: dynamicWidths.bed,
-        maxWidth: BED_COLUMN_MAX_WIDTH,
-        // The growing area is only ever picked in AreaAssignmentDialog, so the
-        // cell skips inline edit mode entirely — see the grid's
-        // `dialogEditFields` prop below.
+        // The inline picker owns its edit lifecycle within the view cell.
         editable: false,
         type: "singleSelect",
         valueOptions: bedOptions,
-        valueFormatter: (_value, row) => getBedLabelForRow(row as PlantingPlanRow),
+        valueFormatter: (_value, row) => getGridBedLabel(row as PlantingPlanRow),
         sortComparator: (_value1, _value2, cellParams1, cellParams2) => {
           const row1 = cellParams1.api.getRow(cellParams1.id) as PlantingPlanRow | null;
           const row2 = cellParams2.api.getRow(cellParams2.id) as PlantingPlanRow | null;
-          return getBedLabelForRow(row1).localeCompare(
-            getBedLabelForRow(row2),
-            "de",
+          return getGridBedLabel(row1).localeCompare(
+            getGridBedLabel(row2),
+            numberLocale,
           );
         },
         renderCell: (params) => {
           const row = params.row as PlantingPlanRow;
           const bedId = resolveBedCellValue(params.value, row);
-          const label = getBedLabelForRow(row);
-          if (row.carried_over) {
-            const rotationStatus = getTableRotationStatus(row.rotation_status, row.rotation_findings);
-            return (
-              <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", minWidth: 0, width: "100%" }}>
-                <Typography component="span" variant="inherit" noWrap>
-                  <SearchHighlightedText text={label} />
-                </Typography>
-                {isFlaggedRotationStatus(rotationStatus) && (
-                  <ReadOnlyRotationWarning
-                    status={rotationStatus}
-                    findings={row.rotation_findings}
-                    cultureLabel={row.crop_display_name ?? row.crop_name ?? ""}
-                    tabIndex={params.hasFocus ? 0 : -1}
-                  />
-                )}
-                <HarvestOverlapIcon overlaps={getRowHarvestOverlaps(row)} fontSize="inherit" />
-                <CompanionWarningIcon findings={row.companion_findings} fontSize="inherit" />
-              </Stack>
-            );
-          }
           return (
-            <AreaAssignmentDialog
-              bedId={bedId || null}
-              beds={beds}
-              fields={fields}
-              locations={locations}
-              locale={numberLocale}
-              compactLabel={label}
-              placeholder={t("plantingPlans:placeholders.selectArea")}
+            <PlantingPlanBedCell
+              path={getBedPath(row)}
+              options={bedPickerOptions}
+              selected={bedPickerOptionsById.get(bedId)}
+              numberLocale={numberLocale}
               hasFocus={params.hasFocus}
+              readOnly={Boolean(row.carried_over)}
               rowId={params.id}
               field={params.field}
-              memoKey={`${String(params.id)}:${params.field}`}
-              onApply={(nextBedId, details) => applyBedSelection(params.id, row, nextBedId, details)}
+              onSelect={(nextBedId, freeAreaSqm) => applyBedSelection(params.id, row, nextBedId, freeAreaSqm)}
+              onAccept={(accepted) => saveRotationAcceptance(row.id, accepted)}
               rotation={{
+                bedId: bedId || null,
                 cropId: typeof row.crop === "number" && row.crop > 0 ? row.crop : null,
                 plantingDate: toPlanIsoDate(row.planting_date),
                 endDate: getPlanOccupancyEndIso(row),
@@ -990,9 +975,13 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
                 cultureLabel: row.crop_display_name ?? row.crop_name ?? "",
                 status: row.isNew ? null : row.rotation_status ?? null,
                 findings: row.rotation_findings ?? null,
-                acceptance: row.isNew ? null : row,
-                companionFindings: row.isNew ? null : row.companion_findings ?? null,
               }}
+              endAdornment={(
+                <>
+                  {row.carried_over && <HarvestOverlapIcon overlaps={getRowHarvestOverlaps(row)} fontSize="inherit" />}
+                  <CompanionWarningIcon findings={row.companion_findings} fontSize="inherit" />
+                </>
+              )}
             />
           );
         },
@@ -1385,26 +1374,26 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     ],
     [
       applyBedSelection,
+      bedColumnLabel,
       bedLabelById,
       bedOptions,
-      beds,
-      fields,
-      locations,
+      bedPickerOptions,
+      bedPickerOptionsById,
       cultivationTypeOptions,
       getCultivationTypeOptionsForRow,
       cropOptions,
       crops,
       dynamicWidths,
-      getBedLabelForRow,
+      getBedPath,
+      getGridBedLabel,
       getRowHarvestOverlaps,
       renderCalculatedHarvestDateCell,
       getRowSowingSchedule,
       dateMode,
       getColumnDates,
       renderDateEditor,
-      areaColumnLabel,
-      fieldBedColumnLabel,
       numberLocale,
+      saveRotationAcceptance,
       seasonBounds,
       isPlantingDateWithinSeason,
       isSowingDatePartnerVisible,
@@ -1727,8 +1716,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     },
     {
       field: "bed",
-      headerName: areaColumnLabel,
-      getValue: getBedLabelForRow,
+      headerName: bedColumnLabel,
+      getValue: getGridBedLabel,
     },
     {
       field: "sowing_date",
@@ -1766,8 +1755,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       getValue: (row: PlantingPlanRow) => getPlainExcerpt(row.notes ?? "", 120),
     },
   ], [
-    areaColumnLabel,
-    getBedLabelForRow,
+    bedColumnLabel,
+    getGridBedLabel,
     getCropLabel,
     getCultivationTypeLabel,
     getDisplayArea,
@@ -2826,12 +2815,6 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               notes: row.notes || "",
               cultivation_type: row.cultivation_type ?? "",
             };
-            const pendingAcceptance = pendingRotationAcceptanceRef.current.get(String(row.id));
-            if (pendingAcceptance !== undefined) {
-              apiData.rotation_conflict_accepted = pendingAcceptance;
-              pendingRotationAcceptanceRef.current.delete(String(row.id));
-            }
-
             // Determine which field to send based on last edit
             const source = lastEditedFieldRef.current || "area_m2";
             const autoAreaDraft = source === "area_m2" && isAutoAreaRequest(row.area_m2, t("plantingPlans:placeholders.maxKeyword"))

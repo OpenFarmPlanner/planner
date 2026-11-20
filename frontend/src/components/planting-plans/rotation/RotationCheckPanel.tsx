@@ -39,6 +39,7 @@ export interface RotationAcceptanceControls {
    */
   persisted: { userLabel: string | null; acceptedAt: string | null } | null;
   onChange: (accepted: boolean) => void;
+  disabled?: boolean;
 }
 
 interface RotationCheckPanelProps {
@@ -48,6 +49,8 @@ interface RotationCheckPanelProps {
   /** Omitted where the flow cannot store an acceptance (e.g. "Anbaufläche ändern"). */
   acceptance?: RotationAcceptanceControls;
   onShowSuggestions?: () => void;
+  /** The grid popover keeps both actions available for accepted conflicts. */
+  showConflictActions?: boolean;
 }
 
 const linkRowSx = { display: 'flex', flexWrap: 'wrap', columnGap: 2, rowGap: 0.5, mt: 1 } as const;
@@ -159,6 +162,7 @@ function RotationResult({
   cultureLabel,
   acceptance,
   onShowSuggestions,
+  showConflictActions,
   data,
 }: RotationCheckPanelProps & { data: RotationCheckResponse }) {
   const { t, i18n } = useTranslation('plantingPlans');
@@ -172,7 +176,7 @@ function RotationResult({
   }
   const family = familyName(finding.family_key, finding.family_name);
 
-  if (data.status === 'conflict' && acceptance?.accepted && acceptance.persisted) {
+  if (data.status === 'conflict' && acceptance?.accepted && acceptance.persisted && !showConflictActions) {
     const date = formatIsoDate(acceptance.persisted.acceptedAt, i18n.language);
     const values = { previousCulture: finding.previous_crop_label ?? '', year: finding.year, date };
     return (
@@ -219,9 +223,9 @@ function RotationResult({
               aria-expanded={isHistoryOpen}
               onClick={() => setIsHistoryOpen((open) => !open)}
             >
-              {isHistoryOpen
-                ? t('rotation.conflict.hideBedHistory', { bed: bedLabel })
-                : t('rotation.conflict.showBedHistory', { bed: bedLabel })}
+              {showConflictActions
+                ? t(isHistoryOpen ? 'bedPicker.hideOccupancy' : 'bedPicker.showOccupancy', { bed: bedLabel })
+                : t(isHistoryOpen ? 'rotation.conflict.hideBedHistory' : 'rotation.conflict.showBedHistory', { bed: bedLabel })}
             </Link>
             <CropSettingsLink finding={finding} label={breakLinkLabel} />
           </Box>
@@ -234,6 +238,7 @@ function RotationResult({
                   size="small"
                   color="warning"
                   checked={acceptance.accepted}
+                  disabled={acceptance.disabled}
                   onChange={(event) => acceptance.onChange(event.target.checked)}
                 />
               )}
@@ -241,9 +246,11 @@ function RotationResult({
             />
           ) : null}
         </Alert>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          {t('rotation.conflict.saveNote')}
-        </Typography>
+        {!showConflictActions && (
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            {t('rotation.conflict.saveNote')}
+          </Typography>
+        )}
       </Box>
     );
   }

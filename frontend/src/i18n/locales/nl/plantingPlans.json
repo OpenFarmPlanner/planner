@@ -112,20 +112,25 @@
     "preCultivation": "Uitplanten (eigen opkweek)",
     "purchasedTransplant": "Uitplanten met ingekochte planten"
   },
-  "areaAssignment": {
-    "title": "Teeltoppervlak wijzigen",
-    "editButton": "Teeltoppervlak bewerken",
-    "hierarchyHint": "Locatie filtert percelen, perceel filtert bedden.",
-    "emptyStateTitle": "Geen teeltoppervlakken beschikbaar",
-    "emptyStateDescription": "Maak eerst percelen en bedden voordat je een oppervlakte aan een teelt toewijst.",
-    "emptyStateAction": "Naar Teeltoppervlakken",
-    "apply": "Toepassen",
-    "cancel": "Annuleren",
-    "selectLocationFirst": "Kies eerst een locatie.",
-    "noFieldsForLocation": "Voor deze locatie zijn geen percelen beschikbaar.",
-    "selectFieldFirst": "Kies eerst een perceel.",
-    "noBedsForField": "Voor dit perceel zijn geen bedden beschikbaar.",
-    "selectBedFirst": "Kies eerst een bed."
+  "bedPicker": {
+    "emptyTitle": "Geen teeltoppervlakken beschikbaar",
+    "openGrowingAreas": "Naar Teeltoppervlakken",
+    "search": "Bedden zoeken",
+    "removeFilter": "Filter ‘{{name}}’ verwijderen",
+    "noScopedMatches": "Geen resultaten in {{name}}",
+    "noMatches": "Geen bedden gevonden",
+    "showOutside_one": "{{count}} resultaat buiten het filter tonen",
+    "showOutside_other": "{{count}} resultaten buiten het filter tonen",
+    "searchAll": "Op alle locaties zoeken",
+    "keyboardHint": "↑ ↓ Navigeren · Enter Kiezen · Esc Annuleren · Backspace Filter verwijderen",
+    "conflictReason": "{{family}}, op zijn vroegst {{year}}",
+    "showOccupancy": "Bezetting van {{bed}} tonen",
+    "hideOccupancy": "Bezetting van {{bed}} verbergen",
+    "rotation": {
+      "conflict": "Vruchtwisselingsconflict tonen",
+      "accepted": "Geaccepteerd vruchtwisselingsconflict tonen",
+      "info": "Waarom de vruchtwisseling niet kon worden gecontroleerd"
+    }
   },
   "mobile": {
     "showDetails": "Details tonen",
@@ -273,10 +278,6 @@
     "waterMismatch": "Het gewas heeft veel water nodig. Het bodemvocht staat geregistreerd als {{moisture}} en irrigatie als {{irrigation}}."
   },
   "rotation": {
-    "iconAria": {
-      "conflict": "Vruchtwisselingsconflict, teeltoppervlak wijzigen",
-      "info": "Vruchtwisseling niet controleerbaar, teeltoppervlak wijzigen"
-    },
     "status": {
       "conflict": "Conflict",
       "accepted": "Conflict geaccepteerd",

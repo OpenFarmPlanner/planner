@@ -141,8 +141,8 @@ import {
   resolveFocusedCellFromEvent,
   scrollCellIntoView,
 } from './keyboardNavigation';
-import type { SpreadsheetEditTrigger } from './keyboardEditing';
-import { useSpreadsheetCellEditing } from './useSpreadsheetCellEditing';
+import { isSpreadsheetPrintableKey, type SpreadsheetEditTrigger } from './keyboardEditing';
+import { isOnControlInsideCell, useSpreadsheetCellEditing } from './useSpreadsheetCellEditing';
 import { EditHintPopper } from './EditHintPopper';
 import type {
   EditableDataGridClipboardColumn,
@@ -606,7 +606,7 @@ export function EditableDataGrid<T extends EditableRow>({
   );
   const [dialogEditRequest, setDialogEditRequest] = useState<DialogEditCellRequest | null>(null);
   const dialogEditTokenRef = useRef(0);
-  const requestDialogEditForCell = useCallback((rowId: GridRowId, field: string): void => {
+  const requestDialogEditForCell = useCallback((rowId: GridRowId, field: string, initialQuery?: string): void => {
     if (!isDialogEditField(field)) {
       return;
     }
@@ -615,6 +615,7 @@ export function EditableDataGrid<T extends EditableRow>({
     setDialogEditRequest({
       cellKey: buildDialogEditCellKey(rowId, field),
       token: dialogEditTokenRef.current,
+      initialQuery,
     });
   }, [isDialogEditField]);
   const consumeDialogEditRequest = useCallback((token: number): void => {
@@ -745,7 +746,7 @@ export function EditableDataGrid<T extends EditableRow>({
   const focusKeyboardNavigableCell = useCallback((
     rowId: GridRowId,
     field: string,
-    options: { startEdit: boolean; requestDialogEdit?: boolean },
+    options: { startEdit: boolean },
   ): void => {
     const rowKey = String(rowId);
     const row = rowsById.get(rowKey);
@@ -768,10 +769,6 @@ export function EditableDataGrid<T extends EditableRow>({
           && (rowModesModel[rowId]?.mode === GridRowModes.Edit || options.startEdit),
       });
 
-      if (!readOnly && options.requestDialogEdit) {
-        requestDialogEditForCell(rowId, field);
-      }
-
       if (readOnly || !options.startEdit || hasDedicatedEditor(field)) {
         return;
       }
@@ -793,7 +790,6 @@ export function EditableDataGrid<T extends EditableRow>({
     gridApiRef,
     hasDedicatedEditor,
     isReadOnlyRow,
-    requestDialogEditForCell,
     rowModesModel,
     rowsById,
     runAfterRowVisible,
@@ -1160,7 +1156,7 @@ export function EditableDataGrid<T extends EditableRow>({
   const navigateFromEditedCell = useCallback((
     current: { id: GridRowId; field: string },
     target: { id: GridRowId; field: string },
-    options: { startTargetEdit: boolean; requestDialogEdit?: boolean },
+    options: { startTargetEdit: boolean },
   ): void => {
     if (current.id === target.id && current.field === target.field) {
       return;
@@ -1179,7 +1175,6 @@ export function EditableDataGrid<T extends EditableRow>({
       internalEditNavigationRowIdRef.current = String(current.id);
       focusKeyboardNavigableCell(target.id, target.field, {
         startEdit: options.startTargetEdit,
-        requestDialogEdit: options.requestDialogEdit,
       });
       window.requestAnimationFrame(() => {
         if (internalEditNavigationRowIdRef.current === String(current.id)) {
@@ -1198,7 +1193,6 @@ export function EditableDataGrid<T extends EditableRow>({
 
     focusKeyboardNavigableCell(target.id, target.field, {
       startEdit: options.startTargetEdit,
-      requestDialogEdit: options.requestDialogEdit,
     });
   }, [
     commitEditedRowDraftForKeyboardNavigation,
@@ -1595,7 +1589,7 @@ export function EditableDataGrid<T extends EditableRow>({
   const saveEditedRowAndFocusTarget = useCallback(async (
     current: { id: GridRowId; field: string },
     target: { id: GridRowId; field: string },
-    options: { startTargetEdit?: boolean; requestDialogEdit?: boolean } = {},
+    options: { startTargetEdit?: boolean } = {},
   ): Promise<void> => {
     const preparedRow = await prepareRowForSave(current.id);
     if (!preparedRow) {
@@ -1613,7 +1607,6 @@ export function EditableDataGrid<T extends EditableRow>({
       );
       focusKeyboardNavigableCell(target.id, target.field, {
         startEdit: options.startTargetEdit ?? !hasDedicatedEditor(target.field),
-        requestDialogEdit: options.requestDialogEdit,
       });
     } catch (error) {
       handleProcessRowUpdateError(error);
@@ -1725,7 +1718,7 @@ export function EditableDataGrid<T extends EditableRow>({
     event: DataGridKeyboardEvent,
   ): boolean => {
     const gridSurface = gridSurfaceRef.current;
-    if (!(target instanceof HTMLElement) || !gridSurface?.contains(target)) {
+    if (!(target instanceof HTMLElement) || !gridSurface?.contains(target) || target.closest('[data-grid-dedicated-editor]')) {
       return false;
     }
 
@@ -2904,9 +2897,12 @@ export function EditableDataGrid<T extends EditableRow>({
               }
             }
             if (hasDedicatedEditor(params.field)) {
-              // The cell's own popover/dialog is the editor and the click has
-              // already opened it — never layer inline edit mode on top.
-              markRowDirty(rowKey);
+              if (notesFieldNames.includes(params.field)) {
+                markRowDirty(rowKey);
+              } else if ((event.nativeEvent as PointerEvent | undefined)?.pointerType === 'touch'
+                && !isReadOnlyRow?.(params.row) && !isOnControlInsideCell(event)) {
+                requestDialogEditForCell(params.id, params.field);
+              }
               return;
             }
             if (cellEditing.handleCellClick(params, event)) {
@@ -2920,6 +2916,11 @@ export function EditableDataGrid<T extends EditableRow>({
           onCellDoubleClick={(params, event) => {
             if (isAnyContextMenuOpen() || isContextMenuDismissGestureInProgress()) {
               event.defaultMuiPrevented = true;
+              return;
+            }
+            if (isDialogEditField(params.field) && !isReadOnlyRow?.(params.row) && !isOnControlInsideCell(event)) {
+              event.defaultMuiPrevented = true;
+              requestDialogEditForCell(params.id, params.field);
               return;
             }
             cellEditing.handleCellDoubleClick(params, event);
@@ -2984,6 +2985,17 @@ export function EditableDataGrid<T extends EditableRow>({
               event.preventDefault();
               event.defaultMuiPrevented = true;
               notesEditor.handleOpen(params.id, params.field);
+              return;
+            }
+
+            const typedSearch = isSpreadsheetPrintableKey(event);
+            if (isDialogEditField(params.field) && !isReadOnlyRow?.(params.row) && !isOnControlInsideCell(event)
+              && !event.altKey && !event.ctrlKey && !event.metaKey && !event.nativeEvent.isComposing
+              && (typedSearch || event.key === 'Enter' || event.key === 'F2')) {
+              event.preventDefault();
+              event.stopPropagation();
+              event.defaultMuiPrevented = true;
+              requestDialogEditForCell(params.id, params.field, typedSearch ? event.key : undefined);
               return;
             }
 

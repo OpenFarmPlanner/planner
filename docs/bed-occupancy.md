@@ -9,7 +9,7 @@ the check models that instead of rejecting such plans.
 One service answers every capacity question:
 [`backend/farm/services/bed_capacity.py`](../backend/farm/services/bed_capacity.py).
 The planting-plan table's save check, the bed options and suggestions of
-"Anbaufläche ändern" (see [crop-rotation.md](./crop-rotation.md#bed-capacity)),
+the inline bed picker (see [crop-rotation.md](./crop-rotation.md#bed-capacity)),
 the live info in the planting-plan dialog and the overlap infos on saved plans
 all use it, so a bed that is offered is never rejected on save.
 
