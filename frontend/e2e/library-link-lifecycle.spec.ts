@@ -955,9 +955,11 @@ test.describe('bulk library import', () => {
         await page.setViewportSize(viewport);
         await page.getByRole('button', { name: germanCrops.selectCrop, exact: true }).click();
         const mobile = page.getByRole('dialog', { name: germanCrops.selectCrop });
+        const mobileSearch = mobile.getByRole('textbox', { name: germanCrops.library.searchLabel, exact: true });
         const mobileMode = mobile.getByRole('button', { name: text.selectCultures, exact: true });
+        await expect(mobileSearch).toHaveCSS('font-size', '16px');
         await expectSearchToolbar(
-          mobile.getByRole('textbox', { name: germanCrops.library.searchLabel, exact: true }),
+          mobileSearch,
           mobile.getByRole('button', { name: germanCrops.filters.openAdvanced, exact: true }),
           mobileMode,
         );

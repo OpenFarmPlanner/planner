@@ -20,7 +20,9 @@ export function CropSearchToolbar({ search: { endAdornment, ...search }, actions
           slotProps={{ htmlInput: { 'aria-label': search.placeholder }, input: { endAdornment } }}
           sx={{ '& .MuiInputBase-input': {
             px: 1,
-            fontSize: '0.875rem',
+            // iOS Safari zooms when a focused input uses text smaller than 16px.
+            fontSize: { xs: '1rem', md: '0.875rem' },
+            '@media (any-pointer: coarse)': { fontSize: '1rem' },
             '&:placeholder-shown': { textOverflow: 'ellipsis' },
             '&::placeholder': { opacity: 1, color: 'text.secondary' },
           } }}
