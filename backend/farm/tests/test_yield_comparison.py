@@ -1,0 +1,222 @@
+from datetime import date
+from decimal import Decimal
+
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from django.urls import reverse
+from django.utils import timezone
+from rest_framework.test import APIClient
+
+from farm.models import (
+    Crop,
+    CropLoss,
+    HarvestAllocation,
+    HarvestRecord,
+    PlantingPlan,
+    Project,
+    ProjectMembership,
+    Season,
+)
+from farm.services.seasons import copy_planting_plans
+
+
+class YieldComparisonTest(TestCase):
+    def setUp(self):
+        self.project = Project.objects.create(name='Market garden', slug='market-garden')
+        user = get_user_model().objects.create_user(username='yield-grower')
+        ProjectMembership.objects.create(project=self.project, user=user, role='admin')
+        self.client = APIClient()
+        self.client.force_authenticate(user)
+        self.client.defaults['HTTP_X_PROJECT_ID'] = str(self.project.pk)
+        self.url = reverse('yield-comparison')
+        self.crop = Crop.objects.create(
+            project=self.project, name='Leek', expected_yield=Decimal('3.50'),
+            harvest_method='per_sqm', cultivation_types=['direct_sowing'],
+        )
+        self.previous = Season.objects.create(
+            project=self.project, start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
+        )
+        self.current = Season.objects.create(
+            project=self.project, start_date=date(2026, 9, 1), end_date=date(2027, 8, 31),
+            custom_label='Market garden September to August',
+        )
+        self.later = Season.objects.create(
+            project=self.project, start_date=date(2028, 9, 1), end_date=date(2029, 8, 31),
+        )
+
+    def add_plan(
+        self, season, day, start=None, end=None, *, crop=None, area=10, actual=None,
+    ):
+        plan = PlantingPlan.objects.create(
+            project=self.project, crop=crop or self.crop, season=season, planting_date=day,
+            area_usage_sqm=area, cultivation_type='direct_sowing', actual_sowing_date=actual,
+        )
+        PlantingPlan.objects.filter(pk=plan.pk).update(harvest_date=start, harvest_end_date=end)
+        return plan
+
+    def add_harvest(self, day, amount, unit, allocations=(), *, crop=None, grams_per_unit=None):
+        harvest = HarvestRecord.objects.create(
+            project=self.project, crop=crop or self.crop, date=day, quantity=amount, unit=unit,
+            grams_per_unit=grams_per_unit, conversion_source='manual' if grams_per_unit else '',
+        )
+        HarvestAllocation.objects.bulk_create([
+            HarvestAllocation(
+                project=self.project, harvest=harvest, planting_plan=plan,
+                quantity=quantity, harvested_area_sqm=area,
+            )
+            for plan, quantity, area in allocations
+        ])
+        return harvest
+
+    def rows(self, crop=None):
+        response = self.client.get(
+            self.url, {'crop_id': (crop or self.crop).pk}, HTTP_X_SEASON_ID=str(self.current.pk),
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        return {item['id']: item for item in response.json()['seasons']}
+
+    def test_clips_forecast_and_dated_actuals_on_either_side_of_a_noncalendar_boundary(self):
+        plan = self.add_plan(
+            self.previous, date(2025, 10, 14), date(2026, 8, 28), date(2026, 9, 4),
+            actual=date(2025, 10, 16),
+        )
+        self.add_harvest(date(2026, 8, 31), 6, 'kg', [(plan, 6, None)])
+        self.add_harvest(date(2026, 9, 1), 2500, 'g', [(plan, 2500, 2)])
+        self.add_harvest(date(2028, 5, 2), 1000, 'kg')
+        CropLoss.objects.create(
+            project=self.project, planting_plan=plan, date=date(2026, 9, 2),
+            loss_type='partial', cause='frost', extent_unit='percent', extent_value=0,
+        )
+
+        rows = self.rows()
+        self.assertEqual(list(rows), [self.later.pk, self.current.pk, self.previous.pk])
+        old, new, empty = (rows[key] for key in [self.previous.pk, self.current.pk, self.later.pk])
+        self.assertEqual([old['forecast_kg'], new['forecast_kg']], ['20', '15'])
+        self.assertEqual(
+            [old['recorded']['measured_kg'], new['recorded']['measured_kg']], ['6', '2.5'],
+        )
+        self.assertEqual(new['label'], self.current.custom_label)
+        self.assertEqual(new['start_date'], '2026-09-01')
+        self.assertEqual(new['end_date'], '2027-08-31')
+        self.assertTrue(old['comparable'])
+        self.assertTrue(new['comparable'])
+        self.assertEqual(new['recorded_kg_per_plan_sqm'], '0.25')
+        self.assertEqual(new['harvested_areas'][0]['kg_per_sqm'], '1.25')
+        self.assertEqual(old['plan_dates'][0]['actual_sowing_date'], '2025-10-16')
+        self.assertIsNone(old['plan_dates'][0]['recorded_harvest_end_date'])
+        self.assertEqual(new['plan_dates'], [])
+        self.assertEqual(old['losses'], [])
+        self.assertEqual(new['losses'][0]['extent_value'], '0')
+        self.assertEqual(empty['recorded']['quantities'], [])
+        self.assertIsNone(empty['recorded']['measured_kg'])
+        self.assertIsNone(empty['forecast_kg'])
+
+    def test_split_records_count_once_and_area_uses_unique_plans(self):
+        first, second = [
+            self.add_plan(
+                self.current, date(2027, 2, 1), date(2027, 6, 1), date(2027, 6, 10), area=area,
+            )
+            for area in (5, 10)
+        ]
+        day = date(2027, 6, 4)
+        self.add_harvest(day, 17, 'kg', [(first, 6, 2), (second, 9, 4)])
+        self.add_harvest(day, 3000, 'g', [(first, 3000, 2)])
+        row = self.rows()[self.current.pk]
+        self.assertEqual(row['recorded']['quantities'], [{'quantity': '20', 'unit': 'kg'}])
+        self.assertEqual(row['unassigned'], [{'quantity': '2', 'unit': 'kg'}])
+        self.assertEqual(row['assigned_plan_count'], 2)
+        self.assertEqual(row['recorded_kg_per_plan_sqm'], '1.2')
+        self.assertEqual(row['forecast_kg'], '52.5')
+        self.assertEqual(row['forecast_kg_per_sqm'], '3.5')
+        self.assertFalse(row['comparable'])
+
+        self.add_harvest(day, 4, 'piece', [(first, 4, None)], grams_per_unit=500)
+        mixed = self.rows()[self.current.pk]
+        self.assertTrue(mixed['recorded_kg_per_plan_sqm_estimated'])
+        self.assertEqual(mixed['recorded_kg_per_plan_sqm'], '1.333333')
+        self.assertEqual(mixed['recorded']['measured_kg'], '20')
+        self.assertEqual(mixed['recorded']['estimated_kg'], '2')
+
+        self.add_harvest(day, 3, 'bunch', [(second, 3, 1)])
+        mixed = self.rows()[self.current.pk]
+        self.assertEqual(mixed['recorded']['quantities'], [
+            {'quantity': '20', 'unit': 'kg'}, {'quantity': '4', 'unit': 'piece'},
+            {'quantity': '3', 'unit': 'bunch'},
+        ])
+        self.assertTrue(mixed['recorded']['has_unconvertible_quantity'])
+        self.assertIsNone(mixed['recorded_kg_per_plan_sqm'])
+        self.assertFalse(mixed['comparable'])
+
+    def test_continuing_perennial_does_not_invent_a_repeat_forecast(self):
+        perennial = Crop.objects.create(
+            project=self.project, name='Rhubarb', life_cycle='perennial', standing_time_years=7,
+            expected_yield=1, harvest_method='per_sqm',
+        )
+        plan = self.add_plan(
+            self.previous, date(2025, 9, 20), date(2026, 6, 1), date(2026, 6, 15), crop=perennial,
+        )
+        PlantingPlan.objects.filter(pk=plan.pk).update(clearing_date=date(2031, 9, 20))
+        self.add_harvest(date(2027, 6, 3), 10, 'kg', [(plan, 10, None)], crop=perennial)
+        older, newer = (self.rows(perennial)[key] for key in (self.previous.pk, self.current.pk))
+        self.assertEqual(older['forecast_kg'], '10')
+        self.assertIsNone(newer['forecast_kg'])
+        self.assertEqual(newer['recorded']['measured_kg'], '10')
+        self.assertEqual(newer['recorded_kg_per_plan_sqm'], '1')
+        self.assertFalse(newer['comparable'])
+
+    def test_missing_forecast_inputs_never_produce_a_comparable_pair(self):
+        day = date(2027, 4, 20)
+        scheduled = self.add_plan(self.current, day, date(2027, 5, 5), date(2027, 5, 9))
+        draft = self.add_plan(self.current, day, date(2027, 5, 6), date(2027, 5, 10), area=None)
+        self.add_harvest(day, 8, 'kg', [(scheduled, 8, None)])
+        row = self.rows()[self.current.pk]
+        self.assertEqual(row['expected_plan_count'], 2)
+        self.assertEqual(row['forecast_plan_count'], 1)
+        self.assertEqual(row['assigned_forecast_plan_count'], 1)
+        self.assertEqual(row['forecast_kg'], '35')
+        self.assertFalse(row['comparable'])
+        self.assertEqual({plan['id'] for plan in row['plan_dates']}, {scheduled.id, draft.id})
+
+    def test_repeated_identical_copies_contribute_one_forecast_until_edited(self):
+        source = self.add_plan(
+            self.previous, date(2026, 4, 20), date(2026, 5, 5), date(2026, 5, 9),
+        )
+        PlantingPlan.objects.filter(pk=source.pk).update(
+            harvest_date_is_explicit=True, harvest_end_date_is_explicit=True,
+        )
+        first, duplicate = [
+            copy_planting_plans(source_season=self.previous, target_season=self.current)[0][0]
+            for _ in range(2)
+        ]
+        self.assertEqual(first.copied_from_plan_id, source.pk)
+        self.assertEqual(duplicate.copied_from_plan_id, source.pk)
+        self.add_harvest(date(2027, 5, 5), 5, 'kg', [(first, 5, None)])
+        row = self.rows()[self.current.pk]
+        self.assertEqual(row['forecast_kg'], '35')
+        self.assertEqual(row['forecast_plan_count'], 1)
+        self.assertEqual(row['recorded']['measured_kg'], '5')
+
+        PlantingPlan.objects.filter(pk=duplicate.pk).update(area_usage_sqm=12)
+        row = self.rows()[self.current.pk]
+        self.assertEqual(row['forecast_kg'], '77')
+        self.assertEqual(row['assigned_forecast_plan_count'], 1)
+        self.assertEqual(row['expected_plan_count'], 2)
+        self.assertFalse(row['comparable'])
+
+    def test_chart_catalog_and_details_are_project_scoped_and_exclude_deleted_seasons(self):
+        foreign = Project.objects.create(name='Foreign garden', slug='foreign-garden')
+        unrelated = Crop.objects.create(project=foreign, name='Hidden')
+        deleted_only = Crop.objects.create(project=self.project, name='From a deleted season')
+        removed = Season.objects.create(
+            project=self.project, start_date=date(2024, 9, 1), end_date=date(2025, 8, 31),
+        )
+        self.add_plan(removed, date(2025, 5, 6), crop=deleted_only)
+        Season.all_objects.filter(pk=removed.pk).update(deleted_at=timezone.now())
+        self.add_harvest(date(2026, 8, 30), 1, 'kg')
+        self.add_harvest(date(2026, 9, 5), 2, 'kg', crop=unrelated)
+        self.assertEqual(self.client.get(self.url).json()['crops'], [
+            {'id': self.crop.pk, 'name': 'Leek'},
+        ])
+        self.assertEqual(self.client.get(self.url, {'crop_id': unrelated.pk}).status_code, 404)
+        self.assertEqual(self.client.get(self.url, {'crop_id': '9' * 100}).status_code, 400)
+        self.assertNotIn(removed.pk, self.rows())

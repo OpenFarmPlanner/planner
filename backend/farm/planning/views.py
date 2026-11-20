@@ -18,10 +18,11 @@ from django.db.models import (
     When,
 )
 from django.db.models.functions import Coalesce
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
-from rest_framework import generics, status, viewsets
+from rest_framework import generics, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -64,6 +65,7 @@ from farm.services.tasks import (
 )
 from farm.services.timing_window_check import TimingWindowChecker
 from farm.services.yield_calendar import build_yield_forecast
+from farm.services.yield_comparison import build_yield_comparison, comparison_crops
 
 from .serializers import (
     PlantingPlanDetailSerializer,
@@ -315,6 +317,29 @@ class YieldCalendarListView(generics.GenericAPIView):
             season=season, season_id=season_id, include_incomplete=include_incomplete,
         )
         return Response(forecast if include_incomplete else forecast['weeks'])
+
+
+class YieldComparisonView(generics.GenericAPIView):
+    """Read comparable yields and recorded observations across a project's seasons."""
+
+    @extend_schema(
+        description=(
+            'List crops with planting plans or harvest records. With crop_id, compare that crop '
+            'across the active project’s non-deleted season periods.'
+        ),
+        parameters=[
+            OpenApiParameter('crop_id', int, description='Crop to compare across seasons.'),
+        ],
+    )
+    def get(self, request):
+        project = get_active_project_or_400(request)
+        if 'crop_id' not in request.query_params:
+            return Response({'crops': comparison_crops(project, resolve_request_language(request))})
+        crop_id = serializers.IntegerField(min_value=1, max_value=2**63 - 1).run_validation(
+            request.query_params['crop_id'],
+        )
+        crop = get_object_or_404(Crop.all_objects, project=project, pk=crop_id)
+        return Response(build_yield_comparison(project, crop))
 
 
 @extend_schema_view(

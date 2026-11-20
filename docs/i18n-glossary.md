@@ -169,6 +169,8 @@ FR/ES/IT: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Ertrag | Yield | Rendement | Rendimiento | resa | rendimento | opbrengst |
 | Ertragseinheit | Yield unit | Unité de rendement | Unidad de rendimiento | unità di resa | unidade de rendimento | opbrengsteenheid |
 | Erntemenge | Harvest quantity | Quantité récoltée | Cantidad cosechada | Quantità raccolta | Quantidade colhida | Geoogste hoeveelheid |
+| Ertragsprognose | Forecast yield | Rendement prévisionnel | Rendimiento previsto | Resa prevista | Rendimento previsto | Opbrengstprognose |
+| Ertrag pro m² | Yield per m² | Rendement par m² | Rendimiento por m² | Resa per m² | Rendimento por m² | Opbrengst per m² |
 | Zugeordnete Menge | Assigned quantity | Quantité affectée | Cantidad asignada | Quantità assegnata | Quantidade atribuída | Toegewezen hoeveelheid |
 | Beerntete Fläche | Harvested area | Surface récoltée | Superficie cosechada | Superficie raccolta | Área colhida | Geoogst oppervlak |
 | Ertragsübersicht | Yield overview | Aperçu des rendements | Resumen de rendimientos | panoramica delle rese | visão geral dos rendimentos | opbrengstoverzicht |

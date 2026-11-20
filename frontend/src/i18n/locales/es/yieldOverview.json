@@ -49,5 +49,37 @@
       "zero_plant_count": "El número de plantas calculado es cero",
       "missing_harvest_period": "Falta el periodo de cosecha o no es válido"
     }
+  },
+  "comparison": {
+    "view": "Vista del resumen de rendimientos",
+    "calendar": "Calendario de previsión",
+    "seasons": "Comparar temporadas",
+    "chooseCrop": "Elige un cultivo",
+    "noCrops": "Añade una serie o registra una cosecha para comparar un cultivo entre temporadas.",
+    "noSeasons": "No hay temporadas para comparar.",
+    "season": "Temporada",
+    "forecast": "Rendimiento previsto",
+    "recorded": "Cantidad cosechada",
+    "notRecorded": "Sin registrar",
+    "harvestRecorded": "Cosecha registrada",
+    "zeroRecorded": "Cero registrado",
+    "noForecast": "Previsión no disponible",
+    "forecastCoverage": "Previsión para {{included}} de {{total}} series",
+    "harvestCoverage": "Cosecha asignada a {{included}} de {{total}} series de la previsión",
+    "estimated": "{{value}} de peso estimado",
+    "unassigned": "{{value}} sin asignar",
+    "assignedPlans": "Series con cosecha asignada ({{count}})",
+    "noAreaYield": "Rendimiento por m² no disponible",
+    "noMass": "Peso no disponible",
+    "details": "Fechas y observaciones",
+    "activityDates": "Fechas de las actividades según la temporada de cultivo",
+    "openPlan": "Abrir la serie",
+    "harvestedAreaYield": "Rendimiento por m² de superficie cosechada",
+    "chartTitle": "Rendimiento comparable",
+    "chartScope": "Aquí solo aparecen temporadas con cosechas pesadas y una previsión completa para las mismas series.",
+    "chartEmpty": "Ninguna temporada tiene cosechas pesadas y una previsión completa para las mismas series.",
+    "chartValues": "Rendimiento de {{season}} ({{period}})",
+    "axis": "Rendimiento en kilogramos",
+    "tableScope": "Las cantidades cosechadas se atribuyen a la temporada de su fecha de registro. El rendimiento registrado por m² utiliza la superficie total de las series con cosecha asignada."
   }
 }

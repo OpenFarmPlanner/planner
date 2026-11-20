@@ -11,8 +11,8 @@ import LoadRetryButton from '../components/LoadRetryButton';
 import { DetailSection } from '../components/layout/DetailPrimitives';
 import { useTranslation } from '../i18n';
 import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
-import { formatLocalizedNumber } from '../utils/numberLocalization';
 import { CropLossDialog } from './CropLossDialog';
+import { formatCropLossExtent } from './cropLossDisplay';
 
 interface CropLossesProps {
   planId: number;
@@ -66,15 +66,6 @@ export function CropLosses({ planId, initialDate, onChanged }: CropLossesProps) 
     }
   };
 
-  const extentLabel = ({ extent_unit: unit, extent_value: value }: CropLoss) => {
-    if (value === null || !unit) return '';
-    const amount = Number(value);
-    const formatted = formatLocalizedNumber(amount, locale, { maximumFractionDigits: 3 });
-    if (unit === 'percent') return formatLocalizedNumber(amount / 100, locale, { style: 'percent', maximumFractionDigits: 3 });
-    return unit === 'plants' ? t('cropLosses.extentPlants', { count: amount, value: formatted })
-      : t('cropLosses.extentArea', { value: formatted });
-  };
-
   return <DetailSection title={t('cropLosses.title')} outlined>
     <Stack spacing={1.25} sx={{ minWidth: 0 }}>
       <Button startIcon={<AddIcon />} sx={{ alignSelf: 'flex-start' }} onClick={() => setEditor('new')}>
@@ -89,7 +80,7 @@ export function CropLosses({ planId, initialDate, onChanged }: CropLossesProps) 
         {rows.map(row => {
           const date = formatSeasonDate(row.date, locale);
           const cause = t(`cropLosses.causes.${row.cause}`);
-          const extent = extentLabel(row);
+          const extent = formatCropLossExtent(row, locale, t);
           return <ListItem key={row.id} divider disableGutters sx={{ py: 0.75, gap: 1, alignItems: 'flex-start' }}>
             <Stack spacing={0.25} sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
               <Typography variant="subtitle2">{[t(`cropLosses.types.${row.loss_type}`), cause, extent].filter(Boolean).join(' · ')}</Typography>
