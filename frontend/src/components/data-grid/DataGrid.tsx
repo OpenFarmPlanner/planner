@@ -1844,7 +1844,10 @@ export function EditableDataGrid<T extends EditableRow>({
     setRowModesModel,
     // Notes and dialog cells own their editor, so no entry point may pull
     // them into the inline edit mode they never leave through.
-    isCellEditable: (params) => !isReadOnlyRow?.(params.row) && !hasDedicatedEditor(params.field),
+    isCellEditable: ({ id, field }) => {
+      const row = rowsById.get(String(id));
+      return !hasDedicatedEditor(field) && (!row || !isReadOnlyRow?.(row));
+    },
     onBeforeEdit: handleBeforeCellEdit,
     onReplaceValue: (params) => markRowDirty(String(params.id)),
   });
