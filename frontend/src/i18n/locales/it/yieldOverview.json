@@ -36,7 +36,9 @@
     "openPlansAction": "Apri piano colturale"
   },
   "diagnostics": {
-    "title": "Serie senza previsione ({{count}})",
+    "title_one": "Serie senza previsione ({{count}})",
+    "title_other": "Serie senza previsione ({{count}})",
+    "title_many": "Serie senza previsione ({{count}})",
     "unnamedPlan": "Serie senza coltura",
     "blockers": {
       "missing_crop": "Coltura mancante",

@@ -36,7 +36,8 @@
     "openPlansAction": "Teeltplan openen"
   },
   "diagnostics": {
-    "title": "Teelten zonder prognose ({{count}})",
+    "title_one": "Teelt zonder prognose ({{count}})",
+    "title_other": "Teelten zonder prognose ({{count}})",
     "unnamedPlan": "Teelt zonder gewas",
     "blockers": {
       "missing_crop": "Gewas ontbreekt",

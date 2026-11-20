@@ -36,7 +36,9 @@
     "openPlansAction": "Ouvrir le plan de culture"
   },
   "diagnostics": {
-    "title": "Séries sans prévision ({{count}})",
+    "title_one": "Série sans prévision ({{count}})",
+    "title_other": "Séries sans prévision ({{count}})",
+    "title_many": "Séries sans prévision ({{count}})",
     "unnamedPlan": "Série sans culture",
     "blockers": {
       "missing_crop": "Culture manquante",

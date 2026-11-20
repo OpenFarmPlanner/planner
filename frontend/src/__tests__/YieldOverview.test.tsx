@@ -39,7 +39,7 @@ vi.mock("../hooks/useProjectRequirement", () => ({
 
 const outletContext = vi.hoisted(() => ({
   activeSeasonYear: null as number | null,
-  activeSeason: null as null | { start_date: string; end_date: string },
+  activeSeason: null as null | { id?: number; start_date: string; end_date: string },
 }));
 
 vi.mock("react-router", async () => {
@@ -88,9 +88,10 @@ describe("YieldOverviewPage", () => {
       planting_date: "2026-03-03",
       calculation_blockers: ["missing_yield_unit", "missing_plant_spacing"],
     }];
-    render(<FocusManagerProvider><MemoryRouter><YieldOverviewPage /></MemoryRouter></FocusManagerProvider>);
+    const page = <FocusManagerProvider><MemoryRouter><YieldOverviewPage /></MemoryRouter></FocusManagerProvider>;
+    const { rerender } = render(page);
 
-    const summary = await screen.findByText("Anbaupläne ohne Prognose (1)");
+    const summary = await screen.findByText("Anbauplan ohne Prognose (1)");
     expect(summary.closest("details")).not.toHaveAttribute("open");
     await userEvent.click(summary);
     expect(summary.closest("details")).toHaveAttribute("open");
@@ -100,6 +101,13 @@ describe("YieldOverviewPage", () => {
     expect(screen.getByText(/Ertragseinheit fehlt.*Pflanzabstand fehlt/)).toBeVisible();
     expect(screen.getByTestId("yield-bar-2026-W10-1")).toBeVisible();
     expect(screen.queryByRole("button", { name: /Tomate/ })).not.toBeInTheDocument();
+
+    const nextSeasonPlan = { ...mocks.incompletePlans[0], plan_id: 18 };
+    mocks.incompletePlans = [nextSeasonPlan, { ...nextSeasonPlan, plan_id: 19 }];
+    outletContext.activeSeason = { id: 2, start_date: "2026-01-01", end_date: "2026-12-31" };
+    rerender(<FocusManagerProvider><MemoryRouter><YieldOverviewPage /></MemoryRouter></FocusManagerProvider>);
+    expect(await screen.findByText("Anbaupläne ohne Prognose (2)")).toBeVisible();
+    expect(screen.queryByText("Anbauplan ohne Prognose (1)")).not.toBeInTheDocument();
   });
 
   it("retries a failed load without showing empty yield content", async () => {

@@ -36,7 +36,8 @@
     "openPlansAction": "Open planting plans"
   },
   "diagnostics": {
-    "title": "Plans excluded from the forecast ({{count}})",
+    "title_one": "Plan excluded from the forecast ({{count}})",
+    "title_other": "Plans excluded from the forecast ({{count}})",
     "unnamedPlan": "Plan without a crop",
     "blockers": {
       "missing_crop": "Crop is missing",

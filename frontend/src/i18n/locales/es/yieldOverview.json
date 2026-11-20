@@ -36,7 +36,9 @@
     "openPlansAction": "Abrir plan de cultivos"
   },
   "diagnostics": {
-    "title": "Series sin previsión ({{count}})",
+    "title_one": "Serie sin previsión ({{count}})",
+    "title_other": "Series sin previsión ({{count}})",
+    "title_many": "Series sin previsión ({{count}})",
     "unnamedPlan": "Serie sin cultivo",
     "blockers": {
       "missing_crop": "Falta el cultivo",
