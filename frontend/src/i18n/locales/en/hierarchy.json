@@ -172,6 +172,9 @@
       "created": "Field “{{name}}” added",
       "createdWithBeds_one": "Field “{{name}}” added with {{count}} bed",
       "createdWithBeds_other": "Field “{{name}}” added with {{count}} beds"
+    },
+    "duplicateBed": {
+      "created": "Bed “{{name}}” added"
     }
   },
   "emptyAreas": {

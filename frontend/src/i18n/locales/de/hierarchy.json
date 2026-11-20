@@ -172,6 +172,9 @@
       "created": "Parzelle „{{name}}“ angelegt",
       "createdWithBeds_one": "Parzelle „{{name}}“ mit {{count}} Beet angelegt",
       "createdWithBeds_other": "Parzelle „{{name}}“ mit {{count}} Beeten angelegt"
+    },
+    "duplicateBed": {
+      "created": "Beet „{{name}}“ angelegt"
     }
   },
   "emptyAreas": {

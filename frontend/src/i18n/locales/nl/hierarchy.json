@@ -172,6 +172,9 @@
       "created": "Perceel ‘{{name}}’ toegevoegd",
       "createdWithBeds_one": "Perceel ‘{{name}}’ toegevoegd met {{count}} bed",
       "createdWithBeds_other": "Perceel ‘{{name}}’ toegevoegd met {{count}} bedden"
+    },
+    "duplicateBed": {
+      "created": "Bed ‘{{name}}’ toegevoegd"
     }
   },
   "emptyAreas": {

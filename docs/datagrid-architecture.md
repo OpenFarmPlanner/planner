@@ -846,9 +846,12 @@ names are unique per field in the backend).
 Rows without an explicit sort follow their names in natural order
 (`compareHierarchyNames`: "E 2" before "E 10", "E 1 9" before "E 1 10");
 the name-column sort uses the same comparison. The mobile list offers
-"Mehrere Beete anlegen" and "Parzelle duplizieren" in the sheet's ⋮ menu
-(choosing either closes the sheet first) but keeps its own add flow for
-single beds and has no "Beet duplizieren".
+"Mehrere Beete anlegen", "Parzelle duplizieren" and "Beet duplizieren" in
+the sheet's ⋮ menu (choosing any closes the sheet first) but keeps its own
+add flow for single beds. Its bed duplicate calls the same
+`useBedOperations.duplicateBed` as the desktop shortcut under the next
+free name, and shows the created name in a snackbar, because the mobile
+list has no active row to focus.
 
 ## Mobile layout (< sm)
 

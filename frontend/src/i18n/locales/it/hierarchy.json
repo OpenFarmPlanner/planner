@@ -184,6 +184,9 @@
       "bedNamesConflict_many": "Dopo la sostituzione, più aiuole condividerebbero uno di questi nomi: {{names}}",
       "invalidBedNames_many": "Dopo la sostituzione, questi nomi di aiuola sarebbero vuoti o troppo lunghi: {{names}}",
       "createdWithBeds_many": "Appezzamento «{{name}}» aggiunto con {{count}} aiuole"
+    },
+    "duplicateBed": {
+      "created": "Aiuola «{{name}}» aggiunta"
     }
   },
   "emptyAreas": {

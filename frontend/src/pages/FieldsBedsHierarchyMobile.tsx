@@ -301,9 +301,10 @@ function FieldsBedsHierarchyMobile({
     if (sheetState?.mode !== "edit") {
       return [];
     }
-    // Deleting closes the sheet, and so do the actions whose dialog takes over.
+    // Deleting closes the sheet, and so do the actions whose dialog takes
+    // over or whose created bed should be visible in the list.
     return getHierarchyRowActions(sheetState.row, openCreateSheet).map((action) =>
-      action.group === "destructive" || action.id === "duplicate-field" || action.id === "bulk-create-beds"
+      action.group === "destructive" || action.id === "duplicate-bed" || action.id === "duplicate-field" || action.id === "bulk-create-beds"
         ? {
             ...action,
             onClick: () => {

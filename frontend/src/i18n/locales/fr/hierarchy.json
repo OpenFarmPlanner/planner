@@ -184,6 +184,9 @@
       "createdWithBeds_one": "Parcelle « {{name}} » ajoutée avec {{count}} planche",
       "createdWithBeds_other": "Parcelle « {{name}} » ajoutée avec {{count}} planches",
       "createdWithBeds_many": "Parcelle « {{name}} » ajoutée avec {{count}} planches"
+    },
+    "duplicateBed": {
+      "created": "Planche « {{name}} » ajoutée"
     }
   },
   "emptyAreas": {
