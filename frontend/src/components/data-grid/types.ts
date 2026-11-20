@@ -47,6 +47,8 @@ export interface EditableDataGridCommandApi {
    * dialog cell never opens an edit session of its own.
    */
   applyDialogEditValues: (rowId: GridRowId, values: Partial<EditableRow>) => Promise<void>;
+  /** Merge a successfully saved external edit without resetting other rows or drafts. */
+  applySavedRowValues?: (rowId: GridRowId, values: Partial<EditableRow>) => void;
 }
 
 export interface EditableDataGridRowActionHelpers<T extends EditableRow> {
@@ -103,6 +105,8 @@ export interface EditableDataGridProps<T extends EditableRow> {
   initialRow?: Partial<T>;
   tableKey?: string;
   defaultSortModel?: GridSortModel;
+  /** Use the displayed values when a view can present a field in different ways. */
+  sortProjection?: { mode: string; getValue: (row: T, field: string) => unknown };
   persistSortInUrl?: boolean;
   notes?: {
     fields: NotesFieldConfig[];

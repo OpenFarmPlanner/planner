@@ -435,5 +435,41 @@
     "tasks": "Attività",
     "tasksLoadFailed": "Impossibile caricare le attività.",
     "taskCancelled": "Annullata"
+  },
+  "actualDates": {
+    "clear": "Cancella data",
+    "title": "Date previste ed effettive",
+    "modeLabel": "Date da mostrare",
+    "edit": "Registra date effettive",
+    "saveError": "Impossibile salvare le date effettive.",
+    "unsaved": "Uscendo perderai le modifiche alle date non salvate.",
+    "missing": "Nessuna data",
+    "same": "Nella data prevista",
+    "early_one": "{{count}} giorno in anticipo",
+    "early_other": "{{count}} giorni in anticipo",
+    "early_many": "{{count}} giorni in anticipo",
+    "late_one": "{{count}} giorno in ritardo",
+    "late_other": "{{count}} giorni in ritardo",
+    "late_many": "{{count}} giorni in ritardo",
+    "editTarget": "Scegli la data da modificare",
+    "modes": {
+      "planned": "Previsto",
+      "actual": "Effettivo",
+      "combined": "Entrambi"
+    },
+    "activities": {
+      "propagation": "Avvio in vivaio",
+      "sowing": "Data di semina",
+      "transplanting": "Data di trapianto",
+      "harvestStart": "Inizio della raccolta",
+      "harvestEnd": "Fine della raccolta"
+    },
+    "actualLabels": {
+      "propagation": "Data effettiva di avvio in vivaio",
+      "sowing": "Data effettiva di semina",
+      "transplanting": "Data effettiva di trapianto",
+      "harvestStart": "Inizio effettivo della raccolta",
+      "harvestEnd": "Fine effettiva della raccolta"
+    }
   }
 }

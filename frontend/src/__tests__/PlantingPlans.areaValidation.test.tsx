@@ -491,11 +491,11 @@ describe("PlantingPlans save-time area validation", () => {
       expect.objectContaining({ minWidth: 142, width: 142, maxWidth: 142 }),
       expect.objectContaining({ minWidth: 142, width: 142, maxWidth: 142 }),
     ]);
-    // The planting-date column has a season-constrained custom edit cell; the
-    // (read-only calculated) harvest columns keep the default rendering.
+    // Combined mode keeps the existing edit cell width and offers recording
+    // actual harvest dates in the existing calculated harvest columns.
     const [plantingDateColumn, ...harvestColumns] = dateColumns;
     expect(typeof plantingDateColumn?.renderEditCell).toBe("function");
-    expect(harvestColumns.every((column) => column?.renderEditCell === undefined)).toBe(true);
+    expect(harvestColumns.every((column) => typeof column?.renderEditCell === 'function')).toBe(true);
   });
 
   it("explains the harvest start and end calculations separately", async () => {
@@ -651,7 +651,7 @@ describe("PlantingPlans save-time area validation", () => {
     expect(columnsAfter).toBe(columnsBefore);
   });
 
-  it("marks the sowing date cell non-editable with a dash and tooltip when the crop has no propagation duration", async () => {
+  it("explains an unavailable planned sowing date while allowing an actual date", async () => {
     apiMocks.cropList.mockResolvedValue({
       data: {
         results: [
@@ -667,7 +667,7 @@ describe("PlantingPlans save-time area validation", () => {
     const sowingDateColumn = columns.find((column: { field: string }) => column.field === "sowing_date");
 
     const row = { id: 3, crop: 6, planting_date: "2026-05-01" };
-    expect(sowingDateColumn.isCellEditable({ row })).toBe(false);
+    expect(sowingDateColumn.isCellEditable({ row })).toBe(true);
     expect(sowingDateColumn.cellClassName({ row })).toContain("ofp-cell-full-tooltip");
 
     const missingCell = render(<>{sowingDateColumn.renderCell({ row, hasFocus: false })}</>);
@@ -704,8 +704,8 @@ describe("PlantingPlans save-time area validation", () => {
       })
     );
 
-    expect(harvestStartColumn.cellClassName({ value: null })).toContain("ofp-cell-full-tooltip");
-    expect(harvestStartColumn.cellClassName({ value: new Date("2026-05-01") })).not.toContain("ofp-cell-full-tooltip");
+    expect(harvestStartColumn.cellClassName({ row: { id: 1, crop: 2 }, value: null })).toContain("ofp-cell-full-tooltip");
+    expect(harvestStartColumn.cellClassName({ row: { id: 2, crop: 4 }, value: new Date("2026-05-01") })).not.toContain("ofp-cell-full-tooltip");
 
     const completeStart = render(<>{renderCell(harvestStartColumn, {
       id: 1,

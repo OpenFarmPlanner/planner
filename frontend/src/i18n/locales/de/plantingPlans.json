@@ -426,5 +426,39 @@
     "tasks": "Aufgaben",
     "tasksLoadFailed": "Aufgaben konnten nicht geladen werden.",
     "taskCancelled": "Abgebrochen"
+  },
+  "actualDates": {
+    "clear": "Datum löschen",
+    "title": "Plan- und Ist-Termine",
+    "modeLabel": "Terminanzeige",
+    "edit": "Ist-Termine erfassen",
+    "saveError": "Ist-Termine konnten nicht gespeichert werden.",
+    "unsaved": "Ungespeicherte Terminänderungen gehen beim Verlassen verloren.",
+    "missing": "Kein Datum",
+    "same": "Am geplanten Tag",
+    "early_one": "{{count}} Tag früher",
+    "early_other": "{{count}} Tage früher",
+    "late_one": "{{count}} Tag später",
+    "late_other": "{{count}} Tage später",
+    "editTarget": "Terminart wählen",
+    "modes": {
+      "planned": "Plan",
+      "actual": "Ist",
+      "combined": "Beides"
+    },
+    "activities": {
+      "propagation": "Anzuchtbeginn",
+      "sowing": "Aussaattermin",
+      "transplanting": "Pflanztermin",
+      "harvestStart": "Erntebeginn",
+      "harvestEnd": "Ernteende"
+    },
+    "actualLabels": {
+      "propagation": "Ist-Anzuchtbeginn",
+      "sowing": "Ist-Aussaattermin",
+      "transplanting": "Ist-Pflanztermin",
+      "harvestStart": "Ist-Erntebeginn",
+      "harvestEnd": "Ist-Ernteende"
+    }
   }
 }

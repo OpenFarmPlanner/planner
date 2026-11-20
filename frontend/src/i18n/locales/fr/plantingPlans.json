@@ -435,5 +435,41 @@
     "tasks": "Tâches",
     "tasksLoadFailed": "Impossible de charger les tâches.",
     "taskCancelled": "Annulée"
+  },
+  "actualDates": {
+    "clear": "Effacer la date",
+    "title": "Dates prévues et réelles",
+    "modeLabel": "Dates à afficher",
+    "edit": "Saisir les dates réelles",
+    "saveError": "Impossible d’enregistrer les dates réelles.",
+    "unsaved": "Les dates non enregistrées seront perdues si vous quittez la page.",
+    "missing": "Aucune date",
+    "same": "À la date prévue",
+    "early_one": "{{count}} jour d’avance",
+    "early_other": "{{count}} jours d’avance",
+    "early_many": "{{count}} jours d’avance",
+    "late_one": "{{count}} jour de retard",
+    "late_other": "{{count}} jours de retard",
+    "late_many": "{{count}} jours de retard",
+    "editTarget": "Choisir la date à modifier",
+    "modes": {
+      "planned": "Prévu",
+      "actual": "Réalisé",
+      "combined": "Les deux"
+    },
+    "activities": {
+      "propagation": "Début des semis en pépinière",
+      "sowing": "Date de semis",
+      "transplanting": "Date de plantation",
+      "harvestStart": "Début de la récolte",
+      "harvestEnd": "Fin de la récolte"
+    },
+    "actualLabels": {
+      "propagation": "Date réelle de début des semis en pépinière",
+      "sowing": "Date réelle de semis",
+      "transplanting": "Date réelle de plantation",
+      "harvestStart": "Date réelle de début de récolte",
+      "harvestEnd": "Date réelle de fin de récolte"
+    }
   }
 }

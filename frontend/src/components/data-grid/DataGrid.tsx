@@ -30,6 +30,7 @@ import {
   GridRowModes,
   useGridApiRef,
 } from '@mui/x-data-grid';
+import { gridEditRowsStateSelector } from '@mui/x-data-grid/internals';
 import { dataGridSx, dataGridFooterSx, dataGridAddRowButtonSx, deleteIconButtonSx } from './styles';
 import { handleRowEditStop } from './handlers';
 import {
@@ -219,6 +220,7 @@ export function EditableDataGrid<T extends EditableRow>({
   initialRow,
   tableKey,
   defaultSortModel = [],
+  sortProjection,
   persistSortInUrl = true,
   notes,
   dialogEditFields,
@@ -293,6 +295,7 @@ export function EditableDataGrid<T extends EditableRow>({
   const continuousScrollFooterFallbackHeight = shouldRenderGridFooter ? CONTINUOUS_SCROLL_FOOTER_HEIGHT_PX : 0;
   const [rows, setRows] = useState<GridRowsProp<T>>([]);
   const [stableRowOrder, setStableRowOrder] = useState<GridRowId[]>([]);
+  const [projectedSortMode, setProjectedSortMode] = useState(sortProjection?.mode);
   const [rowModesModel, setRowModesModel] = useState<GridRowModesModel>({});
   const [error, setError] = useState<string>('');
   // Tied to the message it was created for, so any later error (or clearing
@@ -334,6 +337,10 @@ export function EditableDataGrid<T extends EditableRow>({
     allowedFields: columns.map((column) => column.field),
     persistInUrl: persistSortInUrl,
   });
+  if (projectedSortMode !== sortProjection?.mode) {
+    setProjectedSortMode(sortProjection?.mode);
+    setStableRowOrder(getSortedRowIds(rows, sortModel, sortProjection?.getValue));
+  }
   const orderedRows = useMemo(
     () => orderRowsByStableIds(rows as T[], stableRowOrder),
     [rows, stableRowOrder],
@@ -526,10 +533,11 @@ export function EditableDataGrid<T extends EditableRow>({
   );
 
   const clearCreatedRowPins = createdRowPinning.clear;
+  const getSortValue = sortProjection?.getValue;
   const refreshStableRowOrder = useCallback((sourceRows: readonly T[], model: GridSortModel = sortModel): void => {
     clearCreatedRowPins();
-    setStableRowOrder(getSortedRowIds(sourceRows, model));
-  }, [clearCreatedRowPins, sortModel]);
+    setStableRowOrder(getSortedRowIds(sourceRows, model, getSortValue));
+  }, [clearCreatedRowPins, getSortValue, sortModel]);
 
   const saveUpdatedRow = useCallback(async (updatedRow: T): Promise<T> => {
     const numericId = Number(updatedRow.id);
@@ -1210,7 +1218,8 @@ export function EditableDataGrid<T extends EditableRow>({
 
   const handleEditableRowEditStop: GridEventListener<'rowEditStop'> = useCallback((params, event, details): void => {
     if (params.reason === GridRowEditStopReasons.rowFocusOut) {
-      if (isAnyContextMenuOpen() || isContextMenuDismissGestureInProgress()) {
+      if (isAnyContextMenuOpen() || isContextMenuDismissGestureInProgress()
+        || document.activeElement?.closest('[data-grid-view-control]')) {
         event.defaultMuiPrevented = true;
         return;
       }
@@ -1771,7 +1780,7 @@ export function EditableDataGrid<T extends EditableRow>({
         return;
       }
       if (
-        target.closest('[role="listbox"], .MuiAutocomplete-popper, .MuiPopover-root, .MuiPickersPopper-root, .MuiDialog-root, .MuiModal-root')
+        target.closest('[data-grid-view-control], [role="listbox"], .MuiAutocomplete-popper, .MuiPopover-root, .MuiPickersPopper-root, .MuiDialog-root, .MuiModal-root')
         || target.closest('a[href]')
       ) {
         return;
@@ -1932,6 +1941,27 @@ export function EditableDataGrid<T extends EditableRow>({
     handleDeleteClick(selectedRowId)();
   }, [handleDeleteClick, selectedRowIds]);
 
+  const applySavedRowValues = useCallback((rowId: GridRowId, values: Partial<T>): void => {
+    const key = String(rowId);
+    const snapshot = rowSnapshotRef.current.get(key);
+    if (snapshot) rowSnapshotRef.current.set(key, { ...snapshot, ...values });
+    setRows(current => current.map(row => String(row.id) === key ? { ...row, ...values } : row));
+    const api = gridApiRef.current;
+    if (!api || api.getRowMode(rowId) !== GridRowModes.Edit) return;
+    const draft = gridEditRowsStateSelector(gridApiRef)[rowId];
+    if (!draft) return;
+    // A side edit already saved itself. Keep separate grid edits, but avoid
+    // autosaving old planned values when the row was only opened for that edit.
+    const unchanged = Object.entries(draft).every(([field, cell]) => {
+      if (cell.isProcessingProps) return false;
+      const original = api.getCellValue(rowId, field);
+      return cell.value instanceof Date && original instanceof Date
+        ? cell.value.getTime() === original.getTime()
+        : Object.is(cell.value, original);
+    });
+    if (unchanged) handleDiscardRowChanges(rowId);
+  }, [gridApiRef, handleDiscardRowChanges]);
+
   useDataGridCommandApi<T>({
     commandApiRef,
     selectedRowIds,
@@ -1943,6 +1973,7 @@ export function EditableDataGrid<T extends EditableRow>({
     applyDraftValues,
     commitDraftValues,
     applyDialogEditValues,
+    applySavedRowValues,
     reload: fetchData,
     focusTable,
     openRowById,

@@ -115,6 +115,44 @@ class PlantingPlanApiTest(ProjectApiTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn('harvest_date', response.data)
 
+    def test_actual_dates_are_nullable_independent_and_preserve_planned_dates(self):
+        plan = PlantingPlan.objects.create(
+            project=self.project, season=self.season, crop=self.crop, bed=self.bed,
+            planting_date=date(2024, 3, 1),
+        )
+        url = f'/openfarmplanner/api/planting-plans/{plan.pk}/'
+        planned = (plan.planting_date, plan.harvest_date, plan.harvest_end_date)
+        self.assertEqual(len(PlantingPlan.ACTUAL_DATE_FIELDS), 5)
+        initial = self.client.get(url)
+        for field in PlantingPlan.ACTUAL_DATE_FIELDS:
+            self.assertIsNone(initial.data[field])
+
+        actual = {
+            'actual_propagation_start_date': '2024-02-09',
+            'actual_sowing_date': '2024-02-10',
+            'actual_transplanting_date': '2024-03-03',
+            'actual_harvest_start_date': '2024-05-05',
+            'recorded_harvest_end_date': '2025-01-02',
+        }
+        response = self.client.patch(url, actual, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual({field: response.data[field] for field in actual}, actual)
+        self.assertIsNone(response.data['actual_harvest_end_date'])
+        plan.refresh_from_db()
+        self.assertEqual((plan.planting_date, plan.harvest_date, plan.harvest_end_date), planned)
+
+        invalid = self.client.patch(url, {'actual_sowing_date': '2024-02-30'}, format='json')
+        self.assertEqual(invalid.status_code, 400, invalid.data)
+        self.assertIn('actual_sowing_date', invalid.data)
+        cleared = self.client.patch(url, {'actual_sowing_date': None}, format='json')
+        self.assertEqual(cleared.status_code, 200, cleared.data)
+        self.assertIsNone(cleared.data['actual_sowing_date'])
+        self.assertEqual(
+            cleared.data['actual_transplanting_date'], actual['actual_transplanting_date'],
+        )
+        plan.refresh_from_db()
+        self.assertEqual((plan.planting_date, plan.harvest_date, plan.harvest_end_date), planned)
+
     def test_planting_plan_area_validation_success(self):
         """Test API allows a single planting plan within bed capacity."""
         data = {

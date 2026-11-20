@@ -22,10 +22,11 @@ import { useProjectRequirement } from '../hooks/useProjectRequirement';
 import { useTranslation } from '../i18n';
 import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
 import {
-  DIRECT_SOWING, getPlanPropagationInfo, getPlanSowingSchedule, PRE_CULTIVATION, PURCHASED_TRANSPLANT,
+  DIRECT_SOWING, getPlanPropagationInfo, PRE_CULTIVATION, PURCHASED_TRANSPLANT,
 } from '../pages/planSowingDate';
 import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import { formatLocalizedNumber } from '../utils/numberLocalization';
+import { PlantingPlanExecutionDates } from './PlantingPlanExecutionDates';
 
 interface PlantingPlanDetailsProps {
   planId: number | null;
@@ -52,13 +53,15 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
+  const [datesDirty, setDatesDirty] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const loadedPlan = result && 'plan' in result ? result.plan : undefined;
   const loadedPlanId = loadedPlan?.id;
   const hasPhotos = Boolean(loadedPlan?.note_attachment_count) || attachmentRevision > 0;
   const hasUnsavedNotes = editorOpen && draft !== (loadedPlan?.notes ?? '');
 
-  useNavigationBlocker(hasUnsavedNotes, t('common:notesDrawer.unsavedDialog.message'));
+  useNavigationBlocker(hasUnsavedNotes || datesDirty, hasUnsavedNotes
+    ? t('common:notesDrawer.unsavedDialog.message') : t('actualDates.unsaved'));
 
   useEffect(() => {
     titleRef.current?.focus({ preventScroll: true });
@@ -111,7 +114,6 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
   const otherSeason = Boolean(loadedPlan && (loadedPlan.season ?? null) !== (context?.activeSeason?.id ?? null));
   const canEditNotes = Boolean(loadedPlan && !otherSeason);
   const cropName = loadedPlan ? formatCropDisplayName(loadedPlan) : '';
-  const schedule = loadedPlan && getPlanSowingSchedule(loadedPlan, undefined);
   const propagation = loadedPlan && getPlanPropagationInfo(loadedPlan, undefined);
   const cultivation = loadedPlan?.cultivation_type || (propagation?.isPreCultivation
     ? PRE_CULTIVATION : loadedPlan?.crop_cultivation_type);
@@ -125,13 +127,7 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
     { label: t('columns.field'), value: loadedPlan.field_name },
     { label: t('columns.bed'), value: loadedPlan.bed_name },
     { label: t('columns.areaM2'), value: area == null ? '' : formatLocalizedNumber(Number(area), locale) },
-  ].filter(row => row.value) : [];
-  const plannedRows = loadedPlan ? [
     { label: t('columns.cultivationType'), value: cultivationLabel },
-    { label: t('columns.sowingDate'), value: date(schedule?.sowingDate) },
-    { label: t('columns.plantingDate'), value: schedule?.isPreCultivation || schedule?.isPurchasedTransplant ? date(loadedPlan.planting_date) : '' },
-    { label: t('columns.harvestStartDate'), value: date(loadedPlan.harvest_date) },
-    { label: t('columns.harvestEndDate'), value: date(loadedPlan.harvest_end_date) },
   ].filter(row => row.value) : [];
 
   const saveNotes = async () => {
@@ -190,9 +186,11 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
             {contextRows.length > 0 && <DetailSection title={t('details.context')} outlined>
               <DetailGrid>{contextRows.map(row => <DetailRow key={row.label} label={row.label} value={row.value!} />)}</DetailGrid>
             </DetailSection>}
-            {plannedRows.length > 0 && <DetailSection title={t('details.planned')} outlined>
-              <DetailGrid>{plannedRows.map(row => <DetailRow key={row.label} label={row.label} value={row.value} />)}</DetailGrid>
-            </DetailSection>}
+            <PlantingPlanExecutionDates plan={loadedPlan} editable={canEditNotes} onDirtyChange={setDatesDirty}
+              onSaved={dates => {
+                setResult(current => current && 'plan' in current ? { plan: { ...current.plan, ...dates } } : current);
+                onChanged();
+              }} />
             {(canEditNotes || loadedPlan.notes?.trim() || hasPhotos) && (
               <DetailSection title={t('details.notesAndPhotos')} outlined>
                 <Stack spacing={1.5} sx={{ alignItems: 'flex-start', minWidth: 0, overflowWrap: 'anywhere' }}>

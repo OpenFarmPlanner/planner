@@ -435,5 +435,41 @@
     "tasks": "Tarefas",
     "tasksLoadFailed": "Não foi possível carregar as tarefas.",
     "taskCancelled": "Cancelada"
+  },
+  "actualDates": {
+    "clear": "Limpar data",
+    "title": "Datas planeadas e reais",
+    "modeLabel": "Datas a apresentar",
+    "edit": "Registar datas reais",
+    "saveError": "Não foi possível guardar as datas reais.",
+    "unsaved": "Se sair, perderá as alterações de datas que não guardou.",
+    "missing": "Sem data",
+    "same": "Na data planeada",
+    "early_one": "{{count}} dia antes",
+    "early_other": "{{count}} dias antes",
+    "early_many": "{{count}} dias antes",
+    "late_one": "{{count}} dia depois",
+    "late_other": "{{count}} dias depois",
+    "late_many": "{{count}} dias depois",
+    "editTarget": "Escolher a data a editar",
+    "modes": {
+      "planned": "Planeado",
+      "actual": "Realizado",
+      "combined": "Ambos"
+    },
+    "activities": {
+      "propagation": "Início do viveiro",
+      "sowing": "Data de sementeira",
+      "transplanting": "Data de transplantação",
+      "harvestStart": "Início da colheita",
+      "harvestEnd": "Fim da colheita"
+    },
+    "actualLabels": {
+      "propagation": "Data efetiva de início do viveiro",
+      "sowing": "Data efetiva de sementeira",
+      "transplanting": "Data efetiva de transplantação",
+      "harvestStart": "Data efetiva de início da colheita",
+      "harvestEnd": "Data efetiva de fim da colheita"
+    }
   }
 }

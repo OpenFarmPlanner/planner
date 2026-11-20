@@ -15,6 +15,10 @@ from .structure import Bed, Field
 
 class PlantingPlan(TimestampedModel):
     """A planting schedule linking a crop to a bed with dates."""
+    ACTUAL_DATE_FIELDS = frozenset({
+        'actual_propagation_start_date', 'actual_sowing_date', 'actual_transplanting_date',
+        'actual_harvest_start_date', 'recorded_harvest_end_date',
+    })
     # Plan-only cultivation type: planted out from bought-in young plants, so
     # there is no own propagation (Anzucht) and no seed demand. A crop never
     # lists it in its own `cultivation_types`; it is selectable whenever the
@@ -66,6 +70,12 @@ class PlantingPlan(TimestampedModel):
         null=True,
         help_text="Harvest end date (Ernteende)",
     )
+    actual_propagation_start_date = models.DateField(null=True, blank=True)
+    actual_sowing_date = models.DateField(null=True, blank=True)
+    actual_transplanting_date = models.DateField(null=True, blank=True)
+    actual_harvest_start_date = models.DateField(null=True, blank=True)
+    # The API already uses actual_harvest_end_date for a calculated succession boundary.
+    recorded_harvest_end_date = models.DateField(null=True, blank=True)
     quantity = models.IntegerField(null=True, blank=True, help_text="Number of plants or seeds")
     area_usage_sqm = models.DecimalField(
         max_digits=10, 
@@ -187,6 +197,13 @@ class PlantingPlan(TimestampedModel):
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         """Save the plan and auto-calculate harvest dates if needed."""
+        update_fields = set(kwargs.get('update_fields') or ())
+        if update_fields & self.ACTUAL_DATE_FIELDS and (
+            update_fields <= self.ACTUAL_DATE_FIELDS | {'updated_by', 'updated_at'}
+        ):
+            super().save(*args, **kwargs)
+            return
+
         # Detect if planting_date or crop has changed.
         should_recalculate = False
         prev: PlantingPlan | None = None

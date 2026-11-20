@@ -8,9 +8,8 @@ export const parseGermanDateText = (text: string): Date | null => {
 };
 
 export const formatDateAsGerman = (value: Date | string | null | undefined): string => {
-  if (!value) return '';
-  const d = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(d.getTime())) return '';
+  const d = toGridDateValue(value);
+  if (!d) return '';
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
   return `${day}.${month}.${d.getFullYear()}`;
@@ -48,6 +47,10 @@ export const toGridDateValue = (value: unknown): Date | null => {
     return null;
   }
   if (typeof value === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const localDate = new Date(`${value}T00:00:00`);
+      return Number.isNaN(localDate.getTime()) ? null : localDate;
+    }
     const germanDate = parseGermanDateText(value);
     if (germanDate) {
       return germanDate;

@@ -426,5 +426,39 @@
     "tasks": "Tasks",
     "tasksLoadFailed": "Could not load tasks.",
     "taskCancelled": "Cancelled"
+  },
+  "actualDates": {
+    "clear": "Clear date",
+    "title": "Planned and actual dates",
+    "modeLabel": "Dates to show",
+    "edit": "Record actual dates",
+    "saveError": "Could not save actual dates.",
+    "unsaved": "Leaving will discard unsaved date changes.",
+    "missing": "No date",
+    "same": "On the planned date",
+    "early_one": "{{count}} day early",
+    "early_other": "{{count}} days early",
+    "late_one": "{{count}} day late",
+    "late_other": "{{count}} days late",
+    "editTarget": "Choose which date to edit",
+    "modes": {
+      "planned": "Planned",
+      "actual": "Actual",
+      "combined": "Both"
+    },
+    "activities": {
+      "propagation": "Propagation start",
+      "sowing": "Sowing date",
+      "transplanting": "Transplanting date",
+      "harvestStart": "Harvest start",
+      "harvestEnd": "Harvest end"
+    },
+    "actualLabels": {
+      "propagation": "Actual propagation start",
+      "sowing": "Actual sowing date",
+      "transplanting": "Actual transplanting date",
+      "harvestStart": "Actual harvest start",
+      "harvestEnd": "Actual harvest end"
+    }
   }
 }

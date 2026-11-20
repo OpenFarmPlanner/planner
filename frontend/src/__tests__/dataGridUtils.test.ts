@@ -177,8 +177,8 @@ describe('toGridDateValue', () => {
     expect(toGridDateValue('')).toBeNull();
   });
 
-  it('parses the ISO strings rows store dates as', () => {
-    expect(toGridDateValue('2026-04-10')).toEqual(new Date('2026-04-10'));
+  it('parses ISO calendar dates as local dates for the grid', () => {
+    expect(toGridDateValue('2026-04-10')).toEqual(new Date(2026, 3, 10));
   });
 
   it('parses the German text a date editor produces', () => {

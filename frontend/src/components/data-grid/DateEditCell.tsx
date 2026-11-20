@@ -17,7 +17,7 @@ import {
   type MouseEvent,
 } from 'react';
 import { useTranslation } from '../../i18n';
-import { formatDateAsGerman, parseGermanDateText, toIsoDateString } from './dateEditCellUtils';
+import { formatDateAsGerman, parseGermanDateText, toGridDateValue, toIsoDateString } from './dateEditCellUtils';
 import { useEditCellNavigation } from './EditCellNavigationContext';
 import { useEditCellTabNavigation } from './useEditCellTabNavigation';
 
@@ -28,17 +28,6 @@ const SEGMENT_RANGES: Record<DateSegment, [number, number]> = {
   day: [0, 2],
   month: [3, 5],
   year: [6, 10],
-};
-
-const toDateValue = (value: unknown): Date | null => {
-  if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return value;
-  }
-  if (typeof value === 'string' && value.trim().length > 0) {
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? parseGermanDateText(value) : parsed;
-  }
-  return null;
 };
 
 const getDaysInMonth = (year: number, monthIndex: number): number =>
@@ -92,6 +81,9 @@ export interface DateEditCellBoundsProps {
    * live-updates a coupled partner field never acts on incomplete input.
    */
   onCommitted?: (value: Date | null) => void;
+  ariaLabel?: string;
+  leadingAction?: React.ReactNode;
+  targetLabel?: string;
 }
 
 function DateEditCellComponent(params: GridRenderEditCellParams & DateEditCellBoundsProps) {
@@ -209,7 +201,7 @@ function DateEditCellComponent(params: GridRenderEditCellParams & DateEditCellBo
       return;
     }
 
-    const currentDate = parseGermanDateText(displayedText) ?? toDateValue(params.value) ?? new Date();
+    const currentDate = parseGermanDateText(displayedText) ?? toGridDateValue(params.value) ?? new Date();
     const nextDate = adjustDateSegment(currentDate, currentSegment, event.key === 'ArrowUp' ? 1 : -1);
     await commitDate(nextDate);
     selectSegment(currentSegment);
@@ -240,6 +232,7 @@ function DateEditCellComponent(params: GridRenderEditCellParams & DateEditCellBo
         fullWidth
         size="small"
         inputRef={inputRef}
+        label={params.targetLabel}
         value={displayedText}
         placeholder={t('common:dateFormatPlaceholder')}
         sx={{
@@ -249,7 +242,9 @@ function DateEditCellComponent(params: GridRenderEditCellParams & DateEditCellBo
           },
         }}
         slotProps={{
+          ...(params.targetLabel ? { inputLabel: { shrink: true } } : {}),
           htmlInput: {
+            'aria-label': params.ariaLabel,
             tabIndex: params.hasFocus ? 0 : -1,
             inputMode: 'numeric',
             onFocus: (event: FocusEvent<HTMLInputElement>) => {
@@ -262,6 +257,9 @@ function DateEditCellComponent(params: GridRenderEditCellParams & DateEditCellBo
             onKeyDown: handleKeyDown,
           },
           input: {
+            startAdornment: params.leadingAction && (
+              <InputAdornment position="start" sx={{ mr: 0 }}>{params.leadingAction}</InputAdornment>
+            ),
             endAdornment: (
               <InputAdornment position="end">
                 <IconButton
@@ -313,4 +311,7 @@ export const DateEditCell = memo(DateEditCellComponent, (previous, next) => (
   && previous.hasFocus === next.hasFocus
   && previous.minDate === next.minDate
   && previous.maxDate === next.maxDate
+  && previous.ariaLabel === next.ariaLabel
+  && previous.leadingAction === next.leadingAction
+  && previous.targetLabel === next.targetLabel
 ));

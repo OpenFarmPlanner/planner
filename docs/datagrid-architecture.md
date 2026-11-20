@@ -180,6 +180,17 @@ Detail reads can use `across_seasons=true` for one plan in the active project.
 The table and edit endpoints continue to use the active season, and the detail
 page offers an explicit switch to the plan's originating season.
 
+The planting-plans date mode controls display, ordering, filter input and
+clipboard export. Combined shows recorded dates first and falls back to the
+plan. Actual leaves unrecorded dates blank. The sowing column uses the start
+of propagation for a home-raised crop. The existing planting-date column also
+represents the start on the bed for direct sowing.
+
+The inline editor labels its planned value and offers a separate actual-date
+choice. Actual date saves patch just the selected fields, so a standalone
+actual edit leaves the forecast and planned-task schedule intact. The plan
+detail page compares each activity and can record or clear all five dates.
+
 For large editable flat tables, `EditableDataGrid` also supports
 `scrollMode="continuous"`. This keeps the free MUI DataGrid's internal page
 size at 100 rows, hides the pager UI, and advances the internal row window

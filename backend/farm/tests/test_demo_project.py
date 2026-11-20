@@ -442,6 +442,13 @@ class DemoProjectServiceTests(TestCase):
             sorted(Season.objects.filter(project=result.project).values_list('start_date__year', flat=True)),
             [2028, 2029, 2030, 2031],
         )
+        plans = PlantingPlan.objects.filter(project=result.project)
+        self.assertTrue(plans.filter(
+            planting_date=date(2031, 3, 12), actual_sowing_date=date(2031, 3, 12),
+        ).exists())
+        self.assertTrue(plans.filter(
+            planting_date=date(2031, 5, 18), actual_transplanting_date=date(2031, 5, 21),
+        ).exists())
 
     def test_only_the_new_bed_has_no_planting_history(self) -> None:
         result = create_or_reset_demo_project()
@@ -703,7 +710,9 @@ class DemoProjectServiceTests(TestCase):
                     [(bed.area_sqm, bed.length_m, bed.width_m) for bed in beds],
                     [(crop_index[plan.crop_id], bed_index[plan.bed_id], plan.planting_date,
                       plan.area_usage_sqm, plan.quantity, plan.cultivation_type,
-                      plan.rotation_conflict_accepted) for plan in plans],
+                      plan.rotation_conflict_accepted,
+                      tuple(getattr(plan, key) for key in sorted(PlantingPlan.ACTUAL_DATE_FIELDS)))
+                     for plan in plans],
                     Counter(Task.objects.filter(project=project).values_list(
                         'origin', 'status', 'due_date', 'due_date_overridden',
                     )),

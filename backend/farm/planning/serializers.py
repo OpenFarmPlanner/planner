@@ -313,14 +313,31 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         return compute_plan_plant_count(obj, self._general_crop_index(obj)).count
 
     def validate(self, attrs):
-        self._validate_minimal_identity(attrs)
+        actual_dates_only = self.instance is not None and self.is_actual_date_update(attrs)
+        if not actual_dates_only:
+            self._validate_minimal_identity(attrs)
         self._validate_project_scope(attrs)
+        if actual_dates_only:
+            return attrs
         self._validate_create_has_active_season(attrs)
         self._validate_planting_date_within_season(attrs)
         self._apply_area_input_conversion(attrs)
         self._apply_rotation_acceptance(attrs)
         self._run_model_clean(attrs)
         return attrs
+
+    @staticmethod
+    def is_actual_date_update(attrs: dict[str, Any]) -> bool:
+        fields = attrs.keys() - {'updated_by'}
+        return bool(fields) and fields <= PlantingPlan.ACTUAL_DATE_FIELDS
+
+    def update(self, instance: PlantingPlan, validated_data: dict[str, Any]) -> PlantingPlan:
+        if not self.is_actual_date_update(validated_data):
+            return super().update(instance, validated_data)
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        instance.save(update_fields=(*validated_data, 'updated_at'))
+        return instance
 
     def _moves_plan(self, attrs) -> bool:
         """Whether this write changes the plan's crop, bed or dates."""
