@@ -274,3 +274,40 @@ check does not advance the full-sweep baseline above.
 
 Scratch script and screenshots: `/tmp/ofp-1180/` (local only).
 No defect reproduced in the requested flow. No production testing performed.
+
+## Targeted follow-up — 2026-11-20: variety publication (#953)
+
+Tested local main `b8b45bb615f5bb715029a17b22fdb676e04cd85f`, including
+merged PR #1309, against the existing development frontend at
+`http://localhost:5173` and backend on port 8000 in headless Chrome.
+This owner-requested acceptance check does not advance the full-sweep baseline.
+
+Ran a scratch copy of `frontend/e2e/variety-parent-publication.spec.ts` with
+only import paths and the runner configuration adapted to the existing local
+servers. All three tests passed (French, Portuguese and Dutch; 1.9 minutes).
+Synthetic users/projects were created through the guarded E2E fixture and
+reset in each test's cleanup. Test-specific approved species and public
+entries were synthetic; existing library entries were not edited.
+
+Confirmed the requested sequence:
+
+- An unlinked parent's variety initially offers the editable species picker.
+- Switching to a species without a public general entry explains creating
+  that entry from the parent crop's values; switching back restores the
+  existing-entry link notice and field comparison.
+- Taking the library growth duration (77 days) while keeping project notes
+  publishes successfully. API readback confirms the parent's public link,
+  77-day duration, retained private notes and notes in `library_pinned_fields`.
+  The variety receives its public link and retains its own 50-day duration.
+- Publishing another variety shows the linked parent species read-only,
+  removes the species combobox and leaves Publish enabled.
+
+Checked the comparison dialog at 375×800, 768×900, 1024×900, 1440×900 and
+800×375; Publish stays in the viewport and page overflow assertions pass.
+Visually inspected the French screenshots for all five sizes and the
+create-parent/read-only-parent states. The dialog content scrolls at compact
+sizes and its footer remains reachable. Screenshots and the scratch runner
+are local artifacts under `/tmp/ofp-953/`. No application code or UI changed.
+
+Removed only #953's row from work queue #1058 after these checks, as explicitly
+requested by the owner; no personal-acceptance checkbox was checked.
