@@ -167,6 +167,19 @@ class PerennialPlanningTest(ProjectApiTestCase):
         self.assertEqual(edited.data['end_date'], '2025-03-31')
         self.assertEqual(edited.data['remaining_area_sqm'], 20)
 
+        suggestions_url = f'{PLANS}bed-suggestions/'
+        suggestions_params = {**params, 'planting_date': params['start_date'], 'area_sqm': 20}
+        for clearing_date, expected_end, fits in (
+            ({}, '2027-02-28', False),
+            ({'clearing_date': '2025-03-31'}, '2025-03-31', True),
+        ):
+            with self.subTest(clearing_date=clearing_date):
+                result = self.client.get(suggestions_url, {**suggestions_params, **clearing_date})
+                self.assertEqual(result.status_code, 200, result.data)
+                self.assertEqual(result.data['end_date'], expected_end)
+                bed = next(row for row in result.data['results'] if row['bed_id'] == self.bed.pk)
+                self.assertEqual(bed['has_enough_area'], fits)
+
         for invalid_date in ('2024-02-28', '2024-02-31'):
             with self.subTest(invalid_date=invalid_date):
                 invalid = self.client.get(url, {**params, 'clearing_date': invalid_date})

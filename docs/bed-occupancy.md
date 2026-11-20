@@ -106,8 +106,8 @@ Only project admins can change it, like the other general project settings.
   start, the minimum gap and the earliest follow-up date — for the error
   message; `succession_limit` is null when the project setting is off or the
   previous crop has no harvest start.
-- `bed-suggestions` uses the same rule; its `blocking_plan.end_date` is the
-  last day of the blocker's firm stage.
+- `bed-suggestions` uses the same interval and capacity rule; its
+  `blocking_plan.end_date` is the last day of the blocker's firm stage.
 
 ## UI
 
