@@ -50,6 +50,7 @@ import { ContextMenuIndicator } from '../contextMenu/ContextMenuIndicator';
 import { contextMenuActionsOverlaySx } from '../contextMenu/contextMenuIndicatorStyles';
 import { isAnyContextMenuOpen } from '../contextMenu/contextMenuOpenState';
 import { useNavigationBlocker } from '../../hooks/autosave';
+import { useBeforeUnloadProtection } from '../../hooks/useBeforeUnloadProtection';
 import { usePersistentSortModel } from '../../hooks/usePersistentSortModel';
 import { useTranslation } from '../../i18n';
 import { ExternalFilterColumnMenu, HighlightableNotesCell } from './ExternalFilterColumnMenu';
@@ -187,14 +188,17 @@ const wrapNativeKeyboardEvent = (event: globalThis.KeyboardEvent): DataGridKeybo
   stopPropagation: () => event.stopPropagation(),
 } as DataGridKeyboardEvent);
 
-function GridNavigationGuard({ dirty, message, save }: {
+function GridNavigationGuard({ dirty, message, save, requireSavedBeforeNavigation }: {
   dirty: boolean;
   message: string;
-  save: () => Promise<void>;
+  save: () => Promise<boolean>;
+  requireSavedBeforeNavigation?: (pathname: string) => boolean;
 }) {
-  // In-app navigation saves dirty rows. Closing or reloading a tab still uses
-  // the browser's beforeunload guard.
-  useNavigationBlocker(dirty, message, save, false);
+  useNavigationBlocker(dirty, message, async destination => {
+    const requireSave = requireSavedBeforeNavigation?.(destination.pathname);
+    const saved = await save().catch(() => false);
+    return !requireSave || saved;
+  }, false, { protectBeforeUnload: false });
   return null;
 }
 
@@ -220,7 +224,8 @@ export function EditableDataGrid<T extends EditableRow>({
   dialogEditFields,
   commandApiRef,
   onSelectedRowChange,
-  suspendNavigationGuard = false,
+  suspendRouteNavigationGuard = false,
+  requireSavedBeforeNavigation,
   getRowValidationErrors,
   showAddAction = true,
   showFooterEditControls = true,
@@ -566,6 +571,7 @@ export function EditableDataGrid<T extends EditableRow>({
     (mode) => mode.mode === GridRowModes.Edit
   );
   const hasUnsavedChanges = hasRowsInEditMode || dirtyRowIds.size > 0;
+  useBeforeUnloadProtection(hasUnsavedChanges, t('messages.unsavedChanges'));
   const notesFieldNames = useMemo(
     () => notes?.fields.map((fieldConfig) => fieldConfig.field) ?? [],
     [notes],
@@ -1496,10 +1502,10 @@ export function EditableDataGrid<T extends EditableRow>({
     rowsById,
   ]);
 
-  const handleSaveRow = useCallback(async (rowId: GridRowId): Promise<void> => {
+  const handleSaveRow = useCallback(async (rowId: GridRowId): Promise<boolean> => {
     const preparedRow = await prepareRowForSave(rowId);
     if (!preparedRow) {
-      return;
+      return false;
     }
 
     try {
@@ -1515,8 +1521,10 @@ export function EditableDataGrid<T extends EditableRow>({
           )
           : prevRows,
       );
+      return true;
     } catch (error) {
       handleProcessRowUpdateError(error);
+      return false;
     }
   }, [
     handleProcessRowUpdateError,
@@ -1734,7 +1742,7 @@ export function EditableDataGrid<T extends EditableRow>({
     );
   }, [handleEditedCellTabNavigation]);
 
-  const handleSaveAllDirtyRows = useCallback(async (): Promise<void> => {
+  const handleSaveAllDirtyRows = useCallback(async (): Promise<boolean> => {
     // Awaits the real save (including the API call) for every dirty row in
     // turn, rather than just flipping rowModesModel to View and hoping MUI's
     // own async commit catches up later. Callers (e.g. the navigation
@@ -1743,15 +1751,13 @@ export function EditableDataGrid<T extends EditableRow>({
     const editingRowIds = Object.entries(rowModesModel)
       .filter(([, mode]) => mode.mode === GridRowModes.Edit)
       .map(([id]) => id);
-    for (const rowId of editingRowIds) {
-      await handleSaveRow(rowId);
-    }
     const editingRowIdKeys = new Set(editingRowIds.map(String));
-    for (const rowKey of dirtyRowIds) {
-      if (!editingRowIdKeys.has(rowKey)) {
-        await handleSaveRow(rowKey);
-      }
+    const rowsToSave = [...editingRowIds, ...[...dirtyRowIds].filter(rowId => !editingRowIdKeys.has(rowId))];
+    let savedAll = true;
+    for (const rowId of rowsToSave) {
+      if (!await handleSaveRow(rowId)) savedAll = false;
     }
+    return savedAll;
   }, [dirtyRowIds, handleSaveRow, rowModesModel]);
 
   useEffect(() => {
@@ -2996,8 +3002,9 @@ export function EditableDataGrid<T extends EditableRow>({
           />
         )}
       </Box>
-      {!suspendNavigationGuard && <GridNavigationGuard dirty={hasUnsavedChanges}
-        message={t('messages.unsavedChanges')} save={handleSaveAllDirtyRows} />}
+      {!suspendRouteNavigationGuard && <GridNavigationGuard dirty={hasUnsavedChanges}
+        message={t('messages.unsavedChanges')} save={handleSaveAllDirtyRows}
+        requireSavedBeforeNavigation={requireSavedBeforeNavigation} />}
       <CustomContextMenu
         open={Boolean(rowActionMenuState)}
         onClose={closeRowActionMenu}

@@ -119,8 +119,10 @@ export interface EditableDataGridProps<T extends EditableRow> {
   dialogEditFields?: string[];
   commandApiRef?: MutableRefObject<EditableDataGridCommandApi | null>;
   onSelectedRowChange?: (row: T | null) => void;
-  /** Allow a routed detail overlay to own the blocker while the grid stays mounted. */
-  suspendNavigationGuard?: boolean;
+  /** Let a routed overlay own in-app blocking while the mounted grid retains unload protection. */
+  suspendRouteNavigationGuard?: boolean;
+  /** Keep the grid visible if saving its rows fails before navigating to this pathname. */
+  requireSavedBeforeNavigation?: (pathname: string) => boolean;
   getRowValidationErrors?: (row: T) => Record<string, string>;
   showAddAction?: boolean;
   showFooterEditControls?: boolean;

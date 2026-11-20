@@ -15,40 +15,24 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { useBlocker } from 'react-router';
+import { useBlocker, type Location } from 'react-router';
 import { confirmAction } from '../utils/confirmAction';
+import { useBeforeUnloadProtection } from './useBeforeUnloadProtection';
+
+type BeforeNavigation = (destination: Location) => Promise<void | boolean> | void | boolean;
 
 /**
- * Hook to block navigation when there are unsaved changes
- *
- * @param onProceed Optional callback run after the user confirms leaving,
- * before navigation actually proceeds, e.g. to save in-progress edits
- * instead of silently discarding them (the confirmation message tells the
- * user their changes will be saved, so this makes that true).
+ * Run onProceed before navigating, for example to save an in-progress edit.
+ * Returning false retains the current route after a failed save.
  */
 export function useNavigationBlocker(
   shouldBlock: boolean,
-  message: string = 'You have unsaved changes. Are you sure you want to leave?',
-  onProceed?: () => Promise<void> | void,
+  message = 'You have unsaved changes. Are you sure you want to leave?',
+  onProceed?: BeforeNavigation,
   confirmBeforeProceed = true,
+  { protectBeforeUnload = true }: { protectBeforeUnload?: boolean } = {},
 ): void {
-  // Setup beforeunload handler for browser navigation (tab close, reload, etc.)
-  useEffect(() => {
-    if (!shouldBlock) return;
-
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      // Modern browsers ignore custom messages, but setting returnValue triggers the dialog
-      e.returnValue = message;
-      return message;
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [shouldBlock, message]);
-
+  useBeforeUnloadProtection(shouldBlock && protectBeforeUnload, message);
   // Use React Router's blocker for in-app navigation
   const blocker = useBlocker(({ currentLocation, nextLocation }) => {
     // Only block if we're actually navigating to a different location
@@ -75,10 +59,10 @@ export function useNavigationBlocker(
     const proceed = confirmBeforeProceed ? confirmAction(message) : true;
     if (proceed) {
       if (onProceed) {
-        // Proceed regardless of whether the save succeeds. A failed
-        // save shouldn't trap the user on the page; validation errors
-        // remain visible inline for when they come back to the row.
-        void Promise.resolve(onProceed()).catch(() => undefined).finally(() => blocker.proceed());
+        void Promise.resolve(onProceed(blocker.location)).then(allowed => {
+          if (allowed === false) blocker.reset();
+          else blocker.proceed();
+        }, () => blocker.proceed());
       } else {
         blocker.proceed();
         isHandlingBlockRef.current = false;

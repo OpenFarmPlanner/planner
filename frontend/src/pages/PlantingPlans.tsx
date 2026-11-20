@@ -140,7 +140,7 @@ import { MobilePlanFormDialog } from "../components/planting-plans/MobilePlanFor
 import { CropSpacingEditAction } from "../components/planting-plans/CropSpacingEditAction";
 import { MobilePlanActionsMenu, type PlanMenuNavigationAction } from "../components/planting-plans/MobilePlanActionsMenu";
 import { getEntityDetailPath } from "../components/hierarchy/details/hierarchyDetailRoutes";
-import { plantingPlanDetailPath } from "../planting-plans/plantingPlanDetailRoutes";
+import { isPlantingPlanDetailPath, plantingPlanDetailPath } from "../planting-plans/plantingPlanDetailRoutes";
 import { RotationStatusIcon } from "../components/planting-plans/rotation/RotationStatusIcon";
 import { CompanionWarningIcon } from "../components/planting-plans/rotation/CompanionCheckAlert";
 import { SiteSuitabilityHints } from "../components/planting-plans/rotation/SiteSuitabilityHints";
@@ -2712,7 +2712,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           showRowEditActions={false}
           inlineRowActionField="crop"
           showInlineRowActionMenu
-          suspendNavigationGuard={detailOpen}
+          suspendRouteNavigationGuard={detailOpen}
+          requireSavedBeforeNavigation={isPlantingPlanDetailPath}
           getRowActions={row => [
             ...getPlanNavigationActions(row).map(action => ({
               id: action.id,

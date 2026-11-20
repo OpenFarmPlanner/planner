@@ -736,6 +736,7 @@ describe('EditableDataGrid', () => {
         'messages.unsavedChanges',
         expect.any(Function),
         false,
+        { protectBeforeUnload: false },
       );
     });
   });

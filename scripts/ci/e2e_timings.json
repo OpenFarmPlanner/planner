@@ -196,8 +196,8 @@
       "duration_ms": 119178
     },
     "e2e/planting-plan-details.spec.ts": {
-      "tests": 3,
-      "duration_ms": 34000
+      "tests": 4,
+      "duration_ms": 44000
     },
     "e2e/planting-plan-headings.spec.ts": {
       "tests": 6,

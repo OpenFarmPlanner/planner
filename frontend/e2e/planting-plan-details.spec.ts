@@ -182,6 +182,42 @@ test('direct links retain the original season and reuse the notes, task and area
   await expect(page).toHaveURL(new RegExp(`${table}$`));
 });
 
+test('opening details keeps an edit visible if the grid cannot save it', async ({ page, request }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const { noBed, plan } = await seedPlans(page, request, 'plan-details-failed-grid-save');
+  await page.goto(table);
+  const row = page.locator(`[role="row"][data-id="${plan.id}"]`);
+  const plantingCell = row.locator('[data-field="planting_date"]');
+  await plantingCell.dblclick();
+  const input = plantingCell.getByRole('textbox');
+  await input.fill('02.04.2026');
+
+  const updatePath = `**/api/planting-plans/${plan.id}/`;
+  await page.route(updatePath, route => route.request().method() === 'PUT'
+    ? route.fulfill({ status: 400, json: { detail: 'Test write rejected' } }) : route.continue());
+  const otherRow = page.locator(`[role="row"][data-id="${noBed.id}"]`);
+  const menuTrigger = otherRow.getByRole('button', { name: 'Aktionen', exact: true });
+  const openMenu = async () => {
+    await otherRow.hover();
+    await menuTrigger.click();
+  };
+  await openMenu();
+  const failure = page.waitForResponse(response => response.status() === 400
+    && response.url().endsWith(`/planting-plans/${plan.id}/`));
+  await page.getByRole('menuitem', { name: 'Anbauplan-Details' }).click();
+  await failure;
+  await expect(page.getByRole('searchbox', { name: 'Anbaupläne durchsuchen' })).toBeVisible();
+  await expect(input).toHaveValue('02.04.2026');
+  await expect(page.getByRole('dialog', { name: 'Anbauplan-Details' })).toHaveCount(0);
+
+  await page.unroute(updatePath);
+  await input.press('Escape');
+  await expect(row).not.toHaveClass(/MuiDataGrid-row--editing/);
+  await openMenu();
+  await page.getByRole('menuitem', { name: 'Anbauplan-Details' }).click();
+  await expect(page.getByRole('dialog', { name: 'Anbauplan-Details' })).toBeVisible();
+});
+
 test.describe('touch details', () => {
   test.use({ hasTouch: true, viewport: { width: 375, height: 800 } });
 
