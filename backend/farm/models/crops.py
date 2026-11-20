@@ -1,6 +1,7 @@
 """Crops, suppliers, supplier data, public library, and seed packages."""
 
 import json
+import math
 import re
 from decimal import Decimal
 from typing import Any
@@ -246,7 +247,10 @@ def compute_plants_per_m2(
 
     if not row_spacing_cm or not plant_spacing_cm:
         return None
-    if row_spacing_cm <= 0 or plant_spacing_cm <= 0:
+    if not (
+        math.isfinite(row_spacing_cm) and math.isfinite(plant_spacing_cm)
+        and row_spacing_cm > 0 and plant_spacing_cm > 0
+    ):
         return None
 
     return Decimal("10000") / (Decimal(str(row_spacing_cm)) * Decimal(str(plant_spacing_cm)))

@@ -38,7 +38,7 @@ from farm.services.tasks import (
     synchronize_plan_tasks,
 )
 from farm.services.timing_window_check import TimingWindowChecker
-from farm.services.yield_calendar import build_yield_calendar, build_yield_calendar_for_season
+from farm.services.yield_calendar import build_yield_forecast
 
 from .serializers import (
     PlantingPlanDetailSerializer,
@@ -227,8 +227,23 @@ def _parse_rotation_params(query_params) -> tuple[dict | None, str | None]:
 
 
 class YieldCalendarListView(generics.GenericAPIView):
-    """Return expected yield distribution aggregated by ISO week and crop."""
+    """Return expected yield in kilograms, aggregated by ISO week and crop."""
 
+    @extend_schema(
+        description=(
+            'Forecast kilograms by ISO week from each plan’s effective crop rate in kg/m² '
+            'or kg/plant and its area or calculated plant count. The default response is '
+            'an array of weeks. With include_incomplete=true, the response contains weeks '
+            'and incomplete_plans with the reasons those plans are omitted.'
+        ),
+        parameters=[
+            SEASON_HEADER_PARAMETER,
+            OpenApiParameter('year', int, description='Limit the forecast to one ISO year.'),
+            OpenApiParameter(
+                'include_incomplete', bool, description='Include omitted plan details.',
+            ),
+        ],
+    )
     def get(self, request):
         active_project = get_active_project_or_400(request)
         year_param = request.query_params.get('year')
@@ -251,9 +266,13 @@ class YieldCalendarListView(generics.GenericAPIView):
         # list) — return every ISO year it spans, not just one, so a season that
         # straddles a calendar-year boundary is shown whole. An explicit ?year=
         # still wins for backwards compatibility with direct API callers.
-        if season is not None and not year_param:
-            return Response(build_yield_calendar_for_season(active_project, season, language_code))
-        return Response(build_yield_calendar(active_project, iso_year, language_code, season_id=season_id))
+        include_incomplete = request.query_params.get('include_incomplete') == 'true'
+        forecast = build_yield_forecast(
+            active_project, language_code,
+            iso_year=None if season is not None and not year_param else iso_year,
+            season=season, season_id=season_id, include_incomplete=include_incomplete,
+        )
+        return Response(forecast if include_incomplete else forecast['weeks'])
 
 
 @extend_schema_view(

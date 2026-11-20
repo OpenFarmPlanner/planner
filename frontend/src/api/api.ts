@@ -26,6 +26,7 @@ import type {
   Supplier,
   SeedDemand,
   YoungPlantDemand,
+  YieldCalendarForecast,
   YieldCalendarWeek,
   NoteAttachment,
   CropHistoryEntry,
@@ -596,6 +597,9 @@ export const yieldCalendarAPI = {
     http.get<YieldCalendarWeek[]>('/yield-calendar/', {
       params: year === undefined ? {} : { year },
     }),
+  forecast: () => http.get<YieldCalendarForecast>('/yield-calendar/', {
+    params: { include_incomplete: true },
+  }),
 };
 
 export const fieldAPI = {

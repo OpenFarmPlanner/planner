@@ -1742,6 +1742,30 @@ export interface YieldCalendarWeek {
   crops: YieldCalendarCrop[];
 }
 
+export interface IncompleteYieldPlan {
+  plan_id: number;
+  crop_name: string;
+  crop_display_name: string | null;
+  crop_display_language_code: string;
+  crop_variety: string | null;
+  bed_name: string;
+  planting_date: string | null;
+  calculation_blockers: (
+    | 'missing_crop'
+    | 'missing_yield_rate'
+    | 'missing_yield_unit'
+    | 'missing_area'
+    | 'missing_plant_spacing'
+    | 'zero_plant_count'
+    | 'missing_harvest_period'
+  )[];
+}
+
+export interface YieldCalendarForecast {
+  weeks: YieldCalendarWeek[];
+  incomplete_plans: IncompleteYieldPlan[];
+}
+
 export interface PaginatedResponse<T> {
   count: number;
   next: string | null;

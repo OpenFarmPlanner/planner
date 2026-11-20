@@ -32,7 +32,22 @@
     "description": "Las previsiones de rendimiento están disponibles en cuanto existan series con periodos de cosecha.",
     "createPlanAction": "Añadir serie",
     "noYieldTitle": "No hay rendimientos previstos en esta temporada",
-    "noYieldDescription": "No hay datos de cosecha para la temporada activa. Comprueba que tus cultivos tengan rendimientos previstos.",
+    "noYieldDescription": "Cada previsión requiere un periodo de cosecha, un rendimiento previsto con unidad y una superficie cultivada o un número de plantas.",
     "openPlansAction": "Abrir plan de cultivos"
+  },
+  "diagnostics": {
+    "title_one": "Serie sin previsión ({{count}})",
+    "title_other": "Series sin previsión ({{count}})",
+    "title_many": "Series sin previsión ({{count}})",
+    "unnamedPlan": "Serie sin cultivo",
+    "blockers": {
+      "missing_crop": "Falta el cultivo",
+      "missing_yield_rate": "Falta el rendimiento previsto o no es válido",
+      "missing_yield_unit": "Falta la unidad de rendimiento",
+      "missing_area": "Falta la superficie cultivada o no es válida",
+      "missing_plant_spacing": "Falta el marco de plantación o no es válido",
+      "zero_plant_count": "El número de plantas calculado es cero",
+      "missing_harvest_period": "Falta el periodo de cosecha o no es válido"
+    }
   }
 }

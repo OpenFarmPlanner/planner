@@ -5,11 +5,13 @@ import { FocusManagerProvider } from "../focus/FocusManager";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LONG_PRESS_THRESHOLD_MS } from "../utils/contextMenu";
 import YieldOverviewPage from "../pages/YieldOverview";
+import type { IncompleteYieldPlan } from "../api/types";
 import { getYieldAxisLabelStep } from "../pages/yieldOverviewUtils";
 
 const mocks = vi.hoisted(() => ({
   planList: vi.fn(),
   yieldList: vi.fn(),
+  incompletePlans: [] as IncompleteYieldPlan[],
   navigate: vi.fn(),
 }));
 const projectRequirementState = vi.hoisted(() => ({
@@ -23,7 +25,11 @@ vi.mock("../api/api", async () => {
   return {
     ...actual,
     plantingPlanAPI: { list: mocks.planList, listAll: async () => (await mocks.planList()).data },
-    yieldCalendarAPI: { list: mocks.yieldList },
+    yieldCalendarAPI: {
+      forecast: async () => ({
+        data: { weeks: (await mocks.yieldList()).data, incomplete_plans: mocks.incompletePlans },
+      }),
+    },
   };
 });
 
@@ -33,7 +39,7 @@ vi.mock("../hooks/useProjectRequirement", () => ({
 
 const outletContext = vi.hoisted(() => ({
   activeSeasonYear: null as number | null,
-  activeSeason: null as null | { start_date: string; end_date: string },
+  activeSeason: null as null | { id?: number; start_date: string; end_date: string },
 }));
 
 vi.mock("react-router", async () => {
@@ -65,9 +71,45 @@ beforeEach(() => {
     },
   });
   mocks.yieldList.mockResolvedValue({ data: [] });
+  mocks.incompletePlans = [];
 });
 
 describe("YieldOverviewPage", () => {
+  it("links omitted plans with localized reasons without adding them to the chart", async () => {
+    mocks.yieldList.mockResolvedValue({
+      data: [{
+        iso_week: "2026-W10", week_start: "2026-03-02", week_end: "2026-03-09",
+        crops: [{ crop_id: 1, crop_name: "Kohl", yield: 30, color: "#16a34a" }],
+      }],
+    });
+    mocks.incompletePlans = [{
+      plan_id: 17, crop_name: "Tomato", crop_display_name: "Tomate",
+      crop_display_language_code: "de", crop_variety: "Früh", bed_name: "Beet 3",
+      planting_date: "2026-03-03",
+      calculation_blockers: ["missing_yield_unit", "missing_plant_spacing"],
+    }];
+    const page = <FocusManagerProvider><MemoryRouter><YieldOverviewPage /></MemoryRouter></FocusManagerProvider>;
+    const { rerender } = render(page);
+
+    const summary = await screen.findByText("Anbauplan ohne Prognose (1)");
+    expect(summary.closest("details")).not.toHaveAttribute("open");
+    await userEvent.click(summary);
+    expect(summary.closest("details")).toHaveAttribute("open");
+    expect(screen.getByRole("link", { name: /Tomate \(Früh\).*Beet 3/ })).toHaveAttribute(
+      "href", "/app/planting-plans/17",
+    );
+    expect(screen.getByText(/Ertragseinheit fehlt.*Pflanzabstand fehlt/)).toBeVisible();
+    expect(screen.getByTestId("yield-bar-2026-W10-1")).toBeVisible();
+    expect(screen.queryByRole("button", { name: /Tomate/ })).not.toBeInTheDocument();
+
+    const nextSeasonPlan = { ...mocks.incompletePlans[0], plan_id: 18 };
+    mocks.incompletePlans = [nextSeasonPlan, { ...nextSeasonPlan, plan_id: 19 }];
+    outletContext.activeSeason = { id: 2, start_date: "2026-01-01", end_date: "2026-12-31" };
+    rerender(<FocusManagerProvider><MemoryRouter><YieldOverviewPage /></MemoryRouter></FocusManagerProvider>);
+    expect(await screen.findByText("Anbaupläne ohne Prognose (2)")).toBeVisible();
+    expect(screen.queryByText("Anbauplan ohne Prognose (1)")).not.toBeInTheDocument();
+  });
+
   it("retries a failed load without showing empty yield content", async () => {
     mocks.planList.mockRejectedValueOnce(new Error("offline"));
     render(<FocusManagerProvider><MemoryRouter><YieldOverviewPage /></MemoryRouter></FocusManagerProvider>);
@@ -467,7 +509,7 @@ describe("YieldOverviewPage", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Für die aktive Saison sind keine Erntedaten vorhanden. Stelle sicher, dass deine Kulturen erwartete Erträge eingetragen haben.",
+        "Für die Prognose braucht jeder Anbauplan einen Erntezeitraum, einen erwarteten Ertrag mit Einheit und eine Anbaufläche oder Pflanzenzahl.",
       ),
     ).toBeInTheDocument();
   });
