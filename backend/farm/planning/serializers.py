@@ -33,6 +33,7 @@ from farm.services.demo_project import find_demo_crop_species, is_demo_project_d
 from farm.services.germination_check import check_germination
 from farm.services.plant_count import compute_plan_plant_count
 from farm.services.site_suitability import check_site_suitability
+from farm.services.tasks import plan_cultivation_type
 from farm.services.timing_window_check import TimingWindowChecker
 
 
@@ -277,26 +278,18 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
     def get_crop_display_language_code(self, obj: PlantingPlan) -> str:
         return self._get_localized_crop_name(obj)[1]
 
-    def _calculated_harvest_dates(self, obj: PlantingPlan) -> tuple[date | None, date | None]:
-        cache = self.context.setdefault('_calculated_harvest_dates_by_plan', {})
+    def _planned_harvest_dates(self, obj: PlantingPlan) -> tuple[date | None, date | None]:
+        cache = self.context.setdefault('_planned_harvest_dates_by_plan', {})
         cache_key = obj.pk or id(obj)
         if cache_key not in cache:
-            cache[cache_key] = obj.calculate_effective_harvest_dates(self._general_crop_index(obj))
+            cache[cache_key] = obj.planned_harvest_dates(self._general_crop_index(obj))
         return cache[cache_key]
 
     def get_harvest_date(self, obj: PlantingPlan) -> date | None:
-        """Return harvest start only when crop growth timing is known."""
-        calculated_harvest_date, _ = self._calculated_harvest_dates(obj)
-        if calculated_harvest_date is None:
-            return None
-        return obj.harvest_date or calculated_harvest_date
+        return self._planned_harvest_dates(obj)[0]
 
     def get_harvest_end_date(self, obj: PlantingPlan) -> date | None:
-        """Return harvest end only when both growth and harvest timing are known."""
-        _, calculated_harvest_end_date = self._calculated_harvest_dates(obj)
-        if calculated_harvest_end_date is None:
-            return None
-        return obj.harvest_end_date or calculated_harvest_end_date
+        return self._planned_harvest_dates(obj)[1]
 
     class Meta:
         model = PlantingPlan
@@ -321,6 +314,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
             return attrs
         self._validate_create_has_active_season(attrs)
         self._validate_planting_date_within_season(attrs)
+        self._apply_planned_propagation_dates(attrs)
         self._apply_area_input_conversion(attrs)
         self._apply_rotation_acceptance(attrs)
         self._run_model_clean(attrs)
@@ -331,8 +325,30 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         fields = attrs.keys() - {'updated_by'}
         return bool(fields) and fields <= PlantingPlan.ACTUAL_DATE_FIELDS
 
+    def _apply_planned_propagation_dates(self, attrs: dict[str, Any]) -> None:
+        fields = attrs.keys() & {'planned_propagation_start_date', 'planned_sowing_date'}
+        if not any(attrs[field] is not None for field in fields):
+            return
+        crop = attrs.get('crop', getattr(self.instance, 'crop', None))
+        cultivation = attrs.get('cultivation_type', getattr(self.instance, 'cultivation_type', ''))
+        plan = PlantingPlan(
+            crop=crop, project_id=crop.project_id if crop else None, cultivation_type=cultivation,
+        )
+        if plan_cultivation_type(plan, self._general_crop_index(plan)) != 'pre_cultivation':
+            attrs.update(dict.fromkeys(fields))
+
     def update(self, instance: PlantingPlan, validated_data: dict[str, Any]) -> PlantingPlan:
         if not self.is_actual_date_update(validated_data):
+            cultivation = validated_data.get('cultivation_type', instance.cultivation_type)
+            crop_changed = 'crop' in validated_data and validated_data['crop'] != instance.crop
+            if crop_changed:
+                validated_data.update(
+                    harvest_date_is_explicit=False, harvest_end_date_is_explicit=False,
+                )
+            if crop_changed or cultivation != instance.cultivation_type:
+                # Only retain applicable dates explicitly supplied with this change.
+                validated_data.setdefault('planned_propagation_start_date', None)
+                validated_data.setdefault('planned_sowing_date', None)
             return super().update(instance, validated_data)
         for field, value in validated_data.items():
             setattr(instance, field, value)

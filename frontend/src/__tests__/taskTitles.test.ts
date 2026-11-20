@@ -13,4 +13,10 @@ describe('automatic task titles', () => {
     expect(taskDisplayTitle({ ...task, origin: 'manual' }, () => 'translated')).toBe('Start propagation');
     expect(taskDisplayTitle({ ...task, source_key: 'external' }, () => 'translated')).toBe('Start propagation');
   });
+
+  it('distinguishes generic sowing and direct sowing with the same stable event', () => {
+    const sowing = { ...task, source_key: 'plan:42:event:sowing', title: 'Sowing' };
+    expect(taskDisplayTitle(sowing, key => key)).toBe('dashboard:events.generic_sowing');
+    expect(taskDisplayTitle({ ...sowing, title: 'Direct sowing' }, key => key)).toBe('dashboard:events.sowing');
+  });
 });

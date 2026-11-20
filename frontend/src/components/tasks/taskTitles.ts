@@ -7,6 +7,9 @@ const EVENT_TITLES: Record<string, string> = {
 
 export function taskDisplayTitle(task: Task, translate: (key: string) => string): string {
   const event = /^plan:\d+:event:(propagation_start|sowing|planting|harvest_start|harvest_end)$/.exec(task.source_key ?? '')?.[1];
+  if (task.origin === 'automatic' && event === 'sowing' && task.title === 'Sowing') {
+    return translate('dashboard:events.generic_sowing');
+  }
   if (task.origin === 'automatic' && event && task.title === EVENT_TITLES[event]) {
     return translate(`dashboard:events.${event}`);
   }

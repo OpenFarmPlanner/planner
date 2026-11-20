@@ -280,6 +280,43 @@ class GerminationTest(ProjectApiTestCase):
             self.assertEqual(saved[field], live.data[field])
         self.assertEqual(len(saved["germination_findings"]), 2)
 
+    def test_saved_and_live_checks_prefer_the_planned_nursery_sowing_date(self) -> None:
+        season = Season.objects.create(
+            project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+        )
+        CropTimingWindow.objects.create(
+            crop=self.crop, kind="pre_cultivation", unit="iso_week", start_week=11, end_week=13,
+        )
+        plan = PlantingPlan.objects.create(
+            project=self.project, season=season, crop=self.crop, bed=self.bed, area_usage_sqm=2,
+            cultivation_type="pre_cultivation", planting_date=date(2026, 4, 10),
+            planned_propagation_start_date=date(2026, 3, 20), planned_sowing_date=date(2026, 4, 2),
+        )
+        saved = self.client.get(f"/openfarmplanner/api/planting-plans/{plan.pk}/")
+        preview_url = "/openfarmplanner/api/planting-plans/timing-window-check/"
+        params = {
+            "crop_id": self.crop.pk, "planting_date": "2026-04-10",
+            "cultivation_type": "pre_cultivation", "planned_propagation_start_date": "2026-03-20",
+            "planned_sowing_date": "2026-04-02",
+        }
+        live = self.client.get(preview_url, params)
+
+        for response in (saved, live):
+            self.assertEqual(response.status_code, 200, response.data)
+            self.assertEqual(response.data["expected_emergence"], {
+                "min": "2026-04-09", "max": "2026-04-16",
+            })
+            self.assertEqual(response.data["germination_findings"], [
+                {"code": "propagation_shorter_than_germination"}, {"code": "cold_period_required"},
+            ])
+            self.assertEqual(response.data["timing_window_findings"][0]["date"], "2026-04-02")
+
+        for field in ("planned_propagation_start_date", "planned_sowing_date"):
+            with self.subTest(field=field):
+                invalid = self.client.get(preview_url, {**params, field: "2026-02-30"})
+                self.assertEqual(invalid.status_code, 400, invalid.data)
+                self.assertEqual(invalid.data["code"], "invalid_timing_window_parameters")
+
 
 class GerminationRequirementsTest(ProjectApiTestCase):
     def test_canonical_requirements_round_trip_and_preserve_explicit_none_for_old_clients(self) -> None:

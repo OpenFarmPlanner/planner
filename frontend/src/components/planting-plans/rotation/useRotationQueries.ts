@@ -90,13 +90,15 @@ const fetchTimingWindowCheck = (params: Parameters<typeof plantingPlanAPI.timing
 
 /**
  * The plan's timing-window hints as entered, live (docs/timing-windows.md):
- * needs crop and planting date; the backend derives sowing and harvest dates.
+ * needs crop and planting date and can use independently planned nursery dates.
  */
 export function useTimingWindowCheck(
   cropId: number | null,
   plantingDate: string | null,
   cultivationType: string,
+  nurseryDates: Pick<PlantingPlan, 'planned_propagation_start_date' | 'planned_sowing_date'>,
 ): RotationQueryResult<{ timing_window_findings: TimingWindowFinding[] } & Pick<PlantingPlan, 'germination_findings' | 'expected_emergence'>> {
+  const { planned_propagation_start_date, planned_sowing_date } = nurseryDates;
   const request = useMemo(() => {
     if (!cropId || !plantingDate) {
       return null;
@@ -105,8 +107,10 @@ export function useTimingWindowCheck(
       crop_id: cropId,
       planting_date: plantingDate,
       ...(cultivationType ? { cultivation_type: cultivationType } : {}),
+      ...(planned_propagation_start_date ? { planned_propagation_start_date } : {}),
+      ...(planned_sowing_date ? { planned_sowing_date } : {}),
     };
-  }, [cropId, cultivationType, plantingDate]);
+  }, [cropId, cultivationType, plantingDate, planned_propagation_start_date, planned_sowing_date]);
   return useDebouncedRotationQuery(request, fetchTimingWindowCheck);
 }
 

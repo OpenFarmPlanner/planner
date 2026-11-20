@@ -39,6 +39,24 @@ describe('planting-plan dates', () => {
       .toBe('2026-05-16');
   });
 
+  it('displays copied supplemental activities and leaves their new actual dates empty', () => {
+    const copied: PlantingPlan = {
+      crop: 1, bed: 2, cultivation_type: 'pre_cultivation',
+      planting_date: '2027-04-07', crop_propagation_duration_days: 21,
+      planned_propagation_start_date: '2027-03-12', planned_sowing_date: '2027-03-13',
+    };
+    expect(getPlanColumnDates(copied, 'sowing_date')).toEqual({
+      activity: 'propagation', planned: '2027-03-12', actual: null,
+    });
+    const activities = getPlanActivityDates(copied);
+    expect(activities.find(date => date.activity === 'sowing')).toEqual({
+      activity: 'sowing', planned: '2027-03-13', actual: null,
+    });
+    expect(activities.find(date => date.activity === 'transplanting')).toEqual({
+      activity: 'transplanting', planned: '2027-04-07', actual: null,
+    });
+  });
+
   it('compares calendar days across daylight-saving changes with a signed difference', () => {
     expect(planDateDeviation({ activity: 'sowing', planned: '2026-03-28', actual: '2026-03-30' })).toBe(2);
     expect(planDateDeviation({ activity: 'sowing', planned: '2026-03-30', actual: '2026-03-28' })).toBe(-2);

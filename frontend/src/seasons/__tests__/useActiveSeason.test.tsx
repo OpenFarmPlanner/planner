@@ -394,10 +394,10 @@ describe('useActiveSeason — mutations', () => {
 
     let summary;
     await act(async () => {
-      summary = await result.current.copyDataInto(1, 2);
+      summary = await result.current.copyDataInto(1, 2, 'without_bed', true);
     });
 
-    expect(copyFromMock).toHaveBeenCalledWith(1, 2);
+    expect(copyFromMock).toHaveBeenCalledWith(1, 2, 'without_bed', true);
     expect(summary).toEqual({ copied: 12 });
     expect(listMock).toHaveBeenCalled();
   });

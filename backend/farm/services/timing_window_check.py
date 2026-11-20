@@ -7,9 +7,9 @@ windows of the matching kind; without them there is no hint:
   Direktsaat windows;
 - transplanting from own propagation: the planting date against the
   Pflanzung windows. Only when the crop has no effective Pflanzung windows is
-  the sowing date (planting date minus the effective propagation duration)
-  checked against the Anzucht windows instead, so one wrong planting date
-  gives exactly one hint;
+  the sowing date checked against the Anzucht windows instead. This uses
+  the planned nursery sowing date, the planned propagation start, or the
+  planting date minus the effective propagation duration;
 - transplanting bought-in plants: the planting date against the Pflanzung windows.
 
 There are no harvest windows: the harvest follows from the planting date and
@@ -88,6 +88,11 @@ def dates_to_check(
     decides whether own propagation is checked by planting or by sowing date.
     """
     planting_date = plan.planting_date
+    nursery_sowing = plan.planned_sowing_date or plan.planned_propagation_start_date
+    if nursery_sowing and plan_uses_own_propagation(plan, crop, index) and (
+        planting_date is None or KIND_PLANTING not in kinds_with_windows
+    ):
+        return [(KIND_PRE_CULTIVATION, nursery_sowing)]
     if planting_date is None:
         return []
     if plan.cultivation_type == PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT:

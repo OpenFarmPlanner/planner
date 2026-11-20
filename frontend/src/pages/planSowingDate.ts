@@ -1,6 +1,6 @@
 import type { Crop, PlantingPlan } from '../api/types';
 import { getEffectiveCropValue } from '../crops/varietyValueSource';
-import { addUtcDays, formatIsoDate, parseIsoDate } from '../utils/isoDate';
+import { addUtcDays, formatDateToAPI, formatIsoDate, parseIsoDate } from '../utils/isoDate';
 
 export const PRE_CULTIVATION = 'pre_cultivation';
 export const DIRECT_SOWING = 'direct_sowing';
@@ -14,7 +14,9 @@ type PlanCultivationFields = Pick<
 type PlanPropagationFields = PlanCultivationFields
   & Pick<PlantingPlan, 'crop_propagation_duration_days'>;
 
-type PlanScheduleFields = PlanPropagationFields & Pick<PlantingPlan, 'planting_date'>;
+type PlanPropagationDateFields = PlanPropagationFields & Pick<PlantingPlan, 'planned_propagation_start_date'>;
+
+type PlanScheduleFields = PlanPropagationDateFields & Pick<PlantingPlan, 'planting_date'>;
 
 /**
  * `planting_date` is typed as an ISO string, but a DataGrid row mid-edit can
@@ -29,7 +31,7 @@ function normalizePlantingDate(value: PlantingPlan['planting_date'] | Date): str
     return null;
   }
   if (value instanceof Date) {
-    return formatIsoDate(value);
+    return formatDateToAPI(value);
   }
   return value;
 }
@@ -75,6 +77,10 @@ function resolvePropagationDurationDays(
     ?? null;
 }
 
+export function getExplicitPropagationStart(plan: PlanPropagationDateFields, crop?: Crop): string | null {
+  return resolveIsPreCultivation(plan, crop) ? plan.planned_propagation_start_date ?? null : null;
+}
+
 export interface PlanPropagationInfo {
   isPreCultivation: boolean;
   isPurchasedTransplant: boolean;
@@ -118,6 +124,16 @@ export function getPlanSowingSchedule(
   crop: Crop | undefined,
 ): PlanSowingSchedule | null {
   const plantingDateIso = normalizePlantingDate(plan.planting_date);
+  const propagationStart = getExplicitPropagationStart(plan, crop);
+  if (propagationStart) {
+    const sowing = parseIsoDate(propagationStart);
+    const planting = parseIsoDate(plantingDateIso);
+    const days = sowing && planting ? (planting.getTime() - sowing.getTime()) / 86_400_000 : 0;
+    return {
+      isPreCultivation: true, isPurchasedTransplant: false,
+      propagationDurationDays: days > 0 ? days : null, sowingDate: propagationStart,
+    };
+  }
   if (!plantingDateIso) {
     return null;
   }

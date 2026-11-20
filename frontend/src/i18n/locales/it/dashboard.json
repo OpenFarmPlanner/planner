@@ -96,6 +96,7 @@
     "deleteError": "Impossibile eliminare l'attività. Riprova."
   },
   "events": {
+    "generic_sowing": "Semina",
     "propagation_start": "Avvio del vivaio",
     "sowing": "Semina diretta",
     "planting": "Trapianto",

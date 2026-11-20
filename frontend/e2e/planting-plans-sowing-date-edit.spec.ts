@@ -8,13 +8,14 @@ interface SowingDateEditFixture {
   planId: number;
   propagationDurationDays: number;
   api: <T>(path: string, data: Record<string, unknown>) => Promise<T>;
-  getPlan: () => Promise<{ planting_date: string }>;
+  getPlan: () => Promise<{ planting_date: string; planned_propagation_start_date: string | null }>;
 }
 
 async function createSowingDateEditFixture(
   page: Page,
   request: APIRequestContext,
   scenario: string,
+  plannedPropagationStart?: string,
 ): Promise<SowingDateEditFixture> {
   await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
 
@@ -55,10 +56,11 @@ async function createSowingDateEditFixture(
     season: season.id,
     cultivation_type: 'pre_cultivation',
     planting_date: '2026-05-01',
+    planned_propagation_start_date: plannedPropagationStart,
     area_usage_sqm: 1,
   });
 
-  const getPlan = async (): Promise<{ planting_date: string }> => {
+  const getPlan = async (): ReturnType<SowingDateEditFixture['getPlan']> => {
     const response = await page.request.get(`${apiBase}/planting-plans/${plan.id}/`, {
       headers: { 'X-Project-Id': String(projectId) },
     });
@@ -132,5 +134,82 @@ test.describe('planting plans sowing date edit', () => {
 
     const persisted = await fixture.getPlan();
     expect(persisted.planting_date).toBe('2026-06-15');
+  });
+
+  test('edits an independently planned propagation date without moving the transplant date', async ({ page, request }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    const fixture = await createSowingDateEditFixture(page, request, 'independent-propagation-date', '2026-04-15');
+    await page.goto('/app/planting-plans');
+
+    const row = page.locator(`[role="row"][data-id="${fixture.planId}"]`);
+    const sowingCell = row.locator('[data-field="sowing_date"]');
+    await expect(sowingCell).toContainText('15.4.2026');
+    await sowingCell.dblclick();
+    const sowingInput = sowingCell.getByRole('textbox');
+    await expect(sowingInput).toBeFocused();
+    await sowingInput.fill('17.04.2026');
+    await sowingInput.press('Enter');
+    await expect(page.locator('.MuiDataGrid-row--editing')).toHaveCount(0);
+
+    expect(await fixture.getPlan()).toMatchObject({
+      planned_propagation_start_date: '2026-04-17', planting_date: '2026-05-01',
+    });
+    await page.reload();
+    await expect(sowingCell).toContainText('17.4.2026');
+    await expect(row.locator('[data-field="planting_date"]')).toContainText('1.5.2026');
+  });
+
+  test('recomputes propagation timing when the grid changes the crop', async ({ page, request }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    const fixture = await createSowingDateEditFixture(page, request, 'replace-propagation-crop', '2026-04-15');
+    const replacement = await fixture.api<{ id: number }>('/crops/', {
+      name: 'Ersatzkultur',
+      propagation_duration_days: 30,
+      cultivation_type: 'pre_cultivation',
+      cultivation_types: ['pre_cultivation'],
+      plants_per_m2: 4,
+    });
+    await page.goto('/app/planting-plans');
+
+    const row = page.locator(`[role="row"][data-id="${fixture.planId}"]`);
+    const sowingCell = row.locator('[data-field="sowing_date"]');
+    await expect(sowingCell).toContainText('15.4.2026');
+    const cropCell = row.locator('[data-field="crop"]');
+    await cropCell.dblclick();
+    await cropCell.getByRole('combobox').fill('Ersatzkultur');
+    await page.getByRole('option', { name: 'Ersatzkultur' }).click();
+    await page.getByRole('heading', { name: 'Anbaupläne' }).click();
+
+    await expect(sowingCell).toContainText('1.4.2026');
+    expect(await fixture.getPlan()).toMatchObject({
+      crop: replacement.id,
+      planned_propagation_start_date: null,
+      planting_date: '2026-05-01',
+    });
+  });
+
+  test('keeps the planned propagation date when duplicating on mobile', async ({ page, request }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    const fixture = await createSowingDateEditFixture(page, request, 'duplicate-mobile-propagation', '2026-04-15');
+    await page.goto('/app/planting-plans');
+
+    const card = page.locator(`[data-mobile-card-id="${fixture.planId}"]`);
+    await card.getByRole('button', { name: /Aktionen für Anbauplan/ }).click();
+    await page.getByRole('menuitem', { name: 'Duplizieren' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Anbauplan hinzufügen' });
+    await expect(dialog.getByRole('textbox', { name: 'Aussaattermin' })).toHaveValue('15.04.2026');
+
+    const created = page.waitForResponse(response =>
+      new URL(response.url()).pathname === '/api/planting-plans/' && response.request().method() === 'POST'
+    );
+    await dialog.getByRole('button', { name: 'Hinzufügen' }).click();
+    const response = await created;
+    expect(response.status()).toBe(201);
+    expect(await response.json()).toMatchObject({
+      planned_propagation_start_date: '2026-04-15',
+      planting_date: '2026-05-01',
+      actual_propagation_start_date: null,
+    });
+    await expect(dialog).toBeHidden();
   });
 });

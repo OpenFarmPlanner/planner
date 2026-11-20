@@ -96,6 +96,7 @@
     "deleteError": "Die Aufgabe konnte nicht gelöscht werden. Versuche es erneut."
   },
   "events": {
+    "generic_sowing": "Aussaat",
     "propagation_start": "Anzucht beginnen",
     "sowing": "Direktsaat",
     "planting": "Pflanzen",

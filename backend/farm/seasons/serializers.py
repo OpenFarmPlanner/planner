@@ -174,7 +174,11 @@ class SeasonCreateAndCopySerializer(SeasonSerializer):
         return super().create(validated_data)
 
 
-class SeasonCopyFromSerializer(serializers.Serializer):
+class SeasonCopyDateBasisSerializer(serializers.Serializer):
+    use_actual_dates = serializers.BooleanField(default=False)
+
+
+class SeasonCopyFromSerializer(SeasonCopyDateBasisSerializer):
     source_season_id = serializers.IntegerField()
     rotation_conflicts = serializers.ChoiceField(
         choices=COPY_CONFLICT_MODES,

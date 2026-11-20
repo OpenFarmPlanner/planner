@@ -56,6 +56,7 @@ from farm.services.seasons import (
 from farm.services.tasks import generate_tasks_for_plans
 
 from .serializers import (
+    SeasonCopyDateBasisSerializer,
     SeasonCopyFromSerializer,
     SeasonCreateAndCopySerializer,
     SeasonPatternSerializer,
@@ -197,6 +198,13 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
+    @staticmethod
+    def _invalid_copy_options(errors) -> Response:
+        return api_error_response(
+            code='invalid_season_copy_options', detail='Invalid season copy options.',
+            status_code=status.HTTP_400_BAD_REQUEST, fields=errors,
+        )
+
     def _resolve_copy_source(self, target_season: Season, source_season_id: object) -> Season | Response:
         """The copy's source season, or the error response to return instead."""
         try:
@@ -238,8 +246,12 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             source_season = self._resolve_copy_source(target_season, source_id)
         if isinstance(source_season, Response):
             return source_season
+        options = SeasonCopyDateBasisSerializer(data=request.query_params)
+        if not options.is_valid():
+            return self._invalid_copy_options(options.errors)
         pairs, skipped_count = build_planting_plan_copies(
             source_season=source_season, target_season=target_season,
+            use_actual_dates=options.validated_data['use_actual_dates'],
         )
         service = RotationService(
             target_season.project_id,
@@ -264,10 +276,7 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
         if not serializer.is_valid():
             if 'source_season_id' in serializer.errors:
                 return self._invalid_copy_source_id()
-            return api_error_response(
-                code='invalid_season_copy_options', detail='Invalid season copy options.',
-                status_code=status.HTTP_400_BAD_REQUEST, fields=serializer.errors,
-            )
+            return self._invalid_copy_options(serializer.errors)
         source_season = self._resolve_copy_source(
             target_season, serializer.validated_data['source_season_id'],
         )
@@ -277,6 +286,7 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
         ensure_project_checkpoint(request.active_project, user_name=_current_actor_label(request))
         return Response(self._copy_plans(
             source_season, target_season, serializer.validated_data['rotation_conflicts'],
+            use_actual_dates=serializer.validated_data['use_actual_dates'],
         ))
 
     @action(
@@ -308,12 +318,14 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
     def _copy_plans(
         self, source_season: Season, target_season: Season,
         rotation_conflicts: str = COPY_CONFLICTS_KEEP,
+        *, use_actual_dates: bool = False,
     ) -> dict[str, int]:
         created_plans, skipped_count = copy_planting_plans(
             source_season=source_season,
             target_season=target_season,
             rotation_conflicts=rotation_conflicts,
             language_code=resolve_request_language(self.request),
+            use_actual_dates=use_actual_dates,
         )
         if created_plans:
             # Group the created revisions while keeping each copy individually restorable.

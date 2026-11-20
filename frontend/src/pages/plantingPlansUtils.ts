@@ -133,11 +133,27 @@ export interface PlantingPlanRow extends PlantingPlan, EditableRow {
   note_attachment_count?: number;
 }
 
-export interface MobileCreateFormState {
+type SupplementalPlannedDates = Pick<
+  PlantingPlan, 'planned_propagation_start_date' | 'planned_sowing_date'
+>;
+
+export const clearSupplementalPlannedDates: SupplementalPlannedDates = {
+  planned_propagation_start_date: undefined,
+  planned_sowing_date: undefined,
+};
+
+export function getSupplementalPlannedDates(plan: SupplementalPlannedDates): SupplementalPlannedDates {
+  return {
+    planned_propagation_start_date: plan.planned_propagation_start_date,
+    planned_sowing_date: plan.planned_sowing_date,
+  };
+}
+
+export interface MobileCreateFormState extends SupplementalPlannedDates {
   crop: string;
   bed: string;
   cultivation_type: PlanCultivationType | "";
-  /** Derived from `planting_date`; German-formatted, like `planting_date`. */
+  /** German-formatted date, using explicit propagation timing when available. */
   sowing_date: string;
   planting_date: string;
   area_m2: string;
@@ -386,6 +402,8 @@ export const areRowsSemanticallyEqual = (
       previousRow.crop === nextRow.crop &&
       previousRow.cultivation_type === nextRow.cultivation_type &&
       previousRow.planting_date === nextRow.planting_date &&
+      previousRow.planned_propagation_start_date === nextRow.planned_propagation_start_date &&
+      previousRow.planned_sowing_date === nextRow.planned_sowing_date &&
       previousRow.harvest_date === nextRow.harvest_date &&
       previousRow.harvest_end_date === nextRow.harvest_end_date &&
       Object.values(ACTUAL_DATE_FIELDS).every(field => previousRow[field] === nextRow[field]) &&

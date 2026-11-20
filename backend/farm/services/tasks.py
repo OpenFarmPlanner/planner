@@ -20,11 +20,9 @@ AUTOMATIC_TASK_TITLES = {
 }
 
 
-def plan_event_dates(
+def plan_cultivation_type(
     plan: PlantingPlan, crop_index: dict[int, Any] | None = None,
-) -> dict[str, date]:
-    """Resolve known events from the same effective timing values as the plan."""
-    events = {}
+) -> str:
     crop = plan.crop
     cultivation_type = plan.cultivation_type or resolve_crop_field(
         crop, 'cultivation_type', crop_index,
@@ -35,13 +33,39 @@ def plan_event_dates(
             cultivation_type = 'pre_cultivation'
         elif 'direct_sowing' in types:
             cultivation_type = 'direct_sowing'
+    return cultivation_type or ''
+
+
+def _automatic_event_title(
+    plan: PlantingPlan, event: str, crop_index: dict[int, Any] | None,
+) -> str:
+    if event == 'sowing' and plan_cultivation_type(plan, crop_index) != 'direct_sowing':
+        return 'Sowing'
+    return AUTOMATIC_TASK_TITLES[event]
+
+
+def plan_event_dates(
+    plan: PlantingPlan, crop_index: dict[int, Any] | None = None,
+) -> dict[str, date]:
+    """Resolve known events from the same effective timing values as the plan."""
+    crop = plan.crop
+    cultivation_type = plan_cultivation_type(plan, crop_index)
+    events = {}
+    if cultivation_type == 'pre_cultivation':
+        if plan.planned_propagation_start_date is not None:
+            events['propagation_start'] = plan.planned_propagation_start_date
+        if plan.planned_sowing_date is not None:
+            events['sowing'] = plan.planned_sowing_date
     if plan.planting_date:
         if cultivation_type == 'direct_sowing':
             events['sowing'] = plan.planting_date
         elif cultivation_type in ('pre_cultivation', 'purchased_transplant'):
             events['planting'] = plan.planting_date
         propagation = resolve_crop_field(crop, 'propagation_duration_days', crop_index)
-        if cultivation_type == 'pre_cultivation' and propagation is not None and propagation > 0:
+        if (
+            cultivation_type == 'pre_cultivation' and 'propagation_start' not in events
+            and propagation is not None and propagation > 0
+        ):
             events['propagation_start'] = plan.planting_date - timedelta(days=propagation)
     computed_start, computed_end = plan.calculate_effective_harvest_dates(crop_index)
     start = plan.harvest_date or computed_start
@@ -91,7 +115,7 @@ def generate_plan_tasks(
             source_key=f'plan:{plan.pk}:event:{event}', occurrence_index=0,
             defaults={
                 'planting_plan': plan, 'season_id': plan.season_id, 'crop_id': plan.crop_id,
-                'title': AUTOMATIC_TASK_TITLES[event], 'origin': 'automatic',
+                'title': _automatic_event_title(plan, event, crop_index), 'origin': 'automatic',
                 'due_date': due_date, 'calculated_due_date': due_date,
             },
         )
@@ -172,6 +196,8 @@ def synchronize_plan_tasks(plan: PlantingPlan) -> None:
             continue
         changes = {'season_id': plan.season_id, 'crop_id': plan.crop_id, 'field_id': None}
         if event in events:
+            if event == 'sowing' and task.title in ('Sowing', AUTOMATIC_TASK_TITLES['sowing']):
+                changes['title'] = _automatic_event_title(plan, event, crop_index)
             changes['calculated_due_date'] = events[event]
             if not task.due_date_overridden:
                 changes['due_date'] = events[event]

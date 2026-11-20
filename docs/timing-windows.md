@@ -258,9 +258,10 @@ when the crop has effective windows of the matching kind:
 - direct sowing: the planting date (= sowing date) against Direktsaat;
 - transplanting from own propagation: the planting date against Pflanzung.
   Only when the crop has no effective Pflanzung windows is the sowing date
-  (planting date minus the effective propagation duration, Sorte before
-  Kultur, as in the sowing-date column) checked against Anzucht instead, so a
-  wrong planting date gives exactly one hint;
+  checked against Anzucht. Use the planned nursery sowing date when present,
+  then the planned propagation start, then the planting date minus the
+  effective propagation duration (Sorte before Kultur). Germination uses
+  the same date for expected emergence and cold-period hints;
 - bought-in plants: the planting date against Pflanzung.
 
 The harvest start is never checked (there are no harvest windows). Anzucht

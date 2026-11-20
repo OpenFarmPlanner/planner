@@ -370,19 +370,14 @@ helper with its own two columns.
   (`area_input_unit: "M2" | "PLANTS"`) the backend recomputes the other from
   (`lastEditedFieldRef` in `PlantingPlans.tsx`, read in `mapToApiData`).
 - **Aussaattermin (`sowing_date`) / Pflanztermin (`planting_date`)** —
-  `sowing_date` is a pure `valueGetter`/`valueSetter` view over the single
-  persisted `planting_date`; editing it writes `planting_date` straight back
-  (`planting_date = sowing_date + propagation duration` for Anzucht, identity
-  for direct sowing), so there's no backend ambiguity to resolve and no
-  `lastEditedFieldRef` involved. The underlying "is this plan Anzucht, and
-  what's its propagation duration/sowing date" logic lives once in
-  `frontend/src/pages/planSowingDate.ts` (`getPlanSowingSchedule`,
-  `getPlantingDateFromSowingDate`, `getPlanPropagationInfo`) and is shared
-  with the Anbaukalender (`ganttChartUtils.ts`) and derived location tasks
-  (`locationDerivedTasks.ts`) — don't re-derive it a third time. The cell is
-  `isCellEditable: false` and renders "—" with `FullCellTooltip` when the
-  crop uses Anzucht but has no effective `propagation_duration_days`, the
-  same pattern the calculated harvest columns use for a missing duration.
+  Direct sowing uses the same date for both columns. For standard Anzucht,
+  the sowing date is the planting date minus the crop's propagation duration
+  and the two editors update each other. When a plan has a separate
+  `planned_propagation_start_date`, the sowing cell edits that date and the
+  planting date stays independent. `frontend/src/pages/planSowingDate.ts`
+  resolves the schedule shared by the grid and Anbaukalender. If neither a
+  separate date nor a usable duration exists, the Planned-mode sowing cell
+  shows "—" and explains the missing timing.
 
 ### Marking the pair in the header
 

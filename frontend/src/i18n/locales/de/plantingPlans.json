@@ -65,9 +65,9 @@
     "missingHarvestDuration": "Nicht berechenbar, da für diese Kultur keine Erntezeit hinterlegt ist.",
     "missingGrowthAndHarvestDuration": "Nicht berechenbar, da für diese Kultur weder eine Wachstumszeit noch eine Erntezeit hinterlegt ist.",
     "sowingDateTitle": "Aussaattermin",
-    "sowingDateDescription": "Mit dem Pflanztermin gekoppelt: Pflanztermin minus Anzuchtdauer der Kultur. Änderungen aktualisieren automatisch den anderen Wert. Bei Direktsaat gleich dem Pflanztermin.",
+    "sowingDateDescription": "Bei Anzucht wird der Termin aus Pflanztermin und Anzuchtdauer berechnet, sofern kein eigener Anzuchtbeginn geplant ist. Bei Direktsaat entspricht er dem Pflanztermin.",
     "plantingDateTitle": "Pflanztermin",
-    "plantingDateDescription": "Mit dem Aussaattermin gekoppelt. Bei Direktsaat ist das zugleich der Aussaattermin. Muss innerhalb der Saison liegen.",
+    "plantingDateDescription": "Termin für Pflanzung oder Direktsaat. Er muss in der Saison liegen.",
     "missingPropagationDuration": "Nicht berechenbar, da für diese Kultur keine Anzuchtdauer hinterlegt ist.",
     "noOwnPropagation": "Keine eigene Anzucht, die Pflanzen werden zugekauft."
   },

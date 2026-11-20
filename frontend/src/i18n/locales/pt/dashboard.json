@@ -96,6 +96,7 @@
     "deleteError": "Não foi possível eliminar a tarefa. Tente novamente."
   },
   "events": {
+    "generic_sowing": "Sementeira",
     "propagation_start": "Iniciar viveiro",
     "sowing": "Sementeira direta",
     "planting": "Transplantação",

@@ -233,6 +233,17 @@ a season pattern changes and keeps the previous period eligible.
 - The dialog loads `GET /seasons/{id}/copy-preview/?resolve_source=true` to
   resolve the preceding season and calculate the crop rotation preview.
   Explicit `source_season_id` requests use the same eligibility check.
+  Preview and execution both accept `use_actual_dates`, which defaults to
+  false. With it enabled, each recorded date supplies the corresponding new
+  planned date, using the source's planned date for activities with no entry.
+  Changing the date basis revalidates the same source season.
+  The selected direct sowing or transplanting date determines the whole-year
+  shift for the plan, and the remaining dates receive that same shift.
+  A crop-derived fallback stays calculated when the new plan yields the same
+  shifted date. Otherwise the copy stores the shifted source date explicitly.
+  Direct sowing uses sowing and harvest dates. Bought-in plants use
+  transplant and harvest dates. Own propagation can use all five.
+  Copies always start with their own actual dates unset.
   When a copy would break the rotation
   on its bed (or gets a nutrient hint), shows a summary and lets the user copy
   the conflicting plans without a bed, onto the same beds anyway, or not at
