@@ -1890,10 +1890,13 @@ def _create_demo_harvests(project: Project, crops, beds, language: str, year: in
         'en': 'Picked from both tomato rows.',
         'fr': 'Récolte des deux rangs de tomates.',
         'es': 'Cosecha de las dos hileras de tomate.',
+        'it': 'Raccolta da entrambe le file di pomodori.',
+        'pt': 'Colheita das duas linhas de tomate.',
+        'nl': 'Geoogst uit beide tomatenrijen.',
     }
     batch = HarvestRecord.objects.create(
         project=project, crop=tomato, date=date(year, 7, 26), quantity=12,
-        unit=HarvestUnit.KILOGRAM, note=notes[language],
+        unit=HarvestUnit.KILOGRAM, note=notes.get(language, notes[DEMO_LANGUAGE_FALLBACK]),
     )
     HarvestAllocation.objects.bulk_create([
         HarvestAllocation(
