@@ -82,6 +82,81 @@ why catching the database exception alone cannot enforce logical identity.
 Detailed reproduction and commands are in
 [the audit report](qa-archive/qa-report-2026-11-16.md).
 
+## Targeted localhost companion history acceptance — 2026-11-20
+
+Verified #1202 / merged PR #1277 (`d93ab49f8`) on main
+`f2c1a2d0b14befcbe9ea6b8850380c2628cfae0d`. This narrowly scoped acceptance
+check does not advance the full-sweep baseline or resolve the backlog above.
+
+- Used the existing development servers at `http://localhost:5173` and
+  `http://localhost:8000`, with local loopback PostgreSQL. Previewed the exact
+  database target, then applied the guarded `seed_companion_history_acceptance`
+  command for an existing local account. Only the isolated synthetic
+  **Companion history acceptance** project was exercised; no migrations,
+  application changes, existing-project edits or server restarts were needed.
+- Imported the documented JSON through the Crops file-import dialog, checked
+  **Allow updates**, and started the import. The result reported one new crop,
+  one updated crop and one imported neighbour. The completed operation appears
+  as one **2 crops imported** history entry.
+- Both companion records have a non-null `companion_crop` and empty
+  `companion_text`, including the former free-text neighbour. The other record
+  retains `notes.en = "Imported note"`. The English note is verified in the
+  API payload; the German UI does not display an English-only note.
+- Edited the owner's crop notes through the edit dialog and saved. Restored
+  the completed import through Project History and its confirmation dialog:
+  HTTP 200, the later crop note disappears, both linked neighbours retain their
+  original relation IDs and crop targets, and the imported English note remains.
+  Repeated the edit/restore successfully at 375×800 after the desktop
+  1440×900 run; the JSON file import itself was performed at desktop size.
+- Inspected the restored crop at 1440×900, 375×800 and 800×375 in Chrome,
+  German UI. Both neighbour links remain visible. The known shared topbar
+  overlap at 800×375 was reproduced twice and is tracked by #930; no duplicate
+  issue or queue change. The portrait companion section fits the viewport.
+- Throwaway Playwright script and screenshots are retained locally under
+  `/tmp/ofp-1202-acceptance/`; they are not committed or public attachments.
+  The synthetic fixture remains available locally for the owner's inspection.
+
+Result: **PASS** for the requested import/relink/full-restore acceptance case.
+No new functional defect was found in this scope. This run does not certify
+other import formats, selective undo, concurrency or the rest of the app.
+
+## Targeted localhost acceptance — 2026-11-20, #1087 / #1283
+
+Tested main `b8b45bb615f5bb715029a17b22fdb676e04cd85f`, which includes
+#1283 (`b96657f53`). This is a requested legacy-companion import acceptance
+check, not a full sweep or security review; the full-sweep backlog above is
+unchanged.
+
+- Used the running localhost frontend on port 5173 and backend on port 8000.
+  Created a separate synthetic project through the guarded E2E endpoint;
+  existing user projects and running servers were left unchanged.
+- Uploaded a two-row CSV through the actual import dialog. Its neighbour cell
+  used the supported spaced en-dash legacy format and a German note containing
+  a comma: `QA1087 Basilikum – Schutz vor Schädlingen, Quelle 2026`.
+- Preview returned two new crops and one resolved companion without warnings;
+  reading the preview did not create crops. Apply returned two created crops,
+  one created companion and no errors through crops/companions/finalize phases.
+- Verified both stored crop IDs belong to the captured active project and the
+  relation references those IDs, with no free-text companion. Clicking the
+  neighbour navigated to the other crop, where the reciprocal link appeared.
+- Verified exact storage as `notes.de` with `note_language_code: de`. Switching
+  the browser UI to English did not display the German note as fallback;
+  switching back restored its display unchanged.
+- Repeated the actual CSV preview/apply at 375x800 with a second synthetic
+  crop pair: two created crops, one created companion, no errors.
+- Inspected companion details screenshots at 1440x900, 375x800 and 800x375:
+  note and neighbour link remained readable without clipping or overlap.
+  No UI code was changed.
+- The five bounded synthetic examples in `test_legacy_companion_limits.py`
+  passed using Django's test runner with `config.settings_test` (0.004 seconds).
+  The initial pytest invocation failed before test execution because the
+  session taxonomy fixture queried an absent `crops_cropspecies` table;
+  this is recorded as a runner limitation, not a parser-test failure.
+
+Local scripts, request receipts and screenshots are under `/tmp/qa1087/` on
+the test machine. No load test, production test or cross-project authorization
+adversarial test was performed. No import defect was observed in this scope.
+
 ## Targeted library restore acceptance — 2026-11-20
 
 Tested #1099 / merged PR #1285 on main
@@ -114,3 +189,5 @@ sweep baseline or satisfy #1232; the outstanding backlog above remains.
   scripts, result JSON, proposal response, screenshots and three role traces.
   Credentials and database contents are not committed. No application changes,
   deployment, full test suite or owner acceptance checkbox changes were made.
+
+Durable findings for the library restore run: [QA report](qa-archive/qa-report-2026-11-20.md).
