@@ -166,6 +166,92 @@ class HistoryInvariantTestCase(APITestCase):
                 )
 
 
+class CompositeMutationHistoryTests(HistoryInvariantTestCase):
+    def assert_completed_action(
+        self, previous: EntityRevision, parent: str, children: list[str],
+    ) -> None:
+        completed = self.versions[-1].revision
+        self.assertEqual(completed.entity_type, parent)
+        entries = self.client.get(f'{API}/history/project/').json()
+        self.assertEqual(
+            [entry['history_id'] for entry in entries if entry['history_id'] > previous.pk],
+            [completed.pk],
+        )
+        related = self.project.entity_revisions.filter(pk__gt=previous.pk, pk__lt=completed.pk)
+        self.assertCountEqual([revision.entity_type for revision in related], children)
+        for revision in related:
+            before, counts = capture_project_state(self.project), self.history_counts()
+            self.assert_refusal_is_atomic(self.restore(revision), before, counts)
+
+    def test_field_duplicate_restores_the_complete_structure(self) -> None:
+        location = self.write('create location', 'post', '/locations/', {'name': 'North'})
+        field = self.write('create field', 'post', '/fields/', {
+            'name': 'North field', 'location': location['id'], 'length_m': 24, 'width_m': 10,
+            'light_condition': 'shade', 'cultivation_environment': 'greenhouse',
+        })
+        self.write('create first bed', 'post', '/beds/', {
+            'name': 'North 1', 'field': field['id'], 'length_m': 12, 'width_m': 1.5,
+        })
+        self.write('create second bed', 'post', '/beds/', {
+            'name': 'North 2', 'field': field['id'], 'area_sqm': 8,
+            'irrigation': 'available',
+        })
+        before = self.versions[-1]
+        path = f"/fields/{field['id']}/duplicate/"
+        counts = self.history_counts()
+        rejected = self.client.post(f'{API}{path}', {
+            'name': 'South field', 'replace_search': '2', 'replace_with': '1',
+        }, format='json')
+        self.assertEqual(rejected.json()['code'], 'bed_names_conflict')
+        self.assert_refusal_is_atomic(rejected.status_code, before.state, counts)
+
+        copy = self.write('duplicate field', 'post', path, {
+            'name': 'South field', 'replace_search': 'North', 'replace_with': 'South',
+        })
+        self.assert_completed_action(before.revision, 'field', ['bed', 'bed'])
+        after = self.versions[-1].state
+        copied_id = copy['field']['id']
+        self.assertEqual(after['field'][str(copied_id)]['light_condition'], 'shade')
+        copied_beds = [row for row in after['bed'].values() if row['field_id'] == copied_id]
+        self.assertCountEqual([row['name'] for row in copied_beds], ['South 1', 'South 2'])
+        self.write('rename the first copied bed', 'patch', f"/beds/{copy['beds'][0]['id']}/", {
+            'name': 'First copy renamed',
+        })
+        self.round_trip_every_version()
+
+    def test_supplier_unlink_undo_restores_complete_versions_after_a_crop_edit(self) -> None:
+        supplier = self.write('create supplier', 'post', '/suppliers/', {'name': 'Seed nursery'})
+        supplier_id = supplier['id']
+        crop = self.write('create crop and offer', 'post', '/crops/', {
+            'name': 'Lettuce', 'supplier_id': supplier_id,
+            'selected_seed_demand_supplier': supplier_id,
+            'supplier_data_input': [{
+                'supplier_id': supplier_id, 'seed_status': 'conventional',
+                'seed_exemption_status': 'approved', 'price': '4.25',
+            }],
+        })
+        before = self.versions[-1].revision
+        result = self.write('unlink and delete supplier', 'post',
+                            f'/suppliers/{supplier_id}/unlink-and-delete/')
+        self.assert_completed_action(before, 'supplier', ['crop', 'crop_supplier_data'])
+        crop_path = f"/crops/{crop['id']}/"
+        self.write('edit crop while unlinked', 'patch', crop_path, {'notes': 'Keep the edit'})
+        before_undo = self.versions[-1].revision
+        self.write('undo supplier unlink', 'post', '/suppliers/restore-unlinked-delete/',
+                   result['undo_payload'])
+        self.assert_completed_action(before_undo, 'supplier', ['crop', 'crop_supplier_data'])
+        after = self.versions[-1].state
+        offer_id = result['undo_payload']['supplier_data'][0]['id']
+        self.assertEqual(after['crop_supplier_data'][str(offer_id)]['price'], '4.25')
+        restored_crop = after['crop'][str(crop['id'])]
+        self.assertEqual(restored_crop['selected_seed_demand_supplier_id'], supplier_id)
+        self.assertEqual(after['crop'][str(crop['id'])]['notes'], 'Keep the edit')
+        self.write('rename restored supplier', 'patch', f'/suppliers/{supplier_id}/', {
+            'name': 'New name',
+        })
+        self.round_trip_every_version()
+
+
 class ProjectRestorePreviewTests(HistoryInvariantTestCase):
     def preview(self, revision: EntityRevision):
         return self.client.get(RESTORE_PREVIEW_URL, {'history_id': revision.pk})
