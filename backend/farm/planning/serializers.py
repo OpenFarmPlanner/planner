@@ -31,6 +31,7 @@ from farm.services.crop_inheritance import (
 from farm.services.crop_rotation import RotationResult, RotationService
 from farm.services.demo_project import find_demo_crop_species, is_demo_project_description
 from farm.services.germination_check import check_germination
+from farm.services.harvests import HarvestTotals, plan_harvest_totals
 from farm.services.plant_count import compute_plan_plant_count
 from farm.services.site_suitability import check_site_suitability
 from farm.services.tasks import plan_cultivation_type
@@ -55,6 +56,8 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
     crop_life_cycle = serializers.SerializerMethodField()
     crop_standing_time_years = serializers.SerializerMethodField()
     suggested_clearing_date = serializers.SerializerMethodField()
+    actual_harvest = serializers.SerializerMethodField()
+    crop_loss_count = serializers.SerializerMethodField()
     bed_name = serializers.SerializerMethodField(read_only=True)
     harvest_date = serializers.SerializerMethodField(read_only=True)
     harvest_end_date = serializers.SerializerMethodField(read_only=True)
@@ -313,6 +316,39 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
             return None
         return obj.suggested_clearing_date(self._general_crop_index(obj))
 
+    def get_actual_harvest(self, obj: PlantingPlan) -> dict | None:
+        if obj.pk is None:
+            return None
+        season = self.context.get('harvest_season')
+        allocations = getattr(obj, 'visible_harvest_allocations', None)
+        if allocations is None:
+            allocations = obj.harvest_allocations.select_related('harvest')
+            if season is not None:
+                allocations = allocations.filter(
+                    harvest__date__range=(season.start_date, season.end_date),
+                )
+        totals = HarvestTotals()
+        different_crop = False
+        for row in allocations:
+            harvest = row.harvest
+            totals.add(row.quantity, harvest.unit, harvest.grams_per_unit)
+            different_crop = different_crop or harvest.crop_id != obj.crop_id
+        if not totals.quantities:
+            return None
+        return plan_harvest_totals(
+            obj, totals, season, self._general_crop_index(obj), comparable_crop=not different_crop,
+        )
+
+    def get_crop_loss_count(self, obj: PlantingPlan) -> int:
+        count = getattr(obj, 'crop_loss_count', None)
+        if count is not None or obj.pk is None:
+            return count or 0
+        incidents = obj.crop_losses.filter(project_id=obj.project_id)
+        season = self.context.get('harvest_season')
+        if season is not None:
+            incidents = incidents.filter(date__range=(season.start_date, season.end_date))
+        return incidents.count()
+
     def get_origin_season_label(self, obj: PlantingPlan) -> str | None:
         if self.get_carried_over(obj) and obj.season_id is not None:
             return obj.season.label
@@ -320,7 +356,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PlantingPlan
-        fields = '__all__'
+        exclude = ['copied_from_plan_id']
         read_only_fields = [
             'project', 'harvest_date', 'harvest_end_date', 'created_by', 'updated_by',
             'rotation_conflict_accepted_by', 'rotation_conflict_accepted_at',
@@ -627,9 +663,46 @@ class PlantingPlanDetailSerializer(PlantingPlanSerializer):
         source='bed.field.location.name', read_only=True, allow_null=True,
     )
     crop_available = serializers.SerializerMethodField()
+    previous_season_reference = serializers.SerializerMethodField()
 
     def get_crop_available(self, obj: PlantingPlan) -> bool:
         return bool(obj.crop and obj.crop.deleted_at is None)
+
+    def get_previous_season_reference(self, obj: PlantingPlan) -> dict | None:
+        if obj.copied_from_plan_id is None:
+            return None
+        source = PlantingPlan.objects.select_related('season').filter(
+            pk=obj.copied_from_plan_id, project_id=obj.project_id,
+            season__project_id=obj.project_id, season__deleted_at__isnull=True,
+        ).first()
+        if source is None:
+            return {'available': False}
+
+        season = source.season
+        period = (season.start_date, season.end_date)
+        allocations = source.harvest_allocations.filter(
+            project_id=obj.project_id, harvest__project_id=obj.project_id,
+            harvest__date__range=period,
+        ).values_list('quantity', 'harvest__unit')
+        totals = HarvestTotals()
+        for quantity, unit in allocations.iterator():
+            totals.add(quantity, unit, None)
+
+        return {
+            'available': True,
+            'source_plan_id': source.pk,
+            'source_season_id': season.pk,
+            'source_season_label': season.label,
+            'actual_dates': {
+                field: value.isoformat()
+                for field in PlantingPlan.ACTUAL_DATE_FIELDS
+                if (value := getattr(source, field)) is not None
+            },
+            'harvest_quantities': totals.quantities_payload(),
+            'crop_loss_count': source.crop_losses.filter(
+                project_id=obj.project_id, date__range=period,
+            ).count(),
+        }
 
 
 class TaskSerializer(serializers.ModelSerializer):

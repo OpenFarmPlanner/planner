@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from copy import deepcopy
 from datetime import date
+from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -20,6 +21,7 @@ from farm.models import (
     CropTaskTemplate,
     CropTimingWindow,
     FieldLayout,
+    HarvestRecord,
     Location,
     PlantingPlan,
     Project,
@@ -439,6 +441,37 @@ class DemoProjectServiceTests(TestCase):
         self.assertEqual(perennial.season.start_date.year, current_year - 2)
         self.assertEqual(perennial.clearing_date, date(current_year + 4, 3, 12))
         self.assertLess(perennial.harvest_end_date, date(current_year, 1, 1))
+        harvests = HarvestRecord.objects.filter(project=result.project)
+        self.assertEqual(harvests.count(), 13)
+        self.assertEqual(harvests.filter(date__year=current_year).count(), 8)
+        potato_harvests = harvests.filter(crop__name='Kartoffel')
+        self.assertEqual(potato_harvests.filter(date__year=current_year).count(), 2)
+        self.assertEqual(potato_harvests.filter(date__year=current_year - 2).count(), 2)
+        rhubarb_harvest = harvests.get(allocations__planting_plan=perennial)
+        self.assertEqual(rhubarb_harvest.quantity, Decimal('3.5'))
+        self.assertTrue(harvests.filter(unit='piece', grams_per_unit=110).exists())
+        self.assertTrue(harvests.filter(allocations__isnull=True).exists())
+        losses = result.project.crop_losses.all()
+        self.assertEqual(losses.count(), 5)
+        self.assertEqual(losses.filter(date__year=current_year).count(), 4)
+        self.assertEqual(
+            set(losses.values_list('extent_unit', flat=True)), {'', 'percent', 'plants', 'sqm'},
+        )
+        self.assertEqual(losses.filter(loss_type='total', extent_value__isnull=True).count(), 1)
+        self.assertEqual(
+            losses.filter(planting_plan__season__start_date__year=current_year - 1).count(), 2,
+        )
+        copied = PlantingPlan.objects.get(project=result.project, copied_from_plan_id__isnull=False)
+        source = PlantingPlan.objects.get(pk=copied.copied_from_plan_id)
+        self.assertEqual(source.season.start_date.year, current_year - 1)
+        self.assertNotEqual(copied.bed_id, source.bed_id)
+        self.assertTrue(
+            all(getattr(copied, field) is None for field in PlantingPlan.ACTUAL_DATE_FIELDS)
+        )
+        self.assertEqual(copied.harvest_allocations.count(), 0)
+        self.assertEqual(copied.crop_losses.count(), 0)
+        self.assertEqual(source.harvest_allocations.count(), 3)
+        self.assertEqual(source.crop_losses.count(), 1)
 
     def test_demo_seasons_follow_the_current_date(self) -> None:
         with patch('farm.services.demo_project.demo_current_year', return_value=2031):

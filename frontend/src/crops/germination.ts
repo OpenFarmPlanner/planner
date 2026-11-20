@@ -18,7 +18,7 @@ export const GERMINATION_FIELDS = [
   'germination_temperature_optimal_min_c', 'germination_temperature_optimal_max_c',
   'germination_temperature_min_c', 'germination_days_min', 'germination_days_max',
   'germination_temperature_requirement', ...STRATIFICATION_FIELDS,
-  'germination_light_requirement', 'propagation_duration_days', 'germination_pretreatment',
+  'germination_light_requirement', 'germination_pretreatment',
 ] as const;
 
 export function requiresStratification(requirement: unknown): boolean {
@@ -44,8 +44,7 @@ export function formatGerminationValue(field: string, value: unknown, t: TFuncti
     return t(`germination.values.${field}.${value}`);
   }
   if (typeof value === 'number') {
-    const formatted = new Intl.NumberFormat(locale).format(value);
-    return field === 'propagation_duration_days' ? `${formatted} ${t('detail.units.days')}` : formatted;
+    return new Intl.NumberFormat(locale).format(value);
   }
   return String(value);
 }

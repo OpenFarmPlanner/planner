@@ -48,5 +48,37 @@
       "zero_plant_count": "Het berekende aantal planten is nul",
       "missing_harvest_period": "Oogstperiode ontbreekt of is ongeldig"
     }
+  },
+  "comparison": {
+    "view": "Weergave van het opbrengstoverzicht",
+    "calendar": "Prognosekalender",
+    "seasons": "Seizoenen vergelijken",
+    "chooseCrop": "Kies een gewas",
+    "noCrops": "Voeg een teelt toe of registreer een oogst om een gewas over meerdere seizoenen te vergelijken.",
+    "noSeasons": "Er zijn geen seizoenen om te vergelijken.",
+    "season": "Seizoen",
+    "forecast": "Opbrengstprognose",
+    "recorded": "Geoogste hoeveelheid",
+    "notRecorded": "Niet geregistreerd",
+    "harvestRecorded": "Oogst geregistreerd",
+    "zeroRecorded": "Nul geregistreerd",
+    "noForecast": "Geen prognose beschikbaar",
+    "forecastCoverage": "Prognose voor {{included}} van {{total}} teelten",
+    "harvestCoverage": "Oogst toegewezen aan {{included}} van {{total}} teelten in de prognose",
+    "estimated": "{{value}} geschat",
+    "unassigned": "{{value}} niet toegewezen",
+    "assignedPlans": "Teelten met toegewezen oogst ({{count}})",
+    "noAreaYield": "Opbrengst per m² niet beschikbaar",
+    "noMass": "Gewicht niet beschikbaar",
+    "details": "Datums en waarnemingen",
+    "activityDates": "Datums van activiteiten in het teeltseizoen",
+    "openPlan": "Teelt openen",
+    "harvestedAreaYield": "Opbrengst per m² geoogst oppervlak",
+    "chartTitle": "Vergelijkbare opbrengst",
+    "chartScope": "Hier staan alleen seizoenen met gewogen oogsten en een volledige prognose voor dezelfde teelten.",
+    "chartEmpty": "Geen enkel seizoen heeft gewogen oogsten en een volledige prognose voor dezelfde teelten.",
+    "chartValues": "Opbrengst voor {{season}} ({{period}})",
+    "axis": "Opbrengst in kilogrammen",
+    "tableScope": "Geoogste hoeveelheden tellen mee in het seizoen van hun oogstdatum. De geregistreerde opbrengst per m² gebruikt het totale oppervlak van de teelten met een toegewezen oogst."
   }
 }

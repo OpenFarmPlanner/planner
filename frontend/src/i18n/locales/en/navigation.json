@@ -9,6 +9,7 @@
   "plantingPlans": "Planting plans",
   "ganttChart": "Planting calendar",
   "yieldOverview": "Yield overview",
+  "harvests": "Harvests",
   "seedDemand": "Seed demand",
   "youngPlantDemand": "Young plant demand",
   "short": {
@@ -19,6 +20,7 @@
     "plantingPlans": "Planting plans",
     "ganttChart": "Planting calendar",
     "yieldOverview": "Yield overview",
+    "harvests": "Harvests",
     "seedDemand": "Seed demand",
     "youngPlantDemand": "Young plant demand",
     "suppliers": "Suppliers"

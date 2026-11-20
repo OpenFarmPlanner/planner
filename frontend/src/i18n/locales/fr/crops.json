@@ -264,6 +264,16 @@
     "propagationDurationDaysHelp": "Temps entre la mise en pépinière et la date de plantation.",
     "propagationDurationDaysError": "La durée en pépinière doit être ≥ 0",
     "yieldUnit": "Unité de rendement",
+    "defaultHarvestUnit": "Unité de récolte par défaut",
+    "averageHarvestPieceWeight": "Poids moyen (g par pièce)",
+    "averageHarvestBunchWeight": "Poids moyen (g par botte)",
+    "harvestWeightError": "Saisissez un poids positif avec trois décimales au maximum ou laissez le champ vide.",
+    "harvestUnits": {
+      "kg": "Kilogrammes (kg)",
+      "g": "Grammes (g)",
+      "piece": "Pièces",
+      "bunch": "Bottes"
+    },
     "yieldUnitPerPlant": "Par plant",
     "yieldUnitPerSqm": "Par m²",
     "expectedYield": "Rendement prévu",

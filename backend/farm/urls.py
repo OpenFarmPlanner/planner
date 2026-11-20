@@ -35,10 +35,13 @@ from .notes.views import (
     NoteAttachmentDeleteView,
     NoteAttachmentListCreateView,
 )
+from .planning.crop_loss_views import CropLossViewSet
+from .planning.harvest_views import HarvestRecordViewSet
 from .planning.views import (
     PlantingPlanViewSet,
     TaskViewSet,
     YieldCalendarListView,
+    YieldComparisonView,
 )
 from .projects.views import (
     AcceptPendingProjectInvitationView,
@@ -78,6 +81,8 @@ router.register(r'crop-companions', CropCompanionViewSet)
 router.register(r'public-crops', PublicCropViewSet, basename='public-crops')
 router.register(r'seed-packages', SeedPackageViewSet)
 router.register(r'planting-plans', PlantingPlanViewSet)
+router.register(r'harvests', HarvestRecordViewSet)
+router.register(r'crop-losses', CropLossViewSet)
 router.register(r'seasons', SeasonViewSet)
 router.register(r'tasks', TaskViewSet)
 router.register(r'crop-task-templates', CropTaskTemplateViewSet)
@@ -129,6 +134,7 @@ urlpatterns = [
     path('seed-demand/', SeedDemandListView.as_view(), name='seed-demand-list'),
     path('young-plant-demand/', YoungPlantDemandListView.as_view(), name='young-plant-demand-list'),
     path('yield-calendar/', YieldCalendarListView.as_view(), name='yield-calendar-list'),
+    path('yield-calendar/comparison/', YieldComparisonView.as_view(), name='yield-comparison'),
     path('season-pattern/', SeasonPatternView.as_view(), name='season-pattern'),
     path('season-pattern/preview/', SeasonPatternPreviewView.as_view(), name='season-pattern-preview'),
     path('season-setup/status/', SeasonSetupStatusView.as_view(), name='season-setup-status'),

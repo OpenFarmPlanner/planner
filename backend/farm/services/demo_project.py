@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -22,11 +22,14 @@ from farm.models import (
     Bed,
     BedLayout,
     Crop,
+    CropLoss,
     CropSupplierData,
     CropTaskTemplate,
     EntityRevision,
     Field,
     FieldLayout,
+    HarvestAllocation,
+    HarvestRecord,
     Location,
     PlantingPlan,
     Project,
@@ -37,6 +40,8 @@ from farm.models import (
     Supplier,
     Task,
 )
+from farm.models.crop_losses import CropLossCause, CropLossType, CropLossUnit
+from farm.models.harvests import HarvestConversionSource, HarvestUnit
 from farm.services.crop_companions import library_companions
 from farm.services.demo_features import (
     FEATURE_TEXT,
@@ -443,6 +448,7 @@ def reset_project_demo_data(project: Project) -> None:
     """Remove farm-planning records from one project before recreating the demo."""
     Task.objects.filter(project=project).delete()
     CropTaskTemplate.objects.filter(project=project).delete()
+    HarvestRecord.objects.filter(project=project).delete()
     PlantingPlan.objects.filter(project=project).delete()
     Season.all_objects.filter(project=project).delete()
     BedLayout.objects.filter(project=project).delete()
@@ -587,6 +593,9 @@ def populate_demo_project(
             current_year=year,
         )
         assign_unassigned_planting_plans(project, owner=owner)
+        _create_demo_harvests(project, crops, beds, language, year)
+        _create_demo_crop_losses(project, crops, beds, language, year)
+        _create_demo_previous_season_reference(project, crops, beds, year)
         populate_demo_tasks(
             project, owner=owner, fields=fields, crops=crops, language_code=language,
             today=reference_date,
@@ -634,6 +643,8 @@ def populate_public_demo_library_from_project(project: Project, *, owner: Any | 
                 propagation_duration_days=crop.propagation_duration_days,
                 harvest_method=crop.harvest_method,
                 expected_yield=crop.expected_yield,
+                average_harvest_piece_weight_g=crop.average_harvest_piece_weight_g,
+                average_harvest_bunch_weight_g=crop.average_harvest_bunch_weight_g,
                 distance_within_row_m=crop.distance_within_row_m,
                 row_spacing_m=crop.row_spacing_m,
                 sowing_depth_m=crop.sowing_depth_m,
@@ -1865,3 +1876,139 @@ def _create_planting_plans(
             season=season,
             **(spec.actual_dates or {}),
         )
+
+
+def _create_demo_harvests(project: Project, crops, beds, language: str, year: int) -> None:
+    """Seed measured, estimated, split and unassigned records in every demo locale."""
+    tomato = crops['tomate']
+    tomato.default_harvest_unit = HarvestUnit.KILOGRAM
+    tomato.average_harvest_piece_weight_g = Decimal('110')
+    tomato.save(update_fields=['default_harvest_unit', 'average_harvest_piece_weight_g'])
+    plans = PlantingPlan.objects.filter(project=project)
+    first = plans.get(crop=tomato, bed=beds['tomate-1'], planting_date__year=year)
+    second = plans.get(crop=tomato, bed=beds['tomate-2'], planting_date__year=year)
+    rhubarb = plans.get(crop=crops['rhabarber'])
+    garlic = plans.get(crop=crops['knoblauch'], bed=beds['lauch'], planting_date__year=year - 1)
+    notes = {
+        'de': 'Ernte aus beiden Tomatenreihen.',
+        'en': 'Picked from both tomato rows.',
+        'fr': 'Récolte des deux rangs de tomates.',
+        'es': 'Cosecha de las dos hileras de tomate.',
+        'it': 'Raccolta da entrambe le file di pomodori.',
+        'pt': 'Colheita das duas linhas de tomate.',
+        'nl': 'Geoogst uit beide tomatenrijen.',
+    }
+    batch = HarvestRecord.objects.create(
+        project=project, crop=tomato, date=date(year, 7, 26), quantity=12,
+        unit=HarvestUnit.KILOGRAM, note=notes.get(language, notes[DEMO_LANGUAGE_FALLBACK]),
+    )
+    HarvestAllocation.objects.bulk_create([
+        HarvestAllocation(
+            project=project, harvest=batch, planting_plan=first, quantity=8, harvested_area_sqm=5,
+        ),
+        HarvestAllocation(project=project, harvest=batch, planting_plan=second, quantity=3),
+    ])
+    for plan, day, quantity, unit, grams_per_unit in (
+        (first, date(year, 8, 4), 8, HarvestUnit.PIECE, tomato.average_harvest_piece_weight_g),
+        (second, date(year, 8, 5), 1800, HarvestUnit.GRAM, None),
+        (garlic, date(year, 6, 28), 5, HarvestUnit.BUNCH, None),
+        (rhubarb, date(year, 4, 22), Decimal('3.5'), HarvestUnit.KILOGRAM, None),
+    ):
+        record = HarvestRecord.objects.create(
+            project=project, crop_id=plan.crop_id, date=day, quantity=quantity, unit=unit,
+            grams_per_unit=grams_per_unit,
+            conversion_source=HarvestConversionSource.CROP if grams_per_unit is not None else '',
+        )
+        HarvestAllocation.objects.create(
+            project=project, harvest=record, planting_plan=plan, quantity=quantity,
+        )
+    HarvestRecord.objects.create(
+        project=project, crop=tomato, date=date(year, 8, 14), quantity=2,
+        unit=HarvestUnit.KILOGRAM,
+    )
+    # Two complete measured potato seasons, with a gap in the record between them.
+    for offset, bed_key, amount, harvested_area in (
+        (0, 'kartoffel-1', '46.75', '16.5'), (0, 'kartoffel-2', '41.75', None),
+        (-2, 'kartoffel-1', '50.25', None), (-2, 'kohlbeet', '41.5', None),
+    ):
+        plan = plans.get(
+            crop=crops['kartoffel'], bed=beds[bed_key], planting_date__year=year + offset,
+        )
+        day = date(year + offset, 8, 5)
+        plans.filter(pk=plan.pk).update(
+            actual_sowing_date=plan.planting_date + timedelta(days=2),
+            actual_harvest_start_date=day, recorded_harvest_end_date=day,
+        )
+        record = HarvestRecord.objects.create(
+            project=project, crop_id=plan.crop_id, date=day,
+            quantity=amount, unit=HarvestUnit.KILOGRAM,
+        )
+        HarvestAllocation.objects.create(
+            project=project, harvest=record, planting_plan=plan, quantity=amount,
+            harvested_area_sqm=harvested_area,
+        )
+
+
+def _create_demo_crop_losses(project: Project, crops, beds, language: str, year: int) -> None:
+    plans = PlantingPlan.objects.filter(project=project)
+    first = plans.get(crop=crops['tomate'], bed=beds['tomate-1'], planting_date__year=year)
+    second = plans.get(crop=crops['tomate'], bed=beds['tomate-2'], planting_date__year=year)
+    garlic = plans.get(crop=crops['knoblauch'], bed=beds['lauch'], planting_date__year=year - 1)
+    notes = {
+        'de': 'Die Pflanzen am Rand der Reihe waren betroffen.',
+        'en': 'The plants at the end of the row were affected.',
+        'fr': 'Les plants en bout de rang ont été touchés.',
+        'es': 'Se vieron afectadas las plantas del extremo de la hilera.',
+        'it': 'Sono state colpite le piante all’estremità della fila.',
+        'pt': 'As plantas no fim da linha foram afetadas.',
+        'nl': 'De planten aan het einde van de rij waren getroffen.',
+    }
+    CropLoss.objects.bulk_create([
+        CropLoss(
+            project=project, planting_plan=first, date=date(year, 5, 25),
+            loss_type=CropLossType.PARTIAL, cause=CropLossCause.FROST,
+            extent_value=20, extent_unit=CropLossUnit.PERCENT,
+            note=notes.get(language, notes[DEMO_LANGUAGE_FALLBACK]),
+        ),
+        CropLoss(
+            project=project, planting_plan=first, date=date(year, 6, 21),
+            loss_type=CropLossType.PARTIAL, cause=CropLossCause.PESTS,
+            extent_value=3, extent_unit=CropLossUnit.PLANTS,
+        ),
+        CropLoss(
+            project=project, planting_plan=second, date=date(year, 8, 26),
+            loss_type=CropLossType.TOTAL, cause=CropLossCause.DISEASE,
+        ),
+        CropLoss(
+            project=project, planting_plan=garlic, date=date(year, 4, 18),
+            loss_type=CropLossType.PARTIAL, cause=CropLossCause.WATERLOGGING,
+            extent_value=Decimal('1.5'), extent_unit=CropLossUnit.SQUARE_METRES,
+        ),
+    ])
+
+
+def _create_demo_previous_season_reference(project: Project, crops, beds, year: int) -> None:
+    carrot = crops['karotte']
+    plans = PlantingPlan.objects.filter(project=project, crop=carrot)
+    source = plans.get(bed=beds['salat-2'], planting_date__year=year - 1)
+    plans.filter(bed=beds['karotte-2'], planting_date__year=year).update(
+        copied_from_plan_id=source.pk,
+    )
+    plans.filter(pk=source.pk).update(
+        actual_harvest_start_date=date(year - 1, 6, 28),
+        recorded_harvest_end_date=date(year - 1, 7, 15),
+    )
+    for day, quantity, unit in (
+        (28, 2, HarvestUnit.KILOGRAM), (29, 750, HarvestUnit.GRAM), (30, 6, HarvestUnit.BUNCH),
+    ):
+        harvest = HarvestRecord.objects.create(
+            project=project, crop=carrot, date=date(year - 1, 6, day), quantity=quantity, unit=unit,
+        )
+        HarvestAllocation.objects.create(
+            project=project, harvest=harvest, planting_plan=source, quantity=quantity,
+        )
+    CropLoss.objects.create(
+        project=project, planting_plan=source, date=date(year - 1, 4, 8),
+        loss_type=CropLossType.PARTIAL, cause=CropLossCause.DROUGHT,
+        extent_value=10, extent_unit=CropLossUnit.PERCENT,
+    )

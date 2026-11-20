@@ -428,6 +428,63 @@
     "tasksLoadFailed": "Aufgaben konnten nicht geladen werden.",
     "taskCancelled": "Abgebrochen"
   },
+  "previousSeason": {
+    "title": "Vorherige Saison: {{season}}",
+    "titleWithoutSeason": "Vorherige Saison",
+    "reference": "Referenz",
+    "empty": "Für den ursprünglichen Anbauplan sind keine Ist-Daten erfasst.",
+    "unavailable": "Die Referenzdaten sind nicht verfügbar.",
+    "openSource": "Ursprünglichen Anbauplan öffnen"
+  },
+  "cropLosses": {
+    "title": "Ausfälle",
+    "historyType": "Ausfall",
+    "add": "Ausfall erfassen",
+    "edit": "Ausfall bearbeiten",
+    "delete": "Ausfall löschen",
+    "date": "Ausfalldatum",
+    "type": "Art des Ausfalls",
+    "cause": "Ursache",
+    "extent": "Ausmaß (optional)",
+    "unit": "Einheit",
+    "note": "Notiz (optional)",
+    "empty": "Keine Ausfälle erfasst.",
+    "loading": "Ausfälle werden geladen",
+    "actionsFor": "Aktionen zum Ausfall am {{date}} ({{cause}})",
+    "confirmDelete": "Den Ausfall vom {{date}} löschen?",
+    "types": {
+      "partial": "Teilausfall",
+      "total": "Totalausfall"
+    },
+    "causes": {
+      "frost": "Frost",
+      "drought": "Trockenheit",
+      "waterlogging": "Staunässe",
+      "pests": "Schädlinge",
+      "disease": "Krankheit",
+      "other": "Sonstiges"
+    },
+    "units": {
+      "percent": "Prozent (%)",
+      "plants": "Pflanzen",
+      "sqm": "Fläche (m²)"
+    },
+    "incidentCount_one": "{{count}} Ausfall",
+    "incidentCount_other": "{{count}} Ausfälle",
+    "extentPlants_one": "{{value}} Pflanze",
+    "extentPlants_other": "{{value}} Pflanzen",
+    "extentArea": "{{value}} m²",
+    "errors": {
+      "load": "Ausfälle konnten nicht geladen werden.",
+      "save": "Der Ausfall konnte nicht gespeichert werden.",
+      "delete": "Der Ausfall konnte nicht gelöscht werden.",
+      "date": "Gib ein gültiges Datum ein.",
+      "cause": "Wähle eine Ursache aus.",
+      "percent": "Gib 0 bis 100 Prozent mit bis zu drei Nachkommastellen ein.",
+      "plants": "Gib eine ganze, nicht negative Pflanzenanzahl ein.",
+      "sqm": "Gib eine nicht negative Fläche mit bis zu drei Nachkommastellen ein."
+    }
+  },
   "actualDates": {
     "clear": "Datum löschen",
     "title": "Plan- und Ist-Termine",

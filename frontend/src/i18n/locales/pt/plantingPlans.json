@@ -437,6 +437,65 @@
     "tasksLoadFailed": "Não foi possível carregar as tarefas.",
     "taskCancelled": "Cancelada"
   },
+  "previousSeason": {
+    "title": "Época anterior: {{season}}",
+    "titleWithoutSeason": "Época anterior",
+    "reference": "Referência",
+    "empty": "O plano de cultivo de origem não tem dados reais registados.",
+    "unavailable": "A referência da época anterior não está disponível.",
+    "openSource": "Abrir o plano de cultivo de origem"
+  },
+  "cropLosses": {
+    "title": "Perdas na cultura",
+    "historyType": "Perda na cultura",
+    "add": "Registar perda",
+    "edit": "Editar perda",
+    "delete": "Eliminar perda",
+    "date": "Data da perda",
+    "type": "Tipo de perda",
+    "cause": "Causa",
+    "extent": "Quantificação (opcional)",
+    "unit": "Unidade",
+    "note": "Nota (opcional)",
+    "empty": "Sem perdas registadas na cultura.",
+    "loading": "A carregar perdas na cultura",
+    "actionsFor": "Ações para a perda de {{date}} ({{cause}})",
+    "confirmDelete": "Eliminar a perda de {{date}}?",
+    "types": {
+      "partial": "Perda parcial",
+      "total": "Perda total"
+    },
+    "causes": {
+      "frost": "Geada",
+      "drought": "Seca",
+      "waterlogging": "Encharcamento",
+      "pests": "Pragas",
+      "disease": "Doença",
+      "other": "Outra"
+    },
+    "units": {
+      "percent": "Percentagem (%)",
+      "plants": "Plantas",
+      "sqm": "Área (m²)"
+    },
+    "incidentCount_one": "{{count}} ocorrência",
+    "incidentCount_many": "{{count}} ocorrências",
+    "incidentCount_other": "{{count}} ocorrências",
+    "extentPlants_one": "{{value}} planta",
+    "extentPlants_many": "{{value}} plantas",
+    "extentPlants_other": "{{value}} plantas",
+    "extentArea": "{{value}} m²",
+    "errors": {
+      "load": "Não foi possível carregar as perdas na cultura.",
+      "save": "Não foi possível guardar a perda.",
+      "delete": "Não foi possível eliminar a perda.",
+      "date": "Introduz uma data válida.",
+      "cause": "Seleciona uma causa.",
+      "percent": "Introduz uma percentagem de 0 a 100 com até três casas decimais.",
+      "plants": "Introduz um número inteiro de plantas, a partir de zero.",
+      "sqm": "Introduz uma área não negativa com até três casas decimais."
+    }
+  },
   "actualDates": {
     "clear": "Limpar data",
     "title": "Datas planeadas e reais",

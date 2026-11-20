@@ -256,6 +256,9 @@ export interface Crop {
   water_requirement?: WaterRequirement | '';
   life_cycle?: LifeCycle | '';
   standing_time_years?: number | null;
+  default_harvest_unit?: HarvestUnit | '';
+  average_harvest_piece_weight_g?: number | string | null;
+  average_harvest_bunch_weight_g?: number | string | null;
   winter_hardiness?: WinterHardiness | '';
   
   harvest_method?: 'per_plant' | 'per_sqm' | '';
@@ -366,6 +369,9 @@ export type CropInheritableField =
   | 'water_requirement'
   | 'life_cycle'
   | 'standing_time_years'
+  | 'default_harvest_unit'
+  | 'average_harvest_piece_weight_g'
+  | 'average_harvest_bunch_weight_g'
   | 'winter_hardiness'
   | 'harvest_method'
   | 'expected_yield'
@@ -491,6 +497,8 @@ export interface PublicCrop {
   water_requirement?: WaterRequirement | '';
   life_cycle?: LifeCycle | '';
   standing_time_years?: number | null;
+  average_harvest_piece_weight_g?: number | string | null;
+  average_harvest_bunch_weight_g?: number | string | null;
   winter_hardiness?: WinterHardiness | '';
   harvest_method?: 'per_plant' | 'per_sqm' | '';
   expected_yield?: number | null;
@@ -1290,6 +1298,8 @@ export interface PlantingPlan extends PlantingPlanActualDates {
   crop_cultivation_types?: CultivationType[] | null;
   crop_life_cycle?: LifeCycle | '';
   crop_standing_time_years?: number | null;
+  actual_harvest?: PlanActualHarvest | null;
+  crop_loss_count?: number;
   bed: number | null;
   bed_name?: string | null;
   season?: number | null;
@@ -1340,7 +1350,18 @@ export interface PlantingPlanDetail extends PlantingPlan {
   field_name: string | null;
   location_name: string | null;
   crop_available: boolean;
+  previous_season_reference?: PlantingPlanPreviousSeasonReference | null;
 }
+
+export type PlantingPlanPreviousSeasonReference = { available: false } | {
+  available: true;
+  source_plan_id: number;
+  source_season_id: number;
+  source_season_label: string;
+  actual_dates: PlantingPlanActualDates;
+  harvest_quantities: HarvestQuantity[];
+  crop_loss_count: number;
+};
 
 export type RotationStatus = 'conflict' | 'accepted' | 'hint' | 'info' | 'ok';
 
@@ -1729,6 +1750,91 @@ export interface SuccessionLimit {
   earliest_date: string;
 }
 
+export type HarvestUnit = 'kg' | 'g' | 'piece' | 'bunch';
+export type HarvestConversionSource = '' | 'crop' | 'library' | 'manual';
+
+export interface HarvestQuantity {
+  quantity: string;
+  unit: HarvestUnit;
+}
+
+export interface HarvestTotals {
+  quantities: HarvestQuantity[];
+  measured_kg: string | null;
+  estimated_kg: string | null;
+  has_unconvertible_quantity: boolean;
+}
+
+export interface PlanActualHarvest extends HarvestTotals {
+  forecast_kg: string | null;
+  actual_kg_per_sqm: string | null;
+  forecast_percentage: string | null;
+}
+
+export interface HarvestAllocationWrite {
+  planting_plan: number;
+  quantity: string;
+  harvested_area_sqm?: string | null;
+}
+
+export interface HarvestAllocation extends HarvestAllocationWrite {
+  id: number;
+  bed_name: string | null;
+  season_label: string | null;
+  planting_date: string | null;
+  kilograms_per_harvested_sqm: string | null;
+}
+
+export interface HarvestWrite {
+  crop: number;
+  date: string;
+  quantity: string;
+  unit: HarvestUnit;
+  note: string;
+  grams_per_unit?: string | null;
+  allocations?: HarvestAllocationWrite[];
+}
+
+export interface HarvestRecord extends HarvestWrite {
+  id: number;
+  crop_label: string;
+  grams_per_unit: string | null;
+  conversion_source: HarvestConversionSource;
+  measured_kg: string | null;
+  estimated_kg: string | null;
+  unallocated_quantity: string;
+  allocations: HarvestAllocation[];
+}
+
+export interface HarvestPlanSuggestion {
+  id: number;
+  bed_name: string;
+  field_name: string;
+  season_label: string;
+  planting_date: string | null;
+  harvest_start: string | null;
+  harvest_end: string | null;
+  area_sqm: string | null;
+}
+
+export type CropLossType = 'total' | 'partial';
+export type CropLossCause = 'frost' | 'drought' | 'waterlogging' | 'pests' | 'disease' | 'other';
+export type CropLossUnit = 'percent' | 'plants' | 'sqm';
+
+export interface CropLossWrite {
+  planting_plan: number;
+  date: string;
+  loss_type: CropLossType;
+  cause: CropLossCause;
+  extent_value: string | null;
+  extent_unit: CropLossUnit | '';
+  note: string;
+}
+
+export interface CropLoss extends CropLossWrite {
+  id: number;
+}
+
 export interface RemainingAreaResponse {
   bed_id: number;
   bed_area_sqm: number;
@@ -1782,6 +1888,50 @@ export interface IncompleteYieldPlan {
 export interface YieldCalendarForecast {
   weeks: YieldCalendarWeek[];
   incomplete_plans: IncompleteYieldPlan[];
+}
+
+export type YieldComparisonCropTiming = Pick<PlantingPlan,
+  'crop_cultivation_type' | 'crop_cultivation_types' | 'crop_propagation_duration_days'>;
+
+export type YieldComparisonPlanDates = PlantingPlanActualDates & Pick<PlantingPlan,
+  'cultivation_type' | 'planting_date' | 'planned_propagation_start_date' | 'planned_sowing_date'
+  | 'harvest_date' | 'harvest_end_date'> & { id: number; bed_name: string };
+
+export interface YieldComparisonSeason {
+  id: number;
+  label: string;
+  start_date: string;
+  end_date: string;
+  forecast_kg: string | null;
+  forecast_kg_per_sqm: string | null;
+  forecast_plan_count: number;
+  expected_plan_count: number;
+  recorded: HarvestTotals;
+  unassigned: HarvestQuantity[];
+  assigned_plan_count: number;
+  assigned_forecast_plan_count: number;
+  recorded_kg_per_plan_sqm: string | null;
+  recorded_kg_per_plan_sqm_estimated: boolean;
+  comparable: boolean;
+  harvested_areas: {
+    id: number;
+    date: string;
+    plan_id: number;
+    bed_name: string;
+    area_sqm: string;
+    kg_per_sqm: string | null;
+    estimated: boolean;
+  }[];
+  losses: (Pick<CropLoss, 'id' | 'date' | 'loss_type' | 'cause' | 'extent_value' | 'extent_unit'> & {
+    planting_plan_id: number;
+    bed_name: string;
+  })[];
+  plan_dates: YieldComparisonPlanDates[];
+}
+
+export interface YieldComparison {
+  crop_timing: YieldComparisonCropTiming;
+  seasons: YieldComparisonSeason[];
 }
 
 export interface PaginatedResponse<T> {

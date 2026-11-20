@@ -44,6 +44,8 @@ export const LIBRARY_LINK_FIELDS = [
   'winter_hardiness',
   'harvest_method',
   'expected_yield',
+  'average_harvest_piece_weight_g',
+  'average_harvest_bunch_weight_g',
   'distance_within_row_cm',
   'row_spacing_cm',
   'sowing_depth_cm',

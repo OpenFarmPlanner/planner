@@ -43,6 +43,7 @@ from farm.seed_units import (
 from farm.sowing_depth import fill_missing_depth_bound, sowing_depth_errors
 
 from .base import TimestampedModel
+from .harvests import MIN_HARVEST_QUANTITY, HarvestUnit
 from .history import EntityRevision
 from .projects import Project
 
@@ -600,6 +601,17 @@ class Crop(TimestampedModel):
         blank=True,
         help_text="Expected yield amount"
     )
+    default_harvest_unit = models.CharField(max_length=5, choices=HarvestUnit.choices, blank=True)
+    average_harvest_piece_weight_g = models.DecimalField(
+        max_digits=10, decimal_places=3, null=True, blank=True,
+        validators=[MinValueValidator(MIN_HARVEST_QUANTITY)],
+        help_text='Optional reference mass in grams per harvested piece.',
+    )
+    average_harvest_bunch_weight_g = models.DecimalField(
+        max_digits=10, decimal_places=3, null=True, blank=True,
+        validators=[MinValueValidator(MIN_HARVEST_QUANTITY)],
+        help_text='Optional reference mass in grams per harvested bunch.',
+    )
     allow_deviation_delivery_weeks = models.BooleanField(
         default=False,
         help_text="Allow deviating delivery weeks"
@@ -869,7 +881,8 @@ class Crop(TimestampedModel):
         'germination_types', 'germination_pretreatment', 'specific_properties',
         'pests_diseases', 'plant_health', 'light_requirement', 'water_requirement', 'life_cycle',
         'standing_time_years', 'winter_hardiness',
-        'harvest_method', 'expected_yield', 'distance_within_row_m',
+        'harvest_method', 'expected_yield', 'average_harvest_piece_weight_g',
+        'average_harvest_bunch_weight_g', 'distance_within_row_m',
         'row_spacing_m', 'sowing_depth_m', 'sowing_depth_max_m', 'seed_rate_value', 'seed_rate_unit',
         'seed_rate_by_cultivation',
         'sowing_calculation_safety_percent', 'seed_rate_direct_value', 'seed_rate_direct_unit',
@@ -1470,6 +1483,16 @@ class PublicCrop(TimestampedModel):
     )
     harvest_method = models.CharField(max_length=20, choices=Crop.HARVEST_METHOD_CHOICES, blank=True)
     expected_yield = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    average_harvest_piece_weight_g = models.DecimalField(
+        max_digits=10, decimal_places=3, null=True, blank=True,
+        validators=[MinValueValidator(MIN_HARVEST_QUANTITY)],
+        help_text='Optional reference mass in grams per harvested piece.',
+    )
+    average_harvest_bunch_weight_g = models.DecimalField(
+        max_digits=10, decimal_places=3, null=True, blank=True,
+        validators=[MinValueValidator(MIN_HARVEST_QUANTITY)],
+        help_text='Optional reference mass in grams per harvested bunch.',
+    )
     allow_deviation_delivery_weeks = models.BooleanField(default=False)
     distance_within_row_m = models.FloatField(null=True, blank=True)
     row_spacing_m = models.FloatField(null=True, blank=True)

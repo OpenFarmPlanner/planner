@@ -31,6 +31,22 @@ that predate this feature.
   pre-existing projects keep working until the first-run setup (below) assigns
   a season. Crop library and bed/field structure stay season-independent,
   per the feature's original scope.
+- Harvest records belong to the project and use their picking date for
+  seasonal reporting. Allocations can point to a planting from an earlier
+  season if its bed occupancy overlaps the harvest date. Season copies
+  leave the source harvests and allocations in place. See
+  [planning and operations](./data-model.md#4-planning-and-operations).
+- Crop-loss incidents contribute to the season containing their recorded date.
+  A plan's detail view lists its incidents across seasons. The optional table
+  count follows the currently selected season, including incidents recorded for
+  carried-over plans. A copied plan starts with an empty incident log.
+- A season copy records the direct source plan. The detail view reads the
+  source's recorded activity dates and the harvest allocations and crop-loss
+  incidents dated in its season. The source link opens the original plan in its
+  season. Pattern transitions can distribute one copy operation across two new
+  periods, retaining the original source for each resulting plan. Each later
+  copy records its own direct source. The [actual-date copy option](#copy-data-action)
+  controls how new planned dates are set.
 
 ## Deleting a season
 
@@ -52,7 +68,12 @@ deleted for real, but `_delete_planting_plans_with_season` records an
   `planting_plan` whose latest revision at/after that timestamp is a deletion
   with `snapshot['season_id']` pointing at this season — keeping the original
   primary keys and skipping any plan a user had already deleted individually
-  beforehand — and then the `task` rows that DB-cascaded away with those plans.
+  beforehand. The same operation restores their tasks and recorded crop-loss
+  incidents. It restores a harvest's deleted allocations when the harvest still
+  has the recorded crop, date and unit, and enough quantity for all those shares.
+  Older deletion records without the harvest metadata require an untouched
+  harvest. Recorded dates, restored allocations and losses become visible
+  again in copies that reference the recovered plan.
   Creating a season over a deleted one's period is the same undelete, so
   `POST /seasons/`, `POST /seasons/create-transition/` and `undelete` all go
   through `farm/services/seasons.py::resurrect_season` rather than repeating
@@ -163,6 +184,21 @@ description), one level down:
   response has `weeks` and `incomplete_plans`. It gives the yield overview the
   scoped plan IDs and their calculation blockers. The default response is the
   array of weeks.
+- **Compare seasons** in Yield overview reads `/yield-calendar/comparison/`.
+  Each crop's forecasts use the same half-open harvest windows and cumulative
+  rounding as the calendar. Identical forecasts copied from the same source
+  into the same target season contribute once. An edited bed, area or planned
+  date can give a copy a separate forecast. Harvests and losses follow the
+  recorded event date, including events attributed to an older planting plan.
+  The plan's activity date comparisons stay in its planting season.
+- Comparison totals include each harvest record once, across all of its
+  allocations and any unassigned remainder. Gram and kilogram records share
+  a mass total. Counts and weight estimates appear separately. Recorded
+  yield per m² uses the full area of each plan with assigned harvest, counted
+  once. Individual harvests with a recorded area show their own rate separately.
+  A chart pair uses measured mass and complete forecasts for the same plans.
+  A season without harvest records has unknown yield, including when a loss
+  incident was recorded. The harvest-entry model accepts positive quantities.
 
 There is no server-persisted "last active season" (unlike
 `UserProjectSettings.last_project`); it is a client-only, per-project

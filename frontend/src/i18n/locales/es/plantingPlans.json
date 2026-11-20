@@ -437,6 +437,65 @@
     "tasksLoadFailed": "No se pudieron cargar las tareas.",
     "taskCancelled": "Cancelada"
   },
+  "previousSeason": {
+    "title": "Temporada anterior: {{season}}",
+    "titleWithoutSeason": "Temporada anterior",
+    "reference": "Referencia",
+    "empty": "El plan de cultivo de origen no tiene datos reales registrados.",
+    "unavailable": "La referencia de la temporada anterior no está disponible.",
+    "openSource": "Abrir el plan de cultivo de origen"
+  },
+  "cropLosses": {
+    "title": "Pérdidas del cultivo",
+    "historyType": "Pérdida del cultivo",
+    "add": "Registrar pérdida",
+    "edit": "Editar pérdida",
+    "delete": "Eliminar pérdida",
+    "date": "Fecha de la pérdida",
+    "type": "Tipo de pérdida",
+    "cause": "Causa",
+    "extent": "Magnitud (opcional)",
+    "unit": "Unidad",
+    "note": "Nota (opcional)",
+    "empty": "No hay pérdidas del cultivo registradas.",
+    "loading": "Cargando las pérdidas del cultivo",
+    "actionsFor": "Acciones para la pérdida del {{date}} ({{cause}})",
+    "confirmDelete": "¿Eliminar la pérdida del {{date}}?",
+    "types": {
+      "partial": "Pérdida parcial",
+      "total": "Pérdida total"
+    },
+    "causes": {
+      "frost": "Helada",
+      "drought": "Sequía",
+      "waterlogging": "Encharcamiento",
+      "pests": "Plagas",
+      "disease": "Enfermedad",
+      "other": "Otra"
+    },
+    "units": {
+      "percent": "Porcentaje (%)",
+      "plants": "Plantas",
+      "sqm": "Superficie (m²)"
+    },
+    "incidentCount_one": "{{count}} incidente",
+    "incidentCount_many": "{{count}} incidentes",
+    "incidentCount_other": "{{count}} incidentes",
+    "extentPlants_one": "{{value}} planta",
+    "extentPlants_many": "{{value}} plantas",
+    "extentPlants_other": "{{value}} plantas",
+    "extentArea": "{{value}} m²",
+    "errors": {
+      "load": "No se pudieron cargar las pérdidas del cultivo.",
+      "save": "No se pudo guardar la pérdida.",
+      "delete": "No se pudo eliminar la pérdida.",
+      "date": "Introduce una fecha válida.",
+      "cause": "Selecciona una causa.",
+      "percent": "Introduce un porcentaje de 0 a 100 con hasta tres decimales.",
+      "plants": "Introduce un número entero de plantas, a partir de cero.",
+      "sqm": "Introduce una superficie no negativa con hasta tres decimales."
+    }
+  },
   "actualDates": {
     "clear": "Borrar fecha",
     "title": "Fechas previstas y reales",

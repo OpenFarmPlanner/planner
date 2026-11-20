@@ -17,16 +17,23 @@ import type {
   AppNotification,
   NotificationListResponse,
   Crop,
+  CropLoss,
+  CropLossWrite,
   CropDeletePreview,
   Location,
   Field,
   Bed,
   PlantingPlan,
+  HarvestPlanSuggestion,
+  HarvestRecord,
+  HarvestTotals,
+  HarvestWrite,
   PaginatedResponse,
   Supplier,
   SeedDemand,
   YoungPlantDemand,
   YieldCalendarForecast,
+  YieldComparison,
   YieldCalendarWeek,
   NoteAttachment,
   CropHistoryEntry,
@@ -94,6 +101,7 @@ import type {
 
 export async function fetchAllPaginated<T>(
   initialPath: string,
+  signal?: AbortSignal,
 ): Promise<PaginatedResponse<T>> {
   const results: T[] = [];
   const [basePath] = initialPath.split('?');
@@ -102,9 +110,9 @@ export async function fetchAllPaginated<T>(
   let count = 0;
 
   while (nextPath) {
-    const response: { data: PaginatedResponse<T> } = await http.get<
-      PaginatedResponse<T>
-    >(nextPath);
+    const response: { data: PaginatedResponse<T> } = signal
+      ? await http.get<PaginatedResponse<T>>(nextPath, { signal })
+      : await http.get<PaginatedResponse<T>>(nextPath);
     results.push(...response.data.results);
     count = response.data.count;
     // DRF returns an absolute URL for `next`, built from the backend's own host.
@@ -151,7 +159,7 @@ const withActiveProject = <T extends object>(data: T): T | (T & { project: numbe
 
 export const cropAPI = {
   list: (url = '/crops/') => http.get<PaginatedResponse<Crop>>(url),
-  listAll: () => fetchAllPaginated<Crop>('/crops/'),
+  listAll: (signal?: AbortSignal) => fetchAllPaginated<Crop>('/crops/', signal),
   get: (id: number) => http.get<Crop>(`/crops/${id}/`),
   duplicateCheck: (params: { name: string; variety: string; exclude_id?: number }, signal?: AbortSignal) =>
     http.get<CropDuplicateCheckResponse>('/crops/duplicate-check/', { params, signal }),
@@ -456,6 +464,28 @@ export const bedAPI = {
   delete: (id: number) => http.delete(`/beds/${id}/`),
 };
 
+export const harvestAPI = {
+  list: (planId?: number, signal?: AbortSignal) => fetchAllPaginated<HarvestRecord>(
+    planId === undefined ? '/harvests/' : `/harvests/?planting_plan=${planId}`, signal,
+  ),
+  summary: (signal?: AbortSignal) => http.get<HarvestTotals>('/harvests/summary/', { signal }),
+  suggestions: (crop: number, date: string, signal?: AbortSignal) => (
+    http.get<HarvestPlanSuggestion[]>('/harvests/suggestions/', { params: { crop, date }, signal })
+  ),
+  create: (data: HarvestWrite) => http.post<HarvestRecord>('/harvests/', data),
+  patch: (id: number, data: Partial<HarvestWrite>) => http.patch<HarvestRecord>(`/harvests/${id}/`, data),
+  delete: (id: number) => http.delete(`/harvests/${id}/`),
+};
+
+export const cropLossAPI = {
+  listForPlan: (planId: number, signal?: AbortSignal) => fetchAllPaginated<CropLoss>(
+    `/crop-losses/?planting_plan=${planId}`, signal,
+  ),
+  create: (data: CropLossWrite) => http.post<CropLoss>('/crop-losses/', data),
+  patch: (id: number, data: Omit<CropLossWrite, 'planting_plan'>) => http.patch<CropLoss>(`/crop-losses/${id}/`, data),
+  delete: (id: number) => http.delete(`/crop-losses/${id}/`),
+};
+
 export const plantingPlanAPI = {
   list: () => http.get<PaginatedResponse<PlantingPlan>>('/planting-plans/'),
   listAll: () => fetchAllPaginated<PlantingPlan>('/planting-plans/'),
@@ -600,6 +630,12 @@ export const yieldCalendarAPI = {
     }),
   forecast: () => http.get<YieldCalendarForecast>('/yield-calendar/', {
     params: { include_incomplete: true },
+  }),
+  comparisonCrops: (signal: AbortSignal) => http.get<{ crops: { id: number; name: string }[] }>(
+    '/yield-calendar/comparison/', { signal },
+  ),
+  comparison: (cropId: number, signal: AbortSignal) => http.get<YieldComparison>('/yield-calendar/comparison/', {
+    params: { crop_id: cropId }, signal,
   }),
 };
 

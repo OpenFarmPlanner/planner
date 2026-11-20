@@ -31,10 +31,13 @@ The shared crop form offers a Germination block after the time windows: the
 optimal temperature and the germination time are one range field each
 (`RangeField`, "Von"/"Bis" inside one outlined field), the minimum
 temperature is a plain field beside them. Temperature pretreatment follows,
-then its conditional stratification ranges, the light requirement, propagation
-duration, and free-text pretreatment. Stratification ranges are shown only
+then its conditional stratification ranges, the light requirement, and
+free-text pretreatment. Stratification ranges are shown only
 for cold stratification or frost treatment; hiding them preserves saved values.
-Crop details and library details use this same order. Spreadsheet
+Crop details and library details use this same order. Propagation duration
+appears under Time planning and measures the time from starting propagation
+to transplanting. Direct-sowing-only crops keep any saved duration, with the
+input disabled until propagation is applicable again. Spreadsheet
 and JSON exchange preserve each field. Sheets additionally accept range
 columns (`Keimtemperatur`, `Keim-temperatur (°C)`, `Keimdauer`,
 `Keim-dauer (Tage)`), with `18-25` or `18–25` syntax; a single number sets

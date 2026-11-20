@@ -9,6 +9,7 @@
   "plantingPlans": "Anbaupläne",
   "ganttChart": "Anbaukalender",
   "yieldOverview": "Ertragsübersicht",
+  "harvests": "Ernten",
   "seedDemand": "Saatgutbedarf",
   "youngPlantDemand": "Jungpflanzenbedarf",
   "short": {
@@ -19,6 +20,7 @@
     "plantingPlans": "Anbaupläne",
     "ganttChart": "Anbaukalender",
     "yieldOverview": "Ertragsübersicht",
+    "harvests": "Ernten",
     "seedDemand": "Saatgutbedarf",
     "youngPlantDemand": "Jungpflanzenbedarf",
     "suppliers": "Lieferanten"

@@ -437,6 +437,65 @@
     "tasksLoadFailed": "Impossibile caricare le attività.",
     "taskCancelled": "Annullata"
   },
+  "previousSeason": {
+    "title": "Stagione precedente: {{season}}",
+    "titleWithoutSeason": "Stagione precedente",
+    "reference": "Riferimento",
+    "empty": "Il piano di coltivazione di origine non contiene dati effettivi registrati.",
+    "unavailable": "Il riferimento alla stagione precedente non è disponibile.",
+    "openSource": "Apri il piano di coltivazione di origine"
+  },
+  "cropLosses": {
+    "title": "Perdite colturali",
+    "historyType": "Perdita colturale",
+    "add": "Registra perdita",
+    "edit": "Modifica perdita",
+    "delete": "Elimina perdita",
+    "date": "Data della perdita",
+    "type": "Tipo di perdita",
+    "cause": "Causa",
+    "extent": "Entità (facoltativa)",
+    "unit": "Unità",
+    "note": "Nota (facoltativa)",
+    "empty": "Nessuna perdita colturale registrata.",
+    "loading": "Caricamento delle perdite colturali",
+    "actionsFor": "Azioni per la perdita del {{date}} ({{cause}})",
+    "confirmDelete": "Eliminare la perdita del {{date}}?",
+    "types": {
+      "partial": "Perdita parziale",
+      "total": "Perdita totale"
+    },
+    "causes": {
+      "frost": "Gelata",
+      "drought": "Siccità",
+      "waterlogging": "Ristagno idrico",
+      "pests": "Parassiti",
+      "disease": "Malattia",
+      "other": "Altro"
+    },
+    "units": {
+      "percent": "Percentuale (%)",
+      "plants": "Piante",
+      "sqm": "Superficie (m²)"
+    },
+    "incidentCount_one": "{{count}} evento",
+    "incidentCount_many": "{{count}} eventi",
+    "incidentCount_other": "{{count}} eventi",
+    "extentPlants_one": "{{value}} pianta",
+    "extentPlants_many": "{{value}} piante",
+    "extentPlants_other": "{{value}} piante",
+    "extentArea": "{{value}} m²",
+    "errors": {
+      "load": "Impossibile caricare le perdite colturali.",
+      "save": "Impossibile salvare la perdita.",
+      "delete": "Impossibile eliminare la perdita.",
+      "date": "Inserisci una data valida.",
+      "cause": "Scegli una causa.",
+      "percent": "Inserisci una percentuale da 0 a 100 con un massimo di tre decimali.",
+      "plants": "Inserisci un numero intero di piante, a partire da zero.",
+      "sqm": "Inserisci una superficie non negativa con un massimo di tre decimali."
+    }
+  },
   "actualDates": {
     "clear": "Cancella data",
     "title": "Date previste ed effettive",

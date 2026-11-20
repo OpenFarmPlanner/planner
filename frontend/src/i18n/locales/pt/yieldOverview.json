@@ -49,5 +49,37 @@
       "zero_plant_count": "O número de plantas calculado é zero",
       "missing_harvest_period": "O período de colheita está em falta ou é inválido"
     }
+  },
+  "comparison": {
+    "view": "Vista geral dos rendimentos",
+    "calendar": "Calendário de previsões",
+    "seasons": "Comparar épocas",
+    "chooseCrop": "Escolher uma cultura",
+    "noCrops": "Adicione uma série ou registe uma colheita para comparar uma cultura entre épocas.",
+    "noSeasons": "Não há épocas para comparar.",
+    "season": "Época",
+    "forecast": "Rendimento previsto",
+    "recorded": "Quantidade colhida",
+    "notRecorded": "Por registar",
+    "harvestRecorded": "Colheita registada",
+    "zeroRecorded": "Zero registado",
+    "noForecast": "Previsão indisponível",
+    "forecastCoverage": "Previsão para {{included}} de {{total}} séries",
+    "harvestCoverage": "Colheita atribuída a {{included}} de {{total}} séries da previsão",
+    "estimated": "{{value}} de peso estimado",
+    "unassigned": "{{value}} por atribuir",
+    "assignedPlans": "Séries com colheita atribuída ({{count}})",
+    "noAreaYield": "Rendimento por m² indisponível",
+    "noMass": "Peso indisponível",
+    "details": "Datas e observações",
+    "activityDates": "Datas das atividades na época de cultivo",
+    "openPlan": "Abrir a série",
+    "harvestedAreaYield": "Rendimento por m² de área colhida",
+    "chartTitle": "Rendimento comparável",
+    "chartScope": "Aqui só aparecem as épocas com colheitas pesadas e uma previsão completa para as mesmas séries.",
+    "chartEmpty": "Nenhuma época tem colheitas pesadas e uma previsão completa para as mesmas séries.",
+    "chartValues": "Rendimento de {{season}} ({{period}})",
+    "axis": "Rendimento em quilogramas",
+    "tableScope": "As quantidades colhidas contam na época da data da colheita. O rendimento registado por m² usa a área total das séries com colheita atribuída."
   }
 }

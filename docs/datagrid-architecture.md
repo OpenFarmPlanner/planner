@@ -534,6 +534,8 @@ Anbauflächen (`FieldsBedsHierarchy.tsx`) — edit like a spreadsheet on
 desktop, through one shared hook, `useSpreadsheetCellEditing.ts`:
 
 - **A single click only selects the cell.** It never starts edit mode.
+- The optional Actual harvest and Crop losses summaries accept click and
+  keyboard focus. Their records are edited from Planting plan details.
 - **Editing starts** with a double click, Enter, F2, or by typing a
   printable character, which replaces the value. All four go through
   `useSpreadsheetEditStarter` (`keyboardEditing.ts`), so every start takes

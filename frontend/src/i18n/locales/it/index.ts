@@ -12,6 +12,7 @@ import beds from './beds.json';
 import hierarchy from './hierarchy.json';
 import ganttChart from './ganttChart.json';
 import yieldOverview from './yieldOverview.json';
+import harvests from './harvests.json';
 import suppliers from './suppliers.json';
 import help from './help.json';
 import auth from './auth.json';
@@ -33,6 +34,7 @@ export default {
   hierarchy,
   ganttChart,
   yieldOverview,
+  harvests,
   suppliers,
   help,
   auth,

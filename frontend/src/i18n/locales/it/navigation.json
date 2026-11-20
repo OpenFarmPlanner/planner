@@ -9,6 +9,7 @@
   "plantingPlans": "Piano colturale",
   "ganttChart": "Calendario colturale",
   "yieldOverview": "Panoramica delle rese",
+  "harvests": "Raccolte",
   "seedDemand": "Fabbisogno di sementi",
   "youngPlantDemand": "Fabbisogno di piantine",
   "short": {
@@ -19,6 +20,7 @@
     "plantingPlans": "Piano colturale",
     "ganttChart": "Calendario",
     "yieldOverview": "Rese",
+    "harvests": "Raccolte",
     "seedDemand": "Sementi",
     "youngPlantDemand": "Piantine",
     "suppliers": "Fornitori"

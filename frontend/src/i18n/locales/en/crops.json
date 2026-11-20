@@ -258,6 +258,16 @@
     "propagationDurationDaysHelp": "Time from the start of propagation to the planting date.",
     "propagationDurationDaysError": "Propagation duration must be ≥ 0",
     "yieldUnit": "Yield unit",
+    "defaultHarvestUnit": "Default harvest unit",
+    "averageHarvestPieceWeight": "Average weight (g per piece)",
+    "averageHarvestBunchWeight": "Average weight (g per bunch)",
+    "harvestWeightError": "Enter a positive weight with up to three decimal places, or clear the field.",
+    "harvestUnits": {
+      "kg": "Kilograms (kg)",
+      "g": "Grams (g)",
+      "piece": "Pieces",
+      "bunch": "Bunches"
+    },
     "yieldUnitPerPlant": "Per plant",
     "yieldUnitPerSqm": "Per m²",
     "expectedYield": "Expected yield",

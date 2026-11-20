@@ -58,9 +58,11 @@ import {
   plantingPlanAPI,
   type PlantingPlan,
 } from "../api/api";
-import type { HarvestOverlap, PlanCultivationType, SuccessionLimit, TimingWindowFinding } from "../api/types";
+import type { HarvestOverlap, PlanActualHarvest, PlanCultivationType, SuccessionLimit, TimingWindowFinding } from "../api/types";
 import { extractApiErrorMessage, isAreaInputSpacingMissingError } from "../api/errors";
+import { formatHarvestQuantity, formatHarvestTotals } from "../harvests/harvestDisplay";
 import {
+  formatLocalizedNumber,
   formatLocalizedNumberForInput,
   parseLocalizedNumber,
   resolveLocaleFromLanguage,
@@ -210,7 +212,8 @@ const PLANTING_PLAN_DIALOG_EDIT_FIELDS = ["bed"];
  * render — visible as the header/toolbar jitter this constant fixes.
  */
 const DEFAULT_HIDDEN_FIELDS_ON_SMALL_SCREEN = ["harvest_date", "harvest_end_date"];
-const DEFAULT_HIDDEN_FIELDS = ["season_status"];
+const DEFAULT_HIDDEN_FIELDS = ["season_status", "actual_harvest", "crop_loss_count"];
+const FOCUSABLE_SUMMARY_FIELDS = ["actual_harvest", "crop_loss_count"];
 
 const isCarriedOverPlan = (row: PlantingPlanRow): boolean => Boolean(row.carried_over);
 
@@ -221,6 +224,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   restoredView?: PlantingPlanSearchSnapshot;
 } = {}) {
   const { t, i18n } = useTranslation(["plantingPlans", "common"]);
+  const { t: tHarvest } = useTranslation("harvests");
   const [dateMode, setDateMode] = useState<PlantingPlanDateMode>('combined');
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
   const activeSeason = outletContext?.activeSeason ?? null;
@@ -1338,6 +1342,37 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         ),
       },
       {
+        field: "actual_harvest",
+        headerName: tHarvest("tableColumn"),
+        width: 178,
+        editable: false,
+        sortable: false,
+        valueFormatter: (value: PlanActualHarvest | null | undefined) => value
+          ? formatHarvestTotals(value.quantities, numberLocale, tHarvest) : "—",
+        renderCell: ({ value, formattedValue, hasFocus }) => {
+          const actual = value as PlanActualHarvest | null | undefined;
+          const comparable = actual?.forecast_kg && actual.forecast_percentage && actual.quantities.length === 1
+            && actual.quantities[0].unit === 'kg';
+          const text = <Typography component="span" variant="inherit" noWrap tabIndex={comparable && hasFocus ? 0 : -1}>
+            {formattedValue ?? "—"}
+          </Typography>;
+          return comparable ? <AppTooltip describeChild title={tHarvest('forecastComparison', {
+            forecast: formatHarvestQuantity(actual.forecast_kg!, 'kg', numberLocale, tHarvest),
+            percent: formatLocalizedNumber(Number(actual.forecast_percentage) / 100, numberLocale, {
+              style: 'percent', maximumFractionDigits: 1,
+            }),
+          })}>{text}</AppTooltip> : text;
+        },
+      },
+      {
+        field: "crop_loss_count",
+        headerName: t("plantingPlans:cropLosses.title"),
+        width: 150,
+        editable: false,
+        valueFormatter: (count: number | undefined) => count
+          ? t("plantingPlans:cropLosses.incidentCount", { count }) : "—",
+      },
+      {
         field: "notes",
         headerName: t("common:fields.notes"),
         width: 72,
@@ -1378,6 +1413,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       isPlantsPartnerVisible,
       linkedPartnerHighlight,
       t,
+      tHarvest,
     ],
   );
 
@@ -2656,6 +2692,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             columns={columns}
             api={plantingPlanGridAPI}
             dialogEditFields={PLANTING_PLAN_DIALOG_EDIT_FIELDS}
+            focusableReadOnlyFields={FOCUSABLE_SUMMARY_FIELDS}
             commandApiRef={gridCommandApiRef}
             onSelectedRowChange={setSelectedPlan}
             onRowsStateChange={(rows) => {

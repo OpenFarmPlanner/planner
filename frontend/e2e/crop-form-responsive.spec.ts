@@ -72,6 +72,8 @@ async function openEditCropDialog(page: Page): Promise<Locator> {
     name: 'Kompaktsalat',
     botanical_name: 'Lactuca sativa',
     cultivation_types: ['pre_cultivation', 'direct_sowing'],
+    growth_duration_days: 60,
+    propagation_duration_days: 28,
   });
   await page.goto(`/app/crops?cropId=${crop.id}&action=edit`);
   const dialog = page.getByRole('dialog', { name: 'Kultur bearbeiten' });
@@ -101,6 +103,10 @@ test.describe('crop edit dialog compact layout', () => {
     const nameBox = await inputBox(dialog.getByLabel(/^Name/));
     const botanicalBox = await inputBox(dialog.getByLabel('Lateinischer Name'));
     expect(botanicalBox.y).toBeGreaterThan(nameBox.y + nameBox.height);
+    const harvest = await fieldBox(dialog.getByLabel('Erntezeit (Tage)', { exact: true }));
+    const propagation = await fieldBox(dialog.getByLabel('Anzuchtdauer (Tage)', { exact: true }));
+    expect(propagation.y).toBeGreaterThan(harvest.y + harvest.height);
+    expect(propagation.width).toBeCloseTo(harvest.width, 0);
     await expect(dialog.getByRole('button', { name: /Speichern/ })).toBeInViewport();
   });
 
@@ -125,16 +131,17 @@ test.describe('crop edit dialog compact layout', () => {
     // Compact fields: the small MUI field height.
     expect(nameBox.height).toBeLessThan(48);
 
-    // Timing: cultivation type, then growth and harvest. Propagation belongs
-    // to the later germination section.
+    // The three durations share one row beneath cultivation type.
     const cultivationBox = await fieldBox(dialog.getByRole('combobox', { name: 'Anbauart' }));
     const durationBoxes = [
       await fieldBox(dialog.getByLabel('Wachstumszeit (Tage)', { exact: true })),
       await fieldBox(dialog.getByLabel('Erntezeit (Tage)', { exact: true })),
+      await fieldBox(dialog.getByLabel('Anzuchtdauer (Tage)', { exact: true })),
     ];
     await expectOneRow(durationBoxes);
     expect(durationBoxes[0].y).toBeGreaterThan(cultivationBox.y + cultivationBox.height);
     expect(durationBoxes[0].x).toBeLessThan(durationBoxes[1].x);
+    expect(durationBoxes[1].x).toBeLessThan(durationBoxes[2].x);
     await expectOneRow([
       // The yield unit select has no labelled combobox: find it by its label.
       await inputBox(dialog.locator('.MuiFormControl-root')
@@ -154,6 +161,7 @@ test('keeps every variety form row on the shared three-column grid', async ({ pa
     name: 'Rasterkarotte',
     variety: 'Nantaise',
     cultivation_types: ['direct_sowing'],
+    propagation_duration_days: 28,
   });
   await page.goto(`/app/crops?cropId=${crop.id}&action=edit`);
   const dialog = page.getByRole('dialog', { name: 'Sorte bearbeiten' });
@@ -198,6 +206,7 @@ test('keeps every variety form row on the shared three-column grid', async ({ pa
   ]);
 
   // Review artifacts only; the layout itself is asserted above.
+  const propagation = dialog.getByLabel('Anzuchtdauer (Tage)', { exact: true });
   const germination = dialog.getByRole('heading', { name: 'Keimung' });
   for (const viewport of [
     { width: 375, height: 800 }, { width: 800, height: 375 }, { width: 768, height: 900 },
@@ -206,6 +215,8 @@ test('keeps every variety form row on the shared three-column grid', async ({ pa
     await page.setViewportSize(viewport);
     await dialog.getByLabel(/^Name/).scrollIntoViewIfNeeded();
     await page.screenshot({ path: testInfo.outputPath(`crop-form-top-${viewport.width}.png`) });
+    await propagation.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath(`crop-form-timing-${viewport.width}.png`) });
     await germination.scrollIntoViewIfNeeded();
     await page.screenshot({ path: testInfo.outputPath(`crop-form-germination-${viewport.width}.png`) });
     await dialog.getByLabel('Saattiefe von (cm)').scrollIntoViewIfNeeded();

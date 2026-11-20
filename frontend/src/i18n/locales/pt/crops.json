@@ -260,6 +260,16 @@
     "propagationDurationDaysHelp": "Tempo entre o início do viveiro e a data de transplantação.",
     "propagationDurationDaysError": "A duração em viveiro tem de ser ≥ 0",
     "yieldUnit": "Unidade de rendimento",
+    "defaultHarvestUnit": "Unidade de colheita predefinida",
+    "averageHarvestPieceWeight": "Peso médio (g por unidade)",
+    "averageHarvestBunchWeight": "Peso médio (g por molho)",
+    "harvestWeightError": "Introduza um peso positivo com até três casas decimais ou deixe o campo vazio.",
+    "harvestUnits": {
+      "kg": "Quilogramas (kg)",
+      "g": "Gramas (g)",
+      "piece": "Unidades",
+      "bunch": "Molhos"
+    },
     "yieldUnitPerPlant": "Por planta",
     "yieldUnitPerSqm": "Por m²",
     "expectedYield": "Rendimento esperado",
