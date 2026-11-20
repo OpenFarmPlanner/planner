@@ -1494,36 +1494,39 @@ export function EditableDataGrid<T extends EditableRow>({
   const applyDialogEditValues = useCallback(async (
     rowId: GridRowId,
     values: Partial<T>,
-  ): Promise<void> => {
+  ): Promise<boolean> => {
     const rowKey = String(rowId);
-    await applyDraftValues(rowId, values);
-
-    if (rowModesModel[rowId]?.mode === GridRowModes.Edit) {
-      // The row already has an open edit session (typically a new draft row).
-      // Its own save cycle persists the dialog values together with the rest,
-      // so committing here would save a half-filled row.
-      return;
-    }
-
     const baseRow = getDraftRow(rowId) ?? (rowsById.get(rowKey) as T | undefined);
-    if (!baseRow) {
-      return;
-    }
+    if (!baseRow || isReadOnlyRow?.(baseRow)) return false;
 
     try {
+      if (rowModesModel[rowId]?.mode === GridRowModes.Edit) {
+        // The row's own save cycle persists the picker result with its other edits.
+        await applyDraftValues(rowId, values);
+        return true;
+      }
+
       const savedRow = await processRowUpdate({ ...baseRow, ...values } as T);
       setRows((previousRows) =>
         previousRows.map((currentRow) =>
           String(currentRow.id) === rowKey ? savedRow : currentRow,
         ),
       );
+      return true;
     } catch (error) {
+      if (isSaveBlockedError(error)) {
+        // Validation opened the row editor. Keep the proposed bed in its draft
+        // so adjusting the area can finish saving the same selection.
+        await applyDraftValues(rowId, values);
+      }
       handleProcessRowUpdateError(error);
+      return false;
     }
   }, [
     applyDraftValues,
     getDraftRow,
     handleProcessRowUpdateError,
+    isReadOnlyRow,
     processRowUpdate,
     rowModesModel,
     rowsById,

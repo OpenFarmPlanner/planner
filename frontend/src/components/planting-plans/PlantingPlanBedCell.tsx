@@ -30,7 +30,7 @@ interface PlantingPlanBedCellProps {
     cultureLabel: string;
   };
   numberLocale: string;
-  onSelect: (bedId: number, freeAreaSqm: number | null) => Promise<void>;
+  onSelect: (bedId: number, freeAreaSqm: number | null) => Promise<boolean>;
   onAccept: (accepted: boolean) => Promise<void>;
   endAdornment?: ReactNode;
 }

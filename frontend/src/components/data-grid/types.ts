@@ -44,9 +44,10 @@ export interface EditableDataGridCommandApi {
    * Writes values produced by a `dialogEditFields` cell's own popover/dialog.
    * A row that already has an inline edit session open just receives the
    * values into its draft; a row in view mode is saved right away, because a
-   * dialog cell never opens an edit session of its own.
+   * dialog cell never opens an edit session of its own. Returns whether the
+   * values were added to the draft or successfully saved.
    */
-  applyDialogEditValues: (rowId: GridRowId, values: Partial<EditableRow>) => Promise<void>;
+  applyDialogEditValues: (rowId: GridRowId, values: Partial<EditableRow>) => Promise<boolean>;
   /** Merge a successfully saved external edit without resetting other rows or drafts. */
   applySavedRowValues?: (rowId: GridRowId, values: Partial<EditableRow>) => void;
 }

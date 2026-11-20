@@ -142,6 +142,29 @@ test.describe('inline bed picker', () => {
     await page.keyboard.press('Tab');
     await expect(page.getByRole('tooltip')).toHaveText(path);
   });
+
+  test('keeps the saved bed and allows retry after a failed change', async ({ page, request }) => {
+    const { plan, original, nearby } = await seedBeds(page, request, 'bed-picker-retry');
+    const path = `/planting-plans/${plan}/`;
+    let saveAttempts = 0;
+    await page.route(`**/api${path}`, (route) => {
+      if (route.request().method() === 'PUT' && ++saveAttempts === 1) {
+        return route.fulfill({ status: 500, json: { detail: 'Simulated save error' } });
+      }
+      return route.continue();
+    });
+    await cell(page, 'bed').dblclick();
+    const option = beds(page).getByRole('option', { name: /Salat 2/ });
+    await option.click();
+    await expect.poll(() => saveAttempts).toBe(1);
+    await expect(picker(page)).toBeEditable();
+    await expect(beds(page).getByRole('option', { selected: true })).toContainText('Salat 1');
+    expect(await apiRequest(page, 'GET', path)).toMatchObject({ bed: original });
+
+    await option.click();
+    await expect(cell(page, 'bed')).toContainText('Salat 2');
+    expect(await apiRequest(page, 'GET', path)).toMatchObject({ bed: nearby });
+  });
 });
 
 test.describe('touch tablet bed picker', () => {

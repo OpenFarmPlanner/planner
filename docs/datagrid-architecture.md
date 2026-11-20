@@ -998,7 +998,9 @@ current mode: a row already in inline edit mode — typically a new draft row
 — only gets the values merged into its draft, so its own save cycle
 persists everything at once; a row in view mode is saved immediately
 through the normal `processRowUpdate` path, including the
-`onBeforeSaveRow` gate.
+`onBeforeSaveRow` gate. A failed server save keeps the saved value visible and
+returns control to the picker. If the validation gate opens the row editor,
+the proposed values stay in its draft so the user can correct the area.
 
 `values` must carry **only the fields the picker changed**, never a
 whole row. On a row that is mid-edit those values are pushed into the open

@@ -25,7 +25,7 @@ const commandApiSpies = vi.hoisted(() => ({
   addRow: vi.fn(),
   setDraftValues: vi.fn(),
   commitDraftValues: vi.fn(),
-  applyDialogEditValues: vi.fn(),
+  applyDialogEditValues: vi.fn().mockResolvedValue(true),
   saveAttemptResult: vi.fn(),
   apiPayload: vi.fn(),
   gridProps: vi.fn(),

@@ -25,7 +25,7 @@ interface InlineBedPickerProps {
   rotation: RotationInput;
   numberLocale: string;
   onClose: (restoreFocus: boolean) => void;
-  onSelect: (bedId: number, freeAreaSqm: number | null) => Promise<void>;
+  onSelect: (bedId: number, freeAreaSqm: number | null) => Promise<boolean>;
 }
 
 const touchButtonSx = { minHeight: 44, minWidth: 44, maxWidth: '100%', overflowWrap: 'anywhere', textTransform: 'none' } as const;
@@ -105,10 +105,13 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
     if (submitting || !hasRoom(option)) return;
     if (option.id !== selected?.id) {
       setSubmitting(true);
+      let saved: boolean;
       try {
-        await onSelect(option.id, suggestionsByBed.get(option.id)?.free_area_sqm ?? null);
+        saved = await onSelect(option.id, suggestionsByBed.get(option.id)?.free_area_sqm ?? null);
       } catch {
-        // Keep the picker usable so the user can retry or dismiss it.
+        saved = false;
+      }
+      if (!saved) {
         setSubmitting(false);
         return;
       }

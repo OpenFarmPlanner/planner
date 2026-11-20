@@ -583,7 +583,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       row: PlantingPlanRow,
       nextBedId: number,
       freeAreaSqm: number | null,
-    ): Promise<void> => {
+    ): Promise<boolean> => {
       const selectedBed = bedById.get(nextBedId);
       const shouldAutofillArea = Boolean(row.isNew)
         && (row.area_m2 === undefined || row.area_m2 === null);
@@ -604,14 +604,14 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         beds,
       );
 
-      await gridCommandApiRef.current?.applyDialogEditValues(rowId, {
+      return gridCommandApiRef.current?.applyDialogEditValues(rowId, {
         location_id,
         field_id,
         bed,
         ...(shouldAutofillArea && autofillArea !== undefined && autofillArea !== null && autofillArea > 0
           ? { area_m2: autofillArea }
           : {}),
-      });
+      }) ?? false;
     },
     [bedById, beds, fields],
   );
@@ -1948,7 +1948,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   /**
    * The bed's capacity in the row's period, from the backend's shared
    * capacity rule (farm/services/bed_capacity.py) — the same rule the bed
-   * options of "Anbaufläche ändern" use, so a bed offered there is never
+   * options in the inline bed picker use, so a bed offered there is never
    * rejected here. Null skips the check (no bed, no bed area, or the check
    * failed: a failed check never blocks a save).
    */
