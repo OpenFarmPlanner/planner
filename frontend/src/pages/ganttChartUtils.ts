@@ -15,6 +15,10 @@ export interface GanttTask {
   percent?: number;
   dependencies?: string[];
   plantingPlanId?: number;
+  readOnly?: boolean;
+  accessibleLabel?: string;
+  originSeasonId?: number;
+  originSeasonLabel?: string | null;
   /** Shared by all phase bars of one planting plan so they are dragged as one unit. */
   linkGroupId?: string;
   cropName?: string;
@@ -96,7 +100,6 @@ type ScheduledPlantingPlan = PlantingPlan & {
   id: number;
   bed: number;
   planting_date: string;
-  harvest_date: string;
 };
 
 function isScheduledPlantingPlan(plan: PlantingPlan): plan is ScheduledPlantingPlan {
@@ -104,7 +107,9 @@ function isScheduledPlantingPlan(plan: PlantingPlan): plan is ScheduledPlantingP
     typeof plan.id === 'number'
     && typeof plan.bed === 'number'
     && Boolean(plan.planting_date)
-    && Boolean(plan.harvest_date)
+    && Boolean(plan.harvest_date || (
+      plan.carried_over && (plan.occupancy_end_date || plan.harvest_end_date)
+    ))
   );
 }
 
@@ -246,8 +251,12 @@ function extendRange(
  * past the season end. Returns null when the season has no scheduled plans —
  * the caller then falls back and the existing empty state renders.
  */
-export function getOccupancyCalendarRange(plantingPlans: PlantingPlan[]): CalendarDateRange | null {
+export function getOccupancyCalendarRange(
+  plantingPlans: PlantingPlan[],
+  seasonStart?: string,
+): CalendarDateRange | null {
   let range: { start: Date; end: Date } | null = null;
+  const startOfSeason = seasonStart ? parseDateString(seasonStart) : undefined;
   plantingPlans.forEach((plan) => {
     if (!isScheduledPlantingPlan(plan)) {
       return;
@@ -256,14 +265,27 @@ export function getOccupancyCalendarRange(plantingPlans: PlantingPlan[]): Calend
     if (Number.isNaN(plantingDate.getTime())) {
       return;
     }
-    const harvestEndSource = plan.harvest_end_date || plan.harvest_date;
-    const harvestEndDate = parseDateString(harvestEndSource);
+    const end = plan.carried_over ? plan.occupancy_end_date : undefined;
+    const harvestEndDate = parseDateString(end || plan.harvest_end_date || plan.harvest_date || '');
     const rangeEnd = !Number.isNaN(harvestEndDate.getTime()) && harvestEndDate > plantingDate
       ? harvestEndDate
       : plantingDate;
-    range = extendRange(range, plantingDate, rangeEnd);
+    const visibleStart = plan.carried_over && startOfSeason && plantingDate < startOfSeason
+      ? startOfSeason : plantingDate;
+    range = extendRange(range, visibleStart, rangeEnd);
   });
   return range;
+}
+
+export function clipCarriedOverOccupancyTask(task: GanttTask, axisStart: Date): GanttTask | null {
+  if (!task.readOnly || task.startDate >= axisStart) return task;
+  if (task.endDate < axisStart) return null;
+  const actualEnd = task.actualHarvestEndDate;
+  const duration = task.endDate.getTime() - axisStart.getTime();
+  const fadedTailFraction = actualEnd && duration > 0
+    ? Math.min(1, (task.endDate.getTime() - actualEnd.getTime()) / duration)
+    : task.fadedTailFraction;
+  return { ...task, startDate: axisStart, fadedTailFraction };
 }
 
 /**
@@ -520,10 +542,10 @@ export function buildFieldOccupancyTaskGroups({
         const tasks: GanttTask[] = [];
         bedPlans.forEach((plan) => {
           const plantingDate = parseDateString(plan.planting_date);
-          const harvestStartDate = parseDateString(plan.harvest_date);
-          const harvestEndDate = plan.harvest_end_date
-            ? parseDateString(plan.harvest_end_date)
-            : harvestStartDate;
+          const recordedEnd = plan.carried_over ? plan.occupancy_end_date : undefined;
+          const harvestEnd = plan.harvest_end_date || recordedEnd || plan.harvest_date || '';
+          const harvestStartDate = parseDateString(plan.harvest_date || harvestEnd);
+          const harvestEndDate = parseDateString(harvestEnd);
           const cropDisplayName = getPlanCropDisplayName(plan);
           const baseColor = getCropColor(crops, plan.crop, cropDisplayName, plan.crop_display_color);
           const phaseColors = getGanttPhaseColors(baseColor);
@@ -545,7 +567,7 @@ export function buildFieldOccupancyTaskGroups({
             cropVariety: plan.crop_variety ?? undefined,
             areaUsage: plan.area_usage_sqm ? Number(plan.area_usage_sqm) : undefined,
             notes: plan.notes,
-            harvestStartDate,
+            harvestStartDate: plan.harvest_date ? harvestStartDate : undefined,
             harvestEndDate,
           });
 
@@ -684,10 +706,10 @@ export function buildFieldOccupancyHierarchy({
     const tasks: GanttTask[] = [];
     bedPlans.forEach((plan) => {
       const plantingDate = parseDateString(plan.planting_date);
-      const harvestStartDate = parseDateString(plan.harvest_date);
-      const harvestEndDate = plan.harvest_end_date
-        ? parseDateString(plan.harvest_end_date)
-        : harvestStartDate;
+      const recordedEnd = plan.carried_over ? plan.occupancy_end_date : undefined;
+      const harvestEnd = plan.harvest_end_date || recordedEnd || plan.harvest_date || '';
+      const harvestStartDate = parseDateString(plan.harvest_date || harvestEnd);
+      const harvestEndDate = parseDateString(harvestEnd);
       const cropDisplayName = getPlanCropDisplayName(plan);
       const baseColor = getCropColor(crops, plan.crop, cropDisplayName, plan.crop_display_color);
       const phaseColors = getGanttPhaseColors(baseColor);
@@ -695,6 +717,11 @@ export function buildFieldOccupancyHierarchy({
         cropDisplayName || labels.unknownCropName(plan.crop),
         plan.crop_variety,
       );
+      const carryover = plan.carried_over ? {
+        readOnly: true,
+        originSeasonId: plan.season ?? undefined,
+        originSeasonLabel: plan.origin_season_label,
+      } : {};
 
       tasks.push({
         id: `plan-${plan.id}-growth`,
@@ -709,8 +736,9 @@ export function buildFieldOccupancyHierarchy({
         cropVariety: plan.crop_variety ?? undefined,
         areaUsage: plan.area_usage_sqm ? Number(plan.area_usage_sqm) : undefined,
         notes: plan.notes,
-        harvestStartDate,
+        harvestStartDate: plan.harvest_date ? harvestStartDate : undefined,
         harvestEndDate,
+        ...carryover,
       });
 
       if (harvestEndDate > harvestStartDate) {
@@ -729,6 +757,7 @@ export function buildFieldOccupancyHierarchy({
           notes: plan.notes,
           harvestStartDate,
           harvestEndDate,
+          ...carryover,
           ...getHarvestCutShort(plan, harvestStartDate, harvestEndDate),
         });
       }

@@ -57,6 +57,9 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
     harvest_end_date = serializers.SerializerMethodField(read_only=True)
     plants_count = serializers.SerializerMethodField(read_only=True)
     note_attachment_count = serializers.IntegerField(read_only=True)
+    occupancy_end_date = serializers.DateField(read_only=True)
+    carried_over = serializers.SerializerMethodField()
+    origin_season_label = serializers.SerializerMethodField()
     created_by_user = AuditUserSerializer(source='created_by', read_only=True)
     updated_by_user = AuditUserSerializer(source='updated_by', read_only=True)
     rotation_status = serializers.SerializerMethodField(read_only=True)
@@ -290,6 +293,14 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
 
     def get_harvest_end_date(self, obj: PlantingPlan) -> date | None:
         return self._planned_harvest_dates(obj)[1]
+
+    def get_carried_over(self, obj: PlantingPlan) -> bool:
+        return getattr(obj, 'carried_over', False)
+
+    def get_origin_season_label(self, obj: PlantingPlan) -> str | None:
+        if self.get_carried_over(obj) and obj.season_id is not None:
+            return obj.season.label
+        return None
 
     class Meta:
         model = PlantingPlan

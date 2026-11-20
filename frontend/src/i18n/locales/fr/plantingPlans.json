@@ -471,5 +471,15 @@
       "harvestStart": "Date réelle de début de récolte",
       "harvestEnd": "Date réelle de fin de récolte"
     }
+  },
+  "carriedOver": {
+    "badge": "De {{season}}",
+    "description": "Se poursuit depuis la saison {{season}}. Lecture seule ici.",
+    "unknownBadge": "Se poursuit",
+    "unknownDescription": "Série commencée précédemment. Lecture seule ici.",
+    "openOrigin": "Ouvrir dans la saison d’origine",
+    "count_one": "{{own}} démarrées cette saison · {{count}} se poursuit",
+    "count_other": "{{own}} démarrées cette saison · {{count}} se poursuivent",
+    "count_many": "{{own}} démarrées cette saison · {{count}} se poursuivent"
   }
 }

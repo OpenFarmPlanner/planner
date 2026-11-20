@@ -586,6 +586,38 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             '/openfarmplanner/api/planting-plans/', 15, expected_rows=2 * ROW_COUNT,
         )
 
+    def test_planting_plans_list_query_count_with_carried_over_plans(self):
+        """Carried-over plans resolve their origin season label from the joined
+        `season`, so their count must not grow the queries."""
+        target = Season.objects.create(
+            project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
+        )
+        headers = {'HTTP_X_SEASON_ID': str(target.pk)}
+
+        def carried_over_count() -> int:
+            with CaptureQueriesContext(connection) as queries:
+                response = self.client.get('/openfarmplanner/api/planting-plans/', **headers)
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(all(row['carried_over'] for row in response.data['results']))
+            self.assertTrue(all(row['origin_season_label'] for row in response.data['results']))
+            return len(queries)
+
+        def add_carried_over(index: int) -> None:
+            PlantingPlan.objects.create(
+                crop=self.crops[index], bed=self.beds[index], planting_date=date(2026, 12, 31),
+                area_usage_sqm=5,
+                project=self.project, season=self.seasons[index],
+            )
+
+        add_carried_over(0)
+        single_row_queries = carried_over_count()
+        add_carried_over(1)
+        add_carried_over(2)
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get('/openfarmplanner/api/planting-plans/', **headers)
+        self.assertEqual(len(response.data['results']), ROW_COUNT)
+        self.assertEqual(len(queries), single_row_queries)
+
     def test_planting_plans_list_query_count_with_timing_window_findings(self):
         """A planting date outside the crop's Direktsaat window on every plan
         must cost the same queries as plans without hints."""

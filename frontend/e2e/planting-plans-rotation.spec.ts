@@ -75,9 +75,18 @@ test.describe('planting plan crop rotation in the table', () => {
     await page.keyboard.press('Escape');
 
     await expect(page.getByText('Fruchtfolge: Konflikt')).toBeVisible();
-    const count = await rows(page).count();
-    expect(count).toBeGreaterThan(0);
-    await expect(rows(page).getByRole('button', { name: 'Fruchtfolge-Konflikt, Anbaufläche ändern' })).toHaveCount(count);
+    const seasonMarker = page.getByText(/^Aus Saison /);
+    const carriedOver = rows(page).filter({ has: seasonMarker });
+    const current = rows(page).filter({ hasNot: seasonMarker });
+    await expect(carriedOver.first()).toBeVisible();
+    await expect(current.first()).toBeVisible();
+    const changeArea = { name: 'Fruchtfolge-Konflikt, Anbaufläche ändern' };
+    await expect(current.getByRole('button', changeArea)).toHaveCount(await current.count());
+    await expect(carriedOver.getByRole('button', changeArea)).toHaveCount(0);
+    const warning = carriedOver.getByRole('img', { name: 'Konflikt', exact: true });
+    await expect(warning).toHaveCount(await carriedOver.count());
+    await warning.first().hover();
+    await expect(page.getByRole('tooltip')).toContainText('Fruchtfolge:');
   });
 
   test('explains in the tooltip why the rotation cannot be checked, matching the filter', async ({ page }) => {

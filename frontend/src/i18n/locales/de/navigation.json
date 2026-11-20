@@ -186,7 +186,9 @@
             "description": "Nur die {{ok}} konfliktfreien Anbaupläne werden übernommen."
           }
         }
-      }
+      },
+      "continuingPlans_one": "{{count}} Anbauplan läuft weiter und bleibt in seiner ursprünglichen Saison.",
+      "continuingPlans_other": "{{count}} Anbaupläne laufen weiter und bleiben in ihrer ursprünglichen Saison."
     }
   },
   "seasonSetup": {

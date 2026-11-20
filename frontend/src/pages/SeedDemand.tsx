@@ -191,7 +191,7 @@ export default function SeedDemandPage() {
       const crops = cropsResponse.results;
       setSetupCounts({
         crops: crops.length,
-        plans: plansResponse.data.results.length,
+        plans: plansResponse.data.results.filter(plan => !plan.carried_over).length,
         locations: locationsResponse.data.results.length,
         fields: fieldsResponse.data.results.length,
         beds: bedsResponse.data.results.length,

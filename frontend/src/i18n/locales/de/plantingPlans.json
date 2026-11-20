@@ -460,5 +460,14 @@
       "harvestStart": "Ist-Erntebeginn",
       "harvestEnd": "Ist-Ernteende"
     }
+  },
+  "carriedOver": {
+    "badge": "Aus Saison {{season}}",
+    "description": "Läuft weiter aus Saison {{season}}. Hier nur lesbar.",
+    "unknownBadge": "Läuft weiter",
+    "unknownDescription": "Anbauplan aus einem früheren Zeitraum. Hier nur lesbar.",
+    "openOrigin": "In ursprünglicher Saison öffnen",
+    "count_one": "{{own}} in dieser Saison gepflanzt · {{count}} läuft weiter",
+    "count_other": "{{own}} in dieser Saison gepflanzt · {{count}} laufen weiter"
   }
 }

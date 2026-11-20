@@ -45,7 +45,7 @@ export interface RootLayoutOutletContext {
   activeSeason: Season | null;
   /** Seasons available in the active project, including the origin of a plan read from another season. */
   projectSeasons?: readonly Season[];
-  switchActiveSeason?: (seasonId: number) => void;
+  switchActiveSeason?: (seasonId: number, destination?: string) => void;
   /** Whether the root layout is currently loading seasons for the active project. */
   activeSeasonLoading: boolean;
   /** Whether the active project's season list has completed its first load. */

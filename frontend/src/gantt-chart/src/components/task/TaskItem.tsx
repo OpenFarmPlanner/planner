@@ -33,13 +33,13 @@ const TaskItem: React.FC<TaskItemProps> = ({
 }) => {
   // Show resize handles only when hovered or dragging, in edit mode, AND resizing is allowed
   const showResizeHandles =
-    (isHovered || isDragging) && editMode && allowTaskResize;
+    (isHovered || isDragging) && editMode && !task.readOnly && allowTaskResize;
 
   // Progress editing requires: editMode=true, showProgress=true, AND allowProgressEdit=true
-  const canEditProgress = editMode && showProgress && allowProgressEdit;
+  const canEditProgress = editMode && !task.readOnly && showProgress && allowProgressEdit;
 
   // Task movement requires: editMode=true AND allowTaskMove=true
-  const canMoveTask = editMode && allowTaskMove;
+  const canMoveTask = editMode && !task.readOnly && allowTaskMove;
   const taskRef = useRef<HTMLDivElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const [isDraggingProgress, setIsDraggingProgress] = useState(false);
@@ -260,6 +260,9 @@ const TaskItem: React.FC<TaskItemProps> = ({
       data-dragging={isDragging ? "true" : "false"}
       data-long-pressing={onContextMenu && isLongPressing ? "true" : undefined}
       data-rmg-component="task"
+      aria-label={task.accessibleLabel}
+      tabIndex={task.accessibleLabel ? 0 : undefined}
+      role={task.accessibleLabel ? "group" : undefined}
     >
       {/* Left resize handle */}
       {showResizeHandles && (

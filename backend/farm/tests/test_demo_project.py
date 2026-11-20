@@ -1067,7 +1067,7 @@ class DemoRotationCasesTests(TestCase):
         target = Season.objects.create(
             project=self.project, start_date=date(self.year + 1, 1, 1), end_date=date(self.year + 1, 12, 31),
         )
-        pairs, _ = build_planting_plan_copies(source_season=source, target_season=target)
+        pairs, _, _ = build_planting_plan_copies(source_season=source, target_season=target)
 
         preview = preview_season_copy(self.service, pairs)
 

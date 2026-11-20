@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
-from django.db.models import Count, Q, QuerySet
+from django.db.models import BooleanField, Case, Count, Q, QuerySet, Value, When
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
@@ -262,10 +262,8 @@ class YieldCalendarListView(generics.GenericAPIView):
             if season_id is not None
             else None
         )
-        # An active season fully scopes the calendar (same as the planting-plans
-        # list) — return every ISO year it spans, not just one, so a season that
-        # straddles a calendar-year boundary is shown whole. An explicit ?year=
-        # still wins for backwards compatibility with direct API callers.
+        # Harvest dates define a season's forecast, including harvests from
+        # older plans. An explicit year further limits the harvest interval.
         include_incomplete = request.query_params.get('include_incomplete') == 'true'
         forecast = build_yield_forecast(
             active_project, language_code,
@@ -307,7 +305,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         .select_related(
             'crop', 'crop__crop_species', 'crop__project', 'bed__field__location',
             'created_by', 'updated_by',
-            'rotation_conflict_accepted_by',
+            'rotation_conflict_accepted_by', 'season',
         )
         .prefetch_related('crop__crop_species__translations')
         .annotate(note_attachment_count=Count('attachments'))
@@ -326,10 +324,13 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         across_seasons = (
             self.action == 'retrieve' and self.request.query_params.get('across_seasons') == 'true'
         )
-        if across_seasons:
-            return queryset.filter(season__deleted_at__isnull=True)
         if season_id is not None:
-            queryset = queryset.filter(season_id=season_id)
+            if self.action in {'list', 'retrieve'}:
+                queryset = self._read_season_plans(queryset, season_id, across_seasons)
+            else:
+                queryset = queryset.filter(season_id=season_id)
+        elif across_seasons:
+            queryset = queryset.filter(season__deleted_at__isnull=True)
         if self.action == 'list':
             for name, lookup in (('bed', 'bed_id'), ('field', 'bed__field_id')):
                 value = self.request.query_params.get(name)
@@ -339,6 +340,28 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
                     except ValueError:
                         return queryset.none()
         return queryset
+
+    def _read_season_plans(
+        self, queryset: QuerySet[PlantingPlan], season_id: int, across_seasons: bool,
+    ) -> QuerySet[PlantingPlan]:
+        active_season = Season.objects.filter(
+            pk=season_id, project=self.request.active_project,
+        ).first()
+        queryset = queryset.filter(season__deleted_at__isnull=True)
+        if active_season is None:
+            return queryset if across_seasons else queryset.none()
+        queryset = queryset.alias(occupied_until=PlantingPlan.occupancy_end_expression())
+        starts_before = Q(
+            bed__isnull=False,
+            planting_date__lt=active_season.start_date,
+            occupied_until__gte=active_season.start_date,
+        )
+        carried_over = starts_before & ~Q(season_id=season_id)
+        if not across_seasons:
+            queryset = queryset.filter(Q(season_id=season_id) | carried_over)
+        return queryset.annotate(carried_over=Case(
+            When(carried_over, then=Value(True)), default=Value(False), output_field=BooleanField(),
+        ))
 
     @transaction.atomic
     def perform_create(self, serializer: PlantingPlanSerializer) -> None:

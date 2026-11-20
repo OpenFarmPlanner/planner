@@ -32,8 +32,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
-from django.db.models import DateField, QuerySet
-from django.db.models.functions import Coalesce
+from django.db.models import QuerySet
 
 from farm.models import Bed, Crop, PlantingPlan, Project
 
@@ -202,11 +201,7 @@ class BedCapacity:
 
 
 def _plans_with_period() -> QuerySet[PlantingPlan]:
-    return PlantingPlan.objects.annotate(
-        occupied_until=Coalesce(
-            'harvest_end_date', 'harvest_date', 'planting_date', output_field=DateField(),
-        ),
-    )
+    return PlantingPlan.objects.annotate(occupied_until=PlantingPlan.occupancy_end_expression())
 
 
 def occupying_plans_in_period(

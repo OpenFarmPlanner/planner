@@ -191,7 +191,10 @@
         "summary_many": "Serão copiadas {{count}} séries da época {{source}} para os mesmos canteiros."
       },
       "warning_many": "A época {{target}} já contém {{count}} séries. A cópia adiciona as séries da época {{source}}. As séries existentes em {{target}} não são alteradas nem substituídas.",
-      "summary_many": "Serão adicionados {{count}} planos de cultivo. A época ficará com {{total}} no total."
+      "summary_many": "Serão adicionados {{count}} planos de cultivo. A época ficará com {{total}} no total.",
+      "continuingPlans_one": "{{count}} série continua e permanece na sua época de origem.",
+      "continuingPlans_other": "{{count}} séries continuam e permanecem nas respetivas épocas de origem.",
+      "continuingPlans_many": "{{count}} séries continuam e permanecem nas respetivas épocas de origem."
     },
     "planCount_many": "{{count}} séries"
   },

@@ -180,9 +180,18 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
                 <Button component={RouterLink} to={getEntityDetailPath('bed', loadedPlan.bed)}>{t('details.openBed')}</Button>
               )}
               {otherSeason && season && context?.switchActiveSeason && (
-                <Button onClick={() => context.switchActiveSeason?.(season.id)}>{t('details.openSeason')}</Button>
+                <Button onClick={() => context.switchActiveSeason?.(season.id)}>
+                  {t(loadedPlan.carried_over ? 'carriedOver.openOrigin' : 'details.openSeason')}
+                </Button>
               )}
             </Stack>
+            {loadedPlan.carried_over && (
+              <Alert severity="info">
+                {loadedPlan.origin_season_label
+                  ? t('carriedOver.description', { season: loadedPlan.origin_season_label })
+                  : t('carriedOver.unknownDescription')}
+              </Alert>
+            )}
             {contextRows.length > 0 && <DetailSection title={t('details.context')} outlined>
               <DetailGrid>{contextRows.map(row => <DetailRow key={row.label} label={row.label} value={row.value!} />)}</DetailGrid>
             </DetailSection>}

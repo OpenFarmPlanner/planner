@@ -2,9 +2,13 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlineOutlin
 import HelpOutlineIcon from '@mui/icons-material/HelpOutlineOutlined';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
-import { createSvgIcon, type SvgIconProps } from '@mui/material';
+import { Box, createSvgIcon, type SvgIconProps } from '@mui/material';
 
-import type { RotationStatus } from '../../../api/types';
+import type { RotationFinding, RotationStatus } from '../../../api/types';
+import { useTranslation } from '../../../i18n';
+import { AppTooltip } from '../../AppTooltip';
+import { getMissingDataLines, getPrimaryFinding, getRotationTitle } from './rotationCopy';
+import { useFamilyNameResolver } from './useFamilyNameResolver';
 
 /**
  * A filled warning triangle with a check mark cut out: a conflict that was
@@ -36,4 +40,24 @@ interface RotationStatusIconProps extends Omit<SvgIconProps, 'color'> {
 export function RotationStatusIcon({ status, ...props }: RotationStatusIconProps) {
   const { Icon, color } = ICONS[status];
   return <Icon color={color} data-rotation-status={status} {...props} />;
+}
+
+export function ReadOnlyRotationWarning({ status, findings, cultureLabel, tabIndex = 0 }: {
+  status: 'conflict' | 'info';
+  findings?: RotationFinding[] | null;
+  cultureLabel: string;
+  tabIndex?: number;
+}) {
+  const { t } = useTranslation('plantingPlans');
+  const familyName = useFamilyNameResolver();
+  const title = status === 'info'
+    ? getMissingDataLines(findings, t, cultureLabel).join(' ')
+    : getRotationTitle(status, getPrimaryFinding(findings ?? undefined), t, familyName);
+  return (
+    <AppTooltip title={title} describeChild>
+      <Box component="span" tabIndex={tabIndex} sx={{ display: 'inline-flex', verticalAlign: 'middle', flexShrink: 0 }}>
+        <RotationStatusIcon status={status} fontSize="inherit" titleAccess={t(`rotation.status.${status}`)} />
+      </Box>
+    </AppTooltip>
+  );
 }

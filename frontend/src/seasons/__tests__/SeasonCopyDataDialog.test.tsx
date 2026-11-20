@@ -54,6 +54,22 @@ describe('SeasonCopyDataDialog', () => {
     copyPreviewMock.mockResolvedValue({ data: emptyPreview });
   });
 
+  it('keeps continuing plans explained when switching to actual dates', async () => {
+    const user = userEvent.setup();
+    copyPreviewMock.mockResolvedValue({
+      data: { ...emptyPreview, total: 1, conflict_free_count: 1, continuing_count: 1 },
+    });
+    const onConfirm = vi.fn().mockResolvedValue({ copied_count: 1, target_planting_plan_count: 1 });
+    render(<SeasonCopyDataDialog open targetSeason={targetSeason} onClose={vi.fn()} onConfirm={onConfirm} />);
+
+    const message = '1 Anbauplan läuft weiter und bleibt in seiner ursprünglichen Saison.';
+    expect(await screen.findByText(message)).toBeVisible();
+    await user.click(screen.getByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' }));
+    expect(await screen.findByText(message)).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
+    expect(onConfirm).toHaveBeenCalledWith(2, 1, undefined, true);
+  });
+
   it('waits for the preceding season and explains when it is missing', async () => {
     copyPreviewMock.mockRejectedValue({
       isAxiosError: true,

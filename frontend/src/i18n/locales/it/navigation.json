@@ -191,7 +191,10 @@
         "summary_many": "{{count}} serie dalla stagione {{source}} verranno copiate nelle stesse aiuole."
       },
       "warning_many": "La stagione {{target}} contiene già {{count}} serie. La copia aggiungerà le serie della stagione {{source}}; le serie esistenti in {{target}} non verranno modificate né sostituite.",
-      "summary_many": "Verranno aggiunti {{count}} piani di coltivazione. Il totale sarà di {{total}}."
+      "summary_many": "Verranno aggiunti {{count}} piani di coltivazione. Il totale sarà di {{total}}.",
+      "continuingPlans_one": "{{count}} serie prosegue e rimane nella sua stagione di origine.",
+      "continuingPlans_other": "{{count}} serie proseguono e rimangono nelle loro stagioni di origine.",
+      "continuingPlans_many": "{{count}} serie proseguono e rimangono nelle loro stagioni di origine."
     },
     "planCount_many": "{{count}} serie"
   },

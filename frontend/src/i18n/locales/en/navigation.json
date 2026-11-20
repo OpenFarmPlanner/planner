@@ -186,7 +186,9 @@
             "description": "Only the {{ok}} conflict-free planting plans are copied."
           }
         }
-      }
+      },
+      "continuingPlans_one": "{{count}} plan continues and stays in its originating season.",
+      "continuingPlans_other": "{{count}} plans continue and stay in their originating seasons."
     }
   },
   "seasonSetup": {

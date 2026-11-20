@@ -186,7 +186,9 @@
             "description": "Alleen de {{ok}} teelten zonder conflict worden gekopieerd."
           }
         }
-      }
+      },
+      "continuingPlans_one": "{{count}} teelt loopt door en blijft in het oorspronkelijke seizoen.",
+      "continuingPlans_other": "{{count}} teelten lopen door en blijven in hun oorspronkelijke seizoenen."
     }
   },
   "seasonSetup": {

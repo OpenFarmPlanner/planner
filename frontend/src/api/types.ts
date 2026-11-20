@@ -1270,6 +1270,9 @@ export interface PlantingPlanActualDates {
 
 export interface PlantingPlan extends PlantingPlanActualDates {
   id?: number;
+  carried_over?: boolean;
+  origin_season_label?: string | null;
+  occupancy_end_date?: string | null;
   // Optional until the plan is fully filled in — a plan can be saved as a
   // draft as long as at least one of crop/bed is chosen.
   crop: number | null;
@@ -1554,6 +1557,7 @@ export interface SeasonCopyPreview {
   hint_count: number;
   conflict_free_count: number;
   skipped_count: number;
+  continuing_count?: number;
   source_season_id: number;
   source_season_label: string;
   items: SeasonCopyPreviewItem[];
@@ -1612,6 +1616,7 @@ export interface SeasonCopyCounts {
   total: number;
   copied: number;
   skipped: number;
+  continuing_count?: number;
 }
 
 export interface SeasonCreationOptions {
@@ -1660,6 +1665,7 @@ export interface SeasonCreateTransitionResponse {
   transition_copied_count: number;
   followup_copied_count: number;
   skipped_count: number;
+  continuing_count?: number;
 }
 
 export interface SeasonDueSuggestion {
@@ -1671,6 +1677,7 @@ export interface SeasonDueSuggestion {
 export interface SeasonCopyFromResponse {
   copied_count: number;
   skipped_count: number;
+  continuing_count?: number;
   target_planting_plan_count: number;
 }
 

@@ -47,6 +47,7 @@ export interface NotesDrawerProps {
   saveError?: string;
   focusAttachments?: boolean;
   focusRequestId?: number;
+  readOnly?: boolean;
 }
 
 const MAX_SIDE = 2560;
@@ -92,7 +93,7 @@ async function renderProcessedFile(file: File, cropRect?: CropRect): Promise<Fil
   return new File([jpeg], `${file.name.replace(/\.[^.]+$/, '')}.jpg`, { type: 'image/jpeg' });
 }
 
-export function NotesDrawer({ open, title, value, onChange, onSave, onClose, hasUnsavedChanges = false, loading = false, noteId, onAttachmentsChanged, saveError, focusAttachments = false, focusRequestId = 0 }: NotesDrawerProps) {
+export function NotesDrawer({ open, title, value, onChange, onSave, onClose, hasUnsavedChanges = false, loading = false, noteId, onAttachmentsChanged, saveError, focusAttachments = false, focusRequestId = 0, readOnly = false }: NotesDrawerProps) {
   const { t } = useTranslation('common');
   const { blockInGuestDemo } = useGuestDemoGuard();
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
@@ -420,7 +421,7 @@ export function NotesDrawer({ open, title, value, onChange, onSave, onClose, has
   };
 
   const handleSaveClick = async (): Promise<void> => {
-    if (loading) {
+    if (loading || readOnly) {
       return;
     }
     await onSave();
@@ -438,14 +439,14 @@ export function NotesDrawer({ open, title, value, onChange, onSave, onClose, has
       <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 3 }} onKeyDown={handleKeyDown}>
         <Typography variant="h6" gutterBottom>{title}</Typography>
         {saveError && <Alert severity="error" sx={{ mb: 1 }}>{saveError}</Alert>}
-        <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)} sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+        {!readOnly && <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)} sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
           <Tab label={t('notesDrawer.tabs.edit')} value="edit" />
           <Tab label={t('notesDrawer.tabs.preview')} value="preview" />
-        </Tabs>
+        </Tabs>}
 
         {noteId && (
           <Box sx={{ mb: 2 }} ref={attachmentsSectionRef} tabIndex={-1}>
-            <Stack
+            {!readOnly && <Stack
               spacing={1}
               sx={{
                 mb: 1.5,
@@ -493,20 +494,20 @@ export function NotesDrawer({ open, title, value, onChange, onSave, onClose, has
                 </Button>
               </Stack>
               {uploading ? <Typography variant="body2">{t('notesDrawer.uploading')}</Typography> : null}
-            </Stack>
+            </Stack>}
             {uploading && <LinearProgress variant="determinate" value={uploadProgress} />}
             <ImageList cols={4} rowHeight={84}>
               {attachments.map((attachment) => (
                 <ImageListItem key={attachment.id}>
                   <img src={attachment.image_url ?? attachment.image} alt={attachment.caption || t('notesDrawer.attachmentAlt')} loading="lazy" style={{ cursor: 'pointer' }} onClick={() => setSelectedImage(attachment.image_url ?? attachment.image)} />
-                  <IconButton size="small" aria-label={t('actions.delete')} sx={{ position: 'absolute', right: 2, top: 2, bgcolor: (theme) => alpha(theme.palette.common.black, 0.4), color: 'common.white' }} onClick={async () => {
+                  {!readOnly && <IconButton size="small" aria-label={t('actions.delete')} sx={{ position: 'absolute', right: 2, top: 2, bgcolor: (theme) => alpha(theme.palette.common.black, 0.4), color: 'common.white' }} onClick={async () => {
                     await noteAttachmentAPI.delete(attachment.id);
                     if (noteId) invalidateNoteAttachmentsCache(noteId);
                     onAttachmentsChanged?.();
                     await loadAttachments();
  }}>
                     <DeleteIcon fontSize="small" />
-                  </IconButton>
+                  </IconButton>}
                 </ImageListItem>
               ))}
             </ImageList>
@@ -514,7 +515,7 @@ export function NotesDrawer({ open, title, value, onChange, onSave, onClose, has
         )}
 
         <Box sx={{ flexGrow: 1, mb: 2, overflow: 'auto' }}>
-          {activeTab === 'edit' ? (
+          {!readOnly && activeTab === 'edit' ? (
             <LazyRichTextEditor value={value} onChange={onChange} minHeight={260} />
           ) : (
             <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1, minHeight: '300px' }}>
@@ -525,11 +526,11 @@ export function NotesDrawer({ open, title, value, onChange, onSave, onClose, has
 
         <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
           <DisabledActionTooltip title={loading ? t('disabledReasons.busy') : ''}>
-            <Button onClick={requestClose} disabled={loading} variant="outlined">{t('actions.cancel')}</Button>
+            <Button onClick={requestClose} disabled={loading} variant="outlined">{t(readOnly ? 'actions.close' : 'actions.cancel')}</Button>
           </DisabledActionTooltip>
-          <DisabledActionTooltip title={loading ? t('disabledReasons.busy') : ''}>
+          {!readOnly && <DisabledActionTooltip title={loading ? t('disabledReasons.busy') : ''}>
             <Button onClick={() => void handleSaveClick()} disabled={loading} variant="contained" color="primary" startIcon={loading ? <CircularProgress size={16} /> : undefined}>{t('actions.save')}</Button>
-          </DisabledActionTooltip>
+          </DisabledActionTooltip>}
         </Box>
       </Box>
 

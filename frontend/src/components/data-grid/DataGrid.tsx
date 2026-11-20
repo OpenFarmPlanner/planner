@@ -229,6 +229,7 @@ export function EditableDataGrid<T extends EditableRow>({
   suspendRouteNavigationGuard = false,
   requireSavedBeforeNavigation,
   getRowValidationErrors,
+  isReadOnlyRow,
   showAddAction = true,
   showFooterEditControls = true,
   showRowEditActions = false,
@@ -310,6 +311,7 @@ export function EditableDataGrid<T extends EditableRow>({
   });
   const initialRowProcessedRef = useRef<boolean>(false);
   const initialFetchDoneRef = useRef<boolean>(false);
+  const pendingNewRowFocusRef = useRef<GridRowId | null>(null);
   const [selectedRowIds, setSelectedRowIds] = useState<GridRowId[]>([]);
   const {
     dirtyRowIds,
@@ -656,6 +658,7 @@ export function EditableDataGrid<T extends EditableRow>({
     setRowModesModel,
     rowSnapshotRef,
     ensureRowVisible,
+    isReadOnlyRow,
   });
   const handleSortModelChange = useCallback((nextSortModel: GridSortModel): void => {
     setSortModel(nextSortModel);
@@ -745,7 +748,8 @@ export function EditableDataGrid<T extends EditableRow>({
   ): void => {
     const rowKey = String(rowId);
     const row = rowsById.get(rowKey);
-    if (row && !rowSnapshotRef.current.has(rowKey)) {
+    const readOnly = Boolean(row && isReadOnlyRow?.(row));
+    if (row && !readOnly && !rowSnapshotRef.current.has(rowKey)) {
       rowSnapshotRef.current.set(rowKey, row as T);
     }
 
@@ -759,15 +763,15 @@ export function EditableDataGrid<T extends EditableRow>({
       focusDataGridKeyboardNavigableCell<T>({
         api,
         cell: { id: rowId, field },
-        focusEditInput: !hasDedicatedEditor(field)
+        focusEditInput: !readOnly && !hasDedicatedEditor(field)
           && (rowModesModel[rowId]?.mode === GridRowModes.Edit || options.startEdit),
       });
 
-      if (options.requestDialogEdit) {
+      if (!readOnly && options.requestDialogEdit) {
         requestDialogEditForCell(rowId, field);
       }
 
-      if (!options.startEdit || hasDedicatedEditor(field)) {
+      if (readOnly || !options.startEdit || hasDedicatedEditor(field)) {
         return;
       }
 
@@ -787,6 +791,7 @@ export function EditableDataGrid<T extends EditableRow>({
   }, [
     gridApiRef,
     hasDedicatedEditor,
+    isReadOnlyRow,
     requestDialogEditForCell,
     rowModesModel,
     rowsById,
@@ -892,20 +897,17 @@ export function EditableDataGrid<T extends EditableRow>({
       // Set row to edit mode after a small delay to ensure row is added first
       setTimeout(() => {
         const fieldToFocus = columns.find((column) => column.editable !== false)?.field ?? columns[0]?.field;
+        pendingNewRowFocusRef.current = newRow.id;
         setRowModesModel((oldModel) => ({
           ...oldModel,
           [newRow.id]: { mode: GridRowModes.Edit, fieldToFocus },
         }));
-        if (fieldToFocus) {
-          gridApiRef.current?.setCellFocus(newRow.id, fieldToFocus);
-        }
       }, 0);
     }
   }, [
     columns,
     createNewRow,
     dataFetched,
-    gridApiRef,
     initialRow,
     isContinuousScroll,
     loading,
@@ -919,6 +921,7 @@ export function EditableDataGrid<T extends EditableRow>({
    */
   const handleAddClick = useCallback((): void => {
     const newRow = createNewRow();
+    pendingNewRowFocusRef.current = newRow.id;
     setRows((oldRows) => [...oldRows, newRow]);
     setStableRowOrder((previousOrder) => [...previousOrder, newRow.id]);
     setRowModesModel((oldModel) => ({
@@ -934,6 +937,21 @@ export function EditableDataGrid<T extends EditableRow>({
       }));
     }
   }, [columns, createNewRow, isContinuousScroll, rows.length, scrollDrivenRowWindow, showPaginationControls]);
+
+  useEffect(() => {
+    const id = pendingNewRowFocusRef.current;
+    if (id === null) return;
+    const mode = rowModesModel[id];
+    if (mode?.mode !== GridRowModes.Edit || !mode.fieldToFocus) return;
+    const field = mode.fieldToFocus;
+
+    // The new row can sit outside the rendered viewport even on the same page.
+    const frame = requestAnimationFrame(() => {
+      pendingNewRowFocusRef.current = null;
+      focusKeyboardNavigableCell(id, field, { startEdit: false });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusKeyboardNavigableCell, rowModesModel]);
 
   const handleDiscardRowChanges = useCallback((rowId: GridRowId): void => {
     const rowKey = String(rowId);
@@ -1026,6 +1044,7 @@ export function EditableDataGrid<T extends EditableRow>({
     const rowKey = String(rowId);
     const isEditing = rowModesModel[rowId]?.mode === GridRowModes.Edit;
     const targetRow = rowsById.get(rowKey) as T | undefined;
+    if (targetRow && isReadOnlyRow?.(targetRow)) return;
     const api = gridApiRef.current;
 
     if (isEditing && api) {
@@ -1058,7 +1077,7 @@ export function EditableDataGrid<T extends EditableRow>({
       setRowFieldErrors(rowKey, fieldErrors);
     }
     markRowDirty(rowKey);
-  }, [getRowValidationErrors, gridApiRef, isEditableCell, markRowDirty, rowModesModel, rowsById, setRowFieldErrors, toEditCellValue]);
+  }, [getRowValidationErrors, gridApiRef, isEditableCell, isReadOnlyRow, markRowDirty, rowModesModel, rowsById, setRowFieldErrors, toEditCellValue]);
 
   const runBeforeSaveGate = useCallback(async (row: T): Promise<T | null> => {
     if (!onBeforeSaveRow) {
@@ -1380,6 +1399,8 @@ export function EditableDataGrid<T extends EditableRow>({
 
   const processRowUpdate = useCallback(async (newRow: T): Promise<T> => {
     const rowKey = String(newRow.id);
+    const original = rowsById.get(rowKey);
+    if (original && isReadOnlyRow?.(original)) return original;
     if (canceledRowIdsRef.current.has(rowKey)) {
       canceledRowIdsRef.current.delete(rowKey);
       setError('');
@@ -1421,6 +1442,8 @@ export function EditableDataGrid<T extends EditableRow>({
     }
   }, [
     forgetRows,
+    isReadOnlyRow,
+    rowsById,
     runBeforeSaveGate,
     saveResolvedRow,
   ]);
@@ -1447,7 +1470,7 @@ export function EditableDataGrid<T extends EditableRow>({
 
     const draftRow = getDraftRow(rowId);
     const baseRow = draftRow ?? (rowsById.get(rowKey) as T | undefined);
-    if (!baseRow) {
+    if (!baseRow || isReadOnlyRow?.(baseRow)) {
       return;
     }
 
@@ -1471,7 +1494,7 @@ export function EditableDataGrid<T extends EditableRow>({
       }));
       handleProcessRowUpdateError(error);
     }
-  }, [applyDraftValues, getDraftRow, gridApiRef, handleProcessRowUpdateError, rowsById, saveResolvedRow]);
+  }, [applyDraftValues, getDraftRow, gridApiRef, handleProcessRowUpdateError, isReadOnlyRow, rowsById, saveResolvedRow]);
 
   const applyDialogEditValues = useCallback(async (
     rowId: GridRowId,
@@ -1835,7 +1858,10 @@ export function EditableDataGrid<T extends EditableRow>({
     setRowModesModel,
     // Notes and dialog cells own their editor, so no entry point may pull
     // them into the inline edit mode they never leave through.
-    isCellEditable: (params) => !hasDedicatedEditor(params.field),
+    isCellEditable: ({ id, field }) => {
+      const row = rowsById.get(String(id));
+      return !hasDedicatedEditor(field) && (!row || !isReadOnlyRow?.(row));
+    },
     onBeforeEdit: handleBeforeCellEdit,
     onReplaceValue: (params) => markRowDirty(String(params.id)),
   });
@@ -1913,6 +1939,7 @@ export function EditableDataGrid<T extends EditableRow>({
     undoDeleteWithUndo,
   } = useDataGridDelete<T>({
     rowsById,
+    isReadOnlyRow,
     rows,
     stableRowOrder,
     rowModesModel,
@@ -1980,7 +2007,7 @@ export function EditableDataGrid<T extends EditableRow>({
   });
 
   const handleDuplicateRow = useCallback((row: T): void => {
-    if (!duplicateRow) {
+    if (!duplicateRow || isReadOnlyRow?.(row)) {
       return;
     }
 
@@ -1992,7 +2019,7 @@ export function EditableDataGrid<T extends EditableRow>({
       ...oldModel,
       [duplicatedRow.id]: { mode: GridRowModes.Edit, fieldToFocus: columns[0]?.field },
     }));
-  }, [columns, duplicateRow, markRowDirty]);
+  }, [columns, duplicateRow, isReadOnlyRow, markRowDirty]);
 
   const rowActionHelpers = useMemo<EditableDataGridRowActionHelpers<T>>(() => ({
     startEdit: handleStartRowEdit,
@@ -2784,6 +2811,7 @@ export function EditableDataGrid<T extends EditableRow>({
           onRowEditStop={handleEditableRowEditStop}
           processRowUpdate={processRowUpdate}
           onProcessRowUpdateError={handleProcessRowUpdateError}
+          isCellEditable={isReadOnlyRow ? params => !isReadOnlyRow(params.row as T) : undefined}
           loading={loading}
           editMode="row"
           density={isMobile ? 'standard' : 'compact'}
@@ -3091,6 +3119,7 @@ export function EditableDataGrid<T extends EditableRow>({
       {notes && notes.fields && notes.fields.length > 0 && (
         <NotesDrawer
           open={notesEditor.isOpen}
+          readOnly={Boolean(notesEditor.currentRow && isReadOnlyRow?.(notesEditor.currentRow))}
           title={getNotesDrawerTitle()}
           value={notesEditor.draft}
           onChange={notesEditor.setDraft}

@@ -128,6 +128,7 @@ export interface EditableDataGridProps<T extends EditableRow> {
   /** Keep the grid visible if saving its rows fails before navigating to this pathname. */
   requireSavedBeforeNavigation?: (pathname: string) => boolean;
   getRowValidationErrors?: (row: T) => Record<string, string>;
+  isReadOnlyRow?: (row: T) => boolean;
   showAddAction?: boolean;
   showFooterEditControls?: boolean;
   showRowEditActions?: boolean;

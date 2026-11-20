@@ -992,7 +992,7 @@ class _Occupancy:
 def _plan_end(plan: PlantingPlan) -> date | None:
     if plan.planting_date is None:
         return None
-    end = plan.harvest_end_date or plan.harvest_date or plan.planting_date
+    end = plan.occupancy_end_date
     return end if end >= plan.planting_date else plan.planting_date
 
 

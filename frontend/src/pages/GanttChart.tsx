@@ -91,6 +91,7 @@ import { formatDateToAPI } from '../utils/isoDate';
 import {
   buildOccupancyTooltipDetails,
   buildSeedlingTaskGroups,
+  clipCarriedOverOccupancyTask,
   createGanttTaskLabels,
   buildSeedlingTooltipDetails,
   formatSeedlingTooltipTitle,
@@ -306,9 +307,9 @@ function GanttChartPage() {
   // fall back to its calendar year — the existing empty state then renders.
   const calendarDataRange = useMemo<CalendarDateRange | null>(
     () => (calendarMode === 'seedlings'
-      ? getSeedlingCalendarRange(plantingPlans, crops)
-      : getOccupancyCalendarRange(plantingPlans)),
-    [calendarMode, plantingPlans, crops],
+      ? getSeedlingCalendarRange(plantingPlans.filter(plan => !plan.carried_over), crops)
+      : getOccupancyCalendarRange(plantingPlans, outletContext?.activeSeason?.start_date)),
+    [calendarMode, plantingPlans, crops, outletContext?.activeSeason?.start_date],
   );
   const startDate = useMemo(
     () => calendarDataRange?.start ?? new Date(displayYear, 0, 1),
@@ -595,6 +596,7 @@ function GanttChartPage() {
         console.error('Could not find planting plan:', planId);
         return;
       }
+      if (plan.carried_over) return;
 
       const movedDates = getMovedPlanDates(plan, updatedTask);
       if (!movedDates) {
@@ -655,7 +657,11 @@ function GanttChartPage() {
     openAreasPage,
     copyTaskSummary,
     deletePlantingPlanFromTask,
-  } = useGanttTaskActions({ navigate, plantingPlans, setPlantingPlans, setError, t });
+    openOriginSeasonFromTask,
+  } = useGanttTaskActions({
+    navigate, plantingPlans, setPlantingPlans, setError, t,
+    switchActiveSeason: outletContext?.switchActiveSeason,
+  });
 
   const {
     contextMenuState,
@@ -669,6 +675,7 @@ function GanttChartPage() {
     openAreasPage,
     copyTaskSummary,
     deletePlantingPlanFromTask,
+    openOriginSeasonFromTask,
     addPlantingPlanForBed,
   }, t);
 
@@ -692,7 +699,24 @@ function GanttChartPage() {
       fieldFilter: occupancyFieldFilter,
       expandedIds: expandedHierarchyIds,
       t,
-    }),
+    }).map(group => ({
+      ...group,
+      tasks: group.tasks.flatMap(task => {
+        if (!task.readOnly) return [task];
+        const visible = clipCarriedOverOccupancyTask(task, startDate);
+        if (!visible) return [];
+        const season = task.originSeasonLabel;
+        const badge = season ? t('plantingPlans:carriedOver.badge', { season })
+          : t('plantingPlans:carriedOver.unknownBadge');
+        const description = season ? t('plantingPlans:carriedOver.description', { season })
+          : t('plantingPlans:carriedOver.unknownDescription');
+        return [{
+          ...visible,
+          name: `← ${task.name} · ${badge}`,
+          accessibleLabel: `${task.name} · ${description}`,
+        }];
+      }),
+    })),
     [
       expandedHierarchyIds,
       occupancyFieldFilter,
@@ -700,6 +724,7 @@ function GanttChartPage() {
       occupancyLocationFilter,
       occupancySearchText,
       onlyOccupiedBeds,
+      startDate,
       t,
     ],
   );
@@ -714,7 +739,7 @@ function GanttChartPage() {
       locations: [],
       fields: [],
       beds: [],
-      plantingPlans,
+      plantingPlans: plantingPlans.filter(plan => !plan.carried_over),
       crops,
       labels: ganttTaskLabels,
     });
@@ -1554,6 +1579,13 @@ function GanttChartPage() {
       <Typography variant="caption" sx={{ display: 'block', mb: 0.75, opacity: 0.7 }}>
         {t(`ganttChart:tooltip.phase.${getOccupancyTaskPhase(task)}`)}
       </Typography>
+      {task.readOnly && (
+        <Typography variant="body2">
+          {task.originSeasonLabel
+            ? t('plantingPlans:carriedOver.description', { season: task.originSeasonLabel })
+            : t('plantingPlans:carriedOver.unknownDescription')}
+        </Typography>
+      )}
       {buildOccupancyTooltipDetails(task).map((detail) => (
         <Typography key={`${task.id}-${detail.labelKey}`} variant="body2" sx={{ display: 'block', lineHeight: 1.4 }}>
           {t(`ganttChart:tooltip.${detail.labelKey}`)}: {detail.value}

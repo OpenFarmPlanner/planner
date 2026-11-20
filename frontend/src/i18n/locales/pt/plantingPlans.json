@@ -471,5 +471,15 @@
       "harvestStart": "Data efetiva de início da colheita",
       "harvestEnd": "Data efetiva de fim da colheita"
     }
+  },
+  "carriedOver": {
+    "badge": "Da época {{season}}",
+    "description": "Continua da época {{season}}. Aqui é só de leitura.",
+    "unknownBadge": "Continua",
+    "unknownDescription": "Série iniciada anteriormente. Aqui é só de leitura.",
+    "openOrigin": "Abrir na época de origem",
+    "count_one": "{{own}} iniciadas nesta época · {{count}} continua",
+    "count_other": "{{own}} iniciadas nesta época · {{count}} continuam",
+    "count_many": "{{own}} iniciadas nesta época · {{count}} continuam"
   }
 }

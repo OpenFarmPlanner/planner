@@ -19,6 +19,7 @@ interface PendingDeleteWithUndo<T extends EditableRow> {
 
 interface UseDataGridDeleteParams<T extends EditableRow> {
   rowsById: Map<string, T>;
+  isReadOnlyRow?: (row: T) => boolean;
   rows: GridRowsProp<T>;
   stableRowOrder: GridRowId[];
   rowModesModel: GridRowModesModel;
@@ -40,6 +41,7 @@ interface UseDataGridDeleteParams<T extends EditableRow> {
 
 export function useDataGridDelete<T extends EditableRow>({
   rowsById,
+  isReadOnlyRow,
   rows,
   stableRowOrder,
   rowModesModel,
@@ -156,7 +158,7 @@ export function useDataGridDelete<T extends EditableRow>({
   const handleDeleteClick = useCallback((id: GridRowId) => (): void => {
     const rowKey = String(id);
     const row = rowsById.get(rowKey) as T | undefined;
-    if (!row) {
+    if (!row || isReadOnlyRow?.(row)) {
       return;
     }
 
@@ -224,6 +226,7 @@ export function useDataGridDelete<T extends EditableRow>({
     deleteErrorMessage,
     deleteRowWithUndoSnackbar,
     deleteUndoOptions,
+    isReadOnlyRow,
     moveFocusAwayFromRemovedRow,
     rowModesModel,
     rows,

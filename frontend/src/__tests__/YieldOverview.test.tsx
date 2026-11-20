@@ -75,6 +75,20 @@ beforeEach(() => {
 });
 
 describe("YieldOverviewPage", () => {
+  it("shows the harvest forecast when a bedless plan stays in its planting season list", async () => {
+    mocks.planList.mockResolvedValue({ data: { results: [] } });
+    mocks.yieldList.mockResolvedValue({
+      data: [{
+        iso_week: "2026-W36", week_start: "2026-08-31", week_end: "2026-09-07",
+        crops: [{ crop_id: 1, crop_name: "Knoblauch", yield: 30, color: "#16a34a" }],
+      }],
+    });
+
+    render(<FocusManagerProvider><MemoryRouter><YieldOverviewPage /></MemoryRouter></FocusManagerProvider>);
+
+    expect(await screen.findByTestId("yield-bar-2026-W36-1")).toBeVisible();
+  });
+
   it("links omitted plans with localized reasons without adding them to the chart", async () => {
     mocks.yieldList.mockResolvedValue({
       data: [{
