@@ -49,5 +49,37 @@
       "zero_plant_count": "Le nombre de plants calculé est nul",
       "missing_harvest_period": "Période de récolte manquante ou invalide"
     }
+  },
+  "comparison": {
+    "view": "Affichage de l’aperçu des rendements",
+    "calendar": "Calendrier prévisionnel",
+    "seasons": "Comparer les saisons",
+    "chooseCrop": "Choisir une culture",
+    "noCrops": "Ajoutez une série ou saisissez une récolte pour comparer une culture entre saisons.",
+    "noSeasons": "Aucune saison à comparer.",
+    "season": "Saison",
+    "forecast": "Rendement prévisionnel",
+    "recorded": "Quantité récoltée",
+    "notRecorded": "Non enregistré",
+    "harvestRecorded": "Récolte enregistrée",
+    "zeroRecorded": "Zéro enregistré",
+    "noForecast": "Prévision indisponible",
+    "forecastCoverage": "Prévision pour {{included}} séries sur {{total}}",
+    "harvestCoverage": "Récoltes affectées à {{included}} séries sur {{total}} dans la prévision",
+    "estimated": "{{value}} estimés",
+    "unassigned": "{{value}} sans affectation",
+    "assignedPlans": "Séries avec récolte affectée ({{count}})",
+    "noAreaYield": "Rendement par m² indisponible",
+    "noMass": "Poids indisponible",
+    "details": "Dates et observations",
+    "activityDates": "Dates des activités selon la saison de culture",
+    "openPlan": "Ouvrir la série",
+    "harvestedAreaYield": "Rendement par m² de surface récoltée",
+    "chartTitle": "Rendement comparable",
+    "chartScope": "Seules les saisons disposant de récoltes pesées et d’une prévision complète pour les mêmes séries apparaissent ici.",
+    "chartEmpty": "Aucune saison ne dispose de récoltes pesées et d’une prévision complète pour les mêmes séries.",
+    "chartValues": "Rendement pour {{season}} ({{period}})",
+    "axis": "Rendement en kilogrammes",
+    "tableScope": "Les quantités récoltées sont rattachées à la saison de leur date. Le rendement enregistré par m² utilise la surface totale des séries auxquelles une récolte a été affectée."
   }
 }

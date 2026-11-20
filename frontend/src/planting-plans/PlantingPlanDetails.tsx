@@ -17,6 +17,7 @@ import LoadRetryButton from '../components/LoadRetryButton';
 import ProjectRequiredState from '../components/project/ProjectRequiredState';
 import { taskDisplayTitle } from '../components/tasks/taskTitles';
 import { formatCropDisplayName } from '../crops/cropDisplay';
+import { HarvestRecords } from '../harvests/HarvestRecords';
 import { useNavigationBlocker } from '../hooks/useNavigationBlocker';
 import { useProjectRequirement } from '../hooks/useProjectRequirement';
 import { useTranslation } from '../i18n';
@@ -24,9 +25,12 @@ import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
 import {
   DIRECT_SOWING, getPlanPropagationInfo, PRE_CULTIVATION, PURCHASED_TRANSPLANT,
 } from '../pages/planSowingDate';
-import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
+import { formatSeasonDate, initialSeasonRecordDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import { formatLocalizedNumber } from '../utils/numberLocalization';
 import { PlantingPlanExecutionDates } from './PlantingPlanExecutionDates';
+import { PerennialPlanDates } from './PerennialPlanDates';
+import { CropLosses } from './CropLosses';
+import { PreviousSeasonReference } from './PreviousSeasonReference';
 
 interface PlantingPlanDetailsProps {
   planId: number | null;
@@ -38,7 +42,7 @@ interface PlantingPlanDetailsProps {
 type PlanLoad = { plan: PlantingPlanDetail } | { error: 'not-found' | 'load' };
 
 export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: PlantingPlanDetailsProps) {
-  const { t, i18n } = useTranslation(['plantingPlans', 'common', 'dashboard']);
+  const { t, i18n } = useTranslation(['plantingPlans', 'common', 'dashboard', 'harvests']);
   const { activeProjectId, isAuthLoading, missingProjectReason } = useProjectRequirement();
   const context = useOutletContext<RootLayoutOutletContext | null>();
   const [result, setResult] = useState<PlanLoad>();
@@ -54,14 +58,16 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
   const [saving, setSaving] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
   const [datesDirty, setDatesDirty] = useState(false);
+  const [clearingDateDirty, setClearingDateDirty] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const loadedPlan = result && 'plan' in result ? result.plan : undefined;
   const loadedPlanId = loadedPlan?.id;
   const hasPhotos = Boolean(loadedPlan?.note_attachment_count) || attachmentRevision > 0;
   const hasUnsavedNotes = editorOpen && draft !== (loadedPlan?.notes ?? '');
 
-  useNavigationBlocker(hasUnsavedNotes || datesDirty, hasUnsavedNotes
-    ? t('common:notesDrawer.unsavedDialog.message') : t('actualDates.unsaved'));
+  useNavigationBlocker(hasUnsavedNotes || datesDirty || clearingDateDirty, hasUnsavedNotes
+    ? t('common:notesDrawer.unsavedDialog.message')
+    : t(clearingDateDirty ? 'perennial.unsaved' : 'actualDates.unsaved'));
 
   useEffect(() => {
     titleRef.current?.focus({ preventScroll: true });
@@ -79,7 +85,7 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
       setResult({ error: status === 404 || status === 403 ? 'not-found' : 'load' });
     });
     return () => controller.abort();
-  }, [activeProjectId, attempt, planId]);
+  }, [activeProjectId, attempt, context?.activeSeason?.id, planId]);
 
   useEffect(() => {
     if (loadedPlanId === undefined) return;
@@ -114,6 +120,12 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
   const otherSeason = Boolean(loadedPlan && (loadedPlan.season ?? null) !== (context?.activeSeason?.id ?? null));
   const canEditNotes = Boolean(loadedPlan && !otherSeason);
   const cropName = loadedPlan ? formatCropDisplayName(loadedPlan) : '';
+  const recordSeason = context?.activeSeason ?? season;
+  const proposedHarvestDate = initialSeasonRecordDate(recordSeason, loadedPlan?.harvest_date);
+  const lastOccupiedDay = loadedPlan?.occupancy_end_date;
+  const recordDate = loadedPlan?.carried_over && lastOccupiedDay && proposedHarvestDate > lastOccupiedDay
+    ? lastOccupiedDay : proposedHarvestDate;
+  const recordScope = `${activeProjectId ?? ''}:${recordSeason?.id ?? ''}:${loadedPlanId ?? ''}`;
   const propagation = loadedPlan && getPlanPropagationInfo(loadedPlan, undefined);
   const cultivation = loadedPlan?.cultivation_type || (propagation?.isPreCultivation
     ? PRE_CULTIVATION : loadedPlan?.crop_cultivation_type);
@@ -180,17 +192,45 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
                 <Button component={RouterLink} to={getEntityDetailPath('bed', loadedPlan.bed)}>{t('details.openBed')}</Button>
               )}
               {otherSeason && season && context?.switchActiveSeason && (
-                <Button onClick={() => context.switchActiveSeason?.(season.id)}>{t('details.openSeason')}</Button>
+                <Button onClick={() => context.switchActiveSeason?.(season.id)}>
+                  {t(loadedPlan.carried_over ? 'carriedOver.openOrigin' : 'details.openSeason')}
+                </Button>
               )}
             </Stack>
+            {loadedPlan.carried_over && (
+              <Alert severity="info">
+                {loadedPlan.origin_season_label
+                  ? t('carriedOver.description', { season: loadedPlan.origin_season_label })
+                  : t('carriedOver.unknownDescription')}
+              </Alert>
+            )}
             {contextRows.length > 0 && <DetailSection title={t('details.context')} outlined>
               <DetailGrid>{contextRows.map(row => <DetailRow key={row.label} label={row.label} value={row.value!} />)}</DetailGrid>
             </DetailSection>}
+            {loadedPlan.previous_season_reference && <PreviousSeasonReference
+              reference={loadedPlan.previous_season_reference} activeSeasonId={context?.activeSeason?.id}
+              switchSeason={context?.switchActiveSeason} />}
+            <PerennialPlanDates key={loadedPlan.id} plan={loadedPlan} editable={canEditNotes}
+              onDirtyChange={setClearingDateDirty} onSaved={updated => {
+                setResult(current => current && 'plan' in current ? { plan: { ...current.plan, ...updated } } : current);
+                onChanged();
+              }} />
             <PlantingPlanExecutionDates plan={loadedPlan} editable={canEditNotes} onDirtyChange={setDatesDirty}
               onSaved={dates => {
                 setResult(current => current && 'plan' in current ? { plan: { ...current.plan, ...dates } } : current);
                 onChanged();
               }} />
+            <DetailSection title={t('harvests:title')} outlined>
+              <HarvestRecords key={recordScope} scope={recordScope} planId={loadedPlan.id}
+                initialDate={recordDate} planTotals={loadedPlan.actual_harvest}
+                plan={loadedPlan.crop_available && loadedPlan.crop !== null ? {
+                  id: loadedPlan.id, crop: loadedPlan.crop, cropLabel: cropName,
+                  label: [loadedPlan.bed_name, season?.label, date(loadedPlan.planting_date)].filter(Boolean).join(' · '),
+                } : undefined}
+                onChanged={() => { setAttempt(value => value + 1); onChanged(); }} />
+            </DetailSection>
+            <CropLosses key={recordScope} planId={loadedPlan.id} onChanged={onChanged}
+              initialDate={initialSeasonRecordDate(loadedPlan.carried_over ? recordSeason : season, loadedPlan.planting_date)} />
             {(canEditNotes || loadedPlan.notes?.trim() || hasPhotos) && (
               <DetailSection title={t('details.notesAndPhotos')} outlined>
                 <Stack spacing={1.5} sx={{ alignItems: 'flex-start', minWidth: 0, overflowWrap: 'anywhere' }}>

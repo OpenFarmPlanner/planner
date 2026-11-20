@@ -17,8 +17,9 @@ all use it, so a bed that is offered is never rejected on save.
 
 A plan occupies its bed from its planting date (the planting date for
 transplants, the sowing date for direct sowing — both are stored as
-`planting_date`) to its harvest end, else its harvest start, else its planting
-date. Plans without a bed or planting date never count. Two periods overlap
+`planting_date`) to its explicit perennial removal date if present. The
+ordinary fallback is the harvest end, then the harvest start, then the
+planting date. Plans without a bed or planting date never count. Two periods overlap
 when they share at least one day (inclusive bounds).
 
 That occupancy has two stages:
@@ -34,6 +35,10 @@ Erntebeginn"). If the harvest phase is shorter than the gap, the whole harvest
 phase is firm. A gap of 0 makes the whole harvest phase soft. Without a
 harvest start, or with the project setting off, everything is firm (the
 behavior before this feature).
+
+A perennial plan with an explicit removal date occupies its area firmly
+through that day. Its first harvest does not release any of the bed's area
+for a follow-up planting.
 
 The gap covers harvesting, clearing and bed preparation; there is no separate
 bed-preparation parameter.
@@ -90,16 +95,19 @@ Only project admins can change it, like the other general project settings.
   bed occupancies (with species translations for the crop labels) are loaded
   with a constant number of queries, pinned in
   `farm/tests/test_api_query_counts.py`.
-- `GET /planting-plans/remaining-area/?bed_id&start_date[&end_date][&harvest_start_date][&crop_id][&exclude_plan_id][&area_sqm]`
+- `GET /planting-plans/remaining-area/?bed_id&start_date[&end_date][&clearing_date][&harvest_start_date][&crop_id][&exclude_plan_id][&area_sqm]`
   is the save check. Without `end_date`/`harvest_start_date` the backend
-  derives them from the crop's timing. It returns the free area in the plan's
+  derives them from the crop's timing. Perennials use `clearing_date` for a
+  proposed removal date, then the matching plan's saved removal date or the
+  date suggested by its lifespan. `end_date` remains the annual harvest
+  boundary. The response includes the free area in the plan's
   firm stage (`remaining_area_sqm`), the plan's `harvest_overlaps` (needs
   `area_sqm`) and `succession_limit` — the previous crop's label, harvest
   start, the minimum gap and the earliest follow-up date — for the error
   message; `succession_limit` is null when the project setting is off or the
   previous crop has no harvest start.
-- `bed-suggestions` uses the same rule; its `blocking_plan.end_date` is the
-  last day of the blocker's firm stage.
+- `bed-suggestions` uses the same interval and capacity rule; its
+  `blocking_plan.end_date` is the last day of the blocker's firm stage.
 
 ## UI
 

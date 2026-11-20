@@ -249,7 +249,7 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
         options = SeasonCopyDateBasisSerializer(data=request.query_params)
         if not options.is_valid():
             return self._invalid_copy_options(options.errors)
-        pairs, skipped_count = build_planting_plan_copies(
+        pairs, skipped_count, continuing_count, unconfigured_count = build_planting_plan_copies(
             source_season=source_season, target_season=target_season,
             use_actual_dates=options.validated_data['use_actual_dates'],
         )
@@ -261,6 +261,8 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
         return Response({
             **preview_season_copy(service, pairs),
             'skipped_count': skipped_count,
+            'continuing_count': continuing_count,
+            'unconfigured_perennial_count': unconfigured_count,
             'source_season_id': source_season.pk,
             'source_season_label': source_season.label,
         })
@@ -320,7 +322,7 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
         rotation_conflicts: str = COPY_CONFLICTS_KEEP,
         *, use_actual_dates: bool = False,
     ) -> dict[str, int]:
-        created_plans, skipped_count = copy_planting_plans(
+        created_plans, skipped_count, continuing_count, unconfigured_count = copy_planting_plans(
             source_season=source_season,
             target_season=target_season,
             rotation_conflicts=rotation_conflicts,
@@ -350,6 +352,8 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
         return {
             'copied_count': len(created_plans),
             'skipped_count': skipped_count,
+            'continuing_count': continuing_count,
+            'unconfigured_perennial_count': unconfigured_count,
             'target_planting_plan_count': total_count,
         }
 
@@ -450,6 +454,8 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             'transition_copied_count': len(distribution['transition']),
             'followup_copied_count': len(distribution['followup']),
             'skipped_count': distribution['skipped'],
+            'continuing_count': distribution.get('continuing_count', 0),
+            'unconfigured_perennial_count': distribution.get('unconfigured_perennial_count', 0),
         }, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['get'], url_path='due-suggestion')

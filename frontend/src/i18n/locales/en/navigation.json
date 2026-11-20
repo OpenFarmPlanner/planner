@@ -9,6 +9,7 @@
   "plantingPlans": "Planting plans",
   "ganttChart": "Planting calendar",
   "yieldOverview": "Yield overview",
+  "harvests": "Harvests",
   "seedDemand": "Seed demand",
   "youngPlantDemand": "Young plant demand",
   "short": {
@@ -19,6 +20,7 @@
     "plantingPlans": "Planting plans",
     "ganttChart": "Planting calendar",
     "yieldOverview": "Yield overview",
+    "harvests": "Harvests",
     "seedDemand": "Seed demand",
     "youngPlantDemand": "Young plant demand",
     "suppliers": "Suppliers"
@@ -186,7 +188,11 @@
             "description": "Only the {{ok}} conflict-free planting plans are copied."
           }
         }
-      }
+      },
+      "continuingPlans_one": "{{count}} plan continues and stays in its originating season.",
+      "continuingPlans_other": "{{count}} plans continue and stay in their originating seasons.",
+      "unconfiguredPerennials_one": "One perennial planting with missing or invalid dates or lifespan will be skipped.",
+      "unconfiguredPerennials_other": "{{count, number}} perennial plantings with missing or invalid dates or lifespans will be skipped."
     }
   },
   "seasonSetup": {

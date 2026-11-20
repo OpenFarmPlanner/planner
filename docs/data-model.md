@@ -209,6 +209,9 @@ erDiagram
   Renaming a crop group is atomic; a conflicting active general name in the
   same project returns 409 `crop_name_conflict` without partial saves. See
   [crop-library-architecture.md](./crop-library-architecture.md#sorte--kultur-value-inheritance).
+  Perennials have a positive whole-year `standing_time_years`. Varieties
+  can inherit the value from their general crop. Existing perennial crops
+  keep an unknown value until it is explicitly configured.
 - **`PublicCrop`** is the shared, cross-project "crop library" — it has
   no owning `Project`, only optional *provenance* links back to the project
   and crop it was published from. Published rows are intended to be
@@ -218,6 +221,8 @@ erDiagram
   status events) are in [§5](#5-public-crop-library); see
   [crop-library-architecture.md](./crop-library-architecture.md) for the
   full story of how this split is formalized into the `crops` Django app.
+  Published perennial entries carry the productive lifespan along with
+  the life-cycle category.
 - **`CropSupplierData`** is the join between one `Crop` and one
   `Supplier`: supplier-specific product data (price, packaging sizes,
   germination rate, thousand-kernel-weight, `seed_status` and
@@ -245,8 +250,13 @@ erDiagram
 ```mermaid
 erDiagram
     Crop ||--o{ PlantingPlan : "planted as"
+    Crop ||--o{ HarvestRecord : "picked as"
+    HarvestRecord ||--o{ HarvestAllocation : "quantity split"
+    PlantingPlan ||--o{ HarvestAllocation : "assigned share"
+    PlantingPlan ||--o{ CropLoss : "dated incident"
     Bed ||--o{ PlantingPlan : "scheduled on"
     Season ||--o{ PlantingPlan : "scoped to (nullable)"
+    PlantingPlan |o--o{ PlantingPlan : "copied from plan"
     Project ||--o| SeasonPattern : "1:1 start day/month"
     Project ||--o{ Season : has
     PlantingPlan ||--o{ Task : "optional related task"
@@ -276,6 +286,11 @@ erDiagram
   These fields start unset for existing plans.
   The API's read-only `actual_harvest_end_date` is the calculated bed
   succession boundary. See [bed occupancy](./bed-occupancy.md).
+  A perennial plan stores its own `clearing_date`. The first save suggests
+  the planting anniversary from the effective productive lifespan. The
+  editable stored date controls bed occupancy, regardless of later changes
+  to the crop's typical lifespan or to its first harvest window. Existing
+  plans without a clearing date retain their original occupancy dates.
   Its `cultivation_type` is `direct_sowing`,
   `pre_cultivation` or the plan-only `purchased_transplant` (bought-in
   plants: no Anzucht, no seed demand — see
@@ -284,6 +299,31 @@ erDiagram
   only a consciously accepted conflict is stored on the plan
   (`rotation_conflict_accepted_by`/`_at`) — see
   [crop-rotation.md](./crop-rotation.md).
+  Season copy stores the direct source in the optional `copied_from_plan_id`
+  field. The identity follows the copy through bed changes and stays available
+  for lookup if the original season is restored. The detail API resolves the
+  source within the same project. Project history captures the source identity.
+- **`HarvestRecord`** stores one project's crop, picking date, positive
+  quantity, unit and optional note. Pieces and bunches can carry a saved
+  grams-per-unit factor and its source. Reference weights can come from the
+  library and can be overridden on the project crop. The preferred recording
+  unit belongs to the project crop. Editing either crop setting leaves
+  conversion factors on historical records intact.
+- **`HarvestAllocation`** links part of a record to one planting plan in
+  the same project. Optional harvested area belongs to the allocation. The
+  API validates the crop, date and area against the selected plans and saves
+  the record and its assignments in one transaction. The assigned sum must
+  fit within the record total. Deleting a plan leaves the original harvest
+  and frees its former share for reassignment. Whole-project history includes
+  both harvests and allocations.
+- **`CropLoss`** records a dated total or partial loss on one planting plan in
+  the project. The incident has a cause and an optional note. Partial extent
+  may be recorded as a percentage from 0 to 100, a whole plant count or square
+  metres. The amount and unit are stored together, including an explicit zero.
+  The plan details give each incident its own row. The optional table column
+  counts incidents by date in the active season. Incident writes affect the
+  loss log and its project history. Deleting the plan removes its incidents,
+  and restoring the plan through project history restores its incident rows.
 - **`Season`**/**`SeasonPattern`** scope planting plans into successive
   ~12-month periods; the crop library and bed/field structure stay
   season-independent. `PlantingPlan.season` is nullable only until a
@@ -302,6 +342,18 @@ erDiagram
   `PlantingPlan` — see
   [datagrid-architecture.md](./datagrid-architecture.md#notes--markdown-cells)
   for how these render as rich markdown+photo notes in the grid.
+
+The Harvests overview reads `/harvests/` and `/harvests/summary/`. Both use
+the record date to scope totals to the selected season. Planting-plan details
+list the records assigned to that plan across its lifetime. A plan's optional
+table column groups its assigned quantities in the selected season and
+combines equivalent mass units. Piece and bunch quantities retain their
+units. The forecast comparison uses the existing plan-scaled kilograms,
+requires the full planned harvest window in the reporting period, and
+disappears when a recorded quantity cannot be converted. Estimated mass
+appears separately and is identified in detail comparisons. The plan's yield
+per m² uses its full area. Yield per harvested m² uses only the area recorded
+for an individual allocation.
 
 ## 5. Public crop library
 

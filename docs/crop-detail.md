@@ -33,12 +33,12 @@ form's headings:
 2. Allgemeine Informationen
 3. Kulturspezifische Eigenschaften (only supported species, filled own values)
 4. Fruchtfolge-Eigenschaften
-5. Zeitplanung (cultivation type, growth duration, harvest duration)
+5. Zeitplanung (cultivation type, growth duration, harvest duration, propagation duration)
 6. Pflanzabstände
 7. Ertrag
 8. Saatgutbedarf (direct-sowing quantities, transplanting quantities, thousand-kernel weight)
 9. Zeiträume (crops page only: timing windows are project data)
-10. Keimung (including propagation duration)
+10. Keimung
 11. Standort und Pflanzengesundheit
 12. Mischkultur
 13. Notizen

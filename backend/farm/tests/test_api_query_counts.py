@@ -36,10 +36,13 @@ from farm.models import (
     Bed,
     Crop,
     CropCompanion,
+    CropLoss,
     CropSupplierData,
     CropTimingWindow,
     EntityRevision,
     Field,
+    HarvestAllocation,
+    HarvestRecord,
     Location,
     PlantingPlan,
     Project,
@@ -547,8 +550,22 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         page-wide companion check's relation lookup
         (farm/services/crop_companions.py), which stops there when the
         project lists no neighbours, plus the page-wide timing-window check's
-        window lookup (farm/services/timing_window_check.py)."""
-        self.assert_list_query_count('/openfarmplanner/api/planting-plans/', 15)
+        window lookup (farm/services/timing_window_check.py), plus one query
+        for assigned harvest quantities."""
+        for plan in PlantingPlan.objects.filter(project=self.project):
+            record = HarvestRecord.objects.create(
+                project=self.project, crop_id=plan.crop_id, date=date(2026, 7, 1),
+                unit='kg', quantity=2,
+            )
+            HarvestAllocation.objects.create(
+                project=self.project, harvest=record, planting_plan=plan, quantity=1,
+            )
+            CropLoss.objects.create(
+                project=self.project, planting_plan=plan, date=date(2026, 5, 17),
+                loss_type='partial', cause='frost',
+            )
+        self.assert_list_query_count('/openfarmplanner/api/planting-plans/', 16)
+        self.assert_list_query_count('/openfarmplanner/api/harvests/', 7)
 
     def test_planting_plans_germination_findings_share_timing_indexes(self) -> None:
         Crop.objects.filter(project=self.project).update(
@@ -564,7 +581,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 cultivation_type='direct_sowing',
                 area_usage_sqm=5, project=self.project, season=self.seasons[index],
             )
-        with self.assertNumQueries(15):
+        with self.assertNumQueries(16):
             response = self.client.get('/openfarmplanner/api/planting-plans/')
         self.assertEqual(response.status_code, 200)
         flagged = [row for row in response.data['results'] if row['germination_findings']]
@@ -583,8 +600,58 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             )
 
         self.assert_list_query_count(
-            '/openfarmplanner/api/planting-plans/', 15, expected_rows=2 * ROW_COUNT,
+            '/openfarmplanner/api/planting-plans/', 16, expected_rows=2 * ROW_COUNT,
         )
+
+    def test_planting_plans_list_query_count_with_perennial_plans(self):
+        """Perennial plans resolve life cycle, standing time and the suggested
+        removal date from the shared crop index, never per row."""
+        for index in range(ROW_COUNT):
+            crop = self.crops[index]
+            crop.life_cycle = 'perennial'
+            crop.standing_time_years = 3 + index
+            crop.save()
+            PlantingPlan.objects.create(
+                crop=crop, bed=self.beds[index], planting_date=date(2027, 4, 1),
+                clearing_date=date(2030, 4, 1) if index % 2 else None,
+                area_usage_sqm=5, project=self.project, season=self.seasons[index],
+            )
+
+        self.assert_list_query_count(
+            '/openfarmplanner/api/planting-plans/', 14, expected_rows=2 * ROW_COUNT,
+        )
+
+    def test_planting_plans_list_query_count_with_carried_over_plans(self):
+        """Carried-over plans resolve their origin season label from the joined
+        `season`, so their count must not grow the queries."""
+        target = Season.objects.create(
+            project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
+        )
+        headers = {'HTTP_X_SEASON_ID': str(target.pk)}
+
+        def carried_over_count() -> int:
+            with CaptureQueriesContext(connection) as queries:
+                response = self.client.get('/openfarmplanner/api/planting-plans/', **headers)
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(all(row['carried_over'] for row in response.data['results']))
+            self.assertTrue(all(row['origin_season_label'] for row in response.data['results']))
+            return len(queries)
+
+        def add_carried_over(index: int) -> None:
+            PlantingPlan.objects.create(
+                crop=self.crops[index], bed=self.beds[index], planting_date=date(2026, 12, 31),
+                area_usage_sqm=5,
+                project=self.project, season=self.seasons[index],
+            )
+
+        add_carried_over(0)
+        single_row_queries = carried_over_count()
+        add_carried_over(1)
+        add_carried_over(2)
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get('/openfarmplanner/api/planting-plans/', **headers)
+        self.assertEqual(len(response.data['results']), ROW_COUNT)
+        self.assertEqual(len(queries), single_row_queries)
 
     def test_planting_plans_list_query_count_with_timing_window_findings(self):
         """A planting date outside the crop's Direktsaat window on every plan
@@ -596,7 +663,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 area_usage_sqm=5, project=self.project, season=self.seasons[index],
             )
 
-        with self.assertNumQueries(15):
+        with self.assertNumQueries(16):
             response = self.client.get('/openfarmplanner/api/planting-plans/')
         self.assertEqual(response.status_code, 200)
         flagged = [row for row in response.data['results'] if row['timing_window_findings']]
@@ -607,7 +674,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         Location.objects.filter(project=self.project).update(light_condition='shade')
         url = '/openfarmplanner/api/planting-plans/'
         for size in (ROW_COUNT, 2 * ROW_COUNT):
-            with self.assertNumQueries(15):
+            with self.assertNumQueries(16):
                 response = self.client.get(url)
             self.assertEqual(response.status_code, 200, response.data)
             found = [row for row in response.data['results'] if row['site_suitability_findings']]
@@ -636,7 +703,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 area_usage_sqm=10, project=self.project, season=self.seasons[index],
             )
 
-        with self.assertNumQueries(15):
+        with self.assertNumQueries(16):
             response = self.client.get('/openfarmplanner/api/planting-plans/')
         self.assertEqual(response.status_code, 200)
         rows = response.data['results']
@@ -670,7 +737,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         independent of the plan count."""
         self._add_bad_neighbours_on_every_bed()
 
-        with self.assertNumQueries(21):
+        with self.assertNumQueries(22):
             response = self.client.get('/openfarmplanner/api/planting-plans/')
         self.assertEqual(response.status_code, 200)
         rows = response.data['results']

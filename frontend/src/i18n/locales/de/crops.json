@@ -258,6 +258,16 @@
     "propagationDurationDaysHelp": "Zeit vom Beginn der Anzucht bis zum Pflanztermin.",
     "propagationDurationDaysError": "Anzuchtdauer muss ≥ 0 sein",
     "yieldUnit": "Ertragseinheit",
+    "defaultHarvestUnit": "Standard-Ernteeinheit",
+    "averageHarvestPieceWeight": "Durchschnittsgewicht (g je Stück)",
+    "averageHarvestBunchWeight": "Durchschnittsgewicht (g je Bund)",
+    "harvestWeightError": "Gib ein positives Gewicht mit bis zu drei Nachkommastellen ein oder leere das Feld.",
+    "harvestUnits": {
+      "kg": "Kilogramm (kg)",
+      "g": "Gramm (g)",
+      "piece": "Stück",
+      "bunch": "Bund"
+    },
     "yieldUnitPerPlant": "Pro Pflanze",
     "yieldUnitPerSqm": "Pro m²",
     "expectedYield": "Erwarteter Ertrag",
@@ -747,7 +757,8 @@
       "sampleNote": "Beispielzeile: vor dem Import ersetzen oder löschen.",
       "potatoSeedNote": "Dieses Beispiel beschreibt die Anzucht aus botanischen Kartoffelsamen, nicht das Pflanzen von Knollen.",
       "pretreatment": "Gleichmäßig feucht halten.",
-      "pestsDiseases": "Kraut- und Braunfäule: Blätter trocken halten."
+      "pestsDiseases": "Kraut- und Braunfäule: Blätter trocken halten.",
+      "perennialName": "Rhabarber"
     },
     "help": {
       "templateHint": "Noch keine passende Datei?",
@@ -802,7 +813,7 @@
         "cultivation": "Anbau und Ertrag",
         "other": "Weitere Eigenschaften"
       },
-      "templateSamples": "Ersetze oder lösche die drei Beispielzeilen vor dem Import deiner Daten.",
+      "templateSamples": "Ersetze oder lösche die Beispielzeilen vor dem Import deiner Daten.",
       "templateError": "Die Vorlage konnte nicht geladen werden."
     },
     "timingWindowIssue": "Zeile {{row}}, {{column}}: {{message}} Der Wert wird nicht übernommen.",
@@ -1466,7 +1477,8 @@
       "fields": {
         "variety": "Sorte",
         "growth_duration_days": "Kulturdauer",
-        "harvest_duration_days": "Erntedauer"
+        "harvest_duration_days": "Erntedauer",
+        "standing_time_years": "Standzeit (Jahre)"
       },
       "blockingReasons": {
         "missingCropSpecies": "Bitte wähle eine offizielle Kulturart aus.",
@@ -1968,7 +1980,8 @@
       "water_requirement": "Wasserbedarf",
       "life_cycle": "Lebensdauer",
       "winter_hardiness": "Winterhärte",
-      "pests_diseases": "Schädlinge und Krankheiten"
+      "pests_diseases": "Schädlinge und Krankheiten",
+      "standing_time_years": "Standzeit (Jahre)"
     },
     "values": {
       "light_requirement": {
@@ -1993,7 +2006,9 @@
       }
     },
     "legacyLifeCycleOption": "{{value}} (Bestandswert)",
-    "legacyLifeCycleHint": "Dieser vorhandene Wert bleibt erhalten, solange du keine andere Lebensdauer wählst."
+    "legacyLifeCycleHint": "Dieser vorhandene Wert bleibt erhalten, solange du keine andere Lebensdauer wählst.",
+    "standingTimeHelp": "Typische Nutzungsdauer dieser mehrjährigen Kultur. Sie bestimmt den Vorschlag für das Räumungsdatum.",
+    "standingTimeRequired": "Gib eine ganze Zahl ab 1 ein."
   },
   "taskTemplates": {
     "title": "Aufgabenvorlagen",

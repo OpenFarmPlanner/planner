@@ -199,6 +199,9 @@ export function SeasonCreateSuggestionDialog({
   const choosingCopy = !needsGapDecision || gapChoice === 'adopt' || gapChoice === 'transition'
     || (gapChoice === 'manual' && manualValid);
   const followupCopyPreview = seasonCreationOptions?.copy_preview?.transition_followup ?? null;
+  const continuingCopyCount = activeCopyPreview?.continuing_count ?? 0;
+  const unconfiguredCopyCount = activeCopyPreview?.unconfigured_perennial_count ?? 0;
+  const excludedFromCopyCount = continuingCopyCount + unconfiguredCopyCount;
 
   const resetTransientState = () => {
     setCreateError(null);
@@ -464,7 +467,7 @@ export function SeasonCreateSuggestionDialog({
                   </Stack>
                 )}
               />
-              {copyFromPrevious && activeCopyPreview && activeCopyPreview.total > 0 ? (
+              {copyFromPrevious && activeCopyPreview && activeCopyPreview.total > excludedFromCopyCount ? (
                 <Typography
                   variant="caption"
                   color={activeCopyPreview.skipped > 0 ? 'warning.dark' : 'text.secondary'}
@@ -474,11 +477,26 @@ export function SeasonCreateSuggestionDialog({
                     activeCopyPreview.skipped > 0
                       ? 'navigation:seasonSwitcher.suggestion.gap.copyPreviewPartial'
                       : 'navigation:seasonSwitcher.suggestion.gap.copyPreviewAll',
-                    { ...activeCopyPreview, label: copyFromLabel },
+                    {
+                      ...activeCopyPreview,
+                      total: activeCopyPreview.total - excludedFromCopyCount,
+                      label: copyFromLabel,
+                    },
                   )}
                 </Typography>
               ) : null}
-              {copyFromPrevious && isTransitionTwoSeason && followupCopyPreview && followupCopyPreview.total > 0 ? (
+              {copyFromPrevious && continuingCopyCount > 0 ? (
+                <Typography variant="caption" color="text.secondary" sx={{ pl: 4 }}>
+                  {t('navigation:seasonSwitcher.copyDialog.continuingPlans', { count: continuingCopyCount })}
+                </Typography>
+              ) : null}
+              {copyFromPrevious && unconfiguredCopyCount > 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  {t('navigation:seasonSwitcher.copyDialog.unconfiguredPerennials', { count: unconfiguredCopyCount })}
+                </Typography>
+              ) : null}
+              {copyFromPrevious && isTransitionTwoSeason && followupCopyPreview
+                && followupCopyPreview.total > excludedFromCopyCount ? (
                 <Typography
                   variant="caption"
                   color={followupCopyPreview.skipped > 0 ? 'warning.dark' : 'text.secondary'}
@@ -486,6 +504,7 @@ export function SeasonCreateSuggestionDialog({
                 >
                   {t('navigation:seasonSwitcher.suggestion.gap.copyPreviewFollowup', {
                     ...followupCopyPreview,
+                    total: followupCopyPreview.total - excludedFromCopyCount,
                     label: followupLabel,
                   })}
                 </Typography>

@@ -198,6 +198,12 @@ export function validateCrop(
       }
     }
   });
+  for (const field of ['average_harvest_piece_weight_g', 'average_harvest_bunch_weight_g'] as const) {
+    const value = toNumber(draft[field]);
+    if (value !== null && (value < 0.001 || value > 9999999.999 || Math.round(value * 1000) / 1000 !== value)) {
+      errors[field] = t('form.harvestWeightError');
+    }
+  }
 
   if (draft.thousand_kernel_weight_g !== undefined && draft.thousand_kernel_weight_g !== null && Number(draft.thousand_kernel_weight_g) <= 0) {
     errors.thousand_kernel_weight_g = t('form.thousandKernelWeightError');

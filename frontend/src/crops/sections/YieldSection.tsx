@@ -12,6 +12,7 @@ import { LocalizedDecimalField } from '../../components/inputs/LocalizedDecimalF
 import { mergeVarietyFieldSx, type GetVarietyFieldHighlightSx } from '../varietyValueAccent';
 import { libraryPinSelectSx } from '../libraryFieldPin';
 import type { GetLibraryFieldPinProps } from '../libraryFieldPinProps';
+import { HARVEST_UNITS } from '../../harvests/harvestDisplay';
 
 interface YieldSectionProps {
   formData: Partial<Crop>;
@@ -20,9 +21,10 @@ interface YieldSectionProps {
   t: TFunction;
   getFieldHighlightSx?: GetVarietyFieldHighlightSx;
   getFieldPinProps?: GetLibraryFieldPinProps;
+  showDefaultHarvestUnit?: boolean;
 }
 
-export function YieldSection({ formData, errors, onChange, t, getFieldHighlightSx, getFieldPinProps }: YieldSectionProps) {
+export function YieldSection({ formData, errors, onChange, t, getFieldHighlightSx, getFieldPinProps, showDefaultHarvestUnit }: YieldSectionProps) {
   const harvestMethodPin = getFieldPinProps?.('harvest_method');
   const expectedYieldPin = getFieldPinProps?.('expected_yield');
 
@@ -65,6 +67,26 @@ export function YieldSection({ formData, errors, onChange, t, getFieldHighlightS
             ?? (formData.harvest_method ? undefined : t('form.expectedYieldChooseUnit'))}
           slotProps={{ input: { endAdornment: expectedYieldPin?.endAdornment } }}
         />
+        {showDefaultHarvestUnit && <FormControl sx={mergeVarietyFieldSx(formGridFieldSx,
+          getFieldHighlightSx?.('default_harvest_unit'))}>
+          <InputLabel>{t('form.defaultHarvestUnit')}</InputLabel>
+          <Select fullWidth label={t('form.defaultHarvestUnit')} value={formData.default_harvest_unit ?? ''}
+            onChange={event => onChange('default_harvest_unit', event.target.value as Crop['default_harvest_unit'])}>
+            <MenuItem value="">{t('noData')}</MenuItem>
+            {HARVEST_UNITS.map(unit => <MenuItem key={unit} value={unit}>{t(`form.harvestUnits.${unit}`)}</MenuItem>)}
+          </Select>
+        </FormControl>}
+        {([
+          ['average_harvest_piece_weight_g', 'form.averageHarvestPieceWeight'],
+          ['average_harvest_bunch_weight_g', 'form.averageHarvestBunchWeight'],
+        ] as const).map(([field, label]) => {
+          const pin = getFieldPinProps?.(field);
+          return <LocalizedDecimalField key={field} label={t(label)} value={formData[field]}
+            sx={mergeVarietyFieldSx(formGridFieldSx, getFieldHighlightSx?.(field), pin?.fieldSx)}
+            onValueChange={value => onChange(field, value)}
+            error={Boolean(errors[field])} helperText={errors[field]}
+            slotProps={{ input: { endAdornment: pin?.endAdornment } }} />;
+        })}
       </Box>
     </>
   );

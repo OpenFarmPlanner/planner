@@ -26,6 +26,7 @@ const buildTemplateCrops = (t: TemplateT, potatoSpecies: TemplateSpecies): Crop[
     pests_diseases: t('import.template.pestsDiseases'),
     plant_health: { entries: [{ name: t('plantHealth.templateEntry') }] },
     harvest_method: 'per_plant', expected_yield: 4,
+    default_harvest_unit: 'piece', average_harvest_piece_weight_g: 110,
     distance_within_row_cm: 50, row_spacing_cm: 80, sowing_depth_cm: 0.5, sowing_depth_max_cm: 1,
     thousand_kernel_weight_g: 3,
     seed_rate_pre_cultivation_value: 1, seed_rate_pre_cultivation_unit: 'seeds_per_plant',
@@ -44,6 +45,7 @@ const buildTemplateCrops = (t: TemplateT, potatoSpecies: TemplateSpecies): Crop[
     growth_duration_days: 100, harvest_duration_days: 28,
     germination_temperature_requirement: 'none', germination_light_requirement: 'none', germination_types: [],
     harvest_method: 'per_sqm', expected_yield: 3.8,
+    default_harvest_unit: 'bunch', average_harvest_bunch_weight_g: 250,
     distance_within_row_cm: 4, row_spacing_cm: 25, sowing_depth_cm: 1, sowing_depth_max_cm: 1.5,
     seed_rate_direct_value: 0.7, seed_rate_direct_unit: 'g_per_m2', sowing_calculation_safety_percent_direct: 12,
     display_color: '#ea580c', notes: t('import.template.sampleNote'),
@@ -62,7 +64,14 @@ const buildTemplateCrops = (t: TemplateT, potatoSpecies: TemplateSpecies): Crop[
     germination_temperature_requirement: 'cold_stratification', germination_light_requirement: 'light', germination_types: ['cold', 'light'],
     stratification_days_min: 28, stratification_days_max: 56,
     stratification_temperature_min_c: 3, stratification_temperature_max_c: 5,
-    life_cycle: 'perennial', notes: `${t('import.template.sampleNote')} ${t('import.template.potatoSeedNote')}`,
+    life_cycle: 'annual', notes: `${t('import.template.sampleNote')} ${t('import.template.potatoSeedNote')}`,
+  },
+  {
+    name: t('import.template.perennialName'), variety: '',
+    botanical_name: 'Rheum rhabarbarum', crop_family: 'Polygonaceae',
+    cultivation_type: 'pre_cultivation', cultivation_types: ['pre_cultivation'],
+    growth_duration_days: 365, harvest_duration_days: 28,
+    life_cycle: 'perennial', standing_time_years: 6, notes: t('import.template.sampleNote'),
   },
 ] as Crop[];
 

@@ -19,17 +19,19 @@ import {
 } from "./yieldOverviewUtils";
 
 interface YieldFilterBarProps {
-  crops: YieldCropMeta[];
+  crops: Pick<YieldCropMeta, 'id' | 'name'>[];
   selectedCropId: string;
-  period: ChartPeriod;
+  period?: ChartPeriod;
+  allCropsLabel?: string;
   onCropChange: (cropId: string) => void;
-  onPeriodChange: (period: ChartPeriod) => void;
+  onPeriodChange?: (period: ChartPeriod) => void;
 }
 
 export function YieldFilterBar({
   crops,
   selectedCropId,
   period,
+  allCropsLabel,
   onCropChange,
   onPeriodChange,
 }: YieldFilterBarProps) {
@@ -56,9 +58,10 @@ export function YieldFilterBar({
             fullWidth
             labelId="yield-crop-filter-label"
             value={selectedCropId}
+            sx={allCropsLabel ? { minHeight: 44 } : undefined}
             onChange={(event) => onCropChange(String(event.target.value))}
           >
-            <MenuItem value={ALL_CROPS}>{t("filters.allCrops")}</MenuItem>
+            <MenuItem value={ALL_CROPS}>{allCropsLabel ?? t("filters.allCrops")}</MenuItem>
             {crops.map((crop) => (
               <MenuItem key={crop.id} value={String(crop.id)}>
                 {crop.name}
@@ -68,7 +71,7 @@ export function YieldFilterBar({
         </FormControl>
       </Stack>
 
-      <Stack spacing={0.5}>
+      {period && onPeriodChange && <Stack spacing={0.5}>
         <Typography
           variant="caption"
           color="text.secondary"
@@ -96,7 +99,7 @@ export function YieldFilterBar({
             {t("filters.month")}
           </ToggleButton>
         </ToggleButtonGroup>
-      </Stack>
+      </Stack>}
     </Stack>
   );
 }

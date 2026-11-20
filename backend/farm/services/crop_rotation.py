@@ -90,6 +90,7 @@ class RotationCrop:
     settings_crop_label: str
     nutrient_demand: str
     is_soil_improver: bool
+    is_perennial: bool = False
 
 
 @dataclass(frozen=True)
@@ -434,7 +435,7 @@ def _plan_end_date(plan: PlantingPlan, general_crop_index: GeneralCropIndex) -> 
     """The last date a plan occupies its bed."""
     if plan.planting_date is None:
         return None
-    end = plan.harvest_end_date or plan.harvest_date
+    end = plan.clearing_date or plan.harvest_end_date or plan.harvest_date
     if end is None and plan.crop_id is not None:
         harvest_start, harvest_end = plan.calculate_effective_harvest_dates(general_crop_index)
         end = harvest_end or harvest_start
@@ -523,6 +524,7 @@ class RotationService:
             settings_crop_id=settings_crop.pk,
             settings_crop_label=self._crop_label(settings_crop),
             nutrient_demand=resolve_crop_field(crop, 'nutrient_demand', index) or '',
+            is_perennial=resolve_crop_field(crop, 'life_cycle', index) == 'perennial',
             is_soil_improver=(
                 family_key == LEGUME_FAMILY_KEY or GREEN_MANURE_CATEGORY in (categories or [])
             ),
@@ -600,6 +602,8 @@ class RotationService:
             by_bed.setdefault(occupancy.bed_id, []).append(occupancy)
 
     def check(self, candidate: RotationOccupancy, *, accepted: bool = False) -> RotationResult:
+        if candidate.crop.is_perennial:
+            return RotationResult(status=STATUS_OK)
         others = [
             other for other in self.bed_occupancies(candidate.bed_id)
             if other is not candidate
@@ -702,6 +706,7 @@ def suggest_beds(
     end: date | None,
     exclude_plan_id: int | None = None,
     needed_area_sqm: Decimal | None = None,
+    firm_occupancy: bool = False,
 ) -> list[dict[str, Any]]:
     """Every bed of the project for ``crop`` in ``[start, end]``, best fit first.
 
@@ -723,10 +728,11 @@ def suggest_beds(
     # stage a follow-up crop may already take over (farm/services/bed_capacity.py).
     draft = PlantingPlan(crop=crop, planting_date=start)
     harvest_start, _ = draft.calculate_effective_harvest_dates(service.general_crop_index)
-    capacities = calculate_bed_capacities(
-        beds, start=start, end=end, harvest_start=harvest_start, exclude_plan_id=exclude_plan_id,
-    )
     rotation_crop = service.rotation_crop(crop)
+    capacities = calculate_bed_capacities(
+        beds, start=start, end=end, exclude_plan_id=exclude_plan_id,
+        harvest_start=None if firm_occupancy or rotation_crop.is_perennial else harvest_start,
+    )
     rows: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
     for position, bed in enumerate(beds):
         candidate = RotationOccupancy(

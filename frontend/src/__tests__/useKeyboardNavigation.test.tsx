@@ -76,7 +76,7 @@ describe('useKeyboardNavigation', () => {
     expect(navigateMock).toHaveBeenCalledWith('/app/yield-overview');
   });
 
-  it('navigates from yield overview to seed demand on Ctrl+Shift+ArrowDown', () => {
+  it('navigates from yield overview to harvests on Ctrl+Shift+ArrowDown', () => {
     window.history.pushState({}, '', '/yield-overview');
     render(<TestComponent />);
 
@@ -89,7 +89,7 @@ describe('useKeyboardNavigation', () => {
       })
     );
 
-    expect(navigateMock).toHaveBeenCalledWith('/app/seed-demand');
+    expect(navigateMock).toHaveBeenCalledWith('/app/harvests');
   });
 
 

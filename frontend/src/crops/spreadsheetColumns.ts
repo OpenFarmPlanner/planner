@@ -274,6 +274,7 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
   },
   { key: 'water_requirement', headerKey: 'siteHealth.fields.water_requirement', aliases: ['wasser', 'wasserbedarf', 'water_requirement'], type: 'string', enumImport: SITE_HEALTH_IMPORT.water_requirement },
   { key: 'life_cycle', headerKey: 'siteHealth.fields.life_cycle', aliases: ['lebenszyklus', 'lebensdauer', 'life_cycle'], type: 'string', enumImport: SITE_HEALTH_IMPORT.life_cycle },
+  { key: 'standing_time_years', headerKey: 'siteHealth.fields.standing_time_years', aliases: ['standzeit', 'standzeit (jahre)', 'standing_time_years'], type: 'number' },
   { key: 'winter_hardiness', headerKey: 'siteHealth.fields.winter_hardiness', aliases: ['winterhärte', 'winterhart', 'winter_hardiness'], type: 'string', enumImport: SITE_HEALTH_IMPORT.winter_hardiness },
   { key: 'pests_diseases', headerKey: 'plantHealth.notes', aliases: ["schädlinge", "krankheiten", "pests_diseases", "Pests and diseases", "Schädlinge und Krankheiten", "Ravageurs et maladies", "Plagas y enfermedades", "Parassiti e malattie", "Pragas e doenças", "Plagen en ziekten"], type: 'string' },
   { key: 'plant_health', headerKey: 'plantHealth.spreadsheetHeader', aliases: ['plant_health'], type: 'plantHealth' },
@@ -342,6 +343,15 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
     aliases: ["erwarteter ertrag (kg/m²)", "expected yield (kg/m²)", "rendement prévu (kg/m²)", "rendimiento previsto (kg/m²)", "export.columns.expectedyieldkgpersqm", 'ertrag', 'erwarteter ertrag', 'expected_yield'],
     type: 'number',
   },
+  {
+    key: 'default_harvest_unit',
+    headerKey: 'form.defaultHarvestUnit',
+    aliases: ['default_harvest_unit'],
+    type: 'string',
+    enumImport: { kg: 'kg', g: 'g', piece: 'piece', bunch: 'bunch' },
+  },
+  { key: 'average_harvest_piece_weight_g', headerKey: 'form.averageHarvestPieceWeight', aliases: ['average_harvest_piece_weight_g'], type: 'number' },
+  { key: 'average_harvest_bunch_weight_g', headerKey: 'form.averageHarvestBunchWeight', aliases: ['average_harvest_bunch_weight_g'], type: 'number' },
   {
     key: 'distance_within_row_cm',
     headerKey: 'form.distanceWithinRowCm',
@@ -488,6 +498,9 @@ const getLocalizedEnumExport = (columnKey: string, t: SpreadsheetT): Record<stri
   if (columnKey === 'seed_type') return buildSeedTypeExport(t);
   if (columnKey === 'cultivation_types') return buildCultivationTypeExport(t);
   if (columnKey === 'harvest_method') return buildYieldUnitExport(t);
+  if (columnKey === 'default_harvest_unit') {
+    return Object.fromEntries(['kg', 'g', 'piece', 'bunch'].map(value => [value, t(`form.harvestUnits.${value}`)]));
+  }
   if (columnKey in SITE_HEALTH_CHOICES) {
     const field = columnKey as SiteHealthChoiceField;
     return Object.fromEntries(SITE_HEALTH_CHOICES[field].map((value) => [value, t(`siteHealth.values.${field}.${value}`)]));

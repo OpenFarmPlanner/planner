@@ -371,7 +371,7 @@ the note in "Anbaufläche ändern" can be shown (#1189). German names:
 
 | Pair | Relation | Bed | Expected |
 | --- | --- | --- | --- |
-| Buschbohne (this season) and Knoblauch (planted last October, harvested in July) | bad, `allelopathy` | Bohnen (Pachtacker Lindenhof) | Bad-neighbour warning and leaf icon on both plans |
+| Buschbohne (this season) and Knoblauch (planted last October, harvested in July) | bad, `allelopathy` | Bohnen (Pachtacker Lindenhof) | Bad-neighbour warning and leaf icon on both plans. Knoblauch appears in this season as a read-only plan from the preceding season. |
 | Lauch (planted 25 July) and Karotte Nantaise 2 (sown 20 June) | good, `pest_control` | Knoblauch & Lauch (Pachtacker Lindenhof) | Good-neighbour note on both plans |
 
 Both added plans fit the crop rotation (`ok`); the other demo cases in

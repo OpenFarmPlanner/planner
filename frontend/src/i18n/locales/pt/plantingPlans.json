@@ -262,7 +262,8 @@
       "info": "Não verificável"
     },
     "occupancyOptions": {
-      "harvestOverlap": "Sobreposição de colheitas"
+      "harvestOverlap": "Sobreposição de colheitas",
+      "continued": "Culturas que continuam"
     },
     "timingOptions": {
       "outsideWindow": "Fora dos períodos"
@@ -436,6 +437,65 @@
     "tasksLoadFailed": "Não foi possível carregar as tarefas.",
     "taskCancelled": "Cancelada"
   },
+  "previousSeason": {
+    "title": "Época anterior: {{season}}",
+    "titleWithoutSeason": "Época anterior",
+    "reference": "Referência",
+    "empty": "O plano de cultivo de origem não tem dados reais registados.",
+    "unavailable": "A referência da época anterior não está disponível.",
+    "openSource": "Abrir o plano de cultivo de origem"
+  },
+  "cropLosses": {
+    "title": "Perdas na cultura",
+    "historyType": "Perda na cultura",
+    "add": "Registar perda",
+    "edit": "Editar perda",
+    "delete": "Eliminar perda",
+    "date": "Data da perda",
+    "type": "Tipo de perda",
+    "cause": "Causa",
+    "extent": "Quantificação (opcional)",
+    "unit": "Unidade",
+    "note": "Nota (opcional)",
+    "empty": "Sem perdas registadas na cultura.",
+    "loading": "A carregar perdas na cultura",
+    "actionsFor": "Ações para a perda de {{date}} ({{cause}})",
+    "confirmDelete": "Eliminar a perda de {{date}}?",
+    "types": {
+      "partial": "Perda parcial",
+      "total": "Perda total"
+    },
+    "causes": {
+      "frost": "Geada",
+      "drought": "Seca",
+      "waterlogging": "Encharcamento",
+      "pests": "Pragas",
+      "disease": "Doença",
+      "other": "Outra"
+    },
+    "units": {
+      "percent": "Percentagem (%)",
+      "plants": "Plantas",
+      "sqm": "Área (m²)"
+    },
+    "incidentCount_one": "{{count}} ocorrência",
+    "incidentCount_many": "{{count}} ocorrências",
+    "incidentCount_other": "{{count}} ocorrências",
+    "extentPlants_one": "{{value}} planta",
+    "extentPlants_many": "{{value}} plantas",
+    "extentPlants_other": "{{value}} plantas",
+    "extentArea": "{{value}} m²",
+    "errors": {
+      "load": "Não foi possível carregar as perdas na cultura.",
+      "save": "Não foi possível guardar a perda.",
+      "delete": "Não foi possível eliminar a perda.",
+      "date": "Introduz uma data válida.",
+      "cause": "Seleciona uma causa.",
+      "percent": "Introduz uma percentagem de 0 a 100 com até três casas decimais.",
+      "plants": "Introduz um número inteiro de plantas, a partir de zero.",
+      "sqm": "Introduz uma área não negativa com até três casas decimais."
+    }
+  },
   "actualDates": {
     "clear": "Limpar data",
     "title": "Datas planeadas e reais",
@@ -470,6 +530,46 @@
       "transplanting": "Data efetiva de transplantação",
       "harvestStart": "Data efetiva de início da colheita",
       "harvestEnd": "Data efetiva de fim da colheita"
+    }
+  },
+  "carriedOver": {
+    "badge": "Da época {{season}}",
+    "description": "Continua da época {{season}}. Aqui é só de leitura.",
+    "unknownBadge": "Continua",
+    "unknownDescription": "Série iniciada anteriormente. Aqui é só de leitura.",
+    "openOrigin": "Abrir na época de origem",
+    "count_one": "{{own}} iniciadas nesta época · {{count}} continua",
+    "count_other": "{{own}} iniciadas nesta época · {{count}} continuam",
+    "count_many": "{{own}} iniciadas nesta época · {{count}} continuam"
+  },
+  "perennial": {
+    "title": "Cultura perene",
+    "productiveLifespan": "Vida útil da cultura",
+    "clearingDate": "Data de fim da cultura",
+    "clearingDateHelp": "O canteiro mantém-se ocupado até esta data, inclusive.",
+    "editClearingDate": "Editar a data de fim da cultura",
+    "invalidDate": "Introduza uma data igual ou posterior à plantação.",
+    "plantingDateRequired": "Introduza primeiro a data de plantação.",
+    "saveFailed": "Não foi possível guardar a data de fim da cultura.",
+    "years_one": "{{count, number}} ano",
+    "years_other": "{{count, number}} anos",
+    "years_many": "{{count, number}} anos",
+    "insufficientArea": "O canteiro não tem área livre suficiente até esta data.",
+    "unsaved": "A alteração à data de fim da cultura ainda não foi guardada."
+  },
+  "seasonStatus": {
+    "column": "Estado na época",
+    "labels": {
+      "only": "Só nesta época",
+      "starts": "Começa",
+      "continues": "Continua",
+      "ends": "Termina"
+    },
+    "descriptions": {
+      "only": "Ocupa o canteiro apenas nesta época.",
+      "starts": "Começa nesta época e ocupa o canteiro para além dela.",
+      "continues": "Ocupa o canteiro antes, durante e depois desta época.",
+      "ends": "Começou antes desta época e termina durante a época."
     }
   }
 }

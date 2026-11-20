@@ -331,6 +331,26 @@ class HistoryRoundTripScenarioTests(HistoryInvariantTestCase):
                 'area_usage_sqm': 4,
             },
         )['id']
+        ids['harvest'] = self.write(
+            'record harvest', 'post', '/harvests/', {
+                'crop': ids['crop'], 'date': '2026-08-06', 'quantity': '5', 'unit': 'kg',
+                'allocations': [{'planting_plan': ids['plan'], 'quantity': '3'}],
+            },
+        )['id']
+        self.write(
+            'adjust harvest allocation', 'patch', f"/harvests/{ids['harvest']}/", {
+                'quantity': '6', 'allocations': [{'planting_plan': ids['plan'], 'quantity': '4'}],
+            },
+        )
+        ids['loss'] = self.write(
+            'record crop loss', 'post', '/crop-losses/', {
+                'planting_plan': ids['plan'], 'date': '2026-05-08', 'loss_type': 'partial',
+                'cause': 'frost', 'extent_value': '20', 'extent_unit': 'percent',
+            },
+        )['id']
+        self.write(
+            'add crop loss note', 'patch', f"/crop-losses/{ids['loss']}/", {'note': 'Outer row'},
+        )
         ids['task'] = self.write(
             'create manual task',
             'post',
@@ -397,6 +417,7 @@ class HistoryRoundTripScenarioTests(HistoryInvariantTestCase):
             },
         )
         self.write('delete planting plan', 'delete', f"/planting-plans/{ids['plan']}/")
+        self.write('delete unassigned harvest', 'delete', f"/harvests/{ids['harvest']}/")
         self.write('delete spare bed', 'delete', f"/beds/{ids['spare_bed']}/")
         self.write('delete supplier', 'delete', f"/suppliers/{ids['supplier']}/")
         self.write('delete variety', 'delete', f"/crops/{ids['variety']}/")

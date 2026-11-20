@@ -1208,6 +1208,7 @@ const detailSectionGridSx = {
               activeCultivationTypes,
               getCropValue('growth_duration_days', selectedCrop.growth_duration_days),
               getCropValue('harvest_duration_days', selectedCrop.harvest_duration_days),
+              getCropValue('propagation_duration_days', selectedCrop.propagation_duration_days),
             ) ? (
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom>
@@ -1278,6 +1279,9 @@ const detailSectionGridSx = {
             {hasAnyDetailValue(
               getCropValue('harvest_method', selectedCrop.harvest_method),
               getCropValue('expected_yield', selectedCrop.expected_yield),
+              getCropValue('default_harvest_unit', selectedCrop.default_harvest_unit),
+              getCropValue('average_harvest_piece_weight_g', selectedCrop.average_harvest_piece_weight_g),
+              getCropValue('average_harvest_bunch_weight_g', selectedCrop.average_harvest_bunch_weight_g),
             ) ? (
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom>
@@ -1320,6 +1324,27 @@ const detailSectionGridSx = {
                     </ValueWithLibraryPin>
                   </Box>
                 )}
+                {getCropValue('default_harvest_unit', selectedCrop.default_harvest_unit) && (
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">{t('form.defaultHarvestUnit')}</Typography>
+                    <Typography variant="body1" sx={getOwnValueSx('default_harvest_unit')}>
+                      {t(`form.harvestUnits.${getCropValue('default_harvest_unit', selectedCrop.default_harvest_unit)}`)}
+                    </Typography>
+                  </Box>
+                )}
+                {([
+                  ['average_harvest_piece_weight_g', 'form.averageHarvestPieceWeight'],
+                  ['average_harvest_bunch_weight_g', 'form.averageHarvestBunchWeight'],
+                ] as const).map(([field, label]) => {
+                  const weight = getCropValue(field, selectedCrop[field]);
+                  if (!hasDetailValue(weight)) return null;
+                  return <Box key={field}>
+                    <Typography variant="body2" color="text.secondary">{t(label)}</Typography>
+                    <ValueWithLibraryPin pin={getLibraryPin(field)}>
+                      <Typography variant="body1" sx={getOwnValueSx(field)}>{formatNumber(Number(weight), t, locale)}</Typography>
+                    </ValueWithLibraryPin>
+                  </Box>;
+                })}
               </Box>
             </Box>
             ) : null}
@@ -1380,7 +1405,11 @@ const detailSectionGridSx = {
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom>{t('siteHealth.title')}</Typography>
               <Box sx={detailSectionGridSx}>
-                {SITE_HEALTH_FIELDS.filter(field => field !== 'pests_diseases' && hasDetailValue(getCropValue(field, selectedCrop[field]))).map(field => (
+                {SITE_HEALTH_FIELDS.filter(field => (
+                  field !== 'pests_diseases'
+                  && (field !== 'standing_time_years' || getCropValue('life_cycle', selectedCrop.life_cycle) === 'perennial')
+                  && hasDetailValue(getCropValue(field, selectedCrop[field]))
+                )).map(field => (
                   <Box key={field} sx={{ minWidth: 0 }}>
                     <Typography variant="body2" color="text.secondary">{t(`siteHealth.fields.${field}`)}</Typography>
                     <ValueWithLibraryPin pin={getLibraryPin(field)}>

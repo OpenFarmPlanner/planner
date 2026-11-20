@@ -260,6 +260,16 @@
     "propagationDurationDaysHelp": "Tempo dall'avvio del vivaio alla data di trapianto.",
     "propagationDurationDaysError": "La durata in vivaio deve essere ≥ 0",
     "yieldUnit": "Unità di resa",
+    "defaultHarvestUnit": "Unità di raccolta predefinita",
+    "averageHarvestPieceWeight": "Peso medio (g per pezzo)",
+    "averageHarvestBunchWeight": "Peso medio (g per mazzo)",
+    "harvestWeightError": "Inserisci un peso positivo con al massimo tre decimali oppure lascia il campo vuoto.",
+    "harvestUnits": {
+      "kg": "Chilogrammi (kg)",
+      "g": "Grammi (g)",
+      "piece": "Pezzi",
+      "bunch": "Mazzi"
+    },
     "yieldUnitPerPlant": "Per pianta",
     "yieldUnitPerSqm": "Per m²",
     "expectedYield": "Resa prevista",
@@ -764,7 +774,8 @@
       "sampleNote": "Riga di esempio: sostituiscila o eliminala prima dell'importazione.",
       "potatoSeedNote": "Questo esempio descrive la propagazione da vero seme di patata, anziché l'impianto di tuberi.",
       "pretreatment": "Mantieni un'umidità uniforme.",
-      "pestsDiseases": "Peronospora: mantieni asciutte le foglie."
+      "pestsDiseases": "Peronospora: mantieni asciutte le foglie.",
+      "perennialName": "Rabarbaro"
     },
     "help": {
       "templateHint": "Non hai ancora un file adatto?",
@@ -819,7 +830,7 @@
         "cultivation": "Coltivazione e resa",
         "other": "Altre proprietà"
       },
-      "templateSamples": "Sostituisci o elimina le tre righe di esempio prima di importare i tuoi dati.",
+      "templateSamples": "Sostituisci o elimina le righe di esempio prima di importare i tuoi dati.",
       "templateError": "Impossibile caricare il modello."
     },
     "timingWindowIssue": "Riga {{row}}, {{column}}: {{message}} Il valore non viene importato.",
@@ -1500,7 +1511,8 @@
       "fields": {
         "variety": "Varietà",
         "growth_duration_days": "Durata della coltura",
-        "harvest_duration_days": "Durata della raccolta"
+        "harvest_duration_days": "Durata della raccolta",
+        "standing_time_years": "Durata produttiva (anni)"
       },
       "blockingReasons": {
         "missingCropSpecies": "Seleziona una specie coltivata ufficiale.",
@@ -2019,7 +2031,8 @@
       "water_requirement": "Fabbisogno idrico",
       "life_cycle": "Ciclo di vita",
       "winter_hardiness": "Resistenza al freddo",
-      "pests_diseases": "Parassiti e malattie"
+      "pests_diseases": "Parassiti e malattie",
+      "standing_time_years": "Durata produttiva (anni)"
     },
     "values": {
       "light_requirement": {
@@ -2044,7 +2057,9 @@
       }
     },
     "legacyLifeCycleOption": "{{value}} (valore esistente)",
-    "legacyLifeCycleHint": "Questo valore salvato viene mantenuto se non scegli un altro ciclo di vita."
+    "legacyLifeCycleHint": "Questo valore salvato viene mantenuto se non scegli un altro ciclo di vita.",
+    "standingTimeHelp": "Durata produttiva tipica di questa coltura perenne. Serve a proporre una data di fine coltivazione.",
+    "standingTimeRequired": "Inserisci un numero intero maggiore o uguale a 1."
   },
   "taskTemplates": {
     "title": "Modelli di attività",

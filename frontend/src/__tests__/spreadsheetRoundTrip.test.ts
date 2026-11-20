@@ -51,7 +51,7 @@ const ENUM_CROPS = [
   },
   { name: 'Phacelia', seed_rate_direct_value: 2, seed_rate_direct_unit: 'g_per_lfm' },
   { name: 'Spinat', seed_rate_direct_value: 300, seed_rate_direct_unit: 'seeds_per_m2' },
-  { name: 'Rhabarber', life_cycle: 'perennial' },
+  { name: 'Rhabarber', life_cycle: 'perennial', standing_time_years: 6 },
 ] as unknown as Crop[];
 
 const ENUM_KEYS = [
@@ -269,13 +269,17 @@ describe('crop spreadsheet export → import round trip', () => {
     germination_pretreatment: 'Chill four weeks.',
     light_requirement: 'partial_shade',
     water_requirement: 'high',
-    life_cycle: 'biennial',
+    life_cycle: 'perennial',
+    standing_time_years: 4,
     winter_hardiness: 'with_protection',
     pests_diseases: 'Carrot fly; cover with netting.',
     plant_health: { entries: [{ name: 'Synthetic explicit entry' }] },
     seed_type: 'f1_hybrid',
     harvest_method: 'per_plant',
     expected_yield: 4.2,
+    default_harvest_unit: 'bunch',
+    average_harvest_piece_weight_g: 110.5,
+    average_harvest_bunch_weight_g: 200.75,
     distance_within_row_cm: 45,
     row_spacing_cm: 70,
     sowing_depth_cm: 0.5,
@@ -398,7 +402,7 @@ describe('crop spreadsheet export → import round trip', () => {
 
     expect(result.warnings).toEqual([]);
     expect(result.skippedRows).toBe(0);
-    expect(result.entries).toHaveLength(3);
+    expect(result.entries).toHaveLength(4);
     expect(result.entries[0]).toMatchObject({
       nutrient_demand: 'high', cultivation_types: ['pre_cultivation'], seed_rate_pre_cultivation_unit: 'seeds_per_plant',
     });
@@ -406,6 +410,7 @@ describe('crop spreadsheet export → import round trip', () => {
     expect(result.entries[0]?.good_companions).toHaveLength(2);
     expect(result.entries[0]?.bad_companions).toHaveLength(2);
     expect(result.entries[2]).toMatchObject({ germination_temperature_requirement: 'cold_stratification', stratification_days_min: 28, stratification_temperature_max_c: 5 });
+    expect(result.entries[3]).toMatchObject({ life_cycle: 'perennial', standing_time_years: 6 });
     for (const entry of result.entries) expect(entry.notes).toContain(i18n.t('crops:import.template.sampleNote'));
   });
 });

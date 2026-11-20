@@ -11,16 +11,22 @@ import { formGridFieldSx, formGridFullRowSx, formGridSx } from './styles';
 
 interface Props {
   formData: Partial<Crop>;
+  errors?: Readonly<Record<string, string>>;
   onChange: <K extends keyof Crop>(name: K, value: Crop[K]) => void;
   t: TFunction;
   getFieldHighlightSx?: GetVarietyFieldHighlightSx;
   getFieldPinProps?: GetLibraryFieldPinProps;
   plantHealthField?: ReactNode;
   inheritedLight?: Crop['light_requirement'];
+  inheritedLifeCycle?: Crop['life_cycle'];
+  inheritedStandingTime?: Crop['standing_time_years'];
 }
 
 /** Site, life cycle and plant health: light, water, life cycle, winter hardiness, pests and diseases. */
-export function SiteHealthSection({ formData, onChange, t, getFieldHighlightSx, getFieldPinProps, plantHealthField, inheritedLight }: Props) {
+export function SiteHealthSection({
+  formData, errors, onChange, t, getFieldHighlightSx, getFieldPinProps, plantHealthField,
+  inheritedLight, inheritedLifeCycle, inheritedStandingTime,
+}: Props) {
   const choiceField = (field: Exclude<SiteHealthChoiceField, 'light_requirement'>) => {
     const pin = getFieldPinProps?.(field);
     const labelId = `crop-${field}-label`;
@@ -58,6 +64,8 @@ export function SiteHealthSection({ formData, onChange, t, getFieldHighlightSx, 
   const showInheritedLight = light.length === 0 && normalizeLightRequirements(inheritedLight).length > 0;
   const lightLabel = t('siteHealth.fields.light_requirement');
   const pestsPin = getFieldPinProps?.('pests_diseases');
+  const standingTimePin = getFieldPinProps?.('standing_time_years');
+  const standingTimeError = errors?.standing_time_years;
   return (
     <>
       <Typography variant="h6" sx={{ mt: 1 }}>{t('siteHealth.title')}</Typography>
@@ -93,6 +101,23 @@ export function SiteHealthSection({ formData, onChange, t, getFieldHighlightSx, 
           ) : null}
         </FormControl>
         {SITE_HEALTH_CHOICE_FIELDS.filter((field) => field !== 'light_requirement').map(choiceField)}
+        {(formData.life_cycle || inheritedLifeCycle) === 'perennial' && (
+          <TextField
+            sx={mergeVarietyFieldSx(formGridFieldSx, getFieldHighlightSx?.('standing_time_years'), standingTimePin?.fieldSx)}
+            label={t('siteHealth.fields.standing_time_years')}
+            type="number"
+            value={formData.standing_time_years ?? ''}
+            placeholder={inheritedStandingTime == null ? undefined : String(inheritedStandingTime)}
+            error={Boolean(standingTimeError)}
+            helperText={standingTimeError ?? t('siteHealth.standingTimeHelp')}
+            onChange={event => onChange('standing_time_years', event.target.value === '' ? null : Number(event.target.value))}
+            slotProps={{
+              htmlInput: { min: 1, step: 1 },
+              inputLabel: { shrink: true },
+              input: { endAdornment: standingTimePin?.endAdornment },
+            }}
+          />
+        )}
         {plantHealthField ? <Box sx={formGridFullRowSx}>{plantHealthField}</Box> : null}
         <TextField
           sx={mergeVarietyFieldSx(formGridFullRowSx, getFieldHighlightSx?.('pests_diseases'), pestsPin?.fieldSx)}

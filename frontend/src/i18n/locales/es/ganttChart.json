@@ -54,9 +54,11 @@
     "notes": "Nota",
     "phase": {
       "growth": "Fase de crecimiento",
-      "harvest": "Fase de cosecha"
+      "harvest": "Fase de cosecha",
+      "occupancy": "Ocupación del bancal"
     },
-    "actualHarvestEnd": "La cosecha termina a más tardar"
+    "actualHarvestEnd": "La cosecha termina a más tardar",
+    "clearingDate": "Fecha de fin del cultivo"
   },
   "noData": "No hay series disponibles",
   "modeLabel": "Modo",

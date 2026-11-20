@@ -24,6 +24,7 @@ from typing import Any
 from crops.plant_families import PLANT_FAMILY_BOTANICAL_NAMES
 from crops.specific_properties import PROPERTY_DEFINITIONS
 from farm.models import Crop
+from farm.models.harvests import HarvestUnit
 from farm.seed_units import (
     SEED_RATE_UNIT_G_PER_LFM,
     SEED_RATE_UNIT_G_PER_M2,
@@ -402,6 +403,9 @@ CROP_FIELD_SPECS: tuple[FieldSpec, ...] = (
               description='Annual, biennial or perennial.', example='annual',
               enum_values=LIFE_CYCLE_VALUES,
               input_aliases={'life_cycle': None}),
+    FieldSpec(name='standing_time_years', kind=KIND_INTEGER,
+              description='Typical productive lifespan of a perennial crop in years.', example=6,
+              unit='years', hard_min=1, input_aliases={'standing_time_years': None}),
     FieldSpec(name='winter_hardiness', kind=KIND_ENUM,
               description='Whether the crop survives winter outdoors.', example='hardy',
               enum_values=WINTER_HARDINESS_VALUES,
@@ -431,6 +435,24 @@ CROP_FIELD_SPECS: tuple[FieldSpec, ...] = (
         warn_max=500,
         input_aliases={'expected_yield': None},
         notes='Interpretation depends on harvest_method.',
+    ),
+    FieldSpec(
+        name='default_harvest_unit', kind=KIND_ENUM,
+        description='Preferred unit for recording actual harvests in this project.',
+        example='kg', enum_values=tuple(HarvestUnit.values),
+        input_aliases={'default_harvest_unit': None},
+    ),
+    FieldSpec(
+        name='average_harvest_piece_weight_g', kind=KIND_NUMBER,
+        description='Estimated mass of one harvested piece, in grams.',
+        example=125, unit='g/piece', hard_min=0.001, hard_max=9999999.999,
+        input_aliases={'average_harvest_piece_weight_g': None},
+    ),
+    FieldSpec(
+        name='average_harvest_bunch_weight_g', kind=KIND_NUMBER,
+        description='Estimated mass of one harvested bunch, in grams.',
+        example=200, unit='g/bunch', hard_min=0.001, hard_max=9999999.999,
+        input_aliases={'average_harvest_bunch_weight_g': None},
     ),
     FieldSpec(
         name='row_spacing_m',

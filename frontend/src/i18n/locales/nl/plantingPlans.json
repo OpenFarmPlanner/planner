@@ -260,7 +260,8 @@
       "info": "Niet controleerbaar"
     },
     "occupancyOptions": {
-      "harvestOverlap": "Oogstoverlap"
+      "harvestOverlap": "Oogstoverlap",
+      "continued": "Doorlopende teelten"
     },
     "timingOptions": {
       "outsideWindow": "Buiten de periodes"
@@ -427,6 +428,63 @@
     "tasksLoadFailed": "De taken konden niet worden geladen.",
     "taskCancelled": "Geannuleerd"
   },
+  "previousSeason": {
+    "title": "Vorig seizoen: {{season}}",
+    "titleWithoutSeason": "Vorig seizoen",
+    "reference": "Referentie",
+    "empty": "Voor het oorspronkelijke teeltplan zijn geen werkelijke gegevens geregistreerd.",
+    "unavailable": "De referentie voor het vorige seizoen is niet beschikbaar.",
+    "openSource": "Open het oorspronkelijke teeltplan"
+  },
+  "cropLosses": {
+    "title": "Teeltuitval",
+    "historyType": "Teeltuitval",
+    "add": "Uitval registreren",
+    "edit": "Uitval bewerken",
+    "delete": "Uitval verwijderen",
+    "date": "Datum van uitval",
+    "type": "Soort uitval",
+    "cause": "Oorzaak",
+    "extent": "Omvang (optioneel)",
+    "unit": "Eenheid",
+    "note": "Notitie (optioneel)",
+    "empty": "Geen teeltuitval geregistreerd.",
+    "loading": "Teeltuitval laden",
+    "actionsFor": "Acties voor uitval op {{date}} ({{cause}})",
+    "confirmDelete": "De uitval van {{date}} verwijderen?",
+    "types": {
+      "partial": "Gedeeltelijke uitval",
+      "total": "Volledige uitval"
+    },
+    "causes": {
+      "frost": "Vorst",
+      "drought": "Droogte",
+      "waterlogging": "Wateroverlast",
+      "pests": "Plagen",
+      "disease": "Ziekte",
+      "other": "Overig"
+    },
+    "units": {
+      "percent": "Percentage (%)",
+      "plants": "Planten",
+      "sqm": "Oppervlakte (m²)"
+    },
+    "incidentCount_one": "{{count}} geval",
+    "incidentCount_other": "{{count}} gevallen",
+    "extentPlants_one": "{{value}} plant",
+    "extentPlants_other": "{{value}} planten",
+    "extentArea": "{{value}} m²",
+    "errors": {
+      "load": "Kon de teeltuitval niet laden.",
+      "save": "Kon de uitval niet opslaan.",
+      "delete": "Kon de uitval niet verwijderen.",
+      "date": "Vul een geldige datum in.",
+      "cause": "Kies een oorzaak.",
+      "percent": "Vul 0 tot 100 procent in met maximaal drie decimalen.",
+      "plants": "Vul een geheel aantal planten in, vanaf nul.",
+      "sqm": "Vul een niet-negatieve oppervlakte in met maximaal drie decimalen."
+    }
+  },
   "actualDates": {
     "clear": "Datum wissen",
     "title": "Geplande en werkelijke datums",
@@ -459,6 +517,44 @@
       "transplanting": "Werkelijke uitplantdatum",
       "harvestStart": "Werkelijk begin van de oogst",
       "harvestEnd": "Werkelijk einde van de oogst"
+    }
+  },
+  "carriedOver": {
+    "badge": "Uit seizoen {{season}}",
+    "description": "Loopt door vanuit seizoen {{season}}. Hier alleen-lezen.",
+    "unknownBadge": "Loopt door",
+    "unknownDescription": "Eerder begonnen teelt. Hier alleen-lezen.",
+    "openOrigin": "Openen in het oorspronkelijke seizoen",
+    "count_one": "{{own}} gestart in dit seizoen · {{count}} loopt door",
+    "count_other": "{{own}} gestart in dit seizoen · {{count}} lopen door"
+  },
+  "perennial": {
+    "title": "Meerjarige teelt",
+    "productiveLifespan": "Productieve levensduur",
+    "clearingDate": "Einddatum teelt",
+    "clearingDateHelp": "Het bed blijft tot en met deze datum bezet.",
+    "editClearingDate": "Einddatum van de teelt wijzigen",
+    "invalidDate": "Voer een datum op of na de plantdatum in.",
+    "plantingDateRequired": "Vul eerst de plantdatum in.",
+    "saveFailed": "De einddatum van de teelt kon niet worden opgeslagen.",
+    "years_one": "{{count, number}} jaar",
+    "years_other": "{{count, number}} jaar",
+    "insufficientArea": "Er is tot die einddatum onvoldoende vrije ruimte in het bed.",
+    "unsaved": "Je wijziging van de einddatum van de teelt is nog niet opgeslagen."
+  },
+  "seasonStatus": {
+    "column": "Seizoensstatus",
+    "labels": {
+      "only": "Alleen dit seizoen",
+      "starts": "Begint",
+      "continues": "Loopt door",
+      "ends": "Eindigt"
+    },
+    "descriptions": {
+      "only": "Bezet het bed alleen in dit seizoen.",
+      "starts": "Begint dit seizoen en bezet het bed daarna ook.",
+      "continues": "Bezet het bed vóór, tijdens en na dit seizoen.",
+      "ends": "Begon vóór dit seizoen en eindigt tijdens dit seizoen."
     }
   }
 }

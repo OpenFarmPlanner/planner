@@ -68,6 +68,7 @@ const GanttChart = React.lazy(() => import('./pages/GanttChart'));
 const SeedDemandPage = React.lazy(() => import('./pages/SeedDemand'));
 const YoungPlantDemandPage = React.lazy(() => import('./pages/YoungPlantDemand'));
 const YieldOverviewPage = React.lazy(() => import('./pages/YieldOverview'));
+const HarvestsPage = React.lazy(() => import('./pages/Harvests'));
 const Suppliers = React.lazy(() => import('./pages/Suppliers'));
 
 // One element per registered public page; the router gets one entry per
@@ -294,6 +295,7 @@ function createAppRouter(basename: string) {
                 { path: 'planting-plans/:plantingPlanId?', element: withLazyFallback(<PlantingPlansRoute />) },
                 { path: 'gantt-chart', element: withLazyFallback(<GanttChart />) },
                 { path: 'yield-overview', element: withLazyFallback(<YieldOverviewPage />) },
+                { path: 'harvests', element: withLazyFallback(<HarvestsPage />) },
                 { path: 'seed-demand', element: withLazyFallback(<SeedDemandPage />) },
                 { path: 'young-plant-demand', element: withLazyFallback(<YoungPlantDemandPage />) },
                 { path: 'project-selection', element: withLazyFallback(<ProjectSelectionPage />) },

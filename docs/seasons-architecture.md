@@ -31,6 +31,22 @@ that predate this feature.
   pre-existing projects keep working until the first-run setup (below) assigns
   a season. Crop library and bed/field structure stay season-independent,
   per the feature's original scope.
+- Harvest records belong to the project and use their picking date for
+  seasonal reporting. Allocations can point to a planting from an earlier
+  season if its bed occupancy overlaps the harvest date. Season copies
+  leave the source harvests and allocations in place. See
+  [planning and operations](./data-model.md#4-planning-and-operations).
+- Crop-loss incidents contribute to the season containing their recorded date.
+  A plan's detail view lists its incidents across seasons. The optional table
+  count follows the currently selected season, including incidents recorded for
+  carried-over plans. A copied plan starts with an empty incident log.
+- A season copy records the direct source plan. The detail view reads the
+  source's recorded activity dates and the harvest allocations and crop-loss
+  incidents dated in its season. The source link opens the original plan in its
+  season. Pattern transitions can distribute one copy operation across two new
+  periods, retaining the original source for each resulting plan. Each later
+  copy records its own direct source. The [actual-date copy option](#copy-data-action)
+  controls how new planned dates are set.
 
 ## Deleting a season
 
@@ -52,7 +68,12 @@ deleted for real, but `_delete_planting_plans_with_season` records an
   `planting_plan` whose latest revision at/after that timestamp is a deletion
   with `snapshot['season_id']` pointing at this season — keeping the original
   primary keys and skipping any plan a user had already deleted individually
-  beforehand — and then the `task` rows that DB-cascaded away with those plans.
+  beforehand. The same operation restores their tasks and recorded crop-loss
+  incidents. It restores a harvest's deleted allocations when the harvest still
+  has the recorded crop, date and unit, and enough quantity for all those shares.
+  Older deletion records without the harvest metadata require an untouched
+  harvest. Recorded dates, restored allocations and losses become visible
+  again in copies that reference the recovered plan.
   Creating a season over a deleted one's period is the same undelete, so
   `POST /seasons/`, `POST /seasons/create-transition/` and `undelete` all go
   through `farm/services/seasons.py::resurrect_season` rather than repeating
@@ -73,16 +94,10 @@ missing or stale), `useActiveSeason.reload` writes the resolved id back to
 ## Season-scoping of planting plans
 
 Planting plans are the only season-scoped entity. Everything downstream that
-reads `PlantingPlan` scopes by the active season explicitly — there is no
-free ride through a shared queryset, because the Gantt/occupancy calendar
-goes through `/api/planting-plans/` (a `ModelViewSet`) while yield overview
-and seed demand are plain `APIView`s that build their own querysets in
-`farm/services/yield_calendar.py` and `farm/services/seed_demand.py` (as does
-the young-plant demand in `farm/services/young_plant_demand.py`). All of them
-accept an optional `season_id` and both views resolve it from the request the
-same way the planting-plans viewset does — via
-`resolve_season_id_from_request()` — so all three surfaces stay consistent
-even though they don't share a queryset.
+reads `PlantingPlan` resolves the active season explicitly. The list and
+occupancy calendar show plans for the active season and older plans that
+still occupy a bed. Seed and young-plant demand use the planting season.
+Yield uses the harvest dates within the selected season's period.
 
 Scoping works the same way project-scoping does (see
 [architecture-overview.md](./architecture-overview.md)'s `X-Project-Id`
@@ -99,32 +114,43 @@ description), one level down:
   or `None`; every season-aware view calls this rather than parsing the
   header itself.
 - `PlantingPlanViewSet.get_queryset()` (`backend/farm/planning/views.py`)
-  filters by `season_id` when the header is present; `perform_create` injects
-  it onto new plans the same way project injection works, unless the
-  serializer payload already specifies a season explicitly. Without a usable
-  active season the serializer rejects creation; `season IS NULL` stays
-  reserved for rows that predate the feature — see the first-run setup below.
-- `YieldCalendarListView`/`build_yield_calendar` and
-  `SeedDemandListView`/`build_seed_demand_rows` take the same resolved
-  `season_id` and filter their own `PlantingPlan` queries by it when present;
-  omitting the header (or filtering by `None`) aggregates across every season
-  of the project, unchanged from before seasons existed.
+  scopes writes to `season_id` when the header is present. For reads in the
+  selected season, it also includes a plan planted before the first day if
+  it occupies an assigned bed on or after that day. The recorded perennial
+  removal date takes precedence over the stored harvest end, harvest date,
+  and planting date.
+  A read returns `carried_over` and the originating season label. The plan's
+  ID and season assignment stay the same. Attachment writes use the same
+  season boundary. `perform_create` assigns new plans to the active season
+  when the payload has no explicit season. Legacy unassigned rows retain
+  their existing assignment until season setup.
+- `SeedDemandListView` and `YoungPlantDemandListView` use the owning season
+  directly. Omitting the season header retains the existing project-wide
+  API behavior.
 - Switching the active season reloads the page — the same deliberate choice
   `switchActiveProject` makes for projects, to guarantee no page holds stale
-  cross-season state.
+  cross-season state. The originating-season action opens the same plan in
+  its own season. The list keeps carried-over plans selectable and includes
+  them in search and filters, with a separate count for newly planted plans.
+  The Continued crops filter includes every carried-over planting. The
+  optional Season status column describes which part of the occupancy period
+  falls in the selected season.
 - The Anbaukalender's Gantt/occupancy timeline
   (`frontend/src/pages/GanttChart.tsx`) does **not** anchor its visible time
   axis to a calendar year. The axis follows the actual data range of the
   season's plans: `startDate` = the earliest `planting_date`, `endDate` = the
   latest relevant date (harvest end, falling back to the harvest date), even
-  when that reaches past the season's end. The `planting_date` itself stays
-  hard-clamped to the season boundary on the serializer side — only the *end*
-  of the displayed axis may extend beyond the season. The range is computed
+  when that reaches past the season's end. Carried-over bars begin at the
+  first visible day and label their source season. The perennial occupancy bar
+  is clipped to the selected season and its tooltip includes the full removal
+  date. Own-season edits keep
+  the planting date within that season's period. The range is computed
   globally across every Fläche/Standort/Parzelle so all rows share the same
   columns and stay comparable, and gaps in the middle of the range are never
   collapsed. The occupancy view and the seedling/Anzucht view each get their
   own range (`getOccupancyCalendarRange` / `getSeedlingCalendarRange` in
   `ganttChartUtils.ts`), because propagation starts before the planting date.
+  The seedling view includes only the active season's own plantings.
   The zoom levels (Tag/Woche/Monat/Quartal/Jahr) only change the column
   granularity, not the anchor. When a season has no plans at all, the axis
   falls back to the season's calendar year (`displayYear`, seeded once from
@@ -136,10 +162,13 @@ description), one level down:
   "Jahr" filter with the same season-start-year default. It was removed: the
   page is fully season-scoped through `X-Season-Id`, and for a
   non-calendar-aligned season the calendar-year filter was actively
-  misleading. `YieldCalendarListView` returns the ISO-year range covered by the
-  active season, so a Sep–Aug season is shown whole. The page reloads the
-  forecast when the active project or season changes. The active season's
-  dates also determine whether the chart draws a year-boundary marker.
+  misleading. `YieldCalendarListView` clips the weekly harvest contributions
+  to the season's date range, including both its first and last day. An
+  explicit ISO year further limits that range. A week crossing a season
+  boundary contributes only its share on each side, including for plans
+  still awaiting a bed assignment. Carrying a perennial forward never creates
+  another harvest forecast. The active season's dates
+  also determine whether the chart draws a year-boundary marker.
 - `farm.services.yield_calendar.compute_plan_expected_yield` calculates the
   plan's forecast in kilograms from the effective crop rate and unit. Use the
   plan's planted square metres for a per-m² rate and its canonical calculated
@@ -155,6 +184,21 @@ description), one level down:
   response has `weeks` and `incomplete_plans`. It gives the yield overview the
   scoped plan IDs and their calculation blockers. The default response is the
   array of weeks.
+- **Compare seasons** in Yield overview reads `/yield-calendar/comparison/`.
+  Each crop's forecasts use the same half-open harvest windows and cumulative
+  rounding as the calendar. Identical forecasts copied from the same source
+  into the same target season contribute once. An edited bed, area or planned
+  date can give a copy a separate forecast. Harvests and losses follow the
+  recorded event date, including events attributed to an older planting plan.
+  The plan's activity date comparisons stay in its planting season.
+- Comparison totals include each harvest record once, across all of its
+  allocations and any unassigned remainder. Gram and kilogram records share
+  a mass total. Counts and weight estimates appear separately. Recorded
+  yield per m² uses the full area of each plan with assigned harvest, counted
+  once. Individual harvests with a recorded area show their own rate separately.
+  A chart pair uses measured mass and complete forecasts for the same plans.
+  A season without harvest records has unknown yield, including when a loss
+  incident was recorded. The harvest-entry model accepts positive quantities.
 
 There is no server-persisted "last active season" (unlike
 `UserProjectSettings.last_project`); it is a client-only, per-project
@@ -220,6 +264,13 @@ a season pattern changes and keeps the previous period eligible.
   excludes the PK, timestamps, and audit fields) and `bulk_create`s the
   copies against the target season. It is always additive: existing plans in
   the target season are never touched, matched, or replaced.
+- Before shifting a source plan, preview and execution skip it if it still
+  occupies its bed on the first day of its destination. The response reports
+  these plans in `continuing_count`, independent of date basis or rotation
+  choices. The copy dialog and season creation suggestion explain the skip.
+  Drafts without an assigned bed remain eligible for copying.
+  A perennial copy also needs a valid planting date and effective productive
+  lifespan. A legacy perennial that cannot be copied is counted separately.
 - `planting_date`, `harvest_date` and `harvest_end_date`
   (`PLANTING_PLAN_SHIFTED_DATE_FIELDS`) are shifted by a **whole number of
   years, chosen per plan** so the `planting_date` keeps its month and day but

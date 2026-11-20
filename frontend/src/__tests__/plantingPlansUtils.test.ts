@@ -2,9 +2,24 @@ import { describe, expect, it } from 'vitest';
 import {
   areRowsSemanticallyEqual,
   getAllowedCultivationTypesForCrop,
+  getSeasonOccupancyStatus,
   isEmptyNewPlantingPlanRow,
   type PlantingPlanRow,
 } from '../pages/plantingPlansUtils';
+
+describe('the season status of a dated planting', () => {
+  const season = { minDate: '2026-09-01', maxDate: '2027-08-31' };
+
+  it.each([
+    ['2026-09-01', '2027-08-31', 'only'],
+    ['2026-10-01', '2029-01-01', 'starts'],
+    ['2025-10-01', '2029-01-01', 'continues'],
+    ['2025-10-01', '2026-09-01', 'ends'],
+    ['2025-10-01', '2026-08-31', null],
+  ])('classifies the interval %s through %s', (start, end, status) => {
+    expect(getSeasonOccupancyStatus(start, end, season)).toBe(status);
+  });
+});
 
 describe('getAllowedCultivationTypesForCrop', () => {
   it('returns only allowed values from cultivation_types', () => {

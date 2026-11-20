@@ -9,6 +9,7 @@
   "plantingPlans": "Plan de culture",
   "ganttChart": "Calendrier de culture",
   "yieldOverview": "Aperçu des rendements",
+  "harvests": "Récoltes",
   "seedDemand": "Besoin en semences",
   "youngPlantDemand": "Besoin en plants",
   "short": {
@@ -19,6 +20,7 @@
     "plantingPlans": "Plan de culture",
     "ganttChart": "Calendrier",
     "yieldOverview": "Rendements",
+    "harvests": "Récoltes",
     "seedDemand": "Semences",
     "youngPlantDemand": "Plants",
     "suppliers": "Fournisseurs"
@@ -192,7 +194,13 @@
             "description": "Seules les {{ok}} séries sans conflit sont copiées."
           }
         }
-      }
+      },
+      "continuingPlans_one": "{{count}} série se poursuit et reste dans sa saison d’origine.",
+      "continuingPlans_other": "{{count}} séries se poursuivent et restent dans leur saison d’origine.",
+      "continuingPlans_many": "{{count}} séries se poursuivent et restent dans leur saison d’origine.",
+      "unconfiguredPerennials_one": "Une culture vivace dont les dates ou la durée productive manquent ou sont invalides sera ignorée.",
+      "unconfiguredPerennials_other": "{{count, number}} cultures vivaces dont les dates ou la durée productive manquent ou sont invalides seront ignorées.",
+      "unconfiguredPerennials_many": "{{count, number}} cultures vivaces dont les dates ou la durée productive manquent ou sont invalides seront ignorées."
     }
   },
   "seasonSetup": {

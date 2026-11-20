@@ -260,7 +260,8 @@
       "info": "Not checkable"
     },
     "occupancyOptions": {
-      "harvestOverlap": "Harvest overlap"
+      "harvestOverlap": "Harvest overlap",
+      "continued": "Continued crops"
     },
     "timingOptions": {
       "outsideWindow": "Outside the time windows"
@@ -427,6 +428,63 @@
     "tasksLoadFailed": "Could not load tasks.",
     "taskCancelled": "Cancelled"
   },
+  "previousSeason": {
+    "title": "Previous season: {{season}}",
+    "titleWithoutSeason": "Previous season",
+    "reference": "Reference",
+    "empty": "The source planting plan has no recorded actuals.",
+    "unavailable": "The previous-season reference is unavailable.",
+    "openSource": "Open source planting plan"
+  },
+  "cropLosses": {
+    "title": "Crop losses",
+    "historyType": "Crop loss",
+    "add": "Record loss",
+    "edit": "Edit loss",
+    "delete": "Delete loss",
+    "date": "Loss date",
+    "type": "Loss type",
+    "cause": "Cause",
+    "extent": "Extent (optional)",
+    "unit": "Unit",
+    "note": "Note (optional)",
+    "empty": "No crop losses recorded.",
+    "loading": "Loading crop losses",
+    "actionsFor": "Actions for loss on {{date}} ({{cause}})",
+    "confirmDelete": "Delete the loss recorded on {{date}}?",
+    "types": {
+      "partial": "Partial loss",
+      "total": "Total loss"
+    },
+    "causes": {
+      "frost": "Frost",
+      "drought": "Drought",
+      "waterlogging": "Waterlogging",
+      "pests": "Pests",
+      "disease": "Disease",
+      "other": "Other"
+    },
+    "units": {
+      "percent": "Percentage (%)",
+      "plants": "Plants",
+      "sqm": "Area (m²)"
+    },
+    "incidentCount_one": "{{count}} incident",
+    "incidentCount_other": "{{count}} incidents",
+    "extentPlants_one": "{{value}} plant",
+    "extentPlants_other": "{{value}} plants",
+    "extentArea": "{{value}} m²",
+    "errors": {
+      "load": "Could not load crop losses.",
+      "save": "Could not save the loss.",
+      "delete": "Could not delete the loss.",
+      "date": "Enter a valid date.",
+      "cause": "Choose a cause.",
+      "percent": "Enter 0 to 100 percent with up to three decimal places.",
+      "plants": "Enter a non-negative whole number of plants.",
+      "sqm": "Enter a non-negative area with up to three decimal places."
+    }
+  },
   "actualDates": {
     "clear": "Clear date",
     "title": "Planned and actual dates",
@@ -459,6 +517,44 @@
       "transplanting": "Actual transplanting date",
       "harvestStart": "Actual harvest start",
       "harvestEnd": "Actual harvest end"
+    }
+  },
+  "carriedOver": {
+    "badge": "From {{season}}",
+    "description": "Continues from season {{season}}. Read-only here.",
+    "unknownBadge": "Continues",
+    "unknownDescription": "Continues from an earlier planting. Read-only here.",
+    "openOrigin": "Open in originating season",
+    "count_one": "{{own}} planted this season · {{count}} continues",
+    "count_other": "{{own}} planted this season · {{count}} continue"
+  },
+  "perennial": {
+    "title": "Perennial planting",
+    "productiveLifespan": "Productive lifespan",
+    "clearingDate": "Crop removal date",
+    "clearingDateHelp": "The bed stays occupied through this date.",
+    "editClearingDate": "Edit crop removal date",
+    "invalidDate": "Enter a date on or after planting.",
+    "plantingDateRequired": "Enter the planting date first.",
+    "saveFailed": "The crop removal date could not be saved.",
+    "years_one": "{{count, number}} year",
+    "years_other": "{{count, number}} years",
+    "insufficientArea": "There is insufficient free bed area through this removal date.",
+    "unsaved": "Your change to the crop removal date is unsaved."
+  },
+  "seasonStatus": {
+    "column": "Season status",
+    "labels": {
+      "only": "Only this season",
+      "starts": "Starts",
+      "continues": "Continues",
+      "ends": "Ends"
+    },
+    "descriptions": {
+      "only": "Occupies the bed only in this season.",
+      "starts": "Starts this season and occupies the bed beyond it.",
+      "continues": "Occupies the bed before, during and after this season.",
+      "ends": "Started before this season and ends in this season."
     }
   }
 }

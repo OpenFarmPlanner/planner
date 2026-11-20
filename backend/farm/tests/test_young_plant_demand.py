@@ -179,6 +179,29 @@ def test_seed_demand_skips_purchased_transplants(api_client, beds, season, proje
 
 
 @pytest.mark.django_db
+def test_continuing_plans_stay_in_their_planting_seasons_demand(api_client, beds, season, project):
+    target = Season.objects.create(
+        project=project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
+    )
+    crop = Crop.objects.create(
+        name='Overwintering crop', project=project, cultivation_types=['direct_sowing'],
+        seed_rate_direct_value=2, seed_rate_direct_unit='g_per_m2',
+        row_spacing_m=0.5, distance_within_row_m=0.5,
+    )
+    direct = _plan(crop, beds[0], season, date(2026, 10, 6), 3, cultivation_type='direct_sowing')
+    purchased = _plan(crop, beds[1], season, date(2026, 10, 6), 4)
+    PlantingPlan.objects.filter(pk__in=(direct.id, purchased.id)).update(
+        harvest_end_date=date(2027, 2, 1),
+    )
+    later = {'HTTP_X_SEASON_ID': str(target.pk)}
+    plans = api_client.get('/openfarmplanner/api/planting-plans/', **later).json()['results']
+    assert {row['id'] for row in plans if row['carried_over']} == {direct.id, purchased.id}
+    for endpoint in (URL, '/openfarmplanner/api/seed-demand/'):
+        assert api_client.get(endpoint).json()['results']
+        assert not api_client.get(endpoint, **later).json()['results']
+
+
+@pytest.mark.django_db
 def test_plant_count_matches_the_planting_plan_column(api_client, beds, season, lettuce):
     plan = _plan(lettuce, beds[0], season, date(2026, 4, 6), 3)
 

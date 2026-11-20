@@ -55,6 +55,10 @@
       "tests": 9,
       "duration_ms": 58967
     },
+    "e2e/crop-losses.spec.ts": {
+      "tests": 2,
+      "duration_ms": 18100
+    },
     "e2e/crop-plant-health-filters.spec.ts": {
       "tests": 5,
       "duration_ms": 47890
@@ -227,6 +231,14 @@
       "tests": 1,
       "duration_ms": 4644
     },
+    "e2e/harvest-recording.spec.ts": {
+      "tests": 2,
+      "duration_ms": 20000
+    },
+    "e2e/planting-plans-perennial.spec.ts": {
+      "tests": 1,
+      "duration_ms": 16000
+    },
     "e2e/planting-plans-rotation.spec.ts": {
       "tests": 5,
       "duration_ms": 29884
@@ -236,8 +248,8 @@
       "duration_ms": 87103
     },
     "e2e/planting-plans-season-scope.spec.ts": {
-      "tests": 1,
-      "duration_ms": 5474
+      "tests": 2,
+      "duration_ms": 19000
     },
     "e2e/planting-plans-sowing-date-edit.spec.ts": {
       "tests": 5,
@@ -250,6 +262,10 @@
     "e2e/planting-plans-tab-navigation.spec.ts": {
       "tests": 5,
       "duration_ms": 35899
+    },
+    "e2e/previous-season-reference.spec.ts": {
+      "tests": 2,
+      "duration_ms": 12900
     },
     "e2e/public-crop-library.spec.ts": {
       "tests": 1,
@@ -298,6 +314,10 @@
     "e2e/variety-parent-publication.spec.ts": {
       "tests": 3,
       "duration_ms": 78000
+    },
+    "e2e/yield-season-comparison.spec.ts": {
+      "tests": 2,
+      "duration_ms": 24000
     }
   }
 }

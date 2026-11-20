@@ -54,9 +54,11 @@
     "notes": "Notizen",
     "phase": {
       "growth": "Wachstumsphase",
-      "harvest": "Erntephase"
+      "harvest": "Erntephase",
+      "occupancy": "Belegung"
     },
-    "actualHarvestEnd": "Ernte endet spätestens"
+    "actualHarvestEnd": "Ernte endet spätestens",
+    "clearingDate": "Räumungsdatum"
   },
   "noData": "Keine Anbaupläne vorhanden",
   "modeLabel": "Modus",

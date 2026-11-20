@@ -24,7 +24,7 @@ from farm.models import (
     PlantingPlan,
     crop_media_upload_path,
 )
-from farm.project_context import get_active_project_or_400
+from farm.project_context import get_active_project_or_400, resolve_season_id_from_request
 
 from .serializers import NoteAttachmentSerializer, NoteAttachmentUploadSerializer
 
@@ -124,7 +124,11 @@ class NoteAttachmentListCreateView(APIView):
         if is_active_guest_demo_user(request.user):
             return guest_demo_forbidden_response()
         active_project = get_active_project_or_400(request)
-        plan = get_object_or_404(PlantingPlan, pk=note_id, project=active_project)
+        plans = PlantingPlan.objects.filter(project=active_project)
+        season_id = resolve_season_id_from_request(request)
+        if season_id is not None:
+            plans = plans.filter(season_id=season_id)
+        plan = get_object_or_404(plans, pk=note_id)
 
         if plan.attachments.count() >= 10:
             return api_error_response(
@@ -195,8 +199,12 @@ class NoteAttachmentDeleteView(APIView):
 
     def delete(self, request, attachment_id: int):
         active_project = get_active_project_or_400(request)
+        attachments = NoteAttachment.objects.filter(project=active_project)
+        season_id = resolve_season_id_from_request(request)
+        if season_id is not None:
+            attachments = attachments.filter(planting_plan__season_id=season_id)
+        attachment = get_object_or_404(attachments, pk=attachment_id)
         ensure_project_checkpoint(active_project, user_name=_current_actor_label(request))
-        attachment = get_object_or_404(NoteAttachment, pk=attachment_id, project=active_project)
         attachment_id = attachment.pk
         attachment_project = attachment.project
         snapshot = _serialize_instance(attachment)

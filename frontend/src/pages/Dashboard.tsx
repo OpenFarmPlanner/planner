@@ -78,7 +78,7 @@ export default function Dashboard() {
         setFields(fieldsRes.results);
         setBeds(bedsRes.results);
         setCrops(cropsRes.results);
-        setPlans(plansRes.results);
+        setPlans(plansRes.results.filter(plan => !plan.carried_over));
         setError(false);
       } catch {
         if (!cancelled) setError(true);

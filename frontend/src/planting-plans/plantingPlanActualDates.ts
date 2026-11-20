@@ -23,7 +23,11 @@ export interface PlantingPlanDateComparison {
   actual: string | null;
 }
 
-export function getPlanActivityDates(plan: PlantingPlan, crop?: Crop): PlantingPlanDateComparison[] {
+type ActivityDatePlan = PlantingPlanActualDates & Pick<PlantingPlan,
+  'cultivation_type' | 'crop_cultivation_type' | 'crop_cultivation_types' | 'crop_propagation_duration_days'
+  | 'planting_date' | 'planned_sowing_date' | 'planned_propagation_start_date' | 'harvest_date' | 'harvest_end_date'>;
+
+export function getPlanActivityDates(plan: ActivityDatePlan, crop?: Crop): PlantingPlanDateComparison[] {
   const schedule = getPlanSowingSchedule(plan, crop);
   const propagation = getPlanPropagationInfo(plan, crop);
   const planned = {

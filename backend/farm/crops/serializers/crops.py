@@ -82,6 +82,7 @@ from farm.services.crop_inheritance import (
     lock_crop_project,
     promote_species_invariant_values,
     raise_crop_identity_conflict,
+    resolve_crop_field,
     resolve_effective_rotation_break_years,
     resolve_effective_timing_windows,
     resolve_plants_per_m2,
@@ -1318,6 +1319,7 @@ class CropSerializer(serializers.ModelSerializer):
         self._validate_supplier_data_rows(attrs, errors)
         self._resolve_supplier_from_name(attrs)
         self._normalize_variety(attrs)
+        self._validate_standing_time(attrs, errors)
         self._normalize_tags(attrs)
         if 'plant_health' in attrs:
             project = self._resolve_project(attrs, instance_first=True)
@@ -1344,6 +1346,25 @@ class CropSerializer(serializers.ModelSerializer):
         self._validate_library_pinned_fields(attrs)
         self._run_model_clean(attrs)
         return attrs
+
+    def _validate_standing_time(self, attrs: dict[str, Any], errors: dict) -> None:
+        fields = ('crop_species', 'variety', 'life_cycle', 'standing_time_years')
+        if self.instance is not None and not any(
+            field in attrs and attrs[field] != getattr(self.instance, field) for field in fields
+        ):
+            return
+        candidate = Crop(
+            project=self._resolve_project(attrs, instance_first=True),
+            **{field: attrs.get(field, getattr(self.instance, field, None)) for field in fields},
+        )
+        candidate.pk = getattr(self.instance, 'pk', None)
+        if resolve_crop_field(candidate, 'life_cycle') == 'perennial':
+            if not resolve_crop_field(candidate, 'standing_time_years'):
+                errors['standing_time_years'] = (
+                    'A productive lifespan is required for a perennial crop.'
+                )
+        elif candidate.standing_time_years is not None:
+            attrs['standing_time_years'] = None
 
     def validate_library_pinned_fields(self, value: list[str]) -> list[str]:
         return list(dict.fromkeys(value))

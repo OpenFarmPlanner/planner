@@ -1,4 +1,5 @@
 import type { TFunction } from 'i18next';
+import { formatLocalizedNumber, getActiveFormattingLocale } from '../utils/numberLocalization';
 
 /**
  * Site, life cycle and plant health of a crop: descriptive values a Sorte
@@ -14,7 +15,7 @@ export const SITE_HEALTH_CHOICES = {
 
 export type SiteHealthChoiceField = keyof typeof SITE_HEALTH_CHOICES;
 export const SITE_HEALTH_CHOICE_FIELDS = Object.keys(SITE_HEALTH_CHOICES) as SiteHealthChoiceField[];
-export const SITE_HEALTH_FIELDS = [...SITE_HEALTH_CHOICE_FIELDS, 'pests_diseases'] as const;
+export const SITE_HEALTH_FIELDS = [...SITE_HEALTH_CHOICE_FIELDS, 'standing_time_years', 'pests_diseases'] as const;
 export type SiteHealthField = typeof SITE_HEALTH_FIELDS[number];
 
 export type LightRequirement = typeof SITE_HEALTH_CHOICES.light_requirement[number];
@@ -37,6 +38,7 @@ export function selectableSiteHealthChoices(field: SiteHealthChoiceField): reado
 export function formatSiteHealthValue(field: SiteHealthField, value: unknown, t: TFunction): string {
   if (value == null || value === '') return t('noData');
   if (field === 'pests_diseases') return String(value);
+  if (field === 'standing_time_years') return formatLocalizedNumber(Number(value), getActiveFormattingLocale());
   if (field === 'light_requirement') {
     return normalizeLightRequirements(value)
       .map((choice) => t(`siteHealth.values.light_requirement.${choice}`)).join(', ') || t('noData');

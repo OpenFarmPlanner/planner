@@ -49,5 +49,37 @@
       "zero_plant_count": "Il numero di piante calcolato è zero",
       "missing_harvest_period": "Periodo di raccolta mancante o non valido"
     }
+  },
+  "comparison": {
+    "view": "Vista della panoramica delle rese",
+    "calendar": "Calendario delle previsioni",
+    "seasons": "Confronta le stagioni",
+    "chooseCrop": "Scegli una coltura",
+    "noCrops": "Aggiungi una serie o registra una raccolta per confrontare una coltura tra stagioni.",
+    "noSeasons": "Non ci sono stagioni da confrontare.",
+    "season": "Stagione",
+    "forecast": "Resa prevista",
+    "recorded": "Quantità raccolta",
+    "notRecorded": "Non registrata",
+    "harvestRecorded": "Raccolta registrata",
+    "zeroRecorded": "Zero registrato",
+    "noForecast": "Previsione non disponibile",
+    "forecastCoverage": "Previsione per {{included}} serie su {{total}}",
+    "harvestCoverage": "Raccolta assegnata a {{included}} serie su {{total}} della previsione",
+    "estimated": "{{value}} stimati",
+    "unassigned": "{{value}} senza assegnazione",
+    "assignedPlans": "Serie con raccolta assegnata ({{count}})",
+    "noAreaYield": "Resa per m² non disponibile",
+    "noMass": "Peso non disponibile",
+    "details": "Date e osservazioni",
+    "activityDates": "Date delle attività nella stagione di coltivazione",
+    "openPlan": "Apri la serie",
+    "harvestedAreaYield": "Resa per m² di superficie raccolta",
+    "chartTitle": "Resa confrontabile",
+    "chartScope": "Qui compaiono solo le stagioni con raccolte pesate e una previsione completa per le stesse serie.",
+    "chartEmpty": "Nessuna stagione ha raccolte pesate e una previsione completa per le stesse serie.",
+    "chartValues": "Resa per {{season}} ({{period}})",
+    "axis": "Resa in chilogrammi",
+    "tableScope": "Le quantità raccolte sono attribuite alla stagione della data di raccolta. La resa registrata per m² usa la superficie totale delle serie con raccolta assegnata."
   }
 }

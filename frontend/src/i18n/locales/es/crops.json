@@ -264,6 +264,16 @@
     "propagationDurationDaysHelp": "Tiempo desde el inicio del semillero hasta la fecha de plantación.",
     "propagationDurationDaysError": "La duración en semillero debe ser ≥ 0",
     "yieldUnit": "Unidad de rendimiento",
+    "defaultHarvestUnit": "Unidad de cosecha predeterminada",
+    "averageHarvestPieceWeight": "Peso medio (g por pieza)",
+    "averageHarvestBunchWeight": "Peso medio (g por manojo)",
+    "harvestWeightError": "Introduce un peso positivo con hasta tres decimales o deja el campo vacío.",
+    "harvestUnits": {
+      "kg": "Kilogramos (kg)",
+      "g": "Gramos (g)",
+      "piece": "Piezas",
+      "bunch": "Manojos"
+    },
     "yieldUnitPerPlant": "Por planta",
     "yieldUnitPerSqm": "Por m²",
     "expectedYield": "Rendimiento previsto",
@@ -773,7 +783,8 @@
       "sampleNote": "Fila de ejemplo: sustituir o eliminar antes de importar.",
       "potatoSeedNote": "Este ejemplo describe el cultivo a partir de semillas botánicas de patata, no la plantación de tubérculos.",
       "pretreatment": "Mantener una humedad uniforme.",
-      "pestsDiseases": "Mildiu: mantener las hojas secas."
+      "pestsDiseases": "Mildiu: mantener las hojas secas.",
+      "perennialName": "Ruibarbo"
     },
     "help": {
       "templateHint": "¿Todavía no tienes un archivo adecuado?",
@@ -828,7 +839,7 @@
         "cultivation": "Cultivo y rendimiento",
         "other": "Otras propiedades"
       },
-      "templateSamples": "Sustituye o elimina las tres filas de ejemplo antes de importar tus datos.",
+      "templateSamples": "Sustituye o elimina las filas de ejemplo antes de importar tus datos.",
       "templateError": "No se ha podido cargar la plantilla."
     },
     "timingWindowIssue": "Fila {{row}}, {{column}}: {{message}} El valor no se importa.",
@@ -1503,7 +1514,8 @@
       "fields": {
         "variety": "Variedad",
         "growth_duration_days": "Duración del cultivo",
-        "harvest_duration_days": "Duración de la cosecha"
+        "harvest_duration_days": "Duración de la cosecha",
+        "standing_time_years": "Vida útil del cultivo (años)"
       },
       "blockingReasons": {
         "missingCropSpecies": "Selecciona una especie de cultivo oficial.",
@@ -2020,7 +2032,8 @@
       "water_requirement": "Necesidad de agua",
       "life_cycle": "Ciclo de vida",
       "winter_hardiness": "Resistencia al frío",
-      "pests_diseases": "Plagas y enfermedades"
+      "pests_diseases": "Plagas y enfermedades",
+      "standing_time_years": "Vida útil del cultivo (años)"
     },
     "values": {
       "light_requirement": {
@@ -2045,7 +2058,9 @@
       }
     },
     "legacyLifeCycleOption": "{{value}} (valor existente)",
-    "legacyLifeCycleHint": "Este valor guardado se conserva hasta que elijas otro ciclo de vida."
+    "legacyLifeCycleHint": "Este valor guardado se conserva hasta que elijas otro ciclo de vida.",
+    "standingTimeHelp": "Duración productiva habitual de este cultivo perenne. Sirve para proponer una fecha de fin del cultivo.",
+    "standingTimeRequired": "Introduce un número entero igual o superior a 1."
   },
   "taskTemplates": {
     "title": "Plantillas de tareas",

@@ -58,9 +58,11 @@ import {
   plantingPlanAPI,
   type PlantingPlan,
 } from "../api/api";
-import type { HarvestOverlap, PlanCultivationType, SuccessionLimit, TimingWindowFinding } from "../api/types";
+import type { HarvestOverlap, PlanActualHarvest, PlanCultivationType, SuccessionLimit, TimingWindowFinding } from "../api/types";
 import { extractApiErrorMessage, isAreaInputSpacingMissingError } from "../api/errors";
+import { formatHarvestQuantity, formatHarvestTotals } from "../harvests/harvestDisplay";
 import {
+  formatLocalizedNumber,
   formatLocalizedNumberForInput,
   parseLocalizedNumber,
   resolveLocaleFromLanguage,
@@ -72,6 +74,7 @@ import {
   createSearchableSelectColumn,
   getCalculatedColumnProps,
   type DataGridAPI,
+  type EditableDataGridRowActionHelpers,
   type EditableDataGridCommandApi,
   copyRowsToClipboard,
   formatClipboardValue,
@@ -122,6 +125,7 @@ import { SearchHighlightedText } from "../search/SearchHighlightedText";
 import { buildMatchExcerpt } from "../search/searchText";
 import { PlantingPlanSearchMatchContext } from "../components/planting-plans/search/plantingPlanSearchMatchContext";
 import { PlantingPlanCropLabel } from "../components/planting-plans/search/PlantingPlanCropLabel";
+import { CarriedOverPlanBadge } from "../components/planting-plans/CarriedOverPlanBadge";
 import { PlantingPlanSearchToolbar } from "../components/planting-plans/search/PlantingPlanSearchToolbar";
 import { PlantingPlanMobileSearchBar } from "../components/planting-plans/search/PlantingPlanMobileSearchBar";
 import { PlantingPlanMobileListHeader } from "../components/planting-plans/search/PlantingPlanMobileListHeader";
@@ -142,14 +146,14 @@ import { MobilePlanFormDialog } from "../components/planting-plans/MobilePlanFor
 import { CropSpacingEditAction } from "../components/planting-plans/CropSpacingEditAction";
 import { MobilePlanActionsMenu, type PlanMenuNavigationAction } from "../components/planting-plans/MobilePlanActionsMenu";
 import { getEntityDetailPath } from "../components/hierarchy/details/hierarchyDetailRoutes";
-import { isPlantingPlanDetailPath, plantingPlanDetailPath } from "../planting-plans/plantingPlanDetailRoutes";
+import { isPlantingPlanDetailPath, plantingPlanDetailPath, PLANTING_PLANS_PATH } from "../planting-plans/plantingPlanDetailRoutes";
 import {
   ACTUAL_DATE_FIELDS, displayedPlanDate, getPlanColumnDates, PLANTING_PLAN_DATE_COLUMNS,
   type PlantingPlanActivity, type PlantingPlanDateColumn, type PlantingPlanDateMode,
 } from "../planting-plans/plantingPlanActualDates";
 import { InlinePlanDateEditor, PlantingPlanDateModeToggle, RecordedPlanDateCell, RecordedPlanDateValue } from "../planting-plans/PlantingPlanDateCells";
 import { PlanDateComparisonText, PlantingPlanExecutionDates } from "../planting-plans/PlantingPlanExecutionDates";
-import { RotationStatusIcon } from "../components/planting-plans/rotation/RotationStatusIcon";
+import { ReadOnlyRotationWarning, RotationStatusIcon } from "../components/planting-plans/rotation/RotationStatusIcon";
 import { CompanionWarningIcon } from "../components/planting-plans/rotation/CompanionCheckAlert";
 import { SiteSuitabilityHints } from "../components/planting-plans/rotation/SiteSuitabilityHints";
 import { HarvestOverlapDateCell, HarvestOverlapIcon } from "../components/planting-plans/HarvestOverlapInfo";
@@ -172,6 +176,7 @@ import {
   BED_COLUMN_MAX_WIDTH,
   CROP_COLUMN_MAX_WIDTH,
   getPlanOccupancyEndIso,
+  getSeasonOccupancyStatus,
   getSupplementalPlannedDates,
   toPlanIsoDate,
   getVisibleMobileRows,
@@ -183,6 +188,7 @@ import {
   toOptionalString,
   type MobileCreateFormState,
   type PlantingPlanRow,
+  type SeasonOccupancyStatus,
 } from './plantingPlansUtils';
 import { AppTooltip } from '../components/AppTooltip';
 import { dataGridHeaderLabelSx } from "../components/data-grid/dataGridHeaderLabelSx";
@@ -206,6 +212,10 @@ const PLANTING_PLAN_DIALOG_EDIT_FIELDS = ["bed"];
  * render — visible as the header/toolbar jitter this constant fixes.
  */
 const DEFAULT_HIDDEN_FIELDS_ON_SMALL_SCREEN = ["harvest_date", "harvest_end_date"];
+const DEFAULT_HIDDEN_FIELDS = ["season_status", "actual_harvest", "crop_loss_count"];
+const FOCUSABLE_SUMMARY_FIELDS = ["actual_harvest", "crop_loss_count"];
+
+const isCarriedOverPlan = (row: PlantingPlanRow): boolean => Boolean(row.carried_over);
 
 function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, restoredView }: {
   onOpenDetails?: (id: number, view: PlantingPlanSearchSnapshot, anchor?: HTMLElement | null) => void;
@@ -214,6 +224,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   restoredView?: PlantingPlanSearchSnapshot;
 } = {}) {
   const { t, i18n } = useTranslation(["plantingPlans", "common"]);
+  const { t: tHarvest } = useTranslation("harvests");
   const [dateMode, setDateMode] = useState<PlantingPlanDateMode>('combined');
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
   const activeSeason = outletContext?.activeSeason ?? null;
@@ -247,6 +258,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   const { columnVisibilityModel, setColumnVisibilityModel } = useColumnVisibility({
     tableKey: "plantingPlans",
     defaultHiddenFieldsOnSmallScreen: DEFAULT_HIDDEN_FIELDS_ON_SMALL_SCREEN,
+    defaultHiddenFields: DEFAULT_HIDDEN_FIELDS,
     isSmallScreen,
   });
   const [searchParams] = useSearchParams();
@@ -811,6 +823,14 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         renderCell: (params) => (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
             <PlantingPlanCropLabel planId={Number(params.id)} text={String(params.formattedValue ?? "")} truncate />
+            {params.row.carried_over && (
+              <Box sx={{ display: 'flex', maxWidth: '55%', minWidth: 0 }}>
+                <CarriedOverPlanBadge
+                  season={params.row.origin_season_label}
+                  tabIndex={params.hasFocus ? 0 : -1}
+                />
+              </Box>
+            )}
           </Box>
         ),
         valueSetter: (value, row) => {
@@ -927,6 +947,26 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           const row = params.row as PlantingPlanRow;
           const bedId = resolveBedCellValue(params.value, row);
           const label = getBedLabelForRow(row);
+          if (row.carried_over) {
+            const rotationStatus = getTableRotationStatus(row.rotation_status, row.rotation_findings);
+            return (
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", minWidth: 0, width: "100%" }}>
+                <Typography component="span" variant="inherit" noWrap>
+                  <SearchHighlightedText text={label} />
+                </Typography>
+                {isFlaggedRotationStatus(rotationStatus) && (
+                  <ReadOnlyRotationWarning
+                    status={rotationStatus}
+                    findings={row.rotation_findings}
+                    cultureLabel={row.crop_display_name ?? row.crop_name ?? ""}
+                    tabIndex={params.hasFocus ? 0 : -1}
+                  />
+                )}
+                <HarvestOverlapIcon overlaps={getRowHarvestOverlaps(row)} fontSize="inherit" />
+                <CompanionWarningIcon findings={row.companion_findings} fontSize="inherit" />
+              </Stack>
+            );
+          }
           return (
             <AreaAssignmentDialog
               bedId={bedId || null}
@@ -1280,6 +1320,59 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         headerClassName: getCoupledFieldHeaderClassName("end", isPlantsPartnerVisible),
       },
       {
+        field: "season_status",
+        headerName: t("plantingPlans:seasonStatus.column"),
+        width: 156,
+        editable: false,
+        valueGetter: (_value, row: PlantingPlanRow) => {
+          const start = toPlanIsoDate(row.planting_date);
+          const end = row.occupancy_end_date ?? getPlanOccupancyEndIso(row) ?? start;
+          return seasonBounds && row.bed && start && end
+            ? getSeasonOccupancyStatus(start, end, seasonBounds) : null;
+        },
+        valueFormatter: (value: SeasonOccupancyStatus | null) => (
+          value ? t(`plantingPlans:seasonStatus.labels.${value}`) : "—"
+        ),
+        renderCell: ({ value, formattedValue, hasFocus }) => value && (
+          <AppTooltip title={t(`plantingPlans:seasonStatus.descriptions.${value as SeasonOccupancyStatus}`)} describeChild>
+            <Typography component="span" variant="inherit" noWrap tabIndex={hasFocus ? 0 : -1}>
+              {formattedValue}
+            </Typography>
+          </AppTooltip>
+        ),
+      },
+      {
+        field: "actual_harvest",
+        headerName: tHarvest("tableColumn"),
+        width: 178,
+        editable: false,
+        sortable: false,
+        valueFormatter: (value: PlanActualHarvest | null | undefined) => value
+          ? formatHarvestTotals(value.quantities, numberLocale, tHarvest) : "—",
+        renderCell: ({ value, formattedValue, hasFocus }) => {
+          const actual = value as PlanActualHarvest | null | undefined;
+          const comparable = actual?.forecast_kg && actual.forecast_percentage && actual.quantities.length === 1
+            && actual.quantities[0].unit === 'kg';
+          const text = <Typography component="span" variant="inherit" noWrap tabIndex={comparable && hasFocus ? 0 : -1}>
+            {formattedValue ?? "—"}
+          </Typography>;
+          return comparable ? <AppTooltip describeChild title={tHarvest('forecastComparison', {
+            forecast: formatHarvestQuantity(actual.forecast_kg!, 'kg', numberLocale, tHarvest),
+            percent: formatLocalizedNumber(Number(actual.forecast_percentage) / 100, numberLocale, {
+              style: 'percent', maximumFractionDigits: 1,
+            }),
+          })}>{text}</AppTooltip> : text;
+        },
+      },
+      {
+        field: "crop_loss_count",
+        headerName: t("plantingPlans:cropLosses.title"),
+        width: 150,
+        editable: false,
+        valueFormatter: (count: number | undefined) => count
+          ? t("plantingPlans:cropLosses.incidentCount", { count }) : "—",
+      },
+      {
         field: "notes",
         headerName: t("common:fields.notes"),
         width: 72,
@@ -1320,6 +1413,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       isPlantsPartnerVisible,
       linkedPartnerHighlight,
       t,
+      tHarvest,
     ],
   );
 
@@ -1580,6 +1674,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       harvestEndDate: getDisplayedDate(row, 'harvest_end_date'),
       rotationStatus: row.isNew ? null : getTableRotationStatus(row.rotation_status, row.rotation_findings),
       hasHarvestOverlap: (getRowHarvestOverlaps(row)?.length ?? 0) > 0,
+      carriedOver: row.carried_over,
       hasTimingWindowFinding: (getRowTimingWindowFindings(row)?.length ?? 0) > 0,
     };
   }, [bedById, cropById, cropOptions, cultivationTypeOptions, fieldById, locationById, getDisplayedDate, getRowHarvestOverlaps, getRowTimingWindowFindings]);
@@ -1601,6 +1696,10 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     () => withPinnedRowFirst(search.sortedRows, persistedRows, pinnedPlanId),
     [persistedRows, pinnedPlanId, search.sortedRows],
   );
+  const continuingCount = search.sortedRows.filter(isCarriedOverPlan).length;
+  const continuingSummary = continuingCount > 0 ? t('plantingPlans:carriedOver.count', {
+    count: continuingCount, own: search.sortedRows.length - continuingCount,
+  }) : null;
   const gridExternalFilter = useMemo<ExternalRowFilter<PlantingPlanRow>>(() => ({
     isRowVisible,
     onOpenFilterPanel: openFilterPanel,
@@ -1776,6 +1875,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     const planId = typeof row.id === 'number' && row.id > 0 && !row.isNew ? row.id : null;
     const cropId = crops.some(crop => crop.id === row.crop) ? row.crop : null;
     const bedId = row.bed && bedById.has(row.bed) ? row.bed : null;
+    const originSeasonId = row.carried_over ? row.season : null;
     return [
       {
         id: 'plan-details', label: t('plantingPlans:details.title'), icon: <ArticleOutlinedIcon fontSize="small" />,
@@ -1796,6 +1896,13 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         disabledReason: bedId ? undefined : t('plantingPlans:details.missingBed'),
         activate: () => { if (bedId) void navigate(getEntityDetailPath('bed', bedId)); },
       },
+      ...(planId && originSeasonId && outletContext?.switchActiveSeason ? [{
+        id: 'plan-origin-season', label: t('plantingPlans:carriedOver.openOrigin'),
+        icon: <ArticleOutlinedIcon fontSize="small" />,
+        activate: () => outletContext.switchActiveSeason?.(
+          originSeasonId, `${PLANTING_PLANS_PATH}?planId=${planId}`,
+        ),
+      }] : []),
     ];
   };
 
@@ -2074,6 +2181,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   };
 
   const openMobileEditDialog = (row: PlantingPlanRow): void => {
+    if (row.carried_over) return;
     const derivedArea = getDerivedAreaFromRow(row);
     setMobileCreateError("");
     setMobileEditId(row.id);
@@ -2157,6 +2265,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   }, [isMobile, isPlansLoading, mobileRows, replacePlantingPlanSearchParams, searchParams]);
 
   const openMobileDuplicateDialog = (row: PlantingPlanRow): void => {
+    if (row.carried_over) return;
     const derivedArea = getDerivedAreaFromRow(row);
     setMobileCreateError("");
     setMobileEditId(null);
@@ -2366,6 +2475,11 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               search={search}
               onOpenFilterSheet={() => setIsFilterPanelOpen(true)}
             />
+            {continuingSummary && (
+              <Typography variant="body2" color="text.secondary" sx={{ px: 2, pb: 1 }}>
+                {continuingSummary}
+              </Typography>
+            )}
             <MobileCardList
               items={mobileListRows}
               flashingId={flashingPlanId}
@@ -2384,14 +2498,22 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
                       {" · "}
                     </>}
                     <SearchHighlightedText text={getBedLabelForRow(item)} />
-                    {isFlaggedRotationStatus(rotationStatus) ? (
-                      <RotationStatusIcon
-                        status={rotationStatus}
-                        fontSize="inherit"
-                        titleAccess={t(`plantingPlans:rotation.status.${rotationStatus}`)}
-                        sx={{ ml: 0.5, verticalAlign: "middle" }}
-                      />
-                    ) : null}
+                    {isFlaggedRotationStatus(rotationStatus) && (
+                      item.carried_over ? (
+                        <ReadOnlyRotationWarning
+                          status={rotationStatus}
+                          findings={item.rotation_findings}
+                          cultureLabel={getCropLabel(item)}
+                        />
+                      ) : (
+                        <RotationStatusIcon
+                          status={rotationStatus}
+                          fontSize="inherit"
+                          titleAccess={t(`plantingPlans:rotation.status.${rotationStatus}`)}
+                          sx={{ ml: 0.5, verticalAlign: "middle" }}
+                        />
+                      )
+                    )}
                     <HarvestOverlapIcon
                       overlaps={getRowHarvestOverlaps(item)}
                       fontSize="inherit"
@@ -2477,22 +2599,29 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
                   </Button>
                 </Stack>
               )}
-              renderFooter={(item) => (search.noteMatchIds.has(item.id) ? (
-                <Box
-                  data-testid="planting-plan-notes-match"
-                  sx={{ display: "flex", alignItems: "flex-start", gap: 0.75, pt: 0.75, borderTop: "1px solid", borderColor: "divider" }}
-                >
-                  <NotesIcon
-                    fontSize="small"
-                    color="action"
-                    titleAccess={t("plantingPlans:search.notesMatchAria")}
-                    sx={{ mt: 0.125, flexShrink: 0 }}
-                  />
-                  <Typography variant="body2" color="text.secondary" sx={{ minWidth: 0, overflowWrap: "anywhere" }}>
-                    <SearchHighlightedText text={buildMatchExcerpt(stripMarkdown(item.notes ?? ""), search.terms)} />
-                  </Typography>
-                </Box>
-              ) : null)}
+              renderFooter={(item) => (
+                <>
+                  {item.carried_over && (
+                    <CarriedOverPlanBadge season={item.origin_season_label} />
+                  )}
+                  {search.noteMatchIds.has(item.id) && (
+                    <Box
+                      data-testid="planting-plan-notes-match"
+                      sx={{ display: "flex", alignItems: "flex-start", gap: 0.75, pt: 0.75, borderTop: "1px solid", borderColor: "divider" }}
+                    >
+                      <NotesIcon
+                        fontSize="small"
+                        color="action"
+                        titleAccess={t("plantingPlans:search.notesMatchAria")}
+                        sx={{ mt: 0.125, flexShrink: 0 }}
+                      />
+                      <Typography variant="body2" color="text.secondary" sx={{ minWidth: 0, overflowWrap: "anywhere" }}>
+                        <SearchHighlightedText text={buildMatchExcerpt(stripMarkdown(item.notes ?? ""), search.terms)} />
+                      </Typography>
+                    </Box>
+                  )}
+                </>
+              )}
               detailsShowLabel={t("plantingPlans:mobile.showDetails")}
               detailsHideLabel={t("plantingPlans:mobile.hideDetails")}
               emptyState={search.isActive ? <PlantingPlanSearchEmptyState search={search} /> : (
@@ -2540,6 +2669,11 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           ) : null}
           {!isMobile && hasPlans && <Box sx={{ px: 2, pb: 1 }}>
             <PlantingPlanDateModeToggle mode={dateMode} onChange={setDateMode} />
+            {continuingSummary && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                {continuingSummary}
+              </Typography>
+            )}
           </Box>}
           {!isMobile && showDesktopSearchEmptyState ? <PlantingPlanSearchEmptyState search={search} /> : null}
           {/* Collapsed rather than unmounted while nothing matches, so the grid
@@ -2558,6 +2692,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             columns={columns}
             api={plantingPlanGridAPI}
             dialogEditFields={PLANTING_PLAN_DIALOG_EDIT_FIELDS}
+            focusableReadOnlyFields={FOCUSABLE_SUMMARY_FIELDS}
             commandApiRef={gridCommandApiRef}
             onSelectedRowChange={setSelectedPlan}
             onRowsStateChange={(rows) => {
@@ -2587,6 +2722,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             })}
           getSaveErrorAction={getGridSaveErrorAction}
           isNewRowEmpty={isEmptyNewPlantingPlanRow}
+          isReadOnlyRow={isCarriedOverPlan}
           initialRow={
             !isMobile && (initialSelection.cropId || initialSelection.bedId)
               ? {
@@ -2868,21 +3004,21 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               color: "primary",
               onClick: () => handleCreatePlan(),
             },
-            {
+            ...(!row.carried_over ? [{
               id: "duplicate",
               label: t("common:actions.duplicate"),
               icon: <ContentCopyIcon fontSize="small" />,
-              onClick: (row, helpers) => helpers.duplicate(row),
+              onClick: (row: PlantingPlanRow, helpers: EditableDataGridRowActionHelpers<PlantingPlanRow>) => helpers.duplicate(row),
             },
             {
               id: "delete",
               label: t("common:actions.delete"),
               icon: <DeleteIcon fontSize="small" />,
-              color: "error",
-              onClick: (row, helpers) => helpers.delete(row.id),
-            },
+              color: "error" as const,
+              onClick: (row: PlantingPlanRow, helpers: EditableDataGridRowActionHelpers<PlantingPlanRow>) => helpers.delete(row.id),
+            }] : []),
           ]}
-          getInlineRowActions={(row, helpers) => [
+          getInlineRowActions={(row, helpers) => row.carried_over ? [] : [
             {
               id: "delete",
               label: t("common:actions.delete"),
@@ -2978,6 +3114,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
 
       <NotesDrawer
         open={mobileNotesEditor.isOpen}
+        readOnly={Boolean(mobileNotesEditor.currentRow?.carried_over)}
         title={t("common:fields.notes")}
         value={mobileNotesEditor.draft}
         onChange={mobileNotesEditor.setDraft}

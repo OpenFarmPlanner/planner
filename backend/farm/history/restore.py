@@ -1,7 +1,9 @@
 """Point-in-time restore and batch-operation revert, built on recorded
 entity revisions."""
 
+from collections import defaultdict
 from collections.abc import Callable
+from decimal import Decimal
 from typing import Any
 
 from django.core.files.storage import default_storage
@@ -15,7 +17,10 @@ from crops.specific_properties import crop_specific_property_errors
 from farm.models import (
     Crop,
     CropCompanion,
+    CropLoss,
     EntityRevision,
+    HarvestAllocation,
+    HarvestRecord,
     MediaFile,
     PlantingPlan,
     Project,
@@ -287,7 +292,7 @@ def _restore_snapshot_children(model: type, object_id: int, snapshot: dict) -> N
 
 
 def _with_legacy_snapshot_fields(model: type, snapshot: dict) -> dict:
-    """Interpret historical crop and companion fields without rewriting the snapshot."""
+    """Apply historical field defaults without rewriting the stored snapshot."""
     if model is Crop:
         from farm.crop_light import normalize_crop_light
         from farm.germination import upgrade_germination_snapshot
@@ -304,6 +309,8 @@ def _with_legacy_snapshot_fields(model: type, snapshot: dict) -> dict:
             snapshot['crop_family_id'] = coerce_plant_family_key(snapshot['crop_family'])
     if model is CropCompanion and 'notes' not in snapshot:
         return {**snapshot, 'notes': {'de': snapshot['note']} if snapshot.get('note') else {}}
+    if model is PlantingPlan and 'copied_from_plan_id' not in snapshot:
+        return {**snapshot, 'copied_from_plan_id': None}
     return snapshot
 
 
@@ -335,6 +342,7 @@ def _recreate_rows_deleted_since(
     belongs_to_restore: Callable[[dict], bool],
     build_row_data: Callable[[dict], dict],
     select_related: tuple[str, ...] = (),
+    deletion_batch_id: int | None = None,
 ) -> list[int]:
     """Recreate rows this project's history records as deleted since
     `deleted_since`, and record an `ACTION_RESTORED` revision for each.
@@ -350,6 +358,7 @@ def _recreate_rows_deleted_since(
         snapshot = revision.snapshot
         if (
             revision.action != EntityRevision.ACTION_DELETED
+            or (deletion_batch_id is not None and revision.batch_operation_id != deletion_batch_id)
             or not isinstance(snapshot, dict)
             or not belongs_to_restore(snapshot)
             or model.objects.filter(pk=revision.object_id).exists()
@@ -406,16 +415,64 @@ def _null_dangling_nullable_fks(model: type, row_data: dict, *, keep: set[str]) 
     return row_data
 
 
-def restore_plans_and_tasks_deleted_with_season(
+def _harvest_reference(harvest: HarvestRecord) -> dict:
+    return {'crop_id': harvest.crop_id, 'date': harvest.date.isoformat(), 'unit': harvest.unit}
+
+
+def _recoverable_harvest_allocations(
+    project: Project, plan_ids: set[int], deletion: EntityRevision,
+) -> set[int]:
+    candidates = defaultdict(list)
+    for revision in _latest_revision_per_object(project, 'harvest_allocation', deletion.created_at):
+        snapshot = revision.snapshot
+        if (
+            revision.action == EntityRevision.ACTION_DELETED
+            and revision.batch_operation_id == deletion.batch_operation_id
+            and isinstance(snapshot, dict)
+            and snapshot.get('planting_plan_id') in plan_ids
+        ):
+            candidates[snapshot['harvest_id']].append((revision.object_id, snapshot))
+    if not candidates:
+        return set()
+
+    harvests = list(HarvestRecord.objects.select_for_update().filter(
+        project=project, pk__in=candidates,
+    ).order_by('pk'))
+    existing = defaultdict(dict)
+    for harvest_id, plan_id, amount in HarvestAllocation.objects.filter(
+        harvest_id__in=candidates,
+    ).values_list('harvest_id', 'planting_plan_id', 'quantity'):
+        existing[harvest_id][plan_id] = amount
+
+    recoverable = set()
+    for harvest in harvests:
+        assigned = existing[harvest.pk]
+        reference = _harvest_reference(harvest)
+        # Older deletion snapshots have no unit/date evidence. An untouched
+        # harvest still has the values that applied to those allocations.
+        matching = [
+            (pk, Decimal(snapshot['quantity']))
+            for pk, snapshot in candidates[harvest.pk]
+            if snapshot['planting_plan_id'] not in assigned
+            and (
+                snapshot['_harvest_reference'] == reference if '_harvest_reference' in snapshot
+                else harvest.updated_at <= deletion.created_at
+            )
+        ]
+        if sum(assigned.values()) + sum(amount for _, amount in matching) <= harvest.quantity:
+            recoverable.update(pk for pk, _ in matching)
+    return recoverable
+
+
+def _restore_rows_deleted_with_season(
     project: Project,
     season,
-    deleted_since,
+    deletion: EntityRevision,
     batch,
     *,
     user_name: str,
 ) -> None:
-    """Bring back the planting plans hard-deleted with `season`, and the tasks
-    that DB-cascaded away with those plans.
+    """Bring back the plans, tasks, and dated observations deleted with a season.
 
     Planting plans have no soft delete, so undeleting a season has to recreate
     them from the revisions recorded when it was deleted.
@@ -428,7 +485,7 @@ def restore_plans_and_tasks_deleted_with_season(
         )
 
     plan_ids = _recreate_rows_deleted_since(
-        project, PlantingPlan, 'planting_plan', deleted_since, batch,
+        project, PlantingPlan, 'planting_plan', deletion.created_at, batch,
         user_name=user_name,
         belongs_to_restore=lambda snapshot: snapshot.get('season_id') == season.pk,
         build_row_data=build_plan_row,
@@ -437,24 +494,43 @@ def restore_plans_and_tasks_deleted_with_season(
     if not plan_ids:
         return
 
-    def build_task_row(row_data: dict) -> dict:
+    def build_child_row(row_data: dict) -> dict:
         row_data['project_id'] = project.id
         return row_data
 
     _recreate_rows_deleted_since(
-        project, Task, 'task', deleted_since, batch,
+        project, Task, 'task', deletion.created_at, batch,
         user_name=user_name,
         belongs_to_restore=lambda snapshot: snapshot.get('planting_plan_id') in plan_ids,
-        build_row_data=build_task_row,
+        build_row_data=build_child_row,
     )
+    if deletion.batch_operation_id is None:
+        return
+    _recreate_rows_deleted_since(
+        project, CropLoss, 'crop_loss', deletion.created_at, batch,
+        user_name=user_name,
+        belongs_to_restore=lambda snapshot: snapshot.get('planting_plan_id') in plan_ids,
+        build_row_data=build_child_row,
+        select_related=('planting_plan__crop', 'planting_plan__bed'),
+        deletion_batch_id=deletion.batch_operation_id,
+    )
+    allocation_ids = _recoverable_harvest_allocations(project, set(plan_ids), deletion)
+    if allocation_ids:
+        _recreate_rows_deleted_since(
+            project, HarvestAllocation, 'harvest_allocation', deletion.created_at, batch,
+            user_name=user_name,
+            belongs_to_restore=lambda snapshot: snapshot.get('id') in allocation_ids,
+            build_row_data=build_child_row,
+            deletion_batch_id=deletion.batch_operation_id,
+        )
 
 
 def restore_season_planting_plans(project: Project, season, batch, *, user_name: str) -> None:
-    """Replay the plan/task deletions recorded when `season` was last deleted.
+    """Replay recoverable deletions recorded when `season` was last deleted.
 
     A no-op for a season that was never deleted; otherwise it finds that
     deletion's timestamp and hands it to
-    `restore_plans_and_tasks_deleted_with_season`.
+    `_restore_rows_deleted_with_season`.
     """
     deleted_revision = (
         EntityRevision.objects
@@ -469,8 +545,8 @@ def restore_season_planting_plans(project: Project, season, batch, *, user_name:
     )
     if deleted_revision is None:
         return
-    restore_plans_and_tasks_deleted_with_season(
-        project, season, deleted_revision.created_at, batch, user_name=user_name,
+    _restore_rows_deleted_with_season(
+        project, season, deleted_revision, batch, user_name=user_name,
     )
 
 
@@ -507,13 +583,19 @@ def _record_cascade_deletions(project: Project, instances: list, batch, user_nam
         entity_type = _RESTORABLE_MODEL_ENTITY_TYPE.get(model)
         if entity_type is None:
             continue
+        harvests = HarvestRecord.objects.filter(
+            project=project, pk__in={obj.harvest_id for obj in objs},
+        ).in_bulk() if model is HarvestAllocation else {}
         for obj in objs:
             if (model, obj.pk) in already:
                 continue
+            snapshot = _serialize_instance(obj)
+            if model is HarvestAllocation and obj.harvest_id in harvests:
+                snapshot['_harvest_reference'] = _harvest_reference(harvests[obj.harvest_id])
             record_entity_revision(
                 project=project, entity_type=entity_type, object_id=obj.pk,
                 action=EntityRevision.ACTION_DELETED,
-                snapshot=_serialize_instance(obj),
+                snapshot=snapshot,
                 display_name=_entity_display_name(obj),
                 changed_fields=[], user_name=user_name, batch_operation=batch,
             )

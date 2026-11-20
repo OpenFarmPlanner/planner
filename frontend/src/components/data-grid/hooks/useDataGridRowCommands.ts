@@ -57,6 +57,7 @@ interface UseDataGridRowCommandsParams<T extends EditableRow> {
   setRowModesModel: Dispatch<SetStateAction<GridRowModesModel>>;
   rowSnapshotRef: MutableRefObject<Map<string, T>>;
   ensureRowVisible?: (rowId: GridRowId) => boolean;
+  isReadOnlyRow?: (row: T) => boolean;
 }
 
 export function useDataGridRowCommands<T extends EditableRow>({
@@ -68,10 +69,12 @@ export function useDataGridRowCommands<T extends EditableRow>({
   setRowModesModel,
   rowSnapshotRef,
   ensureRowVisible,
+  isReadOnlyRow,
 }: UseDataGridRowCommandsParams<T>) {
   const handleEditSelectedRow = useCallback((): void => {
     const selectedRowId = selectedRowIds[0];
-    if (!selectedRowId) {
+    const row = rowsById.get(String(selectedRowId));
+    if (!selectedRowId || (row && isReadOnlyRow?.(row))) {
       return;
     }
 
@@ -79,15 +82,14 @@ export function useDataGridRowCommands<T extends EditableRow>({
       ...oldModel,
       [selectedRowId]: { mode: GridRowModes.Edit, fieldToFocus: columns[0]?.field },
     }));
-  }, [columns, selectedRowIds, setRowModesModel]);
+  }, [columns, isReadOnlyRow, rowsById, selectedRowIds, setRowModesModel]);
 
   const handleStartRowEdit = useCallback((rowId: GridRowId, field?: string): void => {
     const rowKey = String(rowId);
-    if (!rowSnapshotRef.current.has(rowKey)) {
-      const row = rowsById.get(rowKey);
-      if (row) {
-        rowSnapshotRef.current.set(rowKey, row);
-      }
+    const row = rowsById.get(rowKey);
+    if (row && isReadOnlyRow?.(row)) return;
+    if (row && !rowSnapshotRef.current.has(rowKey)) {
+      rowSnapshotRef.current.set(rowKey, row);
     }
 
     const fieldToFocus = field ?? columns.find((column) => column.editable !== false)?.field ?? columns[0]?.field;
@@ -95,7 +97,7 @@ export function useDataGridRowCommands<T extends EditableRow>({
       ...oldModel,
       [rowId]: { mode: GridRowModes.Edit, fieldToFocus },
     }));
-  }, [columns, rowSnapshotRef, rowsById, setRowModesModel]);
+  }, [columns, isReadOnlyRow, rowSnapshotRef, rowsById, setRowModesModel]);
 
   const focusTable = useCallback((): void => {
     const api = gridApiRef.current;
@@ -112,8 +114,9 @@ export function useDataGridRowCommands<T extends EditableRow>({
   // instead of just prefilling a brand-new draft row via `initialRow`.
   const openRowById = useCallback((rowId: GridRowId, options?: { startEdit?: boolean }): void => {
     const api = gridApiRef.current;
-    if (!api || !rowsById.has(String(rowId))) return;
-    const shouldStartEdit = options?.startEdit !== false;
+    const row = rowsById.get(String(rowId));
+    if (!api || !row) return;
+    const shouldStartEdit = options?.startEdit !== false && !isReadOnlyRow?.(row);
     setSelectedRowIds([rowId]);
     const changedPage = ensureRowVisible?.(rowId) ?? false;
     // Edit mode moves focus into its own input via handleStartRowEdit's
@@ -123,7 +126,7 @@ export function useDataGridRowCommands<T extends EditableRow>({
     if (shouldStartEdit) {
       handleStartRowEdit(rowId);
     }
-  }, [ensureRowVisible, gridApiRef, handleStartRowEdit, rowsById, setSelectedRowIds]);
+  }, [ensureRowVisible, gridApiRef, handleStartRowEdit, isReadOnlyRow, rowsById, setSelectedRowIds]);
 
   return {
     handleEditSelectedRow,

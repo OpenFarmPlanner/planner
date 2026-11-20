@@ -9,6 +9,7 @@
   "plantingPlans": "Teeltplan",
   "ganttChart": "Teeltkalender",
   "yieldOverview": "Opbrengstoverzicht",
+  "harvests": "Oogsten",
   "seedDemand": "Zaadbehoefte",
   "youngPlantDemand": "Plantgoedbehoefte",
   "short": {
@@ -19,6 +20,7 @@
     "plantingPlans": "Teeltplan",
     "ganttChart": "Kalender",
     "yieldOverview": "Opbrengsten",
+    "harvests": "Oogsten",
     "seedDemand": "Zaad",
     "youngPlantDemand": "Plantgoed",
     "suppliers": "Leveranciers"
@@ -186,7 +188,11 @@
             "description": "Alleen de {{ok}} teelten zonder conflict worden gekopieerd."
           }
         }
-      }
+      },
+      "continuingPlans_one": "{{count}} teelt loopt door en blijft in het oorspronkelijke seizoen.",
+      "continuingPlans_other": "{{count}} teelten lopen door en blijven in hun oorspronkelijke seizoenen.",
+      "unconfiguredPerennials_one": "Een meerjarige teelt met ontbrekende of ongeldige datums of levensduur wordt overgeslagen.",
+      "unconfiguredPerennials_other": "{{count, number}} meerjarige teelten met ontbrekende of ongeldige datums of levensduur worden overgeslagen."
     }
   },
   "seasonSetup": {

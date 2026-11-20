@@ -1,13 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { TimingSection as TimingFields } from '../crops/sections/TimingSection';
-import { GerminationSection } from '../crops/sections/GerminationSection';
-import type { ComponentProps } from 'react';
-
-function TimingSection(props: ComponentProps<typeof TimingFields>) {
-  return <><TimingFields {...props} /><GerminationSection {...props} /></>;
-}
+import { TimingSection } from '../crops/sections/TimingSection';
 import type { GetVarietyFieldHighlightSx } from '../crops/varietyValueAccent';
 
 const translations: Record<string, string> = {
@@ -29,7 +23,7 @@ const t = (key: string, options?: Record<string, unknown>) => (translations[key]
 
 const PRE_CULTIVATION = { cultivation_type: 'pre_cultivation', cultivation_types: ['pre_cultivation'] } as const;
 
-describe('timing and germination sections', () => {
+describe('timing section', () => {
   it('parses growth, propagation and harvest duration inputs', () => {
     const onChange = vi.fn();
 
@@ -52,22 +46,6 @@ describe('timing and germination sections', () => {
     expect(onChange).toHaveBeenCalledWith('propagation_duration_days', 8);
     expect(onChange).toHaveBeenCalledWith('harvest_duration_days', 12);
     expect(onChange).toHaveBeenCalledWith('harvest_duration_days', 0);
-  });
-
-  it('keeps growth and harvest in timing and places propagation after the germination requirements', () => {
-    render(<TimingSection formData={{ ...PRE_CULTIVATION }} errors={{}} onChange={vi.fn()} t={t} />);
-
-    const fields = [
-      screen.getByRole('combobox', { name: 'Anbauart' }),
-      screen.getByLabelText('Wachstumszeit (Tage)'),
-      screen.getByLabelText('Erntezeit (Tage)'),
-      screen.getByRole('combobox', { name: 'germination.fields.germination_temperature_requirement' }),
-      screen.getByRole('combobox', { name: 'germination.fields.germination_light_requirement' }),
-      screen.getByLabelText('Anzuchtdauer (Tage)'),
-    ];
-    for (let index = 1; index < fields.length; index += 1) {
-      expect(fields[index - 1].compareDocumentPosition(fields[index]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    }
   });
 
   it('explains each duration through an info button inside the field, not on hovering the field', async () => {
@@ -116,14 +94,17 @@ describe('timing and germination sections', () => {
     const user = userEvent.setup();
     render(
       <TimingSection
-        formData={{ cultivation_type: 'direct_sowing', cultivation_types: ['direct_sowing'] }}
+        formData={{ cultivation_type: 'direct_sowing', cultivation_types: ['direct_sowing'], propagation_duration_days: 28 }}
         errors={{}}
         onChange={vi.fn()}
         t={t}
       />,
     );
 
-    expect(screen.getByLabelText('Anzuchtdauer (Tage)')).toBeDisabled();
+    const propagation = screen.getByLabelText('Anzuchtdauer (Tage)');
+    expect(propagation).toBeDisabled();
+    expect(propagation).toHaveValue(28);
+    expect(screen.queryByText('form.propagationDurationDaysTooLong')).not.toBeInTheDocument();
     const infoButton = screen.getByRole('button', { name: 'Info zu Anzuchtdauer (Tage)' });
     expect(infoButton).toBeEnabled();
     await user.click(infoButton);
@@ -167,17 +148,18 @@ describe('timing and germination sections', () => {
     expect(screen.getByText('Erntefehler')).toBeInTheDocument();
   });
 
-  it('sets propagation duration to 0 when cultivation type changes to direct sowing', () => {
+  it('keeps propagation editable for crops supporting both cultivation types', () => {
     const onChange = vi.fn();
 
-    render(<TimingSection formData={{ ...PRE_CULTIVATION }} errors={{}} onChange={onChange} t={t} />);
+    render(<TimingSection formData={{
+      cultivation_type: 'direct_sowing',
+      cultivation_types: ['direct_sowing', 'pre_cultivation'],
+      propagation_duration_days: 28,
+    }} errors={{}} onChange={onChange} t={t} />);
 
-    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Anbauart' }));
-    fireEvent.click(screen.getByRole('option', { name: 'Direktsaat' }));
-
-    expect(onChange).toHaveBeenCalledWith('cultivation_types', ['pre_cultivation', 'direct_sowing']);
-    expect(onChange).toHaveBeenCalledWith('cultivation_type', 'pre_cultivation');
-    expect(onChange).not.toHaveBeenCalledWith('propagation_duration_days', 0);
+    const propagation = screen.getByLabelText('Anzuchtdauer (Tage)');
+    expect(propagation).toBeEnabled();
+    expect(propagation).toHaveValue(28);
   });
 
   describe('variety override highlighting', () => {

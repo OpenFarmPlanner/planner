@@ -1,6 +1,7 @@
 """Plan-level yield forecasts and their allocation across ISO harvest weeks."""
 
 from collections import defaultdict
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -18,6 +19,11 @@ from farm.services.crop_inheritance import (
 from farm.services.plant_count import PLANT_COUNT_BLOCKER_MISSING_AREA, compute_plan_plant_count
 
 _YIELD_PRECISION = Decimal('0.01')
+_COPIED_FORECAST_FIELDS = (
+    'copied_from_plan_id', 'season_id', 'crop_id', 'bed_id', 'cultivation_type',
+    'planting_date', 'planned_propagation_start_date', 'planned_sowing_date',
+    'harvest_date', 'harvest_end_date', 'clearing_date', 'area_usage_sqm', 'quantity',
+)
 
 
 @dataclass(frozen=True)
@@ -58,6 +64,18 @@ def compute_plan_expected_yield(
     return PlanExpectedYield(rate * quantity)
 
 
+def distinct_forecast_plans(plans: Iterable[PlantingPlan]) -> Iterator[PlantingPlan]:
+    """Count repeated copies of an unchanged forecast in one target season once."""
+    seen = set()
+    for plan in plans:
+        if plan.copied_from_plan_id is not None:
+            key = tuple(getattr(plan, name) for name in _COPIED_FORECAST_FIELDS)
+            if key in seen:
+                continue
+            seen.add(key)
+        yield plan
+
+
 def week_start_for_iso_year(iso_year: int) -> date:
     """Return Monday of ISO week 1 for an ISO year."""
     return date.fromisocalendar(iso_year, 1, 1)
@@ -71,6 +89,17 @@ def iso_week_key(day: date) -> str:
 
 def _iso_year_end(iso_year: int) -> date:
     return week_start_for_iso_year(iso_year + 1) if iso_year < date.max.year else date.max
+
+
+def _forecast_bounds(iso_year: int | None, season: Season | None) -> tuple[date, date]:
+    if season is None:
+        year = iso_year if iso_year is not None else date.today().year
+        return week_start_for_iso_year(year), _iso_year_end(year)
+    start = season.start_date
+    end = season.end_date + timedelta(days=1) if season.end_date < date.max else date.max
+    if iso_year is not None:
+        return max(start, week_start_for_iso_year(iso_year)), min(end, _iso_year_end(iso_year))
+    return start, end
 
 
 def build_yield_calendar(
@@ -104,15 +133,9 @@ def build_yield_forecast(
     include_incomplete: bool = True,
 ) -> dict[str, list[dict]]:
     """Build weekly yield rows and, if requested, explain omitted planting plans."""
-    full_season = season is not None and iso_year is None
-    if full_season:
-        start_year = min(season.start_date.year, season.start_date.isocalendar().year)
-        end_year = max(season.end_date.year, season.end_date.isocalendar().year)
-        season_id = season.pk
-    else:
-        start_year = end_year = iso_year if iso_year is not None else date.today().year
-    start = week_start_for_iso_year(start_year)
-    end = _iso_year_end(end_year)
+    start, end = _forecast_bounds(iso_year, season)
+    if start >= end:
+        return {'weeks': [], 'incomplete_plans': []}
 
     overlaps = Q(harvest_date__lt=end, harvest_end_date__gt=start)
     invalid_period = (
@@ -126,22 +149,31 @@ def build_yield_forecast(
         .prefetch_related('crop__crop_species__translations')
         .order_by('pk')
     )
-    if season_id is not None:
+    if season is not None:
+        plans = plans.filter(season__deleted_at__isnull=True).alias(
+            occupied_until=PlantingPlan.occupancy_end_expression(),
+        ).filter(
+            Q(season_id=season.pk) | Q(
+                planting_date__lt=season.start_date, occupied_until__gte=season.start_date,
+            ),
+        )
+    elif season_id is not None:
         plans = plans.filter(season_id=season_id)
     if include_incomplete:
-        if not full_season:
-            plans = plans.alias(
-                diagnostic_date=Coalesce('harvest_date', 'planting_date', 'harvest_end_date'),
-            )
-            invalid_period &= Q(diagnostic_date__gte=start, diagnostic_date__lt=end)
-        plans = plans.filter(overlaps | invalid_period)
+        plans = plans.alias(
+            diagnostic_date=Coalesce('harvest_date', 'harvest_end_date', 'planting_date'),
+        )
+        diagnosis_scope = Q(diagnostic_date__gte=start, diagnostic_date__lt=end)
+        if season is not None and iso_year is None:
+            diagnosis_scope |= Q(season_id=season.pk)
+        plans = plans.filter(overlaps | (invalid_period & diagnosis_scope))
     else:
         plans = plans.filter(overlaps & ~invalid_period)
 
     general_crops = build_general_crop_index(project.pk)
     weekly_data: dict[date, dict[tuple, Decimal]] = defaultdict(lambda: defaultdict(Decimal))
     incomplete_plans = []
-    for plan in plans:
+    for plan in distinct_forecast_plans(plans):
         expected = compute_plan_expected_yield(plan, general_crops)
         harvest_start, harvest_end = plan.harvest_date, plan.harvest_end_date
         has_window = (
@@ -181,6 +213,22 @@ def _next_week(week_start: date) -> date:
     return week_start + timedelta(days=min(7, (date.max - week_start).days))
 
 
+def _plan_yield_through(kilograms: Decimal, start: date, end: date, day: date) -> Decimal:
+    return (kilograms * (day - start).days / (end - start).days).quantize(
+        _YIELD_PRECISION, rounding=ROUND_HALF_UP,
+    )
+
+
+def forecast_yield_in_period(
+    kilograms: Decimal, harvest_start: date, harvest_end: date, start: date, end: date,
+) -> Decimal:
+    """Use the same cumulative rounding as the calendar for a half-open period."""
+    return (
+        _plan_yield_through(kilograms, harvest_start, harvest_end, min(harvest_end, end))
+        - _plan_yield_through(kilograms, harvest_start, harvest_end, max(harvest_start, start))
+    )
+
+
 def _accumulate_plan_yield(
     weekly_data: dict[date, dict[tuple, Decimal]],
     plan: PlantingPlan,
@@ -193,7 +241,6 @@ def _accumulate_plan_yield(
     """Allocate the rounded cumulative yield between each pair of week boundaries."""
     harvest_start = plan.harvest_date
     harvest_end = plan.harvest_end_date
-    total_days = (harvest_end - harvest_start).days
     overlap_start = max(harvest_start, start)
     overlap_limit = min(harvest_end, end)
     week_start = overlap_start - timedelta(days=overlap_start.weekday())
@@ -203,16 +250,11 @@ def _accumulate_plan_yield(
         plan.crop.display_color or '#3b82f6',
     )
 
-    def allocated_through(day: date) -> Decimal:
-        return (kilograms * (day - harvest_start).days / total_days).quantize(
-            _YIELD_PRECISION, rounding=ROUND_HALF_UP,
-        )
-
-    allocated = allocated_through(overlap_start)
+    allocated = _plan_yield_through(kilograms, harvest_start, harvest_end, overlap_start)
     while overlap_start < overlap_limit:
         week_end = _next_week(week_start)
         overlap_end = min(week_end, overlap_limit)
-        next_allocated = allocated_through(overlap_end)
+        next_allocated = _plan_yield_through(kilograms, harvest_start, harvest_end, overlap_end)
         if next_allocated > allocated:
             weekly_data[week_start][crop_key] += next_allocated - allocated
         allocated = next_allocated

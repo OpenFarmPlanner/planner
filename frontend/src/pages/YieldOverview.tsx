@@ -8,6 +8,8 @@ import {
   Box,
   Link,
   Stack,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
 import {
@@ -32,8 +34,11 @@ import {
   type YieldCropMeta,
 } from "./yieldOverviewUtils";
 import { formatCropDisplayName, getCropDisplayName } from "../crops/cropDisplay";
+import { segmentedToggleButtonGroupSx, segmentedToggleButtonSx } from "../components/buttons/segmentedControlStyles";
+import { YieldSeasonComparison } from "./YieldSeasonComparison";
 
 const EMPTY_FORECAST: YieldCalendarForecast = { weeks: [], incomplete_plans: [] };
+type YieldView = 'calendar' | 'comparison';
 
 export default function YieldOverviewPage() {
   const { t, i18n } = useTranslation("yieldOverview");
@@ -42,6 +47,7 @@ export default function YieldOverviewPage() {
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
   const activeSeason = outletContext?.activeSeason ?? null;
   const scope = `${activeProjectId ?? ''}:${activeSeason?.id ?? ''}`;
+  const [view, setView] = useState<YieldView>('calendar');
   const [selectedCropId, setSelectedCropId] = useState(ALL_CROPS);
   const [period, setPeriod] = useState<ChartPeriod>("week");
   const [isFetching, setLoading] = useState(true);
@@ -122,26 +128,8 @@ export default function YieldOverviewPage() {
     );
   }, [i18n.language, i18n.resolvedLanguage, weeklyYield]);
 
-  useEffect(() => {
-    if (
-      selectedCropId !== ALL_CROPS &&
-      !crops.some(
-        (crop) => String(crop.id) === selectedCropId,
-      )
-    ) {
-      setSelectedCropId(ALL_CROPS);
-    }
-  }, [crops, selectedCropId]);
-
-  if (loading) {
-    return (
-      <PageContainer variant="workspacePage">
-        <PageSurface variant="fullWorkspace" sx={{ py: 2 }}>
-          <Typography variant="body1">{t("loading")}</Typography>
-        </PageSurface>
-      </PageContainer>
-    );
-  }
+  const calendarCropId = crops.some(crop => String(crop.id) === selectedCropId)
+    ? selectedCropId : ALL_CROPS;
 
   if (shouldShowProjectRequiredState && missingProjectReason) {
     return (
@@ -153,94 +141,106 @@ export default function YieldOverviewPage() {
     );
   }
 
-  if (error) {
-    return (
-      <PageContainer>
-        <Alert severity="error" sx={loadRetryAlertSx} action={<LoadRetryButton disabled={loading} onClick={() => setRetryAttempt((attempt) => attempt + 1)} />}>
-          {error}
-        </Alert>
-      </PageContainer>
-    );
-  }
-
-  const hasPlantingPlans = plantingPlans.length > 0;
   const hasYieldData = weeklyYield.length > 0;
+  const hasRelevantPlans = plantingPlans.length > 0 || hasYieldData || incompletePlans.length > 0;
   const dateFormatter = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeZone: 'UTC' });
+
+  const calendar = loading ? (
+    <Typography variant="body1" role="status">{t("loading")}</Typography>
+  ) : error ? (
+    <Alert severity="error" sx={loadRetryAlertSx}
+      action={<LoadRetryButton onClick={() => setRetryAttempt(attempt => attempt + 1)} />}>
+      {error}
+    </Alert>
+  ) : (
+    <>
+      <YieldFilterBar
+        crops={crops}
+        selectedCropId={calendarCropId}
+        period={period}
+        onCropChange={setSelectedCropId}
+        onPeriodChange={setPeriod}
+      />
+
+      {incompletePlans.length > 0 && (
+        <Alert severity="warning" sx={{ '& .MuiAlert-message': { minWidth: 0 }, overflowWrap: 'anywhere' }}>
+          <details>
+            <Box component="summary" sx={{ cursor: 'pointer', minHeight: 44, alignContent: 'center' }}>
+              {t('diagnostics.title', { count: incompletePlans.length })}
+            </Box>
+            <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+              {incompletePlans.map(plan => {
+                const date = plan.planting_date
+                  ? dateFormatter.format(new Date(`${plan.planting_date}T00:00:00Z`))
+                  : null;
+                const planLabel = [
+                  formatCropDisplayName(plan) || t('diagnostics.unnamedPlan'),
+                  plan.bed_name,
+                  date,
+                ].filter(Boolean).join(' · ');
+                return (
+                  <Box component="li" key={plan.plan_id} sx={{ mb: 0.75 }}>
+                    <Link component={RouterLink} to={plantingPlanDetailPath(plan.plan_id)}>
+                      {planLabel}
+                    </Link>
+                    <Typography variant="body2">
+                      {plan.calculation_blockers.map(blocker => t(`diagnostics.blockers.${blocker}`)).join(' · ')}
+                    </Typography>
+                  </Box>
+                );
+              })}
+            </Box>
+          </details>
+        </Alert>
+      )}
+
+      {!hasRelevantPlans ? (
+        <EmptyStateCard
+          title={t("empty.noPlansTitle")}
+          description={t("empty.description")}
+          actions={[
+            {
+              label: t("empty.createPlanAction"),
+              to: "/app/planting-plans?create=true",
+              icon: <AddIcon fontSize="small" />,
+            },
+          ]}
+          containerSx={{ maxWidth: "none", mb: 0 }}
+        />
+      ) : hasYieldData ? (
+        <YieldDistributionChart
+          weeklyYield={weeklyYield}
+          selectedCropId={calendarCropId}
+          period={period}
+          activeSeason={activeSeason}
+        />
+      ) : (
+        <EmptyStateCard
+          title={t("empty.noYieldTitle")}
+          description={t("empty.noYieldDescription")}
+          actions={[
+            { label: t("empty.openPlansAction"), to: "/app/planting-plans" },
+          ]}
+          containerSx={{ maxWidth: "none", mb: 0 }}
+        />
+      )}
+    </>
+  );
 
   return (
     <PageContainer variant="workspacePage">
       <PageSurface variant="fullWorkspace">
         <Stack spacing={2}>
-          <YieldFilterBar
-            crops={crops}
-            selectedCropId={selectedCropId}
-            period={period}
-            onCropChange={setSelectedCropId}
-            onPeriodChange={setPeriod}
-          />
+          <ToggleButtonGroup value={view} exclusive aria-label={t('comparison.view')}
+            size="small" color="primary" sx={{ ...segmentedToggleButtonGroupSx, alignSelf: 'flex-start' }}
+            onChange={(_, next: YieldView | null) => { if (next !== null) setView(next); }}>
+            <ToggleButton value="calendar" sx={{ ...segmentedToggleButtonSx, minHeight: 44 }}>{t('comparison.calendar')}</ToggleButton>
+            <ToggleButton value="comparison" sx={{ ...segmentedToggleButtonSx, minHeight: 44 }}>{t('comparison.seasons')}</ToggleButton>
+          </ToggleButtonGroup>
 
-          {incompletePlans.length > 0 && (
-            <Alert severity="warning" sx={{ '& .MuiAlert-message': { minWidth: 0 }, overflowWrap: 'anywhere' }}>
-              <details>
-                <Box component="summary" sx={{ cursor: 'pointer', minHeight: 44, alignContent: 'center' }}>
-                  {t('diagnostics.title', { count: incompletePlans.length })}
-                </Box>
-                <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
-                  {incompletePlans.map(plan => {
-                    const date = plan.planting_date
-                      ? dateFormatter.format(new Date(`${plan.planting_date}T00:00:00Z`))
-                      : null;
-                    const planLabel = [
-                      formatCropDisplayName(plan) || t('diagnostics.unnamedPlan'),
-                      plan.bed_name,
-                      date,
-                    ].filter(Boolean).join(' · ');
-                    return (
-                      <Box component="li" key={plan.plan_id} sx={{ mb: 0.75 }}>
-                        <Link component={RouterLink} to={plantingPlanDetailPath(plan.plan_id)}>
-                          {planLabel}
-                        </Link>
-                        <Typography variant="body2">
-                          {plan.calculation_blockers.map(blocker => t(`diagnostics.blockers.${blocker}`)).join(' · ')}
-                        </Typography>
-                      </Box>
-                    );
-                  })}
-                </Box>
-              </details>
-            </Alert>
-          )}
-
-          {!hasPlantingPlans ? (
-            <EmptyStateCard
-              title={t("empty.noPlansTitle")}
-              description={t("empty.description")}
-              actions={[
-                {
-                  label: t("empty.createPlanAction"),
-                  to: "/app/planting-plans?create=true",
-                  icon: <AddIcon fontSize="small" />,
-                },
-              ]}
-              containerSx={{ maxWidth: "none", mb: 0 }}
-            />
-          ) : hasYieldData ? (
-            <YieldDistributionChart
-              weeklyYield={weeklyYield}
-              selectedCropId={selectedCropId}
-              period={period}
-              activeSeason={activeSeason}
-            />
-          ) : (
-            <EmptyStateCard
-              title={t("empty.noYieldTitle")}
-              description={t("empty.noYieldDescription")}
-              actions={[
-                { label: t("empty.openPlansAction"), to: "/app/planting-plans" },
-              ]}
-              containerSx={{ maxWidth: "none", mb: 0 }}
-            />
-          )}
+          {view === 'comparison' ? (
+            <YieldSeasonComparison key={activeProjectId} cropId={selectedCropId} onCropChange={setSelectedCropId} />
+          ) : calendar}
         </Stack>
       </PageSurface>
     </PageContainer>

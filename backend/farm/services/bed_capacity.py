@@ -32,8 +32,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
-from django.db.models import DateField, QuerySet
-from django.db.models.functions import Coalesce
+from django.db.models import QuerySet
 
 from farm.models import Bed, Crop, PlantingPlan, Project
 
@@ -202,11 +201,7 @@ class BedCapacity:
 
 
 def _plans_with_period() -> QuerySet[PlantingPlan]:
-    return PlantingPlan.objects.annotate(
-        occupied_until=Coalesce(
-            'harvest_end_date', 'harvest_date', 'planting_date', output_field=DateField(),
-        ),
-    )
+    return PlantingPlan.objects.annotate(occupied_until=PlantingPlan.occupancy_end_expression())
 
 
 def occupying_plans_in_period(
@@ -251,11 +246,14 @@ def calculate_bed_capacities(
         bed_ids=[bed.pk for bed in beds], start=start, end=firm_end,
         exclude_plan_id=exclude_plan_id,
     ).values_list(
-        'bed_id', 'pk', 'crop_id', 'area_usage_sqm', 'planting_date', 'harvest_date', 'occupied_until',
+        'bed_id', 'pk', 'crop_id', 'area_usage_sqm', 'planting_date', 'harvest_date',
+        'clearing_date', 'occupied_until',
     )
-    for bed_id, plan_id, crop_id, area, planting_date, plan_harvest_start, occupied_until in rows:
+    for row in rows:
+        bed_id, plan_id, crop_id, area, planted, plan_harvest, clearing_date, occupied_until = row
         occupancy = build_occupancy(
-            rule=rule, start=planting_date, harvest_start=plan_harvest_start, end=occupied_until,
+            rule=rule, start=planted, harvest_start=None if clearing_date else plan_harvest,
+            end=occupied_until,
             area_sqm=area, plan_id=plan_id, crop_id=crop_id,
         )
         if occupancy.firmly_overlaps(start, firm_end):
@@ -420,7 +418,7 @@ class HarvestOverlapIndex:
                 by_bed[plan.bed_id].append(build_occupancy(
                     rule=self.rule,
                     start=plan.planting_date,
-                    harvest_start=plan.harvest_date,
+                    harvest_start=None if plan.clearing_date else plan.harvest_date,
                     end=plan.occupied_until,
                     area_sqm=plan.area_usage_sqm,
                     plan_id=plan.pk,

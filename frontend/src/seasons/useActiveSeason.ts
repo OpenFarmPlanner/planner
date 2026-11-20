@@ -4,6 +4,7 @@ import type { Season, SeasonCopyRotationMode, SeasonCreationOptions, SeasonDueSu
 import { extractApiErrorMessage } from '../api/errors';
 import { useTranslation } from '../i18n';
 import { useAuth } from '../auth/useAuth';
+import { appRouteUrl } from '../utils/appRouteUrl';
 import { createTransientId } from '../utils/transientId';
 import { DELETE_UNDO_DURATION_MS } from '../components/data-grid';
 import { stashSeasonSwitchState } from './seasonSwitchState';
@@ -119,13 +120,14 @@ export function useActiveSeason() {
   // reload the app the same deliberate way a project switch does (see
   // AuthContext.switchActiveProject) rather than trying to invalidate every
   // page's in-flight state individually.
-  const switchSeason = useCallback((seasonId: number) => {
+  const switchSeason = useCallback((seasonId: number, destination?: string) => {
     if (!activeProjectId) {
       return;
     }
     setStoredActiveSeasonId(activeProjectId, seasonId);
     stashSeasonSwitchState(activeProjectId);
-    window.location.reload();
+    if (destination) window.location.assign(appRouteUrl(destination));
+    else window.location.reload();
   }, [activeProjectId]);
 
   const createSeason = useCallback(async (

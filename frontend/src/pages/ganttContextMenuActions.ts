@@ -19,6 +19,7 @@ export interface GanttContextMenuCallbacks {
   copyTaskSummary: (task: GanttTask, group: GanttTaskGroup) => void;
   deletePlantingPlanFromTask: (task: GanttTask) => void | Promise<void>;
   addPlantingPlanForBed: (group: GanttTaskGroup) => void;
+  openOriginSeasonFromTask?: (task: GanttTask) => void;
 }
 
 /**
@@ -38,6 +39,7 @@ export function buildGanttContextMenuActions(
     copyTaskSummary,
     deletePlantingPlanFromTask,
     addPlantingPlanForBed,
+    openOriginSeasonFromTask,
   } = callbacks;
 
   if (target.type === "task") {
@@ -63,11 +65,21 @@ export function buildGanttContextMenuActions(
       const locationId = group.locationId;
       actions.push({ id: "open-location", label: t("ganttChart:contextMenu.openLocation"), group: "navigate", onClick: () => openAreasPage({ type: "location", id: locationId }) });
     }
-    actions.push(
-      { id: "edit", label: t("common:actions.edit"), group: "edit", onClick: () => openPlantingPlanFromTask(task, { edit: true }) },
-      { id: "copy", label: t("common:actions.copyRow"), group: "edit", onClick: () => copyTaskSummary(task, group) },
-      { id: "delete", label: t("common:actions.delete"), group: "danger", onClick: () => { void deletePlantingPlanFromTask(task); } },
-    );
+    if (task.readOnly) {
+      if (task.originSeasonId && task.plantingPlanId && openOriginSeasonFromTask) {
+        actions.push({ id: "open-origin", label: t("plantingPlans:carriedOver.openOrigin"),
+          group: "navigate", onClick: () => openOriginSeasonFromTask(task) });
+      }
+    } else {
+      actions.push({ id: "edit", label: t("common:actions.edit"), group: "edit",
+        onClick: () => openPlantingPlanFromTask(task, { edit: true }) });
+    }
+    actions.push({ id: "copy", label: t("common:actions.copyRow"), group: "edit",
+      onClick: () => copyTaskSummary(task, group) });
+    if (!task.readOnly) {
+      actions.push({ id: "delete", label: t("common:actions.delete"), group: "danger",
+        onClick: () => { void deletePlantingPlanFromTask(task); } });
+    }
     return actions;
   }
 

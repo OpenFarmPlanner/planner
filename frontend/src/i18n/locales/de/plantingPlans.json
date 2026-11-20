@@ -260,7 +260,8 @@
       "info": "Nicht prüfbar"
     },
     "occupancyOptions": {
-      "harvestOverlap": "Ernteüberlappung"
+      "harvestOverlap": "Ernteüberlappung",
+      "continued": "Weiterlaufende Kulturen"
     },
     "timingOptions": {
       "outsideWindow": "Außerhalb der Zeiträume"
@@ -427,6 +428,63 @@
     "tasksLoadFailed": "Aufgaben konnten nicht geladen werden.",
     "taskCancelled": "Abgebrochen"
   },
+  "previousSeason": {
+    "title": "Vorherige Saison: {{season}}",
+    "titleWithoutSeason": "Vorherige Saison",
+    "reference": "Referenz",
+    "empty": "Für den ursprünglichen Anbauplan sind keine Ist-Daten erfasst.",
+    "unavailable": "Die Referenzdaten sind nicht verfügbar.",
+    "openSource": "Ursprünglichen Anbauplan öffnen"
+  },
+  "cropLosses": {
+    "title": "Ausfälle",
+    "historyType": "Ausfall",
+    "add": "Ausfall erfassen",
+    "edit": "Ausfall bearbeiten",
+    "delete": "Ausfall löschen",
+    "date": "Ausfalldatum",
+    "type": "Art des Ausfalls",
+    "cause": "Ursache",
+    "extent": "Ausmaß (optional)",
+    "unit": "Einheit",
+    "note": "Notiz (optional)",
+    "empty": "Keine Ausfälle erfasst.",
+    "loading": "Ausfälle werden geladen",
+    "actionsFor": "Aktionen zum Ausfall am {{date}} ({{cause}})",
+    "confirmDelete": "Den Ausfall vom {{date}} löschen?",
+    "types": {
+      "partial": "Teilausfall",
+      "total": "Totalausfall"
+    },
+    "causes": {
+      "frost": "Frost",
+      "drought": "Trockenheit",
+      "waterlogging": "Staunässe",
+      "pests": "Schädlinge",
+      "disease": "Krankheit",
+      "other": "Sonstiges"
+    },
+    "units": {
+      "percent": "Prozent (%)",
+      "plants": "Pflanzen",
+      "sqm": "Fläche (m²)"
+    },
+    "incidentCount_one": "{{count}} Ausfall",
+    "incidentCount_other": "{{count}} Ausfälle",
+    "extentPlants_one": "{{value}} Pflanze",
+    "extentPlants_other": "{{value}} Pflanzen",
+    "extentArea": "{{value}} m²",
+    "errors": {
+      "load": "Ausfälle konnten nicht geladen werden.",
+      "save": "Der Ausfall konnte nicht gespeichert werden.",
+      "delete": "Der Ausfall konnte nicht gelöscht werden.",
+      "date": "Gib ein gültiges Datum ein.",
+      "cause": "Wähle eine Ursache aus.",
+      "percent": "Gib 0 bis 100 Prozent mit bis zu drei Nachkommastellen ein.",
+      "plants": "Gib eine ganze, nicht negative Pflanzenanzahl ein.",
+      "sqm": "Gib eine nicht negative Fläche mit bis zu drei Nachkommastellen ein."
+    }
+  },
   "actualDates": {
     "clear": "Datum löschen",
     "title": "Plan- und Ist-Termine",
@@ -459,6 +517,44 @@
       "transplanting": "Ist-Pflanztermin",
       "harvestStart": "Ist-Erntebeginn",
       "harvestEnd": "Ist-Ernteende"
+    }
+  },
+  "carriedOver": {
+    "badge": "Aus Saison {{season}}",
+    "description": "Läuft weiter aus Saison {{season}}. Hier nur lesbar.",
+    "unknownBadge": "Läuft weiter",
+    "unknownDescription": "Anbauplan aus einem früheren Zeitraum. Hier nur lesbar.",
+    "openOrigin": "In ursprünglicher Saison öffnen",
+    "count_one": "{{own}} in dieser Saison gepflanzt · {{count}} läuft weiter",
+    "count_other": "{{own}} in dieser Saison gepflanzt · {{count}} laufen weiter"
+  },
+  "perennial": {
+    "title": "Standzeit und Räumung",
+    "productiveLifespan": "Standzeit",
+    "clearingDate": "Räumungsdatum",
+    "clearingDateHelp": "Das Beet bleibt bis einschließlich dieses Datums belegt.",
+    "editClearingDate": "Räumungsdatum ändern",
+    "invalidDate": "Gib ein Datum ab dem Pflanztermin ein.",
+    "plantingDateRequired": "Trage zuerst den Pflanztermin ein.",
+    "saveFailed": "Das Räumungsdatum konnte nicht gespeichert werden.",
+    "years_one": "{{count, number}} Jahr",
+    "years_other": "{{count, number}} Jahre",
+    "insufficientArea": "Bis zu diesem Räumungsdatum ist auf dem Beet nicht genug Platz frei.",
+    "unsaved": "Deine Änderung am Räumungsdatum wurde noch nicht gespeichert."
+  },
+  "seasonStatus": {
+    "column": "Saisonstatus",
+    "labels": {
+      "only": "Nur diese Saison",
+      "starts": "Beginnt",
+      "continues": "Läuft weiter",
+      "ends": "Endet"
+    },
+    "descriptions": {
+      "only": "Belegt das Beet nur in dieser Saison.",
+      "starts": "Beginnt in dieser Saison und belegt das Beet darüber hinaus.",
+      "continues": "Belegt das Beet vor, während und nach dieser Saison.",
+      "ends": "Begann vor dieser Saison und endet in dieser Saison."
     }
   }
 }

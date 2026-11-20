@@ -121,6 +121,8 @@ export interface EditableDataGridProps<T extends EditableRow> {
    * back through `EditableDataGridCommandApi.applyDialogEditValues`.
    */
   dialogEditFields?: string[];
+  /** Read-only summary columns that can receive focus by click, Tab, or arrow keys. */
+  focusableReadOnlyFields?: readonly string[];
   commandApiRef?: MutableRefObject<EditableDataGridCommandApi | null>;
   onSelectedRowChange?: (row: T | null) => void;
   /** Let a routed overlay own in-app blocking while the mounted grid retains unload protection. */
@@ -128,6 +130,7 @@ export interface EditableDataGridProps<T extends EditableRow> {
   /** Keep the grid visible if saving its rows fails before navigating to this pathname. */
   requireSavedBeforeNavigation?: (pathname: string) => boolean;
   getRowValidationErrors?: (row: T) => Record<string, string>;
+  isReadOnlyRow?: (row: T) => boolean;
   showAddAction?: boolean;
   showFooterEditControls?: boolean;
   showRowEditActions?: boolean;
