@@ -60,6 +60,7 @@ and English currently use the same text for both.
 | Anbaupläne | Plan de culture / Plan de culture | Plan de cultivos / Plan de cultivos | Piano colturale / Piano colturale | Plano de cultivo / Plano de cultivo | Teeltplan / Teeltplan |
 | Anbaukalender | Calendrier / Calendrier de culture | Calendario / Calendario de cultivos | Calendario / Calendario colturale | Calendário / Calendário de cultivo | Kalender / Teeltkalender |
 | Ertragsübersicht | Rendements / Aperçu des rendements | Rendimientos / Resumen de rendimientos | Rese / Panoramica delle rese | Rendimentos / Visão geral dos rendimentos | Opbrengsten / Opbrengstoverzicht |
+| Ernten | Récoltes / Récoltes | Cosechas / Cosechas | Raccolte / Raccolte | Colheitas / Colheitas | Oogsten / Oogsten |
 | Saatgutbedarf | Semences / Besoin en semences | Semillas / Necesidad de semillas | Sementi / Fabbisogno di sementi | Sementes / Necessidades de sementes | Zaad / Zaadbehoefte |
 | Jungpflanzenbedarf | Plants / Besoin en plants | Plantel / Necesidad de plantel | Piantine / Fabbisogno di piantine | Plantas / Necessidades de plantas de viveiro | Plantgoed / Plantgoedbehoefte |
 | Feldbelegung (Kalender-Modus) | Occupation / Occupation des parcelles | Ocupación / Ocupación de parcelas | Occupazione / Occupazione degli appezzamenti | Ocupação / Ocupação das parcelas | Bezetting / Perceelbezetting |
@@ -167,6 +168,9 @@ FR/ES/IT: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Schwach-/Mittel-/Starkzehrer | Light/medium/heavy feeder | Culture peu / moyennement / très exigeante | Cultivo poco / medianamente / muy exigente | coltura poco / mediamente / molto esigente | cultura pouco / moderadamente / muito exigente | lage / gemiddelde / hoge voedingsbehoefte |
 | Ertrag | Yield | Rendement | Rendimiento | resa | rendimento | opbrengst |
 | Ertragseinheit | Yield unit | Unité de rendement | Unidad de rendimiento | unità di resa | unidade de rendimento | opbrengsteenheid |
+| Erntemenge | Harvest quantity | Quantité récoltée | Cantidad cosechada | Quantità raccolta | Quantidade colhida | Geoogste hoeveelheid |
+| Zugeordnete Menge | Assigned quantity | Quantité affectée | Cantidad asignada | Quantità assegnata | Quantidade atribuída | Toegewezen hoeveelheid |
+| Beerntete Fläche | Harvested area | Surface récoltée | Superficie cosechada | Superficie raccolta | Área colhida | Geoogst oppervlak |
 | Ertragsübersicht | Yield overview | Aperçu des rendements | Resumen de rendimientos | panoramica delle rese | visão geral dos rendimentos | opbrengstoverzicht |
 | Fruchtfolge | Crop rotation | Rotation des cultures | Rotación de cultivos | rotazione colturale | rotação de culturas | vruchtwisseling |
 | Anbaupause / Familienpause | Rotation break | Délai de retour | Pausa de rotación † | intervallo di rotazione | intervalo de rotação | rotatiepauze |

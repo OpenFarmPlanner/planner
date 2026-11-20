@@ -42,6 +42,9 @@ const EMPTY_CROP: Partial<Crop> = {
   standing_time_years: null,
   winter_hardiness: '',
   expected_yield: undefined,
+  default_harvest_unit: '',
+  average_harvest_piece_weight_g: null,
+  average_harvest_bunch_weight_g: null,
   distance_within_row_cm: undefined,
   row_spacing_cm: undefined,
   sowing_depth_cm: undefined,
@@ -115,6 +118,8 @@ export const buildDraftFromPublicCrop = (publicCrop: PublicCrop): Partial<Crop> 
   plant_health: publicCrop.plant_health ?? null,
   harvest_method: publicCrop.harvest_method ?? '',
   expected_yield: publicCrop.expected_yield ?? undefined,
+  average_harvest_piece_weight_g: publicCrop.average_harvest_piece_weight_g ?? null,
+  average_harvest_bunch_weight_g: publicCrop.average_harvest_bunch_weight_g ?? null,
   distance_within_row_cm: metersToRoundedCentimeters(publicCrop.distance_within_row_m),
   row_spacing_cm: metersToRoundedCentimeters(publicCrop.row_spacing_m),
   // The only spacing field that takes decimals; rounding it would make a

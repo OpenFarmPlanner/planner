@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
-from django.db.models import BooleanField, Case, Count, Q, QuerySet, Value, When
+from django.db.models import BooleanField, Case, Count, Prefetch, Q, QuerySet, Value, When
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
@@ -18,7 +18,7 @@ from config.responses import api_error_response
 from farm.agent_api.schema import SEASON_HEADER_PARAMETER
 from farm.common.mixins import ProjectRevisionMixin, ProjectScopedMixin
 from farm.history import _serialize_instance
-from farm.models import Bed, Crop, EntityRevision, PlantingPlan, Season, Task
+from farm.models import Bed, Crop, EntityRevision, HarvestAllocation, PlantingPlan, Season, Task
 from farm.project_context import get_active_project_or_400, resolve_season_id_from_request
 from farm.services.bed_capacity import (
     BedCapacity,
@@ -341,6 +341,18 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             return PlantingPlanDetailSerializer
         return super().get_serializer_class()
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        season = getattr(self, '_harvest_season', None)
+        if self.action in {'create', 'update', 'partial_update'}:
+            season_id = resolve_season_id_from_request(self.request)
+            if season_id is not None:
+                season = Season.objects.filter(
+                    pk=season_id, project=self.request.active_project,
+                ).first()
+        context['harvest_season'] = season
+        return context
+
     def get_queryset(self):
         queryset = super().get_queryset()
         season_id = resolve_season_id_from_request(self.request)
@@ -362,6 +374,21 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
                         queryset = queryset.filter(**{lookup: int(value)})
                     except ValueError:
                         return queryset.none()
+        if self.action in {'list', 'retrieve'}:
+            allocations = HarvestAllocation.objects.filter(
+                project=self.request.active_project,
+            ).select_related('harvest').only(
+                'planting_plan_id', 'quantity', 'harvest__crop_id',
+                'harvest__unit', 'harvest__grams_per_unit',
+            )
+            season = getattr(self, '_harvest_season', None)
+            if season is not None:
+                allocations = allocations.filter(
+                    harvest__date__range=(season.start_date, season.end_date),
+                )
+            queryset = queryset.prefetch_related(Prefetch(
+                'harvest_allocations', queryset=allocations, to_attr='visible_harvest_allocations',
+            ))
         return queryset
 
     def _read_season_plans(
@@ -373,6 +400,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         queryset = queryset.filter(season__deleted_at__isnull=True)
         if active_season is None:
             return queryset if across_seasons else queryset.none()
+        self._harvest_season = active_season
         queryset = queryset.alias(occupied_until=PlantingPlan.occupancy_end_expression())
         starts_before = Q(
             bed__isnull=False,

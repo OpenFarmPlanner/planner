@@ -134,7 +134,12 @@ def _checkpoint_state(snapshot: dict[str, Any]) -> ProjectState | None:
     state = snapshot.get(CHECKPOINT_KEY)
     if state is None:
         return None
-    if not isinstance(state, dict) or set(state) != set(_MODELS):
+    if not isinstance(state, dict):
+        raise ProjectRestoreConflict("incompatible checkpoint")
+    if set(state) == set(_MODELS) - {"harvest_record", "harvest_allocation"}:
+        # Projects created before harvest recording had neither table.
+        return {**state, "harvest_record": {}, "harvest_allocation": {}}
+    if set(state) != set(_MODELS):
         raise ProjectRestoreConflict("incompatible checkpoint")
     return state
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from copy import deepcopy
 from datetime import date
+from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -20,6 +21,7 @@ from farm.models import (
     CropTaskTemplate,
     CropTimingWindow,
     FieldLayout,
+    HarvestRecord,
     Location,
     PlantingPlan,
     Project,
@@ -439,6 +441,13 @@ class DemoProjectServiceTests(TestCase):
         self.assertEqual(perennial.season.start_date.year, current_year - 2)
         self.assertEqual(perennial.clearing_date, date(current_year + 4, 3, 12))
         self.assertLess(perennial.harvest_end_date, date(current_year, 1, 1))
+        harvests = HarvestRecord.objects.filter(project=result.project)
+        self.assertEqual(harvests.count(), 6)
+        self.assertEqual(harvests.filter(date__year=current_year).count(), 6)
+        rhubarb_harvest = harvests.get(allocations__planting_plan=perennial)
+        self.assertEqual(rhubarb_harvest.quantity, Decimal('3.5'))
+        self.assertTrue(harvests.filter(unit='piece', grams_per_unit=110).exists())
+        self.assertTrue(harvests.filter(allocations__isnull=True).exists())
 
     def test_demo_seasons_follow_the_current_date(self) -> None:
         with patch('farm.services.demo_project.demo_current_year', return_value=2031):

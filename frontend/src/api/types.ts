@@ -256,6 +256,9 @@ export interface Crop {
   water_requirement?: WaterRequirement | '';
   life_cycle?: LifeCycle | '';
   standing_time_years?: number | null;
+  default_harvest_unit?: HarvestUnit | '';
+  average_harvest_piece_weight_g?: number | string | null;
+  average_harvest_bunch_weight_g?: number | string | null;
   winter_hardiness?: WinterHardiness | '';
   
   harvest_method?: 'per_plant' | 'per_sqm' | '';
@@ -366,6 +369,9 @@ export type CropInheritableField =
   | 'water_requirement'
   | 'life_cycle'
   | 'standing_time_years'
+  | 'default_harvest_unit'
+  | 'average_harvest_piece_weight_g'
+  | 'average_harvest_bunch_weight_g'
   | 'winter_hardiness'
   | 'harvest_method'
   | 'expected_yield'
@@ -491,6 +497,8 @@ export interface PublicCrop {
   water_requirement?: WaterRequirement | '';
   life_cycle?: LifeCycle | '';
   standing_time_years?: number | null;
+  average_harvest_piece_weight_g?: number | string | null;
+  average_harvest_bunch_weight_g?: number | string | null;
   winter_hardiness?: WinterHardiness | '';
   harvest_method?: 'per_plant' | 'per_sqm' | '';
   expected_yield?: number | null;
@@ -1290,6 +1298,7 @@ export interface PlantingPlan extends PlantingPlanActualDates {
   crop_cultivation_types?: CultivationType[] | null;
   crop_life_cycle?: LifeCycle | '';
   crop_standing_time_years?: number | null;
+  actual_harvest?: PlanActualHarvest | null;
   bed: number | null;
   bed_name?: string | null;
   season?: number | null;
@@ -1727,6 +1736,73 @@ export interface SuccessionLimit {
   harvest_start_date: string;
   min_days_after_harvest_start: number;
   earliest_date: string;
+}
+
+export type HarvestUnit = 'kg' | 'g' | 'piece' | 'bunch';
+export type HarvestConversionSource = '' | 'crop' | 'library' | 'manual';
+
+export interface HarvestQuantity {
+  quantity: string;
+  unit: HarvestUnit;
+}
+
+export interface HarvestTotals {
+  quantities: HarvestQuantity[];
+  measured_kg: string | null;
+  estimated_kg: string | null;
+  has_unconvertible_quantity: boolean;
+}
+
+export interface PlanActualHarvest extends HarvestTotals {
+  forecast_kg: string | null;
+  actual_kg_per_sqm: string | null;
+  forecast_percentage: string | null;
+}
+
+export interface HarvestAllocationWrite {
+  planting_plan: number;
+  quantity: string;
+  harvested_area_sqm?: string | null;
+}
+
+export interface HarvestAllocation extends HarvestAllocationWrite {
+  id: number;
+  bed_name: string | null;
+  season_label: string | null;
+  planting_date: string | null;
+  kilograms_per_harvested_sqm: string | null;
+}
+
+export interface HarvestWrite {
+  crop: number;
+  date: string;
+  quantity: string;
+  unit: HarvestUnit;
+  note: string;
+  grams_per_unit?: string | null;
+  allocations?: HarvestAllocationWrite[];
+}
+
+export interface HarvestRecord extends HarvestWrite {
+  id: number;
+  crop_label: string;
+  grams_per_unit: string | null;
+  conversion_source: HarvestConversionSource;
+  measured_kg: string | null;
+  estimated_kg: string | null;
+  unallocated_quantity: string;
+  allocations: HarvestAllocation[];
+}
+
+export interface HarvestPlanSuggestion {
+  id: number;
+  bed_name: string;
+  field_name: string;
+  season_label: string;
+  planting_date: string | null;
+  harvest_start: string | null;
+  harvest_end: string | null;
+  area_sqm: string | null;
 }
 
 export interface RemainingAreaResponse {

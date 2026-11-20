@@ -1516,7 +1516,7 @@ export function CropForm({
                 companion planting, display colour, notes. */}
             <TimingSection {...sectionProps} />
             <SpacingSection {...sectionProps} />
-            <YieldSection {...sectionProps} />
+            <YieldSection {...sectionProps} showDefaultHarvestUnit={isProjectForm} />
             <SeedingSection
               {...sectionProps}
               seedRateUnitConstraints={seedRateUnitConstraints}

@@ -31,6 +31,7 @@ from farm.services.crop_inheritance import (
 from farm.services.crop_rotation import RotationResult, RotationService
 from farm.services.demo_project import find_demo_crop_species, is_demo_project_description
 from farm.services.germination_check import check_germination
+from farm.services.harvests import HarvestTotals, plan_harvest_totals
 from farm.services.plant_count import compute_plan_plant_count
 from farm.services.site_suitability import check_site_suitability
 from farm.services.tasks import plan_cultivation_type
@@ -55,6 +56,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
     crop_life_cycle = serializers.SerializerMethodField()
     crop_standing_time_years = serializers.SerializerMethodField()
     suggested_clearing_date = serializers.SerializerMethodField()
+    actual_harvest = serializers.SerializerMethodField()
     bed_name = serializers.SerializerMethodField(read_only=True)
     harvest_date = serializers.SerializerMethodField(read_only=True)
     harvest_end_date = serializers.SerializerMethodField(read_only=True)
@@ -312,6 +314,29 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         if self.get_crop_life_cycle(obj) != 'perennial':
             return None
         return obj.suggested_clearing_date(self._general_crop_index(obj))
+
+    def get_actual_harvest(self, obj: PlantingPlan) -> dict | None:
+        if obj.pk is None:
+            return None
+        season = self.context.get('harvest_season')
+        allocations = getattr(obj, 'visible_harvest_allocations', None)
+        if allocations is None:
+            allocations = obj.harvest_allocations.select_related('harvest')
+            if season is not None:
+                allocations = allocations.filter(
+                    harvest__date__range=(season.start_date, season.end_date),
+                )
+        totals = HarvestTotals()
+        different_crop = False
+        for row in allocations:
+            harvest = row.harvest
+            totals.add(row.quantity, harvest.unit, harvest.grams_per_unit)
+            different_crop = different_crop or harvest.crop_id != obj.crop_id
+        if not totals.quantities:
+            return None
+        return plan_harvest_totals(
+            obj, totals, season, self._general_crop_index(obj), comparable_crop=not different_crop,
+        )
 
     def get_origin_season_label(self, obj: PlantingPlan) -> str | None:
         if self.get_carried_over(obj) and obj.season_id is not None:

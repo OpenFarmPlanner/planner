@@ -17,6 +17,8 @@ import LoadRetryButton from '../components/LoadRetryButton';
 import ProjectRequiredState from '../components/project/ProjectRequiredState';
 import { taskDisplayTitle } from '../components/tasks/taskTitles';
 import { formatCropDisplayName } from '../crops/cropDisplay';
+import { HarvestRecords } from '../harvests/HarvestRecords';
+import { initialHarvestDate } from '../harvests/harvestDisplay';
 import { useNavigationBlocker } from '../hooks/useNavigationBlocker';
 import { useProjectRequirement } from '../hooks/useProjectRequirement';
 import { useTranslation } from '../i18n';
@@ -39,7 +41,7 @@ interface PlantingPlanDetailsProps {
 type PlanLoad = { plan: PlantingPlanDetail } | { error: 'not-found' | 'load' };
 
 export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: PlantingPlanDetailsProps) {
-  const { t, i18n } = useTranslation(['plantingPlans', 'common', 'dashboard']);
+  const { t, i18n } = useTranslation(['plantingPlans', 'common', 'dashboard', 'harvests']);
   const { activeProjectId, isAuthLoading, missingProjectReason } = useProjectRequirement();
   const context = useOutletContext<RootLayoutOutletContext | null>();
   const [result, setResult] = useState<PlanLoad>();
@@ -82,7 +84,7 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
       setResult({ error: status === 404 || status === 403 ? 'not-found' : 'load' });
     });
     return () => controller.abort();
-  }, [activeProjectId, attempt, planId]);
+  }, [activeProjectId, attempt, context?.activeSeason?.id, planId]);
 
   useEffect(() => {
     if (loadedPlanId === undefined) return;
@@ -117,6 +119,12 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
   const otherSeason = Boolean(loadedPlan && (loadedPlan.season ?? null) !== (context?.activeSeason?.id ?? null));
   const canEditNotes = Boolean(loadedPlan && !otherSeason);
   const cropName = loadedPlan ? formatCropDisplayName(loadedPlan) : '';
+  const recordSeason = context?.activeSeason ?? season;
+  const proposedHarvestDate = initialHarvestDate(recordSeason, loadedPlan?.harvest_date);
+  const lastOccupiedDay = loadedPlan?.occupancy_end_date;
+  const recordDate = loadedPlan?.carried_over && lastOccupiedDay && proposedHarvestDate > lastOccupiedDay
+    ? lastOccupiedDay : proposedHarvestDate;
+  const harvestScope = `${activeProjectId ?? ''}:${recordSeason?.id ?? ''}:${loadedPlanId ?? ''}`;
   const propagation = loadedPlan && getPlanPropagationInfo(loadedPlan, undefined);
   const cultivation = loadedPlan?.cultivation_type || (propagation?.isPreCultivation
     ? PRE_CULTIVATION : loadedPlan?.crop_cultivation_type);
@@ -208,6 +216,15 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
                 setResult(current => current && 'plan' in current ? { plan: { ...current.plan, ...dates } } : current);
                 onChanged();
               }} />
+            <DetailSection title={t('harvests:title')} outlined>
+              <HarvestRecords key={harvestScope} scope={harvestScope} planId={loadedPlan.id}
+                initialDate={recordDate} planTotals={loadedPlan.actual_harvest}
+                plan={loadedPlan.crop_available && loadedPlan.crop !== null ? {
+                  id: loadedPlan.id, crop: loadedPlan.crop, cropLabel: cropName,
+                  label: [loadedPlan.bed_name, season?.label, date(loadedPlan.planting_date)].filter(Boolean).join(' · '),
+                } : undefined}
+                onChanged={() => { setAttempt(value => value + 1); onChanged(); }} />
+            </DetailSection>
             {(canEditNotes || loadedPlan.notes?.trim() || hasPhotos) && (
               <DetailSection title={t('details.notesAndPhotos')} outlined>
                 <Stack spacing={1.5} sx={{ alignItems: 'flex-start', minWidth: 0, overflowWrap: 'anywhere' }}>

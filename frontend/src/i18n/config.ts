@@ -37,7 +37,7 @@ type LanguageBundle = Record<string, Record<string, unknown>>;
  */
 export const I18N_NAMESPACES = [
   'common', 'navigation', 'home', 'dashboard', 'locations', 'crops', 'plantingPlans', 'fields', 'beds',
-  'hierarchy', 'ganttChart', 'yieldOverview', 'suppliers', 'help', 'auth', 'account', 'projectInvitations',
+  'hierarchy', 'ganttChart', 'yieldOverview', 'harvests', 'suppliers', 'help', 'auth', 'account', 'projectInvitations',
   'notifications', 'feedback',
 ] as const;
 

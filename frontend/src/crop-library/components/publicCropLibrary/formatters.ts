@@ -413,6 +413,8 @@ const NUMERIC_FIELDS = new Set([
   'stratification_temperature_max_c',
 
   'expected_yield',
+  'average_harvest_piece_weight_g',
+  'average_harvest_bunch_weight_g',
   'thousand_kernel_weight_g',
   'seed_rate_value',
   'seeding_requirement',

@@ -13,6 +13,7 @@ export const NAV_ITEM_EMOJI: Record<string, string> = {
   '/app/planting-plans': '📋',
   '/app/gantt-chart': '📆',
   '/app/yield-overview': '📈',
+  '/app/harvests': '🧺',
   '/app/seed-demand': '🌾',
   '/app/young-plant-demand': '🪴',
   '/app/suppliers': '🚚',

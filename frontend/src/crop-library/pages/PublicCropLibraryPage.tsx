@@ -2018,6 +2018,8 @@ export default function PublicCropLibraryPage() {
                           hasAnyDetailValue(
                             getPublicFieldValue('harvest_method', selectedCrop.harvest_method),
                             getPublicFieldValue('expected_yield', selectedCrop.expected_yield),
+                            getPublicFieldValue('average_harvest_piece_weight_g', selectedCrop.average_harvest_piece_weight_g),
+                            getPublicFieldValue('average_harvest_bunch_weight_g', selectedCrop.average_harvest_bunch_weight_g),
                           ) ? (
                             <DetailSection key="yield" title={t('form.sectionYield')}>
                               <DetailGrid>
@@ -2027,6 +2029,15 @@ export default function PublicCropLibraryPage() {
                                 {hasDetailValue(getPublicFieldValue('expected_yield', selectedCrop.expected_yield)) ? (
                                   <DetailRow label={t('library.page.fields.expectedYield')} value={`${formatLocalizedNumber(getPublicFieldValue('expected_yield', selectedCrop.expected_yield), locale, t('library.page.notSpecified'), { maximumFractionDigits: 2 })} ${getPublicFieldValue('harvest_method', selectedCrop.harvest_method) === 'per_plant' ? t('detail.units.kgPerPlant') : getPublicFieldValue('harvest_method', selectedCrop.harvest_method) === 'per_sqm' ? t('detail.units.kgPerSqm') : t('detail.units.kilograms')}`} source={getPublicFieldSource('expected_yield')} />
                                 ) : null}
+                                {([
+                                  ['average_harvest_piece_weight_g', 'form.averageHarvestPieceWeight'],
+                                  ['average_harvest_bunch_weight_g', 'form.averageHarvestBunchWeight'],
+                                ] as const).map(([field, label]) => {
+                                  const value = getPublicFieldValue(field, selectedCrop[field]);
+                                  return hasDetailValue(value) ? <DetailRow key={field} label={t(label)}
+                                    value={formatLocalizedNumber(value, locale, t('library.page.notSpecified'), { maximumFractionDigits: 3 })}
+                                    source={getPublicFieldSource(field)} /> : null;
+                                })}
                               </DetailGrid>
                             </DetailSection>
                           ) : null,

@@ -27,6 +27,8 @@ from farm.models import (
     EntityRevision,
     Field,
     FieldLayout,
+    HarvestAllocation,
+    HarvestRecord,
     Location,
     PlantingPlan,
     Project,
@@ -37,6 +39,7 @@ from farm.models import (
     Supplier,
     Task,
 )
+from farm.models.harvests import HarvestConversionSource, HarvestUnit
 from farm.services.crop_companions import library_companions
 from farm.services.demo_features import (
     FEATURE_TEXT,
@@ -443,6 +446,7 @@ def reset_project_demo_data(project: Project) -> None:
     """Remove farm-planning records from one project before recreating the demo."""
     Task.objects.filter(project=project).delete()
     CropTaskTemplate.objects.filter(project=project).delete()
+    HarvestRecord.objects.filter(project=project).delete()
     PlantingPlan.objects.filter(project=project).delete()
     Season.all_objects.filter(project=project).delete()
     BedLayout.objects.filter(project=project).delete()
@@ -587,6 +591,7 @@ def populate_demo_project(
             current_year=year,
         )
         assign_unassigned_planting_plans(project, owner=owner)
+        _create_demo_harvests(project, crops, beds, language, year)
         populate_demo_tasks(
             project, owner=owner, fields=fields, crops=crops, language_code=language,
             today=reference_date,
@@ -634,6 +639,8 @@ def populate_public_demo_library_from_project(project: Project, *, owner: Any | 
                 propagation_duration_days=crop.propagation_duration_days,
                 harvest_method=crop.harvest_method,
                 expected_yield=crop.expected_yield,
+                average_harvest_piece_weight_g=crop.average_harvest_piece_weight_g,
+                average_harvest_bunch_weight_g=crop.average_harvest_bunch_weight_g,
                 distance_within_row_m=crop.distance_within_row_m,
                 row_spacing_m=crop.row_spacing_m,
                 sowing_depth_m=crop.sowing_depth_m,
@@ -1865,3 +1872,53 @@ def _create_planting_plans(
             season=season,
             **(spec.actual_dates or {}),
         )
+
+
+def _create_demo_harvests(project: Project, crops, beds, language: str, year: int) -> None:
+    """Seed measured, estimated, split and unassigned records in every demo locale."""
+    tomato = crops['tomate']
+    tomato.default_harvest_unit = HarvestUnit.KILOGRAM
+    tomato.average_harvest_piece_weight_g = Decimal('110')
+    tomato.save(update_fields=['default_harvest_unit', 'average_harvest_piece_weight_g'])
+    plans = PlantingPlan.objects.filter(project=project)
+    first = plans.get(crop=tomato, bed=beds['tomate-1'], planting_date__year=year)
+    second = plans.get(crop=tomato, bed=beds['tomate-2'], planting_date__year=year)
+    rhubarb = plans.get(crop=crops['rhabarber'])
+    garlic = plans.get(crop=crops['knoblauch'], bed=beds['lauch'], planting_date__year=year - 1)
+    notes = {
+        'de': 'Ernte aus beiden Tomatenreihen.',
+        'en': 'Picked from both tomato rows.',
+        'fr': 'Récolte des deux rangs de tomates.',
+        'es': 'Cosecha de las dos hileras de tomate.',
+        'it': 'Raccolta da entrambe le file di pomodori.',
+        'pt': 'Colheita das duas linhas de tomate.',
+        'nl': 'Geoogst uit beide tomatenrijen.',
+    }
+    batch = HarvestRecord.objects.create(
+        project=project, crop=tomato, date=date(year, 7, 26), quantity=12,
+        unit=HarvestUnit.KILOGRAM, note=notes.get(language, notes[DEMO_LANGUAGE_FALLBACK]),
+    )
+    HarvestAllocation.objects.bulk_create([
+        HarvestAllocation(
+            project=project, harvest=batch, planting_plan=first, quantity=8, harvested_area_sqm=5,
+        ),
+        HarvestAllocation(project=project, harvest=batch, planting_plan=second, quantity=3),
+    ])
+    for plan, day, quantity, unit, grams_per_unit in (
+        (first, date(year, 8, 4), 8, HarvestUnit.PIECE, tomato.average_harvest_piece_weight_g),
+        (second, date(year, 8, 5), 1800, HarvestUnit.GRAM, None),
+        (garlic, date(year, 6, 28), 5, HarvestUnit.BUNCH, None),
+        (rhubarb, date(year, 4, 22), Decimal('3.5'), HarvestUnit.KILOGRAM, None),
+    ):
+        record = HarvestRecord.objects.create(
+            project=project, crop_id=plan.crop_id, date=day, quantity=quantity, unit=unit,
+            grams_per_unit=grams_per_unit,
+            conversion_source=HarvestConversionSource.CROP if grams_per_unit is not None else '',
+        )
+        HarvestAllocation.objects.create(
+            project=project, harvest=record, planting_plan=plan, quantity=quantity,
+        )
+    HarvestRecord.objects.create(
+        project=project, crop=tomato, date=date(year, 8, 14), quantity=2,
+        unit=HarvestUnit.KILOGRAM,
+    )

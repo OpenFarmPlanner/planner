@@ -250,6 +250,9 @@ erDiagram
 ```mermaid
 erDiagram
     Crop ||--o{ PlantingPlan : "planted as"
+    Crop ||--o{ HarvestRecord : "picked as"
+    HarvestRecord ||--o{ HarvestAllocation : "quantity split"
+    PlantingPlan ||--o{ HarvestAllocation : "assigned share"
     Bed ||--o{ PlantingPlan : "scheduled on"
     Season ||--o{ PlantingPlan : "scoped to (nullable)"
     Project ||--o| SeasonPattern : "1:1 start day/month"
@@ -294,6 +297,19 @@ erDiagram
   only a consciously accepted conflict is stored on the plan
   (`rotation_conflict_accepted_by`/`_at`) — see
   [crop-rotation.md](./crop-rotation.md).
+- **`HarvestRecord`** stores one project's crop, picking date, positive
+  quantity, unit and optional note. Pieces and bunches can carry a saved
+  grams-per-unit factor and its source. Reference weights can come from the
+  library and can be overridden on the project crop. The preferred recording
+  unit belongs to the project crop. Editing either crop setting leaves
+  conversion factors on historical records intact.
+- **`HarvestAllocation`** links part of a record to one planting plan in
+  the same project. Optional harvested area belongs to the allocation. The
+  API validates the crop, date and area against the selected plans and saves
+  the record and its assignments in one transaction. The assigned sum must
+  fit within the record total. Deleting a plan leaves the original harvest
+  and frees its former share for reassignment. Whole-project history includes
+  both harvests and allocations.
 - **`Season`**/**`SeasonPattern`** scope planting plans into successive
   ~12-month periods; the crop library and bed/field structure stay
   season-independent. `PlantingPlan.season` is nullable only until a
@@ -312,6 +328,18 @@ erDiagram
   `PlantingPlan` — see
   [datagrid-architecture.md](./datagrid-architecture.md#notes--markdown-cells)
   for how these render as rich markdown+photo notes in the grid.
+
+The Harvests overview reads `/harvests/` and `/harvests/summary/`. Both use
+the record date to scope totals to the selected season. Planting-plan details
+list the records assigned to that plan across its lifetime. A plan's optional
+table column groups its assigned quantities in the selected season and
+combines equivalent mass units. Piece and bunch quantities retain their
+units. The forecast comparison uses the existing plan-scaled kilograms,
+requires the full planned harvest window in the reporting period, and
+disappears when a recorded quantity cannot be converted. Estimated mass
+appears separately and is identified in detail comparisons. The plan's yield
+per m² uses its full area. Yield per harvested m² uses only the area recorded
+for an individual allocation.
 
 ## 5. Public crop library
 

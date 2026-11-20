@@ -20,6 +20,8 @@ from farm.models import (
     EntityRevision,
     Field,
     FieldLayout,
+    HarvestAllocation,
+    HarvestRecord,
     Location,
     MediaFile,
     NoteAttachment,
@@ -85,6 +87,8 @@ _RESTORABLE_ENTITY_TYPES: list[tuple[type, str]] = [
     (CropCompanion, 'crop_companion'),
     (Season, 'season'),
     (PlantingPlan, 'planting_plan'),
+    (HarvestRecord, 'harvest_record'),
+    (HarvestAllocation, 'harvest_allocation'),
     (Task, 'task'),
     (NoteAttachment, 'note_attachment'),
 ]
