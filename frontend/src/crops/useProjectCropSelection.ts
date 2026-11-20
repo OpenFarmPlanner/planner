@@ -3,13 +3,13 @@ import type { CropBulkDeleteSelection } from '../api/types';
 
 export type CropDeletionTarget = Omit<CropBulkDeleteSelection, 'delete_varieties'>;
 
-export function useProjectCropSelection(projectId: number | null) {
+export function useProjectCropSelection(projectId: number | null | undefined) {
   const [selection, setSelection] = useState<{ project: number; ids: ReadonlySet<number> } | null>(null);
   const [target, setTarget] = useState<CropDeletionTarget | null>(null);
   const [previousProject, setPreviousProject] = useState(projectId);
   const selectionButton = useRef<HTMLButtonElement>(null);
   const controlsId = useId();
-  const selected = selection?.project === projectId ? selection.ids : null;
+  const selected = selection && selection.project === projectId ? selection.ids : null;
 
   if (previousProject !== projectId) {
     setPreviousProject(projectId);
