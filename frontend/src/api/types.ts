@@ -1991,6 +1991,23 @@ export interface CropHistoryChange {
   new_value: unknown;
 }
 
+export interface ProjectRestoreImpactCount {
+  count: number;
+  names: string[];
+}
+
+export interface ProjectRestoreImpact {
+  category: 'crops' | 'varieties' | 'planting_plans' | 'locations' | 'fields' | 'beds' | 'other';
+  removed: ProjectRestoreImpactCount;
+  restored: ProjectRestoreImpactCount;
+  changed: ProjectRestoreImpactCount;
+}
+
+export interface ProjectRestorePreview {
+  token: string;
+  impact: ProjectRestoreImpact[];
+}
+
 /**
  * Scope of a project-bound API token.
  *

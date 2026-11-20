@@ -5,6 +5,8 @@ from datetime import timedelta
 from django.db.models import BooleanField, Case, Q, When
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -20,7 +22,9 @@ from .project_restore import (
     AUTOMATIC_BACKUP_KEY,
     CHECKPOINT_KEY,
     ProjectRestoreConflict,
+    ProjectRestorePreviewChanged,
     ensure_project_checkpoint,
+    preview_project_restore,
     restore_project_version,
 )
 from .records import _current_actor_label
@@ -30,7 +34,7 @@ from .restore import (
     restore_crop_from_revision,
     revert_batch_operation,
 )
-from .serializers import CropHistoryEntrySerializer, CropRestoreSerializer
+from .serializers import CropHistoryEntrySerializer, CropRestoreSerializer, ProjectRestoreSerializer
 
 
 class ProjectHistoryListView(APIView):
@@ -127,44 +131,76 @@ class ProjectHistoryListView(APIView):
         return Response(CropHistoryEntrySerializer(payload, many=True).data)
 
 
+def _project_restore_revision(project, history_id):
+    revision = get_object_or_404(EntityRevision.objects.filter(project=project), id=history_id)
+    if revision.snapshot.get("_project_version_internal"):
+        return api_error_response(
+            code="project_restore_conflict",
+            detail="Select the completed crop action instead of an internal derived revision.",
+            status_code=status.HTTP_409_CONFLICT,
+        )
+    if is_latest_project_revision(project, revision):
+        return api_error_response(
+            code="already_current_version",
+            detail="This version is already the current state of the project.",
+            status_code=status.HTTP_409_CONFLICT,
+        )
+    return revision
+
+
+def _project_restore_conflict_response():
+    return api_error_response(
+        code="project_restore_conflict",
+        detail=(
+            "This historical state is incomplete or conflicts with dependent data. "
+            "No changes were made."
+        ),
+        status_code=status.HTTP_409_CONFLICT,
+    )
+
+
+class ProjectHistoryRestorePreviewView(APIView):
+    """Read the changes the selected whole-project restore would make."""
+
+    @method_decorator(never_cache)
+    def get(self, request):
+        project = get_active_project_or_400(request)
+        require_project_admin(request.user, project.pk, request=request)
+        serializer = CropRestoreSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        revision = _project_restore_revision(project, serializer.validated_data['history_id'])
+        if isinstance(revision, Response):
+            return revision
+        try:
+            return Response(preview_project_restore(project, revision))
+        except ProjectRestoreConflict:
+            return _project_restore_conflict_response()
+
+
 class ProjectHistoryRestoreView(APIView):
     """Restore whole project state to a past point in time."""
 
     def post(self, request):
-        active_project = get_active_project_or_400(request)
-        require_project_admin(request.user, active_project.id, request=request)
-        serializer = CropRestoreSerializer(data=request.data)
+        project = get_active_project_or_400(request)
+        require_project_admin(request.user, project.pk, request=request)
+        serializer = ProjectRestoreSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        revision_id = serializer.validated_data['history_id']
-
-        revision = get_object_or_404(
-            EntityRevision.objects.filter(project=active_project), id=revision_id
-        )
-        if revision.snapshot.get("_project_version_internal"):
-            return api_error_response(
-                code="project_restore_conflict",
-                detail="Select the completed crop action instead of an internal derived revision.",
-                status_code=status.HTTP_409_CONFLICT,
-            )
-        if is_latest_project_revision(active_project, revision):
-            return api_error_response(
-                code="already_current_version",
-                detail="This version is already the current state of the project.",
-                status_code=status.HTTP_409_CONFLICT,
-            )
+        revision = _project_restore_revision(project, serializer.validated_data['history_id'])
+        if isinstance(revision, Response):
+            return revision
         try:
             restore_project_version(
-                active_project, revision, user_name=_current_actor_label(request)
+                project, revision, user_name=_current_actor_label(request),
+                preview_token=serializer.validated_data.get('preview_token'),
             )
-        except ProjectRestoreConflict:
+        except ProjectRestorePreviewChanged:
             return api_error_response(
-                code="project_restore_conflict",
-                detail=(
-                    "This historical state is incomplete or conflicts with dependent data. "
-                    "No changes were made."
-                ),
+                code="project_restore_preview_changed",
+                detail="The project or version changed. Preview the restore again to confirm it.",
                 status_code=status.HTTP_409_CONFLICT,
             )
+        except ProjectRestoreConflict:
+            return _project_restore_conflict_response()
 
         return Response({"detail": "Project restored successfully."}, status=status.HTTP_200_OK)
 

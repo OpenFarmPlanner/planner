@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { RestoreVersionDialog } from '../navigation/RestoreVersionDialog';
 import i18n from '../i18n';
 import type { CropHistoryEntry } from '../api/types';
+import type { RestorePreviewState } from '../navigation/useProjectHistory';
 
 const tCrops = i18n.getFixedT('de', 'crops');
 
@@ -25,10 +26,14 @@ const batchEntry = (partial: Partial<CropHistoryEntry> = {}): CropHistoryEntry =
     ...partial,
   });
 
-const renderDialog = (value: CropHistoryEntry | null) => {
+const renderDialog = (
+  value: CropHistoryEntry | null,
+  preview: RestorePreviewState = { status: 'ready', data: { token: 'token', impact: [] } },
+) => {
   const onClose = vi.fn();
   const onConfirm = vi.fn();
   const onConfirmRevertBatch = vi.fn();
+  const onRefreshPreview = vi.fn();
   const getEntryTitle = vi.fn((item: CropHistoryEntry) => `Eintrag #${item.history_id}`);
   const formatTimestamp = vi.fn((raw: string) => `formatiert(${raw})`);
   const view = render(
@@ -39,9 +44,11 @@ const renderDialog = (value: CropHistoryEntry | null) => {
       tCrops={tCrops}
       onClose={onClose}
       onConfirm={onConfirm}
+      preview={preview}
+      onRefreshPreview={onRefreshPreview}
     />,
   );
-  return { ...view, onClose, onConfirm, onConfirmRevertBatch, getEntryTitle, formatTimestamp };
+  return { ...view, onClose, onConfirm, onConfirmRevertBatch, onRefreshPreview, getEntryTitle, formatTimestamp };
 };
 
 const confirmButton = (): HTMLElement =>
@@ -50,6 +57,42 @@ const confirmButton = (): HTMLElement =>
 const cancelButton = (): HTMLElement => screen.getByRole('button', { name: 'Abbrechen' });
 
 describe('RestoreVersionDialog', () => {
+  it('announces the preview loading state and disables confirmation', () => {
+    renderDialog(entry(), { status: 'loading' });
+    expect(screen.getByRole('status')).toHaveTextContent(tCrops('restoreDialog.preview.loading'));
+    expect(confirmButton()).toBeDisabled();
+  });
+
+  it.each(['unavailable', 'conflict', 'stale'] as const)('offers a retry without enabling confirmation for %s', async (status) => {
+    const { onRefreshPreview, onConfirm } = renderDialog(entry(), { status });
+    expect(screen.getByRole('alert')).toHaveTextContent(tCrops(`restoreDialog.preview.${status}`));
+    expect(confirmButton()).toBeDisabled();
+    expect(screen.queryByText(tCrops('restoreDialog.preview.unchanged'))).toBeNull();
+    await userEvent.setup().click(screen.getByRole('button', { name: tCrops('restoreDialog.preview.refresh') }));
+    expect(onRefreshPreview).toHaveBeenCalledOnce();
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('uses the bounded record samples supplied by the server', async () => {
+    renderDialog(entry(), {
+      status: 'ready',
+      data: { token: 'token', impact: [{
+        category: 'varieties',
+        removed: { count: 12, names: ['Tomato (Roma)'] },
+        restored: { count: 0, names: [] },
+        changed: { count: 0, names: [] },
+      }] },
+    });
+    const summary = screen.getByRole('region', { name: tCrops('restoreDialog.preview.title') });
+    expect(summary).toHaveTextContent(tCrops('restoreDialog.preview.categories.varieties'));
+    const expansion = screen.getByText(tCrops('restoreDialog.preview.actions.removed', { count: 12 }));
+    expect(expansion.tagName).toBe('SUMMARY');
+    await userEvent.setup().click(expansion);
+    expect(expansion.parentElement).toHaveAttribute('open');
+    expect(summary).toHaveTextContent('Tomato (Roma)');
+    expect(summary).toHaveTextContent(tCrops('restoreDialog.preview.sample', { shown: 1, total: 12 }));
+  });
+
   it('confirms a legacy secondary undo by batch ID with its own explanation', async () => {
     const onConfirm = vi.fn();
     render(<RestoreVersionDialog entry={batchEntry({ history_id: 123, batch_id: 42 })}
@@ -83,17 +126,17 @@ describe('RestoreVersionDialog', () => {
   describe('copy for a plain revision', () => {
     it('describes restoring an earlier version', () => {
       renderDialog(entry());
-      expect(screen.getByText('Du setzt das gesamte Projekt auf diese Version zurück. Alle späteren Änderungen werden rückgängig gemacht; später angelegte Kulturen und Beete werden entfernt.')).toBeInTheDocument();
+      expect(screen.getByText('Du setzt das gesamte Projekt auf diese Version zurück. Dadurch werden alle späteren Änderungen rückgängig gemacht.')).toBeInTheDocument();
       expect(
         screen.queryByText('Du machst diese Aktion mit allen zugehörigen Änderungen rückgängig.'),
       ).not.toBeInTheDocument();
     });
 
-    it('promises that the current version survives the restore', () => {
+    it('explains the automatic backup before restore', () => {
       renderDialog(entry());
       expect(
         screen.getByText(
-          'Die aktuelle Version bleibt erhalten. Vor der Wiederherstellung wird automatisch eine neue Version erstellt, sodass du jederzeit wieder zurückwechseln kannst.',
+          'Der aktuelle Stand wird vor der Wiederherstellung automatisch im Versionsverlauf gesichert.',
         ),
       ).toBeInTheDocument();
     });

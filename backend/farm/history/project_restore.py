@@ -11,6 +11,7 @@ from django.db import IntegrityError, models, transaction
 from django.db.models import Q
 from django.db.models.deletion import Collector, ProtectedError
 from django.utils import timezone
+from django.utils.crypto import constant_time_compare
 from django.utils.dateparse import parse_datetime
 
 from farm.models import (
@@ -25,16 +26,23 @@ from farm.models import (
     SeasonPattern,
     SeedPackage,
 )
-from farm.services.crop_inheritance import lock_crop_project
+from farm.services.crop_inheritance import GeneralCropIdentityConflict, lock_crop_project
 from farm.services.crop_media import reconcile_media_orphans
-from farm.services.timing_windows import load_timing_window_index
+from farm.services.timing_windows import (
+    TimingWindow,
+    load_timing_window_index,
+    sort_windows,
+    validate_timing_window,
+)
 
+from .project_restore_impact import restore_preview_token, summarize_restore
 from .records import _RESTORABLE_ENTITY_TYPES, _canonical_entity_type, record_entity_revision
 from .restore import (
     _model_manager,
     _restore_snapshot_children,
     _validate_restored_general_identities,
     _with_legacy_snapshot_fields,
+    is_latest_project_revision,
 )
 
 PROJECT_STATE_MODELS = [(MediaFile, "media_file")]
@@ -52,6 +60,7 @@ for _model, _label in _RESTORABLE_ENTITY_TYPES:
         )
 _MODELS = dict((label, model) for model, label in PROJECT_STATE_MODELS)
 ProjectState = dict[str, dict[str, dict[str, Any]]]
+ValidatedRows = dict[type, dict[int, dict[str, Any]]]
 CHECKPOINT_KEY = "project_state_v1"
 AUTOMATIC_BACKUP_KEY = "_automatic_restore_backup"
 _TIMESTAMPS = {"created_at", "updated_at"}
@@ -68,6 +77,10 @@ class ProjectStateEncoder(DjangoJSONEncoder):
 
 class ProjectRestoreConflict(Exception):
     """The historical state cannot be reconstructed or applied without guessing."""
+
+
+class ProjectRestorePreviewChanged(ProjectRestoreConflict):
+    """The current or target state differs from the confirmed preview."""
 
 
 def capture_project_state(project: Project, *, lock: bool = False) -> ProjectState:
@@ -412,14 +425,26 @@ def _validate_delete(project: Project, instances: list[models.Model]) -> None:
                 raise ProjectRestoreConflict("external dependent data")
 
 
-def apply_project_state(project: Project, state: ProjectState, current: ProjectState) -> None:
-    """Apply a validated state or roll back the entire transaction on any conflict."""
+def _validated_target(
+    project: Project, state: ProjectState, current: ProjectState,
+) -> ValidatedRows:
     target = _validated_rows(project, state)
-    crop_rows = target[Crop]
     _validate_restored_general_identities(
         {int(pk): row for pk, row in current["crop"].items()},
-        {pk: row for pk, row in crop_rows.items() if row.get("deleted_at") is None},
+        {pk: row for pk, row in target[Crop].items() if row.get("deleted_at") is None},
     )
+    return target
+
+
+def apply_project_state(
+    project: Project, state: ProjectState, current: ProjectState,
+    *, validated_target: ValidatedRows | None = None,
+) -> None:
+    """Apply a validated state or roll back the entire transaction on any conflict."""
+    target = validated_target if validated_target is not None else _validated_target(
+        project, state, current,
+    )
+    crop_rows = target[Crop]
     _prepare_restored_uploads(project, state, current)
     for model, label in reversed(PROJECT_STATE_MODELS):
         removed = set(map(int, current[label])) - set(target[model])
@@ -441,6 +466,12 @@ def apply_project_state(project: Project, state: ProjectState, current: ProjectS
 
 
 def _prepare_restored_uploads(project: Project, state: ProjectState, current: ProjectState) -> None:
+    retain_upload_paths(project, _uploads_to_retain(state, current, lock=True))
+
+
+def _uploads_to_retain(
+    state: ProjectState, current: ProjectState, *, lock: bool = False,
+) -> set[str]:
     def paths(snapshot: ProjectState) -> set[str]:
         return {
             row[field]
@@ -455,13 +486,10 @@ def _prepare_restored_uploads(project: Project, state: ProjectState, current: Pr
         (set(restored_images.values()) - state['media_file'].keys())
         | (set(current_images.values()) - current['media_file'].keys())
     )
-    legacy_paths = {
-        str(pk): path
-        for pk, path in MediaFile.objects.select_for_update()
-        .filter(pk__in=legacy_ids, project__isnull=True)
-        .order_by('pk')
-        .values_list('pk', 'storage_path')
-    }
+    legacy_media = MediaFile.objects.filter(pk__in=legacy_ids, project__isnull=True).order_by('pk')
+    if lock:
+        legacy_media = legacy_media.select_for_update()
+    legacy_paths = {str(pk): path for pk, path in legacy_media.values_list('pk', 'storage_path')}
     restored = _live_upload_references(state, restored_images, legacy_paths)
     before = _live_upload_references(current, current_images, legacy_paths)
     restored_paths, current_paths = paths(state), paths(current)
@@ -474,7 +502,7 @@ def _prepare_restored_uploads(project: Project, state: ProjectState, current: Pr
     # A restore can keep the media row and its historical orphan timestamp while
     # disconnecting an image the automatic backup still needs.
     detached = set(filter(None, before.values())) - set(restored.values())
-    retain_upload_paths(project, (current_paths - restored_paths) | detached)
+    return (current_paths - restored_paths) | detached
 
 
 def _live_crop_image_ids(state: ProjectState) -> dict[str, str]:
@@ -541,8 +569,77 @@ def _write_target_rows(
             _restore_snapshot_children(model, pk, state[_label][str(pk)])
 
 
+def _effective_target(
+    state: ProjectState, current: ProjectState, target: ValidatedRows,
+) -> ProjectState:
+    effective = {label: {} for _model, label in PROJECT_STATE_MODELS}
+    for model, label in PROJECT_STATE_MODELS:
+        for pk, values in target[model].items():
+            key = str(pk)
+            # An older snapshot may lack fields added later. The write preserves
+            # those fields on surviving records and uses defaults on new rows.
+            row = {**current[label].get(key, {}), **values}
+            if model is Crop and "timing_windows" in state[label][key]:
+                windows = [
+                    TimingWindow.from_dict(window)
+                    for window in state[label][key]["timing_windows"] or []
+                ]
+                if any(validate_timing_window(window) for window in windows):
+                    raise ProjectRestoreConflict("invalid historical crop timing window")
+                row["timing_windows"] = [window.as_dict() for window in sort_windows(windows)]
+            effective[label][key] = row
+    return effective
+
+
+def _validate_preview_removals_and_identities(
+    project: Project, current: ProjectState, target: ValidatedRows,
+) -> None:
+    for model, label in PROJECT_STATE_MODELS:
+        manager = _model_manager(model)
+        live_ids = set(map(int, current[label]))
+        removed = live_ids - target[model].keys()
+        if removed and model is not Crop:
+            _validate_delete(project, list(manager.filter(project=project, pk__in=removed)))
+        recreated = target[model].keys() - live_ids
+        if recreated and manager.filter(pk__in=recreated).exists():
+            raise ProjectRestoreConflict("historical identity belongs to another project")
+
+
+def _locked_preview_revision(project: Project, revision_id: int) -> EntityRevision:
+    selected = EntityRevision.objects.select_for_update().filter(
+        project=project, pk=revision_id,
+    ).first()
+    if (
+        selected is None or selected.snapshot.get("_project_version_internal")
+        or is_latest_project_revision(project, selected)
+    ):
+        raise ProjectRestorePreviewChanged("historical revision is no longer available")
+    return selected
+
+
+def preview_project_restore(project: Project, revision: EntityRevision) -> dict:
+    """Read and validate the same historical state the restore would apply."""
+    try:
+        with transaction.atomic():
+            lock_crop_project(project.pk)
+            revision = _locked_preview_revision(project, revision.pk)
+            current = capture_project_state(project)
+            state = reconstruct_project_state(project, revision, current)
+            target = _validated_target(project, state, current)
+            _validate_preview_removals_and_identities(project, current, target)
+            _uploads_to_retain(state, current)
+            effective = _effective_target(state, current, target)
+            return {
+                "token": restore_preview_token(project.pk, revision.pk, current, effective),
+                "impact": summarize_restore(current, effective),
+            }
+    except (ValueError, TypeError, KeyError, AttributeError, GeneralCropIdentityConflict) as exc:
+        raise ProjectRestoreConflict("incompatible historical state") from exc
+
+
 def restore_project_version(
-    project: Project, revision: EntityRevision, *, user_name: str = ""
+    project: Project, revision: EntityRevision, *, user_name: str = "",
+    preview_token: str | None = None,
 ) -> None:
     """Save an exact backup and result, and never publish a partial restore."""
     if revision.project_id != project.pk:
@@ -550,13 +647,24 @@ def restore_project_version(
     try:
         with transaction.atomic():
             lock_crop_project(project.pk)
+            if preview_token is not None:
+                revision = _locked_preview_revision(project, revision.pk)
             current = capture_project_state(project, lock=True)
-            target = reconstruct_project_state(project, revision, current)
+            state = reconstruct_project_state(project, revision, current)
+            target = _validated_target(project, state, current)
+            if preview_token is not None:
+                effective = _effective_target(state, current, target)
+                expected = restore_preview_token(project.pk, revision.pk, current, effective)
+                if not constant_time_compare(preview_token, expected):
+                    raise ProjectRestorePreviewChanged("preview no longer matches the project")
             record_project_checkpoint(
                 project, current, user_name=user_name,
                 action=EntityRevision.ACTION_UPDATED, automatic_backup=True,
             )
-            apply_project_state(project, target, current)
+            apply_project_state(project, state, current, validated_target=target)
             record_project_checkpoint(project, capture_project_state(project), user_name=user_name)
-    except (IntegrityError, ValueError, TypeError, KeyError, AttributeError) as exc:
+    except (
+        IntegrityError, ValueError, TypeError, KeyError, AttributeError,
+        GeneralCropIdentityConflict,
+    ) as exc:
         raise ProjectRestoreConflict("incompatible historical state") from exc

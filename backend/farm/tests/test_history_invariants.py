@@ -51,6 +51,7 @@ from farm.tests.history_guard import latest_selectable_revision, state_diff
 
 API = '/openfarmplanner/api'
 RESTORE_URL = f'{API}/history/project/restore/'
+RESTORE_PREVIEW_URL = f'{API}/history/project/restore-preview/'
 IN_MEMORY_STORAGE = {
     'default': {'BACKEND': 'django.core.files.storage.InMemoryStorage'},
     'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
@@ -159,6 +160,164 @@ class HistoryInvariantTestCase(APITestCase):
                 self.assert_state(
                     before, f'the backup of restoring {version.step} does not reproduce it'
                 )
+
+
+class ProjectRestorePreviewTests(HistoryInvariantTestCase):
+    def preview(self, revision: EntityRevision):
+        return self.client.get(RESTORE_PREVIEW_URL, {'history_id': revision.pk})
+
+    def confirm(self, revision: EntityRevision, token: str):
+        return self.client.post(
+            RESTORE_URL, {'history_id': revision.pk, 'preview_token': token}, format='json',
+        )
+
+    def test_preview_counts_named_scope_and_exact_restore_are_read_only_until_confirmed(self):
+        location = self.write('location', 'post', '/locations/', {'name': 'North'})
+        field = self.write('field', 'post', '/fields/', {
+            'name': 'Courtyard', 'location': location['id'],
+        })
+        bed = self.write('bed', 'post', '/beds/', {
+            'name': 'Bed One', 'field': field['id'], 'area_sqm': 12,
+        })
+        season = self.write('season', 'post', '/seasons/', {
+            'start_date': '2026-03-01', 'end_date': '2027-02-28',
+        })
+        crop = self.write('general crop', 'post', '/crops/', {'name': 'Tomato'})
+        variety = self.write('variety', 'post', '/crops/', {'name': 'Tomato', 'variety': 'Roma'})
+        self.write('planting plan', 'post', '/planting-plans/', {
+            'crop': crop['id'], 'bed': bed['id'], 'season': season['id'],
+            'planting_date': '2026-05-01', 'area_usage_sqm': 4,
+        })
+        historical = self.versions[-1]
+        self.write('delete variety', 'delete', f"/crops/{variety['id']}/")
+        self.write('edit general crop', 'patch', f"/crops/{crop['id']}/", {'notes': 'New notes'})
+        self.write('delete growing area', 'delete', f"/locations/{location['id']}/")
+        for index in range(7):
+            self.write('add later crop', 'post', '/crops/', {'name': f'Later crop {index}'})
+        before, counts = capture_project_state(self.project), self.history_counts()
+
+        response = self.preview(historical.revision)
+        self.assertEqual(response.status_code, 200, response.json())
+        self.assertIn('no-store', response['Cache-Control'])
+        payload = response.json()
+        impact = {row['category']: row for row in payload['impact']}
+        self.assertEqual(set(impact), {
+            'crops', 'varieties', 'planting_plans', 'locations', 'fields', 'beds', 'other',
+        })
+        self.assertEqual(impact['crops']['removed'], {
+            'count': 7, 'names': [f'Later crop {index}' for index in range(5)],
+        })
+        self.assertEqual(impact['crops']['changed'], {'count': 1, 'names': ['Tomato']})
+        self.assertEqual(impact['varieties']['restored'], {
+            'count': 1, 'names': ['Tomato (Roma)'],
+        })
+        self.assertEqual(impact['planting_plans']['restored'], {
+            'count': 1, 'names': ['Tomato · Bed One'],
+        })
+        self.assertEqual(impact['locations']['restored'], {'count': 1, 'names': ['North']})
+        self.assertEqual(impact['fields']['restored'], {'count': 1, 'names': ['Courtyard']})
+        self.assertEqual(impact['beds']['restored'], {'count': 1, 'names': ['Bed One']})
+        self.assertEqual(impact['other']['changed'], {'count': 1, 'names': []})
+        self.assertEqual(impact['crops']['restored'], {'count': 0, 'names': []})
+        self.assertEqual(capture_project_state(self.project), before)
+        self.assertEqual(self.history_counts(), counts)
+
+        response = self.confirm(historical.revision, payload['token'])
+        self.assertEqual(response.status_code, 200, response.json())
+        self.assert_state(historical.state, 'preview should describe the exact resulting state')
+        self.assertEqual(self.latest_backup().snapshot[CHECKPOINT_KEY], before)
+
+    def test_layout_changes_count_as_changed_growing_areas_once(self):
+        location = self.write('location', 'post', '/locations/', {'name': 'West'})
+        field = self.write('field', 'post', '/fields/', {
+            'name': 'Small field', 'location': location['id'],
+        })
+        bed = self.write('bed', 'post', '/beds/', {
+            'name': 'Small bed', 'field': field['id'], 'area_sqm': 12,
+        })
+        layouts_url = f"/locations/{location['id']}/layouts/"
+        for coordinate in (2, 6):
+            self.write('configure layouts', 'put', layouts_url, {
+                'bed_layouts': [{'bed': bed['id'], 'x': coordinate, 'y': 1}],
+                'field_layouts': [{'field': field['id'], 'x': 1, 'y': coordinate}],
+            })
+        historical = self.versions[-2]
+        self.write('rename bed too', 'patch', f"/beds/{bed['id']}/", {'name': 'Renamed bed'})
+        response = self.preview(historical.revision)
+        self.assertEqual(response.status_code, 200, response.json())
+        impact = {row['category']: row for row in response.json()['impact']}
+        self.assertEqual(set(impact), {'fields', 'beds'})
+        self.assertEqual(impact['fields']['changed'], {'count': 1, 'names': ['Small field']})
+        self.assertEqual(impact['beds']['changed'], {'count': 1, 'names': ['Small bed']})
+        confirmed = self.confirm(historical.revision, response.json()['token'])
+        self.assertEqual(confirmed.status_code, 200, confirmed.json())
+        self.assert_state(historical.state, 'restore should match previewed layout positions')
+
+    def test_unsampled_intervening_edit_rejects_confirmation_until_previewed_again(self):
+        self.write('target crop', 'post', '/crops/', {'name': 'Baseline'})
+        target = self.versions[-1].revision
+        for index in range(6):
+            outside_sample = self.write('extra crop', 'post', '/crops/', {'name': f'Extra {index}'})
+        first_preview = self.preview(target).json()
+        self.write('edit outside the sample', 'patch', f"/crops/{outside_sample['id']}/", {
+            'notes': 'Save this unless newly confirmed',
+        })
+        before, counts = capture_project_state(self.project), self.history_counts()
+
+        response = self.confirm(target, first_preview['token'])
+        self.assertEqual(response.json()['code'], 'project_restore_preview_changed')
+        self.assert_refusal_is_atomic(response.status_code, before, counts)
+        self.assert_refusal_is_atomic(self.confirm(target, 'invalid').status_code, before, counts)
+        fresh_preview = self.preview(target).json()
+        self.assertEqual(fresh_preview['impact'], first_preview['impact'])
+        self.assertNotEqual(fresh_preview['token'], first_preview['token'])
+        self.assertEqual(self.confirm(target, fresh_preview['token']).status_code, 200)
+
+    def test_no_active_changes_preview_is_distinct_from_an_incomplete_target(self):
+        crop = self.write('baseline', 'post', '/crops/', {'name': 'Chard'})
+        complete = self.versions[-1].revision
+        self.write('temporary edit', 'patch', f"/crops/{crop['id']}/", {'notes': 'Temporary'})
+        self.write('reverse edit', 'patch', f"/crops/{crop['id']}/", {'notes': ''})
+        response = self.preview(complete)
+        self.assertEqual(response.status_code, 200, response.json())
+        self.assertEqual(response.json()['impact'], [])
+
+        Location.objects.create(project=self.project, name='Untracked legacy location')
+        chard = Crop.objects.get(pk=crop['id'])
+        chard.notes = 'Target'
+        chard.save()
+        incomplete = latest_selectable_revision(self.project)
+        chard.notes = 'Current'
+        chard.save()
+        before, counts = capture_project_state(self.project), self.history_counts()
+        response = self.preview(incomplete)
+        self.assertEqual(response.json()['code'], 'project_restore_conflict')
+        self.assertNotIn('impact', response.json())
+        self.assertNotIn('token', response.json())
+        self.assert_refusal_is_atomic(response.status_code, before, counts)
+
+    def test_preview_and_token_use_project_admin_scope_and_selected_revision(self):
+        self.write('first version', 'post', '/crops/', {'name': 'First crop'})
+        first = self.versions[-1].revision
+        self.write('second version', 'post', '/crops/', {'name': 'Second crop'})
+        second = self.versions[-1].revision
+        self.write('third version', 'post', '/crops/', {'name': 'Third crop'})
+        token = self.preview(first).json()['token']
+        before, counts = capture_project_state(self.project), self.history_counts()
+        self.assert_refusal_is_atomic(self.confirm(second, token).status_code, before, counts)
+
+        other = Project.objects.create(name='Other project', slug='other-preview-project')
+        ProjectMembership.objects.create(user=self.user, project=other, role='admin')
+        self.client.defaults['HTTP_X_PROJECT_ID'] = str(other.pk)
+        self.assertEqual(self.preview(first).status_code, 404)
+        self.assertEqual(self.confirm(first, token).status_code, 404)
+
+        self.client.defaults['HTTP_X_PROJECT_ID'] = str(self.project.pk)
+        ProjectMembership.objects.filter(user=self.user, project=self.project).update(role='member')
+        self.assertEqual(self.preview(first).status_code, 403)
+        self.assertEqual(self.confirm(first, token).status_code, 403)
+        self.assertEqual(capture_project_state(self.project), before)
+        self.assertEqual(self.history_counts(), counts)
 
 
 class HistoryRoundTripScenarioTests(HistoryInvariantTestCase):

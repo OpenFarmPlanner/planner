@@ -1786,11 +1786,38 @@
   "restoreDialog": {
     "title": "Versie herstellen?",
     "batchDescription": "Deze actie en alle bijbehorende wijzigingen worden ongedaan gemaakt.",
-    "versionDescription": "Je zet het hele project terug naar deze versie. Alle latere wijzigingen worden teruggedraaid, inclusief later aangemaakte gewassen en bedden.",
+    "versionDescription": "Dit zet het hele project terug naar deze versie en draait alle latere wijzigingen terug.",
     "batchNotice": "De vorige toestand wordt hersteld. De actie blijft in de geschiedenis staan en kan opnieuw worden uitgevoerd.",
-    "versionNotice": "De huidige versie blijft behouden. Vóór het herstellen wordt automatisch een nieuwe versie gemaakt, zodat je op elk moment kunt terugkeren.",
+    "versionNotice": "Vóór het herstel wordt de huidige projectstatus automatisch opgeslagen in de versiegeschiedenis.",
     "cancel": "Annuleren",
-    "confirm": "Versie herstellen"
+    "confirm": "Versie herstellen",
+    "preview": {
+      "title": "Wijzigingen bij dit herstel",
+      "counting": "Elk actief item wordt afzonderlijk geteld. Algemene gewassen en rassen worden apart geteld.",
+      "unchanged": "Deze versie heeft dezelfde actieve items als het huidige project.",
+      "loading": "Wijzigingen controleren…",
+      "unavailable": "Het overzicht is niet beschikbaar. Vernieuw het om het project opnieuw te controleren.",
+      "conflict": "Deze versie kan niet veilig worden hersteld. Kies een andere versie of vernieuw het overzicht.",
+      "stale": "Het project of de gekozen versie is gewijzigd. Vernieuw het overzicht en controleer de wijzigingen voordat je herstelt.",
+      "refresh": "Overzicht vernieuwen",
+      "restoring": "Versie herstellen…",
+      "scope": "Accounts, projectlidmaatschappen en de gedeelde gewassenbibliotheek vallen buiten het herstel.",
+      "sample": "{{shown}} van {{total}} getoond",
+      "categories": {
+        "crops": "Algemene gewassen",
+        "varieties": "Rassen",
+        "planting_plans": "Teeltplannen",
+        "locations": "Locaties",
+        "fields": "Percelen",
+        "beds": "Bedden",
+        "other": "Overige projectitems"
+      },
+      "actions": {
+        "removed": "{{count}} verwijderd",
+        "restored": "{{count}} hersteld",
+        "changed": "{{count}} gewijzigd"
+      }
+    }
   },
   "disabledReasons": {
     "requiredSpeciesNames": "Voer eerst een naam in elke verplichte taal in.",

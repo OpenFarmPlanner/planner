@@ -1833,11 +1833,38 @@
   "restoreDialog": {
     "title": "Ripristinare la versione?",
     "batchDescription": "Questa azione e tutte le modifiche correlate verranno annullate.",
-    "versionDescription": "Ripristini l’intero progetto a questa versione. Tutte le modifiche successive saranno annullate, incluse le colture e le aiuole create in seguito.",
+    "versionDescription": "L’intero progetto tornerà a questa versione. Tutte le modifiche successive verranno annullate.",
     "batchNotice": "Verrà ripristinato lo stato precedente. L'azione rimane nella cronologia e può essere eseguita di nuovo.",
-    "versionNotice": "La versione attuale viene conservata. Prima del ripristino viene creata automaticamente una nuova versione, così puoi tornare indietro in qualsiasi momento.",
+    "versionNotice": "Prima del ripristino, lo stato attuale del progetto viene salvato automaticamente nella cronologia delle versioni.",
     "cancel": "Annulla",
-    "confirm": "Ripristina versione"
+    "confirm": "Ripristina versione",
+    "preview": {
+      "title": "Modifiche del ripristino",
+      "counting": "Ogni voce attiva è contata singolarmente. Le colture generiche e le varietà sono contate separatamente.",
+      "unchanged": "Questa versione contiene le stesse voci attive del progetto attuale.",
+      "loading": "Verifica delle modifiche in corso…",
+      "unavailable": "L’anteprima non è disponibile. Aggiornala per verificare di nuovo il progetto.",
+      "conflict": "Questa versione non può essere ripristinata in modo sicuro. Scegli un’altra versione o aggiorna l’anteprima.",
+      "stale": "Il progetto o la versione selezionata è cambiata. Aggiorna l’anteprima e controlla le modifiche prima di procedere.",
+      "refresh": "Aggiorna anteprima",
+      "restoring": "Ripristino in corso…",
+      "scope": "Account, partecipazioni al progetto e biblioteca condivisa delle colture sono esclusi dal ripristino.",
+      "sample": "{{shown}} di {{total}} visibili",
+      "categories": {
+        "crops": "Colture generiche",
+        "varieties": "Varietà",
+        "planting_plans": "Piani colturali",
+        "locations": "Siti",
+        "fields": "Appezzamenti",
+        "beds": "Aiuole",
+        "other": "Altre voci del progetto"
+      },
+      "actions": {
+        "removed": "Rimozioni ({{count}})",
+        "restored": "Ripristini ({{count}})",
+        "changed": "Modifiche ({{count}})"
+      }
+    }
   },
   "disabledReasons": {
     "requiredSpeciesNames": "Inserisci prima un nome in ogni lingua obbligatoria.",
