@@ -46,6 +46,8 @@ export function PlantingPlanBedCell({
   const restoreFocusRef = useRef(false);
   const [editor, setEditor] = useState<{ anchor: HTMLElement; initialQuery: string } | null>(null);
   const [conflictAnchor, setConflictAnchor] = useState<HTMLButtonElement | null>(null);
+  const [pathInteraction, setPathInteraction] = useState(false);
+  const [rotationInteraction, setRotationInteraction] = useState(false);
   const [pendingAcceptance, setPendingAcceptance] = useState<boolean | null>(null);
   const [saveError, setSaveError] = useState(false);
   const conflictId = useId();
@@ -53,6 +55,7 @@ export function PlantingPlanBedCell({
   const openEditor = useCallback((initialQuery = ''): void => {
     const anchor = cellRef.current;
     if (readOnly || !anchor || isAnyContextMenuOpen() || isContextMenuDismissGestureInProgress()) return;
+    setPathInteraction(false);
     setEditor((opened) => opened ?? { anchor, initialQuery });
   }, [readOnly]);
   useDialogEditCellOpenRequest(rowId, field, openEditor);
@@ -104,7 +107,14 @@ export function PlantingPlanBedCell({
         />
       ) : (
         <>
-          <AppTooltip title={tooltip} describeChild disableInteractive>
+          <AppTooltip
+            title={tooltip}
+            open={!conflictAnchor && !rotationInteraction && (hasFocus || pathInteraction)}
+            onOpen={() => setPathInteraction(true)}
+            onClose={() => setPathInteraction(false)}
+            describeChild
+            disableInteractive
+          >
             <Box
               component="span"
               ref={textRef}
@@ -134,7 +144,11 @@ export function PlantingPlanBedCell({
             <ReadOnlyRotationWarning status={status} findings={rotation.findings} cultureLabel={rotation.cultureLabel} tabIndex={hasFocus ? 0 : -1} />
           )}
           {showRotation && (
-            <AppTooltip title={statusTooltip}>
+            <AppTooltip
+              title={statusTooltip}
+              onOpen={() => setRotationInteraction(true)}
+              onClose={() => setRotationInteraction(false)}
+            >
               <IconButton
                 ref={rotationButtonRef}
                 aria-label={label}
@@ -170,7 +184,10 @@ export function PlantingPlanBedCell({
         <Popover
           open
           anchorEl={conflictAnchor}
-          onClose={() => setConflictAnchor(null)}
+          onClose={() => {
+            setConflictAnchor(null);
+            setRotationInteraction(false);
+          }}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
           transformOrigin={{ vertical: 'top', horizontal: 'right' }}
           slotProps={{ paper: { id: conflictId, role: 'dialog', 'aria-label': label, sx: { width: 'min(460px, calc(100vw - 32px))', p: 1.5 } } }}

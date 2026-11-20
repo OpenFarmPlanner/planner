@@ -121,6 +121,7 @@
     "noScopedMatches": "Sem resultados em {{name}}",
     "noMatches": "Nenhum canteiro corresponde à pesquisa",
     "showOutside_one": "Mostrar {{count}} resultado fora do filtro",
+    "showOutside_many": "Mostrar {{count}} resultados fora do filtro",
     "showOutside_other": "Mostrar {{count}} resultados fora do filtro",
     "searchAll": "Pesquisar em todos os locais",
     "keyboardHint": "↑ ↓ Mover · Enter Escolher · Esc Cancelar · Retrocesso Remover filtro",

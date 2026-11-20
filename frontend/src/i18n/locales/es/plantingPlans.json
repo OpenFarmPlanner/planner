@@ -121,6 +121,7 @@
     "noScopedMatches": "No hay resultados en {{name}}",
     "noMatches": "No hay bancales que coincidan",
     "showOutside_one": "Mostrar {{count}} resultado fuera del filtro",
+    "showOutside_many": "Mostrar {{count}} resultados fuera del filtro",
     "showOutside_other": "Mostrar {{count}} resultados fuera del filtro",
     "searchAll": "Buscar en todas las ubicaciones",
     "keyboardHint": "↑ ↓ Mover · Intro Elegir · Esc Cancelar · Retroceso Quitar filtro",

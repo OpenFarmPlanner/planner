@@ -121,6 +121,7 @@
     "noScopedMatches": "Aucun résultat dans {{name}}",
     "noMatches": "Aucune planche ne correspond à la recherche",
     "showOutside_one": "Afficher {{count}} résultat ailleurs",
+    "showOutside_many": "Afficher {{count}} résultats ailleurs",
     "showOutside_other": "Afficher {{count}} résultats ailleurs",
     "searchAll": "Rechercher dans tous les sites",
     "keyboardHint": "↑ ↓ Naviguer · Entrée Choisir · Échap Annuler · Retour arrière Retirer un filtre",

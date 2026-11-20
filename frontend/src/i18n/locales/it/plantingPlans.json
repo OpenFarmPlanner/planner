@@ -121,6 +121,7 @@
     "noScopedMatches": "Nessun risultato in {{name}}",
     "noMatches": "Nessuna aiuola corrispondente",
     "showOutside_one": "Mostra {{count}} risultato fuori dal filtro",
+    "showOutside_many": "Mostra {{count}} risultati fuori dal filtro",
     "showOutside_other": "Mostra {{count}} risultati fuori dal filtro",
     "searchAll": "Cerca in tutte le località",
     "keyboardHint": "↑ ↓ Sposta · Invio Scegli · Esc Annulla · Backspace Rimuovi filtro",
