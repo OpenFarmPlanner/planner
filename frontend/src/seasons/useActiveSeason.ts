@@ -133,17 +133,19 @@ export function useActiveSeason() {
     endDate: string,
     copyFromSeasonId?: number,
   ): Promise<Season> => {
-    const response = await seasonAPI.create({ start_date: startDate, end_date: endDate });
-    const created = response.data;
-    if (copyFromSeasonId) {
-      await seasonAPI.copyFrom(created.id, copyFromSeasonId);
-    }
+    const period = { start_date: startDate, end_date: endDate };
+    const response = copyFromSeasonId === undefined
+      ? await seasonAPI.create(period)
+      : await seasonAPI.createAndCopy({ ...period, source_season_id: copyFromSeasonId });
     await reload();
-    return created;
+    return response.data;
   }, [reload]);
 
-  const createTransitionSeasons = useCallback(async (copy: boolean) => {
-    const response = await seasonAPI.createTransition({ copy });
+  const createTransitionSeasons = useCallback(async (copy: boolean, expectedSourceId?: number) => {
+    const response = await seasonAPI.createTransition({
+      copy,
+      ...(expectedSourceId === undefined ? {} : { source_season_id: expectedSourceId }),
+    });
     await reload();
     return response.data;
   }, [reload]);

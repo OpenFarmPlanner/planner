@@ -5,7 +5,7 @@ import type { Season } from '../../api/types';
 
 const {
   listMock, dueMock, deleteMock, undeleteMock, creationOptionsMock,
-  createMock, createTransitionMock, updateMock, copyFromMock, activeProjectIdRef,
+  createMock, createAndCopyMock, createTransitionMock, updateMock, copyFromMock, activeProjectIdRef,
 } = vi.hoisted(() => ({
   listMock: vi.fn(),
   dueMock: vi.fn(),
@@ -13,6 +13,7 @@ const {
   undeleteMock: vi.fn(),
   creationOptionsMock: vi.fn(),
   createMock: vi.fn(),
+  createAndCopyMock: vi.fn(),
   createTransitionMock: vi.fn(),
   updateMock: vi.fn(),
   copyFromMock: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock('../../api/api', () => ({
     delete: deleteMock,
     undelete: undeleteMock,
     create: createMock,
+    createAndCopy: createAndCopyMock,
     createTransition: createTransitionMock,
     update: updateMock,
     copyFrom: copyFromMock,
@@ -325,7 +327,8 @@ describe('useActiveSeason — mutations', () => {
     expect(created).toMatchObject({ id: 4 });
   });
 
-  it('copies into the new season before reloading when a source is given', async () => {
+  it('creates and copies in one request when a source is given', async () => {
+    createAndCopyMock.mockResolvedValue({ data: season(4, '2027-09-01', '2028-08-31') });
     const { result } = renderHook(() => useActiveSeason());
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
@@ -333,8 +336,11 @@ describe('useActiveSeason — mutations', () => {
       await result.current.createSeason('2027-09-01', '2028-08-31', 2);
     });
 
-    // Copying targets the season that was just created, not the source.
-    expect(copyFromMock).toHaveBeenCalledWith(4, 2);
+    expect(createAndCopyMock).toHaveBeenCalledWith({
+      start_date: '2027-09-01', end_date: '2028-08-31', source_season_id: 2,
+    });
+    expect(createMock).not.toHaveBeenCalled();
+    expect(copyFromMock).not.toHaveBeenCalled();
   });
 
   it('creates the transition seasons and returns the response payload', async () => {

@@ -68,7 +68,7 @@
     "settingsLink": "Saison-Muster in Projekteinstellungen ändern",
     "menu": {
       "openAria": "Saison-Aktionen öffnen",
-      "copyDataFrom": "Daten übernehmen von…",
+      "copyData": "Daten übernehmen",
       "rename": "Umbenennen",
       "editPeriod": "Zeitraum bearbeiten",
       "delete": "Löschen"
@@ -140,14 +140,19 @@
     },
     "copyDialog": {
       "title": "Daten übernehmen",
-      "sourceLabel": "Quelle",
+      "sourceLabel": "Vorherige Saison",
+      "targetLabel": "Zielsaison",
       "warning_one": "Saison {{target}} enthält bereits 1 Anbauplan. Beim Übernehmen werden die Anbaupläne aus Saison {{source}} zusätzlich hinzugefügt — bestehende Anbaupläne in {{target}} werden nicht verändert oder ersetzt.",
       "warning_other": "Saison {{target}} enthält bereits {{count}} Anbaupläne. Beim Übernehmen werden die Anbaupläne aus Saison {{source}} zusätzlich hinzugefügt — bestehende Anbaupläne in {{target}} werden nicht verändert oder ersetzt.",
-      "summary_one": "→ 1 Anbauplan aus Saison {{source}} wird zu Saison {{target}} hinzugefügt (danach: {{total}} insgesamt).",
-      "summary_other": "→ {{count}} Anbaupläne aus Saison {{source}} werden zu Saison {{target}} hinzugefügt (danach: {{total}} insgesamt).",
+      "summary_one": "{{count}} Anbauplan wird übernommen. Danach sind es insgesamt {{total}}.",
+      "summary_other": "{{count}} Anbaupläne werden übernommen. Danach sind es insgesamt {{total}}.",
       "confirm": "Übernehmen",
       "error": "Daten konnten nicht übernommen werden.",
-      "confirmDisabledTooltip": "Bitte zuerst eine Quellsaison auswählen.",
+      "noPrecedingSource": "Es gibt keine unmittelbar vorherige Saison. Lege zuerst die fehlende Saison an, um ihre Daten zu übernehmen.",
+      "sourceChanged": "Die vorherige Saison hat sich geändert. Öffne den Dialog erneut, um die Vorschau zu aktualisieren.",
+      "previewError": "Die Kopiervorschau konnte nicht geladen werden.",
+      "success": "Anbaupläne wurden in die Saison {{target}} übernommen.",
+      "noCopies": "In die Saison {{target}} wurden keine Anbaupläne übernommen.",
       "rotation": {
         "checking": "Fruchtfolge in der Zielsaison wird geprüft …",
         "checkError": "Die Fruchtfolge konnte nicht geprüft werden. Übernommen werden kann trotzdem.",

@@ -24,7 +24,7 @@ export function SeasonRowActionsMenu({
     <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={onClose}>
       <MenuItem onClick={() => { onClose(); onCopyDataFrom(); }}>
         <ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><ContentCopyIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>
-        {t('seasonSwitcher.menu.copyDataFrom')}
+        {t('seasonSwitcher.menu.copyData')}
       </MenuItem>
       <MenuItem onClick={() => { onClose(); onRename(); }}>
         <ListItemIcon sx={ACTION_MENU_ITEM_ICON_SX}><EditIcon {...ACTION_MENU_ICON_PROPS} /></ListItemIcon>

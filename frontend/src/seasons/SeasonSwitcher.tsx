@@ -29,7 +29,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import type { Season, SeasonCopyCounts } from '../api/types';
+import type { Season, SeasonCopyCounts, SeasonCreationOptions } from '../api/types';
 import { seasonAPI } from '../api/api';
 import { useTranslation } from '../i18n';
 import type { UseActiveSeasonReturn } from './useActiveSeason';
@@ -43,7 +43,7 @@ import { addDaysIso, analyzePeriodTransition, computeManualSeasonEnd } from './s
 import { SEASON_SWITCHER_EMOJI } from '../navigation/navigationIconEmoji';
 import { NavEmojiIcon } from '../navigation/NavEmojiIcon';
 import { DeleteUndoSnackbar } from '../components/data-grid';
-import { extractApiErrorMessage } from '../api/errors';
+import { extractApiErrorCode, extractApiErrorMessage } from '../api/errors';
 import { TruncatedTextWithTooltip } from '../components/TruncatedTextWithTooltip';
 
 interface SeasonSwitcherProps {
@@ -80,6 +80,9 @@ function getSeasonCreateErrorMessage(
   if (axios.isAxiosError(error)) {
     const data = error.response?.data as SeasonConflictPayload | undefined;
     const code = data ? (Array.isArray(data.code) ? data.code[0] : data.code) : undefined;
+    if (code === 'source_season_not_found') {
+      return t('navigation:seasonSwitcher.copyDialog.sourceChanged');
+    }
     if (data && code === 'season_unassigned_data_outside_period') {
       const examples = data.conflicts
         ?.map((conflict) => conflict.label)
@@ -107,15 +110,18 @@ export function SeasonCreateSuggestionDialog({
   const { t, i18n } = useTranslation(['navigation', 'common']);
   const locale = resolveSeasonDateLocale(i18n);
   const {
-    activeSeason, dueSuggestion, seasonCreationOptions,
-    switchSeason, createSeason, createTransitionSeasons,
+    dueSuggestion, seasonCreationOptions,
+    switchSeason, createSeason, createTransitionSeasons, reload,
   } = controller;
-  const [copyFromCurrent, setCopyFromCurrent] = useState(true);
+  const [copyFromPrevious, setCopyFromPrevious] = useState(true);
   const [creatingSuggested, setCreatingSuggested] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [gapChoice, setGapChoice] = useState<'adopt' | 'transition' | 'manual' | ''>('');
   const [manualStartDate, setManualStartDate] = useState('');
-  const [manualCopyPreview, setManualCopyPreview] = useState<SeasonCopyCounts | null>(null);
+  const [manualCopyOptions, setManualCopyOptions] = useState<{
+    start: string;
+    options: SeasonCreationOptions | null;
+  } | null>(null);
 
   const showSuggestion = Boolean(dueSuggestion?.start_date && dueSuggestion?.end_date);
   const suggestedLabel = showSuggestion ? computeSeasonLabel(dueSuggestion!.start_date!, dueSuggestion!.end_date!) : '';
@@ -135,7 +141,6 @@ export function SeasonCreateSuggestionDialog({
   const seamlessPeriod = seasonCreationOptions?.seamless_period ?? null;
   const duePeriod = seasonCreationOptions?.due_period ?? null;
   const followupLabel = duePeriod ? computeSeasonLabel(duePeriod.start_date, duePeriod.end_date) : '';
-  const copyFromLabel = seasonCreationOptions?.copy_source_label ?? activeSeason?.label ?? '';
   const manualEndDate = manualStartDate && seasonCreationOptions
     ? computeManualSeasonEnd(
       manualStartDate,
@@ -157,26 +162,27 @@ export function SeasonCreateSuggestionDialog({
   // would need the source season's planting dates).
   useEffect(() => {
     if (gapChoice !== 'manual' || !manualValid) {
-      setManualCopyPreview(null);
       return;
     }
     let cancelled = false;
     seasonAPI.creationOptions({ manual_start_date: manualStartDate })
       .then((response) => {
         if (!cancelled) {
-          setManualCopyPreview(response.data.copy_preview.manual);
+          setManualCopyOptions({ start: manualStartDate, options: response.data });
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setManualCopyPreview(null);
+          setManualCopyOptions({ start: manualStartDate, options: null });
         }
       });
     return () => { cancelled = true; };
   }, [gapChoice, manualValid, manualStartDate]);
 
+  const manualCopyResult = manualCopyOptions?.start === manualStartDate ? manualCopyOptions : null;
+  const copyOptions = gapChoice === 'manual' ? manualCopyResult?.options : seasonCreationOptions;
   const activeCopyPreview: SeasonCopyCounts | null = (() => {
-    const preview = seasonCreationOptions?.copy_preview;
+    const preview = copyOptions?.copy_preview;
     if (!needsGapDecision || gapChoice === 'adopt') {
       return preview?.adopt ?? null;
     }
@@ -184,18 +190,28 @@ export function SeasonCreateSuggestionDialog({
       return preview?.transition ?? null;
     }
     if (gapChoice === 'manual') {
-      return manualCopyPreview;
+      return preview?.manual ?? null;
     }
     return null;
   })();
+  const eligibleSourceId = activeCopyPreview ? copyOptions?.copy_source_season_id ?? null : null;
+  const copyFromLabel = copyOptions?.copy_source_label ?? '';
+  const choosingCopy = !needsGapDecision || gapChoice === 'adopt' || gapChoice === 'transition'
+    || (gapChoice === 'manual' && manualValid);
   const followupCopyPreview = seasonCreationOptions?.copy_preview?.transition_followup ?? null;
 
   const resetTransientState = () => {
     setCreateError(null);
-    setCopyFromCurrent(true);
+    setCopyFromPrevious(true);
     setGapChoice('');
     setManualStartDate('');
-    setManualCopyPreview(null);
+    setManualCopyOptions(null);
+  };
+
+  const updateManualStart = (start: string) => {
+    if (start === manualStartDate) return;
+    setManualStartDate(start);
+    setManualCopyOptions(null);
   };
 
   const handleClose = () => {
@@ -234,7 +250,8 @@ export function SeasonCreateSuggestionDialog({
   // The transition option creates two seasons: the gap-filling transition
   // season plus the regular follow-up season the pattern computes next.
   const isTransitionTwoSeason = needsGapDecision && gapChoice === 'transition';
-  const canSubmit = !creatingSuggested && (
+  const checkingManualCopy = choosingCopy && gapChoice === 'manual' && !manualCopyResult;
+  const canSubmit = !creatingSuggested && !checkingManualCopy && (
     isTransitionTwoSeason
       ? Boolean(seamlessPeriod && duePeriod)
       : resolveCreatePeriod() !== null
@@ -244,13 +261,15 @@ export function SeasonCreateSuggestionDialog({
     setCreatingSuggested(true);
     setCreateError(null);
     try {
-      const copySourceId = copyFromCurrent && activeSeason ? activeSeason.id : undefined;
+      const copySourceId = copyFromPrevious ? eligibleSourceId ?? undefined : undefined;
       let seasonToActivate: Season;
       if (isTransitionTwoSeason && seamlessPeriod && duePeriod) {
         // One server call creates both seasons and distributes the last
         // season's plans across them (each plan routed to the season its
         // shifted planting date lands in).
-        const result = await createTransitionSeasons(copyFromCurrent && Boolean(activeSeason));
+        const result = copySourceId === undefined
+          ? await createTransitionSeasons(false)
+          : await createTransitionSeasons(true, copySourceId);
         seasonToActivate = result.followup_season;
       } else {
         const period = resolveCreatePeriod();
@@ -264,6 +283,12 @@ export function SeasonCreateSuggestionDialog({
       onClose();
       switchSeason(seasonToActivate.id);
     } catch (error) {
+      const code = extractApiErrorCode(error);
+      if (code === 'season_copy_source_not_preceding' || code === 'source_season_not_found') {
+        setGapChoice('');
+        setManualCopyOptions(null);
+        void reload();
+      }
       setCreateError(getSeasonCreateErrorMessage(
         error,
         t('navigation:seasonSwitcher.suggestion.createError'),
@@ -303,7 +328,7 @@ export function SeasonCreateSuggestionDialog({
                     const choice = event.target.value as typeof gapChoice;
                     setGapChoice(choice);
                     if (choice === 'manual' && !manualStartDate && seamlessStartDate) {
-                      setManualStartDate(seamlessStartDate);
+                      updateManualStart(seamlessStartDate);
                     }
                   }}
                 >
@@ -371,7 +396,7 @@ export function SeasonCreateSuggestionDialog({
                     size="small"
                     label={t('navigation:seasonSwitcher.suggestion.gap.manualStartLabel')}
                     value={manualStartDate}
-                    onChange={(event) => setManualStartDate(event.target.value)}
+                    onChange={(event) => updateManualStart(event.target.value)}
                     slotProps={{ inputLabel: { shrink: true } }}
                   />
                   {manualValid ? (
@@ -409,28 +434,29 @@ export function SeasonCreateSuggestionDialog({
             </Stack>
           ) : null}
 
-          {activeSeason ? (
+          {eligibleSourceId !== null ? (
             <Stack
               spacing={1}
               sx={{
                 borderRadius: 1,
                 bgcolor: 'success.50',
                 p: 1.5,
+                overflowWrap: 'anywhere',
               }}
             >
               <FormControlLabel
                 sx={{ alignItems: 'flex-start', m: 0 }}
                 control={(
                   <Checkbox
-                    checked={copyFromCurrent}
-                    onChange={(event) => setCopyFromCurrent(event.target.checked)}
+                    checked={copyFromPrevious}
+                    onChange={(event) => setCopyFromPrevious(event.target.checked)}
                     sx={{ pt: 0 }}
                   />
                 )}
                 label={(
                   <Stack spacing={0.5}>
                     <Typography variant="body2">
-                      {t('navigation:seasonSwitcher.suggestion.copyCheckbox', { label: activeSeason.label })}
+                      {t('navigation:seasonSwitcher.suggestion.copyCheckbox', { label: copyFromLabel })}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {t('navigation:seasonSwitcher.suggestion.copyDescription')}
@@ -438,7 +464,7 @@ export function SeasonCreateSuggestionDialog({
                   </Stack>
                 )}
               />
-              {copyFromCurrent && activeCopyPreview && activeCopyPreview.total > 0 ? (
+              {copyFromPrevious && activeCopyPreview && activeCopyPreview.total > 0 ? (
                 <Typography
                   variant="caption"
                   color={activeCopyPreview.skipped > 0 ? 'warning.dark' : 'text.secondary'}
@@ -452,7 +478,7 @@ export function SeasonCreateSuggestionDialog({
                   )}
                 </Typography>
               ) : null}
-              {copyFromCurrent && isTransitionTwoSeason && followupCopyPreview && followupCopyPreview.total > 0 ? (
+              {copyFromPrevious && isTransitionTwoSeason && followupCopyPreview && followupCopyPreview.total > 0 ? (
                 <Typography
                   variant="caption"
                   color={followupCopyPreview.skipped > 0 ? 'warning.dark' : 'text.secondary'}
@@ -465,6 +491,12 @@ export function SeasonCreateSuggestionDialog({
                 </Typography>
               ) : null}
             </Stack>
+          ) : choosingCopy && lastSeason && copyOptions ? (
+            <Alert severity="info">{t('navigation:seasonSwitcher.copyDialog.noPrecedingSource')}</Alert>
+          ) : checkingManualCopy ? (
+            <Typography role="status" variant="body2">{t('common:actions.loading')}</Typography>
+          ) : choosingCopy && gapChoice === 'manual' && manualCopyResult?.options === null ? (
+            <Alert severity="error">{t('navigation:seasonSwitcher.copyDialog.previewError')}</Alert>
           ) : null}
           <Box
             sx={{
@@ -598,7 +630,9 @@ export function SeasonSwitcher({
             <MenuItem key={season.id} selected={isActive} onClick={() => { closeMenu(); switchSeason(season.id); }}>
               <Stack sx={{ flex: 1, minWidth: 0 }}>
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                  <Typography sx={{ fontWeight: isActive ? 700 : 500 }}>{season.label}</Typography>
+                  <Typography sx={{ fontWeight: isActive ? 700 : 500, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
+                    {season.label}
+                  </Typography>
                   {isActive ? <CheckIcon fontSize="small" color="primary" /> : null}
                 </Stack>
                 <Typography variant="caption" color="text.secondary" noWrap>
@@ -681,7 +715,12 @@ export function SeasonSwitcher({
       <SeasonRowActionsMenu
         anchorEl={rowMenuAnchor}
         onClose={() => { setRowMenuAnchor(null); setRowMenuSeasonId(null); }}
-        onCopyDataFrom={() => { if (rowMenuSeason) { setCopyDialogTarget(rowMenuSeason); } }}
+        onCopyDataFrom={() => {
+          if (rowMenuSeason) {
+            closeMenu();
+            setCopyDialogTarget(rowMenuSeason);
+          }
+        }}
         onRename={() => { if (rowMenuSeason) { setRenameSeasonTarget(rowMenuSeason); } }}
         onEditPeriod={() => { if (rowMenuSeason) { setPeriodEditTarget(rowMenuSeason); } }}
         onDelete={() => { if (rowMenuSeason) { void deleteSeason(rowMenuSeason); closeMenu(); } }}
@@ -704,7 +743,6 @@ export function SeasonSwitcher({
       <SeasonCopyDataDialog
         open={copyDialogTarget !== null}
         targetSeason={copyDialogTarget}
-        seasons={seasons}
         onClose={() => setCopyDialogTarget(null)}
         onConfirm={copyDataInto}
       />
