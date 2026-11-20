@@ -81,3 +81,29 @@ why catching the database exception alone cannot enforce logical identity.
 
 Detailed reproduction and commands are in
 [the audit report](qa-archive/qa-report-2026-11-16.md).
+
+## Targeted follow-up — 2026-11-20: closed species picker popup (#1180)
+
+Tested local main `b8b45bb615f5bb715029a17b22fdb676e04cd85f`, including
+PR #1307 (`f2ca0124b`), against the existing development frontend on
+localhost:5173 and backend on localhost:8000. This owner-requested acceptance
+check does not advance the full-sweep baseline above.
+
+- All three German Chrome browser checks passed: 375x800 portrait, 800x375
+  short landscape and 1440x900 desktop (3 passed, 1.4 minutes).
+- Used a scratch copy of `crop-species-popup.spec.ts`, with an additional
+  assertion that variety text remains after selecting a species. Created
+  isolated synthetic moderator/identity fixtures through the guarded E2E API;
+  each scenario was reset after testing. Existing servers were not restarted.
+- Verified Escape closes only the popup; reopening and Tab focuses variety;
+  touch focus changes hide the popup; scrolling the reference out of view
+  hides it; Enter on Save with blank species focuses the validation error.
+  Both actual popup visibility and `aria-expanded=false` were asserted.
+- Reopened live search, selected a visible species by touch, and confirmed
+  the selected species and previously entered variety survived blur.
+- Inspected error screenshots at all three viewports: no orphan popup, no
+  horizontal page overflow, readable focused error and reachable Save/Cancel.
+  No application code or responsive behavior changed.
+
+Scratch script and screenshots: `/tmp/ofp-1180/` (local only).
+No defect reproduced in the requested flow. No production testing performed.
