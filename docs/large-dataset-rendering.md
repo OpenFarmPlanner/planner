@@ -85,8 +85,8 @@ many rows are loaded:
   to move a 24px thumb. The thumb's position is now written straight to its
   DOM node; only values that change rarely (whether the scrollbar exists,
   how tall the thumb is) still go through state.
-- **Per-cell derivation of shared data.** Every growing-area cell renders an
-  `AreaAssignmentDialog`, and each one rebuilt the location/field/bed
+- **Per-cell derivation of shared data.** Every growing-area cell rendered an
+  area-assignment dialog, and each one rebuilt the location/field/bed
   hierarchy from the same three arrays on mount — thousands of object
   allocations for every row scrolled into view. `getAreaHierarchyIndex`
   (`areaHierarchySelection.ts`) derives it once per array identity and hands
