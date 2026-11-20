@@ -41,6 +41,7 @@ export function RestoreVersionDialog({
   mode = 'version',
 }: RestoreVersionDialogProps) {
   const isBatch = entry ? isBatchGroupEntry(entry) : false;
+  const displayName = entry?.is_automatic_backup ? null : entry?.object_display_name?.trim();
 
   return (
     <Dialog open={Boolean(entry)} onClose={onClose} fullWidth maxWidth="xs">
@@ -54,7 +55,7 @@ export function RestoreVersionDialog({
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
               {isBatch
                 ? getBatchSummary(entry, tCrops)
-                : (entry.object_display_name?.trim() || getEntryTitle(entry))}
+                : (displayName || getEntryTitle(entry))}
             </Typography>
             <Typography variant="caption" color="text.secondary">
               {formatTimestamp(entry.history_date)}

@@ -460,7 +460,7 @@
       "versionRestoreError": "Impossible de restaurer la version du projet.",
       "leaveDemoError": "Impossible de quitter la démo. Veuillez réessayer.",
       "logoutError": "La déconnexion a échoué. Veuillez réessayer.",
-      "versionRestoreConflict": "Cette version est incomplète ou incompatible avec des données liées. Aucune modification n’a été effectuée."
+      "versionRestoreConflict": "Cette version est incomplète ou incompatible avec des données liées. Aucune modification n’a été effectuée. Choisissez une autre version dans l’historique."
     },
     "shortcutHint": "Astuce : appuyez sur Alt+K pour ouvrir la palette de commandes.",
     "historyBy": "Par {{actor}}",

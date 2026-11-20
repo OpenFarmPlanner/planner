@@ -87,7 +87,7 @@ export function ProjectHistoryDialog({
     isPhonePortrait ? (
       <>
         <Divider />
-        <Button variant="outlined" size="small" onClick={onClick} sx={{ alignSelf: 'flex-start', minHeight: 34 }}>
+        <Button variant="outlined" size="small" onClick={onClick} sx={{ alignSelf: 'flex-start', minHeight: 44 }}>
           {t('commandPalette.restoreVersion')}
         </Button>
       </>

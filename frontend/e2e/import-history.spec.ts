@@ -202,25 +202,36 @@ test('full restore before spreadsheet and library imports refreshes the crop gri
 
 for (const [width, height] of [[375, 800], [1440, 900]]) {
   test(`full restore and restoring its automatic backup at ${width}x${height}`, async ({ page, request }, info) => {
-    // The backup of a restore that re-created a deleted row is refused today.
-    test.fail(true, 'Restoring the automatic backup is refused until #1194 is fixed.');
     test.setTimeout(120_000);
     const scenario = `history-backup-${width}-${Date.now()}`;
     try {
       await page.setViewportSize({ width, height });
       await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
       await page.goto('/app/crops');
-      const name = `Doomed history location ${width}`;
-      const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', { name });
+      const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', {
+        name: `Doomed history location ${width}`,
+      });
+      const field = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
+        name: `Doomed history field ${width}`, location: location.id,
+      });
+      const bedName = `Doomed history bed ${width}`;
+      const bed = await apiRequest<{ id: number }>(page, 'POST', '/beds/', {
+        name: bedName, field: field.id, area_sqm: 5,
+      });
       await apiRequest(page, 'DELETE', `/locations/${location.id}/`);
-      const locationIds = async () => {
-        const data = await apiRequest<Array<{ id: number }> | { results: Array<{ id: number }> }>(page, 'GET', '/locations/');
+      const getIds = async (path: string) => {
+        const data = await apiRequest<Array<{ id: number }> | { results: Array<{ id: number }> }>(page, 'GET', path);
         return (Array.isArray(data) ? data : data.results).map(item => item.id);
       };
+      const geometry = () => Promise.all(['/locations/', '/fields/', '/beds/'].map(getIds));
+      const before = await geometry();
+      for (const [index, item] of [location, field, bed].entries()) {
+        expect(before[index]).not.toContain(item.id);
+      }
 
       let dialog = await history(page);
-      await dialog.getByRole('listitem').filter({ hasText: name }).last()
-        .getByRole('button', { name: navigation.commandPalette.restoreVersion, exact: true }).click();
+      await dialog.getByRole('listitem').filter({ hasText: bedName }).last()
+        .getByRole('button', { name: navigation.commandPalette.restoreVersion, exact: true }).press('Enter');
       let confirmation = page.getByRole('dialog', { name: de.restoreDialog.title, exact: true });
       await page.screenshot({ path: info.outputPath('restore-confirmation.png'), animations: 'disabled' });
       const [restored] = await Promise.all([
@@ -229,20 +240,26 @@ for (const [width, height] of [[375, 800], [1440, 900]]) {
       ]);
       expect(restored.status()).toBe(200);
       await expect(page.getByRole('dialog')).toHaveCount(0);
-      expect(await locationIds()).toContain(location.id);
+      const restoredGeometry = await geometry();
+      for (const [index, item] of [location, field, bed].entries()) {
+        expect(restoredGeometry[index]).toContain(item.id);
+      }
 
-      // The newest entry is the restore result; the automatic backup sits directly below it.
       dialog = await history(page);
-      await dialog.getByRole('listitem').nth(1)
-        .getByRole('button', { name: navigation.commandPalette.restoreVersion, exact: true }).click();
+      const backupEntry = dialog.getByRole('listitem').filter({ hasText: de.history.automaticBackup });
+      await expect(backupEntry).toHaveCount(1);
+      await page.screenshot({ path: info.outputPath('history-list.png'), animations: 'disabled' });
+      await backupEntry.getByRole('button', { name: navigation.commandPalette.restoreVersion, exact: true }).press('Enter');
       confirmation = page.getByRole('dialog', { name: de.restoreDialog.title, exact: true });
+      await expect(confirmation.getByText(de.history.automaticBackup, { exact: true })).toBeVisible();
+      await page.screenshot({ path: info.outputPath('backup-confirmation.png'), animations: 'disabled' });
       const [backup] = await Promise.all([
         page.waitForResponse(response => response.url().includes('/history/project/restore/')),
-        confirmation.getByRole('button', { name: de.restoreDialog.confirm, exact: true }).click(),
+        confirmation.getByRole('button', { name: de.restoreDialog.confirm, exact: true }).press('Enter'),
       ]);
-      await page.screenshot({ path: info.outputPath('backup-restore-result.png'), animations: 'disabled' });
       expect(backup.status()).toBe(200);
-      expect(await locationIds()).not.toContain(location.id);
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      expect(await geometry()).toEqual(before);
     } finally {
       await resetE2EScenario(request, scenario);
     }

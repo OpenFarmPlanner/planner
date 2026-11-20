@@ -26,6 +26,7 @@ from rest_framework.test import APITestCase
 
 from crops.models import CropSpecies
 from farm.history.project_restore import (
+    AUTOMATIC_BACKUP_KEY,
     CHECKPOINT_KEY,
     PROJECT_STATE_MODELS,
     ProjectState,
@@ -39,6 +40,7 @@ from farm.models import (
     CropCompanion,
     CropSupplierData,
     EntityRevision,
+    Location,
     MediaFile,
     Project,
     ProjectMembership,
@@ -53,18 +55,6 @@ IN_MEMORY_STORAGE = {
     'default': {'BACKEND': 'django.core.files.storage.InMemoryStorage'},
     'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
 }
-
-# #1194: the backup of a restore is refused whenever the restore re-created a
-# row that is absent from the pre-restore state (a row deleted later in the
-# scenario). Such refusals must stay atomic. The test fails as soon as one of
-# them succeeds; the fix for #1194 then sets this to False.
-BACKUP_REFUSED_AFTER_RECREATION_1194 = True
-
-
-def recreates_absent_rows(version: ProjectState, current: ProjectState) -> bool:
-    """Whether restoring `version` brings back a row that `current` does not hold."""
-    return any(pk not in current[label] for label, rows in version.items() for pk in rows)
-
 
 def _png(name: str) -> SimpleUploadedFile:
     buffer = io.BytesIO()
@@ -120,9 +110,17 @@ class HistoryInvariantTestCase(APITestCase):
         return EntityRevision.objects.filter(
             project=self.project,
             entity_type='project',
-            snapshot__has_key=CHECKPOINT_KEY,
+            snapshot__has_key=AUTOMATIC_BACKUP_KEY,
             action=EntityRevision.ACTION_UPDATED,
         ).latest('created_at', 'id')
+
+    def assert_backup_listed(self, backup: EntityRevision) -> None:
+        entries = self.client.get(f'{API}/history/project/').json()
+        entry = next(item for item in entries if item['history_id'] == backup.pk)
+        self.assertTrue(entry['is_automatic_backup'])
+        self.assertFalse(entry.get('is_batch', False))
+        self.assertFalse(entry['is_current_version'])
+        self.assertFalse(entries[0].get('is_automatic_backup', False))
 
     def assert_state(self, expected: ProjectState, message: str) -> None:
         diff = state_diff(expected, capture_project_state(self.project))
@@ -145,7 +143,6 @@ class HistoryInvariantTestCase(APITestCase):
 
     def round_trip_every_version(self) -> None:
         """Restore each recorded version, compare, then restore its backup and compare."""
-        final = self.versions[-1].state
         for version in self.versions[:-1]:
             with self.subTest(step=version.step):
                 before = capture_project_state(self.project)
@@ -154,26 +151,14 @@ class HistoryInvariantTestCase(APITestCase):
                 )
                 self.assert_state(version.state, f'restoring {version.step} does not reproduce it')
                 backup = self.latest_backup()
-                if BACKUP_REFUSED_AFTER_RECREATION_1194 and recreates_absent_rows(
-                    version.state, final
-                ):
-                    after, counts = capture_project_state(self.project), self.history_counts()
-                    self.assert_refusal_is_atomic(self.restore(backup), after, counts)
-                else:
-                    self.assertEqual(
-                        self.restore(backup),
-                        200,
-                        f'the backup of restoring {version.step} was refused',
-                    )
-                    self.assert_state(
-                        before, f'the backup of restoring {version.step} does not reproduce it'
-                    )
-            # Every step starts from the same end state, reached the way users can today (#1194),
-            # so the outcome of one step does not depend on the known refusals of another.
-            self.assertEqual(self.restore(self.versions[-1].revision), 200)
-            self.assert_state(
-                self.versions[-1].state, 'restoring the final version does not reproduce it'
-            )
+                self.assertEqual(
+                    self.restore(backup),
+                    200,
+                    f'the backup of restoring {version.step} was refused',
+                )
+                self.assert_state(
+                    before, f'the backup of restoring {version.step} does not reproduce it'
+                )
 
 
 class HistoryRoundTripScenarioTests(HistoryInvariantTestCase):
@@ -426,6 +411,29 @@ class HistoryRoundTripScenarioTests(HistoryInvariantTestCase):
     def test_every_version_and_every_backup_restores_exactly(self) -> None:
         self.build_scenario()
         self.round_trip_every_version()
+        self.assert_backup_listed(self.latest_backup())
+
+        self.write('crop after backup recovery', 'post', '/crops/', {'name': 'Chard'})
+        new_version = self.versions[-1]
+        self.write('another crop after recovery', 'post', '/crops/', {'name': 'Rosemary'})
+        self.assertEqual(self.restore(new_version.revision), 200)
+        self.assert_state(new_version.state, 'a version after backup recovery did not restore')
+
+    def test_untracked_rows_in_the_replay_interval_still_block_restore(self) -> None:
+        crop_id = self.write('establish baseline', 'post', '/crops/', {'name': 'Chard'})['id']
+        Location.objects.create(project=self.project, name='Untracked legacy location')
+        crop = Crop.objects.get(pk=crop_id)
+        crop.notes = 'Selected revision'
+        crop.save()
+        target = latest_selectable_revision(self.project)
+        crop.notes = 'Newer work'
+        crop.save()
+
+        before = capture_project_state(self.project)
+        counts = self.history_counts()
+        response = self.client.post(RESTORE_URL, {'history_id': target.pk}, format='json')
+        self.assertEqual(response.json()['code'], 'project_restore_conflict')
+        self.assert_refusal_is_atomic(response.status_code, before, counts)
 
     def test_scenario_covers_every_restorable_model(self) -> None:
         """A new entry in PROJECT_STATE_MODELS must come with scenario coverage."""
@@ -561,8 +569,18 @@ class HistoryGroupedOperationRoundTripTests(HistoryInvariantTestCase):
         self.assert_state(
             self.versions[0].state, 'undoing the import does not return to the pre-import state'
         )
+        backup = self.latest_backup()
+        self.assert_backup_listed(backup)
+        # Older import undos stored the before-checkpoint in the undo group.
+        undo_group = BatchOperation.objects.get(
+            project=self.project, operation_type=BatchOperation.TYPE_REVERTED,
+        )
+        EntityRevision.objects.filter(pk=backup.pk).update(
+            batch_operation=undo_group, snapshot={CHECKPOINT_KEY: backup.snapshot[CHECKPOINT_KEY]},
+        )
+        self.assert_backup_listed(backup)
         self.assertEqual(
-            self.restore(self.latest_backup()), 200, 'the backup of the import undo was refused'
+            self.restore(backup), 200, 'the backup of the import undo was refused'
         )
         self.assert_state(
             before_undo, 'the backup of the import undo does not reproduce the imported state'
@@ -594,8 +612,10 @@ class HistoryGroupedOperationRoundTripTests(HistoryInvariantTestCase):
         self.assert_state(
             self.versions[0].state, 'reverting the season creation does not remove it'
         )
+        backup = self.latest_backup()
+        self.assert_backup_listed(backup)
         self.assertEqual(
-            self.restore(self.latest_backup()), 200, 'the backup of the batch revert was refused'
+            self.restore(backup), 200, 'the backup of the batch revert was refused'
         )
         self.assert_state(
             before_revert, 'the backup of the batch revert does not reproduce the season'
