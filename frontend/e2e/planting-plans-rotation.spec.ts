@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { loginWithDeterministicProject } from './utils';
+import { apiRequest, loginWithDeterministicProject } from './utils';
 
 // Functional assertions on the demo project's crop rotation cases (see the
 // "Demo cases" table in docs/crop-rotation.md); the rules themselves are
@@ -78,6 +78,37 @@ test.describe('planting plan crop rotation in the table', () => {
     await expect(bedCell).toContainText('Knoblauch & Lauch');
     await expect(leek.getByRole('button', { name: 'Fruchtfolgekonflikt anzeigen' })).toBeVisible();
     await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+
+  test('keeps a saved conflict separate from an unsaved bed change', async ({ page }) => {
+    await searchBox(page).fill('Lauch');
+    const match = rows(page).filter({ has: page.locator('[data-field="crop"]').getByText('Lauch', { exact: true }) });
+    const plan = await match.getAttribute('data-id');
+    const leek = page.locator(`[role="row"][data-id="${plan}"]`);
+    const bedCell = leek.locator('[data-field="bed"]');
+    const icon = leek.getByRole('button', { name: 'Fruchtfolgekonflikt anzeigen' });
+    await expect(icon).toBeVisible();
+    const path = `/planting-plans/${plan}/`;
+    const saved = await apiRequest<{ bed: number; rotation_conflict_accepted: boolean }>(page, 'GET', path);
+    const plantingDate = leek.locator('[data-field="planting_date"]');
+
+    await plantingDate.dblclick();
+    await expect(leek).toHaveClass(/ofp-row-editing/);
+    await bedCell.dblclick();
+    await page.getByRole('button', { name: 'An allen Standorten suchen' }).click();
+    await page.getByRole('option', { name: /Bohnen/ }).click();
+    await expect(bedCell).toContainText('Bohnen');
+    await expect(leek.getByTestId('rotation-status-button')).toHaveCount(0);
+    expect(await apiRequest(page, 'GET', path)).toMatchObject({
+      bed: saved.bed, rotation_conflict_accepted: saved.rotation_conflict_accepted,
+    });
+
+    await plantingDate.getByRole('textbox').press('Escape');
+    await expect(bedCell).toContainText('Knoblauch & Lauch');
+    await expect(icon).toBeVisible();
+    expect(await apiRequest(page, 'GET', path)).toMatchObject({
+      bed: saved.bed, rotation_conflict_accepted: saved.rotation_conflict_accepted,
+    });
   });
 
   test('leaves the cell empty when the rotation fits', async ({ page }) => {

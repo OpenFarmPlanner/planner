@@ -190,7 +190,8 @@ harmless and is reset on the next move.
   cell shows the open conflict, accepted conflict or missing-data icon. The
   conflict popover explains the finding and offers bed occupancy, the crop's
   rotation-break settings and a checkbox that saves acceptance immediately.
-  The same popover can clear an acceptance. The existing Fruchtfolge filter
+  The same popover can clear an acceptance. The conflict action is available
+  after saving or discarding a row draft. The existing Fruchtfolge filter
   continues to find all three statuses. Mobile cards retain their existing
   conflict and missing-data indicators.
 - **Inline bed picker.** Double-click, Enter, F2 or typing opens the search.

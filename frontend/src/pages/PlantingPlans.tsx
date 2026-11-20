@@ -608,6 +608,10 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         location_id,
         field_id,
         bed,
+        // The stored assessment belongs to the saved bed. The save response
+        // supplies a new assessment, and a draft has none until it is saved.
+        rotation_status: undefined,
+        rotation_findings: undefined,
         ...(shouldAutofillArea && autofillArea !== undefined && autofillArea !== null && autofillArea > 0
           ? { area_m2: autofillArea }
           : {}),
@@ -953,6 +957,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         renderCell: (params) => {
           const row = params.row as PlantingPlanRow;
           const bedId = resolveBedCellValue(params.value, row);
+          const hasDraft = row.isNew || params.api?.getRowMode?.(params.id) === "edit";
           return (
             <PlantingPlanBedCell
               path={getBedPath(row)}
@@ -973,8 +978,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
                 areaSqm: toAreaNumericValue(row.area_m2 ?? row.area_usage_sqm, numberLocale),
                 planId: row.isNew ? null : row.id,
                 cultureLabel: row.crop_display_name ?? row.crop_name ?? "",
-                status: row.isNew ? null : row.rotation_status ?? null,
-                findings: row.rotation_findings ?? null,
+                status: hasDraft ? null : row.rotation_status ?? null,
+                findings: hasDraft ? null : row.rotation_findings ?? null,
               }}
               endAdornment={(
                 <>

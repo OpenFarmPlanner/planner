@@ -49,6 +49,7 @@ export function PlantingPlanBedCell({
   const [conflictAnchor, setConflictAnchor] = useState<HTMLButtonElement | null>(null);
   const [pathInteraction, setPathInteraction] = useState(false);
   const [rotationInteraction, setRotationInteraction] = useState(false);
+  const [savingBed, setSavingBed] = useState(false);
   const [pendingAcceptance, setPendingAcceptance] = useState<boolean | null>(null);
   const [saveError, setSaveError] = useState(false);
   const conflictId = useId();
@@ -76,17 +77,19 @@ export function PlantingPlanBedCell({
   const submitBed = async (bedId: number, freeAreaSqm: number | null): Promise<boolean> => {
     if (pendingSelectionRef.current) return false;
     pendingSelectionRef.current = true;
+    setSavingBed(true);
     try {
       return await onSelect(bedId, freeAreaSqm);
     } finally {
       pendingSelectionRef.current = false;
+      setSavingBed(false);
     }
   };
 
   const prefix = [path.locationName, path.fieldName].filter(Boolean).join(BED_PATH_SEPARATOR);
   const tooltip = [prefix, path.name].filter(Boolean).join(BED_PATH_SEPARATOR);
   const status = getTableRotationStatus(rotation.status, rotation.findings);
-  const showRotation = !readOnly && (status === 'conflict' || status === 'accepted' || status === 'info');
+  const showRotation = !readOnly && !savingBed && (status === 'conflict' || status === 'accepted' || status === 'info');
   const label = showRotation ? t(`bedPicker.rotation.${status}`) : '';
   const statusTooltip = status === 'info'
     ? getMissingDataLines(rotation.findings, t, rotation.cultureLabel).join(' ')
@@ -197,6 +200,7 @@ export function PlantingPlanBedCell({
           open
           anchorEl={conflictAnchor}
           onClose={() => {
+            if (pendingAcceptance !== null) return;
             setConflictAnchor(null);
             setRotationInteraction(false);
           }}
