@@ -57,7 +57,7 @@ export function MobilePlanActionsMenu({
         icon={action.icon} disabled={Boolean(action.disabledReason)} disabledReason={action.disabledReason}
         onClick={() => { onClose(); action.activate(anchorEl); }} />)}
       {navigationActions.length > 0 && <Divider role="separator" />}
-      <ContextMenuActionItem
+      {!row?.carried_over && <ContextMenuActionItem
         label={t("common:actions.edit")}
         icon={<EditIcon fontSize="small" />}
         onClick={() => {
@@ -66,8 +66,8 @@ export function MobilePlanActionsMenu({
           }
           onClose();
         }}
-      />
-      <ContextMenuActionItem
+      />}
+      {!row?.carried_over && <ContextMenuActionItem
         label={t("common:actions.duplicate")}
         icon={<ContentCopyIcon fontSize="small" />}
         onClick={() => {
@@ -76,7 +76,7 @@ export function MobilePlanActionsMenu({
           }
           onClose();
         }}
-      />
+      />}
       <ContextMenuActionItem
         label={t("plantingPlans:actions.copyPlantingPlan")}
         icon={<ContentCopyIcon fontSize="small" />}
@@ -87,8 +87,8 @@ export function MobilePlanActionsMenu({
           onClose();
         }}
       />
-      <Divider role="separator" />
-      <ContextMenuActionItem
+      {!row?.carried_over && <Divider role="separator" />}
+      {!row?.carried_over && <ContextMenuActionItem
         label={t("common:actions.delete")}
         icon={<DeleteIcon fontSize="small" />}
         color="error"
@@ -98,7 +98,7 @@ export function MobilePlanActionsMenu({
           }
           onClose();
         }}
-      />
+      />}
     </Menu>
   );
 }

@@ -73,6 +73,17 @@ def _iso_year_end(iso_year: int) -> date:
     return week_start_for_iso_year(iso_year + 1) if iso_year < date.max.year else date.max
 
 
+def _forecast_bounds(iso_year: int | None, season: Season | None) -> tuple[date, date]:
+    if season is None:
+        year = iso_year if iso_year is not None else date.today().year
+        return week_start_for_iso_year(year), _iso_year_end(year)
+    start = season.start_date
+    end = season.end_date + timedelta(days=1) if season.end_date < date.max else date.max
+    if iso_year is not None:
+        return max(start, week_start_for_iso_year(iso_year)), min(end, _iso_year_end(iso_year))
+    return start, end
+
+
 def build_yield_calendar(
     project: Project,
     iso_year: int,
@@ -104,15 +115,9 @@ def build_yield_forecast(
     include_incomplete: bool = True,
 ) -> dict[str, list[dict]]:
     """Build weekly yield rows and, if requested, explain omitted planting plans."""
-    full_season = season is not None and iso_year is None
-    if full_season:
-        start_year = min(season.start_date.year, season.start_date.isocalendar().year)
-        end_year = max(season.end_date.year, season.end_date.isocalendar().year)
-        season_id = season.pk
-    else:
-        start_year = end_year = iso_year if iso_year is not None else date.today().year
-    start = week_start_for_iso_year(start_year)
-    end = _iso_year_end(end_year)
+    start, end = _forecast_bounds(iso_year, season)
+    if start >= end:
+        return {'weeks': [], 'incomplete_plans': []}
 
     overlaps = Q(harvest_date__lt=end, harvest_end_date__gt=start)
     invalid_period = (
@@ -126,15 +131,24 @@ def build_yield_forecast(
         .prefetch_related('crop__crop_species__translations')
         .order_by('pk')
     )
-    if season_id is not None:
+    if season is not None:
+        plans = plans.filter(season__deleted_at__isnull=True).alias(
+            occupied_until=PlantingPlan.occupancy_end_expression(),
+        ).filter(
+            Q(season_id=season.pk) | Q(
+                planting_date__lt=season.start_date, occupied_until__gte=season.start_date,
+            ),
+        )
+    elif season_id is not None:
         plans = plans.filter(season_id=season_id)
     if include_incomplete:
-        if not full_season:
-            plans = plans.alias(
-                diagnostic_date=Coalesce('harvest_date', 'planting_date', 'harvest_end_date'),
-            )
-            invalid_period &= Q(diagnostic_date__gte=start, diagnostic_date__lt=end)
-        plans = plans.filter(overlaps | invalid_period)
+        plans = plans.alias(
+            diagnostic_date=Coalesce('harvest_date', 'harvest_end_date', 'planting_date'),
+        )
+        diagnosis_scope = Q(diagnostic_date__gte=start, diagnostic_date__lt=end)
+        if season is not None and iso_year is None:
+            diagnosis_scope |= Q(season_id=season.pk)
+        plans = plans.filter(overlaps | (invalid_period & diagnosis_scope))
     else:
         plans = plans.filter(overlaps & ~invalid_period)
 

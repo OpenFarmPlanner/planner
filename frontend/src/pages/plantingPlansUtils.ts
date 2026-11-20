@@ -400,6 +400,9 @@ export const areRowsSemanticallyEqual = (
       previousRow.plants_count === nextRow.plants_count &&
       previousRow.notes === nextRow.notes &&
       previousRow.crop === nextRow.crop &&
+      previousRow.season === nextRow.season &&
+      previousRow.carried_over === nextRow.carried_over &&
+      previousRow.origin_season_label === nextRow.origin_season_label &&
       previousRow.cultivation_type === nextRow.cultivation_type &&
       previousRow.planting_date === nextRow.planting_date &&
       previousRow.planned_propagation_start_date === nextRow.planned_propagation_start_date &&

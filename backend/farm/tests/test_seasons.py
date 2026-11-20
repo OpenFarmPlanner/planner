@@ -13,6 +13,7 @@ from farm.models import (
     BatchOperation,
     Crop,
     EntityRevision,
+    NoteAttachment,
     PlantingPlan,
     Project,
     Season,
@@ -473,7 +474,10 @@ class SeasonCopyServiceTest(ProjectApiTestCase):
             crop=self.crop, bed=self.bed, project=self.project, season=target, planting_date=date(2027, 4, 1),
         )
 
-        created_plans, skipped_count = copy_planting_plans(source_season=source, target_season=target)
+        created_plans, skipped_count, continuing = copy_planting_plans(
+            source_season=source, target_season=target,
+        )
+        self.assertEqual(continuing, 0)
 
         self.assertEqual(len(created_plans), 1)
         self.assertEqual(skipped_count, 0)
@@ -523,7 +527,10 @@ class SeasonCopyServiceTest(ProjectApiTestCase):
             planting_date=date(2025, 9, 1),
         )
 
-        created_plans, skipped_count = copy_planting_plans(source_season=source, target_season=target)
+        created_plans, skipped_count, continuing = copy_planting_plans(
+            source_season=source, target_season=target,
+        )
+        self.assertEqual(continuing, 0)
 
         self.assertEqual(len(created_plans), 1)
         self.assertEqual(skipped_count, 1)
@@ -548,7 +555,10 @@ class SeasonCopyServiceTest(ProjectApiTestCase):
             planting_date=date(2027, 3, 20),
         )
 
-        created_plans, skipped_count = copy_planting_plans(source_season=source, target_season=target)
+        created_plans, skipped_count, continuing = copy_planting_plans(
+            source_season=source, target_season=target,
+        )
+        self.assertEqual(continuing, 0)
 
         self.assertEqual(skipped_count, 0)
         self.assertEqual(
@@ -1433,6 +1443,107 @@ class SeasonApiTest(ProjectApiTestCase):
         self.assertEqual(response.status_code, 200)
         ids = [row['id'] for row in response.data['results']]
         self.assertEqual(ids, [plan_a.pk])
+
+    def test_carried_over_plans_use_inclusive_occupancy_and_are_read_only(self):
+        source = Season.objects.create(
+            project=self.project, start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
+            custom_label='Overwintering 25/26',
+        )
+        target = Season.objects.create(
+            project=self.project, start_date=date(2026, 9, 1), end_date=date(2027, 8, 31),
+        )
+        url = '/openfarmplanner/api/planting-plans/'
+        later = {'HTTP_X_SEASON_ID': str(target.pk)}
+        earlier = {'HTTP_X_SEASON_ID': str(source.pk)}
+
+        def add_plan(season, planting, harvest, harvest_end):
+            plan = PlantingPlan.objects.create(
+                project=self.project, season=season, crop=self.crop, bed=self.bed,
+                planting_date=planting,
+            )
+            PlantingPlan.objects.filter(pk=plan.pk).update(
+                harvest_date=harvest, harvest_end_date=harvest_end,
+            )
+            return plan
+
+        carried = add_plan(source, date(2026, 8, 1), date(2026, 8, 27), target.start_date)
+        outside = add_plan(source, date(2026, 8, 2), date(2026, 8, 27), source.end_date)
+        own = add_plan(target, target.start_date, date(2026, 9, 4), None)
+        with CaptureQueriesContext(connection) as queries:
+            later_plans = self.client.get(url, **later).json()['results']
+        self.assertEqual([row['id'] for row in later_plans], [own.pk, carried.pk])
+        self.assertFalse(later_plans[0]['carried_over'])
+        self.assertTrue(later_plans[1]['carried_over'])
+        self.assertEqual(later_plans[1]['season'], source.pk)
+        self.assertEqual(later_plans[1]['origin_season_label'], 'Overwintering 25/26')
+
+        fallback = add_plan(source, date(2026, 8, 3), target.start_date, None)
+        with self.assertNumQueries(len(queries)):
+            extra_rows = self.client.get(url, **later).json()['results']
+        self.assertEqual({row['id'] for row in extra_rows}, {own.pk, carried.pk, fallback.pk})
+        self.assertTrue(next(row for row in extra_rows if row['id'] == fallback.pk)['carried_over'])
+        self.assertEqual(self.client.get(f'{url}{outside.pk}/', **later).status_code, 404)
+        details = self.client.get(f'{url}{carried.pk}/', **later)
+        self.assertEqual(details.status_code, 200, details.data)
+        self.assertTrue(details.json()['carried_over'])
+        blocked = self.client.patch(f'{url}{carried.pk}/', {'notes': 'Blocked edit'}, **later)
+        self.assertEqual(blocked.status_code, 404)
+        self.assertEqual(self.client.delete(f'{url}{carried.pk}/', **later).status_code, 404)
+        updated = self.client.patch(f'{url}{carried.pk}/', {'notes': 'Origin edit'}, **earlier)
+        self.assertEqual(updated.status_code, 200, updated.data)
+        self.assertFalse(updated.json()['carried_over'])
+        carried.refresh_from_db()
+        self.assertEqual(carried.notes, 'Origin edit')
+        self.assertEqual(carried.season_id, source.id)
+
+        attachment = NoteAttachment.objects.create(
+            project=self.project, planting_plan=carried, image='notes/overwintering.webp',
+        )
+        attachment_list = f'/openfarmplanner/api/notes/{carried.pk}/attachments/'
+        attachment_detail = f'/openfarmplanner/api/attachments/{attachment.pk}/'
+        self.assertEqual(self.client.get(attachment_list, **later).json()[0]['id'], attachment.pk)
+        self.assertEqual(self.client.post(attachment_list, {}, **later).status_code, 404)
+        self.assertEqual(self.client.delete(attachment_detail, **later).status_code, 404)
+        self.assertEqual(self.client.post(attachment_list, {}, **earlier).status_code, 400)
+        self.assertTrue(NoteAttachment.objects.filter(pk=attachment.pk).exists())
+
+    def test_copy_skips_plans_already_active_in_target_for_both_date_bases(self):
+        source = Season.objects.create(
+            project=self.project, start_date=date(2025, 1, 1), end_date=date(2025, 12, 31),
+        )
+        target = Season.objects.create(
+            project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+        )
+        winter = PlantingPlan.objects.create(
+            project=self.project, season=source, crop=self.crop, bed=self.bed,
+            planting_date=date(2025, 10, 14), notes='Overwintering fixture',
+            actual_harvest_start_date=date(2026, 6, 25),
+        )
+        PlantingPlan.objects.filter(pk=winter.pk).update(harvest_end_date=date(2026, 7, 10))
+        ending = PlantingPlan.objects.create(
+            project=self.project, season=source, crop=self.crop, bed=self.bed,
+            cultivation_type='direct_sowing', planting_date=date(2025, 10, 2),
+            notes='Ends before the first day', actual_sowing_date=date(2025, 10, 3),
+        )
+        PlantingPlan.objects.filter(pk=ending.pk).update(harvest_end_date=source.end_date)
+        previous = PlantingPlan.objects.values().get(pk=winter.pk)
+        url = f'/openfarmplanner/api/seasons/{target.pk}/'
+        for use_actual_dates in (False, True):
+            with self.subTest(use_actual_dates=use_actual_dates):
+                options = {'source_season_id': source.pk, 'use_actual_dates': use_actual_dates}
+                preview = self.client.get(f'{url}copy-preview/', options)
+                self.assertEqual(preview.status_code, 200, preview.data)
+                self.assertEqual(preview.data['total'], 1)
+                self.assertEqual(preview.data['continuing_count'], 1)
+                copied = self.client.post(f'{url}copy-from/', options)
+                self.assertEqual(copied.status_code, 200, copied.data)
+                self.assertEqual(copied.data['copied_count'], preview.data['total'])
+                self.assertEqual(copied.data['continuing_count'], preview.data['continuing_count'])
+        self.assertCountEqual(
+            PlantingPlan.objects.filter(season=target).values_list('planting_date', flat=True),
+            [date(2026, 10, 2), date(2026, 10, 3)],
+        )
+        self.assertEqual(PlantingPlan.objects.values().get(pk=winter.pk), previous)
 
 
 class SeasonPeriodEditApiTest(ProjectApiTestCase):

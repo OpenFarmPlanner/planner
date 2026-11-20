@@ -197,6 +197,36 @@ class YieldCalendarAPITest(TestCase):
             sum(Decimal(str(week['crops'][0]['yield'])) for week in all_weeks), Decimal('0.47'),
         )
 
+    def test_harvest_is_split_at_the_actual_september_season_boundary(self):
+        source = Season.objects.create(
+            project=self.project, start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
+        )
+        target = Season.objects.create(
+            project=self.project, start_date=date(2026, 9, 1), end_date=date(2027, 8, 31),
+        )
+        crop = Crop.objects.create(
+            name='Overwintering garlic', harvest_method='per_sqm', expected_yield=7,
+            project=self.project,
+        )
+        plan = self._create_plan(
+            crop=crop, area_usage_sqm=10,
+            harvest_start=date(2026, 8, 28), harvest_end=date(2026, 9, 4),
+        )
+        PlantingPlan.objects.filter(pk=plan.pk).update(
+            season=source, planting_date=date(2025, 10, 14),
+        )
+        url = '/openfarmplanner/api/yield-calendar/'
+
+        def forecast(season, params=None):
+            response = self.client.get(url, params or {}, HTTP_X_SEASON_ID=str(season.pk))
+            self.assertEqual(response.status_code, 200, response.data)
+            return {week['iso_week']: week['crops'][0]['yield'] for week in response.json()}
+
+        self.assertEqual(forecast(source), {'2026-W35': 30, '2026-W36': 10})
+        self.assertEqual(forecast(target), {'2026-W36': 30})
+        self.assertEqual(forecast(target, {'year': 2026}), {'2026-W36': 30})
+        self.assertEqual(forecast(target, {'year': 2027}), {})
+
     def test_yield_calendar_localizes_linked_crop_species_name(self):
         species = CropSpecies.objects.create(name='Yield Calendar Localized Species')
         CropSpeciesTranslation.objects.create(species=species, language_code='de', common_name='Ackerbohne')

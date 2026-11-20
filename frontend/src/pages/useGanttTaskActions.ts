@@ -5,7 +5,7 @@ import { plantingPlanAPI, type PlantingPlan } from '../api/api';
 import { extractApiErrorMessage } from '../api/errors';
 import { confirmAction } from '../utils/confirmAction';
 import { copyTextToClipboardSilently } from '../components/data-grid';
-import { plantingPlanDetailPath } from '../planting-plans/plantingPlanDetailRoutes';
+import { plantingPlanDetailPath, PLANTING_PLANS_PATH } from '../planting-plans/plantingPlanDetailRoutes';
 import {
   formatCropDisplayLabel,
   formatGanttDate,
@@ -19,6 +19,7 @@ interface UseGanttTaskActionsParams {
   setPlantingPlans: Dispatch<SetStateAction<PlantingPlan[]>>;
   setError: Dispatch<SetStateAction<string | null>>;
   t: TFunction;
+  switchActiveSeason?: (seasonId: number, destination?: string) => void;
 }
 
 /**
@@ -32,6 +33,7 @@ export function useGanttTaskActions({
   setPlantingPlans,
   setError,
   t,
+  switchActiveSeason,
 }: UseGanttTaskActionsParams) {
   const openPlantingPlanFromTask = useCallback((task: GanttTask, options?: { edit?: boolean; details?: boolean }) => {
     if (task.plantingPlanId) {
@@ -39,12 +41,19 @@ export function useGanttTaskActions({
         void navigate(plantingPlanDetailPath(task.plantingPlanId));
         return;
       }
-      const query = options?.edit ? `planId=${task.plantingPlanId}&edit=true` : `planId=${task.plantingPlanId}`;
+      const query = options?.edit && !task.readOnly
+        ? `planId=${task.plantingPlanId}&edit=true` : `planId=${task.plantingPlanId}`;
       navigate(`/app/planting-plans?${query}`);
       return;
     }
     navigate('/app/planting-plans');
   }, [navigate]);
+
+  const openOriginSeasonFromTask = useCallback((task: GanttTask) => {
+    if (task.originSeasonId && task.plantingPlanId) {
+      switchActiveSeason?.(task.originSeasonId, `${PLANTING_PLANS_PATH}?planId=${task.plantingPlanId}`);
+    }
+  }, [switchActiveSeason]);
 
   // Stable (task) => void wrapper so it can be passed directly as a
   // GanttChartProps callback without a fresh inline arrow on every render.
@@ -82,7 +91,7 @@ export function useGanttTaskActions({
   }, []);
 
   const deletePlantingPlanFromTask = useCallback(async (task: GanttTask) => {
-    if (!task.plantingPlanId) return;
+    if (!task.plantingPlanId || task.readOnly) return;
     const confirmed = confirmAction(t('ganttChart:contextMenu.confirmDeletePlan'));
     if (!confirmed) return;
     try {
@@ -101,5 +110,6 @@ export function useGanttTaskActions({
     openAreasPage,
     copyTaskSummary,
     deletePlantingPlanFromTask,
+    openOriginSeasonFromTask,
   };
 }

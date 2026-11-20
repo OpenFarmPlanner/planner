@@ -6,6 +6,8 @@ export interface Task {
   color?: string;
   percent?: number;
   dependencies?: string[];
+  readOnly?: boolean;
+  accessibleLabel?: string;
   /**
    * Tasks in the same row sharing this id are moved together as one unit
    * (e.g. the phases of one planting plan): dragging any of them shifts all

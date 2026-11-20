@@ -192,7 +192,10 @@
             "description": "Seules les {{ok}} séries sans conflit sont copiées."
           }
         }
-      }
+      },
+      "continuingPlans_one": "{{count}} série se poursuit et reste dans sa saison d’origine.",
+      "continuingPlans_other": "{{count}} séries se poursuivent et restent dans leur saison d’origine.",
+      "continuingPlans_many": "{{count}} séries se poursuivent et restent dans leur saison d’origine."
     }
   },
   "seasonSetup": {

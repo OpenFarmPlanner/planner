@@ -119,13 +119,14 @@ export function useActiveSeason() {
   // reload the app the same deliberate way a project switch does (see
   // AuthContext.switchActiveProject) rather than trying to invalidate every
   // page's in-flight state individually.
-  const switchSeason = useCallback((seasonId: number) => {
+  const switchSeason = useCallback((seasonId: number, destination?: string) => {
     if (!activeProjectId) {
       return;
     }
     setStoredActiveSeasonId(activeProjectId, seasonId);
     stashSeasonSwitchState(activeProjectId);
-    window.location.reload();
+    if (destination) window.location.assign(destination);
+    else window.location.reload();
   }, [activeProjectId]);
 
   const createSeason = useCallback(async (

@@ -460,5 +460,14 @@
       "harvestStart": "Werkelijk begin van de oogst",
       "harvestEnd": "Werkelijk einde van de oogst"
     }
+  },
+  "carriedOver": {
+    "badge": "Uit seizoen {{season}}",
+    "description": "Loopt door vanuit seizoen {{season}}. Hier alleen-lezen.",
+    "unknownBadge": "Loopt door",
+    "unknownDescription": "Eerder begonnen teelt. Hier alleen-lezen.",
+    "openOrigin": "Openen in het oorspronkelijke seizoen",
+    "count_one": "{{own}} gestart in dit seizoen · {{count}} loopt door",
+    "count_other": "{{own}} gestart in dit seizoen · {{count}} lopen door"
   }
 }
