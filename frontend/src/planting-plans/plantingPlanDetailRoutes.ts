@@ -1,7 +1,8 @@
 export const PLANTING_PLANS_PATH = '/app/planting-plans';
 
 export function plantingPlanDetailPath(planId: number, tablePath = PLANTING_PLANS_PATH): string {
-  return `${tablePath.replace(/\/$/, '')}/${planId}`;
+  // Accept a path that already carries a plan id so a detail path is never nested.
+  return `${tablePath.replace(/\/\d*$/, '')}/${planId}`;
 }
 
 export function plantingPlanIdFromPath(value: string | undefined): number | null {
