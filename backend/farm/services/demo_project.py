@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -1926,6 +1926,27 @@ def _create_demo_harvests(project: Project, crops, beds, language: str, year: in
         project=project, crop=tomato, date=date(year, 8, 14), quantity=2,
         unit=HarvestUnit.KILOGRAM,
     )
+    # Two complete measured potato seasons, with a gap in the record between them.
+    for offset, bed_key, amount, harvested_area in (
+        (0, 'kartoffel-1', '46.75', '16.5'), (0, 'kartoffel-2', '41.75', None),
+        (-2, 'kartoffel-1', '50.25', None), (-2, 'kohlbeet', '41.5', None),
+    ):
+        plan = plans.get(
+            crop=crops['kartoffel'], bed=beds[bed_key], planting_date__year=year + offset,
+        )
+        day = date(year + offset, 8, 5)
+        plans.filter(pk=plan.pk).update(
+            actual_sowing_date=plan.planting_date + timedelta(days=2),
+            actual_harvest_start_date=day, recorded_harvest_end_date=day,
+        )
+        record = HarvestRecord.objects.create(
+            project=project, crop_id=plan.crop_id, date=day,
+            quantity=amount, unit=HarvestUnit.KILOGRAM,
+        )
+        HarvestAllocation.objects.create(
+            project=project, harvest=record, planting_plan=plan, quantity=amount,
+            harvested_area_sqm=harvested_area,
+        )
 
 
 def _create_demo_crop_losses(project: Project, crops, beds, language: str, year: int) -> None:

@@ -1,6 +1,7 @@
 """Plan-level yield forecasts and their allocation across ISO harvest weeks."""
 
 from collections import defaultdict
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -18,6 +19,11 @@ from farm.services.crop_inheritance import (
 from farm.services.plant_count import PLANT_COUNT_BLOCKER_MISSING_AREA, compute_plan_plant_count
 
 _YIELD_PRECISION = Decimal('0.01')
+_COPIED_FORECAST_FIELDS = (
+    'copied_from_plan_id', 'season_id', 'crop_id', 'bed_id', 'cultivation_type',
+    'planting_date', 'planned_propagation_start_date', 'planned_sowing_date',
+    'harvest_date', 'harvest_end_date', 'clearing_date', 'area_usage_sqm', 'quantity',
+)
 
 
 @dataclass(frozen=True)
@@ -56,6 +62,18 @@ def compute_plan_expected_yield(
     if blockers:
         return PlanExpectedYield(None, tuple(blockers))
     return PlanExpectedYield(rate * quantity)
+
+
+def distinct_forecast_plans(plans: Iterable[PlantingPlan]) -> Iterator[PlantingPlan]:
+    """Count repeated copies of an unchanged forecast in one target season once."""
+    seen = set()
+    for plan in plans:
+        if plan.copied_from_plan_id is not None:
+            key = tuple(getattr(plan, name) for name in _COPIED_FORECAST_FIELDS)
+            if key in seen:
+                continue
+            seen.add(key)
+        yield plan
 
 
 def week_start_for_iso_year(iso_year: int) -> date:
@@ -155,7 +173,7 @@ def build_yield_forecast(
     general_crops = build_general_crop_index(project.pk)
     weekly_data: dict[date, dict[tuple, Decimal]] = defaultdict(lambda: defaultdict(Decimal))
     incomplete_plans = []
-    for plan in plans:
+    for plan in distinct_forecast_plans(plans):
         expected = compute_plan_expected_yield(plan, general_crops)
         harvest_start, harvest_end = plan.harvest_date, plan.harvest_end_date
         has_window = (
@@ -195,6 +213,22 @@ def _next_week(week_start: date) -> date:
     return week_start + timedelta(days=min(7, (date.max - week_start).days))
 
 
+def _plan_yield_through(kilograms: Decimal, start: date, end: date, day: date) -> Decimal:
+    return (kilograms * (day - start).days / (end - start).days).quantize(
+        _YIELD_PRECISION, rounding=ROUND_HALF_UP,
+    )
+
+
+def forecast_yield_in_period(
+    kilograms: Decimal, harvest_start: date, harvest_end: date, start: date, end: date,
+) -> Decimal:
+    """Use the same cumulative rounding as the calendar for a half-open period."""
+    return (
+        _plan_yield_through(kilograms, harvest_start, harvest_end, min(harvest_end, end))
+        - _plan_yield_through(kilograms, harvest_start, harvest_end, max(harvest_start, start))
+    )
+
+
 def _accumulate_plan_yield(
     weekly_data: dict[date, dict[tuple, Decimal]],
     plan: PlantingPlan,
@@ -207,7 +241,6 @@ def _accumulate_plan_yield(
     """Allocate the rounded cumulative yield between each pair of week boundaries."""
     harvest_start = plan.harvest_date
     harvest_end = plan.harvest_end_date
-    total_days = (harvest_end - harvest_start).days
     overlap_start = max(harvest_start, start)
     overlap_limit = min(harvest_end, end)
     week_start = overlap_start - timedelta(days=overlap_start.weekday())
@@ -217,16 +250,11 @@ def _accumulate_plan_yield(
         plan.crop.display_color or '#3b82f6',
     )
 
-    def allocated_through(day: date) -> Decimal:
-        return (kilograms * (day - harvest_start).days / total_days).quantize(
-            _YIELD_PRECISION, rounding=ROUND_HALF_UP,
-        )
-
-    allocated = allocated_through(overlap_start)
+    allocated = _plan_yield_through(kilograms, harvest_start, harvest_end, overlap_start)
     while overlap_start < overlap_limit:
         week_end = _next_week(week_start)
         overlap_end = min(week_end, overlap_limit)
-        next_allocated = allocated_through(overlap_end)
+        next_allocated = _plan_yield_through(kilograms, harvest_start, harvest_end, overlap_end)
         if next_allocated > allocated:
             weekly_data[week_start][crop_key] += next_allocated - allocated
         allocated = next_allocated

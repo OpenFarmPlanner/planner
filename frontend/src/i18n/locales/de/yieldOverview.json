@@ -48,5 +48,37 @@
       "zero_plant_count": "Berechnete Pflanzenzahl ist null",
       "missing_harvest_period": "Erntezeitraum fehlt oder ist ungültig"
     }
+  },
+  "comparison": {
+    "view": "Ansicht der Ertragsübersicht",
+    "calendar": "Prognosekalender",
+    "seasons": "Saisonen vergleichen",
+    "chooseCrop": "Kultur auswählen",
+    "noCrops": "Lege einen Anbauplan an oder erfasse eine Ernte, um eine Kultur über mehrere Saisonen zu vergleichen.",
+    "noSeasons": "Es sind keine Saisonen zum Vergleichen vorhanden.",
+    "season": "Saison",
+    "forecast": "Ertragsprognose",
+    "recorded": "Erntemenge",
+    "notRecorded": "Nicht erfasst",
+    "harvestRecorded": "Ernte erfasst",
+    "zeroRecorded": "Null erfasst",
+    "noForecast": "Keine Prognose verfügbar",
+    "forecastCoverage": "Prognose für {{included}} von {{total}} Anbauplänen",
+    "harvestCoverage": "Ernte für {{included}} von {{total}} Anbauplänen der Prognose zugeordnet",
+    "estimated": "{{value}} geschätzt",
+    "unassigned": "{{value}} ohne Zuordnung",
+    "assignedPlans": "Anbaupläne mit Zuordnung ({{count}})",
+    "noAreaYield": "Kein Ertrag pro m² verfügbar",
+    "noMass": "Kein Gewicht verfügbar",
+    "details": "Termine und Beobachtungen",
+    "activityDates": "Termine in der Anbausaison",
+    "openPlan": "Anbauplan öffnen",
+    "harvestedAreaYield": "Ertrag pro m² beernteter Fläche",
+    "chartTitle": "Vergleichbarer Ertrag",
+    "chartScope": "Hier erscheinen Saisonen, in denen für dieselben Anbaupläne gewogene Ernten und eine vollständige Prognose vorliegen.",
+    "chartEmpty": "Für keine Saison liegen gewogene Ernten und eine vollständige Prognose für dieselben Anbaupläne vor.",
+    "chartValues": "Ertrag für {{season}} ({{period}})",
+    "axis": "Ertrag in Kilogramm",
+    "tableScope": "Erntemengen zählen zur Saison ihres Erntedatums. Der erfasste Ertrag pro m² bezieht sich auf die gesamte Fläche der Anbaupläne mit zugeordneter Ernte."
   }
 }

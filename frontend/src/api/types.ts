@@ -1890,6 +1890,50 @@ export interface YieldCalendarForecast {
   incomplete_plans: IncompleteYieldPlan[];
 }
 
+export type YieldComparisonCropTiming = Pick<PlantingPlan,
+  'crop_cultivation_type' | 'crop_cultivation_types' | 'crop_propagation_duration_days'>;
+
+export type YieldComparisonPlanDates = PlantingPlanActualDates & Pick<PlantingPlan,
+  'cultivation_type' | 'planting_date' | 'planned_propagation_start_date' | 'planned_sowing_date'
+  | 'harvest_date' | 'harvest_end_date'> & { id: number; bed_name: string };
+
+export interface YieldComparisonSeason {
+  id: number;
+  label: string;
+  start_date: string;
+  end_date: string;
+  forecast_kg: string | null;
+  forecast_kg_per_sqm: string | null;
+  forecast_plan_count: number;
+  expected_plan_count: number;
+  recorded: HarvestTotals;
+  unassigned: HarvestQuantity[];
+  assigned_plan_count: number;
+  assigned_forecast_plan_count: number;
+  recorded_kg_per_plan_sqm: string | null;
+  recorded_kg_per_plan_sqm_estimated: boolean;
+  comparable: boolean;
+  harvested_areas: {
+    id: number;
+    date: string;
+    plan_id: number;
+    bed_name: string;
+    area_sqm: string;
+    kg_per_sqm: string | null;
+    estimated: boolean;
+  }[];
+  losses: (Pick<CropLoss, 'id' | 'date' | 'loss_type' | 'cause' | 'extent_value' | 'extent_unit'> & {
+    planting_plan_id: number;
+    bed_name: string;
+  })[];
+  plan_dates: YieldComparisonPlanDates[];
+}
+
+export interface YieldComparison {
+  crop_timing: YieldComparisonCropTiming;
+  seasons: YieldComparisonSeason[];
+}
+
 export interface PaginatedResponse<T> {
   count: number;
   next: string | null;

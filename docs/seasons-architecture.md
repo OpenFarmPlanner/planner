@@ -184,6 +184,21 @@ description), one level down:
   response has `weeks` and `incomplete_plans`. It gives the yield overview the
   scoped plan IDs and their calculation blockers. The default response is the
   array of weeks.
+- **Compare seasons** in Yield overview reads `/yield-calendar/comparison/`.
+  Each crop's forecasts use the same half-open harvest windows and cumulative
+  rounding as the calendar. Identical forecasts copied from the same source
+  into the same target season contribute once. An edited bed, area or planned
+  date can give a copy a separate forecast. Harvests and losses follow the
+  recorded event date, including events attributed to an older planting plan.
+  The plan's activity date comparisons stay in its planting season.
+- Comparison totals include each harvest record once, across all of its
+  allocations and any unassigned remainder. Gram and kilogram records share
+  a mass total. Counts and weight estimates appear separately. Recorded
+  yield per m² uses the full area of each plan with assigned harvest, counted
+  once. Individual harvests with a recorded area show their own rate separately.
+  A chart pair uses measured mass and complete forecasts for the same plans.
+  A season without harvest records has unknown yield, including when a loss
+  incident was recorded. The harvest-entry model accepts positive quantities.
 
 There is no server-persisted "last active season" (unlike
 `UserProjectSettings.last_project`); it is a client-only, per-project

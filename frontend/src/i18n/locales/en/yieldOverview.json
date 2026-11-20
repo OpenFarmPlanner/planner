@@ -48,5 +48,37 @@
       "zero_plant_count": "Calculated plant count is zero",
       "missing_harvest_period": "Harvest period is missing or invalid"
     }
+  },
+  "comparison": {
+    "view": "Yield overview view",
+    "calendar": "Forecast calendar",
+    "seasons": "Compare seasons",
+    "chooseCrop": "Choose a crop",
+    "noCrops": "Add a planting plan or harvest record to compare a crop across seasons.",
+    "noSeasons": "There are no seasons to compare.",
+    "season": "Season",
+    "forecast": "Forecast yield",
+    "recorded": "Harvested quantity",
+    "notRecorded": "Not recorded",
+    "harvestRecorded": "Harvest recorded",
+    "zeroRecorded": "Zero recorded",
+    "noForecast": "Forecast unavailable",
+    "forecastCoverage": "Forecast for {{included}} of {{total}} plans",
+    "harvestCoverage": "Harvest assigned for {{included}} of {{total}} forecast plans",
+    "estimated": "{{value}} estimated",
+    "unassigned": "{{value}} unassigned",
+    "assignedPlans": "Assigned plans ({{count}})",
+    "noAreaYield": "Yield per m² unavailable",
+    "noMass": "Weight unavailable",
+    "details": "Dates and observations",
+    "activityDates": "Activity dates in the planting season",
+    "openPlan": "Open planting plan",
+    "harvestedAreaYield": "Yield per m² of harvested area",
+    "chartTitle": "Comparable yield",
+    "chartScope": "Only seasons with measured harvest and a complete forecast for the same plans appear here.",
+    "chartEmpty": "No season has measured harvest and a complete forecast for the same plans.",
+    "chartValues": "Yield for {{season}} ({{period}})",
+    "axis": "Yield in kilograms",
+    "tableScope": "Harvest quantities follow the date of each record. Recorded yield per m² uses the full area of the plans with assigned harvests."
   }
 }

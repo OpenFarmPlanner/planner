@@ -33,6 +33,7 @@ import type {
   SeedDemand,
   YoungPlantDemand,
   YieldCalendarForecast,
+  YieldComparison,
   YieldCalendarWeek,
   NoteAttachment,
   CropHistoryEntry,
@@ -629,6 +630,12 @@ export const yieldCalendarAPI = {
     }),
   forecast: () => http.get<YieldCalendarForecast>('/yield-calendar/', {
     params: { include_incomplete: true },
+  }),
+  comparisonCrops: (signal: AbortSignal) => http.get<{ crops: { id: number; name: string }[] }>(
+    '/yield-calendar/comparison/', { signal },
+  ),
+  comparison: (cropId: number, signal: AbortSignal) => http.get<YieldComparison>('/yield-calendar/comparison/', {
+    params: { crop_id: cropId }, signal,
   }),
 };
 
