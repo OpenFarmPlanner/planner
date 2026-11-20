@@ -779,17 +779,21 @@ async function expectSearchToolbar(input: Locator, filter: Locator, selection: L
   await expect(input).toBeVisible();
   await expect(filter).toBeVisible();
   await expect(selection).toBeVisible();
-  const field = (await input.locator('xpath=ancestor::*[contains(@class,"MuiTextField-root")][1]').boundingBox())!;
-  const filterBox = (await filter.boundingBox())!;
-  const selectionBox = (await selection.boundingBox())!;
-  expect(field.width).toBeGreaterThan(80);
-  expect(field.x + field.width).toBeLessThanOrEqual(filterBox.x);
-  expect(filterBox.x + filterBox.width).toBeLessThanOrEqual(selectionBox.x);
-  for (const button of [filterBox, selectionBox]) {
-    expect(button.width).toBeGreaterThanOrEqual(40);
-    expect(button.height).toBeGreaterThanOrEqual(40);
-    expect(button.y + button.height / 2).toBeCloseTo(field.y + field.height / 2, 0);
-  }
+  const field = input.locator('xpath=ancestor::*[contains(@class,"MuiTextField-root")][1]');
+  // The navigation sidebar can still move the toolbar after a viewport resize.
+  await expect(async () => {
+    const [fieldBox, filterBox, selectionBox] = await Promise.all(
+      [field, filter, selection].map(async locator => (await locator.boundingBox())!),
+    );
+    expect(fieldBox.width).toBeGreaterThan(80);
+    expect(fieldBox.x + fieldBox.width).toBeLessThanOrEqual(filterBox.x);
+    expect(filterBox.x + filterBox.width).toBeLessThanOrEqual(selectionBox.x);
+    for (const button of [filterBox, selectionBox]) {
+      expect(button.width).toBeGreaterThanOrEqual(40);
+      expect(button.height).toBeGreaterThanOrEqual(40);
+      expect(button.y + button.height / 2).toBeCloseTo(fieldBox.y + fieldBox.height / 2, 0);
+    }
+  }).toPass({ timeout: 5_000 });
 }
 
 test.describe('bulk library import', () => {
