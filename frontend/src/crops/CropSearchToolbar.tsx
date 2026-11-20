@@ -44,7 +44,7 @@ export function CropSearchFilterButton({ activeCount, open, popoverId, onClick, 
   const label = t('filters.openAdvanced');
   const size = touch ? 48 : 40;
   return (
-    <AppTooltip title={label}>
+    <AppTooltip title={label} disableInteractive>
       <IconButton
         size="small"
         aria-label={label}

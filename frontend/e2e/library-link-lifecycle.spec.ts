@@ -828,7 +828,9 @@ test.describe('bulk library import', () => {
       await search.focus();
       await search.press('Tab');
       await expect(filter).toBeFocused();
-      await expect(page.getByRole('tooltip', { name: germanCrops.filters.openAdvanced })).toBeVisible();
+      const filterTooltip = page.getByRole('tooltip', { name: germanCrops.filters.openAdvanced });
+      await expect(filterTooltip).toBeVisible();
+      await expect(filterTooltip).toHaveCSS('pointer-events', 'none');
       await filter.press('Enter');
       const resetFilters = page.getByRole('button', { name: germanCrops.filters.reset, exact: true });
       await expect(resetFilters).toBeVisible();
