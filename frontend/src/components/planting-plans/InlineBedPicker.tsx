@@ -105,7 +105,13 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
     if (submitting || !hasRoom(option)) return;
     if (option.id !== selected?.id) {
       setSubmitting(true);
-      await onSelect(option.id, suggestionsByBed.get(option.id)?.free_area_sqm ?? null);
+      try {
+        await onSelect(option.id, suggestionsByBed.get(option.id)?.free_area_sqm ?? null);
+      } catch {
+        // Keep the picker usable so the user can retry or dismiss it.
+        setSubmitting(false);
+        return;
+      }
     }
     onClose(true);
   };
