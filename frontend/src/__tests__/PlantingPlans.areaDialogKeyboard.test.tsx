@@ -48,6 +48,7 @@ vi.mock("../api/api", async () => {
       list: apiMocks.planList,
       listAll: async () => (await apiMocks.planList()).data,
       update: apiMocks.planUpdate,
+      bedSuggestions: vi.fn().mockResolvedValue({ data: { results: [] } }),
     },
   };
 });
@@ -75,6 +76,12 @@ const expectNoPicker = async (): Promise<void> => {
   await waitFor(() => {
     expect(queryPickers()).toHaveLength(0);
   });
+};
+
+const pickSecondBed = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  const option = await screen.findByRole("option", { name: /^Beet 2/ });
+  await waitFor(() => expect(option).not.toHaveAttribute("aria-disabled", "true"));
+  await user.click(option);
 };
 
 const focusCell = async (cell: HTMLElement): Promise<void> => {
@@ -178,7 +185,7 @@ describe("PlantingPlans growing-area cell keyboard editing", () => {
     await openFocusedBedPickerWithEnter(user, 10);
     await findPicker();
 
-    await user.click(await screen.findByRole("option", { name: /^Beet 2/ }));
+    await pickSecondBed(user);
 
     await waitFor(() => {
       expect(apiMocks.planUpdate).toHaveBeenCalledWith(10, expect.objectContaining({ bed: 102 }));
@@ -260,7 +267,7 @@ describe("PlantingPlans growing-area cell keyboard editing", () => {
     await user.tab();
     await openFocusedBedPickerWithEnter(user, 10);
     await findPicker();
-    await user.click(screen.getByRole("option", { name: /^Beet 2/ }));
+    await pickSecondBed(user);
     await expectNoPicker();
 
     await waitFor(() => {

@@ -1,6 +1,8 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { apiRequest, loginWithDeterministicProject } from './utils';
 
+test.use({ serviceWorkers: 'block' });
+
 const cell = (page: Page, field: string) => page.locator(`[role="gridcell"][data-field="${field}"]`).first();
 const picker = (page: Page) => page.getByRole('combobox', { name: 'Beete suchen' });
 const beds = (page: Page) => page.getByRole('listbox', { name: 'Beet' });
@@ -110,6 +112,7 @@ test.describe('inline bed picker', () => {
     expect(await apiRequest(page, 'GET', `/planting-plans/${plan}/`)).toMatchObject({ bed: original });
 
     await cell(page, 'bed').dblclick();
+    await expect(beds(page).getByRole('option', { name: /Salat 2/ })).toBeEnabled();
     await picker(page).press('ArrowDown');
     await picker(page).press('Enter');
     await expect(cell(page, 'bed')).toContainText('Salat 2');
@@ -164,6 +167,34 @@ test.describe('inline bed picker', () => {
     await option.click();
     await expect(cell(page, 'bed')).toContainText('Salat 2');
     expect(await apiRequest(page, 'GET', path)).toMatchObject({ bed: nearby });
+  });
+
+  test('waits for capacity before allowing a different bed to be chosen', async ({ page, request }) => {
+    const { plan, original, nearby } = await seedBeds(page, request, 'bed-picker-capacity');
+    await apiRequest(page, 'PATCH', `/beds/${nearby}/`, { area_sqm: 1 });
+    let releaseCheck = () => {};
+    const capacityPending = new Promise<void>((resolve) => { releaseCheck = resolve; });
+    let capacityRequested = false;
+    await page.route(/\/planting-plans\/bed-suggestions\//, async (route) => {
+      capacityRequested = true;
+      await capacityPending;
+      await route.continue();
+    });
+    await cell(page, 'bed').dblclick();
+    const fullBed = beds(page).getByRole('option', { name: /Salat 2/ });
+    try {
+      await expect.poll(() => capacityRequested).toBe(true);
+      await expect(beds(page)).toHaveAttribute('aria-busy', 'true');
+      await expect(fullBed).toBeDisabled();
+      await picker(page).fill('Salat 2');
+      await picker(page).press('Enter');
+      await expect(picker(page)).toBeVisible();
+    } finally {
+      releaseCheck();
+    }
+    await expect(beds(page)).toHaveAttribute('aria-busy', 'false');
+    await expect(fullBed).toBeDisabled();
+    expect(await apiRequest(page, 'GET', `/planting-plans/${plan}/`)).toMatchObject({ bed: original });
   });
 });
 

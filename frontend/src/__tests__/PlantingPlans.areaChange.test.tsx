@@ -70,6 +70,7 @@ vi.mock("../api/api", async () => {
       list: apiMocks.planList,
       listAll: async () => (await apiMocks.planList()).data,
       update: apiMocks.planUpdate,
+      bedSuggestions: vi.fn().mockResolvedValue({ data: { results: [] } }),
     },
   };
 });
@@ -97,7 +98,9 @@ const changeGrowingAreaToBedB = async (
 ): Promise<void> => {
   await user.dblClick(cellOf("bed")!);
   await screen.findByRole("combobox", { name: "Beete suchen" });
-  await user.click(await screen.findByRole("option", { name: /Beet B/ }));
+  const option = await screen.findByRole("option", { name: /Beet B/ });
+  await waitFor(() => expect(option).not.toHaveAttribute("aria-disabled", "true"));
+  await user.click(option);
   await waitFor(() =>
     expect(screen.queryByRole("combobox", { name: "Beete suchen" })).not.toBeInTheDocument());
 };

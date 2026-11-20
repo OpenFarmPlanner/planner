@@ -64,10 +64,11 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
   const suggestionsByBed = useMemo(() => new Map(
     suggestions.data?.results.map((suggestion) => [suggestion.bed_id, suggestion]) ?? [],
   ), [suggestions.data]);
-  const hasRoom = (option: BedPickerOption) => (
-    option.id === selected?.id || suggestionsByBed.get(option.id)?.has_enough_area !== false
+  const canChoose = (option: BedPickerOption) => (
+    option.id === selected?.id
+    || (!suggestions.isLoading && suggestionsByBed.get(option.id)?.has_enough_area !== false)
   );
-  const enabled = visible.filter(hasRoom);
+  const enabled = visible.filter(canChoose);
   const active = enabled.find((option) => option.id === activeId) ?? enabled[0];
   const activeOptionId = active ? `${listId}-${active.id}` : undefined;
 
@@ -102,7 +103,7 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
   };
 
   const pick = async (option: BedPickerOption): Promise<void> => {
-    if (submitting || !hasRoom(option)) return;
+    if (submitting || !canChoose(option)) return;
     if (option.id !== selected?.id) {
       setSubmitting(true);
       let saved: boolean;
@@ -262,7 +263,7 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
                         const suggestion = suggestionsByBed.get(option.id);
                         const reason = conflictReason(suggestion);
                         const capacity = suggestion && getBedCapacityText(suggestion, rotation.areaSqm, t, numberLocale, i18n.language);
-                        const disabled = !hasRoom(option);
+                        const disabled = !canChoose(option);
                         return (
                           <Box
                             component="li"
@@ -333,7 +334,8 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
               </Button>
             )}
             <Typography variant="caption" color="text.secondary" sx={{ px: 1.5, py: 0.75, borderTop: 1, borderColor: 'divider' }}>
-              {suggestions.isError ? t('rotation.checkError') : t('bedPicker.keyboardHint')}
+              {suggestions.isLoading ? t('rotation.checking')
+                : suggestions.isError ? t('rotation.checkError') : t('bedPicker.keyboardHint')}
             </Typography>
           </Paper>
         </Popper>
