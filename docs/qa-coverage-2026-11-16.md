@@ -311,3 +311,41 @@ are local artifacts under `/tmp/ofp-953/`. No application code or UI changed.
 
 Removed only #953's row from work queue #1058 after these checks, as explicitly
 requested by the owner; no personal-acceptance checkbox was checked.
+
+## Targeted follow-up — 2026-11-20: media orphan markers (#1196)
+
+Tested localhost frontend on port 5173 and backend on port 8000 with local
+PostgreSQL and German Chrome. The completed run used main
+`63faa46118ddc0a7d2a972fe483570f76ca5919b`, including merged PR #1315.
+This owner-requested check does not advance the full-sweep baseline.
+
+- Created disposable private project 3399 through the normal API under a
+  synthetic QA account, uploaded a real PNG and attached it to crops 20686
+  and 20687. Existing projects and running servers were preserved.
+- Restored project versions through the rendered version-history confirmation
+  dialog at 1440x900, 375x800 and 800x375. Before/after clearing the first
+  reference, the second crop retained the same image ID and storage bytes;
+  the media orphan marker stayed null.
+- Clearing the final reference set the marker. Restoring that version after
+  reattaching retained its historical detachment time at the documented
+  millisecond precision. The automatic backup restored successfully on phone,
+  reattached the image and cleared the marker. Repeating the detached restore
+  set the marker consistently again.
+- Read-only verification of the localhost cleanup predicate at +31 days
+  confirmed this media would qualify for cleanup, including the retention
+  record and live-reference checks. PIL verified that its stored PNG remained
+  valid. No cleanup clock or global cleanup command was applied to the local
+  development database.
+- Ran the five existing `HistoryRestorePathConsistencyTests` using isolated
+  SQLite test settings: 5 passed in 49.23 seconds. These execute cleanup past
+  retention and cover referenced/other-project preservation, legacy batch
+  revert, import undo, legacy snapshots and crop/project restore agreement.
+- Inspected desktop, phone and landscape confirmation screenshots; actions
+  remained readable and reachable. Image-reference setup and assertions were
+  API/database driven; the crop detail screen does not display this upload.
+  No application code or mobile behavior changed.
+
+Scratch script, screenshots and results: `/tmp/ofp-1196/` (local only).
+Removed only #1196 from queue #1058 after passing, as explicitly requested;
+preserved its adjoining epic banner and checked no acceptance boxes.
+No defect reproduced and no production testing was performed.
