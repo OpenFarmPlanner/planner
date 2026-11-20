@@ -81,3 +81,40 @@ why catching the database exception alone cannot enforce logical identity.
 
 Detailed reproduction and commands are in
 [the audit report](qa-archive/qa-report-2026-11-16.md).
+
+## Targeted localhost acceptance — 2026-11-20, #1087 / #1283
+
+Tested main `b8b45bb615f5bb715029a17b22fdb676e04cd85f`, which includes
+#1283 (`b96657f53`). This is a requested legacy-companion import acceptance
+check, not a full sweep or security review; the full-sweep backlog above is
+unchanged.
+
+- Used the running localhost frontend on port 5173 and backend on port 8000.
+  Created a separate synthetic project through the guarded E2E endpoint;
+  existing user projects and running servers were left unchanged.
+- Uploaded a two-row CSV through the actual import dialog. Its neighbour cell
+  used the supported spaced en-dash legacy format and a German note containing
+  a comma: `QA1087 Basilikum – Schutz vor Schädlingen, Quelle 2026`.
+- Preview returned two new crops and one resolved companion without warnings;
+  reading the preview did not create crops. Apply returned two created crops,
+  one created companion and no errors through crops/companions/finalize phases.
+- Verified both stored crop IDs belong to the captured active project and the
+  relation references those IDs, with no free-text companion. Clicking the
+  neighbour navigated to the other crop, where the reciprocal link appeared.
+- Verified exact storage as `notes.de` with `note_language_code: de`. Switching
+  the browser UI to English did not display the German note as fallback;
+  switching back restored its display unchanged.
+- Repeated the actual CSV preview/apply at 375x800 with a second synthetic
+  crop pair: two created crops, one created companion, no errors.
+- Inspected companion details screenshots at 1440x900, 375x800 and 800x375:
+  note and neighbour link remained readable without clipping or overlap.
+  No UI code was changed.
+- The five bounded synthetic examples in `test_legacy_companion_limits.py`
+  passed using Django's test runner with `config.settings_test` (0.004 seconds).
+  The initial pytest invocation failed before test execution because the
+  session taxonomy fixture queried an absent `crops_cropspecies` table;
+  this is recorded as a runner limitation, not a parser-test failure.
+
+Local scripts, request receipts and screenshots are under `/tmp/qa1087/` on
+the test machine. No load test, production test or cross-project authorization
+adversarial test was performed. No import defect was observed in this scope.
