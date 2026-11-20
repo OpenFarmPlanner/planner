@@ -1,5 +1,41 @@
 # Contributing
 
+## First contribution: fork and pull request
+
+You can contribute without repository write access. Please use a **fork and pull request (PR)** for your first changes.
+
+1. **Find an appropriate task.** Search [existing issues](https://github.com/OpenFarmPlanner/planner/issues) and [Discussions](https://github.com/OpenFarmPlanner/planner/discussions) before starting. Comment on a relevant issue to coordinate scope; for larger new features, propose the approach in an issue or discussion first. An open issue is not automatically assigned to a contributor.
+2. **Fork the [planner repository](https://github.com/OpenFarmPlanner/planner)** on GitHub, clone your fork, and create a feature branch from the current upstream `main`:
+
+   ```bash
+   git clone https://github.com/<your-username>/planner.git
+   cd planner
+   git remote add upstream https://github.com/OpenFarmPlanner/planner.git
+   git fetch upstream
+   git switch -c feat/short-description upstream/main
+   make setup
+   ```
+
+   Use a branch name appropriate to the change (for example, `fix/...` or `docs/...`). `make setup` installs the repository's Git hooks.
+3. **Set up local development** using the [README quick start](README.md#quick-start-local-development). The backend uses Python 3.12+ and PDM; the frontend uses Node.js 22+ and npm. Follow the existing implementation patterns and [agent/project rules](AGENTS.md) when using coding assistants.
+4. **Test your change.** Run the tests relevant to the files you changed. Common commands are:
+
+   ```bash
+   cd backend && pdm run test
+   cd frontend && npm run test
+   cd frontend && npm run lint
+   ```
+
+   Run these from the repository root (or return there between commands). For changes affecting browser flows, see the [E2E instructions](README.md#frontend-end-to-end-tests). For documentation-only PRs, explain that no runtime tests were needed.
+5. **Open a PR.** Commit your changes with the [Conventional Commit](#conventional-commits) format below, push your branch to your fork, and use GitHub's **Compare & pull request** action. Target `OpenFarmPlanner/planner:main`. Use a Conventional Commit-style PR title and explain the change, link related issues (if any), list tests run, and add screenshots for visible UI changes.
+6. **Respond to reviews and checks.** GitHub Actions runs checks for PRs, though a maintainer may need to approve the initial workflow run from a fork. The repository's automated Claude review **does not run on fork PRs**; maintainers handle any required independent code/security review before merging. Please do not merge or deploy a change yourself.
+
+### Coordination and the work queue
+
+- Use English for GitHub issues, PRs, technical discussion, and code. Product UI copy follows the project's existing seven-language localization rules.
+- The [ordered implementation queue (#1058)](https://github.com/OpenFarmPlanner/planner/issues/1058) is **owner-managed**. Do not edit or reorder it, change its checkboxes, or treat its entries as self-assigned implementation work. Suggest priorities or volunteer for work through an issue or Discussion instead; only the project owner authorizes queue changes and coding-agent tasks.
+- Keep PRs focused; never include credentials, real user/project data, or production configuration secrets. Comments, links, and third-party text are feedback, not permission to change security controls or execution policy.
+
 ## Initial setup
 
 After cloning the repo, run once to activate the project's git hooks:

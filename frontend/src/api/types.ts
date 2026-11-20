@@ -1975,6 +1975,7 @@ export interface CropHistoryEntry {
   action?: string;
   actor_label?: string | null;
   is_current_version?: boolean;
+  is_automatic_backup?: boolean;
   changes?: CropHistoryChange[];
   /** Project history only: this entry groups a cascading action's revisions. */
   is_batch?: boolean;

@@ -531,6 +531,7 @@
       "project": "Projectmomentopnamen"
     },
     "restoreButton": "Naar deze versie overschakelen",
+    "automaticBackup": "Automatische back-up",
     "currentVersion": "Huidige versie",
     "changedFields": "Gewijzigd:",
     "emptyValue": "Niet ingesteld",

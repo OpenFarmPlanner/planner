@@ -403,7 +403,11 @@ class BedBulkCreateApiTest(ProjectApiTestCase):
         self.assertFalse(Bed.objects.filter(field=foreign_field).exists())
 
     def test_query_count_does_not_depend_on_lookups_per_bed(self):
-        from farm.history.project_restore import ensure_project_checkpoint
+        from farm.history.project_restore import (
+            capture_project_state,
+            ensure_project_checkpoint,
+            record_project_checkpoint,
+        )
 
         ensure_project_checkpoint(self.project)
         # Validation reads the field and the taken names once for the whole
@@ -411,6 +415,8 @@ class BedBulkCreateApiTest(ProjectApiTestCase):
         # read and the revision insert (the same as a single create).
         with CaptureQueriesContext(connection) as small:
             self.client.post(self.url, self._payload(['S 1', 'S 2']), format='json')
+        # Use the same starting history state for both guard preflights.
+        record_project_checkpoint(self.project, capture_project_state(self.project))
         with CaptureQueriesContext(connection) as large:
             self.client.post(self.url, self._payload(['L 1', 'L 2', 'L 3', 'L 4']), format='json')
 
@@ -571,7 +577,11 @@ class FieldDuplicateApiTest(ProjectApiTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_query_count_does_not_grow_with_lookups_per_bed(self):
-        from farm.history.project_restore import ensure_project_checkpoint
+        from farm.history.project_restore import (
+            capture_project_state,
+            ensure_project_checkpoint,
+            record_project_checkpoint,
+        )
 
         # Per copied bed there is only the insert, the revision snapshot read
         # and the revision insert, the same as in the bulk create.
@@ -589,6 +599,7 @@ class FieldDuplicateApiTest(ProjectApiTestCase):
         ensure_project_checkpoint(self.project)
         with CaptureQueriesContext(connection) as small:
             self.client.post(self._url(small_field.id), {'name': 'Klein 2'}, format='json')
+        record_project_checkpoint(self.project, capture_project_state(self.project))
         with CaptureQueriesContext(connection) as large:
             self.client.post(self._url(large_field.id), {'name': 'Groß 2'}, format='json')
 
