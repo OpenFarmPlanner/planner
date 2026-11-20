@@ -8,8 +8,6 @@ import type { GetLibraryFieldPinProps } from '../libraryFieldPinProps';
 import { libraryPinSelectSx } from '../libraryFieldPin';
 import { mergeVarietyFieldSx, type GetVarietyFieldHighlightSx } from '../varietyValueAccent';
 import { TEMPERATURE_REQUIREMENTS, GERMINATION_LIGHT_REQUIREMENTS, requiresStratification, hasLegacyGerminationConflict, propagationShorterThanGermination } from '../germination';
-import { FieldInfoButton } from '../FieldInfoButton';
-import { buildFieldEndAdornment } from '../fieldEndAdornment';
 import { formGridDoubleColumnSx, formGridFieldSx, formGridSx } from './styles';
 
 type RangeBoundField =
@@ -56,14 +54,6 @@ export function GerminationSection({ formData, errors, onChange, t, getFieldHigh
     />
   );
   const minTemperaturePin = getFieldPinProps?.('germination_temperature_min_c');
-  const selectedCultivationTypes = formData.cultivation_types?.length
-    ? formData.cultivation_types : (formData.cultivation_type ? [formData.cultivation_type] : []);
-  const isDirectSowingOnly = selectedCultivationTypes.length === 1 && selectedCultivationTypes[0] === 'direct_sowing';
-  const propagationTooLong = (formData.propagation_duration_days ?? 0) > (formData.growth_duration_days ?? 0);
-  const propagationDurationPin = getFieldPinProps?.('propagation_duration_days');
-  const infoButton = (labelKey: string, helpKey: string) => (
-    <FieldInfoButton title={t(helpKey)} ariaLabel={t('form.fieldInfoAriaLabel', { field: t(labelKey) })} />
-  );
   const requirementSelect = <F extends 'germination_temperature_requirement' | 'germination_light_requirement'>(field: F, options: readonly NonNullable<Crop[F]>[]) => {
     const pin = getFieldPinProps?.(field);
     return (
@@ -103,31 +93,6 @@ export function GerminationSection({ formData, errors, onChange, t, getFieldHigh
           {range(t('germination.stratificationTemperature'), 'stratification_temperature_min_c', 'stratification_temperature_max_c', 'decimal')}
         </> : null}
         {requirementSelect('germination_light_requirement', GERMINATION_LIGHT_REQUIREMENTS)}
-        <TextField
-          sx={mergeVarietyFieldSx(formGridFieldSx, getFieldHighlightSx?.('propagation_duration_days'), propagationDurationPin?.fieldSx)}
-          type="number"
-          label={t('form.propagationDurationDays')}
-          value={isDirectSowingOnly ? 0 : (formData.propagation_duration_days ?? '')}
-          onChange={e => onChange('propagation_duration_days', e.target.value ? parseInt(e.target.value) : undefined)}
-          disabled={isDirectSowingOnly}
-          error={Boolean(errors.propagation_duration_days) || propagationTooLong}
-          helperText={
-            errors.propagation_duration_days
-              || (propagationTooLong ? t('form.propagationDurationDaysTooLong') : undefined)
-          }
-          slotProps={{
-            htmlInput: { min: 0, step: 1, inputMode: 'numeric' },
-            input: {
-              endAdornment: buildFieldEndAdornment(
-                infoButton(
-                  'form.propagationDurationDays',
-                  isDirectSowingOnly ? 'form.directSowingPropagationDisabledHelp' : 'form.propagationDurationDaysHelp',
-                ),
-                isDirectSowingOnly ? undefined : propagationDurationPin,
-              ),
-            },
-          }}
-        />
         <TextField sx={mergeVarietyFieldSx(formGridDoubleColumnSx, getFieldHighlightSx?.('germination_pretreatment'), treatmentPin?.fieldSx)}
           label={t('germination.fields.germination_pretreatment')} multiline minRows={2}
           value={formData.germination_pretreatment ?? ''} onChange={(event) => onChange('germination_pretreatment', event.target.value)}

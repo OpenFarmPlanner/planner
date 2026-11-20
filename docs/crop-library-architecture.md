@@ -1292,9 +1292,10 @@ and the legend above the form ("Markierte Werte = gelten nur für diese
 Sorte.") are the only markers: fields carry no "inherited"/"own value" hover
 tooltip, and an inherited value is a real field value, never a placeholder.
 Kultur and Sorte share one form with the same section order: general
-information, crop rotation, timing (cultivation type, growth and harvest duration), plant spacing, yield, seed demand, time
-windows, germination (including propagation duration), site and plant health,
-companion planting, display colour, notes (project form only).
+information, crop rotation, timing (cultivation type, growth, harvest and
+propagation durations), plant spacing, yield, seed demand, time windows,
+germination, site and plant health, companion planting, display colour, notes
+(project form only).
 
 ### Plant families (Pflanzenfamilien)
 

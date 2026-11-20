@@ -820,8 +820,18 @@ describe('CropDetail Component', () => {
     expect(screen.getByText(translations.crops.form.rotationBreakYears)).toBeInTheDocument();
     expect(screen.getByText(/^0\s+Jahre$/)).toBeInTheDocument();
     expect(screen.queryByText(translations.crops.form.cropFamily)).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 6, name: translations.crops.germination.title })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 6, name: translations.crops.germination.title })).not.toBeInTheDocument();
     expect(screen.queryByText(translations.crops.noData)).not.toBeInTheDocument();
+  });
+
+  it('opens the timing section for a retained propagation duration on its own', () => {
+    renderCropDetail(<CropDetail crops={[{ id: 40, name: 'Tomate', propagation_duration_days: 28 }]}
+      selectedCropId={40} onCropSelect={vi.fn()} />);
+
+    const timing = screen.getByRole('heading', { name: translations.crops.form.sectionTiming }).parentElement;
+    expect(timing).toContainElement(screen.getByText(translations.crops.form.propagationDurationDays));
+    expect(timing).toHaveTextContent('28 Tage');
+    expect(screen.queryByRole('heading', { name: translations.crops.germination.title })).not.toBeInTheDocument();
   });
 
   it('leaves out the seed type of a Sorte that has none', () => {

@@ -1208,6 +1208,7 @@ const detailSectionGridSx = {
               activeCultivationTypes,
               getCropValue('growth_duration_days', selectedCrop.growth_duration_days),
               getCropValue('harvest_duration_days', selectedCrop.harvest_duration_days),
+              getCropValue('propagation_duration_days', selectedCrop.propagation_duration_days),
             ) ? (
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom>

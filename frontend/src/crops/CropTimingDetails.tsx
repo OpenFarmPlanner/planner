@@ -10,6 +10,7 @@ import { varietySpecificValueHighlightSx } from './varietyValueAccent';
 const TIMING_DURATION_FIELDS = [
   ['growth_duration_days', 'form.growthDurationDays'],
   ['harvest_duration_days', 'form.harvestDurationDays'],
+  ['propagation_duration_days', 'form.propagationDurationDays'],
 ] as const;
 type DurationField = typeof TIMING_DURATION_FIELDS[number][0];
 

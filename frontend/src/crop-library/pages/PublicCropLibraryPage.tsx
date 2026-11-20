@@ -1984,7 +1984,12 @@ export default function PublicCropLibraryPage() {
                               </DetailGrid>
                             </DetailSection>
                           ) : null,
-                          hasAnyDetailValue(publicActiveCultivationTypes, getPublicFieldValue('growth_duration_days', selectedCrop.growth_duration_days), getPublicFieldValue('harvest_duration_days', selectedCrop.harvest_duration_days)) ? (
+                          hasAnyDetailValue(
+                            publicActiveCultivationTypes,
+                            getPublicFieldValue('growth_duration_days', selectedCrop.growth_duration_days),
+                            getPublicFieldValue('harvest_duration_days', selectedCrop.harvest_duration_days),
+                            getPublicFieldValue('propagation_duration_days', selectedCrop.propagation_duration_days),
+                          ) ? (
                             <DetailSection key="timing" title={t('form.sectionTiming')}>
                               <CropTimingDetails cultivationTypes={publicActiveCultivationTypes}
                                 cultivationSource={getPublicFieldSource('cultivation_types') ?? getPublicFieldSource('cultivation_type')}

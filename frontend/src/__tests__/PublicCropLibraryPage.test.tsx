@@ -515,10 +515,12 @@ describe('PublicCropLibraryPage', () => {
 
     await screen.findByRole('heading', { level: 2, name: 'Radieschen' });
     const titles = screen.getAllByRole('heading', { level: 6 }).map((node) => node.textContent?.trim());
-    expect(titles).toEqual(['Sorten', 'Allgemeine Informationen', 'Zeitplanung', 'Keimung', 'Bibliotheksdaten']);
+    expect(titles).toEqual(['Sorten', 'Allgemeine Informationen', 'Zeitplanung', 'Bibliotheksdaten']);
     expect(screen.getByText('Wachstumszeit (Tage)')).toBeInTheDocument();
     // 0 is a value, not a gap.
-    expect(screen.getByText('Anzuchtdauer (Tage)')).toBeInTheDocument();
+    const timing = screen.getByRole('heading', { name: 'Zeitplanung' }).parentElement;
+    expect(timing).toContainElement(screen.getByText('Anzuchtdauer (Tage)'));
+    expect(timing).toHaveTextContent('0 Tage');
     expect(screen.queryByText('Erntezeit (Tage)')).not.toBeInTheDocument();
     expect(screen.queryByText('Lateinischer Name')).not.toBeInTheDocument();
     expect(screen.queryByText('Keine Angabe')).not.toBeInTheDocument();
