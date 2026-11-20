@@ -81,3 +81,41 @@ why catching the database exception alone cannot enforce logical identity.
 
 Detailed reproduction and commands are in
 [the audit report](qa-archive/qa-report-2026-11-16.md).
+
+## Targeted localhost companion history acceptance — 2026-11-20
+
+Verified #1202 / merged PR #1277 (`d93ab49f8`) on main
+`f2c1a2d0b14befcbe9ea6b8850380c2628cfae0d`. This narrowly scoped acceptance
+check does not advance the full-sweep baseline or resolve the backlog above.
+
+- Used the existing development servers at `http://localhost:5173` and
+  `http://localhost:8000`, with local loopback PostgreSQL. Previewed the exact
+  database target, then applied the guarded `seed_companion_history_acceptance`
+  command for an existing local account. Only the isolated synthetic
+  **Companion history acceptance** project was exercised; no migrations,
+  application changes, existing-project edits or server restarts were needed.
+- Imported the documented JSON through the Crops file-import dialog, checked
+  **Allow updates**, and started the import. The result reported one new crop,
+  one updated crop and one imported neighbour. The completed operation appears
+  as one **2 crops imported** history entry.
+- Both companion records have a non-null `companion_crop` and empty
+  `companion_text`, including the former free-text neighbour. The other record
+  retains `notes.en = "Imported note"`. The English note is verified in the
+  API payload; the German UI does not display an English-only note.
+- Edited the owner's crop notes through the edit dialog and saved. Restored
+  the completed import through Project History and its confirmation dialog:
+  HTTP 200, the later crop note disappears, both linked neighbours retain their
+  original relation IDs and crop targets, and the imported English note remains.
+  Repeated the edit/restore successfully at 375×800 after the desktop
+  1440×900 run; the JSON file import itself was performed at desktop size.
+- Inspected the restored crop at 1440×900, 375×800 and 800×375 in Chrome,
+  German UI. Both neighbour links remain visible. The known shared topbar
+  overlap at 800×375 was reproduced twice and is tracked by #930; no duplicate
+  issue or queue change. The portrait companion section fits the viewport.
+- Throwaway Playwright script and screenshots are retained locally under
+  `/tmp/ofp-1202-acceptance/`; they are not committed or public attachments.
+  The synthetic fixture remains available locally for the owner's inspection.
+
+Result: **PASS** for the requested import/relink/full-restore acceptance case.
+No new functional defect was found in this scope. This run does not certify
+other import formats, selective undo, concurrency or the rest of the app.
