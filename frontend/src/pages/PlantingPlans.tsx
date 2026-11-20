@@ -2431,7 +2431,10 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               renderDetails={(item) => (
                 <Stack spacing={0.75}>
                   <SiteSuitabilityHints findings={item.site_suitability_findings} />
-                  <GerminationInfo {...item} sowingDate={getRowSowingSchedule(item)?.sowingDate} />
+                  <GerminationInfo
+                    {...item}
+                    sowingDate={item.planned_sowing_date ?? getRowSowingSchedule(item)?.sowingDate}
+                  />
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.cultivationType")}:</strong> <SearchHighlightedText text={getCultivationTypeLabel(item) || "—"} /></Typography>
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.bed")}:</strong> <SearchHighlightedText text={getBedLabelForRow(item)} /></Typography>
                   {PLANTING_PLAN_DATE_COLUMNS.map(field => {

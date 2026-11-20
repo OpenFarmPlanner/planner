@@ -142,10 +142,17 @@ export function MobilePlanFormDialog({
   };
   const showSuggestions = Boolean(rotation) && isSuggestionsOpen;
   const harvestOverlapCheck = useHarvestOverlapCheck(rotationInput);
+  const sowingPickerValue = toIsoDateString(parseGermanDateText(form.sowing_date)) ?? "";
   const timingWindowCheck = useTimingWindowCheck(
     rotationInput.cropId,
     rotationInput.plantingDate,
     form.cultivation_type ?? "",
+    {
+      planned_propagation_start_date: form.planned_propagation_start_date
+        ? sowingPickerValue || form.planned_propagation_start_date
+        : undefined,
+      planned_sowing_date: form.planned_sowing_date,
+    },
   );
 
   const pickerValue = toIsoDateString(parseGermanDateText(form.planting_date)) ?? "";
@@ -165,7 +172,6 @@ export function MobilePlanFormDialog({
 
   const sowingDateDisabledReason = getSowingDateDisabledReason(form);
   const sowingDateDisabled = sowingDateDisabledReason !== null;
-  const sowingPickerValue = toIsoDateString(parseGermanDateText(form.sowing_date)) ?? "";
   const openSowingDatePicker = (): void => {
     const pickerInput = sowingDatePickerRef.current;
     if (!pickerInput) {
@@ -452,7 +458,11 @@ export function MobilePlanFormDialog({
             />
           </Box>
           <HarvestOverlapAlert overlaps={harvestOverlapCheck.data?.harvest_overlaps} />
-          <GerminationInfo germination_findings={timingWindowCheck.data?.germination_findings} expected_emergence={timingWindowCheck.data?.expected_emergence} sowingDate={sowingPickerValue || null} />
+          <GerminationInfo
+            germination_findings={timingWindowCheck.data?.germination_findings}
+            expected_emergence={timingWindowCheck.data?.expected_emergence}
+            sowingDate={form.planned_sowing_date || sowingPickerValue || form.planned_propagation_start_date}
+          />
           <TimingWindowAlert findings={timingWindowCheck.data?.timing_window_findings} />
           {rotation ? (
             <RotationCheckPanel

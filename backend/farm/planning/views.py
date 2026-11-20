@@ -478,6 +478,16 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             error_detail = 'crop_id and planting_date (YYYY-MM-DD) are required.'
         if error_detail is None and cultivation_type and cultivation_type not in valid_types:
             error_detail = 'Unknown cultivation_type.'
+        nursery_dates = {}
+        for field in ('planned_propagation_start_date', 'planned_sowing_date'):
+            value = request.query_params.get(field)
+            if error_detail is None and value:
+                try:
+                    nursery_dates[field] = parse_date(value)
+                except ValueError:
+                    nursery_dates[field] = None
+                if nursery_dates[field] is None:
+                    error_detail = f'{field} must use YYYY-MM-DD format.'
         if error_detail:
             return api_error_response(
                 code='invalid_timing_window_parameters', detail=error_detail,
@@ -490,6 +500,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         candidate = PlantingPlan(
             project=request.active_project, crop=crop,
             planting_date=planting_date, cultivation_type=cultivation_type,
+            **nursery_dates,
         )
         findings = checker.check_plan(candidate)
         return Response({

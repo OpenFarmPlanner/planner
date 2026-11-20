@@ -28,9 +28,11 @@ def check_germination(plan: PlantingPlan, checker: TimingWindowChecker) -> dict[
     propagation = resolve_crop_field(crop, "propagation_duration_days", index)
     maximum = resolve_crop_field(crop, "germination_days_max", index)
     own_propagation = plan_uses_own_propagation(plan, crop, index)
-    explicit_start = plan.planned_propagation_start_date if own_propagation else None
-    if explicit_start and plan.planting_date:
-        propagation = (plan.planting_date - explicit_start).days
+    explicit_sowing = (
+        plan.planned_sowing_date or plan.planned_propagation_start_date
+    ) if own_propagation else None
+    if explicit_sowing and plan.planting_date:
+        propagation = (plan.planting_date - explicit_sowing).days
     if (
         own_propagation
         and propagation is not None
@@ -38,10 +40,10 @@ def check_germination(plan: PlantingPlan, checker: TimingWindowChecker) -> dict[
         and propagation < maximum
     ):
         result["germination_findings"].append({"code": "propagation_shorter_than_germination"})
-    sowing = explicit_start or plan.planting_date
-    if sowing is None or (own_propagation and propagation is None and explicit_start is None):
+    sowing = explicit_sowing or plan.planting_date
+    if sowing is None or (own_propagation and propagation is None and explicit_sowing is None):
         return result
-    if own_propagation and explicit_start is None:
+    if own_propagation and explicit_sowing is None:
         sowing_iso = add_days(sowing, -propagation)
         if sowing_iso is None:
             return result

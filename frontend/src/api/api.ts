@@ -483,7 +483,13 @@ export const plantingPlanAPI = {
     http.get<Pick<PlantingPlan, 'site_suitability_findings'>>('/planting-plans/site-suitability-check/', { params }),
   bedSuggestions: (params: RotationQueryParams) =>
     http.get<BedSuggestionsResponse>('/planting-plans/bed-suggestions/', { params }),
-  timingWindowCheck: (params: { crop_id: number; planting_date: string; cultivation_type?: string }) =>
+  timingWindowCheck: (params: {
+    crop_id: number;
+    planting_date: string;
+    cultivation_type?: string;
+    planned_propagation_start_date?: string;
+    planned_sowing_date?: string;
+  }) =>
     http.get<{ timing_window_findings: TimingWindowFinding[] } & Pick<PlantingPlan, 'germination_findings' | 'expected_emergence'>>('/planting-plans/timing-window-check/', { params }),
 };
 
