@@ -1,7 +1,7 @@
 import { loadRetryAlertSx } from '../components/loadRetryStyles';
 import LoadRetryButton from '../components/LoadRetryButton';
 import { Alert, Box, Button, Card, CardContent, Divider, Stack, Typography } from '@mui/material';
-import { Link as RouterLink, useOutletContext } from 'react-router';
+import { Link as RouterLink, useLocation, useNavigate, useOutletContext } from 'react-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from '../i18n';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
@@ -23,6 +23,8 @@ import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
 
 export default function Dashboard() {
   const { t } = useTranslation(['dashboard', 'common']);
+  const location = useLocation();
+  const navigate = useNavigate();
   const { shouldShowProjectRequiredState, missingProjectReason, activeProjectId } = useProjectRequirement();
   const [isFetching, setLoading] = useState(true);
   const [fetchError, setError] = useState(false);
@@ -46,6 +48,9 @@ export default function Dashboard() {
   const [beds, setBeds] = useState<Bed[]>([]);
   const [crops, setCrops] = useState<Crop[]>([]);
   const [plans, setPlans] = useState<PlantingPlan[]>([]);
+  const newTaskPlanId = (location.state as { newTaskPlantingPlanId?: number } | null)?.newTaskPlantingPlanId;
+  const initialTaskPlan = newTaskPlanId && seasonId
+    ? plans.find(plan => plan.id === newTaskPlanId && plan.season === seasonId) : undefined;
 
   // Without a project there is nothing to fetch, so the page is neither
   // loading nor in error. Derived rather than pushed into state from the
@@ -239,9 +244,13 @@ export default function Dashboard() {
             else context?.requestSeasonCreation();
           }} onEdit={setEditor} onDelete={(task) => { setDeleteError(false); setDeleting(task); }} />
       </PageSurface>}
-      {editor !== undefined && <TaskFormDialog key={editor?.id ?? 'new'} task={editor} seasonId={seasonId}
+      {(editor !== undefined || initialTaskPlan) && <TaskFormDialog key={editor?.id ?? initialTaskPlan?.id ?? 'new'}
+        task={editor ?? null} initialPlan={editor === undefined ? initialTaskPlan : undefined} seasonId={seasonId}
         crops={crops} fields={fields} beds={beds} plans={plans} members={members}
-        onSave={saveTask} onClose={() => setEditor(undefined)} />}
+        onSave={saveTask} onClose={() => {
+          setEditor(undefined);
+          if (initialTaskPlan) void navigate(location.pathname + location.search, { replace: true });
+        }} />}
       <ConfirmationDialog open={Boolean(deleting)} title={t('dashboard:form.delete')}
         message={<>{t('dashboard:form.deleteConfirm', { title: deleting ? taskDisplayTitle(deleting, t) : '' })}
           {deleteError && <Alert severity="error" sx={{ mt: 2 }}>{t('dashboard:form.deleteError')}</Alert>}</>}

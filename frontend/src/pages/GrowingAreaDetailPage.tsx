@@ -36,8 +36,8 @@ import { useHierarchyData } from '../components/hierarchy/hooks/useHierarchyData
 import { bedAPI, fieldAPI, locationAPI, plantingPlanAPI } from '../api/api';
 import type { Bed, Field, Location, PlantingPlan } from '../api/types';
 import { extractApiErrorMessage } from '../api/errors';
-import { formatCropDisplayName } from '../crops/cropDisplay';
-import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
+import { resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
+import { GrowingAreaPlanLinks } from '../planting-plans/GrowingAreaPlanLinks';
 import { parseDimensionValue } from '../components/hierarchy/utils/hierarchyAreaParsing';
 import {
   DETAIL_ROUTE_SEGMENTS,
@@ -430,21 +430,7 @@ function GrowingAreaReadView({
       {relatedPlans.length > 0 ? (
         <Box data-testid="detail-section-plans">
           <DetailSection title={t('hierarchy:details.sections.plantingPlans')}>
-            <List dense disablePadding>
-              {relatedPlans.map((plan) => (
-                <ListItem key={plan.id} disableGutters sx={{ flexWrap: 'wrap', columnGap: 1 }}>
-                  <Link component={RouterLink} to={`/app/planting-plans?planId=${plan.id}`} underline="hover">
-                    {formatCropDisplayName(plan) || t('hierarchy:details.unnamedPlan')}
-                  </Link>
-                  <Typography variant="body2" color="text.secondary" component="span">
-                    {[
-                      type !== 'bed' ? plan.bed_name : null,
-                      plan.planting_date ? formatSeasonDate(plan.planting_date, locale) : null,
-                    ].filter(Boolean).join(' · ')}
-                  </Typography>
-                </ListItem>
-              ))}
-            </List>
+            <GrowingAreaPlanLinks plans={relatedPlans} showBed={type !== 'bed'} keepTableLinks />
           </DetailSection>
         </Box>
       ) : null}

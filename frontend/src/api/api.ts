@@ -458,7 +458,11 @@ export const bedAPI = {
 export const plantingPlanAPI = {
   list: () => http.get<PaginatedResponse<PlantingPlan>>('/planting-plans/'),
   listAll: () => fetchAllPaginated<PlantingPlan>('/planting-plans/'),
+  listForArea: (type: 'bed' | 'field', id: number) => fetchAllPaginated<PlantingPlan>(`/planting-plans/?${type}=${id}`),
   get: (id: number) => http.get<PlantingPlan>(`/planting-plans/${id}/`),
+  getAcrossSeasons: (id: number, signal?: AbortSignal) => http.get<import('./types').PlantingPlanDetail>(`/planting-plans/${id}/`, {
+    params: { across_seasons: true }, signal,
+  }),
   create: (data: PlantingPlan) => http.post<PlantingPlan>('/planting-plans/', withActiveProject(data)),
   update: (id: number, data: PlantingPlan) => http.put<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),
   patch: (id: number, data: Partial<PlantingPlan>) => http.patch<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),
@@ -833,6 +837,7 @@ export default {
 
 export const taskAPI = {
   listAll: () => fetchAllPaginated<Task>('/tasks/'),
+  listForPlan: (planId: number) => fetchAllPaginated<Task>(`/tasks/?planting_plan=${planId}&across_seasons=true`),
   create: (data: TaskWritePayload) => http.post<Task>('/tasks/', data),
   update: (id: number, data: TaskWritePayload) => http.patch<Task>(`/tasks/${id}/`, data),
   delete: (id: number) => http.delete(`/tasks/${id}/`),

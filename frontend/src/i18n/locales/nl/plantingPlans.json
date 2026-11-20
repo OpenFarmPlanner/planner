@@ -403,5 +403,28 @@
     "plantingDate": "Plantdatum",
     "harvestStartDate": "Begin oogst",
     "harvestEndDate": "Einde oogst"
+  },
+  "details": {
+    "title": "Teeltdetails",
+    "openNamed": "Teeltdetails voor {{name}}",
+    "openCrop": "Naar gewas",
+    "openBed": "Naar bed",
+    "missingCrop": "Het gewas ontbreekt of is verwijderd.",
+    "missingBed": "Het bed ontbreekt of is verwijderd.",
+    "saveFirst": "Sla de teelt eerst op.",
+    "back": "Terug naar de tabel",
+    "expand": "Open als volledige pagina",
+    "notFound": "Deze teelt is niet beschikbaar.",
+    "context": "Teeltgebied en seizoen",
+    "season": "Seizoen",
+    "openSeason": "Open het oorspronkelijke seizoen",
+    "planned": "Geplande datums",
+    "notesAndPhotos": "Notities en foto’s",
+    "addNoteOrPhoto": "Notitie of foto toevoegen",
+    "editNotesAndPhotos": "Notities en foto’s bewerken",
+    "photosLoadFailed": "De foto’s konden niet worden geladen.",
+    "tasks": "Taken",
+    "tasksLoadFailed": "De taken konden niet worden geladen.",
+    "taskCancelled": "Geannuleerd"
   }
 }

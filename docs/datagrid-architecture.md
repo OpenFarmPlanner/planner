@@ -158,7 +158,27 @@ replaced an earlier `initialRow`-based approach, which always prefilled a
 **new draft row** — clicking "open" on an existing task used to silently
 create a duplicate-looking blank plan instead of opening the one clicked.
 If you add deep-linking into another grid page, this is the reference
-pattern to follow, not a one-off to reinvent.
+pattern to follow.
+
+`/app/planting-plans/:id` and the `/app/anbauplaene/:id` alias are shareable plan
+detail routes. The table's row menu keeps its grid mounted while the detail
+route is open. On desktop, the details appear in a drawer with an expand
+action. A mobile or direct visit uses the same detail component as a full page.
+Returning to the table restores focus to the invoking row action. The mounted
+grid retains its search, sorting, filters, selection and scroll position. The
+grid saves dirty rows before opening details. Failed saves leave the table
+visible, and the detail view owns the notes guard while open. Browser history
+carries the originating table's search, filters and sort so a return from a
+linked crop or growing area can reconstruct the drawer and its table. The
+window can resize while an open notes editor keeps its draft.
+
+The calendar has separate actions to show details, select the grid row, and
+edit the row. Growing Areas links also distinguish the existing grid selection
+link from the detail route. The existing `?planId=<id>`,
+`?planId=<id>&edit=true` and `?bedId=<id>&create=true` paths retain their behavior.
+Detail reads can use `across_seasons=true` for one plan in the active project.
+The table and edit endpoints continue to use the active season, and the detail
+page offers an explicit switch to the plan's originating season.
 
 For large editable flat tables, `EditableDataGrid` also supports
 `scrollMode="continuous"`. This keeps the free MUI DataGrid's internal page

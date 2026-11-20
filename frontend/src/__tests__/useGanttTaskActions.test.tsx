@@ -73,6 +73,14 @@ describe('openPlantingPlanFromTask', () => {
     expect(navigate).toHaveBeenCalledWith('/app/planting-plans?planId=5&edit=true');
   });
 
+  it('opens standalone details only from the detail action', () => {
+    const { result, navigate } = setup();
+
+    act(() => result.current.openPlantingPlanFromTask(task(), { details: true }));
+
+    expect(navigate).toHaveBeenCalledWith('/app/planting-plans/5');
+  });
+
   it('does not add the edit flag when it is explicitly false', () => {
     const { result, navigate } = setup();
 

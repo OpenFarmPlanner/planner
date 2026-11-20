@@ -1315,6 +1315,13 @@ export interface PlantingPlan {
   updated_at?: string;
 }
 
+export interface PlantingPlanDetail extends PlantingPlan {
+  id: number;
+  field_name: string | null;
+  location_name: string | null;
+  crop_available: boolean;
+}
+
 export type RotationStatus = 'conflict' | 'accepted' | 'hint' | 'info' | 'ok';
 
 export type RotationFindingKind =

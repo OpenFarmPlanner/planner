@@ -412,5 +412,28 @@
     "plantingDate": "Transplantação",
     "harvestStartDate": "Início da colheita",
     "harvestEndDate": "Fim da colheita"
+  },
+  "details": {
+    "title": "Detalhes da série",
+    "openNamed": "Detalhes da série de {{name}}",
+    "openCrop": "Abrir cultura",
+    "openBed": "Abrir canteiro",
+    "missingCrop": "A cultura não foi atribuída ou foi eliminada.",
+    "missingBed": "O canteiro não foi atribuído ou foi eliminado.",
+    "saveFirst": "Guarde primeiro a série.",
+    "back": "Voltar à tabela",
+    "expand": "Abrir em página inteira",
+    "notFound": "Esta série não está disponível.",
+    "context": "Área de cultivo e época",
+    "season": "Época",
+    "openSeason": "Abrir a época de origem",
+    "planned": "Datas previstas",
+    "notesAndPhotos": "Notas e fotografias",
+    "addNoteOrPhoto": "Adicionar nota ou fotografia",
+    "editNotesAndPhotos": "Editar notas e fotografias",
+    "photosLoadFailed": "Não foi possível carregar as fotografias.",
+    "tasks": "Tarefas",
+    "tasksLoadFailed": "Não foi possível carregar as tarefas.",
+    "taskCancelled": "Cancelada"
   }
 }

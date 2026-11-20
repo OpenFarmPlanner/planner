@@ -75,6 +75,9 @@ export function ContextMenuIndicator({
         size="small"
         aria-label={label}
         tabIndex={tabIndex}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') event.stopPropagation();
+        }}
         onMouseDown={(event) => {
           event.stopPropagation();
         }}

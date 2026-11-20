@@ -326,15 +326,19 @@ describe("PlantingPlans save-time area validation", () => {
       delete: deleteHelper,
     });
     expect(rowActions.map((action: { id: string }) => action.id)).toEqual([
+      "plan-details",
+      "plan-crop",
+      "plan-bed",
       "create-planting-plan",
       "duplicate",
       "delete",
     ]);
-    expect(rowActions[0]).toMatchObject({
+    expect(rowActions[3]).toMatchObject({
       label: "Anbauplan erstellen",
       color: "primary",
+      separatorBefore: true,
     });
-    rowActions[0].onClick({ id: 9 }, {
+    rowActions[3].onClick({ id: 9 }, {
       duplicate: duplicateHelper,
       delete: deleteHelper,
     });

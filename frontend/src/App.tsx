@@ -63,7 +63,7 @@ const Crops = React.lazy(() => import('./pages/Crops'));
 const PublicCropLibraryPage = React.lazy(() => import('./crop-library/pages/PublicCropLibraryPage'));
 const PublicLibraryModerationPage = React.lazy(() => import('./crop-library/pages/PublicLibraryModerationPage'));
 const NotificationHistoryPage = React.lazy(() => import('./notifications/pages/NotificationHistoryPage'));
-const PlantingPlans = React.lazy(() => import('./pages/PlantingPlans'));
+const PlantingPlansRoute = React.lazy(() => import('./pages/PlantingPlansRoute'));
 const GanttChart = React.lazy(() => import('./pages/GanttChart'));
 const SeedDemandPage = React.lazy(() => import('./pages/SeedDemand'));
 const YoungPlantDemandPage = React.lazy(() => import('./pages/YoungPlantDemand'));
@@ -289,9 +289,9 @@ function createAppRouter(basename: string) {
                 },
                 { path: 'crop-library', element: withLazyFallback(<PublicCropLibraryPage />) },
                 { path: 'public-library-moderation', element: withLazyFallback(<PublicLibraryModerationPage />) },
-                { path: 'anbauplaene', element: withLazyFallback(<PlantingPlans />) },
+                { path: 'anbauplaene/:plantingPlanId?', element: withLazyFallback(<PlantingPlansRoute />) },
                 { path: 'suppliers', element: withLazyFallback(<Suppliers />) },
-                { path: 'planting-plans', element: withLazyFallback(<PlantingPlans />) },
+                { path: 'planting-plans/:plantingPlanId?', element: withLazyFallback(<PlantingPlansRoute />) },
                 { path: 'gantt-chart', element: withLazyFallback(<GanttChart />) },
                 { path: 'yield-overview', element: withLazyFallback(<YieldOverviewPage />) },
                 { path: 'seed-demand', element: withLazyFallback(<SeedDemandPage />) },

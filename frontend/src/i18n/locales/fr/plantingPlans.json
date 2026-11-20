@@ -412,5 +412,28 @@
     "plantingDate": "Date de plantation",
     "harvestStartDate": "Début de récolte",
     "harvestEndDate": "Fin de récolte"
+  },
+  "details": {
+    "title": "Détails de la série",
+    "openNamed": "Détails de la série pour {{name}}",
+    "openCrop": "Voir la culture",
+    "openBed": "Voir la planche",
+    "missingCrop": "La culture est manquante ou a été supprimée.",
+    "missingBed": "La planche est manquante ou a été supprimée.",
+    "saveFirst": "Enregistrez d’abord la série.",
+    "back": "Retour au tableau",
+    "expand": "Ouvrir en pleine page",
+    "notFound": "Cette série de culture est indisponible.",
+    "context": "Zone de culture et saison",
+    "season": "Saison",
+    "openSeason": "Ouvrir la saison d’origine",
+    "planned": "Dates prévues",
+    "notesAndPhotos": "Notes et photos",
+    "addNoteOrPhoto": "Ajouter une note ou une photo",
+    "editNotesAndPhotos": "Modifier les notes et les photos",
+    "photosLoadFailed": "Impossible de charger les photos.",
+    "tasks": "Tâches",
+    "tasksLoadFailed": "Impossible de charger les tâches.",
+    "taskCancelled": "Annulée"
   }
 }

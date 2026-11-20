@@ -45,7 +45,7 @@ interface SearchState {
   sortKey: PlantingPlanSortKey;
 }
 
-interface SeasonSwitchSnapshot {
+export interface PlantingPlanSearchSnapshot {
   query: string;
   filters: PlantingPlanFilters;
   sortKey: PlantingPlanSortKey;
@@ -73,7 +73,7 @@ const parseMonthRanges = (value: unknown): PlantingPlanFilters['monthRanges'] | 
   return ranges;
 };
 
-const parseSnapshot = (value: unknown): SeasonSwitchSnapshot | null => {
+const parseSnapshot = (value: unknown): PlantingPlanSearchSnapshot | null => {
   if (!value || typeof value !== 'object') {
     return null;
   }
@@ -107,10 +107,10 @@ const parseSnapshot = (value: unknown): SeasonSwitchSnapshot | null => {
   };
 };
 
-const createInitialState = (projectId: number | null): SearchState => {
-  const snapshot = projectId === null
+const createInitialState = (projectId: number | null, restoredView?: PlantingPlanSearchSnapshot): SearchState => {
+  const snapshot = restoredView ?? (projectId === null
     ? null
-    : parseSnapshot(peekSeasonSwitchState(projectId, SEASON_SWITCH_STATE_KEY));
+    : parseSnapshot(peekSeasonSwitchState(projectId, SEASON_SWITCH_STATE_KEY)));
   return {
     projectId,
     query: snapshot?.query ?? '',
@@ -126,6 +126,7 @@ interface UsePlantingPlanSearchOptions<Row extends SearchRow> {
   /** Resolves the display texts search and filters look at. */
   toRecordInput: (row: Row) => PlantingPlanSearchRecordInput;
   projectId: number | null;
+  restoredView?: PlantingPlanSearchSnapshot;
 }
 
 /** The row-independent part of the search state, as the search UI needs it. */
@@ -171,8 +172,9 @@ export function usePlantingPlanSearch<Row extends SearchRow>({
   rows,
   toRecordInput,
   projectId,
+  restoredView,
 }: UsePlantingPlanSearchOptions<Row>): PlantingPlanSearchResult<Row> {
-  const [state, setState] = useState<SearchState>(() => createInitialState(projectId));
+  const [state, setState] = useState<SearchState>(() => createInitialState(projectId, restoredView));
 
   // A project switch starts from scratch; a season switch keeps the state
   // through `seasonSwitchState` (both reload the app today).
@@ -190,7 +192,7 @@ export function usePlantingPlanSearch<Row extends SearchRow>({
   }, [projectId]);
 
   // The rotation, occupancy and timing filters are deliberately left out: they live in memory only.
-  const snapshotRef = useRef<SeasonSwitchSnapshot>({
+  const snapshotRef = useRef<PlantingPlanSearchSnapshot>({
     query, filters: { ...filters, rotationStatuses: [], occupancy: [], timing: [] }, sortKey,
   });
   useEffect(() => {

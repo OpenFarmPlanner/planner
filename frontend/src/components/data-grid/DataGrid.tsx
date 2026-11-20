@@ -38,7 +38,7 @@ import {
   isEnterSaveInputTarget,
 } from './domEventTargets';
 import type { GridColDef, GridRowsProp, GridRowModesModel, GridRowId, GridSortModel, GridFilterModel, GridCellParams, GridRenderCellParams, GridRowParams, GridPaginationModel, GridEventListener } from '@mui/x-data-grid';
-import { Box, Alert, IconButton, Chip, Button, useMediaQuery } from '@mui/material';
+import { Box, Alert, IconButton, Chip, Button, Divider, useMediaQuery } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckIcon from '@mui/icons-material/Check';
@@ -50,6 +50,7 @@ import { ContextMenuIndicator } from '../contextMenu/ContextMenuIndicator';
 import { contextMenuActionsOverlaySx } from '../contextMenu/contextMenuIndicatorStyles';
 import { isAnyContextMenuOpen } from '../contextMenu/contextMenuOpenState';
 import { useNavigationBlocker } from '../../hooks/autosave';
+import { useBeforeUnloadProtection } from '../../hooks/useBeforeUnloadProtection';
 import { usePersistentSortModel } from '../../hooks/usePersistentSortModel';
 import { useTranslation } from '../../i18n';
 import { ExternalFilterColumnMenu, HighlightableNotesCell } from './ExternalFilterColumnMenu';
@@ -187,6 +188,20 @@ const wrapNativeKeyboardEvent = (event: globalThis.KeyboardEvent): DataGridKeybo
   stopPropagation: () => event.stopPropagation(),
 } as DataGridKeyboardEvent);
 
+function GridNavigationGuard({ dirty, message, save, requireSavedBeforeNavigation }: {
+  dirty: boolean;
+  message: string;
+  save: () => Promise<boolean>;
+  requireSavedBeforeNavigation?: (pathname: string) => boolean;
+}) {
+  useNavigationBlocker(dirty, message, async destination => {
+    const requireSave = requireSavedBeforeNavigation?.(destination.pathname);
+    const saved = await save().catch(() => false);
+    return !requireSave || saved;
+  }, false, { protectBeforeUnload: false });
+  return null;
+}
+
 export function EditableDataGrid<T extends EditableRow>({
   columns,
   api,
@@ -209,6 +224,8 @@ export function EditableDataGrid<T extends EditableRow>({
   dialogEditFields,
   commandApiRef,
   onSelectedRowChange,
+  suspendRouteNavigationGuard = false,
+  requireSavedBeforeNavigation,
   getRowValidationErrors,
   showAddAction = true,
   showFooterEditControls = true,
@@ -554,6 +571,7 @@ export function EditableDataGrid<T extends EditableRow>({
     (mode) => mode.mode === GridRowModes.Edit
   );
   const hasUnsavedChanges = hasRowsInEditMode || dirtyRowIds.size > 0;
+  useBeforeUnloadProtection(hasUnsavedChanges, t('messages.unsavedChanges'));
   const notesFieldNames = useMemo(
     () => notes?.fields.map((fieldConfig) => fieldConfig.field) ?? [],
     [notes],
@@ -1484,10 +1502,10 @@ export function EditableDataGrid<T extends EditableRow>({
     rowsById,
   ]);
 
-  const handleSaveRow = useCallback(async (rowId: GridRowId): Promise<void> => {
+  const handleSaveRow = useCallback(async (rowId: GridRowId): Promise<boolean> => {
     const preparedRow = await prepareRowForSave(rowId);
     if (!preparedRow) {
-      return;
+      return false;
     }
 
     try {
@@ -1503,8 +1521,10 @@ export function EditableDataGrid<T extends EditableRow>({
           )
           : prevRows,
       );
+      return true;
     } catch (error) {
       handleProcessRowUpdateError(error);
+      return false;
     }
   }, [
     handleProcessRowUpdateError,
@@ -1722,7 +1742,7 @@ export function EditableDataGrid<T extends EditableRow>({
     );
   }, [handleEditedCellTabNavigation]);
 
-  const handleSaveAllDirtyRows = useCallback(async (): Promise<void> => {
+  const handleSaveAllDirtyRows = useCallback(async (): Promise<boolean> => {
     // Awaits the real save (including the API call) for every dirty row in
     // turn, rather than just flipping rowModesModel to View and hoping MUI's
     // own async commit catches up later. Callers (e.g. the navigation
@@ -1731,15 +1751,13 @@ export function EditableDataGrid<T extends EditableRow>({
     const editingRowIds = Object.entries(rowModesModel)
       .filter(([, mode]) => mode.mode === GridRowModes.Edit)
       .map(([id]) => id);
-    for (const rowId of editingRowIds) {
-      await handleSaveRow(rowId);
-    }
     const editingRowIdKeys = new Set(editingRowIds.map(String));
-    for (const rowKey of dirtyRowIds) {
-      if (!editingRowIdKeys.has(rowKey)) {
-        await handleSaveRow(rowKey);
-      }
+    const rowsToSave = [...editingRowIds, ...[...dirtyRowIds].filter(rowId => !editingRowIdKeys.has(rowId))];
+    let savedAll = true;
+    for (const rowId of rowsToSave) {
+      if (!await handleSaveRow(rowId)) savedAll = false;
     }
+    return savedAll;
   }, [dirtyRowIds, handleSaveRow, rowModesModel]);
 
   useEffect(() => {
@@ -1775,15 +1793,6 @@ export function EditableDataGrid<T extends EditableRow>({
       document.removeEventListener('pointerdown', handleDocumentPointerDown, true);
     };
   }, [handleSaveAllDirtyRows, hasUnsavedChanges, rowModesModel]);
-
-  // Route changes save first and then proceed without showing a confirmation.
-  // Browser tab close/reload still gets the native beforeunload protection.
-  useNavigationBlocker(
-    hasUnsavedChanges,
-    t('messages.unsavedChanges'),
-    handleSaveAllDirtyRows,
-    false,
-  );
 
   const rememberRowSnapshotForCellEdit = useCallback((params: GridCellParams<T>): void => {
     const rowKey = String(params.id);
@@ -2993,6 +3002,9 @@ export function EditableDataGrid<T extends EditableRow>({
           />
         )}
       </Box>
+      {!suspendRouteNavigationGuard && <GridNavigationGuard dirty={hasUnsavedChanges}
+        message={t('messages.unsavedChanges')} save={handleSaveAllDirtyRows}
+        requireSavedBeforeNavigation={requireSavedBeforeNavigation} />}
       <CustomContextMenu
         open={Boolean(rowActionMenuState)}
         onClose={closeRowActionMenu}
@@ -3002,22 +3014,23 @@ export function EditableDataGrid<T extends EditableRow>({
         mouseX={rowActionMenuState?.mouseX}
         mouseY={rowActionMenuState?.mouseY}
       >
-        {menuActions.map((action) => (
+        {menuActions.flatMap(action => [
+          ...(action.separatorBefore ? [<Divider key={`${action.id}-separator`} role="separator" />] : []),
           <ContextMenuActionItem
             key={action.id}
             label={action.label}
             icon={action.icon}
             color={action.color === 'error' || action.color === 'primary' ? action.color : undefined}
             disabled={action.disabled}
+            disabledReason={action.disabledReason}
             onClick={() => {
-              if (!menuRow) {
-                return;
-              }
+              if (!menuRow) return;
+              const anchor = rowActionMenuState?.anchorEl;
               closeRowActionMenu();
-              action.onClick(menuRow, rowActionHelpers);
+              action.onClick(menuRow, rowActionHelpers, anchor);
             }}
-          />
-        ))}
+          />,
+        ])}
         <TableCopyMenuItems
           rowValues={menuRow ? getClipboardRowValues(menuRow) : null}
           tableRows={getClipboardTableRows()}

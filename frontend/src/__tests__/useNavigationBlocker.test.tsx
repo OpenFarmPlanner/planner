@@ -19,7 +19,7 @@ function TestComponent({
 }: {
   shouldBlock: boolean;
   message?: string;
-  onProceed?: () => Promise<void> | void;
+  onProceed?: () => Promise<void | boolean> | void | boolean;
   confirmBeforeProceed?: boolean;
 }) {
   useNavigationBlocker(shouldBlock, message, onProceed, confirmBeforeProceed);
@@ -165,6 +165,21 @@ describe('useNavigationBlocker', () => {
     expect(onProceed).toHaveBeenCalledTimes(1);
     await vi.waitFor(() => expect(blocker.proceed).toHaveBeenCalledTimes(1));
     expect(blocker.reset).not.toHaveBeenCalled();
+  });
+
+  it('stays on the current route when saving is required and fails', async () => {
+    const blocker = {
+      state: 'blocked', proceed: vi.fn(), reset: vi.fn(),
+      location: { pathname: '/app/planting-plans/4' },
+    };
+    useBlockerMock.mockReturnValueOnce(blocker);
+    const save = vi.fn(async () => false);
+
+    render(<TestComponent shouldBlock onProceed={save} confirmBeforeProceed={false} />);
+
+    expect(save).toHaveBeenCalledWith(blocker.location);
+    await vi.waitFor(() => expect(blocker.reset).toHaveBeenCalledTimes(1));
+    expect(blocker.proceed).not.toHaveBeenCalled();
   });
 
   it('does not show another confirmation dialog when onProceed triggers a rerender while still blocked', async () => {

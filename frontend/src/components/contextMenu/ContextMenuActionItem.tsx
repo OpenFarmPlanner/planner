@@ -16,6 +16,7 @@ interface ContextMenuActionItemProps extends Omit<MenuItemProps, 'children'> {
   color?: ContextMenuActionColor;
   emphasized?: boolean;
   shortcutHint?: ReactNode;
+  disabledReason?: string;
   renderPlainWhenUnadorned?: boolean;
 }
 
@@ -40,6 +41,7 @@ export function ContextMenuActionItem({
   color,
   emphasized = false,
   shortcutHint,
+  disabledReason,
   renderPlainWhenUnadorned = false,
   sx,
   ...menuItemProps
@@ -49,13 +51,18 @@ export function ContextMenuActionItem({
     : color === 'primary'
       ? 'primary.main'
       : undefined;
-  const shouldRenderPlain = renderPlainWhenUnadorned && !icon && !shortcutHint && !emphasized;
+  const itemSx: SxProps<Theme> | undefined = disabledReason ? {
+    whiteSpace: 'normal',
+    '&.Mui-disabled': { opacity: 1 },
+    '& .MuiListItemIcon-root': { color: 'text.disabled' },
+  } : resolvedColor ? { color: resolvedColor } : undefined;
+  const shouldRenderPlain = renderPlainWhenUnadorned && !icon && !shortcutHint && !emphasized && !disabledReason;
 
   if (shouldRenderPlain) {
     return (
       <MenuItem
         {...menuItemProps}
-        sx={mergeSx(resolvedColor ? { color: resolvedColor } : undefined, sx)}
+        sx={mergeSx(itemSx, sx)}
       >
         {label}
       </MenuItem>
@@ -65,7 +72,9 @@ export function ContextMenuActionItem({
   return (
     <MenuItem
       {...menuItemProps}
-      sx={mergeSx(resolvedColor ? { color: resolvedColor } : undefined, sx)}
+      aria-label={typeof label === 'string' && disabledReason ? label : menuItemProps['aria-label']}
+      aria-description={disabledReason ?? menuItemProps['aria-description']}
+      sx={mergeSx(itemSx, sx)}
     >
       {icon ? (
         <ListItemIcon sx={resolvedColor ? { color: resolvedColor } : undefined}>
@@ -74,13 +83,15 @@ export function ContextMenuActionItem({
       ) : null}
       <ListItemText
         primary={label}
+        secondary={disabledReason}
         slotProps={{
           primary: {
             sx: {
-              color: resolvedColor,
+              color: disabledReason ? 'text.disabled' : resolvedColor,
               fontWeight: emphasized ? 600 : undefined,
             },
           },
+          secondary: { sx: { overflowWrap: 'anywhere' } },
         }}
       />
       {shortcutHint ? (

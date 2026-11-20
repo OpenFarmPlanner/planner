@@ -8,7 +8,7 @@ from django.db import transaction
 from django.db.models import Count, Q, QuerySet
 from django.utils import timezone
 from django.utils.dateparse import parse_date
-from drf_spectacular.utils import extend_schema, extend_schema_view
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -40,7 +40,12 @@ from farm.services.tasks import (
 from farm.services.timing_window_check import TimingWindowChecker
 from farm.services.yield_calendar import build_yield_calendar, build_yield_calendar_for_season
 
-from .serializers import PlantingPlanSerializer, TaskFilterSerializer, TaskSerializer
+from .serializers import (
+    PlantingPlanDetailSerializer,
+    PlantingPlanSerializer,
+    TaskFilterSerializer,
+    TaskSerializer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -251,7 +256,17 @@ class YieldCalendarListView(generics.GenericAPIView):
         return Response(build_yield_calendar(active_project, iso_year, language_code, season_id=season_id))
 
 
-@extend_schema_view(list=extend_schema(parameters=[SEASON_HEADER_PARAMETER]))
+@extend_schema_view(
+    list=extend_schema(parameters=[
+        SEASON_HEADER_PARAMETER,
+        OpenApiParameter('bed', int, description='Limit plans to this bed.'),
+        OpenApiParameter('field', int, description='Limit plans to this field.'),
+    ]),
+    retrieve=extend_schema(parameters=[SEASON_HEADER_PARAMETER, OpenApiParameter(
+        'across_seasons', bool,
+        description='Read a plan in any non-deleted season of the active project.',
+    )]),
+)
 class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet):
     """ViewSet for PlantingPlan model providing CRUD operations.
     
@@ -281,11 +296,29 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
     )
     serializer_class = PlantingPlanSerializer
 
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return PlantingPlanDetailSerializer
+        return super().get_serializer_class()
+
     def get_queryset(self):
         queryset = super().get_queryset()
         season_id = resolve_season_id_from_request(self.request)
+        across_seasons = (
+            self.action == 'retrieve' and self.request.query_params.get('across_seasons') == 'true'
+        )
+        if across_seasons:
+            return queryset.filter(season__deleted_at__isnull=True)
         if season_id is not None:
             queryset = queryset.filter(season_id=season_id)
+        if self.action == 'list':
+            for name, lookup in (('bed', 'bed_id'), ('field', 'bed__field_id')):
+                value = self.request.query_params.get(name)
+                if value is not None:
+                    try:
+                        queryset = queryset.filter(**{lookup: int(value)})
+                    except ValueError:
+                        return queryset.none()
         return queryset
 
     @transaction.atomic
@@ -589,11 +622,18 @@ class TaskViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSe
         queryset = super().get_queryset().filter(
             season__deleted_at__isnull=True, deleted_at__isnull=True,
         )
-        season_id = resolve_season_id_from_request(self.request)
-        if season_id is not None:
-            queryset = queryset.filter(season_id=season_id)
         filters = TaskFilterSerializer(data=self.request.query_params)
         filters.is_valid(raise_exception=True)
+        across_seasons = filters.validated_data.pop('across_seasons', False)
+        if self.action == 'list' and across_seasons and 'planting_plan' in filters.validated_data:
+            queryset = queryset.filter(
+                planting_plan__project=self.request.active_project,
+                planting_plan__season__deleted_at__isnull=True,
+            )
+        else:
+            season_id = resolve_season_id_from_request(self.request)
+            if season_id is not None:
+                queryset = queryset.filter(season_id=season_id)
         field_id = filters.validated_data.pop('field', None)
         if field_id is not None:
             queryset = queryset.filter(

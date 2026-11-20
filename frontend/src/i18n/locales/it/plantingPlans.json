@@ -412,5 +412,28 @@
     "plantingDate": "Trapianto",
     "harvestStartDate": "Inizio raccolta",
     "harvestEndDate": "Fine raccolta"
+  },
+  "details": {
+    "title": "Dettagli della serie",
+    "openNamed": "Dettagli della serie per {{name}}",
+    "openCrop": "Apri coltura",
+    "openBed": "Apri aiuola",
+    "missingCrop": "La coltura manca o è stata eliminata.",
+    "missingBed": "L’aiuola manca o è stata eliminata.",
+    "saveFirst": "Salva prima la serie.",
+    "back": "Torna alla tabella",
+    "expand": "Apri a pagina intera",
+    "notFound": "Questa serie non è disponibile.",
+    "context": "Area di coltivazione e stagione",
+    "season": "Stagione",
+    "openSeason": "Apri la stagione di origine",
+    "planned": "Date previste",
+    "notesAndPhotos": "Note e foto",
+    "addNoteOrPhoto": "Aggiungi una nota o foto",
+    "editNotesAndPhotos": "Modifica note e foto",
+    "photosLoadFailed": "Impossibile caricare le foto.",
+    "tasks": "Attività",
+    "tasksLoadFailed": "Impossibile caricare le attività.",
+    "taskCancelled": "Annullata"
   }
 }

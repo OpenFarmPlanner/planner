@@ -46,6 +46,7 @@ export interface SnapResult {
 }
 
 export interface SelectedElement {
+  id: number;
   type: "field" | "bed";
   name: string;
   area: number | null;

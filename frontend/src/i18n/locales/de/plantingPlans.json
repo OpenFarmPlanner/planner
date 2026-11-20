@@ -403,5 +403,28 @@
     "plantingDate": "Pflanztermin",
     "harvestStartDate": "Erntebeginn",
     "harvestEndDate": "Ernteende"
+  },
+  "details": {
+    "title": "Anbauplan-Details",
+    "openNamed": "Anbauplan-Details für {{name}}",
+    "openCrop": "Zur Kultur",
+    "openBed": "Zur Beetfläche",
+    "missingCrop": "Die Kultur fehlt oder wurde gelöscht.",
+    "missingBed": "Das Beet fehlt oder wurde gelöscht.",
+    "saveFirst": "Speichere zuerst den Anbauplan.",
+    "back": "Zurück zur Tabelle",
+    "expand": "Als ganze Seite öffnen",
+    "notFound": "Dieser Anbauplan ist nicht verfügbar.",
+    "context": "Standort und Fläche",
+    "season": "Saison",
+    "openSeason": "Ursprüngliche Saison öffnen",
+    "planned": "Geplante Termine",
+    "notesAndPhotos": "Notizen und Fotos",
+    "addNoteOrPhoto": "Notiz oder Foto hinzufügen",
+    "editNotesAndPhotos": "Notizen und Fotos bearbeiten",
+    "photosLoadFailed": "Fotos konnten nicht geladen werden.",
+    "tasks": "Aufgaben",
+    "tasksLoadFailed": "Aufgaben konnten nicht geladen werden.",
+    "taskCancelled": "Abgebrochen"
   }
 }

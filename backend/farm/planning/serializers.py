@@ -507,6 +507,17 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(e.message_dict) from e
 
 
+class PlantingPlanDetailSerializer(PlantingPlanSerializer):
+    field_name = serializers.CharField(source='bed.field.name', read_only=True, allow_null=True)
+    location_name = serializers.CharField(
+        source='bed.field.location.name', read_only=True, allow_null=True,
+    )
+    crop_available = serializers.SerializerMethodField()
+
+    def get_crop_available(self, obj: PlantingPlan) -> bool:
+        return bool(obj.crop and obj.crop.deleted_at is None)
+
+
 class TaskSerializer(serializers.ModelSerializer):
     planting_plan_name = serializers.CharField(source='planting_plan.__str__', read_only=True)
 
@@ -606,6 +617,7 @@ class TaskFilterSerializer(serializers.Serializer):
     season = serializers.IntegerField(min_value=1, required=False)
     crop = serializers.IntegerField(min_value=1, required=False)
     planting_plan = serializers.IntegerField(min_value=1, required=False)
+    across_seasons = serializers.BooleanField(required=False)
     assigned_to = serializers.IntegerField(min_value=1, required=False)
     field = serializers.IntegerField(min_value=1, required=False)
     due_date__gte = serializers.DateField(required=False)
