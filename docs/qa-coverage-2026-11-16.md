@@ -191,3 +191,36 @@ sweep baseline or satisfy #1232; the outstanding backlog above remains.
   deployment, full test suite or owner acceptance checkbox changes were made.
 
 Durable findings for the library restore run: [QA report](qa-archive/qa-report-2026-11-20.md).
+
+## Targeted localhost companion-note acceptance — 2026-11-20
+
+Owner-requested acceptance of #1088 / merged PR #1288 at
+`b8b45bb615f5bb715029a17b22fdb676e04cd85f`. This adds only the scoped
+companion-note coverage below; the outstanding full-sweep baseline and backlog
+above remain unchanged.
+
+- Used the existing localhost servers (`localhost:5173`, backend port 8000)
+  and local loopback PostgreSQL database. Previewed the guarded
+  `seed_companion_history_acceptance` target before applying it for the
+  existing local owner. The idempotent fixture retained the existing imported
+  linked pair and the other neighbour. No migrations or application changes.
+- Playwright drove two actual editor tabs in the German UI. Both loaded the
+  same pair; the reciprocal tab saved a new French note. The older tab then
+  selected French, confirmed its stale cached text, changed only the reason
+  to `allelopathy`, and saved successfully.
+- Inspected the actual `PUT /api/crop-companions/replace/` request: the pair
+  included the changed reason and no `note`, `notes` or `note_language_code`.
+  Reopening the editor from both crops displayed the newer French note.
+  API assertions confirmed unchanged relation identity, retained German and
+  English notes, the newer French note, and the changed reason.
+- Reopened the French editor at 1440x900, 375x800 and 800x375. Assertions
+  passed at each size; inspected screenshots of desktop and both phone
+  orientations. Existing phone layout and scrollable landscape dialog retained;
+  no UI implementation changes. No new defect confirmed in this scoped test.
+- Left the private **Companion history acceptance** fixture available to the
+  owner on localhost. Local evidence (script, screenshots, request payload and
+  final assertions) lives outside version control in
+  `/tmp/ofp-1088-acceptance/`; authentication material is not published.
+
+This was the requested two-tab scenario, not a full rerun of the automated
+companion suite, a broad QA sweep, or a production validation.
