@@ -22,6 +22,7 @@ from farm.models import (
     Bed,
     BedLayout,
     Crop,
+    CropLoss,
     CropSupplierData,
     CropTaskTemplate,
     EntityRevision,
@@ -39,6 +40,7 @@ from farm.models import (
     Supplier,
     Task,
 )
+from farm.models.crop_losses import CropLossCause, CropLossType, CropLossUnit
 from farm.models.harvests import HarvestConversionSource, HarvestUnit
 from farm.services.crop_companions import library_companions
 from farm.services.demo_features import (
@@ -592,6 +594,7 @@ def populate_demo_project(
         )
         assign_unassigned_planting_plans(project, owner=owner)
         _create_demo_harvests(project, crops, beds, language, year)
+        _create_demo_crop_losses(project, crops, beds, language, year)
         populate_demo_tasks(
             project, owner=owner, fields=fields, crops=crops, language_code=language,
             today=reference_date,
@@ -1922,3 +1925,41 @@ def _create_demo_harvests(project: Project, crops, beds, language: str, year: in
         project=project, crop=tomato, date=date(year, 8, 14), quantity=2,
         unit=HarvestUnit.KILOGRAM,
     )
+
+
+def _create_demo_crop_losses(project: Project, crops, beds, language: str, year: int) -> None:
+    plans = PlantingPlan.objects.filter(project=project)
+    first = plans.get(crop=crops['tomate'], bed=beds['tomate-1'], planting_date__year=year)
+    second = plans.get(crop=crops['tomate'], bed=beds['tomate-2'], planting_date__year=year)
+    garlic = plans.get(crop=crops['knoblauch'], bed=beds['lauch'], planting_date__year=year - 1)
+    notes = {
+        'de': 'Die Pflanzen am Rand der Reihe waren betroffen.',
+        'en': 'The plants at the end of the row were affected.',
+        'fr': 'Les plants en bout de rang ont été touchés.',
+        'es': 'Se vieron afectadas las plantas del extremo de la hilera.',
+        'it': 'Sono state colpite le piante all’estremità della fila.',
+        'pt': 'As plantas no fim da linha foram afetadas.',
+        'nl': 'De planten aan het einde van de rij waren getroffen.',
+    }
+    CropLoss.objects.bulk_create([
+        CropLoss(
+            project=project, planting_plan=first, date=date(year, 5, 25),
+            loss_type=CropLossType.PARTIAL, cause=CropLossCause.FROST,
+            extent_value=20, extent_unit=CropLossUnit.PERCENT,
+            note=notes.get(language, notes[DEMO_LANGUAGE_FALLBACK]),
+        ),
+        CropLoss(
+            project=project, planting_plan=first, date=date(year, 6, 21),
+            loss_type=CropLossType.PARTIAL, cause=CropLossCause.PESTS,
+            extent_value=3, extent_unit=CropLossUnit.PLANTS,
+        ),
+        CropLoss(
+            project=project, planting_plan=second, date=date(year, 8, 26),
+            loss_type=CropLossType.TOTAL, cause=CropLossCause.DISEASE,
+        ),
+        CropLoss(
+            project=project, planting_plan=garlic, date=date(year, 4, 18),
+            loss_type=CropLossType.PARTIAL, cause=CropLossCause.WATERLOGGING,
+            extent_value=Decimal('1.5'), extent_unit=CropLossUnit.SQUARE_METRES,
+        ),
+    ])

@@ -428,6 +428,55 @@
     "tasksLoadFailed": "Could not load tasks.",
     "taskCancelled": "Cancelled"
   },
+  "cropLosses": {
+    "title": "Crop losses",
+    "historyType": "Crop loss",
+    "add": "Record loss",
+    "edit": "Edit loss",
+    "delete": "Delete loss",
+    "date": "Loss date",
+    "type": "Loss type",
+    "cause": "Cause",
+    "extent": "Extent (optional)",
+    "unit": "Unit",
+    "note": "Note (optional)",
+    "empty": "No crop losses recorded.",
+    "loading": "Loading crop losses",
+    "actionsFor": "Actions for loss on {{date}} ({{cause}})",
+    "confirmDelete": "Delete the loss recorded on {{date}}?",
+    "types": {
+      "partial": "Partial loss",
+      "total": "Total loss"
+    },
+    "causes": {
+      "frost": "Frost",
+      "drought": "Drought",
+      "waterlogging": "Waterlogging",
+      "pests": "Pests",
+      "disease": "Disease",
+      "other": "Other"
+    },
+    "units": {
+      "percent": "Percentage (%)",
+      "plants": "Plants",
+      "sqm": "Area (m²)"
+    },
+    "incidentCount_one": "{{count}} incident",
+    "incidentCount_other": "{{count}} incidents",
+    "extentPlants_one": "{{value}} plant",
+    "extentPlants_other": "{{value}} plants",
+    "extentArea": "{{value}} m²",
+    "errors": {
+      "load": "Could not load crop losses.",
+      "save": "Could not save the loss.",
+      "delete": "Could not delete the loss.",
+      "date": "Enter a valid date.",
+      "cause": "Choose a cause.",
+      "percent": "Enter 0 to 100 percent with up to three decimal places.",
+      "plants": "Enter a non-negative whole number of plants.",
+      "sqm": "Enter a non-negative area with up to three decimal places."
+    }
+  },
   "actualDates": {
     "clear": "Clear date",
     "title": "Planned and actual dates",

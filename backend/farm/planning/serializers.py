@@ -57,6 +57,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
     crop_standing_time_years = serializers.SerializerMethodField()
     suggested_clearing_date = serializers.SerializerMethodField()
     actual_harvest = serializers.SerializerMethodField()
+    crop_loss_count = serializers.SerializerMethodField()
     bed_name = serializers.SerializerMethodField(read_only=True)
     harvest_date = serializers.SerializerMethodField(read_only=True)
     harvest_end_date = serializers.SerializerMethodField(read_only=True)
@@ -337,6 +338,16 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         return plan_harvest_totals(
             obj, totals, season, self._general_crop_index(obj), comparable_crop=not different_crop,
         )
+
+    def get_crop_loss_count(self, obj: PlantingPlan) -> int:
+        count = getattr(obj, 'crop_loss_count', None)
+        if count is not None or obj.pk is None:
+            return count or 0
+        incidents = obj.crop_losses.filter(project_id=obj.project_id)
+        season = self.context.get('harvest_season')
+        if season is not None:
+            incidents = incidents.filter(date__range=(season.start_date, season.end_date))
+        return incidents.count()
 
     def get_origin_season_label(self, obj: PlantingPlan) -> str | None:
         if self.get_carried_over(obj) and obj.season_id is not None:

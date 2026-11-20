@@ -342,6 +342,15 @@ class HistoryRoundTripScenarioTests(HistoryInvariantTestCase):
                 'quantity': '6', 'allocations': [{'planting_plan': ids['plan'], 'quantity': '4'}],
             },
         )
+        ids['loss'] = self.write(
+            'record crop loss', 'post', '/crop-losses/', {
+                'planting_plan': ids['plan'], 'date': '2026-05-08', 'loss_type': 'partial',
+                'cause': 'frost', 'extent_value': '20', 'extent_unit': 'percent',
+            },
+        )['id']
+        self.write(
+            'add crop loss note', 'patch', f"/crop-losses/{ids['loss']}/", {'note': 'Outer row'},
+        )
         ids['task'] = self.write(
             'create manual task',
             'post',

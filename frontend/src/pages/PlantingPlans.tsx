@@ -212,7 +212,8 @@ const PLANTING_PLAN_DIALOG_EDIT_FIELDS = ["bed"];
  * render — visible as the header/toolbar jitter this constant fixes.
  */
 const DEFAULT_HIDDEN_FIELDS_ON_SMALL_SCREEN = ["harvest_date", "harvest_end_date"];
-const DEFAULT_HIDDEN_FIELDS = ["season_status", "actual_harvest"];
+const DEFAULT_HIDDEN_FIELDS = ["season_status", "actual_harvest", "crop_loss_count"];
+const FOCUSABLE_SUMMARY_FIELDS = ["actual_harvest", "crop_loss_count"];
 
 const isCarriedOverPlan = (row: PlantingPlanRow): boolean => Boolean(row.carried_over);
 
@@ -1362,6 +1363,14 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             }),
           })}>{text}</AppTooltip> : text;
         },
+      },
+      {
+        field: "crop_loss_count",
+        headerName: t("plantingPlans:cropLosses.title"),
+        width: 150,
+        editable: false,
+        valueFormatter: (count: number | undefined) => count
+          ? t("plantingPlans:cropLosses.incidentCount", { count }) : "—",
       },
       {
         field: "notes",
@@ -2683,6 +2692,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             columns={columns}
             api={plantingPlanGridAPI}
             dialogEditFields={PLANTING_PLAN_DIALOG_EDIT_FIELDS}
+            focusableReadOnlyFields={FOCUSABLE_SUMMARY_FIELDS}
             commandApiRef={gridCommandApiRef}
             onSelectedRowChange={setSelectedPlan}
             onRowsStateChange={(rows) => {

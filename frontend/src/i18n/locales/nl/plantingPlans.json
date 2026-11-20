@@ -428,6 +428,55 @@
     "tasksLoadFailed": "De taken konden niet worden geladen.",
     "taskCancelled": "Geannuleerd"
   },
+  "cropLosses": {
+    "title": "Teeltuitval",
+    "historyType": "Teeltuitval",
+    "add": "Uitval registreren",
+    "edit": "Uitval bewerken",
+    "delete": "Uitval verwijderen",
+    "date": "Datum van uitval",
+    "type": "Soort uitval",
+    "cause": "Oorzaak",
+    "extent": "Omvang (optioneel)",
+    "unit": "Eenheid",
+    "note": "Notitie (optioneel)",
+    "empty": "Geen teeltuitval geregistreerd.",
+    "loading": "Teeltuitval laden",
+    "actionsFor": "Acties voor uitval op {{date}} ({{cause}})",
+    "confirmDelete": "De uitval van {{date}} verwijderen?",
+    "types": {
+      "partial": "Gedeeltelijke uitval",
+      "total": "Volledige uitval"
+    },
+    "causes": {
+      "frost": "Vorst",
+      "drought": "Droogte",
+      "waterlogging": "Wateroverlast",
+      "pests": "Plagen",
+      "disease": "Ziekte",
+      "other": "Overig"
+    },
+    "units": {
+      "percent": "Percentage (%)",
+      "plants": "Planten",
+      "sqm": "Oppervlakte (m²)"
+    },
+    "incidentCount_one": "{{count}} geval",
+    "incidentCount_other": "{{count}} gevallen",
+    "extentPlants_one": "{{value}} plant",
+    "extentPlants_other": "{{value}} planten",
+    "extentArea": "{{value}} m²",
+    "errors": {
+      "load": "Kon de teeltuitval niet laden.",
+      "save": "Kon de uitval niet opslaan.",
+      "delete": "Kon de uitval niet verwijderen.",
+      "date": "Vul een geldige datum in.",
+      "cause": "Kies een oorzaak.",
+      "percent": "Vul 0 tot 100 procent in met maximaal drie decimalen.",
+      "plants": "Vul een geheel aantal planten in, vanaf nul.",
+      "sqm": "Vul een niet-negatieve oppervlakte in met maximaal drie decimalen."
+    }
+  },
   "actualDates": {
     "clear": "Datum wissen",
     "title": "Geplande en werkelijke datums",

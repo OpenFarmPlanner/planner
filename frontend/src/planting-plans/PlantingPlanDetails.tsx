@@ -18,7 +18,6 @@ import ProjectRequiredState from '../components/project/ProjectRequiredState';
 import { taskDisplayTitle } from '../components/tasks/taskTitles';
 import { formatCropDisplayName } from '../crops/cropDisplay';
 import { HarvestRecords } from '../harvests/HarvestRecords';
-import { initialHarvestDate } from '../harvests/harvestDisplay';
 import { useNavigationBlocker } from '../hooks/useNavigationBlocker';
 import { useProjectRequirement } from '../hooks/useProjectRequirement';
 import { useTranslation } from '../i18n';
@@ -26,10 +25,11 @@ import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
 import {
   DIRECT_SOWING, getPlanPropagationInfo, PRE_CULTIVATION, PURCHASED_TRANSPLANT,
 } from '../pages/planSowingDate';
-import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
+import { formatSeasonDate, initialSeasonRecordDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import { formatLocalizedNumber } from '../utils/numberLocalization';
 import { PlantingPlanExecutionDates } from './PlantingPlanExecutionDates';
 import { PerennialPlanDates } from './PerennialPlanDates';
+import { CropLosses } from './CropLosses';
 
 interface PlantingPlanDetailsProps {
   planId: number | null;
@@ -120,11 +120,11 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
   const canEditNotes = Boolean(loadedPlan && !otherSeason);
   const cropName = loadedPlan ? formatCropDisplayName(loadedPlan) : '';
   const recordSeason = context?.activeSeason ?? season;
-  const proposedHarvestDate = initialHarvestDate(recordSeason, loadedPlan?.harvest_date);
+  const proposedHarvestDate = initialSeasonRecordDate(recordSeason, loadedPlan?.harvest_date);
   const lastOccupiedDay = loadedPlan?.occupancy_end_date;
   const recordDate = loadedPlan?.carried_over && lastOccupiedDay && proposedHarvestDate > lastOccupiedDay
     ? lastOccupiedDay : proposedHarvestDate;
-  const harvestScope = `${activeProjectId ?? ''}:${recordSeason?.id ?? ''}:${loadedPlanId ?? ''}`;
+  const recordScope = `${activeProjectId ?? ''}:${recordSeason?.id ?? ''}:${loadedPlanId ?? ''}`;
   const propagation = loadedPlan && getPlanPropagationInfo(loadedPlan, undefined);
   const cultivation = loadedPlan?.cultivation_type || (propagation?.isPreCultivation
     ? PRE_CULTIVATION : loadedPlan?.crop_cultivation_type);
@@ -217,7 +217,7 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
                 onChanged();
               }} />
             <DetailSection title={t('harvests:title')} outlined>
-              <HarvestRecords key={harvestScope} scope={harvestScope} planId={loadedPlan.id}
+              <HarvestRecords key={recordScope} scope={recordScope} planId={loadedPlan.id}
                 initialDate={recordDate} planTotals={loadedPlan.actual_harvest}
                 plan={loadedPlan.crop_available && loadedPlan.crop !== null ? {
                   id: loadedPlan.id, crop: loadedPlan.crop, cropLabel: cropName,
@@ -225,6 +225,8 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
                 } : undefined}
                 onChanged={() => { setAttempt(value => value + 1); onChanged(); }} />
             </DetailSection>
+            <CropLosses key={recordScope} planId={loadedPlan.id} onChanged={onChanged}
+              initialDate={initialSeasonRecordDate(loadedPlan.carried_over ? recordSeason : season, loadedPlan.planting_date)} />
             {(canEditNotes || loadedPlan.notes?.trim() || hasPhotos) && (
               <DetailSection title={t('details.notesAndPhotos')} outlined>
                 <Stack spacing={1.5} sx={{ alignItems: 'flex-start', minWidth: 0, overflowWrap: 'anywhere' }}>

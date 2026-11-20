@@ -29,6 +29,7 @@ from .agent_api import (  # noqa: E402
     ProjectApiToken,
 )
 from .base import TimestampedModel  # noqa: E402
+from .crop_losses import CropLoss  # noqa: E402
 from .crops import (  # noqa: E402
     ActiveCropManager,
     Crop,
@@ -78,6 +79,7 @@ __all__ = [
     'Crop',
     'CropCompanion',
     'CropImportDraft',
+    'CropLoss',
     'CropRevision',
     'CropSupplierData',
     'CropTimingWindow',

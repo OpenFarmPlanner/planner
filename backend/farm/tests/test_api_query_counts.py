@@ -36,6 +36,7 @@ from farm.models import (
     Bed,
     Crop,
     CropCompanion,
+    CropLoss,
     CropSupplierData,
     CropTimingWindow,
     EntityRevision,
@@ -558,6 +559,10 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             )
             HarvestAllocation.objects.create(
                 project=self.project, harvest=record, planting_plan=plan, quantity=1,
+            )
+            CropLoss.objects.create(
+                project=self.project, planting_plan=plan, date=date(2026, 5, 17),
+                loss_type='partial', cause='frost',
             )
         self.assert_list_query_count('/openfarmplanner/api/planting-plans/', 16)
         self.assert_list_query_count('/openfarmplanner/api/harvests/', 7)

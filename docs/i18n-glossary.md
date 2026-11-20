@@ -402,6 +402,34 @@ Broad groups and disease concepts never establish a confirmed shared pathogen.
 | Quellenbeleg | Source evidence | Source | Fuente | fonte | fonte | bron |
 | wissenschaftlicher Ersatzname | Scientific-name fallback | Nom scientifique par défaut | Nombre científico alternativo | nome scientifico sostitutivo | nome científico alternativo | wetenschappelijke naam als terugval |
 
+### Crop losses
+
+Use `plantingPlans.cropLosses` for a dated incident affecting plants or occupied
+area. Record harvest quantity, young-plant reserve, and catalogue references in
+their respective workflows. The table shows the number of dated incidents, and
+the detail view gives each incident its own measured extent.
+
+| DE | EN | FR | ES | IT | PT (pt-PT) | NL |
+| --- | --- | --- | --- | --- | --- | --- |
+| Ausfälle | Crop losses | Pertes de culture | Pérdidas del cultivo | Perdite colturali | Perdas na cultura | Teeltuitval |
+| Totalausfall | Total loss | Perte totale | Pérdida total | Perdita totale | Perda total | Volledige uitval |
+| Teilausfall | Partial loss | Perte partielle | Pérdida parcial | Perdita parziale | Perda parcial | Gedeeltelijke uitval |
+| Frost | Frost | Gel | Helada | Gelata | Geada | Vorst |
+| Trockenheit | Drought | Sécheresse | Sequía | Siccità | Seca | Droogte |
+| Staunässe | Waterlogging | Excès d’eau | Encharcamiento | Ristagno idrico | Encharcamento | Wateroverlast |
+| Schädlinge | Pests | Ravageurs | Plagas | Parassiti | Pragas | Plagen |
+| Krankheit | Disease | Maladie | Enfermedad | Malattia | Doença | Ziekte |
+
+The pest and disease labels follow the plant-health vocabulary above. Excess
+water refers to overly wet growing conditions. Regional terminology references
+include [LfL](https://lfl.bayern.de/ips/kleingarten/066433/index.php),
+[UMN Extension](https://extension.umn.edu/agriculture/specialty-crops/vegetable-farming/irrigation-strategies-for-vegetables),
+[CTIFL](https://www.ctifl.fr/changement-climatique-les-travaux-du-ctifl-pour-accompagner-l-adaptation-des-productions-francaises-de-fruits-et-legumes),
+[MAPA](https://www.mapa.gob.es/dam/mapa/contenido/ministerio/servicios/servicios-de-informacion/analisis-y-prospectiva/adversidades-climaticas-y-medioambientales/informe-semanal/informes-anteriores/2025/mayo/informecopac070525.pdf),
+[CREA](https://agrometeo.crea.gov.it/dati-e-analisi/fenologia-delle-colture/),
+[CCDR Norte](https://agrodigital.ccdr-n.pt/sia/Informa%C3%A7%C3%A3o-Agr%C3%A1ria/Estado-das-Culturas),
+and [Wageningen University & Research](https://edepot.wur.nl/640935).
+
 ### Planting-plan table date headings
 
 `plantingPlans.tableHeaders` is table-specific. In Portuguese, Italian and

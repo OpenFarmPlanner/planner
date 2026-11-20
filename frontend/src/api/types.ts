@@ -1299,6 +1299,7 @@ export interface PlantingPlan extends PlantingPlanActualDates {
   crop_life_cycle?: LifeCycle | '';
   crop_standing_time_years?: number | null;
   actual_harvest?: PlanActualHarvest | null;
+  crop_loss_count?: number;
   bed: number | null;
   bed_name?: string | null;
   season?: number | null;
@@ -1803,6 +1804,24 @@ export interface HarvestPlanSuggestion {
   harvest_start: string | null;
   harvest_end: string | null;
   area_sqm: string | null;
+}
+
+export type CropLossType = 'total' | 'partial';
+export type CropLossCause = 'frost' | 'drought' | 'waterlogging' | 'pests' | 'disease' | 'other';
+export type CropLossUnit = 'percent' | 'plants' | 'sqm';
+
+export interface CropLossWrite {
+  planting_plan: number;
+  date: string;
+  loss_type: CropLossType;
+  cause: CropLossCause;
+  extent_value: string | null;
+  extent_unit: CropLossUnit | '';
+  note: string;
+}
+
+export interface CropLoss extends CropLossWrite {
+  id: number;
 }
 
 export interface RemainingAreaResponse {

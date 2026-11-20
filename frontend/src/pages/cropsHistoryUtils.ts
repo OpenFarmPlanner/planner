@@ -13,6 +13,7 @@ export type HistoryScope = 'crop' | 'global' | 'project';
 const OBJECT_TYPE_TRANSLATION_KEYS: Record<string, string> = {
   crop: 'history.objectTypes.crop',
   planting_plan: 'history.objectTypes.plantingPlan',
+  crop_loss: 'plantingPlans:cropLosses.historyType',
   location: 'history.objectTypes.location',
   field: 'history.objectTypes.field',
   bed: 'history.objectTypes.bed',
@@ -42,6 +43,10 @@ const HISTORY_FIELD_LABEL_KEYS: Record<string, string> = {
   name: 'form.name',
   variety: 'form.variety',
   notes: 'form.notes',
+  loss_type: 'plantingPlans:cropLosses.type',
+  cause: 'plantingPlans:cropLosses.cause',
+  extent_value: 'plantingPlans:cropLosses.extent',
+  extent_unit: 'plantingPlans:cropLosses.unit',
   seed_supplier: 'form.supplier',
   supplier_name: 'form.supplier',
   crop_family: 'form.cropFamily',
@@ -307,6 +312,9 @@ export function formatHistoryChangeValue(
   if (field === 'created') {
     return t('history.createdValue');
   }
+  if (field === 'loss_type') return t(`plantingPlans:cropLosses.types.${value}`);
+  if (field === 'cause') return t(`plantingPlans:cropLosses.causes.${value}`);
+  if (field === 'extent_unit') return t(`plantingPlans:cropLosses.units.${value}`);
   if (field === 'seed_rate_by_cultivation') {
     return formatSeedRateByCultivation(value, t);
   }

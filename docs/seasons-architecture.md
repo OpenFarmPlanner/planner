@@ -36,6 +36,10 @@ that predate this feature.
   season if its bed occupancy overlaps the harvest date. Season copies
   leave the source harvests and allocations in place. See
   [planning and operations](./data-model.md#4-planning-and-operations).
+- Crop-loss incidents contribute to the season containing their recorded date.
+  A plan's detail view lists its incidents across seasons. The optional table
+  count follows the currently selected season, including incidents recorded for
+  carried-over plans. A copied plan starts with an empty incident log.
 
 ## Deleting a season
 

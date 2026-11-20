@@ -437,6 +437,57 @@
     "tasksLoadFailed": "Impossible de charger les tâches.",
     "taskCancelled": "Annulée"
   },
+  "cropLosses": {
+    "title": "Pertes de culture",
+    "historyType": "Perte de culture",
+    "add": "Enregistrer une perte",
+    "edit": "Modifier la perte",
+    "delete": "Supprimer la perte",
+    "date": "Date de la perte",
+    "type": "Type de perte",
+    "cause": "Cause",
+    "extent": "Quantité perdue (facultatif)",
+    "unit": "Unité",
+    "note": "Note (facultatif)",
+    "empty": "Aucune perte de culture enregistrée.",
+    "loading": "Chargement des pertes de culture",
+    "actionsFor": "Actions pour la perte du {{date}} ({{cause}})",
+    "confirmDelete": "Supprimer la perte du {{date}} ?",
+    "types": {
+      "partial": "Perte partielle",
+      "total": "Perte totale"
+    },
+    "causes": {
+      "frost": "Gel",
+      "drought": "Sécheresse",
+      "waterlogging": "Excès d’eau",
+      "pests": "Ravageurs",
+      "disease": "Maladie",
+      "other": "Autre"
+    },
+    "units": {
+      "percent": "Pourcentage (%)",
+      "plants": "Plants",
+      "sqm": "Surface (m²)"
+    },
+    "incidentCount_one": "{{count}} incident",
+    "incidentCount_many": "{{count}} incidents",
+    "incidentCount_other": "{{count}} incidents",
+    "extentPlants_one": "{{value}} plant",
+    "extentPlants_many": "{{value}} plants",
+    "extentPlants_other": "{{value}} plants",
+    "extentArea": "{{value}} m²",
+    "errors": {
+      "load": "Impossible de charger les pertes de culture.",
+      "save": "Impossible d’enregistrer la perte.",
+      "delete": "Impossible de supprimer la perte.",
+      "date": "Saisis une date valide.",
+      "cause": "Choisis une cause.",
+      "percent": "Saisis un pourcentage de 0 à 100 avec trois décimales au maximum.",
+      "plants": "Saisis un nombre entier de plants, à partir de zéro.",
+      "sqm": "Saisis une surface positive ou nulle avec trois décimales au maximum."
+    }
+  },
   "actualDates": {
     "clear": "Effacer la date",
     "title": "Dates prévues et réelles",

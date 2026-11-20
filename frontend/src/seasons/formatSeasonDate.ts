@@ -1,4 +1,6 @@
 import type { i18n as I18nInstance } from 'i18next';
+import type { Season } from '../api/types';
+import { toIsoDateString } from '../components/data-grid/dateEditCellUtils';
 import { resolveLocaleFromLanguage } from '../utils/numberLocalization';
 
 /** Formatting locale of the resolved UI language. */
@@ -12,6 +14,13 @@ export function formatSeasonDate(isoDate: string, locale: string): string {
 
 export function formatSeasonPeriod(startDate: string, endDate: string, locale: string): string {
   return `${formatSeasonDate(startDate, locale)} – ${formatSeasonDate(endDate, locale)}`;
+}
+
+export function initialSeasonRecordDate(season: Season | null | undefined, planned?: string | null): string {
+  const today = toIsoDateString(new Date())!;
+  if (!season || (season.start_date <= today && today <= season.end_date)) return today;
+  if (planned && season.start_date <= planned && planned <= season.end_date) return planned;
+  return today < season.start_date ? season.start_date : season.end_date;
 }
 
 /** Mirrors `Season.computed_label` on the backend (see `farm/models/seasons.py`):

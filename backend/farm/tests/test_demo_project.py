@@ -448,6 +448,16 @@ class DemoProjectServiceTests(TestCase):
         self.assertEqual(rhubarb_harvest.quantity, Decimal('3.5'))
         self.assertTrue(harvests.filter(unit='piece', grams_per_unit=110).exists())
         self.assertTrue(harvests.filter(allocations__isnull=True).exists())
+        losses = result.project.crop_losses.all()
+        self.assertEqual(losses.count(), 4)
+        self.assertEqual(losses.filter(date__year=current_year).count(), 4)
+        self.assertEqual(
+            set(losses.values_list('extent_unit', flat=True)), {'', 'percent', 'plants', 'sqm'},
+        )
+        self.assertEqual(losses.filter(loss_type='total', extent_value__isnull=True).count(), 1)
+        self.assertEqual(
+            losses.filter(planting_plan__season__start_date__year=current_year - 1).count(), 1,
+        )
 
     def test_demo_seasons_follow_the_current_date(self) -> None:
         with patch('farm.services.demo_project.demo_current_year', return_value=2031):

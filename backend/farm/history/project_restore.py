@@ -136,9 +136,10 @@ def _checkpoint_state(snapshot: dict[str, Any]) -> ProjectState | None:
         return None
     if not isinstance(state, dict):
         raise ProjectRestoreConflict("incompatible checkpoint")
-    if set(state) == set(_MODELS) - {"harvest_record", "harvest_allocation"}:
-        # Projects created before harvest recording had neither table.
-        return {**state, "harvest_record": {}, "harvest_allocation": {}}
+    # Older checkpoints predate the loss table or both dated event features.
+    for added in ({"crop_loss"}, {"crop_loss", "harvest_record", "harvest_allocation"}):
+        if set(state) == set(_MODELS) - added:
+            return {**state, **{label: {} for label in added}}
     if set(state) != set(_MODELS):
         raise ProjectRestoreConflict("incompatible checkpoint")
     return state
