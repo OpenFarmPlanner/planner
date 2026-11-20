@@ -160,11 +160,16 @@
         "description": "Crea ora la tua prima coltura o importane una dalla biblioteca delle colture. Potrai poi creare le serie."
       },
       "plans": {
-        "title": "Nessuna serie ancora presente",
-        "description": "Non sono ancora state create serie per le superfici coltivate esistenti. Crea una serie per mostrare colture e date nel calendario colturale."
+        "title": "Nessuna serie per questa stagione",
+        "description": "Aggiungi una serie per visualizzare colture e date nel calendario colturale."
+      },
+      "selectSeason": {
+        "title": "Nessuna stagione selezionata",
+        "description": "Seleziona una stagione per vedere le sue serie nel calendario."
       }
     },
     "actions": {
+      "selectSeason": "Seleziona stagione",
       "createCrop": "Aggiungi coltura",
       "createField": "Aggiungi appezzamento",
       "createAreas": "Vai a Superfici coltivate",

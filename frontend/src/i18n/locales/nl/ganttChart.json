@@ -160,11 +160,16 @@
         "description": "Maak nu je eerste gewas of importeer er een uit de gewassenbibliotheek. Daarna kun je teelten maken."
       },
       "plans": {
-        "title": "Nog geen teelten",
-        "description": "Er zijn nog geen teelten gemaakt voor de bestaande teeltoppervlakken. Maak een teelt om gewassen en datums in de teeltkalender te tonen."
+        "title": "Nog geen teelten voor dit seizoen",
+        "description": "Voeg een teelt toe om gewassen en datums in de teeltkalender te zien."
+      },
+      "selectSeason": {
+        "title": "Geen seizoen geselecteerd",
+        "description": "Kies een seizoen om de bijbehorende teelten in de kalender te zien."
       }
     },
     "actions": {
+      "selectSeason": "Seizoen kiezen",
       "createCrop": "Gewas toevoegen",
       "createField": "Perceel toevoegen",
       "createAreas": "Naar Teeltoppervlakken",

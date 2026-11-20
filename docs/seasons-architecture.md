@@ -135,6 +135,10 @@ description), one level down:
   The Continued crops filter includes every carried-over planting. The
   optional Season status column describes which part of the occupancy period
   falls in the selected season.
+- The Crop Calendar waits for a selected season before fetching plans. Its empty
+  state opens season creation when the project has no seasons, or opens the
+  season picker when seasons exist without a selection. A selected season
+  with only carried-over plans still displays the calendar.
 - The Anbaukalender's Gantt/occupancy timeline
   (`frontend/src/pages/GanttChart.tsx`) does **not** anchor its visible time
   axis to a calendar year. The axis follows the actual data range of the

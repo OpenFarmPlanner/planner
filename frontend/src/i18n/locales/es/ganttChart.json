@@ -160,11 +160,16 @@
         "description": "Crea ahora tu primer cultivo o impórtalo desde la biblioteca de cultivos. Después podrás crear series."
       },
       "plans": {
-        "title": "Todavía no hay series",
-        "description": "Todavía no se han creado series para las superficies de cultivo existentes. Crea una serie para mostrar cultivos y fechas en el calendario de cultivos."
+        "title": "Todavía no hay series para esta temporada",
+        "description": "Añade una serie para ver los cultivos y las fechas en el calendario de cultivos."
+      },
+      "selectSeason": {
+        "title": "Ninguna temporada seleccionada",
+        "description": "Selecciona una temporada para ver sus series en el calendario."
       }
     },
     "actions": {
+      "selectSeason": "Seleccionar temporada",
       "createCrop": "Añadir cultivo",
       "createField": "Añadir parcela",
       "createAreas": "Ir a Superficies de cultivo",

@@ -160,11 +160,16 @@
         "description": "Créez dès maintenant votre première culture ou importez-en une depuis la bibliothèque de cultures. Vous pourrez ensuite créer des séries."
       },
       "plans": {
-        "title": "Aucune série pour l'instant",
-        "description": "Aucune série n'a encore été créée pour les surfaces de culture existantes. Créez une série pour afficher les cultures et les dates dans le calendrier de culture."
+        "title": "Aucune série pour cette saison",
+        "description": "Ajoutez une série pour afficher les cultures et les dates dans le calendrier de culture."
+      },
+      "selectSeason": {
+        "title": "Aucune saison sélectionnée",
+        "description": "Sélectionnez une saison pour afficher ses séries dans le calendrier."
       }
     },
     "actions": {
+      "selectSeason": "Sélectionner une saison",
       "createCrop": "Ajouter une culture",
       "createField": "Ajouter une parcelle",
       "createAreas": "Aller à Surfaces de culture",

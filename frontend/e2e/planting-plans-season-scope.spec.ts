@@ -1,10 +1,116 @@
 import { expect, test, type Request } from '@playwright/test';
-import { loginWithDeterministicProject } from './utils';
+import common from '../src/i18n/locales/de/common.json' with { type: 'json' };
+import calendar from '../src/i18n/locales/de/ganttChart.json' with { type: 'json' };
+import navigation from '../src/i18n/locales/de/navigation.json' with { type: 'json' };
+import plans from '../src/i18n/locales/de/plantingPlans.json' with { type: 'json' };
+import { apiRequest, expectNoHorizontalPageOverflow, loginWithDeterministicProject, resetE2EScenario } from './utils';
 
 // The PWA service worker answers fetches itself, and page.route() never sees a
 // request a service worker handled — blocking it is what lets this spec hold
 // the season responses back.
 test.use({ serviceWorkers: 'block' });
+
+test('an empty project opens season creation directly from the Crop Calendar', async ({ page, request }, info) => {
+  const scenario = `calendar-no-season-${Date.now()}`;
+  try {
+    await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
+    for (const [width, height] of [[1440, 900], [375, 800], [800, 375]]) {
+      await page.setViewportSize({ width, height });
+      await page.goto('/app/gantt-chart');
+      await expect(page.getByText(plans.emptyStates.states.seasons.title, { exact: true })).toBeVisible();
+      await expect(page.getByRole('link', { name: common.setupActions.createPlan, exact: true })).toHaveCount(0);
+      const create = page.getByRole('button', { name: plans.emptyStates.actions.createSeason, exact: true });
+      await expect(create).toBeInViewport({ ratio: 1 });
+      await expectNoHorizontalPageOverflow(page);
+      await page.screenshot({ path: info.outputPath(`no-season-${width}.png`), animations: 'disabled' });
+      await create.focus();
+      await expect(create).toBeFocused();
+      await create.press('Enter');
+      const dialog = page.getByRole('dialog', { name: /^Saison .* anlegen\?$/ });
+      await expect(dialog).toBeVisible();
+      await expect(page).toHaveURL(/\/app\/gantt-chart(?:\?|$)/);
+      await page.keyboard.press('Escape');
+      await expect(dialog).toBeHidden();
+    }
+  } finally {
+    await resetE2EScenario(request, scenario);
+  }
+});
+
+test('the Crop Calendar follows the selected season and includes carried plans', async ({ page, request }, info) => {
+  const scenario = `calendar-season-setup-${Date.now()}`;
+  try {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
+    const earlier = await apiRequest<{ id: number }>(page, 'POST', '/seasons/', {
+      start_date: '2026-01-01', end_date: '2026-12-31', custom_label: 'Test A',
+    });
+    const later = await apiRequest<{ id: number }>(page, 'POST', '/seasons/', {
+      start_date: '2027-01-01', end_date: '2027-12-31', custom_label: 'Test B',
+    });
+    const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', { name: 'Test garden' });
+    const field = await apiRequest<{ id: number }>(page, 'POST', '/fields/', { location: location.id, name: 'Test field' });
+    const bed = await apiRequest<{ id: number }>(page, 'POST', '/beds/', { field: field.id, name: 'Test bed', area_sqm: 12 });
+    const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+      name: 'Test lettuce', growth_duration_days: 40, harvest_duration_days: 14,
+      cultivation_type: 'direct_sowing', cultivation_types: ['direct_sowing'],
+    });
+    const createPlan = (date: string) => apiRequest<{ id: number }>(page, 'POST', '/planting-plans/', {
+      season: earlier.id, crop: crop.id, bed: bed.id, planting_date: date,
+      cultivation_type: 'direct_sowing', area_usage_sqm: 2,
+    });
+    const original = await createPlan('2026-04-01');
+    const scopeHeaders: Array<string | undefined> = [];
+    page.on('request', (entry) => {
+      if (entry.method() === 'GET'
+        && new URL(entry.url()).pathname.endsWith('/planting-plans/')
+        && entry.frame().url().includes('/app/gantt-chart')) {
+        scopeHeaders.push(entry.headers()['x-season-id']);
+      }
+    });
+    await page.goto('/app/gantt-chart');
+    const empty = page.getByText(calendar.emptyStates.states.plans.title, { exact: true });
+    const add = page.getByRole('link', { name: common.setupActions.createPlan, exact: true });
+    const timeline = page.getByTestId('gantt-virtual-viewport');
+    const task = (id: number) => timeline.locator(`[data-task-id^="plan-${id}-"]`).first();
+    await expect(empty).toBeVisible();
+    await expect(timeline).toHaveCount(0);
+    expect(scopeHeaders).toContain(String(later.id));
+    expect(scopeHeaders.every(scope => scope === String(later.id))).toBe(true);
+    await expect(add).toHaveAttribute('href', '/app/planting-plans?create=true');
+    await page.screenshot({ path: info.outputPath('empty-season-desktop.png'), animations: 'disabled' });
+
+    const switchSeason = async (label: string) => {
+      await page.getByRole('button', { name: navigation.seasonSwitcher.ariaLabel }).click();
+      await page.getByRole('menuitem', { name: new RegExp(label) }).click();
+    };
+    await switchSeason('Test A');
+    await expect(timeline).toBeVisible();
+    await expect(task(original.id)).toBeVisible();
+    await expect(empty).toBeHidden();
+    await switchSeason('Test B');
+    await expect(empty).toBeVisible();
+
+    await page.setViewportSize({ width: 375, height: 800 });
+    await expectNoHorizontalPageOverflow(page);
+    await expect(add).toBeInViewport({ ratio: 1 });
+    await page.screenshot({ path: info.outputPath('empty-season-mobile.png'), animations: 'disabled' });
+    await add.click();
+    await expect(page).toHaveURL(/\/app\/planting-plans(?:\?|$)/);
+    await expect(page.getByRole('dialog', { name: plans.mobile.createTitle })).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    const winterPlan = await createPlan('2026-12-18');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/app/gantt-chart');
+    await expect(timeline).toBeVisible();
+    await expect(task(winterPlan.id)).toBeVisible();
+    await expect(task(original.id)).toHaveCount(0);
+    await expect(empty).toBeHidden();
+  } finally {
+    await resetE2EScenario(request, scenario);
+  }
+});
 
 // Regression for a CI flake (OpenFarmPlanner/planner#742, e2e shard 2/3, run
 // 36989707245): the demo project has a 2025 and a 2026 season, and a page that
