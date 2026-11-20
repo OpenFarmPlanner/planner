@@ -23,6 +23,7 @@ from .project_restore import (
     CHECKPOINT_KEY,
     ProjectRestoreConflict,
     ProjectRestorePreviewChanged,
+    ProjectRestorePreviewTooLarge,
     ensure_project_checkpoint,
     preview_project_restore,
     restore_project_version,
@@ -35,6 +36,7 @@ from .restore import (
     revert_batch_operation,
 )
 from .serializers import CropHistoryEntrySerializer, CropRestoreSerializer, ProjectRestoreSerializer
+from .throttling import ProjectRestorePreviewIpThrottle, ProjectRestorePreviewUserThrottle
 
 
 class ProjectHistoryListView(APIView):
@@ -159,8 +161,18 @@ def _project_restore_conflict_response():
     )
 
 
+def _project_restore_preview_limit_response():
+    return api_error_response(
+        code="project_restore_preview_too_large",
+        detail="This project exceeds the size limit for a restore preview.",
+        status_code=status.HTTP_409_CONFLICT,
+    )
+
+
 class ProjectHistoryRestorePreviewView(APIView):
     """Read the changes the selected whole-project restore would make."""
+
+    throttle_classes = [ProjectRestorePreviewUserThrottle, ProjectRestorePreviewIpThrottle]
 
     @method_decorator(never_cache)
     def get(self, request):
@@ -168,11 +180,12 @@ class ProjectHistoryRestorePreviewView(APIView):
         require_project_admin(request.user, project.pk, request=request)
         serializer = CropRestoreSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        revision = _project_restore_revision(project, serializer.validated_data['history_id'])
-        if isinstance(revision, Response):
-            return revision
+        revision_id = serializer.validated_data['history_id']
+        get_object_or_404(EntityRevision.objects.filter(project=project).only('id'), id=revision_id)
         try:
-            return Response(preview_project_restore(project, revision))
+            return Response(preview_project_restore(project, revision_id))
+        except ProjectRestorePreviewTooLarge:
+            return _project_restore_preview_limit_response()
         except ProjectRestoreConflict:
             return _project_restore_conflict_response()
 
@@ -199,6 +212,8 @@ class ProjectHistoryRestoreView(APIView):
                 detail="The project or version changed. Preview the restore again to confirm it.",
                 status_code=status.HTTP_409_CONFLICT,
             )
+        except ProjectRestorePreviewTooLarge:
+            return _project_restore_preview_limit_response()
         except ProjectRestoreConflict:
             return _project_restore_conflict_response()
 

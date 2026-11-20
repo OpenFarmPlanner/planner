@@ -124,7 +124,7 @@ export function RestoreVersionDialog({
   const isBatch = entry ? isBatchGroupEntry(entry) : false;
   const displayName = entry?.is_automatic_backup ? null : entry?.object_display_name?.trim();
   const status = preview?.status ?? 'loading';
-  const previewError = status === 'stale' || status === 'conflict' || status === 'unavailable';
+  const previewError = status !== 'ready' && status !== 'loading';
 
   return (
     <Dialog
@@ -192,9 +192,11 @@ export function RestoreVersionDialog({
                 <Alert severity={status === 'unavailable' ? 'error' : 'warning'}>
                   {tCrops(`restoreDialog.preview.${status}`)}
                 </Alert>
-                <Button onClick={onRefreshPreview} sx={{ mt: 0.5 }}>
-                  {tCrops('restoreDialog.preview.refresh')}
-                </Button>
+                {status !== 'too_large' ? (
+                  <Button onClick={onRefreshPreview} sx={{ mt: 0.5 }}>
+                    {tCrops('restoreDialog.preview.refresh')}
+                  </Button>
+                ) : null}
               </Box>
             ) : null}
           </>

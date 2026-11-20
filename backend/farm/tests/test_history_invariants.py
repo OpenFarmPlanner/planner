@@ -34,6 +34,10 @@ from farm.history.project_restore import (
     record_project_checkpoint,
 )
 from farm.history.records import revision_batch
+from farm.history.throttling import (
+    ProjectRestorePreviewIpThrottle,
+    ProjectRestorePreviewUserThrottle,
+)
 from farm.models import (
     BatchOperation,
     Crop,
@@ -318,6 +322,79 @@ class ProjectRestorePreviewTests(HistoryInvariantTestCase):
         self.assertEqual(self.confirm(first, token).status_code, 403)
         self.assertEqual(capture_project_state(self.project), before)
         self.assertEqual(self.history_counts(), counts)
+
+    def test_oversized_projects_are_refused_before_capture_without_changes(self):
+        self.write('first crop', 'post', '/crops/', {'name': 'First crop'})
+        historical = self.versions[-1].revision
+        self.write('second crop', 'post', '/crops/', {'name': 'Second crop'})
+        token = self.preview(historical).json()['token']
+        before, counts = capture_project_state(self.project), self.history_counts()
+        for limit in ('MAX_PREVIEW_REVISIONS', 'MAX_PREVIEW_HISTORY_BYTES', 'MAX_PREVIEW_ROWS'):
+            with (
+                self.subTest(limit=limit),
+                patch(f'farm.history.project_restore.{limit}', 1),
+                patch('farm.history.project_restore.capture_project_state') as capture,
+            ):
+                response = self.preview(historical)
+                self.assertEqual(response.status_code, 409, response.json())
+                self.assertEqual(response.json()['code'], 'project_restore_preview_too_large')
+                self.assertNotIn('impact', response.json())
+                self.assertNotIn('token', response.json())
+                refused_restore = self.confirm(historical, token)
+                self.assertEqual(refused_restore.status_code, 409, refused_restore.json())
+                self.assertEqual(
+                    refused_restore.json()['code'], 'project_restore_preview_too_large',
+                )
+                capture.assert_not_called()
+            self.assert_refusal_is_atomic(response.status_code, before, counts)
+
+    def test_preview_limits_historical_storage_checks(self):
+        image = self.write('upload', 'post', '/media-files/upload/', {'file': _png('preview.png')},
+                           multipart=True)
+        crop = self.write('add crop', 'post', '/crops/', {
+            'name': 'Picture crop', 'image_file_id': image['id'],
+        })
+        historical = self.versions[-1].revision
+        self.write('detach photo', 'patch', f"/crops/{crop['id']}/", {'image_file_id': None})
+        before, counts = capture_project_state(self.project), self.history_counts()
+        with (
+            patch('farm.history.project_restore.MAX_PREVIEW_STORAGE_CHECKS', 0),
+            patch('farm.history.project_restore.default_storage.exists') as exists,
+        ):
+            response = self.preview(historical)
+            self.assertEqual(response.status_code, 409, response.json())
+            self.assertEqual(response.json()['code'], 'project_restore_preview_too_large')
+            exists.assert_not_called()
+        self.assert_refusal_is_atomic(response.status_code, before, counts)
+
+    def test_preview_requests_are_rate_limited_independently_by_user_and_ip(self):
+        self.write('first crop', 'post', '/crops/', {'name': 'First crop'})
+        target = self.versions[-1].revision
+        self.write('second crop', 'post', '/crops/', {'name': 'Second crop'})
+        another_admin = get_user_model().objects.create_user(username='preview-admin')
+        ProjectMembership.objects.create(user=another_admin, project=self.project, role='admin')
+        before, counts = capture_project_state(self.project), self.history_counts()
+
+        def preview_as(user, ip):
+            self.client.force_authenticate(user=user)
+            return self.client.get(RESTORE_PREVIEW_URL, {'history_id': target.pk}, REMOTE_ADDR=ip)
+
+        for throttle in (ProjectRestorePreviewUserThrottle, ProjectRestorePreviewIpThrottle):
+            scope = f'test_preview_{uuid4().hex}'
+            with (
+                self.subTest(throttle=throttle.__name__),
+                patch.object(throttle, 'scope', scope),
+                patch.object(throttle, 'THROTTLE_RATES', {scope: '1/minute'}),
+            ):
+                self.assertEqual(preview_as(self.user, '192.0.2.1').status_code, 200)
+                if throttle is ProjectRestorePreviewUserThrottle:
+                    response = preview_as(self.user, '192.0.2.2')
+                else:
+                    response = preview_as(another_admin, '192.0.2.1')
+                self.assertEqual(response.status_code, 429, response.json())
+                self.assertIn('Retry-After', response)
+                self.assertEqual(capture_project_state(self.project), before)
+                self.assertEqual(self.history_counts(), counts)
 
 
 class HistoryRoundTripScenarioTests(HistoryInvariantTestCase):

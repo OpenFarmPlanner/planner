@@ -1799,6 +1799,8 @@
       "unavailable": "Die Vorschau ist nicht verfügbar. Aktualisiere sie, um das Projekt erneut zu prüfen.",
       "conflict": "Diese Version kann nicht sicher wiederhergestellt werden. Wähle eine andere Version oder aktualisiere die Vorschau.",
       "stale": "Das Projekt oder die ausgewählte Version hat sich geändert. Aktualisiere die Vorschau und prüfe die Änderungen vor der Wiederherstellung.",
+      "too_large": "Dieses Projekt überschreitet die Größenbegrenzung für die Vorschau. Wende dich an den Support.",
+      "throttled": "Zu viele Anfragen für die Vorschau. Warte kurz und aktualisiere sie dann.",
       "refresh": "Vorschau aktualisieren",
       "restoring": "Version wird wiederhergestellt …",
       "scope": "Konten, Projektmitgliedschaften und die gemeinsame Kulturbibliothek bleiben von der Wiederherstellung unberührt.",

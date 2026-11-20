@@ -63,7 +63,7 @@ describe('RestoreVersionDialog', () => {
     expect(confirmButton()).toBeDisabled();
   });
 
-  it.each(['unavailable', 'conflict', 'stale'] as const)('offers a retry without enabling confirmation for %s', async (status) => {
+  it.each(['unavailable', 'conflict', 'stale', 'throttled'] as const)('offers a retry without enabling confirmation for %s', async (status) => {
     const { onRefreshPreview, onConfirm } = renderDialog(entry(), { status });
     expect(screen.getByRole('alert')).toHaveTextContent(tCrops(`restoreDialog.preview.${status}`));
     expect(confirmButton()).toBeDisabled();
@@ -71,6 +71,13 @@ describe('RestoreVersionDialog', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: tCrops('restoreDialog.preview.refresh') }));
     expect(onRefreshPreview).toHaveBeenCalledOnce();
     expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('explains the preview size limit and keeps confirmation disabled', () => {
+    renderDialog(entry(), { status: 'too_large' });
+    expect(screen.getByRole('alert')).toHaveTextContent(tCrops('restoreDialog.preview.too_large'));
+    expect(confirmButton()).toBeDisabled();
+    expect(screen.queryByRole('button', { name: tCrops('restoreDialog.preview.refresh') })).toBeNull();
   });
 
   it('uses the bounded record samples supplied by the server', async () => {

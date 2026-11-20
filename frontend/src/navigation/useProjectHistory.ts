@@ -4,14 +4,17 @@ import type { CropHistoryEntry, ProjectRestorePreview } from '../api/types';
 import { useTranslation } from '../i18n';
 
 type ShowSnackbar = (message: string, severity: 'success' | 'error' | 'info') => void;
+type RestorePreviewFailure = 'unavailable' | 'conflict' | 'stale' | 'too_large' | 'throttled';
 
 export type RestorePreviewState =
   | { status: 'ready'; data: ProjectRestorePreview }
-  | { status: 'loading' | 'unavailable' | 'conflict' | 'stale' };
+  | { status: 'loading' | RestorePreviewFailure };
 
-function restoreErrorStatus(error: unknown): 'unavailable' | 'conflict' | 'stale' {
+function restoreErrorStatus(error: unknown): RestorePreviewFailure {
   const status = (error as { response?: { status?: number; data?: { code?: string } } })?.response;
   if (status?.data?.code === 'project_restore_preview_changed') return 'stale';
+  if (status?.data?.code === 'project_restore_preview_too_large') return 'too_large';
+  if (status?.status === 429) return 'throttled';
   if (status?.status === 409 || status?.status === 404) return 'conflict';
   return 'unavailable';
 }

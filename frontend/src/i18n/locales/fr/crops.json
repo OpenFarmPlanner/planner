@@ -1847,6 +1847,8 @@
       "unavailable": "L’aperçu est indisponible. Actualisez-le pour vérifier à nouveau le projet.",
       "conflict": "Cette version ne peut pas être restaurée en toute sécurité. Choisissez une autre version ou actualisez l’aperçu.",
       "stale": "Le projet ou la version sélectionnée a changé. Actualisez l’aperçu et vérifiez les changements avant de restaurer.",
+      "too_large": "Ce projet dépasse la taille maximale pour l’aperçu de restauration. Contactez l’assistance.",
+      "throttled": "Trop de demandes d’aperçu. Patientez un instant, puis actualisez l’aperçu.",
       "refresh": "Actualiser l’aperçu",
       "restoring": "Restauration en cours…",
       "scope": "Les comptes, les adhésions au projet et la bibliothèque de cultures partagée sont en dehors du périmètre de la restauration.",

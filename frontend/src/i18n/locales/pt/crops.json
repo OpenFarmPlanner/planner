@@ -1846,6 +1846,8 @@
       "unavailable": "A pré-visualização está indisponível. Atualiza-a para verificar o projeto novamente.",
       "conflict": "Não é possível restaurar esta versão em segurança. Escolhe outra versão ou atualiza a pré-visualização.",
       "stale": "O projeto ou a versão selecionada mudou. Atualiza a pré-visualização e verifica as alterações antes de restaurar.",
+      "too_large": "Este projeto excede o tamanho máximo para a pré-visualização. Contacta o apoio.",
+      "throttled": "Demasiados pedidos de pré-visualização. Aguarda um momento e atualiza-a.",
       "refresh": "Atualizar pré-visualização",
       "restoring": "A restaurar…",
       "scope": "As contas, os membros do projeto e a biblioteca de culturas partilhada ficam fora do restauro.",

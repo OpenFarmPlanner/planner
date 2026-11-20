@@ -1846,6 +1846,8 @@
       "unavailable": "L’anteprima non è disponibile. Aggiornala per verificare di nuovo il progetto.",
       "conflict": "Questa versione non può essere ripristinata in modo sicuro. Scegli un’altra versione o aggiorna l’anteprima.",
       "stale": "Il progetto o la versione selezionata è cambiata. Aggiorna l’anteprima e controlla le modifiche prima di procedere.",
+      "too_large": "Questo progetto supera il limite di dimensione per l’anteprima. Contatta l’assistenza.",
+      "throttled": "Troppe richieste di anteprima. Aspetta un momento e aggiorna l’anteprima.",
       "refresh": "Aggiorna anteprima",
       "restoring": "Ripristino in corso…",
       "scope": "Account, partecipazioni al progetto e biblioteca condivisa delle colture sono esclusi dal ripristino.",

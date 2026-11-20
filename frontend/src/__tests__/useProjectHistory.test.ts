@@ -252,11 +252,15 @@ describe('restoreVersion', () => {
     expect(reload).toHaveBeenCalledOnce();
   });
 
-  it('blocks writes when the selected version has no valid preview', async () => {
-    api.projectRestorePreview.mockRejectedValue({ response: { status: 409 } });
+  it.each([
+    [{ status: 409 }, 'conflict'],
+    [{ status: 409, data: { code: 'project_restore_preview_too_large' } }, 'too_large'],
+    [{ status: 429 }, 'throttled'],
+  ])('blocks writes when the preview request receives %j', async (response, status) => {
+    api.projectRestorePreview.mockRejectedValue({ response });
     const { result } = setup();
     await act(async () => { await result.current.requestRestore(ENTRIES[0]); });
-    expect(result.current.restorePreview).toEqual({ status: 'conflict' });
+    expect(result.current.restorePreview).toEqual({ status });
     await act(async () => { await result.current.restoreVersion(1); });
     expect(api.projectRestore).not.toHaveBeenCalled();
   });

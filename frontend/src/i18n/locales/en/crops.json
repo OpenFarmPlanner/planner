@@ -1799,6 +1799,8 @@
       "unavailable": "The preview is unavailable. Refresh it to check the project again.",
       "conflict": "This version can’t be restored safely. Choose another version or refresh the preview to check again.",
       "stale": "The project or selected version changed. Refresh the preview and review the changes before restoring.",
+      "too_large": "This project exceeds the size limit for a restore preview. Contact support for help.",
+      "throttled": "Too many preview requests. Wait a moment and refresh the preview.",
       "refresh": "Refresh preview",
       "restoring": "Restoring…",
       "scope": "Accounts, project memberships and the shared crop library are outside the restore.",

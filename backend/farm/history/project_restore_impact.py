@@ -4,7 +4,7 @@ import json
 from hashlib import sha256
 from typing import TYPE_CHECKING
 
-from django.core.signing import Signer
+from django.core.signing import BadSignature, Signer
 
 from farm.models import format_crop_display_name
 
@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from .project_restore import ProjectState
 
 _NAMES_PER_CHANGE = 5
+_TOKEN_SALT = "farm.project-restore-preview.v1"
 _NAMED_CATEGORIES = ("crops", "varieties", "planting_plans", "locations", "fields", "beds")
 _CHANGE_TYPES = ("removed", "restored", "changed")
 _CATEGORY_BY_LABEL = {
@@ -30,9 +31,16 @@ def restore_preview_token(
     """Bind confirmation to all domain data, including records outside the sample."""
     encoded = json.dumps([current, target], sort_keys=True, separators=(",", ":")).encode()
     fingerprint = sha256(encoded).hexdigest()
-    return Signer(salt="farm.project-restore-preview.v1").sign(
-        f"{project_id}:{revision_id}:{fingerprint}"
-    )
+    return Signer(salt=_TOKEN_SALT).sign(f"{project_id}:{revision_id}:{fingerprint}")
+
+
+def valid_preview_token_for_revision(token: str, project_id: int, revision_id: int) -> bool:
+    """Reject unrelated confirmation tokens before reconstructing any state."""
+    try:
+        payload = Signer(salt=_TOKEN_SALT).unsign(token)
+    except BadSignature:
+        return False
+    return payload.startswith(f"{project_id}:{revision_id}:")
 
 
 def _category(label: str, row: dict) -> str:

@@ -1847,6 +1847,8 @@
       "unavailable": "La vista previa no está disponible. Actualízala para volver a comprobar el proyecto.",
       "conflict": "Esta versión no se puede restaurar de forma segura. Elige otra versión o actualiza la vista previa.",
       "stale": "El proyecto o la versión seleccionada ha cambiado. Actualiza la vista previa y revisa los cambios antes de restaurar.",
+      "too_large": "Este proyecto supera el tamaño máximo para la vista previa. Contacta con el equipo de soporte.",
+      "throttled": "Hay demasiadas solicitudes de vista previa. Espera un momento y actualízala.",
       "refresh": "Actualizar vista previa",
       "restoring": "Restaurando…",
       "scope": "Las cuentas, las pertenencias al proyecto y la biblioteca de cultivos compartida quedan fuera de la restauración.",

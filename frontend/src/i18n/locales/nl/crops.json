@@ -1799,6 +1799,8 @@
       "unavailable": "Het overzicht is niet beschikbaar. Vernieuw het om het project opnieuw te controleren.",
       "conflict": "Deze versie kan niet veilig worden hersteld. Kies een andere versie of vernieuw het overzicht.",
       "stale": "Het project of de gekozen versie is gewijzigd. Vernieuw het overzicht en controleer de wijzigingen voordat je herstelt.",
+      "too_large": "Dit project is te groot voor een hersteloverzicht. Neem contact op met support.",
+      "throttled": "Te veel verzoeken voor het overzicht. Wacht even en vernieuw het overzicht.",
       "refresh": "Overzicht vernieuwen",
       "restoring": "Versie herstellen…",
       "scope": "Accounts, projectlidmaatschappen en de gedeelde gewassenbibliotheek vallen buiten het herstel.",

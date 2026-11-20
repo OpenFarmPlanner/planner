@@ -1,15 +1,17 @@
 """Atomic project restoration with explicit absence and restorable checkpoints."""
 
 import json
+from contextlib import closing
 from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
 from django.core.files.storage import default_storage
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db import IntegrityError, models, transaction
+from django.db import IntegrityError, connection, models, transaction
 from django.db.models import Q
 from django.db.models.deletion import Collector, ProtectedError
+from django.db.models.functions import Cast, Length
 from django.utils import timezone
 from django.utils.crypto import constant_time_compare
 from django.utils.dateparse import parse_datetime
@@ -35,7 +37,11 @@ from farm.services.timing_windows import (
     validate_timing_window,
 )
 
-from .project_restore_impact import restore_preview_token, summarize_restore
+from .project_restore_impact import (
+    restore_preview_token,
+    summarize_restore,
+    valid_preview_token_for_revision,
+)
 from .records import _RESTORABLE_ENTITY_TYPES, _canonical_entity_type, record_entity_revision
 from .restore import (
     _model_manager,
@@ -64,6 +70,10 @@ ValidatedRows = dict[type, dict[int, dict[str, Any]]]
 CHECKPOINT_KEY = "project_state_v1"
 AUTOMATIC_BACKUP_KEY = "_automatic_restore_backup"
 _TIMESTAMPS = {"created_at", "updated_at"}
+MAX_PREVIEW_REVISIONS = 25_000
+MAX_PREVIEW_ROWS = 15_000
+MAX_PREVIEW_HISTORY_BYTES = 24 * 1024 * 1024
+MAX_PREVIEW_STORAGE_CHECKS = 250
 
 
 class ProjectStateEncoder(DjangoJSONEncoder):
@@ -81,6 +91,10 @@ class ProjectRestoreConflict(Exception):
 
 class ProjectRestorePreviewChanged(ProjectRestoreConflict):
     """The current or target state differs from the confirmed preview."""
+
+
+class ProjectRestorePreviewTooLarge(ProjectRestoreConflict):
+    """The selected project exceeds the synchronous preview budget."""
 
 
 def capture_project_state(project: Project, *, lock: bool = False) -> ProjectState:
@@ -471,6 +485,7 @@ def _prepare_restored_uploads(project: Project, state: ProjectState, current: Pr
 
 def _uploads_to_retain(
     state: ProjectState, current: ProjectState, *, lock: bool = False,
+    max_checks: int | None = None,
 ) -> set[str]:
     def paths(snapshot: ProjectState) -> set[str]:
         return {
@@ -496,6 +511,8 @@ def _uploads_to_retain(
     added_paths = (restored_paths - current_paths) | {
         path for reference, path in restored.items() if before.get(reference) != path
     }
+    if max_checks is not None and len(added_paths) > max_checks:
+        raise ProjectRestorePreviewTooLarge("too many historical files to check in a preview")
     if any(not path or not default_storage.exists(path) for path in added_paths):
         raise ProjectRestoreConflict("historical image is no longer available in storage")
 
@@ -617,17 +634,56 @@ def _locked_preview_revision(project: Project, revision_id: int) -> EntityRevisi
     return selected
 
 
-def preview_project_restore(project: Project, revision: EntityRevision) -> dict:
+def _bounded_row_count(queryset, limit: int) -> int:
+    observed = queryset.order_by().values("pk")[:limit + 1].count()
+    if observed > limit:
+        raise ProjectRestorePreviewTooLarge("too many records to preview")
+    return observed
+
+
+def _check_preview_size(project: Project) -> None:
+    revisions = EntityRevision.objects.filter(project=project)
+    _bounded_row_count(revisions, MAX_PREVIEW_REVISIONS)
+    # Stop at the payload budget without importing snapshots into Python. Count
+    # decoded bytes so large compressed snapshots still consume their full budget.
+    size = (
+        models.Func(
+            Cast("snapshot", models.TextField()),
+            function="octet_length",
+            output_field=models.IntegerField(),
+        )
+        if connection.vendor == "postgresql" else Length(Cast("snapshot", models.BinaryField()))
+    )
+    remaining_bytes = MAX_PREVIEW_HISTORY_BYTES
+    encoded_sizes = revisions.order_by().values_list(size, flat=True).iterator(chunk_size=50)
+    with closing(encoded_sizes) as sizes:
+        for snapshot_bytes in sizes:
+            remaining_bytes -= snapshot_bytes
+            if remaining_bytes < 0:
+                raise ProjectRestorePreviewTooLarge("historical snapshots are too large to preview")
+    remaining = MAX_PREVIEW_ROWS
+    for model, _label in PROJECT_STATE_MODELS:
+        remaining -= _bounded_row_count(_model_manager(model).filter(project=project), remaining)
+
+
+def _check_preview_target_size(state: ProjectState) -> None:
+    if sum(len(rows) for rows in state.values()) > MAX_PREVIEW_ROWS:
+        raise ProjectRestorePreviewTooLarge("historical target has too many records")
+
+
+def preview_project_restore(project: Project, revision_id: int) -> dict:
     """Read and validate the same historical state the restore would apply."""
     try:
         with transaction.atomic():
             lock_crop_project(project.pk)
-            revision = _locked_preview_revision(project, revision.pk)
+            _check_preview_size(project)
+            revision = _locked_preview_revision(project, revision_id)
             current = capture_project_state(project)
             state = reconstruct_project_state(project, revision, current)
+            _check_preview_target_size(state)
             target = _validated_target(project, state, current)
             _validate_preview_removals_and_identities(project, current, target)
-            _uploads_to_retain(state, current)
+            _uploads_to_retain(state, current, max_checks=MAX_PREVIEW_STORAGE_CHECKS)
             effective = _effective_target(state, current, target)
             return {
                 "token": restore_preview_token(project.pk, revision.pk, current, effective),
@@ -644,13 +700,20 @@ def restore_project_version(
     """Save an exact backup and result, and never publish a partial restore."""
     if revision.project_id != project.pk:
         raise ProjectRestoreConflict("wrong project")
+    if preview_token is not None and not valid_preview_token_for_revision(
+        preview_token, project.pk, revision.pk,
+    ):
+        raise ProjectRestorePreviewChanged("preview does not match the selected version")
     try:
         with transaction.atomic():
             lock_crop_project(project.pk)
             if preview_token is not None:
+                _check_preview_size(project)
                 revision = _locked_preview_revision(project, revision.pk)
             current = capture_project_state(project, lock=True)
             state = reconstruct_project_state(project, revision, current)
+            if preview_token is not None:
+                _check_preview_target_size(state)
             target = _validated_target(project, state, current)
             if preview_token is not None:
                 effective = _effective_target(state, current, target)
