@@ -258,6 +258,16 @@
     "propagationDurationDaysHelp": "Tijd van het begin van de opkweek tot de plantdatum.",
     "propagationDurationDaysError": "De opkweekduur moet ≥ 0 zijn",
     "yieldUnit": "Opbrengsteenheid",
+    "defaultHarvestUnit": "Standaard oogsteenheid",
+    "averageHarvestPieceWeight": "Gemiddeld gewicht (g per stuk)",
+    "averageHarvestBunchWeight": "Gemiddeld gewicht (g per bos)",
+    "harvestWeightError": "Voer een positief gewicht met maximaal drie decimalen in of laat het veld leeg.",
+    "harvestUnits": {
+      "kg": "Kilogram (kg)",
+      "g": "Gram (g)",
+      "piece": "Stuks",
+      "bunch": "Bossen"
+    },
     "yieldUnitPerPlant": "Per plant",
     "yieldUnitPerSqm": "Per m²",
     "expectedYield": "Verwachte opbrengst",

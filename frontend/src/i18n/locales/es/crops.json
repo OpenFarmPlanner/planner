@@ -264,6 +264,16 @@
     "propagationDurationDaysHelp": "Tiempo desde el inicio del semillero hasta la fecha de plantación.",
     "propagationDurationDaysError": "La duración en semillero debe ser ≥ 0",
     "yieldUnit": "Unidad de rendimiento",
+    "defaultHarvestUnit": "Unidad de cosecha predeterminada",
+    "averageHarvestPieceWeight": "Peso medio (g por pieza)",
+    "averageHarvestBunchWeight": "Peso medio (g por manojo)",
+    "harvestWeightError": "Introduce un peso positivo con hasta tres decimales o deja el campo vacío.",
+    "harvestUnits": {
+      "kg": "Kilogramos (kg)",
+      "g": "Gramos (g)",
+      "piece": "Piezas",
+      "bunch": "Manojos"
+    },
     "yieldUnitPerPlant": "Por planta",
     "yieldUnitPerSqm": "Por m²",
     "expectedYield": "Rendimiento previsto",

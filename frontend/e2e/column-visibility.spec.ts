@@ -100,7 +100,7 @@ test.describe('planting plans column management', () => {
     await expect(page.getByRole('columnheader', { name: 'Notizen' })).toHaveCount(0);
 
     const storedModel = await page.evaluate(() => window.localStorage.getItem('tableColumns.plantingPlans'));
-    expect(JSON.parse(storedModel ?? '{}')).toEqual({ notes: false, season_status: false });
+    expect(JSON.parse(storedModel ?? '{}')).toEqual({ notes: false, season_status: false, actual_harvest: false });
 
     // A saved choice must not be overridden by screen-size changes: shrinking
     // the viewport shouldn't re-apply the small-screen default (which never

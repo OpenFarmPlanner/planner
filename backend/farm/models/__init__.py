@@ -52,6 +52,7 @@ from .crops import (  # noqa: E402
     is_supplier_domain,
 )
 from .feedback import Feedback  # noqa: E402
+from .harvests import HarvestAllocation, HarvestRecord  # noqa: E402
 from .history import BatchOperation, CropRevision, EntityRevision, ProjectRevision  # noqa: E402
 from .notes import NoteAttachment  # noqa: E402
 from .planning import CropTaskTemplate, PlantingPlan, Task  # noqa: E402
@@ -85,6 +86,8 @@ __all__ = [
     'Feedback',
     'Field',
     'FieldLayout',
+    'HarvestAllocation',
+    'HarvestRecord',
     'Location',
     'MediaFile',
     'NoteAttachment',

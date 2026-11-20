@@ -35,6 +35,7 @@ from .notes.views import (
     NoteAttachmentDeleteView,
     NoteAttachmentListCreateView,
 )
+from .planning.harvest_views import HarvestRecordViewSet
 from .planning.views import (
     PlantingPlanViewSet,
     TaskViewSet,
@@ -78,6 +79,7 @@ router.register(r'crop-companions', CropCompanionViewSet)
 router.register(r'public-crops', PublicCropViewSet, basename='public-crops')
 router.register(r'seed-packages', SeedPackageViewSet)
 router.register(r'planting-plans', PlantingPlanViewSet)
+router.register(r'harvests', HarvestRecordViewSet)
 router.register(r'seasons', SeasonViewSet)
 router.register(r'tasks', TaskViewSet)
 router.register(r'crop-task-templates', CropTaskTemplateViewSet)

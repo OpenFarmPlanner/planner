@@ -344,6 +344,15 @@ export const CROP_COLUMNS: SpreadsheetColumnDef[] = [
     type: 'number',
   },
   {
+    key: 'default_harvest_unit',
+    headerKey: 'form.defaultHarvestUnit',
+    aliases: ['default_harvest_unit'],
+    type: 'string',
+    enumImport: { kg: 'kg', g: 'g', piece: 'piece', bunch: 'bunch' },
+  },
+  { key: 'average_harvest_piece_weight_g', headerKey: 'form.averageHarvestPieceWeight', aliases: ['average_harvest_piece_weight_g'], type: 'number' },
+  { key: 'average_harvest_bunch_weight_g', headerKey: 'form.averageHarvestBunchWeight', aliases: ['average_harvest_bunch_weight_g'], type: 'number' },
+  {
     key: 'distance_within_row_cm',
     headerKey: 'form.distanceWithinRowCm',
     aliases: ['pflanzenabstand', 'abstand in der reihe', 'abstand reihe', 'distance_within_row_cm'],
@@ -489,6 +498,9 @@ const getLocalizedEnumExport = (columnKey: string, t: SpreadsheetT): Record<stri
   if (columnKey === 'seed_type') return buildSeedTypeExport(t);
   if (columnKey === 'cultivation_types') return buildCultivationTypeExport(t);
   if (columnKey === 'harvest_method') return buildYieldUnitExport(t);
+  if (columnKey === 'default_harvest_unit') {
+    return Object.fromEntries(['kg', 'g', 'piece', 'bunch'].map(value => [value, t(`form.harvestUnits.${value}`)]));
+  }
   if (columnKey in SITE_HEALTH_CHOICES) {
     const field = columnKey as SiteHealthChoiceField;
     return Object.fromEntries(SITE_HEALTH_CHOICES[field].map((value) => [value, t(`siteHealth.values.${field}.${value}`)]));

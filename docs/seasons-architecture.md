@@ -31,6 +31,11 @@ that predate this feature.
   pre-existing projects keep working until the first-run setup (below) assigns
   a season. Crop library and bed/field structure stay season-independent,
   per the feature's original scope.
+- Harvest records belong to the project and use their picking date for
+  seasonal reporting. Allocations can point to a planting from an earlier
+  season if its bed occupancy overlaps the harvest date. Season copies
+  leave the source harvests and allocations in place. See
+  [planning and operations](./data-model.md#4-planning-and-operations).
 
 ## Deleting a season
 

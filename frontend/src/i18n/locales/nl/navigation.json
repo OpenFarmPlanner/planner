@@ -9,6 +9,7 @@
   "plantingPlans": "Teeltplan",
   "ganttChart": "Teeltkalender",
   "yieldOverview": "Opbrengstoverzicht",
+  "harvests": "Oogsten",
   "seedDemand": "Zaadbehoefte",
   "youngPlantDemand": "Plantgoedbehoefte",
   "short": {
@@ -19,6 +20,7 @@
     "plantingPlans": "Teeltplan",
     "ganttChart": "Kalender",
     "yieldOverview": "Opbrengsten",
+    "harvests": "Oogsten",
     "seedDemand": "Zaad",
     "youngPlantDemand": "Plantgoed",
     "suppliers": "Leveranciers"

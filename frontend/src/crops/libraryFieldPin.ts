@@ -47,6 +47,8 @@ export const LIBRARY_PIN_FORM_FIELDS = {
   winter_hardiness: ['winter_hardiness'],
   harvest_method: ['harvest_method'],
   expected_yield: ['expected_yield'],
+  average_harvest_piece_weight_g: ['average_harvest_piece_weight_g'],
+  average_harvest_bunch_weight_g: ['average_harvest_bunch_weight_g'],
   distance_within_row_cm: ['distance_within_row_m'],
   row_spacing_cm: ['row_spacing_m'],
   sowing_depth_cm: ['sowing_depth_m'],

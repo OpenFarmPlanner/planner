@@ -21,6 +21,7 @@ export const MAIN_NAV_ITEMS: MainNavigationItem[] = [
   { to: '/app/planting-plans', labelKey: 'plantingPlans', activeAliases: ['/app/anbauplaene'], keywords: ['anbaupläne', 'pläne', 'planung'], requiresProject: true },
   { to: '/app/gantt-chart', labelKey: 'ganttChart', keywords: ['anbaukalender', 'kalender', 'gantt'], requiresProject: true },
   { to: '/app/yield-overview', labelKey: 'yieldOverview', keywords: ['ertragsübersicht', 'ertrag', 'ernte'], requiresProject: true },
+  { to: '/app/harvests', labelKey: 'harvests', keywords: ['ernten', 'erntemenge', 'harvests'], requiresProject: true },
   { to: '/app/seed-demand', labelKey: 'seedDemand', keywords: ['saatgutbedarf', 'saatgut'], requiresProject: true },
   { to: '/app/young-plant-demand', labelKey: 'youngPlantDemand', keywords: ['jungpflanzenbedarf', 'jungpflanzen', 'zukauf'], requiresProject: true },
   { to: '/app/suppliers', labelKey: 'suppliers', keywords: ['lieferanten', 'einkauf'], requiresProject: true },

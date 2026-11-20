@@ -258,6 +258,16 @@
     "propagationDurationDaysHelp": "Zeit vom Beginn der Anzucht bis zum Pflanztermin.",
     "propagationDurationDaysError": "Anzuchtdauer muss ≥ 0 sein",
     "yieldUnit": "Ertragseinheit",
+    "defaultHarvestUnit": "Standard-Ernteeinheit",
+    "averageHarvestPieceWeight": "Durchschnittsgewicht (g je Stück)",
+    "averageHarvestBunchWeight": "Durchschnittsgewicht (g je Bund)",
+    "harvestWeightError": "Gib ein positives Gewicht mit bis zu drei Nachkommastellen ein oder leere das Feld.",
+    "harvestUnits": {
+      "kg": "Kilogramm (kg)",
+      "g": "Gramm (g)",
+      "piece": "Stück",
+      "bunch": "Bund"
+    },
     "yieldUnitPerPlant": "Pro Pflanze",
     "yieldUnitPerSqm": "Pro m²",
     "expectedYield": "Erwarteter Ertrag",

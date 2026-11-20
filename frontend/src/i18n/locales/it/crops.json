@@ -260,6 +260,16 @@
     "propagationDurationDaysHelp": "Tempo dall'avvio del vivaio alla data di trapianto.",
     "propagationDurationDaysError": "La durata in vivaio deve essere ≥ 0",
     "yieldUnit": "Unità di resa",
+    "defaultHarvestUnit": "Unità di raccolta predefinita",
+    "averageHarvestPieceWeight": "Peso medio (g per pezzo)",
+    "averageHarvestBunchWeight": "Peso medio (g per mazzo)",
+    "harvestWeightError": "Inserisci un peso positivo con al massimo tre decimali oppure lascia il campo vuoto.",
+    "harvestUnits": {
+      "kg": "Chilogrammi (kg)",
+      "g": "Grammi (g)",
+      "piece": "Pezzi",
+      "bunch": "Mazzi"
+    },
     "yieldUnitPerPlant": "Per pianta",
     "yieldUnitPerSqm": "Per m²",
     "expectedYield": "Resa prevista",

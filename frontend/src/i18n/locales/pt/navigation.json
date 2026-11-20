@@ -9,6 +9,7 @@
   "plantingPlans": "Plano de cultivo",
   "ganttChart": "Calendário de cultivo",
   "yieldOverview": "Visão geral dos rendimentos",
+  "harvests": "Colheitas",
   "seedDemand": "Necessidades de sementes",
   "youngPlantDemand": "Necessidades de plantas de viveiro",
   "short": {
@@ -19,6 +20,7 @@
     "plantingPlans": "Plano de cultivo",
     "ganttChart": "Calendário",
     "yieldOverview": "Rendimentos",
+    "harvests": "Colheitas",
     "seedDemand": "Sementes",
     "youngPlantDemand": "Plantas",
     "suppliers": "Fornecedores"

@@ -53,6 +53,9 @@ export interface PortableCrop {
 
   harvest_method?: Crop['harvest_method'];
   expected_yield?: number;
+  default_harvest_unit?: Crop['default_harvest_unit'];
+  average_harvest_piece_weight_g?: Crop['average_harvest_piece_weight_g'];
+  average_harvest_bunch_weight_g?: Crop['average_harvest_bunch_weight_g'];
   distance_within_row_cm?: number;
   row_spacing_cm?: number;
   sowing_depth_cm?: number | null;
@@ -154,6 +157,9 @@ export const toPortableCrop = (crop: Crop, companions?: CompanionItemsByKind): P
     winter_hardiness: crop.winter_hardiness ?? '',
     harvest_method: crop.harvest_method,
     expected_yield: crop.expected_yield,
+    default_harvest_unit: crop.default_harvest_unit,
+    average_harvest_piece_weight_g: crop.average_harvest_piece_weight_g ?? null,
+    average_harvest_bunch_weight_g: crop.average_harvest_bunch_weight_g ?? null,
     distance_within_row_cm: crop.distance_within_row_cm,
     row_spacing_cm: crop.row_spacing_cm,
     sowing_depth_cm: crop.sowing_depth_cm,
