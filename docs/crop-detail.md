@@ -6,6 +6,10 @@ Two read views show one crop: the read mode of the crops page
 form (`CropForm.tsx`), the dedicated project companion editor and the
 library's edit dialog.
 
+The crop library, its import picker, and project Crops place filter and
+selection controls beside the search field. The field takes the available
+space. At very narrow widths, the buttons can move together to the next line.
+
 ## Selecting project crops for deletion
 
 The project crop search toolbar uses the library's checklist control. Search,

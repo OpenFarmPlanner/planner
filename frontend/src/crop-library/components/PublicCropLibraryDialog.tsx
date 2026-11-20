@@ -7,7 +7,6 @@ import { DisabledActionTooltip } from '../../components/DisabledActionTooltip';
 import type { PublicCrop, PublicCropBatchImportResult } from '../../api/types';
 import {
   Alert,
-  Badge,
   Box,
   Button,
   Chip,
@@ -16,19 +15,16 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  IconButton,
-  TextField,
   Typography,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
-import TuneIcon from '@mui/icons-material/Tune';
 import SpaOutlinedIcon from '@mui/icons-material/SpaOutlined';
 import { useOverlayHistory } from '../../hooks/useOverlayHistory';
 import { PublicCropHierarchyList } from '../../crops/PublicCropHierarchyList';
 import { CropLibraryStatusCircle } from '../../crops/CropLibraryStatusIcon';
 import { usePlantFamilies } from '../../crops/plantFamilies';
+import { CropSearchFilterButton, CropSearchToolbar } from '../../crops/CropSearchToolbar';
 import { getPublicCropDescription, getPublicCropTitle } from '../publicCropDisplay';
 import { DetailSection } from '../../components/layout/DetailPrimitives';
 import { LocalizedMarkdownNotes } from './LocalizedMarkdownNotes';
@@ -336,41 +332,29 @@ export function PublicCropLibraryDialog({
           bgcolor: 'background.paper',
         }}
       >
-        <TextField
-          fullWidth
-          label={t('library.searchLabel')}
-          value={query}
-          onChange={(event) => {
-            const nextValue = event.target.value;
-            setQuery(nextValue);
-            onSearch(nextValue);
-          }}
-          size="medium"
-          sx={{ mb: 2 }}
-          slotProps={{
-            input: {
-              startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />,
-              endAdornment: (
-                <>
-                <IconButton
-                  size="small"
+        <Box sx={{ mb: 2, flexShrink: 0 }}>
+          <CropSearchToolbar
+            search={{
+              placeholder: t('library.searchLabel'),
+              value: query,
+              onChange: (event) => {
+                const nextValue = event.target.value;
+                setQuery(nextValue);
+                onSearch(nextValue);
+              },
+            }}
+            actions={<>
+                <CropSearchFilterButton
+                  activeCount={activeFilterCount}
+                  open={isFilterPopoverOpen}
+                  popoverId="public-crop-filters-popover"
+                  touch={useMobileFilterLayout}
                   onClick={(event) => setFilterAnchorEl(event.currentTarget)}
-                  aria-expanded={isFilterPopoverOpen}
-                  aria-haspopup="dialog"
-                  aria-controls={isFilterPopoverOpen ? 'public-crop-filters-popover' : undefined}
-                  aria-label={t('filters.openAdvanced')}
-                  sx={{ bgcolor: activeFilterCount > 0 ? 'action.selected' : 'transparent' }}
-                >
-                  <Badge color="primary" badgeContent={activeFilterCount > 0 ? activeFilterCount : null}>
-                    <TuneIcon fontSize="small" />
-                  </Badge>
-                </IconButton>
+                />
                 <PublicCropBatchSelectButton batch={batch} disabled={importingId !== null} onEnter={() => setMobileStep('list')} />
-                </>
-              ),
-            }
-          }}
-        />
+            </>}
+          />
+        </Box>
         <PublicCropBatchActions batch={batch} loading={loading || Boolean(error)} />
 
         <PublicCropFiltersPopover

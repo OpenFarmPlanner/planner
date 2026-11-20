@@ -1,9 +1,8 @@
 {
   "title": "Cultivos",
-  "searchPlaceholder": "Buscar cultivo",
+  "searchPlaceholder": "Buscar cultivos",
   "searchInputPlaceholder": "Introduce el nombre del cultivo…",
   "noOptions": "No se han encontrado cultivos",
-  "searchInputPlaceholderEnhanced": "Buscar por nombre de cultivo (p. ej. zanahoria)",
   "searchHelperText_one": "{{count}} cultivo encontrado. Usa los filtros para acotar más.",
   "searchHelperText_other": "{{count}} cultivos encontrados. Usa los filtros para acotar más.",
   "searchHelperText_many": "{{count}} cultivos encontrados. Usa los filtros para acotar más.",
@@ -1066,7 +1065,7 @@
         }
       }
     },
-    "searchLabel": "Buscar cultivos públicos",
+    "searchLabel": "Buscar cultivos",
     "selectPrompt": "Selecciona un cultivo público para ver sus detalles e importarlo.",
     "empty": "No se han encontrado cultivos públicos.",
     "emptyState": {

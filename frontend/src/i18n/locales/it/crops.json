@@ -1,9 +1,8 @@
 {
   "title": "Colture",
-  "searchPlaceholder": "Cerca coltura",
+  "searchPlaceholder": "Cerca colture",
   "searchInputPlaceholder": "Inserisci nome della coltura…",
   "noOptions": "Nessuna coltura trovata",
-  "searchInputPlaceholderEnhanced": "Cerca per nome della coltura (es. carota)",
   "searchHelperText_one": "{{count}} coltura trovata. Usa i filtri per restringere ulteriormente la ricerca.",
   "searchHelperText_other": "{{count}} colture trovate. Usa i filtri per restringere ulteriormente la ricerca.",
   "clearSearch": "Cancella ricerca",
@@ -1065,7 +1064,7 @@
         }
       }
     },
-    "searchLabel": "Cerca colture pubbliche",
+    "searchLabel": "Cerca colture",
     "selectPrompt": "Seleziona una coltura pubblica per vederne i dettagli e importarla.",
     "empty": "Nessuna coltura pubblica trovata.",
     "emptyState": {

@@ -1,9 +1,8 @@
 {
   "title": "Kulturen",
-  "searchPlaceholder": "Kultur suchen",
+  "searchPlaceholder": "Kulturen suchen",
   "searchInputPlaceholder": "Name der Kultur eingeben...",
   "noOptions": "Keine Kulturen gefunden",
-  "searchInputPlaceholderEnhanced": "Nach Kulturname suchen (z. B. Karotte)",
   "searchHelperText_one": "{{count}} Kultur gefunden. Mit den Filtern können Sie weiter eingrenzen.",
   "searchHelperText_other": "{{count}} Kulturen gefunden. Mit den Filtern können Sie weiter eingrenzen.",
   "clearSearch": "Suche löschen",
@@ -1039,7 +1038,7 @@
         }
       }
     },
-    "searchLabel": "Öffentliche Kulturen durchsuchen",
+    "searchLabel": "Kulturen suchen",
     "selectPrompt": "Wählen Sie eine öffentliche Kultur aus, um Details und Import anzuzeigen.",
     "empty": "Keine öffentlichen Kulturen gefunden.",
     "emptyState": {

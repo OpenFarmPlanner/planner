@@ -1,7 +1,7 @@
 import germanCrops from '../src/i18n/locales/de/crops.json' with { type: 'json' };
 import frenchCrops from '../src/i18n/locales/fr/crops.json' with { type: 'json' };
 import frenchNavigation from '../src/i18n/locales/fr/navigation.json' with { type: 'json' };
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { apiRequest, expectNoHorizontalPageOverflow, loginWithDeterministicProject, resetE2EScenario, waitForPageStable } from './utils';
 
 // Functional assertions, not screenshots: these flows are about which control
@@ -775,6 +775,23 @@ async function prepareSelectedVarietyParent(page: Page, scenario: string): Promi
   return apiRequest<CarrotEntry>(page, 'GET', `/public-crops/${published.public_crop.id}/`);
 }
 
+async function expectSearchToolbar(input: Locator, filter: Locator, selection: Locator) {
+  await expect(input).toBeVisible();
+  await expect(filter).toBeVisible();
+  await expect(selection).toBeVisible();
+  const field = (await input.locator('xpath=ancestor::*[contains(@class,"MuiTextField-root")][1]').boundingBox())!;
+  const filterBox = (await filter.boundingBox())!;
+  const selectionBox = (await selection.boundingBox())!;
+  expect(field.width).toBeGreaterThan(80);
+  expect(field.x + field.width).toBeLessThanOrEqual(filterBox.x);
+  expect(filterBox.x + filterBox.width).toBeLessThanOrEqual(selectionBox.x);
+  for (const button of [filterBox, selectionBox]) {
+    expect(button.width).toBeGreaterThanOrEqual(40);
+    expect(button.height).toBeGreaterThanOrEqual(40);
+    expect(button.y + button.height / 2).toBeCloseTo(field.y + field.height / 2, 0);
+  }
+}
+
 test.describe('bulk library import', () => {
   test.use({ serviceWorkers: 'block', hasTouch: true });
 
@@ -801,11 +818,33 @@ test.describe('bulk library import', () => {
       await page.goto('/app/crop-library');
       const search = page.getByLabel(germanCrops.library.searchLabel, { exact: true });
       const mode = page.getByRole('button', { name: text.selectCultures, exact: true });
+      const filter = page.getByRole('button', { name: germanCrops.filters.openAdvanced, exact: true });
       const selectName = (name: string) => text.selectNamed.replace('{{name}}', name);
+      await expect(search).toHaveAttribute('placeholder', germanCrops.library.searchLabel);
+      await search.focus();
+      await search.press('Tab');
+      await expect(filter).toBeFocused();
+      await expect(page.getByRole('tooltip', { name: germanCrops.filters.openAdvanced })).toBeVisible();
+      await filter.press('Enter');
+      const resetFilters = page.getByRole('button', { name: germanCrops.filters.reset, exact: true });
+      await expect(resetFilters).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(resetFilters).toBeHidden();
+      await expect(filter).toBeFocused();
+      await filter.press('Tab');
+      await expect(mode).toBeFocused();
+      await expect(mode).toHaveAttribute('aria-pressed', 'false');
+      await search.fill(fresh.name);
+      await search.press('Enter');
+      await expect(search).toHaveValue(fresh.name);
+      await expect(page).toHaveURL(/\/app\/crop-library(?:\?|$)/);
+      await page.getByRole('button', { name: germanCrops.clearSearch, exact: true }).click();
+      await expect(search).toHaveValue('');
+      await expect(search).toBeFocused();
       await search.fill(fresh.name);
       await expect(page.getByRole('option', { name: fresh.name, exact: true })).toBeVisible();
       await expect(page.getByRole('checkbox', { name: selectName(fresh.name), exact: true })).toHaveCount(0);
-      expect((await mode.boundingBox())!.y).toBeLessThan((await search.boundingBox())!.y + (await search.boundingBox())!.height);
+      await expectSearchToolbar(search, filter, mode);
       await mode.focus();
       await page.keyboard.press('Enter');
       await page.getByRole('button', { name: text.selectVisible.replace('{{count}}', '1'), exact: true }).click();
@@ -825,7 +864,7 @@ test.describe('bulk library import', () => {
       await expectNoHorizontalPageOverflow(page);
       await page.screenshot({ path: testInfo.outputPath('batch-library-desktop.png'), animations: 'disabled' });
       await page.setViewportSize({ width: 1024, height: 900 });
-      await expect(mode).toBeVisible();
+      await expectSearchToolbar(search, filter, mode);
       await expectNoHorizontalPageOverflow(page);
       await page.screenshot({ path: testInfo.outputPath('batch-library-1024.png'), animations: 'disabled' });
 
@@ -900,11 +939,23 @@ test.describe('bulk library import', () => {
       await expect(search).toHaveValue(scenario);
       await expect(page.getByRole('button', { name: 'Bereits verknüpft', exact: true })).toBeDisabled();
 
-      for (const viewport of [{ width: 375, height: 800 }, { width: 768, height: 900 }, { width: 800, height: 375 }]) {
+      for (const viewport of [
+        { width: 375, height: 800 },
+        { width: 768, height: 900 },
+        { width: 800, height: 375 },
+        // CSS viewport on a 1440x900 screen at 200% browser zoom.
+        { width: 720, height: 450 },
+      ]) {
         await page.setViewportSize(viewport);
         await page.getByRole('button', { name: germanCrops.selectCrop, exact: true }).click();
         const mobile = page.getByRole('dialog', { name: germanCrops.selectCrop });
-        await mobile.getByRole('button', { name: text.selectCultures, exact: true }).tap();
+        const mobileMode = mobile.getByRole('button', { name: text.selectCultures, exact: true });
+        await expectSearchToolbar(
+          mobile.getByRole('textbox', { name: germanCrops.library.searchLabel, exact: true }),
+          mobile.getByRole('button', { name: germanCrops.filters.openAdvanced, exact: true }),
+          mobileMode,
+        );
+        await mobileMode.tap();
         await mobile.getByRole('checkbox', { name: selectName(fresh.name), exact: true }).tap();
         await expect(mobile.getByRole('checkbox', { name: selectName(fresh.name), exact: true })).toBeChecked();
         await expect(mobile.getByRole('button', { name: text.import, exact: true })).toBeInViewport();
@@ -924,8 +975,14 @@ test.describe('bulk library import', () => {
       const browserDialog = page.getByRole('dialog', { name: frenchCrops.library.dialogTitle, exact: true });
       const french = frenchCrops.library.batchImport;
       const dialogSearch = browserDialog.getByLabel(frenchCrops.library.searchLabel, { exact: true });
+      const dialogMode = browserDialog.getByRole('button', { name: french.selectCultures, exact: true });
+      await expectSearchToolbar(
+        dialogSearch,
+        browserDialog.getByRole('button', { name: frenchCrops.filters.openAdvanced, exact: true }),
+        dialogMode,
+      );
       await dialogSearch.fill(fresh.name);
-      await browserDialog.getByRole('button', { name: french.selectCultures, exact: true }).tap();
+      await dialogMode.tap();
       await browserDialog.getByRole('checkbox', { name: french.selectNamed.replace('{{name}}', fresh.name), exact: true }).tap();
       await browserDialog.getByRole('button', { name: french.import, exact: true }).tap();
       const frenchPreview = page.getByRole('dialog', { name: french.confirmTitle_one.replace('{{count}}', '1'), exact: true });

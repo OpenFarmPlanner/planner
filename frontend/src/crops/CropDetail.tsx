@@ -18,10 +18,10 @@ import { AppTooltip } from '../components/AppTooltip';
 import { CropFiltersPopover } from './CropFiltersPopover';
 import { CropMobileSelectorDialog } from './CropMobileSelectorDialog';
 import { CropBulkSelectionActions, CropBulkSelectionRow, CropBulkSelectionToolbar } from './CropBulkSelectionControls';
+import { CropSearchFilterButton, CropSearchToolbar } from './CropSearchToolbar';
 import type { ProjectCropSelection } from './useProjectCropSelection';
 import { CropHeaderActionsMenu } from './CropHeaderActionsMenu';
 import { CropTitleSelectorButton } from './CropTitleSelectorButton';
-import TuneIcon from '@mui/icons-material/Tune';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
 import AgricultureIcon from '@mui/icons-material/Agriculture';
@@ -38,7 +38,6 @@ import { CropSpeciesPendingChip } from './CropSpeciesPendingChip';
 import { getSeedTypeLabel, matchesSeedTypeFilter } from './seedType';
 import { usePublicCropUpdate } from './usePublicCropUpdate';
 import {
-  Badge,
   Box,
   Card,
   CardContent,
@@ -50,7 +49,6 @@ import {
   Stack,
   Button,
   IconButton,
-  TextField,
 } from '@mui/material';
 import type { Crop } from '../api/api';
 import EmptyStateCard from '../components/project/EmptyStateCard';
@@ -725,60 +723,43 @@ const detailSectionGridSx = {
   const bulkSelecting = Boolean(bulkSelection?.selected);
   const selectorControl = crops.length > 0 ? (
       <Box sx={{ width: '100%', p: 1.25, borderBottom: '1px solid', borderColor: 'surface.surfaceBorder', bgcolor: 'surface.surfaceSubtleBackground' }}>
-        <Stack direction="row" spacing={0.25} sx={{ alignItems: 'center' }}>
-          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-            <TextField
-              label={t('searchPlaceholder')}
-              placeholder={t('searchInputPlaceholderEnhanced')}
-              id={searchFieldId}
-              inputRef={searchInputRef}
-              value={filters.searchQuery}
-              onChange={(event) => updateFilter('searchQuery', event.target.value)}
-              fullWidth
-              slotProps={{
-                input: {
-                  endAdornment: (
-                    <>
-                      {filters.searchQuery ? (
-                        <AppTooltip title={t('clearSearch')}>
-                          <IconButton
-                            size="small"
-                            aria-label={t('clearSearch')}
-                            onClick={() => {
-                              updateFilter('searchQuery', '');
-                              document.getElementById(searchFieldId)?.focus();
-                            }}
-                          >
-                            <CloseIcon fontSize="small" />
-                          </IconButton>
-                        </AppTooltip>
-                      ) : null}
-                      <IconButton
-                        size="small"
-                        onClick={(event) => setFilterAnchorEl(event.currentTarget)}
-                        aria-expanded={isFilterPopoverOpen}
-                        aria-haspopup="dialog"
-                        aria-controls={isFilterPopoverOpen ? 'crop-filters-popover' : undefined}
-                        aria-label={t('filters.openAdvanced')}
-                        sx={{ bgcolor: activeFilterCount > 0 ? 'action.selected' : 'transparent' }}
-                      >
-                        <Badge color="primary" badgeContent={activeFilterCount > 0 ? activeFilterCount : null}>
-                          <TuneIcon fontSize="small" />
-                        </Badge>
-                      </IconButton>
-                    </>
-                  ),
-                },
-              }}
+        <CropSearchToolbar
+          search={{
+            placeholder: t('searchPlaceholder'),
+            id: searchFieldId,
+            inputRef: searchInputRef,
+            value: filters.searchQuery,
+            onChange: (event) => updateFilter('searchQuery', event.target.value),
+            endAdornment: filters.searchQuery ? (
+              <AppTooltip title={t('clearSearch')}>
+                <IconButton
+                  size="small"
+                  aria-label={t('clearSearch')}
+                  onClick={() => {
+                    updateFilter('searchQuery', '');
+                    document.getElementById(searchFieldId)?.focus();
+                  }}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </AppTooltip>
+            ) : null,
+          }}
+          actions={<>
+            <CropSearchFilterButton
+              activeCount={activeFilterCount}
+              open={isFilterPopoverOpen}
+              popoverId="crop-filters-popover"
+              onClick={(event) => setFilterAnchorEl(event.currentTarget)}
             />
-          </Box>
-          {bulkSelection ? (
-            <CropBulkSelectionToolbar
-              selection={bulkSelection}
-              onOpenPreview={useUnifiedMobileLayout ? () => setMobileSelectorOpen(false) : undefined}
-            />
-          ) : null}
-        </Stack>
+            {bulkSelection ? (
+              <CropBulkSelectionToolbar
+                selection={bulkSelection}
+                onOpenPreview={useUnifiedMobileLayout ? () => setMobileSelectorOpen(false) : undefined}
+              />
+            ) : null}
+          </>}
+        />
 
         <CropFiltersPopover
           anchorEl={filterAnchorEl}
@@ -814,7 +795,7 @@ const detailSectionGridSx = {
         >
           {!useUnifiedMobileLayout ? (<Card
             sx={{
-              width: { md: 230, lg: 300, xl: 330 },
+              width: { md: 264, lg: 300, xl: 330 },
               flexShrink: 0,
               height: { md: '100%' },
               // Flex items default to `min-height: auto`, which ignores the
