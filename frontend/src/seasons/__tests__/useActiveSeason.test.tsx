@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { useActiveSeason } from '../useActiveSeason';
 import type { Season } from '../../api/types';
@@ -54,6 +54,7 @@ const seasons = [
 ];
 
 const reloadMock = vi.fn();
+const assignMock = vi.fn();
 
 /** What `pendingSeasonDeletions` held at the moment each reload was called. */
 const stashAtReload: (string | null)[] = [];
@@ -77,16 +78,32 @@ beforeEach(() => {
     stashAtReload.push(window.sessionStorage.getItem('pendingSeasonDeletions'));
   });
   Object.defineProperty(window, 'location', {
-    value: { ...window.location, reload: reloadMock },
+    value: { ...window.location, reload: reloadMock, assign: assignMock },
     writable: true,
   });
 });
+
+afterEach(() => vi.unstubAllEnvs());
 
 describe('useActiveSeason', () => {
   it('persists the resolved fallback season id so the X-Season-Id header never goes missing', async () => {
     const { result } = renderHook(() => useActiveSeason());
     await waitFor(() => expect(result.current.activeSeason?.id).toBe(3));
     expect(window.localStorage.getItem('activeSeasonId:1')).toBe('3');
+  });
+
+  it('opens the selected plan under the app base path after storing its originating season', async () => {
+    vi.stubEnv('BASE_URL', '/openfarmplanner/');
+    assignMock.mockImplementationOnce(() => {
+      expect(window.localStorage.getItem('activeSeasonId:1')).toBe('2');
+    });
+    const { result } = renderHook(() => useActiveSeason());
+    await waitFor(() => expect(result.current.activeSeason?.id).toBe(3));
+
+    act(() => result.current.switchSeason(2, '/app/planting-plans?planId=42'));
+
+    expect(assignMock).toHaveBeenCalledWith('/openfarmplanner/app/planting-plans?planId=42');
+    expect(reloadMock).not.toHaveBeenCalled();
   });
 
   it('deleting the active season points the stored id at the next season, reloads, and keeps the undo', async () => {
