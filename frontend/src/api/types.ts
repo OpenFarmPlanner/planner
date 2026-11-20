@@ -1260,7 +1260,15 @@ export interface LocationLayoutsPayload {
   /** Omit to keep the stored origin; null clears it. */
   location_boundary?: LocationBoundaryOrigin | null;
 }
-export interface PlantingPlan {
+export interface PlantingPlanActualDates {
+  actual_propagation_start_date?: string | null;
+  actual_sowing_date?: string | null;
+  actual_transplanting_date?: string | null;
+  actual_harvest_start_date?: string | null;
+  recorded_harvest_end_date?: string | null;
+}
+
+export interface PlantingPlan extends PlantingPlanActualDates {
   id?: number;
   // Optional until the plan is fully filled in — a plan can be saved as a
   // draft as long as at least one of crop/bed is chosen.

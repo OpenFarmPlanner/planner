@@ -426,6 +426,7 @@ class PlanSpec:
     quantity: int | None = None
     notes: str = ''
     rotation_conflict_accepted: bool = False
+    actual_dates: dict[str, date] | None = None
 
 
 def demo_current_year() -> int:
@@ -1754,13 +1755,24 @@ def _create_planting_plans(
         # young-plant demand list (docs/young-plant-demand.md).
         PlanSpec('tomate', 'tomate-2', 'purchased_transplant', date(current, 5, 2), Decimal('14.0'), 35),
         PlanSpec('gurke', 'gurke', 'pre_cultivation', date(current, 5, 10), Decimal('12.0'), 38),
-        PlanSpec('karotte', 'karotte-1', 'direct_sowing', date(current, 3, 12), Decimal('16.0')),
+        PlanSpec(
+            'karotte', 'karotte-1', 'direct_sowing', date(current, 3, 12), Decimal('16.0'),
+            actual_dates={'actual_sowing_date': date(current, 3, 12)},
+        ),
         # Not checkable: "Karotten 2" is newly established this season and
         # deliberately has no planting history.
         PlanSpec('karotte', 'karotte-2', 'direct_sowing', date(current, 5, 18), Decimal('16.0')),
         PlanSpec('rote-bete', 'rote-bete', 'direct_sowing', date(current, 4, 10), Decimal('15.0')),
         PlanSpec('kohlrabi', 'kohlrabi', 'pre_cultivation', date(current, 3, 28), Decimal('14.0'), 180),
-        PlanSpec('zucchini', 'zucchini', 'pre_cultivation', date(current, 5, 18), Decimal('18.0'), 18),
+        PlanSpec(
+            'zucchini', 'zucchini', 'pre_cultivation', date(current, 5, 18), Decimal('18.0'), 18,
+            actual_dates={
+                'actual_propagation_start_date': date(current, 4, 26),
+                'actual_transplanting_date': date(current, 5, 21),
+                'actual_harvest_start_date': date(current, 6, 28),
+                'recorded_harvest_end_date': date(current, 9, 25),
+            },
+        ),
         # Second half of the lettuce-after-lettuce conflict above.
         PlanSpec('salat', 'salat-1', 'pre_cultivation', date(current, 8, 25), Decimal('8.5'), 95, plan_notes['salat_herbst']),
         # Lindenhof: one teaching case per bed (docs/crop-rotation.md, "Demo cases").
@@ -1807,4 +1819,5 @@ def _create_planting_plans(
             rotation_conflict_accepted_at=timezone.now() if spec.rotation_conflict_accepted else None,
             project=project,
             season=season,
+            **(spec.actual_dates or {}),
         )

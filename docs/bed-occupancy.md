@@ -83,6 +83,8 @@ Only project admins can change it, like the other general project settings.
     plan's harvest ends on `date` at the latest (the follow-up's first day);
     as the `successor` `date` is the previous crop's planned harvest end.
   - `actual_harvest_end_date`: the earliest follow-up's first day, or null.
+    This calculated occupancy boundary retains its existing API name. The
+    user-recorded harvest end is stored separately in `recorded_harvest_end_date`.
 
   The serializer builds one `HarvestOverlapIndex` per request: the project's
   bed occupancies (with species translations for the crop labels) are loaded

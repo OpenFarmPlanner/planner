@@ -85,6 +85,8 @@ interface MobilePlanFormDialogProps {
   onLinkedFieldEdited: (field: "area_m2" | "plants_count") => void;
   /** Crop rotation check and bed suggestions; omitted, the dialog shows neither. */
   rotation?: MobilePlanRotationProps;
+  actualDatesEditor?: ReactNode;
+  submitDisabled?: boolean;
   onClose: () => void;
   onSubmit: () => void;
 }
@@ -113,6 +115,8 @@ export function MobilePlanFormDialog({
   getPlantingDateFromSowingDate,
   onLinkedFieldEdited,
   rotation,
+  actualDatesEditor,
+  submitDisabled,
   onClose,
   onSubmit,
 }: MobilePlanFormDialogProps) {
@@ -459,6 +463,7 @@ export function MobilePlanFormDialog({
             }
             sx={fullWidthFieldSx}
           />
+          {actualDatesEditor}
         </Stack>
         {showSuggestions && rotation ? (
           <Box sx={{ mt: 1 }}>
@@ -473,7 +478,7 @@ export function MobilePlanFormDialog({
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>{t("common:actions.cancel")}</Button>
-        <Button onClick={onSubmit} variant="contained">
+        <Button onClick={onSubmit} variant="contained" disabled={submitDisabled}>
           {isEdit ? t("common:actions.save") : t("common:actions.add")}
         </Button>
       </DialogActions>

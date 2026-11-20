@@ -339,8 +339,10 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
     def perform_update(self, serializer: PlantingPlanSerializer) -> None:
         current_user = self.request.user if self.request.user.is_authenticated else None
         previous_snapshot = _serialize_instance(serializer.instance)
+        actual_dates_only = serializer.is_actual_date_update(serializer.validated_data)
         instance = serializer.save(updated_by=current_user)
-        synchronize_plan_tasks(instance)
+        if not actual_dates_only:
+            synchronize_plan_tasks(instance)
         self.record_revision(instance, EntityRevision.ACTION_UPDATED, previous_snapshot=previous_snapshot)
 
     @transaction.atomic

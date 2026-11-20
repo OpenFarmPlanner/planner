@@ -189,6 +189,8 @@ FR/ES/IT: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Aussaat / Aussaattermin | Sowing / sowing date | Semis / date de semis | Siembra / fecha de siembra | semina / data di semina | sementeira / data de sementeira | zaai / zaaidatum |
 | Erntebeginn | Harvest start | Début de récolte | Inicio de cosecha | inizio della raccolta | início da colheita | begin oogst |
 | Ernteende | Harvest end | Fin de récolte | Fin de cosecha | fine della raccolta | fim da colheita | einde oogst |
+| Plan / Ist / Beides (Terminanzeige) | Planned / Actual / Both | Prévu / Réalisé / Les deux | Previsto / Realizado / Ambos | Previsto / Effettivo / Entrambi | Planeado / Realizado / Ambos | Gepland / Werkelijk / Beide |
+| Ist-Aussaattermin | Actual sowing date | Date réelle de semis | Fecha real de siembra | Data effettiva di semina | Data efetiva de sementeira | Werkelijke zaaidatum |
 | Ernte | Harvest | Récolte | Cosecha | raccolta | colheita | oogst |
 | Satz (Folgesatz) | Succession | Série | Serie | serie successiva | série sucessiva | opvolgende teelt |
 | Vorkultur | Previous crop | Culture précédente | Cultivo anterior | coltura precedente | cultura anterior | voorteelt |

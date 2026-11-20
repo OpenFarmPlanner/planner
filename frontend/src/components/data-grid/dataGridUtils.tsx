@@ -160,6 +160,7 @@ const compareSortableValues = (leftValue: unknown, rightValue: unknown): number 
 export const getSortedRowIds = <T extends EditableRow>(
   sourceRows: readonly T[],
   model: GridSortModel,
+  getValue: (row: T, field: string) => unknown = getSortableValue,
 ): GridRowId[] => {
   const [sortItem] = model;
   if (!sortItem?.field || !sortItem.sort) {
@@ -168,12 +169,9 @@ export const getSortedRowIds = <T extends EditableRow>(
 
   const direction = sortItem.sort === 'desc' ? -1 : 1;
   return sourceRows
-    .map((row, index) => ({ row, index }))
+    .map((row, index) => ({ row, index, value: getValue(row, sortItem.field) }))
     .sort((left, right) => {
-      const comparison = compareSortableValues(
-        getSortableValue(left.row, sortItem.field),
-        getSortableValue(right.row, sortItem.field),
-      );
+      const comparison = compareSortableValues(left.value, right.value);
       return comparison === 0 ? left.index - right.index : comparison * direction;
     })
     .map(({ row }) => row.id);

@@ -426,5 +426,39 @@
     "tasks": "Taken",
     "tasksLoadFailed": "De taken konden niet worden geladen.",
     "taskCancelled": "Geannuleerd"
+  },
+  "actualDates": {
+    "clear": "Datum wissen",
+    "title": "Geplande en werkelijke datums",
+    "modeLabel": "Datums weergeven",
+    "edit": "Werkelijke datums invoeren",
+    "saveError": "De werkelijke datums konden niet worden opgeslagen.",
+    "unsaved": "Bij het verlaten verlies je niet-opgeslagen wijzigingen aan datums.",
+    "missing": "Geen datum",
+    "same": "Op de geplande datum",
+    "early_one": "{{count}} dag eerder",
+    "early_other": "{{count}} dagen eerder",
+    "late_one": "{{count}} dag later",
+    "late_other": "{{count}} dagen later",
+    "editTarget": "Kies de datum die je wilt wijzigen",
+    "modes": {
+      "planned": "Gepland",
+      "actual": "Werkelijk",
+      "combined": "Beide"
+    },
+    "activities": {
+      "propagation": "Begin opkweek",
+      "sowing": "Zaaidatum",
+      "transplanting": "Uitplantdatum",
+      "harvestStart": "Begin oogst",
+      "harvestEnd": "Einde oogst"
+    },
+    "actualLabels": {
+      "propagation": "Werkelijke begindatum van de opkweek",
+      "sowing": "Werkelijke zaaidatum",
+      "transplanting": "Werkelijke uitplantdatum",
+      "harvestStart": "Werkelijk begin van de oogst",
+      "harvestEnd": "Werkelijk einde van de oogst"
+    }
   }
 }

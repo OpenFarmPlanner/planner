@@ -1,6 +1,7 @@
 import type { Bed, Crop, CultivationType, Field, PlanCultivationType, PlantingPlan } from '../api/types';
 import type { EditableRow } from '../components/data-grid/types';
 import { getEffectiveCropValue } from '../crops/varietyValueSource';
+import { ACTUAL_DATE_FIELDS } from '../planting-plans/plantingPlanActualDates';
 import { formatLocalizedNumber, parseLocalizedNumber } from '../utils/numberLocalization';
 
 export const AREA_LABEL_SEPARATOR = ' | ';
@@ -387,6 +388,7 @@ export const areRowsSemanticallyEqual = (
       previousRow.planting_date === nextRow.planting_date &&
       previousRow.harvest_date === nextRow.harvest_date &&
       previousRow.harvest_end_date === nextRow.harvest_end_date &&
+      Object.values(ACTUAL_DATE_FIELDS).every(field => previousRow[field] === nextRow[field]) &&
       // The rotation check is recomputed server-side on every save (also of
       // other plans on the bed), so a reload can change only these.
       previousRow.rotation_status === nextRow.rotation_status &&

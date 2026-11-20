@@ -435,5 +435,41 @@
     "tasks": "Tareas",
     "tasksLoadFailed": "No se pudieron cargar las tareas.",
     "taskCancelled": "Cancelada"
+  },
+  "actualDates": {
+    "clear": "Borrar fecha",
+    "title": "Fechas previstas y reales",
+    "modeLabel": "Fechas que se muestran",
+    "edit": "Registrar fechas reales",
+    "saveError": "No se pudieron guardar las fechas reales.",
+    "unsaved": "Al salir se perderán las fechas sin guardar.",
+    "missing": "Sin fecha",
+    "same": "En la fecha prevista",
+    "early_one": "{{count}} día antes",
+    "early_other": "{{count}} días antes",
+    "early_many": "{{count}} días antes",
+    "late_one": "{{count}} día después",
+    "late_other": "{{count}} días después",
+    "late_many": "{{count}} días después",
+    "editTarget": "Elegir qué fecha editar",
+    "modes": {
+      "planned": "Previsto",
+      "actual": "Realizado",
+      "combined": "Ambos"
+    },
+    "activities": {
+      "propagation": "Inicio del semillero",
+      "sowing": "Fecha de siembra",
+      "transplanting": "Fecha de trasplante",
+      "harvestStart": "Inicio de la cosecha",
+      "harvestEnd": "Fin de la cosecha"
+    },
+    "actualLabels": {
+      "propagation": "Fecha real de inicio del semillero",
+      "sowing": "Fecha real de siembra",
+      "transplanting": "Fecha real de trasplante",
+      "harvestStart": "Fecha real de inicio de la cosecha",
+      "harvestEnd": "Fecha real de fin de la cosecha"
+    }
   }
 }
