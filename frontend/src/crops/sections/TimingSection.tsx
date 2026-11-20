@@ -1,5 +1,5 @@
 /**
- * TimingSection: cultivation type, growth and harvest duration.
+ * TimingSection: cultivation type, growth, harvest and propagation durations.
  * @remarks Presentational, no internal state
  */
 import { Box, Typography, FormControl, InputLabel, MenuItem, TextField, Checkbox, ListItemText } from '@mui/material';
@@ -26,9 +26,13 @@ export function TimingSection({ formData, errors, onChange, t, getFieldHighlight
   const selectedCultivationTypes = formData.cultivation_types?.length
     ? formData.cultivation_types
     : (formData.cultivation_type ? [formData.cultivation_type as CultivationType] : []);
+  const isDirectSowingOnly = selectedCultivationTypes.length === 1 && selectedCultivationTypes[0] === 'direct_sowing';
+  const propagationTooLong = !isDirectSowingOnly
+    && (formData.propagation_duration_days ?? 0) > (formData.growth_duration_days ?? 0);
   const cultivationTypePin = getFieldPinProps?.('cultivation_types');
   const growthDurationPin = getFieldPinProps?.('growth_duration_days');
   const harvestDurationPin = getFieldPinProps?.('harvest_duration_days');
+  const propagationDurationPin = getFieldPinProps?.('propagation_duration_days');
   const infoButton = (labelKey: string, helpKey: string) => (
     <FieldInfoButton title={t(helpKey)} ariaLabel={t('form.fieldInfoAriaLabel', { field: t(labelKey) })} />
   );
@@ -57,9 +61,6 @@ export function TimingSection({ formData, errors, onChange, t, getFieldHighlight
               const values = (e.target.value as CultivationType[]).filter(Boolean);
               onChange('cultivation_types', values);
               onChange('cultivation_type', values[0] || 'pre_cultivation');
-              if (values.length === 1 && values[0] === 'direct_sowing') {
-                onChange('propagation_duration_days', 0);
-              }
             }}
             renderValue={(selected) => {
               const values = selected as CultivationType[];
@@ -116,6 +117,28 @@ export function TimingSection({ formData, errors, onChange, t, getFieldHighlight
               endAdornment: buildFieldEndAdornment(
                 infoButton('form.harvestDurationDays', 'form.harvestDurationDaysHelp'),
                 harvestDurationPin,
+              ),
+            },
+          }}
+        />
+        <TextField
+          sx={mergeVarietyFieldSx(formGridFieldSx, getFieldHighlightSx?.('propagation_duration_days'), propagationDurationPin?.fieldSx)}
+          type="number"
+          label={t('form.propagationDurationDays')}
+          value={formData.propagation_duration_days ?? ''}
+          onChange={e => onChange('propagation_duration_days', e.target.value === '' ? undefined : parseInt(e.target.value, 10))}
+          disabled={isDirectSowingOnly}
+          error={Boolean(errors.propagation_duration_days) || propagationTooLong}
+          helperText={errors.propagation_duration_days || (propagationTooLong ? t('form.propagationDurationDaysTooLong') : undefined)}
+          slotProps={{
+            htmlInput: { min: 0, step: 1, inputMode: 'numeric' },
+            input: {
+              endAdornment: buildFieldEndAdornment(
+                infoButton(
+                  'form.propagationDurationDays',
+                  isDirectSowingOnly ? 'form.directSowingPropagationDisabledHelp' : 'form.propagationDurationDaysHelp',
+                ),
+                isDirectSowingOnly ? undefined : propagationDurationPin,
               ),
             },
           }}

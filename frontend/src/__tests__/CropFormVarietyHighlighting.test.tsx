@@ -363,10 +363,14 @@ describe('CropForm section order', () => {
     expect(renderedSectionHeadings()).toEqual(SECTION_HEADINGS);
   });
 
-  it('places growth and harvest in timing and propagation in germination', async () => {
+  it.each([
+    ['create', undefined],
+    ['edit', VARIETY_CROP],
+  ] as const)('places all three durations in Time planning in the %s form', async (_mode, crop) => {
     render(
       <CropForm
-        crop={VARIETY_CROP}
+        crop={crop}
+        formKind={crop ? 'variety' : 'crop'}
         crops={[SPECIES_CROP, VARIETY_CROP]}
         onSave={vi.fn().mockResolvedValue(undefined)}
         onCancel={() => {}}
@@ -378,15 +382,48 @@ describe('CropForm section order', () => {
       screen.getByRole('heading', { name: 'form.sectionTiming' }),
       screen.getByLabelText('form.growthDurationDays'),
       screen.getByLabelText('form.harvestDurationDays'),
+      screen.getByLabelText('form.propagationDurationDays'),
       screen.getByRole('heading', { name: 'form.sectionPlanting' }),
       screen.getByRole('heading', { name: 'germination.title' }),
       screen.getByRole('combobox', { name: 'germination.fields.germination_temperature_requirement' }),
       screen.getByRole('combobox', { name: 'germination.fields.germination_light_requirement' }),
-      screen.getByLabelText('form.propagationDurationDays'),
+      screen.getByLabelText('germination.fields.germination_pretreatment'),
     ];
     for (let index = 1; index < ordered.length; index += 1) {
       expect(ordered[index - 1].compareDocumentPosition(ordered[index]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     }
     expect(screen.queryByText('form.sectionHarvest')).not.toBeInTheDocument();
+  });
+
+  it('saves the existing propagation duration after switching to direct sowing only', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const crop: Crop = {
+      ...SPECIES_CROP,
+      cultivation_type: 'pre_cultivation',
+      cultivation_types: ['pre_cultivation'],
+      growth_duration_days: 60,
+      propagation_duration_days: 28,
+    };
+    render(<CropForm crop={crop} crops={[crop]} formKind="crop" onSave={onSave} onCancel={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /^form\.name/ })).toHaveFocus());
+    const propagation = screen.getByLabelText('form.propagationDurationDays');
+    expect(propagation).toBeEnabled();
+    expect(propagation).toHaveValue(28);
+
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'form.cultivationType' }));
+    fireEvent.click(screen.getByRole('option', { name: 'form.cultivationTypeDirectSowing' }));
+    fireEvent.click(screen.getByRole('option', { name: 'form.cultivationTypePreCultivation' }));
+    fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Escape' });
+    expect(propagation).toBeDisabled();
+    expect(propagation).toHaveValue(28);
+
+    const save = await screen.findByRole('button', { name: 'form.save' });
+    await waitFor(() => expect(save).toBeEnabled());
+    fireEvent.click(save);
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][0]).toMatchObject({
+      cultivation_type: 'direct_sowing', cultivation_types: ['direct_sowing'], propagation_duration_days: 28,
+    });
   });
 });
