@@ -822,6 +822,32 @@ class SeasonApiTest(ProjectApiTestCase):
             {date(2026, 4, 1), date(2026, 4, 8), date(2026, 4, 15)},
         )
 
+    def test_undelete_restores_generated_recurring_tasks_with_their_state(self):
+        season = Season.objects.create(
+            project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+        )
+        plan = PlantingPlan.objects.create(
+            crop=self.crop, bed=self.bed, project=self.project, season=season,
+            planting_date=date(2026, 4, 1),
+        )
+        generated = Task.objects.create(
+            project=self.project, season=season, planting_plan=plan, title='Water',
+            source_key='rule:1', occurrence_index=0, status='completed',
+        )
+
+        self.client.delete(f'/openfarmplanner/api/seasons/{season.pk}/')
+        generated.refresh_from_db()
+        self.assertIsNone(generated.planting_plan_id)
+        self.assertIsNotNone(generated.deleted_at)
+
+        response = self.client.post(f'/openfarmplanner/api/seasons/{season.pk}/undelete/')
+
+        self.assertEqual(response.status_code, 200)
+        generated.refresh_from_db()
+        self.assertEqual(generated.planting_plan_id, plan.pk)
+        self.assertIsNone(generated.deleted_at)
+        self.assertEqual(generated.status, 'completed')
+
     def test_season_delete_groups_its_cascade_into_one_batch_operation(self):
         season = Season.objects.create(
             project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
