@@ -14,7 +14,6 @@ import {
   ListItemButton,
   ListItemText,
   Stack,
-  TextField,
   Typography,
 } from '@mui/material';
 import type { PublicCrop } from '../../../api/types';
@@ -23,6 +22,7 @@ import { buildCropHierarchy, getFirstVarietyItem, type CropHierarchyItemKind } f
 import { flattenTreeRows } from '../../../components/hierarchy/utils/treeRows';
 import { useExpandedState } from '../../../components/hierarchy/hooks/useExpandedState';
 import { CropHierarchyExpandToggle } from '../../../crops/CropHierarchyExpandToggle';
+import { CropSearchToolbar } from '../../../crops/CropSearchToolbar';
 import {
   MOBILE_ROW_MIN_HEIGHT,
   MOBILE_TOUCH_TARGET_SIZE,
@@ -53,7 +53,7 @@ export interface PublicCropMobileSelectorDialogProps {
   onSearchSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onSelect: (crop: PublicCrop, itemKind: CropHierarchyItemKind, speciesKey: string) => void;
   onListScroll: (event: UIEvent<HTMLUListElement>) => void;
-  filterControl?: ReactNode;
+  searchActions?: ReactNode;
   batchActions?: ReactNode;
   batchSelection?: PublicCropBatchSelection;
 }
@@ -73,7 +73,7 @@ export function PublicCropMobileSelectorDialog({
   onSearchSubmit,
   onSelect,
   onListScroll,
-  filterControl,
+  searchActions,
   batchActions,
   batchSelection,
 }: PublicCropMobileSelectorDialogProps) {
@@ -129,13 +129,13 @@ export function PublicCropMobileSelectorDialog({
       <DialogTitle>{t('selectCrop')}</DialogTitle>
       <DialogContent sx={{ px: 1.5, pb: 2 }}>
         <Box component="form" onSubmit={onSearchSubmit} sx={{ mb: 1.5 }}>
-          <TextField
-            value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
-            label={t('library.searchLabel')}
-            size="medium"
-            fullWidth
-            slotProps={{ input: { endAdornment: filterControl } }}
+          <CropSearchToolbar
+            search={{
+              value: query,
+              onChange: (event) => onQueryChange(event.target.value),
+              placeholder: t('library.searchLabel'),
+            }}
+            actions={searchActions}
           />
         </Box>
         {batchActions}

@@ -1,9 +1,8 @@
 {
   "title": "Gewassen",
-  "searchPlaceholder": "Gewas zoeken",
+  "searchPlaceholder": "Gewassen zoeken",
   "searchInputPlaceholder": "Gewasnaam invoeren...",
   "noOptions": "Geen gewassen gevonden",
-  "searchInputPlaceholderEnhanced": "Zoeken op gewasnaam, bijvoorbeeld wortel",
   "searchHelperText_one": "{{count}} gewas gevonden. Gebruik de filters om verder te verfijnen.",
   "searchHelperText_other": "{{count}} gewassen gevonden. Gebruik de filters om verder te verfijnen.",
   "clearSearch": "Zoekveld wissen",
@@ -1039,7 +1038,7 @@
         }
       }
     },
-    "searchLabel": "Openbare gewassen zoeken",
+    "searchLabel": "Gewassen zoeken",
     "selectPrompt": "Kies een openbaar gewas om de details te zien en het te importeren.",
     "empty": "Geen openbare gewassen gevonden.",
     "emptyState": {
