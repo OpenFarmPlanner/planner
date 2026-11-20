@@ -117,7 +117,8 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
         return;
       }
     }
-    onClose(true);
+    const focused = document.activeElement;
+    onClose(anchor.contains(focused) || Boolean(popupRef.current?.contains(focused)));
   };
 
   const handleInputKey = (event: KeyboardEvent<HTMLInputElement>): void => {

@@ -44,6 +44,7 @@ export function PlantingPlanBedCell({
   const textRef = useRef<HTMLSpanElement>(null);
   const rotationButtonRef = useRef<HTMLButtonElement>(null);
   const restoreFocusRef = useRef(false);
+  const pendingSelectionRef = useRef(false);
   const [editor, setEditor] = useState<{ anchor: HTMLElement; initialQuery: string } | null>(null);
   const [conflictAnchor, setConflictAnchor] = useState<HTMLButtonElement | null>(null);
   const [pathInteraction, setPathInteraction] = useState(false);
@@ -54,7 +55,8 @@ export function PlantingPlanBedCell({
 
   const openEditor = useCallback((initialQuery = ''): void => {
     const anchor = cellRef.current;
-    if (readOnly || !anchor || isAnyContextMenuOpen() || isContextMenuDismissGestureInProgress()) return;
+    if (readOnly || !anchor || pendingSelectionRef.current
+      || isAnyContextMenuOpen() || isContextMenuDismissGestureInProgress()) return;
     setPathInteraction(false);
     setEditor((opened) => opened ?? { anchor, initialQuery });
   }, [readOnly]);
@@ -70,6 +72,16 @@ export function PlantingPlanBedCell({
       textRef.current?.focus({ preventScroll: true });
     }
   }, [editor]);
+
+  const submitBed = async (bedId: number, freeAreaSqm: number | null): Promise<boolean> => {
+    if (pendingSelectionRef.current) return false;
+    pendingSelectionRef.current = true;
+    try {
+      return await onSelect(bedId, freeAreaSqm);
+    } finally {
+      pendingSelectionRef.current = false;
+    }
+  };
 
   const prefix = [path.locationName, path.fieldName].filter(Boolean).join(BED_PATH_SEPARATOR);
   const tooltip = [prefix, path.name].filter(Boolean).join(BED_PATH_SEPARATOR);
@@ -103,7 +115,7 @@ export function PlantingPlanBedCell({
           rotation={rotation}
           numberLocale={numberLocale}
           onClose={closeEditor}
-          onSelect={onSelect}
+          onSelect={submitBed}
         />
       ) : (
         <>

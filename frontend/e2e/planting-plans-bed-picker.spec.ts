@@ -196,6 +196,37 @@ test.describe('inline bed picker', () => {
     await expect(fullBed).toBeDisabled();
     expect(await apiRequest(page, 'GET', `/planting-plans/${plan}/`)).toMatchObject({ bed: original });
   });
+
+  test('prevents a second selection during a save and preserves focus if the user moves on', async ({ page, request }) => {
+    const { plan, nearby } = await seedBeds(page, request, 'bed-picker-save-in-flight');
+    let releaseSave = () => {};
+    const savePending = new Promise<void>((resolve) => { releaseSave = resolve; });
+    let saveAttempts = 0;
+    await page.route(`**/api/planting-plans/${plan}/`, async (route) => {
+      if (route.request().method() === 'PUT') {
+        saveAttempts += 1;
+        await savePending;
+      }
+      await route.continue();
+    });
+    try {
+      await cell(page, 'bed').dblclick();
+      await beds(page).getByRole('option', { name: /Salat 2/ }).click();
+      await expect.poll(() => saveAttempts).toBe(1);
+      await expect(picker(page)).toHaveAttribute('readonly', '');
+      await page.getByRole('heading', { name: 'Anbaupläne' }).click();
+      await expect(picker(page)).toHaveCount(0);
+      await cell(page, 'bed').dblclick();
+      await expect(picker(page)).toHaveCount(0);
+      await cell(page, 'sowing_date').click();
+    } finally {
+      releaseSave();
+    }
+    await expect(cell(page, 'bed')).toContainText('Salat 2');
+    await expect(cell(page, 'sowing_date')).toHaveAttribute('tabindex', '0');
+    expect(saveAttempts).toBe(1);
+    expect(await apiRequest(page, 'GET', `/planting-plans/${plan}/`)).toMatchObject({ bed: nearby });
+  });
 });
 
 test.describe('touch tablet bed picker', () => {
