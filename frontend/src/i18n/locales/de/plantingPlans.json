@@ -260,7 +260,8 @@
       "info": "Nicht prüfbar"
     },
     "occupancyOptions": {
-      "harvestOverlap": "Ernteüberlappung"
+      "harvestOverlap": "Ernteüberlappung",
+      "continued": "Weiterlaufende Kulturen"
     },
     "timingOptions": {
       "outsideWindow": "Außerhalb der Zeiträume"
@@ -469,5 +470,34 @@
     "openOrigin": "In ursprünglicher Saison öffnen",
     "count_one": "{{own}} in dieser Saison gepflanzt · {{count}} läuft weiter",
     "count_other": "{{own}} in dieser Saison gepflanzt · {{count}} laufen weiter"
+  },
+  "perennial": {
+    "title": "Standzeit und Räumung",
+    "productiveLifespan": "Standzeit",
+    "clearingDate": "Räumungsdatum",
+    "clearingDateHelp": "Das Beet bleibt bis einschließlich dieses Datums belegt.",
+    "editClearingDate": "Räumungsdatum ändern",
+    "invalidDate": "Gib ein Datum ab dem Pflanztermin ein.",
+    "plantingDateRequired": "Trage zuerst den Pflanztermin ein.",
+    "saveFailed": "Das Räumungsdatum konnte nicht gespeichert werden.",
+    "years_one": "{{count, number}} Jahr",
+    "years_other": "{{count, number}} Jahre",
+    "insufficientArea": "Bis zu diesem Räumungsdatum ist auf dem Beet nicht genug Platz frei.",
+    "unsaved": "Deine Änderung am Räumungsdatum wurde noch nicht gespeichert."
+  },
+  "seasonStatus": {
+    "column": "Saisonstatus",
+    "labels": {
+      "only": "Nur diese Saison",
+      "starts": "Beginnt",
+      "continues": "Läuft weiter",
+      "ends": "Endet"
+    },
+    "descriptions": {
+      "only": "Belegt das Beet nur in dieser Saison.",
+      "starts": "Beginnt in dieser Saison und belegt das Beet darüber hinaus.",
+      "continues": "Belegt das Beet vor, während und nach dieser Saison.",
+      "ends": "Begann vor dieser Saison und endet in dieser Saison."
+    }
   }
 }

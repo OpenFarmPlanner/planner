@@ -54,9 +54,11 @@
     "notes": "Note",
     "phase": {
       "growth": "Growth phase",
-      "harvest": "Harvest phase"
+      "harvest": "Harvest phase",
+      "occupancy": "Bed occupancy"
     },
-    "actualHarvestEnd": "Harvest ends at the latest"
+    "actualHarvestEnd": "Harvest ends at the latest",
+    "clearingDate": "Crop removal date"
   },
   "noData": "No planting plans available",
   "modeLabel": "Mode",

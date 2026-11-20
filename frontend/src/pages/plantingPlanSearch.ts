@@ -37,7 +37,7 @@ export const ROTATION_FILTER_STATUSES = ['conflict', 'accepted', 'info'] as cons
 export type RotationFilterStatus = (typeof ROTATION_FILTER_STATUSES)[number];
 
 /** Bed-occupancy cases the "Belegung" filter offers (see docs/bed-occupancy.md). */
-export const OCCUPANCY_FILTER_OPTIONS = ['harvestOverlap'] as const;
+export const OCCUPANCY_FILTER_OPTIONS = ['harvestOverlap', 'continued'] as const;
 
 export type OccupancyFilterOption = (typeof OCCUPANCY_FILTER_OPTIONS)[number];
 
@@ -127,6 +127,7 @@ export interface PlantingPlanSearchRecordInput {
   rotationStatus?: string | null;
   /** Whether the plan is a previous or follow-up crop in an allowed harvest overlap. */
   hasHarvestOverlap?: boolean;
+  carriedOver?: boolean;
   /** Whether a plan date lies outside the crop's timing windows. */
   hasTimingWindowFinding?: boolean;
 }
@@ -245,7 +246,9 @@ export function matchesPlantingPlanFilters(record: PlantingPlanSearchRecord, fil
   if (!includesIfSelected(filters.cultivationTypes, record.cultivationType || null)) return false;
   if (!includesIfSelected(filters.cropKeys, record.cropKey || null)) return false;
   if (!includesIfSelected<string>(filters.rotationStatuses, record.rotationStatus ?? null)) return false;
-  if (filters.occupancy.includes('harvestOverlap') && !record.hasHarvestOverlap) return false;
+  if (filters.occupancy.length && !filters.occupancy.some(option => (
+    option === 'continued' ? record.carriedOver : record.hasHarvestOverlap
+  ))) return false;
   if (filters.timing.includes('outsideWindow') && !record.hasTimingWindowFinding) return false;
   return DATE_FILTER_FIELDS.every((field) => (
     matchesMonthRange(record[DATE_FIELD_TO_RECORD_KEY[field]], filters.monthRanges[field])

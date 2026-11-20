@@ -266,7 +266,8 @@
       "info": "No comprobable"
     },
     "occupancyOptions": {
-      "harvestOverlap": "Solapamiento de cosecha"
+      "harvestOverlap": "Solapamiento de cosecha",
+      "continued": "Cultivos que continúan"
     },
     "timingOptions": {
       "outsideWindow": "Fuera de los periodos"
@@ -481,5 +482,35 @@
     "count_one": "{{own}} iniciadas esta temporada · {{count}} continúa",
     "count_other": "{{own}} iniciadas esta temporada · {{count}} continúan",
     "count_many": "{{own}} iniciadas esta temporada · {{count}} continúan"
+  },
+  "perennial": {
+    "title": "Cultivo perenne",
+    "productiveLifespan": "Vida útil del cultivo",
+    "clearingDate": "Fecha de fin del cultivo",
+    "clearingDateHelp": "El bancal sigue ocupado hasta esta fecha inclusive.",
+    "editClearingDate": "Editar la fecha de fin del cultivo",
+    "invalidDate": "Introduce una fecha igual o posterior a la de plantación.",
+    "plantingDateRequired": "Introduce primero la fecha de plantación.",
+    "saveFailed": "No se pudo guardar la fecha de fin del cultivo.",
+    "years_one": "{{count, number}} año",
+    "years_other": "{{count, number}} años",
+    "years_many": "{{count, number}} años",
+    "insufficientArea": "No hay suficiente superficie libre en el bancal hasta esa fecha.",
+    "unsaved": "El cambio de la fecha de fin del cultivo está sin guardar."
+  },
+  "seasonStatus": {
+    "column": "Estado en la temporada",
+    "labels": {
+      "only": "Solo esta temporada",
+      "starts": "Empieza",
+      "continues": "Continúa",
+      "ends": "Termina"
+    },
+    "descriptions": {
+      "only": "Ocupa el bancal solo durante esta temporada.",
+      "starts": "Empieza esta temporada y ocupa el bancal después de que termine.",
+      "continues": "Ocupa el bancal antes, durante y después de esta temporada.",
+      "ends": "Empezó antes de esta temporada y termina durante ella."
+    }
   }
 }

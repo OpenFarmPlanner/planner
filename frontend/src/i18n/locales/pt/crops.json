@@ -764,7 +764,8 @@
       "sampleNote": "Linha de exemplo: substituir ou eliminar antes de importar.",
       "potatoSeedNote": "Este exemplo descreve a propagação por semente verdadeira de batata, em vez da plantação de tubérculos.",
       "pretreatment": "Manter a humidade uniforme.",
-      "pestsDiseases": "Míldio da batateira: manter as folhas secas."
+      "pestsDiseases": "Míldio da batateira: manter as folhas secas.",
+      "perennialName": "Ruibarbo"
     },
     "help": {
       "templateHint": "Ainda não tem um ficheiro adequado?",
@@ -1500,7 +1501,8 @@
       "fields": {
         "variety": "Variedade",
         "growth_duration_days": "Duração da cultura",
-        "harvest_duration_days": "Duração da colheita"
+        "harvest_duration_days": "Duração da colheita",
+        "standing_time_years": "Vida útil da cultura (anos)"
       },
       "blockingReasons": {
         "missingCropSpecies": "Selecione uma espécie cultivada oficial.",
@@ -2019,7 +2021,8 @@
       "water_requirement": "Necessidades de água",
       "life_cycle": "Ciclo de vida",
       "winter_hardiness": "Resistência ao frio",
-      "pests_diseases": "Pragas e doenças"
+      "pests_diseases": "Pragas e doenças",
+      "standing_time_years": "Vida útil da cultura (anos)"
     },
     "values": {
       "light_requirement": {
@@ -2044,7 +2047,9 @@
       }
     },
     "legacyLifeCycleOption": "{{value}} (valor existente)",
-    "legacyLifeCycleHint": "Este valor guardado é mantido, exceto se escolher outro ciclo de vida."
+    "legacyLifeCycleHint": "Este valor guardado é mantido, exceto se escolher outro ciclo de vida.",
+    "standingTimeHelp": "Duração produtiva habitual desta cultura perene. Serve para sugerir uma data de fim da cultura.",
+    "standingTimeRequired": "Introduza um número inteiro igual ou superior a 1."
   },
   "taskTemplates": {
     "title": "Modelos de tarefas",

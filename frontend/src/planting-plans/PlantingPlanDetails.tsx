@@ -27,6 +27,7 @@ import {
 import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import { formatLocalizedNumber } from '../utils/numberLocalization';
 import { PlantingPlanExecutionDates } from './PlantingPlanExecutionDates';
+import { PerennialPlanDates } from './PerennialPlanDates';
 
 interface PlantingPlanDetailsProps {
   planId: number | null;
@@ -54,14 +55,16 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
   const [saving, setSaving] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
   const [datesDirty, setDatesDirty] = useState(false);
+  const [clearingDateDirty, setClearingDateDirty] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const loadedPlan = result && 'plan' in result ? result.plan : undefined;
   const loadedPlanId = loadedPlan?.id;
   const hasPhotos = Boolean(loadedPlan?.note_attachment_count) || attachmentRevision > 0;
   const hasUnsavedNotes = editorOpen && draft !== (loadedPlan?.notes ?? '');
 
-  useNavigationBlocker(hasUnsavedNotes || datesDirty, hasUnsavedNotes
-    ? t('common:notesDrawer.unsavedDialog.message') : t('actualDates.unsaved'));
+  useNavigationBlocker(hasUnsavedNotes || datesDirty || clearingDateDirty, hasUnsavedNotes
+    ? t('common:notesDrawer.unsavedDialog.message')
+    : t(clearingDateDirty ? 'perennial.unsaved' : 'actualDates.unsaved'));
 
   useEffect(() => {
     titleRef.current?.focus({ preventScroll: true });
@@ -195,6 +198,11 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
             {contextRows.length > 0 && <DetailSection title={t('details.context')} outlined>
               <DetailGrid>{contextRows.map(row => <DetailRow key={row.label} label={row.label} value={row.value!} />)}</DetailGrid>
             </DetailSection>}
+            <PerennialPlanDates key={loadedPlan.id} plan={loadedPlan} editable={canEditNotes}
+              onDirtyChange={setClearingDateDirty} onSaved={updated => {
+                setResult(current => current && 'plan' in current ? { plan: { ...current.plan, ...updated } } : current);
+                onChanged();
+              }} />
             <PlantingPlanExecutionDates plan={loadedPlan} editable={canEditNotes} onDirtyChange={setDatesDirty}
               onSaved={dates => {
                 setResult(current => current && 'plan' in current ? { plan: { ...current.plan, ...dates } } : current);

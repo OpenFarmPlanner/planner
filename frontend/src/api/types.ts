@@ -255,6 +255,7 @@ export interface Crop {
   light_requirement?: LightRequirement | LightRequirement[] | '';
   water_requirement?: WaterRequirement | '';
   life_cycle?: LifeCycle | '';
+  standing_time_years?: number | null;
   winter_hardiness?: WinterHardiness | '';
   
   harvest_method?: 'per_plant' | 'per_sqm' | '';
@@ -364,6 +365,7 @@ export type CropInheritableField =
   | 'light_requirement'
   | 'water_requirement'
   | 'life_cycle'
+  | 'standing_time_years'
   | 'winter_hardiness'
   | 'harvest_method'
   | 'expected_yield'
@@ -488,6 +490,7 @@ export interface PublicCrop {
   light_requirement?: LightRequirement | LightRequirement[] | '';
   water_requirement?: WaterRequirement | '';
   life_cycle?: LifeCycle | '';
+  standing_time_years?: number | null;
   winter_hardiness?: WinterHardiness | '';
   harvest_method?: 'per_plant' | 'per_sqm' | '';
   expected_yield?: number | null;
@@ -1285,10 +1288,14 @@ export interface PlantingPlan extends PlantingPlanActualDates {
   crop_propagation_duration_days?: number | null;
   crop_cultivation_type?: CultivationType | '' | null;
   crop_cultivation_types?: CultivationType[] | null;
+  crop_life_cycle?: LifeCycle | '';
+  crop_standing_time_years?: number | null;
   bed: number | null;
   bed_name?: string | null;
   season?: number | null;
   planting_date: string | null;
+  clearing_date?: string | null;
+  suggested_clearing_date?: string | null;
   planned_propagation_start_date?: string | null;
   planned_sowing_date?: string | null;
   // Read-only, computed.
@@ -1558,6 +1565,7 @@ export interface SeasonCopyPreview {
   conflict_free_count: number;
   skipped_count: number;
   continuing_count?: number;
+  unconfigured_perennial_count?: number;
   source_season_id: number;
   source_season_label: string;
   items: SeasonCopyPreviewItem[];
@@ -1617,6 +1625,7 @@ export interface SeasonCopyCounts {
   copied: number;
   skipped: number;
   continuing_count?: number;
+  unconfigured_perennial_count?: number;
 }
 
 export interface SeasonCreationOptions {
@@ -1666,6 +1675,7 @@ export interface SeasonCreateTransitionResponse {
   followup_copied_count: number;
   skipped_count: number;
   continuing_count?: number;
+  unconfigured_perennial_count?: number;
 }
 
 export interface SeasonDueSuggestion {
@@ -1678,6 +1688,7 @@ export interface SeasonCopyFromResponse {
   copied_count: number;
   skipped_count: number;
   continuing_count?: number;
+  unconfigured_perennial_count?: number;
   target_planting_plan_count: number;
 }
 

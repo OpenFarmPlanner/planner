@@ -188,7 +188,9 @@
         }
       },
       "continuingPlans_one": "{{count}} teelt loopt door en blijft in het oorspronkelijke seizoen.",
-      "continuingPlans_other": "{{count}} teelten lopen door en blijven in hun oorspronkelijke seizoenen."
+      "continuingPlans_other": "{{count}} teelten lopen door en blijven in hun oorspronkelijke seizoenen.",
+      "unconfiguredPerennials_one": "Een meerjarige teelt met ontbrekende of ongeldige datums of levensduur wordt overgeslagen.",
+      "unconfiguredPerennials_other": "{{count, number}} meerjarige teelten met ontbrekende of ongeldige datums of levensduur worden overgeslagen."
     }
   },
   "seasonSetup": {

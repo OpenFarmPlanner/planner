@@ -2063,7 +2063,11 @@ export default function PublicCropLibraryPage() {
                           (publicPlantHealth?.entries.length || hasAnyDetailValue(...SITE_HEALTH_FIELDS.map((field) => getPublicFieldValue(field, selectedCrop[field])))) ? (
                             <DetailSection key="siteHealth" title={t('siteHealth.title')}>
                               <DetailGrid>
-                                {SITE_HEALTH_FIELDS.filter(field => field !== 'pests_diseases' && hasDetailValue(getPublicFieldValue(field, selectedCrop[field])))
+                                {SITE_HEALTH_FIELDS.filter(field => (
+                                  field !== 'pests_diseases'
+                                  && (field !== 'standing_time_years' || getPublicFieldValue('life_cycle', selectedCrop.life_cycle) === 'perennial')
+                                  && hasDetailValue(getPublicFieldValue(field, selectedCrop[field]))
+                                ))
                                   .map(field => <DetailRow key={field} label={t(`siteHealth.fields.${field}`)} value={formatSiteHealthValue(field, getPublicFieldValue(field, selectedCrop[field]), t)} source={getPublicFieldSource(field)} />)}
                                 {publicPlantHealth?.entries.length ? <Box sx={{ gridColumn: '1 / -1' }}>
                                   <PlantHealthChips value={publicPlantHealth} />

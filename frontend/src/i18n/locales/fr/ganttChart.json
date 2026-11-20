@@ -54,9 +54,11 @@
     "notes": "Note",
     "phase": {
       "growth": "Phase de croissance",
-      "harvest": "Phase de récolte"
+      "harvest": "Phase de récolte",
+      "occupancy": "Occupation de la planche"
     },
-    "actualHarvestEnd": "Fin de récolte au plus tard"
+    "actualHarvestEnd": "Fin de récolte au plus tard",
+    "clearingDate": "Date de fin de culture"
   },
   "noData": "Aucune série disponible",
   "modeLabel": "Mode",

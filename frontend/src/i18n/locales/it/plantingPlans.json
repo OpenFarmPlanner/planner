@@ -262,7 +262,8 @@
       "info": "Non verificabile"
     },
     "occupancyOptions": {
-      "harvestOverlap": "Sovrapposizione delle raccolte"
+      "harvestOverlap": "Sovrapposizione delle raccolte",
+      "continued": "Colture che proseguono"
     },
     "timingOptions": {
       "outsideWindow": "Fuori dai periodi"
@@ -481,5 +482,35 @@
     "count_one": "{{own}} avviate in questa stagione · {{count}} prosegue",
     "count_other": "{{own}} avviate in questa stagione · {{count}} proseguono",
     "count_many": "{{own}} avviate in questa stagione · {{count}} proseguono"
+  },
+  "perennial": {
+    "title": "Coltura perenne",
+    "productiveLifespan": "Durata produttiva",
+    "clearingDate": "Data di fine coltivazione",
+    "clearingDateHelp": "L’aiuola resta occupata fino a questa data compresa.",
+    "editClearingDate": "Modifica la data di fine coltivazione",
+    "invalidDate": "Inserisci una data uguale o successiva alla semina o al trapianto.",
+    "plantingDateRequired": "Inserisci prima la data di semina o di trapianto.",
+    "saveFailed": "Impossibile salvare la data di fine coltivazione.",
+    "years_one": "{{count, number}} anno",
+    "years_other": "{{count, number}} anni",
+    "years_many": "{{count, number}} anni",
+    "insufficientArea": "Nell’aiuola non c’è abbastanza superficie libera fino a questa data.",
+    "unsaved": "La modifica della data di fine coltivazione non è stata salvata."
+  },
+  "seasonStatus": {
+    "column": "Stato nella stagione",
+    "labels": {
+      "only": "Solo questa stagione",
+      "starts": "Inizia",
+      "continues": "Prosegue",
+      "ends": "Termina"
+    },
+    "descriptions": {
+      "only": "Occupa l’aiuola solo in questa stagione.",
+      "starts": "Inizia in questa stagione e occupa l’aiuola anche oltre.",
+      "continues": "Occupa l’aiuola prima, durante e dopo questa stagione.",
+      "ends": "È iniziata prima di questa stagione e termina durante la stagione."
+    }
   }
 }

@@ -1380,7 +1380,11 @@ const detailSectionGridSx = {
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom>{t('siteHealth.title')}</Typography>
               <Box sx={detailSectionGridSx}>
-                {SITE_HEALTH_FIELDS.filter(field => field !== 'pests_diseases' && hasDetailValue(getCropValue(field, selectedCrop[field]))).map(field => (
+                {SITE_HEALTH_FIELDS.filter(field => (
+                  field !== 'pests_diseases'
+                  && (field !== 'standing_time_years' || getCropValue('life_cycle', selectedCrop.life_cycle) === 'perennial')
+                  && hasDetailValue(getCropValue(field, selectedCrop[field]))
+                )).map(field => (
                   <Box key={field} sx={{ minWidth: 0 }}>
                     <Typography variant="body2" color="text.secondary">{t(`siteHealth.fields.${field}`)}</Typography>
                     <ValueWithLibraryPin pin={getLibraryPin(field)}>

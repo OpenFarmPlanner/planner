@@ -43,6 +43,7 @@ export const LIBRARY_PIN_FORM_FIELDS = {
   light_requirement: ['light_requirement'],
   water_requirement: ['water_requirement'],
   life_cycle: ['life_cycle'],
+  standing_time_years: ['standing_time_years'],
   winter_hardiness: ['winter_hardiness'],
   harvest_method: ['harvest_method'],
   expected_yield: ['expected_yield'],

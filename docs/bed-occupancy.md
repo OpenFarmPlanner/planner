@@ -17,8 +17,9 @@ all use it, so a bed that is offered is never rejected on save.
 
 A plan occupies its bed from its planting date (the planting date for
 transplants, the sowing date for direct sowing — both are stored as
-`planting_date`) to its harvest end, else its harvest start, else its planting
-date. Plans without a bed or planting date never count. Two periods overlap
+`planting_date`) to its explicit perennial removal date if present. The
+ordinary fallback is the harvest end, then the harvest start, then the
+planting date. Plans without a bed or planting date never count. Two periods overlap
 when they share at least one day (inclusive bounds).
 
 That occupancy has two stages:
@@ -34,6 +35,10 @@ Erntebeginn"). If the harvest phase is shorter than the gap, the whole harvest
 phase is firm. A gap of 0 makes the whole harvest phase soft. Without a
 harvest start, or with the project setting off, everything is firm (the
 behavior before this feature).
+
+A perennial plan with an explicit removal date occupies its area firmly
+through that day. Its first harvest does not release any of the bed's area
+for a follow-up planting.
 
 The gap covers harvesting, clearing and bed preparation; there is no separate
 bed-preparation parameter.

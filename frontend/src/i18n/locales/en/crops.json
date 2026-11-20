@@ -747,7 +747,8 @@
       "sampleNote": "Example row: replace or delete before importing.",
       "potatoSeedNote": "This example describes propagation from true potato seed, rather than planting tubers.",
       "pretreatment": "Keep evenly moist.",
-      "pestsDiseases": "Late blight: keep leaves dry."
+      "pestsDiseases": "Late blight: keep leaves dry.",
+      "perennialName": "Rhubarb"
     },
     "help": {
       "templateHint": "No suitable file yet?",
@@ -1466,7 +1467,8 @@
       "fields": {
         "variety": "Variety",
         "growth_duration_days": "Growth duration",
-        "harvest_duration_days": "Harvest duration"
+        "harvest_duration_days": "Harvest duration",
+        "standing_time_years": "Productive lifespan (years)"
       },
       "blockingReasons": {
         "missingCropSpecies": "Please select an official crop species.",
@@ -1968,7 +1970,8 @@
       "water_requirement": "Water requirement",
       "life_cycle": "Life cycle",
       "winter_hardiness": "Winter hardiness",
-      "pests_diseases": "Pests and diseases"
+      "pests_diseases": "Pests and diseases",
+      "standing_time_years": "Productive lifespan (years)"
     },
     "values": {
       "light_requirement": {
@@ -1993,7 +1996,9 @@
       }
     },
     "legacyLifeCycleOption": "{{value}} (existing value)",
-    "legacyLifeCycleHint": "This saved value is kept unless you choose a different life cycle."
+    "legacyLifeCycleHint": "This saved value is kept unless you choose a different life cycle.",
+    "standingTimeHelp": "The usual productive lifespan of this perennial. It suggests a crop removal date.",
+    "standingTimeRequired": "Enter a whole number of at least 1."
   },
   "taskTemplates": {
     "title": "Task templates",

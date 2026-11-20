@@ -365,12 +365,13 @@ class DemoProjectServiceTests(TestCase):
                 sum(field.length_m * field.width_m for field in location.fields.all()),
             )
         self.assertEqual(Bed.objects.filter(project=result.project).count(), 20)
-        self.assertEqual(Crop.objects.filter(project=result.project).count(), 30)
-        self.assertEqual(PlantingPlan.objects.filter(project=result.project).count(), 67)
+        self.assertEqual(Crop.objects.filter(project=result.project).count(), 31)
+        self.assertEqual(PlantingPlan.objects.filter(project=result.project).count(), 68)
         self.assertEqual(Supplier.objects.filter(project=result.project).count(), 3)
         self.assertEqual(FieldLayout.objects.filter(project=result.project).count(), 6)
         self.assertEqual(BedLayout.objects.filter(project=result.project).count(), 20)
-        self.assertEqual(Crop.objects.filter(project=result.project, crop_species__isnull=False).count(), 30)
+        linked_crops = Crop.objects.filter(project=result.project, crop_species__isnull=False)
+        self.assertEqual(linked_crops.count(), 31)
         self.assertTrue(Crop.objects.filter(project=result.project, name='Tomate', variety='').exists())
         self.assertTrue(Crop.objects.filter(project=result.project, name='Tomate', variety='Moneymaker', harvest_duration_days=65).exists())
         self.assertTrue(Crop.objects.filter(project=result.project, name='Tomate', variety='San Marzano', row_spacing_m=0.90).exists())
@@ -431,8 +432,13 @@ class DemoProjectServiceTests(TestCase):
 
         self.assertEqual(
             [PlantingPlan.objects.filter(project=result.project, season=season).count() for season in seasons],
-            [1, 20, 23, 23],
+            [1, 21, 23, 23],
         )
+        perennial = PlantingPlan.objects.get(project=result.project, crop__life_cycle='perennial')
+        self.assertEqual(perennial.crop.standing_time_years, 6)
+        self.assertEqual(perennial.season.start_date.year, current_year - 2)
+        self.assertEqual(perennial.clearing_date, date(current_year + 4, 3, 12))
+        self.assertLess(perennial.harvest_end_date, date(current_year, 1, 1))
 
     def test_demo_seasons_follow_the_current_date(self) -> None:
         with patch('farm.services.demo_project.demo_current_year', return_value=2031):
@@ -599,8 +605,9 @@ class DemoProjectServiceTests(TestCase):
         user = User.objects.get(email='command-demo@example.local')
         self.assertEqual(project.name, 'Solawi Sonnenacker')
         self.assertTrue(ProjectMembership.objects.filter(project=project, user=user, role='admin').exists())
-        self.assertEqual(PlantingPlan.objects.filter(project=project).count(), 67)
-        self.assertEqual(PublicCrop.objects.filter(source_project=project, seed_packages=[]).count(), 30)
+        self.assertEqual(PlantingPlan.objects.filter(project=project).count(), 68)
+        public_entries = PublicCrop.objects.filter(source_project=project, seed_packages=[])
+        self.assertEqual(public_entries.count(), 31)
         self.assertTrue(PublicCrop.objects.filter(source_project=project, name='Tomate', variety='Roma', row_spacing_m=0.70).exists())
         self.assertTrue(PublicCrop.objects.filter(source_project=project, name='Tomate', variety='Moneymaker', row_spacing_m__isnull=True).exists())
         self.assertTrue(PublicCrop.objects.filter(source_project=project, name='Gurke', variety='Arola', cultivation_types=['pre_cultivation']).exists())
@@ -619,8 +626,8 @@ class DemoProjectServiceTests(TestCase):
         self.assertEqual(settings_obj.last_project_id, result.project.id)
         self.assertEqual(Location.objects.filter(project=result.project).count(), 3)
         self.assertEqual(Bed.objects.filter(project=result.project).count(), 20)
-        self.assertEqual(Crop.objects.filter(project=result.project).count(), 30)
-        self.assertEqual(PlantingPlan.objects.filter(project=result.project).count(), 67)
+        self.assertEqual(Crop.objects.filter(project=result.project).count(), 31)
+        self.assertEqual(PlantingPlan.objects.filter(project=result.project).count(), 68)
 
     def test_seeding_marks_when_it_finished_after_its_own_revisions(self) -> None:
         """The dashboard tells seed revisions from user changes by this marker."""
@@ -1067,7 +1074,7 @@ class DemoRotationCasesTests(TestCase):
         target = Season.objects.create(
             project=self.project, start_date=date(self.year + 1, 1, 1), end_date=date(self.year + 1, 12, 31),
         )
-        pairs, _, _ = build_planting_plan_copies(source_season=source, target_season=target)
+        pairs, _, _, _ = build_planting_plan_copies(source_season=source, target_season=target)
 
         preview = preview_season_copy(self.service, pairs)
 

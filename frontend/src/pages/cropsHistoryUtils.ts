@@ -76,6 +76,7 @@ const HISTORY_FIELD_LABEL_KEYS: Record<string, string> = {
   light_requirement: 'siteHealth.fields.light_requirement',
   water_requirement: 'siteHealth.fields.water_requirement',
   life_cycle: 'siteHealth.fields.life_cycle',
+  standing_time_years: 'siteHealth.fields.standing_time_years',
   winter_hardiness: 'siteHealth.fields.winter_hardiness',
   harvest_method: 'form.yieldUnit',
   expected_yield: 'form.expectedYield',

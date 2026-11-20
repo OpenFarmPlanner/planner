@@ -266,7 +266,8 @@
       "info": "Non vérifiable"
     },
     "occupancyOptions": {
-      "harvestOverlap": "Chevauchement de récolte"
+      "harvestOverlap": "Chevauchement de récolte",
+      "continued": "Cultures en cours depuis une autre saison"
     },
     "timingOptions": {
       "outsideWindow": "En dehors des périodes"
@@ -481,5 +482,35 @@
     "count_one": "{{own}} démarrées cette saison · {{count}} se poursuit",
     "count_other": "{{own}} démarrées cette saison · {{count}} se poursuivent",
     "count_many": "{{own}} démarrées cette saison · {{count}} se poursuivent"
+  },
+  "perennial": {
+    "title": "Culture vivace",
+    "productiveLifespan": "Durée productive",
+    "clearingDate": "Date de fin de culture",
+    "clearingDateHelp": "La planche reste occupée jusqu’à cette date incluse.",
+    "editClearingDate": "Modifier la date de fin de culture",
+    "invalidDate": "Saisissez une date à partir du jour de plantation.",
+    "plantingDateRequired": "Renseignez d’abord la date de plantation.",
+    "saveFailed": "La date de fin de culture n’a pas pu être enregistrée.",
+    "years_one": "{{count, number}} an",
+    "years_other": "{{count, number}} ans",
+    "years_many": "{{count, number}} ans",
+    "insufficientArea": "La surface disponible sur la planche est insuffisante jusqu’à cette date.",
+    "unsaved": "Votre modification de la date de fin de culture n’a pas été enregistrée."
+  },
+  "seasonStatus": {
+    "column": "Statut dans la saison",
+    "labels": {
+      "only": "Cette saison",
+      "starts": "Démarre",
+      "continues": "Se poursuit",
+      "ends": "Se termine"
+    },
+    "descriptions": {
+      "only": "Occupe la planche uniquement pendant cette saison.",
+      "starts": "Démarre cette saison et occupe la planche au-delà.",
+      "continues": "Occupe la planche avant, pendant et après cette saison.",
+      "ends": "A démarré avant cette saison et se termine pendant celle-ci."
+    }
   }
 }

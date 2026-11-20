@@ -171,6 +171,19 @@ describe('getOccupancyCalendarRange', () => {
     expect(range?.end.toISOString()).toContain('2026-09-30');
   });
 
+  it('limits the visible perennial occupancy to the selected season', () => {
+    const range = getOccupancyCalendarRange([{
+      id: 1, crop: 7, bed: 100, planting_date: '2024-04-10', carried_over: true,
+      harvest_date: '2025-04-15', harvest_end_date: '2025-05-16', clearing_date: '2030-04-10',
+    }], '2026-09-01', '2027-08-31');
+
+    expect(range?.start.toISOString()).toContain('2026-09-01');
+    expect(range?.end.toISOString()).toContain('2027-08-31');
+    expect(getMovedPlanDates({ planting_date: '2024-04-10', clearing_date: '2030-04-10' }, {
+      id: 'plan-1-occupancy', startDate: parseIsoDate('2024-04-13')!,
+    })).toMatchObject({ planting_date: '2024-04-13', clearing_date: '2030-04-13' });
+  });
+
   it('returns null when the season has no scheduled plans', () => {
     expect(getOccupancyCalendarRange([])).toBeNull();
     expect(getOccupancyCalendarRange([{ id: 1, bed: 100, planting_date: null }])).toBeNull();

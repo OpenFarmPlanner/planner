@@ -260,7 +260,8 @@
       "info": "Niet controleerbaar"
     },
     "occupancyOptions": {
-      "harvestOverlap": "Oogstoverlap"
+      "harvestOverlap": "Oogstoverlap",
+      "continued": "Doorlopende teelten"
     },
     "timingOptions": {
       "outsideWindow": "Buiten de periodes"
@@ -469,5 +470,34 @@
     "openOrigin": "Openen in het oorspronkelijke seizoen",
     "count_one": "{{own}} gestart in dit seizoen · {{count}} loopt door",
     "count_other": "{{own}} gestart in dit seizoen · {{count}} lopen door"
+  },
+  "perennial": {
+    "title": "Meerjarige teelt",
+    "productiveLifespan": "Productieve levensduur",
+    "clearingDate": "Einddatum teelt",
+    "clearingDateHelp": "Het bed blijft tot en met deze datum bezet.",
+    "editClearingDate": "Einddatum van de teelt wijzigen",
+    "invalidDate": "Voer een datum op of na de plantdatum in.",
+    "plantingDateRequired": "Vul eerst de plantdatum in.",
+    "saveFailed": "De einddatum van de teelt kon niet worden opgeslagen.",
+    "years_one": "{{count, number}} jaar",
+    "years_other": "{{count, number}} jaar",
+    "insufficientArea": "Er is tot die einddatum onvoldoende vrije ruimte in het bed.",
+    "unsaved": "Je wijziging van de einddatum van de teelt is nog niet opgeslagen."
+  },
+  "seasonStatus": {
+    "column": "Seizoensstatus",
+    "labels": {
+      "only": "Alleen dit seizoen",
+      "starts": "Begint",
+      "continues": "Loopt door",
+      "ends": "Eindigt"
+    },
+    "descriptions": {
+      "only": "Bezet het bed alleen in dit seizoen.",
+      "starts": "Begint dit seizoen en bezet het bed daarna ook.",
+      "continues": "Bezet het bed vóór, tijdens en na dit seizoen.",
+      "ends": "Begon vóór dit seizoen en eindigt tijdens dit seizoen."
+    }
   }
 }

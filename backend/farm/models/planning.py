@@ -74,6 +74,10 @@ class PlantingPlan(TimestampedModel):
         null=True,
         help_text="Harvest end date (Ernteende)",
     )
+    clearing_date = models.DateField(
+        null=True, blank=True,
+        help_text='Last day the perennial planting occupies the bed.',
+    )
     harvest_date_is_explicit = models.BooleanField(default=False, editable=False)
     harvest_end_date_is_explicit = models.BooleanField(default=False, editable=False)
     actual_propagation_start_date = models.DateField(null=True, blank=True)
@@ -133,7 +137,9 @@ class PlantingPlan(TimestampedModel):
 
     # Changing any of these moves the plan in the crop rotation, so a
     # previously accepted rotation conflict no longer describes it.
-    ROTATION_RELEVANT_FIELDS = ('crop_id', 'bed_id', 'planting_date', 'harvest_date', 'harvest_end_date')
+    ROTATION_RELEVANT_FIELDS = (
+        'crop_id', 'bed_id', 'planting_date', 'harvest_date', 'harvest_end_date', 'clearing_date',
+    )
 
     @property
     def rotation_conflict_accepted(self) -> bool:
@@ -191,14 +197,29 @@ class PlantingPlan(TimestampedModel):
             end = self.harvest_end_date or end
         return start, end
 
+    def suggested_clearing_date(
+        self, general_crop_index: dict[int, Crop] | None = None,
+    ) -> date | None:
+        """A planting anniversary, clamped to the last day of February if needed."""
+        from farm.services.seasons import add_months
+
+        if self.planting_date is None:
+            return None
+        years = self._effective_crop_days('standing_time_years', general_crop_index)
+        if not years or self.planting_date.year + years > date.max.year:
+            return None
+        return add_months(self.planting_date, years * 12)
+
     @staticmethod
     def occupancy_end_expression() -> Coalesce:
         """The inclusive last day of a plan's occupancy for queryset filtering."""
-        return Coalesce('harvest_end_date', 'harvest_date', 'planting_date')
+        return Coalesce('clearing_date', 'harvest_end_date', 'harvest_date', 'planting_date')
 
     @property
     def occupancy_end_date(self) -> date | None:
-        return self.harvest_end_date or self.harvest_date or self.planting_date
+        return (
+            self.clearing_date or self.harvest_end_date or self.harvest_date or self.planting_date
+        )
 
     def _get_active_period(self) -> tuple[date, date] | None:
         """Return inclusive active period used for overlap validations."""
@@ -206,7 +227,7 @@ class PlantingPlan(TimestampedModel):
             return None
 
         active_start = self.planting_date
-        active_end = self.harvest_end_date
+        active_end = self.clearing_date or self.harvest_end_date
 
         if active_end is None and self.crop_id:
             _, active_end = self.calculate_effective_harvest_dates()

@@ -81,6 +81,7 @@ export function SeasonCopyDataDialog({ open, targetSeason, onClose, onConfirm }:
     ? previewState : null;
   const preview = result && 'data' in result ? result.data : null;
   const continuingCount = preview?.continuing_count ?? 0;
+  const unconfiguredCount = preview?.unconfigured_perennial_count ?? 0;
   const previewFailure = result && 'error' in result ? result : null;
   const previewErrorCode = extractApiErrorCode(previewFailure?.error);
   const noPrecedingSource = previewErrorCode === 'season_copy_no_preceding_source';
@@ -208,6 +209,11 @@ export function SeasonCopyDataDialog({ open, targetSeason, onClose, onConfirm }:
         {continuingCount > 0 && (
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             {t('navigation:seasonSwitcher.copyDialog.continuingPlans', { count: continuingCount })}
+          </Typography>
+        )}
+        {unconfiguredCount > 0 && (
+          <Typography variant="body2" color="text.secondary">
+            {t('navigation:seasonSwitcher.copyDialog.unconfiguredPerennials', { count: unconfiguredCount })}
           </Typography>
         )}
 

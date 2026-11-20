@@ -28,7 +28,7 @@ from farm.services.bed_capacity import (
 )
 from farm.services.crop_companions import CompanionService
 from farm.services.crop_display import format_crop_label
-from farm.services.crop_inheritance import build_general_crop_index
+from farm.services.crop_inheritance import build_general_crop_index, resolve_crop_field
 from farm.services.crop_rotation import RotationService, suggest_beds
 from farm.services.germination_check import check_germination
 from farm.services.site_suitability import check_site_suitability
@@ -136,6 +136,11 @@ def _derive_plan_end(
     general_crop_index=None,
 ) -> date | None:
     """Where a saved plan of ``crop`` planted on ``planting_date`` would end."""
+    if resolve_crop_field(crop, 'life_cycle', general_crop_index) == 'perennial':
+        draft = PlantingPlan(crop=crop, planting_date=planting_date)
+        clearing_date = draft.suggested_clearing_date(general_crop_index)
+        if clearing_date is not None:
+            return clearing_date
     harvest_start, harvest_end = _derive_harvest_dates(
         crop, planting_date, project, general_crop_index,
     )
@@ -412,9 +417,12 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         if bed is None:
             return api_error_response(code='bed_not_found', detail='Bed not found.', status_code=status.HTTP_404_NOT_FOUND)
 
+        existing_plan = None
         if params['exclude_plan_id'] is not None:
-            plan_exists = PlantingPlan.objects.filter(id=params['exclude_plan_id'], project=active_project).exists()
-            if not plan_exists:
+            existing_plan = PlantingPlan.objects.filter(
+                id=params['exclude_plan_id'], project=active_project,
+            ).only('crop_id', 'clearing_date').first()
+            if existing_plan is None:
                 return api_error_response(code='exclude_plan_not_found', detail='exclude_plan_id not found in active project.', status_code=status.HTTP_400_BAD_REQUEST)
 
         crop = None
@@ -423,13 +431,26 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             if crop is None:
                 return api_error_response(code='crop_not_found', detail='Crop not found.', status_code=status.HTTP_404_NOT_FOUND)
         start_date = params['start_date']
-        derived_harvest_start, derived_harvest_end = _derive_harvest_dates(crop, start_date, active_project)
-        end_date = params['end_date'] or derived_harvest_end or derived_harvest_start or start_date
+        crop_index = build_general_crop_index(active_project.pk) if crop is not None else None
+        draft = PlantingPlan(crop=crop, planting_date=start_date)
+        harvest_start, harvest_end = draft.calculate_effective_harvest_dates(crop_index)
+        saved_end = (
+            existing_plan.clearing_date
+            if existing_plan and crop is not None and crop.pk == existing_plan.crop_id else None
+        )
+        perennial = bool(saved_end) or (
+            resolve_crop_field(crop, 'life_cycle', crop_index) == 'perennial'
+        )
+        suggested_end = draft.suggested_clearing_date(crop_index) if perennial else None
+        end_date = (
+            params['end_date'] or saved_end or suggested_end or harvest_end
+            or harvest_start or start_date
+        )
         if end_date < start_date:
             if params['end_date'] is not None:
                 return api_error_response(code='invalid_remaining_area_interval', detail='end_date must be greater than or equal to start_date.', status_code=status.HTTP_400_BAD_REQUEST)
             end_date = start_date
-        harvest_start_date = params['harvest_start_date'] or derived_harvest_start
+        harvest_start_date = None if perennial else params['harvest_start_date'] or harvest_start
 
         language_code = resolve_request_language(request)
         region = getattr(active_project, 'region', '') or ''

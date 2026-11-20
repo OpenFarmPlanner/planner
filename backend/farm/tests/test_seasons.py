@@ -474,10 +474,11 @@ class SeasonCopyServiceTest(ProjectApiTestCase):
             crop=self.crop, bed=self.bed, project=self.project, season=target, planting_date=date(2027, 4, 1),
         )
 
-        created_plans, skipped_count, continuing = copy_planting_plans(
+        created_plans, skipped_count, continuing, unconfigured = copy_planting_plans(
             source_season=source, target_season=target,
         )
         self.assertEqual(continuing, 0)
+        self.assertEqual(unconfigured, 0)
 
         self.assertEqual(len(created_plans), 1)
         self.assertEqual(skipped_count, 0)
@@ -527,10 +528,11 @@ class SeasonCopyServiceTest(ProjectApiTestCase):
             planting_date=date(2025, 9, 1),
         )
 
-        created_plans, skipped_count, continuing = copy_planting_plans(
+        created_plans, skipped_count, continuing, unconfigured = copy_planting_plans(
             source_season=source, target_season=target,
         )
         self.assertEqual(continuing, 0)
+        self.assertEqual(unconfigured, 0)
 
         self.assertEqual(len(created_plans), 1)
         self.assertEqual(skipped_count, 1)
@@ -555,10 +557,11 @@ class SeasonCopyServiceTest(ProjectApiTestCase):
             planting_date=date(2027, 3, 20),
         )
 
-        created_plans, skipped_count, continuing = copy_planting_plans(
+        created_plans, skipped_count, continuing, unconfigured = copy_planting_plans(
             source_season=source, target_season=target,
         )
         self.assertEqual(continuing, 0)
+        self.assertEqual(unconfigured, 0)
 
         self.assertEqual(skipped_count, 0)
         self.assertEqual(

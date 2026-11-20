@@ -146,7 +146,7 @@ _COMPARABLE_FIELDS = [
     'stratification_temperature_max_c',
     'germination_types', 'germination_pretreatment', 'specific_properties',
     'pests_diseases', 'plant_health', 'light_requirement', 'water_requirement',
-    'life_cycle', 'winter_hardiness',
+    'life_cycle', 'standing_time_years', 'winter_hardiness',
     'harvest_method', 'expected_yield',
     'distance_within_row_cm', 'row_spacing_cm', 'sowing_depth_cm', 'sowing_depth_max_cm',
     'seed_rate_value', 'seed_rate_unit', 'sowing_calculation_safety_percent',

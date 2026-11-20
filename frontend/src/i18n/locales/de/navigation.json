@@ -188,7 +188,9 @@
         }
       },
       "continuingPlans_one": "{{count}} Anbauplan läuft weiter und bleibt in seiner ursprünglichen Saison.",
-      "continuingPlans_other": "{{count}} Anbaupläne laufen weiter und bleiben in ihrer ursprünglichen Saison."
+      "continuingPlans_other": "{{count}} Anbaupläne laufen weiter und bleiben in ihrer ursprünglichen Saison.",
+      "unconfiguredPerennials_one": "Ein mehrjähriger Anbauplan mit fehlenden oder ungültigen Terminen oder fehlender Standzeit wird ausgelassen.",
+      "unconfiguredPerennials_other": "{{count, number}} mehrjährige Anbaupläne mit fehlenden oder ungültigen Terminen oder fehlender Standzeit werden ausgelassen."
     }
   },
   "seasonSetup": {

@@ -52,6 +52,9 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
     crop_propagation_duration_days = serializers.SerializerMethodField(read_only=True)
     crop_cultivation_type = serializers.SerializerMethodField(read_only=True)
     crop_cultivation_types = serializers.SerializerMethodField(read_only=True)
+    crop_life_cycle = serializers.SerializerMethodField()
+    crop_standing_time_years = serializers.SerializerMethodField()
+    suggested_clearing_date = serializers.SerializerMethodField()
     bed_name = serializers.SerializerMethodField(read_only=True)
     harvest_date = serializers.SerializerMethodField(read_only=True)
     harvest_end_date = serializers.SerializerMethodField(read_only=True)
@@ -297,6 +300,19 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
     def get_carried_over(self, obj: PlantingPlan) -> bool:
         return getattr(obj, 'carried_over', False)
 
+    def get_crop_life_cycle(self, obj: PlantingPlan) -> str:
+        return resolve_crop_field(obj.crop, 'life_cycle', self._general_crop_index(obj)) or ''
+
+    def get_crop_standing_time_years(self, obj: PlantingPlan) -> int | None:
+        if self.get_crop_life_cycle(obj) != 'perennial':
+            return None
+        return resolve_crop_field(obj.crop, 'standing_time_years', self._general_crop_index(obj))
+
+    def get_suggested_clearing_date(self, obj: PlantingPlan) -> date | None:
+        if self.get_crop_life_cycle(obj) != 'perennial':
+            return None
+        return obj.suggested_clearing_date(self._general_crop_index(obj))
+
     def get_origin_season_label(self, obj: PlantingPlan) -> str | None:
         if self.get_carried_over(obj) and obj.season_id is not None:
             return obj.season.label
@@ -325,11 +341,65 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
             return attrs
         self._validate_create_has_active_season(attrs)
         self._validate_planting_date_within_season(attrs)
+        self._resolve_clearing_date(attrs)
         self._apply_planned_propagation_dates(attrs)
         self._apply_area_input_conversion(attrs)
         self._apply_rotation_acceptance(attrs)
         self._run_model_clean(attrs)
         return attrs
+
+    def _resolve_clearing_date(self, attrs: dict[str, Any]) -> None:
+        current = self.instance
+        if current is not None and not any(
+            key in attrs and attrs[key] != getattr(current, key)
+            for key in ('crop', 'planting_date', 'clearing_date')
+        ):
+            return
+        crop = attrs.get('crop', getattr(current, 'crop', None))
+        crop_changed = current is not None and crop != current.crop
+        previous = None if crop_changed else getattr(current, 'clearing_date', None)
+        if resolve_crop_field(crop, 'life_cycle') != 'perennial' and previous is None:
+            if crop_changed or 'clearing_date' in attrs:
+                attrs['clearing_date'] = None
+            return
+
+        planted = attrs.get('planting_date', getattr(current, 'planting_date', None))
+        if planted is None:
+            raise serializers.ValidationError({
+                'planting_date': 'A perennial planting requires a planting date.',
+            })
+        clearing = attrs.get('clearing_date', previous)
+        if previous is None:
+            clearing = self._new_perennial_clearing_date(
+                crop, planted, clearing, require_standing_time=current is None or crop_changed,
+            )
+        elif clearing is None:
+            raise serializers.ValidationError({
+                'clearing_date': 'A perennial planting requires a crop removal date.',
+            })
+        if clearing < planted:
+            raise serializers.ValidationError({
+                'clearing_date': 'Crop removal cannot be before planting.',
+            })
+        attrs['clearing_date'] = clearing
+
+    @staticmethod
+    def _new_perennial_clearing_date(
+        crop: Crop, planted: date, requested: date | None, *, require_standing_time: bool,
+    ) -> date:
+        if (require_standing_time or requested is None) and not resolve_crop_field(
+            crop, 'standing_time_years',
+        ):
+            raise serializers.ValidationError({
+                'crop': 'Set a productive lifespan on this perennial crop first.',
+            })
+        draft = PlantingPlan(crop=crop, planting_date=planted)
+        clearing = requested or draft.suggested_clearing_date()
+        if clearing is None:
+            raise serializers.ValidationError({
+                'clearing_date': 'Enter a crop removal date within the supported range.',
+            })
+        return clearing
 
     @staticmethod
     def is_actual_date_update(attrs: dict[str, Any]) -> bool:
@@ -370,7 +440,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         """Whether this write changes the plan's crop, bed or dates."""
         return any(
             name in attrs and attrs[name] != getattr(self.instance, name)
-            for name in ('crop', 'bed', 'planting_date')
+            for name in ('crop', 'bed', 'planting_date', 'clearing_date')
         )
 
     def _apply_rotation_acceptance(self, attrs) -> None:
