@@ -1783,14 +1783,10 @@
     }
   },
   "bulkDelete": {
-    "menu": "Kulturaktionen",
-    "allAction": "Alle Projektkulturen löschen",
     "title": "Ausgewählte Kulturen löschen",
-    "scopeAll": "Die Aktion umfasst alle aktiven Kulturen im Projekt, auch durch Filter ausgeblendete.",
     "scopeSelected": "Prüfe die ausgewählten Kulturen und die einbezogenen Sorten.",
     "trashNotice": "Die Kulturen werden mit ihren Saatgutdaten in den Papierkorb verschoben. Einträge in der Kulturbibliothek bleiben erhalten.",
     "deleteVarieties": "Sorten mitlöschen",
-    "confirmAll": "Ich bestätige das Löschen aller aktiven Kulturen in diesem Projekt.",
     "showCrops": "Betroffene Kulturen anzeigen",
     "empty": "Diese Auswahl enthält keine aktiven Kulturen.",
     "missing": "Einige ausgewählte Kulturen sind nicht mehr verfügbar. Aktualisiere die Auswahl.",

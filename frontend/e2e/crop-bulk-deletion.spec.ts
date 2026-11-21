@@ -51,6 +51,21 @@ test('project bulk deletion retains filtered selections, blocks plans and recove
     const selectionList = page.getByRole('list', { name: de.title, exact: true });
     const deleteSelection = page.getByRole('button', { name: common.actions.delete, exact: true });
     await expect(deleteSelection).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Kulturaktionen', exact: true })).toHaveCount(0);
+    const visibleCount = await selectionList.getByRole('checkbox').count();
+    await page.getByRole('button', {
+      name: de.library.batchImport.selectVisible.replace('{{count}}', String(visibleCount)), exact: true,
+    }).click();
+    await deleteSelection.click();
+    const dialog = page.getByRole('dialog', { name: de.bulkDelete.title, exact: true });
+    await expect(count(dialog, de.bulkDelete.counts.selected)).toHaveText(String(visibleCount));
+    await expect(count(dialog, de.bulkDelete.counts.affected)).toHaveText(String(before.length));
+    await dialog.getByRole('button', { name: de.restoreDialog.cancel, exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    expect(await activeCropIds(page)).toEqual(before);
+    await page.getByRole('button', {
+      name: de.library.batchImport.clearVisible.replace('{{count}}', String(visibleCount)), exact: true,
+    }).click();
 
     const generalCheckbox = selectionList.getByRole('checkbox', { name: selectedLabel(general.name), exact: true });
     await generalCheckbox.focus();
@@ -67,7 +82,6 @@ test('project bulk deletion retains filtered selections, blocks plans and recove
     await expect(selectionList.getByRole('checkbox', { name: selectedLabel('File basil'), exact: true })).toBeChecked();
     await deleteSelection.click();
 
-    const dialog = page.getByRole('dialog', { name: de.bulkDelete.title, exact: true });
     const confirm = dialog.getByRole('button', { name: de.bulkDelete.confirm, exact: true });
     const includeVarieties = dialog.getByRole('checkbox', { name: de.bulkDelete.deleteVarieties, exact: true });
     await expect(count(dialog, de.bulkDelete.counts.selected)).toHaveText('2');
@@ -127,14 +141,14 @@ test('project bulk deletion retains filtered selections, blocks plans and recove
 });
 
 for (const [width, height] of [[375, 800], [800, 375]]) {
-  test(`delete all includes filtered-out crops and requires explicit confirmation at ${width}x${height}`, async ({ page, request }, info) => {
+  test(`deleting all visible cultures preserves filtered-out cultures at ${width}x${height}`, async ({ page, request }, info) => {
     test.setTimeout(90_000);
     const scenario = `crop-bulk-phone-${width}-${randomUUID().slice(0, 8)}`;
     try {
       await page.setViewportSize({ width, height });
       await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
-      await apiRequest(page, 'POST', '/crops/', { name: 'Visible test herb' });
-      await apiRequest(page, 'POST', '/crops/', { name: 'Hidden test herb' });
+      const visible = await apiRequest<Crop>(page, 'POST', '/crops/', { name: 'Visible test herb' });
+      const hidden = await apiRequest<Crop>(page, 'POST', '/crops/', { name: 'Hidden test herb' });
       await page.goto('/app/crops');
       await page.getByRole('button', { name: de.selectCrop, exact: true }).click();
       const picker = page.getByRole('dialog', { name: de.selectCrop, exact: true });
@@ -144,19 +158,28 @@ for (const [width, height] of [[375, 800], [800, 375]]) {
       await input.fill('Visible test herb');
       await expect(picker.getByRole('checkbox')).toHaveCount(1);
       await page.screenshot({ path: info.outputPath('mobile-selection.png'), animations: 'disabled' });
-      await picker.getByRole('button', { name: de.bulkDelete.menu, exact: true }).click();
-      await page.getByRole('menuitem', { name: de.bulkDelete.allAction, exact: true }).click();
-      const dialog = page.getByRole('dialog', { name: de.bulkDelete.allAction, exact: true });
-      await expect(count(dialog, de.bulkDelete.counts.affected)).toHaveText('2');
-      const confirm = dialog.getByRole('button', { name: de.bulkDelete.allAction, exact: true });
-      await expect(confirm).toBeDisabled();
-      await expect(dialog.getByRole('button', { name: de.restoreDialog.cancel, exact: true })).toBeFocused();
-      await dialog.getByRole('checkbox', { name: de.bulkDelete.confirmAll, exact: true }).check();
+      await expect(picker.getByRole('button', { name: 'Kulturaktionen', exact: true })).toHaveCount(0);
+      await picker.getByRole('button', {
+        name: de.library.batchImport.selectVisible.replace('{{count}}', '1'), exact: true,
+      }).click();
+      await picker.getByRole('button', { name: common.actions.delete, exact: true }).click();
+      const dialog = page.getByRole('dialog', { name: de.bulkDelete.title, exact: true });
+      await expect(count(dialog, de.bulkDelete.counts.selected)).toHaveText('1');
+      await expect(count(dialog, de.bulkDelete.counts.affected)).toHaveText('1');
+      const cancel = dialog.getByRole('button', { name: de.restoreDialog.cancel, exact: true });
+      await expect(cancel).toBeFocused();
+      await cancel.click();
+      await expect(dialog).toHaveCount(0);
+      expect(await activeCropIds(page)).toEqual(expect.arrayContaining([visible.id, hidden.id]));
+      await page.getByRole('button', { name: de.selectCrop, exact: true }).click();
+      await expect(picker.getByRole('checkbox', { name: selectedLabel(visible.name), exact: true })).toBeChecked();
+      await picker.getByRole('button', { name: common.actions.delete, exact: true }).click();
+      const confirm = dialog.getByRole('button', { name: de.bulkDelete.confirm, exact: true });
       await expect(confirm).toBeEnabled();
-      await page.screenshot({ path: info.outputPath('mobile-delete-all.png'), animations: 'disabled' });
+      await page.screenshot({ path: info.outputPath('mobile-delete-selection.png'), animations: 'disabled' });
       await confirm.click();
       await expect(dialog).toHaveCount(0);
-      expect(await activeCropIds(page)).toEqual([]);
+      expect(await activeCropIds(page)).toEqual([hidden.id]);
       await expect(picker).toHaveCount(0);
       const undo = page.getByTestId('bulk-crop-undo-snackbar').getByRole('button', { name: common.actions.undo });
       const [recovered] = await Promise.all([

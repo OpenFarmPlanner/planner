@@ -1830,14 +1830,10 @@
     }
   },
   "bulkDelete": {
-    "menu": "Ações das culturas",
-    "allAction": "Eliminar todas as culturas do projeto",
     "title": "Eliminar culturas selecionadas",
-    "scopeAll": "A ação inclui todas as culturas ativas do projeto, mesmo as ocultas pelos filtros.",
     "scopeSelected": "Revê as culturas selecionadas e as variedades incluídas.",
     "trashNotice": "As culturas e os dados de sementes passam para o lixo. As entradas da biblioteca partilhada são conservadas.",
     "deleteVarieties": "Eliminar também as variedades",
-    "confirmAll": "Confirmo a eliminação de todas as culturas ativas deste projeto.",
     "showCrops": "Mostrar culturas afetadas",
     "empty": "Esta seleção não contém culturas ativas.",
     "missing": "Algumas culturas selecionadas já não estão disponíveis. Atualiza a seleção.",

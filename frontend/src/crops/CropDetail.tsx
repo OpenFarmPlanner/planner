@@ -17,7 +17,8 @@ import { useTranslation } from '../i18n';
 import { AppTooltip } from '../components/AppTooltip';
 import { CropFiltersPopover } from './CropFiltersPopover';
 import { CropMobileSelectorDialog } from './CropMobileSelectorDialog';
-import { CropBulkSelectionActions, CropBulkSelectionRow, CropBulkSelectionToolbar } from './CropBulkSelectionControls';
+import { CropBulkSelectionActions, CropBulkSelectionRow } from './CropBulkSelectionControls';
+import { CropSelectionButton } from './CropSelectionButton';
 import { CropSearchFilterButton, CropSearchToolbar } from './CropSearchToolbar';
 import type { ProjectCropSelection } from './useProjectCropSelection';
 import { CropHeaderActionsMenu } from './CropHeaderActionsMenu';
@@ -752,10 +753,13 @@ const detailSectionGridSx = {
               popoverId="crop-filters-popover"
               onClick={(event) => setFilterAnchorEl(event.currentTarget)}
             />
-            {bulkSelection ? (
-              <CropBulkSelectionToolbar
-                selection={bulkSelection}
-                onOpenPreview={useUnifiedMobileLayout ? () => setMobileSelectorOpen(false) : undefined}
+            {bulkSelection?.enabled ? (
+              <CropSelectionButton
+                label={t('library.batchImport.selectCultures')}
+                active={bulkSelecting}
+                buttonRef={bulkSelection.selectionButton}
+                controlsId={bulkSelection.controlsId}
+                onClick={bulkSelection.toggle}
               />
             ) : null}
           </>}

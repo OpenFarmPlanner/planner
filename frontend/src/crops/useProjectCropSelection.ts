@@ -1,7 +1,10 @@
 import { useId, useRef, useState } from 'react';
 import type { CropBulkDeleteSelection } from '../api/types';
 
-export type CropDeletionTarget = Omit<CropBulkDeleteSelection, 'delete_varieties'>;
+export type CropDeletionTarget = Pick<CropBulkDeleteSelection, 'expected_project_id'> & {
+  scope: 'selected';
+  crop_ids: number[];
+};
 
 export function useProjectCropSelection(projectId: number | null | undefined) {
   const [selection, setSelection] = useState<{ project: number; ids: ReadonlySet<number> } | null>(null);
@@ -46,9 +49,6 @@ export function useProjectCropSelection(projectId: number | null | undefined) {
       if (projectId != null && selected?.size) {
         setTarget({ expected_project_id: projectId, scope: 'selected', crop_ids: [...selected] });
       }
-    },
-    openAll: () => {
-      if (projectId != null) setTarget({ expected_project_id: projectId, scope: 'all' });
     },
     closeTarget: () => setTarget(null),
     completeTarget: () => {
