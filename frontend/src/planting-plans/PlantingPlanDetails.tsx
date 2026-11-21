@@ -247,7 +247,7 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
                 </Stack>
               </DetailSection>
             )}
-            {activeProjectId !== null && <PlantingPlanTasks key={recordScope} plan={loadedPlan}
+            {activeProjectId !== null && <PlantingPlanTasks key={`tasks:${recordScope}`} plan={loadedPlan}
               projectId={activeProjectId} editableSeasonLabel={canEditNotes ? season?.label : undefined} />}
             <NotesDrawer open={editorOpen} title={t('details.notesAndPhotos')} value={draft} onChange={setDraft}
               onSave={saveNotes} onClose={() => setEditorOpen(false)} hasUnsavedChanges={hasUnsavedNotes}
