@@ -518,3 +518,50 @@ screenshots and results are under `/tmp/ofp-1194/` (temporary artifacts).
 
 Removed only #1194 from work queue #1058 after passing, as explicitly requested
 by the owner. No personal-acceptance checkbox was checked.
+
+## Targeted localhost structure and supplier history acceptance — 2026-11-21
+
+Verified #1204 / merged PR #1372 (`58f4f8e3e9491886f78867174c39e1d91df629d2`)
+on checkout `2d7f4d1eb` (a concurrent documentation-only merge advanced it to
+`f12a00f5f` during the run). This requested acceptance test does not advance the
+full-sweep baseline or resolve its backlog above.
+
+- Used the existing localhost servers at ports 5173/8000 and loopback
+  PostgreSQL `farmplanner_db`. Previewed the exact target before applying
+  `seed_structure_supplier_history_acceptance` for the local owner's account.
+  Only its synthetic **Structure and supplier history acceptance** project was
+  edited. No server restart, migration or application change was needed.
+- Through the Growing Areas context menu and duplication dialog, copied
+  **North field** as **South field**, replacing `North` with `South` in both
+  bed names. Made a later bed-note edit, restored the checkpoint before the
+  copy through the actual project-history confirmation, then restored the
+  completed duplication version. The pre-copy state contains one field and
+  two beds; the duplication version contains two fields and four beds.
+- Verified the restored copy's 24 × 10 m, `shade` and `greenhouse`, South 1's
+  12 × 1.5 m, South 2's 8 m² and `available` irrigation, and inherited shade
+  on both beds. The later note is absent after restore. Bed after-images do
+  not appear as independently selectable completed versions.
+- Through Suppliers, deleted **Seed nursery** using the unlink confirmation
+  and clicked the snackbar's Undo action. After another crop-note edit,
+  restored the completed supplier-undo version through Project History.
+  Lettuce retains its direct supplier, `selected_seed_demand_supplier`, one
+  **Lettuce seeds** offer, `conventional` seed status, `approved` exemption
+  and price `4.25`. Repeated the edit/full-restore check at 375 × 800.
+- Opened the actual offer editor and confirmed **Konventionell** and
+  **Genehmigung vorhanden**. The crop detail shows the offer and **Preis: 4,25**.
+  API assertions also verify the selected seed-demand supplier; this fixture
+  has no season or planting plan, so it does not create a calculated demand row.
+- Inspected restored Growing Areas and crop screens at 1440 × 900,
+  375 × 800 and 800 × 375. Portrait content and offer actions remain reachable.
+  The known Cultures topbar overlap at 800 × 375 remains tracked by
+  [#930](https://github.com/OpenFarmPlanner/planner/issues/930); no duplicate
+  issue or queue edit. No mobile behavior or application code changed.
+
+Result: **PASS** for the requested duplication and supplier Undo/full-version
+restore paths. Duplication and supplier deletion/Undo were exercised on desktop;
+mobile verification covered full restore and the resulting screens. This does
+not certify concurrency, selective undo or the rest of the app.
+
+Local scripts, API receipts and screenshots are retained in `/tmp/ofp-1204/`;
+session credentials are local only and are not committed. The synthetic project
+remains available for the owner's manual inspection.
