@@ -1,18 +1,23 @@
-import { useId, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import {
   Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem,
   TextField, useMediaQuery, useTheme,
 } from '@mui/material';
-import type { Bed, Crop, Field, PlantingPlan, Task, TaskWritePayload } from '../../api/types';
-import type { ProjectMemberPayload } from '../../api/api';
+import type { Bed, Crop, Field, PlantingPlan, PlantingPlanDetail, Task, TaskWritePayload } from '../../api/types';
+import { projectAPI, type ProjectMemberPayload } from '../../api/api';
 import { useTranslation } from '../../i18n';
 import { resolveLocaleFromLanguage } from '../../utils/numberLocalization';
 import { formatCropDisplayName } from '../../crops/cropDisplay';
 import { formGridSx, formGridFieldSx, formGridFullRowSx } from '../forms/formLayout';
+import LoadRetryButton from '../LoadRetryButton';
 import { taskDisplayTitle } from './taskTitles';
 import { BOARD_STATUSES } from './taskBoard';
 
-interface Props {
+type TaskContext = {
+  planContext: { plan: PlantingPlanDetail; projectId: number; seasonLabel: string };
+  task: null;
+} | {
+  planContext?: never;
   task: Task | null;
   initialPlan?: PlantingPlan;
   seasonId: number | undefined;
@@ -21,28 +26,56 @@ interface Props {
   beds: Bed[];
   plans: PlantingPlan[];
   members: ProjectMemberPayload[];
+};
+
+type Props = TaskContext & {
   onSave: (payload: TaskWritePayload) => Promise<void>;
   onClose: () => void;
+};
+
+function planLabel(plan: PlantingPlan, locale: string) {
+  return [formatCropDisplayName(plan), plan.bed_name, plan.planting_date
+    ? new Date(`${plan.planting_date}T00:00:00`).toLocaleDateString(locale) : null].filter(Boolean).join(' · ');
 }
 
-export default function TaskFormDialog({ task, initialPlan, seasonId, crops, fields, beds, plans, members, onSave, onClose }: Props) {
-  const { t, i18n } = useTranslation(['dashboard', 'common']);
+export default function TaskFormDialog(props: Props) {
+  const { task, planContext, onSave, onClose } = props;
+  const { t, i18n } = useTranslation(['dashboard', 'common', 'crops', 'plantingPlans', 'projectInvitations']);
   const theme = useTheme();
   const compact = useMediaQuery(theme.breakpoints.down('md'));
   const titleId = useId();
   const locale = resolveLocaleFromLanguage(i18n.resolvedLanguage);
+  const initialPlan = planContext ? planContext.plan : props.initialPlan;
+  const seasonId = planContext ? planContext.plan.season ?? undefined : props.seasonId;
+  const projectId = planContext?.projectId;
+  const [projectMembers, setProjectMembers] = useState<ProjectMemberPayload[] | null>();
+  const [memberAttempt, setMemberAttempt] = useState(0);
+  const members = planContext ? projectMembers : props.members;
+  useEffect(() => {
+    if (projectId === undefined) return;
+    const controller = new AbortController();
+    void projectAPI.listMembers(projectId, controller.signal).then(({ data }) => {
+      if (!controller.signal.aborted) setProjectMembers(data);
+    }).catch(() => {
+      if (!controller.signal.aborted) setProjectMembers(null);
+    });
+    return () => controller.abort();
+  }, [projectId, memberAttempt]);
+
   const [initialTitle] = useState(() => task ? taskDisplayTitle(task, t) : '');
-  const [draft, setDraft] = useState<TaskWritePayload>({
+  const [draft, setDraft] = useState<TaskWritePayload>(() => ({
     title: initialTitle, description: task?.description ?? '', due_date: task?.due_date ?? null,
     status: task?.status ?? 'pending', planting_plan: task?.planting_plan ?? initialPlan?.id ?? null,
     crop: task?.crop ?? initialPlan?.crop ?? null,
-    field: task?.field ?? beds.find((bed) => bed.id === plans.find((plan) => plan.id === task?.planting_plan)?.bed)?.field ?? null, assigned_to: task?.assigned_to ?? null,
-  });
+    field: task?.field ?? (planContext ? null : props.beds.find((bed) =>
+      bed.id === props.plans.find((plan) => plan.id === task?.planting_plan)?.bed)?.field) ?? null,
+    assigned_to: task?.assigned_to ?? null,
+  }));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
   const savingRef = useRef(false);
-  const selectedPlan = plans.find((plan) => plan.id === draft.planting_plan);
-  const planField = beds.find((bed) => bed.id === selectedPlan?.bed)?.field;
+  const selectedPlan = planContext ? planContext.plan : props.plans.find((plan) => plan.id === draft.planting_plan);
+  const planField = planContext ? undefined : props.beds.find((bed) => bed.id === selectedPlan?.bed)?.field;
   const close = () => { if (!savingRef.current) onClose(); };
   const update = (key: keyof TaskWritePayload, value: string | number | null) => setDraft((previous) => ({ ...previous, [key]: value }));
   const selectId = (value: string) => value === '' ? null : Number(value);
@@ -93,37 +126,51 @@ export default function TaskFormDialog({ task, initialPlan, seasonId, crops, fie
           </TextField>
           {task && <TextField label={t('dashboard:form.origin')} value={t(`dashboard:board.origin.${task.origin}`)}
             disabled sx={formGridFieldSx} />}
-          <TextField select label={t('dashboard:board.filters.person')} value={draft.assigned_to ?? ''} disabled={saving}
+          <TextField select label={t('dashboard:board.filters.person')} value={draft.assigned_to ?? ''} disabled={saving || !members}
+            helperText={members === undefined ? t('common:messages.loading') : undefined}
             sx={formGridFieldSx} onChange={(event) => update('assigned_to', selectId(event.target.value))}>
             <MenuItem value="">{t('dashboard:board.unassigned')}</MenuItem>
-            {members.map((member) => <MenuItem key={member.user} value={member.user}>{member.user_display_name || member.user_email}</MenuItem>)}
+            {members?.map((member) => <MenuItem key={member.user} value={member.user}>{member.user_display_name || member.user_email}</MenuItem>)}
           </TextField>
-          <TextField select label={t('dashboard:form.plan')} value={draft.planting_plan ?? ''} disabled={saving || Boolean(task?.source_key)}
-            sx={formGridFullRowSx} onChange={(event) => {
-              const id = selectId(event.target.value);
-              const plan = plans.find((row) => row.id === id);
-              const bed = beds.find((row) => row.id === plan?.bed);
-              setDraft((previous) => ({ ...previous, planting_plan: id,
-                ...(plan ? { crop: plan.crop, field: bed?.field ?? null } : {}),
-              }));
-            }}>
-            <MenuItem value="">{t('dashboard:form.none')}</MenuItem>
-            {plans.map((plan) => <MenuItem key={plan.id} value={plan.id}>
-              {[formatCropDisplayName(plan), plan.bed_name, plan.planting_date ? new Date(`${plan.planting_date}T00:00:00`).toLocaleDateString(locale) : null].filter(Boolean).join(' · ')}
-            </MenuItem>)}
-          </TextField>
-          <TextField select label={t('dashboard:board.filters.crop')} value={draft.crop ?? ''}
-            disabled={saving || Boolean(selectedPlan) || Boolean(task?.source_key)} sx={formGridFieldSx}
-            onChange={(event) => update('crop', selectId(event.target.value))}>
-            <MenuItem value="">{t('dashboard:form.none')}</MenuItem>
-            {crops.map((crop) => <MenuItem key={crop.id} value={crop.id}>{formatCropDisplayName(crop)}</MenuItem>)}
-          </TextField>
-          <TextField select label={t('dashboard:board.filters.field')} value={selectedPlan ? planField ?? '' : draft.field ?? ''}
-            disabled={saving || Boolean(selectedPlan) || Boolean(task?.source_key)} sx={formGridFieldSx}
-            onChange={(event) => update('field', selectId(event.target.value))}>
-            <MenuItem value="">{t('dashboard:form.none')}</MenuItem>
-            {fields.map((field) => <MenuItem key={field.id} value={field.id}>{field.name}</MenuItem>)}
-          </TextField>
+          {members === null && <Alert severity="error" sx={formGridFullRowSx} action={<LoadRetryButton disabled={saving} onClick={() => {
+            setProjectMembers(undefined);
+            setMemberAttempt(value => value + 1);
+          }} />}>{t('projectInvitations:memberListLoadFailed')}</Alert>}
+          {planContext ? <>
+            <TextField label={t('plantingPlans:details.season')} value={planContext.seasonLabel}
+              sx={formGridFieldSx} slotProps={{ input: { readOnly: true } }} />
+            <TextField label={t('crops:history.objectTypes.plantingPlan')} value={planLabel(planContext.plan, locale)}
+              sx={formGridFullRowSx} slotProps={{ input: { readOnly: true } }} />
+            <TextField label={t('dashboard:board.filters.crop')} value={formatCropDisplayName(planContext.plan) || t('dashboard:form.none')}
+              sx={formGridFieldSx} slotProps={{ input: { readOnly: true } }} />
+            <TextField label={t('dashboard:board.filters.field')} value={planContext.plan.field_name || t('dashboard:form.none')}
+              sx={formGridFieldSx} slotProps={{ input: { readOnly: true } }} />
+          </> : <>
+            <TextField select label={t('dashboard:form.plan')} value={draft.planting_plan ?? ''} disabled={saving || Boolean(task?.source_key)}
+              sx={formGridFullRowSx} onChange={(event) => {
+                const id = selectId(event.target.value);
+                const plan = props.plans.find((row) => row.id === id);
+                const bed = props.beds.find((row) => row.id === plan?.bed);
+                setDraft((previous) => ({ ...previous, planting_plan: id,
+                  ...(plan ? { crop: plan.crop, field: bed?.field ?? null } : {}),
+                }));
+              }}>
+              <MenuItem value="">{t('dashboard:form.none')}</MenuItem>
+              {props.plans.map((plan) => <MenuItem key={plan.id} value={plan.id}>{planLabel(plan, locale)}</MenuItem>)}
+            </TextField>
+            <TextField select label={t('dashboard:board.filters.crop')} value={draft.crop ?? ''}
+              disabled={saving || Boolean(selectedPlan) || Boolean(task?.source_key)} sx={formGridFieldSx}
+              onChange={(event) => update('crop', selectId(event.target.value))}>
+              <MenuItem value="">{t('dashboard:form.none')}</MenuItem>
+              {props.crops.map((crop) => <MenuItem key={crop.id} value={crop.id}>{formatCropDisplayName(crop)}</MenuItem>)}
+            </TextField>
+            <TextField select label={t('dashboard:board.filters.field')} value={selectedPlan ? planField ?? '' : draft.field ?? ''}
+              disabled={saving || Boolean(selectedPlan) || Boolean(task?.source_key)} sx={formGridFieldSx}
+              onChange={(event) => update('field', selectId(event.target.value))}>
+              <MenuItem value="">{t('dashboard:form.none')}</MenuItem>
+              {props.fields.map((field) => <MenuItem key={field.id} value={field.id}>{field.name}</MenuItem>)}
+            </TextField>
+          </>}
         </Box>
         {error && <Alert severity="error" sx={{ mt: 2 }}>{t('dashboard:form.saveError')}</Alert>}
       </DialogContent>

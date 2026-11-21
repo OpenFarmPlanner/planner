@@ -762,8 +762,8 @@ export const projectAPI = {
     // The invitee without an explicit account language gets the email in the
     // inviter's current UI language (docs/i18n.md, "E-Mails").
     http.post(`/projects/${projectId}/invitations/`, data, { params: { language: getCurrentUiLanguage() } }),
-  listMembers: (projectId: number) =>
-    http.get<ProjectMemberPayload[]>(`/projects/${projectId}/members/`),
+  listMembers: (projectId: number, signal?: AbortSignal) =>
+    http.get<ProjectMemberPayload[]>(`/projects/${projectId}/members/`, signal ? { signal } : undefined),
   updateMember: (projectId: number, membershipId: number, role: 'admin' | 'member') =>
     http.patch<ProjectMemberPayload>(`/projects/${projectId}/members/`, { membership_id: membershipId, role }),
   removeMember: (projectId: number, membershipId: number) =>
@@ -904,7 +904,7 @@ export default {
 
 export const taskAPI = {
   listAll: () => fetchAllPaginated<Task>('/tasks/'),
-  listForPlan: (planId: number) => fetchAllPaginated<Task>(`/tasks/?planting_plan=${planId}&across_seasons=true`),
+  listForPlan: (planId: number, signal?: AbortSignal) => fetchAllPaginated<Task>(`/tasks/?planting_plan=${planId}&across_seasons=true`, signal),
   create: (data: TaskWritePayload) => http.post<Task>('/tasks/', data),
   update: (id: number, data: TaskWritePayload) => http.patch<Task>(`/tasks/${id}/`, data),
   delete: (id: number) => http.delete(`/tasks/${id}/`),
