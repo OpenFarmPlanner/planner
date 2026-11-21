@@ -489,7 +489,14 @@
   "actualDates": {
     "clear": "Datum wissen",
     "title": "Geplande en werkelijke datums",
-    "modeLabel": "Datums weergeven",
+    "modeLabel": "Datums",
+    "modeInfoLabel": "Over de datumweergave",
+    "modeHelp": "Gepland toont de plandatums. Werkelijk toont de vastgelegde datums en laat ontbrekende datums leeg. Werkelijk of gepland toont de vastgelegde datum als die beschikbaar is en anders de geplande datum.",
+    "displayModes": {
+      "planned": "Gepland",
+      "actual": "Werkelijk",
+      "combined": "Werkelijk of gepland"
+    },
     "edit": "Werkelijke datums invoeren",
     "saveError": "De werkelijke datums konden niet worden opgeslagen.",
     "unsaved": "Bij het verlaten verlies je niet-opgeslagen wijzigingen aan datums.",

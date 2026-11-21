@@ -1,4 +1,4 @@
-import type { Ref } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { Badge, Box, IconButton } from '@mui/material';
 import FilterListIcon from '@mui/icons-material/FilterList';
 
@@ -15,6 +15,7 @@ interface PlantingPlanMobileSearchBarProps {
   isFilterSheetOpen: boolean;
   onOpenFilterSheet: () => void;
   filterSheetId: string;
+  viewControls?: ReactNode;
 }
 
 /**
@@ -28,6 +29,7 @@ export function PlantingPlanMobileSearchBar({
   isFilterSheetOpen,
   onOpenFilterSheet,
   filterSheetId,
+  viewControls,
 }: PlantingPlanMobileSearchBarProps) {
   const { t } = useTranslation('plantingPlans');
   const appBarHeight = useAppBarHeight();
@@ -53,7 +55,7 @@ export function PlantingPlanMobileSearchBar({
         bgcolor: 'surface.contentBackground',
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         <PageSearchField
           value={search.query}
           onChange={search.setQuery}
@@ -63,7 +65,7 @@ export function PlantingPlanMobileSearchBar({
           clearLabel={t('search.clear')}
           inputRef={searchInputRef}
           variant="rounded"
-          sx={{ flex: '1 1 auto', minWidth: 0 }}
+          sx={{ flex: '1 1 8rem', minWidth: 0 }}
         />
         <AppTooltip title={filterLabel}>
           <IconButton
@@ -93,6 +95,7 @@ export function PlantingPlanMobileSearchBar({
             </Badge>
           </IconButton>
         </AppTooltip>
+        {viewControls}
       </Box>
       {hasFilters ? (
         <PlantingPlanActiveFilterChips search={search} scrollable sx={{ mt: 1 }} />

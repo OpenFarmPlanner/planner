@@ -43,6 +43,7 @@ export interface DataGridSearchToolbarProps {
   /** Anchors the columns panel to this button. */
   columnsButtonRef?: Ref<HTMLButtonElement>;
   testId?: string;
+  viewControls?: ReactNode;
 }
 
 /**
@@ -70,6 +71,7 @@ export function DataGridSearchToolbar({
   onColumnsPanelOpenChange,
   columnsButtonRef,
   testId,
+  viewControls,
 }: DataGridSearchToolbarProps) {
   const panelId = useId();
   const panelTitleId = useId();
@@ -86,7 +88,7 @@ export function DataGridSearchToolbar({
           clearLabel={labels.searchClear}
           inputRef={searchInputRef}
           shortcutHint="/"
-          sx={{ width: 340, maxWidth: '100%' }}
+          sx={{ width: viewControls ? { xs: 272, lg: 340 } : 340, maxWidth: '100%' }}
         />
         <Badge
           color="primary"
@@ -117,6 +119,7 @@ export function DataGridSearchToolbar({
             label={labels.columnsButton}
           />
         ) : null}
+        {viewControls}
         {count ? <Box sx={{ ml: 'auto', pl: 1 }}>{count}</Box> : null}
       </Box>
       {hasFilters && activeFilterChips ? <Box sx={{ mt: 1 }}>{activeFilterChips}</Box> : null}

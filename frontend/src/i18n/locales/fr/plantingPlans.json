@@ -501,7 +501,14 @@
   "actualDates": {
     "clear": "Effacer la date",
     "title": "Dates prévues et réelles",
-    "modeLabel": "Dates à afficher",
+    "modeLabel": "Dates",
+    "modeInfoLabel": "À propos de l’affichage des dates",
+    "modeHelp": "Prévues affiche les dates planifiées. Réelles affiche les dates saisies et laisse les dates manquantes vides. Réelles ou prévues affiche la date saisie si elle existe et la date prévue sinon.",
+    "displayModes": {
+      "planned": "Prévues",
+      "actual": "Réelles",
+      "combined": "Réelles ou prévues"
+    },
     "edit": "Saisir les dates réelles",
     "saveError": "Impossible d’enregistrer les dates réelles.",
     "unsaved": "Les dates non enregistrées seront perdues si vous quittez la page.",
