@@ -184,6 +184,9 @@
       "bedNamesConflict_many": "Após a substituição, vários canteiros partilhariam um destes nomes: {{names}}",
       "invalidBedNames_many": "Após a substituição, estes nomes de canteiro ficariam vazios ou demasiado longos: {{names}}",
       "createdWithBeds_many": "Parcela «{{name}}» adicionada com {{count}} canteiros"
+    },
+    "duplicateBed": {
+      "created": "Canteiro «{{name}}» adicionado"
     }
   },
   "emptyAreas": {

@@ -168,4 +168,108 @@ test.describe('fields-beds mobile list', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(fieldRow.getByText(/4.*×.*3.*12/)).toBeVisible();
   });
+
+  test('duplicating a bed from its row sheet copies the dimensions under the next free name', async ({ page, request }) => {
+    await loginWithDeterministicProject(page, request, 'fields-mobile-list-duplicate-bed', { loginAsAdmin: true });
+    const { location, field, bed } = await seedHierarchy(page, 'Mobile List Duplicate Bed');
+    await page.goto('/app/fields-beds');
+
+    const locationRow = page.locator(`[data-hierarchy-mobile-row-id="location-${location.id}"]`);
+    await locationRow.getByRole('button', { name: /^Aufklappen:/ }).click();
+    const fieldRow = page.locator(`[data-hierarchy-mobile-row-id="field-${field.id}"]`);
+    await fieldRow.getByRole('button', { name: /^Aufklappen:/ }).click();
+
+    const bedRow = page.locator(`[data-hierarchy-mobile-row-id="${bed.id}"]`);
+    await expect(bedRow).toBeVisible();
+    await bedRow.getByRole('button', { name: new RegExp(`^${bed.name}`) }).click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('heading', { name: 'Beet bearbeiten' })).toBeVisible();
+
+    const createResponsePromise = page.waitForResponse((response) => (
+      response.url().includes('/api/beds/') && response.request().method() === 'POST' && response.status() === 201
+    ));
+    await dialog.getByRole('button', { name: 'Weitere Aktionen' }).click();
+    await page.getByRole('menuitem', { name: /^Beet duplizieren/ }).click();
+    const createdBed = await createResponsePromise;
+    const created = await createdBed.json() as { id: number };
+
+    // The sheet closes so the created bed is visible in the list.
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.getByText(`Beet „${bed.name} 2“ angelegt`)).toBeVisible();
+    // Bed rows carry their bare numeric id, unlike location-/field-prefixed rows.
+    const duplicateRow = page.locator(`[data-hierarchy-mobile-row-id="${created.id}"]`);
+    await expect(duplicateRow).toBeVisible();
+    await expect(duplicateRow.getByText(`${bed.name} 2`)).toBeVisible();
+
+    // The copy carries the source dimensions and derived area.
+    await duplicateRow.getByRole('button', { name: new RegExp(`^${bed.name} 2`) }).click();
+    const editDialog = page.getByRole('dialog');
+    await expect(editDialog.getByLabel('Länge (m)', { exact: true })).toHaveValue('2');
+    await expect(editDialog.getByLabel('Breite (m)', { exact: true })).toHaveValue('3');
+    await page.screenshot({ path: test.info().outputPath('duplicate-bed-dimensions.png'), animations: 'disabled' });
+  });
+
+  test('an unsaved desktop bed draft cannot be duplicated after resizing to mobile', async ({ page, request }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await loginWithDeterministicProject(page, request, 'fields-mobile-list-duplicate-draft', { loginAsAdmin: true });
+    const { field } = await seedHierarchy(page, 'Mobile List Duplicate Draft');
+    await page.goto('/app/fields-beds');
+
+    await page.locator(`[role="row"][data-id="field-${field.id}"]`).click({ button: 'right' });
+    await page.getByRole('menuitem', { name: /^Beet hinzufügen/ }).click();
+
+    const draftRow = page.locator('[role="row"][data-id^="-"]');
+    await expect(draftRow).toBeVisible();
+    const draftId = await draftRow.getAttribute('data-id');
+
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.locator(`[data-hierarchy-mobile-row-id="${draftId}"]`).getByRole('button').first().click();
+
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: 'Weitere Aktionen' }).click();
+    await expect(page.getByRole('menuitem', { name: /^Beet duplizieren/ })).toHaveCount(0);
+  });
+
+  test('duplicating a bed with unsaved sheet edits asks before discarding them', async ({ page, request }) => {
+    await loginWithDeterministicProject(page, request, 'fields-mobile-list-duplicate-dirty', { loginAsAdmin: true });
+    const { location, field, bed } = await seedHierarchy(page, 'Mobile List Duplicate Dirty');
+    await page.goto('/app/fields-beds');
+
+    const locationRow = page.locator(`[data-hierarchy-mobile-row-id="location-${location.id}"]`);
+    await locationRow.getByRole('button', { name: /^Aufklappen:/ }).click();
+    const fieldRow = page.locator(`[data-hierarchy-mobile-row-id="field-${field.id}"]`);
+    await fieldRow.getByRole('button', { name: /^Aufklappen:/ }).click();
+    await page.locator(`[data-hierarchy-mobile-row-id="${bed.id}"]`).getByRole('button', { name: new RegExp(`^${bed.name}`) }).click();
+
+    const dialog = page.getByRole('dialog');
+    await dialog.getByLabel('Länge (m)', { exact: true }).fill('4');
+
+    const openDuplicate = async (): Promise<void> => {
+      await dialog.getByRole('button', { name: 'Weitere Aktionen' }).click();
+      await page.getByRole('menuitem', { name: /^Beet duplizieren/ }).click();
+    };
+
+    // Keeping the edits cancels the duplicate and leaves the sheet open.
+    await openDuplicate();
+    const discardDialog = page.getByRole('dialog', { name: 'Änderungen verwerfen?' });
+    await expect(discardDialog).toBeVisible();
+    await discardDialog.getByRole('button', { name: 'Weiter bearbeiten' }).click();
+    await expect(page.getByRole('dialog', { name: 'Änderungen verwerfen?' })).toHaveCount(0);
+    await expect(dialog.getByLabel('Länge (m)', { exact: true })).toHaveValue('4');
+    await expect(page.locator(`[data-hierarchy-mobile-row-id="${bed.id}"]`)).toHaveCount(1);
+    await expect(page.locator('[data-hierarchy-mobile-row-id]').filter({ hasText: `${bed.name} 2` })).toHaveCount(0);
+
+    // Discarding closes the sheet and duplicates the saved bed (2 × 3, not 4 × 3).
+    const createResponsePromise = page.waitForResponse((response) => (
+      response.url().includes('/api/beds/') && response.request().method() === 'POST' && response.status() === 201
+    ));
+    await openDuplicate();
+    await page.getByRole('dialog', { name: 'Änderungen verwerfen?' }).getByRole('button', { name: 'Verwerfen' }).click();
+    const created = await (await createResponsePromise).json() as { id: number; length_m: number; width_m: number };
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.getByText(`Beet „${bed.name} 2“ angelegt`)).toBeVisible();
+    expect(created.length_m).toBe(2);
+    expect(created.width_m).toBe(3);
+  });
 });

@@ -184,6 +184,9 @@
       "createdWithBeds_one": "Parcela «{{name}}» añadida con {{count}} bancal",
       "createdWithBeds_other": "Parcela «{{name}}» añadida con {{count}} bancales",
       "createdWithBeds_many": "Parcela «{{name}}» añadida con {{count}} bancales"
+    },
+    "duplicateBed": {
+      "created": "Bancal «{{name}}» añadido"
     }
   },
   "emptyAreas": {

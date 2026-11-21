@@ -9,7 +9,9 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { getHierarchyDetailPath } from "../details/hierarchyDetailRoutes";
 import type { Bed, Field, Location } from "../../../api/api";
+import { showGlobalSnackbar } from "../../../utils/globalSnackbar";
 import { HierarchyAddIcon } from "../HierarchyAddIcon";
+import { nextFreeName } from "../utils/bedNaming";
 import { useBedOperations } from "./useBedOperations";
 import { useHierarchyDelete } from "./useHierarchyDelete";
 import type { HierarchyRow } from "../utils/types";
@@ -24,6 +26,12 @@ export interface HierarchyRowAction {
   emphasized?: boolean;
   icon?: React.ReactNode;
   shortcutHint?: string;
+  /**
+   * The sheet must close before this action runs. The sheet itself decides
+   * how: immediately when the form is clean, otherwise after the usual
+   * save/discard confirmation (same as Cancel and the close button).
+   */
+  closeSheetBeforeRun?: boolean;
 }
 
 export interface MobileCreateSheetRequest {
@@ -75,7 +83,7 @@ export function useMobileHierarchyRowOperations({
 }: UseMobileHierarchyRowOperationsParams) {
   const navigate = useNavigate();
 
-  const { saveBed, bulkCreateBeds } = useBedOperations(setBeds, setError, t);
+  const { saveBed, bulkCreateBeds, duplicateBed } = useBedOperations(setBeds, setError, t);
 
   const {
     pendingDeletions,
@@ -103,6 +111,32 @@ export function useMobileHierarchyRowOperations({
       navigate(`/app/planting-plans?bedId=${bedId}`);
     },
     [navigate],
+  );
+
+  /**
+   * Copies a bed at once under the next free name in its field, like the
+   * desktop row menu and Ctrl+D: dimensions and structured site conditions
+   * only, no notes or planting plans. The snackbar confirms the new name,
+   * since the mobile list has no row focus to signal the created bed.
+   */
+  const handleDuplicateBed = useCallback(
+    async (bedId: number): Promise<void> => {
+      const source = beds.find((bed) => bed.id === bedId);
+      if (!source) return;
+      const bedNames = beds.filter((bed) => bed.field === source.field).map((bed) => bed.name);
+      try {
+        const created = await duplicateBed(source, nextFreeName(source.name, bedNames));
+        if (created?.id !== undefined) {
+          showGlobalSnackbar({
+            message: t("dialogs.duplicateBed.created", { name: created.name }),
+            severity: "success",
+          });
+        }
+      } catch {
+        // duplicateBed already reported the error on the page.
+      }
+    },
+    [beds, duplicateBed, t],
   );
 
   const getHierarchyRowActions = useCallback(
@@ -159,6 +193,18 @@ export function useMobileHierarchyRowOperations({
       }
 
       if (row.type === "bed" && row.bedId) {
+        const bedId = row.bedId;
+        if (bedId > 0 && !row.isNew) {
+          createActions.push({
+            id: "duplicate-bed",
+            label: t("actions.duplicateBed"),
+            group: "create",
+            icon: <ControlPointDuplicateIcon fontSize="small" />,
+            onClick: () => {
+              void handleDuplicateBed(bedId);
+            },
+          });
+        }
         createActions.push({
           id: "create-planting-plan",
           label: t("createPlantingPlan"),
@@ -181,7 +227,7 @@ export function useMobileHierarchyRowOperations({
 
       return [...detailActions, ...createActions, ...destructiveActions];
     },
-    [deleteHierarchyRowWithUndo, handleCreatePlantingPlan, navigate, onBulkCreateBeds, onDuplicateField, t],
+    [deleteHierarchyRowWithUndo, handleCreatePlantingPlan, handleDuplicateBed, navigate, onBulkCreateBeds, onDuplicateField, t],
   );
 
   return {
