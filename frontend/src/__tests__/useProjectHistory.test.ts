@@ -4,6 +4,7 @@ import type { CropHistoryEntry } from '../api/types';
 
 const api = vi.hoisted(() => ({
   projectHistory: vi.fn(),
+  projectRestorePreview: vi.fn(),
   projectRestore: vi.fn(),
   revertBatch: vi.fn(),
   importUndoPreview: vi.fn(),
@@ -12,7 +13,7 @@ const api = vi.hoisted(() => ({
 vi.mock('../api/api', () => ({ cropAPI: api }));
 vi.mock('../i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
-const entry = (id: number): CropHistoryEntry => ({ id, batch_id: id * 10 } as CropHistoryEntry);
+const entry = (id: number): CropHistoryEntry => ({ history_id: id, batch_id: id * 10 } as CropHistoryEntry);
 const ENTRIES = [entry(1), entry(2)];
 
 function setup() {
@@ -25,6 +26,7 @@ let reload: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  api.projectRestorePreview.mockReset().mockResolvedValue({ data: { token: 'preview-token', impact: [] } });
   reload = vi.fn();
   // jsdom refuses a real reload; the hook calls it after every successful undo.
   Object.defineProperty(window, 'location', {
@@ -143,21 +145,22 @@ describe('selective import undo', () => {
 });
 
 describe('the restore confirmation step', () => {
-  it('holds the picked entry until it is confirmed or cancelled', () => {
+  it('holds the picked entry until it is confirmed or cancelled', async () => {
     const { result } = setup();
 
-    act(() => { result.current.requestRestore(ENTRIES[0]); });
+    await act(async () => { await result.current.requestRestore(ENTRIES[0]); });
     expect(result.current.pendingRestoreEntry).toEqual(ENTRIES[0]);
 
     act(() => { result.current.cancelRestore(); });
     expect(result.current.pendingRestoreEntry).toBeNull();
   });
 
-  it('does not restore anything on its own', () => {
+  it('only reads the preview when the history entry is selected', async () => {
     const { result } = setup();
 
-    act(() => { result.current.requestRestore(ENTRIES[0]); });
+    await act(async () => { await result.current.requestRestore(ENTRIES[0]); });
 
+    expect(api.projectRestorePreview).toHaveBeenCalledWith(1, expect.any(AbortSignal));
     expect(api.projectRestore).not.toHaveBeenCalled();
   });
 
@@ -166,9 +169,22 @@ describe('the restore confirmation step', () => {
     const { result } = setup();
 
     await act(async () => { await result.current.openHistory(); });
-    act(() => { result.current.requestRestore(ENTRIES[0]); });
+    await act(async () => { await result.current.requestRestore(ENTRIES[0]); });
 
     expect(result.current.open).toBe(true);
+  });
+
+  it('ignores an outdated preview when the selected entry changes', async () => {
+    let finish!: (response: unknown) => void;
+    api.projectRestorePreview.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const { result } = setup();
+    act(() => { void result.current.requestRestore(ENTRIES[0]); });
+    const signal = api.projectRestorePreview.mock.calls[0][1] as AbortSignal;
+    await act(async () => { await result.current.requestRestore(ENTRIES[1]); });
+    expect(signal.aborted).toBe(true);
+    await act(async () => { finish({ data: { token: 'outdated', impact: [] } }); });
+    expect(result.current.pendingRestoreEntry).toEqual(ENTRIES[1]);
+    expect(result.current.restorePreview).toEqual({ status: 'ready', data: { token: 'preview-token', impact: [] } });
   });
 });
 
@@ -179,10 +195,10 @@ describe('restoreVersion', () => {
     const { result, showSnackbar } = setup();
 
     await act(async () => { await result.current.openHistory(); });
-    act(() => { result.current.requestRestore(ENTRIES[0]); });
+    await act(async () => { await result.current.requestRestore(ENTRIES[0]); });
     await act(async () => { await result.current.restoreVersion(1); });
 
-    expect(api.projectRestore).toHaveBeenCalledWith(1);
+    expect(api.projectRestore).toHaveBeenCalledWith(1, 'preview-token');
     expect(result.current.open).toBe(false);
     expect(result.current.pendingRestoreEntry).toBeNull();
     expect(reload).toHaveBeenCalledTimes(1);
@@ -195,34 +211,58 @@ describe('restoreVersion', () => {
     api.projectRestore.mockResolvedValue({ data: { detail: 'ok' } });
     const { result, showSnackbar } = setup();
 
+    await act(async () => { await result.current.requestRestore(ENTRIES[0]); });
     await act(async () => { await result.current.restoreVersion(1); });
 
     expect(showSnackbar.mock.calls[0][0]).toBe('commandPalette.feedback.versionRestoredWithBackup');
   });
 
-  it('clears the confirmation but keeps the dialog open when the restore fails', async () => {
+  it('keeps the confirmation open and invalidates the preview when the restore fails', async () => {
     api.projectHistory.mockResolvedValue({ data: ENTRIES });
-    api.projectRestore.mockRejectedValue(new Error('conflict'));
-    const { result, showSnackbar } = setup();
-
-    await act(async () => { await result.current.openHistory(); });
-    act(() => { result.current.requestRestore(ENTRIES[0]); });
-    await act(async () => { await result.current.restoreVersion(1); });
-
-    expect(result.current.pendingRestoreEntry).toBeNull();
-    expect(result.current.open).toBe(true);
-    expect(showSnackbar).toHaveBeenLastCalledWith(
-      'commandPalette.feedback.versionRestoreError', 'error',
-    );
-  });
-
-  it('never reloads when the restore failed, so the error stays on screen', async () => {
     api.projectRestore.mockRejectedValue(new Error('conflict'));
     const { result } = setup();
 
+    await act(async () => { await result.current.openHistory(); });
+    await act(async () => { await result.current.requestRestore(ENTRIES[0]); });
     await act(async () => { await result.current.restoreVersion(1); });
 
+    expect(result.current.pendingRestoreEntry).toEqual(ENTRIES[0]);
+    expect(result.current.open).toBe(true);
+    expect(result.current.restorePreview).toEqual({ status: 'unavailable' });
+  });
+
+  it('requires a fresh preview and a second confirmation after a stale response', async () => {
+    api.projectRestore.mockRejectedValueOnce({
+      response: { status: 409, data: { code: 'project_restore_preview_changed' } },
+    }).mockResolvedValueOnce({ data: {} });
+    const { result } = setup();
+
+    await act(async () => { await result.current.requestRestore(ENTRIES[0]); });
+    await act(async () => { await result.current.restoreVersion(1); });
+    expect(result.current.restorePreview).toEqual({ status: 'stale' });
+    await act(async () => { await result.current.restoreVersion(1); });
     expect(reload).not.toHaveBeenCalled();
+    expect(api.projectRestore).toHaveBeenCalledOnce();
+
+    api.projectRestorePreview.mockResolvedValueOnce({ data: { token: 'fresh-token', impact: [] } });
+    await act(async () => { result.current.refreshRestorePreview(); });
+    expect(api.projectRestore).toHaveBeenCalledOnce();
+    await act(async () => { await result.current.restoreVersion(1); });
+    expect(api.projectRestore).toHaveBeenLastCalledWith(1, 'fresh-token');
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    [{ status: 409 }, 'conflict'],
+    [{ status: 409, data: { code: 'project_restore_preview_too_large' } }, 'too_large'],
+    [{ status: 429 }, 'throttled'],
+  ])('blocks writes when the preview request receives %j', async (response, status) => {
+    api.projectRestorePreview.mockRejectedValue({ response });
+    const { result } = setup();
+    await act(async () => { await result.current.requestRestore(ENTRIES[0]); });
+    expect(result.current.restorePreview).toEqual({ status });
+    await act(async () => { await result.current.restoreVersion(1); });
+    expect(api.projectRestore).not.toHaveBeenCalled();
   });
 });
 
@@ -270,7 +310,7 @@ describe('revertBatch', () => {
     api.revertBatch.mockRejectedValue(new Error('gone'));
     const { result } = setup();
 
-    act(() => { result.current.requestRestore(ENTRIES[0]); });
+    await act(async () => { await result.current.requestRestore(ENTRIES[0]); });
     await act(async () => { await result.current.revertBatch(10); });
 
     expect(result.current.pendingRestoreEntry).toBeNull();

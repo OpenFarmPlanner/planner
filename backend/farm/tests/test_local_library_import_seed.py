@@ -10,6 +10,7 @@ from django.db import connection
 from django.test import TestCase, override_settings
 
 from crops.models import CropSpecies
+from farm.history.project_restore import CHECKPOINT_KEY
 from farm.models import Crop, CropCompanion, PlantingPlan, Project, ProjectMembership, PublicCrop
 
 
@@ -41,6 +42,96 @@ class LocalLibraryImportSeedTests(TestCase):
 
     def seed(self, **options):
         call_command("seed_library_import_acceptance", **{**self.arguments, **options})
+
+    def test_bed_capacity_fixture_previews_and_preserves_manual_edits(self):
+        command = 'seed_bed_capacity_acceptance'
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        call_command(command, **arguments)
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before))
+        with self.assertRaisesMessage(CommandError, 'does not match'):
+            call_command(command, apply=True, **{**arguments, 'database_name': 'wrong-target'})
+
+        call_command(command, apply=True, **arguments)
+        project = Project.objects.get(slug=f'ofp-local-bed-capacity-{self.user.pk}')
+        bed = project.beds.get(name='Carrot and lettuce')
+        first, second = project.planting_plans.filter(bed=bed).order_by('planting_date')
+        self.assertEqual((bed.area_sqm, first.area_usage_sqm, second.area_usage_sqm), (10, 5, 3))
+        self.assertGreater(first.occupancy_end_date, second.planting_date)
+        unmeasured = project.planting_plans.get(bed__name='Unmeasured planting')
+        self.assertIsNone(unmeasured.area_usage_sqm)
+        self.assertFalse(project.beds.get(name='Unused bed').planting_plans.exists())
+        checkpoints = project.entity_revisions.filter(
+            entity_type='project', snapshot__has_key=CHECKPOINT_KEY,
+        )
+        self.assertEqual(checkpoints.count(), 1)
+
+        first.notes = 'Keep the manual edit'
+        first.save(update_fields=['notes'])
+        call_command(command, apply=True, **arguments)
+        first.refresh_from_db()
+        self.assertEqual(first.notes, 'Keep the manual edit')
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before) + 1)
+        self.assertEqual(project.planting_plans.count(), 3)
+        self.assertEqual(checkpoints.count(), 1)
+
+    def test_structure_supplier_fixture_has_a_complete_repeat_safe_baseline(self):
+        command = 'seed_structure_supplier_history_acceptance'
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        call_command(command, **arguments)
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before))
+        with self.assertRaisesMessage(CommandError, 'does not match'):
+            call_command(command, apply=True, **{**arguments, 'database_name': 'wrong-target'})
+
+        call_command(command, apply=True, **arguments)
+        project = Project.objects.get(slug=f'ofp-local-structure-supplier-history-{self.user.pk}')
+        field = project.fields.get(name='North field')
+        self.assertEqual(set(field.beds.values_list('name', flat=True)), {'North 1', 'North 2'})
+        crop = project.crops.get(name='Lettuce')
+        offer = crop.supplier_data.get()
+        self.assertEqual(offer.supplier_id, crop.selected_seed_demand_supplier_id)
+        self.assertEqual(
+            (offer.seed_status, offer.seed_exemption_status), ('conventional', 'approved'),
+        )
+        checkpoints = project.entity_revisions.filter(
+            entity_type='project', snapshot__has_key=CHECKPOINT_KEY,
+        )
+        self.assertEqual(checkpoints.count(), 1)
+
+        field.notes = 'Keep my edit'
+        field.save(update_fields=['notes'])
+        call_command(command, apply=True, **arguments)
+        field.refresh_from_db()
+        self.assertEqual(field.notes, 'Keep my edit')
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before) + 1)
+        self.assertEqual(checkpoints.count(), 1)
+
+    def test_season_task_history_fixture_previews_and_preserves_manual_edits(self):
+        command = 'seed_season_task_history_acceptance'
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        call_command(command, **arguments)
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before))
+        with self.assertRaisesMessage(CommandError, 'does not match'):
+            call_command(command, apply=True, **{**arguments, 'database_name': 'wrong-target'})
+
+        call_command(command, apply=True, **arguments)
+        project = Project.objects.get(slug=f'ofp-local-season-task-history-{self.user.pk}')
+        first, second, third = project.tasks.filter(template__isnull=False).order_by(
+            'occurrence_index',
+        )
+        self.assertEqual(first.status, 'completed')
+        self.assertTrue(second.due_date_overridden)
+        self.assertIsNone(second.due_date)
+        self.assertIsNotNone(third.deleted_at)
+        self.assertIsNotNone(project.tasks.get(title='Manual check').planting_plan_id)
+        self.assertIsNone(project.tasks.get(title='Unrelated task').planting_plan_id)
+        self.assertTrue(project.entity_revisions.filter(snapshot__has_key=CHECKPOINT_KEY).exists())
+
+        first.title = 'Keep my edited task title'
+        first.save(update_fields=['title'])
+        call_command(command, apply=True, **arguments)
+        first.refresh_from_db()
+        self.assertEqual(first.title, 'Keep my edited task title')
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before) + 1)
 
     def test_crop_site_fixture_is_previewed_and_preserves_manual_edits(self):
         command = 'seed_crop_site_acceptance'

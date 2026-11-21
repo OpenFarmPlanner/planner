@@ -718,7 +718,7 @@ describe('PublicCropLibraryPage', () => {
     expect(screen.getByRole('button', { name: 'Importieren und verknüpfen' })).toBeInTheDocument();
     expect(screen.queryByText('Version 1')).not.toBeInTheDocument();
     expect(screen.queryByRole('listbox', { name: 'Kulturbibliothek' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('textbox', { name: 'Öffentliche Kulturen durchsuchen' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Kulturen suchen' })).not.toBeInTheDocument();
   });
 
   it('opens the mobile public crop selector from the title', async () => {
@@ -729,7 +729,7 @@ describe('PublicCropLibraryPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Kultur auswählen' }));
 
     expect(screen.getByRole('listbox', { name: 'Kulturbibliothek' })).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: 'Öffentliche Kulturen durchsuchen' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Kulturen suchen' })).toBeInTheDocument();
   });
 
   it('opens the mobile public crop selector from the chevron', async () => {
@@ -752,7 +752,7 @@ describe('PublicCropLibraryPage', () => {
     expect(screen.getByRole('combobox', { name: 'Schädlinge und Krankheiten' })).toBeVisible();
     await user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('combobox', { name: 'Schädlinge und Krankheiten' })).not.toBeInTheDocument());
-    expect(screen.getByRole('textbox', { name: 'Öffentliche Kulturen durchsuchen' })).toBeVisible();
+    expect(screen.getByRole('textbox', { name: 'Kulturen suchen' })).toBeVisible();
   });
 
   it('keeps the selected public crop when the mobile selector is cancelled', async () => {
@@ -835,7 +835,7 @@ describe('PublicCropLibraryPage', () => {
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Tomate' })).toBeInTheDocument();
     expect(screen.getByRole('listbox', { name: 'Kulturbibliothek' })).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: 'Öffentliche Kulturen durchsuchen' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Kulturen suchen' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Kultur auswählen' })).not.toBeInTheDocument();
   });
 
@@ -2027,7 +2027,7 @@ describe('PublicCropLibraryPage', () => {
       expect(screen.getByRole('option', { name: 'Tomate (Roma)' })).toHaveFocus();
     });
 
-    const searchInput = screen.getByRole('textbox', { name: 'Öffentliche Kulturen durchsuchen' });
+    const searchInput = screen.getByRole('textbox', { name: 'Kulturen suchen' });
     await user.click(searchInput);
     await user.type(searchInput, 'mai');
 
@@ -2158,7 +2158,7 @@ describe('PublicCropLibraryPage', () => {
     renderPage(['/app/crop-library?cropId=1']);
 
     await screen.findByRole('heading', { level: 2, name: 'Tomate' });
-    const searchInput = screen.getByLabelText('Öffentliche Kulturen durchsuchen');
+    const searchInput = screen.getByLabelText('Kulturen suchen');
     await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
     const editDialog = await screen.findByRole('dialog', { name: 'Öffentliche Kultur bearbeiten' });
 
@@ -2267,7 +2267,7 @@ describe('PublicCropLibraryPage', () => {
       } });
       const user = userEvent.setup();
       renderPage();
-      const search = await screen.findByLabelText('Öffentliche Kulturen durchsuchen');
+      const search = await screen.findByLabelText('Kulturen suchen');
       await user.type(search, 'Tomate');
       await importViaButton(user);
       await waitFor(() => expect(publicCropApiMocks.list).toHaveBeenCalledTimes(2));
@@ -2295,7 +2295,7 @@ describe('PublicCropLibraryPage', () => {
       } });
       const user = userEvent.setup();
       renderPage();
-      const search = await screen.findByLabelText('Öffentliche Kulturen durchsuchen');
+      const search = await screen.findByLabelText('Kulturen suchen');
       await user.type(search, 'Tomate');
       await importViaButton(user);
       const error = 'Die Kulturbibliothek konnte nicht geladen werden.';

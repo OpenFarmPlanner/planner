@@ -6,6 +6,26 @@ Two read views show one crop: the read mode of the crops page
 form (`CropForm.tsx`), the dedicated project companion editor and the
 library's edit dialog.
 
+The crop library, its import picker, and project Crops place filter and
+selection controls beside the search field. The field takes the available
+space. At very narrow widths, the buttons can move together to the next line.
+
+## Selecting project crops for deletion
+
+The project crop search toolbar uses the library's checklist control. Search,
+the origin filter, and opening a crop's details preserve the selection. Select
+visible uses the rows displayed with the current search, filters, and expanded
+groups. Delete all in the crop actions menu includes every active project crop
+and requires a separate acknowledgment.
+
+The preview counts unique affected general crops and varieties, seed packages,
+supplier offers, and referencing planting plans. A selection that would leave
+varieties without their general crop, an ambiguous group, or a referenced crop
+blocks the entire batch until the conflict is resolved. Seed records follow
+their archived crop and shared library entries stay intact. The success message
+offers Undo. An administrator can also recover a batch from project version
+history. [Versioning and History](./versioning-and-history.md#bulk-crop-deletion)
+
 ## Split-view scrolling
 
 From `md` up, the project crop list and detail card scroll independently inside

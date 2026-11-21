@@ -27,7 +27,15 @@ const topbarContext = vi.hoisted(() => ({
   latestActions: [] as Array<Record<string, unknown>>,
   latestTitleActions: [] as Array<Record<string, unknown>>,
 }));
-const outletSeasonState = vi.hoisted(() => ({ activeSeasonYear: null as number | null }));
+const outletSeasonState = vi.hoisted(() => ({
+  activeSeasonYear: null as number | null,
+  activeSeasonLoaded: undefined as boolean | undefined,
+  activeSeasonError: null as string | null,
+  hasSeasons: false,
+  requestSeasonCreation: vi.fn(),
+  requestSeasonSelection: vi.fn(),
+  reloadActiveSeason: vi.fn(),
+}));
 const projectRequirementState = vi.hoisted(() => ({
   shouldShowProjectRequiredState: false,
   missingProjectReason: null as null | 'no_projects' | 'no_active_project',
@@ -180,7 +188,7 @@ vi.mock('react-router', async () => {
         topbarContext.latestTitleActions = actions;
         topbarContext.setTopbarTitleActions(actions);
       },
-      activeSeasonYear: outletSeasonState.activeSeasonYear,
+      ...outletSeasonState,
       activeSeason: null,
     }),
     useNavigate: () => mocks.navigate,
@@ -367,6 +375,9 @@ beforeEach(() => {
   topbarContext.latestActions = [];
   topbarContext.latestTitleActions = [];
   outletSeasonState.activeSeasonYear = null;
+  outletSeasonState.activeSeasonLoaded = undefined;
+  outletSeasonState.activeSeasonError = null;
+  outletSeasonState.hasSeasons = false;
 });
 
 describe('GanttChartPage', () => {
@@ -492,11 +503,46 @@ describe('GanttChartPage', () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(screen.getByText('Noch keine Anbaupläne vorhanden')).toBeInTheDocument());
-    expect(screen.getByText('Für die vorhandenen Anbauflächen wurden noch keine Anbaupläne erstellt. Lege einen Anbauplan an, um Kulturen und Termine im Anbaukalender darzustellen.')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Anbauplan hinzufügen' })).toBeInTheDocument();
+    expect(await screen.findByText('Noch keine Anbaupläne für diese Saison')).toBeInTheDocument();
+    expect(screen.getByText('Füge einen Anbauplan hinzu, um Kulturen und Termine im Anbaukalender zu sehen.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Anbauplan hinzufügen' })).toHaveAttribute('href', '/app/planting-plans?create=true');
     expect(screen.queryByText('Anbauplan fehlt')).not.toBeInTheDocument();
     expect(screen.queryByText('Öffne die Anbauflächen und füge dort eine Parzelle beim passenden Standort hinzu. Danach kannst du Beete, Kulturen und Anbaupläne erfassen.')).not.toBeInTheDocument();
+  });
+
+  it('opens the existing season creation flow without fetching unscoped planting plans', async () => {
+    outletSeasonState.activeSeasonLoaded = true;
+    renderWithAuth();
+
+    expect(await screen.findByText('Noch keine Saison angelegt')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Saison anlegen' }));
+    expect(outletSeasonState.requestSeasonCreation).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('link', { name: 'Anbauplan hinzufügen' })).not.toBeInTheDocument();
+    expect(mocks.planList).not.toHaveBeenCalled();
+  });
+
+  it('opens season selection when there are seasons but none is selected', async () => {
+    outletSeasonState.activeSeasonLoaded = true;
+    outletSeasonState.hasSeasons = true;
+    renderWithAuth();
+
+    expect(await screen.findByText('Keine Saison ausgewählt')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Saison auswählen' }));
+    expect(outletSeasonState.requestSeasonSelection).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('button', { name: 'Saison anlegen' })).not.toBeInTheDocument();
+    expect(mocks.planList).not.toHaveBeenCalled();
+  });
+
+  it('offers retry when the season list failed to load', async () => {
+    outletSeasonState.activeSeasonLoaded = true;
+    outletSeasonState.activeSeasonError = 'Saisonen konnten nicht geladen werden.';
+    renderWithAuth();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(outletSeasonState.activeSeasonError);
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+    expect(outletSeasonState.reloadActiveSeason).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('button', { name: 'Saison anlegen' })).not.toBeInTheDocument();
+    expect(mocks.planList).not.toHaveBeenCalled();
   });
 
   it('shows crop-specific guidance when land hierarchy exists but no crops exist', async () => {

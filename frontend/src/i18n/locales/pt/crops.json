@@ -1,9 +1,8 @@
 {
   "title": "Culturas",
-  "searchPlaceholder": "Pesquisar cultura",
+  "searchPlaceholder": "Pesquisar culturas",
   "searchInputPlaceholder": "Introduzir nome da cultura...",
   "noOptions": "Não foram encontradas culturas",
-  "searchInputPlaceholderEnhanced": "Pesquisar pelo nome da cultura (por exemplo cenoura)",
   "searchHelperText_one": "{{count}} cultura encontrada. Utilize os filtros para restringir a pesquisa.",
   "searchHelperText_other": "{{count}} culturas encontradas. Utilize os filtros para restringir a pesquisa.",
   "clearSearch": "Limpar pesquisa",
@@ -1065,7 +1064,7 @@
         }
       }
     },
-    "searchLabel": "Pesquisar culturas públicas",
+    "searchLabel": "Pesquisar culturas",
     "selectPrompt": "Selecione uma cultura pública para consultar os detalhes e a importar.",
     "empty": "Não foram encontradas culturas públicas.",
     "emptyState": {
@@ -1830,14 +1829,106 @@
       "next": "seguinte, cultura"
     }
   },
+  "bulkDelete": {
+    "menu": "Ações das culturas",
+    "allAction": "Eliminar todas as culturas do projeto",
+    "title": "Eliminar culturas selecionadas",
+    "scopeAll": "A ação inclui todas as culturas ativas do projeto, mesmo as ocultas pelos filtros.",
+    "scopeSelected": "Revê as culturas selecionadas e as variedades incluídas.",
+    "trashNotice": "As culturas e os dados de sementes passam para o lixo. As entradas da biblioteca partilhada são conservadas.",
+    "deleteVarieties": "Eliminar também as variedades",
+    "confirmAll": "Confirmo a eliminação de todas as culturas ativas deste projeto.",
+    "showCrops": "Mostrar culturas afetadas",
+    "empty": "Esta seleção não contém culturas ativas.",
+    "missing": "Algumas culturas selecionadas já não estão disponíveis. Atualiza a seleção.",
+    "outcomeUnknown": "O resultado não está disponível. Repete o mesmo pedido para o verificar.",
+    "retry": "Voltar a tentar eliminar",
+    "confirm": "Mover para o lixo",
+    "recovered": "Culturas recuperadas do lixo.",
+    "recoveryFailed": "Não foi possível recuperar todas as culturas em conjunto.",
+    "archived_one": "{{count}} cultura movida para o lixo",
+    "archived_other": "{{count}} culturas movidas para o lixo",
+    "archived_many": "{{count}} culturas movidas para o lixo",
+    "recoveredCount_one": "{{count}} cultura recuperada do lixo",
+    "recoveredCount_other": "{{count}} culturas recuperadas do lixo",
+    "recoveredCount_many": "{{count}} culturas recuperadas do lixo",
+    "counts": {
+      "selected": "Registos selecionados",
+      "affected": "Registos afetados",
+      "general": "Culturas gerais",
+      "varieties": "Variedades",
+      "additional": "Adicionados dos grupos",
+      "plans": "Planos de cultivo associados",
+      "packages": "Embalagens de sementes",
+      "offers": "Ofertas de fornecedores",
+      "blocked": "Registos bloqueados",
+      "missing": "Registos indisponíveis",
+      "skipped": "Registos ignorados",
+      "failed": "Registos com erros"
+    },
+    "blockers": {
+      "varieties_required": "Estas variedades precisam da cultura geral. Inclui-as para eliminar o grupo.",
+      "ambiguous_group": "O grupo tem mais do que uma cultura geral. Corrige o grupo antes de o eliminar.",
+      "planting_plans": "Há planos de cultivo que usam estas culturas. Altera os planos antes de as eliminar."
+    },
+    "origin": {
+      "label": "Origem da cultura",
+      "manual": "Criada manualmente",
+      "file_import": "Importada de um ficheiro",
+      "library_import": "Importada da biblioteca",
+      "unknown": "Origem desconhecida ou antiga"
+    },
+    "errors": {
+      "unavailable": "A pré-visualização não está disponível. Tenta novamente.",
+      "changed": "A seleção ou o projeto mudou. Consulta uma nova pré-visualização.",
+      "limit": "A seleção é demasiado grande. Seleciona menos culturas de cada vez.",
+      "throttled": "Demasiados pedidos. Aguarda um momento e tenta novamente.",
+      "writeFailed": "Não foi possível mover as culturas para o lixo. Continuam no projeto."
+    }
+  },
   "restoreDialog": {
     "title": "Restaurar versão?",
     "batchDescription": "Esta ação e todas as alterações relacionadas serão anuladas.",
-    "versionDescription": "Repões todo o projeto nesta versão. Todas as alterações posteriores serão anuladas, incluindo as culturas e os canteiros criados depois.",
+    "versionDescription": "Todo o projeto regressa a esta versão e todas as alterações posteriores são revertidas.",
     "batchNotice": "O estado anterior será restaurado. A ação permanece no histórico e pode ser executada novamente.",
-    "versionNotice": "A versão atual é mantida. É criada automaticamente uma nova versão antes do restauro, para permitir regressar a qualquer momento.",
+    "versionNotice": "Antes do restauro, o estado atual do projeto é guardado automaticamente no histórico de versões.",
     "cancel": "Cancelar",
-    "confirm": "Restaurar versão"
+    "confirm": "Restaurar versão",
+    "preview": {
+      "title": "Alterações do restauro",
+      "counting": "Cada registo ativo é contado individualmente. As culturas gerais e as variedades são contadas separadamente.",
+      "unchanged": "Esta versão tem os mesmos registos ativos do projeto atual.",
+      "loading": "A verificar as alterações…",
+      "unavailable": "A pré-visualização está indisponível. Atualiza-a para verificar o projeto novamente.",
+      "conflict": "Não é possível restaurar esta versão em segurança. Escolhe outra versão ou atualiza a pré-visualização.",
+      "stale": "O projeto ou a versão selecionada mudou. Atualiza a pré-visualização e verifica as alterações antes de restaurar.",
+      "too_large": "Este projeto excede o tamanho máximo para a pré-visualização. Contacta o apoio.",
+      "throttled": "Demasiados pedidos de pré-visualização. Aguarda um momento e atualiza-a.",
+      "refresh": "Atualizar pré-visualização",
+      "restoring": "A restaurar…",
+      "scope": "As contas, os membros do projeto e a biblioteca de culturas partilhada ficam fora do restauro.",
+      "sample": "A mostrar {{shown}} de {{total}}",
+      "categories": {
+        "crops": "Culturas gerais",
+        "varieties": "Variedades",
+        "planting_plans": "Planos de cultivo",
+        "locations": "Explorações",
+        "fields": "Parcelas",
+        "beds": "Canteiros",
+        "other": "Outros registos do projeto"
+      },
+      "actions": {
+        "removed_one": "Remoção ({{count}})",
+        "removed_other": "Remoções ({{count}})",
+        "removed_many": "Remoções ({{count}})",
+        "restored_one": "Reposição ({{count}})",
+        "restored_other": "Reposições ({{count}})",
+        "restored_many": "Reposições ({{count}})",
+        "changed_one": "Alteração ({{count}})",
+        "changed_other": "Alterações ({{count}})",
+        "changed_many": "Alterações ({{count}})"
+      }
+    }
   },
   "disabledReasons": {
     "requiredSpeciesNames": "Introduza primeiro um nome em cada idioma obrigatório.",

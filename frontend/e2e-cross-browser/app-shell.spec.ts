@@ -67,19 +67,22 @@ test.describe('app shell', () => {
     await expectNoHorizontalPageOverflow(page);
   });
 
-  test('dialogs fit the viewport', async ({ page }, testInfo) => {
+  test('planting-plan editors fit the viewport', async ({ page }, testInfo) => {
     await gotoAppPage(page, '/app/planting-plans', 'Anbaupläne');
 
-    // Phones edit planting plans in a dialog; desktop edits inline in the grid
-    // and opens a dialog for the bed assignment instead. The first row is the
-    // fixture's lettuce-after-lettuce plan, so that dialog shows its rotation
-    // conflict warning.
-    const mobile = isMobileProject(testInfo);
-    if (mobile) {
-      await page.getByRole('button', { name: /^Anbauplan hinzufügen/ }).first().click();
-    } else {
-      await page.getByRole('button', { name: 'Anbaufläche bearbeiten' }).first().click();
+    if (!isMobileProject(testInfo)) {
+      await page.locator('[role="gridcell"][data-field="bed"]').first().dblclick();
+      const picker = page.getByRole('combobox', { name: 'Beete suchen' });
+      await expect(picker).toBeFocused();
+      const options = page.getByRole('listbox', { name: 'Beet' });
+      await expect(options.getByRole('option').first()).toBeVisible();
+      await expectWithinViewport(page, picker, 'bed search');
+      await expectWithinViewport(page, options, 'bed options');
+      const option = await options.getByRole('option').first().boundingBox();
+      expect(option?.height).toBeGreaterThanOrEqual(44);
+      return;
     }
+    await page.getByRole('button', { name: /^Anbauplan hinzufügen/ }).first().click();
     const dialog = page.getByRole('dialog').first();
     await expect(dialog).toBeVisible();
     await page.waitForLoadState('networkidle');

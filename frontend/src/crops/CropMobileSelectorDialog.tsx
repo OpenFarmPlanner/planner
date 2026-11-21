@@ -25,6 +25,8 @@ import {
 } from './cropHierarchyRowSx';
 import { HighlightedText } from '../components/HighlightedText';
 import { useSearchExpandedGroups } from './useSearchExpandedGroups';
+import { CropBulkSelectionActions, CropBulkSelectionRow } from './CropBulkSelectionControls';
+import type { ProjectCropSelection } from './useProjectCropSelection';
 
 const EMPTY_MATCHED_GROUP_ROW_IDS: ReadonlySet<string> = new Set();
 
@@ -41,6 +43,7 @@ interface CropMobileSelectorDialogProps {
   highlightQuery?: string;
   /** Row ids of the Kultur groups the running search hit. */
   matchedGroupRowIds?: ReadonlySet<string>;
+  bulkSelection?: ProjectCropSelection;
   t: TFunction<'crops'>;
 }
 
@@ -59,6 +62,7 @@ export function CropMobileSelectorDialog({
   onSelect,
   highlightQuery,
   matchedGroupRowIds = EMPTY_MATCHED_GROUP_ROW_IDS,
+  bulkSelection,
   t,
 }: CropMobileSelectorDialogProps) {
   useOverlayHistory({
@@ -97,12 +101,16 @@ export function CropMobileSelectorDialog({
     () => flattenTreeRows(hierarchyItems, { expandedIds: expandedRows }),
     [expandedRows, hierarchyItems],
   );
+  const bulkSelecting = Boolean(bulkSelection?.selected);
 
   return (
     <Dialog fullScreen open={open} onClose={onClose}>
       <DialogTitle>{t('selectCrop')}</DialogTitle>
       <DialogContent sx={{ px: 1.5, pb: 2 }}>
         {selectorControl}
+        {bulkSelection ? <CropBulkSelectionActions selection={bulkSelection} onOpenPreview={onClose} visibleIds={
+          visibleRows.flatMap(({ node }) => node.crop?.id === undefined ? [] : [node.crop.id])
+        } /> : null}
         {visibleRows.length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={{ px: 1.5, py: 2 }}>
             {t('noOptionsEnhanced')}
@@ -130,53 +138,55 @@ export function CropMobileSelectorDialog({
                 : selectedSpeciesViewKey !== node.speciesKey),
             );
             return (
-              <ListItemButton
-                key={`mobile-${node.id}`}
-                role={isClickable ? 'option' : 'presentation'}
-                aria-label={node.kind === 'species' ? node.label : undefined}
-                aria-selected={isClickable ? isRowSelected : undefined}
-                selected={isRowSelected}
-                disabled={!isClickable}
-                onClick={() => {
-                  if (crop) {
-                    onSelect(crop, node.kind, node.speciesKey);
-                  } else if (firstVarietyCrop) {
-                    ensureExpanded(node.id);
-                    onSelect(firstVarietyCrop, 'variety', node.speciesKey);
-                  }
-                }}
-                onDoubleClick={(event) => {
-                  if (!hasChildren) {
-                    return;
-                  }
-                  event.preventDefault();
-                  event.stopPropagation();
-                  toggleExpand(node.id);
-                }}
-                sx={{
-                  borderRadius: 1.25,
-                  mb: 0.375,
-                  pl: `calc(${0.75 + depth * 0.85}rem)`,
-                  minHeight: MOBILE_ROW_MIN_HEIGHT,
-                }}
-              >
-                <CropHierarchyExpandToggle
-                  hasChildren={hasChildren}
-                  isExpanded={expandedRows.has(node.id)}
-                  onToggle={() => toggleExpand(node.id)}
-                  expandLabel={t('hierarchy.expandCrop')}
-                  collapseLabel={t('hierarchy.collapseCrop')}
-                  sx={mobileCropChevronButtonSx}
-                  placeholderWidth={MOBILE_TOUCH_TARGET_SIZE}
-                />
-                <ListItemText
-                  primary={highlightQuery
-                    ? <HighlightedText text={rowLabel} query={highlightQuery} />
-                    : rowLabel}
-                  slotProps={{
-                    primary: { sx: { fontSize: '0.95rem', fontWeight: node.kind === 'species' ? 700 : 500 } },
-                  }} />
-              </ListItemButton>
+              <CropBulkSelectionRow key={`mobile-${node.id}`} selection={bulkSelection} crop={crop}>
+                <ListItemButton
+                  role={isClickable ? (bulkSelecting ? 'button' : 'option') : 'presentation'}
+                  aria-label={node.kind === 'species' ? node.label : undefined}
+                  aria-selected={isClickable && !bulkSelecting ? isRowSelected : undefined}
+                  aria-current={bulkSelecting && isRowSelected ? 'true' : undefined}
+                  selected={isRowSelected}
+                  disabled={!isClickable}
+                  onClick={() => {
+                    if (crop) {
+                      onSelect(crop, node.kind, node.speciesKey);
+                    } else if (firstVarietyCrop) {
+                      ensureExpanded(node.id);
+                      onSelect(firstVarietyCrop, 'variety', node.speciesKey);
+                    }
+                  }}
+                  onDoubleClick={(event) => {
+                    if (!hasChildren) {
+                      return;
+                    }
+                    event.preventDefault();
+                    event.stopPropagation();
+                    toggleExpand(node.id);
+                  }}
+                  sx={{
+                    borderRadius: 1.25,
+                    mb: 0.375,
+                    pl: `calc(${0.75 + depth * 0.85}rem)`,
+                    minHeight: MOBILE_ROW_MIN_HEIGHT,
+                  }}
+                >
+                  <CropHierarchyExpandToggle
+                    hasChildren={hasChildren}
+                    isExpanded={expandedRows.has(node.id)}
+                    onToggle={() => toggleExpand(node.id)}
+                    expandLabel={t('hierarchy.expandCrop')}
+                    collapseLabel={t('hierarchy.collapseCrop')}
+                    sx={mobileCropChevronButtonSx}
+                    placeholderWidth={MOBILE_TOUCH_TARGET_SIZE}
+                  />
+                  <ListItemText
+                    primary={highlightQuery
+                      ? <HighlightedText text={rowLabel} query={highlightQuery} />
+                      : rowLabel}
+                    slotProps={{
+                      primary: { sx: { fontSize: '0.95rem', fontWeight: node.kind === 'species' ? 700 : 500 } },
+                    }} />
+                </ListItemButton>
+              </CropBulkSelectionRow>
             );
           })}
         </List>

@@ -312,6 +312,68 @@ are local artifacts under `/tmp/ofp-953/`. No application code or UI changed.
 Removed only #953's row from work queue #1058 after these checks, as explicitly
 requested by the owner; no personal-acceptance checkbox was checked.
 
+## Targeted project restore verification — 2026-11-20 (#1335)
+
+This owner-requested check covers full project restore before crop imports.
+It does not advance the outstanding full-sweep baseline above. The public
+production `/api/version/` endpoint returned `{"version":"1.183.1"}`;
+this is newer than the full-restore introduction in v1.178.0. No production
+project was accessed or modified.
+
+Tested isolated localhost servers with disposable SQLite databases and
+production frontend builds at:
+
+- v1.183.1: `92db6a5f50f7b9d3b271306e7265f20fea8b9e41`.
+- Current main: `30a806545` (includes merged regression PR #1341).
+
+The throwaway Playwright probe reuses the merged #1341 regression: create a
+selectable pre-import crop version, import a general crop and variety through
+spreadsheet apply, import another general crop and variety from synthetic
+public-library records, then use **Restore this version** in global project
+history. It checks HTTP 200, exact active crop IDs, the refreshed visible crop
+list and unchanged public-library IDs, names, varieties and versions.
+Fixture users/projects and library records are reset after each run.
+
+Desktop (1440×900), mobile portrait (375×900) and phone landscape
+(800×375) passed on both versions: one original active crop became
+five after the imports and returned to exactly the original ID after restore.
+The four imported private rows disappeared from the active crop list.
+The mobile probe opens the crop-picker dialog; its first run incorrectly used
+the desktop listbox selector and stopped before restore. After adapting that
+selector to the intentional mobile UI, the probe passed. Screenshots of the
+restored desktop list and mobile picker were visually inspected; the retained
+crop is visible without overlap or clipping. No mobile behavior changed.
+
+Backend validation used the repository's pytest configuration
+(`config.settings_test`) on SQLite:
+
+```bash
+python -m pytest farm/tests/test_crop_history.py farm/tests/test_history_invariants.py -n 0 --no-cov
+```
+
+The v1.183.1 run passed all 71 tests; current main passed all 87 tests.
+These include the atomic HTTP 409 refusal
+for incomplete legacy history. An initial `manage.py test` invocation used
+runtime settings and exhausted request throttles; its failures were harness
+configuration errors, and both runs were repeated with the prescribed pytest
+settings.
+
+The previously reported retention was investigated in merged PR #1341: the
+selected legacy target lacked history for older geometry rows, so restore
+returned HTTP 409 and preserved current data. Such a rejected restore must
+not be described as a successful restore retaining later crops.
+
+Scratch scripts, screenshots, build output and test logs are retained locally
+under `/tmp/ofp1335-verify/`. No application code or UI text changed, no
+production deployment was performed, and the user's running servers and
+existing modified coverage file were left intact.
+
+Per the owner's explicit request, removed only #1335's row from work queue
+#1058 after the browser checks passed, re-fetching immediately before writing
+and verifying the exact resulting body. The issue was already closed and
+implementation PR #1341 was merged; no open PR matching #1335 was found.
+No checkbox was changed. Evidence was also recorded on #1335.
+
 ## Targeted follow-up — 2026-11-20: media orphan markers (#1196)
 
 Tested localhost frontend on port 5173 and backend on port 8000 with local

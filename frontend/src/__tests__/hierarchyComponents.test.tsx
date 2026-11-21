@@ -138,9 +138,8 @@ describe('hierarchy components and behaviors', () => {
     expect(nameColumn?.width).toBe(280);
     expect(nameColumn).not.toHaveProperty('flex');
     expect(areaColumn?.width).toBe(120);
-    // Notes column default was intentionally reduced to tighten content-fit hierarchy tables.
     expect(notesColumn?.width).toBe(220);
-    expect(notesColumn?.minWidth).toBe(220);
+    expect(notesColumn?.minWidth).toBe(136);
     expect(notesColumn?.flex).toBe(1);
     expect(notesColumn).not.toHaveProperty('maxWidth');
 

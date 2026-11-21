@@ -4,7 +4,6 @@
 from datetime import date
 from unittest import mock
 
-import pytest
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from rest_framework import status
@@ -494,9 +493,6 @@ class FieldDuplicateApiTest(ProjectApiTestCase):
         self.assertEqual(response.data['beds'], [])
         self.assertFalse(Bed.objects.filter(field_id=response.data['field']['id']).exists())
 
-    @pytest.mark.history_gap(
-        issue=1204, reason='copied beds or restored supplier data record no revision',
-    )
     def test_replaces_first_case_sensitive_occurrence_in_bed_names(self):
         payload = {'name': 'Süd', 'replace_search': 'Nord', 'replace_with': 'Süd'}
         response = self.client.post(self._url(), payload, format='json')
@@ -504,7 +500,10 @@ class FieldDuplicateApiTest(ProjectApiTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual([bed['name'] for bed in response.data['beds']], ['Süd 1', 'Süd 2'])
 
-        Bed.objects.create(name='nord Nord Nord', field=self.field, project=self.project)
+        additional_bed = self.client.post('/openfarmplanner/api/beds/', {
+            'name': 'nord Nord Nord', 'field': self.field.pk,
+        }, format='json')
+        self.assertEqual(additional_bed.status_code, status.HTTP_201_CREATED)
         payload = {'name': 'Süd 2', 'replace_search': 'Nord', 'replace_with': 'X'}
         response = self.client.post(self._url(), payload, format='json')
         self.assertIn('nord X Nord', [bed['name'] for bed in response.data['beds']])

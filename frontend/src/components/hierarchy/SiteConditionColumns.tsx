@@ -16,6 +16,7 @@ import {
 } from './siteConditionLabels';
 import { INHERIT_VALUE, SiteConditionEditCell, type SiteConditionOption } from './SiteConditionEditCell';
 import { FullCellTooltip, FULL_CELL_TOOLTIP_CELL_CLASS } from '../data-grid/FullCellTooltip';
+import { widthForHeaderTitles } from '../data-grid/columnHeaderWidth';
 import { NON_BLOCKING_TOOLTIP_PROPS } from './hierarchyColumnShared';
 
 
@@ -80,19 +81,27 @@ function renderSiteConditionCell(
 
 /** The optional site-condition columns, hidden until enabled in the Columns panel. */
 export function createSiteConditionColumns(t: TFunction): GridColDef<HierarchyRow>[] {
-  return INLINE_SITE_CONDITION_FIELDS.map((field) => ({
-    field,
-    headerName: getSiteConditionFieldLabel(t, field),
-    description: getSiteConditionFieldHelp(t, field),
-    width: 150,
-    editable: true,
-    sortable: false,
-    valueGetter: (_value, row: HierarchyRow) => row[field] ?? INHERIT_VALUE,
-    // The inherited-source tooltip covers the whole cell (FullCellTooltip).
-    cellClassName: () => FULL_CELL_TOOLTIP_CELL_CLASS,
-    renderCell: (params) => renderSiteConditionCell(params, field, t),
-    renderEditCell: (params) => (
-      <SiteConditionEditCell {...params} options={buildEditOptions(t, params.row, field)} />
-    ),
-  }));
+  return INLINE_SITE_CONDITION_FIELDS.map((field) => {
+    const headerName = getSiteConditionFieldLabel(t, field);
+    const valueLabels = SITE_CONDITION_OPTIONS[field].map(value => getSiteConditionValueLabel(t, field, value));
+    return {
+      field,
+      headerName,
+      description: getSiteConditionFieldHelp(t, field),
+      width: widthForHeaderTitles([headerName, ...valueLabels], {
+        baseWidth: 104,
+        allowance: 20,
+        maxWidth: 240,
+      }),
+      editable: true,
+      sortable: false,
+      valueGetter: (_value, row: HierarchyRow) => row[field] ?? INHERIT_VALUE,
+      // The inherited-source tooltip covers the whole cell (FullCellTooltip).
+      cellClassName: () => FULL_CELL_TOOLTIP_CELL_CLASS,
+      renderCell: (params) => renderSiteConditionCell(params, field, t),
+      renderEditCell: (params) => (
+        <SiteConditionEditCell {...params} options={buildEditOptions(t, params.row, field)} />
+      ),
+    };
+  });
 }

@@ -151,6 +151,26 @@
       "done": "Teelt beschikbaar"
     }
   },
+  "capacity": {
+    "show": "Vrije ruimte tonen",
+    "details": "Beschikbare ruimte voor {{bed}}",
+    "estimate": "Schatting op basis van de bedoppervlakte en de geplande bezettingsperiodes.",
+    "available": "{{free}} m² vrij van {{total}} m² · {{used}} m² bezet",
+    "overallocated": "Bedcapaciteit overschreden. {{used}} m² bezet op een bed van {{total}} m².",
+    "minimumOverallocated": "Bedcapaciteit overschreden. Minstens {{used}} m² bezet op een bed van {{total}} m².",
+    "used": "{{used}} m² bezet",
+    "minimumUsed": "Minstens {{used}} m² bezet",
+    "total": "Bedoppervlakte {{total}} m²",
+    "unknownBed": "Bedoppervlakte onbekend",
+    "incomplete": "Vrije ruimte onbekend · {{total}} · {{used}}",
+    "status": {
+      "free": "Helemaal vrij",
+      "partial": "Deels vrij",
+      "occupied": "Volledig bezet",
+      "unknown": "Onbekend",
+      "overallocated": "Capaciteit overschreden"
+    }
+  },
   "emptyStates": {
     "requirementsTitle": "Nog geen teeltplanning mogelijk",
     "requirementsDescription": "Open Teeltoppervlakken en voeg daar een perceel toe op de juiste locatie. Daarna kun je bedden, gewassen en teelten vastleggen.",
@@ -160,11 +180,16 @@
         "description": "Maak nu je eerste gewas of importeer er een uit de gewassenbibliotheek. Daarna kun je teelten maken."
       },
       "plans": {
-        "title": "Nog geen teelten",
-        "description": "Er zijn nog geen teelten gemaakt voor de bestaande teeltoppervlakken. Maak een teelt om gewassen en datums in de teeltkalender te tonen."
+        "title": "Nog geen teelten voor dit seizoen",
+        "description": "Voeg een teelt toe om gewassen en datums in de teeltkalender te zien."
+      },
+      "selectSeason": {
+        "title": "Geen seizoen geselecteerd",
+        "description": "Kies een seizoen om de bijbehorende teelten in de kalender te zien."
       }
     },
     "actions": {
+      "selectSeason": "Seizoen kiezen",
       "createCrop": "Gewas toevoegen",
       "createField": "Perceel toevoegen",
       "createAreas": "Naar Teeltoppervlakken",

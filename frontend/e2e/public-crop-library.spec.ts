@@ -73,13 +73,13 @@ test('public crop library supports quick import, direct edit, versions, discussi
     await libraryMenuItem.click();
     const importDialog = page.getByRole('dialog', { name: 'Aus Kulturbibliothek importieren' });
     await expect(importDialog).toBeVisible();
-    await importDialog.getByLabel('Öffentliche Kulturen durchsuchen').fill(publicCrop.variety);
+    await importDialog.getByLabel('Kulturen suchen').fill(publicCrop.variety);
     await expect(importDialog.getByRole('option', { name: new RegExp(publicCrop.variety) })).toBeVisible();
     await importDialog.getByRole('option', { name: new RegExp(publicCrop.variety) }).click();
     // Publishing already linked this identical project copy. The neutral linked
     // state disables a redundant import while preserving the browser context.
     await expect(importDialog.getByRole('button', { name: 'Bereits verknüpft', exact: true })).toBeDisabled();
-    await expect(importDialog.getByLabel('Öffentliche Kulturen durchsuchen')).toHaveValue(publicCrop.variety);
+    await expect(importDialog.getByLabel('Kulturen suchen')).toHaveValue(publicCrop.variety);
     await expect(importDialog).toBeVisible();
     await importDialog.getByRole('link', { name: 'Kulturbibliothek öffnen' }).click();
     await expect(page).toHaveURL(/\/app\/crop-library/);
@@ -88,7 +88,7 @@ test('public crop library supports quick import, direct edit, versions, discussi
     await expect(page.getByRole('heading', { name: 'Kulturbibliothek' })).toBeVisible();
     await expect(page.getByText('Die Kulturbibliothek wächst mit der Community')).toBeVisible();
     await expect(page.getByText('Teile deine bewährten Kulturen mit anderen.')).toBeVisible();
-    await page.getByLabel('Öffentliche Kulturen durchsuchen').fill(publicCrop.variety);
+    await page.getByLabel('Kulturen suchen').fill(publicCrop.variety);
     await page.keyboard.press('Enter');
     await expect(page.getByText(publicCrop.variety).first()).toBeVisible();
     await page.getByText(publicCrop.variety).first().click();
@@ -175,11 +175,11 @@ test('public crop library supports quick import, direct edit, versions, discussi
     await page.setViewportSize({ width: 390, height: 844 });
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Kulturbibliothek' })).toBeVisible();
-    await expect(page.getByLabel('Öffentliche Kulturen durchsuchen')).not.toBeVisible();
+    await expect(page.getByLabel('Kulturen suchen')).not.toBeVisible();
     await page.getByRole('button', { name: 'Kultur auswählen' }).click();
     const mobileSelector = page.getByRole('dialog', { name: 'Kultur auswählen' });
     await expect(mobileSelector).toBeVisible();
-    await mobileSelector.getByLabel('Öffentliche Kulturen durchsuchen').fill(publicCrop.variety);
+    await mobileSelector.getByLabel('Kulturen suchen').fill(publicCrop.variety);
     await mobileSelector.getByRole('option', { name: new RegExp(publicCrop.variety) }).click();
     await expect(mobileSelector).not.toBeVisible();
     await expect(page.getByText(publicCrop.variety).first()).toBeVisible();

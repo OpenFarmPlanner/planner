@@ -113,20 +113,26 @@
     "preCultivation": "Transplantação (viveiro próprio)",
     "purchasedTransplant": "Transplantação com plantas compradas"
   },
-  "areaAssignment": {
-    "title": "Alterar área de cultivo",
-    "editButton": "Editar área de cultivo",
-    "hierarchyHint": "A exploração filtra as parcelas; a parcela filtra os canteiros.",
-    "emptyStateTitle": "Sem áreas de cultivo disponíveis",
-    "emptyStateDescription": "Crie primeiro parcelas e canteiros antes de atribuir uma área a uma série.",
-    "emptyStateAction": "Ir para Parcelas e canteiros",
-    "apply": "Aplicar",
-    "cancel": "Cancelar",
-    "selectLocationFirst": "Selecione primeiro uma exploração.",
-    "noFieldsForLocation": "Não existem parcelas disponíveis nesta exploração.",
-    "selectFieldFirst": "Selecione primeiro uma parcela.",
-    "noBedsForField": "Não existem canteiros disponíveis nesta parcela.",
-    "selectBedFirst": "Selecione primeiro um canteiro."
+  "bedPicker": {
+    "emptyTitle": "Sem áreas de cultivo disponíveis",
+    "openGrowingAreas": "Ir para Parcelas e canteiros",
+    "search": "Pesquisar canteiros",
+    "removeFilter": "Remover o filtro «{{name}}»",
+    "noScopedMatches": "Sem resultados em {{name}}",
+    "noMatches": "Nenhum canteiro corresponde à pesquisa",
+    "showOutside_one": "Mostrar {{count}} resultado fora do filtro",
+    "showOutside_many": "Mostrar {{count}} resultados fora do filtro",
+    "showOutside_other": "Mostrar {{count}} resultados fora do filtro",
+    "searchAll": "Pesquisar em todos os locais",
+    "keyboardHint": "↑ ↓ Mover · Enter Escolher · Esc Cancelar · Retrocesso Remover filtro",
+    "conflictReason": "{{family}}, a partir de {{year}}",
+    "showOccupancy": "Mostrar a ocupação de {{bed}}",
+    "hideOccupancy": "Ocultar a ocupação de {{bed}}",
+    "rotation": {
+      "conflict": "Mostrar o conflito de rotação",
+      "accepted": "Mostrar o conflito de rotação aceite",
+      "info": "Por que razão não foi possível verificar a rotação"
+    }
   },
   "mobile": {
     "showDetails": "Mostrar detalhes",
@@ -279,10 +285,6 @@
     "waterMismatch": "A cultura tem necessidades de água elevadas. A humidade do solo está registada como {{moisture}} e a rega como {{irrigation}}."
   },
   "rotation": {
-    "iconAria": {
-      "conflict": "Conflito de rotação de culturas, alterar área de cultivo",
-      "info": "Rotação de culturas não verificável, alterar área de cultivo"
-    },
     "status": {
       "conflict": "Conflito",
       "accepted": "Conflito aceite",

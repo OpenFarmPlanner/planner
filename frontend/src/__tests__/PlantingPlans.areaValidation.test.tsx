@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import PlantingPlans from "../pages/PlantingPlans";
+import { DialogEditCellContext, buildDialogEditCellKey } from "../components/data-grid/DialogEditCellContext";
 import type { EditableDataGridCommandApi } from "../components/data-grid";
 import { registerOpenContextMenu } from "../components/contextMenu/contextMenuOpenState";
 
@@ -24,7 +25,7 @@ const commandApiSpies = vi.hoisted(() => ({
   addRow: vi.fn(),
   setDraftValues: vi.fn(),
   commitDraftValues: vi.fn(),
-  applyDialogEditValues: vi.fn(),
+  applyDialogEditValues: vi.fn().mockResolvedValue(true),
   saveAttemptResult: vi.fn(),
   apiPayload: vi.fn(),
   gridProps: vi.fn(),
@@ -376,7 +377,7 @@ describe("PlantingPlans save-time area validation", () => {
     expect(inlineDeleteHelper).toHaveBeenCalledWith(-1);
   });
 
-  it("edits the growing area through its dialog instead of an inline edit cell", async () => {
+  it("renders the picker through the dedicated cell renderer", async () => {
     render(<MemoryRouter><PlantingPlans /></MemoryRouter>);
     await waitForPlansToLoad();
 
@@ -391,7 +392,7 @@ describe("PlantingPlans save-time area validation", () => {
     expect(bedColumn?.valueSetter).toBeUndefined();
   });
 
-  it("opens the growing area dialog with a single click and saves the picked bed", async () => {
+  it("commits the picked bed through the grid command", async () => {
     apiMocks.bedList.mockResolvedValue({
       data: {
         results: [
@@ -409,7 +410,10 @@ describe("PlantingPlans save-time area validation", () => {
       (column: { field: string }) => column.field === "bed",
     );
     const cell = render(
-      <>
+      <DialogEditCellContext.Provider value={{
+        request: { cellKey: buildDialogEditCellKey(7, "bed"), token: 1 },
+        consumeRequest: vi.fn(),
+      }}>
         {bedColumn.renderCell({
           id: 7,
           field: "bed",
@@ -417,13 +421,11 @@ describe("PlantingPlans save-time area validation", () => {
           row: { id: 7, bed: 101, area_m2: 1 },
           hasFocus: false,
         })}
-      </>,
+      </DialogEditCellContext.Provider>,
     );
 
-    await user.click(cell.getByRole("button", { name: "Anbaufläche bearbeiten" }));
-    await user.click(await screen.findByRole("combobox", { name: "Beet" }));
+    await screen.findByRole("combobox", { name: "Beete suchen" });
     await user.click(await screen.findByRole("option", { name: /^Beet B/ }));
-    await user.click(screen.getByRole("button", { name: "Übernehmen" }));
 
     await waitFor(() => {
       expect(commandApiSpies.applyDialogEditValues).toHaveBeenCalledWith(
@@ -435,7 +437,7 @@ describe("PlantingPlans save-time area validation", () => {
     cell.unmount();
   });
 
-  it("does not open the growing area dialog while an app context menu is open", async () => {
+  it("keeps the picker closed while an app context menu is open", async () => {
     apiMocks.bedList.mockResolvedValue({
       data: {
         results: [
@@ -444,7 +446,6 @@ describe("PlantingPlans save-time area validation", () => {
         ],
       },
     });
-    const user = userEvent.setup();
     const releaseMenu = registerOpenContextMenu(Symbol("test-context-menu"));
 
     try {
@@ -456,7 +457,10 @@ describe("PlantingPlans save-time area validation", () => {
         (column: { field: string }) => column.field === "bed",
       );
       const cell = render(
-        <>
+        <DialogEditCellContext.Provider value={{
+          request: { cellKey: buildDialogEditCellKey(7, "bed"), token: 1 },
+          consumeRequest: vi.fn(),
+        }}>
           {bedColumn.renderCell({
             id: 7,
             field: "bed",
@@ -464,12 +468,10 @@ describe("PlantingPlans save-time area validation", () => {
             row: { id: 7, bed: 101, area_m2: 1 },
             hasFocus: false,
           })}
-        </>,
+        </DialogEditCellContext.Provider>,
       );
 
-      await user.click(cell.getByRole("button", { name: "Anbaufläche bearbeiten" }));
-
-      expect(screen.queryByRole("dialog", { name: "Anbaufläche ändern" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("combobox", { name: "Beete suchen" })).not.toBeInTheDocument();
       cell.unmount();
     } finally {
       releaseMenu();

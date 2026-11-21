@@ -16,6 +16,7 @@ import type { GridRowId } from '@mui/x-data-grid';
 export interface DialogEditCellRequest {
   cellKey: string;
   token: number;
+  initialQuery?: string;
 }
 
 export interface DialogEditCellContextValue {
@@ -36,7 +37,7 @@ export const DialogEditCellContext = createContext<DialogEditCellContextValue | 
 export function useDialogEditCellOpenRequest(
   rowId: GridRowId | undefined,
   field: string | undefined,
-  onOpenRequested: () => void,
+  onOpenRequested: (initialQuery?: string) => void,
 ): void {
   const context = useContext(DialogEditCellContext);
   const onOpenRequestedRef = useRef(onOpenRequested);
@@ -54,6 +55,7 @@ export function useDialogEditCellOpenRequest(
   const pendingToken = request && cellKey !== null && request.cellKey === cellKey
     ? request.token
     : null;
+  const initialQuery = request?.initialQuery;
 
   useEffect(() => {
     if (pendingToken === null || handledTokenRef.current === pendingToken) {
@@ -62,6 +64,6 @@ export function useDialogEditCellOpenRequest(
 
     handledTokenRef.current = pendingToken;
     consumeRequest?.(pendingToken);
-    onOpenRequestedRef.current();
-  }, [consumeRequest, pendingToken]);
+    onOpenRequestedRef.current(initialQuery);
+  }, [consumeRequest, initialQuery, pendingToken]);
 }

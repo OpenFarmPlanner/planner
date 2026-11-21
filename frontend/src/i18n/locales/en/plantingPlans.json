@@ -112,20 +112,25 @@
     "preCultivation": "Transplant (home-raised)",
     "purchasedTransplant": "Transplant with bought-in plants"
   },
-  "areaAssignment": {
-    "title": "Change growing area",
-    "editButton": "Edit growing area",
-    "hierarchyHint": "Location filters fields, field filters beds.",
-    "emptyStateTitle": "No growing areas available",
-    "emptyStateDescription": "Create fields and beds first before assigning an area to a planting plan.",
-    "emptyStateAction": "Go to Fields & Beds",
-    "apply": "Apply",
-    "cancel": "Cancel",
-    "selectLocationFirst": "Select a location first.",
-    "noFieldsForLocation": "No fields are available for this location.",
-    "selectFieldFirst": "Select a field first.",
-    "noBedsForField": "No beds are available for this field.",
-    "selectBedFirst": "Select a bed first."
+  "bedPicker": {
+    "emptyTitle": "No growing areas available",
+    "openGrowingAreas": "Go to Fields & Beds",
+    "search": "Search beds",
+    "removeFilter": "Remove filter {{name}}",
+    "noScopedMatches": "No matches in {{name}}",
+    "noMatches": "No beds match your search",
+    "showOutside_one": "Show {{count}} match elsewhere",
+    "showOutside_other": "Show {{count}} matches elsewhere",
+    "searchAll": "Search all locations",
+    "keyboardHint": "↑ ↓ Move · Enter Choose · Esc Cancel · Backspace Remove filter",
+    "conflictReason": "{{family}}, earliest {{year}}",
+    "showOccupancy": "Show occupancy of {{bed}}",
+    "hideOccupancy": "Hide occupancy of {{bed}}",
+    "rotation": {
+      "conflict": "Show crop rotation conflict",
+      "accepted": "Show accepted crop rotation conflict",
+      "info": "Why the crop rotation could not be checked"
+    }
   },
   "mobile": {
     "showDetails": "Show details",
@@ -273,10 +278,6 @@
     "waterMismatch": "The crop has high water needs. Soil moisture is recorded as {{moisture}}, and irrigation as {{irrigation}}."
   },
   "rotation": {
-    "iconAria": {
-      "conflict": "Crop rotation conflict, change growing area",
-      "info": "Crop rotation not checkable, change growing area"
-    },
     "status": {
       "conflict": "Conflict",
       "accepted": "Conflict accepted",

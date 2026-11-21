@@ -332,6 +332,7 @@ def ensure_general_crop_for_variety(
     *,
     copy_values: bool = False,
     promote_fields: Sequence[str] = (),
+    creation_origin: str | None = None,
 ) -> Crop | None:
     """Ensure a linked Sorte has a general Kultur and seed explicitly written gaps.
 
@@ -378,6 +379,7 @@ def ensure_general_crop_for_variety(
             crop_species_id=variety.crop_species_id,
             name=variety.name,
             variety='',
+            creation_origin=creation_origin,
             **crop_model_kwargs(defaults),
         )
 

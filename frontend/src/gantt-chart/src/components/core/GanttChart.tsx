@@ -26,6 +26,7 @@ import { Timeline, TodayMarker } from "../../components/timeline";
 import { ViewModeSelector } from "../../components/ui";
 import { TaskRow, TaskList } from "../../components/task";
 import { ExportService } from "../../services/ExportService";
+import { createTimelineDateScale, toLocalCalendarDate } from "../../utils/timelineDatePosition";
 import {
   addDays,
   addHours,
@@ -76,6 +77,7 @@ const GanttChart = forwardRef<GanttChartRef, GanttChartProps>(
       // Custom rendering functions
       renderTaskList,
       renderTask,
+      renderTimelineRow,
       renderTooltip,
       renderTooltipInPortal = true,
       tooltipOffset = 12,
@@ -142,6 +144,8 @@ const GanttChart = forwardRef<GanttChartRef, GanttChartProps>(
     // Calculate timeline bounds
     const derivedStartDate = customStartDate || findEarliestDate(tasks);
     const derivedEndDate = customEndDate || findLatestDate(tasks);
+    const columnStart = renderTimelineRow ? toLocalCalendarDate(derivedStartDate) : derivedStartDate;
+    const columnEnd = renderTimelineRow ? toLocalCalendarDate(derivedEndDate) : derivedEndDate;
 
     // Expose export methods via ref
     useImperativeHandle(
@@ -207,7 +211,7 @@ const GanttChart = forwardRef<GanttChartRef, GanttChartProps>(
         scrollToDate: (date: Date): void => {
           if (!scrollContainerRef.current) return;
 
-          const timeUnitsArray = getTimeUnitsForMode(activeViewMode);
+          const timeUnitsArray = getTimeUnits();
           const targetIndex = findDateIndex(
             date,
             timeUnitsArray,
@@ -392,28 +396,28 @@ const GanttChart = forwardRef<GanttChartRef, GanttChartProps>(
     };
 
     // Time unit calculation functions
-    const getTimeUnits = () => {
-      switch (activeViewMode) {
+    const getTimeUnits = (mode: ViewMode = activeViewMode) => {
+      switch (mode) {
         case ViewMode.MINUTE:
           return getMinutesBetween(
-            derivedStartDate,
-            derivedEndDate,
+            columnStart,
+            columnEnd,
             minuteStep,
           );
         case ViewMode.HOUR:
-          return getHoursBetween(derivedStartDate, derivedEndDate);
+          return getHoursBetween(columnStart, columnEnd);
         case ViewMode.DAY:
-          return getDaysBetween(derivedStartDate, derivedEndDate);
+          return getDaysBetween(columnStart, columnEnd);
         case ViewMode.WEEK:
-          return getWeeksBetween(derivedStartDate, derivedEndDate);
+          return getWeeksBetween(columnStart, columnEnd);
         case ViewMode.MONTH:
-          return getMonthsBetween(derivedStartDate, derivedEndDate);
+          return getMonthsBetween(columnStart, columnEnd);
         case ViewMode.QUARTER:
-          return getQuartersBetween(derivedStartDate, derivedEndDate);
+          return getQuartersBetween(columnStart, columnEnd);
         case ViewMode.YEAR:
-          return getYearsBetween(derivedStartDate, derivedEndDate);
+          return getYearsBetween(columnStart, columnEnd);
         default:
-          return getMonthsBetween(derivedStartDate, derivedEndDate);
+          return getMonthsBetween(columnStart, columnEnd);
       }
     };
 
@@ -612,6 +616,9 @@ const GanttChart = forwardRef<GanttChartRef, GanttChartProps>(
     // Get time units and calculate current unit index
     const timeUnits = getTimeUnits();
     const totalUnits = timeUnits.length;
+    const timelineDateScale = renderTimelineRow
+      ? createTimelineDateScale(timeUnits, activeViewMode, viewUnitWidth, minuteStep)
+      : null;
     const currentUnitIndex = getCurrentUnitIndex();
 
     // Handle auto-scrolling state
@@ -818,32 +825,6 @@ const GanttChart = forwardRef<GanttChartRef, GanttChartProps>(
       return Math.max(0, Math.min(maxScroll, scrollPosition));
     };
 
-    // Helper to get time units for a specific view mode (used for scroll calculations)
-    const getTimeUnitsForMode = (mode: ViewMode): Date[] => {
-      switch (mode) {
-        case ViewMode.MINUTE:
-          return getMinutesBetween(
-            derivedStartDate,
-            derivedEndDate,
-            minuteStep,
-          );
-        case ViewMode.HOUR:
-          return getHoursBetween(derivedStartDate, derivedEndDate);
-        case ViewMode.DAY:
-          return getDaysBetween(derivedStartDate, derivedEndDate);
-        case ViewMode.WEEK:
-          return getWeeksBetween(derivedStartDate, derivedEndDate);
-        case ViewMode.MONTH:
-          return getMonthsBetween(derivedStartDate, derivedEndDate);
-        case ViewMode.QUARTER:
-          return getQuartersBetween(derivedStartDate, derivedEndDate);
-        case ViewMode.YEAR:
-          return getYearsBetween(derivedStartDate, derivedEndDate);
-        default:
-          return getMonthsBetween(derivedStartDate, derivedEndDate);
-      }
-    };
-
     // Smooth scroll to "now" position
     const scrollToNow = (mode: ViewMode, unitWidth: number) => {
       if (!scrollContainerRef.current) {
@@ -851,7 +832,7 @@ const GanttChart = forwardRef<GanttChartRef, GanttChartProps>(
       }
 
       // Calculate timeUnits for the NEW mode directly (don't rely on state)
-      const newTimeUnits = getTimeUnitsForMode(mode);
+      const newTimeUnits = getTimeUnits(mode);
       const targetScroll = calculateScrollToNow(mode, unitWidth, newTimeUnits);
       const container = scrollContainerRef.current;
 
@@ -1186,6 +1167,8 @@ const GanttChart = forwardRef<GanttChartRef, GanttChartProps>(
                     <TaskRow
                       key={`task-row-${group.id}-${forceRender}`}
                       taskGroup={group}
+                      timelineAdornment={timelineDateScale && renderTimelineRow?.(group, timelineDateScale.positionDate)}
+                      timelineDateScale={timelineDateScale ?? undefined}
                       startDate={derivedStartDate}
                       endDate={derivedEndDate}
                       totalMonths={totalUnits}
