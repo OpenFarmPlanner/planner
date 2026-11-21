@@ -18,6 +18,10 @@ Rules: `CLAUDE.md` ("Playwright Layout Tests and Visual Review",
 - Open the state that shows the change (dialog open, menu expanded, long
   text, empty state), not just the page's initial render.
 
+- For changes to persistent controls or layout, capture the same rendered
+  state before and after at the affected viewports, using comparable data
+  and locale.
+
 ## 2. Capture
 
 Responsive capture suite:
@@ -38,10 +42,22 @@ text, hidden or displaced actions, misalignment, touch targets on mobile,
 unintended reflow of unrelated elements. Passing functional checks do not prove
 the layout is right. Check the longest language (fr/es) where text grew.
 
+For changes to persistent controls or layout, compare the rendered before and
+after views using [Preserve space for primary content](../../../docs/ux-principles.md#preserve-space-for-primary-content).
+
+- Check whether the header or toolbar grew and how many records are visible
+  before scrolling. Identify what that extra space gives the user.
+- Check whether a secondary control's size or prominence suits its frequency
+  of use and whether an existing compact control could serve the same purpose.
+- Verify that controls remain discoverable and usable with touch and keyboard,
+  with readable long translations and enough room to wrap when needed.
+
 ## 4. Act
 
 - Obvious, low-risk problem (spacing, alignment, truncation): fix it and
   capture again.
+- If a more compact placement would change product behavior or conflict with
+  an explicit requirement, report the trade-off for a decision.
 - Needs a design decision (which element yields, shared component, no clear
   layout): stop and report with the screenshot.
 
