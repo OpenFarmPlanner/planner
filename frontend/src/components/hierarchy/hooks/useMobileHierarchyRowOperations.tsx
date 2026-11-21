@@ -193,15 +193,18 @@ export function useMobileHierarchyRowOperations({
       }
 
       if (row.type === "bed" && row.bedId) {
-        createActions.push({
-          id: "duplicate-bed",
-          label: t("actions.duplicateBed"),
-          group: "create",
-          icon: <ControlPointDuplicateIcon fontSize="small" />,
-          onClick: () => {
-            void handleDuplicateBed(row.bedId!);
-          },
-        });
+        const bedId = row.bedId;
+        if (bedId > 0 && !row.isNew) {
+          createActions.push({
+            id: "duplicate-bed",
+            label: t("actions.duplicateBed"),
+            group: "create",
+            icon: <ControlPointDuplicateIcon fontSize="small" />,
+            onClick: () => {
+              void handleDuplicateBed(bedId);
+            },
+          });
+        }
         createActions.push({
           id: "create-planting-plan",
           label: t("createPlantingPlan"),

@@ -210,6 +210,27 @@ test.describe('fields-beds mobile list', () => {
     await page.screenshot({ path: test.info().outputPath('duplicate-bed-dimensions.png'), animations: 'disabled' });
   });
 
+  test('an unsaved desktop bed draft cannot be duplicated after resizing to mobile', async ({ page, request }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await loginWithDeterministicProject(page, request, 'fields-mobile-list-duplicate-draft', { loginAsAdmin: true });
+    const { field } = await seedHierarchy(page, 'Mobile List Duplicate Draft');
+    await page.goto('/app/fields-beds');
+
+    await page.locator(`[role="row"][data-id="field-${field.id}"]`).click({ button: 'right' });
+    await page.getByRole('menuitem', { name: /^Beet hinzufügen/ }).click();
+
+    const draftRow = page.locator('[role="row"][data-id^="-"]');
+    await expect(draftRow).toBeVisible();
+    const draftId = await draftRow.getAttribute('data-id');
+
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.locator(`[data-hierarchy-mobile-row-id="${draftId}"]`).getByRole('button').first().click();
+
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: 'Weitere Aktionen' }).click();
+    await expect(page.getByRole('menuitem', { name: /^Beet duplizieren/ })).toHaveCount(0);
+  });
+
   test('duplicating a bed with unsaved sheet edits asks before discarding them', async ({ page, request }) => {
     await loginWithDeterministicProject(page, request, 'fields-mobile-list-duplicate-dirty', { loginAsAdmin: true });
     const { location, field, bed } = await seedHierarchy(page, 'Mobile List Duplicate Dirty');
