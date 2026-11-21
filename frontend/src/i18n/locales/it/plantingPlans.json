@@ -523,8 +523,7 @@
     "editTarget": "Scegli la data da modificare",
     "modes": {
       "planned": "Previsto",
-      "actual": "Effettivo",
-      "combined": "Entrambi"
+      "actual": "Effettivo"
     },
     "activities": {
       "propagation": "Avvio in vivaio",

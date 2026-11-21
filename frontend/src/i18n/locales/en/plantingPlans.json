@@ -509,8 +509,7 @@
     "editTarget": "Choose which date to edit",
     "modes": {
       "planned": "Planned",
-      "actual": "Actual",
-      "combined": "Both"
+      "actual": "Actual"
     },
     "activities": {
       "propagation": "Propagation start",

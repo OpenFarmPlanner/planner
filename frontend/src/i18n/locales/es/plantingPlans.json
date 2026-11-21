@@ -523,8 +523,7 @@
     "editTarget": "Elegir qué fecha editar",
     "modes": {
       "planned": "Previsto",
-      "actual": "Realizado",
-      "combined": "Ambos"
+      "actual": "Realizado"
     },
     "activities": {
       "propagation": "Inicio del semillero",

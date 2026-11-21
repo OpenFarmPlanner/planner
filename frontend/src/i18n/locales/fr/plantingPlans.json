@@ -523,8 +523,7 @@
     "editTarget": "Choisir la date à modifier",
     "modes": {
       "planned": "Prévu",
-      "actual": "Réalisé",
-      "combined": "Les deux"
+      "actual": "Réalisé"
     },
     "activities": {
       "propagation": "Début des semis en pépinière",

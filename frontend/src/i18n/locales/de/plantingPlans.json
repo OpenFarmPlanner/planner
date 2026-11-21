@@ -509,8 +509,7 @@
     "editTarget": "Terminart wählen",
     "modes": {
       "planned": "Plan",
-      "actual": "Ist",
-      "combined": "Beides"
+      "actual": "Ist"
     },
     "activities": {
       "propagation": "Anzuchtbeginn",

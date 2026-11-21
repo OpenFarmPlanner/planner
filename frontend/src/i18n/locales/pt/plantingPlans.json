@@ -523,8 +523,7 @@
     "editTarget": "Escolher a data a editar",
     "modes": {
       "planned": "Planeado",
-      "actual": "Realizado",
-      "combined": "Ambos"
+      "actual": "Realizado"
     },
     "activities": {
       "propagation": "Início do viveiro",

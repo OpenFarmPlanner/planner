@@ -509,8 +509,7 @@
     "editTarget": "Kies de datum die je wilt wijzigen",
     "modes": {
       "planned": "Gepland",
-      "actual": "Werkelijk",
-      "combined": "Beide"
+      "actual": "Werkelijk"
     },
     "activities": {
       "propagation": "Begin opkweek",
