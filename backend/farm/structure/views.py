@@ -14,6 +14,7 @@ from config.responses import api_error_response
 from farm.common.mixins import ProjectRevisionMixin, ProjectScopedMixin
 from farm.history import _current_actor_label, _serialize_instance, record_entity_revision
 from farm.history.project_restore import ensure_project_checkpoint
+from farm.history.records import internal_project_versions
 from farm.models import Bed, BedLayout, EntityRevision, Field, FieldLayout, Location
 from farm.project_context import get_active_project_or_400
 from farm.services.bed_layouts import (
@@ -181,16 +182,18 @@ class FieldViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewS
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         try:
-            result = duplicate_field(
-                source,
-                name=data['name'],
-                copy_beds=data['copy_beds'],
-                search=data['replace_search'],
-                replacement=data['replace_with'],
-                on_created=lambda instance: self.record_revision(
-                    instance, EntityRevision.ACTION_CREATED
-                ),
-            )
+            with transaction.atomic():
+                result = duplicate_field(
+                    source,
+                    name=data['name'],
+                    copy_beds=data['copy_beds'],
+                    search=data['replace_search'],
+                    replacement=data['replace_with'],
+                )
+                with internal_project_versions():
+                    for bed in result.beds:
+                        self.record_revision(bed, EntityRevision.ACTION_CREATED)
+                self.record_revision(result.field, EntityRevision.ACTION_CREATED)
         except FieldNameTakenError:
             return api_error_response(
                 code='field_name_taken',

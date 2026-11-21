@@ -3,6 +3,8 @@ export interface Task {
   name: string;
   startDate: Date;
   endDate: Date;
+  /** In a date-column chart, this phase stops at the start of the end date. */
+  endDateIsExclusive?: boolean;
   color?: string;
   percent?: number;
   dependencies?: string[];

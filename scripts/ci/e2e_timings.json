@@ -19,6 +19,10 @@
       "tests": 1,
       "duration_ms": 5525
     },
+    "e2e/crop-bulk-deletion.spec.ts": {
+      "tests": 3,
+      "duration_ms": 41500
+    },
     "e2e/crop-companion-display-names.spec.ts": {
       "tests": 8,
       "duration_ms": 51405
@@ -204,16 +208,16 @@
       "duration_ms": 43000
     },
     "e2e/planting-plan-details.spec.ts": {
-      "tests": 4,
-      "duration_ms": 44000
+      "tests": 6,
+      "duration_ms": 66000
     },
     "e2e/planting-plan-headings.spec.ts": {
       "tests": 6,
       "duration_ms": 36675
     },
-    "e2e/planting-plans-area-assignment-dialog.spec.ts": {
-      "tests": 7,
-      "duration_ms": 31894
+    "e2e/planting-plans-bed-picker.spec.ts": {
+      "tests": 8,
+      "duration_ms": 50000
     },
     "e2e/planting-plans-continuous-scroll.spec.ts": {
       "tests": 6,
@@ -240,8 +244,8 @@
       "duration_ms": 16000
     },
     "e2e/planting-plans-rotation.spec.ts": {
-      "tests": 5,
-      "duration_ms": 29884
+      "tests": 7,
+      "duration_ms": 48000
     },
     "e2e/planting-plans-search.spec.ts": {
       "tests": 14,
@@ -288,8 +292,8 @@
       "duration_ms": 58196
     },
     "e2e/scrollbar-layout.spec.ts": {
-      "tests": 5,
-      "duration_ms": 18869
+      "tests": 8,
+      "duration_ms": 64000
     },
     "e2e/season-copy-source.spec.ts": {
       "tests": 2,

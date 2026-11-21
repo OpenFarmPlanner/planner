@@ -52,6 +52,7 @@ export const DEFAULT_HIERARCHY_COLUMN_WIDTHS: HierarchyColumnWidths = {
 // calculated area header does not.
 const DIMENSION_HEADER_ALLOWANCE = 50;
 const AREA_HEADER_ALLOWANCE = 30;
+const NOTES_MIN_WIDTH = 136;
 
 // A new bed row can start prefilled ("Beet hinzufügen" copies the last bed's
 // dimensions and counts its name up). The first focus of each new-row cell
@@ -342,7 +343,7 @@ export function createHierarchyColumns(
       field: 'notes',
       headerName: t('common:fields.notes'),
       width: widths.notes,
-      minWidth: widths.notes,
+      minWidth: resolvedColumnWidths?.notes ?? NOTES_MIN_WIDTH,
       flex: 1,
       editable: false,
       cellClassName: () => getNotesCellClassName(),

@@ -6,7 +6,6 @@ structured site conditions. Notes, layouts, planting plans and
 everything hanging off them stay with the source.
 """
 
-from collections.abc import Callable
 from dataclasses import dataclass
 
 from django.db import IntegrityError, transaction
@@ -77,13 +76,10 @@ def duplicate_field(
     copy_beds: bool,
     search: str = '',
     replacement: str = '',
-    on_created: Callable[[Field | Bed], None] | None = None,
 ) -> FieldDuplicate:
     """Create a copy of `source` named `name`, optionally with renamed copies of its beds.
 
-    All-or-nothing: a conflict raises before or rolls back every write.
-    `on_created` is called for each created row inside the transaction
-    (the view records its `created` revision there).
+    A conflict raises before writing or rolls back the copy.
     """
     if Field.objects.filter(location_id=source.location_id, name=name).exists():
         raise FieldNameTakenError(name)
@@ -117,8 +113,6 @@ def duplicate_field(
         except IntegrityError as exc:
             # A concurrent create took the name between the check and the insert.
             raise FieldNameTakenError(name) from exc
-        if on_created:
-            on_created(new_field)
         new_beds: list[Bed] = []
         for bed, bed_name in zip(source_beds, bed_names, strict=True):
             new_bed = Bed.objects.create(
@@ -130,7 +124,5 @@ def duplicate_field(
                 area_sqm=bed.area_sqm,
                 **_structured_conditions(bed, BED_COPIED_CONDITIONS),
             )
-            if on_created:
-                on_created(new_bed)
             new_beds.append(new_bed)
     return FieldDuplicate(field=new_field, beds=new_beds)

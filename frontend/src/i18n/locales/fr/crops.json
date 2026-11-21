@@ -1,9 +1,8 @@
 {
   "title": "Cultures",
-  "searchPlaceholder": "Rechercher une culture",
+  "searchPlaceholder": "Chercher des cultures",
   "searchInputPlaceholder": "Saisir le nom de la culture…",
   "noOptions": "Aucune culture trouvée",
-  "searchInputPlaceholderEnhanced": "Rechercher par nom de culture (p. ex. carotte)",
   "searchHelperText_one": "{{count}} culture trouvée. Utilisez les filtres pour affiner davantage.",
   "searchHelperText_other": "{{count}} cultures trouvées. Utilisez les filtres pour affiner davantage.",
   "searchHelperText_many": "{{count}} cultures trouvées. Utilisez les filtres pour affiner davantage.",
@@ -1066,7 +1065,7 @@
         }
       }
     },
-    "searchLabel": "Rechercher des cultures publiques",
+    "searchLabel": "Chercher des cultures",
     "selectPrompt": "Sélectionnez une culture publique pour afficher ses détails et l'importer.",
     "empty": "Aucune culture publique trouvée.",
     "emptyState": {
@@ -1831,14 +1830,106 @@
       "next": "suivante, culture"
     }
   },
+  "bulkDelete": {
+    "menu": "Actions sur les cultures",
+    "allAction": "Supprimer toutes les cultures du projet",
+    "title": "Supprimer les cultures sélectionnées",
+    "scopeAll": "Toutes les cultures actives du projet sont concernées, même celles masquées par des filtres.",
+    "scopeSelected": "Vérifiez les cultures sélectionnées et les variétés incluses.",
+    "trashNotice": "Les cultures et leurs données de semences vont dans la corbeille. Les fiches de la bibliothèque partagée restent en place.",
+    "deleteVarieties": "Supprimer aussi les variétés",
+    "confirmAll": "Je confirme la suppression de toutes les cultures actives de ce projet.",
+    "showCrops": "Afficher les cultures concernées",
+    "empty": "Cette sélection ne contient aucune culture active.",
+    "missing": "Certaines cultures sélectionnées sont indisponibles. Actualisez la sélection.",
+    "outcomeUnknown": "Le résultat est indisponible. Réessayez la même demande pour vérifier son état.",
+    "retry": "Réessayer la suppression",
+    "confirm": "Placer dans la corbeille",
+    "recovered": "Cultures restaurées depuis la corbeille.",
+    "recoveryFailed": "Les cultures n’ont pas pu être restaurées ensemble.",
+    "archived_one": "{{count}} culture placée dans la corbeille",
+    "archived_other": "{{count}} cultures placées dans la corbeille",
+    "archived_many": "{{count}} cultures placées dans la corbeille",
+    "recoveredCount_one": "{{count}} culture restaurée depuis la corbeille",
+    "recoveredCount_other": "{{count}} cultures restaurées depuis la corbeille",
+    "recoveredCount_many": "{{count}} cultures restaurées depuis la corbeille",
+    "counts": {
+      "selected": "Éléments sélectionnés",
+      "affected": "Éléments concernés",
+      "general": "Cultures générales",
+      "varieties": "Variétés",
+      "additional": "Éléments ajoutés des groupes",
+      "plans": "Plans de culture liés",
+      "packages": "Conditionnements de semences",
+      "offers": "Offres des fournisseurs",
+      "blocked": "Éléments bloqués",
+      "missing": "Éléments indisponibles",
+      "skipped": "Éléments ignorés",
+      "failed": "Éléments en échec"
+    },
+    "blockers": {
+      "varieties_required": "Ces variétés dépendent de leur culture générale. Incluez-les pour supprimer le groupe.",
+      "ambiguous_group": "Ce groupe contient plusieurs cultures générales. Corrigez le groupe avant de le supprimer.",
+      "planting_plans": "Des plans de culture utilisent ces cultures. Modifiez les plans avant la suppression."
+    },
+    "origin": {
+      "label": "Origine de la culture",
+      "manual": "Créée manuellement",
+      "file_import": "Importée depuis un fichier",
+      "library_import": "Importée depuis la bibliothèque",
+      "unknown": "Origine inconnue ou ancienne"
+    },
+    "errors": {
+      "unavailable": "L’aperçu est indisponible. Réessayez.",
+      "changed": "La sélection ou le projet a changé. Consultez un nouvel aperçu.",
+      "limit": "La sélection est trop grande. Sélectionnez moins de cultures à la fois.",
+      "throttled": "Trop de demandes. Patientez un instant et réessayez.",
+      "writeFailed": "Les cultures n’ont pas pu être placées dans la corbeille. Elles restent dans le projet."
+    }
+  },
   "restoreDialog": {
     "title": "Restaurer la version ?",
     "batchDescription": "Cette action et toutes les modifications associées seront annulées.",
-    "versionDescription": "Vous rétablissez tout le projet dans cette version. Toutes les modifications ultérieures seront annulées, y compris les cultures et les planches créées ensuite.",
+    "versionDescription": "Cette action restaure l’ensemble du projet à cette version et annule toutes les modifications ultérieures.",
     "batchNotice": "L'état précédent sera restauré. L'action reste dans l'historique et peut être effectuée à nouveau.",
-    "versionNotice": "La version actuelle est conservée. Une nouvelle version est créée automatiquement avant la restauration, afin que vous puissiez revenir en arrière à tout moment.",
+    "versionNotice": "Avant la restauration, l’état actuel du projet est automatiquement enregistré dans l’historique des versions.",
     "cancel": "Annuler",
-    "confirm": "Restaurer la version"
+    "confirm": "Restaurer la version",
+    "preview": {
+      "title": "Effets de la restauration",
+      "counting": "Chaque élément actif est compté individuellement. Les cultures générales et les variétés sont comptées séparément.",
+      "unchanged": "Cette version présente les mêmes éléments actifs que le projet actuel.",
+      "loading": "Vérification des changements…",
+      "unavailable": "L’aperçu est indisponible. Actualisez-le pour vérifier à nouveau le projet.",
+      "conflict": "Cette version ne peut pas être restaurée en toute sécurité. Choisissez une autre version ou actualisez l’aperçu.",
+      "stale": "Le projet ou la version sélectionnée a changé. Actualisez l’aperçu et vérifiez les changements avant de restaurer.",
+      "too_large": "Ce projet dépasse la taille maximale pour l’aperçu de restauration. Contactez l’assistance.",
+      "throttled": "Trop de demandes d’aperçu. Patientez un instant, puis actualisez l’aperçu.",
+      "refresh": "Actualiser l’aperçu",
+      "restoring": "Restauration en cours…",
+      "scope": "Les comptes, les adhésions au projet et la bibliothèque de cultures partagée sont en dehors du périmètre de la restauration.",
+      "sample": "{{shown}} sur {{total}} affichés",
+      "categories": {
+        "crops": "Cultures générales",
+        "varieties": "Variétés",
+        "planting_plans": "Plans de culture",
+        "locations": "Sites",
+        "fields": "Parcelles",
+        "beds": "Planches",
+        "other": "Autres éléments du projet"
+      },
+      "actions": {
+        "removed_one": "Suppression ({{count}})",
+        "removed_other": "Suppressions ({{count}})",
+        "removed_many": "Suppressions ({{count}})",
+        "restored_one": "Rétablissement ({{count}})",
+        "restored_other": "Rétablissements ({{count}})",
+        "restored_many": "Rétablissements ({{count}})",
+        "changed_one": "Modification ({{count}})",
+        "changed_other": "Modifications ({{count}})",
+        "changed_many": "Modifications ({{count}})"
+      }
+    }
   },
   "disabledReasons": {
     "requiredSpeciesNames": "Saisissez d’abord un nom dans chaque langue requise.",

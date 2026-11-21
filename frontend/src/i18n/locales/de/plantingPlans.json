@@ -112,20 +112,25 @@
     "preCultivation": "Pflanzung (eigene Anzucht)",
     "purchasedTransplant": "Pflanzung mit gekauften Pflanzen"
   },
-  "areaAssignment": {
-    "title": "Anbaufläche ändern",
-    "editButton": "Anbaufläche bearbeiten",
-    "hierarchyHint": "Standort filtert Parzellen, Parzelle filtert Beete.",
-    "emptyStateTitle": "Keine Anbauflächen vorhanden",
-    "emptyStateDescription": "Lege zuerst Parzellen und Beete an, bevor du einem Anbauplan eine Fläche zuweist.",
-    "emptyStateAction": "Zu Anbauflächen",
-    "apply": "Übernehmen",
-    "cancel": "Abbrechen",
-    "selectLocationFirst": "Bitte zuerst einen Standort auswählen.",
-    "noFieldsForLocation": "Für diesen Standort sind keine Parzellen verfügbar.",
-    "selectFieldFirst": "Bitte zuerst eine Parzelle auswählen.",
-    "noBedsForField": "Für diese Parzelle sind keine Beete verfügbar.",
-    "selectBedFirst": "Bitte zuerst ein Beet auswählen."
+  "bedPicker": {
+    "emptyTitle": "Keine Anbauflächen vorhanden",
+    "openGrowingAreas": "Zu Anbauflächen",
+    "search": "Beete suchen",
+    "removeFilter": "Filter „{{name}}“ entfernen",
+    "noScopedMatches": "Keine Treffer in {{name}}",
+    "noMatches": "Keine passenden Beete",
+    "showOutside_one": "{{count}} Treffer außerhalb anzeigen",
+    "showOutside_other": "{{count}} Treffer außerhalb anzeigen",
+    "searchAll": "An allen Standorten suchen",
+    "keyboardHint": "↑ ↓ Navigieren · Enter Auswählen · Esc Abbrechen · Rücktaste Filter entfernen",
+    "conflictReason": "{{family}}, frühestens {{year}}",
+    "showOccupancy": "Belegung von {{bed}} anzeigen",
+    "hideOccupancy": "Belegung von {{bed}} ausblenden",
+    "rotation": {
+      "conflict": "Fruchtfolgekonflikt anzeigen",
+      "accepted": "Akzeptierten Fruchtfolgekonflikt anzeigen",
+      "info": "Warum die Fruchtfolge nicht prüfbar ist"
+    }
   },
   "mobile": {
     "showDetails": "Details anzeigen",
@@ -273,10 +278,6 @@
     "waterMismatch": "Die Kultur hat einen hohen Wasserbedarf. Der Boden ist als {{moisture}} erfasst und die Bewässerung als {{irrigation}}."
   },
   "rotation": {
-    "iconAria": {
-      "conflict": "Fruchtfolge-Konflikt, Anbaufläche ändern",
-      "info": "Fruchtfolge nicht prüfbar, Anbaufläche ändern"
-    },
     "status": {
       "conflict": "Konflikt",
       "accepted": "Konflikt akzeptiert",

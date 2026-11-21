@@ -2,7 +2,7 @@ import type { ReactElement } from 'react';
 import { Checkbox, ListItemText, MenuItem } from '@mui/material';
 
 import { useTranslation } from '../i18n';
-import type { PersistedCropFilters } from './cropDetailFormatters';
+import { CROP_ORIGIN_FILTER_OPTIONS, type CropOriginFilter, type PersistedCropFilters } from './cropDetailFormatters';
 import { buildPlantFamilyFilterOptions, usePlantFamilies } from './plantFamilies';
 import { FilterNumberField } from '../components/filters/FilterNumberField';
 import { FilterPopoverShell } from '../components/filters/FilterPopoverShell';
@@ -65,6 +65,18 @@ export function CropFiltersPopover({
         value={{ entries: filters.selectedPlantHealthFilter ?? [] }}
         onChange={value => onFilterChange('selectedPlantHealthFilter', value?.entries ?? [])}
         sx={FULL_WIDTH_ROW} />
+      <FilterSelectField
+        id="crop-origin-filter"
+        label={t('bulkDelete.origin.label')}
+        value={filters.selectedOriginFilter ?? ''}
+        onChange={event => onFilterChange('selectedOriginFilter', event.target.value as CropOriginFilter)}
+        sx={FULL_WIDTH_ROW}
+      >
+        <MenuItem value="">{t('filters.all')}</MenuItem>
+        {CROP_ORIGIN_FILTER_OPTIONS.map(origin => (
+          <MenuItem key={origin} value={origin}>{t(`bulkDelete.origin.${origin}`)}</MenuItem>
+        ))}
+      </FilterSelectField>
       <FilterSelectField
         id="crop-family-filter"
         label={t('filters.cropFamily')}

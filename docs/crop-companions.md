@@ -104,10 +104,10 @@ a list costs a constant number of queries (pinned in
 `farm/tests/test_api_query_counts.py`); without any relation in the project it
 stops after one query.
 
-UI: "Anbaufläche ändern" and the mobile plan form show bad neighbours as a
-warning below the rotation result and good ones as a one-line note
-(`CompanionCheckAlert`); the table's area cell and the mobile cards mark bad
-neighbours with a leaf icon whose tooltip names them.
+The mobile plan form shows bad neighbours as a warning below the rotation
+result and good ones as a one-line note (`CompanionCheckAlert`). The
+planting-plans grid and mobile cards mark bad neighbours with a leaf icon
+whose tooltip names them.
 
 ## Crop form
 
@@ -365,9 +365,10 @@ so a published neighbour names a **crop species** or a **plant family**:
 
 ## Demo cases
 
-The demo project (every demo language) seeds one bad and one good pair on the
-same bed with overlapping periods, so the planning check, the leaf icon and
-the note in "Anbaufläche ändern" can be shown (#1189). German names:
+The demo project seeds one bad and one good pair on beds with overlapping
+periods in every demo language. Use the mobile plan form to see the planning
+check and notes, and inspect the leaf icon on plans with a bad neighbour
+(#1189). The table uses German crop and bed names.
 
 | Pair | Relation | Bed | Expected |
 | --- | --- | --- | --- |

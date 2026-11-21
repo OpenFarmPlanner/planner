@@ -34,6 +34,10 @@ from farm.history.project_restore import (
     record_project_checkpoint,
 )
 from farm.history.records import revision_batch
+from farm.history.throttling import (
+    ProjectRestorePreviewIpThrottle,
+    ProjectRestorePreviewUserThrottle,
+)
 from farm.models import (
     BatchOperation,
     Crop,
@@ -46,11 +50,13 @@ from farm.models import (
     ProjectMembership,
     PublicCrop,
     RetainedUpload,
+    Task,
 )
 from farm.tests.history_guard import latest_selectable_revision, state_diff
 
 API = '/openfarmplanner/api'
 RESTORE_URL = f'{API}/history/project/restore/'
+RESTORE_PREVIEW_URL = f'{API}/history/project/restore-preview/'
 IN_MEMORY_STORAGE = {
     'default': {'BACKEND': 'django.core.files.storage.InMemoryStorage'},
     'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
@@ -159,6 +165,411 @@ class HistoryInvariantTestCase(APITestCase):
                 self.assert_state(
                     before, f'the backup of restoring {version.step} does not reproduce it'
                 )
+
+
+class CompositeMutationHistoryTests(HistoryInvariantTestCase):
+    def assert_completed_action(
+        self, previous: EntityRevision, parent: str, children: list[str],
+    ) -> None:
+        completed = self.versions[-1].revision
+        self.assertEqual(completed.entity_type, parent)
+        entries = self.client.get(f'{API}/history/project/').json()
+        self.assertEqual(
+            [entry['history_id'] for entry in entries if entry['history_id'] > previous.pk],
+            [completed.pk],
+        )
+        related = self.project.entity_revisions.filter(pk__gt=previous.pk, pk__lt=completed.pk)
+        self.assertCountEqual([revision.entity_type for revision in related], children)
+        for revision in related:
+            before, counts = capture_project_state(self.project), self.history_counts()
+            self.assert_refusal_is_atomic(self.restore(revision), before, counts)
+
+    def test_field_duplicate_restores_the_complete_structure(self) -> None:
+        location = self.write('create location', 'post', '/locations/', {'name': 'North'})
+        field = self.write('create field', 'post', '/fields/', {
+            'name': 'North field', 'location': location['id'], 'length_m': 24, 'width_m': 10,
+            'light_condition': 'shade', 'cultivation_environment': 'greenhouse',
+        })
+        self.write('create first bed', 'post', '/beds/', {
+            'name': 'North 1', 'field': field['id'], 'length_m': 12, 'width_m': 1.5,
+        })
+        self.write('create second bed', 'post', '/beds/', {
+            'name': 'North 2', 'field': field['id'], 'area_sqm': 8,
+            'irrigation': 'available',
+        })
+        before = self.versions[-1]
+        path = f"/fields/{field['id']}/duplicate/"
+        counts = self.history_counts()
+        rejected = self.client.post(f'{API}{path}', {
+            'name': 'South field', 'replace_search': '2', 'replace_with': '1',
+        }, format='json')
+        self.assertEqual(rejected.json()['code'], 'bed_names_conflict')
+        self.assert_refusal_is_atomic(rejected.status_code, before.state, counts)
+
+        copy = self.write('duplicate field', 'post', path, {
+            'name': 'South field', 'replace_search': 'North', 'replace_with': 'South',
+        })
+        self.assert_completed_action(before.revision, 'field', ['bed', 'bed'])
+        after = self.versions[-1].state
+        copied_id = copy['field']['id']
+        self.assertEqual(after['field'][str(copied_id)]['light_condition'], 'shade')
+        copied_beds = [row for row in after['bed'].values() if row['field_id'] == copied_id]
+        self.assertCountEqual([row['name'] for row in copied_beds], ['South 1', 'South 2'])
+        self.write('rename the first copied bed', 'patch', f"/beds/{copy['beds'][0]['id']}/", {
+            'name': 'First copy renamed',
+        })
+        self.round_trip_every_version()
+
+    def test_supplier_unlink_undo_restores_complete_versions_after_a_crop_edit(self) -> None:
+        supplier = self.write('create supplier', 'post', '/suppliers/', {'name': 'Seed nursery'})
+        supplier_id = supplier['id']
+        crop = self.write('create crop and offer', 'post', '/crops/', {
+            'name': 'Lettuce', 'supplier_id': supplier_id,
+            'selected_seed_demand_supplier': supplier_id,
+            'supplier_data_input': [{
+                'supplier_id': supplier_id, 'seed_status': 'conventional',
+                'seed_exemption_status': 'approved', 'price': '4.25',
+            }],
+        })
+        before = self.versions[-1].revision
+        result = self.write('unlink and delete supplier', 'post',
+                            f'/suppliers/{supplier_id}/unlink-and-delete/')
+        self.assert_completed_action(before, 'supplier', ['crop', 'crop_supplier_data'])
+        crop_path = f"/crops/{crop['id']}/"
+        self.write('edit crop while unlinked', 'patch', crop_path, {'notes': 'Keep the edit'})
+        before_undo = self.versions[-1].revision
+        self.write('undo supplier unlink', 'post', '/suppliers/restore-unlinked-delete/',
+                   result['undo_payload'])
+        self.assert_completed_action(before_undo, 'supplier', ['crop', 'crop_supplier_data'])
+        after = self.versions[-1].state
+        offer_id = result['undo_payload']['supplier_data'][0]['id']
+        self.assertEqual(after['crop_supplier_data'][str(offer_id)]['price'], '4.25')
+        restored_crop = after['crop'][str(crop['id'])]
+        self.assertEqual(restored_crop['selected_seed_demand_supplier_id'], supplier_id)
+        self.assertEqual(after['crop'][str(crop['id'])]['notes'], 'Keep the edit')
+        self.write('rename restored supplier', 'patch', f'/suppliers/{supplier_id}/', {
+            'name': 'New name',
+        })
+        self.round_trip_every_version()
+
+
+class SeasonTaskDeletionHistoryTests(HistoryInvariantTestCase):
+    def test_generated_task_tombstones_survive_full_restore_and_batch_redo(self) -> None:
+        season = self.write('create season', 'post', '/seasons/', {
+            'start_date': '2026-01-01', 'end_date': '2026-12-31',
+        })
+        other = self.write('create other season', 'post', '/seasons/', {
+            'start_date': '2027-01-01', 'end_date': '2027-12-31',
+        })
+        other_task = self.write('unrelated work', 'post', '/tasks/', {
+            'season': other['id'], 'title': 'Next year', 'status': 'in_progress',
+        })
+        self.client.defaults['HTTP_X_SEASON_ID'] = str(season['id'])
+        crop = self.write('create crop', 'post', '/crops/', {
+            'name': 'Lettuce', 'growth_duration_days': 40,
+        })
+        template = self.write('create recurring rule', 'post', '/crop-task-templates/', {
+            'crop': crop['id'], 'title': 'Check soil', 'reference_event': 'planting',
+            'repeat_interval_days': 7, 'repeat_until': 'count', 'repeat_count': 3,
+        })
+        plan = self.write('create plan', 'post', '/planting-plans/', {
+            'crop': crop['id'], 'season': season['id'], 'planting_date': '2026-04-07',
+            'cultivation_type': 'pre_cultivation',
+        })
+        manual = self.write('create linked manual task', 'post', '/tasks/', {
+            'title': 'Manual check', 'planting_plan': plan['id'], 'status': 'completed',
+        })
+        first, second, third = Task.objects.filter(
+            project=self.project, template_id=template['id'],
+        ).order_by('occurrence_index')
+        self.write('complete occurrence', 'patch', f'/tasks/{first.pk}/', {'status': 'completed'})
+        self.write('override occurrence', 'patch', f'/tasks/{second.pk}/', {'due_date': None})
+        self.write('remove occurrence', 'delete', f'/tasks/{third.pk}/')
+        before = self.versions[-1]
+        path = f"/seasons/{season['id']}/"
+
+        self.write('delete season', 'delete', path)
+        deleted = self.versions[-1]
+        self.assertEqual(deleted.revision.entity_type, 'season')
+        child = deleted.revision.batch_operation.revisions.get(
+            entity_type='task', object_id=first.pk,
+        )
+        counts = self.history_counts()
+        self.assert_refusal_is_atomic(self.restore(child), deleted.state, counts)
+        self.assertNotIn(str(manual['id']), deleted.state['task'])
+        self.assertNotIn(str(plan['id']), deleted.state['planting_plan'])
+        unrelated_id = str(other_task['id'])
+        self.assertEqual(deleted.state['task'][unrelated_id], before.state['task'][unrelated_id])
+        protected_fields = (
+            'source_key', 'occurrence_index', 'status', 'due_date', 'due_date_overridden',
+        )
+        for task in (first, second, third):
+            original = before.state['task'][str(task.pk)]
+            tombstone = deleted.state['task'][str(task.pk)]
+            self.assertIsNone(tombstone['planting_plan_id'])
+            self.assertIsNotNone(tombstone['deleted_at'])
+            for field in protected_fields:
+                self.assertEqual(tombstone[field], original[field])
+        self.assertEqual(
+            deleted.state['task'][str(third.pk)]['deleted_at'],
+            before.state['task'][str(third.pk)]['deleted_at'],
+        )
+
+        self.write('later edit', 'post', '/locations/', {'name': 'After deletion'})
+        self.assertEqual(self.restore(before.revision), 200)
+        self.assert_state(before.state, 'restore before the deletion')
+        self.assertEqual(self.restore(deleted.revision), 200)
+        self.assert_state(deleted.state, 'restore the completed deletion')
+        self.assertEqual(self.restore(self.latest_backup()), 200)
+        self.assert_state(before.state, 'undo restoring the deleted version')
+
+        self.write('delete the restored season again', 'delete', path)
+        second_deletion = self.versions[-1]
+        batch = second_deletion.revision.batch_operation
+        self.write('undo the deletion batch', 'post', f'/history/batch/{batch.pk}/revert/')
+        tasks = Task.objects.filter(project=self.project, planting_plan_id=plan['id'])
+        self.assertCountEqual(
+            tasks.filter(template_id=template['id']).values_list('pk', flat=True),
+            [first.pk, second.pk, third.pk],
+        )
+        self.assertEqual(tasks.get(pk=first.pk).status, 'completed')
+        self.assertTrue(tasks.get(pk=second.pk).due_date_overridden)
+        self.assertIsNotNone(tasks.get(pk=third.pk).deleted_at)
+        self.assertTrue(tasks.filter(pk=manual['id']).exists())
+        revert = self.versions[-1].revision.batch_operation
+        self.write('redo the deletion batch', 'post', f'/history/batch/{revert.pk}/revert/')
+        self.assert_state(second_deletion.state, 'redo the complete deletion')
+
+
+class ProjectRestorePreviewTests(HistoryInvariantTestCase):
+    def preview(self, revision: EntityRevision):
+        return self.client.get(RESTORE_PREVIEW_URL, {'history_id': revision.pk})
+
+    def confirm(self, revision: EntityRevision, token: str):
+        return self.client.post(
+            RESTORE_URL, {'history_id': revision.pk, 'preview_token': token}, format='json',
+        )
+
+    def test_preview_counts_named_scope_and_exact_restore_are_read_only_until_confirmed(self):
+        location = self.write('location', 'post', '/locations/', {'name': 'North'})
+        field = self.write('field', 'post', '/fields/', {
+            'name': 'Courtyard', 'location': location['id'],
+        })
+        bed = self.write('bed', 'post', '/beds/', {
+            'name': 'Bed One', 'field': field['id'], 'area_sqm': 12,
+        })
+        season = self.write('season', 'post', '/seasons/', {
+            'start_date': '2026-03-01', 'end_date': '2027-02-28',
+        })
+        crop = self.write('general crop', 'post', '/crops/', {'name': 'Tomato'})
+        variety = self.write('variety', 'post', '/crops/', {'name': 'Tomato', 'variety': 'Roma'})
+        self.write('planting plan', 'post', '/planting-plans/', {
+            'crop': crop['id'], 'bed': bed['id'], 'season': season['id'],
+            'planting_date': '2026-05-01', 'area_usage_sqm': 4,
+        })
+        historical = self.versions[-1]
+        self.write('delete variety', 'delete', f"/crops/{variety['id']}/")
+        self.write('edit general crop', 'patch', f"/crops/{crop['id']}/", {'notes': 'New notes'})
+        self.write('delete growing area', 'delete', f"/locations/{location['id']}/")
+        for index in range(7):
+            self.write('add later crop', 'post', '/crops/', {'name': f'Later crop {index}'})
+        before, counts = capture_project_state(self.project), self.history_counts()
+
+        response = self.preview(historical.revision)
+        self.assertEqual(response.status_code, 200, response.json())
+        self.assertIn('no-store', response['Cache-Control'])
+        payload = response.json()
+        impact = {row['category']: row for row in payload['impact']}
+        self.assertEqual(set(impact), {
+            'crops', 'varieties', 'planting_plans', 'locations', 'fields', 'beds', 'other',
+        })
+        self.assertEqual(impact['crops']['removed'], {
+            'count': 7, 'names': [f'Later crop {index}' for index in range(5)],
+        })
+        self.assertEqual(impact['crops']['changed'], {'count': 1, 'names': ['Tomato']})
+        self.assertEqual(impact['varieties']['restored'], {
+            'count': 1, 'names': ['Tomato (Roma)'],
+        })
+        self.assertEqual(impact['planting_plans']['restored'], {
+            'count': 1, 'names': ['Tomato · Bed One'],
+        })
+        self.assertEqual(impact['locations']['restored'], {'count': 1, 'names': ['North']})
+        self.assertEqual(impact['fields']['restored'], {'count': 1, 'names': ['Courtyard']})
+        self.assertEqual(impact['beds']['restored'], {'count': 1, 'names': ['Bed One']})
+        self.assertEqual(impact['other']['changed'], {'count': 1, 'names': []})
+        self.assertEqual(impact['crops']['restored'], {'count': 0, 'names': []})
+        self.assertEqual(capture_project_state(self.project), before)
+        self.assertEqual(self.history_counts(), counts)
+
+        response = self.confirm(historical.revision, payload['token'])
+        self.assertEqual(response.status_code, 200, response.json())
+        self.assert_state(historical.state, 'preview should describe the exact resulting state')
+        self.assertEqual(self.latest_backup().snapshot[CHECKPOINT_KEY], before)
+
+    def test_layout_changes_count_as_changed_growing_areas_once(self):
+        location = self.write('location', 'post', '/locations/', {'name': 'West'})
+        field = self.write('field', 'post', '/fields/', {
+            'name': 'Small field', 'location': location['id'],
+        })
+        bed = self.write('bed', 'post', '/beds/', {
+            'name': 'Small bed', 'field': field['id'], 'area_sqm': 12,
+        })
+        layouts_url = f"/locations/{location['id']}/layouts/"
+        for coordinate in (2, 6):
+            self.write('configure layouts', 'put', layouts_url, {
+                'bed_layouts': [{'bed': bed['id'], 'x': coordinate, 'y': 1}],
+                'field_layouts': [{'field': field['id'], 'x': 1, 'y': coordinate}],
+            })
+        historical = self.versions[-2]
+        self.write('rename bed too', 'patch', f"/beds/{bed['id']}/", {'name': 'Renamed bed'})
+        response = self.preview(historical.revision)
+        self.assertEqual(response.status_code, 200, response.json())
+        impact = {row['category']: row for row in response.json()['impact']}
+        self.assertEqual(set(impact), {'fields', 'beds'})
+        self.assertEqual(impact['fields']['changed'], {'count': 1, 'names': ['Small field']})
+        self.assertEqual(impact['beds']['changed'], {'count': 1, 'names': ['Small bed']})
+        confirmed = self.confirm(historical.revision, response.json()['token'])
+        self.assertEqual(confirmed.status_code, 200, confirmed.json())
+        self.assert_state(historical.state, 'restore should match previewed layout positions')
+
+    def test_unsampled_intervening_edit_rejects_confirmation_until_previewed_again(self):
+        self.write('target crop', 'post', '/crops/', {'name': 'Baseline'})
+        target = self.versions[-1].revision
+        for index in range(6):
+            outside_sample = self.write('extra crop', 'post', '/crops/', {'name': f'Extra {index}'})
+        first_preview = self.preview(target).json()
+        self.write('edit outside the sample', 'patch', f"/crops/{outside_sample['id']}/", {
+            'notes': 'Save this unless newly confirmed',
+        })
+        before, counts = capture_project_state(self.project), self.history_counts()
+
+        response = self.confirm(target, first_preview['token'])
+        self.assertEqual(response.json()['code'], 'project_restore_preview_changed')
+        self.assert_refusal_is_atomic(response.status_code, before, counts)
+        self.assert_refusal_is_atomic(self.confirm(target, 'invalid').status_code, before, counts)
+        fresh_preview = self.preview(target).json()
+        self.assertEqual(fresh_preview['impact'], first_preview['impact'])
+        self.assertNotEqual(fresh_preview['token'], first_preview['token'])
+        self.assertEqual(self.confirm(target, fresh_preview['token']).status_code, 200)
+
+    def test_no_active_changes_preview_is_distinct_from_an_incomplete_target(self):
+        crop = self.write('baseline', 'post', '/crops/', {'name': 'Chard'})
+        complete = self.versions[-1].revision
+        self.write('temporary edit', 'patch', f"/crops/{crop['id']}/", {'notes': 'Temporary'})
+        self.write('reverse edit', 'patch', f"/crops/{crop['id']}/", {'notes': ''})
+        response = self.preview(complete)
+        self.assertEqual(response.status_code, 200, response.json())
+        self.assertEqual(response.json()['impact'], [])
+
+        Location.objects.create(project=self.project, name='Untracked legacy location')
+        chard = Crop.objects.get(pk=crop['id'])
+        chard.notes = 'Target'
+        chard.save()
+        incomplete = latest_selectable_revision(self.project)
+        chard.notes = 'Current'
+        chard.save()
+        before, counts = capture_project_state(self.project), self.history_counts()
+        response = self.preview(incomplete)
+        self.assertEqual(response.json()['code'], 'project_restore_conflict')
+        self.assertNotIn('impact', response.json())
+        self.assertNotIn('token', response.json())
+        self.assert_refusal_is_atomic(response.status_code, before, counts)
+
+    def test_preview_and_token_use_project_admin_scope_and_selected_revision(self):
+        self.write('first version', 'post', '/crops/', {'name': 'First crop'})
+        first = self.versions[-1].revision
+        self.write('second version', 'post', '/crops/', {'name': 'Second crop'})
+        second = self.versions[-1].revision
+        self.write('third version', 'post', '/crops/', {'name': 'Third crop'})
+        token = self.preview(first).json()['token']
+        before, counts = capture_project_state(self.project), self.history_counts()
+        self.assert_refusal_is_atomic(self.confirm(second, token).status_code, before, counts)
+
+        other = Project.objects.create(name='Other project', slug='other-preview-project')
+        ProjectMembership.objects.create(user=self.user, project=other, role='admin')
+        self.client.defaults['HTTP_X_PROJECT_ID'] = str(other.pk)
+        self.assertEqual(self.preview(first).status_code, 404)
+        self.assertEqual(self.confirm(first, token).status_code, 404)
+
+        self.client.defaults['HTTP_X_PROJECT_ID'] = str(self.project.pk)
+        ProjectMembership.objects.filter(user=self.user, project=self.project).update(role='member')
+        self.assertEqual(self.preview(first).status_code, 403)
+        self.assertEqual(self.confirm(first, token).status_code, 403)
+        self.assertEqual(capture_project_state(self.project), before)
+        self.assertEqual(self.history_counts(), counts)
+
+    def test_oversized_projects_are_refused_before_capture_without_changes(self):
+        self.write('first crop', 'post', '/crops/', {'name': 'First crop'})
+        historical = self.versions[-1].revision
+        self.write('second crop', 'post', '/crops/', {'name': 'Second crop'})
+        token = self.preview(historical).json()['token']
+        before, counts = capture_project_state(self.project), self.history_counts()
+        for limit in ('MAX_PREVIEW_REVISIONS', 'MAX_PREVIEW_HISTORY_BYTES', 'MAX_PREVIEW_ROWS'):
+            with (
+                self.subTest(limit=limit),
+                patch(f'farm.history.project_restore.{limit}', 1),
+                patch('farm.history.project_restore.capture_project_state') as capture,
+            ):
+                response = self.preview(historical)
+                self.assertEqual(response.status_code, 409, response.json())
+                self.assertEqual(response.json()['code'], 'project_restore_preview_too_large')
+                self.assertNotIn('impact', response.json())
+                self.assertNotIn('token', response.json())
+                refused_restore = self.confirm(historical, token)
+                self.assertEqual(refused_restore.status_code, 409, refused_restore.json())
+                self.assertEqual(
+                    refused_restore.json()['code'], 'project_restore_preview_too_large',
+                )
+                capture.assert_not_called()
+            self.assert_refusal_is_atomic(response.status_code, before, counts)
+
+    def test_preview_limits_historical_storage_checks(self):
+        image = self.write('upload', 'post', '/media-files/upload/', {'file': _png('preview.png')},
+                           multipart=True)
+        crop = self.write('add crop', 'post', '/crops/', {
+            'name': 'Picture crop', 'image_file_id': image['id'],
+        })
+        historical = self.versions[-1].revision
+        self.write('detach photo', 'patch', f"/crops/{crop['id']}/", {'image_file_id': None})
+        before, counts = capture_project_state(self.project), self.history_counts()
+        with (
+            patch('farm.history.project_restore.MAX_PREVIEW_STORAGE_CHECKS', 0),
+            patch('farm.history.project_restore.default_storage.exists') as exists,
+        ):
+            response = self.preview(historical)
+            self.assertEqual(response.status_code, 409, response.json())
+            self.assertEqual(response.json()['code'], 'project_restore_preview_too_large')
+            exists.assert_not_called()
+        self.assert_refusal_is_atomic(response.status_code, before, counts)
+
+    def test_preview_requests_are_rate_limited_independently_by_user_and_ip(self):
+        self.write('first crop', 'post', '/crops/', {'name': 'First crop'})
+        target = self.versions[-1].revision
+        self.write('second crop', 'post', '/crops/', {'name': 'Second crop'})
+        another_admin = get_user_model().objects.create_user(username='preview-admin')
+        ProjectMembership.objects.create(user=another_admin, project=self.project, role='admin')
+        before, counts = capture_project_state(self.project), self.history_counts()
+
+        def preview_as(user, ip):
+            self.client.force_authenticate(user=user)
+            return self.client.get(RESTORE_PREVIEW_URL, {'history_id': target.pk}, REMOTE_ADDR=ip)
+
+        for throttle in (ProjectRestorePreviewUserThrottle, ProjectRestorePreviewIpThrottle):
+            scope = f'test_preview_{uuid4().hex}'
+            with (
+                self.subTest(throttle=throttle.__name__),
+                patch.object(throttle, 'scope', scope),
+                patch.object(throttle, 'THROTTLE_RATES', {scope: '1/minute'}),
+            ):
+                self.assertEqual(preview_as(self.user, '192.0.2.1').status_code, 200)
+                if throttle is ProjectRestorePreviewUserThrottle:
+                    response = preview_as(self.user, '192.0.2.2')
+                else:
+                    response = preview_as(another_admin, '192.0.2.1')
+                self.assertEqual(response.status_code, 429, response.json())
+                self.assertIn('Retry-After', response)
+                self.assertEqual(capture_project_state(self.project), before)
+                self.assertEqual(self.history_counts(), counts)
 
 
 class HistoryRoundTripScenarioTests(HistoryInvariantTestCase):

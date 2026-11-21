@@ -151,6 +151,26 @@
       "done": "Anbauplan vorhanden"
     }
   },
+  "capacity": {
+    "show": "Freie Flächen anzeigen",
+    "details": "Flächenverfügbarkeit für {{bed}}",
+    "estimate": "Schätzung anhand der Beetfläche und der geplanten Belegungszeiträume.",
+    "available": "{{free}} m² frei von {{total}} m² · {{used}} m² belegt",
+    "overallocated": "Beetfläche überschritten. {{used}} m² belegt bei {{total}} m² Beetfläche.",
+    "minimumOverallocated": "Beetfläche überschritten. Mindestens {{used}} m² belegt bei {{total}} m² Beetfläche.",
+    "used": "{{used}} m² belegt",
+    "minimumUsed": "Mindestens {{used}} m² belegt",
+    "total": "{{total}} m² Beetfläche",
+    "unknownBed": "Beetfläche unbekannt",
+    "incomplete": "Freie Fläche unbekannt · {{total}} · {{used}}",
+    "status": {
+      "free": "Ganz frei",
+      "partial": "Teilweise frei",
+      "occupied": "Voll belegt",
+      "unknown": "Unbekannt",
+      "overallocated": "Fläche überschritten"
+    }
+  },
   "emptyStates": {
     "requirementsTitle": "Noch keine Anbauplanung möglich",
     "requirementsDescription": "Öffne die Anbauflächen und füge dort eine Parzelle beim passenden Standort hinzu. Danach kannst du Beete, Kulturen und Anbaupläne erfassen.",
@@ -160,11 +180,16 @@
         "description": "Lege jetzt deine erste Kultur an oder importiere eine Kultur aus der Kulturbibliothek. Danach kannst du Anbaupläne erstellen."
       },
       "plans": {
-        "title": "Noch keine Anbaupläne vorhanden",
-        "description": "Für die vorhandenen Anbauflächen wurden noch keine Anbaupläne erstellt. Lege einen Anbauplan an, um Kulturen und Termine im Anbaukalender darzustellen."
+        "title": "Noch keine Anbaupläne für diese Saison",
+        "description": "Füge einen Anbauplan hinzu, um Kulturen und Termine im Anbaukalender zu sehen."
+      },
+      "selectSeason": {
+        "title": "Keine Saison ausgewählt",
+        "description": "Wähle eine Saison, um ihre Anbaupläne im Kalender zu sehen."
       }
     },
     "actions": {
+      "selectSeason": "Saison auswählen",
       "createCrop": "Kultur hinzufügen",
       "createField": "Parzelle hinzufügen",
       "createAreas": "Zu Anbauflächen",

@@ -1,9 +1,8 @@
 {
   "title": "Crops",
-  "searchPlaceholder": "Search crop",
+  "searchPlaceholder": "Search crops",
   "searchInputPlaceholder": "Enter crop name...",
   "noOptions": "No crops found",
-  "searchInputPlaceholderEnhanced": "Search by crop name (e.g. carrot)",
   "searchHelperText_one": "{{count}} crop found. Use the filters to narrow it down further.",
   "searchHelperText_other": "{{count}} crops found. Use the filters to narrow it down further.",
   "clearSearch": "Clear search",
@@ -1039,7 +1038,7 @@
         }
       }
     },
-    "searchLabel": "Search public crops",
+    "searchLabel": "Search crops",
     "selectPrompt": "Select a public crop to see its details and import it.",
     "empty": "No public crops found.",
     "emptyState": {
@@ -1783,14 +1782,101 @@
       "next": "next, crop"
     }
   },
+  "bulkDelete": {
+    "menu": "Crop actions",
+    "allAction": "Delete all project crops",
+    "title": "Delete selected crops",
+    "scopeAll": "This includes all active crops in this project, even those hidden by filters.",
+    "scopeSelected": "Review the selected crops and any varieties included with them.",
+    "trashNotice": "The crops move to trash with their seed data. Shared library entries stay in place.",
+    "deleteVarieties": "Delete varieties too",
+    "confirmAll": "I confirm deletion of every active crop in this project.",
+    "showCrops": "Show affected crops",
+    "empty": "There are no active crops in this selection.",
+    "missing": "Some selected crops are no longer available. Update the selection before trying again.",
+    "outcomeUnknown": "The result is unavailable. Retry this same request to check whether it succeeded.",
+    "retry": "Retry deletion",
+    "confirm": "Move to trash",
+    "recovered": "Archived crops restored.",
+    "recoveryFailed": "The archived crops could not be restored together.",
+    "archived_one": "{{count}} crop moved to trash",
+    "archived_other": "{{count}} crops moved to trash",
+    "recoveredCount_one": "{{count}} crop restored from trash",
+    "recoveredCount_other": "{{count}} crops restored from trash",
+    "counts": {
+      "selected": "Selected records",
+      "affected": "Affected records",
+      "general": "General crops",
+      "varieties": "Varieties",
+      "additional": "Added from crop groups",
+      "plans": "Referencing planting plans",
+      "packages": "Seed packages",
+      "offers": "Supplier offers",
+      "blocked": "Blocked records",
+      "missing": "Unavailable selections",
+      "skipped": "Skipped records",
+      "failed": "Failed records"
+    },
+    "blockers": {
+      "varieties_required": "These varieties need their general crop. Include them to delete this group.",
+      "ambiguous_group": "This group has multiple general crops. Resolve the group before deleting it.",
+      "planting_plans": "Planting plans reference these crops. Change those plans before deleting them."
+    },
+    "origin": {
+      "label": "Crop origin",
+      "manual": "Created manually",
+      "file_import": "Imported from a file",
+      "library_import": "Imported from the crop library",
+      "unknown": "Unknown or legacy origin"
+    },
+    "errors": {
+      "unavailable": "The preview is unavailable. Try again.",
+      "changed": "The selection or project changed. Check a fresh preview.",
+      "limit": "This selection is too large. Select fewer crops at a time.",
+      "throttled": "Too many requests. Wait a moment and try again.",
+      "writeFailed": "The crop batch could not be archived. Your crops are still in the project."
+    }
+  },
   "restoreDialog": {
     "title": "Restore version?",
     "batchDescription": "This action and all related changes will be undone.",
-    "versionDescription": "Restore the whole project to this version. All later changes will be undone, including removing crops and beds created afterward.",
+    "versionDescription": "This rolls back the entire project to this version and reverses all later changes.",
     "batchNotice": "The previous state will be restored. The action remains in the history and can be performed again.",
-    "versionNotice": "The current version is retained. A new version is created automatically before restoring, so you can switch back at any time.",
+    "versionNotice": "Before restoring, the current project state is automatically saved in version history.",
     "cancel": "Cancel",
-    "confirm": "Restore version"
+    "confirm": "Restore version",
+    "preview": {
+      "title": "Changes in this restore",
+      "counting": "Counts show individual active records. General crops and varieties are counted separately.",
+      "unchanged": "This version has no differences in active project records.",
+      "loading": "Checking what will change…",
+      "unavailable": "The preview is unavailable. Refresh it to check the project again.",
+      "conflict": "This version can’t be restored safely. Choose another version or refresh the preview to check again.",
+      "stale": "The project or selected version changed. Refresh the preview and review the changes before restoring.",
+      "too_large": "This project exceeds the size limit for a restore preview. Contact support for help.",
+      "throttled": "Too many preview requests. Wait a moment and refresh the preview.",
+      "refresh": "Refresh preview",
+      "restoring": "Restoring…",
+      "scope": "Accounts, project memberships and the shared crop library are outside the restore.",
+      "sample": "Showing {{shown}} of {{total}}",
+      "categories": {
+        "crops": "General crops",
+        "varieties": "Varieties",
+        "planting_plans": "Planting plans",
+        "locations": "Locations",
+        "fields": "Fields",
+        "beds": "Beds",
+        "other": "Other project records"
+      },
+      "actions": {
+        "removed_one": "{{count}} removed",
+        "removed_other": "{{count}} removed",
+        "restored_one": "{{count}} restored",
+        "restored_other": "{{count}} restored",
+        "changed_one": "{{count}} changed",
+        "changed_other": "{{count}} changed"
+      }
+    }
   },
   "disabledReasons": {
     "requiredSpeciesNames": "Enter a name in every required language first.",

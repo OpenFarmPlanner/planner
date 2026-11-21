@@ -31,7 +31,7 @@ async function seedPlans(page: Page, request: APIRequestContext, scenario: strin
     const projectId = window.localStorage.getItem('activeProjectId');
     window.localStorage.setItem(`activeSeasonId:${projectId}`, String(seasonId));
   }, season.id);
-  return { bed, crop, noBed, oldPlan, plan };
+  return { bed, crop, noBed, oldPlan, plan, season };
 }
 
 test('desktop details preserve the table, restoring row focus on Escape, Close and Back', async ({ page, request }) => {
@@ -93,6 +93,30 @@ test('desktop details preserve the table, restoring row focus on Escape, Close a
   await page.getByRole('button', { name: 'Verwerfen', exact: true }).click();
   await expect(drawer.getByRole('heading', { name: cropName })).toBeVisible();
 
+  const detailUrl = page.url();
+  const addTask = drawer.getByRole('button', { name: 'Aufgabe hinzufügen' });
+  const taskForm = page.getByRole('dialog', { name: 'Aufgabe hinzufügen' });
+  await addTask.focus();
+  await addTask.press('Enter');
+  const taskTitle = taskForm.getByRole('textbox', { name: 'Titel' });
+  await expect(taskTitle).toBeFocused();
+  await taskTitle.fill('Nicht gespeicherter Entwurf');
+  await taskTitle.press('Escape');
+  await expect(taskForm).toHaveCount(0);
+  await expect(addTask).toBeFocused();
+  await expect(page).toHaveURL(detailUrl);
+  await addTask.press('Enter');
+  await expect(taskTitle).toHaveValue('');
+  await taskForm.getByRole('button', { name: 'Abbrechen' }).click();
+  await expect(addTask).toBeFocused();
+  await expect(page).toHaveURL(detailUrl);
+  await addTask.press('Enter');
+  await taskTitle.fill('Aufgabe in der Seitenleiste');
+  await taskForm.getByRole('button', { name: 'Speichern' }).click();
+  await expect(drawer.getByText('Aufgabe in der Seitenleiste', { exact: true })).toBeVisible();
+  await expect(addTask).toBeFocused();
+  await expect(page).toHaveURL(detailUrl);
+
   await page.keyboard.press('Escape');
   await expect(drawer).toHaveCount(0);
   await expect(menuButton).toBeFocused();
@@ -135,7 +159,10 @@ test('desktop details preserve the table, restoring row focus on Escape, Close a
 
 test('direct links retain the original season and reuse the notes, task and area workflows', async ({ page, request }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  const { plan, bed, oldPlan } = await seedPlans(page, request, 'plan-details-direct');
+  const { plan, bed, crop, oldPlan, season } = await seedPlans(page, request, 'plan-details-direct');
+  const existingTask = 'Bestehende Aufgabe für diesen Anbauplan';
+  const newTask = 'Neue Aufgabe für diesen Anbauplan';
+  await apiRequest(page, 'POST', '/tasks/', { title: existingTask, planting_plan: plan.id, season: season.id });
   await page.goto(`${table}/${plan.id}`);
   await expect(page.getByRole('heading', { name: cropName })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -161,14 +188,26 @@ test('direct links retain the original season and reuse the notes, task and area
   await page.getByRole('button', { name: 'Speichern', exact: true }).click();
   await expect(page.getByText('Neue Notiz für diesen Anbauplan', { exact: true })).toBeVisible();
 
-  await page.getByRole('link', { name: 'Aufgabe hinzufügen' }).click();
+  await expect(page.getByText(existingTask, { exact: true })).toBeVisible();
+  const detailUrl = page.url();
+  await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click();
   const createTask = page.getByRole('dialog', { name: 'Aufgabe hinzufügen' });
-  await expect(createTask.getByRole('combobox', { name: 'Anbauplan (optional)' })).toContainText(cropName);
-  await createTask.getByRole('textbox', { name: 'Titel' }).fill('Neue Aufgabe für diesen Anbauplan');
+  await expect(page).toHaveURL(detailUrl);
+  await expect(createTask.getByRole('textbox', { name: 'Anbauplan', exact: true })).toHaveValue(/^Details-Kohl \(Sorte Grün\) · Details-Beet/);
+  await expect(createTask.getByRole('textbox', { name: 'Parzelle' })).toHaveValue('Details-Parzelle');
+  await expect(createTask.getByRole('textbox', { name: 'Saison' })).toHaveValue('Saison für Details');
+  await createTask.getByRole('textbox', { name: 'Titel' }).fill(newTask);
   await createTask.getByRole('button', { name: 'Speichern', exact: true }).click();
   await expect(createTask).toHaveCount(0);
-  await page.goBack();
-  await expect(page.getByText('Neue Aufgabe für diesen Anbauplan', { exact: true })).toBeVisible();
+  await expect(page).toHaveURL(detailUrl);
+  await expect(page.getByText(newTask, { exact: true })).toBeVisible();
+  await expect(page.getByText(existingTask, { exact: true })).toBeVisible();
+  const { results } = await apiRequest<{ results: { title: string; planting_plan: number; season: number; crop: number; field: number | null }[] }>(
+    page, 'GET', `/tasks/?planting_plan=${plan.id}&across_seasons=true`,
+  );
+  expect(results.filter(task => task.title === newTask)).toEqual([
+    expect.objectContaining({ planting_plan: plan.id, season: season.id, crop: crop.id, field: null }),
+  ]);
 
   await page.goto(`${table}/${oldPlan.id}`);
   await expect(page.getByText('Vorjahr', { exact: true })).toBeVisible();
@@ -176,10 +215,32 @@ test('direct links retain the original season and reuse the notes, task and area
   await expect(page.getByText('Historische Aufgabe', { exact: true })).toBeVisible();
   await expect(page.getByText('Fläche (m²)', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Notizen und Fotos bearbeiten' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Aufgabe hinzufügen' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Ursprüngliche Saison öffnen' }).click();
   await expect(page.getByRole('button', { name: 'Notizen und Fotos bearbeiten' })).toBeVisible();
   await page.getByRole('button', { name: 'Zurück zur Tabelle' }).click();
   await expect(page).toHaveURL(new RegExp(`${table}$`));
+});
+
+test('a plan whose crop was archived still accepts a linked task', async ({ page, request }) => {
+  const { crop, plan, season } = await seedPlans(page, request, 'plan-details-archived-crop-task');
+  await apiRequest(page, 'DELETE', `/crops/${crop.id}/`);
+  await page.goto(`${table}/${plan.id}`);
+  await expect(page.getByRole('heading', { name: cropName })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Zur Kultur' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Aufgabe hinzufügen' });
+  const title = 'Beet nach archivierter Kultur prüfen';
+  await dialog.getByRole('textbox', { name: 'Titel' }).fill(title);
+  const saved = page.waitForResponse(response => response.url().endsWith('/api/tasks/') && response.request().method() === 'POST');
+  await dialog.getByRole('button', { name: 'Speichern' }).click();
+  expect((await saved).status()).toBe(201);
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByText(title, { exact: true })).toBeVisible();
+  const { results } = await apiRequest<{ results: { title: string; season: number; planting_plan: number; crop: number | null }[] }>(
+    page, 'GET', `/tasks/?planting_plan=${plan.id}&across_seasons=true`,
+  );
+  expect(results.find(task => task.title === title)).toMatchObject({ season: season.id, planting_plan: plan.id, crop: null });
 });
 
 test('opening details keeps an edit visible if the grid cannot save it', async ({ page, request }) => {
@@ -220,6 +281,38 @@ test('opening details keeps an edit visible if the grid cannot save it', async (
 
 test.describe('touch details', () => {
   test.use({ hasTouch: true, viewport: { width: 375, height: 800 } });
+
+  test('keeps the task draft after a failed save and retries from the direct detail page', async ({ page, request }) => {
+    const { plan } = await seedPlans(page, request, 'plan-details-task-touch');
+    await page.goto(`${table}/${plan.id}`);
+    await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).tap();
+    const dialog = page.getByRole('dialog', { name: 'Aufgabe hinzufügen' });
+    const planLabel = dialog.getByRole('textbox', { name: 'Anbauplan', exact: true });
+    await expect(planLabel).toHaveValue(/Details-Kohl \(Sorte Grün\) · Details-Beet/);
+    await expect.poll(() => planLabel.evaluate(el => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);
+    const title = dialog.getByRole('textbox', { name: 'Titel' });
+    const description = dialog.getByRole('textbox', { name: 'Beschreibung' });
+    const save = dialog.getByRole('button', { name: 'Speichern' });
+    await title.fill('   ');
+    await expect(save).toBeDisabled();
+    await title.fill('Mobile Aufgabe');
+    await description.fill('Vor der Ernte prüfen');
+
+    const path = '**/api/tasks/';
+    await page.route(path, route => route.request().method() === 'POST'
+      ? route.fulfill({ status: 400, json: { detail: 'Test write rejected' } }) : route.continue());
+    await save.tap();
+    await expect(dialog.getByRole('alert')).toContainText('Die Aufgabe konnte nicht gespeichert werden');
+    await expect(title).toHaveValue('Mobile Aufgabe');
+    await expect(description).toHaveValue('Vor der Ernte prüfen');
+    await expect(page).toHaveURL(new RegExp(`${table}/${plan.id}$`));
+
+    await page.unroute(path);
+    await save.tap();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByText('Mobile Aufgabe', { exact: true })).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`${table}/${plan.id}$`));
+  });
 
   test('uses the same three named actions and opens a full page', async ({ page, request }) => {
     const { noBed, crop, bed } = await seedPlans(page, request, 'plan-details-touch');

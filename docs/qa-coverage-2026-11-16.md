@@ -120,6 +120,197 @@ Result: **PASS** for the requested import/relink/full-restore acceptance case.
 No new functional defect was found in this scope. This run does not certify
 other import formats, selective undo, concurrency or the rest of the app.
 
+## Targeted localhost acceptance — 2026-11-20, #1087 / #1283
+
+Tested main `b8b45bb615f5bb715029a17b22fdb676e04cd85f`, which includes
+#1283 (`b96657f53`). This is a requested legacy-companion import acceptance
+check, not a full sweep or security review; the full-sweep backlog above is
+unchanged.
+
+- Used the running localhost frontend on port 5173 and backend on port 8000.
+  Created a separate synthetic project through the guarded E2E endpoint;
+  existing user projects and running servers were left unchanged.
+- Uploaded a two-row CSV through the actual import dialog. Its neighbour cell
+  used the supported spaced en-dash legacy format and a German note containing
+  a comma: `QA1087 Basilikum – Schutz vor Schädlingen, Quelle 2026`.
+- Preview returned two new crops and one resolved companion without warnings;
+  reading the preview did not create crops. Apply returned two created crops,
+  one created companion and no errors through crops/companions/finalize phases.
+- Verified both stored crop IDs belong to the captured active project and the
+  relation references those IDs, with no free-text companion. Clicking the
+  neighbour navigated to the other crop, where the reciprocal link appeared.
+- Verified exact storage as `notes.de` with `note_language_code: de`. Switching
+  the browser UI to English did not display the German note as fallback;
+  switching back restored its display unchanged.
+- Repeated the actual CSV preview/apply at 375x800 with a second synthetic
+  crop pair: two created crops, one created companion, no errors.
+- Inspected companion details screenshots at 1440x900, 375x800 and 800x375:
+  note and neighbour link remained readable without clipping or overlap.
+  No UI code was changed.
+- The five bounded synthetic examples in `test_legacy_companion_limits.py`
+  passed using Django's test runner with `config.settings_test` (0.004 seconds).
+  The initial pytest invocation failed before test execution because the
+  session taxonomy fixture queried an absent `crops_cropspecies` table;
+  this is recorded as a runner limitation, not a parser-test failure.
+
+Local scripts, request receipts and screenshots are under `/tmp/qa1087/` on
+the test machine. No load test, production test or cross-project authorization
+adversarial test was performed. No import defect was observed in this scope.
+
+## Targeted library restore acceptance — 2026-11-20
+
+Tested #1099 / merged PR #1285 on main
+`b8b45bb615f5bb715029a17b22fdb676e04cd85f` using real Chrome through
+Playwright on localhost. This narrow acceptance test does not advance the full
+sweep baseline or satisfy #1232; the outstanding backlog above remains.
+
+- Isolated file-backed SQLite database, backend `127.0.0.1:8299`, Vite frontend
+  `127.0.0.1:5299`; existing servers and user data were not changed.
+- Created three synthetic accounts: established editor, new contributor and a
+  separate moderator with the library moderator permission. Recorded Terms
+  acceptance and explicit established trust for the editor/moderator only.
+- Previewed the actual database target, then applied the guarded
+  `seed_library_import_acceptance --include-variety-selection` command. Used
+  its synthetic Nantaise 2 published variety and recorded its initial revision.
+- **Pass:** established editor saved a Notes edit through the UI, producing
+  version 2 (PATCH 200). The new contributor selected version 1 under Versions;
+  the UI confirmed pending approval and POST revert returned 202. A fresh GET
+  still showed version 2 and the editor's Notes.
+- **Pass:** moderator opened the contribution review, which identified source
+  version 1 and the proposed Notes. Approval returned 200. A fresh GET showed
+  the original Notes and version 3; a browser reload showed
+  “Aus Version 1 wiederhergestellt” on the current version.
+- Inspected screenshots at 1440×900, 375×800 and 800×375. The restore history is
+  visible at each size. Found clipped phone history actions and raw cultivation
+  field names/enum values; reproduced both on two fresh page navigations and
+  filed [#1346](https://github.com/OpenFarmPlanner/planner/issues/1346), P3.
+  These presentation issues do not invalidate the restore acceptance result.
+- Local evidence: `/tmp/ofp-1099-acceptance/` contains the throwaway Playwright
+  scripts, result JSON, proposal response, screenshots and three role traces.
+  Credentials and database contents are not committed. No application changes,
+  deployment, full test suite or owner acceptance checkbox changes were made.
+
+Durable findings for the library restore run: [QA report](qa-archive/qa-report-2026-11-20.md).
+
+## Targeted localhost companion-note acceptance — 2026-11-20
+
+Owner-requested acceptance of #1088 / merged PR #1288 at
+`b8b45bb615f5bb715029a17b22fdb676e04cd85f`. This adds only the scoped
+companion-note coverage below; the outstanding full-sweep baseline and backlog
+above remain unchanged.
+
+- Used the existing localhost servers (`localhost:5173`, backend port 8000)
+  and local loopback PostgreSQL database. Previewed the guarded
+  `seed_companion_history_acceptance` target before applying it for the
+  existing local owner. The idempotent fixture retained the existing imported
+  linked pair and the other neighbour. No migrations or application changes.
+- Playwright drove two actual editor tabs in the German UI. Both loaded the
+  same pair; the reciprocal tab saved a new French note. The older tab then
+  selected French, confirmed its stale cached text, changed only the reason
+  to `allelopathy`, and saved successfully.
+- Inspected the actual `PUT /api/crop-companions/replace/` request: the pair
+  included the changed reason and no `note`, `notes` or `note_language_code`.
+  Reopening the editor from both crops displayed the newer French note.
+  API assertions confirmed unchanged relation identity, retained German and
+  English notes, the newer French note, and the changed reason.
+- Reopened the French editor at 1440x900, 375x800 and 800x375. Assertions
+  passed at each size; inspected screenshots of desktop and both phone
+  orientations. Existing phone layout and scrollable landscape dialog retained;
+  no UI implementation changes. No new defect confirmed in this scoped test.
+- Left the private **Companion history acceptance** fixture available to the
+  owner on localhost. Local evidence (script, screenshots, request payload and
+  final assertions) lives outside version control in
+  `/tmp/ofp-1088-acceptance/`; authentication material is not published.
+
+This was the requested two-tab scenario, not a full rerun of the automated
+companion suite, a broad QA sweep, or a production validation.
+
+## Targeted follow-up — 2026-11-20: exact crop synonyms (#1159)
+
+Tested `b8b45bb615f5bb715029a17b22fdb676e04cd85f`, which includes
+PR #1305 (`c7bbbd786`). This check covers only the requested publishing picker;
+the outstanding full-sweep baseline and backlog above remain unchanged.
+
+- Ran `npm run test:e2e:headed -- e2e/crop-species-autocomplete.spec.ts`
+  from `frontend/`: **2 passed** (Italian desktop and Portuguese touch).
+- Production frontend at `http://127.0.0.1:15359`, disposable Daphne backend
+  at `http://127.0.0.1:18359`, fresh SQLite database outside the checkout;
+  existing local servers and their data were not used.
+- Both cases create 21 partial-name matches and two exact synonym matches.
+  Both exact matches remain visible under their localized official names in
+  the capped list of 20, with the matching synonym explanation.
+- Ambiguous matches require selection: publishing is disabled beforehand,
+  the propose-new action is absent, and selecting with Italian keyboard
+  navigation or Portuguese touch enables publishing with the selected name.
+- Inspected screenshots at 1440x900 (Italian), 375x800 and 800x375
+  (Portuguese): both exact options are visible; no horizontal overflow or
+  picker layout defects observed. Fixture cleanup completed.
+- No application changes or new defects from this targeted run. Local evidence:
+  `/tmp/ofp-1159-Xep6lh/headed-test.log` and
+  `/tmp/ofp-1159-Xep6lh/screenshots/` (temporary artifacts, not committed).
+
+## Targeted follow-up — 2026-11-20: closed species picker popup (#1180)
+
+Tested local main `b8b45bb615f5bb715029a17b22fdb676e04cd85f`, including
+PR #1307 (`f2ca0124b`), against the existing development frontend on
+localhost:5173 and backend on localhost:8000. This owner-requested acceptance
+check does not advance the full-sweep baseline above.
+
+- All three German Chrome browser checks passed: 375x800 portrait, 800x375
+  short landscape and 1440x900 desktop (3 passed, 1.4 minutes).
+- Used a scratch copy of `crop-species-popup.spec.ts`, with an additional
+  assertion that variety text remains after selecting a species. Created
+  isolated synthetic moderator/identity fixtures through the guarded E2E API;
+  each scenario was reset after testing. Existing servers were not restarted.
+- Verified Escape closes only the popup; reopening and Tab focuses variety;
+  touch focus changes hide the popup; scrolling the reference out of view
+  hides it; Enter on Save with blank species focuses the validation error.
+  Both actual popup visibility and `aria-expanded=false` were asserted.
+- Reopened live search, selected a visible species by touch, and confirmed
+  the selected species and previously entered variety survived blur.
+- Inspected error screenshots at all three viewports: no orphan popup, no
+  horizontal page overflow, readable focused error and reachable Save/Cancel.
+  No application code or responsive behavior changed.
+
+Scratch script and screenshots: `/tmp/ofp-1180/` (local only).
+No defect reproduced in the requested flow. No production testing performed.
+
+## Targeted follow-up — 2026-11-20: variety publication (#953)
+
+Tested local main `b8b45bb615f5bb715029a17b22fdb676e04cd85f`, including
+merged PR #1309, against the existing development frontend at
+`http://localhost:5173` and backend on port 8000 in headless Chrome.
+This owner-requested acceptance check does not advance the full-sweep baseline.
+
+Ran a scratch copy of `frontend/e2e/variety-parent-publication.spec.ts` with
+only import paths and the runner configuration adapted to the existing local
+servers. All three tests passed (French, Portuguese and Dutch; 1.9 minutes).
+Synthetic users/projects were created through the guarded E2E fixture and
+reset in each test's cleanup. Test-specific approved species and public
+entries were synthetic; existing library entries were not edited.
+
+Confirmed the requested sequence:
+
+- An unlinked parent's variety initially offers the editable species picker.
+- Switching to a species without a public general entry explains creating
+  that entry from the parent crop's values; switching back restores the
+  existing-entry link notice and field comparison.
+- Taking the library growth duration (77 days) while keeping project notes
+  publishes successfully. API readback confirms the parent's public link,
+  77-day duration, retained private notes and notes in `library_pinned_fields`.
+  The variety receives its public link and retains its own 50-day duration.
+- Publishing another variety shows the linked parent species read-only,
+  removes the species combobox and leaves Publish enabled.
+
+Checked the comparison dialog at 375×800, 768×900, 1024×900, 1440×900 and
+800×375; Publish stays in the viewport and page overflow assertions pass.
+Visually inspected the French screenshots for all five sizes and the
+create-parent/read-only-parent states. The dialog content scrolls at compact
+sizes and its footer remains reachable. Screenshots and the scratch runner
+are local artifacts under `/tmp/ofp-953/`. No application code or UI changed.
+
+Removed only #953's row from work queue #1058 after these checks, as explicitly
+requested by the owner; no personal-acceptance checkbox was checked.
 
 ## Targeted project restore verification — 2026-11-20 (#1335)
 

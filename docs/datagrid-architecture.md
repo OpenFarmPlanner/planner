@@ -187,7 +187,10 @@ of propagation for a home-raised crop. The existing planting-date column also
 represents the start on the bed for direct sowing.
 
 The inline editor labels its planned value and offers a separate actual-date
-choice. Actual date saves patch just the selected fields, so a standalone
+choice. When the selected activity has a planned date, the actual-date editor
+shows it for comparison and suggests it if the actual date is empty. Save
+records the input. Cancel, Escape and changing display mode discard the
+suggestion. Actual date saves patch just the selected fields, so a standalone
 actual edit leaves the forecast and planned-task schedule intact. The plan
 detail page compares each activity and can record or clear all five dates.
 
@@ -973,63 +976,23 @@ than a grid (`FieldsBedsHierarchy.tsx` and the Anbaupläne mobile card list in
 persists the value, and an `onError`; a rejected `onSave` keeps the drawer
 open with the draft intact and hands its message to `onError`.
 
-## Cells edited in a popover/dialog (`dialogEditFields`)
+## Cells with their own editor (`dialogEditFields`)
 
-Some values are never typed into a cell — they are picked in a dialog
-(today: the Anbaupläne "Anbaufläche" column, a Standort → Parzelle → Beet
-picker in `AreaAssignmentDialog.tsx`). Those columns are **`editable:
-false`** and listed in `EditableDataGrid`'s `dialogEditFields` prop. The
-grid then treats them exactly like notes cells:
+The planting-plans bed column renders its value and inline autocomplete from
+`renderCell`. It is declared `editable: false` and listed in the grid's
+`dialogEditFields` so the picker can open independently of the row-edit session.
 
-- **one left click opens the real editor.** The column's `renderCell` —
-  not `renderEditCell` — renders both the value and the dialog, so the
-  click lands directly on the dialog trigger. There is deliberately no
-  intermediate inline edit state and no pencil icon: an edit mode the user
-  can only click *through* is a wasted click, not an affordance.
-- **no inline edit mode is ever started for them**, from the click, from
-  F2, or from "just start typing" (`onCellClick` returns early and
-  `useSpreadsheetEditStarter` gets an `isCellEditable` that rejects them).
-- **they stay keyboard stops.** `editable: false` would normally drop a
-  cell out of Tab/arrow navigation, so `isCellKeyboardNavigable`'s
-  `isActionCell` hook covers notes *and* dialog fields
-  (`dedicatedEditorFieldNames` in `DataGrid.tsx`). Enter/Space is handled by
-  the trigger element itself, which stops propagation so the grid does not
-  also react; after the dialog closes, focus returns to that trigger and
-  ordinary navigation continues.
-- **Tab/Shift+Tab onto the cell opens the dialog** — that is what "entering
-  edit mode" means for a cell whose dialog *is* its edit session. Arrow keys
-  deliberately stay pure movement, so the cell can still be passed by without
-  a modal opening.
+A single mouse click, Tab or an arrow key focuses the cell. Double-click,
+Enter, F2 or typing opens the picker. A touch tap also opens it. When opening
+from a typed character, the grid includes that character in the initial search.
+The picker returns focus to the cell after selection or Esc.
 
-That last point is what `DialogEditCellContext.tsx` exists for. The grid has
-no inline edit session to hang the dialog off, so `EditableDataGrid` publishes
-a *request* — `{ cellKey, token }` — every time keyboard navigation enters a
-`dialogEditFields` cell, and the cell's renderer opens on it via
-`useDialogEditCellOpenRequest(rowId, field, open)`. Two properties make
-repeated entries work where a "did I already open?" flag would not:
+`DialogEditCellContext.tsx` carries each explicit edit request with the cell
+identity, a new token and the optional initial search. The cell consumes the
+token when it opens. This keeps focus events and virtualized remounts from
+replaying a previous request.
 
-- the token is bumped per entry, and a cell opens for a given token **exactly
-  once**, so a focus event, a click and the request all landing on the same
-  entry cannot stack up two dialogs (`AreaAssignmentDialog`'s `handleOpen` is
-  additionally idempotent while open, so a duplicate impulse can't reset a
-  draft the user is mid-way through);
-- the cell **consumes** the request as it opens, so nothing is left behind for
-  a later re-render or a re-mount (grid virtualization) to replay.
-
-Requests are issued from the Tab paths only — `handleViewModeCellNavigation`
-for a row in view mode, and `handleEditedCellTabNavigation` (via
-`navigateFromEditedCell` / `saveEditedRowAndFocusTarget` /
-`focusKeyboardNavigableCell`'s `requestDialogEdit` option) for a row in inline
-edit mode. Don't reintroduce a "the dialog was already opened once" flag or a
-timeout-based reopen: both are what made the cell open on the first Tab and
-never again.
-
-For this to hold, a cell renderer that focuses itself on `hasFocus` must
-cancel that pending frame on cleanup (see `CompactAreaCell`) — otherwise the
-frame scheduled by the focus that *caused* the request fires after the dialog
-mounted and pulls focus straight back out of it.
-
-The dialog writes its result back through the command API's
+The picker writes its result back through the command API's
 `applyDialogEditValues(rowId, values)`, **not** `setEditCellValue` (there is
 no edit session to write into) and **not** a column `valueSetter` (which
 only runs in edit mode — any side effects it had must move into the caller;
@@ -1038,9 +1001,11 @@ current mode: a row already in inline edit mode — typically a new draft row
 — only gets the values merged into its draft, so its own save cycle
 persists everything at once; a row in view mode is saved immediately
 through the normal `processRowUpdate` path, including the
-`onBeforeSaveRow` gate.
+`onBeforeSaveRow` gate. A failed server save keeps the saved value visible and
+returns control to the picker. If the validation gate opens the row editor,
+the proposed values stay in its draft so the user can correct the area.
 
-`values` must carry **only the fields the dialog actually changed**, never a
+`values` must carry **only the fields the picker changed**, never a
 whole row. On a row that is mid-edit those values are pushed into the open
 edit session, so a whole-row write-back would both undo newer draft edits and
 re-seed every cell from a render-time snapshot. Dates make that fatal rather

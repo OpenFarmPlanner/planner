@@ -151,6 +151,26 @@
       "done": "Série disponível"
     }
   },
+  "capacity": {
+    "show": "Mostrar áreas livres",
+    "details": "Área disponível em {{bed}}",
+    "estimate": "Estimativa baseada na área do canteiro e nos períodos de ocupação previstos.",
+    "available": "{{free}} m² livres de {{total}} m² · {{used}} m² ocupados",
+    "overallocated": "Capacidade excedida. {{used}} m² ocupados num canteiro de {{total}} m².",
+    "minimumOverallocated": "Capacidade excedida. Pelo menos {{used}} m² ocupados num canteiro de {{total}} m².",
+    "used": "{{used}} m² ocupados",
+    "minimumUsed": "Pelo menos {{used}} m² ocupados",
+    "total": "Canteiro de {{total}} m²",
+    "unknownBed": "Área do canteiro desconhecida",
+    "incomplete": "Área livre desconhecida · {{total}} · {{used}}",
+    "status": {
+      "free": "Totalmente livre",
+      "partial": "Parcialmente livre",
+      "occupied": "Totalmente ocupado",
+      "unknown": "Desconhecida",
+      "overallocated": "Capacidade excedida"
+    }
+  },
   "emptyStates": {
     "requirementsTitle": "Ainda não é possível planear culturas",
     "requirementsDescription": "Abra Parcelas e canteiros e adicione uma parcela à exploração adequada. Depois será possível registar canteiros, culturas e séries.",
@@ -160,11 +180,16 @@
         "description": "Crie a primeira cultura ou importe uma da biblioteca de culturas. Depois será possível criar séries."
       },
       "plans": {
-        "title": "Ainda não existem séries",
-        "description": "Ainda não foram criadas séries para as áreas de cultivo existentes. Crie uma série para mostrar culturas e datas no calendário de cultivo."
+        "title": "Ainda não há séries para esta época",
+        "description": "Adicione uma série para ver as culturas e as datas no calendário de cultivo."
+      },
+      "selectSeason": {
+        "title": "Nenhuma época selecionada",
+        "description": "Selecione uma época para ver as suas séries no calendário."
       }
     },
     "actions": {
+      "selectSeason": "Selecionar época",
       "createCrop": "Adicionar cultura",
       "createField": "Adicionar parcela",
       "createAreas": "Ir para Parcelas e canteiros",

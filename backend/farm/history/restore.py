@@ -64,6 +64,7 @@ def _model_manager(model):
 
 
 _SKIP_ON_UPDATE = {'id', 'created_at', 'updated_at'}
+SEASON_TASK_BEFORE = '_season_task_before'
 
 
 class CropRestoreReferenceConflict(APIException):
@@ -420,10 +421,10 @@ def _harvest_reference(harvest: HarvestRecord) -> dict:
 
 
 def _recoverable_harvest_allocations(
-    project: Project, plan_ids: set[int], deletion: EntityRevision,
+    project: Project, plan_ids: set[int], deletion: EntityRevision, deleted_since,
 ) -> set[int]:
     candidates = defaultdict(list)
-    for revision in _latest_revision_per_object(project, 'harvest_allocation', deletion.created_at):
+    for revision in _latest_revision_per_object(project, 'harvest_allocation', deleted_since):
         snapshot = revision.snapshot
         if (
             revision.action == EntityRevision.ACTION_DELETED
@@ -464,6 +465,35 @@ def _recoverable_harvest_allocations(
     return recoverable
 
 
+def _restore_generated_season_tasks(
+    project: Project, plan_ids: set[int], deletion: EntityRevision, batch, *, user_name: str,
+) -> None:
+    # The season delete records new tombstones alongside the state needed to undo it.
+    revisions = EntityRevision.objects.filter(
+        project=project, batch_operation_id=deletion.batch_operation_id, entity_type='task',
+        action=EntityRevision.ACTION_DELETED, snapshot__has_key=SEASON_TASK_BEFORE,
+    )
+    for revision in revisions:
+        snapshot = revision.snapshot
+        before = snapshot[SEASON_TASK_BEFORE]
+        if before['planting_plan_id'] not in plan_ids:
+            continue
+        tasks = Task.objects.filter(
+            project=project, pk=revision.object_id, planting_plan__isnull=True,
+            season_id=snapshot['season_id'], source_key=snapshot['source_key'],
+            occurrence_index=snapshot['occurrence_index'], deleted_at__isnull=False,
+        )
+        task = tasks.first()
+        if task is None or _serialize_instance(task)['deleted_at'] != snapshot['deleted_at']:
+            continue
+        tasks.update(planting_plan_id=before['planting_plan_id'], deleted_at=before['deleted_at'])
+        record_entity_revision(
+            project=project, entity_type='task', object_id=task.pk,
+            action=EntityRevision.ACTION_RESTORED, snapshot=_serialize_instance(task),
+            display_name=task.title, changed_fields=[], user_name=user_name, batch_operation=batch,
+        )
+
+
 def _restore_rows_deleted_with_season(
     project: Project,
     season,
@@ -477,6 +507,10 @@ def _restore_rows_deleted_with_season(
     Planting plans have no soft delete, so undeleting a season has to recreate
     them from the revisions recorded when it was deleted.
     """
+    deleted_since = (
+        deletion.batch_operation.created_at if deletion.batch_operation_id else deletion.created_at
+    )
+
     def build_plan_row(row_data: dict) -> dict:
         row_data['project_id'] = season.project_id
         row_data['season_id'] = season.pk
@@ -484,13 +518,13 @@ def _restore_rows_deleted_with_season(
             PlantingPlan, row_data, keep={'project_id', 'season_id'},
         )
 
-    plan_ids = _recreate_rows_deleted_since(
-        project, PlantingPlan, 'planting_plan', deletion.created_at, batch,
+    plan_ids = set(_recreate_rows_deleted_since(
+        project, PlantingPlan, 'planting_plan', deleted_since, batch,
         user_name=user_name,
         belongs_to_restore=lambda snapshot: snapshot.get('season_id') == season.pk,
         build_row_data=build_plan_row,
         select_related=('crop', 'bed'),
-    )
+    ))
     if not plan_ids:
         return
 
@@ -499,25 +533,26 @@ def _restore_rows_deleted_with_season(
         return row_data
 
     _recreate_rows_deleted_since(
-        project, Task, 'task', deletion.created_at, batch,
+        project, Task, 'task', deleted_since, batch,
         user_name=user_name,
         belongs_to_restore=lambda snapshot: snapshot.get('planting_plan_id') in plan_ids,
         build_row_data=build_child_row,
     )
     if deletion.batch_operation_id is None:
         return
+    _restore_generated_season_tasks(project, plan_ids, deletion, batch, user_name=user_name)
     _recreate_rows_deleted_since(
-        project, CropLoss, 'crop_loss', deletion.created_at, batch,
+        project, CropLoss, 'crop_loss', deleted_since, batch,
         user_name=user_name,
         belongs_to_restore=lambda snapshot: snapshot.get('planting_plan_id') in plan_ids,
         build_row_data=build_child_row,
         select_related=('planting_plan__crop', 'planting_plan__bed'),
         deletion_batch_id=deletion.batch_operation_id,
     )
-    allocation_ids = _recoverable_harvest_allocations(project, set(plan_ids), deletion)
+    allocation_ids = _recoverable_harvest_allocations(project, plan_ids, deletion, deleted_since)
     if allocation_ids:
         _recreate_rows_deleted_since(
-            project, HarvestAllocation, 'harvest_allocation', deletion.created_at, batch,
+            project, HarvestAllocation, 'harvest_allocation', deleted_since, batch,
             user_name=user_name,
             belongs_to_restore=lambda snapshot: snapshot.get('id') in allocation_ids,
             build_row_data=build_child_row,
@@ -607,7 +642,7 @@ def _row_data_from_snapshot(model, snapshot: dict, project: Project) -> dict:
     row = {key: value for key, value in snapshot.items() if key in concrete}
     row['project_id'] = project.id
     if 'deleted_at' in concrete:
-        row['deleted_at'] = None
+        row.setdefault('deleted_at', None)
     for field in model._meta.concrete_fields:
         related_id = row.get(field.attname)
         if field.remote_field is None or related_id is None:
@@ -615,6 +650,51 @@ def _row_data_from_snapshot(model, snapshot: dict, project: Project) -> dict:
         if not _model_manager(field.remote_field.model).filter(pk=related_id).exists():
             row[field.attname] = None
     return row
+
+
+def _batch_revert_rows(
+    project: Project, revisions: list[EntityRevision],
+) -> tuple[list[tuple[str, int]], list[tuple[str, int, dict]]]:
+    first_batch_id: dict[tuple[str, int], int] = {}
+    for revision in revisions:
+        key = (revision.entity_type, revision.object_id)
+        first_batch_id[key] = min(first_batch_id.get(key, revision.id), revision.id)
+
+    to_delete: list[tuple[str, int]] = []
+    to_write: list[tuple[str, int, dict]] = []
+    for revision in revisions:
+        if revision.entity_type not in _MODEL_BY_ENTITY_TYPE:
+            raise BatchRevertError(revision.entity_type)
+        key = (revision.entity_type, revision.object_id)
+        if revision.action == EntityRevision.ACTION_CREATED:
+            to_delete.append(key)
+            continue
+        if revision.action == EntityRevision.ACTION_DELETED:
+            snapshot = revision.snapshot
+            task_before = snapshot.get(SEASON_TASK_BEFORE)
+            if revision.entity_type == 'task' and isinstance(task_before, dict):
+                snapshot = {**snapshot, **task_before}
+            elif revision.entity_type != 'task':
+                snapshot = {**snapshot, 'deleted_at': None}
+            to_write.append((revision.entity_type, revision.object_id, snapshot))
+            continue
+        prior = (
+            EntityRevision.objects
+            .filter(
+                project=project, entity_type=revision.entity_type,
+                object_id=revision.object_id, id__lt=first_batch_id[key],
+            )
+            .order_by('-id')
+            .first()
+        )
+        if prior is None or (
+            prior.action == EntityRevision.ACTION_DELETED
+            and not (prior.entity_type in {'season', 'task'} and prior.snapshot.get('deleted_at'))
+        ):
+            to_delete.append(key)
+        else:
+            to_write.append((revision.entity_type, revision.object_id, prior.snapshot))
+    return to_delete, to_write
 
 
 def revert_batch_operation(project: Project, batch, *, user_name: str = '') -> None:
@@ -638,37 +718,7 @@ def revert_batch_operation(project: Project, batch, *, user_name: str = '') -> N
     ))
     if not revisions:
         raise BatchRevertError('empty batch')
-
-    first_batch_id: dict[tuple[str, int], int] = {}
-    for revision in revisions:
-        key = (revision.entity_type, revision.object_id)
-        first_batch_id[key] = min(first_batch_id.get(key, revision.id), revision.id)
-
-    to_delete: list[tuple[str, int]] = []
-    to_write: list[tuple[str, int, dict]] = []
-    for revision in revisions:
-        if revision.entity_type not in _MODEL_BY_ENTITY_TYPE:
-            raise BatchRevertError(revision.entity_type)
-        key = (revision.entity_type, revision.object_id)
-        if revision.action == EntityRevision.ACTION_CREATED:
-            to_delete.append(key)
-            continue
-        if revision.action == EntityRevision.ACTION_DELETED:
-            to_write.append((revision.entity_type, revision.object_id, revision.snapshot))
-            continue
-        prior = (
-            EntityRevision.objects
-            .filter(
-                project=project, entity_type=revision.entity_type,
-                object_id=revision.object_id, id__lt=first_batch_id[key],
-            )
-            .order_by('-id')
-            .first()
-        )
-        if prior is None or prior.action == EntityRevision.ACTION_DELETED:
-            to_delete.append(key)
-        else:
-            to_write.append((revision.entity_type, revision.object_id, prior.snapshot))
+    to_delete, to_write = _batch_revert_rows(project, revisions)
 
     with transaction.atomic():
         lock_crop_project(project.pk)

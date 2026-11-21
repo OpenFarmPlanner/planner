@@ -9,7 +9,7 @@ the check models that instead of rejecting such plans.
 One service answers every capacity question:
 [`backend/farm/services/bed_capacity.py`](../backend/farm/services/bed_capacity.py).
 The planting-plan table's save check, the bed options and suggestions of
-"Anbaufläche ändern" (see [crop-rotation.md](./crop-rotation.md#bed-capacity)),
+the inline bed picker (see [crop-rotation.md](./crop-rotation.md#bed-capacity)),
 the live info in the planting-plan dialog and the overlap infos on saved plans
 all use it, so a bed that is offered is never rejected on save.
 
@@ -134,6 +134,12 @@ Only project admins can change it, like the other general project settings.
   the actual harvest end is hatched (`Task.fadedTailFraction`, styled from the
   theme in `GanttChart.tsx`), and the tooltip adds "Ernte endet spätestens".
   After a drag the plans are refetched so other bars follow.
+  **Show free areas** adds a capacity band to each visible bed. The band
+  estimates free area within the selected season by counting each plan's
+  stored area once through its inclusive occupancy end. It includes
+  carried-over plans and shows unknown area or planned over-allocation
+  explicitly. The normal succession rule still governs whether a proposed
+  planting can be saved. Select a band to inspect its dated intervals.
 
 Texts: "{Folgekultur} folgt ab {Datum} auf diesem Beet. Die Ernte muss bis
 dahin abgeschlossen sein." on the previous crop, "Beginnt vor dem geplanten

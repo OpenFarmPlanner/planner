@@ -57,6 +57,45 @@ test('the grid sorts, filters and edits the displayed dates without writing plan
   await modes.getByRole('button', { name: 'Ist', exact: true }).click();
   await expect(cell(third.id)).toHaveText('');
   await expect(cell(first.id)).toHaveText('11.7.2026');
+
+  const missingDateCell = cell(third.id);
+  const actualDateAction = missingDateCell.getByRole('button', { name: 'Ist-Pflanztermin' });
+  const missingDateEditor = page.getByRole('dialog', { name: 'Ist-Pflanztermin' });
+  const actualInput = missingDateEditor.getByLabel('Ist-Pflanztermin', { exact: true });
+  const thirdDateWrites: (string | null)[] = [];
+  page.on('request', request => {
+    if (request.url().endsWith(`/api/planting-plans/${third.id}/`) && request.method() === 'PATCH') {
+      thirdDateWrites.push(request.postDataJSON().actual_transplanting_date);
+    }
+  });
+  await missingDateCell.press('Enter');
+  await actualDateAction.press('Enter');
+  await expect(actualInput).toHaveValue('2026-06-01');
+  await expect(missingDateEditor.getByText('Plan', { exact: true }).locator('..')).toHaveText('Plan 1.6.2026');
+  await actualInput.press('Escape');
+  await expect(missingDateEditor).toHaveCount(0);
+  expect(thirdDateWrites).toEqual([]);
+
+  await actualDateAction.press('Enter');
+  await missingDateEditor.getByRole('button', { name: 'Speichern' }).click();
+  await expect(missingDateEditor).toHaveCount(0);
+  await expect(missingDateCell).toHaveText('1.6.2026');
+  await missingDateCell.press('Enter');
+  await expect(actualDateAction).toHaveText('1.6.2026');
+  await actualDateAction.press('Enter');
+  await missingDateEditor.getByRole('button', { name: 'Datum löschen' }).click();
+  await missingDateEditor.getByRole('button', { name: 'Speichern' }).click();
+  await expect(missingDateEditor).toHaveCount(0);
+  expect(thirdDateWrites).toEqual(['2026-06-01', null]);
+  expect(await apiRequest(page, 'GET', `/planting-plans/${third.id}/`)).toMatchObject({
+    planting_date: '2026-06-01', actual_transplanting_date: null,
+  });
+  await missingDateCell.press('Escape');
+  await modes.getByRole('button', { name: 'Beides' }).click();
+  await expect(missingDateCell).toHaveText('1.6.2026');
+  await modes.getByRole('button', { name: 'Ist', exact: true }).click();
+  await expect(missingDateCell).toHaveText('');
+
   await cell(first.id).click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Zeile kopieren' }).click();
   const copiedDates = await page.evaluate(() => sessionStorage.getItem('copiedPlan')?.split('\t').slice(4, 6));

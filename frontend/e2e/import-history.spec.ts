@@ -6,6 +6,8 @@ import navigation from '../src/i18n/locales/de/navigation.json' with { type: 'js
 import type { Crop, CropHistoryEntry, CropSpecies, PublicCrop, PublishPublicCropResponse } from '../src/api/types';
 import { SUPPORTED_LANGUAGES } from '../src/i18n/languages';
 
+test.use({ serviceWorkers: 'block' });
+
 async function history(page: Page) {
   await page.getByRole('button', { name: navigation.globalMenu.moreActions, exact: true }).click();
   await page.getByRole('menuitem', { name: navigation.commandPalette.commands.openVersionHistory, exact: true }).click();
@@ -74,6 +76,9 @@ for (const [width, height] of [[375, 800], [768, 900], [1024, 900], [1440, 900],
         .getByRole('button', { name: navigation.commandPalette.restoreVersion, exact: true }).click();
       const restore = page.getByRole('dialog', { name: de.restoreDialog.title, exact: true });
       await expect(restore.getByText(de.restoreDialog.versionDescription)).toBeVisible();
+      const impact = restore.getByRole('region', { name: de.restoreDialog.preview.title });
+      await expect(impact.getByText(de.restoreDialog.preview.categories.varieties, { exact: true })).toBeVisible();
+      await expect(impact.getByText(de.restoreDialog.preview.categories.beds, { exact: true })).toBeVisible();
       await page.screenshot({ path: info.outputPath('full-restore-confirmation.png'), animations: 'disabled' });
       await Promise.all([
         page.waitForResponse(response => response.url().includes('/history/project/restore/') && response.status() === 200),
@@ -178,14 +183,61 @@ test('full restore before spreadsheet and library imports refreshes the crop gri
     await expect(sheetRow).toBeVisible();
     await expect(libraryRow).toBeVisible();
     const dialog = await history(page);
-    await dialog.getByRole('listitem').filter({ hasText: marker.name })
-      .getByRole('button', { name: navigation.commandPalette.restoreVersion, exact: true }).click();
+    const select = dialog.getByRole('listitem').filter({ hasText: marker.name })
+      .getByRole('button', { name: navigation.commandPalette.restoreVersion, exact: true });
+    await select.click();
     const confirmation = page.getByRole('dialog', { name: de.restoreDialog.title, exact: true });
+    const confirm = confirmation.getByRole('button', { name: de.restoreDialog.confirm, exact: true });
+    const cancel = confirmation.getByRole('button', { name: de.restoreDialog.cancel, exact: true });
+    const impact = confirmation.getByRole('region', { name: de.restoreDialog.preview.title });
+    const general = impact.getByRole('listitem').filter({
+      has: page.getByText(de.restoreDialog.preview.categories.crops, { exact: true }),
+    });
+    await expect(general.locator('summary')).toHaveText('Entfernungen (2)');
+    await expect(cancel).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(confirmation).toHaveCount(0);
+    expect((await crops(page)).map(crop => crop.id)).toEqual(imported.map(crop => crop.id));
+
+    await page.route(
+      url => url.pathname.endsWith('/history/project/restore-preview/'),
+      route => route.fulfill({ status: 503, json: { detail: 'Preview unavailable' } }),
+      { times: 1 },
+    );
+    await select.click();
+    await expect(confirmation.getByRole('alert')).toHaveText(de.restoreDialog.preview.unavailable);
+    await expect(confirm).toBeDisabled();
+    await expect(impact).toHaveCount(0);
+    await confirmation.getByRole('button', { name: de.restoreDialog.preview.refresh, exact: true }).click();
+    await expect(confirm).toBeEnabled();
+    const removalDetails = general.locator('summary');
+    await removalDetails.focus();
+    await page.keyboard.press('Enter');
+    await expect(general.getByText('Synthetic spreadsheet crop', { exact: true })).toBeVisible();
+
+    const extra = await apiRequest<Crop>(page, 'POST', '/crops/', { name: 'Synthetic concurrent crop' });
+    const [conflict] = await Promise.all([
+      page.waitForResponse(result => result.url().includes('/history/project/restore/')),
+      confirm.click(),
+    ]);
+    expect(conflict.status()).toBe(409);
+    expect(await conflict.json()).toMatchObject({ code: 'project_restore_preview_changed' });
+    await expect(confirmation.getByRole('alert')).toHaveText(de.restoreDialog.preview.stale);
+    await expect(confirm).toBeDisabled();
+    await expect(impact).toHaveCount(0);
+    expect((await crops(page)).some(crop => crop.id === extra.id)).toBe(true);
+
+    await confirmation.getByRole('button', { name: de.restoreDialog.preview.refresh, exact: true }).click();
+    await expect(general.locator('summary')).toHaveText('Entfernungen (3)');
+    await expect(confirm).toBeEnabled();
+    expect((await crops(page)).some(crop => crop.id === extra.id)).toBe(true);
     const [response] = await Promise.all([
       page.waitForResponse(result => result.url().includes('/history/project/restore/')),
-      confirmation.getByRole('button', { name: de.restoreDialog.confirm, exact: true }).click(),
+      confirm.click(),
     ]);
-    expect(response.request().postDataJSON()).toEqual({ history_id: target!.history_id });
+    expect(response.request().postDataJSON()).toEqual({
+      history_id: target!.history_id, preview_token: expect.any(String),
+    });
     expect(response.status()).toBe(200);
     await expect(dialog).toHaveCount(0);
     await expect(cropList.getByText(marker.name, { exact: true })).toBeVisible();
@@ -233,6 +285,7 @@ for (const [width, height] of [[375, 800], [1440, 900]]) {
       await dialog.getByRole('listitem').filter({ hasText: bedName }).last()
         .getByRole('button', { name: navigation.commandPalette.restoreVersion, exact: true }).press('Enter');
       let confirmation = page.getByRole('dialog', { name: de.restoreDialog.title, exact: true });
+      await expect(confirmation.getByRole('region', { name: de.restoreDialog.preview.title })).toBeVisible();
       await page.screenshot({ path: info.outputPath('restore-confirmation.png'), animations: 'disabled' });
       const [restored] = await Promise.all([
         page.waitForResponse(response => response.url().includes('/history/project/restore/')),
@@ -252,10 +305,12 @@ for (const [width, height] of [[375, 800], [1440, 900]]) {
       await backupEntry.getByRole('button', { name: navigation.commandPalette.restoreVersion, exact: true }).press('Enter');
       confirmation = page.getByRole('dialog', { name: de.restoreDialog.title, exact: true });
       await expect(confirmation.getByText(de.history.automaticBackup, { exact: true })).toBeVisible();
+      const confirmBackup = confirmation.getByRole('button', { name: de.restoreDialog.confirm, exact: true });
+      await expect(confirmBackup).toBeEnabled();
       await page.screenshot({ path: info.outputPath('backup-confirmation.png'), animations: 'disabled' });
       const [backup] = await Promise.all([
         page.waitForResponse(response => response.url().includes('/history/project/restore/')),
-        confirmation.getByRole('button', { name: de.restoreDialog.confirm, exact: true }).press('Enter'),
+        confirmBackup.press('Enter'),
       ]);
       expect(backup.status()).toBe(200);
       await expect(page.getByRole('dialog')).toHaveCount(0);

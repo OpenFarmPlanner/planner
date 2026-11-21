@@ -8,7 +8,7 @@ import { FullCellTooltip } from '../components/data-grid/FullCellTooltip';
 import { useTranslation } from '../i18n';
 import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import { ActualPlanDateField, PlanDateComparisonText } from './PlantingPlanExecutionDates';
-import { planDateDeviation, type PlantingPlanDateComparison, type PlantingPlanDateMode } from './plantingPlanActualDates';
+import { planDateDeviation, planDateDeviationLabel, type PlantingPlanDateComparison, type PlantingPlanDateMode } from './plantingPlanActualDates';
 
 const DATE_MODES: PlantingPlanDateMode[] = ['planned', 'actual', 'combined'];
 
@@ -63,7 +63,7 @@ interface InlinePlanDateEditorProps {
 /** Keeps the existing planned cell editor and offers an explicit actual-date choice. */
 export function InlinePlanDateEditor({ dates, mode, hasFocus, renderPlanned, onSaveActual }: InlinePlanDateEditorProps) {
   const { t, i18n } = useTranslation(['plantingPlans', 'common']);
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const [editor, setEditor] = useState<{ anchor: HTMLElement; mode: PlantingPlanDateMode } | null>(null);
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
@@ -72,25 +72,29 @@ export function InlinePlanDateEditor({ dates, mode, hasFocus, renderPlanned, onS
   const activityLabel = t(`actualDates.activities.${dates.activity}`);
   const plannedLabel = `${t('actualDates.modes.planned')} ${activityLabel}`;
   const showPlanned = mode !== 'actual' && Boolean(renderPlanned);
+  const locale = resolveSeasonDateLocale(i18n);
+  const draftDate = value || null;
+  const anchor = editor?.mode === mode ? editor.anchor : null;
+  if (editor && !anchor) setEditor(null);
 
   useEffect(() => {
     if (hasFocus && !showPlanned) actualActionRef.current?.focus({ preventScroll: true });
   }, [hasFocus, showPlanned]);
 
   const open = (target: HTMLElement) => {
-    setValue(dates.actual ?? '');
+    setValue(dates.actual ?? dates.planned ?? '');
     setSaveFailed(false);
-    setAnchor(target);
+    setEditor({ anchor: target, mode });
   };
-  const close = () => { if (!saving) setAnchor(null); };
+  const close = () => { if (!saving) setEditor(null); };
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (saving) return;
     setSaving(true);
     setSaveFailed(false);
     try {
-      await onSaveActual(value || null);
-      setAnchor(null);
+      await onSaveActual(draftDate);
+      setEditor(null);
     } catch {
       setSaveFailed(true);
     } finally {
@@ -114,8 +118,7 @@ export function InlinePlanDateEditor({ dates, mode, hasFocus, renderPlanned, onS
           aria-label={actualLabel} aria-haspopup="dialog" aria-expanded={Boolean(anchor)}
           onClick={event => { event.stopPropagation(); open(event.currentTarget); }}
           sx={{ justifyContent: 'flex-start', gap: 0.5, px: 0.75, whiteSpace: 'nowrap', textTransform: 'none' }}>
-          {t('actualDates.modes.actual')}
-          {dates.actual && formatSeasonDate(dates.actual, resolveSeasonDateLocale(i18n))}
+          {dates.actual ? formatSeasonDate(dates.actual, locale) : t('actualDates.modes.actual')}
           <ArrowDropDownIcon fontSize="small" />
         </Button>
       )}
@@ -123,7 +126,13 @@ export function InlinePlanDateEditor({ dates, mode, hasFocus, renderPlanned, onS
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
         slotProps={{ paper: { role: 'dialog', 'aria-label': actualLabel, sx: { maxWidth: 'calc(100vw - 24px)' } } }}>
         <Box component="form" data-grid-view-control onSubmit={event => { void save(event); }}
-          onKeyDown={event => event.stopPropagation()}>
+          onKeyDown={event => {
+            event.stopPropagation();
+            if (event.key === 'Escape' && !event.nativeEvent.isComposing) {
+              event.preventDefault();
+              close();
+            }
+          }}>
           <Stack spacing={1.25} sx={{ p: 1.5, width: 296, maxWidth: '100%', boxSizing: 'border-box' }}>
             {showPlanned && <Stack direction="row" spacing={0.75}>
               <Button type="button" variant="outlined" onClick={close} disabled={saving}>{t('actualDates.modes.planned')}</Button>
@@ -131,13 +140,21 @@ export function InlinePlanDateEditor({ dates, mode, hasFocus, renderPlanned, onS
                 {t('actualDates.modes.actual')}
               </Button>
             </Stack>}
-            <ActualPlanDateField autoFocus label={actualLabel} value={value} disabled={saving} onChange={setValue} />
+            {dates.planned && <Typography variant="body2" color="text.secondary">
+              <Box component="span" sx={{ fontWeight: 600 }}>{t('actualDates.modes.planned')}</Box>
+              {' '}{formatSeasonDate(dates.planned, locale)}
+            </Typography>}
+            <ActualPlanDateField autoFocus label={actualLabel} value={value} disabled={saving} onChange={setValue}
+              helperText={planDateDeviationLabel({ ...dates, actual: draftDate }, t)} />
             {saveFailed && <Alert severity="error">{t('actualDates.saveError')}</Alert>}
-            <Stack direction="row" sx={{ justifyContent: 'space-between' }} spacing={0.75}>
-              <Button onClick={() => setValue('')} disabled={!value || saving}>{t('actualDates.clear')}</Button>
-              <Button type="submit" variant="contained" disabled={saving || (value || null) === dates.actual}>
-                {t('common:actions.save')}
-              </Button>
+            <Stack direction="row" sx={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 0.5 }}>
+              <Button size="small" onClick={() => setValue('')} disabled={!value || saving}>{t('actualDates.clear')}</Button>
+              <Stack direction="row" spacing={0.5} sx={{ ml: 'auto' }}>
+                <Button size="small" onClick={close} disabled={saving}>{t('common:actions.cancel')}</Button>
+                <Button size="small" type="submit" variant="contained" disabled={saving || draftDate === dates.actual}>
+                  {t('common:actions.save')}
+                </Button>
+              </Stack>
             </Stack>
           </Stack>
         </Box>

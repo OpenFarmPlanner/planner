@@ -151,6 +151,26 @@
       "done": "Série disponible"
     }
   },
+  "capacity": {
+    "show": "Afficher les surfaces libres",
+    "details": "Surface disponible pour {{bed}}",
+    "estimate": "Estimation fondée sur la surface de la planche et les périodes d’occupation prévues.",
+    "available": "{{free}} m² libres sur {{total}} m² · {{used}} m² occupés",
+    "overallocated": "Capacité dépassée. {{used}} m² occupés sur une planche de {{total}} m².",
+    "minimumOverallocated": "Capacité dépassée. Au moins {{used}} m² occupés sur une planche de {{total}} m².",
+    "used": "{{used}} m² occupés",
+    "minimumUsed": "Au moins {{used}} m² occupés",
+    "total": "Planche de {{total}} m²",
+    "unknownBed": "Surface de la planche inconnue",
+    "incomplete": "Surface libre inconnue · {{total}} · {{used}}",
+    "status": {
+      "free": "Entièrement libre",
+      "partial": "Partiellement libre",
+      "occupied": "Entièrement occupée",
+      "unknown": "Inconnue",
+      "overallocated": "Capacité dépassée"
+    }
+  },
   "emptyStates": {
     "requirementsTitle": "Planification des cultures pas encore possible",
     "requirementsDescription": "Ouvrez Surfaces de culture et ajoutez-y une parcelle sur le site approprié. Vous pourrez ensuite saisir des planches, des cultures et des séries.",
@@ -160,11 +180,16 @@
         "description": "Créez dès maintenant votre première culture ou importez-en une depuis la bibliothèque de cultures. Vous pourrez ensuite créer des séries."
       },
       "plans": {
-        "title": "Aucune série pour l'instant",
-        "description": "Aucune série n'a encore été créée pour les surfaces de culture existantes. Créez une série pour afficher les cultures et les dates dans le calendrier de culture."
+        "title": "Aucune série pour cette saison",
+        "description": "Ajoutez une série pour afficher les cultures et les dates dans le calendrier de culture."
+      },
+      "selectSeason": {
+        "title": "Aucune saison sélectionnée",
+        "description": "Sélectionnez une saison pour afficher ses séries dans le calendrier."
       }
     },
     "actions": {
+      "selectSeason": "Sélectionner une saison",
       "createCrop": "Ajouter une culture",
       "createField": "Ajouter une parcelle",
       "createAreas": "Aller à Surfaces de culture",

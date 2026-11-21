@@ -10,6 +10,7 @@ import LoadRetryButton from '../../components/LoadRetryButton';
 import { germinationDetailFields, formatGerminationValue } from '../../crops/germination';
 import { SITE_HEALTH_FIELDS, formatSiteHealthValue } from '../../crops/siteHealth';
 import { PlantHealthChips } from '../../crops/PlantHealthChips';
+import { CropSearchFilterButton, CropSearchToolbar } from '../../crops/CropSearchToolbar';
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type UIEvent } from 'react';
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router';
 import axios from 'axios';
@@ -17,7 +18,6 @@ import { hasCropIdParam, readCropIdParam } from '../../compat/legacyCropNames';
 import TranslateOutlinedIcon from '@mui/icons-material/TranslateOutlined';
 import {
   Alert,
-  Badge,
   Box,
   Button,
   Card,
@@ -52,7 +52,6 @@ import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 import SpaOutlinedIcon from '@mui/icons-material/SpaOutlined';
 import SyncOutlinedIcon from '@mui/icons-material/SyncOutlined';
-import TuneIcon from '@mui/icons-material/Tune';
 import { cropSpeciesAPI, publicCropAPI, publicLibraryModeratorRequestAPI } from '../../api/api';
 import type {
   CultivationType,
@@ -220,18 +219,13 @@ export default function PublicCropLibraryPage() {
   const activeLibraryFilterCount = countActivePublicCropFilters(libraryFilters);
   const isMobile = useMediaQuery('(max-width:600px)');
   const useCompactLibraryLayout = useMediaQuery('(max-width:899.95px)');
-  const libraryFilterButton = <IconButton
-    size="small" onClick={(event) => setLibraryFilterAnchorEl(event.currentTarget)}
-    aria-expanded={isLibraryFilterPopoverOpen} aria-haspopup="dialog"
-    aria-controls={isLibraryFilterPopoverOpen ? 'public-crop-filters-popover' : undefined}
-    aria-label={t('filters.openAdvanced')}
-    sx={{ bgcolor: activeLibraryFilterCount > 0 ? 'action.selected' : 'transparent',
-      ...(useCompactLibraryLayout ? { minWidth: 48, minHeight: 48 } : {}),
-    }}>
-    <Badge color="primary" badgeContent={activeLibraryFilterCount > 0 ? activeLibraryFilterCount : null}>
-      <TuneIcon fontSize="small" />
-    </Badge>
-  </IconButton>;
+  const libraryFilterButton = <CropSearchFilterButton
+    activeCount={activeLibraryFilterCount}
+    open={isLibraryFilterPopoverOpen}
+    popoverId="public-crop-filters-popover"
+    touch={useCompactLibraryLayout}
+    onClick={(event) => setLibraryFilterAnchorEl(event.currentTarget)}
+  />;
   const libraryAreaRef = useRef<HTMLDivElement>(null);
   // How tall the two-pane area is allowed to be, measured directly from where it
   // actually starts in the viewport rather than guessed via a hardcoded "chrome
@@ -1616,7 +1610,7 @@ export default function PublicCropLibraryPage() {
               variant="outlined"
               sx={{
                 ...libraryCardSx,
-                width: { md: 230, lg: 300, xl: 330 },
+                width: { md: 256, lg: 300, xl: 330 },
                 flexShrink: 0,
                 height: { md: '100%' },
                 // Flex items default to `min-height: auto`, which ignores the
@@ -1628,39 +1622,34 @@ export default function PublicCropLibraryPage() {
               }}
             >
               <Box component="form" onSubmit={handleSearchSubmit} sx={{ p: 1.5, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'action.hover' }}>
-                <TextField
-                  inputRef={searchInputRef}
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  onFocus={() => setIsSearchInputFocused(true)}
-                  onBlur={() => setIsSearchInputFocused(false)}
-                  label={t('library.searchLabel')}
-                  size="small"
-                  fullWidth
-                    slotProps={{
-                      input: {
-                        endAdornment: (
-                          <>
-                            {query ? (
-                              <AppTooltip title={t('clearSearch')}>
-                                <IconButton
-                                  size="small"
-                                  aria-label={t('clearSearch')}
-                                  onClick={() => {
-                                    setQuery('');
-                                    searchInputRef.current?.focus();
-                                  }}
-                                >
-                                  <CloseIcon fontSize="small" />
-                                </IconButton>
-                              </AppTooltip>
-                            ) : null}
-                            {libraryFilterButton}
-                            <PublicCropBatchSelectButton batch={batch} disabled={importingId !== null} />
-                          </>
-                        ),
-                      }
-                    }}
+                <CropSearchToolbar
+                  search={{
+                    inputRef: searchInputRef,
+                    value: query,
+                    onChange: (event) => setQuery(event.target.value),
+                    onFocus: () => setIsSearchInputFocused(true),
+                    onBlur: () => setIsSearchInputFocused(false),
+                    placeholder: t('library.searchLabel'),
+                    size: 'small',
+                    endAdornment: query ? (
+                      <AppTooltip title={t('clearSearch')}>
+                        <IconButton
+                          size="small"
+                          aria-label={t('clearSearch')}
+                          onClick={() => {
+                            setQuery('');
+                            searchInputRef.current?.focus();
+                          }}
+                        >
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
+                      </AppTooltip>
+                    ) : null,
+                  }}
+                  actions={<>
+                    {libraryFilterButton}
+                    <PublicCropBatchSelectButton batch={batch} disabled={importingId !== null} />
+                  </>}
                 />
               </Box>
               <PublicCropBatchActions batch={batch} loading={isCropLoading || loadStatus === 'error'} />
@@ -2376,7 +2365,7 @@ export default function PublicCropLibraryPage() {
         onReset={() => { setLibraryFilters(EMPTY_PUBLIC_CROP_FILTERS); setLibraryFilterAnchorEl(null); }}
       />
       <PublicCropMobileSelectorDialog
-          filterControl={<>{libraryFilterButton}<PublicCropBatchSelectButton batch={batch} disabled={importingId !== null} /></>}
+          searchActions={<>{libraryFilterButton}<PublicCropBatchSelectButton batch={batch} disabled={importingId !== null} /></>}
           batchActions={<PublicCropBatchActions batch={batch} loading={isCropLoading || loadStatus === 'error'} />}
           batchSelection={batch.selection}
           open={mobileSelectorOpen}

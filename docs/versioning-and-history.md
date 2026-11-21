@@ -178,11 +178,45 @@ Legacy batch reverts also save a separate selectable backup and finish their
 group with a complete checkpoint. Reverting that group still composes using
 its entity revisions; the checkpoint is not treated as another inverse entity.
 
+## Bulk crop deletion
+
+The project crop list previews a selected set or all active crops through
+`POST /api/crops/bulk-delete/preview/`. The preview expands groups according
+to the same rules as single-crop deletion and counts each affected row once.
+It has no project writes. When any affected crop has a planting plan, when a
+group is ambiguous, or when excluding varieties would leave an incomplete
+group, the preview blocks the batch.
+
+Confirmation sends a signed proof of the selected state and a request ID.
+Under the project write lock the server rechecks the active crop identities,
+group membership, and dependencies before archiving the rows. The
+request ID gives the initiating user the same receipt on an exact retry.
+The operation is bounded to 5,000 affected crop rows. Crop, seed, and supplier
+relationships survive the archive. Each deletion or recovery produces one
+history group with the actor and the affected rows.
+
+Undo uses the original batch's crop IDs and deletion timestamp. It restores
+the archived rows together and revalidates identities under the project lock.
+If an intervening change prevents safe recovery, the batch is refused. The
+individual trash and recovery API remains available.
+
 ## Full project restoration
 
 The owner clarified in #1061 that **Restore this version means the complete
 historical domain state, including removing later-created crops and beds**.
 This deliberately replaces the old retain-later-created-rows behavior.
+
+The confirmation dialog requests `GET /api/history/project/restore-preview/?history_id=…`.
+The project administrator's preview reconstructs and validates the historical
+target without writing data, history, or retained uploads. Each count represents
+an individual active record removed, restored, or changed, with general crops
+and varieties counted separately. A group can show up to five affected names
+per action. A change to a bed or field's visual layout counts toward that
+growing area. Internal timestamps and derived normalization fields are ignored
+in the counts. Unsafe or incomplete targets cannot be confirmed. Preview
+requests have per-user and per-IP rate limits. The synchronous preview also
+bounds project rows, stored revision data and storage checks. Projects beyond
+those limits display a size error and cannot be confirmed through the dialog.
 
 `ProjectHistoryRestoreView` and the timestamp compatibility helper delegate to
 `history/project_restore.py`:
@@ -200,7 +234,12 @@ This deliberately replaces the old retain-later-created-rows behavior.
 3. Validate ownership, historical parents, external references and final general
    crop identities. Refuse untracked/external cascades. Missing optional global
    references retain the established nulling behavior; required missing parents
-   cannot be silently skipped.
+   cannot be silently skipped. The dialog sends the preview's signed token with
+   the restore request. The server compares the complete current and reconstructed
+   target states under the project lock before saving a backup. If either state
+   changes, the dialog requires a fresh preview and confirmation. This
+   confirmation applies the same project size limits as the preview. Existing
+   project-administrator API callers can still send a history ID alone.
 4. Save a complete current-state backup, remove absent rows in reverse dependency
    order and restore targets in forward order. Crops use soft deletion to retain
    identity, library provenance and the drain-only legacy crop audit rows. No
@@ -415,6 +454,11 @@ deletions replay the schema's cascade/nullable-FK effects without inventing
 absence for untracked rows. If deleting a newer parent cascades into a row that
 belongs in the target, the restore recreates it with its original ID and stored
 creation timestamp.
+
+Parcel duplication records copied beds in the parcel's completed version.
+Supplier unlink and undo record changed crop links and offers in their supplier
+versions. A full restore uses the selected version's supplier and offer creation
+times when an undo reused those row IDs.
 
 Crop revision restore and grouped undelete reject active normalized name/variety
 conflicts with HTTP 409 (`crop_variety_conflict`), including crops without a
