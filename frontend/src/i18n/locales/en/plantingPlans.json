@@ -489,7 +489,14 @@
   "actualDates": {
     "clear": "Clear date",
     "title": "Planned and actual dates",
-    "modeLabel": "Dates to show",
+    "modeLabel": "Dates",
+    "modeInfoLabel": "About date display",
+    "modeHelp": "Planned shows scheduled dates. Actual shows recorded dates and leaves missing dates blank. Actual or planned shows the recorded date when available and the planned date otherwise.",
+    "displayModes": {
+      "planned": "Planned",
+      "actual": "Actual",
+      "combined": "Actual or planned"
+    },
     "edit": "Record actual dates",
     "saveError": "Could not save actual dates.",
     "unsaved": "Leaving will discard unsaved date changes.",
@@ -502,8 +509,7 @@
     "editTarget": "Choose which date to edit",
     "modes": {
       "planned": "Planned",
-      "actual": "Actual",
-      "combined": "Both"
+      "actual": "Actual"
     },
     "activities": {
       "propagation": "Propagation start",

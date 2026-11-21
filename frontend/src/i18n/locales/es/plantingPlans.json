@@ -501,7 +501,14 @@
   "actualDates": {
     "clear": "Borrar fecha",
     "title": "Fechas previstas y reales",
-    "modeLabel": "Fechas que se muestran",
+    "modeLabel": "Fechas",
+    "modeInfoLabel": "Información sobre las fechas mostradas",
+    "modeHelp": "Previstas muestra las fechas planificadas. Reales muestra las fechas registradas y deja en blanco las que faltan. Reales o previstas muestra la fecha registrada si existe y la prevista en caso contrario.",
+    "displayModes": {
+      "planned": "Previstas",
+      "actual": "Reales",
+      "combined": "Reales o previstas"
+    },
     "edit": "Registrar fechas reales",
     "saveError": "No se pudieron guardar las fechas reales.",
     "unsaved": "Al salir se perderán las fechas sin guardar.",
@@ -516,8 +523,7 @@
     "editTarget": "Elegir qué fecha editar",
     "modes": {
       "planned": "Previsto",
-      "actual": "Realizado",
-      "combined": "Ambos"
+      "actual": "Realizado"
     },
     "activities": {
       "propagation": "Inicio del semillero",

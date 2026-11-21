@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Alert, Box, Button, IconButton, Popover, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { Alert, Box, Button, IconButton, Popover, NativeSelect, Stack, Typography } from '@mui/material';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { FullCellTooltip } from '../components/data-grid/FullCellTooltip';
+import { FieldInfoButton } from '../crops/FieldInfoButton';
 import { useTranslation } from '../i18n';
 import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import { ActualPlanDateField, PlanDateComparisonText } from './PlantingPlanExecutionDates';
@@ -12,18 +13,30 @@ import { planDateDeviation, planDateDeviationLabel, type PlantingPlanDateCompari
 
 const DATE_MODES: PlantingPlanDateMode[] = ['planned', 'actual', 'combined'];
 
-export function PlantingPlanDateModeToggle({ mode, onChange }: {
+export function PlantingPlanDateModeSelect({ mode, onChange }: {
   mode: PlantingPlanDateMode;
   onChange: (mode: PlantingPlanDateMode) => void;
 }) {
   const { t } = useTranslation('plantingPlans');
+  const selectId = useId();
   return (
-    <ToggleButtonGroup size="small" exclusive value={mode} data-grid-view-control
-      aria-label={t('actualDates.modeLabel')}
-      onChange={(_, value: PlantingPlanDateMode | null) => { if (value) onChange(value); }}
-      sx={{ maxWidth: '100%', '& .MuiToggleButton-root': { textTransform: 'none', px: 1.25, minHeight: 36 } }}>
-      {DATE_MODES.map(value => <ToggleButton key={value} value={value}>{t(`actualDates.modes.${value}`)}</ToggleButton>)}
-    </ToggleButtonGroup>
+    <Stack direction="row" spacing={0.5} data-grid-view-control sx={{ alignItems: 'center', maxWidth: '100%' }}>
+      <Typography component="label" htmlFor={selectId} variant="body2">
+        {t('actualDates.modeLabel')}
+      </Typography>
+      <NativeSelect
+        value={mode}
+        onChange={event => {
+          const nextMode = DATE_MODES.find(value => value === event.target.value);
+          if (nextMode) onChange(nextMode);
+        }}
+        inputProps={{ id: selectId }}
+        sx={{ minWidth: 0, '& .MuiNativeSelect-select': { minHeight: 32, boxSizing: 'content-box' } }}
+      >
+        {DATE_MODES.map(value => <option key={value} value={value}>{t(`actualDates.displayModes.${value}`)}</option>)}
+      </NativeSelect>
+      <FieldInfoButton contextual ariaLabel={t('actualDates.modeInfoLabel')} title={t('actualDates.modeHelp')} />
+    </Stack>
   );
 }
 

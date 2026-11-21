@@ -198,7 +198,8 @@ FR/ES/IT: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Räumungsdatum † | Crop removal date | Date de fin de culture | Fecha de fin del cultivo | Data di fine coltivazione | Data de fim da cultura | Einddatum teelt |
 | Saisonstatus | Season status | Statut dans la saison | Estado en la temporada | Stato nella stagione | Estado na época | Seizoensstatus |
 | Weiterlaufende Kulturen | Continued crops | Cultures en cours depuis une autre saison | Cultivos que continúan | Colture che proseguono | Culturas que continuam | Doorlopende teelten |
-| Plan / Ist / Beides (Terminanzeige) | Planned / Actual / Both | Prévu / Réalisé / Les deux | Previsto / Realizado / Ambos | Previsto / Effettivo / Entrambi | Planeado / Realizado / Ambos | Gepland / Werkelijk / Beide |
+| Termine (Terminanzeige) | Dates | Dates | Fechas | Date | Datas | Datums |
+| Geplant / Tatsächlich / Plan mit Ist (Optionen der Terminanzeige) | Planned / Actual / Actual or planned | Prévues / Réelles / Réelles ou prévues | Previstas / Reales / Reales o previstas | Pianificate / Effettive / Effettive o pianificate | Planeadas / Reais / Reais ou planeadas | Gepland / Werkelijk / Werkelijk of gepland |
 | Ist-Aussaattermin | Actual sowing date | Date réelle de semis | Fecha real de siembra | Data effettiva di semina | Data efetiva de sementeira | Werkelijke zaaidatum |
 | Ist-Termine als Plantermine verwenden | Use actual dates as planned dates | Utiliser les dates réelles pour la planification | Usar las fechas reales para planificar | Usa le date effettive per pianificare | Usar datas efetivas no planeamento | Werkelijke datums gebruiken voor de planning |
 | Ernte | Harvest | Récolte | Cosecha | raccolta | colheita | oogst |

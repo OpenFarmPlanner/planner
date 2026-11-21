@@ -1,4 +1,4 @@
-import type { Ref, RefObject } from 'react';
+import type { ReactNode, Ref, RefObject } from 'react';
 
 import { useTranslation } from '../../../i18n';
 import type { PlantingPlanSearchControls } from '../../../pages/usePlantingPlanSearch';
@@ -18,6 +18,7 @@ interface PlantingPlanSearchToolbarProps {
   onColumnsPanelOpenChange?: (open: boolean) => void;
   /** Anchors the columns panel to this button; see `columnsPanelAnchorEl` on `EditableDataGrid`. */
   columnsButtonRef?: Ref<HTMLButtonElement>;
+  viewControls?: ReactNode;
 }
 
 /**
@@ -33,6 +34,7 @@ export function PlantingPlanSearchToolbar({
   columnsPanelOpen,
   onColumnsPanelOpenChange,
   columnsButtonRef,
+  viewControls,
 }: PlantingPlanSearchToolbarProps) {
   const { t } = useTranslation('plantingPlans');
   const activeGroupCount = search.activeFilterGroups.length;
@@ -67,6 +69,7 @@ export function PlantingPlanSearchToolbar({
       columnsPanelOpen={columnsPanelOpen}
       onColumnsPanelOpenChange={onColumnsPanelOpenChange}
       columnsButtonRef={columnsButtonRef}
+      viewControls={viewControls}
     />
   );
 }

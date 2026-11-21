@@ -149,7 +149,7 @@ import {
   ACTUAL_DATE_FIELDS, displayedPlanDate, getPlanColumnDates, PLANTING_PLAN_DATE_COLUMNS,
   type PlantingPlanActivity, type PlantingPlanDateColumn, type PlantingPlanDateMode,
 } from "../planting-plans/plantingPlanActualDates";
-import { InlinePlanDateEditor, PlantingPlanDateModeToggle, RecordedPlanDateCell, RecordedPlanDateValue } from "../planting-plans/PlantingPlanDateCells";
+import { InlinePlanDateEditor, PlantingPlanDateModeSelect, RecordedPlanDateCell, RecordedPlanDateValue } from "../planting-plans/PlantingPlanDateCells";
 import { PlanDateComparisonText, PlantingPlanExecutionDates } from "../planting-plans/PlantingPlanExecutionDates";
 import { ReadOnlyRotationWarning, RotationStatusIcon } from "../components/planting-plans/rotation/RotationStatusIcon";
 import { CompanionWarningIcon } from "../components/planting-plans/rotation/CompanionCheckAlert";
@@ -2463,8 +2463,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               isFilterSheetOpen={isFilterPanelOpen}
               onOpenFilterSheet={() => setIsFilterPanelOpen(true)}
               filterSheetId={filterSheetId}
+              viewControls={<PlantingPlanDateModeSelect mode={dateMode} onChange={setDateMode} />}
             />
-            <Box sx={{ px: 2, pt: 1 }}><PlantingPlanDateModeToggle mode={dateMode} onChange={setDateMode} /></Box>
             <PlantingPlanMobileListHeader
               search={search}
               onOpenFilterSheet={() => setIsFilterPanelOpen(true)}
@@ -2659,16 +2659,14 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               columnsPanelOpen={isColumnsPanelOpen}
               onColumnsPanelOpenChange={setIsColumnsPanelOpen}
               columnsButtonRef={setColumnsAnchorEl}
+              viewControls={<PlantingPlanDateModeSelect mode={dateMode} onChange={setDateMode} />}
             />
           ) : null}
-          {!isMobile && hasPlans && <Box sx={{ px: 2, pb: 1 }}>
-            <PlantingPlanDateModeToggle mode={dateMode} onChange={setDateMode} />
-            {continuingSummary && (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                {continuingSummary}
-              </Typography>
-            )}
-          </Box>}
+          {!isMobile && hasPlans && continuingSummary && (
+            <Typography variant="body2" color="text.secondary" sx={{ px: 2, pb: 1 }}>
+              {continuingSummary}
+            </Typography>
+          )}
           {!isMobile && showDesktopSearchEmptyState ? <PlantingPlanSearchEmptyState search={search} /> : null}
           {/* Collapsed rather than unmounted while nothing matches, so the grid
               keeps its rows and scroll state, and still sizes the card: the

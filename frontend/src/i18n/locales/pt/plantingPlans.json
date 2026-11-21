@@ -501,7 +501,14 @@
   "actualDates": {
     "clear": "Limpar data",
     "title": "Datas planeadas e reais",
-    "modeLabel": "Datas a apresentar",
+    "modeLabel": "Datas",
+    "modeInfoLabel": "Informações sobre a apresentação das datas",
+    "modeHelp": "Planeadas apresenta as datas previstas. Reais apresenta as datas registadas e deixa em branco as que faltam. Reais ou planeadas apresenta a data registada quando existe e a planeada nos restantes casos.",
+    "displayModes": {
+      "planned": "Planeadas",
+      "actual": "Reais",
+      "combined": "Reais ou planeadas"
+    },
     "edit": "Registar datas reais",
     "saveError": "Não foi possível guardar as datas reais.",
     "unsaved": "Se sair, perderá as alterações de datas que não guardou.",
@@ -516,8 +523,7 @@
     "editTarget": "Escolher a data a editar",
     "modes": {
       "planned": "Planeado",
-      "actual": "Realizado",
-      "combined": "Ambos"
+      "actual": "Realizado"
     },
     "activities": {
       "propagation": "Início do viveiro",

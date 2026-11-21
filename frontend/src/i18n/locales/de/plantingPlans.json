@@ -489,7 +489,14 @@
   "actualDates": {
     "clear": "Datum löschen",
     "title": "Plan- und Ist-Termine",
-    "modeLabel": "Terminanzeige",
+    "modeLabel": "Termine",
+    "modeInfoLabel": "Info zur Terminanzeige",
+    "modeHelp": "Geplant zeigt die geplanten Termine. Tatsächlich zeigt nur erfasste Ist-Termine und lässt fehlende Termine leer. Plan mit Ist zeigt den Ist-Termin, falls erfasst, sonst den geplanten Termin.",
+    "displayModes": {
+      "planned": "Geplant",
+      "actual": "Tatsächlich",
+      "combined": "Plan mit Ist"
+    },
     "edit": "Ist-Termine erfassen",
     "saveError": "Ist-Termine konnten nicht gespeichert werden.",
     "unsaved": "Ungespeicherte Terminänderungen gehen beim Verlassen verloren.",
@@ -502,8 +509,7 @@
     "editTarget": "Terminart wählen",
     "modes": {
       "planned": "Plan",
-      "actual": "Ist",
-      "combined": "Beides"
+      "actual": "Ist"
     },
     "activities": {
       "propagation": "Anzuchtbeginn",

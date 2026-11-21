@@ -180,7 +180,8 @@ Detail reads can use `across_seasons=true` for one plan in the active project.
 The table and edit endpoints continue to use the active season, and the detail
 page offers an explicit switch to the plan's originating season.
 
-The planting-plans date mode controls display, ordering, filter input and
+The planting-plans date selector sits beside Columns on desktop and follows the
+search and filter controls on mobile. The date mode controls display, ordering, filter input and
 clipboard export. Combined shows recorded dates first and falls back to the
 plan. Actual leaves unrecorded dates blank. The sowing column uses the start
 of propagation for a home-raised crop. The existing planting-date column also
