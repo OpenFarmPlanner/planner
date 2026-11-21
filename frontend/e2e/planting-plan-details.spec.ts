@@ -222,6 +222,27 @@ test('direct links retain the original season and reuse the notes, task and area
   await expect(page).toHaveURL(new RegExp(`${table}$`));
 });
 
+test('a plan whose crop was archived still accepts a linked task', async ({ page, request }) => {
+  const { crop, plan, season } = await seedPlans(page, request, 'plan-details-archived-crop-task');
+  await apiRequest(page, 'DELETE', `/crops/${crop.id}/`);
+  await page.goto(`${table}/${plan.id}`);
+  await expect(page.getByRole('heading', { name: cropName })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Zur Kultur' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Aufgabe hinzufügen' });
+  const title = 'Beet nach archivierter Kultur prüfen';
+  await dialog.getByRole('textbox', { name: 'Titel' }).fill(title);
+  const saved = page.waitForResponse(response => response.url().endsWith('/api/tasks/') && response.request().method() === 'POST');
+  await dialog.getByRole('button', { name: 'Speichern' }).click();
+  expect((await saved).status()).toBe(201);
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByText(title, { exact: true })).toBeVisible();
+  const { results } = await apiRequest<{ results: { title: string; season: number; planting_plan: number; crop: number | null }[] }>(
+    page, 'GET', `/tasks/?planting_plan=${plan.id}&across_seasons=true`,
+  );
+  expect(results.find(task => task.title === title)).toMatchObject({ season: season.id, planting_plan: plan.id, crop: null });
+});
+
 test('opening details keeps an edit visible if the grid cannot save it', async ({ page, request }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const { noBed, plan } = await seedPlans(page, request, 'plan-details-failed-grid-save');
