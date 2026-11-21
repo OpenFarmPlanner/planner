@@ -20,6 +20,9 @@ import type {
   CropLoss,
   CropLossWrite,
   CropDeletePreview,
+  CropBulkDeletePreview,
+  CropBulkDeleteResult,
+  CropBulkDeleteSelection,
   Location,
   Field,
   Bed,
@@ -172,6 +175,13 @@ export const cropAPI = {
   updateSupplierData: (id: number, rows: CropSupplierDataInput[]) =>
     http.patch<Crop>(`/crops/${id}/`, { supplier_data_input: rows }),
   deletePreview: (id: number) => http.get<CropDeletePreview>(`/crops/${id}/delete-preview/`),
+  bulkDeletePreview: (selection: CropBulkDeleteSelection, signal: AbortSignal) =>
+    http.post<CropBulkDeletePreview>('/crops/bulk-delete/preview/', selection, { signal }),
+  bulkDelete: (payload: CropBulkDeleteSelection & {
+    request_id: string; preview_token: string; confirm_all: boolean;
+  }) => http.post<CropBulkDeleteResult>('/crops/bulk-delete/', payload),
+  recoverBulkDelete: (expected_project_id: number, batch_id: number) =>
+    http.post<{ restored_count: number }>('/crops/bulk-delete/undo/', { expected_project_id, batch_id }),
   delete: (id: number) => http.delete(`/crops/${id}/`),
   history: (id: number) => http.get<CropHistoryEntry[]>(`/crops/${id}/history/`),
   restore: (id: number, history_id: number) => http.post<Crop>(`/crops/${id}/restore/`, { history_id }),
@@ -752,8 +762,8 @@ export const projectAPI = {
     // The invitee without an explicit account language gets the email in the
     // inviter's current UI language (docs/i18n.md, "E-Mails").
     http.post(`/projects/${projectId}/invitations/`, data, { params: { language: getCurrentUiLanguage() } }),
-  listMembers: (projectId: number) =>
-    http.get<ProjectMemberPayload[]>(`/projects/${projectId}/members/`),
+  listMembers: (projectId: number, signal?: AbortSignal) =>
+    http.get<ProjectMemberPayload[]>(`/projects/${projectId}/members/`, signal ? { signal } : undefined),
   updateMember: (projectId: number, membershipId: number, role: 'admin' | 'member') =>
     http.patch<ProjectMemberPayload>(`/projects/${projectId}/members/`, { membership_id: membershipId, role }),
   removeMember: (projectId: number, membershipId: number) =>
@@ -894,7 +904,7 @@ export default {
 
 export const taskAPI = {
   listAll: () => fetchAllPaginated<Task>('/tasks/'),
-  listForPlan: (planId: number) => fetchAllPaginated<Task>(`/tasks/?planting_plan=${planId}&across_seasons=true`),
+  listForPlan: (planId: number, signal?: AbortSignal) => fetchAllPaginated<Task>(`/tasks/?planting_plan=${planId}&across_seasons=true`, signal),
   create: (data: TaskWritePayload) => http.post<Task>('/tasks/', data),
   update: (id: number, data: TaskWritePayload) => http.patch<Task>(`/tasks/${id}/`, data),
   delete: (id: number) => http.delete(`/tasks/${id}/`),

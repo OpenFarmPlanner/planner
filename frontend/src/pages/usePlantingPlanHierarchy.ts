@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useTheme } from '@mui/material';
 import {
   cropAPI,
   locationAPI,
@@ -14,15 +15,12 @@ import {
 import {
   toNumericValue,
   formatAreaM2,
-  buildAreaColumnHeaderLabel,
   buildBedDisplayLabel,
-  AREA_LABEL_SEPARATOR,
-  BED_COLUMN_MAX_WIDTH,
-  BED_STATUS_ICON_ALLOWANCE,
   CROP_COLUMN_MAX_WIDTH,
 } from './plantingPlansUtils';
 import { resolveLocaleFromLanguage } from '../utils/numberLocalization';
 import { collectHierarchyAvailability } from '../components/planting-plans/areaHierarchySelection';
+import { BED_PATH_SEPARATOR } from '../components/planting-plans/bedPickerOptions';
 import type { SearchableSelectOption } from '../components/data-grid';
 import { useTranslation } from '../i18n';
 import { formatCropDisplayName } from '../crops/cropDisplay';
@@ -101,6 +99,7 @@ const estimateDateColumnWidth = (headerName: string, allowance: number): number 
 );
 
 export function usePlantingPlanHierarchy(shouldShowProjectRequiredState: boolean) {
+  const { typography } = useTheme();
   const { t } = useTranslation(['plantingPlans', 'common']);
   const { i18n } = useTranslation();
   const numberLocale = resolveLocaleFromLanguage(i18n.language);
@@ -250,21 +249,8 @@ export function usePlantingPlanHierarchy(shouldShowProjectRequiredState: boolean
     return locationIdsWithBeds.size > 1;
   }, [beds, fields]);
 
-  const fieldBedColumnLabel = useMemo(
-    () => t('plantingPlans:columns.fieldBed', { separator: AREA_LABEL_SEPARATOR }),
-    [t],
-  );
-
-  const areaColumnLabel = useMemo(
-    () =>
-      buildAreaColumnHeaderLabel(
-        hasMultipleLocationsWithBeds,
-        t('plantingPlans:columns.location'),
-        t('plantingPlans:columns.field'),
-        t('plantingPlans:columns.bed'),
-      ),
-    [hasMultipleLocationsWithBeds, t],
-  );
+  const bedColumnLabel = [t('plantingPlans:columns.location'), t('plantingPlans:columns.field'), t('plantingPlans:columns.bed')]
+    .join(BED_PATH_SEPARATOR);
 
   const getCultivationTypeOptionsForRow = useMemo(
     () =>
@@ -283,15 +269,14 @@ export function usePlantingPlanHierarchy(shouldShowProjectRequiredState: boolean
       170,
       CROP_COLUMN_MAX_WIDTH,
     );
-    const hierarchyColumnValues = [
-      t('plantingPlans:columns.bed'),
-      ...Array.from(new Set(bedOptions.map((option) => option.label))),
-    ];
-    const bedWidth = estimateColumnWidth(
-      hierarchyColumnValues,
-      hasMultipleLocationsWithBeds ? 210 : 160,
-      hasMultipleLocationsWithBeds ? 380 : BED_COLUMN_MAX_WIDTH - BED_STATUS_ICON_ALLOWANCE,
-    ) + BED_STATUS_ICON_ALLOWANCE;
+    // Keep room for the bed name itself, status controls and cell padding.
+    // Only the location/field prefix can shrink when the path is longer.
+    const measure = typeof OffscreenCanvas === 'undefined' ? null : new OffscreenCanvas(1, 1).getContext('2d');
+    if (measure) measure.font = `500 ${typography.fontSize}px ${typography.fontFamily}`;
+    const longestBed = beds.reduce((width, bed) => Math.max(width, measure
+      ? Math.ceil(measure.measureText(bed.name).width)
+      : Array.from(bed.name).length * 15), 0);
+    const bedWidth = Math.max(estimateColumnWidth([bedColumnLabel], 210, 330), longestBed + 102);
     return {
       crop: cropWidth,
       bed: bedWidth,
@@ -316,7 +301,7 @@ export function usePlantingPlanHierarchy(shouldShowProjectRequiredState: boolean
       plants: estimateColumnWidth([t('plantingPlans:columns.plantsCount'), '≈ 9999'], 96, 122),
       notes: 220,
     };
-  }, [bedOptions, beds, cultivationTypeOptions, cropOptions, hasMultipleLocationsWithBeds, i18n.language, numberLocale, t]);
+  }, [bedColumnLabel, beds, cultivationTypeOptions, cropOptions, i18n.language, numberLocale, t, typography]);
 
   return {
     crops,
@@ -335,8 +320,7 @@ export function usePlantingPlanHierarchy(shouldShowProjectRequiredState: boolean
     cultivationTypeOptions,
     cultivationTypeOptionsByCropId,
     hasMultipleLocationsWithBeds,
-    fieldBedColumnLabel,
-    areaColumnLabel,
+    bedColumnLabel,
     getCultivationTypeOptionsForRow,
     dynamicWidths,
   };

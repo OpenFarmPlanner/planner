@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type Ref } from 'react';
 import {
   Alert,
   Box,
@@ -47,6 +47,7 @@ import { extractApiErrorCode, extractApiErrorMessage } from '../api/errors';
 import { TruncatedTextWithTooltip } from '../components/TruncatedTextWithTooltip';
 
 interface SeasonSwitcherProps {
+  buttonRef?: Ref<HTMLButtonElement>;
   controller: UseActiveSeasonReturn;
   onOpenProjectSettings: () => void;
   onOpenCreateSuggestion: () => void;
@@ -576,6 +577,7 @@ export function SeasonCreateSuggestionDialog({
 }
 
 export function SeasonSwitcher({
+  buttonRef,
   controller,
   onOpenProjectSettings,
   onOpenCreateSuggestion,
@@ -614,9 +616,11 @@ export function SeasonSwitcher({
   return (
     <>
       <Button
+        ref={buttonRef}
         aria-label={t('navigation:seasonSwitcher.ariaLabel')}
         aria-controls={menuAnchor ? 'season-switcher-menu' : undefined}
-        aria-haspopup="true"
+        aria-haspopup="menu"
+        aria-expanded={Boolean(menuAnchor)}
         onClick={(event) => setMenuAnchor(event.currentTarget)}
         size="small"
         sx={{

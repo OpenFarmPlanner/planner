@@ -419,6 +419,12 @@ function batchBaseText(
   if (operationType === 'crop_import') {
     return t('history.import.summary', { count: Number(context.created_count ?? 0) + Number(context.updated_count ?? 0) });
   }
+  if (operationType === 'crop_bulk_delete') {
+    return t('bulkDelete.archived', { count: Number(context.deleted_count ?? 0) });
+  }
+  if (operationType === 'crop_bulk_undelete') {
+    return t('bulkDelete.recoveredCount', { count: Number(context.restored_count ?? 0) });
+  }
   const baseKey = BATCH_OPERATION_BASE_KEYS[operationType ?? ''] ?? 'history.batch.fallback';
   return t(baseKey, {
     season: String(context.season_label ?? ''),

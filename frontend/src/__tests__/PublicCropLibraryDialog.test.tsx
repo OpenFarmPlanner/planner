@@ -523,7 +523,7 @@ describe('PublicCropLibraryDialog', () => {
     );
 
     await screen.findByRole('dialog', { name: 'Aus Kulturbibliothek importieren' });
-    const searchInput = screen.getByLabelText('Öffentliche Kulturen durchsuchen');
+    const searchInput = screen.getByLabelText('Kulturen suchen');
     searchInput.focus();
 
     await user.keyboard('{ArrowDown}');

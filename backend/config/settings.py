@@ -706,6 +706,8 @@ REST_FRAMEWORK = {
         'public_crop_report': _env_str('THROTTLE_PUBLIC_CROP_REPORT', '20/hour'),
         'client_error_report': _env_str('THROTTLE_CLIENT_ERROR_REPORT', '10/hour'),
         'client_error_report_global': _env_str('THROTTLE_CLIENT_ERROR_REPORT_GLOBAL', '60/hour'),
+        'crop_bulk_delete_user': _env_str('THROTTLE_CROP_BULK_DELETE_USER', '20/minute'),
+        'crop_bulk_delete_ip': _env_str('THROTTLE_CROP_BULK_DELETE_IP', '120/minute'),
         'project_restore_preview_user': _env_str(
             'THROTTLE_PROJECT_RESTORE_PREVIEW_USER',
             '120/minute' if DJANGO_ENV in ('development', 'test') else '12/minute',

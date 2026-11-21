@@ -84,7 +84,7 @@ def _apply_row(item: dict[str, Any], *, project, context: dict[str, Any]) -> dic
         # `project` is read-only on the serializer and assigned here from the
         # token's bound project, so a payload can never place a crop in a
         # different project.
-        crop = serializer.save(project=project)
+        crop = serializer.save(project=project, creation_origin=Crop.CREATION_FILE_IMPORT)
         return {'index': item['index'], 'action': ACTION_CREATE, 'crop_id': crop.id}
 
     existing = Crop.objects.filter(project=project, pk=item['matched_crop_id']).first()

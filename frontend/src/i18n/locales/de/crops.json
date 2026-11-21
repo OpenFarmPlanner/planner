@@ -1,9 +1,8 @@
 {
   "title": "Kulturen",
-  "searchPlaceholder": "Kultur suchen",
+  "searchPlaceholder": "Kulturen suchen",
   "searchInputPlaceholder": "Name der Kultur eingeben...",
   "noOptions": "Keine Kulturen gefunden",
-  "searchInputPlaceholderEnhanced": "Nach Kulturname suchen (z. B. Karotte)",
   "searchHelperText_one": "{{count}} Kultur gefunden. Mit den Filtern können Sie weiter eingrenzen.",
   "searchHelperText_other": "{{count}} Kulturen gefunden. Mit den Filtern können Sie weiter eingrenzen.",
   "clearSearch": "Suche löschen",
@@ -1039,7 +1038,7 @@
         }
       }
     },
-    "searchLabel": "Öffentliche Kulturen durchsuchen",
+    "searchLabel": "Kulturen suchen",
     "selectPrompt": "Wählen Sie eine öffentliche Kultur aus, um Details und Import anzuzeigen.",
     "empty": "Keine öffentlichen Kulturen gefunden.",
     "emptyState": {
@@ -1781,6 +1780,61 @@
       "createPlan": "anbauplan, planung",
       "previous": "vorherige, kultur",
       "next": "nächste, kultur"
+    }
+  },
+  "bulkDelete": {
+    "menu": "Kulturaktionen",
+    "allAction": "Alle Projektkulturen löschen",
+    "title": "Ausgewählte Kulturen löschen",
+    "scopeAll": "Die Aktion umfasst alle aktiven Kulturen im Projekt, auch durch Filter ausgeblendete.",
+    "scopeSelected": "Prüfe die ausgewählten Kulturen und die einbezogenen Sorten.",
+    "trashNotice": "Die Kulturen werden mit ihren Saatgutdaten in den Papierkorb verschoben. Einträge in der Kulturbibliothek bleiben erhalten.",
+    "deleteVarieties": "Sorten mitlöschen",
+    "confirmAll": "Ich bestätige das Löschen aller aktiven Kulturen in diesem Projekt.",
+    "showCrops": "Betroffene Kulturen anzeigen",
+    "empty": "Diese Auswahl enthält keine aktiven Kulturen.",
+    "missing": "Einige ausgewählte Kulturen sind nicht mehr verfügbar. Aktualisiere die Auswahl.",
+    "outcomeUnknown": "Das Ergebnis ist nicht verfügbar. Wiederhole dieselbe Anfrage, um den Status zu prüfen.",
+    "retry": "Löschen erneut versuchen",
+    "confirm": "In den Papierkorb verschieben",
+    "recovered": "Kulturen aus dem Papierkorb wiederhergestellt.",
+    "recoveryFailed": "Die Kulturen konnten nicht gemeinsam wiederhergestellt werden.",
+    "archived_one": "{{count}} Kultur in den Papierkorb verschoben",
+    "archived_other": "{{count}} Kulturen in den Papierkorb verschoben",
+    "recoveredCount_one": "{{count}} Kultur aus dem Papierkorb wiederhergestellt",
+    "recoveredCount_other": "{{count}} Kulturen aus dem Papierkorb wiederhergestellt",
+    "counts": {
+      "selected": "Ausgewählte Einträge",
+      "affected": "Betroffene Einträge",
+      "general": "Allgemeine Kulturen",
+      "varieties": "Sorten",
+      "additional": "Zusätzlich aus Kulturgruppen",
+      "plans": "Verknüpfte Anbaupläne",
+      "packages": "Saatgutpackungen",
+      "offers": "Lieferantenangebote",
+      "blocked": "Blockierte Einträge",
+      "missing": "Nicht verfügbare Einträge",
+      "skipped": "Übersprungene Einträge",
+      "failed": "Fehlgeschlagene Einträge"
+    },
+    "blockers": {
+      "varieties_required": "Diese Sorten benötigen ihre allgemeine Kultur. Beziehe die Sorten ein, um die Gruppe zu löschen.",
+      "ambiguous_group": "Die Gruppe enthält mehrere allgemeine Kulturen. Kläre die Zuordnung vor dem Löschen.",
+      "planting_plans": "Anbaupläne verwenden diese Kulturen. Ändere die Pläne vor dem Löschen."
+    },
+    "origin": {
+      "label": "Herkunft der Kultur",
+      "manual": "Manuell angelegt",
+      "file_import": "Aus Datei importiert",
+      "library_import": "Aus der Kulturbibliothek importiert",
+      "unknown": "Unbekannt oder Altbestand"
+    },
+    "errors": {
+      "unavailable": "Die Vorschau ist nicht verfügbar. Versuche es erneut.",
+      "changed": "Die Auswahl oder das Projekt hat sich geändert. Prüfe eine neue Vorschau.",
+      "limit": "Die Auswahl ist zu groß. Wähle weniger Kulturen auf einmal aus.",
+      "throttled": "Zu viele Anfragen. Warte kurz und versuche es erneut.",
+      "writeFailed": "Die Kulturen konnten nicht in den Papierkorb verschoben werden. Sie sind weiterhin im Projekt."
     }
   },
   "restoreDialog": {

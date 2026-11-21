@@ -7,7 +7,7 @@ import { DetailSection } from '../components/layout/DetailPrimitives';
 import { useTranslation } from '../i18n';
 import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import {
-  ACTUAL_DATE_FIELDS, getPlanActivityDates, planDateDeviation, type PlantingPlanDateComparison,
+  ACTUAL_DATE_FIELDS, getPlanActivityDates, planDateDeviationLabel, type PlantingPlanDateComparison,
 } from './plantingPlanActualDates';
 
 export function ActualPlanDateField({ label, value, onChange, disabled, autoFocus, allowClear, helperText }: {
@@ -26,10 +26,13 @@ export function ActualPlanDateField({ label, value, onChange, disabled, autoFocu
       <Typography component="label" htmlFor={id} variant="body2">{label}</Typography>
       <TextField id={id} type="date" size="small" value={value} disabled={disabled} autoFocus={autoFocus}
         onChange={event => onChange(event.target.value)} helperText={helperText}
-        slotProps={allowClear && value ? { input: { endAdornment: <InputAdornment position="end">
-          <IconButton type="button" size="small" disabled={disabled} onClick={() => onChange('')}
-            aria-label={`${t('actualDates.clear')} · ${label}`}><ClearIcon fontSize="small" /></IconButton>
-        </InputAdornment> } } : undefined} />
+        slotProps={{
+          formHelperText: helperText ? { 'aria-live': 'polite' } : undefined,
+          input: allowClear && value ? { endAdornment: <InputAdornment position="end">
+            <IconButton type="button" size="small" disabled={disabled} onClick={() => onChange('')}
+              aria-label={`${t('actualDates.clear')} · ${label}`}><ClearIcon fontSize="small" /></IconButton>
+          </InputAdornment> } : undefined,
+        }} />
     </Stack>
   );
 }
@@ -38,11 +41,7 @@ export function PlanDateComparisonText({ dates }: { dates: PlantingPlanDateCompa
   const { t, i18n } = useTranslation('plantingPlans');
   const locale = resolveSeasonDateLocale(i18n);
   const dateLabel = (value: string | null) => value ? formatSeasonDate(value, locale) : t('actualDates.missing');
-  const deviation = planDateDeviation(dates);
-  const difference = deviation === null ? null
-    : deviation === 0 ? t('actualDates.same')
-      : deviation < 0 ? t('actualDates.early', { count: -deviation })
-        : t('actualDates.late', { count: deviation });
+  const difference = planDateDeviationLabel(dates, t);
   return (
     <Stack component="span" spacing={0.25}>
       <Typography component="span" variant="inherit" sx={{ fontWeight: 600 }}>

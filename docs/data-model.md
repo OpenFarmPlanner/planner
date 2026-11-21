@@ -212,6 +212,11 @@ erDiagram
   Perennials have a positive whole-year `standing_time_years`. Varieties
   can inherit the value from their general crop. Existing perennial crops
   keep an unknown value until it is explicitly configured.
+  `creation_origin` is set by the server for a new manual, file-imported,
+  or library-imported crop. It stays separate from the library link and
+  licensing provenance. Rows without recorded creation evidence retain an
+  unknown origin. The API can also recognize retained creation revisions
+  that belong to a file-import group.
 - **`PublicCrop`** is the shared, cross-project "crop library" — it has
   no owning `Project`, only optional *provenance* links back to the project
   and crop it was published from. Published rows are intended to be

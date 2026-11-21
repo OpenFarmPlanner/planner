@@ -4,7 +4,7 @@ from datetime import timedelta
 
 from django.core.exceptions import ValidationError as ModelValidationError
 from django.db import transaction
-from django.db.models import Prefetch, Q
+from django.db.models import Exists, OuterRef, Prefetch, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -51,6 +51,7 @@ from farm.history import (
 from farm.history.records import revision_actor
 from farm.history.serializers import CropHistoryEntrySerializer, CropRestoreSerializer
 from farm.models import (
+    BatchOperation,
     Crop,
     EntityRevision,
     PlantingPlan,
@@ -59,6 +60,7 @@ from farm.models import (
     format_crop_display_name,
 )
 from farm.services.crop_companions import link_free_text_companions
+from farm.services.crop_deletion import crop_group_query, crops_affected_by_delete
 from farm.services.crop_import.field_specs import seed_rate_unit_constraints_payload
 from farm.services.crop_import.spreadsheet import (
     apply_crop_import,
@@ -248,9 +250,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             latest_revision.save(update_fields=['user_name'])
 
     def _crop_group_q(self, crop: Crop) -> Q:
-        if crop.crop_species_id is not None:
-            return Q(project_id=crop.project_id, crop_species_id=crop.crop_species_id)
-        return Q(project_id=crop.project_id, crop_species_id__isnull=True, name_normalized=crop.name_normalized)
+        return crop_group_query(crop)
 
     def _active_crop_group(self, crop: Crop):
         return (
@@ -261,12 +261,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         )
 
     def _crops_affected_by_delete(self, crop: Crop) -> list[Crop]:
-        group = list(self._active_crop_group(crop))
-        has_general_entry = any(candidate.variety_normalized is None for candidate in group)
-        deletes_whole_group = crop.variety_normalized is None or not has_general_entry
-        if deletes_whole_group:
-            return group
-        return [crop]
+        return crops_affected_by_delete(crop, list(self._active_crop_group(crop)))
 
     def _delete_preview_payload(self, crop: Crop) -> dict[str, object]:
         affected_crops = self._crops_affected_by_delete(crop)
@@ -322,6 +317,11 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         return (
             manager
             .filter(project=self.request.active_project)
+            .annotate(_recorded_file_import=Exists(EntityRevision.objects.filter(
+                project_id=OuterRef('project_id'), object_id=OuterRef('pk'), entity_type='crop',
+                action=EntityRevision.ACTION_CREATED,
+                batch_operation__operation_type=BatchOperation.TYPE_CROP_IMPORT,
+            )))
             .select_related(
                 'supplier', 'image_file', 'source_public_crop',
                 'source_public_crop__crop_species', 'crop_species', 'derived_from_public_crop',

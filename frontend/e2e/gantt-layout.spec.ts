@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { submitLoginFormAndAwaitApp } from './utils';
+import calendar from '../src/i18n/locales/de/ganttChart.json' with { type: 'json' };
+import { apiRequest, expectNoHorizontalPageOverflow, loginWithDeterministicProject, resetE2EScenario, submitLoginFormAndAwaitApp } from './utils';
 
 const backendPort = process.env.BACKEND_PORT ?? '8000';
 const e2eToken = process.env.E2E_TEST_TOKEN || 'openfarmplanner-e2e-token';
@@ -127,6 +128,122 @@ async function createCalendarFixture(page: Page, options: { bedCount?: number } 
     });
   }
 }
+
+test.describe('Gantt free bed area', () => {
+  test.use({ hasTouch: true, serviceWorkers: 'block', timezoneId: 'America/Los_Angeles' });
+
+  test('shows day-level capacity without covering the crop bars', async ({ page, request }, info) => {
+    const scenario = `gantt-bed-capacity-${Date.now()}`;
+    try {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
+      const season = await apiRequest<{ id: number }>(page, 'POST', '/seasons/', {
+        start_date: '2026-03-18', end_date: '2026-10-23',
+      });
+      const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', { name: 'Test garden' });
+      const field = await apiRequest<{ id: number }>(page, 'POST', '/fields/', { name: 'Test field', location: location.id });
+      const beds = await Promise.all(['Test bed', 'Free bed', 'Unknown bed'].map(name => (
+        apiRequest<{ id: number; name: string }>(page, 'POST', '/beds/', { field: field.id, name, area_sqm: 10 })
+      )));
+      const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+        name: 'Test carrot', growth_duration_days: 35, harvest_duration_days: 15, cultivation_type: 'direct_sowing',
+      });
+      const create = (bed: number, date: string, area_usage_sqm?: number) => apiRequest<{ id: number }>(page, 'POST', '/planting-plans/', {
+        season: season.id, crop: crop.id, bed, planting_date: date, area_usage_sqm, cultivation_type: 'direct_sowing',
+      });
+      const first = await create(beds[0].id, '2026-04-01', 5);
+      await create(beds[0].id, '2026-04-15', 3);
+      await create(beds[2].id, '2026-04-05');
+      await page.goto('/app/gantt-chart');
+
+      const toggle = page.getByRole('checkbox', { name: calendar.capacity.show, exact: true });
+      const bandName = (name: string) => calendar.capacity.details.replace('{{bed}}', name);
+      const band = page.getByRole('button', { name: bandName(beds[0].name), exact: true });
+      const freeBand = page.getByRole('button', { name: bandName(beds[1].name), exact: true });
+      const unknownBand = page.getByRole('button', { name: bandName(beds[2].name), exact: true });
+      const cropBar = page.locator(`[data-task-id="plan-${first.id}-growth"]`);
+      const firstUsedInterval = band.locator('[data-capacity-status="partial"]').first();
+      await expect(toggle).not.toBeChecked();
+      await expect(band).toHaveCount(0);
+      await expect(cropBar).toBeVisible();
+      await toggle.check();
+      await expect(band).toBeVisible();
+      await expect(firstUsedInterval).toBeVisible();
+      await expect(freeBand).toHaveCount(0);
+      await page.getByRole('checkbox', { name: calendar.treeFilters.onlyOccupiedBeds, exact: true }).uncheck();
+      await expect(freeBand.locator('[data-capacity-status="free"]')).toHaveCount(1);
+      await expect(unknownBand.locator('[data-capacity-status="unknown"]')).toHaveCount(1);
+
+      for (const mode of ['day', 'week', 'month', 'quarter', 'year'] as const) {
+        const selector = page.getByRole('button', { name: calendar.chartLocaleText.viewModes[mode], exact: true });
+        await selector.click();
+        await expect(selector).toHaveAttribute('aria-pressed', 'true');
+        await expect(band).toBeVisible();
+        await expect(cropBar).toBeVisible();
+        const [barBox, bandBox] = await Promise.all([cropBar.boundingBox(), band.boundingBox()]);
+        expect(barBox!.y + barBox!.height).toBeLessThanOrEqual(bandBox!.y);
+        await expect.poll(async () => {
+          const [bar, interval] = await Promise.all([cropBar.boundingBox(), firstUsedInterval.boundingBox()]);
+          return Math.abs(bar!.x - interval!.x);
+        }).toBeLessThan(1);
+        await expectNoHorizontalPageOverflow(page);
+      }
+      await page.getByRole('button', { name: calendar.chartLocaleText.viewModes.month, exact: true }).click();
+      const harvestBar = page.locator(`[data-task-id="plan-${first.id}-harvest"]`);
+      const afterHarvest = band.locator('[data-capacity-status="partial"]').nth(2);
+      await expect.poll(async () => {
+        const [bar, interval] = await Promise.all([harvestBar.boundingBox(), afterHarvest.boundingBox()]);
+        return Math.abs(bar!.x + bar!.width - interval!.x);
+      }).toBeLessThan(1);
+      await firstUsedInterval.hover();
+      await expect(page.getByRole('tooltip').filter({ hasText: '5 m² frei von 10 m²' })).toBeVisible();
+      await band.focus();
+      await expect(band).toBeFocused();
+      await band.press('Enter');
+      const details = page.getByRole('dialog', { name: bandName(beds[0].name), exact: true });
+      await expect(details.getByText('10 m² frei von 10 m² · 0 m² belegt').first()).toBeVisible();
+      await expect(details.getByText('5 m² frei von 10 m² · 5 m² belegt')).toBeVisible();
+      await expect(details.getByText('2 m² frei von 10 m² · 8 m² belegt')).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(details).toBeHidden();
+      await page.screenshot({ path: info.outputPath('free-areas-desktop.png'), animations: 'disabled' });
+
+      const edit = page.getByRole('button', { name: calendar.moveModeOption, exact: true });
+      await edit.click();
+      await cropBar.scrollIntoViewIfNeeded();
+      const cropBox = (await cropBar.boundingBox())!;
+      const x = cropBox.x + cropBox.width / 2;
+      const y = cropBox.y + cropBox.height / 2;
+      const saved = page.waitForResponse(response => response.request().method() === 'PUT'
+        && new URL(response.url()).pathname.endsWith(`/planting-plans/${first.id}/`));
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.mouse.move(x + 10, y, { steps: 5 }); // Two days in a 150 px April column.
+      await page.mouse.up();
+      const response = await saved;
+      expect(response.ok()).toBe(true);
+      expect(await response.json()).toMatchObject({ planting_date: '2026-04-03' });
+      await edit.click();
+
+      for (const [width, height] of [[375, 800], [800, 375]]) {
+        await page.setViewportSize({ width, height });
+        await expect(toggle).toBeInViewport({ ratio: 1 });
+        await expectNoHorizontalPageOverflow(page);
+        await page.screenshot({ path: info.outputPath(`free-areas-${width}.png`), animations: 'disabled' });
+      }
+      await unknownBand.locator('[data-capacity-status="unknown"]').tap();
+      const unknown = page.getByRole('dialog', { name: bandName(beds[2].name), exact: true });
+      await expect(unknown.getByText(/Freie Fläche unbekannt/)).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(unknown).toBeHidden();
+      await toggle.uncheck();
+      await expect(band).toHaveCount(0);
+      await expect(cropBar).toBeVisible();
+    } finally {
+      await resetE2EScenario(request, scenario);
+    }
+  });
+});
 
 async function readLayoutMetrics(page: Page): Promise<LayoutMetrics> {
   await expect(page.locator('.gantt-container-wrapper .rmg-container')).toBeVisible({ timeout: 10_000 });

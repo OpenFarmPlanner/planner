@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -48,11 +48,12 @@ vi.mock("../api/api", async () => {
       list: apiMocks.planList,
       listAll: async () => (await apiMocks.planList()).data,
       update: apiMocks.planUpdate,
+      bedSuggestions: vi.fn().mockResolvedValue({ data: { results: [] } }),
     },
   };
 });
 
-// The real DataGrid.tsx keyboard/edit logic and the real AreaAssignmentDialog,
+// The real DataGrid.tsx keyboard/edit logic and the real inline bed picker,
 // with only MUI's <DataGrid> swapped for a mock that renders focusable cells —
 // see helpers/muiDataGridKeyboardCellsMock.
 vi.mock("@mui/x-data-grid", async () => {
@@ -60,21 +61,27 @@ vi.mock("@mui/x-data-grid", async () => {
   return createMuiDataGridKeyboardCellsMock({ renderCellFields: ["bed"] });
 });
 
-const DIALOG_NAME = "Anbaufläche ändern";
+const PICKER_NAME = "Beete suchen";
 
 const bedCell = (planId: number): HTMLElement => screen.getByTestId(`cell-${planId}-bed`);
 const cultivationTypeCell = (planId: number): HTMLElement =>
   screen.getByTestId(`cell-${planId}-cultivation_type`);
 
-const queryDialogs = (): HTMLElement[] => screen.queryAllByRole("dialog", { name: DIALOG_NAME });
+const queryPickers = (): HTMLElement[] => screen.queryAllByRole("combobox", { name: PICKER_NAME });
 
-const findDialog = async (): Promise<HTMLElement> =>
-  screen.findByRole("dialog", { name: DIALOG_NAME });
+const findPicker = async (): Promise<HTMLElement> =>
+  screen.findByRole("combobox", { name: PICKER_NAME });
 
-const expectNoDialog = async (): Promise<void> => {
+const expectNoPicker = async (): Promise<void> => {
   await waitFor(() => {
-    expect(queryDialogs()).toHaveLength(0);
+    expect(queryPickers()).toHaveLength(0);
   });
+};
+
+const pickSecondBed = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  const option = await screen.findByRole("option", { name: /^Beet 2/ });
+  await waitFor(() => expect(option).not.toHaveAttribute("aria-disabled", "true"));
+  await user.click(option);
 };
 
 const focusCell = async (cell: HTMLElement): Promise<void> => {
@@ -83,12 +90,12 @@ const focusCell = async (cell: HTMLElement): Promise<void> => {
   });
 };
 
-const openFocusedBedDialogWithEnter = async (
+const openFocusedBedPickerWithEnter = async (
   user: ReturnType<typeof userEvent.setup>,
   planId: number,
 ): Promise<void> => {
   await waitFor(() => {
-    expect(within(bedCell(planId)).getByRole("button", { name: "Anbaufläche bearbeiten" })).toHaveFocus();
+    expect(bedCell(planId)).toContainElement(document.activeElement as HTMLElement);
   });
   await user.keyboard("{Enter}");
 };
@@ -128,64 +135,62 @@ describe("PlantingPlans growing-area cell keyboard editing", () => {
     }));
   });
 
-  it("focuses the growing-area cell on Tab and opens the dialog with Enter", async () => {
+  it("focuses the growing-area cell on Tab and opens the picker with Enter", async () => {
     const user = await renderPlantingPlans();
 
     await focusCell(cultivationTypeCell(10));
     await user.tab();
 
-    await expectNoDialog();
+    await expectNoPicker();
     expect(screen.getByTestId("focused-cell")).toHaveTextContent("10-bed");
     await waitFor(() => {
-      expect(within(bedCell(10)).getByRole("button", { name: "Anbaufläche bearbeiten" })).toHaveFocus();
+      expect(bedCell(10)).toContainElement(document.activeElement as HTMLElement);
     });
 
-    await openFocusedBedDialogWithEnter(user, 10);
-    expect(await findDialog()).toBeInTheDocument();
+    await openFocusedBedPickerWithEnter(user, 10);
+    expect(await findPicker()).toBeInTheDocument();
     expect(screen.getByTestId("focused-cell")).toHaveTextContent("10-bed");
   });
 
-  it("reopens the dialog after Cancel when Enter is pressed after returning to the cell", async () => {
+  it("reopens the picker after Escape when Enter is pressed after returning to the cell", async () => {
     const user = await renderPlantingPlans();
 
     await focusCell(cultivationTypeCell(10));
     await user.tab();
-    await openFocusedBedDialogWithEnter(user, 10);
-    await findDialog();
+    await openFocusedBedPickerWithEnter(user, 10);
+    await findPicker();
 
-    await user.click(screen.getByRole("button", { name: "Abbrechen" }));
-    await expectNoDialog();
+    await user.keyboard("{Escape}");
+    await expectNoPicker();
 
     // Focus is back on the cell, so Shift+Tab leaves it the normal way …
     await user.tab({ shift: true });
     await waitFor(() => {
       expect(screen.getByTestId("focused-cell")).toHaveTextContent("10-cultivation_type");
     });
-    await expectNoDialog();
+    await expectNoPicker();
 
     // … and coming back must only focus the cell until Enter starts editing.
     await user.tab();
-    await expectNoDialog();
-    await openFocusedBedDialogWithEnter(user, 10);
-    expect(await findDialog()).toBeInTheDocument();
+    await expectNoPicker();
+    await openFocusedBedPickerWithEnter(user, 10);
+    expect(await findPicker()).toBeInTheDocument();
   });
 
-  it("reopens the dialog with Enter after Apply", async () => {
+  it("reopens the picker after committing a selection", async () => {
     const user = await renderPlantingPlans();
 
     await focusCell(cultivationTypeCell(10));
     await user.tab();
-    await openFocusedBedDialogWithEnter(user, 10);
-    const dialog = await findDialog();
+    await openFocusedBedPickerWithEnter(user, 10);
+    await findPicker();
 
-    await user.click(within(dialog).getByRole("combobox", { name: "Beet" }));
-    await user.click(await screen.findByRole("option", { name: /^Beet 2/ }));
-    await user.click(within(dialog).getByRole("button", { name: "Übernehmen" }));
+    await pickSecondBed(user);
 
     await waitFor(() => {
       expect(apiMocks.planUpdate).toHaveBeenCalledWith(10, expect.objectContaining({ bed: 102 }));
     });
-    await expectNoDialog();
+    await expectNoPicker();
 
     await user.tab({ shift: true });
     await waitFor(() => {
@@ -193,21 +198,21 @@ describe("PlantingPlans growing-area cell keyboard editing", () => {
     });
     await user.tab();
 
-    await expectNoDialog();
-    await openFocusedBedDialogWithEnter(user, 10);
-    expect(await findDialog()).toBeInTheDocument();
+    await expectNoPicker();
+    await openFocusedBedPickerWithEnter(user, 10);
+    expect(await findPicker()).toBeInTheDocument();
   });
 
-  it("reopens the dialog with Enter after Escape", async () => {
+  it("reopens the picker with Enter after Escape", async () => {
     const user = await renderPlantingPlans();
 
     await focusCell(cultivationTypeCell(10));
     await user.tab();
-    await openFocusedBedDialogWithEnter(user, 10);
-    await findDialog();
+    await openFocusedBedPickerWithEnter(user, 10);
+    await findPicker();
 
     await user.keyboard("{Escape}");
-    await expectNoDialog();
+    await expectNoPicker();
     expect(apiMocks.planUpdate).not.toHaveBeenCalled();
 
     await user.tab({ shift: true });
@@ -216,49 +221,43 @@ describe("PlantingPlans growing-area cell keyboard editing", () => {
     });
     await user.tab();
 
-    await expectNoDialog();
-    await openFocusedBedDialogWithEnter(user, 10);
-    expect(await findDialog()).toBeInTheDocument();
+    await expectNoPicker();
+    await openFocusedBedPickerWithEnter(user, 10);
+    expect(await findPicker()).toBeInTheDocument();
   });
 
-  it("opens the dialog only once for a single keyboard edit entry", async () => {
-    const user = await renderPlantingPlans();
-
-    const trigger = within(bedCell(10)).getByRole("button", { name: "Anbaufläche bearbeiten" });
-    await focusCell(cultivationTypeCell(10));
-    await user.tab();
-    await openFocusedBedDialogWithEnter(user, 10);
-    const dialog = await findDialog();
-    expect(queryDialogs()).toHaveLength(1);
-
-    await user.click(within(dialog).getByRole("combobox", { name: "Beet" }));
-    await user.click(await screen.findByRole("option", { name: /^Beet 2/ }));
-
-    // The focus, click and edit-request paths can all fire around one entry.
-    // A second open would reset the draft the user is already editing.
-    fireEvent.click(trigger);
-    fireEvent.keyDown(trigger, { key: "Enter" });
-
-    expect(queryDialogs()).toHaveLength(1);
-    expect(within(dialog).getByRole("combobox", { name: "Beet" })).toHaveTextContent(/Beet 2/);
-  });
-
-  it("keeps focus and tab order intact after Cancel and after Apply", async () => {
+  it("keeps the typed query when the same cell receives another open request", async () => {
     const user = await renderPlantingPlans();
 
     await focusCell(cultivationTypeCell(10));
     await user.tab();
-    await openFocusedBedDialogWithEnter(user, 10);
-    await findDialog();
-    await user.click(screen.getByRole("button", { name: "Abbrechen" }));
-    await expectNoDialog();
+    await openFocusedBedPickerWithEnter(user, 10);
+    const input = await findPicker();
+    expect(queryPickers()).toHaveLength(1);
+
+    await user.type(input, "Beet 2");
+    fireEvent.keyDown(bedCell(10), { key: "F2" });
+
+    expect(queryPickers()).toHaveLength(1);
+    expect(input).toHaveValue("Beet 2");
+  });
+
+  it("keeps focus and tab order intact after Escape and after selection", async () => {
+    const user = await renderPlantingPlans();
+
+    await focusCell(cultivationTypeCell(10));
+    await user.tab();
+    await openFocusedBedPickerWithEnter(user, 10);
+    await findPicker();
+    await user.keyboard("{Escape}");
+    await expectNoPicker();
 
     await waitFor(() => {
       expect(bedCell(10).contains(document.activeElement)).toBe(true);
     });
     expect(screen.getByTestId("focused-cell")).toHaveTextContent("10-bed");
 
-    // Tab keeps walking the row from the cell the dialog was opened from.
+    // Tab keeps walking the row from the cell the picker was opened from.
     await user.tab();
     await waitFor(() => {
       expect(screen.getByTestId("focused-cell")).toHaveTextContent("10-sowing_date");
@@ -266,10 +265,10 @@ describe("PlantingPlans growing-area cell keyboard editing", () => {
 
     await focusCell(cultivationTypeCell(10));
     await user.tab();
-    await openFocusedBedDialogWithEnter(user, 10);
-    const dialog = await findDialog();
-    await user.click(within(dialog).getByRole("button", { name: "Übernehmen" }));
-    await expectNoDialog();
+    await openFocusedBedPickerWithEnter(user, 10);
+    await findPicker();
+    await pickSecondBed(user);
+    await expectNoPicker();
 
     await waitFor(() => {
       expect(bedCell(10).contains(document.activeElement)).toBe(true);
@@ -277,34 +276,34 @@ describe("PlantingPlans growing-area cell keyboard editing", () => {
     expect(screen.getByTestId("focused-cell")).toHaveTextContent("10-bed");
   });
 
-  it("opens the dialog with Enter for every row and in both navigation directions", async () => {
+  it("opens the picker with Enter for every row and in both navigation directions", async () => {
     const user = await renderPlantingPlans();
 
     // Second row, forwards.
     await focusCell(cultivationTypeCell(20));
     await user.tab();
-    await expectNoDialog();
-    await openFocusedBedDialogWithEnter(user, 20);
-    await findDialog();
-    await user.click(screen.getByRole("button", { name: "Abbrechen" }));
-    await expectNoDialog();
+    await expectNoPicker();
+    await openFocusedBedPickerWithEnter(user, 20);
+    await findPicker();
+    await user.keyboard("{Escape}");
+    await expectNoPicker();
 
     // Second row, backwards from the following cell.
     await focusCell(screen.getByTestId("cell-20-sowing_date"));
     await user.tab({ shift: true });
-    await expectNoDialog();
-    await openFocusedBedDialogWithEnter(user, 20);
-    expect(await findDialog()).toBeInTheDocument();
+    await expectNoPicker();
+    await openFocusedBedPickerWithEnter(user, 20);
+    expect(await findPicker()).toBeInTheDocument();
     expect(screen.getByTestId("focused-cell")).toHaveTextContent("20-bed");
-    await user.click(screen.getByRole("button", { name: "Abbrechen" }));
-    await expectNoDialog();
+    await user.keyboard("{Escape}");
+    await expectNoPicker();
 
-    // First row again — an earlier row's dialog must not consume its request.
+    // Move to the first row and open the picker there again.
     await focusCell(cultivationTypeCell(10));
     await user.tab();
-    await expectNoDialog();
-    await openFocusedBedDialogWithEnter(user, 10);
-    expect(await findDialog()).toBeInTheDocument();
+    await expectNoPicker();
+    await openFocusedBedPickerWithEnter(user, 10);
+    expect(await findPicker()).toBeInTheDocument();
     expect(screen.getByTestId("focused-cell")).toHaveTextContent("10-bed");
   });
 });

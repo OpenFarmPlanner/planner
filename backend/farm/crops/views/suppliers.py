@@ -15,17 +15,19 @@ from farm.common.mixins import ProjectRevisionMixin, ProjectScopedMixin
 from farm.history import (
     _serialize_instance,
 )
+from farm.history.records import internal_project_versions
 from farm.models import (
+    Crop,
     CropSupplierData,
     EntityRevision,
     Supplier,
 )
 from farm.services.suppliers import (
+    SUPPLIER_NAME_DUPLICATE_MESSAGE,
     DuplicateSupplierNameError,
     SupplierPayloadError,
     SupplierRestoreConflictError,
     SupplierRestoreFailedError,
-    SUPPLIER_NAME_DUPLICATE_MESSAGE,
     build_delete_undo_payload,
     build_delete_usage,
     create_supplier,
@@ -109,16 +111,7 @@ class SupplierViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelVi
         usage = build_delete_usage(supplier)
         undo_payload = build_delete_undo_payload(supplier)
 
-        with transaction.atomic():
-            unlink_supplier_references(supplier)
-            supplier_id = supplier.pk
-            supplier_snapshot = _serialize_instance(supplier)
-            supplier_name = supplier.name
-            supplier.delete()
-            self.record_revision(
-                supplier, EntityRevision.ACTION_DELETED,
-                object_id=supplier_id, snapshot=supplier_snapshot, display_name=supplier_name, changed_fields=[],
-            )
+        self.perform_destroy(supplier)
 
         return Response({
             'affected_crop_count': usage['total_crop_count'],
@@ -133,6 +126,7 @@ class SupplierViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelVi
                 project=request.active_project,
                 payload=payload,
                 record_restore=lambda supplier: self.record_revision(supplier, EntityRevision.ACTION_RESTORED),
+                record_related=self._record_supplier_relation,
             )
         except SupplierPayloadError as exc:
             raise DRFValidationError(exc.errors) from exc
@@ -152,15 +146,17 @@ class SupplierViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelVi
             'restored_supplier_data_count': result.restored_supplier_data_count,
         })
 
+    def _record_supplier_relation(
+        self, instance: Crop | CropSupplierData, action: str, *,
+        changed_fields: list[str] | None = None,
+    ) -> None:
+        with internal_project_versions():
+            self.record_revision(instance, action, changed_fields=changed_fields)
+
+    @transaction.atomic
     def perform_destroy(self, instance: Supplier) -> None:
-        instance_id = instance.pk
-        snapshot = _serialize_instance(instance)
-        name = instance.name
-        instance.delete()
-        self.record_revision(
-            instance, EntityRevision.ACTION_DELETED,
-            object_id=instance_id, snapshot=snapshot, display_name=name, changed_fields=[],
-        )
+        unlink_supplier_references(instance, record_related=self._record_supplier_relation)
+        super().perform_destroy(instance)
 
     def get_queryset(self):
         """Filter suppliers by name if query parameter is provided.

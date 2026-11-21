@@ -312,6 +312,106 @@ are local artifacts under `/tmp/ofp-953/`. No application code or UI changed.
 Removed only #953's row from work queue #1058 after these checks, as explicitly
 requested by the owner; no personal-acceptance checkbox was checked.
 
+## Targeted project restore verification — 2026-11-20 (#1335)
+
+This owner-requested check covers full project restore before crop imports.
+It does not advance the outstanding full-sweep baseline above. The public
+production `/api/version/` endpoint returned `{"version":"1.183.1"}`;
+this is newer than the full-restore introduction in v1.178.0. No production
+project was accessed or modified.
+
+Tested isolated localhost servers with disposable SQLite databases and
+production frontend builds at:
+
+- v1.183.1: `92db6a5f50f7b9d3b271306e7265f20fea8b9e41`.
+- Current main: `30a806545` (includes merged regression PR #1341).
+
+The throwaway Playwright probe reuses the merged #1341 regression: create a
+selectable pre-import crop version, import a general crop and variety through
+spreadsheet apply, import another general crop and variety from synthetic
+public-library records, then use **Restore this version** in global project
+history. It checks HTTP 200, exact active crop IDs, the refreshed visible crop
+list and unchanged public-library IDs, names, varieties and versions.
+Fixture users/projects and library records are reset after each run.
+
+Desktop (1440×900), mobile portrait (375×900) and phone landscape
+(800×375) passed on both versions: one original active crop became
+five after the imports and returned to exactly the original ID after restore.
+The four imported private rows disappeared from the active crop list.
+The mobile probe opens the crop-picker dialog; its first run incorrectly used
+the desktop listbox selector and stopped before restore. After adapting that
+selector to the intentional mobile UI, the probe passed. Screenshots of the
+restored desktop list and mobile picker were visually inspected; the retained
+crop is visible without overlap or clipping. No mobile behavior changed.
+
+Backend validation used the repository's pytest configuration
+(`config.settings_test`) on SQLite:
+
+```bash
+python -m pytest farm/tests/test_crop_history.py farm/tests/test_history_invariants.py -n 0 --no-cov
+```
+
+The v1.183.1 run passed all 71 tests; current main passed all 87 tests.
+These include the atomic HTTP 409 refusal
+for incomplete legacy history. An initial `manage.py test` invocation used
+runtime settings and exhausted request throttles; its failures were harness
+configuration errors, and both runs were repeated with the prescribed pytest
+settings.
+
+The previously reported retention was investigated in merged PR #1341: the
+selected legacy target lacked history for older geometry rows, so restore
+returned HTTP 409 and preserved current data. Such a rejected restore must
+not be described as a successful restore retaining later crops.
+
+Scratch scripts, screenshots, build output and test logs are retained locally
+under `/tmp/ofp1335-verify/`. No application code or UI text changed, no
+production deployment was performed, and the user's running servers and
+existing modified coverage file were left intact.
+
+Per the owner's explicit request, removed only #1335's row from work queue
+#1058 after the browser checks passed, re-fetching immediately before writing
+and verifying the exact resulting body. The issue was already closed and
+implementation PR #1341 was merged; no open PR matching #1335 was found.
+No checkbox was changed. Evidence was also recorded on #1335.
+
+## Targeted follow-up — 2026-11-20: media orphan markers (#1196)
+
+Tested localhost frontend on port 5173 and backend on port 8000 with local
+PostgreSQL and German Chrome. The completed run used main
+`63faa46118ddc0a7d2a972fe483570f76ca5919b`, including merged PR #1315.
+This owner-requested check does not advance the full-sweep baseline.
+
+- Created disposable private project 3399 through the normal API under a
+  synthetic QA account, uploaded a real PNG and attached it to crops 20686
+  and 20687. Existing projects and running servers were preserved.
+- Restored project versions through the rendered version-history confirmation
+  dialog at 1440x900, 375x800 and 800x375. Before/after clearing the first
+  reference, the second crop retained the same image ID and storage bytes;
+  the media orphan marker stayed null.
+- Clearing the final reference set the marker. Restoring that version after
+  reattaching retained its historical detachment time at the documented
+  millisecond precision. The automatic backup restored successfully on phone,
+  reattached the image and cleared the marker. Repeating the detached restore
+  set the marker consistently again.
+- Read-only verification of the localhost cleanup predicate at +31 days
+  confirmed this media would qualify for cleanup, including the retention
+  record and live-reference checks. PIL verified that its stored PNG remained
+  valid. No cleanup clock or global cleanup command was applied to the local
+  development database.
+- Ran the five existing `HistoryRestorePathConsistencyTests` using isolated
+  SQLite test settings: 5 passed in 49.23 seconds. These execute cleanup past
+  retention and cover referenced/other-project preservation, legacy batch
+  revert, import undo, legacy snapshots and crop/project restore agreement.
+- Inspected desktop, phone and landscape confirmation screenshots; actions
+  remained readable and reachable. Image-reference setup and assertions were
+  API/database driven; the crop detail screen does not display this upload.
+  No application code or mobile behavior changed.
+
+Scratch script, screenshots and results: `/tmp/ofp-1196/` (local only).
+Removed only #1196 from queue #1058 after passing, as explicitly requested;
+preserved its adjoining epic banner and checked no acceptance boxes.
+No defect reproduced and no production testing was performed.
+
 ## Targeted localhost acceptance — 2026-11-20: automatic restore backups (#1194)
 
 Tested main `1856b7dc237b2d7740b519008b5072ca32c1126d`, including the

@@ -85,12 +85,11 @@ many rows are loaded:
   to move a 24px thumb. The thumb's position is now written straight to its
   DOM node; only values that change rarely (whether the scrollbar exists,
   how tall the thumb is) still go through state.
-- **Per-cell derivation of shared data.** Every growing-area cell renders an
-  `AreaAssignmentDialog`, and each one rebuilt the location/field/bed
-  hierarchy from the same three arrays on mount — thousands of object
-  allocations for every row scrolled into view. `getAreaHierarchyIndex`
-  (`areaHierarchySelection.ts`) derives it once per array identity and hands
-  the same index to every cell.
+- **Per-cell derivation of shared data.** Every growing-area cell rendered an
+  area-assignment dialog, and each one rebuilt the location/field/bed
+  hierarchy from the same three arrays on mount. The planting-plans page now
+  builds one sorted, searchable bed list per hierarchy and locale and shares
+  it across cells. Grouping and filtering run only for the open picker.
 - **A fresh `Intl.NumberFormat` per formatted value.** Constructing one costs
   far more than formatting with it, and grid cells format on every render;
   this alone was ~18% of scroll time. `formatLocalizedNumber` now keeps one

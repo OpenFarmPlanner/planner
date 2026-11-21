@@ -2,12 +2,12 @@
 
 from datetime import date
 
-import pytest
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import connection
 from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
+from django.utils import timezone
 
 from farm.models import (
     BatchOperation,
@@ -341,9 +341,6 @@ class SeasonGapDecisionApiTest(ProjectApiTestCase):
         ).values_list('copied_from_plan_id', flat=True))
         self.assertEqual(copied_source_ids, source_ids)
 
-    @pytest.mark.history_gap(
-        issue=1205, reason='season deletion records no soft-delete after-state',
-    )
     def test_create_transition_resurrecting_seasons_restores_their_planting_plans(self):
         self._set_pattern(1, 1)
         last_season = Season.objects.create(
@@ -825,6 +822,44 @@ class SeasonApiTest(ProjectApiTestCase):
             {plan.planting_date for plan in restored},
             {date(2026, 4, 1), date(2026, 4, 8), date(2026, 4, 15)},
         )
+
+    def test_undelete_restores_generated_recurring_tasks_with_their_state(self):
+        season = Season.objects.create(
+            project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+        )
+        plan = PlantingPlan.objects.create(
+            crop=self.crop, bed=self.bed, project=self.project, season=season,
+            planting_date=date(2026, 4, 1),
+        )
+        generated = Task.objects.create(
+            project=self.project, season=season, planting_plan=plan, title='Water',
+            source_key='rule:1', occurrence_index=0, status='completed',
+        )
+        deleted_at = timezone.now()
+        archived = Task.objects.create(
+            project=self.project, season=season, planting_plan=plan, title='Water',
+            source_key='rule:1', occurrence_index=1, deleted_at=deleted_at,
+        )
+
+        response = self.client.delete(f'/openfarmplanner/api/seasons/{season.pk}/')
+        self.assertEqual(response.status_code, 204)
+        generated.refresh_from_db()
+        archived.refresh_from_db()
+        self.assertIsNone(generated.planting_plan_id)
+        self.assertIsNotNone(generated.deleted_at)
+        self.assertIsNone(archived.planting_plan_id)
+        self.assertEqual(archived.deleted_at, deleted_at)
+
+        response = self.client.post(f'/openfarmplanner/api/seasons/{season.pk}/undelete/')
+
+        self.assertEqual(response.status_code, 200)
+        generated.refresh_from_db()
+        self.assertEqual(generated.planting_plan_id, plan.pk)
+        self.assertIsNone(generated.deleted_at)
+        self.assertEqual(generated.status, 'completed')
+        archived.refresh_from_db()
+        self.assertEqual(archived.planting_plan_id, plan.pk)
+        self.assertEqual(archived.deleted_at, deleted_at)
 
     def test_season_delete_groups_its_cascade_into_one_batch_operation(self):
         season = Season.objects.create(

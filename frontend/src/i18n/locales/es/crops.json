@@ -1,9 +1,8 @@
 {
   "title": "Cultivos",
-  "searchPlaceholder": "Buscar cultivo",
+  "searchPlaceholder": "Buscar cultivos",
   "searchInputPlaceholder": "Introduce el nombre del cultivo…",
   "noOptions": "No se han encontrado cultivos",
-  "searchInputPlaceholderEnhanced": "Buscar por nombre de cultivo (p. ej. zanahoria)",
   "searchHelperText_one": "{{count}} cultivo encontrado. Usa los filtros para acotar más.",
   "searchHelperText_other": "{{count}} cultivos encontrados. Usa los filtros para acotar más.",
   "searchHelperText_many": "{{count}} cultivos encontrados. Usa los filtros para acotar más.",
@@ -1066,7 +1065,7 @@
         }
       }
     },
-    "searchLabel": "Buscar cultivos públicos",
+    "searchLabel": "Buscar cultivos",
     "selectPrompt": "Selecciona un cultivo público para ver sus detalles e importarlo.",
     "empty": "No se han encontrado cultivos públicos.",
     "emptyState": {
@@ -1829,6 +1828,63 @@
       "createPlan": "serie, plan de cultivos, planificar",
       "previous": "anterior, cultivo",
       "next": "siguiente, cultivo"
+    }
+  },
+  "bulkDelete": {
+    "menu": "Acciones de cultivos",
+    "allAction": "Eliminar todos los cultivos del proyecto",
+    "title": "Eliminar los cultivos seleccionados",
+    "scopeAll": "Esta acción incluye todos los cultivos activos del proyecto, incluso los ocultos por filtros.",
+    "scopeSelected": "Revisa los cultivos seleccionados y las variedades incluidas.",
+    "trashNotice": "Los cultivos y sus datos de semillas pasan a la papelera. Las entradas de la biblioteca compartida se conservan.",
+    "deleteVarieties": "Eliminar también las variedades",
+    "confirmAll": "Confirmo que quiero eliminar todos los cultivos activos de este proyecto.",
+    "showCrops": "Mostrar cultivos afectados",
+    "empty": "Esta selección no contiene cultivos activos.",
+    "missing": "Algunos cultivos seleccionados ya no están disponibles. Actualiza la selección.",
+    "outcomeUnknown": "El resultado no está disponible. Repite la misma solicitud para comprobar el resultado.",
+    "retry": "Reintentar la eliminación",
+    "confirm": "Mover a la papelera",
+    "recovered": "Cultivos restaurados desde la papelera.",
+    "recoveryFailed": "No se pudieron restaurar todos los cultivos juntos.",
+    "archived_one": "{{count}} cultivo movido a la papelera",
+    "archived_other": "{{count}} cultivos movidos a la papelera",
+    "archived_many": "{{count}} cultivos movidos a la papelera",
+    "recoveredCount_one": "{{count}} cultivo restaurado desde la papelera",
+    "recoveredCount_other": "{{count}} cultivos restaurados desde la papelera",
+    "recoveredCount_many": "{{count}} cultivos restaurados desde la papelera",
+    "counts": {
+      "selected": "Registros seleccionados",
+      "affected": "Registros afectados",
+      "general": "Cultivos generales",
+      "varieties": "Variedades",
+      "additional": "Añadidos de los grupos",
+      "plans": "Planes de cultivos vinculados",
+      "packages": "Envases de semillas",
+      "offers": "Ofertas de proveedores",
+      "blocked": "Registros bloqueados",
+      "missing": "Registros no disponibles",
+      "skipped": "Registros omitidos",
+      "failed": "Registros con errores"
+    },
+    "blockers": {
+      "varieties_required": "Estas variedades necesitan su cultivo general. Inclúyelas para eliminar el grupo.",
+      "ambiguous_group": "Este grupo contiene varios cultivos generales. Corrige el grupo antes de eliminarlo.",
+      "planting_plans": "Hay planes de cultivos que usan estos cultivos. Modifica los planes antes de eliminarlos."
+    },
+    "origin": {
+      "label": "Origen del cultivo",
+      "manual": "Creado manualmente",
+      "file_import": "Importado desde un archivo",
+      "library_import": "Importado desde la biblioteca",
+      "unknown": "Origen desconocido o antiguo"
+    },
+    "errors": {
+      "unavailable": "La vista previa no está disponible. Inténtalo de nuevo.",
+      "changed": "La selección o el proyecto ha cambiado. Consulta otra vista previa.",
+      "limit": "La selección es demasiado grande. Selecciona menos cultivos a la vez.",
+      "throttled": "Hay demasiadas solicitudes. Espera un momento y vuelve a intentarlo.",
+      "writeFailed": "No se pudieron mover los cultivos a la papelera. Siguen en el proyecto."
     }
   },
   "restoreDialog": {

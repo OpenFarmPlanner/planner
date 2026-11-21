@@ -7,6 +7,7 @@
 import { ViewMode } from '../gantt-chart/src';
 import { CollisionService } from '../gantt-chart/src/services/CollisionService';
 import { estimateTaskGroupLabelHeight } from '../gantt-chart/src/utils';
+import { toLocalCalendarDate } from '../gantt-chart/src/utils/timelineDatePosition';
 import { parseDateString } from './ganttChartUtils';
 import type { GanttTaskGroup } from './ganttChartUtils';
 
@@ -210,12 +211,15 @@ export function clampDate(date: Date, startDate: Date, endDate: Date): Date {
   return date;
 }
 
-export function getStoredReferenceDate(state: StoredGanttState | null, startDate: Date, endDate: Date): Date | null {
+export function getStoredReferenceDate(
+  state: StoredGanttState | null, startDate: Date, endDate: Date, localCalendarDates = false,
+): Date | null {
   if (!state?.referenceDate) {
     return null;
   }
 
-  const date = parseDateString(state.referenceDate);
+  const storedDate = parseDateString(state.referenceDate);
+  const date = localCalendarDates ? toLocalCalendarDate(storedDate) : storedDate;
   if (!isValidDate(date) || date < startDate || date > endDate) {
     return null;
   }
@@ -226,8 +230,11 @@ export function getStoredTimelineViewModeFromState(state: StoredGanttState | nul
   return state?.referenceDate && state.timelineViewMode ? state.timelineViewMode : null;
 }
 
-export function getInitialTimelineReferenceDate(state: StoredGanttState | null, startDate: Date, endDate: Date): Date {
-  return getStoredReferenceDate(state, startDate, endDate) ?? clampDate(new Date(), startDate, endDate);
+export function getInitialTimelineReferenceDate(
+  state: StoredGanttState | null, startDate: Date, endDate: Date, localCalendarDates = false,
+): Date {
+  return getStoredReferenceDate(state, startDate, endDate, localCalendarDates)
+    ?? clampDate(new Date(), startDate, endDate);
 }
 
 export function getGanttUnitWidth(viewMode: ViewMode): number {
