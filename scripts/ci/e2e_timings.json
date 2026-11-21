@@ -1,327 +1,327 @@
 {
   "schema": 1,
   "source": {
-    "run_url": "https://github.com/OpenFarmPlanner/planner/actions/runs/44085890583",
-    "head_sha": "10d5aac8b78c7f1772d922806a09640facb52cbb",
-    "tests": 392,
+    "run_url": "https://github.com/OpenFarmPlanner/planner/actions/runs/44898486810",
+    "head_sha": "7eeccd1369cb6914fe40293fdb776acfd5d05f50",
+    "tests": 459,
     "retries": 0
   },
   "files": {
     "e2e/additional-languages.spec.ts": {
       "tests": 16,
-      "duration_ms": 161829
+      "duration_ms": 168060
     },
     "e2e/column-visibility.spec.ts": {
       "tests": 2,
-      "duration_ms": 9187
+      "duration_ms": 7784
     },
     "e2e/context-menu-hint.spec.ts": {
       "tests": 1,
-      "duration_ms": 5525
+      "duration_ms": 6170
     },
     "e2e/crop-bulk-deletion.spec.ts": {
       "tests": 3,
-      "duration_ms": 41500
+      "duration_ms": 13924
     },
     "e2e/crop-companion-display-names.spec.ts": {
       "tests": 8,
-      "duration_ms": 51405
+      "duration_ms": 50695
     },
     "e2e/crop-companion-editor.spec.ts": {
       "tests": 2,
-      "duration_ms": 9869
+      "duration_ms": 15084
     },
     "e2e/crop-cultivation-type-switch.spec.ts": {
       "tests": 2,
-      "duration_ms": 9200
+      "duration_ms": 12596
     },
     "e2e/crop-detail-badge-row.spec.ts": {
       "tests": 2,
-      "duration_ms": 34044
+      "duration_ms": 30279
     },
     "e2e/crop-detail-empty-fields.spec.ts": {
       "tests": 2,
-      "duration_ms": 16899
+      "duration_ms": 17480
     },
     "e2e/crop-detail-header.spec.ts": {
       "tests": 1,
-      "duration_ms": 18303
+      "duration_ms": 18584
     },
     "e2e/crop-form-responsive.spec.ts": {
       "tests": 10,
-      "duration_ms": 52409
+      "duration_ms": 52582
     },
     "e2e/crop-import-batches.spec.ts": {
       "tests": 18,
-      "duration_ms": 114000
+      "duration_ms": 119872
     },
     "e2e/crop-import-templates.spec.ts": {
       "tests": 9,
-      "duration_ms": 58967
+      "duration_ms": 76203
     },
     "e2e/crop-losses.spec.ts": {
       "tests": 2,
-      "duration_ms": 18100
+      "duration_ms": 14658
     },
     "e2e/crop-plant-health-filters.spec.ts": {
       "tests": 5,
-      "duration_ms": 47890
+      "duration_ms": 61343
     },
     "e2e/crop-plant-health-publication.spec.ts": {
       "tests": 7,
-      "duration_ms": 89301
+      "duration_ms": 74060
     },
     "e2e/crop-plant-health.spec.ts": {
       "tests": 2,
-      "duration_ms": 22092
-    },
-    "e2e/crop-species-autocomplete.spec.ts": {
-      "tests": 2,
-      "duration_ms": 25000
-    },
-    "e2e/crop-species-popup.spec.ts": {
-      "tests": 3,
-      "duration_ms": 27000
+      "duration_ms": 16690
     },
     "e2e/crop-rename-conflict.spec.ts": {
       "tests": 2,
-      "duration_ms": 10445
+      "duration_ms": 9810
+    },
+    "e2e/crop-species-autocomplete.spec.ts": {
+      "tests": 2,
+      "duration_ms": 17034
+    },
+    "e2e/crop-species-popup.spec.ts": {
+      "tests": 3,
+      "duration_ms": 10906
     },
     "e2e/crop-tag-filter.spec.ts": {
       "tests": 9,
-      "duration_ms": 61615
+      "duration_ms": 61692
     },
     "e2e/crop-version-restore.spec.ts": {
       "tests": 1,
-      "duration_ms": 9000
+      "duration_ms": 5999
     },
     "e2e/data-grid-resize-container.spec.ts": {
       "tests": 2,
-      "duration_ms": 6706
+      "duration_ms": 8954
     },
     "e2e/fields-beds-bed-dialogs.spec.ts": {
       "tests": 8,
-      "duration_ms": 31652
+      "duration_ms": 31284
     },
     "e2e/fields-beds-click-outside.spec.ts": {
       "tests": 6,
-      "duration_ms": 31653
+      "duration_ms": 37039
     },
     "e2e/fields-beds-enter-key.spec.ts": {
       "tests": 3,
-      "duration_ms": 23217
+      "duration_ms": 23010
     },
     "e2e/fields-beds-graphical-add-field.spec.ts": {
       "tests": 1,
-      "duration_ms": 6202
+      "duration_ms": 7696
     },
     "e2e/fields-beds-graphical-layout.spec.ts": {
-      "tests": 3,
-      "duration_ms": 20374
+      "tests": 6,
+      "duration_ms": 44062
     },
     "e2e/fields-beds-keyboard-focus.spec.ts": {
       "tests": 6,
-      "duration_ms": 20514
+      "duration_ms": 22386
     },
     "e2e/fields-beds-mobile-create-focus.spec.ts": {
       "tests": 4,
-      "duration_ms": 11624
+      "duration_ms": 15497
     },
     "e2e/fields-beds-mobile-landscape.spec.ts": {
       "tests": 4,
-      "duration_ms": 10076
+      "duration_ms": 11325
     },
     "e2e/fields-beds-mobile-list.spec.ts": {
-      "tests": 6,
-      "duration_ms": 17504
+      "tests": 9,
+      "duration_ms": 27748
     },
     "e2e/fields-beds-site-conditions.spec.ts": {
-      "tests": 4,
-      "duration_ms": 24000
+      "tests": 5,
+      "duration_ms": 23370
     },
     "e2e/focus-region-outline.spec.ts": {
       "tests": 2,
-      "duration_ms": 12935
+      "duration_ms": 13213
     },
     "e2e/gantt-context-menu-smoke.spec.ts": {
       "tests": 1,
-      "duration_ms": 23000
+      "duration_ms": 13757
     },
     "e2e/gantt-layout.spec.ts": {
-      "tests": 6,
-      "duration_ms": 27826
+      "tests": 7,
+      "duration_ms": 36199
     },
     "e2e/gantt-scroll-keyboard.spec.ts": {
       "tests": 3,
-      "duration_ms": 17225
+      "duration_ms": 17917
     },
     "e2e/germination.spec.ts": {
       "tests": 8,
-      "duration_ms": 39634
+      "duration_ms": 41294
     },
     "e2e/guest-demo-start.spec.ts": {
       "tests": 16,
-      "duration_ms": 65410
-    },
-    "e2e/hover-icons.spec.ts": {
-      "tests": 1,
-      "duration_ms": 7914
-    },
-    "e2e/import-history.spec.ts": {
-      "tests": 8,
-      "duration_ms": 63070
-    },
-    "e2e/invitation-flow.spec.ts": {
-      "tests": 6,
-      "duration_ms": 15882
-    },
-    "e2e/landing-page-navigation.spec.ts": {
-      "tests": 10,
-      "duration_ms": 14841
-    },
-    "e2e/language-persistence.spec.ts": {
-      "tests": 2,
-      "duration_ms": 8276
-    },
-    "e2e/library-link-lifecycle.spec.ts": {
-      "tests": 25,
-      "duration_ms": 163000
-    },
-    "e2e/life-cycle-selection.spec.ts": {
-      "tests": 8,
-      "duration_ms": 40161
-    },
-    "e2e/localized-companion-notes.spec.ts": {
-      "tests": 16,
-      "duration_ms": 90541
-    },
-    "e2e/onboarding-demo-project.spec.ts": {
-      "tests": 2,
-      "duration_ms": 7703
-    },
-    "e2e/plant-health-catalogue.spec.ts": {
-      "tests": 23,
-      "duration_ms": 119178
-    },
-    "e2e/planting-plan-actual-dates.spec.ts": {
-      "tests": 2,
-      "duration_ms": 43000
-    },
-    "e2e/planting-plan-details.spec.ts": {
-      "tests": 6,
-      "duration_ms": 66000
-    },
-    "e2e/planting-plan-headings.spec.ts": {
-      "tests": 6,
-      "duration_ms": 36675
-    },
-    "e2e/planting-plans-bed-picker.spec.ts": {
-      "tests": 8,
-      "duration_ms": 50000
-    },
-    "e2e/planting-plans-continuous-scroll.spec.ts": {
-      "tests": 6,
-      "duration_ms": 67783
-    },
-    "e2e/planting-plans-created-on-top.spec.ts": {
-      "tests": 1,
-      "duration_ms": 10531
-    },
-    "e2e/planting-plans-empty-new-row.spec.ts": {
-      "tests": 2,
-      "duration_ms": 12273
-    },
-    "e2e/planting-plans-mobile-date-picker.spec.ts": {
-      "tests": 1,
-      "duration_ms": 4644
+      "duration_ms": 63110
     },
     "e2e/harvest-recording.spec.ts": {
       "tests": 2,
-      "duration_ms": 20000
+      "duration_ms": 13106
+    },
+    "e2e/hover-icons.spec.ts": {
+      "tests": 1,
+      "duration_ms": 8450
+    },
+    "e2e/import-history.spec.ts": {
+      "tests": 8,
+      "duration_ms": 56503
+    },
+    "e2e/invitation-flow.spec.ts": {
+      "tests": 6,
+      "duration_ms": 15206
+    },
+    "e2e/landing-page-navigation.spec.ts": {
+      "tests": 10,
+      "duration_ms": 16137
+    },
+    "e2e/language-persistence.spec.ts": {
+      "tests": 2,
+      "duration_ms": 5524
+    },
+    "e2e/library-link-lifecycle.spec.ts": {
+      "tests": 25,
+      "duration_ms": 162837
+    },
+    "e2e/life-cycle-selection.spec.ts": {
+      "tests": 8,
+      "duration_ms": 42513
+    },
+    "e2e/localized-companion-notes.spec.ts": {
+      "tests": 17,
+      "duration_ms": 86062
+    },
+    "e2e/onboarding-demo-project.spec.ts": {
+      "tests": 2,
+      "duration_ms": 8656
+    },
+    "e2e/plant-health-catalogue.spec.ts": {
+      "tests": 23,
+      "duration_ms": 118416
+    },
+    "e2e/planting-plan-actual-dates.spec.ts": {
+      "tests": 2,
+      "duration_ms": 14145
+    },
+    "e2e/planting-plan-details.spec.ts": {
+      "tests": 6,
+      "duration_ms": 28160
+    },
+    "e2e/planting-plan-headings.spec.ts": {
+      "tests": 6,
+      "duration_ms": 57780
+    },
+    "e2e/planting-plans-bed-picker.spec.ts": {
+      "tests": 8,
+      "duration_ms": 35445
+    },
+    "e2e/planting-plans-continuous-scroll.spec.ts": {
+      "tests": 6,
+      "duration_ms": 77376
+    },
+    "e2e/planting-plans-created-on-top.spec.ts": {
+      "tests": 1,
+      "duration_ms": 10389
+    },
+    "e2e/planting-plans-empty-new-row.spec.ts": {
+      "tests": 4,
+      "duration_ms": 24545
+    },
+    "e2e/planting-plans-mobile-date-picker.spec.ts": {
+      "tests": 1,
+      "duration_ms": 3979
     },
     "e2e/planting-plans-perennial.spec.ts": {
       "tests": 1,
-      "duration_ms": 16000
+      "duration_ms": 9144
     },
     "e2e/planting-plans-rotation.spec.ts": {
       "tests": 7,
-      "duration_ms": 48000
+      "duration_ms": 38060
     },
     "e2e/planting-plans-search.spec.ts": {
       "tests": 14,
-      "duration_ms": 87103
+      "duration_ms": 92931
     },
     "e2e/planting-plans-season-scope.spec.ts": {
-      "tests": 2,
-      "duration_ms": 19000
+      "tests": 4,
+      "duration_ms": 25838
     },
     "e2e/planting-plans-sowing-date-edit.spec.ts": {
       "tests": 5,
-      "duration_ms": 17522
+      "duration_ms": 16938
     },
     "e2e/planting-plans-spacing-missing-alert.spec.ts": {
       "tests": 2,
-      "duration_ms": 9615
+      "duration_ms": 6902
     },
     "e2e/planting-plans-tab-navigation.spec.ts": {
       "tests": 5,
-      "duration_ms": 35899
+      "duration_ms": 27427
     },
     "e2e/previous-season-reference.spec.ts": {
       "tests": 2,
-      "duration_ms": 12900
+      "duration_ms": 9238
     },
     "e2e/public-crop-library.spec.ts": {
       "tests": 1,
-      "duration_ms": 12168
+      "duration_ms": 10944
     },
     "e2e/public-page-prerendering.spec.ts": {
       "tests": 20,
-      "duration_ms": 10502
+      "duration_ms": 11053
     },
     "e2e/pwa.spec.ts": {
       "tests": 3,
-      "duration_ms": 3798
+      "duration_ms": 4358
     },
     "e2e/registration-confirmation.spec.ts": {
       "tests": 5,
-      "duration_ms": 8282
+      "duration_ms": 8038
     },
     "e2e/responsive-layouts.spec.ts": {
       "tests": 4,
-      "duration_ms": 58196
+      "duration_ms": 52615
     },
     "e2e/scrollbar-layout.spec.ts": {
       "tests": 8,
-      "duration_ms": 64000
+      "duration_ms": 42737
     },
     "e2e/season-copy-source.spec.ts": {
-      "tests": 2,
-      "duration_ms": 10800
+      "tests": 3,
+      "duration_ms": 10666
     },
     "e2e/specific-properties.spec.ts": {
       "tests": 9,
-      "duration_ms": 45569
+      "duration_ms": 52044
     },
     "e2e/spreadsheet-cell-editing.spec.ts": {
       "tests": 6,
-      "duration_ms": 28205
+      "duration_ms": 36884
     },
     "e2e/task-dashboard.spec.ts": {
       "tests": 14,
-      "duration_ms": 66773
+      "duration_ms": 70651
     },
     "e2e/task-templates.spec.ts": {
       "tests": 3,
-      "duration_ms": 36000
+      "duration_ms": 34046
     },
     "e2e/variety-parent-publication.spec.ts": {
       "tests": 3,
-      "duration_ms": 78000
+      "duration_ms": 28016
     },
     "e2e/yield-season-comparison.spec.ts": {
       "tests": 2,
-      "duration_ms": 24000
+      "duration_ms": 10073
     }
   }
 }
