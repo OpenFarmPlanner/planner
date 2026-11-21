@@ -411,3 +411,48 @@ Scratch script, screenshots and results: `/tmp/ofp-1196/` (local only).
 Removed only #1196 from queue #1058 after passing, as explicitly requested;
 preserved its adjoining epic banner and checked no acceptance boxes.
 No defect reproduced and no production testing was performed.
+
+## Targeted localhost acceptance — 2026-11-20: automatic restore backups (#1194)
+
+Tested main `1856b7dc237b2d7740b519008b5072ca32c1126d`, including the
+backup fix in PR #1350 and subsequent restore-impact preview in PR #1355.
+Used the existing development frontend at `http://localhost:5173`, backend
+on port 8000 and loopback PostgreSQL. This owner-requested acceptance check
+does not advance the full-sweep baseline.
+
+A scratch Playwright scenario created disposable E2E projects through the
+guarded fixture endpoint and domain records through the normal API. At
+375x800, 800x375 landscape and 1440x900, it:
+
+- Created a location, field and bed, a crop with supplier offer and seed
+  package, a companion relationship, a season, a task template and a
+  planting plan with generated/manual tasks.
+- Saved the completed version, deleted the plan and companion, removed the
+  offer/package, deleted the supplier and finally deleted the location.
+- Restored the saved version through project history, then selected the
+  clearly labeled **Automatische Sicherung** and confirmed using Enter.
+  Both restores returned HTTP 200. Location, field and bed disappeared again.
+- Compared all registered restorable domain models with their captured
+  states after both restores, using the invariant harness normalization
+  (active records, millisecond timestamps, excluding refreshed timestamps
+  and derived normalized names). Both complete domain comparisons matched.
+- Created two subsequent crop edits and restored the earlier new version
+  through the UI; its complete domain state also matched.
+
+All three browser cases passed. Inspected history-list and confirmation
+screenshots at all three sizes: the backup label and actions remain readable
+and reachable, including phone landscape. Application code and mobile behavior
+were unchanged. The scratch test explicitly waits for the newly introduced
+impact preview before keyboard confirmation. Initial scratch-run failures
+were setup/selector/timing problems, corrected before the passing run.
+
+Focused backend verification: five tests and 40 subtests passed in
+`test_history_invariants.py`, covering every-version/backup round trips,
+import-undo and legacy-season-revert backups, untracked-row refusal and atomic
+failure. Those tests used isolated test SQLite; the browser scenarios exercised
+the existing local PostgreSQL database, without a new concurrency test.
+Synthetic fixture cleanup ran after each successful browser case. Local scripts,
+screenshots and results are under `/tmp/ofp-1194/` (temporary artifacts).
+
+Removed only #1194 from work queue #1058 after passing, as explicitly requested
+by the owner. No personal-acceptance checkbox was checked.
