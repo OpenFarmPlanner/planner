@@ -206,7 +206,7 @@ test('overwintering garlic is selectable in the later table and read-only in the
   const search = page.getByRole('searchbox', { name: 'Anbaupläne durchsuchen' });
   await search.fill('Knoblauch');
   const tableRows = page.locator('[role="row"][data-id]');
-  const beanBed = page.locator('[data-field="bed"]').getByText(/\| Bohnen \(/);
+  const beanBed = page.locator('[data-field="bed"]').getByText('Bohnen', { exact: true });
   const carried = tableRows.filter({ has: page.getByText(/^Aus Saison /) }).filter({ has: beanBed });
   await expect(carried).toBeVisible();
   const planId = await carried.getAttribute('data-id');
