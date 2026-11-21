@@ -187,7 +187,10 @@ of propagation for a home-raised crop. The existing planting-date column also
 represents the start on the bed for direct sowing.
 
 The inline editor labels its planned value and offers a separate actual-date
-choice. Actual date saves patch just the selected fields, so a standalone
+choice. When the selected activity has a planned date, the actual-date editor
+shows it for comparison and suggests it if the actual date is empty. Save
+records the input. Cancel, Escape and changing display mode discard the
+suggestion. Actual date saves patch just the selected fields, so a standalone
 actual edit leaves the forecast and planned-task schedule intact. The plan
 detail page compares each activity and can record or clear all five dates.
 
