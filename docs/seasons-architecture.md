@@ -345,17 +345,17 @@ persisted periods, including custom season dates and labels.
   all (`rotation_conflicts` on `copy-from`, API default `keep`). The copies
   are built once by `build_planting_plan_copies`, shared by the preview and
   the copy. Details: [crop-rotation.md](./crop-rotation.md#season-copy).
-- Parcel-group rotation ([#1063](https://github.com/OpenFarmPlanner/planner/issues/1063))
+- Field-group rotation ([#1063](https://github.com/OpenFarmPlanner/planner/issues/1063))
   is limited to immediate predecessor copies. The manual preview reports
-  `is_preceding_source` and explains why parcel-group rotation is unavailable
+  `is_preceding_source` and explains why field-group rotation is unavailable
   when an older source is selected. The crop-family conflict check still runs.
 
 For local QA, preview the guarded fixture command, then repeat with `--apply`
 after confirming the database target. In **Historical season copy**, create
 2027 and confirm the guided copy offers only 2026. From 2027's three-dot menu,
 open **Copy season data**, choose **Historical garden** (2024), and select
-**Use actual dates as planned dates**. The preview explains parcel rotation
-availability, and confirming adds lettuce to 2027 with February 28 planned
+**Use actual dates as planned dates**. The preview explains when plans can
+rotate to the next field. Confirming adds lettuce to 2027 with February 28 planned
 sowing and an empty actual date. The original lettuce keeps February 26
 planned and February 29 actual. The carrot copied from 2026 stays in 2027.
 

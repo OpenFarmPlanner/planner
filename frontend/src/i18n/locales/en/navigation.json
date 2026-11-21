@@ -146,7 +146,7 @@
       "selectedSourceDatesHelp": "Use recorded dates from the selected season. Where an actual date is missing, use that season’s planned date.",
       "noEarlierSource": "There is no earlier season to copy from.",
       "earlierSourceUnavailable": "This season is no longer available as a source. Select another season or reopen the dialog.",
-      "parcelRotationUnavailable": "Parcel rotation is available only when copying from the immediately preceding season.",
+      "parcelRotationUnavailable": "Rotating plans to the next field is available only when copying from the immediately preceding season.",
       "targetLabel": "Target season",
       "useActualDates": "Use actual dates as planned dates",
       "useActualDatesHelp": "Use recorded dates from the previous season. Where an actual date is missing, use that season’s planned date.",
