@@ -248,6 +248,68 @@ the outstanding full-sweep baseline and backlog above remain unchanged.
 - No application changes or new defects from this targeted run. Local evidence:
   `/tmp/ofp-1159-Xep6lh/headed-test.log` and
   `/tmp/ofp-1159-Xep6lh/screenshots/` (temporary artifacts, not committed).
+## Targeted follow-up — 2026-11-20: import reload recovery (#1093)
+
+Tested local main `b8b45bb615f5bb715029a17b22fdb676e04cd85f`, which includes
+PR #1299 (`76fdede3e`), using the production frontend bundle, headed Chrome,
+and a disposable SQLite backend on `127.0.0.1:8275` with preview on port 4275.
+Existing development servers on ports 8000 and 5173 were left running.
+This focused owner-requested check does not advance the full-sweep baseline.
+
+Ran `npm run test:e2e:headed -- e2e/crop-import-batches.spec.ts -g
+'refresh failure after saved import|unknown first apply'` from `frontend/`,
+with temporary settings isolating the database, cache, channels and email.
+
+- Reload failure: passed at 1440x900 and 1024x900 (English), 768x900
+  (German), 375x800 (French), and 800x375 landscape (Spanish).
+- Confirmed the injected crop-list 503 reaches the focused reload warning,
+  preserves the two-created summary and saved rows 2–3, and offers Close
+  without replay. Closing and reloading reveals the saved crop.
+- Unknown first apply: passed at 375x800 (English); focused error, unknown
+  outcome detail, Close only, no saved summary and exactly one apply request.
+- Inspected all six dialog screenshots; warning, saved-row text and Close
+  remain readable and reachable. No application code or mobile behavior changed.
+- Initial run: five passed; the 1440px browser closed before login
+  (`page.goto: Target page, context or browser has been closed`). The targeted
+  1440px rerun passed (12.0 seconds). This was not an import assertion failure.
+- First-run screenshots and failure trace were preserved locally under
+  `/tmp/ofp-import-recovery-nwPWHz/first-run-results/`; the successful desktop
+  rerun screenshot is under `frontend/test-results/`.
+
+No import recovery defect reproduced. No production testing was performed.
+
+## Targeted follow-up — 2026-11-20: crop reference restore (#1195)
+
+Tested local main `b8b45bb615f5bb715029a17b22fdb676e04cd85f`, including
+PR #1295 (`9248651d9`), against the existing localhost servers at ports 5173
+and 8000 with local PostgreSQL. This owner-requested acceptance check does
+not advance the full-sweep baseline above.
+
+- Previewed the exact database target and applied the documented guarded
+  `seed_import_history_acceptance` fixture under an existing synthetic QA
+  account. Used private project 3383 and crop 20659. Existing projects and
+  owner fixture edits were preserved.
+- Prepared two saved states through normal API endpoints with different
+  species, actual uploaded PNGs and synthetic suppliers. Restored through
+  the rendered crop **More actions → Versions** menu in German Chrome.
+- At 1440x900 and 375x800, successful restore returned HTTP 200 and brought
+  the original species, image and supplier IDs back together, plus the
+  original notes.
+- After changing the crop again and deleting the original synthetic supplier,
+  restoring the original version returned HTTP 409 with
+  `crop_restore_reference_unavailable` / `supplier_id`. The dialog displayed
+  the localized supplier-specific error. Deep comparisons confirmed that the
+  complete crop API response and crop history were unchanged.
+- Repeated rejected restore at 800x375 phone landscape: same result and
+  preservation assertions. Inspected the desktop, phone portrait and
+  landscape dialog screenshots; the error and Close control remained visible.
+- No application code or responsive behavior changed. Setup saves were API
+  driven; the edit/upload form itself was not exercised. Synthetic fixtures
+  remain locally for inspection, with the original test supplier intentionally
+  deleted for the negative scenario.
+
+Scripts, screenshots and detailed evidence: `/tmp/ofp-1195/` (local only).
+No defect reproduced in the requested restore behavior. No production test.
 
 ## Targeted follow-up — 2026-11-20: closed species picker popup (#1180)
 
