@@ -119,6 +119,7 @@ export function HierarchyEditSheet({
     setInitialValues(nextValues);
     setFieldErrors({});
     setConfirmDiscardOpen(false);
+    setPendingCloseAction(null);
     // Only re-derive when the sheet (re)opens for a given row/mode - not on
     // every keystroke, which would reset the form the user is typing into.
     // eslint-disable-next-line react-hooks/exhaustive-deps
