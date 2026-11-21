@@ -69,7 +69,8 @@ test.describe('season copy on a French phone', () => {
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
     await expect(select).toHaveText(sourceLabel);
-    await expect(dialog.getByText(/La rotation entre parcelles est possible uniquement/)).toBeVisible();
+    await expect(select).toHaveCSS('white-space', 'normal');
+    await expect(select).toHaveAccessibleDescription(/La rotation entre parcelles est possible uniquement/);
     expect(await dialog.evaluate(node => node.scrollWidth)).toBeLessThanOrEqual(375);
 
     const dateBasis = dialog.getByRole('checkbox', { name: 'Utiliser les dates réelles pour la planification' });

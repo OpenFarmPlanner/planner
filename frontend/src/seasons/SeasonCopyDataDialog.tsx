@@ -162,11 +162,18 @@ export function SeasonCopyDataDialog({ targetSeason, seasons, onClose, onConfirm
             label={t('navigation:seasonSwitcher.copyDialog.selectSource')}
             value={source?.id ?? ''}
             disabled={submitting}
+            helperText={preview?.is_preceding_source === false
+              ? t('navigation:seasonSwitcher.copyDialog.parcelRotationUnavailable') : undefined}
             onChange={(event) => {
               setRotationMode(DEFAULT_ROTATION_MODE);
               refreshPreview(Number(event.target.value), options.useActualDates);
             }}
-            sx={{ mb: 2, '& .MuiSelect-select': { whiteSpace: 'normal', overflowWrap: 'anywhere' } }}
+            sx={{
+              mb: 2,
+              '& .MuiSelect-select.MuiSelect-outlined': {
+                whiteSpace: 'normal', overflowWrap: 'anywhere', textOverflow: 'clip',
+              },
+            }}
           >
             {availableSources.map(season => (
               <MenuItem key={season.id} value={season.id} sx={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
@@ -244,12 +251,6 @@ export function SeasonCopyDataDialog({ targetSeason, seasons, onClose, onConfirm
         {preview && hasRotationFindings ? (
           <SeasonCopyRotationSummary preview={preview} mode={rotationMode} onModeChange={setRotationMode} />
         ) : null}
-        {preview?.is_preceding_source === false && (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            {t('navigation:seasonSwitcher.copyDialog.parcelRotationUnavailable')}
-          </Typography>
-        )}
-
         {error ? <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert> : null}
       </DialogContent>
       <DialogActions>
