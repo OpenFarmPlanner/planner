@@ -141,11 +141,10 @@ the second name is a **trade name** in its language
 (`PublicCropTradeName`), not a second entry. Example: `Gelbe Birne` =
 `Yellow Pear` = `Poire jaune`.
 
-Strains, selections and populations sold under the same name are **not**
-split into separate entries, unless sources clearly document different
-properties (for example a different ripening time, fruit colour or growth
-habit). If they do, they are separate varieties with distinguishable original
-names.
+Treat strains, selections and populations sold under the same name or
+equivalent names in different languages as one variety. Create separate
+entries with distinguishable original names when sources clearly document
+different properties, such as ripening time, fruit colour or growth habit.
 
 A trade name is entered only when the variety is actually sold under it in
 that language area, preferably with a source. It is never:
