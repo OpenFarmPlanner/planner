@@ -83,14 +83,17 @@ class LocalLibraryImportSeedTests(TestCase):
 
         call_command(command, historical_copy=True, apply=True, **arguments)
         project = Project.objects.get(name='Historical season copy')
-        self.assertTrue(ProjectMembership.objects.filter(project=project, user=self.user, role='admin').exists())
+        self.assertTrue(ProjectMembership.objects.filter(
+            project=project, user=self.user, role='admin',
+        ).exists())
         self.assertEqual(
             list(project.seasons.order_by('start_date').values_list('start_date', flat=True)),
             [date(2024, 1, 1), date(2025, 1, 1), date(2026, 1, 1)],
         )
         lettuce = project.planting_plans.get(crop__name='Lettuce')
         self.assertEqual(lettuce.actual_sowing_date, date(2024, 2, 29))
-        self.assertEqual(project.planting_plans.get(crop__name='Carrot').planting_date, date(2026, 4, 1))
+        carrot = project.planting_plans.get(crop__name='Carrot')
+        self.assertEqual(carrot.planting_date, date(2026, 4, 1))
 
         lettuce.notes = 'Keep this manual edit'
         lettuce.save(update_fields=['notes'])

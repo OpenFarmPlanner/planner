@@ -1512,7 +1512,8 @@ class SeasonApiTest(ProjectApiTestCase):
                     self.assertEqual(response.data['code'], code)
 
         payload = {'source_season_id': older.pk}
-        for request, endpoint in ((self.client.get, 'copy-preview'), (self.client.post, 'copy-from')):
+        endpoints = ((self.client.get, 'copy-preview'), (self.client.post, 'copy-from'))
+        for request, endpoint in endpoints:
             response = request(f'{url}{endpoint}/', payload, HTTP_X_PROJECT_ID=foreign_project.pk)
             self.assertEqual(response.status_code, 403)
 
