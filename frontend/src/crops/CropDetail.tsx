@@ -390,7 +390,7 @@ const detailSectionGridSx = {
     filters,
   ]);
 
-  const { filteredCrops, matchedGroupRowIds } = useMemo(
+  const { filteredCrops, matchingCrops, matchedGroupRowIds } = useMemo(
     () => filterCropGroupsForSearch({
       crops,
       filterMatchingCrops,
@@ -398,6 +398,11 @@ const detailSectionGridSx = {
       matchesSearchQuery: cropMatchesSearchQuery,
     }),
     [crops, filterMatchingCrops, normalizedSearchQuery],
+  );
+
+  const bulkVisibleCropIds = useMemo(
+    () => matchingCrops.flatMap(({ id }) => id === undefined ? [] : [id]),
+    [matchingCrops],
   );
 
   const cropHierarchyItems = useMemo(
@@ -816,9 +821,7 @@ const detailSectionGridSx = {
             }}
           >
             {selectorControl}
-            {bulkSelection ? <CropBulkSelectionActions selection={bulkSelection} visibleIds={
-              visibleCropRows.flatMap(({ node }) => node.crop?.id === undefined ? [] : [node.crop.id])
-            } /> : null}
+            {bulkSelection ? <CropBulkSelectionActions selection={bulkSelection} visibleIds={bulkVisibleCropIds} /> : null}
             {visibleCropRows.length === 0 ? (
               // Rendered instead of the listbox, not inside it: a plain <li>
               // in there carries no role of its own and gets pruned, and an
@@ -1508,6 +1511,7 @@ const detailSectionGridSx = {
           highlightQuery={normalizedSearchQuery}
           matchedGroupRowIds={matchedGroupRowIds}
           bulkSelection={bulkSelection}
+          bulkVisibleCropIds={bulkVisibleCropIds}
           onSelect={(crop, itemKind, speciesKey) => {
             setSelectedSpeciesViewKey(itemKind === 'species' ? speciesKey : null);
             onCropSelect(crop);
