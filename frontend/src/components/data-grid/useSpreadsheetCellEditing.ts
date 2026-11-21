@@ -45,7 +45,7 @@ const CONTROL_INSIDE_CELL_SELECTOR = 'a[href], button, input, select, textarea, 
 // A press on a control inside the cell (expand toggle, row actions) belongs
 // to that control. The cell element itself is excluded: the focused cell
 // carries tabindex="0" and must still count as a cell.
-const isOnControlInsideCell = (event: React.MouseEvent): boolean => {
+export const isOnControlInsideCell = (event: React.SyntheticEvent): boolean => {
   const { target, currentTarget } = event;
   if (!(target instanceof Element)) {
     return false;

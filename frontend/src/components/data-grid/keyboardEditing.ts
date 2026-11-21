@@ -81,7 +81,7 @@ const isRowEditing = (rowModesModel: GridRowModesModel, rowId: GridRowId): boole
   rowModesModel[rowId]?.mode === GridRowModes.Edit
   || rowModesModel[String(rowId)]?.mode === GridRowModes.Edit;
 
-const isSpreadsheetPrintableKey = (event: DataGridKeyboardEvent): boolean => (
+export const isSpreadsheetPrintableKey = (event: DataGridKeyboardEvent): boolean => (
   event.key.length === 1
   && event.key !== ' '
   && !event.altKey

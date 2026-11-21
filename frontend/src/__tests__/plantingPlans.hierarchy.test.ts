@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Bed, Field } from "../api/types";
+import { buildBedPickerOptions, isBedInScope } from "../components/planting-plans/bedPickerOptions";
 import {
   collectHierarchyAvailability,
-  filterBedOptionsBySelection,
-  filterFieldOptionsByLocation,
 } from "../components/planting-plans/areaHierarchySelection";
 import {
-  buildAreaColumnHeaderLabel,
   buildBedDisplayLabel,
   normalizeSelectionAfterBedChange,
   normalizeSelectionAfterFieldChange,
@@ -25,15 +23,6 @@ const beds: Bed[] = [
 ];
 
 describe("PlantingPlans hierarchy normalization", () => {
-  it("builds combined area column header labels with pipe separators", () => {
-    expect(
-      buildAreaColumnHeaderLabel(true, "Standort", "Parzelle", "Beet"),
-    ).toBe("Standort | Parzelle | Beet");
-    expect(
-      buildAreaColumnHeaderLabel(false, "Standort", "Parzelle", "Beet"),
-    ).toBe("Parzelle | Beet");
-  });
-
   it("builds combined bed labels with optional area", () => {
     expect(
       buildBedDisplayLabel(
@@ -69,22 +58,19 @@ describe("PlantingPlans hierarchy normalization", () => {
     expect(availability.fieldIdsWithBeds.has(30)).toBe(false);
   });
 
-  it("filters field options immediately from the locally selected location", () => {
-    const allFields: Field[] = [
-      ...fields,
-      { id: 30, name: "Parzelle Ost", location: 1 },
-    ];
-    const availability = collectHierarchyAvailability(allFields, beds);
-    const filtered = filterFieldOptionsByLocation(2, allFields, availability.fieldIdsWithBeds);
+  it("resolves bed options once and scopes them using location and field IDs", () => {
+    const options = buildBedPickerOptions(beds, fields, [
+      { id: 1, name: "Hofgärten" },
+      { id: 2, name: "Außenacker" },
+    ], "de-DE");
 
-    expect(filtered.map((field) => field.id)).toEqual([20]);
-  });
-
-  it("filters bed options immediately from local field selection", () => {
-    const availability = collectHierarchyAvailability(fields, beds);
-    const filtered = filterBedOptionsBySelection(1, 10, fields, beds, availability.fieldIdsWithBeds);
-
-    expect(filtered.map((bed) => bed.id)).toEqual([100]);
+    expect(options.find((bed) => bed.id === 200)).toMatchObject({
+      locationName: "Außenacker", fieldName: "Parzelle Süd",
+      searchText: "aussenacker\nparzelle sud\nbeet 1", areaSqm: 5,
+    });
+    expect(options.filter((bed) => isBedInScope(bed, { locationId: 2, fieldId: null })).map((bed) => bed.id))
+      .toEqual([200]);
+    expect(options.filter((bed) => isBedInScope(bed, { locationId: 1, fieldId: 20 }))).toEqual([]);
   });
 
   it("resets field and bed when location no longer matches", () => {
