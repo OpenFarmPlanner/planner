@@ -41,6 +41,7 @@ interface PublicCropSyncPanelProps {
   /** Null while the differences are loading. */
   changes: PublicCropSyncFieldChange[] | null;
   choices: PublicCropSyncChoices;
+  unresolvedFields?: ReadonlySet<string>;
   onChoicesChange: (choices: PublicCropSyncChoices) => void;
   /** The user's library contributions are queued for moderation. */
   requiresModeration: boolean;
@@ -400,7 +401,7 @@ function SyncOption({ name, value, checked, disabled, label, onSelect, children 
 
 interface SyncFieldRowProps {
   change: PublicCropSyncFieldChange;
-  choice: PublicCropSyncChoice;
+  choice: PublicCropSyncChoice | undefined;
   disabled: boolean;
   allowLocal: boolean;
   keepMineLocally: boolean;
@@ -568,6 +569,7 @@ function SyncFieldRow({ change, choice, disabled, allowLocal, keepMineLocally, l
 export function PublicCropSyncPanel({
   changes,
   choices,
+  unresolvedFields,
   onChoicesChange,
   requiresModeration,
   loadError,
@@ -595,7 +597,8 @@ export function PublicCropSyncPanel({
   }
 
   const choiceOptions = { allowLocal };
-  const { pullFields, pushFields, pinFields } = splitSyncChoices(changes, choices, choiceOptions);
+  const resolvedChanges = unresolvedFields ? changes.filter(change => !unresolvedFields.has(change.field)) : changes;
+  const { pullFields, pushFields, pinFields } = splitSyncChoices(resolvedChanges, choices, choiceOptions);
   const setChoice = (field: string, choice: PublicCropSyncChoice) => {
     onChoicesChange({ ...choices, [field]: choice });
   };
@@ -614,10 +617,11 @@ export function PublicCropSyncPanel({
       : t('library.sync.summarySingle', { part: summaryParts[0] });
 
   const setAll = (choice: PublicCropSyncChoice) => onChoicesChange(buildUniformSyncChoices(changes, choice));
-  const keepOwnValues = () => onChoicesChange(Object.fromEntries(changes.map((change) => [
-    change.field,
-    canKeepSyncFieldLocally(change) ? 'local' : change.pushable ? 'mine' : 'library',
-  ])));
+  const keepOwnValues = () => onChoicesChange(Object.fromEntries(changes.flatMap<[string, PublicCropSyncChoice]>(change => {
+    if (canKeepSyncFieldLocally(change)) return [[change.field, 'local']];
+    if (change.pushable) return [[change.field, 'mine']];
+    return unresolvedFields?.has(change.field) ? [] : [[change.field, 'library']];
+  })));
 
   return (
     <Stack spacing={1}>
@@ -689,7 +693,7 @@ export function PublicCropSyncPanel({
             <SyncFieldRow
               key={change.field}
               change={change}
-              choice={choices[change.field] ?? getDefaultSyncChoice(change, choiceOptions)}
+              choice={unresolvedFields?.has(change.field) ? undefined : choices[change.field] ?? getDefaultSyncChoice(change, choiceOptions)}
               disabled={disabled}
               allowLocal={allowLocal}
               keepMineLocally={keepMineLocally}
@@ -718,7 +722,7 @@ export function PublicCropSyncPanel({
         </Alert>
       ) : null}
 
-      <Typography
+      {summaryParts.length > 0 && <Typography
         variant="body2"
         color="text.secondary"
         data-testid="public-crop-sync-summary"
@@ -742,7 +746,7 @@ export function PublicCropSyncPanel({
         }}
       >
         {summary}
-      </Typography>
+      </Typography>}
     </Stack>
   );
 }

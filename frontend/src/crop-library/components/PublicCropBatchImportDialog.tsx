@@ -1,20 +1,23 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import {
   Alert, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
-  FormControlLabel, Stack, Typography,
+  FormControlLabel, MenuItem, Stack, TextField, Typography,
 } from '@mui/material';
 import { publicCropAPI } from '../../api/api';
 import { extractApiErrorCode } from '../../api/errors';
 import type {
   PublicCrop, PublicCropBatchImportRequest, PublicCropBatchImportResult,
-  PublicCropImportDecision, PublicCropSelectionImportResult,
+  PublicCropSelectionImportResult,
 } from '../../api/types';
 import { ExistingCropLinkDialog } from '../../crops/ExistingCropLinkDialog';
 import { useTranslation } from '../../i18n';
-import { BatchImportLimitError, buildBatchImportGroups, loadBatchImportPreview, type BatchImportPreview } from '../batchImport';
+import {
+  BatchImportLimitError, buildBatchImportPlan, loadBatchImportPreview,
+  type BatchImportChoice, type BatchImportPreview, type BatchImportRow,
+} from '../batchImport';
 import { getPublicCropTitle } from '../publicCropDisplay';
 
-type EntryResult = PublicCropSelectionImportResult['entries'][number]['operation'] | 'skipped';
+type EntryResult = PublicCropSelectionImportResult['entries'][number]['operation'] | 'skipped' | 'excluded';
 type ImportError = 'project' | 'preview' | 'limit' | 'request' | 'receipt';
 
 export function PublicCropBatchImportDialog({ open, projectId, initialParents, onClose, onComplete, onRequestStarted }: {
@@ -32,8 +35,10 @@ export function PublicCropBatchImportDialog({ open, projectId, initialParents, o
   const [attempt, setAttempt] = useState(0);
   const [preview, setPreview] = useState<BatchImportPreview | null>(null);
   const [checkingCount, setCheckingCount] = useState(0);
-  const [choices, setChoices] = useState<Map<number, PublicCropImportDecision | null>>(() => new Map());
-  const [comparison, setComparison] = useState<PublicCrop | null>(null);
+  const [choices, setChoices] = useState<Map<number, BatchImportChoice>>(() => new Map());
+  const [skipDefaults, setSkipDefaults] = useState(false);
+  const [comparison, setComparison] = useState<BatchImportRow | null>(null);
+  const [returnFocusId, setReturnFocusId] = useState<number | null>(null);
   const [error, setError] = useState<ImportError | null>(null);
   const [applying, setApplying] = useState(false);
   const [requestStarted, setRequestStarted] = useState(false);
@@ -67,14 +72,12 @@ export function PublicCropBatchImportDialog({ open, projectId, initialParents, o
   }, [attempt, includeVarieties, parents, projectId]);
 
   const title = (crop: PublicCrop) => getPublicCropTitle(crop, i18n.resolvedLanguage ?? i18n.language, t('library.translation.missingName'));
-  const reviewEntries = preview?.groups.flatMap(group => choices.get(group[0].id) === null ? [] : group.filter(entry => (
-    Boolean(preview.candidates.get(entry.id)?.length) && !choices.has(entry.id)
-  ))) ?? [];
-  const linkedUpdates = preview?.groups.flat().filter(entry => entry.project_import_status?.is_up_to_date === false) ?? [];
+  const plan = preview && buildBatchImportPlan(preview, choices, skipDefaults);
   const totalVarieties = preview?.groups.reduce((total, group) => total + group.length - 1, 0) ?? 0;
   const appliedCount = [...results.values()].filter(value => value === 'created' || value === 'copied').length;
   const linkedCount = [...results.values()].filter(value => value === 'linked').length;
   const skippedCount = [...results.values()].filter(value => value === 'unchanged' || value === 'skipped').length;
+  const excludedCount = [...results.values()].filter(value => value === 'excluded').length;
 
   const resetPreview = () => {
     setPreview(null);
@@ -83,12 +86,12 @@ export function PublicCropBatchImportDialog({ open, projectId, initialParents, o
   };
 
   const apply = async () => {
-    if (applyInFlight.current || !preview || reviewEntries.length) return;
+    if (applyInFlight.current || !plan || (!plan.ready && !pendingRequest.current)) return;
     if (Number(localStorage.getItem('activeProjectId')) !== projectId) {
       setError('project');
       return;
     }
-    const { groups, skipped } = buildBatchImportGroups(preview, choices);
+    const { groups, skipped, rows } = plan;
     applyInFlight.current = true;
     setApplying(true);
     setError(null);
@@ -106,6 +109,9 @@ export function PublicCropBatchImportDialog({ open, projectId, initialParents, o
       setResults(current => {
         const updated = new Map(current);
         skipped.forEach(id => updated.set(id, 'skipped'));
+        for (const row of rows.flat()) {
+          if (row.status === 'needsReview') updated.set(row.crop.id, 'excluded');
+        }
         for (const group of result.groups) {
           if ('entries' in group) for (const entry of group.entries) updated.set(entry.public_crop_id, entry.operation);
         }
@@ -131,32 +137,37 @@ export function PublicCropBatchImportDialog({ open, projectId, initialParents, o
 
   const retryFailed = () => {
     resetPreview();
-    setChoices(current => new Map([...current].filter(([, value]) => value === null)));
+    setChoices(current => new Map([...current].map(([id, value]) => [id, value && { ...value, reviewAgain: true }])));
     setParents(failedParents);
     setResultOpen(false);
   };
 
-  const rememberChoice = (id: number, choice: PublicCropImportDecision | null) => {
+  const rememberChoice = (id: number, choice: BatchImportChoice) => {
     setChoices(current => new Map(current).set(id, choice));
   };
 
-  if (comparison) return <ExistingCropLinkDialog key={comparison.id} publicCrop={comparison}
-    candidates={preview?.candidates.get(comparison.id) ?? []} allowSharing={false}
+  if (comparison && preview) return <ExistingCropLinkDialog key={comparison.crop.id} publicCrop={comparison.crop}
+    candidates={comparison.candidates} allowSharing={false}
+    batchReview={{
+      decision: comparison.reviewDecision,
+      onSkip: () => { rememberChoice(comparison.crop.id, null); setComparison(null); },
+    }}
     onClose={() => setComparison(null)} onLinked={() => undefined}
-    onDecision={decision => { rememberChoice(comparison.id, decision); setComparison(null); }} />;
+    onDecision={decision => { rememberChoice(comparison.crop.id, { decision, previewId: preview.id }); setComparison(null); }} />;
 
   const close = () => onClose(requestStarted && error === 'request' ? 'pending'
     : resultOpen || results.size > 0 || requestStarted ? 'finished' : 'cancelled');
   return <Dialog open={open} fullWidth maxWidth="sm" onClose={applying ? undefined : close} aria-labelledby={titleId}>
     <DialogTitle id={titleId}>{t(resultOpen ? 'library.batchImport.results' : 'library.batchImport.confirmTitle', { count: parents.length })}</DialogTitle>
     <DialogContent dividers>
-      <Stack spacing={1.5}>
+      <Stack spacing={1}>
         {resultOpen ? <>
           <Box role="status">
             <Stack component="ul" spacing={0.5} sx={{ m: 0, pl: 2.5 }}>
               <Typography component="li">{t('library.batchImport.importedCount', { count: appliedCount })}</Typography>
               <Typography component="li">{t('library.batchImport.linkedCount', { count: linkedCount })}</Typography>
               <Typography component="li">{t('library.batchImport.skippedCount', { count: skippedCount })}</Typography>
+              {excludedCount > 0 && <Typography component="li">{t('library.batchImport.excludedCount', { count: excludedCount })}</Typography>}
               <Typography component="li">{t('library.batchImport.failedCount', { count: failedParents.length })}</Typography>
             </Stack>
           </Box>
@@ -164,40 +175,70 @@ export function PublicCropBatchImportDialog({ open, projectId, initialParents, o
             {t('library.batchImport.failedGroups', { names: failedParents.map(title).join(', ') })}
           </Alert>}
         </> : <>
-          <FormControlLabel label={t('library.batchImport.includeVarieties')} control={<Checkbox checked={includeVarieties}
-            disabled={applying || requestStarted} onChange={(_, checked) => {
-              resetPreview(); setChoices(new Map()); setIncludeVarieties(checked);
-            }} />} />
+          <Stack direction="row" useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap', columnGap: 1 }}>
+            <FormControlLabel label={t('library.batchImport.includeVarieties')} control={<Checkbox checked={includeVarieties}
+              disabled={applying || requestStarted} onChange={(_, checked) => {
+                resetPreview(); setIncludeVarieties(checked);
+              }} />} />
+            {includeVarieties && preview && !requestStarted && (
+              <Typography variant="body2" color="text.secondary">{t('library.batchImport.varieties', { count: totalVarieties })}</Typography>
+            )}
+          </Stack>
           {!preview && !error && <Stack role="status" direction="row" spacing={1} sx={{ alignItems: 'center' }}>
             <CircularProgress size={20} /><Typography>{t('library.batchImport.checking', { count: checkingCount })}</Typography>
           </Stack>}
           {applying && <Stack role="status" direction="row" spacing={1} sx={{ alignItems: 'center' }}>
             <CircularProgress size={20} /><Typography>{t('library.importing')}</Typography>
           </Stack>}
-          {preview && !applying && !requestStarted && <>
-            {includeVarieties && <Typography variant="body2">{t('library.batchImport.varieties', { count: totalVarieties })}</Typography>}
+          {preview && plan && !applying && !requestStarted && <>
             {preview.unavailable.length > 0 && <Alert severity="warning">
               {t('library.batchImport.unavailable', { names: preview.unavailable.map(title).join(', ') })}
             </Alert>}
-            {linkedUpdates.length > 0 && <Alert severity="info">
-              {t('library.batchImport.linkedUpdates', { names: linkedUpdates.map(title).join(', ') })}
-            </Alert>}
-            {reviewEntries.length > 0 && <>
-              <Typography variant="body2">{t('library.batchImport.reviewMatches')}</Typography>
-              <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }} role="list">
-                {reviewEntries.map(entry => <Stack key={entry.id} component="li" direction="row" useFlexGap sx={{
-                  alignItems: 'center', flexWrap: 'wrap', gap: 0.5, py: 0.5, borderTop: '1px solid', borderColor: 'divider',
+            <Stack direction="row" useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
+              <TextField select size="small" label={t('library.batchImport.batchDefault')}
+                value={skipDefaults ? 'skip' : 'link'} onChange={event => setSkipDefaults(event.target.value === 'skip')}
+                sx={{ minWidth: 180, maxWidth: '100%' }}>
+                <MenuItem value="link">{t('library.batchImport.link')}</MenuItem>
+                <MenuItem value="skip">{t('library.batchImport.skip')}</MenuItem>
+              </TextField>
+              <Typography role="status" variant="body2" color="text.secondary">
+                {t('library.batchImport.readyCount', { count: plan.ready })}{' · '}
+                {t('library.batchImport.needsReviewCount', { count: plan.needsReview })}{' · '}
+                {t('library.batchImport.skippedCount', { count: plan.skipped.length })}
+              </Typography>
+            </Stack>
+            {plan.needsReview > 0 && <Typography variant="body2" color="text.secondary">
+              {t('library.batchImport.unresolvedExcluded')}
+            </Typography>}
+            <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }} role="list">
+              {plan.rows.flat().map(row => {
+                const name = title(row.crop);
+                const linked = row.status === 'alreadyLinked' || row.status === 'linkedUpdate';
+                const status = row.parentBlocked
+                  ? t(row.status === 'needsReview' ? 'library.batchImport.parentNeedsReview' : 'library.batchImport.parentSkipped')
+                  : row.status === 'ready'
+                    ? t(row.decision?.link_to_library ? 'library.batchImport.link' : 'library.importDecision.copy')
+                    : t(`library.batchImport.rowStatus.${row.status}`);
+                return <Stack key={row.crop.id} component="li" direction="row" useFlexGap sx={{
+                  alignItems: 'center', flexWrap: 'wrap', gap: 0.5, py: 0.5, pl: row.crop.variety ? 2 : 0,
+                  borderTop: '1px solid', borderColor: 'divider',
                 }}>
-                  <Typography sx={{ flex: '1 1 10rem', minWidth: 0, overflowWrap: 'anywhere' }} variant="body2">{title(entry)}</Typography>
-                  <Stack direction="row" useFlexGap sx={{ flexWrap: 'wrap', gap: 0.5, ml: 'auto', maxWidth: '100%' }}>
-                    <Button size="small" aria-label={t('library.batchImport.reviewNamed', { name: title(entry) })}
-                      onClick={() => setComparison(entry)}>{t('library.batchImport.review')}</Button>
-                    <Button size="small" aria-label={t('library.batchImport.skipNamed', { name: title(entry) })}
-                      onClick={() => rememberChoice(entry.id, null)}>{t('library.batchImport.skip')}</Button>
-                  </Stack>
-                </Stack>)}
-              </Box>
-            </>}
+                  <Box sx={{ flex: '1 1 9rem', minWidth: 0, overflowWrap: 'anywhere' }}>
+                    <Typography variant="body2">{name}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {status}
+                      {Boolean(row.differences) && <> {' · '}{t('library.batchImport.differenceCount', { count: row.differences })}</>}
+                    </Typography>
+                  </Box>
+                  {!linked && !row.parentBlocked && <Button size="small"
+                    aria-label={t('library.batchImport.reviewNamed', { name })}
+                    autoFocus={returnFocusId === row.crop.id}
+                    onClick={() => { setReturnFocusId(row.crop.id); setComparison(row); }}>
+                    {t('library.batchImport.review')}
+                  </Button>}
+                </Stack>;
+              })}
+            </Box>
           </>}
           {error && <Alert severity="error">{t(error === 'project' ? 'library.importProjectChanged' : `library.batchImport.errors.${error}`)}</Alert>}
         </>}
@@ -209,7 +250,7 @@ export function PublicCropBatchImportDialog({ open, projectId, initialParents, o
         : error === 'preview' ? <Button variant="contained" onClick={() => { resetPreview(); setAttempt(value => value + 1); }}>
           {t('common:runtime.retryAction')}
         </Button> : error === 'request' ? <Button variant="contained" onClick={() => void apply()}>{t('common:runtime.retryAction')}</Button>
-          : <Button variant="contained" disabled={applying || !preview || Boolean(error) || reviewEntries.length > 0} onClick={() => void apply()}>
+          : <Button variant="contained" disabled={applying || !plan?.ready || Boolean(error)} onClick={() => void apply()}>
             {t('library.batchImport.import')}
           </Button>}
     </DialogActions>
