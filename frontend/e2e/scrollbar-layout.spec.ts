@@ -250,7 +250,8 @@ test('growing-area columns fit when there is room and preserve a manual width', 
     for (const name of ['Licht', 'Feuchtigkeit', 'Bewässerung verfügbar']) {
       await page.getByRole('checkbox', { name, exact: true }).setChecked(visible);
     }
-    await page.keyboard.press('Escape');
+    await toolbar.getByRole('searchbox').click();
+    await expect(page.getByRole('checkbox', { name: 'Licht', exact: true })).toBeHidden();
   };
 
   await expect(grid.getByText('Gründüngung Reserve', { exact: true })).toBeVisible();
@@ -284,9 +285,9 @@ test('growing-area columns fit when there is room and preserve a manual width', 
   const y = grip.y + grip.height / 2;
   await page.mouse.move(x, y);
   await page.mouse.down();
-  await page.mouse.move(x + 200, y, { steps: 8 });
+  await page.mouse.move(x + 430, y, { steps: 8 });
   await page.mouse.up();
-  await expect.poll(async () => (await box(nameHeader)).width).toBeGreaterThan(before + 170);
+  await expect.poll(async () => (await box(nameHeader)).width).toBeGreaterThan(Math.max(680, before + 400));
   const manualWidth = (await box(nameHeader)).width;
   await expect(horizontal).toBeVisible();
   await nameHeader.getByRole('button', { name: 'Eine Hierarchieebene ausblenden' }).click();
@@ -294,11 +295,27 @@ test('growing-area columns fit when there is room and preserve a manual width', 
   await nameHeader.getByRole('button', { name: 'Eine Hierarchieebene mehr anzeigen' }).click();
   await expect(grid.getByText('Gründüngung Reserve', { exact: true })).toBeVisible();
   await expect.poll(async () => Math.abs((await box(nameHeader)).width - manualWidth)).toBeLessThanOrEqual(1);
+
+  await page.setViewportSize({ width: 768, height: 900 });
+  await expect.poll(async () => (await box(nameHeader)).width).toBeLessThanOrEqual(680);
+  const bedRow = grid.getByRole('row').filter({ hasText: 'Gründüngung Reserve' });
+  const rowActions = bedRow.getByRole('button', { name: 'Aktionen', exact: true });
+  await expect.poll(async () => {
+    const actionBox = await box(rowActions);
+    const gridBox = await box(grid);
+    return actionBox.x + actionBox.width - (gridBox.x + gridBox.width);
+  }).toBeLessThanOrEqual(0);
+  await rowActions.click();
+  const bedDetails = page.getByRole('menuitem', { name: 'Beetdetails', exact: true });
+  await expect(bedDetails).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(bedDetails).toBeHidden();
+
   await page.setViewportSize({ width: 1800, height: 900 });
+  await expect.poll(async () => Math.abs((await box(nameHeader)).width - manualWidth)).toBeLessThanOrEqual(1);
+  await expect(horizontal).toBeVisible();
   await setSiteColumns(false);
   await expect(horizontal).toBeHidden();
   await expect.poll(async () => Math.abs((await box(nameHeader)).width - manualWidth)).toBeLessThanOrEqual(1);
-  await setSiteColumns(true);
-  await expect(horizontal).toBeVisible();
   await expectNoHorizontalPageOverflow(page);
 });

@@ -1703,14 +1703,10 @@ function FieldsBedsHierarchy({
     );
   }, [hierarchyIndex]);
   const showPersistentContextMenuButton = isTouchLikePointer || isMobileViewport;
-  const effectiveNameColumnWidth = useMemo(() => {
-    if (!showPersistentContextMenuButton) {
-      return nameColumnWidth;
-    }
-
-    const visibleMobileNameWidth = Math.max(260, viewportWidth - 88);
-    return Math.min(nameColumnWidth, visibleMobileNameWidth);
-  }, [nameColumnWidth, showPersistentContextMenuButton, viewportWidth]);
+  const nameColumnWidthLimit = showPersistentContextMenuButton ? Math.max(260, viewportWidth - 88) : Infinity;
+  // Keep the row actions within reach on narrow screens while retaining the
+  // user's preferred width for when the list has enough room again.
+  const effectiveNameColumnWidth = Math.min(resizedColumnWidths.name ?? nameColumnWidth, nameColumnWidthLimit);
 
   const handleContextMenuButtonOpen = useCallback((row: HierarchyRow, origin: HTMLElement): void => {
     const rect = origin.getBoundingClientRect();
@@ -1782,6 +1778,7 @@ function FieldsBedsHierarchy({
     // MUI clears flex when a column is resized. Keep that width when rows,
     // viewport changes or other callbacks rebuild the column definitions.
     return orderedColumns.map(column => {
+      if (column.field === "name") return { ...column, maxWidth: nameColumnWidthLimit };
       const width = resizedColumnWidths[column.field];
       return width === undefined ? column : { ...column, width, flex: 0 };
     });
@@ -1797,6 +1794,7 @@ function FieldsBedsHierarchy({
     rowsById,
     t,
     effectiveNameColumnWidth,
+    nameColumnWidthLimit,
     resizedColumnWidths,
     showPersistentContextMenuButton,
     isMobileViewport,
