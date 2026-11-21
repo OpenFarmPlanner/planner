@@ -266,6 +266,9 @@ test.describe('touch details', () => {
     await page.goto(`${table}/${plan.id}`);
     await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).tap();
     const dialog = page.getByRole('dialog', { name: 'Aufgabe hinzufügen' });
+    const planLabel = dialog.getByRole('textbox', { name: 'Anbauplan', exact: true });
+    await expect(planLabel).toHaveValue(/Details-Kohl \(Sorte Grün\) · Details-Beet/);
+    await expect.poll(() => planLabel.evaluate(el => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);
     const title = dialog.getByRole('textbox', { name: 'Titel' });
     const description = dialog.getByRole('textbox', { name: 'Beschreibung' });
     const save = dialog.getByRole('button', { name: 'Speichern' });

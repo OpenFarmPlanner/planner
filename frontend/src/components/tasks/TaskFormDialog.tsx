@@ -137,13 +137,13 @@ export default function TaskFormDialog(props: Props) {
             setMemberAttempt(value => value + 1);
           }} />}>{t('projectInvitations:memberListLoadFailed')}</Alert>}
           {planContext ? <>
-            <TextField label={t('plantingPlans:details.season')} value={planContext.seasonLabel}
-              sx={formGridFieldSx} slotProps={{ input: { readOnly: true } }} />
-            <TextField label={t('crops:history.objectTypes.plantingPlan')} value={planLabel(planContext.plan, locale)}
+            <TextField multiline label={t('crops:history.objectTypes.plantingPlan')} value={planLabel(planContext.plan, locale)}
               sx={formGridFullRowSx} slotProps={{ input: { readOnly: true } }} />
-            <TextField label={t('dashboard:board.filters.crop')} value={formatCropDisplayName(planContext.plan) || t('dashboard:form.none')}
+            <TextField multiline label={t('plantingPlans:details.season')} value={planContext.seasonLabel}
               sx={formGridFieldSx} slotProps={{ input: { readOnly: true } }} />
-            <TextField label={t('dashboard:board.filters.field')} value={planContext.plan.field_name || t('dashboard:form.none')}
+            <TextField multiline label={t('dashboard:board.filters.crop')} value={formatCropDisplayName(planContext.plan) || t('dashboard:form.none')}
+              sx={formGridFieldSx} slotProps={{ input: { readOnly: true } }} />
+            <TextField multiline label={t('dashboard:board.filters.field')} value={planContext.plan.field_name || t('dashboard:form.none')}
               sx={formGridFieldSx} slotProps={{ input: { readOnly: true } }} />
           </> : <>
             <TextField select label={t('dashboard:form.plan')} value={draft.planting_plan ?? ''} disabled={saving || Boolean(task?.source_key)}
