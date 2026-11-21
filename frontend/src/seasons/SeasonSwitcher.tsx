@@ -1,4 +1,4 @@
-import { useEffect, useState, type Ref } from 'react';
+import { useEffect, useId, useState, type Ref } from 'react';
 import {
   Alert,
   Box,
@@ -29,7 +29,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import type { Season, SeasonCopyCounts, SeasonCreationOptions } from '../api/types';
+import type { Season, SeasonCreationOptions } from '../api/types';
 import { seasonAPI } from '../api/api';
 import { useTranslation } from '../i18n';
 import type { UseActiveSeasonReturn } from './useActiveSeason';
@@ -115,13 +115,18 @@ export function SeasonCreateSuggestionDialog({
     switchSeason, createSeason, createTransitionSeasons, reload,
   } = controller;
   const [copyFromPrevious, setCopyFromPrevious] = useState(true);
+  const [useActualDates, setUseActualDates] = useState(false);
+  const [copyPreviewRevision, setCopyPreviewRevision] = useState(0);
+  const dateBasisHelpId = useId();
   const [creatingSuggested, setCreatingSuggested] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [gapChoice, setGapChoice] = useState<'adopt' | 'transition' | 'manual' | ''>('');
   const [manualStartDate, setManualStartDate] = useState('');
-  const [manualCopyOptions, setManualCopyOptions] = useState<{
+  const [remoteCopyOptions, setRemoteCopyOptions] = useState<{
+    key: string;
     start: string;
     options: SeasonCreationOptions | null;
+    lastSuccessfulOptions: SeasonCreationOptions | null;
   } | null>(null);
 
   const showSuggestion = Boolean(dueSuggestion?.start_date && dueSuggestion?.end_date);
@@ -158,48 +163,46 @@ export function SeasonCreateSuggestionDialog({
     ? analyzePeriodTransition(lastSeason.end_date, manualStartDate)
     : null;
 
-  // The copy split for the manual option depends on the chosen start date, so
-  // it is re-fetched from the server rather than derived client-side (which
-  // would need the source season's planting dates).
-  useEffect(() => {
-    if (gapChoice !== 'manual' || !manualValid) {
-      return;
-    }
-    let cancelled = false;
-    seasonAPI.creationOptions({ manual_start_date: manualStartDate })
-      .then((response) => {
-        if (!cancelled) {
-          setManualCopyOptions({ start: manualStartDate, options: response.data });
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setManualCopyOptions({ start: manualStartDate, options: null });
-        }
-      });
-    return () => { cancelled = true; };
-  }, [gapChoice, manualValid, manualStartDate]);
-
-  const manualCopyResult = manualCopyOptions?.start === manualStartDate ? manualCopyOptions : null;
-  const copyOptions = gapChoice === 'manual' ? manualCopyResult?.options : seasonCreationOptions;
-  const activeCopyPreview: SeasonCopyCounts | null = (() => {
-    const preview = copyOptions?.copy_preview;
-    if (!needsGapDecision || gapChoice === 'adopt') {
-      return preview?.adopt ?? null;
-    }
-    if (gapChoice === 'transition') {
-      return preview?.transition ?? null;
-    }
-    if (gapChoice === 'manual') {
-      return preview?.manual ?? null;
-    }
-    return null;
-  })();
-  const eligibleSourceId = activeCopyPreview ? copyOptions?.copy_source_season_id ?? null : null;
-  const copyFromLabel = copyOptions?.copy_source_label ?? '';
   const choosingCopy = !needsGapDecision || gapChoice === 'adopt' || gapChoice === 'transition'
     || (gapChoice === 'manual' && manualValid);
-  const followupCopyPreview = seasonCreationOptions?.copy_preview?.transition_followup ?? null;
+  const previewStart = gapChoice === 'manual' && manualValid ? manualStartDate : '';
+  const actualDateBasis = copyFromPrevious && useActualDates;
+  // A new revision also distinguishes on → off → on before the first response settles.
+  const requestKey = open && choosingCopy && (previewStart || actualDateBasis)
+    ? `${previewStart}:${actualDateBasis}:${copyPreviewRevision}` : null;
+
+  useEffect(() => {
+    if (!requestKey) return;
+    let cancelled = false;
+    const accept = (options: SeasonCreationOptions | null) => {
+      if (cancelled) return;
+      setRemoteCopyOptions(previous => ({
+        key: requestKey, start: previewStart, options,
+        lastSuccessfulOptions: options ?? (previous?.start === previewStart ? previous.lastSuccessfulOptions : null),
+      }));
+    };
+    seasonAPI.creationOptions({
+      ...(previewStart ? { manual_start_date: previewStart } : {}),
+      ...(actualDateBasis ? { use_actual_dates: true } : {}),
+    })
+      .then(response => accept(response.data))
+      .catch(() => accept(null));
+    return () => { cancelled = true; };
+  }, [requestKey, previewStart, actualDateBasis]);
+
+  const remoteResult = remoteCopyOptions?.key === requestKey ? remoteCopyOptions : null;
+  const copyOptions = requestKey ? remoteResult?.options : seasonCreationOptions;
+  const eligibilityOptions = copyOptions ?? (gapChoice === 'manual'
+    ? (remoteCopyOptions?.start === previewStart ? remoteCopyOptions.lastSuccessfulOptions : null)
+    : seasonCreationOptions);
+  const previewChoice = !needsGapDecision ? 'adopt' : gapChoice;
+  const activeCopyPreview = previewChoice ? copyOptions?.copy_preview?.[previewChoice] ?? null : null;
+  const eligibleSourceId = previewChoice && eligibilityOptions?.copy_preview?.[previewChoice]
+    ? eligibilityOptions.copy_source_season_id ?? null : null;
+  const copyFromLabel = eligibilityOptions?.copy_source_label ?? '';
+  const followupCopyPreview = copyOptions?.copy_preview?.transition_followup ?? null;
+  const checkingCopyOptions = Boolean(requestKey && !remoteResult);
+  const copyPreviewError = Boolean(remoteResult && !remoteResult.options);
   const continuingCopyCount = activeCopyPreview?.continuing_count ?? 0;
   const unconfiguredCopyCount = activeCopyPreview?.unconfigured_perennial_count ?? 0;
   const excludedFromCopyCount = continuingCopyCount + unconfiguredCopyCount;
@@ -207,15 +210,16 @@ export function SeasonCreateSuggestionDialog({
   const resetTransientState = () => {
     setCreateError(null);
     setCopyFromPrevious(true);
+    setUseActualDates(false);
     setGapChoice('');
     setManualStartDate('');
-    setManualCopyOptions(null);
+    setRemoteCopyOptions(null);
   };
 
   const updateManualStart = (start: string) => {
     if (start === manualStartDate) return;
     setManualStartDate(start);
-    setManualCopyOptions(null);
+    setRemoteCopyOptions(null);
   };
 
   const handleClose = () => {
@@ -254,18 +258,19 @@ export function SeasonCreateSuggestionDialog({
   // The transition option creates two seasons: the gap-filling transition
   // season plus the regular follow-up season the pattern computes next.
   const isTransitionTwoSeason = needsGapDecision && gapChoice === 'transition';
-  const checkingManualCopy = choosingCopy && gapChoice === 'manual' && !manualCopyResult;
-  const canSubmit = !creatingSuggested && !checkingManualCopy && (
+  const copyPreviewPending = copyFromPrevious && (checkingCopyOptions || copyPreviewError);
+  const canSubmit = !creatingSuggested && !copyPreviewPending && (
     isTransitionTwoSeason
       ? Boolean(seamlessPeriod && duePeriod)
       : resolveCreatePeriod() !== null
   );
 
   const handleCreateSuggested = async () => {
+    if (!canSubmit) return;
     setCreatingSuggested(true);
     setCreateError(null);
     try {
-      const copySourceId = copyFromPrevious ? eligibleSourceId ?? undefined : undefined;
+      const copySourceId = copyFromPrevious && activeCopyPreview ? copyOptions?.copy_source_season_id ?? undefined : undefined;
       let seasonToActivate: Season;
       if (isTransitionTwoSeason && seamlessPeriod && duePeriod) {
         // One server call creates both seasons and distributes the last
@@ -273,7 +278,8 @@ export function SeasonCreateSuggestionDialog({
         // shifted planting date lands in).
         const result = copySourceId === undefined
           ? await createTransitionSeasons(false)
-          : await createTransitionSeasons(true, copySourceId);
+          : actualDateBasis ? await createTransitionSeasons(true, copySourceId, true)
+            : await createTransitionSeasons(true, copySourceId);
         seasonToActivate = result.followup_season;
       } else {
         const period = resolveCreatePeriod();
@@ -281,7 +287,9 @@ export function SeasonCreateSuggestionDialog({
           setCreatingSuggested(false);
           return;
         }
-        seasonToActivate = await createSeason(period.start, period.end, copySourceId);
+        seasonToActivate = actualDateBasis && copySourceId !== undefined
+          ? await createSeason(period.start, period.end, copySourceId, true)
+          : await createSeason(period.start, period.end, copySourceId);
       }
       resetTransientState();
       onClose();
@@ -290,7 +298,7 @@ export function SeasonCreateSuggestionDialog({
       const code = extractApiErrorCode(error);
       if (code === 'season_copy_source_not_preceding' || code === 'source_season_not_found') {
         setGapChoice('');
-        setManualCopyOptions(null);
+        setRemoteCopyOptions(null);
         void reload();
       }
       setCreateError(getSeasonCreateErrorMessage(
@@ -453,7 +461,11 @@ export function SeasonCreateSuggestionDialog({
                 control={(
                   <Checkbox
                     checked={copyFromPrevious}
-                    onChange={(event) => setCopyFromPrevious(event.target.checked)}
+                    disabled={creatingSuggested}
+                    onChange={(event) => {
+                      setCopyFromPrevious(event.target.checked);
+                      if (!event.target.checked) setUseActualDates(false);
+                    }}
                     sx={{ pt: 0 }}
                   />
                 )}
@@ -468,6 +480,27 @@ export function SeasonCreateSuggestionDialog({
                   </Stack>
                 )}
               />
+              {copyFromPrevious && (
+                <Box>
+                  <FormControlLabel
+                    sx={{ alignItems: 'flex-start', m: 0 }}
+                    control={<Checkbox checked={useActualDates} disabled={creatingSuggested}
+                      slotProps={{ input: { 'aria-describedby': dateBasisHelpId } }}
+                      onChange={event => {
+                        setUseActualDates(event.target.checked);
+                        setCopyPreviewRevision(current => current + 1);
+                      }}
+                      sx={{ pt: 0 }}
+                    />}
+                    label={<Typography variant="body2">
+                      {t('navigation:seasonSwitcher.copyDialog.useActualDates')}
+                    </Typography>}
+                  />
+                  <Typography id={dateBasisHelpId} variant="caption" color="text.secondary" sx={{ display: 'block', pl: 4 }}>
+                    {t('navigation:seasonSwitcher.copyDialog.useActualDatesHelp')}
+                  </Typography>
+                </Box>
+              )}
               {copyFromPrevious && activeCopyPreview && activeCopyPreview.total > excludedFromCopyCount ? (
                 <Typography
                   variant="caption"
@@ -511,13 +544,21 @@ export function SeasonCreateSuggestionDialog({
                 </Typography>
               ) : null}
             </Stack>
-          ) : choosingCopy && lastSeason && copyOptions ? (
+          ) : !checkingCopyOptions && choosingCopy && lastSeason && copyOptions ? (
             <Alert severity="info">{t('navigation:seasonSwitcher.copyDialog.noPrecedingSource')}</Alert>
-          ) : checkingManualCopy ? (
-            <Typography role="status" variant="body2">{t('common:messages.loading')}</Typography>
-          ) : choosingCopy && gapChoice === 'manual' && manualCopyResult?.options === null ? (
-            <Alert severity="error">{t('navigation:seasonSwitcher.copyDialog.previewError')}</Alert>
           ) : null}
+          {checkingCopyOptions && (
+            <Typography role="status" variant="body2">{t('common:messages.loading')}</Typography>
+          )}
+          {copyPreviewError && (
+            <Alert severity="error" action={
+              <Button color="inherit" onClick={() => setCopyPreviewRevision(current => current + 1)}>
+                {t('common:runtime.retryAction')}
+              </Button>
+            }>
+              {t('navigation:seasonSwitcher.copyDialog.previewError')}
+            </Alert>
+          )}
           <Box
             sx={{
               display: 'flex',

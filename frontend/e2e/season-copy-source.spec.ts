@@ -11,9 +11,9 @@ function createSeason(page: Page, start: string, end: string, label: string) {
   });
 }
 
-async function createPlan(page: Page, season: number, plantingDate: string, actualSowingDate?: string) {
+async function createPlan(page: Page, season: number, plantingDate: string, actualSowingDate?: string, growthDuration = 30) {
   const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
-    name: 'Kopiersalat', cultivation_type: 'direct_sowing', growth_duration_days: 30,
+    name: 'Kopiersalat', cultivation_type: 'direct_sowing', growth_duration_days: growthDuration,
   });
   return apiRequest<{ id: number }>(page, 'POST', '/planting-plans/', {
     season, crop: crop.id, planting_date: plantingDate, cultivation_type: 'direct_sowing',
@@ -91,32 +91,56 @@ test.describe('season copy on a French phone', () => {
   });
 });
 
-test('the suggested season copies from the predecessor when an older season is active', async ({ page, request }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await loginWithDeterministicProject(page, request, 'season-suggestion-preceding', { loginAsAdmin: true });
-  const older = await createSeason(page, '2024-09-01', '2025-08-31', 'Historische Saison');
-  const source = await createSeason(page, '2025-09-01', '2026-08-31', 'Unmittelbar vorherige Saison');
-  await apiRequest(page, 'PATCH', '/season-pattern/', { start_day: 1, start_month: 9 });
-  await createPlan(page, source.id, '2026-04-01');
+for (const basis of ['planned', 'actual'] as const) {
+  test(`the suggested season copies ${basis} dates from the predecessor when an older season is active`, async ({ page, request }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await loginWithDeterministicProject(page, request, `season-suggestion-preceding-${basis}`, { loginAsAdmin: true });
+    const older = await createSeason(page, '2024-09-01', '2025-08-31', 'Historische Saison');
+    const source = await createSeason(page, '2025-09-01', '2026-08-31', 'Unmittelbar vorherige Saison');
+    await apiRequest(page, 'PATCH', '/season-pattern/', { start_day: 1, start_month: 9 });
+    const original = await createPlan(page, source.id, '2026-04-01', '2026-04-06', 32);
 
-  await page.goto(plansPage);
-  const switcher = page.getByRole('button', { name: 'Aktive Saison wechseln' });
-  await switcher.click();
-  await page.getByRole('menuitem').filter({ hasText: 'Historische Saison' }).click();
-  await expect(switcher).toContainText('Historische Saison');
-  await switcher.click();
-  await page.getByRole('menuitem').filter({ hasText: 'Saison 26/27 anlegen' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Saison 26/27 anlegen?' });
-  await expect(dialog.getByRole('checkbox', { name: /Daten aus Saison Unmittelbar vorherige Saison übernehmen/ })).toBeChecked();
+    await page.goto(plansPage);
+    const switcher = page.getByRole('button', { name: 'Aktive Saison wechseln' });
+    await switcher.click();
+    await page.getByRole('menuitem').filter({ hasText: 'Historische Saison' }).click();
+    await expect(switcher).toContainText('Historische Saison');
+    await switcher.click();
+    await page.getByRole('menuitem').filter({ hasText: 'Saison 26/27 anlegen' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Saison 26/27 anlegen?' });
+    await expect(dialog.getByRole('checkbox', { name: /Daten aus Saison Unmittelbar vorherige Saison übernehmen/ })).toBeChecked();
 
-  const copying = page.waitForResponse(response => response.url().endsWith('/seasons/create-and-copy/'));
-  await dialog.getByRole('button', { name: 'Anlegen', exact: true }).click();
-  const response = await copying;
-  expect(response.request().postDataJSON()).toEqual({
-    start_date: '2026-09-01', end_date: '2027-08-31', source_season_id: source.id,
+    const dateBasis = dialog.getByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' });
+    await expect(dateBasis).not.toBeChecked();
+    await expect(dateBasis).toHaveAccessibleDescription(/vorherigen Saison.*Plantermin/);
+    if (basis === 'actual') {
+      const preview = page.waitForResponse(response => (
+        response.url().includes('/seasons/creation-options/') && response.url().includes('use_actual_dates=true')
+      ));
+      await dateBasis.check();
+      expect((await preview).ok()).toBe(true);
+      await expect(dialog.getByText(/Anbaupläne.*übernommen/)).toBeVisible();
+    }
+    const copying = page.waitForResponse(response => response.url().endsWith('/seasons/create-and-copy/'));
+    await dialog.getByRole('button', { name: 'Anlegen', exact: true }).click();
+    const response = await copying;
+    expect(response.request().postDataJSON()).toEqual({
+      start_date: '2026-09-01', end_date: '2027-08-31', source_season_id: source.id,
+      ...(basis === 'actual' ? { use_actual_dates: true } : {}),
+    });
+    const created = await response.json();
+    expect(created).toMatchObject({ planting_plan_count: 1 });
+    await expect(switcher).toContainText('26/27');
+    const { results } = await apiRequest<{ results: Array<{ id: number; planting_plan_count: number }> }>(page, 'GET', '/seasons/');
+    expect(results.find(season => season.id === older.id)?.planting_plan_count).toBe(0);
+    type Dates = { id: number; season: number; planting_date: string; harvest_date: string; actual_sowing_date: string | null };
+    const { results: rows } = await apiRequest<{ results: Dates[] }>(page, 'GET', '/planting-plans/');
+    expect(rows.filter(plan => plan.season === created.id)).toMatchObject([{
+      planting_date: basis === 'actual' ? '2027-04-06' : '2027-04-01',
+      harvest_date: '2027-05-03', actual_sowing_date: null,
+    }]);
+    expect(await apiRequest<Dates>(page, 'GET', `/planting-plans/${original.id}/`)).toMatchObject({
+      planting_date: '2026-04-01', harvest_date: '2026-05-03', actual_sowing_date: '2026-04-06',
+    });
   });
-  expect(await response.json()).toMatchObject({ planting_plan_count: 1 });
-  await expect(switcher).toContainText('26/27');
-  const { results } = await apiRequest<{ results: Array<{ id: number; planting_plan_count: number }> }>(page, 'GET', '/seasons/');
-  expect(results.find(season => season.id === older.id)?.planting_plan_count).toBe(0);
-});
+}

@@ -43,6 +43,37 @@ class LocalLibraryImportSeedTests(TestCase):
     def seed(self, **options):
         call_command("seed_library_import_acceptance", **{**self.arguments, **options})
 
+    def test_season_creation_fixture_previews_and_preserves_manual_edits(self):
+        command = 'seed_season_creation_dates_acceptance'
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        call_command(command, **arguments)
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before))
+        with self.assertRaisesMessage(CommandError, 'does not match'):
+            call_command(command, apply=True, **{**arguments, 'database_name': 'wrong-target'})
+
+        call_command(command, apply=True, **arguments)
+        projects = Project.objects.filter(
+            slug__startswith=f'ofp-local-season-creation-dates-{self.user.pk}-',
+        )
+        self.assertEqual(projects.count(), 2)
+        for project in projects:
+            self.assertTrue(ProjectMembership.objects.filter(
+                project=project, user=self.user, role='admin',
+            ).exists())
+            plan = project.planting_plans.get()
+            self.assertEqual((plan.planting_date.month, plan.planting_date.day), (4, 1))
+            self.assertEqual((plan.actual_sowing_date.month, plan.actual_sowing_date.day), (4, 6))
+            self.assertTrue(plan.harvest_date_is_explicit)
+            self.assertIsNone(plan.actual_harvest_start_date)
+            plan.notes = 'Keep this manual edit'
+            plan.save(update_fields=['notes'])
+        call_command(command, apply=True, **arguments)
+        edited_plans = PlantingPlan.objects.filter(
+            project__in=projects, notes='Keep this manual edit',
+        )
+        self.assertEqual(edited_plans.count(), 2)
+        self.assertEqual(PlantingPlan.objects.filter(project__in=projects).count(), 2)
+
     def test_bed_capacity_fixture_previews_and_preserves_manual_edits(self):
         command = 'seed_bed_capacity_acceptance'
         arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}

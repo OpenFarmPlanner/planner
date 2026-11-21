@@ -165,12 +165,14 @@ class SeasonPatternSerializer(serializers.ModelSerializer):
 
 class SeasonCreateAndCopySerializer(SeasonSerializer):
     source_season_id = serializers.IntegerField(write_only=True)
+    use_actual_dates = serializers.BooleanField(write_only=True, default=False)
 
     class Meta(SeasonSerializer.Meta):
-        fields = [*SeasonSerializer.Meta.fields, 'source_season_id']
+        fields = [*SeasonSerializer.Meta.fields, 'source_season_id', 'use_actual_dates']
 
     def create(self, validated_data):
         validated_data.pop('source_season_id')
+        validated_data.pop('use_actual_dates')
         return super().create(validated_data)
 
 

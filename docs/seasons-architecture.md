@@ -294,7 +294,25 @@ a season pattern changes and keeps the previous period eligible.
   `POST /seasons/create-and-copy/` rechecks the source and saves the new season
   and the copied plans in one transaction.
   When creating a transition and follow-up together, the eligible source for
-  the transition is copied once across the pair.
+  the transition is copied once across the pair. Create Season defaults to
+  planned dates. Enable **Use actual dates as planned dates** while copying to
+  use the predecessor's recorded dates, falling back activity by activity to
+  its planned dates. The dialog refreshes `creation-options` for the selected
+  basis before submission and sends the same `use_actual_dates` option to
+  `create-and-copy` or `create-transition`. The resulting dates are planned
+  dates in the new season. The new plans' actual fields start empty.
+
+  For local QA, preview the command below, then repeat with `--apply` after
+  confirming the target. In **Season creation dates (actual)**, create the
+  suggested next season, keep copying enabled and check the date-basis option.
+  The lettuce's new planned sowing date is April 6. Repeat in **Season creation
+  dates (planned)** with the option clear and verify April 1. In both projects,
+  the new harvest start is May 3 and the new actual dates are empty. The prior
+  season keeps April 1 planned, April 6 recorded, and May 3 planned harvest.
+
+  ```bash
+  DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py seed_season_creation_dates_acceptance --username LOCAL_USER --database-name LOCAL_DATABASE
+  ```
 - `frontend/src/seasons/SeasonCopyDataDialog.tsx` is the shared dialog
   opened from an existing season's row menu. It names the source and target
   and warns when the target already has planting plans. The copies are added
