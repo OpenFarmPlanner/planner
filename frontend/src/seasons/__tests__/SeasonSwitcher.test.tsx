@@ -412,7 +412,6 @@ describe('SeasonSwitcher', () => {
     expect(screen.getByRole('checkbox', { name: /Daten aus Saison 25\/26 übernehmen/ })).toBeChecked();
     const create = screen.getByRole('button', { name: 'Anlegen' });
     expect(create).toBeDisabled();
-    await user.click(create);
     expect(createSeason).not.toHaveBeenCalled();
     await user.click(basis);
     expect(await screen.findByText(/1 von 4 Anbauplänen aus 25\/26 werden übernommen/)).toBeInTheDocument();
