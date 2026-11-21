@@ -258,7 +258,8 @@ export function SeasonCreateSuggestionDialog({
   // The transition option creates two seasons: the gap-filling transition
   // season plus the regular follow-up season the pattern computes next.
   const isTransitionTwoSeason = needsGapDecision && gapChoice === 'transition';
-  const canSubmit = !creatingSuggested && !checkingCopyOptions && !(actualDateBasis && copyPreviewError) && (
+  const copyPreviewPending = copyFromPrevious && (checkingCopyOptions || copyPreviewError);
+  const canSubmit = !creatingSuggested && !copyPreviewPending && (
     isTransitionTwoSeason
       ? Boolean(seamlessPeriod && duePeriod)
       : resolveCreatePeriod() !== null

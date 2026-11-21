@@ -401,11 +401,23 @@ describe('SeasonSwitcher', () => {
 
     expect(await screen.findByText(/1 von 4 Anbauplänen aus 25\/26 werden übernommen/)).toBeInTheDocument();
     expect(creationOptionsMock).toHaveBeenCalledWith({ manual_start_date: '2026-10-01' });
-    await user.click(screen.getByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' }));
+    const basis = screen.getByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' });
+    await user.click(basis);
     expect(await screen.findByText(/1 von 4 Anbauplänen aus 25\/26 werden übernommen/)).toBeInTheDocument();
     expect(creationOptionsMock).toHaveBeenLastCalledWith({ manual_start_date: '2026-10-01', use_actual_dates: true });
 
-    await user.click(screen.getByRole('button', { name: 'Anlegen' }));
+    creationOptionsMock.mockRejectedValueOnce(new Error('Preview request failed'));
+    await user.click(basis);
+    expect(await screen.findByRole('button', { name: 'Erneut versuchen' })).toBeVisible();
+    expect(screen.getByRole('checkbox', { name: /Daten aus Saison 25\/26 übernehmen/ })).toBeChecked();
+    const create = screen.getByRole('button', { name: 'Anlegen' });
+    expect(create).toBeDisabled();
+    await user.click(create);
+    expect(createSeason).not.toHaveBeenCalled();
+    await user.click(basis);
+    expect(await screen.findByText(/1 von 4 Anbauplänen aus 25\/26 werden übernommen/)).toBeInTheDocument();
+
+    await user.click(create);
     expect(createSeason).toHaveBeenCalledTimes(1);
     expect(createSeason).toHaveBeenCalledWith('2026-10-01', '2027-12-31', 2, true);
     expect(switchSeason).toHaveBeenCalledWith(9);
