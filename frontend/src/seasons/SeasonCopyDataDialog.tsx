@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import {
   Alert,
   Button,
@@ -8,7 +8,9 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  MenuItem,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material';
 import { seasonAPI } from '../api/api';
@@ -20,8 +22,8 @@ import { showGlobalSnackbar } from '../utils/globalSnackbar';
 import { SeasonCopyRotationSummary } from './SeasonCopyRotationSummary';
 
 interface SeasonCopyDataDialogProps {
-  open: boolean;
-  targetSeason: Season | null;
+  targetSeason: Season;
+  seasons: readonly Season[];
   onClose: () => void;
   onConfirm: (
     targetSeasonId: number,
@@ -31,104 +33,109 @@ interface SeasonCopyDataDialogProps {
   ) => Promise<{ copied_count: number; target_planting_plan_count: number }>;
 }
 
-type PreviewState = { targetId: number; version: number } & (
+interface PreviewRequest {
+  target: Season;
+  source: Season;
+  useActualDates: boolean;
+}
+
+type PreviewState = { request: PreviewRequest } & (
   | { data: SeasonCopyPreview }
   | { error: unknown }
 );
 
 const DEFAULT_ROTATION_MODE: SeasonCopyRotationMode = 'without_bed';
 
-export function SeasonCopyDataDialog({ open, targetSeason, onClose, onConfirm }: SeasonCopyDataDialogProps) {
+function isStaleSourceError(code: string | null | undefined) {
+  return code === 'source_season_not_found' || code === 'season_copy_source_not_earlier'
+    || code === 'same_source_and_target_season';
+}
+
+function isEarlierSource(season: Season, target: Season) {
+  return season.project === target.project && season.id !== target.id && season.end_date < target.start_date;
+}
+
+export function SeasonCopyDataDialog({ targetSeason, seasons, onClose, onConfirm }: SeasonCopyDataDialogProps) {
   const { t } = useTranslation(['navigation', 'common']);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewState, setPreviewState] = useState<PreviewState | null>(null);
-  const [source, setSource] = useState<{ targetId: number; id: number; label: string } | null>(null);
-  const [dateBasis, setDateBasis] = useState<{
-    useActualDates: boolean; version: number; source?: { targetId: number; id: number };
-  }>({ useActualDates: false, version: 0 });
+  const [options, setOptions] = useState({ sourceId: null as number | null, useActualDates: false });
   const [rotationMode, setRotationMode] = useState<SeasonCopyRotationMode>(DEFAULT_ROTATION_MODE);
+  const sourceInputId = useId();
   const dateBasisHelpId = useId();
-  const targetSeasonId = targetSeason?.id ?? null;
+
+  const availableSources = seasons.filter(season => isEarlierSource(season, targetSeason))
+    .sort((a, b) => b.start_date.localeCompare(a.start_date));
+  const selectedSourceId = options.sourceId ?? availableSources[0]?.id;
+  const source = seasons.find(season => season.id === selectedSourceId && isEarlierSource(season, targetSeason));
+  const request = useMemo<PreviewRequest | null>(() => source ? ({
+    target: targetSeason, source, useActualDates: options.useActualDates,
+  }) : null, [source, targetSeason, options]);
+
   useEffect(() => {
-    if (!open || targetSeasonId === null) {
+    if (!request) {
       return undefined;
     }
     let cancelled = false;
-    const sourceId = dateBasis.source?.targetId === targetSeasonId ? dateBasis.source.id : undefined;
-    seasonAPI.copyPreview(targetSeasonId, sourceId, dateBasis.useActualDates)
+    seasonAPI.copyPreview(request.target.id, request.source.id, request.useActualDates)
       .then((response) => {
+        if (response.data.source_season_id !== request.source.id) {
+          throw new Error('The copy preview returned a different source season.');
+        }
         if (!cancelled) {
-          setSource({
-            targetId: targetSeasonId, id: response.data.source_season_id,
-            label: response.data.source_season_label,
-          });
-          setPreviewState({ targetId: targetSeasonId, version: dateBasis.version, data: response.data });
+          setPreviewState({ request, data: response.data });
         }
       })
       .catch((requestError: unknown) => {
         if (!cancelled) {
-          setPreviewState({ targetId: targetSeasonId, version: dateBasis.version, error: requestError });
-          if (extractApiErrorCode(requestError) === 'season_copy_no_preceding_source') setSource(null);
+          setPreviewState({ request, error: requestError });
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [open, targetSeasonId, dateBasis]);
+  }, [request]);
 
-  const result = previewState?.targetId === targetSeasonId && previewState.version === dateBasis.version
-    ? previewState : null;
+  const result = previewState?.request === request ? previewState : null;
   const preview = result && 'data' in result ? result.data : null;
   const continuingCount = preview?.continuing_count ?? 0;
   const unconfiguredCount = preview?.unconfigured_perennial_count ?? 0;
   const previewFailure = result && 'error' in result ? result : null;
   const previewErrorCode = extractApiErrorCode(previewFailure?.error);
-  const noPrecedingSource = previewErrorCode === 'season_copy_no_preceding_source';
-  const sourceChanged = previewErrorCode === 'source_season_not_found' || previewErrorCode === 'season_copy_source_not_preceding';
-  const sourceForTarget = source?.targetId === targetSeasonId ? source : null;
-  const sourceLabel = sourceForTarget?.label;
+  const sourceChanged = (options.sourceId !== null && !source) || isStaleSourceError(previewErrorCode);
+  const previewLoading = Boolean(request && !result);
   const hasRotationFindings = Boolean(preview && (preview.conflict_count > 0 || preview.hint_count > 0));
+  const copyCount = preview && (rotationMode === 'skip' ? preview.conflict_free_count : preview.total);
 
-  const refreshPreview = (useActualDates: boolean) => {
+  const refreshPreview = (sourceId: number, useActualDates: boolean) => {
     setError(null);
-    setDateBasis(current => ({
-      useActualDates, version: current.version + 1, source: sourceForTarget ?? undefined,
-    }));
-  };
-
-  const handleClose = () => {
-    setPreviewState(null);
-    setSource(null);
-    setDateBasis({ useActualDates: false, version: 0 });
-    setError(null);
-    setRotationMode(DEFAULT_ROTATION_MODE);
-    onClose();
+    setOptions({ sourceId, useActualDates });
   };
 
   const handleConfirm = async () => {
-    if (!targetSeason || !preview || submitting) {
+    if (!request || !preview || submitting) {
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
       const result = await onConfirm(
-        targetSeason.id, preview.source_season_id,
+        request.target.id, request.source.id,
         preview.conflict_count > 0 ? rotationMode : undefined,
-        dateBasis.useActualDates,
+        request.useActualDates,
       );
       showGlobalSnackbar({
         message: t(result.copied_count > 0 ? 'seasonSwitcher.copyDialog.success' : 'seasonSwitcher.copyDialog.noCopies', {
-          target: targetSeason.label,
+          target: request.target.label,
         }),
         severity: result.copied_count > 0 ? 'success' : 'info',
       });
-      handleClose();
+      onClose();
     } catch (confirmError) {
       const code = extractApiErrorCode(confirmError);
-      if (code === 'season_copy_source_not_preceding' || code === 'source_season_not_found') {
-        setPreviewState({ targetId: targetSeason.id, version: dateBasis.version, error: confirmError });
+      if (isStaleSourceError(code)) {
+        setPreviewState({ request, error: confirmError });
       } else {
         setError(extractApiErrorMessage(confirmError, t, t('navigation:seasonSwitcher.copyDialog.error')));
       }
@@ -137,48 +144,65 @@ export function SeasonCopyDataDialog({ open, targetSeason, onClose, onConfirm }:
     }
   };
 
-  if (!targetSeason) {
-    return null;
-  }
-
   return (
-    <Dialog open={open} onClose={submitting ? undefined : handleClose} fullWidth maxWidth="sm">
+    <Dialog open onClose={submitting ? undefined : onClose} fullWidth maxWidth="sm">
       <DialogTitle>{t('navigation:seasonSwitcher.copyDialog.title')}</DialogTitle>
       <DialogContent>
         <Stack component="dl" spacing={0.5} sx={{ mt: 0, mb: 2, overflowWrap: 'anywhere' }}>
-          {sourceLabel && (
-            <>
-              <Typography component="dt" variant="subtitle2">{t('navigation:seasonSwitcher.copyDialog.sourceLabel')}</Typography>
-              <Typography component="dd" variant="body2" sx={{ m: 0 }}>{sourceLabel}</Typography>
-            </>
-          )}
           <Typography component="dt" variant="subtitle2">{t('navigation:seasonSwitcher.copyDialog.targetLabel')}</Typography>
           <Typography component="dd" variant="body2" sx={{ m: 0 }}>{targetSeason.label}</Typography>
         </Stack>
 
-        {sourceLabel && (
+        {availableSources.length > 0 && (
+          <TextField
+            id={sourceInputId}
+            select
+            fullWidth
+            size="small"
+            label={t('navigation:seasonSwitcher.copyDialog.selectSource')}
+            value={source?.id ?? ''}
+            disabled={submitting}
+            onChange={(event) => {
+              setRotationMode(DEFAULT_ROTATION_MODE);
+              refreshPreview(Number(event.target.value), options.useActualDates);
+            }}
+            sx={{ mb: 2, '& .MuiSelect-select': { whiteSpace: 'normal', overflowWrap: 'anywhere' } }}
+          >
+            {availableSources.map(season => (
+              <MenuItem key={season.id} value={season.id} sx={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
+                {season.label}
+              </MenuItem>
+            ))}
+          </TextField>
+        )}
+
+        {source && (
           <Stack sx={{ mb: 2 }}>
             <FormControlLabel
               sx={{ m: 0, alignItems: 'flex-start', '& .MuiFormControlLabel-label': { pt: 1 } }}
-              control={<Checkbox checked={dateBasis.useActualDates} disabled={submitting || sourceChanged}
-                onChange={(_, checked) => refreshPreview(checked)}
+              control={<Checkbox checked={options.useActualDates} disabled={submitting || sourceChanged}
+                onChange={(_, checked) => refreshPreview(source.id, checked)}
                 slotProps={{ input: { 'aria-describedby': dateBasisHelpId } }} />}
               label={t('navigation:seasonSwitcher.copyDialog.useActualDates')}
             />
             <Typography id={dateBasisHelpId} variant="body2" color="text.secondary" sx={{ pl: 5 }}>
-              {t('navigation:seasonSwitcher.copyDialog.useActualDatesHelp')}
+              {t('navigation:seasonSwitcher.copyDialog.selectedSourceDatesHelp')}
             </Typography>
           </Stack>
         )}
 
-        {!result && <Typography role="status" variant="body2">{t('common:messages.loading')}</Typography>}
-        {previewFailure && (
-          <Alert severity={noPrecedingSource ? 'info' : 'error'} action={!noPrecedingSource && !sourceChanged && (
-            <Button color="inherit" onClick={() => refreshPreview(dateBasis.useActualDates)}>{t('common:runtime.retryAction')}</Button>
-          )}>
-            {previewErrorCode === 'source_season_not_found'
-              ? t('navigation:seasonSwitcher.copyDialog.sourceChanged')
-              : extractApiErrorMessage(previewFailure.error, t, t('navigation:seasonSwitcher.copyDialog.previewError'))}
+        {previewLoading && <Typography role="status" variant="body2">{t('common:messages.loading')}</Typography>}
+        {availableSources.length === 0 && !sourceChanged && (
+          <Alert severity="info">{t('navigation:seasonSwitcher.copyDialog.noEarlierSource')}</Alert>
+        )}
+        {sourceChanged && <Alert severity="error">{t('navigation:seasonSwitcher.copyDialog.earlierSourceUnavailable')}</Alert>}
+        {source && previewFailure && !sourceChanged && (
+          <Alert severity="error" action={
+            <Button color="inherit" onClick={() => refreshPreview(source.id, options.useActualDates)}>
+              {t('common:runtime.retryAction')}
+            </Button>
+          }>
+            {extractApiErrorMessage(previewFailure.error, t, t('navigation:seasonSwitcher.copyDialog.previewError'))}
           </Alert>
         )}
 
@@ -192,11 +216,11 @@ export function SeasonCopyDataDialog({ open, targetSeason, onClose, onConfirm }:
           </Alert>
         ) : null}
 
-        {preview ? (
+        {copyCount !== null ? (
           <Typography variant="body2" color="text.secondary">
             {t('navigation:seasonSwitcher.copyDialog.summary', {
-              count: preview.total,
-              total: preview.total + targetSeason.planting_plan_count,
+              count: copyCount,
+              total: copyCount + targetSeason.planting_plan_count,
             })}
           </Typography>
         ) : null}
@@ -220,17 +244,22 @@ export function SeasonCopyDataDialog({ open, targetSeason, onClose, onConfirm }:
         {preview && hasRotationFindings ? (
           <SeasonCopyRotationSummary preview={preview} mode={rotationMode} onModeChange={setRotationMode} />
         ) : null}
+        {preview?.is_preceding_source === false && (
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            {t('navigation:seasonSwitcher.copyDialog.parcelRotationUnavailable')}
+          </Typography>
+        )}
 
         {error ? <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert> : null}
       </DialogContent>
       <DialogActions>
         <DisabledActionTooltip title={submitting ? t('common:disabledReasons.busy') : ''}>
-          <Button onClick={handleClose} disabled={submitting}>{t('common:actions.cancel')}</Button>
+          <Button onClick={onClose} disabled={submitting}>{t('common:actions.cancel')}</Button>
         </DisabledActionTooltip>
         <DisabledActionTooltip
           title={submitting
             ? t('common:disabledReasons.busy')
-            : !result ? t('common:messages.loading') : ''}
+            : previewLoading ? t('common:messages.loading') : ''}
         >
           <Button onClick={() => void handleConfirm()} variant="contained" disabled={submitting || !preview}>
             {t('navigation:seasonSwitcher.copyDialog.confirm')}

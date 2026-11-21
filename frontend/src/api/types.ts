@@ -1633,6 +1633,7 @@ export interface SeasonCopyPreview {
   unconfigured_perennial_count?: number;
   source_season_id: number;
   source_season_label: string;
+  is_preceding_source: boolean;
   items: SeasonCopyPreviewItem[];
 }
 

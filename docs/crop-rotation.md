@@ -217,7 +217,11 @@ harmless and is reset on the next move.
 `SeasonCopyDataDialog` loads `copy-preview` once a source season is chosen.
 The preview builds the shifted copies exactly like the copy itself
 (`build_planting_plan_copies`) and checks them against the bed history *and*
-each other, since they will all exist afterwards. The section only appears
+each other, since they will all exist afterwards. This applies to any earlier
+source in the existing-season copy dialog. The separate parcel-group rotation
+feature ([#1063](https://github.com/OpenFarmPlanner/planner/issues/1063)) is
+limited to the immediate predecessor and does not affect these crop-family
+checks. The section only appears
 when there is at least one conflict or hint. For conflicts the user chooses:
 
 - **Ohne Beet übernehmen** (default in the dialog) — the conflicting copies are

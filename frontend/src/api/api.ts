@@ -557,10 +557,10 @@ export const seasonAPI = {
       ...(rotationConflicts ? { rotation_conflicts: rotationConflicts } : {}),
       ...(useActualDates ? { use_actual_dates: true } : {}),
     }),
-  copyPreview: (targetId: number, sourceSeasonId?: number, useActualDates = false) =>
+  copyPreview: (targetId: number, sourceSeasonId: number, useActualDates = false) =>
     http.get<SeasonCopyPreview>(`/seasons/${targetId}/copy-preview/`, {
       params: {
-        ...(sourceSeasonId === undefined ? { resolve_source: 'true' } : { source_season_id: sourceSeasonId }),
+        source_season_id: sourceSeasonId,
         ...(useActualDates ? { use_actual_dates: 'true' } : {}),
       },
     }),

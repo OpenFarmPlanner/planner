@@ -150,15 +150,8 @@ class PlantingPlanCopyReferenceTest(ProjectApiTestCase):
         middle = self.copy(self.source_season, self.target_season)
         moved = self.client.patch(f"{PLANS}{middle.pk}/", {"bed": None}, format="json")
         self.assertEqual(moved.status_code, 200, moved.data)
-        denied = self.client.post(
-            f"{SEASONS}{following.pk}/copy-from/",
-            {
-                "source_season_id": self.source_season.pk,
-            },
-            format="json",
-        )
-        self.assertEqual(denied.status_code, 400, denied.data)
-        self.assertFalse(PlantingPlan.objects.filter(season=following).exists())
+        historical = self.copy(self.source_season, following)
+        self.assertIsNone(self.details(historical)["previous_season_reference"])
 
         latest = self.copy(self.target_season, following)
         middle_reference = self.details(middle)["previous_season_reference"]

@@ -641,15 +641,21 @@ class CropRotationApiTest(ProjectApiTestCase):
         self.assertEqual(copies.count(), 2)
         self.assertTrue(all(copy.bed_id is None for copy in copies))
 
-    def test_season_copy_can_skip_conflicts(self):
+    def test_historical_season_copy_can_skip_crop_family_conflicts(self):
         target = Season.objects.create(
-            project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
+            project=self.project, start_date=date(2028, 1, 1), end_date=date(2028, 12, 31),
         )
         self.plan(self.kale, self.bed, date(2026, 4, 1), self.season_2026)
         unchecked = self.plan(self.crop, self.other_bed, date(2026, 4, 1), self.season_2026)
+        url = f'/openfarmplanner/api/seasons/{target.id}/'
+
+        preview = self.client.get(f'{url}copy-preview/', {'source_season_id': self.season_2026.id})
+        self.assertEqual(preview.status_code, status.HTTP_200_OK)
+        self.assertFalse(preview.data['is_preceding_source'])
+        self.assertEqual(preview.data['conflict_count'], 1)
 
         response = self.client.post(
-            f'/openfarmplanner/api/seasons/{target.id}/copy-from/',
+            f'{url}copy-from/',
             {'source_season_id': self.season_2026.id, 'rotation_conflicts': 'skip'},
             format='json',
         )

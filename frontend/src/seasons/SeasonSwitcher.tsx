@@ -638,9 +638,10 @@ export function SeasonSwitcher({
   const [rowMenuSeasonId, setRowMenuSeasonId] = useState<number | null>(null);
   const [renameSeasonTarget, setRenameSeasonTarget] = useState<Season | null>(null);
   const [periodEditTarget, setPeriodEditTarget] = useState<Season | null>(null);
-  const [copyDialogTarget, setCopyDialogTarget] = useState<Season | null>(null);
+  const [copyDialogTargetId, setCopyDialogTargetId] = useState<number | null>(null);
 
   const rowMenuSeason = seasons.find((season) => season.id === rowMenuSeasonId) ?? null;
+  const copyDialogTarget = seasons.find((season) => season.id === copyDialogTargetId);
   const showSuggestion = Boolean(dueSuggestion?.due && dueSuggestion?.start_date && dueSuggestion?.end_date);
   const suggestedLabel = showSuggestion ? computeSeasonLabel(dueSuggestion!.start_date!, dueSuggestion!.end_date!) : '';
   const suggestedPeriod = showSuggestion
@@ -782,7 +783,7 @@ export function SeasonSwitcher({
         onCopyDataFrom={() => {
           if (rowMenuSeason) {
             closeMenu();
-            setCopyDialogTarget(rowMenuSeason);
+            setCopyDialogTargetId(rowMenuSeason.id);
           }
         }}
         onRename={() => { if (rowMenuSeason) { setRenameSeasonTarget(rowMenuSeason); } }}
@@ -804,12 +805,15 @@ export function SeasonSwitcher({
         onConfirm={updateSeasonPeriod}
       />
 
-      <SeasonCopyDataDialog
-        open={copyDialogTarget !== null}
-        targetSeason={copyDialogTarget}
-        onClose={() => setCopyDialogTarget(null)}
-        onConfirm={copyDataInto}
-      />
+      {copyDialogTarget && (
+        <SeasonCopyDataDialog
+          key={copyDialogTarget.id}
+          targetSeason={copyDialogTarget}
+          seasons={seasons}
+          onClose={() => setCopyDialogTargetId(null)}
+          onConfirm={copyDataInto}
+        />
+      )}
 
       {pendingDeletions.map((deletion, index) => (
         <DeleteUndoSnackbar
