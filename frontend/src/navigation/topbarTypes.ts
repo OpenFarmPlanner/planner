@@ -50,10 +50,14 @@ export interface RootLayoutOutletContext {
   activeSeasonLoading: boolean;
   /** Whether the active project's season list has completed its first load. */
   activeSeasonLoaded: boolean;
+  /** The season list could not be loaded. */
+  activeSeasonError?: string | null;
   /** True when the active project already has at least one season. */
   hasSeasons: boolean;
   /** Opens the shared suggested-season creation dialog. */
   requestSeasonCreation: () => void;
+  /** Opens the topbar's existing season picker. */
+  requestSeasonSelection?: () => void;
   /**
    * Re-fetches the active project's seasons and the due-season suggestion.
    * Call after something outside the season list changes what the suggestion

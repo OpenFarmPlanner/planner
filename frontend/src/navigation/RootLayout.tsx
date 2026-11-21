@@ -208,6 +208,12 @@ function RootLayout() {
   // compact widths, the "Mehr" menu — so the list is fetched once.
   const notifications = useNotifications(true);
   const activeSeason = useActiveSeason();
+  const seasonSwitcherButtonRef = React.useRef<HTMLButtonElement>(null);
+  const requestSeasonSelection = useCallback(() => {
+    const button = seasonSwitcherButtonRef.current;
+    button?.focus();
+    button?.click();
+  }, []);
   const [seasonSuggestionDialogOpen, setSeasonSuggestionDialogOpen] = useState(false);
   const requestSeasonCreation = useCallback(() => {
     setSeasonSuggestionDialogOpen(true);
@@ -1380,6 +1386,7 @@ function RootLayout() {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: TOPBAR_STATUS_CLUSTER_GAP }}>
           {hasActiveProject ? (
             <SeasonSwitcher
+              buttonRef={seasonSwitcherButtonRef}
               controller={activeSeason}
               onOpenProjectSettings={handleOpenProjectSettings}
               onOpenCreateSuggestion={requestSeasonCreation}
@@ -1728,6 +1735,7 @@ function RootLayout() {
                 <ConnectionStatusIndicator size={COMPACT_TOPBAR_TOGGLE_SIZE} hideWhenOnline />
                 {hasActiveProject ? (
                   <SeasonSwitcher
+                    buttonRef={seasonSwitcherButtonRef}
                     controller={activeSeason}
                     onOpenProjectSettings={handleOpenProjectSettings}
                     onOpenCreateSuggestion={requestSeasonCreation}
@@ -2032,8 +2040,10 @@ function RootLayout() {
           switchActiveSeason: activeSeason.switchSeason,
           activeSeasonLoading: activeSeason.loading,
           activeSeasonLoaded: activeSeason.loaded,
+          activeSeasonError: activeSeason.error,
           hasSeasons: activeSeason.seasons.length > 0,
           requestSeasonCreation,
+          requestSeasonSelection,
           reloadActiveSeason: () => { void activeSeason.reload(); },
           notifications,
         } satisfies RootLayoutOutletContext} />}

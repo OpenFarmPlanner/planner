@@ -28,6 +28,8 @@ interface DragListeners {
  */
 const TaskRow: React.FC<TaskRowProps> = ({
   taskGroup,
+  timelineAdornment,
+  timelineDateScale,
   startDate,
   endDate,
   totalMonths,
@@ -251,6 +253,16 @@ const TaskRow: React.FC<TaskRowProps> = ({
     if (!draggingTaskRef.current) return;
 
     try {
+      if (timelineDateScale) {
+        const task = draggingTaskRef.current;
+        const start = timelineDateScale.dateAt(left);
+        const end = timelineDateScale.dateAt(left + width, !task.endDateIsExclusive);
+        const boundedStart = new Date(Math.max(validStartDate.getTime(), start.getTime()));
+        const boundedEnd = new Date(Math.min(validEndDate.getTime(), end.getTime()));
+        updatePreviewTask(toPreviewTask(task, boundedStart, boundedEnd));
+        return;
+      }
+
       // For day view, apply precise date calculation
       if (viewMode === ViewMode.DAY) {
         // Calculate days from start position
@@ -855,6 +867,9 @@ const TaskRow: React.FC<TaskRowProps> = ({
       taskElementRef.current.style.left = `${finalLeft}px`;
       taskElementRef.current.style.width = `${finalWidth}px`;
     }
+    if (timelineDateScale && viewMode !== ViewMode.DAY) {
+      updateDatesFromPosition(finalLeft, finalWidth);
+    }
 
     // Calculate final dates
     let finalTask = previewTaskRef.current;
@@ -983,6 +998,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
             {taskGroup.emptyRowLabel}
           </span>
         )}
+        {timelineAdornment}
       </div>
     );
   }
@@ -1033,6 +1049,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
                   totalMonths,
                   monthWidth,
                   viewMode,
+                  timelineDateScale?.positionDate,
                 );
 
               const isHovered = hoveredTask?.id === task.id;
@@ -1074,6 +1091,8 @@ const TaskRow: React.FC<TaskRowProps> = ({
           })}
         </React.Fragment>
       ))}
+
+      {timelineAdornment}
 
       {/* Task tooltip */}
       {(hoveredTask || draggingTask) && (

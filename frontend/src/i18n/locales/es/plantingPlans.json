@@ -113,20 +113,26 @@
     "preCultivation": "Trasplante (plantel propio)",
     "purchasedTransplant": "Trasplante de plantel comprado"
   },
-  "areaAssignment": {
-    "title": "Cambiar superficie de cultivo",
-    "editButton": "Editar superficie de cultivo",
-    "hierarchyHint": "La ubicación filtra las parcelas y la parcela filtra los bancales.",
-    "emptyStateTitle": "No hay superficies de cultivo disponibles",
-    "emptyStateDescription": "Crea primero parcelas y bancales antes de asignar una superficie a una serie.",
-    "emptyStateAction": "Ir a Superficies de cultivo",
-    "apply": "Aplicar",
-    "cancel": "Cancelar",
-    "selectLocationFirst": "Selecciona primero una ubicación.",
-    "noFieldsForLocation": "No hay parcelas disponibles para esta ubicación.",
-    "selectFieldFirst": "Selecciona primero una parcela.",
-    "noBedsForField": "No hay bancales disponibles para esta parcela.",
-    "selectBedFirst": "Selecciona primero un bancal."
+  "bedPicker": {
+    "emptyTitle": "No hay superficies de cultivo disponibles",
+    "openGrowingAreas": "Ir a Superficies de cultivo",
+    "search": "Buscar bancales",
+    "removeFilter": "Quitar el filtro «{{name}}»",
+    "noScopedMatches": "No hay resultados en {{name}}",
+    "noMatches": "No hay bancales que coincidan",
+    "showOutside_one": "Mostrar {{count}} resultado fuera del filtro",
+    "showOutside_many": "Mostrar {{count}} resultados fuera del filtro",
+    "showOutside_other": "Mostrar {{count}} resultados fuera del filtro",
+    "searchAll": "Buscar en todas las ubicaciones",
+    "keyboardHint": "↑ ↓ Mover · Intro Elegir · Esc Cancelar · Retroceso Quitar filtro",
+    "conflictReason": "{{family}}, a partir de {{year}}",
+    "showOccupancy": "Mostrar la ocupación de {{bed}}",
+    "hideOccupancy": "Ocultar la ocupación de {{bed}}",
+    "rotation": {
+      "conflict": "Mostrar el conflicto de rotación",
+      "accepted": "Mostrar el conflicto de rotación aceptado",
+      "info": "Por qué no se pudo comprobar la rotación"
+    }
   },
   "mobile": {
     "showDetails": "Mostrar detalles",
@@ -279,10 +285,6 @@
     "waterMismatch": "El cultivo necesita mucha agua. La humedad del suelo figura como {{moisture}} y el riego como {{irrigation}}."
   },
   "rotation": {
-    "iconAria": {
-      "conflict": "Conflicto de rotación de cultivos, cambiar superficie de cultivo",
-      "info": "Rotación de cultivos no comprobable, cambiar superficie de cultivo"
-    },
     "status": {
       "conflict": "Conflicto",
       "accepted": "Conflicto aceptado",

@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next';
 import type { Crop, PlantingPlan, PlantingPlanActualDates } from '../api/types';
 import { toIsoDateString } from '../components/data-grid/dateEditCellUtils';
 import { getPlanPropagationInfo, getPlanSowingSchedule } from '../pages/planSowingDate';
@@ -82,4 +83,13 @@ export function planDateDeviation(dates: PlantingPlanDateComparison): number | n
   const plan = parseIsoDate(dates.planned);
   const actual = parseIsoDate(dates.actual);
   return plan && actual ? (actual.getTime() - plan.getTime()) / 86_400_000 : null;
+}
+
+export function planDateDeviationLabel(dates: PlantingPlanDateComparison, t: TFunction): string | undefined {
+  const deviation = planDateDeviation(dates);
+  if (deviation === null) return undefined;
+  if (deviation === 0) return t('plantingPlans:actualDates.same');
+  return deviation < 0
+    ? t('plantingPlans:actualDates.early', { count: -deviation })
+    : t('plantingPlans:actualDates.late', { count: deviation });
 }

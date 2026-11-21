@@ -18,7 +18,7 @@ const createDeps = () => ({
   setRowModesModel: vi.fn(),
   applyDraftValues: vi.fn().mockResolvedValue(undefined),
   commitDraftValues: vi.fn().mockResolvedValue(undefined),
-  applyDialogEditValues: vi.fn().mockResolvedValue(undefined),
+  applyDialogEditValues: vi.fn().mockResolvedValue(true),
   applySavedRowValues: vi.fn(),
   reload: vi.fn().mockResolvedValue(undefined),
   focusTable: vi.fn(),
@@ -360,7 +360,9 @@ describe('the awaited write commands', () => {
   it('applyDialogEditValues passes the row and values through', async () => {
     setup(deps, { commandApiRef: ref, selectedRowIds: [] });
 
-    await act(async () => { await published(ref).applyDialogEditValues(4, { name: 'Möhre' }); });
+    await act(async () => {
+      await expect(published(ref).applyDialogEditValues(4, { name: 'Möhre' })).resolves.toBe(true);
+    });
 
     expect(deps.applyDialogEditValues).toHaveBeenCalledWith(4, { name: 'Möhre' });
     expect(deps.commitDraftValues).not.toHaveBeenCalled();

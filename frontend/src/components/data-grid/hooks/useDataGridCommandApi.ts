@@ -14,7 +14,7 @@ interface UseDataGridCommandApiParams<T extends EditableRow> {
   setRowModesModel: Dispatch<SetStateAction<GridRowModesModel>>;
   applyDraftValues: (rowId: GridRowId, values: Partial<T>) => Promise<void>;
   commitDraftValues: (rowId: GridRowId, values: Partial<T>) => Promise<void>;
-  applyDialogEditValues: (rowId: GridRowId, values: Partial<T>) => Promise<void>;
+  applyDialogEditValues: (rowId: GridRowId, values: Partial<T>) => Promise<boolean>;
   applySavedRowValues: (rowId: GridRowId, values: Partial<T>) => void;
   reload: () => Promise<void>;
   focusTable: () => void;
@@ -61,9 +61,7 @@ export function useDataGridCommandApi<T extends EditableRow>({
       commitDraftValues: async (rowId, values) => {
         await commitDraftValues(rowId, values as Partial<T>);
       },
-      applyDialogEditValues: async (rowId, values) => {
-        await applyDialogEditValues(rowId, values as Partial<T>);
-      },
+      applyDialogEditValues: (rowId, values) => applyDialogEditValues(rowId, values as Partial<T>),
       applySavedRowValues: (rowId, values) => applySavedRowValues(rowId, values as Partial<T>),
       reload,
       focusTable,

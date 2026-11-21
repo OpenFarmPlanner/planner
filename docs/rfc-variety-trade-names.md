@@ -1,18 +1,10 @@
 # RFC: Variety trade names and cross-language variety recognition
 
-**Status (2026-10-24):**
-
-- **Part A (trade names):** the design was decided on 2026-10-20 (§15,
-  D1–D9). Its backend is implemented on the branch of
-  OpenFarmPlanner/planner#806, which is not merged yet (§3.2). The frontend
-  is not built.
-- **Parts B (recognising a variety across languages) and C (taxonomy
-  rule):** new proposal, not implemented. No code, migrations or permission
-  changes have been made for them. This document is the "analyse and plan"
-  step for B and C.
-
-§2 lists the decisions fixed before analysis began, and §16 the questions
-still open. Parts B and C need their own go-ahead before implementation.
+**Status (2026-11-21):** RFC delivered in [PR #806](https://github.com/OpenFarmPlanner/planner/pull/806),
+merged on 2026-10-24. The trade-name backend and the baseline taxonomy rule
+have shipped. The library UI, private-name sync exemption, starter import,
+and cross-language recognition flows remain proposed. [Issue #1256](https://github.com/OpenFarmPlanner/planner/issues/1256)
+tracks the RFC. §16 records the decisions still open for future implementation.
 
 ## 1. Motivation
 
@@ -110,7 +102,7 @@ expected. This RFC has two jobs:
 
 ## 3. Current state
 
-### 3.1 On `main` (implemented)
+### 3.1 Baseline before PR #806
 
 **There is no variety entity.** A "Sorte" in the public library is a
 `PublicCrop` row whose `variety` is not blank. A row with a blank `variety`
@@ -130,12 +122,12 @@ is the general entry of a crop species ("Kultur").
 | Linking and sync | `POST /api/crops/{id}/link-public-crop/` → `link_project_crop_to_public_reference(pull_fields=…)`; `GET/POST …/public-sync/` → `sync_crop_with_public_entry()`; shared per-field `PublicCropSyncPanel`; `CropForm.tsx` `linkLibraryEntry()` / `crops/libraryLink.ts` (see [crop-library-architecture.md](./crop-library-architecture.md) §7 "Field-by-field sync") | `variety` is a compared field. A foreign `variety` is never pushable and is forced to the library side, so linking a private `Poire jaune` to `Gelbe Birne` would rename the private variety. That conflicts with decision 8. |
 | The 4-case update model | `resolveCropLibraryAction` and `public_publish_blocked_reason` (crop-library-architecture.md §0): case 1 not linked → share; case 2 library ahead → pull ("Kultur aktualisieren"), 2b rejected update, 2c own proposal pending; case 3/4 local changes → push ("Bibliothek aktualisieren"); case 5 aligned → "Aktuell" | Baseline = `source_public_version`. `has_pending_public_crop_update()` ignores version bumps that change no compared field. |
 | History and revert | `PublicCropRevision` snapshots of `PUBLIC_CROP_EDITABLE_FIELDS`; `restore_public_crop_version()`; `POST …/revert/` | Renaming or restoring `variety` is admin- or publisher-only. **Description translations are unversioned.** |
-| Report | — | **No report function** on `main`. |
+| Report | — | No reporting before #806. |
 | Merge | — | **None.** A duplicate can only be *removed* (`REMOVAL_REASON_DUPLICATE`); its linked private crops, discussions and history stay on the removed entry. The closest precedent is the moderator species relink (`relink_public_crop_species()`, `PublicCropSpeciesRelinkRequest`), which notifies the members of every affected project (`TYPE_CROP_SPECIES_REASSIGNED`). |
 | Moderation routing | `farm/crops/moderation.py` → `requires_moderation_queue()`: API tokens and `new`-trust session users are queued as `PublicCropChangeProposal` | The description `translations` action does not route through it. |
 | Tokens | `ProjectApiToken` may call `publish_public` on `CropViewSet` (always queued); `link-public-crop` and `public-sync` are session-only. `CropLibraryApiToken` (`ofp_clt_`) reaches only `CropSpeciesViewSet` / `PlantFamilyViewSet`. | |
 
-### 3.2 On the branch of OpenFarmPlanner/planner#806 (implemented, not merged)
+### 3.2 On `main` after PR #806
 
 Part A, backend only:
 
@@ -162,7 +154,7 @@ Part A, backend only:
 - **Shared code:** `farm/services/public_crop_trade_names.py`,
   `farm.utils.normalize_search_text`.
 
-**Not on the branch yet:**
+**Remaining work:**
 
 - the frontend;
 - the sync rule that keeps a private variety matching a trade name from
@@ -183,7 +175,7 @@ is no SEO impact.
 ### 3.4 Discrepancies noted in passing
 
 - `i18n.md` §4 used to claim that duplicate detection includes "the
-  supplier". The code never did. Corrected on the branch.
+  supplier". The code never did. Corrected in PR #806.
 - The backend's `variety__icontains` and species search do not fold
   diacritics, which `search.md` requires. Trade names fold; bringing the
   original-name search up to the same rules is pre-existing debt.
@@ -228,12 +220,12 @@ language, so there is nowhere to store an alias.
 
 | Option | Pros | Cons |
 | --- | --- | --- |
-| **A. `kind` column on `PublicCropTradeName`** (`trade_name` / `alias`); one `trade_name` per language through a partial unique constraint, any number of aliases (recommended) | One table, one index, one history, one search and identity path; the existing services take a `kind` argument | The table name says "trade name" for aliases too; since #806 is unmerged, it can still be renamed to `PublicCropVarietyName` at no cost |
+| **A. `kind` column on `PublicCropTradeName`** (`trade_name` / `alias`); one `trade_name` per language through a partial unique constraint, any number of aliases (recommended) | One table, one index, one history, one search and identity path; the existing services take a `kind` argument | The table name would cover aliases too; renaming it requires a follow-up migration |
 | B. Separate `PublicCropVarietyAlias` table | Clear separation | A second identity source to keep in step in every lookup in §3.2 |
 | C. `aliases` JSON list on the trade-name row | Small | Ties an alias to an existing trade name in that language; not indexable |
 
-**Recommendation: A**, folded into the not-yet-merged migration `farm.0115`
-if #806 has not shipped by then. Aliases are never displayed, search and
+**Recommendation: A**, implemented through a new migration that preserves
+existing trade names and their history. Aliases are never displayed, search and
 identify like trade names, and are edited in the same dialog under
 "Weitere Namen (nur für die Suche)".
 
@@ -684,7 +676,7 @@ Einträge zusammenführen?" there.
   - Implemented in `_sync_compared_fields()` /
     `public_crop_field_changes()`, next to the existing general-entry
     exemption.
-  - Needed for decision 8 from phase 1 on, and missing on the branch (§3.2).
+  - Needed for decision 8 from phase 1 on, and still pending (§3.2).
   - Without it, every confirmed match would leave a permanent "Bibliothek
     aktualisieren" or a forced rename.
 - **Trade names, aliases and dismissals** do not bump `PublicCrop.version`,
@@ -832,7 +824,7 @@ change permission surfaces and go through the security review.
 
 | Phase | Content | Useful on its own because … |
 | --- | --- | --- |
-| **1. Trade names and search** | Backend: done on the #806 branch. Remaining: aliases (`kind`, §4.1.2); the variety sync exemption (§9.4); the frontend (display, search, edit dialog with hint and source field, history, report, moderation queue) | French and Spanish users find a variety as soon as one person has entered its name. |
+| **1. Trade names and search** | Backend: shipped in #806. Remaining: aliases (`kind`, §4.1.2); the variety sync exemption (§9.4); the frontend (display, search, edit dialog with hint and source field, history, report, moderation queue) | French and Spanish users find a variety as soon as one person has entered its name. |
 | 1b. Starter set | `CropLibraryApiToken` opt-in and the `crop-data` sync (§12), staging first | Many well-known names exist from day one. |
 | **2. Suggestion at publish and link, names only** | Match key and index (§4.2); candidates endpoint without traits; the dialog of §7.2; `confirmed_variety_name`; dismissals; outcome logging | Catches spelling variants and every name some earlier user entered. Each confirmation adds a trade name, so the data grows from normal use. |
 | **3. Traits** | Catalogue (§4.3/§4.4) and admin; trait editing on entries and in the wizard; variety list with filters (§7.1); trait scoring and trait-only candidates (§8) | Recognition without any shared name, which is the core cross-language case; browsing by properties is useful on its own. |
@@ -847,7 +839,7 @@ surfaces, the transactional revert), **medium** for phases 1 (frontend) and
 
 ### 14.1 `crop-taxonomy-guidelines.md`
 
-§5 "Varieties: one variety, several names" was added on the branch (rule of
+§5 "Varieties: one variety, several names" was added in PR #806 (rule of
 decision 12, trade name vs. second entry, no self-translations, no type names
 used for several varieties). Additions:
 
@@ -870,7 +862,7 @@ used for several varieties). Additions:
 
 ### 14.2 `i18n.md`
 
-Already changed on the branch: the model tree, "Translatable vs. not" (trade
+Shipped in PR #806: the model tree, "Translatable vs. not" (trade
 name as a market fact), "no fallback for trade names", the editing paragraph,
 search, duplicate detection without the inaccurate "plus the supplier", API
 fields, and tests. Still to change with B:
@@ -926,9 +918,9 @@ full revert in both cases (§11.2).
   barrier for users who do not know, and invites guesses that are worse
   than gaps. Existing entries get a "Merkmale ergänzen" prompt, not a block.
 
-**Q4. Aliases as a `kind` column on the trade-name table (§4.1.2)?** This
-includes renaming the table to `PublicCropVarietyName` while #806 is
-unmerged.
+**Q4. Aliases as a `kind` column on the trade-name table (§4.1.2)?**
+If adopted, decide separately whether to rename the shipped table to
+`PublicCropVarietyName` in a follow-up migration.
 
 **Q5. How is the trait catalogue maintained?** *Recommendation:* seeded by
 migration plus the Django admin, like `PlantFamily`. Alternatively through

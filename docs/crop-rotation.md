@@ -107,7 +107,7 @@ Status priority: `conflict` (or `accepted`) > `hint` > `info` > `ok`.
 
 ## Bed capacity
 
-Suggestions, the bed options of "Anbaufläche ändern" and the planting-plan
+Suggestions, the inline bed picker and the planting-plan
 table's save check (which rejects an area larger than what is free on the
 bed) all use
 [`backend/farm/services/bed_capacity.py`](../backend/farm/services/bed_capacity.py),
@@ -186,51 +186,23 @@ harmless and is reset on the next move.
 
 ## UI
 
-- **Table**: there is no rotation column. The rotation status sits as a small
-  icon button at the right end of the "Standort | Parzelle | Beet" cell, only
-  where the user still has something to do: `conflict` (warning triangle)
-  and `info` (question circle, missing culture data that blocks a check, see
-  the rules above; `incomplete` drafts are not flagged). Accepted conflicts
-  and nutrient hints show no icon in the table; they stay visible in
-  "Anbaufläche ändern", and accepted ones can be found through the filter.
-  The button has an aria-label ("Fruchtfolge-Konflikt,
-  Anbaufläche ändern") and a tooltip. For a conflict it shows the finding
-  title; for "nicht prüfbar" it lists the reasons, one per line, between
-  "Fruchtfolge nicht prüfbar:" and "Du kannst die fehlenden Angaben in der
-  Kulturbibliothek ergänzen." (`getMissingDataLines`). A click
-  opens the same "Anbaufläche ändern" dialog as a click on the cell. It stays
-  out of the grid's tab order, since Enter on the cell opens the dialog too.
-  The "Filter" menu has a "Fruchtfolge" filter (multi-select "Konflikt",
-  "Akzeptiert", "Nicht prüfbar"); icon, cards and filter all read the status
-  through `getTableRotationStatus`, so they never disagree. It is shown in
-  the active filter chips like the
-  others and kept in memory only ([search.md](./search.md#filters)). Mobile
-  cards follow the table and show the icon for conflict and not checkable
-  only.
-- **"Anbaufläche ändern"** (`AreaAssignmentDialog`): the Standort → Parzelle →
-  Beet cascade, then `RotationCheckPanel` for the selected bed, updated live
-  when the bed changes: the warning Alert with the "Bewusst so planen
-  (Konflikt akzeptieren)" checkbox for a conflict, the outlined Alert with
-  "Akzeptieren zurücknehmen" for an accepted one, the hint and "nicht
-  prüfbar" Alerts (one line and crop link per missing value), and the
-  one-line "Fruchtfolge passt: …" note. An
-  acceptance only holds for the bed it was given for and is sent with the
-  bed on "Übernehmen" (`rotation_conflict_accepted`).
-  - The Beet options come from one `bed-suggestions` batch (with the plan's
-    period and area): a status icon, a secondary line with the reason, plus
-    "{{free}} von {{total}} m² frei im Zeitraum" for a partly occupied bed;
-    ordered as the batch is. A bed without enough room stays visible but
-    disabled, with "Nur … m² frei im Zeitraum (Kultur bis Datum), benötigt …
-    m²" naming the plan that frees its area last. Without an area on the plan
-    only the rotation is checked.
-  - "Passende Beete, frei von … bis …" (`AreaBedSuggestions`) is collapsible
-    below the status; it starts expanded when the plan's bed has a conflict
-    and is toggled by "Passende Beete anzeigen". It lists the top three beds
-    of the whole project (all locations and parcels) with enough room and no
-    conflict, each with its status icon, the full "Standort | Parzelle |
-    Beet" path and one reason line, plus "Alle … passenden Beete anzeigen".
-    Clicking one fills the cascade; nothing is saved until "Übernehmen". A new
-    row without an area takes the bed's free area in the period.
+- **Desktop and tablet grid.** The right end of the Standort › Parzelle › Beet
+  cell shows the open conflict, accepted conflict or missing-data icon. The
+  conflict popover explains the finding and offers bed occupancy, the crop's
+  rotation-break settings and a checkbox that saves acceptance immediately.
+  The same popover can clear an acceptance. The conflict action is available
+  after saving or discarding a row draft. The existing Fruchtfolge filter
+  continues to find all three statuses. Mobile cards retain their existing
+  conflict and missing-data indicators.
+- **Inline bed picker.** Double-click, Enter, F2 or typing opens the search.
+  The current location and field filter the initial choices. Remove filters,
+  use the group headers or select the action to search all locations.
+  Search matches words across the location, field and bed names. The option
+  list shows the bed size and warns about rotation conflicts before selection.
+  Conflicting beds can be selected without opening the conflict popover.
+  The existing batch capacity check supplies the free area and disables beds
+  with insufficient room. Selecting a bed saves a view-mode row immediately.
+  For a new row it fills the draft with the bed and the free area if known.
 - **Planting-plan dialog** (`MobilePlanFormDialog`, the mobile create/edit
   form): the same `RotationCheckPanel` below the date fields;
   `useRotationAcceptanceDraft` mirrors the backend reset rule in the form.

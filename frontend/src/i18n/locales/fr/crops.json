@@ -1,9 +1,8 @@
 {
   "title": "Cultures",
-  "searchPlaceholder": "Rechercher une culture",
+  "searchPlaceholder": "Chercher des cultures",
   "searchInputPlaceholder": "Saisir le nom de la culture…",
   "noOptions": "Aucune culture trouvée",
-  "searchInputPlaceholderEnhanced": "Rechercher par nom de culture (p. ex. carotte)",
   "searchHelperText_one": "{{count}} culture trouvée. Utilisez les filtres pour affiner davantage.",
   "searchHelperText_other": "{{count}} cultures trouvées. Utilisez les filtres pour affiner davantage.",
   "searchHelperText_many": "{{count}} cultures trouvées. Utilisez les filtres pour affiner davantage.",
@@ -1066,7 +1065,7 @@
         }
       }
     },
-    "searchLabel": "Rechercher des cultures publiques",
+    "searchLabel": "Chercher des cultures",
     "selectPrompt": "Sélectionnez une culture publique pour afficher ses détails et l'importer.",
     "empty": "Aucune culture publique trouvée.",
     "emptyState": {

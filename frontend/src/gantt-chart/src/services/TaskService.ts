@@ -1,5 +1,16 @@
 import { type Task, ViewMode } from "../types";
 import { startOfDay, endOfDay, isWithinInterval } from "date-fns";
+import type { TimelineDateScale } from "../utils/timelineDatePosition";
+
+const minWidthByViewMode = {
+  [ViewMode.MINUTE]: 10,
+  [ViewMode.HOUR]: 15,
+  [ViewMode.DAY]: 20,
+  [ViewMode.WEEK]: 20,
+  [ViewMode.MONTH]: 20,
+  [ViewMode.QUARTER]: 30,
+  [ViewMode.YEAR]: 40,
+};
 
 export class TaskService {
   /**
@@ -142,6 +153,7 @@ export class TaskService {
     totalUnits: number,
     unitWidth: number,
     viewMode: ViewMode = ViewMode.MONTH,
+    positionDate?: TimelineDateScale["positionDate"],
   ): { leftPx: number; widthPx: number } {
     try {
       if (
@@ -149,6 +161,15 @@ export class TaskService {
         !(task.endDate instanceof Date)
       ) {
         throw new Error("Invalid dates in task");
+      }
+
+      const minWidth = minWidthByViewMode[viewMode] || 20;
+      const totalPixelWidth = totalUnits * unitWidth;
+      if (positionDate) {
+        const leftPx = positionDate(task.startDate);
+        const endPx = positionDate(task.endDate, !task.endDateIsExclusive);
+        const width = Math.max(minWidth, endPx - leftPx);
+        return { leftPx, widthPx: Math.min(totalPixelWidth - leftPx, width) };
       }
 
       // Normalize dates based on view mode for consistent calculations
@@ -265,7 +286,6 @@ export class TaskService {
       const widthPercent = taskDuration / totalTimelineRange;
 
       // Calculate pixel positions
-      const totalPixelWidth = totalUnits * unitWidth;
       let leftPx = leftPercent * totalPixelWidth;
       let widthPx = widthPercent * totalPixelWidth;
 
@@ -287,19 +307,7 @@ export class TaskService {
         );
       }
 
-      // Apply view mode specific adjustments for minimum width
-      const minWidthByViewMode = {
-        [ViewMode.MINUTE]: 10, // Narrower for minute view
-        [ViewMode.HOUR]: 15, // Narrow for hour view
-        [ViewMode.DAY]: 20,
-        [ViewMode.WEEK]: 20,
-        [ViewMode.MONTH]: 20,
-        [ViewMode.QUARTER]: 30,
-        [ViewMode.YEAR]: 40,
-      };
-
       // Ensure minimum width
-      const minWidth = minWidthByViewMode[viewMode] || 20;
       widthPx = Math.max(minWidth, widthPx);
 
       // Ensure not extending beyond timeline

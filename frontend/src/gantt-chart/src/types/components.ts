@@ -1,4 +1,5 @@
 import React from "react";
+import type { TimelineDateScale } from "../utils/timelineDatePosition";
 import type { Task, TaskGroup, GanttStyles } from "./core";
 import { ViewMode } from "./enums";
 
@@ -117,6 +118,8 @@ export interface GanttChartProps {
   // Custom rendering functions
   renderTaskList?: (props: TaskListRenderProps) => React.ReactNode;
   renderTask?: (props: TaskRenderProps) => React.ReactNode;
+  /** Use the date columns for UTC calendar dates in both task bars and the rendered row. */
+  renderTimelineRow?: (group: TaskGroup, positionDate: (date: Date) => number) => React.ReactNode;
   renderTooltip?: (props: TooltipRenderProps) => React.ReactNode;
   renderTooltipInPortal?: boolean;
   tooltipOffset?: number;
@@ -158,6 +161,8 @@ export interface GanttChartProps {
 }
 export interface TaskRowProps {
   taskGroup: TaskGroup;
+  timelineAdornment?: React.ReactNode;
+  timelineDateScale?: TimelineDateScale;
   startDate: Date;
   endDate: Date;
   totalMonths: number;

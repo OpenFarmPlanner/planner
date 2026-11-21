@@ -50,6 +50,7 @@ from farm.models import (
     ProjectMembership,
     PublicCrop,
     RetainedUpload,
+    Task,
 )
 from farm.tests.history_guard import latest_selectable_revision, state_diff
 
@@ -164,6 +165,180 @@ class HistoryInvariantTestCase(APITestCase):
                 self.assert_state(
                     before, f'the backup of restoring {version.step} does not reproduce it'
                 )
+
+
+class CompositeMutationHistoryTests(HistoryInvariantTestCase):
+    def assert_completed_action(
+        self, previous: EntityRevision, parent: str, children: list[str],
+    ) -> None:
+        completed = self.versions[-1].revision
+        self.assertEqual(completed.entity_type, parent)
+        entries = self.client.get(f'{API}/history/project/').json()
+        self.assertEqual(
+            [entry['history_id'] for entry in entries if entry['history_id'] > previous.pk],
+            [completed.pk],
+        )
+        related = self.project.entity_revisions.filter(pk__gt=previous.pk, pk__lt=completed.pk)
+        self.assertCountEqual([revision.entity_type for revision in related], children)
+        for revision in related:
+            before, counts = capture_project_state(self.project), self.history_counts()
+            self.assert_refusal_is_atomic(self.restore(revision), before, counts)
+
+    def test_field_duplicate_restores_the_complete_structure(self) -> None:
+        location = self.write('create location', 'post', '/locations/', {'name': 'North'})
+        field = self.write('create field', 'post', '/fields/', {
+            'name': 'North field', 'location': location['id'], 'length_m': 24, 'width_m': 10,
+            'light_condition': 'shade', 'cultivation_environment': 'greenhouse',
+        })
+        self.write('create first bed', 'post', '/beds/', {
+            'name': 'North 1', 'field': field['id'], 'length_m': 12, 'width_m': 1.5,
+        })
+        self.write('create second bed', 'post', '/beds/', {
+            'name': 'North 2', 'field': field['id'], 'area_sqm': 8,
+            'irrigation': 'available',
+        })
+        before = self.versions[-1]
+        path = f"/fields/{field['id']}/duplicate/"
+        counts = self.history_counts()
+        rejected = self.client.post(f'{API}{path}', {
+            'name': 'South field', 'replace_search': '2', 'replace_with': '1',
+        }, format='json')
+        self.assertEqual(rejected.json()['code'], 'bed_names_conflict')
+        self.assert_refusal_is_atomic(rejected.status_code, before.state, counts)
+
+        copy = self.write('duplicate field', 'post', path, {
+            'name': 'South field', 'replace_search': 'North', 'replace_with': 'South',
+        })
+        self.assert_completed_action(before.revision, 'field', ['bed', 'bed'])
+        after = self.versions[-1].state
+        copied_id = copy['field']['id']
+        self.assertEqual(after['field'][str(copied_id)]['light_condition'], 'shade')
+        copied_beds = [row for row in after['bed'].values() if row['field_id'] == copied_id]
+        self.assertCountEqual([row['name'] for row in copied_beds], ['South 1', 'South 2'])
+        self.write('rename the first copied bed', 'patch', f"/beds/{copy['beds'][0]['id']}/", {
+            'name': 'First copy renamed',
+        })
+        self.round_trip_every_version()
+
+    def test_supplier_unlink_undo_restores_complete_versions_after_a_crop_edit(self) -> None:
+        supplier = self.write('create supplier', 'post', '/suppliers/', {'name': 'Seed nursery'})
+        supplier_id = supplier['id']
+        crop = self.write('create crop and offer', 'post', '/crops/', {
+            'name': 'Lettuce', 'supplier_id': supplier_id,
+            'selected_seed_demand_supplier': supplier_id,
+            'supplier_data_input': [{
+                'supplier_id': supplier_id, 'seed_status': 'conventional',
+                'seed_exemption_status': 'approved', 'price': '4.25',
+            }],
+        })
+        before = self.versions[-1].revision
+        result = self.write('unlink and delete supplier', 'post',
+                            f'/suppliers/{supplier_id}/unlink-and-delete/')
+        self.assert_completed_action(before, 'supplier', ['crop', 'crop_supplier_data'])
+        crop_path = f"/crops/{crop['id']}/"
+        self.write('edit crop while unlinked', 'patch', crop_path, {'notes': 'Keep the edit'})
+        before_undo = self.versions[-1].revision
+        self.write('undo supplier unlink', 'post', '/suppliers/restore-unlinked-delete/',
+                   result['undo_payload'])
+        self.assert_completed_action(before_undo, 'supplier', ['crop', 'crop_supplier_data'])
+        after = self.versions[-1].state
+        offer_id = result['undo_payload']['supplier_data'][0]['id']
+        self.assertEqual(after['crop_supplier_data'][str(offer_id)]['price'], '4.25')
+        restored_crop = after['crop'][str(crop['id'])]
+        self.assertEqual(restored_crop['selected_seed_demand_supplier_id'], supplier_id)
+        self.assertEqual(after['crop'][str(crop['id'])]['notes'], 'Keep the edit')
+        self.write('rename restored supplier', 'patch', f'/suppliers/{supplier_id}/', {
+            'name': 'New name',
+        })
+        self.round_trip_every_version()
+
+
+class SeasonTaskDeletionHistoryTests(HistoryInvariantTestCase):
+    def test_generated_task_tombstones_survive_full_restore_and_batch_redo(self) -> None:
+        season = self.write('create season', 'post', '/seasons/', {
+            'start_date': '2026-01-01', 'end_date': '2026-12-31',
+        })
+        other = self.write('create other season', 'post', '/seasons/', {
+            'start_date': '2027-01-01', 'end_date': '2027-12-31',
+        })
+        other_task = self.write('unrelated work', 'post', '/tasks/', {
+            'season': other['id'], 'title': 'Next year', 'status': 'in_progress',
+        })
+        self.client.defaults['HTTP_X_SEASON_ID'] = str(season['id'])
+        crop = self.write('create crop', 'post', '/crops/', {
+            'name': 'Lettuce', 'growth_duration_days': 40,
+        })
+        template = self.write('create recurring rule', 'post', '/crop-task-templates/', {
+            'crop': crop['id'], 'title': 'Check soil', 'reference_event': 'planting',
+            'repeat_interval_days': 7, 'repeat_until': 'count', 'repeat_count': 3,
+        })
+        plan = self.write('create plan', 'post', '/planting-plans/', {
+            'crop': crop['id'], 'season': season['id'], 'planting_date': '2026-04-07',
+            'cultivation_type': 'pre_cultivation',
+        })
+        manual = self.write('create linked manual task', 'post', '/tasks/', {
+            'title': 'Manual check', 'planting_plan': plan['id'], 'status': 'completed',
+        })
+        first, second, third = Task.objects.filter(
+            project=self.project, template_id=template['id'],
+        ).order_by('occurrence_index')
+        self.write('complete occurrence', 'patch', f'/tasks/{first.pk}/', {'status': 'completed'})
+        self.write('override occurrence', 'patch', f'/tasks/{second.pk}/', {'due_date': None})
+        self.write('remove occurrence', 'delete', f'/tasks/{third.pk}/')
+        before = self.versions[-1]
+        path = f"/seasons/{season['id']}/"
+
+        self.write('delete season', 'delete', path)
+        deleted = self.versions[-1]
+        self.assertEqual(deleted.revision.entity_type, 'season')
+        child = deleted.revision.batch_operation.revisions.get(
+            entity_type='task', object_id=first.pk,
+        )
+        counts = self.history_counts()
+        self.assert_refusal_is_atomic(self.restore(child), deleted.state, counts)
+        self.assertNotIn(str(manual['id']), deleted.state['task'])
+        self.assertNotIn(str(plan['id']), deleted.state['planting_plan'])
+        unrelated_id = str(other_task['id'])
+        self.assertEqual(deleted.state['task'][unrelated_id], before.state['task'][unrelated_id])
+        protected_fields = (
+            'source_key', 'occurrence_index', 'status', 'due_date', 'due_date_overridden',
+        )
+        for task in (first, second, third):
+            original = before.state['task'][str(task.pk)]
+            tombstone = deleted.state['task'][str(task.pk)]
+            self.assertIsNone(tombstone['planting_plan_id'])
+            self.assertIsNotNone(tombstone['deleted_at'])
+            for field in protected_fields:
+                self.assertEqual(tombstone[field], original[field])
+        self.assertEqual(
+            deleted.state['task'][str(third.pk)]['deleted_at'],
+            before.state['task'][str(third.pk)]['deleted_at'],
+        )
+
+        self.write('later edit', 'post', '/locations/', {'name': 'After deletion'})
+        self.assertEqual(self.restore(before.revision), 200)
+        self.assert_state(before.state, 'restore before the deletion')
+        self.assertEqual(self.restore(deleted.revision), 200)
+        self.assert_state(deleted.state, 'restore the completed deletion')
+        self.assertEqual(self.restore(self.latest_backup()), 200)
+        self.assert_state(before.state, 'undo restoring the deleted version')
+
+        self.write('delete the restored season again', 'delete', path)
+        second_deletion = self.versions[-1]
+        batch = second_deletion.revision.batch_operation
+        self.write('undo the deletion batch', 'post', f'/history/batch/{batch.pk}/revert/')
+        tasks = Task.objects.filter(project=self.project, planting_plan_id=plan['id'])
+        self.assertCountEqual(
+            tasks.filter(template_id=template['id']).values_list('pk', flat=True),
+            [first.pk, second.pk, third.pk],
+        )
+        self.assertEqual(tasks.get(pk=first.pk).status, 'completed')
+        self.assertTrue(tasks.get(pk=second.pk).due_date_overridden)
+        self.assertIsNotNone(tasks.get(pk=third.pk).deleted_at)
+        self.assertTrue(tasks.filter(pk=manual['id']).exists())
+        revert = self.versions[-1].revision.batch_operation
+        self.write('redo the deletion batch', 'post', f'/history/batch/{revert.pk}/revert/')
+        self.assert_state(second_deletion.state, 'redo the complete deletion')
 
 
 class ProjectRestorePreviewTests(HistoryInvariantTestCase):

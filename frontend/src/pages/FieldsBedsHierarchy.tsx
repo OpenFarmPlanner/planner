@@ -116,7 +116,6 @@ import {
 } from "../components/hierarchy/utils/hierarchyUtils";
 import {
   createHierarchyColumns,
-  DEFAULT_HIERARCHY_COLUMN_WIDTHS,
 } from "../components/hierarchy/HierarchyColumns";
 import type { HierarchyRow } from "../components/hierarchy/utils/types";
 import {
@@ -250,6 +249,12 @@ function FieldsBedsHierarchy({
     tableKey: "fieldsBedsHierarchy",
     defaultHiddenFields: SITE_CONDITION_COLUMN_FIELDS,
   });
+  const [resizedColumnWidths, setResizedColumnWidths] = useState<Partial<Record<string, number>>>({});
+  const handleColumnWidthChange: GridEventListener<"columnWidthChange"> = useCallback(({ colDef, width }) => {
+    setResizedColumnWidths(previous => previous[colDef.field] === width
+      ? previous
+      : { ...previous, [colDef.field]: width });
+  }, []);
   const columnVisibilityModelRef = useRef(columnVisibilityModel);
   useLayoutEffect(() => {
     columnVisibilityModelRef.current = columnVisibilityModel;
@@ -1698,14 +1703,10 @@ function FieldsBedsHierarchy({
     );
   }, [hierarchyIndex]);
   const showPersistentContextMenuButton = isTouchLikePointer || isMobileViewport;
-  const effectiveNameColumnWidth = useMemo(() => {
-    if (!showPersistentContextMenuButton) {
-      return nameColumnWidth;
-    }
-
-    const visibleMobileNameWidth = Math.max(260, viewportWidth - 88);
-    return Math.min(nameColumnWidth, visibleMobileNameWidth);
-  }, [nameColumnWidth, showPersistentContextMenuButton, viewportWidth]);
+  const nameColumnWidthLimit = showPersistentContextMenuButton ? Math.max(260, viewportWidth - 88) : Infinity;
+  // Keep the row actions within reach on narrow screens while retaining the
+  // user's preferred width for when the list has enough room again.
+  const effectiveNameColumnWidth = Math.min(resizedColumnWidths.name ?? nameColumnWidth, nameColumnWidthLimit);
 
   const handleContextMenuButtonOpen = useCallback((row: HierarchyRow, origin: HTMLElement): void => {
     const rect = origin.getBoundingClientRect();
@@ -1751,10 +1752,7 @@ function FieldsBedsHierarchy({
       handleNameCellContextMenu,
       notesEditor.handleOpen,
       t,
-      {
-        ...DEFAULT_HIERARCHY_COLUMN_WIDTHS,
-        name: effectiveNameColumnWidth,
-      },
+      { name: effectiveNameColumnWidth },
       {
         disableInlineHoverActions: showPersistentContextMenuButton,
         onOpenContextMenuFromButton: handleContextMenuButtonOpen,
@@ -1772,11 +1770,18 @@ function FieldsBedsHierarchy({
     );
     // The optional site-condition columns sit before the notes (#1075).
     const notesIndex = baseColumns.findIndex((column) => column.field === "notes");
-    return [
+    const orderedColumns = [
       ...baseColumns.slice(0, notesIndex),
       ...createSiteConditionColumns(t),
       ...baseColumns.slice(notesIndex),
     ];
+    // MUI clears flex when a column is resized. Keep that width when rows,
+    // viewport changes or other callbacks rebuild the column definitions.
+    return orderedColumns.map(column => {
+      if (column.field === "name") return { ...column, maxWidth: nameColumnWidthLimit };
+      const width = resizedColumnWidths[column.field];
+      return width === undefined ? column : { ...column, width, flex: 0 };
+    });
   }, [
     toggleExpand,
     handleAddBed,
@@ -1789,6 +1794,8 @@ function FieldsBedsHierarchy({
     rowsById,
     t,
     effectiveNameColumnWidth,
+    nameColumnWidthLimit,
+    resizedColumnWidths,
     showPersistentContextMenuButton,
     isMobileViewport,
     hierarchyLevelToggle.canExpand,
@@ -2103,6 +2110,7 @@ function FieldsBedsHierarchy({
             <DataGrid
               rows={rows}
               columns={columns}
+              onColumnWidthChange={handleColumnWidthChange}
               columnVisibilityModel={columnVisibilityModel}
               onColumnVisibilityModelChange={setColumnVisibilityModel}
               slotProps={{

@@ -455,6 +455,11 @@ absence for untracked rows. If deleting a newer parent cascades into a row that
 belongs in the target, the restore recreates it with its original ID and stored
 creation timestamp.
 
+Parcel duplication records copied beds in the parcel's completed version.
+Supplier unlink and undo record changed crop links and offers in their supplier
+versions. A full restore uses the selected version's supplier and offer creation
+times when an undo reused those row IDs.
+
 Crop revision restore and grouped undelete reject active normalized name/variety
 conflicts with HTTP 409 (`crop_variety_conflict`), including crops without a
 supplier. A rejected group restores no rows or history. Full project restoration

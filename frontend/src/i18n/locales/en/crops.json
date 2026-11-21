@@ -1,9 +1,8 @@
 {
   "title": "Crops",
-  "searchPlaceholder": "Search crop",
+  "searchPlaceholder": "Search crops",
   "searchInputPlaceholder": "Enter crop name...",
   "noOptions": "No crops found",
-  "searchInputPlaceholderEnhanced": "Search by crop name (e.g. carrot)",
   "searchHelperText_one": "{{count}} crop found. Use the filters to narrow it down further.",
   "searchHelperText_other": "{{count}} crops found. Use the filters to narrow it down further.",
   "clearSearch": "Clear search",
@@ -1039,7 +1038,7 @@
         }
       }
     },
-    "searchLabel": "Search public crops",
+    "searchLabel": "Search crops",
     "selectPrompt": "Select a public crop to see its details and import it.",
     "empty": "No public crops found.",
     "emptyState": {

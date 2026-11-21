@@ -217,8 +217,11 @@ identity, preventing regeneration on later plan saves. The field is server-owned
 list/detail APIs exclude these rows. Manual tasks retain normal hard deletion.
 Plan deletion detaches tasks, preserving completed/manual/overridden history and
 cancelling other unfinished generated work. Planless historical source keys cannot
-attach to a newly created plan. Season deletion/restoration retains its existing
-batched snapshot behavior. Recurrence expansion is implemented in #896 using the
+attach to a newly created plan. When a season and its plans are deleted, generated
+tasks keep their identities as detached tombstones in the completed history batch.
+Season recovery restores each task's original plan link and deletion state, including
+an occurrence the user had already deleted. Linked manual tasks retain their
+normal hard-deletion and recovery behavior. Recurrence expansion uses the
 same per-occurrence identity policy. Schema migration 0131 adds the tombstone and
 changes the plan FK to SET_NULL; rollback loses tombstone suppression metadata
 and reinstates cascade deletion, so retained tasks should be reviewed before rollback.
