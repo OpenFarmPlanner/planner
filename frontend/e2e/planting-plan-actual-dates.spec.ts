@@ -57,12 +57,14 @@ test('the grid sorts, filters and edits the displayed dates without writing plan
   await modes.focus();
   await page.keyboard.press('Tab');
   await expect(info).toBeFocused();
-  await expect(page.getByRole('tooltip')).toContainText('sonst den geplanten Termin');
+  const modeHelp = page.getByRole('tooltip', { name: /Geplant zeigt die geplanten Termine/ });
+  await expect(modeHelp).toContainText('sonst den geplanten Termin');
   await info.press('Escape');
+  await expect(modeHelp).toBeHidden();
   await expect.poll(rowIds).toEqual([second.id, third.id, first.id]);
   await expect(cell(first.id)).toHaveText('11.7.2026');
   await cell(first.id).click();
-  await expect(page.getByRole('tooltip')).toContainText('Tage später');
+  await expect(page.getByRole('tooltip', { name: /^Pflanztermin/ })).toContainText('Tage später');
 
   await modes.selectOption('planned');
   await expect.poll(rowIds).toEqual([first.id, second.id, third.id]);
@@ -191,7 +193,7 @@ test.describe('touch and French actual date labels', () => {
     const modes = page.getByRole('combobox', { name: 'Dates' });
     await expect(modes.locator('option:checked')).toHaveText('Réelles ou prévues');
     await page.getByRole('button', { name: 'À propos de l’affichage des dates' }).tap();
-    await expect(page.getByRole('tooltip')).toContainText('la date prévue sinon');
+    await expect(page.getByRole('tooltip', { name: /Prévues affiche les dates planifiées/ })).toContainText('la date prévue sinon');
     await page.getByRole('button', { name: 'À propos de l’affichage des dates' }).tap();
     await modes.selectOption('actual');
     const plan = page.locator(`[data-mobile-card-id="${first.id}"]`);
