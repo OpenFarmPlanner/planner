@@ -1831,14 +1831,10 @@
     }
   },
   "bulkDelete": {
-    "menu": "Actions sur les cultures",
-    "allAction": "Supprimer toutes les cultures du projet",
     "title": "Supprimer les cultures sélectionnées",
-    "scopeAll": "Toutes les cultures actives du projet sont concernées, même celles masquées par des filtres.",
     "scopeSelected": "Vérifiez les cultures sélectionnées et les variétés incluses.",
     "trashNotice": "Les cultures et leurs données de semences vont dans la corbeille. Les fiches de la bibliothèque partagée restent en place.",
     "deleteVarieties": "Supprimer aussi les variétés",
-    "confirmAll": "Je confirme la suppression de toutes les cultures actives de ce projet.",
     "showCrops": "Afficher les cultures concernées",
     "empty": "Cette sélection ne contient aucune culture active.",
     "missing": "Certaines cultures sélectionnées sont indisponibles. Actualisez la sélection.",

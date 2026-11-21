@@ -44,6 +44,7 @@ interface CropMobileSelectorDialogProps {
   /** Row ids of the Kultur groups the running search hit. */
   matchedGroupRowIds?: ReadonlySet<string>;
   bulkSelection?: ProjectCropSelection;
+  bulkVisibleCropIds?: number[];
   t: TFunction<'crops'>;
 }
 
@@ -63,6 +64,7 @@ export function CropMobileSelectorDialog({
   highlightQuery,
   matchedGroupRowIds = EMPTY_MATCHED_GROUP_ROW_IDS,
   bulkSelection,
+  bulkVisibleCropIds,
   t,
 }: CropMobileSelectorDialogProps) {
   useOverlayHistory({
@@ -108,9 +110,9 @@ export function CropMobileSelectorDialog({
       <DialogTitle>{t('selectCrop')}</DialogTitle>
       <DialogContent sx={{ px: 1.5, pb: 2 }}>
         {selectorControl}
-        {bulkSelection ? <CropBulkSelectionActions selection={bulkSelection} onOpenPreview={onClose} visibleIds={
-          visibleRows.flatMap(({ node }) => node.crop?.id === undefined ? [] : [node.crop.id])
-        } /> : null}
+        {bulkSelection && bulkVisibleCropIds ? (
+          <CropBulkSelectionActions selection={bulkSelection} onOpenPreview={onClose} visibleIds={bulkVisibleCropIds} />
+        ) : null}
         {visibleRows.length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={{ px: 1.5, py: 2 }}>
             {t('noOptionsEnhanced')}

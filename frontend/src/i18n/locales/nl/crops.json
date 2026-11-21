@@ -1783,14 +1783,10 @@
     }
   },
   "bulkDelete": {
-    "menu": "Gewasacties",
-    "allAction": "Alle projectgewassen verwijderen",
     "title": "Geselecteerde gewassen verwijderen",
-    "scopeAll": "Dit omvat alle actieve gewassen in het project, ook de gewassen die door filters verborgen zijn.",
     "scopeSelected": "Controleer de geselecteerde gewassen en de rassen die worden meegenomen.",
     "trashNotice": "De gewassen en hun zaadgegevens gaan naar de prullenbak. Vermeldingen in de gedeelde gewassenbibliotheek blijven behouden.",
     "deleteVarieties": "Ook de rassen verwijderen",
-    "confirmAll": "Ik bevestig dat alle actieve gewassen in dit project worden verwijderd.",
     "showCrops": "Betrokken gewassen tonen",
     "empty": "Deze selectie bevat geen actieve gewassen.",
     "missing": "Sommige geselecteerde gewassen zijn niet meer beschikbaar. Werk de selectie bij.",

@@ -1783,14 +1783,10 @@
     }
   },
   "bulkDelete": {
-    "menu": "Crop actions",
-    "allAction": "Delete all project crops",
     "title": "Delete selected crops",
-    "scopeAll": "This includes all active crops in this project, even those hidden by filters.",
     "scopeSelected": "Review the selected crops and any varieties included with them.",
     "trashNotice": "The crops move to trash with their seed data. Shared library entries stay in place.",
     "deleteVarieties": "Delete varieties too",
-    "confirmAll": "I confirm deletion of every active crop in this project.",
     "showCrops": "Show affected crops",
     "empty": "There are no active crops in this selection.",
     "missing": "Some selected crops are no longer available. Update the selection before trying again.",

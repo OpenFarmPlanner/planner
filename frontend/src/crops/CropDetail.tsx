@@ -17,7 +17,8 @@ import { useTranslation } from '../i18n';
 import { AppTooltip } from '../components/AppTooltip';
 import { CropFiltersPopover } from './CropFiltersPopover';
 import { CropMobileSelectorDialog } from './CropMobileSelectorDialog';
-import { CropBulkSelectionActions, CropBulkSelectionRow, CropBulkSelectionToolbar } from './CropBulkSelectionControls';
+import { CropBulkSelectionActions, CropBulkSelectionRow } from './CropBulkSelectionControls';
+import { CropSelectionButton } from './CropSelectionButton';
 import { CropSearchFilterButton, CropSearchToolbar } from './CropSearchToolbar';
 import type { ProjectCropSelection } from './useProjectCropSelection';
 import { CropHeaderActionsMenu } from './CropHeaderActionsMenu';
@@ -389,7 +390,7 @@ const detailSectionGridSx = {
     filters,
   ]);
 
-  const { filteredCrops, matchedGroupRowIds } = useMemo(
+  const { filteredCrops, matchingCrops, matchedGroupRowIds } = useMemo(
     () => filterCropGroupsForSearch({
       crops,
       filterMatchingCrops,
@@ -397,6 +398,11 @@ const detailSectionGridSx = {
       matchesSearchQuery: cropMatchesSearchQuery,
     }),
     [crops, filterMatchingCrops, normalizedSearchQuery],
+  );
+
+  const bulkVisibleCropIds = useMemo(
+    () => matchingCrops.flatMap(({ id }) => id === undefined ? [] : [id]),
+    [matchingCrops],
   );
 
   const cropHierarchyItems = useMemo(
@@ -752,10 +758,13 @@ const detailSectionGridSx = {
               popoverId="crop-filters-popover"
               onClick={(event) => setFilterAnchorEl(event.currentTarget)}
             />
-            {bulkSelection ? (
-              <CropBulkSelectionToolbar
-                selection={bulkSelection}
-                onOpenPreview={useUnifiedMobileLayout ? () => setMobileSelectorOpen(false) : undefined}
+            {bulkSelection?.enabled ? (
+              <CropSelectionButton
+                label={t('library.batchImport.selectCultures')}
+                active={bulkSelecting}
+                buttonRef={bulkSelection.selectionButton}
+                controlsId={bulkSelection.controlsId}
+                onClick={bulkSelection.toggle}
               />
             ) : null}
           </>}
@@ -812,9 +821,7 @@ const detailSectionGridSx = {
             }}
           >
             {selectorControl}
-            {bulkSelection ? <CropBulkSelectionActions selection={bulkSelection} visibleIds={
-              visibleCropRows.flatMap(({ node }) => node.crop?.id === undefined ? [] : [node.crop.id])
-            } /> : null}
+            {bulkSelection ? <CropBulkSelectionActions selection={bulkSelection} visibleIds={bulkVisibleCropIds} /> : null}
             {visibleCropRows.length === 0 ? (
               // Rendered instead of the listbox, not inside it: a plain <li>
               // in there carries no role of its own and gets pruned, and an
@@ -1504,6 +1511,7 @@ const detailSectionGridSx = {
           highlightQuery={normalizedSearchQuery}
           matchedGroupRowIds={matchedGroupRowIds}
           bulkSelection={bulkSelection}
+          bulkVisibleCropIds={bulkVisibleCropIds}
           onSelect={(crop, itemKind, speciesKey) => {
             setSelectedSpeciesViewKey(itemKind === 'species' ? speciesKey : null);
             onCropSelect(crop);

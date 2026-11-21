@@ -1,47 +1,9 @@
-import { useState, type ReactNode } from 'react';
-import { Box, Button, Checkbox, IconButton, Menu, MenuItem, Stack, Typography } from '@mui/material';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
+import type { ReactNode } from 'react';
+import { Box, Button, Checkbox, Stack, Typography } from '@mui/material';
 import type { Crop } from '../api/types';
-import { AppTooltip } from '../components/AppTooltip';
 import { useTranslation } from '../i18n';
 import { getCropDisplayName } from './cropDisplay';
-import { CropSelectionButton } from './CropSelectionButton';
 import type { ProjectCropSelection } from './useProjectCropSelection';
-
-export function CropBulkSelectionToolbar({ selection, onOpenPreview }: {
-  selection: ProjectCropSelection;
-  onOpenPreview?: () => void;
-}) {
-  const { t } = useTranslation('crops');
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
-  if (!selection.enabled) return null;
-  return (
-    <>
-      <CropSelectionButton
-        label={t('library.batchImport.selectCultures')}
-        active={Boolean(selection.selected)}
-        buttonRef={selection.selectionButton}
-        controlsId={selection.controlsId}
-        onClick={selection.toggle}
-      />
-      <AppTooltip title={t('bulkDelete.menu')}>
-        <IconButton size="small" aria-label={t('bulkDelete.menu')} aria-haspopup="menu"
-          aria-expanded={Boolean(anchor)} onClick={event => setAnchor(event.currentTarget)}>
-          <MoreVertIcon fontSize="small" />
-        </IconButton>
-      </AppTooltip>
-      <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}>
-        <MenuItem sx={{ color: 'error.main' }} onClick={() => {
-          setAnchor(null);
-          onOpenPreview?.();
-          selection.openAll();
-        }}>
-          {t('bulkDelete.allAction')}
-        </MenuItem>
-      </Menu>
-    </>
-  );
-}
 
 export function CropBulkSelectionActions({ selection, visibleIds, onOpenPreview }: {
   selection: ProjectCropSelection;

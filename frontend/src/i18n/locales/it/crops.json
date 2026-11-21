@@ -1830,14 +1830,10 @@
     }
   },
   "bulkDelete": {
-    "menu": "Azioni delle colture",
-    "allAction": "Elimina tutte le colture del progetto",
     "title": "Elimina le colture selezionate",
-    "scopeAll": "L’azione include tutte le colture attive del progetto, comprese quelle nascoste dai filtri.",
     "scopeSelected": "Controlla le colture selezionate e le varietà incluse.",
     "trashNotice": "Le colture e i dati delle sementi vengono spostati nel cestino. Le voci della biblioteca condivisa restano disponibili.",
     "deleteVarieties": "Elimina anche le varietà",
-    "confirmAll": "Confermo l’eliminazione di tutte le colture attive di questo progetto.",
     "showCrops": "Mostra le colture interessate",
     "empty": "Questa selezione non contiene colture attive.",
     "missing": "Alcune colture selezionate non sono più disponibili. Aggiorna la selezione.",

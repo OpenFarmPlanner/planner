@@ -1831,14 +1831,10 @@
     }
   },
   "bulkDelete": {
-    "menu": "Acciones de cultivos",
-    "allAction": "Eliminar todos los cultivos del proyecto",
     "title": "Eliminar los cultivos seleccionados",
-    "scopeAll": "Esta acción incluye todos los cultivos activos del proyecto, incluso los ocultos por filtros.",
     "scopeSelected": "Revisa los cultivos seleccionados y las variedades incluidas.",
     "trashNotice": "Los cultivos y sus datos de semillas pasan a la papelera. Las entradas de la biblioteca compartida se conservan.",
     "deleteVarieties": "Eliminar también las variedades",
-    "confirmAll": "Confirmo que quiero eliminar todos los cultivos activos de este proyecto.",
     "showCrops": "Mostrar cultivos afectados",
     "empty": "Esta selección no contiene cultivos activos.",
     "missing": "Algunos cultivos seleccionados ya no están disponibles. Actualiza la selección.",

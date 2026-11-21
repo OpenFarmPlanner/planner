@@ -107,10 +107,8 @@ export function CropBulkDeletionDialog({ target, onClose, onComplete }: {
   const [failureCounts, setFailureCounts] = useState<Pick<CropBulkDeleteResult,
     'blocked_count' | 'skipped_count' | 'failed_count'> | null>(null);
   const [unknownResult, setUnknownResult] = useState(false);
-  const [confirmedAll, setConfirmedAll] = useState(false);
   const [busy, setBusy] = useState(false);
   const submitting = useRef(false);
-  const all = target.scope === 'all';
 
   useEffect(() => {
     const controller = new AbortController();
@@ -124,19 +122,18 @@ export function CropBulkDeletionDialog({ target, onClose, onComplete }: {
     setPreview(null);
     setError(null);
     setFailureCounts(null);
-    setConfirmedAll(false);
     setUnknownResult(false);
     setRequest({ deleteVarieties });
   };
   const confirm = async () => {
-    if (submitting.current || !preview?.token || (all && !confirmedAll)) return;
+    if (submitting.current || !preview?.token) return;
     submitting.current = true;
     setBusy(true);
     setUnknownResult(false);
     try {
       const { data } = await cropAPI.bulkDelete({
         ...target, delete_varieties: request.deleteVarieties, request_id: requestId,
-        preview_token: preview.token, confirm_all: confirmedAll,
+        preview_token: preview.token, confirm_all: false,
       });
       onComplete(data);
     } catch (error) {
@@ -155,7 +152,6 @@ export function CropBulkDeletionDialog({ target, onClose, onComplete }: {
           });
         }
         setPreview(null);
-        setConfirmedAll(false);
         setError(outcome);
       }
     } finally {
@@ -166,11 +162,11 @@ export function CropBulkDeletionDialog({ target, onClose, onComplete }: {
 
   return (
     <Dialog open fullWidth maxWidth="sm" aria-labelledby={titleId} onClose={busy ? undefined : onClose}>
-      <DialogTitle id={titleId}>{t(all ? 'bulkDelete.allAction' : 'bulkDelete.title')}</DialogTitle>
+      <DialogTitle id={titleId}>{t('bulkDelete.title')}</DialogTitle>
       <DialogContent>
         <Stack spacing={1.25}>
           <Typography variant="body2">
-            {t(all ? 'bulkDelete.scopeAll' : 'bulkDelete.scopeSelected')}
+            {t('bulkDelete.scopeSelected')}
           </Typography>
           <Typography variant="body2" color="text.secondary">{t('bulkDelete.trashNotice')}</Typography>
           <FormControlLabel
@@ -198,13 +194,6 @@ export function CropBulkDeletionDialog({ target, onClose, onComplete }: {
           ) : preview ? (
             <CropBulkImpact impact={preview} />
           ) : <Typography role="status" variant="body2">{t('restoreDialog.preview.loading')}</Typography>}
-          {all && preview?.token ? (
-            <FormControlLabel
-              label={t('bulkDelete.confirmAll')}
-              control={<Checkbox checked={confirmedAll} disabled={busy || unknownResult}
-                onChange={(_, checked) => setConfirmedAll(checked)} />}
-            />
-          ) : null}
           {unknownResult ? <Alert severity="warning">{t('bulkDelete.outcomeUnknown')}</Alert> : null}
         </Stack>
       </DialogContent>
@@ -213,8 +202,8 @@ export function CropBulkDeletionDialog({ target, onClose, onComplete }: {
           {t('restoreDialog.cancel')}
         </Button>
         <Button color="error" variant="contained"
-          disabled={busy || !preview?.token || (all && !confirmedAll)} onClick={() => void confirm()}>
-          {t(unknownResult ? 'bulkDelete.retry' : all ? 'bulkDelete.allAction' : 'bulkDelete.confirm')}
+          disabled={busy || !preview?.token} onClick={() => void confirm()}>
+          {t(unknownResult ? 'bulkDelete.retry' : 'bulkDelete.confirm')}
         </Button>
       </DialogActions>
     </Dialog>

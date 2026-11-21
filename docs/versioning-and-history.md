@@ -105,6 +105,13 @@ write path — it just creates an `EntityRevision` row. It's called:
 `EntityRevision` rows. Season create/delete/undelete/copy operations still use
 `start_batch_operation` and the backwards-compatible batch revert endpoint.
 
+In Cultures selection mode, **Select visible** adds the current search and
+filter results to the selection, including varieties within collapsed groups.
+Existing selections persist when filters change. To include the full project, clear the search and filters before
+selecting visible cultures. **Delete** opens the impact preview, including
+varieties and dependencies, before confirmation. Confirmed deletion and
+recovery each appear in project history as a grouped operation.
+
 The crops page generates one random `import_operation_id` for the entire apply
 attempt, including all crop, companion and finalize HTTP batches. It never
 retries an uncertain write automatically. The server binds this UUID to the
