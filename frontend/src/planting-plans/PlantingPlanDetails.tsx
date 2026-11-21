@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Box, Button, CircularProgress, Link, List, ListItem, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, CircularProgress, Link, Stack, Typography } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CloseIcon from '@mui/icons-material/Close';
 import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import { Link as RouterLink, useOutletContext } from 'react-router';
 import { isAxiosError } from 'axios';
-import { noteAttachmentAPI, plantingPlanAPI, taskAPI } from '../api/api';
-import type { NoteAttachment, PlantingPlanDetail, Task } from '../api/types';
+import { noteAttachmentAPI, plantingPlanAPI } from '../api/api';
+import type { NoteAttachment, PlantingPlanDetail } from '../api/types';
 import { NotesDrawer } from '../components/data-grid/NotesDrawer';
 import { RichTextViewer } from '../components/data-grid/RichTextViewer';
 import { getEntityDetailPath } from '../components/hierarchy/details/hierarchyDetailRoutes';
@@ -15,7 +15,6 @@ import { DetailGrid, DetailRow, DetailSection } from '../components/layout/Detai
 import { detailHeaderRowSx, detailHeaderTitleColumnSx, detailHeaderTitleTextSx } from '../components/layout/detailHeaderStyles';
 import LoadRetryButton from '../components/LoadRetryButton';
 import ProjectRequiredState from '../components/project/ProjectRequiredState';
-import { taskDisplayTitle } from '../components/tasks/taskTitles';
 import { formatCropDisplayName } from '../crops/cropDisplay';
 import { HarvestRecords } from '../harvests/HarvestRecords';
 import { useNavigationBlocker } from '../hooks/useNavigationBlocker';
@@ -31,6 +30,7 @@ import { PlantingPlanExecutionDates } from './PlantingPlanExecutionDates';
 import { PerennialPlanDates } from './PerennialPlanDates';
 import { CropLosses } from './CropLosses';
 import { PreviousSeasonReference } from './PreviousSeasonReference';
+import { PlantingPlanTasks } from './PlantingPlanTasks';
 
 interface PlantingPlanDetailsProps {
   planId: number | null;
@@ -42,14 +42,11 @@ interface PlantingPlanDetailsProps {
 type PlanLoad = { plan: PlantingPlanDetail } | { error: 'not-found' | 'load' };
 
 export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: PlantingPlanDetailsProps) {
-  const { t, i18n } = useTranslation(['plantingPlans', 'common', 'dashboard', 'harvests']);
+  const { t, i18n } = useTranslation(['plantingPlans', 'common', 'harvests']);
   const { activeProjectId, isAuthLoading, missingProjectReason } = useProjectRequirement();
   const context = useOutletContext<RootLayoutOutletContext | null>();
   const [result, setResult] = useState<PlanLoad>();
   const [attempt, setAttempt] = useState(0);
-  const [tasks, setTasks] = useState<Task[]>();
-  const [taskLoadFailed, setTaskLoadFailed] = useState(false);
-  const [taskAttempt, setTaskAttempt] = useState(0);
   const [attachments, setAttachments] = useState<NoteAttachment[]>();
   const [attachmentLoadFailed, setAttachmentLoadFailed] = useState(false);
   const [attachmentRevision, setAttachmentRevision] = useState(0);
@@ -86,17 +83,6 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
     });
     return () => controller.abort();
   }, [activeProjectId, attempt, context?.activeSeason?.id, planId]);
-
-  useEffect(() => {
-    if (loadedPlanId === undefined) return;
-    let current = true;
-    void taskAPI.listForPlan(loadedPlanId).then(({ results }) => {
-      if (current) setTasks(results);
-    }).catch(() => {
-      if (current) setTaskLoadFailed(true);
-    });
-    return () => { current = false; };
-  }, [loadedPlanId, taskAttempt]);
 
   useEffect(() => {
     if (loadedPlanId === undefined || !hasPhotos) return;
@@ -261,27 +247,8 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
                 </Stack>
               </DetailSection>
             )}
-            {taskLoadFailed && <Alert severity="error" action={<LoadRetryButton onClick={() => {
-              setTaskLoadFailed(false);
-              setTaskAttempt(value => value + 1);
-            }} />}>{t('details.tasksLoadFailed')}</Alert>}
-            {(Boolean(tasks?.length) || (canEditNotes && season)) && <DetailSection title={t('details.tasks')} outlined>
-              {Boolean(tasks?.length) && <List dense disablePadding>
-                {tasks?.map(task => <ListItem key={task.id} disableGutters sx={{ py: 0.5 }}>
-                  <Stack spacing={0.25} sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-                    <Typography variant="body1">{taskDisplayTitle(task, t)}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {[date(task.due_date), task.status === 'cancelled'
-                        ? t('details.taskCancelled') : t(`dashboard:board.status.${task.status}`)].filter(Boolean).join(' · ')}
-                    </Typography>
-                  </Stack>
-                </ListItem>)}
-              </List>}
-              {canEditNotes && season && <Button component={RouterLink} to="/app/dashboard"
-                state={{ newTaskPlantingPlanId: loadedPlan.id }}>
-                {t('dashboard:form.add')}
-              </Button>}
-            </DetailSection>}
+            {activeProjectId !== null && <PlantingPlanTasks key={`tasks:${recordScope}`} plan={loadedPlan}
+              projectId={activeProjectId} editableSeasonLabel={canEditNotes ? season?.label : undefined} />}
             <NotesDrawer open={editorOpen} title={t('details.notesAndPhotos')} value={draft} onChange={setDraft}
               onSave={saveNotes} onClose={() => setEditorOpen(false)} hasUnsavedChanges={hasUnsavedNotes}
               loading={saving} noteId={loadedPlan.id} saveError={saveFailed ? t('errors.save') : undefined}
