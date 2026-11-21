@@ -1407,7 +1407,9 @@ class SeasonApiTest(ProjectApiTestCase):
         for response in (
             self.client.get(f'{url}creation-options/', {'use_actual_dates': 'either'}),
             self.client.post(f'{url}create-and-copy/', {**payload, 'use_actual_dates': 'either'}),
-            self.client.post(f'{url}create-transition/', {'copy': True, 'use_actual_dates': 'either'}),
+            self.client.post(
+                f'{url}create-transition/', {'copy': True, 'use_actual_dates': 'either'},
+            ),
         ):
             self.assertEqual(response.status_code, 400, response.data)
             self.assertEqual(response.data['code'], 'invalid_season_copy_options')
