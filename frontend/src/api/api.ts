@@ -545,7 +545,7 @@ export const seasonAPI = {
   list: () => http.get<PaginatedResponse<Season>>('/seasons/', { params: { page_size: 1000 } }),
   create: (data: { start_date: string; end_date: string; custom_label?: string }) =>
     http.post<Season>('/seasons/', data),
-  createAndCopy: (data: { start_date: string; end_date: string; source_season_id: number }) =>
+  createAndCopy: (data: { start_date: string; end_date: string; source_season_id: number; use_actual_dates?: boolean }) =>
     http.post<Season>('/seasons/create-and-copy/', data),
   update: (id: number, data: Partial<{ custom_label: string; start_date: string; end_date: string }>) =>
     http.patch<Season>(`/seasons/${id}/`, data),
@@ -565,9 +565,9 @@ export const seasonAPI = {
       },
     }),
   dueSuggestion: () => http.get<SeasonDueSuggestion>('/seasons/due-suggestion/'),
-  creationOptions: (params?: { manual_start_date?: string }) =>
+  creationOptions: (params?: { manual_start_date?: string; use_actual_dates?: boolean }) =>
     http.get<SeasonCreationOptions>('/seasons/creation-options/', { params }),
-  createTransition: (data: { copy: boolean; source_season_id?: number }) =>
+  createTransition: (data: { copy: boolean; source_season_id?: number; use_actual_dates?: boolean }) =>
     http.post<SeasonCreateTransitionResponse>('/seasons/create-transition/', data),
 };
 

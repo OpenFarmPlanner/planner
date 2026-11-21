@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AxiosError } from 'axios';
 import { SeasonCreateSuggestionDialog, SeasonSwitcher } from '../SeasonSwitcher';
@@ -107,6 +107,7 @@ describe('SeasonSwitcher', () => {
 
     expect(screen.getByRole('heading', { name: 'Saison 26/27 anlegen?' })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: /Daten aus Saison 25\/26 übernehmen/ })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' })).not.toBeChecked();
     await user.click(screen.getByRole('button', { name: 'Anlegen' }));
 
     expect(createSeason).toHaveBeenCalledWith('2026-09-01', '2027-08-31', 2);
@@ -145,9 +146,57 @@ describe('SeasonSwitcher', () => {
     );
 
     await user.click(screen.getByRole('checkbox', { name: /Daten aus Saison 25\/26 übernehmen/ }));
+    expect(screen.queryByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Anlegen' }));
 
     expect(createSeason).toHaveBeenCalledWith('2026-09-01', '2027-08-31', undefined);
+  });
+
+  it('waits for the current basis preview and ignores an older actual-date response', async () => {
+    const user = userEvent.setup();
+    const createSeason = vi.fn().mockResolvedValue({ ...seasons[0], id: 3 });
+    const controller = {
+      seasons,
+      dueSuggestion: { due: true, start_date: '2026-09-01', end_date: '2027-08-31' },
+      seasonCreationOptions: consecutiveCreationOptions,
+      createSeason,
+      switchSeason: vi.fn(),
+    } as unknown as UseActiveSeasonReturn;
+    const loadPreview = () => {
+      let finish!: (value: { data: SeasonCreationOptions }) => void;
+      const promise = new Promise<{ data: SeasonCreationOptions }>(resolve => { finish = resolve; });
+      return { promise, finish };
+    };
+    const old = loadPreview();
+    const latest = loadPreview();
+    creationOptionsMock.mockReset()
+      .mockReturnValueOnce(old.promise)
+      .mockReturnValueOnce(latest.promise);
+    render(<SeasonCreateSuggestionDialog controller={controller} open onClose={vi.fn()} onEditSeasonPattern={vi.fn()} />);
+
+    const basis = screen.getByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' });
+    const submit = screen.getByRole('button', { name: 'Anlegen' });
+    expect(basis).toHaveAccessibleDescription(/vorherigen Saison.*Plantermin/);
+    await user.click(basis);
+    expect(submit).toBeDisabled();
+    await user.click(basis);
+    expect(submit).toBeEnabled();
+    await user.click(basis);
+    expect(submit).toBeDisabled();
+    expect(creationOptionsMock).toHaveBeenCalledTimes(2);
+    expect(creationOptionsMock).toHaveBeenLastCalledWith({ use_actual_dates: true });
+    const response = (copied: number) => ({
+      data: {
+        ...consecutiveCreationOptions,
+        copy_preview: { ...consecutiveCreationOptions.copy_preview, adopt: { total: 3, copied, skipped: 3 - copied } },
+      },
+    });
+    await act(async () => latest.finish(response(2)));
+    expect(screen.getByText(/2 von 3 Anbauplänen/)).toBeInTheDocument();
+    await act(async () => old.finish(response(1)));
+    expect(screen.getByText(/2 von 3 Anbauplänen/)).toBeInTheDocument();
+    await user.click(submit);
+    expect(createSeason).toHaveBeenCalledExactlyOnceWith('2026-09-01', '2027-08-31', 2, true);
   });
 
   it('keeps the create dialog open and shows a concrete conflict reason when creation fails', async () => {
@@ -286,9 +335,12 @@ describe('SeasonSwitcher', () => {
     expect(screen.getByText(/Es werden zwei Saisonen angelegt/)).toBeInTheDocument();
     expect(screen.getByText(/2 von 3 Anbauplänen aus 25\/26 werden übernommen/)).toBeInTheDocument();
 
+    creationOptionsMock.mockResolvedValueOnce({ data: controller.seasonCreationOptions });
+    await user.click(screen.getByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' }));
+    expect(await screen.findByText(/2 von 3 Anbauplänen aus 25\/26 werden übernommen/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Anlegen' }));
 
-    expect(createTransitionSeasons).toHaveBeenCalledWith(true, 2);
+    expect(createTransitionSeasons).toHaveBeenCalledWith(true, 2, true);
     expect(createSeason).not.toHaveBeenCalled();
     expect(switchSeason).toHaveBeenCalledWith(4);
   });
@@ -349,10 +401,13 @@ describe('SeasonSwitcher', () => {
 
     expect(await screen.findByText(/1 von 4 Anbauplänen aus 25\/26 werden übernommen/)).toBeInTheDocument();
     expect(creationOptionsMock).toHaveBeenCalledWith({ manual_start_date: '2026-10-01' });
+    await user.click(screen.getByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' }));
+    expect(await screen.findByText(/1 von 4 Anbauplänen aus 25\/26 werden übernommen/)).toBeInTheDocument();
+    expect(creationOptionsMock).toHaveBeenLastCalledWith({ manual_start_date: '2026-10-01', use_actual_dates: true });
 
     await user.click(screen.getByRole('button', { name: 'Anlegen' }));
     expect(createSeason).toHaveBeenCalledTimes(1);
-    expect(createSeason).toHaveBeenCalledWith('2026-10-01', '2027-12-31', 2);
+    expect(createSeason).toHaveBeenCalledWith('2026-10-01', '2027-12-31', 2, true);
     expect(switchSeason).toHaveBeenCalledWith(9);
   });
 

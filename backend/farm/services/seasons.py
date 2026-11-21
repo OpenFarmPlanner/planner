@@ -539,39 +539,33 @@ def preview_bridged_copy_counts(
     return {'total': len(source_periods), **counts}
 
 
-def distribute_planting_plans(
+def _build_distributed_plan_copies(
     *,
     source_season: Season,
     transition_season: Season,
     followup_season: Season,
-) -> dict:
-    """Copy `source_season`'s plans across the transition + follow-up season pair.
-
-    Every plan is shifted once, by the whole-year gap between the source and the
-    transition season, then routed to whichever of the two target seasons its
-    shifted `planting_date` falls in (the transition season also takes plans with
-    no `planting_date`). Plans landing in neither and plans already active in
-    their destination are counted separately and skipped.
-    """
+    use_actual_dates: bool,
+) -> tuple[dict[str, list[tuple[PlantingPlan, PlantingPlan]]], int, int, int]:
+    """Shift each plan once, then route it by its resulting planned planting date."""
     month_offset = (transition_season.start_date.year - source_season.start_date.year) * 12
 
     def shifted(value: date | None) -> date | None:
         return None if value is None else add_months(value, month_offset)
 
-    per_target: dict[str, list[PlantingPlan]] = {'first': [], 'second': []}
+    per_target: dict[str, list[tuple[PlantingPlan, PlantingPlan]]] = {'first': [], 'second': []}
     target_season = {'first': transition_season, 'second': followup_season}
     skipped_count = 0
     continuing_count = 0
     unconfigured_count = 0
     crop_index = build_general_crop_index(source_season.project_id)
-    predecessor = preceding_season_copy_source(
-        transition_season.project, transition_season.start_date,
+    source_plans = (
+        PlantingPlan.objects
+        .filter(season=source_season, project_id=transition_season.project_id)
+        .select_related('crop', 'crop__crop_species')
+        .prefetch_related('crop__crop_species__translations')
     )
-    source_plans = PlantingPlan.objects.filter(
-        season=source_season, project_id=transition_season.project_id,
-    ).select_related('crop')
     for plan in source_plans:
-        fields = {field: getattr(plan, field) for field in PLANTING_PLAN_COPY_FIELDS}
+        fields = _season_copy_fields(plan, crop_index if use_actual_dates else None)
         for date_field in PLANTING_PLAN_SHIFTED_DATE_FIELDS:
             fields[date_field] = shifted(fields[date_field])
         route = _route_shifted_planting_date(
@@ -589,17 +583,42 @@ def distribute_planting_plans(
             continuing_count += 1
             continue
         copy = PlantingPlan(project=season.project, season=season, **fields)
-        if source_season == predecessor and plan.project_id == season.project_id:
-            copy.copied_from_plan_id = plan.pk
         copy.crop = plan.crop
         if not _prepare_perennial_copy(copy, crop_index):
             unconfigured_count += 1
             continue
-        per_target[route].append(copy)
+        if use_actual_dates:
+            _keep_equivalent_dates_computed(plan, copy, crop_index)
+        per_target[route].append((plan, copy))
+
+    return per_target, skipped_count, continuing_count, unconfigured_count
+
+
+def distribute_planting_plans(
+    *,
+    source_season: Season,
+    transition_season: Season,
+    followup_season: Season,
+    use_actual_dates: bool = False,
+) -> dict:
+    """Copy the predecessor across the transition and follow-up periods."""
+    per_target, skipped_count, continuing_count, unconfigured_count = (
+        _build_distributed_plan_copies(
+            source_season=source_season, transition_season=transition_season,
+            followup_season=followup_season, use_actual_dates=use_actual_dates,
+        )
+    )
+    predecessor = preceding_season_copy_source(
+        transition_season.project, transition_season.start_date,
+    )
+    if source_season == predecessor:
+        for pairs in per_target.values():
+            for source, copy in pairs:
+                copy.copied_from_plan_id = source.pk
 
     created = {
-        'transition': PlantingPlan.objects.bulk_create(per_target['first']),
-        'followup': PlantingPlan.objects.bulk_create(per_target['second']),
+        'transition': PlantingPlan.objects.bulk_create([copy for _, copy in per_target['first']]),
+        'followup': PlantingPlan.objects.bulk_create([copy for _, copy in per_target['second']]),
         'skipped': skipped_count,
         'continuing_count': continuing_count,
         'unconfigured_perennial_count': unconfigured_count,
@@ -725,6 +744,7 @@ def build_season_creation_options(
     project: Project,
     *,
     manual_start: date | None = None,
+    use_actual_dates: bool = False,
 ) -> dict[str, Any]:
     """Describe the gap/overlap decision for the next season the user would create.
 
@@ -761,13 +781,29 @@ def build_season_creation_options(
         }
 
     last_plan_periods: list[tuple[int | None, date | None, date | None, bool]] = []
-    if latest_season is not None:
+    if latest_season is not None and not use_actual_dates:
         crop_index = build_general_crop_index(latest_season.project_id)
         last_plan_periods = [
             (plan.bed_id, plan.planting_date, plan.occupancy_end_date,
              _has_perennial_copy_defaults(plan, crop_index))
             for plan in PlantingPlan.objects.filter(season=latest_season).select_related('crop')
         ]
+
+    def preview_period(source: Season, start: date, end: date) -> dict[str, int]:
+        if not use_actual_dates:
+            return preview_copy_counts(
+                source_periods=last_plan_periods, target_start=start, target_end=end,
+            )
+        target = Season(project=project, start_date=start, end_date=end)
+        pairs, skipped, continuing, unconfigured = build_planting_plan_copies(
+            source_season=source, target_season=target, use_actual_dates=True,
+        )
+        copied = len(pairs)
+        return _season_copy_count_summary(
+            copied + skipped + continuing + unconfigured, copied, skipped, continuing, unconfigured,
+        )
+
+    if latest_season is not None:
         payload['last_season'] = {
             'start_date': latest_season.start_date.isoformat(),
             'end_date': latest_season.end_date.isoformat(),
@@ -776,10 +812,7 @@ def build_season_creation_options(
         if due_period is not None:
             due_start, due_end = due_period
             if is_preceding_copy_period(latest_season, due_start):
-                payload['copy_preview']['adopt'] = preview_copy_counts(
-                    source_periods=last_plan_periods,
-                    target_start=due_start, target_end=due_end,
-                )
+                payload['copy_preview']['adopt'] = preview_period(latest_season, due_start, due_end)
             raw_transition = analyze_period_transition(latest_season.end_date, due_start)
             if raw_transition is not None:
                 payload['transition'] = serialize_period_transition(raw_transition)
@@ -791,20 +824,34 @@ def build_season_creation_options(
                 }
                 # The transition starts right after the source ends. Each plan
                 # is shifted once and routed across the two new seasons.
-                bridged = preview_bridged_copy_counts(
-                    source_periods=last_plan_periods,
-                    source_start_year=latest_season.start_date.year,
-                    transition_start=seamless_start, transition_end=seamless_end,
-                    followup_start=due_start, followup_end=due_end,
-                )
-                payload['copy_preview']['transition'] = _season_copy_count_summary(
-                    bridged['total'], bridged['transition'], bridged['skipped'],
-                    bridged['continuing_count'], bridged['unconfigured_perennial_count'],
-                )
-                payload['copy_preview']['transition_followup'] = _season_copy_count_summary(
-                    bridged['total'], bridged['followup'], bridged['skipped'],
-                    bridged['continuing_count'], bridged['unconfigured_perennial_count'],
-                )
+                if use_actual_dates:
+                    pairs, skipped, continuing, unconfigured = _build_distributed_plan_copies(
+                        source_season=latest_season,
+                        transition_season=Season(
+                            project=project, start_date=seamless_start, end_date=seamless_end,
+                        ),
+                        followup_season=Season(
+                            project=project, start_date=due_start, end_date=due_end,
+                        ),
+                        use_actual_dates=True,
+                    )
+                    counts = (len(pairs['first']), len(pairs['second']))
+                    total = sum(counts) + skipped + continuing + unconfigured
+                else:
+                    bridged = preview_bridged_copy_counts(
+                        source_periods=last_plan_periods,
+                        source_start_year=latest_season.start_date.year,
+                        transition_start=seamless_start, transition_end=seamless_end,
+                        followup_start=due_start, followup_end=due_end,
+                    )
+                    counts = (bridged['transition'], bridged['followup'])
+                    total, skipped = bridged['total'], bridged['skipped']
+                    continuing = bridged['continuing_count']
+                    unconfigured = bridged['unconfigured_perennial_count']
+                for key, copied in zip(('transition', 'transition_followup'), counts, strict=True):
+                    payload['copy_preview'][key] = _season_copy_count_summary(
+                        total, copied, skipped, continuing, unconfigured,
+                    )
 
     if manual_start is not None:
         manual_start, manual_end = compute_manual_season_period(pattern, manual_start)
@@ -818,9 +865,8 @@ def build_season_creation_options(
                 serialize_period_transition(raw_residual) if raw_residual is not None else None
             )
             if is_preceding_copy_period(latest_season, manual_start):
-                payload['copy_preview']['manual'] = preview_copy_counts(
-                    source_periods=last_plan_periods,
-                    target_start=manual_start, target_end=manual_end,
+                payload['copy_preview']['manual'] = preview_period(
+                    latest_season, manual_start, manual_end,
                 )
 
     if latest_season is not None and any(payload['copy_preview'].values()):
