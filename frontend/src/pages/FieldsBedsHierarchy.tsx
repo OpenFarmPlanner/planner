@@ -116,7 +116,6 @@ import {
 } from "../components/hierarchy/utils/hierarchyUtils";
 import {
   createHierarchyColumns,
-  DEFAULT_HIERARCHY_COLUMN_WIDTHS,
 } from "../components/hierarchy/HierarchyColumns";
 import type { HierarchyRow } from "../components/hierarchy/utils/types";
 import {
@@ -250,6 +249,12 @@ function FieldsBedsHierarchy({
     tableKey: "fieldsBedsHierarchy",
     defaultHiddenFields: SITE_CONDITION_COLUMN_FIELDS,
   });
+  const [resizedColumnWidths, setResizedColumnWidths] = useState<Partial<Record<string, number>>>({});
+  const handleColumnWidthChange: GridEventListener<"columnWidthChange"> = useCallback(({ colDef, width }) => {
+    setResizedColumnWidths(previous => previous[colDef.field] === width
+      ? previous
+      : { ...previous, [colDef.field]: width });
+  }, []);
   const columnVisibilityModelRef = useRef(columnVisibilityModel);
   useLayoutEffect(() => {
     columnVisibilityModelRef.current = columnVisibilityModel;
@@ -1751,10 +1756,7 @@ function FieldsBedsHierarchy({
       handleNameCellContextMenu,
       notesEditor.handleOpen,
       t,
-      {
-        ...DEFAULT_HIERARCHY_COLUMN_WIDTHS,
-        name: effectiveNameColumnWidth,
-      },
+      { name: effectiveNameColumnWidth },
       {
         disableInlineHoverActions: showPersistentContextMenuButton,
         onOpenContextMenuFromButton: handleContextMenuButtonOpen,
@@ -1772,11 +1774,17 @@ function FieldsBedsHierarchy({
     );
     // The optional site-condition columns sit before the notes (#1075).
     const notesIndex = baseColumns.findIndex((column) => column.field === "notes");
-    return [
+    const orderedColumns = [
       ...baseColumns.slice(0, notesIndex),
       ...createSiteConditionColumns(t),
       ...baseColumns.slice(notesIndex),
     ];
+    // MUI clears flex when a column is resized. Keep that width when rows,
+    // viewport changes or other callbacks rebuild the column definitions.
+    return orderedColumns.map(column => {
+      const width = resizedColumnWidths[column.field];
+      return width === undefined ? column : { ...column, width, flex: 0 };
+    });
   }, [
     toggleExpand,
     handleAddBed,
@@ -1789,6 +1797,7 @@ function FieldsBedsHierarchy({
     rowsById,
     t,
     effectiveNameColumnWidth,
+    resizedColumnWidths,
     showPersistentContextMenuButton,
     isMobileViewport,
     hierarchyLevelToggle.canExpand,
@@ -2103,6 +2112,7 @@ function FieldsBedsHierarchy({
             <DataGrid
               rows={rows}
               columns={columns}
+              onColumnWidthChange={handleColumnWidthChange}
               columnVisibilityModel={columnVisibilityModel}
               onColumnVisibilityModelChange={setColumnVisibilityModel}
               slotProps={{

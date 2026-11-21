@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { apiRequest, loginWithDeterministicProject, waitForPageStable } from './utils';
+import { apiRequest, expectNoHorizontalPageOverflow, loginWithDeterministicProject, waitForPageStable } from './utils';
 
 /**
  * Guards the interaction between MUI's modal scroll lock and the page's own
@@ -234,3 +234,71 @@ for (const bedCount of [4, 30]) {
     })).toBeLessThanOrEqual(0);
   });
 }
+
+test('growing-area columns fit when there is room and preserve a manual width', async ({ page, request }) => {
+  await page.setViewportSize({ width: 1585, height: 900 });
+  await loginWithDeterministicProject(page, request, 'scrollbar-hierarchy-column-fit', {
+    loginAsAdmin: true, demoProject: true, demoYear: 2026,
+  });
+  await page.goto('/app/fields-beds');
+  const grid = page.getByRole('grid');
+  const toolbar = page.getByTestId('growing-area-search-toolbar');
+  const horizontal = grid.locator('.MuiDataGrid-scrollbar--horizontal');
+  const header = (field: string) => grid.locator(`[role="columnheader"][data-field="${field}"]`);
+  const setSiteColumns = async (visible: boolean) => {
+    await toolbar.getByRole('button', { name: 'Spalten' }).click();
+    for (const name of ['Licht', 'Feuchtigkeit', 'Bewässerung verfügbar']) {
+      await page.getByRole('checkbox', { name, exact: true }).setChecked(visible);
+    }
+    await page.keyboard.press('Escape');
+  };
+
+  await expect(grid.getByText('Gründüngung Reserve', { exact: true })).toBeVisible();
+  await expect(horizontal).toBeHidden();
+  await setSiteColumns(true);
+  await expect(header('irrigation')).toBeVisible();
+  await expect(horizontal).toBeHidden();
+  const irrigationLabel = header('irrigation').locator('.MuiDataGrid-columnHeaderTitle');
+  await expect.poll(() => irrigationLabel.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
+
+  await page.setViewportSize({ width: 1350, height: 900 });
+  await expect(horizontal).toBeVisible();
+  const scroller = grid.locator('.MuiDataGrid-virtualScroller');
+  await scroller.evaluate(el => { el.scrollLeft = el.scrollWidth; });
+  await expect.poll(() => scroller.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
+  const note = grid.locator('[role="row"][data-id] [data-field="notes"]').first();
+  await expect.poll(async () => Math.abs((await box(header('notes'))).x - (await box(note)).x)).toBeLessThanOrEqual(1);
+  await expectNoHorizontalPageOverflow(page);
+  await setSiteColumns(false);
+  await expect(header('irrigation')).toHaveCount(0);
+  await expect(horizontal).toBeHidden();
+  await setSiteColumns(true);
+  await expect(horizontal).toBeVisible();
+  await page.setViewportSize({ width: 1585, height: 900 });
+  await expect(horizontal).toBeHidden();
+
+  const nameHeader = header('name');
+  const before = (await box(nameHeader)).width;
+  const grip = await box(nameHeader.locator('.MuiDataGrid-columnSeparator--resizable'));
+  const x = grip.x + grip.width / 2;
+  const y = grip.y + grip.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 200, y, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(async () => (await box(nameHeader)).width).toBeGreaterThan(before + 170);
+  const manualWidth = (await box(nameHeader)).width;
+  await expect(horizontal).toBeVisible();
+  await nameHeader.getByRole('button', { name: 'Eine Hierarchieebene ausblenden' }).click();
+  await expect(grid.getByText('Gründüngung Reserve', { exact: true })).toHaveCount(0);
+  await nameHeader.getByRole('button', { name: 'Eine Hierarchieebene mehr anzeigen' }).click();
+  await expect(grid.getByText('Gründüngung Reserve', { exact: true })).toBeVisible();
+  await expect.poll(async () => Math.abs((await box(nameHeader)).width - manualWidth)).toBeLessThanOrEqual(1);
+  await page.setViewportSize({ width: 1800, height: 900 });
+  await setSiteColumns(false);
+  await expect(horizontal).toBeHidden();
+  await expect.poll(async () => Math.abs((await box(nameHeader)).width - manualWidth)).toBeLessThanOrEqual(1);
+  await setSiteColumns(true);
+  await expect(horizontal).toBeVisible();
+  await expectNoHorizontalPageOverflow(page);
+});
