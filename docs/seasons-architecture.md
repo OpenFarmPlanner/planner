@@ -257,11 +257,17 @@ Anbaukalender Gantt):
 
 ## Copy-data action
 
-"Daten übernehmen" copies planting plans from the immediately preceding
-season. Eligibility uses the project's persisted periods. The most recent
-active period starting before the target must also end before it. A gap of a
-full annual period makes the copy unavailable. A shorter gap can occur when
-a season pattern changes and keeps the previous period eligible.
+The source rules depend on how copying was opened. Both use the project's
+persisted periods, including custom season dates and labels.
+
+- The guided **Create season** dialog can copy only from the immediately
+  preceding season. The latest active period starting before the target must
+  also end before it. A shorter gap from a season-pattern change is allowed.
+  A gap of a full annual period makes the copy unavailable.
+- **Copy season data** in an existing season's three-dot menu lets the user
+  select any active season in the same project that ends before the target
+  begins. The dropdown defaults to the newest eligible source. Gaps and
+  intervening seasons do not prevent manual copying.
 
 - `farm/services/seasons.py::copy_planting_plans(source_season, target_season)`
   copies a fixed tuple of `PlantingPlan` fields (`PLANTING_PLAN_COPY_FIELDS` —
@@ -288,8 +294,7 @@ a season pattern changes and keeps the previous period eligible.
   is not a leap year (`add_months`). Plans with no `planting_date` fall back to
   the whole-year gap between the two seasons' start dates. The shift is always
   whole years, so it works for any season pattern, calendar-year or not.
-- `SeasonViewSet.copy_from` validates the requested source again before any
-  write. The creation suggestion uses the eligible source returned by
+- The creation suggestion uses the eligible source returned by
   `GET /seasons/creation-options/`, independent of the season currently open.
   `POST /seasons/create-and-copy/` rechecks the source and saves the new season
   and the copied plans in one transaction.
@@ -317,13 +322,16 @@ a season pattern changes and keeps the previous period eligible.
   opened from an existing season's row menu. It names the source and target
   and warns when the target already has planting plans. The copies are added
   alongside any existing plans.
-- The dialog loads `GET /seasons/{id}/copy-preview/?resolve_source=true` to
-  resolve the preceding season and calculate the crop rotation preview.
-  Explicit `source_season_id` requests use the same eligibility check.
+- The dialog loads `GET /seasons/{id}/copy-preview/?source_season_id=...`
+  for the selected source and sends that same ID to `copy-from` only after
+  the current preview succeeds. Both endpoints check source chronology and
+  project membership. Execution revalidates under the project lock before
+  writing. The old `resolve_source=true` preview still resolves only the
+  immediate predecessor for clients that do not send a source ID.
   Preview and execution both accept `use_actual_dates`, which defaults to
   false. With it enabled, each recorded date supplies the corresponding new
   planned date, using the source's planned date for activities with no entry.
-  Changing the date basis revalidates the same source season.
+  Changing the source, target or date basis invalidates the previous preview.
   The selected direct sowing or transplanting date determines the whole-year
   shift for the plan, and the remaining dates receive that same shift.
   A crop-derived fallback stays calculated when the new plan yields the same
@@ -337,6 +345,23 @@ a season pattern changes and keeps the previous period eligible.
   all (`rotation_conflicts` on `copy-from`, API default `keep`). The copies
   are built once by `build_planting_plan_copies`, shared by the preview and
   the copy. Details: [crop-rotation.md](./crop-rotation.md#season-copy).
+- Field-group rotation ([#1063](https://github.com/OpenFarmPlanner/planner/issues/1063))
+  is limited to immediate predecessor copies. The manual preview reports
+  `is_preceding_source` and explains why field-group rotation is unavailable
+  when an older source is selected. The crop-family conflict check still runs.
+
+For local QA, preview the guarded fixture command, then repeat with `--apply`
+after confirming the database target. In **Historical season copy**, create
+2027 and confirm the guided copy offers only 2026. From 2027's three-dot menu,
+open **Copy season data**, choose **Historical garden** (2024), and select
+**Use actual dates as planned dates**. The preview explains when plans can
+rotate to the next field. Confirming adds lettuce to 2027 with February 28 planned
+sowing and an empty actual date. The original lettuce keeps February 26
+planned and February 29 actual. The carrot copied from 2026 stays in 2027.
+
+```bash
+DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py seed_season_creation_dates_acceptance --historical-copy --username LOCAL_USER --database-name LOCAL_DATABASE
+```
 
 ## First-run setup (migrating pre-existing projects)
 

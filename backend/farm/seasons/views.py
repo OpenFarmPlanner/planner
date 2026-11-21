@@ -224,19 +224,49 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             status_code=status.HTTP_400_BAD_REQUEST, fields=errors,
         )
 
-    def _resolve_copy_source(self, target_season: Season, source_season_id: object) -> Season | Response:
-        """The copy's source season, or the error response to return instead."""
+    def _get_copy_source(self, source_season_id: object) -> Season | Response:
         try:
             source_pk = int(source_season_id)
         except (TypeError, ValueError):
             return self._invalid_copy_source_id()
-        source_season = Season.objects.filter(project=self.request.active_project, pk=source_pk).first()
+        source_season = Season.objects.filter(
+            project=self.request.active_project, pk=source_pk,
+        ).first()
         if source_season is None:
-            return api_error_response(code='source_season_not_found', detail='Source season not found.', status_code=status.HTTP_404_NOT_FOUND)
+            return api_error_response(
+                code='source_season_not_found', detail='Source season not found.',
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        return source_season
+
+    def _resolve_existing_copy_source(
+        self, target_season: Season, source_id: object,
+    ) -> Season | Response:
+        source_season = self._get_copy_source(source_id)
+        if isinstance(source_season, Response):
+            return source_season
         if source_season.pk == target_season.pk:
-            return api_error_response(code='same_source_and_target_season', detail='Source and target season must be different.', status_code=status.HTTP_400_BAD_REQUEST)
+            return api_error_response(
+                code='same_source_and_target_season',
+                detail='Source and target season must be different.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        if source_season.end_date >= target_season.start_date:
+            return api_error_response(
+                code='season_copy_source_not_earlier',
+                detail='The source season must end before the target season starts.',
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        return source_season
+
+    def _resolve_creation_copy_source(
+        self, target_start: date, source_id: object,
+    ) -> Season | Response:
+        source_season = self._get_copy_source(source_id)
+        if isinstance(source_season, Response):
+            return source_season
         preceding = preceding_season_copy_source(
-            self.request.active_project, target_season.start_date,
+            self.request.active_project, target_start,
         )
         if preceding is None or preceding.pk != source_season.pk:
             return api_error_response(
@@ -248,21 +278,20 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
 
     @action(detail=True, methods=['get'], url_path='copy-preview')
     def copy_preview(self, request, pk=None):
-        """Preview this season's eligible source, or check an explicitly supplied source."""
+        """Preview a historical source, or resolve the predecessor for older clients."""
         target_season = self.get_object()
         source_id = request.query_params.get('source_season_id')
+        preceding = preceding_season_copy_source(request.active_project, target_season.start_date)
         if source_id is None and request.query_params.get('resolve_source') == 'true':
-            source_season = preceding_season_copy_source(
-                request.active_project, target_season.start_date,
-            )
-            if source_season is None:
+            if preceding is None:
                 return api_error_response(
                     code='season_copy_no_preceding_source',
                     detail='There is no immediately preceding season to copy from.',
                     status_code=status.HTTP_400_BAD_REQUEST,
                 )
+            source_season = preceding
         else:
-            source_season = self._resolve_copy_source(target_season, source_id)
+            source_season = self._resolve_existing_copy_source(target_season, source_id)
         if isinstance(source_season, Response):
             return source_season
         options = SeasonCopyDateBasisSerializer(data=request.query_params)
@@ -284,6 +313,7 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             'unconfigured_perennial_count': unconfigured_count,
             'source_season_id': source_season.pk,
             'source_season_label': source_season.label,
+            'is_preceding_source': source_season == preceding,
         })
 
     @action(detail=True, methods=['post'], url_path='copy-from', history_read_only=True)
@@ -298,7 +328,7 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             if 'source_season_id' in serializer.errors:
                 return self._invalid_copy_source_id()
             return self._invalid_copy_options(serializer.errors)
-        source_season = self._resolve_copy_source(
+        source_season = self._resolve_existing_copy_source(
             target_season, serializer.validated_data['source_season_id'],
         )
         if isinstance(source_season, Response):
@@ -325,8 +355,8 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             if 'use_actual_dates' in serializer.errors:
                 return self._invalid_copy_options(serializer.errors)
             raise ValidationError(serializer.errors)
-        source_season = self._resolve_copy_source(
-            Season(start_date=serializer.validated_data['start_date']),
+        source_season = self._resolve_creation_copy_source(
+            serializer.validated_data['start_date'],
             serializer.validated_data['source_season_id'],
         )
         if isinstance(source_season, Response):
@@ -437,8 +467,8 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
         )
         copy_requested = bool(request.data.get('copy'))
         if copy_requested and 'source_season_id' in request.data:
-            source = self._resolve_copy_source(
-                Season(start_date=seamless_start), request.data['source_season_id'],
+            source = self._resolve_creation_copy_source(
+                seamless_start, request.data['source_season_id'],
             )
             if isinstance(source, Response):
                 return source

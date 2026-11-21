@@ -1457,6 +1457,7 @@ class SeasonApiTest(ProjectApiTestCase):
         self.assertEqual(preview.status_code, 200)
         self.assertEqual(preview.data['source_season_id'], source.pk)
         self.assertEqual(preview.data['source_season_label'], source.label)
+        self.assertTrue(preview.data['is_preceding_source'])
         self.assertEqual(preview.data['total'], 1)
         self.assertEqual(PlantingPlan.objects.filter(season=target).count(), 1)
 
@@ -1493,8 +1494,7 @@ class SeasonApiTest(ProjectApiTestCase):
         url = f'/openfarmplanner/api/seasons/{target.pk}/'
 
         for source, status_code, code in (
-            (older.pk, 400, 'season_copy_source_not_preceding'),
-            (future.pk, 400, 'season_copy_source_not_preceding'),
+            (future.pk, 400, 'season_copy_source_not_earlier'),
             (target.pk, 400, 'same_source_and_target_season'),
             (foreign_season.pk, 404, 'source_season_not_found'),
             ('invalid', 400, 'invalid_source_season_id'),
@@ -1511,6 +1511,12 @@ class SeasonApiTest(ProjectApiTestCase):
                     self.assertEqual(response.status_code, status_code)
                     self.assertEqual(response.data['code'], code)
 
+        payload = {'source_season_id': older.pk}
+        endpoints = ((self.client.get, 'copy-preview'), (self.client.post, 'copy-from'))
+        for request, endpoint in endpoints:
+            response = request(f'{url}{endpoint}/', payload, HTTP_X_PROJECT_ID=foreign_project.pk)
+            self.assertEqual(response.status_code, 403)
+
         missing = self.client.get(f'{url}copy-preview/', {'resolve_source': 'true'})
         self.assertEqual(missing.data['code'], 'season_copy_no_preceding_source')
         project_plans = PlantingPlan.objects.filter(project=self.project)
@@ -1523,9 +1529,53 @@ class SeasonApiTest(ProjectApiTestCase):
         )
         automatic = self.client.get(f'{url}copy-preview/', {'resolve_source': 'true'})
         self.assertEqual(automatic.data['source_season_id'], preceding.pk)
-        rejected = self.client.post(f'{url}copy-from/', {'source_season_id': older.pk})
-        self.assertEqual(rejected.data['code'], 'season_copy_source_not_preceding')
+        self.assertTrue(automatic.data['is_preceding_source'])
         self.assertFalse(PlantingPlan.objects.filter(season=target).exists())
+
+    def test_historical_copy_without_intermediate_season_uses_real_periods_and_leap_dates(self):
+        source = Season.objects.create(
+            project=self.project, start_date=date(2023, 9, 1), end_date=date(2024, 8, 31),
+            custom_label='Historical garden',
+        )
+        target = Season.objects.create(
+            project=self.project, start_date=date(2026, 9, 1), end_date=date(2027, 8, 31),
+        )
+        original = PlantingPlan.objects.create(
+            crop=self.crop, bed=self.bed, project=self.project, season=source,
+            cultivation_type='direct_sowing', planting_date=date(2024, 2, 26),
+            actual_sowing_date=date(2024, 2, 29), harvest_date=date(2024, 5, 1),
+            harvest_date_is_explicit=True,
+        )
+        existing = PlantingPlan.objects.create(
+            crop=self.crop, project=self.project, season=target, planting_date=date(2027, 6, 1),
+        )
+        url = f'/openfarmplanner/api/seasons/{target.pk}/'
+        options = {'source_season_id': source.pk, 'use_actual_dates': True}
+
+        preview = self.client.get(f'{url}copy-preview/', options)
+        self.assertEqual(preview.status_code, 200)
+        self.assertEqual(preview.data['source_season_label'], source.label)
+        self.assertFalse(preview.data['is_preceding_source'])
+        self.assertEqual(preview.data['total'], 1)
+        self.assertEqual(PlantingPlan.objects.filter(season=target).get().pk, existing.pk)
+
+        result = self.client.post(f'{url}copy-from/', options)
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.data['target_planting_plan_count'], 2)
+        copied = PlantingPlan.objects.filter(season=target).exclude(pk=existing.pk).get()
+        self.assertEqual(copied.planting_date, date(2027, 2, 28))
+        self.assertEqual(copied.harvest_date, date(2027, 5, 1))
+        self.assertEqual(copied.bed_id, original.bed_id)
+        self.assertIsNone(copied.actual_sowing_date)
+        self.assertIsNone(copied.copied_from_plan_id)
+        original.refresh_from_db()
+        existing.refresh_from_db()
+        self.assertEqual(original.actual_sowing_date, date(2024, 2, 29))
+        self.assertEqual(existing.planting_date, date(2027, 6, 1))
+        batch = BatchOperation.objects.get(
+            project=self.project, operation_type=BatchOperation.TYPE_SEASON_COPY_DATA,
+        )
+        self.assertEqual(batch.context['source_season_label'], source.label)
 
     def test_copy_from_returns_structured_error_for_missing_source(self):
         target = Season.objects.create(

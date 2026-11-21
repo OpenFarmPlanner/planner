@@ -662,11 +662,12 @@ new/changed files, project variants, literal filters and fail-closed inputs.
 `frontend/e2e/*.spec.ts` file has no entry in the profile, or when the profile
 lists a deleted file. A new spec therefore lands with either a refreshed
 profile or an estimated `{ tests, duration_ms }` entry until the next refresh.
-The profile was last refreshed in #1210 from run
-[44085890583](https://github.com/OpenFarmPlanner/planner/actions/runs/44085890583)
-(65 files, 392 tests, no retries). That run, still scheduled with the old
-weights, measured 641 / 821 / 733 seconds of test time per shard. The new
-weights predict about 733 seconds for each shard.
+The latest refresh uses [run 44898486810](https://github.com/OpenFarmPlanner/planner/actions/runs/44898486810)
+(79 files, 459 tests, zero retries). That run measured about 826, 913 and 1034
+seconds in the three Playwright steps. The refreshed weights estimate about
+893–897 seconds per shard in test files, before service startup and teardown.
+The refresh follows two job-limit cancellations after Playwright reported
+all tests passed in [#1406](https://github.com/OpenFarmPlanner/planner/issues/1406).
 
 To refresh the profile, combine `E2E_TIMING_FILE` durations and counts from
 all three successful, retry-free jobs of one comparable run. Use the selected

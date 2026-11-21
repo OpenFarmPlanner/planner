@@ -1,5 +1,6 @@
 """Local test data must be explicit, isolated and safe to prepare repeatedly."""
 
+from datetime import date
 from io import StringIO
 from unittest.mock import patch
 
@@ -73,6 +74,34 @@ class LocalLibraryImportSeedTests(TestCase):
         )
         self.assertEqual(edited_plans.count(), 2)
         self.assertEqual(PlantingPlan.objects.filter(project__in=projects).count(), 2)
+
+    def test_historical_season_fixture_previews_and_preserves_manual_edits(self):
+        command = 'seed_season_creation_dates_acceptance'
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        call_command(command, historical_copy=True, **arguments)
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before))
+
+        call_command(command, historical_copy=True, apply=True, **arguments)
+        project = Project.objects.get(name='Historical season copy')
+        self.assertTrue(ProjectMembership.objects.filter(
+            project=project, user=self.user, role='admin',
+        ).exists())
+        self.assertEqual(
+            list(project.seasons.order_by('start_date').values_list('start_date', flat=True)),
+            [date(2024, 1, 1), date(2025, 1, 1), date(2026, 1, 1)],
+        )
+        lettuce = project.planting_plans.get(crop__name='Lettuce')
+        self.assertEqual(lettuce.actual_sowing_date, date(2024, 2, 29))
+        carrot = project.planting_plans.get(crop__name='Carrot')
+        self.assertEqual(carrot.planting_date, date(2026, 4, 1))
+
+        lettuce.notes = 'Keep this manual edit'
+        lettuce.save(update_fields=['notes'])
+        call_command(command, historical_copy=True, apply=True, **arguments)
+        lettuce.refresh_from_db()
+        self.assertEqual(lettuce.notes, 'Keep this manual edit')
+        self.assertEqual(project.planting_plans.count(), 2)
+        self.assertEqual(Project.objects.count(), len(self.project_ids_before) + 1)
 
     def test_bed_capacity_fixture_previews_and_preserves_manual_edits(self):
         command = 'seed_bed_capacity_acceptance'
