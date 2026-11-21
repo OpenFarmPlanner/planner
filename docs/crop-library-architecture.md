@@ -2591,10 +2591,19 @@ its existing unique-name behavior.
 The library page, mobile selector and compact picker share selection scoped to
 the active project. The toolbar reports the number of eligible parents in the
 current search and filters. The preview expands selected parents to their
-published varieties when **Include varieties** is selected. It compares existing
-matches through `ExistingCropLinkDialog`, where project fields can be kept local
-or selected library fields can be pulled. Linked entries are skipped, with
-available updates flagged for individual review.
+published varieties when **Include varieties** is selected. **Import and link**
+is the default for new entries and unambiguous existing species matches. An
+existing match uses its field comparison and versioned target snapshot. Empty
+project fields can take library values, and differing project values are pinned
+where supported. A conflicting value that cannot be pinned, or an uncertain
+identity match, needs review before that entry can be imported. If its parent
+needs review, its varieties also wait. Ready entries can be imported immediately.
+
+Use **Review** to change a row to a one-time import, choose field values, or
+skip it. The batch default applies to ready rows that have no individual
+decision. The preview shows ready, needs-review and skipped counts and explains
+which entries will be excluded. Already linked entries stay unchanged and show
+whether a library update is available.
 
 `POST /api/public-crops/import-batch/` takes `expected_project_id`, a client UUID
 in `request_id`, and explicit `groups` containing `parent_id` and versioned
@@ -2610,8 +2619,20 @@ response is lost, retrying the original request retrieves its receipt. Closing
 the confirmation leaves **Check import result** available in the same library
 view for the current project. After a
 confirmed partial result, the browser previews only the failed cultures for a
-new request. It refreshes project link indicators while retaining search and
-filters. [Import history and receipt replay](versioning-and-history.md#grouped-operations-and-imports)
+new request. Explicit field or mode decisions in a failed group need fresh
+review before being submitted again. It refreshes project link indicators
+while retaining search and filters. [Import history and receipt replay](versioning-and-history.md#grouped-operations-and-imports)
+
+For local acceptance, reuse the guarded `seed_library_import_acceptance`
+command with `--include-variety-selection`. In **Carrot variety selection
+(partial)**, search for the synthetic Carrot entry and select it together with a
+library crop absent from that project. Preview with **Include varieties**
+enabled. The linked parent and first variety are skipped, the missing variety
+and fresh crop can link, and review shows the existing Rodelika's private note
+and growth duration. Switch the missing variety to a one-time import, then
+confirm. Check the existing crop IDs, plan reference and private values in
+Cultures. Use the command's `--include-name-conflicts` fixture to verify a
+name-only match waits for review. [Local fixture command](work-execution-queue.md#local-test-data-handoff)
 
 ### Seven-language species moderation table
 

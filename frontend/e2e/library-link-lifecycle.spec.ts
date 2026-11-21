@@ -810,11 +810,21 @@ test.describe('bulk library import', () => {
       const existing = await prepareSelectedVarietyParent(source, `${scenario} Vorhanden`);
       const linked = await prepareSelectedVarietyParent(source, `${scenario} Verknüpft`);
       const stale = await prepareSelectedVarietyParent(source, `${scenario} Geändert`);
+      const ambiguous = await prepareSelectedVarietyParent(source, `${scenario} Unklar`);
       const variety = await publishVariety(source, { id: fresh.crop_species, name: fresh.name }, `Frühe Sorte ${scenario}`);
       await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
-      interface LocalCrop extends CropRow { source_public_crop: number | null; notes: string }
+      interface LocalCrop extends CropRow {
+        source_public_crop: number | null;
+        derived_from_public_crop: number | null;
+        notes: string;
+        growth_duration_days: number;
+        library_pinned_fields: string[];
+      }
       const local = await apiRequest<LocalCrop>(page, 'POST', '/crops/', {
         name: existing.name, crop_species: existing.crop_species, notes: 'Private Notiz behalten', growth_duration_days: 95,
+      });
+      const unclassified = await apiRequest<LocalCrop>(page, 'POST', '/crops/', {
+        name: ambiguous.name, notes: 'Unclassified local crop',
       });
       await apiRequest(page, 'POST', `/public-crops/${linked.id}/import/`, {});
       const localRows = async () => (await apiRequest<{ results: LocalCrop[] }>(page, 'GET', '/crops/?page_size=50')).results;
@@ -861,10 +871,10 @@ test.describe('bulk library import', () => {
       await page.keyboard.press('Space');
       await expect(page.getByRole('status').filter({ hasText: text.selected.replace('{{count}}', '2') })).toBeVisible();
       await search.fill(scenario);
-      await page.getByRole('button', { name: text.selectVisible.replace('{{count}}', '4'), exact: true }).click();
-      await page.getByRole('button', { name: text.clearVisible.replace('{{count}}', '4'), exact: true }).click();
+      await page.getByRole('button', { name: text.selectVisible.replace('{{count}}', '5'), exact: true }).click();
+      await page.getByRole('button', { name: text.clearVisible.replace('{{count}}', '5'), exact: true }).click();
       await expect(page.getByRole('status').filter({ hasText: text.selected.replace('{{count}}', '0') })).toBeVisible();
-      await page.getByRole('button', { name: text.selectVisible.replace('{{count}}', '4'), exact: true }).click();
+      await page.getByRole('button', { name: text.selectVisible.replace('{{count}}', '5'), exact: true }).click();
       await page.getByRole('button', { name: fresh.name, exact: true }).click();
       await expect(page.getByRole('checkbox', { name: selectName(fresh.name), exact: true })).toBeChecked();
       await expectNoHorizontalPageOverflow(page);
@@ -875,7 +885,7 @@ test.describe('bulk library import', () => {
       await page.screenshot({ path: testInfo.outputPath('batch-library-1024.png'), animations: 'disabled' });
 
       await page.getByRole('button', { name: text.import, exact: true }).click();
-      const confirmation = page.getByRole('dialog', { name: text.confirmTitle_other.replace('{{count}}', '4') });
+      const confirmation = page.getByRole('dialog', { name: text.confirmTitle_other.replace('{{count}}', '5') });
       const include = confirmation.getByRole('checkbox', { name: text.includeVarieties, exact: true });
       await expect(include).toBeChecked();
       await expect(confirmation.getByText(text.varieties.replace('{{count}}', '1'), { exact: true })).toBeVisible();
@@ -888,13 +898,30 @@ test.describe('bulk library import', () => {
       await expect(confirmation.getByText(text.varieties.replace('{{count}}', '1'), { exact: true })).toBeHidden();
       await include.check();
       await expect(confirmation.getByText(text.varieties.replace('{{count}}', '1'), { exact: true })).toBeVisible();
-      await expect(confirmation.getByRole('button', { name: text.import, exact: true })).toBeDisabled();
-      await confirmation.getByRole('button', { name: text.reviewNamed.replace('{{name}}', existing.name), exact: true }).click();
+      const submit = confirmation.getByRole('button', { name: text.import, exact: true });
+      await expect(submit).toBeEnabled();
+      await expect(confirmation.getByRole('status')).toContainText(text.readyCount.replace('{{count}}', '4'));
+      await expect(confirmation.getByRole('status')).toContainText(text.needsReviewCount.replace('{{count}}', '1'));
+      await expect(confirmation.getByText(text.unresolvedExcluded, { exact: true })).toBeVisible();
+      const existingRow = confirmation.getByRole('listitem').filter({ hasText: existing.name });
+      await expect(existingRow).toContainText(text.link);
+      await expect(existingRow).toContainText(/Unterschiede \(\d+\)/);
+      await expect(confirmation.getByRole('listitem').filter({ hasText: ambiguous.name })).toContainText(text.rowStatus.needsReview);
+      const varietyReview = confirmation.getByRole('button', { name: new RegExp(variety.crop.variety) });
+      await varietyReview.press('Enter');
       const comparison = page.getByRole('dialog', { name: germanCrops.library.importDecision.title });
-      await comparison.getByRole('button', { name: germanCrops.library.sync.allMine, exact: true }).click();
+      await comparison.getByRole('radio', { name: germanCrops.library.importDecision.copy, exact: true }).check();
       await comparison.getByRole('button', { name: germanCrops.library.varietyImport.continue, exact: true }).click();
-      await expect(confirmation.getByRole('button', { name: text.import, exact: true })).toBeEnabled();
-      expect((await localRows())).toHaveLength(2);
+      await expect(varietyReview).toBeFocused();
+      const batchDefault = confirmation.getByRole('combobox', { name: text.batchDefault });
+      await batchDefault.click();
+      await page.getByRole('option', { name: text.skip, exact: true }).click();
+      await expect(submit).toBeDisabled();
+      await batchDefault.click();
+      await page.getByRole('option', { name: text.link, exact: true }).click();
+      await expect(varietyReview.locator('..')).toContainText(germanCrops.library.importDecision.copy);
+      await expect(submit).toBeEnabled();
+      expect(await localRows()).toHaveLength(3);
 
       await apiRequest(source, 'PATCH', `/public-crops/${stale.id}/`, { base_version: stale.version, growth_duration_days: 119 });
       const writes: { request_id: string; groups: { parent_id: number }[] }[] = [];
@@ -923,6 +950,8 @@ test.describe('bulk library import', () => {
       await expect(result.getByText(text.failedCount.replace('{{count}}', '1'), { exact: true })).toBeVisible();
       await expect(result.getByText(text.importedCount.replace('{{count}}', '2'), { exact: true })).toBeVisible();
       expect(writes[0]).toEqual(writes[1]);
+      expect(writes[0].groups.some(group => group.parent_id === ambiguous.id)).toBe(false);
+      await expect(result.getByText(text.excludedCount.replace('{{count}}', '1'), { exact: true })).toBeVisible();
       await page.setViewportSize({ width: 800, height: 375 });
       await expect(result.getByRole('button', { name: text.retryFailed, exact: true })).toBeInViewport();
       await expectNoHorizontalPageOverflow(page);
@@ -937,9 +966,15 @@ test.describe('bulk library import', () => {
       await expect(result.getByText(text.skippedCount.replace('{{count}}', '1'), { exact: true })).toBeVisible();
       expect(writes[2].groups.map(group => group.parent_id)).toEqual([stale.id]);
       const rows = await localRows();
-      expect(rows).toHaveLength(5);
-      expect(rows.find(row => row.id === local.id)).toMatchObject({ source_public_crop: existing.id, notes: local.notes });
-      expect(rows.find(row => row.source_public_crop === variety.publicCropId)).toBeTruthy();
+      expect(rows).toHaveLength(6);
+      expect(rows.find(row => row.id === local.id)).toMatchObject({
+        source_public_crop: existing.id,
+        notes: local.notes,
+        growth_duration_days: local.growth_duration_days,
+        library_pinned_fields: expect.arrayContaining(['notes', 'growth_duration_days']),
+      });
+      expect(rows.find(row => row.id === unclassified.id)).toMatchObject({ source_public_crop: null });
+      expect(rows.find(row => row.derived_from_public_crop === variety.publicCropId)).toMatchObject({ source_public_crop: null });
       await result.getByRole('button', { name: 'Schließen', exact: true }).click();
       await expect(mode).toBeFocused();
       await expect(search).toHaveValue(scenario);
@@ -971,7 +1006,7 @@ test.describe('bulk library import', () => {
         await page.screenshot({ path: testInfo.outputPath(`batch-library-${viewport.width}-${viewport.height}.png`), animations: 'disabled' });
         await mobile.getByRole('button', { name: 'Abbrechen', exact: true }).last().click();
       }
-      expect(await localRows()).toHaveLength(5);
+      expect(await localRows()).toHaveLength(6);
 
       await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'fr' });
       await page.evaluate(() => {
@@ -995,13 +1030,12 @@ test.describe('bulk library import', () => {
       await browserDialog.getByRole('button', { name: french.import, exact: true }).tap();
       const frenchPreview = page.getByRole('dialog', { name: french.confirmTitle_one.replace('{{count}}', '1'), exact: true });
       await frenchPreview.getByRole('checkbox', { name: french.includeVarieties, exact: true }).uncheck();
-      await frenchPreview.getByRole('button', { name: french.import, exact: true }).tap();
-      const frenchResult = page.getByRole('dialog', { name: french.results, exact: true });
-      await expect(frenchResult.getByText(french.skippedCount.replace('{{count}}', '1'), { exact: true })).toBeVisible();
-      await frenchResult.getByRole('button', { name: 'Fermer', exact: true }).tap();
+      await expect(frenchPreview.getByText(french.rowStatus.alreadyLinked, { exact: true })).toBeVisible();
+      await expect(frenchPreview.getByRole('button', { name: french.import, exact: true })).toBeDisabled();
+      await frenchPreview.getByRole('button', { name: 'Annuler', exact: true }).tap();
       await expect(browserDialog).toBeVisible();
       await expect(dialogSearch).toHaveValue(fresh.name);
-      expect(await localRows()).toHaveLength(5);
+      expect(await localRows()).toHaveLength(6);
     } finally {
       await source.close();
       await resetE2EScenario(request, scenario);

@@ -91,6 +91,19 @@ function Harness({
 const summary = () => screen.getByTestId('public-crop-sync-summary');
 
 describe('PublicCropSyncPanel', () => {
+  it('leaves an unresolved batch conflict unselected until a library value is chosen explicitly', async () => {
+    const change = { field: 'name', local_value: 'Local name', public_value: 'Library name', pushable: false };
+    const onChoicesChange = vi.fn();
+    render(<PublicCropSyncPanel changes={[change]} choices={{}} onChoicesChange={onChoicesChange}
+      requiresModeration={false} allowLocal libraryOrOwn unresolvedFields={new Set(['name'])} />);
+    const row = screen.getByTestId('public-crop-sync-row-name');
+    for (const option of within(row).getAllByRole('radio')) expect(option).not.toBeChecked();
+    await userEvent.click(screen.getByRole('button', { name: 'Alle meine Werte' }));
+    expect(onChoicesChange).toHaveBeenLastCalledWith({});
+    await userEvent.click(screen.getByRole('button', { name: 'Alle aus Bibliothek' }));
+    expect(onChoicesChange).toHaveBeenLastCalledWith({ name: 'library' });
+  });
+
   it('shows both values per differing field and a live summary of the preselection', () => {
     render(<Harness />);
 

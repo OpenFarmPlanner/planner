@@ -90,6 +90,18 @@ export function buildDefaultSyncChoices(
   return Object.fromEntries(changes.map((change) => [change.field, getDefaultSyncChoice(change, options)]));
 }
 
+export function buildSafeImportSyncChoices(
+  changes: readonly PublicCropSyncFieldChange[], mode: 'copy' | 'link',
+): PublicCropSyncChoices {
+  const choices: PublicCropSyncChoices = {};
+  for (const change of changes) {
+    if (!change.pinned && isEmptyPublicValue(change.local_value)) choices[change.field] = 'library';
+    else if (mode === 'copy') choices[change.field] = 'mine';
+    else if (canKeepSyncFieldLocally(change)) choices[change.field] = 'local';
+  }
+  return choices;
+}
+
 function isChoiceAvailable(change: PublicCropSyncFieldChange, choice: PublicCropSyncChoice): boolean {
   if (choice === 'mine') return change.pushable;
   if (choice === 'local') return canKeepSyncFieldLocally(change);
