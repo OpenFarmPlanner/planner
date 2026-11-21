@@ -137,7 +137,7 @@ export function PublicCropBatchImportDialog({ open, projectId, initialParents, o
 
   const retryFailed = () => {
     resetPreview();
-    setChoices(current => new Map([...current].map(([id, value]) => [id, value === null ? null : 'reviewAgain'])));
+    setChoices(current => new Map([...current].map(([id, value]) => [id, value && { ...value, reviewAgain: true }])));
     setParents(failedParents);
     setResultOpen(false);
   };
@@ -146,14 +146,14 @@ export function PublicCropBatchImportDialog({ open, projectId, initialParents, o
     setChoices(current => new Map(current).set(id, choice));
   };
 
-  if (comparison) return <ExistingCropLinkDialog key={comparison.crop.id} publicCrop={comparison.crop}
+  if (comparison && preview) return <ExistingCropLinkDialog key={comparison.crop.id} publicCrop={comparison.crop}
     candidates={comparison.candidates} allowSharing={false}
     batchReview={{
-      decision: comparison.decision,
+      decision: comparison.reviewDecision,
       onSkip: () => { rememberChoice(comparison.crop.id, null); setComparison(null); },
     }}
     onClose={() => setComparison(null)} onLinked={() => undefined}
-    onDecision={decision => { rememberChoice(comparison.crop.id, decision); setComparison(null); }} />;
+    onDecision={decision => { rememberChoice(comparison.crop.id, { decision, previewId: preview.id }); setComparison(null); }} />;
 
   const close = () => onClose(requestStarted && error === 'request' ? 'pending'
     : resultOpen || results.size > 0 || requestStarted ? 'finished' : 'cancelled');

@@ -70,21 +70,37 @@ describe('public library batch defaults', () => {
   it('honors individual copy and skip decisions when the batch default changes', async () => {
     const preview = await loadBatchImportPreview([fresh, matched, ambiguous], true, vi.fn(), vi.fn());
     const copy = { ...defaultLink(fresh), link_to_library: false };
-    const choices = new Map<number, BatchImportChoice>([[fresh.id, copy], [ambiguous.id, null]]);
+    const choices = new Map<number, BatchImportChoice>([[fresh.id, { decision: copy, previewId: preview.id }], [ambiguous.id, null]]);
     const plan = buildBatchImportPlan(preview, choices, true);
     expect(plan.groups).toEqual([{ parent_id: fresh.id, decisions: [copy] }]);
     expect(plan.skipped).toEqual([variety.id, matched.id, ambiguous.id, ambiguousVariety.id]);
     expect(buildBatchImportPlan(preview, choices, false).groups[0].decisions).toEqual([copy, defaultLink(variety)]);
   });
 
+  it('rechecks a retained choice against the refreshed local target, even when the public version stays the same', async () => {
+    const preview = await loadBatchImportPreview([matched], true, vi.fn(), vi.fn());
+    const decision = { ...preview.groups[0][0].defaultDecision!, link_to_library: false, pin_fields: [] };
+    const choices = new Map<number, BatchImportChoice>([[matched.id, { decision, previewId: preview.id }]]);
+    const unchanged = await loadBatchImportPreview([matched], false, vi.fn(), vi.fn());
+    expect(buildBatchImportPlan(unchanged, choices, false).groups[0].decisions).toEqual([decision]);
+
+    const updated = syncResponse(matched, []);
+    updated.data.crop_updated_at = '2026-11-21T10:00:00+00:00';
+    vi.mocked(cropAPI.publicSyncPreview).mockResolvedValueOnce(updated);
+    const refreshed = await loadBatchImportPreview([matched], false, vi.fn(), vi.fn());
+    const plan = buildBatchImportPlan(refreshed, choices, false);
+    expect(plan).toMatchObject({ groups: [], ready: 0, needsReview: 1 });
+    expect(plan.rows[0][0]).toMatchObject({ decision: null, reviewDecision: decision });
+  });
+
   it('does not reapply a stale explicit decision or write a linked-only group', async () => {
     const preview = await loadBatchImportPreview([fresh, linked], false, vi.fn(), vi.fn());
     const choices = new Map<number, BatchImportChoice>([
-      [fresh.id, { ...defaultLink(fresh), link_to_library: false, base_version: 1 }],
+      [fresh.id, { decision: { ...defaultLink(fresh), link_to_library: false, base_version: 1 }, previewId: Symbol() }],
     ]);
     const plan = buildBatchImportPlan(preview, choices, false);
     expect(plan).toMatchObject({ groups: [], ready: 0, needsReview: 1, skipped: [linked.id] });
-    choices.set(fresh.id, 'reviewAgain');
+    choices.set(fresh.id, { decision: defaultLink(fresh), previewId: preview.id, reviewAgain: true });
     expect(buildBatchImportPlan(preview, choices, false).groups).toEqual([]);
   });
 });

@@ -19,9 +19,11 @@ export interface BatchImportEntry {
   candidates: CropLinkCandidate[];
   defaultDecision: PublicCropImportDecision | null;
   differences: number | null;
+  targetSnapshot?: { id: number; updatedAt: string };
 }
 
 export interface BatchImportPreview {
+  id: symbol;
   groups: BatchImportEntry[][];
   unavailable: PublicCrop[];
 }
@@ -45,8 +47,9 @@ async function previewEntry(crop: PublicCrop, checkProject: () => void): Promise
   const { data: preview } = await cropAPI.publicSyncPreview(candidate.id, crop.id);
   const choices = buildSafeImportSyncChoices(preview.changes, 'link');
   entry.differences = preview.changes.length;
-  if (!preview.crop_updated_at || preview.public_crop_id !== crop.id || preview.public_version !== crop.version
-    || preview.changes.some(change => !choices[change.field])) return entry;
+  if (!preview.crop_updated_at || preview.public_crop_id !== crop.id || preview.public_version !== crop.version) return entry;
+  entry.targetSnapshot = { id: candidate.id, updatedAt: preview.crop_updated_at };
+  if (preview.changes.some(change => !choices[change.field])) return entry;
 
   const { pullFields, pinFields } = splitSyncChoices(preview.changes, choices, { allowLocal: true });
   return {
@@ -89,27 +92,45 @@ export async function loadBatchImportPreview(
     throw new BatchImportLimitError();
   }
   const previews = await loadImportEntryPreviews(entries, crop => previewEntry(crop, checkProject), checkProject, onProgress);
-  return { groups: groups.map(group => group.map(crop => previews.get(crop.id)!)), unavailable };
+  return { id: Symbol(), groups: groups.map(group => group.map(crop => previews.get(crop.id)!)), unavailable };
 }
 
-export type BatchImportChoice = PublicCropImportDecision | null | 'reviewAgain';
+export type BatchImportChoice = {
+  decision: PublicCropImportDecision;
+  previewId: symbol;
+  reviewAgain?: boolean;
+} | null;
 
 type RowStatus = 'ready' | 'needsReview' | 'skipped' | 'alreadyLinked' | 'linkedUpdate';
 export interface BatchImportRow extends BatchImportEntry {
   status: RowStatus;
   decision: PublicCropImportDecision | null;
+  reviewDecision: PublicCropImportDecision | null;
   parentBlocked: boolean;
 }
 
-function planEntry(entry: BatchImportEntry, choice: BatchImportChoice | undefined, skipDefaults: boolean): BatchImportRow {
+function isCurrentReview(entry: BatchImportEntry, choice: NonNullable<BatchImportChoice>, previewId: symbol): boolean {
+  const { decision } = choice;
+  if (choice.reviewAgain) return false;
+  if (choice.previewId === previewId) return true;
+  if (decision.base_version !== entry.crop.version) return false;
+  if (!decision.target_id) return decision.mode !== 'new' && entry.candidates.length === 0;
+  return entry.targetSnapshot?.id === decision.target_id
+    && entry.targetSnapshot.updatedAt === decision.expected_updated_at;
+}
+
+function planEntry(
+  entry: BatchImportEntry, choice: BatchImportChoice | undefined, previewId: symbol, skipDefaults: boolean,
+): BatchImportRow {
   const linked = entry.crop.project_import_status;
-  const decision = choice === undefined ? (skipDefaults ? null : entry.defaultDecision) : choice;
+  const reviewDecision = choice?.decision ?? entry.defaultDecision;
+  const decision = choice ? (isCurrentReview(entry, choice, previewId) ? choice.decision : null)
+    : choice === null || skipDefaults ? null : entry.defaultDecision;
   let status: RowStatus;
   if (linked) status = linked.is_up_to_date ? 'alreadyLinked' : 'linkedUpdate';
-  else if (choice === 'reviewAgain' || (choice && choice.base_version !== entry.crop.version)) status = 'needsReview';
   else if (choice === null || (skipDefaults && choice === undefined && entry.defaultDecision)) status = 'skipped';
   else status = decision ? 'ready' : 'needsReview';
-  return { ...entry, status, decision: status === 'ready' && decision !== 'reviewAgain' ? decision : null, parentBlocked: false };
+  return { ...entry, status, decision: status === 'ready' ? decision : null, reviewDecision, parentBlocked: false };
 }
 
 export function buildBatchImportPlan(
@@ -120,7 +141,7 @@ export function buildBatchImportPlan(
   let ready = 0;
   let needsReview = 0;
   const rows = preview.groups.map(group => {
-    const [parent, ...varieties] = group.map(entry => planEntry(entry, choices.get(entry.crop.id), skipDefaults));
+    const [parent, ...varieties] = group.map(entry => planEntry(entry, choices.get(entry.crop.id), preview.id, skipDefaults));
     const parentAvailable = Boolean(parent.decision || parent.crop.project_import_status);
     const children = varieties.map(row => {
       if (parentAvailable || row.status === 'alreadyLinked' || row.status === 'linkedUpdate' || row.status === 'skipped') {

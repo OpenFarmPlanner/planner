@@ -33,8 +33,13 @@ export function ExistingCropLinkDialog({ publicCrop, candidates, onClose, onLink
   const onlyCandidate = candidates.length === 1 && candidates[0].species_match && !candidates[0].source_public_crop
     ? candidates[0].id : undefined;
   const savedDecision = batchReview?.decision;
-  const [target, setTarget] = useState<number | 'new' | undefined>(() => savedDecision
-    ? savedDecision.target_id ?? 'new' : candidates.length ? onlyCandidate : 'new');
+  const [target, setTarget] = useState<number | 'new' | undefined>(() => {
+    if (savedDecision?.target_id && candidates.some(candidate => candidate.id === savedDecision.target_id && !candidate.source_public_crop)) {
+      return savedDecision.target_id;
+    }
+    if (!candidates.length || (savedDecision && !savedDecision.target_id && canCreate)) return 'new';
+    return onlyCandidate;
+  });
   const [mode, setMode] = useState<'copy' | 'link'>(() => savedDecision
     ? (savedDecision.link_to_library ? 'link' : 'copy')
     : onDecision || candidates.some(candidate => !candidate.source_public_crop) ? 'link' : 'copy');

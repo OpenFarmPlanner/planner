@@ -2601,7 +2601,8 @@ needs review, its varieties also wait. Ready entries can be imported immediately
 
 Use **Review** to change a row to a one-time import, choose field values, or
 skip it. The batch default applies to ready rows that have no individual
-decision. The preview shows ready, needs-review and skipped counts and explains
+decision. A refreshed preview retains a reviewed target only while it can
+verify the same public version and local snapshot. The preview shows ready, needs-review and skipped counts and explains
 which entries will be excluded. Already linked entries stay unchanged and show
 whether a library update is available.
 
