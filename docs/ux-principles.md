@@ -24,6 +24,12 @@ These principles apply when drafting/reviewing issues and implementing user-faci
 
 9. **Keep complexity proportional to user benefit.** Every new field, preference, menu, toggle and confirmation needs a concrete user scenario. Prefer defaults and optional advanced capability over comprehensive upfront configuration. Accessibility, data integrity and informed consent take precedence over shaving off clicks.
 
+## Preserve space for primary content
+
+Give controls space and prominence in proportion to their importance and frequency of use. Before adding a persistent row, panel, toolbar, card, large button or explanation, look for room in an existing structure. Vertical space above tables, lists and calendars is especially valuable because extra controls can push records below the fold.
+
+For occasional settings such as a table's date display mode, consider a useful default and a compact selector alongside Search, Filter or Columns. Use an established contextual menu when users can still find the action easily. Keep primary actions visible and allow controls to wrap or use an extra row when the viewport, readable translations or accessible touch and keyboard targets need the space.
+
 ## UX issue preflight
 
 When creating or revising a user-facing issue, review the **whole flow** rather than only the requested component:
