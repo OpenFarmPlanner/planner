@@ -5,7 +5,11 @@ test.use({ serviceWorkers: 'block' });
 
 async function compareCrop(page: Page, crop: string) {
   await page.goto('/app/yield-overview');
-  await page.getByRole('button', { name: 'Saisonen vergleichen' }).click();
+  const topbar = page.getByTestId('topbar-workspace-controls');
+  await expect(topbar.getByRole('button', { name: 'Prognosekalender' })).toHaveAttribute('aria-pressed', 'true');
+  const compare = topbar.getByRole('button', { name: 'Saisonen vergleichen' });
+  await compare.click();
+  await expect(compare).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('combobox', { name: 'Kultur' }).click();
   await page.getByRole('option', { name: crop, exact: true }).click();
   return page.getByRole('table', { name: crop });
@@ -35,6 +39,12 @@ test('compares measured yields and exposes a table and actual date deviations wi
   await expect(results.getByText('2 Tage später', { exact: true }).first()).toBeVisible();
   await expect(results.getByRole('heading', { name: 'Ertrag pro m² beernteter Fläche' })).toBeVisible();
   await expect(results.getByText(/16,5 m²/)).toBeVisible();
+
+  const forecast = page.getByTestId('topbar-workspace-controls').getByRole('button', { name: 'Prognosekalender' });
+  await forecast.press('Enter');
+  await expect(forecast).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Monat', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Monat', exact: true })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test.describe('touch comparison', () => {
@@ -46,6 +56,7 @@ test.describe('touch comparison', () => {
       loginAsAdmin: true, demoProject: true, demoYear: 2026,
     });
     const results = await compareCrop(page, 'Tomate (Roma)');
+    await expect(page.getByTestId('topbar-workspace-row').getByRole('button', { name: 'Saisonen vergleichen' })).toBeVisible();
     await expect(results.getByText('15,8 kg + 8 Stück', { exact: true })).toBeVisible();
     await expect(results.getByText('0,88 kg geschätzt', { exact: true })).toBeVisible();
     await expect(results.getByText('3 kg ohne Zuordnung', { exact: true })).toBeVisible();
