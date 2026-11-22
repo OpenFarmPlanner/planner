@@ -632,7 +632,7 @@
 .rmg-task-item-label {
   /* Keep the continuation visible on bars that extend behind the sticky field column. */
   position: sticky;
-  inset-inline-start: calc(var(--rmg-left-column-width, 160px) + 3px);
+  inset-inline-start: calc(var(--rmg-left-column-width, 160px) + var(--rmg-left-column-overlay, 0px) + 3px);
   display: flex;
   align-items: center;
   gap: 4px;

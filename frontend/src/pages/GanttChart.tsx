@@ -1912,6 +1912,7 @@ function GanttChartPage() {
           <Box
             className={`gantt-container-wrapper gantt-container-wrapper--${calendarMode}`}
             sx={{
+              '--rmg-left-column-overlay': `${ganttSidebarResizeHandleHitboxWidth / 2}px`,
               width: '100%',
               minWidth: 0,
               overflow: 'hidden',
