@@ -98,10 +98,8 @@ class PerennialPlanningTest(ProjectApiTestCase):
             self.assertEqual(self.client.delete(endpoint, **header).status_code, 404)
 
         self.assertEqual(self.client.delete(endpoint).status_code, 200)
-        occurrence = next(
-            item for item in self.client.get(detail).json()['harvest_windows_by_year']['occurrences']
-            if item['year'] == 2027
-        )
+        page = self.client.get(detail).json()['harvest_windows_by_year']
+        occurrence = next(item for item in page['occurrences'] if item['year'] == 2027)
         self.assertEqual(occurrence['default'], {
             'start_date': '2027-09-01', 'end_date': '2027-10-15',
         })
@@ -145,9 +143,8 @@ class PerennialPlanningTest(ProjectApiTestCase):
         self.assertEqual(shortened.status_code, 200, shortened.data)
         season = self.season(2028)
         loaded = self.client.get(detail, HTTP_X_SEASON_ID=str(season.pk)).json()
-        occurrence = next(
-            item for item in loaded['harvest_windows_by_year']['occurrences'] if item['year'] == 2028
-        )
+        page = loaded['harvest_windows_by_year']
+        occurrence = next(item for item in page['occurrences'] if item['year'] == 2028)
         self.assertEqual(occurrence['override'], dates)
         self.assertTrue(occurrence['conflict'])
         self.assertEqual(loaded['seasonal_harvest']['periods'], [{
@@ -177,9 +174,8 @@ class PerennialPlanningTest(ProjectApiTestCase):
             self.assertEqual(loaded['seasonal_harvest']['periods'], [{
                 'start_date': start, 'end_date': end,
             }])
-            windows = [
-                item for item in loaded['harvest_windows_by_year']['occurrences'] if item['override']
-            ]
+            page = loaded['harvest_windows_by_year']
+            windows = [item for item in page['occurrences'] if item['override']]
             self.assertEqual(len(windows), 1)
             self.assertEqual(windows[0]['year'], 2025)
             self.assertEqual(windows[0]['override'], dates)
