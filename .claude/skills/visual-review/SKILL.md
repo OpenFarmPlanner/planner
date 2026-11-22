@@ -42,6 +42,12 @@ text, hidden or displaced actions, misalignment, touch targets on mobile,
 unintended reflow of unrelated elements. Passing functional checks do not prove
 the layout is right. Check the longest language (fr/es) where text grew.
 
+For tooltip and help changes, apply the [tooltip roles](../../../docs/ux-principles.md#tooltip-roles).
+Move the pointer across neighboring controls, then check keyboard focus and touch.
+Look for repeated action labels and excessive help. Check tooltip placement,
+overlap with nearby content and access to record previews. Check the explanatory
+hover delay alongside the responsiveness of data previews.
+
 For changes to persistent controls or layout, compare the rendered before and
 after views using [Preserve space for primary content](../../../docs/ux-principles.md#preserve-space-for-primary-content).
 
