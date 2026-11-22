@@ -334,6 +334,10 @@ test.describe('recurring harvest dates', () => {
         await expect(year.locator('option')).toHaveCount(20);
         await page.getByRole('button', { name: plans.harvestWindows.previousYears }).click();
         await expect(year).toHaveValue('2046');
+        await switchSeason(2027);
+        await expect(year).toHaveValue('2027');
+        await page.getByRole('button', { name: plans.carriedOver.openOrigin }).click();
+        await expect(edit).toBeVisible();
         await apiRequest(page, 'PATCH', `/planting-plans/${plan.id}/`, { clearing_date: '2028-09-10' });
       });
 
