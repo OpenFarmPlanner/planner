@@ -249,6 +249,18 @@ description), one level down:
   A chart pair uses measured mass and complete forecasts for the same plans.
   A season without harvest records has unknown yield, including when a loss
   incident was recorded. The harvest-entry model accepts positive quantities.
+- The comparison `summary` covers all seasons returned by the current filters.
+  It adds the known areas of plans owned by or occupying a selected season.
+  A carried plan contributes once across the window, and unchanged repeated
+  copies use the forecast's deduplication rule. Separate plans using the same
+  bed each contribute their planned area. Missing areas are counted alongside
+  the partial total. If no area is known, the total is unavailable.
+  Recorded amounts use the same allocations and event dates as the seasonal
+  rows, with original piece and bunch quantities separate from measured mass.
+  Crop coverage groups varieties by crop species and uses the normalized name
+  for unlinked crops. The denominator includes those with either a plan or a
+  record in scope. The numerator includes those with at least one harvest
+  record in scope.
 
 There is no server-persisted "last active season" (unlike
 `UserProjectSettings.last_project`); it is a client-only, per-project
@@ -322,6 +334,15 @@ Tomato together, then choose Roma under **More filters** to see that variety's
 6 kg. Switch to **All seasons** to see the fourth season. Each season runs
 from September through August, and a season without a harvest shows
 **Not recorded**. Repeating the command preserves manual edits.
+
+For a mixed-unit check, open a fresh German [demo project](demo-project.md).
+In **Ertragsübersicht → Saisonen vergleichen**, select Tomate and Kohlrabi
+with the default three seasons. The crop coverage reads **1 von 2** and the
+recorded total is **15,8 kg + 8 Stück**. Choose **Hofgarten** and check
+**12,8 kg + 8 Stück** and the disclosure for two harvest records with
+unassigned portions. Switch to Kohlrabi alone and verify **Nicht erfasst**
+with **0 von 1** coverage. Open the existing help to see how planned area
+and crop coverage are calculated.
 
 ## Year-boundary marker on season-spanning axes
 

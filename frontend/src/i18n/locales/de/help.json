@@ -283,7 +283,11 @@
     "yieldOverview": {
       "title": "Hilfe: Ertragsübersicht",
       "intro": "Der Prognosekalender berechnet die erwartete Menge je Anbauplan der aktiven Saison. Dazu multipliziert er den erwarteten Ertrag pro m² mit der geplanten Fläche oder den erwarteten Ertrag pro Pflanze mit der berechneten Pflanzenzahl. Er verteilt die Menge über die Tage des Erntezeitraums. Der Warnhinweis zeigt Anbaupläne mit fehlenden oder ungültigen Angaben.\n\nGrenze die Ansicht auf eine Kultur ein oder wechsle unter „Darstellung“ zwischen Wochen und Monaten. Fahre über einen Balken oder drücke die Leertaste, wenn er fokussiert ist. So siehst du Zeitraum, Kultur und erwartete Erntemenge. Erfasste Ernten findest du unter „Saisonen vergleichen“.",
-      "points": []
+      "points": [
+        "Die geplante Anbaufläche ist die Summe der Flächenangaben der gefilterten Anbaupläne über die ausgewählten Saisonen. Ein laufender Anbauplan zählt einmal. Wenn mehrere Anbaupläne dasselbe Beet nutzen, zählt ihre Fläche je Anbauplan.",
+        "Die erfasste Erntemenge folgt dem Erntedatum. Gewogene Mengen, Stück und Bund bleiben getrennt. Mit einem Standort-, Parzellen- oder Beetfilter zählen nur zugeordnete Mengen. Fehlende Zuordnungen werden angezeigt.",
+        "Die Datenlage zählt Kulturen mit mindestens einem Ernteintrag. Die Bezugsmenge umfasst alle Kulturen mit Anbauplan oder Ernte im Filterbereich. Weitere Ernten können noch fehlen."
+      ]
     }
   }
 }

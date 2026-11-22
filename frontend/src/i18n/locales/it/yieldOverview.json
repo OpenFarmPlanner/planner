@@ -60,6 +60,22 @@
       "missing_harvest_period": "Periodo di raccolta mancante o non valido"
     }
   },
+  "summary": {
+    "plannedArea": "Superficie coltivata prevista",
+    "areaScope_one": "Somma in {{count}} stagione",
+    "areaScope_other": "Somma in {{count}} stagioni",
+    "areaUnavailable": "Non disponibile",
+    "plansWithoutArea_one": "{{count}} serie senza superficie indicata",
+    "plansWithoutArea_other": "{{count}} serie senza superficie indicata",
+    "recordedHarvest": "Quantità raccolta registrata",
+    "recordedCrops": "Colture con raccolta registrata",
+    "cropCoverage": "{{recorded}} su {{total}}",
+    "noCropsInScope": "Nessuna coltura corrisponde ai filtri",
+    "dataCoverage": "Copertura delle raccolte",
+    "coverageBasis": "Almeno una raccolta registrata per coltura",
+    "areaScope_many": "Somma in {{count}} stagioni",
+    "plansWithoutArea_many": "{{count}} serie senza superficie indicata"
+  },
   "comparison": {
     "excludedUnassigned_one": "Quantità senza superficie escluse ({{count}} raccolta)",
     "excludedUnassigned_many": "Quantità senza superficie escluse ({{count}} raccolte)",

@@ -283,7 +283,11 @@
     "yieldOverview": {
       "title": "Ayuda: Resumen de rendimientos",
       "intro": "Para cada plan de cultivo de la temporada activa, la previsión multiplica el rendimiento previsto por m² por la superficie planificada, o el rendimiento previsto por planta por el número de plantas calculado. La cantidad se reparte entre los días del periodo de cosecha. El aviso indica los planes con datos incompletos o no válidos.\n\nFiltra por cultivo o cambia entre semanas y meses en «Vista». Pasa el cursor sobre una barra o pulsa la barra espaciadora cuando tenga el foco para ver el periodo, el cultivo y la cantidad prevista. Consulta las cosechas registradas en «Comparar temporadas».",
-      "points": []
+      "points": [
+        "La superficie de cultivo prevista suma las superficies de las series filtradas durante las temporadas seleccionadas. Una serie que se prolonga cuenta una vez. Si varias series usan el mismo bancal, cada serie aporta su propia superficie.",
+        "La cantidad recolectada registrada se contabiliza por fecha de recolección. Las cantidades pesadas, las unidades y los manojos se mantienen separados. Un filtro de ubicación, parcela o bancal solo incluye las cantidades asignadas e indica si faltan asignaciones.",
+        "El registro cuenta los cultivos con al menos una recolección registrada. El total incluye los cultivos con una serie o una recolección que coincide con los filtros. Puede haber otras recolecciones por registrar."
+      ]
     }
   }
 }

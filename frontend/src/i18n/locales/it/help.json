@@ -283,7 +283,11 @@
     "yieldOverview": {
       "title": "Guida: panoramica delle rese",
       "intro": "Per ogni serie della stagione attiva, la previsione moltiplica la resa prevista per m² per la superficie pianificata, oppure la resa prevista per pianta per il numero di piante calcolato. La quantità viene distribuita sui giorni del periodo di raccolta. L’avviso elenca le serie con dati mancanti o non validi.\n\nFiltra per coltura o passa da settimane a mesi in «Visualizzazione». Passa il puntatore su una barra o premi la barra spaziatrice quando è selezionata con la tastiera per vedere il periodo, la coltura e la quantità prevista. Trovi le raccolte registrate in «Confronta le stagioni».",
-      "points": []
+      "points": [
+        "La superficie coltivata prevista somma le superfici delle serie filtrate nelle stagioni selezionate. Una serie che prosegue conta una volta. Se più serie utilizzano la stessa aiuola, ognuna contribuisce con la propria superficie.",
+        "La quantità raccolta registrata segue la data di raccolta. Le quantità pesate, i pezzi e i mazzi restano separati. Un filtro per sito, appezzamento o aiuola include solo le quantità assegnate e segnala le assegnazioni mancanti.",
+        "La copertura conta le colture con almeno una raccolta registrata. Il totale include le colture con una serie o una raccolta che corrisponde ai filtri. Altre raccolte possono ancora mancare."
+      ]
     }
   }
 }

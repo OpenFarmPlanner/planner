@@ -59,6 +59,20 @@
       "missing_harvest_period": "Harvest period is missing or invalid"
     }
   },
+  "summary": {
+    "plannedArea": "Planned growing area",
+    "areaScope_one": "Sum across {{count}} season",
+    "areaScope_other": "Sum across {{count}} seasons",
+    "areaUnavailable": "Unavailable",
+    "plansWithoutArea_one": "{{count}} plan without a specified area",
+    "plansWithoutArea_other": "{{count}} plans without a specified area",
+    "recordedHarvest": "Recorded harvest",
+    "recordedCrops": "Crops with a recorded harvest",
+    "cropCoverage": "{{recorded}} of {{total}}",
+    "noCropsInScope": "No crops match the filters",
+    "dataCoverage": "Harvest coverage",
+    "coverageBasis": "At least one harvest record per crop"
+  },
   "comparison": {
     "excludedUnassigned_one": "Unassigned amounts excluded ({{count}} harvest)",
     "excludedUnassigned_other": "Unassigned amounts excluded ({{count}} harvests)",

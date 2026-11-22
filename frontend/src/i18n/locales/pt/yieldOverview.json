@@ -60,6 +60,22 @@
       "missing_harvest_period": "O período de colheita está em falta ou é inválido"
     }
   },
+  "summary": {
+    "plannedArea": "Área de cultivo planeada",
+    "areaScope_one": "Soma de {{count}} época",
+    "areaScope_other": "Soma de {{count}} épocas",
+    "areaUnavailable": "Indisponível",
+    "plansWithoutArea_one": "{{count}} série sem área indicada",
+    "plansWithoutArea_other": "{{count}} séries sem área indicada",
+    "recordedHarvest": "Quantidade colhida registada",
+    "recordedCrops": "Culturas com colheita registada",
+    "cropCoverage": "{{recorded}} de {{total}}",
+    "noCropsInScope": "Nenhuma cultura corresponde aos filtros",
+    "dataCoverage": "Registo das colheitas",
+    "coverageBasis": "Pelo menos uma colheita registada por cultura",
+    "areaScope_many": "Soma de {{count}} épocas",
+    "plansWithoutArea_many": "{{count}} séries sem área indicada"
+  },
   "comparison": {
     "excludedUnassigned_one": "Quantidades sem área excluídas ({{count}} colheita)",
     "excludedUnassigned_many": "Quantidades sem área excluídas ({{count}} colheitas)",

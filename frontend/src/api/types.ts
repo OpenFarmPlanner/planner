@@ -2049,6 +2049,16 @@ export interface YieldComparisonSeason {
 export interface YieldComparison {
   crop_timing: YieldComparisonCropTiming;
   seasons: YieldComparisonSeason[];
+  summary: YieldComparisonSummary;
+}
+
+export interface YieldComparisonSummary {
+  planned_area_sqm: string | null;
+  plans_without_area_count: number;
+  recorded_quantities: HarvestQuantity[];
+  excluded_unassigned_records: number;
+  crop_count: number;
+  recorded_crop_count: number;
 }
 
 export interface PaginatedResponse<T> {

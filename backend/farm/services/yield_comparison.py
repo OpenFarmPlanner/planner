@@ -65,6 +65,42 @@ class SeasonYield:
     excluded_unassigned_records: int = 0
 
 
+def _crop_group_key(crop: Crop) -> int | str:
+    # Match the crop filter: linked varieties share a species, other names are case-insensitive.
+    return crop.crop_species_id or ' '.join(crop.name.split()).lower()
+
+
+@dataclass
+class YieldWindowSummary:
+    planned_crops: set[int | str] = field(default_factory=set)
+    recorded_crops: set[int | str] = field(default_factory=set)
+    recorded: HarvestTotals = field(default_factory=HarvestTotals)
+    planned_area: Decimal | None = None
+    plans_without_area: int = 0
+
+    def add_plan(self, plan: PlantingPlan) -> None:
+        self.planned_crops.add(_crop_group_key(plan.crop))
+        area = plan.area_usage_sqm
+        if area is not None and area > 0:
+            self.planned_area = (self.planned_area or Decimal(0)) + area
+        else:
+            self.plans_without_area += 1
+
+    def add_harvest(self, harvest: HarvestRecord, quantity: Decimal) -> None:
+        self.recorded_crops.add(_crop_group_key(harvest.crop))
+        self.recorded.add(quantity, harvest.unit, harvest.grams_per_unit)
+
+    def payload(self, rows: list[SeasonYield]) -> dict:
+        return {
+            'planned_area_sqm': harvest_number(self.planned_area),
+            'plans_without_area_count': self.plans_without_area,
+            'recorded_quantities': self.recorded.quantities_payload(),
+            'excluded_unassigned_records': sum(row.excluded_unassigned_records for row in rows),
+            'crop_count': len(self.planned_crops | self.recorded_crops),
+            'recorded_crop_count': len(self.recorded_crops),
+        }
+
+
 @dataclass(frozen=True)
 class YieldComparisonScope:
     crop_ids: tuple[int, ...] = ()
@@ -210,6 +246,21 @@ def _plan_visible_in_season(plan: PlantingPlan, season: Season) -> bool:
     )
 
 
+def _plan_in_window(
+    plan: PlantingPlan, schedule: RecurringHarvestSchedule | None,
+    rows: list[SeasonYield], starts: list[date], by_id: dict[int, SeasonYield],
+) -> bool:
+    if plan.season_id in by_id:
+        return True
+    if schedule is not None:
+        return any(recurring_plan_visible_in_season(plan, row.season, schedule) for row in rows)
+    start, end = plan.planting_date, plan.occupancy_end_date
+    if start is None or end is None or end < start:
+        return False
+    last = bisect_right(starts, end) - 1
+    return last >= 0 and start <= rows[last].season.end_date
+
+
 def _crop_timing(crop: Crop | None, crop_index: GeneralCropIndex) -> dict:
     return {
         f'crop_{name}': resolve_crop_field(crop, name, crop_index) for name in _CROP_TIMING_FIELDS
@@ -259,9 +310,8 @@ def _record_activity_dates(
 def _record_harvest(
     row: SeasonYield, harvest: HarvestRecord, plans: dict[int, PlantingPlan],
     scoped_plans: dict[int, PlantingPlan], *, has_area_filter: bool,
-) -> None:
-    if not has_area_filter:
-        row.recorded.add(harvest.quantity, harvest.unit, harvest.grams_per_unit)
+) -> Decimal | None:
+    recorded = None if has_area_filter else harvest.quantity
     remainder = harvest.quantity
     missing_area = False
     for allocation in harvest.comparison_allocations:
@@ -274,11 +324,14 @@ def _record_harvest(
             continue
         _record_harvest_allocation(row, harvest, allocation, plan)
         if has_area_filter:
-            row.recorded.add(allocation.quantity, harvest.unit, harvest.grams_per_unit)
+            recorded = (recorded or Decimal(0)) + allocation.quantity
+    if recorded is not None:
+        row.recorded.add(recorded, harvest.unit, harvest.grams_per_unit)
     if has_area_filter and (remainder > 0 or missing_area):
         row.excluded_unassigned_records += 1
     elif remainder > 0:
         row.unassigned.add(remainder, harvest.unit, harvest.grams_per_unit)
+    return recorded
 
 
 def _record_harvest_allocation(
@@ -347,6 +400,27 @@ def _season_payload(row: SeasonYield, plans: dict[int, PlantingPlan]) -> dict:
     }
 
 
+def _record_window_losses(
+    project: Project, crop_ids: QuerySet, date_range: tuple[date, date],
+    rows: list[SeasonYield], starts: list[date], plans: dict[int, PlantingPlan],
+) -> None:
+    losses = CropLoss.objects.filter(
+        project=project, planting_plan__project=project,
+        planting_plan__crop_id__in=crop_ids, date__range=date_range,
+    ).values(
+        'id', 'planting_plan_id', 'date', 'loss_type', 'cause', 'extent_value', 'extent_unit',
+    )
+    for loss in losses:
+        row = _season_on(rows, starts, loss['date'])
+        plan = plans.get(loss['planting_plan_id'])
+        if row is not None and plan is not None:
+            row.losses.append({
+                **loss,
+                'extent_value': harvest_number(loss['extent_value']),
+                'bed_name': plan.bed.name if plan.bed_id else '',
+            })
+
+
 def build_yield_comparison(
     project: Project, scope: YieldComparisonScope, language_code: str,
     *, crop: Crop | None = None,
@@ -357,8 +431,9 @@ def build_yield_comparison(
     by_id = {row.season.pk: row for row in rows}
     crop_index = build_general_crop_index(project.pk)
     crop_timing = _crop_timing(crop, crop_index)
+    summary = YieldWindowSummary()
     if not rows:
-        return {'crop_timing': crop_timing, 'seasons': []}
+        return {'crop_timing': crop_timing, 'seasons': [], 'summary': summary.payload(rows)}
 
     crops = Crop.all_objects.filter(project=project)
     if scope.crop_ids:
@@ -378,6 +453,8 @@ def build_yield_comparison(
     }
     scoped_plans = {pk: plan for pk, plan in plans.items() if scope.includes_plan(plan)}
     for plan, schedule in distinct_forecast_plans(scoped_plans.values(), crop_index):
+        if _plan_in_window(plan, schedule, rows, starts, by_id):
+            summary.add_plan(plan)
         _forecast_for_plan(plan, rows, starts, by_id, crop_index, schedule)
     for plan in scoped_plans.values():
         _record_activity_dates(plan, rows, by_id, crop_index, language_code)
@@ -385,7 +462,7 @@ def build_yield_comparison(
     date_range = (starts[0], rows[-1].season.end_date)
     harvests = HarvestRecord.objects.filter(
         project=project, crop_id__in=crop_ids, date__range=date_range,
-    ).prefetch_related(
+    ).select_related('crop').prefetch_related(
         Prefetch(
             'allocations', queryset=HarvestAllocation.objects.filter(project=project),
             to_attr='comparison_allocations',
@@ -394,26 +471,15 @@ def build_yield_comparison(
     for harvest in harvests:
         row = _season_on(rows, starts, harvest.date)
         if row is not None:
-            _record_harvest(
+            quantity = _record_harvest(
                 row, harvest, plans, scoped_plans, has_area_filter=scope.has_area_filter,
             )
+            if quantity is not None:
+                summary.add_harvest(harvest, quantity)
 
-    losses = CropLoss.objects.filter(
-        project=project, planting_plan__project=project,
-        planting_plan__crop_id__in=crop_ids, date__range=date_range,
-    ).values(
-        'id', 'planting_plan_id', 'date', 'loss_type', 'cause', 'extent_value', 'extent_unit',
-    )
-    for loss in losses:
-        row = _season_on(rows, starts, loss['date'])
-        plan = scoped_plans.get(loss['planting_plan_id'])
-        if row is not None and plan is not None:
-            row.losses.append({
-                **loss,
-                'extent_value': harvest_number(loss['extent_value']),
-                'bed_name': plan.bed.name if plan.bed_id else '',
-            })
+    _record_window_losses(project, crop_ids, date_range, rows, starts, scoped_plans)
     return {
         'crop_timing': crop_timing,
         'seasons': [_season_payload(row, plans) for row in reversed(rows)],
+        'summary': summary.payload(rows),
     }

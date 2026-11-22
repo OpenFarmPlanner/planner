@@ -60,6 +60,22 @@
       "missing_harvest_period": "Falta el periodo de cosecha o no es válido"
     }
   },
+  "summary": {
+    "plannedArea": "Superficie de cultivo prevista",
+    "areaScope_one": "Suma de {{count}} temporada",
+    "areaScope_other": "Suma de {{count}} temporadas",
+    "areaUnavailable": "No disponible",
+    "plansWithoutArea_one": "{{count}} serie sin superficie indicada",
+    "plansWithoutArea_other": "{{count}} series sin superficie indicada",
+    "recordedHarvest": "Cantidad recolectada registrada",
+    "recordedCrops": "Cultivos con recolección registrada",
+    "cropCoverage": "{{recorded}} de {{total}}",
+    "noCropsInScope": "Ningún cultivo coincide con los filtros",
+    "dataCoverage": "Registro de recolecciones",
+    "coverageBasis": "Al menos una recolección registrada por cultivo",
+    "areaScope_many": "Suma de {{count}} temporadas",
+    "plansWithoutArea_many": "{{count}} series sin superficie indicada"
+  },
   "comparison": {
     "excludedUnassigned_one": "Cantidades sin superficie excluidas ({{count}} cosecha)",
     "excludedUnassigned_many": "Cantidades sin superficie excluidas ({{count}} cosechas)",
