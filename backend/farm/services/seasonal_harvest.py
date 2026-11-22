@@ -15,6 +15,8 @@ from farm.services.crop_inheritance import (
 )
 from farm.services.tasks import plan_cultivation_type
 
+HARVEST_YEARS_PER_PAGE = 20
+
 
 @dataclass(frozen=True)
 class HarvestProjection:
@@ -29,6 +31,19 @@ class HarvestProjection:
 class SeasonalHarvestPeriod(TypedDict):
     start_date: date
     end_date: date
+
+
+class HarvestOccurrencePayload(TypedDict):
+    year: int
+    default: SeasonalHarvestPeriod | None
+    override: SeasonalHarvestPeriod | None
+    conflict: bool
+
+
+class HarvestOccurrencesPage(TypedDict):
+    occurrences: list[HarvestOccurrencePayload]
+    previous_year: int | None
+    next_year: int | None
 
 
 class SeasonalHarvestPayload(TypedDict):
@@ -67,6 +82,146 @@ class RecurringHarvestSchedule:
     # determine whether copies have the same forecast.
     occupied_from: date | None = field(compare=False)
     planting_recorded: bool = field(compare=False)
+    overrides: dict[int, tuple[date, date]] = field(default_factory=dict, hash=False)
+
+    @property
+    def crosses_new_year(self) -> bool:
+        return self.end < self.start
+
+    def default_window(self, year: int) -> tuple[date, date]:
+        start = _day_in_year(year, self.start)
+        end_year = year + self.crosses_new_year
+        if end_year > date.max.year:
+            return start, date.max
+        end = _day_in_year(end_year, self.end)
+        if self.crosses_new_year:
+            # A clamped February 29 start can coincide with the preceding end.
+            end = min(end, _day_in_year(end_year, self.start) - timedelta(days=1))
+        return start, end
+
+    def eligible_window(self, year: int) -> tuple[date, date] | None:
+        if self.eligible_from is None or self.occupied_until is None:
+            return None
+        start, end = self.default_window(year)
+        start = max(start, self.eligible_from)
+        end = min(end, self.occupied_until)
+        return (start, end) if start <= end else None
+
+    def override_fits(self, year: int, start: date, end: date) -> bool:
+        if self.eligible_window(year) is None:
+            return False
+        _, default_end = self.default_window(year)
+        lower = date(year, 1, 1)
+        if year > date.min.year:
+            _, previous_end = self.default_window(year - 1)
+            if start <= previous_end:
+                return False
+        # Keep the dates attached to the same occurrence, including an
+        # existing January tail of a window that started the previous year.
+        upper_start = max(date(year, 12, 31), default_end)
+        upper_end = date(min(date.max.year, year + self.crosses_new_year), 12, 31)
+        if year < date.max.year:
+            next_start, _ = self.default_window(year + 1)
+            upper_end = min(upper_end, next_start - timedelta(days=1))
+        return (
+            max(lower, self.eligible_from) <= start <= min(upper_start, end)
+            and end <= min(upper_end, self.occupied_until)
+        )
+
+    def _eligible_override(self, year: int) -> tuple[date, date] | None:
+        override = self.overrides.get(year)
+        return override if override and self.override_fits(year, *override) else None
+
+    def _separate_from_neighbours(self, year: int, start: date, end: date) -> bool:
+        previous = self._eligible_override(year - 1)
+        following = self._eligible_override(year + 1)
+        return (
+            (previous is None or previous[1] < start)
+            and (following is None or end < following[0])
+        )
+
+    def effective_override(self, year: int) -> tuple[date, date] | None:
+        override = self._eligible_override(year)
+        if override and self._separate_from_neighbours(year, *override):
+            return override
+        return None
+
+    def can_override(self, year: int, start: date, end: date) -> bool:
+        return self.override_fits(year, start, end) and self._separate_from_neighbours(
+            year, start, end,
+        )
+
+    def _eligible_years(self) -> range:
+        if (
+            self.eligible_from is None or self.occupied_until is None
+            or self.eligible_from > self.occupied_until
+        ):
+            return range(0)
+        first = max(date.min.year, self.eligible_from.year - self.crosses_new_year)
+        last = self.occupied_until.year
+        while first <= last and self.eligible_window(first) is None:
+            first += 1
+        if first <= last and self.eligible_window(last) is None:
+            last -= 1
+        return range(first, last + 1)
+
+    def first_conflicting_year(self) -> int | None:
+        return min(
+            (year for year in self.overrides if self.effective_override(year) is None),
+            default=None,
+        )
+
+    def year_for_season(self, season: Season) -> int:
+        start = season.start_date
+        first = max(date.min.year, start.year - self.crosses_new_year)
+        last = min(date.max.year, start.year + 1, season.end_date.year)
+        for year in range(first, last + 1):
+            window = self.effective_override(year) or self.eligible_window(year)
+            if window and window[0] <= season.end_date and window[1] >= start:
+                return year
+        return start.year
+
+    def occurrence_details(self, year: int | None = None) -> HarvestOccurrencesPage:
+        eligible = self._eligible_years()
+        override_years = self.overrides.keys()
+        if not eligible and not override_years:
+            return {'occurrences': [], 'previous_year': None, 'next_year': None}
+
+        first = min(override_years, default=eligible.start)
+        if eligible:
+            first = min(first, eligible.start)
+        anchor = first if year is None else year
+        candidates = set(override_years)
+        if eligible:
+            candidates.add(max(eligible.start, min(anchor, eligible.stop - 1)))
+        anchor = min(candidates, key=lambda candidate: (abs(candidate - anchor), candidate))
+        page_start = first + (anchor - first) // HARVEST_YEARS_PER_PAGE * HARVEST_YEARS_PER_PAGE
+        page_end = page_start + HARVEST_YEARS_PER_PAGE
+
+        years = (
+            year for year in range(page_start, page_end)
+            if year in eligible or year in self.overrides
+        )
+        previous_default = min(eligible.stop, page_start) - 1
+        next_default = max(eligible.start, page_end)
+        if previous_default in eligible:
+            candidates.add(previous_default)
+        if next_default in eligible:
+            candidates.add(next_default)
+        return {
+            'occurrences': [self._occurrence_detail(year) for year in years],
+            'previous_year': max((year for year in candidates if year < page_start), default=None),
+            'next_year': min((year for year in candidates if year >= page_end), default=None),
+        }
+
+    def _occurrence_detail(self, year: int) -> HarvestOccurrencePayload:
+        override = self.overrides.get(year)
+        return {
+            'year': year,
+            'default': _period(self.eligible_window(year)),
+            'override': _period(override),
+            'conflict': bool(override and self.effective_override(year) is None),
+        }
 
     def project(self, start_date: date, end_date: date) -> list[HarvestProjection]:
         """Intersect the annual windows, eligibility, occupancy and requested period."""
@@ -77,21 +232,19 @@ class RecurringHarvestSchedule:
         if start_date > end_date:
             return []
 
-        crosses_new_year = self.end < self.start
-        first_year = max(date.min.year, start_date.year - int(crosses_new_year))
+        first_year = max(date.min.year, start_date.year - self.crosses_new_year)
         projections = []
         for year in range(first_year, end_date.year + 1):
-            end_year = year + int(crosses_new_year)
-            window_start = _day_in_year(year, self.start)
-            window_end = _day_in_year(end_year, self.end) if end_year <= date.max.year else date.max
-            if crosses_new_year and end_year <= date.max.year:
-                # A clamped February 29 start can coincide with the preceding end.
-                window_end = min(window_end, _day_in_year(end_year, self.start) - timedelta(days=1))
+            window_start, window_end = self.effective_override(year) or self.default_window(year)
             start = max(window_start, start_date)
             end = min(window_end, end_date)
             if start <= end:
                 projections.append(HarvestProjection(start, end, window_start, window_end))
         return projections
+
+
+def _period(interval: tuple[date, date] | None) -> SeasonalHarvestPeriod | None:
+    return {'start_date': interval[0], 'end_date': interval[1]} if interval else None
 
 
 def _day_in_year(year: int, month_day: tuple[int, int]) -> date:
@@ -128,10 +281,16 @@ def recurring_harvest_schedule(
     planted = (actual or plan.planting_date) if plan.planting_date is not None else None
     occupied_from = min(planted, plan.planting_date) if planted is not None else None
     delay = resolve_crop_field(plan.crop, 'first_harvest_delay_years', crop_index) or 0
+    overrides = {
+        int(year): (
+            date.fromisoformat(period['start_date']), date.fromisoformat(period['end_date']),
+        )
+        for year, period in plan.harvest_window_overrides.items()
+    }
     return RecurringHarvestSchedule(
         (start_month, start_day), (end_month, end_day),
         _first_eligible_day(planted, delay), plan.occupancy_end_date, occupied_from,
-        actual is not None,
+        actual is not None, overrides,
     )
 
 

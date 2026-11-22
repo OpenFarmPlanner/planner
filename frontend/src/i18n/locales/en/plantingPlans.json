@@ -534,6 +534,23 @@
     "count_one": "{{own}} planted this season · {{count}} continues",
     "count_other": "{{own}} planted this season · {{count}} continue"
   },
+  "harvestWindows": {
+    "previousYears": "Earlier years",
+    "nextYears": "Later years",
+    "title": "Harvest windows by year",
+    "year": "Harvest year",
+    "yearWithConflict": "{{year}} (conflict)",
+    "default": "Calculated from the crop or variety’s harvest window",
+    "override": "Custom harvest window",
+    "edit": "Edit this year",
+    "reset": "Reset to calculated default",
+    "empty": "This planting plan has no calculated harvest window yet.",
+    "conflict": "The saved dates no longer fit this occurrence. The forecast uses the calculated dates when available.",
+    "invalidOrder": "The harvest end must be on or after the harvest start.",
+    "invalidWindow": "Choose dates within this year’s eligible harvest period, with no overlap with another harvest window.",
+    "saveFailed": "The harvest window could not be saved.",
+    "unsaved": "You have unsaved changes to the harvest window."
+  },
   "perennial": {
     "title": "Perennial planting",
     "productiveLifespan": "Productive lifespan",

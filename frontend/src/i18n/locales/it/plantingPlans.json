@@ -549,6 +549,23 @@
     "count_other": "{{own}} avviate in questa stagione · {{count}} proseguono",
     "count_many": "{{own}} avviate in questa stagione · {{count}} proseguono"
   },
+  "harvestWindows": {
+    "previousYears": "Anni precedenti",
+    "nextYears": "Anni successivi",
+    "title": "Periodi di raccolta per anno",
+    "year": "Anno di raccolta",
+    "yearWithConflict": "{{year}} (conflitto)",
+    "default": "Calcolato dal periodo di raccolta della coltura o della varietà",
+    "override": "Periodo di raccolta personalizzato",
+    "edit": "Modifica quest’anno",
+    "reset": "Ripristina il periodo calcolato",
+    "empty": "Per questa serie non è ancora disponibile un periodo di raccolta calcolato.",
+    "conflict": "Le date salvate non rientrano più in questo periodo. La previsione usa le date calcolate, se disponibili.",
+    "invalidOrder": "La fine della raccolta deve coincidere con l’inizio o essere successiva.",
+    "invalidWindow": "Scegli date nel periodo ammesso per quest’anno, senza sovrapposizioni con altri periodi di raccolta.",
+    "saveFailed": "Impossibile salvare il periodo di raccolta.",
+    "unsaved": "Ci sono modifiche non salvate al periodo di raccolta."
+  },
   "perennial": {
     "title": "Coltura perenne",
     "productiveLifespan": "Durata produttiva",

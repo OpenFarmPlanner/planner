@@ -27,6 +27,8 @@ import type {
   Field,
   Bed,
   PlantingPlan,
+  HarvestWindowUpdate,
+  SeasonalHarvestPeriod,
   HarvestPlanSuggestion,
   HarvestRecord,
   HarvestTotals,
@@ -505,12 +507,17 @@ export const plantingPlanAPI = {
   listAll: () => fetchAllPaginated<PlantingPlan>('/planting-plans/'),
   listForArea: (type: 'bed' | 'field', id: number) => fetchAllPaginated<PlantingPlan>(`/planting-plans/?${type}=${id}`),
   get: (id: number) => http.get<PlantingPlan>(`/planting-plans/${id}/`),
-  getAcrossSeasons: (id: number, signal?: AbortSignal) => http.get<import('./types').PlantingPlanDetail>(`/planting-plans/${id}/`, {
-    params: { across_seasons: true }, signal,
-  }),
+  getAcrossSeasons: (id: number, signal?: AbortSignal, harvestYear?: number) =>
+    http.get<import('./types').PlantingPlanDetail>(`/planting-plans/${id}/`, {
+      params: { across_seasons: true, harvest_year: harvestYear }, signal,
+    }),
   create: (data: PlantingPlan) => http.post<PlantingPlan>('/planting-plans/', withActiveProject(data)),
   update: (id: number, data: PlantingPlan) => http.put<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),
   patch: (id: number, data: Partial<PlantingPlan>) => http.patch<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),
+  setHarvestWindow: (id: number, year: number, period: SeasonalHarvestPeriod) =>
+    http.put<HarvestWindowUpdate>(`/planting-plans/${id}/harvest-window/${String(year).padStart(4, '0')}/`, period),
+  resetHarvestWindow: (id: number, year: number) =>
+    http.delete<HarvestWindowUpdate>(`/planting-plans/${id}/harvest-window/${String(year).padStart(4, '0')}/`),
   delete: (id: number) => http.delete(`/planting-plans/${id}/`),
   remainingArea: (params: {
     bed_id: number;

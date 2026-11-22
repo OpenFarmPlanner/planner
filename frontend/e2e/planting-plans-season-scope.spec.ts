@@ -265,6 +265,82 @@ test.describe('recurring harvest dates', () => {
         clearing_date: '2028-09-10', actual_harvest_start_date: '2025-10-03',
       });
 
+      await test.step('edit a single future harvest in origin details and reset it', async () => {
+        const detailsUrl = `/app/planting-plans/${plan.id}`;
+        await page.goto(detailsUrl);
+        const heading = page.getByRole('heading', { name: plans.harvestWindows.title });
+        const year = page.getByRole('combobox', { name: plans.harvestWindows.year });
+        const edit = page.getByRole('button', { name: plans.harvestWindows.edit });
+        const reset = page.getByRole('button', { name: plans.harvestWindows.reset });
+        const start = page.getByLabel(plans.columns.harvestStartDate, { exact: true });
+        const end = page.getByLabel(plans.columns.harvestEndDate, { exact: true });
+        await expect(heading).toBeVisible();
+        await year.selectOption('2027');
+        await edit.press('Enter');
+        await expect(start).toBeFocused();
+        await start.fill('2027-09-10');
+        await start.press('Escape');
+        await expect(year).toBeFocused();
+        await expect(reset).toHaveCount(0);
+
+        await edit.click();
+        await start.fill('2027-09-10');
+        await end.fill('2027-10-20');
+        for (const [width, height] of [[375, 800], [800, 375], [768, 900], [1024, 900], [1440, 900]]) {
+          await page.setViewportSize({ width, height });
+          await start.scrollIntoViewIfNeeded();
+          await expectNoHorizontalPageOverflow(page);
+          await page.screenshot({ path: info.outputPath(`harvest-window-editor-${width}.png`), animations: 'disabled' });
+        }
+        const refreshedDetail = page.waitForResponse(response => {
+          const url = new URL(response.url());
+          return response.request().method() === 'GET' && response.ok()
+            && url.pathname.endsWith(`/planting-plans/${plan.id}/`)
+            && url.searchParams.get('harvest_year') === '2027';
+        });
+        await page.getByRole('button', { name: common.actions.save, exact: true }).click();
+        await refreshedDetail;
+        await expect(reset).toBeVisible();
+        await expect(page.getByText('10.9.2027 – 20.10.2027', { exact: true })).toBeVisible();
+
+        await switchSeason(2027);
+        await expect(page.getByText('10.9.2027 – 20.10.2027', { exact: true })).toBeVisible();
+        await expect(edit).toHaveCount(0);
+        await expect(reset).toHaveCount(0);
+        await page.goto('/app/planting-plans');
+        await mode.selectOption('planned');
+        await expect(harvestStart).toHaveText('10.9.2027');
+        await expect(harvestEnd).toHaveText('20.10.2027');
+        await page.goto('/app/gantt-chart?view=field');
+        await expect(bar).toHaveAccessibleName(/Versuchsapfel.*10\.9\.2027.*20\.10\.2027/);
+
+        await switchSeason(2028);
+        await page.goto('/app/planting-plans');
+        await expect(harvestEnd).toHaveText('10.9.2028');
+        await page.goto(detailsUrl);
+        await page.getByRole('button', { name: plans.carriedOver.openOrigin }).click();
+        await expect(edit).toBeVisible();
+        await year.selectOption('2027');
+        await reset.click();
+        await expect(reset).toHaveCount(0);
+        await expect(page.getByText('1.9.2027 – 15.10.2027', { exact: true })).toBeVisible();
+        await expect(year).toBeFocused();
+
+        await apiRequest(page, 'PATCH', `/planting-plans/${plan.id}/`, { clearing_date: '2070-12-31' });
+        await page.reload();
+        await expect(year.locator('option')).toHaveCount(20);
+        await page.getByRole('button', { name: plans.harvestWindows.nextYears }).click();
+        await expect(year).toHaveValue('2047');
+        await expect(year.locator('option')).toHaveCount(20);
+        await page.getByRole('button', { name: plans.harvestWindows.previousYears }).click();
+        await expect(year).toHaveValue('2046');
+        await switchSeason(2027);
+        await expect(year).toHaveValue('2027');
+        await page.getByRole('button', { name: plans.carriedOver.openOrigin }).click();
+        await expect(edit).toBeVisible();
+        await apiRequest(page, 'PATCH', `/planting-plans/${plan.id}/`, { clearing_date: '2028-09-10' });
+      });
+
       await test.step('moving the occupancy bar keeps the harvest band on its calendar dates', async () => {
         await apiRequest(page, 'PATCH', `/crops/${crop.id}/`, { first_harvest_delay_years: 0 });
         const earlierBed = await create('/beds/', { field: field.id, name: 'Frühes Obstbeet', area_sqm: 12 });

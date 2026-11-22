@@ -549,6 +549,23 @@
     "count_other": "{{own}} démarrées cette saison · {{count}} se poursuivent",
     "count_many": "{{own}} démarrées cette saison · {{count}} se poursuivent"
   },
+  "harvestWindows": {
+    "previousYears": "Années précédentes",
+    "nextYears": "Années suivantes",
+    "title": "Périodes de récolte par année",
+    "year": "Année de récolte",
+    "yearWithConflict": "{{year}} (conflit)",
+    "default": "Calculée d’après la période de récolte de la culture ou de la variété",
+    "override": "Période de récolte personnalisée",
+    "edit": "Modifier cette année",
+    "reset": "Rétablir la période calculée",
+    "empty": "Cette série n’a pas encore de période de récolte calculée.",
+    "conflict": "Les dates enregistrées ne conviennent plus à cette occurrence. La prévision utilise les dates calculées si elles sont disponibles.",
+    "invalidOrder": "La fin de récolte doit être le même jour que le début ou après.",
+    "invalidWindow": "Choisissez des dates dans la période admissible de cette année, sans chevauchement avec une autre période de récolte.",
+    "saveFailed": "Impossible d’enregistrer la période de récolte.",
+    "unsaved": "Vous avez des modifications non enregistrées à la période de récolte."
+  },
   "perennial": {
     "title": "Culture vivace",
     "productiveLifespan": "Durée productive",

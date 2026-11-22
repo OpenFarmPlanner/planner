@@ -549,6 +549,23 @@
     "count_other": "{{own}} iniciadas nesta época · {{count}} continuam",
     "count_many": "{{own}} iniciadas nesta época · {{count}} continuam"
   },
+  "harvestWindows": {
+    "previousYears": "Anos anteriores",
+    "nextYears": "Anos seguintes",
+    "title": "Períodos de colheita por ano",
+    "year": "Ano de colheita",
+    "yearWithConflict": "{{year}} (conflito)",
+    "default": "Calculado a partir do período de colheita da cultura ou variedade",
+    "override": "Período de colheita personalizado",
+    "edit": "Editar este ano",
+    "reset": "Repor o período calculado",
+    "empty": "Esta série ainda não tem um período de colheita calculado.",
+    "conflict": "As datas guardadas já não se enquadram neste período. A previsão usa as datas calculadas, se estiverem disponíveis.",
+    "invalidOrder": "O fim da colheita deve coincidir com o início ou ser posterior.",
+    "invalidWindow": "Escolha datas no período admissível deste ano, sem sobreposição com outro período de colheita.",
+    "saveFailed": "Não foi possível guardar o período de colheita.",
+    "unsaved": "Tem alterações por guardar no período de colheita."
+  },
   "perennial": {
     "title": "Cultura perene",
     "productiveLifespan": "Vida útil da cultura",

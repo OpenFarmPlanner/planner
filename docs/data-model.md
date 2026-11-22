@@ -299,6 +299,11 @@ erDiagram
   editable stored date controls bed occupancy, regardless of later changes
   to the crop's typical lifespan or to its first harvest window. Existing
   plans without a clearing date retain their original occupancy dates.
+  `harvest_window_overrides` maps an occurrence's start year to an absolute
+  planned start and end date. It is stored on the original plan, independently
+  of crop defaults, the plan's stored harvest snapshot, and actual harvests.
+  Project history includes the map. A snapshot made before overrides
+  existed restores an empty map.
   Its `cultivation_type` is `direct_sowing`,
   `pre_cultivation` or the plan-only `purchased_transplant` (bought-in
   plants: no Anzucht, no seed demand — see

@@ -29,6 +29,7 @@ import { formatSeasonDate, initialSeasonRecordDate, resolveSeasonDateLocale } fr
 import { formatLocalizedNumber } from '../utils/numberLocalization';
 import { PlantingPlanExecutionDates } from './PlantingPlanExecutionDates';
 import { PerennialPlanDates } from './PerennialPlanDates';
+import { PerennialHarvestWindows } from './PerennialHarvestWindows';
 import { CropLosses } from './CropLosses';
 import { PreviousSeasonReference } from './PreviousSeasonReference';
 import { PlantingPlanTasks } from './PlantingPlanTasks';
@@ -40,12 +41,15 @@ interface PlantingPlanDetailsProps {
   onExpand?: () => void;
 }
 
-type PlanLoad = { plan: PlantingPlanDetail } | { error: 'not-found' | 'load' };
+type PlanLoad = { plan: PlantingPlanDetail; activeSeasonId: number | undefined }
+  | { error: 'not-found' | 'load' };
+type HarvestWindowSelection = { seasonId: number | undefined; year?: number; dirty: boolean };
 
 export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: PlantingPlanDetailsProps) {
   const { t, i18n } = useTranslation(['plantingPlans', 'common', 'harvests']);
   const { activeProjectId, isAuthLoading, missingProjectReason } = useProjectRequirement();
   const context = useOutletContext<RootLayoutOutletContext | null>();
+  const activeSeasonId = context?.activeSeason?.id;
   const [result, setResult] = useState<PlanLoad>();
   const [attempt, setAttempt] = useState(0);
   const [attachments, setAttachments] = useState<NoteAttachment[]>();
@@ -57,15 +61,28 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
   const [saveFailed, setSaveFailed] = useState(false);
   const [datesDirty, setDatesDirty] = useState(false);
   const [clearingDateDirty, setClearingDateDirty] = useState(false);
+  const [harvestSelection, setHarvestSelection] = useState<HarvestWindowSelection>({
+    seasonId: activeSeasonId, dirty: false,
+  });
+  if (harvestSelection.seasonId !== activeSeasonId) {
+    setHarvestSelection({ seasonId: activeSeasonId, dirty: false });
+  }
+  const { year: harvestYear, dirty: harvestWindowDirty } = harvestSelection;
+  const setHarvestYear = (year?: number) => setHarvestSelection(current =>
+    current.seasonId === activeSeasonId ? { ...current, year } : current);
+  const setHarvestWindowDirty = (dirty: boolean) => setHarvestSelection(current =>
+    current.seasonId === activeSeasonId ? { ...current, dirty } : current);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const loadedPlan = result && 'plan' in result ? result.plan : undefined;
+  const harvestWindows = result && 'plan' in result && result.activeSeasonId === activeSeasonId
+    ? result.plan.harvest_windows_by_year : null;
   const loadedPlanId = loadedPlan?.id;
   const hasPhotos = Boolean(loadedPlan?.note_attachment_count) || attachmentRevision > 0;
   const hasUnsavedNotes = editorOpen && draft !== (loadedPlan?.notes ?? '');
 
-  useNavigationBlocker(hasUnsavedNotes || datesDirty || clearingDateDirty, hasUnsavedNotes
+  useNavigationBlocker(hasUnsavedNotes || datesDirty || clearingDateDirty || harvestWindowDirty, hasUnsavedNotes
     ? t('common:notesDrawer.unsavedDialog.message')
-    : t(clearingDateDirty ? 'perennial.unsaved' : 'actualDates.unsaved'));
+    : t(harvestWindowDirty ? 'harvestWindows.unsaved' : clearingDateDirty ? 'perennial.unsaved' : 'actualDates.unsaved'));
 
   useEffect(() => {
     titleRef.current?.focus({ preventScroll: true });
@@ -75,15 +92,15 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
     if (planId === null || activeProjectId === null) return;
 
     const controller = new AbortController();
-    void plantingPlanAPI.getAcrossSeasons(planId, controller.signal).then(({ data }) => {
-      if (!controller.signal.aborted) setResult({ plan: data });
+    void plantingPlanAPI.getAcrossSeasons(planId, controller.signal, harvestYear).then(({ data }) => {
+      if (!controller.signal.aborted) setResult({ plan: data, activeSeasonId });
     }).catch((error: unknown) => {
       if (controller.signal.aborted) return;
       const status = isAxiosError(error) ? error.response?.status : undefined;
       setResult({ error: status === 404 || status === 403 ? 'not-found' : 'load' });
     });
     return () => controller.abort();
-  }, [activeProjectId, attempt, context?.activeSeason?.id, planId]);
+  }, [activeProjectId, activeSeasonId, attempt, harvestYear, planId]);
 
   useEffect(() => {
     if (loadedPlanId === undefined || !hasPhotos) return;
@@ -141,7 +158,8 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
     setSaveFailed(false);
     try {
       const { data } = await plantingPlanAPI.patch(loadedPlan.id, { notes: draft });
-      setResult({ plan: { ...loadedPlan, notes: data.notes } });
+      setResult(current => current && 'plan' in current
+        ? { ...current, plan: { ...current.plan, notes: data.notes } } : current);
       setEditorOpen(false);
       onChanged();
     } catch {
@@ -206,12 +224,27 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
               switchSeason={context?.switchActiveSeason} />}
             <PerennialPlanDates key={loadedPlan.id} plan={loadedPlan} editable={canEditNotes}
               onDirtyChange={setClearingDateDirty} onSaved={updated => {
-                setResult(current => current && 'plan' in current ? { plan: { ...current.plan, ...updated } } : current);
+                setResult(current => current && 'plan' in current
+                  ? { ...current, plan: { ...current.plan, ...updated } } : current);
+                setHarvestYear(undefined);
+                setAttempt(value => value + 1);
                 onChanged();
               }} />
+            {harvestWindows && <PerennialHarvestWindows planId={loadedPlan.id}
+              page={harvestWindows} season={recordSeason} onPageChange={setHarvestYear}
+              editable={canEditNotes} onDirtyChange={setHarvestWindowDirty} onSaved={(updated, year) => {
+                setResult(current => current && 'plan' in current && current.activeSeasonId === activeSeasonId
+                  ? { ...current, plan: { ...current.plan, ...updated } } : current);
+                setHarvestYear(year);
+                setAttempt(value => value + 1);
+                onChanged();
+              }} />}
             <PlantingPlanExecutionDates plan={loadedPlan} editable={canEditNotes} onDirtyChange={setDatesDirty}
               onSaved={dates => {
-                setResult(current => current && 'plan' in current ? { plan: { ...current.plan, ...dates } } : current);
+                setResult(current => current && 'plan' in current
+                  ? { ...current, plan: { ...current.plan, ...dates } } : current);
+                setHarvestYear(undefined);
+                setAttempt(value => value + 1);
                 onChanged();
               }} />
             <DetailSection title={t('harvests:title')} outlined>

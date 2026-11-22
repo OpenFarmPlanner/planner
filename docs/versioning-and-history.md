@@ -403,6 +403,10 @@ manual changes in the fixture project.
 
 ## What participates in whole-project restore
 
+Planting-plan snapshots include custom perennial harvest windows. Restoring a
+version returns those windows to the selected version, including an empty set
+for a snapshot taken before overrides were available.
+
 `_RESTORABLE_ENTITY_TYPES` (`backend/farm/history/records.py`) is an ordered
 list — parents before children, because restore deletes in reverse order and
 recreates in forward order:

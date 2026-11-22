@@ -34,6 +34,7 @@ from farm.services.germination_check import check_germination
 from farm.services.harvests import HarvestTotals, plan_harvest_totals
 from farm.services.plant_count import compute_plan_plant_count
 from farm.services.seasonal_harvest import (
+    HarvestOccurrencesPage,
     SeasonalHarvestPayload,
     recurring_harvest_schedule,
     seasonal_harvest_payload,
@@ -374,7 +375,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PlantingPlan
-        exclude = ['copied_from_plan_id']
+        exclude = ['copied_from_plan_id', 'harvest_window_overrides']
         read_only_fields = [
             'project', 'harvest_date', 'harvest_end_date', 'created_by', 'updated_by',
             'rotation_conflict_accepted_by', 'rotation_conflict_accepted_at',
@@ -682,6 +683,26 @@ class PlantingPlanDetailSerializer(PlantingPlanSerializer):
     )
     crop_available = serializers.SerializerMethodField()
     previous_season_reference = serializers.SerializerMethodField()
+    harvest_windows_by_year = serializers.SerializerMethodField()
+
+    def get_harvest_windows_by_year(
+        self, obj: PlantingPlan,
+    ) -> HarvestOccurrencesPage | None:
+        schedule = recurring_harvest_schedule(obj, self._general_crop_index(obj))
+        if schedule is None:
+            return None
+        request = self.context.get('request')
+        requested_year = request.query_params.get('harvest_year') if request else None
+        if requested_year is not None:
+            year = serializers.IntegerField(min_value=1, max_value=date.max.year).run_validation(
+                requested_year,
+            )
+        else:
+            season = self.context.get('harvest_season')
+            year = schedule.year_for_season(season) if season is not None else None
+            if season is None or obj.season_id == season.pk:
+                year = schedule.first_conflicting_year() or year
+        return schedule.occurrence_details(year)
 
     def get_crop_available(self, obj: PlantingPlan) -> bool:
         return bool(obj.crop and obj.crop.deleted_at is None)
@@ -721,6 +742,11 @@ class PlantingPlanDetailSerializer(PlantingPlanSerializer):
                 project_id=obj.project_id, date__range=period,
             ).count(),
         }
+
+
+class HarvestWindowOverrideSerializer(serializers.Serializer):
+    start_date = serializers.DateField()
+    end_date = serializers.DateField()
 
 
 class TaskSerializer(serializers.ModelSerializer):

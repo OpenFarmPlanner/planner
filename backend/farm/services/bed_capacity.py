@@ -268,7 +268,7 @@ def calculate_bed_capacities(
         exclude_plan_id=exclude_plan_id,
     ).select_related('crop').only(
         'bed', 'project', 'crop', 'area_usage_sqm', 'planting_date', 'harvest_date',
-        'harvest_end_date', 'clearing_date', 'cultivation_type',
+        'harvest_end_date', 'clearing_date', 'cultivation_type', 'harvest_window_overrides',
         'actual_sowing_date', 'actual_transplanting_date', 'crop__project', 'crop__crop_species',
         'crop__variety', 'crop__life_cycle', 'crop__annual_harvest_window',
         'crop__first_harvest_delay_years', 'crop__cultivation_type', 'crop__cultivation_types',

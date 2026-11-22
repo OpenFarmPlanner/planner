@@ -130,6 +130,16 @@ description), one level down:
   and `actual_end_date` drawn from recorded dates within that season. An
   empty list means the plan has no eligible harvest in that period. The
   property is null for legacy one-off plans or a request without a season.
+  Plan details show the lifetime harvest occurrences in pages of up to 20 years.
+  In the originating
+  season, open **Harvest windows by year** to replace the calculated dates for
+  one occurrence or reset its saved dates. The occurrence key is the calendar
+  year in which its default window starts, even when it spans two seasons.
+  The API accepts ordered absolute dates for an eligible occurrence, within
+  the first-bearing and removal dates and separate from neighbouring windows.
+  If a later edit makes an override invalid, the details show the saved
+  dates and a warning. The forecast uses the calculated dates when available.
+  The table and calendar use the same projection as the yield forecast.
   Stored sowing, planting and harvest dates retain their meanings. Attachment
   writes use the same season boundary. `perform_create` assigns new plans to the active season
   when the payload has no explicit season. Legacy unassigned rows retain
@@ -273,6 +283,14 @@ start is visible only in 2025. In 2027 compare the 40 kg forecast with the
 separate 3 kg dated harvest. Winter apple shows how a December–January window
 splits at a season boundary. Legacy rhubarb and Overwintering garlic retain
 their one-off schedules. Reapplying the command preserves manual edits.
+
+To check a yearly override, open Apple's details in 2027 and choose
+**Open in originating season**. In **Harvest windows by year**, select 2027
+and save September 10 through October 20. Switch to 2027 and compare the
+planting-plans table, Crop Calendar and yield forecast. The planned window
+moves and the 3 kg harvest record remains dated September 10. Check 2028,
+then reset 2027 from the 2025 details and verify September 1 through October 15
+returns.
 
 ## Year-boundary marker on season-spanning axes
 
