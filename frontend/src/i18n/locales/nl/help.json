@@ -287,7 +287,8 @@
         "Het geplande teeltoppervlak telt de oppervlakken van de gefilterde teelten in de geselecteerde seizoenen bij elkaar op. Een doorlopende teelt telt één keer mee. Als meerdere teelten hetzelfde bed gebruiken, telt het oppervlak van elke teelt mee.",
         "De geregistreerde oogst volgt de oogstdatum. Gewogen hoeveelheden, stuks en bossen blijven gescheiden. Een filter op locatie, perceel of bed telt alleen toegewezen hoeveelheden mee en meldt ontbrekende toewijzingen.",
         "De oogstregistratie telt gewassen met minstens één geregistreerde oogst. Het totaal omvat gewassen met een teelt of geregistreerde oogst binnen de filters. Andere oogsten kunnen nog ontbreken.",
-        "De balken tonen prognoses in kg en geregistreerde hoeveelheden per eenheid. Arcering duidt op een gedeeltelijke waarde. Een streepje geeft een ontbrekende waarde aan en een geregistreerde nul verschijnt als 0. Geschatte gewichten staan apart in de details en tellen niet mee bij de gemeten gewichten."
+        "De balken tonen prognoses in kg en geregistreerde hoeveelheden per eenheid. Arcering duidt op een gedeeltelijke waarde. Een streepje geeft een ontbrekende waarde aan en een geregistreerde nul verschijnt als 0. Geschatte gewichten staan apart in de details en tellen niet mee bij de gemeten gewichten.",
+        "De opbrengst per m² per gewas gebruikt toegewezen oogsten en de teeltoppervlakken van dezelfde teelten. De verandering vergelijkt het eerste en het laatste seizoen met vergelijkbare gemeten gewichten. Gedeeltelijke waarden en schattingen tellen niet mee in die vergelijking."
       ]
     }
   }

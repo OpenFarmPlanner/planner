@@ -59,6 +59,12 @@
       "missing_harvest_period": "Erntezeitraum fehlt oder ist ungültig"
     }
   },
+  "cropYields": {
+    "title": "Ertrag pro m² nach Kultur",
+    "trend": "Entwicklung",
+    "noTrend": "Keine vergleichbare Entwicklung",
+    "unassigned": "Ohne Zuordnung"
+  },
   "summary": {
     "plannedArea": "Geplante Anbaufläche",
     "areaScope_one": "Summe aus {{count}} Saison",

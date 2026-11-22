@@ -60,6 +60,12 @@
       "missing_harvest_period": "Période de récolte manquante ou invalide"
     }
   },
+  "cropYields": {
+    "title": "Rendement par m² et par culture",
+    "trend": "Évolution",
+    "noTrend": "Aucune évolution comparable",
+    "unassigned": "Sans affectation"
+  },
   "summary": {
     "plannedArea": "Surface de culture prévue",
     "areaScope_one": "Somme sur {{count}} saison",

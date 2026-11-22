@@ -60,6 +60,12 @@
       "missing_harvest_period": "Periodo di raccolta mancante o non valido"
     }
   },
+  "cropYields": {
+    "title": "Resa per m² e per coltura",
+    "trend": "Andamento",
+    "noTrend": "Nessun andamento comparabile",
+    "unassigned": "Senza assegnazione"
+  },
   "summary": {
     "plannedArea": "Superficie coltivata prevista",
     "areaScope_one": "Somma in {{count}} stagione",

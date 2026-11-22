@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Stack, Typography } from '@mui/material';
 import { yieldCalendarAPI } from '../api/api';
 import type { YieldComparison, YieldComparisonFilterOptions, YieldComparisonFilters } from '../api/types';
@@ -33,6 +33,9 @@ export function YieldSeasonComparison({ filters, onFiltersChange }: YieldSeasonC
   const varietyName = options?.crops.find(crop => crop.id === filters.varietyId)?.name;
   const cropName = varietyName ?? (selected.length === 1 ? selected[0].name
     : t(selected.length ? 'filters.selectedCrops' : 'filters.allCrops'));
+  const loadCropComparison = useCallback((ids: number[], signal: AbortSignal) => (
+    yieldCalendarAPI.comparison(filters, ids, signal).then(({ data }) => data)
+  ), [filters]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -70,6 +73,7 @@ export function YieldSeasonComparison({ filters, onFiltersChange }: YieldSeasonC
       {current && ('error' in current
         ? <Alert severity="error" action={retryButton}>{t('errors.load')}</Alert>
         : <YieldComparisonResults key={comparisonKey} comparison={current.data} cropName={cropName}
+          groups={groups} loadCropComparison={loadCropComparison}
           preferredUnit={preferredUnit} onChartUnitChange={setPreferredUnit} />)}
     </Stack>
   );

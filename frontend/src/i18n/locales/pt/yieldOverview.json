@@ -60,6 +60,12 @@
       "missing_harvest_period": "O período de colheita está em falta ou é inválido"
     }
   },
+  "cropYields": {
+    "title": "Rendimento por m² e por cultura",
+    "trend": "Evolução",
+    "noTrend": "Sem evolução comparável",
+    "unassigned": "Sem atribuição"
+  },
   "summary": {
     "plannedArea": "Área de cultivo planeada",
     "areaScope_one": "Soma de {{count}} época",

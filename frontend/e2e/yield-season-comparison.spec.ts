@@ -96,6 +96,24 @@ test('combines searchable crop groups and preserves season and site filters when
   await expect(page.getByText('Summe aus 3 Saisonen')).toBeVisible();
   const chart = page.getByRole('figure', { name: 'Erntemengen nach Saison' });
   await expect(chart.getByRole('button', { name: /^Ertrag für / })).toHaveCount(3);
+  const matrix = page.getByRole('table', { name: 'Ertrag pro m² nach Kultur' });
+  const potatoRow = matrix.getByRole('row', { name: /^Kartoffel/ });
+  await expect(potatoRow.getByText('2024 → 2026')).toBeVisible();
+  await expect(potatoRow.getByText('Nicht erfasst', { exact: true })).toHaveCount(1);
+  const trend = matrix.getByRole('button', { name: 'Entwicklung', exact: true });
+  await trend.click();
+  await expect(matrix.getByRole('columnheader', { name: 'Entwicklung' })).toHaveAttribute('aria-sort', 'descending');
+  await expect(matrix.locator('tbody tr').first()).toContainText('Kartoffel');
+  const potato = potatoRow.getByRole('button', { name: 'Kartoffel', exact: true });
+  await potato.press('Enter');
+  const drilldown = page.getByRole('dialog', { name: 'Kartoffel' });
+  await expect(drilldown.getByText('88,5 kg', { exact: true })).toBeVisible();
+  await drilldown.locator('summary').first().press('Enter');
+  await expect(drilldown.getByRole('heading', { name: 'Termine in der Anbausaison' })).toBeVisible();
+  await expect(drilldown.getByRole('link').first()).toHaveAttribute('href', /^\/app\/planting-plans\/\d+$/);
+  await page.keyboard.press('Escape');
+  await expect(drilldown).toBeHidden();
+  await expect(potato).toBeFocused();
   const crops = page.getByRole('combobox', { name: 'Kultur' });
   await crops.fill('kartoff');
   await crops.press('ArrowDown');
@@ -118,6 +136,10 @@ test('combines searchable crop groups and preserves season and site filters when
   for (const [width, height] of [[375, 800], [800, 375], [768, 900], [1024, 900], [1440, 900]]) {
     await page.setViewportSize({ width, height });
     await expectNoHorizontalPageOverflow(page);
+    if (width === 375) {
+      const region = page.getByRole('region', { name: 'Ertrag pro m² nach Kultur' });
+      await expect.poll(() => region.evaluate(node => node.scrollWidth > node.clientWidth)).toBe(true);
+    }
     await page.screenshot({ path: test.info().outputPath(`yield-comparison-filters-${width}.png`) });
   }
   await page.getByRole('combobox', { name: 'Standort' }).click();

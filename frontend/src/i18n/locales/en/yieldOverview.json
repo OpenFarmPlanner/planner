@@ -59,6 +59,12 @@
       "missing_harvest_period": "Harvest period is missing or invalid"
     }
   },
+  "cropYields": {
+    "title": "Yield per m² by crop",
+    "trend": "Change",
+    "noTrend": "No comparable change",
+    "unassigned": "Unassigned"
+  },
   "summary": {
     "plannedArea": "Planned growing area",
     "areaScope_one": "Sum across {{count}} season",
