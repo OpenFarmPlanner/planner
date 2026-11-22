@@ -45,6 +45,19 @@ test('compares measured yields and exposes a table and actual date deviations wi
   await expect(forecast).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Monat', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Monat', exact: true })).toHaveAttribute('aria-pressed', 'true');
+
+  await expect(page.getByRole('heading', { name: 'Ertragsverteilung' })).toBeVisible();
+  await expect(page.getByRole('main').getByText(/Prognose aus den Anbauplänen der aktiven Saison/)).toHaveCount(0);
+  const help = page.getByRole('button', { name: 'Hilfe zu Ertragsübersicht öffnen' });
+  await help.press('Enter');
+  await expect(page.getByText('Hilfe: Ertragsübersicht', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Ertrag pro m².*geplanten Fläche.*berechneten Pflanzenzahl.*Erntezeitraums/)).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(help).toBeFocused();
+
+  const segment = page.getByTestId('yield-chart-plot').getByRole('button', { name: /^Kartoffel,.*kg$/ }).first();
+  await segment.press('Space');
+  await expect(page.getByRole('tooltip').getByText('Erwarteter Ertrag', { exact: false })).toBeVisible();
 });
 
 test.describe('touch comparison', () => {

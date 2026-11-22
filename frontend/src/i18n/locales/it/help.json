@@ -282,7 +282,7 @@
     },
     "yieldOverview": {
       "title": "Guida: panoramica delle rese",
-      "intro": "La panoramica delle rese è una previsione: distribuisce il raccolto previsto delle serie della stagione attiva sui rispettivi periodi di raccolta. Si basa sulla superficie o sul numero di piante pianificati e sulla resa prevista della coltura per m² o per pianta. Le raccolte effettive non vengono registrate.\n\nLimita la vista a una coltura o passa da settimane a mesi in «Visualizzazione». Passa il puntatore su una barra per vedere periodo, coltura e quantità del raccolto.",
+      "intro": "Per ogni serie della stagione attiva, la previsione moltiplica la resa prevista per m² per la superficie pianificata, oppure la resa prevista per pianta per il numero di piante calcolato. La quantità viene distribuita sui giorni del periodo di raccolta. L’avviso elenca le serie con dati mancanti o non validi.\n\nFiltra per coltura o passa da settimane a mesi in «Visualizzazione». Passa il puntatore su una barra o premi la barra spaziatrice quando è selezionata con la tastiera per vedere il periodo, la coltura e la quantità prevista. Trovi le raccolte registrate in «Confronta le stagioni».",
       "points": []
     }
   }

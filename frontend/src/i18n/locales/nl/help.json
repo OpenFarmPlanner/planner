@@ -282,7 +282,7 @@
     },
     "yieldOverview": {
       "title": "Hulp: Opbrengstoverzicht",
-      "intro": "Het opbrengstoverzicht is een prognose: het verdeelt de verwachte oogst van de teelten van het actieve seizoen over hun oogstperiodes. Het is gebaseerd op de geplande oppervlakte of het aantal planten en de verwachte opbrengst per m² of per plant van het gewas. Werkelijke oogsten worden niet vastgelegd.\n\nBeperk de weergave tot één gewas of wissel onder ‘Weergave’ tussen weken en maanden. Houd de muisaanwijzer boven een balk om de periode, het gewas en de oogsthoeveelheid te zien.",
+      "intro": "Voor elke teelt in het actieve seizoen vermenigvuldigt de prognose de verwachte opbrengst per m² met de geplande oppervlakte, of de verwachte opbrengst per plant met het berekende aantal planten. De hoeveelheid wordt verdeeld over de dagen van de oogstperiode. De waarschuwing vermeldt teelten met ontbrekende of ongeldige gegevens.\n\nFilter op gewas of wissel onder ‘Weergave’ tussen weken en maanden. Ga met de muis over een balk of druk op de spatiebalk als de balk focus heeft om de periode, het gewas en de verwachte hoeveelheid te zien. Geregistreerde oogsten staan onder ‘Seizoenen vergelijken’.",
       "points": []
     }
   }

@@ -12,7 +12,6 @@
   },
   "chart": {
     "title": "Distribuição dos rendimentos",
-    "subtitle": "Previsão a partir das séries da época ativa: área planeada ou número de plantas multiplicado pelo rendimento esperado da cultura.",
     "tooltip": "{{period}} · {{crop}}: {{yield}} kg",
     "tooltipPeriod": "Período",
     "tooltipYield": "Rendimento esperado",

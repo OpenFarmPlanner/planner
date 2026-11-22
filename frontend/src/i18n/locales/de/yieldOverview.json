@@ -12,7 +12,6 @@
   },
   "chart": {
     "title": "Ertragsverteilung",
-    "subtitle": "Prognose aus den Anbauplänen der aktiven Saison: geplante Fläche oder Pflanzenzahl mal erwarteter Ertrag der Kultur.",
     "tooltip": "{{period}} · {{crop}}: {{yield}} kg",
     "tooltipPeriod": "Zeitraum",
     "tooltipYield": "Erwarteter Ertrag",
