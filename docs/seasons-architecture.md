@@ -199,8 +199,10 @@ description), one level down:
   its boundaries, rounded to 0.01 kg. The same weeks have the same values in separate ISO-year
   requests and in the season response. The optional `include_incomplete=true`
   response has `weeks` and `incomplete_plans`. It gives the yield overview the
-  scoped plan IDs and their calculation blockers. The default response is the
-  array of weeks.
+  scoped plan IDs and their calculation blockers. An unscheduled perennial
+  draft is incomplete in its planting season. A scheduled, nonbearing plan
+  contributes neither a forecast nor a blocker for that season. The default
+  response is the array of weeks.
 - **Compare seasons** in Yield overview reads `/yield-calendar/comparison/`.
   Each crop's forecasts use the same projected periods and cumulative
   rounding as the calendar. Identical forecasts copied from the same source

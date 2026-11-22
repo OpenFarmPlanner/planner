@@ -174,3 +174,34 @@ class SeasonalHarvestTest(ProjectApiTestCase):
         changed.save(update_fields=['actual_transplanting_date'])
         self.assertEqual(self.forecast(target), Decimal(24))
         self.assertEqual(self.comparison(crop)[target.pk]['forecast_kg'], '24')
+
+    def test_unscheduled_perennials_are_incomplete_only_in_their_own_season(self) -> None:
+        origin = self.season(date(2025, 1, 1), date(2025, 12, 31))
+        later = self.season(date(2026, 1, 1), date(2026, 12, 31))
+        crop = self.crop_with_window('09-01/10-15', first_harvest_delay_years=2)
+        draft = PlantingPlan.objects.create(
+            project=self.project, crop=crop, bed=self.bed, season=origin, area_usage_sqm=8,
+        )
+        PlantingPlan.objects.create(
+            project=self.project, crop=crop, bed=self.bed, season=origin, area_usage_sqm=8,
+            planting_date=date(2025, 3, 15), clearing_date=date(2028, 12, 31),
+        )
+
+        for season, expected_ids in ((origin, [draft.pk]), (later, [])):
+            with self.subTest(season=season.label):
+                response = self.client.get(
+                    FORECAST, {'include_incomplete': 'true'}, HTTP_X_SEASON_ID=str(season.pk),
+                )
+                self.assertEqual(response.status_code, 200, response.data)
+                self.assertEqual(response.data['weeks'], [])
+                incomplete = response.data['incomplete_plans']
+                self.assertEqual([entry['plan_id'] for entry in incomplete], expected_ids)
+                if incomplete:
+                    self.assertEqual(
+                        incomplete[0]['calculation_blockers'], ['missing_harvest_period'],
+                    )
+
+        comparison = self.comparison(crop)
+        self.assertEqual(comparison[origin.pk]['forecast_plan_count'], 0)
+        self.assertEqual(comparison[origin.pk]['expected_plan_count'], 1)
+        self.assertEqual(comparison[later.pk]['expected_plan_count'], 0)

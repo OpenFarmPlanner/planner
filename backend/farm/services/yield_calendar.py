@@ -208,7 +208,8 @@ def build_yield_forecast(
             if season is not None and plan.season_id != season.pk and plan.bed_id is None:
                 continue
             projections = schedule.project(start, end)
-            if not projections:
+            unscheduled = plan.planting_date is None and plan.legacy_forecast_candidate
+            if not projections and not unscheduled:
                 continue
         expected = compute_plan_expected_yield(plan, general_crops)
         if expected.kilograms is not None and projections:

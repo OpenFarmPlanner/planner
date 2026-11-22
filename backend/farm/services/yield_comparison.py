@@ -87,13 +87,13 @@ def _forecast_for_plan(
     by_id: dict[int, SeasonYield], crop_index: GeneralCropIndex,
     schedule: RecurringHarvestSchedule | None,
 ) -> None:
-    if schedule is not None:
+    if schedule is not None and plan.planting_date is not None:
         _forecast_recurring_plan(plan, schedule, rows, crop_index)
         return
 
     start, end = plan.harvest_date, plan.harvest_end_date
     original = by_id.get(plan.season_id)
-    if start is None or end is None or end <= start:
+    if schedule is not None or start is None or end is None or end <= start:
         if original is not None:
             original.forecast[plan.pk] = None
         diagnostic = start or end or plan.planting_date
