@@ -50,7 +50,7 @@ test('compares measured yields and exposes a table and actual date deviations wi
   await expect(results.getByText('91,75 kg', { exact: true })).toBeVisible();
   await expect(results.getByText('Nicht erfasst', { exact: true })).toHaveCount(2);
 
-  const group = page.getByRole('figure', { name: 'Vergleichbarer Ertrag' });
+  const group = page.getByRole('figure', { name: 'Erntemengen nach Saison' });
   const values = group.getByRole('button', { name: /^Ertrag für 2026/ });
   await values.press('Enter');
   const tooltip = page.getByRole('tooltip');
@@ -88,11 +88,14 @@ test('combines searchable crop groups and preserves season and site filters when
   await loginWithDeterministicProject(page, request, 'yield-comparison-filter-groups', {
     loginAsAdmin: true, demoProject: true, demoYear: 2026,
   });
+  await apiRequest(page, 'POST', '/locations/', { name: 'Standort ohne Anbau' });
   await page.goto('/app/yield-overview');
   const topbar = page.getByTestId('topbar-workspace-controls');
   await topbar.getByRole('button', { name: 'Saisonen vergleichen' }).click();
   await expect(page.getByRole('table', { name: 'Alle Kulturen' }).locator('th[scope="row"]')).toHaveCount(3);
   await expect(page.getByText('Summe aus 3 Saisonen')).toBeVisible();
+  const chart = page.getByRole('figure', { name: 'Erntemengen nach Saison' });
+  await expect(chart.getByRole('button', { name: /^Ertrag für / })).toHaveCount(3);
   const crops = page.getByRole('combobox', { name: 'Kultur' });
   await crops.fill('kartoff');
   await crops.press('ArrowDown');
@@ -117,6 +120,10 @@ test('combines searchable crop groups and preserves season and site filters when
     await expectNoHorizontalPageOverflow(page);
     await page.screenshot({ path: test.info().outputPath(`yield-comparison-filters-${width}.png`) });
   }
+  await page.getByRole('combobox', { name: 'Standort' }).click();
+  await page.getByRole('option', { name: 'Standort ohne Anbau', exact: true }).click();
+  await expect(chart.getByText('Für diese Auswahl sind keine Erntemengen oder Prognosen verfügbar.')).toBeVisible();
+  await expect(chart.getByRole('button')).toHaveCount(0);
 });
 
 test.describe('touch comparison', () => {
@@ -149,7 +156,7 @@ test.describe('touch comparison', () => {
     await expect(page).toHaveURL(/\/app\/planting-plans\/\d+$/);
   });
 
-  test('shows mixed units, estimated weight, unassigned harvest, and losses without a paired chart', async ({ page, request }) => {
+  test('shows separate unit groups, estimated weight, unassigned harvest and losses', async ({ page, request }) => {
     await page.setViewportSize({ width: 375, height: 800 });
     await loginWithDeterministicProject(page, request, 'season-yield-compare-touch', {
       loginAsAdmin: true, demoProject: true, demoYear: 2026,
@@ -161,8 +168,20 @@ test.describe('touch comparison', () => {
     await expect(summary.getByText('15,8 kg + 8 Stück', { exact: true })).toBeVisible();
     await expect(results.getByText('0,88 kg geschätzt', { exact: true })).toBeVisible();
     await expect(results.getByText('3 kg ohne Zuordnung', { exact: true })).toBeVisible();
-    await expect(page.getByRole('figure').getByRole('button')).toHaveCount(0);
-    await expect(page.getByText(/Für keine Saison liegen gewogene Ernten/)).toBeVisible();
+    const chart = page.getByRole('figure', { name: 'Erntemengen nach Saison' });
+    const unit = chart.getByRole('combobox', { name: 'Einheit' });
+    const current = chart.getByRole('button', { name: /^Ertrag für 2026/ });
+    const tooltip = page.getByRole('tooltip');
+    await current.tap();
+    await expect(tooltip.getByText('Erntemenge · 15,8 kg · Teilwert', { exact: true })).toBeVisible();
+    await expect(tooltip.getByText('Geschätztes Gewicht · 0,88 kg', { exact: true })).toBeVisible();
+    await unit.tap();
+    await page.getByRole('option', { name: 'Stück', exact: true }).tap();
+    await expect(chart.getByText('Prognose nur in kg', { exact: true })).toBeVisible();
+    await current.tap();
+    await expect(tooltip.getByText(/^Erntemenge · 8 Stück/)).toBeVisible();
+    await chart.getByRole('button', { name: /^Ertrag für 2025/ }).tap();
+    await expect(tooltip.getByText('Erntemenge · Nicht erfasst', { exact: true })).toBeVisible();
 
     await results.locator('summary').first().tap();
     await expect(results.getByRole('heading', { name: 'Ausfälle', exact: true })).toBeVisible();
@@ -174,6 +193,7 @@ test.describe('touch comparison', () => {
     await expect(results.getByText(/Anteile ohne Flächenzuordnung ausgeblendet/).first()).toBeVisible();
     await expect(summary.getByText('12,8 kg + 8 Stück', { exact: true })).toBeVisible();
     await expect(summary.getByText('Anteile ohne Flächenzuordnung ausgeblendet (2 Ernten)')).toBeVisible();
+    await expect(unit).toHaveText('Stück');
     await expect(results.getByText('3 kg ohne Zuordnung', { exact: true })).toHaveCount(0);
     await page.getByRole('combobox', { name: 'Standort' }).tap();
     await page.getByRole('option', { name: 'Alle Standorte', exact: true }).tap();

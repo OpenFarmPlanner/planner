@@ -241,14 +241,19 @@ description), one level down:
   allocations and any unassigned remainder when no area filter is active.
   An area filter counts the allocated shares on matching plans. If a record
   has an unallocated remainder or a plan without an area, the season reports
-  that record's incomplete assignment and omits the season from the comparable
-  chart. Gram and kilogram records share
+  that record's incomplete assignment and the chart marks recorded values
+  as partial. Gram and kilogram records share
   a mass total. Counts and weight estimates appear separately. Recorded
   yield per m² uses the full area of each plan with assigned harvest, counted
   once. Individual harvests with a recorded area show their own rate separately.
-  A chart pair uses measured mass and complete forecasts for the same plans.
-  A season without harvest records has unknown yield, including when a loss
-  incident was recorded. The harvest-entry model accepts positive quantities.
+  The API marks pairs comparable when measured mass and complete forecasts
+  cover the same plans. The chart can show either series on its own and hatches
+  known values with incomplete coverage. The unit picker shows kilograms,
+  pieces or bunches with data in the selected seasons. Forecasts use kilograms.
+  The chart and table expose estimates separately from measured quantities.
+  A season without a record in the selected unit has unknown yield, including
+  when a loss was recorded. The chart marks a missing value with a dash and
+  an explicit zero with a zero. The harvest-entry model accepts positive quantities.
 - The comparison `summary` covers all seasons returned by the current filters.
   It adds the known areas of plans owned by or occupying a selected season.
   A carried plan contributes once across the window, and unchanged repeated
@@ -343,6 +348,13 @@ recorded total is **15,8 kg + 8 Stück**. Choose **Hofgarten** and check
 unassigned portions. Switch to Kohlrabi alone and verify **Nicht erfasst**
 with **0 von 1** coverage. Open the existing help to see how planned area
 and crop coverage are calculated.
+
+In the same demo, choose **Alle Kulturen** and the default three seasons to
+check **Erntemengen nach Saison**. The kilogram chart has two slots per season.
+Open the 2026 tooltip for the **107,8 kg** recorded weight and the separate
+**0,88 kg** estimate. Switch to **Stück** for the eight pieces in 2026 and an
+unknown value in 2025. Selecting **Kartoffel** returns to the kilogram chart.
+The 2025 forecast remains visible with a dash for the unrecorded harvest.
 
 ## Year-boundary marker on season-spanning axes
 

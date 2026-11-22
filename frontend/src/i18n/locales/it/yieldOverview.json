@@ -104,11 +104,13 @@
     "activityDates": "Date delle attività nella stagione di coltivazione",
     "openPlan": "Apri la serie",
     "harvestedAreaYield": "Resa per m² di superficie raccolta",
-    "chartTitle": "Resa confrontabile",
-    "chartScope": "Qui compaiono solo le stagioni con raccolte pesate e una previsione completa per le stesse serie.",
-    "chartEmpty": "Nessuna stagione ha raccolte pesate e una previsione completa per le stesse serie.",
+    "chartTitle": "Quantità raccolte per stagione",
+    "chartEmpty": "Nessuna quantità raccolta o previsione disponibile per questa selezione.",
     "chartValues": "Resa per {{season}} ({{period}})",
-    "axis": "Resa in chilogrammi",
+    "partialValue": "Valore parziale",
+    "missingMark": "– Valore non disponibile",
+    "forecastMassOnly": "Previsione solo in kg",
+    "axis": "Quantità raccolta ({{unit}})",
     "tableScope": "Le quantità raccolte sono attribuite alla stagione della data di raccolta. La resa registrata per m² usa la superficie totale delle serie con raccolta assegnata."
   }
 }

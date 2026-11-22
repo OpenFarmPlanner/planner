@@ -104,11 +104,13 @@
     "activityDates": "Fechas de las actividades según la temporada de cultivo",
     "openPlan": "Abrir la serie",
     "harvestedAreaYield": "Rendimiento por m² de superficie cosechada",
-    "chartTitle": "Rendimiento comparable",
-    "chartScope": "Aquí solo aparecen temporadas con cosechas pesadas y una previsión completa para las mismas series.",
-    "chartEmpty": "Ninguna temporada tiene cosechas pesadas y una previsión completa para las mismas series.",
+    "chartTitle": "Cantidades recolectadas por temporada",
+    "chartEmpty": "No hay cantidades recolectadas ni previsiones para esta selección.",
     "chartValues": "Rendimiento de {{season}} ({{period}})",
-    "axis": "Rendimiento en kilogramos",
+    "partialValue": "Valor parcial",
+    "missingMark": "– Valor no disponible",
+    "forecastMassOnly": "Previsión solo en kg",
+    "axis": "Cantidad recolectada ({{unit}})",
     "tableScope": "Las cantidades cosechadas se atribuyen a la temporada de su fecha de registro. El rendimiento registrado por m² utiliza la superficie total de las series con cosecha asignada."
   }
 }

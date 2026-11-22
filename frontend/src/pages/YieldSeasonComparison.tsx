@@ -8,6 +8,7 @@ import { resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import { YieldComparisonFilterBar } from './YieldComparisonFilterBar';
 import { YieldComparisonResults } from './YieldComparisonResults';
 import { groupYieldComparisonCrops } from './yieldComparisonFilters';
+import type { YieldChartUnit } from './yieldSeasonChartData';
 
 type LoadResult<T> = { key: string; data: T } | { key: string; error: true };
 
@@ -22,6 +23,7 @@ export function YieldSeasonComparison({ filters, onFiltersChange }: YieldSeasonC
   const [retry, setRetry] = useState(0);
   const [catalog, setCatalog] = useState<LoadResult<YieldComparisonFilterOptions>>();
   const [comparison, setComparison] = useState<LoadResult<YieldComparison>>();
+  const [preferredUnit, setPreferredUnit] = useState<YieldChartUnit>('kg');
   const catalogKey = `${locale}:${retry}`;
   const options = catalog?.key === catalogKey && 'data' in catalog ? catalog.data : undefined;
   const groups = useMemo(() => groupYieldComparisonCrops(options?.crops ?? [], locale), [options, locale]);
@@ -67,7 +69,8 @@ export function YieldSeasonComparison({ filters, onFiltersChange }: YieldSeasonC
       {!current && <Typography role="status">{t('loading')}</Typography>}
       {current && ('error' in current
         ? <Alert severity="error" action={retryButton}>{t('errors.load')}</Alert>
-        : <YieldComparisonResults key={comparisonKey} comparison={current.data} cropName={cropName} />)}
+        : <YieldComparisonResults key={comparisonKey} comparison={current.data} cropName={cropName}
+          preferredUnit={preferredUnit} onChartUnitChange={setPreferredUnit} />)}
     </Stack>
   );
 }

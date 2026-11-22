@@ -286,7 +286,8 @@
       "points": [
         "Die geplante Anbaufläche ist die Summe der Flächenangaben der gefilterten Anbaupläne über die ausgewählten Saisonen. Ein laufender Anbauplan zählt einmal. Wenn mehrere Anbaupläne dasselbe Beet nutzen, zählt ihre Fläche je Anbauplan.",
         "Die erfasste Erntemenge folgt dem Erntedatum. Gewogene Mengen, Stück und Bund bleiben getrennt. Mit einem Standort-, Parzellen- oder Beetfilter zählen nur zugeordnete Mengen. Fehlende Zuordnungen werden angezeigt.",
-        "Die Datenlage zählt Kulturen mit mindestens einem Ernteintrag. Die Bezugsmenge umfasst alle Kulturen mit Anbauplan oder Ernte im Filterbereich. Weitere Ernten können noch fehlen."
+        "Die Datenlage zählt Kulturen mit mindestens einem Ernteintrag. Die Bezugsmenge umfasst alle Kulturen mit Anbauplan oder Ernte im Filterbereich. Weitere Ernten können noch fehlen.",
+        "Die Balken zeigen Prognosen in kg und erfasste Mengen je Einheit. Schraffierte Balken kennzeichnen Teilwerte. Ein Strich bedeutet, dass ein Wert fehlt. Eine erfasste Null erscheint als 0. Geschätzte Gewichte stehen separat in den Details und zählen nicht als gewogene Mengen."
       ]
     }
   }
