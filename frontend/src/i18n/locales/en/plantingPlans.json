@@ -529,6 +529,7 @@
   "carriedOver": {
     "description": "Continues from season {{season}}. Read-only here.",
     "unknownDescription": "Continues from an earlier planting. Read-only here.",
+    "otherSeasonDescription": "Planting plan from season {{season}}. Read-only here.",
     "openOrigin": "Open in originating season",
     "count_one": "{{own}} planted this season · {{count}} continues",
     "count_other": "{{own}} planted this season · {{count}} continue"

@@ -6,11 +6,13 @@ import { addUtcDays, formatIsoDate, parseIsoDate } from '../utils/isoDate';
 import { formatCropDisplayName, getCropDisplayName } from '../crops/cropDisplay';
 import { getGanttPhaseColors } from '../utils/colorContrast';
 import { getPlanSowingSchedule } from './planSowingDate';
+import { hasEarlyRecordedOccupancy } from './plantingPlansUtils';
 
 export interface GanttTask extends Task {
   plantingPlanId?: number;
   originSeasonId?: number;
   originSeasonLabel?: string | null;
+  earlyRecordedOccupancy?: boolean;
   cropName?: string;
   cropVariety?: string;
   areaUsage?: number;
@@ -258,23 +260,19 @@ export function getOccupancyCalendarRange(
     if (Number.isNaN(plantingDate.getTime())) {
       return;
     }
-    const occupancyStart = firstOccupancyDate(plantingDate, parseIsoDate(plan.seasonal_harvest?.periods[0]?.start_date));
+    const occupancyStart = parseIsoDate(plan.seasonal_harvest?.occupancy_start_date) ?? plantingDate;
     const end = plan.clearing_date || (plan.carried_over || plan.seasonal_harvest ? plan.occupancy_end_date : undefined);
     const harvestEndDate = parseDateString(end || plan.harvest_end_date || plan.harvest_date || '');
     const rangeEnd = !Number.isNaN(harvestEndDate.getTime()) && harvestEndDate > plantingDate
       ? harvestEndDate
       : plantingDate;
-    const visibleStart = plan.carried_over && startOfSeason && occupancyStart < startOfSeason
+    const visibleStart = (plan.carried_over || plan.seasonal_harvest) && startOfSeason && occupancyStart < startOfSeason
       ? startOfSeason : occupancyStart;
     const visibleEnd = (plan.clearing_date || plan.seasonal_harvest) && endOfSeason && endOfSeason < rangeEnd
       ? endOfSeason : rangeEnd;
     range = extendRange(range, visibleStart, visibleEnd);
   });
   return range;
-}
-
-function firstOccupancyDate(plantingDate: Date, firstHarvest: Date | null | undefined): Date {
-  return firstHarvest && firstHarvest < plantingDate ? firstHarvest : plantingDate;
 }
 
 export function clipCarriedOverOccupancyTask(task: GanttTask, axisStart: Date): GanttTask | null {
@@ -516,7 +514,7 @@ function buildPerennialOccupancyTask(
   return {
     id: `plan-${plan.id}-occupancy`,
     name: formatCropDisplayLabel(name || labels.unknownCropName(plan.crop), plan.crop_variety),
-    startDate: firstOccupancyDate(plantingDate, phaseBands?.[0]?.startDate),
+    startDate: parseIsoDate(recurring?.occupancy_start_date) ?? plantingDate,
     endDate: occupancyEnd,
     plantingAnchor: plantingDate,
     clearingDate: clearingDate ?? undefined,
@@ -528,6 +526,7 @@ function buildPerennialOccupancyTask(
     positionLocked: Boolean(recurring?.planting_recorded),
     originSeasonId: plan.season ?? undefined,
     originSeasonLabel: plan.origin_season_label,
+    earlyRecordedOccupancy: hasEarlyRecordedOccupancy(plan),
     cropName: name || undefined,
     cropVariety: plan.crop_variety ?? undefined,
     areaUsage: plan.area_usage_sqm ? Number(plan.area_usage_sqm) : undefined,

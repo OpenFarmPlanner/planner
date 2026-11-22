@@ -760,7 +760,8 @@ function GanttChartPage() {
         if (!visible) return [];
         if (!task.readOnly && !task.phaseBands) return [visible];
         const description = task.originSeasonLabel
-          ? t('plantingPlans:carriedOver.description', { season: task.originSeasonLabel })
+          ? t(task.earlyRecordedOccupancy ? 'plantingPlans:carriedOver.otherSeasonDescription' : 'plantingPlans:carriedOver.description',
+            { season: task.originSeasonLabel })
           : t('plantingPlans:carriedOver.unknownDescription');
         const harvestLabel = task.phaseBands?.length
           ? `${t('ganttChart:tooltip.seasonalHarvest')} · ${formatSeasonalHarvestBands(task.phaseBands)}`
@@ -1691,7 +1692,8 @@ function GanttChartPage() {
       {task.readOnly && (
         <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
           {task.originSeasonLabel
-            ? t('plantingPlans:carriedOver.description', { season: task.originSeasonLabel })
+            ? t(task.earlyRecordedOccupancy ? 'plantingPlans:carriedOver.otherSeasonDescription' : 'plantingPlans:carriedOver.description',
+              { season: task.originSeasonLabel })
             : t('plantingPlans:carriedOver.unknownDescription')}
         </Typography>
       )}

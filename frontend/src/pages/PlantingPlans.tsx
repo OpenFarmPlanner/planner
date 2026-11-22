@@ -174,6 +174,7 @@ import {
   CROP_COLUMN_MAX_WIDTH,
   getPlanOccupancyEndIso,
   getSeasonOccupancyStatus,
+  hasEarlyRecordedOccupancy,
   getSupplementalPlannedDates,
   toPlanIsoDate,
   getVisibleMobileRows,
@@ -851,6 +852,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             {params.row.carried_over && (
               <CarriedOverPlanIndicator
                 season={params.row.origin_season_label}
+                early={hasEarlyRecordedOccupancy(params.row)}
                 tabIndex={params.hasFocus ? 0 : -1}
                 compact
               />
@@ -1329,7 +1331,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         width: 156,
         editable: false,
         valueGetter: (_value, row: PlantingPlanRow) => {
-          const start = toPlanIsoDate(row.planting_date);
+          const start = row.seasonal_harvest?.occupancy_start_date ?? toPlanIsoDate(row.planting_date);
           const end = row.occupancy_end_date ?? getPlanOccupancyEndIso(row) ?? start;
           return seasonBounds && row.bed && start && end
             ? getSeasonOccupancyStatus(start, end, seasonBounds) : null;
@@ -2544,7 +2546,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               renderHeaderAction={(item) => (
                 <Stack direction="row">
                   {item.carried_over && (
-                    <CarriedOverPlanIndicator season={item.origin_season_label} />
+                    <CarriedOverPlanIndicator season={item.origin_season_label} early={hasEarlyRecordedOccupancy(item)} />
                   )}
                   <AppTooltip title={t("common:actions.actions")}>
                     <IconButton

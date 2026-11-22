@@ -24,6 +24,7 @@ import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
 import {
   DIRECT_SOWING, getPlanPropagationInfo, PRE_CULTIVATION, PURCHASED_TRANSPLANT,
 } from '../pages/planSowingDate';
+import { hasEarlyRecordedOccupancy } from '../pages/plantingPlansUtils';
 import { formatSeasonDate, initialSeasonRecordDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import { formatLocalizedNumber } from '../utils/numberLocalization';
 import { PlantingPlanExecutionDates } from './PlantingPlanExecutionDates';
@@ -108,12 +109,15 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
   const cropName = loadedPlan ? formatCropDisplayName(loadedPlan) : '';
   const recordSeason = context?.activeSeason ?? season;
   const seasonalHarvest = loadedPlan?.seasonal_harvest;
-  const proposedHarvestDate = initialSeasonRecordDate(
+  let recordDate = initialSeasonRecordDate(
     recordSeason, seasonalHarvest ? seasonalHarvest.periods[0]?.start_date : loadedPlan?.harvest_date,
   );
+  const firstOccupiedDay = seasonalHarvest?.occupancy_start_date;
   const lastOccupiedDay = loadedPlan?.occupancy_end_date;
-  const recordDate = loadedPlan?.carried_over && lastOccupiedDay && proposedHarvestDate > lastOccupiedDay
-    ? lastOccupiedDay : proposedHarvestDate;
+  if (loadedPlan?.carried_over) {
+    if (firstOccupiedDay && recordDate < firstOccupiedDay) recordDate = firstOccupiedDay;
+    if (lastOccupiedDay && recordDate > lastOccupiedDay) recordDate = lastOccupiedDay;
+  }
   const recordScope = `${activeProjectId ?? ''}:${recordSeason?.id ?? ''}:${loadedPlanId ?? ''}`;
   const propagation = loadedPlan && getPlanPropagationInfo(loadedPlan, undefined);
   const cultivation = loadedPlan?.cultivation_type || (propagation?.isPreCultivation
@@ -189,7 +193,8 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
             {loadedPlan.carried_over && (
               <Alert severity="info">
                 {loadedPlan.origin_season_label
-                  ? t('carriedOver.description', { season: loadedPlan.origin_season_label })
+                  ? t(hasEarlyRecordedOccupancy(loadedPlan) ? 'carriedOver.otherSeasonDescription' : 'carriedOver.description',
+                    { season: loadedPlan.origin_season_label })
                   : t('carriedOver.unknownDescription')}
               </Alert>
             )}

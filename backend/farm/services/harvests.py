@@ -12,7 +12,10 @@ from farm.models import Crop, PlantingPlan, Season
 from farm.models.harvests import HarvestConversionSource, HarvestUnit
 from farm.services.crop_inheritance import GeneralCropIndex, get_general_crop
 from farm.services.public_crops import effective_library_pinned_fields
-from farm.services.seasonal_harvest import recurring_harvest_schedule
+from farm.services.seasonal_harvest import (
+    early_recorded_perennial_plan_ids,
+    recurring_harvest_schedule,
+)
 from farm.services.yield_calendar import compute_plan_expected_yield, forecast_yield_for_projection
 
 REFERENCE_WEIGHT_FIELDS = {
@@ -61,17 +64,14 @@ def harvest_number(value: Decimal | None) -> str | None:
 
 def eligible_harvest_plans(project_id: int, crop_id: int, day: date) -> QuerySet[PlantingPlan]:
     """Plans in the record's season or physically occupying a bed on its date."""
-    return (
-        PlantingPlan.objects.filter(
-            project_id=project_id,
-            crop_id=crop_id,
-            season__deleted_at__isnull=True,
-        )
-        .alias(occupied_until=PlantingPlan.occupancy_end_expression())
-        .filter(
-            Q(season__start_date__lte=day, season__end_date__gte=day)
-            | Q(bed__isnull=False, planting_date__lte=day, occupied_until__gte=day)
-        )
+    plans = PlantingPlan.objects.filter(
+        project_id=project_id, crop_id=crop_id, season__deleted_at__isnull=True,
+    )
+    early_plans, _ = early_recorded_perennial_plan_ids(plans, project_id, day, day)
+    return plans.alias(occupied_until=PlantingPlan.occupancy_end_expression()).filter(
+        Q(season__start_date__lte=day, season__end_date__gte=day)
+        | Q(bed__isnull=False, planting_date__lte=day, occupied_until__gte=day)
+        | Q(pk__in=early_plans)
     )
 
 

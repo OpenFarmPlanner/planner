@@ -529,6 +529,7 @@
   "carriedOver": {
     "description": "Loopt door vanuit seizoen {{season}}. Hier alleen-lezen.",
     "unknownDescription": "Eerder begonnen teelt. Hier alleen-lezen.",
+    "otherSeasonDescription": "Teeltplan uit seizoen {{season}}. Hier alleen-lezen.",
     "openOrigin": "Openen in het oorspronkelijke seizoen",
     "count_one": "{{own}} gestart in dit seizoen · {{count}} loopt door",
     "count_other": "{{own}} gestart in dit seizoen · {{count}} lopen door"

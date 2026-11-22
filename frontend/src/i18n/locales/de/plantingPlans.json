@@ -529,6 +529,7 @@
   "carriedOver": {
     "description": "Läuft weiter aus Saison {{season}}. Hier nur lesbar.",
     "unknownDescription": "Anbauplan aus einem früheren Zeitraum. Hier nur lesbar.",
+    "otherSeasonDescription": "Anbauplan aus Saison {{season}}. Hier nur lesbar.",
     "openOrigin": "In ursprünglicher Saison öffnen",
     "count_one": "{{own}} in dieser Saison gepflanzt · {{count}} läuft weiter",
     "count_other": "{{own}} in dieser Saison gepflanzt · {{count}} laufen weiter"

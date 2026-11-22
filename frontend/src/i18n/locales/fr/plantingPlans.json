@@ -543,6 +543,7 @@
   "carriedOver": {
     "description": "Se poursuit depuis la saison {{season}}. Lecture seule ici.",
     "unknownDescription": "Série commencée précédemment. Lecture seule ici.",
+    "otherSeasonDescription": "Plan de culture de la saison {{season}}. Lecture seule ici.",
     "openOrigin": "Ouvrir dans la saison d’origine",
     "count_one": "{{own}} démarrées cette saison · {{count}} se poursuit",
     "count_other": "{{own}} démarrées cette saison · {{count}} se poursuivent",

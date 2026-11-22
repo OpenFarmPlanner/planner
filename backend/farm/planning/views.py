@@ -57,6 +57,7 @@ from farm.services.crop_inheritance import (
 )
 from farm.services.crop_rotation import RotationService, suggest_beds
 from farm.services.germination_check import check_germination
+from farm.services.seasonal_harvest import early_recorded_perennial_plan_ids
 from farm.services.site_suitability import check_site_suitability
 from farm.services.tasks import (
     detach_plan_tasks,
@@ -397,6 +398,9 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
                     pk=season_id, project=self.request.active_project,
                 ).first()
         context['harvest_season'] = season
+        crop_index = getattr(self, '_harvest_crop_index', None)
+        if crop_index is not None:
+            context['_general_crop_index_by_project'] = {self.request.active_project.pk: crop_index}
         return context
 
     def get_queryset(self):
@@ -467,7 +471,14 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             planting_date__lt=active_season.start_date,
             occupied_until__gte=active_season.start_date,
         )
-        carried_over = starts_before & ~Q(season_id=season_id)
+        project_id = self.request.active_project.pk
+        candidates = PlantingPlan.objects.filter(
+            project_id=project_id, season__deleted_at__isnull=True,
+        ).exclude(season_id=season_id)
+        early_plans, self._harvest_crop_index = early_recorded_perennial_plan_ids(
+            candidates, project_id, active_season.start_date, active_season.end_date,
+        )
+        carried_over = (starts_before | Q(pk__in=early_plans)) & ~Q(season_id=season_id)
         if not across_seasons:
             queryset = queryset.filter(Q(season_id=season_id) | carried_over)
         return queryset.annotate(carried_over=Case(

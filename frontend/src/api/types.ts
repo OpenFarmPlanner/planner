@@ -1337,6 +1337,7 @@ export interface SeasonalHarvestPeriod {
 
 export interface PlantingPlanSeasonalHarvest {
   periods: SeasonalHarvestPeriod[];
+  occupancy_start_date?: string | null;
   planting_recorded?: boolean;
   actual_start_date: string | null;
   actual_end_date: string | null;

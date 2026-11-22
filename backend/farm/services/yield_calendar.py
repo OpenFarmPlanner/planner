@@ -20,7 +20,9 @@ from farm.services.plant_count import PLANT_COUNT_BLOCKER_MISSING_AREA, compute_
 from farm.services.seasonal_harvest import (
     HarvestProjection,
     RecurringHarvestSchedule,
+    early_recorded_planting_candidates,
     recurring_harvest_schedule,
+    recurring_plan_visible_in_season,
 )
 
 _YIELD_PRECISION = Decimal('0.01')
@@ -150,11 +152,14 @@ def _forecast_plans(
         .alias(occupied_until=PlantingPlan.occupancy_end_expression())
         .order_by('pk')
     )
+    legacy_visibility = Q()
     if season is not None:
+        legacy_visibility = Q(season_id=season.pk) | Q(
+            planting_date__lt=season.start_date, occupied_until__gte=season.start_date,
+        )
+        early_occupancy = early_recorded_planting_candidates(season.start_date, season.end_date)
         plans = plans.filter(season__deleted_at__isnull=True).filter(
-            Q(season_id=season.pk) | Q(
-                planting_date__lt=season.start_date, occupied_until__gte=season.start_date,
-            ),
+            legacy_visibility | early_occupancy,
         )
     elif season_id is not None:
         plans = plans.filter(season_id=season_id)
@@ -168,6 +173,7 @@ def _forecast_plans(
         legacy_selection = overlaps | (invalid_period & diagnosis_scope)
     else:
         legacy_selection = overlaps & ~invalid_period
+    legacy_selection &= legacy_visibility
     # Active perennials can contribute without any stored legacy harvest dates.
     could_be_planted = (
         Q(planting_date__lte=end)
@@ -210,7 +216,7 @@ def build_yield_forecast(
                 continue
             projections = legacy_harvest_projection(plan, start, end)
         else:
-            if season is not None and plan.season_id != season.pk and plan.bed_id is None:
+            if season is not None and not recurring_plan_visible_in_season(plan, season, schedule):
                 continue
             projections = schedule.project(start, end)
             unscheduled = plan.planting_date is None and plan.legacy_forecast_candidate

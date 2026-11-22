@@ -299,7 +299,7 @@ test.describe('recurring harvest dates', () => {
         await page.reload();
         await expect(bar).toHaveAccessibleName(/Geplante Saisonernte.*11\.3\.2025.*12\.3\.2025/);
         await expect(phase).toHaveCount(1);
-        expect((await phase.boundingBox())!.x).toBeCloseTo((await bar.boundingBox())!.x, 0);
+        expect((await phase.boundingBox())!.x).toBeGreaterThan((await bar.boundingBox())!.x);
         expect((await phase.boundingBox())!.width).toBeGreaterThan(1);
         const moveMode = page.getByRole('button', { name: /^Zeitraum verschieben/ });
         if (await moveMode.getAttribute('aria-pressed') === 'false') await moveMode.click();
@@ -316,6 +316,26 @@ test.describe('recurring harvest dates', () => {
         await mode.selectOption('planned');
         await expect(plantingDate).toHaveText('15.3.2025');
         await expect(harvestStart).toHaveText('11.3.2025');
+      });
+
+      await test.step('an actual start in the preceding season keeps the original plan read-only there', async () => {
+        await create('/seasons/', {
+          start_date: '2024-01-01', end_date: '2024-12-31', custom_label: 'Obstjahr 2024',
+        });
+        await apiRequest(page, 'PATCH', `/crops/${crop.id}/`, { annual_harvest_window: '12-20/12-25' });
+        await apiRequest(page, 'PATCH', `/planting-plans/${plan.id}/`, { actual_sowing_date: '2024-12-17' });
+        await page.reload();
+        await switchSeason(2024);
+        await expect(harvestStart).toHaveText('20.12.2024');
+        await expect(harvestEnd).toHaveText('25.12.2024');
+        const sourceLabel = plans.carriedOver.otherSeasonDescription.replace('{{season}}', 'Obstjahr 2025');
+        await expect(row.getByRole('button', { name: sourceLabel })).toBeVisible();
+        await page.goto('/app/gantt-chart?view=field');
+        await expect(bar).toHaveAccessibleName(/Obstjahr 2025.*20\.12\.2024.*25\.12\.2024/);
+        await expect(phase).toHaveCount(1);
+        await bar.click({ button: 'right' });
+        await expect(page.getByRole('menuitem', { name: 'Bearbeiten' })).toHaveCount(0);
+        await expect(page.getByRole('menuitem', { name: 'In ursprünglicher Saison öffnen' })).toBeVisible();
       });
     } finally {
       await resetE2EScenario(request, scenario);

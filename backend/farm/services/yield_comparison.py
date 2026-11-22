@@ -32,6 +32,7 @@ from farm.services.harvests import (
 from farm.services.seasonal_harvest import (
     RecurringHarvestSchedule,
     recurring_harvest_schedule,
+    recurring_plan_visible_in_season,
     seasonal_harvest_payload,
 )
 from farm.services.yield_calendar import (
@@ -126,9 +127,7 @@ def _forecast_recurring_plan(
     expected = compute_plan_expected_yield(plan, crop_index).kilograms
     for row in rows:
         season = row.season
-        if plan.season_id != season.pk and not plan.bed_id:
-            continue
-        if not _plan_visible_in_season(plan, season):
+        if not recurring_plan_visible_in_season(plan, season, schedule):
             continue
         projections = schedule.project(season.start_date, season.end_date)
         if projections:
@@ -168,7 +167,7 @@ def _record_activity_dates(
         return
 
     for row in rows:
-        if row is not origin and (not plan.bed_id or not _plan_visible_in_season(plan, row.season)):
+        if not recurring_plan_visible_in_season(plan, row.season, schedule):
             continue
         harvest = seasonal_harvest_payload(plan, row.season, schedule)
         has_actual = harvest['actual_start_date'] or harvest['actual_end_date']

@@ -5,8 +5,14 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import TypedDict
 
+from django.db.models import F, Q, QuerySet
+
 from farm.models import PlantingPlan, Season
-from farm.services.crop_inheritance import GeneralCropIndex, resolve_crop_field
+from farm.services.crop_inheritance import (
+    GeneralCropIndex,
+    build_general_crop_index,
+    resolve_crop_field,
+)
 from farm.services.tasks import plan_cultivation_type
 
 
@@ -27,6 +33,7 @@ class SeasonalHarvestPeriod(TypedDict):
 
 class SeasonalHarvestPayload(TypedDict):
     periods: list[SeasonalHarvestPeriod]
+    occupancy_start_date: date | None
     planting_recorded: bool
     actual_start_date: date | None
     actual_end_date: date | None
@@ -43,6 +50,7 @@ def seasonal_harvest_payload(
             {'start_date': projection.start_date, 'end_date': projection.end_date}
             for projection in schedule.project(season.start_date, season.end_date)
         ],
+        'occupancy_start_date': schedule.occupied_from,
         'planting_recorded': schedule.planting_recorded,
         'actual_start_date': within_season(plan.actual_harvest_start_date),
         'actual_end_date': within_season(plan.recorded_harvest_end_date),
@@ -55,7 +63,9 @@ class RecurringHarvestSchedule:
     end: tuple[int, int]
     eligible_from: date | None
     occupied_until: date | None
-    # Eligibility already determines forecast equality for copied plans.
+    # These dates guide season visibility and editing. Eligibility and clearing
+    # determine whether copies have the same forecast.
+    occupied_from: date | None = field(compare=False)
     planting_recorded: bool = field(compare=False)
 
     def project(self, start_date: date, end_date: date) -> list[HarvestProjection]:
@@ -116,8 +126,56 @@ def recurring_harvest_schedule(
         else plan.actual_transplanting_date
     )
     planted = (actual or plan.planting_date) if plan.planting_date is not None else None
+    occupied_from = min(planted, plan.planting_date) if planted is not None else None
     delay = resolve_crop_field(plan.crop, 'first_harvest_delay_years', crop_index) or 0
     return RecurringHarvestSchedule(
         (start_month, start_day), (end_month, end_day),
-        _first_eligible_day(planted, delay), plan.occupancy_end_date, actual is not None,
+        _first_eligible_day(planted, delay), plan.occupancy_end_date, occupied_from,
+        actual is not None,
+    )
+
+
+def early_recorded_planting_candidates(start: date, end: date) -> Q:
+    """Select possible early carry-ins before resolving crop inheritance in bulk."""
+    return Q(
+        bed__isnull=False, crop__isnull=False, planting_date__gte=start,
+        occupied_until__gte=start,
+    ) & (
+        Q(actual_sowing_date__lte=end, actual_sowing_date__lt=F('planting_date'))
+        | Q(actual_transplanting_date__lte=end, actual_transplanting_date__lt=F('planting_date'))
+    )
+
+
+def early_recorded_perennial_plan_ids(
+    plans: QuerySet[PlantingPlan], project_id: int, start: date, end: date,
+) -> tuple[list[int], GeneralCropIndex | None]:
+    """Resolve the few plans whose actual occupancy starts before their planned date."""
+    candidates = list(plans.alias(occupied_until=PlantingPlan.occupancy_end_expression()).filter(
+        early_recorded_planting_candidates(start, end),
+    ).select_related('crop').order_by())
+    if not candidates:
+        return [], None
+
+    crop_index = build_general_crop_index(project_id)
+    return [
+        plan.pk for plan in candidates
+        if (schedule := recurring_harvest_schedule(plan, crop_index)) is not None
+        and schedule.occupied_from is not None
+        and schedule.occupied_from < plan.planting_date
+        and schedule.occupied_from <= end
+    ], crop_index
+
+
+def recurring_plan_visible_in_season(
+    plan: PlantingPlan, season: Season, schedule: RecurringHarvestSchedule,
+) -> bool:
+    """Keep the owning plan and any assigned bed occupancy intersecting the season."""
+    if plan.season_id == season.pk:
+        return True
+    return bool(
+        plan.bed_id is not None
+        and plan.planting_date is not None
+        and schedule.occupied_from is not None and schedule.occupied_from <= season.end_date
+        and schedule.occupied_until is not None and schedule.occupied_until >= season.start_date
+        and (plan.planting_date < season.start_date or schedule.occupied_from < plan.planting_date)
     )

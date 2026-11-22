@@ -79,6 +79,7 @@ class SeasonalHarvestTest(ProjectApiTestCase):
                 self.assertEqual(row['carried_over'], year != 2025)
                 self.assertEqual(row['seasonal_harvest'], {
                     'periods': expected,
+                    'occupancy_start_date': '2025-03-15',
                     'planting_recorded': False,
                     'actual_start_date': '2025-09-10' if year == 2025 else None,
                     'actual_end_date': '2025-10-02' if year == 2025 else None,
@@ -228,3 +229,50 @@ class SeasonalHarvestTest(ProjectApiTestCase):
         self.assertEqual(sum(crop['yield'] for week in weekly.data for crop in week['crops']), 16)
         self.assertEqual(self.forecast(season), Decimal(16))
         self.assertEqual(self.comparison(crop)[season.pk]['forecast_kg'], '16')
+
+    def test_early_occupancy_in_a_preceding_season_keeps_the_original_plan(self) -> None:
+        earlier = self.season(date(2026, 1, 1), date(2026, 12, 31))
+        owner = self.season(date(2027, 1, 1), date(2027, 12, 31))
+        crop = self.crop_with_window('12-20/12-25')
+        plan = PlantingPlan.objects.create(
+            project=self.project, crop=crop, bed=self.bed, season=owner, area_usage_sqm=8,
+            planting_date=date(2027, 1, 10), clearing_date=date(2027, 9, 15),
+            actual_transplanting_date=date(2026, 12, 17), cultivation_type='purchased_transplant',
+        )
+        annual = Crop.objects.create(
+            project=self.project, name='Annual comparator', life_cycle='annual',
+        )
+        PlantingPlan.objects.create(
+            project=self.project, crop=annual, bed=self.bed, season=owner, area_usage_sqm=8,
+            planting_date=date(2027, 1, 10), actual_transplanting_date=date(2026, 12, 17),
+            cultivation_type='purchased_transplant',
+        )
+
+        headers = {'HTTP_X_SEASON_ID': str(earlier.pk)}
+        response = self.client.get(PLANS, **headers)
+        self.assertEqual(response.status_code, 200, response.data)
+        row, = response.json()['results']
+        self.assertEqual(row['id'], plan.pk)
+        self.assertEqual(row['season'], owner.pk)
+        self.assertTrue(row['carried_over'])
+        self.assertEqual(row['seasonal_harvest']['occupancy_start_date'], '2026-12-17')
+        self.assertEqual(row['seasonal_harvest']['periods'], [
+            {'start_date': '2026-12-20', 'end_date': '2026-12-25'},
+        ])
+        detail = self.client.get(f'{PLANS}{plan.pk}/', **headers)
+        self.assertEqual(detail.status_code, 200, detail.data)
+        edit = self.client.patch(f'{PLANS}{plan.pk}/', {'notes': 'test'}, **headers)
+        self.assertEqual(edit.status_code, 404)
+
+        self.assertEqual(self.forecast(earlier), Decimal(16))
+        self.assertEqual(self.forecast(owner), 0)
+        harvest = self.client.post('/openfarmplanner/api/harvests/', {
+            'crop': crop.pk, 'date': '2026-12-21', 'quantity': 3, 'unit': 'kg',
+            'allocations': [{'planting_plan': plan.pk, 'quantity': 3}],
+        }, format='json', **headers)
+        self.assertEqual(harvest.status_code, 201, harvest.data)
+        comparison = self.comparison(crop)
+        self.assertEqual(comparison[earlier.pk]['forecast_kg'], '16')
+        self.assertEqual(comparison[earlier.pk]['recorded']['measured_kg'], '3')
+        self.assertIsNone(comparison[owner.pk]['forecast_kg'])
+        self.assertIsNone(comparison[owner.pk]['recorded']['measured_kg'])

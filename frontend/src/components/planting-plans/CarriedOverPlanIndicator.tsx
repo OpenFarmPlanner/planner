@@ -4,15 +4,16 @@ import { ButtonBase } from '@mui/material';
 import { useTranslation } from '../../i18n';
 import { AppTooltip } from '../AppTooltip';
 
-export function CarriedOverPlanIndicator({ season, tabIndex = 0, compact = false }: {
+export function CarriedOverPlanIndicator({ season, early = false, tabIndex = 0, compact = false }: {
   season?: string | null;
+  early?: boolean;
   tabIndex?: number;
   compact?: boolean;
 }) {
   const { t } = useTranslation('plantingPlans');
   const [open, setOpen] = useState(false);
   const description = season
-    ? t('carriedOver.description', { season })
+    ? t(early ? 'carriedOver.otherSeasonDescription' : 'carriedOver.description', { season })
     : t('carriedOver.unknownDescription');
   return (
     <AppTooltip

@@ -657,6 +657,9 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         target = Season.objects.create(
             project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
         )
+        later = Season.objects.create(
+            project=self.project, start_date=date(2028, 1, 1), end_date=date(2028, 12, 31),
+        )
         headers = {'HTTP_X_SEASON_ID': str(target.pk)}
         plan_url = '/openfarmplanner/api/planting-plans/'
         yield_url = '/openfarmplanner/api/yield-calendar/'
@@ -671,6 +674,12 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 clearing_date=date(2027, 12, 31), area_usage_sqm=5,
                 project=self.project, season=self.seasons[index],
             )
+            PlantingPlan.objects.create(
+                crop=self.crops[index], bed=self.beds[index], planting_date=date(2028, 1, 15),
+                actual_transplanting_date=date(2027, 8, 1), cultivation_type='purchased_transplant',
+                clearing_date=date(2029, 12, 31), area_usage_sqm=5,
+                project=self.project, season=later,
+            )
             with CaptureQueriesContext(connection) as plan_queries:
                 plans = self.client.get(plan_url, **headers)
             with CaptureQueriesContext(connection) as yield_queries:
@@ -678,7 +687,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             self.assertEqual(plans.status_code, 200)
             self.assertEqual(weekly_yield.status_code, 200)
             rows = plans.data['results']
-            self.assertEqual(len(rows), index + 1)
+            self.assertEqual(len(rows), 2 * (index + 1))
             self.assertTrue(all(
                 row['carried_over'] and row['seasonal_harvest']['periods'] for row in rows
             ))

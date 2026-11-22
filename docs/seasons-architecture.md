@@ -118,11 +118,14 @@ description), one level down:
   selected season, it also includes a plan planted before the first day if
   it occupies an assigned bed on or after that day. The recorded perennial
   removal date takes precedence over the stored harvest end, harvest date,
-  and planting date.
+  and planting date. For a configured perennial, an earlier recorded sowing
+  or transplant can make the plan visible in a season preceding its planned
+  start. That view uses the same plan ID, read-only status and origin action.
   A read returns `carried_over` and the originating season label. The plan's
   ID and season assignment stay the same. For a perennial with a configured
   annual window, `seasonal_harvest` gives the ordered, inclusive `periods`
-  that intersect the selected season, a `planting_recorded` flag for an
+  that intersect the selected season, the effective `occupancy_start_date`,
+  a `planting_recorded` flag for an
   actual sowing or transplanting anchor, and nullable `actual_start_date`
   and `actual_end_date` drawn from recorded dates within that season. An
   empty list means the plan has no eligible harvest in that period. The

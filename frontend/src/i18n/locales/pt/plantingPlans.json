@@ -543,6 +543,7 @@
   "carriedOver": {
     "description": "Continua da época {{season}}. Aqui é só de leitura.",
     "unknownDescription": "Série iniciada anteriormente. Aqui é só de leitura.",
+    "otherSeasonDescription": "Plano de cultivo da época {{season}}. Aqui é só de leitura.",
     "openOrigin": "Abrir na época de origem",
     "count_one": "{{own}} iniciadas nesta época · {{count}} continua",
     "count_other": "{{own}} iniciadas nesta época · {{count}} continuam",
