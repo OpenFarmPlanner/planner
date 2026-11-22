@@ -12,7 +12,6 @@
   },
   "chart": {
     "title": "Distribuzione delle rese",
-    "subtitle": "Previsione dalle serie della stagione attiva: superficie o numero di piante pianificati moltiplicati per la resa prevista della coltura.",
     "tooltip": "{{period}} · {{crop}}: {{yield}} kg",
     "tooltipPeriod": "Periodo",
     "tooltipYield": "Resa prevista",

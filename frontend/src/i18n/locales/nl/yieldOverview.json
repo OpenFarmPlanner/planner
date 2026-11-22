@@ -12,7 +12,6 @@
   },
   "chart": {
     "title": "Opbrengstverdeling",
-    "subtitle": "Prognose op basis van de teelten van het actieve seizoen: geplande oppervlakte of aantal planten maal de verwachte opbrengst van het gewas.",
     "tooltip": "{{period}} · {{crop}}: {{yield}} kg",
     "tooltipPeriod": "Periode",
     "tooltipYield": "Verwachte opbrengst",

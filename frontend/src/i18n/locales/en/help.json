@@ -282,7 +282,7 @@
     },
     "yieldOverview": {
       "title": "Help: Yield overview",
-      "intro": "The yield overview is a forecast: it spreads the expected harvest of the active season's planting plans over their harvest periods. It is based on the planned area or plant count and the crop's expected yield per m² or per plant. Actual harvests are not recorded.\n\nNarrow the view to one crop or switch between weeks and months under \"View\". Hover over a bar to see the period, crop and harvest amount.",
+      "intro": "For each planting plan in the active season, the forecast multiplies the expected yield per m² by the planned area, or the expected yield per plant by the calculated plant count. It spreads the resulting quantity across the days in the harvest period. The warning lists plans with missing or invalid inputs.\n\nFilter to one crop or switch between weeks and months under “Display”. Hover over a bar or press Space when it has focus to see the period, crop and expected harvest quantity. Find recorded harvests under “Compare seasons”.",
       "points": []
     }
   }

@@ -282,7 +282,7 @@
     },
     "yieldOverview": {
       "title": "Hilfe: Ertragsübersicht",
-      "intro": "Die Ertragsübersicht ist eine Prognose: Sie verteilt die erwarteten Erntemengen deiner Anbaupläne der aktiven Saison über die Erntezeiträume. Grundlage sind die geplante Fläche oder Pflanzenzahl und der erwartete Ertrag der Kultur pro m² oder pro Pflanze. Tatsächliche Erntemengen werden nicht erfasst.\n\nGrenze die Ansicht auf eine Kultur ein oder wechsle unter „Darstellung“ zwischen Wochen und Monaten. Fahre über einen Balken, um Zeitraum, Kultur und Erntemenge anzuzeigen.",
+      "intro": "Der Prognosekalender berechnet die erwartete Menge je Anbauplan der aktiven Saison. Dazu multipliziert er den erwarteten Ertrag pro m² mit der geplanten Fläche oder den erwarteten Ertrag pro Pflanze mit der berechneten Pflanzenzahl. Er verteilt die Menge über die Tage des Erntezeitraums. Der Warnhinweis zeigt Anbaupläne mit fehlenden oder ungültigen Angaben.\n\nGrenze die Ansicht auf eine Kultur ein oder wechsle unter „Darstellung“ zwischen Wochen und Monaten. Fahre über einen Balken oder drücke die Leertaste, wenn er fokussiert ist. So siehst du Zeitraum, Kultur und erwartete Erntemenge. Erfasste Ernten findest du unter „Saisonen vergleichen“.",
       "points": []
     }
   }

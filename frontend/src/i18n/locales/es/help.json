@@ -282,7 +282,7 @@
     },
     "yieldOverview": {
       "title": "Ayuda: Resumen de rendimientos",
-      "intro": "El resumen de rendimiento es una previsión: reparte las cosechas previstas de los planes de cultivo de la temporada activa a lo largo de sus periodos de cosecha. Se basa en la superficie o el número de plantas previsto y en el rendimiento previsto del cultivo por m² o por planta. Las cosechas reales no se registran.\n\nLimita la vista a un cultivo o cambia entre semanas y meses en «Vista». Pasa el cursor sobre una barra para ver el periodo, el cultivo y la cantidad cosechada.",
+      "intro": "Para cada plan de cultivo de la temporada activa, la previsión multiplica el rendimiento previsto por m² por la superficie planificada, o el rendimiento previsto por planta por el número de plantas calculado. La cantidad se reparte entre los días del periodo de cosecha. El aviso indica los planes con datos incompletos o no válidos.\n\nFiltra por cultivo o cambia entre semanas y meses en «Vista». Pasa el cursor sobre una barra o pulsa la barra espaciadora cuando tenga el foco para ver el periodo, el cultivo y la cantidad prevista. Consulta las cosechas registradas en «Comparar temporadas».",
       "points": []
     }
   }

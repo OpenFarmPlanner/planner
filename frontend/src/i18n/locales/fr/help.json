@@ -282,7 +282,7 @@
     },
     "yieldOverview": {
       "title": "Aide : Aperçu des rendements",
-      "intro": "L'aperçu des rendements est une prévision : il répartit les récoltes prévues des plans de culture de la saison active sur leurs périodes de récolte. Il se base sur la surface ou le nombre de plants prévu et sur le rendement prévu de la culture par m² ou par plant. Les récoltes réelles ne sont pas saisies.\n\nLimitez l'affichage à une culture ou basculez entre semaines et mois sous « Affichage ». Survolez une barre pour voir la période, la culture et la quantité récoltée.",
+      "intro": "Pour chaque plan de culture de la saison active, la prévision multiplie le rendement prévu par m² par la surface planifiée, ou le rendement prévu par plant par le nombre de plants calculé. La quantité ainsi obtenue est répartie sur les jours de la période de récolte. L’avertissement signale les plans de culture dont les données sont manquantes ou non valides.\n\nLimitez l’affichage à une culture ou passez des semaines aux mois dans « Affichage ». Survolez une barre ou appuyez sur la barre d’espace lorsqu’elle a le focus, pour voir la période, la culture et la quantité prévue. Retrouvez les récoltes saisies dans « Comparer les saisons ».",
       "points": []
     }
   }

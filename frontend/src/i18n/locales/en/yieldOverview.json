@@ -12,7 +12,6 @@
   },
   "chart": {
     "title": "Yield distribution",
-    "subtitle": "Forecast from the active season's planting plans: planned area or plant count times the crop's expected yield.",
     "tooltip": "{{period}} · {{crop}}: {{yield}} kg",
     "tooltipPeriod": "Period",
     "tooltipYield": "Expected yield",
