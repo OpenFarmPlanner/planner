@@ -81,6 +81,23 @@ describe('bed capacity intervals', () => {
     ]);
   });
 
+  it('allocates a recurring perennial from its earlier recorded occupancy start', () => {
+    const perennial = {
+      ...plan(1, '2026-04-07', '2026-04-15', 10),
+      seasonal_harvest: {
+        occupancy_start_date: '2026-03-28', planting_recorded: true,
+        periods: [{ start_date: '2026-04-02', end_date: '2026-04-05' }],
+        actual_start_date: null, actual_end_date: null,
+      },
+    };
+    const result = intervals([perennial]).get(1)?.intervals ?? [];
+    expect(result.map(interval => [days(interval), interval.freeArea])).toEqual([
+      [['2026-03-25', '2026-03-27'], 10],
+      [['2026-03-28', '2026-04-15'], 0],
+      [['2026-04-16', '2026-04-30'], 10],
+    ]);
+  });
+
   it('uses the same inclusive fallback for scheduled drafts without a recorded end', () => {
     const result = intervals([
       plan(1, '2026-03-27', null, 10),

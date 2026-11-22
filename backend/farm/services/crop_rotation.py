@@ -707,6 +707,7 @@ def suggest_beds(
     exclude_plan_id: int | None = None,
     needed_area_sqm: Decimal | None = None,
     firm_occupancy: bool = False,
+    occupancy_start: date | None = None,
 ) -> list[dict[str, Any]]:
     """Every bed of the project for ``crop`` in ``[start, end]``, best fit first.
 
@@ -730,7 +731,7 @@ def suggest_beds(
     harvest_start, _ = draft.calculate_effective_harvest_dates(service.general_crop_index)
     rotation_crop = service.rotation_crop(crop)
     capacities = calculate_bed_capacities(
-        beds, start=start, end=end, exclude_plan_id=exclude_plan_id,
+        beds, start=occupancy_start or start, end=end, exclude_plan_id=exclude_plan_id,
         harvest_start=None if firm_occupancy or rotation_crop.is_perennial else harvest_start,
     )
     rows: list[tuple[tuple[Any, ...], dict[str, Any]]] = []

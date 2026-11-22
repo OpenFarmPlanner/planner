@@ -4,7 +4,7 @@ from datetime import date
 
 from crops.models import CropSpecies, PlantFamily
 from farm.crops.serializers.public import PublicCropUpdateSerializer
-from farm.models import Crop, PlantingPlan, PublicCrop, Season
+from farm.models import Bed, Crop, PlantingPlan, PublicCrop, Season
 from farm.services.crop_rotation import STATUS_CONFLICT, STATUS_OK, RotationService
 from farm.tests.api_base import ProjectApiTestCase
 
@@ -285,6 +285,48 @@ class PerennialPlanningTest(ProjectApiTestCase):
             with self.subTest(invalid_date=invalid_date):
                 invalid = self.client.get(url, {**params, 'clearing_date': invalid_date})
                 self.assertEqual(invalid.status_code, 400, invalid.data)
+
+    def test_capacity_checks_use_the_recorded_start_of_a_recurring_perennial(self):
+        crop = self.perennial(annual_harvest_window='02-12/02-15')
+        created = self.plant(
+            crop, actual_sowing_date='2024-02-10', cultivation_type='direct_sowing',
+        )
+        self.assertEqual(created.status_code, 201, created.data)
+        plan_id = created.data['id']
+        remaining = f'{PLANS}remaining-area/'
+        suggestions = f'{PLANS}bed-suggestions/'
+        params = {'bed_id': self.bed.pk, 'area_sqm': 20}
+        for day, free in (('2024-02-09', 20), ('2024-02-10', 0)):
+            with self.subTest(day=day):
+                response = self.client.get(
+                    remaining, {**params, 'start_date': day, 'end_date': day},
+                )
+                self.assertEqual(response.status_code, 200, response.data)
+                self.assertEqual(response.data['remaining_area_sqm'], free)
+        ranked = self.client.get(suggestions, {
+            **params, 'crop_id': self.crop.pk, 'planting_date': '2024-02-12',
+        })
+        self.assertEqual(ranked.status_code, 200, ranked.data)
+        self.assertFalse(ranked.data['results'][0]['has_enough_area'])
+        self.assertEqual(ranked.data['results'][0]['blocking_plan']['plan_id'], plan_id)
+
+        other = Bed.objects.create(
+            project=self.project, field=self.bed.field, name='Second bed', area_sqm=20,
+        )
+        PlantingPlan.objects.create(
+            project=self.project, season=self.source, bed=other, crop=self.crop, area_usage_sqm=20,
+            planting_date=date(2024, 2, 9), harvest_date=date(2024, 2, 16),
+            harvest_end_date=date(2024, 2, 20), harvest_date_is_explicit=True,
+            harvest_end_date_is_explicit=True,
+        )
+        edit = {'bed_id': other.pk, 'crop_id': crop.pk, 'exclude_plan_id': plan_id, 'area_sqm': 20}
+        preflight = self.client.get(remaining, {**edit, 'start_date': '2024-02-29'})
+        self.assertEqual(preflight.status_code, 200, preflight.data)
+        self.assertEqual(preflight.data['remaining_area_sqm'], 0)
+        ranked_edit = self.client.get(suggestions, {**edit, 'planting_date': '2024-02-29'})
+        self.assertEqual(ranked_edit.status_code, 200, ranked_edit.data)
+        destination = next(row for row in ranked_edit.data['results'] if row['bed_id'] == other.pk)
+        self.assertFalse(destination['has_enough_area'])
 
     def test_running_perennial_is_not_copied_or_forecast_again(self):
         response = self.plant(self.perennial())
