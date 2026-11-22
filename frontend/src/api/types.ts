@@ -1913,6 +1913,7 @@ export interface YieldCalendarWeek {
 
 export interface IncompleteYieldPlan {
   plan_id: number;
+  crop_id?: number | null;
   crop_name: string;
   crop_display_name: string | null;
   crop_display_language_code: string;

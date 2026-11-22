@@ -36,6 +36,7 @@
     "openPlansAction": "Apri piano colturale"
   },
   "diagnostics": {
+    "summary": "{{count}} senza previsione",
     "title_one": "Serie senza previsione ({{count}})",
     "title_other": "Serie senza previsione ({{count}})",
     "title_many": "Serie senza previsione ({{count}})",

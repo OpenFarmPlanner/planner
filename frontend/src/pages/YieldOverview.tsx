@@ -2,11 +2,9 @@ import { loadRetryAlertSx } from '../components/loadRetryStyles';
 import LoadRetryButton from "../components/LoadRetryButton";
 import { useEffect, useMemo, useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
-import { Link as RouterLink, useOutletContext } from "react-router";
+import { useOutletContext } from "react-router";
 import {
   Alert,
-  Box,
-  Link,
   Stack,
   ToggleButton,
   ToggleButtonGroup,
@@ -26,15 +24,15 @@ import { useTopbarWorkspaceControls } from "../hooks/useTopbarWorkspaceControls"
 import { useProjectRequirement } from "../hooks/useProjectRequirement";
 import { useTranslation } from "../i18n";
 import type { RootLayoutOutletContext } from "../navigation/topbarTypes";
-import { plantingPlanDetailPath } from "../planting-plans/plantingPlanDetailRoutes";
 import { YieldFilterBar } from "./YieldFilterBar";
+import { YieldForecastWarning } from "./YieldForecastWarning";
 import { YieldDistributionChart } from "./YieldDistributionChart";
 import {
   ALL_CROPS,
   type ChartPeriod,
   type YieldCropMeta,
 } from "./yieldOverviewUtils";
-import { formatCropDisplayName, getCropDisplayName } from "../crops/cropDisplay";
+import { getCropDisplayName } from "../crops/cropDisplay";
 import { segmentedToggleButtonGroupSx, segmentedToggleButtonSx } from "../components/buttons/segmentedControlStyles";
 import { YieldSeasonComparison } from "./YieldSeasonComparison";
 
@@ -166,7 +164,10 @@ export default function YieldOverviewPage() {
 
   const hasYieldData = weeklyYield.length > 0;
   const hasRelevantPlans = plantingPlans.length > 0 || hasYieldData || incompletePlans.length > 0;
-  const dateFormatter = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeZone: 'UTC' });
+  const visibleIncompletePlans = calendarCropId === ALL_CROPS
+    ? incompletePlans
+    // Older responses omit crop_id. Keep their warnings visible until they can be scoped reliably.
+    : incompletePlans.filter(plan => plan.crop_id === undefined || String(plan.crop_id) === calendarCropId);
 
   const calendar = loading ? (
     <Typography variant="body1" role="status">{t("loading")}</Typography>
@@ -183,39 +184,11 @@ export default function YieldOverviewPage() {
         period={period}
         onCropChange={setSelectedCropId}
         onPeriodChange={setPeriod}
-      />
-
-      {incompletePlans.length > 0 && (
-        <Alert severity="warning" sx={{ '& .MuiAlert-message': { minWidth: 0 }, overflowWrap: 'anywhere' }}>
-          <details>
-            <Box component="summary" sx={{ cursor: 'pointer', minHeight: 44, alignContent: 'center' }}>
-              {t('diagnostics.title', { count: incompletePlans.length })}
-            </Box>
-            <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
-              {incompletePlans.map(plan => {
-                const date = plan.planting_date
-                  ? dateFormatter.format(new Date(`${plan.planting_date}T00:00:00Z`))
-                  : null;
-                const planLabel = [
-                  formatCropDisplayName(plan) || t('diagnostics.unnamedPlan'),
-                  plan.bed_name,
-                  date,
-                ].filter(Boolean).join(' · ');
-                return (
-                  <Box component="li" key={plan.plan_id} sx={{ mb: 0.75 }}>
-                    <Link component={RouterLink} to={plantingPlanDetailPath(plan.plan_id)}>
-                      {planLabel}
-                    </Link>
-                    <Typography variant="body2">
-                      {plan.calculation_blockers.map(blocker => t(`diagnostics.blockers.${blocker}`)).join(' · ')}
-                    </Typography>
-                  </Box>
-                );
-              })}
-            </Box>
-          </details>
-        </Alert>
-      )}
+      >
+        {visibleIncompletePlans.length > 0 && (
+          <YieldForecastWarning plans={visibleIncompletePlans} />
+        )}
+      </YieldFilterBar>
 
       {!hasRelevantPlans ? (
         <EmptyStateCard

@@ -50,6 +50,28 @@ test('compares measured yields and exposes a table and actual date deviations wi
 test.describe('touch comparison', () => {
   test.use({ hasTouch: true });
 
+  test('opens forecast diagnostics by touch and returns to the warning when closed', async ({ page, request }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await loginWithDeterministicProject(page, request, 'yield-forecast-warning-touch', {
+      loginAsAdmin: true, demoProject: true, demoYear: 2026,
+    });
+    await page.goto('/app/yield-overview');
+
+    const warning = page.getByRole('button', { name: '1 ohne Prognose' });
+    await expect(warning).toHaveAttribute('aria-expanded', 'false');
+    await warning.tap();
+    const details = page.getByRole('dialog', { name: 'Anbauplan ohne Prognose (1)' });
+    await expect(details).toBeInViewport({ ratio: 1 });
+    const plan = details.getByRole('link');
+    await expect(plan).toHaveAttribute('href', /^\/app\/planting-plans\/\d+$/);
+    await details.getByRole('button', { name: 'Schließen' }).tap();
+    await expect(warning).toHaveAttribute('aria-expanded', 'false');
+
+    await warning.tap();
+    await plan.tap();
+    await expect(page).toHaveURL(/\/app\/planting-plans\/\d+$/);
+  });
+
   test('shows mixed units, estimated weight, unassigned harvest, and losses without a paired chart', async ({ page, request }) => {
     await page.setViewportSize({ width: 375, height: 800 });
     await loginWithDeterministicProject(page, request, 'season-yield-compare-touch', {

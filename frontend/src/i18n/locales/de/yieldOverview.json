@@ -36,6 +36,7 @@
     "openPlansAction": "Anbaupläne öffnen"
   },
   "diagnostics": {
+    "summary": "{{count}} ohne Prognose",
     "title_one": "Anbauplan ohne Prognose ({{count}})",
     "title_other": "Anbaupläne ohne Prognose ({{count}})",
     "unnamedPlan": "Anbauplan ohne Kultur",

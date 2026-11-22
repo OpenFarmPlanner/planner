@@ -36,6 +36,7 @@
     "openPlansAction": "Teeltplan openen"
   },
   "diagnostics": {
+    "summary": "{{count}} zonder prognose",
     "title_one": "Teelt zonder prognose ({{count}})",
     "title_other": "Teelten zonder prognose ({{count}})",
     "unnamedPlan": "Teelt zonder gewas",

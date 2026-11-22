@@ -199,6 +199,7 @@ def _incomplete_plan(
     )
     return {
         'plan_id': plan.pk,
+        'crop_id': plan.crop_id,
         'crop_name': crop.name if crop else '',
         'crop_display_name': display_name,
         'crop_display_language_code': display_language,

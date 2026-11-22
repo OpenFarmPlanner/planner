@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   FormControl,
   MenuItem,
@@ -25,6 +26,7 @@ interface YieldFilterBarProps {
   allCropsLabel?: string;
   onCropChange: (cropId: string) => void;
   onPeriodChange?: (period: ChartPeriod) => void;
+  children?: ReactNode;
 }
 
 export function YieldFilterBar({
@@ -34,17 +36,18 @@ export function YieldFilterBar({
   allCropsLabel,
   onCropChange,
   onPeriodChange,
+  children,
 }: YieldFilterBarProps) {
   const { t } = useTranslation("yieldOverview");
 
   return (
     <Stack
-      direction={{ xs: "column", sm: "row" }}
+      direction="row"
       spacing={1.5}
-      sx={{ width: "100%", flexWrap: "wrap",
-            alignItems: { xs: "stretch", sm: "flex-start" }, }}
+      useFlexGap
+      sx={{ width: "100%", flexWrap: "wrap", alignItems: "flex-end" }}
     >
-      <Stack spacing={0.5} sx={{ minWidth: { sm: 220 } }}>
+      <Stack spacing={0.5} sx={{ width: { xs: "100%", sm: "auto" }, minWidth: { sm: 220 } }}>
         <Typography
           id="yield-crop-filter-label"
           variant="caption"
@@ -100,6 +103,7 @@ export function YieldFilterBar({
           </ToggleButton>
         </ToggleButtonGroup>
       </Stack>}
+      {children}
     </Stack>
   );
 }
