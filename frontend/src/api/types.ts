@@ -1335,6 +1335,18 @@ export interface SeasonalHarvestPeriod {
   end_date: string;
 }
 
+export interface HarvestWindowOccurrence {
+  year: number;
+  default: SeasonalHarvestPeriod | null;
+  override: SeasonalHarvestPeriod | null;
+  conflict: boolean;
+}
+
+export interface HarvestWindowUpdate {
+  harvest_windows_by_year: HarvestWindowOccurrence[] | null;
+  seasonal_harvest: PlantingPlanSeasonalHarvest | null;
+}
+
 export interface PlantingPlanSeasonalHarvest {
   periods: SeasonalHarvestPeriod[];
   occupancy_start_date?: string | null;
@@ -1417,6 +1429,7 @@ export interface PlantingPlanDetail extends PlantingPlan {
   location_name: string | null;
   crop_available: boolean;
   previous_season_reference?: PlantingPlanPreviousSeasonReference | null;
+  harvest_windows_by_year?: HarvestWindowOccurrence[] | null;
 }
 
 export type PlantingPlanPreviousSeasonReference = { available: false } | {

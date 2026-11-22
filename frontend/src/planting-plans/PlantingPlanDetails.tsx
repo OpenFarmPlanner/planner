@@ -29,6 +29,7 @@ import { formatSeasonDate, initialSeasonRecordDate, resolveSeasonDateLocale } fr
 import { formatLocalizedNumber } from '../utils/numberLocalization';
 import { PlantingPlanExecutionDates } from './PlantingPlanExecutionDates';
 import { PerennialPlanDates } from './PerennialPlanDates';
+import { PerennialHarvestWindows } from './PerennialHarvestWindows';
 import { CropLosses } from './CropLosses';
 import { PreviousSeasonReference } from './PreviousSeasonReference';
 import { PlantingPlanTasks } from './PlantingPlanTasks';
@@ -57,15 +58,16 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
   const [saveFailed, setSaveFailed] = useState(false);
   const [datesDirty, setDatesDirty] = useState(false);
   const [clearingDateDirty, setClearingDateDirty] = useState(false);
+  const [harvestWindowDirty, setHarvestWindowDirty] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const loadedPlan = result && 'plan' in result ? result.plan : undefined;
   const loadedPlanId = loadedPlan?.id;
   const hasPhotos = Boolean(loadedPlan?.note_attachment_count) || attachmentRevision > 0;
   const hasUnsavedNotes = editorOpen && draft !== (loadedPlan?.notes ?? '');
 
-  useNavigationBlocker(hasUnsavedNotes || datesDirty || clearingDateDirty, hasUnsavedNotes
+  useNavigationBlocker(hasUnsavedNotes || datesDirty || clearingDateDirty || harvestWindowDirty, hasUnsavedNotes
     ? t('common:notesDrawer.unsavedDialog.message')
-    : t(clearingDateDirty ? 'perennial.unsaved' : 'actualDates.unsaved'));
+    : t(harvestWindowDirty ? 'harvestWindows.unsaved' : clearingDateDirty ? 'perennial.unsaved' : 'actualDates.unsaved'));
 
   useEffect(() => {
     titleRef.current?.focus({ preventScroll: true });
@@ -207,11 +209,19 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
             <PerennialPlanDates key={loadedPlan.id} plan={loadedPlan} editable={canEditNotes}
               onDirtyChange={setClearingDateDirty} onSaved={updated => {
                 setResult(current => current && 'plan' in current ? { plan: { ...current.plan, ...updated } } : current);
+                setAttempt(value => value + 1);
                 onChanged();
               }} />
+            {loadedPlan.harvest_windows_by_year && <PerennialHarvestWindows planId={loadedPlan.id}
+              occurrences={loadedPlan.harvest_windows_by_year} season={recordSeason}
+              editable={canEditNotes} onDirtyChange={setHarvestWindowDirty} onSaved={updated => {
+                setResult(current => current && 'plan' in current ? { plan: { ...current.plan, ...updated } } : current);
+                onChanged();
+              }} />}
             <PlantingPlanExecutionDates plan={loadedPlan} editable={canEditNotes} onDirtyChange={setDatesDirty}
               onSaved={dates => {
                 setResult(current => current && 'plan' in current ? { plan: { ...current.plan, ...dates } } : current);
+                setAttempt(value => value + 1);
                 onChanged();
               }} />
             <DetailSection title={t('harvests:title')} outlined>

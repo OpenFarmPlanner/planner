@@ -534,6 +534,21 @@
     "count_one": "{{own}} gestart in dit seizoen · {{count}} loopt door",
     "count_other": "{{own}} gestart in dit seizoen · {{count}} lopen door"
   },
+  "harvestWindows": {
+    "title": "Oogstperiodes per jaar",
+    "year": "Oogstjaar",
+    "yearWithConflict": "{{year}} (conflict)",
+    "default": "Berekend op basis van de oogstperiode van het gewas of ras",
+    "override": "Aangepaste oogstperiode",
+    "edit": "Dit jaar bewerken",
+    "reset": "Berekende oogstperiode herstellen",
+    "empty": "Voor deze teelt is nog geen oogstperiode berekend.",
+    "conflict": "De opgeslagen datums passen niet meer in deze oogstperiode. De prognose gebruikt de berekende datums als die beschikbaar zijn.",
+    "invalidOrder": "Het einde van de oogst moet op of na het begin van de oogst vallen.",
+    "invalidWindow": "Kies datums binnen de mogelijke oogstperiode van dit jaar, zonder overlap met een andere oogstperiode.",
+    "saveFailed": "De oogstperiode kon niet worden opgeslagen.",
+    "unsaved": "Je hebt niet-opgeslagen wijzigingen aan de oogstperiode."
+  },
   "perennial": {
     "title": "Meerjarige teelt",
     "productiveLifespan": "Productieve levensduur",

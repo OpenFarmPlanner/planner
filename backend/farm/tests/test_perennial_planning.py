@@ -4,7 +4,17 @@ from datetime import date
 
 from crops.models import CropSpecies, PlantFamily
 from farm.crops.serializers.public import PublicCropUpdateSerializer
-from farm.models import Bed, Crop, PlantingPlan, PublicCrop, Season
+from farm.models import (
+    Bed,
+    Crop,
+    EntityRevision,
+    HarvestAllocation,
+    HarvestRecord,
+    PlantingPlan,
+    PublicCrop,
+    Season,
+    Task,
+)
 from farm.services.crop_rotation import STATUS_CONFLICT, STATUS_OK, RotationService
 from farm.tests.api_base import ProjectApiTestCase
 
@@ -40,6 +50,171 @@ class PerennialPlanningTest(ProjectApiTestCase):
             'crop': crop.pk, 'bed': self.bed.pk, 'planting_date': '2024-02-29',
             'area_usage_sqm': 20, **attributes,
         })
+
+    def test_saves_and_resets_one_occurrence_without_changing_execution(self):
+        crop = self.perennial(
+            standing_time=6, annual_harvest_window='09-01/10-15', first_harvest_delay_years=2,
+        )
+        fruiting_season = self.season(2027)
+        following_season = self.season(2028)
+        created = self.plant(crop, actual_harvest_start_date='2024-10-03')
+        self.assertEqual(created.status_code, 201, created.data)
+        plan = PlantingPlan.objects.get(pk=created.data['id'])
+        harvested = self.client.post('/openfarmplanner/api/harvests/', {
+            'crop': crop.pk, 'date': '2027-09-10', 'quantity': '3', 'unit': 'kg',
+            'allocations': [{'planting_plan': plan.pk, 'quantity': '3'}],
+        }, format='json', HTTP_X_SEASON_ID=str(fruiting_season.pk))
+        self.assertEqual(harvested.status_code, 201, harvested.data)
+        record = HarvestRecord.objects.get(pk=harvested.data['id'])
+        allocation = HarvestAllocation.objects.get(
+            harvest=record, planting_plan=plan,
+        )
+        task_ids = set(Task.objects.filter(planting_plan=plan).values_list('pk', flat=True))
+        detail = f'{PLANS}{plan.pk}/'
+        endpoint = f'{detail}harvest-window/2027/'
+        dates = {'start_date': '2027-09-10', 'end_date': '2027-10-20'}
+        saved = self.client.put(endpoint, dates, format='json')
+        self.assertEqual(saved.status_code, 200, saved.data)
+        version_filter = EntityRevision.objects.filter(
+            project=self.project, entity_type='planting_plan', object_id=plan.pk,
+        )
+        revision_count = version_filter.count()
+        self.assertEqual(self.client.put(endpoint, dates, format='json').status_code, 200)
+        self.assertEqual(version_filter.count(), revision_count)
+
+        for season, expected in (
+            (fruiting_season, dates),
+            (following_season, {'start_date': '2028-09-01', 'end_date': '2028-10-15'}),
+        ):
+            header = {'HTTP_X_SEASON_ID': str(season.pk)}
+            response = self.client.get(PLANS, **header)
+            self.assertEqual(response.status_code, 200, response.data)
+            row = response.json()['results'][0]
+            self.assertEqual(row['id'], plan.pk)
+            self.assertTrue(row['carried_over'])
+            self.assertEqual(row['seasonal_harvest']['periods'], [expected])
+            blocked = self.client.put(endpoint, dates, format='json', **header)
+            self.assertEqual(blocked.status_code, 404)
+            self.assertEqual(self.client.delete(endpoint, **header).status_code, 404)
+
+        self.assertEqual(self.client.delete(endpoint).status_code, 200)
+        occurrence = next(
+            item for item in self.client.get(detail).json()['harvest_windows_by_year']
+            if item['year'] == 2027
+        )
+        self.assertEqual(occurrence['default'], {
+            'start_date': '2027-09-01', 'end_date': '2027-10-15',
+        })
+        self.assertIsNone(occurrence['override'])
+        reloaded = PlantingPlan.objects.get(pk=plan.pk)
+        self.assertEqual(reloaded.planting_date, plan.planting_date)
+        self.assertEqual(reloaded.harvest_date, plan.harvest_date)
+        self.assertEqual(reloaded.actual_harvest_start_date, plan.actual_harvest_start_date)
+        self.assertEqual(reloaded.season_id, plan.season_id)
+        self.assertEqual(PlantingPlan.objects.filter(project=self.project).count(), 1)
+        self.assertEqual(
+            set(Task.objects.filter(planting_plan=plan).values_list('pk', flat=True)), task_ids,
+        )
+        self.assertEqual(HarvestAllocation.objects.get(planting_plan=plan), allocation)
+        self.assertEqual(HarvestRecord.objects.get(pk=record.pk).date, date(2027, 9, 10))
+
+    def test_override_dates_follow_first_bearing_leap_year_and_removal(self):
+        crop = self.perennial(annual_harvest_window='02-29/03-05', first_harvest_delay_years=2)
+        created = self.plant(crop, clearing_date='2028-03-10')
+        self.assertEqual(created.status_code, 201, created.data)
+        detail = f"{PLANS}{created.data['id']}/"
+
+        for year, start, end in (
+            (2025, '2025-03-01', '2025-03-02'),  # Before first bearing.
+            (2026, '2026-02-27', '2026-03-04'),  # Before the clamped anniversary.
+            (2028, '2028-03-03', '2028-03-02'),  # Reversed.
+            (2028, '2028-03-02', '2028-03-11'),  # Beyond removal.
+        ):
+            with self.subTest(year=year, start=start, end=end):
+                response = self.client.put(f'{detail}harvest-window/{year}/', {
+                    'start_date': start, 'end_date': end,
+                }, format='json')
+                self.assertEqual(response.status_code, 400, response.data)
+                self.assertEqual(response.data['code'], 'invalid_harvest_window')
+
+        dates = {'start_date': '2028-03-01', 'end_date': '2028-03-09'}
+        endpoint = f'{detail}harvest-window/2028/'
+        saved = self.client.put(endpoint, dates, format='json')
+        self.assertEqual(saved.status_code, 200, saved.data)
+        shortened = self.client.patch(detail, {'clearing_date': '2028-03-02'}, format='json')
+        self.assertEqual(shortened.status_code, 200, shortened.data)
+        season = self.season(2028)
+        loaded = self.client.get(detail, HTTP_X_SEASON_ID=str(season.pk)).json()
+        occurrence = next(
+            item for item in loaded['harvest_windows_by_year'] if item['year'] == 2028
+        )
+        self.assertEqual(occurrence['override'], dates)
+        self.assertTrue(occurrence['conflict'])
+        self.assertEqual(loaded['seasonal_harvest']['periods'], [{
+            'start_date': '2028-02-29', 'end_date': '2028-03-02',
+        }])
+
+    def test_one_override_splits_forecast_across_custom_seasons(self):
+        self.next_season.start_date = date(2025, 9, 1)
+        self.next_season.save(update_fields=['start_date'])
+        following = Season.objects.create(
+            project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 8, 31),
+        )
+        created = self.plant(self.perennial(
+            annual_harvest_window='11-20/01-20', first_harvest_delay_years=1,
+        ))
+        self.assertEqual(created.status_code, 201, created.data)
+        detail = f"{PLANS}{created.data['id']}/"
+        dates = {'start_date': '2025-12-27', 'end_date': '2026-01-05'}
+        saved = self.client.put(f'{detail}harvest-window/2025/', dates, format='json')
+        self.assertEqual(saved.status_code, 200, saved.data)
+        for season, start, end in (
+            (self.next_season, '2025-12-27', '2025-12-31'),
+            (following, '2026-01-01', '2026-01-05'),
+        ):
+            header = {'HTTP_X_SEASON_ID': str(season.pk)}
+            loaded = self.client.get(detail, **header).json()
+            self.assertEqual(loaded['seasonal_harvest']['periods'], [{
+                'start_date': start, 'end_date': end,
+            }])
+            windows = [item for item in loaded['harvest_windows_by_year'] if item['override']]
+            self.assertEqual(len(windows), 1)
+            self.assertEqual(windows[0]['year'], 2025)
+            self.assertEqual(windows[0]['override'], dates)
+            forecast = self.client.get('/openfarmplanner/api/yield-calendar/', **header)
+            self.assertEqual(forecast.status_code, 200, forecast.data)
+            projected_yield = sum(crop['yield'] for week in forecast.data for crop in week['crops'])
+            self.assertAlmostEqual(projected_yield, 20)
+
+    def test_history_restores_overrides_and_accepts_pre_migration_snapshots(self):
+        created = self.plant(self.perennial(annual_harvest_window='09-01/10-15'))
+        self.assertEqual(created.status_code, 201, created.data)
+        plan_id = created.data['id']
+        detail = f'{PLANS}{plan_id}/'
+        versions = EntityRevision.objects.filter(
+            project=self.project, entity_type='planting_plan', object_id=plan_id,
+        )
+        before = versions.latest('id')
+        before.snapshot.pop('harvest_window_overrides')
+        before.save(update_fields=['snapshot'])
+        dates = {'start_date': '2025-09-10', 'end_date': '2025-10-20'}
+        response = self.client.put(f'{detail}harvest-window/2025/', dates, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        saved = versions.latest('id')
+        self.assertEqual(saved.snapshot['harvest_window_overrides'], {'2025': dates})
+        self.assertIn('harvest_window_overrides', saved.changed_fields)
+        response = self.client.patch(detail, {'notes': 'Later edit'}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        plan = PlantingPlan.objects.get(pk=plan_id)
+        self.assertEqual(plan.harvest_window_overrides, {'2025': dates})
+
+        for version, expected in ((before, {}), (saved, {'2025': dates})):
+            response = self.client.post('/openfarmplanner/api/history/project/restore/', {
+                'history_id': version.pk,
+            }, format='json')
+            self.assertEqual(response.status_code, 200, response.data)
+            plan.refresh_from_db()
+            self.assertEqual(plan.harvest_window_overrides, expected)
 
     def test_crop_writes_require_positive_whole_years_and_allow_variety_inheritance(self):
         base = {'name': 'Rhubarb', 'life_cycle': 'perennial', 'crop_species': self.species.pk}

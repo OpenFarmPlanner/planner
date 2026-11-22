@@ -549,6 +549,21 @@
     "count_other": "{{own}} iniciadas esta temporada · {{count}} continúan",
     "count_many": "{{own}} iniciadas esta temporada · {{count}} continúan"
   },
+  "harvestWindows": {
+    "title": "Periodos de cosecha por año",
+    "year": "Año de cosecha",
+    "yearWithConflict": "{{year}} (conflicto)",
+    "default": "Calculado a partir del periodo de cosecha del cultivo o de la variedad",
+    "override": "Periodo de cosecha personalizado",
+    "edit": "Editar este año",
+    "reset": "Restablecer el periodo calculado",
+    "empty": "Esta serie aún no tiene un periodo de cosecha calculado.",
+    "conflict": "Las fechas guardadas ya no encajan en este periodo. La previsión usa las fechas calculadas cuando están disponibles.",
+    "invalidOrder": "El fin de cosecha debe ser igual o posterior al inicio.",
+    "invalidWindow": "Elige fechas dentro del periodo admisible de este año, sin solaparlo con otro periodo de cosecha.",
+    "saveFailed": "No se ha podido guardar el periodo de cosecha.",
+    "unsaved": "Tienes cambios sin guardar en el periodo de cosecha."
+  },
   "perennial": {
     "title": "Cultivo perenne",
     "productiveLifespan": "Vida útil del cultivo",

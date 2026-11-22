@@ -27,6 +27,8 @@ import type {
   Field,
   Bed,
   PlantingPlan,
+  HarvestWindowUpdate,
+  SeasonalHarvestPeriod,
   HarvestPlanSuggestion,
   HarvestRecord,
   HarvestTotals,
@@ -511,6 +513,10 @@ export const plantingPlanAPI = {
   create: (data: PlantingPlan) => http.post<PlantingPlan>('/planting-plans/', withActiveProject(data)),
   update: (id: number, data: PlantingPlan) => http.put<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),
   patch: (id: number, data: Partial<PlantingPlan>) => http.patch<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),
+  setHarvestWindow: (id: number, year: number, period: SeasonalHarvestPeriod) =>
+    http.put<HarvestWindowUpdate>(`/planting-plans/${id}/harvest-window/${String(year).padStart(4, '0')}/`, period),
+  resetHarvestWindow: (id: number, year: number) =>
+    http.delete<HarvestWindowUpdate>(`/planting-plans/${id}/harvest-window/${String(year).padStart(4, '0')}/`),
   delete: (id: number) => http.delete(`/planting-plans/${id}/`),
   remainingArea: (params: {
     bed_id: number;

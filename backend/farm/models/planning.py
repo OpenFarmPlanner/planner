@@ -78,6 +78,10 @@ class PlantingPlan(TimestampedModel):
         null=True, blank=True,
         help_text='Last day the perennial planting occupies the bed.',
     )
+    harvest_window_overrides = models.JSONField(
+        default=dict, blank=True, editable=False,
+        help_text='Absolute planned harvest ranges keyed by the recurring window start year.',
+    )
     harvest_date_is_explicit = models.BooleanField(default=False, editable=False)
     harvest_end_date_is_explicit = models.BooleanField(default=False, editable=False)
     actual_propagation_start_date = models.DateField(null=True, blank=True)

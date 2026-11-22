@@ -534,6 +534,21 @@
     "count_one": "{{own}} in dieser Saison gepflanzt · {{count}} läuft weiter",
     "count_other": "{{own}} in dieser Saison gepflanzt · {{count}} laufen weiter"
   },
+  "harvestWindows": {
+    "title": "Erntefenster je Jahr",
+    "year": "Erntejahr",
+    "yearWithConflict": "{{year}} (Konflikt)",
+    "default": "Berechnet aus dem Erntefenster der Kultur oder Sorte",
+    "override": "Individuelles Erntefenster",
+    "edit": "Dieses Jahr bearbeiten",
+    "reset": "Auf berechnetes Erntefenster zurücksetzen",
+    "empty": "Für diesen Anbauplan gibt es noch kein berechnetes Erntefenster.",
+    "conflict": "Die gespeicherten Termine passen nicht mehr in den Erntezeitraum. Für die Planung gelten die berechneten Termine, sofern vorhanden.",
+    "invalidOrder": "Das Ernteende muss am oder nach dem Erntebeginn liegen.",
+    "invalidWindow": "Wähle Termine im verfügbaren Zeitraum dieses Erntejahrs. Das Erntefenster darf sich nicht mit einem anderen überschneiden.",
+    "saveFailed": "Das Erntefenster konnte nicht gespeichert werden.",
+    "unsaved": "Du hast ungespeicherte Änderungen am Erntefenster."
+  },
   "perennial": {
     "title": "Standzeit und Räumung",
     "productiveLifespan": "Standzeit",

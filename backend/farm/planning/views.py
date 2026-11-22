@@ -60,6 +60,7 @@ from farm.services.germination_check import check_germination
 from farm.services.seasonal_harvest import (
     early_recorded_perennial_plan_ids,
     recurring_harvest_schedule,
+    seasonal_harvest_payload,
 )
 from farm.services.site_suitability import check_site_suitability
 from farm.services.tasks import (
@@ -72,6 +73,7 @@ from farm.services.yield_calendar import build_yield_forecast
 from farm.services.yield_comparison import build_yield_comparison, comparison_crops
 
 from .serializers import (
+    HarvestWindowOverrideSerializer,
     PlantingPlanDetailSerializer,
     PlantingPlanSerializer,
     TaskFilterSerializer,
@@ -527,6 +529,18 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         self.record_revision(instance, EntityRevision.ACTION_CREATED)
 
     @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        # Serialize ordinary edits with amendments to the same plan's forecast.
+        self._lock_plan()
+        return super().update(request, *args, **kwargs)
+
+    def _lock_plan(self) -> PlantingPlan:
+        return generics.get_object_or_404(
+            PlantingPlan.objects.select_for_update().filter(project=self.request.active_project),
+            pk=self.kwargs['pk'],
+        )
+
+    @transaction.atomic
     def perform_update(self, serializer: PlantingPlanSerializer) -> None:
         current_user = self.request.user if self.request.user.is_authenticated else None
         previous_snapshot = _serialize_instance(serializer.instance)
@@ -535,6 +549,60 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         if not actual_dates_only:
             synchronize_plan_tasks(instance)
         self.record_revision(instance, EntityRevision.ACTION_UPDATED, previous_snapshot=previous_snapshot)
+
+    @extend_schema(request=HarvestWindowOverrideSerializer, methods=['PUT'])
+    @action(detail=True, methods=['put', 'delete'], url_path=r'harvest-window/(?P<year>[0-9]{4})')
+    @transaction.atomic
+    def harvest_window(self, request, pk=None, year=None):
+        plan = self._lock_plan()
+        self.check_object_permissions(request, plan)
+        season_id = resolve_season_id_from_request(request)
+        season = plan.season
+        if season_id != plan.season_id or (season is not None and season.deleted_at is not None):
+            return api_error_response(
+                code='origin_season_required', detail='Edit the plan in its originating season.',
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        occurrence_year = int(year)
+        if occurrence_year < date.min.year:
+            raise serializers.ValidationError({'year': 'A valid occurrence year is required.'})
+
+        crop_index = build_general_crop_index(plan.project_id)
+        schedule = recurring_harvest_schedule(plan, crop_index)
+        if schedule is None:
+            raise serializers.ValidationError({
+                'year': 'This plan has no recurring harvest window.',
+            })
+
+        stored = dict(plan.harvest_window_overrides)
+        key = str(occurrence_year)
+        if request.method == 'DELETE':
+            stored.pop(key, None)
+        else:
+            dates = HarvestWindowOverrideSerializer(data=request.data)
+            dates.is_valid(raise_exception=True)
+            start, end = dates.validated_data['start_date'], dates.validated_data['end_date']
+            if not schedule.can_override(occurrence_year, start, end):
+                return api_error_response(
+                    code='invalid_harvest_window',
+                    detail='Use ordered dates within this occurrence and the growing period.',
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+            stored[key] = {'start_date': start.isoformat(), 'end_date': end.isoformat()}
+
+        if stored != plan.harvest_window_overrides:
+            before = _serialize_instance(plan)
+            plan.harvest_window_overrides = stored
+            plan.updated_by = request.user
+            plan.save(update_fields=['harvest_window_overrides', 'updated_by', 'updated_at'])
+            self.record_revision(plan, EntityRevision.ACTION_UPDATED, previous_snapshot=before)
+            schedule = recurring_harvest_schedule(plan, crop_index)
+        return Response({
+            'harvest_windows_by_year': schedule.occurrence_details(),
+            'seasonal_harvest': (
+                seasonal_harvest_payload(plan, season, schedule) if season else None
+            ),
+        })
 
     @transaction.atomic
     def perform_destroy(self, instance: PlantingPlan) -> None:
