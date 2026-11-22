@@ -155,7 +155,10 @@ description), one level down:
   is clipped to the selected season and its tooltip includes the full removal
   date. For a configured perennial, the same continuous bar marks the
   eligible harvest periods inside that season and lists their dates in its
-  accessible label and tooltip. Own-season edits keep
+  accessible label and tooltip. An earlier recorded planting can let a crop
+  bear before its original planned planting date. The bar includes that
+  harvest interval, and the planned planting date remains in the tooltip.
+  Own-season edits keep
   the planting date within that season's period. The range is computed
   globally across every Fläche/Standort/Parzelle so all rows share the same
   columns and stay comparable, and gaps in the middle of the range are never

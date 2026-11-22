@@ -205,3 +205,24 @@ class SeasonalHarvestTest(ProjectApiTestCase):
         self.assertEqual(comparison[origin.pk]['forecast_plan_count'], 0)
         self.assertEqual(comparison[origin.pk]['expected_plan_count'], 1)
         self.assertEqual(comparison[later.pk]['expected_plan_count'], 0)
+
+    def test_zero_delay_uses_an_earlier_recorded_transplant_date(self) -> None:
+        season = self.season(date(2026, 9, 1), date(2027, 8, 31))
+        crop = self.crop_with_window('12-20/12-25', first_harvest_delay_years=0)
+        plan = PlantingPlan.objects.create(
+            project=self.project, crop=crop, bed=self.bed, season=season, area_usage_sqm=8,
+            planting_date=date(2027, 1, 10), clearing_date=date(2029, 1, 10),
+            actual_transplanting_date=date(2026, 12, 17), cultivation_type='purchased_transplant',
+        )
+
+        headers = {'HTTP_X_SEASON_ID': str(season.pk)}
+        row = self.client.get(f'{PLANS}{plan.pk}/', **headers).json()
+        self.assertEqual(row['planting_date'], '2027-01-10')
+        self.assertEqual(row['seasonal_harvest']['periods'], [
+            {'start_date': '2026-12-20', 'end_date': '2026-12-25'},
+        ])
+        weekly = self.client.get(FORECAST, {'year': 2026}, **headers)
+        self.assertEqual(weekly.status_code, 200, weekly.data)
+        self.assertEqual(sum(crop['yield'] for week in weekly.data for crop in week['crops']), 16)
+        self.assertEqual(self.forecast(season), Decimal(16))
+        self.assertEqual(self.comparison(crop)[season.pk]['forecast_kg'], '16')

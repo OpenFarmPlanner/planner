@@ -97,7 +97,7 @@ def _first_eligible_day(plan: PlantingPlan, crop_index: GeneralCropIndex | None)
     eligibility_year = planted.year + delay
     if eligibility_year > date.max.year:
         return None
-    return max(plan.planting_date, _day_in_year(eligibility_year, (planted.month, planted.day)))
+    return _day_in_year(eligibility_year, (planted.month, planted.day))
 
 
 def recurring_harvest_schedule(

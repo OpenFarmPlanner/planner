@@ -258,18 +258,23 @@ export function getOccupancyCalendarRange(
     if (Number.isNaN(plantingDate.getTime())) {
       return;
     }
+    const occupancyStart = firstOccupancyDate(plantingDate, parseIsoDate(plan.seasonal_harvest?.periods[0]?.start_date));
     const end = plan.clearing_date || (plan.carried_over || plan.seasonal_harvest ? plan.occupancy_end_date : undefined);
     const harvestEndDate = parseDateString(end || plan.harvest_end_date || plan.harvest_date || '');
     const rangeEnd = !Number.isNaN(harvestEndDate.getTime()) && harvestEndDate > plantingDate
       ? harvestEndDate
       : plantingDate;
-    const visibleStart = plan.carried_over && startOfSeason && plantingDate < startOfSeason
-      ? startOfSeason : plantingDate;
+    const visibleStart = plan.carried_over && startOfSeason && occupancyStart < startOfSeason
+      ? startOfSeason : occupancyStart;
     const visibleEnd = (plan.clearing_date || plan.seasonal_harvest) && endOfSeason && endOfSeason < rangeEnd
       ? endOfSeason : rangeEnd;
     range = extendRange(range, visibleStart, visibleEnd);
   });
   return range;
+}
+
+function firstOccupancyDate(plantingDate: Date, firstHarvest: Date | null | undefined): Date {
+  return firstHarvest && firstHarvest < plantingDate ? firstHarvest : plantingDate;
 }
 
 export function clipCarriedOverOccupancyTask(task: GanttTask, axisStart: Date): GanttTask | null {
@@ -374,18 +379,19 @@ export interface MovedPlanDates {
 
 /**
  * Dates of a planting plan after one of its phase bars was dropped at
- * `task.startDate`. Every date shifts by the same number of days, which is
- * exactly what the drag preview showed for all bars of the plan. Returns null
- * when the plan has no complete schedule to move.
+ * `task.startDate`. Stored dates shift together. The server projects recurring
+ * harvest periods again after saving. Returns null for an incomplete schedule.
  */
 export function getMovedPlanDates(
-  plan: Pick<PlantingPlan, 'planting_date' | 'harvest_date' | 'harvest_end_date' | 'clearing_date'>,
+  plan: Pick<PlantingPlan, 'planting_date' | 'harvest_date' | 'harvest_end_date' | 'clearing_date' | 'seasonal_harvest'>,
   task: Pick<GanttTask, 'id' | 'startDate'>,
 ): MovedPlanDates | null {
   const plantingDate = parseIsoDate(plan.planting_date);
   const harvestDate = parseIsoDate(plan.harvest_date);
   const clearingDate = parseIsoDate(plan.clearing_date);
-  const storedStart = getOccupancyTaskPhase(task) === 'harvest' ? harvestDate : plantingDate;
+  const storedStart = getOccupancyTaskPhase(task) === 'harvest' ? harvestDate : (
+    plantingDate && firstOccupancyDate(plantingDate, parseIsoDate(plan.seasonal_harvest?.periods[0]?.start_date))
+  );
   if (!plantingDate || !storedStart || (!harvestDate && !clearingDate)) {
     return null;
   }
@@ -412,9 +418,13 @@ export function buildOccupancyTooltipDetails(task: Pick<
   // the harvest starts, so the bar's own offset shifts the harvest dates and
   // the tooltip describes the plan as it will be after the drop.
   const harvestAnchor = isHarvestTask ? task.startDate : task.endDate;
+  const occupancyStart = task.plantingAnchor && firstOccupancyDate(task.plantingAnchor, task.phaseBands?.[0]?.startDate);
   const harvestShiftDays = phase === 'occupancy'
-    ? (task.plantingAnchor && !task.readOnly ? getDayDelta(task.plantingAnchor, task.startDate) : 0)
+    ? (occupancyStart && !task.readOnly ? getDayDelta(occupancyStart, task.startDate) : 0)
     : (task.harvestStartDate ? getDayDelta(task.harvestStartDate, harvestAnchor) : 0);
+  const shownPlantingDate = phase === 'occupancy' && task.plantingAnchor
+    ? addUtcDays(task.plantingAnchor, harvestShiftDays)
+    : (task.readOnly && task.plantingAnchor || task.startDate);
   const harvestStartDate = task.harvestStartDate && addUtcDays(task.harvestStartDate, harvestShiftDays);
   const harvestEndDate = task.harvestEndDate && addUtcDays(task.harvestEndDate, harvestShiftDays);
   const hasHarvestRange = Boolean(
@@ -425,7 +435,7 @@ export function buildOccupancyTooltipDetails(task: Pick<
 
   const details: Array<OccupancyTooltipDetail | null> = [
     !isHarvestTask
-      ? { labelKey: 'plantingDate', value: formatDate(task.readOnly && task.plantingAnchor || task.startDate) }
+      ? { labelKey: 'plantingDate', value: formatDate(shownPlantingDate) }
       : null,
     task.clearingDate
       ? { labelKey: 'clearingDate', value: formatDate(addUtcDays(task.clearingDate, harvestShiftDays)) }
@@ -508,7 +518,7 @@ function buildPerennialOccupancyTask(
   return {
     id: `plan-${plan.id}-occupancy`,
     name: formatCropDisplayLabel(name || labels.unknownCropName(plan.crop), plan.crop_variety),
-    startDate: plantingDate,
+    startDate: firstOccupancyDate(plantingDate, phaseBands?.[0]?.startDate),
     endDate: occupancyEnd,
     plantingAnchor: plantingDate,
     clearingDate: clearingDate ?? undefined,

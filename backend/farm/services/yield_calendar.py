@@ -169,7 +169,12 @@ def _forecast_plans(
     else:
         legacy_selection = overlaps & ~invalid_period
     # Active perennials can contribute without any stored legacy harvest dates.
-    occupied = Q(planting_date__lte=end, occupied_until__gte=start, crop__isnull=False)
+    could_be_planted = (
+        Q(planting_date__lte=end)
+        | Q(actual_sowing_date__lte=end)
+        | Q(actual_transplanting_date__lte=end)
+    )
+    occupied = Q(occupied_until__gte=start, crop__isnull=False) & could_be_planted
     return plans.filter(legacy_selection | occupied).annotate(
         legacy_forecast_candidate=Case(
             When(legacy_selection, then=Value(True)), default=Value(False),

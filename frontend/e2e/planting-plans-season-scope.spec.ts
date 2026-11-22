@@ -292,6 +292,23 @@ test.describe('recurring harvest dates', () => {
         await page.mouse.up();
         await expect.poll(async () => (await bar.boundingBox())!.x).toBeCloseTo(originalBar.x, 0);
       });
+
+      await test.step('earlier recorded sowing can start a zero-delay harvest before the planned date', async () => {
+        await apiRequest(page, 'PATCH', `/crops/${crop.id}/`, { annual_harvest_window: '03-11/03-12' });
+        await apiRequest(page, 'PATCH', `/planting-plans/${plan.id}/`, { actual_sowing_date: '2025-03-10' });
+        await page.reload();
+        await expect(bar).toHaveAccessibleName(/Geplante Saisonernte.*11\.3\.2025.*12\.3\.2025/);
+        await expect(phase).toHaveCount(1);
+        expect((await phase.boundingBox())!.x).toBeCloseTo((await bar.boundingBox())!.x, 0);
+        expect((await phase.boundingBox())!.width).toBeGreaterThan(1);
+        await bar.focus();
+        const earlyHarvest = page.getByRole('tooltip').filter({ hasText: '11.3.2025' });
+        await expect(earlyHarvest).toContainText('15.3.2025');
+        await page.goto('/app/planting-plans');
+        await mode.selectOption('planned');
+        await expect(plantingDate).toHaveText('15.3.2025');
+        await expect(harvestStart).toHaveText('11.3.2025');
+      });
     } finally {
       await resetE2EScenario(request, scenario);
     }

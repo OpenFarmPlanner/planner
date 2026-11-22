@@ -67,6 +67,19 @@ describe('getMovedPlanDates', () => {
       .toBe('2026-04-11');
   });
 
+  it('moves the planned date by the bar offset when an earlier actual planting allows harvest', () => {
+    const perennial = {
+      planting_date: '2027-09-10', clearing_date: '2028-12-31',
+      seasonal_harvest: {
+        periods: [{ start_date: '2027-09-01', end_date: '2027-09-05' }],
+        actual_start_date: null, actual_end_date: null,
+      },
+    };
+    expect(getMovedPlanDates(perennial, {
+      id: 'plan-1-occupancy', startDate: parseIsoDate('2027-09-03')!,
+    })).toMatchObject({ planting_date: '2027-09-12', clearing_date: '2029-01-02' });
+  });
+
   it('keeps a missing harvest end empty and rejects plans without a schedule', () => {
     expect(getMovedPlanDates(
       { ...plan, harvest_end_date: null },
