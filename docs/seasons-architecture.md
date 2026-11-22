@@ -126,8 +126,8 @@ description), one level down:
   and `actual_end_date` drawn from recorded dates within that season. An
   empty list means the plan has no eligible harvest in that period. The
   property is null for legacy one-off plans or a request without a season.
-  Stored sowing, planting and harvest dates retain their meanings. Attachment writes use the same
-  season boundary. `perform_create` assigns new plans to the active season
+  Stored sowing, planting and harvest dates retain their meanings. Attachment
+  writes use the same season boundary. `perform_create` assigns new plans to the active season
   when the payload has no explicit season. Legacy unassigned rows retain
   their existing assignment until season setup.
 - `SeedDemandListView` and `YoungPlantDemandListView` use the owning season
@@ -241,6 +241,27 @@ page first would drop its unsaved-changes guards. The id is written inside
 run before the hook's in the commit that mounts it.
 `e2e/planting-plans-season-scope.spec.ts` pins this by delaying the season
 endpoints on a first visit.
+
+### Local perennial harvest fixture
+
+On the matching local checkout, check the database target using the
+[local fixture handoff](work-execution-queue.md#local-test-data-handoff).
+From `backend/`, preview using an existing local user and the exact configured
+database name or SQLite path.
+
+```bash
+DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py \
+  seed_perennial_harvest_acceptance --username LOCAL_USER --database-name LOCAL_DATABASE
+```
+
+After checking the preview, repeat with `--apply`. In **Perennial harvest
+acceptance**, open Apple in 2025, 2026, 2027 and Sep 2028–Aug 2029. Its planned
+dates are empty in 2025 and 2026, September 1 through October 15 in 2027, and
+September 1 through September 10 in the last season. The original actual
+start is visible only in 2025. In 2027 compare the 40 kg forecast with the
+separate 3 kg dated harvest. Winter apple shows how a December–January window
+splits at a season boundary. Legacy rhubarb and Overwintering garlic retain
+their one-off schedules. Reapplying the command preserves manual edits.
 
 ## Year-boundary marker on season-spanning axes
 
