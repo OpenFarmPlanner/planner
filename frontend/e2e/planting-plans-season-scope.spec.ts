@@ -183,25 +183,29 @@ test.describe('recurring harvest dates', () => {
         await expect(page.getByRole('button', { name: navigation.seasonSwitcher.ariaLabel }))
           .toContainText(`Obstjahr ${year}`);
       };
-      const mode = page.getByRole('combobox', { name: plans.actualDates.modeLabel });
+      const mode = page.getByRole('button', { name: new RegExp(`^${plans.actualDates.modeLabel} `) });
+      const selectMode = async (value: keyof typeof plans.actualDates.displayModes) => {
+        await mode.click();
+        await page.getByRole('menuitemradio', { name: plans.actualDates.displayModes[value], exact: true }).click();
+      };
       const row = page.locator(`[role="row"][data-id="${plan.id}"]`);
       const harvestStart = row.locator('[data-field="harvest_date"]');
       const harvestEnd = row.locator('[data-field="harvest_end_date"]');
       const plantingDate = row.locator('[data-field="planting_date"]');
 
       await switchSeason(2025);
-      await mode.selectOption('planned');
+      await selectMode('planned');
       await expect(harvestStart).toHaveText('—');
       await expect(plantingDate).toHaveText('15.3.2025');
-      await mode.selectOption('actual');
+      await selectMode('actual');
       await expect(harvestStart).toHaveText('3.10.2025');
-      await mode.selectOption('combined');
+      await selectMode('combined');
       await expect(harvestStart).toHaveText('3.10.2025');
 
       await switchSeason(2026);
-      await mode.selectOption('actual');
+      await selectMode('actual');
       await expect(harvestStart).toHaveText('');
-      await mode.selectOption('combined');
+      await selectMode('combined');
       await expect(harvestStart).toHaveText('—');
       await expect(plantingDate).toHaveText('15.3.2025');
       await page.goto('/app/gantt-chart?view=field');
@@ -236,12 +240,12 @@ test.describe('recurring harvest dates', () => {
       await page.screenshot({ path: info.outputPath('recurring-calendar-desktop.png'), animations: 'disabled' });
 
       await page.goto('/app/planting-plans');
-      await mode.selectOption('planned');
+      await selectMode('planned');
       await expect(harvestStart).toHaveText('1.9.2027');
       await expect(harvestEnd).toHaveText('15.10.2027');
-      await mode.selectOption('actual');
+      await selectMode('actual');
       await expect(harvestStart).toHaveText('');
-      await mode.selectOption('combined');
+      await selectMode('combined');
       await expect(harvestStart).toHaveText('1.9.2027');
       await expect(plantingDate).toHaveText('15.3.2025');
 
@@ -308,7 +312,7 @@ test.describe('recurring harvest dates', () => {
         await expect(edit).toHaveCount(0);
         await expect(reset).toHaveCount(0);
         await page.goto('/app/planting-plans');
-        await mode.selectOption('planned');
+        await selectMode('planned');
         await expect(harvestStart).toHaveText('10.9.2027');
         await expect(harvestEnd).toHaveText('20.10.2027');
         await page.goto('/app/gantt-chart?view=field');
@@ -418,7 +422,7 @@ test.describe('recurring harvest dates', () => {
         await bar.click({ button: 'right' });
         await expect(page.getByRole('menuitem', { name: 'Bearbeiten' })).toBeVisible();
         await page.goto('/app/planting-plans');
-        await mode.selectOption('planned');
+        await selectMode('planned');
         await expect(plantingDate).toHaveText('15.3.2025');
         await expect(harvestStart).toHaveText('11.3.2025');
       });

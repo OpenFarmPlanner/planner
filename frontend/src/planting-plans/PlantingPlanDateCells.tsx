@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Alert, Box, Button, IconButton, Popover, NativeSelect, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, IconButton, Menu, MenuItem, Popover, Stack, Typography } from '@mui/material';
+import { visuallyHidden } from '@mui/utils';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { FullCellTooltip } from '../components/data-grid/FullCellTooltip';
-import { FieldInfoButton } from '../crops/FieldInfoButton';
 import { useTranslation } from '../i18n';
 import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import { ActualPlanDateField, PlanDateComparisonText } from './PlantingPlanExecutionDates';
@@ -18,26 +19,31 @@ export function PlantingPlanDateModeSelect({ mode, onChange }: {
   onChange: (mode: PlantingPlanDateMode) => void;
 }) {
   const { t } = useTranslation('plantingPlans');
-  const selectId = useId();
-  return (
-    <Stack direction="row" spacing={0.5} data-grid-view-control sx={{ alignItems: 'center', maxWidth: '100%' }}>
-      <Typography component="label" htmlFor={selectId} variant="body2">
-        {t('actualDates.modeLabel')}
-      </Typography>
-      <NativeSelect
-        value={mode}
-        onChange={event => {
-          const nextMode = DATE_MODES.find(value => value === event.target.value);
-          if (nextMode) onChange(nextMode);
-        }}
-        inputProps={{ id: selectId }}
-        sx={{ minWidth: 0, '& .MuiNativeSelect-select': { minHeight: 32, boxSizing: 'content-box' } }}
-      >
-        {DATE_MODES.map(value => <option key={value} value={value}>{t(`actualDates.displayModes.${value}`)}</option>)}
-      </NativeSelect>
-      <FieldInfoButton contextual ariaLabel={t('actualDates.modeInfoLabel')} title={t('actualDates.modeHelp')} />
-    </Stack>
-  );
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const menuId = useId();
+  const labelId = useId();
+  const valueId = useId();
+  const open = anchor !== null;
+  return <>
+    <Button data-grid-view-control variant="outlined" color="primary"
+      startIcon={<CalendarTodayOutlinedIcon fontSize="small" />} endIcon={<ArrowDropDownIcon />}
+      aria-haspopup="menu" aria-expanded={open} aria-controls={open ? menuId : undefined}
+      aria-labelledby={`${labelId} ${valueId}`} onClick={event => setAnchor(event.currentTarget)}
+      sx={{ minHeight: { xs: 44, sm: 40 }, maxWidth: '100%', textAlign: 'start' }}>
+      <Box component="span" id={labelId} sx={visuallyHidden}>{t('actualDates.modeLabel')}</Box>
+      <span id={valueId}>{t(`actualDates.displayModes.${mode}`)}</span>
+    </Button>
+    <Menu data-grid-view-control anchorEl={anchor} open={open} onClose={() => setAnchor(null)}
+      slotProps={{ list: { id: menuId, 'aria-labelledby': labelId } }}>
+      {DATE_MODES.map(value => <MenuItem key={value} role="menuitemradio" selected={value === mode}
+        aria-checked={value === mode} onClick={() => {
+          setAnchor(null);
+          onChange(value);
+        }}>
+        {t(`actualDates.displayModes.${value}`)}
+      </MenuItem>)}
+    </Menu>
+  </>;
 }
 
 export function RecordedPlanDateValue({ dates }: { dates: PlantingPlanDateComparison }) {

@@ -39,37 +39,49 @@ test('the grid sorts, filters and edits the displayed dates without writing plan
     });
   });
   await page.goto(table);
-  const modes = page.getByRole('combobox', { name: 'Termine' });
+  const modes = page.getByRole('button', { name: /^Terminansicht / });
+  const menu = page.getByRole('menu', { name: 'Terminansicht' });
+  const selectMode = async (name: string) => {
+    await modes.click();
+    await menu.getByRole('menuitemradio', { name, exact: true }).click();
+    await expect(modes.getByText(name, { exact: true })).toBeVisible();
+  };
   const grid = page.getByRole('grid');
   const rows = grid.locator('[role="row"][data-id]');
   const rowIds = () => rows.evaluateAll(list => list.map(row => Number(row.getAttribute('data-id'))));
   const cell = (id: number) => grid.locator(`[role="row"][data-id="${id}"] [data-field="planting_date"]`);
 
-  await expect(modes).toHaveValue('combined');
-  await expect(modes.locator('option:checked')).toHaveText('Plan mit Ist');
+  await expect(modes.getByText('Plan mit Ist', { exact: true })).toBeVisible();
   const toolbar = page.getByTestId('planting-plan-search-toolbar');
   const columns = toolbar.getByRole('button', { name: 'Spalten', exact: true });
+  const filterBox = (await toolbar.getByRole('button', { name: 'Filter', exact: true }).boundingBox())!;
   const columnsBox = (await columns.boundingBox())!;
   const modeBox = (await modes.boundingBox())!;
+  expect(Math.abs(columnsBox.y - filterBox.y)).toBeLessThan(2);
   expect(modeBox.x).toBeGreaterThan(columnsBox.x + columnsBox.width);
   expect(Math.abs(modeBox.y + modeBox.height / 2 - columnsBox.y - columnsBox.height / 2)).toBeLessThan(4);
-  const info = toolbar.getByRole('button', { name: 'Info zur Terminanzeige' });
-  await modes.focus();
-  await page.keyboard.press('Tab');
-  await expect(info).toBeFocused();
-  const modeHelp = page.getByRole('tooltip', { name: /Geplant zeigt die geplanten Termine/ });
-  await expect(modeHelp).toContainText('sonst den geplanten Termin');
-  await info.press('Escape');
-  await expect(modeHelp).toBeHidden();
+  expect(Math.abs(modeBox.height - columnsBox.height)).toBeLessThanOrEqual(1);
+  await expect(toolbar.getByRole('button', { name: 'Info zur Terminanzeige' })).toHaveCount(0);
+  await modes.press('Enter');
+  const combined = menu.getByRole('menuitemradio', { name: 'Plan mit Ist', exact: true });
+  await expect(combined).toHaveAttribute('aria-checked', 'true');
+  await expect(combined).toBeFocused();
+  await combined.press('Escape');
+  await expect(menu).toBeHidden();
+  await expect(modes).toBeFocused();
+  const pageHelp = page.getByRole('button', { name: 'Hilfe zu Anbauplänen öffnen' });
+  await pageHelp.press('Enter');
+  await expect(page.getByText(/lässt fehlende Werte leer.*sonst den geplanten Termin/)).toBeVisible();
+  await page.keyboard.press('Escape');
   await expect.poll(rowIds).toEqual([second.id, third.id, first.id]);
   await expect(cell(first.id)).toHaveText('11.7.2026');
   await cell(first.id).click();
   await expect(page.getByRole('tooltip', { name: /^Pflanztermin/ })).toContainText('Tage später');
 
-  await modes.selectOption('planned');
+  await selectMode('Geplant');
   await expect.poll(rowIds).toEqual([first.id, second.id, third.id]);
   await expect(cell(first.id)).toHaveText('4.4.2026');
-  await modes.selectOption('actual');
+  await selectMode('Tatsächlich');
   await expect(cell(third.id)).toHaveText('');
   await expect(cell(first.id)).toHaveText('11.7.2026');
 
@@ -106,9 +118,9 @@ test('the grid sorts, filters and edits the displayed dates without writing plan
     planting_date: '2026-06-01', actual_transplanting_date: null,
   });
   await missingDateCell.press('Escape');
-  await modes.selectOption('combined');
+  await selectMode('Plan mit Ist');
   await expect(missingDateCell).toHaveText('1.6.2026');
-  await modes.selectOption('actual');
+  await selectMode('Tatsächlich');
   await expect(missingDateCell).toHaveText('');
 
   await cell(first.id).click({ button: 'right' });
@@ -122,11 +134,11 @@ test('the grid sorts, filters and edits the displayed dates without writing plan
   await page.getByRole('option', { name: 'September' }).click();
   await page.keyboard.press('Escape');
   await expect.poll(rowIds).toEqual([first.id]);
-  await modes.selectOption('planned');
+  await selectMode('Geplant');
   await expect(rows).toHaveCount(0);
   await page.getByRole('button', { name: 'Filter Erntebeginn entfernen' }).click();
 
-  await modes.selectOption('combined');
+  await selectMode('Plan mit Ist');
   const writes: string[] = [];
   page.on('request', request => {
     if (request.url().endsWith(`/api/planting-plans/${first.id}/`) && ['PUT', 'PATCH'].includes(request.method())) {
@@ -137,8 +149,8 @@ test('the grid sorts, filters and edits the displayed dates without writing plan
   const plannedInput = cell(first.id).getByRole('textbox', { name: 'Plan Pflanztermin' });
   await plannedInput.fill('06.04.2026');
   await modes.focus();
-  await modes.selectOption('actual');
-  await modes.selectOption('combined');
+  await selectMode('Tatsächlich');
+  await selectMode('Plan mit Ist');
   await expect(plannedInput).toHaveValue('06.04.2026');
   expect(writes).toEqual([]);
   await plannedInput.press('Escape');
@@ -160,7 +172,7 @@ test('the grid sorts, filters and edits the displayed dates without writing plan
   await actualEditor.getByRole('button', { name: 'Speichern' }).click();
   await expect(actualEditor).toHaveCount(0);
   await expect(cell(first.id)).toHaveText('4.4.2026');
-  await modes.selectOption('actual');
+  await selectMode('Tatsächlich');
   await expect(cell(first.id)).toHaveText('');
   expect(writes).toEqual(['PATCH', 'PATCH']);
   const saved = await apiRequest<{ planting_date: string; actual_transplanting_date: string | null }>(
@@ -190,12 +202,14 @@ test.describe('touch and French actual date labels', () => {
     await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'fr' });
     await page.goto(table);
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
-    const modes = page.getByRole('combobox', { name: 'Dates' });
-    await expect(modes.locator('option:checked')).toHaveText('Réelles ou prévues');
-    await page.getByRole('button', { name: 'À propos de l’affichage des dates' }).tap();
-    await expect(page.getByRole('tooltip', { name: /Prévues affiche les dates planifiées/ })).toContainText('la date prévue sinon');
-    await page.getByRole('button', { name: 'À propos de l’affichage des dates' }).tap();
-    await modes.selectOption('actual');
+    const modes = page.getByRole('button', { name: /^Affichage des dates / });
+    await expect(modes.getByText('Réelles ou prévues', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Plus', exact: true }).tap();
+    await page.getByRole('menuitem', { name: 'Aide sur cette page' }).tap();
+    await expect(page.getByText(/laisse les valeurs manquantes vides.*sinon la date prévue/)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await modes.tap();
+    await page.getByRole('menuitemradio', { name: 'Réelles', exact: true }).tap();
     const plan = page.locator(`[data-mobile-card-id="${first.id}"]`);
     await expect(plan).toContainText('11/07/2026');
     await plan.getByRole('button', { name: /Actions pour la série/ }).tap();

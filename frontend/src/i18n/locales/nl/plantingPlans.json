@@ -489,9 +489,7 @@
   "actualDates": {
     "clear": "Datum wissen",
     "title": "Geplande en werkelijke datums",
-    "modeLabel": "Datums",
-    "modeInfoLabel": "Over de datumweergave",
-    "modeHelp": "Gepland toont de plandatums. Werkelijk toont de vastgelegde datums en laat ontbrekende datums leeg. Werkelijk of gepland toont de vastgelegde datum als die beschikbaar is en anders de geplande datum.",
+    "modeLabel": "Datumweergave",
     "displayModes": {
       "planned": "Gepland",
       "actual": "Werkelijk",

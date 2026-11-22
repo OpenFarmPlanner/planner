@@ -501,9 +501,7 @@
   "actualDates": {
     "clear": "Borrar fecha",
     "title": "Fechas previstas y reales",
-    "modeLabel": "Fechas",
-    "modeInfoLabel": "Información sobre las fechas mostradas",
-    "modeHelp": "Previstas muestra las fechas planificadas. Reales muestra las fechas registradas y deja en blanco las que faltan. Reales o previstas muestra la fecha registrada si existe y la prevista en caso contrario.",
+    "modeLabel": "Vista de fechas",
     "displayModes": {
       "planned": "Previstas",
       "actual": "Reales",
