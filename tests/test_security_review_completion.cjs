@@ -1,4 +1,4 @@
-const { test } = require('node:test');
+const { beforeEach, test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { execFileSync } = require('node:child_process');
@@ -287,6 +287,11 @@ test('required quality job loads immutable base policy and bootstrap needs expli
 });
 
 const NATIVE_NOW = Date.parse('2026-11-15T07:26:00Z');
+
+// Snapshot reads the wall clock when it validates the fixed native-review receipts.
+beforeEach(({ mock }) => {
+  mock.timers.enable({ apis: ['Date'], now: NATIVE_NOW });
+});
 function nativeFixture() {
   const base = { user: { id: 199175422, type: 'Bot' }, performed_via_github_app: { id: 1144995 },
     created_at: '2026-11-15T07:25:17Z', updated_at: '2026-11-15T07:25:21Z' };
