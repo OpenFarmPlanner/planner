@@ -224,8 +224,9 @@ description), one level down:
   response is the array of weeks.
 - **Compare seasons** in Yield overview reads `/yield-calendar/comparison/`.
   It starts with all crops, all locations and the three most recent season
-  records. The crop picker groups varieties under their crop name and searches
-  the varieties and crop aliases. Other filters include an individual variety,
+  records. The crop picker groups varieties by species, with a crop-name
+  fallback for unlinked crops, and searches the varieties and crop aliases.
+  Other filters include an individual variety,
   field, bed, and the latest five or all seasons. The forecast calendar keeps
   its own filters when changing views.
   Each crop's forecasts use the same projected periods and cumulative

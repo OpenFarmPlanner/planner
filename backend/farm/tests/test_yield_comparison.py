@@ -165,6 +165,10 @@ class YieldComparisonTest(TestCase):
         self.assertEqual(variety['recorded']['measured_kg'], '6')
         self.assertEqual(variety['excluded_unassigned_records'], 0)
         self.assertTrue(variety['comparable'])
+        Crop.objects.filter(pk=self.crop.pk).update(variety_normalized='')
+        legacy_general = current_row(variety_id=self.crop.pk)
+        self.assertIsNone(legacy_general['forecast_kg'])
+        self.assertIsNone(legacy_general['recorded']['measured_kg'])
 
     def test_window_uses_the_latest_real_seasons_and_preserves_unknown_recorded_yield(self):
         for year in (2022, 2023, 2024):

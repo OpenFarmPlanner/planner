@@ -2004,6 +2004,7 @@ export interface YieldComparisonFilterOptions {
     name: string;
     culture: string;
     culture_label: string | null;
+    crop_species: number | null;
     variety: string;
     search_names: string[];
   }[];

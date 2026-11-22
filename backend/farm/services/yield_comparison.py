@@ -124,6 +124,7 @@ def comparison_filter_options(project: Project, language_code: str) -> dict:
                 'variety': (crop.variety or '').strip(),
                 'culture': crop.name,
                 'culture_label': resolve_crop_display_name(crop, language_code, project.region)[0],
+                'crop_species': crop.crop_species_id,
                 'search_names': crop.crop_species.search_names() if crop.crop_species else [],
             }
             for crop in _comparison_crops(project)
