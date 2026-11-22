@@ -17,6 +17,14 @@ describe('hasEffectiveCropFormChanges', () => {
     expect(unchanged({ name: 'Salat' }, { name: 'Spinat' })).toBe(true);
   });
 
+  it('detects adding, moving and clearing only the annual harvest window', () => {
+    const original = { annual_harvest_window: '09-01/10-15', first_harvest_delay_years: null };
+    const empty = { ...original, annual_harvest_window: '' };
+    expect(hasEffectiveCropFormChanges(empty, original)).toBe(true);
+    expect(hasEffectiveCropFormChanges(original, { ...original, annual_harvest_window: '12-15/02-29' })).toBe(true);
+    expect(hasEffectiveCropFormChanges(original, empty)).toBe(true);
+  });
+
   it('saves health-only edits and distinguishes inheritance from an empty override', () => {
     const selected = { entries: [{ name: 'Explicit local name' }] };
     expect(unchanged({}, { plant_health: selected })).toBe(true);

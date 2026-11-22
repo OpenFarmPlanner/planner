@@ -123,6 +123,13 @@ test('edits and reloads the perennial harvest window by keyboard on a phone', as
   await expect(start).toHaveValue('12-15');
   await expect(end).toHaveValue('02-29');
   await expect(delay).toHaveValue('2');
+
+  await start.fill('12-01');
+  await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  expect(await apiRequest(page, 'GET', `/crops/${crop.id}/`)).toMatchObject({
+    annual_harvest_window: '12-01/02-29', first_harvest_delay_years: 2,
+  });
 });
 
 test.describe('crop edit dialog compact layout', () => {

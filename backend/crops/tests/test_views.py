@@ -80,6 +80,17 @@ class CropViewSetTest(DRFAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_library_api_exposes_the_perennial_window_and_zero_delay(self) -> None:
+        self.published.life_cycle = 'perennial'
+        self.published.annual_harvest_window = '12-15/02-29'
+        self.published.first_harvest_delay_years = 0
+        self.published.save()
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(f'/openfarmplanner/api/crop-library/{self.published.id}/')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['annual_harvest_window'], '12-15/02-29')
+        self.assertEqual(response.data['first_harvest_delay_years'], 0)
+
     def test_retrieving_crop_under_rejected_species_404s(self):
         rejected_species = CropSpecies.objects.create(
             name='Rejected bean', status=CropSpecies.STATUS_REJECTED,

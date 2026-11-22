@@ -518,6 +518,8 @@ class CropSerializer(serializers.ModelSerializer):
             'cultivation_type',
             'growth_duration_days',
             'harvest_duration_days',
+            'annual_harvest_window',
+            'first_harvest_delay_years',
             'propagation_duration_days',
             'germination_temperature_optimal_min_c',
             'germination_temperature_optimal_max_c',
