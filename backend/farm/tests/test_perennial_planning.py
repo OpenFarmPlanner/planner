@@ -328,15 +328,11 @@ class PerennialPlanningTest(ProjectApiTestCase):
         destination = next(row for row in ranked_edit.data['results'] if row['bed_id'] == other.pk)
         self.assertFalse(destination['has_enough_area'])
 
-    def test_rotation_checks_include_the_recorded_year_of_a_recurring_perennial(self):
+    def test_rotation_history_includes_the_recorded_year_of_a_recurring_perennial(self):
         family = PlantFamily.objects.get(botanical_name='Polygonaceae')
         annual = Crop.objects.create(
-            project=self.project, name='Rotation predecessor', crop_family=family,
-            rotation_break_years=1, growth_duration_days=30, harvest_duration_days=5,
-        )
-        previous = PlantingPlan.objects.create(
-            project=self.project, season=self.season(2023), bed=self.bed, crop=annual,
-            planting_date=date(2023, 4, 1), area_usage_sqm=10,
+            project=self.project, name='Annual rotation candidate', crop_family=family,
+            rotation_break_years=1, growth_duration_days=5, harvest_duration_days=3,
         )
         crop = self.perennial(
             annual_harvest_window='12-20/12-25', crop_family=family, rotation_break_years=1,
@@ -349,16 +345,19 @@ class PerennialPlanningTest(ProjectApiTestCase):
 
         service = RotationService(self.project.pk, language_code='en')
         self.assertEqual(service.plan_occupancy(plan).start, date(2024, 12, 17))
-        self.assertEqual(service.check_plan(plan).status, STATUS_CONFLICT)
+        candidate = service.occupancy(
+            crop=annual, bed_id=self.bed.pk, start=date(2024, 12, 20), end=date(2024, 12, 28),
+        )
+        self.assertEqual(service.check(candidate).status, STATUS_CONFLICT)
 
         params = {
-            'crop_id': crop.pk, 'bed_id': self.bed.pk, 'exclude_plan_id': plan.pk,
-            'planting_date': '2025-01-10',
+            'crop_id': annual.pk, 'bed_id': self.bed.pk,
+            'planting_date': '2024-12-20', 'end_date': '2024-12-28',
         }
         checked = self.client.get(f'{PLANS}rotation-check/', params)
         self.assertEqual(checked.status_code, 200, checked.data)
         self.assertEqual(checked.data['status'], STATUS_CONFLICT)
-        self.assertEqual(checked.data['findings'][0]['previous_plan_id'], previous.pk)
+        self.assertEqual(checked.data['findings'][0]['previous_plan_id'], plan.pk)
 
         suggested = self.client.get(f'{PLANS}bed-suggestions/', params)
         self.assertEqual(suggested.status_code, 200, suggested.data)
