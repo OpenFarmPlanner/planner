@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 export interface Task {
   id: string;
   name: string;
@@ -10,6 +12,7 @@ export interface Task {
   dependencies?: string[];
   readOnly?: boolean;
   accessibleLabel?: string;
+  leadingIcon?: ReactNode;
   /**
    * Tasks in the same row sharing this id are moved together as one unit
    * (e.g. the phases of one planting plan): dragging any of them shifts all

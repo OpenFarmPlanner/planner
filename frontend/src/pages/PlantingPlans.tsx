@@ -123,7 +123,7 @@ import { SearchHighlightedText } from "../search/SearchHighlightedText";
 import { buildMatchExcerpt } from "../search/searchText";
 import { PlantingPlanSearchMatchContext } from "../components/planting-plans/search/plantingPlanSearchMatchContext";
 import { PlantingPlanCropLabel } from "../components/planting-plans/search/PlantingPlanCropLabel";
-import { CarriedOverPlanBadge } from "../components/planting-plans/CarriedOverPlanBadge";
+import { CarriedOverPlanIndicator } from "../components/planting-plans/CarriedOverPlanIndicator";
 import { PlantingPlanSearchToolbar } from "../components/planting-plans/search/PlantingPlanSearchToolbar";
 import { PlantingPlanMobileSearchBar } from "../components/planting-plans/search/PlantingPlanMobileSearchBar";
 import { PlantingPlanMobileListHeader } from "../components/planting-plans/search/PlantingPlanMobileListHeader";
@@ -838,12 +838,11 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
             <PlantingPlanCropLabel planId={Number(params.id)} text={String(params.formattedValue ?? "")} truncate />
             {params.row.carried_over && (
-              <Box sx={{ display: 'flex', maxWidth: '55%', minWidth: 0 }}>
-                <CarriedOverPlanBadge
-                  season={params.row.origin_season_label}
-                  tabIndex={params.hasFocus ? 0 : -1}
-                />
-              </Box>
+              <CarriedOverPlanIndicator
+                season={params.row.origin_season_label}
+                tabIndex={params.hasFocus ? 0 : -1}
+                compact
+              />
             )}
           </Box>
         ),
@@ -2528,21 +2527,26 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
                 );
               }}
               renderHeaderAction={(item) => (
-                <AppTooltip title={t("common:actions.actions")}>
-                  <IconButton
-                    size="small"
-                    aria-label={t("plantingPlans:mobile.actionsAria", {
-                      plan: getCropLabel(item),
-                    })}
-                    aria-controls={mobileActionMenuAnchor ? "planting-plan-mobile-actions-menu" : undefined}
-                    aria-haspopup="menu"
-                    aria-expanded={Boolean(mobileActionMenuAnchor && mobileActionMenuRow?.id === item.id)}
-                    onClick={(event) => openMobileActionMenu(event, item)}
-                    sx={{ width: 44, height: 44 }}
-                  >
-                    <MoreVertIcon fontSize="small" />
-                  </IconButton>
-                </AppTooltip>
+                <Stack direction="row">
+                  {item.carried_over && (
+                    <CarriedOverPlanIndicator season={item.origin_season_label} />
+                  )}
+                  <AppTooltip title={t("common:actions.actions")}>
+                    <IconButton
+                      size="small"
+                      aria-label={t("plantingPlans:mobile.actionsAria", {
+                        plan: getCropLabel(item),
+                      })}
+                      aria-controls={mobileActionMenuAnchor ? "planting-plan-mobile-actions-menu" : undefined}
+                      aria-haspopup="menu"
+                      aria-expanded={Boolean(mobileActionMenuAnchor && mobileActionMenuRow?.id === item.id)}
+                      onClick={(event) => openMobileActionMenu(event, item)}
+                      sx={{ width: 44, height: 44 }}
+                    >
+                      <MoreVertIcon fontSize="small" />
+                    </IconButton>
+                  </AppTooltip>
+                </Stack>
               )}
               renderDetails={(item) => (
                 <Stack spacing={0.75}>
@@ -2595,9 +2599,6 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               )}
               renderFooter={(item) => (
                 <>
-                  {item.carried_over && (
-                    <CarriedOverPlanBadge season={item.origin_season_label} />
-                  )}
                   {search.noteMatchIds.has(item.id) && (
                     <Box
                       data-testid="planting-plan-notes-match"

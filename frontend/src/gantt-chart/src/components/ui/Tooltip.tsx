@@ -378,6 +378,7 @@ const Tooltip: React.FC<
             }
       }
       data-rmg-component="tooltip"
+      role="tooltip"
       data-placement={canUsePortal ? portalPosition.placement : "inline"}
     >
       {tooltipBody}

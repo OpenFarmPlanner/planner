@@ -624,6 +624,28 @@
   min-width: 20px;
 }
 
+.rmg-task-item-with-icon {
+  overflow: clip;
+  padding-inline: 3px;
+}
+
+.rmg-task-item-label {
+  /* Keep the continuation visible on bars that extend behind the sticky field column. */
+  position: sticky;
+  inset-inline-start: calc(var(--rmg-left-column-width, 160px) + var(--rmg-left-column-overlay, 0px) + 3px);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-inline-size: 100%;
+  min-inline-size: 0;
+}
+
+.rmg-task-item-leading-icon {
+  display: inline-flex;
+  flex: none;
+  pointer-events: none;
+}
+
 .rmg-task-item:hover {
   transform: translateY(-1px);
   box-shadow: 0 3px 6px var(--rmg-shadow-hover);

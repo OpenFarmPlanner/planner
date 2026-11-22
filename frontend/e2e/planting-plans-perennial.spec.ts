@@ -12,7 +12,7 @@ test('keeps the original perennial visible and edits its removal date in the pla
   const rows = page.locator('[role="row"][data-id]');
   await search.fill('Rhabarber');
   const rhubarb = rows.filter({ hasText: 'Rhabarber' });
-  await expect(rhubarb.getByText('Aus Saison 2024')).toBeVisible();
+  await expect(rhubarb.getByRole('button', { name: 'Läuft weiter aus Saison 2024. Hier nur lesbar.' })).toBeVisible();
   const planId = await rhubarb.getAttribute('data-id');
   await expect(page.getByRole('columnheader', { name: 'Saisonstatus' })).toHaveCount(0);
 

@@ -527,9 +527,7 @@
     }
   },
   "carriedOver": {
-    "badge": "From {{season}}",
     "description": "Continues from season {{season}}. Read-only here.",
-    "unknownBadge": "Continues",
     "unknownDescription": "Continues from an earlier planting. Read-only here.",
     "openOrigin": "Open in originating season",
     "count_one": "{{own}} planted this season · {{count}} continues",

@@ -274,6 +274,8 @@ export interface TaskItemProps {
   ) => void;
   onMouseEnter: (event: React.MouseEvent, task: Task) => void;
   onMouseLeave: () => void;
+  onPreview?: (target: HTMLDivElement, task: Task) => void;
+  onDismissPreview?: () => void;
   onClick: (event: React.MouseEvent, task: Task) => void;
   onDoubleClick?: (event: React.MouseEvent, task: Task) => void;
   onContextMenu?: (event: React.MouseEvent | React.TouchEvent, task: Task) => void;

@@ -238,7 +238,7 @@ test.describe('planting plans tab navigation with hidden columns', () => {
 
     const rowWithEditablePlantCount = page
       .locator('[role="row"][data-id]')
-      .filter({ hasNot: page.getByText(/^Aus Saison /) })
+      .filter({ hasNot: page.getByRole('button', { name: /Hier nur lesbar/ }) })
       .filter({ has: page.locator('[data-field="plants_count"]', { hasText: /≈/ }) })
       .first();
     await expect(rowWithEditablePlantCount).toBeVisible();

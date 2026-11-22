@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { apiRequest, loginWithDeterministicProject } from './utils';
+import { apiRequest, loginWithDeterministicProject, waitForPageStable } from './utils';
 
 test.use({ serviceWorkers: 'block' });
 
@@ -82,7 +82,7 @@ test('opens the shared harvest form from readonly carried plan details', async (
   await page.goto('/app/planting-plans');
   await page.getByRole('searchbox', { name: 'Anbaupläne durchsuchen' }).fill('Rhabarber');
   const row = page.locator('[role="row"][data-id]').filter({ hasText: 'Rhabarber' });
-  await expect(row.getByText('Aus Saison 2024')).toBeVisible();
+  await expect(row.getByRole('button', { name: 'Läuft weiter aus Saison 2024. Hier nur lesbar.' })).toBeVisible();
   const id = await row.getAttribute('data-id');
   await page.getByRole('button', { name: 'Spalten', exact: true }).click();
   const actualColumn = page.getByRole('checkbox', { name: 'Tatsächliche Ernte' });
@@ -95,6 +95,7 @@ test('opens the shared harvest form from readonly carried plan details', async (
   await expect(page).toHaveURL(/\/app\/planting-plans$/);
 
   await page.goto(`/app/planting-plans/${id}`);
+  await waitForPageStable(page);
   await expect(page.getByRole('button', { name: 'Räumungsdatum ändern' })).toHaveCount(0);
   await page.getByRole('button', { name: /Ernteaktionen für Rhabarber/ }).click();
   await page.getByRole('menuitem', { name: 'Ernte löschen' }).click();

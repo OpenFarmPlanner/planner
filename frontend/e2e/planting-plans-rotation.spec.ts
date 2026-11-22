@@ -126,7 +126,7 @@ test.describe('planting plan crop rotation in the table', () => {
     await page.keyboard.press('Escape');
 
     await expect(page.getByText('Fruchtfolge: Konflikt')).toBeVisible();
-    const seasonMarker = page.getByText(/^Aus Saison /);
+    const seasonMarker = page.getByRole('button', { name: /Hier nur lesbar/ });
     const carriedOver = rows(page).filter({ has: seasonMarker });
     const current = rows(page).filter({ hasNot: seasonMarker });
     await expect(carriedOver.first()).toBeVisible();

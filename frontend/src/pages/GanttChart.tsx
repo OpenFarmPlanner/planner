@@ -11,6 +11,7 @@ import React, { useState, useEffect, useMemo, useCallback, useContext, useRef, u
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import { useTranslation } from '../i18n';
 import {
@@ -758,13 +759,11 @@ function GanttChartPage() {
         const visible = clipCarriedOverOccupancyTask(inSeason, taskRangeStart);
         if (!visible) return [];
         const season = task.originSeasonLabel;
-        const badge = season ? t('plantingPlans:carriedOver.badge', { season })
-          : t('plantingPlans:carriedOver.unknownBadge');
         const description = season ? t('plantingPlans:carriedOver.description', { season })
           : t('plantingPlans:carriedOver.unknownDescription');
         return [{
           ...visible,
-          name: `← ${task.name} · ${badge}`,
+          leadingIcon: <HistoryOutlinedIcon sx={{ fontSize: 14 }} />,
           accessibleLabel: `${task.name} · ${description}`,
         }];
       }),
@@ -1686,7 +1685,7 @@ function GanttChartPage() {
         {t(`ganttChart:tooltip.phase.${getOccupancyTaskPhase(task)}`)}
       </Typography>
       {task.readOnly && (
-        <Typography variant="body2">
+        <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
           {task.originSeasonLabel
             ? t('plantingPlans:carriedOver.description', { season: task.originSeasonLabel })
             : t('plantingPlans:carriedOver.unknownDescription')}
@@ -1913,6 +1912,7 @@ function GanttChartPage() {
           <Box
             className={`gantt-container-wrapper gantt-container-wrapper--${calendarMode}`}
             sx={{
+              '--rmg-left-column-overlay': `${ganttSidebarResizeHandleHitboxWidth / 2}px`,
               width: '100%',
               minWidth: 0,
               overflow: 'hidden',

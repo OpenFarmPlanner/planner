@@ -26,6 +26,8 @@ const TaskItem: React.FC<TaskItemProps> = ({
   onMouseDown,
   onMouseEnter,
   onMouseLeave,
+  onPreview,
+  onDismissPreview,
   onClick,
   onDoubleClick,
   onContextMenu,
@@ -240,12 +242,24 @@ const TaskItem: React.FC<TaskItemProps> = ({
     taskStyles.borderStyle = "solid";
   }
 
+  const taskName = (
+    <div className={`rmg-task-item-name${onContextMenu ? " rmg-task-item-name-maskable" : ""}`}>
+      {task.name || "Unnamed Task"}
+    </div>
+  );
+
   return (
     <div
       ref={taskRef}
-      className={`rmg-task-item ${isDragging ? "rmg-task-item-dragging" : ""}`}
+      className={`rmg-task-item${isDragging ? " rmg-task-item-dragging" : ""}${task.leadingIcon ? " rmg-task-item-with-icon" : ""}`}
       style={taskStyles}
-      onClick={(e) => onClick(e, task)}
+      onClick={(event) => {
+        if (task.accessibleLabel && onPreview) {
+          event.currentTarget.focus({ preventScroll: true });
+          onPreview(event.currentTarget, task);
+        }
+        onClick(event, task);
+      }}
       onDoubleClick={onDoubleClick ? (e) => onDoubleClick(e, task) : undefined}
       onContextMenu={onContextMenu ? (e) => onContextMenu(e, task) : undefined}
       onTouchStart={onContextMenu ? onTouchStart : undefined}
@@ -254,6 +268,13 @@ const TaskItem: React.FC<TaskItemProps> = ({
       onMouseDown={canMoveTask ? handleTaskMouseDown : undefined}
       onMouseEnter={(e) => onMouseEnter(e, task)}
       onMouseLeave={onMouseLeave}
+      onFocus={task.accessibleLabel ? (event) => {
+        if (event.target === event.currentTarget) onPreview?.(event.currentTarget, task);
+      } : undefined}
+      onBlur={task.accessibleLabel ? onDismissPreview : undefined}
+      onKeyDown={task.accessibleLabel ? (event) => {
+        if (event.key === "Escape") onDismissPreview?.();
+      } : undefined}
       data-testid={`task-${task.id}`}
       data-task-id={task.id}
       data-instance-id={instanceId}
@@ -284,10 +305,12 @@ const TaskItem: React.FC<TaskItemProps> = ({
         />
       )}
 
-      {/* Task name */}
-      <div className={`rmg-task-item-name${onContextMenu ? " rmg-task-item-name-maskable" : ""}`}>
-        {task.name || "Unnamed Task"}
-      </div>
+      {task.leadingIcon ? (
+        <div className="rmg-task-item-label">
+          <span className="rmg-task-item-leading-icon" aria-hidden="true">{task.leadingIcon}</span>
+          {taskName}
+        </div>
+      ) : taskName}
 
       {onContextMenu && (
         <ContextMenuIndicator

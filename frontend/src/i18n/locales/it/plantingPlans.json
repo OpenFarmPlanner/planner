@@ -541,9 +541,7 @@
     }
   },
   "carriedOver": {
-    "badge": "Dalla stagione {{season}}",
     "description": "Prosegue dalla stagione {{season}}. Qui è in sola lettura.",
-    "unknownBadge": "Prosegue",
     "unknownDescription": "Serie avviata in precedenza. Qui è in sola lettura.",
     "openOrigin": "Apri nella stagione di origine",
     "count_one": "{{own}} avviate in questa stagione · {{count}} prosegue",

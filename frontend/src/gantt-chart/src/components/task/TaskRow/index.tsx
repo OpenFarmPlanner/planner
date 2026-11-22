@@ -77,6 +77,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
 
   // Task interaction states
   const [hoveredTask, setHoveredTask] = useState<Task | null>(null);
+  const [focusedPreview, setFocusedPreview] = useState<{ task: Task; position: { x: number; y: number } } | null>(null);
   const [draggingTask, setDraggingTask] = useState<Task | null>(null);
   const [dragType, setDragType] = useState<DragType | null>(null);
   const [dragStartX, setDragStartX] = useState(0);
@@ -545,12 +546,19 @@ const TaskRow: React.FC<TaskRowProps> = ({
     onTaskDoubleClick?.(task, taskGroup);
   };
 
-  const handleTaskContextMenu = (event: React.MouseEvent | React.TouchEvent, task: Task) => {
-    // Dismiss the hover tooltip immediately — otherwise it stays visible
-    // (the pointer is still technically "hovering" the bar) and overlaps
-    // the context menu that's about to open.
+  const dismissTaskPreview = () => {
     setHoveredTask(null);
+    setFocusedPreview(null);
+  };
+
+  const handleTaskContextMenu = (event: React.MouseEvent | React.TouchEvent, task: Task) => {
+    dismissTaskPreview();
     onTaskContextMenu?.(event, task, taskGroup);
+  };
+
+  const handleTaskPreview = (target: HTMLDivElement, task: Task) => {
+    const rect = target.getBoundingClientRect();
+    setFocusedPreview({ task, position: { x: rect.left + rect.width / 2, y: rect.bottom } });
   };
 
   const handleTaskMouseEnter = (event: React.MouseEvent, task: Task) => {
@@ -1003,6 +1011,8 @@ const TaskRow: React.FC<TaskRowProps> = ({
     );
   }
 
+  const tooltipTask = draggingTask ? previewTask || draggingTask : hoveredTask || focusedPreview?.task;
+
   return (
     <div
       className={`rmg-task-row ${className}`}
@@ -1076,6 +1086,8 @@ const TaskRow: React.FC<TaskRowProps> = ({
                   onMouseDown={handleMouseDown}
                   onMouseEnter={handleTaskMouseEnter}
                   onMouseLeave={handleTaskMouseLeave}
+                  onPreview={handleTaskPreview}
+                  onDismissPreview={dismissTaskPreview}
                   onClick={handleTaskClick}
                   onDoubleClick={onTaskDoubleClick ? handleTaskDoubleClick : undefined}
                   onContextMenu={onTaskContextMenu ? handleTaskContextMenu : undefined}
@@ -1095,10 +1107,10 @@ const TaskRow: React.FC<TaskRowProps> = ({
       {timelineAdornment}
 
       {/* Task tooltip */}
-      {(hoveredTask || draggingTask) && (
+      {tooltipTask && (
         <Tooltip
-          task={previewTask || draggingTask || hoveredTask!}
-          position={tooltipPosition}
+          task={tooltipTask}
+          position={hoveredTask || draggingTask ? tooltipPosition : focusedPreview?.position ?? tooltipPosition}
           dragType={dragType}
           taskId={draggingTask?.id}
           startDate={validStartDate}
