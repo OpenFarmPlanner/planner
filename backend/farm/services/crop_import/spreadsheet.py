@@ -385,6 +385,16 @@ def _import_error_details(error: Exception) -> dict[str, Any]:
     return details
 
 
+def _validate_perennial_harvest_cells(data: dict[str, Any], serializer: CropSerializer) -> None:
+    for field in ('annual_harvest_window', 'first_harvest_delay_years'):
+        if field not in data:
+            continue
+        try:
+            data[field] = serializer.fields[field].run_validation(data[field])
+        except ValidationError as error:
+            raise ValidationError({field: error.detail}) from error
+
+
 def preview_crop_import(
     project: Project, rows: list, *, known_names: Iterable[str] = (),
 ) -> list[dict]:
@@ -423,13 +433,7 @@ def preview_crop_import(
             continue
 
         try:
-            for field in ('annual_harvest_window', 'first_harvest_delay_years'):
-                if field in crop_data:
-                    try:
-                        value = crop_data[field]
-                        crop_data[field] = field_validator.fields[field].run_validation(value)
-                    except ValidationError as error:
-                        raise ValidationError({field: error.detail}) from error
+            _validate_perennial_harvest_cells(crop_data, field_validator)
             germination_issues = apply_germination_cells(crop_data)
             _normalize_crop_family(crop_data)
             matching_crop = _match_import_row(project, crop_data)
