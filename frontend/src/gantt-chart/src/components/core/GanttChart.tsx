@@ -144,8 +144,10 @@ const GanttChart = forwardRef<GanttChartRef, GanttChartProps>(
     // Calculate timeline bounds
     const derivedStartDate = customStartDate || findEarliestDate(tasks);
     const derivedEndDate = customEndDate || findLatestDate(tasks);
-    const columnStart = renderTimelineRow ? toLocalCalendarDate(derivedStartDate) : derivedStartDate;
-    const columnEnd = renderTimelineRow ? toLocalCalendarDate(derivedEndDate) : derivedEndDate;
+    const alignCalendarDates = Boolean(renderTimelineRow)
+      || tasks.some(group => group?.tasks?.some(task => task.phaseBands));
+    const columnStart = alignCalendarDates ? toLocalCalendarDate(derivedStartDate) : derivedStartDate;
+    const columnEnd = alignCalendarDates ? toLocalCalendarDate(derivedEndDate) : derivedEndDate;
 
     // Expose export methods via ref
     useImperativeHandle(
@@ -616,7 +618,7 @@ const GanttChart = forwardRef<GanttChartRef, GanttChartProps>(
     // Get time units and calculate current unit index
     const timeUnits = getTimeUnits();
     const totalUnits = timeUnits.length;
-    const timelineDateScale = renderTimelineRow
+    const timelineDateScale = alignCalendarDates
       ? createTimelineDateScale(timeUnits, activeViewMode, viewUnitWidth, minuteStep)
       : null;
     const currentUnitIndex = getCurrentUnitIndex();
@@ -1168,7 +1170,8 @@ const GanttChart = forwardRef<GanttChartRef, GanttChartProps>(
                       key={`task-row-${group.id}-${forceRender}`}
                       taskGroup={group}
                       timelineAdornment={timelineDateScale && renderTimelineRow?.(group, timelineDateScale.positionDate)}
-                      timelineDateScale={timelineDateScale ?? undefined}
+                      timelineDateScale={renderTimelineRow ? timelineDateScale ?? undefined : undefined}
+                      phaseDateScale={timelineDateScale ?? undefined}
                       startDate={derivedStartDate}
                       endDate={derivedEndDate}
                       totalMonths={totalUnits}

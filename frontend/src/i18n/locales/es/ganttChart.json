@@ -57,6 +57,8 @@
       "harvest": "Fase de cosecha",
       "occupancy": "Ocupación del bancal"
     },
+    "seasonalHarvest": "Cosecha prevista de la temporada",
+    "noSeasonalHarvest": "No hay cosecha prevista para esta temporada.",
     "actualHarvestEnd": "La cosecha termina a más tardar",
     "clearingDate": "Fecha de fin del cultivo"
   },

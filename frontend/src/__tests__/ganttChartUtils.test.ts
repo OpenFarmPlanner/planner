@@ -934,6 +934,39 @@ describe('buildFieldOccupancyHierarchy', () => {
     expect(bedNode?.tasks[1].name).toBe('Salat (Bijella) (Ernte)');
   });
 
+  it('keeps both harvest periods inside one read-only occupancy task', () => {
+    const nodes = buildFieldOccupancyHierarchy({
+      labels, locations, fields, beds, crops: [],
+      plantingPlans: [{
+        id: 21, crop: 42, crop_name: 'Apfel', bed: 100, carried_over: true,
+        planting_date: '2025-03-15', clearing_date: '2030-12-31',
+        harvest_date: '2025-04-15', harvest_end_date: '2025-04-30',
+        seasonal_harvest: {
+          periods: [
+            { start_date: '2027-01-01', end_date: '2027-01-10' },
+            { start_date: '2027-12-20', end_date: '2027-12-31' },
+          ],
+          actual_start_date: null, actual_end_date: null,
+        },
+      }],
+    });
+    const tasks = nodes.find(node => node.type === 'bed')?.tasks;
+    expect(tasks).toHaveLength(1);
+    const task = tasks![0];
+    expect(task).toMatchObject({
+      id: 'plan-21-occupancy', plantingPlanId: 21, readOnly: true,
+      startDate: parseIsoDate('2025-03-15'), endDate: parseIsoDate('2030-12-31'),
+      phaseBands: [
+        expect.objectContaining({ startDate: parseIsoDate('2027-01-01'), endDate: parseIsoDate('2027-01-10') }),
+        expect.objectContaining({ startDate: parseIsoDate('2027-12-20'), endDate: parseIsoDate('2027-12-31') }),
+      ],
+    });
+    expect(buildOccupancyTooltipDetails(task)).toContainEqual({
+      labelKey: 'seasonalHarvest', value: '1.1.2027 – 10.1.2027 · 20.12.2027 – 31.12.2027',
+    });
+    expect(buildOccupancyTooltipDetails(task).map(detail => detail.labelKey)).not.toContain('firstHarvest');
+  });
+
   it('prefers localized planting plan crop names in hierarchy task labels', () => {
     const nodes = buildFieldOccupancyHierarchy({
       labels,

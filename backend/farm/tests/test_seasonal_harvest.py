@@ -1,0 +1,176 @@
+from datetime import date
+from decimal import Decimal
+
+from django.urls import reverse
+
+from crops.models import CropSpecies
+from farm.models import Crop, HarvestAllocation, HarvestRecord, PlantingPlan, Season
+from farm.services.seasonal_harvest import recurring_harvest_schedule
+from farm.tests.api_base import ProjectApiTestCase
+
+PLANS = '/openfarmplanner/api/planting-plans/'
+FORECAST = '/openfarmplanner/api/yield-calendar/'
+
+
+class SeasonalHarvestTest(ProjectApiTestCase):
+    def season(self, start: date, end: date, label: str = '') -> Season:
+        return Season.objects.create(
+            project=self.project, start_date=start, end_date=end, custom_label=label,
+        )
+
+    def crop_with_window(self, window: str, **fields: object) -> Crop:
+        return Crop.objects.create(project=self.project, name='Orchard crop', **{
+            'life_cycle': 'perennial', 'standing_time_years': 20,
+            'annual_harvest_window': window, 'expected_yield': 2, 'harvest_method': 'per_sqm',
+            **fields,
+        })
+
+    def forecast(self, season: Season) -> Decimal:
+        response = self.client.get(FORECAST, HTTP_X_SEASON_ID=str(season.pk))
+        self.assertEqual(response.status_code, 200, response.data)
+        return sum((
+            Decimal(str(crop['yield'])) for week in response.json() for crop in week['crops']
+        ), Decimal(0))
+
+    def comparison(self, crop: Crop) -> dict[int, dict]:
+        response = self.client.get(reverse('yield-comparison'), {'crop_id': crop.pk})
+        self.assertEqual(response.status_code, 200, response.data)
+        return {row['id']: row for row in response.json()['seasons']}
+
+    def test_season_changes_projected_dates_and_forecast_for_one_inherited_plan(self) -> None:
+        seasons = {
+            year: self.season(date(year, 1, 1), date(year, 12, 31))
+            for year in range(2025, 2030)
+        }
+        species = CropSpecies.objects.create(name='Synthetic orchard species')
+        parent = self.crop_with_window('09-01/10-15', crop_species=species,
+                                       first_harvest_delay_years=2)
+        variety = Crop.objects.create(
+            project=self.project, name=parent.name, variety='Test apple', crop_species=species,
+        )
+        plan = PlantingPlan.objects.create(
+            project=self.project, crop=variety, bed=self.bed, season=seasons[2025],
+            planting_date=date(2025, 3, 15), clearing_date=date(2028, 9, 10), area_usage_sqm=20,
+            cultivation_type='pre_cultivation', planned_sowing_date=date(2025, 2, 5),
+            actual_harvest_start_date=date(2025, 9, 10),
+            recorded_harvest_end_date=date(2025, 10, 2),
+        )
+        measured = HarvestRecord.objects.create(
+            project=self.project, crop=variety, date=date(2027, 9, 2), quantity=3, unit='kg',
+        )
+        HarvestAllocation.objects.create(
+            project=self.project, harvest=measured, planting_plan=plan, quantity=3,
+        )
+        expected_windows = {
+            2025: [], 2026: [],
+            2027: [{'start_date': '2027-09-01', 'end_date': '2027-10-15'}],
+            2028: [{'start_date': '2028-09-01', 'end_date': '2028-09-10'}],
+        }
+        for year, expected in expected_windows.items():
+            with self.subTest(year=year):
+                response = self.client.get(PLANS, HTTP_X_SEASON_ID=str(seasons[year].pk))
+                self.assertEqual(response.status_code, 200, response.data)
+                row, = response.json()['results']
+                self.assertEqual(row['id'], plan.pk)
+                self.assertEqual(row['season'], seasons[2025].pk)
+                self.assertEqual(row['planting_date'], '2025-03-15')
+                self.assertEqual(row['planned_sowing_date'], '2025-02-05')
+                self.assertEqual(row['clearing_date'], '2028-09-10')
+                self.assertEqual(row['carried_over'], year != 2025)
+                self.assertEqual(row['seasonal_harvest'], {
+                    'periods': expected,
+                    'actual_start_date': '2025-09-10' if year == 2025 else None,
+                    'actual_end_date': '2025-10-02' if year == 2025 else None,
+                })
+                if year == 2027:
+                    self.assertEqual(row['actual_harvest']['forecast_kg'], '40')
+
+        comparison = self.comparison(variety)
+        totals = {2025: None, 2026: None, 2027: '40', 2028: '8.89', 2029: None}
+        for year, total in totals.items():
+            with self.subTest(forecast_year=year):
+                season = seasons[year]
+                row = comparison[season.pk]
+                self.assertEqual(row['forecast_kg'], total)
+                self.assertEqual(self.forecast(season), Decimal(total or 0))
+                self.assertEqual(row['recorded']['measured_kg'], '3' if year == 2027 else None)
+        forecast_activity, = comparison[seasons[2027].pk]['plan_dates']
+        self.assertIsNone(forecast_activity['planting_date'])
+        self.assertEqual(forecast_activity['id'], plan.pk)
+        self.assertEqual(forecast_activity['seasonal_harvest']['periods'], expected_windows[2027])
+        self.assertEqual(PlantingPlan.objects.filter(project=self.project).count(), 1)
+        self.assertEqual(HarvestAllocation.objects.filter(planting_plan=plan).count(), 1)
+
+    def test_cross_year_window_rounding_is_shared_by_weekly_and_season_forecasts(self) -> None:
+        first = self.season(date(2025, 1, 1), date(2025, 12, 31))
+        second = self.season(date(2026, 1, 1), date(2026, 8, 31))
+        third = self.season(date(2026, 9, 1), date(2027, 8, 31), 'Orchard autumn to summer')
+        crop = self.crop_with_window('12-20/01-10', harvest_method='per_plant',
+                                    row_spacing_m=1, distance_within_row_m=1)
+        plan = PlantingPlan.objects.create(
+            project=self.project, crop=crop, bed=self.bed, season=first,
+            planting_date=date(2025, 3, 15), clearing_date=date(2027, 1, 8), area_usage_sqm=11,
+        )
+
+        comparison = self.comparison(crop)
+        expected = [(first, '12', '2025-12-20', '2025-12-31'),
+                    (second, '10', '2026-01-01', '2026-01-10'),
+                    (third, '20', '2026-12-20', '2027-01-08')]
+        for season, kilograms, start, end in expected:
+            with self.subTest(season=season.label):
+                self.assertEqual(comparison[season.pk]['forecast_kg'], kilograms)
+                self.assertEqual(self.forecast(season), Decimal(kilograms))
+                response = self.client.get(f'{PLANS}{plan.pk}/', HTTP_X_SEASON_ID=str(season.pk))
+                self.assertEqual(response.status_code, 200, response.data)
+                self.assertEqual(response.json()['seasonal_harvest']['periods'], [
+                    {'start_date': start, 'end_date': end},
+                ])
+        self.assertEqual(self.forecast(first) + self.forecast(second), Decimal(22))
+        schedule = recurring_harvest_schedule(plan)
+        projections = schedule.project(date(2026, 1, 1), date(2026, 12, 31))
+        self.assertEqual([(part.start_date, part.end_date) for part in projections], [
+            (date(2026, 1, 1), date(2026, 1, 10)),
+            (date(2026, 12, 20), date(2026, 12, 31)),
+        ])
+
+    def test_actual_planting_anniversaries_and_leap_boundaries(self) -> None:
+        crop = self.crop_with_window('02-15/02-29', first_harvest_delay_years=2)
+        plan = PlantingPlan(
+            crop=crop, planting_date=date(2024, 2, 15), actual_sowing_date=date(2024, 2, 29),
+            clearing_date=date(2029, 5, 1), cultivation_type='direct_sowing',
+        )
+        schedule = recurring_harvest_schedule(plan)
+        self.assertEqual(schedule.project(date(2025, 1, 1), date(2025, 12, 31)), [])
+        first, = schedule.project(date(2026, 1, 1), date(2026, 12, 31))
+        self.assertEqual((first.start_date, first.end_date), (date(2026, 2, 28), date(2026, 2, 28)))
+        leap, = schedule.project(date(2028, 1, 1), date(2028, 12, 31))
+        self.assertEqual(leap.end_date, date(2028, 2, 29))
+
+        crop.annual_harvest_window = '02-29/02-28'
+        schedule = recurring_harvest_schedule(plan)
+        previous, current = schedule.project(date(2027, 1, 1), date(2027, 12, 31))
+        self.assertEqual(previous.end_date, date(2027, 2, 27))
+        self.assertEqual(current.start_date, date(2027, 2, 28))
+
+    def test_identical_copies_share_one_forecast_until_their_eligibility_differs(self) -> None:
+        origin = self.season(date(2025, 1, 1), date(2025, 12, 31))
+        target = self.season(date(2026, 1, 1), date(2026, 12, 31))
+        crop = self.crop_with_window('09-01/09-02')
+        source = PlantingPlan.objects.create(
+            project=self.project, crop=crop, bed=self.bed, season=origin,
+            planting_date=date(2025, 3, 15), clearing_date=date(2025, 12, 31), area_usage_sqm=8,
+        )
+        template = dict(
+            project=self.project, crop=crop, bed=self.bed, season=target,
+            planting_date=date(2026, 3, 15), clearing_date=date(2026, 12, 31), area_usage_sqm=8,
+            copied_from_plan_id=source.pk, cultivation_type='pre_cultivation',
+        )
+        PlantingPlan.objects.create(**template)
+        changed = PlantingPlan.objects.create(**template)
+        self.assertEqual(self.forecast(target), Decimal(16))
+        self.assertEqual(self.comparison(crop)[target.pk]['forecast_kg'], '16')
+
+        changed.actual_transplanting_date = date(2026, 9, 2)
+        changed.save(update_fields=['actual_transplanting_date'])
+        self.assertEqual(self.forecast(target), Decimal(24))
+        self.assertEqual(self.comparison(crop)[target.pk]['forecast_kg'], '24')

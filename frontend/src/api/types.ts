@@ -1330,6 +1330,17 @@ export interface PlantingPlanActualDates {
   recorded_harvest_end_date?: string | null;
 }
 
+export interface SeasonalHarvestPeriod {
+  start_date: string;
+  end_date: string;
+}
+
+export interface PlantingPlanSeasonalHarvest {
+  periods: SeasonalHarvestPeriod[];
+  actual_start_date: string | null;
+  actual_end_date: string | null;
+}
+
 export interface PlantingPlan extends PlantingPlanActualDates {
   id?: number;
   carried_over?: boolean;
@@ -1363,6 +1374,8 @@ export interface PlantingPlan extends PlantingPlanActualDates {
   harvest_date?: string | null;
   // Read-only, computed.
   harvest_end_date?: string | null;
+  /** Season-clipped perennial harvest, with an empty list before eligibility. */
+  seasonal_harvest?: PlantingPlanSeasonalHarvest | null;
   quantity?: number;
   plants_count?: number | null;
   area_usage_sqm?: number;
@@ -1948,7 +1961,7 @@ export type YieldComparisonCropTiming = Pick<PlantingPlan,
 
 export type YieldComparisonPlanDates = PlantingPlanActualDates & Pick<PlantingPlan,
   'cultivation_type' | 'planting_date' | 'planned_propagation_start_date' | 'planned_sowing_date'
-  | 'harvest_date' | 'harvest_end_date'> & { id: number; bed_name: string };
+  | 'harvest_date' | 'harvest_end_date' | 'seasonal_harvest'> & { id: number; bed_name: string };
 
 export interface YieldComparisonSeason {
   id: number;

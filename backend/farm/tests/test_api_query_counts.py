@@ -653,6 +653,39 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         self.assertEqual(len(response.data['results']), ROW_COUNT)
         self.assertEqual(len(queries), single_row_queries)
 
+    def test_carried_perennial_harvests_do_not_cost_queries_per_plan(self):
+        target = Season.objects.create(
+            project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
+        )
+        headers = {'HTTP_X_SEASON_ID': str(target.pk)}
+        plan_url = '/openfarmplanner/api/planting-plans/'
+        yield_url = '/openfarmplanner/api/yield-calendar/'
+        Crop.objects.filter(project=self.project).update(
+            life_cycle='perennial', annual_harvest_window='09-01/10-15',
+            expected_yield=2, harvest_method='per_sqm',
+        )
+        counts = []
+        for index in range(ROW_COUNT):
+            PlantingPlan.objects.create(
+                crop=self.crops[index], bed=self.beds[index], planting_date=date(2026, 12, 31),
+                clearing_date=date(2027, 12, 31), area_usage_sqm=5,
+                project=self.project, season=self.seasons[index],
+            )
+            with CaptureQueriesContext(connection) as plan_queries:
+                plans = self.client.get(plan_url, **headers)
+            with CaptureQueriesContext(connection) as yield_queries:
+                weekly_yield = self.client.get(yield_url, **headers)
+            self.assertEqual(plans.status_code, 200)
+            self.assertEqual(weekly_yield.status_code, 200)
+            rows = plans.data['results']
+            self.assertEqual(len(rows), index + 1)
+            self.assertTrue(all(
+                row['carried_over'] and row['seasonal_harvest']['periods'] for row in rows
+            ))
+            self.assertTrue(weekly_yield.data)
+            counts.append((len(plan_queries), len(yield_queries)))
+        self.assertEqual(counts, [counts[0]] * ROW_COUNT)
+
     def test_planting_plans_list_query_count_with_timing_window_findings(self):
         """A planting date outside the crop's Direktsaat window on every plan
         must cost the same queries as plans without hints."""

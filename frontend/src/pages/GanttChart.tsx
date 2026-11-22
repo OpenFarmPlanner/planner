@@ -100,6 +100,7 @@ import {
   createGanttTaskLabels,
   buildSeedlingTooltipDetails,
   formatSeedlingTooltipTitle,
+  formatSeasonalHarvestBands,
   formatPlantCount,
   getMovedPlanDates,
   getOccupancyTaskPhase,
@@ -753,18 +754,21 @@ function GanttChartPage() {
     }).map(group => ({
       ...group,
       tasks: group.tasks.flatMap(task => {
-        const inSeason = task.clearingDate && seasonEnd && task.endDate > seasonEnd
+        const inSeason = (task.clearingDate || task.phaseBands) && seasonEnd && task.endDate > seasonEnd
           ? { ...task, endDate: seasonEnd } : task;
-        if (!task.readOnly) return [inSeason];
         const visible = clipCarriedOverOccupancyTask(inSeason, taskRangeStart);
         if (!visible) return [];
-        const season = task.originSeasonLabel;
-        const description = season ? t('plantingPlans:carriedOver.description', { season })
+        if (!task.readOnly && !task.phaseBands) return [visible];
+        const description = task.originSeasonLabel
+          ? t('plantingPlans:carriedOver.description', { season: task.originSeasonLabel })
           : t('plantingPlans:carriedOver.unknownDescription');
+        const harvestLabel = task.phaseBands?.length
+          ? `${t('ganttChart:tooltip.seasonalHarvest')} · ${formatSeasonalHarvestBands(task.phaseBands)}`
+          : task.phaseBands ? t('ganttChart:tooltip.noSeasonalHarvest') : '';
         return [{
           ...visible,
-          leadingIcon: <HistoryOutlinedIcon sx={{ fontSize: 14 }} />,
-          accessibleLabel: `${task.name} · ${description}`,
+          leadingIcon: task.readOnly ? <HistoryOutlinedIcon sx={{ fontSize: 14 }} /> : undefined,
+          accessibleLabel: [task.name, task.readOnly && description, harvestLabel].filter(Boolean).join(' · '),
         }];
       }),
     })),
@@ -1690,6 +1694,9 @@ function GanttChartPage() {
             ? t('plantingPlans:carriedOver.description', { season: task.originSeasonLabel })
             : t('plantingPlans:carriedOver.unknownDescription')}
         </Typography>
+      )}
+      {task.phaseBands?.length === 0 && (
+        <Typography variant="body2">{t('ganttChart:tooltip.noSeasonalHarvest')}</Typography>
       )}
       {buildOccupancyTooltipDetails(task).map((detail) => (
         <Typography key={`${task.id}-${detail.labelKey}`} variant="body2" sx={{ display: 'block', lineHeight: 1.4 }}>

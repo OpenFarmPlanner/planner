@@ -98,7 +98,7 @@ function isScheduledPlantingPlan(plan: PlantingPlan): plan is ScheduledPlantingP
     typeof plan.id === 'number'
     && typeof plan.bed === 'number'
     && Boolean(plan.planting_date)
-    && Boolean(plan.clearing_date || plan.harvest_date || (
+    && Boolean(plan.seasonal_harvest || plan.clearing_date || plan.harvest_date || (
       plan.carried_over && (plan.occupancy_end_date || plan.harvest_end_date)
     ))
   );
@@ -122,7 +122,7 @@ interface SeedlingTooltipDetail {
 }
 
 export interface OccupancyTooltipDetail {
-  labelKey: 'plantingDate' | 'clearingDate' | 'harvestDate' | 'firstHarvest' | 'lastHarvest' | 'actualHarvestEnd' | 'areaUsage' | 'notes';
+  labelKey: 'plantingDate' | 'clearingDate' | 'harvestDate' | 'firstHarvest' | 'lastHarvest' | 'actualHarvestEnd' | 'seasonalHarvest' | 'areaUsage' | 'notes';
   value: string;
 }
 
@@ -258,14 +258,14 @@ export function getOccupancyCalendarRange(
     if (Number.isNaN(plantingDate.getTime())) {
       return;
     }
-    const end = plan.clearing_date || (plan.carried_over ? plan.occupancy_end_date : undefined);
+    const end = plan.clearing_date || (plan.carried_over || plan.seasonal_harvest ? plan.occupancy_end_date : undefined);
     const harvestEndDate = parseDateString(end || plan.harvest_end_date || plan.harvest_date || '');
     const rangeEnd = !Number.isNaN(harvestEndDate.getTime()) && harvestEndDate > plantingDate
       ? harvestEndDate
       : plantingDate;
     const visibleStart = plan.carried_over && startOfSeason && plantingDate < startOfSeason
       ? startOfSeason : plantingDate;
-    const visibleEnd = plan.clearing_date && endOfSeason && endOfSeason < rangeEnd
+    const visibleEnd = (plan.clearing_date || plan.seasonal_harvest) && endOfSeason && endOfSeason < rangeEnd
       ? endOfSeason : rangeEnd;
     range = extendRange(range, visibleStart, visibleEnd);
   });
@@ -326,6 +326,12 @@ export function formatSeedlingTooltipTitle(task: Pick<GanttTask, 'cropName' | 'c
 
 export function formatGanttDate(value: Date): string {
   return value.toLocaleDateString(getActiveFormattingLocale());
+}
+
+export function formatSeasonalHarvestBands(bands: NonNullable<GanttTask['phaseBands']>): string {
+  const dateLabel = (date: Date) => date.toLocaleDateString(getActiveFormattingLocale(), { timeZone: 'UTC' });
+  return bands.map(({ startDate, endDate }) => startDate.getTime() === endDate.getTime()
+    ? dateLabel(startDate) : `${dateLabel(startDate)} – ${dateLabel(endDate)}`).join(' · ');
 }
 
 export function formatAreaSquareMeters(value: number): string {
@@ -396,7 +402,7 @@ export function getMovedPlanDates(
 export function buildOccupancyTooltipDetails(task: Pick<
   GanttTask,
   'id' | 'startDate' | 'endDate' | 'harvestStartDate' | 'harvestEndDate' | 'actualHarvestEndDate'
-  | 'areaUsage' | 'notes' | 'readOnly' | 'plantingAnchor' | 'clearingDate'
+  | 'areaUsage' | 'notes' | 'readOnly' | 'plantingAnchor' | 'clearingDate' | 'phaseBands'
 >): OccupancyTooltipDetail[] {
   const phase = getOccupancyTaskPhase(task);
   const isHarvestTask = phase === 'harvest';
@@ -434,6 +440,9 @@ export function buildOccupancyTooltipDetails(task: Pick<
       : null,
     task.actualHarvestEndDate
       ? { labelKey: 'actualHarvestEnd', value: formatGanttDate(addUtcDays(task.actualHarvestEndDate, harvestShiftDays)) }
+      : null,
+    task.phaseBands?.length
+      ? { labelKey: 'seasonalHarvest', value: formatSeasonalHarvestBands(task.phaseBands) }
       : null,
     typeof task.areaUsage === 'number'
       ? { labelKey: 'areaUsage', value: formatAreaSquareMeters(task.areaUsage) }
@@ -483,18 +492,27 @@ function buildPerennialOccupancyTask(
   plan: ScheduledPlantingPlan, crops: Crop[], labels: GanttTaskLabels,
 ): GanttTask | null {
   const clearingDate = parseIsoDate(plan.clearing_date);
-  if (!clearingDate) return null;
+  const recurring = plan.seasonal_harvest;
+  if (!clearingDate && !recurring) return null;
   const plantingDate = parseDateString(plan.planting_date);
+  const occupancyEnd = clearingDate ?? parseIsoDate(plan.occupancy_end_date) ?? plantingDate;
   const name = getPlanCropDisplayName(plan);
   const color = getCropColor(crops, plan.crop, name, plan.crop_display_color);
+  const phaseColors = getGanttPhaseColors(color);
+  const phaseBands = recurring?.periods.flatMap(period => {
+    const startDate = parseIsoDate(period.start_date);
+    const endDate = parseIsoDate(period.end_date);
+    return startDate && endDate ? [{ startDate, endDate, color: phaseColors.harvest }] : [];
+  });
   return {
     id: `plan-${plan.id}-occupancy`,
     name: formatCropDisplayLabel(name || labels.unknownCropName(plan.crop), plan.crop_variety),
     startDate: plantingDate,
-    endDate: clearingDate,
+    endDate: occupancyEnd,
     plantingAnchor: plantingDate,
-    clearingDate,
-    color: getGanttPhaseColors(color).growth,
+    clearingDate: clearingDate ?? undefined,
+    color: phaseColors.growth,
+    phaseBands,
     percent: 100,
     plantingPlanId: plan.id,
     readOnly: plan.carried_over,
@@ -504,8 +522,8 @@ function buildPerennialOccupancyTask(
     cropVariety: plan.crop_variety ?? undefined,
     areaUsage: plan.area_usage_sqm ? Number(plan.area_usage_sqm) : undefined,
     notes: plan.notes,
-    harvestStartDate: parseIsoDate(plan.harvest_date) ?? undefined,
-    harvestEndDate: parseIsoDate(plan.harvest_end_date) ?? undefined,
+    harvestStartDate: !recurring ? parseIsoDate(plan.harvest_date) ?? undefined : undefined,
+    harvestEndDate: !recurring ? parseIsoDate(plan.harvest_end_date) ?? undefined : undefined,
   };
 }
 

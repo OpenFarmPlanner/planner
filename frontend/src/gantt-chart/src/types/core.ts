@@ -13,6 +13,8 @@ export interface Task {
   readOnly?: boolean;
   accessibleLabel?: string;
   leadingIcon?: ReactNode;
+  /** Dated highlights along a continuous bar. */
+  phaseBands?: { startDate: Date; endDate: Date; color: string }[];
   /**
    * Tasks in the same row sharing this id are moved together as one unit
    * (e.g. the phases of one planting plan): dragging any of them shifts all

@@ -11,6 +11,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
   leftPx,
   widthPx,
   topPx,
+  phaseBands,
   isHovered,
   isDragging,
   editMode,
@@ -304,6 +305,15 @@ const TaskItem: React.FC<TaskItemProps> = ({
           data-rmg-component="faded-tail"
         />
       )}
+      {phaseBands?.map(({ left, width, color }) => (
+        <span
+          key={left}
+          aria-hidden="true"
+          className="rmg-task-phase-band"
+          data-rmg-component="task-phase-band"
+          style={{ left, width, backgroundColor: color }}
+        />
+      ))}
 
       {task.leadingIcon ? (
         <div className="rmg-task-item-label">

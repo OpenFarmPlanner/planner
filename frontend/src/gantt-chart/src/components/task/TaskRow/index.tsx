@@ -30,6 +30,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
   taskGroup,
   timelineAdornment,
   timelineDateScale,
+  phaseDateScale,
   startDate,
   endDate,
   totalMonths,
@@ -249,15 +250,18 @@ const TaskRow: React.FC<TaskRowProps> = ({
       ? buildMovePreviewTasks(original, newStartDate, [])[0]
       : { ...original, startDate: newStartDate, endDate: newEndDate };
 
+  const getTaskDateScale = (task: Task) => timelineDateScale ?? (task.phaseBands ? phaseDateScale : undefined);
+
   // Update dates based on visual position with special Day view handling
   const updateDatesFromPosition = (left: number, width: number) => {
-    if (!draggingTaskRef.current) return;
+    const task = draggingTaskRef.current;
+    if (!task) return;
 
     try {
-      if (timelineDateScale) {
-        const task = draggingTaskRef.current;
-        const start = timelineDateScale.dateAt(left);
-        const end = timelineDateScale.dateAt(left + width, !task.endDateIsExclusive);
+      const taskDateScale = getTaskDateScale(task);
+      if (taskDateScale) {
+        const start = taskDateScale.dateAt(left);
+        const end = taskDateScale.dateAt(left + width, !task.endDateIsExclusive);
         const boundedStart = new Date(Math.max(validStartDate.getTime(), start.getTime()));
         const boundedEnd = new Date(Math.min(validEndDate.getTime(), end.getTime()));
         updatePreviewTask(toPreviewTask(task, boundedStart, boundedEnd));
@@ -297,7 +301,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
 
         updatePreviewTask(
           toPreviewTask(
-            draggingTaskRef.current,
+            task,
             constrainedStartDate,
             constrainedEndDate,
           ),
@@ -316,7 +320,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
           );
 
         updatePreviewTask(
-          toPreviewTask(draggingTaskRef.current, newStartDate, newEndDate),
+          toPreviewTask(task, newStartDate, newEndDate),
         );
       }
     } catch (error) {
@@ -875,7 +879,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
       taskElementRef.current.style.left = `${finalLeft}px`;
       taskElementRef.current.style.width = `${finalWidth}px`;
     }
-    if (timelineDateScale && viewMode !== ViewMode.DAY) {
+    if (draggingTaskRef.current && getTaskDateScale(draggingTaskRef.current) && viewMode !== ViewMode.DAY) {
       updateDatesFromPosition(finalLeft, finalWidth);
     }
 
@@ -1050,17 +1054,28 @@ const TaskRow: React.FC<TaskRowProps> = ({
                 return null;
               }
 
-              // Calculate task position
-              const { leftPx, widthPx } =
+              const positionDate = getTaskDateScale(task)?.positionDate;
+              const calculatePosition = (positionedTask: Task, minimumWidth?: number) =>
                 TaskService.calculateTaskPixelPosition(
-                  task,
+                  positionedTask,
                   validStartDate,
                   validEndDate,
                   totalMonths,
                   monthWidth,
                   viewMode,
-                  timelineDateScale?.positionDate,
+                  positionDate,
+                  minimumWidth,
                 );
+              const { leftPx, widthPx } = calculatePosition(task);
+              const phaseBands = task.phaseBands?.flatMap(band => {
+                const startDate = band.startDate < task.startDate ? task.startDate : band.startDate;
+                const endDate = band.endDate > task.endDate ? task.endDate : band.endDate;
+                if (startDate > endDate) return [];
+                const position = calculatePosition({ ...task, startDate, endDate, endDateIsExclusive: false }, 0);
+                const left = Math.max(0, position.leftPx - leftPx);
+                const width = Math.min(widthPx - left, Math.max(1, position.widthPx));
+                return width > 0 ? [{ left, width, color: band.color }] : [];
+              });
 
               const isHovered = hoveredTask?.id === task.id;
               const isDragging = draggingTaskIds.has(task.id);
@@ -1073,6 +1088,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
                   leftPx={leftPx}
                   widthPx={widthPx}
                   topPx={topPx}
+                  phaseBands={phaseBands}
                   isHovered={isHovered}
                   isDragging={isDragging}
                   editMode={editMode}

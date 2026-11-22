@@ -41,6 +41,8 @@ export function PlanDateComparisonText({ dates }: { dates: PlantingPlanDateCompa
   const { t, i18n } = useTranslation('plantingPlans');
   const locale = resolveSeasonDateLocale(i18n);
   const dateLabel = (value: string | null) => value ? formatSeasonDate(value, locale) : t('actualDates.missing');
+  const plannedLabel = dates.plannedDates?.length
+    ? dates.plannedDates.map(dateLabel).join(' · ') : dateLabel(dates.planned);
   const difference = planDateDeviationLabel(dates, t);
   return (
     <Stack component="span" spacing={0.25}>
@@ -48,7 +50,7 @@ export function PlanDateComparisonText({ dates }: { dates: PlantingPlanDateCompa
         {t(`actualDates.activities.${dates.activity}`)}
       </Typography>
       <Typography component="span" variant="inherit">{t('actualDates.modes.planned')}{' '}
-        <Box component="span">{dateLabel(dates.planned)}</Box>
+        <Box component="span">{plannedLabel}</Box>
       </Typography>
       <Typography component="span" variant="inherit">{t('actualDates.modes.actual')}{' '}
         <Box component="span">{dateLabel(dates.actual)}</Box>
@@ -61,7 +63,7 @@ export function PlanDateComparisonText({ dates }: { dates: PlantingPlanDateCompa
 interface PlantingPlanExecutionDatesProps {
   plan: PlantingPlan & { id: number };
   editable: boolean;
-  onSaved: (dates: PlantingPlanActualDates) => void;
+  onSaved: (dates: PlantingPlanActualDates & Pick<PlantingPlan, 'seasonal_harvest'>) => void;
   onDirtyChange: (dirty: boolean) => void;
 }
 
@@ -103,7 +105,10 @@ export function PlantingPlanExecutionDates({ plan, editable, onSaved, onDirtyCha
     setSaveFailed(false);
     try {
       const { data } = await plantingPlanAPI.patch(plan.id, changes);
-      onSaved(Object.fromEntries(Object.keys(changes).map(field => [field, data[field as keyof PlantingPlanActualDates]])));
+      onSaved({
+        ...Object.fromEntries(Object.keys(changes).map(field => [field, data[field as keyof PlantingPlanActualDates]])),
+        seasonal_harvest: data.seasonal_harvest,
+      });
       close();
     } catch {
       setSaveFailed(true);
@@ -124,7 +129,7 @@ export function PlantingPlanExecutionDates({ plan, editable, onSaved, onDirtyCha
                 <ActualPlanDateField
                   key={field}
                   label={t(`actualDates.actualLabels.${date.activity}`)}
-                  value={(field in draft ? draft[field] : date.actual) ?? ''}
+                  value={(field in draft ? draft[field] : plan[field]) ?? ''}
                   onChange={value => updateDate(field, value || null)}
                   disabled={saving}
                   allowClear

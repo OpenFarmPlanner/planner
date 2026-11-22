@@ -107,7 +107,10 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
   const canEditNotes = Boolean(loadedPlan && !otherSeason);
   const cropName = loadedPlan ? formatCropDisplayName(loadedPlan) : '';
   const recordSeason = context?.activeSeason ?? season;
-  const proposedHarvestDate = initialSeasonRecordDate(recordSeason, loadedPlan?.harvest_date);
+  const seasonalHarvest = loadedPlan?.seasonal_harvest;
+  const proposedHarvestDate = initialSeasonRecordDate(
+    recordSeason, seasonalHarvest ? seasonalHarvest.periods[0]?.start_date : loadedPlan?.harvest_date,
+  );
   const lastOccupiedDay = loadedPlan?.occupancy_end_date;
   const recordDate = loadedPlan?.carried_over && lastOccupiedDay && proposedHarvestDate > lastOccupiedDay
     ? lastOccupiedDay : proposedHarvestDate;

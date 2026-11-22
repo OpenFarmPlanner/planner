@@ -61,6 +61,9 @@ test('the Crop Calendar follows the selected season and includes carried plans',
       cultivation_type: 'direct_sowing', area_usage_sqm: 2,
     });
     const original = await createPlan('2026-04-01');
+    await page.evaluate((id) => {
+      localStorage.setItem(`activeSeasonId:${localStorage.getItem('activeProjectId')}`, String(id));
+    }, later.id);
     const scopeHeaders: Array<string | undefined> = [];
     page.on('request', (entry) => {
       if (entry.method() === 'GET'
@@ -139,6 +142,123 @@ test('the Crop Calendar follows the selected season and includes carried plans',
     await expect(tooltip).toBeHidden();
     await expect(task(original.id)).toHaveCount(0);
     await expect(empty).toBeHidden();
+  } finally {
+    await resetE2EScenario(request, scenario);
+  }
+});
+
+test('one perennial plan shows eligible harvest dates in each season', async ({ page, request }, info) => {
+  const scenario = `recurring-harvest-scope-${Date.now()}`;
+  try {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
+    const create = (path: string, data: Record<string, unknown>) => apiRequest<{ id: number }>(page, 'POST', path, data);
+    const seasons = [];
+    for (const year of [2025, 2026, 2027, 2028]) {
+      seasons.push(await create('/seasons/', {
+        start_date: `${year}-01-01`, end_date: `${year}-12-31`, custom_label: `Obstjahr ${year}`,
+      }));
+    }
+    const location = await create('/locations/', { name: 'Obstgarten' });
+    const field = await create('/fields/', { location: location.id, name: 'Obstparzelle' });
+    const bed = await create('/beds/', { field: field.id, name: 'Obstbeet', area_sqm: 12 });
+    const crop = await create('/crops/', {
+      name: 'Versuchsapfel', life_cycle: 'perennial', standing_time_years: 8,
+      annual_harvest_window: '09-01/10-15', first_harvest_delay_years: 2,
+      cultivation_type: 'direct_sowing', cultivation_types: ['direct_sowing'],
+    });
+    const plan = await create('/planting-plans/', {
+      crop: crop.id, bed: bed.id, season: seasons[0].id, planting_date: '2025-03-15',
+      area_usage_sqm: 8, cultivation_type: 'direct_sowing',
+      clearing_date: '2028-09-10', actual_harvest_start_date: '2025-10-03',
+    });
+
+    await page.goto('/app/planting-plans');
+    const switchSeason = async (year: number) => {
+      await page.getByRole('button', { name: navigation.seasonSwitcher.ariaLabel }).click();
+      await page.getByRole('menuitem', { name: new RegExp(`Obstjahr ${year}`) }).click();
+      await expect(page.getByRole('button', { name: navigation.seasonSwitcher.ariaLabel }))
+        .toContainText(`Obstjahr ${year}`);
+    };
+    const mode = page.getByRole('combobox', { name: plans.actualDates.modeLabel });
+    const row = page.locator(`[role="row"][data-id="${plan.id}"]`);
+    const harvestStart = row.locator('[data-field="harvest_date"]');
+    const harvestEnd = row.locator('[data-field="harvest_end_date"]');
+    const plantingDate = row.locator('[data-field="planting_date"]');
+
+    await switchSeason(2025);
+    await mode.selectOption('planned');
+    await expect(harvestStart).toHaveText('—');
+    await expect(plantingDate).toHaveText('15.3.2025');
+    await mode.selectOption('actual');
+    await expect(harvestStart).toHaveText('3.10.2025');
+    await mode.selectOption('combined');
+    await expect(harvestStart).toHaveText('3.10.2025');
+
+    await switchSeason(2026);
+    await mode.selectOption('actual');
+    await expect(harvestStart).toHaveText('');
+    await mode.selectOption('combined');
+    await expect(harvestStart).toHaveText('—');
+    await expect(plantingDate).toHaveText('15.3.2025');
+    await page.goto('/app/gantt-chart?view=field');
+    const bar = page.getByTestId(`task-plan-${plan.id}-occupancy`);
+    const phase = bar.locator('[data-rmg-component="task-phase-band"]');
+    await expect(bar).toHaveAccessibleName(new RegExp(calendar.tooltip.noSeasonalHarvest.replace('.', '\\.')));
+    await expect(phase).toHaveCount(0);
+
+    await switchSeason(2027);
+    await expect(bar).toHaveAccessibleName(/Versuchsapfel.*Obstjahr 2025.*Geplante Saisonernte.*1\.9\.2027.*15\.10\.2027/);
+    await expect(phase).toHaveCount(1);
+    const barBounds = (await bar.boundingBox())!;
+    const phaseBounds = (await phase.boundingBox())!;
+    expect(phaseBounds.x).toBeGreaterThan(barBounds.x);
+    expect(phaseBounds.x + phaseBounds.width).toBeLessThan(barBounds.x + barBounds.width);
+    const months = page.locator('[data-rmg-component="timeline-unit"]');
+    const september = (await months.filter({ hasText: /^Sep.*2027$/ }).boundingBox())!;
+    const october = (await months.filter({ hasText: /^Okt.*2027$/ }).boundingBox())!;
+    expect(phaseBounds.x).toBeCloseTo(september.x, 0);
+    expect(phaseBounds.x + phaseBounds.width).toBeCloseTo(october.x + 15 / 31 * october.width, 0);
+    await bar.focus();
+    const tooltip = page.getByRole('tooltip').filter({ hasText: calendar.tooltip.seasonalHarvest });
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip).toContainText('15.10.2027');
+    await page.keyboard.press('Escape');
+    await expect(tooltip).toBeHidden();
+    const calendarTaskPrefix = `[data-rmg-component="task"][data-task-id^="plan-${plan.id}-"]`;
+    await expect(page.getByTestId('gantt-virtual-viewport').locator(calendarTaskPrefix)).toHaveCount(1);
+    await phase.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: info.outputPath('recurring-calendar-desktop.png'), animations: 'disabled' });
+
+    await page.goto('/app/planting-plans');
+    await mode.selectOption('planned');
+    await expect(harvestStart).toHaveText('1.9.2027');
+    await expect(harvestEnd).toHaveText('15.10.2027');
+    await mode.selectOption('actual');
+    await expect(harvestStart).toHaveText('');
+    await mode.selectOption('combined');
+    await expect(harvestStart).toHaveText('1.9.2027');
+    await expect(plantingDate).toHaveText('15.3.2025');
+
+    await switchSeason(2028);
+    await expect(harvestEnd).toHaveText('10.9.2028');
+    await page.setViewportSize({ width: 375, height: 800 });
+    const card = page.locator(`[data-mobile-card-id="${plan.id}"]`);
+    await card.getByRole('button', { name: /Details anzeigen/ }).click();
+    await expect(card.getByText(`${plans.actualDates.activities.harvestStart} 1.9.2028`, { exact: true })).toBeVisible();
+    await expect(card.getByText(`${plans.actualDates.activities.harvestEnd} 10.9.2028`, { exact: true })).toBeVisible();
+    await expectNoHorizontalPageOverflow(page);
+    await page.screenshot({ path: info.outputPath('recurring-card-mobile.png'), animations: 'disabled' });
+    await card.getByRole('button', { name: /Aktionen für Anbauplan Versuchsapfel/ }).click();
+    await expect(page.getByRole('menuitem', { name: 'Bearbeiten' })).toHaveCount(0);
+    await page.getByRole('menuitem', { name: 'In ursprünglicher Saison öffnen' }).click();
+    await expect(card.getByRole('button', { name: /Details ausblenden/ })).toBeVisible();
+    await card.getByRole('button', { name: /Aktionen für Anbauplan Versuchsapfel/ }).click();
+    await expect(page.getByRole('menuitem', { name: 'Bearbeiten' })).toBeVisible();
+    expect(await apiRequest(page, 'GET', `/planting-plans/${plan.id}/`)).toMatchObject({
+      id: plan.id, season: seasons[0].id, bed: bed.id, planting_date: '2025-03-15',
+      clearing_date: '2028-09-10', actual_harvest_start_date: '2025-10-03',
+    });
   } finally {
     await resetE2EScenario(request, scenario);
   }

@@ -646,6 +646,14 @@
   pointer-events: none;
 }
 
+.rmg-task-phase-band {
+  position: absolute;
+  bottom: 0;
+  height: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+}
+
 .rmg-task-item:hover {
   transform: translateY(-1px);
   box-shadow: 0 3px 6px var(--rmg-shadow-hover);
