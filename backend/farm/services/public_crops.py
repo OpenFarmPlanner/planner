@@ -131,6 +131,8 @@ CROP_COPY_FIELDS = [
     'cultivation_type',
     'growth_duration_days',
     'harvest_duration_days',
+    'annual_harvest_window',
+    'first_harvest_delay_years',
     'propagation_duration_days',
     'germination_temperature_optimal_min_c',
     'germination_temperature_optimal_max_c',
@@ -186,6 +188,8 @@ PUBLIC_CROP_EDITABLE_FIELDS = [
     'cultivation_type',
     'growth_duration_days',
     'harvest_duration_days',
+    'annual_harvest_window',
+    'first_harvest_delay_years',
     'propagation_duration_days',
     'germination_temperature_optimal_min_c',
     'germination_temperature_optimal_max_c',
@@ -945,7 +949,7 @@ def _public_crop_version_changes(
             value = coerce_plant_family_key(value)
         if field in {
             'botanical_name', 'seed_type', 'pests_diseases',
-            'water_requirement', 'life_cycle', 'winter_hardiness',
+            'water_requirement', 'life_cycle', 'winter_hardiness', 'annual_harvest_window',
         } and value is None:
             value = ''
         if previous_snapshot.get(field) != value:
@@ -1274,8 +1278,11 @@ def detect_available_language_codes(crop: Crop) -> list[str]:
 
 def get_public_required_field_gaps(crop: Crop, *, require_variety: bool = True) -> list[MissingRequiredField]:
     gaps: list[MissingRequiredField] = []
+    is_perennial = resolve_crop_field(crop, 'life_cycle') == 'perennial'
     for field in PUBLIC_REQUIRED_FIELDS:
         if field == 'variety' and not require_variety:
+            continue
+        if is_perennial and field in {'growth_duration_days', 'harvest_duration_days'}:
             continue
         # Resolve the effective value so a Sorte that inherits a required field
         # (e.g. harvest duration) from its general Kultur is not flagged as
@@ -1283,10 +1290,7 @@ def get_public_required_field_gaps(crop: Crop, *, require_variety: bool = True) 
         value = resolve_crop_field(crop, field)
         if value is None or (isinstance(value, str) and not value.strip()):
             gaps.append(MissingRequiredField(field=field, label_key=f'library.publishWizard.fields.{field}'))
-    if (
-        resolve_crop_field(crop, 'life_cycle') == 'perennial'
-        and not resolve_crop_field(crop, 'standing_time_years')
-    ):
+    if is_perennial and not resolve_crop_field(crop, 'standing_time_years'):
         gaps.append(MissingRequiredField(
             field='standing_time_years',
             label_key='library.publishWizard.fields.standing_time_years',

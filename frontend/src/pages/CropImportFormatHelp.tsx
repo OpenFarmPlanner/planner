@@ -103,6 +103,9 @@ export function CropImportFormatHelp({ t }: { t: Translator }) {
       t('import.help.timing.short'),
       t('import.help.timing.several'),
       t('import.help.timing.noDates'),
+      t('annualHarvest.importFormat', {
+        window: header('annual_harvest_window'), delay: header('first_harvest_delay_years'),
+      }),
     ], outro: t('import.help.timing.preview') },
     { key: 'notes', intro: t('import.help.notes.intro', {
       good: header('good_companions'), bad: header('bad_companions'),

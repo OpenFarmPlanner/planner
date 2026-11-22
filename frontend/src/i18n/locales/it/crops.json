@@ -2123,6 +2123,18 @@
       }
     }
   },
+  "annualHarvest": {
+    "window": "Periodo annuale di raccolta",
+    "start": "Inizio annuale della raccolta",
+    "end": "Fine annuale della raccolta",
+    "monthDayFormat": "Mese e giorno (MM-GG)",
+    "delay": "Anni fino al primo raccolto",
+    "windowHelp": "Inserisci il mese e il giorno, ad esempio 09-01 per il 1° settembre. Se la fine precede l’inizio, il periodo prosegue nell’anno successivo. Negli anni non bisestili, il 29 febbraio corrisponde al 28 febbraio.",
+    "delayHelp": "Il primo raccolto è possibile a partire dal corrispondente anniversario del trapianto. Con 0 o il campo vuoto vale la data di trapianto. Una varietà con il campo vuoto eredita prima il valore della coltura. Negli anni non bisestili, il 29 febbraio corrisponde al 28 febbraio.",
+    "invalidWindow": "Inserisci una data valida nel formato MM-GG per l’inizio e la fine.",
+    "invalidDelay": "Inserisci un numero intero maggiore o uguale a 0.",
+    "importFormat": "Inserisci il periodo annuale in «{{window}}» come mese-giorno/mese-giorno, ad esempio 09-01/10-15. In «{{delay}}», indica il numero di anni interi dal trapianto, ad esempio 2."
+  },
   "siteHealth": {
     "inheritedLight": "Ereditata dalla coltura ({{value}})",
     "title": "Sito e salute delle piante",

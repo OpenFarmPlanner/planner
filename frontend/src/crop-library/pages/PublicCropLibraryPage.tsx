@@ -1978,10 +1978,15 @@ export default function PublicCropLibraryPage() {
                             getPublicFieldValue('growth_duration_days', selectedCrop.growth_duration_days),
                             getPublicFieldValue('harvest_duration_days', selectedCrop.harvest_duration_days),
                             getPublicFieldValue('propagation_duration_days', selectedCrop.propagation_duration_days),
+                            getPublicFieldValue('annual_harvest_window', selectedCrop.annual_harvest_window),
+                            getPublicFieldValue('first_harvest_delay_years', selectedCrop.first_harvest_delay_years),
                           ) ? (
                             <DetailSection key="timing" title={t('form.sectionTiming')}>
                               <CropTimingDetails cultivationTypes={publicActiveCultivationTypes}
                                 cultivationSource={getPublicFieldSource('cultivation_types') ?? getPublicFieldSource('cultivation_type')}
+                                isPerennial={getPublicFieldValue('life_cycle', selectedCrop.life_cycle) === 'perennial'}
+                                annualWindow={getPublicFieldValue('annual_harvest_window', selectedCrop.annual_harvest_window)}
+                                delay={getPublicFieldValue('first_harvest_delay_years', selectedCrop.first_harvest_delay_years)}
                                 value={field => getPublicFieldValue(field, selectedCrop[field])} source={getPublicFieldSource}
                                 locale={locale} t={t} />
                             </DetailSection>

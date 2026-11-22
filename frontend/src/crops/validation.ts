@@ -9,6 +9,7 @@ import type { Crop, SeedRateUnitConstraints } from '../api/types';
 import type { TFunction } from 'i18next';
 import { seedRateValueViolatesConstraint } from './seedRateConstraints';
 import { isTimingWindowComplete } from './timingWindows';
+import { isValidAnnualHarvestWindow } from './annualHarvestWindow';
 
 export interface ValidationResult {
   isValid: boolean;
@@ -92,6 +93,14 @@ export function validateCrop(
   seedRateUnitConstraints?: Partial<SeedRateUnitConstraints> | null,
 ): ValidationResult {
   const errors: Record<string, string> = {};
+
+  if (draft.annual_harvest_window && !isValidAnnualHarvestWindow(draft.annual_harvest_window)) {
+    errors.annual_harvest_window = t('annualHarvest.invalidWindow');
+  }
+  const delay = draft.first_harvest_delay_years;
+  if (delay != null && (!Number.isInteger(delay) || delay < 0 || delay > 2147483647)) {
+    errors.first_harvest_delay_years = t('annualHarvest.invalidDelay');
+  }
 
   const cultivationTypes = draft.cultivation_types ?? (draft.cultivation_type ? [draft.cultivation_type] : []);
   const hasDirect = cultivationTypes.includes('direct_sowing');

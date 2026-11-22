@@ -298,6 +298,8 @@ export function getPublicCropFieldLabel(field: string, t: (key: string, options?
     notes: 'library.page.fields.notes',
     growth_duration_days: 'library.page.fields.growthDurationDays',
     harvest_duration_days: 'library.page.fields.harvestDurationDays',
+    annual_harvest_window: 'annualHarvest.window',
+    first_harvest_delay_years: 'annualHarvest.delay',
     propagation_duration_days: 'library.page.fields.propagationDurationDays',
     germination_temperature_optimal_min_c: 'germination.fields.germination_temperature_optimal_min_c',
     germination_temperature_optimal_max_c: 'germination.fields.germination_temperature_optimal_max_c',
@@ -401,6 +403,7 @@ const METER_FIELDS = new Set(['distance_within_row_m', 'row_spacing_m', 'sowing_
 const NUMERIC_FIELDS = new Set([
   'growth_duration_days',
   'harvest_duration_days',
+  'first_harvest_delay_years',
   'propagation_duration_days',
   'germination_temperature_optimal_min_c',
   'germination_temperature_optimal_max_c',

@@ -67,6 +67,88 @@ class PerennialPlanningTest(ProjectApiTestCase):
         self.assertEqual(annual.status_code, 201, annual.data)
         self.assertIsNone(annual.data['standing_time_years'])
 
+    def test_inherits_a_complete_annual_window_and_preserves_a_zero_delay(self) -> None:
+        parent = self.perennial(crop_species=self.species)
+        plan = self.plant(parent)
+        self.assertEqual(plan.status_code, 201, plan.data)
+        timing = {'annual_harvest_window': '12-15/02-29', 'first_harvest_delay_years': 2}
+        response = self.client.patch(f'{CROPS}{parent.pk}/', timing, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        for field, value in timing.items():
+            self.assertEqual(response.data[field], value)
+
+        response = self.client.post(CROPS, {
+            'name': parent.name, 'variety': 'Early stems', 'crop_species': self.species.pk,
+        }, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data['annual_harvest_window'], '')
+        self.assertIsNone(response.data['first_harvest_delay_years'])
+        for field, value in timing.items():
+            self.assertEqual(response.data['effective_values'][field], value)
+            self.assertIn(field, response.data['inherited_fields'])
+
+        response = self.client.patch(f"{CROPS}{response.data['id']}/", {
+            'annual_harvest_window': '06-01/06-01', 'first_harvest_delay_years': 0,
+        }, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['effective_values']['annual_harvest_window'], '06-01/06-01')
+        self.assertEqual(response.data['effective_values']['first_harvest_delay_years'], 0)
+        self.assertNotIn('first_harvest_delay_years', response.data['inherited_fields'])
+        reloaded = self.client.get(f"{PLANS}{plan.data['id']}/")
+        for field in ('planting_date', 'harvest_date', 'harvest_end_date', 'clearing_date'):
+            self.assertEqual(reloaded.data[field], plan.data[field])
+
+    def test_annual_harvest_timing_rejects_invalid_dates_and_delay(self) -> None:
+        crop = self.perennial()
+        url = f'{CROPS}{crop.pk}/'
+        for field, value in (
+            ('annual_harvest_window', '04-31/06-01'),
+            ('annual_harvest_window', '12-01/02-30'),
+            ('annual_harvest_window', '09-01/'),
+            ('annual_harvest_window', '2026-09-01/10-15'),
+            ('first_harvest_delay_years', -1),
+            ('first_harvest_delay_years', 1.5),
+        ):
+            with self.subTest(field=field, value=value):
+                response = self.client.patch(url, {field: value}, format='json')
+                self.assertEqual(response.status_code, 400, response.data)
+                self.assertIn(field, response.data)
+        crop.refresh_from_db()
+        self.assertEqual(crop.annual_harvest_window, '')
+        self.assertIsNone(crop.first_harvest_delay_years)
+
+    def test_crop_file_import_previews_updates_and_persists_annual_timing(self) -> None:
+        crop = self.perennial()
+        invalid = self.client.post(f'{CROPS}import/preview/', [
+            {'name': crop.name, 'annual_harvest_window': '12-15/02-30'},
+        ], format='json')
+        self.assertIn('annual_harvest_window', invalid.data['results'][0]['error'])
+        timing = {'annual_harvest_window': '09-01/10-15', 'first_harvest_delay_years': 0}
+        items = [{'name': crop.name, **timing}]
+        response = self.client.post(f'{CROPS}import/preview/', items, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        changes = response.data['results'][0]['diff']
+        self.assertEqual({item['field']: item['new'] for item in changes}, timing)
+        response = self.client.post(f'{CROPS}import/apply/', {
+            'items': items, 'confirm_updates': True,
+        }, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['errors'], [])
+        crop.refresh_from_db()
+        self.assertEqual(crop.annual_harvest_window, timing['annual_harvest_window'])
+        self.assertEqual(crop.first_harvest_delay_years, 0)
+        response = self.client.post(f'{CROPS}import/apply/', {
+            'items': [{
+                'name': crop.name, 'annual_harvest_window': '', 'first_harvest_delay_years': None,
+            }],
+            'confirm_updates': True,
+        }, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['errors'], [])
+        crop.refresh_from_db()
+        self.assertEqual(crop.annual_harvest_window, '')
+        self.assertIsNone(crop.first_harvest_delay_years)
+
     def test_legacy_values_remain_readable_and_new_plantings_require_a_lifespan(self):
         perennial = self.perennial(standing_time=None)
         update = self.client.patch(f'{CROPS}{perennial.pk}/', {'notes': 'Older crop'})

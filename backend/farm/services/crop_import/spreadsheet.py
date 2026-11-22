@@ -9,6 +9,8 @@ from collections.abc import Iterable
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from rest_framework.exceptions import ValidationError
+
 from crops.plant_families import coerce_plant_family_key
 from crops.services import find_species_by_common_name
 from farm.crops.serializers import CropSerializer
@@ -136,6 +138,7 @@ _COMPARABLE_FIELDS = [
     'name', 'variety', 'seed_type', 'notes', 'seed_supplier', 'botanical_name',
     'crop_family', 'nutrient_demand', 'cultivation_type', 'cultivation_types', 'tags',
     'growth_duration_days', 'harvest_duration_days', 'propagation_duration_days',
+    'annual_harvest_window', 'first_harvest_delay_years',
     'germination_temperature_optimal_min_c', 'germination_temperature_optimal_max_c',
     'germination_temperature_min_c', 'germination_days_min', 'germination_days_max',
     'germination_temperature_requirement',
@@ -392,6 +395,7 @@ def preview_crop_import(
     """
     results: list[dict] = []
     duplicates = _duplicate_row_indices(rows)
+    field_validator = CropSerializer()
     resolver = CompanionNameResolver(
         project.id,
         extra_names=[
@@ -419,6 +423,13 @@ def preview_crop_import(
             continue
 
         try:
+            for field in ('annual_harvest_window', 'first_harvest_delay_years'):
+                if field in crop_data:
+                    try:
+                        value = crop_data[field]
+                        crop_data[field] = field_validator.fields[field].run_validation(value)
+                    except ValidationError as error:
+                        raise ValidationError({field: error.detail}) from error
             germination_issues = apply_germination_cells(crop_data)
             _normalize_crop_family(crop_data)
             matching_crop = _match_import_row(project, crop_data)

@@ -118,7 +118,10 @@ for (const [language, { text, navigation, common }] of Object.entries(languages)
       expect(potato?.specific_properties).toEqual({ cooking_type: 'waxy', maturity_group: 'early' });
       expect(potato?.stratification_days_min).toBe(28);
       const rhubarb = crops.results.find(crop => crop.name === text.import.template.perennialName);
-      expect(rhubarb).toMatchObject({ life_cycle: 'perennial', standing_time_years: 6 });
+      expect(rhubarb).toMatchObject({
+        life_cycle: 'perennial', standing_time_years: 6,
+        annual_harvest_window: '04-15/06-24', first_harvest_delay_years: 1,
+      });
       await page.goto(`/app/crops?cropId=${existing.id}`);
       const timing = page.getByTestId('crop-timing-windows-detail');
       await expect(timing).toBeVisible();

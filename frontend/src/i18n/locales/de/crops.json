@@ -2067,6 +2067,18 @@
       }
     }
   },
+  "annualHarvest": {
+    "window": "Jährliches Erntefenster",
+    "start": "Jährlicher Erntebeginn",
+    "end": "Jährliches Ernteende",
+    "monthDayFormat": "Monat und Tag (MM-TT)",
+    "delay": "Jahre bis zur ersten Ernte",
+    "windowHelp": "Gib Monat und Tag ein, zum Beispiel 09-01 für den 1. September. Liegt das Ende vor dem Beginn, reicht das Erntefenster ins nächste Jahr. In Jahren ohne Schalttag gilt der 28. Februar.",
+    "delayHelp": "Die erste Ernte ist ab dem entsprechenden Jahrestag der Pflanzung möglich. Bei 0 oder leerem Feld gilt das Pflanzdatum. Bei Sorten übernimmt ein leeres Feld zunächst den Wert der Kultur. Der 29. Februar fällt in Nichtschaltjahren auf den 28. Februar.",
+    "invalidWindow": "Gib für Beginn und Ende ein gültiges Datum im Format MM-TT ein.",
+    "invalidDelay": "Gib eine ganze Zahl ab 0 ein.",
+    "importFormat": "Schreibe das jährliche Erntefenster in „{{window}}“ als Monat-Tag/Monat-Tag, zum Beispiel 09-01/10-15. Trage in „{{delay}}“ die Anzahl ganzer Jahre ab Pflanzung ein, zum Beispiel 2."
+  },
   "siteHealth": {
     "inheritedLight": "Von der Kultur übernommen ({{value}})",
     "title": "Standort und Pflanzengesundheit",

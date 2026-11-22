@@ -70,7 +70,7 @@ const buildTemplateCrops = (t: TemplateT, potatoSpecies: TemplateSpecies): Crop[
     name: t('import.template.perennialName'), variety: '',
     botanical_name: 'Rheum rhabarbarum', crop_family: 'Polygonaceae',
     cultivation_type: 'pre_cultivation', cultivation_types: ['pre_cultivation'],
-    growth_duration_days: 365, harvest_duration_days: 28,
+    annual_harvest_window: '04-15/06-24', first_harvest_delay_years: 1,
     life_cycle: 'perennial', standing_time_years: 6, notes: t('import.template.sampleNote'),
   },
 ] as Crop[];

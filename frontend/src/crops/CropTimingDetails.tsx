@@ -1,6 +1,7 @@
 import { Box, Typography, type SxProps, type Theme } from '@mui/material';
 import type { ReactNode } from 'react';
 import type { CultivationType } from '../api/types';
+import { formatAnnualHarvestWindow } from './annualHarvestWindow';
 import { ValueWithLibraryPin } from './LibraryPinIndicator';
 import type { ValueSource } from './CropSeedDetails';
 import { formatNumber } from './cropDetailFormatters';
@@ -13,18 +14,25 @@ const TIMING_DURATION_FIELDS = [
   ['propagation_duration_days', 'form.propagationDurationDays'],
 ] as const;
 type DurationField = typeof TIMING_DURATION_FIELDS[number][0];
+type TimingField = DurationField | 'annual_harvest_window' | 'first_harvest_delay_years';
 
-export function CropTimingDetails({ cultivationTypes, cultivationSource, cultivationPin, value, source, pin, locale, t, sx }: {
+export function CropTimingDetails({
+  cultivationTypes, cultivationSource, cultivationPin, isPerennial, annualWindow, delay, value, source, pin, locale, t, sx,
+}: {
   cultivationTypes: CultivationType[];
   cultivationSource?: ValueSource | null;
   cultivationPin?: ReactNode;
+  isPerennial?: boolean;
+  annualWindow?: string;
+  delay?: number | null;
   value: (field: DurationField) => number | null | undefined;
-  source?: (field: DurationField) => ValueSource | null;
-  pin?: (field: DurationField) => ReactNode;
+  source?: (field: TimingField) => ValueSource | null;
+  pin?: (field: TimingField) => ReactNode;
   locale: string;
   t: (key: string) => string;
   sx?: SxProps<Theme>;
 }) {
+  const durations = isPerennial ? TIMING_DURATION_FIELDS.slice(2) : TIMING_DURATION_FIELDS;
   const fieldValue = (content: ReactNode, origin?: ValueSource | null, marker?: ReactNode) =>
     <ValueWithLibraryPin pin={marker}>
       <Typography variant="body1" sx={origin === 'ownValue' ? varietySpecificValueHighlightSx : undefined}>{content}</Typography>
@@ -34,7 +42,15 @@ export function CropTimingDetails({ cultivationTypes, cultivationSource, cultiva
       <Typography variant="body2" color="text.secondary">{t('form.cultivationType')}</Typography>
       {fieldValue(cultivationTypes.map(type => t(type === 'pre_cultivation' ? 'form.cultivationTypePreCultivation' : 'form.cultivationTypeDirectSowing')).join(', '), cultivationSource, cultivationPin)}
     </Box> : null}
-    {TIMING_DURATION_FIELDS.filter(([field]) => hasDetailValue(value(field))).map(([field, label]) => <Box key={field}>
+    {isPerennial && annualWindow ? <Box>
+      <Typography variant="body2" color="text.secondary">{t('annualHarvest.window')}</Typography>
+      {fieldValue(formatAnnualHarvestWindow(annualWindow, locale), source?.('annual_harvest_window'), pin?.('annual_harvest_window'))}
+    </Box> : null}
+    {isPerennial && delay != null ? <Box>
+      <Typography variant="body2" color="text.secondary">{t('annualHarvest.delay')}</Typography>
+      {fieldValue(`${formatNumber(delay, t, locale)} ${t('detail.units.years')}`, source?.('first_harvest_delay_years'), pin?.('first_harvest_delay_years'))}
+    </Box> : null}
+    {durations.filter(([field]) => hasDetailValue(value(field))).map(([field, label]) => <Box key={field}>
       <Typography variant="body2" color="text.secondary">{t(label)}</Typography>
       {fieldValue(`${formatNumber(value(field), t, locale)} ${t('detail.units.days')}`, source?.(field), pin?.(field))}
     </Box>)}

@@ -23,6 +23,8 @@ export const LIBRARY_PIN_FORM_FIELDS = {
   cultivation_types: ['cultivation_types', 'cultivation_type'],
   growth_duration_days: ['growth_duration_days'],
   harvest_duration_days: ['harvest_duration_days'],
+  annual_harvest_window: ['annual_harvest_window'],
+  first_harvest_delay_years: ['first_harvest_delay_years'],
   propagation_duration_days: ['propagation_duration_days'],
   germination_temperature_optimal_min_c: ['germination_temperature_optimal_min_c'],
   germination_temperature_optimal_max_c: ['germination_temperature_optimal_max_c'],

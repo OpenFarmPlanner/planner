@@ -36,6 +36,14 @@ columns also split at `,` and line breaks, and neighbour cells keep reading
 line-separated entries, comma-separated names without a note and the legacy
 dash form. The help describes only the canonical `;`.
 
+For perennials, the annual harvest window is one text cell in the form
+`MM-DD/MM-DD`, for example `09-01/10-15` or `12-15/01-20`. The first harvest
+delay is a separate column in whole years. Empty spreadsheet cells preserve
+existing values on update. JSON can send an empty string as
+`annual_harvest_window` and `null` as `first_harvest_delay_years` to clear
+them. See [perennial harvest planning](crop-detail.md#perennial-harvest-planning)
+for inheritance, cross-year windows and leap days.
+
 ## Preview and identity
 
 `POST /crops/import/preview/` still accepts the legacy array. The optional

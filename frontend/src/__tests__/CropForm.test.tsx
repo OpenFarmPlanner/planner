@@ -1,11 +1,10 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createTheme } from '@mui/material/styles';
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CropForm } from '../crops/CropForm';
 import type { Crop, PublicCrop } from '../api/types';
 import type { PublicCropSpeciesOption } from '../crops/publicCropNameSuggestions';
-import type { GetLibraryFieldPinProps } from '../crops/libraryFieldPinProps';
 
 vi.mock('../i18n', async () => {
   const { default: crops } = await import('../i18n/locales/de/crops.json');
@@ -162,11 +161,14 @@ vi.mock('../crops/sections/SpacingSection', () => ({
   ),
 }));
 
-vi.mock('../crops/sections/TimingSection', () => ({
-  TimingSection: ({ getFieldPinProps }: { getFieldPinProps?: GetLibraryFieldPinProps }) => (
-    <>{getFieldPinProps?.('growth_duration_days')?.button ?? null}</>
-  ),
-}));
+vi.mock('../crops/sections/TimingSection', async (importOriginal) => {
+  const { TimingSection } = await importOriginal<typeof import('../crops/sections/TimingSection')>();
+  return {
+    TimingSection: (props: ComponentProps<typeof TimingSection>) => props.isPerennial
+      ? <TimingSection {...props} />
+      : <>{props.getFieldPinProps?.('growth_duration_days')?.button ?? null}</>,
+  };
+});
 vi.mock('../crops/sections/GerminationSection', () => ({ GerminationSection: () => null }));
 vi.mock('../crops/sections/HarvestSection', () => ({ HarvestSection: () => null }));
 vi.mock('../crops/sections/SeedingSection', () => ({
@@ -1491,6 +1493,31 @@ describe('CropForm', () => {
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(onSave.mock.calls[0][0].life_cycle).toBe('perennial');
     expect(onSave.mock.calls[0][0].standing_time_years).toBe(6);
+  });
+
+  it.each(['project', 'publicLibrary'] as const)('edits perennial harvest timing in the %s form', async (variant) => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const crop = { ...CROP_A, life_cycle: 'perennial', standing_time_years: 15 } as Crop;
+    render(<CropForm crop={crop} variant={variant} onSave={onSave} onCancel={() => {}} />);
+
+    expect(screen.queryByLabelText('form.growthDurationDays')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('form.harvestDurationDays')).not.toBeInTheDocument();
+    const start = screen.getByRole('textbox', { name: 'annualHarvest.start', exact: true });
+    const end = screen.getByRole('textbox', { name: 'annualHarvest.end', exact: true });
+    const delay = screen.getByRole('spinbutton', { name: 'annualHarvest.delay', exact: true });
+    fireEvent.change(start, { target: { value: '12-15' } });
+    fireEvent.change(end, { target: { value: '02-30' } });
+    expect(screen.getByText('annualHarvest.invalidWindow')).toBeVisible();
+    fireEvent.change(end, { target: { value: '02-29' } });
+    fireEvent.change(delay, { target: { value: '-1' } });
+    expect(screen.getByText('annualHarvest.invalidDelay')).toBeVisible();
+    fireEvent.change(delay, { target: { value: '0' } });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'form.save' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][0]).toMatchObject({
+      annual_harvest_window: '12-15/02-29', first_harvest_delay_years: 0,
+    });
   });
 
   it('treats trim-only text edits as unchanged when saving an edited crop', () => {

@@ -1217,6 +1217,8 @@ const detailSectionGridSx = {
               getCropValue('growth_duration_days', selectedCrop.growth_duration_days),
               getCropValue('harvest_duration_days', selectedCrop.harvest_duration_days),
               getCropValue('propagation_duration_days', selectedCrop.propagation_duration_days),
+              getCropValue('annual_harvest_window', selectedCrop.annual_harvest_window),
+              getCropValue('first_harvest_delay_years', selectedCrop.first_harvest_delay_years),
             ) ? (
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom>
@@ -1225,6 +1227,9 @@ const detailSectionGridSx = {
               <CropTimingDetails cultivationTypes={activeCultivationTypes}
                 cultivationSource={getCropValueSource('cultivation_types') === 'ownValue' || getCropValueSource('cultivation_type') === 'ownValue' ? 'ownValue' : null}
                 cultivationPin={getLibraryPin('cultivation_types')}
+                isPerennial={getCropValue('life_cycle', selectedCrop.life_cycle) === 'perennial'}
+                annualWindow={getCropValue('annual_harvest_window', selectedCrop.annual_harvest_window)}
+                delay={getCropValue('first_harvest_delay_years', selectedCrop.first_harvest_delay_years)}
                 value={field => getCropValue(field, selectedCrop[field])} source={getCropValueSource}
                 pin={getLibraryPin} locale={locale} t={t} sx={detailSectionGridSx} />
             </Box>

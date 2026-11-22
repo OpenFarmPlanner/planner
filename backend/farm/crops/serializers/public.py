@@ -60,6 +60,8 @@ PUBLIC_CROP_PROPOSABLE_FIELDS = {
     'cultivation_types',
     'growth_duration_days',
     'harvest_duration_days',
+    'annual_harvest_window',
+    'first_harvest_delay_years',
     'propagation_duration_days',
     'germination_temperature_optimal_min_c',
     'germination_temperature_optimal_max_c',
@@ -277,6 +279,8 @@ class PublicCropSerializer(serializers.ModelSerializer):
             'cultivation_type',
             'growth_duration_days',
             'harvest_duration_days',
+            'annual_harvest_window',
+            'first_harvest_delay_years',
             'propagation_duration_days',
             'germination_temperature_optimal_min_c',
             'germination_temperature_optimal_max_c',
@@ -1081,8 +1085,8 @@ class PublicCropChangeProposalSerializer(serializers.ModelSerializer):
         )
         typed_serializer.is_valid(raise_exception=True)
         cleaned = dict(value)
-        # A proposal that names one depth proposes it as both bounds.
-        for field in SOWING_DEPTH_FIELDS:
+        # Persist both depth bounds and the normalized perennial timing inputs.
+        for field in (*SOWING_DEPTH_FIELDS, 'annual_harvest_window', 'first_harvest_delay_years'):
             if field in typed_serializer.validated_data:
                 cleaned[field] = typed_serializer.validated_data[field]
         if 'crop_family' in typed_serializer.validated_data:
