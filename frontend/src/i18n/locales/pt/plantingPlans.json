@@ -501,9 +501,7 @@
   "actualDates": {
     "clear": "Limpar data",
     "title": "Datas planeadas e reais",
-    "modeLabel": "Datas",
-    "modeInfoLabel": "Informações sobre a apresentação das datas",
-    "modeHelp": "Planeadas apresenta as datas previstas. Reais apresenta as datas registadas e deixa em branco as que faltam. Reais ou planeadas apresenta a data registada quando existe e a planeada nos restantes casos.",
+    "modeLabel": "Vista de datas",
     "displayModes": {
       "planned": "Planeadas",
       "actual": "Reais",

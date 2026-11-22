@@ -489,9 +489,7 @@
   "actualDates": {
     "clear": "Clear date",
     "title": "Planned and actual dates",
-    "modeLabel": "Dates",
-    "modeInfoLabel": "About date display",
-    "modeHelp": "Planned shows scheduled dates. Actual shows recorded dates and leaves missing dates blank. Actual or planned shows the recorded date when available and the planned date otherwise.",
+    "modeLabel": "Date view",
     "displayModes": {
       "planned": "Planned",
       "actual": "Actual",

@@ -489,9 +489,7 @@
   "actualDates": {
     "clear": "Datum löschen",
     "title": "Plan- und Ist-Termine",
-    "modeLabel": "Termine",
-    "modeInfoLabel": "Info zur Terminanzeige",
-    "modeHelp": "Geplant zeigt die geplanten Termine. Tatsächlich zeigt nur erfasste Ist-Termine und lässt fehlende Termine leer. Plan mit Ist zeigt den Ist-Termin, falls erfasst, sonst den geplanten Termin.",
+    "modeLabel": "Terminansicht",
     "displayModes": {
       "planned": "Geplant",
       "actual": "Tatsächlich",

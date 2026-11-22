@@ -501,9 +501,7 @@
   "actualDates": {
     "clear": "Cancella data",
     "title": "Date previste ed effettive",
-    "modeLabel": "Date",
-    "modeInfoLabel": "Informazioni sulle date visualizzate",
-    "modeHelp": "Pianificate mostra le date previste. Effettive mostra le date registrate e lascia vuote quelle mancanti. Effettive o pianificate mostra la data registrata quando disponibile e quella pianificata negli altri casi.",
+    "modeLabel": "Vista delle date",
     "displayModes": {
       "planned": "Pianificate",
       "actual": "Effettive",
