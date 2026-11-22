@@ -777,7 +777,8 @@ function RootLayout() {
       const label = isSingleCreateAction ? primaryCreateAction.label : t('commandPalette.createNew');
       return {
         label,
-        tooltip: `${label} (${primaryCreateAction.shortcut ?? 'Alt+Shift+N'})`,
+        tooltip: isSingleCreateAction && primaryCreateAction.tooltipOnIconOnly
+          ? undefined : `${label} (${primaryCreateAction.shortcut ?? 'Alt+Shift+N'})`,
         onClick: runPrimaryCreateAction,
       };
     }
@@ -833,7 +834,7 @@ function RootLayout() {
                 </Button>
               </ButtonGroup>
             ) : (
-              <AppTooltip title={topbarPrimaryAction.tooltip ?? topbarPrimaryAction.label}>
+              <AppTooltip title={topbarPrimaryAction.tooltip ?? (isPhone ? topbarPrimaryAction.label : '')}>
                 <Button
                   size="small"
                   variant="contained"
