@@ -59,6 +59,20 @@
       "missing_harvest_period": "Oogstperiode ontbreekt of is ongeldig"
     }
   },
+  "summary": {
+    "plannedArea": "Gepland teeltoppervlak",
+    "areaScope_one": "Som over {{count}} seizoen",
+    "areaScope_other": "Som over {{count}} seizoenen",
+    "areaUnavailable": "Niet beschikbaar",
+    "plansWithoutArea_one": "{{count}} teelt zonder opgegeven oppervlak",
+    "plansWithoutArea_other": "{{count}} teelten zonder opgegeven oppervlak",
+    "recordedHarvest": "Geregistreerde oogst",
+    "recordedCrops": "Gewassen met geregistreerde oogst",
+    "cropCoverage": "{{recorded}} van {{total}}",
+    "noCropsInScope": "Geen gewassen binnen de filters",
+    "dataCoverage": "Oogstregistratie",
+    "coverageBasis": "Minstens één geregistreerde oogst per gewas"
+  },
   "comparison": {
     "excludedUnassigned_one": "Hoeveelheden zonder teeltoppervlak uitgesloten ({{count}} oogst)",
     "excludedUnassigned_other": "Hoeveelheden zonder teeltoppervlak uitgesloten ({{count}} oogsten)",

@@ -283,7 +283,11 @@
     "yieldOverview": {
       "title": "Aide : Aperçu des rendements",
       "intro": "Pour chaque plan de culture de la saison active, la prévision multiplie le rendement prévu par m² par la surface planifiée, ou le rendement prévu par plant par le nombre de plants calculé. La quantité ainsi obtenue est répartie sur les jours de la période de récolte. L’avertissement signale les plans de culture dont les données sont manquantes ou non valides.\n\nLimitez l’affichage à une culture ou passez des semaines aux mois dans « Affichage ». Survolez une barre ou appuyez sur la barre d’espace lorsqu’elle a le focus, pour voir la période, la culture et la quantité prévue. Retrouvez les récoltes saisies dans « Comparer les saisons ».",
-      "points": []
+      "points": [
+        "La surface de culture prévue additionne les surfaces des séries filtrées sur les saisons sélectionnées. Une série qui se poursuit compte une fois. Si plusieurs séries utilisent la même planche, chacune apporte sa propre surface.",
+        "La quantité récoltée saisie suit la date de récolte. Les quantités pesées, les pièces et les bottes restent séparées. Un filtre par site, parcelle ou planche ne retient que les quantités affectées et signale les affectations manquantes.",
+        "Le suivi compte les cultures ayant au moins une récolte saisie. Le total comprend les cultures avec une série ou une récolte saisie correspondant aux filtres. D’autres récoltes peuvent encore manquer."
+      ]
     }
   }
 }

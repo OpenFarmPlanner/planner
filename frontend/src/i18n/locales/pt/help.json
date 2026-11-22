@@ -283,7 +283,11 @@
     "yieldOverview": {
       "title": "Ajuda: visão geral dos rendimentos",
       "intro": "Para cada série da época ativa, a previsão multiplica o rendimento esperado por m² pela área planeada ou o rendimento esperado por planta pelo número de plantas calculado. A quantidade é distribuída pelos dias do período de colheita. O aviso indica as séries com dados em falta ou inválidos.\n\nFiltre por cultura ou alterne entre semanas e meses em «Visualização». Passe o rato sobre uma barra ou prima a barra de espaço quando a barra estiver em foco para ver o período, a cultura e a quantidade esperada. Consulte as colheitas registadas em «Comparar épocas».",
-      "points": []
+      "points": [
+        "A área de cultivo planeada soma as áreas das séries filtradas nas épocas selecionadas. Uma série que continua conta uma vez. Se várias séries utilizarem o mesmo canteiro, cada série contribui com a sua área.",
+        "A quantidade colhida registada segue a data da colheita. As quantidades pesadas, as unidades e os molhos ficam separados. Um filtro por exploração, parcela ou canteiro inclui apenas as quantidades atribuídas e indica as atribuições em falta.",
+        "O registo conta as culturas com pelo menos uma colheita registada. O total inclui as culturas com uma série ou colheita que corresponde aos filtros. Pode haver outras colheitas por registar."
+      ]
     }
   }
 }

@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from crops.models import CropSpecies
 from farm.models import (
     Bed,
     Crop,
@@ -198,6 +199,73 @@ class YieldComparisonTest(TestCase):
         invalid = self.client.get(self.url, {'season_window': '1'})
         self.assertEqual(invalid.status_code, 400)
 
+    def test_window_summary_scopes_area_quantities_and_distinct_crop_coverage(self):
+        beds = []
+        for name in ('North', 'South'):
+            site = Location.objects.create(project=self.project, name=name)
+            field = Field.objects.create(project=self.project, location=site, name='Market garden')
+            beds.append(Bed.objects.create(project=self.project, field=field, name='Bed One'))
+        north, south = beds
+        species = CropSpecies.objects.create(name='Tomato')
+        crop_fields = (
+            {'name': 'Tomato', 'crop_species': species},
+            {'name': 'Garden tomato', 'crop_species': species, 'variety': 'Roma'},
+            {'name': 'Carrot'},
+            {'name': 'Chard'},
+        )
+        tomato, roma, carrot, chard = [
+            Crop.objects.create(project=self.project, **fields) for fields in crop_fields
+        ]
+        first = date(2026, 8, 31)
+        second = date(2026, 9, 1)
+        old_north = self.add_plan(
+            self.previous, date(2026, 5, 1), date(2026, 8, 27), date(2026, 9, 3), bed=north,
+        )
+        old_south = self.add_plan(self.previous, date(2026, 5, 1), bed=south, area=8)
+        self.add_plan(self.current, date(2027, 5, 1), bed=north, area=4)
+        self.add_plan(self.current, second, bed=north, area=2, crop=tomato)
+        roma_plan = self.add_plan(self.current, second, bed=north, area=3, crop=roma)
+        self.add_plan(self.current, second, bed=north, area=None, crop=carrot)
+        self.add_harvest(first, 1000, 'g', [(old_north, 800, None), (old_south, 200, None)])
+        self.add_harvest(second, 6, 'kg', [(old_north, 4, None), (old_south, 1, None)])
+        self.add_harvest(second, 3, 'kg', crop=chard)
+        self.add_harvest(second, 5, 'piece', [(roma_plan, 5, None)], crop=roma, grams_per_unit=200)
+        # The selected season records have a gap in 2027/28.
+        self.add_harvest(date(2028, 5, 1), 99, 'kg', crop=carrot)
+
+        def get_summary(**filters):
+            response = self.client.get(self.url, {'season_window': '3', **filters})
+            self.assertEqual(response.status_code, 200, response.data)
+            return response.json()['summary']
+
+        self.assertEqual(get_summary(), {
+            'planned_area_sqm': '27', 'plans_without_area_count': 1,
+            'recorded_quantities': [
+                {'unit': 'kg', 'quantity': '10'}, {'unit': 'piece', 'quantity': '5'},
+            ],
+            'excluded_unassigned_records': 0, 'crop_count': 4, 'recorded_crop_count': 3,
+        })
+        self.assertEqual(get_summary(location_id=north.field.location_id), {
+            'planned_area_sqm': '19', 'plans_without_area_count': 1,
+            'recorded_quantities': [
+                {'unit': 'kg', 'quantity': '4.8'}, {'unit': 'piece', 'quantity': '5'},
+            ],
+            'excluded_unassigned_records': 2, 'crop_count': 3, 'recorded_crop_count': 2,
+        })
+        self.assertEqual(get_summary(bed_id=north.pk, variety_id=roma.pk), {
+            'planned_area_sqm': '3', 'plans_without_area_count': 0,
+            'recorded_quantities': [{'unit': 'piece', 'quantity': '5'}],
+            'excluded_unassigned_records': 0, 'crop_count': 1, 'recorded_crop_count': 1,
+        })
+        self.assertEqual(get_summary(crop_id=carrot.pk), {
+            'planned_area_sqm': None, 'plans_without_area_count': 1, 'recorded_quantities': [],
+            'excluded_unassigned_records': 0, 'crop_count': 1, 'recorded_crop_count': 0,
+        })
+        self.assertEqual(get_summary(bed_id=south.pk, crop_id=chard.pk), {
+            'planned_area_sqm': None, 'plans_without_area_count': 0, 'recorded_quantities': [],
+            'excluded_unassigned_records': 1, 'crop_count': 0, 'recorded_crop_count': 0,
+        })
+
     def test_split_records_count_once_and_area_uses_unique_plans(self):
         first, second = [
             self.add_plan(
@@ -250,6 +318,9 @@ class YieldComparisonTest(TestCase):
         self.assertEqual(newer['recorded']['measured_kg'], '10')
         self.assertEqual(newer['recorded_kg_per_plan_sqm'], '1')
         self.assertFalse(newer['comparable'])
+        summary = self.client.get(self.url, {'crop_id': perennial.pk}).json()['summary']
+        self.assertEqual(summary['planned_area_sqm'], '10')
+        self.assertEqual(summary['recorded_crop_count'], 1)
 
     def test_missing_forecast_inputs_never_produce_a_comparable_pair(self):
         day = date(2027, 4, 20)
@@ -282,6 +353,8 @@ class YieldComparisonTest(TestCase):
         self.assertEqual(row['forecast_kg'], '35')
         self.assertEqual(row['forecast_plan_count'], 1)
         self.assertEqual(row['recorded']['measured_kg'], '5')
+        summary = self.client.get(self.url, {'season_window': '3'}).json()['summary']
+        self.assertEqual(summary['planned_area_sqm'], '20')
 
         PlantingPlan.objects.filter(pk=duplicate.pk).update(area_usage_sqm=12)
         row = self.rows()[self.current.pk]

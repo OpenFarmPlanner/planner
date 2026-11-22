@@ -59,6 +59,20 @@
       "missing_harvest_period": "Erntezeitraum fehlt oder ist ungültig"
     }
   },
+  "summary": {
+    "plannedArea": "Geplante Anbaufläche",
+    "areaScope_one": "Summe aus {{count}} Saison",
+    "areaScope_other": "Summe aus {{count}} Saisonen",
+    "areaUnavailable": "Nicht verfügbar",
+    "plansWithoutArea_one": "{{count}} Anbauplan ohne Flächenangabe",
+    "plansWithoutArea_other": "{{count}} Anbaupläne ohne Flächenangabe",
+    "recordedHarvest": "Erfasste Erntemenge",
+    "recordedCrops": "Kulturen mit erfasster Ernte",
+    "cropCoverage": "{{recorded}} von {{total}}",
+    "noCropsInScope": "Keine Kulturen im Filterbereich",
+    "dataCoverage": "Datenlage",
+    "coverageBasis": "Mindestens ein Ernteintrag pro Kultur"
+  },
   "comparison": {
     "excludedUnassigned_one": "Anteile ohne Flächenzuordnung ausgeblendet ({{count}} Ernte)",
     "excludedUnassigned_other": "Anteile ohne Flächenzuordnung ausgeblendet ({{count}} Ernten)",

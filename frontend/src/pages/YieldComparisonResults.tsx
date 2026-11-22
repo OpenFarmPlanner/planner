@@ -14,6 +14,7 @@ import { PlanDateComparisonText } from '../planting-plans/PlantingPlanExecutionD
 import { plantingPlanDetailPath } from '../planting-plans/plantingPlanDetailRoutes';
 import { formatSeasonDate, formatSeasonPeriod, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import { formatLocalizedNumber } from '../utils/numberLocalization';
+import { YieldComparisonSummaryPanel } from './YieldComparisonSummary';
 
 const barStyles = {
   forecast: { border: '1px dashed', borderColor: 'primary.main', bgcolor: 'action.selected' },
@@ -257,6 +258,7 @@ export function YieldComparisonResults({ comparison, cropName }: { comparison: Y
   if (seasons.length === 0) return <Typography>{t('comparison.noSeasons')}</Typography>;
 
   return <Stack spacing={2} sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+    <YieldComparisonSummaryPanel summary={comparison.summary} seasonCount={seasons.length} locale={locale} />
     <ComparisonChart seasons={seasons} locale={locale} />
     <Paper variant="outlined">
       <Box sx={{ px: { xs: 1.25, sm: 2 }, pt: 1.5, pb: 0.75 }}>

@@ -283,7 +283,11 @@
     "yieldOverview": {
       "title": "Help: Yield overview",
       "intro": "For each planting plan in the active season, the forecast multiplies the expected yield per m² by the planned area, or the expected yield per plant by the calculated plant count. It spreads the resulting quantity across the days in the harvest period. The warning lists plans with missing or invalid inputs.\n\nFilter to one crop or switch between weeks and months under “Display”. Hover over a bar or press Space when it has focus to see the period, crop and expected harvest quantity. Find recorded harvests under “Compare seasons”.",
-      "points": []
+      "points": [
+        "Planned growing area adds the areas of the filtered planting plans across the selected seasons. A continuing plan counts once. When several plans use the same bed, each plan contributes its own area.",
+        "Recorded harvest totals follow the harvest date. Weighed quantities, pieces and bunches stay separate. A location, field or bed filter includes only assigned quantities and indicates missing assignments.",
+        "Harvest coverage counts crops with at least one harvest record. The total includes crops with a planting plan or a recorded harvest within the filters. Other harvests may still be missing."
+      ]
     }
   }
 }

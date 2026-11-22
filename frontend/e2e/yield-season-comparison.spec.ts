@@ -92,6 +92,7 @@ test('combines searchable crop groups and preserves season and site filters when
   const topbar = page.getByTestId('topbar-workspace-controls');
   await topbar.getByRole('button', { name: 'Saisonen vergleichen' }).click();
   await expect(page.getByRole('table', { name: 'Alle Kulturen' }).locator('th[scope="row"]')).toHaveCount(3);
+  await expect(page.getByText('Summe aus 3 Saisonen')).toBeVisible();
   const crops = page.getByRole('combobox', { name: 'Kultur' });
   await crops.fill('kartoff');
   await crops.press('ArrowDown');
@@ -101,6 +102,7 @@ test('combines searchable crop groups and preserves season and site filters when
   await page.getByRole('option', { name: 'Tomate', exact: true }).click();
   await crops.press('Escape');
   await expect(page.getByRole('table', { name: 'Ausgewählte Kulturen' })).toBeVisible();
+  await expect(page.getByRole('meter', { name: 'Kulturen mit erfasster Ernte' })).toHaveAttribute('aria-valuetext', '2 von 2');
   await page.getByRole('combobox', { name: 'Standort' }).click();
   await page.getByRole('option', { name: 'Hofgarten', exact: true }).click();
   await page.getByRole('combobox', { name: 'Saisonen' }).click();
@@ -153,8 +155,10 @@ test.describe('touch comparison', () => {
       loginAsAdmin: true, demoProject: true, demoYear: 2026,
     });
     const results = await compareCrop(page, 'Tomate (Roma)');
+    const summary = page.getByRole('main').locator('dl').filter({ hasText: 'Erfasste Erntemenge' });
     await expect(page.getByTestId('topbar-workspace-row').getByRole('button', { name: 'Saisonen vergleichen' })).toBeVisible();
     await expect(results.getByText('15,8 kg + 8 Stück', { exact: true })).toBeVisible();
+    await expect(summary.getByText('15,8 kg + 8 Stück', { exact: true })).toBeVisible();
     await expect(results.getByText('0,88 kg geschätzt', { exact: true })).toBeVisible();
     await expect(results.getByText('3 kg ohne Zuordnung', { exact: true })).toBeVisible();
     await expect(page.getByRole('figure').getByRole('button')).toHaveCount(0);
@@ -168,6 +172,8 @@ test.describe('touch comparison', () => {
     await page.getByRole('combobox', { name: 'Standort' }).tap();
     await page.getByRole('option', { name: 'Hofgarten', exact: true }).tap();
     await expect(results.getByText(/Anteile ohne Flächenzuordnung ausgeblendet/).first()).toBeVisible();
+    await expect(summary.getByText('12,8 kg + 8 Stück', { exact: true })).toBeVisible();
+    await expect(summary.getByText('Anteile ohne Flächenzuordnung ausgeblendet (2 Ernten)')).toBeVisible();
     await expect(results.getByText('3 kg ohne Zuordnung', { exact: true })).toHaveCount(0);
     await page.getByRole('combobox', { name: 'Standort' }).tap();
     await page.getByRole('option', { name: 'Alle Standorte', exact: true }).tap();

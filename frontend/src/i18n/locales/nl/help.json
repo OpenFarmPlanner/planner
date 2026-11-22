@@ -283,7 +283,11 @@
     "yieldOverview": {
       "title": "Hulp: Opbrengstoverzicht",
       "intro": "Voor elke teelt in het actieve seizoen vermenigvuldigt de prognose de verwachte opbrengst per m² met de geplande oppervlakte, of de verwachte opbrengst per plant met het berekende aantal planten. De hoeveelheid wordt verdeeld over de dagen van de oogstperiode. De waarschuwing vermeldt teelten met ontbrekende of ongeldige gegevens.\n\nFilter op gewas of wissel onder ‘Weergave’ tussen weken en maanden. Ga met de muis over een balk of druk op de spatiebalk als de balk focus heeft om de periode, het gewas en de verwachte hoeveelheid te zien. Geregistreerde oogsten staan onder ‘Seizoenen vergelijken’.",
-      "points": []
+      "points": [
+        "Het geplande teeltoppervlak telt de oppervlakken van de gefilterde teelten in de geselecteerde seizoenen bij elkaar op. Een doorlopende teelt telt één keer mee. Als meerdere teelten hetzelfde bed gebruiken, telt het oppervlak van elke teelt mee.",
+        "De geregistreerde oogst volgt de oogstdatum. Gewogen hoeveelheden, stuks en bossen blijven gescheiden. Een filter op locatie, perceel of bed telt alleen toegewezen hoeveelheden mee en meldt ontbrekende toewijzingen.",
+        "De oogstregistratie telt gewassen met minstens één geregistreerde oogst. Het totaal omvat gewassen met een teelt of geregistreerde oogst binnen de filters. Andere oogsten kunnen nog ontbreken."
+      ]
     }
   }
 }
