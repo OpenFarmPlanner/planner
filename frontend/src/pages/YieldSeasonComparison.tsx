@@ -27,7 +27,7 @@ export function YieldSeasonComparison({ filters, onFiltersChange }: YieldSeasonC
   const groups = useMemo(() => groupYieldComparisonCrops(options?.crops ?? [], locale), [options, locale]);
   const selected = useMemo(() => groups.filter(group => filters.cropKeys.includes(group.key)), [filters.cropKeys, groups]);
   const cropIds = useMemo(() => selected.flatMap(group => group.cropIds), [selected]);
-  const comparisonKey = options ? JSON.stringify([catalogKey, filters, cropIds]) : null;
+  const comparisonKey = options && options.crops.length > 0 ? JSON.stringify([catalogKey, filters, cropIds]) : null;
   const varietyName = options?.crops.find(crop => crop.id === filters.varietyId)?.name;
   const cropName = varietyName ?? (selected.length === 1 ? selected[0].name
     : t(selected.length ? 'filters.selectedCrops' : 'filters.allCrops'));
@@ -58,6 +58,7 @@ export function YieldSeasonComparison({ filters, onFiltersChange }: YieldSeasonC
   const retryButton = <LoadRetryButton onClick={() => setRetry(value => value + 1)} />;
   if (catalog?.key !== catalogKey) return <Typography role="status">{t('loading')}</Typography>;
   if ('error' in catalog) return <Alert severity="error" action={retryButton}>{t('errors.load')}</Alert>;
+  if (catalog.data.crops.length === 0) return <Typography>{t('comparison.noCrops')}</Typography>;
   const current = comparison?.key === comparisonKey ? comparison : undefined;
   return (
     <Stack spacing={2} sx={{ minWidth: 0 }}>

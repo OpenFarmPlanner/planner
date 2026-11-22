@@ -1,7 +1,19 @@
 import { expect, test, type Page } from '@playwright/test';
-import { expectNoHorizontalPageOverflow, loginWithDeterministicProject } from './utils';
+import { apiRequest, expectNoHorizontalPageOverflow, loginWithDeterministicProject } from './utils';
 
 test.use({ serviceWorkers: 'block' });
+
+test('offers guidance when a season has no planting plans or recorded harvests', async ({ page, request }) => {
+  await loginWithDeterministicProject(page, request, 'yield-comparison-empty-catalog', { loginAsAdmin: true });
+  await apiRequest(page, 'POST', '/seasons/', { start_date: '2026-01-01', end_date: '2026-12-31' });
+  await page.goto('/app/yield-overview');
+  const topbar = page.getByTestId('topbar-workspace-controls');
+  await topbar.getByRole('button', { name: 'Saisonen vergleichen' }).click();
+
+  await expect(page.getByText('Lege einen Anbauplan an oder erfasse eine Ernte, um eine Kultur über mehrere Saisonen zu vergleichen.'))
+    .toBeVisible();
+  await expect(page.getByRole('table')).toHaveCount(0);
+});
 
 async function compareCrop(page: Page, crop: string) {
   await page.goto('/app/yield-overview');
