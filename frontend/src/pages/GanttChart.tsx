@@ -100,6 +100,7 @@ import {
   createGanttTaskLabels,
   buildSeedlingTooltipDetails,
   formatSeedlingTooltipTitle,
+  formatSeasonalHarvestBands,
   formatPlantCount,
   getMovedPlanDates,
   getOccupancyTaskPhase,
@@ -669,7 +670,15 @@ function GanttChartPage() {
       // shifted along with the planting date so the harvest bar stays where
       // the drag preview put it instead of jumping after the response.
       setPlantingPlans((previous) => previous.map((entry) => (
-        entry.id === planId ? { ...entry, ...movedDates } : entry
+        entry.id === planId ? {
+          ...entry,
+          ...movedDates,
+          occupancy_end_date: movedDates.clearing_date ?? movedDates.harvest_end_date
+            ?? movedDates.harvest_date ?? movedDates.planting_date,
+          seasonal_harvest: entry.seasonal_harvest && {
+            ...entry.seasonal_harvest, occupancy_start_date: movedDates.planting_date,
+          },
+        } : entry
       )));
 
       const response = await plantingPlanAPI.update(planId, updatedPlan as PlantingPlan);
@@ -753,18 +762,22 @@ function GanttChartPage() {
     }).map(group => ({
       ...group,
       tasks: group.tasks.flatMap(task => {
-        const inSeason = task.clearingDate && seasonEnd && task.endDate > seasonEnd
+        const inSeason = (task.clearingDate || task.phaseBands) && seasonEnd && task.endDate > seasonEnd
           ? { ...task, endDate: seasonEnd } : task;
-        if (!task.readOnly) return [inSeason];
         const visible = clipCarriedOverOccupancyTask(inSeason, taskRangeStart);
         if (!visible) return [];
-        const season = task.originSeasonLabel;
-        const description = season ? t('plantingPlans:carriedOver.description', { season })
+        if (!task.readOnly && !task.phaseBands) return [visible];
+        const description = task.originSeasonLabel
+          ? t(task.earlyRecordedOccupancy ? 'plantingPlans:carriedOver.otherSeasonDescription' : 'plantingPlans:carriedOver.description',
+            { season: task.originSeasonLabel })
           : t('plantingPlans:carriedOver.unknownDescription');
+        const harvestLabel = task.phaseBands?.length
+          ? `${t('ganttChart:tooltip.seasonalHarvest')} · ${formatSeasonalHarvestBands(task.phaseBands)}`
+          : task.phaseBands ? t('ganttChart:tooltip.noSeasonalHarvest') : '';
         return [{
           ...visible,
-          leadingIcon: <HistoryOutlinedIcon sx={{ fontSize: 14 }} />,
-          accessibleLabel: `${task.name} · ${description}`,
+          leadingIcon: task.readOnly ? <HistoryOutlinedIcon sx={{ fontSize: 14 }} /> : undefined,
+          accessibleLabel: [task.name, task.readOnly && description, harvestLabel].filter(Boolean).join(' · '),
         }];
       }),
     })),
@@ -1687,9 +1700,16 @@ function GanttChartPage() {
       {task.readOnly && (
         <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
           {task.originSeasonLabel
-            ? t('plantingPlans:carriedOver.description', { season: task.originSeasonLabel })
+            ? t(task.earlyRecordedOccupancy ? 'plantingPlans:carriedOver.otherSeasonDescription' : 'plantingPlans:carriedOver.description',
+              { season: task.originSeasonLabel })
             : t('plantingPlans:carriedOver.unknownDescription')}
         </Typography>
+      )}
+      {editMode && task.positionLocked && !task.readOnly && (
+        <Typography variant="body2">{t('ganttChart:tooltip.recordedPlantingEdit')}</Typography>
+      )}
+      {task.phaseBands?.length === 0 && (
+        <Typography variant="body2">{t('ganttChart:tooltip.noSeasonalHarvest')}</Typography>
       )}
       {buildOccupancyTooltipDetails(task).map((detail) => (
         <Typography key={`${task.id}-${detail.labelKey}`} variant="body2" sx={{ display: 'block', lineHeight: 1.4 }}>
@@ -1697,7 +1717,7 @@ function GanttChartPage() {
         </Typography>
       ))}
     </Box>
-  ), [t]);
+  ), [editMode, t]);
 
   const renderSeedlingTooltip = useCallback(({ task }: { task: GanttTask }) => (
     <Box sx={{ p: 0.5 }}>

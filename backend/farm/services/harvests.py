@@ -12,7 +12,11 @@ from farm.models import Crop, PlantingPlan, Season
 from farm.models.harvests import HarvestConversionSource, HarvestUnit
 from farm.services.crop_inheritance import GeneralCropIndex, get_general_crop
 from farm.services.public_crops import effective_library_pinned_fields
-from farm.services.yield_calendar import compute_plan_expected_yield
+from farm.services.seasonal_harvest import (
+    early_recorded_perennial_plan_ids,
+    recurring_harvest_schedule,
+)
+from farm.services.yield_calendar import compute_plan_expected_yield, forecast_yield_for_projection
 
 REFERENCE_WEIGHT_FIELDS = {
     HarvestUnit.PIECE: "average_harvest_piece_weight_g",
@@ -60,17 +64,14 @@ def harvest_number(value: Decimal | None) -> str | None:
 
 def eligible_harvest_plans(project_id: int, crop_id: int, day: date) -> QuerySet[PlantingPlan]:
     """Plans in the record's season or physically occupying a bed on its date."""
-    return (
-        PlantingPlan.objects.filter(
-            project_id=project_id,
-            crop_id=crop_id,
-            season__deleted_at__isnull=True,
-        )
-        .alias(occupied_until=PlantingPlan.occupancy_end_expression())
-        .filter(
-            Q(season__start_date__lte=day, season__end_date__gte=day)
-            | Q(bed__isnull=False, planting_date__lte=day, occupied_until__gte=day)
-        )
+    plans = PlantingPlan.objects.filter(
+        project_id=project_id, crop_id=crop_id, season__deleted_at__isnull=True,
+    )
+    early_plans, _ = early_recorded_perennial_plan_ids(plans, project_id, day, day)
+    return plans.alias(occupied_until=PlantingPlan.occupancy_end_expression()).filter(
+        Q(season__start_date__lte=day, season__end_date__gte=day)
+        | Q(bed__isnull=False, planting_date__lte=day, occupied_until__gte=day)
+        | Q(pk__in=early_plans)
     )
 
 
@@ -132,17 +133,8 @@ def plan_harvest_totals(
     *,
     comparable_crop: bool = True,
 ) -> dict:
-    """Compare recorded totals with the original forecast in a matching period."""
-    start, end = plan.harvest_date, plan.harvest_end_date
-    has_window = start is not None and end is not None and start < end
-    matches_period = has_window and (
-        season is None or (season.start_date <= start and end <= season.end_date)
-    )
-    forecast = (
-        compute_plan_expected_yield(plan, crop_index).kilograms
-        if matches_period and comparable_crop
-        else None
-    )
+    """Compare recorded totals with the forecast for the same period."""
+    forecast = _matching_plan_forecast(plan, season, crop_index) if comparable_crop else None
     convertible = bool(totals.quantities) and not totals.has_unconvertible
     actual = totals.measured_kg + totals.estimated_kg if convertible else None
     area = plan.area_usage_sqm
@@ -155,3 +147,26 @@ def plan_harvest_totals(
             harvest_number(actual / forecast * 100) if actual is not None and forecast else None
         ),
     }
+
+
+def _matching_plan_forecast(
+    plan: PlantingPlan, season: Season | None, crop_index: GeneralCropIndex,
+) -> Decimal | None:
+    schedule = recurring_harvest_schedule(plan, crop_index)
+    if schedule is not None:
+        if season is None:
+            return None
+        projections = schedule.project(season.start_date, season.end_date)
+        expected = compute_plan_expected_yield(plan, crop_index).kilograms
+        if expected is None or not projections:
+            return None
+        return sum(
+            (forecast_yield_for_projection(expected, part) for part in projections), Decimal(0),
+        )
+
+    start, end = plan.harvest_date, plan.harvest_end_date
+    if start is None or end is None or start >= end:
+        return None
+    if season is not None and (start < season.start_date or end > season.end_date):
+        return None
+    return compute_plan_expected_yield(plan, crop_index).kilograms

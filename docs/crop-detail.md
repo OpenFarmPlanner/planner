@@ -134,7 +134,9 @@ calendar years after planting. A variety inherits a blank value from its
 general culture when available. After inheritance, a blank delay and an
 explicit `0` both mean eligibility starts on the planting date. A positive
 delay starts on the corresponding planting anniversary, using February 28 if
-that year has no February 29. For a crop planted on March 15, 2025 with a delay
+that year has no February 29. The calculation uses recorded direct sowing or
+transplanting when available and otherwise uses the original planned date.
+For a crop planted on March 15, 2025 with a delay
 of 2 years, eligibility begins March 15, 2027. In a September–October window,
 the first eligible harvest falls in September 2027. If eligibility begins
 inside a window, only dates on or after eligibility qualify.
@@ -142,8 +144,10 @@ inside a window, only dates on or after eligibility qualify.
 The whole window is inherited together, independent of the delay. Standing
 time continues to describe bed occupancy. Existing crops may leave the window
 empty. Importing or editing either timing field stores crop data and preserves
-existing plan dates and actual harvest records. Forecasts and calendar bars
-use the plan's existing date logic until season-specific projection is available.
+existing plan dates and actual harvest records. Plans with a window show
+projected dates for the selected season in the planting plans, crop calendar
+and yield overview. Plans with an empty window still use their stored one-off
+dates. See [season-scoped planting plans](seasons-architecture.md#season-scoping-of-planting-plans).
 Publishing a perennial to the library requires an annual window or both
 legacy day-based durations. The detail view shows saved durations when the
 annual window is absent.

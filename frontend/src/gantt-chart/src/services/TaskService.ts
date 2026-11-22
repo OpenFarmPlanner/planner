@@ -154,6 +154,7 @@ export class TaskService {
     unitWidth: number,
     viewMode: ViewMode = ViewMode.MONTH,
     positionDate?: TimelineDateScale["positionDate"],
+    minimumWidth?: number,
   ): { leftPx: number; widthPx: number } {
     try {
       if (
@@ -163,7 +164,7 @@ export class TaskService {
         throw new Error("Invalid dates in task");
       }
 
-      const minWidth = minWidthByViewMode[viewMode] || 20;
+      const minWidth = minimumWidth ?? (minWidthByViewMode[viewMode] || 20);
       const totalPixelWidth = totalUnits * unitWidth;
       if (positionDate) {
         const leftPx = positionDate(task.startDate);

@@ -118,10 +118,20 @@ description), one level down:
   selected season, it also includes a plan planted before the first day if
   it occupies an assigned bed on or after that day. The recorded perennial
   removal date takes precedence over the stored harvest end, harvest date,
-  and planting date.
+  and planting date. For a configured perennial, an earlier recorded sowing
+  or transplant can make the plan visible in a season preceding its planned
+  start. That view uses the same plan ID, read-only status and origin action.
   A read returns `carried_over` and the originating season label. The plan's
-  ID and season assignment stay the same. Attachment writes use the same
-  season boundary. `perform_create` assigns new plans to the active season
+  ID and season assignment stay the same. For a perennial with a configured
+  annual window, `seasonal_harvest` gives the ordered, inclusive `periods`
+  that intersect the selected season, the effective `occupancy_start_date`,
+  a `planting_recorded` flag for an
+  actual sowing or transplanting anchor, and nullable `actual_start_date`
+  and `actual_end_date` drawn from recorded dates within that season. An
+  empty list means the plan has no eligible harvest in that period. The
+  property is null for legacy one-off plans or a request without a season.
+  Stored sowing, planting and harvest dates retain their meanings. Attachment
+  writes use the same season boundary. `perform_create` assigns new plans to the active season
   when the payload has no explicit season. Legacy unassigned rows retain
   their existing assignment until season setup.
 - `SeedDemandListView` and `YoungPlantDemandListView` use the owning season
@@ -147,7 +157,14 @@ description), one level down:
   when that reaches past the season's end. Carried-over bars begin at the
   first visible day and label their source season. The perennial occupancy bar
   is clipped to the selected season and its tooltip includes the full removal
-  date. Own-season edits keep
+  date. For a configured perennial, the same continuous bar marks the
+  eligible harvest periods inside that season and lists their dates in its
+  accessible label and tooltip. An earlier recorded planting can let a crop
+  bear before its original planned planting date. The bar includes that
+  harvest interval, and the planned planting date remains in the tooltip.
+  When a recorded date anchors recurring harvests, edit planned dates from
+  the planting plan. The calendar keeps the bar fixed in move mode.
+  Own-season edits keep
   the planting date within that season's period. The range is computed
   globally across every Fläche/Standort/Parzelle so all rows share the same
   columns and stay comparable, and gaps in the middle of the range are never
@@ -170,9 +187,8 @@ description), one level down:
   to the season's date range, including both its first and last day. An
   explicit ISO year further limits that range. A week crossing a season
   boundary contributes only its share on each side, including for plans
-  still awaiting a bed assignment. Carrying a perennial forward never creates
-  another harvest forecast. The active season's dates
-  also determine whether the chart draws a year-boundary marker.
+  still awaiting a bed assignment. The active season's dates also determine
+  whether the chart draws a year-boundary marker.
 - `farm.services.yield_calendar.compute_plan_expected_yield` calculates the
   plan's forecast in kilograms from the effective crop rate and unit. Use the
   plan's planted square metres for a per-m² rate and its canonical calculated
@@ -180,21 +196,31 @@ description), one level down:
   the same resolver as the planting-plans API. The generic plan quantity can
   also represent seeds, so it does not participate. Missing or invalid inputs
   yield calculation blockers.
-- The calendar distributes a plan's forecast by days in the half-open interval
-  from harvest start to harvest end. Each weekly contribution is the
-  difference between the cumulative values at its boundaries, rounded to
-  0.01 kg. The same weeks then have the same values in separate ISO-year
+- The calendar distributes a one-off plan's forecast by days in its half-open
+  stored harvest interval. For each configured perennial window it spreads
+  the same plan-scaled forecast over the inclusive dates of the full annual
+  window. A season receives only the share between the first-bearing
+  anniversary and clearing, bounded by the season dates. A calendar-year
+  boundary can split one window across seasons, or one season can contain
+  parts of two windows. If the February 29 fallback would place adjacent
+  windows on the same day, that day goes to the window starting on it.
+  Each weekly contribution is the difference between cumulative values at
+  its boundaries, rounded to 0.01 kg. The same weeks have the same values in separate ISO-year
   requests and in the season response. The optional `include_incomplete=true`
   response has `weeks` and `incomplete_plans`. It gives the yield overview the
-  scoped plan IDs and their calculation blockers. The default response is the
-  array of weeks.
+  scoped plan IDs and their calculation blockers. An unscheduled perennial
+  draft is incomplete in its planting season. A scheduled, nonbearing plan
+  contributes neither a forecast nor a blocker for that season. The default
+  response is the array of weeks.
 - **Compare seasons** in Yield overview reads `/yield-calendar/comparison/`.
-  Each crop's forecasts use the same half-open harvest windows and cumulative
+  Each crop's forecasts use the same projected periods and cumulative
   rounding as the calendar. Identical forecasts copied from the same source
   into the same target season contribute once. An edited bed, area or planned
   date can give a copy a separate forecast. Harvests and losses follow the
   recorded event date, including events attributed to an older planting plan.
-  The plan's activity date comparisons stay in its planting season.
+  The plan's planting activity comparisons stay in its planting season.
+  For recurring plans, the season with the harvest shows the corresponding
+  harvest activity dates under the original plan ID.
 - Comparison totals include each harvest record once, across all of its
   allocations and any unassigned remainder. Gram and kilogram records share
   a mass total. Counts and weight estimates appear separately. Recorded
@@ -226,6 +252,27 @@ page first would drop its unsaved-changes guards. The id is written inside
 run before the hook's in the commit that mounts it.
 `e2e/planting-plans-season-scope.spec.ts` pins this by delaying the season
 endpoints on a first visit.
+
+### Local perennial harvest fixture
+
+On the matching local checkout, check the database target using the
+[local fixture handoff](work-execution-queue.md#local-test-data-handoff).
+From `backend/`, preview using an existing local user and the exact configured
+database name or SQLite path.
+
+```bash
+DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py \
+  seed_perennial_harvest_acceptance --username LOCAL_USER --database-name LOCAL_DATABASE
+```
+
+After checking the preview, repeat with `--apply`. In **Perennial harvest
+acceptance**, open Apple in 2025, 2026, 2027 and Sep 2028–Aug 2029. Its planned
+dates are empty in 2025 and 2026, September 1 through October 15 in 2027, and
+September 1 through September 10 in the last season. The original actual
+start is visible only in 2025. In 2027 compare the 40 kg forecast with the
+separate 3 kg dated harvest. Winter apple shows how a December–January window
+splits at a season boundary. Legacy rhubarb and Overwintering garlic retain
+their one-off schedules. Reapplying the command preserves manual edits.
 
 ## Year-boundary marker on season-spanning axes
 

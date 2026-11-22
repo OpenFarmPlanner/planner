@@ -435,6 +435,13 @@ export const getPlanOccupancyEndIso = (
 
 export type SeasonOccupancyStatus = 'only' | 'starts' | 'continues' | 'ends';
 
+export function hasEarlyRecordedOccupancy(plan: Pick<
+  PlantingPlan, 'carried_over' | 'planting_date' | 'seasonal_harvest'
+>): boolean {
+  const actualStart = plan.seasonal_harvest?.occupancy_start_date;
+  return Boolean(plan.carried_over && plan.planting_date && actualStart && actualStart < plan.planting_date);
+}
+
 export function getSeasonOccupancyStatus(
   plantingDate: string, endDate: string, season: { minDate: string; maxDate: string },
 ): SeasonOccupancyStatus | null {

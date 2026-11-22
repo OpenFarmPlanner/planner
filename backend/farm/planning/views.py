@@ -57,6 +57,10 @@ from farm.services.crop_inheritance import (
 )
 from farm.services.crop_rotation import RotationService, suggest_beds
 from farm.services.germination_check import check_germination
+from farm.services.seasonal_harvest import (
+    early_recorded_perennial_plan_ids,
+    recurring_harvest_schedule,
+)
 from farm.services.site_suitability import check_site_suitability
 from farm.services.tasks import (
     detach_plan_tasks,
@@ -183,6 +187,30 @@ def _capacity_interval(
     if perennial:
         return derived_end, None, True
     return end_date or derived_end, harvest_start, False
+
+
+_CAPACITY_CULTIVATION_TYPE = serializers.ChoiceField(
+    choices=PlantingPlan.CULTIVATION_TYPE_CHOICES, allow_blank=True, allow_null=True,
+)
+
+
+def _capacity_start(
+    draft: PlantingPlan, existing: PlantingPlan | None, crop_index: GeneralCropIndex | None,
+    *, cultivation_type: str | None,
+) -> date:
+    """Include the recorded start for the proposed cultivation type."""
+    cultivation_type = _CAPACITY_CULTIVATION_TYPE.run_validation(cultivation_type)
+    if existing is None or not (existing.actual_sowing_date or existing.actual_transplanting_date):
+        return draft.planting_date
+    if draft.crop_id is None:
+        draft.crop = existing.crop
+    draft.cultivation_type = (
+        existing.cultivation_type if cultivation_type is None else cultivation_type
+    )
+    draft.actual_sowing_date = existing.actual_sowing_date
+    draft.actual_transplanting_date = existing.actual_transplanting_date
+    schedule = recurring_harvest_schedule(draft, crop_index)
+    return schedule.occupied_from if schedule is not None else draft.planting_date
 
 
 def _succession_limit_payload(
@@ -397,6 +425,9 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
                     pk=season_id, project=self.request.active_project,
                 ).first()
         context['harvest_season'] = season
+        crop_index = getattr(self, '_harvest_crop_index', None)
+        if crop_index is not None:
+            context['_general_crop_index_by_project'] = {self.request.active_project.pk: crop_index}
         return context
 
     def get_queryset(self):
@@ -467,7 +498,14 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             planting_date__lt=active_season.start_date,
             occupied_until__gte=active_season.start_date,
         )
-        carried_over = starts_before & ~Q(season_id=season_id)
+        project_id = self.request.active_project.pk
+        candidates = PlantingPlan.objects.filter(
+            project_id=project_id, season__deleted_at__isnull=True,
+        ).exclude(season_id=season_id)
+        early_plans, self._harvest_crop_index = early_recorded_perennial_plan_ids(
+            candidates, project_id, active_season.start_date, active_season.end_date,
+        )
+        carried_over = (starts_before | Q(pk__in=early_plans)) & ~Q(season_id=season_id)
         if not across_seasons:
             queryset = queryset.filter(Q(season_id=season_id) | carried_over)
         return queryset.annotate(carried_over=Case(
@@ -527,7 +565,10 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         if params['exclude_plan_id'] is not None:
             existing_plan = PlantingPlan.objects.filter(
                 id=params['exclude_plan_id'], project=active_project,
-            ).only('crop_id', 'clearing_date').first()
+            ).only(
+                'crop_id', 'clearing_date', 'cultivation_type',
+                'actual_sowing_date', 'actual_transplanting_date',
+            ).first()
             if existing_plan is None:
                 return api_error_response(code='exclude_plan_not_found', detail='exclude_plan_id not found in active project.', status_code=status.HTTP_400_BAD_REQUEST)
 
@@ -538,8 +579,9 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
                 return api_error_response(code='crop_not_found', detail='Crop not found.', status_code=status.HTTP_404_NOT_FOUND)
         start_date = params['start_date']
         crop_index = build_general_crop_index(active_project.pk) if crop is not None else None
+        draft = PlantingPlan(crop=crop, planting_date=start_date)
         end_date, harvest_start, perennial = _capacity_interval(
-            PlantingPlan(crop=crop, planting_date=start_date), crop_index,
+            draft, crop_index,
             existing_plan=existing_plan, end_date=params['end_date'],
             clearing_date=params['clearing_date'],
         )
@@ -554,13 +596,17 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
                 )
             end_date = start_date
         harvest_start_date = None if perennial else params['harvest_start_date'] or harvest_start
+        occupancy_start = _capacity_start(
+            draft, existing_plan, crop_index,
+            cultivation_type=request.query_params.get('cultivation_type'),
+        )
 
         language_code = resolve_request_language(request)
         region = getattr(active_project, 'region', '') or ''
         rule = SuccessionRule.for_project(active_project)
         capacity = calculate_bed_capacity(
             bed,
-            start=start_date,
+            start=occupancy_start,
             end=end_date,
             harvest_start=harvest_start_date,
             exclude_plan_id=params['exclude_plan_id'],
@@ -574,7 +620,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         )
         harvest_overlaps = overlap_index.candidate_overlaps(
             bed,
-            start=start_date,
+            start=occupancy_start,
             harvest_start=harvest_start_date,
             end=end_date,
             area_sqm=params['area_sqm'],
@@ -592,7 +638,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             'harvest_start_date': harvest_start_date.isoformat() if harvest_start_date else None,
             'harvest_overlaps': [overlap.as_dict() for overlap in harvest_overlaps],
             'succession_limit': _succession_limit_payload(
-                capacity, rule, crop=crop, start=start_date, harvest_start=harvest_start_date,
+                capacity, rule, crop=crop, start=occupancy_start, harvest_start=harvest_start_date,
                 language_code=language_code, region=region,
             ),
         })
@@ -623,11 +669,18 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         if params['exclude_plan_id'] is not None:
             existing_plan = PlantingPlan.objects.filter(
                 pk=params['exclude_plan_id'], project=active_project,
-            ).only('crop_id', 'clearing_date').first()
+            ).only(
+                'crop_id', 'clearing_date', 'cultivation_type',
+                'actual_sowing_date', 'actual_transplanting_date',
+            ).first()
         draft = PlantingPlan(crop=crop, planting_date=params['planting_date'])
         params['end_date'], _, params['perennial'] = _capacity_interval(
             draft, service.general_crop_index, existing_plan=existing_plan,
             end_date=params['end_date'], clearing_date=params['clearing_date'],
+        )
+        params['occupancy_start'] = _capacity_start(
+            draft, existing_plan, service.general_crop_index,
+            cultivation_type=request.query_params.get('cultivation_type'),
         )
         if (
             params['perennial'] and params['clearing_date']
@@ -741,7 +794,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         candidate = service.occupancy(
             crop=crop,
             bed_id=params['bed_id'],
-            start=params['planting_date'],
+            start=params['occupancy_start'],
             end=params['end_date'],
             plan_id=params['exclude_plan_id'],
         )
@@ -784,6 +837,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             exclude_plan_id=params['exclude_plan_id'],
             needed_area_sqm=params['area_sqm'],
             firm_occupancy=params['perennial'],
+            occupancy_start=params['occupancy_start'],
         )
         return Response({
             'count': len(results),

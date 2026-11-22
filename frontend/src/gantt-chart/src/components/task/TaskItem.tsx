@@ -11,6 +11,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
   leftPx,
   widthPx,
   topPx,
+  phaseBands,
   isHovered,
   isDragging,
   editMode,
@@ -33,15 +34,16 @@ const TaskItem: React.FC<TaskItemProps> = ({
   onContextMenu,
   onProgressUpdate,
 }) => {
-  // Show resize handles only when hovered or dragging, in edit mode, AND resizing is allowed
+  const canChangePosition = editMode && !task.readOnly && !task.positionLocked;
+  // Show resize handles only while hovering or dragging a movable task.
   const showResizeHandles =
-    (isHovered || isDragging) && editMode && !task.readOnly && allowTaskResize;
+    (isHovered || isDragging) && canChangePosition && allowTaskResize;
 
   // Progress editing requires: editMode=true, showProgress=true, AND allowProgressEdit=true
   const canEditProgress = editMode && !task.readOnly && showProgress && allowProgressEdit;
 
   // Task movement requires: editMode=true AND allowTaskMove=true
-  const canMoveTask = editMode && !task.readOnly && allowTaskMove;
+  const canMoveTask = canChangePosition && allowTaskMove;
   const taskRef = useRef<HTMLDivElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const [isDraggingProgress, setIsDraggingProgress] = useState(false);
@@ -227,8 +229,9 @@ const TaskItem: React.FC<TaskItemProps> = ({
   // Inline styles based on received task colors. CSS enforces a 20px
   // min-width on .rmg-task-item so very short tasks stay clickable/visible
   // without distorting the actual date range in the data.
-  const taskStyles: React.CSSProperties = {
+  const taskStyles: React.CSSProperties & { "--rmg-task-left"?: string } = {
     left: `${leftPx}px`,
+    "--rmg-task-left": phaseBands ? `${leftPx}px` : undefined,
     top: `${topPx}px`,
     width: `${widthPx}px`,
     backgroundColor,
@@ -304,6 +307,15 @@ const TaskItem: React.FC<TaskItemProps> = ({
           data-rmg-component="faded-tail"
         />
       )}
+      {phaseBands?.map(({ timelineLeft, width, color }) => (
+        <span
+          key={timelineLeft}
+          aria-hidden="true"
+          className="rmg-task-phase-band"
+          data-rmg-component="task-phase-band"
+          style={{ left: `calc(${timelineLeft}px - var(--rmg-task-left))`, width, backgroundColor: color }}
+        />
+      ))}
 
       {task.leadingIcon ? (
         <div className="rmg-task-item-label">

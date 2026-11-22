@@ -59,8 +59,8 @@
     "areaInputTitle": "Vom Anbauplan belegte Fläche",
     "areaInputDescription": "Die Fläche des Beets, die durch diesen Anbauplan beansprucht wird. Änderungen an Fläche oder Pflanzenanzahl aktualisieren automatisch den jeweils anderen Wert. Leer oder „max“ verwendet die maximal verfügbare Restfläche.",
     "plantsFromSpacing": "Pflanzenanzahl: Mit genutzter Fläche gekoppelt. Änderungen aktualisieren automatisch den anderen Wert.",
-    "calculatedHarvestStartDate": "Wird automatisch aus Pflanztermin und Wachstumszeit der Kultur berechnet.",
-    "calculatedHarvestEndDate": "Wird automatisch aus Erntebeginn und Erntezeit der Kultur berechnet.",
+    "calculatedHarvestStartDate": "Wird automatisch aus Pflanztermin und Wachstumszeit der Kultur berechnet. Bei mehrjährigen Kulturen mit Erntefenster gelten die Termine der gewählten Saison.",
+    "calculatedHarvestEndDate": "Wird automatisch aus Erntebeginn und Erntezeit der Kultur berechnet. Bei mehrjährigen Kulturen mit Erntefenster gelten die Termine der gewählten Saison.",
     "missingGrowthDuration": "Nicht berechenbar, da für diese Kultur keine Wachstumszeit hinterlegt ist.",
     "missingHarvestDuration": "Nicht berechenbar, da für diese Kultur keine Erntezeit hinterlegt ist.",
     "missingGrowthAndHarvestDuration": "Nicht berechenbar, da für diese Kultur weder eine Wachstumszeit noch eine Erntezeit hinterlegt ist.",
@@ -529,6 +529,7 @@
   "carriedOver": {
     "description": "Läuft weiter aus Saison {{season}}. Hier nur lesbar.",
     "unknownDescription": "Anbauplan aus einem früheren Zeitraum. Hier nur lesbar.",
+    "otherSeasonDescription": "Anbauplan aus Saison {{season}}. Hier nur lesbar.",
     "openOrigin": "In ursprünglicher Saison öffnen",
     "count_one": "{{own}} in dieser Saison gepflanzt · {{count}} läuft weiter",
     "count_other": "{{own}} in dieser Saison gepflanzt · {{count}} laufen weiter"

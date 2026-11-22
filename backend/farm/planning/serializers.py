@@ -33,6 +33,11 @@ from farm.services.demo_project import find_demo_crop_species, is_demo_project_d
 from farm.services.germination_check import check_germination
 from farm.services.harvests import HarvestTotals, plan_harvest_totals
 from farm.services.plant_count import compute_plan_plant_count
+from farm.services.seasonal_harvest import (
+    SeasonalHarvestPayload,
+    recurring_harvest_schedule,
+    seasonal_harvest_payload,
+)
 from farm.services.site_suitability import check_site_suitability
 from farm.services.tasks import plan_cultivation_type
 from farm.services.timing_window_check import TimingWindowChecker
@@ -61,6 +66,9 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
     bed_name = serializers.SerializerMethodField(read_only=True)
     harvest_date = serializers.SerializerMethodField(read_only=True)
     harvest_end_date = serializers.SerializerMethodField(read_only=True)
+    seasonal_harvest = serializers.SerializerMethodField(
+        help_text='Selected-season periods and recorded dates for a recurring perennial harvest.',
+    )
     plants_count = serializers.SerializerMethodField(read_only=True)
     note_attachment_count = serializers.IntegerField(read_only=True)
     occupancy_end_date = serializers.DateField(read_only=True)
@@ -299,6 +307,16 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
 
     def get_harvest_end_date(self, obj: PlantingPlan) -> date | None:
         return self._planned_harvest_dates(obj)[1]
+
+    def get_seasonal_harvest(self, obj: PlantingPlan) -> SeasonalHarvestPayload | None:
+        season: Season | None = self.context.get('harvest_season')
+        if season is None:
+            return None
+        schedule = recurring_harvest_schedule(obj, self._general_crop_index(obj))
+        if schedule is None:
+            return None
+
+        return seasonal_harvest_payload(obj, season, schedule)
 
     def get_carried_over(self, obj: PlantingPlan) -> bool:
         return getattr(obj, 'carried_over', False)

@@ -57,6 +57,9 @@
       "harvest": "Fase di raccolta",
       "occupancy": "Occupazione dell’aiuola"
     },
+    "seasonalHarvest": "Raccolto previsto per la stagione",
+    "noSeasonalHarvest": "Per questa stagione non è previsto alcun raccolto.",
+    "recordedPlantingEdit": "La semina o la messa a dimora è registrata. Modifica le date previste nel piano di coltivazione.",
     "actualHarvestEnd": "La raccolta termina al più tardi",
     "clearingDate": "Data di fine coltivazione"
   },

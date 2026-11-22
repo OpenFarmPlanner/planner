@@ -12,7 +12,16 @@ from django.test import TestCase, override_settings
 
 from crops.models import CropSpecies
 from farm.history.project_restore import CHECKPOINT_KEY
-from farm.models import Crop, CropCompanion, PlantingPlan, Project, ProjectMembership, PublicCrop
+from farm.models import (
+    Crop,
+    CropCompanion,
+    HarvestAllocation,
+    PlantingPlan,
+    Project,
+    ProjectMembership,
+    PublicCrop,
+)
+from farm.services.seasonal_harvest import recurring_harvest_schedule
 
 
 @override_settings(DJANGO_ENV="development")
@@ -43,6 +52,45 @@ class LocalLibraryImportSeedTests(TestCase):
 
     def seed(self, **options):
         call_command("seed_library_import_acceptance", **{**self.arguments, **options})
+
+    def test_perennial_harvest_fixture_previews_and_preserves_manual_edits(self):
+        command = 'seed_perennial_harvest_acceptance'
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        projects = Project.objects.filter(slug=f'ofp-local-perennial-harvest-{self.user.pk}')
+        call_command(command, **arguments)
+        self.assertFalse(projects.exists())
+        with self.assertRaisesMessage(CommandError, 'does not match'):
+            call_command(command, **{**arguments, 'database_name': 'wrong-target'}, apply=True)
+        self.assertFalse(projects.exists())
+
+        call_command(command, **arguments, apply=True)
+        project = projects.get()
+        self.assertTrue(ProjectMembership.objects.filter(
+            project=project, user=self.user, role='admin',
+        ).exists())
+        self.assertEqual(project.seasons.count(), 5)
+        apple = project.planting_plans.get(crop__name='Apple')
+        schedule = recurring_harvest_schedule(apple)
+        self.assertEqual(schedule.project(date(2025, 1, 1), date(2026, 12, 31)), [])
+        first, = schedule.project(date(2027, 1, 1), date(2027, 12, 31))
+        self.assertEqual((first.start_date, first.end_date), (date(2027, 9, 1), date(2027, 10, 15)))
+        last, = schedule.project(date(2028, 9, 1), date(2029, 8, 31))
+        self.assertEqual(last.end_date, date(2028, 9, 10))
+        self.assertEqual(apple.actual_harvest_start_date, date(2025, 10, 3))
+        self.assertEqual(HarvestAllocation.objects.get(planting_plan=apple).quantity, 3)
+        garlic = project.planting_plans.get(crop__name='Overwintering garlic')
+        self.assertGreater(garlic.harvest_date, garlic.season.end_date)
+        self.assertIsNone(recurring_harvest_schedule(garlic))
+        rhubarb = project.planting_plans.get(crop__name='Legacy rhubarb')
+        self.assertIsNone(recurring_harvest_schedule(rhubarb))
+
+        apple.notes = 'Keep this manual edit'
+        apple.save(update_fields=['notes'])
+        call_command(command, **arguments, apply=True)
+        apple.refresh_from_db()
+        self.assertEqual(apple.notes, 'Keep this manual edit')
+        self.assertEqual(project.planting_plans.count(), 4)
+        self.assertEqual(HarvestAllocation.objects.filter(planting_plan=apple).count(), 1)
 
     def test_season_creation_fixture_previews_and_preserves_manual_edits(self):
         command = 'seed_season_creation_dates_acceptance'

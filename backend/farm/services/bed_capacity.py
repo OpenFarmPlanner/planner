@@ -32,9 +32,14 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 
 from farm.models import Bed, Crop, PlantingPlan, Project
+from farm.services.crop_inheritance import GeneralCropIndex, build_general_crop_index
+from farm.services.seasonal_harvest import (
+    early_recorded_planting_candidates,
+    recurring_harvest_schedule,
+)
 
 ZERO_AREA = Decimal('0.00')
 DEFAULT_SUCCESSION_MIN_DAYS = 14
@@ -204,20 +209,35 @@ def _plans_with_period() -> QuerySet[PlantingPlan]:
     return PlantingPlan.objects.annotate(occupied_until=PlantingPlan.occupancy_end_expression())
 
 
-def occupying_plans_in_period(
+def _occupancy_candidates_in_period(
     *,
     bed_ids: Iterable[int],
     start: date,
     end: date,
     exclude_plan_id: int | None = None,
 ) -> QuerySet[PlantingPlan]:
-    """Plans on ``bed_ids`` whose occupied period overlaps ``[start, end]``."""
+    """Plans whose planned or recorded start could overlap the checked period."""
     plans = _plans_with_period().filter(
-        bed_id__in=list(bed_ids), planting_date__lte=end, occupied_until__gte=start,
+        bed_id__in=list(bed_ids), occupied_until__gte=start,
+    ).filter(
+        Q(planting_date__lte=end) | early_recorded_planting_candidates(start, end),
     )
     if exclude_plan_id is not None:
         plans = plans.exclude(pk=exclude_plan_id)
     return plans
+
+
+def _occupancy_start(plan: PlantingPlan, crop_indexes: dict[int, GeneralCropIndex]) -> date:
+    planted = plan.planting_date
+    if not any(
+        actual and actual < planted
+        for actual in (plan.actual_sowing_date, plan.actual_transplanting_date)
+    ):
+        return planted
+    if plan.project_id not in crop_indexes:
+        crop_indexes[plan.project_id] = build_general_crop_index(plan.project_id)
+    schedule = recurring_harvest_schedule(plan, crop_indexes[plan.project_id])
+    return schedule.occupied_from if schedule is not None else planted
 
 
 def calculate_bed_capacities(
@@ -242,22 +262,26 @@ def calculate_bed_capacities(
         rule = SuccessionRule.for_project_id(beds[0].project_id) if beds else SuccessionRule()
     firm_end = rule.firm_end(start, harvest_start, end)
     occupying: dict[int, list[BedOccupancy]] = defaultdict(list)
-    rows = occupying_plans_in_period(
+    crop_indexes: dict[int, GeneralCropIndex] = {}
+    plans = _occupancy_candidates_in_period(
         bed_ids=[bed.pk for bed in beds], start=start, end=firm_end,
         exclude_plan_id=exclude_plan_id,
-    ).values_list(
-        'bed_id', 'pk', 'crop_id', 'area_usage_sqm', 'planting_date', 'harvest_date',
-        'clearing_date', 'occupied_until',
+    ).select_related('crop').only(
+        'bed', 'project', 'crop', 'area_usage_sqm', 'planting_date', 'harvest_date',
+        'harvest_end_date', 'clearing_date', 'cultivation_type',
+        'actual_sowing_date', 'actual_transplanting_date', 'crop__project', 'crop__crop_species',
+        'crop__variety', 'crop__life_cycle', 'crop__annual_harvest_window',
+        'crop__first_harvest_delay_years', 'crop__cultivation_type', 'crop__cultivation_types',
     )
-    for row in rows:
-        bed_id, plan_id, crop_id, area, planted, plan_harvest, clearing_date, occupied_until = row
+    for plan in plans:
         occupancy = build_occupancy(
-            rule=rule, start=planted, harvest_start=None if clearing_date else plan_harvest,
-            end=occupied_until,
-            area_sqm=area, plan_id=plan_id, crop_id=crop_id,
+            rule=rule, start=_occupancy_start(plan, crop_indexes),
+            harvest_start=None if plan.clearing_date else plan.harvest_date,
+            end=plan.occupied_until, area_sqm=plan.area_usage_sqm,
+            plan_id=plan.pk, crop_id=plan.crop_id,
         )
         if occupancy.firmly_overlaps(start, firm_end):
-            occupying[bed_id].append(occupancy)
+            occupying[plan.bed_id].append(occupancy)
     return {
         bed.pk: BedCapacity(
             bed_id=bed.pk,
@@ -413,11 +437,12 @@ class HarvestOverlapIndex:
             if self._bed_ids is not None:
                 plans = plans.filter(bed_id__in=self._bed_ids)
             by_bed: dict[int, list[BedOccupancy]] = defaultdict(list)
+            crop_indexes: dict[int, GeneralCropIndex] = {}
             for plan in plans:
                 self._bed_areas[plan.bed_id] = plan.bed.area_sqm
                 by_bed[plan.bed_id].append(build_occupancy(
                     rule=self.rule,
-                    start=plan.planting_date,
+                    start=_occupancy_start(plan, crop_indexes),
                     harvest_start=None if plan.clearing_date else plan.harvest_date,
                     end=plan.occupied_until,
                     area_sqm=plan.area_usage_sqm,

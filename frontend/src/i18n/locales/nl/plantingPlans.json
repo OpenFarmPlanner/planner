@@ -59,8 +59,8 @@
     "areaInputTitle": "Oppervlakte die deze teelt inneemt",
     "areaInputDescription": "De oppervlakte van het bed die deze teelt inneemt. Wijzigingen in de oppervlakte of het aantal planten werken de andere waarde automatisch bij. Leeg of ‘max’ gebruikt de maximaal beschikbare resterende oppervlakte.",
     "plantsFromSpacing": "Aantal planten: gekoppeld aan de gebruikte oppervlakte. Wijzigingen werken de andere waarde automatisch bij.",
-    "calculatedHarvestStartDate": "Automatisch berekend uit de plantdatum en de groeiduur van het gewas.",
-    "calculatedHarvestEndDate": "Automatisch berekend uit het begin van de oogst en de oogstduur van het gewas.",
+    "calculatedHarvestStartDate": "Automatisch berekend uit de plantdatum en de groeiduur van het gewas. Bij meerjarige gewassen met een oogstperiode staan hier de datums voor het gekozen seizoen.",
+    "calculatedHarvestEndDate": "Automatisch berekend uit het begin van de oogst en de oogstduur van het gewas. Bij meerjarige gewassen met een oogstperiode staan hier de datums voor het gekozen seizoen.",
     "missingGrowthDuration": "Kan niet worden berekend omdat dit gewas geen groeiduur heeft.",
     "missingHarvestDuration": "Kan niet worden berekend omdat dit gewas geen oogstduur heeft.",
     "missingGrowthAndHarvestDuration": "Kan niet worden berekend omdat dit gewas geen groei- of oogstduur heeft.",
@@ -529,6 +529,7 @@
   "carriedOver": {
     "description": "Loopt door vanuit seizoen {{season}}. Hier alleen-lezen.",
     "unknownDescription": "Eerder begonnen teelt. Hier alleen-lezen.",
+    "otherSeasonDescription": "Teeltplan uit seizoen {{season}}. Hier alleen-lezen.",
     "openOrigin": "Openen in het oorspronkelijke seizoen",
     "count_one": "{{own}} gestart in dit seizoen · {{count}} loopt door",
     "count_other": "{{own}} gestart in dit seizoen · {{count}} lopen door"

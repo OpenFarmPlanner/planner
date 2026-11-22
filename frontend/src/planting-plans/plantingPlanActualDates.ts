@@ -22,11 +22,32 @@ export interface PlantingPlanDateComparison {
   activity: PlantingPlanActivity;
   planned: string | null;
   actual: string | null;
+  plannedDates?: string[];
 }
 
 type ActivityDatePlan = PlantingPlanActualDates & Pick<PlantingPlan,
   'cultivation_type' | 'crop_cultivation_type' | 'crop_cultivation_types' | 'crop_propagation_duration_days'
-  | 'planting_date' | 'planned_sowing_date' | 'planned_propagation_start_date' | 'harvest_date' | 'harvest_end_date'>;
+  | 'planting_date' | 'planned_sowing_date' | 'planned_propagation_start_date'
+  | 'harvest_date' | 'harvest_end_date' | 'seasonal_harvest'>;
+
+function harvestComparison(plan: ActivityDatePlan, activity: 'harvestStart' | 'harvestEnd'): PlantingPlanDateComparison {
+  const isStart = activity === 'harvestStart';
+  const harvest = plan.seasonal_harvest;
+  if (harvest) {
+    const plannedDates = harvest.periods.map(period => isStart ? period.start_date : period.end_date);
+    return {
+      activity,
+      planned: plannedDates[0] ?? null,
+      plannedDates,
+      actual: isStart ? harvest.actual_start_date : harvest.actual_end_date,
+    };
+  }
+  return {
+    activity,
+    planned: toIsoDateString(isStart ? plan.harvest_date : plan.harvest_end_date),
+    actual: plan[ACTUAL_DATE_FIELDS[activity]] ?? null,
+  };
+}
 
 export function getPlanActivityDates(plan: ActivityDatePlan, crop?: Crop): PlantingPlanDateComparison[] {
   const schedule = getPlanSowingSchedule(plan, crop);
@@ -36,15 +57,17 @@ export function getPlanActivityDates(plan: ActivityDatePlan, crop?: Crop): Plant
     sowing: propagation.isPreCultivation ? plan.planned_sowing_date : schedule?.sowingDate,
     transplanting: propagation.isPreCultivation || propagation.isPurchasedTransplant
       ? plan.planting_date : null,
-    harvestStart: plan.harvest_date,
-    harvestEnd: plan.harvest_end_date,
   };
 
-  return (Object.keys(ACTUAL_DATE_FIELDS) as PlantingPlanActivity[]).map(activity => ({
-    activity,
-    planned: toIsoDateString(planned[activity]),
-    actual: plan[ACTUAL_DATE_FIELDS[activity]] ?? null,
-  }));
+  return (Object.keys(ACTUAL_DATE_FIELDS) as PlantingPlanActivity[]).map(activity => (
+    activity === 'harvestStart' || activity === 'harvestEnd'
+      ? harvestComparison(plan, activity)
+      : {
+        activity,
+        planned: toIsoDateString(planned[activity]),
+        actual: plan[ACTUAL_DATE_FIELDS[activity]] ?? null,
+      }
+  ));
 }
 
 export function getPlanColumnDates(
@@ -53,10 +76,10 @@ export function getPlanColumnDates(
   crop?: Crop,
 ): PlantingPlanDateComparison {
   if (field === 'harvest_date') {
-    return { activity: 'harvestStart', planned: toIsoDateString(plan.harvest_date), actual: plan.actual_harvest_start_date ?? null };
+    return harvestComparison(plan, 'harvestStart');
   }
   if (field === 'harvest_end_date') {
-    return { activity: 'harvestEnd', planned: toIsoDateString(plan.harvest_end_date), actual: plan.recorded_harvest_end_date ?? null };
+    return harvestComparison(plan, 'harvestEnd');
   }
 
   const propagation = getPlanPropagationInfo(plan, crop);
@@ -79,7 +102,16 @@ export function displayedPlanDate(dates: PlantingPlanDateComparison, mode: Plant
   return dates.actual ?? dates.planned;
 }
 
+export function displayedPlanDates(dates: PlantingPlanDateComparison, mode: PlantingPlanDateMode): string[] {
+  if (dates.plannedDates && (mode === 'planned' || (mode === 'combined' && !dates.actual))) {
+    return dates.plannedDates;
+  }
+  const date = displayedPlanDate(dates, mode);
+  return date ? [date] : [];
+}
+
 export function planDateDeviation(dates: PlantingPlanDateComparison): number | null {
+  if ((dates.plannedDates?.length ?? 0) > 1) return null;
   const plan = parseIsoDate(dates.planned);
   const actual = parseIsoDate(dates.actual);
   return plan && actual ? (actual.getTime() - plan.getTime()) / 86_400_000 : null;

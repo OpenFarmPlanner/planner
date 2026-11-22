@@ -60,8 +60,8 @@
     "areaInputTitle": "Surface occupée par cette série",
     "areaInputDescription": "La surface de la planche occupée par cette série. Toute modification de la surface ou du nombre de plants met automatiquement à jour l'autre valeur. Vide ou « max » utilise la surface restante maximale disponible.",
     "plantsFromSpacing": "Nombre de plants : lié à la surface occupée. Toute modification met automatiquement à jour l'autre valeur.",
-    "calculatedHarvestStartDate": "Calculé automatiquement à partir de la date de plantation et de la durée de culture.",
-    "calculatedHarvestEndDate": "Calculé automatiquement à partir du début de récolte et de la durée de récolte de la culture.",
+    "calculatedHarvestStartDate": "Calculé automatiquement à partir de la date de plantation et de la durée de culture. Pour les cultures vivaces avec une période de récolte, les dates correspondent à la saison sélectionnée.",
+    "calculatedHarvestEndDate": "Calculé automatiquement à partir du début de récolte et de la durée de récolte de la culture. Pour les cultures vivaces avec une période de récolte, les dates correspondent à la saison sélectionnée.",
     "missingGrowthDuration": "Calcul impossible, car aucune durée de culture n'est indiquée pour cette culture.",
     "missingHarvestDuration": "Calcul impossible, car aucune durée de récolte n'est indiquée pour cette culture.",
     "missingGrowthAndHarvestDuration": "Calcul impossible, car ni la durée de culture ni la durée de récolte ne sont indiquées pour cette culture.",
@@ -543,6 +543,7 @@
   "carriedOver": {
     "description": "Se poursuit depuis la saison {{season}}. Lecture seule ici.",
     "unknownDescription": "Série commencée précédemment. Lecture seule ici.",
+    "otherSeasonDescription": "Plan de culture de la saison {{season}}. Lecture seule ici.",
     "openOrigin": "Ouvrir dans la saison d’origine",
     "count_one": "{{own}} démarrées cette saison · {{count}} se poursuit",
     "count_other": "{{own}} démarrées cette saison · {{count}} se poursuivent",

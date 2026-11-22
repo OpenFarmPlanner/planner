@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { PlantingPlan } from '../api/types';
-import { displayedPlanDate, getPlanActivityDates, getPlanColumnDates, planDateDeviation } from '../planting-plans/plantingPlanActualDates';
+import {
+  displayedPlanDate, displayedPlanDates, getPlanActivityDates, getPlanColumnDates, planDateDeviation,
+} from '../planting-plans/plantingPlanActualDates';
 
 const plan: PlantingPlan = {
   crop: 1, bed: 2, planting_date: '2026-04-04', harvest_date: '2026-05-04',
@@ -37,6 +39,42 @@ describe('planting-plan dates', () => {
     expect(harvestEnd).toEqual({ activity: 'harvestEnd', planned: '2026-05-14', actual: null });
     expect(getPlanColumnDates({ ...plan, recorded_harvest_end_date: '2026-05-16' }, 'harvest_end_date').actual)
       .toBe('2026-05-16');
+  });
+
+  it('uses each clipped perennial period and only the season’s own actual dates', () => {
+    const recurring = {
+      ...plan,
+      actual_harvest_start_date: '2026-05-04',
+      recorded_harvest_end_date: '2026-05-12',
+      seasonal_harvest: {
+        periods: [
+          { start_date: '2027-01-01', end_date: '2027-01-10' },
+          { start_date: '2027-12-20', end_date: '2027-12-31' },
+        ],
+        actual_start_date: '2027-01-03',
+        actual_end_date: null,
+      },
+    };
+    const start = getPlanColumnDates(recurring, 'harvest_date');
+    const end = getPlanColumnDates(recurring, 'harvest_end_date');
+    expect(displayedPlanDates(start, 'planned')).toEqual(['2027-01-01', '2027-12-20']);
+    expect(displayedPlanDates(start, 'actual')).toEqual(['2027-01-03']);
+    expect(displayedPlanDates(start, 'combined')).toEqual(['2027-01-03']);
+    expect(displayedPlanDates(end, 'combined')).toEqual(['2027-01-10', '2027-12-31']);
+    expect(displayedPlanDates(end, 'actual')).toEqual([]);
+    expect(planDateDeviation(start)).toBeNull();
+    expect(getPlanColumnDates(recurring, 'planting_date')).toEqual(getPlanColumnDates(plan, 'planting_date'));
+  });
+
+  it('shows no harvest dates for a nonbearing season and preserves one-off plans', () => {
+    const nonbearing = {
+      ...plan,
+      seasonal_harvest: { periods: [], actual_start_date: null, actual_end_date: null },
+    };
+    expect(displayedPlanDates(getPlanColumnDates(nonbearing, 'harvest_date'), 'combined')).toEqual([]);
+    expect(displayedPlanDates(getPlanColumnDates(nonbearing, 'harvest_end_date'), 'planned')).toEqual([]);
+    expect(displayedPlanDates(getPlanColumnDates({ ...plan, seasonal_harvest: null }, 'harvest_date'), 'combined'))
+      .toEqual(['2026-05-04']);
   });
 
   it('displays copied supplemental activities and leaves their new actual dates empty', () => {

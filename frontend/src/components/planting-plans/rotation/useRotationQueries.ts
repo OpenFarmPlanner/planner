@@ -120,6 +120,7 @@ export interface RotationInput {
   /** ISO date (YYYY-MM-DD) or null while the field is empty/invalid. */
   plantingDate: string | null;
   planId: number | null;
+  cultivationType?: RotationQueryParams['cultivation_type'];
   /**
    * ISO date the plan stops occupying the bed. Without it the backend derives
    * the end from the crop's timing, like a saved plan would.
@@ -134,6 +135,7 @@ const buildBaseParams = (
   plantingDate: string | null,
   planId: number | null,
   endDate: string | null | undefined,
+  cultivationType: RotationInput['cultivationType'],
 ): RotationQueryParams | null => {
   if (!cropId || !plantingDate) {
     return null;
@@ -143,15 +145,16 @@ const buildBaseParams = (
     planting_date: plantingDate,
     ...(endDate ? { end_date: endDate } : {}),
     ...(planId ? { exclude_plan_id: planId } : {}),
+    ...(planId && cultivationType !== undefined ? { cultivation_type: cultivationType } : {}),
   };
 };
 
 export function useRotationCheck(input: RotationInput): RotationQueryResult<RotationCheckResponse> {
-  const { cropId, bedId, plantingDate, planId, endDate } = input;
+  const { cropId, bedId, plantingDate, planId, endDate, cultivationType } = input;
   const request = useMemo(() => {
-    const base = buildBaseParams(cropId, plantingDate, planId, endDate);
+    const base = buildBaseParams(cropId, plantingDate, planId, endDate, cultivationType);
     return base && bedId ? { ...base, bed_id: bedId } : null;
-  }, [bedId, cropId, endDate, planId, plantingDate]);
+  }, [bedId, cropId, cultivationType, endDate, planId, plantingDate]);
   return useDebouncedRotationQuery(request, fetchRotationCheck);
 }
 
@@ -169,11 +172,11 @@ export function useBedSuggestions(
   input: RotationInput,
   enabled: boolean,
 ): RotationQueryResult<BedSuggestionsResponse> {
-  const { cropId, plantingDate, planId, endDate, areaSqm } = input;
+  const { cropId, plantingDate, planId, endDate, areaSqm, cultivationType } = input;
   const request = useMemo(() => {
-    const base = enabled ? buildBaseParams(cropId, plantingDate, planId, endDate) : null;
+    const base = enabled ? buildBaseParams(cropId, plantingDate, planId, endDate, cultivationType) : null;
     return base && areaSqm && areaSqm > 0 ? { ...base, area_sqm: areaSqm } : base;
-  }, [areaSqm, cropId, enabled, endDate, planId, plantingDate]);
+  }, [areaSqm, cropId, cultivationType, enabled, endDate, planId, plantingDate]);
   return useDebouncedRotationQuery(request, fetchBedSuggestions);
 }
 
@@ -183,7 +186,7 @@ export function useBedSuggestions(
  * date and an area; the backend derives the harvest phase from the crop.
  */
 export function useHarvestOverlapCheck(input: RotationInput): RotationQueryResult<RemainingAreaResponse> {
-  const { cropId, bedId, plantingDate, planId, areaSqm } = input;
+  const { cropId, bedId, plantingDate, planId, areaSqm, cultivationType } = input;
   const request = useMemo(() => {
     if (!cropId || !bedId || !plantingDate || !areaSqm || areaSqm <= 0) {
       return null;
@@ -194,7 +197,8 @@ export function useHarvestOverlapCheck(input: RotationInput): RotationQueryResul
       crop_id: cropId,
       area_sqm: areaSqm,
       ...(planId ? { exclude_plan_id: planId } : {}),
+    ...(planId && cultivationType !== undefined ? { cultivation_type: cultivationType } : {}),
     };
-  }, [areaSqm, bedId, cropId, planId, plantingDate]);
+  }, [areaSqm, bedId, cropId, cultivationType, planId, plantingDate]);
   return useDebouncedRotationQuery(request, fetchRemainingArea);
 }

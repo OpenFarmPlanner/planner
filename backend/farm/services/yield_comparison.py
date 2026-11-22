@@ -29,10 +29,17 @@ from farm.services.harvests import (
     harvest_number,
     measured_weight_kg,
 )
+from farm.services.seasonal_harvest import (
+    RecurringHarvestSchedule,
+    recurring_harvest_schedule,
+    recurring_plan_visible_in_season,
+    seasonal_harvest_payload,
+)
 from farm.services.yield_calendar import (
     compute_plan_expected_yield,
     distinct_forecast_plans,
-    forecast_yield_in_period,
+    forecast_yield_for_projection,
+    legacy_harvest_projection,
 )
 
 _ACTIVITY_DATE_FIELDS = (
@@ -79,10 +86,15 @@ def _season_on(rows: list[SeasonYield], starts: list[date], day: date) -> Season
 def _forecast_for_plan(
     plan: PlantingPlan, rows: list[SeasonYield], starts: list[date],
     by_id: dict[int, SeasonYield], crop_index: GeneralCropIndex,
+    schedule: RecurringHarvestSchedule | None,
 ) -> None:
+    if schedule is not None and plan.planting_date is not None:
+        _forecast_recurring_plan(plan, schedule, rows, crop_index)
+        return
+
     start, end = plan.harvest_date, plan.harvest_end_date
     original = by_id.get(plan.season_id)
-    if start is None or end is None or end <= start:
+    if schedule is not None or start is None or end is None or end <= start:
         if original is not None:
             original.forecast[plan.pk] = None
         diagnostic = start or end or plan.planting_date
@@ -98,12 +110,34 @@ def _forecast_for_plan(
         season = row.season
         if season.end_date < start or not _plan_visible_in_season(plan, season):
             continue
-        limit = season.end_date + timedelta(days=1) if season.end_date < date.max else end
+        projections = legacy_harvest_projection(plan, season.start_date, season.end_date)
+        if not projections:
+            continue
         portion = (
-            forecast_yield_in_period(expected, start, end, season.start_date, limit)
+            forecast_yield_for_projection(expected, projections[0])
             if expected is not None else None
         )
         row.forecast[plan.pk] = portion
+
+
+def _forecast_recurring_plan(
+    plan: PlantingPlan, schedule: RecurringHarvestSchedule, rows: list[SeasonYield],
+    crop_index: GeneralCropIndex,
+) -> None:
+    expected = compute_plan_expected_yield(plan, crop_index).kilograms
+    for row in rows:
+        season = row.season
+        if not recurring_plan_visible_in_season(plan, season, schedule):
+            continue
+        projections = schedule.project(season.start_date, season.end_date)
+        if projections:
+            row.forecast[plan.pk] = (
+                sum(
+                    (forecast_yield_for_projection(expected, part) for part in projections),
+                    Decimal(0),
+                )
+                if expected is not None else None
+            )
 
 
 def _plan_visible_in_season(plan: PlantingPlan, season: Season) -> bool:
@@ -111,6 +145,36 @@ def _plan_visible_in_season(plan: PlantingPlan, season: Season) -> bool:
         plan.planting_date is not None
         and plan.planting_date < season.start_date <= plan.occupancy_end_date
     )
+
+
+def _activity_dates(plan: PlantingPlan, *, original: bool) -> dict:
+    return {
+        'id': plan.pk, 'bed_name': plan.bed.name if plan.bed_id else '',
+        'cultivation_type': plan.cultivation_type,
+        **{name: getattr(plan, name) if original else None for name in _ACTIVITY_DATE_FIELDS},
+    }
+
+
+def _record_activity_dates(
+    plan: PlantingPlan, rows: list[SeasonYield], by_id: dict[int, SeasonYield],
+    crop_index: GeneralCropIndex,
+) -> None:
+    schedule = recurring_harvest_schedule(plan, crop_index)
+    origin = by_id.get(plan.season_id)
+    if schedule is None:
+        if origin is not None:
+            origin.plan_dates.append(_activity_dates(plan, original=True))
+        return
+
+    for row in rows:
+        if not recurring_plan_visible_in_season(plan, row.season, schedule):
+            continue
+        harvest = seasonal_harvest_payload(plan, row.season, schedule)
+        has_actual = harvest['actual_start_date'] or harvest['actual_end_date']
+        if row is origin or harvest['periods'] or has_actual:
+            row.plan_dates.append({
+                **_activity_dates(plan, original=row is origin), 'seasonal_harvest': harvest,
+            })
 
 
 def _record_harvest(
@@ -206,16 +270,10 @@ def build_yield_comparison(project: Project, crop: Crop) -> dict:
             Q(season__project=project, season__deleted_at__isnull=True) | Q(season__isnull=True),
         ).select_related('bed', 'crop').order_by('pk')
     }
-    for plan in distinct_forecast_plans(plans.values()):
-        _forecast_for_plan(plan, rows, starts, by_id, crop_index)
+    for plan, schedule in distinct_forecast_plans(plans.values(), crop_index):
+        _forecast_for_plan(plan, rows, starts, by_id, crop_index, schedule)
     for plan in plans.values():
-        original = by_id.get(plan.season_id)
-        if original is not None:
-            original.plan_dates.append({
-                'id': plan.pk, 'bed_name': plan.bed.name if plan.bed_id else '',
-                'cultivation_type': plan.cultivation_type,
-                **{name: getattr(plan, name) for name in _ACTIVITY_DATE_FIELDS},
-            })
+        _record_activity_dates(plan, rows, by_id, crop_index)
 
     date_range = (starts[0], rows[-1].season.end_date)
     harvests = HarvestRecord.objects.filter(

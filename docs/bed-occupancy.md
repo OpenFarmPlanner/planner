@@ -22,6 +22,12 @@ ordinary fallback is the harvest end, then the harvest start, then the
 planting date. Plans without a bed or planting date never count. Two periods overlap
 when they share at least one day (inclusive bounds).
 
+A perennial with a recurring harvest window can occupy its bed from an
+earlier recorded direct sowing or transplant. The calendar's area band, the
+remaining-area check and bed suggestions use the same start. The same dates
+count toward the bed's calendar-year crop rotation history. The planned
+planting date continues to identify the original plan and its season.
+
 That occupancy has two stages:
 
 - **Firm (feste Belegung):** from the planting date to the day before

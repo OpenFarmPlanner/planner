@@ -163,6 +163,7 @@ export interface TaskRowProps {
   taskGroup: TaskGroup;
   timelineAdornment?: React.ReactNode;
   timelineDateScale?: TimelineDateScale;
+  phaseDateScale?: TimelineDateScale;
   startDate: Date;
   endDate: Date;
   totalMonths: number;
@@ -250,6 +251,7 @@ export interface TaskItemProps {
   leftPx: number;
   widthPx: number;
   topPx: number;
+  phaseBands?: { timelineLeft: number; width: number; color: string }[];
   isHovered: boolean;
   isDragging: boolean;
   editMode: boolean;
