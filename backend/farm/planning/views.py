@@ -781,7 +781,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         candidate = service.occupancy(
             crop=crop,
             bed_id=params['bed_id'],
-            start=params['planting_date'],
+            start=params['occupancy_start'],
             end=params['end_date'],
             plan_id=params['exclude_plan_id'],
         )

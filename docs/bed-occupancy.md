@@ -24,8 +24,9 @@ when they share at least one day (inclusive bounds).
 
 A perennial with a recurring harvest window can occupy its bed from an
 earlier recorded direct sowing or transplant. The calendar's area band, the
-remaining-area check and bed suggestions use the same start. The one-time
-planned planting date continues to identify the original plan and its season.
+remaining-area check and bed suggestions use the same start. The same dates
+count toward the bed's calendar-year crop rotation history. The planned
+planting date continues to identify the original plan and its season.
 
 That occupancy has two stages:
 

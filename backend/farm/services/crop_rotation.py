@@ -5,9 +5,8 @@ each planting plan, the live check in the planting-plan dialog, the ranked bed
 suggestions, and the preview/decision when copying plans into a new season.
 The rules are documented in docs/crop-rotation.md; in short:
 
-- The scope is the bed. A plan occupies every calendar year from its planting
-  date to its last date (harvest end, else harvest start, else the planting
-  date itself).
+- The scope is the bed. A plan occupies every calendar year from its
+  effective occupancy start to its last occupied date.
 - ``rotation_break_years`` counts the calendar years *without* the family on
   the bed in between: a family last on the bed in year ``Y`` may come back
   from ``Y + break + 1``. Of the two cultures involved, the stricter (larger)
@@ -38,6 +37,7 @@ from farm.services.crop_inheritance import (
     get_general_crop,
     resolve_crop_field,
 )
+from farm.services.seasonal_harvest import recurring_harvest_schedule
 
 STATUS_CONFLICT = 'conflict'
 STATUS_ACCEPTED = 'accepted'
@@ -552,11 +552,14 @@ class RotationService:
     def plan_occupancy(self, plan: PlantingPlan) -> RotationOccupancy | None:
         if plan.crop is None or plan.bed_id is None or plan.planting_date is None:
             return None
+        crop_index = self.general_crop_index
+        schedule = recurring_harvest_schedule(plan, crop_index)
+        start = schedule.occupied_from if schedule is not None else plan.planting_date
         return self.occupancy(
             crop=plan.crop,
             bed_id=plan.bed_id,
-            start=plan.planting_date,
-            end=_plan_end_date(plan, self.general_crop_index),
+            start=start,
+            end=_plan_end_date(plan, crop_index),
             plan_id=plan.pk,
         )
 
@@ -737,7 +740,8 @@ def suggest_beds(
     rows: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
     for position, bed in enumerate(beds):
         candidate = RotationOccupancy(
-            plan_id=exclude_plan_id, bed_id=bed.pk, start=start, end=end, crop=rotation_crop,
+            plan_id=exclude_plan_id, bed_id=bed.pk, start=occupancy_start or start,
+            end=end, crop=rotation_crop,
         )
         result = service.check(candidate)
         category = _suggestion_category(result, rotation_crop)

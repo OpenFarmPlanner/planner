@@ -328,6 +328,42 @@ class PerennialPlanningTest(ProjectApiTestCase):
         destination = next(row for row in ranked_edit.data['results'] if row['bed_id'] == other.pk)
         self.assertFalse(destination['has_enough_area'])
 
+    def test_rotation_checks_include_the_recorded_year_of_a_recurring_perennial(self):
+        family = PlantFamily.objects.get(botanical_name='Polygonaceae')
+        annual = Crop.objects.create(
+            project=self.project, name='Rotation predecessor', crop_family=family,
+            rotation_break_years=1, growth_duration_days=30, harvest_duration_days=5,
+        )
+        previous = PlantingPlan.objects.create(
+            project=self.project, season=self.season(2023), bed=self.bed, crop=annual,
+            planting_date=date(2023, 4, 1), area_usage_sqm=10,
+        )
+        crop = self.perennial(
+            annual_harvest_window='12-20/12-25', crop_family=family, rotation_break_years=1,
+        )
+        plan = PlantingPlan.objects.create(
+            project=self.project, season=self.next_season, bed=self.bed, crop=crop,
+            planting_date=date(2025, 1, 10), clearing_date=date(2027, 1, 10), area_usage_sqm=10,
+            actual_transplanting_date=date(2024, 12, 17), cultivation_type='purchased_transplant',
+        )
+
+        service = RotationService(self.project.pk, language_code='en')
+        self.assertEqual(service.plan_occupancy(plan).start, date(2024, 12, 17))
+        self.assertEqual(service.check_plan(plan).status, STATUS_CONFLICT)
+
+        params = {
+            'crop_id': crop.pk, 'bed_id': self.bed.pk, 'exclude_plan_id': plan.pk,
+            'planting_date': '2025-01-10',
+        }
+        checked = self.client.get(f'{PLANS}rotation-check/', params)
+        self.assertEqual(checked.status_code, 200, checked.data)
+        self.assertEqual(checked.data['status'], STATUS_CONFLICT)
+        self.assertEqual(checked.data['findings'][0]['previous_plan_id'], previous.pk)
+
+        suggested = self.client.get(f'{PLANS}bed-suggestions/', params)
+        self.assertEqual(suggested.status_code, 200, suggested.data)
+        self.assertEqual(suggested.data['results'][0]['status'], STATUS_CONFLICT)
+
     def test_running_perennial_is_not_copied_or_forecast_again(self):
         response = self.plant(self.perennial())
         self.assertEqual(response.status_code, 201, response.data)
