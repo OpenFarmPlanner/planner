@@ -286,7 +286,8 @@
       "points": [
         "La superficie coltivata prevista somma le superfici delle serie filtrate nelle stagioni selezionate. Una serie che prosegue conta una volta. Se più serie utilizzano la stessa aiuola, ognuna contribuisce con la propria superficie.",
         "La quantità raccolta registrata segue la data di raccolta. Le quantità pesate, i pezzi e i mazzi restano separati. Un filtro per sito, appezzamento o aiuola include solo le quantità assegnate e segnala le assegnazioni mancanti.",
-        "La copertura conta le colture con almeno una raccolta registrata. Il totale include le colture con una serie o una raccolta che corrisponde ai filtri. Altre raccolte possono ancora mancare."
+        "La copertura conta le colture con almeno una raccolta registrata. Il totale include le colture con una serie o una raccolta che corrisponde ai filtri. Altre raccolte possono ancora mancare.",
+        "Le barre mostrano le previsioni in kg e le quantità registrate per unità. Il tratteggio indica un valore parziale. Un trattino segnala un valore mancante e uno zero registrato appare come 0. I pesi stimati compaiono separatamente nei dettagli e restano esclusi dai pesi misurati."
       ]
     }
   }

@@ -100,11 +100,13 @@
     "activityDates": "Activity dates in the planting season",
     "openPlan": "Open planting plan",
     "harvestedAreaYield": "Yield per m² of harvested area",
-    "chartTitle": "Comparable yield",
-    "chartScope": "Only seasons with measured harvest and a complete forecast for the same plans appear here.",
-    "chartEmpty": "No season has measured harvest and a complete forecast for the same plans.",
+    "chartTitle": "Harvest quantities by season",
+    "chartEmpty": "No harvest quantities or forecasts are available for this selection.",
     "chartValues": "Yield for {{season}} ({{period}})",
-    "axis": "Yield in kilograms",
+    "partialValue": "Partial value",
+    "missingMark": "– Value unavailable",
+    "forecastMassOnly": "Forecast in kg only",
+    "axis": "Harvest quantity ({{unit}})",
     "tableScope": "Harvest quantities follow the date of each record. Recorded yield per m² uses the full area of the plans with assigned harvests."
   }
 }

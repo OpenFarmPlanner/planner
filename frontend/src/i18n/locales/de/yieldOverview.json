@@ -100,11 +100,13 @@
     "activityDates": "Termine in der Anbausaison",
     "openPlan": "Anbauplan öffnen",
     "harvestedAreaYield": "Ertrag pro m² beernteter Fläche",
-    "chartTitle": "Vergleichbarer Ertrag",
-    "chartScope": "Hier erscheinen Saisonen, in denen für dieselben Anbaupläne gewogene Ernten und eine vollständige Prognose vorliegen.",
-    "chartEmpty": "Für keine Saison liegen gewogene Ernten und eine vollständige Prognose für dieselben Anbaupläne vor.",
+    "chartTitle": "Erntemengen nach Saison",
+    "chartEmpty": "Für diese Auswahl sind keine Erntemengen oder Prognosen verfügbar.",
     "chartValues": "Ertrag für {{season}} ({{period}})",
-    "axis": "Ertrag in Kilogramm",
+    "partialValue": "Teilwert",
+    "missingMark": "– Ohne Wert",
+    "forecastMassOnly": "Prognose nur in kg",
+    "axis": "Erntemenge ({{unit}})",
     "tableScope": "Erntemengen zählen zur Saison ihres Erntedatums. Der erfasste Ertrag pro m² bezieht sich auf die gesamte Fläche der Anbaupläne mit zugeordneter Ernte."
   }
 }

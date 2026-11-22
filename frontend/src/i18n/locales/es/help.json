@@ -286,7 +286,8 @@
       "points": [
         "La superficie de cultivo prevista suma las superficies de las series filtradas durante las temporadas seleccionadas. Una serie que se prolonga cuenta una vez. Si varias series usan el mismo bancal, cada serie aporta su propia superficie.",
         "La cantidad recolectada registrada se contabiliza por fecha de recolección. Las cantidades pesadas, las unidades y los manojos se mantienen separados. Un filtro de ubicación, parcela o bancal solo incluye las cantidades asignadas e indica si faltan asignaciones.",
-        "El registro cuenta los cultivos con al menos una recolección registrada. El total incluye los cultivos con una serie o una recolección que coincide con los filtros. Puede haber otras recolecciones por registrar."
+        "El registro cuenta los cultivos con al menos una recolección registrada. El total incluye los cultivos con una serie o una recolección que coincide con los filtros. Puede haber otras recolecciones por registrar.",
+        "Las barras muestran las previsiones en kg y las cantidades registradas por unidad. El rayado indica un valor parcial. Un guion indica que falta el valor y el cero registrado aparece como 0. Los pesos estimados figuran por separado en los detalles y se excluyen de los pesos medidos."
       ]
     }
   }

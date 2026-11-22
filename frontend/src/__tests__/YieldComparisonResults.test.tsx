@@ -5,6 +5,16 @@ import type { YieldComparisonSeason } from '../api/types';
 import { YieldComparisonResults } from '../pages/YieldComparisonResults';
 import { YieldComparisonSummaryPanel } from '../pages/YieldComparisonSummary';
 import { groupYieldComparisonCrops } from '../pages/yieldComparisonFilters';
+import { yieldChartScale, yieldChartSeries, yieldChartUnits } from '../pages/yieldSeasonChartData';
+
+const missing: YieldComparisonSeason = {
+  id: 1, label: '24/25', start_date: '2024-09-01', end_date: '2025-08-31',
+  forecast_kg: null, forecast_kg_per_sqm: null, forecast_plan_count: 0, expected_plan_count: 0,
+  recorded: { quantities: [], measured_kg: null, estimated_kg: null, has_unconvertible_quantity: false },
+  unassigned: [], assigned_plan_count: 0, assigned_forecast_plan_count: 0,
+  recorded_kg_per_plan_sqm: null, recorded_kg_per_plan_sqm_estimated: false, comparable: false,
+  harvested_areas: [], losses: [], plan_dates: [],
+};
 
 it('groups yield filters by species and falls back to the name for unlinked crops', () => {
   const group = (id: number, culture: string, species: number | null, variety = '') => ({
@@ -24,21 +34,11 @@ it('groups yield filters by species and falls back to the name for unlinked crop
 });
 
 it('distinguishes a missing harvest from an explicit recorded zero in the table', () => {
-  const missing: YieldComparisonSeason = {
-    id: 1, label: '24/25', start_date: '2024-09-01', end_date: '2025-08-31',
-    forecast_kg: null, forecast_kg_per_sqm: null, forecast_plan_count: 0, expected_plan_count: 0,
-    recorded: {
-      quantities: [], measured_kg: null, estimated_kg: null, has_unconvertible_quantity: false,
-    },
-    unassigned: [], assigned_plan_count: 0, assigned_forecast_plan_count: 0,
-    recorded_kg_per_plan_sqm: null, recorded_kg_per_plan_sqm_estimated: false, comparable: false,
-    harvested_areas: [], losses: [], plan_dates: [],
-  };
   const zero: YieldComparisonSeason = {
     ...missing, id: 2, label: '25/26', start_date: '2025-09-01', end_date: '2026-08-31',
     recorded: { ...missing.recorded, quantities: [{ quantity: '0', unit: 'kg' }], measured_kg: '0' },
   };
-  render(<MemoryRouter><YieldComparisonResults cropName="Lauch" comparison={{
+  render(<MemoryRouter><YieldComparisonResults cropName="Lauch" preferredUnit="kg" onChartUnitChange={() => undefined} comparison={{
     crop_timing: {}, seasons: [zero, missing], summary: {
       planned_area_sqm: null, plans_without_area_count: 0,
       recorded_quantities: [{ quantity: '0', unit: 'kg' }],
@@ -54,6 +54,36 @@ it('distinguishes a missing harvest from an explicit recorded zero in the table'
   expect(within(rows[2]).queryByText('0 kg')).not.toBeInTheDocument();
   expect(screen.getByRole('meter')).toHaveAttribute('aria-valuetext', '1 von 1');
   expect(screen.getAllByText('Null erfasst')).toHaveLength(2);
+  const chart = screen.getByRole('figure', { name: 'Erntemengen nach Saison' });
+  expect(within(chart).getByRole('button', { name: /^Ertrag für 25\/26/ })).toHaveTextContent('0');
+  expect(within(chart).getByRole('button', { name: /^Ertrag für 24\/25/ })).not.toHaveTextContent('0');
+});
+
+it('separates kg, pieces, and bunches and retains partial, missing, and measured-zero values', () => {
+  const mixed: YieldComparisonSeason = {
+    ...missing, id: 2, label: '25/26', start_date: '2025-09-01', end_date: '2026-08-31',
+    forecast_kg: '12', forecast_plan_count: 1, expected_plan_count: 2, assigned_forecast_plan_count: 1,
+    excluded_unassigned_records: 1,
+    recorded: {
+      ...missing.recorded, measured_kg: '0', estimated_kg: '1.5',
+      quantities: [{ quantity: '0', unit: 'kg' }, { quantity: '8', unit: 'piece' }, { quantity: '2', unit: 'bunch' }],
+    },
+  };
+  const countOnly: YieldComparisonSeason = {
+    ...missing, id: 3, label: '26/27', start_date: '2026-09-01', end_date: '2027-08-31',
+    recorded: { ...missing.recorded, estimated_kg: '10', quantities: [{ quantity: '9', unit: 'piece' }] },
+  };
+  expect(yieldChartUnits([missing])).toEqual([]);
+  expect(yieldChartUnits([countOnly])).toEqual(['piece']);
+  expect(yieldChartUnits([mixed, missing, countOnly])).toEqual(['kg', 'piece', 'bunch']);
+  expect(yieldChartSeries(mixed, 'kg')).toEqual([
+    { kind: 'forecast', value: '12', partial: true }, { kind: 'recorded', value: '0', partial: true },
+  ]);
+  expect(yieldChartSeries(countOnly, 'kg')[1].value).toBeNull();
+  expect(yieldChartSeries(mixed, 'bunch')).toEqual([{ kind: 'recorded', value: '2', partial: true }]);
+  const pieces = [mixed, missing, countOnly].map(row => yieldChartSeries(row, 'piece'));
+  expect(pieces.flat().map(series => series.value)).toEqual(['8', null, '9']);
+  expect(yieldChartScale(pieces)).toBe(10);
 });
 
 it('shows partial scope, keeps harvest units separate, and reports an empty selection', () => {

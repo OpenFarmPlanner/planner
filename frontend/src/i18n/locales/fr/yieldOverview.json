@@ -104,11 +104,13 @@
     "activityDates": "Dates des activités selon la saison de culture",
     "openPlan": "Ouvrir la série",
     "harvestedAreaYield": "Rendement par m² de surface récoltée",
-    "chartTitle": "Rendement comparable",
-    "chartScope": "Seules les saisons disposant de récoltes pesées et d’une prévision complète pour les mêmes séries apparaissent ici.",
-    "chartEmpty": "Aucune saison ne dispose de récoltes pesées et d’une prévision complète pour les mêmes séries.",
+    "chartTitle": "Quantités récoltées par saison",
+    "chartEmpty": "Aucune quantité récoltée ni prévision pour cette sélection.",
     "chartValues": "Rendement pour {{season}} ({{period}})",
-    "axis": "Rendement en kilogrammes",
+    "partialValue": "Valeur partielle",
+    "missingMark": "– Valeur indisponible",
+    "forecastMassOnly": "Prévisions en kg uniquement",
+    "axis": "Quantité récoltée ({{unit}})",
     "tableScope": "Les quantités récoltées sont rattachées à la saison de leur date. Le rendement enregistré par m² utilise la surface totale des séries auxquelles une récolte a été affectée."
   }
 }

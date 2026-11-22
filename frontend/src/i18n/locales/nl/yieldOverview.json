@@ -100,11 +100,13 @@
     "activityDates": "Datums van activiteiten in het teeltseizoen",
     "openPlan": "Teelt openen",
     "harvestedAreaYield": "Opbrengst per m² geoogst oppervlak",
-    "chartTitle": "Vergelijkbare opbrengst",
-    "chartScope": "Hier staan alleen seizoenen met gewogen oogsten en een volledige prognose voor dezelfde teelten.",
-    "chartEmpty": "Geen enkel seizoen heeft gewogen oogsten en een volledige prognose voor dezelfde teelten.",
+    "chartTitle": "Geoogste hoeveelheden per seizoen",
+    "chartEmpty": "Voor deze selectie zijn geen oogsthoeveelheden of prognoses beschikbaar.",
     "chartValues": "Opbrengst voor {{season}} ({{period}})",
-    "axis": "Opbrengst in kilogrammen",
+    "partialValue": "Gedeeltelijke waarde",
+    "missingMark": "– Waarde niet beschikbaar",
+    "forecastMassOnly": "Prognose alleen in kg",
+    "axis": "Geoogste hoeveelheid ({{unit}})",
     "tableScope": "Geoogste hoeveelheden tellen mee in het seizoen van hun oogstdatum. De geregistreerde opbrengst per m² gebruikt het totale oppervlak van de teelten met een toegewezen oogst."
   }
 }

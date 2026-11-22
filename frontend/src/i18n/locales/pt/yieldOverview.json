@@ -104,11 +104,13 @@
     "activityDates": "Datas das atividades na época de cultivo",
     "openPlan": "Abrir a série",
     "harvestedAreaYield": "Rendimento por m² de área colhida",
-    "chartTitle": "Rendimento comparável",
-    "chartScope": "Aqui só aparecem as épocas com colheitas pesadas e uma previsão completa para as mesmas séries.",
-    "chartEmpty": "Nenhuma época tem colheitas pesadas e uma previsão completa para as mesmas séries.",
+    "chartTitle": "Quantidades colhidas por época",
+    "chartEmpty": "Não há quantidades colhidas nem previsões para esta seleção.",
     "chartValues": "Rendimento de {{season}} ({{period}})",
-    "axis": "Rendimento em quilogramas",
+    "partialValue": "Valor parcial",
+    "missingMark": "– Valor indisponível",
+    "forecastMassOnly": "Previsão apenas em kg",
+    "axis": "Quantidade colhida ({{unit}})",
     "tableScope": "As quantidades colhidas contam na época da data da colheita. O rendimento registado por m² usa a área total das séries com colheita atribuída."
   }
 }

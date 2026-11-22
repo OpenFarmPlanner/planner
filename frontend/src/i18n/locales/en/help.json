@@ -286,7 +286,8 @@
       "points": [
         "Planned growing area adds the areas of the filtered planting plans across the selected seasons. A continuing plan counts once. When several plans use the same bed, each plan contributes its own area.",
         "Recorded harvest totals follow the harvest date. Weighed quantities, pieces and bunches stay separate. A location, field or bed filter includes only assigned quantities and indicates missing assignments.",
-        "Harvest coverage counts crops with at least one harvest record. The total includes crops with a planting plan or a recorded harvest within the filters. Other harvests may still be missing."
+        "Harvest coverage counts crops with at least one harvest record. The total includes crops with a planting plan or a recorded harvest within the filters. Other harvests may still be missing.",
+        "The bars show forecasts in kg and recorded quantities by unit. Hatching marks a partial value. A dash indicates a missing value, and a recorded zero appears as 0. Estimated weights appear separately in the details and are excluded from measured weights."
       ]
     }
   }

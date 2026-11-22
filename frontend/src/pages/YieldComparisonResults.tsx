@@ -1,11 +1,10 @@
-import { Fragment, useId, useState } from 'react';
+import { useId } from 'react';
 import {
-  Box, ButtonBase, Link, Paper, Stack, Table, TableBody, TableCell, TableHead,
+  Box, Link, Paper, Stack, Table, TableBody, TableCell, TableHead,
   TableRow, Typography,
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router';
 import type { YieldComparison, YieldComparisonSeason } from '../api/types';
-import { AppTooltip } from '../components/AppTooltip';
 import { formatHarvestQuantity, formatHarvestTotals } from '../harvests/harvestDisplay';
 import { useTranslation } from '../i18n';
 import { formatCropLossExtent } from '../planting-plans/cropLossDisplay';
@@ -15,102 +14,12 @@ import { plantingPlanDetailPath } from '../planting-plans/plantingPlanDetailRout
 import { formatSeasonDate, formatSeasonPeriod, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import { formatLocalizedNumber } from '../utils/numberLocalization';
 import { YieldComparisonSummaryPanel } from './YieldComparisonSummary';
+import { YieldSeasonChart } from './YieldSeasonChart';
+import type { YieldChartUnit } from './yieldSeasonChartData';
 
-const barStyles = {
-  forecast: { border: '1px dashed', borderColor: 'primary.main', bgcolor: 'action.selected' },
-  recorded: { border: '1px solid', borderColor: 'primary.main', bgcolor: 'primary.main' },
-};
 const numericOptions = { maximumFractionDigits: 6 };
 const number = (value: number | string, locale: string) => formatLocalizedNumber(Number(value), locale, numericOptions);
 const perArea = (value: string, locale: string) => `${number(value, locale)} kg/m²`;
-
-function ComparisonBars({ row, max, locale }: { row: YieldComparisonSeason; max: number; locale: string }) {
-  const { t } = useTranslation('yieldOverview');
-  const { t: harvest } = useTranslation('harvests');
-  const [preview, setPreview] = useState<'closed' | 'open' | 'dismissed'>('closed');
-  const bars = [
-    { style: 'forecast', label: t('comparison.forecast'), value: row.forecast_kg! },
-    { style: 'recorded', label: t('comparison.recorded'), value: row.recorded.measured_kg! },
-  ] as const;
-  const period = formatSeasonPeriod(row.start_date, row.end_date, locale);
-
-  const restorePreview = () => setPreview(current => current === 'dismissed' ? 'closed' : current);
-  return <AppTooltip open={preview === 'open'}
-    onOpen={() => setPreview(current => current === 'dismissed' ? current : 'open')}
-    onClose={() => setPreview(current => current === 'dismissed' ? current : 'closed')}
-    enterTouchDelay={350} describeChild title={
-      <Stack spacing={0.25}>
-        <Typography variant="body2">{row.label}</Typography>
-        <Typography variant="caption">{period}</Typography>
-        {bars.map(bar => <Typography key={bar.style} variant="caption">
-          {bar.label} · {formatHarvestQuantity(bar.value, 'kg', locale, harvest)}
-        </Typography>)}
-      </Stack>
-    }>
-    <ButtonBase
-      aria-label={t('comparison.chartValues', { season: row.label, period })}
-      onClick={() => setPreview('open')}
-      onMouseLeave={restorePreview}
-      onBlur={restorePreview}
-      onKeyDown={event => { if (event.key === 'Escape') setPreview('dismissed'); }}
-      sx={{
-        display: 'grid', gridTemplateColumns: '1fr', gap: 0.5, alignContent: 'center',
-        minHeight: 44, px: 0, borderRadius: 1, width: '100%', justifyContent: 'stretch',
-        '&.Mui-focusVisible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2 },
-      }}
-    >
-      {bars.map(bar => <Box key={bar.style} aria-hidden sx={{ bgcolor: 'action.hover', height: 12, borderRadius: 0.5 }}>
-        <Box sx={{
-          ...barStyles[bar.style], height: '100%', borderRadius: 0.5, boxSizing: 'border-box',
-          width: `${Number(bar.value) / max * 100}%`, minWidth: Number(bar.value) > 0 ? 2 : 0,
-          visibility: Number(bar.value) === 0 ? 'hidden' : 'visible',
-        }} />
-      </Box>)}
-    </ButtonBase>
-  </AppTooltip>;
-}
-
-function ComparisonChart({ seasons, locale }: { seasons: YieldComparisonSeason[]; locale: string }) {
-  const { t } = useTranslation('yieldOverview');
-  const { t: harvest } = useTranslation('harvests');
-  const chartId = useId();
-  const rows = seasons.filter(row => row.comparable);
-  const max = rows.reduce((largest, row) => Math.max(largest, Number(row.forecast_kg), Number(row.recorded.measured_kg)), 0);
-  return <Paper component="figure" variant="outlined" aria-labelledby={chartId} sx={{ p: { xs: 1.5, sm: 2 }, m: 0 }}>
-    <Stack spacing={1.5}>
-      <Box component="figcaption">
-        <Typography id={chartId} variant="subtitle1" component="h2" sx={{ fontWeight: 600 }}>{t('comparison.chartTitle')}</Typography>
-        <Typography variant="body2" color="text.secondary">
-          {t(max > 0 ? 'comparison.chartScope' : 'comparison.chartEmpty')}
-        </Typography>
-      </Box>
-      {max > 0 && <>
-        <Stack direction="row" useFlexGap spacing={1.5} sx={{ flexWrap: 'wrap' }}>
-          {(['forecast', 'recorded'] as const).map(style => <Stack key={style} direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-            <Box aria-hidden sx={{ ...barStyles[style], width: 16, height: 10, borderRadius: 0.5 }} />
-            <Typography variant="caption">{t(`comparison.${style}`)}</Typography>
-          </Stack>)}
-        </Stack>
-        <Box sx={{
-          display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 37%) minmax(0, 1fr)', sm: 'minmax(0, 13rem) minmax(0, 1fr)' },
-          columnGap: 1.5, rowGap: 0.5, alignItems: 'center', overflowWrap: 'anywhere',
-        }}>
-          <Typography variant="caption" color="text.secondary">{t('comparison.season')}</Typography>
-          <Stack direction="row" spacing={0.5} sx={{ justifyContent: 'space-between' }} aria-label={t('comparison.axis')}>
-            <Typography variant="caption" color="text.secondary">0</Typography>
-            <Typography variant="caption" color="text.secondary">
-              {formatHarvestQuantity(max, 'kg', locale, harvest)}
-            </Typography>
-          </Stack>
-          {rows.map(row => <Fragment key={row.id}>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>{row.label}</Typography>
-            <ComparisonBars row={row} max={max} locale={locale} />
-          </Fragment>)}
-        </Box>
-      </>}
-    </Stack>
-  </Paper>;
-}
 
 function SeasonObservations({ row, plans, locale }: {
   row: YieldComparisonSeason;
@@ -250,7 +159,12 @@ function SeasonSummary({ row, timing, locale }: {
   </>;
 }
 
-export function YieldComparisonResults({ comparison, cropName }: { comparison: YieldComparison; cropName: string }) {
+export function YieldComparisonResults({ comparison, cropName, preferredUnit, onChartUnitChange }: {
+  comparison: YieldComparison;
+  cropName: string;
+  preferredUnit: YieldChartUnit;
+  onChartUnitChange: (unit: YieldChartUnit) => void;
+}) {
   const { t, i18n } = useTranslation('yieldOverview');
   const locale = resolveSeasonDateLocale(i18n);
   const { seasons, crop_timing: timing } = comparison;
@@ -259,7 +173,7 @@ export function YieldComparisonResults({ comparison, cropName }: { comparison: Y
 
   return <Stack spacing={2} sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
     <YieldComparisonSummaryPanel summary={comparison.summary} seasonCount={seasons.length} locale={locale} />
-    <ComparisonChart seasons={seasons} locale={locale} />
+    <YieldSeasonChart seasons={seasons} locale={locale} preferredUnit={preferredUnit} onUnitChange={onChartUnitChange} />
     <Paper variant="outlined">
       <Box sx={{ px: { xs: 1.25, sm: 2 }, pt: 1.5, pb: 0.75 }}>
         <Typography id={tableId} component="h2" variant="subtitle1" sx={{ fontWeight: 600 }}>{cropName}</Typography>

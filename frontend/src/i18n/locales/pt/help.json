@@ -286,7 +286,8 @@
       "points": [
         "A área de cultivo planeada soma as áreas das séries filtradas nas épocas selecionadas. Uma série que continua conta uma vez. Se várias séries utilizarem o mesmo canteiro, cada série contribui com a sua área.",
         "A quantidade colhida registada segue a data da colheita. As quantidades pesadas, as unidades e os molhos ficam separados. Um filtro por exploração, parcela ou canteiro inclui apenas as quantidades atribuídas e indica as atribuições em falta.",
-        "O registo conta as culturas com pelo menos uma colheita registada. O total inclui as culturas com uma série ou colheita que corresponde aos filtros. Pode haver outras colheitas por registar."
+        "O registo conta as culturas com pelo menos uma colheita registada. O total inclui as culturas com uma série ou colheita que corresponde aos filtros. Pode haver outras colheitas por registar.",
+        "As barras mostram as previsões em kg e as quantidades registadas por unidade. O tracejado assinala um valor parcial. Um travessão indica que falta um valor e um zero registado aparece como 0. Os pesos estimados aparecem em separado nos detalhes e ficam excluídos dos pesos medidos."
       ]
     }
   }
