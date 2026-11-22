@@ -42,8 +42,9 @@ test('the Crop Calendar follows the selected season and includes carried plans',
   try {
     await page.setViewportSize({ width: 1440, height: 900 });
     await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
+    const earlierLabel = 'Test A – Wintergarten am nördlichen Rand des Gemeinschaftsprojekts';
     const earlier = await apiRequest<{ id: number }>(page, 'POST', '/seasons/', {
-      start_date: '2026-01-01', end_date: '2026-12-31', custom_label: 'Test A',
+      start_date: '2026-01-01', end_date: '2026-12-31', custom_label: earlierLabel,
     });
     const later = await apiRequest<{ id: number }>(page, 'POST', '/seasons/', {
       start_date: '2027-01-01', end_date: '2027-12-31', custom_label: 'Test B',
@@ -126,7 +127,16 @@ test('the Crop Calendar follows the selected season and includes carried plans',
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/app/gantt-chart');
     await expect(timeline).toBeVisible();
-    await expect(task(winterPlan.id)).toBeVisible();
+    const winterTask = task(winterPlan.id);
+    const description = plans.carriedOver.description.replace('{{season}}', earlierLabel);
+    await expect(winterTask).toHaveAccessibleName(`Test lettuce · ${description}`);
+    await expect(winterTask.locator('.rmg-task-item-leading-icon')).toHaveCount(1);
+    await expect(winterTask).not.toContainText(earlierLabel);
+    await winterTask.focus();
+    const tooltip = page.getByRole('tooltip').filter({ hasText: description });
+    await expect(tooltip).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(tooltip).toBeHidden();
     await expect(task(original.id)).toHaveCount(0);
     await expect(empty).toBeHidden();
   } finally {
@@ -179,9 +189,15 @@ test('a first visit without a stored season only loads the active season', async
   await expect(cards).toHaveCount(2);
 
   await page.getByRole('searchbox', { name: 'Anbaupläne durchsuchen' }).fill('Knoblauch');
-  const carried = cards.filter({ has: page.getByText(/^Aus Saison /) }).first();
+  const indicator = page.getByRole('button', { name: /^Läuft weiter aus Saison .* Hier nur lesbar\.$/ });
+  const carried = cards.filter({ has: indicator }).first();
   await expect(carried).toBeVisible();
   const planId = await carried.getAttribute('data-mobile-card-id');
+  await carried.getByRole('button', { name: /Hier nur lesbar/ }).press('Space');
+  const preview = page.getByRole('tooltip').filter({ hasText: /Läuft weiter aus Saison/ });
+  await expect(preview).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(preview).toBeHidden();
   await carried.getByRole('button', { name: /Aktionen für Anbauplan Knoblauch/ }).click();
   const menu = page.getByRole('menu');
   await expect(menu.getByRole('menuitem', { name: 'Anbauplan-Details' })).toBeVisible();
@@ -192,7 +208,7 @@ test('a first visit without a stored season only loads the active season', async
 
   const originatingCard = page.locator(`[data-mobile-card-id="${planId}"]`);
   await expect(originatingCard.getByRole('button', { name: /Details ausblenden/ })).toBeVisible();
-  await expect(originatingCard.getByText(/^Aus Saison /)).toHaveCount(0);
+  await expect(originatingCard.getByRole('button', { name: /Hier nur lesbar/ })).toHaveCount(0);
   await originatingCard.getByRole('button', { name: /Aktionen für Anbauplan Knoblauch/ }).click();
   await expect(page.getByRole('menuitem', { name: 'Bearbeiten' })).toBeVisible();
 });
@@ -207,10 +223,13 @@ test('overwintering garlic is selectable in the later table and read-only in the
   await search.fill('Knoblauch');
   const tableRows = page.locator('[role="row"][data-id]');
   const beanBed = page.locator('[data-field="bed"]').getByText('Bohnen', { exact: true });
-  const carried = tableRows.filter({ has: page.getByText(/^Aus Saison /) }).filter({ has: beanBed });
+  const indicator = page.getByRole('button', { name: /^Läuft weiter aus Saison .* Hier nur lesbar\.$/ });
+  const carried = tableRows.filter({ has: indicator }).filter({ has: beanBed });
   await expect(carried).toBeVisible();
   const planId = await carried.getAttribute('data-id');
   const cropCell = carried.locator('[data-field="crop"]');
+  await cropCell.getByRole('button', { name: /Hier nur lesbar/ }).hover();
+  await expect(page.getByRole('tooltip')).toContainText(/Läuft weiter aus Saison/);
   await cropCell.click();
   await expect.poll(() => cropCell.evaluate(cell => cell.contains(document.activeElement))).toBe(true);
   await cropCell.dblclick();
@@ -245,7 +264,9 @@ test('overwintering garlic is selectable in the later table and read-only in the
   await page.getByRole('textbox', { name: 'Suche nach Kultur, Beet, Parzelle oder Standort…' }).fill('Knoblauch');
   const garlicBar = page.getByTestId(`task-plan-${planId}-growth`);
   await expect(garlicBar).toHaveAttribute('aria-label', /Knoblauch.*Läuft weiter aus Saison/);
-  const moveMode = page.getByRole('button', { name: 'Zeitraum verschieben', exact: true });
+  await garlicBar.focus();
+  await expect(page.getByRole('tooltip').filter({ hasText: /Läuft weiter aus Saison/ })).toBeVisible();
+  const moveMode = page.getByRole('button', { name: /^Zeitraum verschieben/ });
   await moveMode.click();
   await expect(moveMode).toHaveAttribute('aria-pressed', 'true');
   await expect(garlicBar).toHaveCSS('cursor', 'default');
