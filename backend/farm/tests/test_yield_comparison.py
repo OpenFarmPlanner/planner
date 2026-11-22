@@ -153,6 +153,7 @@ class YieldComparisonTest(TestCase):
         self.assertEqual(first['recorded']['measured_kg'], '12')
         self.assertEqual(first['excluded_unassigned_records'], 3)
         self.assertEqual(first['unassigned'], [])
+        self.assertFalse(first['comparable'])
         self.assertEqual({plan['id'] for plan in first['plan_dates']}, {north.pk, roma_plan.pk})
         self.assertEqual([area['plan_id'] for area in first['harvested_areas']], [north.pk])
         second = current_row(**crop_filter, field_id=beds[1].field_id)
@@ -163,6 +164,7 @@ class YieldComparisonTest(TestCase):
         self.assertEqual(variety['forecast_kg'], '20')
         self.assertEqual(variety['recorded']['measured_kg'], '6')
         self.assertEqual(variety['excluded_unassigned_records'], 0)
+        self.assertTrue(variety['comparable'])
 
     def test_window_uses_the_latest_real_seasons_and_preserves_unknown_recorded_yield(self):
         for year in (2022, 2023, 2024):

@@ -317,6 +317,7 @@ def _season_payload(row: SeasonYield, plans: dict[int, PlantingPlan]) -> dict:
     comparable = (
         bool(forecast) and len(forecast) == len(row.forecast)
         and forecast.keys() == row.assigned.keys() and not row.unassigned.quantities
+        and row.excluded_unassigned_records == 0
         and not mixed and not estimated
     )
     return {

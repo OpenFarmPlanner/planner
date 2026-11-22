@@ -240,7 +240,8 @@ description), one level down:
   allocations and any unassigned remainder when no area filter is active.
   An area filter counts the allocated shares on matching plans. If a record
   has an unallocated remainder or a plan without an area, the season reports
-  that record's incomplete assignment. Gram and kilogram records share
+  that record's incomplete assignment and omits the season from the comparable
+  chart. Gram and kilogram records share
   a mass total. Counts and weight estimates appear separately. Recorded
   yield per m² uses the full area of each plan with assigned harvest, counted
   once. Individual harvests with a recorded area show their own rate separately.

@@ -14,7 +14,14 @@ interface Props {
   onChange: (filters: YieldComparisonFilters) => void;
 }
 
-const selectStyles = { flex: '1 1 10rem', maxWidth: { xs: '100%', sm: '15rem' }, minWidth: 0 };
+const selectStyles = {
+  flex: '1 1 10rem',
+  maxWidth: { xs: '100%', sm: '15rem' },
+  minWidth: 0,
+  '& .MuiSelect-select.MuiSelect-select': {
+    whiteSpace: 'normal', overflowWrap: 'anywhere', textOverflow: 'clip',
+  },
+};
 const readId = (value: string) => value === 'all' ? null : Number(value);
 
 export function YieldComparisonFilterBar({ options, groups, selected, filters, onChange }: Props) {
