@@ -79,6 +79,7 @@ class SeasonalHarvestTest(ProjectApiTestCase):
                 self.assertEqual(row['carried_over'], year != 2025)
                 self.assertEqual(row['seasonal_harvest'], {
                     'periods': expected,
+                    'planting_recorded': False,
                     'actual_start_date': '2025-09-10' if year == 2025 else None,
                     'actual_end_date': '2025-10-02' if year == 2025 else None,
                 })
@@ -218,6 +219,7 @@ class SeasonalHarvestTest(ProjectApiTestCase):
         headers = {'HTTP_X_SEASON_ID': str(season.pk)}
         row = self.client.get(f'{PLANS}{plan.pk}/', **headers).json()
         self.assertEqual(row['planting_date'], '2027-01-10')
+        self.assertTrue(row['seasonal_harvest']['planting_recorded'])
         self.assertEqual(row['seasonal_harvest']['periods'], [
             {'start_date': '2026-12-20', 'end_date': '2026-12-25'},
         ])

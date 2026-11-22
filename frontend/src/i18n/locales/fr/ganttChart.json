@@ -59,6 +59,7 @@
     },
     "seasonalHarvest": "Récolte prévue pour la saison",
     "noSeasonalHarvest": "Aucune récolte prévue pour cette saison.",
+    "recordedPlantingEdit": "Le semis ou la plantation est enregistré. Modifiez les dates prévues dans le plan de culture.",
     "actualHarvestEnd": "Fin de récolte au plus tard",
     "clearingDate": "Date de fin de culture"
   },

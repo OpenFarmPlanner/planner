@@ -59,6 +59,7 @@
     },
     "seasonalHarvest": "Geplante Saisonernte",
     "noSeasonalHarvest": "Für diese Saison ist keine Ernte geplant.",
+    "recordedPlantingEdit": "Aussaat oder Pflanzung ist erfasst. Bearbeite geplante Termine im Anbauplan.",
     "actualHarvestEnd": "Ernte endet spätestens",
     "clearingDate": "Räumungsdatum"
   },

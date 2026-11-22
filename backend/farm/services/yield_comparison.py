@@ -170,10 +170,9 @@ def _record_activity_dates(
     for row in rows:
         if row is not origin and (not plan.bed_id or not _plan_visible_in_season(plan, row.season)):
             continue
-        projections = schedule.project(row.season.start_date, row.season.end_date)
-        harvest = seasonal_harvest_payload(plan, row.season, projections)
+        harvest = seasonal_harvest_payload(plan, row.season, schedule)
         has_actual = harvest['actual_start_date'] or harvest['actual_end_date']
-        if row is origin or projections or has_actual:
+        if row is origin or harvest['periods'] or has_actual:
             row.plan_dates.append({
                 **_activity_dates(plan, original=row is origin), 'seasonal_harvest': harvest,
             })

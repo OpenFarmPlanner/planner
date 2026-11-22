@@ -1,7 +1,7 @@
 """Project a perennial crop's recurring harvest within a plan's occupancy."""
 
 from calendar import monthrange
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import TypedDict
 
@@ -27,12 +27,13 @@ class SeasonalHarvestPeriod(TypedDict):
 
 class SeasonalHarvestPayload(TypedDict):
     periods: list[SeasonalHarvestPeriod]
+    planting_recorded: bool
     actual_start_date: date | None
     actual_end_date: date | None
 
 
 def seasonal_harvest_payload(
-    plan: PlantingPlan, season: Season, projections: list[HarvestProjection],
+    plan: PlantingPlan, season: Season, schedule: 'RecurringHarvestSchedule',
 ) -> SeasonalHarvestPayload:
     def within_season(value: date | None) -> date | None:
         return value if value and season.start_date <= value <= season.end_date else None
@@ -40,8 +41,9 @@ def seasonal_harvest_payload(
     return {
         'periods': [
             {'start_date': projection.start_date, 'end_date': projection.end_date}
-            for projection in projections
+            for projection in schedule.project(season.start_date, season.end_date)
         ],
+        'planting_recorded': schedule.planting_recorded,
         'actual_start_date': within_season(plan.actual_harvest_start_date),
         'actual_end_date': within_season(plan.recorded_harvest_end_date),
     }
@@ -53,6 +55,8 @@ class RecurringHarvestSchedule:
     end: tuple[int, int]
     eligible_from: date | None
     occupied_until: date | None
+    # Eligibility already determines forecast equality for copied plans.
+    planting_recorded: bool = field(compare=False)
 
     def project(self, start_date: date, end_date: date) -> list[HarvestProjection]:
         """Intersect the annual windows, eligibility, occupancy and requested period."""
@@ -85,15 +89,9 @@ def _day_in_year(year: int, month_day: tuple[int, int]) -> date:
     return date(year, month, min(day, monthrange(year, month)[1]))
 
 
-def _first_eligible_day(plan: PlantingPlan, crop_index: GeneralCropIndex | None) -> date | None:
-    if plan.planting_date is None:
+def _first_eligible_day(planted: date | None, delay: int) -> date | None:
+    if planted is None:
         return None
-    cultivation = plan_cultivation_type(plan, crop_index)
-    if cultivation == 'direct_sowing':
-        planted = plan.actual_sowing_date or plan.planting_date
-    else:
-        planted = plan.actual_transplanting_date or plan.planting_date
-    delay = resolve_crop_field(plan.crop, 'first_harvest_delay_years', crop_index) or 0
     eligibility_year = planted.year + delay
     if eligibility_year > date.max.year:
         return None
@@ -112,7 +110,14 @@ def recurring_harvest_schedule(
     start, end = window.split('/')
     start_month, start_day = map(int, start.split('-'))
     end_month, end_day = map(int, end.split('-'))
+    cultivation = plan_cultivation_type(plan, crop_index)
+    actual = (
+        plan.actual_sowing_date if cultivation == 'direct_sowing'
+        else plan.actual_transplanting_date
+    )
+    planted = (actual or plan.planting_date) if plan.planting_date is not None else None
+    delay = resolve_crop_field(plan.crop, 'first_harvest_delay_years', crop_index) or 0
     return RecurringHarvestSchedule(
         (start_month, start_day), (end_month, end_day),
-        _first_eligible_day(plan, crop_index), plan.occupancy_end_date,
+        _first_eligible_day(planted, delay), plan.occupancy_end_date, actual is not None,
     )

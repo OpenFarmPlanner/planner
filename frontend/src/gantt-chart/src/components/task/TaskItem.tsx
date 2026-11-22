@@ -34,15 +34,16 @@ const TaskItem: React.FC<TaskItemProps> = ({
   onContextMenu,
   onProgressUpdate,
 }) => {
-  // Show resize handles only when hovered or dragging, in edit mode, AND resizing is allowed
+  const canChangePosition = editMode && !task.readOnly && !task.positionLocked;
+  // Show resize handles only while hovering or dragging a movable task.
   const showResizeHandles =
-    (isHovered || isDragging) && editMode && !task.readOnly && allowTaskResize;
+    (isHovered || isDragging) && canChangePosition && allowTaskResize;
 
   // Progress editing requires: editMode=true, showProgress=true, AND allowProgressEdit=true
   const canEditProgress = editMode && !task.readOnly && showProgress && allowProgressEdit;
 
   // Task movement requires: editMode=true AND allowTaskMove=true
-  const canMoveTask = editMode && !task.readOnly && allowTaskMove;
+  const canMoveTask = canChangePosition && allowTaskMove;
   const taskRef = useRef<HTMLDivElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const [isDraggingProgress, setIsDraggingProgress] = useState(false);

@@ -301,9 +301,17 @@ test.describe('recurring harvest dates', () => {
         await expect(phase).toHaveCount(1);
         expect((await phase.boundingBox())!.x).toBeCloseTo((await bar.boundingBox())!.x, 0);
         expect((await phase.boundingBox())!.width).toBeGreaterThan(1);
+        const moveMode = page.getByRole('button', { name: /^Zeitraum verschieben/ });
+        if (await moveMode.getAttribute('aria-pressed') === 'false') await moveMode.click();
+        await expect(moveMode).toHaveAttribute('aria-pressed', 'true');
+        await expect(bar).toHaveCSS('cursor', 'default');
         await bar.focus();
         const earlyHarvest = page.getByRole('tooltip').filter({ hasText: '11.3.2025' });
         await expect(earlyHarvest).toContainText('15.3.2025');
+        await expect(earlyHarvest).toContainText(calendar.tooltip.recordedPlantingEdit);
+        await page.keyboard.press('Escape');
+        await bar.click({ button: 'right' });
+        await expect(page.getByRole('menuitem', { name: 'Bearbeiten' })).toBeVisible();
         await page.goto('/app/planting-plans');
         await mode.selectOption('planned');
         await expect(plantingDate).toHaveText('15.3.2025');

@@ -122,7 +122,8 @@ description), one level down:
   A read returns `carried_over` and the originating season label. The plan's
   ID and season assignment stay the same. For a perennial with a configured
   annual window, `seasonal_harvest` gives the ordered, inclusive `periods`
-  that intersect the selected season, alongside nullable `actual_start_date`
+  that intersect the selected season, a `planting_recorded` flag for an
+  actual sowing or transplanting anchor, and nullable `actual_start_date`
   and `actual_end_date` drawn from recorded dates within that season. An
   empty list means the plan has no eligible harvest in that period. The
   property is null for legacy one-off plans or a request without a season.
@@ -158,6 +159,8 @@ description), one level down:
   accessible label and tooltip. An earlier recorded planting can let a crop
   bear before its original planned planting date. The bar includes that
   harvest interval, and the planned planting date remains in the tooltip.
+  When a recorded date anchors recurring harvests, edit planned dates from
+  the planting plan. The calendar keeps the bar fixed in move mode.
   Own-season edits keep
   the planting date within that season's period. The range is computed
   globally across every Fläche/Standort/Parzelle so all rows share the same

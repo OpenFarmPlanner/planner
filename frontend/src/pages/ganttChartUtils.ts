@@ -17,7 +17,7 @@ export interface GanttTask extends Task {
   notes?: string;
   harvestStartDate?: Date;
   harvestEndDate?: Date;
-  /** Original planting date of a standing crop, even when the bar starts later. */
+  /** Original planned planting date independent of the bar's visible start. */
   plantingAnchor?: Date;
   clearingDate?: Date;
   /** The day a follow-up crop takes over the bed, before the planned harvest end. */
@@ -386,12 +386,11 @@ export function getMovedPlanDates(
   plan: Pick<PlantingPlan, 'planting_date' | 'harvest_date' | 'harvest_end_date' | 'clearing_date' | 'seasonal_harvest'>,
   task: Pick<GanttTask, 'id' | 'startDate'>,
 ): MovedPlanDates | null {
+  if (plan.seasonal_harvest?.planting_recorded) return null;
   const plantingDate = parseIsoDate(plan.planting_date);
   const harvestDate = parseIsoDate(plan.harvest_date);
   const clearingDate = parseIsoDate(plan.clearing_date);
-  const storedStart = getOccupancyTaskPhase(task) === 'harvest' ? harvestDate : (
-    plantingDate && firstOccupancyDate(plantingDate, parseIsoDate(plan.seasonal_harvest?.periods[0]?.start_date))
-  );
+  const storedStart = getOccupancyTaskPhase(task) === 'harvest' ? harvestDate : plantingDate;
   if (!plantingDate || !storedStart || (!harvestDate && !clearingDate)) {
     return null;
   }
@@ -408,7 +407,7 @@ export function getMovedPlanDates(
 export function buildOccupancyTooltipDetails(task: Pick<
   GanttTask,
   'id' | 'startDate' | 'endDate' | 'harvestStartDate' | 'harvestEndDate' | 'actualHarvestEndDate'
-  | 'areaUsage' | 'notes' | 'readOnly' | 'plantingAnchor' | 'clearingDate' | 'phaseBands'
+  | 'areaUsage' | 'notes' | 'readOnly' | 'plantingAnchor' | 'clearingDate' | 'phaseBands' | 'positionLocked'
 >): OccupancyTooltipDetail[] {
   const phase = getOccupancyTaskPhase(task);
   const formatDate = (date: Date) => formatGanttDate(date, task.phaseBands ? 'UTC' : undefined);
@@ -418,9 +417,8 @@ export function buildOccupancyTooltipDetails(task: Pick<
   // the harvest starts, so the bar's own offset shifts the harvest dates and
   // the tooltip describes the plan as it will be after the drop.
   const harvestAnchor = isHarvestTask ? task.startDate : task.endDate;
-  const occupancyStart = task.plantingAnchor && firstOccupancyDate(task.plantingAnchor, task.phaseBands?.[0]?.startDate);
   const harvestShiftDays = phase === 'occupancy'
-    ? (occupancyStart && !task.readOnly ? getDayDelta(occupancyStart, task.startDate) : 0)
+    ? (task.plantingAnchor && !task.readOnly && !task.positionLocked ? getDayDelta(task.plantingAnchor, task.startDate) : 0)
     : (task.harvestStartDate ? getDayDelta(task.harvestStartDate, harvestAnchor) : 0);
   const shownPlantingDate = phase === 'occupancy' && task.plantingAnchor
     ? addUtcDays(task.plantingAnchor, harvestShiftDays)
@@ -527,6 +525,7 @@ function buildPerennialOccupancyTask(
     percent: 100,
     plantingPlanId: plan.id,
     readOnly: plan.carried_over,
+    positionLocked: Boolean(recurring?.planting_recorded),
     originSeasonId: plan.season ?? undefined,
     originSeasonLabel: plan.origin_season_label,
     cropName: name || undefined,

@@ -11,6 +11,7 @@ export interface Task {
   percent?: number;
   dependencies?: string[];
   readOnly?: boolean;
+  positionLocked?: boolean;
   accessibleLabel?: string;
   leadingIcon?: ReactNode;
   /** Dated highlights along a continuous bar. */

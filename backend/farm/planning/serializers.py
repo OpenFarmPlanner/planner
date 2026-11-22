@@ -316,8 +316,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         if schedule is None:
             return None
 
-        projections = schedule.project(season.start_date, season.end_date)
-        return seasonal_harvest_payload(obj, season, projections)
+        return seasonal_harvest_payload(obj, season, schedule)
 
     def get_carried_over(self, obj: PlantingPlan) -> bool:
         return getattr(obj, 'carried_over', False)

@@ -599,7 +599,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
     task: Task,
     type: DragType,
   ) => {
-    if (!editMode || task.readOnly) return;
+    if (!editMode || task.readOnly || task.positionLocked) return;
 
     event.preventDefault();
     event.stopPropagation();

@@ -1695,6 +1695,9 @@ function GanttChartPage() {
             : t('plantingPlans:carriedOver.unknownDescription')}
         </Typography>
       )}
+      {editMode && task.positionLocked && !task.readOnly && (
+        <Typography variant="body2">{t('ganttChart:tooltip.recordedPlantingEdit')}</Typography>
+      )}
       {task.phaseBands?.length === 0 && (
         <Typography variant="body2">{t('ganttChart:tooltip.noSeasonalHarvest')}</Typography>
       )}
@@ -1704,7 +1707,7 @@ function GanttChartPage() {
         </Typography>
       ))}
     </Box>
-  ), [t]);
+  ), [editMode, t]);
 
   const renderSeedlingTooltip = useCallback(({ task }: { task: GanttTask }) => (
     <Box sx={{ p: 0.5 }}>
