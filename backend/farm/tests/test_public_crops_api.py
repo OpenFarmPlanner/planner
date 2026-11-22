@@ -45,6 +45,7 @@ from farm.services.public_crops import (
     ensure_general_public_crop,
     ensure_public_crop_revision,
     find_general_public_crop,
+    get_public_required_field_gaps,
     has_pending_public_crop_update,
     is_project_crop_up_to_date,
     link_project_crop_to_public_reference,
@@ -567,6 +568,54 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
                 document=DocumentConsent.DOCUMENT_PUBLIC_LIBRARY,
             ).exists()
         )
+
+    def test_perennial_publishing_requests_the_window_when_harvest_data_is_missing(self) -> None:
+        self.crop.life_cycle = 'perennial'
+        self.crop.standing_time_years = 20
+        self.crop.growth_duration_days = None
+        self.crop.harvest_duration_days = None
+        gaps = get_public_required_field_gaps(self.crop)
+        self.assertEqual([(gap.field, gap.label_key) for gap in gaps], [
+            ('annual_harvest_window', 'annualHarvest.window'),
+        ])
+        self.crop.annual_harvest_window = '09-01/10-15'
+        self.assertEqual(get_public_required_field_gaps(self.crop), [])
+        self.crop.annual_harvest_window = ''
+        self.crop.growth_duration_days = 760
+        self.crop.harvest_duration_days = 0
+        self.assertEqual(get_public_required_field_gaps(self.crop), [])
+
+    def test_perennial_harvest_timing_round_trips_through_the_public_library(self) -> None:
+        self.crop.life_cycle = 'perennial'
+        self.crop.standing_time_years = 20
+        self.crop.growth_duration_days = None
+        self.crop.harvest_duration_days = None
+        self.crop.annual_harvest_window = '12-15/01-20'
+        self.crop.first_harvest_delay_years = 0
+        self.crop.save()
+
+        response = self.publish_current_crop()
+        self.assertEqual(response.status_code, 201, response.data)
+        public_crop = PublicCrop.objects.get(variety=self.crop.variety)
+        public_url = f'/openfarmplanner/api/public-crops/{public_crop.pk}/'
+        response = self.client.get(public_url)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['annual_harvest_window'], '12-15/01-20')
+        self.assertEqual(response.data['first_harvest_delay_years'], 0)
+        snapshot = public_crop.revisions.get(version=public_crop.version).snapshot
+        self.assertEqual(snapshot['annual_harvest_window'], '12-15/01-20')
+        self.assertEqual(snapshot['first_harvest_delay_years'], 0)
+
+        target = Project.objects.create(name='Other library project', slug='other-library-project')
+        ProjectMembership.objects.create(user=self.user, project=target, role='admin')
+        imported = self.client.post(
+            f'{public_url}import/', {}, format='json', HTTP_X_PROJECT_ID=str(target.pk),
+        )
+        self.assertEqual(imported.status_code, 201, imported.data)
+        linked = Crop.objects.get(pk=imported.data['crop']['id'])
+        self.assertEqual(linked.source_public_crop, public_crop)
+        self.assertEqual(linked.annual_harvest_window, '12-15/01-20')
+        self.assertEqual(linked.first_harvest_delay_years, 0)
 
     def test_public_crop_response_exposes_project_crop_unit_aliases(self):
         PublicCrop.objects.create(

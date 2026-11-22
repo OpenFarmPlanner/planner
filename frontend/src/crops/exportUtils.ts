@@ -27,6 +27,8 @@ export interface PortableCrop {
   tags?: string[];
   growth_duration_days?: number;
   harvest_duration_days?: number;
+  annual_harvest_window?: string;
+  first_harvest_delay_years?: number | null;
   propagation_duration_days?: number;
   germination_temperature_optimal_min_c?: Crop['germination_temperature_optimal_min_c'];
   germination_temperature_optimal_max_c?: Crop['germination_temperature_optimal_max_c'];
@@ -132,6 +134,8 @@ export const toPortableCrop = (crop: Crop, companions?: CompanionItemsByKind): P
     tags: crop.tags?.length ? crop.tags : undefined,
     growth_duration_days: crop.growth_duration_days,
     harvest_duration_days: crop.harvest_duration_days,
+    annual_harvest_window: crop.annual_harvest_window,
+    first_harvest_delay_years: crop.first_harvest_delay_years,
     propagation_duration_days: crop.propagation_duration_days,
     germination_temperature_optimal_min_c: crop.germination_temperature_optimal_min_c ?? undefined,
     germination_temperature_optimal_max_c: crop.germination_temperature_optimal_max_c ?? undefined,

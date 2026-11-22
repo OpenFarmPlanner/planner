@@ -23,6 +23,7 @@ const textFields = [
   'germination_light_requirement',
   'germination_pretreatment',
   'pests_diseases',
+  'annual_harvest_window',
 ] as const satisfies readonly (keyof Crop)[];
 
 const enumFields = [
@@ -42,6 +43,7 @@ const enumFields = [
 const numberFields = [
   'growth_duration_days',
   'harvest_duration_days',
+  'first_harvest_delay_years',
   'propagation_duration_days',
   'germination_temperature_optimal_min_c',
   'germination_temperature_optimal_max_c',

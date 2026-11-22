@@ -271,6 +271,8 @@ describe('crop spreadsheet export → import round trip', () => {
     water_requirement: 'high',
     life_cycle: 'perennial',
     standing_time_years: 4,
+    annual_harvest_window: '12-15/02-29',
+    first_harvest_delay_years: 0,
     winter_hardiness: 'with_protection',
     pests_diseases: 'Carrot fly; cover with netting.',
     plant_health: { entries: [{ name: 'Synthetic explicit entry' }] },
@@ -410,7 +412,10 @@ describe('crop spreadsheet export → import round trip', () => {
     expect(result.entries[0]?.good_companions).toHaveLength(2);
     expect(result.entries[0]?.bad_companions).toHaveLength(2);
     expect(result.entries[2]).toMatchObject({ germination_temperature_requirement: 'cold_stratification', stratification_days_min: 28, stratification_temperature_max_c: 5 });
-    expect(result.entries[3]).toMatchObject({ life_cycle: 'perennial', standing_time_years: 6 });
+    expect(result.entries[3]).toMatchObject({
+      life_cycle: 'perennial', standing_time_years: 6,
+      annual_harvest_window: '04-15/06-24', first_harvest_delay_years: 1,
+    });
     for (const entry of result.entries) expect(entry.notes).toContain(i18n.t('crops:import.template.sampleNote'));
   });
 });

@@ -30,6 +30,7 @@ from farm.germination import (
     germination_errors,
     sync_germination_requirements,
 )
+from farm.harvest_window import validate_annual_harvest_window
 from farm.seed_units import (
     SEED_PACKAGE_UNIT_GRAMS,
     SEED_PACKAGE_UNIT_SEEDS,
@@ -522,6 +523,17 @@ class Crop(TimestampedModel):
         blank=True,
         help_text="Harvest duration in days (from first to last harvest)"
     )
+    annual_harvest_window = models.CharField(
+        max_length=11,
+        blank=True,
+        validators=[validate_annual_harvest_window],
+        help_text='One inclusive recurring harvest window for perennials, as MM-DD/MM-DD.',
+    )
+    first_harvest_delay_years = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text='Whole calendar years after planting before the first eligible harvest.',
+    )
     propagation_duration_days = models.IntegerField(
         null=True,
         blank=True,
@@ -881,6 +893,7 @@ class Crop(TimestampedModel):
         'name', 'variety', 'seed_type', 'notes', 'botanical_name', 'crop_family_id',
         'nutrient_demand', 'cultivation_types',
         'cultivation_type', 'growth_duration_days', 'harvest_duration_days', 'propagation_duration_days',
+        'annual_harvest_window', 'first_harvest_delay_years',
         'germination_temperature_optimal_min_c', 'germination_temperature_optimal_max_c',
         'germination_temperature_min_c', 'germination_days_min', 'germination_days_max',
         'germination_temperature_requirement',
@@ -1433,6 +1446,17 @@ class PublicCrop(TimestampedModel):
     cultivation_type = models.CharField(max_length=30, choices=Crop.CULTIVATION_TYPE_CHOICES, blank=True)
     growth_duration_days = models.IntegerField(null=True, blank=True)
     harvest_duration_days = models.IntegerField(null=True, blank=True)
+    annual_harvest_window = models.CharField(
+        max_length=11,
+        blank=True,
+        validators=[validate_annual_harvest_window],
+        help_text='One inclusive recurring harvest window for perennials, as MM-DD/MM-DD.',
+    )
+    first_harvest_delay_years = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text='Whole calendar years after planting before the first eligible harvest.',
+    )
     propagation_duration_days = models.IntegerField(null=True, blank=True)
     germination_temperature_optimal_min_c = models.FloatField(
         null=True, blank=True, help_text="Germination temperature in degrees Celsius",

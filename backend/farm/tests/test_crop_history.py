@@ -34,7 +34,7 @@ def legacy_crop_snapshot(snapshot):
     added_fields = {
         *GERMINATION_FIELDS, 'seed_type', 'life_cycle', 'light_requirement',
         'pests_diseases', 'water_requirement', 'winter_hardiness', 'specific_properties',
-        'plant_health',
+        'plant_health', 'annual_harvest_window', 'first_harvest_delay_years',
     }
     return {
         **{key: value for key, value in snapshot.items() if key not in added_fields},
@@ -172,6 +172,7 @@ class CropHistoryTests(TestCase):
             seed_type='f1_hybrid', germination_temperature_requirement='none',
             germination_days_min=12, stratification_days_min=21, life_cycle='annual',
             pests_diseases='Later pest note', water_requirement='high', winter_hardiness='hardy',
+            annual_harvest_window='09-01/10-15', first_harvest_delay_years=2,
         )
 
         response = self.client.post(
@@ -182,6 +183,8 @@ class CropHistoryTests(TestCase):
         self.assertEqual(response.status_code, 200, response.content)
         self.crop.refresh_from_db()
         self.assertEqual(self.crop.variety, '')
+        self.assertEqual(self.crop.annual_harvest_window, '')
+        self.assertIsNone(self.crop.first_harvest_delay_years)
         self.assert_legacy_crop_values(self.crop)
         version.refresh_from_db()
         self.assertEqual(version.snapshot, historical)

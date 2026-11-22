@@ -87,6 +87,60 @@ async function expectOneRow(boxes: Array<{ y: number }>) {
   }
 }
 
+test('edits and reloads the perennial harvest window by keyboard on a phone', async ({ page, request }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await loginWithDeterministicProject(page, request, 'perennial-crop-annual-harvest', { loginAsAdmin: true });
+  const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+    name: 'Testapfel', life_cycle: 'perennial', standing_time_years: 20,
+    growth_duration_days: 760, harvest_duration_days: 44,
+  });
+  const detailUrl = `/app/crops?cropId=${crop.id}`;
+  const sections = page.getByTestId('crop-detail-sections');
+  await page.goto(detailUrl);
+  await expect(sections.getByText('Wachstumszeit (Tage)', { exact: true })).toBeVisible();
+  await expect(sections.getByText('Erntezeit (Tage)', { exact: true })).toBeVisible();
+  await page.goto(`${detailUrl}&action=edit`);
+  const dialog = page.getByRole('dialog', { name: 'Kultur bearbeiten' });
+  const start = dialog.getByRole('textbox', { name: 'Jährlicher Erntebeginn', exact: true });
+  const end = dialog.getByRole('textbox', { name: 'Jährliches Ernteende', exact: true });
+  const delay = dialog.getByRole('spinbutton', { name: 'Jahre bis zur ersten Ernte', exact: true });
+  await expect(dialog.getByLabel('Wachstumszeit (Tage)', { exact: true })).toHaveCount(0);
+  await expect(dialog.getByLabel('Erntezeit (Tage)', { exact: true })).toHaveCount(0);
+  await start.focus();
+  await page.keyboard.type('12-15');
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Tab');
+  await expect(end).toBeFocused();
+  await page.keyboard.type('02-30');
+  await expect(dialog.getByText('Gib für Beginn und Ende ein gültiges Datum im Format MM-TT ein.')).toBeVisible();
+  await end.fill('02-29');
+  await page.keyboard.press('Tab');
+  await expect(delay).toBeFocused();
+  await page.keyboard.type('-1');
+  await expect(dialog.getByText('Gib eine ganze Zahl ab 0 ein.')).toBeVisible();
+  await delay.clear();
+  await page.keyboard.type('2');
+  await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(dialog).toBeHidden();
+
+  const saved = await apiRequest(page, 'GET', `/crops/${crop.id}/`);
+  expect(saved).toMatchObject({ annual_harvest_window: '12-15/02-29', first_harvest_delay_years: 2 });
+  await page.goto(detailUrl);
+  await expect(sections.getByText('Jährliches Erntefenster', { exact: true })).toBeVisible();
+  await expect(sections.getByText('Wachstumszeit (Tage)', { exact: true })).toHaveCount(0);
+  await page.goto(`${detailUrl}&action=edit`);
+  await expect(start).toHaveValue('12-15');
+  await expect(end).toHaveValue('02-29');
+  await expect(delay).toHaveValue('2');
+
+  await start.fill('12-01');
+  await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  expect(await apiRequest(page, 'GET', `/crops/${crop.id}/`)).toMatchObject({
+    annual_harvest_window: '12-01/02-29', first_harvest_delay_years: 2,
+  });
+});
+
 test.describe('crop edit dialog compact layout', () => {
   test.beforeEach(async ({ page, request }, testInfo) => {
     await loginWithDeterministicProject(page, request, `crop-form-compact-${testInfo.workerIndex}`);

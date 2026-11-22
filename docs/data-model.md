@@ -212,6 +212,9 @@ erDiagram
   Perennials have a positive whole-year `standing_time_years`. Varieties
   can inherit the value from their general crop. Existing perennial crops
   keep an unknown value until it is explicitly configured.
+  Perennials can also record `annual_harvest_window` and
+  `first_harvest_delay_years`. The whole window is inherited as one value
+  and the delay is inherited separately. See [perennial harvest planning](crop-detail.md#perennial-harvest-planning).
   `creation_origin` is set by the server for a new manual, file-imported,
   or library-imported crop. It stays separate from the library link and
   licensing provenance. Rows without recorded creation evidence retain an
@@ -227,7 +230,7 @@ erDiagram
   [crop-library-architecture.md](./crop-library-architecture.md) for the
   full story of how this split is formalized into the `crops` Django app.
   Published perennial entries carry the productive lifespan along with
-  the life-cycle category.
+  the life-cycle category and any configured harvest window and delay.
 - **`CropSupplierData`** is the join between one `Crop` and one
   `Supplier`: supplier-specific product data (price, packaging sizes,
   germination rate, thousand-kernel-weight, `seed_status` and

@@ -16,8 +16,11 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
+from django.core.exceptions import ValidationError
+
 from crops.plant_families import coerce_plant_family_key
 from farm.enum_normalization import normalize_choice_value
+from farm.harvest_window import validate_annual_harvest_window
 from farm.models import Crop
 from farm.services.crop_tags import normalize_tags
 
@@ -153,6 +156,13 @@ def _analyze_string(spec: FieldSpec, analysis: FieldAnalysis, raw_value: Any) ->
         analysis.errors.append(_issue('too_long', f'Maximum is {spec.max_length} characters.'))
         analysis.confidence = CONFIDENCE_INVALID
         return
+    if spec.name == 'annual_harvest_window':
+        try:
+            validate_annual_harvest_window(text)
+        except ValidationError as error:
+            analysis.errors.append(_issue(error.code, error.message))
+            analysis.confidence = CONFIDENCE_INVALID
+            return
     analysis.api_value = text
 
 
@@ -382,8 +392,6 @@ def analyze_field(
     if spec.kind == KIND_STRING:
         _analyze_string(spec, analysis, raw_value)
     elif spec.name == 'plant_health':
-        from django.core.exceptions import ValidationError
-
         from crops.plant_health_values import normalize_plant_health
 
         try:

@@ -25,6 +25,8 @@ import { PublicCropHierarchyList } from '../../crops/PublicCropHierarchyList';
 import { CropLibraryStatusCircle } from '../../crops/CropLibraryStatusIcon';
 import { usePlantFamilies } from '../../crops/plantFamilies';
 import { CropSearchFilterButton, CropSearchToolbar } from '../../crops/CropSearchToolbar';
+import { formatAnnualHarvestWindow } from '../../crops/annualHarvestWindow';
+import { findSpeciesCrop } from '../../crops/cropHierarchy';
 import { getPublicCropDescription, getPublicCropTitle } from '../publicCropDisplay';
 import { DetailSection } from '../../components/layout/DetailPrimitives';
 import { LocalizedMarkdownNotes } from './LocalizedMarkdownNotes';
@@ -248,6 +250,10 @@ export function PublicCropLibraryDialog({
     () => filteredCrops.find((entry) => entry.id === selectedId) ?? null,
     [filteredCrops, selectedId],
   );
+  const selectedParent = useMemo(() => findSpeciesCrop(selectedCrop, crops), [selectedCrop, crops]);
+  const isPerennial = (selectedCrop?.life_cycle || selectedParent?.life_cycle) === 'perennial';
+  const annualWindow = selectedCrop?.annual_harvest_window || selectedParent?.annual_harvest_window;
+  const firstHarvestDelay = selectedCrop?.first_harvest_delay_years ?? selectedParent?.first_harvest_delay_years;
 
   const selectCropFromList = useCallback((crop: PublicCrop, kind: 'species' | 'variety'): void => {
     setSelectedId(crop.id);
@@ -422,12 +428,25 @@ export function PublicCropLibraryDialog({
                   />
                 </Box>
                 <Box sx={{ display: 'grid', gap: 0.5, mb: 1.5 }}>
-                  <Typography variant="body2" sx={{ lineHeight: 1.35 }}>
-                    <strong>{t('form.growthDurationDays')}:</strong> {selectedCrop.growth_duration_days ?? t('noData')}
-                  </Typography>
-                  <Typography variant="body2" sx={{ lineHeight: 1.35 }}>
-                    <strong>{t('form.harvestDurationDays')}:</strong> {selectedCrop.harvest_duration_days ?? t('noData')}
-                  </Typography>
+                  {isPerennial && annualWindow ? (
+                    <Typography variant="body2" sx={{ lineHeight: 1.35 }}>
+                      <strong>{t('annualHarvest.window')}:</strong> {formatAnnualHarvestWindow(annualWindow, language)}
+                    </Typography>
+                  ) : (
+                    <>
+                      <Typography variant="body2" sx={{ lineHeight: 1.35 }}>
+                        <strong>{t('form.growthDurationDays')}:</strong> {selectedCrop.growth_duration_days ?? t('noData')}
+                      </Typography>
+                      <Typography variant="body2" sx={{ lineHeight: 1.35 }}>
+                        <strong>{t('form.harvestDurationDays')}:</strong> {selectedCrop.harvest_duration_days ?? t('noData')}
+                      </Typography>
+                    </>
+                  )}
+                  {isPerennial && firstHarvestDelay != null ? (
+                    <Typography variant="body2" sx={{ lineHeight: 1.35 }}>
+                      <strong>{t('annualHarvest.delay')}:</strong> {firstHarvestDelay}
+                    </Typography>
+                  ) : null}
                 </Box>
                 {!selectedCrop.variety?.trim() && selectedCrop.crop_species && onImportVarieties
                   && crops.some(entry => entry.crop_species === selectedCrop.crop_species && entry.variety?.trim()) ? (

@@ -237,6 +237,9 @@ export interface Crop {
   
   growth_duration_days?: number;
   harvest_duration_days?: number;
+  /** One inclusive yearless interval as MM-DD/MM-DD, or blank. */
+  annual_harvest_window?: string;
+  first_harvest_delay_years?: number | null;
   propagation_duration_days?: number;
   germination_temperature_optimal_min_c?: number | null;
   germination_temperature_optimal_max_c?: number | null;
@@ -352,6 +355,8 @@ export type CropInheritableField =
   | 'cultivation_types'
   | 'growth_duration_days'
   | 'harvest_duration_days'
+  | 'annual_harvest_window'
+  | 'first_harvest_delay_years'
   | 'propagation_duration_days'
   | 'germination_temperature_optimal_min_c'
   | 'germination_temperature_optimal_max_c'
@@ -478,6 +483,8 @@ export interface PublicCrop {
   cultivation_types?: CultivationType[];
   growth_duration_days?: number | null;
   harvest_duration_days?: number | null;
+  annual_harvest_window?: string;
+  first_harvest_delay_years?: number | null;
   propagation_duration_days?: number | null;
   germination_temperature_optimal_min_c?: number | null;
   germination_temperature_optimal_max_c?: number | null;

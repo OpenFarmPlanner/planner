@@ -61,6 +61,8 @@ const HISTORY_FIELD_LABEL_KEYS: Record<string, string> = {
   cultivation_types: 'form.cultivationType',
   growth_duration_days: 'form.growthDurationDays',
   harvest_duration_days: 'form.harvestDurationDays',
+  annual_harvest_window: 'annualHarvest.window',
+  first_harvest_delay_years: 'annualHarvest.delay',
   propagation_duration_days: 'form.propagationDurationDays',
   germination_temperature_optimal_min_c: 'germination.fields.germination_temperature_optimal_min_c',
   germination_temperature_optimal_max_c: 'germination.fields.germination_temperature_optimal_max_c',

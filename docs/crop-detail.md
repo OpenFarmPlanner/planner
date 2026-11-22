@@ -67,8 +67,8 @@ form's headings:
 16. Bibliotheksdaten (library only: original language, publication dates)
 
 Hiding empty sections never reorders the remaining ones. The shared
-`CropTimingDetails` keeps cultivation type before the two durations in both read
-views, matching `TimingSection`; method labels still identify seed-rate rows.
+`CropTimingDetails` keeps cultivation type above harvest timing in both read
+views, matching `TimingSection`. Method labels still identify seed-rate rows.
 A cultivation method alone does not create an empty seed-demand section. Existing
 seed quantities, project safety margins, legacy quantities and local pin/variety
 markers remain in their respective groups.
@@ -117,10 +117,36 @@ only what is set; a seed rate in the per-method table without a safety margin
 shows "-" because a table cell cannot be left out.
 
 The project timing section uses the same Anzuchtzeitraum, Direktsaatzeitraum
-and Pflanzzeitraum labels as the edit form and spreadsheets (localized in
-all four languages; see [timing-windows.md](timing-windows.md)). They are
-windows, distinct from the cultivation-method labels. Harvest remains
-calculated, not an imported or editable harvest window.
+and Pflanzzeitraum labels as the edit form and spreadsheets. These windows
+describe when to propagate, sow or plant. See [timing windows](timing-windows.md).
+
+## Perennial harvest planning
+
+Annual crops retain their day-based growth and harvest durations. A perennial
+can declare one inclusive recurring harvest window, stored as `MM-DD/MM-DD`.
+For example, `09-01/10-15` is September 1 through October 15 each year.
+If the end precedes the start, it falls in the following calendar year.
+Identical endpoints describe one day. February 29 is valid and uses February 28
+in years without a leap day.
+
+The optional `first_harvest_delay_years` is a nonnegative whole number of
+calendar years after planting. A variety inherits a blank value from its
+general culture when available. After inheritance, a blank delay and an
+explicit `0` both mean eligibility starts on the planting date. A positive
+delay starts on the corresponding planting anniversary, using February 28 if
+that year has no February 29. For a crop planted on March 15, 2025 with a delay
+of 2 years, eligibility begins March 15, 2027. In a September–October window,
+the first eligible harvest falls in September 2027. If eligibility begins
+inside a window, only dates on or after eligibility qualify.
+
+The whole window is inherited together, independent of the delay. Standing
+time continues to describe bed occupancy. Existing crops may leave the window
+empty. Importing or editing either timing field stores crop data and preserves
+existing plan dates and actual harvest records. Forecasts and calendar bars
+use the plan's existing date logic until season-specific projection is available.
+Publishing a perennial to the library requires an annual window or both
+legacy day-based durations. The detail view shows saved durations when the
+annual window is absent.
 
 Project companion references use the same resolved crop-name helper as the
 Name field and detail heading, including a variety's owner hint and reciprocal

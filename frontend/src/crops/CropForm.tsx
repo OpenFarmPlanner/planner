@@ -729,6 +729,11 @@ export function CropForm({
   const handleChange = <K extends keyof Crop>(name: K, value: Crop[K]) => {
     setFormData((prev) => {
       const updated = { ...prev, [name]: value };
+      if (name === 'life_cycle' && (updated.life_cycle || inheritedLifeCycle) !== 'perennial') {
+        // Hidden perennial fields retain their saved values when the life cycle changes.
+        updated.annual_harvest_window = crop?.annual_harvest_window ?? '';
+        updated.first_harvest_delay_years = crop?.first_harvest_delay_years ?? null;
+      }
       setIsDirty(true);
       setUserInteracted(true);
       setSaveError('');
@@ -1514,7 +1519,7 @@ export function CropForm({
                 rotation (both in BasicInfoSection), timing, spacing, yield,
                 seed demand, time windows, germination, site and health,
                 companion planting, display colour, notes. */}
-            <TimingSection {...sectionProps} />
+            <TimingSection {...sectionProps} isPerennial={(formData.life_cycle || inheritedLifeCycle) === 'perennial'} />
             <SpacingSection {...sectionProps} />
             <YieldSection {...sectionProps} showDefaultHarvestUnit={isProjectForm} />
             <SeedingSection
