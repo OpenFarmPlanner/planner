@@ -144,6 +144,9 @@ time continues to describe bed occupancy. Existing crops may leave the window
 empty. Importing or editing either timing field stores crop data and preserves
 existing plan dates and actual harvest records. Forecasts and calendar bars
 use the plan's existing date logic until season-specific projection is available.
+Publishing a perennial to the library requires an annual window or both
+legacy day-based durations. The detail view shows saved durations when the
+annual window is absent.
 
 Project companion references use the same resolved crop-name helper as the
 Name field and detail heading, including a variety's owner hint and reciprocal

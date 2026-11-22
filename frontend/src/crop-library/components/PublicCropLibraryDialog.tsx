@@ -428,10 +428,10 @@ export function PublicCropLibraryDialog({
                   />
                 </Box>
                 <Box sx={{ display: 'grid', gap: 0.5, mb: 1.5 }}>
-                  {isPerennial ? (
+                  {isPerennial && annualWindow ? (
                     <>
                       <Typography variant="body2" sx={{ lineHeight: 1.35 }}>
-                        <strong>{t('annualHarvest.window')}:</strong> {annualWindow ? formatAnnualHarvestWindow(annualWindow, language) : t('noData')}
+                        <strong>{t('annualHarvest.window')}:</strong> {formatAnnualHarvestWindow(annualWindow, language)}
                       </Typography>
                       <Typography variant="body2" sx={{ lineHeight: 1.35 }}>
                         <strong>{t('annualHarvest.delay')}:</strong> {firstHarvestDelay ?? t('noData')}

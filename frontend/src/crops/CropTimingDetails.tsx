@@ -32,7 +32,7 @@ export function CropTimingDetails({
   t: (key: string) => string;
   sx?: SxProps<Theme>;
 }) {
-  const durations = isPerennial ? TIMING_DURATION_FIELDS.slice(2) : TIMING_DURATION_FIELDS;
+  const durations = isPerennial && annualWindow ? TIMING_DURATION_FIELDS.slice(2) : TIMING_DURATION_FIELDS;
   const fieldValue = (content: ReactNode, origin?: ValueSource | null, marker?: ReactNode) =>
     <ValueWithLibraryPin pin={marker}>
       <Typography variant="body1" sx={origin === 'ownValue' ? varietySpecificValueHighlightSx : undefined}>{content}</Typography>

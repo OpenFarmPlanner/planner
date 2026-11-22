@@ -45,6 +45,7 @@ from farm.services.public_crops import (
     ensure_general_public_crop,
     ensure_public_crop_revision,
     find_general_public_crop,
+    get_public_required_field_gaps,
     has_pending_public_crop_update,
     is_project_crop_up_to_date,
     link_project_crop_to_public_reference,
@@ -568,19 +569,21 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             ).exists()
         )
 
-    def test_perennial_without_a_window_still_needs_the_harvest_durations(self) -> None:
-        from farm.services.public_crops import get_public_required_field_gaps
-
+    def test_perennial_publishing_requests_the_window_when_harvest_data_is_missing(self) -> None:
         self.crop.life_cycle = 'perennial'
+        self.crop.standing_time_years = 20
         self.crop.growth_duration_days = None
         self.crop.harvest_duration_days = None
-        self.crop.annual_harvest_window = ''
-        fields = {gap.field for gap in get_public_required_field_gaps(self.crop)}
-        self.assertIn('harvest_duration_days', fields)
+        gaps = get_public_required_field_gaps(self.crop)
+        self.assertEqual([(gap.field, gap.label_key) for gap in gaps], [
+            ('annual_harvest_window', 'annualHarvest.window'),
+        ])
         self.crop.annual_harvest_window = '09-01/10-15'
-        fields = {gap.field for gap in get_public_required_field_gaps(self.crop)}
-        self.assertNotIn('harvest_duration_days', fields)
-        self.assertNotIn('growth_duration_days', fields)
+        self.assertEqual(get_public_required_field_gaps(self.crop), [])
+        self.crop.annual_harvest_window = ''
+        self.crop.growth_duration_days = 760
+        self.crop.harvest_duration_days = 0
+        self.assertEqual(get_public_required_field_gaps(self.crop), [])
 
     def test_perennial_harvest_timing_round_trips_through_the_public_library(self) -> None:
         self.crop.life_cycle = 'perennial'
