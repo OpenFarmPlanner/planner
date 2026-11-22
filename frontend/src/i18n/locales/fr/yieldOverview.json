@@ -36,6 +36,7 @@
     "openPlansAction": "Ouvrir le plan de culture"
   },
   "diagnostics": {
+    "summary": "{{count}} sans prévision",
     "title_one": "Série sans prévision ({{count}})",
     "title_other": "Séries sans prévision ({{count}})",
     "title_many": "Séries sans prévision ({{count}})",

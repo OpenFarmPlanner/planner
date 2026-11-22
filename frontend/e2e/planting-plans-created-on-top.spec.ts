@@ -16,7 +16,9 @@ test('mobile: a new plan is listed first, scrolled into view and focused, even w
   const firstCardBefore = await cards.first().getAttribute('data-mobile-card-id');
 
   // A search the new plan will not match, and the end of the list in view.
-  await page.getByRole('searchbox').first().fill(await cards.first().locator('h6, .MuiTypography-subtitle1').first().innerText());
+  const search = page.getByRole('searchbox', { name: 'Anbaupläne durchsuchen' });
+  await search.fill(await cards.first().locator('h6, .MuiTypography-subtitle1').first().innerText());
+  await expect(page.getByTestId('planting-plan-search-count')).toHaveText(/^\d+ von \d+$/);
   await cards.last().scrollIntoViewIfNeeded();
 
   await page.getByRole('button', { name: /^Anbauplan hinzufügen/ }).first().click();
@@ -35,7 +37,7 @@ test('mobile: a new plan is listed first, scrolled into view and focused, even w
   await expect(cards.first()).toBeInViewport();
   await expect(cards.first().getByRole('button', { name: /^Aktionen/ })).toBeFocused();
   // The search the user typed is still applied.
-  await expect(page.getByRole('searchbox').first()).not.toHaveValue('');
+  await expect(search).not.toHaveValue('');
 
   // The flash ends; the position does not.
   await expect(cards.first()).not.toHaveAttribute('data-flashing', 'true', { timeout: 5000 });

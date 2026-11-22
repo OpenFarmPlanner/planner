@@ -143,9 +143,9 @@ class YieldCalendarAPITest(TestCase):
                 area_usage_sqm=area, quantity=44,
             )
             PlantingPlan.objects.filter(pk=plan.pk).update(season=season)
-            expected.append((plan.pk, blockers))
+            expected.append((plan.pk, crop.pk, blockers))
         draft = PlantingPlan.objects.create(bed=self.bed, season=season, project=self.project)
-        expected.append((draft.pk, ['missing_crop', 'missing_harvest_period']))
+        expected.append((draft.pk, None, ['missing_crop', 'missing_harvest_period']))
         PlantingPlan.objects.create(bed=self.bed, season=later, project=self.project)
         foreign_project = Project.objects.create(name='Other', slug='yield-foreign-diagnostics')
         foreign_crop = Crop.objects.create(name='Private crop', project=foreign_project)
@@ -159,14 +159,14 @@ class YieldCalendarAPITest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['weeks'], [])
         self.assertEqual([
-            (plan['plan_id'], plan['calculation_blockers'])
+            (plan['plan_id'], plan['crop_id'], plan['calculation_blockers'])
             for plan in response.json()['incomplete_plans']
         ], expected)
         self.assertEqual(self.client.get(url, HTTP_X_SEASON_ID=season.pk).json(), [])
         explicit_year = self.client.get(url, {'include_incomplete': 'true', 'year': 2026})
         self.assertEqual(
             [plan['plan_id'] for plan in explicit_year.json()['incomplete_plans']],
-            [plan_id for plan_id, _ in expected if plan_id != draft.id],
+            [plan_id for plan_id, _, _ in expected if plan_id != draft.id],
         )
 
     def test_independent_year_slices_preserve_the_same_rounded_plan_total(self):

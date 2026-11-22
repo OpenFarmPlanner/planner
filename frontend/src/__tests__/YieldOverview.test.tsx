@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { FocusManagerProvider } from "../focus/FocusManager";
@@ -105,14 +105,21 @@ describe("YieldOverviewPage", () => {
     const page = <FocusManagerProvider><MemoryRouter><YieldOverviewPage /></MemoryRouter></FocusManagerProvider>;
     const { rerender } = render(page);
 
-    const summary = await screen.findByText("Anbauplan ohne Prognose (1)");
-    expect(summary.closest("details")).not.toHaveAttribute("open");
-    await userEvent.click(summary);
-    expect(summary.closest("details")).toHaveAttribute("open");
-    expect(screen.getByRole("link", { name: /Tomate \(Früh\).*Beet 3/ })).toHaveAttribute(
+    const user = userEvent.setup();
+    const summary = await screen.findByRole("button", { name: "1 ohne Prognose" });
+    expect(summary).toHaveAttribute("aria-expanded", "false");
+    summary.focus();
+    await user.keyboard("{Enter}");
+    expect(summary).toHaveAttribute("aria-expanded", "true");
+    const details = await screen.findByRole("dialog", { name: "Anbauplan ohne Prognose (1)" });
+    expect(within(details).getByRole("link", { name: /Tomate \(Früh\).*Beet 3/ })).toHaveAttribute(
       "href", "/app/planting-plans/17",
     );
-    expect(screen.getByText(/Ertragseinheit fehlt.*Pflanzabstand fehlt/)).toBeVisible();
+    expect(within(details).getByText(/Ertragseinheit fehlt.*Pflanzabstand fehlt/)).toBeVisible();
+    await user.keyboard("{Escape}");
+    expect(summary).toHaveFocus();
+    expect(summary).toHaveAttribute("aria-expanded", "false");
+    await waitFor(() => expect(details).not.toBeInTheDocument());
     expect(screen.getByTestId("yield-bar-2026-W10-1")).toBeVisible();
     expect(screen.queryByRole("button", { name: /Tomate/ })).not.toBeInTheDocument();
 
@@ -120,8 +127,8 @@ describe("YieldOverviewPage", () => {
     mocks.incompletePlans = [nextSeasonPlan, { ...nextSeasonPlan, plan_id: 19 }];
     outletContext.activeSeason = { id: 2, start_date: "2026-01-01", end_date: "2026-12-31" };
     rerender(<FocusManagerProvider><MemoryRouter><YieldOverviewPage /></MemoryRouter></FocusManagerProvider>);
-    expect(await screen.findByText("Anbaupläne ohne Prognose (2)")).toBeVisible();
-    expect(screen.queryByText("Anbauplan ohne Prognose (1)")).not.toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "2 ohne Prognose" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "1 ohne Prognose" })).not.toBeInTheDocument();
   });
 
   it("retries a failed load without showing empty yield content", async () => {
@@ -245,8 +252,8 @@ describe("YieldOverviewPage", () => {
         },
       ],
     });
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.assign(navigator, { clipboard: { writeText } });
+    userEvent.setup();
+    const writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
 
     render(
       <FocusManagerProvider><MemoryRouter>
@@ -264,6 +271,7 @@ describe("YieldOverviewPage", () => {
     fireEvent.contextMenu(segment);
     fireEvent.click(await screen.findByRole("menuitem", { name: "Zeile kopieren" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("Kohl · W13 Mär · 0.70 kg"));
+    writeText.mockRestore();
   });
 
   it("uses localized crop display names in the chart and crop filter", async () => {
@@ -1633,6 +1641,41 @@ describe("YieldFilterBar", () => {
     await user.click(await screen.findByRole("option", { name: "Alle Kulturen" }));
 
     expect(await screen.findByTestId("yield-bar-2026-W13-1")).toBeInTheDocument();
+  });
+
+  it("scopes the warning to the forecast crop without losing unknown diagnostics from older responses", async () => {
+    const user = userEvent.setup();
+    mocks.incompletePlans = [
+      { plan_id: 21, crop_id: 1, crop_name: "Kohl", crop_display_name: null,
+        crop_display_language_code: "", crop_variety: null, bed_name: "",
+        planting_date: null, calculation_blockers: ["missing_plant_spacing"] },
+      { plan_id: 22, crop_id: null, crop_name: "", crop_display_name: null,
+        crop_display_language_code: "", crop_variety: null, bed_name: "",
+        planting_date: null, calculation_blockers: ["missing_crop"] },
+    ];
+    const rendered = renderPage();
+    expect(await screen.findByRole("button", { name: "2 ohne Prognose" })).toBeVisible();
+
+    const selectCrop = async (name: string) => {
+      await user.click(screen.getByRole("combobox"));
+      await user.click(await screen.findByRole("option", { name }));
+    };
+    await selectCrop("Kohl");
+    expect(screen.getByRole("button", { name: "1 ohne Prognose" })).toBeVisible();
+
+    await selectCrop("Karotte");
+    expect(screen.queryByRole("button", { name: /ohne Prognose/ })).not.toBeInTheDocument();
+    expect(screen.getByTestId("yield-bar-2026-W13-2")).toBeVisible();
+
+    await selectCrop("Alle Kulturen");
+    expect(screen.getByRole("button", { name: "2 ohne Prognose" })).toBeVisible();
+    await selectCrop("Karotte");
+
+    const oldPlan = { ...mocks.incompletePlans[0], crop_id: undefined };
+    mocks.incompletePlans = [oldPlan];
+    outletContext.activeSeason = { id: 2, start_date: "2026-01-01", end_date: "2026-12-31" };
+    rendered.rerender(<FocusManagerProvider><MemoryRouter><YieldOverviewPage /></MemoryRouter></FocusManagerProvider>);
+    expect(await screen.findByRole("button", { name: "1 ohne Prognose" })).toBeVisible();
   });
 
   it("rescales the y axis to the crop left in view", async () => {

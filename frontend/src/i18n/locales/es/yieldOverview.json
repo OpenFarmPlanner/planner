@@ -36,6 +36,7 @@
     "openPlansAction": "Abrir plan de cultivos"
   },
   "diagnostics": {
+    "summary": "{{count}} sin previsión",
     "title_one": "Serie sin previsión ({{count}})",
     "title_other": "Series sin previsión ({{count}})",
     "title_many": "Series sin previsión ({{count}})",
