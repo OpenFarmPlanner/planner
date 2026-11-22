@@ -291,6 +291,35 @@ test.describe('recurring harvest dates', () => {
         await page.keyboard.press('Escape');
         await page.mouse.up();
         await expect.poll(async () => (await bar.boundingBox())!.x).toBeCloseTo(originalBar.x, 0);
+
+        const updatePath = new RegExp(`/planting-plans/${plan.id}/$`);
+        let releaseWrite!: () => void;
+        const writeHeld = new Promise<void>(resolve => { releaseWrite = resolve; });
+        await page.route(updatePath, async route => {
+          if (route.request().method() === 'PUT') await writeHeld;
+          await route.continue();
+        });
+        const nextSave = page.waitForResponse(response => response.request().method() === 'PUT'
+          && updatePath.test(response.url()));
+        try {
+          await page.mouse.move(x, y);
+          await page.mouse.down();
+          await page.mouse.move(x - 60, y, { steps: 8 });
+          await expect.poll(async () => (await bar.boundingBox())!.x).toBeLessThan(originalBar.x - 35);
+          const pendingWrite = page.waitForRequest(entry => entry.method() === 'PUT' && updatePath.test(entry.url()));
+          await page.mouse.up();
+          await pendingWrite;
+          await expect(bar).toHaveAttribute('data-dragging', 'false');
+          await expect.poll(async () => (await bar.boundingBox())!.x).toBeLessThan(originalBar.x - 35);
+          expect((await phase.boundingBox())!.x).toBeCloseTo(originalPhase.x, 0);
+        } finally {
+          releaseWrite();
+        }
+        expect((await nextSave).ok()).toBe(true);
+        await page.unroute(updatePath);
+        await apiRequest(page, 'PATCH', `/planting-plans/${plan.id}/`, {
+          planting_date: '2025-03-15', clearing_date: '2028-09-10',
+        });
       });
 
       await test.step('earlier recorded sowing can start a zero-delay harvest before the planned date', async () => {

@@ -670,7 +670,15 @@ function GanttChartPage() {
       // shifted along with the planting date so the harvest bar stays where
       // the drag preview put it instead of jumping after the response.
       setPlantingPlans((previous) => previous.map((entry) => (
-        entry.id === planId ? { ...entry, ...movedDates } : entry
+        entry.id === planId ? {
+          ...entry,
+          ...movedDates,
+          occupancy_end_date: movedDates.clearing_date ?? movedDates.harvest_end_date
+            ?? movedDates.harvest_date ?? movedDates.planting_date,
+          seasonal_harvest: entry.seasonal_harvest && {
+            ...entry.seasonal_harvest, occupancy_start_date: movedDates.planting_date,
+          },
+        } : entry
       )));
 
       const response = await plantingPlanAPI.update(planId, updatedPlan as PlantingPlan);
