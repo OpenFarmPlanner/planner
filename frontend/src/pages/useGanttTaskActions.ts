@@ -82,10 +82,11 @@ export function useGanttTaskActions({
   }, [navigate]);
 
   const copyTaskSummary = useCallback((task: GanttTask, group: GanttTaskGroup) => {
+    const timeZone = task.phaseBands ? 'UTC' : undefined;
     const parts = [
       task.cropName ? formatCropDisplayLabel(task.cropName, task.cropVariety) : task.name,
       group.name,
-      `${formatGanttDate(task.startDate)} – ${formatGanttDate(task.endDate)}`,
+      `${formatGanttDate(task.startDate, timeZone)} – ${formatGanttDate(task.endDate, timeZone)}`,
     ].filter(Boolean);
     copyTextToClipboardSilently(parts.join(' · '));
   }, []);

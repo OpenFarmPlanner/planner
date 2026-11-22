@@ -251,7 +251,7 @@ export interface TaskItemProps {
   leftPx: number;
   widthPx: number;
   topPx: number;
-  phaseBands?: { left: number; width: number; color: string }[];
+  phaseBands?: { timelineLeft: number; width: number; color: string }[];
   isHovered: boolean;
   isDragging: boolean;
   editMode: boolean;

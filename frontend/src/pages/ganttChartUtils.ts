@@ -324,12 +324,12 @@ export function formatSeedlingTooltipTitle(task: Pick<GanttTask, 'cropName' | 'c
   return formatCropDisplayLabel(task.cropName || task.name, task.cropVariety);
 }
 
-export function formatGanttDate(value: Date): string {
-  return value.toLocaleDateString(getActiveFormattingLocale());
+export function formatGanttDate(value: Date, timeZone?: 'UTC'): string {
+  return value.toLocaleDateString(getActiveFormattingLocale(), { timeZone });
 }
 
 export function formatSeasonalHarvestBands(bands: NonNullable<GanttTask['phaseBands']>): string {
-  const dateLabel = (date: Date) => date.toLocaleDateString(getActiveFormattingLocale(), { timeZone: 'UTC' });
+  const dateLabel = (date: Date) => formatGanttDate(date, 'UTC');
   return bands.map(({ startDate, endDate }) => startDate.getTime() === endDate.getTime()
     ? dateLabel(startDate) : `${dateLabel(startDate)} – ${dateLabel(endDate)}`).join(' · ');
 }
@@ -405,6 +405,7 @@ export function buildOccupancyTooltipDetails(task: Pick<
   | 'areaUsage' | 'notes' | 'readOnly' | 'plantingAnchor' | 'clearingDate' | 'phaseBands'
 >): OccupancyTooltipDetail[] {
   const phase = getOccupancyTaskPhase(task);
+  const formatDate = (date: Date) => formatGanttDate(date, task.phaseBands ? 'UTC' : undefined);
   const isHarvestTask = phase === 'harvest';
   // While a bar is being moved its start/end already sit at the preview
   // position, but the stored harvest dates do not. A growth bar ends where
@@ -424,22 +425,22 @@ export function buildOccupancyTooltipDetails(task: Pick<
 
   const details: Array<OccupancyTooltipDetail | null> = [
     !isHarvestTask
-      ? { labelKey: 'plantingDate', value: formatGanttDate(task.readOnly && task.plantingAnchor || task.startDate) }
+      ? { labelKey: 'plantingDate', value: formatDate(task.readOnly && task.plantingAnchor || task.startDate) }
       : null,
     task.clearingDate
-      ? { labelKey: 'clearingDate', value: formatGanttDate(addUtcDays(task.clearingDate, harvestShiftDays)) }
+      ? { labelKey: 'clearingDate', value: formatDate(addUtcDays(task.clearingDate, harvestShiftDays)) }
       : null,
     harvestStartDate && !hasHarvestRange
-      ? { labelKey: 'harvestDate', value: formatGanttDate(harvestStartDate) }
+      ? { labelKey: 'harvestDate', value: formatDate(harvestStartDate) }
       : null,
     harvestStartDate && hasHarvestRange
-      ? { labelKey: 'firstHarvest', value: formatGanttDate(harvestStartDate) }
+      ? { labelKey: 'firstHarvest', value: formatDate(harvestStartDate) }
       : null,
     harvestEndDate && hasHarvestRange
-      ? { labelKey: 'lastHarvest', value: formatGanttDate(harvestEndDate) }
+      ? { labelKey: 'lastHarvest', value: formatDate(harvestEndDate) }
       : null,
     task.actualHarvestEndDate
-      ? { labelKey: 'actualHarvestEnd', value: formatGanttDate(addUtcDays(task.actualHarvestEndDate, harvestShiftDays)) }
+      ? { labelKey: 'actualHarvestEnd', value: formatDate(addUtcDays(task.actualHarvestEndDate, harvestShiftDays)) }
       : null,
     task.phaseBands?.length
       ? { labelKey: 'seasonalHarvest', value: formatSeasonalHarvestBands(task.phaseBands) }

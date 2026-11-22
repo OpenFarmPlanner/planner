@@ -23,6 +23,13 @@ interface DragListeners {
   keyDown: (event: KeyboardEvent) => void;
 }
 
+function setTaskLeft(element: HTMLElement, left: number) {
+  const position = `${left}px`;
+  element.style.left = position;
+  // Phase bands are positioned in timeline coordinates, including during the DOM drag preview.
+  element.style.setProperty("--rmg-task-left", position);
+}
+
 /**
  * TaskRow Component - Displays and manages tasks for a single task group
  */
@@ -227,7 +234,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
     currentPositionRef.current = { left: newLeft, width: newWidth };
 
     // Apply to DOM - direct DOM manipulation
-    taskElementRef.current.style.left = `${newLeft}px`;
+    setTaskLeft(taskElementRef.current, newLeft);
     taskElementRef.current.style.width = `${newWidth}px`;
 
     // Calculate and update dates based on current position
@@ -446,7 +453,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
           }
 
           // Apply position immediately to keep task visible
-          taskElementRef.current.style.left = `${adjustedLeft}px`;
+          setTaskLeft(taskElementRef.current, adjustedLeft);
 
           // Update dates based on new position
           if (draggingTaskRef.current) {
@@ -500,7 +507,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
           }
 
           // Apply position immediately to keep task visible
-          taskElementRef.current.style.left = `${adjustedLeft}px`;
+          setTaskLeft(taskElementRef.current, adjustedLeft);
 
           // Update dates based on new position
           if (draggingTaskRef.current) {
@@ -701,7 +708,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
     if (taskEl) {
       taskEl.style.transition = "";
       if (initialState) {
-        taskEl.style.left = `${initialState.left}px`;
+        setTaskLeft(taskEl, initialState.left);
         taskEl.style.width = `${initialState.width}px`;
       }
       taskEl.setAttribute("data-dragging", "false");
@@ -817,7 +824,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
 
         // Apply position immediately for day view mode
         if (viewMode === ViewMode.DAY && taskElementRef.current) {
-          taskElementRef.current.style.left = `${newLeft}px`;
+          setTaskLeft(taskElementRef.current, newLeft);
           taskElementRef.current.style.width = `${newWidth}px`;
           updateDatesFromPosition(newLeft, newWidth);
         }
@@ -831,7 +838,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
         }
         // Direct update for non-smooth non-day view modes
         else if (taskElementRef.current) {
-          taskElementRef.current.style.left = `${newLeft}px`;
+          setTaskLeft(taskElementRef.current, newLeft);
           taskElementRef.current.style.width = `${newWidth}px`;
           updateDatesFromPosition(newLeft, newWidth);
         }
@@ -853,6 +860,9 @@ const TaskRow: React.FC<TaskRowProps> = ({
     // Get final position
     let finalLeft = targetPositionRef.current.left;
     let finalWidth = targetPositionRef.current.width;
+    const transition = draggingTaskRef.current.phaseBands
+      ? "transform 0.15s ease-out, width 0.15s ease-out"
+      : "transform 0.15s ease-out, left 0.15s ease-out, width 0.15s ease-out";
 
     // Apply snapping for final position in day mode
     if (viewMode === ViewMode.DAY) {
@@ -864,9 +874,8 @@ const TaskRow: React.FC<TaskRowProps> = ({
       finalWidth = Math.max(monthWidth, finalWidth);
 
       // Apply final position to element with transition
-      taskElementRef.current.style.transition =
-        "transform 0.15s ease-out, left 0.15s ease-out, width 0.15s ease-out";
-      taskElementRef.current.style.left = `${finalLeft}px`;
+      taskElementRef.current.style.transition = transition;
+      setTaskLeft(taskElementRef.current, finalLeft);
       taskElementRef.current.style.width = `${finalWidth}px`;
 
       // Update dates from the snapped position
@@ -874,9 +883,8 @@ const TaskRow: React.FC<TaskRowProps> = ({
     }
     // Apply snapping for other modes if desired
     else if (!shouldUseSmoothDragging) {
-      taskElementRef.current.style.transition =
-        "transform 0.15s ease-out, left 0.15s ease-out, width 0.15s ease-out";
-      taskElementRef.current.style.left = `${finalLeft}px`;
+      taskElementRef.current.style.transition = transition;
+      setTaskLeft(taskElementRef.current, finalLeft);
       taskElementRef.current.style.width = `${finalWidth}px`;
     }
     if (draggingTaskRef.current && getTaskDateScale(draggingTaskRef.current) && viewMode !== ViewMode.DAY) {
@@ -1067,14 +1075,11 @@ const TaskRow: React.FC<TaskRowProps> = ({
                   minimumWidth,
                 );
               const { leftPx, widthPx } = calculatePosition(task);
-              const phaseBands = task.phaseBands?.flatMap(band => {
-                const startDate = band.startDate < task.startDate ? task.startDate : band.startDate;
-                const endDate = band.endDate > task.endDate ? task.endDate : band.endDate;
-                if (startDate > endDate) return [];
+              const phaseBands = task.phaseBands?.flatMap(({ startDate, endDate, color }) => {
                 const position = calculatePosition({ ...task, startDate, endDate, endDateIsExclusive: false }, 0);
-                const left = Math.max(0, position.leftPx - leftPx);
-                const width = Math.min(widthPx - left, Math.max(1, position.widthPx));
-                return width > 0 ? [{ left, width, color: band.color }] : [];
+                return position.widthPx > 0
+                  ? [{ timelineLeft: position.leftPx, width: Math.max(1, position.widthPx), color }]
+                  : [];
               });
 
               const isHovered = hoveredTask?.id === task.id;
