@@ -363,7 +363,9 @@ def build_yield_comparison(
     if scope.crop_ids:
         crops = crops.filter(pk__in=scope.crop_ids)
     if scope.variety_id is not None:
-        crops = crops.filter(pk=scope.variety_id, variety_normalized__isnull=False)
+        crops = crops.filter(pk=scope.variety_id, variety_normalized__isnull=False).exclude(
+            variety_normalized='',
+        )
     crop_ids = crops.values('pk')
     plans = {
         plan.pk: plan for plan in PlantingPlan.objects.filter(
