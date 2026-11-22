@@ -328,6 +328,49 @@ class PerennialPlanningTest(ProjectApiTestCase):
         destination = next(row for row in ranked_edit.data['results'] if row['bed_id'] == other.pk)
         self.assertFalse(destination['has_enough_area'])
 
+    def test_capacity_preflight_uses_the_proposed_cultivation_type_for_recorded_dates(self):
+        crop = self.perennial(
+            annual_harvest_window='02-12/02-15', cultivation_type='direct_sowing',
+        )
+        plan = PlantingPlan.objects.create(
+            project=self.project, season=self.source, bed=self.bed, crop=crop, area_usage_sqm=20,
+            planting_date=date(2024, 2, 29), clearing_date=date(2027, 2, 28),
+            actual_sowing_date=date(2024, 2, 10), actual_transplanting_date=date(2024, 2, 25),
+            cultivation_type='purchased_transplant',
+        )
+        other_bed = Bed.objects.create(
+            project=self.project, field=self.bed.field, name='Second bed', area_sqm=20,
+        )
+        PlantingPlan.objects.create(
+            project=self.project, season=self.source, bed=other_bed, crop=self.crop,
+            area_usage_sqm=20,
+            planting_date=date(2024, 2, 9), harvest_date=date(2024, 2, 16),
+            harvest_end_date=date(2024, 2, 20), harvest_date_is_explicit=True,
+            harvest_end_date_is_explicit=True,
+        )
+        params = {
+            'bed_id': other_bed.pk, 'crop_id': crop.pk, 'exclude_plan_id': plan.pk, 'area_sqm': 20,
+        }
+        for change, free in (
+            ({}, 20),
+            ({'cultivation_type': 'direct_sowing'}, 0),
+            ({'cultivation_type': ''}, 0),
+        ):
+            with self.subTest(change=change):
+                remaining = self.client.get(
+                    f'{PLANS}remaining-area/', {**params, **change, 'start_date': '2024-02-29'},
+                )
+                self.assertEqual(remaining.status_code, 200, remaining.data)
+                self.assertEqual(remaining.data['remaining_area_sqm'], free)
+                suggestions = self.client.get(
+                    f'{PLANS}bed-suggestions/', {**params, **change, 'planting_date': '2024-02-29'},
+                )
+                self.assertEqual(suggestions.status_code, 200, suggestions.data)
+                destination = next(
+                    row for row in suggestions.data['results'] if row['bed_id'] == other_bed.pk
+                )
+                self.assertEqual(destination['has_enough_area'], free == 20)
+
     def test_rotation_history_includes_the_recorded_year_of_a_recurring_perennial(self):
         family = PlantFamily.objects.get(botanical_name='Polygonaceae')
         annual = Crop.objects.create(

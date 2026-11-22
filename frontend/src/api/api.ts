@@ -519,6 +519,7 @@ export const plantingPlanAPI = {
     clearing_date?: string;
     harvest_start_date?: string;
     crop_id?: number;
+    cultivation_type?: PlantingPlan['cultivation_type'];
     exclude_plan_id?: number;
     area_sqm?: number;
   }) =>

@@ -969,7 +969,11 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         renderCell: (params) => {
           const row = params.row as PlantingPlanRow;
           const bedId = resolveBedCellValue(params.value, row);
-          const hasDraft = row.isNew || params.api?.getRowMode?.(params.id) === "edit";
+          const isEditing = params.api?.getRowMode?.(params.id) === "edit";
+          const hasDraft = row.isNew || isEditing;
+          const draft = isEditing
+            ? params.api.getRowWithUpdatedValues(params.id, params.field) as PlantingPlanRow
+            : row;
           return (
             <PlantingPlanBedCell
               path={getBedPath(row)}
@@ -984,11 +988,12 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               onAccept={(accepted) => saveRotationAcceptance(row.id, accepted)}
               rotation={{
                 bedId: bedId || null,
-                cropId: typeof row.crop === "number" && row.crop > 0 ? row.crop : null,
-                plantingDate: toPlanIsoDate(row.planting_date),
-                endDate: getPlanOccupancyEndIso(row),
-                areaSqm: toAreaNumericValue(row.area_m2 ?? row.area_usage_sqm, numberLocale),
+                cropId: typeof draft.crop === "number" && draft.crop > 0 ? draft.crop : null,
+                plantingDate: toPlanIsoDate(draft.planting_date),
+                endDate: getPlanOccupancyEndIso(draft),
+                areaSqm: toAreaNumericValue(draft.area_m2 ?? draft.area_usage_sqm, numberLocale),
                 planId: row.isNew ? null : row.id,
+                cultivationType: draft.cultivation_type,
                 cultureLabel: row.crop_display_name ?? row.crop_name ?? "",
                 status: hasDraft ? null : row.rotation_status ?? null,
                 findings: hasDraft ? null : row.rotation_findings ?? null,
@@ -1999,7 +2004,10 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         ...(endDate ? { end_date: endDate } : {}),
         ...(endDate && harvestStartDate && harvestStartDate >= plantingDate ? { harvest_start_date: harvestStartDate } : {}),
         ...(cropId ? { crop_id: cropId } : {}),
-        ...(!row.isNew && typeof row.id === "number" ? { exclude_plan_id: row.id } : {}),
+        ...(!row.isNew && typeof row.id === "number" ? {
+          exclude_plan_id: row.id,
+          ...(row.cultivation_type === undefined ? {} : { cultivation_type: row.cultivation_type }),
+        } : {}),
       });
       if (!data.has_bed_area) {
         return null;

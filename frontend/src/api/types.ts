@@ -1630,6 +1630,7 @@ export interface RotationQueryParams {
   end_date?: string;
   bed_id?: number;
   exclude_plan_id?: number;
+  cultivation_type?: PlantingPlan['cultivation_type'];
   /** The plan's area in m²; beds that cannot hold it are flagged. */
   area_sqm?: number;
 }

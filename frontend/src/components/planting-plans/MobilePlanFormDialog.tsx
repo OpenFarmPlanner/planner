@@ -138,6 +138,7 @@ export function MobilePlanFormDialog({
     bedId: Number(form.bed) || null,
     plantingDate: toIsoDateString(parseGermanDateText(form.planting_date)),
     planId: rotation?.planId ?? null,
+    cultivationType: form.cultivation_type,
     areaSqm: toAreaNumericValue(form.area_m2, numberLocale),
   };
   const showSuggestions = Boolean(rotation) && isSuggestionsOpen;

@@ -189,15 +189,24 @@ def _capacity_interval(
     return end_date or derived_end, harvest_start, False
 
 
+_CAPACITY_CULTIVATION_TYPE = serializers.ChoiceField(
+    choices=PlantingPlan.CULTIVATION_TYPE_CHOICES, allow_blank=True, allow_null=True,
+)
+
+
 def _capacity_start(
     draft: PlantingPlan, existing: PlantingPlan | None, crop_index: GeneralCropIndex | None,
+    *, cultivation_type: str | None,
 ) -> date:
-    """Include the recorded start when editing the same perennial planting."""
+    """Include the recorded start for the proposed cultivation type."""
+    cultivation_type = _CAPACITY_CULTIVATION_TYPE.run_validation(cultivation_type)
     if existing is None or not (existing.actual_sowing_date or existing.actual_transplanting_date):
         return draft.planting_date
     if draft.crop_id is None:
         draft.crop = existing.crop
-    draft.cultivation_type = existing.cultivation_type
+    draft.cultivation_type = (
+        existing.cultivation_type if cultivation_type is None else cultivation_type
+    )
     draft.actual_sowing_date = existing.actual_sowing_date
     draft.actual_transplanting_date = existing.actual_transplanting_date
     schedule = recurring_harvest_schedule(draft, crop_index)
@@ -587,7 +596,10 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
                 )
             end_date = start_date
         harvest_start_date = None if perennial else params['harvest_start_date'] or harvest_start
-        occupancy_start = _capacity_start(draft, existing_plan, crop_index)
+        occupancy_start = _capacity_start(
+            draft, existing_plan, crop_index,
+            cultivation_type=request.query_params.get('cultivation_type'),
+        )
 
         language_code = resolve_request_language(request)
         region = getattr(active_project, 'region', '') or ''
@@ -668,6 +680,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         )
         params['occupancy_start'] = _capacity_start(
             draft, existing_plan, service.general_crop_index,
+            cultivation_type=request.query_params.get('cultivation_type'),
         )
         if (
             params['perennial'] and params['clearing_date']
