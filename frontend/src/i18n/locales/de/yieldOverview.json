@@ -4,6 +4,16 @@
     "load": "Ertragsübersicht konnte nicht geladen werden."
   },
   "filters": {
+    "clearCrops": "Kulturauswahl leeren",
+    "selectedCrops": "Ausgewählte Kulturen",
+    "seasonWindow": "Saisonen",
+    "lastThreeSeasons": "Letzte 3 Saisonen",
+    "lastFiveSeasons": "Letzte 5 Saisonen",
+    "allSeasons": "Alle Saisonen",
+    "moreFilters": "Weitere Filter",
+    "variety": "Sorte",
+    "allVarieties": "Alle Sorten",
+    "allBeds": "Alle Beete",
     "crop": "Kultur",
     "allCrops": "Alle Kulturen",
     "period": "Darstellung",
@@ -50,6 +60,8 @@
     }
   },
   "comparison": {
+    "excludedUnassigned_one": "Anteile ohne Flächenzuordnung ausgeblendet ({{count}} Ernte)",
+    "excludedUnassigned_other": "Anteile ohne Flächenzuordnung ausgeblendet ({{count}} Ernten)",
     "view": "Ansicht der Ertragsübersicht",
     "calendar": "Prognosekalender",
     "seasons": "Saisonen vergleichen",

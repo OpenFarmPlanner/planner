@@ -4,6 +4,16 @@
     "load": "Impossible de charger l'aperçu des rendements."
   },
   "filters": {
+    "clearCrops": "Effacer la sélection de cultures",
+    "selectedCrops": "Cultures sélectionnées",
+    "seasonWindow": "Saisons",
+    "lastThreeSeasons": "3 dernières saisons",
+    "lastFiveSeasons": "5 dernières saisons",
+    "allSeasons": "Toutes les saisons",
+    "moreFilters": "Autres filtres",
+    "variety": "Variété",
+    "allVarieties": "Toutes les variétés",
+    "allBeds": "Toutes les planches",
     "crop": "Culture",
     "allCrops": "Toutes les cultures",
     "period": "Affichage",
@@ -51,6 +61,9 @@
     }
   },
   "comparison": {
+    "excludedUnassigned_one": "Quantités sans surface exclues ({{count}} récolte)",
+    "excludedUnassigned_many": "Quantités sans surface exclues ({{count}} récoltes)",
+    "excludedUnassigned_other": "Quantités sans surface exclues ({{count}} récoltes)",
     "view": "Affichage de l’aperçu des rendements",
     "calendar": "Calendrier prévisionnel",
     "seasons": "Comparer les saisons",

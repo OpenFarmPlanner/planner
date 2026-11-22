@@ -4,6 +4,16 @@
     "load": "No se ha podido cargar el resumen de rendimientos."
   },
   "filters": {
+    "clearCrops": "Borrar la selección de cultivos",
+    "selectedCrops": "Cultivos seleccionados",
+    "seasonWindow": "Temporadas",
+    "lastThreeSeasons": "Últimas 3 temporadas",
+    "lastFiveSeasons": "Últimas 5 temporadas",
+    "allSeasons": "Todas las temporadas",
+    "moreFilters": "Más filtros",
+    "variety": "Variedad",
+    "allVarieties": "Todas las variedades",
+    "allBeds": "Todos los bancales",
     "crop": "Cultivo",
     "allCrops": "Todos los cultivos",
     "period": "Vista",
@@ -51,6 +61,9 @@
     }
   },
   "comparison": {
+    "excludedUnassigned_one": "Cantidades sin superficie excluidas ({{count}} cosecha)",
+    "excludedUnassigned_many": "Cantidades sin superficie excluidas ({{count}} cosechas)",
+    "excludedUnassigned_other": "Cantidades sin superficie excluidas ({{count}} cosechas)",
     "view": "Vista del resumen de rendimientos",
     "calendar": "Calendario de previsión",
     "seasons": "Comparar temporadas",

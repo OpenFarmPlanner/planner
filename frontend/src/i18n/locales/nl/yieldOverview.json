@@ -4,6 +4,16 @@
     "load": "Het opbrengstoverzicht kon niet worden geladen."
   },
   "filters": {
+    "clearCrops": "Gewasselectie wissen",
+    "selectedCrops": "Geselecteerde gewassen",
+    "seasonWindow": "Seizoenen",
+    "lastThreeSeasons": "Afgelopen 3 seizoenen",
+    "lastFiveSeasons": "Afgelopen 5 seizoenen",
+    "allSeasons": "Alle seizoenen",
+    "moreFilters": "Meer filters",
+    "variety": "Ras",
+    "allVarieties": "Alle rassen",
+    "allBeds": "Alle bedden",
     "crop": "Gewas",
     "allCrops": "Alle gewassen",
     "period": "Weergave",
@@ -50,6 +60,8 @@
     }
   },
   "comparison": {
+    "excludedUnassigned_one": "Hoeveelheden zonder teeltoppervlak uitgesloten ({{count}} oogst)",
+    "excludedUnassigned_other": "Hoeveelheden zonder teeltoppervlak uitgesloten ({{count}} oogsten)",
     "view": "Weergave van het opbrengstoverzicht",
     "calendar": "Prognosekalender",
     "seasons": "Seizoenen vergelijken",

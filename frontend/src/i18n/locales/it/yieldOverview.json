@@ -4,6 +4,16 @@
     "load": "Impossibile caricare la panoramica delle rese."
   },
   "filters": {
+    "clearCrops": "Cancella la selezione delle colture",
+    "selectedCrops": "Colture selezionate",
+    "seasonWindow": "Stagioni",
+    "lastThreeSeasons": "Ultime 3 stagioni",
+    "lastFiveSeasons": "Ultime 5 stagioni",
+    "allSeasons": "Tutte le stagioni",
+    "moreFilters": "Altri filtri",
+    "variety": "Varietà",
+    "allVarieties": "Tutte le varietà",
+    "allBeds": "Tutte le aiuole",
     "crop": "Coltura",
     "allCrops": "Tutte le colture",
     "period": "Visualizzazione",
@@ -51,6 +61,9 @@
     }
   },
   "comparison": {
+    "excludedUnassigned_one": "Quantità senza superficie escluse ({{count}} raccolta)",
+    "excludedUnassigned_many": "Quantità senza superficie escluse ({{count}} raccolte)",
+    "excludedUnassigned_other": "Quantità senza superficie escluse ({{count}} raccolte)",
     "view": "Vista della panoramica delle rese",
     "calendar": "Calendario delle previsioni",
     "seasons": "Confronta le stagioni",

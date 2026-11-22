@@ -35,6 +35,7 @@ import {
 import { getCropDisplayName } from "../crops/cropDisplay";
 import { segmentedToggleButtonGroupSx, segmentedToggleButtonSx } from "../components/buttons/segmentedControlStyles";
 import { YieldSeasonComparison } from "./YieldSeasonComparison";
+import { DEFAULT_YIELD_COMPARISON_FILTERS } from "./yieldComparisonFilters";
 
 const EMPTY_FORECAST: YieldCalendarForecast = { weeks: [], incomplete_plans: [] };
 type YieldView = 'calendar' | 'comparison';
@@ -48,6 +49,9 @@ export default function YieldOverviewPage() {
   const scope = `${activeProjectId ?? ''}:${activeSeason?.id ?? ''}`;
   const [view, setView] = useState<YieldView>('calendar');
   const [selectedCropId, setSelectedCropId] = useState(ALL_CROPS);
+  const [comparisonFilterState, setComparisonFilterState] = useState({
+    projectId: activeProjectId, filters: DEFAULT_YIELD_COMPARISON_FILTERS,
+  });
   const [period, setPeriod] = useState<ChartPeriod>("week");
   const [isFetching, setLoading] = useState(true);
   const [fetchError, setError] = useState<string | null>(null);
@@ -228,7 +232,10 @@ export default function YieldOverviewPage() {
       <PageSurface variant="fullWorkspace">
         <Stack spacing={2}>
           {view === 'comparison' ? (
-            <YieldSeasonComparison key={activeProjectId} cropId={selectedCropId} onCropChange={setSelectedCropId} />
+            <YieldSeasonComparison key={activeProjectId}
+              filters={comparisonFilterState.projectId === activeProjectId
+                ? comparisonFilterState.filters : DEFAULT_YIELD_COMPARISON_FILTERS}
+              onFiltersChange={filters => setComparisonFilterState({ projectId: activeProjectId, filters })} />
           ) : calendar}
         </Stack>
       </PageSurface>

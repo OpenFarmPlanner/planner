@@ -26,14 +26,17 @@ const perArea = (value: string, locale: string) => `${number(value, locale)} kg/
 function ComparisonBars({ row, max, locale }: { row: YieldComparisonSeason; max: number; locale: string }) {
   const { t } = useTranslation('yieldOverview');
   const { t: harvest } = useTranslation('harvests');
-  const [open, setOpen] = useState(false);
+  const [preview, setPreview] = useState<'closed' | 'open' | 'dismissed'>('closed');
   const bars = [
     { style: 'forecast', label: t('comparison.forecast'), value: row.forecast_kg! },
     { style: 'recorded', label: t('comparison.recorded'), value: row.recorded.measured_kg! },
   ] as const;
   const period = formatSeasonPeriod(row.start_date, row.end_date, locale);
 
-  return <AppTooltip open={open} onOpen={() => setOpen(true)} onClose={() => setOpen(false)}
+  const restorePreview = () => setPreview(current => current === 'dismissed' ? 'closed' : current);
+  return <AppTooltip open={preview === 'open'}
+    onOpen={() => setPreview(current => current === 'dismissed' ? current : 'open')}
+    onClose={() => setPreview(current => current === 'dismissed' ? current : 'closed')}
     enterTouchDelay={350} describeChild title={
       <Stack spacing={0.25}>
         <Typography variant="body2">{row.label}</Typography>
@@ -45,8 +48,10 @@ function ComparisonBars({ row, max, locale }: { row: YieldComparisonSeason; max:
     }>
     <ButtonBase
       aria-label={t('comparison.chartValues', { season: row.label, period })}
-      onClick={() => setOpen(true)}
-      onKeyDown={event => { if (event.key === 'Escape') setOpen(false); }}
+      onClick={() => setPreview('open')}
+      onMouseLeave={restorePreview}
+      onBlur={restorePreview}
+      onKeyDown={event => { if (event.key === 'Escape') setPreview('dismissed'); }}
       sx={{
         display: 'grid', gridTemplateColumns: '1fr', gap: 0.5, alignContent: 'center',
         minHeight: 44, px: 0, borderRadius: 1, width: '100%', justifyContent: 'stretch',
@@ -108,7 +113,7 @@ function ComparisonChart({ seasons, locale }: { seasons: YieldComparisonSeason[]
 
 function SeasonObservations({ row, plans, locale }: {
   row: YieldComparisonSeason;
-  plans: { id: number; bed_name: string; activities: PlantingPlanDateComparison[] }[];
+  plans: { id: number; bed_name: string; crop_label?: string; activities: PlantingPlanDateComparison[] }[];
   locale: string;
 }) {
   const { t } = useTranslation('yieldOverview');
@@ -120,7 +125,7 @@ function SeasonObservations({ row, plans, locale }: {
       {plans.map(plan => <Box key={plan.id} sx={{ pt: 1 }}>
         <Link component={RouterLink} to={plantingPlanDetailPath(plan.id)}
           sx={{ display: 'inline-flex', alignItems: 'center', minHeight: 44 }}>
-          {plan.bed_name || t('comparison.openPlan')}
+          {[plan.crop_label, plan.bed_name].filter(Boolean).join(' · ') || t('comparison.openPlan')}
         </Link>
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr))', gap: 1 }}>
           {plan.activities.map(dates => <PlanDateComparisonText key={dates.activity} dates={dates} />)}
@@ -165,7 +170,7 @@ function SeasonSummary({ row, timing, locale }: {
   const { t: harvest } = useTranslation('harvests');
   const totals = row.recorded.quantities;
   const activityPlans = row.plan_dates.map(plan => ({
-    id: plan.id, bed_name: plan.bed_name,
+    id: plan.id, bed_name: plan.bed_name, crop_label: plan.crop_label,
     activities: getPlanActivityDates({ ...timing, ...plan }).filter(date => date.planned || date.actual),
   })).filter(plan => plan.activities.length > 0);
   const hasDetails = activityPlans.length > 0 || row.harvested_areas.length > 0 || row.losses.length > 0;
@@ -205,6 +210,9 @@ function SeasonSummary({ row, timing, locale }: {
         </Typography>}
         {row.unassigned.length > 0 && <Typography component="div" variant="caption">
           {t('comparison.unassigned', { value: formatHarvestTotals(row.unassigned, locale, harvest) })}
+        </Typography>}
+        {Boolean(row.excluded_unassigned_records) && <Typography component="div" variant="caption">
+          {t('comparison.excludedUnassigned', { count: row.excluded_unassigned_records })}
         </Typography>}
         {totals.length > 0 && row.assigned_forecast_plan_count < row.expected_plan_count
           && <Typography component="div" variant="caption">
@@ -261,7 +269,7 @@ export function YieldComparisonResults({ comparison, cropName }: { comparison: Y
       }}>
         <TableHead><TableRow>
           <TableCell scope="col" sx={{ width: { xs: '25%', sm: '24%' } }}>{t('comparison.season')}</TableCell>
-          <TableCell scope="col" sx={{ width: { xs: '32%', sm: '33%' } }}>{t('comparison.forecast')}</TableCell>
+          <TableCell scope="col" sx={{ width: { xs: '36%', sm: '33%' } }}>{t('comparison.forecast')}</TableCell>
           <TableCell scope="col">{t('comparison.recorded')}</TableCell>
         </TableRow></TableHead>
         <TableBody>

@@ -8,10 +8,13 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from farm.models import (
+    Bed,
     Crop,
     CropLoss,
+    Field,
     HarvestAllocation,
     HarvestRecord,
+    Location,
     PlantingPlan,
     Project,
     ProjectMembership,
@@ -45,11 +48,12 @@ class YieldComparisonTest(TestCase):
         )
 
     def add_plan(
-        self, season, day, start=None, end=None, *, crop=None, area=10, actual=None,
+        self, season, day, start=None, end=None, *, crop=None, area=10, actual=None, bed=None,
     ):
         plan = PlantingPlan.objects.create(
             project=self.project, crop=crop or self.crop, season=season, planting_date=day,
-            area_usage_sqm=area, cultivation_type='direct_sowing', actual_sowing_date=actual,
+            area_usage_sqm=area, cultivation_type='direct_sowing',
+            actual_sowing_date=actual, bed=bed,
         )
         PlantingPlan.objects.filter(pk=plan.pk).update(harvest_date=start, harvest_end_date=end)
         return plan
@@ -110,6 +114,89 @@ class YieldComparisonTest(TestCase):
         self.assertEqual(empty['recorded']['quantities'], [])
         self.assertIsNone(empty['recorded']['measured_kg'])
         self.assertIsNone(empty['forecast_kg'])
+
+    def test_scope_counts_all_crops_and_only_the_allocated_share_for_a_site(self):
+        beds = []
+        for name in ('North', 'South'):
+            site = Location.objects.create(project=self.project, name=name)
+            field = Field.objects.create(project=self.project, location=site, name='Market garden')
+            beds.append(Bed.objects.create(project=self.project, field=field, name='Bed One'))
+        roma = Crop.objects.create(
+            project=self.project, name='Tomato', variety='Roma', expected_yield=2,
+            harvest_method='per_sqm',
+        )
+        carrot = Crop.objects.create(project=self.project, name='Carrot')
+        date_range = (self.current, date(2027, 4, 1), date(2027, 6, 1), date(2027, 6, 10))
+        north = self.add_plan(*date_range, bed=beds[0], area=5)
+        south = self.add_plan(*date_range, bed=beds[1])
+        bedless = self.add_plan(*date_range)
+        roma_plan = self.add_plan(*date_range, bed=beds[0], crop=roma)
+        day = date(2027, 6, 5)
+        self.add_harvest(day, 17, 'kg', [(north, 6, 2), (south, 9, 4)])
+        self.add_harvest(day, 4, 'kg')
+        self.add_harvest(day, 3, 'kg', [(bedless, 3, None)])
+        self.add_harvest(day, 6, 'kg', [(roma_plan, 6, None)], crop=roma)
+        self.add_harvest(day, 5, 'kg', crop=carrot)
+
+        def current_row(**filters):
+            response = self.client.get(self.url, {'season_window': '3', **filters})
+            self.assertEqual(response.status_code, 200, response.data)
+            return next(row for row in response.json()['seasons'] if row['id'] == self.current.pk)
+
+        self.assertEqual(current_row()['recorded']['measured_kg'], '35')
+        crop_filter = {'crop_id': [self.crop.pk, roma.pk]}
+        unfiltered = current_row(**crop_filter)
+        self.assertEqual(unfiltered['recorded']['measured_kg'], '30')
+        self.assertEqual(unfiltered['unassigned'], [{'quantity': '6', 'unit': 'kg'}])
+        first = current_row(**crop_filter, location_id=beds[0].field.location_id)
+        self.assertEqual(first['forecast_kg'], '37.5')
+        self.assertEqual(first['recorded']['measured_kg'], '12')
+        self.assertEqual(first['excluded_unassigned_records'], 3)
+        self.assertEqual(first['unassigned'], [])
+        self.assertFalse(first['comparable'])
+        self.assertEqual({plan['id'] for plan in first['plan_dates']}, {north.pk, roma_plan.pk})
+        self.assertEqual([area['plan_id'] for area in first['harvested_areas']], [north.pk])
+        second = current_row(**crop_filter, field_id=beds[1].field_id)
+        self.assertEqual(second['forecast_kg'], '35')
+        self.assertEqual(second['recorded']['measured_kg'], '9')
+        self.assertEqual(second['excluded_unassigned_records'], 3)
+        variety = current_row(bed_id=beds[0].pk, variety_id=roma.pk)
+        self.assertEqual(variety['forecast_kg'], '20')
+        self.assertEqual(variety['recorded']['measured_kg'], '6')
+        self.assertEqual(variety['excluded_unassigned_records'], 0)
+        self.assertTrue(variety['comparable'])
+        Crop.objects.filter(pk=self.crop.pk).update(variety_normalized='')
+        legacy_general = current_row(variety_id=self.crop.pk)
+        self.assertIsNone(legacy_general['forecast_kg'])
+        self.assertIsNone(legacy_general['recorded']['measured_kg'])
+
+    def test_window_uses_the_latest_real_seasons_and_preserves_unknown_recorded_yield(self):
+        for year in (2022, 2023, 2024):
+            Season.objects.create(
+                project=self.project, start_date=date(year, 9, 1),
+                end_date=date(year + 1, 8, 31),
+            )
+        self.add_harvest(date(2026, 8, 31), 4, 'kg')
+        self.add_harvest(date(2026, 9, 1), 8, 'kg')
+        for window, expected_count in (('3', 3), ('5', 5), ('all', 6)):
+            with self.subTest(window=window):
+                seasons = self.client.get(self.url, {'season_window': window}).json()['seasons']
+                self.assertEqual(len(seasons), expected_count)
+                self.assertEqual([row['id'] for row in seasons[:3]], [
+                    self.later.pk, self.current.pk, self.previous.pk,
+                ])
+                self.assertEqual([row['recorded']['measured_kg'] for row in seasons[:3]], [
+                    None, '8', '4',
+                ])
+        for keep in (2, 1):
+            retained = [self.later, self.current][:keep]
+            Season.objects.filter(project=self.project).exclude(
+                pk__in=[season.pk for season in retained],
+            ).update(deleted_at=timezone.now())
+            seasons = self.client.get(self.url, {'season_window': '3'}).json()['seasons']
+            self.assertEqual([row['id'] for row in seasons], [season.pk for season in retained])
+        invalid = self.client.get(self.url, {'season_window': '1'})
+        self.assertEqual(invalid.status_code, 400)
 
     def test_split_records_count_once_and_area_uses_unique_plans(self):
         first, second = [

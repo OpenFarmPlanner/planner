@@ -4,6 +4,16 @@
     "load": "Yield overview could not be loaded."
   },
   "filters": {
+    "clearCrops": "Clear crop selection",
+    "selectedCrops": "Selected crops",
+    "seasonWindow": "Seasons",
+    "lastThreeSeasons": "Last 3 seasons",
+    "lastFiveSeasons": "Last 5 seasons",
+    "allSeasons": "All seasons",
+    "moreFilters": "More filters",
+    "variety": "Variety",
+    "allVarieties": "All varieties",
+    "allBeds": "All beds",
     "crop": "Crop",
     "allCrops": "All crops",
     "period": "Display",
@@ -50,6 +60,8 @@
     }
   },
   "comparison": {
+    "excludedUnassigned_one": "Unassigned amounts excluded ({{count}} harvest)",
+    "excludedUnassigned_other": "Unassigned amounts excluded ({{count}} harvests)",
     "view": "Yield overview view",
     "calendar": "Forecast calendar",
     "seasons": "Compare seasons",

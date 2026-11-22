@@ -74,6 +74,39 @@ PAGE_SIZE = 100
 class ListEndpointQueryCountTest(ProjectApiTestCase):
     """Each list endpoint must cost the same number of queries for every row."""
 
+    def test_yield_comparison_filters_and_results_keep_constant_query_counts(self):
+        season = Season.objects.create(
+            project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+        )
+        url = '/openfarmplanner/api/yield-calendar/comparison/'
+        scopes = ({'filters': 'true'}, {'season_window': '3', 'location_id': self.location.pk})
+        counts = []
+        for size in (3, 7):
+            for index in range(size):
+                species = CropSpecies.objects.create(name=f'Synthetic yield species {size}-{index}')
+                crop = Crop.objects.create(
+                    name=species.name, project=self.project, crop_species=species,
+                )
+                plan = PlantingPlan.objects.create(
+                    project=self.project, crop=crop, bed=self.bed, season=season,
+                    planting_date=date(2026, 4, 1),
+                )
+                record = HarvestRecord.objects.create(
+                    project=self.project, crop=crop, date=date(2026, 7, 1), quantity=2, unit='kg',
+                )
+                HarvestAllocation.objects.create(
+                    project=self.project, harvest=record, planting_plan=plan, quantity=2,
+                )
+            for position, scope in enumerate(scopes):
+                if size == 3:
+                    with CaptureQueriesContext(connection) as queries:
+                        response = self.client.get(url, scope)
+                    counts.append(len(queries))
+                else:
+                    with self.assertNumQueries(counts[position]):
+                        response = self.client.get(url, scope)
+                self.assertEqual(response.status_code, 200, response.data)
+
     def test_project_history_groups_do_not_add_per_row_queries(self):
         from farm.models import BatchOperation
 
