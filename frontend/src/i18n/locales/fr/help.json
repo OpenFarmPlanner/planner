@@ -287,7 +287,8 @@
         "La surface de culture prévue additionne les surfaces des séries filtrées sur les saisons sélectionnées. Une série qui se poursuit compte une fois. Si plusieurs séries utilisent la même planche, chacune apporte sa propre surface.",
         "La quantité récoltée saisie suit la date de récolte. Les quantités pesées, les pièces et les bottes restent séparées. Un filtre par site, parcelle ou planche ne retient que les quantités affectées et signale les affectations manquantes.",
         "Le suivi compte les cultures ayant au moins une récolte saisie. Le total comprend les cultures avec une série ou une récolte saisie correspondant aux filtres. D’autres récoltes peuvent encore manquer.",
-        "Les barres affichent les prévisions en kg et les quantités saisies par unité. Les hachures indiquent une valeur partielle. Un tiret signale une valeur manquante et un zéro saisi apparaît sous la forme 0. Les poids estimés figurent séparément dans les détails et sont exclus des poids mesurés."
+        "Les barres affichent les prévisions en kg et les quantités saisies par unité. Les hachures indiquent une valeur partielle. Un tiret signale une valeur manquante et un zéro saisi apparaît sous la forme 0. Les poids estimés figurent séparément dans les détails et sont exclus des poids mesurés.",
+        "Le rendement par m² et par culture utilise les récoltes affectées et les surfaces des mêmes séries. L’évolution compare la première et la dernière saison avec des poids mesurés comparables. Les valeurs partielles et les estimations sont exclues de la comparaison."
       ]
     }
   }

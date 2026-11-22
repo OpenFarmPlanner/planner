@@ -4,6 +4,7 @@ import { expect, it } from 'vitest';
 import type { YieldComparisonSeason } from '../api/types';
 import { YieldComparisonResults } from '../pages/YieldComparisonResults';
 import { YieldComparisonSummaryPanel } from '../pages/YieldComparisonSummary';
+import { YieldCropMatrix } from '../pages/YieldCropMatrix';
 import { groupYieldComparisonCrops } from '../pages/yieldComparisonFilters';
 import { yieldChartScale, yieldChartSeries, yieldChartUnits } from '../pages/yieldSeasonChartData';
 
@@ -38,8 +39,9 @@ it('distinguishes a missing harvest from an explicit recorded zero in the table'
     ...missing, id: 2, label: '25/26', start_date: '2025-09-01', end_date: '2026-08-31',
     recorded: { ...missing.recorded, quantities: [{ quantity: '0', unit: 'kg' }], measured_kg: '0' },
   };
-  render(<MemoryRouter><YieldComparisonResults cropName="Lauch" preferredUnit="kg" onChartUnitChange={() => undefined} comparison={{
-    crop_timing: {}, seasons: [zero, missing], summary: {
+  render(<MemoryRouter><YieldComparisonResults cropName="Lauch" preferredUnit="kg" onChartUnitChange={() => undefined}
+    groups={[]} loadCropComparison={() => Promise.reject(new Error('Unexpected detail load'))} comparison={{
+    crop_timing: {}, seasons: [zero, missing], crop_yields: [], summary: {
       planned_area_sqm: null, plans_without_area_count: 0,
       recorded_quantities: [{ quantity: '0', unit: 'kg' }],
       excluded_unassigned_records: 0, crop_count: 1, recorded_crop_count: 1,
@@ -84,6 +86,21 @@ it('separates kg, pieces, and bunches and retains partial, missing, and measured
   const pieces = [mixed, missing, countOnly].map(row => yieldChartSeries(row, 'piece'));
   expect(pieces.flat().map(series => series.value)).toEqual(['8', null, '9']);
   expect(yieldChartScale(pieces)).toBe(10);
+});
+
+it('shows a measured zero and a missing matrix cell without inventing a trend', () => {
+  const current = { ...missing, id: 2, label: '25/26' };
+  render(<YieldCropMatrix crops={[{
+    key: 'name:lauch', name: 'Lauch', crop_ids: [1], trend: null,
+    rates: [
+      { season_id: 1, status: 'missing', value: null, partial: false, below_resolution: false },
+      { season_id: 2, status: 'measured', value: '0', partial: false, below_resolution: false },
+    ],
+  }]} seasons={[current, missing]} groups={[]} locale="de-DE" onOpen={() => undefined} />);
+  const cells = within(screen.getByRole('row', { name: /^Lauch/ })).getAllByRole('cell');
+  expect(within(cells[0]).getByText('Nicht erfasst')).toBeInTheDocument();
+  expect(within(cells[1]).getByText('0 kg/m²')).toBeVisible();
+  expect(within(cells[2]).getByText('Keine vergleichbare Entwicklung')).toBeInTheDocument();
 });
 
 it('shows partial scope, keeps harvest units separate, and reports an empty selection', () => {

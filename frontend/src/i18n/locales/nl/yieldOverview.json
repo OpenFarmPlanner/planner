@@ -59,6 +59,12 @@
       "missing_harvest_period": "Oogstperiode ontbreekt of is ongeldig"
     }
   },
+  "cropYields": {
+    "title": "Opbrengst per m² per gewas",
+    "trend": "Verandering",
+    "noTrend": "Geen vergelijkbare verandering",
+    "unassigned": "Niet toegewezen"
+  },
   "summary": {
     "plannedArea": "Gepland teeltoppervlak",
     "areaScope_one": "Som over {{count}} seizoen",

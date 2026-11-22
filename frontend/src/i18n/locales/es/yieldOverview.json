@@ -60,6 +60,12 @@
       "missing_harvest_period": "Falta el periodo de cosecha o no es válido"
     }
   },
+  "cropYields": {
+    "title": "Rendimiento por m² y cultivo",
+    "trend": "Evolución",
+    "noTrend": "Sin evolución comparable",
+    "unassigned": "Sin asignación"
+  },
   "summary": {
     "plannedArea": "Superficie de cultivo prevista",
     "areaScope_one": "Suma de {{count}} temporada",

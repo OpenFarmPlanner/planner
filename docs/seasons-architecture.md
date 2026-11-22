@@ -266,6 +266,17 @@ description), one level down:
   for unlinked crops. The denominator includes those with either a plan or a
   record in scope. The numerator includes those with at least one harvest
   record in scope.
+- The comparison `crop_yields` uses the same crop grouping and returns one
+  rate per selected season. It divides plan-assigned weight by the known area
+  of those same plans, counting each assigned plan once for that season.
+  Unknown areas and incompatible records have no rate. Any contribution
+  converted from a piece or bunch count makes the rate an estimate. A known
+  rate is partial when a harvest has an unassigned portion or a plan in the
+  crop's season forecast has no assigned harvest. A trend compares the
+  first and last seasons with measured, nonpartial rates and needs a positive
+  starting rate. The table names both seasons. Selecting a crop opens the
+  existing forecast, actual harvest and date observations for that crop under
+  the same filters.
 
 There is no server-persisted "last active season" (unlike
 `UserProjectSettings.last_project`); it is a client-only, per-project
@@ -355,6 +366,14 @@ Open the 2026 tooltip for the **107,8 kg** recorded weight and the separate
 **0,88 kg** estimate. Switch to **Stück** for the eight pieces in 2026 and an
 unknown value in 2025. Selecting **Kartoffel** returns to the kilogram chart.
 The 2025 forecast remains visible with a dash for the unrecorded harvest.
+
+In **Ertrag pro m² nach Kultur**, Kartoffel has **2,29375 kg/m²** for 2024
+and **2,2125 kg/m²** for 2026. The 2025 cell has a dash, while **Entwicklung**
+shows approximately **−3,5 %** from **2024 → 2026**. Sort by a season or by
+change and open the Kartoffel row to see **Termine und Beobachtungen** and
+the plan links. Select **Lindenhof** to keep the potato plans, then **Hofgarten**
+to see crops from that site. The trend needs two usable seasons in the current
+selection.
 
 ## Year-boundary marker on season-spanning axes
 

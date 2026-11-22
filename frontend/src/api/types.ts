@@ -2050,6 +2050,23 @@ export interface YieldComparison {
   crop_timing: YieldComparisonCropTiming;
   seasons: YieldComparisonSeason[];
   summary: YieldComparisonSummary;
+  crop_yields: YieldComparisonCropYield[];
+}
+
+export interface YieldComparisonCropRate {
+  season_id: number;
+  status: 'missing' | 'unassigned' | 'unavailable' | 'measured' | 'estimated';
+  value: string | null;
+  partial: boolean;
+  below_resolution: boolean;
+}
+
+export interface YieldComparisonCropYield {
+  key: string;
+  name: string;
+  crop_ids: number[];
+  rates: YieldComparisonCropRate[];
+  trend: { from_season_id: number; to_season_id: number; change: string } | null;
 }
 
 export interface YieldComparisonSummary {

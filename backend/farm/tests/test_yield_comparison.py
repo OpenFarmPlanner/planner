@@ -302,6 +302,96 @@ class YieldComparisonTest(TestCase):
         self.assertIsNone(mixed['recorded_kg_per_plan_sqm'])
         self.assertFalse(mixed['comparable'])
 
+    def test_crop_rates_use_matching_plan_areas_and_skip_invalid_trend_seasons(self):
+        old = Season.objects.create(
+            project=self.project, start_date=date(2024, 9, 1), end_date=date(2025, 8, 31),
+        )
+        earliest = Season.objects.create(
+            project=self.project, start_date=date(2023, 9, 1), end_date=date(2024, 8, 31),
+        )
+        species = CropSpecies.objects.create(name='Leek')
+        self.crop.crop_species = species
+        self.crop.save(update_fields=['crop_species'])
+        variety = Crop.objects.create(
+            project=self.project, name='Winter leek', variety='Blue', crop_species=species,
+        )
+        sites = [Location.objects.create(project=self.project, name=name)
+                 for name in ('North', 'South')]
+        fields = [Field.objects.create(project=self.project, name='Plot', location=site)
+                  for site in sites]
+        north, south = [Bed.objects.create(project=self.project, field=field, name='Bed')
+                        for field in fields]
+        old_day = date(2025, 8, 30)
+        current_day = date(2026, 9, 1)
+        base = self.add_plan(old, old_day, old_day, date(2025, 8, 31), bed=north, area=5)
+        self.add_harvest(old_day, 10000, 'g', [(base, 10000, None)])
+        overwintering = self.add_plan(
+            self.previous, date(2026, 8, 20), date(2026, 8, 30), date(2026, 9, 10),
+            bed=north, area=4, crop=variety,
+        )
+        other_site = self.add_plan(self.current, current_day, bed=south, area=6, crop=variety)
+        self.add_harvest(current_day, 16, 'kg', [(overwintering, 12, None), (other_site, 4, None)],
+                         crop=variety)
+        self.add_harvest(current_day, 6, 'kg', [(overwintering, 6, None)], crop=variety)
+        pieces = self.add_harvest(
+            date(2026, 8, 31), 10, 'piece', [(overwintering, 10, None)], crop=variety,
+        )
+        self.add_harvest(date(2028, 9, 2), 5, 'kg')
+
+        def row(**filters):
+            response = self.client.get(self.url, {'season_window': '5', **filters})
+            self.assertEqual(response.status_code, 200, response.data)
+            crops = response.json()['crop_yields']
+            self.assertEqual(len(crops), 1)
+            return crops[0]
+
+        all_sites = row()
+        self.assertEqual(all_sites['crop_ids'], sorted([self.crop.pk, variety.pk]))
+        self.assertEqual([cell['season_id'] for cell in all_sites['rates']], [
+            earliest.pk, old.pk, self.previous.pk, self.current.pk, self.later.pk,
+        ])
+        self.assertEqual([cell['status'] for cell in all_sites['rates']], [
+            'missing', 'measured', 'unavailable', 'measured', 'unassigned',
+        ])
+        self.assertEqual(all_sites['rates'][3]['value'], '2.2')
+        self.assertEqual(all_sites['trend'], {
+            'from_season_id': old.pk, 'to_season_id': self.current.pk, 'change': '0.1',
+        })
+        north_only = row(location_id=sites[0].pk)
+        self.assertEqual(north_only['rates'][3]['value'], '4.5')
+        self.assertEqual(north_only['trend']['change'], '1.25')
+        self.assertEqual(row(season_window='3')['trend'], None)
+        self.assertEqual(row(variety_id=variety.pk)['crop_ids'], [variety.pk])
+
+        pieces.grams_per_unit = 100
+        pieces.conversion_source = 'manual'
+        pieces.save(update_fields=['grams_per_unit', 'conversion_source'])
+        estimated = row()['rates'][2]
+        self.assertEqual((estimated['status'], estimated['value']), ('estimated', '0.25'))
+
+        self.add_harvest(current_day, 1, 'kg', crop=variety)
+        partial = row(location_id=sites[0].pk)
+        self.assertEqual(partial['rates'][3]['value'], '4.5')
+        self.assertTrue(partial['rates'][3]['partial'])
+        self.assertIsNone(partial['trend'])
+
+        PlantingPlan.objects.filter(pk=other_site.pk).update(area_usage_sqm=None)
+        self.assertEqual(row(location_id=sites[1].pk)['rates'][3]['status'], 'unavailable')
+
+    def test_crop_rates_do_not_reassign_harvest_if_a_plan_changes_crop(self):
+        day = date(2027, 6, 1)
+        plan = self.add_plan(self.current, date(2027, 4, 1))
+        self.add_harvest(day, 4, 'kg', [(plan, 4, None)])
+        carrot = Crop.objects.create(project=self.project, name='Carrot')
+        PlantingPlan.objects.filter(pk=plan.pk).update(crop=carrot)
+
+        data = self.client.get(self.url, {'season_window': '3'}).json()
+        crops = {crop['name']: crop['rates'][1] for crop in data['crop_yields']}
+        self.assertEqual(crops['Leek']['status'], 'unassigned')
+        self.assertEqual(crops['Carrot']['status'], 'missing')
+        self.assertEqual(data['seasons'][1]['recorded']['measured_kg'], '4')
+        self.assertIsNone(data['seasons'][1]['recorded_kg_per_plan_sqm'])
+
     def test_continuing_perennial_does_not_invent_a_repeat_forecast(self):
         perennial = Crop.objects.create(
             project=self.project, name='Rhubarb', life_cycle='perennial', standing_time_years=7,
