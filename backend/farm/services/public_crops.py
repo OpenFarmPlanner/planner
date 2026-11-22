@@ -1279,10 +1279,13 @@ def detect_available_language_codes(crop: Crop) -> list[str]:
 def get_public_required_field_gaps(crop: Crop, *, require_variety: bool = True) -> list[MissingRequiredField]:
     gaps: list[MissingRequiredField] = []
     is_perennial = resolve_crop_field(crop, 'life_cycle') == 'perennial'
+    # A recurring harvest window replaces the day-based durations; without
+    # one, a perennial still needs them so it never publishes without harvest data.
+    has_window = is_perennial and bool(resolve_crop_field(crop, 'annual_harvest_window'))
     for field in PUBLIC_REQUIRED_FIELDS:
         if field == 'variety' and not require_variety:
             continue
-        if is_perennial and field in {'growth_duration_days', 'harvest_duration_days'}:
+        if has_window and field in {'growth_duration_days', 'harvest_duration_days'}:
             continue
         # Resolve the effective value so a Sorte that inherits a required field
         # (e.g. harvest duration) from its general Kultur is not flagged as

@@ -568,6 +568,20 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             ).exists()
         )
 
+    def test_perennial_without_a_window_still_needs_the_harvest_durations(self) -> None:
+        from farm.services.public_crops import get_public_required_field_gaps
+
+        self.crop.life_cycle = 'perennial'
+        self.crop.growth_duration_days = None
+        self.crop.harvest_duration_days = None
+        self.crop.annual_harvest_window = ''
+        fields = {gap.field for gap in get_public_required_field_gaps(self.crop)}
+        self.assertIn('harvest_duration_days', fields)
+        self.crop.annual_harvest_window = '09-01/10-15'
+        fields = {gap.field for gap in get_public_required_field_gaps(self.crop)}
+        self.assertNotIn('harvest_duration_days', fields)
+        self.assertNotIn('growth_duration_days', fields)
+
     def test_perennial_harvest_timing_round_trips_through_the_public_library(self) -> None:
         self.crop.life_cycle = 'perennial'
         self.crop.standing_time_years = 20
