@@ -22,6 +22,7 @@ import PageContainer from "../components/layout/PageContainer";
 import PageSurface from "../components/layout/PageSurface";
 import EmptyStateCard from "../components/project/EmptyStateCard";
 import ProjectRequiredState from "../components/project/ProjectRequiredState";
+import { useTopbarWorkspaceControls } from "../hooks/useTopbarWorkspaceControls";
 import { useProjectRequirement } from "../hooks/useProjectRequirement";
 import { useTranslation } from "../i18n";
 import type { RootLayoutOutletContext } from "../navigation/topbarTypes";
@@ -131,6 +132,28 @@ export default function YieldOverviewPage() {
   const calendarCropId = crops.some(crop => String(crop.id) === selectedCropId)
     ? selectedCropId : ALL_CROPS;
 
+  const viewControls = useMemo(() => shouldShowProjectRequiredState ? null : (
+    <ToggleButtonGroup
+      value={view}
+      exclusive
+      aria-label={t('comparison.view')}
+      size="small"
+      color="primary"
+      sx={{ ...segmentedToggleButtonGroupSx, maxWidth: '100%' }}
+      onChange={(_, next: YieldView | null) => {
+        if (next !== null) setView(next);
+      }}
+    >
+      <ToggleButton value="calendar" sx={{ ...segmentedToggleButtonSx, minHeight: 44, overflowWrap: 'anywhere' }}>
+        {t('comparison.calendar')}
+      </ToggleButton>
+      <ToggleButton value="comparison" sx={{ ...segmentedToggleButtonSx, minHeight: 44, overflowWrap: 'anywhere' }}>
+        {t('comparison.seasons')}
+      </ToggleButton>
+    </ToggleButtonGroup>
+  ), [shouldShowProjectRequiredState, t, view]);
+  useTopbarWorkspaceControls(outletContext?.setTopbarWorkspaceControls, viewControls);
+
   if (shouldShowProjectRequiredState && missingProjectReason) {
     return (
       <PageContainer variant="workspacePage">
@@ -231,13 +254,6 @@ export default function YieldOverviewPage() {
     <PageContainer variant="workspacePage">
       <PageSurface variant="fullWorkspace">
         <Stack spacing={2}>
-          <ToggleButtonGroup value={view} exclusive aria-label={t('comparison.view')}
-            size="small" color="primary" sx={{ ...segmentedToggleButtonGroupSx, alignSelf: 'flex-start' }}
-            onChange={(_, next: YieldView | null) => { if (next !== null) setView(next); }}>
-            <ToggleButton value="calendar" sx={{ ...segmentedToggleButtonSx, minHeight: 44 }}>{t('comparison.calendar')}</ToggleButton>
-            <ToggleButton value="comparison" sx={{ ...segmentedToggleButtonSx, minHeight: 44 }}>{t('comparison.seasons')}</ToggleButton>
-          </ToggleButtonGroup>
-
           {view === 'comparison' ? (
             <YieldSeasonComparison key={activeProjectId} cropId={selectedCropId} onCropChange={setSelectedCropId} />
           ) : calendar}
