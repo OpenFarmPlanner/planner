@@ -666,7 +666,9 @@ The latest refresh uses [run 45000245910](https://github.com/OpenFarmPlanner/pla
 (79 files, 459 tests, zero retries). Its Playwright steps took about 1074, 1057
 and 744 seconds. Applying its file weights to the next run's measured tests
 reduces the slowest partition estimate from 1076 to 959 seconds before
-startup and teardown. This addresses the uneven runtime observed in [#1406](https://github.com/OpenFarmPlanner/planner/issues/1406).
+startup and teardown. Runner variability still pushed a partition over the
+20-minute job limit after rebalancing. Each job has 25 minutes for setup,
+test execution, and artifact upload. [#1406](https://github.com/OpenFarmPlanner/planner/issues/1406)
 
 To refresh the profile, combine `E2E_TIMING_FILE` durations and counts from
 all three successful, retry-free jobs of one comparable run. Use the selected

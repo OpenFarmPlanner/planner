@@ -24,7 +24,8 @@ jobs:
     if: ${{ !cancelled() }}
     name: e2e (shard ${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Include runner setup, the complete test partition, and artifact uploads.
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
