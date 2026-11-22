@@ -39,6 +39,8 @@ import type {
   YoungPlantDemand,
   YieldCalendarForecast,
   YieldComparison,
+  YieldComparisonFilterOptions,
+  YieldComparisonFilters,
   YieldCalendarWeek,
   NoteAttachment,
   CropHistoryEntry,
@@ -653,12 +655,21 @@ export const yieldCalendarAPI = {
   forecast: () => http.get<YieldCalendarForecast>('/yield-calendar/', {
     params: { include_incomplete: true },
   }),
-  comparisonCrops: (signal: AbortSignal) => http.get<{ crops: { id: number; name: string }[] }>(
-    '/yield-calendar/comparison/', { signal },
+  comparisonFilterOptions: (signal: AbortSignal) => http.get<YieldComparisonFilterOptions>(
+    '/yield-calendar/comparison/', { params: { filters: true }, signal },
   ),
-  comparison: (cropId: number, signal: AbortSignal) => http.get<YieldComparison>('/yield-calendar/comparison/', {
-    params: { crop_id: cropId }, signal,
-  }),
+  comparison: (filters: Omit<YieldComparisonFilters, 'cropKeys'>, cropIds: number[], signal: AbortSignal) => {
+    const params = new URLSearchParams({ season_window: filters.seasonWindow });
+    cropIds.forEach(id => params.append('crop_id', String(id)));
+    const ids = {
+      location_id: filters.locationId, field_id: filters.fieldId,
+      bed_id: filters.bedId, variety_id: filters.varietyId,
+    };
+    for (const [name, id] of Object.entries(ids)) {
+      if (id !== null) params.set(name, String(id));
+    }
+    return http.get<YieldComparison>('/yield-calendar/comparison/', { params, signal });
+  },
 };
 
 export const fieldAPI = {

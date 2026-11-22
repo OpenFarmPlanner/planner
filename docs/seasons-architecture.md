@@ -223,6 +223,11 @@ description), one level down:
   contributes neither a forecast nor a blocker for that season. The default
   response is the array of weeks.
 - **Compare seasons** in Yield overview reads `/yield-calendar/comparison/`.
+  It starts with all crops, all locations and the three most recent season
+  records. The crop picker groups varieties under their crop name and searches
+  the varieties and crop aliases. Other filters include an individual variety,
+  field, bed, and the latest five or all seasons. The forecast calendar keeps
+  its own filters when changing views.
   Each crop's forecasts use the same projected periods and cumulative
   rounding as the calendar. Identical forecasts copied from the same source
   into the same target season contribute once. An edited bed, area or planned
@@ -232,7 +237,10 @@ description), one level down:
   For recurring plans, the season with the harvest shows the corresponding
   harvest activity dates under the original plan ID.
 - Comparison totals include each harvest record once, across all of its
-  allocations and any unassigned remainder. Gram and kilogram records share
+  allocations and any unassigned remainder when no area filter is active.
+  An area filter counts the allocated shares on matching plans. If a record
+  has an unallocated remainder or a plan without an area, the season reports
+  that record's incomplete assignment. Gram and kilogram records share
   a mass total. Counts and weight estimates appear separately. Recorded
   yield per m² uses the full area of each plan with assigned harvest, counted
   once. Individual harvests with a recorded area show their own rate separately.
@@ -291,6 +299,27 @@ planting-plans table, Crop Calendar and yield forecast. The planned window
 moves and the 3 kg harvest record remains dated September 10. Check 2028,
 then reset 2027 from the 2025 details and verify September 1 through October 15
 returns.
+
+### Local yield comparison fixture
+
+On the matching checkout, verify the local database with the
+[local fixture handoff](work-execution-queue.md#local-test-data-handoff).
+From `backend/`, preview with an existing local user and your exact
+database name or SQLite path.
+
+```bash
+DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py \
+  seed_yield_comparison_acceptance --username LOCAL_USER --database-name LOCAL_DATABASE
+```
+
+After checking the preview, repeat with `--apply`. In **Yield comparison
+acceptance**, open **Yield overview → Compare seasons**. The latest season
+shows 31 kg across all crops. Choose **North orchard** and look for 12 kg
+and two harvest records with incomplete area assignments. Select Leek and
+Tomato together, then choose Roma under **More filters** to see that variety's
+6 kg. Switch to **All seasons** to see the fourth season. Each season runs
+from September through August, and a season without a harvest shows
+**Not recorded**. Repeating the command preserves manual edits.
 
 ## Year-boundary marker on season-spanning axes
 

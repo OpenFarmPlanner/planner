@@ -1983,7 +1983,34 @@ export type YieldComparisonCropTiming = Pick<PlantingPlan,
 
 export type YieldComparisonPlanDates = PlantingPlanActualDates & Pick<PlantingPlan,
   'cultivation_type' | 'planting_date' | 'planned_propagation_start_date' | 'planned_sowing_date'
-  | 'harvest_date' | 'harvest_end_date' | 'seasonal_harvest'> & { id: number; bed_name: string };
+  | 'harvest_date' | 'harvest_end_date' | 'seasonal_harvest'> & YieldComparisonCropTiming & {
+    id: number;
+    bed_name: string;
+    crop_label?: string;
+  };
+
+export interface YieldComparisonFilters {
+  cropKeys: string[];
+  locationId: number | null;
+  fieldId: number | null;
+  bedId: number | null;
+  varietyId: number | null;
+  seasonWindow: '3' | '5' | 'all';
+}
+
+export interface YieldComparisonFilterOptions {
+  crops: {
+    id: number;
+    name: string;
+    culture: string;
+    culture_label: string | null;
+    variety: string;
+    search_names: string[];
+  }[];
+  locations: { id: number; name: string }[];
+  fields: { id: number; name: string; location_id: number }[];
+  beds: { id: number; name: string; field_id: number }[];
+}
 
 export interface YieldComparisonSeason {
   id: number;
@@ -1996,6 +2023,7 @@ export interface YieldComparisonSeason {
   expected_plan_count: number;
   recorded: HarvestTotals;
   unassigned: HarvestQuantity[];
+  excluded_unassigned_records?: number;
   assigned_plan_count: number;
   assigned_forecast_plan_count: number;
   recorded_kg_per_plan_sqm: string | null;

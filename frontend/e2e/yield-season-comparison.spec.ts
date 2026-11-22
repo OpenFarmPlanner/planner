@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { loginWithDeterministicProject } from './utils';
+import { expectNoHorizontalPageOverflow, loginWithDeterministicProject } from './utils';
 
 test.use({ serviceWorkers: 'block' });
 
@@ -10,8 +10,20 @@ async function compareCrop(page: Page, crop: string) {
   const compare = topbar.getByRole('button', { name: 'Saisonen vergleichen' });
   await compare.click();
   await expect(compare).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('table', { name: 'Alle Kulturen' })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Saisonen' })).toHaveText('Letzte 3 Saisonen');
+  await page.getByRole('combobox', { name: 'Saisonen' }).click();
+  await page.getByRole('option', { name: 'Alle Saisonen', exact: true }).click();
   await page.getByRole('combobox', { name: 'Kultur' }).click();
-  await page.getByRole('option', { name: crop, exact: true }).click();
+  await page.getByRole('option', {
+    name: crop === 'Tomate (Roma)' ? 'Tomate' : crop, exact: true,
+  }).click();
+  await page.getByRole('combobox', { name: 'Kultur' }).press('Escape');
+  if (crop === 'Tomate (Roma)') {
+    await page.getByRole('button', { name: 'Weitere Filter' }).click();
+    await page.getByRole('combobox', { name: 'Sorte' }).click();
+    await page.getByRole('option', { name: crop, exact: true }).click();
+  }
   return page.getByRole('table', { name: crop });
 }
 
@@ -58,6 +70,39 @@ test('compares measured yields and exposes a table and actual date deviations wi
   const segment = page.getByTestId('yield-chart-plot').getByRole('button', { name: /^Kartoffel,.*kg$/ }).first();
   await segment.press('Space');
   await expect(page.getByRole('tooltip').getByText('Erwarteter Ertrag', { exact: false })).toBeVisible();
+});
+
+test('combines searchable crop groups and preserves season and site filters when switching views', async ({ page, request }) => {
+  await loginWithDeterministicProject(page, request, 'yield-comparison-filter-groups', {
+    loginAsAdmin: true, demoProject: true, demoYear: 2026,
+  });
+  await page.goto('/app/yield-overview');
+  const topbar = page.getByTestId('topbar-workspace-controls');
+  await topbar.getByRole('button', { name: 'Saisonen vergleichen' }).click();
+  await expect(page.getByRole('table', { name: 'Alle Kulturen' }).locator('th[scope="row"]')).toHaveCount(3);
+  const crops = page.getByRole('combobox', { name: 'Kultur' });
+  await crops.fill('kartoff');
+  await crops.press('ArrowDown');
+  await crops.press('Enter');
+  await expect(page.getByRole('table', { name: 'Kartoffel' })).toBeVisible();
+  await crops.fill('roma tom');
+  await page.getByRole('option', { name: 'Tomate', exact: true }).click();
+  await crops.press('Escape');
+  await expect(page.getByRole('table', { name: 'Ausgewählte Kulturen' })).toBeVisible();
+  await page.getByRole('combobox', { name: 'Standort' }).click();
+  await page.getByRole('option', { name: 'Hofgarten', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Saisonen' }).click();
+  await page.getByRole('option', { name: 'Letzte 5 Saisonen', exact: true }).click();
+  await topbar.getByRole('button', { name: 'Prognosekalender' }).click();
+  await topbar.getByRole('button', { name: 'Saisonen vergleichen' }).click();
+  await expect(page.getByRole('combobox', { name: 'Standort' })).toHaveText('Hofgarten');
+  await expect(page.getByRole('combobox', { name: 'Saisonen' })).toHaveText('Letzte 5 Saisonen');
+  await expect(page.getByRole('table', { name: 'Ausgewählte Kulturen' })).toBeVisible();
+  for (const [width, height] of [[375, 800], [800, 375], [768, 900], [1024, 900], [1440, 900]]) {
+    await page.setViewportSize({ width, height });
+    await expectNoHorizontalPageOverflow(page);
+    await page.screenshot({ path: test.info().outputPath(`yield-comparison-filters-${width}.png`) });
+  }
 });
 
 test.describe('touch comparison', () => {
@@ -108,8 +153,16 @@ test.describe('touch comparison', () => {
     await expect(results.getByText(/Totalausfall.*Krankheit/)).toBeVisible();
     expect(await results.evaluate(table => table.scrollWidth <= table.clientWidth + 1)).toBeTruthy();
 
+    await page.getByRole('combobox', { name: 'Standort' }).tap();
+    await page.getByRole('option', { name: 'Hofgarten', exact: true }).tap();
+    await expect(results.getByText(/Anteile ohne Flächenzuordnung ausgeblendet/).first()).toBeVisible();
+    await expect(results.getByText('3 kg ohne Zuordnung', { exact: true })).toHaveCount(0);
+    await page.getByRole('combobox', { name: 'Standort' }).tap();
+    await page.getByRole('option', { name: 'Alle Standorte', exact: true }).tap();
+    await page.getByRole('button', { name: 'Kulturauswahl leeren' }).tap();
     await page.getByRole('combobox', { name: 'Kultur' }).tap();
     await page.getByRole('option', { name: 'Kartoffel', exact: true }).tap();
+    await page.getByRole('combobox', { name: 'Kultur' }).press('Escape');
     await page.getByRole('figure').getByRole('button', { name: /^Ertrag für 2026/ }).tap();
     await expect(page.getByRole('tooltip').getByText('Erntemenge · 88,5 kg', { exact: true })).toBeVisible();
   });

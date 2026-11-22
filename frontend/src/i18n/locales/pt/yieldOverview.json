@@ -4,6 +4,16 @@
     "load": "Não foi possível carregar a visão geral dos rendimentos."
   },
   "filters": {
+    "clearCrops": "Limpar a seleção de culturas",
+    "selectedCrops": "Culturas selecionadas",
+    "seasonWindow": "Épocas",
+    "lastThreeSeasons": "Últimas 3 épocas",
+    "lastFiveSeasons": "Últimas 5 épocas",
+    "allSeasons": "Todas as épocas",
+    "moreFilters": "Mais filtros",
+    "variety": "Variedade",
+    "allVarieties": "Todas as variedades",
+    "allBeds": "Todos os canteiros",
     "crop": "Cultura",
     "allCrops": "Todas as culturas",
     "period": "Visualização",
@@ -51,6 +61,9 @@
     }
   },
   "comparison": {
+    "excludedUnassigned_one": "Quantidades sem área excluídas ({{count}} colheita)",
+    "excludedUnassigned_many": "Quantidades sem área excluídas ({{count}} colheitas)",
+    "excludedUnassigned_other": "Quantidades sem área excluídas ({{count}} colheitas)",
     "view": "Vista geral dos rendimentos",
     "calendar": "Calendário de previsões",
     "seasons": "Comparar épocas",

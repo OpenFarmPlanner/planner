@@ -749,6 +749,17 @@ class HarvestWindowOverrideSerializer(serializers.Serializer):
     end_date = serializers.DateField()
 
 
+class YieldComparisonQuerySerializer(serializers.Serializer):
+    season_window = serializers.ChoiceField(choices=('3', '5', 'all'))
+    crop_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1, max_value=2**63 - 1), required=False,
+    )
+    variety_id = serializers.IntegerField(min_value=1, max_value=2**63 - 1, required=False)
+    location_id = serializers.IntegerField(min_value=1, max_value=2**63 - 1, required=False)
+    field_id = serializers.IntegerField(min_value=1, max_value=2**63 - 1, required=False)
+    bed_id = serializers.IntegerField(min_value=1, max_value=2**63 - 1, required=False)
+
+
 class TaskSerializer(serializers.ModelSerializer):
     planting_plan_name = serializers.CharField(source='planting_plan.__str__', read_only=True)
 

@@ -92,6 +92,29 @@ class LocalLibraryImportSeedTests(TestCase):
         self.assertEqual(project.planting_plans.count(), 4)
         self.assertEqual(HarvestAllocation.objects.filter(planting_plan=apple).count(), 1)
 
+    def test_yield_comparison_fixture_previews_and_preserves_manual_edits(self):
+        command = 'seed_yield_comparison_acceptance'
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        projects = Project.objects.filter(slug=f'ofp-local-yield-comparison-{self.user.pk}')
+        call_command(command, **arguments)
+        self.assertFalse(projects.exists())
+        with self.assertRaisesMessage(CommandError, 'does not match'):
+            call_command(command, **{**arguments, 'database_name': 'wrong-target'}, apply=True)
+        self.assertFalse(projects.exists())
+
+        call_command(command, **arguments, apply=True)
+        project = projects.get()
+        self.assertEqual(project.seasons.count(), 4)
+        self.assertEqual(project.locations.count(), 2)
+        self.assertEqual(project.harvest_records.count(), 6)
+        plan = project.planting_plans.order_by('pk').first()
+        plan.notes = 'Keep this manual edit'
+        plan.save(update_fields=['notes'])
+        call_command(command, **arguments, apply=True)
+        plan.refresh_from_db()
+        self.assertEqual(plan.notes, 'Keep this manual edit')
+        self.assertEqual(project.planting_plans.count(), 5)
+
     def test_season_creation_fixture_previews_and_preserves_manual_edits(self):
         command = 'seed_season_creation_dates_acceptance'
         arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}

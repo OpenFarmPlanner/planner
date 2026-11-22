@@ -70,7 +70,12 @@ from farm.services.tasks import (
 )
 from farm.services.timing_window_check import TimingWindowChecker
 from farm.services.yield_calendar import build_yield_forecast
-from farm.services.yield_comparison import build_yield_comparison, comparison_crops
+from farm.services.yield_comparison import (
+    YieldComparisonScope,
+    build_yield_comparison,
+    comparison_crops,
+    comparison_filter_options,
+)
 
 from .serializers import (
     HarvestWindowOverrideSerializer,
@@ -78,6 +83,7 @@ from .serializers import (
     PlantingPlanSerializer,
     TaskFilterSerializer,
     TaskSerializer,
+    YieldComparisonQuerySerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -355,21 +361,45 @@ class YieldComparisonView(generics.GenericAPIView):
     @extend_schema(
         description=(
             'List crops with planting plans or harvest records. With crop_id, compare that crop '
-            'across the active project’s non-deleted season periods.'
+            'across the active project’s non-deleted season periods. Supply season_window '
+            'to compare a filtered set of crops, growing areas and seasons.'
         ),
         parameters=[
-            OpenApiParameter('crop_id', int, description='Crop to compare across seasons.'),
+            OpenApiParameter('crop_id', int, many=True, description='Crop IDs to compare.'),
+            OpenApiParameter('season_window', str, enum=['3', '5', 'all']),
+            OpenApiParameter('location_id', int),
+            OpenApiParameter('field_id', int),
+            OpenApiParameter('bed_id', int),
+            OpenApiParameter('variety_id', int),
+            OpenApiParameter('filters', bool, description='Return comparison filter choices.'),
         ],
     )
     def get(self, request):
         project = get_active_project_or_400(request)
-        if 'crop_id' not in request.query_params:
-            return Response({'crops': comparison_crops(project, resolve_request_language(request))})
+        language = resolve_request_language(request)
+        params = request.query_params
+        if params.get('filters') == 'true':
+            return Response(comparison_filter_options(project, language))
+        if 'season_window' in params:
+            query = YieldComparisonQuerySerializer(data={
+                **params.dict(), 'crop_ids': params.getlist('crop_id'),
+            })
+            query.is_valid(raise_exception=True)
+            filters = query.validated_data.copy()
+            limit = filters.pop('season_window')
+            crop_ids = tuple(filters.pop('crop_ids'))
+            return Response(build_yield_comparison(project, YieldComparisonScope(
+                crop_ids=crop_ids, season_limit=None if limit == 'all' else int(limit), **filters,
+            ), language))
+        if 'crop_id' not in params:
+            return Response({'crops': comparison_crops(project, language)})
         crop_id = serializers.IntegerField(min_value=1, max_value=2**63 - 1).run_validation(
-            request.query_params['crop_id'],
+            params['crop_id'],
         )
         crop = get_object_or_404(Crop.all_objects, project=project, pk=crop_id)
-        return Response(build_yield_comparison(project, crop))
+        return Response(build_yield_comparison(
+            project, YieldComparisonScope(crop_ids=(crop.pk,)), language, crop=crop,
+        ))
 
 
 @extend_schema_view(
