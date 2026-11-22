@@ -30,6 +30,14 @@ Give controls space and prominence in proportion to their importance and frequen
 
 For occasional settings such as a table's date display mode, consider a useful default and a compact selector alongside Search, Filter or Columns. Use an established contextual menu when users can still find the action easily. Keep primary actions visible and allow controls to wrap or use an extra row when the viewport, readable translations or accessible touch and keyboard targets need the space.
 
+## Tooltip roles
+
+- **Explanatory help.** Use a brief, optional explanation for genuinely non-obvious behavior, such as how a sowing date is derived. Put longer explanations in the existing page help opened from the question mark beside the page title. Where appropriate, delay the explanatory tooltip by about 600 ms on pointer entry to avoid triggering it as the pointer passes over the control. Keep the explanation usable on keyboard focus and touch.
+- **Action identification.** Give icon-only controls a concise hover and focus label when their action needs clarification, and give each control an accessible name. A text button's visible label generally provides the action name on its own. Keep shortcut reminders in the existing keyboard-shortcuts help.
+- **Data previews.** Keep previews that reveal record details, such as planting dates and plan information in the Crop Calendar. Preserve their responsive hover behavior and make the same details available with keyboard focus and touch.
+
+Put essential warnings, requirements, errors and reasons an action is unavailable in the visible UI or behind an explicit control that supports keyboard and touch. Use the active UI language for tooltip text and accessible names. Keep explanatory tooltip availability independent of account age and feature use. Use one shared behavior across accounts and revisit a personal opt-out only if targeted cleanup leaves demonstrable overload.
+
 ## UX issue preflight
 
 When creating or revising a user-facing issue, review the **whole flow** rather than only the requested component:
