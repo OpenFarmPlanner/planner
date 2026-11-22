@@ -81,7 +81,7 @@ export function PerennialHarvestWindows({ planId, occurrences, season, editable,
         <TextField id={selectId} select size="small" label={t('harvestWindows.year')} value={selected.year}
           inputRef={selectRef} disabled={Boolean(draft) || saving} slotProps={{ select: { native: true } }}
           onChange={event => { setYear(Number(event.target.value)); setError(undefined); }}
-          sx={{ alignSelf: 'flex-start', maxWidth: '100%' }}>
+          sx={{ alignSelf: 'flex-start', minWidth: 160, maxWidth: '100%' }}>
           {occurrences.map(item => <option key={item.year} value={item.year}>
             {item.conflict ? t('harvestWindows.yearWithConflict', { year: item.year }) : item.year}
           </option>)}
