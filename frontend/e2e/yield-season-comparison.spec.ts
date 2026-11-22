@@ -62,12 +62,17 @@ test.describe('touch comparison', () => {
     await warning.tap();
     const details = page.getByRole('dialog', { name: 'Anbauplan ohne Prognose (1)' });
     await expect(details).toBeInViewport({ ratio: 1 });
+    await expect(details).toHaveClass(/MuiDialog-paperFullScreen/);
     const plan = details.getByRole('link');
     await expect(plan).toHaveAttribute('href', /^\/app\/planting-plans\/\d+$/);
     await details.getByRole('button', { name: 'Schließen' }).tap();
     await expect(warning).toHaveAttribute('aria-expanded', 'false');
+    await expect(details).toBeHidden();
 
+    await page.setViewportSize({ width: 800, height: 375 });
     await warning.tap();
+    await expect(details).toBeInViewport({ ratio: 1 });
+    await expect(details).toHaveClass(/MuiDialog-paperFullScreen/);
     await plan.tap();
     await expect(page).toHaveURL(/\/app\/planting-plans\/\d+$/);
   });
