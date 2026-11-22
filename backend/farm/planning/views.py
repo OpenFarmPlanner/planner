@@ -598,7 +598,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             self.record_revision(plan, EntityRevision.ACTION_UPDATED, previous_snapshot=before)
             schedule = recurring_harvest_schedule(plan, crop_index)
         return Response({
-            'harvest_windows_by_year': schedule.occurrence_details(),
+            'harvest_windows_by_year': schedule.occurrence_details(occurrence_year),
             'seasonal_harvest': (
                 seasonal_harvest_payload(plan, season, schedule) if season else None
             ),

@@ -130,7 +130,8 @@ description), one level down:
   and `actual_end_date` drawn from recorded dates within that season. An
   empty list means the plan has no eligible harvest in that period. The
   property is null for legacy one-off plans or a request without a season.
-  Plan details also list the lifetime harvest occurrences. In the originating
+  Plan details show the lifetime harvest occurrences in pages of up to 20 years.
+  In the originating
   season, open **Harvest windows by year** to replace the calculated dates for
   one occurrence or reset its saved dates. The occurrence key is the calendar
   year in which its default window starts, even when it spans two seasons.

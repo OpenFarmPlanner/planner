@@ -507,9 +507,10 @@ export const plantingPlanAPI = {
   listAll: () => fetchAllPaginated<PlantingPlan>('/planting-plans/'),
   listForArea: (type: 'bed' | 'field', id: number) => fetchAllPaginated<PlantingPlan>(`/planting-plans/?${type}=${id}`),
   get: (id: number) => http.get<PlantingPlan>(`/planting-plans/${id}/`),
-  getAcrossSeasons: (id: number, signal?: AbortSignal) => http.get<import('./types').PlantingPlanDetail>(`/planting-plans/${id}/`, {
-    params: { across_seasons: true }, signal,
-  }),
+  getAcrossSeasons: (id: number, signal?: AbortSignal, harvestYear?: number) =>
+    http.get<import('./types').PlantingPlanDetail>(`/planting-plans/${id}/`, {
+      params: { across_seasons: true, harvest_year: harvestYear }, signal,
+    }),
   create: (data: PlantingPlan) => http.post<PlantingPlan>('/planting-plans/', withActiveProject(data)),
   update: (id: number, data: PlantingPlan) => http.put<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),
   patch: (id: number, data: Partial<PlantingPlan>) => http.patch<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),

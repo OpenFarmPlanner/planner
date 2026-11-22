@@ -550,6 +550,8 @@
     "count_many": "{{own}} démarrées cette saison · {{count}} se poursuivent"
   },
   "harvestWindows": {
+    "previousYears": "Années précédentes",
+    "nextYears": "Années suivantes",
     "title": "Périodes de récolte par année",
     "year": "Année de récolte",
     "yearWithConflict": "{{year}} (conflit)",

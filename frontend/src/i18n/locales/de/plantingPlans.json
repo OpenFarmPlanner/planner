@@ -535,6 +535,8 @@
     "count_other": "{{own}} in dieser Saison gepflanzt · {{count}} laufen weiter"
   },
   "harvestWindows": {
+    "previousYears": "Frühere Jahre",
+    "nextYears": "Spätere Jahre",
     "title": "Erntefenster je Jahr",
     "year": "Erntejahr",
     "yearWithConflict": "{{year}} (Konflikt)",

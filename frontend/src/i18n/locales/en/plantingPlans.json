@@ -535,6 +535,8 @@
     "count_other": "{{own}} planted this season · {{count}} continue"
   },
   "harvestWindows": {
+    "previousYears": "Earlier years",
+    "nextYears": "Later years",
     "title": "Harvest windows by year",
     "year": "Harvest year",
     "yearWithConflict": "{{year}} (conflict)",

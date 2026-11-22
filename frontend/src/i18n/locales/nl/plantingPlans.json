@@ -535,6 +535,8 @@
     "count_other": "{{own}} gestart in dit seizoen · {{count}} lopen door"
   },
   "harvestWindows": {
+    "previousYears": "Eerdere jaren",
+    "nextYears": "Latere jaren",
     "title": "Oogstperiodes per jaar",
     "year": "Oogstjaar",
     "yearWithConflict": "{{year}} (conflict)",

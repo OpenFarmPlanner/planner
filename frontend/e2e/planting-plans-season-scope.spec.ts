@@ -292,7 +292,14 @@ test.describe('recurring harvest dates', () => {
           await expectNoHorizontalPageOverflow(page);
           await page.screenshot({ path: info.outputPath(`harvest-window-editor-${width}.png`), animations: 'disabled' });
         }
+        const refreshedDetail = page.waitForResponse(response => {
+          const url = new URL(response.url());
+          return response.request().method() === 'GET' && response.ok()
+            && url.pathname.endsWith(`/planting-plans/${plan.id}/`)
+            && url.searchParams.get('harvest_year') === '2027';
+        });
         await page.getByRole('button', { name: common.actions.save, exact: true }).click();
+        await refreshedDetail;
         await expect(reset).toBeVisible();
         await expect(page.getByText('10.9.2027 – 20.10.2027', { exact: true })).toBeVisible();
 
@@ -318,6 +325,16 @@ test.describe('recurring harvest dates', () => {
         await expect(reset).toHaveCount(0);
         await expect(page.getByText('1.9.2027 – 15.10.2027', { exact: true })).toBeVisible();
         await expect(year).toBeFocused();
+
+        await apiRequest(page, 'PATCH', `/planting-plans/${plan.id}/`, { clearing_date: '2070-12-31' });
+        await page.reload();
+        await expect(year.locator('option')).toHaveCount(20);
+        await page.getByRole('button', { name: plans.harvestWindows.nextYears }).click();
+        await expect(year).toHaveValue('2047');
+        await expect(year.locator('option')).toHaveCount(20);
+        await page.getByRole('button', { name: plans.harvestWindows.previousYears }).click();
+        await expect(year).toHaveValue('2046');
+        await apiRequest(page, 'PATCH', `/planting-plans/${plan.id}/`, { clearing_date: '2028-09-10' });
       });
 
       await test.step('moving the occupancy bar keeps the harvest band on its calendar dates', async () => {

@@ -99,7 +99,7 @@ class PerennialPlanningTest(ProjectApiTestCase):
 
         self.assertEqual(self.client.delete(endpoint).status_code, 200)
         occurrence = next(
-            item for item in self.client.get(detail).json()['harvest_windows_by_year']
+            item for item in self.client.get(detail).json()['harvest_windows_by_year']['occurrences']
             if item['year'] == 2027
         )
         self.assertEqual(occurrence['default'], {
@@ -146,7 +146,7 @@ class PerennialPlanningTest(ProjectApiTestCase):
         season = self.season(2028)
         loaded = self.client.get(detail, HTTP_X_SEASON_ID=str(season.pk)).json()
         occurrence = next(
-            item for item in loaded['harvest_windows_by_year'] if item['year'] == 2028
+            item for item in loaded['harvest_windows_by_year']['occurrences'] if item['year'] == 2028
         )
         self.assertEqual(occurrence['override'], dates)
         self.assertTrue(occurrence['conflict'])
@@ -177,7 +177,9 @@ class PerennialPlanningTest(ProjectApiTestCase):
             self.assertEqual(loaded['seasonal_harvest']['periods'], [{
                 'start_date': start, 'end_date': end,
             }])
-            windows = [item for item in loaded['harvest_windows_by_year'] if item['override']]
+            windows = [
+                item for item in loaded['harvest_windows_by_year']['occurrences'] if item['override']
+            ]
             self.assertEqual(len(windows), 1)
             self.assertEqual(windows[0]['year'], 2025)
             self.assertEqual(windows[0]['override'], dates)
@@ -185,6 +187,27 @@ class PerennialPlanningTest(ProjectApiTestCase):
             self.assertEqual(forecast.status_code, 200, forecast.data)
             projected_yield = sum(crop['yield'] for week in forecast.data for crop in week['crops'])
             self.assertAlmostEqual(projected_yield, 20)
+
+    def test_lifetime_windows_are_bounded_and_allow_navigation_to_a_distant_year(self):
+        crop = self.perennial(annual_harvest_window='12-01/01-31')
+        january = Season.objects.create(
+            project=self.project, start_date=date(2044, 1, 1), end_date=date(2044, 8, 31),
+        )
+        created = self.plant(crop, clearing_date='9999-12-31')
+        self.assertEqual(created.status_code, 201, created.data)
+        detail = f"{PLANS}{created.data['id']}/"
+        first = self.client.get(detail).json()['harvest_windows_by_year']
+        self.assertEqual([item['year'] for item in first['occurrences']], list(range(2024, 2044)))
+        self.assertIsNone(first['previous_year'])
+        self.assertEqual(first['next_year'], 2044)
+        second = self.client.get(detail, {'harvest_year': first['next_year']}).json()
+        self.assertEqual(second['harvest_windows_by_year']['previous_year'], 2043)
+        distant = self.client.get(detail, {'harvest_year': 9999}).json()['harvest_windows_by_year']
+        self.assertLessEqual(len(distant['occurrences']), 20)
+        self.assertEqual(distant['occurrences'][-1]['year'], 9999)
+        self.assertIsNone(distant['next_year'])
+        january_detail = self.client.get(detail, HTTP_X_SEASON_ID=str(january.pk)).json()
+        self.assertEqual(january_detail['harvest_windows_by_year']['occurrences'][-1]['year'], 2043)
 
     def test_history_restores_overrides_and_accepts_pre_migration_snapshots(self):
         created = self.plant(self.perennial(annual_harvest_window='09-01/10-15'))

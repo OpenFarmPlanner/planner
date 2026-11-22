@@ -15,6 +15,8 @@ from farm.services.crop_inheritance import (
 )
 from farm.services.tasks import plan_cultivation_type
 
+HARVEST_YEARS_PER_PAGE = 20
+
 
 @dataclass(frozen=True)
 class HarvestProjection:
@@ -36,6 +38,12 @@ class HarvestOccurrencePayload(TypedDict):
     default: SeasonalHarvestPeriod | None
     override: SeasonalHarvestPeriod | None
     conflict: bool
+
+
+class HarvestOccurrencesPage(TypedDict):
+    occurrences: list[HarvestOccurrencePayload]
+    previous_year: int | None
+    next_year: int | None
 
 
 class SeasonalHarvestPayload(TypedDict):
@@ -143,23 +151,77 @@ class RecurringHarvestSchedule:
             year, start, end,
         )
 
-    def occurrence_details(self) -> list[HarvestOccurrencePayload]:
-        years = set(self.overrides)
-        if self.eligible_from is not None and self.occupied_until is not None:
-            first = max(date.min.year, self.eligible_from.year - self.crosses_new_year)
-            years.update(range(first, self.occupied_until.year + 1))
-        occurrences: list[HarvestOccurrencePayload] = []
-        for year in sorted(years):
-            default = self.eligible_window(year)
-            override = self.overrides.get(year)
-            if default or override:
-                occurrences.append({
-                    'year': year,
-                    'default': _period(default),
-                    'override': _period(override),
-                    'conflict': bool(override and self.effective_override(year) is None),
-                })
-        return occurrences
+    def _eligible_years(self) -> range:
+        if (
+            self.eligible_from is None or self.occupied_until is None
+            or self.eligible_from > self.occupied_until
+        ):
+            return range(0)
+        first = max(date.min.year, self.eligible_from.year - self.crosses_new_year)
+        last = self.occupied_until.year
+        while first <= last and self.eligible_window(first) is None:
+            first += 1
+        if first <= last and self.eligible_window(last) is None:
+            last -= 1
+        return range(first, last + 1)
+
+    def first_conflicting_year(self) -> int | None:
+        return min(
+            (year for year in self.overrides if self.effective_override(year) is None),
+            default=None,
+        )
+
+    def year_for_season(self, season: Season) -> int:
+        start = season.start_date
+        first = max(date.min.year, start.year - self.crosses_new_year)
+        last = min(date.max.year, start.year + 1, season.end_date.year)
+        for year in range(first, last + 1):
+            window = self.effective_override(year) or self.eligible_window(year)
+            if window and window[0] <= season.end_date and window[1] >= start:
+                return year
+        return start.year
+
+    def occurrence_details(self, year: int | None = None) -> HarvestOccurrencesPage:
+        eligible = self._eligible_years()
+        override_years = self.overrides.keys()
+        if not eligible and not override_years:
+            return {'occurrences': [], 'previous_year': None, 'next_year': None}
+
+        first = min(override_years, default=eligible.start)
+        if eligible:
+            first = min(first, eligible.start)
+        anchor = first if year is None else year
+        candidates = set(override_years)
+        if eligible:
+            candidates.add(max(eligible.start, min(anchor, eligible.stop - 1)))
+        anchor = min(candidates, key=lambda candidate: (abs(candidate - anchor), candidate))
+        page_start = first + (anchor - first) // HARVEST_YEARS_PER_PAGE * HARVEST_YEARS_PER_PAGE
+        page_end = page_start + HARVEST_YEARS_PER_PAGE
+
+        years = (
+            year for year in range(page_start, page_end)
+            if year in eligible or year in self.overrides
+        )
+        previous_default = min(eligible.stop, page_start) - 1
+        next_default = max(eligible.start, page_end)
+        if previous_default in eligible:
+            candidates.add(previous_default)
+        if next_default in eligible:
+            candidates.add(next_default)
+        return {
+            'occurrences': [self._occurrence_detail(year) for year in years],
+            'previous_year': max((year for year in candidates if year < page_start), default=None),
+            'next_year': min((year for year in candidates if year >= page_end), default=None),
+        }
+
+    def _occurrence_detail(self, year: int) -> HarvestOccurrencePayload:
+        override = self.overrides.get(year)
+        return {
+            'year': year,
+            'default': _period(self.eligible_window(year)),
+            'override': _period(override),
+            'conflict': bool(override and self.effective_override(year) is None),
+        }
 
     def project(self, start_date: date, end_date: date) -> list[HarvestProjection]:
         """Intersect the annual windows, eligibility, occupancy and requested period."""

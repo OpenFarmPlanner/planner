@@ -1342,8 +1342,14 @@ export interface HarvestWindowOccurrence {
   conflict: boolean;
 }
 
+export interface HarvestWindowPage {
+  occurrences: HarvestWindowOccurrence[];
+  previous_year: number | null;
+  next_year: number | null;
+}
+
 export interface HarvestWindowUpdate {
-  harvest_windows_by_year: HarvestWindowOccurrence[] | null;
+  harvest_windows_by_year: HarvestWindowPage;
   seasonal_harvest: PlantingPlanSeasonalHarvest | null;
 }
 
@@ -1429,7 +1435,7 @@ export interface PlantingPlanDetail extends PlantingPlan {
   location_name: string | null;
   crop_available: boolean;
   previous_season_reference?: PlantingPlanPreviousSeasonReference | null;
-  harvest_windows_by_year?: HarvestWindowOccurrence[] | null;
+  harvest_windows_by_year?: HarvestWindowPage | null;
 }
 
 export type PlantingPlanPreviousSeasonReference = { available: false } | {

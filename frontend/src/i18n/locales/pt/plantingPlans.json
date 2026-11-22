@@ -550,6 +550,8 @@
     "count_many": "{{own}} iniciadas nesta época · {{count}} continuam"
   },
   "harvestWindows": {
+    "previousYears": "Anos anteriores",
+    "nextYears": "Anos seguintes",
     "title": "Períodos de colheita por ano",
     "year": "Ano de colheita",
     "yearWithConflict": "{{year}} (conflito)",

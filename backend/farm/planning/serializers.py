@@ -34,7 +34,7 @@ from farm.services.germination_check import check_germination
 from farm.services.harvests import HarvestTotals, plan_harvest_totals
 from farm.services.plant_count import compute_plan_plant_count
 from farm.services.seasonal_harvest import (
-    HarvestOccurrencePayload,
+    HarvestOccurrencesPage,
     SeasonalHarvestPayload,
     recurring_harvest_schedule,
     seasonal_harvest_payload,
@@ -687,9 +687,22 @@ class PlantingPlanDetailSerializer(PlantingPlanSerializer):
 
     def get_harvest_windows_by_year(
         self, obj: PlantingPlan,
-    ) -> list[HarvestOccurrencePayload] | None:
+    ) -> HarvestOccurrencesPage | None:
         schedule = recurring_harvest_schedule(obj, self._general_crop_index(obj))
-        return schedule.occurrence_details() if schedule is not None else None
+        if schedule is None:
+            return None
+        request = self.context.get('request')
+        requested_year = request.query_params.get('harvest_year') if request else None
+        if requested_year is not None:
+            year = serializers.IntegerField(min_value=1, max_value=date.max.year).run_validation(
+                requested_year,
+            )
+        else:
+            season = self.context.get('harvest_season')
+            year = schedule.year_for_season(season) if season is not None else None
+            if season is None or obj.season_id == season.pk:
+                year = schedule.first_conflicting_year() or year
+        return schedule.occurrence_details(year)
 
     def get_crop_available(self, obj: PlantingPlan) -> bool:
         return bool(obj.crop and obj.crop.deleted_at is None)

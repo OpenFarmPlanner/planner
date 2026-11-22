@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { Alert, Box, Button, Stack, TextField, Typography } from '@mui/material';
 import { isAxiosError } from 'axios';
 import { plantingPlanAPI } from '../api/api';
-import type { HarvestWindowOccurrence, HarvestWindowUpdate, Season, SeasonalHarvestPeriod } from '../api/types';
+import type { HarvestWindowPage, HarvestWindowUpdate, Season, SeasonalHarvestPeriod } from '../api/types';
 import { DetailGrid, DetailRow, DetailSection } from '../components/layout/DetailPrimitives';
 import { useTranslation } from '../i18n';
 import { formatSeasonPeriod, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
@@ -10,14 +10,15 @@ import { ActualPlanDateField } from './PlantingPlanExecutionDates';
 
 interface Props {
   planId: number;
-  occurrences: HarvestWindowOccurrence[];
+  page: HarvestWindowPage;
   season: Season | null | undefined;
   editable: boolean;
-  onSaved: (data: HarvestWindowUpdate) => void;
+  onSaved: (data: HarvestWindowUpdate, year: number) => void;
+  onPageChange: (year: number) => void;
   onDirtyChange: (dirty: boolean) => void;
 }
 
-export function PerennialHarvestWindows({ planId, occurrences, season, editable, onSaved, onDirtyChange }: Props) {
+export function PerennialHarvestWindows({ planId, page, season, editable, onSaved, onPageChange, onDirtyChange }: Props) {
   const { t, i18n } = useTranslation(['plantingPlans', 'common']);
   const [year, setYear] = useState<number>();
   const [draft, setDraft] = useState<SeasonalHarvestPeriod | null>(null);
@@ -26,6 +27,7 @@ export function PerennialHarvestWindows({ planId, occurrences, season, editable,
   const selectId = useId();
   const selectRef = useRef<HTMLSelectElement>(null);
   const restoreFocus = useRef(false);
+  const { occurrences, previous_year: previousYear, next_year: nextYear } = page;
   const selected = occurrences.find(item => item.year === year) ??
     (editable ? occurrences.find(item => item.conflict) : undefined) ??
     occurrences.find(item => {
@@ -65,7 +67,7 @@ export function PerennialHarvestWindows({ planId, occurrences, season, editable,
     try {
       const { data } = period ? await plantingPlanAPI.setHarvestWindow(planId, selected.year, period)
         : await plantingPlanAPI.resetHarvestWindow(planId, selected.year);
-      onSaved(data);
+      onSaved(data, selected.year);
       close();
     } catch (failure: unknown) {
       setError(isAxiosError(failure) && failure.response?.data?.code === 'invalid_harvest_window'
@@ -73,6 +75,11 @@ export function PerennialHarvestWindows({ planId, occurrences, season, editable,
     } finally {
       setSaving(false);
     }
+  };
+  const changePage = (next: number) => {
+    setYear(next);
+    setError(undefined);
+    onPageChange(next);
   };
 
   return (
@@ -86,6 +93,13 @@ export function PerennialHarvestWindows({ planId, occurrences, season, editable,
             {item.conflict ? t('harvestWindows.yearWithConflict', { year: item.year }) : item.year}
           </option>)}
         </TextField>
+        {(previousYear !== null || nextYear !== null) && <Stack direction="row" spacing={1} useFlexGap
+          sx={{ flexWrap: 'wrap' }}>
+          {previousYear !== null && <Button size="small" disabled={Boolean(draft) || saving}
+            onClick={() => changePage(previousYear)}>{t('harvestWindows.previousYears')}</Button>}
+          {nextYear !== null && <Button size="small" disabled={Boolean(draft) || saving}
+            onClick={() => changePage(nextYear)}>{t('harvestWindows.nextYears')}</Button>}
+        </Stack>}
         <DetailGrid>
           <DetailRow label={t('harvestWindows.default')} value={selected.default
             ? formatPeriod(selected.default) : t('actualDates.missing')} />
