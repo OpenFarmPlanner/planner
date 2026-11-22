@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Tooltip, type TooltipProps } from '@mui/material';
 import { useContextMenuOpenSnapshot } from './contextMenu/contextMenuOpenState';
 
+const EXPLANATORY_HOVER_DELAY = 600;
+
 /**
  * The app's tooltip. Use this everywhere instead of MUI's `Tooltip` (enforced
  * by the `no-restricted-imports` rule in eslint.config.js) — it behaves
@@ -22,8 +24,11 @@ export function AppTooltip({
   disableHoverListener,
   disableFocusListener,
   disableTouchListener,
+  explanatory,
+  enterDelay,
+  enterNextDelay,
   ...props
-}: TooltipProps) {
+}: TooltipProps & { explanatory?: boolean }) {
   const { open: contextMenuOpen, openSequence } = useContextMenuOpenSnapshot();
   const [openedInSequence, setOpenedInSequence] = useState<number | null>(null);
 
@@ -34,6 +39,8 @@ export function AppTooltip({
     <Tooltip
       {...props}
       open={effectiveOpen}
+      enterDelay={enterDelay ?? (explanatory ? EXPLANATORY_HOVER_DELAY : undefined)}
+      enterNextDelay={enterNextDelay ?? (explanatory ? EXPLANATORY_HOVER_DELAY : undefined)}
       onOpen={(event) => {
         if (contextMenuOpen) {
           return;

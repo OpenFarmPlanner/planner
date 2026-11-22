@@ -190,6 +190,7 @@ import {
 } from './plantingPlansUtils';
 import { AppTooltip } from '../components/AppTooltip';
 import { dataGridHeaderLabelSx } from "../components/data-grid/dataGridHeaderLabelSx";
+import { GridHeaderHelp } from "../components/data-grid/GridHeaderHelp";
 
 
 /**
@@ -1019,22 +1020,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         editable: true,
         headerClassName: getCoupledFieldHeaderClassName("start", isSowingDatePartnerVisible),
         renderHeader: () => (
-          <AppTooltip
-            title={(
-              <Box component="span" sx={{ display: "block" }}>
-                <Box component="span" sx={{ display: "block", fontWeight: 600 }}>
-                  {t("plantingPlans:tooltips.sowingDateTitle")}
-                </Box>
-                <Box component="span" sx={{ display: "block" }}>
-                  {t("plantingPlans:tooltips.sowingDateDescription")}
-                </Box>
-              </Box>
-            )}
-          >
-            <Box component="span" sx={dataGridHeaderLabelSx}>
-              {t("plantingPlans:tableHeaders.sowingDate")}
-            </Box>
-          </AppTooltip>
+          <GridHeaderHelp label={t("plantingPlans:tableHeaders.sowingDate")}
+            description={t("plantingPlans:tooltips.sowingDateDescription")} />
         ),
         valueGetter: (_value, row) => toGridDateValue(getRowSowingSchedule(row as PlantingPlanRow)?.sowingDate ?? null),
         isCellEditable: (params: GridCellParams<PlantingPlanRow>) =>
@@ -1124,22 +1111,9 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         editable: true,
         headerClassName: getCoupledFieldHeaderClassName("end", isPlantingDatePartnerVisible),
         renderHeader: () => (
-          <AppTooltip
-            title={(
-              <Box component="span" sx={{ display: "block" }}>
-                <Box component="span" sx={{ display: "block", fontWeight: 600 }}>
-                  {t("plantingPlans:tooltips.plantingDateTitle")}
-                </Box>
-                <Box component="span" sx={{ display: "block" }}>
-                  {t("plantingPlans:tooltips.plantingDateDescription")}
-                </Box>
-              </Box>
-            )}
-          >
-            <Box component="span" sx={dataGridHeaderLabelSx}>
-              {t("plantingPlans:tableHeaders.plantingDate")}
-            </Box>
-          </AppTooltip>
+          <Box component="span" sx={dataGridHeaderLabelSx}>
+            {t("plantingPlans:tableHeaders.plantingDate")}
+          </Box>
         ),
         valueGetter: (value) => toGridDateValue(value),
         cellClassName: (params) => [
@@ -1236,22 +1210,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         maxWidth: dynamicWidths.area,
         editable: true,
         renderHeader: () => (
-          <AppTooltip
-            title={(
-              <Box component="span" sx={{ display: "block" }}>
-                <Box component="span" sx={{ display: "block", fontWeight: 600 }}>
-                  {t("plantingPlans:tooltips.areaInputTitle")}
-                </Box>
-                <Box component="span" sx={{ display: "block" }}>
-                  {t("plantingPlans:tooltips.areaInputDescription")}
-                </Box>
-              </Box>
-            )}
-          >
-            <Box component="span" sx={dataGridHeaderLabelSx}>
-              {t("plantingPlans:columns.areaM2")}
-            </Box>
-          </AppTooltip>
+          <GridHeaderHelp label={t("plantingPlans:columns.areaM2")}
+            description={t("plantingPlans:tooltips.areaAutoMax")} />
         ),
         preProcessEditCellProps: (params) => {
           if (params.hasChanged && !linkedPartnerUpdateInProgressRef.current) {
@@ -1296,11 +1256,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         editable: true,
         type: "number",
         renderHeader: () => (
-          <AppTooltip title={t("plantingPlans:tooltips.plantsFromSpacing")}>
-            <Box component="span" sx={dataGridHeaderLabelSx}>
-              {t("plantingPlans:columns.plantsCount")}
-            </Box>
-          </AppTooltip>
+          <GridHeaderHelp label={t("plantingPlans:columns.plantsCount")}
+            description={t("plantingPlans:tooltips.plantsFromSpacing")} />
         ),
         preProcessEditCellProps: (params) => {
           if (params.hasChanged && !linkedPartnerUpdateInProgressRef.current) {
@@ -2385,6 +2342,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       id: "create-planting-plan",
       label: t("plantingPlans:addButton"),
       shortcut: "Alt+Shift+N",
+      tooltipOnIconOnly: true,
       disabled: !canCreatePlan || shouldShowProjectRequiredState,
       handler: handleCreatePlan,
     },
@@ -2989,7 +2947,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
                   snackbarTestId: "planting-plan-delete-snackbar",
           }}
           clipboardColumns={clipboardColumns}
-          addButtonLabel={`${t("plantingPlans:addButton")} (Alt+Shift+N)`}
+          addButtonLabel={t("plantingPlans:addButton")}
           addButtonText={t("plantingPlans:addButton")}
           showAddAction={false}
           showDeleteAction={false}

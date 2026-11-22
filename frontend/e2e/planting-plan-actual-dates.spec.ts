@@ -194,6 +194,56 @@ test('the grid sorts, filters and edits the displayed dates without writing plan
   expect(harvest).toMatchObject({ harvest_date: '2026-06-08', actual_harvest_start_date: '2026-06-05' });
 });
 
+test('keeps explanatory header help delayed and shows Add in keyboard help', async ({ page, request }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await seedPlans(page, request, 'planting-plan-tooltip-roles');
+  await page.goto(table);
+
+  const add = page.getByRole('button', { name: 'Anbauplan hinzufügen', exact: true });
+  await add.hover();
+  await page.waitForTimeout(700);
+  await expect(page.getByRole('tooltip').filter({ hasText: 'Anbauplan hinzufügen' })).toHaveCount(0);
+
+  const header = page.locator('[role="columnheader"][data-field="sowing_date"]');
+  const label = header.locator('.MuiDataGrid-columnHeaderTitleContainerContent > span').first();
+  const help = page.getByRole('tooltip').filter({ hasText: 'Bei Anzucht aus Pflanztermin' });
+  await expect(header).toHaveAccessibleDescription(/Bei Anzucht.*Bei Direktsaat/);
+  await expect(header).not.toHaveAccessibleName(/Bei Anzucht/);
+  await label.hover();
+  await page.waitForTimeout(200);
+  await expect(help).toHaveCount(0);
+  await expect(help).toBeVisible();
+  await page.mouse.move(300, 63);
+  await expect(help).toBeHidden();
+
+  await page.keyboard.press('Tab');
+  await header.focus();
+  await expect(help).toBeVisible();
+  await header.press('Escape');
+  await expect(help).toBeHidden();
+  await expect(header).toBeFocused();
+  await header.press('Enter');
+  await expect(header).toHaveAttribute('aria-sort', 'ascending');
+
+  await label.dispatchEvent('touchstart');
+  await expect(help).toBeVisible();
+  await label.dispatchEvent('touchend');
+  await page.keyboard.press('Escape');
+
+  await page.getByRole('button', { name: 'Hilfe zu Anbauplänen öffnen' }).click();
+  await expect(page.getByText(/ausdrücklich geplanter Anzuchtbeginn Vorrang/)).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('?');
+  const shortcuts = page.getByRole('dialog', { name: /Tastenkürzel/ });
+  const shortcut = shortcuts.getByRole('listitem')
+    .filter({ has: page.getByText('Anbauplan hinzufügen', { exact: true }) })
+    .filter({ hasText: 'Alt+Shift+N' });
+  await expect(shortcut).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Alt+Shift+N');
+  await expect(page.locator('.MuiDataGrid-row--editing')).toBeInViewport();
+});
+
 test.describe('touch and French actual date labels', () => {
   test.use({ hasTouch: true, viewport: { width: 375, height: 800 } });
 

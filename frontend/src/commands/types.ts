@@ -17,6 +17,7 @@ export interface CreateAction {
   id: string;
   label: string;
   shortcut?: string;
+  tooltipOnIconOnly?: boolean;
   priority?: number;
   disabled?: boolean;
   hidden?: boolean;

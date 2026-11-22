@@ -190,6 +190,12 @@ to the plan. Actual leaves unrecorded dates blank. The sowing column uses the
 start of propagation for a home-raised crop. The existing planting-date column
 also represents the start on the bed for direct sowing.
 
+Planting Plans header explanations use the
+[explanatory tooltip role](ux-principles.md#tooltip-roles). A header exposes
+its explanation on keyboard focus and keeps its existing grid tab stop.
+Page help covers the date and area rules. The central keyboard help lists
+the Add planting plan shortcut.
+
 The inline editor labels its planned value and offers a separate actual-date
 choice. When the selected activity has a planned date, the actual-date editor
 shows it for comparison and suggests it if the actual date is empty. Save
