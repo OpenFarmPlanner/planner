@@ -429,14 +429,9 @@ export function PublicCropLibraryDialog({
                 </Box>
                 <Box sx={{ display: 'grid', gap: 0.5, mb: 1.5 }}>
                   {isPerennial && annualWindow ? (
-                    <>
-                      <Typography variant="body2" sx={{ lineHeight: 1.35 }}>
-                        <strong>{t('annualHarvest.window')}:</strong> {formatAnnualHarvestWindow(annualWindow, language)}
-                      </Typography>
-                      <Typography variant="body2" sx={{ lineHeight: 1.35 }}>
-                        <strong>{t('annualHarvest.delay')}:</strong> {firstHarvestDelay ?? t('noData')}
-                      </Typography>
-                    </>
+                    <Typography variant="body2" sx={{ lineHeight: 1.35 }}>
+                      <strong>{t('annualHarvest.window')}:</strong> {formatAnnualHarvestWindow(annualWindow, language)}
+                    </Typography>
                   ) : (
                     <>
                       <Typography variant="body2" sx={{ lineHeight: 1.35 }}>
@@ -447,6 +442,11 @@ export function PublicCropLibraryDialog({
                       </Typography>
                     </>
                   )}
+                  {isPerennial && firstHarvestDelay != null ? (
+                    <Typography variant="body2" sx={{ lineHeight: 1.35 }}>
+                      <strong>{t('annualHarvest.delay')}:</strong> {firstHarvestDelay}
+                    </Typography>
+                  ) : null}
                 </Box>
                 {!selectedCrop.variety?.trim() && selectedCrop.crop_species && onImportVarieties
                   && crops.some(entry => entry.crop_species === selectedCrop.crop_species && entry.variety?.trim()) ? (

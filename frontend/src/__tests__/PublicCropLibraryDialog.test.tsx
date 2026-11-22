@@ -82,6 +82,20 @@ function renderDialog(props: Parameters<typeof PublicCropLibraryDialog>[0]): Ret
 }
 
 describe('PublicCropLibraryDialog', () => {
+  it('shows a perennial first-harvest delay without an annual window', async () => {
+    mockDesktopViewport();
+    const perennial: PublicCrop = {
+      ...crop, name: 'Apfel', life_cycle: 'perennial', annual_harvest_window: '',
+      first_harvest_delay_years: 0,
+    };
+    renderDialog({
+      open: true, loading: false, error: null, importingId: null, crops: [perennial],
+      initialSelectedId: perennial.id, onClose: vi.fn(), onSearch: vi.fn(), onImport: vi.fn(),
+    });
+    const delay = await screen.findByText('Jahre bis zur ersten Ernte:', { exact: true });
+    expect(delay.parentElement).toHaveTextContent(/: 0$/);
+  });
+
   it('selects only eligible visible cultures and retains hidden selections through filter changes', async () => {
     mockDesktopViewport();
     const tomato = { ...crop, id: 20, variety: '', crop_species: 101 };
