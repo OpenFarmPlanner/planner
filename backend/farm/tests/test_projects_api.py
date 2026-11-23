@@ -446,6 +446,19 @@ class ProjectsApiTests(APITestCase):
         )
         self.assertEqual(membership['project_region'], Project.REGION_AUSTRIA)
 
+    def test_project_offer_currency_can_be_set_and_returned_to_regional_default(self) -> None:
+        url = f'/openfarmplanner/api/projects/{self.project.id}/'
+        for currency in ('GBP', ''):
+            response = self.client.patch(url, {'default_currency': currency}, format='json')
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(response.data['default_currency'], currency)
+            me = self.client.get('/openfarmplanner/api/auth/me/')
+            membership = next(row for row in me.data['memberships']
+                              if row['project_id'] == self.project.id)
+            self.assertEqual(membership['project_default_currency'], currency)
+        response = self.client.patch(url, {'default_currency': 'XXX'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_members_cannot_change_project_settings(self) -> None:
         """Name, region and the crop-planning settings are admin-only, as in the UI."""
         ProjectMembership.objects.create(user=self.other, project=self.project, role='member')
@@ -453,7 +466,10 @@ class ProjectsApiTests(APITestCase):
 
         response = self.client.patch(
             f'/openfarmplanner/api/projects/{self.project.id}/',
-            {'allow_succession_during_harvest': False, 'name': 'Renamed'},
+            {
+                'allow_succession_during_harvest': False, 'name': 'Renamed',
+                'default_currency': 'CHF',
+            },
             format='json',
         )
 
@@ -461,6 +477,7 @@ class ProjectsApiTests(APITestCase):
         self.project.refresh_from_db()
         self.assertTrue(self.project.allow_succession_during_harvest)
         self.assertEqual(self.project.name, 'P1')
+        self.assertEqual(self.project.default_currency, '')
 
     def test_create_project_with_duplicate_name_assigns_unique_slug(self) -> None:
         Project.objects.create(name='Neues Projekt', slug='neues-projekt')

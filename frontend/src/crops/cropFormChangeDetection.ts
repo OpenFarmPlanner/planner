@@ -2,8 +2,8 @@ import type {
   Crop,
   CropSupplierData,
   CropSupplierDataInput,
-  SeedPackage,
   SeedRateByCultivation,
+  SupplierSeedPackage,
 } from '../api/types';
 import { normalizeCropTags } from './cropTags';
 import { normalizePlantHealthSelections } from './plantHealth';
@@ -139,9 +139,10 @@ const normalizeSeedRateByCultivation = (value: SeedRateByCultivation | null | un
   return Object.keys(normalized).length > 0 ? normalized : null;
 };
 
-const normalizePackage = (seedPackage: SeedPackage): { size_value: number | null; size_unit: string | null } => ({
+const normalizePackage = (seedPackage: SupplierSeedPackage) => ({
   size_value: normalizeNumber(seedPackage.size_value),
   size_unit: normalizeEnum(seedPackage.size_unit),
+  price: normalizeNumber(seedPackage.price),
 });
 
 const normalizeSupplierRow = (row: SupplierDataDraft): Record<string, unknown> => {
@@ -163,6 +164,7 @@ const normalizeSupplierRow = (row: SupplierDataDraft): Record<string, unknown> =
     seed_status: row.seed_status ?? 'unknown',
     seed_exemption_status: row.seed_exemption_status ?? 'unknown',
     packaging_sizes: packagingSizes,
+    package_currency: normalizeEnum(row.package_currency),
     germination_rate: normalizeNumber(row.germination_rate),
     price: normalizeNumber(row.price),
     notes: normalizeText(row.notes),

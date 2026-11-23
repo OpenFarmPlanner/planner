@@ -11,12 +11,14 @@ import { SettingsLayout, type SettingsLayoutSection } from '../components/settin
 import { SettingsSection } from '../components/settings/SettingsSection';
 import { settingsActionButtonSx, settingsFlatAlertSx } from '../components/settings/settingsStyles';
 import { TypeaheadSelect as Select } from '../components/inputs/TypeaheadSelect';
+import { CurrencyField } from '../components/inputs/CurrencyField';
 import { useTranslation } from '../i18n';
 import { showProjectDeleteUndoSnackbar } from '../projects/projectDeletionFeedback';
 import { wideFieldSx, wideSingleColumnFieldSx } from '../components/forms/formLayout';
 import { SeasonPatternCard } from '../seasons/SeasonPatternCard';
 import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
 import { showGlobalSnackbar } from '../utils/globalSnackbar';
+import { currencyForRegion } from '../utils/currency';
 import { ProjectSettingsMembersSection } from './projectSettingsMembersSection';
 import { ProjectSettingsSchedulingSection } from './projectSettingsSchedulingSection';
 import type { MembersFeedback, ProjectRole } from './projectSettingsMembers';
@@ -46,6 +48,7 @@ export default function ProjectSettingsPage() {
   const [projectNameDraft, setProjectNameDraft] = useState('');
   const [projectNameError, setProjectNameError] = useState<string | null>(null);
   const [projectRegionDraft, setProjectRegionDraft] = useState<ProjectRegion>('germany');
+  const [defaultCurrencyDraft, setDefaultCurrencyDraft] = useState('');
   const [isSavingGeneral, setIsSavingGeneral] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
@@ -55,9 +58,11 @@ export default function ProjectSettingsPage() {
   const canManageMembers = isProjectAdmin;
   const normalizedProjectName = projectNameDraft.trim();
   const activeProjectRegion = activeMembership?.project_region ?? 'germany';
+  const activeDefaultCurrency = activeMembership?.project_default_currency ?? '';
   const hasProjectNameChanges = normalizedProjectName !== (activeMembership?.project_name ?? '');
   const hasRegionChanges = projectRegionDraft !== activeProjectRegion;
-  const hasGeneralChanges = hasProjectNameChanges || hasRegionChanges;
+  const hasCurrencyChanges = defaultCurrencyDraft !== activeDefaultCurrency;
+  const hasGeneralChanges = hasProjectNameChanges || hasRegionChanges || hasCurrencyChanges;
   const canDeleteProject = deleteConfirmationText === (activeMembership?.project_name ?? '');
   const canQuickDeleteProjectInDev = import.meta.env.DEV && isProjectAdmin;
 
@@ -119,8 +124,9 @@ export default function ProjectSettingsPage() {
   useEffect(() => {
     setProjectNameDraft(activeMembership?.project_name ?? '');
     setProjectRegionDraft(activeProjectRegion);
+    setDefaultCurrencyDraft(activeDefaultCurrency);
     setProjectNameError(null);
-  }, [activeMembership?.project_name, activeProjectRegion]);
+  }, [activeMembership?.project_name, activeProjectRegion, activeDefaultCurrency]);
 
   if (!activeMembership) {
     return (
@@ -166,6 +172,7 @@ export default function ProjectSettingsPage() {
   const handleGeneralCancel = (): void => {
     setProjectNameDraft(activeMembership.project_name);
     setProjectRegionDraft(activeProjectRegion);
+    setDefaultCurrencyDraft(activeDefaultCurrency);
     setProjectNameError(null);
     setGeneralError(null);
   };
@@ -187,6 +194,7 @@ export default function ProjectSettingsPage() {
       await projectAPI.update(activeMembership.project_id, {
         ...(hasProjectNameChanges ? { name: normalizedProjectName } : {}),
         ...(hasRegionChanges ? { region: projectRegionDraft } : {}),
+        ...(hasCurrencyChanges ? { default_currency: defaultCurrencyDraft } : {}),
       });
       await refreshUser();
       setProjectNameDraft(normalizedProjectName);
@@ -369,6 +377,14 @@ export default function ProjectSettingsPage() {
                 {t('projectRegion.help')}
               </Typography>
             </Box>
+            <CurrencyField
+              label={t('projectCurrency.label')}
+              automaticLabel={t('projectCurrency.automatic', { currency: currencyForRegion(projectRegionDraft) })}
+              value={defaultCurrencyDraft}
+              onChange={setDefaultCurrencyDraft}
+              disabled={!isProjectAdmin || isSavingGeneral}
+              sx={wideSingleColumnFieldSx}
+            />
             {generalError ? <Alert severity="error" sx={settingsFlatAlertSx}>{generalError}</Alert> : null}
           </Stack>
         </SettingsSection>

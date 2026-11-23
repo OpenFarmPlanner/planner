@@ -20,7 +20,8 @@ class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = [
-            'id', 'name', 'slug', 'description', 'region', 'is_active', 'deleted_at',
+            'id', 'name', 'slug', 'description', 'region', 'default_currency',
+            'is_active', 'deleted_at',
             'created_at', 'updated_at',
             'allow_succession_during_harvest', 'succession_min_days_after_harvest_start',
         ]

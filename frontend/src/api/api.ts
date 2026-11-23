@@ -698,6 +698,7 @@ export interface ProjectPayload {
   slug: string;
   description: string;
   region: ProjectRegion;
+  default_currency: string;
   is_active: boolean;
   deleted_at: string | null;
   created_at: string;
@@ -767,7 +768,7 @@ export const projectAPI = {
     http.post<ProjectPayload>('/projects/create-demo/', {}),
   get: (projectId: number) =>
     http.get<ProjectPayload>(`/projects/${projectId}/`),
-  update: (projectId: number, data: { name?: string; region?: ProjectRegion } & Partial<ProjectSchedulingSettings>) =>
+  update: (projectId: number, data: Partial<Pick<ProjectPayload, 'name' | 'region' | 'default_currency'>> & Partial<ProjectSchedulingSettings>) =>
     http.patch<ProjectPayload>(`/projects/${projectId}/`, data),
   delete: (projectId: number) =>
     http.delete(`/projects/${projectId}/`),

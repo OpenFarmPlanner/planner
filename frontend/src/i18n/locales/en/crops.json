@@ -209,6 +209,12 @@
     "noSupplierDataRows": "No crop-specific supplier information yet.",
     "supplierDataSelectSupplierHint": "Select a supplier to edit crop-specific data.",
     "supplierProductNameLabel": "Product name at the supplier",
+    "supplierProductUrl": "Product link",
+    "supplierSourceUrl": "Source link",
+    "offerCurrency": "Offer currency",
+    "offerPackagePrice": "Package price",
+    "offerCurrencyRequired": "Choose a currency for the package prices.",
+    "seedExemptionStatusHelpButton": "Seed exemption help",
     "supplierDataMissingSupplier": "Please select a supplier or remove the supplier data.",
     "addSupplierData": "Add supplier information",
     "removeSupplierData": "Remove supplier data",
@@ -332,7 +338,7 @@
     "tagsPlaceholder": "e.g. Herbs, Storage vegetables",
     "seedStatus": "Seed status",
     "seedExemptionStatus": "Seed exemption",
-    "seedExemptionStatusHelp": "Manual note for this offer in the project. Check validity for your farm, intended use and period separately.",
+    "seedExemptionStatusHelp": "Manual note for this offer. Verify applicability for your farm, intended use and period separately. Unknown means you have yet to check.",
     "seedStatusOptions": {
       "organic": "Organic",
       "in_conversion": "In conversion",
@@ -2147,6 +2153,9 @@
     "repeatUntilEvent": "Until {{event}}"
   },
   "supplierData": {
+    "germination": "Germination {{rate}}%",
+    "source": "Source",
+    "legacyPrice": "Legacy price without package or currency {{amount}}",
     "price": "Price",
     "title": "Supplier data",
     "editNamed": "Edit supplier data: {{supplier}}",

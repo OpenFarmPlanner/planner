@@ -14,6 +14,10 @@
     "empty": "De projectnaam mag niet leeg zijn.",
     "minLength": "Minimaal 2 tekens."
   },
+  "projectCurrency": {
+    "label": "Standaardvaluta voor aanbiedingen",
+    "automatic": "Volgens de projectregio ({{currency}})"
+  },
   "projectRegion": {
     "label": "Regionale benamingen",
     "help": "Bepaalt welke regionale gewassoortnamen dit project in de bibliotheek en planningsweergaven ziet. Deze instelling staat los van de interfacetaal.",

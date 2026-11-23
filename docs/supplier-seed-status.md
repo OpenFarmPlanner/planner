@@ -55,6 +55,22 @@ Supplier deletion/undo explicitly carries both statuses, and legacy undo
 payloads without them restore `unknown`. Project history snapshots include
 the fields through the existing model-field serializer.
 
+## Package pricing
+
+The offer editor stores an optional whole-package amount on each size. An
+offer uses one currency across its packages. Project Settings supplies the
+default for new offers, with an automatic EUR default for Germany and Austria
+or CHF for Switzerland. The editor shows the currency and lets users choose
+another one for the offer. Stored amounts retain their explicit currency when
+the project default changes. Previous offer-level amounts display as legacy
+prices with unknown package and currency.
+
+In the API, `package_currency` is the offer's currency code and each
+`packaging_sizes` entry can include a decimal `price` for that package. Zero
+is an amount. Use null to clear a price. An update omitting a price keeps it
+for the same size and unit. Duplicate priced sizes are rejected and removing
+a size also removes its price. Supplier undo and project history carry the
+currency and the package amounts.
 
 ## Independent editing (#898)
 
@@ -76,6 +92,6 @@ draft remains available. Deletion requires confirmation and removes only that
 crop offer, preserving the supplier entity and normalized seed packages.
 
 The normal crop editor omits supplier writes, so an unrelated crop edit cannot
-overwrite offers saved independently. No schema or seed-demand formula changes
-are required; the existing supplier-specific packaging/TKG/germination resolution
-and supplier-selection behavior remain in use.
+overwrite offers saved independently. Seed Demand continues to use the
+selected offer's package sizes and germination rate. The package amounts and
+currency provide the inputs for future cost estimates tracked in #921.

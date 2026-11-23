@@ -481,6 +481,11 @@ class SupplierUnlinkAndRestoreTest(ProjectApiTestCase):
         self.assertEqual(other_crop.supplier_id, other_supplier.id)
 
     def test_the_endpoint_round_trip_restores_the_links_and_the_data_row(self):
+        self.data_row.package_currency = 'CHF'
+        self.data_row.packaging_sizes = [
+            {'size_value': 100, 'size_unit': 'seeds', 'price': '4.0000'},
+        ]
+        self.data_row.save(update_fields=['package_currency', 'packaging_sizes'])
         undo_payload = self.client.post(
             f'/openfarmplanner/api/suppliers/{self.supplier.id}/unlink-and-delete/'
         )
@@ -503,6 +508,8 @@ class SupplierUnlinkAndRestoreTest(ProjectApiTestCase):
         self.assertEqual(restored_row.seed_status, 'conventional')
         self.assertEqual(restored_row.seed_exemption_status, 'approved')
         self.assertEqual(restored_row.germination_rate, 85)
+        self.assertEqual(restored_row.package_currency, 'CHF')
+        self.assertEqual(restored_row.packaging_sizes, self.data_row.packaging_sizes)
 
     def test_legacy_undo_payload_defaults_seed_statuses(self) -> None:
         response = self.client.post(

@@ -1179,7 +1179,7 @@ describe('CropDetail Component', () => {
     expect(screen.getByText('3,85 g')).toBeInTheDocument();
   });
 
-  it('renders no-data state when supplier package sizes are empty or invalid', () => {
+  it('omits the package line when supplier package sizes are empty or invalid', () => {
     const mockOnSelect = vi.fn();
     const cropsWithEmptySupplierPackages: Crop[] = [
       {
@@ -1206,7 +1206,9 @@ describe('CropDetail Component', () => {
       />
     );
 
-    expect(screen.getAllByText(translations.crops.noData).length).toBeGreaterThan(0);
+    const supplierData = screen.getByRole('region', { name: 'Lieferantendaten', exact: true });
+    expect(within(supplierData).queryByText(translations.crops.noData)).not.toBeInTheDocument();
+    expect(within(supplierData).queryByText(/Packungsgrößen beim Lieferanten/)).not.toBeInTheDocument();
   });
 
   it('renders supplier-specific heading and helper text when multiple suppliers exist', () => {

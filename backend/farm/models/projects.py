@@ -9,6 +9,8 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
+from farm.common.offer_pricing import validate_currency_code
+
 from .base import TimestampedModel
 
 
@@ -55,6 +57,10 @@ class Project(TimestampedModel):
     slug = models.SlugField(max_length=220, unique=True)
     description = models.TextField(blank=True)
     region = models.CharField(max_length=20, choices=REGION_CHOICES, default=REGION_GERMANY)
+    default_currency = models.CharField(
+        max_length=3, blank=True, default='', validators=[validate_currency_code],
+        help_text='Currency to prefill for new supplier offers. Empty uses the regional currency.',
+    )
     is_active = models.BooleanField(default=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
     demo_seeded_at = models.DateTimeField(

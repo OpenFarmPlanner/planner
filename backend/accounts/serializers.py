@@ -161,6 +161,7 @@ class UserSerializer(serializers.ModelSerializer):
                 'project_id': row.project_id,
                 'project_name': row.project.name,
                 'project_region': row.project.region,
+                'project_default_currency': row.project.default_currency,
                 'role': row.role,
                 'is_demo_project': is_demo_project_description(row.project.description),
             }

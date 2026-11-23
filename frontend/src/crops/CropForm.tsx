@@ -61,6 +61,8 @@ import { validateCrop } from './validation';
 import { buildCropIdentityKey, normalizeCropIdentityValue } from './cropIdentity';
 import { TypeaheadSelect as Select } from '../components/inputs/TypeaheadSelect';
 import { LocalizedDecimalField } from '../components/inputs/LocalizedDecimalField';
+import { CurrencyField } from '../components/inputs/CurrencyField';
+import { SeedExemptionStatusField } from './SeedExemptionStatusField';
 import { BasicInfoSection } from './sections/BasicInfoSection';
 import { TimingSection } from './sections/TimingSection';
 import { YieldSection } from './sections/YieldSection';
@@ -100,10 +102,7 @@ import { buildDefaultSyncChoices, type PublicCropSyncChoices } from './publicCro
 import { pickLibraryChoices, pickLibraryLinkValues, planLibraryLink } from './libraryLink';
 import type { PublicCropSyncFieldChange } from '../api/types';
 import {
-  compactFieldSx,
-  formRowSx,
   mediumStackedFieldSx,
-  smallFieldSx,
   wideSingleColumnFieldSx,
 } from '../components/forms/formLayout';
 
@@ -150,6 +149,7 @@ interface CropFormProps {
   variant?: 'project' | 'publicLibrary';
   /** The dedicated supplier editor reuses these controls without general crop fields. */
   section?: 'crop' | 'supplierData';
+  defaultOfferCurrency?: string;
   /** Explains a consistency failure detected by an independently saving section. */
   saveErrorOverride?: string;
   extraSections?: ReactNode;
@@ -275,6 +275,7 @@ export function CropForm({
   title,
   variant = 'project',
   section = 'crop',
+  defaultOfferCurrency,
   extraSections,
   libraryCompanions,
   hasExternalChanges = false,
@@ -1136,6 +1137,12 @@ export function CropForm({
       setSaveError(t('form.supplierDataMissingSupplier'));
       return;
     }
+    if (showSupplierDataSection && formData.supplier_data?.some(
+      (row) => !row.package_currency && row.packaging_sizes?.some((pkg) => pkg.price != null),
+    )) {
+      setSaveError(t('form.offerCurrencyRequired'));
+      return;
+    }
     if (!showSupplierDataSection && (duplicateErrorKey || isDuplicateChecking)) return;
     isSavingRef.current = true;
     setIsSaving(true);
@@ -1306,7 +1313,11 @@ export function CropForm({
     handleChange('supplier_data', nextRows);
   };
   const addSupplierRow = () => {
-    handleChange('supplier_data', [...supplierRows, { supplier_name_input: '', packaging_sizes: [] }]);
+    handleChange('supplier_data', [...supplierRows, {
+      supplier_name_input: '',
+      packaging_sizes: [],
+      ...(defaultOfferCurrency ? { package_currency: defaultOfferCurrency } : {}),
+    }]);
   };
   const removeSupplierRow = (index: number) => {
     handleChange('supplier_data', supplierRows.filter((_row, rowIndex) => rowIndex !== index));
@@ -1703,6 +1714,12 @@ export function CropForm({
                             sx={wideSingleColumnFieldSx}
                           />
                           <TextField
+                            label={t('form.supplierProductUrl')}
+                            value={row.supplier_product_url ?? ''}
+                            onChange={(event) => updateSupplierRow(supplierIndex, { supplier_product_url: event.target.value })}
+                            sx={wideSingleColumnFieldSx}
+                          />
+                          <TextField
                             select
                             label={t('form.seedStatus')}
                             value={row.seed_status ?? 'unknown'}
@@ -1715,46 +1732,85 @@ export function CropForm({
                               <MenuItem key={value} value={value}>{t(`form.seedStatusOptions.${value}`)}</MenuItem>
                             ))}
                           </TextField>
-                          <TextField
-                            select
-                            label={t('form.seedExemptionStatus')}
+                          <SeedExemptionStatusField
                             value={row.seed_exemption_status ?? 'unknown'}
-                            onChange={(event) => updateSupplierRow(supplierIndex, {
-                              seed_exemption_status: event.target.value as NonNullable<typeof row.seed_exemption_status>,
-                            })}
-                            helperText={t('form.seedExemptionStatusHelp')}
+                            onChange={(value) => updateSupplierRow(supplierIndex, { seed_exemption_status: value })}
+                          />
+                          <LocalizedDecimalField
+                            label={t('form.germinationRate')}
+                            value={row.germination_rate}
+                            onValueChange={(value) => updateSupplierRow(supplierIndex, { germination_rate: value })}
+                            sx={mediumStackedFieldSx}
+                          />
+                          <TextField
+                            label={t('form.supplierSourceUrl')}
+                            value={row.source_url ?? ''}
+                            onChange={(event) => updateSupplierRow(supplierIndex, { source_url: event.target.value })}
                             sx={wideSingleColumnFieldSx}
-                          >
-                            {(['approved', 'not_approved', 'not_required', 'unknown'] as const).map((value) => (
-                              <MenuItem key={value} value={value}>{t(`form.seedExemptionStatusOptions.${value}`)}</MenuItem>
-                            ))}
-                          </TextField>
+                          />
+                          <TextField
+                            label={t('form.notes')}
+                            value={row.notes ?? ''}
+                            onChange={(event) => updateSupplierRow(supplierIndex, { notes: event.target.value })}
+                            multiline
+                            minRows={2}
+                            sx={wideSingleColumnFieldSx}
+                          />
                           <Typography variant="subtitle2">{t('form.seedPackagesLabel')}</Typography>
+                          {Boolean(row.packaging_sizes?.length) && (
+                            <CurrencyField
+                              label={t('form.offerCurrency')}
+                              value={row.package_currency ?? ''}
+                              onChange={(value) => updateSupplierRow(supplierIndex, { package_currency: value })}
+                              sx={wideSingleColumnFieldSx}
+                            />
+                          )}
                           {(row.packaging_sizes ?? []).map((pkg, packageIndex) => (
                             <Box
                               key={`pkg-${supplierIndex}-${packageIndex}`}
-                              sx={{ ...formRowSx, gap: 1, alignItems: 'center' }}
+                              sx={{
+                                display: 'grid',
+                                gridTemplateColumns: {
+                                  xs: 'minmax(0, 1fr) minmax(0, 1fr) auto',
+                                  sm: 'minmax(0, 180px) minmax(0, 140px) minmax(0, 180px) auto',
+                                },
+                                justifyContent: 'start',
+                                gap: 1,
+                                alignItems: 'center',
+                              }}
                             >
                               <LocalizedDecimalField
                                 label={t('form.seedAmountLabel')}
                                 value={pkg.size_value}
                                 onValueChange={(value) => updatePackageRow(supplierIndex, packageIndex, { size_value: value ?? 0 })}
-                                sx={compactFieldSx}
+                                sx={{ minWidth: 0 }}
                                 inputMode={pkg.size_unit === 'seeds' ? 'numeric' : 'decimal'}
                               />
                               <Select
                                 value={pkg.size_unit}
+                                inputProps={{ 'aria-label': t('form.packageUnitLabel') }}
                                 onChange={(event) => updatePackageRow(supplierIndex, packageIndex, { size_unit: event.target.value })}
-                                size="small"
-                                sx={smallFieldSx}
+                                sx={{ minWidth: 0 }}
                               >
                                 <MenuItem value="g">{t('form.packageUnitGram')}</MenuItem>
                                 <MenuItem value="seeds">{t('form.packageUnitSeeds')}</MenuItem>
                               </Select>
+                              <LocalizedDecimalField
+                                label={t('form.offerPackagePrice')}
+                                value={pkg.price}
+                                onValueChange={(value) => updatePackageRow(supplierIndex, packageIndex, { price: value })}
+                                sx={{ minWidth: 0, gridColumn: { xs: '1 / span 2', sm: 'auto' } }}
+                              />
                               <IconButton
                                 color="error"
                                 onClick={() => removePackageRow(supplierIndex, packageIndex)}
                                 aria-label={t('form.removeSeedPackageAriaLabel')}
+                                sx={{
+                                  minWidth: 44,
+                                  minHeight: 44,
+                                  gridColumn: { xs: 3, sm: 'auto' },
+                                  gridRow: { xs: 2, sm: 'auto' },
+                                }}
                               >
                                 <DeleteIcon fontSize="small" />
                               </IconButton>

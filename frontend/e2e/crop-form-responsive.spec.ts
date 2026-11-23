@@ -355,8 +355,22 @@ test('supplier seed statuses persist and fit the existing responsive editor', as
     name: 'Status supplier', homepage_url: 'https://seeds.example',
   });
   const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
-    name: 'Status carrot', notes: 'Keep crop notes', supplier_data_input: [{ supplier_id: supplier.id, packaging_sizes: [{ size_value: 25, size_unit: 'g' }], supplier_product_name: 'Old article' }],
+    name: 'Status carrot', notes: 'Keep crop notes', supplier_data_input: [{
+      supplier_id: supplier.id, supplier_product_name: 'Old article', price: 3.5,
+      packaging_sizes: [{ size_value: 25, size_unit: 'g' }, { size_value: 100, size_unit: 'g' }],
+    }],
   });
+  await page.goto('/app/project-settings');
+  const general = page.getByRole('region', { name: 'Allgemein' });
+  const projectCurrency = general.getByRole('combobox', { name: 'Standardwährung für Angebote' });
+  await expect(projectCurrency).toHaveValue('Nach Projektregion (EUR)');
+  await projectCurrency.fill('CHF');
+  await page.getByRole('option', { name: /^CHF/ }).click();
+  const saveProject = page.waitForResponse((response) =>
+    /\/api\/projects\/\d+\/$/.test(new URL(response.url()).pathname) && response.request().method() === 'PATCH');
+  await general.getByRole('button', { name: 'Speichern', exact: true }).click();
+  expect((await saveProject).ok()).toBe(true);
+
   await page.goto(`/app/crops?cropId=${crop.id}&action=edit`);
   const cropDialog = page.getByRole('dialog', { name: 'Kultur bearbeiten' });
   await expect(cropDialog.getByTestId('crop-supplier-data-section')).toHaveCount(0);
@@ -366,6 +380,22 @@ test('supplier seed statuses persist and fit the existing responsive editor', as
   await selectSupplierOfferAction(page, 'Status supplier', 'Lieferantendaten bearbeiten: Status supplier');
   const dialog = page.getByRole('dialog', { name: 'Kulturspezifische Lieferantendaten' });
   const seedStatus = dialog.getByRole('combobox', { name: 'Saatgutstatus', exact: true });
+  const exemptionHelp = dialog.getByRole('button', { name: 'Hilfe zur Saatgut-Ausnahme' });
+  const currency = dialog.getByRole('combobox', { name: 'Währung des Angebots' });
+  await expect(currency).toHaveValue(/^CHF/);
+  await currency.fill('GBP');
+  await page.getByRole('option', { name: /^GBP/ }).click();
+  const packagePrices = dialog.getByRole('textbox', { name: 'Packungspreis', exact: true });
+  await packagePrices.nth(0).fill('0');
+  await packagePrices.nth(1).fill('12,75');
+  await dialog.getByRole('textbox', { name: 'Produktlink' }).fill('https://seeds.example/carrot');
+  await dialog.getByRole('textbox', { name: 'Quellenlink' }).fill('https://seeds.example/catalogue');
+  await dialog.getByRole('textbox', { name: 'Notizen', exact: true }).fill('Catalogue price');
+  await dialog.getByRole('textbox', { name: 'Keimrate (%)', exact: true }).fill('85');
+  await exemptionHelp.press('Enter');
+  await expect(page.getByRole('tooltip')).toContainText('Unbekannt bedeutet');
+  await exemptionHelp.press('Escape');
+  await expect(page.getByRole('tooltip')).toBeHidden();
   await expect(seedStatus).toHaveText('Unbekannt');
   await seedStatus.click();
   await page.getByRole('option', { name: 'Konventionell', exact: true }).click();
@@ -377,13 +407,27 @@ test('supplier seed statuses persist and fit the existing responsive editor', as
   const response = await write;
   expect(Object.keys(response.request().postDataJSON())).toEqual(['supplier_data_input']);
   await expect(dialog).not.toBeVisible();
-  const saved = await apiRequest<{ supplier_data: Array<{ seed_status: string; seed_exemption_status: string }> }>(page, 'GET', `/crops/${crop.id}/`);
-  expect(saved.supplier_data[0]).toMatchObject({ seed_status: 'conventional', seed_exemption_status: 'approved' });
+  const saved = await apiRequest<{ supplier_data: Array<Record<string, unknown>> }>(page, 'GET', `/crops/${crop.id}/`);
+  expect(saved.supplier_data[0]).toMatchObject({
+    seed_status: 'conventional', seed_exemption_status: 'approved', package_currency: 'GBP',
+    notes: 'Catalogue price', supplier_product_url: 'https://seeds.example/carrot', germination_rate: 85,
+    source_url: 'https://seeds.example/catalogue', price: '3.50',
+    packaging_sizes: [
+      { size_value: 25, size_unit: 'g', price: '0.0000' },
+      { size_value: 100, size_unit: 'g', price: '12.7500' },
+    ],
+  });
+  await page.reload();
+  const supplierRegion = page.getByRole('region', { name: 'Lieferantendaten', exact: true });
+  await expect(supplierRegion.getByText(/12,75.*GBP|GBP.*12,75/)).toBeVisible();
+  await expect(supplierRegion.getByRole('link', { name: 'Quelle', exact: true })).toHaveAttribute('href', 'https://seeds.example/catalogue');
   await selectSupplierOfferAction(page, 'Status supplier', 'Lieferantendaten bearbeiten: Status supplier');
   await expect(seedStatus).toHaveText('Konventionell');
-  for (const width of [375, 768, 1024, 1440]) {
-    await page.setViewportSize({ width, height: 900 });
-    await seedStatus.scrollIntoViewIfNeeded();
+  await expect(currency).toHaveValue(/^GBP/);
+  await expect(packagePrices.nth(0)).toHaveValue(/^0([.,]0+)?$/);
+  for (const [width, height] of [[375, 800], [800, 375], [768, 900], [1024, 900], [1440, 900]]) {
+    await page.setViewportSize({ width, height });
+    await packagePrices.nth(1).scrollIntoViewIfNeeded();
     const row = dialog.getByTestId('crop-supplier-data-row');
     const overflow = await row.evaluate((element) => element.scrollWidth - element.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);
@@ -391,6 +435,14 @@ test('supplier seed statuses persist and fit the existing responsive editor', as
     // Review artifacts only; dynamic form contents are asserted functionally.
     await page.screenshot({ path: testInfo.outputPath(`supplier-status-${width}.png`) });
   }
+  await packagePrices.nth(1).fill('');
+  await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  const cleared = await apiRequest<{ supplier_data: Array<Record<string, unknown>> }>(page, 'GET', `/crops/${crop.id}/`);
+  expect(cleared.supplier_data[0]).toMatchObject({
+    package_currency: 'GBP',
+    packaging_sizes: [{ price: '0.0000' }, { price: null }],
+  });
   await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'fr' });
   await page.goto(`/app/crops?cropId=${crop.id}`);
   await selectSupplierOfferAction(page, 'Status supplier', 'Modifier les données fournisseur : Status supplier');

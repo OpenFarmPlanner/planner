@@ -402,6 +402,10 @@ export type CropInheritableField =
 export type SeedStatus = 'organic' | 'in_conversion' | 'conventional' | 'unknown';
 export type SeedExemptionStatus = 'approved' | 'not_approved' | 'not_required' | 'unknown';
 
+export interface SupplierSeedPackage extends SeedPackage {
+  price?: number | string | null;
+}
+
 export interface CropSupplierData {
   id?: number;
   crop?: number;
@@ -415,7 +419,8 @@ export interface CropSupplierData {
   supplier_product_url?: string;
   seed_status?: SeedStatus;
   seed_exemption_status?: SeedExemptionStatus;
-  packaging_sizes?: SeedPackage[];
+  packaging_sizes?: SupplierSeedPackage[];
+  package_currency?: string;
   germination_rate?: number | null;
   price?: number | null;
   notes?: string;
@@ -432,7 +437,8 @@ export interface CropSupplierDataInput {
   supplier_product_url?: string;
   seed_status?: SeedStatus;
   seed_exemption_status?: SeedExemptionStatus;
-  packaging_sizes?: SeedPackage[];
+  packaging_sizes?: SupplierSeedPackage[];
+  package_currency?: string;
   germination_rate?: number | null;
   price?: number | null;
   notes?: string;

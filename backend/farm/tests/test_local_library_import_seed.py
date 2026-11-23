@@ -53,6 +53,29 @@ class LocalLibraryImportSeedTests(TestCase):
     def seed(self, **options):
         call_command("seed_library_import_acceptance", **{**self.arguments, **options})
 
+    def test_supplier_offer_fixture_previews_and_preserves_edits(self):
+        command = 'seed_supplier_offer_acceptance'
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        projects = Project.objects.filter(slug=f'ofp-local-supplier-offers-{self.user.pk}')
+        call_command(command, **arguments)
+        with self.assertRaisesMessage(CommandError, 'does not match'):
+            call_command(command, **{**arguments, 'database_name': 'wrong-target'}, apply=True)
+        self.assertFalse(projects.exists())
+
+        call_command(command, **arguments, apply=True)
+        project = projects.get()
+        self.assertTrue(project.memberships.filter(user=self.user, role='admin').exists())
+        priced = project.crop_supplier_data.get(package_currency='EUR')
+        self.assertEqual([pkg.get('price') for pkg in priced.packaging_sizes],
+                         ['4.0000', '12.0000', '0.0000', None])
+        self.assertEqual(str(project.crop_supplier_data.get(package_currency='').price), '9.90')
+        priced.notes = 'Manual edit'
+        priced.save(update_fields=['notes'])
+        call_command(command, **arguments, apply=True)
+        priced.refresh_from_db()
+        self.assertEqual(priced.notes, 'Manual edit')
+        self.assertEqual(project.crop_supplier_data.count(), 2)
+
     def test_bed_picker_fixture_previews_and_is_idempotent(self):
         command = 'seed_bed_picker_acceptance'
         arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}

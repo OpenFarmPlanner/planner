@@ -21,6 +21,7 @@ from crops.plant_health_values import (
     validate_public_plant_health_value,
 )
 from crops.specific_properties import crop_specific_property_errors
+from farm.common.offer_pricing import validate_currency_code
 from farm.crop_light import CROP_LIGHT_CHOICES, normalize_crop_light, validate_crop_light
 from farm.germination import (
     LIGHT_REQUIREMENT_CHOICES as GERMINATION_LIGHT_CHOICES,
@@ -1308,6 +1309,10 @@ class CropSupplierData(TimestampedModel):
     supplier_product_name = models.CharField(max_length=255, blank=True)
     supplier_product_url = models.URLField(blank=True)
     packaging_sizes = models.JSONField(default=list, blank=True)
+    package_currency = models.CharField(
+        max_length=3, blank=True, default='', validators=[validate_currency_code],
+        help_text='Explicit currency for the package prices on this supplier offer.',
+    )
     thousand_kernel_weight_g = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     germination_rate = models.FloatField(null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)

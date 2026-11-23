@@ -214,6 +214,12 @@
     "noSupplierDataRows": "Aucune information fournisseur propre à la culture pour l'instant.",
     "supplierDataSelectSupplierHint": "Choisissez un fournisseur pour modifier les données propres à la culture.",
     "supplierProductNameLabel": "Nom du produit chez le fournisseur",
+    "supplierProductUrl": "Lien du produit",
+    "supplierSourceUrl": "Lien de la source",
+    "offerCurrency": "Devise de l’offre",
+    "offerPackagePrice": "Prix du conditionnement",
+    "offerCurrencyRequired": "Choisissez une devise pour les prix des conditionnements.",
+    "seedExemptionStatusHelpButton": "Aide sur la dérogation semences",
     "supplierDataMissingSupplier": "Veuillez choisir un fournisseur ou supprimer les données du fournisseur.",
     "addSupplierData": "Ajouter des informations fournisseur",
     "removeSupplierData": "Supprimer les données du fournisseur",
@@ -338,7 +344,7 @@
     "tagsPlaceholder": "p. ex. Aromatiques, Légumes de garde",
     "seedStatus": "Statut des semences",
     "seedExemptionStatus": "Dérogation pour les semences",
-    "seedExemptionStatusHelp": "Note manuelle pour cette offre dans le projet. Vérifiez séparément la validité pour votre exploitation, l’utilisation prévue et la période.",
+    "seedExemptionStatusHelp": "Note manuelle pour cette offre. Vérifiez la validité pour votre exploitation, l’usage prévu et la période. Inconnu signifie que la vérification reste à faire.",
     "seedStatusOptions": {
       "organic": "Biologique",
       "in_conversion": "En conversion",
@@ -2206,6 +2212,9 @@
     "repeatUntilEvent": "Jusqu’à {{event}}"
   },
   "supplierData": {
+    "germination": "Germination {{rate}} %",
+    "source": "Source",
+    "legacyPrice": "Ancien prix sans conditionnement ni devise {{amount}}",
     "price": "Prix",
     "title": "Données fournisseurs",
     "editNamed": "Modifier les données fournisseur : {{supplier}}",

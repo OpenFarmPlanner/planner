@@ -125,7 +125,7 @@ describe('CropSupplierDataSection', () => {
     const row = screen.getAllByRole('listitem').find(item => item.textContent?.includes('Second supplier'))!;
     expect(within(row).getByText('Second article')).toBeVisible();
     expect(within(row).getByText(/250 Korn/)).toBeVisible();
-    expect(within(row).getByText('Preis: 3,5')).toBeVisible();
+    expect(within(row).getByText('Bisheriger Preis ohne Packung und Währung 3,5')).toBeVisible();
     expect(within(row).getByText('Keep offer notes')).toBeVisible();
   });
 });
