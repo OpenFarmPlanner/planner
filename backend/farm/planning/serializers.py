@@ -26,6 +26,7 @@ from farm.services.crop_companions import CompanionService
 from farm.services.crop_display import format_crop_label, resolve_crop_display_name
 from farm.services.crop_inheritance import (
     build_general_crop_index,
+    plan_cultivation_type,
     resolve_crop_field,
     resolve_plants_per_m2,
 )
@@ -42,7 +43,6 @@ from farm.services.seasonal_harvest import (
     seasonal_harvest_payload,
 )
 from farm.services.site_suitability import check_site_suitability
-from farm.services.tasks import plan_cultivation_type
 from farm.services.timing_window_check import TimingWindowChecker
 
 
@@ -792,7 +792,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Task
-        fields = '__all__'
+        exclude = ['suppressed_by_harvest_configuration']
         read_only_fields = [
             'project', 'origin', 'source_key', 'occurrence_index', 'calculated_due_date',
             'created_at', 'updated_at', 'deleted_at', 'template',

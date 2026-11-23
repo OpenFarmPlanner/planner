@@ -314,6 +314,8 @@ def _with_legacy_snapshot_fields(model: type, snapshot: dict) -> dict:
         return {**snapshot, 'notes': {'de': snapshot['note']} if snapshot.get('note') else {}}
     if model is PlantingPlan:
         return {'copied_from_plan_id': None, 'harvest_window_overrides': {}, **snapshot}
+    if model is Task:
+        return {'suppressed_by_harvest_configuration': False, **snapshot}
     return snapshot
 
 

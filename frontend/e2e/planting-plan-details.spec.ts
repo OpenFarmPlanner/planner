@@ -31,6 +31,12 @@ test('keeps one perennial plan while switching its records between seasons', asy
       title: 'Historischer Erntebeginn', planting_plan: plan.id, season: origin.id,
       due_date: '2025-03-12', status: 'completed',
     });
+    const { results: generated } = await apiRequest<{
+      results: { id: number; origin: string; occurrence_index: number }[];
+    }>(page, 'GET', `/tasks/?planting_plan=${plan.id}&across_seasons=true`);
+    const harvestTasks = generated.filter(task => task.origin === 'automatic' && task.occurrence_index > 0);
+    expect(harvestTasks.map(task => task.occurrence_index)).toEqual([2025, 2026]);
+    await apiRequest(page, 'PATCH', `/tasks/${harvestTasks[0].id}/`, { status: 'completed' });
     await create('/harvests/', {
       date: '2026-04-22', crop: crop.id, quantity: '3.5', unit: 'kg',
       allocations: [{ planting_plan: plan.id, quantity: '3.5' }],
@@ -39,16 +45,25 @@ test('keeps one perennial plan while switching its records between seasons', asy
       date: '2025-04-02', planting_plan: plan.id, loss_type: 'partial', cause: 'frost',
     });
     await page.evaluate(id => localStorage.setItem(`activeSeasonId:${localStorage.getItem('activeProjectId')}`, String(id)), active.id);
+    await page.goto('/app/dashboard');
+    const harvestCard = page.getByRole('article', { name: 'Ernte beginnen', exact: true });
+    await expect(harvestCard).toHaveCount(1);
+    await expect(page.getByRole('region', { name: 'Offen', exact: true }).locator(harvestCard)).toContainText('12.3.2026');
+
     await page.goto(`${table}/${plan.id}`);
     const chooser = page.getByRole('combobox', { name: 'Saison anzeigen' });
     const seasonRegion = page.getByRole('heading', { name: 'Saisondaten' }).locator('..');
     const harvestDates = seasonRegion.getByRole('heading', { name: 'Erntetermine' }).locator('..');
+    const seasonTasks = seasonRegion.getByRole('heading', { name: 'Aufgaben', exact: true }).locator('..');
     await expect(chooser).toHaveValue(String(active.id));
     await expect(harvestDates.getByText('12.3.2026', { exact: true })).toBeVisible();
     await expect(harvestDates.getByText('9.4.2026', { exact: true })).toBeVisible();
     await expect(seasonRegion.getByText('Erste erfasste Ernte am 22.4.2026')).toBeVisible();
     await expect(seasonRegion.getByText('In dieser Saison zugeordnet · 3,5 kg')).toBeVisible();
     await expect(seasonRegion.getByText('Historischer Erntebeginn')).toHaveCount(0);
+    const harvestTask = seasonTasks.getByRole('listitem').filter({ hasText: 'Ernte beginnen' });
+    await expect(harvestTask).toHaveCount(1);
+    await expect(harvestTask).toContainText('12.3.2026 · Offen');
     await expect(page.getByText('3.5.2024', { exact: true })).toBeVisible();
     await expect(page.getByText('30.9.2030', { exact: true })).toBeVisible();
     await expect(page.getByText('Kein Datum', { exact: true })).toHaveCount(0);
@@ -77,6 +92,8 @@ test('keeps one perennial plan while switching its records between seasons', asy
     await chooser.selectOption(String(earlier.id));
     await expect(harvestDates.getByText('12.3.2025', { exact: true })).toBeVisible();
     await expect(seasonRegion.getByText('Historischer Erntebeginn')).toBeVisible();
+    await expect(harvestTask).toHaveCount(1);
+    await expect(harvestTask).toContainText('12.3.2025 · Erledigt');
     await expect(seasonRegion.getByText('Teilausfall · Frost')).toBeVisible();
     await expect(seasonRegion.getByText('22.4.2026', { exact: true })).toHaveCount(0);
     await expect(seasonRegion.getByText('Aktuelle Beetkontrolle erledigt')).toHaveCount(0);

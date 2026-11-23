@@ -254,6 +254,40 @@ class CompositeMutationHistoryTests(HistoryInvariantTestCase):
 
 
 class SeasonTaskDeletionHistoryTests(HistoryInvariantTestCase):
+    def test_restoring_a_legacy_task_version_clears_harvest_suppression(self) -> None:
+        year = timezone.localdate().year + 1
+        season = self.write('create season', 'post', '/seasons/', {
+            'start_date': f'{year}-01-01', 'end_date': f'{year}-12-31',
+        })
+        self.client.defaults['HTTP_X_SEASON_ID'] = str(season['id'])
+        crop = self.write('create crop', 'post', '/crops/', {
+            'name': 'Rhubarb', 'growth_duration_days': 30,
+        })
+        plan = self.write('create plan', 'post', '/planting-plans/', {
+            'crop': crop['id'], 'season': season['id'], 'planting_date': f'{year}-02-01',
+        })
+        task = Task.objects.get(
+            project=self.project, planting_plan_id=plan['id'],
+            source_key__endswith=':event:harvest_start',
+        )
+        original = self.versions[-1].revision
+        task_version = EntityRevision.objects.get(
+            project=self.project, entity_type='task', object_id=task.pk,
+        )
+        task_version.snapshot.pop('suppressed_by_harvest_configuration')
+        task_version.save(update_fields=['snapshot'])
+
+        self.write('configure annual windows', 'patch', f"/crops/{crop['id']}/", {
+            'life_cycle': 'perennial', 'standing_time_years': 3,
+            'annual_harvest_window': '03-12/04-09', 'first_harvest_delay_years': 1,
+        })
+        task.refresh_from_db()
+        self.assertTrue(task.suppressed_by_harvest_configuration)
+        self.assertEqual(self.restore(original), 200)
+        visible = self.client.get(f'{API}/tasks/{task.pk}/')
+        self.assertEqual(visible.status_code, 200)
+        self.assertEqual(visible.json()['status'], 'pending')
+
     def test_generated_task_tombstones_survive_full_restore_and_batch_redo(self) -> None:
         season = self.write('create season', 'post', '/seasons/', {
             'start_date': '2026-01-01', 'end_date': '2026-12-31',

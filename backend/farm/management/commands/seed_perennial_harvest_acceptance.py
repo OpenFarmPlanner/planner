@@ -22,6 +22,7 @@ from farm.models import (
     Season,
     Task,
 )
+from farm.services.tasks import generate_tasks_for_plans
 
 MARKER = 'Synthetic perennial harvest acceptance fixture.'
 
@@ -35,6 +36,7 @@ class Command(LocalFixtureCommand):
         variants = parser.add_mutually_exclusive_group()
         variants.add_argument('--calendar-axis', action='store_true')
         variants.add_argument('--season-details', action='store_true')
+        variants.add_argument('--harvest-tasks', action='store_true')
         parser.add_argument('--apply', action='store_true')
 
     def handle(self, *args: object, **options: object) -> None:
@@ -44,19 +46,25 @@ class Command(LocalFixtureCommand):
             raise CommandError('An existing active local user is required.')
         self.stdout.write(f'Target: {engine}, host={host or "local file"}, database={database}.')
         season_details = bool(options['season_details'])
-        calendar_axis = bool(options['calendar_axis']) or season_details
+        harvest_tasks = bool(options['harvest_tasks'])
+        calendar_axis = bool(options['calendar_axis']) or season_details or harvest_tasks
         if not options['apply']:
             fixture = (
                 'six seasons and six plans' if calendar_axis else 'five seasons and four plans'
             )
+            if harvest_tasks:
+                fixture = 'seven seasons and six plans with seasonal harvest tasks'
             self.stdout.write(f'Preview only: one private orchard, {fixture}.')
             if season_details:
                 self.stdout.write('Calendar rhubarb has a harvest, a historical loss and a task.')
             return
 
-        suffix = 'details' if season_details else 'calendar' if calendar_axis else 'harvest'
+        suffix = 'tasks' if harvest_tasks else 'details' if season_details else (
+            'calendar' if calendar_axis else 'harvest'
+        )
         name = {
             'details': 'Perennial season details acceptance',
+            'tasks': 'Perennial harvest tasks acceptance',
             'calendar': 'Perennial calendar acceptance',
             'harvest': 'Perennial harvest acceptance',
         }[suffix]
@@ -68,11 +76,26 @@ class Command(LocalFixtureCommand):
             if created:
                 ProjectMembership.objects.create(project=project, user=user, role='admin')
                 self._populate(project, calendar_axis=calendar_axis, season_details=season_details)
+                if harvest_tasks:
+                    self._generate_harvest_tasks(project)
             elif project.description != MARKER or not ProjectMembership.objects.filter(
                 project=project, user=user, role='admin',
             ).exists():
                 raise CommandError('Fixture slug has different ownership; nothing changed.')
         self.stdout.write(f'Open project {project.pk}: {project.name}. Existing data is preserved.')
+
+    @staticmethod
+    def _generate_harvest_tasks(project: Project) -> None:
+        Season.objects.create(
+            project=project, start_date=date(2029, 9, 1), end_date=date(2030, 8, 31),
+        )
+        plans = PlantingPlan.objects.filter(project=project).select_related('crop', 'season')
+        generate_tasks_for_plans(plans)
+        rhubarb = plans.get(crop__name='Calendar rhubarb')
+        Task.objects.filter(
+            project=project, source_key=f'plan:{rhubarb.pk}:event:harvest_start',
+            occurrence_index=2025,
+        ).update(status='completed')
 
     @staticmethod
     def _populate(project: Project, *, calendar_axis: bool, season_details: bool) -> None:

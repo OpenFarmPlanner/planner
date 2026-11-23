@@ -10,13 +10,21 @@ import calendar
 from datetime import date, timedelta
 from typing import Any
 
-from farm.models import EntityRevision, PlantingPlan, Project, Season, SeasonPattern
+from django.db import transaction
+from django.db.models import Q
+
+from farm.models import EntityRevision, PlantingPlan, Project, Season, SeasonPattern, Task
 from farm.services.crop_inheritance import (
     GeneralCropIndex,
     build_general_crop_index,
+    plan_cultivation_type,
     resolve_crop_field,
 )
-from farm.services.tasks import generate_tasks_for_plans, plan_cultivation_type, plan_event_dates
+from farm.services.tasks import (
+    generate_tasks_for_plans,
+    plan_event_dates,
+    synchronize_recurring_harvest_tasks,
+)
 
 # Fields copied from a source PlantingPlan onto a new one in the target
 # season. Excludes the primary key, timestamps, audit fields, and the
@@ -627,6 +635,37 @@ def distribute_planting_plans(
     return created
 
 
+def synchronize_season_harvest_tasks(
+    season: Season, *, previous_period: tuple[date, date] | None = None,
+    restoring: bool = False,
+) -> None:
+    start, end = season.start_date, season.end_date
+    if previous_period is not None:
+        start = min(start, previous_period[0])
+        end = max(end, previous_period[1])
+    candidates = Q(occupied_until__gte=start) & (
+        Q(planting_date__lte=end) | Q(actual_sowing_date__lte=end)
+        | Q(actual_transplanting_date__lte=end)
+    )
+    if restoring:
+        # Plans may have been cleared and other seasons added while this one was absent.
+        prior_tasks = Task.objects.filter(
+            project_id=season.project_id, season=season, origin='automatic', occurrence_index__gt=0,
+        )
+        candidates |= Q(season_id=season.pk) | Q(pk__in=prior_tasks.values('planting_plan_id'))
+    plans = (
+        PlantingPlan.objects.filter(project_id=season.project_id)
+        .alias(occupied_until=PlantingPlan.occupancy_end_expression())
+        .filter(candidates)
+    )
+    synchronize_recurring_harvest_tasks(
+        plans, new_season_id=season.pk if previous_period is None and not restoring else None,
+        fill_past_occurrences=restoring,
+        fill_past_season_id=season.pk if previous_period is not None else None,
+    )
+
+
+@transaction.atomic
 def get_or_create_season_for_period(
     project: Project,
     start_date: date,
@@ -644,6 +683,7 @@ def get_or_create_season_for_period(
     if created:
         from farm.history import _serialize_instance, record_entity_revision
 
+        synchronize_season_harvest_tasks(season)
         record_entity_revision(
             project=project, entity_type='season', object_id=season.pk,
             action=EntityRevision.ACTION_CREATED,
@@ -916,6 +956,16 @@ def find_soft_deleted_season(project: Project, start_date: date) -> Season | Non
     )
 
 
+def restore_season_contents(season: Season, batch, *, user_name: str) -> None:
+    from farm.history.records import internal_project_versions, revision_batch
+    from farm.history.restore import restore_season_planting_plans
+
+    with internal_project_versions(), revision_batch(batch):
+        restore_season_planting_plans(season.project, season, batch, user_name=user_name)
+        synchronize_season_harvest_tasks(season, restoring=True)
+
+
+@transaction.atomic
 def resurrect_season(
     season: Season,
     end_date: date,
@@ -931,12 +981,12 @@ def resurrect_season(
     create-transition and `undelete` paths all do once they find a deleted row.
     """
     from farm.history import _entity_display_name, _serialize_instance, record_entity_revision
-    from farm.history.restore import restore_season_planting_plans
 
     season.deleted_at = None
     season.end_date = end_date
     season.created_by = user
     season.save(update_fields=['deleted_at', 'end_date', 'created_by', 'updated_at'])
+    restore_season_contents(season, batch, user_name=user_name)
     record_entity_revision(
         project=season.project, entity_type='season', object_id=season.pk,
         action=EntityRevision.ACTION_UPDATED,
@@ -945,10 +995,10 @@ def resurrect_season(
         changed_fields=['deleted_at', 'end_date'],
         user_name=user_name, batch_operation=batch,
     )
-    restore_season_planting_plans(season.project, season, batch, user_name=user_name)
     return season
 
 
+@transaction.atomic
 def create_or_resurrect_season(
     project: Project,
     start_date: date,
@@ -969,6 +1019,7 @@ def create_or_resurrect_season(
     season = Season.objects.create(
         project=project, start_date=start_date, end_date=end_date, created_by=user,
     )
+    synchronize_season_harvest_tasks(season)
     record_entity_revision(
         project=project, entity_type='season', object_id=season.pk,
         action=EntityRevision.ACTION_CREATED,

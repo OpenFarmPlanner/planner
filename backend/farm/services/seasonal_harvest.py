@@ -1,6 +1,7 @@
 """Project a perennial crop's recurring harvest within a plan's occupancy."""
 
 from calendar import monthrange
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import TypedDict
@@ -11,9 +12,9 @@ from farm.models import PlantingPlan, Season
 from farm.services.crop_inheritance import (
     GeneralCropIndex,
     build_general_crop_index,
+    plan_cultivation_type,
     resolve_crop_field,
 )
-from farm.services.tasks import plan_cultivation_type
 
 HARVEST_YEARS_PER_PAGE = 20
 
@@ -180,6 +181,35 @@ class RecurringHarvestSchedule:
             if window and window[0] <= season.end_date and window[1] >= start:
                 return year
         return start.year
+
+    def harvest_starts_between(self, start: date, end: date) -> Iterator[tuple[int, date]]:
+        """Yield each occurrence's stable year and its eligible first day."""
+        eligible = self._eligible_years()
+        first = max(eligible.start, start.year - self.crosses_new_year)
+        stop = min(eligible.stop, end.year + 1)
+        for year in range(first, stop):
+            window = self.effective_override(year) or self.eligible_window(year)
+            if window is not None and start <= window[0] <= end:
+                yield year, window[0]
+
+    def harvest_start_dates(
+        self, seasons: Iterable[tuple[int, date, date]],
+    ) -> dict[int, tuple[date, int]]:
+        """Assign each start to the first concrete season containing it."""
+        expected = {}
+        for season_id, start, end in seasons:
+            for year, due in self.harvest_starts_between(start, end):
+                expected.setdefault(year, (due, season_id))
+        return expected
+
+    def legacy_harvest_year(self, due: date | None) -> int | None:
+        if due is None:
+            return None
+        if self.crosses_new_year and due.year > date.min.year:
+            start, end = self.default_window(due.year - 1)
+            if start <= due <= end:
+                return due.year - 1
+        return due.year
 
     def occurrence_details(self, year: int | None = None) -> HarvestOccurrencesPage:
         eligible = self._eligible_years()

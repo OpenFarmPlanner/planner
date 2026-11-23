@@ -183,7 +183,7 @@ rows to re-identify. Existing manual tasks are never reclassified or overwritten
 Backfilled events start pending, including past dates: a past deadline does not
 prove the work was completed.
 
-Generated identity is `plan:<id>:event:<kind>` plus occurrence index zero. Creation
+One-time events use `plan:<id>:event:<kind>` plus occurrence index zero. Creation
 uses that unique identity and never replaces an existing task, status, title,
 manual override or date. The synchronizer below reconciles subsequent changes.
 Tasks in plans without an assigned season wait until first-season setup; legacy
@@ -199,6 +199,31 @@ Task schema already supports all generated rows, so rollback retains work,
 including any completion/override recorded after deployment. Reapplying the
 migration preserves IDs through the unique constraint instead of duplicating
 rows. Forward/backward/replay and inherited timing are covered by migration tests.
+
+### Perennial harvest starts (#1459)
+
+A perennial with an effective annual harvest window has one harvest-start task
+per eligible occurrence whose first day falls inside a configured season. The
+task stays linked to the source plan and belongs to the season containing that
+first day. A November–January occurrence keeps its November year as its task
+index even when its eligible start moves into January. It shares the calendar's
+eligibility, clearing date and effective yearly override. A perennial without
+an annual window continues to use a one-time harvest event.
+
+`0162_recurring_harvest_start_tasks` backfills the configured seasons and adopts
+a matching legacy task in place. It preserves protected dates, status, deletion
+markers and manual overrides while assigning the stable occurrence index.
+Newly generated work starts pending. Saving a clearing date, actual planting
+date, crop harvest default or yearly window recalculates only future open tasks
+without a manual date override. Creating a season adds the tasks due in its
+period. Deleting a season hides cross-season tasks for that period. Restoring
+it brings back eligible work and fills tasks for its restored plans in periods
+added while those plans were absent. Removing the recurring
+window restores the one-time harvest start if the source plan has a future
+harvest date that still needs a task. Editable tasks paused when switching
+between one-time and annual schedules keep their IDs and statuses.
+Propagation, sowing, transplanting and crop-template recurrences keep their
+existing identities and schedules.
 
 
 ## Synchronization (#894)
