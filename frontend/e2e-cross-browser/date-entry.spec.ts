@@ -20,6 +20,12 @@ test('a Pflanztermin entered in the UI is stored as the same calendar day', asyn
   await gotoAppPage(page, '/app/planting-plans', 'Anbaupläne');
 
   if (!isMobileProject(testInfo)) {
+    const mode = page.getByRole('button', { name: /^Terminansicht / });
+    const selectMode = async (name: string) => {
+      await mode.click();
+      await page.getByRole('menuitemradio', { name, exact: true }).click();
+    };
+    await selectMode('Geplant');
     const row = page.locator(`[role="row"][data-id="${plan.id}"]`);
     const cell = row.locator('[data-field="planting_date"]');
     await expect(cell).toContainText('10.5.2026');
@@ -31,6 +37,16 @@ test('a Pflanztermin entered in the UI is stored as the same calendar day', asyn
     await expect(page.locator('.MuiDataGrid-row--editing')).toHaveCount(0);
     await expect(cell).toContainText('15.6.2026');
     await expect.poll(async () => (await getPlantingPlan(page, plan.id)).planting_date).toBe('2026-06-15');
+
+    await selectMode('Tatsächlich');
+    await expect(cell).toHaveText('—');
+    await cell.dblclick();
+    await expect(cell.getByRole('textbox', { name: 'Ist-Pflanztermin' })).toHaveValue('15.06.2026');
+    await cell.locator('input[type="date"]').fill('2026-06-20');
+    await expect(cell).toHaveText('20.6.2026');
+    expect(await getPlantingPlan(page, plan.id)).toMatchObject({
+      planting_date: '2026-06-15', actual_transplanting_date: '2026-06-20',
+    });
     return;
   }
 
