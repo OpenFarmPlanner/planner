@@ -27,6 +27,8 @@ import type {
   Field,
   Bed,
   PlantingPlan,
+  HarvestActualDateResult,
+  HarvestActualDateUpdate,
   HarvestWindowUpdate,
   SeasonalHarvestPeriod,
   HarvestPlanSuggestion,
@@ -528,6 +530,10 @@ export const plantingPlanAPI = {
   create: (data: PlantingPlan) => http.post<PlantingPlan>('/planting-plans/', withActiveProject(data)),
   update: (id: number, data: PlantingPlan) => http.put<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),
   patch: (id: number, data: Partial<PlantingPlan>) => http.patch<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),
+  saveHarvestActualDates: (id: number, recordSeasonId: number, data: HarvestActualDateUpdate) =>
+    http.patch<HarvestActualDateResult>(`/planting-plans/${id}/harvest-actual-dates/`, data, {
+      params: { record_season: recordSeasonId },
+    }),
   calendarHarvestWindows: async (startDate: string, endDate: string, signal: AbortSignal) => {
     const windowsByPlan: Record<string, CalendarHarvestWindow[]> = {};
     let nextStart: string | null = startDate;

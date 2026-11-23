@@ -62,7 +62,7 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
   const [saving, setSaving] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
   const [plantingDatesDirty, setPlantingDatesDirty] = useState(false);
-  const [harvestDatesDirty, setHarvestDatesDirty] = useState(false);
+  const [dirtyHarvestYears, setDirtyHarvestYears] = useState<Set<number | null>>(new Set());
   const [clearingDateDirty, setClearingDateDirty] = useState(false);
   const [harvestSelection, setHarvestSelection] = useState<HarvestWindowSelection>({
     seasonId: activeSeasonId, dirty: false,
@@ -81,7 +81,7 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
   const hasPhotos = Boolean(loadedPlan?.note_attachment_count) || attachmentRevision > 0;
   const hasUnsavedNotes = editorOpen && draft !== (loadedPlan?.notes ?? '');
 
-  const datesDirty = plantingDatesDirty || harvestDatesDirty;
+  const datesDirty = plantingDatesDirty || dirtyHarvestYears.size > 0;
   useNavigationBlocker(hasUnsavedNotes || datesDirty || clearingDateDirty || harvestWindowDirty, hasUnsavedNotes
     ? t('common:notesDrawer.unsavedDialog.message')
     : t(harvestWindowDirty ? 'harvestWindows.unsaved' : clearingDateDirty ? 'perennial.unsaved' : 'actualDates.unsaved'));
@@ -149,10 +149,16 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
   const recordReady = loadedRecordSeasonId === recordSeasonId;
   const recordSeason = context?.projectSeasons?.find(item => item.id === recordSeasonId)
     ?? (recordSeasonId !== undefined && recordSeasonId === activeSeasonId ? context?.activeSeason ?? undefined : season);
-  const harvestDatesEditable = canEditPlan && recordSeasonId === loadedPlan?.season;
+  const harvestDatesEditable = canEditPlan && recordSeasonId === loadedPlan?.season && !loadedPlan?.seasonal_harvest;
   const tasksEditable = recordSeasonId !== undefined && recordSeasonId === activeSeasonId
     && (canEditPlan || loadedPlan?.carried_over);
   const seasonalHarvest = loadedPlan?.seasonal_harvest;
+  const scopedHarvests = (seasonalHarvest || loadedPlan?.carried_over) ? loadedPlan?.harvest_actual_occurrences : undefined;
+  const harvestEntries = scopedHarvests?.length ? scopedHarvests : [undefined];
+  const observedHarvest = loadedPlan?.observed_first_harvest_date;
+  const observedYear = scopedHarvests?.find(occurrence => observedHarvest
+    && occurrence.planned_start_date && occurrence.planned_end_date
+    && occurrence.planned_start_date <= observedHarvest && observedHarvest <= occurrence.planned_end_date)?.year;
   let recordDate = initialSeasonRecordDate(
     recordSeason, seasonalHarvest ? seasonalHarvest.periods[0]?.start_date : loadedPlan?.harvest_date,
   );
@@ -272,10 +278,10 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
             <PlantingPlanExecutionDates plan={loadedPlan} group="planting" editable={canEditPlan}
               onDirtyChange={setPlantingDatesDirty}
               onSaved={dates => {
-                const { seasonal_harvest, ...actualDates } = dates;
+                const { seasonal_harvest, harvest_actual_occurrences, ...actualDates } = dates;
                 setResult(current => current && 'plan' in current
                   ? { ...current, plan: { ...current.plan, ...actualDates,
-                    ...(current.recordSeasonId === activeSeasonId ? { seasonal_harvest } : {}) } } : current);
+                    ...(current.recordSeasonId === activeSeasonId ? { seasonal_harvest, harvest_actual_occurrences } : {}) } } : current);
                 setHarvestYear(undefined);
                 setAttempt(value => value + 1);
                 onChanged();
@@ -330,15 +336,26 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
                     setAttempt(value => value + 1);
                   }} />}>{t('errors.load')}</Alert>
                 ) : !recordReady ? <CircularProgress size={24} aria-label={t('loadingPlans')} /> : <>
-                  <PlantingPlanExecutionDates key={`harvest-dates:${recordScope}`} plan={loadedPlan} group="harvest"
-                    season={recordSeason} observedFirstHarvest={loadedPlan.observed_first_harvest_date}
-                    editable={harvestDatesEditable} onDirtyChange={setHarvestDatesDirty}
-                    onSaved={dates => {
-                      setResult(current => current && 'plan' in current
-                        ? { ...current, plan: { ...current.plan, ...dates } } : current);
-                      setAttempt(value => value + 1);
-                      onChanged();
-                    }} />
+                  {harvestEntries.map((occurrence, index) => {
+                    const year = occurrence?.year ?? null;
+                    const showObserved = observedYear === undefined ? index === 0 : year === observedYear;
+                    return <PlantingPlanExecutionDates key={`harvest-dates:${recordScope}:${year}`} plan={loadedPlan} group="harvest"
+                      season={recordSeason} occurrence={occurrence} showOccurrenceYear={harvestEntries.length > 1}
+                      observedFirstHarvest={showObserved ? observedHarvest : undefined}
+                      editable={Boolean(occurrence && recordSeason) || harvestDatesEditable}
+                      onDirtyChange={dirty => setDirtyHarvestYears(current => {
+                        const next = new Set(current);
+                        if (dirty) next.add(year);
+                        else next.delete(year);
+                        return next;
+                      })}
+                      onSaved={dates => {
+                        setResult(current => current && 'plan' in current && current.recordSeasonId === recordSeasonId
+                          ? { ...current, plan: { ...current.plan, ...dates } } : current);
+                        setAttempt(value => value + 1);
+                        onChanged();
+                      }} />;
+                  })}
                   <DetailSection title={t('harvests:title')}>
                     <HarvestRecords key={recordScope} scope={recordScope} planId={loadedPlan.id} recordSeasonId={recordSeasonId}
                       initialDate={recordDate} planTotals={loadedPlan.actual_harvest}

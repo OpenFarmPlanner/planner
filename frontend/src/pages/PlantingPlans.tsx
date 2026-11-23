@@ -147,7 +147,7 @@ import { getEntityDetailPath } from "../components/hierarchy/details/hierarchyDe
 import { isPlantingPlanDetailPath, plantingPlanDetailPath, PLANTING_PLANS_PATH } from "../planting-plans/plantingPlanDetailRoutes";
 import {
   ACTUAL_DATE_FIELDS, displayedPlanDate, displayedPlanDates, getPlanColumnDates, PLANTING_PLAN_DATE_COLUMNS,
-  type PlantingPlanActivity, type PlantingPlanDateColumn, type PlantingPlanDateMode,
+  type PlantingPlanDateColumn, type PlantingPlanDateComparison, type PlantingPlanDateMode,
 } from "../planting-plans/plantingPlanActualDates";
 import { ActualPlanDateCell, PlantingPlanDateModeSelect, RecordedPlanDateCell } from "../planting-plans/PlantingPlanDateCells";
 import { ReadOnlyRotationWarning, RotationStatusIcon } from "../components/planting-plans/rotation/RotationStatusIcon";
@@ -757,17 +757,36 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   const applySavedActualDates = useCallback((id: number, dates: Partial<PlantingPlan>) => {
     gridCommandApiRef.current?.applySavedRowValues?.(id, dates);
   }, []);
-  const saveActualDate = useCallback(async (id: number, activity: PlantingPlanActivity, value: string | null) => {
+  const saveActualDate = useCallback(async (id: number, dates: PlantingPlanDateComparison, value: string | null) => {
+    const { activity, occurrenceYear } = dates;
+    if (occurrenceYear !== undefined && activeSeason?.id) {
+      const field = activity === 'harvestStart' ? 'start_date' : 'end_date';
+      const { data } = await plantingPlanAPI.saveHarvestActualDates(id, activeSeason.id, {
+        year: occurrenceYear, [field]: value,
+      });
+      applySavedActualDates(id, data);
+      if (data.harvest_actual_occurrences?.length === 0) await reloadPlans();
+      return;
+    }
     const field = ACTUAL_DATE_FIELDS[activity];
     const { data } = await plantingPlanAPI.patch(id, { [field]: value });
-    applySavedActualDates(id, { [field]: data[field], seasonal_harvest: data.seasonal_harvest });
-  }, [applySavedActualDates]);
+    applySavedActualDates(id, {
+      [field]: data[field], seasonal_harvest: data.seasonal_harvest,
+      harvest_actual_occurrences: data.harvest_actual_occurrences,
+    });
+  }, [activeSeason?.id, applySavedActualDates, reloadPlans]);
 
-  const isActualDateEditor = useCallback((row: PlantingPlanRow, field: string) => (
-    displayDateMode !== 'planned' && PLANTING_PLAN_DATE_COLUMNS.includes(field as PlantingPlanDateColumn)
-    && !row.isNew && !row.carried_over
-    && (!row.seasonal_harvest || (field !== 'harvest_date' && field !== 'harvest_end_date'))
-  ), [displayDateMode]);
+  const isActualDateEditor = useCallback((row: PlantingPlanRow, field: string) => {
+    if (displayDateMode === 'planned' || !PLANTING_PLAN_DATE_COLUMNS.includes(field as PlantingPlanDateColumn) || row.isNew) {
+      return false;
+    }
+    if (field === 'harvest_date' || field === 'harvest_end_date') {
+      if (row.carried_over || row.seasonal_harvest) {
+        return Boolean(activeSeason?.id && row.harvest_actual_occurrences?.length);
+      }
+    }
+    return !row.carried_over;
+  }, [activeSeason?.id, displayDateMode]);
 
   const renderDateCell = useCallback((params: GridRenderCellParams<PlantingPlanRow>, renderPlanned: () => ReactNode) => {
     const field = params.field as PlantingPlanDateColumn;
@@ -779,7 +798,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     return editable ? <ActualPlanDateCell key={displayDateMode} params={params}
       getEditDates={() => params.api.getRowMode(params.id) === 'edit'
         ? getColumnDates(params.api.getRowWithUpdatedValues(params.id, field) as PlantingPlanRow, field) : dates}
-      onSaveActual={(activity, value) => saveActualDate(params.row.id, activity, value)}>{cell}</ActualPlanDateCell> : cell;
+      onSaveActual={(editedDates, value) => saveActualDate(params.row.id, editedDates, value)}>{cell}</ActualPlanDateCell> : cell;
   }, [displayDateMode, getColumnDates, isActualDateEditor, saveActualDate]);
 
   const plannedDateLabel = useCallback((row: PlantingPlanRow, field: PlantingPlanDateColumn) => {
@@ -1162,9 +1181,9 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         }),
         editable: false,
         type: "date",
-        valueGetter: (value, row) => toGridDateValue(row.seasonal_harvest ? getColumnDates(row, 'harvest_date').planned : value),
+        valueGetter: (_value, row) => toGridDateValue(getColumnDates(row, 'harvest_date').planned),
         cellClassName: (params) => displayDateMode === 'actual' || (displayDateMode === 'combined' && getColumnDates(params.row, 'harvest_date').actual)
-          ? FULL_CELL_TOOLTIP_CELL_CLASS : params.value
+          ? `${CALCULATED_COLUMN_CELL_CLASS} ${FULL_CELL_TOOLTIP_CELL_CLASS}` : params.value
           ? CALCULATED_COLUMN_CELL_CLASS
           : `${CALCULATED_COLUMN_CELL_CLASS} ${FULL_CELL_TOOLTIP_CELL_CLASS}`,
         renderCell: renderCalculatedHarvestDateCell,
@@ -1181,9 +1200,9 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         }),
         editable: false,
         type: "date",
-        valueGetter: (value, row) => toGridDateValue(row.seasonal_harvest ? getColumnDates(row, 'harvest_end_date').planned : value),
+        valueGetter: (_value, row) => toGridDateValue(getColumnDates(row, 'harvest_end_date').planned),
         cellClassName: (params) => displayDateMode === 'actual' || (displayDateMode === 'combined' && getColumnDates(params.row, 'harvest_end_date').actual)
-          ? FULL_CELL_TOOLTIP_CELL_CLASS : (
+          ? `${CALCULATED_COLUMN_CELL_CLASS} ${FULL_CELL_TOOLTIP_CELL_CLASS}` : (
           params.value && getPredecessorOverlaps(getRowHarvestOverlaps(params.row as PlantingPlanRow)).length === 0
             ? CALCULATED_COLUMN_CELL_CLASS
             : `${CALCULATED_COLUMN_CELL_CLASS} ${FULL_CELL_TOOLTIP_CELL_CLASS}`

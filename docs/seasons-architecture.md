@@ -127,7 +127,7 @@ description), one level down:
   that intersect the selected season, the effective `occupancy_start_date`,
   a `planting_recorded` flag for an
   actual sowing or transplanting anchor, and nullable `actual_start_date`
-  and `actual_end_date` drawn from recorded dates within that season. An
+  and `actual_end_date` from the primary harvest occurrence for that season. An
   empty list means the plan has no eligible harvest in that period. The
   property is null for legacy one-off plans or a request without a season.
   Planting-plan details use the active season for perennial and carried-over
@@ -140,9 +140,17 @@ description), one level down:
   as pre-planting tasks. The first dated allocated harvest can be shown as an
   observation when an explicit start is
   absent. Only explicitly recorded dates supply an actual harvest end.
-  Original planting information remains visible in every period. The editor in
-  the originating season retains the saved actual dates, including a date in
-  a different period. A current-season task
+  Original planting information remains visible in every period. The table and
+  detail editor use `harvest_actual_occurrences` for harvests visible in the
+  selected season. If several occurrences are visible, the table prefers one
+  starting in that season, and details show each occurrence separately. The same
+  actual dates appear on both sides of a season boundary when the occurrence
+  spans it. An actual one-off harvest can stay visible after the forecast ends.
+  `PATCH /planting-plans/{id}/harvest-actual-dates/?record_season={season_id}`
+  accepts `start_date` or `end_date`, including null to clear a value, and the
+  occurrence `year` for a recurring harvest. The original plan retains its season
+  assignment. These writes leave planned windows, occupancy, harvest quantities
+  and task dates untouched. A current-season task
   may link to the original plan while the crop occupies an assigned bed.
   Plan details show the lifetime harvest occurrences in pages of up to 20 years.
   In the originating
@@ -371,6 +379,13 @@ shows the March–April plan, 3.5 kg allocated on April 22 and the first recorde
 harvest as an observation. Switch the detail chooser to 2025 to find the frost
 loss and completed spring harvest task. The application's season stays at 2026.
 Return the detail chooser to 2026 and add or edit a task or a loss for that year.
+
+To check actual harvest dates, use the same **Perennial season details acceptance**
+project. In the 2026 table, enter an actual harvest start for Calendar rhubarb in
+**Actual**. Open its details at phone width and record an end date. Select 2027
+and enter a different actual start. Return to 2026 to verify both dates, the
+March–April forecast, the 3.5 kg allocation and the task dates. In a fresh
+German demo project, repeat on the 2025 Knoblauch carried into 2026.
 
 For perennial harvest tasks, use `--harvest-tasks`. In **Perennial harvest
 tasks acceptance**, check the dashboard in 2026 for Calendar rhubarb's open

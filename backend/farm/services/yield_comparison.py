@@ -35,6 +35,7 @@ from farm.services.harvests import (
 )
 from farm.services.seasonal_harvest import (
     RecurringHarvestSchedule,
+    recurring_actual_occurrences,
     recurring_harvest_schedule,
     recurring_plan_visible_in_season,
     seasonal_harvest_payload,
@@ -312,6 +313,9 @@ def _record_activity_dates(
                     language_code=language_code,
                 ),
                 'seasonal_harvest': harvest,
+                'harvest_actual_occurrences': recurring_actual_occurrences(
+                    plan, row.season, schedule,
+                ),
             })
 
 

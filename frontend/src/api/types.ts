@@ -1346,6 +1346,8 @@ export interface HarvestWindowOccurrence {
   default: SeasonalHarvestPeriod | null;
   override: SeasonalHarvestPeriod | null;
   conflict: boolean;
+  actual_start_date?: string | null;
+  actual_end_date?: string | null;
 }
 
 export interface HarvestWindowPage {
@@ -1366,6 +1368,23 @@ export interface PlantingPlanSeasonalHarvest {
   actual_start_date: string | null;
   actual_end_date: string | null;
 }
+
+export interface HarvestActualOccurrence {
+  year: number | null;
+  planned_start_date: string | null;
+  planned_end_date: string | null;
+  actual_start_date: string | null;
+  actual_end_date: string | null;
+}
+
+export interface HarvestActualDateUpdate {
+  year: number | null;
+  start_date?: string | null;
+  end_date?: string | null;
+}
+
+export type HarvestActualDateResult = Pick<PlantingPlan,
+  'actual_harvest_start_date' | 'recorded_harvest_end_date' | 'harvest_actual_occurrences' | 'seasonal_harvest'>;
 
 export interface PlantingPlan extends PlantingPlanActualDates {
   id?: number;
@@ -1402,6 +1421,7 @@ export interface PlantingPlan extends PlantingPlanActualDates {
   harvest_end_date?: string | null;
   /** Season-clipped perennial harvest, with an empty list before eligibility. */
   seasonal_harvest?: PlantingPlanSeasonalHarvest | null;
+  harvest_actual_occurrences?: HarvestActualOccurrence[] | null;
   quantity?: number;
   plants_count?: number | null;
   area_usage_sqm?: number;
@@ -1992,7 +2012,7 @@ export type YieldComparisonCropTiming = Pick<PlantingPlan,
 
 export type YieldComparisonPlanDates = PlantingPlanActualDates & Pick<PlantingPlan,
   'cultivation_type' | 'planting_date' | 'planned_propagation_start_date' | 'planned_sowing_date'
-  | 'harvest_date' | 'harvest_end_date' | 'seasonal_harvest'> & YieldComparisonCropTiming & {
+  | 'harvest_date' | 'harvest_end_date' | 'seasonal_harvest' | 'harvest_actual_occurrences'> & YieldComparisonCropTiming & {
     id: number;
     bed_name: string;
     crop_label?: string;

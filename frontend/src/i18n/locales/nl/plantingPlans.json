@@ -498,7 +498,20 @@
       "sqm": "Vul een niet-negatieve oppervlakte in met maximaal drie decimalen."
     }
   },
+  "fields": {
+    "start_date": "Werkelijk begin van de oogst",
+    "end_date": "Werkelijk einde van de oogst",
+    "year": "Oogstjaar"
+  },
   "actualDates": {
+    "harvestOccurrence": "Oogstdatums {{year}}",
+    "harvestErrors": {
+      "order": "De oogst moet op of na de begindatum eindigen.",
+      "occupancy": "Voer een datum in waarop het gewas op het bed staat.",
+      "occurrence": "Voer een datum in voor de gekozen oogst.",
+      "overlap": "De geregistreerde oogsten moeten op volgorde staan en mogen elkaar niet overlappen.",
+      "season": "Kies een oogst in dit seizoen."
+    },
     "plannedCardLabels": {
       "sowing": "Geplande zaaidatum",
       "transplanting": "Geplande uitplantdatum"
