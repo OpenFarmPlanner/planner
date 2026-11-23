@@ -499,6 +499,11 @@
     }
   },
   "actualDates": {
+    "plannedCardLabels": {
+      "sowing": "Geplande zaaidatum",
+      "transplanting": "Geplande uitplantdatum"
+    },
+    "invalidDate": "Voer een geldige datum in.",
     "clear": "Datum wissen",
     "title": "Geplande en werkelijke datums",
     "modeLabel": "Datumweergave",
@@ -516,7 +521,6 @@
     "early_other": "{{count}} dagen eerder",
     "late_one": "{{count}} dag later",
     "late_other": "{{count}} dagen later",
-    "editTarget": "Kies de datum die je wilt wijzigen",
     "modes": {
       "planned": "Gepland",
       "actual": "Werkelijk"

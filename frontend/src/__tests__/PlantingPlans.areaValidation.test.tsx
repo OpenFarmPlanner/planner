@@ -497,7 +497,11 @@ describe("PlantingPlans save-time area validation", () => {
     // calculated harvest columns.
     const [, plantingDateColumn, ...harvestColumns] = dateColumns;
     expect(typeof plantingDateColumn?.renderEditCell).toBe("function");
-    expect(harvestColumns.every((column) => typeof column?.renderEditCell === 'function')).toBe(true);
+    expect(harvestColumns.every((column) => !column?.editable && typeof column?.renderCell === 'function')).toBe(true);
+    for (const column of harvestColumns) {
+      expect(latestProps?.isStandaloneEditCell({ id: 1 }, column.field)).toBe(true);
+      expect(latestProps?.isStandaloneEditCell({ id: 1, seasonal_harvest: {} }, column.field)).toBe(false);
+    }
   });
 
   it("explains the harvest start and end calculations separately", async () => {
@@ -669,7 +673,8 @@ describe("PlantingPlans save-time area validation", () => {
     const sowingDateColumn = columns.find((column: { field: string }) => column.field === "sowing_date");
 
     const row = { id: 3, crop: 6, planting_date: "2026-05-01" };
-    expect(sowingDateColumn.isCellEditable({ row })).toBe(true);
+    expect(sowingDateColumn.isCellEditable({ row })).toBe(false);
+    expect(latestProps?.isStandaloneEditCell(row, 'sowing_date')).toBe(true);
     expect(sowingDateColumn.cellClassName({ row })).toContain("ofp-cell-full-tooltip");
 
     const missingCell = render(<>{sowingDateColumn.renderCell({ row, hasFocus: false })}</>);

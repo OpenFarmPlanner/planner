@@ -1,5 +1,5 @@
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { Box, Card, CardActionArea, CardContent, Collapse, Stack, Typography } from '@mui/material';
+import { Box, Card, CardActionArea, CardContent, Collapse, IconButton, Stack, Typography } from '@mui/material';
 import { highlightFlashAnimationSx, highlightFlashKeyframesSx } from '../feedback/highlightFlashStyles';
 
 export interface MobileCardListItem {
@@ -10,6 +10,7 @@ interface MobileCardListProps<T extends MobileCardListItem> {
   items: T[];
   expandedIds: Set<string | number>;
   onToggleExpanded: (id: string | number) => void;
+  onOpenItem?: (item: T, anchor: HTMLElement) => void;
   renderPrimary: (item: T) => React.ReactNode;
   renderSecondary?: (item: T) => React.ReactNode;
   renderDetails: (item: T) => React.ReactNode;
@@ -28,6 +29,7 @@ export function MobileCardList<T extends MobileCardListItem>({
   items,
   expandedIds,
   onToggleExpanded,
+  onOpenItem,
   renderPrimary,
   renderSecondary,
   renderDetails,
@@ -61,9 +63,9 @@ export function MobileCardList<T extends MobileCardListItem>({
                   <CardActionArea
                     component="button"
                     type="button"
-                    onClick={() => onToggleExpanded(item.id)}
-                    aria-expanded={isExpanded}
-                    aria-label={isExpanded ? detailsHideLabel : detailsShowLabel}
+                    onClick={event => onOpenItem ? onOpenItem(item, event.currentTarget) : onToggleExpanded(item.id)}
+                    aria-expanded={onOpenItem ? undefined : isExpanded}
+                    aria-label={onOpenItem ? undefined : isExpanded ? detailsHideLabel : detailsShowLabel}
                     sx={{
                       display: 'block',
                       borderRadius: 1,
@@ -95,7 +97,7 @@ export function MobileCardList<T extends MobileCardListItem>({
                         ) : null}
                       </Stack>
 
-                      <Box
+                      {!onOpenItem && <Box
                         aria-hidden="true"
                         sx={{
                           mt: -0.25,
@@ -108,9 +110,16 @@ export function MobileCardList<T extends MobileCardListItem>({
                         }}
                       >
                         <ExpandMoreIcon fontSize="small" />
-                      </Box>
+                      </Box>}
                     </Stack>
                   </CardActionArea>
+                  {onOpenItem && (
+                    <IconButton aria-expanded={isExpanded}
+                      aria-label={isExpanded ? detailsHideLabel : detailsShowLabel}
+                      onClick={() => onToggleExpanded(item.id)} sx={{ width: 44, height: 44, flexShrink: 0 }}>
+                      <ExpandMoreIcon sx={{ transform: isExpanded ? 'rotate(180deg)' : undefined }} />
+                    </IconButton>
+                  )}
                   {renderHeaderAction ? (
                     <Box sx={{ flexShrink: 0, mt: 0.25 }}>
                       {renderHeaderAction(item)}

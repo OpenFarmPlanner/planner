@@ -6,7 +6,7 @@
  * under test lives in the real edit-cell components and the grid's own
  * edit-state wiring, not something a column-definition mock can stand in for.
  */
-import { fireEvent, render, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -72,10 +72,14 @@ const GRID_VIEWPORT_SIZE: ReadonlyArray<readonly [string, number]> = [
 const cellOf = (field: string): HTMLElement | null =>
   document.querySelector<HTMLElement>(`.MuiDataGrid-row [data-field="${field}"]`);
 
-const renderPlantingPlans = async (): Promise<void> => {
+const renderPlantingPlans = async (plannedDatesUser?: ReturnType<typeof userEvent.setup>): Promise<void> => {
   render(<MemoryRouter><PlantingPlans /></MemoryRouter>);
   await waitFor(() => expect(apiMocks.planList).toHaveBeenCalled());
   await waitFor(() => expect(cellOf("planting_date")?.textContent).toBeTruthy());
+  if (plannedDatesUser) {
+    await plannedDatesUser.click(screen.getByRole('button', { name: /^Terminansicht / }));
+    await plannedDatesUser.click(screen.getByRole('menuitemradio', { name: 'Geplant', exact: true }));
+  }
 };
 
 describe("PlantingPlans coupled-field live link", () => {
@@ -231,7 +235,7 @@ describe("PlantingPlans coupled-field live link", () => {
 
     it("recomputes the planting date live while typing the sowing date, and highlights it", async () => {
       const user = userEvent.setup();
-      await renderPlantingPlans();
+      await renderPlantingPlans(user);
 
       await user.dblClick(cellOf("sowing_date")!);
       await waitFor(() => expect(document.querySelector(".MuiDataGrid-row--editing")).toBeTruthy());
@@ -249,7 +253,7 @@ describe("PlantingPlans coupled-field live link", () => {
 
     it("recomputes the sowing date live while typing the planting date, and highlights it", async () => {
       const user = userEvent.setup();
-      await renderPlantingPlans();
+      await renderPlantingPlans(user);
 
       await user.dblClick(cellOf("planting_date")!);
       await waitFor(() => expect(document.querySelector(".MuiDataGrid-row--editing")).toBeTruthy());
@@ -264,7 +268,7 @@ describe("PlantingPlans coupled-field live link", () => {
 
     it("resets both dates to their saved values on Escape", async () => {
       const user = userEvent.setup();
-      await renderPlantingPlans();
+      await renderPlantingPlans(user);
 
       await user.dblClick(cellOf("planting_date")!);
       await waitFor(() => expect(document.querySelector(".MuiDataGrid-row--editing")).toBeTruthy());

@@ -71,6 +71,11 @@ async function createSowingDateEditFixture(
   return { planId: plan.id, propagationDurationDays, api, getPlan };
 }
 
+async function selectPlannedDates(page: Page): Promise<void> {
+  await page.getByRole('button', { name: /^Terminansicht / }).click();
+  await page.getByRole('menuitemradio', { name: 'Geplant', exact: true }).click();
+}
+
 test.describe('planting plans sowing date edit', () => {
   test('editing Aussaattermin on an existing row persists the shifted Pflanztermin on save', async ({ page, request }) => {
     await page.setViewportSize({ width: 1400, height: 900 });
@@ -78,6 +83,7 @@ test.describe('planting plans sowing date edit', () => {
 
     await page.goto('/app/planting-plans');
     await expect(page.getByRole('heading', { name: 'Anbaupläne' })).toBeVisible();
+    await selectPlannedDates(page);
 
     const row = page.locator(`[role="row"][data-id="${fixture.planId}"]`);
     await expect(row).toBeVisible();
@@ -116,6 +122,7 @@ test.describe('planting plans sowing date edit', () => {
 
     await page.goto('/app/planting-plans');
     await expect(page.getByRole('heading', { name: 'Anbaupläne' })).toBeVisible();
+    await selectPlannedDates(page);
 
     const row = page.locator(`[role="row"][data-id="${fixture.planId}"]`);
     await expect(row).toBeVisible();
@@ -140,6 +147,7 @@ test.describe('planting plans sowing date edit', () => {
     await page.setViewportSize({ width: 1400, height: 900 });
     const fixture = await createSowingDateEditFixture(page, request, 'independent-propagation-date', '2026-04-15');
     await page.goto('/app/planting-plans');
+    await selectPlannedDates(page);
 
     const row = page.locator(`[role="row"][data-id="${fixture.planId}"]`);
     const sowingCell = row.locator('[data-field="sowing_date"]');

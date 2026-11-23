@@ -32,11 +32,11 @@ export function createMuiDataGridEscapeFocusMock() {
     rows: MockRow[];
     columns: GridColDef[];
     onCellClick?: (
-      params: { id: string | number; field: string; isEditable: boolean },
+      params: { id: string | number; field: string; isEditable: boolean; row: MockRow },
       event: { preventDefault: () => void; stopPropagation: () => void; defaultMuiPrevented?: boolean },
     ) => void;
     onCellDoubleClick?: (
-      params: { id: string | number; field: string; isEditable: boolean },
+      params: { id: string | number; field: string; isEditable: boolean; row: MockRow },
       event: React.MouseEvent,
     ) => void;
     onCellKeyDown?: (
@@ -97,12 +97,12 @@ export function createMuiDataGridEscapeFocusMock() {
                     }
                     onRowSelectionModelChange?.({ type: 'include', ids: new Set([row.id]) });
                     onCellClick?.(
-                      { id: row.id, field: col.field, isEditable: col.editable !== false },
+                      { id: row.id, field: col.field, isEditable: col.editable !== false, row },
                       { preventDefault: () => {}, stopPropagation: () => {}, defaultMuiPrevented: false },
                     );
                   }}
                   onDoubleClick={(event) => {
-                    onCellDoubleClick?.({ id: row.id, field: col.field, isEditable: col.editable !== false }, event);
+                    onCellDoubleClick?.({ id: row.id, field: col.field, isEditable: col.editable !== false, row }, event);
                   }}
                 >
                   Zelle {row.id}-{col.field}

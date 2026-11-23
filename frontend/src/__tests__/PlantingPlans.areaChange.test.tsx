@@ -183,6 +183,8 @@ describe("PlantingPlans growing-area change", () => {
     const user = userEvent.setup();
     await renderPlantingPlans();
 
+    await user.click(screen.getByRole("button", { name: /^Terminansicht / }));
+    await user.click(screen.getByRole("menuitemradio", { name: "Geplant" }));
     await user.dblClick(cellOf("crop")!);
     await waitFor(() => expect(document.querySelector(".MuiDataGrid-row--editing")).toBeTruthy());
 

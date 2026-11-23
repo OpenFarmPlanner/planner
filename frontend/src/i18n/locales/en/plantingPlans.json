@@ -499,6 +499,11 @@
     }
   },
   "actualDates": {
+    "plannedCardLabels": {
+      "sowing": "Planned sowing date",
+      "transplanting": "Planned transplanting date"
+    },
+    "invalidDate": "Enter a valid date.",
     "clear": "Clear date",
     "title": "Planned and actual dates",
     "modeLabel": "Date view",
@@ -516,7 +521,6 @@
     "early_other": "{{count}} days early",
     "late_one": "{{count}} day late",
     "late_other": "{{count}} days late",
-    "editTarget": "Choose which date to edit",
     "modes": {
       "planned": "Planned",
       "actual": "Actual"
