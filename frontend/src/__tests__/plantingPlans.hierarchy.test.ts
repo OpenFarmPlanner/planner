@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Bed, Field } from "../api/types";
-import { buildBedPickerOptions, isBedInScope } from "../components/planting-plans/bedPickerOptions";
+import { buildBedPickerResults, isBedInScope } from "../components/planting-plans/bedPickerOptions";
 import {
   collectHierarchyAvailability,
 } from "../components/planting-plans/areaHierarchySelection";
@@ -59,10 +59,10 @@ describe("PlantingPlans hierarchy normalization", () => {
   });
 
   it("resolves bed options once and scopes them using location and field IDs", () => {
-    const options = buildBedPickerOptions(beds, fields, [
+    const options = buildBedPickerResults(beds, fields, [
       { id: 1, name: "Hofgärten" },
       { id: 2, name: "Außenacker" },
-    ], "de-DE");
+    ], "de-DE").filter((result) => result.kind === "bed");
 
     expect(options.find((bed) => bed.id === 200)).toMatchObject({
       locationName: "Außenacker", fieldName: "Parzelle Süd",

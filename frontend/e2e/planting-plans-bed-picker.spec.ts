@@ -4,8 +4,11 @@ import { apiRequest, loginWithDeterministicProject } from './utils';
 test.use({ serviceWorkers: 'block' });
 
 const cell = (page: Page, field: string) => page.locator(`[role="gridcell"][data-field="${field}"]`).first();
-const picker = (page: Page) => page.getByRole('combobox', { name: 'Beete suchen' });
-const beds = (page: Page) => page.getByRole('listbox', { name: 'Beet' });
+const picker = (page: Page) => page.getByRole('combobox', { name: 'Standort, Parzelle, Beet suchen' });
+const beds = (page: Page) => page.getByRole('listbox', { name: 'Anbauflächen' });
+const activeResult = (page: Page) => beds(page).locator('[data-highlighted="true"]');
+const searchField = (page: Page) => page.getByTestId('inline-bed-picker');
+const removeScope = (page: Page, name: string) => searchField(page).getByRole('button', { name: `Filter „${name}“ entfernen` });
 
 async function seedBeds(page: Page, request: APIRequestContext, scenario: string, longPath = false) {
   await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
@@ -33,6 +36,10 @@ async function seedBeds(page: Page, request: APIRequestContext, scenario: string
   const south = await createField('Sommerbeete', home);
   const remote = await createLocation('Wiesenacker');
   const west = await createField('Westparzelle', remote);
+  if (longPath) {
+    const duplicate = await createField(field, remote);
+    await createBed(name, duplicate);
+  }
   const original = await createBed(name, north);
   const nearby = await createBed('Salat 2', north);
   await createBed('Kohl 1', south);
@@ -41,6 +48,7 @@ async function seedBeds(page: Page, request: APIRequestContext, scenario: string
   const { id: crop } = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
     name: 'Salat', propagation_duration_days: 21,
     cultivation_type: 'pre_cultivation', cultivation_types: ['pre_cultivation'], plants_per_m2: 4,
+    crop_family: 'Asteraceae', rotation_break_years: 3,
   });
   const { id: plan } = await apiRequest<{ id: number }>(page, 'POST', '/planting-plans/', {
     bed: original, crop, season, cultivation_type: 'pre_cultivation',
@@ -48,7 +56,7 @@ async function seedBeds(page: Page, request: APIRequestContext, scenario: string
   });
   await page.goto('/app/planting-plans');
   await expect(page.getByRole('heading', { name: 'Anbaupläne' })).toBeVisible();
-  return { location, field, name, original, nearby, alternative, plan };
+  return { location, field, name, original, nearby, alternative, plan, crop };
 }
 
 test.describe('inline bed picker', () => {
@@ -87,42 +95,86 @@ test.describe('inline bed picker', () => {
     await expect(picker(page)).toHaveCount(0);
   });
 
-  test('filters by each scope, highlights all matching terms and commits with Enter', async ({ page, request }) => {
+  test('moves between location, plot and bed results and only assigns beds', async ({ page, request }, testInfo) => {
     const { plan, original, nearby, alternative } = await seedBeds(page, request, 'bed-picker-scope');
-    await cell(page, 'bed').dblclick();
-    await expect(page.getByText('Hofgarten', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Filter „Frühbeete Nord“ entfernen' })).toBeVisible();
+    const bedCell = cell(page, 'bed');
+    const search = picker(page);
+    const results = beds(page).getByRole('option');
+    await bedCell.dblclick();
+    const plotBadge = removeScope(page, 'Frühbeete Nord');
+    await expect(plotBadge).toBeVisible();
+    expect(await plotBadge.locator('span').first().evaluate((label) => label.scrollWidth <= label.clientWidth)).toBe(true);
     await expect(beds(page).getByRole('option')).toHaveCount(2);
-    await picker(page).press('Backspace');
-    await expect(beds(page).getByRole('option')).toHaveCount(3);
-    await expect(page.getByRole('button', { name: 'Filter „Hofgarten“ entfernen' })).toBeVisible();
-    await picker(page).press('Backspace');
-    await expect(beds(page).getByRole('option')).toHaveCount(4);
+    await search.press('Backspace');
+    await expect(results).toHaveCount(5);
+    await expect(removeScope(page, 'Hofgarten')).toBeVisible();
+    await search.press('Backspace');
+    await expect(results).toHaveCount(10);
+    await expect(search).toHaveAttribute('placeholder', 'Standort, Parzelle, Beet suchen');
+    await search.fill('Hofg');
+    await expect(results.first()).toHaveAccessibleName('Hofgarten Standort');
+    await expect(results.nth(1)).toHaveAccessibleName('Frühbeete Nord Hofgarten Parzelle');
+    await expect(activeResult(page)).toHaveCount(1);
+    await expect(search).toHaveAttribute('aria-activedescendant', (await results.first().getAttribute('id'))!);
+    await search.press('ArrowLeft');
+    expect(await search.evaluate((input: HTMLInputElement) => input.selectionStart)).toBe(3);
+    await search.press('ArrowRight');
+    expect(await search.evaluate((input: HTMLInputElement) => input.selectionStart)).toBe(4);
+    await expect(activeResult(page)).toHaveAccessibleName('Hofgarten Standort');
+    await expect(page.getByText(/Enter Bereich eingrenzen/)).toBeVisible();
+    await expect(beds(page)).toHaveAttribute('aria-busy', 'false');
+    await page.screenshot({ path: testInfo.outputPath('locale-de-bed-picker-1440-unscoped.png'), animations: 'disabled' });
+    await search.press('ArrowDown');
+    await expect(activeResult(page)).toHaveAccessibleName('Frühbeete Nord Hofgarten Parzelle');
+    await search.press('ArrowUp');
+    await expect(activeResult(page)).toHaveAccessibleName('Hofgarten Standort');
+    await search.press('Enter');
+    await expect(removeScope(page, 'Hofgarten')).toBeVisible();
+    await expect(search).toBeFocused();
+    await expect(search).toHaveValue('');
+    await expect(results).toHaveCount(5);
+    await search.fill('früh');
+    await expect(results.first()).toHaveAccessibleName('Frühbeete Nord Parzelle');
+    await search.press('Enter');
+    await expect(removeScope(page, 'Frühbeete Nord')).toBeVisible();
+    await expect(search).toBeFocused();
+    await expect(search).toHaveValue('');
+    await expect(page.getByText(/Enter Aktuelles Beet behalten/)).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('locale-de-bed-picker-1440-scoped.png'), animations: 'disabled' });
 
-    await picker(page).fill('hof fruh sal');
-    await expect(beds(page).getByRole('option')).toHaveCount(2);
-    expect(await beds(page).locator('mark').allTextContents()).toEqual(['Hof', 'Früh', 'Sal', 'Sal']);
-    await beds(page).getByRole('button', { name: 'Frühbeete Nord' }).click();
-    await picker(page).fill('wiesen sal');
-    await expect(beds(page).getByRole('option')).toHaveCount(0);
+    await search.fill('wiesen sal');
+    await expect(results).toHaveCount(0);
     await expect(page.getByText('Keine Treffer in Frühbeete Nord', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: '1 Treffer außerhalb anzeigen' }).click();
-    await expect(beds(page).getByRole('option')).toHaveCount(1);
-    await picker(page).press('Escape');
+    await expect(results).toHaveCount(1);
+    await search.fill('hof fruh sal');
+    await expect(results).toHaveCount(2);
+    await expect(beds(page).locator('mark')).toHaveCount(6);
+    expect(await beds(page).locator('mark').allTextContents()).toEqual(expect.arrayContaining(['Hof', 'Früh', 'Sal']));
+    await search.press('Escape');
     expect(await apiRequest(page, 'GET', `/planting-plans/${plan}/`)).toMatchObject({ bed: original });
 
-    await cell(page, 'bed').dblclick();
+    await bedCell.dblclick();
     await expect(beds(page).getByRole('option', { name: /Salat 2/ })).toBeEnabled();
-    await picker(page).press('ArrowDown');
-    await picker(page).press('Enter');
-    await expect(cell(page, 'bed')).toContainText('Salat 2');
+    await search.press('ArrowDown');
+    await expect(activeResult(page)).toContainText('Salat 2');
+    await expect(page.getByText(/Enter Beet zuweisen/)).toBeVisible();
+    await search.press('Enter');
+    await expect(bedCell).toContainText('Salat 2');
     expect(await apiRequest(page, 'GET', `/planting-plans/${plan}/`)).toMatchObject({ bed: nearby });
 
-    await cell(page, 'bed').dblclick();
+    await bedCell.dblclick();
     await page.getByRole('button', { name: 'An allen Standorten suchen' }).click();
-    await picker(page).fill('wiesen sal');
+    await search.fill('wiesen');
+    await beds(page).getByRole('option', { name: 'Wiesenacker Standort' }).click();
+    await expect(removeScope(page, 'Wiesenacker')).toBeVisible();
+    await expect(search).toBeFocused();
+    await beds(page).getByRole('option', { name: 'Westparzelle Parzelle', exact: true }).click();
+    await expect(removeScope(page, 'Westparzelle')).toBeVisible();
+    await expect(search).toBeFocused();
+    await search.fill('sal');
     await beds(page).getByRole('option', { name: /Salat 3/ }).click();
-    await expect(cell(page, 'bed')).toContainText('Salat 3');
+    await expect(bedCell).toContainText('Salat 3');
     expect(await apiRequest(page, 'GET', `/planting-plans/${plan}/`)).toMatchObject({ bed: alternative });
   });
 
@@ -169,9 +221,16 @@ test.describe('inline bed picker', () => {
     expect(await apiRequest(page, 'GET', path)).toMatchObject({ bed: nearby });
   });
 
-  test('waits for capacity before allowing a different bed to be chosen', async ({ page, request }) => {
-    const { plan, original, nearby } = await seedBeds(page, request, 'bed-picker-capacity');
-    await apiRequest(page, 'PATCH', `/beds/${nearby}/`, { area_sqm: 1 });
+  test('waits for capacity before allowing a different bed to be chosen', async ({ page, request }, testInfo) => {
+    const { plan, original, nearby, crop } = await seedBeds(page, request, 'bed-picker-capacity');
+    await apiRequest(page, 'PATCH', `/beds/${nearby}/`, { area_sqm: 0.5 });
+    const { id: priorSeason } = await apiRequest<{ id: number }>(page, 'POST', '/seasons/', {
+      start_date: '2025-01-01', end_date: '2025-12-31',
+    });
+    await apiRequest(page, 'POST', '/planting-plans/', {
+      bed: nearby, crop, season: priorSeason, cultivation_type: 'pre_cultivation', planting_date: '2025-04-10',
+      area_input_value: 0.5, area_input_unit: 'M2',
+    });
     let releaseCheck = () => {};
     const capacityPending = new Promise<void>((resolve) => { releaseCheck = resolve; });
     let capacityRequested = false;
@@ -194,6 +253,10 @@ test.describe('inline bed picker', () => {
     }
     await expect(beds(page)).toHaveAttribute('aria-busy', 'false');
     await expect(fullBed).toBeDisabled();
+    await expect(fullBed).toContainText('0,5 m² frei · 2 m² benötigt');
+    await expect(fullBed).toContainText('Korbblütler, frühestens 2029');
+    await expect(activeResult(page)).toHaveCount(0);
+    await page.screenshot({ path: testInfo.outputPath('locale-de-bed-picker-capacity.png'), animations: 'disabled' });
     expect(await apiRequest(page, 'GET', `/planting-plans/${plan}/`)).toMatchObject({ bed: original });
   });
 
@@ -227,6 +290,60 @@ test.describe('inline bed picker', () => {
     expect(saveAttempts).toBe(1);
     expect(await apiRequest(page, 'GET', `/planting-plans/${plan}/`)).toMatchObject({ bed: nearby });
   });
+
+  test('can keep the current bed when it no longer has enough area', async ({ page, request }) => {
+    const { plan, original } = await seedBeds(page, request, 'bed-picker-current-capacity');
+    await apiRequest(page, 'PATCH', `/beds/${original}/`, { area_sqm: 0.5 });
+    const bedCell = cell(page, 'bed');
+    await bedCell.dblclick();
+    await expect(beds(page)).toHaveAttribute('aria-busy', 'false');
+    await expect(activeResult(page)).toContainText('0,5 m² frei · 2 m² benötigt');
+    await expect(activeResult(page)).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByText(/Enter Aktuelles Beet behalten/)).toBeVisible();
+    await picker(page).press('Enter');
+    await expect(picker(page)).toHaveCount(0);
+    expect(await apiRequest(page, 'GET', `/planting-plans/${plan}/`)).toMatchObject({ bed: original });
+  });
+});
+
+test('keeps long scopes inside an editable field at a narrow grid width', async ({ page, request }, testInfo) => {
+  await page.setViewportSize({ width: 920, height: 850 });
+  const { field, location, name, plan, original } = await seedBeds(page, request, 'bed-picker-narrow', true);
+  await cell(page, 'bed').dblclick();
+  const search = picker(page);
+  const badge = removeScope(page, field);
+  await expect(search).toBeFocused();
+  await expect(search).toHaveAccessibleDescription(new RegExp(field));
+  await expect(badge).toBeVisible();
+  await expect(beds(page)).toHaveAttribute('aria-busy', 'false');
+  await search.fill('Tomaten');
+  await expect(beds(page).getByRole('option')).toHaveCount(1);
+  const [boundary, input, chip] = await Promise.all([searchField(page).boundingBox(), search.boundingBox(), badge.boundingBox()]);
+  expect(boundary && input && chip).toBeTruthy();
+  expect(chip!.x).toBeGreaterThan(boundary!.x);
+  expect(input!.x).toBeGreaterThanOrEqual(chip!.x + chip!.width);
+  expect(input!.x + input!.width).toBeLessThanOrEqual(boundary!.x + boundary!.width);
+  expect(input!.width).toBeGreaterThan(75);
+  await page.screenshot({ path: testInfo.outputPath('locale-de-bed-picker-920-scoped.png'), animations: 'disabled' });
+
+  await search.press('Tab');
+  await expect(badge).toBeFocused();
+  await badge.press('Enter');
+  await expect(removeScope(page, location)).toBeVisible();
+  await expect(search).toBeFocused();
+  await expect(search).toHaveValue('Tomaten');
+  await removeScope(page, location).click();
+  await expect(search).toBeFocused();
+  await expect(search).toHaveValue('Tomaten');
+  await expect(beds(page).getByRole('option', { name: new RegExp(name) })).toHaveCount(2);
+  await search.fill('Folientunnel');
+  const plots = beds(page).getByRole('option', { name: /Parzelle$/ });
+  await expect(plots).toHaveCount(2);
+  await expect(plots.first()).toContainText(location);
+  await expect(plots.last()).toContainText('Wiesenacker');
+  await page.screenshot({ path: testInfo.outputPath('locale-de-bed-picker-920-unscoped.png'), animations: 'disabled' });
+  await search.press('Escape');
+  expect(await apiRequest(page, 'GET', `/planting-plans/${plan}/`)).toMatchObject({ bed: original });
 });
 
 test.describe('touch tablet bed picker', () => {
@@ -235,6 +352,10 @@ test.describe('touch tablet bed picker', () => {
   test('opens with a tap and commits via a full-sized option', async ({ page, request }) => {
     const { plan, nearby } = await seedBeds(page, request, 'bed-picker-touch');
     await cell(page, 'bed').tap();
+    await removeScope(page, 'Frühbeete Nord').tap();
+    await expect(removeScope(page, 'Hofgarten')).toBeVisible();
+    await beds(page).getByRole('option', { name: 'Frühbeete Nord Parzelle', exact: true }).tap();
+    await expect(removeScope(page, 'Frühbeete Nord')).toBeVisible();
     const option = beds(page).getByRole('option', { name: /Salat 2/ });
     await expect(option).toBeVisible();
     expect((await option.boundingBox())?.height).toBeGreaterThanOrEqual(44);

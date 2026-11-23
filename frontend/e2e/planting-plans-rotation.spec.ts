@@ -43,7 +43,7 @@ test.describe('planting plan crop rotation in the table', () => {
     await expect(dialog.getByRole('link', { name: /Anbaupause/ })).toHaveAttribute('href', /\/app\/crops\?cropId=\d+&action=edit/);
     await dialog.getByRole('button', { name: /Belegung von .* anzeigen/ }).click();
     await expect(dialog.getByTestId('rotation-bed-history')).toBeVisible();
-    await expect(page.getByRole('combobox', { name: 'Beete suchen' })).toHaveCount(0);
+    await expect(page.getByRole('combobox', { name: 'Standort, Parzelle, Beet suchen' })).toHaveCount(0);
     await accept.check();
     await expect(accept).toBeChecked();
     await expect(leek.locator('[data-rotation-status="accepted"]')).toHaveCount(1);

@@ -424,7 +424,7 @@ describe("PlantingPlans save-time area validation", () => {
       </DialogEditCellContext.Provider>,
     );
 
-    await screen.findByRole("combobox", { name: "Beete suchen" });
+    await screen.findByRole("combobox", { name: "Standort, Parzelle, Beet suchen" });
     await user.click(await screen.findByRole("option", { name: /^Beet B/ }));
 
     await waitFor(() => {
@@ -471,7 +471,7 @@ describe("PlantingPlans save-time area validation", () => {
         </DialogEditCellContext.Provider>,
       );
 
-      expect(screen.queryByRole("combobox", { name: "Beete suchen" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("combobox", { name: "Standort, Parzelle, Beet suchen" })).not.toBeInTheDocument();
       cell.unmount();
     } finally {
       releaseMenu();

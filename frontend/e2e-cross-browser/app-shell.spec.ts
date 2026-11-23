@@ -72,9 +72,9 @@ test.describe('app shell', () => {
 
     if (!isMobileProject(testInfo)) {
       await page.locator('[role="gridcell"][data-field="bed"]').first().dblclick();
-      const picker = page.getByRole('combobox', { name: 'Beete suchen' });
+      const picker = page.getByRole('combobox', { name: 'Standort, Parzelle, Beet suchen' });
       await expect(picker).toBeFocused();
-      const options = page.getByRole('listbox', { name: 'Beet' });
+      const options = page.getByRole('listbox', { name: 'Anbauflächen' });
       await expect(options.getByRole('option').first()).toBeVisible();
       await expectWithinViewport(page, picker, 'bed search');
       await expectWithinViewport(page, options, 'bed options');
