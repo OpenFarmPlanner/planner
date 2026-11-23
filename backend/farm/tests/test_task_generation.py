@@ -277,15 +277,37 @@ class RecurringHarvestTaskTest(TaskTimingFixture):
         self.assertEqual(generate_plan_tasks(plan), [])
 
     @patch('farm.services.tasks.timezone.localdate', return_value=date(2026, 1, 1))
-    def test_deleting_a_season_cancels_open_harvest_tasks_of_other_plans_in_it(self, _today):
+    def test_season_delete_hides_cross_season_tasks_and_restore_recovers_them(self, _today):
         self.set_window('03-12/04-09')
         later = self.period(2027)
         plan = self.plan(planting_date=date(2026, 2, 1), clearing_date=date(2028, 9, 1))
         generate_plan_tasks(plan)
         task = self.harvests(plan).get(occurrence_index=2027)
         self.assertEqual(task.season_id, later.pk)
-        response = self.client.delete(f'/openfarmplanner/api/seasons/{later.pk}/')
+        url = f'/openfarmplanner/api/seasons/{later.pk}/'
+        response = self.client.delete(url)
         self.assertEqual(response.status_code, 204)
+        filters = {'planting_plan': plan.pk, 'across_seasons': True}
+        listed = self.client.get('/openfarmplanner/api/tasks/', filters)
+        self.assertNotIn(task.pk, [row['id'] for row in listed.data['results']])
+
+        response = self.client.patch(f'/openfarmplanner/api/crops/{self.crop.pk}/', {
+            'annual_harvest_window': '03-15/04-09',
+        })
+        self.assertEqual(response.status_code, 200, response.data)
+        response = self.client.post(f'{url}undelete/')
+        self.assertEqual(response.status_code, 200, response.data)
+        task.refresh_from_db()
+        self.assertEqual((task.status, task.season_id, task.due_date), (
+            'pending', later.pk, date(2027, 3, 15),
+        ))
+        listed = self.client.get('/openfarmplanner/api/tasks/', filters)
+        self.assertIn(task.pk, [row['id'] for row in listed.data['results']])
+
+        task.status = 'cancelled'
+        task.save(update_fields=['status'])
+        self.assertEqual(self.client.delete(url).status_code, 204)
+        self.assertEqual(self.client.post(f'{url}undelete/').status_code, 200)
         task.refresh_from_db()
         self.assertEqual(task.status, 'cancelled')
 

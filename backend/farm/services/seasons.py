@@ -13,7 +13,7 @@ from typing import Any
 from django.db import transaction
 from django.db.models import Q
 
-from farm.models import EntityRevision, PlantingPlan, Project, Season, SeasonPattern
+from farm.models import EntityRevision, PlantingPlan, Project, Season, SeasonPattern, Task
 from farm.services.crop_inheritance import (
     GeneralCropIndex,
     build_general_crop_index,
@@ -637,22 +637,30 @@ def distribute_planting_plans(
 
 def synchronize_season_harvest_tasks(
     season: Season, *, previous_period: tuple[date, date] | None = None,
+    restoring: bool = False,
 ) -> None:
     start, end = season.start_date, season.end_date
     if previous_period is not None:
         start = min(start, previous_period[0])
         end = max(end, previous_period[1])
-    candidates = (
+    candidates = Q(occupied_until__gte=start) & (
+        Q(planting_date__lte=end) | Q(actual_sowing_date__lte=end)
+        | Q(actual_transplanting_date__lte=end)
+    )
+    if restoring:
+        # Plans may have been cleared and other seasons added while this one was absent.
+        prior_tasks = Task.objects.filter(
+            project_id=season.project_id, season=season, origin='automatic', occurrence_index__gt=0,
+        )
+        candidates |= Q(season_id=season.pk) | Q(pk__in=prior_tasks.values('planting_plan_id'))
+    plans = (
         PlantingPlan.objects.filter(project_id=season.project_id)
         .alias(occupied_until=PlantingPlan.occupancy_end_expression())
-        .filter(occupied_until__gte=start)
-        .filter(
-            Q(planting_date__lte=end) | Q(actual_sowing_date__lte=end)
-            | Q(actual_transplanting_date__lte=end),
-        )
+        .filter(candidates)
     )
     synchronize_recurring_harvest_tasks(
-        candidates, new_season_id=season.pk if previous_period is None else None,
+        plans, new_season_id=season.pk if previous_period is None and not restoring else None,
+        fill_past_occurrences=restoring,
     )
 
 
@@ -953,12 +961,7 @@ def restore_season_contents(season: Season, batch, *, user_name: str) -> None:
 
     with internal_project_versions(), revision_batch(batch):
         restore_season_planting_plans(season.project, season, batch, user_name=user_name)
-        synchronize_season_harvest_tasks(season)
-        # Other seasons could have been created while these source plans were absent.
-        synchronize_recurring_harvest_tasks(
-            PlantingPlan.objects.filter(project_id=season.project_id, season=season),
-            fill_past_occurrences=True,
-        )
+        synchronize_season_harvest_tasks(season, restoring=True)
 
 
 @transaction.atomic

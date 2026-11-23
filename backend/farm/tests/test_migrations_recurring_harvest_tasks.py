@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import UTC, date, datetime
 from importlib import import_module
 from typing import ClassVar
 
@@ -18,6 +18,7 @@ class TestRecurringHarvestTasksMigration(MigrationTestBase):
     def seed_before_migration(cls, apps: Apps) -> None:
         project = apps.get_model('farm', 'Project').objects.create(
             name='Legacy perennial task project', slug='legacy-perennial-tasks',
+            deleted_at=datetime(2025, 6, 1, tzinfo=UTC),
         )
         species = apps.get_model('crops', 'CropSpecies').objects.create(name='Perennial task crop')
         crops = apps.get_model('farm', 'Crop').objects
@@ -68,6 +69,7 @@ class TestRecurringHarvestTasksMigration(MigrationTestBase):
         assert pending.due_date == pending.calculated_due_date == date(2025, 1, 3)
         assert pending.season.start_date == date(2024, 9, 1)
         assert pending.planting_plan_id == legacy.planting_plan_id
+        assert pending.project.deleted_at is not None
 
     def test_replay_keeps_task_ids(self) -> None:
         task_model = self.new_apps.get_model('farm', 'Task')

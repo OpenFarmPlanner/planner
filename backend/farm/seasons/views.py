@@ -150,9 +150,7 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             season.save(update_fields=["deleted_at", "updated_at"])
             with internal_project_versions():
                 self._delete_planting_plans_with_season(season, batch)
-            synchronize_season_harvest_tasks(
-                season, previous_period=(season.start_date, season.end_date),
-            )
+            # Tasks of other plans stay attached to this temporarily hidden season.
             self.record_revision(
                 season,
                 EntityRevision.ACTION_DELETED,

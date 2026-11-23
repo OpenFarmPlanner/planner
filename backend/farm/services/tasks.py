@@ -196,9 +196,9 @@ def _reconcile_harvest_tasks(
 ) -> list[Task]:
     expected = _harvest_task_dates(plan, schedule)
     stored = {
-        task.occurrence_index: task for task in Task.objects.select_for_update().filter(
+        task.occurrence_index: task for task in Task.objects.select_related('season').filter(
             project_id=plan.project_id, source_key=f'plan:{plan.pk}:event:harvest_start',
-        )
+        ).select_for_update(of=('self',))
     }
     _adopt_legacy_harvest_task(stored, expected, schedule)
     if new_season_id is not None:
@@ -221,7 +221,8 @@ def _reconcile_harvest_tasks(
                 'crop_id': plan.crop_id, 'occurrence_index': year,
             })
     for task in stored.values() if new_season_id is None else ():
-        if _can_reschedule_harvest(task, preserve_before):
+        hidden_season = task.season is not None and task.season.deleted_at is not None
+        if not hidden_season and _can_reschedule_harvest(task, preserve_before):
             _save_synchronized_task(task, {'status': 'cancelled', 'calculated_due_date': None})
     return created
 

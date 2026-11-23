@@ -173,8 +173,7 @@ def backfill_tasks(apps: Apps, schema_editor: BaseDatabaseSchemaEditor) -> None:
     alias = schema_editor.connection.alias
     plans = apps.get_model('farm', 'PlantingPlan').objects.using(alias).filter(
         season__isnull=False, season__deleted_at__isnull=True, season__project_id=F('project_id'),
-        crop__project_id=F('project_id'), planting_date__isnull=False,
-        project__is_active=True, project__deleted_at__isnull=True,
+        crop__project_id=F('project_id'), planting_date__isnull=False, project__is_active=True,
     ).filter(
         Q(crop__life_cycle='perennial') | Q(crop__crop_species__isnull=False),
     )
