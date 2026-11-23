@@ -58,7 +58,7 @@
       "occupancy": "Ocupação do canteiro"
     },
     "seasonalHarvest": "Colheita prevista para a época",
-    "noSeasonalHarvest": "Não está prevista nenhuma colheita para esta época.",
+    "noSeasonalHarvest": "Não está prevista nenhuma colheita no período visível.",
     "recordedPlantingEdit": "A sementeira ou a plantação foi registada. Edite as datas previstas no plano de cultivo.",
     "actualHarvestEnd": "Fim de colheita mais tardio",
     "clearingDate": "Data de fim da cultura"

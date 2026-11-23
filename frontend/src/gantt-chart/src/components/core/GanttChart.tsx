@@ -48,6 +48,7 @@ const GanttChart = forwardRef<GanttChartRef, GanttChartProps>(
       tasks = [],
       startDate: customStartDate,
       endDate: customEndDate,
+      calendarDateAxis,
       title,
       currentDate = new Date(),
       showCurrentDateMarker = true,
@@ -144,8 +145,8 @@ const GanttChart = forwardRef<GanttChartRef, GanttChartProps>(
     // Calculate timeline bounds
     const derivedStartDate = customStartDate || findEarliestDate(tasks);
     const derivedEndDate = customEndDate || findLatestDate(tasks);
-    const alignCalendarDates = Boolean(renderTimelineRow)
-      || tasks.some(group => group?.tasks?.some(task => task.phaseBands));
+    const alignCalendarDates = calendarDateAxis || Boolean(renderTimelineRow)
+      || tasks.some(group => group?.tasks?.some(task => task.useCalendarDateScale || task.phaseBands));
     const columnStart = alignCalendarDates ? toLocalCalendarDate(derivedStartDate) : derivedStartDate;
     const columnEnd = alignCalendarDates ? toLocalCalendarDate(derivedEndDate) : derivedEndDate;
 

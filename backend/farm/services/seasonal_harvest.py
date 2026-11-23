@@ -61,10 +61,7 @@ def seasonal_harvest_payload(
         return value if value and season.start_date <= value <= season.end_date else None
 
     return {
-        'periods': [
-            {'start_date': projection.start_date, 'end_date': projection.end_date}
-            for projection in schedule.project(season.start_date, season.end_date)
-        ],
+        'periods': schedule.periods(season.start_date, season.end_date),
         'occupancy_start_date': schedule.occupied_from,
         'planting_recorded': schedule.planting_recorded,
         'actual_start_date': within_season(plan.actual_harvest_start_date),
@@ -222,6 +219,12 @@ class RecurringHarvestSchedule:
             'override': _period(override),
             'conflict': bool(override and self.effective_override(year) is None),
         }
+
+    def periods(self, start_date: date, end_date: date) -> list[SeasonalHarvestPeriod]:
+        return [
+            {'start_date': projection.start_date, 'end_date': projection.end_date}
+            for projection in self.project(start_date, end_date)
+        ]
 
     def project(self, start_date: date, end_date: date) -> list[HarvestProjection]:
         """Intersect the annual windows, eligibility, occupancy and requested period."""

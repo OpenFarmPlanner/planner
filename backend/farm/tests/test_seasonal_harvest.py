@@ -9,6 +9,7 @@ from farm.services.seasonal_harvest import recurring_harvest_schedule
 from farm.tests.api_base import ProjectApiTestCase
 
 PLANS = '/openfarmplanner/api/planting-plans/'
+CALENDAR_WINDOWS = f'{PLANS}calendar-harvest-windows/'
 FORECAST = '/openfarmplanner/api/yield-calendar/'
 
 
@@ -87,6 +88,14 @@ class SeasonalHarvestTest(ProjectApiTestCase):
                 if year == 2027:
                     self.assertEqual(row['actual_harvest']['forecast_kg'], '40')
 
+        calendar = self.client.get(CALENDAR_WINDOWS, {
+            'start_date': '2026-09-01', 'end_date': '2028-10-31',
+        }, HTTP_X_SEASON_ID=str(seasons[2026].pk))
+        self.assertEqual(calendar.status_code, 200, calendar.data)
+        self.assertEqual(calendar.json(), {
+            str(plan.pk): expected_windows[2027] + expected_windows[2028],
+        })
+
         comparison = self.comparison(variety)
         totals = {2025: None, 2026: None, 2027: '40', 2028: '8.89', 2029: None}
         for year, total in totals.items():
@@ -133,6 +142,36 @@ class SeasonalHarvestTest(ProjectApiTestCase):
         self.assertEqual([(part.start_date, part.end_date) for part in projections], [
             (date(2026, 1, 1), date(2026, 1, 10)),
             (date(2026, 12, 20), date(2026, 12, 31)),
+        ])
+
+    def test_calendar_projection_uses_overrides_beyond_a_non_calendar_season(self) -> None:
+        origin = self.season(date(2024, 9, 1), date(2025, 8, 31))
+        active = self.season(date(2025, 9, 1), date(2026, 8, 31))
+        crop = self.crop_with_window('12-20/01-10')
+        plan = PlantingPlan.objects.create(
+            project=self.project, crop=crop, bed=self.bed, season=origin,
+            planting_date=date(2025, 3, 15), clearing_date=date(2028, 1, 4),
+            area_usage_sqm=8,
+            harvest_window_overrides={
+                '2026': {'start_date': '2026-12-25', 'end_date': '2027-01-15'},
+            },
+        )
+        headers = {'HTTP_X_SEASON_ID': str(active.pk)}
+        response = self.client.get(CALENDAR_WINDOWS, {
+            'start_date': '2026-01-05', 'end_date': '2028-01-20',
+        }, **headers)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.json(), {str(plan.pk): [
+            {'start_date': '2026-01-05', 'end_date': '2026-01-10'},
+            {'start_date': '2026-12-25', 'end_date': '2027-01-15'},
+            {'start_date': '2027-12-20', 'end_date': '2028-01-04'},
+        ]})
+        invalid = self.client.get(CALENDAR_WINDOWS, {
+            'start_date': '2028-01-20', 'end_date': '2026-01-05',
+        }, **headers)
+        self.assertEqual(invalid.status_code, 400)
+        self.assertEqual(self.client.get(f'{PLANS}{plan.pk}/', **headers).json()['seasonal_harvest']['periods'], [
+            {'start_date': '2025-12-20', 'end_date': '2026-01-10'},
         ])
 
     def test_actual_planting_anniversaries_and_leap_boundaries(self) -> None:

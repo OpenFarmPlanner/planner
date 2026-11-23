@@ -58,7 +58,7 @@
       "occupancy": "Bedbezetting"
     },
     "seasonalHarvest": "Geplande seizoensoogst",
-    "noSeasonalHarvest": "Voor dit seizoen is geen oogst gepland.",
+    "noSeasonalHarvest": "In de zichtbare periode is geen oogst gepland.",
     "recordedPlantingEdit": "Het echte zaai- of plantmoment is vastgelegd. Bewerk de geplande datums in het teeltplan.",
     "actualHarvestEnd": "Oogst eindigt uiterlijk",
     "clearingDate": "Einddatum teelt"

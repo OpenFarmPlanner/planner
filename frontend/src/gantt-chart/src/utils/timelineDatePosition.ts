@@ -1,4 +1,5 @@
-import { add, type Duration } from 'date-fns';
+import { add, endOfMonth, endOfQuarter, endOfYear, startOfMonth, startOfQuarter, startOfYear, type Duration } from 'date-fns';
+import { addUtcDays } from '../../../utils/isoDate';
 import { ViewMode } from '../types/enums';
 
 const durations: Record<Exclude<ViewMode, typeof ViewMode.MINUTE>, Duration> = {
@@ -14,6 +15,30 @@ const DAY_MS = 86_400_000;
 
 export function toLocalCalendarDate(date: Date): Date {
   return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+/** Inclusive date-only bounds of the first and last rendered calendar columns. */
+export function getCalendarAxisBounds(start: Date, end: Date, mode: ViewMode): { start: Date; end: Date } {
+  if (mode === ViewMode.WEEK) {
+    // Week columns are anchored to the first calendar date, not an ISO weekday.
+    const wholeWeeks = Math.floor((end.getTime() - start.getTime()) / (DAY_MS * 7));
+    return { start, end: addUtcDays(start, wholeWeeks * 7 + 6) };
+  }
+
+  const columnBounds = {
+    [ViewMode.MONTH]: [startOfMonth, endOfMonth],
+    [ViewMode.QUARTER]: [startOfQuarter, endOfQuarter],
+    [ViewMode.YEAR]: [startOfYear, endOfYear],
+  } as const;
+  if (mode !== ViewMode.MONTH && mode !== ViewMode.QUARTER && mode !== ViewMode.YEAR) {
+    return { start, end };
+  }
+  const [floor, ceiling] = columnBounds[mode];
+  const toUtcDate = (date: Date) => new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  return {
+    start: toUtcDate(floor(toLocalCalendarDate(start))),
+    end: toUtcDate(ceiling(toLocalCalendarDate(end))),
+  };
 }
 
 export interface TimelineDateScale {

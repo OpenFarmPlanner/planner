@@ -744,7 +744,7 @@ class PlantingPlanDetailSerializer(PlantingPlanSerializer):
         }
 
 
-class HarvestWindowOverrideSerializer(serializers.Serializer):
+class HarvestDateRangeSerializer(serializers.Serializer):
     start_date = serializers.DateField()
     end_date = serializers.DateField()
 
