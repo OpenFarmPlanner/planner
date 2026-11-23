@@ -83,7 +83,7 @@ test('crop detail lists keep localized values and actions usable at narrow width
       await expect(offer.getByText(product, { exact: true })).toBeVisible();
       await expect(offer.getByText(notes)).toHaveCSS('white-space', 'pre-wrap');
       await expect(offer.getByText('25 ' + text.detail.packageUnits.grams, { exact: false })).toContainText('250 ' + text.detail.packageUnits.seeds);
-      await expect(offer.getByText(text.supplierData.price + ': 0', { exact: true })).toBeVisible();
+      await expect(offer.getByText(text.supplierData.legacyPrice.replace('{{amount}}', '0'), { exact: true })).toBeVisible();
       await expect(taskSection.getByRole('button', { name: text.taskTemplates.add, exact: true })).toBeEnabled();
       await expect(supplierSection.getByRole('button', { name: text.form.addSupplierData, exact: true })).toBeEnabled();
 
