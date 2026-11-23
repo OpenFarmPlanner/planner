@@ -13,7 +13,7 @@ async function seedPlans(page: Page, request: APIRequestContext, scenario: strin
   const field = await create('/fields/', { location: location.id, name: 'Testparzelle' });
   const bed = await create('/beds/', { field: field.id, name: 'Versuchsbeet', length_m: 15, width_m: 1 });
   const crop = await create('/crops/', {
-    name: 'Terminkohl', cultivation_type: 'pre_cultivation', cultivation_types: ['pre_cultivation'],
+    name: 'Terminkohl', cultivation_type: 'pre_cultivation', cultivation_types: ['pre_cultivation', 'direct_sowing'],
     propagation_duration_days: 21, growth_duration_days: 30, harvest_duration_days: 10,
   });
   const seed = (plannedDate: string, actualDate: string | null, harvest: string | null) => create('/planting-plans/', {
@@ -167,15 +167,19 @@ test('the grid sorts, filters and edits the displayed dates without writing plan
   await expect(firstActual).toHaveAttribute('aria-invalid', 'true');
   await expect(firstActual).toHaveAccessibleDescription('Gib ein gültiges Datum ein.');
   expect(writes).toEqual([]);
-  await firstActual.fill('05.04.2026');
+  await firstActual.press('Escape');
+  await firstCell.press('1');
+  await expect(firstActual).toBeFocused();
+  await page.keyboard.type('5.04.2026');
+  await expect(firstActual).toHaveValue('15.04.2026');
   await firstActual.press('Tab');
-  await expect(firstCell).toHaveText('5.4.2026');
+  await expect(firstCell).toHaveText('15.4.2026');
   await firstCell.dblclick();
   await firstActual.fill('');
   await firstActual.press('ControlOrMeta+s');
   await expect(firstCell).toHaveText('4.4.2026');
   expect(writes).toEqual([
-    { method: 'PATCH', body: { actual_transplanting_date: '2026-04-05', project } },
+    { method: 'PATCH', body: { actual_transplanting_date: '2026-04-15', project } },
     { method: 'PATCH', body: { actual_transplanting_date: null, project } },
   ]);
   expect(await apiRequest(page, 'GET', `/planting-plans/${first.id}/`)).toMatchObject({
@@ -209,6 +213,28 @@ test('the grid sorts, filters and edits the displayed dates without writing plan
     harvest_date: '2026-06-08',
     actual_harvest_start_date: '2026-06-05',
     recorded_harvest_end_date: '2026-06-12',
+  });
+
+  const cultivationType = secondRow.locator('[data-field="cultivation_type"]');
+  await cultivationType.dblclick();
+  await page.getByRole('option', { name: 'Direktsaat', exact: true }).click();
+  await expect(secondRow).toHaveClass(/MuiDataGrid-row--editing/);
+  expect(await apiRequest(page, 'GET', `/planting-plans/${second.id}/`)).toMatchObject({
+    cultivation_type: 'pre_cultivation',
+  });
+  const draftDate = secondRow.locator('[data-field="planting_date"]');
+  await draftDate.dblclick();
+  const draftInput = draftDate.getByRole('textbox', { name: 'Ist-Aussaattermin' });
+  await draftInput.fill('17.04.2026');
+  await draftInput.press('Enter');
+  await expect(draftInput).toHaveCount(0);
+  expect(await apiRequest(page, 'GET', `/planting-plans/${second.id}/`)).toMatchObject({
+    cultivation_type: 'pre_cultivation', actual_sowing_date: '2026-04-17', actual_transplanting_date: '2026-03-20',
+  });
+  await draftDate.press('ControlOrMeta+s');
+  await expect(secondRow).not.toHaveClass(/MuiDataGrid-row--editing/);
+  expect(await apiRequest(page, 'GET', `/planting-plans/${second.id}/`)).toMatchObject({
+    cultivation_type: 'direct_sowing', actual_sowing_date: '2026-04-17', actual_transplanting_date: '2026-03-20',
   });
 
   const directCrop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {

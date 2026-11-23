@@ -101,7 +101,9 @@ function DateEditCellComponent(params: GridRenderEditCellParams & DateEditCellBo
   const isProgrammaticFocusRef = useRef(false);
   const [text, setText] = useState(() => params.standalone?.initialText
     ?? formatDateAsGerman(params.value as Date | string | null));
-  const [activeSegment, setActiveSegment] = useState<DateSegment>('day');
+  const [activeSegment, setActiveSegment] = useState<DateSegment | null>(
+    () => params.standalone?.initialText === undefined ? 'day' : null,
+  );
   const displayedText = params.hasFocus || params.standalone
     ? text
     : formatDateAsGerman(params.value as Date | string | null);
@@ -132,9 +134,14 @@ function DateEditCellComponent(params: GridRenderEditCellParams & DateEditCellBo
     // adjustment. This effect also re-fires on every segment change
     // (Left/Right arrow), so it's not a one-time mount focus either.
     isProgrammaticFocusRef.current = true;
-    inputRef.current?.focus({ preventScroll: true });
+    const input = inputRef.current;
+    input?.focus({ preventScroll: true });
     isProgrammaticFocusRef.current = false;
-    focusSegment(activeSegment);
+    if (activeSegment) {
+      focusSegment(activeSegment);
+    } else if (input) {
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
   }, [activeSegment, focusSegment, params.hasFocus]);
 
   const { api, field, id, onCommitted, standalone } = params;
@@ -273,7 +280,7 @@ function DateEditCellComponent(params: GridRenderEditCellParams & DateEditCellBo
             enterKeyHint: params.standalone ? 'done' : undefined,
             readOnly: params.standalone?.readOnly,
             onFocus: (event: FocusEvent<HTMLInputElement>) => {
-              if (isProgrammaticFocusRef.current) {
+              if (isProgrammaticFocusRef.current || activeSegment === null) {
                 return;
               }
               selectSegment(getSegmentFromSelection(event.currentTarget.selectionStart));

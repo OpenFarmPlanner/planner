@@ -42,7 +42,8 @@ function Harness({ activity = 'transplanting', actual = null, suggested = planne
   }}>
     <button onClick={() => setToken(previous => previous + 1)}>Edit cell</button>
     <div role="gridcell">
-      <ActualPlanDateCell params={params} dates={{ activity, actual, planned: suggested }} onSaveActual={save}>
+      <ActualPlanDateCell params={params} getEditDates={() => ({ activity, actual, planned: suggested })}
+        onSaveActual={(_activity, value) => save(value)}>
         {actual ?? '—'}
       </ActualPlanDateCell>
     </div>

@@ -770,13 +770,16 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   ), [displayDateMode]);
 
   const renderDateCell = useCallback((params: GridRenderCellParams<PlantingPlanRow>, renderPlanned: () => ReactNode) => {
-    const dates = getColumnDates(params.row, params.field as PlantingPlanDateColumn);
+    const field = params.field as PlantingPlanDateColumn;
+    const dates = getColumnDates(params.row, field);
     const editable = isActualDateEditor(params.row, params.field);
     const cell = displayDateMode === 'actual' || (displayDateMode === 'combined' && dates.actual)
       ? <RecordedPlanDateCell dates={dates} hasFocus={params.hasFocus} editable={editable} />
       : renderPlanned();
-    return editable ? <ActualPlanDateCell key={displayDateMode} dates={dates} params={params}
-      onSaveActual={value => saveActualDate(params.row.id, dates.activity, value)}>{cell}</ActualPlanDateCell> : cell;
+    return editable ? <ActualPlanDateCell key={displayDateMode} params={params}
+      getEditDates={() => params.api.getRowMode(params.id) === 'edit'
+        ? getColumnDates(params.api.getRowWithUpdatedValues(params.id, field) as PlantingPlanRow, field) : dates}
+      onSaveActual={(activity, value) => saveActualDate(params.row.id, activity, value)}>{cell}</ActualPlanDateCell> : cell;
   }, [displayDateMode, getColumnDates, isActualDateEditor, saveActualDate]);
 
   const plannedDateLabel = useCallback((row: PlantingPlanRow, field: PlantingPlanDateColumn) => {
