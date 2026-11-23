@@ -153,6 +153,7 @@ description), one level down:
   and task dates untouched. A current-season task
   may link to the original plan while the crop occupies an assigned bed.
   Plan details show the lifetime harvest occurrences in pages of up to 20 years.
+  A recorded occurrence remains available if a later change shortens the forecast.
   In the originating
   season, open **Harvest windows by year** to replace the calculated dates for
   one occurrence or reset its saved dates. The occurrence key is the calendar

@@ -208,6 +208,33 @@ class ActualHarvestDatesTest(ProjectApiTestCase):
         plan.refresh_from_db()
         self.assertEqual(list(plan.harvest_occurrence_actuals["occurrences"]), ["2026"])
 
+    def test_lifetime_pages_keep_recorded_years_after_the_forecast_is_shortened(self):
+        origin = self.season("2025-01-01", "2025-12-31")
+        later = self.season("2052-01-01", "2052-12-31")
+        plan = self.perennial(origin, "09-01/10-15")
+        plan.clearing_date = date(2055, 1, 1)
+        plan.save(update_fields=["clearing_date"])
+        recorded = self.edit(plan, later, year=2052, start_date="2052-09-02")
+        self.assertEqual(recorded.status_code, 200, recorded.data)
+        plan.clearing_date = date(2027, 12, 31)
+        plan.save(update_fields=["clearing_date"])
+        page = self.details(plan, origin)["harvest_windows_by_year"]
+        self.assertEqual([item["year"] for item in page["occurrences"]], [2025, 2026, 2027])
+        self.assertEqual(page["next_year"], 2052)
+        response = self.client.get(
+            f"{PLANS}{plan.pk}/",
+            {"across_seasons": "true", "record_season": origin.pk, "harvest_year": 2052},
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        (old,) = response.json()["harvest_windows_by_year"]["occurrences"]
+        self.assertEqual(old["year"], 2052)
+        self.assertIsNone(old["default"])
+        self.assertEqual(old["actual_start_date"], "2052-09-02")
+        self.assertEqual(
+            self.details(plan, later)["harvest_actual_occurrences"][0]["actual_start_date"],
+            "2052-09-02",
+        )
+
     def test_scoped_edit_rejects_foreign_irrelevant_and_archived_seasons(self):
         origin = self.season("2025-01-01", "2025-12-31")
         later = self.season("2026-01-01", "2026-12-31")

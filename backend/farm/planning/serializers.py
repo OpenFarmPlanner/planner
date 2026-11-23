@@ -41,6 +41,7 @@ from farm.services.seasonal_harvest import (
     HarvestOccurrencesPage,
     RecurringHarvestSchedule,
     SeasonalHarvestPayload,
+    harvest_occurrence_page,
     one_off_harvest_actuals,
     recurring_harvest_actuals,
     recurring_harvest_schedule,
@@ -764,7 +765,7 @@ class PlantingPlanDetailSerializer(PlantingPlanSerializer):
             year = schedule.year_for_season(season) if season is not None else None
             if season is None or obj.season_id == season.pk:
                 year = schedule.first_conflicting_year() or year
-        return schedule.occurrence_details(year, actuals=recurring_harvest_actuals(obj, schedule))
+        return harvest_occurrence_page(obj, schedule, year)
 
     def get_crop_available(self, obj: PlantingPlan) -> bool:
         return bool(obj.crop and obj.crop.deleted_at is None)

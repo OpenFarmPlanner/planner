@@ -62,7 +62,7 @@ from farm.services.crop_rotation import RotationService, suggest_beds
 from farm.services.germination_check import check_germination
 from farm.services.seasonal_harvest import (
     early_recorded_perennial_plan_ids,
-    recurring_harvest_actuals,
+    harvest_occurrence_page,
     recurring_harvest_schedule,
     seasonal_harvest_payload,
 )
@@ -771,9 +771,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             self.record_revision(plan, EntityRevision.ACTION_UPDATED, previous_snapshot=before)
             schedule = recurring_harvest_schedule(plan, crop_index)
         return Response({
-            'harvest_windows_by_year': schedule.occurrence_details(
-                occurrence_year, actuals=recurring_harvest_actuals(plan, schedule),
-            ),
+            'harvest_windows_by_year': harvest_occurrence_page(plan, schedule, occurrence_year),
             'seasonal_harvest': (
                 seasonal_harvest_payload(plan, season, schedule) if season else None
             ),
