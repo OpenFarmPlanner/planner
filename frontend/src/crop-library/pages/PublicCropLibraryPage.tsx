@@ -80,7 +80,7 @@ import { CropForm } from '../../crops/CropForm';
 import { CropTitleSelectorButton } from '../../crops/CropTitleSelectorButton';
 import { CropVarietiesOverview } from '../../crops/CropVarietiesOverview';
 import {
-  buildPublicCropUpdatePayload,
+  buildPublicCropEditChanges,
   publicCropToCropFormData,
 } from '../../crops/publicCropFormAdapter';
 import { useCommandContextTag, useRegisterCommands } from '../../commands/useCommandContext';
@@ -1107,6 +1107,7 @@ export default function PublicCropLibraryPage() {
     if (!selectedCrop || blockInGuestDemo('cropLibraryEdit')) {
       return;
     }
+    setDescriptionDrafts(buildPublicCropDescriptionDrafts(selectedCrop));
     setEditDialogOpen(true);
   }, [blockInGuestDemo, selectedCrop]);
 
@@ -1286,35 +1287,43 @@ export default function PublicCropLibraryPage() {
     _firstVariety?: unknown,
     companions?: CompanionFormRow[],
   ): Promise<void> => {
-    if (!selectedCrop) {
+    if (!selectedCrop || !editFormCrop) {
       return;
     }
     try {
-      const draftWithOriginalNotes = {
-        ...draft,
-        notes: descriptionDrafts[selectedCropOriginalLanguageCode] ?? '',
-      };
-      const response = await publicCropAPI.update(selectedCrop.id, {
-        ...buildPublicCropUpdatePayload(draftWithOriginalNotes, selectedCrop.version),
-        ...(companions ? { companions: formRowsToLibraryItems(companions) } : {}),
-      });
-
-      let updatedCrop = response.data;
       const initialDrafts = buildPublicCropDescriptionDrafts(selectedCrop);
+      const changes = buildPublicCropEditChanges(
+        { ...editFormCrop, notes: initialDrafts[selectedCropOriginalLanguageCode] ?? '' },
+        { ...draft, notes: descriptionDrafts[selectedCropOriginalLanguageCode] ?? '' },
+        selectedCrop.version,
+      );
+      if (companions) changes.companions = formRowsToLibraryItems(companions);
+
       const currentTranslationChanged = currentLanguageCode !== selectedCropOriginalLanguageCode
         && (descriptionDrafts[currentLanguageCode] ?? '') !== (initialDrafts[currentLanguageCode] ?? '');
+      let updatedCrop: PublicCrop | undefined;
       if (currentTranslationChanged) {
         await publicCropAPI.updateTranslations(selectedCrop.id, {
           [currentLanguageCode]: descriptionDrafts[currentLanguageCode] ?? '',
         });
-        const refreshedResponse = await publicCropAPI.get(selectedCrop.id);
-        updatedCrop = refreshedResponse.data;
+        updatedCrop = (await publicCropAPI.get(selectedCrop.id)).data;
       }
 
-      upsertCropInList(updatedCrop);
+      let message = t('library.page.edit.success');
+      if (Object.keys(changes).length > 0) {
+        const { data } = await publicCropAPI.update(selectedCrop.id, {
+          ...changes, base_version: selectedCrop.version,
+        });
+        if ('proposed_data' in data) {
+          message = t('library.libraryAction.proposalPendingTooltip');
+        } else {
+          updatedCrop = data;
+        }
+      }
+      if (updatedCrop) upsertCropInList(updatedCrop);
       setEditDialogOpen(false);
-      await reloadCollaboration(updatedCrop.id);
-      showGlobalSnackbar({ message: t('library.page.edit.success'), severity: 'success' });
+      await reloadCollaboration(selectedCrop.id);
+      showGlobalSnackbar({ message, severity: 'success' });
     } catch (error) {
       if (
         axios.isAxiosError(error)

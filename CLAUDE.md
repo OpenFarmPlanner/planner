@@ -422,6 +422,7 @@ or changing a public page:
   `git@github.com:OpenFarmPlanner/planner.git`
 - If origin uses HTTPS and a push is requested, switch to SSH.
 - Assume SSH works unless push errors indicate otherwise.
+- Fetch `origin/main` before starting an implementation and create the feature or fix branch from that commit. Fetch again before opening the pull request. If main has advanced, rebase and rerun the affected checks.
 - Never commit directly to `main`. Always work on a feature/fix branch and open a pull request, even for small changes.
 - Use Conventional Commits only:
   `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`, `build`, `perf`.
