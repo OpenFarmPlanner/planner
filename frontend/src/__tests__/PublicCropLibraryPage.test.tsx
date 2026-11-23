@@ -2069,9 +2069,8 @@ describe('PublicCropLibraryPage', () => {
   it('edits public crops with the shared crop form and public-library save shortcut', async () => {
     const user = userEvent.setup();
     authMocks.user.is_staff = true;
-    renderPage();
+    renderPage(['/app/crop-library?cropId=1']);
 
-    await user.click(await screen.findByRole('option', { name: 'Tomate (Roma)' }));
     await screen.findByRole('heading', { level: 2, name: 'Tomate' });
     await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
 
@@ -2101,16 +2100,50 @@ describe('PublicCropLibraryPage', () => {
     });
 
     await waitFor(() => expect(publicCropApiMocks.update).toHaveBeenCalledTimes(1));
-    expect(publicCropApiMocks.update).toHaveBeenCalledWith(1, expect.objectContaining({
+    expect(publicCropApiMocks.update).toHaveBeenCalledWith(1, {
       base_version: 1,
       variety: 'Roma VF',
       notes: 'Aktualisierte Notizen.',
       display_color: '#123456',
-      row_spacing_m: null,
-    }));
+    });
     expect(publicCropApiMocks.update.mock.calls[0][1]).not.toHaveProperty('name');
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Öffentliche Kultur bearbeiten' })).not.toBeInTheDocument());
   }, 30000);
+
+  it('submits only the edited harvest duration and keeps the published crop while awaiting approval', async () => {
+    const user = userEvent.setup();
+    publicCropApiMocks.update.mockResolvedValueOnce({
+      status: 202, data: { id: 97, public_crop: 1, proposed_data: { harvest_duration_days: 4 } },
+    });
+    renderPage(['/app/crop-library?cropId=1']);
+    await user.click(await screen.findByRole('button', { name: 'Bearbeiten' }));
+    const dialog = within(await screen.findByRole('dialog', { name: 'Öffentliche Kultur bearbeiten' }));
+    fireEvent.change(dialog.getByRole('spinbutton', { name: 'Erntezeit (Tage)' }), { target: { value: '4' } });
+    const snackbar = new Promise<GlobalSnackbarDetail>(resolve => {
+      window.addEventListener(GLOBAL_SNACKBAR_EVENT, event => resolve((event as CustomEvent).detail), { once: true });
+    });
+    await user.click(dialog.getByRole('button', { name: 'Speichern' }));
+    expect(publicCropApiMocks.update).toHaveBeenCalledWith(1, { base_version: 1, harvest_duration_days: 4 });
+    expect(await snackbar).toMatchObject({ message: 'Deine Änderungen an der Kulturbibliothek warten auf Freigabe.' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText('28 Tage')).toBeVisible();
+    expect(screen.getByLabelText('current route')).toHaveTextContent('cropId=1');
+  });
+
+  it('saves a translation-only edit without submitting an empty crop proposal', async () => {
+    await i18n.changeLanguage('en');
+    const user = userEvent.setup();
+    renderPage(['/app/crop-library?cropId=1']);
+
+    await user.click(await screen.findByRole('button', { name: 'Edit' }));
+    const dialog = within(await screen.findByRole('dialog', { name: 'Edit public crop' }));
+    fireEvent.change(dialog.getByLabelText('English translation'), { target: { value: 'A robust variety.' } });
+    await user.click(dialog.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(publicCropApiMocks.updateTranslations).toHaveBeenCalledWith(1, { en: 'A robust variety.' });
+    expect(publicCropApiMocks.update).not.toHaveBeenCalled();
+  });
 
   it('keeps the public crop variety read-only for non-admin contributors', async () => {
     const user = userEvent.setup();

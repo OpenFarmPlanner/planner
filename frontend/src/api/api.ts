@@ -351,7 +351,7 @@ export const publicCropAPI = {
   },
   get: (id: number) => http.get<PublicCrop>(`/public-crops/${id}/`),
   update: (id: number, data: Partial<PublicCrop> & { base_version?: number }) =>
-    http.patch<PublicCrop>(`/public-crops/${id}/`, data),
+    http.patch<PublicCrop | PublicCropChangeProposal>(`/public-crops/${id}/`, data),
   match: (params: { name: string; variety: string }, signal?: AbortSignal) =>
     http.get<PublicCropMatchResponse>('/public-crops/match/', { params, signal }),
   // `unpinFields` releases those pins of the existing copy so the update takes

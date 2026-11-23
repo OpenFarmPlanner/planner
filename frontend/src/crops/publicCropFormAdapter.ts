@@ -8,6 +8,7 @@ import {
   normalizeSeedingRequirementType,
   normalizeSeedRateUnit,
 } from './enumNormalization';
+import { buildInitialFormData } from './cropFormDraft';
 import { buildSeedRateByCultivation } from './seedRatePayload';
 import { centimetersToMeters, metersToRoundedCentimeters } from '../utils/measurementConversion';
 
@@ -70,6 +71,7 @@ export function publicCropToCropFormData(crop: PublicCrop): Crop {
     name: crop.name,
     crop_species: crop.crop_species ?? null,
     variety: crop.variety ?? '',
+    botanical_name: crop.botanical_name ?? '',
     notes: originalNotes,
     crop_family: crop.crop_family ?? null,
     seed_type: crop.seed_type ?? '',
@@ -166,6 +168,7 @@ export function buildPublicCropUpdatePayload(
   return {
     base_version: baseVersion,
     variety: draft.variety ?? '',
+    botanical_name: draft.botanical_name ?? '',
     notes: draft.notes ?? '',
     crop_family: draft.crop_family || null,
     // A blank variety marks the species-level entry, which holds no seed type.
@@ -216,4 +219,20 @@ export function buildPublicCropUpdatePayload(
     display_color: draft.display_color ?? '',
     seed_packages: draft.seed_packages ?? [],
   };
+}
+
+export function buildPublicCropEditChanges(initial: Crop, draft: Crop, version: number): Partial<PublicCrop> {
+  const baseline = buildPublicCropUpdatePayload({
+    ...initial,
+    ...buildInitialFormData(initial),
+    notes: initial.notes,
+  }, version);
+  const payload = buildPublicCropUpdatePayload(draft, version);
+  const changes: Partial<PublicCrop> = Object.fromEntries(
+    Object.entries(payload).filter(([field, value]) =>
+      JSON.stringify(value) !== JSON.stringify(baseline[field as keyof typeof baseline])),
+  );
+  // Older clients send only the minimum to set both ends of the range.
+  if ('sowing_depth_m' in changes) changes.sowing_depth_max_m = payload.sowing_depth_max_m;
+  return changes;
 }

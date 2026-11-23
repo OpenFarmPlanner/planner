@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PublicCrop, Crop } from '../api/types';
-import { buildPublicCropUpdatePayload, publicCropToCropFormData } from '../crops/publicCropFormAdapter';
+import { buildPublicCropEditChanges, buildPublicCropUpdatePayload, publicCropToCropFormData } from '../crops/publicCropFormAdapter';
 
 const buildPublicCrop = (overrides: Partial<PublicCrop>): PublicCrop => ({
   id: 1,
@@ -194,4 +194,18 @@ it('retains official plant-health identities and prose while editing other publi
   expect(form.plant_health).toEqual(plant_health);
   expect(buildPublicCropUpdatePayload({ ...form, notes: 'Other edit' }, 3)).toMatchObject({ plant_health, pests_diseases: 'Early sowing protects against carrot fly.' });
   expect(buildPublicCropUpdatePayload({ ...form, plant_health: { entries: [] } }, 3).plant_health).toEqual({ entries: [] });
+});
+
+describe('buildPublicCropEditChanges', () => {
+  it('keeps the upper sowing depth when only the lower bound changes', () => {
+    const initial = buildCropDraft({ sowing_depth_cm: 2, sowing_depth_max_cm: 5, light_requirement: [] });
+    expect(buildPublicCropEditChanges(initial, { ...initial, sowing_depth_cm: 3 }, 1))
+      .toEqual({ sowing_depth_m: 0.03, sowing_depth_max_m: 0.05 });
+  });
+
+  it('sends an explicit clear for a previously populated field', () => {
+    const initial = publicCropToCropFormData(buildPublicCrop({ botanical_name: 'Vicia faba' }));
+    expect(buildPublicCropEditChanges(initial, { ...initial, botanical_name: '', light_requirement: [] }, 1))
+      .toEqual({ botanical_name: '' });
+  });
 });
