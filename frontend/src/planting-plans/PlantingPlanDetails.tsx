@@ -279,6 +279,36 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
                 setAttempt(value => value + 1);
                 onChanged();
               }} />
+            {(canEditPlan || loadedPlan.notes?.trim() || hasPhotos) && (
+              <DetailSection title={t('details.notesAndPhotos')} outlined>
+                <Stack spacing={1.5} sx={{ alignItems: 'flex-start', minWidth: 0, overflowWrap: 'anywhere' }}>
+                  {loadedPlan.notes?.trim() && <RichTextViewer value={loadedPlan.notes} />}
+                  {attachments && attachments.length > 0 && <Box sx={{
+                    display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(84px, 1fr))', gap: 1, width: '100%',
+                  }}>
+                    {attachments.map(attachment => {
+                      const src = attachment.image_url || attachment.image;
+                      return <Link key={attachment.id} href={src} target="_blank" rel="noopener noreferrer">
+                        <Box component="img" src={src} alt={attachment.caption || t('common:notesDrawer.attachmentAlt')}
+                          loading="lazy" sx={{ width: '100%', height: 84, objectFit: 'cover', borderRadius: 1 }} />
+                      </Link>;
+                    })}
+                  </Box>}
+                  {attachmentLoadFailed && <Alert severity="error" action={<LoadRetryButton onClick={() => {
+                    setAttachmentLoadFailed(false);
+                    setAttachmentRevision(value => value + 1);
+                  }} />}>{t('details.photosLoadFailed')}</Alert>}
+                  {canEditPlan && <Button onClick={() => {
+                    setDraft(loadedPlan.notes ?? '');
+                    setSaveFailed(false);
+                    setEditorOpen(true);
+                  }}>
+                    {loadedPlan.notes?.trim() || (attachments?.length ?? loadedPlan.note_attachment_count ?? 0) > 0
+                      ? t('details.editNotesAndPhotos') : t('details.addNoteOrPhoto')}
+                  </Button>}
+                </Stack>
+              </DetailSection>
+            )}
             <DetailSection title={t('details.seasonalRecords')} outlined>
               <Stack spacing={2}>
                 {recordSeasonOptions.length > 1 && recordSeasonId !== undefined ? (
@@ -332,36 +362,6 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
                 setAttempt(value => value + 1);
                 onChanged();
               }} />}
-            {(canEditPlan || loadedPlan.notes?.trim() || hasPhotos) && (
-              <DetailSection title={t('details.notesAndPhotos')} outlined>
-                <Stack spacing={1.5} sx={{ alignItems: 'flex-start', minWidth: 0, overflowWrap: 'anywhere' }}>
-                  {loadedPlan.notes?.trim() && <RichTextViewer value={loadedPlan.notes} />}
-                  {attachments && attachments.length > 0 && <Box sx={{
-                    display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(84px, 1fr))', gap: 1, width: '100%',
-                  }}>
-                    {attachments.map(attachment => {
-                      const src = attachment.image_url || attachment.image;
-                      return <Link key={attachment.id} href={src} target="_blank" rel="noopener noreferrer">
-                        <Box component="img" src={src} alt={attachment.caption || t('common:notesDrawer.attachmentAlt')}
-                          loading="lazy" sx={{ width: '100%', height: 84, objectFit: 'cover', borderRadius: 1 }} />
-                      </Link>;
-                    })}
-                  </Box>}
-                  {attachmentLoadFailed && <Alert severity="error" action={<LoadRetryButton onClick={() => {
-                    setAttachmentLoadFailed(false);
-                    setAttachmentRevision(value => value + 1);
-                  }} />}>{t('details.photosLoadFailed')}</Alert>}
-                  {canEditPlan && <Button onClick={() => {
-                    setDraft(loadedPlan.notes ?? '');
-                    setSaveFailed(false);
-                    setEditorOpen(true);
-                  }}>
-                    {loadedPlan.notes?.trim() || (attachments?.length ?? loadedPlan.note_attachment_count ?? 0) > 0
-                      ? t('details.editNotesAndPhotos') : t('details.addNoteOrPhoto')}
-                  </Button>}
-                </Stack>
-              </DetailSection>
-            )}
             <NotesDrawer open={editorOpen} title={t('details.notesAndPhotos')} value={draft} onChange={setDraft}
               onSave={saveNotes} onClose={() => setEditorOpen(false)} hasUnsavedChanges={hasUnsavedNotes}
               loading={saving} noteId={loadedPlan.id} saveError={saveFailed ? t('errors.save') : undefined}

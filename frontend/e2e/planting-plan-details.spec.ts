@@ -101,7 +101,7 @@ test('keeps one perennial plan while switching its records between seasons', asy
     const planting = page.getByRole('heading', { name: 'Aussaat und Pflanzung' }).locator('..');
     const editDates = planting.getByRole('button', { name: 'Ist-Termine erfassen' });
     await editDates.click();
-    const sowing = planting.getByLabel('Ist-Aussaattermin');
+    const sowing = planting.getByLabel('Ist-Aussaattermin', { exact: true });
     await expect(sowing).toHaveValue('2024-05-03');
     await expect(sowing).toBeFocused();
     await sowing.fill('2024-05-04');
