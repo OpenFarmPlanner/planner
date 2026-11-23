@@ -321,9 +321,13 @@ def legacy_actual_occurrence_year(
     anchor = actual.start_date or actual.end_date
     if anchor is None:
         return None
+    return actual_occurrence_year_for_date(schedule, anchor)
+
+
+def actual_occurrence_year_for_date(schedule: RecurringHarvestSchedule, day: date) -> int:
     return next(
-        (year for year, _ in schedule.project_by_year(anchor, anchor)),
-        schedule.legacy_harvest_year(anchor),
+        (year for year, _ in schedule.project_by_year(day, day)),
+        schedule.legacy_harvest_year(day) or day.year,
     )
 
 

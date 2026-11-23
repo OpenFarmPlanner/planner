@@ -45,6 +45,8 @@ from farm.models import (
 )
 from farm.project_context import get_active_project_or_400, resolve_season_id_from_request
 from farm.services.actual_harvest import (
+    HARVEST_DATE_FIELDS,
+    apply_legacy_harvest_patch,
     harvest_actual_occurrences,
     recorded_harvest_plan_ids,
     update_harvest_actuals,
@@ -606,12 +608,30 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         current_user = self.request.user if self.request.user.is_authenticated else None
         previous_snapshot = _serialize_instance(serializer.instance)
         actual_dates_only = serializer.is_actual_date_update(serializer.validated_data)
+        save_legacy_occurrence = actual_dates_only and self._apply_legacy_harvest_patch(serializer)
         instance = serializer.save(updated_by=current_user)
+        if save_legacy_occurrence:
+            instance.save(update_fields=['harvest_occurrence_actuals', 'updated_at'])
         if not actual_dates_only:
             synchronize_plan_tasks(instance)
         elif {'actual_sowing_date', 'actual_transplanting_date'} & serializer.validated_data.keys():
             synchronize_recurring_harvest_tasks(PlantingPlan.objects.filter(pk=instance.pk))
         self.record_revision(instance, EntityRevision.ACTION_UPDATED, previous_snapshot=previous_snapshot)
+
+    def _apply_legacy_harvest_patch(self, serializer: PlantingPlanSerializer) -> bool:
+        fields = serializer.validated_data
+        plan = serializer.instance
+        if not fields.keys() & set(HARVEST_DATE_FIELDS) or not plan.harvest_occurrence_actuals:
+            return False
+        schedule = recurring_harvest_schedule(plan, build_general_crop_index(plan.project_id))
+        if schedule is None:
+            return False
+        try:
+            return apply_legacy_harvest_patch(
+                plan, schedule, serializer.context.get('harvest_season') or plan.season, fields,
+            )
+        except DjangoValidationError as error:
+            raise serializers.ValidationError(error.message_dict) from error
 
     @extend_schema(
         request=HarvestActualDateUpdateSerializer, responses=HarvestActualDateResultSerializer,

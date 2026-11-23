@@ -11,6 +11,7 @@ from farm.services.seasonal_harvest import (
     HarvestActualDates,
     HarvestActualOccurrencePayload,
     RecurringHarvestSchedule,
+    actual_occurrence_year_for_date,
     legacy_actual_occurrence_year,
     one_off_harvest_actuals,
     recorded_occurrence_dates,
@@ -54,6 +55,45 @@ def harvest_actual_occurrences(
         'actual_start_date': actual.start_date,
         'actual_end_date': actual.end_date,
     }]
+
+
+def apply_legacy_harvest_patch(
+    plan: PlantingPlan, schedule: RecurringHarvestSchedule, season: Season | None,
+    fields: dict[str, date | None],
+) -> bool:
+    """Keep the old plan PATCH effective when its occurrence already has actuals."""
+    storage = plan.harvest_occurrence_actuals
+    records = storage.get('occurrences', {})
+    legacy_year = legacy_actual_occurrence_year(plan, schedule)
+    changes = {
+        field: fields[model_field]
+        for field, model_field in zip(('start_date', 'end_date'), HARVEST_DATE_FIELDS, strict=True)
+        if model_field in fields
+    }
+    year = legacy_year
+    start = changes.get('start_date')
+    if start is not None and str(legacy_year) not in records:
+        year = actual_occurrence_year_for_date(schedule, start)
+    if year is None and season is not None:
+        occurrences = recurring_actual_occurrences(plan, season, schedule)
+        primary = occurrences[0]['year'] if occurrences else None
+        if str(primary) in records:
+            year = primary
+    end = changes.get('end_date')
+    if year is None and end is not None:
+        year = actual_occurrence_year_for_date(schedule, end)
+    if year is None:
+        return False
+    if str(year) in records:
+        update_harvest_actuals(plan, schedule, year, changes)
+    current = plan.harvest_occurrence_actuals
+    historical = one_off_harvest_actuals(plan)
+    if legacy_year is not None and legacy_year != year and historical:
+        current = {**current, 'occurrences': {
+            str(legacy_year): _serialize_actuals(historical), **current.get('occurrences', {}),
+        }}
+    plan.harvest_occurrence_actuals = {**current, 'legacy_year': year}
+    return plan.harvest_occurrence_actuals != storage
 
 
 def update_harvest_actuals(
@@ -103,16 +143,20 @@ def update_harvest_actuals(
     occurrences = dict(storage.get('occurrences', {}))
     if updated or year == legacy_year:
         # A cleared legacy entry still overrides the legacy plan-level dates.
-        occurrences[str(year)] = {
-            'start_date': updated.start_date.isoformat() if updated.start_date else None,
-            'end_date': updated.end_date.isoformat() if updated.end_date else None,
-        }
+        occurrences[str(year)] = _serialize_actuals(updated)
     else:
         occurrences.pop(str(year), None)
     plan.harvest_occurrence_actuals = {'occurrences': occurrences}
     if legacy_year is not None:
         plan.harvest_occurrence_actuals['legacy_year'] = legacy_year
     return ('harvest_occurrence_actuals',)
+
+
+def _serialize_actuals(actual: HarvestActualDates) -> dict[str, str | None]:
+    return {
+        'start_date': actual.start_date.isoformat() if actual.start_date else None,
+        'end_date': actual.end_date.isoformat() if actual.end_date else None,
+    }
 
 
 def _validate_dates(

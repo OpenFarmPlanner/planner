@@ -236,18 +236,56 @@ class ActualHarvestDatesTest(ProjectApiTestCase):
             "2052-09-02",
         )
         listed = self.client.get(PLANS, HTTP_X_SEASON_ID=str(later.pk)).json()["results"]
-        row, = listed
+        (row,) = listed
         self.assertTrue(row["carried_over"])
         self.assertEqual(row["harvest_actual_occurrences"][0]["actual_start_date"], "2052-09-02")
         comparison = self.client.get(reverse("yield-comparison"), {"crop_id": plan.crop_id})
         self.assertEqual(comparison.status_code, 200, comparison.data)
         compared = next(row for row in comparison.json()["seasons"] if row["id"] == later.pk)
         self.assertIsNone(compared["forecast_kg"])
-        activity, = compared["plan_dates"]
-        occurrence, = activity["harvest_actual_occurrences"]
+        (activity,) = compared["plan_dates"]
+        (occurrence,) = activity["harvest_actual_occurrences"]
         self.assertEqual(occurrence["actual_start_date"], "2052-09-02")
         correction = self.edit(plan, later, year=2052, start_date="2052-09-03")
         self.assertEqual(correction.status_code, 200, correction.data)
+
+    def test_legacy_patch_updates_scoped_dates_and_preserves_other_years(self):
+        origin = self.season("2025-01-01", "2025-12-31")
+        recent = self.season("2026-01-01", "2026-12-31")
+        following = self.season("2027-01-01", "2027-12-31")
+        plan = self.perennial(origin, "03-12/04-09", actual_harvest_start_date=date(2025, 4, 1))
+        for year, season in ((2026, recent), (2027, following)):
+            response = self.edit(
+                plan,
+                season,
+                year=year,
+                start_date=f"{year}-03-15",
+                end_date=f"{year}-04-08",
+            )
+            self.assertEqual(response.status_code, 200, response.data)
+
+        def edit_legacy(**dates):
+            return self.client.patch(
+                f"{PLANS}{plan.pk}/", dates, format="json", HTTP_X_SEASON_ID=str(origin.pk)
+            )
+
+        response = edit_legacy(actual_harvest_start_date="2026-03-17")
+        self.assertEqual(response.status_code, 200, response.data)
+        saved = self.details(plan, recent)["harvest_actual_occurrences"][0]
+        self.assertEqual(saved["actual_start_date"], "2026-03-17")
+        self.assertEqual(saved["actual_end_date"], "2026-04-08")
+        response = edit_legacy(actual_harvest_start_date=None)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertIsNone(self.details(plan, recent)["seasonal_harvest"]["actual_start_date"])
+        self.assertEqual(
+            self.details(plan, recent)["seasonal_harvest"]["actual_end_date"], "2026-04-08"
+        )
+        self.assertEqual(
+            self.details(plan, origin)["seasonal_harvest"]["actual_start_date"], "2025-04-01"
+        )
+        self.assertEqual(
+            self.details(plan, following)["seasonal_harvest"]["actual_start_date"], "2027-03-15"
+        )
 
     def test_scoped_edit_rejects_foreign_irrelevant_and_archived_seasons(self):
         origin = self.season("2025-01-01", "2025-12-31")

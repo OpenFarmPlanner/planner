@@ -312,6 +312,8 @@ erDiagram
   that year, including when it clears them. Older recurring plans retain their
   original recorded dates. The first scoped edit binds those legacy dates to
   their occurrence so that later changes to the forecast do not move them.
+  Legacy plan PATCH requests still update the corresponding occurrence when
+  it has a saved record.
   One-off harvests continue to use the plan-level actual start and end fields.
   Project history includes the map. A snapshot made before overrides
   or occurrence-specific actuals existed restores the corresponding empty map.
