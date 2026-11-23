@@ -47,6 +47,7 @@ from farm.project_context import get_active_project_or_400, resolve_season_id_fr
 from farm.services.actual_harvest import (
     HARVEST_DATE_FIELDS,
     apply_legacy_harvest_patch,
+    detach_stored_legacy_dates,
     harvest_actual_occurrences,
     recorded_harvest_plan_ids,
     update_harvest_actuals,
@@ -625,7 +626,11 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             return False
         schedule = recurring_harvest_schedule(plan, build_general_crop_index(plan.project_id))
         if schedule is None:
-            return False
+            detached = detach_stored_legacy_dates(plan)
+            if detached:
+                for field in HARVEST_DATE_FIELDS:
+                    fields.setdefault(field, None)
+            return detached
         try:
             return apply_legacy_harvest_patch(
                 plan, schedule, serializer.context.get('harvest_season') or plan.season, fields,

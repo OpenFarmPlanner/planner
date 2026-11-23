@@ -287,6 +287,65 @@ class ActualHarvestDatesTest(ProjectApiTestCase):
             self.details(plan, following)["seasonal_harvest"]["actual_start_date"], "2027-03-15"
         )
 
+    def test_saved_occurrences_outlive_the_recurring_configuration(self):
+        origin = self.season("2025-01-01", "2025-12-31")
+        recent = self.season("2026-01-01", "2026-12-31")
+        following = self.season("2027-01-01", "2027-12-31")
+        plan = self.perennial(origin, "03-12/04-09")
+        for year, season in ((2026, recent), (2027, following)):
+            response = self.edit(
+                plan,
+                season,
+                year=year,
+                start_date=f"{year}-03-15",
+                end_date=f"{year}-04-08",
+            )
+            self.assertEqual(response.status_code, 200, response.data)
+        mirrored = self.client.patch(
+            f"{PLANS}{plan.pk}/",
+            {"actual_harvest_start_date": "2026-03-16"},
+            format="json",
+            HTTP_X_SEASON_ID=str(origin.pk),
+        )
+        self.assertEqual(mirrored.status_code, 200, mirrored.data)
+
+        for life_cycle, window in (("perennial", ""), ("annual", "03-12/04-09")):
+            with self.subTest(life_cycle=life_cycle):
+                Crop.objects.filter(pk=plan.crop_id).update(
+                    annual_harvest_window=window,
+                    life_cycle=life_cycle,
+                )
+                self.assertIsNone(self.details(plan, recent)["seasonal_harvest"])
+                listed = self.client.get(PLANS, HTTP_X_SEASON_ID=str(recent.pk)).json()["results"]
+                (scoped,) = listed
+                (occurrence,) = scoped["harvest_actual_occurrences"]
+                self.assertEqual(occurrence["year"], 2026)
+                self.assertEqual(occurrence["actual_start_date"], "2026-03-16")
+                self.assertEqual(occurrence["actual_end_date"], "2026-04-08")
+                self.assertIsNone(occurrence["planned_start_date"])
+                years = self.details(plan, origin)["harvest_windows_by_year"]["occurrences"]
+                self.assertEqual([item["year"] for item in years], [2026, 2027])
+                self.assertTrue(all(item["default"] is None for item in years))
+                comparison = self.client.get(reverse("yield-comparison"), {"crop_id": plan.crop_id})
+                self.assertEqual(comparison.status_code, 200, comparison.data)
+                data = next(row for row in comparison.json()["seasons"] if row["id"] == recent.pk)
+                (activity,) = data["plan_dates"]
+                self.assertEqual(activity["harvest_actual_occurrences"], [occurrence])
+
+        correction = self.edit(plan, recent, year=2026, end_date="2026-04-09")
+        self.assertEqual(correction.status_code, 200, correction.data)
+        replacement = self.edit(plan, origin, year=None, start_date="2025-05-02")
+        self.assertEqual(replacement.status_code, 200, replacement.data)
+        self.assertEqual(replacement.json()["actual_harvest_start_date"], "2025-05-02")
+        self.assertEqual(
+            self.details(plan, recent)["harvest_actual_occurrences"][0]["actual_end_date"],
+            "2026-04-09",
+        )
+        self.assertEqual(
+            self.details(plan, following)["harvest_actual_occurrences"][0]["actual_start_date"],
+            "2027-03-15",
+        )
+
     def test_scoped_edit_rejects_foreign_irrelevant_and_archived_seasons(self):
         origin = self.season("2025-01-01", "2025-12-31")
         later = self.season("2026-01-01", "2026-12-31")

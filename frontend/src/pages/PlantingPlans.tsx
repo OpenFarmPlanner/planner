@@ -782,7 +782,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       return false;
     }
     if (field === 'harvest_date' || field === 'harvest_end_date') {
-      if (row.carried_over || row.seasonal_harvest) {
+      if (row.carried_over || row.seasonal_harvest || row.harvest_actual_occurrences?.[0]?.year != null) {
         return Boolean(activeSeasonId && row.harvest_actual_occurrences?.length);
       }
     }

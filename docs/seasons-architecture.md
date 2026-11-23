@@ -154,8 +154,8 @@ description), one level down:
   may link to the original plan while the crop occupies an assigned bed.
   Plan details show the lifetime harvest occurrences in pages of up to 20 years.
   A recorded occurrence remains available in the table, details and yield
-  activity history if a later change shortens the forecast. Its dates do not
-  extend planned occupancy.
+  activity history if a later change shortens the forecast or disables
+  the recurring schedule. Its dates do not extend planned occupancy.
   In the originating
   season, open **Harvest windows by year** to replace the calculated dates for
   one occurrence or reset its saved dates. The occurrence key is the calendar

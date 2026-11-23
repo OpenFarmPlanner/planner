@@ -238,39 +238,17 @@ class RecurringHarvestSchedule:
         self, year: int | None = None, *, actuals: dict[int, HarvestActualDates],
         recorded_years: set[int],
     ) -> HarvestOccurrencesPage:
-        eligible = self._eligible_years()
         stored_years = self.overrides.keys() | recorded_years
-        if not eligible and not stored_years:
-            return {'occurrences': [], 'previous_year': None, 'next_year': None}
-
-        first = min(stored_years, default=eligible.start)
-        if eligible:
-            first = min(first, eligible.start)
-        anchor = first if year is None else year
-        candidates = set(stored_years)
-        if eligible:
-            candidates.add(max(eligible.start, min(anchor, eligible.stop - 1)))
-        anchor = min(candidates, key=lambda candidate: (abs(candidate - anchor), candidate))
-        page_start = first + (anchor - first) // HARVEST_YEARS_PER_PAGE * HARVEST_YEARS_PER_PAGE
-        page_end = page_start + HARVEST_YEARS_PER_PAGE
-
-        years = (
-            year for year in range(page_start, page_end)
-            if year in eligible or year in stored_years
+        years, previous, following = _page_harvest_years(
+            self._eligible_years(), stored_years, year,
         )
-        previous_default = min(eligible.stop, page_start) - 1
-        next_default = max(eligible.start, page_end)
-        if previous_default in eligible:
-            candidates.add(previous_default)
-        if next_default in eligible:
-            candidates.add(next_default)
         return {
             'occurrences': [
                 self._occurrence_detail(year, actuals.get(year, HarvestActualDates()))
                 for year in years
             ],
-            'previous_year': max((year for year in candidates if year < page_start), default=None),
-            'next_year': min((year for year in candidates if year >= page_end), default=None),
+            'previous_year': previous,
+            'next_year': following,
         }
 
     def _occurrence_detail(self, year: int, actual: HarvestActualDates) -> HarvestOccurrencePayload:
@@ -306,6 +284,35 @@ class RecurringHarvestSchedule:
             end = min(window_end, end_date)
             if start <= end:
                 yield year, HarvestProjection(start, end, window_start, window_end)
+
+
+def _page_harvest_years(
+    eligible: range, stored: set[int], year: int | None,
+) -> tuple[list[int], int | None, int | None]:
+    if not eligible and not stored:
+        return [], None, None
+    first = min(stored, default=eligible.start)
+    if eligible:
+        first = min(first, eligible.start)
+    anchor = first if year is None else year
+    candidates = set(stored)
+    if eligible:
+        candidates.add(max(eligible.start, min(anchor, eligible.stop - 1)))
+    anchor = min(candidates, key=lambda candidate: (abs(candidate - anchor), candidate))
+    page_start = first + (anchor - first) // HARVEST_YEARS_PER_PAGE * HARVEST_YEARS_PER_PAGE
+    page_end = page_start + HARVEST_YEARS_PER_PAGE
+    years = [year for year in range(page_start, page_end) if year in eligible or year in stored]
+    previous_default = min(eligible.stop, page_start) - 1
+    next_default = max(eligible.start, page_end)
+    if previous_default in eligible:
+        candidates.add(previous_default)
+    if next_default in eligible:
+        candidates.add(next_default)
+    return (
+        years,
+        max((year for year in candidates if year < page_start), default=None),
+        min((year for year in candidates if year >= page_end), default=None),
+    )
 
 
 def one_off_harvest_actuals(plan: PlantingPlan) -> HarvestActualDates:
@@ -351,8 +358,22 @@ def recorded_occurrence_dates(storage: dict) -> dict[int, HarvestActualDates]:
 
 
 def harvest_occurrence_page(
-    plan: PlantingPlan, schedule: RecurringHarvestSchedule, year: int | None,
+    plan: PlantingPlan, schedule: RecurringHarvestSchedule | None, year: int | None,
 ) -> HarvestOccurrencesPage:
+    if schedule is None:
+        actuals = recorded_occurrence_dates(plan.harvest_occurrence_actuals)
+        years, previous, following = _page_harvest_years(
+            range(0), {key for key, actual in actuals.items() if actual}, year,
+        )
+        return {
+            'occurrences': [{
+                'year': key, 'default': None, 'override': None, 'conflict': False,
+                'actual_start_date': actuals[key].start_date,
+                'actual_end_date': actuals[key].end_date,
+            } for key in years],
+            'previous_year': previous,
+            'next_year': following,
+        }
     actuals = recurring_harvest_actuals(plan, schedule)
     # Only saved occurrence records extend the lifetime page. The old
     # plan-level dates can still supply actuals for a scheduled year.
@@ -361,6 +382,19 @@ def harvest_occurrence_page(
         if actuals[int(key)]
     }
     return schedule.occurrence_details(year, actuals=actuals, recorded_years=recorded)
+
+
+def historical_actual_occurrences(
+    plan: PlantingPlan, season: Season,
+) -> list[HarvestActualOccurrencePayload]:
+    return [{
+        'year': year,
+        'planned_start_date': None,
+        'planned_end_date': None,
+        'actual_start_date': actual.start_date,
+        'actual_end_date': actual.end_date,
+    } for year, actual in sorted(recorded_occurrence_dates(plan.harvest_occurrence_actuals).items())
+        if actual.intersects(season)]
 
 
 def recurring_actual_occurrences(

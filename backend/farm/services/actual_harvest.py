@@ -12,6 +12,7 @@ from farm.services.seasonal_harvest import (
     HarvestActualOccurrencePayload,
     RecurringHarvestSchedule,
     actual_occurrence_year_for_date,
+    historical_actual_occurrences,
     legacy_actual_occurrence_year,
     one_off_harvest_actuals,
     recorded_occurrence_dates,
@@ -40,21 +41,44 @@ def harvest_actual_occurrences(
 ) -> list[HarvestActualOccurrencePayload]:
     if schedule is not None:
         return recurring_actual_occurrences(plan, season, schedule)
-    actual = one_off_harvest_actuals(plan)
+    history = historical_actual_occurrences(plan, season)
+    actual = unscoped_harvest_actuals(plan)
     planned_start, planned_end = planned
     planned_here = HarvestActualDates(planned_start, planned_end).intersects(season)
     if plan.season_id != season.pk and not (
         plan.bed_id and plan.planting_date and plan.planting_date <= season.end_date
         and (planned_here or actual.intersects(season))
     ):
-        return []
-    return [{
+        return history
+    current: HarvestActualOccurrencePayload = {
         'year': None,
         'planned_start_date': planned_start if planned_here else None,
         'planned_end_date': planned_end if planned_here else None,
         'actual_start_date': actual.start_date,
         'actual_end_date': actual.end_date,
-    }]
+    }
+    return [current, *history] if planned_here or actual else [*history, current]
+
+
+def _legacy_dates_are_in_history(plan: PlantingPlan) -> bool:
+    storage = plan.harvest_occurrence_actuals
+    return str(storage.get('legacy_year')) in storage.get('occurrences', {})
+
+
+def unscoped_harvest_actuals(plan: PlantingPlan) -> HarvestActualDates:
+    if _legacy_dates_are_in_history(plan):
+        return HarvestActualDates()
+    return one_off_harvest_actuals(plan)
+
+
+def detach_stored_legacy_dates(plan: PlantingPlan) -> bool:
+    """Let a new one-off harvest use fields previously bound to saved history."""
+    if not _legacy_dates_are_in_history(plan):
+        return False
+    plan.harvest_occurrence_actuals = {
+        key: value for key, value in plan.harvest_occurrence_actuals.items() if key != 'legacy_year'
+    }
+    return True
 
 
 def apply_legacy_harvest_patch(
@@ -101,45 +125,32 @@ def update_harvest_actuals(
     changes: dict[str, date | None],
 ) -> tuple[str, ...]:
     """Apply a partial edit to a locked plan. The caller verifies season scope."""
-    if schedule is None:
-        previous = one_off_harvest_actuals(plan)
-        updated = replace(previous, **changes)
-        if updated == previous:
-            return ()
-        planting = min(
-            (value for value in (
-                plan.planting_date, plan.actual_sowing_date, plan.actual_transplanting_date,
-            ) if value is not None), default=None,
-        )
-        _validate_dates(updated, changes, planting)
-        fields = []
-        for name, model_field in zip(('start_date', 'end_date'), HARVEST_DATE_FIELDS, strict=True):
-            if getattr(previous, name) != getattr(updated, name):
-                setattr(plan, model_field, getattr(updated, name))
-                fields.append(model_field)
-        return tuple(fields)
-
     if year is None:
-        raise ValueError('An occurrence year is required for a recurring harvest.')
-    dates_by_year = recurring_harvest_actuals(plan, schedule)
+        return _update_one_off_actuals(plan, changes)
+    dates_by_year = recurring_harvest_actuals(plan, schedule) if schedule else (
+        recorded_occurrence_dates(plan.harvest_occurrence_actuals)
+    )
     previous = dates_by_year.get(year, HarvestActualDates())
     updated = replace(previous, **changes)
     if updated == previous:
         return ()
     # A shorter forecast cannot invalidate a record already saved for that
     # occurrence. Corrections still have to fit its cycle and recorded neighbours.
-    window = schedule.eligible_window(year)
+    window = schedule.eligible_window(year) if schedule else None
     _validate_dates(
-        updated, changes, schedule.occupied_from if window is not None else None,
-        schedule.occupied_until if window is not None else None,
+        updated, changes, schedule.occupied_from if window and schedule else None,
+        schedule.occupied_until if window and schedule else None,
     )
     boundary = tuple(value for value in (updated.start_date, updated.end_date) if value is not None)
     if boundary:
-        _validate_occurrence_cycle(schedule, year, changes)
+        if schedule is not None:
+            _validate_occurrence_cycle(schedule, year, changes)
         _validate_neighbouring_actuals(year, boundary, dates_by_year)
 
     storage = plan.harvest_occurrence_actuals
-    legacy_year = legacy_actual_occurrence_year(plan, schedule)
+    legacy_year = legacy_actual_occurrence_year(plan, schedule) if schedule else (
+        storage.get('legacy_year')
+    )
     occurrences = dict(storage.get('occurrences', {}))
     if updated or year == legacy_year:
         # A cleared legacy entry still overrides the legacy plan-level dates.
@@ -150,6 +161,28 @@ def update_harvest_actuals(
     if legacy_year is not None:
         plan.harvest_occurrence_actuals['legacy_year'] = legacy_year
     return ('harvest_occurrence_actuals',)
+
+
+def _update_one_off_actuals(
+    plan: PlantingPlan, changes: dict[str, date | None],
+) -> tuple[str, ...]:
+    raw = one_off_harvest_actuals(plan)
+    previous = unscoped_harvest_actuals(plan)
+    updated = replace(previous, **changes)
+    if updated == previous:
+        return ()
+    planting = min(
+        (value for value in (
+            plan.planting_date, plan.actual_sowing_date, plan.actual_transplanting_date,
+        ) if value is not None), default=None,
+    )
+    _validate_dates(updated, changes, planting)
+    fields = ['harvest_occurrence_actuals'] if detach_stored_legacy_dates(plan) else []
+    for name, model_field in zip(('start_date', 'end_date'), HARVEST_DATE_FIELDS, strict=True):
+        if getattr(raw, name) != getattr(updated, name):
+            setattr(plan, model_field, getattr(updated, name))
+            fields.append(model_field)
+    return tuple(fields)
 
 
 def _serialize_actuals(actual: HarvestActualDates) -> dict[str, str | None]:

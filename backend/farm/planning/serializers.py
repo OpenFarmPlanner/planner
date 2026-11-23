@@ -16,7 +16,7 @@ from farm.common.serializer_fields import (
 )
 from farm.models import Crop, PlantingPlan, Season, Task
 from farm.project_context import resolve_season_id_from_request
-from farm.services.actual_harvest import harvest_actual_occurrences
+from farm.services.actual_harvest import harvest_actual_occurrences, unscoped_harvest_actuals
 from farm.services.bed_capacity import (
     HarvestOverlap,
     HarvestOverlapIndex,
@@ -42,7 +42,7 @@ from farm.services.seasonal_harvest import (
     RecurringHarvestSchedule,
     SeasonalHarvestPayload,
     harvest_occurrence_page,
-    one_off_harvest_actuals,
+    recorded_occurrence_dates,
     recurring_harvest_actuals,
     recurring_harvest_schedule,
     recurring_plan_visible_in_season,
@@ -737,7 +737,8 @@ class PlantingPlanDetailSerializer(PlantingPlanSerializer):
         records = Exists(harvests) | Exists(losses) | Exists(tasks)
         schedule = self._recurring_harvest_schedule(obj)
         actuals = recurring_harvest_actuals(obj, schedule).values() if schedule else (
-            one_off_harvest_actuals(obj),
+            *recorded_occurrence_dates(obj.harvest_occurrence_actuals).values(),
+            unscoped_harvest_actuals(obj),
         )
         for interval in actuals:
             dates = [
@@ -752,7 +753,7 @@ class PlantingPlanDetailSerializer(PlantingPlanSerializer):
         self, obj: PlantingPlan,
     ) -> HarvestOccurrencesPage | None:
         schedule = self._recurring_harvest_schedule(obj)
-        if schedule is None:
+        if schedule is None and not obj.harvest_occurrence_actuals:
             return None
         request = self.context.get('request')
         requested_year = request.query_params.get('harvest_year') if request else None
@@ -762,10 +763,11 @@ class PlantingPlanDetailSerializer(PlantingPlanSerializer):
             )
         else:
             season = self.context.get('harvest_season')
-            year = schedule.year_for_season(season) if season is not None else None
-            if season is None or obj.season_id == season.pk:
+            year = schedule.year_for_season(season) if schedule and season else None
+            if schedule and (season is None or obj.season_id == season.pk):
                 year = schedule.first_conflicting_year() or year
-        return harvest_occurrence_page(obj, schedule, year)
+        page = harvest_occurrence_page(obj, schedule, year)
+        return page if schedule or page['occurrences'] else None
 
     def get_crop_available(self, obj: PlantingPlan) -> bool:
         return bool(obj.crop and obj.crop.deleted_at is None)

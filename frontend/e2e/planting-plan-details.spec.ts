@@ -161,6 +161,13 @@ test('keeps one perennial plan while switching its records between seasons', asy
     const lifetime = page.getByRole('heading', { name: 'Erntefenster je Jahr' }).locator('..');
     await lifetime.getByRole('combobox', { name: 'Erntejahr' }).selectOption('2026');
     await expect(lifetime.getByText('25.4.2026', { exact: true })).toBeVisible();
+
+    await apiRequest(page, 'PATCH', `/crops/${crop.id}/`, { annual_harvest_window: '' });
+    await page.reload();
+    await chooser.selectOption(String(active.id));
+    await expect(harvestDates.getByText('25.4.2026', { exact: true })).toBeVisible();
+    await lifetime.getByRole('combobox', { name: 'Erntejahr' }).selectOption('2026');
+    await expect(lifetime.getByText('25.4.2026', { exact: true })).toBeVisible();
   } finally {
     await resetE2EScenario(request, scenario);
   }

@@ -46,9 +46,14 @@ function occurrenceComparison(
 function harvestComparison(plan: ActivityDatePlan, activity: 'harvestStart' | 'harvestEnd'): PlantingPlanDateComparison {
   const isStart = activity === 'harvestStart';
   const harvest = plan.seasonal_harvest;
-  const occurrences = (harvest || plan.carried_over) ? plan.harvest_actual_occurrences : undefined;
+  const occurrences = plan.harvest_actual_occurrences;
   if (occurrences?.length) {
     const dates = occurrenceComparison(occurrences[0], activity);
+    if (!harvest && !plan.carried_over && dates.occurrenceYear === null) {
+      return {
+        activity, planned: toIsoDateString(isStart ? plan.harvest_date : plan.harvest_end_date), actual: dates.actual,
+      };
+    }
     return harvest ? {
       ...dates,
       plannedDates: occurrences.map(occurrence => occurrenceComparison(occurrence, activity).planned)

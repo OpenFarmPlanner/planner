@@ -151,7 +151,8 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
     ?? (recordSeasonId !== undefined && recordSeasonId === activeSeasonId ? context?.activeSeason ?? undefined : season);
   const harvestDatesEditable = canEditPlan && recordSeasonId === loadedPlan?.season && !loadedPlan?.seasonal_harvest;
   const seasonalHarvest = loadedPlan?.seasonal_harvest;
-  const scopedHarvests = (seasonalHarvest || loadedPlan?.carried_over) ? loadedPlan?.harvest_actual_occurrences : undefined;
+  const scopedHarvests = seasonalHarvest || loadedPlan?.carried_over || loadedPlan?.harvest_windows_by_year
+    ? loadedPlan?.harvest_actual_occurrences : undefined;
   const harvestEntries = scopedHarvests?.length ? scopedHarvests : [undefined];
   const observedHarvest = loadedPlan?.observed_first_harvest_date;
   const observedYear = scopedHarvests?.find(occurrence => observedHarvest
