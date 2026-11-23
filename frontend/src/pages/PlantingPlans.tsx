@@ -112,7 +112,7 @@ import {
   getTranslatedProjectSetupActions,
 } from "./requirementFlow";
 import { PlantingPlanBedCell } from "../components/planting-plans/PlantingPlanBedCell";
-import { BED_PATH_SEPARATOR, buildBedPickerOptions } from "../components/planting-plans/bedPickerOptions";
+import { BED_PATH_SEPARATOR, buildBedPickerResults } from "../components/planting-plans/bedPickerOptions";
 import EmptyStateCard from "../components/project/EmptyStateCard";
 import { formatCropDisplayName, getCropDisplayName } from "../crops/cropDisplay";
 import { usePlantingPlanSearch, type PlantingPlanSearchSnapshot } from "./usePlantingPlanSearch";
@@ -282,8 +282,10 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     getCultivationTypeOptionsForRow,
     dynamicWidths,
   } = usePlantingPlanHierarchy(shouldShowProjectRequiredState);
-  const bedPickerOptions = useMemo(() => buildBedPickerOptions(beds, fields, locations, numberLocale), [beds, fields, locations, numberLocale]);
-  const bedPickerOptionsById = useMemo(() => new Map(bedPickerOptions.map((option) => [option.id, option])), [bedPickerOptions]);
+  const bedPickerOptions = useMemo(() => buildBedPickerResults(beds, fields, locations, numberLocale), [beds, fields, locations, numberLocale]);
+  const bedPickerOptionsById = useMemo(() => new Map(
+    bedPickerOptions.filter((option) => option.kind === "bed").map((option) => [option.id, option]),
+  ), [bedPickerOptions]);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const filterButtonRef = useRef<HTMLButtonElement | null>(null);
   // State (not a ref) because it feeds EditableDataGrid's slotProps during

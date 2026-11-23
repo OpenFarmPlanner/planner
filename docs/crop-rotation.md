@@ -195,10 +195,12 @@ harmless and is reset on the next move.
   continues to find all three statuses. Mobile cards retain their existing
   conflict and missing-data indicators.
 - **Inline bed picker.** Double-click, Enter, F2 or typing opens the search.
-  The current location and field filter the initial choices. Remove filters,
-  use the group headers or select the action to search all locations.
-  Search matches words across the location, field and bed names. The option
-  list shows the bed size and warns about rotation conflicts before selection.
+  The current plot appears as a scope badge in the search field. Search matches
+  words across location, plot and bed names. Use the arrow keys, then Enter, or
+  click a result. Choosing a location or plot narrows the search and keeps
+  typing available. The badge or Backspace in an empty search goes up one level.
+  The result list shows bed sizes, available and required area for beds that
+  cannot fit the plan, and any crop-rotation conflicts.
   Conflicting beds can be selected without opening the conflict popover.
   The existing batch capacity check supplies the free area and disables beds
   with insufficient room. Selecting a bed saves a view-mode row immediately.

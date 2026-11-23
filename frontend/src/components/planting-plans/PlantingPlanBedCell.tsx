@@ -9,7 +9,7 @@ import { isContextMenuDismissGestureInProgress } from '../../utils/contextMenu';
 import { AppTooltip } from '../AppTooltip';
 import { isAnyContextMenuOpen } from '../contextMenu/contextMenuOpenState';
 import { useDialogEditCellOpenRequest } from '../data-grid/DialogEditCellContext';
-import { BED_PATH_SEPARATOR, type BedPickerOption } from './bedPickerOptions';
+import { BED_PATH_SEPARATOR, type BedPickerOption, type BedPickerResult } from './bedPickerOptions';
 import { InlineBedPicker } from './InlineBedPicker';
 import { RotationCheckPanel } from './rotation/RotationCheckPanel';
 import { ReadOnlyRotationWarning, RotationStatusIcon } from './rotation/RotationStatusIcon';
@@ -22,7 +22,7 @@ interface PlantingPlanBedCellProps {
   hasFocus: boolean;
   readOnly: boolean;
   path: { locationName: string; fieldName: string; name: string };
-  options: BedPickerOption[];
+  options: BedPickerResult[];
   selected?: BedPickerOption;
   rotation: RotationInput & {
     status: RotationStatus | null;
