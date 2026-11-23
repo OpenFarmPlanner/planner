@@ -1,5 +1,3 @@
-import { ResizableGridColumnMenu, ResizableGridColumnsManagement } from './ResizableGridColumnControls';
-import { columnAutosizeOptions, resizableGridHeaderSx } from './useGridColumnSizing';
 /**
  * Reusable Editable Data Grid component.
  * 
@@ -33,6 +31,8 @@ import {
   useGridApiRef,
 } from '@mui/x-data-grid';
 import { gridEditRowsStateSelector } from '@mui/x-data-grid/internals';
+import { ResizableGridColumnMenu, ResizableGridColumnsManagement } from './ResizableGridColumnControls';
+import { columnAutosizeOptions, resizableGridHeaderSx } from './useGridColumnSizing';
 import { dataGridSx, dataGridFooterSx, dataGridAddRowButtonSx, deleteIconButtonSx } from './styles';
 import { handleRowEditStop } from './handlers';
 import {
