@@ -86,8 +86,9 @@ export function useGridColumnSizing(
   }, [definitions, update]);
 
   const reset = useCallback(() => update(() => ({})), [update]);
-  const enabled = sizedColumns.some((column, index) =>
-    column.width !== definitions[index].width || column.flex !== definitions[index].flex,
+  const enabled = definitions.some(column =>
+    column.resizable !== false && Object.hasOwn(current.widths, column.field)
+      && (column.flex !== 0 || current.widths[column.field] !== column.width),
   );
   return { columns: sizedColumns, onColumnWidthChange, widthReset: { enabled, reset } };
 }

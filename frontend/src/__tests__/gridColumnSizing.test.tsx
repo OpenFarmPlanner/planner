@@ -58,6 +58,21 @@ describe('grid column sizing', () => {
     expect(localStorage.getItem('tableColumns.plans')).toBe('{"date":false}');
   });
 
+  it('can clear a desktop preference clamped to the current responsive default', () => {
+    localStorage.setItem(storageKey, '{"crop":360}');
+    const { result, rerender } = renderHook(
+      ({ maxWidth }) => useGridColumnSizing([{ field: 'crop', width: 240, maxWidth }], 'plans', 1, 2),
+      { initialProps: { maxWidth: 240 } },
+    );
+    expect(result.current.columns[0].width).toBe(240);
+    expect(result.current.widthReset.enabled).toBe(true);
+    act(() => result.current.widthReset.reset());
+    rerender({ maxWidth: 720 });
+    expect(result.current.columns[0].width).toBe(240);
+    expect(result.current.widthReset.enabled).toBe(false);
+    expect(localStorage.getItem(storageKey)).toBeNull();
+  });
+
   it.each(['{', 'null', '[180]', '{"retired":300,"crop":180}'])('uses defaults for %s', saved => {
     localStorage.setItem(storageKey, saved);
     const { result } = renderSizing();
