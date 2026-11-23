@@ -4,6 +4,7 @@ import logging
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import (
     BooleanField,
@@ -18,6 +19,7 @@ from django.db.models import (
     When,
 )
 from django.db.models.functions import Coalesce
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -42,6 +44,14 @@ from farm.models import (
     Task,
 )
 from farm.project_context import get_active_project_or_400, resolve_season_id_from_request
+from farm.services.actual_harvest import (
+    HARVEST_DATE_FIELDS,
+    apply_legacy_harvest_patch,
+    detach_stored_legacy_dates,
+    harvest_actual_occurrences,
+    recorded_harvest_plan_ids,
+    update_harvest_actuals,
+)
 from farm.services.bed_capacity import (
     BedCapacity,
     HarvestOverlapIndex,
@@ -59,6 +69,7 @@ from farm.services.crop_rotation import RotationService, suggest_beds
 from farm.services.germination_check import check_germination
 from farm.services.seasonal_harvest import (
     early_recorded_perennial_plan_ids,
+    harvest_occurrence_page,
     recurring_harvest_schedule,
     seasonal_harvest_payload,
 )
@@ -80,6 +91,8 @@ from farm.services.yield_comparison import (
 
 from .season_context import resolve_record_season
 from .serializers import (
+    HarvestActualDateResultSerializer,
+    HarvestActualDateUpdateSerializer,
     HarvestDateRangeSerializer,
     PlantingPlanDetailSerializer,
     PlantingPlanSerializer,
@@ -537,6 +550,14 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             planting_date__lt=active_season.start_date,
             occupied_until__gte=active_season.start_date,
         )
+        bounds = (active_season.start_date, active_season.end_date)
+        recorded_harvest_overlap = Q(
+            bed__isnull=False, planting_date__lte=active_season.end_date,
+        ) & (
+            Q(actual_harvest_start_date__range=bounds) | Q(recorded_harvest_end_date__range=bounds)
+            | Q(actual_harvest_start_date__lt=active_season.start_date,
+                recorded_harvest_end_date__gt=active_season.end_date)
+        )
         project_id = self.request.active_project.pk
         candidates = PlantingPlan.objects.filter(
             project_id=project_id, season__deleted_at__isnull=True,
@@ -544,7 +565,13 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         early_plans, self._harvest_crop_index = early_recorded_perennial_plan_ids(
             candidates, project_id, active_season.start_date, active_season.end_date,
         )
-        carried_over = (starts_before | Q(pk__in=early_plans)) & ~Q(season_id=season_id)
+        carries = starts_before | Q(pk__in=early_plans) | recorded_harvest_overlap
+        if self.action in {'list', 'retrieve'}:
+            after_occupancy = candidates.alias(
+                occupied_until=PlantingPlan.occupancy_end_expression(),
+            ).exclude(carries)
+            carries |= Q(pk__in=recorded_harvest_plan_ids(after_occupancy, active_season))
+        carried_over = carries & ~Q(season_id=season_id)
         if not across_seasons:
             queryset = queryset.filter(Q(season_id=season_id) | carried_over)
         return queryset.annotate(carried_over=Case(
@@ -582,12 +609,86 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         current_user = self.request.user if self.request.user.is_authenticated else None
         previous_snapshot = _serialize_instance(serializer.instance)
         actual_dates_only = serializer.is_actual_date_update(serializer.validated_data)
+        save_legacy_occurrence = actual_dates_only and self._apply_legacy_harvest_patch(serializer)
         instance = serializer.save(updated_by=current_user)
+        if save_legacy_occurrence:
+            instance.save(update_fields=['harvest_occurrence_actuals', 'updated_at'])
         if not actual_dates_only:
             synchronize_plan_tasks(instance)
         elif {'actual_sowing_date', 'actual_transplanting_date'} & serializer.validated_data.keys():
             synchronize_recurring_harvest_tasks(PlantingPlan.objects.filter(pk=instance.pk))
         self.record_revision(instance, EntityRevision.ACTION_UPDATED, previous_snapshot=previous_snapshot)
+
+    def _apply_legacy_harvest_patch(self, serializer: PlantingPlanSerializer) -> bool:
+        fields = serializer.validated_data
+        plan = serializer.instance
+        if not fields.keys() & set(HARVEST_DATE_FIELDS) or not plan.harvest_occurrence_actuals:
+            return False
+        schedule = recurring_harvest_schedule(plan, build_general_crop_index(plan.project_id))
+        if schedule is None:
+            detached = detach_stored_legacy_dates(plan)
+            if detached:
+                for field in HARVEST_DATE_FIELDS:
+                    fields.setdefault(field, None)
+            return detached
+        try:
+            return apply_legacy_harvest_patch(
+                plan, schedule, serializer.context.get('harvest_season') or plan.season, fields,
+            )
+        except DjangoValidationError as error:
+            raise serializers.ValidationError(error.message_dict) from error
+
+    @extend_schema(
+        request=HarvestActualDateUpdateSerializer, responses=HarvestActualDateResultSerializer,
+    )
+    @action(detail=True, methods=['patch'], url_path='harvest-actual-dates')
+    @transaction.atomic
+    def harvest_actual_dates(self, request, pk=None):
+        plan = self._lock_plan()
+        self.check_object_permissions(request, plan)
+        if plan.season_id is not None and plan.season.deleted_at is not None:
+            raise Http404
+        season = resolve_record_season(request)
+        if season is None:
+            season = get_object_or_404(
+                Season, pk=resolve_season_id_from_request(request), project=request.active_project,
+            )
+        if season.deleted_at is not None:
+            raise Http404
+        crop_index = build_general_crop_index(plan.project_id)
+        schedule = recurring_harvest_schedule(plan, crop_index)
+        planned = plan.planned_harvest_dates(crop_index)
+        occurrences = harvest_actual_occurrences(plan, season, schedule, planned)
+        if not occurrences:
+            raise Http404
+
+        payload = HarvestActualDateUpdateSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        dates = dict(payload.validated_data)
+        year = dates.pop('year')
+        if year not in {occurrence['year'] for occurrence in occurrences}:
+            raise serializers.ValidationError({
+                'year': 'Select a harvest occurrence in this season.',
+            })
+        before = _serialize_instance(plan)
+        try:
+            fields = update_harvest_actuals(plan, schedule, year, dates)
+        except DjangoValidationError as error:
+            raise serializers.ValidationError(error.message_dict) from error
+        if fields:
+            plan.updated_by = request.user
+            plan.save(update_fields=(*fields, 'updated_by', 'updated_at'))
+            self.record_revision(plan, EntityRevision.ACTION_UPDATED, previous_snapshot=before)
+        return Response({
+            'actual_harvest_start_date': plan.actual_harvest_start_date,
+            'recorded_harvest_end_date': plan.recorded_harvest_end_date,
+            'harvest_actual_occurrences': harvest_actual_occurrences(
+                plan, season, schedule, planned,
+            ),
+            'seasonal_harvest': (
+                seasonal_harvest_payload(plan, season, schedule) if schedule else None
+            ),
+        })
 
     @extend_schema(
         parameters=[SEASON_HEADER_PARAMETER, HarvestDateRangeSerializer],
@@ -704,7 +805,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             self.record_revision(plan, EntityRevision.ACTION_UPDATED, previous_snapshot=before)
             schedule = recurring_harvest_schedule(plan, crop_index)
         return Response({
-            'harvest_windows_by_year': schedule.occurrence_details(occurrence_year),
+            'harvest_windows_by_year': harvest_occurrence_page(plan, schedule, occurrence_year),
             'seasonal_harvest': (
                 seasonal_harvest_payload(plan, season, schedule) if season else None
             ),

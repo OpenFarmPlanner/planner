@@ -13,7 +13,7 @@ import { parseGermanDateText, toGridDateValue, toIsoDateString } from '../compon
 import { useTranslation } from '../i18n';
 import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import { PlanDateComparisonText } from './PlantingPlanExecutionDates';
-import { planDateDeviation, type PlantingPlanActivity, type PlantingPlanDateComparison, type PlantingPlanDateMode } from './plantingPlanActualDates';
+import { planDateDeviation, type PlantingPlanDateComparison, type PlantingPlanDateMode } from './plantingPlanActualDates';
 
 const DATE_MODES: PlantingPlanDateMode[] = ['planned', 'actual', 'combined'];
 
@@ -71,7 +71,7 @@ interface ActualPlanDateCellProps {
   params: GridRenderCellParams;
   children: ReactNode;
   getEditDates: () => PlantingPlanDateComparison;
-  onSaveActual: (activity: PlantingPlanActivity, value: string | null) => Promise<void>;
+  onSaveActual: (dates: PlantingPlanDateComparison, value: string | null) => Promise<void>;
 }
 
 export function ActualPlanDateCell({ params, children, getEditDates, onSaveActual }: ActualPlanDateCellProps) {
@@ -117,7 +117,7 @@ export function ActualPlanDateCell({ params, children, getEditDates, onSaveActua
     setSaving(true);
     setError('');
     try {
-      await onSaveActual(editDates.activity, value);
+      await onSaveActual(editDates, value);
       close(returnFocus);
     } catch (failure) {
       setError(extractApiErrorMessage(failure, t, t('actualDates.saveError')));

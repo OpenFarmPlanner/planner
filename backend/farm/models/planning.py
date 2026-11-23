@@ -82,6 +82,10 @@ class PlantingPlan(TimestampedModel):
         default=dict, blank=True, editable=False,
         help_text='Absolute planned harvest ranges keyed by the recurring window start year.',
     )
+    harvest_occurrence_actuals = models.JSONField(
+        default=dict, blank=True, editable=False,
+        help_text='Recorded harvest dates by occurrence year and any legacy date binding.',
+    )
     harvest_date_is_explicit = models.BooleanField(default=False, editable=False)
     harvest_end_date_is_explicit = models.BooleanField(default=False, editable=False)
     actual_propagation_start_date = models.DateField(null=True, blank=True)
@@ -253,8 +257,9 @@ class PlantingPlan(TimestampedModel):
     def save(self, *args: Any, **kwargs: Any) -> None:
         """Save the plan and auto-calculate harvest dates if needed."""
         update_fields = set(kwargs.get('update_fields') or ())
-        if update_fields & self.ACTUAL_DATE_FIELDS and (
-            update_fields <= self.ACTUAL_DATE_FIELDS | {'updated_by', 'updated_at'}
+        execution_fields = self.ACTUAL_DATE_FIELDS | {'harvest_occurrence_actuals'}
+        if update_fields & execution_fields and (
+            update_fields <= execution_fields | {'updated_by', 'updated_at'}
         ):
             super().save(*args, **kwargs)
             return

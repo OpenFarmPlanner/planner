@@ -132,6 +132,8 @@ test('keeps one perennial plan while switching its records between seasons', asy
     });
     await page.reload();
     await expect(harvestDates.getByText('24.4.2026', { exact: true })).toHaveCount(0);
+    await chooser.selectOption(String(active.id));
+    await expect(harvestDates.getByText('24.4.2026', { exact: true })).toBeVisible();
     await harvestDates.getByRole('button', { name: 'Ist-Termine erfassen' }).click();
     const actualStart = harvestDates.getByLabel('Ist-Erntebeginn', { exact: true });
     const actualEnd = harvestDates.getByLabel('Ist-Ernteende', { exact: true });
@@ -141,9 +143,31 @@ test('keeps one perennial plan while switching its records between seasons', asy
     await harvestDates.getByRole('button', { name: 'Datum löschen · Ist-Ernteende', exact: true }).click();
     await harvestDates.getByRole('button', { name: 'Speichern', exact: true }).click();
     await expect(actualStart).toHaveCount(0);
-    expect(await apiRequest(page, 'GET', `/planting-plans/${plan.id}/`)).toMatchObject({
-      actual_harvest_start_date: '2026-04-25', recorded_harvest_end_date: null,
+    expect(await apiRequest(page, 'GET', `/planting-plans/${plan.id}/?across_seasons=true&record_season=${active.id}`)).toMatchObject({
+      season: origin.id, planting_date: '2024-05-01', seasonal_harvest: {
+        actual_start_date: '2026-04-25', actual_end_date: null,
+      },
     });
+    await chooser.selectOption(String(earlier.id));
+    await expect(harvestDates.getByText('12.3.2025', { exact: true })).toBeVisible();
+    await harvestDates.getByRole('button', { name: 'Ist-Termine erfassen' }).click();
+    await actualStart.fill('2025-03-16');
+    await actualEnd.fill('2025-04-02');
+    await harvestDates.getByRole('button', { name: 'Speichern', exact: true }).click();
+    await expect(harvestDates.getByText('16.3.2025', { exact: true })).toBeVisible();
+    await chooser.selectOption(String(active.id));
+    await expect(harvestDates.getByText('25.4.2026', { exact: true })).toBeVisible();
+    await expect(harvestDates.getByText('16.3.2025', { exact: true })).toHaveCount(0);
+    const lifetime = page.getByRole('heading', { name: 'Erntefenster je Jahr' }).locator('..');
+    await lifetime.getByRole('combobox', { name: 'Erntejahr' }).selectOption('2026');
+    await expect(lifetime.getByText('25.4.2026', { exact: true })).toBeVisible();
+
+    await apiRequest(page, 'PATCH', `/crops/${crop.id}/`, { annual_harvest_window: '' });
+    await page.reload();
+    await chooser.selectOption(String(active.id));
+    await expect(harvestDates.getByText('25.4.2026', { exact: true })).toBeVisible();
+    await lifetime.getByRole('combobox', { name: 'Erntejahr' }).selectOption('2026');
+    await expect(lifetime.getByText('25.4.2026', { exact: true })).toBeVisible();
   } finally {
     await resetE2EScenario(request, scenario);
   }

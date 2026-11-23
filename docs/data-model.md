@@ -306,8 +306,17 @@ erDiagram
   `harvest_window_overrides` maps an occurrence's start year to an absolute
   planned start and end date. It is stored on the original plan, independently
   of crop defaults, the plan's stored harvest snapshot, and actual harvests.
+  `harvest_occurrence_actuals` keeps the optional actual start and end for each
+  recurring occurrence on the same plan, keyed by that occurrence's start year.
+  A scoped edit takes precedence over the legacy plan-level harvest dates for
+  that year, including when it clears them. Older recurring plans retain their
+  original recorded dates. The first scoped edit binds those legacy dates to
+  their occurrence so that later changes to the forecast do not move them.
+  Legacy plan PATCH requests still update the corresponding occurrence when
+  it has a saved record.
+  One-off harvests continue to use the plan-level actual start and end fields.
   Project history includes the map. A snapshot made before overrides
-  existed restores an empty map.
+  or occurrence-specific actuals existed restores the corresponding empty map.
   Its `cultivation_type` is `direct_sowing`,
   `pre_cultivation` or the plan-only `purchased_transplant` (bought-in
   plants: no Anzucht, no seed demand — see

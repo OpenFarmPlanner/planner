@@ -510,7 +510,20 @@
       "sqm": "Introduce una superficie no negativa con hasta tres decimales."
     }
   },
+  "fields": {
+    "start_date": "Fecha real de inicio de la cosecha",
+    "end_date": "Fecha real de fin de la cosecha",
+    "year": "Año de cosecha"
+  },
   "actualDates": {
+    "harvestOccurrence": "Fechas de cosecha de {{year}}",
+    "harvestErrors": {
+      "order": "El fin de la cosecha debe coincidir con su inicio o ser posterior.",
+      "occupancy": "Introduce una fecha en la que el cultivo ocupe el bancal.",
+      "occurrence": "Introduce una fecha para la cosecha seleccionada.",
+      "overlap": "Las cosechas registradas deben estar en orden y no pueden solaparse.",
+      "season": "Selecciona una cosecha de esta temporada."
+    },
     "plannedCardLabels": {
       "sowing": "Fecha prevista de siembra",
       "transplanting": "Fecha prevista de trasplante"

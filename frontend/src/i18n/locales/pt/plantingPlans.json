@@ -510,7 +510,20 @@
       "sqm": "Introduz uma área não negativa com até três casas decimais."
     }
   },
+  "fields": {
+    "start_date": "Data efetiva de início da colheita",
+    "end_date": "Data efetiva de fim da colheita",
+    "year": "Ano de colheita"
+  },
   "actualDates": {
+    "harvestOccurrence": "Datas de colheita de {{year}}",
+    "harvestErrors": {
+      "order": "O fim da colheita deve coincidir com o início ou ser posterior.",
+      "occupancy": "Introduza uma data em que a cultura ocupe o canteiro.",
+      "occurrence": "Introduza uma data para a colheita selecionada.",
+      "overlap": "As colheitas registadas têm de estar em ordem e não podem sobrepor-se.",
+      "season": "Selecione uma colheita desta época."
+    },
     "plannedCardLabels": {
       "sowing": "Data planeada de sementeira",
       "transplanting": "Data planeada de transplantação"

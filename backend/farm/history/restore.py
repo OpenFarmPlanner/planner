@@ -313,7 +313,10 @@ def _with_legacy_snapshot_fields(model: type, snapshot: dict) -> dict:
     if model is CropCompanion and 'notes' not in snapshot:
         return {**snapshot, 'notes': {'de': snapshot['note']} if snapshot.get('note') else {}}
     if model is PlantingPlan:
-        return {'copied_from_plan_id': None, 'harvest_window_overrides': {}, **snapshot}
+        return {
+            'copied_from_plan_id': None, 'harvest_window_overrides': {},
+            'harvest_occurrence_actuals': {}, **snapshot,
+        }
     if model is Task:
         return {'suppressed_by_harvest_configuration': False, **snapshot}
     return snapshot

@@ -607,6 +607,8 @@ export function EditableDataGrid<T extends EditableRow>({
     (field: string): boolean => (dialogEditFields ?? []).includes(field),
     [dialogEditFields],
   );
+  const canOpenDedicatedEditor = (row: T, field: string) => isStandaloneEditCell?.(row, field)
+    || (isDialogEditField(field) && !isReadOnlyRow?.(row));
   const [dialogEditRequest, setDialogEditRequest] = useState<DialogEditCellRequest | null>(null);
   const dialogEditTokenRef = useRef(0);
   const requestDialogEditForCell = useCallback((rowId: GridRowId, field: string, initialQuery?: string): void => {
@@ -2912,7 +2914,7 @@ export function EditableDataGrid<T extends EditableRow>({
               if (notesFieldNames.includes(params.field)) {
                 markRowDirty(rowKey);
               } else if ((event.nativeEvent as PointerEvent | undefined)?.pointerType === 'touch'
-                && !isReadOnlyRow?.(params.row) && !isOnControlInsideCell(event)) {
+                && canOpenDedicatedEditor(params.row, params.field) && !isOnControlInsideCell(event)) {
                 requestDialogEditForCell(params.id, params.field);
               }
               return;
@@ -2930,8 +2932,7 @@ export function EditableDataGrid<T extends EditableRow>({
               event.defaultMuiPrevented = true;
               return;
             }
-            const ownsEditor = isDialogEditField(params.field) || isStandaloneEditCell?.(params.row, params.field);
-            if (ownsEditor && !isReadOnlyRow?.(params.row) && !isOnControlInsideCell(event)) {
+            if (canOpenDedicatedEditor(params.row, params.field) && !isOnControlInsideCell(event)) {
               event.defaultMuiPrevented = true;
               requestDialogEditForCell(params.id, params.field);
               return;
@@ -3002,8 +3003,7 @@ export function EditableDataGrid<T extends EditableRow>({
             }
 
             const typedSearch = isSpreadsheetPrintableKey(event);
-            const ownsEditor = isDialogEditField(params.field) || isStandaloneEditCell?.(params.row, params.field);
-            if (ownsEditor && !isReadOnlyRow?.(params.row) && !isOnControlInsideCell(event)
+            if (canOpenDedicatedEditor(params.row, params.field) && !isOnControlInsideCell(event)
               && !event.altKey && !event.ctrlKey && !event.metaKey && !event.nativeEvent.isComposing
               && (typedSearch || event.key === 'Enter' || event.key === 'F2')) {
               event.preventDefault();

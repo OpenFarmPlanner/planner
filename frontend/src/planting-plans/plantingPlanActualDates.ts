@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next';
-import type { Crop, PlantingPlan, PlantingPlanActualDates, Season } from '../api/types';
+import type { Crop, HarvestActualOccurrence, PlantingPlan, PlantingPlanActualDates, Season } from '../api/types';
 import { toIsoDateString } from '../components/data-grid/dateEditCellUtils';
 import { getPlanPropagationInfo, getPlanSowingSchedule } from '../pages/planSowingDate';
 import { parseIsoDate } from '../utils/isoDate';
@@ -23,16 +23,46 @@ export interface PlantingPlanDateComparison {
   planned: string | null;
   actual: string | null;
   plannedDates?: string[];
+  occurrenceYear?: number | null;
 }
 
 type ActivityDatePlan = PlantingPlanActualDates & Pick<PlantingPlan,
   'cultivation_type' | 'crop_cultivation_type' | 'crop_cultivation_types' | 'crop_propagation_duration_days'
   | 'planting_date' | 'planned_sowing_date' | 'planned_propagation_start_date'
-  | 'harvest_date' | 'harvest_end_date' | 'seasonal_harvest'>;
+  | 'harvest_date' | 'harvest_end_date' | 'seasonal_harvest' | 'harvest_actual_occurrences' | 'carried_over'>;
+
+function occurrenceComparison(
+  occurrence: HarvestActualOccurrence, activity: 'harvestStart' | 'harvestEnd',
+): PlantingPlanDateComparison {
+  const start = activity === 'harvestStart';
+  return {
+    activity,
+    planned: start ? occurrence.planned_start_date : occurrence.planned_end_date,
+    actual: start ? occurrence.actual_start_date : occurrence.actual_end_date,
+    occurrenceYear: occurrence.year,
+  };
+}
 
 function harvestComparison(plan: ActivityDatePlan, activity: 'harvestStart' | 'harvestEnd'): PlantingPlanDateComparison {
   const isStart = activity === 'harvestStart';
   const harvest = plan.seasonal_harvest;
+  const occurrences = plan.harvest_actual_occurrences;
+  if (occurrences?.length) {
+    const dates = occurrenceComparison(occurrences[0], activity);
+    if (!harvest && !plan.carried_over && dates.occurrenceYear === null) {
+      return {
+        activity, planned: toIsoDateString(isStart ? plan.harvest_date : plan.harvest_end_date), actual: dates.actual,
+      };
+    }
+    return harvest ? {
+      ...dates,
+      plannedDates: occurrences.map(occurrence => occurrenceComparison(occurrence, activity).planned)
+        .filter((value): value is string => value !== null),
+    } : dates;
+  }
+  if (plan.carried_over && occurrences?.length === 0 && !harvest) {
+    return { activity, planned: null, actual: null };
+  }
   if (harvest) {
     const plannedDates = harvest.periods.map(period => isStart ? period.start_date : period.end_date);
     return {
@@ -70,7 +100,10 @@ export function getPlanActivityDates(plan: ActivityDatePlan, crop?: Crop): Plant
   ));
 }
 
-export function getDetailHarvestDates(plan: ActivityDatePlan, season?: Season): PlantingPlanDateComparison[] {
+export function getDetailHarvestDates(
+  plan: ActivityDatePlan, season?: Season, occurrence?: HarvestActualOccurrence,
+): PlantingPlanDateComparison[] {
+  if (occurrence) return [occurrenceComparison(occurrence, 'harvestStart'), occurrenceComparison(occurrence, 'harvestEnd')];
   const start = harvestComparison(plan, 'harvestStart');
   const end = harvestComparison(plan, 'harvestEnd');
   if (!season || plan.seasonal_harvest) return [start, end];

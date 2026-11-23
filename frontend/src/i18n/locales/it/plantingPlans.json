@@ -510,7 +510,20 @@
       "sqm": "Inserisci una superficie non negativa con un massimo di tre decimali."
     }
   },
+  "fields": {
+    "start_date": "Inizio effettivo della raccolta",
+    "end_date": "Fine effettiva della raccolta",
+    "year": "Anno di raccolta"
+  },
   "actualDates": {
+    "harvestOccurrence": "Date di raccolta {{year}}",
+    "harvestErrors": {
+      "order": "La fine della raccolta deve coincidere con l’inizio o essere successiva.",
+      "occupancy": "Inserisci una data in cui la coltura occupa l’aiuola.",
+      "occurrence": "Inserisci una data per la raccolta selezionata.",
+      "overlap": "Le raccolte registrate devono essere in ordine e non possono sovrapporsi.",
+      "season": "Seleziona una raccolta di questa stagione."
+    },
     "plannedCardLabels": {
       "sowing": "Data di semina prevista",
       "transplanting": "Data di trapianto prevista"
