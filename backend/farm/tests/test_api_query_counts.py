@@ -730,6 +730,33 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             counts.append((len(plan_queries), len(yield_queries)))
         self.assertEqual(counts, [counts[0]] * ROW_COUNT)
 
+    def test_calendar_harvest_windows_query_count(self):
+        target = Season.objects.create(
+            project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
+        )
+        Crop.objects.filter(project=self.project).update(
+            life_cycle='perennial', annual_harvest_window='02-01/03-01',
+        )
+        for index in range(ROW_COUNT):
+            plan = PlantingPlan.objects.create(
+                crop=self.crops[index], bed=self.beds[index], planting_date=date(2026, 12, 31),
+                clearing_date=date(2029, 12, 31), area_usage_sqm=5,
+                project=self.project, season=self.seasons[index],
+            )
+            with self.assertNumQueries(7):
+                response = self.client.get(
+                    '/openfarmplanner/api/planting-plans/calendar-harvest-windows/',
+                    {'start_date': '2027-12-01', 'end_date': '2028-02-29'},
+                    HTTP_X_SEASON_ID=str(target.pk),
+                )
+            self.assertEqual(response.status_code, 200, response.data)
+            self.assertEqual(len(response.json()['windows_by_plan']), index + 1)
+            self.assertEqual(response.json()['windows_by_plan'][str(plan.pk)], [{
+                'start_date': '2028-02-01',
+                'end_date': '2028-02-29',
+                'occurrence_start_date': '2028-02-01',
+            }])
+
     def test_planting_plans_list_query_count_with_timing_window_findings(self):
         """A planting date outside the crop's Direktsaat window on every plan
         must cost the same queries as plans without hints."""

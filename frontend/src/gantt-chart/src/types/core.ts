@@ -14,6 +14,8 @@ export interface Task {
   positionLocked?: boolean;
   accessibleLabel?: string;
   leadingIcon?: ReactNode;
+  /** Position this continuous bar on the precise date column scale. */
+  useCalendarDateScale?: boolean;
   /** Dated highlights along a continuous bar. */
   phaseBands?: { startDate: Date; endDate: Date; color: string }[];
   /**

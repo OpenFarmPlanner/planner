@@ -58,7 +58,7 @@
       "occupancy": "Bed occupancy"
     },
     "seasonalHarvest": "Planned seasonal harvest",
-    "noSeasonalHarvest": "No harvest is planned for this season.",
+    "noSeasonalHarvest": "No harvest is planned in the visible period.",
     "recordedPlantingEdit": "Sowing or planting is recorded. Edit planned dates in the planting plan.",
     "actualHarvestEnd": "Harvest ends at the latest",
     "clearingDate": "Crop removal date"

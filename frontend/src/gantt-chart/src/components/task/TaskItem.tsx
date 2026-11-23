@@ -226,14 +226,15 @@ const TaskItem: React.FC<TaskItemProps> = ({
     );
   }
 
-  // Inline styles based on received task colors. CSS enforces a 20px
-  // min-width on .rmg-task-item so very short tasks stay clickable/visible
-  // without distorting the actual date range in the data.
+  // Calendar occupancy uses its exact date span, even at coarse zoom levels.
+  // Other tasks keep the CSS minimum width so short tasks stay clickable.
   const taskStyles: React.CSSProperties & { "--rmg-task-left"?: string } = {
     left: `${leftPx}px`,
     "--rmg-task-left": phaseBands ? `${leftPx}px` : undefined,
     top: `${topPx}px`,
     width: `${widthPx}px`,
+    minWidth: task.useCalendarDateScale ? 0 : undefined,
+    paddingInline: task.useCalendarDateScale && widthPx < 16 ? 0 : undefined,
     backgroundColor,
     color: textColor,
     cursor: isDragging ? "grabbing" : canMoveTask ? "grab" : "default",

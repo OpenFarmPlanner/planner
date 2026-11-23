@@ -9,6 +9,7 @@ from farm.services.seasonal_harvest import recurring_harvest_schedule
 from farm.tests.api_base import ProjectApiTestCase
 
 PLANS = '/openfarmplanner/api/planting-plans/'
+CALENDAR_WINDOWS = f'{PLANS}calendar-harvest-windows/'
 FORECAST = '/openfarmplanner/api/yield-calendar/'
 
 
@@ -87,6 +88,18 @@ class SeasonalHarvestTest(ProjectApiTestCase):
                 if year == 2027:
                     self.assertEqual(row['actual_harvest']['forecast_kg'], '40')
 
+        calendar = self.client.get(CALENDAR_WINDOWS, {
+            'start_date': '2026-09-01', 'end_date': '2028-10-31',
+        }, HTTP_X_SEASON_ID=str(seasons[2026].pk))
+        self.assertEqual(calendar.status_code, 200, calendar.data)
+        self.assertEqual(calendar.json(), {
+            'windows_by_plan': {str(plan.pk): [
+                {**window, 'occurrence_start_date': window['start_date']}
+                for window in expected_windows[2027] + expected_windows[2028]
+            ]},
+            'next_start_date': None,
+        })
+
         comparison = self.comparison(variety)
         totals = {2025: None, 2026: None, 2027: '40', 2028: '8.89', 2029: None}
         for year, total in totals.items():
@@ -134,6 +147,78 @@ class SeasonalHarvestTest(ProjectApiTestCase):
             (date(2026, 1, 1), date(2026, 1, 10)),
             (date(2026, 12, 20), date(2026, 12, 31)),
         ])
+
+    def test_calendar_projection_uses_overrides_beyond_a_non_calendar_season(self) -> None:
+        origin = self.season(date(2024, 9, 1), date(2025, 8, 31))
+        active = self.season(date(2025, 9, 1), date(2026, 8, 31))
+        crop = self.crop_with_window('12-20/01-10')
+        plan = PlantingPlan.objects.create(
+            project=self.project, crop=crop, bed=self.bed, season=origin,
+            planting_date=date(2025, 3, 15), clearing_date=date(2028, 1, 4),
+            area_usage_sqm=8,
+            harvest_window_overrides={
+                '2026': {'start_date': '2026-12-25', 'end_date': '2027-01-15'},
+            },
+        )
+        headers = {'HTTP_X_SEASON_ID': str(active.pk)}
+        response = self.client.get(CALENDAR_WINDOWS, {
+            'start_date': '2026-01-05', 'end_date': '2028-01-20',
+        }, **headers)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.json(), {
+            'windows_by_plan': {str(plan.pk): [
+                {
+                    'start_date': '2026-01-05', 'end_date': '2026-01-10',
+                    'occurrence_start_date': '2025-12-20',
+                },
+                {
+                    'start_date': '2026-12-25', 'end_date': '2027-01-15',
+                    'occurrence_start_date': '2026-12-25',
+                },
+                {
+                    'start_date': '2027-12-20', 'end_date': '2028-01-04',
+                    'occurrence_start_date': '2027-12-20',
+                },
+            ]},
+            'next_start_date': None,
+        })
+        invalid = self.client.get(CALENDAR_WINDOWS, {
+            'start_date': '2028-01-20', 'end_date': '2026-01-05',
+        }, **headers)
+        self.assertEqual(invalid.status_code, 400)
+        details = self.client.get(f'{PLANS}{plan.pk}/', **headers).json()
+        self.assertEqual(details['seasonal_harvest']['periods'], [
+            {'start_date': '2025-12-20', 'end_date': '2026-01-10'},
+        ])
+
+    def test_calendar_projection_pages_wide_ranges_and_preserves_occurrence_identity(self) -> None:
+        season = self.season(date(2026, 1, 1), date(2026, 12, 31))
+        plan = PlantingPlan.objects.create(
+            project=self.project, crop=self.crop_with_window('12-20/01-10'), bed=self.bed,
+            season=season, planting_date=date(2026, 3, 15), clearing_date=date(2040, 1, 4),
+            area_usage_sqm=8,
+        )
+        params = {'start_date': '2026-01-01', 'end_date': '2040-01-04'}
+        headers = {'HTTP_X_SEASON_ID': str(season.pk)}
+        first = self.client.get(CALENDAR_WINDOWS, params, **headers).json()
+        self.assertEqual(first['next_start_date'], '2036-01-01')
+        self.assertEqual(len(first['windows_by_plan'][str(plan.pk)]), 10)
+        self.assertEqual(first['windows_by_plan'][str(plan.pk)][-1], {
+            'start_date': '2035-12-20', 'end_date': '2035-12-31',
+            'occurrence_start_date': '2035-12-20',
+        })
+        second = self.client.get(
+            CALENDAR_WINDOWS, {**params, 'start_date': first['next_start_date']}, **headers,
+        ).json()
+        self.assertIsNone(second['next_start_date'])
+        self.assertEqual(second['windows_by_plan'][str(plan.pk)][0], {
+            'start_date': '2036-01-01', 'end_date': '2036-01-10',
+            'occurrence_start_date': '2035-12-20',
+        })
+        invalid_season = self.client.get(
+            CALENDAR_WINDOWS, params, HTTP_X_SEASON_ID=str(season.pk + 1),
+        )
+        self.assertEqual(invalid_season.json(), {'windows_by_plan': {}, 'next_start_date': None})
 
     def test_actual_planting_anniversaries_and_leap_boundaries(self) -> None:
         crop = self.crop_with_window('02-15/02-29', first_harvest_delay_years=2)

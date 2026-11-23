@@ -137,6 +137,28 @@ class LocalLibraryImportSeedTests(TestCase):
         self.assertEqual(project.planting_plans.count(), 4)
         self.assertEqual(HarvestAllocation.objects.filter(planting_plan=apple).count(), 1)
 
+    def test_perennial_calendar_fixture_extends_the_axis_without_changing_other_fixtures(self):
+        command = 'seed_perennial_harvest_acceptance'
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        projects = Project.objects.filter(slug=f'ofp-local-perennial-calendar-{self.user.pk}')
+        call_command(command, **arguments, calendar_axis=True)
+        self.assertFalse(projects.exists())
+        call_command(command, **arguments, calendar_axis=True, apply=True)
+        project = projects.get()
+        rhubarb = project.planting_plans.get(crop__name='Calendar rhubarb')
+        annual = project.planting_plans.get(crop__name='Long winter leek')
+        self.assertEqual(rhubarb.planting_date.year, 2024)
+        self.assertEqual(rhubarb.clearing_date.year, 2030)
+        self.assertEqual(annual.season.start_date.year, 2026)
+        self.assertGreaterEqual(annual.harvest_end_date, date(2027, 10, 15))
+        self.assertEqual(project.planting_plans.count(), 6)
+        rhubarb.notes = 'Keep this manual edit'
+        rhubarb.save(update_fields=['notes'])
+        call_command(command, **arguments, calendar_axis=True, apply=True)
+        rhubarb.refresh_from_db()
+        self.assertEqual(rhubarb.notes, 'Keep this manual edit')
+        self.assertEqual(project.planting_plans.count(), 6)
+
     def test_yield_comparison_fixture_previews_and_preserves_manual_edits(self):
         command = 'seed_yield_comparison_acceptance'
         arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}

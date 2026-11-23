@@ -165,11 +165,19 @@ description), one level down:
   season's plans: `startDate` = the earliest `planting_date`, `endDate` = the
   latest relevant date (harvest end, falling back to the harvest date), even
   when that reaches past the season's end. Carried-over bars begin at the
-  first visible day and label their source season. The perennial occupancy bar
-  is clipped to the selected season and its tooltip includes the full removal
-  date. For a configured perennial, the same continuous bar marks the
-  eligible harvest periods inside that season and lists their dates in its
-  accessible label and tooltip. An earlier recorded planting can let a crop
+  first visible day and label their source season. A far-off perennial removal
+  date does not expand the axis on its own. Within the displayed columns, the
+  perennial's single bar extends to its actual clearing date or the right
+  edge of the calendar, whichever comes first. A configured perennial marks all
+  eligible planned harvest intervals intersecting those columns, including
+  periods outside the selected season. The accessible label and preview list
+  the displayed harvest intervals, and the preview retains the original
+  planting and clearing dates. When the axis goes outside the selected season,
+  the calendar requests projections in bulk from the season-scoped
+  `planting-plans/calendar-harvest-windows/` endpoint using the displayed date
+  bounds. Each response covers up to ten calendar years. For wider axes, the
+  client follows the continuation and joins any split harvest window.
+  Yield and demand retain their season scope. An earlier recorded planting can let a crop
   bear before its original planned planting date. The bar includes that
   harvest interval, and the planned planting date remains in the tooltip.
   When a recorded date anchors recurring harvests, edit planned dates from
@@ -329,6 +337,17 @@ planting-plans table, Crop Calendar and yield forecast. The planned window
 moves and the 3 kg harvest record remains dated September 10. Check 2028,
 then reset 2027 from the 2025 details and verify September 1 through October 15
 returns.
+
+For the extended calendar axis, add `--calendar-axis` to the same preview
+and apply commands. This creates the separate **Perennial calendar acceptance**
+project with a 2024 rhubarb and a winter leek that takes the 2026 axis into
+October 2027. In 2026, open **Crop Calendar → Field occupancy**. Check that the
+rhubarb reaches the right edge of both the month and week views and includes
+March 12–April 9, 2027 in its planned harvest shading and preview. Its
+September 2030 clearing date remains visible in the preview. Shorten the
+clearing date from the origin plan to March 20, 2027 and verify that the
+bar and second shading both end on that date. Apple first bears in 2027.
+Check an override for that year and compare the season-scoped yield report.
 
 ### Local yield comparison fixture
 

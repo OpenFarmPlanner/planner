@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import i18n from '../i18n';
 import {
   buildOccupancyTooltipDetails,
+  clipPerennialOccupancyTask,
   buildFieldOccupancyHierarchy,
   buildFieldOccupancyTaskGroups,
   buildSeedlingTaskGroups,
@@ -160,6 +161,45 @@ describe('getHarvestCutShort', () => {
     expect(getHarvestCutShort({ actual_harvest_end_date: null }, harvestStart, harvestEnd)).toEqual({});
     expect(getHarvestCutShort({ actual_harvest_end_date: '2026-07-01' }, harvestStart, harvestEnd)).toEqual({});
     expect(getHarvestCutShort({ actual_harvest_end_date: '2026-04-01' }, harvestStart, harvestEnd)).toEqual({});
+  });
+});
+
+describe('clipPerennialOccupancyTask', () => {
+  const axis = { start: parseIsoDate('2026-12-01')!, end: parseIsoDate('2027-04-30')! };
+  const task = {
+    id: 'plan-1-occupancy', name: 'Rhubarb',
+    startDate: parseIsoDate('2024-05-01')!, endDate: parseIsoDate('2030-09-30')!,
+    plantingAnchor: parseIsoDate('2024-05-01')!, clearingDate: parseIsoDate('2030-09-30')!,
+    readOnly: true, useCalendarDateScale: true,
+    phaseBands: [{
+      startDate: parseIsoDate('2027-03-12')!, endDate: parseIsoDate('2027-04-09')!, color: '#54843a',
+    }],
+  };
+
+  it('clips at the calendar edges while keeping the source dates and the next year harvest', () => {
+    const visible = clipPerennialOccupancyTask(task, axis);
+    expect(visible).toMatchObject({
+      startDate: axis.start, endDate: axis.end, phaseBands: task.phaseBands,
+      plantingAnchor: task.plantingAnchor, clearingDate: task.clearingDate,
+    });
+  });
+
+  it('keeps a harvest on the last occupied day and excludes days after clearing', () => {
+    const clearingDate = parseIsoDate('2027-03-12')!;
+    const visible = clipPerennialOccupancyTask({ ...task, endDate: clearingDate, clearingDate }, axis);
+    expect(visible?.endDate).toEqual(clearingDate);
+    expect(visible?.phaseBands).toEqual([{ ...task.phaseBands[0], endDate: clearingDate }]);
+    expect(clipPerennialOccupancyTask({ ...task, endDate: parseIsoDate('2026-11-30')! }, axis)).toBeNull();
+  });
+
+  it('keeps legacy occupancy without presenting an old one-time harvest as current', () => {
+    const visible = clipPerennialOccupancyTask({
+      ...task, phaseBands: undefined, harvestStartDate: parseIsoDate('2025-03-12')!,
+      harvestEndDate: parseIsoDate('2025-04-09')!,
+    }, axis);
+    expect(visible).toMatchObject({ startDate: axis.start, endDate: axis.end });
+    expect(visible?.phaseBands).toBeUndefined();
+    expect(visible?.harvestStartDate).toBeUndefined();
   });
 });
 

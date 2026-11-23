@@ -257,7 +257,8 @@ const TaskRow: React.FC<TaskRowProps> = ({
       ? buildMovePreviewTasks(original, newStartDate, [])[0]
       : { ...original, startDate: newStartDate, endDate: newEndDate };
 
-  const getTaskDateScale = (task: Task) => timelineDateScale ?? (task.phaseBands ? phaseDateScale : undefined);
+  const getTaskDateScale = (task: Task) =>
+    timelineDateScale ?? (task.useCalendarDateScale || task.phaseBands ? phaseDateScale : undefined);
 
   // Update dates based on visual position with special Day view handling
   const updateDatesFromPosition = (left: number, width: number) => {
@@ -1023,7 +1024,8 @@ const TaskRow: React.FC<TaskRowProps> = ({
     );
   }
 
-  const tooltipTask = draggingTask ? previewTask || draggingTask : hoveredTask || focusedPreview?.task;
+  const inspectedTaskId = hoveredTask?.id ?? focusedPreview?.task.id;
+  const tooltipTask = draggingTask ? previewTask || draggingTask : groupTasks.find(task => task.id === inspectedTaskId);
 
   return (
     <div
@@ -1074,7 +1076,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
                   positionDate,
                   minimumWidth,
                 );
-              const { leftPx, widthPx } = calculatePosition(task);
+              const { leftPx, widthPx } = calculatePosition(task, task.useCalendarDateScale ? 0 : undefined);
               const phaseBands = task.phaseBands?.flatMap(({ startDate, endDate, color }) => {
                 const position = calculatePosition({ ...task, startDate, endDate, endDateIsExclusive: false }, 0);
                 return position.widthPx > 0

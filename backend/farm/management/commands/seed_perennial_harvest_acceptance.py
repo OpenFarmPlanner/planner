@@ -29,6 +29,7 @@ class Command(LocalFixtureCommand):
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument('--username', required=True)
         parser.add_argument('--database-name', required=True)
+        parser.add_argument('--calendar-axis', action='store_true')
         parser.add_argument('--apply', action='store_true')
 
     def handle(self, *args: object, **options: object) -> None:
@@ -37,18 +38,24 @@ class Command(LocalFixtureCommand):
         if user is None:
             raise CommandError('An existing active local user is required.')
         self.stdout.write(f'Target: {engine}, host={host or "local file"}, database={database}.')
+        calendar_axis = bool(options['calendar_axis'])
         if not options['apply']:
-            self.stdout.write('Preview only: one private orchard, five seasons and four plans.')
+            fixture = (
+                'six seasons and six plans' if calendar_axis else 'five seasons and four plans'
+            )
+            self.stdout.write(f'Preview only: one private orchard, {fixture}.')
             return
 
+        suffix = 'calendar' if calendar_axis else 'harvest'
+        name = 'Perennial calendar acceptance' if calendar_axis else 'Perennial harvest acceptance'
         with transaction.atomic():
             project, created = Project.objects.get_or_create(
-                slug=f'ofp-local-perennial-harvest-{user.pk}',
-                defaults={'name': 'Perennial harvest acceptance', 'description': MARKER},
+                slug=f'ofp-local-perennial-{suffix}-{user.pk}',
+                defaults={'name': name, 'description': MARKER},
             )
             if created:
                 ProjectMembership.objects.create(project=project, user=user, role='admin')
-                self._populate(project)
+                self._populate(project, calendar_axis=calendar_axis)
             elif project.description != MARKER or not ProjectMembership.objects.filter(
                 project=project, user=user, role='admin',
             ).exists():
@@ -56,12 +63,14 @@ class Command(LocalFixtureCommand):
         self.stdout.write(f'Open project {project.pk}: {project.name}. Existing data is preserved.')
 
     @staticmethod
-    def _populate(project: Project) -> None:
+    def _populate(project: Project, *, calendar_axis: bool) -> None:
         origin = Season.objects.create(
             project=project, start_date=date(2025, 1, 1), end_date=date(2025, 12, 31),
         )
+        calendar_season = Season.objects.create(
+            project=project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+        )
         for start, end, label in (
-            (date(2026, 1, 1), date(2026, 12, 31), ''),
             (date(2027, 1, 1), date(2027, 12, 31), ''),
             (date(2028, 1, 1), date(2028, 8, 31), 'Jan–Aug 2028'),
             (date(2028, 9, 1), date(2029, 8, 31), 'Sep 2028–Aug 2029'),
@@ -74,7 +83,8 @@ class Command(LocalFixtureCommand):
         field = Field.objects.create(project=project, location=location, name='Orchard trials')
 
         def plant(
-            name: str, planted: date, clearing: date | None, **timing: object,
+            name: str, planted: date, clearing: date | None,
+            *, season: Season = origin, **timing: object,
         ) -> PlantingPlan:
             bed = Bed.objects.create(project=project, field=field, name=name, area_sqm=24)
             crop = Crop.objects.create(
@@ -83,7 +93,7 @@ class Command(LocalFixtureCommand):
                 **timing,
             )
             return PlantingPlan.objects.create(
-                project=project, crop=crop, bed=bed, season=origin, planting_date=planted,
+                project=project, crop=crop, bed=bed, season=season, planting_date=planted,
                 clearing_date=clearing, area_usage_sqm=20, cultivation_type='direct_sowing',
             )
 
@@ -111,3 +121,16 @@ class Command(LocalFixtureCommand):
             'Overwintering garlic', date(2025, 10, 15), None, life_cycle='annual',
             growth_duration_days=200, harvest_duration_days=14,
         )
+
+        if calendar_axis:
+            earlier = Season.objects.create(
+                project=project, start_date=date(2024, 1, 1), end_date=date(2024, 12, 31),
+            )
+            plant(
+                'Calendar rhubarb', date(2024, 5, 1), date(2030, 9, 30), season=earlier,
+                life_cycle='perennial', standing_time_years=10, annual_harvest_window='03-12/04-09',
+            )
+            plant(
+                'Long winter leek', date(2026, 10, 1), None, season=calendar_season,
+                life_cycle='annual', growth_duration_days=355, harvest_duration_days=40,
+            )

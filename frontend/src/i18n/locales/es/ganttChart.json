@@ -58,7 +58,7 @@
       "occupancy": "Ocupación del bancal"
     },
     "seasonalHarvest": "Cosecha prevista de la temporada",
-    "noSeasonalHarvest": "No hay cosecha prevista para esta temporada.",
+    "noSeasonalHarvest": "No hay ninguna cosecha prevista en el período visible.",
     "recordedPlantingEdit": "La siembra o la plantación ya está registrada. Edita las fechas previstas en el plan de cultivo.",
     "actualHarvestEnd": "La cosecha termina a más tardar",
     "clearingDate": "Fecha de fin del cultivo"

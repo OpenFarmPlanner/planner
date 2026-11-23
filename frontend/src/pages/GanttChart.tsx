@@ -42,7 +42,8 @@ import {
   type PlantingPlan,
 } from '../api/api';
 import GanttChart, { ViewMode } from '../gantt-chart/src';
-import { toLocalCalendarDate } from '../gantt-chart/src/utils/timelineDatePosition';
+import type { SeasonalHarvestPeriod } from '../api/types';
+import { getCalendarAxisBounds, toLocalCalendarDate } from '../gantt-chart/src/utils/timelineDatePosition';
 import './GanttChart.css';
 import { useCommandContextTag, useRegisterCommands } from '../commands/useCommandContext';
 import PageContainer from '../components/layout/PageContainer';
@@ -92,11 +93,12 @@ import {
 } from './ganttChartState';
 import { useGanttResizeHandleTop } from './useGanttResizeHandleTop';
 import { useGanttSidebarResize } from './useGanttSidebarResize';
-import { formatDateToAPI, parseIsoDate } from '../utils/isoDate';
+import { formatDateToAPI, formatIsoDate, parseIsoDate } from '../utils/isoDate';
 import {
   buildOccupancyTooltipDetails,
   buildSeedlingTaskGroups,
   clipCarriedOverOccupancyTask,
+  clipPerennialOccupancyTask,
   createGanttTaskLabels,
   buildSeedlingTooltipDetails,
   formatSeedlingTooltipTitle,
@@ -259,29 +261,6 @@ function GanttChartPage() {
     }
   }, [currentYear, outletContext?.activeSeasonYear]);
 
-  const {
-    occupancyHierarchyNodes,
-    occupancyLocationFilter,
-    setOccupancyLocationFilter,
-    occupancyFieldFilter,
-    setOccupancyFieldFilter,
-    onlyOccupiedBeds,
-    setOnlyOccupiedBeds,
-    occupancyFieldOptions,
-    activeHierarchyFilterCount,
-    resetOccupancyHierarchyFilters,
-    expandedHierarchyIds,
-    toggleHierarchyExpand,
-    hierarchyLevelToggle,
-  } = useOccupancyHierarchyFilter({
-    locations,
-    fields,
-    beds,
-    plantingPlans,
-    crops,
-    activeProjectId,
-  });
-
   const ganttStateStorageKey = useMemo(
     () => (canUseStoredCalendarView ? getGanttStateStorageKey(activeProjectId) : null),
     [activeProjectId, canUseStoredCalendarView],
@@ -324,21 +303,6 @@ function GanttChartPage() {
       ? buildBedCapacityTimelines(beds, plantingPlans, seasonStartText, seasonEndText)
       : null
   ), [beds, plantingPlans, seasonEndText, seasonStartText, showBedCapacity]);
-  const selectedCapacity = capacityDetails ? capacityTimelines?.get(capacityDetails.bedId) : undefined;
-  const toggleFreeAreas = useCallback((checked: boolean) => {
-    setShowFreeAreas(checked);
-    if (!checked) setCapacityDetails(null);
-    // The default occupied-only filter would hide every bed in a new season.
-    if (checked && plantingPlans.length === 0) setOnlyOccupiedBeds(false);
-  }, [plantingPlans.length, setOnlyOccupiedBeds]);
-  const freeAreasControl = useMemo(() => (
-    <FormControlLabel
-      control={<Checkbox checked={showFreeAreas} onChange={(_, checked) => toggleFreeAreas(checked)} />}
-      label={t('ganttChart:capacity.show')}
-      sx={{ ml: 0, mr: 0, minWidth: 0, flexShrink: 0, '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
-    />
-  ), [showFreeAreas, t, toggleFreeAreas]);
-
   // The visible time axis follows the actual data range of the season's plans
   // rather than the season's calendar year: it starts at the earliest planting
   // date and ends at the latest relevant date (harvest end), even when that
@@ -365,11 +329,96 @@ function GanttChartPage() {
     const end = capacityEnd && (!dataEnd || capacityEnd > dataEnd) ? capacityEnd : dataEnd;
     return end ?? new Date(displayYear, 11, 31);
   }, [calendarDataRange, displayYear, seasonEnd, showBedCapacity]);
+  const occupancyAxis = useMemo(
+    () => getCalendarAxisBounds(taskRangeStart, taskRangeEnd, timelineViewMode),
+    [taskRangeStart, taskRangeEnd, timelineViewMode],
+  );
+  const axisStartText = formatIsoDate(occupancyAxis.start);
+  const axisEndText = formatIsoDate(occupancyAxis.end);
+  const projectionRequest = useMemo(() => {
+    if (calendarMode !== 'occupancy' || !activeProjectId || !activeSeasonId || !seasonStartText || !seasonEndText
+      || (axisStartText >= seasonStartText && axisEndText <= seasonEndText)
+      || !plantingPlans.some(plan => plan.seasonal_harvest && plan.bed)) {
+      return null;
+    }
+    return { axisStartText, axisEndText };
+  }, [activeProjectId, activeSeasonId, axisEndText, axisStartText, calendarMode, plantingPlans, seasonEndText, seasonStartText]);
+  const [projectionResult, setProjectionResult] = useState<{
+    request: NonNullable<typeof projectionRequest>;
+    periods: Record<string, SeasonalHarvestPeriod[]> | null;
+  } | null>(null);
+  const activeProjection = projectionResult?.request === projectionRequest ? projectionResult : null;
+  const hasCompleteProjection = projectionRequest === null || Boolean(activeProjection?.periods);
+  const projectionFailed = activeProjection?.periods === null;
+  useEffect(() => {
+    if (!projectionRequest) return;
+    const controller = new AbortController();
+    plantingPlanAPI.calendarHarvestWindows(projectionRequest.axisStartText, projectionRequest.axisEndText, controller.signal)
+      .then(periods => {
+        if (!controller.signal.aborted) setProjectionResult({ request: projectionRequest, periods });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setProjectionResult({ request: projectionRequest, periods: null });
+      });
+    return () => controller.abort();
+  }, [projectionRequest]);
+  const occupancyPlans = useMemo(() => {
+    const periodsByPlan = activeProjection?.periods;
+    if (!periodsByPlan) return plantingPlans;
+    return plantingPlans.map(plan => {
+      const periods = plan.id !== undefined ? periodsByPlan[plan.id] : undefined;
+      return plan.seasonal_harvest && periods
+        ? { ...plan, seasonal_harvest: { ...plan.seasonal_harvest, periods } }
+        : plan;
+    });
+  }, [activeProjection, plantingPlans]);
+
+  const {
+    occupancyHierarchyNodes,
+    occupancyLocationFilter,
+    setOccupancyLocationFilter,
+    occupancyFieldFilter,
+    setOccupancyFieldFilter,
+    onlyOccupiedBeds,
+    setOnlyOccupiedBeds,
+    occupancyFieldOptions,
+    activeHierarchyFilterCount,
+    resetOccupancyHierarchyFilters,
+    expandedHierarchyIds,
+    toggleHierarchyExpand,
+    hierarchyLevelToggle,
+  } = useOccupancyHierarchyFilter({
+    locations,
+    fields,
+    beds,
+    plantingPlans: occupancyPlans,
+    crops,
+    activeProjectId,
+  });
+
+  const selectedCapacity = capacityDetails ? capacityTimelines?.get(capacityDetails.bedId) : undefined;
+  const toggleFreeAreas = useCallback((checked: boolean) => {
+    setShowFreeAreas(checked);
+    if (!checked) setCapacityDetails(null);
+    // The default occupied-only filter would hide every bed in a new season.
+    if (checked && plantingPlans.length === 0) setOnlyOccupiedBeds(false);
+  }, [plantingPlans.length, setOnlyOccupiedBeds]);
+  const freeAreasControl = useMemo(() => (
+    <FormControlLabel
+      control={<Checkbox checked={showFreeAreas} onChange={(_, checked) => toggleFreeAreas(checked)} />}
+      label={t('ganttChart:capacity.show')}
+      sx={{ ml: 0, mr: 0, minWidth: 0, flexShrink: 0, '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
+    />
+  ), [showFreeAreas, t, toggleFreeAreas]);
+
+  const calendarDateAxis = showBedCapacity || (calendarMode === 'occupancy' && plantingPlans.some(
+    plan => plan.bed && plan.planting_date && (plan.clearing_date || plan.seasonal_harvest),
+  ));
   // The scroll helpers use local column dates while tasks retain their UTC dates.
-  const startDate = useMemo(() => showBedCapacity ? toLocalCalendarDate(taskRangeStart) : taskRangeStart,
-    [showBedCapacity, taskRangeStart]);
-  const endDate = useMemo(() => showBedCapacity ? toLocalCalendarDate(taskRangeEnd) : taskRangeEnd,
-    [showBedCapacity, taskRangeEnd]);
+  const startDate = useMemo(() => calendarDateAxis ? toLocalCalendarDate(taskRangeStart) : taskRangeStart,
+    [calendarDateAxis, taskRangeStart]);
+  const endDate = useMemo(() => calendarDateAxis ? toLocalCalendarDate(taskRangeEnd) : taskRangeEnd,
+    [calendarDateAxis, taskRangeEnd]);
   const {
     width: activeGanttLeftColumnWidth,
     widthRef: activeGanttLeftColumnWidthRef,
@@ -469,11 +518,11 @@ function GanttChartPage() {
     }
     storeGanttState(ganttStateStorageKey, {
       timelineViewMode: nextViewMode,
-      referenceDate: formatDateToAPI(currentReferenceDate ?? getInitialTimelineReferenceDate(storedGanttState, startDate, endDate, showBedCapacity)),
+      referenceDate: formatDateToAPI(currentReferenceDate ?? getInitialTimelineReferenceDate(storedGanttState, startDate, endDate, calendarDateAxis)),
     });
     hasRestoredTimelineRef.current = false;
     applyViewModeChange(nextViewMode);
-  }, [activeGanttLeftColumnWidth, endDate, ganttStateStorageKey, showBedCapacity, startDate, storedGanttState, timelineViewMode, timelineViewModeStorageKey]);
+  }, [activeGanttLeftColumnWidth, endDate, ganttStateStorageKey, calendarDateAxis, startDate, storedGanttState, timelineViewMode, timelineViewModeStorageKey]);
 
   const getCurrentTimelineReferenceDate = useCallback((): Date => {
     const scrollContainer = ganttViewportRef.current?.querySelector<HTMLElement>('.rmg-container') ?? null;
@@ -489,8 +538,8 @@ function GanttChartPage() {
     }
 
     return latestReferenceDateRef.current
-      ?? getInitialTimelineReferenceDate(getStoredGanttState(ganttStateStorageKey), startDate, endDate, showBedCapacity);
-  }, [activeGanttLeftColumnWidth, endDate, ganttStateStorageKey, showBedCapacity, startDate, timelineViewMode]);
+      ?? getInitialTimelineReferenceDate(getStoredGanttState(ganttStateStorageKey), startDate, endDate, calendarDateAxis);
+  }, [activeGanttLeftColumnWidth, endDate, ganttStateStorageKey, calendarDateAxis, startDate, timelineViewMode]);
 
   const scrollToTimelineReferenceDate = useCallback((date: Date): void => {
     const referenceDate = clampDate(date, startDate, endDate);
@@ -762,18 +811,18 @@ function GanttChartPage() {
     }).map(group => ({
       ...group,
       tasks: group.tasks.flatMap(task => {
-        const inSeason = (task.clearingDate || task.phaseBands) && seasonEnd && task.endDate > seasonEnd
-          ? { ...task, endDate: seasonEnd } : task;
-        const visible = clipCarriedOverOccupancyTask(inSeason, taskRangeStart);
+        const visible = task.useCalendarDateScale
+          ? clipPerennialOccupancyTask(task, occupancyAxis)
+          : clipCarriedOverOccupancyTask(task, taskRangeStart);
         if (!visible) return [];
-        if (!task.readOnly && !task.phaseBands) return [visible];
+        if (!task.readOnly && !visible.phaseBands) return [visible];
         const description = task.originSeasonLabel
           ? t(task.earlyRecordedOccupancy ? 'plantingPlans:carriedOver.otherSeasonDescription' : 'plantingPlans:carriedOver.description',
             { season: task.originSeasonLabel })
           : t('plantingPlans:carriedOver.unknownDescription');
-        const harvestLabel = task.phaseBands?.length
-          ? `${t('ganttChart:tooltip.seasonalHarvest')} · ${formatSeasonalHarvestBands(task.phaseBands)}`
-          : task.phaseBands ? t('ganttChart:tooltip.noSeasonalHarvest') : '';
+        const harvestLabel = visible.phaseBands?.length
+          ? `${t('ganttChart:tooltip.seasonalHarvest')} · ${formatSeasonalHarvestBands(visible.phaseBands)}`
+          : visible.phaseBands && hasCompleteProjection ? t('ganttChart:tooltip.noSeasonalHarvest') : '';
         return [{
           ...visible,
           leadingIcon: task.readOnly ? <HistoryOutlinedIcon sx={{ fontSize: 14 }} /> : undefined,
@@ -783,12 +832,13 @@ function GanttChartPage() {
     })),
     [
       expandedHierarchyIds,
+      hasCompleteProjection,
+      occupancyAxis,
       occupancyFieldFilter,
       occupancyHierarchyNodes,
       occupancyLocationFilter,
       occupancySearchText,
       onlyOccupiedBeds,
-      seasonEnd,
       taskRangeStart,
       t,
     ],
@@ -1329,7 +1379,7 @@ function GanttChartPage() {
           getStoredGanttState(ganttStateStorageKey),
           startDate,
           endDate,
-          showBedCapacity,
+          calendarDateAxis,
         );
         const nextScrollLeft = getTimelineScrollLeftForDate(
           referenceDate,
@@ -1378,7 +1428,7 @@ function GanttChartPage() {
     ganttStateStorageKey,
     hasCalendarRequirements,
     loading,
-    showBedCapacity,
+    calendarDateAxis,
     startDate,
     timelineViewMode,
   ]);
@@ -1708,7 +1758,7 @@ function GanttChartPage() {
       {editMode && task.positionLocked && !task.readOnly && (
         <Typography variant="body2">{t('ganttChart:tooltip.recordedPlantingEdit')}</Typography>
       )}
-      {task.phaseBands?.length === 0 && (
+      {hasCompleteProjection && task.phaseBands?.length === 0 && (
         <Typography variant="body2">{t('ganttChart:tooltip.noSeasonalHarvest')}</Typography>
       )}
       {buildOccupancyTooltipDetails(task).map((detail) => (
@@ -1717,7 +1767,7 @@ function GanttChartPage() {
         </Typography>
       ))}
     </Box>
-  ), [editMode, t]);
+  ), [editMode, hasCompleteProjection, t]);
 
   const renderSeedlingTooltip = useCallback(({ task }: { task: GanttTask }) => (
     <Box sx={{ p: 0.5 }}>
@@ -1752,6 +1802,7 @@ function GanttChartPage() {
         rowHeight={GANTT_ROW_HEIGHT}
         startDate={taskRangeStart}
         endDate={taskRangeEnd}
+        calendarDateAxis={calendarDateAxis}
         focusMode={false}
         editMode={calendarMode === 'occupancy' ? editMode : false}
         allowTaskResize={false}
@@ -1835,7 +1886,7 @@ function GanttChartPage() {
 
   return (
     <PageContainer variant="workspacePage">
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {(error || projectionFailed) && <Alert severity="error" sx={{ mb: 2 }}>{error ?? t('ganttChart:errors.load')}</Alert>}
 
         {(!hasCalendarRequirements || showEmptyCapacity) && (
           <PageSurface variant="fullWorkspace" sx={{ mt: 0.5 }}>

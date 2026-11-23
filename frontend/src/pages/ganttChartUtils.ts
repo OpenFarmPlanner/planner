@@ -286,6 +286,29 @@ export function clipCarriedOverOccupancyTask(task: GanttTask, axisStart: Date): 
   return { ...task, startDate: axisStart, fadedTailFraction };
 }
 
+export function clipPerennialOccupancyTask(task: GanttTask, axis: CalendarDateRange): GanttTask | null {
+  const startDate = task.startDate > axis.start ? task.startDate : axis.start;
+  const endDate = task.endDate < axis.end ? task.endDate : axis.end;
+  if (startDate > endDate) return null;
+
+  const phaseBands = task.phaseBands?.flatMap(band => {
+    const start = band.startDate > startDate ? band.startDate : startDate;
+    const end = band.endDate < endDate ? band.endDate : endDate;
+    return start <= end ? [{ ...band, startDate: start, endDate: end }] : [];
+  });
+  const harvestEnd = task.harvestEndDate ?? task.harvestStartDate;
+  const legacyHarvestOutsideAxis = !phaseBands && (
+    (harvestEnd && harvestEnd < startDate) || (task.harvestStartDate && task.harvestStartDate > endDate)
+  );
+  return {
+    ...task,
+    startDate,
+    endDate,
+    phaseBands,
+    ...(legacyHarvestOutsideAxis ? { harvestStartDate: undefined, harvestEndDate: undefined } : {}),
+  };
+}
+
 /**
  * Visible time axis for the seedling (Anzucht) calendar: the earliest
  * propagation start and the latest transplant date across every pre-cultivation
@@ -406,9 +429,10 @@ export function buildOccupancyTooltipDetails(task: Pick<
   GanttTask,
   'id' | 'startDate' | 'endDate' | 'harvestStartDate' | 'harvestEndDate' | 'actualHarvestEndDate'
   | 'areaUsage' | 'notes' | 'readOnly' | 'plantingAnchor' | 'clearingDate' | 'phaseBands' | 'positionLocked'
+  | 'useCalendarDateScale'
 >): OccupancyTooltipDetail[] {
   const phase = getOccupancyTaskPhase(task);
-  const formatDate = (date: Date) => formatGanttDate(date, task.phaseBands ? 'UTC' : undefined);
+  const formatDate = (date: Date) => formatGanttDate(date, task.useCalendarDateScale || task.phaseBands ? 'UTC' : undefined);
   const isHarvestTask = phase === 'harvest';
   // While a bar is being moved its start/end already sit at the preview
   // position, but the stored harvest dates do not. A growth bar ends where
@@ -520,6 +544,7 @@ function buildPerennialOccupancyTask(
     clearingDate: clearingDate ?? undefined,
     color: phaseColors.growth,
     phaseBands,
+    useCalendarDateScale: true,
     percent: 100,
     plantingPlanId: plan.id,
     readOnly: plan.carried_over,

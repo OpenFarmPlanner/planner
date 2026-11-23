@@ -3,7 +3,7 @@ import type { Bed, PlantingPlan } from '../api/types';
 import { bedCapacityDayToDate, buildBedCapacityTimelines } from '../pages/bedCapacityIntervals';
 import { formatDateToAPI, formatIsoDate, parseIsoDate } from '../utils/isoDate';
 import { ViewMode } from '../gantt-chart/src/types/enums';
-import { createTimelineDateScale, toLocalCalendarDate } from '../gantt-chart/src/utils/timelineDatePosition';
+import { createTimelineDateScale, getCalendarAxisBounds, toLocalCalendarDate } from '../gantt-chart/src/utils/timelineDatePosition';
 
 const bed = (id: number, area_sqm?: number): Bed => ({
   id, name: `Bed ${id}`, area_sqm, field: 1, location: 1, x: 0, y: 0,
@@ -31,6 +31,17 @@ describe('capacity band positioning', () => {
     const dates = [first, second, end].map(date => parseIsoDate(formatDateToAPI(date))!);
     expect(dates.map(date => scale.positionDate(date))).toEqual([0, 100, 200]);
     expect([0, 100, 200].map(position => scale.dateAt(position))).toEqual(dates);
+  });
+
+  it.each([
+    [ViewMode.DAY, '2027-02-20', '2028-02-26'],
+    [ViewMode.WEEK, '2027-02-20', '2028-03-03'],
+    [ViewMode.MONTH, '2027-02-01', '2028-02-29'],
+    [ViewMode.QUARTER, '2027-01-01', '2028-03-31'],
+    [ViewMode.YEAR, '2027-01-01', '2028-12-31'],
+  ] as const)('includes the full displayed calendar columns in %s view', (mode, first, last) => {
+    const axis = getCalendarAxisBounds(parseIsoDate('2027-02-20')!, parseIsoDate('2028-02-26')!, mode);
+    expect([formatIsoDate(axis.start), formatIsoDate(axis.end)]).toEqual([first, last]);
   });
 
   it('keeps a one-day change within a quarter instead of enlarging it into adjacent intervals', () => {

@@ -3,6 +3,12 @@ import common from '../src/i18n/locales/de/common.json' with { type: 'json' };
 import calendar from '../src/i18n/locales/de/ganttChart.json' with { type: 'json' };
 import navigation from '../src/i18n/locales/de/navigation.json' with { type: 'json' };
 import plans from '../src/i18n/locales/de/plantingPlans.json' with { type: 'json' };
+import calendarEn from '../src/i18n/locales/en/ganttChart.json' with { type: 'json' };
+import calendarEs from '../src/i18n/locales/es/ganttChart.json' with { type: 'json' };
+import calendarFr from '../src/i18n/locales/fr/ganttChart.json' with { type: 'json' };
+import calendarIt from '../src/i18n/locales/it/ganttChart.json' with { type: 'json' };
+import calendarNl from '../src/i18n/locales/nl/ganttChart.json' with { type: 'json' };
+import calendarPt from '../src/i18n/locales/pt/ganttChart.json' with { type: 'json' };
 import { apiRequest, expectNoHorizontalPageOverflow, loginWithDeterministicProject, resetE2EScenario } from './utils';
 
 // The PWA service worker answers fetches itself, and page.route() never sees a
@@ -582,4 +588,123 @@ test('overwintering garlic is selectable in the later table and read-only in the
   await expect(page.getByRole('menuitem', { name: 'Bearbeiten' })).toHaveCount(0);
   await expect(page.getByRole('menuitem', { name: 'Löschen' })).toHaveCount(0);
   await expect(page.getByRole('menuitem', { name: 'In ursprünglicher Saison öffnen' })).toBeVisible();
+});
+
+test.describe('recurring harvest across the calendar axis', () => {
+  test.use({ hasTouch: true, timezoneId: 'America/Los_Angeles' });
+
+  test('keeps the standing crop and its harvest phases visible into the next year', async ({ page, request }, info) => {
+    const scenario = `perennial-calendar-axis-${Date.now()}`;
+    try {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
+      const create = (path: string, data: Record<string, unknown>) => apiRequest<{ id: number }>(page, 'POST', path, data);
+      const origin = await create('/seasons/', { start_date: '2024-01-01', end_date: '2024-12-31' });
+      const active = await create('/seasons/', { start_date: '2026-01-01', end_date: '2026-12-31' });
+      const location = await create('/locations/', { name: 'Kalenderhof' });
+      const field = await create('/fields/', { location: location.id, name: 'Kalenderparzelle' });
+      const rhubarbBed = await create('/beds/', { field: field.id, name: 'Rhabarberbeet', area_sqm: 12 });
+      const annualBed = await create('/beds/', { field: field.id, name: 'Überwinterung', area_sqm: 12 });
+      const rhubarb = await create('/crops/', {
+        name: 'Kalenderrhabarber', life_cycle: 'perennial', standing_time_years: 10,
+        annual_harvest_window: '03-12/04-09', cultivation_types: ['direct_sowing'],
+      });
+      const annual = await create('/crops/', {
+        name: 'Testwinterkohl', life_cycle: 'annual', growth_duration_days: 150, harvest_duration_days: 46,
+        cultivation_types: ['direct_sowing'],
+      });
+      const standingPlan = await create('/planting-plans/', {
+        crop: rhubarb.id, bed: rhubarbBed.id, season: origin.id,
+        planting_date: '2024-05-01', clearing_date: '2030-09-30',
+        area_usage_sqm: 8, cultivation_type: 'direct_sowing',
+      });
+      await create('/planting-plans/', {
+        crop: annual.id, bed: annualBed.id, season: active.id,
+        planting_date: '2026-10-01', area_usage_sqm: 8, cultivation_type: 'direct_sowing',
+      });
+
+      await page.goto('/app/gantt-chart?view=field');
+      const season = page.getByRole('button', { name: navigation.seasonSwitcher.ariaLabel });
+      await season.click();
+      await page.getByRole('menuitem', { name: /^2026/ }).click();
+      await expect(season).toContainText('2026');
+      const scale = page.getByRole('group', { name: calendar.chartLocaleText.titleOccupancy });
+      const bar = page.getByTestId(`task-plan-${standingPlan.id}-occupancy`);
+      const bands = bar.locator('[data-rmg-component="task-phase-band"]');
+      const units = page.locator('[data-rmg-component="timeline-unit"]');
+
+      for (const zoom of ['month', 'week'] as const) {
+        await scale.getByRole('button', { name: calendar.chartLocaleText.viewModes[zoom], exact: true }).click();
+        await expect(bar).toHaveAccessibleName(/Kalenderrhabarber.*2024.*12\.3\.2027.*9\.4\.2027/);
+        await expect(bands).toHaveCount(2);
+        await expect.poll(async () => {
+          const occupancy = (await bar.boundingBox())!;
+          const lastColumn = (await units.last().boundingBox())!;
+          return occupancy.x + occupancy.width - lastColumn.x - lastColumn.width;
+        }).toBeCloseTo(0, 0);
+
+        await bands.last().scrollIntoViewIfNeeded();
+        await bar.focus();
+        const tooltip = page.getByRole('tooltip').filter({ hasText: calendar.tooltip.seasonalHarvest });
+        await expect(tooltip).toContainText('9.4.2027');
+        await expect(tooltip).toContainText('1.5.2024');
+        await expect(tooltip).toContainText('30.9.2030');
+        await expect.poll(async () => {
+          const preview = (await tooltip.boundingBox())!;
+          const sidebar = (await page.locator('[data-rmg-component="task-list"]').boundingBox())!;
+          return preview.x + preview.width / 2 - sidebar.x - sidebar.width;
+        }).toBeGreaterThan(0);
+        await page.screenshot({ path: info.outputPath(`perennial-axis-${zoom}-desktop.png`), animations: 'disabled' });
+        await page.keyboard.press('Escape');
+      }
+
+      await page.setViewportSize({ width: 375, height: 800 });
+      await bands.last().scrollIntoViewIfNeeded();
+      const harvestBand = (await bands.last().boundingBox())!;
+      await page.touchscreen.tap(harvestBand.x + harvestBand.width / 2, harvestBand.y + harvestBand.height / 2);
+      await expect(page.getByRole('tooltip').filter({ hasText: calendar.tooltip.seasonalHarvest }))
+        .toContainText('9.4.2027');
+      await expectNoHorizontalPageOverflow(page);
+      await page.screenshot({ path: info.outputPath('perennial-axis-mobile.png'), animations: 'disabled' });
+
+      await apiRequest(page, 'PATCH', `/planting-plans/${standingPlan.id}/`, { clearing_date: '2027-03-20' });
+      await page.reload();
+      await expect(bar).toHaveAccessibleName(/12\.3\.2027.*20\.3\.2027/);
+      const clearingWeek = units.and(page.locator('[data-timeunit^="2027-03-18"]'));
+      await expect.poll(async () => {
+        const shortened = (await bar.boundingBox())!;
+        const week = (await clearingWeek.boundingBox())!;
+        return shortened.x + shortened.width - week.x - week.width * 3 / 7;
+      }).toBeCloseTo(0, 0);
+      const saved = await apiRequest<{ results: Array<{ id: number; season: number; planting_date: string }> }>(
+        page, 'GET', '/planting-plans/',
+      );
+      expect(saved.results.filter(row => row.id === standingPlan.id)).toEqual([
+        expect.objectContaining({ id: standingPlan.id, season: origin.id, planting_date: '2024-05-01' }),
+      ]);
+
+      await apiRequest(page, 'PATCH', `/crops/${rhubarb.id}/`, { first_harvest_delay_years: 4 });
+      const translations = { de: calendar, en: calendarEn, es: calendarEs, fr: calendarFr,
+        it: calendarIt, nl: calendarNl, pt: calendarPt };
+      for (const [language, text] of Object.entries(translations)) {
+        if (language === 'fr') await page.setViewportSize({ width: 800, height: 375 });
+        if (language === 'it') await page.setViewportSize({ width: 375, height: 800 });
+        await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: language });
+        await page.evaluate(code => {
+          localStorage.setItem('ui.language', code);
+          localStorage.setItem('ui.language.pendingChoice', code);
+        }, language);
+        await page.reload();
+        await expect(page.locator('html')).toHaveAttribute('lang', language);
+        await expect(bar).toHaveAccessibleName(new RegExp(text.tooltip.noSeasonalHarvest.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+        await expect(bands).toHaveCount(0);
+        await bar.focus();
+        await expect(page.getByRole('tooltip').filter({ hasText: text.tooltip.noSeasonalHarvest })).toBeInViewport({ ratio: 1 });
+        await expectNoHorizontalPageOverflow(page);
+        await page.screenshot({ path: info.outputPath(`perennial-no-harvest-${language}.png`), animations: 'disabled' });
+      }
+    } finally {
+      await resetE2EScenario(request, scenario);
+    }
+  });
 });

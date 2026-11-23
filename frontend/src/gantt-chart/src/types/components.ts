@@ -76,6 +76,8 @@ export interface GanttChartProps {
   tasks: TaskGroup[];
   startDate?: Date;
   endDate?: Date;
+  /** Read date-only axis bounds as calendar dates, independent of the visible tasks. */
+  calendarDateAxis?: boolean;
   title?: string;
   currentDate?: Date;
   showCurrentDateMarker?: boolean;
