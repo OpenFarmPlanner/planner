@@ -14,6 +14,10 @@
     "empty": "O nome do projeto não pode estar vazio.",
     "minLength": "Pelo menos 2 caracteres."
   },
+  "projectCurrency": {
+    "label": "Moeda predefinida das ofertas",
+    "automatic": "Segundo a região do projeto ({{currency}})"
+  },
   "projectRegion": {
     "label": "Termos regionais",
     "help": "Determina quais os nomes regionais de espécies cultivadas apresentados neste projeto na biblioteca e nas vistas de planeamento. Esta definição é independente do idioma da interface.",

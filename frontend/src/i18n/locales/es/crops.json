@@ -214,6 +214,12 @@
     "noSupplierDataRows": "Todavía no hay información del proveedor específica del cultivo.",
     "supplierDataSelectSupplierHint": "Selecciona un proveedor para editar los datos específicos del cultivo.",
     "supplierProductNameLabel": "Nombre del producto en el proveedor",
+    "supplierProductUrl": "Enlace del producto",
+    "supplierSourceUrl": "Enlace de la fuente",
+    "offerCurrency": "Moneda de la oferta",
+    "offerPackagePrice": "Precio del paquete",
+    "offerCurrencyRequired": "Elige una moneda para los precios de los paquetes.",
+    "seedExemptionStatusHelpButton": "Ayuda sobre la excepción de semillas",
     "supplierDataMissingSupplier": "Selecciona un proveedor o elimina los datos del proveedor.",
     "addSupplierData": "Añadir información del proveedor",
     "removeSupplierData": "Eliminar datos del proveedor",
@@ -338,7 +344,7 @@
     "tagsPlaceholder": "p. ej. Aromáticas, Hortalizas de conserva",
     "seedStatus": "Estado de las semillas",
     "seedExemptionStatus": "Excepción para las semillas",
-    "seedExemptionStatusHelp": "Nota manual para esta oferta en el proyecto. Comprueba por separado la validez para tu explotación, el uso previsto y el periodo.",
+    "seedExemptionStatusHelp": "Nota manual para esta oferta. Comprueba la validez para tu explotación, uso previsto y período. Desconocido significa que aún no se ha comprobado.",
     "seedStatusOptions": {
       "organic": "Ecológico",
       "in_conversion": "En conversión",
@@ -2206,6 +2212,9 @@
     "repeatUntilEvent": "Hasta {{event}}"
   },
   "supplierData": {
+    "germination": "Germinación {{rate}} %",
+    "source": "Fuente",
+    "legacyPrice": "Precio anterior sin paquete ni moneda {{amount}}",
     "price": "Precio",
     "title": "Datos de proveedores",
     "editNamed": "Editar datos del proveedor: {{supplier}}",

@@ -14,6 +14,10 @@
     "empty": "Projektname darf nicht leer sein.",
     "minLength": "Mindestens 2 Zeichen."
   },
+  "projectCurrency": {
+    "label": "Standardwährung für Angebote",
+    "automatic": "Nach Projektregion ({{currency}})"
+  },
   "projectRegion": {
     "label": "Regionale Begriffe",
     "help": "Legt fest, welche regionalen Kulturart-Namen dieses Projekt in Bibliothek und Planung sieht. Diese Einstellung ist unabhängig von der UI-Sprache.",

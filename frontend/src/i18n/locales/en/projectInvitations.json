@@ -14,6 +14,10 @@
     "empty": "Project name cannot be empty.",
     "minLength": "At least 2 characters."
   },
+  "projectCurrency": {
+    "label": "Default offer currency",
+    "automatic": "From project region ({{currency}})"
+  },
   "projectRegion": {
     "label": "Regional terms",
     "help": "Controls which regional crop species names this project sees in the library and planning views. This setting is independent from the UI language.",

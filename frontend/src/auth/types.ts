@@ -2,6 +2,7 @@ export interface ProjectMembershipInfo {
   project_id: number;
   project_name: string;
   project_region?: ProjectRegion;
+  project_default_currency?: string;
   role: 'admin' | 'member';
   is_demo_project?: boolean;
 }

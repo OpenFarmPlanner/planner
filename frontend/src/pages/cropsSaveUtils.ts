@@ -100,6 +100,7 @@ export const mapSupplierDataRowToInput = (row: CropSupplierData): CropSupplierDa
   seed_status: row.seed_status ?? 'unknown',
   seed_exemption_status: row.seed_exemption_status ?? 'unknown',
   packaging_sizes: row.packaging_sizes ?? [],
+  ...(row.package_currency !== undefined ? { package_currency: row.package_currency } : {}),
   germination_rate: row.germination_rate ?? null,
   price: row.price ?? null,
   notes: row.notes ?? '',

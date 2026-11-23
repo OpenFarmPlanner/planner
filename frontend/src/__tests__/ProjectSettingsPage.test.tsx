@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { GLOBAL_SNACKBAR_EVENT, type GlobalSnackbarDetail } from '../utils/globalSnackbar';
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router';
 import ProjectSettingsPage from '../pages/ProjectSettingsPage';
@@ -469,6 +470,21 @@ describe('ProjectSettingsPage', () => {
     await waitFor(() => expect(updateProjectMock).toHaveBeenCalledWith(1, { region: 'austria' }));
     await waitFor(() => expect(refreshUserMock).toHaveBeenCalled());
     await expectSuccessSnackbar('Projekteinstellungen gespeichert.');
+  });
+
+  it('prefills the regional offer currency and lets the admin set a project override', async () => {
+    const user = userEvent.setup();
+    render(<MemoryRouter><ProjectSettingsPage /></MemoryRouter>);
+    const currency = await screen.findByRole('combobox', { name: 'Standardwährung für Angebote' });
+    expect(currency).toHaveValue('Nach Projektregion (EUR)');
+    await user.click(currency);
+    await user.clear(currency);
+    await user.type(currency, 'GBP');
+    await user.click(await screen.findByRole('option', { name: /^GBP/ }));
+    await user.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => expect(updateProjectMock).toHaveBeenCalledWith(1, { default_currency: 'GBP' }));
+    await waitFor(() => expect(refreshUserMock).toHaveBeenCalled());
   });
 
   it('saves a changed name and region together in one request', async () => {

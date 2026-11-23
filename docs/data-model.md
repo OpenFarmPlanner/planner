@@ -242,6 +242,10 @@ erDiagram
   See [supplier seed status](supplier-seed-status.md)
   for the exemption limitations and import/export contract. `SeedPackage` is a simpler,
   supplier-agnostic "this crop comes in these package sizes" record.
+  The offer's `packaging_sizes` entries can carry a decimal string `price`
+  for the whole package, with one explicit `package_currency` per offer.
+  `Project.default_currency` supplies the editor's default for new offers.
+  The original offer-level `price` column retains legacy amounts of unknown basis.
   `Crop.selected_seed_demand_supplier` is a *separate* nullable FK from
   `Crop.supplier` (the general "preferred supplier") — it specifically
   drives which supplier's data feeds the Seed Demand calculation. See

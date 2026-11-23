@@ -1,12 +1,14 @@
 """Serializers for suppliers and per-crop supplier data rows."""
 
 
+import math
 from typing import Any
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
+from farm.common.offer_pricing import normalize_offer_packages
 from farm.common.serializer_fields import (
     _resolve_active_project_from_serializer,
 )
@@ -142,6 +144,7 @@ class CropSupplierDataSerializer(serializers.ModelSerializer):
             'seed_status',
             'seed_exemption_status',
             'packaging_sizes',
+            'package_currency',
             'germination_rate',
             'price',
             'notes',
@@ -156,6 +159,27 @@ class CropSupplierDataSerializer(serializers.ModelSerializer):
             'seed_exemption_status': {'required': False},
         }
         validators = []
+
+    def validate_germination_rate(self, value):
+        if self.instance is not None and value == self.instance.germination_rate:
+            return value
+        if value is not None and (not math.isfinite(value) or not 0 <= value <= 100):
+            raise serializers.ValidationError('Enter a percentage from 0 to 100.')
+        return value
+
+    def _normalize_package_pricing(self, attrs):
+        if 'packaging_sizes' not in attrs and 'package_currency' not in attrs:
+            return
+        previous_packages = self.instance.packaging_sizes if self.instance else []
+        previous_currency = self.instance.package_currency if self.instance else ''
+        try:
+            attrs['packaging_sizes'] = normalize_offer_packages(
+                attrs.get('packaging_sizes', previous_packages),
+                attrs.get('package_currency', previous_currency),
+                previous_packages,
+            )
+        except ValidationError as exc:
+            raise serializers.ValidationError({'packaging_sizes': exc.messages}) from exc
 
     def _resolve_crop_for_validation(self, attrs):
         crop = attrs.get('crop')
@@ -193,6 +217,7 @@ class CropSupplierDataSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'crop': 'crop_project_mismatch'})
         if project is not None and supplier is not None and supplier.project_id != project.id:
             raise serializers.ValidationError({'supplier_id': 'supplier_project_mismatch'})
+        self._normalize_package_pricing(attrs)
         supplier_name_input = attrs.pop('supplier_name_input', None)
         if not attrs.get('supplier') and supplier_name_input:
             from farm.utils import normalize_supplier_name

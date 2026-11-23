@@ -209,6 +209,12 @@
     "noSupplierDataRows": "Nog geen gewasspecifieke leveranciersinformatie.",
     "supplierDataSelectSupplierHint": "Kies een leverancier om gewasspecifieke gegevens te bewerken.",
     "supplierProductNameLabel": "Productnaam bij de leverancier",
+    "supplierProductUrl": "Productlink",
+    "supplierSourceUrl": "Bronlink",
+    "offerCurrency": "Valuta van de aanbieding",
+    "offerPackagePrice": "Verpakkingsprijs",
+    "offerCurrencyRequired": "Kies een valuta voor de verpakkingsprijzen.",
+    "seedExemptionStatusHelpButton": "Hulp bij de zaadontheffing",
     "supplierDataMissingSupplier": "Kies een leverancier of verwijder de leveranciersgegevens.",
     "addSupplierData": "Leveranciersinformatie toevoegen",
     "removeSupplierData": "Leveranciersgegevens verwijderen",
@@ -332,7 +338,7 @@
     "tagsPlaceholder": "bijv. Kruiden, Bewaargroenten",
     "seedStatus": "Zaadstatus",
     "seedExemptionStatus": "Zaadontheffing",
-    "seedExemptionStatusHelp": "Handmatige notitie voor dit aanbod in het project. Controleer de geldigheid voor je bedrijf, beoogd gebruik en periode afzonderlijk.",
+    "seedExemptionStatusHelp": "Handmatige notitie bij deze aanbieding. Controleer de geldigheid voor je bedrijf, het beoogde gebruik en de periode. Onbekend betekent dat dit nog niet is gecontroleerd.",
     "seedStatusOptions": {
       "organic": "Biologisch",
       "in_conversion": "In omschakeling",
@@ -2147,6 +2153,9 @@
     "repeatUntilEvent": "Tot {{event}}"
   },
   "supplierData": {
+    "germination": "Kiemkracht {{rate}}%",
+    "source": "Bron",
+    "legacyPrice": "Oude prijs zonder verpakking of valuta {{amount}}",
     "price": "Prijs",
     "title": "Leveranciersgegevens",
     "editNamed": "Leveranciersgegevens bewerken: {{supplier}}",

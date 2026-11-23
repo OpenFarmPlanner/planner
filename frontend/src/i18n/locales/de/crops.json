@@ -209,6 +209,12 @@
     "noSupplierDataRows": "Noch keine kulturspezifischen Lieferanteninformationen vorhanden.",
     "supplierDataSelectSupplierHint": "Wähle einen Lieferanten aus, um kulturspezifische Daten zu bearbeiten.",
     "supplierProductNameLabel": "Artikelbezeichnung beim Lieferanten",
+    "supplierProductUrl": "Produktlink",
+    "supplierSourceUrl": "Quellenlink",
+    "offerCurrency": "Währung des Angebots",
+    "offerPackagePrice": "Packungspreis",
+    "offerCurrencyRequired": "Wähle eine Währung für die Packungspreise.",
+    "seedExemptionStatusHelpButton": "Hilfe zur Saatgut-Ausnahme",
     "supplierDataMissingSupplier": "Bitte einen Lieferanten auswählen oder die Lieferantendaten entfernen.",
     "addSupplierData": "Lieferanteninformation hinzufügen",
     "removeSupplierData": "Lieferantendaten entfernen",
@@ -332,7 +338,7 @@
     "tagsPlaceholder": "z. B. Kräuter, Lagergemüse",
     "seedStatus": "Saatgutstatus",
     "seedExemptionStatus": "Ausnahmegenehmigung",
-    "seedExemptionStatusHelp": "Manueller Hinweis für dieses Angebot im Projekt. Prüfe die Gültigkeit für deinen Betrieb, die Verwendung und den Zeitraum separat.",
+    "seedExemptionStatusHelp": "Manueller Vermerk zu diesem Angebot. Prüfe die Gültigkeit für deinen Betrieb, die Verwendung und den Zeitraum selbst. Unbekannt bedeutet noch ungeprüft.",
     "seedStatusOptions": {
       "organic": "Bio",
       "in_conversion": "Umstellung",
@@ -2147,6 +2153,9 @@
     "repeatUntilEvent": "Bis {{event}}"
   },
   "supplierData": {
+    "germination": "Keimfähigkeit {{rate}} %",
+    "source": "Quelle",
+    "legacyPrice": "Bisheriger Preis ohne Packung und Währung {{amount}}",
     "price": "Preis",
     "title": "Lieferantendaten",
     "editNamed": "Lieferantendaten bearbeiten: {{supplier}}",

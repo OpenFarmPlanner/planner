@@ -14,6 +14,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import URLValidator
 from django.db import IntegrityError, models, transaction
 
+from farm.common.offer_pricing import normalize_offer_packages, validate_currency_code
 from farm.models import Crop, CropSupplierData, EntityRevision, Project, Supplier
 from farm.utils import normalize_supplier_name
 
@@ -108,6 +109,7 @@ def build_delete_undo_payload(supplier: Supplier) -> dict[str, object]:
             'seed_status': row.seed_status,
             'seed_exemption_status': row.seed_exemption_status,
             'packaging_sizes': row.packaging_sizes,
+            'package_currency': row.package_currency,
             'thousand_kernel_weight_g': (
                 str(row.thousand_kernel_weight_g)
                 if row.thousand_kernel_weight_g is not None
@@ -245,7 +247,7 @@ def restore_unlinked_supplier(
                     record_related(offer, action)
 
             record_restore(supplier)
-    except (IntegrityError, InvalidOperation, ValueError) as exc:
+    except (DjangoValidationError, IntegrityError, InvalidOperation, ValueError) as exc:
         raise SupplierRestoreFailedError() from exc
 
     return SupplierRestoreResult(
@@ -274,6 +276,10 @@ def _restore_supplier_data_row(
         return None
     if not Crop.all_objects.filter(project=project, pk=crop_id).exists():
         return None
+    currency = str(row_payload.get('package_currency') or '')
+    if currency:
+        validate_currency_code(currency)
+    packages = normalize_offer_packages(row_payload.get('packaging_sizes') or [], currency)
     return CropSupplierData.objects.create(
         id=row_id,
         crop_id=crop_id,
@@ -287,7 +293,8 @@ def _restore_supplier_data_row(
         seed_exemption_status=_choice_or_unknown(
             row_payload.get('seed_exemption_status'), CropSupplierData.SeedExemptionStatus,
         ),
-        packaging_sizes=row_payload.get('packaging_sizes') or [],
+        packaging_sizes=packages,
+        package_currency=currency,
         thousand_kernel_weight_g=(
             Decimal(str(row_payload['thousand_kernel_weight_g']))
             if row_payload.get('thousand_kernel_weight_g') is not None

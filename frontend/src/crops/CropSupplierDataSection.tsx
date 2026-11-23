@@ -1,14 +1,16 @@
-import { useId, useMemo, useRef, useState } from 'react';
+import { useContext, useId, useMemo, useRef, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { Alert, Box, Button, Link, Stack, Typography } from '@mui/material';
 import { cropAPI } from '../api/api';
 import type { Crop, CropSupplierData } from '../api/types';
+import { AuthContext } from '../auth/authContextShared';
 import { AppTooltip } from '../components/AppTooltip';
 import { ConfirmationDialog } from '../components/feedback/ConfirmationDialog';
 import { useTranslation } from '../i18n';
 import { buildCropSavePayload, mapSupplierDataRowToInput } from '../pages/cropsSaveUtils';
 import { resolveLocaleFromLanguage } from '../utils/numberLocalization';
+import { currencyForRegion, formatOfferPrice } from '../utils/currency';
 import { CropForm } from './CropForm';
 import { formatNumber, formatPackageSizes } from './cropDetailFormatters';
 import { CropDetailList, CropDetailListRow } from './CropDetailList';
@@ -27,6 +29,9 @@ interface EditingOffer {
 
 export function CropSupplierDataSection({ crop, crops, onSaved }: CropSupplierDataSectionProps) {
   const { t, i18n } = useTranslation(['crops', 'common']);
+  const auth = useContext(AuthContext);
+  const membership = auth?.user?.memberships?.find((item) => item.project_id === auth.activeProjectId);
+  const defaultOfferCurrency = membership?.project_default_currency || currencyForRegion(membership?.project_region);
   const titleId = useId();
   const [editing, setEditing] = useState<EditingOffer | null>(null);
   const [deleting, setDeleting] = useState<CropSupplierData | null>(null);
@@ -45,10 +50,14 @@ export function CropSupplierDataSection({ crop, crops, onSaved }: CropSupplierDa
   const supplierName = (row: CropSupplierData) => row.supplier?.name || row.supplier_name || t('crops:form.supplier');
   const openEditor = (row?: CropSupplierData) => {
     setEditError('');
+    const draft = row ?? { supplier_name_input: '', packaging_sizes: [] };
+    const packageCurrency = draft.package_currency || defaultOfferCurrency;
     setEditing({
       originalId: row?.id,
       original: row,
-      crop: { ...crop, supplier_data: [row ?? { supplier_name_input: '', packaging_sizes: [] }] },
+      crop: {
+        ...crop, supplier_data: [{ ...draft, ...(packageCurrency ? { package_currency: packageCurrency } : {}) }],
+      },
     });
   };
 
@@ -116,6 +125,17 @@ export function CropSupplierDataSection({ crop, crops, onSaved }: CropSupplierDa
     {rows.length > 0 && <CropDetailList>
       {rows.map((row, index) => {
         const name = supplierName(row);
+        const label = (key: string) => t(`crops:${key}`);
+        const packages = row.packaging_sizes ?? [];
+        const currency = row.package_currency;
+        const noData = label('noData');
+        const packageLabel = currency && packages.some((pkg) => pkg.price != null)
+          ? packages.flatMap((pkg) => {
+            const size = formatPackageSizes([pkg], label, locale);
+            if (size === noData) return [];
+            return pkg.price == null ? size : `${size} · ${formatOfferPrice(pkg.price, currency, locale)}`;
+          }).join(', ')
+          : formatPackageSizes(packages, label, locale);
         return <CropDetailListRow
           key={row.id ?? `${row.supplier?.id ?? row.supplier_id ?? 'supplier'}-${index}`}
           name={name}
@@ -126,13 +146,16 @@ export function CropSupplierDataSection({ crop, crops, onSaved }: CropSupplierDa
               {row.supplier_product_url && <Link variant="body2" href={row.supplier_product_url}
                 target="_blank" rel="noopener noreferrer" underline="hover">{row.supplier_product_url}</Link>}
             </Box>}
-            <Typography variant="body2" color="text.secondary">
-              {t('crops:form.seedPackagesLabel')}: <Box component="span">
-                {formatPackageSizes(row.packaging_sizes, (key) => t(`crops:${key}`), locale)}
-              </Box>
-            </Typography>
+            {packageLabel && packageLabel !== noData && <Typography variant="body2" color="text.secondary">
+              {t('crops:form.seedPackagesLabel')}: <Box component="span">{packageLabel}</Box>
+            </Typography>}
+            {row.germination_rate != null && <Typography variant="body2" color="text.secondary">
+              {t('crops:supplierData.germination', { rate: formatNumber(row.germination_rate, label, locale) })}
+            </Typography>}
+            {row.source_url && <Link variant="body2" href={row.source_url} target="_blank"
+              rel="noopener noreferrer" underline="hover">{t('crops:supplierData.source')}</Link>}
             {row.price != null && <Typography variant="body2" color="text.secondary">
-              {t('crops:supplierData.price')}: {formatNumber(row.price, key => t(`crops:${key}`), locale)}
+              {t('crops:supplierData.legacyPrice', { amount: formatNumber(row.price, label, locale) })}
             </Typography>}
           </>}
           disabled={crop.id === undefined || row.id === undefined}
@@ -145,6 +168,7 @@ export function CropSupplierDataSection({ crop, crops, onSaved }: CropSupplierDa
     </CropDetailList>}
     {editing && <CropForm crop={editing.crop} crops={crops} section="supplierData"
       saveErrorOverride={editError}
+      defaultOfferCurrency={defaultOfferCurrency}
       formKind={crop.variety?.trim() ? 'variety' : 'crop'}
       title={t('crops:form.supplierDataSectionTitle')} onCancel={() => setEditing(null)} onSave={saveOffer} />}
     <ConfirmationDialog open={Boolean(deleting)} title={t('crops:supplierData.delete')}

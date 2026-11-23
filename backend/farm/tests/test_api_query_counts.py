@@ -560,6 +560,8 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             CropSupplierData.objects.create(
                 crop=self.crop, supplier=supplier, project=self.project,
                 seed_status='conventional', seed_exemption_status='approved',
+                package_currency='EUR',
+                packaging_sizes=[{'size_value': 100, 'size_unit': 'seeds', 'price': '4.0000'}],
             )
         self.assert_list_query_count(
             '/openfarmplanner/api/crop-supplier-data/', 5, expected_rows=ROW_COUNT + 3,

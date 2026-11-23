@@ -173,6 +173,20 @@ describe('hasEffectiveCropFormChanges', () => {
       )).toBe(true);
     });
 
+    it('detects clearing a zero package price and changing the offer currency', () => {
+      const packageSize = { size_value: 100, size_unit: 'seeds' } as const;
+      const offer = { supplier_id: 1, package_currency: 'GBP', packaging_sizes: [{ ...packageSize, price: '0.0000' }] };
+      expect(unchanged({ supplier_data: [offer] }, {
+        supplier_data: [{ ...offer, packaging_sizes: [{ ...packageSize, price: null }] }],
+      })).toBe(true);
+      expect(unchanged({ supplier_data: [offer] }, {
+        supplier_data: [{ ...offer, package_currency: 'CHF' }],
+      })).toBe(true);
+      expect(unchanged({ supplier_data: [offer] }, {
+        supplier_data: [{ ...offer, packaging_sizes: [{ ...packageSize, price: 0 }] }],
+      })).toBe(false);
+    });
+
     it('a seed rate value changed', () => {
       expect(unchanged(
         { seed_rate_by_cultivation: { direct: { value: 1, unit: 'g' } } } as unknown as Partial<Crop>,

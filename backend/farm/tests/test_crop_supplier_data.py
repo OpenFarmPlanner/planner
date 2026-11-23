@@ -36,6 +36,70 @@ class CropSupplierDataApiTest(APITestCase):
         self.assertEqual(row.crop_id, self.crop.id)
         self.assertEqual(row.supplier_id, self.supplier.id)
 
+    def test_package_prices_distinguish_zero_missing_and_legacy_amounts(self):
+        offer = CropSupplierData.objects.create(
+            crop=self.crop, supplier=self.supplier, project=self.project, price='2.50',
+        )
+        url = f'/openfarmplanner/api/crops/{self.crop.id}/'
+        small = {'size_value': 100, 'size_unit': 'seeds'}
+        large = {'size_value': 500, 'size_unit': 'seeds'}
+        response = self.client.patch(url, {'supplier_data_input': [{
+            'id': offer.id,
+            'supplier_id': self.supplier.id,
+            'package_currency': 'GBP',
+            'packaging_sizes': [{**small, 'price': 0}, {**large, 'price': '12.75'}],
+            'notes': 'Order early',
+            'supplier_product_url': 'https://supplier.example/product',
+            'source_url': 'https://supplier.example/catalogue',
+            'germination_rate': 85,
+        }]}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        row = response.data['supplier_data'][0]
+        self.assertEqual(row['package_currency'], 'GBP')
+        self.assertEqual(row['price'], '2.50')
+        self.assertEqual(row['germination_rate'], 85)
+        self.assertEqual(row['notes'], 'Order early')
+        self.assertEqual(row['supplier_product_url'], 'https://supplier.example/product')
+        self.assertEqual(row['source_url'], 'https://supplier.example/catalogue')
+        self.assertEqual(row['packaging_sizes'], [
+            {**small, 'price': '0.0000'}, {**large, 'price': '12.7500'},
+        ])
+
+        # Older clients send package sizes without prices. Clearing is explicit.
+        for packages in ([large, small], [large, {**small, 'price': None}]):
+            response = self.client.patch(url, {'supplier_data_input': [{
+                'id': offer.id, 'supplier_id': self.supplier.id, 'packaging_sizes': packages,
+            }]}, format='json')
+            self.assertEqual(response.status_code, 200, response.data)
+            row = response.data['supplier_data'][0]
+            self.assertEqual(row['packaging_sizes'][0]['price'], '12.7500')
+            self.assertEqual(row['packaging_sizes'][1]['price'], packages[1].get('price', '0.0000'))
+            self.assertEqual(row['package_currency'], 'GBP')
+            self.assertEqual(row['price'], '2.50')
+
+    def test_invalid_package_pricing_leaves_saved_offer_unchanged(self):
+        offer = CropSupplierData.objects.create(
+            crop=self.crop, supplier=self.supplier, project=self.project, notes='Keep this',
+        )
+        url = f'/openfarmplanner/api/crop-supplier-data/{offer.id}/'
+        package = {'size_value': 25, 'size_unit': 'g', 'price': 4}
+        for currency, packages, field in (
+            ('', [package], 'packaging_sizes'),
+            ('XXX', [package], 'package_currency'),
+            ('EUR', [{**package, 'price': -1}], 'packaging_sizes'),
+            ('EUR', [{**package, 'size_value': 0}], 'packaging_sizes'),
+            ('EUR', [package, package], 'packaging_sizes'),
+        ):
+            with self.subTest(currency=currency, packages=packages):
+                response = self.client.patch(url, {
+                    'notes': 'Unsaved', 'package_currency': currency, 'packaging_sizes': packages,
+                }, format='json')
+                self.assertEqual(response.status_code, 400)
+                self.assertIn(field, response.data)
+                offer.refresh_from_db()
+                self.assertEqual(offer.notes, 'Keep this')
+                self.assertEqual(offer.packaging_sizes, [])
+
     def test_crop_detail_includes_supplier_data(self):
         CropSupplierData.objects.create(
             crop=self.crop,
