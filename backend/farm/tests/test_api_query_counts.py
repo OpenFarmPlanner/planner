@@ -730,6 +730,29 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             counts.append((len(plan_queries), len(yield_queries)))
         self.assertEqual(counts, [counts[0]] * ROW_COUNT)
 
+    def test_carried_annual_recorded_harvests_do_not_cost_queries_per_plan(self):
+        target = Season.objects.create(
+            project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
+        )
+        headers = {'HTTP_X_SEASON_ID': str(target.pk)}
+        counts = []
+        for index in range(ROW_COUNT):
+            PlantingPlan.objects.create(
+                crop=self.crops[index], bed=self.beds[index], planting_date=date(2026, 6, 1),
+                clearing_date=date(2026, 12, 31), area_usage_sqm=5,
+                actual_harvest_start_date=date(2027, 1, 5),
+                recorded_harvest_end_date=date(2027, 1, 20),
+                project=self.project, season=self.seasons[index],
+            )
+            with CaptureQueriesContext(connection) as queries:
+                response = self.client.get('/openfarmplanner/api/planting-plans/', **headers)
+            self.assertEqual(response.status_code, 200)
+            rows = [row for row in response.data['results'] if row['carried_over']]
+            self.assertEqual(len(rows), index + 1)
+            self.assertTrue(all(row['harvest_actual_occurrences'] for row in rows))
+            counts.append(len(queries))
+        self.assertEqual(counts, [counts[0]] * ROW_COUNT)
+
     def test_calendar_harvest_windows_query_count(self):
         target = Season.objects.create(
             project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
