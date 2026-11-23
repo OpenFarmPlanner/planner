@@ -119,7 +119,7 @@ const applyDefaultHeaderOverflowTooltip = (column: GridColDef): GridColDef => {
     // normally applies) with a plain Box, so that bold weight has to be
     // re-applied here explicitly to keep every default header visually
     // consistent with a column that supplies its own `renderHeader`.
-    renderHeader: () => <TruncatedTextWithTooltip text={headerName} sx={{ width: '100%', ...dataGridHeaderLabelSx }} />,
+    renderHeader: () => <TruncatedTextWithTooltip focusWithinColumnHeader text={headerName} sx={{ width: '100%', ...dataGridHeaderLabelSx }} />,
   };
 };
 

@@ -21,7 +21,7 @@ const truncatedTextSx: SxProps<Theme> = {
 };
 
 export interface TruncatedTextWithTooltipProps
-  extends Pick<OverflowTooltipProps, 'arrow' | 'placement' | 'enterDelay' | 'slotProps'> {
+  extends Pick<OverflowTooltipProps, 'arrow' | 'placement' | 'enterDelay' | 'slotProps' | 'focusWithinColumnHeader'> {
   /** The full text. Rendered as the content unless `children` overrides it, and used as the tooltip title. */
   text: string;
   /** Optional decorated rendering (highlighting, adornments) for the same `text`. */
@@ -47,6 +47,7 @@ export function TruncatedTextWithTooltip({
   children,
   component = 'span',
   focusable = false,
+  focusWithinColumnHeader,
   className,
   sx,
   arrow,
@@ -56,7 +57,7 @@ export function TruncatedTextWithTooltip({
   'data-testid': dataTestId,
 }: TruncatedTextWithTooltipProps) {
   return (
-    <OverflowTooltip title={text} arrow={arrow} placement={placement} enterDelay={enterDelay} slotProps={slotProps}>
+    <OverflowTooltip title={text} arrow={arrow} placement={placement} enterDelay={enterDelay} slotProps={slotProps} focusWithinColumnHeader={focusWithinColumnHeader}>
       <Box
         component={component}
         tabIndex={focusable ? 0 : undefined}

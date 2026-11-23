@@ -8,6 +8,11 @@ export function GridHeaderHelp({ label, description }: { label: string; descript
   const descriptionId = useId();
   const [keyboardFocused, setKeyboardFocused] = useState(false);
   const [interactionOpen, setInteractionOpen] = useState(false);
+  const [truncated, setTruncated] = useState(false);
+  const measureLabel = () => {
+    const element = labelRef.current;
+    setTruncated(Boolean(element && element.scrollWidth > element.clientWidth));
+  };
 
   useEffect(() => {
     const header = labelRef.current?.closest('[role="columnheader"]');
@@ -18,7 +23,10 @@ export function GridHeaderHelp({ label, description }: { label: string; descript
     const describedBy = header.getAttribute('aria-describedby');
     header.setAttribute('aria-describedby', [describedBy, descriptionId].filter(Boolean).join(' '));
     const handleFocus = (event: Event) => {
-      setKeyboardFocused(event.target === header && header.matches(':focus-visible'));
+      if (event.target === header && header.matches(':focus-visible')) {
+        measureLabel();
+        setKeyboardFocused(true);
+      }
     };
     const handleBlur = () => setKeyboardFocused(false);
     header.addEventListener('focusin', handleFocus);
@@ -34,8 +42,8 @@ export function GridHeaderHelp({ label, description }: { label: string; descript
   }, [descriptionId]);
 
   return <>
-    <AppTooltip explanatory describeChild disableInteractive title={<>{description}</>}
-      open={keyboardFocused || interactionOpen} onOpen={() => setInteractionOpen(true)}
+    <AppTooltip explanatory describeChild disableInteractive title={<>{truncated && <><strong>{label}</strong><br /></>}{description}</>}
+      open={keyboardFocused || interactionOpen} onOpen={() => { measureLabel(); setInteractionOpen(true); }}
       onClose={() => {
         setKeyboardFocused(false);
         setInteractionOpen(false);

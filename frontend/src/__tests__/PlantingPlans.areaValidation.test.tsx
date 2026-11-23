@@ -478,24 +478,24 @@ describe("PlantingPlans save-time area validation", () => {
     }
   });
 
-  it("uses one compact width for all date columns", async () => {
+  it("uses compact, resizable defaults for each date column", async () => {
     render(<MemoryRouter><PlantingPlans /></MemoryRouter>);
     await waitForPlansToLoad();
 
     const latestProps = commandApiSpies.gridProps.mock.calls.at(-1)?.[0];
     const columns = latestProps?.columns ?? [];
-    const dateColumns = ["planting_date", "harvest_date", "harvest_end_date"].map((field) =>
+    const dateColumns = ["sowing_date", "planting_date", "harvest_date", "harvest_end_date"].map((field) =>
       columns.find((column: { field: string }) => column.field === field),
     );
 
-    expect(dateColumns).toEqual([
-      expect.objectContaining({ minWidth: 142, width: 142, maxWidth: 142 }),
-      expect.objectContaining({ minWidth: 142, width: 142, maxWidth: 142 }),
-      expect.objectContaining({ minWidth: 142, width: 142, maxWidth: 142 }),
-    ]);
-    // Combined mode keeps the existing edit cell width and offers recording
-    // actual harvest dates in the existing calculated harvest columns.
-    const [plantingDateColumn, ...harvestColumns] = dateColumns;
+    for (const column of dateColumns) {
+      expect(column.width).toBeLessThanOrEqual(200);
+      expect(column.minWidth).toBeLessThan(column.width);
+      expect(column.maxWidth).toBeGreaterThan(column.width);
+    }
+    // Combined mode offers recording actual harvest dates in the existing
+    // calculated harvest columns.
+    const [, plantingDateColumn, ...harvestColumns] = dateColumns;
     expect(typeof plantingDateColumn?.renderEditCell).toBe("function");
     expect(harvestColumns.every((column) => typeof column?.renderEditCell === 'function')).toBe(true);
   });
@@ -554,32 +554,32 @@ describe("PlantingPlans save-time area validation", () => {
 
     // Direct sowing: sowing date equals planting date, and is fully editable.
     const directRow = { id: 1, crop: 2, bed: 101, planting_date: "2026-05-01" };
-    expect(sowingDateColumn.valueGetter(undefined, directRow)).toEqual(new Date("2026-05-01"));
+    expect(sowingDateColumn.valueGetter(undefined, directRow)).toEqual(new Date(2026, 4, 1));
     expect(sowingDateColumn.isCellEditable({ row: directRow })).toBe(true);
     sowingDateColumn.preProcessEditCellProps({
       row: directRow,
-      props: { value: new Date("2026-04-20") },
+      props: { value: new Date(2026, 3, 20) },
       hasChanged: true,
     });
     const directPayload = await latestProps?.mapToApiData?.({
       ...directRow,
-      sowing_date: new Date("2026-04-20"),
+      sowing_date: new Date(2026, 3, 20),
     });
     expect(directPayload).toEqual(expect.objectContaining({ planting_date: "2026-04-20" }));
 
     // Anzucht: sowing date is planting date minus the propagation duration,
     // and editing it shifts the planting date forward by that duration.
     const anzuchtRow = { id: 2, crop: 5, bed: 101, planting_date: "2026-05-01" };
-    expect(sowingDateColumn.valueGetter(undefined, anzuchtRow)).toEqual(new Date("2026-04-11"));
+    expect(sowingDateColumn.valueGetter(undefined, anzuchtRow)).toEqual(new Date(2026, 3, 11));
     expect(sowingDateColumn.isCellEditable({ row: anzuchtRow })).toBe(true);
     sowingDateColumn.preProcessEditCellProps({
       row: anzuchtRow,
-      props: { value: new Date("2026-04-11") },
+      props: { value: new Date(2026, 3, 11) },
       hasChanged: true,
     });
     const anzuchtPayload = await latestProps?.mapToApiData?.({
       ...anzuchtRow,
-      sowing_date: new Date("2026-04-11"),
+      sowing_date: new Date(2026, 3, 11),
     });
     expect(anzuchtPayload).toEqual(expect.objectContaining({ planting_date: "2026-05-01" }));
   });

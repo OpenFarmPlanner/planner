@@ -1,6 +1,8 @@
 {
   "appName": "OpenFarmPlanner",
   "actions": {
+    "resetColumnWidths": "Restablecer el ancho de las columnas",
+    "autoFitColumnWidth": "Ajustar el ancho automáticamente",
     "add": "Añadir",
     "edit": "Editar",
     "duplicate": "Duplicar",

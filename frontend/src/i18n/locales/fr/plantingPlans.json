@@ -415,8 +415,8 @@
     "emergenceWithBasis_other": "Plantules visibles vers le {{from}}–{{to}} (semis le {{sowing}} + {{days}} jours de durée de germination)"
   },
   "tableHeaders": {
-    "sowingDate": "Date de semis",
-    "plantingDate": "Date de plantation",
+    "sowingDate": "Semis",
+    "plantingDate": "Plantation",
     "harvestStartDate": "Début de récolte",
     "harvestEndDate": "Fin de récolte"
   },

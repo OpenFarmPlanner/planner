@@ -84,7 +84,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   // docs/datagrid-architecture.md, "Mobile layout (< sm)"); the DataGrid in
   // FieldsBedsHierarchy is never mounted there.
   const isMobileHierarchyLayout = useIsMobileHierarchyLayout();
-  const { shouldShowProjectRequiredState, missingProjectReason } = useProjectRequirement();
+  const { shouldShowProjectRequiredState, missingProjectReason, userId } = useProjectRequirement();
   const hierarchyData = useHierarchyData(!shouldShowProjectRequiredState);
   const {
     loading: isAreaDataLoading,
@@ -507,6 +507,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
               onPendingDeletionCountChange={setPendingHierarchyDeletionCount}
               suppressContextMenuHint={shouldShowMissingBedsHint}
               projectId={projectId}
+              userId={userId}
             />
           )}</PageContainer>
         ) : null}
