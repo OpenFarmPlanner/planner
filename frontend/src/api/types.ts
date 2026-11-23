@@ -2012,7 +2012,7 @@ export type YieldComparisonCropTiming = Pick<PlantingPlan,
 
 export type YieldComparisonPlanDates = PlantingPlanActualDates & Pick<PlantingPlan,
   'cultivation_type' | 'planting_date' | 'planned_propagation_start_date' | 'planned_sowing_date'
-  | 'harvest_date' | 'harvest_end_date' | 'seasonal_harvest' | 'harvest_actual_occurrences'> & YieldComparisonCropTiming & {
+  | 'harvest_date' | 'harvest_end_date' | 'seasonal_harvest' | 'harvest_actual_occurrences' | 'carried_over'> & YieldComparisonCropTiming & {
     id: number;
     bed_name: string;
     crop_label?: string;

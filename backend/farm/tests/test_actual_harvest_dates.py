@@ -107,6 +107,14 @@ class ActualHarvestDatesTest(ProjectApiTestCase):
         self.assertTrue(annual["carried_over"])
         self.assertEqual(annual["harvest_actual_occurrences"][0]["actual_start_date"], "2026-06-25")
         self.assertEqual(annual["harvest_actual_occurrences"][0]["actual_end_date"], "2026-07-05")
+        comparison = self.client.get(reverse("yield-comparison"), {"crop_id": plan.crop_id})
+        self.assertEqual(comparison.status_code, 200, comparison.data)
+        summer_yield = next(row for row in comparison.json()["seasons"] if row["id"] == summer.pk)
+        (summer_activity,) = summer_yield["plan_dates"]
+        self.assertTrue(summer_activity["carried_over"])
+        self.assertEqual(
+            summer_activity["harvest_actual_occurrences"], annual["harvest_actual_occurrences"],
+        )
         rejected = self.client.patch(
             f"{PLANS}{plan.pk}/",
             {"planting_date": "2026-07-01"},
@@ -291,6 +299,7 @@ class ActualHarvestDatesTest(ProjectApiTestCase):
         origin = self.season("2025-01-01", "2025-12-31")
         recent = self.season("2026-01-01", "2026-12-31")
         following = self.season("2027-01-01", "2027-12-31")
+        later = self.season("2028-01-01", "2028-12-31")
         plan = self.perennial(origin, "03-12/04-09")
         for year, season in ((2026, recent), (2027, following)):
             response = self.edit(
@@ -334,9 +343,17 @@ class ActualHarvestDatesTest(ProjectApiTestCase):
 
         correction = self.edit(plan, recent, year=2026, end_date="2026-04-09")
         self.assertEqual(correction.status_code, 200, correction.data)
-        replacement = self.edit(plan, origin, year=None, start_date="2025-05-02")
+        replacement = self.edit(plan, origin, year=None, start_date="2028-05-02")
         self.assertEqual(replacement.status_code, 200, replacement.data)
-        self.assertEqual(replacement.json()["actual_harvest_start_date"], "2025-05-02")
+        self.assertEqual(replacement.json()["actual_harvest_start_date"], "2028-05-02")
+        comparison = self.client.get(reverse("yield-comparison"), {"crop_id": plan.crop_id})
+        self.assertEqual(comparison.status_code, 200, comparison.data)
+        later_yield = next(row for row in comparison.json()["seasons"] if row["id"] == later.pk)
+        (later_activity,) = later_yield["plan_dates"]
+        self.assertTrue(later_activity["carried_over"])
+        (new_occurrence,) = later_activity["harvest_actual_occurrences"]
+        self.assertIsNone(new_occurrence["year"])
+        self.assertEqual(new_occurrence["actual_start_date"], "2028-05-02")
         self.assertEqual(
             self.details(plan, recent)["harvest_actual_occurrences"][0]["actual_end_date"],
             "2026-04-09",

@@ -35,7 +35,9 @@ from farm.services.harvests import (
     measured_weight_kg,
 )
 from farm.services.seasonal_harvest import (
+    HarvestActualDates,
     RecurringHarvestSchedule,
+    one_off_harvest_actuals,
     recurring_actual_occurrences,
     recurring_harvest_schedule,
     recurring_plan_visible_in_season,
@@ -323,7 +325,7 @@ def _record_one_off_activity_dates(
     plan: PlantingPlan, rows: list[SeasonYield], origin: SeasonYield | None,
     crop_index: GeneralCropIndex, language_code: str,
 ) -> None:
-    if not plan.harvest_occurrence_actuals:
+    if not plan.harvest_occurrence_actuals and not one_off_harvest_actuals(plan):
         if origin is not None:
             origin.plan_dates.append(_activity_dates(
                 plan, original=True, crop_index=crop_index, language_code=language_code,
@@ -332,12 +334,17 @@ def _record_one_off_activity_dates(
     planned = plan.planned_harvest_dates(crop_index)
     for row in rows:
         occurrences = harvest_actual_occurrences(plan, row.season, None, planned)
-        if row is origin or any(occurrence['year'] is not None for occurrence in occurrences):
+        if row is origin or any(
+            HarvestActualDates(
+                occurrence['actual_start_date'], occurrence['actual_end_date'],
+            ).intersects(row.season) for occurrence in occurrences
+        ):
             row.plan_dates.append({
                 **_activity_dates(
                     plan, original=row is origin, crop_index=crop_index,
                     language_code=language_code,
                 ),
+                'carried_over': row is not origin,
                 'harvest_actual_occurrences': occurrences,
             })
 
