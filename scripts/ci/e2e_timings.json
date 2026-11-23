@@ -163,6 +163,10 @@
       "tests": 16,
       "duration_ms": 76206
     },
+    "e2e/grid-column-sizing.spec.ts": {
+      "tests": 2,
+      "duration_ms": 30000
+    },
     "e2e/harvest-recording.spec.ts": {
       "tests": 2,
       "duration_ms": 13399
