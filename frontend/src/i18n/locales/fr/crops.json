@@ -1853,7 +1853,7 @@
     "title": "Supprimer les cultures sélectionnées",
     "scopeSelected": "Vérifiez les cultures sélectionnées et les variétés incluses.",
     "trashNotice": "Les cultures et leurs données de semences vont dans la corbeille. Les fiches de la bibliothèque partagée restent en place.",
-    "deleteVarieties": "Supprimer aussi les variétés",
+    "deleteVarieties": "Inclure les autres variétés requises",
     "showCrops": "Afficher les cultures concernées",
     "empty": "Cette sélection ne contient aucune culture active.",
     "missing": "Certaines cultures sélectionnées sont indisponibles. Actualisez la sélection.",

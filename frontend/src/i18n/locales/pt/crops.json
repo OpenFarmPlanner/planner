@@ -1852,7 +1852,7 @@
     "title": "Eliminar culturas selecionadas",
     "scopeSelected": "Revê as culturas selecionadas e as variedades incluídas.",
     "trashNotice": "As culturas e os dados de sementes passam para o lixo. As entradas da biblioteca partilhada são conservadas.",
-    "deleteVarieties": "Eliminar também as variedades",
+    "deleteVarieties": "Incluir as restantes variedades necessárias",
     "showCrops": "Mostrar culturas afetadas",
     "empty": "Esta seleção não contém culturas ativas.",
     "missing": "Algumas culturas selecionadas já não estão disponíveis. Atualiza a seleção.",

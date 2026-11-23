@@ -325,6 +325,33 @@ class LocalLibraryImportSeedTests(TestCase):
         self.assertEqual(project.beds.count(), 5)
         self.assertEqual(project.planting_plans.count(), 6)
 
+    def test_crop_bulk_selection_fixture_previews_and_preserves_manual_edits(self):
+        command = 'seed_crop_bulk_selection_acceptance'
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        projects = Project.objects.filter(slug=f'ofp-local-crop-bulk-selection-{self.user.pk}')
+        call_command(command, **arguments)
+        self.assertFalse(projects.exists())
+        with self.assertRaisesMessage(CommandError, 'does not match'):
+            call_command(command, apply=True, **{**arguments, 'database_name': 'wrong-target'})
+
+        call_command(command, apply=True, **arguments)
+        project = projects.get()
+        self.assertTrue(project.memberships.filter(user=self.user, role='admin').exists())
+        group = project.crops.filter(name='Manual tomato').order_by('pk')
+        self.assertEqual(list(group.values_list('variety_normalized', 'creation_origin')), [
+            (None, Crop.CREATION_MANUAL),
+            ('file basil', Crop.CREATION_FILE_IMPORT),
+            ('file chard', Crop.CREATION_FILE_IMPORT),
+        ])
+        self.assertTrue(project.entity_revisions.filter(snapshot__has_key=CHECKPOINT_KEY).exists())
+        parent = group.get(variety_normalized__isnull=True)
+        parent.notes = 'Keep the manual edit'
+        parent.save(update_fields=['notes'])
+        call_command(command, apply=True, **arguments)
+        parent.refresh_from_db()
+        self.assertEqual(parent.notes, 'Keep the manual edit')
+        self.assertEqual(project.crops.count(), 4)
+
     def test_structure_supplier_fixture_has_a_complete_repeat_safe_baseline(self):
         command = 'seed_structure_supplier_history_acceptance'
         arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
