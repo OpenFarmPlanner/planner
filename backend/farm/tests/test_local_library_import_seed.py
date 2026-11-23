@@ -53,6 +53,28 @@ class LocalLibraryImportSeedTests(TestCase):
     def seed(self, **options):
         call_command("seed_library_import_acceptance", **{**self.arguments, **options})
 
+    def test_bed_picker_fixture_previews_and_is_idempotent(self):
+        command = 'seed_bed_picker_acceptance'
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        projects = Project.objects.filter(slug=f'ofp-local-bed-picker-{self.user.pk}')
+        call_command(command, **arguments)
+        self.assertFalse(projects.exists())
+        with self.assertRaisesMessage(CommandError, 'does not match'):
+            call_command(command, **{**arguments, 'database_name': 'wrong-target'}, apply=True)
+        self.assertFalse(projects.exists())
+
+        call_command(command, **arguments, apply=True)
+        project = projects.get()
+        self.assertTrue(ProjectMembership.objects.filter(
+            project=project, user=self.user, role='admin',
+        ).exists())
+        self.assertEqual(project.locations.count(), 2)
+        self.assertEqual(project.beds.count(), 4)
+        self.assertEqual(project.planting_plans.count(), 3)
+
+        call_command(command, **arguments, apply=True)
+        self.assertEqual(projects.get().beds.count(), 4)
+
     def test_perennial_harvest_fixture_previews_and_preserves_manual_edits(self):
         command = 'seed_perennial_harvest_acceptance'
         arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
