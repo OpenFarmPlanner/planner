@@ -981,3 +981,29 @@ coverage gaps, report retention and future active/authenticated exclusions.
   `api_token_actions` means updating `EXPECTED_OPERATIONS` there. Reproduce
   locally with
   `DJANGO_SETTINGS_MODULE=config.settings_test pdm run python manage.py spectacular --fail-on-warn --validate --file /dev/null`.
+
+## Keeping a local acceptance dashboard on main
+
+For an existing Linux acceptance-review workspace, run
+`./scripts/local_qa/start.py` from the repository, or point your existing
+`ofp-qa` alias at its absolute path. The launcher expects the dashboard
+server in `.qa-review/dashboard/` and the workspace's `qa_settings.py`,
+`review.sqlite3` and `project-links.py` in `.qa-review/test-data/`.
+The workspace supplies its own project fixtures and reviewer account.
+Use the project's Python, PDM and Node/npm prerequisites and Git credentials
+with read access to `origin`.
+
+The launcher fetches `origin/main` at startup and every five minutes while QA
+is running. Use `ofp-qa update` for an immediate check. The dashboard stays on
+port 4174. The QA app on port 5274 and its backend on port 8274 serve the same
+commit. Reload an open app tab after an update. Compare `/qa-version.json`
+and `/api/qa/version/` on the app origin to check both versions.
+
+Each build uses a Git archive in `.qa-review/runtime/releases/`. Once the build
+passes its checks, the launcher stops the two QA app services, backs up the QA
+SQLite database before pending migrations, and verifies the new backend through
+the frontend proxy. The three most recent automatic pre-migration backups are
+retained in `.qa-review/runtime/backups/`. A failed build leaves the running version available. A failed
+cutover restores the previous release and its pre-migration database backup.
+Review decisions, screenshots and fixture data stay local. Automatic update
+output is in `.qa-review/logs/main-updates.log`.
