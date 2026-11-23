@@ -372,6 +372,13 @@ harvest as an observation. Switch the detail chooser to 2025 to find the frost
 loss and completed spring harvest task. The application's season stays at 2026.
 Return the detail chooser to 2026 and add or edit a task or a loss for that year.
 
+For perennial harvest tasks, use `--harvest-tasks`. In **Perennial harvest
+tasks acceptance**, check the dashboard in 2026 for Calendar rhubarb's open
+March 12 harvest-start task. Its 2025 occurrence is completed. Open the plan's
+details and switch between those years to compare their due dates and statuses.
+Apple first gets a harvest-start task in 2027. Move the rhubarb's 2027 window
+from the original plan to verify that its open task moves independently.
+
 ### Local yield comparison fixture
 
 On the matching checkout, verify the local database with the

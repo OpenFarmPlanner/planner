@@ -976,8 +976,36 @@ class Crop(TimestampedModel):
         ]
         if timing_changed_fields:
             self._recalculate_related_planting_plan_dates(timing_changed_fields)
+        self._synchronize_harvest_tasks(previous, current, changed_fields)
         if record_history:
             self._record_save_revision(current, previous, changed_fields)
+
+    def _synchronize_harvest_tasks(
+        self, previous: dict[str, Any] | None, current: dict[str, Any], changed_fields: list[str],
+    ) -> None:
+        from farm.services.tasks import synchronize_recurring_harvest_tasks
+
+        from .planning import PlantingPlan
+
+        defaults = {
+            'life_cycle', 'annual_harvest_window', 'first_harvest_delay_years',
+            'cultivation_type', 'cultivation_types', 'crop_species_id', 'variety_normalized',
+            'deleted_at', 'growth_duration_days', 'harvest_duration_days',
+        }
+        if current['deleted_at'] is not None:
+            return
+        general_species_ids = {
+            row['crop_species_id'] for row in (previous, current)
+            if row and row['crop_species_id'] and not row['variety_normalized']
+        }
+        if previous is None and not general_species_ids:
+            return
+        if previous is not None and defaults.isdisjoint(changed_fields):
+            return
+        plants = PlantingPlan.objects.filter(project_id=self.project_id).filter(
+            Q(crop_id=self.pk) | Q(crop__crop_species_id__in=general_species_ids),
+        )
+        synchronize_recurring_harvest_tasks(plants, cancel_obsolete=True)
 
     @property
     def pending_timing_windows(self) -> list[Any] | None:

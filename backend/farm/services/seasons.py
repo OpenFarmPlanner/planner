@@ -10,13 +10,21 @@ import calendar
 from datetime import date, timedelta
 from typing import Any
 
+from django.db import transaction
+from django.db.models import Q
+
 from farm.models import EntityRevision, PlantingPlan, Project, Season, SeasonPattern
 from farm.services.crop_inheritance import (
     GeneralCropIndex,
     build_general_crop_index,
+    plan_cultivation_type,
     resolve_crop_field,
 )
-from farm.services.tasks import generate_tasks_for_plans, plan_cultivation_type, plan_event_dates
+from farm.services.tasks import (
+    generate_tasks_for_plans,
+    plan_event_dates,
+    synchronize_recurring_harvest_tasks,
+)
 
 # Fields copied from a source PlantingPlan onto a new one in the target
 # season. Excludes the primary key, timestamps, audit fields, and the
@@ -627,6 +635,28 @@ def distribute_planting_plans(
     return created
 
 
+def synchronize_season_harvest_tasks(
+    season: Season, *, previous_period: tuple[date, date] | None = None,
+) -> None:
+    start, end = season.start_date, season.end_date
+    if previous_period is not None:
+        start = min(start, previous_period[0])
+        end = max(end, previous_period[1])
+    candidates = (
+        PlantingPlan.objects.filter(project_id=season.project_id)
+        .alias(occupied_until=PlantingPlan.occupancy_end_expression())
+        .filter(occupied_until__gte=start)
+        .filter(
+            Q(planting_date__lte=end) | Q(actual_sowing_date__lte=end)
+            | Q(actual_transplanting_date__lte=end),
+        )
+    )
+    synchronize_recurring_harvest_tasks(
+        candidates, new_season_id=season.pk if previous_period is None else None,
+    )
+
+
+@transaction.atomic
 def get_or_create_season_for_period(
     project: Project,
     start_date: date,
@@ -644,6 +674,7 @@ def get_or_create_season_for_period(
     if created:
         from farm.history import _serialize_instance, record_entity_revision
 
+        synchronize_season_harvest_tasks(season)
         record_entity_revision(
             project=project, entity_type='season', object_id=season.pk,
             action=EntityRevision.ACTION_CREATED,
@@ -916,6 +947,7 @@ def find_soft_deleted_season(project: Project, start_date: date) -> Season | Non
     )
 
 
+@transaction.atomic
 def resurrect_season(
     season: Season,
     end_date: date,
@@ -937,6 +969,7 @@ def resurrect_season(
     season.end_date = end_date
     season.created_by = user
     season.save(update_fields=['deleted_at', 'end_date', 'created_by', 'updated_at'])
+    synchronize_season_harvest_tasks(season)
     record_entity_revision(
         project=season.project, entity_type='season', object_id=season.pk,
         action=EntityRevision.ACTION_UPDATED,
@@ -949,6 +982,7 @@ def resurrect_season(
     return season
 
 
+@transaction.atomic
 def create_or_resurrect_season(
     project: Project,
     start_date: date,
@@ -969,6 +1003,7 @@ def create_or_resurrect_season(
     season = Season.objects.create(
         project=project, start_date=start_date, end_date=end_date, created_by=user,
     )
+    synchronize_season_harvest_tasks(season)
     record_entity_revision(
         project=project, entity_type='season', object_id=season.pk,
         action=EntityRevision.ACTION_CREATED,

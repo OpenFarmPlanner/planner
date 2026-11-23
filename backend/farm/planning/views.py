@@ -67,6 +67,7 @@ from farm.services.tasks import (
     detach_plan_tasks,
     generate_plan_tasks,
     synchronize_plan_tasks,
+    synchronize_recurring_harvest_tasks,
 )
 from farm.services.timing_window_check import TimingWindowChecker
 from farm.services.yield_calendar import build_yield_forecast
@@ -584,6 +585,8 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         instance = serializer.save(updated_by=current_user)
         if not actual_dates_only:
             synchronize_plan_tasks(instance)
+        elif {'actual_sowing_date', 'actual_transplanting_date'} & serializer.validated_data.keys():
+            synchronize_recurring_harvest_tasks(PlantingPlan.objects.filter(pk=instance.pk))
         self.record_revision(instance, EntityRevision.ACTION_UPDATED, previous_snapshot=previous_snapshot)
 
     @extend_schema(
@@ -697,6 +700,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             plan.harvest_window_overrides = stored
             plan.updated_by = request.user
             plan.save(update_fields=['harvest_window_overrides', 'updated_by', 'updated_at'])
+            synchronize_recurring_harvest_tasks(PlantingPlan.objects.filter(pk=plan.pk))
             self.record_revision(plan, EntityRevision.ACTION_UPDATED, previous_snapshot=before)
             schedule = recurring_harvest_schedule(plan, crop_index)
         return Response({

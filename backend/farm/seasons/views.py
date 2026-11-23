@@ -58,6 +58,7 @@ from farm.services.seasons import (
     preceding_season_copy_source,
     resurrect_season,
     serialize_period_transition,
+    synchronize_season_harvest_tasks,
 )
 from farm.services.tasks import generate_tasks_for_plans
 
@@ -80,6 +81,7 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
     )
     serializer_class = SeasonSerializer
 
+    @transaction.atomic
     def perform_create(self, serializer):
         current_user = self.request.user if self.request.user.is_authenticated else None
         project = self.request.active_project
@@ -112,7 +114,18 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             context={'season_label': instance.label},
             user_name=_current_actor_label(request=self.request),
         )
+        synchronize_season_harvest_tasks(instance)
         self.record_revision(instance, EntityRevision.ACTION_CREATED, batch_operation=batch)
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        previous = serializer.instance
+        snapshot = _serialize_instance(previous)
+        previous_period = (previous.start_date, previous.end_date)
+        instance = serializer.save()
+        if previous_period != (instance.start_date, instance.end_date):
+            synchronize_season_harvest_tasks(instance, previous_period=previous_period)
+        self.record_revision(instance, EntityRevision.ACTION_UPDATED, previous_snapshot=snapshot)
 
     def destroy(self, request, *args, **kwargs):
         season = self.get_object()
@@ -200,6 +213,7 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
                 )
                 season.deleted_at = None
                 season.save(update_fields=['deleted_at', 'updated_at'])
+                synchronize_season_harvest_tasks(season)
                 self.record_revision(
                     season, EntityRevision.ACTION_UPDATED,
                     changed_fields=['deleted_at'], batch_operation=batch,

@@ -7,9 +7,16 @@ from typing import Any
 
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import transaction
+from django.db.models import F, Q, QuerySet
+from django.utils import timezone
 
-from farm.models import EntityRevision, PlantingPlan, Project, Task
-from farm.services.crop_inheritance import build_general_crop_index, resolve_crop_field
+from farm.models import EntityRevision, PlantingPlan, Project, Season, Task
+from farm.services.crop_inheritance import (
+    build_general_crop_index,
+    plan_cultivation_type,
+    resolve_crop_field,
+)
+from farm.services.seasonal_harvest import RecurringHarvestSchedule, recurring_harvest_schedule
 
 AUTOMATIC_TASK_TITLES = {
     'propagation_start': 'Start propagation',
@@ -18,22 +25,6 @@ AUTOMATIC_TASK_TITLES = {
     'harvest_start': 'Start harvesting',
     'harvest_end': 'Finish harvesting',
 }
-
-
-def plan_cultivation_type(
-    plan: PlantingPlan, crop_index: dict[int, Any] | None = None,
-) -> str:
-    crop = plan.crop
-    cultivation_type = plan.cultivation_type or resolve_crop_field(
-        crop, 'cultivation_type', crop_index,
-    )
-    if not cultivation_type:
-        types = resolve_crop_field(crop, 'cultivation_types', crop_index) or []
-        if 'pre_cultivation' in types:
-            cultivation_type = 'pre_cultivation'
-        elif 'direct_sowing' in types:
-            cultivation_type = 'direct_sowing'
-    return cultivation_type or ''
 
 
 def _automatic_event_title(
@@ -83,6 +74,7 @@ def generate_plan_tasks(
     *,
     crop_index: dict[int, Any] | None = None,
     include_harvest_end: bool = False,
+    synchronize_harvest: bool = False,
 ) -> list[Task]:
     """Create missing event tasks without rewriting existing dates or user work."""
     if not plan.season_id or plan.season.deleted_at is not None:
@@ -107,25 +99,154 @@ def generate_plan_tasks(
     created = []
     events = plan_event_dates(plan, crop_index)
     generate_template_tasks(plan, events)
+    schedule = recurring_harvest_schedule(plan, crop_index)
     for event, due_date in events.items():
-        if event == 'harvest_end' and not include_harvest_end:
+        if (event == 'harvest_end' and not include_harvest_end) or (
+            event == 'harvest_start' and schedule is not None
+        ):
             continue
-        task, was_created = Task.objects.get_or_create(
-            project_id=plan.project_id,
-            source_key=f'plan:{plan.pk}:event:{event}', occurrence_index=0,
-            defaults={
-                'planting_plan': plan, 'season_id': plan.season_id, 'crop_id': plan.crop_id,
-                'title': _automatic_event_title(plan, event, crop_index), 'origin': 'automatic',
-                'due_date': due_date, 'calculated_due_date': due_date,
-            },
+        task = _create_automatic_task(
+            plan, event, due_date, plan.season_id, 0, crop_index,
         )
-        if was_created:
-            _record_task_revision(
-                task, plan.project, action=EntityRevision.ACTION_CREATED,
-                changed_fields=['created'],
-            )
+        if task is not None:
             created.append(task)
+    if schedule is not None:
+        created.extend(_reconcile_harvest_tasks(
+            plan, schedule, preserve_before=timezone.localdate() if synchronize_harvest else None,
+        ))
     return created
+
+
+def _create_automatic_task(
+    plan: PlantingPlan, event: str, due_date: date, season_id: int,
+    occurrence_index: int, crop_index: dict[int, Any] | None = None,
+) -> Task | None:
+    task, created = Task.objects.get_or_create(
+        project_id=plan.project_id,
+        source_key=f'plan:{plan.pk}:event:{event}', occurrence_index=occurrence_index,
+        defaults={
+            'planting_plan': plan, 'season_id': season_id, 'crop_id': plan.crop_id,
+            'title': _automatic_event_title(plan, event, crop_index), 'origin': 'automatic',
+            'due_date': due_date, 'calculated_due_date': due_date,
+        },
+    )
+    if not created:
+        return None
+    _record_task_revision(
+        task, plan.project, action=EntityRevision.ACTION_CREATED, changed_fields=['created'],
+    )
+    return task
+
+
+def _can_reschedule_harvest(task: Task, preserve_before: date | None) -> bool:
+    return bool(
+        preserve_before is not None and task.deleted_at is None and not task.due_date_overridden
+        and task.status in ('pending', 'in_progress')
+        and task.due_date is not None and task.due_date >= preserve_before
+    )
+
+
+def _harvest_task_dates(
+    plan: PlantingPlan, schedule: RecurringHarvestSchedule,
+) -> dict[int, tuple[date, int]]:
+    if schedule.eligible_from is None or schedule.occupied_until is None:
+        return {}
+    seasons = Season.objects.filter(
+        project_id=plan.project_id, start_date__lte=schedule.occupied_until,
+        end_date__gte=schedule.eligible_from,
+    ).order_by('start_date', 'pk')
+    return schedule.harvest_start_dates(
+        (season.pk, season.start_date, season.end_date) for season in seasons
+    )
+
+
+def _adopt_legacy_harvest_task(
+    stored: dict[int, Task], expected: dict[int, tuple[date, int]],
+    schedule: RecurringHarvestSchedule,
+) -> None:
+    legacy = stored.get(0)
+    if legacy is None:
+        return
+    year = schedule.legacy_harvest_year(legacy.calculated_due_date or legacy.due_date)
+    if year in expected and year not in stored:
+        # Pin the identity even for protected rows so a later crop-window edit
+        # cannot reinterpret a January task as work for the following occurrence.
+        Task.objects.filter(pk=legacy.pk).update(occurrence_index=year)
+        legacy.occurrence_index = year
+        _record_task_revision(
+            legacy, legacy.project, action=EntityRevision.ACTION_UPDATED,
+            changed_fields=['occurrence_index'],
+        )
+        stored[year] = stored.pop(0)
+
+
+def _reconcile_harvest_tasks(
+    plan: PlantingPlan, schedule: RecurringHarvestSchedule, *, preserve_before: date | None,
+    new_season_id: int | None = None,
+) -> list[Task]:
+    expected = _harvest_task_dates(plan, schedule)
+    stored = {
+        task.occurrence_index: task for task in Task.objects.select_for_update().filter(
+            project_id=plan.project_id, source_key=f'plan:{plan.pk}:event:harvest_start',
+        )
+    }
+    _adopt_legacy_harvest_task(stored, expected, schedule)
+    if new_season_id is not None:
+        expected = {year: dates for year, dates in expected.items() if dates[1] == new_season_id}
+
+    created = []
+    for year, (due, season_id) in expected.items():
+        task = stored.pop(year, None)
+        if task is None:
+            if preserve_before is None or due >= preserve_before or new_season_id is not None:
+                task = _create_automatic_task(plan, 'harvest_start', due, season_id, year)
+                if task is not None:
+                    created.append(task)
+        elif _can_reschedule_harvest(task, preserve_before):
+            _save_synchronized_task(task, {
+                'due_date': due, 'calculated_due_date': due, 'season_id': season_id,
+                'crop_id': plan.crop_id, 'occurrence_index': year,
+            })
+    for task in stored.values() if new_season_id is None else ():
+        if _can_reschedule_harvest(task, preserve_before):
+            _save_synchronized_task(task, {'status': 'cancelled', 'calculated_due_date': None})
+    return created
+
+
+@transaction.atomic
+def synchronize_recurring_harvest_tasks(
+    plans: QuerySet[PlantingPlan], *, new_season_id: int | None = None,
+    cancel_obsolete: bool = False,
+) -> None:
+    """Reconcile harvest starts when a season, crop default or override changes."""
+    indexes = {}
+    preserve_before = timezone.localdate()
+    if not cancel_obsolete:
+        plans = plans.filter(
+            Q(crop__life_cycle='perennial')
+            | Q(crop__crop_species_id__isnull=False, crop__variety_normalized__isnull=False),
+        )
+    plans = plans.filter(
+        season__isnull=False, season__deleted_at__isnull=True, season__project_id=F('project_id'),
+        crop__project_id=F('project_id'), planting_date__isnull=False,
+    ).select_related('crop').order_by('pk').select_for_update(of=('self',))
+    for plan in plans.iterator(chunk_size=100):
+        if plan.project_id not in indexes:
+            indexes[plan.project_id] = build_general_crop_index(plan.project_id)
+        schedule = recurring_harvest_schedule(plan, indexes[plan.project_id])
+        if schedule is not None:
+            _reconcile_harvest_tasks(
+                plan, schedule, preserve_before=preserve_before, new_season_id=new_season_id,
+            )
+        elif cancel_obsolete:
+            for task in Task.objects.select_for_update().filter(
+                project_id=plan.project_id, occurrence_index__gt=0,
+                source_key=f'plan:{plan.pk}:event:harvest_start',
+            ):
+                if _can_reschedule_harvest(task, preserve_before):
+                    _save_synchronized_task(task, {
+                        'status': 'cancelled', 'calculated_due_date': None,
+                    })
 
 
 def generate_tasks_for_plans(plans: Iterable[PlantingPlan]) -> int:
@@ -182,17 +303,29 @@ def synchronize_plan_tasks(plan: PlantingPlan) -> None:
     if not plan.season_id or plan.season.deleted_at is not None:
         return
     crop_index = build_general_crop_index(plan.project_id)
-    generate_plan_tasks(plan, crop_index=crop_index)
+    generate_plan_tasks(plan, crop_index=crop_index, synchronize_harvest=True)
     events = plan_event_dates(plan, crop_index)
+    schedule = recurring_harvest_schedule(plan, crop_index)
     synchronize_template_tasks(plan, events)
+    _synchronize_automatic_tasks(plan, events, crop_index, schedule is not None)
+
+
+def _synchronize_automatic_tasks(
+    plan: PlantingPlan, events: dict[str, date], crop_index: dict[int, Any], recurring: bool,
+) -> None:
+    preserve_before = timezone.localdate()
+    prefix = f'plan:{plan.pk}:event:'
     for task in Task.objects.select_for_update().filter(
         project_id=plan.project_id, planting_plan=plan, origin='automatic', deleted_at__isnull=True,
     ):
-        prefix = f'plan:{plan.pk}:event:'
         if not task.source_key.startswith(prefix):
             continue
         event = task.source_key[len(prefix):]
         if event not in AUTOMATIC_TASK_TITLES or task.status in ('completed', 'cancelled'):
+            continue
+        if event == 'harvest_start' and (recurring or task.occurrence_index > 0):
+            if not recurring and _can_reschedule_harvest(task, preserve_before):
+                _save_synchronized_task(task, {'status': 'cancelled', 'calculated_due_date': None})
             continue
         changes = {'season_id': plan.season_id, 'crop_id': plan.crop_id, 'field_id': None}
         if event in events:

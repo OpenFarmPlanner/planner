@@ -24,7 +24,7 @@ from django.utils import timezone
 from rest_framework.exceptions import APIException
 
 from farm.germination import REQUIREMENT_LEGACY_VALUES, project_legacy_requirements
-from farm.models import Crop, Project
+from farm.models import Crop, PlantingPlan, Project
 from farm.models.crops import (
     compute_plants_per_m2,
     crop_field_attname,
@@ -719,6 +719,23 @@ def resolve_crop_field(
     if force_inherit:
         return None if is_unset_crop_value(general_value) else general_value
     return own_value if is_unset_crop_value(general_value) else general_value
+
+
+def plan_cultivation_type(
+    plan: PlantingPlan, crop_index: GeneralCropIndex | None = None,
+) -> str:
+    """Use the plan's cultivation choice or the crop's effective defaults."""
+    crop = plan.crop
+    cultivation_type = plan.cultivation_type or resolve_crop_field(
+        crop, 'cultivation_type', crop_index,
+    )
+    if not cultivation_type:
+        types = resolve_crop_field(crop, 'cultivation_types', crop_index) or []
+        if 'pre_cultivation' in types:
+            cultivation_type = 'pre_cultivation'
+        elif 'direct_sowing' in types:
+            cultivation_type = 'direct_sowing'
+    return cultivation_type or ''
 
 
 def build_inherited_crop_values(
