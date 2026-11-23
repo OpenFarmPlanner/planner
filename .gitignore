@@ -65,3 +65,6 @@ frontend/playwright-report/
 
 # Local PDM interpreter selection
 .pdm-python
+
+# Machine-local acceptance dashboard, credentials, SQLite data and app builds
+/.qa-review/
