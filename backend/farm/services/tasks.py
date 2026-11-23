@@ -141,6 +141,15 @@ def _create_automatic_task(
         },
     )
     if not created:
+        if (
+            task.suppressed_by_harvest_configuration and _editable_harvest_task(task)
+            and due_date >= timezone.localdate()
+        ):
+            _save_synchronized_task(task, {
+                'suppressed_by_harvest_configuration': False,
+                'due_date': due_date, 'calculated_due_date': due_date,
+                'season_id': season_id, 'crop_id': plan.crop_id,
+            })
         return None
     _record_task_revision(
         task, plan.project, action=EntityRevision.ACTION_CREATED, changed_fields=['created'],
@@ -148,10 +157,16 @@ def _create_automatic_task(
     return task
 
 
-def _can_reschedule_harvest(task: Task, preserve_before: date | None) -> bool:
-    return bool(
-        preserve_before is not None and task.deleted_at is None and not task.due_date_overridden
+def _editable_harvest_task(task: Task) -> bool:
+    return (
+        task.deleted_at is None and not task.due_date_overridden
         and task.status in ('pending', 'in_progress')
+    )
+
+
+def _can_reschedule_harvest(task: Task, preserve_before: date | None) -> bool:
+    return (
+        preserve_before is not None and _editable_harvest_task(task)
         and task.due_date is not None and task.due_date >= preserve_before
     )
 
@@ -181,13 +196,32 @@ def _adopt_legacy_harvest_task(
     if year in expected and year not in stored:
         # Pin the identity even for protected rows so a later crop-window edit
         # cannot reinterpret a January task as work for the following occurrence.
-        Task.objects.filter(pk=legacy.pk).update(occurrence_index=year)
+        changes = ['occurrence_index']
+        if legacy.suppressed_by_harvest_configuration:
+            changes.append('suppressed_by_harvest_configuration')
+        Task.objects.filter(pk=legacy.pk).update(
+            occurrence_index=year, suppressed_by_harvest_configuration=False,
+        )
         legacy.occurrence_index = year
+        legacy.suppressed_by_harvest_configuration = False
         _record_task_revision(
-            legacy, legacy.project, action=EntityRevision.ACTION_UPDATED,
-            changed_fields=['occurrence_index'],
+            legacy, legacy.project, action=EntityRevision.ACTION_UPDATED, changed_fields=changes,
         )
         stored[year] = stored.pop(0)
+
+
+def _update_recurring_harvest_task(
+    task: Task, plan: PlantingPlan, due: date, season_id: int, preserve_before: date | None,
+) -> None:
+    changes = {}
+    if task.suppressed_by_harvest_configuration and _editable_harvest_task(task):
+        changes['suppressed_by_harvest_configuration'] = False
+    if _can_reschedule_harvest(task, preserve_before):
+        changes.update({
+            'due_date': due, 'calculated_due_date': due, 'season_id': season_id,
+            'crop_id': plan.crop_id,
+        })
+    _save_synchronized_task(task, changes)
 
 
 def _reconcile_harvest_tasks(
@@ -216,15 +250,19 @@ def _reconcile_harvest_tasks(
                 task = _create_automatic_task(plan, 'harvest_start', due, season_id, year)
                 if task is not None:
                     created.append(task)
-        elif _can_reschedule_harvest(task, preserve_before):
-            _save_synchronized_task(task, {
-                'due_date': due, 'calculated_due_date': due, 'season_id': season_id,
-                'crop_id': plan.crop_id, 'occurrence_index': year,
-            })
+        else:
+            _update_recurring_harvest_task(task, plan, due, season_id, preserve_before)
     for task in stored.values() if new_season_id is None else ():
         hidden_season = task.season is not None and task.season.deleted_at is not None
         if not hidden_season and _can_reschedule_harvest(task, preserve_before):
-            _save_synchronized_task(task, {'status': 'cancelled', 'calculated_due_date': None})
+            changes = (
+                {'suppressed_by_harvest_configuration': True} if task.occurrence_index == 0
+                else {
+                    'status': 'cancelled', 'calculated_due_date': None,
+                    'suppressed_by_harvest_configuration': False,
+                }
+            )
+            _save_synchronized_task(task, changes)
     return created
 
 
@@ -239,7 +277,7 @@ def _reconcile_one_time_harvest(
         source_key=f'plan:{plan.pk}:event:harvest_start',
     ):
         if _can_reschedule_harvest(task, preserve_before):
-            _save_synchronized_task(task, {'status': 'cancelled', 'calculated_due_date': None})
+            _save_synchronized_task(task, {'suppressed_by_harvest_configuration': True})
 
 
 @transaction.atomic
@@ -350,7 +388,7 @@ def _synchronize_automatic_tasks(
             continue
         if event == 'harvest_start' and (recurring or task.occurrence_index > 0):
             if not recurring and _can_reschedule_harvest(task, preserve_before):
-                _save_synchronized_task(task, {'status': 'cancelled', 'calculated_due_date': None})
+                _save_synchronized_task(task, {'suppressed_by_harvest_configuration': True})
             continue
         changes = {'season_id': plan.season_id, 'crop_id': plan.crop_id, 'field_id': None}
         if event in events:

@@ -1044,6 +1044,7 @@ class TaskViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSe
     def get_queryset(self) -> QuerySet[Task]:
         queryset = super().get_queryset().filter(
             season__deleted_at__isnull=True, deleted_at__isnull=True,
+            suppressed_by_harvest_configuration=False,
         )
         filters = TaskFilterSerializer(data=self.request.query_params)
         filters.is_valid(raise_exception=True)

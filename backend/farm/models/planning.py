@@ -389,6 +389,7 @@ class Task(TimestampedModel):
     # occurrence index identifies a repetition, independently of its date.
     source_key = models.CharField(max_length=200, blank=True, default='')
     occurrence_index = models.PositiveIntegerField(default=0)
+    suppressed_by_harvest_configuration = models.BooleanField(default=False, editable=False)
 
     def __str__(self) -> str:
         """Return a string combining task title and status."""

@@ -292,10 +292,47 @@ class RecurringHarvestTaskTest(TaskTimingFixture):
         self.assertEqual((one_time.due_date, one_time.season_id, one_time.status), (
             date(2026, 3, 3), self.season.pk, 'pending',
         ))
-        self.assertEqual(self.harvests(plan).get(occurrence_index=2026).status, 'cancelled')
+        self.assertTrue(self.harvests(plan).get(
+            occurrence_index=2026,
+        ).suppressed_by_harvest_configuration)
         self.assertEqual(self.harvests(plan).get(occurrence_index=2027).status, 'completed')
         plan.refresh_from_db()
         self.assertEqual(generate_plan_tasks(plan), [])
+
+    @patch('farm.services.tasks.timezone.localdate', return_value=date(2026, 1, 1))
+    def test_toggling_recurrence_restores_the_original_one_time_task(self, _today):
+        self.period(2027)
+        plan = self.plan(planting_date=date(2026, 2, 1), clearing_date=date(2027, 9, 1))
+        generate_plan_tasks(plan)
+        one_time = self.harvests(plan).get()
+        one_time.status = 'in_progress'
+        one_time.save(update_fields=['status'])
+
+        self.set_window('03-12/04-09', delay=1)
+        one_time.refresh_from_db()
+        self.assertTrue(one_time.suppressed_by_harvest_configuration)
+        self.assertEqual(one_time.status, 'in_progress')
+        recurring = self.harvests(plan).get(occurrence_index=2027)
+        task_url = f'/openfarmplanner/api/tasks/{one_time.pk}/'
+        self.assertEqual(self.client.get(task_url).status_code, 404)
+
+        crop_url = f'/openfarmplanner/api/crops/{self.crop.pk}/'
+        response = self.client.patch(crop_url, {'annual_harvest_window': ''})
+        self.assertEqual(response.status_code, 200, response.data)
+        visible = self.client.get(task_url)
+        self.assertEqual(visible.status_code, 200, visible.data)
+        self.assertEqual(visible.data['status'], 'in_progress')
+        self.assertEqual(visible.data['occurrence_index'], 0)
+        self.assertNotIn('suppressed_by_harvest_configuration', visible.data)
+        self.assertEqual(self.harvests(plan).count(), 2)
+        recurring.refresh_from_db()
+        self.assertTrue(recurring.suppressed_by_harvest_configuration)
+        self.set_window('03-12/04-09', delay=1)
+        self.assertEqual(self.client.get(task_url).status_code, 404)
+        recurring.refresh_from_db()
+        self.assertFalse(recurring.suppressed_by_harvest_configuration)
+        self.assertEqual(recurring.status, 'pending')
+        self.assertEqual(self.harvests(plan).count(), 2)
 
     @patch('farm.services.tasks.timezone.localdate', return_value=date(2026, 1, 1))
     def test_season_delete_hides_cross_season_tasks_and_restore_recovers_them(self, _today):

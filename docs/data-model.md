@@ -521,6 +521,9 @@ identifies each independently completable row regardless of its calculated date.
 Perennial harvest starts store the canonical harvest-window year in
 `Task.occurrence_index`. The task links to the source planting plan, and its
 season is assigned by the start date of its effective annual window.
+`Task.suppressed_by_harvest_configuration` hides editable work that is paused
+when a plan switches between one-time and recurring harvest starts. The task
+keeps its ID and status while it is hidden.
 
 ## Companion note languages
 

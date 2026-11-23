@@ -792,7 +792,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Task
-        fields = '__all__'
+        exclude = ['suppressed_by_harvest_configuration']
         read_only_fields = [
             'project', 'origin', 'source_key', 'occurrence_index', 'calculated_due_date',
             'created_at', 'updated_at', 'deleted_at', 'template',

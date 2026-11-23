@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 from django.apps.registry import Apps
-from django.db import migrations
+from django.db import migrations, models
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.models import F, Q
 from django.utils import timezone
@@ -148,7 +148,9 @@ def _backfill_plan_tasks(plan, schedule, seasons, tasks, today):
     if legacy is not None:
         year = schedule.legacy_harvest_year(legacy.calculated_due_date or legacy.due_date)
         if year in expected and year not in stored:
-            matching.filter(pk=legacy.pk).update(occurrence_index=year)
+            matching.filter(pk=legacy.pk).update(
+                occurrence_index=year, suppressed_by_harvest_configuration=False,
+            )
             stored[year] = stored.pop(0)
 
     created = []
@@ -165,6 +167,9 @@ def _backfill_plan_tasks(plan, schedule, seasons, tasks, today):
                 season_id=season_id, due_date=due, calculated_due_date=due,
             )
     tasks.bulk_create(created, batch_size=500, ignore_conflicts=True)
+    legacy = stored.pop(0, None)
+    if legacy is not None and _is_editable(legacy, today):
+        matching.filter(pk=legacy.pk).update(suppressed_by_harvest_configuration=True)
     obsolete = [task.pk for task in stored.values() if _is_editable(task, today)]
     matching.filter(pk__in=obsolete).update(status='cancelled', calculated_due_date=None)
 
@@ -202,5 +207,11 @@ def backfill_tasks(apps: Apps, schema_editor: BaseDatabaseSchemaEditor) -> None:
 class Migration(migrations.Migration):
     dependencies = [('farm', '0161_supplier_package_pricing')]
 
-    # The preceding schema supports the tasks. Keep their history on rollback.
-    operations = [migrations.RunPython(backfill_tasks, migrations.RunPython.noop)]
+    # Keep generated task rows and their history on rollback.
+    operations = [
+        migrations.AddField(
+            model_name='task', name='suppressed_by_harvest_configuration',
+            field=models.BooleanField(default=False, editable=False),
+        ),
+        migrations.RunPython(backfill_tasks, migrations.RunPython.noop),
+    ]
