@@ -339,7 +339,7 @@ test.describe('planting plans tab navigation with hidden columns', () => {
 
     await page.keyboard.press('Tab');
     await expect.poll(() => focusedField(page)).toBe('bed');
-    await expect(page.getByRole('combobox', { name: 'Beete suchen' })).toBeHidden();
+    await expect(page.getByRole('combobox', { name: 'Standort, Parzelle, Beet suchen' })).toBeHidden();
     await expect(page.locator('.MuiDataGrid-row--editing')).toHaveCount(1);
   });
 

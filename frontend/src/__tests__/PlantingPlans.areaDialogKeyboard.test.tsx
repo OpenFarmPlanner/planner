@@ -61,7 +61,7 @@ vi.mock("@mui/x-data-grid", async () => {
   return createMuiDataGridKeyboardCellsMock({ renderCellFields: ["bed"] });
 });
 
-const PICKER_NAME = "Beete suchen";
+const PICKER_NAME = "Standort, Parzelle, Beet suchen";
 
 const bedCell = (planId: number): HTMLElement => screen.getByTestId(`cell-${planId}-bed`);
 const cultivationTypeCell = (planId: number): HTMLElement =>

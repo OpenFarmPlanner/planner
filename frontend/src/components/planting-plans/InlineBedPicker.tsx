@@ -104,12 +104,16 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
     else if (row.bottom > viewport.bottom) list.scrollTop += row.bottom - viewport.bottom;
   }, [activeOptionId]);
 
+  const resetActiveResult = (): void => {
+    setActiveId(null);
+    if (listRef.current) listRef.current.scrollTop = 0;
+  };
+
   const changeScope = (next: BedPickerScope, clearQuery = false): void => {
     if (submittingRef.current) return;
     setScope(next);
     if (clearQuery) setQuery('');
-    setActiveId(null);
-    listRef.current?.scrollTo({ top: 0 });
+    resetActiveResult();
     inputRef.current?.focus();
   };
   const removeScope = (): void => {
@@ -209,8 +213,7 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
           placeholder={t(scopeOption ? 'bedPicker.searchWithin' : 'bedPicker.search')}
           onChange={(event) => {
             setQuery(event.target.value);
-            setActiveId(null);
-            listRef.current?.scrollTo({ top: 0 });
+            resetActiveResult();
           }}
           onKeyDown={handleInputKey}
           startAdornment={!scopeOption && <SearchIcon fontSize="small" sx={{ mr: 0.5, color: 'text.secondary' }} />}
