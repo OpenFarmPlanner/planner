@@ -57,7 +57,7 @@ export function OverflowTooltip({
   const ref = useForkRef(children.props.ref, focusWithinColumnHeader ? labelRef : null);
 
   const updateTooltipVisibility = useCallback((element: HTMLElement | null = activeElement): void => {
-    setShowTooltip(Boolean(title) && isFinePointer() && Boolean(element && isElementOverflowing(element)));
+    setShowTooltip(Boolean(title) && Boolean(element && isElementOverflowing(element)));
   }, [activeElement, title]);
 
   useEffect(() => {
@@ -76,6 +76,7 @@ export function OverflowTooltip({
     const header = label?.closest('[role="columnheader"]');
     if (!header || !label) return;
     const onFocus = () => {
+      if (!header.matches(':focus-visible')) return;
       setHeaderFocused(true);
       setActiveElement(label);
       updateTooltipVisibility(label);
@@ -92,10 +93,11 @@ export function OverflowTooltip({
     };
   }, [focusWithinColumnHeader, updateTooltipVisibility]);
 
+  const open = showTooltip && (headerFocused || (isActive && isFinePointer()));
   return (
     <AppTooltip
-      open={(isActive || headerFocused) && showTooltip}
-      title={showTooltip ? title : ''}
+      open={open}
+      title={open ? title : ''}
       arrow={arrow}
       placement={placement}
       enterDelay={enterDelay}

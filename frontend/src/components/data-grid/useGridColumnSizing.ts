@@ -107,6 +107,11 @@ export const resizableGridHeaderSx = {
     width: 'auto',
     maxWidth: 'none',
   },
+  // Reserve the controls revealed on hover even during the native width
+  // measurement, when MUI would otherwise collapse the menu to zero width.
+  '&.MuiDataGrid-autosizing .MuiDataGrid-columnHeader .MuiDataGrid-menuIcon, &.MuiDataGrid-autosizing .MuiDataGrid-columnHeader .MuiDataGrid-iconButtonContainer': {
+    width: 'auto !important',
+  },
   '& .MuiDataGrid-columnSeparator--resizable': {
     maxWidth: 14,
     width: 14,

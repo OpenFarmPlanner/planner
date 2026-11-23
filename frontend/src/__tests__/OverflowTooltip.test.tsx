@@ -80,6 +80,25 @@ describe('OverflowTooltip', () => {
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Dynamische Breite');
   });
 
+  it('reveals a clipped column label on keyboard focus with a coarse primary pointer', async () => {
+    mockFinePointer(false);
+    const user = userEvent.setup();
+
+    render(
+      <div role="columnheader" tabIndex={0}>
+        <OverflowTooltip title="Pflanzung" focusWithinColumnHeader>
+          <span>Pflanzung</span>
+        </OverflowTooltip>
+      </div>,
+    );
+
+    mockElementOverflow(screen.getByText('Pflanzung'), { clientWidth: 40, scrollWidth: 70 });
+    await user.tab();
+
+    expect(screen.getByRole('columnheader')).toHaveFocus();
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Pflanzung');
+  });
+
   it('does not add hover tooltip parity on coarse touch pointers', async () => {
     mockFinePointer(false);
     const user = userEvent.setup();

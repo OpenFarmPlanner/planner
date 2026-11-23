@@ -41,6 +41,17 @@ test('planting plan resize, auto-fit and reset preserve sorting and visibility',
   await crop.hover();
   await divider(crop).dblclick();
   await expect.poll(() => width(crop)).toBeLessThan(wide);
+  const planting = header(page, 'planting_date');
+  await dragDivider(page, planting, 100);
+  const widePlanting = await width(planting);
+  await divider(planting).dblclick();
+  await expect.poll(() => width(planting)).toBeLessThan(widePlanting);
+  await planting.hover();
+  // Auto-fit must account for the sort and menu controls revealed on hover.
+  await expect.poll(() => planting.getByText('Pflanzung', { exact: true }).evaluate(
+    label => label.scrollWidth - label.clientWidth,
+  )).toBeLessThanOrEqual(1);
+
   await dragDivider(page, crop, 160);
 
   const columns = page.getByRole('button', { name: 'Spalten', exact: true });
