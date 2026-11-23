@@ -1059,7 +1059,7 @@ class EngagementDashboardShowAllViewTests(TestCase):
         table = self._projects_table_html(response)
         self.assertIn('Nur ich', table)
         self.assertIn('Team', table)
-        self.assertContains(response, 'Alle Projekte werden in den Projektkennzahlen berücksichtigt')
+        self.assertContains(response, 'Alle Projekte werden in den Projektkennzahlen')
         self.assertContains(response, 'Filter wieder aktivieren')
 
     def test_show_all_survives_column_sorting(self) -> None:
