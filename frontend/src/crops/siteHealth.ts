@@ -14,14 +14,19 @@ export const SITE_HEALTH_CHOICES = {
 } as const;
 
 export type SiteHealthChoiceField = keyof typeof SITE_HEALTH_CHOICES;
-export const SITE_HEALTH_CHOICE_FIELDS = Object.keys(SITE_HEALTH_CHOICES) as SiteHealthChoiceField[];
-export const SITE_HEALTH_FIELDS = [...SITE_HEALTH_CHOICE_FIELDS, 'standing_time_years', 'pests_diseases'] as const;
-export type SiteHealthField = typeof SITE_HEALTH_FIELDS[number];
+export const SITE_HEALTH_CHOICE_FIELDS = ['light_requirement', 'water_requirement', 'winter_hardiness'] as const;
+export const SITE_HEALTH_FIELDS = [...SITE_HEALTH_CHOICE_FIELDS, 'pests_diseases'] as const;
+const LIFE_CYCLE_FIELDS = ['life_cycle', 'standing_time_years'] as const;
+export type SiteHealthField = typeof SITE_HEALTH_FIELDS[number] | typeof LIFE_CYCLE_FIELDS[number];
 
 export type LightRequirement = typeof SITE_HEALTH_CHOICES.light_requirement[number];
 export type WaterRequirement = typeof SITE_HEALTH_CHOICES.water_requirement[number];
 export type LifeCycle = typeof SITE_HEALTH_CHOICES.life_cycle[number];
 export type WinterHardiness = typeof SITE_HEALTH_CHOICES.winter_hardiness[number];
+
+export function lifeCycleDetailFields(lifeCycle: LifeCycle | '' | null | undefined) {
+  return lifeCycle === 'perennial' ? LIFE_CYCLE_FIELDS : ['life_cycle'] as const;
+}
 
 export function normalizeLightRequirements(value: unknown): LightRequirement[] {
   const choices = Array.isArray(value) ? value : [value];

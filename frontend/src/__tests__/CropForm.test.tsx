@@ -1520,6 +1520,59 @@ describe('CropForm', () => {
     });
   });
 
+  it.each(['project', 'publicLibrary'] as const)('keeps life-cycle fields above timing and preserves draft values in the %s form', async (variant) => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const crop: Crop = {
+      ...CROP_A, life_cycle: 'perennial', standing_time_years: 15,
+      annual_harvest_window: '09-01/10-15', first_harvest_delay_years: 2,
+      growth_duration_days: 70, harvest_duration_days: 20,
+    };
+    render(<CropForm crop={crop} variant={variant} onSave={onSave} onCancel={vi.fn()} />);
+
+    const group = within(screen.getByRole('group', { name: 'form.generalInfoSectionTitle' }));
+    const select = group.getByRole('combobox', { name: 'siteHealth.fields.life_cycle' });
+    const standing = group.getByRole('spinbutton', { name: 'siteHealth.fields.standing_time_years' });
+    const timing = screen.getByRole('heading', { name: 'form.sectionTiming' });
+    expect(select.compareDocumentPosition(standing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(standing.compareDocumentPosition(timing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(timing.compareDocumentPosition(screen.getByRole('heading', { name: 'siteHealth.title' }))
+      & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getAllByRole('combobox', { name: 'siteHealth.fields.life_cycle' })).toHaveLength(1);
+
+    fireEvent.change(standing, { target: { value: '16' } });
+    fireEvent.mouseDown(select);
+    fireEvent.click(screen.getByRole('option', { name: 'siteHealth.values.life_cycle.annual' }));
+    expect(group.queryByRole('spinbutton')).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'annualHarvest.start' })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('row-spacing-input'), { target: { value: '71' } });
+
+    fireEvent.mouseDown(select);
+    fireEvent.click(screen.getByRole('option', { name: 'siteHealth.values.life_cycle.perennial' }));
+    expect(group.getByRole('spinbutton')).toHaveValue(16);
+    expect(screen.getByRole('textbox', { name: 'annualHarvest.start' })).toHaveValue('09-01');
+    expect(screen.getByRole('textbox', { name: 'annualHarvest.end' })).toHaveValue('10-15');
+    expect(screen.getByRole('spinbutton', { name: 'annualHarvest.delay' })).toHaveValue(2);
+    expect(screen.queryByLabelText('form.growthDurationDays')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][0]).toMatchObject({
+      life_cycle: 'perennial', standing_time_years: 16,
+      annual_harvest_window: '09-01/10-15', first_harvest_delay_years: 2, growth_duration_days: 70, row_spacing_cm: 71,
+    });
+  });
+
+  it('shows the upper standing-time field for a variety inheriting a perennial life cycle', () => {
+    const parent: Crop = { ...CROP_A, id: 8, variety: '', crop_species: 7, life_cycle: 'perennial', standing_time_years: 15 };
+    const variety: Crop = { ...CROP_A, crop_species: 7, life_cycle: '', standing_time_years: null };
+    render(<CropForm crop={variety} formKind="variety" crops={[parent, variety]} onSave={vi.fn()} onCancel={vi.fn()} />);
+
+    const group = within(screen.getByRole('group', { name: 'form.generalInfoSectionTitle' }));
+    const standing = group.getByRole('spinbutton', { name: 'siteHealth.fields.standing_time_years' });
+    expect(standing).toHaveAttribute('placeholder', '15');
+    expect(screen.getByRole('textbox', { name: 'annualHarvest.start' })).toBeVisible();
+    expect(screen.queryByLabelText('form.growthDurationDays')).not.toBeInTheDocument();
+  });
+
   it('treats trim-only text edits as unchanged when saving an edited crop', () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     const onCancel = vi.fn();

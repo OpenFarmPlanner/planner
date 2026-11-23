@@ -454,6 +454,8 @@ describe('PublicCropLibraryPage', () => {
         botanical_name: 'Daucus carota',
         crop_family: 'Apiaceae',
         nutrient_demand: 'medium',
+        life_cycle: 'annual',
+        standing_time_years: 4,
         growth_duration_days: 90,
         distance_within_row_m: 0.03,
         harvest_method: 'per_sqm',
@@ -489,6 +491,26 @@ describe('PublicCropLibraryPage', () => {
       'Bibliotheksdaten',
     ]);
     expect(screen.queryByText('Keine Angabe')).not.toBeInTheDocument();
+    const lifeCycle = screen.getByText('Lebensdauer', { exact: true });
+    const timing = screen.getByRole('heading', { name: 'Zeitplanung' });
+    expect(lifeCycle.compareDocumentPosition(timing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText('Standzeit (Jahre)', { exact: true })).not.toBeInTheDocument();
+  });
+
+  it('shows the inherited standing time before the public variety harvest window', async () => {
+    publicCropApiMocks.list.mockResolvedValue(paginated([
+      { ...publicCrops[0], id: 20, name: 'Apfel', crop_species_name: 'Apfel', crop_species: 7, variety: '',
+        life_cycle: 'perennial', standing_time_years: 20, annual_harvest_window: '09-01/10-15' },
+      { ...publicCrops[0], id: 21, name: 'Apfel', crop_species_name: 'Apfel', crop_species: 7, variety: 'Gala' },
+    ]));
+    renderPage(['/app/crop-library?cropId=21']);
+
+    const standing = await screen.findByText('Standzeit (Jahre)', { exact: true });
+    const life = screen.getByText('Lebensdauer', { exact: true });
+    expect(life.compareDocumentPosition(standing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(standing.parentElement).toHaveTextContent('20');
+    expect(standing.compareDocumentPosition(screen.getByText('Jährliches Erntefenster', { exact: true }))
+      & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('leaves out empty fields and sections of a library entry', async () => {
