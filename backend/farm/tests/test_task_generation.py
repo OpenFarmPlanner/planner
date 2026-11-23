@@ -257,6 +257,26 @@ class RecurringHarvestTaskTest(TaskTimingFixture):
         self.assertEqual(generate_plan_tasks(plan), [])
 
     @patch('farm.services.tasks.timezone.localdate', return_value=date(2026, 1, 1))
+    def test_removing_recurring_window_restores_the_one_time_harvest_task(self, _today):
+        self.set_window('03-12/04-09')
+        self.period(2027)
+        plan = self.plan(planting_date=date(2026, 2, 1), clearing_date=date(2027, 9, 1))
+        generate_plan_tasks(plan)
+        self.harvests(plan).filter(occurrence_index=2027).update(status='completed')
+        crop_url = f'/openfarmplanner/api/crops/{self.crop.pk}/'
+        for _ in range(2):
+            response = self.client.patch(crop_url, {'annual_harvest_window': ''})
+            self.assertEqual(response.status_code, 200, response.data)
+        one_time = self.harvests(plan).get(occurrence_index=0)
+        self.assertEqual((one_time.due_date, one_time.season_id, one_time.status), (
+            date(2026, 3, 3), self.season.pk, 'pending',
+        ))
+        self.assertEqual(self.harvests(plan).get(occurrence_index=2026).status, 'cancelled')
+        self.assertEqual(self.harvests(plan).get(occurrence_index=2027).status, 'completed')
+        plan.refresh_from_db()
+        self.assertEqual(generate_plan_tasks(plan), [])
+
+    @patch('farm.services.tasks.timezone.localdate', return_value=date(2026, 1, 1))
     def test_deleting_a_season_cancels_open_harvest_tasks_of_other_plans_in_it(self, _today):
         self.set_window('03-12/04-09')
         later = self.period(2027)

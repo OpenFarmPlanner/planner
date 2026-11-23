@@ -121,9 +121,19 @@ def _create_automatic_task(
     plan: PlantingPlan, event: str, due_date: date, season_id: int,
     occurrence_index: int, crop_index: dict[int, Any] | None = None,
 ) -> Task | None:
+    source_key = f'plan:{plan.pk}:event:{event}'
+    if event == 'harvest_start' and occurrence_index == 0:
+        history = Task.objects.filter(
+            project_id=plan.project_id, source_key=source_key, occurrence_index__gt=0,
+        ).filter(Q(due_date=due_date) | Q(calculated_due_date=due_date)).filter(
+            Q(deleted_at__isnull=False) | Q(due_date_overridden=True)
+            | Q(status__in=('completed', 'cancelled')),
+        )
+        if history.exists():
+            return None
     task, created = Task.objects.get_or_create(
         project_id=plan.project_id,
-        source_key=f'plan:{plan.pk}:event:{event}', occurrence_index=occurrence_index,
+        source_key=source_key, occurrence_index=occurrence_index,
         defaults={
             'planting_plan': plan, 'season_id': season_id, 'crop_id': plan.crop_id,
             'title': _automatic_event_title(plan, event, crop_index), 'origin': 'automatic',
@@ -213,6 +223,20 @@ def _reconcile_harvest_tasks(
     return created
 
 
+def _reconcile_one_time_harvest(
+    plan: PlantingPlan, crop_index: dict[int, Any], preserve_before: date,
+) -> None:
+    due = plan_event_dates(plan, crop_index).get('harvest_start')
+    if due is not None and due >= preserve_before:
+        _create_automatic_task(plan, 'harvest_start', due, plan.season_id, 0, crop_index)
+    for task in Task.objects.select_for_update().filter(
+        project_id=plan.project_id, occurrence_index__gt=0,
+        source_key=f'plan:{plan.pk}:event:harvest_start',
+    ):
+        if _can_reschedule_harvest(task, preserve_before):
+            _save_synchronized_task(task, {'status': 'cancelled', 'calculated_due_date': None})
+
+
 @transaction.atomic
 def synchronize_recurring_harvest_tasks(
     plans: QuerySet[PlantingPlan], *, new_season_id: int | None = None,
@@ -239,14 +263,7 @@ def synchronize_recurring_harvest_tasks(
                 plan, schedule, preserve_before=preserve_before, new_season_id=new_season_id,
             )
         elif cancel_obsolete:
-            for task in Task.objects.select_for_update().filter(
-                project_id=plan.project_id, occurrence_index__gt=0,
-                source_key=f'plan:{plan.pk}:event:harvest_start',
-            ):
-                if _can_reschedule_harvest(task, preserve_before):
-                    _save_synchronized_task(task, {
-                        'status': 'cancelled', 'calculated_due_date': None,
-                    })
+            _reconcile_one_time_harvest(plan, indexes[plan.project_id], preserve_before)
 
 
 def generate_tasks_for_plans(plans: Iterable[PlantingPlan]) -> int:
