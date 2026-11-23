@@ -106,6 +106,22 @@ describe('API Client', () => {
     expect(getMock).toHaveBeenNthCalledWith(2, '/planting-plans/?page=2');
   });
 
+  it('rejoins only harvest windows sharing an occurrence across calendar pages', async () => {
+    const signal = new AbortController().signal;
+    const december = { start_date: '2035-12-20', end_date: '2035-12-31', occurrence_start_date: '2035-12-20' };
+    const january = { start_date: '2036-01-01', end_date: '2036-01-10', occurrence_start_date: '2035-12-20' };
+    const next = { start_date: '2036-12-20', end_date: '2036-12-31', occurrence_start_date: '2036-12-20' };
+    getMock.mockResolvedValueOnce({ data: { windows_by_plan: { 5: [december] }, next_start_date: '2036-01-01' } })
+      .mockResolvedValueOnce({ data: { windows_by_plan: { 5: [january, next] }, next_start_date: null } });
+
+    await expect(plantingPlanAPI.calendarHarvestWindows('2026-01-01', '2036-12-31', signal)).resolves.toEqual({
+      5: [{ ...december, end_date: '2036-01-10' }, next],
+    });
+    expect(getMock).toHaveBeenNthCalledWith(2, '/planting-plans/calendar-harvest-windows/', {
+      params: { start_date: '2036-01-01', end_date: '2036-12-31' }, signal,
+    });
+  });
+
   it('strips the host from an absolute pagination `next` URL so requests stay same-origin', async () => {
     // DRF builds `next` as an absolute URL using the backend's own host (e.g. when the
     // dev proxy rewrites the request Host header). Following it verbatim would bypass

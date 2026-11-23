@@ -1024,7 +1024,8 @@ const TaskRow: React.FC<TaskRowProps> = ({
     );
   }
 
-  const tooltipTask = draggingTask ? previewTask || draggingTask : hoveredTask || focusedPreview?.task;
+  const inspectedTaskId = hoveredTask?.id ?? focusedPreview?.task.id;
+  const tooltipTask = draggingTask ? previewTask || draggingTask : groupTasks.find(task => task.id === inspectedTaskId);
 
   return (
     <div

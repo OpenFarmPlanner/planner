@@ -649,6 +649,11 @@ test.describe('recurring harvest across the calendar axis', () => {
         await expect(tooltip).toContainText('9.4.2027');
         await expect(tooltip).toContainText('1.5.2024');
         await expect(tooltip).toContainText('30.9.2030');
+        await expect.poll(async () => {
+          const preview = (await tooltip.boundingBox())!;
+          const sidebar = (await page.locator('[data-rmg-component="task-list"]').boundingBox())!;
+          return preview.x + preview.width / 2 - sidebar.x - sidebar.width;
+        }).toBeGreaterThan(0);
         await page.screenshot({ path: info.outputPath(`perennial-axis-${zoom}-desktop.png`), animations: 'disabled' });
         await page.keyboard.press('Escape');
       }
@@ -682,6 +687,8 @@ test.describe('recurring harvest across the calendar axis', () => {
       const translations = { de: calendar, en: calendarEn, es: calendarEs, fr: calendarFr,
         it: calendarIt, nl: calendarNl, pt: calendarPt };
       for (const [language, text] of Object.entries(translations)) {
+        if (language === 'fr') await page.setViewportSize({ width: 800, height: 375 });
+        if (language === 'it') await page.setViewportSize({ width: 375, height: 800 });
         await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: language });
         await page.evaluate(code => {
           localStorage.setItem('ui.language', code);

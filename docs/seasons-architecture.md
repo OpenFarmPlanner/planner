@@ -173,8 +173,10 @@ description), one level down:
   periods outside the selected season. The accessible label and preview list
   the displayed harvest intervals, and the preview retains the original
   planting and clearing dates. When the axis goes outside the selected season,
-  the calendar requests projections in one season-scoped call to
-  `planting-plans/calendar-harvest-windows/` using the displayed date bounds.
+  the calendar requests projections in bulk from the season-scoped
+  `planting-plans/calendar-harvest-windows/` endpoint using the displayed date
+  bounds. Each response covers up to ten calendar years. For wider axes, the
+  client follows the continuation and joins any split harvest window.
   Yield and demand retain their season scope. An earlier recorded planting can let a crop
   bear before its original planned planting date. The bar includes that
   harvest interval, and the planned planting date remains in the tooltip.

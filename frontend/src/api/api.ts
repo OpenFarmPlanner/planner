@@ -504,6 +504,12 @@ export const cropLossAPI = {
   delete: (id: number) => http.delete(`/crop-losses/${id}/`),
 };
 
+type CalendarHarvestWindow = SeasonalHarvestPeriod & { occurrence_start_date: string };
+interface CalendarHarvestPage {
+  windows_by_plan: Record<string, CalendarHarvestWindow[]>;
+  next_start_date: string | null;
+}
+
 export const plantingPlanAPI = {
   list: () => http.get<PaginatedResponse<PlantingPlan>>('/planting-plans/'),
   listAll: () => fetchAllPaginated<PlantingPlan>('/planting-plans/'),
@@ -516,10 +522,30 @@ export const plantingPlanAPI = {
   create: (data: PlantingPlan) => http.post<PlantingPlan>('/planting-plans/', withActiveProject(data)),
   update: (id: number, data: PlantingPlan) => http.put<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),
   patch: (id: number, data: Partial<PlantingPlan>) => http.patch<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),
-  calendarHarvestWindows: (startDate: string, endDate: string, signal: AbortSignal) =>
-    http.get<Record<string, SeasonalHarvestPeriod[]>>('/planting-plans/calendar-harvest-windows/', {
-      params: { start_date: startDate, end_date: endDate }, signal,
-    }),
+  calendarHarvestWindows: async (startDate: string, endDate: string, signal: AbortSignal) => {
+    const windowsByPlan: Record<string, CalendarHarvestWindow[]> = {};
+    let nextStart: string | null = startDate;
+    while (nextStart) {
+      const { data }: { data: CalendarHarvestPage } = await http.get<CalendarHarvestPage>(
+        '/planting-plans/calendar-harvest-windows/',
+        { params: { start_date: nextStart, end_date: endDate }, signal },
+      );
+      for (const [planId, windows] of Object.entries(data.windows_by_plan)) {
+        const collected = windowsByPlan[planId] ??= [];
+        for (const window of windows) {
+          const previous = collected.at(-1);
+          if (previous?.occurrence_start_date === window.occurrence_start_date) {
+            // One occurrence can straddle the page boundary at the end of the year.
+            previous.end_date = window.end_date;
+          } else {
+            collected.push(window);
+          }
+        }
+      }
+      nextStart = data.next_start_date;
+    }
+    return windowsByPlan;
+  },
   setHarvestWindow: (id: number, year: number, period: SeasonalHarvestPeriod) =>
     http.put<HarvestWindowUpdate>(`/planting-plans/${id}/harvest-window/${String(year).padStart(4, '0')}/`, period),
   resetHarvestWindow: (id: number, year: number) =>

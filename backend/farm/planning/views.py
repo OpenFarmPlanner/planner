@@ -584,15 +584,22 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         parameters=[SEASON_HEADER_PARAMETER, HarvestDateRangeSerializer],
         responses={200: {
             'type': 'object',
-            'description': 'Planned harvest windows by planting plan ID.',
-            'additionalProperties': {
-                'type': 'array',
-                'items': {
+            'required': ['windows_by_plan', 'next_start_date'],
+            'properties': {
+                'next_start_date': {'type': ['string', 'null'], 'format': 'date'},
+                'windows_by_plan': {
                     'type': 'object',
-                    'required': ['start_date', 'end_date'],
-                    'properties': {
-                        'start_date': {'type': 'string', 'format': 'date'},
-                        'end_date': {'type': 'string', 'format': 'date'},
+                    'additionalProperties': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'object',
+                            'required': ['start_date', 'end_date', 'occurrence_start_date'],
+                            'properties': {
+                                'start_date': {'type': 'string', 'format': 'date'},
+                                'end_date': {'type': 'string', 'format': 'date'},
+                                'occurrence_start_date': {'type': 'string', 'format': 'date'},
+                            },
+                        },
                     },
                 },
             },
@@ -608,7 +615,11 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             raise serializers.ValidationError({'end_date': 'Use a date on or after start_date.'})
         season_id = resolve_season_id_from_request(request)
         if season_id is None:
-            return Response({})
+            return Response({'windows_by_plan': {}, 'next_start_date': None})
+
+        # Bound the work per request while allowing a wider calendar to continue fetching.
+        page_end = min(end, date(min(start.year + 9, date.max.year), 12, 31))
+        next_start = page_end + timedelta(days=1) if page_end < end else None
 
         project_id = request.active_project.pk
         candidates = PlantingPlan.objects.filter(
@@ -616,14 +627,24 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             planting_date__isnull=False,
         )
         plans = self._read_season_plans(candidates, season_id, across_seasons=False).select_related('crop')
-        crop_index = getattr(self, '_harvest_crop_index', None)
+        if getattr(self, '_harvest_season', None) is None:
+            return Response({'windows_by_plan': {}, 'next_start_date': None})
+        crop_index = self._harvest_crop_index
         if crop_index is None:
             crop_index = build_general_crop_index(project_id)
-        return Response({
-            str(plan.pk): schedule.periods(start, end)
-            for plan in plans
-            if (schedule := recurring_harvest_schedule(plan, crop_index)) is not None
-        })
+        windows_by_plan = {}
+        for plan in plans.filter(occupied_until__gte=start):
+            schedule = recurring_harvest_schedule(plan, crop_index)
+            if schedule is not None:
+                windows_by_plan[str(plan.pk)] = [
+                    {
+                        'start_date': window.start_date,
+                        'end_date': window.end_date,
+                        'occurrence_start_date': window.window_start,
+                    }
+                    for window in schedule.project(start, page_end)
+                ]
+        return Response({'windows_by_plan': windows_by_plan, 'next_start_date': next_start})
 
     @extend_schema(request=HarvestDateRangeSerializer, methods=['PUT'])
     @action(detail=True, methods=['put', 'delete'], url_path=r'harvest-window/(?P<year>[0-9]{4})')

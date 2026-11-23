@@ -273,12 +273,20 @@ const Tooltip: React.FC<
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
+    const calendarViewport = task.useCalendarDateScale ? anchorElement?.closest(".rmg-container") : null;
+    const calendarRect = calendarViewport?.getBoundingClientRect();
+    const taskListRight = calendarViewport?.querySelector('[data-rmg-component="task-list"]')
+      ?.getBoundingClientRect().right;
     const anchorLeft = anchorRect?.left ?? position.x;
     const anchorTop = anchorRect?.top ?? position.y;
     const anchorWidth = anchorRect?.width ?? 0;
     const anchorBottom = anchorRect?.bottom ?? position.y;
 
-    const centeredLeft = anchorLeft + anchorWidth / 2 - tooltipRect.width / 2;
+    // A standing crop can span many more columns than fit on the screen.
+    const visibleLeft = Math.max(anchorLeft, calendarRect?.left ?? anchorLeft, taskListRight ?? anchorLeft);
+    const visibleRight = Math.min(anchorLeft + anchorWidth, calendarRect?.right ?? anchorLeft + anchorWidth);
+    const anchorCenter = visibleLeft <= visibleRight ? (visibleLeft + visibleRight) / 2 : anchorLeft + anchorWidth / 2;
+    const centeredLeft = anchorCenter - tooltipRect.width / 2;
     const maxLeft = Math.max(
       VIEWPORT_PADDING,
       viewportWidth - tooltipRect.width - VIEWPORT_PADDING,
@@ -305,7 +313,7 @@ const Tooltip: React.FC<
 
       return { left, top, placement: nextPlacement };
     });
-  }, [canUsePortal, getTaskElement, position.x, position.y, tooltipOffset]);
+  }, [canUsePortal, getTaskElement, position.x, position.y, task.useCalendarDateScale, tooltipOffset]);
 
   const schedulePositionUpdate = useCallback(() => {
     if (!canUsePortal || !isBrowserEnvironment()) return;

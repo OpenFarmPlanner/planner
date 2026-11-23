@@ -354,8 +354,8 @@ function GanttChartPage() {
     if (!projectionRequest) return;
     const controller = new AbortController();
     plantingPlanAPI.calendarHarvestWindows(projectionRequest.axisStartText, projectionRequest.axisEndText, controller.signal)
-      .then(({ data }) => {
-        if (!controller.signal.aborted) setProjectionResult({ request: projectionRequest, periods: data });
+      .then(periods => {
+        if (!controller.signal.aborted) setProjectionResult({ request: projectionRequest, periods });
       })
       .catch(() => {
         if (!controller.signal.aborted) setProjectionResult({ request: projectionRequest, periods: null });
