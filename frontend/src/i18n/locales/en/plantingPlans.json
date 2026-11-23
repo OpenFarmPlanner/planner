@@ -122,6 +122,7 @@
     "keyboardMove": "↑ ↓ Move",
     "keyboardScope": "Enter Narrow search",
     "keyboardAssign": "Enter Assign bed",
+    "keyboardKeep": "Enter Keep current bed",
     "keyboardCancel": "Esc Cancel",
     "keyboardRemoveScope": "Backspace Remove scope",
     "insufficientArea": "{{free}} m² free · {{needed}} m² needed",

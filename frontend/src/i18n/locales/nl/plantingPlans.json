@@ -122,6 +122,7 @@
     "keyboardMove": "↑ ↓ Navigeren",
     "keyboardScope": "Enter Zoekgebied beperken",
     "keyboardAssign": "Enter Bed toewijzen",
+    "keyboardKeep": "Enter Huidig bed behouden",
     "keyboardCancel": "Esc Annuleren",
     "keyboardRemoveScope": "Backspace Filter verwijderen",
     "insufficientArea": "{{free}} m² vrij · {{needed}} m² nodig",

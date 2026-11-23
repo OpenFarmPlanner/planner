@@ -122,6 +122,7 @@
     "keyboardMove": "↑ ↓ Navigieren",
     "keyboardScope": "Enter Bereich eingrenzen",
     "keyboardAssign": "Enter Beet zuweisen",
+    "keyboardKeep": "Enter Aktuelles Beet behalten",
     "keyboardCancel": "Esc Abbrechen",
     "keyboardRemoveScope": "Rücktaste Bereich entfernen",
     "insufficientArea": "{{free}} m² frei · {{needed}} m² benötigt",

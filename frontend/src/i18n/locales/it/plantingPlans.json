@@ -124,6 +124,7 @@
     "keyboardMove": "↑ ↓ Sposta",
     "keyboardScope": "Invio Restringi la ricerca",
     "keyboardAssign": "Invio Assegna aiuola",
+    "keyboardKeep": "Invio Mantieni l’aiuola attuale",
     "keyboardCancel": "Esc Annulla",
     "keyboardRemoveScope": "Backspace Rimuovi filtro",
     "insufficientArea": "{{free}} m² liberi · {{needed}} m² necessari",

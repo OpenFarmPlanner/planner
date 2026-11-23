@@ -124,6 +124,7 @@
     "keyboardMove": "↑ ↓ Mover",
     "keyboardScope": "Intro Acotar búsqueda",
     "keyboardAssign": "Intro Asignar bancal",
+    "keyboardKeep": "Intro Mantener el bancal actual",
     "keyboardCancel": "Esc Cancelar",
     "keyboardRemoveScope": "Retroceso Quitar filtro",
     "insufficientArea": "{{free}} m² libres · {{needed}} m² necesarios",

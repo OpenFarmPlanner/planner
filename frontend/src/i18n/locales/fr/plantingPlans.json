@@ -124,6 +124,7 @@
     "keyboardMove": "↑ ↓ Naviguer",
     "keyboardScope": "Entrée Affiner la recherche",
     "keyboardAssign": "Entrée Attribuer la planche",
+    "keyboardKeep": "Entrée Conserver la planche actuelle",
     "keyboardCancel": "Échap Annuler",
     "keyboardRemoveScope": "Retour arrière Retirer le filtre",
     "insufficientArea": "{{free}} m² libres · {{needed}} m² nécessaires",

@@ -66,12 +66,16 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
   const suggestionsByBed = useMemo(() => new Map(
     suggestions.data?.results.map((suggestion) => [suggestion.bed_id, suggestion]) ?? [],
   ), [suggestions.data]);
-  const canChoose = (option: BedPickerResult) => option.kind !== 'bed' || (
-    (!suggestions.isLoading || option.id === selected?.id) && suggestionsByBed.get(option.id)?.has_enough_area !== false
+  // Confirming the current bed closes the picker without writing an assignment.
+  const canChoose = (option: BedPickerResult) => (
+    option.kind !== 'bed' || option.id === selected?.id
+    || (!suggestions.isLoading && suggestionsByBed.get(option.id)?.has_enough_area !== false)
   );
   const enabled = visible.filter(canChoose);
   const active = enabled.find((option) => resultId(option) === activeId) ?? enabled[0];
   const activeOptionId = active ? `${listId}-${resultId(active)}` : undefined;
+  const activeAction = active?.kind !== 'bed' ? 'bedPicker.keyboardScope'
+    : active.id === selected?.id ? 'bedPicker.keyboardKeep' : 'bedPicker.keyboardAssign';
 
   useEffect(() => {
     const input = inputRef.current;
@@ -384,7 +388,7 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
               <Typography id={hintId} variant="caption" color="text.secondary">
                 {[
                   t('bedPicker.keyboardMove'),
-                  active && t(active.kind === 'bed' ? 'bedPicker.keyboardAssign' : 'bedPicker.keyboardScope'),
+                  active && t(activeAction),
                   t('bedPicker.keyboardCancel'),
                   inScope && !query && t('bedPicker.keyboardRemoveScope'),
                 ].filter(Boolean).join(' · ')}

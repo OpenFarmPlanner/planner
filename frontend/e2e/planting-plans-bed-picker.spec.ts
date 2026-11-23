@@ -139,7 +139,7 @@ test.describe('inline bed picker', () => {
     await expect(removeScope(page, 'Frühbeete Nord')).toBeVisible();
     await expect(search).toBeFocused();
     await expect(search).toHaveValue('');
-    await expect(page.getByText(/Enter Beet zuweisen/)).toBeVisible();
+    await expect(page.getByText(/Enter Aktuelles Beet behalten/)).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('locale-de-bed-picker-1440-scoped.png'), animations: 'disabled' });
 
     await search.fill('wiesen sal');
@@ -158,6 +158,7 @@ test.describe('inline bed picker', () => {
     await expect(beds(page).getByRole('option', { name: /Salat 2/ })).toBeEnabled();
     await search.press('ArrowDown');
     await expect(activeResult(page)).toContainText('Salat 2');
+    await expect(page.getByText(/Enter Beet zuweisen/)).toBeVisible();
     await search.press('Enter');
     await expect(bedCell).toContainText('Salat 2');
     expect(await apiRequest(page, 'GET', `/planting-plans/${plan}/`)).toMatchObject({ bed: nearby });
@@ -288,6 +289,20 @@ test.describe('inline bed picker', () => {
     await expect(cell(page, 'sowing_date')).toHaveAttribute('tabindex', '0');
     expect(saveAttempts).toBe(1);
     expect(await apiRequest(page, 'GET', `/planting-plans/${plan}/`)).toMatchObject({ bed: nearby });
+  });
+
+  test('can keep the current bed when it no longer has enough area', async ({ page, request }) => {
+    const { plan, original } = await seedBeds(page, request, 'bed-picker-current-capacity');
+    await apiRequest(page, 'PATCH', `/beds/${original}/`, { area_sqm: 0.5 });
+    const bedCell = cell(page, 'bed');
+    await bedCell.dblclick();
+    await expect(beds(page)).toHaveAttribute('aria-busy', 'false');
+    await expect(activeResult(page)).toContainText('0,5 m² frei · 2 m² benötigt');
+    await expect(activeResult(page)).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByText(/Enter Aktuelles Beet behalten/)).toBeVisible();
+    await picker(page).press('Enter');
+    await expect(picker(page)).toHaveCount(0);
+    expect(await apiRequest(page, 'GET', `/planting-plans/${plan}/`)).toMatchObject({ bed: original });
   });
 });
 

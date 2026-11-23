@@ -124,6 +124,7 @@
     "keyboardMove": "↑ ↓ Mover",
     "keyboardScope": "Enter Restringir pesquisa",
     "keyboardAssign": "Enter Atribuir canteiro",
+    "keyboardKeep": "Enter Manter o canteiro atual",
     "keyboardCancel": "Esc Cancelar",
     "keyboardRemoveScope": "Retrocesso Remover filtro",
     "insufficientArea": "{{free}} m² livres · {{needed}} m² necessários",
