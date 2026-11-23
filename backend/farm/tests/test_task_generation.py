@@ -256,6 +256,27 @@ class RecurringHarvestTaskTest(TaskTimingFixture):
         self.assertEqual((task.season_id, task.due_date), (response.data['id'], date(2027, 3, 12)))
         self.assertEqual(generate_plan_tasks(plan), [])
 
+    @patch('farm.services.tasks.timezone.localdate', return_value=date(2029, 1, 1))
+    def test_expanding_a_season_fills_its_newly_covered_past_harvest_start(self, _today):
+        self.set_window('03-12/04-09')
+        later = Season.objects.create(
+            project=self.project, start_date=date(2027, 4, 1), end_date=date(2027, 12, 31),
+        )
+        plan = self.plan(planting_date=date(2026, 2, 1), clearing_date=date(2028, 9, 1))
+        generate_plan_tasks(plan)
+        self.assertFalse(self.harvests(plan).filter(occurrence_index=2027).exists())
+        self.period(2028)
+
+        response = self.client.patch(f'/openfarmplanner/api/seasons/{later.pk}/', {
+            'start_date': '2027-03-01',
+        })
+        self.assertEqual(response.status_code, 200, response.data)
+        task = self.harvests(plan).get(occurrence_index=2027)
+        self.assertEqual((task.due_date, task.season_id, task.status), (
+            date(2027, 3, 12), later.pk, 'pending',
+        ))
+        self.assertFalse(self.harvests(plan).filter(occurrence_index=2028).exists())
+
     @patch('farm.services.tasks.timezone.localdate', return_value=date(2026, 1, 1))
     def test_removing_recurring_window_restores_the_one_time_harvest_task(self, _today):
         self.set_window('03-12/04-09')

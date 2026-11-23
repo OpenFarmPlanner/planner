@@ -193,6 +193,7 @@ def _adopt_legacy_harvest_task(
 def _reconcile_harvest_tasks(
     plan: PlantingPlan, schedule: RecurringHarvestSchedule, *, preserve_before: date | None,
     new_season_id: int | None = None, fill_past_occurrences: bool = False,
+    fill_past_season_id: int | None = None,
 ) -> list[Task]:
     expected = _harvest_task_dates(plan, schedule)
     stored = {
@@ -211,7 +212,7 @@ def _reconcile_harvest_tasks(
     for year, (due, season_id) in expected.items():
         task = stored.pop(year, None)
         if task is None:
-            if due >= create_on_or_after:
+            if due >= create_on_or_after or season_id == fill_past_season_id:
                 task = _create_automatic_task(plan, 'harvest_start', due, season_id, year)
                 if task is not None:
                     created.append(task)
@@ -245,6 +246,7 @@ def _reconcile_one_time_harvest(
 def synchronize_recurring_harvest_tasks(
     plans: QuerySet[PlantingPlan], *, new_season_id: int | None = None,
     cancel_obsolete: bool = False, fill_past_occurrences: bool = False,
+    fill_past_season_id: int | None = None,
 ) -> None:
     """Reconcile harvest starts when a season, crop default or override changes."""
     indexes = {}
@@ -266,6 +268,7 @@ def synchronize_recurring_harvest_tasks(
             _reconcile_harvest_tasks(
                 plan, schedule, preserve_before=preserve_before, new_season_id=new_season_id,
                 fill_past_occurrences=fill_past_occurrences,
+                fill_past_season_id=fill_past_season_id,
             )
         elif cancel_obsolete:
             _reconcile_one_time_harvest(plan, indexes[plan.project_id], preserve_before)

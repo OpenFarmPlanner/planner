@@ -661,6 +661,7 @@ def synchronize_season_harvest_tasks(
     synchronize_recurring_harvest_tasks(
         plans, new_season_id=season.pk if previous_period is None and not restoring else None,
         fill_past_occurrences=restoring,
+        fill_past_season_id=season.pk if previous_period is not None else None,
     )
 
 
