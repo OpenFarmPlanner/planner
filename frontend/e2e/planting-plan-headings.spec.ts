@@ -48,9 +48,10 @@ for (const language of languages) {
       // An explicit saved choice keeps harvest columns visible on tablets too.
       localStorage.setItem('tableColumns.plantingPlans', '{}');
     }, language.code);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/app/planting-plans');
     for (const width of [1440, 1024]) {
       await page.setViewportSize({ width, height: 900 });
-      await page.goto('/app/planting-plans');
       for (const [index, field] of fields.entries()) {
         const header = page.locator(`[role="columnheader"][data-field="${field}"]`);
         await expectReadableHeader(header, language.headings[index]);
