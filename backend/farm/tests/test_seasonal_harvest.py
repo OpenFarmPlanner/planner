@@ -167,9 +167,18 @@ class SeasonalHarvestTest(ProjectApiTestCase):
         self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(response.json(), {
             'windows_by_plan': {str(plan.pk): [
-                {'start_date': '2026-01-05', 'end_date': '2026-01-10', 'occurrence_start_date': '2025-12-20'},
-                {'start_date': '2026-12-25', 'end_date': '2027-01-15', 'occurrence_start_date': '2026-12-25'},
-                {'start_date': '2027-12-20', 'end_date': '2028-01-04', 'occurrence_start_date': '2027-12-20'},
+                {
+                    'start_date': '2026-01-05', 'end_date': '2026-01-10',
+                    'occurrence_start_date': '2025-12-20',
+                },
+                {
+                    'start_date': '2026-12-25', 'end_date': '2027-01-15',
+                    'occurrence_start_date': '2026-12-25',
+                },
+                {
+                    'start_date': '2027-12-20', 'end_date': '2028-01-04',
+                    'occurrence_start_date': '2027-12-20',
+                },
             ]},
             'next_start_date': None,
         })
@@ -177,7 +186,8 @@ class SeasonalHarvestTest(ProjectApiTestCase):
             'start_date': '2028-01-20', 'end_date': '2026-01-05',
         }, **headers)
         self.assertEqual(invalid.status_code, 400)
-        self.assertEqual(self.client.get(f'{PLANS}{plan.pk}/', **headers).json()['seasonal_harvest']['periods'], [
+        details = self.client.get(f'{PLANS}{plan.pk}/', **headers).json()
+        self.assertEqual(details['seasonal_harvest']['periods'], [
             {'start_date': '2025-12-20', 'end_date': '2026-01-10'},
         ])
 
@@ -194,14 +204,20 @@ class SeasonalHarvestTest(ProjectApiTestCase):
         self.assertEqual(first['next_start_date'], '2036-01-01')
         self.assertEqual(len(first['windows_by_plan'][str(plan.pk)]), 10)
         self.assertEqual(first['windows_by_plan'][str(plan.pk)][-1], {
-            'start_date': '2035-12-20', 'end_date': '2035-12-31', 'occurrence_start_date': '2035-12-20',
+            'start_date': '2035-12-20', 'end_date': '2035-12-31',
+            'occurrence_start_date': '2035-12-20',
         })
-        second = self.client.get(CALENDAR_WINDOWS, {**params, 'start_date': first['next_start_date']}, **headers).json()
+        second = self.client.get(
+            CALENDAR_WINDOWS, {**params, 'start_date': first['next_start_date']}, **headers,
+        ).json()
         self.assertIsNone(second['next_start_date'])
         self.assertEqual(second['windows_by_plan'][str(plan.pk)][0], {
-            'start_date': '2036-01-01', 'end_date': '2036-01-10', 'occurrence_start_date': '2035-12-20',
+            'start_date': '2036-01-01', 'end_date': '2036-01-10',
+            'occurrence_start_date': '2035-12-20',
         })
-        invalid_season = self.client.get(CALENDAR_WINDOWS, params, HTTP_X_SEASON_ID=str(season.pk + 1))
+        invalid_season = self.client.get(
+            CALENDAR_WINDOWS, params, HTTP_X_SEASON_ID=str(season.pk + 1),
+        )
         self.assertEqual(invalid_season.json(), {'windows_by_plan': {}, 'next_start_date': None})
 
     def test_actual_planting_anniversaries_and_leap_boundaries(self) -> None:

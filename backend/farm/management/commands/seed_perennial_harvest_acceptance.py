@@ -40,7 +40,9 @@ class Command(LocalFixtureCommand):
         self.stdout.write(f'Target: {engine}, host={host or "local file"}, database={database}.')
         calendar_axis = bool(options['calendar_axis'])
         if not options['apply']:
-            fixture = 'six seasons and six plans' if calendar_axis else 'five seasons and four plans'
+            fixture = (
+                'six seasons and six plans' if calendar_axis else 'five seasons and four plans'
+            )
             self.stdout.write(f'Preview only: one private orchard, {fixture}.')
             return
 

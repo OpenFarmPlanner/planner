@@ -626,14 +626,14 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             project_id=project_id, bed__isnull=False, crop__isnull=False,
             planting_date__isnull=False,
         )
-        plans = self._read_season_plans(candidates, season_id, across_seasons=False).select_related('crop')
+        plans = self._read_season_plans(candidates, season_id, across_seasons=False)
         if getattr(self, '_harvest_season', None) is None:
             return Response({'windows_by_plan': {}, 'next_start_date': None})
         crop_index = self._harvest_crop_index
         if crop_index is None:
             crop_index = build_general_crop_index(project_id)
         windows_by_plan = {}
-        for plan in plans.filter(occupied_until__gte=start):
+        for plan in plans.filter(occupied_until__gte=start).select_related('crop'):
             schedule = recurring_harvest_schedule(plan, crop_index)
             if schedule is not None:
                 windows_by_plan[str(plan.pk)] = [
