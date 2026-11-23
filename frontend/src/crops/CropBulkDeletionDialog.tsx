@@ -46,10 +46,10 @@ function CropSamples({ samples, total }: { samples: CropBulkDeleteSample[]; tota
 function CropBulkImpact({ impact }: { impact: CropBulkDeletePreview }) {
   const { t } = useTranslation('crops');
   const counts = [
-    ['selected', impact.selected_count],
-    ['affected', impact.affected_count],
     ['general', impact.general_count],
     ['varieties', impact.variety_count],
+    ['selected', impact.selected_count],
+    ['affected', impact.affected_count],
     ['additional', impact.additional_count],
     ['plans', impact.planting_plan_count],
     ['packages', impact.seed_package_count],
@@ -64,7 +64,7 @@ function CropBulkImpact({ impact }: { impact: CropBulkDeletePreview }) {
         typography: 'body2', m: 0, '& dd': { m: 0, textAlign: 'right' },
       }}>
         {counts.map(([key, count]) => (
-          count > 0 || ['selected', 'affected', 'plans', 'packages', 'offers'].includes(key)
+          count > 0 || ['selected', 'affected', 'general', 'varieties', 'plans', 'packages', 'offers'].includes(key)
             ? <Count key={key} label={t(`bulkDelete.counts.${key}`)} value={count} />
             : null
         ))}
@@ -101,7 +101,7 @@ export function CropBulkDeletionDialog({ target, onClose, onComplete }: {
   const { t } = useTranslation('crops');
   const titleId = useId();
   const [requestId] = useState(() => crypto.randomUUID());
-  const [request, setRequest] = useState({ deleteVarieties: true });
+  const [request, setRequest] = useState({ deleteVarieties: false });
   const [preview, setPreview] = useState<CropBulkDeletePreview | null>(null);
   const [error, setError] = useState<PreviewError | null>(null);
   const [failureCounts, setFailureCounts] = useState<Pick<CropBulkDeleteResult,

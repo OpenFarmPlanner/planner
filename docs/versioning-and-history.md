@@ -105,12 +105,20 @@ write path — it just creates an `EntityRevision` row. It's called:
 `EntityRevision` rows. Season create/delete/undelete/copy operations still use
 `start_batch_operation` and the backwards-compatible batch revert endpoint.
 
-In Cultures selection mode, **Select visible** adds the current search and
-filter results to the selection, including varieties within collapsed groups.
-Existing selections persist when filters change. To include the full project, clear the search and filters before
-selecting visible cultures. **Delete** opens the impact preview, including
-varieties and dependencies, before confirmation. Confirmed deletion and
-recovery each appear in project history as a grouped operation.
+In Cultures selection mode, a parent checkbox selects or clears the culture and
+all its varieties, including collapsed rows. Selecting varieties individually
+leaves the parent checkbox mixed, even when every variety is selected. Clearing
+a variety from a fully selected group clears the parent selection as well.
+**Select visible** follows the current search and filters, including matching
+varieties in collapsed groups. **Select visible** and **Clear visible** include
+a parent when every variety matches the filters. Changing filters preserves the
+selection.
+
+**Delete** opens the impact preview with separate culture and variety counts
+and any dependencies. The preview starts with the exact selected IDs. Where
+the existing group rules require additional varieties, they can be included
+explicitly in the preview. Confirmed deletion and recovery each appear in
+project history as a grouped operation.
 
 The crops page generates one random `import_operation_id` for the entire apply
 attempt, including all crop, companion and finalize HTTP batches. It never
@@ -206,6 +214,23 @@ Undo uses the original batch's crop IDs and deletion timestamp. It restores
 the archived rows together and revalidates identities under the project lock.
 If an intervening change prevents safe recovery, the batch is refused. The
 individual trash and recovery API remains available.
+
+### Local crop bulk selection fixture
+
+From `backend/`, preview the fixture with the existing local username and the
+confirmed local database name. After inspecting the target, repeat with `--apply`.
+
+```sh
+DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py seed_crop_bulk_selection_acceptance --username martin --database-name LOCAL_DATABASE
+```
+
+Open **Crop bulk selection acceptance** in **Cultures** and enter selection
+mode. Checking collapsed **Manual tomato** selects three records. Clear the
+group, expand it and check **File basil** and **File chard** individually.
+The mixed parent stays in the project when the preview shows zero cultures
+and two varieties. Confirm and undo. Enter selection mode again, filter by
+file import and choose **Select visible**. Clear the filter to verify that
+**Other chard** is still unchecked and the two varieties are still selected.
 
 ## Full project restoration
 

@@ -1853,7 +1853,7 @@
     "title": "Eliminar los cultivos seleccionados",
     "scopeSelected": "Revisa los cultivos seleccionados y las variedades incluidas.",
     "trashNotice": "Los cultivos y sus datos de semillas pasan a la papelera. Las entradas de la biblioteca compartida se conservan.",
-    "deleteVarieties": "Eliminar también las variedades",
+    "deleteVarieties": "Incluir las demás variedades necesarias",
     "showCrops": "Mostrar cultivos afectados",
     "empty": "Esta selección no contiene cultivos activos.",
     "missing": "Algunos cultivos seleccionados ya no están disponibles. Actualiza la selección.",

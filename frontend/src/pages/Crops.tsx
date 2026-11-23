@@ -89,8 +89,6 @@ function Crops() {
   const activeSeasonLoaded = outletContext?.activeSeasonLoaded ?? true;
   const isMissingActiveSeason = Boolean(outletContext) && activeSeasonLoaded && !outletContext?.activeSeason;
   const { shouldShowProjectRequiredState, missingProjectReason, activeProjectId } = useProjectRequirement();
-  const bulkSelection = useProjectCropSelection(activeProjectId);
-  const bulkTarget = bulkSelection.target;
   const [bulkUndo, setBulkUndo] = useState<{ projectId: number; result: CropBulkDeleteResult } | null>(null);
   const recoveringBulk = useRef(false);
   const { selectedCropId, updateSelectedCropId } = useSelectedCropSync();
@@ -125,6 +123,8 @@ function Crops() {
   // the load effect below — that reset is what react-hooks/set-state-in-effect
   // flags, and deriving also avoids the extra render pass it caused.
   const crops = shouldShowProjectRequiredState ? EMPTY_CROPS : loadedCrops;
+  const bulkSelection = useProjectCropSelection(activeProjectId, crops);
+  const bulkTarget = bulkSelection.target;
   const isCropsLoading = shouldShowProjectRequiredState ? false : isFetchingCrops;
   const hasFields = shouldShowProjectRequiredState ? false : hasFieldsLoaded;
   const hasBeds = shouldShowProjectRequiredState ? false : hasBedsLoaded;

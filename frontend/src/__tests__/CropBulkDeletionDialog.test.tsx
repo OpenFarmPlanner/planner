@@ -43,12 +43,16 @@ it('retries an unacknowledged deletion with the same request and preview', async
   const confirm = screen.getByRole('button', { name: t('bulkDelete.confirm') });
   expect(confirm).toBeDisabled();
   await screen.findByText(t('bulkDelete.counts.affected'));
+  expect(api.bulkDeletePreview).toHaveBeenCalledWith({
+    scope: 'selected', expected_project_id: 7, crop_ids: [10], delete_varieties: false,
+  }, expect.any(AbortSignal));
   await user.click(confirm);
 
   expect(await screen.findByRole('alert')).toHaveTextContent(t('bulkDelete.outcomeUnknown'));
   expect(onComplete).not.toHaveBeenCalled();
   expect(screen.getByRole('checkbox', { name: t('bulkDelete.deleteVarieties') })).toBeDisabled();
   await user.click(screen.getByRole('button', { name: t('bulkDelete.retry') }));
+  expect(api.bulkDelete.mock.calls[0][0]).toMatchObject({ crop_ids: [10], delete_varieties: false });
   expect(api.bulkDelete.mock.calls[1]).toEqual(api.bulkDelete.mock.calls[0]);
   expect(onComplete).toHaveBeenCalledOnce();
   expect(onComplete).toHaveBeenCalledWith(result);
