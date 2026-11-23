@@ -126,7 +126,9 @@ Queued edits and explicit change proposals both validate the proposed fields
 against the published target and use the submitting request's language for
 legacy companion notes. An existing variety accepts a `seed_type`-only edit.
 General entries reject a nonblank seed type, and both routes reject identity
-fields in the proposal. The live entry changes only after approval.
+fields in the proposal. The library edit form sends only changed values. When
+the API returns a proposal, the form confirms that it awaits approval and
+continues to show the published crop. The live entry changes only after approval.
 
 Restoring an earlier version of a published crop follows the same session
 trust rule. The `revert/` action returns the updated crop for an immediate
