@@ -289,6 +289,39 @@ class RecurringHarvestTaskTest(TaskTimingFixture):
         task.refresh_from_db()
         self.assertEqual(task.status, 'cancelled')
 
+    @patch('farm.services.tasks.timezone.localdate', return_value=date(2029, 1, 1))
+    def test_restored_source_plan_gains_tasks_for_seasons_added_while_absent(self, _today):
+        self.set_window('03-12/04-09')
+        plan = self.plan(planting_date=date(2026, 2, 1), clearing_date=date(2028, 9, 1))
+        generate_plan_tasks(plan)
+        original = self.harvests(plan).get(occurrence_index=2026)
+        original.status = 'completed'
+        original.save(update_fields=['status'])
+        seasons = '/openfarmplanner/api/seasons/'
+        for year in (2027, 2028):
+            removed = self.client.delete(f'{seasons}{self.season.pk}/')
+            self.assertEqual(removed.status_code, 204)
+            added = self.client.post(seasons, {
+                'start_date': f'{year}-01-01', 'end_date': f'{year}-12-31',
+            })
+            self.assertEqual(added.status_code, 201, added.data)
+            if year == 2027:
+                restored = self.client.post(f'{seasons}{self.season.pk}/undelete/')
+                self.assertEqual(restored.status_code, 200, restored.data)
+            else:
+                restored = self.client.post(seasons, {
+                    'start_date': '2026-01-01', 'end_date': '2026-12-31',
+                })
+                self.assertEqual(restored.status_code, 201, restored.data)
+            self.assertEqual(restored.data['id'], self.season.pk)
+            task = self.harvests(plan).get(occurrence_index=year)
+            self.assertEqual((task.planting_plan_id, task.season_id, task.due_date, task.status), (
+                plan.pk, added.data['id'], date(year, 3, 12), 'pending',
+            ))
+        original.refresh_from_db()
+        self.assertEqual((original.planting_plan_id, original.status), (plan.pk, 'completed'))
+        self.assertEqual(self.harvests(plan).count(), 3)
+
     @patch('farm.services.tasks.timezone.localdate', return_value=date(2027, 1, 1))
     def test_actual_sowing_reanchors_first_bearing_without_moving_sowing_task(self, _today):
         self.set_window('03-12/04-09', delay=1)

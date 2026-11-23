@@ -33,7 +33,6 @@ from farm.history.records import internal_project_versions
 from farm.history.restore import (
     SEASON_TASK_BEFORE,
     _record_cascade_deletions,
-    restore_season_planting_plans,
 )
 from farm.models import BatchOperation, EntityRevision, PlantingPlan, Season, SeasonPattern, Task
 from farm.project_context import get_active_project_or_400
@@ -56,6 +55,7 @@ from farm.services.seasons import (
     get_or_create_season_pattern,
     latest_existing_season,
     preceding_season_copy_source,
+    restore_season_contents,
     resurrect_season,
     serialize_period_transition,
     synchronize_season_harvest_tasks,
@@ -216,14 +216,10 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
                 )
                 season.deleted_at = None
                 season.save(update_fields=['deleted_at', 'updated_at'])
-                synchronize_season_harvest_tasks(season)
+                restore_season_contents(season, batch, user_name=_current_actor_label(request))
                 self.record_revision(
                     season, EntityRevision.ACTION_UPDATED,
                     changed_fields=['deleted_at'], batch_operation=batch,
-                )
-                restore_season_planting_plans(
-                    self.request.active_project, season, batch,
-                    user_name=_current_actor_label(request=self.request),
                 )
         return Response(SeasonSerializer(season).data)
 

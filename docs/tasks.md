@@ -216,10 +216,11 @@ markers and manual overrides while assigning the stable occurrence index.
 Newly generated work starts pending. Saving a clearing date, actual planting
 date, crop harvest default or yearly window recalculates only future open tasks
 without a manual date override. Creating a season adds the tasks due in its
-period. Removing the recurring window restores the one-time harvest start if
-the source plan has a future harvest date and protected work does not already
-cover it. Propagation, sowing, transplanting and crop-template recurrences keep
-their existing identities and schedules.
+period. Restoring a season also fills missing annual work for its restored
+plans in any periods added while those plans were absent. Removing the recurring
+window restores the one-time harvest start if the source plan has a future
+harvest date that still needs a task. Propagation, sowing, transplanting and
+crop-template recurrences keep their existing identities and schedules.
 
 
 ## Synchronization (#894)

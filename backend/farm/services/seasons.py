@@ -947,6 +947,20 @@ def find_soft_deleted_season(project: Project, start_date: date) -> Season | Non
     )
 
 
+def restore_season_contents(season: Season, batch, *, user_name: str) -> None:
+    from farm.history.records import internal_project_versions, revision_batch
+    from farm.history.restore import restore_season_planting_plans
+
+    with internal_project_versions(), revision_batch(batch):
+        restore_season_planting_plans(season.project, season, batch, user_name=user_name)
+        synchronize_season_harvest_tasks(season)
+        # Other seasons could have been created while these source plans were absent.
+        synchronize_recurring_harvest_tasks(
+            PlantingPlan.objects.filter(project_id=season.project_id, season=season),
+            fill_past_occurrences=True,
+        )
+
+
 @transaction.atomic
 def resurrect_season(
     season: Season,
@@ -963,13 +977,12 @@ def resurrect_season(
     create-transition and `undelete` paths all do once they find a deleted row.
     """
     from farm.history import _entity_display_name, _serialize_instance, record_entity_revision
-    from farm.history.restore import restore_season_planting_plans
 
     season.deleted_at = None
     season.end_date = end_date
     season.created_by = user
     season.save(update_fields=['deleted_at', 'end_date', 'created_by', 'updated_at'])
-    synchronize_season_harvest_tasks(season)
+    restore_season_contents(season, batch, user_name=user_name)
     record_entity_revision(
         project=season.project, entity_type='season', object_id=season.pk,
         action=EntityRevision.ACTION_UPDATED,
@@ -978,7 +991,6 @@ def resurrect_season(
         changed_fields=['deleted_at', 'end_date'],
         user_name=user_name, batch_operation=batch,
     )
-    restore_season_planting_plans(season.project, season, batch, user_name=user_name)
     return season
 
 
