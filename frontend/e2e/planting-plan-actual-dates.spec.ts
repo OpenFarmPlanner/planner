@@ -154,6 +154,9 @@ test('the grid sorts, filters and edits the displayed dates without writing plan
   await expect(plannedInput).toHaveValue('06.04.2026');
   expect(writes).toEqual([]);
   await plannedInput.press('Escape');
+  // Cancelling the draft restores the combined view and grid focus asynchronously.
+  await expect(cell(first.id)).toHaveText('11.7.2026');
+  await expect(cell(first.id)).toBeFocused();
 
   const openActual = async () => {
     await cell(first.id).dblclick();
