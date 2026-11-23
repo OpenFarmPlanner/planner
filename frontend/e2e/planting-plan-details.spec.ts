@@ -109,6 +109,24 @@ test('keeps one perennial plan while switching its records between seasons', asy
     await planting.getByRole('button', { name: 'Speichern', exact: true }).click();
     await expect(planting.getByText('4.5.2024', { exact: true })).toBeVisible();
     await expect(editDates).toBeFocused();
+
+    await apiRequest(page, 'PATCH', `/planting-plans/${plan.id}/`, {
+      actual_harvest_start_date: '2026-04-24', recorded_harvest_end_date: '2026-04-28',
+    });
+    await page.reload();
+    await expect(harvestDates.getByText('24.4.2026', { exact: true })).toHaveCount(0);
+    await harvestDates.getByRole('button', { name: 'Ist-Termine erfassen' }).click();
+    const actualStart = harvestDates.getByLabel('Ist-Erntebeginn', { exact: true });
+    const actualEnd = harvestDates.getByLabel('Ist-Ernteende', { exact: true });
+    await expect(actualStart).toHaveValue('2026-04-24');
+    await expect(actualEnd).toHaveValue('2026-04-28');
+    await actualStart.fill('2026-04-25');
+    await harvestDates.getByRole('button', { name: 'Datum löschen · Ist-Ernteende', exact: true }).click();
+    await harvestDates.getByRole('button', { name: 'Speichern', exact: true }).click();
+    await expect(actualStart).toHaveCount(0);
+    expect(await apiRequest(page, 'GET', `/planting-plans/${plan.id}/`)).toMatchObject({
+      actual_harvest_start_date: '2026-04-25', recorded_harvest_end_date: null,
+    });
   } finally {
     await resetE2EScenario(request, scenario);
   }

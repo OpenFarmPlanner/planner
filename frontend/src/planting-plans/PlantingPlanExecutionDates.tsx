@@ -10,7 +10,7 @@ import {
   ACTUAL_DATE_FIELDS, getDetailHarvestDates, getPlanActivityDates, planDateDeviationLabel, type PlantingPlanDateComparison,
 } from './plantingPlanActualDates';
 
-export function ActualPlanDateField({ label, value, onChange, disabled, autoFocus, allowClear, helperText, min, max }: {
+export function ActualPlanDateField({ label, value, onChange, disabled, autoFocus, allowClear, helperText }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -18,8 +18,6 @@ export function ActualPlanDateField({ label, value, onChange, disabled, autoFocu
   autoFocus?: boolean;
   allowClear?: boolean;
   helperText?: string;
-  min?: string;
-  max?: string;
 }) {
   const { t } = useTranslation('plantingPlans');
   const id = useId();
@@ -29,7 +27,6 @@ export function ActualPlanDateField({ label, value, onChange, disabled, autoFocu
       <TextField id={id} type="date" size="small" value={value} disabled={disabled} autoFocus={autoFocus}
         onChange={event => onChange(event.target.value)} helperText={helperText}
         slotProps={{
-          htmlInput: { min, max },
           formHelperText: helperText ? { 'aria-live': 'polite' } : undefined,
           input: allowClear && value ? { endAdornment: <InputAdornment position="end">
             <IconButton type="button" size="small" disabled={disabled} onClick={() => onChange('')}
@@ -155,13 +152,11 @@ export function PlantingPlanExecutionDates({
                 <ActualPlanDateField
                   key={field}
                   label={t(`actualDates.actualLabels.${date.activity}`)}
-                  value={(field in draft ? draft[field] : date.actual) ?? ''}
+                  value={(field in draft ? draft[field] : plan[field]) ?? ''}
                   onChange={value => updateDate(field, value || null)}
                   disabled={saving}
                   autoFocus={date.activity === firstEditActivity}
                   allowClear
-                  min={isHarvest ? season?.start_date : undefined}
-                  max={isHarvest ? season?.end_date : undefined}
                   helperText={date.planned
                     ? `${t('actualDates.modes.planned')} ${formatSeasonDate(date.planned, locale)}` : undefined}
                 />

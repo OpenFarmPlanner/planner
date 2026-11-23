@@ -140,8 +140,9 @@ description), one level down:
   as pre-planting tasks. The first dated allocated harvest can be shown as an
   observation when an explicit start is
   absent. Only explicitly recorded dates supply an actual harvest end.
-  Original planting information remains visible in every period. Changes to
-  the original plan go through its originating season. A current-season task
+  Original planting information remains visible in every period. The editor in
+  the originating season retains the saved actual dates, including a date in
+  a different period. A current-season task
   may link to the original plan while the crop occupies an assigned bed.
   Plan details show the lifetime harvest occurrences in pages of up to 20 years.
   In the originating
