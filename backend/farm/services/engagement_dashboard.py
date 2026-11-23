@@ -577,13 +577,10 @@ def _projects_where_user_is_sole_member(user_id: int) -> set[int]:
     return sole_member_project_ids & current_user_project_ids
 
 
-def _demo_project_ids() -> set[int]:
-    """Return ids of demo/template projects, identified by their description marker."""
-    return set(
-        Project.objects.filter(
-            Q(description__in=DEMO_PROJECT_DESCRIPTIONS) | Q(demo_seeded_at__isnull=False),
-        )
-        .values_list('pk', flat=True),
+def _demo_projects() -> QuerySet[Project]:
+    """Recognize seeded demos after edits and legacy demos by description."""
+    return Project.objects.filter(
+        Q(description__in=DEMO_PROJECT_DESCRIPTIONS) | Q(demo_seeded_at__isnull=False),
     )
 
 
@@ -605,7 +602,7 @@ def build_engagement_dashboard(
 
     all_rows = _collect_project_rows(current_time, cutoff_7_days, cutoff_30_days)
     _add_membership_and_feedback(all_rows, cutoff_30_days)
-    demo_ids = _demo_project_ids()
+    demo_ids = set(_demo_projects().values_list('pk', flat=True))
     guests = set(GuestDemoSession.objects.values_list('project_id', flat=True))
     members = ProjectMembership.objects.filter(project_id=OuterRef('pk'))
     scratch_ids = set(
@@ -687,10 +684,7 @@ def _demo_usage_period(
     projects nor outlive the session, so they could never convert.
     """
     guest_started, guest_used = _guest_demo_usage(cutoff)
-    demo_projects = Project.objects.filter(
-        description__in=DEMO_PROJECT_DESCRIPTIONS,
-        guest_demo_session__isnull=True,
-    )
+    demo_projects = _demo_projects().filter(guest_demo_session__isnull=True)
     if cutoff is not None:
         demo_projects = demo_projects.filter(created_at__gte=cutoff)
     if excluded_project_ids:
@@ -710,8 +704,8 @@ def _demo_usage_period(
     if demo_first_seen:
         earliest_real_project = dict(
             ProjectMembership.objects
-            .exclude(project__description__in=DEMO_PROJECT_DESCRIPTIONS)
-            .filter(user_id__in=demo_first_seen)
+            .exclude(project__in=_demo_projects())
+            .filter(user_id__in=demo_first_seen, project__guest_demo_session__isnull=True)
             .values('user_id')
             .annotate(earliest_real=Min('created_at'))
             .values_list('user_id', 'earliest_real'),

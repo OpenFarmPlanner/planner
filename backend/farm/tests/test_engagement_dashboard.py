@@ -1208,6 +1208,28 @@ class DemoUsageSummaryTests(TestCase):
         self.assertEqual(summary.last_7_days.used, 1)
         self.assertEqual(summary.all_time.used, 1)
 
+    def test_seeded_demos_with_edited_descriptions_still_count_as_demos(self) -> None:
+        _original, user = self._demo_project(days_ago=3, slug='du-original-demo')
+        edited = Project.objects.create(name='Edited demo', slug='du-edited-demo')
+        Project.objects.filter(pk=edited.pk).update(
+            description='Edited project description',
+            created_at=self.now - timedelta(days=1),
+            demo_seeded_at=self.now - timedelta(hours=23),
+        )
+        ProjectMembership.objects.create(user=user, project=edited)
+        EntityRevision.objects.create(
+            project=edited, entity_type='location', object_id=1,
+            action=EntityRevision.ACTION_CREATED, snapshot={},
+        )
+
+        dashboard = build_engagement_dashboard(self.now)
+        summary = self._summary()
+        self.assertEqual(dashboard.projects, [])
+        self.assertEqual(dashboard.projects_from_template, Share(count=2, total=2))
+        self.assertEqual(summary.last_7_days.created, 2)
+        self.assertEqual(summary.last_7_days.used, 1)
+        self.assertEqual(summary.last_7_days.converted_to_own_project, Share(count=0, total=1))
+
     def test_a_user_who_later_joins_a_real_project_counts_as_converted(self) -> None:
         _project, user = self._demo_project(days_ago=1, slug='du-converted')
         real_project = Project.objects.create(name='Echt', slug='du-real')
