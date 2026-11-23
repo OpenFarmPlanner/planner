@@ -1002,7 +1002,8 @@ and `/api/qa/version/` on the app origin to check both versions.
 Each build uses a Git archive in `.qa-review/runtime/releases/`. Once the build
 passes its checks, the launcher stops the two QA app services, backs up the QA
 SQLite database before pending migrations, and verifies the new backend through
-the frontend proxy. A failed build leaves the running version available. A failed
+the frontend proxy. The three most recent automatic pre-migration backups are
+retained in `.qa-review/runtime/backups/`. A failed build leaves the running version available. A failed
 cutover restores the previous release and its pre-migration database backup.
 Review decisions, screenshots and fixture data stay local. Automatic update
 output is in `.qa-review/logs/main-updates.log`.

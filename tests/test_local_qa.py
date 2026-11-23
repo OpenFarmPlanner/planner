@@ -1,5 +1,6 @@
 """Exercise the local QA updater without touching a running dashboard."""
 
+import os
 import sqlite3
 import subprocess
 import sys
@@ -102,6 +103,31 @@ class LocalQAUpdateTests(unittest.TestCase):
                 self.assertEqual(
                     conn.execute("SELECT value FROM fixture").fetchone(), ("original",)
                 )
+
+    def test_only_three_verified_automatic_database_backups_are_retained(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db = root / "review.sqlite3"
+            manual = root / "pre-migration-manual.sqlite3"
+            manual.touch()
+            snapshots = []
+            for n in range(5):
+                with sqlite3.connect(db) as conn:
+                    conn.execute(f"PRAGMA user_version={n}")
+                snapshots.append(qa.backup_database(db, root))
+                # Give the historical snapshots distinct, deterministic mtimes.
+                os.utime(snapshots[-1], (n + 1, n + 1))
+            self.assertEqual(
+                [p.exists() for p in snapshots], [False, False, True, True, True]
+            )
+            with (
+                patch.object(qa, "copy_db", side_effect=OSError("full")),
+                self.assertRaises(OSError),
+            ):
+                qa.backup_database(db, root)
+            self.assertEqual(set(root.iterdir()), {db, manual, *snapshots[-3:]})
+            with sqlite3.connect(snapshots[-1]) as conn:
+                self.assertEqual(conn.execute("PRAGMA user_version").fetchone(), (4,))
 
     def test_watcher_checks_after_five_minutes_and_exits_when_stopped(self):
         with (

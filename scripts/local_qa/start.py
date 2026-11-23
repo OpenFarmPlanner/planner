@@ -224,6 +224,34 @@ def copy_db(src, dst):
             raise RuntimeError(f"SQLite integrity check failed: {dst}")
 
 
+def backup_database(db, backups):
+    """Keep the new verified snapshot and the two most recent earlier ones."""
+    with tempfile.NamedTemporaryFile(
+        dir=backups, prefix="pre-migration-", suffix=".sqlite3", delete=False
+    ) as output:
+        snapshot = Path(output.name)
+    try:
+        copy_db(db, snapshot)
+    except BaseException:
+        snapshot.unlink(missing_ok=True)
+        raise
+    earlier = sorted(
+        (
+            p
+            for p in backups.glob("pre-migration-*.sqlite3")
+            if p != snapshot
+            and not p.is_symlink()
+            and re.fullmatch(r"pre-migration-[a-z0-9_]{8}\.sqlite3", p.name)
+            and p.is_file()
+        ),
+        key=lambda p: p.stat().st_mtime_ns,
+        reverse=True,
+    )
+    for obsolete in earlier[2:]:
+        obsolete.unlink()
+    return snapshot
+
+
 def deploy(release):
     previous = releases.CURRENT.resolve() if releases.CURRENT.exists() else None
     dist = data / "dist"
@@ -242,12 +270,7 @@ def deploy(release):
         if pending:
             if pending != 1:
                 raise RuntimeError("Cannot determine pending migrations.")
-            with tempfile.NamedTemporaryFile(
-                dir=backups, prefix="pre-migration-", suffix=".sqlite3", delete=False
-            ) as f:
-                candidate = Path(f.name)
-            copy_db(db, candidate)
-            backup = candidate
+            backup = backup_database(db, backups)
             print(f"SQLite backup: {backup}", flush=True)
             releases.run([*manage, "--noinput"], backend)
         releases.run([*manage, "--check"], backend)
