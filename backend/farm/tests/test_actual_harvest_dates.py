@@ -217,6 +217,30 @@ class ActualHarvestDatesTest(ProjectApiTestCase):
         plan.refresh_from_db()
         self.assertEqual(list(plan.harvest_occurrence_actuals["occurrences"]), ["2026"])
 
+    def test_legacy_cross_year_actuals_use_the_nearest_harvest_occurrence(self):
+        origin = self.season("2025-01-01", "2025-12-31")
+        winter = self.season("2026-10-01", "2027-02-01")
+        next_year = self.season("2027-01-01", "2027-12-31")
+        plan = self.perennial(origin, "12-20/01-10")
+        for actual, expected_year in (("2027-01-13", 2026), ("2027-12-16", 2027)):
+            with self.subTest(actual=actual):
+                plan.recorded_harvest_end_date = date.fromisoformat(actual)
+                plan.save(update_fields=["recorded_harvest_end_date"])
+                dates = self.details(plan, next_year)["harvest_actual_occurrences"]
+                self.assertEqual(
+                    {item["year"]: item["actual_end_date"] for item in dates},
+                    {year: actual if year == expected_year else None for year in (2026, 2027)},
+                )
+        plan.recorded_harvest_end_date = date(2027, 1, 13)
+        plan.save(update_fields=["recorded_harvest_end_date"])
+        correction = self.edit(plan, winter, year=2026, start_date="2027-01-02")
+        self.assertEqual(correction.status_code, 200, correction.data)
+        (old,) = correction.json()["harvest_actual_occurrences"]
+        self.assertEqual(old["actual_end_date"], "2027-01-13")
+        plan.refresh_from_db()
+        self.assertEqual(plan.harvest_occurrence_actuals["legacy_year"], 2026)
+        self.assertEqual(list(plan.harvest_occurrence_actuals["occurrences"]), ["2026"])
+
     def test_lifetime_pages_keep_recorded_years_after_the_forecast_is_shortened(self):
         origin = self.season("2025-01-01", "2025-12-31")
         later = self.season("2052-01-01", "2052-12-31")

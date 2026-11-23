@@ -332,10 +332,19 @@ def legacy_actual_occurrence_year(
 
 
 def actual_occurrence_year_for_date(schedule: RecurringHarvestSchedule, day: date) -> int:
-    return next(
-        (year for year, _ in schedule.project_by_year(day, day)),
-        schedule.legacy_harvest_year(day) or day.year,
-    )
+    projected = next(schedule.project_by_year(day, day), None)
+    if projected is not None:
+        return projected[0]
+    if not schedule.crosses_new_year or day.year == date.min.year:
+        return day.year
+
+    def distance(year: int) -> int:
+        start, end = schedule.effective_override(year) or schedule.default_window(year)
+        return max((start - day).days, (day - end).days, 0)
+
+    # A cross-year actual can extend beyond the January tail of the forecast.
+    # Keep it with the closer occurrence, even when neither forecast contains it.
+    return min((day.year, day.year - 1), key=distance)
 
 
 def recurring_harvest_actuals(
