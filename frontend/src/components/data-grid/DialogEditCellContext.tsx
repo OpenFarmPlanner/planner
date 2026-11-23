@@ -2,10 +2,8 @@ import { createContext, useContext, useEffect, useRef } from 'react';
 import type { GridRowId } from '@mui/x-data-grid';
 
 /**
- * `dialogEditFields` cells have no inline edit session — their dialog *is* the
- * edit session. This context is how `EditableDataGrid` tells such a cell that
- * an explicit keyboard edit command wants to start that session by opening its
- * dialog.
+ * `EditableDataGrid` sends an explicit edit request to cells whose renderer
+ * manages its own editor outside the grid's row-edit state.
  *
  * The request carries a token that is bumped on every entry. A cell opens for a
  * token exactly once and consumes the request while doing so, which is what

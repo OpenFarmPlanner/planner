@@ -92,6 +92,8 @@ test.describe('planting plan crop rotation in the table', () => {
     const saved = await apiRequest<{ bed: number; rotation_conflict_accepted: boolean }>(page, 'GET', path);
     const plantingDate = leek.locator('[data-field="planting_date"]');
 
+    await page.getByRole('button', { name: /^Terminansicht / }).click();
+    await page.getByRole('menuitemradio', { name: 'Geplant', exact: true }).click();
     await plantingDate.dblclick();
     await expect(leek).toHaveClass(/ofp-row-editing/);
     await bedCell.dblclick();

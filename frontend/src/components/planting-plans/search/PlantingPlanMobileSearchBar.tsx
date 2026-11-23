@@ -1,4 +1,4 @@
-import type { ReactNode, Ref } from 'react';
+import type { Ref } from 'react';
 import { Badge, Box, IconButton } from '@mui/material';
 import FilterListIcon from '@mui/icons-material/FilterList';
 
@@ -15,7 +15,6 @@ interface PlantingPlanMobileSearchBarProps {
   isFilterSheetOpen: boolean;
   onOpenFilterSheet: () => void;
   filterSheetId: string;
-  viewControls?: ReactNode;
 }
 
 /**
@@ -29,7 +28,6 @@ export function PlantingPlanMobileSearchBar({
   isFilterSheetOpen,
   onOpenFilterSheet,
   filterSheetId,
-  viewControls,
 }: PlantingPlanMobileSearchBarProps) {
   const { t } = useTranslation('plantingPlans');
   const appBarHeight = useAppBarHeight();
@@ -95,7 +93,6 @@ export function PlantingPlanMobileSearchBar({
             </Badge>
           </IconButton>
         </AppTooltip>
-        {viewControls}
       </Box>
       {hasFilters ? (
         <PlantingPlanActiveFilterChips search={search} scrollable sx={{ mt: 1 }} />

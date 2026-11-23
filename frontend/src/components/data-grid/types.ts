@@ -123,6 +123,8 @@ export interface EditableDataGridProps<T extends EditableRow> {
    * back through `EditableDataGridCommandApi.applyDialogEditValues`.
    */
   dialogEditFields?: string[];
+  /** Cells whose renderer edits and saves a single value independently of the row draft. */
+  isStandaloneEditCell?: (row: T, field: string) => boolean;
   /** Read-only summary columns that can receive focus by click, Tab, or arrow keys. */
   focusableReadOnlyFields?: readonly string[];
   commandApiRef?: MutableRefObject<EditableDataGridCommandApi | null>;

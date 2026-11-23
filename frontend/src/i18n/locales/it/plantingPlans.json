@@ -511,6 +511,11 @@
     }
   },
   "actualDates": {
+    "plannedCardLabels": {
+      "sowing": "Data di semina prevista",
+      "transplanting": "Data di trapianto prevista"
+    },
+    "invalidDate": "Inserisci una data valida.",
     "clear": "Cancella data",
     "title": "Date previste ed effettive",
     "modeLabel": "Vista delle date",
@@ -530,7 +535,6 @@
     "late_one": "{{count}} giorno in ritardo",
     "late_other": "{{count}} giorni in ritardo",
     "late_many": "{{count}} giorni in ritardo",
-    "editTarget": "Scegli la data da modificare",
     "modes": {
       "planned": "Previsto",
       "actual": "Effettivo"

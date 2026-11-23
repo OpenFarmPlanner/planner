@@ -33,7 +33,7 @@ import {
 import { gridEditRowsStateSelector } from '@mui/x-data-grid/internals';
 import { ResizableGridColumnMenu, ResizableGridColumnsManagement } from './ResizableGridColumnControls';
 import { columnAutosizeOptions, resizableGridHeaderSx } from './useGridColumnSizing';
-import { dataGridSx, dataGridFooterSx, dataGridAddRowButtonSx, deleteIconButtonSx } from './styles';
+import { dataGridSx, dataGridFooterSx, dataGridAddRowButtonSx, deleteIconButtonSx, EDITABLE_CELL_CLASS } from './styles';
 import { handleRowEditStop } from './handlers';
 import {
   editModeEditorArrowKeys,
@@ -226,6 +226,7 @@ export function EditableDataGrid<T extends EditableRow>({
   persistSortInUrl = true,
   notes,
   dialogEditFields,
+  isStandaloneEditCell,
   focusableReadOnlyFields,
   commandApiRef,
   onSelectedRowChange,
@@ -590,19 +591,18 @@ export function EditableDataGrid<T extends EditableRow>({
     () => notes?.fields.map((fieldConfig) => fieldConfig.field) ?? [],
     [notes],
   );
-  // Notes and dialog-edited cells share one rule: they own their editor, so the
-  // grid never starts inline edit mode for them, but they stay keyboard stops.
+  // Cells whose renderer owns its editor stay keyboard stops and keep their
+  // changes separate from the grid's row-edit state.
   const dedicatedEditorFieldNames = useMemo(
     () => [...notesFieldNames, ...(dialogEditFields ?? [])],
     [dialogEditFields, notesFieldNames],
   );
   const hasDedicatedEditor = useCallback(
-    (field: string): boolean => dedicatedEditorFieldNames.includes(field),
-    [dedicatedEditorFieldNames],
+    (field: string, row?: T): boolean => dedicatedEditorFieldNames.includes(field)
+      || Boolean(row && isStandaloneEditCell?.(row, field)),
+    [dedicatedEditorFieldNames, isStandaloneEditCell],
   );
-  // A dialog-edited cell has no inline edit session the grid could start, so
-  // explicit edit commands can be expressed as a request its own renderer
-  // reacts to. Plain Tab focus must not request a dialog.
+  // Explicit edit commands request the cell's editor. Tab only moves focus.
   const isDialogEditField = useCallback(
     (field: string): boolean => (dialogEditFields ?? []).includes(field),
     [dialogEditFields],
@@ -610,17 +610,13 @@ export function EditableDataGrid<T extends EditableRow>({
   const [dialogEditRequest, setDialogEditRequest] = useState<DialogEditCellRequest | null>(null);
   const dialogEditTokenRef = useRef(0);
   const requestDialogEditForCell = useCallback((rowId: GridRowId, field: string, initialQuery?: string): void => {
-    if (!isDialogEditField(field)) {
-      return;
-    }
-
     dialogEditTokenRef.current += 1;
     setDialogEditRequest({
       cellKey: buildDialogEditCellKey(rowId, field),
       token: dialogEditTokenRef.current,
       initialQuery,
     });
-  }, [isDialogEditField]);
+  }, []);
   const consumeDialogEditRequest = useCallback((token: number): void => {
     setDialogEditRequest((current) => (current?.token === token ? null : current));
   }, []);
@@ -723,7 +719,7 @@ export function EditableDataGrid<T extends EditableRow>({
   ), [gridApiRef]);
 
   const isActionCellKeyboardNavigable = useCallback((params: GridCellParams<T>): boolean => (
-    hasDedicatedEditor(params.field) || Boolean(focusableReadOnlyFields?.includes(params.field))
+    hasDedicatedEditor(params.field, params.row) || Boolean(focusableReadOnlyFields?.includes(params.field))
   ), [focusableReadOnlyFields, hasDedicatedEditor]);
 
   const getKeyboardNavigableFieldsForRow = useCallback((rowId: GridRowId): string[] => {
@@ -768,11 +764,11 @@ export function EditableDataGrid<T extends EditableRow>({
       focusDataGridKeyboardNavigableCell<T>({
         api,
         cell: { id: rowId, field },
-        focusEditInput: !readOnly && !hasDedicatedEditor(field)
+        focusEditInput: !readOnly && !hasDedicatedEditor(field, row)
           && (rowModesModel[rowId]?.mode === GridRowModes.Edit || options.startEdit),
       });
 
-      if (readOnly || !options.startEdit || hasDedicatedEditor(field)) {
+      if (readOnly || !options.startEdit || hasDedicatedEditor(field, row)) {
         return;
       }
 
@@ -1166,7 +1162,7 @@ export function EditableDataGrid<T extends EditableRow>({
     }
 
     const isSameRow = String(current.id) === String(target.id);
-    const targetHasDedicatedEditor = hasDedicatedEditor(target.field);
+    const targetHasDedicatedEditor = hasDedicatedEditor(target.field, rowsById.get(String(target.id)));
     const canCommitCurrentDraft = commitEditedRowDraftForKeyboardNavigation(current.id, {
       syncRows: !isSameRow || targetHasDedicatedEditor,
     });
@@ -1202,6 +1198,7 @@ export function EditableDataGrid<T extends EditableRow>({
     focusKeyboardNavigableCell,
     hasDedicatedEditor,
     rowModesModel,
+    rowsById,
   ]);
 
   const recoverSameRowNavigationFromTabEvent = useCallback((
@@ -1224,13 +1221,14 @@ export function EditableDataGrid<T extends EditableRow>({
     }
 
     navigateFromEditedCell(current, sameRowTarget, {
-      startTargetEdit: !hasDedicatedEditor(sameRowTarget.field),
+      startTargetEdit: !hasDedicatedEditor(sameRowTarget.field, rowsById.get(String(rowId))),
     });
     return true;
   }, [
     getHorizontalNavigationTarget,
     hasDedicatedEditor,
     navigateFromEditedCell,
+    rowsById,
   ]);
 
   const handleEditableRowEditStop: GridEventListener<'rowEditStop'> = useCallback((params, event, details): void => {
@@ -1612,7 +1610,7 @@ export function EditableDataGrid<T extends EditableRow>({
           : prevRows,
       );
       focusKeyboardNavigableCell(target.id, target.field, {
-        startEdit: options.startTargetEdit ?? !hasDedicatedEditor(target.field),
+        startEdit: options.startTargetEdit ?? !hasDedicatedEditor(target.field, rowsById.get(String(target.id))),
       });
     } catch (error) {
       handleProcessRowUpdateError(error);
@@ -1621,6 +1619,7 @@ export function EditableDataGrid<T extends EditableRow>({
     focusKeyboardNavigableCell,
     handleProcessRowUpdateError,
     hasDedicatedEditor,
+    rowsById,
     prepareRowForSave,
     processRowUpdate,
   ]);
@@ -1687,7 +1686,7 @@ export function EditableDataGrid<T extends EditableRow>({
 
     if (String(target.id) === String(current.id)) {
       navigateFromEditedCell(current, target, {
-        startTargetEdit: !hasDedicatedEditor(target.field),
+        startTargetEdit: !hasDedicatedEditor(target.field, rowsById.get(String(target.id))),
       });
       return true;
     }
@@ -1702,6 +1701,7 @@ export function EditableDataGrid<T extends EditableRow>({
     hasDedicatedEditor,
     isActionCellKeyboardNavigable,
     navigateFromEditedCell,
+    rowsById,
     rowsForGrid,
     saveEditedRowAndFocusTarget,
   ]);
@@ -1860,7 +1860,7 @@ export function EditableDataGrid<T extends EditableRow>({
     // them into the inline edit mode they never leave through.
     isCellEditable: ({ id, field }) => {
       const row = rowsById.get(String(id));
-      return !hasDedicatedEditor(field) && (!row || !isReadOnlyRow?.(row));
+      return !hasDedicatedEditor(field, row) && (!row || !isReadOnlyRow?.(row));
     },
     onBeforeEdit: handleBeforeCellEdit,
     onReplaceValue: (params) => markRowDirty(String(params.id)),
@@ -2505,7 +2505,7 @@ export function EditableDataGrid<T extends EditableRow>({
   ]);
 
   const isInlineSingleSelectCell = useCallback((params: GridCellParams<T>): boolean => {
-    if (!params.isEditable || hasDedicatedEditor(params.field)) {
+    if (!params.isEditable || hasDedicatedEditor(params.field, params.row)) {
       return false;
     }
 
@@ -2815,7 +2815,7 @@ export function EditableDataGrid<T extends EditableRow>({
           onRowEditStop={handleEditableRowEditStop}
           processRowUpdate={processRowUpdate}
           onProcessRowUpdateError={handleProcessRowUpdateError}
-          isCellEditable={isReadOnlyRow ? params => !isReadOnlyRow(params.row as T) : undefined}
+          isCellEditable={params => !isReadOnlyRow?.(params.row) && !isStandaloneEditCell?.(params.row, params.field)}
           loading={loading}
           editMode="row"
           density={isMobile ? 'standard' : 'compact'}
@@ -2874,7 +2874,9 @@ export function EditableDataGrid<T extends EditableRow>({
             const stateClassName = errorText
               ? 'ofp-cell-error'
               : dirtyRowIds.has(rowKey) ? 'ofp-cell-dirty' : '';
-            return [stateClassName, cellEditing.getEditableCellClassName(params)].filter(Boolean).join(' ');
+            const editableClassName = isStandaloneEditCell?.(params.row, params.field)
+              ? EDITABLE_CELL_CLASS : cellEditing.getEditableCellClassName(params);
+            return [stateClassName, editableClassName].filter(Boolean).join(' ');
           }}
           onCellClick={(params, event) => {
             if (isAnyContextMenuOpen() || isContextMenuDismissGestureInProgress()) {
@@ -2906,7 +2908,7 @@ export function EditableDataGrid<T extends EditableRow>({
                 rowSnapshotRef.current.set(rowKey, row as T);
               }
             }
-            if (hasDedicatedEditor(params.field)) {
+            if (hasDedicatedEditor(params.field, params.row)) {
               if (notesFieldNames.includes(params.field)) {
                 markRowDirty(rowKey);
               } else if ((event.nativeEvent as PointerEvent | undefined)?.pointerType === 'touch'
@@ -2928,7 +2930,8 @@ export function EditableDataGrid<T extends EditableRow>({
               event.defaultMuiPrevented = true;
               return;
             }
-            if (isDialogEditField(params.field) && !isReadOnlyRow?.(params.row) && !isOnControlInsideCell(event)) {
+            const ownsEditor = isDialogEditField(params.field) || isStandaloneEditCell?.(params.row, params.field);
+            if (ownsEditor && !isReadOnlyRow?.(params.row) && !isOnControlInsideCell(event)) {
               event.defaultMuiPrevented = true;
               requestDialogEditForCell(params.id, params.field);
               return;
@@ -2999,7 +3002,8 @@ export function EditableDataGrid<T extends EditableRow>({
             }
 
             const typedSearch = isSpreadsheetPrintableKey(event);
-            if (isDialogEditField(params.field) && !isReadOnlyRow?.(params.row) && !isOnControlInsideCell(event)
+            const ownsEditor = isDialogEditField(params.field) || isStandaloneEditCell?.(params.row, params.field);
+            if (ownsEditor && !isReadOnlyRow?.(params.row) && !isOnControlInsideCell(event)
               && !event.altKey && !event.ctrlKey && !event.metaKey && !event.nativeEvent.isComposing
               && (typedSearch || event.key === 'Enter' || event.key === 'F2')) {
               event.preventDefault();

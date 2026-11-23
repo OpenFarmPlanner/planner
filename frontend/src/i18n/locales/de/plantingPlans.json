@@ -499,6 +499,11 @@
     }
   },
   "actualDates": {
+    "plannedCardLabels": {
+      "sowing": "Geplanter Aussaattermin",
+      "transplanting": "Geplanter Pflanztermin"
+    },
+    "invalidDate": "Gib ein gültiges Datum ein.",
     "clear": "Datum löschen",
     "title": "Plan- und Ist-Termine",
     "modeLabel": "Terminansicht",
@@ -516,7 +521,6 @@
     "early_other": "{{count}} Tage früher",
     "late_one": "{{count}} Tag später",
     "late_other": "{{count}} Tage später",
-    "editTarget": "Terminart wählen",
     "modes": {
       "planned": "Plan",
       "actual": "Ist"

@@ -511,6 +511,11 @@
     }
   },
   "actualDates": {
+    "plannedCardLabels": {
+      "sowing": "Data planeada de sementeira",
+      "transplanting": "Data planeada de transplantação"
+    },
+    "invalidDate": "Introduza uma data válida.",
     "clear": "Limpar data",
     "title": "Datas planeadas e reais",
     "modeLabel": "Vista de datas",
@@ -530,7 +535,6 @@
     "late_one": "{{count}} dia depois",
     "late_other": "{{count}} dias depois",
     "late_many": "{{count}} dias depois",
-    "editTarget": "Escolher a data a editar",
     "modes": {
       "planned": "Planeado",
       "actual": "Realizado"

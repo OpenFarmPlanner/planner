@@ -82,8 +82,15 @@ export interface DateEditCellBoundsProps {
    */
   onCommitted?: (value: Date | null) => void;
   ariaLabel?: string;
-  leadingAction?: React.ReactNode;
-  targetLabel?: string;
+  standalone?: {
+    initialText?: string;
+    onChange: (text: string) => void;
+    onKeyDown: (event: ReactKeyboardEvent<HTMLInputElement>, text: string) => void;
+    onBlur: (event: FocusEvent<HTMLInputElement>, text: string) => void;
+    onPick: (value: Date | null) => void;
+    errorId?: string;
+    readOnly?: boolean;
+  };
 }
 
 function DateEditCellComponent(params: GridRenderEditCellParams & DateEditCellBoundsProps) {
@@ -92,13 +99,17 @@ function DateEditCellComponent(params: GridRenderEditCellParams & DateEditCellBo
   const inputRef = useRef<HTMLInputElement | null>(null);
   const pickerInputRef = useRef<HTMLInputElement | null>(null);
   const isProgrammaticFocusRef = useRef(false);
-  const [text, setText] = useState(formatDateAsGerman(params.value as Date | string | null));
-  const [activeSegment, setActiveSegment] = useState<DateSegment>('day');
-  const displayedText = params.hasFocus
+  const [text, setText] = useState(() => params.standalone?.initialText
+    ?? formatDateAsGerman(params.value as Date | string | null));
+  const [activeSegment, setActiveSegment] = useState<DateSegment | null>(
+    () => params.standalone?.initialText === undefined ? 'day' : null,
+  );
+  const displayedText = params.hasFocus || params.standalone
     ? text
     : formatDateAsGerman(params.value as Date | string | null);
 
-  useEditCellTabNavigation(inputRef, editCellNavigation, params.id, params.field);
+  const navigateEditCell = params.standalone ? null : editCellNavigation;
+  useEditCellTabNavigation(inputRef, navigateEditCell, params.id, params.field);
 
   const focusSegment = useCallback((segment: DateSegment): void => {
     const input = inputRef.current;
@@ -123,24 +134,35 @@ function DateEditCellComponent(params: GridRenderEditCellParams & DateEditCellBo
     // adjustment. This effect also re-fires on every segment change
     // (Left/Right arrow), so it's not a one-time mount focus either.
     isProgrammaticFocusRef.current = true;
-    inputRef.current?.focus({ preventScroll: true });
+    const input = inputRef.current;
+    input?.focus({ preventScroll: true });
     isProgrammaticFocusRef.current = false;
-    focusSegment(activeSegment);
+    if (activeSegment) {
+      focusSegment(activeSegment);
+    } else if (input) {
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
   }, [activeSegment, focusSegment, params.hasFocus]);
 
+  const { api, field, id, onCommitted, standalone } = params;
   const commitDate = useCallback(async (nextValue: Date | null): Promise<void> => {
-    setText(formatDateAsGerman(nextValue));
-    await params.api.setEditCellValue({
-      id: params.id,
-      field: params.field,
-      value: nextValue,
-    });
-    params.onCommitted?.(nextValue);
-  }, [params.api, params.field, params.id, params.onCommitted]);
+    const nextText = formatDateAsGerman(nextValue);
+    setText(nextText);
+    if (standalone) {
+      standalone.onChange(nextText);
+      return;
+    }
+    await api.setEditCellValue({ id, field, value: nextValue });
+    onCommitted?.(nextValue);
+  }, [api, field, id, onCommitted, standalone]);
 
   const handleTextChange = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
     const nextText = event.target.value;
     setText(nextText);
+    if (params.standalone) {
+      params.standalone.onChange(nextText);
+      return;
+    }
 
     if (nextText.trim() === '') {
       await params.api.setEditCellValue({
@@ -163,12 +185,15 @@ function DateEditCellComponent(params: GridRenderEditCellParams & DateEditCellBo
   };
 
   const handleKeyDown = async (event: ReactKeyboardEvent<HTMLInputElement>): Promise<void> => {
+    params.standalone?.onKeyDown(event, displayedText);
+    if (event.defaultPrevented || params.standalone?.readOnly) return;
+
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
       event.stopPropagation();
       return;
     }
 
-    if (event.key === 'Tab' && editCellNavigation?.({
+    if (event.key === 'Tab' && navigateEditCell?.({
       id: params.id,
       field: params.field,
       event: event as ReactKeyboardEvent<HTMLElement>,
@@ -232,42 +257,49 @@ function DateEditCellComponent(params: GridRenderEditCellParams & DateEditCellBo
         fullWidth
         size="small"
         inputRef={inputRef}
-        label={params.targetLabel}
+        error={Boolean(params.standalone?.errorId)}
         value={displayedText}
         placeholder={t('common:dateFormatPlaceholder')}
         sx={{
+          ...(standalone && {
+            '& .MuiOutlinedInput-root': { height: 28, paddingInlineEnd: 0.5 },
+            '& .MuiInputAdornment-root': { marginInlineStart: 0 },
+          }),
           '& .MuiInputBase-input': {
             paddingInline: 1,
             paddingInlineEnd: 0,
+            ...(standalone && { paddingBlock: 0, fontSize: '0.875rem' }),
           },
         }}
         slotProps={{
-          ...(params.targetLabel ? { inputLabel: { shrink: true } } : {}),
           htmlInput: {
             'aria-label': params.ariaLabel,
+            'aria-describedby': params.standalone?.errorId,
             tabIndex: params.hasFocus ? 0 : -1,
             inputMode: 'numeric',
+            enterKeyHint: params.standalone ? 'done' : undefined,
+            readOnly: params.standalone?.readOnly,
             onFocus: (event: FocusEvent<HTMLInputElement>) => {
-              if (isProgrammaticFocusRef.current) {
+              if (isProgrammaticFocusRef.current || activeSegment === null) {
                 return;
               }
               selectSegment(getSegmentFromSelection(event.currentTarget.selectionStart));
             },
             onClick: (event: MouseEvent<HTMLInputElement>) => selectSegment(getSegmentFromSelection(event.currentTarget.selectionStart)),
+            onBlur: (event: FocusEvent<HTMLInputElement>) => params.standalone?.onBlur(event, displayedText),
             onKeyDown: handleKeyDown,
           },
           input: {
-            startAdornment: params.leadingAction && (
-              <InputAdornment position="start" sx={{ mr: 0 }}>{params.leadingAction}</InputAdornment>
-            ),
             endAdornment: (
               <InputAdornment position="end">
                 <IconButton
                   aria-label={t('dateEditor.openCalendar')}
-                  edge="end"
+                  edge={standalone ? false : 'end'}
                   size="small"
                   tabIndex={-1}
+                  disabled={params.standalone?.readOnly}
                   onClick={handleCalendarButtonClick}
+                  sx={standalone && { p: 0.5 }}
                 >
                   <CalendarTodayIcon fontSize="small" />
                 </IconButton>
@@ -290,6 +322,7 @@ function DateEditCellComponent(params: GridRenderEditCellParams & DateEditCellBo
         onChange={(event) => {
           const nextValue = event.target.value ? new Date(`${event.target.value}T00:00:00`) : null;
           void commitDate(nextValue);
+          params.standalone?.onPick(nextValue);
           inputRef.current?.focus({ preventScroll: true });
         }}
         style={{
@@ -312,6 +345,5 @@ export const DateEditCell = memo(DateEditCellComponent, (previous, next) => (
   && previous.minDate === next.minDate
   && previous.maxDate === next.maxDate
   && previous.ariaLabel === next.ariaLabel
-  && previous.leadingAction === next.leadingAction
-  && previous.targetLabel === next.targetLabel
+  && previous.standalone === next.standalone
 ));

@@ -210,7 +210,7 @@ test.describe('recurring harvest dates', () => {
 
       await switchSeason(2026);
       await selectMode('actual');
-      await expect(harvestStart).toHaveText('');
+      await expect(harvestStart).toHaveText('—');
       await selectMode('combined');
       await expect(harvestStart).toHaveText('—');
       await expect(plantingDate).toHaveText('15.3.2025');
@@ -250,7 +250,9 @@ test.describe('recurring harvest dates', () => {
       await expect(harvestStart).toHaveText('1.9.2027');
       await expect(harvestEnd).toHaveText('15.10.2027');
       await selectMode('actual');
-      await expect(harvestStart).toHaveText('');
+      await expect(harvestStart).toHaveText('—');
+      await harvestStart.press('Enter');
+      await expect(harvestStart.getByRole('textbox')).toHaveCount(0);
       await selectMode('combined');
       await expect(harvestStart).toHaveText('1.9.2027');
       await expect(plantingDate).toHaveText('15.3.2025');

@@ -235,6 +235,8 @@ test.describe('planting plans tab navigation with hidden columns', () => {
   test('Tab and Shift+Tab keep moving between editable cells around the date cell', async ({ page }) => {
     const pageErrors: string[] = [];
     page.on('pageerror', (error) => pageErrors.push(error.message));
+    await page.getByRole('button', { name: /^Terminansicht / }).click();
+    await page.getByRole('menuitemradio', { name: 'Geplant', exact: true }).click();
 
     const rowWithEditablePlantCount = page
       .locator('[role="row"][data-id]')

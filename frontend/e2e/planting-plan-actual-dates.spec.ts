@@ -13,23 +13,23 @@ async function seedPlans(page: Page, request: APIRequestContext, scenario: strin
   const field = await create('/fields/', { location: location.id, name: 'Testparzelle' });
   const bed = await create('/beds/', { field: field.id, name: 'Versuchsbeet', length_m: 15, width_m: 1 });
   const crop = await create('/crops/', {
-    name: 'Terminkohl', cultivation_type: 'pre_cultivation', cultivation_types: ['pre_cultivation'],
+    name: 'Terminkohl', cultivation_type: 'pre_cultivation', cultivation_types: ['pre_cultivation', 'direct_sowing'],
     propagation_duration_days: 21, growth_duration_days: 30, harvest_duration_days: 10,
   });
   const seed = (plannedDate: string, actualDate: string | null, harvest: string | null) => create('/planting-plans/', {
     season: season.id, crop: crop.id, bed: bed.id, cultivation_type: 'pre_cultivation',
-    planting_date: plannedDate, area_usage_sqm: 0, actual_transplanting_date: actualDate,
+    planting_date: plannedDate, area_usage_sqm: 1, actual_transplanting_date: actualDate,
     actual_harvest_start_date: harvest,
   });
   const first = await seed('2026-04-04', '2026-07-11', '2026-09-07');
   const second = await seed('2026-05-09', '2026-03-20', null);
   const third = await seed('2026-06-01', null, null);
-  return { first, second, third };
+  return { first, second, third, season, bed };
 }
 
-test('the grid sorts, filters and edits the displayed dates without writing planned values', async ({ page, request }) => {
+test('the grid sorts, filters and edits the displayed dates without writing planned values', async ({ page, request }, info) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  const { first, second, third } = await seedPlans(page, request, 'actual-dates-grid');
+  const { first, second, third, season, bed } = await seedPlans(page, request, 'actual-dates-grid');
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -39,6 +39,7 @@ test('the grid sorts, filters and edits the displayed dates without writing plan
     });
   });
   await page.goto(table);
+  const project = await page.evaluate(() => Number(localStorage.getItem('activeProjectId')));
   const modes = page.getByRole('button', { name: /^Terminansicht / });
   const menu = page.getByRole('menu', { name: 'Terminansicht' });
   const selectMode = async (name: string) => {
@@ -82,46 +83,48 @@ test('the grid sorts, filters and edits the displayed dates without writing plan
   await expect.poll(rowIds).toEqual([first.id, second.id, third.id]);
   await expect(cell(first.id)).toHaveText('4.4.2026');
   await selectMode('Tatsächlich');
-  await expect(cell(third.id)).toHaveText('');
+  await expect(cell(third.id)).toHaveText('—');
   await expect(cell(first.id)).toHaveText('11.7.2026');
 
   const missingDateCell = cell(third.id);
-  const actualDateAction = missingDateCell.getByRole('button', { name: 'Ist-Pflanztermin' });
-  const missingDateEditor = page.getByRole('dialog', { name: 'Ist-Pflanztermin' });
-  const actualInput = missingDateEditor.getByLabel('Ist-Pflanztermin', { exact: true });
-  const thirdDateWrites: (string | null)[] = [];
+  const actualInput = missingDateCell.getByRole('textbox', { name: 'Ist-Pflanztermin', exact: true });
+  const thirdDateWrites: unknown[] = [];
   page.on('request', request => {
-    if (request.url().endsWith(`/api/planting-plans/${third.id}/`) && request.method() === 'PATCH') {
-      thirdDateWrites.push(request.postDataJSON().actual_transplanting_date);
+    if (request.url().endsWith(`/api/planting-plans/${third.id}/`) && ['PUT', 'PATCH'].includes(request.method())) {
+      thirdDateWrites.push(request.postDataJSON());
     }
   });
+  await missingDateCell.click();
+  await expect(actualInput).toHaveCount(0);
   await missingDateCell.press('Enter');
-  await actualDateAction.press('Enter');
-  await expect(actualInput).toHaveValue('2026-06-01');
-  await expect(missingDateEditor.getByText('Plan', { exact: true }).locator('..')).toHaveText('Plan 1.6.2026');
+  await expect(actualInput).toBeFocused();
+  await expect(actualInput).toHaveValue('01.06.2026');
+  await expect(page.getByRole('dialog', { name: 'Ist-Pflanztermin' })).toHaveCount(0);
   await actualInput.press('Escape');
-  await expect(missingDateEditor).toHaveCount(0);
+  await expect(missingDateCell).toBeFocused();
+  await missingDateCell.press('Enter');
+  await actualInput.press('Tab');
+  await expect(actualInput).toHaveCount(0);
   expect(thirdDateWrites).toEqual([]);
 
-  await actualDateAction.press('Enter');
-  await missingDateEditor.getByRole('button', { name: 'Speichern' }).click();
-  await expect(missingDateEditor).toHaveCount(0);
-  await expect(missingDateCell).toHaveText('1.6.2026');
   await missingDateCell.press('Enter');
-  await expect(actualDateAction).toHaveText('1.6.2026');
-  await actualDateAction.press('Enter');
-  await missingDateEditor.getByRole('button', { name: 'Datum löschen' }).click();
-  await missingDateEditor.getByRole('button', { name: 'Speichern' }).click();
-  await expect(missingDateEditor).toHaveCount(0);
-  expect(thirdDateWrites).toEqual(['2026-06-01', null]);
+  await actualInput.press('Enter');
+  await expect(missingDateCell).toHaveText('1.6.2026');
+  await expect(missingDateCell.getByText('1.6.2026')).toHaveCSS('font-weight', '400');
+  await missingDateCell.press('Enter');
+  await actualInput.fill('');
+  await actualInput.press('Enter');
+  await expect(missingDateCell).toHaveText('—');
+  expect(thirdDateWrites).toEqual([
+    { actual_transplanting_date: '2026-06-01', project }, { actual_transplanting_date: null, project },
+  ]);
   expect(await apiRequest(page, 'GET', `/planting-plans/${third.id}/`)).toMatchObject({
     planting_date: '2026-06-01', actual_transplanting_date: null,
   });
-  await missingDateCell.press('Escape');
   await selectMode('Plan mit Ist');
   await expect(missingDateCell).toHaveText('1.6.2026');
   await selectMode('Tatsächlich');
-  await expect(missingDateCell).toHaveText('');
+  await expect(missingDateCell).toHaveText('—');
 
   await cell(first.id).click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Zeile kopieren' }).click();
@@ -139,62 +142,120 @@ test('the grid sorts, filters and edits the displayed dates without writing plan
   await page.getByRole('button', { name: 'Filter Erntebeginn entfernen' }).click();
 
   await selectMode('Plan mit Ist');
-  const writes: string[] = [];
+  const writes: { method: string; body: unknown }[] = [];
   page.on('request', request => {
     if (request.url().endsWith(`/api/planting-plans/${first.id}/`) && ['PUT', 'PATCH'].includes(request.method())) {
-      writes.push(request.method());
+      writes.push({ method: request.method(), body: request.postDataJSON() });
     }
   });
-  await cell(first.id).dblclick();
-  const plannedInput = cell(first.id).getByRole('textbox', { name: 'Plan Pflanztermin' });
-  await plannedInput.fill('06.04.2026');
-  await modes.focus();
+  const firstCell = cell(first.id);
+  await expect(firstCell.getByText('11.7.2026')).toHaveCSS('font-weight', '700');
+  const firstActual = firstCell.getByRole('textbox', { name: 'Ist-Pflanztermin', exact: true });
+  await firstCell.dblclick();
+  await expect(firstActual).toHaveValue('11.07.2026');
+  await page.screenshot({ path: info.outputPath('actual-date-inline-desktop.png'), animations: 'disabled' });
+  await firstActual.fill('06.04.2026');
   await selectMode('Tatsächlich');
-  await selectMode('Plan mit Ist');
-  await expect(plannedInput).toHaveValue('06.04.2026');
+  await expect(firstActual).toHaveCount(0);
+  await expect(firstCell).toHaveText('11.7.2026');
   expect(writes).toEqual([]);
-  await plannedInput.press('Escape');
-  // Cancelling the draft restores the combined view and grid focus asynchronously.
-  await expect(cell(first.id)).toHaveText('11.7.2026');
-  await expect(cell(first.id)).toBeFocused();
 
-  const openActual = async () => {
-    await cell(first.id).dblclick();
-    await expect(cell(first.id).getByRole('textbox', { name: 'Plan Pflanztermin' })).toHaveValue('04.04.2026');
-    await cell(first.id).getByRole('button', { name: /Terminart wählen/ }).click();
-    return page.getByRole('dialog', { name: 'Ist-Pflanztermin' });
-  };
-  let actualEditor = await openActual();
-  await actualEditor.getByLabel('Ist-Pflanztermin').fill('2026-04-05');
-  await actualEditor.getByRole('button', { name: 'Speichern' }).click();
-  await expect(actualEditor).toHaveCount(0);
-  await expect(cell(first.id)).toHaveText('5.4.2026');
+  await selectMode('Plan mit Ist');
+  await firstCell.dblclick();
+  await firstActual.fill('31.02.2026');
+  await firstActual.press('Enter');
+  await expect(firstActual).toHaveAttribute('aria-invalid', 'true');
+  await expect(firstActual).toHaveAccessibleDescription('Gib ein gültiges Datum ein.');
+  expect(writes).toEqual([]);
+  await firstActual.press('Escape');
+  await firstCell.press('1');
+  await expect(firstActual).toBeFocused();
+  await page.keyboard.type('5.04.2026');
+  await expect(firstActual).toHaveValue('15.04.2026');
+  await firstActual.press('Tab');
+  await expect(firstCell).toHaveText('15.4.2026');
+  await firstCell.dblclick();
+  await firstActual.fill('');
+  await firstActual.press('ControlOrMeta+s');
+  await expect(firstCell).toHaveText('4.4.2026');
+  expect(writes).toEqual([
+    { method: 'PATCH', body: { actual_transplanting_date: '2026-04-15', project } },
+    { method: 'PATCH', body: { actual_transplanting_date: null, project } },
+  ]);
+  expect(await apiRequest(page, 'GET', `/planting-plans/${first.id}/`)).toMatchObject({
+    planting_date: '2026-04-04', actual_transplanting_date: null,
+  });
 
-  actualEditor = await openActual();
-  await actualEditor.getByRole('button', { name: 'Datum löschen' }).click();
-  await actualEditor.getByRole('button', { name: 'Speichern' }).click();
-  await expect(actualEditor).toHaveCount(0);
-  await expect(cell(first.id)).toHaveText('4.4.2026');
+  await selectMode('Geplant');
+  await firstCell.dblclick();
+  const plannedInput = firstCell.getByRole('textbox', { name: 'Plan Pflanztermin' });
+  await plannedInput.fill('06.04.2026');
+  await plannedInput.press('Enter');
+  await expect(firstCell).toHaveText('6.4.2026');
+  expect(writes.map(write => write.method)).toEqual(['PATCH', 'PATCH', 'PUT']);
+
   await selectMode('Tatsächlich');
-  await expect(cell(first.id)).toHaveText('');
-  expect(writes).toEqual(['PATCH', 'PATCH']);
-  const saved = await apiRequest<{ planting_date: string; actual_transplanting_date: string | null }>(
-    page, 'GET', `/planting-plans/${first.id}/`,
-  );
-  expect(saved).toMatchObject({ planting_date: '2026-04-04', actual_transplanting_date: null });
+  const secondRow = grid.locator(`[role="row"][data-id="${second.id}"]`);
+  const editDate = async (field: string, label: string, typed: string, shown: string) => {
+    const target = secondRow.locator(`[data-field="${field}"]`);
+    await target.press('Enter');
+    const input = target.getByRole('textbox', { name: label, exact: true });
+    await expect(input).toBeFocused();
+    await input.fill(typed);
+    await input.press('Enter');
+    await expect(target).toHaveText(shown);
+  };
+  await editDate('sowing_date', 'Ist-Anzuchtbeginn', '18.03.2026', '18.3.2026');
+  await editDate('harvest_date', 'Ist-Erntebeginn', '05.06.2026', '5.6.2026');
+  await editDate('harvest_end_date', 'Ist-Ernteende', '12.06.2026', '12.6.2026');
+  expect(await apiRequest(page, 'GET', `/planting-plans/${second.id}/`)).toMatchObject({
+    actual_propagation_start_date: '2026-03-18',
+    harvest_date: '2026-06-08',
+    actual_harvest_start_date: '2026-06-05',
+    recorded_harvest_end_date: '2026-06-12',
+  });
 
-  const harvestCell = grid.locator(`[role="row"][data-id="${second.id}"] [data-field="harvest_date"]`);
-  await harvestCell.click();
-  await harvestCell.press('Enter');
-  await harvestCell.getByRole('button', { name: 'Ist-Erntebeginn' }).click();
-  const harvestEditor = page.getByRole('dialog', { name: 'Ist-Erntebeginn' });
-  await harvestEditor.getByLabel('Ist-Erntebeginn', { exact: true }).fill('2026-06-05');
-  await harvestEditor.getByRole('button', { name: 'Speichern' }).click();
-  await expect(harvestCell).toHaveText('5.6.2026');
-  const harvest = await apiRequest<{ harvest_date: string; actual_harvest_start_date: string }>(
-    page, 'GET', `/planting-plans/${second.id}/`,
-  );
-  expect(harvest).toMatchObject({ harvest_date: '2026-06-08', actual_harvest_start_date: '2026-06-05' });
+  const cultivationType = secondRow.locator('[data-field="cultivation_type"]');
+  await cultivationType.dblclick();
+  await page.getByRole('option', { name: 'Direktsaat', exact: true }).click();
+  await expect(secondRow).toHaveClass(/MuiDataGrid-row--editing/);
+  expect(await apiRequest(page, 'GET', `/planting-plans/${second.id}/`)).toMatchObject({
+    cultivation_type: 'pre_cultivation',
+  });
+  const draftDate = secondRow.locator('[data-field="planting_date"]');
+  await draftDate.dblclick();
+  const draftInput = draftDate.getByRole('textbox', { name: 'Ist-Aussaattermin' });
+  await draftInput.fill('17.04.2026');
+  await draftInput.press('Enter');
+  await expect(draftInput).toHaveCount(0);
+  expect(await apiRequest(page, 'GET', `/planting-plans/${second.id}/`)).toMatchObject({
+    cultivation_type: 'pre_cultivation', actual_sowing_date: '2026-04-17', actual_transplanting_date: '2026-03-20',
+  });
+  await draftDate.press('ControlOrMeta+s');
+  await expect(secondRow).not.toHaveClass(/MuiDataGrid-row--editing/);
+  expect(await apiRequest(page, 'GET', `/planting-plans/${second.id}/`)).toMatchObject({
+    cultivation_type: 'direct_sowing', actual_sowing_date: '2026-04-17', actual_transplanting_date: '2026-03-20',
+  });
+
+  const directCrop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+    name: 'Direktsaat-Demo', cultivation_type: 'direct_sowing', cultivation_types: ['direct_sowing'],
+  });
+  const direct = await apiRequest<{ id: number }>(page, 'POST', '/planting-plans/', {
+    season: season.id, crop: directCrop.id, bed: bed.id, area_usage_sqm: 1,
+    cultivation_type: 'direct_sowing', planting_date: '2026-07-01',
+  });
+  await page.reload();
+  await selectMode('Tatsächlich');
+  const directSowing = grid.locator(`[role="row"][data-id="${direct.id}"] [data-field="sowing_date"]`);
+  await directSowing.press('Enter');
+  const sowingInput = directSowing.getByRole('textbox', { name: 'Ist-Aussaattermin' });
+  await expect(sowingInput).toHaveValue('01.07.2026');
+  await sowingInput.fill('03.07.2026');
+  await sowingInput.press('Enter');
+  await expect(directSowing).toHaveText('3.7.2026');
+  expect(await apiRequest(page, 'GET', `/planting-plans/${direct.id}/`)).toMatchObject({
+    planting_date: '2026-07-01', actual_sowing_date: '2026-07-03',
+  });
 });
 
 test('keeps explanatory header help delayed and shows Add in keyboard help', async ({ page, request }) => {
@@ -253,26 +314,45 @@ test.describe('touch and French actual date labels', () => {
   test('records dates from the mobile edit form and compares them on the detail page', async ({ page, request }, info) => {
     const { first } = await seedPlans(page, request, 'actual-dates-french-mobile');
     await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'fr' });
+    await page.setViewportSize({ width: 1280, height: 1125 });
     await page.goto(table);
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
+    await page.evaluate(() => { document.body.style.zoom = '1.25'; });
     const modes = page.getByRole('button', { name: /^Affichage des dates / });
     await expect(modes.getByText('Réelles ou prévues', { exact: true })).toBeVisible();
+    await modes.tap();
+    await page.getByRole('menuitemradio', { name: 'Réelles', exact: true }).tap();
+    const tabletCell = page.getByRole('grid').locator(`[role="row"][data-id="${first.id}"] [data-field="planting_date"]`);
+    const cellHeight = (await tabletCell.boundingBox())!.height;
+    await tabletCell.tap();
+    const tabletInput = tabletCell.getByRole('textbox', { name: 'Date réelle de plantation', exact: true });
+    await expect(tabletInput).toHaveValue('11.07.2026');
+    expect((await tabletCell.boundingBox())!.height).toBe(cellHeight);
+    const editorFitsCell = await tabletInput.evaluate(input => {
+      const editor = input.closest('.MuiOutlinedInput-root')!.getBoundingClientRect();
+      const cell = input.closest('[role="gridcell"]')!.getBoundingClientRect();
+      return editor.top >= cell.top && editor.bottom <= cell.bottom;
+    });
+    expect(editorFitsCell).toBe(true);
+    await page.screenshot({ path: info.outputPath('actual-date-inline-touch-tablet.png'), animations: 'disabled' });
+    await tabletInput.press('Escape');
+    await page.evaluate(() => { document.body.style.zoom = ''; });
+    await page.setViewportSize({ width: 375, height: 800 });
+    await expect(modes).toHaveCount(0);
     await page.getByRole('button', { name: 'Plus', exact: true }).tap();
     await page.getByRole('menuitem', { name: 'Aide sur cette page' }).tap();
     await expect(page.getByText(/laisse les valeurs manquantes vides.*sinon la date prévue/)).toBeVisible();
     await page.keyboard.press('Escape');
-    await modes.tap();
-    await page.getByRole('menuitemradio', { name: 'Réelles', exact: true }).tap();
     const plan = page.locator(`[data-mobile-card-id="${first.id}"]`);
-    await expect(plan).toContainText('11/07/2026');
+    await expect(plan).toContainText('Date de plantation prévue 04/04/2026');
+    await expect(plan).not.toContainText('11/07/2026');
     await plan.getByRole('button', { name: /Actions pour la série/ }).tap();
     await page.getByRole('menuitem', { name: 'Modifier' }).tap();
     const edit = page.getByRole('dialog');
     await expect(edit.getByRole('button', { name: 'Saisir les dates réelles' })).toHaveCount(0);
     await edit.getByRole('button', { name: 'Annuler' }).tap();
 
-    await plan.getByRole('button', { name: /Actions pour la série/ }).tap();
-    await page.getByRole('menuitem', { name: 'Détails de la série' }).tap();
+    await plan.getByRole('button', { name: /^Terminkohl/ }).tap();
     await expect(page).toHaveURL(new RegExp(`${table}/${first.id}$`));
     await expect(page.getByRole('heading', { name: 'Terminkohl', level: 1 })).toBeVisible();
     const planting = page.getByRole('heading', { name: 'Semis et plantation' }).locator('..');
@@ -289,9 +369,9 @@ test.describe('touch and French actual date labels', () => {
     await page.screenshot({ path: info.outputPath('french-mobile-actual-dates.png'), animations: 'disabled' });
 
     await page.getByRole('button', { name: 'Retour au tableau' }).tap();
-    await expect(plan).toContainText('07/04/2026');
-    await plan.getByRole('button', { name: /Actions pour la série/ }).tap();
-    await page.getByRole('menuitem', { name: 'Détails de la série' }).tap();
+    await expect(plan).toContainText('04/04/2026');
+    await expect(plan).not.toContainText('07/04/2026');
+    await plan.getByRole('button', { name: /^Terminkohl/ }).tap();
 
     await editActual.tap();
     await form.getByRole('button', { name: 'Effacer la date · Date réelle de plantation' }).tap();

@@ -181,12 +181,12 @@ The table and edit endpoints continue to use the active season, and the detail
 page offers an explicit switch to the plan's originating season.
 
 The planting-plans date selector is an outlined toolbar button beside Columns
-on desktop and follows the search and filter controls on mobile. Its menu
+where the table is shown. Its menu
 shows the three date modes. The trigger and menu are both grid view controls,
 so opening and using the menu preserves the active row draft. The existing
 page help explains the modes. The date mode controls display, ordering, filter
 input and clipboard export. Combined shows recorded dates first and falls back
-to the plan. Actual leaves unrecorded dates blank. The sowing column uses the
+to the plan. Actual shows a dash for unrecorded dates. The sowing column uses the
 start of propagation for a home-raised crop. The existing planting-date column
 also represents the start on the bed for direct sowing.
 
@@ -196,13 +196,14 @@ its explanation on keyboard focus and keeps its existing grid tab stop.
 Page help covers the date and area rules. The central keyboard help lists
 the Add planting plan shortcut.
 
-The inline editor labels its planned value and offers a separate actual-date
-choice. When the selected activity has a planned date, the actual-date editor
-shows it for comparison and suggests it if the actual date is empty. Save
-records the input. Cancel, Escape and changing display mode discard the
-suggestion. Actual date saves patch just the selected fields, so a standalone
-actual edit leaves the forecast and planned-task schedule intact. The plan
-detail page compares each activity and can record or clear all five dates.
+The planned mode uses the existing row editor for editable planned dates.
+Actual and combined open the shared inline date control for the actual field.
+An empty actual editor suggests the plan date. Enter confirms that suggestion,
+while Tab leaves it unrecorded unless the input was edited. Escape or a change
+of mode discards the draft. Actual date saves patch the selected field.
+Only a genuine deviation is bold and the comparison tooltip gives the plan date.
+Phone cards keep a labelled planned date. Open the plan from the card to record
+or clear actual dates in its detail page.
 
 For large editable flat tables, `EditableDataGrid` also supports
 `scrollMode="continuous"`. This keeps the free MUI DataGrid's internal page

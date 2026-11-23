@@ -149,8 +149,7 @@ import {
   ACTUAL_DATE_FIELDS, displayedPlanDate, displayedPlanDates, getPlanColumnDates, PLANTING_PLAN_DATE_COLUMNS,
   type PlantingPlanActivity, type PlantingPlanDateColumn, type PlantingPlanDateMode,
 } from "../planting-plans/plantingPlanActualDates";
-import { InlinePlanDateEditor, PlantingPlanDateModeSelect, RecordedPlanDateCell, RecordedPlanDateValue } from "../planting-plans/PlantingPlanDateCells";
-import { PlanDateComparisonText } from "../planting-plans/PlantingPlanExecutionDates";
+import { ActualPlanDateCell, PlantingPlanDateModeSelect, RecordedPlanDateCell } from "../planting-plans/PlantingPlanDateCells";
 import { ReadOnlyRotationWarning, RotationStatusIcon } from "../components/planting-plans/rotation/RotationStatusIcon";
 import { CompanionWarningIcon } from "../components/planting-plans/rotation/CompanionCheckAlert";
 import { SiteSuitabilityHints } from "../components/planting-plans/rotation/SiteSuitabilityHints";
@@ -745,14 +744,15 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   const getColumnDates = useCallback((row: PlantingPlanRow, field: PlantingPlanDateColumn) => (
     getPlanColumnDates(row, field, crops.find(crop => crop.id === row.crop))
   ), [crops]);
+  const displayDateMode = isMobile ? 'planned' : dateMode;
   const getDisplayedDate = useCallback((row: PlantingPlanRow, field: PlantingPlanDateColumn) => (
-    displayedPlanDate(getColumnDates(row, field), dateMode)
-  ), [dateMode, getColumnDates]);
+    displayedPlanDate(getColumnDates(row, field), displayDateMode)
+  ), [displayDateMode, getColumnDates]);
   const dateSortProjection = useMemo(() => ({
-    mode: dateMode,
+    mode: displayDateMode,
     getValue: (row: PlantingPlanRow, field: string) => PLANTING_PLAN_DATE_COLUMNS.includes(field as PlantingPlanDateColumn)
       ? getDisplayedDate(row, field as PlantingPlanDateColumn) : row[field],
-  }), [dateMode, getDisplayedDate]);
+  }), [displayDateMode, getDisplayedDate]);
 
   const applySavedActualDates = useCallback((id: number, dates: Partial<PlantingPlan>) => {
     gridCommandApiRef.current?.applySavedRowValues?.(id, dates);
@@ -763,32 +763,39 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     applySavedActualDates(id, { [field]: data[field], seasonal_harvest: data.seasonal_harvest });
   }, [applySavedActualDates]);
 
-  const renderDateEditor = useCallback((
-    params: GridRenderEditCellParams<PlantingPlanRow>, field: PlantingPlanDateColumn,
-    renderPlanned?: (label: string, leadingAction?: ReactNode, targetLabel?: string) => ReactNode,
-  ) => {
-    const row = params.api.getRowWithUpdatedValues(params.id, params.field) as PlantingPlanRow;
-    const dates = getColumnDates(row, field);
-    const editDates = { ...dates, actual: row[ACTUAL_DATE_FIELDS[dates.activity]] ?? null };
-    return <InlinePlanDateEditor dates={editDates} mode={row.isNew ? 'planned' : dateMode} hasFocus={params.hasFocus}
-      renderPlanned={renderPlanned} onSaveActual={value => saveActualDate(row.id, dates.activity, value)} />;
-  }, [dateMode, getColumnDates, saveActualDate]);
+  const isActualDateEditor = useCallback((row: PlantingPlanRow, field: string) => (
+    displayDateMode !== 'planned' && PLANTING_PLAN_DATE_COLUMNS.includes(field as PlantingPlanDateColumn)
+    && !row.isNew && !row.carried_over
+    && (!row.seasonal_harvest || (field !== 'harvest_date' && field !== 'harvest_end_date'))
+  ), [displayDateMode]);
+
+  const renderDateCell = useCallback((params: GridRenderCellParams<PlantingPlanRow>, renderPlanned: () => ReactNode) => {
+    const field = params.field as PlantingPlanDateColumn;
+    const dates = getColumnDates(params.row, field);
+    const editable = isActualDateEditor(params.row, params.field);
+    const cell = displayDateMode === 'actual' || (displayDateMode === 'combined' && dates.actual)
+      ? <RecordedPlanDateCell dates={dates} hasFocus={params.hasFocus} editable={editable} />
+      : renderPlanned();
+    return editable ? <ActualPlanDateCell key={displayDateMode} params={params}
+      getEditDates={() => params.api.getRowMode(params.id) === 'edit'
+        ? getColumnDates(params.api.getRowWithUpdatedValues(params.id, field) as PlantingPlanRow, field) : dates}
+      onSaveActual={(activity, value) => saveActualDate(params.row.id, activity, value)}>{cell}</ActualPlanDateCell> : cell;
+  }, [displayDateMode, getColumnDates, isActualDateEditor, saveActualDate]);
+
+  const plannedDateLabel = useCallback((row: PlantingPlanRow, field: PlantingPlanDateColumn) => {
+    const { activity } = getColumnDates(row, field);
+    return `${t('plantingPlans:actualDates.modes.planned')} ${t(`plantingPlans:actualDates.activities.${activity}`)}`;
+  }, [getColumnDates, t]);
 
   const renderCalculatedHarvestDateCell = useCallback((
     params: GridRenderCellParams<PlantingPlanRow, Date | null>,
-  ) => {
+  ) => renderDateCell(params, () => {
     const row = params.row as PlantingPlanRow;
     const dates = getColumnDates(row, params.field as PlantingPlanDateColumn);
-    if (dateMode === 'actual' || (dateMode === 'combined' && dates.actual)) {
-      return <RecordedPlanDateCell dates={dates} hasFocus={params.hasFocus} />;
-    }
     if (dates.plannedDates) {
       const labels = dates.plannedDates.map(formatDateForDisplay);
-      const shown = labels.length > 2 ? [labels[0], '…'] : labels;
-      const content = <Stack component="span" sx={{ lineHeight: 1.25, overflow: 'hidden' }}>
-        {(shown.length ? shown : ['—']).map(label => <SearchHighlightedText key={label} text={label} />)}
-      </Stack>;
-      return labels.length > 2
+      const content = <span><SearchHighlightedText text={labels[0] ?? '—'} /></span>;
+      return labels.length > 1
         ? <FullCellTooltip title={labels.join(' · ')} cellHasFocus={params.hasFocus}>{content}</FullCellTooltip>
         : content;
     }
@@ -821,7 +828,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         <SearchHighlightedText text={formatDateForDisplay(value)} />
       </HarvestOverlapDateCell>
     );
-  }, [crops, dateMode, formatDateForDisplay, getColumnDates, getRowHarvestOverlaps, t]);
+  }), [crops, formatDateForDisplay, getColumnDates, getRowHarvestOverlaps, renderDateCell, t]);
 
   // Read as primitive booleans, not the `columnVisibilityModel` object
   // itself, in the columns useMemo's dependency array below: the model's
@@ -1026,9 +1033,10 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         ),
         valueGetter: (_value, row) => toGridDateValue(getRowSowingSchedule(row as PlantingPlanRow)?.sowingDate ?? null),
         isCellEditable: (params: GridCellParams<PlantingPlanRow>) =>
-          (dateMode !== 'planned' && !params.row.isNew) || getRowSowingSchedule(params.row)?.sowingDate != null,
+          getRowSowingSchedule(params.row)?.sowingDate != null,
         cellClassName: (params) => [
-          dateMode !== 'planned' && getColumnDates(params.row, 'sowing_date').actual ? FULL_CELL_TOOLTIP_CELL_CLASS : '',
+          (displayDateMode === 'actual' || (displayDateMode === 'combined' && getColumnDates(params.row, 'sowing_date').actual))
+            ? FULL_CELL_TOOLTIP_CELL_CLASS : '',
           getRowSowingSchedule(params.row as PlantingPlanRow)?.sowingDate
             && !hasTimingWindowFinding(params.row as PlantingPlanRow, "sowing_date")
             && !(params.row as PlantingPlanRow).germination_findings?.length
@@ -1036,11 +1044,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             : FULL_CELL_TOOLTIP_CELL_CLASS,
           getLinkedPartnerHighlightClassName(params),
         ].filter(Boolean).join(" "),
-        renderCell: (params) => {
-          const dates = getColumnDates(params.row, 'sowing_date');
-          if (dateMode === 'actual' || (dateMode === 'combined' && dates.actual)) {
-            return <RecordedPlanDateCell dates={dates} hasFocus={params.hasFocus} />;
-          }
+        renderCell: (params) => renderDateCell(params, () => {
           const schedule = getRowSowingSchedule(params.row as PlantingPlanRow);
           if (!schedule?.sowingDate) {
             const tooltip = schedule?.isPurchasedTransplant
@@ -1062,24 +1066,21 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               <SearchHighlightedText text={typeof params.formattedValue === "string" ? params.formattedValue : ""} />
             </TimingWindowDateCell>
           );
-        },
+        }),
         renderEditCell: (params) => {
           // The grid-level isCellEditable decides editability, so bought-in
           // plants (no own sowing) keep the read-only cell while the row edits.
           const editedRow = params.api.getRowWithUpdatedValues(params.id, params.field) as PlantingPlanRow;
-          if (editedRow.cultivation_type === PURCHASED_TRANSPLANT && (editedRow.isNew || dateMode === 'planned')) {
+          if (editedRow.cultivation_type === PURCHASED_TRANSPLANT) {
             return (
               <FullCellTooltip title={t("plantingPlans:tooltips.noOwnPropagation")} cellHasFocus={params.hasFocus}>
                 <Box component="span" sx={{ px: 1.25 }}>—</Box>
               </FullCellTooltip>
             );
           }
-          const canEditPlanned = editedRow.cultivation_type !== PURCHASED_TRANSPLANT
-            && (editedRow.isNew || getRowSowingSchedule(editedRow)?.sowingDate != null);
-          return renderDateEditor(params, 'sowing_date', canEditPlanned ? (label, leadingAction, targetLabel) => (
-            <DateEditCell {...params} ariaLabel={label} leadingAction={leadingAction} targetLabel={targetLabel}
-              onCommitted={value => applyLinkedDateValue(params, "sowing_date", value)} />
-          ) : undefined);
+          if (!editedRow.isNew && getRowSowingSchedule(editedRow)?.sowingDate == null) return null;
+          return <DateEditCell {...params} ariaLabel={plannedDateLabel(editedRow, 'sowing_date')}
+            onCommitted={value => applyLinkedDateValue(params, "sowing_date", value)} />;
         },
         preProcessEditCellProps: (params) => {
           const row = params.row as PlantingPlanRow;
@@ -1116,34 +1117,29 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         ),
         valueGetter: (value) => toGridDateValue(value),
         cellClassName: (params) => [
-          dateMode !== 'planned' && getColumnDates(params.row, 'planting_date').actual ? FULL_CELL_TOOLTIP_CELL_CLASS : '',
+          (displayDateMode === 'actual' || (displayDateMode === 'combined' && getColumnDates(params.row, 'planting_date').actual))
+            ? FULL_CELL_TOOLTIP_CELL_CLASS : '',
           hasTimingWindowFinding(params.row as PlantingPlanRow, "planting_date") ? FULL_CELL_TOOLTIP_CELL_CLASS : "",
           getLinkedPartnerHighlightClassName(params),
         ].filter(Boolean).join(" "),
-        renderCell: (params) => {
-          const dates = getColumnDates(params.row, 'planting_date');
-          if (dateMode === 'actual' || (dateMode === 'combined' && dates.actual)) {
-            return <RecordedPlanDateCell dates={dates} hasFocus={params.hasFocus} />;
-          }
-          return <TimingWindowDateCell
+        renderCell: (params) => renderDateCell(params, () => (
+          <TimingWindowDateCell
             findings={getRowTimingWindowFindings(params.row as PlantingPlanRow)}
             kinds={TIMING_WINDOW_KINDS_BY_DATE_FIELD.planting_date}
             cellHasFocus={params.hasFocus}
           >
             <SearchHighlightedText text={typeof params.formattedValue === "string" ? params.formattedValue : ""} />
-          </TimingWindowDateCell>;
-        },
-        renderEditCell: (params) => renderDateEditor(params, 'planting_date', (label, leadingAction, targetLabel) => (
+          </TimingWindowDateCell>
+        )),
+        renderEditCell: (params) => (
           <DateEditCell
             {...params}
-            ariaLabel={label}
-            leadingAction={leadingAction}
-            targetLabel={targetLabel}
+            ariaLabel={plannedDateLabel(params.row, 'planting_date')}
             minDate={seasonBounds?.minDate}
             maxDate={seasonBounds?.maxDate}
             onCommitted={(value) => applyLinkedDateValue(params, "planting_date", value)}
           />
-        )),
+        ),
         preProcessEditCellProps: (params) => {
           if (params.hasChanged && !linkedPartnerUpdateInProgressRef.current) {
             lastEditedDateFieldRef.current = "planting_date";
@@ -1164,16 +1160,14 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           headerName: t("plantingPlans:tableHeaders.harvestStartDate"),
           tooltip: t("plantingPlans:tooltips.calculatedHarvestStartDate"),
         }),
-        editable: dateMode !== 'planned',
-        isCellEditable: (params: GridCellParams<PlantingPlanRow>) => !params.row.isNew && !params.row.seasonal_harvest,
+        editable: false,
         type: "date",
         valueGetter: (value, row) => toGridDateValue(row.seasonal_harvest ? getColumnDates(row, 'harvest_date').planned : value),
-        cellClassName: (params) => dateMode !== 'planned' && getColumnDates(params.row, 'harvest_date').actual
+        cellClassName: (params) => displayDateMode === 'actual' || (displayDateMode === 'combined' && getColumnDates(params.row, 'harvest_date').actual)
           ? FULL_CELL_TOOLTIP_CELL_CLASS : params.value
           ? CALCULATED_COLUMN_CELL_CLASS
           : `${CALCULATED_COLUMN_CELL_CLASS} ${FULL_CELL_TOOLTIP_CELL_CLASS}`,
         renderCell: renderCalculatedHarvestDateCell,
-        renderEditCell: dateMode === 'planned' ? undefined : params => renderDateEditor(params, 'harvest_date'),
       },
       {
         field: "harvest_end_date",
@@ -1185,18 +1179,16 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           headerName: t("plantingPlans:tableHeaders.harvestEndDate"),
           tooltip: t("plantingPlans:tooltips.calculatedHarvestEndDate"),
         }),
-        editable: dateMode !== 'planned',
-        isCellEditable: (params: GridCellParams<PlantingPlanRow>) => !params.row.isNew && !params.row.seasonal_harvest,
+        editable: false,
         type: "date",
         valueGetter: (value, row) => toGridDateValue(row.seasonal_harvest ? getColumnDates(row, 'harvest_end_date').planned : value),
-        cellClassName: (params) => dateMode !== 'planned' && getColumnDates(params.row, 'harvest_end_date').actual
+        cellClassName: (params) => displayDateMode === 'actual' || (displayDateMode === 'combined' && getColumnDates(params.row, 'harvest_end_date').actual)
           ? FULL_CELL_TOOLTIP_CELL_CLASS : (
           params.value && getPredecessorOverlaps(getRowHarvestOverlaps(params.row as PlantingPlanRow)).length === 0
             ? CALCULATED_COLUMN_CELL_CLASS
             : `${CALCULATED_COLUMN_CELL_CLASS} ${FULL_CELL_TOOLTIP_CELL_CLASS}`
         ),
         renderCell: renderCalculatedHarvestDateCell,
-        renderEditCell: dateMode === 'planned' ? undefined : params => renderDateEditor(params, 'harvest_end_date'),
       },
       {
         field: "area_m2",
@@ -1365,9 +1357,10 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       getRowHarvestOverlaps,
       renderCalculatedHarvestDateCell,
       getRowSowingSchedule,
-      dateMode,
+      displayDateMode,
       getColumnDates,
-      renderDateEditor,
+      renderDateCell,
+      plannedDateLabel,
       numberLocale,
       saveRotationAcceptance,
       seasonBounds,
@@ -1706,13 +1699,13 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     {
       field: "harvest_date",
       headerName: t("plantingPlans:columns.harvestStartDate"),
-      getValue: (row: PlantingPlanRow) => displayedPlanDates(getColumnDates(row, 'harvest_date'), dateMode)
+      getValue: (row: PlantingPlanRow) => displayedPlanDates(getColumnDates(row, 'harvest_date'), displayDateMode)
         .map(formatDateForDisplay).join(' · ') || '—',
     },
     {
       field: "harvest_end_date",
       headerName: t("plantingPlans:columns.harvestEndDate"),
-      getValue: (row: PlantingPlanRow) => displayedPlanDates(getColumnDates(row, 'harvest_end_date'), dateMode)
+      getValue: (row: PlantingPlanRow) => displayedPlanDates(getColumnDates(row, 'harvest_end_date'), displayDateMode)
         .map(formatDateForDisplay).join(' · ') || '—',
     },
     {
@@ -1739,7 +1732,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     getPlantsCountLabel,
     getDisplayedDate,
     getColumnDates,
-    dateMode,
+    displayDateMode,
     formatDateForDisplay,
     t,
   ]);
@@ -1837,6 +1830,11 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     setMobileActionMenuRow(null);
   };
 
+  const openDetailsForPlan = (planId: number, anchor?: HTMLElement | null): void => {
+    if (onOpenDetails) onOpenDetails(planId, { query: search.query, filters: search.filters, sortKey: search.sortKey }, anchor);
+    else void navigate(plantingPlanDetailPath(planId));
+  };
+
   const getPlanNavigationActions = (row: PlantingPlanRow): PlanMenuNavigationAction[] => {
     const planId = typeof row.id === 'number' && row.id > 0 && !row.isNew ? row.id : null;
     const cropId = crops.some(crop => crop.id === row.crop) ? row.crop : null;
@@ -1847,9 +1845,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         id: 'plan-details', label: t('plantingPlans:details.title'), icon: <ArticleOutlinedIcon fontSize="small" />,
         disabledReason: planId ? undefined : t('plantingPlans:details.saveFirst'),
         activate: anchor => {
-          if (!planId) return;
-          if (onOpenDetails) onOpenDetails(planId, { query: search.query, filters: search.filters, sortKey: search.sortKey }, anchor);
-          else void navigate(plantingPlanDetailPath(planId));
+          if (planId) openDetailsForPlan(planId, anchor);
         },
       },
       {
@@ -2439,7 +2435,6 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               isFilterSheetOpen={isFilterPanelOpen}
               onOpenFilterSheet={() => setIsFilterPanelOpen(true)}
               filterSheetId={filterSheetId}
-              viewControls={<PlantingPlanDateModeSelect mode={dateMode} onChange={setDateMode} />}
             />
             <PlantingPlanMobileListHeader
               search={search}
@@ -2450,16 +2445,16 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               flashingId={flashingPlanId}
               expandedIds={expandedCardIds}
               onToggleExpanded={toggleCardExpanded}
+              onOpenItem={(item, anchor) => { if (item.id > 0 && !item.isNew) openDetailsForPlan(item.id, anchor); }}
               renderPrimary={(item) => <PlantingPlanCropLabel planId={item.id} text={getCropLabel(item)} />}
               renderSecondary={(item) => {
                 const rotationStatus = getTableRotationStatus(item.rotation_status, item.rotation_findings);
                 const dates = getColumnDates(item, 'planting_date');
-                const displayed = displayedPlanDate(dates, dateMode);
                 return (
                   <>
-                    {displayed && <>
-                      {dates.actual && dateMode !== 'planned' ? <RecordedPlanDateValue dates={dates} />
-                        : <SearchHighlightedText text={formatDateForDisplay(displayed)} />}
+                    {dates.planned && <>
+                      {t(`plantingPlans:actualDates.plannedCardLabels.${dates.activity === 'sowing' ? 'sowing' : 'transplanting'}`)}{' '}
+                      <SearchHighlightedText text={formatDateForDisplay(dates.planned)} />
                       {" · "}
                     </>}
                     <SearchHighlightedText text={getBedLabelForRow(item)} />
@@ -2531,25 +2526,13 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.bed")}:</strong> <SearchHighlightedText text={getBedLabelForRow(item)} /></Typography>
                   {PLANTING_PLAN_DATE_COLUMNS.map(field => {
                     const dates = getColumnDates(item, field);
-                    const displayed = displayedPlanDates(dates, dateMode);
+                    const displayed = displayedPlanDates(dates, 'planned');
                     if (!displayed.length) return null;
                     return <Typography key={field} variant="body2">
                       {t(`plantingPlans:actualDates.activities.${dates.activity}`)}{' '}
-                      {dates.actual && dateMode !== 'planned' ? <RecordedPlanDateValue dates={dates} />
-                        : <SearchHighlightedText text={displayed.map(formatDateForDisplay).join(' · ')} />}
+                      <SearchHighlightedText text={displayed.map(formatDateForDisplay).join(' · ')} />
                     </Typography>;
                   })}
-                  {dateMode !== 'planned' && PLANTING_PLAN_DATE_COLUMNS.some(field => getColumnDates(item, field).actual) && (
-                    <Box component="details" sx={{ fontSize: '0.875rem' }}>
-                      <Box component="summary" sx={{ cursor: 'pointer', py: 0.75 }}>{t('plantingPlans:actualDates.title')}</Box>
-                      <Stack spacing={1}>
-                        {PLANTING_PLAN_DATE_COLUMNS
-                          .map(field => getColumnDates(item, field))
-                          .filter((date, index, dates) => date.actual && dates.findIndex(value => value.activity === date.activity) === index)
-                          .map(date => <PlanDateComparisonText key={date.activity} dates={date} />)}
-                      </Stack>
-                    </Box>
-                  )}
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.areaM2")}:</strong> {getDisplayArea(item)}</Typography>
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.plantsCount")}:</strong> {typeof item.plants_count === "number" ? `≈ ${Math.round(item.plants_count)}` : "—"}</Typography>
                   <Typography variant="body2"><strong>{t("common:fields.notes")}:</strong> {item.notes?.trim() ? item.notes : "—"}</Typography>
@@ -2652,6 +2635,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             columnSizing={columnSizing}
             api={plantingPlanGridAPI}
             dialogEditFields={PLANTING_PLAN_DIALOG_EDIT_FIELDS}
+            isStandaloneEditCell={isActualDateEditor}
             focusableReadOnlyFields={FOCUSABLE_SUMMARY_FIELDS}
             commandApiRef={gridCommandApiRef}
             onSelectedRowChange={setSelectedPlan}

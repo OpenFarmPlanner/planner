@@ -1,16 +1,19 @@
-import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Alert, Box, Button, IconButton, Menu, MenuItem, Popover, Stack, Typography } from '@mui/material';
+import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { Box, Button, Menu, MenuItem, Stack, Typography } from '@mui/material';
 import { visuallyHidden } from '@mui/utils';
+import type { GridRenderCellParams } from '@mui/x-data-grid';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
-import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import { extractApiErrorMessage } from '../api/errors';
+import { AppTooltip } from '../components/AppTooltip';
+import { DateEditCell } from '../components/data-grid/DateEditCell';
+import { useDialogEditCellOpenRequest } from '../components/data-grid/DialogEditCellContext';
 import { FullCellTooltip } from '../components/data-grid/FullCellTooltip';
+import { parseGermanDateText, toGridDateValue, toIsoDateString } from '../components/data-grid/dateEditCellUtils';
 import { useTranslation } from '../i18n';
 import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
-import { ActualPlanDateField, PlanDateComparisonText } from './PlantingPlanExecutionDates';
-import { planDateDeviation, planDateDeviationLabel, type PlantingPlanDateComparison, type PlantingPlanDateMode } from './plantingPlanActualDates';
+import { PlanDateComparisonText } from './PlantingPlanExecutionDates';
+import { planDateDeviation, type PlantingPlanActivity, type PlantingPlanDateComparison, type PlantingPlanDateMode } from './plantingPlanActualDates';
 
 const DATE_MODES: PlantingPlanDateMode[] = ['planned', 'actual', 'combined'];
 
@@ -46,138 +49,130 @@ export function PlantingPlanDateModeSelect({ mode, onChange }: {
   </>;
 }
 
-export function RecordedPlanDateValue({ dates }: { dates: PlantingPlanDateComparison }) {
-  const { i18n } = useTranslation('plantingPlans');
-  if (!dates.actual) return null;
-  const deviation = planDateDeviation(dates);
-  return (
-    <Stack component="span" direction="row" spacing={0.5} sx={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
-      <Typography component="span" variant="body2" sx={{ fontWeight: 700 }}>
-        {formatSeasonDate(dates.actual, resolveSeasonDateLocale(i18n))}
-      </Typography>
-      {deviation === null ? <EventAvailableOutlinedIcon color="action" sx={{ fontSize: 16 }} />
-        : deviation === 0 ? <CheckCircleOutlineIcon color="success" sx={{ fontSize: 16 }} />
-          : <WarningAmberIcon color="warning" sx={{ fontSize: 16 }} />}
-    </Stack>
-  );
-}
-
-export function RecordedPlanDateCell({ dates, hasFocus }: { dates: PlantingPlanDateComparison; hasFocus: boolean }) {
-  if (!dates.actual) return null;
-  return (
-    <FullCellTooltip title={<PlanDateComparisonText dates={dates} />} cellHasFocus={hasFocus} describeChild>
-      <RecordedPlanDateValue dates={dates} />
-    </FullCellTooltip>
-  );
-}
-
-interface InlinePlanDateEditorProps {
+export function RecordedPlanDateCell({ dates, hasFocus, editable = false }: {
   dates: PlantingPlanDateComparison;
-  mode: PlantingPlanDateMode;
   hasFocus: boolean;
-  renderPlanned?: (ariaLabel: string, leadingAction?: ReactNode, targetLabel?: string) => ReactNode;
-  onSaveActual: (value: string | null) => Promise<void>;
+  editable?: boolean;
+}) {
+  const { i18n, t } = useTranslation('plantingPlans');
+  const deviation = planDateDeviation(dates);
+  const title = dates.planned || dates.actual || editable ? <Stack spacing={0.5}>
+    {(dates.planned || dates.actual) && <PlanDateComparisonText dates={dates} />}
+    {editable && !dates.actual && <Typography component="span" variant="inherit">{t('actualDates.edit')}</Typography>}
+  </Stack> : '';
+  return <FullCellTooltip title={title} cellHasFocus={hasFocus} describeChild>
+      <Typography component="span" variant="body2" sx={{ fontWeight: deviation ? 700 : undefined }}>
+        {dates.actual ? formatSeasonDate(dates.actual, resolveSeasonDateLocale(i18n)) : '—'}
+      </Typography>
+  </FullCellTooltip>;
 }
 
-/** Keeps the existing planned cell editor and offers an explicit actual-date choice. */
-export function InlinePlanDateEditor({ dates, mode, hasFocus, renderPlanned, onSaveActual }: InlinePlanDateEditorProps) {
-  const { t, i18n } = useTranslation(['plantingPlans', 'common']);
-  const [editor, setEditor] = useState<{ anchor: HTMLElement; mode: PlantingPlanDateMode } | null>(null);
-  const [value, setValue] = useState('');
+interface ActualPlanDateCellProps {
+  params: GridRenderCellParams;
+  children: ReactNode;
+  getEditDates: () => PlantingPlanDateComparison;
+  onSaveActual: (activity: PlantingPlanActivity, value: string | null) => Promise<void>;
+}
+
+export function ActualPlanDateCell({ params, children, getEditDates, onSaveActual }: ActualPlanDateCellProps) {
+  const { t } = useTranslation(['plantingPlans', 'common']);
+  const [editor, setEditor] = useState<{ dates: PlantingPlanDateComparison; initialText?: string } | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saveFailed, setSaveFailed] = useState(false);
-  const actualActionRef = useRef<HTMLButtonElement>(null);
-  const actualLabel = t(`actualDates.actualLabels.${dates.activity}`);
-  const activityLabel = t(`actualDates.activities.${dates.activity}`);
-  const plannedLabel = `${t('actualDates.modes.planned')} ${activityLabel}`;
-  const showPlanned = mode !== 'actual' && Boolean(renderPlanned);
-  const locale = resolveSeasonDateLocale(i18n);
-  const draftDate = value || null;
-  const anchor = editor?.mode === mode ? editor.anchor : null;
-  if (editor && !anchor) setEditor(null);
+  const [error, setError] = useState('');
+  const errorId = useId();
+  const edited = useRef(false);
+  const pending = useRef(false);
+  const closing = useRef(false);
+  const { api, id, field, hasFocus } = params;
 
-  useEffect(() => {
-    if (hasFocus && !showPlanned) actualActionRef.current?.focus({ preventScroll: true });
-  }, [hasFocus, showPlanned]);
+  useDialogEditCellOpenRequest(id, field, initialKey => {
+    api.setCellFocus(id, field);
+    if (editor) return;
+    const initialText = initialKey && /^\d$/.test(initialKey) ? initialKey : undefined;
+    closing.current = false;
+    edited.current = initialText !== undefined;
+    setError('');
+    setEditor({ dates: getEditDates(), initialText });
+  });
 
-  const open = (target: HTMLElement) => {
-    setValue(dates.actual ?? dates.planned ?? '');
-    setSaveFailed(false);
-    setEditor({ anchor: target, mode });
+  if (!editor) return children;
+  const editDates = editor.dates;
+
+  const focusCell = () => {
+    api.setCellFocus(id, field);
+    window.requestAnimationFrame(() => api.getCellElement(id, field)?.focus({ preventScroll: true }));
   };
-  const close = () => { if (!saving) setEditor(null); };
-  const save = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (saving) return;
+  const close = (returnFocus: boolean) => {
+    closing.current = true;
+    setEditor(null);
+    if (returnFocus) focusCell();
+  };
+  const save = async (value: string | null, returnFocus: boolean) => {
+    if (closing.current || pending.current) return;
+    if (value === editDates.actual) {
+      close(returnFocus);
+      return;
+    }
+    pending.current = true;
     setSaving(true);
-    setSaveFailed(false);
+    setError('');
     try {
-      await onSaveActual(draftDate);
-      setEditor(null);
-    } catch {
-      setSaveFailed(true);
+      await onSaveActual(editDates.activity, value);
+      close(returnFocus);
+    } catch (failure) {
+      setError(extractApiErrorMessage(failure, t, t('actualDates.saveError')));
+      api.setCellFocus(id, field);
     } finally {
+      pending.current = false;
       setSaving(false);
     }
   };
 
-  if (mode === 'planned') return renderPlanned?.(plannedLabel) ?? null;
-  return (
-    <>
-      {showPlanned ? renderPlanned?.(plannedLabel, (
-        <IconButton size="small" type="button" tabIndex={hasFocus ? 0 : -1}
-          aria-label={`${t('actualDates.editTarget')} · ${activityLabel}`}
-          aria-haspopup="dialog" aria-expanded={Boolean(anchor)}
-          onClick={event => { event.stopPropagation(); open(event.currentTarget); }}
-          sx={{ px: 0.25 }}>
-          <ArrowDropDownIcon sx={{ fontSize: 18 }} />
-        </IconButton>
-      ), t('actualDates.modes.planned')) : (
-        <Button type="button" fullWidth ref={actualActionRef} tabIndex={hasFocus ? 0 : -1}
-          aria-label={actualLabel} aria-haspopup="dialog" aria-expanded={Boolean(anchor)}
-          onClick={event => { event.stopPropagation(); open(event.currentTarget); }}
-          sx={{ justifyContent: 'flex-start', gap: 0.5, px: 0.75, whiteSpace: 'nowrap', textTransform: 'none' }}>
-          {dates.actual ? formatSeasonDate(dates.actual, locale) : t('actualDates.modes.actual')}
-          <ArrowDropDownIcon fontSize="small" />
-        </Button>
-      )}
-      <Popover open={Boolean(anchor)} anchorEl={anchor} onClose={close}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-        slotProps={{ paper: { role: 'dialog', 'aria-label': actualLabel, sx: { maxWidth: 'calc(100vw - 24px)' } } }}>
-        <Box component="form" data-grid-view-control onSubmit={event => { void save(event); }}
-          onKeyDown={event => {
-            event.stopPropagation();
-            if (event.key === 'Escape' && !event.nativeEvent.isComposing) {
-              event.preventDefault();
-              close();
-            }
-          }}>
-          <Stack spacing={1.25} sx={{ p: 1.5, width: 296, maxWidth: '100%', boxSizing: 'border-box' }}>
-            {showPlanned && <Stack direction="row" spacing={0.75}>
-              <Button type="button" variant="outlined" onClick={close} disabled={saving}>{t('actualDates.modes.planned')}</Button>
-              <Button type="button" variant="contained" aria-pressed="true" tabIndex={-1}>
-                {t('actualDates.modes.actual')}
-              </Button>
-            </Stack>}
-            {dates.planned && <Typography variant="body2" color="text.secondary">
-              <Box component="span" sx={{ fontWeight: 600 }}>{t('actualDates.modes.planned')}</Box>
-              {' '}{formatSeasonDate(dates.planned, locale)}
-            </Typography>}
-            <ActualPlanDateField autoFocus label={actualLabel} value={value} disabled={saving} onChange={setValue}
-              helperText={planDateDeviationLabel({ ...dates, actual: draftDate }, t)} />
-            {saveFailed && <Alert severity="error">{t('actualDates.saveError')}</Alert>}
-            <Stack direction="row" sx={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 0.5 }}>
-              <Button size="small" onClick={() => setValue('')} disabled={!value || saving}>{t('actualDates.clear')}</Button>
-              <Stack direction="row" spacing={0.5} sx={{ ml: 'auto' }}>
-                <Button size="small" onClick={close} disabled={saving}>{t('common:actions.cancel')}</Button>
-                <Button size="small" type="submit" variant="contained" disabled={saving || draftDate === dates.actual}>
-                  {t('common:actions.save')}
-                </Button>
-              </Stack>
-            </Stack>
-          </Stack>
-        </Box>
-      </Popover>
-    </>
-  );
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>, text: string) => {
+    if (event.nativeEvent.isComposing) return;
+    const tab = event.key === 'Tab';
+    const cancel = event.key === 'Escape';
+    const saveShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's';
+    if (!tab && !cancel && event.key !== 'Enter' && !saveShortcut) return;
+
+    const value = toIsoDateString(parseGermanDateText(text));
+    const invalid = Boolean(text.trim() && !value);
+    if (!tab || invalid || pending.current) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    if (pending.current) return;
+    if (cancel || (tab && !edited.current)) {
+      close(cancel);
+    } else if (invalid) {
+      setError(t('actualDates.invalidDate'));
+    } else {
+      void save(value, !tab);
+    }
+  };
+
+  return <AppTooltip title={error} open={hasFocus && Boolean(error)}>
+    <Box data-grid-dedicated-editor sx={{ width: '100%', minWidth: 0 }}>
+      <DateEditCell {...params} value={toGridDateValue(editDates.actual ?? editDates.planned)}
+        ariaLabel={t(`actualDates.actualLabels.${editDates.activity}`)}
+        standalone={{
+          initialText: editor.initialText,
+          onChange: () => { edited.current = true; setError(''); },
+          onKeyDown: handleKeyDown,
+          onBlur: (event, text) => {
+            const target = event.relatedTarget;
+            if (pending.current || !target?.closest('[role="gridcell"]')
+              || target.closest('[data-grid-dedicated-editor], [data-grid-view-control]')) return;
+            const value = toIsoDateString(parseGermanDateText(text));
+            if (!edited.current) close(false);
+            else if (text.trim() && !value) setError(t('actualDates.invalidDate'));
+            else void save(value, false);
+          },
+          onPick: (date) => { void save(toIsoDateString(date), true); },
+          errorId: error ? errorId : undefined,
+          readOnly: saving,
+        }} />
+      {error && <Box component="span" id={errorId} role="alert" sx={visuallyHidden}>{error}</Box>}
+    </Box>
+  </AppTooltip>;
 }

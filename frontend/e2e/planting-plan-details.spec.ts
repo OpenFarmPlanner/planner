@@ -196,7 +196,7 @@ test('desktop details preserve the table, restoring row focus on Escape, Close a
   await expect(cell).not.toBeFocused();
   await cell.dblclick();
   await expect(row).toHaveClass(/MuiDataGrid-row--editing/);
-  await row.locator('[data-field="planting_date"]').getByRole('textbox').press('Escape');
+  await page.keyboard.press('Escape');
   await expect(row).not.toHaveClass(/MuiDataGrid-row--editing/);
 
   const menuButton = row.getByRole('button', { name: 'Aktionen', exact: true });
@@ -399,6 +399,8 @@ test('opening details keeps an edit visible if the grid cannot save it', async (
   await page.setViewportSize({ width: 1440, height: 900 });
   const { noBed, plan } = await seedPlans(page, request, 'plan-details-failed-grid-save');
   await page.goto(table);
+  await page.getByRole('button', { name: /^Terminansicht / }).click();
+  await page.getByRole('menuitemradio', { name: 'Geplant', exact: true }).click();
   const row = page.locator(`[role="row"][data-id="${plan.id}"]`);
   const plantingCell = row.locator('[data-field="planting_date"]');
   await plantingCell.dblclick();

@@ -511,6 +511,11 @@
     }
   },
   "actualDates": {
+    "plannedCardLabels": {
+      "sowing": "Fecha prevista de siembra",
+      "transplanting": "Fecha prevista de trasplante"
+    },
+    "invalidDate": "Introduce una fecha válida.",
     "clear": "Borrar fecha",
     "title": "Fechas previstas y reales",
     "modeLabel": "Vista de fechas",
@@ -530,7 +535,6 @@
     "late_one": "{{count}} día después",
     "late_other": "{{count}} días después",
     "late_many": "{{count}} días después",
-    "editTarget": "Elegir qué fecha editar",
     "modes": {
       "planned": "Previsto",
       "actual": "Realizado"
