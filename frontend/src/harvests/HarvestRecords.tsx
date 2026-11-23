@@ -20,12 +20,13 @@ interface HarvestRecordsProps {
   plan?: HarvestPlanContext;
   planId?: number;
   planTotals?: PlanActualHarvest | null;
+  recordSeasonId?: number;
   onChanged?: () => void;
 }
 
 type LoadResult = { rows: HarvestRecord[]; totals?: HarvestTotals; scope: string } | { error: true; scope: string };
 
-export function HarvestRecords({ scope, initialDate, plan, planId, planTotals, onChanged }: HarvestRecordsProps) {
+export function HarvestRecords({ scope, initialDate, plan, planId, planTotals, recordSeasonId, onChanged }: HarvestRecordsProps) {
   const { t, i18n } = useTranslation(['harvests', 'common']);
   const locale = resolveSeasonDateLocale(i18n);
   const deleteTitle = useId();
@@ -45,7 +46,7 @@ export function HarvestRecords({ scope, initialDate, plan, planId, planTotals, o
   useEffect(() => {
     const controller = new AbortController();
     void Promise.all([
-      harvestAPI.list(planId, controller.signal),
+      harvestAPI.list(planId, controller.signal, recordSeasonId),
       planId === undefined ? harvestAPI.summary(controller.signal) : undefined,
     ]).then(([records, summary]) => {
       if (!controller.signal.aborted) setResult({ rows: records.results, totals: summary?.data, scope: resultKey });
@@ -53,7 +54,7 @@ export function HarvestRecords({ scope, initialDate, plan, planId, planTotals, o
       if (!controller.signal.aborted) setResult({ error: true, scope: resultKey });
     });
     return () => controller.abort();
-  }, [planId, resultKey]);
+  }, [planId, recordSeasonId, resultKey]);
 
   const refresh = () => {
     setRevision(value => value + 1);

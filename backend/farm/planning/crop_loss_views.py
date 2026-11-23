@@ -8,6 +8,8 @@ from farm.models import CropLoss, EntityRevision, PlantingPlan, Season
 from farm.models.crop_losses import CropLossType, CropLossUnit
 from farm.project_context import resolve_season_id_from_request
 
+from .season_context import resolve_record_season
+
 MAX_PLANTING_PLAN_ID = 2**63 - 1
 
 
@@ -100,7 +102,11 @@ class CropLossViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelVi
                 ).run_validation(plan)
             except serializers.ValidationError as error:
                 raise serializers.ValidationError({"planting_plan": error.detail}) from error
-            return queryset.filter(planting_plan_id=plan_id)
+            queryset = queryset.filter(planting_plan_id=plan_id)
+            season = resolve_record_season(self.request)
+            if season is not None:
+                queryset = queryset.filter(date__range=(season.start_date, season.end_date))
+            return queryset
 
         season_id = resolve_season_id_from_request(self.request)
         if season_id is None:

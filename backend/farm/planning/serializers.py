@@ -37,6 +37,7 @@ from farm.services.seasonal_harvest import (
     HarvestOccurrencesPage,
     SeasonalHarvestPayload,
     recurring_harvest_schedule,
+    recurring_plan_visible_in_season,
     seasonal_harvest_payload,
 )
 from farm.services.site_suitability import check_site_suitability
@@ -682,8 +683,19 @@ class PlantingPlanDetailSerializer(PlantingPlanSerializer):
         source='bed.field.location.name', read_only=True, allow_null=True,
     )
     crop_available = serializers.SerializerMethodField()
+    bed_area_sqm = serializers.SerializerMethodField()
     previous_season_reference = serializers.SerializerMethodField()
     harvest_windows_by_year = serializers.SerializerMethodField()
+    observed_first_harvest_date = serializers.SerializerMethodField()
+
+    def get_bed_area_sqm(self, obj: PlantingPlan) -> float | None:
+        return float(obj.bed.area_sqm) if obj.bed and obj.bed.area_sqm is not None else None
+
+    def get_observed_first_harvest_date(self, obj: PlantingPlan) -> date | None:
+        if self.context.get('harvest_season') is None:
+            return None
+        allocations = getattr(obj, 'visible_harvest_allocations', ())
+        return min((row.harvest.date for row in allocations), default=None)
 
     def get_harvest_windows_by_year(
         self, obj: PlantingPlan,
@@ -809,7 +821,7 @@ class TaskSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'season': 'An active season is required.'})
         if (plan is not None
                 and (self.instance is None or {'season', 'planting_plan'} & attrs.keys())
-                and plan.season_id != getattr(season, 'id', None)):
+                and not self._plan_matches_task_season(plan, season)):
             raise serializers.ValidationError({'season': 'Must match the planting plan season.'})
         crop = attrs.get('crop', getattr(self.instance, 'crop', None))
         if (plan is not None and crop is not None
@@ -823,6 +835,19 @@ class TaskSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 'assigned_to': 'Must be a member of the active project.',
             })
+
+    @staticmethod
+    def _plan_matches_task_season(plan: PlantingPlan, season: Season | None) -> bool:
+        if season is None:
+            return False
+        if plan.season_id == season.pk:
+            return True
+        if plan.bed_id is None or plan.planting_date is None or plan.occupancy_end_date is None:
+            return False
+        if plan.planting_date < season.start_date <= plan.occupancy_end_date:
+            return True
+        schedule = recurring_harvest_schedule(plan)
+        return schedule is not None and recurring_plan_visible_in_season(plan, season, schedule)
 
     def _validate_task_field(self, attrs: dict[str, Any]) -> None:
         if self.instance is not None and 'field' not in attrs and 'planting_plan' not in attrs:

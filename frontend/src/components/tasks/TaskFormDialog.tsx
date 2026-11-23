@@ -14,8 +14,8 @@ import { taskDisplayTitle } from './taskTitles';
 import { BOARD_STATUSES } from './taskBoard';
 
 type TaskContext = {
-  planContext: { plan: PlantingPlanDetail; projectId: number; seasonLabel: string };
-  task: null;
+  planContext: { plan: PlantingPlanDetail; projectId: number; seasonId: number; seasonLabel: string };
+  task: Task | null;
 } | {
   planContext?: never;
   task: Task | null;
@@ -47,7 +47,7 @@ export default function TaskFormDialog(props: Props) {
   const locale = resolveLocaleFromLanguage(i18n.resolvedLanguage);
   const initialPlan = planContext ? planContext.plan : props.initialPlan;
   const initialCrop = planContext && !planContext.plan.crop_available ? null : initialPlan?.crop ?? null;
-  const seasonId = planContext ? planContext.plan.season ?? undefined : props.seasonId;
+  const seasonId = planContext ? planContext.seasonId : props.seasonId;
   const projectId = planContext?.projectId;
   const [projectMembers, setProjectMembers] = useState<ProjectMemberPayload[] | null>();
   const [memberAttempt, setMemberAttempt] = useState(0);
@@ -89,7 +89,7 @@ export default function TaskFormDialog(props: Props) {
     const payload = { ...draft, title: draft.title.trim() };
     // A linked plan owns the location: storing its field would go stale when the bed moves.
     if (payload.planting_plan !== null) payload.field = null;
-    if (task?.source_key) {
+    if (task?.source_key || (task && planContext)) {
       delete payload.planting_plan;
       delete payload.crop;
       delete payload.season;

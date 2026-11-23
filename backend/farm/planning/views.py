@@ -77,6 +77,7 @@ from farm.services.yield_comparison import (
     comparison_filter_options,
 )
 
+from .season_context import resolve_record_season
 from .serializers import (
     HarvestDateRangeSerializer,
     PlantingPlanDetailSerializer,
@@ -468,9 +469,13 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         across_seasons = (
             self.action == 'retrieve' and self.request.query_params.get('across_seasons') == 'true'
         )
+        record_season = resolve_record_season(self.request) if across_seasons else None
+        season_id = record_season.pk if record_season is not None else season_id
         if season_id is not None:
             if self.action in {'list', 'retrieve'}:
-                queryset = self._read_season_plans(queryset, season_id, across_seasons)
+                queryset = self._read_season_plans(
+                    queryset, season_id, across_seasons, record_season=record_season,
+                )
             else:
                 queryset = queryset.filter(season_id=season_id)
         elif across_seasons:
@@ -488,7 +493,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
                 project=self.request.active_project,
             ).select_related('harvest').only(
                 'planting_plan_id', 'quantity', 'harvest__crop_id',
-                'harvest__unit', 'harvest__grams_per_unit',
+                'harvest__unit', 'harvest__grams_per_unit', 'harvest__date',
             )
             season = getattr(self, '_harvest_season', None)
             if season is not None:
@@ -516,8 +521,9 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
 
     def _read_season_plans(
         self, queryset: QuerySet[PlantingPlan], season_id: int, across_seasons: bool,
+        *, record_season: Season | None = None,
     ) -> QuerySet[PlantingPlan]:
-        active_season = Season.objects.filter(
+        active_season = record_season or Season.objects.filter(
             pk=season_id, project=self.request.active_project,
         ).first()
         queryset = queryset.filter(season__deleted_at__isnull=True)
@@ -1038,7 +1044,13 @@ class TaskViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSe
         filters = TaskFilterSerializer(data=self.request.query_params)
         filters.is_valid(raise_exception=True)
         across_seasons = filters.validated_data.pop('across_seasons', False)
-        if self.action == 'list' and across_seasons and 'planting_plan' in filters.validated_data:
+        record_season = resolve_record_season(self.request)
+        if record_season is not None:
+            queryset = queryset.filter(
+                Q(due_date__range=(record_season.start_date, record_season.end_date))
+                | Q(due_date__isnull=True, season_id=record_season.pk),
+            )
+        elif self.action == 'list' and across_seasons and 'planting_plan' in filters.validated_data:
             queryset = queryset.filter(
                 planting_plan__project=self.request.active_project,
                 planting_plan__season__deleted_at__isnull=True,

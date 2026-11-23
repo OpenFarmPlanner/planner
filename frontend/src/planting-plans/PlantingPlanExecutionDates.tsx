@@ -1,16 +1,16 @@
-import { useId, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { Alert, Box, Button, IconButton, InputAdornment, Stack, TextField, Typography } from '@mui/material';
 import ClearIcon from '@mui/icons-material/Clear';
 import { plantingPlanAPI } from '../api/api';
-import type { PlantingPlan, PlantingPlanActualDates } from '../api/types';
+import type { PlantingPlan, PlantingPlanActualDates, Season } from '../api/types';
 import { DetailSection } from '../components/layout/DetailPrimitives';
 import { useTranslation } from '../i18n';
 import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import {
-  ACTUAL_DATE_FIELDS, getPlanActivityDates, planDateDeviationLabel, type PlantingPlanDateComparison,
+  ACTUAL_DATE_FIELDS, getDetailHarvestDates, getPlanActivityDates, planDateDeviationLabel, type PlantingPlanDateComparison,
 } from './plantingPlanActualDates';
 
-export function ActualPlanDateField({ label, value, onChange, disabled, autoFocus, allowClear, helperText }: {
+export function ActualPlanDateField({ label, value, onChange, disabled, autoFocus, allowClear, helperText, min, max }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -18,6 +18,8 @@ export function ActualPlanDateField({ label, value, onChange, disabled, autoFocu
   autoFocus?: boolean;
   allowClear?: boolean;
   helperText?: string;
+  min?: string;
+  max?: string;
 }) {
   const { t } = useTranslation('plantingPlans');
   const id = useId();
@@ -27,6 +29,7 @@ export function ActualPlanDateField({ label, value, onChange, disabled, autoFocu
       <TextField id={id} type="date" size="small" value={value} disabled={disabled} autoFocus={autoFocus}
         onChange={event => onChange(event.target.value)} helperText={helperText}
         slotProps={{
+          htmlInput: { min, max },
           formHelperText: helperText ? { 'aria-live': 'polite' } : undefined,
           input: allowClear && value ? { endAdornment: <InputAdornment position="end">
             <IconButton type="button" size="small" disabled={disabled} onClick={() => onChange('')}
@@ -37,7 +40,10 @@ export function ActualPlanDateField({ label, value, onChange, disabled, autoFocu
   );
 }
 
-export function PlanDateComparisonText({ dates }: { dates: PlantingPlanDateComparison }) {
+export function PlanDateComparisonText({ dates, omitMissing = false }: {
+  dates: PlantingPlanDateComparison;
+  omitMissing?: boolean;
+}) {
   const { t, i18n } = useTranslation('plantingPlans');
   const locale = resolveSeasonDateLocale(i18n);
   const dateLabel = (value: string | null) => value ? formatSeasonDate(value, locale) : t('actualDates.missing');
@@ -49,12 +55,12 @@ export function PlanDateComparisonText({ dates }: { dates: PlantingPlanDateCompa
       <Typography component="span" variant="inherit" sx={{ fontWeight: 600 }}>
         {t(`actualDates.activities.${dates.activity}`)}
       </Typography>
-      <Typography component="span" variant="inherit">{t('actualDates.modes.planned')}{' '}
+      {(!omitMissing || dates.planned) && <Typography component="span" variant="inherit">{t('actualDates.modes.planned')}{' '}
         <Box component="span">{plannedLabel}</Box>
-      </Typography>
-      <Typography component="span" variant="inherit">{t('actualDates.modes.actual')}{' '}
+      </Typography>}
+      {(!omitMissing || dates.actual) && <Typography component="span" variant="inherit">{t('actualDates.modes.actual')}{' '}
         <Box component="span">{dateLabel(dates.actual)}</Box>
-      </Typography>
+      </Typography>}
       {difference && <Typography component="span" variant="inherit">{difference}</Typography>}
     </Stack>
   );
@@ -62,24 +68,43 @@ export function PlanDateComparisonText({ dates }: { dates: PlantingPlanDateCompa
 
 interface PlantingPlanExecutionDatesProps {
   plan: PlantingPlan & { id: number };
+  group: 'planting' | 'harvest';
+  season?: Season;
+  observedFirstHarvest?: string | null;
   editable: boolean;
   onSaved: (dates: PlantingPlanActualDates & Pick<PlantingPlan, 'seasonal_harvest'>) => void;
   onDirtyChange: (dirty: boolean) => void;
 }
 
-export function PlantingPlanExecutionDates({ plan, editable, onSaved, onDirtyChange }: PlantingPlanExecutionDatesProps) {
+export function PlantingPlanExecutionDates({
+  plan, group, season, observedFirstHarvest, editable, onSaved, onDirtyChange,
+}: PlantingPlanExecutionDatesProps) {
   const { t, i18n } = useTranslation(['plantingPlans', 'common']);
   const [draft, setDraft] = useState<PlantingPlanActualDates | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
+  const editButton = useRef<HTMLButtonElement>(null);
+  const restoreFocus = useRef(false);
   const locale = resolveSeasonDateLocale(i18n);
-  const dates = getPlanActivityDates(plan);
+  const isHarvest = group === 'harvest';
+  const dates = isHarvest ? getDetailHarvestDates(plan, season)
+    : getPlanActivityDates(plan).filter(({ activity }) => activity !== 'harvestStart' && activity !== 'harvestEnd');
   const visibleDates = dates.filter(date => date.planned !== null || date.actual !== null);
+  const firstEditActivity = (visibleDates[0] ?? dates[0]).activity;
+  const showObserved = isHarvest && observedFirstHarvest && !dates.find(date => date.activity === 'harvestStart')?.actual;
   const hasChanges = (values: PlantingPlanActualDates) => Object.entries(values).some(([field, value]) =>
     value !== (plan[field as keyof PlantingPlanActualDates] ?? null),
   );
 
+  useEffect(() => {
+    if (draft === null && restoreFocus.current) {
+      restoreFocus.current = false;
+      editButton.current?.focus();
+    }
+  }, [draft]);
+
   const close = () => {
+    restoreFocus.current = true;
     setDraft(null);
     setSaveFailed(false);
     onDirtyChange(false);
@@ -117,11 +142,12 @@ export function PlantingPlanExecutionDates({ plan, editable, onSaved, onDirtyCha
     }
   };
 
-  if (!editable && !visibleDates.length) return null;
+  if (!isHarvest && !editable && !visibleDates.length) return null;
   return (
-    <DetailSection title={t('actualDates.title')} outlined>
+    <DetailSection title={t(isHarvest ? 'details.harvestDates' : 'details.plantingDates')} outlined={!isHarvest}>
       {draft ? (
-        <Stack component="form" spacing={1.5} onSubmit={event => { void save(event); }}>
+        <Stack component="form" spacing={1.5} onSubmit={event => { void save(event); }}
+          onKeyDown={event => { if (event.key === 'Escape' && !saving) { event.stopPropagation(); close(); } }}>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 1.5 }}>
             {dates.map(date => {
               const field = ACTUAL_DATE_FIELDS[date.activity];
@@ -129,10 +155,13 @@ export function PlantingPlanExecutionDates({ plan, editable, onSaved, onDirtyCha
                 <ActualPlanDateField
                   key={field}
                   label={t(`actualDates.actualLabels.${date.activity}`)}
-                  value={(field in draft ? draft[field] : plan[field]) ?? ''}
+                  value={(field in draft ? draft[field] : date.actual) ?? ''}
                   onChange={value => updateDate(field, value || null)}
                   disabled={saving}
+                  autoFocus={date.activity === firstEditActivity}
                   allowClear
+                  min={isHarvest ? season?.start_date : undefined}
+                  max={isHarvest ? season?.end_date : undefined}
                   helperText={date.planned
                     ? `${t('actualDates.modes.planned')} ${formatSeasonDate(date.planned, locale)}` : undefined}
                 />
@@ -149,13 +178,19 @@ export function PlantingPlanExecutionDates({ plan, editable, onSaved, onDirtyCha
         <Stack spacing={1.25} sx={{ alignItems: 'flex-start' }}>
           {visibleDates.length > 0 && <Box component="ul" sx={{
             display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' },
-            gap: 1.5, pl: 0, m: 0, listStyle: 'none', width: '100%',
+            gap: { xs: 1, sm: 1.5 }, pl: 0, m: 0, listStyle: 'none', width: '100%',
           }}>
             {visibleDates.map(date => (
-              <Box key={date.activity} component="li"><PlanDateComparisonText dates={date} /></Box>
+              <Box key={date.activity} component="li"><PlanDateComparisonText dates={date} omitMissing /></Box>
             ))}
           </Box>}
-          {editable && <Button onClick={() => setDraft({})}>{t('actualDates.edit')}</Button>}
+          {isHarvest && !dates.some(date => date.planned) && (
+            <Typography variant="body2" color="text.secondary">{t('details.noPlannedHarvest')}</Typography>
+          )}
+          {showObserved && <Typography variant="body2">
+            {t('details.observedFirstHarvest', { date: formatSeasonDate(observedFirstHarvest, locale) })}
+          </Typography>}
+          {editable && <Button ref={editButton} onClick={() => setDraft({})}>{t('actualDates.edit')}</Button>}
         </Stack>
       )}
     </DetailSection>

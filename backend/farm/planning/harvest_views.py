@@ -15,6 +15,7 @@ from farm.project_context import resolve_season_id_from_request
 from farm.services.harvests import HarvestTotals, eligible_harvest_plans, harvest_plan_sort_key
 
 from .harvest_serializers import HarvestRecordSerializer
+from .season_context import resolve_record_season
 
 
 class HarvestSuggestionQuery(serializers.Serializer):
@@ -53,7 +54,11 @@ class HarvestRecordViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mo
                 plan_id = serializers.IntegerField(min_value=1).run_validation(plan)
             except serializers.ValidationError as error:
                 raise serializers.ValidationError({"planting_plan": error.detail}) from error
-            return queryset.filter(allocations__planting_plan_id=plan_id)
+            queryset = queryset.filter(allocations__planting_plan_id=plan_id)
+            season = resolve_record_season(self.request)
+            if season is not None:
+                queryset = queryset.filter(date__range=(season.start_date, season.end_date))
+            return queryset
         season_id = resolve_season_id_from_request(self.request)
         if season_id is None:
             return queryset

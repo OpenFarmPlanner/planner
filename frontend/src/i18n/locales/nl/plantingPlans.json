@@ -431,7 +431,15 @@
     "photosLoadFailed": "De foto’s konden niet worden geladen.",
     "tasks": "Taken",
     "tasksLoadFailed": "De taken konden niet worden geladen.",
-    "taskCancelled": "Geannuleerd"
+    "taskCancelled": "Geannuleerd",
+    "bedArea": "Totale bedoppervlakte (m²)",
+    "originReadOnly": "Teeltplan uit {{season}} · Plangegevens zijn alleen-lezen",
+    "plantingDates": "Zaaien en planten",
+    "seasonalRecords": "Seizoensgegevens",
+    "recordSeason": "Weergegeven seizoen",
+    "harvestDates": "Oogstdata",
+    "noPlannedHarvest": "In dit seizoen is geen oogst gepland.",
+    "observedFirstHarvest": "Eerste geregistreerde oogst op {{date}}"
   },
   "previousSeason": {
     "title": "Vorig seizoen: {{season}}",

@@ -4,13 +4,25 @@ from decimal import Decimal
 from django.urls import reverse
 
 from crops.models import CropSpecies
-from farm.models import Crop, HarvestAllocation, HarvestRecord, PlantingPlan, Season
+from farm.models import (
+    Crop,
+    CropLoss,
+    HarvestAllocation,
+    HarvestRecord,
+    PlantingPlan,
+    Project,
+    Season,
+    Task,
+)
 from farm.services.seasonal_harvest import recurring_harvest_schedule
 from farm.tests.api_base import ProjectApiTestCase
 
 PLANS = '/openfarmplanner/api/planting-plans/'
 CALENDAR_WINDOWS = f'{PLANS}calendar-harvest-windows/'
 FORECAST = '/openfarmplanner/api/yield-calendar/'
+HARVESTS = '/openfarmplanner/api/harvests/'
+LOSSES = '/openfarmplanner/api/crop-losses/'
+TASKS = '/openfarmplanner/api/tasks/'
 
 
 class SeasonalHarvestTest(ProjectApiTestCase):
@@ -219,6 +231,99 @@ class SeasonalHarvestTest(ProjectApiTestCase):
             CALENDAR_WINDOWS, params, HTTP_X_SEASON_ID=str(season.pk + 1),
         )
         self.assertEqual(invalid_season.json(), {'windows_by_plan': {}, 'next_start_date': None})
+
+    def test_detail_record_season_scopes_dates_allocations_losses_and_tasks(self) -> None:
+        origin = self.season(date(2024, 1, 1), date(2024, 12, 31))
+        historical = self.season(date(2025, 1, 1), date(2025, 12, 31))
+        inspected = self.season(date(2026, 9, 1), date(2027, 8, 31))
+        active = self.season(date(2028, 1, 1), date(2028, 12, 31))
+        crop = self.crop_with_window('12-20/01-10')
+        plan = PlantingPlan.objects.create(
+            project=self.project, crop=crop, bed=self.bed, season=origin,
+            planting_date=date(2024, 3, 15), clearing_date=date(2030, 4, 1),
+            actual_harvest_start_date=date(2025, 12, 22), area_usage_sqm=8,
+        )
+        for day, quantity, unit in (
+            (date(2025, 12, 20), Decimal('1'), 'kg'),
+            (inspected.start_date, Decimal('3.5'), 'kg'),
+            (inspected.end_date, Decimal('4'), 'bunch'),
+            (date(2027, 9, 1), Decimal('6'), 'kg'),
+        ):
+            harvest = HarvestRecord.objects.create(
+                project=self.project, crop=crop, date=day, quantity=quantity, unit=unit,
+            )
+            HarvestAllocation.objects.create(
+                project=self.project, harvest=harvest, planting_plan=plan, quantity=quantity,
+            )
+            CropLoss.objects.create(
+                project=self.project, planting_plan=plan, date=day,
+                loss_type='partial', cause='frost',
+            )
+        older_task = Task.objects.create(
+            project=self.project, planting_plan=plan, season=origin, title='Earlier task',
+            due_date=date(2025, 12, 20),
+        )
+        headers = {'HTTP_X_SEASON_ID': str(active.pk)}
+        task = self.client.post(TASKS, {
+            'title': 'Inspect standing crop', 'planting_plan': plan.pk,
+            'season': inspected.pk, 'due_date': inspected.end_date.isoformat(),
+        }, format='json', **headers)
+        self.assertEqual(task.status_code, 201, task.data)
+
+        details_url = f'{PLANS}{plan.pk}/'
+        params = {'across_seasons': 'true', 'record_season': inspected.pk}
+        detail = self.client.get(details_url, params, **headers).json()
+        self.assertEqual(detail['season'], origin.pk)
+        self.assertEqual(detail['planting_date'], '2024-03-15')
+        self.assertEqual(detail['clearing_date'], '2030-04-01')
+        self.assertEqual(detail['observed_first_harvest_date'], inspected.start_date.isoformat())
+        self.assertEqual(detail['seasonal_harvest']['periods'], [
+            {'start_date': '2026-12-20', 'end_date': '2027-01-10'},
+        ])
+        self.assertIsNone(detail['seasonal_harvest']['actual_start_date'])
+        self.assertIsNone(detail['seasonal_harvest']['actual_end_date'])
+        self.assertEqual(detail['actual_harvest']['quantities'], [
+            {'unit': 'kg', 'quantity': '3.5'}, {'unit': 'bunch', 'quantity': '4'},
+        ])
+        for endpoint in (HARVESTS, LOSSES):
+            rows = self.client.get(endpoint, {
+                'planting_plan': plan.pk, 'record_season': inspected.pk,
+            }, **headers).json()['results']
+            self.assertEqual({row['date'] for row in rows}, {'2026-09-01', '2027-08-31'})
+        tasks = self.client.get(TASKS, {
+            'planting_plan': plan.pk, 'record_season': inspected.pk,
+        }, **headers).json()['results']
+        self.assertEqual([row['id'] for row in tasks], [task.data['id']])
+        task_edit = self.client.patch(
+            f"{TASKS}{task.data['id']}/?record_season={inspected.pk}",
+            {'title': 'Checked standing crop'}, format='json', **headers,
+        )
+        self.assertEqual(task_edit.status_code, 200, task_edit.data)
+        previous = self.client.get(
+            details_url, {**params, 'record_season': historical.pk}, **headers,
+        ).json()
+        self.assertEqual(previous['seasonal_harvest']['actual_start_date'], '2025-12-22')
+        self.assertEqual(previous['observed_first_harvest_date'], '2025-12-20')
+        historical_tasks = self.client.get(TASKS, {
+            'planting_plan': plan.pk, 'record_season': historical.pk,
+        }, **headers).json()['results']
+        self.assertEqual([row['id'] for row in historical_tasks], [older_task.pk])
+        plan.refresh_from_db()
+        self.assertEqual(plan.actual_harvest_start_date, date(2025, 12, 22))
+        self.assertIsNone(plan.recorded_harvest_end_date)
+        forbidden_edit = self.client.patch(
+            f'{details_url}?record_season={origin.pk}', {'notes': 'Changed outside origin'},
+            format='json', **headers,
+        )
+        self.assertEqual(forbidden_edit.status_code, 404)
+        foreign = Project.objects.create(name='Other orchard', slug='other-orchard')
+        foreign_season = Season.objects.create(
+            project=foreign, start_date=inspected.start_date, end_date=inspected.end_date,
+        )
+        forbidden_read = self.client.get(
+            details_url, {**params, 'record_season': foreign_season.pk}, **headers,
+        )
+        self.assertEqual(forbidden_read.status_code, 404)
 
     def test_actual_planting_anniversaries_and_leap_boundaries(self) -> None:
         crop = self.crop_with_window('02-15/02-29', first_harvest_delay_years=2)

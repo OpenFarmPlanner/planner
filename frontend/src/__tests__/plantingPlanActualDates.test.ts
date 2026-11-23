@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { PlantingPlan } from '../api/types';
+import type { PlantingPlan, Season } from '../api/types';
 import {
-  displayedPlanDate, displayedPlanDates, getPlanActivityDates, getPlanColumnDates, planDateDeviation,
+  displayedPlanDate, displayedPlanDates, getDetailHarvestDates, getPlanActivityDates, getPlanColumnDates, planDateDeviation,
 } from '../planting-plans/plantingPlanActualDates';
 
 const plan: PlantingPlan = {
@@ -75,6 +75,26 @@ describe('planting-plan dates', () => {
     expect(displayedPlanDates(getPlanColumnDates(nonbearing, 'harvest_end_date'), 'planned')).toEqual([]);
     expect(displayedPlanDates(getPlanColumnDates({ ...plan, seasonal_harvest: null }, 'harvest_date'), 'combined'))
       .toEqual(['2026-05-04']);
+  });
+
+  it('shows the selected part of a one-off harvest and includes actual dates on the boundaries', () => {
+    const season: Season = {
+      id: 3, project: 1, start_date: '2026-09-01', end_date: '2027-08-31', custom_label: '',
+      label: '26/27', computed_label: '26/27', planting_plan_count: 0, created_at: '', updated_at: '',
+    };
+    expect(getDetailHarvestDates({
+      ...plan, harvest_date: '2026-08-28', harvest_end_date: '2026-09-05',
+      actual_harvest_start_date: '2026-09-01', recorded_harvest_end_date: '2027-08-31',
+    }, season)).toEqual([
+      { activity: 'harvestStart', planned: '2026-09-01', actual: '2026-09-01' },
+      { activity: 'harvestEnd', planned: '2026-09-05', actual: '2027-08-31' },
+    ]);
+    expect(getDetailHarvestDates({
+      ...plan, actual_harvest_start_date: '2026-08-31', recorded_harvest_end_date: '2027-09-01',
+    }, season)).toEqual([
+      { activity: 'harvestStart', planned: null, actual: null },
+      { activity: 'harvestEnd', planned: null, actual: null },
+    ]);
   });
 
   it('displays copied supplemental activities and leaves their new actual dates empty', () => {

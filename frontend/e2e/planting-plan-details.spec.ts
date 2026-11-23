@@ -1,10 +1,118 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { apiRequest, loginWithDeterministicProject } from './utils';
+import { apiRequest, expectNoHorizontalPageOverflow, loginWithDeterministicProject, resetE2EScenario } from './utils';
 
 test.use({ serviceWorkers: 'block' });
 
 const cropName = 'Details-Kohl (Sorte Grün)';
 const table = '/app/planting-plans';
+
+test('keeps one perennial plan while switching its records between seasons', async ({ page, request }, info) => {
+  const scenario = `perennial-details-${Date.now()}`;
+  try {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
+    const create = (path: string, data: Record<string, unknown>) => apiRequest<{ id: number }>(page, 'POST', path, data);
+    const origin = await create('/seasons/', { start_date: '2024-01-01', end_date: '2024-12-31' });
+    const earlier = await create('/seasons/', { start_date: '2025-01-01', end_date: '2025-12-31' });
+    const active = await create('/seasons/', { start_date: '2026-01-01', end_date: '2026-12-31' });
+    const location = await create('/locations/', { name: 'Rhabarberhof' });
+    const field = await create('/fields/', { location: location.id, name: 'Rhabarberparzelle' });
+    const bed = await create('/beds/', { field: field.id, name: 'Rhabarberbeet', area_sqm: 12 });
+    const crop = await create('/crops/', {
+      name: 'Detailrhabarber', life_cycle: 'perennial', standing_time_years: 10,
+      annual_harvest_window: '03-12/04-09', cultivation_types: ['direct_sowing'],
+    });
+    const plan = await create('/planting-plans/', {
+      crop: crop.id, bed: bed.id, season: origin.id, planting_date: '2024-05-01',
+      actual_sowing_date: '2024-05-03', clearing_date: '2030-09-30', area_usage_sqm: 8,
+      cultivation_type: 'direct_sowing',
+    });
+    await create('/tasks/', {
+      title: 'Historischer Erntebeginn', planting_plan: plan.id, season: origin.id,
+      due_date: '2025-03-12', status: 'completed',
+    });
+    await create('/harvests/', {
+      date: '2026-04-22', crop: crop.id, quantity: '3.5', unit: 'kg',
+      allocations: [{ planting_plan: plan.id, quantity: '3.5' }],
+    });
+    await create('/crop-losses/', {
+      date: '2025-04-02', planting_plan: plan.id, loss_type: 'partial', cause: 'frost',
+    });
+    await page.evaluate(id => localStorage.setItem(`activeSeasonId:${localStorage.getItem('activeProjectId')}`, String(id)), active.id);
+    await page.goto(`${table}/${plan.id}`);
+    const chooser = page.getByRole('combobox', { name: 'Saison anzeigen' });
+    const seasonRegion = page.getByRole('heading', { name: 'Saisondaten' }).locator('..');
+    const harvestDates = seasonRegion.getByRole('heading', { name: 'Erntetermine' }).locator('..');
+    await expect(chooser).toHaveValue(String(active.id));
+    await expect(harvestDates.getByText('12.3.2026', { exact: true })).toBeVisible();
+    await expect(harvestDates.getByText('9.4.2026', { exact: true })).toBeVisible();
+    await expect(seasonRegion.getByText('Erste erfasste Ernte am 22.4.2026')).toBeVisible();
+    await expect(seasonRegion.getByText('In dieser Saison zugeordnet · 3,5 kg')).toBeVisible();
+    await expect(seasonRegion.getByText('Historischer Erntebeginn')).toHaveCount(0);
+    await expect(page.getByText('3.5.2024', { exact: true })).toBeVisible();
+    await expect(page.getByText('30.9.2030', { exact: true })).toBeVisible();
+    await expect(page.getByText('Kein Datum', { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Räumungsdatum ändern' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Ernte hinzufügen' })).toBeVisible();
+
+    await seasonRegion.getByRole('button', { name: 'Aufgabe hinzufügen' }).click();
+    const createTask = page.getByRole('dialog', { name: 'Aufgabe hinzufügen' });
+    await createTask.getByRole('textbox', { name: 'Titel' }).fill('Aktuelle Beetkontrolle');
+    await createTask.getByRole('button', { name: 'Speichern', exact: true }).click();
+    await expect(seasonRegion.getByText('Aktuelle Beetkontrolle', { exact: true })).toBeVisible();
+    await seasonRegion.getByRole('button', { name: /Aufgabe bearbeiten.*Aktuelle Beetkontrolle/ }).click();
+    const editTask = page.getByRole('dialog', { name: 'Aufgabe bearbeiten' });
+    await editTask.getByRole('textbox', { name: 'Titel' }).fill('Aktuelle Beetkontrolle erledigt');
+    await editTask.getByRole('button', { name: 'Speichern', exact: true }).click();
+    await expect(seasonRegion.getByText('Aktuelle Beetkontrolle erledigt', { exact: true })).toBeVisible();
+
+    await seasonRegion.getByRole('button', { name: 'Ausfall erfassen' }).click();
+    const loss = page.getByRole('dialog', { name: 'Ausfall erfassen' });
+    await loss.getByLabel('Ausfalldatum').fill('2026-04-24');
+    await loss.getByRole('combobox', { name: 'Ursache' }).click();
+    await page.getByRole('option', { name: 'Staunässe' }).click();
+    await loss.getByRole('button', { name: 'Speichern' }).click();
+    await expect(seasonRegion.getByText('Teilausfall · Staunässe')).toBeVisible();
+
+    await chooser.selectOption(String(earlier.id));
+    await expect(harvestDates.getByText('12.3.2025', { exact: true })).toBeVisible();
+    await expect(seasonRegion.getByText('Historischer Erntebeginn')).toBeVisible();
+    await expect(seasonRegion.getByText('Teilausfall · Frost')).toBeVisible();
+    await expect(seasonRegion.getByText('22.4.2026', { exact: true })).toHaveCount(0);
+    await expect(seasonRegion.getByText('Aktuelle Beetkontrolle erledigt')).toHaveCount(0);
+    await expect(page.getByText('3.5.2024', { exact: true })).toBeVisible();
+    await expect(page).toHaveURL(`${table}/${plan.id}`);
+    expect(await page.evaluate(() => localStorage.getItem(`activeSeasonId:${localStorage.getItem('activeProjectId')}`)))
+      .toBe(String(active.id));
+    expect(await apiRequest(page, 'GET', `/planting-plans/${plan.id}/?across_seasons=true`)).toMatchObject({
+      id: plan.id, season: origin.id, actual_harvest_start_date: null, recorded_harvest_end_date: null,
+    });
+
+    await chooser.selectOption(String(active.id));
+    await expect(seasonRegion.getByText('Erste erfasste Ernte am 22.4.2026')).toBeVisible();
+    for (const [width, height] of [[375, 800], [800, 375], [768, 900], [1024, 900], [1440, 900]]) {
+      await page.setViewportSize({ width, height });
+      await expectNoHorizontalPageOverflow(page);
+      await page.screenshot({ path: info.outputPath(`seasonal-details-${width}.png`), fullPage: true, animations: 'disabled' });
+    }
+
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.getByRole('button', { name: 'In ursprünglicher Saison öffnen' }).click();
+    const planting = page.getByRole('heading', { name: 'Aussaat und Pflanzung' }).locator('..');
+    const editDates = planting.getByRole('button', { name: 'Ist-Termine erfassen' });
+    await editDates.click();
+    const sowing = planting.getByLabel('Ist-Aussaattermin');
+    await expect(sowing).toHaveValue('2024-05-03');
+    await expect(sowing).toBeFocused();
+    await sowing.fill('2024-05-04');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await planting.getByRole('button', { name: 'Speichern', exact: true }).click();
+    await expect(planting.getByText('4.5.2024', { exact: true })).toBeVisible();
+    await expect(editDates).toBeFocused();
+  } finally {
+    await resetE2EScenario(request, scenario);
+  }
+});
 
 async function seedPlans(page: Page, request: APIRequestContext, scenario: string) {
   await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
