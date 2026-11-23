@@ -161,6 +161,7 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
   const occupancyStart = firstOccupiedDay ?? loadedPlan?.planting_date;
   const recordSeasonOptions = context?.projectSeasons?.filter(item => (
     item.id === recordSeasonId || item.id === loadedPlan?.season
+    || loadedPlan?.record_season_ids?.includes(item.id)
     || (occupancyStart && lastOccupiedDay && occupancyStart <= item.end_date && item.start_date <= lastOccupiedDay)
   )) ?? [];
   if (loadedPlan?.carried_over) {
@@ -355,9 +356,10 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
                 </>}
               </Stack>
             </DetailSection>
-            {canEditPlan && loadedPlan.harvest_windows_by_year && recordReady && <PerennialHarvestWindows planId={loadedPlan.id}
-              page={loadedPlan.harvest_windows_by_year} season={season} onPageChange={setHarvestYear}
-              editable onDirtyChange={setHarvestWindowDirty} onSaved={(_, year) => {
+            {loadedPlan.harvest_windows_by_year && recordReady && <PerennialHarvestWindows
+              key={`harvest-windows:${recordScope}`} planId={loadedPlan.id}
+              page={loadedPlan.harvest_windows_by_year} season={recordSeason} onPageChange={setHarvestYear}
+              editable={canEditPlan} onDirtyChange={setHarvestWindowDirty} onSaved={(_, year) => {
                 setHarvestYear(year);
                 setAttempt(value => value + 1);
                 onChanged();

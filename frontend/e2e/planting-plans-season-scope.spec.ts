@@ -555,7 +555,7 @@ test('overwintering garlic is selectable in the later table and read-only in the
   await expect(menu.getByRole('menuitem', { name: 'Duplizieren' })).toHaveCount(0);
   await menu.getByRole('menuitem', { name: 'Anbauplan-Details' }).click();
   const detail = page.getByRole('dialog', { name: 'Anbauplan-Details' });
-  await expect(detail.getByText(/Läuft weiter aus Saison .* Hier nur lesbar/)).toBeVisible();
+  await expect(detail.getByText(plans.details.originReadOnly.replace('{{season}}', '2025'), { exact: true })).toBeVisible();
   await expect(detail.getByRole('button', { name: 'Notiz oder Foto hinzufügen' })).toHaveCount(0);
   await page.keyboard.press('Escape');
 

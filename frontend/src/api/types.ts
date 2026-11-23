@@ -1444,6 +1444,7 @@ export interface PlantingPlanDetail extends PlantingPlan {
   previous_season_reference?: PlantingPlanPreviousSeasonReference | null;
   harvest_windows_by_year?: HarvestWindowPage | null;
   observed_first_harvest_date?: string | null;
+  record_season_ids?: number[];
 }
 
 export type PlantingPlanPreviousSeasonReference = { available: false } | {

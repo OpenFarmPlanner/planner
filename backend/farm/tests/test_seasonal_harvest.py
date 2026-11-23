@@ -233,6 +233,7 @@ class SeasonalHarvestTest(ProjectApiTestCase):
         self.assertEqual(invalid_season.json(), {'windows_by_plan': {}, 'next_start_date': None})
 
     def test_detail_record_season_scopes_dates_allocations_losses_and_tasks(self) -> None:
+        preparation = self.season(date(2023, 1, 1), date(2023, 12, 31))
         origin = self.season(date(2024, 1, 1), date(2024, 12, 31))
         historical = self.season(date(2025, 1, 1), date(2025, 12, 31))
         inspected = self.season(date(2026, 9, 1), date(2027, 8, 31))
@@ -263,6 +264,10 @@ class SeasonalHarvestTest(ProjectApiTestCase):
             project=self.project, planting_plan=plan, season=origin, title='Earlier task',
             due_date=date(2025, 12, 20),
         )
+        preparation_task = Task.objects.create(
+            project=self.project, planting_plan=plan, season=origin, title='Pre-planting task',
+            due_date=date(2023, 12, 31),
+        )
         headers = {'HTTP_X_SEASON_ID': str(active.pk)}
         task = self.client.post(TASKS, {
             'title': 'Inspect standing crop', 'planting_plan': plan.pk,
@@ -277,6 +282,9 @@ class SeasonalHarvestTest(ProjectApiTestCase):
         self.assertEqual(detail['planting_date'], '2024-03-15')
         self.assertEqual(detail['clearing_date'], '2030-04-01')
         self.assertEqual(detail['observed_first_harvest_date'], inspected.start_date.isoformat())
+        self.assertEqual(set(detail['record_season_ids']), {
+            preparation.pk, historical.pk, inspected.pk,
+        })
         self.assertEqual(detail['seasonal_harvest']['periods'], [
             {'start_date': '2026-12-20', 'end_date': '2027-01-10'},
         ])
@@ -308,6 +316,10 @@ class SeasonalHarvestTest(ProjectApiTestCase):
             'planting_plan': plan.pk, 'record_season': historical.pk,
         }, **headers).json()['results']
         self.assertEqual([row['id'] for row in historical_tasks], [older_task.pk])
+        preparation_tasks = self.client.get(TASKS, {
+            'planting_plan': plan.pk, 'record_season': preparation.pk,
+        }, **headers).json()['results']
+        self.assertEqual([row['id'] for row in preparation_tasks], [preparation_task.pk])
         plan.refresh_from_db()
         self.assertEqual(plan.actual_harvest_start_date, date(2025, 12, 22))
         self.assertIsNone(plan.recorded_harvest_end_date)

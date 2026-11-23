@@ -139,7 +139,7 @@ async function seedPlans(page: Page, request: APIRequestContext, scenario: strin
     const projectId = window.localStorage.getItem('activeProjectId');
     window.localStorage.setItem(`activeSeasonId:${projectId}`, String(seasonId));
   }, season.id);
-  return { bed, crop, noBed, oldPlan, plan, season };
+  return { bed, crop, noBed, oldPlan, plan, previous, season };
 }
 
 test('desktop details preserve the table, restoring row focus on Escape, Close and Back', async ({ page, request }) => {
@@ -267,10 +267,13 @@ test('desktop details preserve the table, restoring row focus on Escape, Close a
 
 test('direct links retain the original season and reuse the notes, task and area workflows', async ({ page, request }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  const { plan, bed, crop, oldPlan, season } = await seedPlans(page, request, 'plan-details-direct');
+  const { plan, bed, crop, oldPlan, previous, season } = await seedPlans(page, request, 'plan-details-direct');
   const existingTask = 'Bestehende Aufgabe für diesen Anbauplan';
   const newTask = 'Neue Aufgabe für diesen Anbauplan';
   await apiRequest(page, 'POST', '/tasks/', { title: existingTask, planting_plan: plan.id, season: season.id });
+  await apiRequest(page, 'POST', '/tasks/', {
+    title: 'Anzucht im Vorjahr', planting_plan: plan.id, season: season.id, due_date: '2025-12-31',
+  });
   await page.goto(`${table}/${plan.id}`);
   await expect(page.getByRole('heading', { name: cropName })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -316,6 +319,12 @@ test('direct links retain the original season and reuse the notes, task and area
   expect(results.filter(task => task.title === newTask)).toEqual([
     expect.objectContaining({ planting_plan: plan.id, season: season.id, crop: crop.id, field: null }),
   ]);
+  await expect(page.getByText('Anzucht im Vorjahr', { exact: true })).toHaveCount(0);
+  const recordSeason = page.getByRole('combobox', { name: 'Saison anzeigen' });
+  await recordSeason.selectOption(String(previous.id));
+  await expect(page.getByText('Anzucht im Vorjahr', { exact: true })).toBeVisible();
+  await expect(page.getByText(newTask, { exact: true })).toHaveCount(0);
+  await expect(page).toHaveURL(detailUrl);
 
   await page.goto(`${table}/${oldPlan.id}`);
   await expect(page.getByText('Vorjahr', { exact: true })).toBeVisible();

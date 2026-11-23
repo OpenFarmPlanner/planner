@@ -135,8 +135,10 @@ description), one level down:
   harvest totals, crop losses and tasks without moving the source plan or
   changing the app's active season. Its `record_season` parameter resolves to
   a season in the active project. Date ranges are inclusive. Due dates place
-  tasks in this view, with the assigned season used for undated tasks. The first dated
-  allocated harvest can be shown as an observation when an explicit start is
+  tasks in this view, with the assigned season used for undated tasks. The
+  chooser also includes periods with records outside the bed's occupancy, such
+  as pre-planting tasks. The first dated allocated harvest can be shown as an
+  observation when an explicit start is
   absent. Only explicitly recorded dates supply an actual harvest end.
   Original planting information remains visible in every period. Changes to
   the original plan go through its originating season. A current-season task

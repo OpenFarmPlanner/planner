@@ -4,6 +4,7 @@ from datetime import date
 from typing import Any
 
 from django.core.exceptions import ValidationError
+from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -687,6 +688,7 @@ class PlantingPlanDetailSerializer(PlantingPlanSerializer):
     previous_season_reference = serializers.SerializerMethodField()
     harvest_windows_by_year = serializers.SerializerMethodField()
     observed_first_harvest_date = serializers.SerializerMethodField()
+    record_season_ids = serializers.SerializerMethodField()
 
     def get_bed_area_sqm(self, obj: PlantingPlan) -> float | None:
         return float(obj.bed.area_sqm) if obj.bed and obj.bed.area_sqm is not None else None
@@ -696,6 +698,19 @@ class PlantingPlanDetailSerializer(PlantingPlanSerializer):
             return None
         allocations = getattr(obj, 'visible_harvest_allocations', ())
         return min((row.harvest.date for row in allocations), default=None)
+
+    def get_record_season_ids(self, obj: PlantingPlan) -> list[int]:
+        period = (OuterRef('start_date'), OuterRef('end_date'))
+        harvests = obj.harvest_allocations.filter(
+            project_id=obj.project_id, harvest__date__range=period,
+        )
+        losses = obj.crop_losses.filter(project_id=obj.project_id, date__range=period)
+        tasks = obj.tasks.filter(
+            project_id=obj.project_id, deleted_at__isnull=True, season__deleted_at__isnull=True,
+        ).filter(Q(due_date__range=period) | Q(due_date__isnull=True, season_id=OuterRef('pk')))
+        return list(Season.objects.filter(project_id=obj.project_id).filter(
+            Exists(harvests) | Exists(losses) | Exists(tasks),
+        ).order_by().values_list('pk', flat=True))
 
     def get_harvest_windows_by_year(
         self, obj: PlantingPlan,
