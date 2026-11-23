@@ -142,10 +142,13 @@ Only project admins can change it, like the other general project settings.
   After a drag the plans are refetched so other bars follow.
   **Show free areas** adds a capacity band to each visible bed. The band
   estimates free area within the selected season by counting each plan's
-  stored area once through its inclusive occupancy end. It includes
-  carried-over plans and shows unknown area or planned over-allocation
-  explicitly. The normal succession rule still governs whether a proposed
-  planting can be saved. Select a band to inspect its dated intervals.
+  stored area once through its inclusive occupancy end, including carried-over
+  plans. An unfilled band means the whole bed is available, hatching indicates
+  partial occupation, and solid grey means the bed is full. Band width shows
+  how long the state lasts. Unknown area and planned overlaps beyond capacity
+  have their own marks and explanations at the affected interval. The normal
+  succession rule still governs whether a proposed planting can be saved.
+  Hover for one interval, or select a band to inspect all its dated intervals.
 
 Texts: "{Folgekultur} folgt ab {Datum} auf diesem Beet. Die Ernte muss bis
 dahin abgeschlossen sein." on the previous crop, "Beginnt vor dem geplanten
@@ -161,3 +164,22 @@ one previous crop, the symmetric check, `remaining-area` and the list fields).
 Frontend: `HarvestOverlapInfo.test.tsx`, `AreaValidationDialog.test.tsx`,
 `plantingPlanSearch.test.ts`, `ganttChartUtils.test.ts` and
 `ProjectSettingsPage.test.tsx`.
+
+### Local Crop Calendar capacity fixture
+
+From `backend/`, preview the private fixture with your confirmed local database
+name and an existing local username. After inspecting the target, repeat with
+`--apply`.
+
+```sh
+DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py seed_bed_capacity_acceptance --legend --username martin --database-name LOCAL_DATABASE
+```
+
+Open **Crop Calendar capacity legend acceptance** and turn on **Show free areas**
+in **Field occupancy**. Clear **Only occupied beds** to show the empty bed.
+In April, check **Unused bed**, **Carrot and lettuce**, and **Full bed** for the
+three legend states. The overlapping carrot and lettuce plans leave 2 m² free.
+Select **Unmeasured planting** to see the missing-usage explanation. In May,
+check **Succession during harvest**, where the plans sum to 12 m² on a 10 m² bed
+during a permitted harvest overlap. Tab to a band and press Enter, or tap it on
+a phone, to check the dates and amounts.

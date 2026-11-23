@@ -159,8 +159,9 @@
     "details": "Superficie disponible en {{bed}}",
     "estimate": "Estimación basada en la superficie del bancal y los periodos de ocupación previstos.",
     "available": "{{free}} m² libres de {{total}} m² · {{used}} m² ocupados",
-    "overallocated": "Capacidad superada. {{used}} m² ocupados en un bancal de {{total}} m².",
-    "minimumOverallocated": "Capacidad superada. Al menos {{used}} m² ocupados en un bancal de {{total}} m².",
+    "overallocated": "La ocupación prevista supera la superficie del bancal. {{used}} m² ocupados en un bancal de {{total}} m².",
+    "minimumOverallocated": "La ocupación prevista supera la superficie del bancal. Al menos {{used}} m² ocupados en un bancal de {{total}} m².",
+    "successionOverlap": "Si se permiten cultivos sucesivos durante la cosecha, los periodos de ocupación pueden solaparse.",
     "used": "{{used}} m² ocupados",
     "minimumUsed": "Al menos {{used}} m² ocupados",
     "total": "Bancal de {{total}} m²",
@@ -168,10 +169,8 @@
     "incomplete": "Superficie libre desconocida · {{total}} · {{used}}",
     "status": {
       "free": "Totalmente libre",
-      "partial": "Parcialmente libre",
-      "occupied": "Totalmente ocupado",
-      "unknown": "Desconocida",
-      "overallocated": "Capacidad superada"
+      "partial": "Parcialmente ocupado",
+      "occupied": "Totalmente ocupado"
     }
   },
   "emptyStates": {

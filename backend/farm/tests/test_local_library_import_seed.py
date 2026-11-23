@@ -1,6 +1,6 @@
 """Local test data must be explicit, isolated and safe to prepare repeatedly."""
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from io import StringIO
 from unittest.mock import patch
@@ -296,6 +296,34 @@ class LocalLibraryImportSeedTests(TestCase):
         self.assertEqual(Project.objects.count(), len(self.project_ids_before) + 1)
         self.assertEqual(project.planting_plans.count(), 3)
         self.assertEqual(checkpoints.count(), 1)
+
+    def test_capacity_legend_fixture_adds_full_and_soft_overlap_intervals(self):
+        command = 'seed_bed_capacity_acceptance'
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        projects = Project.objects.filter(slug=f'ofp-local-bed-capacity-legend-{self.user.pk}')
+        call_command(command, legend=True, **arguments)
+        self.assertFalse(projects.exists())
+
+        call_command(command, legend=True, apply=True, **arguments)
+        project = projects.get()
+        full = project.beds.get(name='Full bed')
+        self.assertEqual(full.planting_plans.get().area_usage_sqm, full.area_sqm)
+        overlap = project.beds.get(name='Succession during harvest')
+        first, second = overlap.planting_plans.order_by('planting_date')
+        self.assertEqual(first.area_usage_sqm + second.area_usage_sqm, 12)
+        self.assertTrue(project.allow_succession_during_harvest)
+        self.assertGreaterEqual(second.planting_date, first.harvest_date + timedelta(
+            days=project.succession_min_days_after_harvest_start,
+        ))
+        self.assertLessEqual(second.planting_date, first.occupancy_end_date)
+
+        second.notes = 'Keep the manual edit'
+        second.save(update_fields=['notes'])
+        call_command(command, legend=True, apply=True, **arguments)
+        second.refresh_from_db()
+        self.assertEqual(second.notes, 'Keep the manual edit')
+        self.assertEqual(project.beds.count(), 5)
+        self.assertEqual(project.planting_plans.count(), 6)
 
     def test_structure_supplier_fixture_has_a_complete_repeat_safe_baseline(self):
         command = 'seed_structure_supplier_history_acceptance'
