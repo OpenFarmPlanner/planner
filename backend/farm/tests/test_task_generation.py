@@ -256,6 +256,19 @@ class RecurringHarvestTaskTest(TaskTimingFixture):
         self.assertEqual((task.season_id, task.due_date), (response.data['id'], date(2027, 3, 12)))
         self.assertEqual(generate_plan_tasks(plan), [])
 
+    @patch('farm.services.tasks.timezone.localdate', return_value=date(2026, 1, 1))
+    def test_deleting_a_season_cancels_open_harvest_tasks_of_other_plans_in_it(self, _today):
+        self.set_window('03-12/04-09')
+        later = self.period(2027)
+        plan = self.plan(planting_date=date(2026, 2, 1), clearing_date=date(2028, 9, 1))
+        generate_plan_tasks(plan)
+        task = self.harvests(plan).get(occurrence_index=2027)
+        self.assertEqual(task.season_id, later.pk)
+        response = self.client.delete(f'/openfarmplanner/api/seasons/{later.pk}/')
+        self.assertEqual(response.status_code, 204)
+        task.refresh_from_db()
+        self.assertEqual(task.status, 'cancelled')
+
     @patch('farm.services.tasks.timezone.localdate', return_value=date(2027, 1, 1))
     def test_actual_sowing_reanchors_first_bearing_without_moving_sowing_task(self, _today):
         self.set_window('03-12/04-09', delay=1)
