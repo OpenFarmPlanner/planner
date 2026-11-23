@@ -834,6 +834,26 @@ describe('CropDetail Component', () => {
     expect(screen.queryByRole('heading', { name: translations.crops.germination.title })).not.toBeInTheDocument();
   });
 
+  it('puts the inherited perennial life cycle and standing time in general details before timing', () => {
+    renderCropDetail(<CropDetail crops={[
+      { id: 40, name: 'Apple', crop_species: 9, life_cycle: 'perennial', standing_time_years: 20,
+        annual_harvest_window: '09-01/10-15', winter_hardiness: 'hardy' },
+      { id: 41, name: 'Apple', variety: 'Gala', crop_species: 9 },
+    ]} selectedCropId={41} onCropSelect={vi.fn()} />);
+
+    const general = screen.getByTestId('crop-detail-general');
+    const site = screen.getByRole('heading', { name: translations.crops.siteHealth.title }).parentElement;
+    const lifeCycle = within(general).getByText(translations.crops.siteHealth.fields.life_cycle);
+    const standing = within(general).getByText(translations.crops.siteHealth.fields.standing_time_years);
+    expect(lifeCycle.compareDocumentPosition(standing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(general).toHaveTextContent('Mehrjährig');
+    expect(general).toHaveTextContent('20');
+    expect(standing.compareDocumentPosition(screen.getByText(translations.crops.annualHarvest.window))
+      & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(site).not.toContainElement(lifeCycle);
+    expect(site).toContainElement(screen.getByText(translations.crops.siteHealth.fields.winter_hardiness));
+  });
+
   it('leaves out the seed type of a Sorte that has none', () => {
     renderCropDetail(<CropDetail crops={mockCrops} selectedCropId={1} onCropSelect={vi.fn()} />);
 

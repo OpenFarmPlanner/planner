@@ -73,11 +73,12 @@ A cultivation method alone does not create an empty seed-demand section. Existin
 seed quantities, project safety margins, legacy quantities and local pin/variety
 markers remain in their respective groups.
 
-Within Site and plant health, both forms and both read views use the same order:
-light, water, life cycle, winter hardiness, pest/disease assignments, then the
-existing prevention/general notes. The assignments are a subordinate field label,
-not a peer section. They also keep the main heading when they are the only filled
-site/health field. Identity, spacing, yield and germination retain their shared
+In the editor, life cycle and the perennial standing time appear together before
+time planning. Both read views show their effective values under General
+information. Site and plant health groups light, water, winter hardiness,
+pest/disease assignments and the existing prevention/general notes. Assignments
+use a field label within that section, with the main heading also visible when
+assignments are its only filled field. Identity, spacing, yield and germination retain their shared
 form order; project tags, rotation breaks, timing windows, tasks and supplier data
 and library metadata remain in their own contexts. Display colour remains an
 identity/header control in read views and an editable form section.

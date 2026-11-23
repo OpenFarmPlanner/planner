@@ -6,7 +6,7 @@ import { CropTaskTemplatesSection } from './CropTaskTemplatesSection';
  */
 
 import { germinationDetailFields, formatGerminationValue } from './germination';
-import { SITE_HEALTH_FIELDS, formatSiteHealthValue } from './siteHealth';
+import { SITE_HEALTH_FIELDS, formatSiteHealthValue, lifeCycleDetailFields } from './siteHealth';
 import { PlantHealthChips } from './PlantHealthChips';
 import { matchesPlantHealthFilter, normalizePlantHealthSelections } from './plantHealth';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -609,6 +609,10 @@ const detailSectionGridSx = {
   );
 
   const showSeedType = !isSpeciesView && Boolean(selectedCrop?.variety);
+  const lifeCycle = getCropValue('life_cycle', selectedCrop?.life_cycle);
+  const lifeCycleRows = selectedCrop ? lifeCycleDetailFields(lifeCycle)
+    .map(field => ({ field, value: getCropValue(field, selectedCrop[field]) }))
+    .filter(row => hasDetailValue(row.value)) : [];
   const getLibraryPin = (field: LibraryPinFormField) => (
     selectedCrop?.source_public_crop && isLibraryFieldPinned(selectedCrop, field)
       ? (
@@ -1107,8 +1111,8 @@ const detailSectionGridSx = {
             </Box>
             ) : null}
 
-            {/* General Information: the crop's identity details */}
-            {hasAnyDetailValue(
+            {/* General Information: identity and life-cycle details */}
+            {lifeCycleRows.length > 0 || hasAnyDetailValue(
               showSeedType ? selectedCrop.seed_type : undefined,
               getCropValue('botanical_name', selectedCrop.botanical_name),
               getEffectiveCropTags(selectedCrop),
@@ -1154,6 +1158,14 @@ const detailSectionGridSx = {
                         </Box>
                       </Box>
                     )}
+                    {lifeCycleRows.map(({ field, value }) => (
+                      <Box key={field} sx={{ minWidth: 0 }}>
+                        <Typography variant="body2" color="text.secondary">{t(`siteHealth.fields.${field}`)}</Typography>
+                        <ValueWithLibraryPin pin={getLibraryPin(field)}>
+                          <Typography sx={getOwnValueSx(field)}>{formatSiteHealthValue(field, value, t)}</Typography>
+                        </ValueWithLibraryPin>
+                      </Box>
+                    ))}
                   </Box>
                 </Box>
             ) : null}
@@ -1227,7 +1239,7 @@ const detailSectionGridSx = {
               <CropTimingDetails cultivationTypes={activeCultivationTypes}
                 cultivationSource={getCropValueSource('cultivation_types') === 'ownValue' || getCropValueSource('cultivation_type') === 'ownValue' ? 'ownValue' : null}
                 cultivationPin={getLibraryPin('cultivation_types')}
-                isPerennial={getCropValue('life_cycle', selectedCrop.life_cycle) === 'perennial'}
+                isPerennial={lifeCycle === 'perennial'}
                 annualWindow={getCropValue('annual_harvest_window', selectedCrop.annual_harvest_window)}
                 delay={getCropValue('first_harvest_delay_years', selectedCrop.first_harvest_delay_years)}
                 value={field => getCropValue(field, selectedCrop[field])} source={getCropValueSource}
@@ -1420,7 +1432,6 @@ const detailSectionGridSx = {
               <Box sx={detailSectionGridSx}>
                 {SITE_HEALTH_FIELDS.filter(field => (
                   field !== 'pests_diseases'
-                  && (field !== 'standing_time_years' || getCropValue('life_cycle', selectedCrop.life_cycle) === 'perennial')
                   && hasDetailValue(getCropValue(field, selectedCrop[field]))
                 )).map(field => (
                   <Box key={field} sx={{ minWidth: 0 }}>

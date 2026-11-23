@@ -8,7 +8,7 @@ import { hasSpecificPropertyValues } from '../../crops/specificProperties';
 import { loadRetryAlertSx } from '../../components/loadRetryStyles';
 import LoadRetryButton from '../../components/LoadRetryButton';
 import { germinationDetailFields, formatGerminationValue } from '../../crops/germination';
-import { SITE_HEALTH_FIELDS, formatSiteHealthValue } from '../../crops/siteHealth';
+import { SITE_HEALTH_FIELDS, formatSiteHealthValue, lifeCycleDetailFields } from '../../crops/siteHealth';
 import { PlantHealthChips } from '../../crops/PlantHealthChips';
 import { CropSearchFilterButton, CropSearchToolbar } from '../../crops/CropSearchToolbar';
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type UIEvent } from 'react';
@@ -547,6 +547,10 @@ export default function PublicCropLibraryPage() {
     }
     return value;
   }, [isSpeciesView, selectedCrop?.variety, selectedSpeciesCrop]);
+  const publicLifeCycle = getPublicFieldValue('life_cycle', selectedCrop?.life_cycle);
+  const publicLifeCycleRows = selectedCrop ? lifeCycleDetailFields(publicLifeCycle)
+    .map(field => ({ field, value: getPublicFieldValue(field, selectedCrop[field]) }))
+    .filter(row => hasDetailValue(row.value)) : [];
   // A variety entry shows its species entry's neighbours (only that one carries them).
   const companionSourceCrop = selectedCrop && (selectedCrop.variety || '').trim()
     ? selectedSpeciesCrop
@@ -1958,6 +1962,10 @@ export default function PublicCropLibraryPage() {
                                   source={getPublicFieldSource('botanical_name')}
                                 />
                               ) : null}
+                              {publicLifeCycleRows.map(({ field, value }) => (
+                                <DetailRow key={field} label={t(`siteHealth.fields.${field}`)}
+                                  value={formatSiteHealthValue(field, value, t)} source={getPublicFieldSource(field)} />
+                              ))}
                             </DetailGrid>
                           </DetailSection>,
                           hasSpecificPropertyValues(selectedCrop.specific_property_profile, selectedCrop.specific_properties) ? <SpecificPropertiesDetails key="specific-properties"
@@ -1993,7 +2001,7 @@ export default function PublicCropLibraryPage() {
                             <DetailSection key="timing" title={t('form.sectionTiming')}>
                               <CropTimingDetails cultivationTypes={publicActiveCultivationTypes}
                                 cultivationSource={getPublicFieldSource('cultivation_types') ?? getPublicFieldSource('cultivation_type')}
-                                isPerennial={getPublicFieldValue('life_cycle', selectedCrop.life_cycle) === 'perennial'}
+                                isPerennial={publicLifeCycle === 'perennial'}
                                 annualWindow={getPublicFieldValue('annual_harvest_window', selectedCrop.annual_harvest_window)}
                                 delay={getPublicFieldValue('first_harvest_delay_years', selectedCrop.first_harvest_delay_years)}
                                 value={field => getPublicFieldValue(field, selectedCrop[field])} source={getPublicFieldSource}
@@ -2084,7 +2092,6 @@ export default function PublicCropLibraryPage() {
                               <DetailGrid>
                                 {SITE_HEALTH_FIELDS.filter(field => (
                                   field !== 'pests_diseases'
-                                  && (field !== 'standing_time_years' || getPublicFieldValue('life_cycle', selectedCrop.life_cycle) === 'perennial')
                                   && hasDetailValue(getPublicFieldValue(field, selectedCrop[field]))
                                 ))
                                   .map(field => <DetailRow key={field} label={t(`siteHealth.fields.${field}`)} value={formatSiteHealthValue(field, getPublicFieldValue(field, selectedCrop[field]), t)} source={getPublicFieldSource(field)} />)}
