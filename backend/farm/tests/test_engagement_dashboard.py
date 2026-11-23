@@ -96,6 +96,8 @@ class EngagementDashboardTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Nutzungsübersicht')
+        self.assertContains(response, 'Gesamte Parzellenfläche')
+        self.assertContains(response, 'Alle Zeiträume')
         self.assertContains(response, self.active_project.name)
 
     def test_the_rendered_page_shows_every_metric_block(self) -> None:
@@ -1046,7 +1048,7 @@ class EngagementDashboardShowAllViewTests(TestCase):
         table = self._projects_table_html(response)
         self.assertNotIn('Nur ich', table)
         self.assertIn('Team', table)
-        self.assertContains(response, 'guest, demo, or superuser-only project excluded')
+        self.assertContains(response, 'Superuser-Projekt aus den Projektkennzahlen ausgeblendet')
         self.assertContains(response, 'Alle anzeigen')
 
     def test_show_all_reveals_every_project_and_the_reset_link(self) -> None:
@@ -1057,7 +1059,7 @@ class EngagementDashboardShowAllViewTests(TestCase):
         table = self._projects_table_html(response)
         self.assertIn('Nur ich', table)
         self.assertIn('Team', table)
-        self.assertContains(response, 'All projects are included')
+        self.assertContains(response, 'Alle Projekte werden in den Projektkennzahlen berücksichtigt')
         self.assertContains(response, 'Filter wieder aktivieren')
 
     def test_show_all_survives_column_sorting(self) -> None:

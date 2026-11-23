@@ -101,26 +101,3 @@ msgstr ""
 #: accounts/social_views.py
 msgid "The login method was disconnected."
 msgstr "Die Anmeldemethode wurde entfernt."
-
-msgid "Any activity"
-msgstr "Alle Projekte"
-
-msgid "Total parcel area"
-msgstr "Gesamte Parzellenfläche"
-
-msgid "All projects are included in the project metrics."
-msgstr "Alle Projekte werden in den Projektkennzahlen berücksichtigt."
-
-msgid "%(counter)s guest, demo, or superuser-only project excluded from the project metrics."
-msgid_plural "%(counter)s guest, demo, or superuser-only projects excluded from the project metrics."
-msgstr[0] "%(counter)s Gast-, Demo- oder Superuser-Projekt aus den Projektkennzahlen ausgeblendet."
-msgstr[1] "%(counter)s Gast-, Demo- oder Superuser-Projekte aus den Projektkennzahlen ausgeblendet."
-
-msgid "Filter the projects table by recent activity"
-msgstr "Projekte nach letzter Aktivität filtern"
-
-msgid "partial"
-msgstr "unvollständig"
-
-msgid "Unknown area"
-msgstr "Fläche unbekannt"

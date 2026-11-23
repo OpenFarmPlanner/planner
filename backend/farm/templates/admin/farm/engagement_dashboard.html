@@ -85,14 +85,14 @@
   <div class="module">
     <p class="help">
       {% if dashboard.show_all %}
-        {% translate "All projects are included in the project metrics." %}
+        {% translate "Alle Projekte werden in den Projektkennzahlen berücksichtigt." %}
         <a href="{{ show_all_toggle_url }}">{% translate "Filter wieder aktivieren" %}</a>
       {% else %}
-        {% blocktranslate count counter=dashboard.hidden_projects_count %}{{ counter }} guest, demo, or superuser-only project excluded from the project metrics.{% plural %}{{ counter }} guest, demo, or superuser-only projects excluded from the project metrics.{% endblocktranslate %}
+        {% blocktranslate count counter=dashboard.hidden_projects_count %}{{ counter }} Gast-, Demo- oder Superuser-Projekt aus den Projektkennzahlen ausgeblendet.{% plural %}{{ counter }} Gast-, Demo- oder Superuser-Projekte aus den Projektkennzahlen ausgeblendet.{% endblocktranslate %}
         <a href="{{ show_all_toggle_url }}">{% translate "Alle anzeigen" %}</a>
       {% endif %}
     </p>
-    <nav class="usage-filters" aria-label="{% translate 'Filter the projects table by recent activity' %}">
+    <nav class="usage-filters" aria-label="{% translate 'Projekte nach letzter Aktivität filtern' %}">
       {% for label, url, selected in activity_filter %}
         <a href="{{ url }}"{% if selected %} aria-current="true"{% endif %}>{{ label }}</a>
       {% endfor %}
@@ -120,9 +120,9 @@
           <td>
             {% if row.parcels_with_area %}
               {{ row.parcel_area_display|floatformat:"-2" }} {{ row.parcel_area_unit }}
-              {% if row.parcel_area_is_partial %}({% translate "partial" %}){% endif %}
+              {% if row.parcel_area_is_partial %}({% translate "unvollständig" %}){% endif %}
             {% else %}
-              {% translate "Unknown area" %}
+              {% translate "Fläche unbekannt" %}
             {% endif %}
           </td>
           <td>{{ row.member_count }}</td>

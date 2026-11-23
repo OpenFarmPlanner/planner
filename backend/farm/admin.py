@@ -99,7 +99,7 @@ class ProjectAdmin(admin.ModelAdmin):
             'activity_filter': [
                 (label, self._dashboard_url(params, activity=value), activity == value)
                 for value, label in (
-                    ('', _('Any activity')),
+                    ('', _('Alle Zeiträume')),
                     ('7', _('Letzte 7 Tage')),
                     ('30', _('Letzte 30 Tage')),
                 )
@@ -118,7 +118,7 @@ class ProjectAdmin(admin.ModelAdmin):
         order = params['o']
         columns = (
             ('name', gettext_lazy('Projektname')),
-            ('parcel_area', gettext_lazy('Total parcel area')),
+            ('parcel_area', gettext_lazy('Gesamte Parzellenfläche')),
             ('member_count', gettext_lazy('Mitglieder')),
             ('planting_plan_count', gettext_lazy('Anbauplanungen')),
             ('last_active', gettext_lazy('Zuletzt aktiv')),
