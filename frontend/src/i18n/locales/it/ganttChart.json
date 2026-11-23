@@ -159,8 +159,9 @@
     "details": "Superficie disponibile per {{bed}}",
     "estimate": "Stima basata sulla superficie dell’aiuola e sui periodi di occupazione previsti.",
     "available": "{{free}} m² liberi su {{total}} m² · {{used}} m² occupati",
-    "overallocated": "Capacità superata. {{used}} m² occupati in un’aiuola di {{total}} m².",
-    "minimumOverallocated": "Capacità superata. Almeno {{used}} m² occupati in un’aiuola di {{total}} m².",
+    "overallocated": "L’occupazione prevista supera la superficie dell’aiuola. {{used}} m² occupati in un’aiuola di {{total}} m².",
+    "minimumOverallocated": "L’occupazione prevista supera la superficie dell’aiuola. Almeno {{used}} m² occupati in un’aiuola di {{total}} m².",
+    "successionOverlap": "Se sono ammesse colture successive durante la raccolta, i periodi di occupazione possono sovrapporsi.",
     "used": "{{used}} m² occupati",
     "minimumUsed": "Almeno {{used}} m² occupati",
     "total": "Aiuola di {{total}} m²",
@@ -168,10 +169,8 @@
     "incomplete": "Superficie libera sconosciuta · {{total}} · {{used}}",
     "status": {
       "free": "Del tutto libera",
-      "partial": "Parzialmente libera",
-      "occupied": "Del tutto occupata",
-      "unknown": "Sconosciuta",
-      "overallocated": "Capacità superata"
+      "partial": "Parzialmente occupata",
+      "occupied": "Del tutto occupata"
     }
   },
   "emptyStates": {

@@ -159,8 +159,9 @@
     "details": "Área disponível em {{bed}}",
     "estimate": "Estimativa baseada na área do canteiro e nos períodos de ocupação previstos.",
     "available": "{{free}} m² livres de {{total}} m² · {{used}} m² ocupados",
-    "overallocated": "Capacidade excedida. {{used}} m² ocupados num canteiro de {{total}} m².",
-    "minimumOverallocated": "Capacidade excedida. Pelo menos {{used}} m² ocupados num canteiro de {{total}} m².",
+    "overallocated": "A ocupação prevista ultrapassa a área do canteiro. {{used}} m² ocupados num canteiro de {{total}} m².",
+    "minimumOverallocated": "A ocupação prevista ultrapassa a área do canteiro. Pelo menos {{used}} m² ocupados num canteiro de {{total}} m².",
+    "successionOverlap": "Se forem permitidas culturas sucessivas durante a colheita, os períodos de ocupação podem sobrepor-se.",
     "used": "{{used}} m² ocupados",
     "minimumUsed": "Pelo menos {{used}} m² ocupados",
     "total": "Canteiro de {{total}} m²",
@@ -168,10 +169,8 @@
     "incomplete": "Área livre desconhecida · {{total}} · {{used}}",
     "status": {
       "free": "Totalmente livre",
-      "partial": "Parcialmente livre",
-      "occupied": "Totalmente ocupado",
-      "unknown": "Desconhecida",
-      "overallocated": "Capacidade excedida"
+      "partial": "Parcialmente ocupado",
+      "occupied": "Totalmente ocupado"
     }
   },
   "emptyStates": {

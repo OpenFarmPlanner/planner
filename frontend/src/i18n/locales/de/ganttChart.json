@@ -159,8 +159,9 @@
     "details": "Flächenverfügbarkeit für {{bed}}",
     "estimate": "Schätzung anhand der Beetfläche und der geplanten Belegungszeiträume.",
     "available": "{{free}} m² frei von {{total}} m² · {{used}} m² belegt",
-    "overallocated": "Beetfläche überschritten. {{used}} m² belegt bei {{total}} m² Beetfläche.",
-    "minimumOverallocated": "Beetfläche überschritten. Mindestens {{used}} m² belegt bei {{total}} m² Beetfläche.",
+    "overallocated": "Die geplante Belegung übersteigt die Beetfläche. {{used}} m² belegt bei {{total}} m² Beetfläche.",
+    "minimumOverallocated": "Die geplante Belegung übersteigt die Beetfläche. Mindestens {{used}} m² belegt bei {{total}} m² Beetfläche.",
+    "successionOverlap": "Sind Folgekulturen während der Ernte erlaubt, können sich die Belegungszeiten überschneiden.",
     "used": "{{used}} m² belegt",
     "minimumUsed": "Mindestens {{used}} m² belegt",
     "total": "{{total}} m² Beetfläche",
@@ -168,10 +169,8 @@
     "incomplete": "Freie Fläche unbekannt · {{total}} · {{used}}",
     "status": {
       "free": "Ganz frei",
-      "partial": "Teilweise frei",
-      "occupied": "Voll belegt",
-      "unknown": "Unbekannt",
-      "overallocated": "Fläche überschritten"
+      "partial": "Teilweise belegt",
+      "occupied": "Voll belegt"
     }
   },
   "emptyStates": {

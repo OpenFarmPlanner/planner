@@ -15,14 +15,18 @@ export const BED_CAPACITY_EXTRA_ROW_HEIGHT = 14;
 
 function markerStyle(status: BedCapacityStatus) {
   return (theme: Theme) => {
-    const neutral = alpha(theme.palette.text.primary, 0.55);
-    const line = status === 'overallocated' ? theme.palette.warning.dark : neutral;
-    const hatch = (angle: number) => `repeating-linear-gradient(${angle}deg, transparent 0 3px, ${line} 3px 4px)`;
+    const neutral = alpha(theme.palette.text.primary, 0.6);
+    const warning = theme.palette.mode === 'dark' ? theme.palette.warning.light : theme.palette.warning.dark;
+    const hatch = (angle: number, color: string) => `repeating-linear-gradient(${angle}deg, transparent 0 4px, ${color} 4px 5px)`;
+    const line = status === 'overallocated' ? warning
+      : status === 'free' ? alpha(theme.palette.text.primary, 0.54) : neutral;
     return {
+      boxSizing: 'border-box',
       border: `1px ${status === 'unknown' ? 'dotted' : 'solid'} ${line}`,
-      backgroundImage: status === 'overallocated' ? `${hatch(45)}, ${hatch(135)}`
-        : status === 'free' ? hatch(135) : undefined,
-      backgroundColor: status === 'partial' ? neutral : 'transparent',
+      backgroundImage: status === 'overallocated' ? `${hatch(45, warning)}, ${hatch(135, warning)}`
+        : status === 'partial' ? hatch(135, neutral) : 'none',
+      backgroundColor: status === 'occupied' ? theme.palette.grey[600]
+        : status === 'free' ? theme.palette.background.paper : 'transparent',
     };
   };
 }
@@ -32,7 +36,8 @@ function describeCapacity(interval: BedCapacityInterval, t: TFunction<'ganttChar
   const used = number(interval.knownUsedArea);
   const total = interval.totalArea === null ? null : number(interval.totalArea);
   if (interval.status === 'overallocated' && total !== null) {
-    return t(interval.hasUnknownUsage ? 'capacity.minimumOverallocated' : 'capacity.overallocated', { used, total });
+    const amount = t(interval.hasUnknownUsage ? 'capacity.minimumOverallocated' : 'capacity.overallocated', { used, total });
+    return `${amount} ${t('capacity.successionOverlap')}`;
   }
   if (interval.freeArea !== null && total !== null) {
     return t('capacity.available', { free: number(interval.freeArea), total, used });
@@ -78,10 +83,16 @@ export function BedCapacityBand({ timeline, positionDate, onOpenDetails }: {
   if (width <= 0) return null;
   return (
     <AppTooltip
-      title={hovered ? <>{formatRange(hovered, new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }))}<br />{describeCapacity(hovered, t, locale)}</> : ''}
+      title={hovered ? <>
+        {formatRange(hovered, new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }))}
+        <br />
+        {describeCapacity(hovered, t, locale)}
+      </> : ''}
       open={Boolean(hovered)}
+      onClose={() => setHoverStart(null)}
       describeChild
       followCursor
+      disableHoverListener
       disableInteractive
       disableFocusListener
       disableTouchListener
@@ -112,7 +123,7 @@ export function BedCapacityBand({ timeline, positionDate, onOpenDetails }: {
             data-capacity-start={interval.startDay}
             data-capacity-status={interval.status}
             style={{ left: start - left, width: Math.max(0, right - start) }}
-            sx={{ position: 'absolute', top: 0, height: '100%', display: 'flex', alignItems: 'center' }}
+            sx={{ position: 'absolute', top: 0, height: '100%', display: 'flex', alignItems: 'center', overflow: 'hidden' }}
           >
             <Box component="span" sx={[
               { width: '100%', height: '7px', pointerEvents: 'none' },
@@ -125,7 +136,7 @@ export function BedCapacityBand({ timeline, positionDate, onOpenDetails }: {
   );
 }
 
-const LEGEND_STATUSES = ['free', 'partial', 'occupied', 'unknown', 'overallocated'] as const;
+const LEGEND_STATUSES = ['free', 'partial', 'occupied'] as const;
 
 export function BedCapacityLegend() {
   const { t } = useTranslation('ganttChart');

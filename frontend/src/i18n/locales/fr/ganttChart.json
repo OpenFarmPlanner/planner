@@ -159,8 +159,9 @@
     "details": "Surface disponible pour {{bed}}",
     "estimate": "Estimation fondée sur la surface de la planche et les périodes d’occupation prévues.",
     "available": "{{free}} m² libres sur {{total}} m² · {{used}} m² occupés",
-    "overallocated": "Capacité dépassée. {{used}} m² occupés sur une planche de {{total}} m².",
-    "minimumOverallocated": "Capacité dépassée. Au moins {{used}} m² occupés sur une planche de {{total}} m².",
+    "overallocated": "La surface occupée prévue dépasse celle de la planche. {{used}} m² occupés sur une planche de {{total}} m².",
+    "minimumOverallocated": "La surface occupée prévue dépasse celle de la planche. Au moins {{used}} m² occupés sur une planche de {{total}} m².",
+    "successionOverlap": "Si les cultures suivantes sont autorisées pendant la récolte, les périodes d’occupation peuvent se chevaucher.",
     "used": "{{used}} m² occupés",
     "minimumUsed": "Au moins {{used}} m² occupés",
     "total": "Planche de {{total}} m²",
@@ -168,10 +169,8 @@
     "incomplete": "Surface libre inconnue · {{total}} · {{used}}",
     "status": {
       "free": "Entièrement libre",
-      "partial": "Partiellement libre",
-      "occupied": "Entièrement occupée",
-      "unknown": "Inconnue",
-      "overallocated": "Capacité dépassée"
+      "partial": "Partiellement occupée",
+      "occupied": "Entièrement occupée"
     }
   },
   "emptyStates": {

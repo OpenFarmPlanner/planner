@@ -142,7 +142,7 @@ test.describe('Gantt free bed area', () => {
       });
       const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', { name: 'Test garden' });
       const field = await apiRequest<{ id: number }>(page, 'POST', '/fields/', { name: 'Test field', location: location.id });
-      const beds = await Promise.all(['Test bed', 'Free bed', 'Unknown bed'].map(name => (
+      const beds = await Promise.all(['Test bed', 'Free bed', 'Unknown bed', 'Full bed', 'Succession bed'].map(name => (
         apiRequest<{ id: number; name: string }>(page, 'POST', '/beds/', { field: field.id, name, area_sqm: 10 })
       )));
       const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
@@ -154,6 +154,9 @@ test.describe('Gantt free bed area', () => {
       const first = await create(beds[0].id, '2026-04-01', 5);
       await create(beds[0].id, '2026-04-15', 3);
       await create(beds[2].id, '2026-04-05');
+      await create(beds[3].id, '2026-04-05', 10);
+      await create(beds[4].id, '2026-04-01', 6);
+      await create(beds[4].id, '2026-05-20', 6); // The predecessor is in its soft harvest stage.
       await page.goto('/app/gantt-chart');
 
       const toggle = page.getByRole('checkbox', { name: calendar.capacity.show, exact: true });
@@ -161,18 +164,37 @@ test.describe('Gantt free bed area', () => {
       const band = page.getByRole('button', { name: bandName(beds[0].name), exact: true });
       const freeBand = page.getByRole('button', { name: bandName(beds[1].name), exact: true });
       const unknownBand = page.getByRole('button', { name: bandName(beds[2].name), exact: true });
+      const fullBand = page.getByRole('button', { name: bandName(beds[3].name), exact: true });
+      const overlapBand = page.getByRole('button', { name: bandName(beds[4].name), exact: true });
+      const legend = page.getByRole('list').filter({ has: page.getByText(calendar.capacity.status.free, { exact: true }) });
       const cropBar = page.locator(`[data-task-id="plan-${first.id}-growth"]`);
       const firstUsedInterval = band.locator('[data-capacity-status="partial"]').first();
       await expect(toggle).not.toBeChecked();
+      await expect(legend).toHaveCount(0);
       await expect(band).toHaveCount(0);
       await expect(cropBar).toBeVisible();
       await toggle.check();
+      await expect(legend.getByRole('listitem')).toHaveText(Object.values(calendar.capacity.status));
       await expect(band).toBeVisible();
       await expect(firstUsedInterval).toBeVisible();
       await expect(freeBand).toHaveCount(0);
       await page.getByRole('checkbox', { name: calendar.treeFilters.onlyOccupiedBeds, exact: true }).uncheck();
-      await expect(freeBand.locator('[data-capacity-status="free"]')).toHaveCount(1);
-      await expect(unknownBand.locator('[data-capacity-status="unknown"]')).toHaveCount(1);
+      const freeMarker = freeBand.locator('[data-capacity-status="free"] > span');
+      const partialMarkers = band.locator('[data-capacity-status="partial"] > span');
+      const fullMarker = fullBand.locator('[data-capacity-status="occupied"] > span');
+      const unknownMarker = unknownBand.locator('[data-capacity-status="unknown"] > span');
+      const overlapInterval = overlapBand.locator('[data-capacity-status="overallocated"]');
+      await expect(freeMarker).toHaveCSS('background-image', 'none');
+      await expect(freeMarker).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+      await expect(freeMarker).toHaveCSS('border-top-width', '1px');
+      await expect(partialMarkers.nth(0)).toHaveCSS('background-image', /repeating-linear-gradient/);
+      await expect(partialMarkers.nth(1)).toHaveCSS('background-image', await partialMarkers.nth(0).evaluate(
+        node => getComputedStyle(node).backgroundImage,
+      ));
+      await expect(fullMarker).toHaveCSS('background-image', 'none');
+      await expect(fullMarker).toHaveCSS('background-color', 'rgb(117, 117, 117)');
+      await expect(unknownMarker).toHaveCSS('border-top-style', 'dotted');
+      await expect(overlapInterval.locator('span')).toHaveCSS('background-image', /repeating-linear-gradient.*repeating-linear-gradient/);
 
       for (const mode of ['day', 'week', 'month', 'quarter', 'year'] as const) {
         const selector = page.getByRole('button', { name: calendar.chartLocaleText.viewModes[mode], exact: true });
@@ -196,7 +218,11 @@ test.describe('Gantt free bed area', () => {
         return Math.abs(bar!.x + bar!.width - interval!.x);
       }).toBeLessThan(1);
       await firstUsedInterval.hover();
-      await expect(page.getByRole('tooltip').filter({ hasText: '5 m² frei von 10 m²' })).toBeVisible();
+      const capacityTooltip = page.getByRole('tooltip').filter({ hasText: '5 m² frei von 10 m²' });
+      await expect(capacityTooltip).toBeVisible();
+      await expect(capacityTooltip).toContainText('2026');
+      await page.keyboard.press('Escape');
+      await expect(capacityTooltip).toBeHidden();
       await band.focus();
       await expect(band).toBeFocused();
       await band.press('Enter');
@@ -206,6 +232,20 @@ test.describe('Gantt free bed area', () => {
       await expect(details.getByText('2 m² frei von 10 m² · 8 m² belegt')).toBeVisible();
       await page.keyboard.press('Escape');
       await expect(details).toBeHidden();
+      await expect(band).toBeFocused();
+      await overlapInterval.hover();
+      const overlapTooltip = page.getByRole('tooltip').filter({ hasText: '12 m² belegt bei 10 m² Beetfläche' });
+      await expect(overlapTooltip).toContainText(calendar.capacity.successionOverlap);
+      await overlapBand.press('Enter');
+      const overlapDetails = page.getByRole('dialog', { name: bandName(beds[4].name), exact: true });
+      await expect(overlapDetails.getByText(calendar.capacity.successionOverlap, { exact: false })).toContainText('12 m² belegt bei 10 m² Beetfläche');
+      await page.keyboard.press('Escape');
+      await expect(overlapDetails).toBeHidden();
+      await fullBand.press('Enter');
+      const fullDetails = page.getByRole('dialog', { name: bandName(beds[3].name), exact: true });
+      await expect(fullDetails.getByText('0 m² frei von 10 m² · 10 m² belegt')).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(fullDetails).toBeHidden();
       await page.screenshot({ path: info.outputPath('free-areas-desktop.png'), animations: 'disabled' });
 
       const edit = page.getByRole('button', { name: calendar.moveModeOption, exact: true });
@@ -225,7 +265,7 @@ test.describe('Gantt free bed area', () => {
       expect(await response.json()).toMatchObject({ planting_date: '2026-04-03' });
       await edit.click();
 
-      for (const [width, height] of [[375, 800], [800, 375]]) {
+      for (const [width, height] of [[1024, 768], [768, 1024], [375, 800], [800, 375]]) {
         await page.setViewportSize({ width, height });
         await expect(toggle).toBeInViewport({ ratio: 1 });
         await expectNoHorizontalPageOverflow(page);

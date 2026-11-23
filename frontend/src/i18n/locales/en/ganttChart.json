@@ -159,19 +159,18 @@
     "details": "Bed capacity for {{bed}}",
     "estimate": "Estimate based on the bed area and planned occupancy dates.",
     "available": "{{free}} m² free of {{total}} m² · {{used}} m² used",
-    "overallocated": "Bed capacity exceeded. {{used}} m² used on a {{total}} m² bed.",
-    "minimumOverallocated": "Bed capacity exceeded. At least {{used}} m² used on a {{total}} m² bed.",
+    "overallocated": "Planned use exceeds the bed area. {{used}} m² used on a {{total}} m² bed.",
+    "minimumOverallocated": "Planned use exceeds the bed area. At least {{used}} m² used on a {{total}} m² bed.",
+    "successionOverlap": "If harvest succession is enabled, planned crops can overlap during harvest.",
     "used": "{{used}} m² used",
     "minimumUsed": "At least {{used}} m² used",
     "total": "{{total}} m² bed area",
     "unknownBed": "Bed area unknown",
     "incomplete": "Free area unknown · {{total}} · {{used}}",
     "status": {
-      "free": "Fully free",
-      "partial": "Partly free",
-      "occupied": "Fully occupied",
-      "unknown": "Unknown",
-      "overallocated": "Over capacity"
+      "free": "Fully available",
+      "partial": "Partly occupied",
+      "occupied": "Fully occupied"
     }
   },
   "emptyStates": {
