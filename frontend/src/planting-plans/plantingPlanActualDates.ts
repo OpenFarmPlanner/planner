@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next';
-import type { Crop, PlantingPlan, PlantingPlanActualDates } from '../api/types';
+import type { Crop, PlantingPlan, PlantingPlanActualDates, Season } from '../api/types';
 import { toIsoDateString } from '../components/data-grid/dateEditCellUtils';
 import { getPlanPropagationInfo, getPlanSowingSchedule } from '../pages/planSowingDate';
 import { parseIsoDate } from '../utils/isoDate';
@@ -68,6 +68,25 @@ export function getPlanActivityDates(plan: ActivityDatePlan, crop?: Crop): Plant
         actual: plan[ACTUAL_DATE_FIELDS[activity]] ?? null,
       }
   ));
+}
+
+export function getDetailHarvestDates(plan: ActivityDatePlan, season?: Season): PlantingPlanDateComparison[] {
+  const start = harvestComparison(plan, 'harvestStart');
+  const end = harvestComparison(plan, 'harvestEnd');
+  if (!season || plan.seasonal_harvest) return [start, end];
+
+  const first = start.planned ?? end.planned;
+  const last = end.planned ?? start.planned;
+  const intersects = first && last && first <= season.end_date && last >= season.start_date;
+  return [start, end].map(dates => ({
+    ...dates,
+    planned: intersects && dates.planned
+      ? (dates.planned < season.start_date ? season.start_date
+        : dates.planned > season.end_date ? season.end_date : dates.planned)
+      : null,
+    actual: dates.actual && dates.actual >= season.start_date && dates.actual <= season.end_date
+      ? dates.actual : null,
+  }));
 }
 
 export function getPlanColumnDates(

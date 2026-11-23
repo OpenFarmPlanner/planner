@@ -1,6 +1,7 @@
 """Prepare a private orchard for checking recurring and one-off harvests."""
 
 from datetime import date
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import CommandError, CommandParser
@@ -10,6 +11,7 @@ from farm.management.commands.seed_library_import_acceptance import Command as L
 from farm.models import (
     Bed,
     Crop,
+    CropLoss,
     Field,
     HarvestAllocation,
     HarvestRecord,
@@ -18,6 +20,7 @@ from farm.models import (
     Project,
     ProjectMembership,
     Season,
+    Task,
 )
 
 MARKER = 'Synthetic perennial harvest acceptance fixture.'
@@ -29,7 +32,9 @@ class Command(LocalFixtureCommand):
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument('--username', required=True)
         parser.add_argument('--database-name', required=True)
-        parser.add_argument('--calendar-axis', action='store_true')
+        variants = parser.add_mutually_exclusive_group()
+        variants.add_argument('--calendar-axis', action='store_true')
+        variants.add_argument('--season-details', action='store_true')
         parser.add_argument('--apply', action='store_true')
 
     def handle(self, *args: object, **options: object) -> None:
@@ -38,16 +43,23 @@ class Command(LocalFixtureCommand):
         if user is None:
             raise CommandError('An existing active local user is required.')
         self.stdout.write(f'Target: {engine}, host={host or "local file"}, database={database}.')
-        calendar_axis = bool(options['calendar_axis'])
+        season_details = bool(options['season_details'])
+        calendar_axis = bool(options['calendar_axis']) or season_details
         if not options['apply']:
             fixture = (
                 'six seasons and six plans' if calendar_axis else 'five seasons and four plans'
             )
             self.stdout.write(f'Preview only: one private orchard, {fixture}.')
+            if season_details:
+                self.stdout.write('Calendar rhubarb has a harvest, a historical loss and a task.')
             return
 
-        suffix = 'calendar' if calendar_axis else 'harvest'
-        name = 'Perennial calendar acceptance' if calendar_axis else 'Perennial harvest acceptance'
+        suffix = 'details' if season_details else 'calendar' if calendar_axis else 'harvest'
+        name = {
+            'details': 'Perennial season details acceptance',
+            'calendar': 'Perennial calendar acceptance',
+            'harvest': 'Perennial harvest acceptance',
+        }[suffix]
         with transaction.atomic():
             project, created = Project.objects.get_or_create(
                 slug=f'ofp-local-perennial-{suffix}-{user.pk}',
@@ -55,7 +67,7 @@ class Command(LocalFixtureCommand):
             )
             if created:
                 ProjectMembership.objects.create(project=project, user=user, role='admin')
-                self._populate(project, calendar_axis=calendar_axis)
+                self._populate(project, calendar_axis=calendar_axis, season_details=season_details)
             elif project.description != MARKER or not ProjectMembership.objects.filter(
                 project=project, user=user, role='admin',
             ).exists():
@@ -63,7 +75,7 @@ class Command(LocalFixtureCommand):
         self.stdout.write(f'Open project {project.pk}: {project.name}. Existing data is preserved.')
 
     @staticmethod
-    def _populate(project: Project, *, calendar_axis: bool) -> None:
+    def _populate(project: Project, *, calendar_axis: bool, season_details: bool) -> None:
         origin = Season.objects.create(
             project=project, start_date=date(2025, 1, 1), end_date=date(2025, 12, 31),
         )
@@ -126,7 +138,7 @@ class Command(LocalFixtureCommand):
             earlier = Season.objects.create(
                 project=project, start_date=date(2024, 1, 1), end_date=date(2024, 12, 31),
             )
-            plant(
+            rhubarb = plant(
                 'Calendar rhubarb', date(2024, 5, 1), date(2030, 9, 30), season=earlier,
                 life_cycle='perennial', standing_time_years=10, annual_harvest_window='03-12/04-09',
             )
@@ -134,3 +146,23 @@ class Command(LocalFixtureCommand):
                 'Long winter leek', date(2026, 10, 1), None, season=calendar_season,
                 life_cycle='annual', growth_duration_days=355, harvest_duration_days=40,
             )
+            if season_details:
+                rhubarb.actual_sowing_date = date(2024, 5, 3)
+                rhubarb.save(update_fields=['actual_sowing_date'])
+                Task.objects.create(
+                    project=project, planting_plan=rhubarb, crop=rhubarb.crop, season=earlier,
+                    title='Check the spring harvest',
+                    due_date=date(2025, 3, 12), status='completed',
+                )
+                record = HarvestRecord.objects.create(
+                    project=project, crop=rhubarb.crop, date=date(2026, 4, 22),
+                    quantity=Decimal('3.5'), unit='kg',
+                )
+                HarvestAllocation.objects.create(
+                    project=project, harvest=record, planting_plan=rhubarb,
+                    quantity=record.quantity,
+                )
+                CropLoss.objects.create(
+                    project=project, planting_plan=rhubarb, date=date(2025, 4, 8),
+                    loss_type='partial', cause='frost',
+                )

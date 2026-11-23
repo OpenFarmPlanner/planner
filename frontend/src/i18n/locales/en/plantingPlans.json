@@ -431,7 +431,15 @@
     "photosLoadFailed": "Could not load photos.",
     "tasks": "Tasks",
     "tasksLoadFailed": "Could not load tasks.",
-    "taskCancelled": "Cancelled"
+    "taskCancelled": "Cancelled",
+    "bedArea": "Total bed area (m²)",
+    "originReadOnly": "Plan from {{season}} · Plan information is read-only",
+    "plantingDates": "Sowing and planting",
+    "seasonalRecords": "Season records",
+    "recordSeason": "Season to view",
+    "harvestDates": "Harvest dates",
+    "noPlannedHarvest": "No harvest is planned in this season.",
+    "observedFirstHarvest": "First recorded harvest on {{date}}"
   },
   "previousSeason": {
     "title": "Previous season: {{season}}",

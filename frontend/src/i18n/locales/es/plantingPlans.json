@@ -441,7 +441,15 @@
     "photosLoadFailed": "No se pudieron cargar las fotos.",
     "tasks": "Tareas",
     "tasksLoadFailed": "No se pudieron cargar las tareas.",
-    "taskCancelled": "Cancelada"
+    "taskCancelled": "Cancelada",
+    "bedArea": "Superficie total del bancal (m²)",
+    "originReadOnly": "Serie de {{season}} · Datos de la serie en modo de solo lectura",
+    "plantingDates": "Siembra y plantación",
+    "seasonalRecords": "Registros de la temporada",
+    "recordSeason": "Temporada que se muestra",
+    "harvestDates": "Fechas de cosecha",
+    "noPlannedHarvest": "No hay ninguna cosecha prevista en esta temporada.",
+    "observedFirstHarvest": "Primera cosecha registrada el {{date}}"
   },
   "previousSeason": {
     "title": "Temporada anterior: {{season}}",

@@ -10,7 +10,6 @@
 import { GerminationInfo } from "../components/planting-plans/GerminationInfo";
 import { useCallback, useState, useEffect, useId, useMemo, useRef, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { isTypingInEditableElement } from "../hooks/useKeyboardShortcuts";
-import { confirmAction } from "../utils/confirmAction";
 import { useLocation, useNavigate, useOutletContext, useSearchParams } from "react-router";
 import type {
   GridCellParams,
@@ -151,7 +150,7 @@ import {
   type PlantingPlanActivity, type PlantingPlanDateColumn, type PlantingPlanDateMode,
 } from "../planting-plans/plantingPlanActualDates";
 import { InlinePlanDateEditor, PlantingPlanDateModeSelect, RecordedPlanDateCell, RecordedPlanDateValue } from "../planting-plans/PlantingPlanDateCells";
-import { PlanDateComparisonText, PlantingPlanExecutionDates } from "../planting-plans/PlantingPlanExecutionDates";
+import { PlanDateComparisonText } from "../planting-plans/PlantingPlanExecutionDates";
 import { ReadOnlyRotationWarning, RotationStatusIcon } from "../components/planting-plans/rotation/RotationStatusIcon";
 import { CompanionWarningIcon } from "../components/planting-plans/rotation/CompanionCheckAlert";
 import { SiteSuitabilityHints } from "../components/planting-plans/rotation/SiteSuitabilityHints";
@@ -383,8 +382,6 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   const [mobileCreateError, setMobileCreateError] = useState("");
   const [mobileCreateErrorAction, setMobileCreateErrorAction] = useState<{ message: string; action: ReactNode } | null>(null);
   const [mobileEditId, setMobileEditId] = useState<number | null>(null);
-  const [mobileDatesDirty, setMobileDatesDirty] = useState(false);
-  const mobileEditingPlan = mobileRows.find(row => row.id === mobileEditId);
   const [mobileLastEditedField, setMobileLastEditedField] = useState<
     "area_m2" | "plants_count" | null
   >(null);
@@ -1802,7 +1799,6 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     setMobileCreateError("");
     setMobileEditId(null);
     setMobileLastEditedField(null);
-    setMobileDatesDirty(false);
   };
 
   const handleMobileLinkedFieldEdited = (field: "area_m2" | "plants_count"): void => {
@@ -3052,13 +3048,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           bedLabel: bedById.get(Number(mobileCreateForm.bed))?.name ?? "",
           acceptance: getRotationAcceptanceControls(mobileRotationKey),
         }}
-        actualDatesEditor={mobileEditingPlan && <PlantingPlanExecutionDates key={mobileEditingPlan.id}
-          plan={mobileEditingPlan} editable onDirtyChange={setMobileDatesDirty}
-          onSaved={dates => applySavedActualDates(mobileEditingPlan.id, dates)} />}
-        submitDisabled={mobileDatesDirty}
-        onClose={() => {
-          if (!mobileDatesDirty || confirmAction(t('plantingPlans:actualDates.unsaved'))) closeMobileCreateDialog();
-        }}
+        onClose={closeMobileCreateDialog}
         onSubmit={() => void (mobileEditId ? handleMobileUpdate() : handleMobileCreate())}
       />
       {areaValidationDialog && (

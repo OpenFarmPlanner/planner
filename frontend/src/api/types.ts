@@ -1440,8 +1440,11 @@ export interface PlantingPlanDetail extends PlantingPlan {
   field_name: string | null;
   location_name: string | null;
   crop_available: boolean;
+  bed_area_sqm?: number | null;
   previous_season_reference?: PlantingPlanPreviousSeasonReference | null;
   harvest_windows_by_year?: HarvestWindowPage | null;
+  observed_first_harvest_date?: string | null;
+  record_season_ids?: number[];
 }
 
 export type PlantingPlanPreviousSeasonReference = { available: false } | {

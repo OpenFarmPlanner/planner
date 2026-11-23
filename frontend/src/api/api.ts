@@ -483,8 +483,10 @@ export const bedAPI = {
 };
 
 export const harvestAPI = {
-  list: (planId?: number, signal?: AbortSignal) => fetchAllPaginated<HarvestRecord>(
-    planId === undefined ? '/harvests/' : `/harvests/?planting_plan=${planId}`, signal,
+  list: (planId?: number, signal?: AbortSignal, recordSeasonId?: number) => fetchAllPaginated<HarvestRecord>(
+    planId === undefined ? '/harvests/'
+      : `/harvests/?planting_plan=${planId}${recordSeasonId === undefined ? '' : `&record_season=${recordSeasonId}`}`,
+    signal,
   ),
   summary: (signal?: AbortSignal) => http.get<HarvestTotals>('/harvests/summary/', { signal }),
   suggestions: (crop: number, date: string, signal?: AbortSignal) => (
@@ -496,8 +498,9 @@ export const harvestAPI = {
 };
 
 export const cropLossAPI = {
-  listForPlan: (planId: number, signal?: AbortSignal) => fetchAllPaginated<CropLoss>(
-    `/crop-losses/?planting_plan=${planId}`, signal,
+  listForPlan: (planId: number, signal?: AbortSignal, recordSeasonId?: number) => fetchAllPaginated<CropLoss>(
+    `/crop-losses/?planting_plan=${planId}${recordSeasonId === undefined ? '' : `&record_season=${recordSeasonId}`}`,
+    signal,
   ),
   create: (data: CropLossWrite) => http.post<CropLoss>('/crop-losses/', data),
   patch: (id: number, data: Omit<CropLossWrite, 'planting_plan'>) => http.patch<CropLoss>(`/crop-losses/${id}/`, data),
@@ -515,9 +518,12 @@ export const plantingPlanAPI = {
   listAll: () => fetchAllPaginated<PlantingPlan>('/planting-plans/'),
   listForArea: (type: 'bed' | 'field', id: number) => fetchAllPaginated<PlantingPlan>(`/planting-plans/?${type}=${id}`),
   get: (id: number) => http.get<PlantingPlan>(`/planting-plans/${id}/`),
-  getAcrossSeasons: (id: number, signal?: AbortSignal, harvestYear?: number) =>
+  getAcrossSeasons: (id: number, signal?: AbortSignal, harvestYear?: number, recordSeasonId?: number) =>
     http.get<import('./types').PlantingPlanDetail>(`/planting-plans/${id}/`, {
-      params: { across_seasons: true, harvest_year: harvestYear }, signal,
+      params: {
+        across_seasons: true, harvest_year: harvestYear,
+        ...(recordSeasonId === undefined ? {} : { record_season: recordSeasonId }),
+      }, signal,
     }),
   create: (data: PlantingPlan) => http.post<PlantingPlan>('/planting-plans/', withActiveProject(data)),
   update: (id: number, data: PlantingPlan) => http.put<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),
@@ -954,9 +960,14 @@ export default {
 
 export const taskAPI = {
   listAll: () => fetchAllPaginated<Task>('/tasks/'),
-  listForPlan: (planId: number, signal?: AbortSignal) => fetchAllPaginated<Task>(`/tasks/?planting_plan=${planId}&across_seasons=true`, signal),
+  listForPlan: (planId: number, signal?: AbortSignal, recordSeasonId?: number) => fetchAllPaginated<Task>(
+    `/tasks/?planting_plan=${planId}&across_seasons=true${recordSeasonId === undefined ? '' : `&record_season=${recordSeasonId}`}`,
+    signal,
+  ),
   create: (data: TaskWritePayload) => http.post<Task>('/tasks/', data),
-  update: (id: number, data: TaskWritePayload) => http.patch<Task>(`/tasks/${id}/`, data),
+  update: (id: number, data: TaskWritePayload, recordSeasonId?: number) => http.patch<Task>(
+    `/tasks/${id}/${recordSeasonId === undefined ? '' : `?record_season=${recordSeasonId}`}`, data,
+  ),
   delete: (id: number) => http.delete(`/tasks/${id}/`),
   updateStatus: (id: number, status: TaskStatus) => http.patch<Task>(`/tasks/${id}/`, { status }),
 };

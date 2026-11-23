@@ -431,7 +431,15 @@
     "photosLoadFailed": "Fotos konnten nicht geladen werden.",
     "tasks": "Aufgaben",
     "tasksLoadFailed": "Aufgaben konnten nicht geladen werden.",
-    "taskCancelled": "Abgebrochen"
+    "taskCancelled": "Abgebrochen",
+    "bedArea": "Gesamte Beetfläche (m²)",
+    "originReadOnly": "Anbauplan aus {{season}} · Stammdaten schreibgeschützt",
+    "plantingDates": "Aussaat und Pflanzung",
+    "seasonalRecords": "Saisondaten",
+    "recordSeason": "Saison anzeigen",
+    "harvestDates": "Erntetermine",
+    "noPlannedHarvest": "In dieser Saison ist keine Ernte geplant.",
+    "observedFirstHarvest": "Erste erfasste Ernte am {{date}}"
   },
   "previousSeason": {
     "title": "Vorherige Saison: {{season}}",

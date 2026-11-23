@@ -130,6 +130,20 @@ description), one level down:
   and `actual_end_date` drawn from recorded dates within that season. An
   empty list means the plan has no eligible harvest in that period. The
   property is null for legacy one-off plans or a request without a season.
+  Planting-plan details use the active season for perennial and carried-over
+  plans. The local chooser changes the date range of harvest forecasts, allocated
+  harvest totals, crop losses and tasks without moving the source plan or
+  changing the app's active season. Its `record_season` parameter resolves to
+  a season in the active project. Date ranges are inclusive. Due dates place
+  tasks in this view, with the assigned season used for undated tasks. The
+  chooser also includes periods with records outside the bed's occupancy, such
+  as pre-planting tasks. The first dated allocated harvest can be shown as an
+  observation when an explicit start is
+  absent. Only explicitly recorded dates supply an actual harvest end.
+  Original planting information remains visible in every period. The editor in
+  the originating season retains the saved actual dates, including a date in
+  a different period. A current-season task
+  may link to the original plan while the crop occupies an assigned bed.
   Plan details show the lifetime harvest occurrences in pages of up to 20 years.
   In the originating
   season, open **Harvest windows by year** to replace the calculated dates for
@@ -348,6 +362,15 @@ September 2030 clearing date remains visible in the preview. Shorten the
 clearing date from the origin plan to March 20, 2027 and verify that the
 bar and second shading both end on that date. Apple first bears in 2027.
 Check an override for that year and compare the season-scoped yield report.
+
+For the seasonal detail page, preview and apply the same command using
+`--season-details` in place of `--calendar-axis`. In **Perennial season details
+acceptance**, open Calendar rhubarb's details in 2026. Check its 2024 planned
+and recorded sowing dates and September 2030 clearing date. The 2026 section
+shows the March–April plan, 3.5 kg allocated on April 22 and the first recorded
+harvest as an observation. Switch the detail chooser to 2025 to find the frost
+loss and completed spring harvest task. The application's season stays at 2026.
+Return the detail chooser to 2026 and add or edit a task or a loss for that year.
 
 ### Local yield comparison fixture
 

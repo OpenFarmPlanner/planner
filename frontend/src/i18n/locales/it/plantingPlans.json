@@ -441,7 +441,15 @@
     "photosLoadFailed": "Impossibile caricare le foto.",
     "tasks": "Attività",
     "tasksLoadFailed": "Impossibile caricare le attività.",
-    "taskCancelled": "Annullata"
+    "taskCancelled": "Annullata",
+    "bedArea": "Superficie totale dell’aiuola (m²)",
+    "originReadOnly": "Serie della stagione {{season}} · Dati della serie in sola lettura",
+    "plantingDates": "Semina e impianto",
+    "seasonalRecords": "Dati della stagione",
+    "recordSeason": "Stagione da visualizzare",
+    "harvestDates": "Date di raccolta",
+    "noPlannedHarvest": "Non è previsto alcun raccolto in questa stagione.",
+    "observedFirstHarvest": "Primo raccolto registrato il {{date}}"
   },
   "previousSeason": {
     "title": "Stagione precedente: {{season}}",

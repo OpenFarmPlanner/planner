@@ -1,6 +1,7 @@
 """Local test data must be explicit, isolated and safe to prepare repeatedly."""
 
 from datetime import date
+from decimal import Decimal
 from io import StringIO
 from unittest.mock import patch
 
@@ -158,6 +159,30 @@ class LocalLibraryImportSeedTests(TestCase):
         rhubarb.refresh_from_db()
         self.assertEqual(rhubarb.notes, 'Keep this manual edit')
         self.assertEqual(project.planting_plans.count(), 6)
+
+    def test_perennial_details_fixture_keeps_historical_records_on_the_source_plan(self):
+        command = 'seed_perennial_harvest_acceptance'
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        projects = Project.objects.filter(slug=f'ofp-local-perennial-details-{self.user.pk}')
+        call_command(command, **arguments, season_details=True)
+        self.assertFalse(projects.exists())
+        call_command(command, **arguments, season_details=True, apply=True)
+        rhubarb = projects.get().planting_plans.get(crop__name='Calendar rhubarb')
+        self.assertEqual(rhubarb.season.start_date.year, 2024)
+        self.assertEqual(rhubarb.actual_sowing_date, date(2024, 5, 3))
+        task = rhubarb.tasks.get()
+        self.assertEqual(task.season.start_date.year, 2024)
+        self.assertEqual(task.due_date.year, 2025)
+        self.assertEqual(task.status, 'completed')
+        allocation = rhubarb.harvest_allocations.get()
+        self.assertEqual(allocation.harvest.date, date(2026, 4, 22))
+        self.assertEqual(allocation.quantity, Decimal('3.5'))
+        self.assertEqual(rhubarb.crop_losses.get().date.year, 2025)
+        task.title = 'Reviewed by hand'
+        task.save(update_fields=['title'])
+        call_command(command, **arguments, season_details=True, apply=True)
+        self.assertEqual(rhubarb.tasks.get().title, 'Reviewed by hand')
+        self.assertEqual(rhubarb.harvest_allocations.count(), 1)
 
     def test_yield_comparison_fixture_previews_and_preserves_manual_edits(self):
         command = 'seed_yield_comparison_acceptance'

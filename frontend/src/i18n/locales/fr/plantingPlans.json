@@ -441,7 +441,15 @@
     "photosLoadFailed": "Impossible de charger les photos.",
     "tasks": "Tâches",
     "tasksLoadFailed": "Impossible de charger les tâches.",
-    "taskCancelled": "Annulée"
+    "taskCancelled": "Annulée",
+    "bedArea": "Surface totale de la planche (m²)",
+    "originReadOnly": "Série de {{season}} · Données de la série en lecture seule",
+    "plantingDates": "Semis et plantation",
+    "seasonalRecords": "Données de la saison",
+    "recordSeason": "Saison à afficher",
+    "harvestDates": "Dates de récolte",
+    "noPlannedHarvest": "Aucune récolte n’est prévue pour cette saison.",
+    "observedFirstHarvest": "Première récolte enregistrée le {{date}}"
   },
   "previousSeason": {
     "title": "Saison précédente : {{season}}",

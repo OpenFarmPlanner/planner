@@ -250,7 +250,7 @@ test('keeps explanatory header help delayed and shows Add in keyboard help', asy
 test.describe('touch and French actual date labels', () => {
   test.use({ hasTouch: true, viewport: { width: 375, height: 800 } });
 
-  test('records dates from the mobile edit form and compares them on the detail page', async ({ page, request }) => {
+  test('records dates from the mobile edit form and compares them on the detail page', async ({ page, request }, info) => {
     const { first } = await seedPlans(page, request, 'actual-dates-french-mobile');
     await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'fr' });
     await page.goto(table);
@@ -268,27 +268,37 @@ test.describe('touch and French actual date labels', () => {
     await plan.getByRole('button', { name: /Actions pour la série/ }).tap();
     await page.getByRole('menuitem', { name: 'Modifier' }).tap();
     const edit = page.getByRole('dialog');
-    await edit.getByRole('button', { name: 'Saisir les dates réelles' }).tap();
-    const form = edit.locator('form');
-    await form.getByLabel('Date réelle de début des semis en pépinière').fill('2026-03-14');
-    await form.getByLabel('Date réelle de plantation', { exact: true }).fill('2026-04-07');
-    await form.getByRole('button', { name: 'Enregistrer' }).tap();
-    await expect(form).toHaveCount(0);
+    await expect(edit.getByRole('button', { name: 'Saisir les dates réelles' })).toHaveCount(0);
     await edit.getByRole('button', { name: 'Annuler' }).tap();
-    await expect(plan).toContainText('07/04/2026');
 
     await plan.getByRole('button', { name: /Actions pour la série/ }).tap();
     await page.getByRole('menuitem', { name: 'Détails de la série' }).tap();
     await expect(page).toHaveURL(new RegExp(`${table}/${first.id}$`));
     await expect(page.getByRole('heading', { name: 'Terminkohl', level: 1 })).toBeVisible();
-    await expect(page.getByText('3 jours de retard', { exact: true }).filter({ visible: true })).toBeVisible();
-    await expect(page.getByText('À la date prévue', { exact: true }).filter({ visible: true })).toBeVisible();
+    const planting = page.getByRole('heading', { name: 'Semis et plantation' }).locator('..');
+    const editActual = planting.getByRole('button', { name: 'Saisir les dates réelles' });
+    await editActual.tap();
+    const form = planting.locator('form');
+    await form.getByLabel('Date réelle de début des semis en pépinière').fill('2026-03-14');
+    await form.getByLabel('Date réelle de plantation', { exact: true }).fill('2026-04-07');
+    await form.getByRole('button', { name: 'Enregistrer' }).tap();
+    await expect(form).toHaveCount(0);
+    await expect(planting.getByText('3 jours de retard', { exact: true })).toBeVisible();
+    await expect(planting.getByText('À la date prévue', { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+    await page.screenshot({ path: info.outputPath('french-mobile-actual-dates.png'), animations: 'disabled' });
 
-    await page.getByRole('button', { name: 'Saisir les dates réelles' }).tap();
-    await page.getByRole('button', { name: 'Effacer la date · Date réelle de plantation' }).tap();
-    await page.locator('form').getByRole('button', { name: 'Enregistrer' }).tap();
-    await expect(page.getByText('Aucune date', { exact: true }).filter({ visible: true }).first()).toBeVisible();
+    await page.getByRole('button', { name: 'Retour au tableau' }).tap();
+    await expect(plan).toContainText('07/04/2026');
+    await plan.getByRole('button', { name: /Actions pour la série/ }).tap();
+    await page.getByRole('menuitem', { name: 'Détails de la série' }).tap();
+
+    await editActual.tap();
+    await form.getByRole('button', { name: 'Effacer la date · Date réelle de plantation' }).tap();
+    await form.getByRole('button', { name: 'Enregistrer' }).tap();
+    await expect(planting.getByText('07/04/2026', { exact: true })).toHaveCount(0);
+    await expect(planting.getByText('04/04/2026', { exact: true })).toBeVisible();
+    await expect(planting.getByText('Aucune date', { exact: true })).toHaveCount(0);
     const saved = await apiRequest<{ planting_date: string; actual_transplanting_date: string | null }>(
       page, 'GET', `/planting-plans/${first.id}/`,
     );

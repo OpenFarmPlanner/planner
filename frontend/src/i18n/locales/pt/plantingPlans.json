@@ -441,7 +441,15 @@
     "photosLoadFailed": "Não foi possível carregar as fotografias.",
     "tasks": "Tarefas",
     "tasksLoadFailed": "Não foi possível carregar as tarefas.",
-    "taskCancelled": "Cancelada"
+    "taskCancelled": "Cancelada",
+    "bedArea": "Área total do canteiro (m²)",
+    "originReadOnly": "Série da época {{season}} · Dados da série só de leitura",
+    "plantingDates": "Sementeira e plantação",
+    "seasonalRecords": "Registos da época",
+    "recordSeason": "Época a consultar",
+    "harvestDates": "Datas de colheita",
+    "noPlannedHarvest": "Não está prevista nenhuma colheita nesta época.",
+    "observedFirstHarvest": "Primeira colheita registada em {{date}}"
   },
   "previousSeason": {
     "title": "Época anterior: {{season}}",

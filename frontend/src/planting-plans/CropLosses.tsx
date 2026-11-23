@@ -16,13 +16,14 @@ import { formatCropLossExtent } from './cropLossDisplay';
 
 interface CropLossesProps {
   planId: number;
+  recordSeasonId?: number;
   initialDate: string;
   onChanged: () => void;
 }
 
 type IncidentsResult = { revision: number; rows: CropLoss[] } | { revision: number; error: true };
 
-export function CropLosses({ planId, initialDate, onChanged }: CropLossesProps) {
+export function CropLosses({ planId, recordSeasonId, initialDate, onChanged }: CropLossesProps) {
   const { t, i18n } = useTranslation(['plantingPlans', 'common']);
   const locale = resolveSeasonDateLocale(i18n);
   const deleteTitle = useId();
@@ -38,13 +39,13 @@ export function CropLosses({ planId, initialDate, onChanged }: CropLossesProps) 
 
   useEffect(() => {
     const controller = new AbortController();
-    void cropLossAPI.listForPlan(planId, controller.signal).then(({ results }) => {
+    void cropLossAPI.listForPlan(planId, controller.signal, recordSeasonId).then(({ results }) => {
       if (!controller.signal.aborted) setResult({ revision, rows: results });
     }).catch(() => {
       if (!controller.signal.aborted) setResult({ revision, error: true });
     });
     return () => controller.abort();
-  }, [planId, revision]);
+  }, [planId, recordSeasonId, revision]);
 
   const refresh = () => setRevision(value => value + 1);
   const afterChange = () => {
@@ -66,7 +67,7 @@ export function CropLosses({ planId, initialDate, onChanged }: CropLossesProps) 
     }
   };
 
-  return <DetailSection title={t('cropLosses.title')} outlined>
+  return <DetailSection title={t('cropLosses.title')}>
     <Stack spacing={1.25} sx={{ minWidth: 0 }}>
       <Button startIcon={<AddIcon />} sx={{ alignSelf: 'flex-start' }} onClick={() => setEditor('new')}>
         {t('cropLosses.add')}
