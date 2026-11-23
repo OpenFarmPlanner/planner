@@ -74,12 +74,10 @@ export function useProjectCropSelection(projectId: number | null | undefined, cr
       && groups.get(id)?.some(variety => selected.has(variety))),
     setCropSelected: (id: number, checked: boolean) => setSelected([id, ...(groups.get(id) ?? [])], checked),
     eligibleVisibleIds: (ids: readonly number[]) => {
-      // A filtered bulk action can include a parent only if its varieties are
-      // already selected or in the same visible set.
+      // Use one scope for selecting and clearing. A parent belongs to that
+      // scope only when the filters also include its whole group.
       const visible = new Set(ids);
-      return [...visible].filter(id => groups.get(id)?.every(variety => (
-        visible.has(variety) || selected?.has(variety)
-      )) ?? true);
+      return [...visible].filter(id => groups.get(id)?.every(variety => visible.has(variety)) ?? true);
     },
     enabled: projectId != null,
     target: target?.expected_project_id === projectId ? target : null,

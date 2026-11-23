@@ -110,8 +110,9 @@ all its varieties, including collapsed rows. Selecting varieties individually
 leaves the parent checkbox mixed, even when every variety is selected. Clearing
 a variety from a fully selected group clears the parent selection as well.
 **Select visible** follows the current search and filters, including matching
-varieties in collapsed groups. It includes a parent when every variety is in
-scope or already selected. Changing filters preserves the selection.
+varieties in collapsed groups. **Select visible** and **Clear visible** include
+a parent when every variety matches the filters. Changing filters preserves the
+selection.
 
 **Delete** opens the impact preview with separate culture and variety counts
 and any dependencies. The preview starts with the exact selected IDs. Where

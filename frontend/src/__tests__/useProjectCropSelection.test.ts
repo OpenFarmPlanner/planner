@@ -46,11 +46,15 @@ it('keeps Select visible scoped when a filter leaves one variety out', () => {
 
   act(() => result.current.setCropSelected(1, true));
   expect(result.current.selected).toEqual(new Set([1, 2, 3]));
+  expect(result.current.eligibleVisibleIds([1])).toEqual([]);
   const clear = result.current.eligibleVisibleIds(visibleCropIds);
-  expect(clear).toEqual([1, 2]);
+  expect(clear).toEqual([2]);
   act(() => result.current.setSelected(clear, false));
   expect(result.current.selected).toEqual(new Set([3]));
   expect(result.current.isMixed(1)).toBe(true);
+  act(() => result.current.setCropSelected(1, true));
+  act(() => result.current.setCropSelected(1, false));
+  expect(result.current.selected?.size).toBe(0);
 });
 
 it('keeps new varieties unselected after a reload and resets on project changes', () => {
