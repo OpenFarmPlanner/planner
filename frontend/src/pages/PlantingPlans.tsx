@@ -39,6 +39,7 @@ import PhotoCameraOutlinedIcon from "@mui/icons-material/PhotoCameraOutlined";
 import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 import GrassOutlinedIcon from "@mui/icons-material/GrassOutlined";
 import GridViewOutlinedIcon from "@mui/icons-material/GridViewOutlined";
+import { useGridColumnSizing } from "../components/data-grid/useGridColumnSizing";
 import { useTranslation } from "../i18n";
 import {
   normalizeCultivationType,
@@ -171,7 +172,6 @@ import {
   buildMobileCreateForm,
   clearSupplementalPlannedDates,
   createEmptyMobileCreateForm,
-  CROP_COLUMN_MAX_WIDTH,
   getPlanOccupancyEndIso,
   getSeasonOccupancyStatus,
   hasEarlyRecordedOccupancy,
@@ -189,6 +189,7 @@ import {
   type SeasonOccupancyStatus,
 } from './plantingPlansUtils';
 import { AppTooltip } from '../components/AppTooltip';
+import { TruncatedTextWithTooltip } from "../components/TruncatedTextWithTooltip";
 import { dataGridHeaderLabelSx } from "../components/data-grid/dataGridHeaderLabelSx";
 import { GridHeaderHelp } from "../components/data-grid/GridHeaderHelp";
 
@@ -250,7 +251,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     },
     [seasonBounds],
   );
-  const { shouldShowProjectRequiredState, missingProjectReason, activeProjectId } = useProjectRequirement();
+  const { shouldShowProjectRequiredState, missingProjectReason, activeProjectId, userId } = useProjectRequirement();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("lg"));
@@ -842,12 +843,12 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           field: "crop",
           headerName: t("plantingPlans:columns.crop"),
           flex: 0,
-          minWidth: dynamicWidths.crop,
-          maxWidth: CROP_COLUMN_MAX_WIDTH,
+          minWidth: 128,
           truncateCellText: true,
           options: cropOptions,
           placeholder: t("plantingPlans:placeholders.selectCrop"),
         }),
+        width: dynamicWidths.crop,
         hideable: false,
         renderCell: (params) => (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
@@ -887,7 +888,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         field: "cultivation_type",
         headerName: t("plantingPlans:columns.cultivationType"),
         flex: 0,
-        minWidth: dynamicWidths.cultivationType,
+        minWidth: 88,
+        width: dynamicWidths.cultivationType,
         editable: true,
         type: "singleSelect",
         valueOptions: (params: GridValueOptionsParams<PlantingPlanRow>) => {
@@ -955,7 +957,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         field: "bed",
         headerName: bedColumnLabel,
         flex: 0,
-        minWidth: dynamicWidths.bed,
+        minWidth: 152,
+        width: dynamicWidths.bed,
         // The inline picker owns its edit lifecycle within the view cell.
         editable: false,
         type: "singleSelect",
@@ -1015,9 +1018,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         field: "sowing_date",
         headerName: t("plantingPlans:columns.sowingDate"),
         flex: 0,
-        minWidth: dynamicWidths.sowingDate,
+        minWidth: 80,
         width: dynamicWidths.sowingDate,
-        maxWidth: dynamicWidths.sowingDate,
         type: "date",
         editable: true,
         headerClassName: getCoupledFieldHeaderClassName("start", isSowingDatePartnerVisible),
@@ -1106,16 +1108,14 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         field: "planting_date",
         headerName: t("plantingPlans:columns.plantingDate"),
         flex: 0,
-        minWidth: dynamicWidths.plantingDate,
+        minWidth: 80,
         width: dynamicWidths.plantingDate,
-        maxWidth: dynamicWidths.plantingDate,
         type: "date",
         editable: true,
         headerClassName: getCoupledFieldHeaderClassName("end", isPlantingDatePartnerVisible),
         renderHeader: () => (
-          <Box component="span" sx={dataGridHeaderLabelSx}>
-            {t("plantingPlans:tableHeaders.plantingDate")}
-          </Box>
+          <TruncatedTextWithTooltip text={t("plantingPlans:tableHeaders.plantingDate")}
+            sx={dataGridHeaderLabelSx} focusWithinColumnHeader />
         ),
         valueGetter: (value) => toGridDateValue(value),
         cellClassName: (params) => [
@@ -1161,9 +1161,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         field: "harvest_date",
         headerName: t("plantingPlans:columns.harvestStartDate"),
         flex: 0,
-        minWidth: dynamicWidths.harvestDate,
+        minWidth: 80,
         width: dynamicWidths.harvestDate,
-        maxWidth: dynamicWidths.harvestDate,
         ...getCalculatedColumnProps<PlantingPlanRow>({
           headerName: t("plantingPlans:tableHeaders.harvestStartDate"),
           tooltip: t("plantingPlans:tooltips.calculatedHarvestStartDate"),
@@ -1183,9 +1182,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         field: "harvest_end_date",
         headerName: t("plantingPlans:columns.harvestEndDate"),
         flex: 0,
-        minWidth: dynamicWidths.harvestEndDate,
+        minWidth: 80,
         width: dynamicWidths.harvestEndDate,
-        maxWidth: dynamicWidths.harvestEndDate,
         ...getCalculatedColumnProps<PlantingPlanRow>({
           headerName: t("plantingPlans:tableHeaders.harvestEndDate"),
           tooltip: t("plantingPlans:tooltips.calculatedHarvestEndDate"),
@@ -1207,9 +1205,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         field: "area_m2",
         headerName: t("plantingPlans:columns.areaM2"),
         flex: 0,
-        minWidth: dynamicWidths.area,
+        minWidth: 72,
         width: dynamicWidths.area,
-        maxWidth: dynamicWidths.area,
         editable: true,
         renderHeader: () => (
           <GridHeaderHelp label={t("plantingPlans:columns.areaM2")}
@@ -1254,7 +1251,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         field: "plants_count",
         headerName: t("plantingPlans:columns.plantsCount"),
         flex: 0,
-        minWidth: dynamicWidths.plants,
+        minWidth: 72,
+        width: dynamicWidths.plants,
         editable: true,
         type: "number",
         renderHeader: () => (
@@ -1666,10 +1664,6 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     () => withPinnedRowFirst(search.sortedRows, persistedRows, pinnedPlanId),
     [persistedRows, pinnedPlanId, search.sortedRows],
   );
-  const continuingCount = search.sortedRows.filter(isCarriedOverPlan).length;
-  const continuingSummary = continuingCount > 0 ? t('plantingPlans:carriedOver.count', {
-    count: continuingCount, own: search.sortedRows.length - continuingCount,
-  }) : null;
   const gridExternalFilter = useMemo<ExternalRowFilter<PlantingPlanRow>>(() => ({
     isRowVisible,
     onOpenFilterPanel: openFilterPanel,
@@ -1683,6 +1677,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       ? `≈ ${Math.round(row.plants_count)}`
       : "—"
   );
+
+  const columnSizing = useGridColumnSizing(columns, "plantingPlans", userId, activeProjectId);
 
   const clipboardColumns = useMemo(() => [
     {
@@ -2453,11 +2449,6 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               search={search}
               onOpenFilterSheet={() => setIsFilterPanelOpen(true)}
             />
-            {continuingSummary && (
-              <Typography variant="body2" color="text.secondary" sx={{ px: 2, pb: 1 }}>
-                {continuingSummary}
-              </Typography>
-            )}
             <MobileCardList
               items={mobileListRows}
               flashingId={flashingPlanId}
@@ -2648,11 +2639,6 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               viewControls={<PlantingPlanDateModeSelect mode={dateMode} onChange={setDateMode} />}
             />
           ) : null}
-          {!isMobile && hasPlans && continuingSummary && (
-            <Typography variant="body2" color="text.secondary" sx={{ px: 2, pb: 1 }}>
-              {continuingSummary}
-            </Typography>
-          )}
           {!isMobile && showDesktopSearchEmptyState ? <PlantingPlanSearchEmptyState search={search} /> : null}
           {/* Collapsed rather than unmounted while nothing matches, so the grid
               keeps its rows and scroll state, and still sizes the card: the
@@ -2665,9 +2651,9 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           <EditableDataGrid<PlantingPlanRow>
             surfaceSizing={isMobile ? "fullWorkspace" : "contentFit"}
             scrollMode="continuous"
-            columnHeaderHeight={isMobile ? undefined : 80}
             pinCreatedRowsToTop
-            columns={columns}
+            columns={columnSizing.columns}
+            columnSizing={columnSizing}
             api={plantingPlanGridAPI}
             dialogEditFields={PLANTING_PLAN_DIALOG_EDIT_FIELDS}
             focusableReadOnlyFields={FOCUSABLE_SUMMARY_FIELDS}

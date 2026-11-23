@@ -6,7 +6,7 @@ import { formatLocalizedNumber, parseLocalizedNumber } from '../utils/numberLoca
 
 export const AREA_LABEL_SEPARATOR = ' | ';
 
-export const CROP_COLUMN_MAX_WIDTH = 280;
+export const CROP_COLUMN_MAX_WIDTH = 240;
 const UNIT_NON_BREAKING_SPACE = '\u00a0';
 
 export const toNumericValue = (value: unknown): number | null => {

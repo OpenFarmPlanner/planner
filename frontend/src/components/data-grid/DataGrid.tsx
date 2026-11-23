@@ -1,3 +1,5 @@
+import { ResizableGridColumnMenu, ResizableGridColumnsManagement } from './ResizableGridColumnControls';
+import { columnAutosizeOptions, resizableGridHeaderSx } from './useGridColumnSizing';
 /**
  * Reusable Editable Data Grid component.
  * 
@@ -252,6 +254,7 @@ export function EditableDataGrid<T extends EditableRow>({
   initialPageSize = 25,
   scrollMode = 'autoHeight',
   columnHeaderHeight,
+  columnSizing,
   columnVisibilityModel,
   onColumnVisibilityModelChange,
   columnsPanelOpen,
@@ -2229,17 +2232,19 @@ export function EditableDataGrid<T extends EditableRow>({
   ]);
 
   const hasExternalFilter = Boolean(externalFilter);
+  const hasColumnSizing = Boolean(columnSizing);
   const gridSlots = useMemo(
     () => {
-      if (!shouldRenderGridFooter && !hasExternalFilter) {
+      if (!shouldRenderGridFooter && !hasExternalFilter && !hasColumnSizing) {
         return undefined;
       }
       return {
         ...(shouldRenderGridFooter ? { footer: CustomFooter } : {}),
+        ...(hasColumnSizing ? { columnsManagement: ResizableGridColumnsManagement, columnMenu: ResizableGridColumnMenu } : {}),
         ...(hasExternalFilter ? { columnMenu: ExternalFilterColumnMenu } : {}),
       };
     },
-    [CustomFooter, hasExternalFilter, shouldRenderGridFooter],
+    [CustomFooter, hasColumnSizing, hasExternalFilter, shouldRenderGridFooter],
   );
   const externalFilterOpenPanel = externalFilter?.onOpenFilterPanel;
   const externalFilterNoteRowIds = externalFilter?.highlightedNoteRowIds;
@@ -2801,6 +2806,8 @@ export function EditableDataGrid<T extends EditableRow>({
               <DataGrid
           rows={rowsForGrid}
           columns={columnsWithActions}
+          onColumnWidthChange={columnSizing?.onColumnWidthChange}
+          autosizeOptions={hasColumnSizing ? columnAutosizeOptions : undefined}
           columnVisibilityModel={columnVisibilityModel}
           onColumnVisibilityModelChange={onColumnVisibilityModelChange}
           rowModesModel={rowModesModel}
@@ -2835,7 +2842,7 @@ export function EditableDataGrid<T extends EditableRow>({
           onRowSelectionModelChange={(nextModel) => setSelectedRowIds(Array.from(nextModel.ids))}
           slots={gridSlots}
           slotProps={{
-            columnsManagement: { disableResetButton: true },
+            columnsManagement: { disableResetButton: true, widthReset: columnSizing?.widthReset },
             // Anchors the columns panel to its triggering button (left-aligned,
             // directly below, auto-flipping if it doesn't fit) instead of
             // GridPanel's fallback anchor at the grid's own top-right corner.
@@ -2843,7 +2850,7 @@ export function EditableDataGrid<T extends EditableRow>({
               ? { panel: { target: columnsPanelAnchorEl, placement: 'bottom-start' as const } }
               : {}),
           }}
-          sx={gridSx}
+          sx={hasColumnSizing ? [gridSx, resizableGridHeaderSx] : gridSx}
           getRowClassName={(params) => {
             const rowKey = String(params.id);
             const classNames: string[] = [];

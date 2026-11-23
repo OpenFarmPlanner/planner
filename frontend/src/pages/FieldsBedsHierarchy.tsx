@@ -17,6 +17,8 @@ import React, {
   useState,
 } from "react";
 import { useLocation, useNavigate } from "react-router";
+import { ResizableGridColumnMenu, ResizableGridColumnsManagement } from "../components/data-grid/ResizableGridColumnControls";
+import { columnAutosizeOptions, resizableGridHeaderSx, useGridColumnSizing } from "../components/data-grid/useGridColumnSizing";
 import { useTranslation } from "../i18n";
 import {
   DataGrid,
@@ -148,6 +150,7 @@ interface FieldsBedsHierarchyProps {
   suppressContextMenuHint?: boolean;
   /** Scopes the session-kept search and filters; null keeps them in memory only. */
   projectId?: number | null;
+  userId?: number | null;
 }
 
 interface HierarchyRowAction {
@@ -170,6 +173,7 @@ function FieldsBedsHierarchy({
   onPendingDeletionCountChange,
   suppressContextMenuHint = false,
   projectId = null,
+  userId,
 }: FieldsBedsHierarchyProps) {
   const LOCATION_ROW_HEIGHT = 46;
   const FIELD_ROW_HEIGHT = 42;
@@ -249,12 +253,6 @@ function FieldsBedsHierarchy({
     tableKey: "fieldsBedsHierarchy",
     defaultHiddenFields: SITE_CONDITION_COLUMN_FIELDS,
   });
-  const [resizedColumnWidths, setResizedColumnWidths] = useState<Partial<Record<string, number>>>({});
-  const handleColumnWidthChange: GridEventListener<"columnWidthChange"> = useCallback(({ colDef, width }) => {
-    setResizedColumnWidths(previous => previous[colDef.field] === width
-      ? previous
-      : { ...previous, [colDef.field]: width });
-  }, []);
   const columnVisibilityModelRef = useRef(columnVisibilityModel);
   useLayoutEffect(() => {
     columnVisibilityModelRef.current = columnVisibilityModel;
@@ -1706,7 +1704,7 @@ function FieldsBedsHierarchy({
   const nameColumnWidthLimit = showPersistentContextMenuButton ? Math.max(260, viewportWidth - 88) : Infinity;
   // Keep the row actions within reach on narrow screens while retaining the
   // user's preferred width for when the list has enough room again.
-  const effectiveNameColumnWidth = Math.min(resizedColumnWidths.name ?? nameColumnWidth, nameColumnWidthLimit);
+  const effectiveNameColumnWidth = Math.min(nameColumnWidth, nameColumnWidthLimit);
 
   const handleContextMenuButtonOpen = useCallback((row: HierarchyRow, origin: HTMLElement): void => {
     const rect = origin.getBoundingClientRect();
@@ -1775,13 +1773,9 @@ function FieldsBedsHierarchy({
       ...createSiteConditionColumns(t),
       ...baseColumns.slice(notesIndex),
     ];
-    // MUI clears flex when a column is resized. Keep that width when rows,
-    // viewport changes or other callbacks rebuild the column definitions.
-    return orderedColumns.map(column => {
-      if (column.field === "name") return { ...column, maxWidth: nameColumnWidthLimit };
-      const width = resizedColumnWidths[column.field];
-      return width === undefined ? column : { ...column, width, flex: 0 };
-    });
+    return orderedColumns.map(column => column.field === "name"
+      ? { ...column, minWidth: 152, maxWidth: Math.min(720, nameColumnWidthLimit) }
+      : column);
   }, [
     toggleExpand,
     handleAddBed,
@@ -1795,7 +1789,6 @@ function FieldsBedsHierarchy({
     t,
     effectiveNameColumnWidth,
     nameColumnWidthLimit,
-    resizedColumnWidths,
     showPersistentContextMenuButton,
     isMobileViewport,
     hierarchyLevelToggle.canExpand,
@@ -1803,6 +1796,7 @@ function FieldsBedsHierarchy({
     hierarchyLevelToggle.expandOneLevel,
     hierarchyLevelToggle.collapseOneLevel,
   ]);
+  const columnSizing = useGridColumnSizing(columns, "fieldsBedsHierarchy", userId, projectId);
 
   const {
     handleCellClick: handleHierarchyCellClick,
@@ -2109,12 +2103,14 @@ function FieldsBedsHierarchy({
           >
             <DataGrid
               rows={rows}
-              columns={columns}
-              onColumnWidthChange={handleColumnWidthChange}
+              columns={columnSizing.columns}
+              onColumnWidthChange={columnSizing.onColumnWidthChange}
+              autosizeOptions={columnAutosizeOptions}
+              slots={{ columnsManagement: ResizableGridColumnsManagement, columnMenu: ResizableGridColumnMenu }}
               columnVisibilityModel={columnVisibilityModel}
               onColumnVisibilityModelChange={setColumnVisibilityModel}
               slotProps={{
-                columnsManagement: { disableResetButton: true },
+                columnsManagement: { disableResetButton: true, widthReset: columnSizing.widthReset },
                 ...(columnsAnchorEl
                   ? { panel: { target: columnsAnchorEl, placement: "bottom-start" as const } }
                   : {}),
@@ -2157,9 +2153,10 @@ function FieldsBedsHierarchy({
               isCellEditable={isCellEditable}
               sx={
                 isMobileViewport
-                  ? HIERARCHY_DATA_GRID_SX
+                  ? { ...HIERARCHY_DATA_GRID_SX, ...resizableGridHeaderSx }
                   : {
                     ...HIERARCHY_DATA_GRID_SX,
+                    ...resizableGridHeaderSx,
                     height: getHierarchyGridHeight(maxPageContentHeight, tableContentHeight, availableTableHeight),
                   }
               }

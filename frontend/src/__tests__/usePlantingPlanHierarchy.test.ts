@@ -65,7 +65,7 @@ describe('usePlantingPlanHierarchy', () => {
     ]);
   });
 
-  it('updates date widths on a live language switch and restores existing English widths', async () => {
+  it('updates date widths on a live language switch and uses a compact English default', async () => {
     const { result } = renderHook(() => usePlantingPlanHierarchy(false));
     await waitFor(() => expect(result.current.isHierarchyLoading).toBe(false));
     try {
@@ -74,7 +74,7 @@ describe('usePlantingPlanHierarchy', () => {
       await act(() => switchLanguage('it'));
       expect(result.current.dynamicWidths.plantingDate).toBeLessThan(portugueseWidth);
       await act(() => switchLanguage('en'));
-      expect(result.current.dynamicWidths.plantingDate).toBe(142);
+      expect(result.current.dynamicWidths.sowingDate).toBeLessThan(142);
     } finally {
       await act(() => switchLanguage('de'));
     }

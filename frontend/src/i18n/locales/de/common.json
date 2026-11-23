@@ -1,6 +1,8 @@
 {
   "appName": "OpenFarmPlanner",
   "actions": {
+    "resetColumnWidths": "Spaltenbreiten zurücksetzen",
+    "autoFitColumnWidth": "Spaltenbreite automatisch anpassen",
     "add": "Hinzufügen",
     "edit": "Bearbeiten",
     "duplicate": "Duplizieren",

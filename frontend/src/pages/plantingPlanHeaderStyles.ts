@@ -1,16 +1,11 @@
 export const plantingPlanTableHeaderSx = {
-  '& .MuiDataGrid-columnHeaderTitleContainerContent': {
-    minWidth: 0,
-    flex: '1 1 auto',
-  },
+  '& .MuiDataGrid-columnHeaderTitleContainerContent': { minWidth: 0 },
   '& .MuiDataGrid-columnHeaderTitleContainerContent > span': {
     minWidth: 0,
     maxWidth: '100%',
-    whiteSpace: 'normal',
-    overflowWrap: 'anywhere',
-    display: '-webkit-box',
-    WebkitBoxOrient: 'vertical',
-    WebkitLineClamp: 2,
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
+    display: 'block',
     overflow: 'hidden',
     lineHeight: 1.2,
   },

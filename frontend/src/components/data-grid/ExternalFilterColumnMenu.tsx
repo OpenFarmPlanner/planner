@@ -9,6 +9,7 @@ import {
 
 import { ExternalFilterContext } from './externalFilterContext';
 import { NotesCell } from './NotesCell';
+import { ResizableGridColumnMenu } from './ResizableGridColumnControls';
 
 /** The column menu's "Filter" entry, opening the page's filter panel instead of MUI's. */
 function ExternalFilterColumnMenuItem({ colDef, onClick }: GridColumnMenuItemProps) {
@@ -35,7 +36,9 @@ function ExternalFilterColumnMenuItem({ colDef, onClick }: GridColumnMenuItemPro
 const EXTERNAL_FILTER_COLUMN_MENU_SLOTS = { columnMenuFilterItem: ExternalFilterColumnMenuItem };
 
 export function ExternalFilterColumnMenu(props: GridColumnMenuProps) {
-  return <GridColumnMenu {...props} slots={EXTERNAL_FILTER_COLUMN_MENU_SLOTS} />;
+  const { onColumnWidthChange } = useGridRootProps();
+  const Menu = onColumnWidthChange ? ResizableGridColumnMenu : GridColumnMenu;
+  return <Menu {...props} slots={EXTERNAL_FILTER_COLUMN_MENU_SLOTS} />;
 }
 
 type HighlightableNotesCellProps = Omit<ComponentProps<typeof NotesCell>, 'highlighted'> & { rowId: GridRowId };

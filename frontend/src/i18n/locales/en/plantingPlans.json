@@ -405,8 +405,8 @@
     "emergenceWithBasis_other": "Seedlings visible around {{from}}–{{to}} (sown {{sowing}} + {{days}} days germination time)"
   },
   "tableHeaders": {
-    "sowingDate": "Sowing date",
-    "plantingDate": "Planting date",
+    "sowingDate": "Sowing",
+    "plantingDate": "Planting",
     "harvestStartDate": "Harvest start",
     "harvestEndDate": "Harvest end"
   },

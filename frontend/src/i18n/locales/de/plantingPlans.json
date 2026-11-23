@@ -405,8 +405,8 @@
     "emergenceWithBasis_other": "Keimlinge sichtbar ca. {{from}}–{{to}} (Aussaat {{sowing}} + {{days}} Tage Keimdauer)"
   },
   "tableHeaders": {
-    "sowingDate": "Aussaattermin",
-    "plantingDate": "Pflanztermin",
+    "sowingDate": "Aussaat",
+    "plantingDate": "Pflanzung",
     "harvestStartDate": "Erntebeginn",
     "harvestEndDate": "Ernteende"
   },

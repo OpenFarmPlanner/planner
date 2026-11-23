@@ -1,3 +1,4 @@
+import type { useGridColumnSizing } from './useGridColumnSizing';
 import type { MutableRefObject, ReactNode } from 'react';
 import type { GridColDef, GridColumnVisibilityModel, GridRowId, GridSortModel } from '@mui/x-data-grid';
 
@@ -168,6 +169,7 @@ export interface EditableDataGridProps<T extends EditableRow> {
   scrollMode?: 'autoHeight' | 'continuous';
   /** Requested MUI header height before density scaling; defaults stay unchanged. */
   columnHeaderHeight?: number;
+  columnSizing?: Pick<ReturnType<typeof useGridColumnSizing>, 'onColumnWidthChange' | 'widthReset'>;
   /**
    * Column visibility model. Pass `columnVisibilityModel` from
    * `useColumnVisibility`.

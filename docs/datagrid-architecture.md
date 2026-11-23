@@ -1152,6 +1152,27 @@ on the inner `<DataGrid>` hides the panel's Reset button while keeping
 `hideable: false` on its `GridColDef` (used today only for Anbaupläne's
 Kultur (Sorte) column, since the row can't be identified without it).
 
+## Column sizing
+
+The Planting Plans grid and Growing Areas List share `useGridColumnSizing`
+with the native MUI resize divider and auto-fit. Drag a divider to set a width,
+or double-click it to fit rendered rows and the heading. **Auto-fit column
+width** is also available in each resizable column's keyboard-accessible
+header menu. **Reset column widths** at the bottom of Columns restores the
+current responsive defaults while preserving visibility and other preferences.
+
+Widths are stored by stable field ID under
+`tableColumnWidths.<user>.<project>.<table>`, independently of column
+visibility. The key is shared across seasons in the same project. Widths are
+clamped to each column's current limits, including the Growing Areas name
+column's narrow-screen limit for keeping row actions reachable. When the sum
+of visible widths exceeds the viewport, use the grid's horizontal scroll.
+
+The Cultures and public Crop Library browsers use master-detail lists. Phone
+card views, short account-token grids without a Columns toolbar, and HTML
+report tables such as Seed Demand, Young Plant Demand, and Yield Comparison
+keep their existing layouts.
+
 ## Page-owned filtering (`externalFilter`)
 
 A page that owns its search and filter state (today: Anbaupläne, see
@@ -1271,11 +1292,9 @@ retain `plantingPlans.columns` wording. The remaining column terminology stays
 unchanged. Portuguese, Italian and Spanish short forms are recorded in the
 [glossary](i18n-glossary.md#planting-plan-table-date-headings).
 
-`plantingPlanHeaderStyles.ts` scopes two-line label wrapping to this table's
-header text. Labels can shrink beside non-shrinking sort/menu controls, with
-full text retained in the DOM and existing overflow/help tooltips. This table
-opts into an 80px requested header height (56px at desktop compact density),
-allowing two lines even at 150% text size. `EditableDataGrid.columnHeaderHeight`
-forwards the MUI option; other callers retain the existing default. Scroll
-sizing continues to measure the rendered header. Field identifiers and column
-settings stay unchanged.
+`plantingPlanHeaderStyles.ts` keeps labels single-line beside the sort and
+menu controls. When space runs out, labels use ellipses and retain the full
+text in the DOM. Overflow tooltips disclose clipped labels without adding
+tab stops. Existing explanatory header tooltips retain their descriptions.
+The grid uses the shared compact header height and measures the rendered
+height for scroll sizing.

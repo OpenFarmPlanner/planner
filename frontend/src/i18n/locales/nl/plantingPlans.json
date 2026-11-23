@@ -405,8 +405,8 @@
     "emergenceWithBasis_other": "Kiemplanten zichtbaar rond {{from}}–{{to}} (gezaaid {{sowing}} + {{days}} dagen kiemtijd)"
   },
   "tableHeaders": {
-    "sowingDate": "Zaaidatum",
-    "plantingDate": "Plantdatum",
+    "sowingDate": "Zaaien",
+    "plantingDate": "Planten",
     "harvestStartDate": "Begin oogst",
     "harvestEndDate": "Einde oogst"
   },

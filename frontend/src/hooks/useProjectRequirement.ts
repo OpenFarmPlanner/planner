@@ -5,6 +5,7 @@ export type MissingProjectReason = "no_projects" | "no_active_project";
 
 export interface ProjectRequirementState {
   isAuthLoading: boolean;
+  userId: number | null;
   hasAnyProjects: boolean;
   hasActiveProject: boolean;
   /** The active project's id, or null without one. */
@@ -27,11 +28,12 @@ export function useProjectRequirement(): ProjectRequirementState {
 
     return {
       isAuthLoading: isLoading,
+      userId: user?.id ?? null,
       hasAnyProjects,
       hasActiveProject,
       activeProjectId: hasActiveProject ? activeProjectId : null,
       shouldShowProjectRequiredState,
       missingProjectReason,
     };
-  }, [activeProjectId, isLoading, user?.memberships]);
+  }, [activeProjectId, isLoading, user?.id, user?.memberships]);
 }

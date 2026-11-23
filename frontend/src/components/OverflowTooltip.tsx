@@ -2,17 +2,21 @@ import {
   cloneElement,
   useCallback,
   useEffect,
+  useRef,
   useState,
   type FocusEvent,
   type FocusEventHandler,
   type MouseEvent,
   type MouseEventHandler,
   type ReactElement,
+  type Ref,
 } from 'react';
 import type { TooltipProps } from '@mui/material';
+import { unstable_useForkRef as useForkRef } from '@mui/utils';
 import { AppTooltip } from './AppTooltip';
 
 type OverflowTooltipChild = ReactElement<{
+  ref?: Ref<HTMLElement>;
   onBlur?: FocusEventHandler<HTMLElement>;
   onFocus?: FocusEventHandler<HTMLElement>;
   onMouseEnter?: MouseEventHandler<HTMLElement>;
@@ -23,6 +27,7 @@ export interface OverflowTooltipProps
   extends Pick<TooltipProps, 'arrow' | 'placement' | 'enterDelay' | 'slotProps'> {
   children: OverflowTooltipChild;
   title: string;
+  focusWithinColumnHeader?: boolean;
 }
 
 const isFinePointer = (): boolean => {
@@ -42,10 +47,14 @@ export function OverflowTooltip({
   placement,
   enterDelay,
   slotProps,
+  focusWithinColumnHeader = false,
 }: OverflowTooltipProps) {
   const [activeElement, setActiveElement] = useState<HTMLElement | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
   const [isActive, setIsActive] = useState(false);
+  const [headerFocused, setHeaderFocused] = useState(false);
+  const labelRef = useRef<HTMLElement>(null);
+  const ref = useForkRef(children.props.ref, focusWithinColumnHeader ? labelRef : null);
 
   const updateTooltipVisibility = useCallback((element: HTMLElement | null = activeElement): void => {
     setShowTooltip(Boolean(title) && isFinePointer() && Boolean(element && isElementOverflowing(element)));
@@ -61,9 +70,31 @@ export function OverflowTooltip({
     return () => observer.disconnect();
   }, [activeElement, updateTooltipVisibility]);
 
+  useEffect(() => {
+    if (!focusWithinColumnHeader) return;
+    const label = labelRef.current;
+    const header = label?.closest('[role="columnheader"]');
+    if (!header || !label) return;
+    const onFocus = () => {
+      setHeaderFocused(true);
+      setActiveElement(label);
+      updateTooltipVisibility(label);
+    };
+    const onBlur = () => {
+      setHeaderFocused(false);
+      setActiveElement(null);
+    };
+    header.addEventListener('focus', onFocus);
+    header.addEventListener('blur', onBlur);
+    return () => {
+      header.removeEventListener('focus', onFocus);
+      header.removeEventListener('blur', onBlur);
+    };
+  }, [focusWithinColumnHeader, updateTooltipVisibility]);
+
   return (
     <AppTooltip
-      open={isActive && showTooltip}
+      open={(isActive || headerFocused) && showTooltip}
       title={showTooltip ? title : ''}
       arrow={arrow}
       placement={placement}
@@ -72,9 +103,10 @@ export function OverflowTooltip({
       disableTouchListener
     >
       {cloneElement(children, {
+        ...(ref ? { ref } : {}),
         onBlur: (event: FocusEvent<HTMLElement>) => {
           setIsActive(false);
-          setActiveElement(null);
+          if (!headerFocused) setActiveElement(null);
           children.props.onBlur?.(event);
         },
         onFocus: (event: FocusEvent<HTMLElement>) => {
@@ -91,7 +123,7 @@ export function OverflowTooltip({
         },
         onMouseLeave: (event: MouseEvent<HTMLElement>) => {
           setIsActive(false);
-          setActiveElement(null);
+          if (!headerFocused) setActiveElement(null);
           children.props.onMouseLeave?.(event);
         },
       })}

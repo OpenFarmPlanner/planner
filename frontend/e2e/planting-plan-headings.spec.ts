@@ -2,28 +2,39 @@ import { expect, test, type Locator } from '@playwright/test';
 import { apiRequest, expectNoHorizontalPageOverflow, loginWithDeterministicProject } from './utils';
 
 const languages = [
+  { code: 'de', add: 'Anbauplan hinzufügen', explicit: ['Aussaattermin', 'Pflanztermin'], headings: ['Aussaat', 'Pflanzung', 'Erntebeginn', 'Ernteende'] },
+  { code: 'en', add: 'Add planting plan', explicit: ['Sowing date', 'Planting date'], headings: ['Sowing', 'Planting', 'Harvest start', 'Harvest end'] },
+  { code: 'fr', add: 'Ajouter une série', explicit: ['Date de semis', 'Date de plantation'], headings: ['Semis', 'Plantation', 'Début de récolte', 'Fin de récolte'] },
+  { code: 'nl', add: 'Teelt toevoegen', explicit: ['Zaaidatum', 'Plantdatum'], headings: ['Zaaien', 'Planten', 'Begin oogst', 'Einde oogst'] },
   { code: 'pt', start: 'Ver demonstração sem registo', add: 'Adicionar série', explicit: ['Data de sementeira', 'Data de transplantação'], headings: ['Sementeira', 'Transplantação', 'Início da colheita', 'Fim da colheita'] },
   { code: 'it', start: 'Guarda la demo senza registrarti', add: 'Aggiungi serie', explicit: ['Data di semina', 'Data di trapianto'], headings: ['Semina', 'Trapianto', 'Inizio raccolta', 'Fine raccolta'] },
   { code: 'es', start: 'Ver la demo sin registrarse', add: 'Añadir serie', explicit: ['Fecha de siembra', 'Fecha de plantación'], headings: ['Siembra', 'Trasplante', 'Inicio de cosecha', 'Fin de cosecha'] },
 ] as const;
 const fields = ['sowing_date', 'planting_date', 'harvest_date', 'harvest_end_date'];
 
-async function expectReadableHeader(header: Locator, text: string) {
+async function expectReadableHeader(header: Locator, text: string, allowTruncation = false) {
   await header.scrollIntoViewIfNeeded();
   const rect = await header.boundingBox();
   await header.hover({ position: { x: rect!.width - 8, y: rect!.height - 4 } });
   const label = header.locator('.MuiDataGrid-columnHeaderTitleContainerContent > span');
   await expect(label).toHaveText(text);
-  await expect.poll(() => label.evaluate(node => {
+  await expect.poll(() => label.evaluate((node, allowTruncation) => {
     const rect = node.getBoundingClientRect();
     const headerRect = node.closest('[role="columnheader"]')!.getBoundingClientRect();
     const controls = Array.from(node.closest('[role="columnheader"]')!
       .querySelectorAll('.MuiDataGrid-iconButtonContainer, .MuiDataGrid-menuIcon'));
-    return node.scrollHeight <= node.clientHeight + 1
-      && node.scrollWidth <= node.clientWidth + 1
-      && rect.top >= headerRect.top && rect.bottom <= headerRect.bottom
-      && controls.every(control => rect.right <= control.getBoundingClientRect().left + 1);
-  })).toBe(true);
+    return {
+      singleLine: node.scrollHeight <= node.clientHeight + 1 && getComputedStyle(node).whiteSpace === 'nowrap',
+      fits: allowTruncation || node.scrollWidth <= node.clientWidth + 1,
+      contained: rect.top >= headerRect.top && rect.bottom <= headerRect.bottom,
+      avoidsControls: controls.every(control => {
+        const bounds = control.getBoundingClientRect();
+        return bounds.width === 0 || rect.right <= bounds.left + 1;
+      }),
+    };
+  }, allowTruncation), { message: `layout of ${text}` }).toEqual({
+    singleLine: true, fits: true, contained: true, avoidsControls: true,
+  });
 }
 
 for (const language of languages) {
@@ -44,8 +55,9 @@ for (const language of languages) {
         const header = page.locator(`[role="columnheader"][data-field="${field}"]`);
         await expectReadableHeader(header, language.headings[index]);
         if (field === 'planting_date') {
-          await header.click();
-          if (await header.getAttribute('aria-sort') === 'none') await header.click();
+          await header.focus();
+          await header.press('Enter');
+          if (await header.getAttribute('aria-sort') === 'none') await header.press('Enter');
           await expect(header).toHaveAttribute('aria-sort', /ascending|descending/);
           await expectReadableHeader(header, language.headings[index]);
           await header.locator('.MuiDataGrid-menuIconButton').click();
@@ -53,12 +65,12 @@ for (const language of languages) {
           await page.keyboard.press('Escape');
         }
       }
-      // Text-only enlargement exercises wrapping independently of browser zoom.
+      // Enlarged text may truncate, but must stay on one line beside the controls.
       const enlargedText = await page.addStyleTag({ content:
         '.MuiDataGrid-columnHeaderTitleContainerContent > span { font-size: 21px !important; }',
       });
       for (const [index, field] of fields.entries()) {
-        await expectReadableHeader(page.locator(`[role="columnheader"][data-field="${field}"]`), language.headings[index]);
+        await expectReadableHeader(page.locator(`[role="columnheader"][data-field="${field}"]`), language.headings[index], true);
       }
       await enlargedText.evaluate(node => node.remove());
       await expectNoHorizontalPageOverflow(page);
@@ -73,6 +85,7 @@ for (const language of languages) {
     await expectNoHorizontalPageOverflow(page);
   });
 
+  if (!('start' in language)) continue;
   test.describe(`${language.code} guest demo headings`, () => {
     test.use({ locale: language.code });
     test('uses the same concise table labels', async ({ page }) => {
