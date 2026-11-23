@@ -226,6 +226,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   const [dateMode, setDateMode] = useState<PlantingPlanDateMode>('combined');
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
   const activeSeason = outletContext?.activeSeason ?? null;
+  const activeSeasonId = activeSeason?.id;
   const activeSeasonLoaded = outletContext?.activeSeasonLoaded ?? true;
   const isMissingActiveSeason = Boolean(outletContext) && activeSeasonLoaded && !activeSeason;
   const seasonBounds = useMemo(() => {
@@ -759,9 +760,9 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   }, []);
   const saveActualDate = useCallback(async (id: number, dates: PlantingPlanDateComparison, value: string | null) => {
     const { activity, occurrenceYear } = dates;
-    if (occurrenceYear !== undefined && activeSeason?.id) {
+    if (occurrenceYear !== undefined && activeSeasonId) {
       const field = activity === 'harvestStart' ? 'start_date' : 'end_date';
-      const { data } = await plantingPlanAPI.saveHarvestActualDates(id, activeSeason.id, {
+      const { data } = await plantingPlanAPI.saveHarvestActualDates(id, activeSeasonId, {
         year: occurrenceYear, [field]: value,
       });
       applySavedActualDates(id, data);
@@ -774,7 +775,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       [field]: data[field], seasonal_harvest: data.seasonal_harvest,
       harvest_actual_occurrences: data.harvest_actual_occurrences,
     });
-  }, [activeSeason?.id, applySavedActualDates, reloadPlans]);
+  }, [activeSeasonId, applySavedActualDates, reloadPlans]);
 
   const isActualDateEditor = useCallback((row: PlantingPlanRow, field: string) => {
     if (displayDateMode === 'planned' || !PLANTING_PLAN_DATE_COLUMNS.includes(field as PlantingPlanDateColumn) || row.isNew) {
@@ -782,11 +783,11 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     }
     if (field === 'harvest_date' || field === 'harvest_end_date') {
       if (row.carried_over || row.seasonal_harvest) {
-        return Boolean(activeSeason?.id && row.harvest_actual_occurrences?.length);
+        return Boolean(activeSeasonId && row.harvest_actual_occurrences?.length);
       }
     }
     return !row.carried_over;
-  }, [activeSeason?.id, displayDateMode]);
+  }, [activeSeasonId, displayDateMode]);
 
   const renderDateCell = useCallback((params: GridRenderCellParams<PlantingPlanRow>, renderPlanned: () => ReactNode) => {
     const field = params.field as PlantingPlanDateColumn;

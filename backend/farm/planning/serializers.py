@@ -16,6 +16,7 @@ from farm.common.serializer_fields import (
 )
 from farm.models import Crop, PlantingPlan, Season, Task
 from farm.project_context import resolve_season_id_from_request
+from farm.services.actual_harvest import harvest_actual_occurrences
 from farm.services.bed_capacity import (
     HarvestOverlap,
     HarvestOverlapIndex,
@@ -24,7 +25,6 @@ from farm.services.bed_capacity import (
 )
 from farm.services.crop_companions import CompanionService
 from farm.services.crop_display import format_crop_label, resolve_crop_display_name
-from farm.services.actual_harvest import harvest_actual_occurrences
 from farm.services.crop_inheritance import (
     build_general_crop_index,
     plan_cultivation_type,
