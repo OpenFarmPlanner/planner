@@ -1,5 +1,6 @@
 from datetime import date
 
+from django.urls import reverse
 from django.utils import timezone
 
 from farm.models import Crop, HarvestAllocation, HarvestRecord, PlantingPlan, Project, Season, Task
@@ -234,6 +235,19 @@ class ActualHarvestDatesTest(ProjectApiTestCase):
             self.details(plan, later)["harvest_actual_occurrences"][0]["actual_start_date"],
             "2052-09-02",
         )
+        listed = self.client.get(PLANS, HTTP_X_SEASON_ID=str(later.pk)).json()["results"]
+        row, = listed
+        self.assertTrue(row["carried_over"])
+        self.assertEqual(row["harvest_actual_occurrences"][0]["actual_start_date"], "2052-09-02")
+        comparison = self.client.get(reverse("yield-comparison"), {"crop_id": plan.crop_id})
+        self.assertEqual(comparison.status_code, 200, comparison.data)
+        compared = next(row for row in comparison.json()["seasons"] if row["id"] == later.pk)
+        self.assertIsNone(compared["forecast_kg"])
+        activity, = compared["plan_dates"]
+        occurrence, = activity["harvest_actual_occurrences"]
+        self.assertEqual(occurrence["actual_start_date"], "2052-09-02")
+        correction = self.edit(plan, later, year=2052, start_date="2052-09-03")
+        self.assertEqual(correction.status_code, 200, correction.data)
 
     def test_scoped_edit_rejects_foreign_irrelevant_and_archived_seasons(self):
         origin = self.season("2025-01-01", "2025-12-31")
@@ -253,7 +267,8 @@ class ActualHarvestDatesTest(ProjectApiTestCase):
         self.assertEqual(self.edit(plan, later, year=2026).status_code, 400)
         Season.objects.filter(pk=archived.pk).update(deleted_at=timezone.now())
         self.assertEqual(
-            self.edit(plan, archived, year=2027, start_date="2027-03-14").status_code, 404
+            self.edit(plan, archived, year=2027, start_date="2027-03-14").status_code,
+            404,
         )
         Season.objects.filter(pk=origin.pk).update(deleted_at=timezone.now())
         self.assertEqual(self.edit(plan, later, **payload).status_code, 404)

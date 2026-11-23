@@ -44,7 +44,11 @@ from farm.models import (
     Task,
 )
 from farm.project_context import get_active_project_or_400, resolve_season_id_from_request
-from farm.services.actual_harvest import harvest_actual_occurrences, update_harvest_actuals
+from farm.services.actual_harvest import (
+    harvest_actual_occurrences,
+    recorded_harvest_plan_ids,
+    update_harvest_actuals,
+)
 from farm.services.bed_capacity import (
     BedCapacity,
     HarvestOverlapIndex,
@@ -559,6 +563,11 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             candidates, project_id, active_season.start_date, active_season.end_date,
         )
         carries = starts_before | Q(pk__in=early_plans) | recorded_harvest_overlap
+        if self.action in {'list', 'retrieve'}:
+            after_occupancy = candidates.alias(
+                occupied_until=PlantingPlan.occupancy_end_expression(),
+            ).exclude(carries)
+            carries |= Q(pk__in=recorded_harvest_plan_ids(after_occupancy, active_season))
         carried_over = carries & ~Q(season_id=season_id)
         if not across_seasons:
             queryset = queryset.filter(Q(season_id=season_id) | carried_over)

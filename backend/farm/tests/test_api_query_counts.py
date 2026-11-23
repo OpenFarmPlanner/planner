@@ -715,6 +715,14 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 clearing_date=date(2029, 12, 31), area_usage_sqm=5,
                 project=self.project, season=later,
             )
+            PlantingPlan.objects.create(
+                crop=self.crops[index], bed=self.beds[index], planting_date=date(2026, 6, 1),
+                clearing_date=date(2026, 12, 31), area_usage_sqm=5,
+                harvest_occurrence_actuals={'occurrences': {
+                    '2027': {'start_date': '2027-09-03', 'end_date': '2027-10-12'},
+                }},
+                project=self.project, season=self.seasons[index],
+            )
             with CaptureQueriesContext(connection) as plan_queries:
                 plans = self.client.get(plan_url, **headers)
             with CaptureQueriesContext(connection) as yield_queries:
@@ -722,10 +730,12 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             self.assertEqual(plans.status_code, 200)
             self.assertEqual(weekly_yield.status_code, 200)
             rows = plans.data['results']
-            self.assertEqual(len(rows), 2 * (index + 1))
-            self.assertTrue(all(
-                row['carried_over'] and row['seasonal_harvest']['periods'] for row in rows
-            ))
+            self.assertEqual(len(rows), 3 * (index + 1))
+            self.assertTrue(all(row['carried_over'] for row in rows))
+            projected_rows = [row for row in rows if row['seasonal_harvest']['periods']]
+            recorded_rows = [row for row in rows if row['seasonal_harvest']['actual_start_date']]
+            self.assertEqual(len(projected_rows), 2 * (index + 1))
+            self.assertEqual(len(recorded_rows), index + 1)
             self.assertTrue(weekly_yield.data)
             counts.append((len(plan_queries), len(yield_queries)))
         self.assertEqual(counts, [counts[0]] * ROW_COUNT)

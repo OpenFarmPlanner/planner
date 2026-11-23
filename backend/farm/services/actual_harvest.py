@@ -4,6 +4,7 @@ from dataclasses import replace
 from datetime import date
 
 from django.core.exceptions import ValidationError
+from django.db.models import QuerySet
 
 from farm.models import PlantingPlan, Season
 from farm.services.seasonal_harvest import (
@@ -12,11 +13,24 @@ from farm.services.seasonal_harvest import (
     RecurringHarvestSchedule,
     legacy_actual_occurrence_year,
     one_off_harvest_actuals,
+    recorded_occurrence_dates,
     recurring_actual_occurrences,
     recurring_harvest_actuals,
 )
 
 HARVEST_DATE_FIELDS = ('actual_harvest_start_date', 'recorded_harvest_end_date')
+
+
+def recorded_harvest_plan_ids(plans: QuerySet[PlantingPlan], season: Season) -> list[int]:
+    """Find plans with a saved occurrence after their planned occupancy ended."""
+    recorded = plans.filter(
+        bed__isnull=False, planting_date__lte=season.end_date,
+        harvest_occurrence_actuals__has_key='occurrences',
+    ).values_list('pk', 'harvest_occurrence_actuals').order_by()
+    return [
+        plan_id for plan_id, storage in recorded.iterator()
+        if any(actual.intersects(season) for actual in recorded_occurrence_dates(storage).values())
+    ]
 
 
 def harvest_actual_occurrences(
@@ -72,7 +86,13 @@ def update_harvest_actuals(
     updated = replace(previous, **changes)
     if updated == previous:
         return ()
-    _validate_dates(updated, changes, schedule.occupied_from, schedule.occupied_until)
+    # A shorter forecast cannot invalidate a record already saved for that
+    # occurrence. Corrections still have to fit its cycle and recorded neighbours.
+    window = schedule.eligible_window(year)
+    _validate_dates(
+        updated, changes, schedule.occupied_from if window is not None else None,
+        schedule.occupied_until if window is not None else None,
+    )
     boundary = tuple(value for value in (updated.start_date, updated.end_date) if value is not None)
     if boundary:
         _validate_occurrence_cycle(schedule, year, changes)
@@ -111,8 +131,6 @@ def _validate_dates(
 def _validate_occurrence_cycle(
     schedule: RecurringHarvestSchedule, year: int, changes: dict[str, date | None],
 ) -> None:
-    if schedule.eligible_window(year) is None:
-        return
     previous = schedule.default_window(year - 1)[0] if year > date.min.year else None
     following = schedule.default_window(year + 1)[0] if year < date.max.year else None
     for field, value in changes.items():

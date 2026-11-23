@@ -150,8 +150,6 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
   const recordSeason = context?.projectSeasons?.find(item => item.id === recordSeasonId)
     ?? (recordSeasonId !== undefined && recordSeasonId === activeSeasonId ? context?.activeSeason ?? undefined : season);
   const harvestDatesEditable = canEditPlan && recordSeasonId === loadedPlan?.season && !loadedPlan?.seasonal_harvest;
-  const tasksEditable = recordSeasonId !== undefined && recordSeasonId === activeSeasonId
-    && (canEditPlan || loadedPlan?.carried_over);
   const seasonalHarvest = loadedPlan?.seasonal_harvest;
   const scopedHarvests = (seasonalHarvest || loadedPlan?.carried_over) ? loadedPlan?.harvest_actual_occurrences : undefined;
   const harvestEntries = scopedHarvests?.length ? scopedHarvests : [undefined];
@@ -165,12 +163,16 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
   const firstOccupiedDay = seasonalHarvest?.occupancy_start_date;
   const lastOccupiedDay = loadedPlan?.occupancy_end_date;
   const occupancyStart = firstOccupiedDay ?? loadedPlan?.planting_date;
+  const recordSeasonHasOccupancy = Boolean(recordSeason && occupancyStart && lastOccupiedDay
+    && occupancyStart <= recordSeason.end_date && lastOccupiedDay >= recordSeason.start_date);
+  const tasksEditable = recordSeasonId !== undefined && recordSeasonId === activeSeasonId
+    && (canEditPlan || (loadedPlan?.carried_over && recordSeasonHasOccupancy));
   const recordSeasonOptions = context?.projectSeasons?.filter(item => (
     item.id === recordSeasonId || item.id === loadedPlan?.season
     || loadedPlan?.record_season_ids?.includes(item.id)
     || (occupancyStart && lastOccupiedDay && occupancyStart <= item.end_date && item.start_date <= lastOccupiedDay)
   )) ?? [];
-  if (loadedPlan?.carried_over) {
+  if (loadedPlan?.carried_over && recordSeasonHasOccupancy) {
     if (firstOccupiedDay && recordDate < firstOccupiedDay) recordDate = firstOccupiedDay;
     if (lastOccupiedDay && recordDate > lastOccupiedDay) recordDate = lastOccupiedDay;
   }
@@ -359,7 +361,8 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
                   <DetailSection title={t('harvests:title')}>
                     <HarvestRecords key={recordScope} scope={recordScope} planId={loadedPlan.id} recordSeasonId={recordSeasonId}
                       initialDate={recordDate} planTotals={loadedPlan.actual_harvest}
-                      plan={loadedPlan.crop_available && loadedPlan.crop !== null ? {
+                      plan={loadedPlan.crop_available && loadedPlan.crop !== null
+                        && (!loadedPlan.carried_over || recordSeasonHasOccupancy) ? {
                         id: loadedPlan.id, crop: loadedPlan.crop, cropLabel: cropName,
                         label: [loadedPlan.bed_name, season?.label, date(loadedPlan.planting_date)].filter(Boolean).join(' · '),
                       } : undefined}

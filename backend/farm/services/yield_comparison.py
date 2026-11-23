@@ -302,10 +302,14 @@ def _record_activity_dates(
         return
 
     for row in rows:
-        if not recurring_plan_visible_in_season(plan, row.season, schedule):
+        occurrences = recurring_actual_occurrences(plan, row.season, schedule)
+        has_actual = any(
+            occurrence['actual_start_date'] or occurrence['actual_end_date']
+            for occurrence in occurrences
+        )
+        if not has_actual and not recurring_plan_visible_in_season(plan, row.season, schedule):
             continue
         harvest = seasonal_harvest_payload(plan, row.season, schedule)
-        has_actual = harvest['actual_start_date'] or harvest['actual_end_date']
         if row is origin or harvest['periods'] or has_actual:
             row.plan_dates.append({
                 **_activity_dates(
@@ -313,9 +317,7 @@ def _record_activity_dates(
                     language_code=language_code,
                 ),
                 'seasonal_harvest': harvest,
-                'harvest_actual_occurrences': recurring_actual_occurrences(
-                    plan, row.season, schedule,
-                ),
+                'harvest_actual_occurrences': occurrences,
             })
 
 

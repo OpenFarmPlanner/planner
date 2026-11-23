@@ -333,12 +333,17 @@ def recurring_harvest_actuals(
     raw = one_off_harvest_actuals(plan)
     legacy_year = legacy_actual_occurrence_year(plan, schedule)
     actuals = {legacy_year: raw} if raw and legacy_year is not None else {}
-    for year, dates in plan.harvest_occurrence_actuals.get('occurrences', {}).items():
-        actuals[int(year)] = HarvestActualDates(*(
+    return actuals | recorded_occurrence_dates(plan.harvest_occurrence_actuals)
+
+
+def recorded_occurrence_dates(storage: dict) -> dict[int, HarvestActualDates]:
+    return {
+        int(year): HarvestActualDates(*(
             date.fromisoformat(dates[field]) if dates.get(field) is not None else None
             for field in ('start_date', 'end_date')
         ))
-    return actuals
+        for year, dates in storage.get('occurrences', {}).items()
+    }
 
 
 def harvest_occurrence_page(
