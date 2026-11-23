@@ -619,6 +619,8 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             season = get_object_or_404(
                 Season, pk=resolve_season_id_from_request(request), project=request.active_project,
             )
+        if season.deleted_at is not None:
+            raise Http404
         crop_index = build_general_crop_index(plan.project_id)
         schedule = recurring_harvest_schedule(plan, crop_index)
         planned = plan.planned_harvest_dates(crop_index)

@@ -211,6 +211,7 @@ class ActualHarvestDatesTest(ProjectApiTestCase):
     def test_scoped_edit_rejects_foreign_irrelevant_and_archived_seasons(self):
         origin = self.season("2025-01-01", "2025-12-31")
         later = self.season("2026-01-01", "2026-12-31")
+        archived = self.season("2027-01-01", "2027-12-31")
         irrelevant = self.season("2024-01-01", "2024-12-31")
         foreign = Project.objects.create(name="Another project", slug="another-project")
         foreign_season = Season.objects.create(
@@ -223,6 +224,10 @@ class ActualHarvestDatesTest(ProjectApiTestCase):
         for season in (irrelevant, foreign_season):
             self.assertEqual(self.edit(plan, season, **payload).status_code, 404)
         self.assertEqual(self.edit(plan, later, year=2026).status_code, 400)
+        Season.objects.filter(pk=archived.pk).update(deleted_at=timezone.now())
+        self.assertEqual(
+            self.edit(plan, archived, year=2027, start_date="2027-03-14").status_code, 404
+        )
         Season.objects.filter(pk=origin.pk).update(deleted_at=timezone.now())
         self.assertEqual(self.edit(plan, later, **payload).status_code, 404)
         plan.refresh_from_db()
