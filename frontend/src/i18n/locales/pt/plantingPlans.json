@@ -546,6 +546,11 @@
       "planned": "Edita a data planeada.",
       "actual": "Edita a data real."
     },
+    "readOnlyReasons": {
+      "originSeason": "Edite esta data na época de origem.",
+      "calculated": "A data de colheita planeada é calculada.",
+      "noHarvestOccurrence": "Nesta época não há nenhuma colheita que possa ser editada aqui."
+    },
     "edit": "Registar datas reais",
     "saveError": "Não foi possível guardar as datas reais.",
     "unsaved": "Se sair, perderá as alterações de datas que não guardou.",

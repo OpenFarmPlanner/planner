@@ -563,7 +563,7 @@ describe("PlantingPlans save-time area validation", () => {
     // Direct sowing: sowing date equals planting date, and is fully editable.
     const directRow = { id: 1, crop: 2, bed: 101, planting_date: "2026-05-01" };
     expect(sowingDateColumn.valueGetter(undefined, directRow)).toEqual(new Date(2026, 4, 1));
-    expect(sowingDateColumn.isCellEditable({ row: directRow })).toBe(true);
+    expect(latestProps?.getCellReadOnlyReason(directRow, 'sowing_date')).toBeNull();
     sowingDateColumn.preProcessEditCellProps({
       row: directRow,
       props: { value: new Date(2026, 3, 20) },
@@ -579,7 +579,7 @@ describe("PlantingPlans save-time area validation", () => {
     // and editing it shifts the planting date forward by that duration.
     const anzuchtRow = { id: 2, crop: 5, bed: 101, planting_date: "2026-05-01" };
     expect(sowingDateColumn.valueGetter(undefined, anzuchtRow)).toEqual(new Date(2026, 3, 11));
-    expect(sowingDateColumn.isCellEditable({ row: anzuchtRow })).toBe(true);
+    expect(latestProps?.getCellReadOnlyReason(anzuchtRow, 'sowing_date')).toBeNull();
     sowingDateColumn.preProcessEditCellProps({
       row: anzuchtRow,
       props: { value: new Date(2026, 3, 11) },
@@ -678,7 +678,9 @@ describe("PlantingPlans save-time area validation", () => {
     const sowingDateColumn = columns.find((column: { field: string }) => column.field === "sowing_date");
 
     const row = { id: 3, crop: 6, planting_date: "2026-05-01" };
-    expect(sowingDateColumn.isCellEditable({ row })).toBe(false);
+    expect(latestProps?.getCellReadOnlyReason(row, 'sowing_date')).toBe(
+      'Nicht berechenbar, da für diese Kultur keine Anzuchtdauer hinterlegt ist.',
+    );
     expect(latestProps?.isStandaloneEditCell(row, 'sowing_date')).toBe(false);
     expect(sowingDateColumn.cellClassName({ row })).toContain("ofp-cell-full-tooltip");
 
@@ -720,8 +722,10 @@ describe("PlantingPlans save-time area validation", () => {
       })
     );
 
-    expect(harvestStartColumn.cellClassName({ row: { id: 1, crop: 2 }, value: null })).toContain("ofp-cell-full-tooltip");
-    expect(harvestStartColumn.cellClassName({ row: { id: 2, crop: 4 }, value: new Date("2026-05-01") })).not.toContain("ofp-cell-full-tooltip");
+    expect(latestProps?.getCellReadOnlyReason({ id: 1, crop: 2 }, 'harvest_date')).toBe(
+      'Der geplante Erntetermin wird berechnet.',
+    );
+    expect(harvestStartColumn.cellClassName).toBe("ofp-cell-full-tooltip");
 
     const completeStart = render(<>{renderCell(harvestStartColumn, {
       id: 1,

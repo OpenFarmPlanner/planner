@@ -21,14 +21,17 @@
  * DataGrid with its own parallel implementation of several of these patterns).
  */
 
-import { useState, useEffect, useCallback, useRef, useMemo, type KeyboardEvent, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, forwardRef, type KeyboardEvent, type ReactNode } from 'react';
 import {
   DataGrid,
+  GridCell,
   GridPagination,
   GridPreferencePanelsValue,
   GridRowEditStopReasons,
   GridRowModes,
+  useGridApiContext,
   useGridApiRef,
+  useGridSelector,
 } from '@mui/x-data-grid';
 import { gridEditRowsStateSelector } from '@mui/x-data-grid/internals';
 import { ResizableGridColumnMenu, ResizableGridColumnsManagement } from './ResizableGridColumnControls';
@@ -40,7 +43,7 @@ import {
   getRowIdFromElement,
   isEnterSaveInputTarget,
 } from './domEventTargets';
-import type { GridColDef, GridRowsProp, GridRowModesModel, GridRowId, GridSortModel, GridFilterModel, GridCellParams, GridRenderCellParams, GridRowParams, GridPaginationModel, GridEventListener } from '@mui/x-data-grid';
+import type { GridCellProps, GridValidRowModel, GridColDef, GridRowsProp, GridRowModesModel, GridRowId, GridSortModel, GridFilterModel, GridCellParams, GridRenderCellParams, GridRowParams, GridPaginationModel, GridEventListener } from '@mui/x-data-grid';
 import { Box, Alert, IconButton, Chip, Button, Divider, useMediaQuery } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
@@ -205,6 +208,28 @@ function GridNavigationGuard({ dirty, message, save, requireSavedBeforeNavigatio
   return null;
 }
 
+type ReadOnlyCellReason = (row: GridValidRowModel, field: string) => string | null | undefined;
+
+declare module '@mui/x-data-grid' {
+  interface CellPropsOverrides {
+    resolveReadOnlyReason?: ReadOnlyCellReason;
+  }
+}
+
+const selectEditingRow = (api: ReturnType<typeof useGridApiContext>, id: GridRowId) => gridEditRowsStateSelector(api)[id];
+
+const GridCellWithReadOnlyReason = forwardRef<HTMLDivElement, GridCellProps & {
+  resolveReadOnlyReason?: ReadOnlyCellReason;
+}>(function GridCellWithReadOnlyReason({ resolveReadOnlyReason, ...props }, ref) {
+  const api = useGridApiContext();
+  const editingRow = useGridSelector(api, selectEditingRow, props.rowId);
+  const field = props.column.field;
+  const row = editingRow ? api.current.getRowWithUpdatedValues(props.rowId, field) : props.row;
+  const reason = resolveReadOnlyReason?.(row, field);
+  return <GridCell {...props} ref={ref} aria-readonly={reason === undefined ? undefined : Boolean(reason)}
+    aria-description={reason ?? undefined} />;
+});
+
 export function EditableDataGrid<T extends EditableRow>({
   columns,
   api,
@@ -227,6 +252,7 @@ export function EditableDataGrid<T extends EditableRow>({
   notes,
   dialogEditFields,
   isStandaloneEditCell,
+  getCellReadOnlyReason,
   focusableReadOnlyFields,
   commandApiRef,
   onSelectedRowChange,
@@ -597,18 +623,29 @@ export function EditableDataGrid<T extends EditableRow>({
     () => [...notesFieldNames, ...(dialogEditFields ?? [])],
     [dialogEditFields, notesFieldNames],
   );
+  const getRowForCellEditability = useCallback((row: T, field: string): T => {
+    const grid = gridApiRef.current;
+    if (getCellReadOnlyReason && grid?.getRowMode(row.id) === GridRowModes.Edit) {
+      return grid.getRowWithUpdatedValues(row.id, field) as T;
+    }
+    return row;
+  }, [getCellReadOnlyReason, gridApiRef]);
+
   const hasDedicatedEditor = useCallback(
     (field: string, row?: T): boolean => dedicatedEditorFieldNames.includes(field)
-      || Boolean(row && isStandaloneEditCell?.(row, field)),
-    [dedicatedEditorFieldNames, isStandaloneEditCell],
+      || Boolean(row && isStandaloneEditCell?.(getRowForCellEditability(row, field), field)),
+    [dedicatedEditorFieldNames, getRowForCellEditability, isStandaloneEditCell],
   );
   // Explicit edit commands request the cell's editor. Tab only moves focus.
   const isDialogEditField = useCallback(
     (field: string): boolean => (dialogEditFields ?? []).includes(field),
     [dialogEditFields],
   );
-  const canOpenDedicatedEditor = (row: T, field: string) => isStandaloneEditCell?.(row, field)
-    || (isDialogEditField(field) && !isReadOnlyRow?.(row));
+  const canOpenDedicatedEditor = (row: T, field: string) => {
+    const current = getRowForCellEditability(row, field);
+    return !getCellReadOnlyReason?.(current, field)
+      && (isStandaloneEditCell?.(current, field) || (isDialogEditField(field) && !isReadOnlyRow?.(row)));
+  };
   const [dialogEditRequest, setDialogEditRequest] = useState<DialogEditCellRequest | null>(null);
   const dialogEditTokenRef = useRef(0);
   const requestDialogEditForCell = useCallback((rowId: GridRowId, field: string, initialQuery?: string): void => {
@@ -720,9 +757,13 @@ export function EditableDataGrid<T extends EditableRow>({
     resolveFocusedCellFromEvent(gridApiRef.current, event)
   ), [gridApiRef]);
 
+  const isReadOnlyCell = useCallback((params: GridCellParams<T>): boolean => (
+    Boolean(getCellReadOnlyReason?.(getRowForCellEditability(params.row, params.field), params.field))
+  ), [getCellReadOnlyReason, getRowForCellEditability]);
+
   const isActionCellKeyboardNavigable = useCallback((params: GridCellParams<T>): boolean => (
-    hasDedicatedEditor(params.field, params.row) || Boolean(focusableReadOnlyFields?.includes(params.field))
-  ), [focusableReadOnlyFields, hasDedicatedEditor]);
+    hasDedicatedEditor(params.field, params.row) || isReadOnlyCell(params) || Boolean(focusableReadOnlyFields?.includes(params.field))
+  ), [focusableReadOnlyFields, hasDedicatedEditor, isReadOnlyCell]);
 
   const getKeyboardNavigableFieldsForRow = useCallback((rowId: GridRowId): string[] => {
     const api = gridApiRef.current;
@@ -737,12 +778,13 @@ export function EditableDataGrid<T extends EditableRow>({
           columns,
           field: column.field,
           isActionCell: isActionCellKeyboardNavigable,
+          isExcludedCell: isReadOnlyCell,
           row,
           rowId,
         });
       })
       .map((column) => column.field);
-  }, [columns, gridApiRef, isActionCellKeyboardNavigable, rowsById]);
+  }, [columns, gridApiRef, isActionCellKeyboardNavigable, isReadOnlyCell, rowsById]);
 
   const focusKeyboardNavigableCell = useCallback((
     rowId: GridRowId,
@@ -1672,6 +1714,7 @@ export function EditableDataGrid<T extends EditableRow>({
       current,
       direction,
       isActionCell: isActionCellKeyboardNavigable,
+      isExcludedCell: isReadOnlyCell,
       rows: rowsForGrid,
       wrapRows: true,
     });
@@ -1702,6 +1745,7 @@ export function EditableDataGrid<T extends EditableRow>({
     handleSaveRow,
     hasDedicatedEditor,
     isActionCellKeyboardNavigable,
+    isReadOnlyCell,
     navigateFromEditedCell,
     rowsById,
     rowsForGrid,
@@ -2237,16 +2281,17 @@ export function EditableDataGrid<T extends EditableRow>({
   const hasColumnSizing = Boolean(columnSizing);
   const gridSlots = useMemo(
     () => {
-      if (!shouldRenderGridFooter && !hasExternalFilter && !hasColumnSizing) {
+      if (!shouldRenderGridFooter && !hasExternalFilter && !hasColumnSizing && !getCellReadOnlyReason) {
         return undefined;
       }
       return {
+        ...(getCellReadOnlyReason ? { cell: GridCellWithReadOnlyReason } : {}),
         ...(shouldRenderGridFooter ? { footer: CustomFooter } : {}),
         ...(hasColumnSizing ? { columnsManagement: ResizableGridColumnsManagement, columnMenu: ResizableGridColumnMenu } : {}),
         ...(hasExternalFilter ? { columnMenu: ExternalFilterColumnMenu } : {}),
       };
     },
-    [CustomFooter, hasColumnSizing, hasExternalFilter, shouldRenderGridFooter],
+    [CustomFooter, getCellReadOnlyReason, hasColumnSizing, hasExternalFilter, shouldRenderGridFooter],
   );
   const externalFilterOpenPanel = externalFilter?.onOpenFilterPanel;
   const externalFilterNoteRowIds = externalFilter?.highlightedNoteRowIds;
@@ -2531,12 +2576,15 @@ export function EditableDataGrid<T extends EditableRow>({
       return false;
     }
 
+    const editingStandaloneCell = event.key === 'Tab' && 'target' in event && event.target instanceof Element
+      && Boolean(event.target.closest('[data-grid-dedicated-editor]'));
     const navigationOptions = {
       api: gridApiRef.current,
       columns: columnsWithActions,
       current: { id: params.id, field: params.field },
       direction: navigationRequest.direction,
       isActionCell: isActionCellKeyboardNavigable,
+      isExcludedCell: editingStandaloneCell ? isReadOnlyCell : undefined,
       rows: rowsForGrid,
     };
     const target = navigationRequest.axis === 'horizontal'
@@ -2561,6 +2609,7 @@ export function EditableDataGrid<T extends EditableRow>({
     columnsWithActions,
     gridApiRef,
     isActionCellKeyboardNavigable,
+    isReadOnlyCell,
     rowModesModel,
     rowsForGrid,
     runAfterRowVisible,
@@ -2817,7 +2866,8 @@ export function EditableDataGrid<T extends EditableRow>({
           onRowEditStop={handleEditableRowEditStop}
           processRowUpdate={processRowUpdate}
           onProcessRowUpdateError={handleProcessRowUpdateError}
-          isCellEditable={params => !isReadOnlyRow?.(params.row) && !isStandaloneEditCell?.(params.row, params.field)}
+          isCellEditable={params => !isReadOnlyRow?.(params.row) && !isReadOnlyCell(params)
+            && !isStandaloneEditCell?.(getRowForCellEditability(params.row, params.field), params.field)}
           loading={loading}
           editMode="row"
           density={isMobile ? 'standard' : 'compact'}
@@ -2844,6 +2894,9 @@ export function EditableDataGrid<T extends EditableRow>({
           onRowSelectionModelChange={(nextModel) => setSelectedRowIds(Array.from(nextModel.ids))}
           slots={gridSlots}
           slotProps={{
+            ...(getCellReadOnlyReason ? {
+              cell: { resolveReadOnlyReason: (row, field) => getCellReadOnlyReason(row as T, field) },
+            } : {}),
             columnsManagement: { disableResetButton: true, widthReset: columnSizing?.widthReset },
             // Anchors the columns panel to its triggering button (left-aligned,
             // directly below, auto-flipping if it doesn't fit) instead of
@@ -2876,7 +2929,7 @@ export function EditableDataGrid<T extends EditableRow>({
             const stateClassName = errorText
               ? 'ofp-cell-error'
               : dirtyRowIds.has(rowKey) ? 'ofp-cell-dirty' : '';
-            const editableClassName = isStandaloneEditCell?.(params.row, params.field)
+            const editableClassName = isStandaloneEditCell?.(getRowForCellEditability(params.row, params.field), params.field)
               ? EDITABLE_CELL_CLASS : cellEditing.getEditableCellClassName(params);
             return [stateClassName, editableClassName].filter(Boolean).join(' ');
           }}

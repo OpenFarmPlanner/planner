@@ -66,10 +66,17 @@ const SELECTED_ROW_HOVER_SELECTOR = [
   '& .MuiDataGrid-row.Mui-selected:not(.MuiDataGrid-row--editing):hover',
   '& .MuiDataGrid-row.Mui-selected:not(.MuiDataGrid-row--editing):hover .MuiDataGrid-cell',
 ].join(', ');
-const SELECTED_ROW_EDITABLE_CELL_SELECTOR = '& .MuiDataGrid-row.Mui-selected:not(.MuiDataGrid-row--editing) .MuiDataGrid-cell--editable';
-const SELECTED_ROW_EDITABLE_CELL_HOVER_SELECTOR = '& .MuiDataGrid-row.Mui-selected:not(.MuiDataGrid-row--editing) .MuiDataGrid-cell--editable:hover';
-const SELECTED_ROW_CALCULATED_CELL_SELECTOR = `& .MuiDataGrid-row.Mui-selected:not(.MuiDataGrid-row--editing) .${CALCULATED_COLUMN_CELL_CLASS}`;
-const SELECTED_ROW_CALCULATED_CELL_HOVER_SELECTOR = `& .MuiDataGrid-row.Mui-selected:not(.MuiDataGrid-row--editing):hover .${CALCULATED_COLUMN_CELL_CLASS}`;
+const EDITABLE_CELL_SELECTORS = ['.MuiDataGrid-cell--editable', '.MuiDataGrid-cell[aria-readonly="false"]'];
+const READ_ONLY_CELL_SELECTORS = [`.${CALCULATED_COLUMN_CELL_CLASS}`, '.MuiDataGrid-cell[aria-readonly="true"]'];
+
+const cellBackgroundSelector = (cells: string[], prefix = '& ', suffix = ''): string => (
+  cells.map(cell => `${prefix}${cell}${suffix}`).join(', ')
+);
+const SELECTED_ROW_CELL_PREFIX = `${SELECTED_ROW_SELECTOR} `;
+const SELECTED_ROW_EDITABLE_CELL_SELECTOR = cellBackgroundSelector(EDITABLE_CELL_SELECTORS, SELECTED_ROW_CELL_PREFIX);
+const SELECTED_ROW_EDITABLE_CELL_HOVER_SELECTOR = cellBackgroundSelector(EDITABLE_CELL_SELECTORS, SELECTED_ROW_CELL_PREFIX, ':hover');
+const SELECTED_ROW_READ_ONLY_CELL_SELECTOR = cellBackgroundSelector(READ_ONLY_CELL_SELECTORS, SELECTED_ROW_CELL_PREFIX);
+const SELECTED_ROW_READ_ONLY_CELL_HOVER_SELECTOR = cellBackgroundSelector(READ_ONLY_CELL_SELECTORS, `${SELECTED_ROW_SELECTOR}:hover `);
 
 const getPrimaryOverlay = (theme: Theme, opacity: number): string =>
   alpha(theme.palette.primary.main, opacity);
@@ -158,14 +165,14 @@ export const dataGridSx = {
   '& .MuiDataGrid-cell.ofp-cell-full-tooltip': {
     position: 'relative',
   },
-  '& .MuiDataGrid-cell--editable': {
+  [cellBackgroundSelector(EDITABLE_CELL_SELECTORS)]: {
     bgcolor: (theme: Theme) =>
       theme.palette.mode === 'dark'
         ? theme.palette.action.selected
         : (theme.palette.surface?.surfaceBackground ?? theme.palette.background.paper),
     cursor: 'pointer',
   },
-  '& .MuiDataGrid-cell--editable:hover': {
+  [cellBackgroundSelector(EDITABLE_CELL_SELECTORS, '& ', ':hover')]: {
     backgroundColor: 'surface.surfaceHoverBackground',
   },
   '& .MuiDataGrid-cell--editing': {
@@ -259,11 +266,11 @@ export const dataGridSx = {
   [`& .${CALCULATED_COLUMN_HEADER_CLASS}:hover`]: {
     backgroundColor: 'action.disabledBackground',
   },
-  [`& .${CALCULATED_COLUMN_CELL_CLASS}`]: {
+  [cellBackgroundSelector(READ_ONLY_CELL_SELECTORS)]: {
     backgroundColor: 'action.disabledBackground',
     color: 'text.primary',
   },
-  [`& .MuiDataGrid-row:hover .${CALCULATED_COLUMN_CELL_CLASS}`]: {
+  [cellBackgroundSelector(READ_ONLY_CELL_SELECTORS, '& .MuiDataGrid-row:hover ')]: {
     backgroundColor: 'surface.surfaceHoverBackground',
   },
   [EDITING_ROW_HOVER_CELL_SELECTOR]: {
@@ -298,11 +305,11 @@ export const dataGridSx = {
   [SELECTED_ROW_EDITABLE_CELL_HOVER_SELECTOR]: {
     backgroundColor: 'surface.surfaceHoverBackground',
   },
-  [SELECTED_ROW_CALCULATED_CELL_SELECTOR]: {
+  [SELECTED_ROW_READ_ONLY_CELL_SELECTOR]: {
     backgroundColor: 'action.disabledBackground',
     color: 'text.primary',
   },
-  [SELECTED_ROW_CALCULATED_CELL_HOVER_SELECTOR]: {
+  [SELECTED_ROW_READ_ONLY_CELL_HOVER_SELECTOR]: {
     backgroundColor: 'surface.surfaceHoverBackground',
   },
 };

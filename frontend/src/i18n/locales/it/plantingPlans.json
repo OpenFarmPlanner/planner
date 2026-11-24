@@ -546,6 +546,11 @@
       "planned": "Modifica la data pianificata.",
       "actual": "Modifica la data effettiva."
     },
+    "readOnlyReasons": {
+      "originSeason": "Modifica questa data nella stagione di origine.",
+      "calculated": "La data di raccolta pianificata viene calcolata.",
+      "noHarvestOccurrence": "In questa stagione non ci sono raccolte modificabili qui."
+    },
     "edit": "Registra date effettive",
     "saveError": "Impossibile salvare le date effettive.",
     "unsaved": "Uscendo perderai le modifiche alle date non salvate.",

@@ -211,6 +211,8 @@ test.describe('recurring harvest dates', () => {
       await switchSeason(2026);
       await selectMode('actual');
       await expect(harvestStart).toHaveText('—');
+      await expect(harvestStart).toHaveAttribute('aria-readonly', 'true');
+      await expect(harvestStart).toHaveAccessibleDescription(plans.actualDates.readOnlyReasons.noHarvestOccurrence);
       await selectMode('combined');
       await expect(harvestStart).toHaveText('—');
       await expect(plantingDate).toHaveText('15.3.2025');
@@ -249,6 +251,8 @@ test.describe('recurring harvest dates', () => {
       await selectMode('planned');
       await expect(harvestStart).toHaveText('1.9.2027');
       await expect(harvestEnd).toHaveText('15.10.2027');
+      await expect(harvestStart).toHaveAttribute('aria-readonly', 'true');
+      await expect(harvestEnd).toHaveAttribute('aria-readonly', 'true');
       await selectMode('actual');
       await expect(harvestStart).toHaveText('—');
       await harvestStart.press('Enter');
@@ -258,7 +262,14 @@ test.describe('recurring harvest dates', () => {
       await expect(harvestStart).toHaveText('—');
       await selectMode('combined');
       await expect(harvestStart).toHaveText('1.9.2027');
+      await expect(harvestStart).toHaveAttribute('aria-readonly', 'false');
+      await expect(harvestEnd).toHaveAttribute('aria-readonly', 'false');
       await expect(plantingDate).toHaveText('15.3.2025');
+      await expect(plantingDate).toHaveAccessibleDescription(plans.actualDates.readOnlyReasons.originSeason);
+      await page.setViewportSize({ width: 1024, height: 900 });
+      await harvestStart.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: info.outputPath('recurring-combined-dates-tablet.png'), animations: 'disabled' });
+      await page.setViewportSize({ width: 1440, height: 900 });
 
       await switchSeason(2028);
       await expect(harvestEnd).toHaveText('10.9.2028');
@@ -566,18 +577,29 @@ test('overwintering garlic is selectable in the later table and read-only in the
 
   const original = await apiRequest<Record<string, unknown>>(page, 'GET', `/planting-plans/${planId}/?across_seasons=true`);
   const dateMode = page.getByRole('button', { name: /^Terminansicht / });
+  const harvestStart = carried.locator('[data-field="harvest_date"]');
+  const harvestEnd = carried.locator('[data-field="harvest_end_date"]');
+  await expect(harvestStart).toHaveAttribute('aria-readonly', 'true');
+  await expect(harvestStart).toHaveCSS('background-color', 'rgba(0, 0, 0, 0.12)');
+  await expect(harvestStart).toHaveAccessibleDescription(plans.actualDates.readOnlyReasons.calculated);
+  await expect(page.locator('[role="columnheader"][data-field="harvest_date"]')).not.toHaveClass(/ofp-header-calculated/);
+  await harvestStart.press('ArrowRight');
+  await expect(harvestEnd).toBeFocused();
+  await expect(page.getByRole('tooltip').filter({ hasText: plans.actualDates.readOnlyReasons.calculated })).toBeVisible();
+
   await dateMode.click();
   await page.getByRole('menuitemradio', { name: 'Tatsächlich', exact: true }).click();
-  const harvestStart = carried.locator('[data-field="harvest_date"]');
   await expect(harvestStart).toHaveText('—');
-  await expect(harvestStart).toHaveClass(/ofp-cell-calculated/);
+  await expect(harvestStart).toHaveAttribute('aria-readonly', 'false');
+  await expect(harvestEnd).toHaveAttribute('aria-readonly', 'false');
+  await expect(harvestStart).toHaveCSS('background-color', 'rgb(255, 255, 255)');
   await harvestStart.press('Enter');
   const actualStart = harvestStart.getByRole('textbox', { name: 'Ist-Erntebeginn' });
   await expect(actualStart).toBeFocused();
   await actualStart.fill('11.07.2026');
   await actualStart.press('Enter');
   await expect(harvestStart).toHaveText('11.7.2026');
-  await expect(harvestStart).toHaveClass(/ofp-cell-calculated/);
+  await expect(harvestStart).toHaveAttribute('aria-readonly', 'false');
   await dateMode.focus();
   await page.screenshot({ path: info.outputPath('carried-harvest-grid.png'), animations: 'disabled' });
   await dateMode.click();

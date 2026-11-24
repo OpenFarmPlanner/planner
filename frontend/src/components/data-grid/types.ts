@@ -125,6 +125,8 @@ export interface EditableDataGridProps<T extends EditableRow> {
   dialogEditFields?: string[];
   /** Cells whose renderer edits and saves a single value independently of the row draft. */
   isStandaloneEditCell?: (row: T, field: string) => boolean;
+  /** A locked cell stays focusable for its explanation. Null marks an explicitly editable cell. */
+  getCellReadOnlyReason?: (row: T, field: string) => string | null | undefined;
   /** Read-only summary columns that can receive focus by click, Tab, or arrow keys. */
   focusableReadOnlyFields?: readonly string[];
   commandApiRef?: MutableRefObject<EditableDataGridCommandApi | null>;

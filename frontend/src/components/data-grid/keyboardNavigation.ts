@@ -32,6 +32,7 @@ interface IsCellKeyboardNavigableOptions<Row extends GridValidRowModel> {
   columns?: readonly GridColDef<Row>[];
   field: string;
   isActionCell?: (params: GridCellParams<Row>) => boolean;
+  isExcludedCell?: (params: GridCellParams<Row>) => boolean;
   row?: Row;
   rowId: GridRowId;
 }
@@ -42,6 +43,7 @@ interface GetKeyboardNavigationTargetOptions<Row extends GridValidRowModel> {
   current: CellLocation;
   direction: Direction;
   isActionCell?: (params: GridCellParams<Row>) => boolean;
+  isExcludedCell?: (params: GridCellParams<Row>) => boolean;
   rows?: readonly Row[];
   wrapRows?: boolean;
 }
@@ -108,6 +110,7 @@ export function isCellKeyboardNavigable<Row extends GridValidRowModel>({
   columns = [],
   field,
   isActionCell,
+  isExcludedCell,
   row,
   rowId,
 }: IsCellKeyboardNavigableOptions<Row>): boolean {
@@ -137,7 +140,7 @@ export function isCellKeyboardNavigable<Row extends GridValidRowModel>({
     } as GridCellParams<Row>;
   }
 
-  if (!params || !params.row) {
+  if (!params?.row || isExcludedCell?.(params)) {
     return false;
   }
 
@@ -162,6 +165,7 @@ export function getKeyboardNavigationTarget<Row extends GridValidRowModel>({
   current,
   direction,
   isActionCell,
+  isExcludedCell,
   rows = [],
   wrapRows = false,
 }: GetKeyboardNavigationTargetOptions<Row>): CellLocation | null {
@@ -188,6 +192,7 @@ export function getKeyboardNavigationTarget<Row extends GridValidRowModel>({
         columns: visibleColumns,
         field: candidate.field,
         isActionCell,
+        isExcludedCell,
         row,
         rowId: candidate.id,
       })) {
