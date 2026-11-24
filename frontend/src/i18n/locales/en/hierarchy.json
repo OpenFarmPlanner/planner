@@ -107,12 +107,15 @@
       "discard": "Discard"
     },
     "bulkCreateBeds": {
-      "layoutGraphic": "Parcel layout with {{count}} proposed beds",
+      "layoutGraphic_one": "Parcel layout with {{count}} proposed bed",
+      "layoutGraphic_other": "Parcel layout with {{count}} proposed beds",
       "layoutLegend": "Grey marks existing beds, blue marks new beds and red marks beds outside the parcel.",
-      "layoutFits": "Beds that fit in this arrangement ({{count}})",
+      "layoutFits_one": "Bed that fits in this arrangement ({{count}})",
+      "layoutFits_other": "Beds that fit in this arrangement ({{count}})",
       "occupiedAndRemaining": "Bed footprint {{occupied}} m² · Free physical space {{remaining}} m²",
       "unknownBedArea": "Some existing beds lack dimensions, so the footprint and free space are unknown.",
-      "outsideParcel": "Beds extending beyond the parcel boundary ({{count}}). Reduce the count or change dimensions, gap or orientation to fit them inside.",
+      "outsideParcel_one": "Bed extending beyond the parcel boundary ({{count}}). Reduce the count or change dimensions, gap or orientation to fit it inside.",
+      "outsideParcel_other": "Beds extending beyond the parcel boundary ({{count}}). Reduce the count or change dimensions, gap or orientation to fit them inside.",
       "overlappingBeds": "{{first}} and {{second}} overlap.",
       "shortBedGap": "The gap between {{first}} and {{second}} is {{gap}} m. The location recommends {{recommended}} m.",
       "noPathSpace": "The beds leave no physical space for paths.",

@@ -144,7 +144,7 @@ for (const viewport of VIEWPORTS.filter((preset) => preset.key !== 'mobile')) {
 
       await gap.fill('0,75');
       await expect(dialog.getByText('Passende Beete in dieser Anordnung (3)')).toBeVisible();
-      await expect(dialog.getByText(/Beete außerhalb der Parzellengrenze \(1\)/)).toBeVisible();
+      await expect(dialog.getByText(/Beet außerhalb der Parzellengrenze \(1\)/)).toBeVisible();
       await expect(count).toHaveValue('4');
       await dialog.getByRole('button', { name: '3 übernehmen' }).click();
       await expect(count).toHaveValue('3');

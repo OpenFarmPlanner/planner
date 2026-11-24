@@ -107,12 +107,15 @@
       "discard": "Verwerfen"
     },
     "bulkCreateBeds": {
-      "layoutGraphic": "Parzellenlayout mit {{count}} vorgeschlagenen Beeten",
+      "layoutGraphic_one": "Parzellenlayout mit {{count}} vorgeschlagenen Beet",
+      "layoutGraphic_other": "Parzellenlayout mit {{count}} vorgeschlagenen Beeten",
       "layoutLegend": "Grau zeigt vorhandene Beete, Blau neue Beete und Rot Beete außerhalb der Parzelle.",
-      "layoutFits": "Passende Beete in dieser Anordnung ({{count}})",
+      "layoutFits_one": "Passendes Beet in dieser Anordnung ({{count}})",
+      "layoutFits_other": "Passende Beete in dieser Anordnung ({{count}})",
       "occupiedAndRemaining": "Beetfläche {{occupied}} m² · Freie Bodenfläche {{remaining}} m²",
       "unknownBedArea": "Einigen vorhandenen Beeten fehlen Maße. Die belegte und freie Fläche sind daher unbekannt.",
-      "outsideParcel": "Beete außerhalb der Parzellengrenze ({{count}}). Passe Anzahl, Maße, Abstand oder Ausrichtung an, damit sie in die Parzelle passen.",
+      "outsideParcel_one": "Beet außerhalb der Parzellengrenze ({{count}}). Passe Anzahl, Maße, Abstand oder Ausrichtung an, damit es in die Parzelle passt.",
+      "outsideParcel_other": "Beete außerhalb der Parzellengrenze ({{count}}). Passe Anzahl, Maße, Abstand oder Ausrichtung an, damit sie in die Parzelle passen.",
       "overlappingBeds": "{{first}} und {{second}} überlappen sich.",
       "shortBedGap": "Zwischen {{first}} und {{second}} liegen {{gap}} m. Für den Standort sind {{recommended}} m empfohlen.",
       "noPathSpace": "Die Beete lassen keine Fläche für Wege frei.",
