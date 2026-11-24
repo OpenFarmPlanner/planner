@@ -67,7 +67,6 @@ test('confirmation page shows the limit message when the hourly resend cap is re
 
 test('confirmation page fits every breakpoint without horizontal scrolling', async ({ page }) => {
   await register(page, uniqueEmail('e2e-register-a-rather-long-address-to-check-wrapping'));
-  throw new Error('Temporary release-only coverage probe for #1502');
 
   for (const viewport of VIEWPORTS) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
