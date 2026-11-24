@@ -534,6 +534,11 @@
       "planned": "Edits the planned date.",
       "actual": "Edits the actual date."
     },
+    "readOnlyReasons": {
+      "originSeason": "Edit this date in the originating season.",
+      "calculated": "The planned harvest date is calculated.",
+      "noHarvestOccurrence": "There is no editable harvest occurrence in this season."
+    },
     "edit": "Record actual dates",
     "saveError": "Could not save actual dates.",
     "unsaved": "Leaving will discard unsaved date changes.",

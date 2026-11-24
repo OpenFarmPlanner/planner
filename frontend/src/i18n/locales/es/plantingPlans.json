@@ -546,6 +546,11 @@
       "planned": "Edita la fecha prevista.",
       "actual": "Edita la fecha real."
     },
+    "readOnlyReasons": {
+      "originSeason": "Edita esta fecha en la temporada de origen.",
+      "calculated": "La fecha de cosecha prevista se calcula.",
+      "noHarvestOccurrence": "En esta temporada no hay ninguna cosecha que se pueda editar aquí."
+    },
     "edit": "Registrar fechas reales",
     "saveError": "No se pudieron guardar las fechas reales.",
     "unsaved": "Al salir se perderán las fechas sin guardar.",

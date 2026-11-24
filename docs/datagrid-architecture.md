@@ -207,7 +207,11 @@ while the planned cell is shown. Actual date saves patch the selected field.
 Only a genuine deviation is bold. The comparison tooltip shows both dates,
 their difference when available and the field that can be edited. Touch users
 can press and hold a comparison cell for the preview and use the rest of the row
-to open its actions.
+to open its actions. Each date cell reflects whether the active mode can edit
+that field. Locked cells have a grey background, the gridcell’s `aria-readonly`
+attribute and an explanation. Arrow keys can reach them. Tab and Shift+Tab
+during editing skip them. An unsaved new row uses the planned date controls
+until the plan exists.
 Phone cards keep a labelled planned date. Open the plan from the card to record
 or clear actual dates in its detail page.
 

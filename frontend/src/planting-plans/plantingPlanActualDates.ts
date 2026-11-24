@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next';
 import type { Crop, HarvestActualOccurrence, PlantingPlan, PlantingPlanActualDates, Season } from '../api/types';
 import { toIsoDateString } from '../components/data-grid/dateEditCellUtils';
-import { getPlanPropagationInfo, getPlanSowingSchedule } from '../pages/planSowingDate';
+import { getExplicitPropagationStart, getPlanPropagationInfo, getPlanSowingSchedule } from '../pages/planSowingDate';
 import { parseIsoDate } from '../utils/isoDate';
 
 export type PlantingPlanDateMode = 'planned' | 'actual' | 'combined';
@@ -30,6 +30,41 @@ type ActivityDatePlan = PlantingPlanActualDates & Pick<PlantingPlan,
   'cultivation_type' | 'crop_cultivation_type' | 'crop_cultivation_types' | 'crop_propagation_duration_days'
   | 'planting_date' | 'planned_sowing_date' | 'planned_propagation_start_date'
   | 'harvest_date' | 'harvest_end_date' | 'seasonal_harvest' | 'harvest_actual_occurrences' | 'carried_over'>;
+
+export type DateReadOnlyReason = 'originSeason' | 'calculated' | 'noHarvestOccurrence'
+  | 'noOwnPropagation' | 'missingPropagationDuration';
+
+export function getPlanDateReadOnlyReason(
+  plan: ActivityDatePlan & { isNew?: boolean },
+  field: PlantingPlanDateColumn,
+  mode: PlantingPlanDateMode,
+  hasActiveSeason: boolean,
+  crop?: Crop,
+): DateReadOnlyReason | null {
+  const isHarvest = field === 'harvest_date' || field === 'harvest_end_date';
+  if (mode === 'planned' || plan.isNew) {
+    if (isHarvest) return 'calculated';
+    if (plan.carried_over) return 'originSeason';
+    if (field === 'sowing_date') {
+      const propagation = getPlanPropagationInfo(plan, crop);
+      if (propagation.isPurchasedTransplant) return 'noOwnPropagation';
+      if (propagation.isPreCultivation && (propagation.propagationDurationDays ?? 0) <= 0
+        && !getExplicitPropagationStart(plan, crop)) {
+        return 'missingPropagationDuration';
+      }
+    }
+    return null;
+  }
+
+  if (isHarvest && (plan.carried_over || plan.seasonal_harvest || plan.harvest_actual_occurrences?.[0]?.year != null)) {
+    return hasActiveSeason && plan.harvest_actual_occurrences?.length ? null : 'noHarvestOccurrence';
+  }
+  if (plan.carried_over) return 'originSeason';
+  if (field === 'sowing_date' && getPlanPropagationInfo(plan, crop).isPurchasedTransplant) {
+    return 'noOwnPropagation';
+  }
+  return null;
+}
 
 function occurrenceComparison(
   occurrence: HarvestActualOccurrence, activity: 'harvestStart' | 'harvestEnd',

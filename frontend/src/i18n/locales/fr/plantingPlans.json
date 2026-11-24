@@ -546,6 +546,11 @@
       "planned": "Modifie la date prévue.",
       "actual": "Modifie la date réelle."
     },
+    "readOnlyReasons": {
+      "originSeason": "Modifiez cette date dans la saison d’origine.",
+      "calculated": "La date de récolte prévue est calculée.",
+      "noHarvestOccurrence": "Aucune récolte de cette saison ne peut être modifiée ici."
+    },
     "edit": "Saisir les dates réelles",
     "saveError": "Impossible d’enregistrer les dates réelles.",
     "unsaved": "Les dates non enregistrées seront perdues si vous quittez la page.",

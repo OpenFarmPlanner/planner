@@ -534,6 +534,11 @@
       "planned": "Hier bearbeitest du den Plantermin.",
       "actual": "Hier bearbeitest du den Ist-Termin."
     },
+    "readOnlyReasons": {
+      "originSeason": "Bearbeite dieses Datum in der Ursprungssaison.",
+      "calculated": "Der geplante Erntetermin wird berechnet.",
+      "noHarvestOccurrence": "In dieser Saison gibt es keine bearbeitbare Ernte."
+    },
     "edit": "Ist-Termine erfassen",
     "saveError": "Ist-Termine konnten nicht gespeichert werden.",
     "unsaved": "Ungespeicherte Terminänderungen gehen beim Verlassen verloren.",

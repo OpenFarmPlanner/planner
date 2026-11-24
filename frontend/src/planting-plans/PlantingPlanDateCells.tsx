@@ -59,28 +59,31 @@ export function PlantingPlanDateModeSelect({ mode, onChange }: {
   </>;
 }
 
-export function DateComparisonTooltipText({ dates, editMode }: {
+export function DateComparisonTooltipText({ dates, editMode, readOnlyReason }: {
   dates: PlantingPlanDateComparison;
   editMode?: 'planned' | 'actual';
+  readOnlyReason?: string | null;
 }) {
   const { t } = useTranslation('plantingPlans');
   return <Stack component="span" spacing={0.5}>
     <PlanDateComparisonText dates={dates} />
+    {readOnlyReason && <Typography component="span" variant="inherit">{readOnlyReason}</Typography>}
     {editMode && <Typography component="span" variant="inherit">
       {t(`actualDates.editTargets.${editMode}`)}
     </Typography>}
   </Stack>;
 }
 
-export function RecordedPlanDateCell({ dates, hasFocus, editable = false }: {
+export function RecordedPlanDateCell({ dates, hasFocus, editable = false, readOnlyReason }: {
   dates: PlantingPlanDateComparison;
   hasFocus: boolean;
   editable?: boolean;
+  readOnlyReason?: string | null;
 }) {
   const { i18n } = useTranslation('plantingPlans');
   const deviation = planDateDeviation(dates);
-  const title = dates.planned || dates.actual || editable
-    ? <DateComparisonTooltipText dates={dates} editMode={editable ? 'actual' : undefined} /> : '';
+  const title = dates.planned || dates.actual || editable || readOnlyReason
+    ? <DateComparisonTooltipText dates={dates} editMode={editable ? 'actual' : undefined} readOnlyReason={readOnlyReason} /> : '';
   return <FullCellTooltip title={title} cellHasFocus={hasFocus} describeChild touchPreview={Boolean(title)}>
       <Typography component="span" variant="body2" sx={{ fontWeight: deviation ? 700 : undefined }}>
         {dates.actual ? formatSeasonDate(dates.actual, resolveSeasonDateLocale(i18n)) : '—'}
@@ -93,13 +96,12 @@ export type ActualPlanDateDrafts = Map<string, { text?: string }>;
 interface ActualPlanDateCellProps {
   params: GridRenderCellParams;
   children: ReactNode;
-  enabled: boolean;
   drafts: ActualPlanDateDrafts;
   getEditDates: () => PlantingPlanDateComparison;
   onSaveActual: (dates: PlantingPlanDateComparison, value: string | null) => Promise<void>;
 }
 
-export function ActualPlanDateCell({ params, children, enabled, drafts, getEditDates, onSaveActual }: ActualPlanDateCellProps) {
+export function ActualPlanDateCell({ params, children, drafts, getEditDates, onSaveActual }: ActualPlanDateCellProps) {
   const { t } = useTranslation(['plantingPlans', 'common']);
   const { api, id, field, hasFocus } = params;
   const cellKey = buildDialogEditCellKey(id, field);
@@ -116,7 +118,6 @@ export function ActualPlanDateCell({ params, children, enabled, drafts, getEditD
   };
 
   useDialogEditCellOpenRequest(id, field, initialKey => {
-    if (!enabled) return;
     api.setCellFocus(id, field);
     if (draft) return;
     const initialText = initialKey && /^\d$/.test(initialKey) ? initialKey : undefined;
@@ -125,7 +126,7 @@ export function ActualPlanDateCell({ params, children, enabled, drafts, getEditD
     setError('');
   });
 
-  if (!enabled || !draft) return children;
+  if (!draft) return children;
   const draftText = draft.text;
   const editDates = getEditDates();
 

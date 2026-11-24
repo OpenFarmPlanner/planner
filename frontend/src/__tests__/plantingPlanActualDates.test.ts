@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { PlantingPlan, Season } from '../api/types';
 import {
-  displayedPlanDate, displayedPlanDates, getDetailHarvestDates, getPlanActivityDates, getPlanColumnDates, planDateDeviation,
+  displayedPlanDate, displayedPlanDates, getPlanDateReadOnlyReason, PLANTING_PLAN_DATE_COLUMNS, getDetailHarvestDates, getPlanActivityDates, getPlanColumnDates, planDateDeviation,
 } from '../planting-plans/plantingPlanActualDates';
 
 const plan: PlantingPlan = {
@@ -10,6 +10,55 @@ const plan: PlantingPlan = {
   cultivation_type: 'pre_cultivation', crop_propagation_duration_days: 21,
   actual_propagation_start_date: '2026-03-14', actual_transplanting_date: '2026-04-06',
 };
+
+describe('planting plan date editability', () => {
+  const occurrence = {
+    year: 2027,
+    planned_start_date: '2027-09-01',
+    planned_end_date: '2027-10-15',
+    actual_start_date: null,
+    actual_end_date: null,
+  };
+  const seasonalHarvest = { periods: [], actual_start_date: null, actual_end_date: null };
+  const annual: PlantingPlan = {
+    ...plan, actual_propagation_start_date: null, actual_transplanting_date: null, actual_harvest_end_date: null,
+  };
+  const carriedAnnual = { ...annual, carried_over: true, harvest_actual_occurrences: [{ ...occurrence, year: null }] };
+  const perennial = { ...annual, seasonal_harvest: seasonalHarvest, harvest_actual_occurrences: [occurrence] };
+  const carriedPerennial = { ...perennial, carried_over: true };
+  const nonbearing = { ...carriedPerennial, harvest_actual_occurrences: [] };
+  const purchased = { ...annual, cultivation_type: 'purchased_transplant' as const };
+  const missingPropagation = { ...annual, crop_propagation_duration_days: null };
+
+  const ownPlanned = [null, null, 'calculated', 'calculated'];
+  const ownActual = [null, null, null, null];
+  const carriedPlanned = ['originSeason', 'originSeason', 'calculated', 'calculated'];
+  const carriedActual = ['originSeason', 'originSeason', null, null];
+
+  it.each([
+    ['own annual', annual, ownPlanned, ownActual],
+    ['carried annual', carriedAnnual, carriedPlanned, carriedActual],
+    ['own perennial', perennial, ownPlanned, ownActual],
+    ['carried perennial', carriedPerennial, carriedPlanned, carriedActual],
+    ['nonbearing perennial', nonbearing, carriedPlanned, ['originSeason', 'originSeason', 'noHarvestOccurrence', 'noHarvestOccurrence']],
+    ['purchased plants', purchased, ['noOwnPropagation', ...ownPlanned.slice(1)], ['noOwnPropagation', ...ownActual.slice(1)]],
+    ['missing propagation duration', missingPropagation, ['missingPropagationDuration', ...ownPlanned.slice(1)], ownActual],
+  ])('resolves every field in each mode for %s', (_label, row, planned, actual) => {
+    const reasons = (mode: 'planned' | 'actual' | 'combined') =>
+      PLANTING_PLAN_DATE_COLUMNS.map(field => getPlanDateReadOnlyReason(row, field, mode, true));
+    expect(reasons('planned')).toEqual(planned);
+    expect(reasons('actual')).toEqual(actual);
+    expect(reasons('combined')).toEqual(actual);
+  });
+
+  it('requires an active season for occurrence edits and keeps new rows on planned controls', () => {
+    expect(getPlanDateReadOnlyReason(carriedPerennial, 'harvest_end_date', 'combined', false)).toBe('noHarvestOccurrence');
+    expect(getPlanDateReadOnlyReason({ ...annual, isNew: true }, 'harvest_date', 'actual', true)).toBe('calculated');
+    expect(getPlanDateReadOnlyReason({ ...annual, isNew: true }, 'planting_date', 'actual', true)).toBeNull();
+    expect(getPlanDateReadOnlyReason({ ...missingPropagation, isNew: true }, 'sowing_date', 'combined', true))
+      .toBe('missingPropagationDuration');
+  });
+});
 
 describe('planting-plan dates', () => {
   it('displays only dates from the chosen mode and falls back to plan only in Combined', () => {

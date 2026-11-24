@@ -24,12 +24,12 @@ async function seedPlans(page: Page, request: APIRequestContext, scenario: strin
   const first = await seed('2026-04-04', '2026-07-11', '2026-09-07');
   const second = await seed('2026-05-09', '2026-03-20', null);
   const third = await seed('2026-06-01', null, null);
-  return { first, second, third, season, bed };
+  return { first, second, third, season, bed, crop };
 }
 
 test('the grid sorts, filters and edits the displayed dates without writing planned values', async ({ page, request }, info) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  const { first, second, third, season, bed } = await seedPlans(page, request, 'actual-dates-grid');
+  const { first, second, third, season, bed, crop } = await seedPlans(page, request, 'actual-dates-grid');
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -272,6 +272,10 @@ test('the grid sorts, filters and edits the displayed dates without writing plan
     season: season.id, crop: directCrop.id, bed: bed.id, area_usage_sqm: 1,
     cultivation_type: 'direct_sowing', planting_date: '2026-07-01',
   });
+  const purchased = await apiRequest<{ id: number }>(page, 'POST', '/planting-plans/', {
+    season: season.id, crop: crop.id, bed: bed.id, area_usage_sqm: 1,
+    cultivation_type: 'purchased_transplant', planting_date: '2026-07-15',
+  });
   await page.reload();
   await expect(modes.getByText('Tatsächlich', { exact: true })).toBeVisible();
   const directSowing = grid.locator(`[role="row"][data-id="${direct.id}"] [data-field="sowing_date"]`);
@@ -284,6 +288,31 @@ test('the grid sorts, filters and edits the displayed dates without writing plan
   expect(await apiRequest(page, 'GET', `/planting-plans/${direct.id}/`)).toMatchObject({
     planting_date: '2026-07-01', actual_sowing_date: '2026-07-03',
   });
+
+  const purchasedRow = grid.locator(`[role="row"][data-id="${purchased.id}"]`);
+  const lockedSowing = purchasedRow.locator('[data-field="sowing_date"]');
+  const purchasedPlanting = cell(purchased.id);
+  await expect(lockedSowing).toHaveAttribute('aria-readonly', 'true');
+  await expect(purchasedPlanting).toHaveAttribute('aria-readonly', 'false');
+  await purchasedPlanting.press('ArrowLeft');
+  await expect(lockedSowing).toBeFocused();
+  await expect(page.getByRole('tooltip').filter({ hasText: /keine eigene Anzucht/i })).toBeVisible();
+  await lockedSowing.press('Enter');
+  await expect(lockedSowing.getByRole('textbox')).toHaveCount(0);
+  await purchasedPlanting.press('Enter');
+  await purchasedPlanting.getByRole('textbox', { name: 'Ist-Pflanztermin' }).press('Shift+Tab');
+  const purchasedBed = purchasedRow.locator('[data-field="bed"]');
+  await expect.poll(() => purchasedBed.evaluate(bedCell => bedCell.contains(document.activeElement))).toBe(true);
+
+  await selectMode('Geplant');
+  const editedSowing = secondRow.locator('[data-field="sowing_date"]');
+  await expect(editedSowing).toHaveText('9.5.2026');
+  await cultivationType.dblclick();
+  await page.getByRole('option', { name: /gekauften Pflanzen/i }).click();
+  await expect(secondRow).toHaveClass(/MuiDataGrid-row--editing/);
+  await expect(editedSowing).toHaveAttribute('aria-readonly', 'true');
+  await expect(editedSowing).toHaveText('—');
+  await expect(editedSowing).toHaveAccessibleDescription(/keine eigene Anzucht/i);
 });
 
 test('keeps explanatory header help delayed and shows Add in keyboard help', async ({ page, request }) => {
