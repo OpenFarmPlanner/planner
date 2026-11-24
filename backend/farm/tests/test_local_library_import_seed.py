@@ -880,12 +880,20 @@ class PlantingPlanEditBenchmarkSeedTests(TestCase):
 
         call_command("seed_planting_plan_edit_benchmark", apply=True, **self.arguments)
         project = Project.objects.get(slug=slug)
-        self.assertEqual(PlantingPlan.objects.filter(project=project).count(), 25)
+        plans = PlantingPlan.objects.filter(project=project)
+        self.assertEqual(plans.count(), 25)
+        edited_plan = plans.earliest("id")
+        edited_plan.notes = "Local benchmark notes"
+        edited_plan.save(update_fields=["notes"])
 
         call_command("seed_planting_plan_edit_benchmark", apply=True, **self.arguments)
-        self.assertEqual(PlantingPlan.objects.filter(project=project).count(), 25)
+        self.assertEqual(plans.count(), 25)
+        edited_plan.refresh_from_db()
+        self.assertEqual(edited_plan.notes, "Local benchmark notes")
 
     def test_refuses_foreign_project_with_same_slug(self):
-        Project.objects.create(slug=f"ofp-local-plan-edit-benchmark-24-{self.user.pk}", name="Other")
+        Project.objects.create(
+            slug=f"ofp-local-plan-edit-benchmark-24-{self.user.pk}", name="Other",
+        )
         with self.assertRaises(CommandError):
             call_command("seed_planting_plan_edit_benchmark", apply=True, **self.arguments)
