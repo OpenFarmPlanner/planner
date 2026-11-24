@@ -55,6 +55,8 @@ describe('planting plan date editability', () => {
     expect(getPlanDateReadOnlyReason(carriedPerennial, 'harvest_end_date', 'combined', false)).toBe('noHarvestOccurrence');
     expect(getPlanDateReadOnlyReason({ ...annual, isNew: true }, 'harvest_date', 'actual', true)).toBe('calculated');
     expect(getPlanDateReadOnlyReason({ ...annual, isNew: true }, 'planting_date', 'actual', true)).toBeNull();
+    expect(getPlanDateReadOnlyReason({ ...missingPropagation, isNew: true }, 'sowing_date', 'combined', true))
+      .toBe('missingPropagationDuration');
   });
 });
 

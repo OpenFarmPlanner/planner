@@ -303,6 +303,16 @@ test('the grid sorts, filters and edits the displayed dates without writing plan
   await purchasedPlanting.getByRole('textbox', { name: 'Ist-Pflanztermin' }).press('Shift+Tab');
   const purchasedBed = purchasedRow.locator('[data-field="bed"]');
   await expect.poll(() => purchasedBed.evaluate(bedCell => bedCell.contains(document.activeElement))).toBe(true);
+
+  await selectMode('Geplant');
+  const editedSowing = secondRow.locator('[data-field="sowing_date"]');
+  await expect(editedSowing).toHaveText('9.5.2026');
+  await cultivationType.dblclick();
+  await page.getByRole('option', { name: /gekauften Pflanzen/i }).click();
+  await expect(secondRow).toHaveClass(/MuiDataGrid-row--editing/);
+  await expect(editedSowing).toHaveAttribute('aria-readonly', 'true');
+  await expect(editedSowing).toHaveText('—');
+  await expect(editedSowing).toHaveAccessibleDescription(/keine eigene Anzucht/i);
 });
 
 test('keeps explanatory header help delayed and shows Add in keyboard help', async ({ page, request }) => {

@@ -48,7 +48,7 @@ export function getPlanDateReadOnlyReason(
     if (field === 'sowing_date') {
       const propagation = getPlanPropagationInfo(plan, crop);
       if (propagation.isPurchasedTransplant) return 'noOwnPropagation';
-      if (!plan.isNew && propagation.isPreCultivation && (propagation.propagationDurationDays ?? 0) <= 0
+      if (propagation.isPreCultivation && (propagation.propagationDurationDays ?? 0) <= 0
         && !getExplicitPropagationStart(plan, crop)) {
         return 'missingPropagationDuration';
       }

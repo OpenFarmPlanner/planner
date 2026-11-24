@@ -182,6 +182,11 @@ test.describe('recurring harvest dates', () => {
         clearing_date: '2028-09-10', actual_harvest_start_date: '2025-10-03',
       });
 
+      await page.addInitScript(() => {
+        localStorage.setItem('tableColumns.plantingPlans', JSON.stringify({
+          harvest_date: true, harvest_end_date: true,
+        }));
+      });
       await page.goto('/app/planting-plans');
       const switchSeason = async (year: number) => {
         await page.getByRole('button', { name: navigation.seasonSwitcher.ariaLabel }).click();
@@ -258,8 +263,21 @@ test.describe('recurring harvest dates', () => {
       await harvestStart.press('Enter');
       const actualStart = harvestStart.getByRole('textbox', { name: 'Ist-Erntebeginn' });
       await expect(actualStart).toHaveValue('01.09.2027');
-      await actualStart.press('Escape');
+      const harvest = await create('/harvests/', {
+        date: '2027-09-11', crop: crop.id, quantity: '3.5', unit: 'kg',
+        allocations: [{ planting_plan: plan.id, quantity: '3.5' }],
+      });
+      await actualStart.fill('10.09.2027');
+      await actualStart.press('Enter');
+      await expect(harvestStart).toHaveText('10.9.2027');
+      await selectMode('planned');
+      await expect(harvestStart).toHaveText('1.9.2027');
+      await selectMode('actual');
+      await harvestStart.press('Enter');
+      await actualStart.fill('');
+      await actualStart.press('Enter');
       await expect(harvestStart).toHaveText('—');
+      expect(await apiRequest(page, 'GET', `/harvests/${harvest.id}/`)).toMatchObject({ quantity: '3.500', unit: 'kg' });
       await selectMode('combined');
       await expect(harvestStart).toHaveText('1.9.2027');
       await expect(harvestStart).toHaveAttribute('aria-readonly', 'false');
@@ -267,6 +285,7 @@ test.describe('recurring harvest dates', () => {
       await expect(plantingDate).toHaveText('15.3.2025');
       await expect(plantingDate).toHaveAccessibleDescription(plans.actualDates.readOnlyReasons.originSeason);
       await page.setViewportSize({ width: 1024, height: 900 });
+      await expect(harvestStart).toHaveAttribute('aria-readonly', 'false');
       await harvestStart.scrollIntoViewIfNeeded();
       await page.screenshot({ path: info.outputPath('recurring-combined-dates-tablet.png'), animations: 'disabled' });
       await page.setViewportSize({ width: 1440, height: 900 });

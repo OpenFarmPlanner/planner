@@ -795,7 +795,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     displayDateMode !== 'planned' && !row.isNew && getDateReadOnlyReason(row, field) === null,
   [displayDateMode, getDateReadOnlyReason]);
 
-  const renderDateCell = useCallback((params: GridRenderCellParams<PlantingPlanRow>, renderPlanned: (comparison: ReactNode) => ReactNode) => {
+  const renderDateCell = useCallback((params: GridRenderCellParams<PlantingPlanRow>, renderPlanned: (comparison: ReactNode, row: PlantingPlanRow) => ReactNode) => {
     const field = params.field as PlantingPlanDateColumn;
     const getCurrentRow = () => params.api?.getRowMode(params.id) === 'edit'
       ? params.api.getRowWithUpdatedValues(params.id, field) as PlantingPlanRow : params.row;
@@ -808,7 +808,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       readOnlyReason={readOnlyReason} /> : null;
     const cell = displayDateMode === 'actual' || (displayDateMode === 'combined' && dates.actual)
       ? <RecordedPlanDateCell dates={dates} hasFocus={params.hasFocus} editable={editable} readOnlyReason={readOnlyReason} />
-      : renderPlanned(comparison);
+      : renderPlanned(comparison, row);
     return editable ? <ActualPlanDateCell key={actualDateDraftState.key}
       params={params} drafts={actualDateDraftState.drafts}
       getEditDates={() => getColumnDates(getCurrentRow(), field)}
@@ -874,8 +874,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   const isPlantsPartnerVisible = columnVisibilityModel.area_m2 !== false;
 
   const columns: GridColDef[] = useMemo(() => {
-    const renderSowingDate = (params: GridRenderCellParams<PlantingPlanRow>) => renderDateCell(params, comparison => {
-      const schedule = getRowSowingSchedule(params.row);
+    const renderSowingDate = (params: GridRenderCellParams<PlantingPlanRow>) => renderDateCell(params, (comparison, row) => {
+      const schedule = getRowSowingSchedule(row);
       if (!schedule?.sowingDate) {
         const tooltip = schedule?.isPurchasedTransplant
           ? t("plantingPlans:tooltips.noOwnPropagation")
@@ -888,24 +888,24 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       }
       return (
         <TimingWindowDateCell
-          findings={getRowTimingWindowFindings(params.row)}
+          findings={getRowTimingWindowFindings(row)}
           kinds={TIMING_WINDOW_KINDS_BY_DATE_FIELD.sowing_date}
           tooltipContent={comparison}
-          germinationFindings={params.row.germination_findings}
+          germinationFindings={row.germination_findings}
           cellHasFocus={params.hasFocus}
         >
-          <SearchHighlightedText text={typeof params.formattedValue === "string" ? params.formattedValue : ""} />
+          <SearchHighlightedText text={formatDateForDisplay(schedule.sowingDate)} />
         </TimingWindowDateCell>
       );
     });
-    const renderPlantingDate = (params: GridRenderCellParams<PlantingPlanRow>) => renderDateCell(params, comparison => (
+    const renderPlantingDate = (params: GridRenderCellParams<PlantingPlanRow>) => renderDateCell(params, (comparison, row) => (
       <TimingWindowDateCell
-        findings={getRowTimingWindowFindings(params.row)}
+        findings={getRowTimingWindowFindings(row)}
         kinds={TIMING_WINDOW_KINDS_BY_DATE_FIELD.planting_date}
         tooltipContent={comparison}
         cellHasFocus={params.hasFocus}
       >
-        <SearchHighlightedText text={typeof params.formattedValue === "string" ? params.formattedValue : ""} />
+        <SearchHighlightedText text={formatDateForDisplay(toIsoDateString(row.planting_date))} />
       </TimingWindowDateCell>
     ));
 
@@ -1379,6 +1379,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       getRowSowingSchedule,
       isActualDateEditor,
       displayDateMode,
+      formatDateForDisplay,
       getColumnDates,
       getDateReadOnlyReason,
       renderDateCell,
