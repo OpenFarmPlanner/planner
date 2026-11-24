@@ -18,6 +18,7 @@ from http.client import HTTPConnection, HTTPException
 from pathlib import Path
 
 import releases
+import rounds
 
 qa = releases.QA
 repo = releases.REPO
@@ -367,12 +368,9 @@ def start_watcher():
 
 
 def review_round(service, preview=False, agent="auto"):
-    sys.path.append(str(data))
-    from rounds import launch
-
     if service == "refresh":
         if preview:
-            launch("sync", True, agent)
+            rounds.launch("sync", True, agent)
         else:
             if not sys.stdin.isatty() or not sys.stdout.isatty():
                 raise ValueError(
@@ -392,7 +390,7 @@ def review_round(service, preview=False, agent="auto"):
                 check=True,
             )
             subprocess.run([sys.executable, str(Path(__file__).resolve())], check=True)
-    launch(service, preview, agent)
+    rounds.launch(service, preview, agent)
 
 
 if __name__ == "__main__":

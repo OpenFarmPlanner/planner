@@ -530,7 +530,9 @@ build a throwaway local integration branch; never a shared branch:
 The owner's local `ofp-qa refresh` workflow includes acceptance cleanup before
 the QA refresh. Use the existing sync verification and explicit batch-confirmation
 flow for removing Accepted entries from #1058 and archiving their dashboard cards;
-the subsequent QA phase stays read-only on GitHub. See `docs/testing-and-ci.md`.
+the subsequent QA phase stays read-only on GitHub. Codex sync sessions use the
+workspace-write sandbox with network access and no per-command approval prompts;
+retain the explicit batch confirmation in the sync task. See `docs/testing-and-ci.md`.
 
 When asked to search for bugs, run exploratory tests, or do a QA sweep:
 1. Read `docs/qa-strategy.md` first — it defines when to do a full vs. targeted sweep and contains Playwright setup details.

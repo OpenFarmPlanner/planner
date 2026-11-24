@@ -1,6 +1,7 @@
 """Exercise the local QA updater without touching a running dashboard."""
 
 import os
+import json
 import sqlite3
 import subprocess
 import sys
@@ -8,7 +9,6 @@ import tempfile
 import unittest
 from contextlib import ExitStack
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 TOOLS = Path(__file__).resolve().parents[1] / "scripts/local_qa"
@@ -21,7 +21,7 @@ class LocalQAUpdateTests(unittest.TestCase):
         events = []
         launch = Mock(side_effect=lambda *args: events.append(("launch", args)))
         with (
-            patch.dict(sys.modules, {"rounds": SimpleNamespace(launch=launch)}),
+            patch.object(qa.rounds, "launch", launch),
             patch.object(qa.sys.stdin, "isatty", return_value=True),
             patch.object(qa.sys.stdout, "isatty", return_value=True),
             patch.object(
@@ -41,7 +41,7 @@ class LocalQAUpdateTests(unittest.TestCase):
     def test_refresh_preview_shows_both_rounds_without_processes_or_terminal(self):
         launch = Mock()
         with (
-            patch.dict(sys.modules, {"rounds": SimpleNamespace(launch=launch)}),
+            patch.object(qa.rounds, "launch", launch),
             patch.object(qa.sys.stdin, "isatty", return_value=False),
             patch.object(qa.subprocess, "run") as run,
         ):
@@ -57,7 +57,7 @@ class LocalQAUpdateTests(unittest.TestCase):
             with self.subTest(error=type(error).__name__):
                 launch = Mock()
                 with (
-                    patch.dict(sys.modules, {"rounds": SimpleNamespace(launch=launch)}),
+                    patch.object(qa.rounds, "launch", launch),
                     patch.object(qa.sys.stdin, "isatty", return_value=True),
                     patch.object(qa.sys.stdout, "isatty", return_value=True),
                     patch.object(qa.subprocess, "run", side_effect=error) as run,
@@ -70,7 +70,7 @@ class LocalQAUpdateTests(unittest.TestCase):
     def test_refresh_without_terminal_stops_before_starting_cleanup(self):
         launch = Mock()
         with (
-            patch.dict(sys.modules, {"rounds": SimpleNamespace(launch=launch)}),
+            patch.object(qa.rounds, "launch", launch),
             patch.object(qa.sys.stdin, "isatty", return_value=False),
             patch.object(qa.subprocess, "run") as run,
             self.assertRaisesRegex(ValueError, "interactive terminal"),
@@ -82,7 +82,7 @@ class LocalQAUpdateTests(unittest.TestCase):
     def test_standalone_sync_keeps_existing_launch_behavior(self):
         launch = Mock()
         with (
-            patch.dict(sys.modules, {"rounds": SimpleNamespace(launch=launch)}),
+            patch.object(qa.rounds, "launch", launch),
             patch.object(qa.subprocess, "run") as run,
         ):
             qa.review_round("sync", agent="claude")
@@ -216,3 +216,128 @@ class LocalQAUpdateTests(unittest.TestCase):
             )
             update.assert_called_once()
             self.assertEqual(update.call_args.args[0][-1], "update")
+
+
+class LocalQARoundTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.repo = Path(self.temp.name)
+        self.workspace = self.repo / ".qa-review"
+        data = self.workspace / "test-data"
+        data.mkdir(parents=True)
+        (self.workspace / "results.json").write_text(
+            json.dumps(
+                {"issues": [{"number": 1457, "pr": 1500, "commit": "reviewed-merge"}]}
+            )
+        )
+        (self.workspace / "decisions.json").write_text(
+            json.dumps({"1457": {"status": "Accepted", "revision": 2}})
+        )
+        self.task = "Preview the exact batch. Ask for ONE explicit confirmation before queue writes."
+        for mode in ("sync", "refresh"):
+            (data / f"round-{mode}.txt").write_text(self.task)
+        rows = {
+            1457: {"pr": False, "checked": False, "position": 1, "row": "- [ ] #1457"}
+        }
+        info = {
+            1457: {
+                "state": "CLOSED",
+                "stateReason": "COMPLETED",
+                "title": "Synthetic issue",
+                "closedByPullRequestsReferences": {
+                    "nodes": [{"state": "MERGED", "mergeCommit": {"oid": "new-merge"}}],
+                    "pageInfo": {"hasNextPage": False},
+                },
+            }
+        }
+        self.stack = ExitStack()
+        self.addCleanup(self.stack.close)
+        for target, name, kwargs in (
+            (qa.rounds, "repo", {"new": self.repo}),
+            (qa.rounds, "qa", {"new": self.workspace}),
+            (
+                qa.rounds,
+                "live_queue",
+                {"return_value": ({"updated_at": "synthetic"}, rows)},
+            ),
+            (qa.rounds, "metadata", {"return_value": info}),
+            (qa.rounds, "references", {"return_value": {1457: []}}),
+            (qa.rounds.shutil, "which", {"side_effect": lambda name: f"/tools/{name}"}),
+            (qa.rounds.sys.stdin, "isatty", {"return_value": True}),
+            (qa.rounds.sys.stdout, "isatty", {"return_value": True}),
+            (qa.rounds.os, "chdir", {}),
+            (
+                qa.rounds.subprocess,
+                "check_output",
+                {"side_effect": AssertionError("Unexpected external call")},
+            ),
+        ):
+            self.stack.enter_context(patch.object(target, name, **kwargs))
+
+    def test_codex_sync_policy_applies_to_explicit_and_automatic_selection(self):
+        for agent in ("codex", "auto"):
+            with self.subTest(agent=agent):
+                state = self.workspace / "runs/last-agent"
+                if state.exists():
+                    state.unlink()
+                with patch.object(qa.rounds.os, "execv") as execute:
+                    qa.rounds.launch("sync", agent=agent)
+                binary, args = execute.call_args.args
+                self.assertEqual(binary, "/tools/codex")
+                self.assertEqual(args[args.index("-a") + 1], "never")
+                self.assertEqual(args[args.index("--sandbox") + 1], "workspace-write")
+                self.assertEqual(
+                    args[args.index("-c") + 1],
+                    "sandbox_workspace_write.network_access=true",
+                )
+                self.assertEqual(args[args.index("--cd") + 1], str(self.repo))
+                self.assertNotIn("--dangerously-bypass-approvals-and-sandbox", args)
+                self.assertIn(self.task, args[-1])
+                manifest = json.loads(
+                    sorted((self.workspace / "runs").glob("sync-*.json"))[
+                        -1
+                    ].read_text()
+                )
+                self.assertEqual(manifest["entries"][0]["decisionRevision"], 2)
+                self.assertEqual(
+                    manifest["entries"][0]["reviewedCommit"], "reviewed-merge"
+                )
+
+    def test_sync_preview_starts_no_assistant_and_preserves_decisions(self):
+        decisions = (self.workspace / "decisions.json").read_bytes()
+        with patch.object(qa.rounds.os, "execv") as execute:
+            qa.rounds.launch("sync", preview=True)
+        execute.assert_not_called()
+        self.assertFalse((self.workspace / "runs").exists())
+        self.assertEqual((self.workspace / "decisions.json").read_bytes(), decisions)
+
+    def test_claude_sync_keeps_existing_arguments(self):
+        with patch.object(qa.rounds.os, "execv") as execute:
+            qa.rounds.launch("sync", agent="claude")
+        self.assertEqual(
+            execute.call_args.args[1][:-1], ["/tools/claude", "--no-chrome"]
+        )
+        self.assertIn(self.task, execute.call_args.args[1][-1])
+
+    def test_failed_sync_start_restores_agent_alternation_state(self):
+        state = self.workspace / "runs/last-agent"
+        state.parent.mkdir()
+        state.write_text("claude\n")
+        with (
+            patch.object(qa.rounds.os, "execv", side_effect=OSError("failed")),
+            self.assertRaises(OSError),
+        ):
+            qa.rounds.launch("sync", agent="codex")
+        self.assertEqual(state.read_text().strip(), "claude")
+
+    def test_refresh_keeps_unattended_scoped_policy(self):
+        with patch.object(qa.rounds.subprocess, "Popen") as process:
+            process.return_value.wait.return_value = 0
+            qa.rounds.launch("refresh", agent="codex")
+        args = process.call_args.args[0]
+        self.assertIn("exec", args)
+        self.assertEqual(args[args.index("-a") + 1], "never")
+        self.assertEqual(args[args.index("--sandbox") + 1], "workspace-write")
+        self.assertEqual(args[args.index("--cd") + 1], str(self.workspace))
+        self.assertIn("keep GitHub read-only", args[-1])

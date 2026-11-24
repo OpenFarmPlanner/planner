@@ -317,6 +317,9 @@ jobs:
       - name: Test quality finding and scanner failure handling
         run: node --test tests/test_quality_findings.cjs tests/test_classify_changes.cjs
 
+      - name: Test local QA launcher
+        run: python3 -m unittest discover -s tests -p test_local_qa.py
+
       # Runs on every PR, metadata-only ones included: a release version bump
       # skips the heavy jobs, but its two version declarations must agree.
       - name: Check backend version declarations agree

@@ -1061,6 +1061,9 @@ For an existing Linux acceptance-review workspace, run
 server in `.qa-review/dashboard/` and the workspace's `qa_settings.py`,
 `review.sqlite3` and `project-links.py` in `.qa-review/test-data/`.
 The workspace supplies its own project fixtures and reviewer account.
+Queue candidate selection, relationship lookup and assistant startup live in
+`scripts/local_qa/rounds.py` and `qa_references.py`. The initialized workspace
+supplies `test-data/round-sync.txt` and `round-refresh.txt` as its task instructions.
 Use the project's Python, PDM and Node/npm prerequisites and Git credentials
 with read access to `origin`.
 
@@ -1095,3 +1098,13 @@ list; the QA phase itself remains read-only on GitHub.
 starting an assistant, updating services or changing GitHub or review state.
 Its refresh candidates reflect the current queue, before any cleanup.
 `ofp-qa sync --agent codex` remains available for cleanup alone.
+
+Codex sync sessions explicitly use `--ask-for-approval never` with the
+`workspace-write` sandbox and network access enabled. This avoids individual
+command approval prompts during GitHub relationship reads. The same policy
+applies when `refresh` starts its sync phase and when automatic agent selection
+chooses Codex. It applies to all commands in that session, including approved
+queue writes; the existing sync task still requires an explicit confirmation of
+the exact batch before remote changes. This is an assistant instruction, not a
+network write filter. Global Codex settings are unchanged. Preview mode starts
+no assistant; Claude's startup options are unchanged.
