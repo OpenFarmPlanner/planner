@@ -1650,3 +1650,17 @@ class PlatformActivityTests(TestCase):
 
         self.assertEqual(ProjectActiveUserDay.objects.get(project=self.project).user, remaining)
         self.assertEqual(ProjectChangeDay.objects.get(project=self.project).created, 2)
+
+    def test_anonymized_accounts_cannot_recreate_active_keys_from_stale_requests(self) -> None:
+        get_user_model().objects.filter(pk=self.user.pk).update(is_active=False)
+
+        def synthetic_view(request: HttpRequest) -> HttpResponse:
+            Crop.objects.create(project=self.project, name='In-flight crop edit')
+            return HttpResponse()
+
+        request = RequestFactory().post(self.endpoint)
+        request.user = self.user
+        request.session = {}
+        self.assertEqual(ProjectUsageMiddleware(synthetic_view)(request).status_code, 200)
+        self.assertFalse(ProjectActiveUserDay.objects.exists())
+        self.assertFalse(ProjectChangeDay.objects.exists())

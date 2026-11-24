@@ -7,6 +7,7 @@ from itertools import batched
 from typing import Any
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import F, Q
 from django.http import HttpRequest, HttpResponse
@@ -187,9 +188,14 @@ class ProjectUsageMiddleware:
 
         user = request.user
         with collect_usage_changes() as pending, transaction.atomic():
+            # Keep activity writes and account anonymization ordered by the user row.
+            # Lock before the view can take project locks, as account deletion does.
+            can_record = get_user_model().objects.select_for_update(no_key=True).filter(
+                pk=user.pk, is_active=True, is_staff=False, is_superuser=False,
+            ).exists()
             response = self.get_response(request)
             if (
-                pending and 200 <= response.status_code < 300
+                can_record and pending and 200 <= response.status_code < 300
                 and not is_active_guest_demo_user(user)
             ):
                 _save_totals(timezone.now().astimezone(UTC).date(), user.pk, pending)
