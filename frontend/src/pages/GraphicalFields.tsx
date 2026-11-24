@@ -35,6 +35,7 @@ import {
 import { isTypingInEditableElement, useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useTranslation } from "../i18n";
 import { GraphicalFieldDetailsDialog } from "./GraphicalFieldDetailsDialog";
+import { GraphicalFreeAreaInfo, GraphicalFreeRectangles } from "./GraphicalFreeAreas";
 import { GraphicalGeometryWarnings } from "./GraphicalGeometryWarnings";
 import { GraphicalSnapGuides } from "./GraphicalSnapGuides";
 import { analyzeGraphicalGeometry, getGeometryOutlines, getGraphicalBedLayout, type GeometryPreview, type GraphicalParcel, type OutlineKind } from "./graphicalAreaGeometry";
@@ -117,6 +118,7 @@ export default function GraphicalFields({
   interactionMode: controlledInteractionMode,
   onInteractionModeChange,
   showModeToggle = true,
+  showFreeAreas = false,
   hierarchyData,
   selectedLocationId,
   cameraState: controlledCameraState,
@@ -994,7 +996,10 @@ export default function GraphicalFields({
             ) }];
           });
           const pathSpacing = getLocationPathSpacing(location);
-          const geometry = analyzeGraphicalGeometry(location, boundary, parcels, pathSpacing, rotation, geometryPreview);
+          const geometry = analyzeGraphicalGeometry(location, boundary, parcels, pathSpacing, rotation, geometryPreview, showFreeAreas);
+          const locationCoverage = geometry.locationReport.coverage;
+          const incompleteParcels = showFreeAreas
+            && [...geometry.parcelReports.values()].some(report => report.coverage.freeRects === null);
           const parcelWarnings = getGeometryOutlines(geometry.locationReport.issues);
           const fieldsOutsideBoundary = new Set(geometry.locationReport.issues.flatMap(issue => issue.kind === "outside" ? [issue.id] : []));
           if (boundary) {
@@ -1074,6 +1079,7 @@ export default function GraphicalFields({
                     <Stack spacing={0} sx={{ alignItems: "stretch", }} >
                       <GraphicalGeometryWarnings t={t} parcels={parcels} analysis={geometry}
                         outsideParcels={fieldsOutsideBoundary} focusArea={focusArea} />
+                      {showFreeAreas ? <GraphicalFreeAreaInfo coverage={locationCoverage} incompleteParcels={incompleteParcels} t={t} /> : null}
                       <Stack direction={{ xs: "column", sm: "row" }} spacing={0}>
                         {([-1, 1] as const).map(direction => (
                           <AppTooltip disableInteractive key={direction} title={t(direction === -1 ? "fields:graphical.rotateLeft" : "fields:graphical.rotateRight")} placement="left">
@@ -1333,6 +1339,8 @@ export default function GraphicalFields({
                     <Layer>
                       {boundary ? (
                         <Group listening={false}>
+                          {showFreeAreas ? <GraphicalFreeRectangles coverage={locationCoverage} origin={boundary}
+                            scale={{ x: FIELD_WORLD_PX_PER_METER, y: FIELD_WORLD_PX_PER_METER }} kind="site" /> : null}
                           <Rect
                             {...boundary}
                             stroke={theme.palette.text.secondary}
@@ -1407,6 +1415,8 @@ export default function GraphicalFields({
                               listening={false}
                               data-testid={`field-usable-area-${fieldId}`}
                             />
+                            {showFreeAreas && pixelsPerMeter ? <GraphicalFreeRectangles coverage={parcelReport?.coverage}
+                              origin={fieldUsableArea} scale={pixelsPerMeter} kind="parcel" /> : null}
                             <Rect
                               width={baseRect.width}
                               height={baseRect.height}

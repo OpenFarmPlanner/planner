@@ -29,6 +29,18 @@
     "graphical": "Grafisch"
   },
   "graphical": {
+    "freeArea": {
+      "toggle": "Vrije ruimte en paden tonen",
+      "title": "Vrije ruimte",
+      "site": "Niet-toegewezen ruimte buiten de percelen",
+      "parcel": "Ruimte binnen percelen zonder bedden",
+      "incomplete": "Een deel van de vrije ruimte is niet meetbaar",
+      "gross": "Bruto-oppervlakte van de locatie {{area}}",
+      "covered": "Perceeloppervlakte binnen de locatie {{area}}",
+      "remaining": "Niet-toegewezen ruimte buiten de percelen {{area}}",
+      "unknownLocation": "Voor de vrije ruimte op de locatie zijn gemeten locatie- en perceelgrenzen nodig.",
+      "unknownParcel": "Voor enkele percelen ontbreken afmetingen om hun vrije ruimte in te kleuren."
+    },
     "geometry": {
       "title": "Indelingscontrole",
       "open": "Indelingscontrole ({{count}})",

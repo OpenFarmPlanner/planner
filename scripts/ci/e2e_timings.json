@@ -115,6 +115,10 @@
       "tests": 3,
       "duration_ms": 22065
     },
+    "e2e/fields-beds-free-areas.spec.ts": {
+      "tests": 2,
+      "duration_ms": 30000
+    },
     "e2e/fields-beds-geometry-warnings.spec.ts": {
       "tests": 2,
       "duration_ms": 26000

@@ -59,4 +59,25 @@ describe('growing-area metric geometry', () => {
     expect(validateAreaGeometry(null, [measured, footprint(2, rect(9.95, 0, 2, 3))], 0.3).issues)
       .toEqual([{ kind: 'shortGap', ids: [1, 2], gapM: expect.closeTo(0.05), recommendedM: 0.3 }]);
   });
+
+  it('partitions free geometry with the same union and clipping as the area figures', () => {
+    const footprints = [footprint(1, rect(-1, 2, 6, 6)), footprint(2, rect(3, 5, 6, 6))];
+    const coverage = calculateMetricCoverage(parent, footprints, true);
+    expect(coverage).toMatchObject({ grossArea: 100, footprintArea: 54, remainingArea: 46 });
+    const free = coverage.freeRects!;
+    expect(footprintUnionArea(free)).toBe(coverage.remainingArea);
+    expect(free.reduce((area, shape) => area + shape.width * shape.height, 0)).toBe(coverage.remainingArea);
+    for (const shape of free) {
+      expect(shape.x).toBeGreaterThanOrEqual(0);
+      expect(shape.y).toBeGreaterThanOrEqual(0);
+      expect(shape.x + shape.width).toBeLessThanOrEqual(10);
+      expect(shape.y + shape.height).toBeLessThanOrEqual(10);
+    }
+  });
+
+  it('returns a single free shape for an empty measured site and no shapes for incomplete geometry', () => {
+    expect(calculateMetricCoverage(parent, [], true).freeRects).toEqual([parent]);
+    expect(calculateMetricCoverage(null, [], true).freeRects).toBeNull();
+    expect(calculateMetricCoverage(parent, [footprint(1, null)], true).freeRects).toBeNull();
+  });
 });

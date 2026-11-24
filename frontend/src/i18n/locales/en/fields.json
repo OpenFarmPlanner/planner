@@ -29,6 +29,18 @@
     "graphical": "Graphic"
   },
   "graphical": {
+    "freeArea": {
+      "toggle": "Show free areas and paths",
+      "title": "Free areas",
+      "site": "Unassigned space outside parcels",
+      "parcel": "Space inside parcels without beds",
+      "incomplete": "Some free areas cannot be measured",
+      "gross": "Gross location area {{area}}",
+      "covered": "Parcel footprint within the location {{area}}",
+      "remaining": "Unassigned space outside parcels {{area}}",
+      "unknownLocation": "The location overlay requires measured site and parcel outlines.",
+      "unknownParcel": "Some parcels lack measured dimensions for shading their free areas."
+    },
     "geometry": {
       "title": "Layout checks",
       "open": "Layout checks ({{count}})",

@@ -84,6 +84,7 @@ export function analyzeGraphicalGeometry(
   spacing: LocationPathSpacing,
   rotation: GraphicalRotation,
   drag: GeometryPreview | null,
+  showFreeAreas = false,
 ) {
   const preview = drag?.locationId === location.id ? drag : null;
   const locationMeters = measuredSize(location, rotation);
@@ -98,7 +99,7 @@ export function analyzeGraphicalGeometry(
         y: (position.y - origin.y) / FIELD_WORLD_PX_PER_METER, ...size } : null,
     };
   });
-  const locationReport = validateAreaGeometry(locationBounds, plotFootprints, spacing.parcel_path_spacing_cm / 100);
+  const locationReport = validateAreaGeometry(locationBounds, plotFootprints, spacing.parcel_path_spacing_cm / 100, showFreeAreas);
 
   const parcelReports = new Map(parcels.map(({ rect, layout }) => {
     const bounds: MetricRect | null = layout.fieldMeters ? { x: 0, y: 0, ...layout.fieldMeters } : null;
@@ -112,7 +113,7 @@ export function analyzeGraphicalGeometry(
           : null,
       };
     });
-    return [rect.id, validateAreaGeometry(bounds, footprints, spacing.bed_path_spacing_cm / 100)] as const;
+    return [rect.id, validateAreaGeometry(bounds, footprints, spacing.bed_path_spacing_cm / 100, showFreeAreas)] as const;
   }));
   return { locationReport, parcelReports };
 }

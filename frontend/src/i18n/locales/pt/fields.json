@@ -29,6 +29,18 @@
     "graphical": "Gráfico"
   },
   "graphical": {
+    "freeArea": {
+      "toggle": "Mostrar espaços livres e caminhos",
+      "title": "Espaços livres",
+      "site": "Espaço sem atribuição fora das parcelas",
+      "parcel": "Espaço dentro das parcelas sem canteiros",
+      "incomplete": "Alguns espaços livres não podem ser medidos",
+      "gross": "Área bruta da exploração {{area}}",
+      "covered": "Área das parcelas dentro da exploração {{area}}",
+      "remaining": "Espaço sem atribuição fora das parcelas {{area}}",
+      "unknownLocation": "A visualização dos espaços livres requer contornos medidos da exploração e das parcelas.",
+      "unknownParcel": "Faltam dimensões para sombrear o espaço livre de algumas parcelas."
+    },
     "geometry": {
       "title": "Verificação do esquema",
       "open": "Verificação do esquema ({{count}})",

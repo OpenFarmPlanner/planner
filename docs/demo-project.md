@@ -69,6 +69,14 @@ button names the affected beds after the drop. To demonstrate a saved overflow,
 increase that bed's width beyond the parcel width in List, then return to
 Graphic. Reduce it again to restore a valid footprint.
 
+In Spacing, turn on Show free areas and paths. Hofgarten shows shaded room
+around its three early beds and space outside the parcels but inside the site
+boundary. Open the free-area information control for the site figures. The
+overlay is initially off. In the current demo year's early spring, Salat 1
+has a planting scheduled from 18 February and Salat 2 has its first planting
+scheduled for 22 March. Both measured footprints appear with the same styling
+throughout that period.
+
 Site conditions (#1075) are language-independent choices, so every demo
 language shows the same values. Hofgarten is sunny, normal moisture, irrigation
 available; Acker am Bach is sunny and moist without irrigation; Lindenhof

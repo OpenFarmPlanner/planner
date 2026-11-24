@@ -1802,6 +1802,8 @@ def _create_planting_plans(
         # Current season.
         # Conflict: lettuce after lettuce on the same bed. Both successions
         # are Asteraceae within the 2-year break, so they flag each other.
+        # Stagger these two measured beds so the free-area walkthrough can
+        # compare one with a spring planting and one still awaiting planting.
         PlanSpec('salat', 'salat-1', 'pre_cultivation', date(current, 2, 18), Decimal('8.5'), 95, plan_notes['salat_frueh']),
         PlanSpec('salat', 'salat-2', 'pre_cultivation', date(current, 3, 22), Decimal('8.5'), 95),
         PlanSpec('mangold', 'kraeuter', 'pre_cultivation', date(current, 4, 6), Decimal('7.5'), 72),

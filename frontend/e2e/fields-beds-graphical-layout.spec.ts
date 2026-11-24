@@ -354,7 +354,7 @@ test('snaps real bed and parcel edges and permits closer placement with Shift or
 
   await page.getByRole('button', { name: 'Abstände', exact: true }).click();
   const spacing = page.getByRole('dialog', { name: 'Abstände (Wege)' });
-  await spacing.getByRole('checkbox').uncheck();
+  await spacing.getByRole('checkbox', { name: 'Beim Verschieben an Abständen einrasten' }).uncheck();
   await spacing.getByRole('button', { name: 'Übernehmen' }).click();
   await expect(page.locator('[role="dialog"][aria-modal="true"]')).toHaveCount(0);
   await startDrag(fieldId, 188, 0.1);

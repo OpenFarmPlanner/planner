@@ -116,8 +116,16 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   });
   const [cameraState, setCameraState] = useState<GraphicalCameraState>({ viewports: {}, rotations: {} });
   const [isEditingGraphic, setIsEditingGraphic] = useState(false);
+  const [freeAreasByLocation, setFreeAreasByLocation] = useState<Record<number, boolean>>({});
   const graphicalLocations = useMemo(() => locations.filter(item => typeof item.id === 'number' && item.id > 0), [locations]);
   const selectedLocation = graphicalLocations.find(item => item.id === locationSelection.id) ?? graphicalLocations[0];
+  const graphLocationId = selectedLocation?.id;
+  const showFreeAreas = graphLocationId !== undefined && (freeAreasByLocation[graphLocationId] ?? false);
+  const changeFreeAreas = useCallback((checked: boolean) => {
+    if (graphLocationId !== undefined) {
+      setFreeAreasByLocation(current => ({ ...current, [graphLocationId]: checked }));
+    }
+  }, [graphLocationId]);
   // Retain the actual selected ID when new/renamed/removed locations change order.
   if (locationSelection.locations !== locations) {
     setLocationSelection({ locations, id: selectedLocation?.id ?? null });
@@ -301,7 +309,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   const shouldShowAreasEmptyState = hasAreaDataLoaded && !isAreaDataLoading && !areaDataError && !hasLocations;
   const hasSelectedGraphicalFields = fields.some(field => field.location === selectedLocation?.id && hasPersistedEntityId(field.id));
   const shouldShowMissingFieldsState = hasLocations
-    && (effectiveViewMode === 'graphical' ? !hasSelectedGraphicalFields : !hasFields)
+    && (effectiveViewMode === 'graphical' ? !hasSelectedGraphicalFields && !showFreeAreas : !hasFields)
     && !hasUnsavedFields && createFieldRequest <= 0;
   const shouldShowMissingBedsHint = hasFields && !hasBeds && !hasUnsavedBeds;
   const shouldRenderHierarchy = hasHierarchyRows || createFieldRequest > 0 || effectivePendingHierarchyDeletionCount > 0;
@@ -388,12 +396,13 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
           </Button>
         </DisabledActionTooltip>
         {activeProjectMembership ? (
-          <GraphicalSpacingControl key={selectedLocation.id} location={selectedLocation} onSave={saveLocationPathSpacing} />
+          <GraphicalSpacingControl key={selectedLocation.id} location={selectedLocation} onSave={saveLocationPathSpacing}
+            showFreeAreas={showFreeAreas} onFreeAreasChange={changeFreeAreas} />
         ) : null}
       </Box>
     </> : null}</>
-  ) : null, [activeProjectMembership, effectiveViewMode, isEditingGraphic, hasSelectedGraphicalFields,
-    graphicalLocations, saveLocationPathSpacing, selectLocation, selectedLocation, shouldShowProjectRequiredState, t]);
+  ) : null, [activeProjectMembership, changeFreeAreas, effectiveViewMode, isEditingGraphic, hasSelectedGraphicalFields,
+    graphicalLocations, saveLocationPathSpacing, selectLocation, selectedLocation, showFreeAreas, shouldShowProjectRequiredState, t]);
   useTopbarWorkspaceControls(outletContext?.setTopbarWorkspaceControls, workspaceControls);
 
 
@@ -507,6 +516,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             onInteractionModeChange={mode => setIsEditingGraphic(mode === 'edit')}
             showTitle={false}
             showModeToggle={false}
+            showFreeAreas={showFreeAreas}
             hierarchyData={hierarchyData}
           />
         ) : null}
