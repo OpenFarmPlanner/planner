@@ -601,7 +601,13 @@ def populate_demo_project(
             today=reference_date,
         )
         project.demo_seeded_at = timezone.now()
-        Project.objects.filter(pk=project.pk).update(demo_seeded_at=project.demo_seeded_at)
+        project.default_bed_length_m = 10
+        project.default_bed_width_m = 1.2
+        Project.objects.filter(pk=project.pk).update(
+            demo_seeded_at=project.demo_seeded_at,
+            default_bed_length_m=project.default_bed_length_m,
+            default_bed_width_m=project.default_bed_width_m,
+        )
 
 
 def populate_public_demo_library_from_project(project: Project, *, owner: Any | None = None, language_code: str | None = None) -> None:

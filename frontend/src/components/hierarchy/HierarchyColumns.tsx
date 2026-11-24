@@ -33,6 +33,7 @@ import { HierarchyLevelButtons } from './HierarchyLevelToggle';
 import { FullCellTooltip, FULL_CELL_TOOLTIP_CELL_CLASS } from '../data-grid/FullCellTooltip';
 import { dataGridHeaderLabelSx } from '../data-grid/dataGridHeaderLabelSx';
 import { widthForHeaderTitles } from '../data-grid/columnHeaderWidth';
+import { formatLocalizedNumberForInput, getActiveFormattingLocale } from '../../utils/numberLocalization';
 
 export interface HierarchyColumnWidths {
   name: number;
@@ -94,6 +95,9 @@ const renderDecimalEditInputCell = (
 ): ReactElement => (
   <GridEditInputCell
     {...params}
+    value={typeof params.value === 'number'
+      ? formatLocalizedNumberForInput(params.value, getActiveFormattingLocale())
+      : params.value}
     debounceMs={0}
     onFocus={selectPrefilledValueOnFocus(params)}
     slotProps={{ root: { slotProps: { htmlInput: { inputMode: 'decimal' } } } }}

@@ -150,7 +150,7 @@ class UserSerializer(serializers.ModelSerializer):
             return None
         return project.id
 
-    def get_memberships(self, obj: User) -> list[dict[str, str | int | bool]]:
+    def get_memberships(self, obj: User) -> list[dict[str, str | int | bool | float | None]]:
         rows = ProjectMembership.objects.select_related('project').filter(
             user=obj,
             project__is_active=True,
@@ -162,6 +162,8 @@ class UserSerializer(serializers.ModelSerializer):
                 'project_name': row.project.name,
                 'project_region': row.project.region,
                 'project_default_currency': row.project.default_currency,
+                'project_default_bed_length_m': row.project.default_bed_length_m,
+                'project_default_bed_width_m': row.project.default_bed_width_m,
                 'role': row.role,
                 'is_demo_project': is_demo_project_description(row.project.description),
             }

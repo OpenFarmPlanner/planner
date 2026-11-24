@@ -26,6 +26,7 @@ import { LocalizedDecimalField } from '../inputs/LocalizedDecimalField';
 import { DisabledActionTooltip } from '../DisabledActionTooltip';
 import { formatLocalizedNumber, getActiveFormattingLocale } from '../../utils/numberLocalization';
 import { abbreviateNameList } from './utils/bedNaming';
+import type { BedDimensions } from './utils/bedDimensions';
 import {
   changeBulkBedOrientation,
   evaluateBulkBedForm,
@@ -42,11 +43,11 @@ interface BulkBedCreateDialogProps {
   open: boolean;
   field: Field | null;
   /**
-   * Beds of `field` in their current table order (the last one seeds the
-   * dimensions and the first name). Defaults are read once on mount: mount
-   * the dialog per opening.
+   * Beds of `field` in their current table order. The last bed supplies
+   * fallback dimensions and the next name. Mount the dialog per opening.
    */
   fieldBeds: readonly Bed[];
+  bedDefaults?: BedDimensions;
   onClose: () => void;
   onCreate: (payload: BulkBedCreatePayload) => Promise<void>;
 }
@@ -70,6 +71,7 @@ export function BulkBedCreateDialog({
   open,
   field,
   fieldBeds,
+  bedDefaults,
   onClose,
   onCreate,
 }: BulkBedCreateDialogProps): ReactElement {
@@ -79,9 +81,9 @@ export function BulkBedCreateDialog({
   const locale = getActiveFormattingLocale();
   const titleId = useId();
   const [values, setValues] = useState<BulkBedFormValues>(
-    () => getInitialBulkBedFormValues(field, fieldBeds, t('dialogs.bulkCreateBeds.defaultFirstName')),
+    () => getInitialBulkBedFormValues(field, fieldBeds, t('dialogs.bulkCreateBeds.defaultFirstName'), bedDefaults),
   );
-  const [lengthEdited, setLengthEdited] = useState(false);
+  const [keepLength, setKeepLength] = useState(() => bedDefaults?.length_m != null);
   const [submitError, setSubmitError] = useState('');
   const [serverTakenNames, setServerTakenNames] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -103,7 +105,7 @@ export function BulkBedCreateDialog({
   };
 
   const handleOrientationChange = (orientation: BedOrientation): void => {
-    setValues((previous) => changeBulkBedOrientation(previous, field, orientation, lengthEdited));
+    setValues((previous) => changeBulkBedOrientation(previous, field, orientation, keepLength));
     setSubmitError('');
   };
 
@@ -232,7 +234,7 @@ export function BulkBedCreateDialog({
                   error={Boolean(plan.errors.lengthM)}
                   helperText={describeError(plan.errors.lengthM)}
                   onValueChange={(lengthM) => {
-                    setLengthEdited(true);
+                    setKeepLength(true);
                     updateValues({ lengthM });
                   }}
                 />

@@ -81,6 +81,10 @@ erDiagram
   `cleanup_deleted_projects` command once they have been in the trash for
   more than 30 days. Manual permanent deletion uses the same database cascade
   as the cleanup command.
+- **`Project.default_bed_length_m`** and **`Project.default_bed_width_m`**
+  are independently optional positive values in metres. Project admins can
+  update them in project settings. The membership summary exposes them to
+  members so new-bed forms can prefill them without another request.
 - **`Project.demo_seeded_at`** marks when the demo template finished filling
   a project (empty for every other project). Seeding records crop revisions
   of its own, so the engagement dashboard only counts revisions after this

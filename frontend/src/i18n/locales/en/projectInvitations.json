@@ -3,6 +3,10 @@
   "noActiveProject": "No active project selected.",
   "projectLabel": "Project: {{name}}",
   "currentProjectLabel": "Project name",
+  "bedDefaults": {
+    "title": "Default bed dimensions",
+    "description": "These dimensions are suggested when creating beds."
+  },
   "general": {
     "title": "General",
     "save": "Save",

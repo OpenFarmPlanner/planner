@@ -293,6 +293,19 @@ class DemoFeatureCoverageTests(TestCase):
 
 
 class DemoProjectServiceTests(TestCase):
+    def test_bed_defaults_and_differently_sized_beds_exist_in_every_demo_language(self) -> None:
+        for language in SUPPORTED_LANGUAGE_CODES:
+            with self.subTest(language=language):
+                project = create_or_reset_demo_project(language_code=language).project
+                project.refresh_from_db()
+                self.assertEqual(
+                    (project.default_bed_length_m, project.default_bed_width_m), (10, 1.2),
+                )
+                different_beds = Bed.objects.filter(project=project).exclude(
+                    length_m=10, width_m=1.2,
+                )
+                self.assertTrue(different_beds.exists())
+
     def test_demo_project_lists_bought_in_young_plants(self) -> None:
         result = create_or_reset_demo_project()
         season = Season.objects.get(

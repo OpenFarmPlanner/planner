@@ -742,6 +742,8 @@ export interface ProjectPayload {
   description: string;
   region: ProjectRegion;
   default_currency: string;
+  default_bed_length_m: number | null;
+  default_bed_width_m: number | null;
   is_active: boolean;
   deleted_at: string | null;
   created_at: string;
@@ -811,7 +813,9 @@ export const projectAPI = {
     http.post<ProjectPayload>('/projects/create-demo/', {}),
   get: (projectId: number) =>
     http.get<ProjectPayload>(`/projects/${projectId}/`),
-  update: (projectId: number, data: Partial<Pick<ProjectPayload, 'name' | 'region' | 'default_currency'>> & Partial<ProjectSchedulingSettings>) =>
+  update: (projectId: number, data: Partial<Pick<
+    ProjectPayload, 'name' | 'region' | 'default_currency' | 'default_bed_length_m' | 'default_bed_width_m'
+  >> & Partial<ProjectSchedulingSettings>) =>
     http.patch<ProjectPayload>(`/projects/${projectId}/`, data),
   delete: (projectId: number) =>
     http.delete(`/projects/${projectId}/`),

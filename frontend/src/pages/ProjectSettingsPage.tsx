@@ -14,19 +14,29 @@ import { TypeaheadSelect as Select } from '../components/inputs/TypeaheadSelect'
 import { CurrencyField } from '../components/inputs/CurrencyField';
 import { useTranslation } from '../i18n';
 import { showProjectDeleteUndoSnackbar } from '../projects/projectDeletionFeedback';
-import { wideFieldSx, wideSingleColumnFieldSx } from '../components/forms/formLayout';
+import { compactFieldSx, formRowSx, wideFieldSx, wideSingleColumnFieldSx } from '../components/forms/formLayout';
 import { SeasonPatternCard } from '../seasons/SeasonPatternCard';
 import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
 import { showGlobalSnackbar } from '../utils/globalSnackbar';
 import { currencyForRegion } from '../utils/currency';
+import { formatLocalizedNumberForInput, getActiveFormattingLocale, parseLocalizedNumber } from '../utils/numberLocalization';
 import { ProjectSettingsMembersSection } from './projectSettingsMembersSection';
 import { ProjectSettingsSchedulingSection } from './projectSettingsSchedulingSection';
 import type { MembersFeedback, ProjectRole } from './projectSettingsMembers';
 
 const showSuccess = (message: string): void => showGlobalSnackbar({ message, severity: 'success' });
 
+const bedDimensionsDraft = (length: number | null, width: number | null, locale: string) => ({
+  length: length === null ? '' : formatLocalizedNumberForInput(length, locale),
+  width: width === null ? '' : formatLocalizedNumberForInput(width, locale),
+});
+
+const isInvalidDimension = (draft: string, value: number | null): boolean =>
+  draft.trim() !== '' && (value === null || !Number.isFinite(value) || value <= 0);
+
 export default function ProjectSettingsPage() {
   const { t } = useTranslation('projectInvitations');
+  const numberLocale = getActiveFormattingLocale();
   const navigate = useNavigate();
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
   const { user, refreshUser, activeProjectId } = useAuth();
@@ -49,6 +59,7 @@ export default function ProjectSettingsPage() {
   const [projectNameError, setProjectNameError] = useState<string | null>(null);
   const [projectRegionDraft, setProjectRegionDraft] = useState<ProjectRegion>('germany');
   const [defaultCurrencyDraft, setDefaultCurrencyDraft] = useState('');
+  const [defaultBedDraft, setDefaultBedDraft] = useState({ length: '', width: '' });
   const [isSavingGeneral, setIsSavingGeneral] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
@@ -59,10 +70,19 @@ export default function ProjectSettingsPage() {
   const normalizedProjectName = projectNameDraft.trim();
   const activeProjectRegion = activeMembership?.project_region ?? 'germany';
   const activeDefaultCurrency = activeMembership?.project_default_currency ?? '';
+  const activeDefaultBedLength = activeMembership?.project_default_bed_length_m ?? null;
+  const activeDefaultBedWidth = activeMembership?.project_default_bed_width_m ?? null;
+  const defaultBedLength = parseLocalizedNumber(defaultBedDraft.length, numberLocale);
+  const defaultBedWidth = parseLocalizedNumber(defaultBedDraft.width, numberLocale);
+  const lengthInvalid = isInvalidDimension(defaultBedDraft.length, defaultBedLength);
+  const widthInvalid = isInvalidDimension(defaultBedDraft.width, defaultBedWidth);
   const hasProjectNameChanges = normalizedProjectName !== (activeMembership?.project_name ?? '');
   const hasRegionChanges = projectRegionDraft !== activeProjectRegion;
   const hasCurrencyChanges = defaultCurrencyDraft !== activeDefaultCurrency;
-  const hasGeneralChanges = hasProjectNameChanges || hasRegionChanges || hasCurrencyChanges;
+  const hasBedLengthChanges = lengthInvalid || defaultBedLength !== activeDefaultBedLength;
+  const hasBedWidthChanges = widthInvalid || defaultBedWidth !== activeDefaultBedWidth;
+  const hasGeneralChanges = hasProjectNameChanges || hasRegionChanges || hasCurrencyChanges
+    || hasBedLengthChanges || hasBedWidthChanges;
   const canDeleteProject = deleteConfirmationText === (activeMembership?.project_name ?? '');
   const canQuickDeleteProjectInDev = import.meta.env.DEV && isProjectAdmin;
 
@@ -93,7 +113,7 @@ export default function ProjectSettingsPage() {
       setInvitations([]);
       setInvitationLoadError(t('listLoadFailed'));
     }
-  }, [activeMembership, canManageMembers, t]);
+  }, [activeMembership, canManageMembers, setInvitations, setInvitationLoadError, t]);
 
   const loadMembers = useCallback(async (): Promise<void> => {
     if (!activeMembership) {
@@ -107,7 +127,7 @@ export default function ProjectSettingsPage() {
       setMembers([]);
       setMemberLoadError(t('memberListLoadFailed'));
     }
-  }, [activeMembership, t]);
+  }, [activeMembership, setMembers, setMemberLoadError, t]);
 
   useEffect(() => {
     window.setTimeout(() => {
@@ -125,8 +145,10 @@ export default function ProjectSettingsPage() {
     setProjectNameDraft(activeMembership?.project_name ?? '');
     setProjectRegionDraft(activeProjectRegion);
     setDefaultCurrencyDraft(activeDefaultCurrency);
+    setDefaultBedDraft(bedDimensionsDraft(activeDefaultBedLength, activeDefaultBedWidth, numberLocale));
     setProjectNameError(null);
-  }, [activeMembership?.project_name, activeProjectRegion, activeDefaultCurrency]);
+  }, [activeMembership?.project_name, activeProjectRegion, activeDefaultCurrency,
+    activeDefaultBedLength, activeDefaultBedWidth, numberLocale, resolvedActiveProjectId]);
 
   if (!activeMembership) {
     return (
@@ -173,13 +195,14 @@ export default function ProjectSettingsPage() {
     setProjectNameDraft(activeMembership.project_name);
     setProjectRegionDraft(activeProjectRegion);
     setDefaultCurrencyDraft(activeDefaultCurrency);
+    setDefaultBedDraft(bedDimensionsDraft(activeDefaultBedLength, activeDefaultBedWidth, numberLocale));
     setProjectNameError(null);
     setGeneralError(null);
   };
 
   const handleGeneralSave = async (event?: FormEvent<HTMLFormElement>): Promise<void> => {
     event?.preventDefault();
-    if (!isProjectAdmin || isSavingGeneral || !hasGeneralChanges) {
+    if (!isProjectAdmin || isSavingGeneral || !hasGeneralChanges || lengthInvalid || widthInvalid) {
       return;
     }
     const nameError = hasProjectNameChanges ? validateProjectName() : null;
@@ -195,6 +218,8 @@ export default function ProjectSettingsPage() {
         ...(hasProjectNameChanges ? { name: normalizedProjectName } : {}),
         ...(hasRegionChanges ? { region: projectRegionDraft } : {}),
         ...(hasCurrencyChanges ? { default_currency: defaultCurrencyDraft } : {}),
+        ...(hasBedLengthChanges ? { default_bed_length_m: defaultBedLength } : {}),
+        ...(hasBedWidthChanges ? { default_bed_width_m: defaultBedWidth } : {}),
       });
       await refreshUser();
       setProjectNameDraft(normalizedProjectName);
@@ -322,7 +347,7 @@ export default function ProjectSettingsPage() {
                   type="submit"
                   form="project-general-form"
                   variant="contained"
-                  disabled={isSavingGeneral || !hasGeneralChanges}
+                  disabled={isSavingGeneral || !hasGeneralChanges || lengthInvalid || widthInvalid}
                   sx={settingsActionButtonSx}
                 >
                   {t('general.save')}
@@ -385,6 +410,28 @@ export default function ProjectSettingsPage() {
               disabled={!isProjectAdmin || isSavingGeneral}
               sx={wideSingleColumnFieldSx}
             />
+            <Stack component="fieldset" spacing={1.5} sx={{ border: 0, p: 0, m: 0, minWidth: 0 }}>
+              <Typography component="legend" variant="subtitle2">{t('bedDefaults.title')}</Typography>
+              <Typography variant="body2" color="text.secondary">{t('bedDefaults.description')}</Typography>
+              <Box sx={formRowSx}>
+                {([
+                  { key: 'length', label: t('hierarchy:columns.length'), invalid: lengthInvalid },
+                  { key: 'width', label: t('hierarchy:columns.width'), invalid: widthInvalid },
+                ] as const).map(({ key, label, invalid }) => (
+                  <TextField
+                    key={key}
+                    label={label}
+                    value={defaultBedDraft[key]}
+                    onChange={event => setDefaultBedDraft(previous => ({ ...previous, [key]: event.target.value }))}
+                    disabled={!isProjectAdmin || isSavingGeneral}
+                    error={invalid}
+                    helperText={invalid ? t('hierarchy:dialogs.bulkCreateBeds.positiveNumber') : undefined}
+                    slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+                    sx={compactFieldSx}
+                  />
+                ))}
+              </Box>
+            </Stack>
             {generalError ? <Alert severity="error" sx={settingsFlatAlertSx}>{generalError}</Alert> : null}
           </Stack>
         </SettingsSection>

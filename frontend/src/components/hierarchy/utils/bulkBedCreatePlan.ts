@@ -1,4 +1,5 @@
 import type { Bed, Field } from '../../../api/types';
+import { getNewBedDimensions, type BedDimensions } from './bedDimensions';
 import {
   MAX_BULK_BED_COUNT,
   buildBedNameSeries,
@@ -99,22 +100,25 @@ export function suggestBulkBedCount(
 }
 
 /**
- * Dialog defaults: beds run along the field length, as long as the field
- * side (else the last bed), as wide as the last bed, no path, the next free
- * name after the last bed (else `defaultFirstName`), and the suggested count
- * when one fits.
+ * Beds run along the field length. Project dimensions take precedence over
+ * the field side (or last bed length) and last bed width suggestions.
  */
 export function getInitialBulkBedFormValues(
   field: Field | null,
   fieldBeds: readonly Bed[],
   defaultFirstName: string,
+  bedDefaults?: BedDimensions,
 ): BulkBedFormValues {
   const beds = persistedBeds(fieldBeds);
   const lastBed = beds[beds.length - 1];
+  const dimensions = getNewBedDimensions(bedDefaults, {
+    length_m: getFieldSide(field, 'length') ?? positiveOrNull(lastBed?.length_m),
+    width_m: positiveOrNull(lastBed?.width_m),
+  });
   const values: BulkBedFormValues = {
     orientation: 'length',
-    lengthM: getFieldSide(field, 'length') ?? positiveOrNull(lastBed?.length_m),
-    widthM: positiveOrNull(lastBed?.width_m),
+    lengthM: dimensions.length_m,
+    widthM: dimensions.width_m,
     pathM: null,
     count: '',
     firstName: lastBed ? nextFreeName(lastBed.name, beds.map((bed) => bed.name)) : defaultFirstName,

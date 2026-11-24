@@ -3,6 +3,10 @@
   "noActiveProject": "Nenhum projeto ativo selecionado.",
   "projectLabel": "Projeto: {{name}}",
   "currentProjectLabel": "Nome do projeto",
+  "bedDefaults": {
+    "title": "Dimensões predefinidas dos canteiros",
+    "description": "Estas dimensões são sugeridas ao criar novos canteiros."
+  },
   "general": {
     "title": "Geral",
     "save": "Guardar",

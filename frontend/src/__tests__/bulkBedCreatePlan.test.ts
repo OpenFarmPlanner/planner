@@ -76,6 +76,14 @@ describe('getInitialBulkBedFormValues', () => {
     });
   });
 
+  it('applies configured defaults independently and keeps the old suggestion for an unconfigured side', () => {
+    const beds = [bed(1, 'A 1', { length_m: 8, width_m: 2 })];
+    expect(getInitialBulkBedFormValues(FIELD, beds, 'Beet 1', { length_m: 12 }))
+      .toMatchObject({ lengthM: 12, widthM: 2, firstName: 'A 2' });
+    expect(getInitialBulkBedFormValues(FIELD, beds, 'Beet 1', { length_m: null, width_m: 1.2 }))
+      .toMatchObject({ lengthM: 20, widthM: 1.2 });
+  });
+
   it('skips names already taken and ignores unsaved rows', () => {
     const beds = [bed(1, 'E 3'), bed(2, 'E 2'), bed(-5, 'draft')];
     expect(getInitialBulkBedFormValues(FIELD, beds, 'Beet 1').firstName).toBe('E 4');

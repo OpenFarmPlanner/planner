@@ -487,6 +487,37 @@ describe('ProjectSettingsPage', () => {
     await waitFor(() => expect(refreshUserMock).toHaveBeenCalled());
   });
 
+  it('validates editable default bed dimensions and saves blank sides as null', async () => {
+    authState.user = {
+      id: 1,
+      memberships: [{
+        project_id: 1, project_name: 'Alpha', role: 'admin',
+        project_default_bed_length_m: 10, project_default_bed_width_m: 1.2,
+      }],
+    };
+    render(<MemoryRouter><ProjectSettingsPage /></MemoryRouter>);
+
+    const settings = await screen.findByRole('group', { name: 'Standardmaße für Beete' });
+    const length = within(settings).getByRole('textbox', { name: 'Länge (m)' });
+    const width = within(settings).getByRole('textbox', { name: 'Breite (m)' });
+    const save = within(screen.getByRole('region', { name: 'Allgemein' })).getByRole('button', { name: 'Speichern' });
+    expect(length).toHaveValue('10');
+    expect(width).toHaveValue('1,2');
+
+    fireEvent.change(width, { target: { value: '-2' } });
+    expect(width).toHaveAttribute('aria-invalid', 'true');
+    expect(save).toBeDisabled();
+    expect(updateProjectMock).not.toHaveBeenCalled();
+
+    fireEvent.change(width, { target: { value: '1,7' } });
+    fireEvent.change(length, { target: { value: '' } });
+    fireEvent.click(save);
+    await waitFor(() => expect(updateProjectMock).toHaveBeenCalledWith(1, {
+      default_bed_length_m: null, default_bed_width_m: 1.7,
+    }));
+    await waitFor(() => expect(refreshUserMock).toHaveBeenCalled());
+  });
+
   it('saves a changed name and region together in one request', async () => {
     authState.user = {
       id: 1,

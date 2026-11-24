@@ -459,6 +459,60 @@ class ProjectsApiTests(APITestCase):
         response = self.client.patch(url, {'default_currency': 'XXX'}, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_bed_defaults_are_optional_project_settings_and_do_not_change_beds(self) -> None:
+        project_url = f'/openfarmplanner/api/projects/{self.project.id}/'
+        location = Location.objects.create(name='Location', project=self.project)
+        field = Field.objects.create(name='Parcel', project=self.project, location=location)
+        existing = Bed.objects.create(
+            name='Existing', project=self.project, field=field, length_m=5, width_m=0.75,
+        )
+        initial = self.client.get(project_url)
+        self.assertIsNone(initial.data['default_bed_length_m'])
+        self.assertIsNone(initial.data['default_bed_width_m'])
+
+        for payload, expected in (
+            ({'default_bed_length_m': 10}, (10, None)),
+            ({'default_bed_width_m': 1.2}, (10, 1.2)),
+            ({'default_bed_length_m': None}, (None, 1.2)),
+        ):
+            with self.subTest(payload=payload):
+                response = self.client.patch(project_url, payload, format='json')
+                self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+                self.assertEqual(
+                    (response.data['default_bed_length_m'], response.data['default_bed_width_m']),
+                    expected,
+                )
+                me = self.client.get('/openfarmplanner/api/auth/me/')
+                membership = next(
+                    row for row in me.data['memberships'] if row['project_id'] == self.project.id
+                )
+                self.assertEqual(
+                    (
+                        membership['project_default_bed_length_m'],
+                        membership['project_default_bed_width_m'],
+                    ),
+                    expected,
+                )
+        existing.refresh_from_db()
+        self.assertEqual((existing.length_m, existing.width_m), (5, 0.75))
+
+        response = self.client.post(
+            '/openfarmplanner/api/beds/', {'name': 'Unmeasured', 'field': field.id},
+            format='json', HTTP_X_PROJECT_ID=str(self.project.id),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertIsNone(response.data['length_m'])
+        self.assertIsNone(response.data['width_m'])
+
+    def test_bed_defaults_reject_nonpositive_and_nonfinite_dimensions(self) -> None:
+        url = f'/openfarmplanner/api/projects/{self.project.id}/'
+        for field in ('default_bed_length_m', 'default_bed_width_m'):
+            for value in (-1, 0, 'NaN', 'Infinity'):
+                with self.subTest(field=field, value=value):
+                    response = self.client.patch(url, {field: value}, format='json')
+                    self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                    self.assertIn(field, response.data)
+
     def test_members_cannot_change_project_settings(self) -> None:
         """Name, region and the crop-planning settings are admin-only, as in the UI."""
         ProjectMembership.objects.create(user=self.other, project=self.project, role='member')
@@ -469,6 +523,7 @@ class ProjectsApiTests(APITestCase):
             {
                 'allow_succession_during_harvest': False, 'name': 'Renamed',
                 'default_currency': 'CHF',
+                'default_bed_length_m': 10,
             },
             format='json',
         )
@@ -478,6 +533,7 @@ class ProjectsApiTests(APITestCase):
         self.assertTrue(self.project.allow_succession_during_harvest)
         self.assertEqual(self.project.name, 'P1')
         self.assertEqual(self.project.default_currency, '')
+        self.assertIsNone(self.project.default_bed_length_m)
 
     def test_create_project_with_duplicate_name_assigns_unique_slug(self) -> None:
         Project.objects.create(name='Neues Projekt', slug='neues-projekt')

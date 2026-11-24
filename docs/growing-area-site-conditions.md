@@ -121,6 +121,14 @@ logic stays separate: `components/hierarchy/utils/growingAreaSearch.ts` here,
   reset. New, unsaved rows get their conditions after the first save. Soil type
   and the texts are edited on the detail page only.
 
+## Default bed dimensions
+
+Under Project settings → General, project admins can set either or both
+default bed dimensions. The desktop draft, mobile create sheet and bulk dialog
+prefill the configured sides when opened. Sides without a default still use
+the form's existing suggestions. User edits and cleared inputs persist in the
+draft. Duplication, imports and existing beds retain their own dimensions.
+
 ## Detail pages
 
 Routes (`components/hierarchy/details/hierarchyDetailRoutes.ts`):

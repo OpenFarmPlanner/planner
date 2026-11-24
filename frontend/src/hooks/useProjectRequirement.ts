@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useAuth } from "../auth/useAuth";
+import type { ProjectMembershipInfo } from "../auth/types";
 
 export type MissingProjectReason = "no_projects" | "no_active_project";
 
@@ -10,6 +11,7 @@ export interface ProjectRequirementState {
   hasActiveProject: boolean;
   /** The active project's id, or null without one. */
   activeProjectId: number | null;
+  activeProjectMembership?: ProjectMembershipInfo;
   shouldShowProjectRequiredState: boolean;
   missingProjectReason: MissingProjectReason | null;
 }
@@ -32,6 +34,7 @@ export function useProjectRequirement(): ProjectRequirementState {
       hasAnyProjects,
       hasActiveProject,
       activeProjectId: hasActiveProject ? activeProjectId : null,
+      activeProjectMembership: memberships.find(membership => membership.project_id === activeProjectId),
       shouldShowProjectRequiredState,
       missingProjectReason,
     };

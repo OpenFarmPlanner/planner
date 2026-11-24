@@ -3,6 +3,10 @@
   "noActiveProject": "Kein aktives Projekt ausgewählt.",
   "projectLabel": "Projekt: {{name}}",
   "currentProjectLabel": "Projektname",
+  "bedDefaults": {
+    "title": "Standardmaße für Beete",
+    "description": "Diese Maße werden beim Anlegen neuer Beete vorgeschlagen."
+  },
   "general": {
     "title": "Allgemein",
     "save": "Speichern",
