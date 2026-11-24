@@ -70,6 +70,7 @@ interface TimingWindowDateCellProps {
   germinationFindings?: GerminationFindings | null;
   cellHasFocus: boolean;
   children: ReactNode;
+  tooltipContent?: ReactNode;
 }
 
 /**
@@ -77,14 +78,14 @@ interface TimingWindowDateCellProps {
  * hints: the same dotted info underline and full-cell tooltip as a harvest
  * overlap. Needs FULL_CELL_TOOLTIP_CELL_CLASS.
  */
-export function TimingWindowDateCell({ findings, kinds, germinationFindings, cellHasFocus, children }: TimingWindowDateCellProps) {
+export function TimingWindowDateCell({ findings, kinds, germinationFindings, cellHasFocus, children, tooltipContent }: TimingWindowDateCellProps) {
   const lines = useDateHintLines(findings, germinationFindings, kinds);
-  if (lines.length === 0) {
+  if (lines.length === 0 && !tooltipContent) {
     return <>{children}</>;
   }
   return (
-    <FullCellTooltip cellHasFocus={cellHasFocus} title={linesTitle(lines)}>
-      <Box component="span" sx={dateUnderlineSx} data-testid="timing-window-date">{children}</Box>
+    <FullCellTooltip cellHasFocus={cellHasFocus} describeChild={Boolean(tooltipContent)} title={<>{tooltipContent}{linesTitle(lines)}</>}>
+      {lines.length > 0 ? <Box component="span" sx={dateUnderlineSx} data-testid="timing-window-date">{children}</Box> : children}
     </FullCellTooltip>
   );
 }

@@ -525,6 +525,15 @@
       "actual": "Actual",
       "combined": "Actual or planned"
     },
+    "modeDescriptions": {
+      "planned": "View and edit planned dates",
+      "actual": "View and edit actual dates",
+      "combined": "Edit actual dates. If an actual date is missing, show the planned date."
+    },
+    "editTargets": {
+      "planned": "Edits the planned date.",
+      "actual": "Edits the actual date."
+    },
     "edit": "Record actual dates",
     "saveError": "Could not save actual dates.",
     "unsaved": "Leaving will discard unsaved date changes.",

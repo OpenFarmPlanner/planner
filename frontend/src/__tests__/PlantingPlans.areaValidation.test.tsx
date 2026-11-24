@@ -479,8 +479,12 @@ describe("PlantingPlans save-time area validation", () => {
   });
 
   it("uses compact, resizable defaults for each date column", async () => {
+    apiMocks.planList.mockResolvedValue({ data: { results: [{ id: 3, crop: 2, bed: 101, planting_date: "2026-05-01" }] } });
     render(<MemoryRouter><PlantingPlans /></MemoryRouter>);
     await waitForPlansToLoad();
+
+    await userEvent.click(screen.getByRole("button", { name: "Terminansicht Geplant" }));
+    await userEvent.click(screen.getByRole("menuitemradio", { name: "Plan mit Ist" }));
 
     const latestProps = commandApiSpies.gridProps.mock.calls.at(-1)?.[0];
     const columns = latestProps?.columns ?? [];
@@ -665,6 +669,7 @@ describe("PlantingPlans save-time area validation", () => {
         ],
       },
     });
+    apiMocks.planList.mockResolvedValue({ data: { results: [{ id: 3, crop: 6, bed: 101, planting_date: "2026-05-01" }] } });
     render(<MemoryRouter><PlantingPlans /></MemoryRouter>);
     await waitForPlansToLoad();
 
@@ -674,7 +679,7 @@ describe("PlantingPlans save-time area validation", () => {
 
     const row = { id: 3, crop: 6, planting_date: "2026-05-01" };
     expect(sowingDateColumn.isCellEditable({ row })).toBe(false);
-    expect(latestProps?.isStandaloneEditCell(row, 'sowing_date')).toBe(true);
+    expect(latestProps?.isStandaloneEditCell(row, 'sowing_date')).toBe(false);
     expect(sowingDateColumn.cellClassName({ row })).toContain("ofp-cell-full-tooltip");
 
     const missingCell = render(<>{sowingDateColumn.renderCell({ row, hasFocus: false })}</>);
@@ -685,6 +690,10 @@ describe("PlantingPlans save-time area validation", () => {
     await userEvent.hover(trigger as Element);
     expect(await screen.findByText("Nicht berechenbar, da für diese Kultur keine Anzuchtdauer hinterlegt ist.")).toBeInTheDocument();
     missingCell.unmount();
+
+    await userEvent.click(screen.getByRole("button", { name: "Terminansicht Geplant" }));
+    await userEvent.click(screen.getByRole("menuitemradio", { name: "Plan mit Ist" }));
+    expect(commandApiSpies.gridProps.mock.calls.at(-1)?.[0].isStandaloneEditCell(row, 'sowing_date')).toBe(true);
   });
 
   it("renders unavailable calculated harvest dates with a dash and explanatory tooltip", async () => {

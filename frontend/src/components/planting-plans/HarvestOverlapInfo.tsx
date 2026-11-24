@@ -52,6 +52,7 @@ interface HarvestOverlapDateCellProps {
   overlaps: readonly HarvestOverlap[] | null | undefined;
   cellHasFocus: boolean;
   children: ReactNode;
+  tooltipContent?: ReactNode;
 }
 
 /**
@@ -60,19 +61,20 @@ interface HarvestOverlapDateCellProps {
  * the overlap lines as tooltip. The cell needs FULL_CELL_TOOLTIP_CELL_CLASS.
  * Follow-up crops stay unmarked in the table to keep it calm.
  */
-export function HarvestOverlapDateCell({ overlaps, cellHasFocus, children }: HarvestOverlapDateCellProps) {
+export function HarvestOverlapDateCell({ overlaps, cellHasFocus, children, tooltipContent }: HarvestOverlapDateCellProps) {
   const lines = useHarvestOverlapLines(getPredecessorOverlaps(overlaps));
-  if (lines.length === 0) {
+  if (lines.length === 0 && !tooltipContent) {
     return <>{children}</>;
   }
   return (
     <FullCellTooltip
       cellHasFocus={cellHasFocus}
-      title={lines.map((line, index) => (
+      describeChild={Boolean(tooltipContent)}
+      title={<>{tooltipContent}{lines.map((line, index) => (
         <Box component="span" key={index} sx={{ display: 'block' }}>{line}</Box>
-      ))}
+      ))}</>}
     >
-      <Box component="span" sx={overlapUnderlineSx} data-testid="harvest-overlap-date">{children}</Box>
+      {lines.length > 0 ? <Box component="span" sx={overlapUnderlineSx} data-testid="harvest-overlap-date">{children}</Box> : children}
     </FullCellTooltip>
   );
 }

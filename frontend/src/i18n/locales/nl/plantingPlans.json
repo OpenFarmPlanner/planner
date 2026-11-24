@@ -525,6 +525,15 @@
       "actual": "Werkelijk",
       "combined": "Werkelijk of gepland"
     },
+    "modeDescriptions": {
+      "planned": "Geplande datums bekijken en bewerken",
+      "actual": "Werkelijke datums bekijken en bewerken",
+      "combined": "Werkelijke datums bewerken. Ontbreekt de werkelijke datum, dan verschijnt de geplande datum."
+    },
+    "editTargets": {
+      "planned": "Bewerkt de geplande datum.",
+      "actual": "Bewerkt de werkelijke datum."
+    },
     "edit": "Werkelijke datums invoeren",
     "saveError": "De werkelijke datums konden niet worden opgeslagen.",
     "unsaved": "Bij het verlaten verlies je niet-opgeslagen wijzigingen aan datums.",

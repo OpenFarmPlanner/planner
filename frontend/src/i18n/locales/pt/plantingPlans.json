@@ -537,6 +537,15 @@
       "actual": "Reais",
       "combined": "Reais ou planeadas"
     },
+    "modeDescriptions": {
+      "planned": "Ver e editar as datas planeadas",
+      "actual": "Ver e editar as datas reais",
+      "combined": "Editar as datas reais. Se faltar a data real, é apresentada a data planeada."
+    },
+    "editTargets": {
+      "planned": "Edita a data planeada.",
+      "actual": "Edita a data real."
+    },
     "edit": "Registar datas reais",
     "saveError": "Não foi possível guardar as datas reais.",
     "unsaved": "Se sair, perderá as alterações de datas que não guardou.",
