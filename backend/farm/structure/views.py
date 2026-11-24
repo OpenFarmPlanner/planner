@@ -2,6 +2,7 @@
 
 import logging
 
+from django.core import signing
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
@@ -15,9 +16,10 @@ from farm.common.mixins import ProjectRevisionMixin, ProjectScopedMixin
 from farm.history import _current_actor_label, _serialize_instance, record_entity_revision
 from farm.history.project_restore import ensure_project_checkpoint
 from farm.history.records import internal_project_versions
-from farm.models import Bed, BedLayout, EntityRevision, Field, FieldLayout, Location
+from farm.models import Bed, BedLayout, EntityRevision, Field, FieldLayout, Location, PlantingPlan
 from farm.project_context import get_active_project_or_400
 from farm.services.bed_layouts import (
+    create_bed_layout,
     extract_layout_payloads,
     parse_location_boundary,
     save_location_boundary,
@@ -44,6 +46,8 @@ from .serializers import (
 )
 
 logger = logging.getLogger(__name__)
+BULK_BED_UNDO_SALT = 'farm.bulk_bed_create.undo'
+BULK_BED_UNDO_HEADER = 'X-Bulk-Bed-Undo'
 
 class BedLayoutByLocationView(APIView):
     """GET/PUT bed and field layout entries for a given location."""
@@ -272,6 +276,8 @@ class BedViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet
         serializer.is_valid(raise_exception=True)
         field = serializer.validated_data['field']
         created: list[Bed] = []
+        undo_snapshot: dict[int, list[str | None]] = {}
+        user_name = _current_actor_label(request)
         try:
             with transaction.atomic():
                 for entry in serializer.validated_data['beds']:
@@ -282,10 +288,57 @@ class BedViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet
                         length_m=entry['length_m'],
                         width_m=entry['width_m'],
                     )
+                    layout = None
+                    if 'layout' in entry:
+                        layout = create_bed_layout(bed, entry['layout'], user_name=user_name)
                     self.record_revision(bed, EntityRevision.ACTION_CREATED)
+                    undo_snapshot[bed.pk] = [
+                        bed.updated_at.isoformat(), layout.updated_at.isoformat() if layout else None,
+                    ]
                     created.append(bed)
         except IntegrityError as exc:
             raise DRFValidationError({'beds': [BED_NAME_DUPLICATE_MESSAGE]}) from exc
-        return Response(
-            BedSerializer(created, many=True).data, status=status.HTTP_201_CREATED
-        )
+        token = signing.dumps({
+            'project': request.active_project.pk, 'user': request.user.pk, 'beds': undo_snapshot,
+        }, salt=BULK_BED_UNDO_SALT, compress=True)
+        return Response(BedSerializer(created, many=True).data, status=status.HTTP_201_CREATED,
+                        headers={BULK_BED_UNDO_HEADER: token})
+
+    @action(detail=False, methods=['post'], url_path='undo-bulk-create')
+    def undo_bulk_create(self, request) -> Response:
+        """Remove a still unchanged batch, including its layouts, in one transaction."""
+        token = request.data.get('token') if isinstance(request.data, dict) else None
+        if not isinstance(token, str):
+            raise DRFValidationError({'token': 'An undo token is required.'})
+        try:
+            snapshot = signing.loads(token, salt=BULK_BED_UNDO_SALT, max_age=600)
+        except signing.BadSignature as exc:
+            raise DRFValidationError({'token': 'The undo token is invalid or expired.'}) from exc
+        project = request.active_project
+        if snapshot['project'] != project.pk or snapshot['user'] != request.user.pk:
+            raise DRFValidationError({'token': 'The undo token is invalid for this project.'})
+        original = {int(bed_id): times for bed_id, times in snapshot['beds'].items()}
+        with transaction.atomic():
+            beds = list(Bed.objects.select_for_update().filter(
+                project=project, pk__in=original,
+            ).order_by('pk'))
+            if not beds:
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            layouts = dict(BedLayout.objects.select_for_update().filter(
+                project=project, bed_id__in=original,
+            ).order_by('bed_id').values_list('bed_id', 'updated_at'))
+            unchanged = len(beds) == len(original) and all(
+                original[bed.pk] == [
+                    bed.updated_at.isoformat(),
+                    layouts[bed.pk].isoformat() if bed.pk in layouts else None,
+                ] for bed in beds
+            )
+            if not unchanged or PlantingPlan.objects.filter(bed_id__in=original).exists():
+                return api_error_response(
+                    code='bulk_bed_undo_conflict',
+                    detail='The batch has changed or beds have planting plans.',
+                    status_code=status.HTTP_409_CONFLICT,
+                )
+            for bed in beds:
+                self.perform_destroy(bed)
+        return Response(status=status.HTTP_204_NO_CONTENT)

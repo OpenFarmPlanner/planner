@@ -9,6 +9,7 @@ export type LocalizedDecimalFieldProps = Omit<TextFieldProps, 'type' | 'value' |
   value: number | string | null | undefined;
   /** Receives the parsed number, or null when the field was cleared. Unparseable drafts are not reported. */
   onValueChange: (value: number | null) => void;
+  onInvalidValue?: () => void;
   inputMode?: 'decimal' | 'numeric';
   formatOptions?: Intl.NumberFormatOptions;
 };
@@ -22,9 +23,9 @@ export type LocalizedDecimalFieldProps = Omit<TextFieldProps, 'type' | 'value' |
  */
 export const LocalizedDecimalField = forwardRef<HTMLDivElement, LocalizedDecimalFieldProps>(
   function LocalizedDecimalField({
-    value, onValueChange, inputMode = 'decimal', formatOptions, onBlur, slotProps, ...textFieldProps
+    value, onValueChange, onInvalidValue, inputMode = 'decimal', formatOptions, onBlur, slotProps, ...textFieldProps
   }, ref) {
-    const input = useLocalizedDecimalInput({ value, onValueChange, formatOptions });
+    const input = useLocalizedDecimalInput({ value, onValueChange, onInvalidValue, formatOptions });
 
     return (
       <TextField

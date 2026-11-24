@@ -1280,10 +1280,16 @@ export interface Bed extends SiteConditionFields {
 
 
 
+export interface BulkBedPlacement {
+  x: number;
+  y: number;
+  runs_across_parcel: boolean;
+}
+
 export interface BulkBedCreatePayload {
   field: number;
   /** Dimensions in meters; both are required and > 0. */
-  beds: Array<{ name: string; length_m: number; width_m: number }>;
+  beds: Array<{ name: string; length_m: number; width_m: number; layout?: BulkBedPlacement }>;
 }
 
 export interface FieldDuplicatePayload {
@@ -1308,6 +1314,7 @@ export interface BedLayoutEntry {
   y: number;
   version?: number;
   scale?: number | null;
+  runs_across_parcel?: boolean;
   created_at?: string;
   updated_at?: string;
 }

@@ -481,6 +481,7 @@ export const bedAPI = {
   create: (data: Bed) => http.post<Bed>('/beds/', withActiveProject(data)),
   /** Creates a whole series of beds in one field atomically (all or none). */
   bulkCreate: (data: BulkBedCreatePayload) => http.post<Bed[]>('/beds/bulk-create/', data),
+  undoBulkCreate: (token: string) => http.post('/beds/undo-bulk-create/', { token }),
   update: (id: number, data: Bed) => http.put<Bed>(`/beds/${id}/`, withActiveProject(data)),
   delete: (id: number) => http.delete(`/beds/${id}/`),
 };

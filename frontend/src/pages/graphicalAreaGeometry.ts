@@ -36,9 +36,11 @@ export function getGraphicalBedLayout(
   const occupied: Rect[] = [];
   for (const bed of beds) {
     if (bed.id === undefined) continue;
-    const size = getBedRectSizeWithinField(bed, field, storedUsableArea);
-    sizes.set(bed.id, size);
     const saved = savedLayouts[bed.id];
+    const dimensions = saved?.runs_across_parcel
+      ? { ...bed, length_m: bed.width_m, width_m: bed.length_m } : bed;
+    const size = getBedRectSizeWithinField(dimensions, field, storedUsableArea);
+    sizes.set(bed.id, size);
     if (saved) occupied.push({ x: saved.x, y: saved.y, ...size });
     else missing.push(bed.id);
   }

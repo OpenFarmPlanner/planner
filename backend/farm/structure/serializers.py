@@ -287,20 +287,35 @@ class BedSerializer(serializers.ModelSerializer):
 MAX_BULK_BED_COUNT = 200
 
 
+class BulkBedPlacementSerializer(serializers.Serializer):
+    x = serializers.FloatField(min_value=0)
+    y = serializers.FloatField(min_value=0)
+    runs_across_parcel = serializers.BooleanField(default=False)
+
+    def validate(self, attrs):
+        if not all(math.isfinite(attrs[axis]) for axis in ('x', 'y')):
+            raise serializers.ValidationError('Layout coordinates must be finite.')
+        return attrs
+
+
 class BulkBedItemSerializer(serializers.Serializer):
     """One bed of a bulk create; dimensions in meters, both required."""
 
     name = serializers.CharField(max_length=200)
     length_m = serializers.FloatField(min_value=0, help_text='Bed length in meters (> 0).')
     width_m = serializers.FloatField(min_value=0, help_text='Bed width in meters (> 0).')
+    layout = BulkBedPlacementSerializer(required=False)
 
     def validate(self, attrs: dict) -> dict:
         attrs = super().validate(attrs)
-        if attrs['length_m'] <= 0 or attrs['width_m'] <= 0:
+        if not all(math.isfinite(attrs[side]) and attrs[side] > 0 for side in ('length_m', 'width_m')):
             raise serializers.ValidationError('Length and width must be greater than 0.')
         # Same rounding as Bed.save(), which derives area_sqm from the dimensions.
-        area = Decimal(str(attrs['length_m'] * attrs['width_m'])).quantize(Decimal('0.1'))
-        if area < Bed.MIN_AREA_SQM or area > Bed.MAX_AREA_SQM:
+        raw_area = attrs['length_m'] * attrs['width_m']
+        area = None
+        if raw_area <= float(Bed.MAX_AREA_SQM) + 1:
+            area = Decimal(str(raw_area)).quantize(Decimal('0.1'))
+        if area is None or area < Bed.MIN_AREA_SQM or area > Bed.MAX_AREA_SQM:
             raise serializers.ValidationError(
                 f'Area must be between {Bed.MIN_AREA_SQM} and {Bed.MAX_AREA_SQM} sqm.'
             )
@@ -329,6 +344,8 @@ class BulkBedCreateSerializer(serializers.Serializer):
         names = [entry['name'] for entry in value]
         if len(set(names)) != len(names):
             raise serializers.ValidationError('Bed names must be unique.')
+        if any('layout' in entry for entry in value) and not all('layout' in entry for entry in value):
+            raise serializers.ValidationError('Layout positions must be supplied for the whole batch.')
         return value
 
     def validate(self, attrs: dict) -> dict:
@@ -404,6 +421,7 @@ class BedLayoutSerializer(serializers.ModelSerializer):
             'y',
             'version',
             'scale',
+            'runs_across_parcel',
             'created_at',
             'updated_at',
         ]
