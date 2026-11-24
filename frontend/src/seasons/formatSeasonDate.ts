@@ -8,8 +8,20 @@ export function resolveSeasonDateLocale(i18nInstance: I18nInstance): string {
   return resolveLocaleFromLanguage(i18nInstance.resolvedLanguage);
 }
 
+const dateFormatters = new Map<string | undefined, Intl.DateTimeFormat>();
+
+export function formatCalendarDate(date: Date, locale?: string): string {
+  if (Number.isNaN(date.getTime())) return date.toLocaleDateString(locale);
+  let formatter = dateFormatters.get(locale);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale);
+    dateFormatters.set(locale, formatter);
+  }
+  return formatter.format(date);
+}
+
 export function formatSeasonDate(isoDate: string, locale: string): string {
-  return new Date(`${isoDate}T00:00:00`).toLocaleDateString(locale);
+  return formatCalendarDate(new Date(`${isoDate}T00:00:00`), locale);
 }
 
 export function formatSeasonPeriod(startDate: string, endDate: string, locale: string): string {

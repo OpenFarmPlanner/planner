@@ -323,6 +323,13 @@ class BedOccupancyApiTest(ProjectApiTestCase):
         )
         self.assertIsNone(rows[early.pk]['actual_harvest_end_date'])
 
+        scoped_rows = self.list_rows(bed=self.full_bed.pk)
+        self.assertEqual(scoped_rows, rows)
+        detail = self.client.get(f'/openfarmplanner/api/planting-plans/{predecessor.pk}/')
+        self.assertEqual(detail.status_code, status.HTTP_200_OK)
+        self.assertEqual(detail.data['harvest_overlaps'], rows[predecessor.pk]['harvest_overlaps'])
+        self.assertEqual(detail.data['actual_harvest_end_date'], rows[predecessor.pk]['actual_harvest_end_date'])
+
         self.project.allow_succession_during_harvest = False
         self.project.save()
 
@@ -330,8 +337,8 @@ class BedOccupancyApiTest(ProjectApiTestCase):
         self.assertEqual(rows[predecessor.pk]['harvest_overlaps'], [])
         self.assertIsNone(rows[predecessor.pk]['actual_harvest_end_date'])
 
-    def list_rows(self) -> dict[int, dict]:
-        response = self.client.get('/openfarmplanner/api/planting-plans/')
+    def list_rows(self, **filters) -> dict[int, dict]:
+        response = self.client.get('/openfarmplanner/api/planting-plans/', filters)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         return {row['id']: row for row in response.data['results']}
 

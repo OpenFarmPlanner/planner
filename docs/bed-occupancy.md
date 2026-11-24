@@ -126,9 +126,11 @@ Only project admins can change it, like the other general project settings.
   icon in the secondary line, for both roles. No chips or badges above the
   table. The filter panel's "Belegung" group offers "Ernteüberlappung", which
   shows previous and follow-up crops of allowed overlaps (kept in memory only,
-  like the rotation filter). After every write in the table the overlaps of
-  all plans are refetched, because a write can add or remove overlaps on other
-  plans of the bed.
+  like the rotation filter). A table write that changes an occupied interval,
+  area, or crop refreshes overlap information for plans on the affected beds.
+  Moving a plan refreshes both beds. The refresh uses the current season's
+  bed-filtered plan list, including visible carried-over plans, and discards
+  responses superseded by another write or a project or season change.
 - **Save check error:** the area dialog ("Die angegebene Fläche überschreitet
   die verfügbare Restfläche …") adds "Beetfläche überschritten. Auf {Kultur}
   kann frühestens {n} Tage nach Erntebeginn ({Datum}) eine Folgekultur folgen."
@@ -164,6 +166,38 @@ one previous crop, the symmetric check, `remaining-area` and the list fields).
 Frontend: `HarvestOverlapInfo.test.tsx`, `AreaValidationDialog.test.tsx`,
 `plantingPlanSearch.test.ts`, `ganttChartUtils.test.ts` and
 `ProjectSettingsPage.test.tsx`.
+
+### Local date-edit benchmark
+
+Use a local checkout, the [guarded fixture procedure](work-execution-queue.md#local-test-data-handoff)
+and a production frontend build served with `npm run preview`. From
+`backend/`, preview both fixture sizes against the confirmed local database
+and repeat each command with `--apply`.
+
+```sh
+DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py \
+  seed_planting_plan_edit_benchmark --username LOCAL_USER --database-name LOCAL_DATABASE --plans 24
+DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py \
+  seed_planting_plan_edit_benchmark --username LOCAL_USER --database-name LOCAL_DATABASE --plans 640
+```
+
+Open the fixture's **Planting Plans** table in season 2026 at a desktop
+viewport. In Planned, Actual and Combined, alternate March 8 and March 9 on
+the first annual plan's planting date. Use double-click and Enter to open
+the editor. For the missing execution date, search for **Benchmark missing
+actual** and record its suggested date. Search for **Benchmark perennial
+apple** to exercise the occurrence endpoint for an August harvest on a
+carried-over plan. Clear search for the regular cases so the full table is
+visible.
+
+Warm each path once, then measure at least 12 saves with the same browser,
+viewport and network conditions on both revisions. Time edit entry from the
+input event to a focused field and the following paint. Time saves from Enter
+to pending feedback, the write response, the paint with the confirmed value
+and the end of background requests. Browser Performance and Network capture
+rendering work, request counts and response sizes. Measure server time and SQL
+separately to isolate request latency. Compare p50/p95 without establishing
+environment-dependent timing assertions in CI.
 
 ### Local Crop Calendar capacity fixture
 

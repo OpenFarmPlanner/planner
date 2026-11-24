@@ -17,6 +17,7 @@ import type {
   GridRenderCellParams,
   GridRenderEditCellParams,
   GridRowId,
+  GridSortModel,
   GridValueOptionsParams,
 } from "@mui/x-data-grid";
 import {
@@ -58,7 +59,7 @@ import {
   plantingPlanAPI,
   type PlantingPlan,
 } from "../api/api";
-import type { HarvestOverlap, PlanActualHarvest, PlanCultivationType, SuccessionLimit, TimingWindowFinding } from "../api/types";
+import type { Crop, PlanActualHarvest, PlanCultivationType, SuccessionLimit, TimingWindowFinding } from "../api/types";
 import { extractApiErrorMessage, isAreaInputSpacingMissingError } from "../api/errors";
 import { formatHarvestQuantity, formatHarvestTotals } from "../harvests/harvestDisplay";
 import {
@@ -72,7 +73,7 @@ import { PlantsCountEditCell } from "../components/data-grid/PlantsCountEditCell
 import {
   EditableDataGrid,
   createSearchableSelectColumn,
-  type DataGridAPI,
+  type EditableDataGridRowAction,
   type EditableDataGridRowActionHelpers,
   type EditableDataGridCommandApi,
   copyRowsToClipboard,
@@ -89,7 +90,8 @@ import {
 } from "../components/data-grid";
 import { getCoupledFieldHeaderClassName } from "../components/data-grid/coupledFieldHeader";
 import { DateEditCell } from "../components/data-grid/DateEditCell";
-import { formatSeasonDate, resolveSeasonDateLocale } from "../seasons/formatSeasonDate";
+import { formatCalendarDate, formatSeasonDate, resolveSeasonDateLocale } from "../seasons/formatSeasonDate";
+import { usePlantingPlanGridAPI } from "../planting-plans/usePlantingPlanGridAPI";
 import type { RootLayoutOutletContext } from "../navigation/topbarTypes";
 import { MobileCardList } from "../components/mobile/MobileCardList";
 import { NotesDrawer } from "../components/data-grid/NotesDrawer";
@@ -210,8 +212,40 @@ const PLANTING_PLAN_DIALOG_EDIT_FIELDS = ["bed"];
 const DEFAULT_HIDDEN_FIELDS_ON_SMALL_SCREEN = ["harvest_date", "harvest_end_date"];
 const DEFAULT_HIDDEN_FIELDS = ["season_status", "actual_harvest", "crop_loss_count"];
 const FOCUSABLE_SUMMARY_FIELDS = ["actual_harvest", "crop_loss_count"];
+const DEFAULT_PLAN_SORT: GridSortModel = [{ field: "planting_date", sort: "asc" }];
+const PLAN_NOTES = {
+  fields: [{
+    field: "notes",
+    labelKey: "common:fields.notes",
+    attachmentNoteIdField: "id",
+    attachmentCountField: "note_attachment_count",
+    compactIndicator: true,
+  }],
+};
+
+const formatGridDate = (date: Date | null | undefined) => date ? formatCalendarDate(date) : "";
 
 const isCarriedOverPlan = (row: PlantingPlanRow): boolean => Boolean(row.carried_over);
+const duplicatePlanRow = (row: PlantingPlanRow): PlantingPlanRow => ({
+  ...row,
+  ...Object.fromEntries(Object.values(ACTUAL_DATE_FIELDS).map(field => [field, null])),
+  id: -Date.now(),
+  isNew: true,
+  __draft: true,
+  note_attachment_count: 0,
+});
+const DIRECT_PLAN_EDIT_FIELDS = ["crop", "bed", "cultivation_type", "quantity", "notes", "area_m2", "plants_count"] as const;
+
+function createPlanColumnDateReader(cropById: ReadonlyMap<Crop["id"], Crop>) {
+  const byRow = new WeakMap<PlantingPlanRow, Partial<Record<PlantingPlanDateColumn, PlantingPlanDateComparison>>>();
+  return (row: PlantingPlanRow, field: PlantingPlanDateColumn): PlantingPlanDateComparison => {
+    const cached = byRow.get(row);
+    if (cached?.[field]) return cached[field];
+    const dates = getPlanColumnDates(row, field, cropById.get(row.crop ?? undefined));
+    byRow.set(row, { ...cached, [field]: dates });
+    return dates;
+  };
+}
 
 function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, restoredView }: {
   onOpenDetails?: (id: number, view: PlantingPlanSearchSnapshot, anchor?: HTMLElement | null) => void;
@@ -280,6 +314,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     getCultivationTypeOptionsForRow,
     dynamicWidths,
   } = usePlantingPlanHierarchy(shouldShowProjectRequiredState);
+  const cropById = useMemo(() => new Map(crops.map((crop) => [crop.id, crop])), [crops]);
   const bedPickerOptions = useMemo(() => buildBedPickerResults(beds, fields, locations, numberLocale), [beds, fields, locations, numberLocale]);
   const bedPickerOptionsById = useMemo(() => new Map(
     bedPickerOptions.filter((option) => option.kind === "bed").map((option) => [option.id, option]),
@@ -298,28 +333,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   } | null>(null);
   const urlParamProcessedRef = useRef<boolean>(false);
   const gridCommandApiRef = useRef<EditableDataGridCommandApi | null>(null);
-  // A write can add or remove harvest overlaps on other plans of the same bed
-  // (docs/bed-occupancy.md), which the grid's rows do not refetch. After every
-  // grid write the overlaps of all plans are reloaded into this map, which
-  // takes precedence over the rows' own values until the next full reload.
-  const [harvestOverlapsById, setHarvestOverlapsById] = useState<ReadonlyMap<number, HarvestOverlap[]> | null>(null);
-  const refreshHarvestOverlaps = useCallback(async (): Promise<void> => {
-    try {
-      const { results: plans } = await plantingPlanAPI.listAll();
-      setHarvestOverlapsById(new Map(
-        plans
-          .filter((plan): plan is PlantingPlan & { id: number } => typeof plan.id === "number")
-          .map((plan) => [plan.id, plan.harvest_overlaps ?? []]),
-      ));
-    } catch (error) {
-      console.error("Error refreshing the harvest overlaps:", error);
-    }
-  }, []);
-  const getRowHarvestOverlaps = useCallback(
-    (row: PlantingPlanRow): HarvestOverlap[] | undefined => (
-      row.isNew ? undefined : harvestOverlapsById?.get(row.id) ?? row.harvest_overlaps
-    ),
-    [harvestOverlapsById],
+  const { api: plantingPlanGridAPI, getRowHarvestOverlaps } = usePlantingPlanGridAPI(
+    `${userId}:${activeProjectId}:${activeSeasonId}`,
   );
   const getRowTimingWindowFindings = useCallback(
     (row: PlantingPlanRow | undefined): TimingWindowFinding[] | undefined => (
@@ -336,7 +351,6 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     [getRowTimingWindowFindings],
   );
   const reloadPlans = useCallback(async (): Promise<void> => {
-    setHarvestOverlapsById(null);
     await gridCommandApiRef.current?.reload();
   }, []);
   const loadedDetailRevision = useRef(detailRevision);
@@ -345,30 +359,20 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     loadedDetailRevision.current = detailRevision;
     void reloadPlans();
   }, [detailRevision, reloadPlans]);
-  const plantingPlanGridAPI = useMemo<DataGridAPI<PlantingPlanRow>>(() => {
-    const withOverlapRefresh = <A extends unknown[], R>(write: (...args: A) => Promise<R>) =>
-      async (...args: A): Promise<R> => {
-        const result = await write(...args);
-        void refreshHarvestOverlaps();
-        return result;
-      };
-    return {
-      ...plantingPlanAPI,
-      create: withOverlapRefresh(plantingPlanAPI.create),
-      update: withOverlapRefresh(plantingPlanAPI.update),
-      patch: withOverlapRefresh(plantingPlanAPI.patch),
-      delete: withOverlapRefresh(plantingPlanAPI.delete),
-      list: async () => {
-        const data = await plantingPlanAPI.listAll();
-        setHarvestOverlapsById(null);
-        return { data };
-      },
-    } as unknown as DataGridAPI<PlantingPlanRow>;
-  }, [refreshHarvestOverlaps]);
   const [selectedPlan, setSelectedPlan] = useState<PlantingPlanRow | null>(
     null,
   );
   const [mobileRows, setMobileRows] = useState<PlantingPlanRow[]>([]);
+  const syncGridRows = useCallback((rows: PlantingPlanRow[]) => {
+    setMobileRows(previous => areRowsSemanticallyEqual(previous, rows) ? previous : rows);
+  }, []);
+  const getInlinePlanActions = useCallback((row: PlantingPlanRow): EditableDataGridRowAction<PlantingPlanRow>[] => row.carried_over ? [] : [{
+    id: "delete",
+    label: t("common:actions.delete"),
+    icon: <DeleteIcon fontSize="small" />,
+    color: "error",
+    onClick: (target, helpers) => helpers.delete(target.id),
+  }], [t]);
   const [isPlansLoading, setIsPlansLoading] = useState(true);
   const [expandedCardIds, setExpandedCardIds] = useState<Set<number | string>>(
     new Set(),
@@ -736,13 +740,11 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   }, [i18n.language, i18n.resolvedLanguage]);
 
   const getRowSowingSchedule = useCallback(
-    (row: PlantingPlanRow) => getPlanSowingSchedule(row, crops.find((item) => item.id === row.crop)),
-    [crops],
+    (row: PlantingPlanRow) => getPlanSowingSchedule(row, cropById.get(row.crop ?? undefined)),
+    [cropById],
   );
 
-  const getColumnDates = useCallback((row: PlantingPlanRow, field: PlantingPlanDateColumn) => (
-    getPlanColumnDates(row, field, crops.find(crop => crop.id === row.crop))
-  ), [crops]);
+  const getColumnDates = useMemo(() => createPlanColumnDateReader(cropById), [cropById]);
   const displayDateMode = isMobile ? 'planned' : dateMode;
   // A date-mode change can move a row out of the grid's rendered window or
   // replace its cell renderer while a planned row draft is open.
@@ -774,23 +776,23 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       return;
     }
     const field = ACTUAL_DATE_FIELDS[activity];
-    const { data } = await plantingPlanAPI.patch(id, { [field]: value });
+    const { data } = await plantingPlanGridAPI.patch(id, { [field]: value });
     applySavedActualDates(id, {
       [field]: data[field], seasonal_harvest: data.seasonal_harvest,
       harvest_actual_occurrences: data.harvest_actual_occurrences,
     });
-  }, [activeSeasonId, applySavedActualDates, reloadPlans]);
+  }, [activeSeasonId, applySavedActualDates, plantingPlanGridAPI, reloadPlans]);
 
   const getDateReadOnlyReason = useCallback((row: PlantingPlanRow, field: string) => {
     if (!PLANTING_PLAN_DATE_COLUMNS.includes(field as PlantingPlanDateColumn)) return undefined;
-    const crop = crops.find(item => item.id === row.crop);
+    const crop = cropById.get(row.crop ?? undefined);
     const reason = getPlanDateReadOnlyReason(row, field as PlantingPlanDateColumn, displayDateMode, Boolean(activeSeasonId), crop);
     if (reason === null) return null;
     if (reason === 'noOwnPropagation' || reason === 'missingPropagationDuration') {
       return t(`plantingPlans:tooltips.${reason}`);
     }
     return t(`plantingPlans:actualDates.readOnlyReasons.${reason}`);
-  }, [activeSeasonId, crops, displayDateMode, t]);
+  }, [activeSeasonId, cropById, displayDateMode, t]);
   const isActualDateEditor = useCallback((row: PlantingPlanRow, field: string) =>
     displayDateMode !== 'planned' && !row.isNew && getDateReadOnlyReason(row, field) === null,
   [displayDateMode, getDateReadOnlyReason]);
@@ -1106,6 +1108,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             description={t("plantingPlans:tooltips.sowingDateDescription")} />
         ),
         valueGetter: (_value, row) => toGridDateValue(getRowSowingSchedule(row as PlantingPlanRow)?.sowingDate ?? null),
+        valueFormatter: formatGridDate,
         cellClassName: (params) => [
           (displayDateMode !== 'planned' || getDateReadOnlyReason(params.row, 'sowing_date') || getColumnDates(params.row, 'sowing_date').actual)
             ? FULL_CELL_TOOLTIP_CELL_CLASS : '',
@@ -1159,6 +1162,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             sx={dataGridHeaderLabelSx} focusWithinColumnHeader />
         ),
         valueGetter: (value) => toGridDateValue(value),
+        valueFormatter: formatGridDate,
         cellClassName: (params) => [
           (displayDateMode !== 'planned' || getDateReadOnlyReason(params.row, 'planting_date') || getColumnDates(params.row, 'planting_date').actual)
             ? FULL_CELL_TOOLTIP_CELL_CLASS : '',
@@ -1198,6 +1202,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         editable: false,
         type: "date",
         valueGetter: (_value, row) => toGridDateValue(getColumnDates(row, 'harvest_date').planned),
+        valueFormatter: formatGridDate,
         cellClassName: FULL_CELL_TOOLTIP_CELL_CLASS,
         renderCell: renderCalculatedHarvestDateCell,
       },
@@ -1212,6 +1217,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         editable: false,
         type: "date",
         valueGetter: (_value, row) => toGridDateValue(getColumnDates(row, 'harvest_end_date').planned),
+        valueFormatter: formatGridDate,
         cellClassName: FULL_CELL_TOOLTIP_CELL_CLASS,
         renderCell: renderCalculatedHarvestDateCell,
       },
@@ -1622,7 +1628,6 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     return option?.label ?? "";
   };
 
-  const cropById = useMemo(() => new Map(crops.map((crop) => [crop.id, crop])), [crops]);
   const toSearchRecordInput = useCallback((row: PlantingPlanRow): PlantingPlanSearchRecordInput => {
     const linkedCrop = typeof row.crop === "number" ? cropById.get(row.crop) : undefined;
     const bedId = resolveBedCellValue(row.bed, row);
@@ -2668,13 +2673,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             focusableReadOnlyFields={FOCUSABLE_SUMMARY_FIELDS}
             commandApiRef={gridCommandApiRef}
             onSelectedRowChange={setSelectedPlan}
-            onRowsStateChange={(rows) => {
-              setMobileRows((previousRows) =>
-                areRowsSemanticallyEqual(previousRows, rows)
-                  ? previousRows
-                  : rows,
-              );
-            }}
+            onRowsStateChange={syncGridRows}
             onLoadStateChange={({ loading, dataFetched }) => {
               setIsPlansLoading(loading || !dataFetched);
             }}
@@ -2860,9 +2859,19 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             }
             return errors;
           }}
-          onBeforeSaveRow={async (row) => {
+          onBeforeSaveRow={async (row, original) => {
             if (areaValidationDialogRef.current || suppressAreaValidationSaveRef.current) {
               return false;
+            }
+            if (original && !row.isNew &&
+              DIRECT_PLAN_EDIT_FIELDS.every(field => row[field] === original[field]) &&
+              toIsoDateString(row.planting_date) === toIsoDateString(original.planting_date) &&
+              (row.sowing_date === undefined ||
+                toIsoDateString(row.sowing_date) === (getRowSowingSchedule(original)?.sowingDate ?? null))
+            ) {
+              lastEditedDateFieldRef.current = null;
+              lastEditedFieldRef.current = null;
+              return 'unchanged';
             }
             const requestedAreaBeforeCheck = getRequestedAreaForValidation(row);
             const maxKeywordBeforeCheck = t("plantingPlans:placeholders.maxKeyword");
@@ -2876,14 +2885,13 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             }
             const maxKeyword = t("plantingPlans:placeholders.maxKeyword");
             if (isAutoAreaRequest(row.area_m2, maxKeyword)) {
-              const availableAreaDraft = await buildAvailableAreaDraft(row);
-              if (availableAreaDraft) {
+              if (capacity.availableArea > 0) {
                 setAreaNotice({
                   severity: "info",
                   message: t("plantingPlans:areaValidation.maxAreaApplied", { area: formatAreaM2(capacity.availableArea, numberLocale) }),
                 });
                 lastEditedFieldRef.current = "area_m2";
-                return availableAreaDraft;
+                return buildAreaAndPlantsDraft(row, capacity.availableArea);
               }
               return false;
             }
@@ -2950,6 +2958,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           showDeleteAction={false}
           showFooterEditControls={false}
           showRowEditActions={false}
+          showPendingRowSaves
           inlineRowActionField="crop"
           showInlineRowActionMenu
           suspendRouteNavigationGuard={detailOpen}
@@ -2985,25 +2994,10 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               onClick: (row: PlantingPlanRow, helpers: EditableDataGridRowActionHelpers<PlantingPlanRow>) => helpers.delete(row.id),
             }] : []),
           ]}
-          getInlineRowActions={(row, helpers) => row.carried_over ? [] : [
-            {
-              id: "delete",
-              label: t("common:actions.delete"),
-              icon: <DeleteIcon fontSize="small" />,
-              color: "error",
-              onClick: () => helpers.delete(row.id),
-            },
-          ]}
-          duplicateRow={(row) => ({
-            ...row,
-            ...Object.fromEntries(Object.values(ACTUAL_DATE_FIELDS).map(field => [field, null])),
-                  id: -Date.now(),
-                  isNew: true,
-            __draft: true,
-            note_attachment_count: 0,
-          })}
+          getInlineRowActions={getInlinePlanActions}
+          duplicateRow={duplicatePlanRow}
           tableKey="plantingPlans"
-          defaultSortModel={[{ field: "planting_date", sort: "asc" }]}
+          defaultSortModel={DEFAULT_PLAN_SORT}
           sortProjection={dateSortProjection}
           persistSortInUrl={true}
           columnVisibilityModel={columnVisibilityModel}
@@ -3012,17 +3006,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           onColumnsPanelOpenChange={setIsColumnsPanelOpen}
           columnsPanelAnchorEl={columnsAnchorEl}
           externalFilter={gridExternalFilter}
-            notes={{
-              fields: [
-                {
-                  field: "notes",
-                  labelKey: "common:fields.notes",
-                  attachmentNoteIdField: "id",
-                  attachmentCountField: "note_attachment_count",
-                  compactIndicator: true,
-                },
-              ],
-            }}
+            notes={PLAN_NOTES}
           />
           </Box>
         </PageSurface>}

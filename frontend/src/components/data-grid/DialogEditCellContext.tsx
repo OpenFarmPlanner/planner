@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useSyncExternalStore } from 'react';
 import type { GridRowId } from '@mui/x-data-grid';
 
 /**
@@ -17,15 +17,48 @@ export interface DialogEditCellRequest {
   initialQuery?: string;
 }
 
-export interface DialogEditCellContextValue {
-  request: DialogEditCellRequest | null;
-  consumeRequest: (token: number) => void;
-}
-
 export const buildDialogEditCellKey = (rowId: GridRowId, field: string): string =>
   `${String(rowId)}:${field}`;
 
+export function createDialogEditCellRequests() {
+  let request: DialogEditCellRequest | null = null;
+  let token = 0;
+  const listeners = new Map<string, Set<() => void>>();
+  const publish = (next: DialogEditCellRequest | null) => {
+    const previousKey = request?.cellKey;
+    request = next;
+    if (previousKey && previousKey !== next?.cellKey) listeners.get(previousKey)?.forEach(notify => notify());
+    if (next) listeners.get(next.cellKey)?.forEach(notify => notify());
+  };
+
+  // Virtualization can mount the target after the request. Keep the snapshot
+  // until that cell consumes it, and notify only listeners for the affected key.
+  return {
+    open: (rowId: GridRowId, field: string, initialQuery?: string): void => {
+      publish({ cellKey: buildDialogEditCellKey(rowId, field), token: ++token, initialQuery });
+    },
+    getRequest: (cellKey: string): DialogEditCellRequest | null => (
+      request?.cellKey === cellKey ? request : null
+    ),
+    subscribe: (cellKey: string, notify: () => void): (() => void) => {
+      const current = listeners.get(cellKey) ?? new Set();
+      current.add(notify);
+      listeners.set(cellKey, current);
+      return () => {
+        current.delete(notify);
+        if (current.size === 0) listeners.delete(cellKey);
+      };
+    },
+    consumeRequest: (handledToken: number): void => {
+      if (request?.token === handledToken) publish(null);
+    },
+  };
+}
+
+export type DialogEditCellContextValue = ReturnType<typeof createDialogEditCellRequests>;
 export const DialogEditCellContext = createContext<DialogEditCellContextValue | null>(null);
+const getEmptySnapshot = () => null;
+const unsubscribeEmpty = () => {};
 
 /**
  * Runs `onOpenRequested` once per explicit edit request for the cell identified
@@ -45,23 +78,23 @@ export function useDialogEditCellOpenRequest(
     onOpenRequestedRef.current = onOpenRequested;
   }, [onOpenRequested]);
 
-  const request = context?.request ?? null;
-  const consumeRequest = context?.consumeRequest;
   const cellKey = rowId === undefined || field === undefined
     ? null
     : buildDialogEditCellKey(rowId, field);
-  const pendingToken = request && cellKey !== null && request.cellKey === cellKey
-    ? request.token
-    : null;
-  const initialQuery = request?.initialQuery;
+  const subscribe = useCallback((notify: () => void) => (
+    cellKey !== null ? context?.subscribe(cellKey, notify) ?? unsubscribeEmpty : unsubscribeEmpty
+  ), [cellKey, context]);
+  const getSnapshot = useCallback(() => (
+    cellKey !== null ? context?.getRequest(cellKey) ?? null : null
+  ), [cellKey, context]);
+  const request = useSyncExternalStore(subscribe, getSnapshot, getEmptySnapshot);
 
   useEffect(() => {
-    if (pendingToken === null || handledTokenRef.current === pendingToken) {
+    if (!request || handledTokenRef.current === request.token) {
       return;
     }
-
-    handledTokenRef.current = pendingToken;
-    consumeRequest?.(pendingToken);
-    onOpenRequestedRef.current(initialQuery);
-  }, [consumeRequest, initialQuery, pendingToken]);
+    handledTokenRef.current = request.token;
+    context?.consumeRequest(request.token);
+    onOpenRequestedRef.current(request.initialQuery);
+  }, [context, request]);
 }

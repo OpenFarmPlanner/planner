@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { memo, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Box, Button, Menu, MenuItem, Stack, Typography } from '@mui/material';
 import { visuallyHidden } from '@mui/utils';
 import type { GridRenderCellParams } from '@mui/x-data-grid';
@@ -74,7 +74,7 @@ export function DateComparisonTooltipText({ dates, editMode, readOnlyReason }: {
   </Stack>;
 }
 
-export function RecordedPlanDateCell({ dates, hasFocus, editable = false, readOnlyReason }: {
+export const RecordedPlanDateCell = memo(function RecordedPlanDateCell({ dates, hasFocus, editable = false, readOnlyReason }: {
   dates: PlantingPlanDateComparison;
   hasFocus: boolean;
   editable?: boolean;
@@ -89,7 +89,7 @@ export function RecordedPlanDateCell({ dates, hasFocus, editable = false, readOn
         {dates.actual ? formatSeasonDate(dates.actual, resolveSeasonDateLocale(i18n)) : '—'}
       </Typography>
   </FullCellTooltip>;
-}
+});
 
 export type ActualPlanDateDrafts = Map<string, { text?: string }>;
 
