@@ -836,12 +836,12 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                     user=request.user,
                     language=note_language({"request": request}),
                 )
+                if sharing and not has_consent:
+                    record_acceptance(request.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY)
                 if len(entries) > 1 and any(entry['operation'] != 'unchanged' for entry in entries):
                     record_crop_library_outcome(
                         project.pk, CropLibraryUsageDay.Kind.SELECTION_IMPORT,
                     )
-                if sharing and not has_consent:
-                    record_acceptance(request.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY)
         except PublicCropEditConflictError as error:
             return self._edit_conflict_response(error)
         except (CropLinkConflictError, PublicCropImportConfirmationRequiredError) as error:

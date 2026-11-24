@@ -37,7 +37,7 @@ def migration_applied_at(name: str) -> datetime | None:
 def record_crop_library_outcome(
     project_id: int, kind: CropLibraryUsageDay.Kind, *, applied: bool = True,
 ) -> None:
-    """Increment a daily counter inside the caller's operation transaction."""
+    """Date a finished write in UTC and commit its counter with the write."""
     if not applied:
         return
     day = timezone.now().astimezone(UTC).date()

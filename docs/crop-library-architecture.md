@@ -2627,9 +2627,11 @@ while retaining search and filters. [Import history and receipt replay](versioni
 The Django admin dashboard counts successful bulk imports and import undos by
 receipt completion time. Older undo receipts use their creation time. It adds
 selection imports and applied linked updates from `CropLibraryUsageDay`, which
-stores counts by project, UTC date and outcome. These counters omit identities
-of individual users and crop details. Project deletion removes its counters,
-and `cleanup_history` retains 30 UTC dates of counters.
+stores counts by project, UTC date and outcome. The server assigns the date
+after applying the changes. The counter is saved in the same transaction, so
+the count and its changes become visible together on commit. These counters omit
+identities of individual users and crop details. Project deletion removes its
+counters, and `cleanup_history` retains 30 UTC dates of counters.
 
 For local acceptance, reuse the guarded `seed_library_import_acceptance`
 command with `--include-variety-selection`. In **Carrot variety selection
