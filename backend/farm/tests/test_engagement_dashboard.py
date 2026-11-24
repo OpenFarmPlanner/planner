@@ -1569,6 +1569,35 @@ class PlatformActivityTests(TestCase):
         changes = ProjectChangeDay.objects.get(project=self.project, category='harvest')
         self.assertEqual(changes.deleted, 3)
 
+    def test_deleting_structure_counts_dependent_rows_by_workflow(self) -> None:
+        for endpoint, growing_area_count in (('locations', 5), ('fields', 4), ('beds', 2)):
+            with self.subTest(endpoint=endpoint), transaction.atomic():
+                location = Location.objects.create(project=self.project, name='Test location')
+                field = Field.objects.create(project=self.project, location=location, name='Field')
+                bed = Bed.objects.create(project=self.project, field=field, name='Bed')
+                FieldLayout.objects.create(project=self.project, location=location, field=field)
+                BedLayout.objects.create(project=self.project, location=location, bed=bed)
+                crop = Crop.objects.create(project=self.project, name='Planted crop')
+                plan = PlantingPlan.objects.create(project=self.project, bed=bed, crop=crop)
+                harvest = HarvestRecord.objects.create(
+                    project=self.project, crop=crop, date=self.now.date(), quantity=2, unit='kg',
+                )
+                HarvestAllocation.objects.create(
+                    project=self.project, planting_plan=plan, harvest=harvest, quantity=2,
+                )
+                target = {'locations': location, 'fields': field, 'beds': bed}[endpoint]
+                url = f'/openfarmplanner/api/{endpoint}/{target.pk}/'
+                self.assertEqual(self.client.delete(url, **self.headers).status_code, 204)
+                self.assertEqual(self.client.delete(url, **self.headers).status_code, 404)
+                self.assertTrue(HarvestRecord.objects.filter(pk=harvest.pk).exists())
+                counts = dict(ProjectChangeDay.objects.filter(project=self.project).values_list(
+                    'category', 'deleted',
+                ))
+                self.assertEqual(counts, {
+                    'growing_area': growing_area_count, 'planting': 1, 'harvest': 1,
+                })
+                transaction.set_rollback(True)
+
     def test_rolled_back_savepoints_and_background_operations_leave_no_signals(self) -> None:
         def synthetic_view(request: HttpRequest) -> HttpResponse:
             with transaction.atomic():

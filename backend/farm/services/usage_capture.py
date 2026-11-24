@@ -2,6 +2,7 @@ from collections import Counter, defaultdict
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from itertools import batched
 from typing import Any
@@ -35,6 +36,10 @@ ENTITY_CATEGORIES = {
     'season_pattern': Category.SEASON,
     'task': Category.TASK,
 }
+CASCADE_CATEGORIES = {
+    f"farm.{entity_type.replace('_', '')}": category
+    for entity_type, category in ENTITY_CATEGORIES.items()
+}
 CREATED = EntityRevision.ACTION_CREATED
 UPDATED = EntityRevision.ACTION_UPDATED
 DELETED = EntityRevision.ACTION_DELETED
@@ -48,7 +53,16 @@ NON_CONTENT_FIELDS = frozenset({
 
 type Change = tuple[int, str, int, str]  # project, entity type, object, action
 type State = dict[str, dict[str, dict[str, Any]]]
-type PendingChanges = dict[int, tuple[datetime, list[Change]]]
+
+
+@dataclass
+class RevisionChanges:
+    created_at: datetime
+    entities: list[Change]
+    cascaded_deletions: Counter[tuple[int, Category]] = field(default_factory=Counter)
+
+
+type PendingChanges = dict[int, RevisionChanges]
 _pending_changes: ContextVar[PendingChanges | None] = ContextVar(
     'project_usage_changes', default=None,
 )
@@ -83,9 +97,28 @@ def observe_entity_revision(revision: EntityRevision, *, measure_usage: bool) ->
             return
         if 'deleted_at' in fields:
             action = DELETED if revision.snapshot.get('deleted_at') else RESTORED
-    pending[revision.pk] = (revision.created_at, [
+    pending[revision.pk] = RevisionChanges(revision.created_at, [
         (revision.project_id, entity_type, revision.object_id, action),
     ])
+
+
+def observe_cascaded_deletions(
+    revision: EntityRevision, deleted_models: dict[str, int], *, root_model: str,
+) -> None:
+    """Attach the actual cascade counts to the same audit row as the root deletion."""
+    pending = _pending_changes.get()
+    if pending is None:
+        return
+    children = Counter()
+    for model, count in deleted_models.items():
+        category = CASCADE_CATEGORIES.get(model.lower())
+        # The root object's audit revision already contributes its own deletion.
+        count -= int(model == root_model)
+        if category is not None and count > 0:
+            children[revision.project_id, category] += count
+    if children:
+        event = pending.setdefault(revision.pk, RevisionChanges(revision.created_at, []))
+        event.cascaded_deletions.update(children)
 
 
 def _snapshot_action(old: dict | None, new: dict | None) -> str | None:
@@ -114,10 +147,10 @@ def observe_restored_state(checkpoint: EntityRevision, before: State, after: Sta
             if action := _snapshot_action(old.get(pk), new.get(pk)):
                 changes.append((checkpoint.project_id, category, int(pk), action))
     if changes:
-        pending[checkpoint.pk] = (checkpoint.created_at, changes)
+        pending[checkpoint.pk] = RevisionChanges(checkpoint.created_at, changes)
 
 
-def _committed_changes(pending: PendingChanges) -> Iterator[Change]:
+def _committed_changes(pending: PendingChanges) -> Iterator[RevisionChanges]:
     """A revision discarded by a rolled-back savepoint cannot contribute."""
     for ids in batched(sorted(pending), 500):
         revisions = EntityRevision.objects.filter(
@@ -127,9 +160,9 @@ def _committed_changes(pending: PendingChanges) -> Iterator[Change]:
             Q(created_at__gt=F('project__demo_seeded_at')),
         )
         for revision_id, created_at in revisions.order_by('pk').values_list('pk', 'created_at'):
-            expected, changes = pending[revision_id]
-            if created_at == expected:
-                yield from changes
+            event = pending[revision_id]
+            if created_at == event.created_at:
+                yield event
 
 
 def _completed_action(actions: list[str]) -> str | None:
@@ -145,11 +178,14 @@ def _completed_action(actions: list[str]) -> str | None:
     return UPDATED
 
 
-def _completed_totals(changes: Iterator[Change]) -> dict[tuple[int, Category], Counter]:
+def _completed_totals(changes: Iterator[RevisionChanges]) -> dict[tuple[int, Category], Counter]:
     object_actions = defaultdict(list)
-    for project_id, entity_type, pk, action in changes:
-        object_actions[project_id, entity_type, pk].append(action)
     totals = defaultdict(Counter)
+    for event in changes:
+        for project_id, entity_type, pk, action in event.entities:
+            object_actions[project_id, entity_type, pk].append(action)
+        for key, count in event.cascaded_deletions.items():
+            totals[key][DELETED] += count
     for (project_id, entity_type, _), actions in object_actions.items():
         if action := _completed_action(actions):
             totals[project_id, ENTITY_CATEGORIES[entity_type]][action] += 1

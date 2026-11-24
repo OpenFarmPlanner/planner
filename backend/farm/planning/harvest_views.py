@@ -91,12 +91,6 @@ class HarvestRecordViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mo
         harvest = serializer.save()
         serializer.instance = self._record_saved_harvest(harvest, allocations, previous)
 
-    def perform_destroy(self, instance: HarvestRecord) -> None:
-        with internal_project_versions():
-            for allocation in instance.allocations.all():
-                self.record_revision(allocation, EntityRevision.ACTION_DELETED)
-        super().perform_destroy(instance)
-
     def _record_saved_harvest(self, harvest, previous_allocations, previous=None):
         saved = self._with_details(self.queryset).get(
             pk=harvest.pk, project=self.request.active_project

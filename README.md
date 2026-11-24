@@ -125,7 +125,8 @@ today. The chart groups those days into days, Monday-based weeks or calendar
 months, respectively. A user or project counts at most once per bucket and
 once for the period summary. A session-authenticated write contributes when
 it commits a recorded creation, edit, deletion or restore in a listed
-workflow. Failed, unchanged or replayed writes and automated, staff, guest
+workflow. Direct deletions also count dependent rows that Django removes in
+the same operation. Failed, unchanged or replayed writes and automated, staff, guest
 and external-token actions contribute no platform activity. The project
 population filter also applies to these trends. Registrations and project
 creations come from the existing `date_joined` and `created_at` fields.

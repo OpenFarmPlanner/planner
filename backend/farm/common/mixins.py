@@ -18,6 +18,7 @@ from farm.history import (
 from farm.models import EntityRevision, Location
 from farm.project_context import get_active_project_or_400
 from farm.services.default_location import initial_location_name
+from farm.services.usage_capture import observe_cascaded_deletions
 
 
 class ProjectRevisionMixin:
@@ -34,6 +35,7 @@ class ProjectRevisionMixin:
         display_name: str | None = None,
         changed_fields: list[str] | None = None,
         batch_operation=None,
+        deleted_models: dict[str, int] | None = None,
     ) -> None:
         resolved_snapshot = snapshot if snapshot is not None else _serialize_instance(instance)
         resolved_changed_fields = changed_fields
@@ -44,7 +46,8 @@ class ProjectRevisionMixin:
                 resolved_changed_fields = _diff_changed_fields(previous_snapshot, resolved_snapshot)
             else:
                 resolved_changed_fields = []
-        record_entity_revision(
+        model_label = instance._meta.label
+        revision = record_entity_revision(
             project=getattr(self.request, 'active_project', None),
             entity_type=_entity_type_for(instance),
             object_id=object_id if object_id is not None else instance.pk,
@@ -54,7 +57,10 @@ class ProjectRevisionMixin:
             changed_fields=resolved_changed_fields,
             user_name=_current_actor_label(self.request),
             batch_operation=batch_operation,
+            measure_usage=deleted_models is None or deleted_models.get(model_label, 0) > 0,
         )
+        if deleted_models:
+            observe_cascaded_deletions(revision, deleted_models, root_model=model_label)
 
     def perform_update(self, serializer: BaseSerializer) -> None:
         """Save the update and record it against the pre-save snapshot.
@@ -75,10 +81,11 @@ class ProjectRevisionMixin:
         instance_id = instance.pk
         snapshot = _serialize_instance(instance)
         display_name = _entity_display_name(instance)
-        instance.delete()
+        _, deleted_models = instance.delete()
         self.record_revision(
             instance, EntityRevision.ACTION_DELETED,
             object_id=instance_id, snapshot=snapshot, display_name=display_name, changed_fields=[],
+            deleted_models=deleted_models,
         )
 
 
