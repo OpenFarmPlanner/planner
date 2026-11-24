@@ -198,6 +198,13 @@ erDiagram
   label strip at the top stay free. The view paints that margin light grey
   and the usable area white, from the same helper the placement clamp uses,
   so drawing and placement rules cannot drift apart.
+  Layout checks distinguish a footprint outside its parent, intersecting
+  siblings and a gap smaller than the location recommendation. They apply to
+  the drag preview and to saved geometry. Existing beds that extend outside
+  the usable area after a resize are drawn at their saved position. Parcel
+  details report gross area, the union of bed footprints inside the parcel,
+  and their difference. That remaining area includes paths and margins.
+  Exact coverage requires dimensions for the parcel and all of its beds.
 - `Field`, `Bed`, and most other project-scoped models below also carry a
   **direct, denormalized `project` FK** in addition to their natural parent
   (e.g. `Bed.project` in addition to `Bed.field`). This is deliberate — it's

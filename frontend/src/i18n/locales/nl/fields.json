@@ -29,6 +29,24 @@
     "graphical": "Grafisch"
   },
   "graphical": {
+    "geometry": {
+      "title": "Indelingscontrole",
+      "open": "Indelingscontrole ({{count}})",
+      "focus": "{{name}} tonen in de grafiek",
+      "parcelOutside": "{{name}} steekt buiten de grens van de locatie.",
+      "bedOutside": "{{name}} steekt buiten het bruikbare deel van {{parent}}.",
+      "overlap": "{{first}} overlapt {{second}}.",
+      "shortGap": "Tussen {{first}} en {{second}} is {{actual}} cm ruimte. De aanbevolen afstand is {{recommended}} cm.",
+      "noPathSpace": "De bedden vullen {{name}}. Er is geen ruimte voor de aanbevolen paden.",
+      "unknownLocation": "Vul de afmetingen van de locatie in de lijst in om de grens te controleren.",
+      "unknownParcels": "Een nauwkeurige controle van {{names}} is niet mogelijk omdat de afmetingen ontbreken of de contouren vergroot zijn.",
+      "unknownBeds": "De oppervlakte van {{names}} in {{name}} kan niet worden gemeten. Controleer de afmetingen van het perceel en de bedden in de lijst.",
+      "grossArea": "Bruto-oppervlakte {{area}}",
+      "bedFootprint": "Oppervlakte van bedden binnen het perceel {{area}}",
+      "remainingArea": "Resterende oppervlakte {{area}}",
+      "remainingHelp": "De resterende oppervlakte omvat paden en randen.",
+      "areaUnknown": "Voor de gebruikte en resterende oppervlakte zijn de afmetingen van het perceel en de bedden nodig."
+    },
     "spacing": {
       "button": "Afstanden",
       "title": "Afstanden (paden)",

@@ -111,8 +111,8 @@ export function getFieldRectSize(
 ): RectSize {
   if (typeof field.length_m === 'number' && typeof field.width_m === 'number') {
     const dimensionalSize = {
-      width: Math.max(1, Math.round(field.width_m * pxPerMeter)),
-      height: Math.max(1, Math.round(field.length_m * pxPerMeter)),
+      width: Math.max(1, field.width_m * pxPerMeter),
+      height: Math.max(1, field.length_m * pxPerMeter),
     };
     return enforceMinimumSide(dimensionalSize, DIMENSIONAL_RECT_MIN_SIDE);
   }
@@ -129,8 +129,8 @@ export function fieldUsesWorldScale(
   const { length_m: length, width_m: width } = field;
   return typeof length === 'number' && Number.isFinite(length) && length > 0
     && typeof width === 'number' && Number.isFinite(width) && width > 0
-    && size.width === Math.round(width * pxPerMeter)
-    && size.height === Math.round(length * pxPerMeter);
+    && size.width === width * pxPerMeter
+    && size.height === length * pxPerMeter;
 }
 
 /** The location's outer boundary at the layout origin, or null unless both
@@ -148,8 +148,8 @@ export function getLocationBoundaryRect(
   return {
     x: origin.x,
     y: origin.y,
-    width: Math.max(1, Math.round(width * pxPerMeter)),
-    height: Math.max(1, Math.round(length * pxPerMeter)),
+    width: width * pxPerMeter,
+    height: length * pxPerMeter,
   };
 }
 

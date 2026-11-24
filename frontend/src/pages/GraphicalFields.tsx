@@ -35,20 +35,20 @@ import {
 import { isTypingInEditableElement, useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useTranslation } from "../i18n";
 import { GraphicalFieldDetailsDialog } from "./GraphicalFieldDetailsDialog";
+import { GraphicalGeometryWarnings } from "./GraphicalGeometryWarnings";
 import { GraphicalSnapGuides } from "./GraphicalSnapGuides";
+import { analyzeGraphicalGeometry, getGeometryOutlines, getGraphicalBedLayout, type GeometryPreview, type GraphicalParcel, type OutlineKind } from "./graphicalAreaGeometry";
+import type { MetricCoverage } from "../components/hierarchy/utils/growingAreaGeometry";
 import ModeToggle from "../components/ModeToggle";
 import {
   clampInsideBoundary,
   clampInsideParent,
-  DEFAULT_PLACEMENT_SPACING,
   fieldUsesWorldScale,
-  getBedRectSizeWithinField,
   getFieldRectSize,
   getLocationBoundaryRect,
   isRectOutsideBoundary,
   arrangeFieldRects,
   placeFieldRects,
-  initialAutoLayout,
   DEFAULT_GRAPHICAL_ROTATION,
   rotateRect,
   rotateRectBetweenSizes,
@@ -93,7 +93,6 @@ import {
   WORKSPACE_MIN_HEIGHT,
   WORKSPACE_MIN_WIDTH,
   ZOOM_STEP,
-  getFieldUsableArea,
   getFitViewportPadding,
   type BedViewModel,
   type GraphicalFieldsProps,
@@ -110,17 +109,8 @@ import { formatLocalizedNumber, getActiveFormattingLocale } from "../utils/numbe
 import { AppTooltip } from '../components/AppTooltip';
 import LoadRetryButton from '../components/LoadRetryButton';
 
-/** Gap used when auto-arranging beds that do not yet have a saved layout. */
-const BED_AUTO_LAYOUT_GAP = DEFAULT_PLACEMENT_SPACING;
-/** Minimum spacing kept between a newly placed bed and existing beds. */
-const BED_PLACEMENT_SPACING = DEFAULT_PLACEMENT_SPACING;
-
 // A quick Graphic → List → Graphic switch must read after an in-flight drop.
 const pendingFieldSaves = new Map<number, Promise<void>>();
-
-const hasMeasuredDimensions = (area: { length_m?: number | null; width_m?: number | null }): boolean =>
-  Number.isFinite(area.length_m) && (area.length_m ?? 0) > 0
-  && Number.isFinite(area.width_m) && (area.width_m ?? 0) > 0;
 
 export default function GraphicalFields({
   showTitle = true,
@@ -134,6 +124,14 @@ export default function GraphicalFields({
 }: GraphicalFieldsProps) {
   const { t } = useTranslation(["fields", "common"]);
   const theme = useTheme();
+  const getOutlineProps = (kind: OutlineKind | undefined, color: string, width: number) => {
+    switch (kind) {
+      case "outside": return { stroke: theme.palette.warning.dark, strokeWidth: 2.5, dash: [9, 4] };
+      case "overlap": return { stroke: theme.palette.error.dark, strokeWidth: 2.5, dash: [4, 2] };
+      case "shortGap": return { stroke: theme.palette.secondary.dark, strokeWidth: 2.5, dash: [2, 4] };
+      default: return { stroke: color, strokeWidth: width };
+    }
+  };
   const internalHierarchyData = useHierarchyData(hierarchyData === undefined);
   const { loading, error, locations, fields, beds } = hierarchyData ?? internalHierarchyData;
   const activeLocationId = locations.find(location => location.id === selectedLocationId)?.id
@@ -153,6 +151,7 @@ export default function GraphicalFields({
   const layoutReady = activeLocationId === null || (layoutLoad.locationId === activeLocationId && layoutLoad.attempt === layoutAttempt);
   const layoutFailed = activeLocationId !== null && layoutReady && layoutLoad.error;
   const [activeGuides, setActiveGuides] = useState<GuideLine[]>([]);
+  const [geometryPreview, setGeometryPreview] = useState<GeometryPreview | null>(null);
   const areaDrag = useAreaDrag();
   const [localInteractionMode, setLocalInteractionMode] =
     useState<InteractionMode>("view");
@@ -193,6 +192,7 @@ export default function GraphicalFields({
   } = useGraphicalStageSize(activeLocationId, !loading && layoutReady && !layoutFailed);
   const resetTransientInteractionState = (): void => {
     setActiveGuides([]);
+    setGeometryPreview(null);
     Object.keys(panSessionRef.current).forEach((key) => {
       panSessionRef.current[Number(key)] = null;
     });
@@ -736,7 +736,7 @@ export default function GraphicalFields({
 
   const getFieldInteractionProps = (
     fieldId: number,
-    baseRect: (typeof locationLayouts)[number]["defaultFieldRects"][number],
+    baseRect: Pick<(typeof locationLayouts)[number]["defaultFieldRects"][number], "field" | "width" | "height">,
     currentFieldRect: RectViewModel,
     contentBounds: { width: number; height: number },
     fieldViewModels: RectViewModel[],
@@ -746,28 +746,17 @@ export default function GraphicalFields({
     boundary: PlacementRect | null,
     unsavedBoundaryOrigin: LocationBoundaryOrigin | null,
     snapping: DragSnapping,
+    coverage: MetricCoverage | undefined,
   ): KonvaNodeEvents & { draggable: boolean } => {
     if (!isLocationEditMode(locationId)) {
+      const select = () => setSelectedElement({
+        type: "field", id: fieldId, name: baseRect.field.name,
+        area: Number(baseRect.field.area_sqm ?? 0), locationName, coverage,
+      });
       return {
         draggable: false,
-        onClick: () => {
-          setSelectedElement({
-            type: "field",
-            id: fieldId,
-            name: baseRect.field.name,
-            area: Number(baseRect.field.area_sqm ?? 0),
-            locationName,
-          });
-        },
-        onTap: () => {
-          setSelectedElement({
-            type: "field",
-            id: fieldId,
-            name: baseRect.field.name,
-            area: Number(baseRect.field.area_sqm ?? 0),
-            locationName,
-          });
-        },
+        onClick: select,
+        onTap: select,
       };
     }
 
@@ -786,6 +775,7 @@ export default function GraphicalFields({
       constrain,
       blocked: () => pendingFieldSaves.has(locationId),
       onGuides: setActiveGuides,
+      onPreview: position => setGeometryPreview(position && { type: "field", id: fieldId, locationId, position }),
       onDrop: position => {
         const inverseRotation = ((360 - rotation) % 360) as GraphicalRotation;
         const stored = rotateRect({ ...baseRect, ...position }, contentBounds, inverseRotation);
@@ -845,6 +835,7 @@ export default function GraphicalFields({
       snapping,
       constrain: position => clampInsideParent(position, bedVm, fieldInnerSize),
       offset: { x: FIELD_INNER_OFFSET_X, y: FIELD_INNER_OFFSET_Y },
+      onPreview: position => setGeometryPreview(position && { type: "bed", id: bedVm.id, locationId, position }),
       onGuides: guides => setActiveGuides(guides.map(guide => {
         const x = currentFieldRect.x + FIELD_INNER_OFFSET_X;
         const y = currentFieldRect.y + FIELD_INNER_OFFSET_Y;
@@ -992,15 +983,31 @@ export default function GraphicalFields({
           if (!location.id) {
             return null;
           }
-          const fieldsOutsideBoundary = boundary
-            ? new Set(
-                fieldViewModels
-                  .filter((fieldRect) => isRectOutsideBoundary(fieldRect, boundary))
-                  .map((fieldRect) => fieldRect.id),
-              )
-            : new Set<number>();
-
           const locationId = location.id;
+          const fieldRectsById = new Map(fieldViewModels.map(rect => [rect.id, rect]));
+          const parcels = defaultFieldRects.flatMap<GraphicalParcel>(stored => {
+            const { field } = stored;
+            const rect = fieldRectsById.get(field.id!);
+            if (!rect) return [];
+            return [{ field, rect, layout: getGraphicalBedLayout(
+              field, stored, beds.filter(bed => bed.field === rect.id), layoutsByBed, rotation,
+            ) }];
+          });
+          const pathSpacing = getLocationPathSpacing(location);
+          const geometry = analyzeGraphicalGeometry(location, boundary, parcels, pathSpacing, rotation, geometryPreview);
+          const parcelWarnings = getGeometryOutlines(geometry.locationReport.issues);
+          const fieldsOutsideBoundary = new Set(geometry.locationReport.issues.flatMap(issue => issue.kind === "outside" ? [issue.id] : []));
+          if (boundary) {
+            for (const id of geometry.locationReport.uncertainIds) {
+              const rect = fieldRectsById.get(id);
+              const preview = geometryPreview?.type === "field" && geometryPreview.id === id
+                && geometryPreview.locationId === locationId ? geometryPreview.position : null;
+              if (rect && isRectOutsideBoundary(preview ? { ...rect, ...preview } : rect, boundary)) {
+                fieldsOutsideBoundary.add(id);
+                parcelWarnings.set(id, "outside");
+              }
+            }
+          }
           const contentBounds = getContentBoundsForLocation(locationId);
           const locationIsEditable = isLocationEditMode(locationId);
           const viewport =
@@ -1011,8 +1018,14 @@ export default function GraphicalFields({
               getFitViewportPadding(stageWidth, stageHeight),
             );
           const visibility = getVisibleElements(viewport.scale);
-          const pathSpacing = getLocationPathSpacing(location);
           const snapping = { enabled: pathSpacing.snap_to_path_spacing, zoom: viewport.scale };
+          const focusArea = (rect: PlacementRect): void => {
+            setViewportByLocation(previous => ({ ...previous, [locationId]: {
+              scale: viewport.scale,
+              x: stageWidth / 2 - (rect.x + rect.width / 2) * viewport.scale,
+              y: stageHeight / 2 - (rect.y + rect.height / 2) * viewport.scale,
+            } }));
+          };
 
           return (
             <Box key={locationId} role="region" aria-label={t("fields:graphical.locationTitle", { name: location.name })}>
@@ -1059,6 +1072,8 @@ export default function GraphicalFields({
                     }}
                   >
                     <Stack spacing={0} sx={{ alignItems: "stretch", }} >
+                      <GraphicalGeometryWarnings t={t} parcels={parcels} analysis={geometry}
+                        outsideParcels={fieldsOutsideBoundary} focusArea={focusArea} />
                       <Stack direction={{ xs: "column", sm: "row" }} spacing={0}>
                         {([-1, 1] as const).map(direction => (
                           <AppTooltip disableInteractive key={direction} title={t(direction === -1 ? "fields:graphical.rotateLeft" : "fields:graphical.rotateRight")} placement="left">
@@ -1343,113 +1358,17 @@ export default function GraphicalFields({
                           />
                         </Group>
                       ) : null}
-                      {defaultFieldRects.map((storedBaseRect) => {
-                        const baseRect = {
-                          ...storedBaseRect,
-                          ...(rotation === 90 || rotation === 270
-                            ? { width: storedBaseRect.height, height: storedBaseRect.width }
-                            : {}),
-                        };
-                        const fieldId = baseRect.field.id!;
-                        const currentFieldRect = fieldViewModels.find(
-                          (fieldRect) => fieldRect.id === fieldId,
-                        );
-                        if (!currentFieldRect) {
-                          return null;
-                        }
-
-                        const fieldBeds = beds.filter(
-                          (bed) =>
-                            bed.field === fieldId && bed.id !== undefined,
-                        );
-                        const bedSizeMap = new Map<number, RectSize>();
-                        const fieldUsableArea = getFieldUsableArea(baseRect);
-                        const fieldInnerSize = {
-                          width: fieldUsableArea.width,
-                          height: fieldUsableArea.height,
-                        };
-                        const storedFieldInnerSize = getFieldUsableArea(storedBaseRect);
-                        const rotated = rotation === 90 || rotation === 270;
-                        const { length_m: fieldLength, width_m: fieldWidth } = baseRect.field;
-                        const bedSpacing = fieldLength && fieldWidth && hasMeasuredDimensions(baseRect.field)
-                          ? {
-                            centimeters: pathSpacing.bed_path_spacing_cm,
-                            pixelsPerMeter: {
-                              x: fieldInnerSize.width / (rotated ? fieldLength : fieldWidth),
-                              y: fieldInnerSize.height / (rotated ? fieldWidth : fieldLength),
-                            },
-                          }
+                      {parcels.map(({ field, rect: currentFieldRect, layout }) => {
+                        const fieldId = currentFieldRect.id;
+                        const { fieldSize, usableArea: fieldUsableArea, storedUsableArea, pixelsPerMeter, bedRects } = layout;
+                        const baseRect = { field, width: fieldSize.width, height: fieldSize.height };
+                        const parcelReport = geometry.parcelReports.get(fieldId);
+                        const bedWarnings = getGeometryOutlines(parcelReport?.issues ?? []);
+                        const bedSpacing = pixelsPerMeter
+                          ? { centimeters: pathSpacing.bed_path_spacing_cm, pixelsPerMeter }
                           : undefined;
-                        fieldBeds.forEach((bed) => {
-                          bedSizeMap.set(
-                            bed.id!,
-                            getBedRectSizeWithinField(
-                              bed,
-                              baseRect.field,
-                              storedFieldInnerSize,
-                            ),
-                          );
-                        });
-
-                        const missingBeds = fieldBeds
-                          .map((bed) => bed.id!)
-                          .filter((bedId) => !layoutsByBed[bedId]);
-                        const occupiedBedRects: PlacementRect[] = fieldBeds
-                          .filter((bed) => layoutsByBed[bed.id!])
-                          .map((bed) => {
-                            const bedId = bed.id!;
-                            const size = bedSizeMap.get(bedId)!;
-                            const saved = layoutsByBed[bedId];
-                            const clamped = clampInsideParent(
-                              { x: saved.x, y: saved.y },
-                              size,
-                              storedFieldInnerSize,
-                            );
-                            return {
-                              x: clamped.x,
-                              y: clamped.y,
-                              width: size.width,
-                              height: size.height,
-                            };
-                          });
-                        const autoLayout = initialAutoLayout(
-                          missingBeds,
-                          bedSizeMap,
-                          storedFieldInnerSize,
-                          BED_AUTO_LAYOUT_GAP,
-                          occupiedBedRects,
-                          BED_PLACEMENT_SPACING,
-                        );
-                        const bedViewModels: BedViewModel[] = fieldBeds.map(
-                          (bed) => {
-                            const bedId = bed.id!;
-                            const size = bedSizeMap.get(bedId)!;
-                            const saved = layoutsByBed[bedId];
-                            const fallback = autoLayout.get(bedId) ?? {
-                              x: 10,
-                              y: 10,
-                            };
-                            const clamped = clampInsideParent(
-                              {
-                                x: saved?.x ?? fallback.x,
-                                y: saved?.y ?? fallback.y,
-                              },
-                              size,
-                              storedFieldInnerSize,
-                            );
-                            return {
-                              id: bedId,
-                              name: bed.name,
-                              area: Number(bed.area_sqm ?? 0),
-                              x: clamped.x,
-                              y: clamped.y,
-                              width: size.width,
-                              height: size.height,
-                              supportsMetricSpacing: hasMeasuredDimensions(bed),
-                            };
-                          },
-                        ).map(rect => rotateRectBetweenSizes(rect, storedFieldInnerSize, fieldInnerSize, rotation));
-
+                        const fieldWarning = parcelWarnings.get(fieldId)
+                          ?? (parcelReport?.issues.some(issue => issue.kind === "noPathSpace") ? "shortGap" : undefined);
                         const { onClick, onTap, ...fieldDragProps } = getFieldInteractionProps(
                           fieldId, baseRect, currentFieldRect,
                           { width: contentWidth, height: contentHeight },
@@ -1458,6 +1377,7 @@ export default function GraphicalFields({
                             centimeters: pathSpacing.parcel_path_spacing_cm,
                             pixelsPerMeter: { x: FIELD_WORLD_PX_PER_METER, y: FIELD_WORLD_PX_PER_METER },
                           } },
+                          parcelReport?.coverage,
                         );
                         return (
                           <Group
@@ -1490,12 +1410,8 @@ export default function GraphicalFields({
                             <Rect
                               width={baseRect.width}
                               height={baseRect.height}
-                              stroke={
-                                fieldsOutsideBoundary.has(fieldId)
-                                  ? theme.palette.warning.main
-                                  : theme.palette.primary.main
-                              }
-                              strokeWidth={2}
+                              {...getOutlineProps(fieldWarning, theme.palette.primary.main, 2)}
+                              data-geometry-issue={fieldWarning}
                               cornerRadius={4}
                               data-testid={`field-rect-${fieldId}`}
                               data-outside-location={fieldsOutsideBoundary.has(fieldId) || undefined}
@@ -1523,7 +1439,7 @@ export default function GraphicalFields({
                               />
                             ) : null}
                             {visibility.showBeds
-                              ? bedViewModels.map((bedVm) => (
+                              ? bedRects.map((bedVm) => (
                                   <Group key={bedVm.id}>
                                     <Rect
                                       x={FIELD_INNER_OFFSET_X + bedVm.x}
@@ -1531,19 +1447,19 @@ export default function GraphicalFields({
                                       width={bedVm.width}
                                       height={bedVm.height}
                                       fill={theme.palette.info.light}
-                                      stroke={theme.palette.info.main}
-                                      strokeWidth={1}
+                                      {...getOutlineProps(bedWarnings.get(bedVm.id), theme.palette.info.main, 1)}
+                                      data-geometry-issue={bedWarnings.get(bedVm.id)}
                                       name="graphical-editable"
                                       data-testid={`bed-rect-${bedVm.id}`}
                                       {...getBedInteractionProps(
                                         bedVm,
                                         currentFieldRect,
-                                        fieldInnerSize,
-                                        bedViewModels,
+                                        fieldUsableArea,
+                                        bedRects,
                                         location.name,
                                         baseRect.field.name,
                                         locationId,
-                                        storedFieldInnerSize,
+                                        storedUsableArea,
                                         rotation,
                                         { ...snapping, thresholdPx: SNAP_THRESHOLD, spacing: bedSpacing },
                                       )}

@@ -29,6 +29,24 @@
     "graphical": "Gráfico"
   },
   "graphical": {
+    "geometry": {
+      "title": "Verificação do esquema",
+      "open": "Verificação do esquema ({{count}})",
+      "focus": "Mostrar {{name}} no gráfico",
+      "parcelOutside": "{{name}} ultrapassa o limite da exploração.",
+      "bedOutside": "{{name}} ultrapassa a área útil de {{parent}}.",
+      "overlap": "{{first}} sobrepõe-se a {{second}}.",
+      "shortGap": "O espaço entre {{first}} e {{second}} é de {{actual}} cm. O espaçamento recomendado é de {{recommended}} cm.",
+      "noPathSpace": "Os canteiros ocupam toda a área de {{name}}. Não há espaço para os caminhos recomendados.",
+      "unknownLocation": "Indica as dimensões da exploração na lista para verificar o limite.",
+      "unknownParcels": "Não é possível verificar {{names}} com precisão porque faltam as dimensões ou os contornos estão ampliados.",
+      "unknownBeds": "Não é possível medir a área ocupada por {{names}} em {{name}}. Confirma as dimensões da parcela e dos canteiros na lista.",
+      "grossArea": "Área bruta {{area}}",
+      "bedFootprint": "Área de canteiros dentro da parcela {{area}}",
+      "remainingArea": "Área restante {{area}}",
+      "remainingHelp": "A área restante inclui caminhos e margens.",
+      "areaUnknown": "São necessárias as dimensões da parcela e dos canteiros para calcular as áreas ocupada e restante."
+    },
     "spacing": {
       "button": "Espaçamento",
       "title": "Espaçamento (caminhos)",

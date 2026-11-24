@@ -29,6 +29,24 @@
     "graphical": "Grafica"
   },
   "graphical": {
+    "geometry": {
+      "title": "Verifica dello schema",
+      "open": "Verifica dello schema ({{count}})",
+      "focus": "Mostra {{name}} nel grafico",
+      "parcelOutside": "{{name}} supera il limite del sito.",
+      "bedOutside": "{{name}} supera la superficie utilizzabile di {{parent}}.",
+      "overlap": "{{first}} si sovrappone a {{second}}.",
+      "shortGap": "Fra {{first}} e {{second}} ci sono {{actual}} cm. La distanza consigliata è di {{recommended}} cm.",
+      "noPathSpace": "Le aiuole occupano tutta la superficie di {{name}}. Non resta spazio per i passaggi consigliati.",
+      "unknownLocation": "Imposta le dimensioni del sito nell’elenco per verificarne il limite.",
+      "unknownParcels": "Non è possibile verificare con esattezza {{names}} perché le dimensioni mancano o i contorni sono ingranditi.",
+      "unknownBeds": "Non è possibile misurare la superficie occupata da {{names}} in {{name}}. Controlla le dimensioni dell’appezzamento e delle aiuole nell’elenco.",
+      "grossArea": "Superficie lorda {{area}}",
+      "bedFootprint": "Superficie occupata dalle aiuole nell’appezzamento {{area}}",
+      "remainingArea": "Superficie rimanente {{area}}",
+      "remainingHelp": "La superficie rimanente comprende passaggi e margini.",
+      "areaUnknown": "Per calcolare le superfici occupata e rimanente servono le dimensioni dell’appezzamento e delle aiuole."
+    },
     "spacing": {
       "button": "Distanze",
       "title": "Distanze (passaggi)",

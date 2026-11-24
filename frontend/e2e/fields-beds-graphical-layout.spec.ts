@@ -192,6 +192,7 @@ test.describe('location spacing in a touch-capable browser', () => {
     await page.goto('/app/fields-beds');
     await page.getByRole('button', { name: 'Grafik', exact: true }).click();
     await selectLocation(page, 'Hofgarten');
+    await expect(page.getByRole('button', { name: /^Layoutprüfung/ })).toHaveCount(0);
     const trigger = page.getByRole('button', { name: 'Abstände', exact: true });
     const dialog = page.getByRole('dialog', { name: 'Abstände (Wege)' });
     const bed = dialog.getByRole('textbox', { name: 'Zwischen Beeten (cm)' });
@@ -233,6 +234,7 @@ test.describe('location spacing in a touch-capable browser', () => {
     expect(await apiRequest(page, 'GET', layouts)).toEqual(originalGeometry);
 
     await selectLocation(page, 'Acker am Bach');
+    await expect(page.getByRole('button', { name: /^Layoutprüfung/ })).toHaveCount(0);
     await trigger.click();
     await expect(bed).toHaveValue('45');
     await expect(parcel).toHaveValue('100');
@@ -465,7 +467,7 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
            rect.y + rect.height <= other.y + 1 || other.y + other.height <= rect.y + 1)));
     }).toBe(true);
     await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1)).toBe(true);
-    await expect.poll(async () => (await canvasRects(page, 'field-rect-'))[0].stage.height).toBeGreaterThan(96);
+    await expect.poll(async () => (await canvasRects(page, 'field-rect-'))[0]?.stage.height ?? 0).toBeGreaterThan(96);
     if (viewport.width === 1920) await expect(page.getByTestId('topbar-workspace-row')).toHaveCount(0);
     if (viewport.width <= 1024) await expect(page.getByTestId('topbar-workspace-row')).toBeVisible();
     await page.mouse.move(1, viewport.height - 1);

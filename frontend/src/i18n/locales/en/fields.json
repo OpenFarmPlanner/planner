@@ -29,6 +29,24 @@
     "graphical": "Graphic"
   },
   "graphical": {
+    "geometry": {
+      "title": "Layout checks",
+      "open": "Layout checks ({{count}})",
+      "focus": "Show {{name}} on the graphic",
+      "parcelOutside": "{{name}} extends beyond the location boundary.",
+      "bedOutside": "{{name}} extends beyond the usable area of {{parent}}.",
+      "overlap": "{{first}} overlaps {{second}}.",
+      "shortGap": "The gap between {{first}} and {{second}} is {{actual}} cm. The recommended gap is {{recommended}} cm.",
+      "noPathSpace": "Beds fill {{name}}. There is no room for the recommended paths.",
+      "unknownLocation": "Set the location dimensions in List to check its boundary.",
+      "unknownParcels": "Exact parcel checks are unavailable for {{names}} because their dimensions are missing or their outlines are enlarged.",
+      "unknownBeds": "The bed footprint in {{name}} could not be measured for {{names}}. Check the parcel and bed dimensions in List.",
+      "grossArea": "Gross area {{area}}",
+      "bedFootprint": "Bed footprint within the parcel {{area}}",
+      "remainingArea": "Remaining area {{area}}",
+      "remainingHelp": "The remaining area includes paths and margins.",
+      "areaUnknown": "Parcel and bed dimensions are needed to calculate the footprint and remaining area."
+    },
     "spacing": {
       "button": "Spacing",
       "title": "Spacing (paths)",

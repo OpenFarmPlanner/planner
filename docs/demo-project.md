@@ -61,6 +61,14 @@ Move a bed or parcel near its neighbour and check the gap shown on the canvas.
 Hold Shift while dragging to place it freely. Restore defaults and Apply
 changes the selected location's settings for later drags.
 
+For layout warnings, choose Hofgarten in the local demo. Its three early beds
+start with two clear paths. In Edit graphic, hold Shift and move the middle
+bed (Salat 2) towards a neighbour. Move a little to narrow the path and move
+farther to overlap. The outline changes during the drag, and the Layout checks
+button names the affected beds after the drop. To demonstrate a saved overflow,
+increase that bed's width beyond the parcel width in List, then return to
+Graphic. Reduce it again to restore a valid footprint.
+
 Site conditions (#1075) are language-independent choices, so every demo
 language shows the same values. Hofgarten is sunny, normal moisture, irrigation
 available; Acker am Bach is sunny and moist without irrigation; Lindenhof

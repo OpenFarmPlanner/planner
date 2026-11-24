@@ -23,6 +23,7 @@ export interface AreaDragOptions {
   snapping: DragSnapping;
   constrain: (point: Point) => Point;
   onGuides: (guides: GuideLine[]) => void;
+  onPreview: (position: Point | null) => void;
   onDrop: (position: Point) => void;
   offset?: Point;
   blocked?: () => boolean;
@@ -72,6 +73,7 @@ export function useAreaDrag() {
           writePosition(node, offset, result);
           session.targets = result.guides.map(guide => guide.target);
           options.onGuides(result.guides);
+          options.onPreview({ x: result.x, y: result.y });
         },
       };
       sessions.current = session;
@@ -85,6 +87,7 @@ export function useAreaDrag() {
       const offset = options.offset ?? noOffset;
       sessions.current = null;
       options.onGuides([]);
+      options.onPreview(null);
       if (!event.evt || ['touchcancel', 'pointercancel'].includes(event.evt.type) || options.blocked?.()) {
         writePosition(node, offset, options.area);
         return;
