@@ -202,7 +202,8 @@ It has no project writes. When any affected crop has a planting plan, when a
 group is ambiguous, or when excluding varieties would leave an incomplete
 group, the preview blocks the batch.
 
-The same preview returns all affected names, their culture and variety
+The same preview returns all affected display names in the active language
+and project region, their culture and variety
 relationships, and the additional varieties that need consent. The dialog
 shows cultures and varieties in its title, nests affected varieties under an
 affected culture, and lets users expand long lists. If the additional IDs

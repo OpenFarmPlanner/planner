@@ -75,12 +75,25 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
     """Each list endpoint must cost the same number of queries for every row."""
 
     def test_crop_deletion_preview_returns_all_records_with_constant_queries(self):
-        parents = [
-            Crop.objects.create(project=self.project, name=f'Deletion preview {index}')
+        species = [
+            CropSpecies.objects.create(
+                name=f'Deletion preview species {index}', status=CropSpecies.STATUS_PUBLISHED,
+            )
             for index in range(10)
         ]
+        for entry in species:
+            CropSpeciesTranslation.objects.create(
+                species=entry, language_code='en', common_name=f'{entry.name} localized',
+            )
+        parents = [
+            Crop.objects.create(project=self.project, name=entry.name, crop_species=entry)
+            for entry in species
+        ]
         varieties = [
-            Crop.objects.create(project=self.project, name=parent.name, variety='Example')
+            Crop.objects.create(
+                project=self.project, name=parent.name,
+                crop_species=parent.crop_species, variety='Example',
+            )
             for parent in parents
         ]
         url = '/openfarmplanner/api/crops/bulk-delete/preview/'

@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
 
+from config.languages import resolve_request_language
 from config.responses import api_error_response
 from farm.history import _current_actor_label
 from farm.project_context import get_active_project_or_400
@@ -111,6 +112,7 @@ class BulkCropDeletionPreviewView(BulkCropDeletionViewBase):
         try:
             return Response(preview_crop_deletion(
                 project, actor_id=request.user.pk, selection=serializer.selection,
+                language_code=resolve_request_language(request),
             ))
         except BulkCropDeletionConflict as exc:
             return bulk_crop_deletion_error(exc)

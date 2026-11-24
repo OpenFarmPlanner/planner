@@ -9,11 +9,12 @@ from uuid import UUID
 
 from django.core.signing import BadSignature, Signer
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Q
+from django.db.models import Count, Q, prefetch_related_objects
 from django.utils import timezone
 from django.utils.crypto import constant_time_compare
 from django.utils.dateparse import parse_datetime
 
+from config.languages import DEFAULT_LANGUAGE_CODE
 from farm.history.project_restore import ensure_project_checkpoint
 from farm.history.records import revision_actor, revision_batch, start_batch_operation
 from farm.models import (
@@ -26,6 +27,7 @@ from farm.models import (
     SeedPackage,
     format_crop_display_name,
 )
+from farm.services.crop_display import resolve_crop_display_name
 from farm.services.crop_inheritance import lock_crop_project, validate_crop_identity
 
 MAX_BULK_CROPS = 5_000
@@ -144,25 +146,30 @@ def _affected_crops(
     return sorted(affected.values(), key=lambda crop: crop.pk), blocked, required_varieties
 
 
-def _crop_samples(crops: list[Crop]) -> list[dict[str, Any]]:
+def _crop_samples(crops: list[Crop], names: dict[int, str]) -> list[dict[str, Any]]:
     return [
-        {"id": crop.pk, "name": format_crop_display_name(crop.name, crop.variety) or crop.name}
+        {
+            "id": crop.pk,
+            "name": (
+                format_crop_display_name(names.get(crop.pk, crop.name), crop.variety) or crop.name
+            ),
+        }
         for crop in crops[:_SAMPLE_SIZE]
     ]
 
 
 def _preview_records(
-    crops: list[Crop], parents: dict[tuple[str, int | str], Crop],
+    crops: list[Crop], parents: dict[tuple[str, int | str], Crop], names: dict[int, str],
 ) -> list[dict[str, Any]]:
     records = []
     for crop in crops:
         parent = parents.get(_group_key(crop)) if crop.variety_normalized is not None else None
         records.append({
             "id": crop.pk,
-            "name": crop.name,
+            "name": names[crop.pk],
             "variety": crop.variety.strip() if crop.variety_normalized is not None else None,
             "parent_id": parent.pk if parent is not None else None,
-            "parent_name": parent.name if parent is not None else crop.name,
+            "parent_name": names[parent.pk] if parent is not None else names[crop.pk],
         })
     return records
 
@@ -192,7 +199,7 @@ def _preview_token(
 
 def _build_plan(
     project: Project, actor_id: int, selection: CropDeletionSelection,
-    *, include_records: bool = False,
+    *, language_code: str | None = None,
 ) -> CropDeletionPlan:
     selected, groups = _crop_groups(project, selection)
     affected, blocked, required_varieties = _affected_crops(
@@ -217,6 +224,14 @@ def _build_plan(
     missing_count = len(selection.crop_ids) - len(selected) if selection.scope == "selected" else 0
     blocked_ids = set().union(*blocked.values())
     variety_count = sum(crop.variety_normalized is not None for crop in affected)
+    names = {}
+    if language_code is not None:
+        related = [crop for group in groups.values() for crop in group]
+        prefetch_related_objects(related, "crop_species__translations")
+        names = {
+            crop.pk: resolve_crop_display_name(crop, language_code, project.region)[0] or crop.name
+            for crop in related
+        }
     preview = {
         "scope": selection.scope,
         "selected_count": len(selected) + missing_count,
@@ -226,11 +241,11 @@ def _build_plan(
         "additional_count": len(affected) - len(selected),
         "missing_count": missing_count,
         "blocked_count": len(blocked_ids),
-        "samples": _crop_samples(affected),
+        "samples": _crop_samples(affected, names),
         "blockers": [
             {
                 "code": code, "count": len(ids),
-                "samples": _crop_samples([crop for crop in affected if crop.pk in ids]),
+                "samples": _crop_samples([crop for crop in affected if crop.pk in ids], names),
             }
             for code, ids in blocked.items()
         ],
@@ -239,15 +254,15 @@ def _build_plan(
     }
     if affected and not blocked_ids and not missing_count:
         preview["token"] = _preview_token(project.pk, actor_id, selection, affected, dependencies)
-    if include_records:
+    if language_code is not None:
         parents = {}
         for key, group in groups.items():
             general = [entry for entry in group if entry.variety_normalized is None]
             if len(general) == 1:
                 parents[key] = general[0]
-        preview["affected_records"] = _preview_records(affected, parents)
+        preview["affected_records"] = _preview_records(affected, parents, names)
         preview["required_varieties"] = _preview_records(
-            sorted(required_varieties, key=lambda crop: crop.pk), parents,
+            sorted(required_varieties, key=lambda crop: crop.pk), parents, names,
         )
     return CropDeletionPlan(affected, preview)
 
@@ -255,9 +270,10 @@ def _build_plan(
 @transaction.atomic
 def preview_crop_deletion(
     project: Project, *, actor_id: int, selection: CropDeletionSelection,
+    language_code: str = DEFAULT_LANGUAGE_CODE,
 ) -> dict[str, Any]:
     lock_crop_project(project.pk)
-    return _build_plan(project, actor_id, selection, include_records=True).preview
+    return _build_plan(project, actor_id, selection, language_code=language_code).preview
 
 
 def _request_conflict() -> BulkCropDeletionConflict:
