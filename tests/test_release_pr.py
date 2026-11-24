@@ -11,7 +11,33 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from scripts.ci import release_pr as release
+from scripts.ci import dispatch_release_e2e, release_pr as release
+
+
+class ReleaseE2EDispatchTests(unittest.TestCase):
+    def test_lightweight_and_annotated_remote_tags(self):
+        sha, other = 'a' * 40, 'b' * 40
+        for annotated in (False, True):
+            with self.subTest(annotated=annotated):
+                refs = [f'{sha}\trefs/heads/main', f'{other}\trefs/tags/v3.0.0',
+                        f'{sha}\trefs/tags/v1.2.9',
+                        f'{other if annotated else sha}\trefs/tags/v1.2.10']
+                if annotated:
+                    refs.append(f'{sha}\trefs/tags/v1.2.10^{{}}')
+                with patch.object(dispatch_release_e2e, 'git', return_value='\n'.join(refs)), \
+                        patch.object(dispatch_release_e2e.subprocess, 'run') as run:
+                    dispatch_release_e2e.dispatch()
+                    run.assert_called_once_with(['gh', 'workflow', 'run', 'release-e2e.yml', '--repo',
+                                                 release.REPO, '--ref', 'v1.2.10'], check=True)
+
+    def test_untagged_main_aborts_before_dispatch(self):
+        sha, older = 'a' * 40, 'b' * 40
+        refs = f'{sha}\trefs/heads/main\n{older}\trefs/tags/v1.0.0\n{sha}\trefs/tags/vnext'
+        with patch.object(dispatch_release_e2e, 'git', return_value=refs), \
+                patch.object(dispatch_release_e2e.subprocess, 'run') as run:
+            with self.assertRaisesRegex(RuntimeError, 'no release tag.*Release workflow'):
+                dispatch_release_e2e.dispatch()
+            run.assert_not_called()
 
 
 class ReleaseValidationTests(unittest.TestCase):
