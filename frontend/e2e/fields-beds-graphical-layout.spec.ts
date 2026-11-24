@@ -7,8 +7,8 @@ test.use({ serviceWorkers: 'block' });
 
 async function canvasRects(page: Page, prefix: string) {
   return page.evaluate(prefix => {
-    const konva = (window as unknown as { Konva: { stages: Konva.Stage[] } }).Konva;
-    return konva.stages.filter(stage => stage.container()?.isConnected)
+    const konva = (window as unknown as { Konva?: { stages: Konva.Stage[] } }).Konva;
+    return (konva?.stages ?? []).filter(stage => stage.container()?.isConnected)
       .flatMap(stage => stage.find('Rect, Text').map(node => ({
         id: String(node.getAttr('data-testid') ?? ''),
         ...node.getAbsolutePosition(stage), width: node.width(), height: node.height(),
@@ -518,10 +518,10 @@ for (const input of ['mouse', 'touch'] as const) {
       expect(saved.bed_layouts).toEqual(initialLayouts.bed_layouts);
       await activate('Liste');
       await activate('Grafik');
-      await expect.poll(async () => (await plot())?.x).toBeCloseTo(droppedX, 7);
+      await expect.poll(async () => (await plot())?.x ?? NaN).toBeCloseTo(droppedX, 7);
       await expect.poll(bedOffsets).toEqual(offsets);
       await page.reload();
-      await expect.poll(async () => (await plot())?.x).toBeCloseTo(droppedX, 7);
+      await expect.poll(async () => (await plot())?.x ?? NaN).toBeCloseTo(droppedX, 7);
       await expect.poll(bedOffsets).toEqual(offsets);
     });
   });
