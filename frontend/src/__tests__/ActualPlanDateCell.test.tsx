@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import i18n from '../i18n';
 import { DialogEditCellContext } from '../components/data-grid/DialogEditCellContext';
-import { ActualPlanDateCell } from '../planting-plans/PlantingPlanDateCells';
+import { ActualPlanDateCell, type ActualPlanDateDrafts } from '../planting-plans/PlantingPlanDateCells';
 import type { PlantingPlanActivity } from '../planting-plans/plantingPlanActualDates';
 
 const planned = '2026-07-01';
@@ -34,6 +34,7 @@ function Harness({ activity = 'transplanting', actual = null, suggested = planne
   save: (value: string | null) => Promise<void>;
 }) {
   const [token, setToken] = useState(0);
+  const [drafts] = useState<ActualPlanDateDrafts>(() => new Map());
   const api = { setCellFocus: vi.fn(), getCellElement: () => null };
   const params = { id: 1, field: 'date', hasFocus: true, api } as unknown as GridRenderCellParams;
   return <DialogEditCellContext.Provider value={{
@@ -42,7 +43,7 @@ function Harness({ activity = 'transplanting', actual = null, suggested = planne
   }}>
     <button onClick={() => setToken(previous => previous + 1)}>Edit cell</button>
     <div role="gridcell">
-      <ActualPlanDateCell params={params} getEditDates={() => ({ activity, actual, planned: suggested })}
+      <ActualPlanDateCell enabled drafts={drafts} params={params} getEditDates={() => ({ activity, actual, planned: suggested })}
         onSaveActual={(_activity, value) => save(value)}>
         {actual ?? '—'}
       </ActualPlanDateCell>

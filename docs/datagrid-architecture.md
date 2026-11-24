@@ -181,8 +181,10 @@ The table and edit endpoints continue to use the active season, and the detail
 page offers an explicit switch to the plan's originating season.
 
 The planting-plans date selector is an outlined toolbar button beside Columns
-where the table is shown. Its menu
-shows the three date modes. The trigger and menu are both grid view controls,
+where the table is shown. Planned is the default. An explicit selection is saved
+in browser storage per signed-in user and applies across projects and seasons.
+The menu describes what each mode displays and edits. The trigger and menu are
+both grid view controls,
 so opening and using the menu preserves the active row draft. The existing
 page help explains the modes. The date mode controls display, ordering, filter
 input and clipboard export. Combined shows recorded dates first and falls back
@@ -199,9 +201,13 @@ the Add planting plan shortcut.
 The planned mode uses the existing row editor for editable planned dates.
 Actual and combined open the shared inline date control for the actual field.
 An empty actual editor suggests the plan date. Enter confirms that suggestion,
-while Tab leaves it unrecorded unless the input was edited. Escape or a change
-of mode discards the draft. Actual date saves patch the selected field.
-Only a genuine deviation is bold and the comparison tooltip gives the plan date.
+while Tab leaves it unrecorded unless the input was edited. Escape cancels the
+draft. Switching between Actual and Combined keeps the draft. Planned hides it
+while the planned cell is shown. Actual date saves patch the selected field.
+Only a genuine deviation is bold. The comparison tooltip shows both dates,
+their difference when available and the field that can be edited. Touch users
+can press and hold a comparison cell for the preview and use the rest of the row
+to open its actions.
 Phone cards keep a labelled planned date. Open the plan from the card to record
 or clear actual dates in its detail page.
 

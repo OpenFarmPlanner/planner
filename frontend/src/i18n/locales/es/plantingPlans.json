@@ -537,6 +537,15 @@
       "actual": "Reales",
       "combined": "Reales o previstas"
     },
+    "modeDescriptions": {
+      "planned": "Ver y editar las fechas previstas",
+      "actual": "Ver y editar las fechas reales",
+      "combined": "Editar las fechas reales. Si falta la fecha real, se muestra la prevista."
+    },
+    "editTargets": {
+      "planned": "Edita la fecha prevista.",
+      "actual": "Edita la fecha real."
+    },
     "edit": "Registrar fechas reales",
     "saveError": "No se pudieron guardar las fechas reales.",
     "unsaved": "Al salir se perderán las fechas sin guardar.",

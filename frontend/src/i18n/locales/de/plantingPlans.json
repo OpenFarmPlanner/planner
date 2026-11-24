@@ -525,6 +525,15 @@
       "actual": "Tatsächlich",
       "combined": "Plan mit Ist"
     },
+    "modeDescriptions": {
+      "planned": "Plantermine anzeigen und bearbeiten",
+      "actual": "Ist-Termine anzeigen und bearbeiten",
+      "combined": "Ist-Termine bearbeiten. Ohne Ist-Termin erscheint der Plantermin."
+    },
+    "editTargets": {
+      "planned": "Hier bearbeitest du den Plantermin.",
+      "actual": "Hier bearbeitest du den Ist-Termin."
+    },
     "edit": "Ist-Termine erfassen",
     "saveError": "Ist-Termine konnten nicht gespeichert werden.",
     "unsaved": "Ungespeicherte Terminänderungen gehen beim Verlassen verloren.",

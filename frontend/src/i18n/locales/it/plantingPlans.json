@@ -537,6 +537,15 @@
       "actual": "Effettive",
       "combined": "Effettive o pianificate"
     },
+    "modeDescriptions": {
+      "planned": "Visualizza e modifica le date pianificate",
+      "actual": "Visualizza e modifica le date effettive",
+      "combined": "Modifica le date effettive. Se manca la data effettiva, appare quella pianificata."
+    },
+    "editTargets": {
+      "planned": "Modifica la data pianificata.",
+      "actual": "Modifica la data effettiva."
+    },
     "edit": "Registra date effettive",
     "saveError": "Impossibile salvare le date effettive.",
     "unsaved": "Uscendo perderai le modifiche alle date non salvate.",

@@ -537,6 +537,15 @@
       "actual": "Réelles",
       "combined": "Réelles ou prévues"
     },
+    "modeDescriptions": {
+      "planned": "Afficher et modifier les dates prévues",
+      "actual": "Afficher et modifier les dates réelles",
+      "combined": "Modifier les dates réelles. En l’absence de date réelle, la date prévue apparaît."
+    },
+    "editTargets": {
+      "planned": "Modifie la date prévue.",
+      "actual": "Modifie la date réelle."
+    },
     "edit": "Saisir les dates réelles",
     "saveError": "Impossible d’enregistrer les dates réelles.",
     "unsaved": "Les dates non enregistrées seront perdues si vous quittez la page.",
