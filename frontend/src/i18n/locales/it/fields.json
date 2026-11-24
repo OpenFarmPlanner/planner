@@ -39,7 +39,8 @@
       "covered": "Superficie degli appezzamenti nel sito {{area}}",
       "remaining": "Spazio non assegnato fuori dagli appezzamenti {{area}}",
       "unknownLocation": "Per mostrare gli spazi liberi del sito servono contorni misurati del sito e degli appezzamenti.",
-      "unknownParcel": "Mancano le dimensioni per colorare gli spazi liberi di alcuni appezzamenti."
+      "unknownParcel": "Mancano le dimensioni per colorare gli spazi liberi di alcuni appezzamenti.",
+      "unknownBed": "Le dimensioni di alcune aiuole sono incomplete. Gli spazi liberi dei relativi appezzamenti non sono colorati."
     },
     "geometry": {
       "title": "Verifica dello schema",

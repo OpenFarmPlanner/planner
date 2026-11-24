@@ -147,5 +147,17 @@ test.describe('free areas on touch', () => {
     await expect.poll(async () => (await free(page, 'parcel')).length).toBe(1);
     await page.getByRole('button', { name: 'Freiflächen', exact: true }).tap();
     await expect(summary.getByText('Freifläche außerhalb der Parzellen 702 m²')).toBeVisible();
+    await closePopover(page);
+
+    await apiRequest(page, 'POST', '/beds/', { name: 'Beet ohne Maße', field: parcel.id, area_sqm: 6 });
+    await page.reload();
+    await trigger.tap();
+    await toggle.tap();
+    await closePopover(page);
+    await page.getByRole('button', { name: 'Freiflächen teilweise nicht messbar' }).tap();
+    await expect(summary.getByText('Einige Beete haben keine vollständigen Maße. Die Freiflächen ihrer Parzellen bleiben ungeschattet.')).toBeVisible();
+    await expect(summary.getByText('Einige Parzellen sind wegen fehlender Maße ohne Freiflächenschattierung.')).toHaveCount(0);
+    expect(await free(page, 'parcel')).toEqual([]);
+    expect((await free(page, 'site')).length).toBeGreaterThan(0);
   });
 });

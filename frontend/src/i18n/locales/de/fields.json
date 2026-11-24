@@ -39,7 +39,8 @@
       "covered": "Fläche der Parzellen innerhalb des Standorts {{area}}",
       "remaining": "Freifläche außerhalb der Parzellen {{area}}",
       "unknownLocation": "Für die Freiflächen des Standorts werden genaue Standort- und Parzellenumrisse benötigt.",
-      "unknownParcel": "Einige Parzellen sind wegen fehlender Maße ohne Freiflächenschattierung."
+      "unknownParcel": "Einige Parzellen sind wegen fehlender Maße ohne Freiflächenschattierung.",
+      "unknownBed": "Einige Beete haben keine vollständigen Maße. Die Freiflächen ihrer Parzellen bleiben ungeschattet."
     },
     "geometry": {
       "title": "Layoutprüfung",

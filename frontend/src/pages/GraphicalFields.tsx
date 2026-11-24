@@ -998,8 +998,9 @@ export default function GraphicalFields({
           const pathSpacing = getLocationPathSpacing(location);
           const geometry = analyzeGraphicalGeometry(location, boundary, parcels, pathSpacing, rotation, geometryPreview, showFreeAreas);
           const locationCoverage = geometry.locationReport.coverage;
-          const incompleteParcels = showFreeAreas
-            && [...geometry.parcelReports.values()].some(report => report.coverage.freeRects === null);
+          const parcelCoverage = showFreeAreas ? [...geometry.parcelReports.values()].map(report => report.coverage) : [];
+          const missingParcelDimensions = parcelCoverage.some(coverage => coverage.grossArea === null);
+          const missingBedDimensions = parcelCoverage.some(coverage => coverage.grossArea !== null && coverage.freeRects === null);
           const parcelWarnings = getGeometryOutlines(geometry.locationReport.issues);
           const fieldsOutsideBoundary = new Set(geometry.locationReport.issues.flatMap(issue => issue.kind === "outside" ? [issue.id] : []));
           if (boundary) {
@@ -1079,7 +1080,8 @@ export default function GraphicalFields({
                     <Stack spacing={0} sx={{ alignItems: "stretch", }} >
                       <GraphicalGeometryWarnings t={t} parcels={parcels} analysis={geometry}
                         outsideParcels={fieldsOutsideBoundary} focusArea={focusArea} />
-                      {showFreeAreas ? <GraphicalFreeAreaInfo coverage={locationCoverage} incompleteParcels={incompleteParcels} t={t} /> : null}
+                      {showFreeAreas ? <GraphicalFreeAreaInfo coverage={locationCoverage}
+                        missingParcelDimensions={missingParcelDimensions} missingBedDimensions={missingBedDimensions} t={t} /> : null}
                       <Stack direction={{ xs: "column", sm: "row" }} spacing={0}>
                         {([-1, 1] as const).map(direction => (
                           <AppTooltip disableInteractive key={direction} title={t(direction === -1 ? "fields:graphical.rotateLeft" : "fields:graphical.rotateRight")} placement="left">

@@ -12,7 +12,7 @@ import type { Point } from './graphicalFieldsGeometry';
 type AreaKind = 'site' | 'parcel';
 
 const areaColor = (theme: Theme, kind: AreaKind) => kind === 'site'
-  ? alpha(theme.palette.secondary.main, 0.13)
+  ? alpha(theme.palette.info.main, 0.12)
   : alpha(theme.palette.success.main, 0.16);
 
 export function GraphicalFreeRectangles({ coverage, origin, scale, kind }: {
@@ -40,17 +40,19 @@ export function GraphicalFreeRectangles({ coverage, origin, scale, kind }: {
   );
 }
 
-export function GraphicalFreeAreaInfo({ coverage, incompleteParcels, t }: {
+export function GraphicalFreeAreaInfo({ coverage, missingParcelDimensions, missingBedDimensions, t }: {
   coverage: MetricCoverage;
-  incompleteParcels: boolean;
+  missingParcelDimensions: boolean;
+  missingBedDimensions: boolean;
   t: TFunction<['fields', 'common']>;
 }) {
   const theme = useTheme();
   const id = useId();
   const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
   const incompleteLocation = coverage.footprintArea === null || coverage.remainingArea === null;
+  const incomplete = incompleteLocation || missingParcelDimensions || missingBedDimensions;
   const summaryTitle = t('fields:graphical.freeArea.title');
-  const label = incompleteLocation || incompleteParcels ? t('fields:graphical.freeArea.incomplete') : summaryTitle;
+  const label = incomplete ? t('fields:graphical.freeArea.incomplete') : summaryTitle;
   const area = (value: number) => `${formatLocalizedNumber(value, getActiveFormattingLocale(), {
     maximumFractionDigits: 2,
   })} ${t('common:units.squareMeters')}`;
@@ -60,7 +62,7 @@ export function GraphicalFreeAreaInfo({ coverage, incompleteParcels, t }: {
       <AppTooltip title={label} disableInteractive placement="left">
         <IconButton
           size="small"
-          color={incompleteLocation || incompleteParcels ? 'warning' : 'default'}
+          color={incomplete ? 'warning' : 'default'}
           aria-label={label}
           aria-haspopup="dialog"
           aria-expanded={Boolean(anchor)}
@@ -101,7 +103,8 @@ export function GraphicalFreeAreaInfo({ coverage, incompleteParcels, t }: {
               <Typography>{t('fields:graphical.freeArea.remaining', { area: area(coverage.remainingArea) })}</Typography>
             </>
           ) : <Typography variant="body2">{t('fields:graphical.freeArea.unknownLocation')}</Typography>}
-          {incompleteParcels ? <Typography variant="body2">{t('fields:graphical.freeArea.unknownParcel')}</Typography> : null}
+          {missingParcelDimensions ? <Typography variant="body2">{t('fields:graphical.freeArea.unknownParcel')}</Typography> : null}
+          {missingBedDimensions ? <Typography variant="body2">{t('fields:graphical.freeArea.unknownBed')}</Typography> : null}
           <Button onClick={() => setAnchor(null)} sx={{ alignSelf: 'flex-end' }}>{t('common:actions.close')}</Button>
         </Stack>
       </Popover>

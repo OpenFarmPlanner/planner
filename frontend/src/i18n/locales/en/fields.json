@@ -39,7 +39,8 @@
       "covered": "Parcel footprint within the location {{area}}",
       "remaining": "Unassigned space outside parcels {{area}}",
       "unknownLocation": "The location overlay requires measured site and parcel outlines.",
-      "unknownParcel": "Some parcels lack measured dimensions for shading their free areas."
+      "unknownParcel": "Some parcels lack measured dimensions for shading their free areas.",
+      "unknownBed": "Some beds lack complete measurements. The free areas in their parcels are left unshaded."
     },
     "geometry": {
       "title": "Layout checks",

@@ -39,7 +39,8 @@
       "covered": "Superficie de parcelas dentro de la ubicación {{area}}",
       "remaining": "Espacio sin asignar fuera de las parcelas {{area}}",
       "unknownLocation": "Se necesitan contornos medidos de la ubicación y de sus parcelas.",
-      "unknownParcel": "Faltan dimensiones para sombrear el espacio libre de algunas parcelas."
+      "unknownParcel": "Faltan dimensiones para sombrear el espacio libre de algunas parcelas.",
+      "unknownBed": "Faltan dimensiones de algunos bancales. Los espacios libres de sus parcelas no se sombrean."
     },
     "geometry": {
       "title": "Comprobación del esquema",

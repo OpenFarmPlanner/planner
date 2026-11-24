@@ -39,7 +39,8 @@
       "covered": "Área das parcelas dentro da exploração {{area}}",
       "remaining": "Espaço sem atribuição fora das parcelas {{area}}",
       "unknownLocation": "A visualização dos espaços livres requer contornos medidos da exploração e das parcelas.",
-      "unknownParcel": "Faltam dimensões para sombrear o espaço livre de algumas parcelas."
+      "unknownParcel": "Faltam dimensões para sombrear o espaço livre de algumas parcelas.",
+      "unknownBed": "Faltam dimensões de alguns canteiros. Os espaços livres nas respetivas parcelas ficam sem sombreado."
     },
     "geometry": {
       "title": "Verificação do esquema",

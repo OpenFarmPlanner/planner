@@ -39,7 +39,8 @@
       "covered": "Perceeloppervlakte binnen de locatie {{area}}",
       "remaining": "Niet-toegewezen ruimte buiten de percelen {{area}}",
       "unknownLocation": "Voor de vrije ruimte op de locatie zijn gemeten locatie- en perceelgrenzen nodig.",
-      "unknownParcel": "Voor enkele percelen ontbreken afmetingen om hun vrije ruimte in te kleuren."
+      "unknownParcel": "Voor enkele percelen ontbreken afmetingen om hun vrije ruimte in te kleuren.",
+      "unknownBed": "Bij enkele bedden ontbreken afmetingen. De vrije ruimte in hun percelen wordt niet ingekleurd."
     },
     "geometry": {
       "title": "Indelingscontrole",

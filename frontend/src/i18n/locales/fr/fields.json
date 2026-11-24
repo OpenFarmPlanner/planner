@@ -39,7 +39,8 @@
       "covered": "Emprise des parcelles dans le site {{area}}",
       "remaining": "Espace non affecté hors des parcelles {{area}}",
       "unknownLocation": "Les contours du site et des parcelles doivent être mesurés pour afficher les espaces libres du site.",
-      "unknownParcel": "Certaines parcelles présentent des dimensions manquantes. Leurs espaces libres ne sont pas colorés."
+      "unknownParcel": "Certaines parcelles présentent des dimensions manquantes. Leurs espaces libres ne sont pas colorés.",
+      "unknownBed": "Les dimensions de certaines planches sont incomplètes. Les espaces libres de leurs parcelles restent sans couleur."
     },
     "geometry": {
       "title": "Vérification du schéma",
