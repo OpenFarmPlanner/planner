@@ -29,6 +29,18 @@
     "graphical": "Gráfico"
   },
   "graphical": {
+    "spacing": {
+      "button": "Distancias",
+      "title": "Distancias (caminos)",
+      "bed": "Entre bancales (cm)",
+      "parcel": "Entre parcelas (cm)",
+      "snap": "Ajustar a las distancias al arrastrar",
+      "bypass": "Mantén pulsada la tecla Mayús mientras arrastras para desactivar temporalmente el ajuste.",
+      "reset": "Restaurar valores predeterminados",
+      "apply": "Aplicar",
+      "invalid": "Introduce un número mayor o igual que 0.",
+      "saveError": "No se han podido guardar las distancias."
+    },
     "layoutLoadError": "No se ha podido cargar el gráfico. Vuelve a intentarlo.",
     "noFields": "Esta ubicación aún no tiene parcelas. Cambia a la lista para añadirlas.",
     "locationSelector": "Ubicación",

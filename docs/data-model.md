@@ -134,6 +134,13 @@ erDiagram
   dimensions and row actions stay reachable; the graphic view names the
   location as well (#1190). Plots are added from the location row's add action
   (or context menu); the topbar only offers "Add location".
+- Each location stores recommended path gaps in centimetres
+  (`bed_path_spacing_cm`, 30 by default, and `parcel_path_spacing_cm`, 75 by
+  default) and a `snap_to_path_spacing` preference (on by default). Graphic →
+  Spacing edits these values. They affect subsequent drags between measured
+  siblings. Applying them leaves dimensions, area and saved positions intact.
+  Hold Shift while dragging for free positioning, or turn off snapping in
+  the popover. A gap of zero snaps opposing edges together.
 - A location may carry optional outer dimensions (`length_m`, `width_m`, in
   metres, both > 0). Its `area_sqm` is read-only: their product when both are
   set, otherwise none; there is no stored location area and the dimensions are

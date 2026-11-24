@@ -29,6 +29,18 @@
     "graphical": "Grafik"
   },
   "graphical": {
+    "spacing": {
+      "button": "Abstände",
+      "title": "Abstände (Wege)",
+      "bed": "Zwischen Beeten (cm)",
+      "parcel": "Zwischen Parzellen (cm)",
+      "snap": "Beim Verschieben an Abständen einrasten",
+      "bypass": "Beim Ziehen die Umschalttaste gedrückt halten, um vorübergehend ohne Einrasten zu verschieben.",
+      "reset": "Standardwerte",
+      "apply": "Übernehmen",
+      "invalid": "Gib eine Zahl größer oder gleich 0 ein.",
+      "saveError": "Die Abstände konnten nicht gespeichert werden."
+    },
     "layoutLoadError": "Die Grafik konnte nicht geladen werden. Versuche es erneut.",
     "noFields": "Dieser Standort hat noch keine Parzellen. Wechsle zur Liste, um Parzellen anzulegen.",
     "locationSelector": "Standort",

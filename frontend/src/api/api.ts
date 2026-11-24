@@ -24,6 +24,7 @@ import type {
   CropBulkDeleteResult,
   CropBulkDeleteSelection,
   Location,
+  LocationPathSpacing,
   Field,
   Bed,
   PlantingPlan,
@@ -732,6 +733,8 @@ export const locationAPI = {
   get: (id: number) => http.get<Location>(`/locations/${id}/`),
   create: (data: Location) => http.post<Location>('/locations/', withActiveProject(data)),
   update: (id: number, data: Location) => http.put<Location>(`/locations/${id}/`, withActiveProject(data)),
+  updatePathSpacing: (id: number, data: LocationPathSpacing) =>
+    http.patch<Location>(`/locations/${id}/`, data),
   delete: (id: number) => http.delete(`/locations/${id}/`),
 };
 

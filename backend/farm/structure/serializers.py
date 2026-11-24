@@ -33,6 +33,8 @@ def _serialize_effective(conditions: dict[str, EffectiveCondition]) -> dict[str,
 
 
 class LocationSerializer(serializers.ModelSerializer):
+    PATH_GAP_FIELDS = ('bed_path_spacing_cm', 'parcel_path_spacing_cm')
+
     @staticmethod
     def _parse_coordinate(value, field_name: str):
         if value in (None, ''):
@@ -49,11 +51,24 @@ class LocationSerializer(serializers.ModelSerializer):
     def to_internal_value(self, data):
         payload = data.copy() if isinstance(data, dict) else data
         if isinstance(payload, dict):
+            for field in self.PATH_GAP_FIELDS:
+                if isinstance(payload.get(field), bool):
+                    raise serializers.ValidationError({field: 'The spacing must be a number.'})
             if 'latitude' in payload:
                 payload['latitude'] = self._parse_coordinate(payload.get('latitude'), 'latitude')
             if 'longitude' in payload:
                 payload['longitude'] = self._parse_coordinate(payload.get('longitude'), 'longitude')
         return super().to_internal_value(payload)
+
+    def update(self, instance, validated_data):
+        spacing_fields = {*self.PATH_GAP_FIELDS, 'snap_to_path_spacing'}
+        if validated_data and validated_data.keys() <= spacing_fields:
+            # Applying spacing must not overwrite a concurrently saved layout origin.
+            for field, value in validated_data.items():
+                setattr(instance, field, value)
+            instance.save(update_fields=[*validated_data, 'updated_at'])
+            return instance
+        return super().update(instance, validated_data)
 
     def validate_latitude(self, value):
         if value is None:
@@ -94,6 +109,18 @@ class LocationSerializer(serializers.ModelSerializer):
 
     def validate_width_m(self, value: float | None) -> float | None:
         return self._validate_positive_dimension(value, 'Width')
+
+    @staticmethod
+    def _validate_path_spacing(value: float) -> float:
+        if not math.isfinite(value) or value < 0:
+            raise serializers.ValidationError('The spacing must be a finite, non-negative number.')
+        return value
+
+    def validate_bed_path_spacing_cm(self, value: float) -> float:
+        return self._validate_path_spacing(value)
+
+    def validate_parcel_path_spacing_cm(self, value: float) -> float:
+        return self._validate_path_spacing(value)
 
     def get_image_file(self, obj):
         if not obj.image_file_id:

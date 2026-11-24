@@ -4,6 +4,7 @@ import { useLocation, useNavigate, useOutletContext } from 'react-router';
 import FieldsBedsHierarchy from './FieldsBedsHierarchy';
 import FieldsBedsHierarchyMobile from './FieldsBedsHierarchyMobile';
 import GraphicalFields from './GraphicalFields';
+import { GraphicalSpacingControl } from './GraphicalSpacingControl';
 import { AddBedIcon } from '../components/hierarchy/AddBedIcon';
 import { HierarchyAddIcon } from '../components/hierarchy/HierarchyAddIcon';
 import { useCommandContextTag, useRegisterCommands, useRegisterCreateActions } from '../commands/useCommandContext';
@@ -11,6 +12,8 @@ import type { CommandSpec } from '../commands/types';
 import { useTranslation } from '../i18n';
 import PageContainer from '../components/layout/PageContainer';
 import { locationAPI } from '../api/api';
+import type { LocationPathSpacing } from '../api/types';
+import { getLocationPathSpacing } from '../components/hierarchy/utils/locationPathSpacing';
 import { useProjectRequirement } from '../hooks/useProjectRequirement';
 import { useTopbarContextActions } from '../hooks/useTopbarContextActions';
 import { useTopbarTitleActions } from '../hooks/useTopbarTitleActions';
@@ -125,6 +128,12 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
     setIsEditingGraphic(false);
     try { sessionStorage.setItem(`graphicalLocation.${projectId}`, String(id)); } catch { /* Storage may be disabled. */ }
   }, [projectId]);
+  const saveLocationPathSpacing = useCallback(async (id: number, spacing: LocationPathSpacing): Promise<void> => {
+    const { data } = await locationAPI.updatePathSpacing(id, spacing);
+    setLocations(current => current.map(item => item.id === id
+      ? { ...item, ...getLocationPathSpacing(data) }
+      : item));
+  }, [setLocations]);
 
 
   useCommandContextTag('areas');
@@ -369,15 +378,22 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
           <TruncatedTextWithTooltip text={t('fields:graphical.locationTitle', { name: selectedLocation.name })} focusable />
         </Box>
       )}
-      <DisabledActionTooltip title={!hasSelectedGraphicalFields ? t('fields:graphical.noFields') : ''}>
-      <Button disabled={!hasSelectedGraphicalFields} variant={isEditingGraphic ? 'contained' : 'outlined'} color="success"
-        aria-pressed={isEditingGraphic} onClick={() => setIsEditingGraphic(value => !value)}
-        sx={{ flexShrink: 0, maxWidth: '100%', whiteSpace: 'normal', minHeight: { xs: 44, sm: 40 } }}>
-        {t('fields:graphical.locationEditModeAction')}
-      </Button>
-      </DisabledActionTooltip>
+      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, minWidth: 0, maxWidth: '100%',
+        '& > span': { minWidth: 0 } }}>
+        <DisabledActionTooltip title={!hasSelectedGraphicalFields ? t('fields:graphical.noFields') : ''}>
+          <Button disabled={!hasSelectedGraphicalFields} variant={isEditingGraphic ? 'contained' : 'outlined'} color="success"
+            aria-pressed={isEditingGraphic} onClick={() => setIsEditingGraphic(value => !value)}
+            sx={{ minWidth: 0, maxWidth: '100%', whiteSpace: 'normal', minHeight: { xs: 44, sm: 40 } }}>
+            {t('fields:graphical.locationEditModeAction')}
+          </Button>
+        </DisabledActionTooltip>
+        {activeProjectMembership ? (
+          <GraphicalSpacingControl key={selectedLocation.id} location={selectedLocation} onSave={saveLocationPathSpacing} />
+        ) : null}
+      </Box>
     </> : null}</>
-  ) : null, [effectiveViewMode, isEditingGraphic, hasSelectedGraphicalFields, graphicalLocations, selectLocation, selectedLocation, shouldShowProjectRequiredState, t]);
+  ) : null, [activeProjectMembership, effectiveViewMode, isEditingGraphic, hasSelectedGraphicalFields,
+    graphicalLocations, saveLocationPathSpacing, selectLocation, selectedLocation, shouldShowProjectRequiredState, t]);
   useTopbarWorkspaceControls(outletContext?.setTopbarWorkspaceControls, workspaceControls);
 
 

@@ -293,7 +293,7 @@ class DemoFeatureCoverageTests(TestCase):
 
 
 class DemoProjectServiceTests(TestCase):
-    def test_bed_defaults_and_differently_sized_beds_exist_in_every_demo_language(self) -> None:
+    def test_bed_defaults_and_path_spacing_examples_exist_in_every_demo_language(self) -> None:
         for language in SUPPORTED_LANGUAGE_CODES:
             with self.subTest(language=language):
                 project = create_or_reset_demo_project(language_code=language).project
@@ -305,6 +305,32 @@ class DemoProjectServiceTests(TestCase):
                     length_m=10, width_m=1.2,
                 )
                 self.assertTrue(different_beds.exists())
+
+                examples = (
+                    ('hofgarten', 'salat-1', 'salat-2', 30, 75),
+                    ('bachacker', 'karotte-1', 'karotte-2', 45, 100),
+                )
+                text = DEMO_TEXT[resolve_demo_language(language)]
+                for location_key, first, second, bed_gap, parcel_gap in examples:
+                    location = project.locations.get(name=text['locations'][location_key][0])
+                    self.assertEqual(location.bed_path_spacing_cm, bed_gap)
+                    self.assertEqual(location.parcel_path_spacing_cm, parcel_gap)
+                    self.assertTrue(location.snap_to_path_spacing)
+                    left, right = FieldLayout.objects.filter(location=location).order_by('x')
+                    self.assertAlmostEqual(
+                        (right.x - left.x) / 18 - left.field.width_m, parcel_gap / 100,
+                    )
+                    left_bed = BedLayout.objects.get(
+                        location=location, bed__name=text['beds'][first],
+                    )
+                    right_bed = BedLayout.objects.get(
+                        location=location, bed__name=text['beds'][second],
+                    )
+                    pixels_per_meter = (left.field.width_m * 18 - 20) / left.field.width_m
+                    self.assertAlmostEqual(
+                        (right_bed.x - left_bed.x) / pixels_per_meter - left_bed.bed.width_m,
+                        bed_gap / 100,
+                    )
 
     def test_demo_project_lists_bought_in_young_plants(self) -> None:
         result = create_or_reset_demo_project()
@@ -573,21 +599,21 @@ class DemoProjectServiceTests(TestCase):
 
         expected_field_positions = {
             'Fr\u00fchbeete Nord': (40, 40),
-            'Folientunnel S\u00fcd': (240, 40),
+            'Folientunnel S\u00fcd': (188.5, 40),
             'Wurzelgem\u00fcse': (40, 40),
-            'Kohlquartier': (220, 40),
+            'Kohlquartier': (166, 40),
             'Schlag Nord': (40, 40),
             'Schlag S\u00fcd': (240, 40),
         }
         expected_positions = {
             'Salat 1': (12, 12),
-            'Salat 2': (52, 12),
+            'Salat 2': (28.1, 12),
             'Kr\u00e4uter & Mangold': (92, 12),
             'Tomatenreihe 1': (14, 18),
             'Tomatenreihe 2': (54, 18),
             'Gurkenreihe': (94, 18),
             'Karotten 1': (8, 20),
-            'Karotten 2': (38, 20),
+            'Karotten 2': (25.6, 20),
             'Rote Bete': (68, 20),
             'Kohlrabi': (8, 24),
             'Zucchini': (36, 24),

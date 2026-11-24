@@ -72,6 +72,9 @@ class SiteConditionsMixin(models.Model):
 
 class Location(SiteConditionsMixin, TimestampedModel):
     """A physical farm location that can contain multiple fields."""
+    DEFAULT_BED_PATH_SPACING_CM = 30.0
+    DEFAULT_PARCEL_PATH_SPACING_CM = 75.0
+
     SOIL_TYPE_SAND = 'sand'
     SOIL_TYPE_LOAM = 'loam'
     SOIL_TYPE_CLAY = 'clay'
@@ -115,6 +118,17 @@ class Location(SiteConditionsMixin, TimestampedModel):
     boundary_y = models.FloatField(
         null=True, blank=True,
         help_text='Graphical view: y of the boundary top-left corner (canvas units, not metres).',
+    )
+    bed_path_spacing_cm = models.FloatField(
+        default=DEFAULT_BED_PATH_SPACING_CM,
+        help_text='Recommended path between sibling beds in cm.',
+    )
+    parcel_path_spacing_cm = models.FloatField(
+        default=DEFAULT_PARCEL_PATH_SPACING_CM,
+        help_text='Recommended path between sibling parcels in cm.',
+    )
+    snap_to_path_spacing = models.BooleanField(
+        default=True, help_text='Enable snapping while arranging areas in the graphical view.',
     )
     notes = models.TextField(blank=True)
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='locations')

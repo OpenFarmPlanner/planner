@@ -29,6 +29,18 @@
     "graphical": "Gráfico"
   },
   "graphical": {
+    "spacing": {
+      "button": "Espaçamento",
+      "title": "Espaçamento (caminhos)",
+      "bed": "Entre canteiros (cm)",
+      "parcel": "Entre parcelas (cm)",
+      "snap": "Ajustar ao espaçamento ao arrastar",
+      "bypass": "Mantém a tecla Shift premida ao arrastar para desativar temporariamente o ajuste.",
+      "reset": "Repor valores predefinidos",
+      "apply": "Aplicar",
+      "invalid": "Introduz um número maior ou igual a 0.",
+      "saveError": "Não foi possível guardar o espaçamento."
+    },
     "layoutLoadError": "Não foi possível carregar o gráfico. Tente novamente.",
     "noFields": "Esta exploração ainda não tem parcelas. Mude para a lista para adicionar parcelas.",
     "locationSelector": "Exploração",

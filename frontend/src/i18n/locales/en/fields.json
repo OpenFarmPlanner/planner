@@ -29,6 +29,18 @@
     "graphical": "Graphic"
   },
   "graphical": {
+    "spacing": {
+      "button": "Spacing",
+      "title": "Spacing (paths)",
+      "bed": "Between beds (cm)",
+      "parcel": "Between parcels (cm)",
+      "snap": "Snap to spacing while dragging",
+      "bypass": "Hold Shift while dragging to temporarily bypass snapping.",
+      "reset": "Restore defaults",
+      "apply": "Apply",
+      "invalid": "Enter a number greater than or equal to 0.",
+      "saveError": "Could not save the spacing settings."
+    },
     "layoutLoadError": "The graphic could not be loaded. Try again.",
     "noFields": "This location has no fields yet. Switch to List to add fields.",
     "locationSelector": "Location",

@@ -838,6 +838,8 @@ def _create_area_hierarchy(
             irrigation='unavailable',
             length_m=50.0,
             width_m=20.0,
+            bed_path_spacing_cm=45,
+            parcel_path_spacing_cm=100,
             project=project,
         ),
         'lindenhof': Location.objects.create(
@@ -928,11 +930,12 @@ def _create_layouts(
     fields: dict[str, Field],
     beds: dict[str, Bed],
 ) -> None:
+    # Two pairs demonstrate the default 75 cm and custom 100 cm gaps at 18 units/m.
     field_positions = {
         'fruehbeete': (40, 40),
-        'tunnel': (240, 40),
+        'tunnel': (188.5, 40),
         'wurzel': (40, 40),
-        'kohl': (220, 40),
+        'kohl': (166, 40),
         'schlag-nord': (40, 40),
         'schlag-sued': (240, 40),
     }
@@ -945,15 +948,17 @@ def _create_layouts(
         boundary_x=DEMO_BOUNDARY_ORIGIN, boundary_y=DEMO_BOUNDARY_ORIGIN,
     )
 
+    # The first pair at each demonstration site uses the configured path gap.
+    # Bed positions use the parcel's usable width, excluding the 10-unit borders.
     bed_positions = {
         'salat-1': (12, 12),
-        'salat-2': (52, 12),
+        'salat-2': (28.1, 12),
         'kraeuter': (92, 12),
         'tomate-1': (14, 18),
         'tomate-2': (54, 18),
         'gurke': (94, 18),
         'karotte-1': (8, 20),
-        'karotte-2': (38, 20),
+        'karotte-2': (25.6, 20),
         'rote-bete': (68, 20),
         'kohlrabi': (8, 24),
         'zucchini': (36, 24),

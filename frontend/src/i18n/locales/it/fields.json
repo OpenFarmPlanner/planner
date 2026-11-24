@@ -29,6 +29,18 @@
     "graphical": "Grafica"
   },
   "graphical": {
+    "spacing": {
+      "button": "Distanze",
+      "title": "Distanze (passaggi)",
+      "bed": "Tra le aiuole (cm)",
+      "parcel": "Tra gli appezzamenti (cm)",
+      "snap": "Allinea alle distanze durante il trascinamento",
+      "bypass": "Tieni premuto Maiusc mentre trascini per disattivare temporaneamente l’allineamento.",
+      "reset": "Ripristina valori predefiniti",
+      "apply": "Applica",
+      "invalid": "Inserisci un numero maggiore o uguale a 0.",
+      "saveError": "Non è stato possibile salvare le distanze."
+    },
     "layoutLoadError": "Impossibile caricare la grafica. Riprova.",
     "noFields": "Questo sito non ha ancora appezzamenti. Passa all’elenco per aggiungerli.",
     "locationSelector": "Sito",
