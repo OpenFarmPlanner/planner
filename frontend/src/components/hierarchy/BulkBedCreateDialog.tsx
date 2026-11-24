@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState, type FormEvent, type ReactElement } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactElement } from 'react';
 import axios from 'axios';
 import {
   Alert,
@@ -18,8 +18,8 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import type { BulkBedCreatePayload } from '../../api/api';
-import type { Bed, Field } from '../../api/types';
+import { layoutAPI } from '../../api/api';
+import type { Bed, BedLayoutEntry, BulkBedCreatePayload, Field, Location } from '../../api/types';
 import { useTranslation } from '../../i18n';
 import { compactFieldSx, formRowSx, mediumFieldSx } from '../forms/formLayout';
 import { LocalizedDecimalField } from '../inputs/LocalizedDecimalField';
@@ -27,6 +27,9 @@ import { DisabledActionTooltip } from '../DisabledActionTooltip';
 import { formatLocalizedNumber, getActiveFormattingLocale } from '../../utils/numberLocalization';
 import { abbreviateNameList } from './utils/bedNaming';
 import { bedDimensionInputFormat, type BedDimensions } from './utils/bedDimensions';
+import { BulkBedLayoutPreview } from './BulkBedLayoutPreview';
+import { buildBulkBedPreview, getBulkBedPreviewContext } from './utils/bulkBedPreview';
+import { getLocationPathSpacing } from './utils/locationPathSpacing';
 import {
   changeBulkBedOrientation,
   evaluateBulkBedForm,
@@ -47,6 +50,8 @@ interface BulkBedCreateDialogProps {
    * fallback dimensions and the next name. Mount the dialog per opening.
    */
   fieldBeds: readonly Bed[];
+  layoutBeds?: readonly Bed[];
+  location?: Location;
   bedDefaults?: BedDimensions;
   onClose: () => void;
   onCreate: (payload: BulkBedCreatePayload) => Promise<void>;
@@ -71,6 +76,8 @@ export function BulkBedCreateDialog({
   open,
   field,
   fieldBeds,
+  layoutBeds = fieldBeds,
+  location,
   bedDefaults,
   onClose,
   onCreate,
@@ -80,21 +87,53 @@ export function BulkBedCreateDialog({
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const locale = getActiveFormattingLocale();
   const titleId = useId();
+  const recommendedGapM = location ? getLocationPathSpacing(location).bed_path_spacing_cm / 100 : null;
   const [values, setValues] = useState<BulkBedFormValues>(
-    () => getInitialBulkBedFormValues(field, fieldBeds, t('dialogs.bulkCreateBeds.defaultFirstName'), bedDefaults),
+    () => getInitialBulkBedFormValues(
+      field, fieldBeds, t('dialogs.bulkCreateBeds.defaultFirstName'), bedDefaults, recommendedGapM,
+    ),
   );
   const [keepLength, setKeepLength] = useState(() => bedDefaults?.length_m != null);
   const [submitError, setSubmitError] = useState('');
   const [serverTakenNames, setServerTakenNames] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false);
+  const locationId = hasBothFieldSides(field) ? location?.id : undefined;
+  const [layoutAttempt, setLayoutAttempt] = useState(0);
+  const [layoutResult, setLayoutResult] = useState<{
+    locationId: number;
+    attempt: number;
+    layouts: Record<number, BedLayoutEntry> | null;
+  }>();
+  useEffect(() => {
+    if (!open || locationId === undefined) return;
+    let active = true;
+    void layoutAPI.listByLocation(locationId).then(({ data }) => {
+      if (active) setLayoutResult({ locationId, attempt: layoutAttempt,
+        layouts: Object.fromEntries(data.bed_layouts.map(layout => [layout.bed, layout])) });
+    }).catch(() => {
+      if (active) setLayoutResult({ locationId, attempt: layoutAttempt, layouts: null });
+    });
+    return () => { active = false; };
+  }, [layoutAttempt, locationId, open]);
+  const currentLayout = layoutResult?.locationId === locationId && layoutResult?.attempt === layoutAttempt
+    ? layoutResult.layouts : undefined;
+  const layoutContext = useMemo(() => field && currentLayout
+    ? getBulkBedPreviewContext(field, layoutBeds.filter(bed => bed.field === field.id && (bed.id ?? 0) > 0), currentLayout)
+    : null, [field, layoutBeds, currentLayout]);
 
   const existingNames = useMemo(() => fieldBeds.map((bed) => bed.name), [fieldBeds]);
   const plan = useMemo(() => evaluateBulkBedForm(values, existingNames), [existingNames, values]);
-  const suggestion = useMemo(() => suggestBulkBedCount(field, fieldBeds, values), [field, fieldBeds, values]);
+  const preview = useMemo(() => layoutContext
+    ? buildBulkBedPreview(layoutContext, values, plan.names, recommendedGapM ?? 0) : null,
+  [layoutContext, values, plan.names, recommendedGapM]);
+  const suggestion = useMemo(() => locationId === undefined
+    ? suggestBulkBedCount(field, fieldBeds, values) : null, [field, fieldBeds, values, locationId]);
   const takenNames = plan.takenNames.length > 0 ? plan.takenNames : serverTakenNames;
-  const areaOverflow = field ? getBulkBedAreaOverflow(field, fieldBeds, plan.totalAreaSqm) : null;
-  const canSubmit = plan.isComplete && takenNames.length === 0 && !isSaving;
+  const areaOverflow = field && locationId === undefined
+    ? getBulkBedAreaOverflow(field, fieldBeds, plan.totalAreaSqm) : null;
+  const canSubmit = plan.isComplete && takenNames.length === 0 && !isSaving
+    && (locationId === undefined || Boolean(preview));
 
   const formatNumber = (value: number): string => formatLocalizedNumber(value, locale, { maximumFractionDigits: 2 });
 
@@ -118,6 +157,9 @@ export function BulkBedCreateDialog({
   };
 
   const describeSuggestion = (): string | null => {
+    if (preview) return preview.insideCount > 0
+      ? t('dialogs.bulkCreateBeds.layoutFits', { count: preview.insideCount })
+      : t('dialogs.bulkCreateBeds.noSpaceLeft');
     if (!suggestion) return null;
     if (suggestion.count <= 0) return t('dialogs.bulkCreateBeds.noSpaceLeft');
     const params = {
@@ -134,9 +176,8 @@ export function BulkBedCreateDialog({
     });
   };
   const suggestionText = describeSuggestion();
-  const applicableCount = suggestion && suggestion.count > 0 && String(suggestion.count) !== values.count.trim()
-    ? suggestion.count
-    : null;
+  const suggestedCount = preview?.insideCount ?? suggestion?.count ?? 0;
+  const applicableCount = suggestedCount > 0 && String(suggestedCount) !== values.count.trim() ? suggestedCount : null;
 
   const handleClose = (): void => {
     if (!isSavingRef.current) {
@@ -155,7 +196,10 @@ export function BulkBedCreateDialog({
     try {
       await onCreate({
         field: field.id,
-        beds: plan.names.map((name) => ({ name, length_m: values.lengthM!, width_m: values.widthM! })),
+        beds: plan.names.map((name, index) => ({
+          name, length_m: values.lengthM!, width_m: values.widthM!,
+          ...(preview ? { layout: preview.placements[index] } : {}),
+        })),
       });
     } catch (error) {
       console.error('Error creating beds', error);
@@ -238,6 +282,7 @@ export function BulkBedCreateDialog({
                     setKeepLength(true);
                     updateValues({ lengthM });
                   }}
+                  onInvalidValue={() => updateValues({ lengthM: Number.NaN })}
                 />
                 <LocalizedDecimalField
                   label={t('dialogs.bulkCreateBeds.width')}
@@ -249,15 +294,18 @@ export function BulkBedCreateDialog({
                   error={Boolean(plan.errors.widthM)}
                   helperText={describeError(plan.errors.widthM)}
                   onValueChange={(widthM) => updateValues({ widthM })}
+                  onInvalidValue={() => updateValues({ widthM: Number.NaN })}
                 />
                 <LocalizedDecimalField
                   label={t('dialogs.bulkCreateBeds.pathWidth')}
                   margin="dense"
                   value={values.pathM}
+                  formatOptions={bedDimensionInputFormat}
                   disabled={isSaving}
                   error={Boolean(plan.errors.pathM)}
                   helperText={describeError(plan.errors.pathM) ?? t('dialogs.bulkCreateBeds.pathHelper')}
                   onValueChange={(pathM) => updateValues({ pathM })}
+                  onInvalidValue={() => updateValues({ pathM: Number.NaN })}
                 />
               </Box>
             </Box>
@@ -380,6 +428,24 @@ export function BulkBedCreateDialog({
                     fieldArea: formatNumber(areaOverflow.fieldArea),
                   })}
                 </Alert>
+              ) : null}
+              {preview && plan.isComplete ? <BulkBedLayoutPreview preview={preview} formatNumber={formatNumber} /> : null}
+              {locationId !== undefined && currentLayout === undefined ? (
+                <Typography variant="body2" role="status" sx={{ mt: 1 }}>
+                  {t('dialogs.bulkCreateBeds.loadingLayout')}
+                </Typography>
+              ) : null}
+              {currentLayout === null ? (
+                <Alert severity="error" sx={{ mt: 1 }} action={
+                  <Button color="inherit" onClick={() => setLayoutAttempt(attempt => attempt + 1)}>
+                    {t('common:runtime.retryAction')}
+                  </Button>
+                }>{t('dialogs.bulkCreateBeds.loadLayoutError')}</Alert>
+              ) : null}
+              {location && locationId === undefined ? (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  {t('dialogs.bulkCreateBeds.missingParcelDimensions')}
+                </Typography>
               ) : null}
             </Box>
             {submitError ? <Alert severity="error">{submitError}</Alert> : null}

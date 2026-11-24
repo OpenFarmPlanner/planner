@@ -54,6 +54,8 @@ export interface HierarchyDataState {
   fetchGeneration: number;
 }
 
+export const BULK_BEDS_UNDONE_EVENT = 'ofp:bulk-beds-undone';
+
 export function useHierarchyData(enabled = true): HierarchyDataState {
   const { t } = useTranslation('hierarchy');
   const [isFetching, setLoading] = useState<boolean>(enabled);
@@ -136,6 +138,9 @@ export function useHierarchyData(enabled = true): HierarchyDataState {
     }
 
     void fetchData();
+    const refreshAfterUndo = () => { void fetchData({ showLoading: false }); };
+    window.addEventListener(BULK_BEDS_UNDONE_EVENT, refreshAfterUndo);
+    return () => window.removeEventListener(BULK_BEDS_UNDONE_EVENT, refreshAfterUndo);
   }, [enabled, fetchData]);
 
   return {

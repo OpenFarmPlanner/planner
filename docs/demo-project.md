@@ -106,6 +106,12 @@ defaults. For example, Salat 1 in Hofgarten has its own dimensions. Open a
 new-bed draft beside it to see the project values, then duplicate Salat 1 to
 verify its dimensions are copied.
 
+Open the Root Vegetables parcel at Creekside Field (Wurzelgemüse at Acker am
+Bach in German) in the Growing Areas List and choose Add multiple beds. The
+end of the parcel has room for multiple beds with the 10 × 1.2 m defaults and
+the site's 0.45 m gap. Preview a group, save it, then switch to Graphic to see
+its positions alongside the existing beds.
+
 ### Crop rotation story
 
 The previous seasons rotate the plant families across the beds so the

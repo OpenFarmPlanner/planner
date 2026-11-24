@@ -108,6 +108,7 @@ export function getInitialBulkBedFormValues(
   fieldBeds: readonly Bed[],
   defaultFirstName: string,
   bedDefaults?: BedDimensions,
+  pathM: number | null = null,
 ): BulkBedFormValues {
   const beds = persistedBeds(fieldBeds);
   const lastBed = beds[beds.length - 1];
@@ -119,7 +120,7 @@ export function getInitialBulkBedFormValues(
     orientation: 'length',
     lengthM: dimensions.length_m,
     widthM: dimensions.width_m,
-    pathM: null,
+    pathM,
     count: '',
     firstName: lastBed ? nextFreeName(lastBed.name, beds.map((bed) => bed.name)) : defaultFirstName,
   };
@@ -172,13 +173,13 @@ export function evaluateBulkBedForm(values: BulkBedFormValues, existingNames: It
     names = buildBedNameSeries(values.firstName, count);
   }
 
-  if (values.lengthM !== null && !(values.lengthM > 0)) {
+  if (values.lengthM !== null && (!Number.isFinite(values.lengthM) || values.lengthM <= 0)) {
     errors.lengthM = { key: 'positiveNumber' };
   }
-  if (values.widthM !== null && !(values.widthM > 0)) {
+  if (values.widthM !== null && (!Number.isFinite(values.widthM) || values.widthM <= 0)) {
     errors.widthM = { key: 'positiveNumber' };
   }
-  if (values.pathM !== null && !(values.pathM >= 0)) {
+  if (values.pathM !== null && (!Number.isFinite(values.pathM) || values.pathM < 0)) {
     errors.pathM = { key: 'nonNegativeNumber' };
   }
   const dimensionsValid = values.lengthM !== null && values.widthM !== null && !errors.lengthM && !errors.widthM;

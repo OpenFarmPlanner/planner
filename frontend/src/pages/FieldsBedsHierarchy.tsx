@@ -65,7 +65,6 @@ import { BulkBedCreateDialog } from "../components/hierarchy/BulkBedCreateDialog
 import { getNewBedDimensions, type BedDimensions } from "../components/hierarchy/utils/bedDimensions";
 import { useFieldDuplication } from "../components/hierarchy/hooks/useFieldDuplication";
 import { nextFreeName } from "../components/hierarchy/utils/bedNaming";
-import { showGlobalSnackbar } from "../utils/globalSnackbar";
 import { isApplePlatform } from "../utils/platform";
 import EmptyStateCard from '../components/project/EmptyStateCard';
 import { PAGE_CONTAINER_SX } from '../components/layout/pageContainerStyles';
@@ -931,12 +930,8 @@ function FieldsBedsHierarchy({
       if (firstCreatedId !== undefined) {
         setPendingFocusBedId(firstCreatedId);
       }
-      showGlobalSnackbar({
-        message: t("dialogs.bulkCreateBeds.created", { count: created.length }),
-        severity: "success",
-      });
     },
-    [bulkCreateBeds, ensureExpanded, t],
+    [bulkCreateBeds, ensureExpanded],
   );
 
   const bulkCreateField = useMemo(
@@ -2282,6 +2277,8 @@ function FieldsBedsHierarchy({
           open
           field={bulkCreateField}
           fieldBeds={bulkCreateFieldBeds}
+          layoutBeds={beds}
+          location={locations.find(location => location.id === bulkCreateField.location)}
           bedDefaults={bedDefaults}
           onClose={() => setBulkCreateFieldId(null)}
           onCreate={handleBulkCreateBeds}

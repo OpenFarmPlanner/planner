@@ -576,6 +576,7 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = list(default_headers) + [
     'x-project-id',
 ]
+CORS_EXPOSE_HEADERS = ['X-Bulk-Bed-Undo']
 
 _csrf_origins_str = os.getenv('CSRF_TRUSTED_ORIGINS', '')
 CSRF_TRUSTED_ORIGINS = _dedupe(

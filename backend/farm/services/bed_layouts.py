@@ -48,6 +48,14 @@ def serialize_location_boundary(location: Location) -> dict[str, float] | None:
     return {'x': location.boundary_x, 'y': location.boundary_y}
 
 
+def create_bed_layout(bed: Bed, placement: dict, *, user_name: str) -> BedLayout:
+    layout = BedLayout.objects.create(
+        bed=bed, project=bed.project, location=bed.field.location, **placement,
+    )
+    _record_layout_revision(layout, None, user_name=user_name)
+    return layout
+
+
 def parse_location_boundary(data: object) -> tuple[bool, dict[str, float] | None, str | None]:
     """Read the optional `location_boundary` entry of a layouts PUT body.
 

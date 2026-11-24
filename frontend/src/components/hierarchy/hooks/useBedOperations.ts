@@ -7,8 +7,10 @@ import { useCallback, useRef, useState } from 'react';
 import { bedAPI, type Bed, type BulkBedCreatePayload } from '../../../api/api';
 import type { TFunction } from 'i18next';
 import { confirmAction } from '../../../utils/confirmAction';
+import { showGlobalSnackbar } from '../../../utils/globalSnackbar';
 import type { HierarchyRow } from '../utils/types';
 import { matchesHierarchyRowPrefill } from '../utils/hierarchyRowDraft';
+import { BULK_BEDS_UNDONE_EVENT } from './useHierarchyData';
 
 /** Values a new bed row starts with ("Beet hinzufügen" after an existing bed). */
 export type BedPrefill = Pick<Bed, 'name' | 'length_m' | 'width_m'>;
@@ -140,6 +142,24 @@ export function useBedOperations(
     const response = await bedAPI.bulkCreate(payload);
     setError('');
     setBeds((prevBeds) => [...response.data, ...prevBeds]);
+    const token = response.headers?.['x-bulk-bed-undo'];
+    const createdIds = new Set(response.data.map(bed => bed.id));
+    showGlobalSnackbar({
+      message: t('dialogs.bulkCreateBeds.created', { count: response.data.length }),
+      severity: 'success',
+      ...(typeof token === 'string' ? {
+        actionLabel: t('common:actions.undo'),
+        onAction: async () => {
+          try {
+            await bedAPI.undoBulkCreate(token);
+            setBeds(previous => previous.filter(bed => !createdIds.has(bed.id)));
+            window.dispatchEvent(new Event(BULK_BEDS_UNDONE_EVENT));
+          } catch {
+            showGlobalSnackbar({ message: t('dialogs.bulkCreateBeds.undoError'), severity: 'error' });
+          }
+        },
+      } : {}),
+    });
     return response.data;
   };
 

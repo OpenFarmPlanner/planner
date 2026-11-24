@@ -32,7 +32,6 @@ import { useFieldDuplication } from "../components/hierarchy/hooks/useFieldDupli
 import type { Bed, BulkBedCreatePayload } from "../api/api";
 import { BulkBedCreateDialog } from "../components/hierarchy/BulkBedCreateDialog";
 import type { BedDimensions } from "../components/hierarchy/utils/bedDimensions";
-import { showGlobalSnackbar } from "../utils/globalSnackbar";
 import { useGrowingAreaSearch } from "../components/hierarchy/hooks/useGrowingAreaSearch";
 import {
   GrowingAreaSearchEmptyState,
@@ -172,15 +171,11 @@ function FieldsBedsHierarchyMobile({
   );
   const handleBulkCreateBeds = useCallback(
     async (payload: BulkBedCreatePayload): Promise<void> => {
-      const created = await bulkCreateBeds(payload);
+      await bulkCreateBeds(payload);
       ensureExpanded(`field-${payload.field}`);
       setBulkCreateFieldId(null);
-      showGlobalSnackbar({
-        message: t("dialogs.bulkCreateBeds.created", { count: created.length }),
-        severity: "success",
-      });
     },
-    [bulkCreateBeds, ensureExpanded, t],
+    [bulkCreateBeds, ensureExpanded],
   );
 
   const [sheetState, setSheetState] = useState<SheetState>(null);
@@ -380,6 +375,8 @@ function FieldsBedsHierarchyMobile({
           open
           field={bulkCreateField}
           fieldBeds={getFieldBedsByName(bulkCreateField.id)}
+          layoutBeds={beds}
+          location={locations.find(location => location.id === bulkCreateField.location)}
           bedDefaults={bedDefaults}
           onClose={() => setBulkCreateFieldId(null)}
           onCreate={handleBulkCreateBeds}

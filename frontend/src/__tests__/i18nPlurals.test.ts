@@ -56,4 +56,18 @@ describe('plural texts', () => {
     const fallback = render('en', 'search.count', 1_000_000);
     expect(render(language, 'search.count', 1_000_000)).not.toBe(fallback);
   });
+
+  it.each([
+    ['de', '1 vorgeschlagenen Beet', '2 vorgeschlagenen Beeten'],
+    ['en', '1 proposed bed', '2 proposed beds'],
+    ['fr', '1 planche proposée', '2 planches proposées'],
+    ['es', '1 bancal propuesto', '2 bancales propuestos'],
+    ['it', '1 aiuola proposta', '2 aiuole proposte'],
+    ['pt', '1 canteiro proposto', '2 canteiros propostos'],
+    ['nl', '1 voorgesteld bed', '2 voorgestelde bedden'],
+  ])('pluralizes the accessible bed layout label in %s', (language, one, other) => {
+    const t = i18n.getFixedT(language, 'hierarchy');
+    expect(t('dialogs.bulkCreateBeds.layoutGraphic', { count: 1 }).endsWith(one)).toBe(true);
+    expect(t('dialogs.bulkCreateBeds.layoutGraphic', { count: 2 }).endsWith(other)).toBe(true);
+  });
 });

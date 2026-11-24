@@ -834,34 +834,34 @@ names are unique per field in the backend).
   name).
 - **"Mehrere Beete anlegen" (field row, desktop and mobile)** opens
   `BulkBedCreateDialog` (full screen below `sm`), laid
-  out to be filled top to bottom like a spreadsheet row. Its pure logic
-  lives in `utils/bulkBedCreatePlan.ts`:
+  out to be filled top to bottom like a spreadsheet row.
   - *Maße*: the beds run along the field length (default) or width; the
-    choice is only shown when the field has both. Length defaults to that
-    field side, otherwise the last bed's length; switching the orientation
-    moves it to the other side until the user has typed a length. Width
-    defaults to the last bed's width, the path (*Weg*) to empty (= 0).
-  - *Anzahl*: `suggestBulkBedCount` fills the *other* field side: free =
-    cross side − widths of all saved beds − one path per saved bed, then
-    `floor((free + path) / (bed width + path))`. The hint under the field
-    updates live (with/without existing beds, "no space left" at ≤ 0, no
-    hint without field dimensions or bed width); a "{n} übernehmen" link
-    appears while the field differs. The count is prefilled once on open
-    and never overwritten afterwards except through that link.
+    choice is shown when the field has both dimensions. Project bed defaults
+    take precedence over suggestions from the field sides and the last bed.
+    The path starts at the location's recommendation. Edits apply to the batch.
+  - *Anzahl*: `regularBedPlacement.ts` fills rows in the measured usable area
+    and skips existing footprints. The fitting-count hint updates when the
+    dimensions, gap or orientation change and can be applied with a button.
+    Fields with only one measured side still offer an approximate width-based
+    count where available.
   - *Namen*: one "first bed" name, defaulting to `nextFreeName` after the
     last bed (otherwise the localized "Beet 1"); `buildBedNameSeries`
     applies `incrementName` to each previous name ("E 2 1", "E 2 2", …;
     "Nordbeet", "Nordbeet 2", …). Taken names are not skipped — they block
     the submit with the list of conflicts.
-  - *Vorschau*: abbreviated names, per-bed and total area, and the
-    non-blocking warning when existing plus new bed area exceeds the field.
+  - *Vorschau*: abbreviated names, per-bed and total area, and a schematic
+    showing existing and proposed beds. The shared geometry reports clipped
+    ground coverage and free physical space. Beds outside the parcel and
+    spacing below the recommendation have distinct warnings. Incomplete
+    dimensions leave the corresponding physical geometry unavailable.
 
-  The dialog is mounted per opening, so its defaults are read once from the
-  beds at that moment. The frontend sends the finished name list to
-  `POST /api/beds/bulk-create/` (`BedViewSet.bulk_create`), which is
-  all-or-nothing and stays one write against the per-account write
-  throttle; it caps a series at 200 beds and records one `created`
-  revision per bed. It is session-only (not in the API-token allowlist).
+  Confirmation sends the bed dimensions and optional layout positions to
+  `POST /api/beds/bulk-create/` (`BedViewSet.bulk_create`). The session-only
+  endpoint saves up to 200 beds with their `BedLayout` rows in one transaction
+  and records their revisions. `runs_across_parcel` tells the Graphic how to
+  orient the stored dimensions. Undo uses the signed response token and
+  removes the batch in one transaction if its beds and layouts are unchanged
+  and none of the beds has a planting plan.
 - **"Parzelle duplizieren" (field row, desktop and mobile)** opens
   `DuplicateFieldDialog`, wired through the shared
   `hooks/useFieldDuplication.tsx` so both layouts behave the same. The new

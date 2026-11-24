@@ -90,6 +90,16 @@ DEMO_PROJECT_DESCRIPTIONS = frozenset({
     *DEMO_SCREENSHOT_PROJECT_DESCRIPTIONS.values(),
 })
 
+BULK_BED_EXAMPLE_NOTES = {
+    'de': 'Am Ende der Parzelle ist Platz für eine Vorschau unter „Mehrere Beete anlegen“.',
+    'en': 'There is room at the end of this parcel to try “Add multiple beds”.',
+    'fr': 'Il reste de la place en bout de parcelle pour essayer « Ajouter plusieurs planches ».',
+    'es': 'Queda espacio al final de la parcela para probar «Añadir varios bancales».',
+    'it': 'In fondo all’appezzamento c’è spazio per provare «Aggiungi più aiuole».',
+    'pt': 'Há espaço no fundo da parcela para experimentar «Adicionar vários canteiros».',
+    'nl': 'Aan het einde van het perceel is ruimte om ‘Meerdere bedden toevoegen’ te proberen.',
+}
+
 DEMO_TEXT = {
     'de': {
         'locations': {
@@ -534,6 +544,7 @@ def resolve_demo_language(language_code: str | None) -> str:
     bundles = (
         DEMO_TEXT, FEATURE_TEXT, DEMO_PROJECT_NAMES,
         DEMO_PERSONAL_PROJECT_DESCRIPTIONS, DEMO_SCREENSHOT_PROJECT_DESCRIPTIONS,
+        BULK_BED_EXAMPLE_NOTES,
     )
     complete = all(
         _has_complete_translation(bundle[DEMO_LANGUAGE_FALLBACK], bundle.get(language))
@@ -876,6 +887,7 @@ def _create_area_hierarchy(
             length_m=length_m,
             width_m=width_m,
             project=project,
+            notes=BULK_BED_EXAMPLE_NOTES[language_code] if key == 'wurzel' else '',
             **field_conditions.get(key, {}),
         )
         for key, name, location_key, length_m, width_m in field_specs

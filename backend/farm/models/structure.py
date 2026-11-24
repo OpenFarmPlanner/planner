@@ -289,6 +289,7 @@ class BedLayout(TimestampedModel):
     y = models.FloatField(default=0.0)
     version = models.PositiveIntegerField(default=1)
     scale = models.FloatField(null=True, blank=True)
+    runs_across_parcel = models.BooleanField(default=False)
 
     def clean(self) -> None:
         """Validate that location matches the bed's location."""

@@ -377,6 +377,7 @@ class BedBulkCreateApiTest(ProjectApiTestCase):
     """POST /beds/bulk-create/ creates a whole series of beds atomically."""
 
     url = '/openfarmplanner/api/beds/bulk-create/'
+    undo_url = '/openfarmplanner/api/beds/undo-bulk-create/'
 
     def _payload(self, names: list[str], **overrides) -> dict:
         payload = {
@@ -408,6 +409,86 @@ class BedBulkCreateApiTest(ProjectApiTestCase):
             action=EntityRevision.ACTION_CREATED,
         )
         self.assertEqual(revisions.count(), 2)
+
+    def _positioned_payload(self, count=2):
+        payload = self._payload([f'Batch {index:03}' for index in range(count)])
+        for index, entry in enumerate(payload['beds']):
+            entry['layout'] = {'x': index * 25.2, 'y': 10, 'runs_across_parcel': True}
+        return payload
+
+    def test_persists_positioned_batch_and_undoes_it_together(self):
+        BedLayout.objects.create(bed=self.bed, location=self.location, project=self.project, x=12)
+        batch = self.client.post(self.url, self._positioned_payload(50), format='json')
+        self.assertEqual(batch.status_code, status.HTTP_201_CREATED, batch.data)
+        ids = [entry['id'] for entry in batch.data]
+        positioned = BedLayout.objects.filter(bed_id__in=ids).order_by('x')
+        self.assertEqual(positioned.count(), 50)
+        self.assertEqual((positioned[1].x, positioned[1].y), (25.2, 10))
+        self.assertTrue(positioned[1].runs_across_parcel)
+        self.assertEqual(positioned[1].location_id, self.location.id)
+        self.assertEqual(positioned[1].project_id, self.project.id)
+        self.assertEqual((positioned[1].bed.length_m, positioned[1].bed.width_m), (10, 1.2))
+        token = batch['X-Bulk-Bed-Undo']
+        for _ in range(2):
+            undone = self.client.post(self.undo_url, {'token': token}, format='json')
+            self.assertEqual(undone.status_code, status.HTTP_204_NO_CONTENT, undone.data)
+        self.assertFalse(positioned.exists())
+        self.assertFalse(Bed.objects.filter(pk__in=ids).exists())
+        self.assertEqual(BedLayout.objects.get(bed=self.bed).x, 12)
+
+    def test_undo_rejects_forged_token_other_project_and_planting_references(self):
+        batch = self.client.post(self.url, self._positioned_payload(), format='json')
+        self.assertEqual(batch.status_code, status.HTTP_201_CREATED, batch.data)
+        ids = [entry['id'] for entry in batch.data]
+        token = batch['X-Bulk-Bed-Undo']
+        forged = self.client.post(self.undo_url, {'token': 'forged'}, format='json')
+        self.assertEqual(forged.status_code, status.HTTP_400_BAD_REQUEST)
+        other = Project.objects.create(name='Other bulk', slug='other-bulk')
+        ProjectMembership.objects.create(project=other, user=self.user, role='admin')
+        foreign = self.client.post(
+            self.undo_url, {'token': token}, format='json', HTTP_X_PROJECT_ID=other.pk,
+        )
+        self.assertEqual(foreign.status_code, status.HTTP_400_BAD_REQUEST)
+        plan = PlantingPlan.objects.create(
+            crop=self.crop, bed_id=ids[-1], planting_date=date(2026, 4, 1), project=self.project,
+        )
+        conflict = self.client.post(self.undo_url, {'token': token}, format='json')
+        self.assertEqual(conflict.status_code, status.HTTP_409_CONFLICT, conflict.data)
+        self.assertEqual(Bed.objects.filter(pk__in=ids).count(), 2)
+        self.assertEqual(BedLayout.objects.filter(bed_id__in=ids).count(), 2)
+        self.assertTrue(PlantingPlan.objects.filter(pk=plan.pk).exists())
+
+    def test_invalid_layout_rejects_whole_batch(self):
+        for invalid in (-1, 'NaN', 'Infinity'):
+            with self.subTest(invalid=invalid):
+                payload = self._positioned_payload()
+                payload['beds'][1]['layout']['x'] = invalid
+                response = self.client.post(self.url, payload, format='json')
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        payload = self._positioned_payload()
+        del payload['beds'][1]['layout']
+        self.assertEqual(self.client.post(self.url, payload, format='json').status_code, 400)
+        self.assertFalse(Bed.objects.filter(name__startswith='Batch ').exists())
+
+    def test_position_save_failure_rolls_back_all_beds_and_revisions(self):
+        from django.db import IntegrityError
+
+        original_create = BedLayout.objects.create
+        def create_layout(**kwargs):
+            if kwargs['bed'].name.endswith('001'):
+                raise IntegrityError('Unable to save second layout')
+            return original_create(**kwargs)
+
+        with mock.patch(
+            'farm.services.bed_layouts.BedLayout.objects.create', side_effect=create_layout,
+        ):
+            response = self.client.post(self.url, self._positioned_payload(), format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Bed.objects.filter(name__startswith='Batch ').exists())
+        self.assertFalse(BedLayout.objects.filter(project=self.project).exists())
+        self.assertFalse(EntityRevision.objects.filter(
+            entity_type='bed_layout', project=self.project,
+        ).exists())
 
     def test_existing_name_rejects_the_whole_series(self):
         payload = self._payload(['E 1', self.bed.name])

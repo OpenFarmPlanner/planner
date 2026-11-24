@@ -852,7 +852,9 @@ export default function GraphicalFields({
       onDrop: position => {
         const inverseRotation = ((360 - rotation) % 360) as GraphicalRotation;
         const stored = rotateRectBetweenSizes({ ...bedVm, ...position }, fieldInnerSize, storedFieldInnerSize, inverseRotation);
-        const nextLayout: BedLayoutEntry = { bed: bedVm.id, location: locationId, x: stored.x, y: stored.y, version: 1 };
+        const nextLayout: BedLayoutEntry = {
+          ...layoutsByBed[bedVm.id], bed: bedVm.id, location: locationId, x: stored.x, y: stored.y, version: 1,
+        };
         setLayoutsByBed(prev => ({ ...prev, [bedVm.id]: nextLayout }));
         saveBedLayout(locationId, nextLayout);
       },
