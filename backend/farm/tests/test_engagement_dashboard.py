@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
@@ -65,8 +66,14 @@ class EngagementDashboardTests(TestCase):
         recent_time = timezone.now() - timedelta(days=2)
         Location.objects.filter(pk=self.location.pk).update(updated_at=recent_time)
 
-        with self.assertNumQueries(len(ENGAGEMENT_MODELS) + 15):
+        with self.assertNumQueries(len(ENGAGEMENT_MODELS) + 17):
             dashboard = build_engagement_dashboard()
+        for index in range(5):
+            project = Project.objects.create(name=f'Farm {index}', slug=f'count-{index}')
+            location = Location.objects.create(name='Farm', project=project)
+            Field.objects.create(name='Parcel', location=location, project=project, area_sqm=50)
+        with self.assertNumQueries(len(ENGAGEMENT_MODELS) + 17):
+            build_engagement_dashboard()
 
         projects_by_slug = {row.project.slug: row for row in dashboard.projects}
         active = projects_by_slug['active']
@@ -80,7 +87,7 @@ class EngagementDashboardTests(TestCase):
         self.assertEqual(empty.status, 'Nur registriert')
         self.assertEqual(dashboard.active_projects_7_days, 1)
         self.assertGreaterEqual(dashboard.total_projects, 2)
-        self.assertEqual(dashboard.total_users, 2)
+        self.assertEqual(dashboard.total_users, 1)
 
     def test_dashboard_is_available_to_superusers(self) -> None:
         self.client.force_login(self.superuser)
@@ -89,6 +96,8 @@ class EngagementDashboardTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Nutzungsübersicht')
+        self.assertContains(response, 'Gesamte Parzellenfläche')
+        self.assertContains(response, 'Alle Zeiträume')
         self.assertContains(response, self.active_project.name)
 
     def test_the_rendered_page_shows_every_metric_block(self) -> None:
@@ -100,8 +109,6 @@ class EngagementDashboardTests(TestCase):
 
         for caption in (
             'Gesamtübersicht',
-            'Datenreichtum je Projekt',
-            'Aktive Projekte im Detail',
             'Feature-Nutzung',
             'Wachstum und Aktivierung',
             'Saisonen, Layouts und Kulturen',
@@ -150,7 +157,9 @@ class EngagementDashboardTests(TestCase):
     def test_an_unknown_sort_key_falls_back_to_the_default_order(self) -> None:
         self.client.force_login(self.superuser)
 
-        response = self.client.get(reverse('admin:farm_project_engagement'), {'o': 'not-a-real-column'})
+        response = self.client.get(
+            reverse('admin:farm_project_engagement'), {'o': 'not-a-real-column'},
+        )
 
         self.assertEqual(response.status_code, 200)
 
@@ -166,10 +175,9 @@ class EngagementDashboardSortingTests(TestCase):
         for key in (
             'name',
             'last_active',
-            'created_last_7_days',
-            'created_last_30_days',
+            'parcel_area',
+            'planting_plan_count',
             'member_count',
-            'active_users_last_30_days',
             'status',
         ):
             self.assertIn(key, PROJECT_SORT_FIELDS)
@@ -188,6 +196,18 @@ class EngagementDashboardSortingTests(TestCase):
         sorted_rows = sort_project_rows([never_active, active], 'last_active', descending=False)
 
         self.assertEqual([row.project.name for row in sorted_rows], ['Active', 'Never'])
+
+    def test_area_sort_is_numeric_and_puts_unknown_after_zero(self) -> None:
+        zero = self._row('Zero', parcel_area=Decimal(0), parcels_with_area=1)
+        small = self._row('Small', parcel_area=Decimal(9))
+        big = self._row('Big', parcel_area=Decimal(11000))
+        unknown = self._row('Unknown')
+        rows = [small, unknown, big, zero]
+
+        self.assertEqual(sort_project_rows(rows, 'parcel_area', descending=False),
+                         [zero, small, big, unknown])
+        self.assertEqual(sort_project_rows(rows, 'parcel_area', descending=True),
+                         [big, small, zero, unknown])
 
     def test_an_unregistered_sort_key_leaves_the_order_unchanged(self) -> None:
         rows = [self._row('beta'), self._row('Alpha')]
@@ -426,7 +446,7 @@ class ShareTests(TestCase):
         self.assertEqual(Share(count=3, total=4).percent, 75.0)
 
 
-class EngagementDataRichnessTests(TestCase):
+class EngagementProjectTotalsTests(TestCase):
     """Per-project object counts, their ranking, and the active-project averages."""
 
     def setUp(self) -> None:
@@ -455,7 +475,7 @@ class EngagementDataRichnessTests(TestCase):
         for _ in range(plans):
             PlantingPlan.objects.create(project=project, bed=bed)
 
-    def test_counts_are_reported_per_model_and_summed_into_one_total(self):
+    def test_counts_are_reported_per_model(self):
         self._fill(self.rich, beds=3, crops=2, plans=4)
 
         row = next(r for r in self._dashboard().projects if r.project.pk == self.rich.pk)
@@ -466,7 +486,6 @@ class EngagementDataRichnessTests(TestCase):
         self.assertEqual(row.crop_count, 2)
         self.assertEqual(row.planting_plan_count, 4)
         self.assertEqual(row.image_count, 0)
-        self.assertEqual(row.data_total, 11)
 
     def test_note_photos_count_as_images(self):
         self._fill(self.rich)
@@ -476,14 +495,6 @@ class EngagementDataRichnessTests(TestCase):
         row = next(r for r in self._dashboard().projects if r.project.pk == self.rich.pk)
 
         self.assertEqual(row.image_count, 1)
-
-    def test_the_ranking_puts_the_most_data_rich_project_first(self):
-        self._fill(self.rich, beds=5, crops=5, plans=5)
-        self._fill(self.sparse)
-
-        slugs = [row.project.slug for row in self._dashboard().projects_by_data]
-
-        self.assertLess(slugs.index('rich'), slugs.index('sparse'))
 
     def test_the_member_count_comes_from_the_project_memberships(self):
         for index in range(3):
@@ -497,37 +508,28 @@ class EngagementDataRichnessTests(TestCase):
         self.assertEqual(row.member_count, 3)
         self.assertEqual(row.active_users_last_30_days, 0)
 
-    def test_only_active_projects_reach_the_detail_table_and_its_average(self):
-        self._fill(self.rich, beds=3, crops=1, plans=1)
-        self._fill(self.sparse, beds=1, crops=1, plans=1)
-        for model in (Location, Field, Bed, Crop, PlantingPlan):
-            model.objects.filter(project=self.sparse).update(
-                created_at=self.now - timedelta(days=200),
-                updated_at=self.now - timedelta(days=200),
-            )
+    def test_parcel_area_counts_each_parcel_once_and_marks_missing_areas(self) -> None:
+        north = Location.objects.create(
+            name='North', project=self.rich, length_m=200, width_m=200,
+        )
+        south = Location.objects.create(name='South', project=self.rich)
+        first = Field.objects.create(
+            name='First', project=self.rich, location=north, area_sqm=6500,
+        )
+        Field.objects.create(name='Same size', project=self.rich, location=south, area_sqm=6500)
+        Field.objects.create(name='Unknown', project=self.rich, location=south)
+        for index in range(3):
+            Bed.objects.create(name=f'Bed {index}', project=self.rich, field=first, area_sqm=50)
+        sparse_location = Location.objects.create(name='East', project=self.sparse)
+        Field.objects.create(name='Unknown', project=self.sparse, location=sparse_location)
+        rows = {row.project.pk: row for row in self._dashboard().projects}
 
-        dashboard = self._dashboard()
-
-        slugs = [row.project.slug for row in dashboard.active_projects]
-        self.assertEqual(slugs, ['rich'])
-        self.assertEqual(dashboard.active_project_averages.beds, 3.0)
-        self.assertEqual(dashboard.active_project_averages.data_total, 7.0)
-
-    def test_the_average_row_is_the_mean_over_all_active_projects(self):
-        self._fill(self.rich, beds=3, crops=1, plans=1)
-        self._fill(self.sparse, beds=0, crops=1, plans=0)
-
-        averages = self._dashboard().active_project_averages
-
-        self.assertEqual(averages.locations, 1.0)
-        self.assertEqual(averages.beds, 1.5)
-        self.assertEqual(averages.crops, 1.0)
-
-    def test_a_dashboard_without_active_projects_has_zeroed_averages(self):
-        averages = self._dashboard().active_project_averages
-
-        self.assertEqual(averages.data_total, 0.0)
-        self.assertEqual(averages.members, 0.0)
+        self.assertEqual(rows[self.rich.pk].parcel_area, Decimal('13000'))
+        self.assertEqual(rows[self.rich.pk].parcel_area_display, Decimal('1.3'))
+        self.assertEqual(rows[self.rich.pk].parcel_area_unit, 'ha')
+        self.assertTrue(rows[self.rich.pk].parcel_area_is_partial)
+        self.assertIsNone(rows[self.sparse.pk].parcel_area)
+        self.assertFalse(rows[self.sparse.pk].parcel_area_is_partial)
 
 
 class EngagementFeatureAdoptionTests(TestCase):
@@ -842,9 +844,7 @@ class EngagementCropLibraryTests(TestCase):
 
 
 class EngagementDashboardExclusionTests(TestCase):
-    """Demo/template projects and the current superuser's solo projects are
-    hidden from the "Projekte" table and the Gesamtübersicht numbers by
-    default, but stay visible when shown explicitly."""
+    """All project metrics share the same default population."""
 
     def setUp(self) -> None:
         self.now = timezone.now()
@@ -881,38 +881,32 @@ class EngagementDashboardExclusionTests(TestCase):
     def _dashboard(self, **kwargs):
         return build_engagement_dashboard(now=self.now, **kwargs)
 
-    def test_without_a_current_user_only_demo_projects_are_hidden(self) -> None:
-        slugs = {row.project.slug for row in self._dashboard().projects}
-
-        self.assertIn('exclusion-own-solo', slugs)
-        self.assertNotIn('exclusion-demo', slugs)
-
     def test_a_project_where_the_superuser_is_the_sole_member_is_hidden(self) -> None:
-        dashboard = self._dashboard(current_user_id=self.superuser.pk)
+        dashboard = self._dashboard()
 
         slugs = {row.project.slug for row in dashboard.projects}
         self.assertNotIn('exclusion-own-solo', slugs)
 
     def test_a_project_shared_with_others_stays_visible_even_as_a_member(self) -> None:
-        dashboard = self._dashboard(current_user_id=self.superuser.pk)
+        dashboard = self._dashboard()
 
         slugs = {row.project.slug for row in dashboard.projects}
         self.assertIn('exclusion-shared', slugs)
 
     def test_demo_projects_are_hidden_regardless_of_who_is_a_member(self) -> None:
-        dashboard = self._dashboard(current_user_id=self.superuser.pk)
+        dashboard = self._dashboard()
 
         slugs = {row.project.slug for row in dashboard.projects}
         self.assertNotIn('exclusion-demo', slugs)
 
     def test_external_projects_the_superuser_is_not_part_of_stay_visible(self) -> None:
-        dashboard = self._dashboard(current_user_id=self.superuser.pk)
+        dashboard = self._dashboard()
 
         slugs = {row.project.slug for row in dashboard.projects}
         self.assertIn('exclusion-extern', slugs)
 
     def test_include_hidden_shows_every_project_again(self) -> None:
-        dashboard = self._dashboard(current_user_id=self.superuser.pk, include_hidden=True)
+        dashboard = self._dashboard(include_hidden=True)
 
         slugs = {row.project.slug for row in dashboard.projects}
         self.assertEqual(
@@ -922,77 +916,72 @@ class EngagementDashboardExclusionTests(TestCase):
         self.assertTrue(dashboard.show_all)
 
     def test_hidden_projects_count_reports_how_many_are_excluded(self) -> None:
-        dashboard = self._dashboard(current_user_id=self.superuser.pk)
+        dashboard = self._dashboard()
 
         self.assertEqual(dashboard.hidden_projects_count, 2)
 
     def test_hidden_projects_count_stays_the_same_when_showing_all(self) -> None:
-        dashboard = self._dashboard(current_user_id=self.superuser.pk, include_hidden=True)
+        dashboard = self._dashboard(include_hidden=True)
 
         self.assertEqual(dashboard.hidden_projects_count, 2)
 
     def test_gesamtuebersicht_project_totals_match_the_filtered_table(self) -> None:
-        dashboard = self._dashboard(current_user_id=self.superuser.pk)
+        dashboard = self._dashboard()
 
         self.assertEqual(dashboard.total_projects, len(dashboard.projects))
         self.assertEqual(dashboard.total_projects, 2)
 
-    def test_user_totals_exclude_only_the_current_superuser(self) -> None:
-        dashboard = self._dashboard(current_user_id=self.superuser.pk)
+    def test_user_totals_exclude_superusers_staff_and_guests(self) -> None:
+        dashboard = self._dashboard()
 
         self.assertEqual(dashboard.total_users, 1)
         self.assertEqual(dashboard.users_logged_in_30_days, 0)
 
     def test_user_totals_include_the_superuser_again_when_showing_all(self) -> None:
-        dashboard = self._dashboard(current_user_id=self.superuser.pk, include_hidden=True)
+        dashboard = self._dashboard(include_hidden=True)
 
         self.assertEqual(dashboard.total_users, 2)
         self.assertEqual(dashboard.users_logged_in_30_days, 1)
 
-    def test_own_projects_stay_in_the_other_breakdowns(self) -> None:
-        """The superuser's own projects are only hidden from the "Projekte"
-        table and the Gesamtübersicht; the breakdowns below keep them."""
-        dashboard = self._dashboard(current_user_id=self.superuser.pk)
-
-        slugs = {row.project.slug for row in dashboard.projects_by_data}
-        self.assertIn('exclusion-own-solo', slugs)
-
-    def test_demo_projects_are_left_out_of_every_breakdown(self) -> None:
+    def test_scratch_demo_and_guest_projects_are_excluded_from_every_breakdown(self) -> None:
         self._seed_demo_project_data()
-
-        dashboard = self._dashboard(current_user_id=self.superuser.pk)
-
-        self.assertNotIn(
-            'exclusion-demo', {row.project.slug for row in dashboard.projects_by_data},
+        Task.objects.create(title='Test task', project=self.own_solo_project)
+        guest = get_user_model().objects.create_user(username='guest')
+        guest_project = Project.objects.create(name='Guest', slug='exclusion-guest')
+        GuestDemoSession.objects.create(
+            user=guest, project=guest_project, expires_at=self.now + timedelta(hours=1),
         )
-        self.assertNotIn(
-            'exclusion-demo', {row.project.slug for row in dashboard.active_projects},
+        Task.objects.create(title='Guest task', project=guest_project)
+
+        dashboard = self._dashboard()
+
+        self.assertEqual(
+            {row.project.pk for row in dashboard.projects},
+            {self.external_project.pk, self.shared_project.pk},
         )
-        self.assertEqual(dashboard.adoption.tasks, Share(count=0, total=3))
-        self.assertEqual(sum(month.new_projects for month in dashboard.monthly_growth), 3)
+        self.assertEqual(dashboard.adoption.tasks, Share(count=0, total=2))
+        self.assertEqual(sum(month.new_projects for month in dashboard.monthly_growth), 2)
         self.assertEqual(dashboard.season_usage.average_seasons_per_project, 0.0)
         self.assertEqual(dashboard.season_usage.projects_with_pattern.count, 0)
-        self.assertEqual(dashboard.layout_usage.projects_with_any_layout.total, 3)
+        self.assertEqual(dashboard.layout_usage.projects_with_any_layout.total, 2)
         self.assertEqual(dashboard.average_distinct_crops_per_project, 0.0)
         self.assertEqual(dashboard.task_usage.created, 0)
         self.assertEqual(dashboard.crop_library.published_entries, 0)
         self.assertEqual(dashboard.crop_library.self_entered_crops, 0)
+        self.assertEqual(dashboard.total_users, 1)
 
     def test_the_demo_template_share_still_counts_every_project(self) -> None:
-        share = self._dashboard(current_user_id=self.superuser.pk).projects_from_template
+        share = self._dashboard().projects_from_template
 
         self.assertEqual(share, Share(count=1, total=4))
 
     def test_include_hidden_brings_demo_projects_back_into_the_breakdowns(self) -> None:
         self._seed_demo_project_data()
 
-        dashboard = self._dashboard(current_user_id=self.superuser.pk, include_hidden=True)
+        dashboard = self._dashboard(include_hidden=True)
 
         self.assertIn(
-            'exclusion-demo', {row.project.slug for row in dashboard.projects_by_data},
-        )
-        self.assertIn(
-            'exclusion-demo', {row.project.slug for row in dashboard.active_projects},
+            'exclusion-demo', {row.project.slug for row in dashboard.projects},
         )
         self.assertEqual(dashboard.adoption.tasks, Share(count=1, total=4))
         self.assertEqual(dashboard.season_usage.projects_with_pattern.count, 1)
@@ -1037,12 +1026,7 @@ class EngagementDashboardShowAllViewTests(TestCase):
 
     @staticmethod
     def _projects_table_html(response) -> str:
-        """Return only the "Projekte" table's markup.
-
-        Other tables (e.g. "Datenreichtum je Projekt") intentionally still
-        list every project regardless of the exclusion filter, so assertions
-        about which projects the *table* shows have to look only there.
-        """
+        """Return the project table without the other dashboard sections."""
         content = response.content.decode()
         start = content.index('<caption>Projekte</caption>')
         end = content.index('</table>', start)
@@ -1064,7 +1048,7 @@ class EngagementDashboardShowAllViewTests(TestCase):
         table = self._projects_table_html(response)
         self.assertNotIn('Nur ich', table)
         self.assertIn('Team', table)
-        self.assertContains(response, 'ausgeblendet (nur eigene oder Demo-Projekte)')
+        self.assertContains(response, 'Superuser-Projekt aus den Projektkennzahlen ausgeblendet')
         self.assertContains(response, 'Alle anzeigen')
 
     def test_show_all_reveals_every_project_and_the_reset_link(self) -> None:
@@ -1075,7 +1059,7 @@ class EngagementDashboardShowAllViewTests(TestCase):
         table = self._projects_table_html(response)
         self.assertIn('Nur ich', table)
         self.assertIn('Team', table)
-        self.assertContains(response, 'Alle Projekte werden angezeigt')
+        self.assertContains(response, 'Alle Projekte werden in den Projektkennzahlen')
         self.assertContains(response, 'Filter wieder aktivieren')
 
     def test_show_all_survives_column_sorting(self) -> None:
@@ -1096,6 +1080,25 @@ class EngagementDashboardShowAllViewTests(TestCase):
         response = self.client.get(reverse('admin:farm_project_engagement'), {'o': 'name'})
 
         self.assertContains(response, 'href="?o=name&amp;show_all=1"')
+
+    def test_activity_filter_preserves_sort_and_population_toggle(self) -> None:
+        self.client.force_login(self.superuser)
+        url = reverse('admin:farm_project_engagement')
+        location = Location.objects.create(name='Recent', project=self.shared_project)
+        Location.objects.filter(pk=location.pk).update(
+            created_at=timezone.now() - timedelta(days=10),
+            updated_at=timezone.now() - timedelta(days=10),
+        )
+
+        seven = self.client.get(url, {'activity': '7', 'show_all': '1'})
+        thirty = self.client.get(url, {'activity': '30', 'o': '-parcel_area'})
+        self.assertNotIn('Team', self._projects_table_rows(seven))
+        self.assertIn('Team', self._projects_table_rows(thirty))
+        self.assertNotIn('Nur ich', self._projects_table_rows(thirty))
+        self.assertContains(thirty, 'href="?o=-parcel_area&amp;activity=30&amp;show_all=1"')
+        self.assertContains(seven, 'href="?o=parcel_area&amp;activity=7&amp;show_all=1"')
+        self.assertNotContains(thirty, 'Datenreichtum je Projekt')
+        self.assertNotContains(thirty, 'Aktive Projekte im Detail')
 
     def test_the_default_order_without_an_o_param_matches_sorting_by_last_active_desc(self) -> None:
         self.client.force_login(self.superuser)
@@ -1204,6 +1207,28 @@ class DemoUsageSummaryTests(TestCase):
 
         self.assertEqual(summary.last_7_days.used, 1)
         self.assertEqual(summary.all_time.used, 1)
+
+    def test_seeded_demos_with_edited_descriptions_still_count_as_demos(self) -> None:
+        _original, user = self._demo_project(days_ago=3, slug='du-original-demo')
+        edited = Project.objects.create(name='Edited demo', slug='du-edited-demo')
+        Project.objects.filter(pk=edited.pk).update(
+            description='Edited project description',
+            created_at=self.now - timedelta(days=1),
+            demo_seeded_at=self.now - timedelta(hours=23),
+        )
+        ProjectMembership.objects.create(user=user, project=edited)
+        EntityRevision.objects.create(
+            project=edited, entity_type='location', object_id=1,
+            action=EntityRevision.ACTION_CREATED, snapshot={},
+        )
+
+        dashboard = build_engagement_dashboard(self.now)
+        summary = self._summary()
+        self.assertEqual(dashboard.projects, [])
+        self.assertEqual(dashboard.projects_from_template, Share(count=2, total=2))
+        self.assertEqual(summary.last_7_days.created, 2)
+        self.assertEqual(summary.last_7_days.used, 1)
+        self.assertEqual(summary.last_7_days.converted_to_own_project, Share(count=0, total=1))
 
     def test_a_user_who_later_joins_a_real_project_counts_as_converted(self) -> None:
         _project, user = self._demo_project(days_ago=1, slug='du-converted')

@@ -604,6 +604,7 @@ test('overwintering garlic is selectable in the later table and read-only in the
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/app/planting-plans');
   await search.fill('Buschbohne');
+  await expect(page.getByTestId('planting-plan-search-count')).toHaveText(/^1 von \d+/);
   const bean = tableRows.filter({ hasText: 'Buschbohne' }).filter({ has: beanBed });
   const companionWarning = bean.getByRole('img', { name: 'Schlechte Nachbarn auf dem Beet' });
   await expect(companionWarning).toBeVisible();
