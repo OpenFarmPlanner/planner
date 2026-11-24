@@ -316,7 +316,7 @@
         "serviceUsage": {
           "title": "Statistiche interne di utilizzo",
           "content": "Per migliorare OpenFarmPlanner, contiamo per giorno e funzione le modifiche completate nei progetti da utenti autenticati. Per contare gli utenti attivi distinti, conserviamo l’identificativo interno dell’account, l’identificativo del progetto e il giorno UTC una sola volta per progetto e giorno. La dashboard è riservata ai superutenti e mostra dati aggregati. Le statistiche non raccolgono clic, visite alle pagine, cronologia di navigazione o il contenuto dei record modificati. Cancelliamo i dati giornalieri dopo 90 giorni e rimuoviamo i relativi identificativi da queste statistiche al termine della cancellazione di un account.",
-          "legalBasis": "La base giuridica è l’articolo 6, paragrafo 1, lettera f), del GDPR. Il nostro interesse legittimo consiste nel comprendere come vengono usate le funzioni di pianificazione per migliorare l’applicazione."
+          "legalBasis": "La base giuridica è l’art. 6(1)(f) del GDPR. Il nostro interesse legittimo consiste nel comprendere come vengono usate le funzioni di pianificazione per migliorare l’applicazione."
         },
         "publicLibrary": {
           "title": "Biblioteca pubblica delle colture",

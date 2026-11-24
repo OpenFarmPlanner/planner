@@ -312,7 +312,7 @@
         "serviceUsage": {
           "title": "Interne gebruiksstatistieken",
           "content": "Om OpenFarmPlanner te verbeteren, tellen we per dag en functie de voltooide wijzigingen in projecten van ingelogde gebruikers. Om unieke actieve gebruikers te tellen, bewaren we de interne account-ID, project-ID en UTC-dag één keer per project en dag. Het dashboard is alleen toegankelijk voor superbeheerders en toont samengevoegde cijfers. De statistieken verzamelen geen klikken, paginabezoeken, navigatiegeschiedenis of inhoud van gewijzigde gegevens. Na 90 dagen wissen we de daggegevens. Bij de definitieve verwijdering van een account verwijderen we de bijbehorende account-ID uit deze statistieken.",
-          "legalBasis": "De rechtsgrondslag is artikel 6, lid 1, onder f), AVG. Ons gerechtvaardigd belang is inzicht in het gebruik van de planningsfuncties, zodat we de toepassing kunnen verbeteren."
+          "legalBasis": "De rechtsgrondslag is art. 6(1)(f) AVG. Ons gerechtvaardigd belang is inzicht in het gebruik van de planningsfuncties, zodat we de toepassing kunnen verbeteren."
         },
         "publicLibrary": {
           "title": "Openbare gewassenbibliotheek",
