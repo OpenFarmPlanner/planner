@@ -565,6 +565,22 @@ continues to exercise responsive layout, localization variants, batch limits,
 recovery paths and the other complete specs. The supplemental six-project
 cross-browser workflow retains its PR triggers and failure artifacts.
 
+Measured on the same application source and dependency lockfile during rollout:
+
+| Actual PR run | Dependency install / restore | Production build | Browser step | Shard job | E2E workflow wall time |
+|---|---|---|---|---|---|
+| [Full PR baseline](https://github.com/OpenFarmPlanner/planner/actions/runs/45340877728) | warm, 5–7s restore | 63–77s | 17m18s–19m43s | 18m50s–21m34s | 21m46s |
+| [Smoke with a fresh node_modules tree](https://github.com/OpenFarmPlanner/planner/actions/runs/45348181626) | 12–17s npm ci | 66–78s | 44–54s | 2m21s–3m04s | 3m18s |
+| [Smoke with the normal warm cache](https://github.com/OpenFarmPlanner/planner/actions/runs/45348686766) | 4–6s restore | 57–78s | 37–52s | 1m53s–2m41s | 2m51s |
+
+Ranges cover the three parallel jobs. The cold trial used a fresh dependency
+tree and the normal npm download cache. Workflow wall time includes runner
+queueing and classification. The other required checks run concurrently and may
+finish later. The [blocked harvest save](https://github.com/OpenFarmPlanner/planner/actions/runs/45347724020)
+failed required shard 2 during acceptance. The full release test on
+[v1.207.0](https://github.com/OpenFarmPlanner/planner/actions/runs/45344192608)
+passed all 475 tests in 21m56s.
+
 The existing protected `e2e (shard N/3)` contexts and metadata classifier
 remain in place. To roll back, restore the full partition command in
 `.github/workflows/e2e.yml` through a reviewed PR, retaining those names and
