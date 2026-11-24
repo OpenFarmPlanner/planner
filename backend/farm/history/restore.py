@@ -600,7 +600,9 @@ class BatchRevertError(Exception):
 _RESTORABLE_MODEL_ENTITY_TYPE: dict[type, str] = {model: label for model, label in _RESTORABLE_ENTITY_TYPES}
 
 
-def _record_cascade_deletions(project: Project, instances: list, batch, user_name: str) -> None:
+def _record_cascade_deletions(
+    project: Project, instances: list, batch, user_name: str, *, measure_usage: bool = True,
+) -> None:
     """Record an `ACTION_DELETED` revision for every *restorable* row a DB
     cascade delete of `instances` would also remove (a planting plan's tasks,
     say) — so it lands in the same batch and a later restore can bring it back.
@@ -640,6 +642,7 @@ def _record_cascade_deletions(project: Project, instances: list, batch, user_nam
                 snapshot=snapshot,
                 display_name=_entity_display_name(obj),
                 changed_fields=[], user_name=user_name, batch_operation=batch,
+                measure_usage=measure_usage,
             )
 
 
@@ -741,6 +744,7 @@ def revert_batch_operation(project: Project, batch, *, user_name: str = '') -> N
             user_name=user_name,
         )
 
+        # Measure this revert from its checkpoints, including cascades and no-op writes.
         # Children first so a parent's cascade never races us.
         for entity_type, object_id in sorted(
             to_delete, key=lambda pair: -_ENTITY_TYPE_ORDER.get(pair[0], 999),
@@ -754,13 +758,15 @@ def revert_batch_operation(project: Project, batch, *, user_name: str = '') -> N
             # Rows a DB cascade would take with it (plans added to the season
             # after it was created, their tasks) get their own revision so the
             # revert stays reversible.
-            _record_cascade_deletions(project, [instance], revert_batch, user_name)
+            _record_cascade_deletions(
+                project, [instance], revert_batch, user_name, measure_usage=False,
+            )
             _model_manager(model).filter(pk=object_id).delete()
             record_entity_revision(
                 project=project, entity_type=entity_type, object_id=object_id,
                 action=EntityRevision.ACTION_DELETED, snapshot=snapshot,
                 display_name=display_name, changed_fields=[], user_name=user_name,
-                batch_operation=revert_batch,
+                batch_operation=revert_batch, measure_usage=False,
             )
 
         # Parents first for the recreates/updates.
@@ -789,6 +795,7 @@ def revert_batch_operation(project: Project, batch, *, user_name: str = '') -> N
                 action=action, snapshot=_serialize_instance(instance) if instance else snapshot,
                 display_name=_entity_display_name(instance) if instance else '',
                 changed_fields=[], user_name=user_name, batch_operation=revert_batch,
+                measure_usage=False,
             )
 
         reconcile_media_orphans(project.pk)
@@ -798,5 +805,5 @@ def revert_batch_operation(project: Project, batch, *, user_name: str = '') -> N
         _prepare_restored_uploads(project, result, current)
         record_project_checkpoint(
             project, result,
-            user_name=user_name, batch_operation=revert_batch,
+            user_name=user_name, batch_operation=revert_batch, restore_from=current,
         )

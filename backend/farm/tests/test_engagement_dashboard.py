@@ -14,6 +14,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import AccountDeletionRequest, GuestDemoSession, GuestDemoUsageDay
+from farm.history.records import revision_batch
 from farm.models import (
     BatchOperation,
     Bed,
@@ -1511,6 +1512,27 @@ class PlatformActivityTests(TestCase):
         self.assertEqual(undo.status_code, 200, undo.content)
         row = ProjectChangeDay.objects.get(project=self.project, category='crop')
         self.assertEqual((row.created, row.updated, row.deleted, row.restored), (3, 0, 3, 0))
+
+    def test_update_only_batch_revert_counts_only_changed_objects(self) -> None:
+        crop = Crop.objects.create(project=self.project, name='Edited crop', notes='Original notes')
+        batch = BatchOperation.objects.create(
+            project=self.project, operation_type=BatchOperation.TYPE_REVERTED,
+        )
+        with revision_batch(batch):
+            crop.notes = 'Edited notes'
+            crop.save()
+
+        url = f'/openfarmplanner/api/history/batch/{batch.pk}/revert/'
+        for _ in range(2):
+            response = self.client.post(url, **self.headers)
+            self.assertEqual(response.status_code, 200, response.content)
+
+        crop.refresh_from_db()
+        self.assertEqual(crop.notes, 'Original notes')
+        changes = ProjectChangeDay.objects.get(project=self.project, category='crop')
+        self.assertEqual((changes.created, changes.updated, changes.deleted, changes.restored),
+                         (0, 1, 0, 0))
+        self.assertEqual(ProjectActiveUserDay.objects.get(project=self.project).user, self.user)
 
     def test_rolled_back_savepoints_and_background_operations_leave_no_signals(self) -> None:
         def synthetic_view(request: HttpRequest) -> HttpResponse:
