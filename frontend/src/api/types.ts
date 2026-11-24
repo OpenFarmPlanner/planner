@@ -860,6 +860,14 @@ export interface CropBulkDeleteSample {
   name: string;
 }
 
+export interface CropBulkDeleteRecord {
+  id: number;
+  name: string;
+  variety: string | null;
+  parent_id: number | null;
+  parent_name: string;
+}
+
 export interface CropBulkDeletePreview {
   scope: CropBulkDeleteSelection['scope'];
   selected_count: number;
@@ -873,6 +881,8 @@ export interface CropBulkDeletePreview {
   seed_package_count: number;
   supplier_offer_count: number;
   samples: CropBulkDeleteSample[];
+  affected_records: CropBulkDeleteRecord[];
+  required_varieties: CropBulkDeleteRecord[];
   blockers: Array<{
     code: 'varieties_required' | 'ambiguous_group' | 'planting_plans';
     count: number;

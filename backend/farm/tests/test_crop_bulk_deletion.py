@@ -66,6 +66,11 @@ class CropBulkDeletionTests(HistoryInvariantTestCase):
         excluded = self.preview(self.selection(general, delete_varieties=False))
         self.assertEqual(excluded["blocked_count"], 1)
         self.assertEqual(excluded["blockers"][0]["code"], "varieties_required")
+        self.assertEqual([record["id"] for record in excluded["affected_records"]], [general])
+        self.assertEqual(excluded["required_varieties"], [{
+            "id": variety, "name": "Tomato", "variety": "Roma",
+            "parent_id": general, "parent_name": "Tomato",
+        }])
         self.assertIsNone(excluded["token"])
         explicit = self.preview(self.selection(general, variety, variety, delete_varieties=False))
         self.assertEqual(explicit["selected_count"], 2)
@@ -82,6 +87,8 @@ class CropBulkDeletionTests(HistoryInvariantTestCase):
         self.assertEqual(plan["seed_package_count"], 1)
         self.assertEqual(plan["supplier_offer_count"], 1)
         self.assertEqual({sample["id"] for sample in plan["samples"]}, {general, variety})
+        self.assertEqual([record["id"] for record in plan["affected_records"]], [general, variety])
+        self.assertEqual(plan["required_varieties"], [])
         self.assertIsNotNone(plan["token"])
         self.assertEqual(capture_project_state(self.project), before)
         self.assertEqual(self.history_counts(), counts)

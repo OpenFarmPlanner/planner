@@ -74,6 +74,34 @@ PAGE_SIZE = 100
 class ListEndpointQueryCountTest(ProjectApiTestCase):
     """Each list endpoint must cost the same number of queries for every row."""
 
+    def test_crop_deletion_preview_returns_all_records_with_constant_queries(self):
+        parents = [
+            Crop.objects.create(project=self.project, name=f'Deletion preview {index}')
+            for index in range(10)
+        ]
+        varieties = [
+            Crop.objects.create(project=self.project, name=parent.name, variety='Example')
+            for parent in parents
+        ]
+        url = '/openfarmplanner/api/crops/bulk-delete/preview/'
+        payload = {
+            'scope': 'selected', 'delete_varieties': False,
+            'expected_project_id': self.project.pk, 'crop_ids': [parents[0].pk],
+        }
+        with CaptureQueriesContext(connection) as queries:
+            small = self.client.post(url, payload, format='json')
+        self.assertEqual(small.status_code, 200, small.json())
+        payload['crop_ids'] = [parent.pk for parent in parents]
+        with self.assertNumQueries(len(queries)):
+            response = self.client.post(url, payload, format='json')
+        self.assertEqual(response.status_code, 200, response.json())
+        preview = response.json()
+        self.assertEqual(len(preview['samples']), 8)
+        self.assertEqual([row['id'] for row in preview['affected_records']], payload['crop_ids'])
+        required = preview['required_varieties']
+        self.assertEqual([row['id'] for row in required], [row.pk for row in varieties])
+        self.assertEqual([row['parent_id'] for row in required], payload['crop_ids'])
+
     def test_yield_comparison_filters_and_results_keep_constant_query_counts(self):
         season = Season.objects.create(
             project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),

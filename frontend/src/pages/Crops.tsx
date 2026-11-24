@@ -274,10 +274,12 @@ function Crops() {
     const { projectId, result } = bulkUndo;
     recoveringBulk.current = true;
     try {
-      await cropAPI.recoverBulkDelete(projectId, result.batch_id);
+      const { data } = await cropAPI.recoverBulkDelete(projectId, result.batch_id);
       if (Number(window.localStorage.getItem('activeProjectId')) !== projectId) return;
       setBulkUndo(current => current?.result.batch_id === result.batch_id ? null : current);
-      if (await loadCrops(undefined, projectId)) showSnackbar(t('bulkDelete.recovered'), 'success');
+      if (await loadCrops(undefined, projectId)) {
+        showSnackbar(t('bulkDelete.recoveredCount', { count: data.restored_count }), 'success');
+      }
     } catch {
       if (Number(window.localStorage.getItem('activeProjectId')) === projectId) {
         showSnackbar(t('bulkDelete.recoveryFailed'), 'error');
@@ -1069,6 +1071,8 @@ function Crops() {
       {bulkTarget ? (
         <CropBulkDeletionDialog
           target={bulkTarget}
+          canRestoreFromHistory={user?.memberships?.some(membership =>
+            membership.project_id === bulkTarget.expected_project_id && membership.role === 'admin') ?? false}
           onClose={bulkSelection.closeTarget}
           onComplete={result => completeBulkDeletion(bulkTarget.expected_project_id, result)}
         />
@@ -1110,7 +1114,7 @@ function Crops() {
       {bulkUndo && bulkUndo.projectId === activeProjectId ? (
         <DeleteUndoSnackbar
           open
-          message={t('bulkDelete.archived', { count: bulkUndo.result.deleted_count })}
+          message={t('bulkDelete.deleted', { count: bulkUndo.result.deleted_count })}
           undoLabel={t('common:actions.undo')}
           offsetIndex={pendingCropDeletions.length}
           testId="bulk-crop-undo-snackbar"

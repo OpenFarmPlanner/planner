@@ -307,6 +307,15 @@ describe('getHistoryActorLabel', () => {
 describe('getBatchSummary', () => {
   const plan = (action: string) => buildEntry({ object_type: 'planting_plan', action });
 
+  it('describes crop deletion and recovery without trash terminology', () => {
+    expect(getBatchSummary(buildEntry({
+      is_batch: true, batch_operation_type: 'crop_bulk_delete', batch_context: { deleted_count: 1 },
+    }), t)).toBe('1 Eintrag gelöscht');
+    expect(getBatchSummary(buildEntry({
+      is_batch: true, batch_operation_type: 'crop_bulk_undelete', batch_context: { restored_count: 2 },
+    }), t)).toBe('2 Einträge wiederhergestellt');
+  });
+
   it('falls back for an operation type it does not know', () => {
     expect(getBatchSummary(buildEntry({ is_batch: true, batch_operation_type: 'etwas_neues' }), t))
       .toBe('Mehrere Änderungen');

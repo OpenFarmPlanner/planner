@@ -114,10 +114,11 @@ def _affected_crops(
     selected: list[Crop],
     groups: dict[tuple[str, int | str], list[Crop]],
     delete_varieties: bool,
-) -> tuple[list[Crop], dict[str, set[int]]]:
+) -> tuple[list[Crop], dict[str, set[int]], list[Crop]]:
     selected_ids = {crop.pk for crop in selected}
     affected = {crop.pk: crop for crop in selected}
     blocked: dict[str, set[int]] = defaultdict(set)
+    required_varieties = []
     requested_groups = defaultdict(list)
     for crop in selected:
         requested_groups[_group_key(crop)].append(crop)
@@ -130,13 +131,17 @@ def _affected_crops(
         descendants = group if ends_group else requested
         if delete_varieties:
             affected.update((entry.pk, entry) for entry in descendants)
-        elif any(entry.pk not in selected_ids for entry in descendants):
-            blocked["varieties_required"].update(crop.pk for crop in requested)
+        else:
+            excluded = [entry for entry in descendants if entry.pk not in selected_ids]
+            if excluded:
+                blocked["varieties_required"].update(crop.pk for crop in requested)
+                if general_count <= 1:
+                    required_varieties.extend(excluded)
         if general_count > 1:
             blocked["ambiguous_group"].update(
                 crop.pk for crop in (descendants if delete_varieties else requested)
             )
-    return sorted(affected.values(), key=lambda crop: crop.pk), blocked
+    return sorted(affected.values(), key=lambda crop: crop.pk), blocked, required_varieties
 
 
 def _crop_samples(crops: list[Crop]) -> list[dict[str, Any]]:
@@ -144,6 +149,22 @@ def _crop_samples(crops: list[Crop]) -> list[dict[str, Any]]:
         {"id": crop.pk, "name": format_crop_display_name(crop.name, crop.variety) or crop.name}
         for crop in crops[:_SAMPLE_SIZE]
     ]
+
+
+def _preview_records(
+    crops: list[Crop], parents: dict[tuple[str, int | str], Crop],
+) -> list[dict[str, Any]]:
+    records = []
+    for crop in crops:
+        parent = parents.get(_group_key(crop)) if crop.variety_normalized is not None else None
+        records.append({
+            "id": crop.pk,
+            "name": crop.name,
+            "variety": crop.variety.strip() if crop.variety_normalized is not None else None,
+            "parent_id": parent.pk if parent is not None else None,
+            "parent_name": parent.name if parent is not None else crop.name,
+        })
+    return records
 
 
 def _selection_fingerprint(selection: CropDeletionSelection) -> list:
@@ -171,9 +192,12 @@ def _preview_token(
 
 def _build_plan(
     project: Project, actor_id: int, selection: CropDeletionSelection,
+    *, include_records: bool = False,
 ) -> CropDeletionPlan:
     selected, groups = _crop_groups(project, selection)
-    affected, blocked = _affected_crops(selected, groups, selection.delete_varieties)
+    affected, blocked, required_varieties = _affected_crops(
+        selected, groups, selection.delete_varieties,
+    )
     affected_ids = [crop.pk for crop in affected]
     plans = dict(
         PlantingPlan.objects.filter(project=project, crop_id__in=affected_ids)
@@ -215,6 +239,16 @@ def _build_plan(
     }
     if affected and not blocked_ids and not missing_count:
         preview["token"] = _preview_token(project.pk, actor_id, selection, affected, dependencies)
+    if include_records:
+        parents = {}
+        for key, group in groups.items():
+            general = [entry for entry in group if entry.variety_normalized is None]
+            if len(general) == 1:
+                parents[key] = general[0]
+        preview["affected_records"] = _preview_records(affected, parents)
+        preview["required_varieties"] = _preview_records(
+            sorted(required_varieties, key=lambda crop: crop.pk), parents,
+        )
     return CropDeletionPlan(affected, preview)
 
 
@@ -223,7 +257,7 @@ def preview_crop_deletion(
     project: Project, *, actor_id: int, selection: CropDeletionSelection,
 ) -> dict[str, Any]:
     lock_crop_project(project.pk)
-    return _build_plan(project, actor_id, selection).preview
+    return _build_plan(project, actor_id, selection, include_records=True).preview
 
 
 def _request_conflict() -> BulkCropDeletionConflict:

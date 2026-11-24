@@ -422,7 +422,7 @@ function batchBaseText(
     return t('history.import.summary', { count: Number(context.created_count ?? 0) + Number(context.updated_count ?? 0) });
   }
   if (operationType === 'crop_bulk_delete') {
-    return t('bulkDelete.archived', { count: Number(context.deleted_count ?? 0) });
+    return t('bulkDelete.deleted', { count: Number(context.deleted_count ?? 0) });
   }
   if (operationType === 'crop_bulk_undelete') {
     return t('bulkDelete.recoveredCount', { count: Number(context.restored_count ?? 0) });
