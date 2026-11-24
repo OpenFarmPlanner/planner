@@ -113,7 +113,6 @@ function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined
   const navigate = useNavigate();
   const hierarchy = useHierarchyData(true);
   const { locations, fields, beds, setLocations, setFields, setBeds, loading, hasLoaded, error } = hierarchy;
-  const [plans, setPlans] = useState<PlantingPlan[] | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<GrowingAreaDetailDraft | null>(null);
   const [saveError, setSaveError] = useState('');
@@ -123,14 +122,6 @@ function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined
     () => (type && id !== null ? resolveGrowingAreaEntity(type, id, { locations, fields, beds }) : null),
     [beds, fields, id, locations, type],
   );
-
-  useEffect(() => {
-    let cancelled = false;
-    plantingPlanAPI.listAll()
-      .then((loaded) => { if (!cancelled) setPlans(loaded.results); })
-      .catch(() => { if (!cancelled) setPlans([]); });
-    return () => { cancelled = true; };
-  }, []);
 
   const savedDraft = useMemo(() => (resolved ? toDraft(resolved) : null), [resolved]);
   const isDirty = Boolean(isEditing && draft && savedDraft && !sameDraft(draft, savedDraft));
@@ -295,19 +286,80 @@ function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined
 
         {saveError ? <Alert severity="error">{saveError}</Alert> : null}
 
-        {isEditing && draft ? (
-          <GrowingAreaDetailForm
-            type={type}
-            draft={draft}
-            onChange={setDraft}
-            inherited={resolved.inherited}
-            nameError={!draft.name.trim() ? t('hierarchy:validation.nameRequired') : undefined}
-          />
-        ) : (
-          <GrowingAreaReadView resolved={resolved} plans={plans} locale={locale} />
-        )}
+        <Stack spacing={3}>
+          {isEditing && draft ? (
+            <GrowingAreaDetailForm
+              type={type}
+              draft={draft}
+              onChange={setDraft}
+              inherited={resolved.inherited}
+              nameError={!draft.name.trim() ? t('hierarchy:validation.nameRequired') : undefined}
+            />
+          ) : (
+            <GrowingAreaReadView resolved={resolved} locale={locale} />
+          )}
+          <GrowingAreaRelatedPlans bedIds={resolved.bedIds} showBed={type !== 'bed'} />
+          {!isEditing && resolved.entity.notes?.trim() ? (
+            <Box data-testid="detail-section-notes">
+              <DetailSection title={t('common:fields.notes')}>
+                <RichTextViewer value={resolved.entity.notes} />
+              </DetailSection>
+            </Box>
+          ) : null}
+        </Stack>
       </Stack>
     </PageContainer>
+  );
+}
+
+function GrowingAreaRelatedPlans({ bedIds, showBed }: { bedIds: ReadonlySet<number>; showBed: boolean }) {
+  const { t } = useTranslation(['hierarchy', 'plantingPlans']);
+  const [request, setRequest] = useState<{ status: 'loading' | 'ready' | 'error'; plans: PlantingPlan[] }>({
+    status: 'loading',
+    plans: [],
+  });
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    plantingPlanAPI.listAll(controller.signal)
+      .then(({ results }) => {
+        if (!controller.signal.aborted) setRequest({ status: 'ready', plans: results });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setRequest(previous => ({ ...previous, status: 'error' }));
+      });
+    return () => controller.abort();
+  }, [attempt]);
+
+  const retry = () => {
+    setRequest(previous => ({ ...previous, status: 'loading' }));
+    setAttempt(previous => previous + 1);
+  };
+  const relatedPlans = request.plans.filter(plan => plan.bed !== null && bedIds.has(plan.bed));
+  const loading = request.status === 'loading';
+  const showRetry = request.status === 'error' || (loading && attempt > 0);
+  if (request.status === 'ready' && relatedPlans.length === 0) return null;
+
+  return (
+    <Box data-testid="detail-section-plans">
+      <DetailSection title={t('hierarchy:details.sections.plantingPlans')}>
+        {showRetry ? (
+          <Alert
+            severity={loading ? 'info' : 'error'}
+            role={loading ? 'status' : 'alert'}
+            action={<LoadRetryButton disabled={loading} onClick={retry} />}
+          >
+            {loading ? t('plantingPlans:loadingPlans') : t('plantingPlans:errors.load')}
+          </Alert>
+        ) : loading ? (
+          <CircularProgress size={20} aria-label={t('plantingPlans:loadingPlans')} />
+        ) : null}
+        {relatedPlans.length > 0 ? (
+          <GrowingAreaPlanLinks plans={relatedPlans} showBed={showBed} keepTableLinks />
+        ) : null}
+      </DetailSection>
+    </Box>
   );
 }
 
@@ -325,11 +377,9 @@ function OptionalSection({ title, rows, testId }: { title: string; rows: ReactNo
 
 function GrowingAreaReadView({
   resolved,
-  plans,
   locale,
 }: {
   resolved: ResolvedGrowingAreaEntity;
-  plans: PlantingPlan[] | null;
   locale: string;
 }) {
   const { t } = useTranslation(['hierarchy', 'locations', 'common']);
@@ -363,10 +413,8 @@ function GrowingAreaReadView({
     );
   });
 
-  const relatedPlans = (plans ?? []).filter((plan) => plan.bed !== null && resolved.bedIds.has(plan.bed));
-
   return (
-    <Stack spacing={3}>
+    <>
       <OptionalSection
         testId="detail-section-general"
         title={t('hierarchy:details.sections.general')}
@@ -427,21 +475,6 @@ function GrowingAreaReadView({
         </Box>
       ) : null}
 
-      {relatedPlans.length > 0 ? (
-        <Box data-testid="detail-section-plans">
-          <DetailSection title={t('hierarchy:details.sections.plantingPlans')}>
-            <GrowingAreaPlanLinks plans={relatedPlans} showBed={type !== 'bed'} keepTableLinks />
-          </DetailSection>
-        </Box>
-      ) : null}
-
-      {entity.notes && entity.notes.trim() ? (
-        <Box data-testid="detail-section-notes">
-          <DetailSection title={t('common:fields.notes')}>
-            <RichTextViewer value={entity.notes} />
-          </DetailSection>
-        </Box>
-      ) : null}
-    </Stack>
+    </>
   );
 }

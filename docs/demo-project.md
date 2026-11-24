@@ -63,6 +63,10 @@ records its environment and overrides the soil moisture with dry, the
 Frühbeete field is open field, the cabbage field overrides the soil type with
 clay, and the herb bed overrides the inherited light with partial shade. Open
 a bed's row menu → "Bed details" to see an inherited value and an override.
+For the planting-plan retry, use a bed with plans in the active season. In local
+browser developer tools, block the planting-plans list request and reload the
+bed details. The rest of the details stay available. Unblock the request and
+select Retry to see the plan links return.
 
 The location selector and editing action are absent in List mode. At narrower
 widths the shared topbar places graphical controls and the add action in a
