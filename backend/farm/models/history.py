@@ -88,6 +88,9 @@ class BatchOperation(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['project', '-created_at']),
+            models.Index(
+                fields=['operation_type', 'completed_at'], name='farm_batch_type_completed_idx',
+            ),
         ]
 
     def __str__(self) -> str:

@@ -11,6 +11,10 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.AddIndex(
+            model_name='batchoperation',
+            index=models.Index(fields=['operation_type', 'completed_at'], name='farm_batch_type_completed_idx'),
+        ),
         migrations.CreateModel(
             name='CropLibraryUsageDay',
             fields=[

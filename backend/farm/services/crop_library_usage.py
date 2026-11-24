@@ -55,9 +55,7 @@ def build_crop_library_operations(
     end_day = now.astimezone(UTC).date()
     start_day = end_day - timedelta(days=WINDOW_DAYS - 1)
     since = datetime.combine(start_day, time.min, tzinfo=UTC)
-    receipts = BatchOperation.objects.filter(created_at__range=(since, now)).exclude(
-        project_id__in=excluded_project_ids,
-    )
+    receipts = BatchOperation.objects.exclude(project_id__in=excluded_project_ids)
     batch_totals = dict(
         receipts.filter(
             operation_type=BatchOperation.TYPE_CROP_IMPORT,
@@ -80,7 +78,9 @@ def build_crop_library_operations(
         operations=Sum('count', default=0), projects=Count('project_id', distinct=True),
     )
     undos = receipts.filter(
-        operation_type=BatchOperation.TYPE_REVERTED, context___library_import=True,
+        operation_type=BatchOperation.TYPE_REVERTED,
+        created_at__range=(since, now),
+        context___library_import=True,
     ).aggregate(operations=Count('pk'), projects=Count('project_id', distinct=True))
     return CropLibraryOperations(
         bulk_imports=OperationTotal(sum(batch_totals.values()), len(batch_totals)),

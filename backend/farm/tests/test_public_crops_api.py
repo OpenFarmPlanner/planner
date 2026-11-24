@@ -174,14 +174,14 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(metrics.import_undos, OperationTotal(1, 1))
 
         cutoff = datetime.combine(metrics.start_day, time.min, tzinfo=UTC)
-        BatchOperation.objects.filter(pk=first.pk).update(created_at=cutoff, completed_at=cutoff)
+        before_cutoff = cutoff - timedelta(microseconds=1)
+        BatchOperation.objects.filter(pk=first.pk).update(
+            created_at=before_cutoff, completed_at=cutoff,
+        )
         self.assertEqual(build_crop_library_operations(
             now, excluded_project_ids=excluded,
         ).bulk_imports, OperationTotal(3, 2))
-        before_cutoff = cutoff - timedelta(microseconds=1)
-        BatchOperation.objects.filter(pk=first.pk).update(
-            created_at=before_cutoff, completed_at=before_cutoff,
-        )
+        BatchOperation.objects.filter(pk=first.pk).update(completed_at=before_cutoff)
         metrics = build_crop_library_operations(now, excluded_project_ids=excluded)
         self.assertEqual(metrics.bulk_imports, OperationTotal(2, 2))
         self.assertEqual(metrics.import_undos, OperationTotal(1, 1))

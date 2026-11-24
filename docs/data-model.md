@@ -441,6 +441,12 @@ erDiagram
   flow. Approval only adds the user to the `Public Library Moderators` group
   (permission `crops.moderate_crop_species`) — it never grants staff or Django
   admin rights.
+- **`CropLibraryUsageDay`** stores a count of successful selection imports or
+  applied linked updates for each project, UTC date and outcome. The unique key
+  is `(project, day, kind)` and the day is indexed for the dashboard and expiry.
+  Each counter belongs to a `Project` and is deleted with it. `cleanup_history`
+  retains 30 UTC dates of these counters. Bulk import and undo metrics use
+  existing `BatchOperation` receipts.
 
 Full behaviour, including the publishing wizard and the moderation surfaces:
 [crop-library-architecture.md](./crop-library-architecture.md).
