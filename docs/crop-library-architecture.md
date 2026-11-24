@@ -1465,6 +1465,13 @@ choices as the parent stores an explicit override.
   UI selections. No data migration or automatic conversion takes place.
   Current crop/library filter popovers have no life-cycle selector; this
   change does not introduce one.
+- **Recurring perennial harvest.** In the shared timing form, the start and
+  end fields accept a localized month and day by typing or through a calendar
+  picker. Errors appear on the affected endpoint. Both dates may be blank, and
+  either date alone requires its counterpart. The two fields store one
+  `annual_harvest_window` (`MM-DD/MM-DD`) and share its inheritance and pin.
+  The window supports February 29 and can cross the calendar-year boundary.
+  Years until first harvest accepts a nonnegative whole number or a blank value.
 - **Inherited, not species-invariant.** They are in `CROP_INHERITABLE_FIELDS`
   (and the frontend's `VARIETY_INHERITABLE_FIELDS`): a Sorte shows its Kultur's
   value until it sets its own, because varieties can differ (a more

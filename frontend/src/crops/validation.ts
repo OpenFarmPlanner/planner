@@ -9,7 +9,8 @@ import type { Crop, SeedRateUnitConstraints } from '../api/types';
 import type { TFunction } from 'i18next';
 import { seedRateValueViolatesConstraint } from './seedRateConstraints';
 import { isTimingWindowComplete } from './timingWindows';
-import { isValidAnnualHarvestWindow } from './annualHarvestWindow';
+import { splitAnnualHarvestWindow } from './annualHarvestWindow';
+import { parseMonthDay } from '../utils/monthDay';
 
 export interface ValidationResult {
   isValid: boolean;
@@ -94,9 +95,15 @@ export function validateCrop(
 ): ValidationResult {
   const errors: Record<string, string> = {};
 
-  if (draft.annual_harvest_window && !isValidAnnualHarvestWindow(draft.annual_harvest_window)) {
-    errors.annual_harvest_window = t('annualHarvest.invalidWindow');
-  }
+  const window = draft.annual_harvest_window ?? '';
+  const [start, end] = splitAnnualHarvestWindow(window);
+  const validStart = parseMonthDay(start);
+  const validEnd = parseMonthDay(end);
+  if (start && !validStart) errors['annual_harvest_window.start'] = t('annualHarvest.invalidDate');
+  if (end && !validEnd) errors['annual_harvest_window.end'] = t('annualHarvest.invalidDate');
+  if (validStart && !end) errors['annual_harvest_window.end'] = t('annualHarvest.missingEnd');
+  if (validEnd && !start) errors['annual_harvest_window.start'] = t('annualHarvest.missingStart');
+  if (window && !start && !end) errors['annual_harvest_window.start'] = t('annualHarvest.invalidDate');
   const delay = draft.first_harvest_delay_years;
   if (delay != null && (!Number.isInteger(delay) || delay < 0 || delay > 2147483647)) {
     errors.first_harvest_delay_years = t('annualHarvest.invalidDelay');

@@ -287,7 +287,7 @@ export function CropForm({
   publicIdentityReadOnly = false,
   saveErrorOverride,
 }: CropFormProps) {
-  const { t } = useTranslation('crops');
+  const { t, i18n } = useTranslation('crops');
   const isEdit = Boolean(crop);
   const isProjectForm = variant === 'project';
   // Groups are the project's own labels; the library form has none.
@@ -1535,7 +1535,7 @@ export function CropForm({
                 companion planting, display colour, notes. */}
             <Divider aria-hidden />
             <LifeCycleFields {...sectionProps} isPerennial={isPerennial} inheritedStandingTime={inheritedStandingTime} />
-            <TimingSection {...sectionProps} isPerennial={isPerennial} />
+            <TimingSection {...sectionProps} isPerennial={isPerennial} language={i18n?.resolvedLanguage ?? i18n?.language} />
             <SpacingSection {...sectionProps} />
             <YieldSection {...sectionProps} showDefaultHarvestUnit={isProjectForm} />
             <SeedingSection

@@ -1,12 +1,14 @@
 /**
  * TimingSection: cultivation type, harvest planning and propagation duration.
- * @remarks Presentational, no internal state
  */
 import { Box, Typography, FormControl, InputLabel, MenuItem, TextField, Checkbox, ListItemText } from '@mui/material';
 import { formGridFieldSx, formGridSx } from './styles.tsx';
 import type { Crop, CultivationType } from '../../api/types';
 import type { TFunction } from 'i18next';
 import { TypeaheadSelect as Select } from '../../components/inputs/TypeaheadSelect';
+import { YearlessDateField } from '../../components/inputs/YearlessDateField';
+import { resolveLocaleFromLanguage } from '../../utils/numberLocalization';
+import { INVALID_HARVEST_DATE_DRAFT, splitAnnualHarvestWindow } from '../annualHarvestWindow';
 import { mergeVarietyFieldSx, type GetVarietyFieldHighlightSx } from '../varietyValueAccent';
 import { libraryPinSelectSx } from '../libraryFieldPin';
 import type { GetLibraryFieldPinProps } from '../libraryFieldPinProps';
@@ -18,13 +20,14 @@ interface TimingSectionProps {
   errors: Record<string, string>;
   onChange: <K extends keyof Crop>(name: K, value: Crop[K]) => void;
   t: TFunction;
+  language?: string;
   isPerennial?: boolean;
   getFieldHighlightSx?: GetVarietyFieldHighlightSx;
   getFieldPinProps?: GetLibraryFieldPinProps;
 }
 
 export function TimingSection({
-  formData, errors, onChange, t, isPerennial = false, getFieldHighlightSx, getFieldPinProps,
+  formData, errors, onChange, t, language, isPerennial = false, getFieldHighlightSx, getFieldPinProps,
 }: TimingSectionProps) {
   const selectedCultivationTypes = formData.cultivation_types?.length
     ? formData.cultivation_types
@@ -38,7 +41,7 @@ export function TimingSection({
   const propagationDurationPin = getFieldPinProps?.('propagation_duration_days');
   const annualWindowPin = getFieldPinProps?.('annual_harvest_window');
   const delayPin = getFieldPinProps?.('first_harvest_delay_years');
-  const [start = '', end = ''] = (formData.annual_harvest_window ?? '').split('/');
+  const [start, end] = splitAnnualHarvestWindow(formData.annual_harvest_window ?? '');
   const updateAnnualWindow = (nextStart: string, nextEnd: string) => {
     onChange('annual_harvest_window', nextStart || nextEnd ? `${nextStart}/${nextEnd}` : '');
   };
@@ -48,6 +51,12 @@ export function TimingSection({
   const infoButton = (labelKey: string, helpKey: string) => (
     <FieldInfoButton title={t(helpKey)} ariaLabel={t('form.fieldInfoAriaLabel', { field: t(labelKey) })} />
   );
+  const yearlessDateProps = {
+    sx: windowSx,
+    locale: resolveLocaleFromLanguage(language),
+    monthLabel: t('annualHarvest.pickerMonth'),
+    daysLabel: t('annualHarvest.pickerDays'),
+  };
 
   return (
     <>
@@ -97,32 +106,22 @@ export function TimingSection({
       <Box sx={formGridSx}>
         {isPerennial ? (
           <>
-            <TextField
-              sx={windowSx}
+            <YearlessDateField
+              {...yearlessDateProps}
               label={t('annualHarvest.start')}
-              placeholder="09-01"
-              value={start}
-              onChange={event => updateAnnualWindow(event.target.value.replaceAll('/', '-'), end)}
-              error={Boolean(errors.annual_harvest_window)}
-              helperText={errors.annual_harvest_window || t('annualHarvest.monthDayFormat')}
-              slotProps={{
-                htmlInput: { maxLength: 5 },
-                input: {
-                  endAdornment: buildFieldEndAdornment(
-                    infoButton('annualHarvest.start', 'annualHarvest.windowHelp'), annualWindowPin,
-                  ),
-                },
-              }}
+              pickerLabel={t('annualHarvest.openStartPicker')}
+              value={start === INVALID_HARVEST_DATE_DRAFT ? null : start}
+              onChange={value => updateAnnualWindow(value ?? INVALID_HARVEST_DATE_DRAFT, end)}
+              error={errors['annual_harvest_window.start']}
+              actions={<>{infoButton('annualHarvest.start', 'annualHarvest.windowHelp')}{annualWindowPin?.button}</>}
             />
-            <TextField
-              sx={windowSx}
+            <YearlessDateField
+              {...yearlessDateProps}
               label={t('annualHarvest.end')}
-              placeholder="10-15"
-              value={end}
-              onChange={event => updateAnnualWindow(start, event.target.value.replaceAll('/', '-'))}
-              error={Boolean(errors.annual_harvest_window)}
-              helperText={t('annualHarvest.monthDayFormat')}
-              slotProps={{ htmlInput: { maxLength: 5 } }}
+              pickerLabel={t('annualHarvest.openEndPicker')}
+              value={end === INVALID_HARVEST_DATE_DRAFT ? null : end}
+              onChange={value => updateAnnualWindow(start, value ?? INVALID_HARVEST_DATE_DRAFT)}
+              error={errors['annual_harvest_window.end']}
             />
             <TextField
               sx={mergeVarietyFieldSx(formGridFieldSx, getFieldHighlightSx?.('first_harvest_delay_years'), delayPin?.fieldSx)}
@@ -133,6 +132,7 @@ export function TimingSection({
               error={Boolean(errors.first_harvest_delay_years)}
               helperText={errors.first_harvest_delay_years}
               slotProps={{
+                inputLabel: { shrink: true },
                 htmlInput: { min: 0, step: 1, inputMode: 'numeric' },
                 input: { endAdornment: buildFieldEndAdornment(infoButton('annualHarvest.delay', 'annualHarvest.delayHelp'), delayPin) },
               }}

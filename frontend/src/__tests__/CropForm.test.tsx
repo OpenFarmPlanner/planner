@@ -1505,12 +1505,27 @@ describe('CropForm', () => {
     const start = screen.getByRole('textbox', { name: 'annualHarvest.start', exact: true });
     const end = screen.getByRole('textbox', { name: 'annualHarvest.end', exact: true });
     const delay = screen.getByRole('spinbutton', { name: 'annualHarvest.delay', exact: true });
-    fireEvent.change(start, { target: { value: '12-15' } });
-    fireEvent.change(end, { target: { value: '02-30' } });
-    expect(screen.getByText('annualHarvest.invalidWindow')).toBeVisible();
-    fireEvent.change(end, { target: { value: '02-29' } });
+    fireEvent.change(start, { target: { value: '12/15' } });
+    expect(start).toHaveAttribute('aria-invalid', 'false');
+    expect(end).toHaveAccessibleDescription('annualHarvest.missingEnd');
+    expect(screen.getByRole('button', { name: 'form.save' })).toBeDisabled();
+    fireEvent.change(end, { target: { value: '02/' } });
+    expect(end).toHaveValue('02/');
+    fireEvent.change(end, { target: { value: '02/30' } });
+    expect(end).toHaveAccessibleDescription('annualHarvest.invalidDate');
+    expect(start).toHaveAttribute('aria-invalid', 'false');
+    fireEvent.change(start, { target: { value: '13/15' } });
+    expect(start).toHaveAccessibleDescription('annualHarvest.invalidDate');
+    fireEvent.change(start, { target: { value: '12/15' } });
+    fireEvent.change(end, { target: { value: '02/29' } });
+    fireEvent.change(start, { target: { value: '' } });
+    expect(start).toHaveAccessibleDescription('annualHarvest.missingStart');
+    expect(end).toHaveAttribute('aria-invalid', 'false');
+    fireEvent.change(start, { target: { value: '12/15' } });
     fireEvent.change(delay, { target: { value: '-1' } });
     expect(screen.getByText('annualHarvest.invalidDelay')).toBeVisible();
+    fireEvent.change(delay, { target: { value: '0.5' } });
+    expect(delay).toHaveAccessibleDescription('annualHarvest.invalidDelay');
     fireEvent.change(delay, { target: { value: '0' } });
     await waitFor(() => expect(screen.getByRole('button', { name: 'form.save' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
@@ -1549,8 +1564,8 @@ describe('CropForm', () => {
     fireEvent.mouseDown(select);
     fireEvent.click(screen.getByRole('option', { name: 'siteHealth.values.life_cycle.perennial' }));
     expect(group.getByRole('spinbutton')).toHaveValue(16);
-    expect(screen.getByRole('textbox', { name: 'annualHarvest.start' })).toHaveValue('09-01');
-    expect(screen.getByRole('textbox', { name: 'annualHarvest.end' })).toHaveValue('10-15');
+    expect(screen.getByRole('textbox', { name: 'annualHarvest.start' })).toHaveValue('09/01');
+    expect(screen.getByRole('textbox', { name: 'annualHarvest.end' })).toHaveValue('10/15');
     expect(screen.getByRole('spinbutton', { name: 'annualHarvest.delay' })).toHaveValue(2);
     expect(screen.queryByLabelText('form.growthDurationDays')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
@@ -1571,6 +1586,41 @@ describe('CropForm', () => {
     expect(standing).toHaveAttribute('placeholder', '15');
     expect(screen.getByRole('textbox', { name: 'annualHarvest.start' })).toBeVisible();
     expect(screen.queryByLabelText('form.growthDurationDays')).not.toBeInTheDocument();
+  });
+
+  it('saves both harvest dates and the delay as optional when cleared', async () => {
+    const crop: Crop = {
+      ...CROP_A, life_cycle: 'perennial', standing_time_years: 15,
+      annual_harvest_window: '09-01/10-15', first_harvest_delay_years: 0,
+    };
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(<CropForm crop={crop} onSave={onSave} onCancel={vi.fn()} />);
+    fireEvent.change(screen.getByRole('textbox', { name: 'annualHarvest.start' }), { target: { value: '' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'annualHarvest.end' }), { target: { value: '' } });
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'annualHarvest.delay' }), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][0]).toMatchObject({ annual_harvest_window: '', first_harvest_delay_years: null });
+  });
+
+  it('keeps the harvest window and zero delay inherited after an unrelated variety edit', async () => {
+    const variety: Crop = {
+      ...CROP_A, general_crop: 8,
+      inherited_fields: ['life_cycle', 'standing_time_years', 'annual_harvest_window', 'first_harvest_delay_years'],
+      effective_values: {
+        life_cycle: 'perennial', standing_time_years: 15,
+        annual_harvest_window: '09-01/10-15', first_harvest_delay_years: 0,
+      },
+    };
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(<CropForm crop={variety} formKind="variety" onSave={onSave} onCancel={vi.fn()} />);
+    expect(screen.getByRole('textbox', { name: 'annualHarvest.start' })).toHaveValue('09/01');
+    expect(screen.getByRole('textbox', { name: 'annualHarvest.end' })).toHaveValue('10/15');
+    expect(screen.getByRole('spinbutton', { name: 'annualHarvest.delay' })).toHaveValue(0);
+    fireEvent.change(screen.getByLabelText('row-spacing-input'), { target: { value: '71' } });
+    fireEvent.click(screen.getByRole('button', { name: 'form.save' }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][0]).toMatchObject({ annual_harvest_window: '', first_harvest_delay_years: null });
   });
 
   it('treats trim-only text edits as unchanged when saving an edited crop', () => {
