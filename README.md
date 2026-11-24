@@ -31,26 +31,22 @@ dashboard) for internal product-development decisions, reachable from the Farm
 section of the admin navigation. It derives project activity from the existing
 `created_at` and `updated_at` timestamps on farm data (suppliers, crops and
 supplier data, seed packages, locations, fields, beds and layouts, planting
-plans, tasks, and note attachments). It shows only per-project totals and
-recency/status buckets, plus aggregate registration and recent-login totals. A
-project's active-user count uses the existing `last_login` value for its
-members.
+plans, tasks, and note attachments). The project table shows members,
+planting plans, last activity and status. Its 7- and 30-day activity filters
+affect only the table. Total parcel area adds each parcel’s stored
+`Field.area_sqm` once. It displays a partial sum when only some parcels have
+recorded areas, and an unknown value when none do. A recorded zero displays
+as zero.
 
-By default, the "Projekte" table and the "Gesamtübersicht" totals (total
-projects, active-project counts, registered users, and users with a recent
-login) hide two kinds of noise: projects where the logged-in superuser is the
-sole member (their own scratch/test projects), and demo/template projects,
-identified by the template's own project description (never by project name,
-since either can be renamed). The banner above the table names how many
-projects are hidden and links to an unfiltered view (`?show_all=1`) that also
-adds the superuser back into the registered-user totals. Demo/template
-projects are also left out of every other breakdown below (data richness,
-active-project detail, feature adoption, growth, seasons/layouts/crops/tasks,
-crop library), because their seeded sample data says nothing about real
-usage; the superuser's own projects stay in those breakdowns. The
-`?show_all=1` view includes demo projects there again. Only "Projekte aus
-Demo-Vorlage" and the Demo-Nutzung block below still count demo projects by
-design.
+The project table and aggregate project metrics use the same population.
+By default, this excludes temporary guest workspaces, demo/template projects,
+and projects whose memberships are all superusers. Demo/template projects
+are identified by the seeding timestamp or a known template description.
+**Alle anzeigen** (`?show_all=1`) includes those projects and preserves the
+table’s sort and activity filter. Registration and login totals exclude
+temporary guest accounts in both views and include staff and superusers in
+the expanded view. The template-origin figure and **Demo-Nutzung** have
+their own populations.
 
 A **Demo-Nutzung** block, placed between the Gesamtübersicht and the
 "Projekte" table, reports how often the demo is used and whether it leads to
@@ -82,8 +78,7 @@ the two ways into the demo:
   of that window's distinct demo users. Guest demos cannot be linked to a
   later registration, so they are not part of this metric.
 
-This block applies the same superuser exclusion as the rest of the dashboard:
-a demo project where the logged-in superuser is the sole member is left out
+The account demo metrics apply a viewer-specific exclusion. A demo project where the logged-in superuser is the sole member is left out
 of the account demo-project rows, and the superuser is never counted as a
 demo user for the conversion metric, even when sharing a demo project with
 someone else. Like the "Projekte" table and the Gesamtübersicht totals, the
@@ -94,11 +89,6 @@ Beyond that activity view it reads the following existing data, always as
 per-project counts or aggregates over all projects, never as per-user
 behavior:
 
-- **Data richness and active-project detail:** per-project counts of locations,
-  fields/parcels, beds, crops, planting plans, and note photo attachments, plus
-  the average of those counts across active projects.
-- **Project membership:** the number of members per project, from the existing
-  project memberships.
 - **Feature adoption:** the share of projects that have more than one location,
   at least one uploaded planting-plan photo, seed packages, suppliers, tasks, or
   submitted in-app feedback (feedback rows, counted per project; message texts
@@ -113,7 +103,7 @@ behavior:
 - **Crop diversity:** the average number of distinct crop names per project.
 - **Tasks:** created and completed task totals in aggregate.
 - **Template origin:** the share of projects created from the demo template,
-  identified by the template's own project description.
+  identified by the seeding timestamp or template description.
 - **Crop library:** published `PublicCrop` entries per contributing project,
   project crops imported from the library (`source_public_crop`) versus
   self-entered ones, crops whose linked library entry has a newer version than

@@ -11,10 +11,11 @@ from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 from typing import Any
 
 from django.contrib.auth import get_user_model
-from django.db.models import Count, F, Max, Min, Model, Q, Sum
+from django.db.models import Count, Exists, F, Max, Min, Model, OuterRef, Q, QuerySet, Sum
 from django.utils import timezone
 
 from accounts.models import GuestDemoSession, GuestDemoUsageDay
@@ -116,6 +117,9 @@ class ProjectEngagement:
     """Aggregated engagement values for one project."""
 
     project: Project
+    as_of: datetime = field(default_factory=timezone.now)
+    parcel_area: Decimal | None = None
+    parcels_with_area: int = 0
     last_active: datetime | None = None
     created_last_7_days: int = 0
     created_last_30_days: int = 0
@@ -154,16 +158,18 @@ class ProjectEngagement:
         return self.count_of(NoteAttachment)
 
     @property
-    def data_total(self) -> int:
-        """Return the combined object count the data-richness ranking sorts by."""
-        return (
-            self.location_count
-            + self.field_count
-            + self.bed_count
-            + self.crop_count
-            + self.planting_plan_count
-            + self.image_count
-        )
+    def parcel_area_is_partial(self) -> bool:
+        return 0 < self.parcels_with_area < self.field_count
+
+    @property
+    def parcel_area_display(self) -> Decimal | None:
+        if self.parcel_area is not None and self.parcel_area >= 10_000:
+            return self.parcel_area / 10_000
+        return self.parcel_area
+
+    @property
+    def parcel_area_unit(self) -> str:
+        return 'ha' if self.parcel_area is not None and self.parcel_area >= 10_000 else 'm²'
 
     @property
     def activated_at(self) -> datetime | None:
@@ -188,10 +194,9 @@ class ProjectEngagement:
         """Return the German activity label for this project."""
         if self.last_active is None:
             return STATUS_REGISTERED_ONLY
-        now = timezone.now()
-        if self.last_active >= now - timedelta(days=7):
+        if self.last_active >= self.as_of - timedelta(days=7):
             return STATUS_ACTIVE
-        if self.last_active >= now - timedelta(days=30):
+        if self.last_active >= self.as_of - timedelta(days=30):
             return STATUS_QUIET
         return STATUS_INACTIVE
 
@@ -205,6 +210,8 @@ PROJECT_SORT_FIELDS: dict[str, Callable[['ProjectEngagement'], Any]] = {
     'last_active': lambda row: (row.last_active is None, row.last_active or datetime.min),
     'created_last_7_days': lambda row: (False, row.created_last_7_days),
     'created_last_30_days': lambda row: (False, row.created_last_30_days),
+    'parcel_area': lambda row: (row.parcel_area is None, row.parcel_area or Decimal(0)),
+    'planting_plan_count': lambda row: (False, row.planting_plan_count),
     'member_count': lambda row: (False, row.member_count),
     'active_users_last_30_days': lambda row: (False, row.active_users_last_30_days),
     'status': lambda row: (False, row.status),
@@ -221,21 +228,9 @@ def sort_project_rows(
     key_func = PROJECT_SORT_FIELDS.get(sort_key)
     if key_func is None:
         return rows
-    return sorted(rows, key=key_func, reverse=descending)
-
-
-@dataclass(frozen=True)
-class AverageProjectCounts:
-    """Mean per-project object counts across a set of projects."""
-
-    locations: float = 0.0
-    fields: float = 0.0
-    beds: float = 0.0
-    crops: float = 0.0
-    planting_plans: float = 0.0
-    images: float = 0.0
-    members: float = 0.0
-    data_total: float = 0.0
+    known = [row for row in rows if not key_func(row)[0]]
+    unknown = [row for row in rows if key_func(row)[0]]
+    return sorted(known, key=key_func, reverse=descending) + unknown
 
 
 @dataclass(frozen=True)
@@ -321,9 +316,7 @@ class EngagementDashboard:
     """Complete dashboard result and its overall totals."""
 
     projects: list[ProjectEngagement]
-    projects_by_data: list[ProjectEngagement]
-    active_projects: list[ProjectEngagement]
-    active_project_averages: AverageProjectCounts
+    excluded_project_ids: set[int]
     total_projects: int
     active_projects_7_days: int
     active_projects_30_days: int
@@ -342,12 +335,13 @@ class EngagementDashboard:
 
 
 def _collect_project_rows(
+    as_of: datetime,
     cutoff_7_days: datetime,
     cutoff_30_days: datetime,
 ) -> dict[int, ProjectEngagement]:
     """Aggregate every engagement model into one row per project."""
     rows = {
-        project.pk: ProjectEngagement(project=project)
+        project.pk: ProjectEngagement(project=project, as_of=as_of)
         for project in Project.objects.all()
     }
 
@@ -361,6 +355,10 @@ def _collect_project_rows(
             created_7_days=Count('pk', filter=Q(created_at__gte=cutoff_7_days)),
             created_30_days=Count('pk', filter=Q(created_at__gte=cutoff_30_days)),
         )
+        if model is Field:
+            aggregates = aggregates.annotate(
+                parcel_area=Sum('area_sqm'), parcels_with_area=Count('area_sqm'),
+            )
         for aggregate in aggregates:
             row = rows.get(aggregate['project_id'])
             if row is None:
@@ -377,6 +375,9 @@ def _collect_project_rows(
             if aggregate['earliest_created'] is not None:
                 row.first_created[key] = aggregate['earliest_created']
             row.object_counts[key] = aggregate['total']
+            if model is Field:
+                row.parcel_area = aggregate['parcel_area']
+                row.parcels_with_area = aggregate['parcels_with_area']
             row.created_last_7_days += aggregate['created_7_days']
             row.created_last_30_days += aggregate['created_30_days']
 
@@ -409,27 +410,6 @@ def _add_membership_and_feedback(
         row = rows.get(entry['project_id'])
         if row is not None:
             row.feedback_count = entry['total']
-
-
-def _average_counts(projects: list[ProjectEngagement]) -> AverageProjectCounts:
-    """Return the mean per-project object counts over `projects`."""
-    if not projects:
-        return AverageProjectCounts()
-    size = len(projects)
-
-    def mean(values: list[int]) -> float:
-        return round(sum(values) / size, 1)
-
-    return AverageProjectCounts(
-        locations=mean([row.location_count for row in projects]),
-        fields=mean([row.field_count for row in projects]),
-        beds=mean([row.bed_count for row in projects]),
-        crops=mean([row.crop_count for row in projects]),
-        planting_plans=mean([row.planting_plan_count for row in projects]),
-        images=mean([row.image_count for row in projects]),
-        members=mean([row.member_count for row in projects]),
-        data_total=mean([row.data_total for row in projects]),
-    )
 
 
 def _build_adoption(projects: list[ProjectEngagement]) -> FeatureAdoption:
@@ -534,9 +514,8 @@ def _build_crop_library(
 ) -> CropLibraryEngagement:
     """Measure contribution to and consumption of the public crop library.
 
-    Project-owned numbers (contributions, crop origins, pending updates) skip
-    `excluded_ids`; discussion and revision totals belong to the shared
-    library itself and are never scoped to a project.
+    Entries with a known source project use the dashboard population.
+    Shared entries without a project source are included.
     """
     published = PublicCrop.objects.filter(
         status=PublicCrop.STATUS_PUBLISHED,
@@ -574,8 +553,10 @@ def _build_crop_library(
         crops_with_pending_update=pending_updates,
         discussion_comments=PublicCropDiscussionComment.objects.filter(
             deleted_at__isnull=True,
+        ).exclude(topic__public_crop__source_project_id__in=excluded_ids).count(),
+        revisions=PublicCropRevision.objects.exclude(
+            public_crop__source_project_id__in=excluded_ids,
         ).count(),
-        revisions=PublicCropRevision.objects.count(),
     )
 
 
@@ -596,75 +577,53 @@ def _projects_where_user_is_sole_member(user_id: int) -> set[int]:
     return sole_member_project_ids & current_user_project_ids
 
 
-def _demo_project_ids() -> set[int]:
-    """Return ids of demo/template projects, identified by their description marker."""
-    return set(
-        Project.objects.filter(description__in=DEMO_PROJECT_DESCRIPTIONS)
-        .values_list('pk', flat=True),
+def _demo_projects() -> QuerySet[Project]:
+    """Recognize seeded demos after edits and legacy demos by description."""
+    return Project.objects.filter(
+        Q(description__in=DEMO_PROJECT_DESCRIPTIONS) | Q(demo_seeded_at__isnull=False),
     )
+
+
+def usage_users(*, include_hidden: bool = False) -> QuerySet:
+    """Users eligible for registration/login counts under the population filter."""
+    users = get_user_model().objects.filter(guest_demo_session__isnull=True)
+    return users if include_hidden else users.filter(is_superuser=False, is_staff=False)
 
 
 def build_engagement_dashboard(
     now: datetime | None = None,
     *,
-    current_user_id: int | None = None,
     include_hidden: bool = False,
 ) -> EngagementDashboard:
-    """Build the dashboard with a fixed number of aggregate queries, never per project.
-
-    By default (`include_hidden=False`), demo/template projects and projects
-    where `current_user_id` is the sole member are hidden from the "Projekte"
-    table and from the top-line project and user counts, so the dashboard
-    reflects real external usage. Demo projects are also left out of every
-    other breakdown (data richness, feature adoption, growth, crop library,
-    ...), since their seeded sample data says nothing about real usage; the
-    superuser's own projects stay in those breakdowns. `include_hidden=True`
-    lifts both exclusions everywhere.
-    """
+    """Build the inventory and usage totals over one project population."""
     current_time = now or timezone.now()
     cutoff_7_days = current_time - timedelta(days=7)
     cutoff_30_days = current_time - timedelta(days=30)
 
-    all_rows = _collect_project_rows(cutoff_7_days, cutoff_30_days)
+    all_rows = _collect_project_rows(current_time, cutoff_7_days, cutoff_30_days)
     _add_membership_and_feedback(all_rows, cutoff_30_days)
-
-    demo_ids = _demo_project_ids()
-    excluded_ids = set(demo_ids)
-    if current_user_id is not None:
-        excluded_ids |= _projects_where_user_is_sole_member(current_user_id)
-    hidden_projects_count = sum(1 for pk in all_rows if pk in excluded_ids)
-
-    def _without(ids: set[int]) -> dict[int, ProjectEngagement]:
-        if include_hidden:
-            return all_rows
-        return {pk: row for pk, row in all_rows.items() if pk not in ids}
-
-    visible_rows = _without(excluded_ids)
-    analysed_rows = _without(demo_ids)
-    analysis_excluded_ids = set() if include_hidden else demo_ids
-
-    def _by_recency(rows: dict[int, ProjectEngagement]) -> list[ProjectEngagement]:
-        return sorted(
-            rows.values(),
-            key=lambda row: row.last_active or datetime.min.replace(tzinfo=current_time.tzinfo),
-            reverse=True,
-        )
-
-    projects = _by_recency(visible_rows)
-    analysed_projects = _by_recency(analysed_rows)
+    demo_ids = set(_demo_projects().values_list('pk', flat=True))
+    guests = set(GuestDemoSession.objects.values_list('project_id', flat=True))
+    members = ProjectMembership.objects.filter(project_id=OuterRef('pk'))
+    scratch_ids = set(
+        Project.objects.filter(
+            Exists(members.filter(user__is_superuser=True)),
+            ~Exists(members.filter(user__is_superuser=False)),
+        ).values_list('pk', flat=True),
+    )
+    excluded = demo_ids | guests | scratch_ids
+    applied_exclusions = set() if include_hidden else excluded
+    projects = sort_project_rows(
+        [row for pk, row in all_rows.items() if pk not in applied_exclusions],
+        'last_active',
+        descending=True,
+    )
     total_projects = len(projects)
-    analysed_total_projects = len(analysed_projects)
-    active_projects = [row for row in analysed_projects if row.status == STATUS_ACTIVE]
-    user_model = get_user_model()
-    user_qs = user_model.objects.all()
-    if not include_hidden and current_user_id is not None:
-        user_qs = user_qs.exclude(pk=current_user_id)
+    user_qs = usage_users(include_hidden=include_hidden)
 
     return EngagementDashboard(
         projects=projects,
-        projects_by_data=sorted(analysed_projects, key=lambda row: row.data_total, reverse=True),
-        active_projects=active_projects,
-        active_project_averages=_average_counts(active_projects),
+        excluded_project_ids=applied_exclusions,
         total_projects=total_projects,
         active_projects_7_days=sum(
             row.last_active is not None and row.last_active >= cutoff_7_days for row in projects
@@ -674,17 +633,17 @@ def build_engagement_dashboard(
         ),
         total_users=user_qs.count(),
         users_logged_in_30_days=user_qs.filter(last_login__gte=cutoff_30_days).count(),
-        adoption=_build_adoption(analysed_projects),
-        monthly_growth=_build_monthly_growth(analysed_projects),
-        season_usage=_build_season_usage(analysed_total_projects, analysis_excluded_ids),
-        layout_usage=_build_layout_usage(analysed_projects),
+        adoption=_build_adoption(projects),
+        monthly_growth=_build_monthly_growth(projects),
+        season_usage=_build_season_usage(total_projects, applied_exclusions),
+        layout_usage=_build_layout_usage(projects),
         average_distinct_crops_per_project=_average_distinct_crops(
-            analysed_total_projects, analysis_excluded_ids,
+            total_projects, applied_exclusions,
         ),
-        task_usage=_build_task_usage(analysis_excluded_ids),
+        task_usage=_build_task_usage(applied_exclusions),
         projects_from_template=Share(count=len(demo_ids), total=len(all_rows)),
-        crop_library=_build_crop_library(all_rows, analysis_excluded_ids),
-        hidden_projects_count=hidden_projects_count,
+        crop_library=_build_crop_library(all_rows, applied_exclusions),
+        hidden_projects_count=len(excluded),
         show_all=include_hidden,
     )
 
@@ -725,10 +684,7 @@ def _demo_usage_period(
     projects nor outlive the session, so they could never convert.
     """
     guest_started, guest_used = _guest_demo_usage(cutoff)
-    demo_projects = Project.objects.filter(
-        description__in=DEMO_PROJECT_DESCRIPTIONS,
-        guest_demo_session__isnull=True,
-    )
+    demo_projects = _demo_projects().filter(guest_demo_session__isnull=True)
     if cutoff is not None:
         demo_projects = demo_projects.filter(created_at__gte=cutoff)
     if excluded_project_ids:
@@ -748,8 +704,8 @@ def _demo_usage_period(
     if demo_first_seen:
         earliest_real_project = dict(
             ProjectMembership.objects
-            .exclude(project__description__in=DEMO_PROJECT_DESCRIPTIONS)
-            .filter(user_id__in=demo_first_seen)
+            .exclude(project__in=_demo_projects())
+            .filter(user_id__in=demo_first_seen, project__guest_demo_session__isnull=True)
             .values('user_id')
             .annotate(earliest_real=Min('created_at'))
             .values_list('user_id', 'earliest_real'),

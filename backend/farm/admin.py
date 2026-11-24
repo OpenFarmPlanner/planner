@@ -4,7 +4,8 @@ This module configures the Django admin interface for all farm models,
 providing customized list displays, filters, and search capabilities.
 """
 
-from dataclasses import replace
+from datetime import timedelta
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib import admin, messages
@@ -12,8 +13,10 @@ from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse
 from django.template.response import TemplateResponse
 from django.urls import URLPattern, URLResolver, path, reverse
+from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 
 from .models import (
     AgentLoginToken,
@@ -64,85 +67,74 @@ class ProjectAdmin(admin.ModelAdmin):
         return custom_urls + super().get_urls()
 
     def engagement_dashboard_view(self, request: HttpRequest) -> HttpResponse:
-        """Show internal aggregates; never extend this to individual behavior tracking."""
+        """Show aggregate usage to superusers."""
         if not request.user.is_superuser:
             raise PermissionDenied
+        now = timezone.now()
         show_all = request.GET.get('show_all') == '1'
-        dashboard = build_engagement_dashboard(
-            current_user_id=request.user.pk,
-            include_hidden=show_all,
-        )
+        dashboard = build_engagement_dashboard(now, include_hidden=show_all)
         demo_usage = build_demo_usage_summary(
-            current_user_id=request.user.pk,
-            include_hidden=show_all,
+            now, current_user_id=request.user.pk, include_hidden=show_all,
         )
-        order_param = request.GET.get('o', '')
-        descending = order_param.startswith('-')
-        sort_key = order_param[1:] if descending else order_param
-        if sort_key in PROJECT_SORT_FIELDS:
-            dashboard = replace(
-                dashboard,
-                projects=sort_project_rows(dashboard.projects, sort_key, descending=descending),
+        activity = request.GET.get('activity', '')
+        activity = activity if activity in ('7', '30') else ''
+        order = request.GET.get('o', '')
+        order = order if order.removeprefix('-') in PROJECT_SORT_FIELDS else ''
+        params = {'o': order, 'activity': activity, 'show_all': '1' if show_all else ''}
+        rows = dashboard.projects
+        if activity:
+            cutoff = now - timedelta(days=int(activity))
+            rows = [row for row in rows if row.last_active and row.last_active >= cutoff]
+        if order:
+            rows = sort_project_rows(
+                rows, order.removeprefix('-'), descending=order.startswith('-'),
             )
-        else:
-            sort_key = ''
         context = {
             **self.admin_site.each_context(request),
             'title': _('Nutzungsübersicht'),
             'dashboard': dashboard,
+            'project_rows': rows,
             'demo_usage': demo_usage,
-            'project_columns': self._project_column_headers(
-                sort_key, descending, show_all=show_all,
-            ),
-            'show_all_toggle_url': self._show_all_toggle_url(
-                sort_key, descending, show_all=show_all,
-            ),
+            'project_columns': self._project_column_headers(params),
+            'activity_filter': [
+                (label, self._dashboard_url(params, activity=value), activity == value)
+                for value, label in (
+                    ('', _('Alle Zeiträume')),
+                    ('7', _('Letzte 7 Tage')),
+                    ('30', _('Letzte 30 Tage')),
+                )
+            ],
+            'show_all_toggle_url': self._dashboard_url(params, show_all='' if show_all else '1'),
             'opts': self.model._meta,
         }
         return TemplateResponse(request, 'admin/farm/engagement_dashboard.html', context)
 
     @staticmethod
-    def _project_column_headers(
-        current_sort_key: str,
-        descending: bool,
-        *,
-        show_all: bool,
-    ) -> dict[str, dict[str, object]]:
-        """Build Django-admin-style sortable header state for the "Projekte" table.
+    def _dashboard_url(params: dict[str, str], **updates: str) -> str:
+        return '?' + urlencode({key: value for key, value in (params | updates).items() if value})
 
-        Mirrors the `sorted`/`sortoptions`/`toggle` markup and CSS classes from
-        Django's own `admin/change_list_results.html` so the headers look and
-        behave like the sortable columns on other admin list pages (e.g. users).
-        The `show_all` query parameter is carried along so sorting never drops
-        out of the "show every project" view (and vice versa).
-        """
-        show_all_suffix = '&show_all=1' if show_all else ''
-        columns = {}
-        for key in PROJECT_SORT_FIELDS:
-            is_sorted = key == current_sort_key
-            ascending = is_sorted and not descending
-            columns[key] = {
-                'is_sorted': is_sorted,
-                'ascending': ascending,
-                'url_primary': f'?o={key}{show_all_suffix}',
-                'url_toggle': f'?o={"-" if ascending else ""}{key}{show_all_suffix}',
-                'url_remove': '?show_all=1' if show_all else '?',
+    @classmethod
+    def _project_column_headers(cls, params: dict[str, str]) -> list[dict[str, object]]:
+        order = params['o']
+        columns = (
+            ('name', gettext_lazy('Projektname')),
+            ('parcel_area', gettext_lazy('Gesamte Parzellenfläche')),
+            ('member_count', gettext_lazy('Mitglieder')),
+            ('planting_plan_count', gettext_lazy('Anbauplanungen')),
+            ('last_active', gettext_lazy('Zuletzt aktiv')),
+            ('status', gettext_lazy('Status')),
+        )
+        return [
+            {
+                'label': label,
+                'is_sorted': key == order.removeprefix('-'),
+                'ascending': key == order,
+                'url_primary': cls._dashboard_url(params, o=key),
+                'url_toggle': cls._dashboard_url(params, o=f'-{key}' if order == key else key),
+                'url_remove': cls._dashboard_url(params, o=''),
             }
-        return columns
-
-    @staticmethod
-    def _show_all_toggle_url(current_sort_key: str, descending: bool, *, show_all: bool) -> str:
-        """Build the URL for the "Alle anzeigen" / "Filter wieder aktivieren" link.
-
-        Preserves the current `?o=` sort so toggling the exclusion filter never
-        loses the active column sort (and vice versa).
-        """
-        params = []
-        if current_sort_key:
-            params.append(f'o={"-" if descending else ""}{current_sort_key}')
-        if not show_all:
-            params.append('show_all=1')
-        return f'?{"&".join(params)}' if params else '?'
+            for key, label in columns
+        ]
 
 
 @admin.register(ProjectMembership)

@@ -8,6 +8,8 @@
      instead of putting the whole admin page into horizontal scroll. */
   #content-main { min-width: 0; }
   #content-main .module { overflow-x: auto; }
+  .usage-filters { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: baseline; }
+  .usage-filters [aria-current="true"] { font-weight: 700; }
 </style>
 {% endblock %}
 
@@ -81,187 +83,57 @@
   </div>
 
   <div class="module">
-    {% if dashboard.show_all %}
     <p class="help">
-      {% translate "Alle Projekte werden angezeigt." %}
-      <a href="{{ show_all_toggle_url }}">{% translate "Filter wieder aktivieren" %}</a>
+      {% if dashboard.show_all %}
+        {% translate "Alle Projekte werden in den Projektkennzahlen berücksichtigt." %}
+        <a href="{{ show_all_toggle_url }}">{% translate "Filter wieder aktivieren" %}</a>
+      {% else %}
+        {% blocktranslate count counter=dashboard.hidden_projects_count %}{{ counter }} Gast-, Demo- oder Superuser-Projekt aus den Projektkennzahlen ausgeblendet.{% plural %}{{ counter }} Gast-, Demo- oder Superuser-Projekte aus den Projektkennzahlen ausgeblendet.{% endblocktranslate %}
+        <a href="{{ show_all_toggle_url }}">{% translate "Alle anzeigen" %}</a>
+      {% endif %}
     </p>
-    {% elif dashboard.hidden_projects_count %}
-    <p class="help">
-      {% blocktranslate count counter=dashboard.hidden_projects_count %}{{ counter }} Projekt ausgeblendet (nur eigene oder Demo-Projekte).{% plural %}{{ counter }} Projekte ausgeblendet (nur eigene oder Demo-Projekte).{% endblocktranslate %}
-      <a href="{{ show_all_toggle_url }}">{% translate "Alle anzeigen" %}</a>
-    </p>
-    {% endif %}
+    <nav class="usage-filters" aria-label="{% translate 'Projekte nach letzter Aktivität filtern' %}">
+      {% for label, url, selected in activity_filter %}
+        <a href="{{ url }}"{% if selected %} aria-current="true"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </nav>
     <table>
       <caption>{% translate "Projekte" %}</caption>
       <thead><tr>
-        <th{% if project_columns.name.is_sorted %} class="sorted {{ project_columns.name.ascending|yesno:"ascending,descending" }}"{% endif %}>
-          {% if project_columns.name.is_sorted %}
+        {% for column in project_columns %}
+        <th scope="col"{% if column.is_sorted %} class="sorted {{ column.ascending|yesno:'ascending,descending' }}" aria-sort="{{ column.ascending|yesno:'ascending,descending' }}"{% endif %}>
+          {% if column.is_sorted %}
           <div class="sortoptions">
-            <a class="sortremove" href="{{ project_columns.name.url_remove }}" title="{% translate "Sortierung entfernen" %}"></a>
-            <a href="{{ project_columns.name.url_toggle }}" class="toggle {{ project_columns.name.ascending|yesno:"ascending,descending" }}" title="{% translate "Sortierung umkehren" %}"></a>
+            <a class="sortremove" href="{{ column.url_remove }}" title="{% translate 'Sortierung entfernen' %}"></a>
+            <a class="toggle {{ column.ascending|yesno:'ascending,descending' }}" href="{{ column.url_toggle }}" title="{% translate 'Sortierung umkehren' %}"></a>
           </div>
           {% endif %}
-          <div class="text"><a href="{{ project_columns.name.url_primary }}">{% translate "Projektname" %}</a></div>
+          <div class="text"><a href="{{ column.url_primary }}">{{ column.label }}</a></div>
           <div class="clear"></div>
         </th>
-        <th{% if project_columns.last_active.is_sorted %} class="sorted {{ project_columns.last_active.ascending|yesno:"ascending,descending" }}"{% endif %}>
-          {% if project_columns.last_active.is_sorted %}
-          <div class="sortoptions">
-            <a class="sortremove" href="{{ project_columns.last_active.url_remove }}" title="{% translate "Sortierung entfernen" %}"></a>
-            <a href="{{ project_columns.last_active.url_toggle }}" class="toggle {{ project_columns.last_active.ascending|yesno:"ascending,descending" }}" title="{% translate "Sortierung umkehren" %}"></a>
-          </div>
-          {% endif %}
-          <div class="text"><a href="{{ project_columns.last_active.url_primary }}">{% translate "Zuletzt aktiv" %}</a></div>
-          <div class="clear"></div>
-        </th>
-        <th{% if project_columns.created_last_7_days.is_sorted %} class="sorted {{ project_columns.created_last_7_days.ascending|yesno:"ascending,descending" }}"{% endif %}>
-          {% if project_columns.created_last_7_days.is_sorted %}
-          <div class="sortoptions">
-            <a class="sortremove" href="{{ project_columns.created_last_7_days.url_remove }}" title="{% translate "Sortierung entfernen" %}"></a>
-            <a href="{{ project_columns.created_last_7_days.url_toggle }}" class="toggle {{ project_columns.created_last_7_days.ascending|yesno:"ascending,descending" }}" title="{% translate "Sortierung umkehren" %}"></a>
-          </div>
-          {% endif %}
-          <div class="text"><a href="{{ project_columns.created_last_7_days.url_primary }}">{% translate "Objekte angelegt (letzte 7 Tage)" %}</a></div>
-          <div class="clear"></div>
-        </th>
-        <th{% if project_columns.created_last_30_days.is_sorted %} class="sorted {{ project_columns.created_last_30_days.ascending|yesno:"ascending,descending" }}"{% endif %}>
-          {% if project_columns.created_last_30_days.is_sorted %}
-          <div class="sortoptions">
-            <a class="sortremove" href="{{ project_columns.created_last_30_days.url_remove }}" title="{% translate "Sortierung entfernen" %}"></a>
-            <a href="{{ project_columns.created_last_30_days.url_toggle }}" class="toggle {{ project_columns.created_last_30_days.ascending|yesno:"ascending,descending" }}" title="{% translate "Sortierung umkehren" %}"></a>
-          </div>
-          {% endif %}
-          <div class="text"><a href="{{ project_columns.created_last_30_days.url_primary }}">{% translate "Objekte angelegt (letzte 30 Tage)" %}</a></div>
-          <div class="clear"></div>
-        </th>
-        <th{% if project_columns.member_count.is_sorted %} class="sorted {{ project_columns.member_count.ascending|yesno:"ascending,descending" }}"{% endif %}>
-          {% if project_columns.member_count.is_sorted %}
-          <div class="sortoptions">
-            <a class="sortremove" href="{{ project_columns.member_count.url_remove }}" title="{% translate "Sortierung entfernen" %}"></a>
-            <a href="{{ project_columns.member_count.url_toggle }}" class="toggle {{ project_columns.member_count.ascending|yesno:"ascending,descending" }}" title="{% translate "Sortierung umkehren" %}"></a>
-          </div>
-          {% endif %}
-          <div class="text"><a href="{{ project_columns.member_count.url_primary }}">{% translate "Mitglieder" %}</a></div>
-          <div class="clear"></div>
-        </th>
-        <th{% if project_columns.active_users_last_30_days.is_sorted %} class="sorted {{ project_columns.active_users_last_30_days.ascending|yesno:"ascending,descending" }}"{% endif %}>
-          {% if project_columns.active_users_last_30_days.is_sorted %}
-          <div class="sortoptions">
-            <a class="sortremove" href="{{ project_columns.active_users_last_30_days.url_remove }}" title="{% translate "Sortierung entfernen" %}"></a>
-            <a href="{{ project_columns.active_users_last_30_days.url_toggle }}" class="toggle {{ project_columns.active_users_last_30_days.ascending|yesno:"ascending,descending" }}" title="{% translate "Sortierung umkehren" %}"></a>
-          </div>
-          {% endif %}
-          <div class="text"><a href="{{ project_columns.active_users_last_30_days.url_primary }}">{% translate "Aktive Nutzer (letzte 30 Tage)" %}</a></div>
-          <div class="clear"></div>
-        </th>
-        <th{% if project_columns.status.is_sorted %} class="sorted {{ project_columns.status.ascending|yesno:"ascending,descending" }}"{% endif %}>
-          {% if project_columns.status.is_sorted %}
-          <div class="sortoptions">
-            <a class="sortremove" href="{{ project_columns.status.url_remove }}" title="{% translate "Sortierung entfernen" %}"></a>
-            <a href="{{ project_columns.status.url_toggle }}" class="toggle {{ project_columns.status.ascending|yesno:"ascending,descending" }}" title="{% translate "Sortierung umkehren" %}"></a>
-          </div>
-          {% endif %}
-          <div class="text"><a href="{{ project_columns.status.url_primary }}">{% translate "Status" %}</a></div>
-          <div class="clear"></div>
-        </th>
+        {% endfor %}
       </tr></thead>
       <tbody>
-      {% for row in dashboard.projects %}
+      {% for row in project_rows %}
         <tr>
-          <th><a href="{% url 'admin:farm_project_change' row.project.pk %}">{{ row.project.name }}</a></th>
-          <td>{{ row.last_active|date:"SHORT_DATETIME_FORMAT"|default:"–" }}</td>
-          <td>{{ row.created_last_7_days }}</td>
-          <td>{{ row.created_last_30_days }}</td>
+          <th scope="row"><a href="{% url 'admin:farm_project_change' row.project.pk %}">{{ row.project.name }}</a></th>
+          <td>
+            {% if row.parcels_with_area %}
+              {{ row.parcel_area_display|floatformat:"-2" }} {{ row.parcel_area_unit }}
+              {% if row.parcel_area_is_partial %}({% translate "unvollständig" %}){% endif %}
+            {% else %}
+              {% translate "Fläche unbekannt" %}
+            {% endif %}
+          </td>
           <td>{{ row.member_count }}</td>
-          <td>{{ row.active_users_last_30_days }}</td>
+          <td>{{ row.planting_plan_count }}</td>
+          <td>{{ row.last_active|date:"SHORT_DATETIME_FORMAT"|default:"–" }}</td>
           <td>{{ row.status }}</td>
         </tr>
       {% empty %}
-        <tr><td colspan="7">{% translate "Keine Projekte vorhanden." %}</td></tr>
+        <tr><td colspan="6">{% translate "Keine Projekte vorhanden." %}</td></tr>
       {% endfor %}
       </tbody>
-    </table>
-  </div>
-
-  <div class="module">
-    <table>
-      <caption>{% translate "Datenreichtum je Projekt" %}</caption>
-      <thead><tr>
-        <th>{% translate "Projektname" %}</th>
-        <th>{% translate "Standorte" %}</th>
-        <th>{% translate "Flächen" %}</th>
-        <th>{% translate "Beete" %}</th>
-        <th>{% translate "Kulturen" %}</th>
-        <th>{% translate "Anbauplanungen" %}</th>
-        <th>{% translate "Bilder" %}</th>
-        <th>{% translate "Gesamt" %}</th>
-      </tr></thead>
-      <tbody>
-      {% for row in dashboard.projects_by_data %}
-        <tr>
-          <th><a href="{% url 'admin:farm_project_change' row.project.pk %}">{{ row.project.name }}</a></th>
-          <td>{{ row.location_count }}</td>
-          <td>{{ row.field_count }}</td>
-          <td>{{ row.bed_count }}</td>
-          <td>{{ row.crop_count }}</td>
-          <td>{{ row.planting_plan_count }}</td>
-          <td>{{ row.image_count }}</td>
-          <td>{{ row.data_total }}</td>
-        </tr>
-      {% empty %}
-        <tr><td colspan="8">{% translate "Keine Projekte vorhanden." %}</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <div class="module">
-    <table>
-      <caption>{% translate "Aktive Projekte im Detail" %}</caption>
-      <thead><tr>
-        <th>{% translate "Projektname" %}</th>
-        <th>{% translate "Standorte" %}</th>
-        <th>{% translate "Flächen" %}</th>
-        <th>{% translate "Beete" %}</th>
-        <th>{% translate "Kulturen" %}</th>
-        <th>{% translate "Anbauplanungen" %}</th>
-        <th>{% translate "Bilder" %}</th>
-        <th>{% translate "Mitglieder" %}</th>
-        <th>{% translate "Gesamt" %}</th>
-      </tr></thead>
-      <tbody>
-      {% for row in dashboard.active_projects %}
-        <tr>
-          <th><a href="{% url 'admin:farm_project_change' row.project.pk %}">{{ row.project.name }}</a></th>
-          <td>{{ row.location_count }}</td>
-          <td>{{ row.field_count }}</td>
-          <td>{{ row.bed_count }}</td>
-          <td>{{ row.crop_count }}</td>
-          <td>{{ row.planting_plan_count }}</td>
-          <td>{{ row.image_count }}</td>
-          <td>{{ row.member_count }}</td>
-          <td>{{ row.data_total }}</td>
-        </tr>
-      {% empty %}
-        <tr><td colspan="9">{% translate "Keine aktiven Projekte vorhanden." %}</td></tr>
-      {% endfor %}
-      </tbody>
-      {% if dashboard.active_projects %}
-      <tfoot>
-        <tr>
-          <th>{% translate "Durchschnitt" %}</th>
-          <td>{{ dashboard.active_project_averages.locations }}</td>
-          <td>{{ dashboard.active_project_averages.fields }}</td>
-          <td>{{ dashboard.active_project_averages.beds }}</td>
-          <td>{{ dashboard.active_project_averages.crops }}</td>
-          <td>{{ dashboard.active_project_averages.planting_plans }}</td>
-          <td>{{ dashboard.active_project_averages.images }}</td>
-          <td>{{ dashboard.active_project_averages.members }}</td>
-          <td>{{ dashboard.active_project_averages.data_total }}</td>
-        </tr>
-      </tfoot>
-      {% endif %}
     </table>
   </div>
 
