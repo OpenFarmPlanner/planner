@@ -24,7 +24,7 @@ export interface RectViewModel {
   y: number;
   width: number;
   height: number;
-  hasMeasuredDimensions?: boolean;
+  supportsMetricSpacing?: boolean;
 }
 
 export interface BedViewModel extends RectViewModel {
@@ -189,7 +189,7 @@ function findSnapTarget(
     const { spacing } = options;
     const pixelsPerMeter = spacing?.pixelsPerMeter[axis] ?? 0;
     const overlap = overlapAlong(OTHER_AXIS[axis], position, size, neighbor);
-    if (spacing && neighbor.hasMeasuredDimensions && pixelsPerMeter > 0 && overlap.end > overlap.start) {
+    if (spacing && neighbor.supportsMetricSpacing && pixelsPerMeter > 0 && overlap.end > overlap.start) {
       const gap = (spacing.centimeters / 100) * pixelsPerMeter;
       add({ target: `${prefix}:before`, neighbor, position: neighbor[axis] - size[extent] - gap,
         edge: neighbor[axis], gapSide: "before" });

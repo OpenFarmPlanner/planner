@@ -38,7 +38,7 @@ function resolvePosition(options: AreaDragOptions, raw: Point, bypass: boolean, 
   return snapToNeighbors(area.id, position, area, neighbors, {
     thresholdPx: snapping.thresholdPx,
     zoom: snapping.zoom,
-    spacing: area.hasMeasuredDimensions ? snapping.spacing : undefined,
+    spacing: area.supportsMetricSpacing ? snapping.spacing : undefined,
     previousTargets,
     constrain,
   });

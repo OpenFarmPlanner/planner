@@ -210,7 +210,7 @@ describe('snapToNeighbors', () => {
 
   it('snaps to the exact edge gap on each axis and reports the measured distance', () => {
     const spacing = { centimeters: 30, pixelsPerMeter: { x: 20, y: 10 } };
-    const neighbor = { ...rect(2, 200, 500), hasMeasuredDimensions: true };
+    const neighbor = { ...rect(2, 200, 500), supportsMetricSpacing: true };
     const horizontally = snapToNeighbors(1, { x: 308, y: 505 }, { width: 100, height: 60 }, [neighbor], { spacing });
     expect(horizontally.x).toBe(306);
     expect(horizontally.guides).toContainEqual(expect.objectContaining({
@@ -224,7 +224,7 @@ describe('snapToNeighbors', () => {
   });
 
   it('captures the same screen offset at different zoom levels', () => {
-    const neighbor = { ...rect(2, 200, 500), hasMeasuredDimensions: true };
+    const neighbor = { ...rect(2, 200, 500), supportsMetricSpacing: true };
     const spacing = { centimeters: 100, pixelsPerMeter: { x: 20, y: 20 } };
     for (const zoom of [0.5, 1, 2, 4]) {
       const result = (screenDistance: number) => snapToNeighbors(
@@ -238,7 +238,7 @@ describe('snapToNeighbors', () => {
   it('keeps a near-tie stable and chooses a reproducible target without prior selection', () => {
     const options = { spacing: { centimeters: 100, pixelsPerMeter: { x: 20, y: 20 } } };
     const neighbors = [rect(2, 200, 500), rect(3, 204, 500)]
-      .map(neighbor => ({ ...neighbor, hasMeasuredDimensions: true }));
+      .map(neighbor => ({ ...neighbor, supportsMetricSpacing: true }));
     const size = { width: 100, height: 60 };
     const first = snapToNeighbors(1, { x: 322, y: 500 }, size, neighbors.toReversed(), options);
     expect(first.x).toBe(320);
@@ -248,11 +248,11 @@ describe('snapToNeighbors', () => {
   });
 
   it('does not invent gaps for unknown or perpendicular geometry or out-of-bounds positions', () => {
-    const neighbor = { ...rect(2, 200, 500), hasMeasuredDimensions: true };
+    const neighbor = { ...rect(2, 200, 500), supportsMetricSpacing: true };
     const spacing = { centimeters: 100, pixelsPerMeter: { x: 20, y: 20 } };
     const size = { width: 100, height: 60 };
     const position = { x: 323, y: 500 };
-    expect(snapToNeighbors(1, position, size, [{ ...neighbor, hasMeasuredDimensions: false }], { spacing }).x)
+    expect(snapToNeighbors(1, position, size, [{ ...neighbor, supportsMetricSpacing: false }], { spacing }).x)
       .toBe(323);
     expect(snapToNeighbors(1, { ...position, y: 570 }, size, [neighbor], { spacing }).x).toBe(323);
     const constrained = snapToNeighbors(1, position, size, [neighbor], {

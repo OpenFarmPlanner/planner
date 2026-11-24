@@ -41,6 +41,7 @@ import {
   clampInsideBoundary,
   clampInsideParent,
   DEFAULT_PLACEMENT_SPACING,
+  fieldUsesWorldScale,
   getBedRectSizeWithinField,
   getFieldRectSize,
   getLocationBoundaryRect,
@@ -443,10 +444,12 @@ export default function GraphicalFields({
     const rotation = rotationByLocation[location.id] ?? DEFAULT_GRAPHICAL_ROTATION;
     const storedContentSize = { width: contentWidth, height: contentHeight };
     const rotatedContent = rotateRect({ x: 0, y: 0, ...storedContentSize }, storedContentSize, rotation);
-    const measuredFieldIds = new Set(locationFields.filter(hasMeasuredDimensions).map(field => field.id));
+    const metricFieldIds = new Set(sizedFields
+      .filter(rect => fieldUsesWorldScale(rect.field, rect, FIELD_WORLD_PX_PER_METER))
+      .map(rect => rect.field.id));
     const fieldViewModels = storedFieldRects.map(rect => ({
       ...rotateRect(rect, storedContentSize, rotation),
-      hasMeasuredDimensions: measuredFieldIds.has(rect.id),
+      supportsMetricSpacing: metricFieldIds.has(rect.id),
     }));
     const boundary = storedBoundary
       ? rotateRect(storedBoundary, storedContentSize, rotation)
@@ -1368,7 +1371,7 @@ export default function GraphicalFields({
                         const storedFieldInnerSize = getFieldUsableArea(storedBaseRect);
                         const rotated = rotation === 90 || rotation === 270;
                         const { length_m: fieldLength, width_m: fieldWidth } = baseRect.field;
-                        const bedSpacing = fieldLength && fieldWidth && currentFieldRect.hasMeasuredDimensions
+                        const bedSpacing = fieldLength && fieldWidth && hasMeasuredDimensions(baseRect.field)
                           ? {
                             centimeters: pathSpacing.bed_path_spacing_cm,
                             pixelsPerMeter: {
@@ -1442,7 +1445,7 @@ export default function GraphicalFields({
                               y: clamped.y,
                               width: size.width,
                               height: size.height,
-                              hasMeasuredDimensions: hasMeasuredDimensions(bed),
+                              supportsMetricSpacing: hasMeasuredDimensions(bed),
                             };
                           },
                         ).map(rect => rotateRectBetweenSizes(rect, storedFieldInnerSize, fieldInnerSize, rotation));

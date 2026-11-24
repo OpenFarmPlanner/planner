@@ -140,6 +140,8 @@ erDiagram
   Graphic → Spacing popover use centimetres. These values affect subsequent
   drags between measured siblings. Applying them leaves dimensions, area and
   saved positions intact.
+  Metric parcel gaps require both parcels to be drawn at the location scale.
+  Alignment guides also work on parcels enlarged for legibility.
   Hold Shift while dragging for free positioning, or turn off snapping in
   the popover. A gap of zero snaps opposing edges together.
 - A location may carry optional outer dimensions (`length_m`, `width_m`, in
