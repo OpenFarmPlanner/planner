@@ -64,6 +64,7 @@ export interface GraphicalFieldsProps {
   interactionMode?: InteractionMode;
   onInteractionModeChange?: (mode: InteractionMode) => void;
   showModeToggle?: boolean;
+  showFreeAreas?: boolean;
   hierarchyData?: HierarchyDataState;
   selectedLocationId?: number | null;
   cameraState?: GraphicalCameraState;

@@ -29,6 +29,19 @@
     "graphical": "Grafica"
   },
   "graphical": {
+    "freeArea": {
+      "toggle": "Mostra spazi liberi e passaggi",
+      "title": "Spazi liberi",
+      "site": "Spazio non assegnato fuori dagli appezzamenti",
+      "parcel": "Spazio senza aiuole negli appezzamenti",
+      "incomplete": "Alcuni spazi liberi non sono misurabili",
+      "gross": "Superficie lorda del sito {{area}}",
+      "covered": "Superficie degli appezzamenti nel sito {{area}}",
+      "remaining": "Spazio non assegnato fuori dagli appezzamenti {{area}}",
+      "unknownLocation": "Per mostrare gli spazi liberi del sito servono contorni misurati del sito e degli appezzamenti.",
+      "unknownParcel": "Mancano le dimensioni per colorare gli spazi liberi di alcuni appezzamenti.",
+      "unknownBed": "Le dimensioni di alcune aiuole sono incomplete. Gli spazi liberi dei relativi appezzamenti non sono colorati."
+    },
     "geometry": {
       "title": "Verifica dello schema",
       "open": "Verifica dello schema ({{count}})",

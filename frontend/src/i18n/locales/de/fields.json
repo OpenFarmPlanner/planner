@@ -29,6 +29,19 @@
     "graphical": "Grafik"
   },
   "graphical": {
+    "freeArea": {
+      "toggle": "Freiflächen und Wege anzeigen",
+      "title": "Freiflächen",
+      "site": "Freifläche außerhalb der Parzellen",
+      "parcel": "Fläche innerhalb der Parzellen ohne Beete",
+      "incomplete": "Freiflächen teilweise nicht messbar",
+      "gross": "Bruttofläche des Standorts {{area}}",
+      "covered": "Fläche der Parzellen innerhalb des Standorts {{area}}",
+      "remaining": "Freifläche außerhalb der Parzellen {{area}}",
+      "unknownLocation": "Für die Freiflächen des Standorts werden genaue Standort- und Parzellenumrisse benötigt.",
+      "unknownParcel": "Einige Parzellen sind wegen fehlender Maße ohne Freiflächenschattierung.",
+      "unknownBed": "Einige Beete haben keine vollständigen Maße. Die Freiflächen ihrer Parzellen bleiben ungeschattet."
+    },
     "geometry": {
       "title": "Layoutprüfung",
       "open": "Layoutprüfung ({{count}})",

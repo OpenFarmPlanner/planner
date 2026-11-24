@@ -22,6 +22,8 @@ export interface MetricCoverage {
   /** Union of footprints within the parent, or null when dimensions are incomplete. */
   footprintArea: number | null;
   remainingArea: number | null;
+  /** Disjoint unoccupied rectangles, when requested and all dimensions are known. */
+  freeRects?: MetricRect[] | null;
 }
 
 const METRIC_EPSILON = 1e-7;
@@ -36,13 +38,19 @@ export function intersectFootprints(a: MetricRect, b: MetricRect): MetricRect | 
   return width > 0 && height > 0 ? { x, y, width, height } : null;
 }
 
-/** Union area by sweeping vertical edges and tracking covered y intervals. */
-export function footprintUnionArea(rectangles: readonly MetricRect[]): number {
+/** One sweep produces the occupied union and, optionally, the unoccupied rectangles. */
+function sweepFootprints(rectangles: readonly MetricRect[], freeBounds?: MetricRect) {
   const events = rectangles.flatMap(rect => [
     { x: rect.x, start: rect.y, end: bottom(rect), delta: 1 },
     { x: right(rect), start: rect.y, end: bottom(rect), delta: -1 },
-  ]).sort((a, b) => a.x - b.x);
-  if (events.length === 0) return 0;
+  ]);
+  if (freeBounds) {
+    const edge = { start: freeBounds.y, end: bottom(freeBounds), delta: 0 };
+    events.push({ x: freeBounds.x, ...edge }, { x: right(freeBounds), ...edge });
+  }
+  events.sort((a, b) => a.x - b.x);
+  const freeRects: MetricRect[] = [];
+  if (events.length === 0) return { area: 0, freeRects };
 
   const coordinates = [...new Set(events.flatMap(event => [event.start, event.end]))].sort((a, b) => a - b);
   const index = new Map(coordinates.map((value, i) => [value, i]));
@@ -50,9 +58,31 @@ export function footprintUnionArea(rectangles: readonly MetricRect[]): number {
   let previousX = events[0].x;
   let coveredHeight = 0;
   let area = 0;
+  let previousStrip = new Map<number, MetricRect>();
 
   for (const event of events) {
-    area += (event.x - previousX) * coveredHeight;
+    const width = event.x - previousX;
+    area += width * coveredHeight;
+    if (freeBounds && width > 0) {
+      const currentStrip = new Map<number, MetricRect>();
+      for (let start = 0; start < coverage.length;) {
+        if (coverage[start] > 0) {
+          start++;
+          continue;
+        }
+        let end = start + 1;
+        while (end < coverage.length && coverage[end] === 0) end++;
+        const y = coordinates[start];
+        const height = coordinates[end] - y;
+        const previous = previousStrip.get(start);
+        const rect = previous?.height === height ? previous : { x: previousX, y, width: 0, height };
+        if (rect.width === 0) freeRects.push(rect);
+        rect.width += width;
+        currentStrip.set(start, rect);
+        start = end;
+      }
+      previousStrip = currentStrip;
+    }
     previousX = event.x;
     for (let i = index.get(event.start)!; i < index.get(event.end)!; i++) {
       const wasCovered = coverage[i] > 0;
@@ -63,20 +93,29 @@ export function footprintUnionArea(rectangles: readonly MetricRect[]): number {
       }
     }
   }
-  return Math.max(0, area);
+  return { area: Math.max(0, area), freeRects };
 }
 
-export function calculateMetricCoverage(parent: MetricRect | null, footprints: readonly AreaFootprint[]): MetricCoverage {
-  if (parent === null) return { grossArea: null, footprintArea: null, remainingArea: null };
+export function footprintUnionArea(rectangles: readonly MetricRect[]): number {
+  return sweepFootprints(rectangles).area;
+}
+
+export function calculateMetricCoverage(
+  parent: MetricRect | null, footprints: readonly AreaFootprint[], includeFreeRects = false,
+): MetricCoverage {
+  const unavailable = includeFreeRects ? { freeRects: null } : {};
+  if (parent === null) return { grossArea: null, footprintArea: null, remainingArea: null, ...unavailable };
   const grossArea = parent.width * parent.height;
   const clipped: MetricRect[] = [];
   for (const { rect } of footprints) {
-    if (!rect) return { grossArea, footprintArea: null, remainingArea: null };
+    if (!rect) return { grossArea, footprintArea: null, remainingArea: null, ...unavailable };
     const inside = intersectFootprints(parent, rect);
     if (inside) clipped.push(inside);
   }
-  const footprintArea = Math.min(grossArea, footprintUnionArea(clipped));
-  return { grossArea, footprintArea, remainingArea: Math.max(0, grossArea - footprintArea) };
+  const { area, freeRects } = sweepFootprints(clipped, includeFreeRects ? parent : undefined);
+  const footprintArea = Math.min(grossArea, area);
+  return { grossArea, footprintArea, remainingArea: Math.max(0, grossArea - footprintArea),
+    ...(includeFreeRects ? { freeRects } : {}) };
 }
 
 function isOutside(rect: MetricRect, parent: MetricRect): boolean {
@@ -97,6 +136,7 @@ export function validateAreaGeometry(
   parent: MetricRect | null,
   footprints: readonly AreaFootprint[],
   recommendedM: number,
+  includeFreeRects = false,
 ): { issues: GeometryIssue[]; coverage: MetricCoverage; uncertainIds: number[] } {
   const issues: GeometryIssue[] = [];
   const uncertainIds: number[] = [];
@@ -129,7 +169,7 @@ export function validateAreaGeometry(
     }
   }
 
-  const coverage = calculateMetricCoverage(parent, footprints);
+  const coverage = calculateMetricCoverage(parent, footprints, includeFreeRects);
   if (recommendedM > 0 && coverage.grossArea && coverage.remainingArea !== null
       && coverage.remainingArea <= coverage.grossArea * METRIC_EPSILON) {
     issues.push({ kind: 'noPathSpace' });

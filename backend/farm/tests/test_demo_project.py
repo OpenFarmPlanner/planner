@@ -312,6 +312,15 @@ class DemoProjectServiceTests(TestCase):
                     ('bachacker', 'karotte-1', 'karotte-2', 45, 100),
                 )
                 text = DEMO_TEXT[resolve_demo_language(language)]
+                year = demo_current_year()
+                early_planting, later_planting = [
+                    PlantingPlan.objects.filter(
+                        project=project, bed__name=text['beds'][key], planting_date__year=year,
+                    ).earliest('planting_date').planting_date
+                    for key in ('salat-1', 'salat-2')
+                ]
+                self.assertLess(early_planting, date(year, 3, 1))
+                self.assertGreater(later_planting, date(year, 3, 1))
                 for location_key, first, second, bed_gap, parcel_gap in examples:
                     location = project.locations.get(name=text['locations'][location_key][0])
                     self.assertEqual(location.bed_path_spacing_m, bed_gap / 100)

@@ -205,6 +205,11 @@ erDiagram
   details report gross area, the union of bed footprints inside the parcel,
   and their difference. That remaining area includes paths and margins.
   Exact coverage requires dimensions for the parcel and all of its beds.
+  The optional free-area overlay in Spacing uses the unoccupied rectangles
+  from that same calculation. Site shading covers space outside its parcels.
+  Parcel shading is confined to the usable area and excludes bed footprints.
+  The view starts with the overlay off and retains the choice for each location
+  while the Growing Areas workspace is open.
 - `Field`, `Bed`, and most other project-scoped models below also carry a
   **direct, denormalized `project` FK** in addition to their natural parent
   (e.g. `Bed.project` in addition to `Bed.field`). This is deliberate — it's

@@ -29,6 +29,19 @@
     "graphical": "Graphique"
   },
   "graphical": {
+    "freeArea": {
+      "toggle": "Afficher les espaces libres et les allées",
+      "title": "Espaces libres",
+      "site": "Espace non affecté hors des parcelles",
+      "parcel": "Espace sans planches dans les parcelles",
+      "incomplete": "Certains espaces libres sont impossibles à mesurer",
+      "gross": "Surface brute du site {{area}}",
+      "covered": "Emprise des parcelles dans le site {{area}}",
+      "remaining": "Espace non affecté hors des parcelles {{area}}",
+      "unknownLocation": "Les contours du site et des parcelles doivent être mesurés pour afficher les espaces libres du site.",
+      "unknownParcel": "Certaines parcelles présentent des dimensions manquantes. Leurs espaces libres ne sont pas colorés.",
+      "unknownBed": "Les dimensions de certaines planches sont incomplètes. Les espaces libres de leurs parcelles restent sans couleur."
+    },
     "geometry": {
       "title": "Vérification du schéma",
       "open": "Vérification du schéma ({{count}})",
