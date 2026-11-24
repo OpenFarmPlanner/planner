@@ -670,7 +670,9 @@ class CropHistoryTests(TestCase):
     def test_cleanup_history_expires_crop_library_usage_outside_window(self):
         today = timezone.now().date()
         kind = CropLibraryUsageDay.Kind.LINKED_UPDATE
-        CropLibraryUsageDay.objects.create(project=self.crop.project, day=today - timedelta(days=31), kind=kind)
+        CropLibraryUsageDay.objects.create(
+            project=self.crop.project, day=today - timedelta(days=31), kind=kind,
+        )
         kept = CropLibraryUsageDay.objects.create(
             project=self.crop.project, day=today - timedelta(days=28), kind=kind,
         )
