@@ -143,14 +143,19 @@ test('germination hints and emergence appear in the plan dialog and published li
   await page.reload();
   const search = page.getByRole('searchbox', { name: 'Anbaupläne durchsuchen' });
   await search.fill(variety);
+  // The search applies after a debounce; its grid re-render and scroll reset
+  // dismiss an open cell tooltip, so click only once the filter has settled.
+  await expect(page.getByTestId('planting-plan-search-count')).toHaveText(/^1 von \d+/);
   const row = page.locator(`[role="row"][data-id="${plan.id}"]`);
   await expect(row).toBeVisible();
   const sowingHint = row.locator('[data-field="sowing_date"] [data-testid="timing-window-date"]');
   await expect(sowingHint).toBeVisible();
   await expect(row.locator('[data-field="crop"] svg[data-testid="SpaOutlinedIcon"]')).toHaveCount(0);
   await row.locator('[data-field="sowing_date"]').click();
-  await expect(page.getByRole('tooltip')).toContainText('Anzuchtdauer kürzer als die Keimdauer.');
-  await expect(page.getByRole('tooltip')).toContainText('Das Saatgut benötigt eine Kälteperiode.');
+  // The table's edit hint is a role="tooltip" popper too and follows the click.
+  const sowingTooltip = page.getByRole('tooltip').filter({ hasText: 'Anzuchtdauer kürzer als die Keimdauer.' });
+  await expect(sowingTooltip).toBeVisible();
+  await expect(sowingTooltip).toContainText('Das Saatgut benötigt eine Kälteperiode.');
   await page.screenshot({ animations: 'disabled', path: '../work/germination-plan-table-1440.png' });
 
   for (const viewport of [{ width: 375, height: 800 }, { width: 800, height: 375 }]) {
