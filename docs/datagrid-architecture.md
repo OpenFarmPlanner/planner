@@ -205,7 +205,9 @@ while Tab leaves it unrecorded unless the input was edited. Escape cancels the
 draft. Switching between Actual and Combined keeps the draft. Planned hides it
 while the planned cell is shown. Actual date saves patch the selected field.
 Only a genuine deviation is bold. The comparison tooltip shows both dates,
-their difference when available and the field that can be edited.
+their difference when available and the field that can be edited. Touch users
+can press and hold a comparison cell for the preview and use the rest of the row
+to open its actions.
 Phone cards keep a labelled planned date. Open the plan from the card to record
 or clear actual dates in its detail page.
 

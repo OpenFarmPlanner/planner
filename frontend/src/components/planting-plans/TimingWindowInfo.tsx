@@ -84,7 +84,7 @@ export function TimingWindowDateCell({ findings, kinds, germinationFindings, cel
     return <>{children}</>;
   }
   return (
-    <FullCellTooltip cellHasFocus={cellHasFocus} describeChild={Boolean(tooltipContent)} title={<>{tooltipContent}{linesTitle(lines)}</>}>
+    <FullCellTooltip cellHasFocus={cellHasFocus} describeChild={Boolean(tooltipContent)} touchPreview={Boolean(tooltipContent)} title={<>{tooltipContent}{linesTitle(lines)}</>}>
       {lines.length > 0 ? <Box component="span" sx={dateUnderlineSx} data-testid="timing-window-date">{children}</Box> : children}
     </FullCellTooltip>
   );

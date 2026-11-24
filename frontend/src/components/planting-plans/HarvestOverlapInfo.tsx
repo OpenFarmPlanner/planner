@@ -70,6 +70,7 @@ export function HarvestOverlapDateCell({ overlaps, cellHasFocus, children, toolt
     <FullCellTooltip
       cellHasFocus={cellHasFocus}
       describeChild={Boolean(tooltipContent)}
+      touchPreview={Boolean(tooltipContent)}
       title={<>{tooltipContent}{lines.map((line, index) => (
         <Box component="span" key={index} sx={{ display: 'block' }}>{line}</Box>
       ))}</>}

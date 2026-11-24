@@ -7,7 +7,7 @@ import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined
 import { extractApiErrorMessage } from '../api/errors';
 import { AppTooltip } from '../components/AppTooltip';
 import { DateEditCell } from '../components/data-grid/DateEditCell';
-import { useDialogEditCellOpenRequest } from '../components/data-grid/DialogEditCellContext';
+import { buildDialogEditCellKey, useDialogEditCellOpenRequest } from '../components/data-grid/DialogEditCellContext';
 import { FullCellTooltip } from '../components/data-grid/FullCellTooltip';
 import { parseGermanDateText, toGridDateValue, toIsoDateString } from '../components/data-grid/dateEditCellUtils';
 import { useTranslation } from '../i18n';
@@ -81,45 +81,53 @@ export function RecordedPlanDateCell({ dates, hasFocus, editable = false }: {
   const deviation = planDateDeviation(dates);
   const title = dates.planned || dates.actual || editable
     ? <DateComparisonTooltipText dates={dates} editMode={editable ? 'actual' : undefined} /> : '';
-  return <FullCellTooltip title={title} cellHasFocus={hasFocus} describeChild>
+  return <FullCellTooltip title={title} cellHasFocus={hasFocus} describeChild touchPreview={Boolean(title)}>
       <Typography component="span" variant="body2" sx={{ fontWeight: deviation ? 700 : undefined }}>
         {dates.actual ? formatSeasonDate(dates.actual, resolveSeasonDateLocale(i18n)) : '—'}
       </Typography>
   </FullCellTooltip>;
 }
 
+export type ActualPlanDateDrafts = Map<string, { text?: string }>;
+
 interface ActualPlanDateCellProps {
   params: GridRenderCellParams;
   children: ReactNode;
   enabled: boolean;
+  drafts: ActualPlanDateDrafts;
   getEditDates: () => PlantingPlanDateComparison;
   onSaveActual: (dates: PlantingPlanDateComparison, value: string | null) => Promise<void>;
 }
 
-export function ActualPlanDateCell({ params, children, enabled, getEditDates, onSaveActual }: ActualPlanDateCellProps) {
+export function ActualPlanDateCell({ params, children, enabled, drafts, getEditDates, onSaveActual }: ActualPlanDateCellProps) {
   const { t } = useTranslation(['plantingPlans', 'common']);
-  const [editor, setEditor] = useState<PlantingPlanDateComparison | null>(null);
+  const { api, id, field, hasFocus } = params;
+  const cellKey = buildDialogEditCellKey(id, field);
+  const [draft, setDraft] = useState(() => drafts.get(cellKey));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const errorId = useId();
-  const [draftText, setDraftText] = useState<string>();
   const pending = useRef(false);
   const closing = useRef(false);
-  const { api, id, field, hasFocus } = params;
+  const updateDraft = (next?: { text?: string }) => {
+    if (next) drafts.set(cellKey, next);
+    else drafts.delete(cellKey);
+    setDraft(next);
+  };
 
   useDialogEditCellOpenRequest(id, field, initialKey => {
     if (!enabled) return;
     api.setCellFocus(id, field);
-    if (editor) return;
+    if (draft) return;
     const initialText = initialKey && /^\d$/.test(initialKey) ? initialKey : undefined;
     closing.current = false;
-    setDraftText(initialText);
+    updateDraft({ text: initialText });
     setError('');
-    setEditor(getEditDates());
   });
 
-  if (!enabled || !editor) return children;
-  const editDates = editor;
+  if (!enabled || !draft) return children;
+  const draftText = draft.text;
+  const editDates = getEditDates();
 
   const focusCell = () => {
     api.setCellFocus(id, field);
@@ -127,12 +135,13 @@ export function ActualPlanDateCell({ params, children, enabled, getEditDates, on
   };
   const close = (returnFocus: boolean) => {
     closing.current = true;
-    setEditor(null);
+    updateDraft();
     if (returnFocus) focusCell();
   };
   const save = async (value: string | null, returnFocus: boolean) => {
     if (closing.current || pending.current) return;
-    if (value === editDates.actual) {
+    const target = getEditDates();
+    if (value === target.actual) {
       close(returnFocus);
       return;
     }
@@ -140,7 +149,7 @@ export function ActualPlanDateCell({ params, children, enabled, getEditDates, on
     setSaving(true);
     setError('');
     try {
-      await onSaveActual(editDates, value);
+      await onSaveActual(target, value);
       close(returnFocus);
     } catch (failure) {
       setError(extractApiErrorMessage(failure, t, t('actualDates.saveError')));
@@ -176,11 +185,11 @@ export function ActualPlanDateCell({ params, children, enabled, getEditDates, on
 
   return <AppTooltip title={error} open={hasFocus && Boolean(error)}>
     <Box data-grid-dedicated-editor sx={{ width: '100%', minWidth: 0 }}>
-      <DateEditCell {...params} value={toGridDateValue(editDates.actual ?? editDates.planned)}
+      <DateEditCell key={editDates.activity} {...params} value={toGridDateValue(editDates.actual ?? editDates.planned)}
         ariaLabel={t(`actualDates.actualLabels.${editDates.activity}`)}
         standalone={{
           initialText: draftText,
-          onChange: text => { setDraftText(text); setError(''); },
+          onChange: text => { updateDraft({ text }); setError(''); },
           onKeyDown: handleKeyDown,
           onBlur: (event, text) => {
             const target = event.relatedTarget;

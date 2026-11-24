@@ -1,6 +1,7 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Box, type SxProps, type Theme, type TooltipProps } from '@mui/material';
 import { AppTooltip } from '../AppTooltip';
+import { ROW_LONG_PRESS_MS } from '../contextMenu/useLongPressTimer';
 
 export const FULL_CELL_TOOLTIP_CELL_CLASS = 'ofp-cell-full-tooltip';
 
@@ -9,6 +10,7 @@ export interface FullCellTooltipProps
   children: ReactNode;
   cellHasFocus?: boolean;
   focusable?: boolean;
+  touchPreview?: boolean;
   triggerSx?: SxProps<Theme>;
 }
 
@@ -16,23 +18,37 @@ export function FullCellTooltip({
   children,
   cellHasFocus = false,
   focusable = false,
+  touchPreview = false,
   triggerSx,
   ...tooltipProps
 }: FullCellTooltipProps) {
   const [isInteractionOpen, setIsInteractionOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const previewedByTouch = useRef(false);
 
   return (
     <AppTooltip
       {...tooltipProps}
       open={cellHasFocus || isFocused || isInteractionOpen}
-      onOpen={() => setIsInteractionOpen(true)}
+      enterTouchDelay={touchPreview ? ROW_LONG_PRESS_MS : undefined}
+      onOpen={event => {
+        if (touchPreview && event.type === 'touchstart') previewedByTouch.current = true;
+        setIsInteractionOpen(true);
+      }}
       onClose={() => setIsInteractionOpen(false)}
     >
       <Box
         component="span"
         className="ofp-full-cell-tooltip-trigger"
         tabIndex={focusable ? 0 : undefined}
+        onTouchStart={touchPreview ? event => {
+          previewedByTouch.current = false;
+          // Give the comparison preview the long press on this cell.
+          event.stopPropagation();
+        } : undefined}
+        onTouchEnd={touchPreview ? event => {
+          if (previewedByTouch.current) event.preventDefault();
+        } : undefined}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         sx={[
