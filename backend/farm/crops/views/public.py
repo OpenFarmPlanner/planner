@@ -36,6 +36,7 @@ from farm.history.project_restore import ensure_project_checkpoint
 from farm.history.records import _current_actor_label
 from farm.models import (
     Crop,
+    CropLibraryUsageDay,
     PublicCrop,
     PublicCropChangeProposal,
     PublicCropDiscussionComment,
@@ -43,6 +44,7 @@ from farm.models import (
     format_crop_display_name,
 )
 from farm.project_context import get_active_project_optional, get_active_project_or_400
+from farm.services.crop_library_usage import record_crop_library_outcome
 from farm.services.public_crop_import_selection import (
     import_public_crop_batch,
     import_public_crop_selection,
@@ -834,6 +836,10 @@ class PublicCropViewSet(viewsets.ModelViewSet):
                     user=request.user,
                     language=note_language({"request": request}),
                 )
+                if len(entries) > 1 and any(entry['operation'] != 'unchanged' for entry in entries):
+                    record_crop_library_outcome(
+                        project.pk, CropLibraryUsageDay.Kind.SELECTION_IMPORT,
+                    )
                 if sharing and not has_consent:
                     record_acceptance(request.user, DocumentConsent.DOCUMENT_PUBLIC_LIBRARY)
         except PublicCropEditConflictError as error:

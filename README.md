@@ -110,7 +110,17 @@ behavior:
   the imported copy, and the aggregate number of public-library discussion
   comments and revisions.
 
-The dashboard does **not** create tracking records or collect clicks, sessions,
+The crop-library operations table covers the current UTC day and the previous
+29. A public-library batch receipt with committed changes counts once, including
+a partially successful batch. An older receipt retained in project history can
+contribute to this total. Multi-item selections without a batch receipt and
+actual pulls of library values into linked crops increment daily project
+counters. An undo counts from its own committed receipt, even when the original
+import falls outside the window. Coverage for these additional outcomes starts
+with the crop-library usage migration. The existing history cleanup command
+expires daily counters outside the 30-day window.
+
+The dashboard does **not** collect clicks, sessions,
 time on page, navigation paths, or other individual behavioral data — including
 counters for how often a view such as the graphical Beet-/Flächen-Layout is
 opened. Adding such tracking would require a separate privacy review and an

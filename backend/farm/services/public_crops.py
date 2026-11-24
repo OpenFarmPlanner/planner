@@ -46,6 +46,7 @@ from farm.history.records import (
 )
 from farm.models import (
     Crop,
+    CropLibraryUsageDay,
     EntityRevision,
     Project,
     ProjectMembership,
@@ -95,6 +96,7 @@ from farm.services.crop_inheritance import (
     sync_crop_species_across_crop_group,
     validate_crop_identity,
 )
+from farm.services.crop_library_usage import record_crop_library_outcome
 from farm.services.crop_plant_health import canonical_public_plant_health, publication_plant_health
 from farm.services.public_crop_trade_names import (
     find_variety_identity_conflict,
@@ -1384,7 +1386,7 @@ def public_crop_import_candidates(*, public_crop: PublicCrop, project: Project) 
 
 def _record_library_crop_revision(
     crop: Crop, before: dict[str, Any] | None, *, force: bool = False,
-) -> None:
+) -> list[str]:
     """Make the final crop and its preceding derived writes selectable together."""
     snapshot = _serialize_instance(crop)
     action = EntityRevision.ACTION_CREATED if before is None else EntityRevision.ACTION_UPDATED
@@ -1395,6 +1397,7 @@ def _record_library_crop_revision(
             action=action,
             snapshot=snapshot, display_name=_entity_display_name(crop), changed_fields=changed,
         )
+    return changed
 
 
 def link_project_crop_to_public_reference(
@@ -2064,6 +2067,8 @@ def sync_crop_with_public_entry(
     proposal: PublicCropChangeProposal | None = None
     with crop_identity_write(crop.project_id), revision_actor(user):
         before = _serialize_instance(crop)
+        previously_linked = before['source_public_crop_id'] == public_crop.pk
+        pulled = []
         locked = PublicCrop.objects.select_for_update().get(pk=public_crop.pk)
         _validate_base_version(locked, base_version)
         pins_changed = next_pins != previous_pins
@@ -2072,7 +2077,7 @@ def sync_crop_with_public_entry(
         crop.source_public_crop = locked
         _validate_crop_identity_pull(crop, locked, pull_fields, initial_link=initial_link)
         if pull_fields:
-            _pull_public_crop_fields(crop=crop, public_crop=locked, fields=pull_fields)
+            pulled = _pull_public_crop_fields(crop=crop, public_crop=locked, fields=pull_fields)
         if pull_fields or pins_changed or initial_link:
             errors = crop_specific_property_errors(crop)
             if errors:
@@ -2121,8 +2126,15 @@ def sync_crop_with_public_entry(
                 is_modified_from_source=is_modified,
                 rejected_public_version=None,
             )
-        _record_library_crop_revision(
+        changed = _record_library_crop_revision(
             crop, before, force=bool(pull_fields or pins_changed or initial_link),
+        )
+        applied = COMPANIONS_FIELD in pulled or bool(
+            {crop_field_attname(field) for field in pulled}.intersection(changed)
+        )
+        record_crop_library_outcome(
+            crop.project_id, CropLibraryUsageDay.Kind.LINKED_UPDATE,
+            applied=bool(previously_linked and applied and user and not initial_link),
         )
     return PublicCropSyncResult(
         crop=crop,
@@ -3994,10 +4006,23 @@ def _ensure_local_general_crop(
     _record_library_crop_revision(crop, None)
 
 
+def _library_copied_fields(payload: dict[str, Any]) -> set[str]:
+    """Get history field names for library data fields, excluding link metadata."""
+    metadata = {
+        'source_public_crop', 'source_public_version', 'is_modified_from_source',
+        'rejected_public_version',
+    }
+    fields = {crop_field_attname(field) for field in payload.keys() - metadata}
+    if 'crop_species' in fields:
+        fields.add('crop_species_id')
+    return fields
+
+
 def _apply_public_crop_update(
     *,
     crop: Crop,
     public_crop: PublicCrop,
+    user: User | None = None,
     unpin_fields: Sequence[str] = (),
     pin_fields: Sequence[str] = (),
 ) -> Crop:
@@ -4042,15 +4067,21 @@ def _apply_public_crop_update(
             raise ApiValidationError(errors)
         validate_crop_identity(crop)
         crop.save(record_history=False)
-        if COMPANIONS_FIELD not in remaining_pins and _compares_companions(crop, public_crop):
-            replace_library_companions(crop, public_crop.companions)
+        companions_changed = (
+            COMPANIONS_FIELD not in remaining_pins
+            and _compares_companions(crop, public_crop)
+            and replace_library_companions(crop, public_crop.companions)
+        )
         # Crop._flag_source_divergence() runs inside save() and, seeing the tracked
         # fields differ from the pre-update row, may have just flipped this back to True —
         # wrong here, since syncing to a newer library version isn't a local edit. A
         # queryset update avoids triggering the divergence pass again.
         Crop.objects.filter(pk=crop.pk).update(is_modified_from_source=False)
         crop.is_modified_from_source = False
-        _record_library_crop_revision(crop, before, force=True)
+        changed = _record_library_crop_revision(crop, before, force=True)
+        fields_applied = _library_copied_fields(payload).intersection(changed)
+        if user and (fields_applied or companions_changed):
+            record_crop_library_outcome(crop.project_id, CropLibraryUsageDay.Kind.LINKED_UPDATE)
         return crop
 
 
@@ -4564,7 +4595,8 @@ def import_public_crop_into_project(
             _validate_base_version(locked, base_version)
             validate_public_update_pin_fields(existing, locked, pin_fields)
             crop = _apply_public_crop_update(
-                crop=existing, public_crop=locked, unpin_fields=unpin_fields, pin_fields=pin_fields,
+                crop=existing, public_crop=locked, user=user,
+                unpin_fields=unpin_fields, pin_fields=pin_fields,
             )
         return crop, 'updated'
 
@@ -4586,6 +4618,6 @@ def import_public_crop_into_project(
 
     with revision_actor(user):
         crop = _apply_public_crop_update(
-            crop=existing, public_crop=public_crop, unpin_fields=unpin_fields,
+            crop=existing, public_crop=public_crop, user=user, unpin_fields=unpin_fields,
         )
     return crop, 'updated'

@@ -1,11 +1,18 @@
-from datetime import timedelta
+from datetime import UTC, timedelta
 
 from django.core.management.base import BaseCommand
 from django.db.models import F, Window
 from django.db.models.functions import RowNumber
 from django.utils import timezone
 
-from farm.models import BatchOperation, CropRevision, EntityRevision, ProjectRevision
+from farm.models import (
+    BatchOperation,
+    CropLibraryUsageDay,
+    CropRevision,
+    EntityRevision,
+    ProjectRevision,
+)
+from farm.services.crop_library_usage import WINDOW_DAYS
 
 
 class Command(BaseCommand):
@@ -17,7 +24,8 @@ class Command(BaseCommand):
     )
 
     def handle(self, *args, **options):
-        cutoff = timezone.now() - timedelta(days=30)
+        now = timezone.now()
+        cutoff = now - timedelta(days=30)
 
         older = EntityRevision.objects.filter(created_at__lt=cutoff)
         latest_ids = (
@@ -60,6 +68,9 @@ class Command(BaseCommand):
         deleted_batches, _ = BatchOperation.objects.filter(
             created_at__lt=cutoff, revisions__isnull=True
         ).delete()
+
+        first_usage_day = now.astimezone(UTC).date() - timedelta(days=WINDOW_DAYS - 1)
+        CropLibraryUsageDay.objects.filter(day__lt=first_usage_day).delete()
 
         self.stdout.write(
             self.style.SUCCESS(

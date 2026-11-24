@@ -1,5 +1,5 @@
 {% extends "admin/base_site.html" %}
-{% load i18n %}
+{% load i18n tz %}
 
 {% block extrastyle %}{{ block.super }}
 <style>
@@ -281,6 +281,40 @@
         </tr>
       </tbody>
     </table>
+  </div>
+
+  <div class="module">
+    <table>
+      <caption>{% translate "Vorgänge der Kulturen-Bibliothek (30 Tage)" %}</caption>
+      <thead><tr>
+        <th scope="col">{% translate "Vorgang" %}</th>
+        <th scope="col">{% translate "Abgeschlossen" %}</th>
+        <th scope="col">{% translate "Projekte" %}</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <th scope="row">{% translate "Sammelimporte mit Änderungen" %}</th>
+          <td>{{ crop_library_operations.bulk_imports.operations }}</td>
+          <td>{{ crop_library_operations.bulk_imports.projects }}</td>
+        </tr>
+        <tr>
+          <th scope="row">{% translate "Aktualisierungen verknüpfter Kulturen" %}</th>
+          <td>{{ crop_library_operations.linked_updates.operations }}</td>
+          <td>{{ crop_library_operations.linked_updates.projects }}</td>
+        </tr>
+        <tr>
+          <th scope="row">{% translate "Rückgängig gemachte Sammelimporte" %}</th>
+          <td>{{ crop_library_operations.import_undos.operations }}</td>
+          <td>{{ crop_library_operations.import_undos.projects }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="help">{% translate "Jeder geänderte Sammelimport zählt einmal. Das Rückgängigmachen zählt am Tag des Abschlusses. Die Projektzahl zählt jedes Projekt einmal je Zeile." %}</p>
+    {% if crop_library_operations.coverage_started_at %}
+      {% with start=crop_library_operations.coverage_started_at|utc|date:"SHORT_DATE_FORMAT" %}
+        <p class="help">{% blocktranslate %}Die vollständige Erfassung beginnt am {{ start }} (UTC). Frühere Zahlen umfassen nur noch vorhandene Sammelimportbelege.{% endblocktranslate %}</p>
+      {% endwith %}
+    {% endif %}
   </div>
 
   <div class="module">

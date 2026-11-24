@@ -365,6 +365,7 @@ def undo_crop_import(project: Project, batch: BatchOperation, *, user_name: str)
             operation_type=BatchOperation.TYPE_REVERTED,
             context={
                 "reverted_operation_type": BatchOperation.TYPE_CROP_IMPORT,
+                "_library_import": _REQUEST_FINGERPRINT in batch.context,
                 "created_count": preview["created_count"],
                 "updated_count": preview["updated_count"],
             },
