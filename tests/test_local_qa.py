@@ -8,7 +8,8 @@ import tempfile
 import unittest
 from contextlib import ExitStack
 from pathlib import Path
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 TOOLS = Path(__file__).resolve().parents[1] / "scripts/local_qa"
 with patch.object(sys, "path", [str(TOOLS), *sys.path]):
@@ -16,6 +17,78 @@ with patch.object(sys, "path", [str(TOOLS), *sys.path]):
 
 
 class LocalQAUpdateTests(unittest.TestCase):
+    def test_refresh_finishes_sync_and_update_before_planning_new_qa(self):
+        events = []
+        launch = Mock(side_effect=lambda *args: events.append(("launch", args)))
+        with (
+            patch.dict(sys.modules, {"rounds": SimpleNamespace(launch=launch)}),
+            patch.object(qa.sys.stdin, "isatty", return_value=True),
+            patch.object(qa.sys.stdout, "isatty", return_value=True),
+            patch.object(
+                qa.subprocess,
+                "run",
+                side_effect=lambda *a, **kw: events.append(("run", a, kw)),
+            ),
+        ):
+            qa.review_round("refresh", agent="codex")
+        self.assertEqual([e[0] for e in events], ["run", "run", "launch"])
+        self.assertEqual(events[0][1][0][-3:], ["sync", "--agent", "codex"])
+        self.assertTrue(events[0][2]["check"])
+        self.assertEqual(len(events[1][1][0]), 2)
+        self.assertTrue(events[1][2]["check"])
+        launch.assert_called_once_with("refresh", False, "codex")
+
+    def test_refresh_preview_shows_both_rounds_without_processes_or_terminal(self):
+        launch = Mock()
+        with (
+            patch.dict(sys.modules, {"rounds": SimpleNamespace(launch=launch)}),
+            patch.object(qa.sys.stdin, "isatty", return_value=False),
+            patch.object(qa.subprocess, "run") as run,
+        ):
+            qa.review_round("refresh", preview=True, agent="claude")
+        self.assertEqual(
+            [call.args for call in launch.call_args_list],
+            [("sync", True, "claude"), ("refresh", True, "claude")],
+        )
+        run.assert_not_called()
+
+    def test_failed_or_interrupted_sync_never_updates_services_or_refreshes(self):
+        for error in (subprocess.CalledProcessError(1, ["sync"]), KeyboardInterrupt()):
+            with self.subTest(error=type(error).__name__):
+                launch = Mock()
+                with (
+                    patch.dict(sys.modules, {"rounds": SimpleNamespace(launch=launch)}),
+                    patch.object(qa.sys.stdin, "isatty", return_value=True),
+                    patch.object(qa.sys.stdout, "isatty", return_value=True),
+                    patch.object(qa.subprocess, "run", side_effect=error) as run,
+                    self.assertRaises(type(error)),
+                ):
+                    qa.review_round("refresh")
+                run.assert_called_once()
+                launch.assert_not_called()
+
+    def test_refresh_without_terminal_stops_before_starting_cleanup(self):
+        launch = Mock()
+        with (
+            patch.dict(sys.modules, {"rounds": SimpleNamespace(launch=launch)}),
+            patch.object(qa.sys.stdin, "isatty", return_value=False),
+            patch.object(qa.subprocess, "run") as run,
+            self.assertRaisesRegex(ValueError, "interactive terminal"),
+        ):
+            qa.review_round("refresh")
+        run.assert_not_called()
+        launch.assert_not_called()
+
+    def test_standalone_sync_keeps_existing_launch_behavior(self):
+        launch = Mock()
+        with (
+            patch.dict(sys.modules, {"rounds": SimpleNamespace(launch=launch)}),
+            patch.object(qa.subprocess, "run") as run,
+        ):
+            qa.review_round("sync", agent="claude")
+        launch.assert_called_once_with("sync", False, "claude")
+        run.assert_not_called()
+
     def test_fetch_follows_main_without_switching_local_checkout(self):
         with tempfile.TemporaryDirectory() as tmp:
             remote = Path(tmp) / "origin"

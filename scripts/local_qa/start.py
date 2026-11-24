@@ -366,13 +366,42 @@ def start_watcher():
         )
 
 
+def review_round(service, preview=False, agent="auto"):
+    sys.path.append(str(data))
+    from rounds import launch
+
+    if service == "refresh":
+        if preview:
+            launch("sync", True, agent)
+        else:
+            if not sys.stdin.isatty() or not sys.stdout.isatty():
+                raise ValueError(
+                    "Refresh includes acceptance cleanup. Use an interactive terminal "
+                    "for confirmation, or pass --preview."
+                )
+            # Sync replaces its process with the interactive assistant. Run it in
+            # a child so a successful exit can continue with a fresh refresh plan.
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(Path(__file__).resolve()),
+                    "sync",
+                    "--agent",
+                    agent,
+                ],
+                check=True,
+            )
+            subprocess.run([sys.executable, str(Path(__file__).resolve())], check=True)
+    launch(service, preview, agent)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "service",
         nargs="?",
         choices=[*ports, "update", "watch", "sync", "refresh"],
-        help="Start QA and check origin/main every five minutes, check immediately (update), review accepted rows (sync), or add newly implemented work to QA (refresh)",
+        help="Start QA and check origin/main every five minutes, check immediately (update), review accepted rows (sync), or review accepted rows then add newly implemented work to QA (refresh)",
     )
     parser.add_argument(
         "--preview",
@@ -397,15 +426,8 @@ if __name__ == "__main__":
         watch()
         sys.exit(0)
     if args.service in ("sync", "refresh"):
-        sys.path.append(str(data))
-        from rounds import launch
-
         try:
-            if args.service == "refresh" and not args.preview:
-                subprocess.run(
-                    [sys.executable, str(Path(__file__).resolve())], check=True
-                )
-            launch(args.service, args.preview, args.agent or "auto")
+            review_round(args.service, args.preview, args.agent or "auto")
         except subprocess.CalledProcessError as exc:
             sys.exit(
                 f"QA {args.service} stopped: {exc.cmd[0]} failed (exit {exc.returncode})."

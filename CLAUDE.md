@@ -527,6 +527,11 @@ build a throwaway local integration branch; never a shared branch:
 - When changing the privacy policy or related legal texts, decide case by case whether the change only requires informing users or whether it requires renewed active consent from existing users. If renewed consent is necessary, implement the corresponding consent/version bump flow in the same change; if it is not necessary, state that explicitly in the summary.
 
 ## QA / Exploratory Testing
+The owner's local `ofp-qa refresh` workflow includes acceptance cleanup before
+the QA refresh. Use the existing sync verification and explicit batch-confirmation
+flow for removing Accepted entries from #1058 and archiving their dashboard cards;
+the subsequent QA phase stays read-only on GitHub. See `docs/testing-and-ci.md`.
+
 When asked to search for bugs, run exploratory tests, or do a QA sweep:
 1. Read `docs/qa-strategy.md` first — it defines when to do a full vs. targeted sweep and contains Playwright setup details.
 2. Read `docs/qa-coverage-*.md` (most recent date) — it lists which areas were last tested, at which git commit, and known UI patterns that look like bugs but are by design. Only the most recent coverage file stays in `docs/`; older reports, fix logs, and coverage snapshots are archived under `docs/qa-archive/` and are historical only.
