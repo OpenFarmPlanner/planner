@@ -314,13 +314,17 @@ class DemoProjectServiceTests(TestCase):
                 text = DEMO_TEXT[resolve_demo_language(language)]
                 root_vegetables = project.fields.get(name=text['fields']['wurzel'])
                 self.assertTrue(root_vegetables.notes)
-                existing = list(BedLayout.objects.filter(bed__field=root_vegetables).select_related('bed'))
+                existing = list(
+                    BedLayout.objects.filter(bed__field=root_vegetables).select_related('bed')
+                )
                 self.assertEqual(len(existing), 3)
                 width = root_vegetables.width_m
                 length = root_vegetables.length_m
                 gap = root_vegetables.location.bed_path_spacing_m
                 pixels_per_meter_y = (length * 18 - 44) / length
-                occupied_end = max(layout.y / pixels_per_meter_y + layout.bed.length_m for layout in existing)
+                occupied_end = max(
+                    layout.y / pixels_per_meter_y + layout.bed.length_m for layout in existing
+                )
                 self.assertGreaterEqual(length - occupied_end - gap, project.default_bed_length_m)
                 self.assertGreaterEqual(width, 3 * project.default_bed_width_m + 2 * gap)
                 year = demo_current_year()

@@ -479,12 +479,16 @@ class BedBulkCreateApiTest(ProjectApiTestCase):
                 raise IntegrityError('Unable to save second layout')
             return original_create(**kwargs)
 
-        with mock.patch('farm.services.bed_layouts.BedLayout.objects.create', side_effect=create_layout):
+        with mock.patch(
+            'farm.services.bed_layouts.BedLayout.objects.create', side_effect=create_layout,
+        ):
             response = self.client.post(self.url, self._positioned_payload(), format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(Bed.objects.filter(name__startswith='Batch ').exists())
         self.assertFalse(BedLayout.objects.filter(project=self.project).exists())
-        self.assertFalse(EntityRevision.objects.filter(entity_type='bed_layout', project=self.project).exists())
+        self.assertFalse(EntityRevision.objects.filter(
+            entity_type='bed_layout', project=self.project,
+        ).exists())
 
     def test_existing_name_rejects_the_whole_series(self):
         payload = self._payload(['E 1', self.bed.name])

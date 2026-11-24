@@ -293,7 +293,8 @@ class BedViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet
                         layout = create_bed_layout(bed, entry['layout'], user_name=user_name)
                     self.record_revision(bed, EntityRevision.ACTION_CREATED)
                     undo_snapshot[bed.pk] = [
-                        bed.updated_at.isoformat(), layout.updated_at.isoformat() if layout else None,
+                        bed.updated_at.isoformat(),
+                        layout.updated_at.isoformat() if layout else None,
                     ]
                     created.append(bed)
         except IntegrityError as exc:

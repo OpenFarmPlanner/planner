@@ -308,7 +308,8 @@ class BulkBedItemSerializer(serializers.Serializer):
 
     def validate(self, attrs: dict) -> dict:
         attrs = super().validate(attrs)
-        if not all(math.isfinite(attrs[side]) and attrs[side] > 0 for side in ('length_m', 'width_m')):
+        dimensions = (attrs['length_m'], attrs['width_m'])
+        if not all(math.isfinite(side) and side > 0 for side in dimensions):
             raise serializers.ValidationError('Length and width must be greater than 0.')
         # Same rounding as Bed.save(), which derives area_sqm from the dimensions.
         raw_area = attrs['length_m'] * attrs['width_m']
@@ -344,8 +345,11 @@ class BulkBedCreateSerializer(serializers.Serializer):
         names = [entry['name'] for entry in value]
         if len(set(names)) != len(names):
             raise serializers.ValidationError('Bed names must be unique.')
-        if any('layout' in entry for entry in value) and not all('layout' in entry for entry in value):
-            raise serializers.ValidationError('Layout positions must be supplied for the whole batch.')
+        layout_count = sum('layout' in entry for entry in value)
+        if layout_count not in (0, len(value)):
+            raise serializers.ValidationError(
+                'Layout positions must be supplied for the whole batch.'
+            )
         return value
 
     def validate(self, attrs: dict) -> dict:
