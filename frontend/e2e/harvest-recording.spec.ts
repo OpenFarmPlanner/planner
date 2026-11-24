@@ -48,7 +48,7 @@ test('records without an assignment, keeps failed input, and explicitly splits t
   await form.getByRole('button', { name: 'Speichern' }).click();
   await expect(form.getByRole('alert')).toContainText('Deine Eingaben bleiben erhalten.');
   await expect(form.getByRole('textbox', { name: 'Erntemenge' })).toHaveValue('12');
-  // Temporary acceptance probe: keep the harvest write unavailable on retry.
+  await page.unroute(endpoint, offline);
   await form.getByRole('button', { name: 'Speichern' }).click();
   await expect(form).toBeHidden();
   await expect(page.getByText('Nicht zugeordnet')).toBeVisible();
