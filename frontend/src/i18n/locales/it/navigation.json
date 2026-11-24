@@ -92,8 +92,8 @@
     "suggestion": {
       "title": "Crea stagione {{label}}",
       "confirmTitle": "Creare la stagione {{label}}?",
-      "copyCheckbox": "Copia dati dalla stagione {{label}}",
-      "copyDescription": "Superfici coltivate, aiuole e assegnazioni di rotazione colturale verranno copiate nella nuova stagione.",
+      "copyCheckbox": "Copia i piani colturali",
+      "transitionPeriodChanged": "I periodi di transizione sono cambiati. Controlla i periodi aggiornati prima di creare le stagioni.",
       "create": "Crea",
       "createError": "Impossibile creare la stagione.",
       "outOfRangeError_one": "Impossibile creare la stagione per {{period}}: una serie esistente non rientra nel periodo: {{examples}}. Modifica il modello di stagione nelle impostazioni progetto, poi crea di nuovo la stagione.",
@@ -128,9 +128,15 @@
           "gap": "Rimane un intervallo vuoto: {{period}}.",
           "overlap": "Rimane una sovrapposizione: {{period}}."
         },
-        "copyPreviewAll": "Verranno copiate tutte le {{total}} serie da {{label}}.",
-        "copyPreviewPartial": "Verranno copiate {{copied}} di {{total}} serie da {{label}}; {{skipped}} non rientrano nel periodo e non verranno copiate.",
-        "copyPreviewFollowup": "Stagione successiva {{label}}: verranno copiate {{copied}} di {{total}} serie."
+        "copyPreviewAll_one": "Verrà copiata la serie da «{{label}}».",
+        "copyPreviewAll_other": "Verranno copiate tutte le {{count}} serie da {{label}}.",
+        "copyPreviewAll_many": "Verranno copiate tutte le {{count}} serie da {{label}}.",
+        "copyPreviewPartial_one": "Verranno copiate {{copied}} di {{count}} serie da «{{label}}». Fuori dal periodo ({{skipped}}).",
+        "copyPreviewPartial_other": "Verranno copiate {{copied}} di {{count}} serie da {{label}}. {{skipped}} non rientrano nel periodo e non verranno copiate.",
+        "copyPreviewPartial_many": "Verranno copiate {{copied}} di {{count}} serie da {{label}}. {{skipped}} non rientrano nel periodo e non verranno copiate.",
+        "copyPreviewFollowup_one": "Nella stagione successiva «{{label}}» verranno copiate {{copied}} di {{count}} serie.",
+        "copyPreviewFollowup_other": "Stagione successiva {{label}}: verranno copiate {{copied}} di {{count}} serie.",
+        "copyPreviewFollowup_many": "Stagione successiva {{label}}: verranno copiate {{copied}} di {{count}} serie."
       },
       "createDisabledTooltip": "Seleziona prima un'opzione per la transizione tra stagioni.",
       "outOfRangeError_many": "Impossibile creare la stagione per {{period}}: {{count}} serie esistenti non rientrano nel periodo: {{examples}}. Modifica il modello di stagione nelle impostazioni progetto, poi crea di nuovo la stagione."

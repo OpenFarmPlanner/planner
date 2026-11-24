@@ -1766,6 +1766,11 @@ export interface SeasonPeriodRange {
   end_date: string;
 }
 
+export interface SeasonTransitionPeriods {
+  expected_transition: SeasonPeriodRange;
+  expected_followup: SeasonPeriodRange;
+}
+
 /** A gap or overlap between the end of one season period and the start of the next. */
 export interface SeasonPeriodTransition {
   kind: 'gap' | 'overlap';
@@ -1788,6 +1793,8 @@ export interface SeasonCopyCounts {
   unconfigured_perennial_count?: number;
 }
 
+export type SeasonCreationCopyTarget = 'adopt' | 'transition' | 'manual';
+
 export interface SeasonCreationOptions {
   start_day: number;
   start_month: number;
@@ -1799,6 +1806,8 @@ export interface SeasonCreationOptions {
   manual_residual: SeasonPeriodTransition | null;
   copy_source_season_id: number | null;
   copy_source_label: string | null;
+  copy_sources: Record<SeasonCreationCopyTarget, { id: number; label: string }[]>;
+  copy_is_preceding_source: Record<SeasonCreationCopyTarget, boolean>;
   copy_preview: {
     adopt: SeasonCopyCounts | null;
     transition: SeasonCopyCounts | null;

@@ -92,8 +92,8 @@
     "suggestion": {
       "title": "Seizoen {{label}} maken",
       "confirmTitle": "Seizoen {{label}} maken?",
-      "copyCheckbox": "Gegevens uit seizoen {{label}} kopiëren",
-      "copyDescription": "Teeltoppervlakken, bedden en vruchtwisselingstoewijzingen worden naar het nieuwe seizoen gekopieerd.",
+      "copyCheckbox": "Teeltplannen kopiëren",
+      "transitionPeriodChanged": "De overgangsperioden zijn gewijzigd. Controleer de bijgewerkte perioden voordat je de seizoenen aanmaakt.",
       "create": "Maken",
       "createError": "Het seizoen kon niet worden gemaakt.",
       "outOfRangeError_one": "Het seizoen voor {{period}} kan niet worden gemaakt omdat één bestaande teelt buiten die periode valt: {{examples}}. Pas het seizoenspatroon in de projectinstellingen aan en maak het seizoen daarna opnieuw.",
@@ -128,9 +128,12 @@
           "gap": "Er blijft een gat over: {{period}}.",
           "overlap": "Er blijft een overlap: {{period}}."
         },
-        "copyPreviewAll": "Alle {{total}} teelten uit {{label}} worden gekopieerd.",
-        "copyPreviewPartial": "{{copied}} van {{total}} teelten uit {{label}} worden gekopieerd. {{skipped}} vallen buiten de periode en worden niet gekopieerd.",
-        "copyPreviewFollowup": "Volgend seizoen {{label}}: {{copied}} van {{total}} teelten worden gekopieerd."
+        "copyPreviewAll_one": "De teelt uit ‘{{label}}’ wordt gekopieerd.",
+        "copyPreviewAll_other": "Alle {{count}} teelten uit {{label}} worden gekopieerd.",
+        "copyPreviewPartial_one": "{{copied}} van {{count}} teelt uit ‘{{label}}’ wordt gekopieerd. Buiten de periode ({{skipped}}).",
+        "copyPreviewPartial_other": "{{copied}} van {{count}} teelten uit {{label}} worden gekopieerd. {{skipped}} vallen buiten de periode en worden niet gekopieerd.",
+        "copyPreviewFollowup_one": "Volgend seizoen ‘{{label}}’ ontvangt {{copied}} van {{count}} teelt.",
+        "copyPreviewFollowup_other": "Volgend seizoen {{label}}: {{copied}} van {{count}} teelten worden gekopieerd."
       },
       "createDisabledTooltip": "Kies eerst een optie voor de seizoensovergang."
     },

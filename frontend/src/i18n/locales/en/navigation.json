@@ -92,8 +92,8 @@
     "suggestion": {
       "title": "Create season {{label}}",
       "confirmTitle": "Create season {{label}}?",
-      "copyCheckbox": "Copy data from season {{label}}",
-      "copyDescription": "Growing areas, beds, and crop rotation assignments will be copied to the new season.",
+      "copyCheckbox": "Copy planting plans",
+      "transitionPeriodChanged": "The transition periods have changed. Check the updated periods before creating the seasons.",
       "create": "Create",
       "createError": "Season could not be created.",
       "outOfRangeError_one": "The season for {{period}} cannot be created because one existing planting plan lies outside that period: {{examples}}. Adjust the season pattern in project settings, then create the season again.",
@@ -128,9 +128,12 @@
           "gap": "A remaining gap stays: {{period}}.",
           "overlap": "An overlap stays: {{period}}."
         },
-        "copyPreviewAll": "All {{total}} planting plans from {{label}} will be copied.",
-        "copyPreviewPartial": "{{copied}} of {{total}} planting plans from {{label}} will be copied – {{skipped}} lie outside the period and will not be copied.",
-        "copyPreviewFollowup": "Follow-up season {{label}}: {{copied}} of {{total}} planting plans will be copied."
+        "copyPreviewAll_one": "The planting plan from “{{label}}” will be copied.",
+        "copyPreviewAll_other": "All {{count}} planting plans from {{label}} will be copied.",
+        "copyPreviewPartial_one": "{{copied}} of {{count}} planting plan from “{{label}}” will be copied. Outside the period ({{skipped}}).",
+        "copyPreviewPartial_other": "{{copied}} of {{count}} planting plans from {{label}} will be copied – {{skipped}} lie outside the period and will not be copied.",
+        "copyPreviewFollowup_one": "The follow-up season “{{label}}” receives {{copied}} of {{count}} planting plan.",
+        "copyPreviewFollowup_other": "Follow-up season {{label}}: {{copied}} of {{count}} planting plans will be copied."
       },
       "createDisabledTooltip": "Select an option for the season transition first."
     },

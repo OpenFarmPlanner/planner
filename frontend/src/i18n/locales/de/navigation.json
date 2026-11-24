@@ -92,8 +92,8 @@
     "suggestion": {
       "title": "Saison {{label}} anlegen",
       "confirmTitle": "Saison {{label}} anlegen?",
-      "copyCheckbox": "Daten aus Saison {{label}} übernehmen",
-      "copyDescription": "Anbauflächen, Beete und Fruchtfolge-Zuordnungen werden in die neue Saison kopiert.",
+      "copyCheckbox": "Anbaupläne übernehmen",
+      "transitionPeriodChanged": "Die Übergangszeiträume haben sich geändert. Prüfe die aktualisierten Zeiträume vor dem Anlegen.",
       "create": "Anlegen",
       "createError": "Saison konnte nicht angelegt werden.",
       "outOfRangeError_one": "Die Saison kann für {{period}} nicht angelegt werden, weil ein bestehender Anbauplan außerhalb dieses Zeitraums liegt: {{examples}}. Passe das Saison-Muster in den Projekteinstellungen an und lege die Saison danach erneut an.",
@@ -128,9 +128,12 @@
           "gap": "Es bleibt eine Restlücke: {{period}}.",
           "overlap": "Es bleibt eine Überlappung: {{period}}."
         },
-        "copyPreviewAll": "Alle {{total}} Anbaupläne aus {{label}} werden übernommen.",
-        "copyPreviewPartial": "{{copied}} von {{total}} Anbauplänen aus {{label}} werden übernommen – {{skipped}} liegen außerhalb des Zeitraums und werden nicht übernommen.",
-        "copyPreviewFollowup": "Folge-Saison {{label}}: {{copied}} von {{total}} Anbauplänen werden übernommen."
+        "copyPreviewAll_one": "Der Anbauplan aus „{{label}}“ wird übernommen.",
+        "copyPreviewAll_other": "Alle {{count}} Anbaupläne aus {{label}} werden übernommen.",
+        "copyPreviewPartial_one": "{{copied}} von {{count}} Anbauplan aus „{{label}}“ wird übernommen. Außerhalb des Zeitraums ({{skipped}}).",
+        "copyPreviewPartial_other": "{{copied}} von {{count}} Anbauplänen aus {{label}} werden übernommen – {{skipped}} liegen außerhalb des Zeitraums und werden nicht übernommen.",
+        "copyPreviewFollowup_one": "In die Folgesaison „{{label}}“ werden {{copied}} von {{count}} Anbauplan übernommen.",
+        "copyPreviewFollowup_other": "Folge-Saison {{label}}: {{copied}} von {{count}} Anbauplänen werden übernommen."
       },
       "createDisabledTooltip": "Bitte zuerst eine Option für den Saisonübergang auswählen."
     },

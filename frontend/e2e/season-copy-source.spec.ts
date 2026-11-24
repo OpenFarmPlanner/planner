@@ -108,13 +108,16 @@ test.describe('season copy on a French phone', () => {
 });
 
 for (const basis of ['planned', 'actual'] as const) {
-  test(`the suggested season copies ${basis} dates from the predecessor when an older season is active`, async ({ page, request }) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await loginWithDeterministicProject(page, request, `season-suggestion-preceding-${basis}`, { loginAsAdmin: true });
+  test(`the suggested season copies ${basis} dates from the selected historical source`, async ({ page, request }) => {
+    await page.setViewportSize(basis === 'actual' ? { width: 375, height: 800 } : { width: 1440, height: 900 });
+    await loginWithDeterministicProject(page, request, `season-suggestion-source-${basis}`, { loginAsAdmin: true });
+    await createSeason(page, '2023-09-01', '2024-08-31', 'Alter Garten');
     const older = await createSeason(page, '2024-09-01', '2025-08-31', 'Historische Saison');
-    const source = await createSeason(page, '2025-09-01', '2026-08-31', 'Unmittelbar vorherige Saison');
+    const newest = await createSeason(page, '2025-09-01', '2026-08-31', 'Jüngste Saison');
     await apiRequest(page, 'PATCH', '/season-pattern/', { start_day: 1, start_month: 9 });
-    const original = await createPlan(page, source.id, '2026-04-01', '2026-04-06', 32);
+    const source = basis === 'actual' ? older : newest;
+    const year = basis === 'actual' ? 2025 : 2026;
+    const original = await createPlan(page, source.id, `${year}-04-01`, `${year}-04-06`, 32);
 
     await page.goto(plansPage);
     const switcher = page.getByRole('button', { name: 'Aktive Saison wechseln' });
@@ -124,20 +127,33 @@ for (const basis of ['planned', 'actual'] as const) {
     await switcher.click();
     await page.getByRole('menuitem').filter({ hasText: 'Saison 26/27 anlegen' }).click();
     const dialog = page.getByRole('dialog', { name: 'Saison 26/27 anlegen?' });
-    await expect(dialog.getByRole('checkbox', { name: /Daten aus Saison Unmittelbar vorherige Saison übernehmen/ })).toBeChecked();
-    await expect(dialog.getByRole('combobox')).toHaveCount(0);
+    await expect(dialog.getByRole('checkbox', { name: /Anbaupläne übernehmen/ })).toBeChecked();
+    const sourceSelect = dialog.getByRole('combobox', { name: 'Ausgangssaison' });
+    await expect(sourceSelect).toHaveText('Jüngste Saison');
 
     const dateBasis = dialog.getByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' });
     await expect(dateBasis).not.toBeChecked();
-    await expect(dateBasis).toHaveAccessibleDescription(/vorherigen Saison.*Plantermin/);
+    await expect(dateBasis).toHaveAccessibleDescription(/ausgewählten Saison.*Plantermin/);
     if (basis === 'actual') {
+      await sourceSelect.focus();
+      await page.keyboard.press('Enter');
+      const list = page.getByRole('listbox');
+      await expect(list.getByRole('option')).toHaveText(['Jüngste Saison', 'Historische Saison', 'Alter Garten']);
+      await list.getByRole('option', { name: 'Historische Saison' }).focus();
+      await page.keyboard.press('Enter');
+      await expect(sourceSelect).toHaveText('Historische Saison');
       const preview = page.waitForResponse(response => (
         response.url().includes('/seasons/creation-options/') && response.url().includes('use_actual_dates=true')
+        && new URL(response.url()).searchParams.get('source_season_id') === String(older.id)
       ));
       await dateBasis.check();
       expect((await preview).ok()).toBe(true);
-      await expect(dialog.getByText(/Anbaupläne.*übernommen/)).toBeVisible();
+      await expect(dialog.getByText(/Der Anbauplan aus .*Historische Saison.* wird übernommen/)).toBeVisible();
     }
+    expect(await dialog.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
+    await test.info().attach(`create-season-${basis}`, {
+      body: await dialog.screenshot({ animations: 'disabled' }), contentType: 'image/png',
+    });
     const copying = page.waitForResponse(response => response.url().endsWith('/seasons/create-and-copy/'));
     await dialog.getByRole('button', { name: 'Anlegen', exact: true }).click();
     const response = await copying;
@@ -149,7 +165,9 @@ for (const basis of ['planned', 'actual'] as const) {
     expect(created).toMatchObject({ planting_plan_count: 1 });
     await expect(switcher).toContainText('26/27');
     const { results } = await apiRequest<{ results: Array<{ id: number; planting_plan_count: number }> }>(page, 'GET', '/seasons/');
-    expect(results.find(season => season.id === older.id)?.planting_plan_count).toBe(0);
+    expect(results.find(season => season.id === source.id)?.planting_plan_count).toBe(1);
+    expect(results.find(season => season.id === (source.id === older.id ? newest.id : older.id))
+      ?.planting_plan_count).toBe(0);
     type Dates = { id: number; season: number; planting_date: string; harvest_date: string; actual_sowing_date: string | null };
     const { results: rows } = await apiRequest<{ results: Dates[] }>(page, 'GET', '/planting-plans/');
     expect(rows.filter(plan => plan.season === created.id)).toMatchObject([{
@@ -157,7 +175,7 @@ for (const basis of ['planned', 'actual'] as const) {
       harvest_date: '2027-05-03', actual_sowing_date: null,
     }]);
     expect(await apiRequest<Dates>(page, 'GET', `/planting-plans/${original.id}/`)).toMatchObject({
-      planting_date: '2026-04-01', harvest_date: '2026-05-03', actual_sowing_date: '2026-04-06',
+      planting_date: `${year}-04-01`, harvest_date: `${year}-05-03`, actual_sowing_date: `${year}-04-06`,
     });
   });
 }

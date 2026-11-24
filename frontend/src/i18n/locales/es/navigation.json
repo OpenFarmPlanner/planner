@@ -93,8 +93,8 @@
     "suggestion": {
       "title": "Crear la temporada {{label}}",
       "confirmTitle": "¿Crear la temporada {{label}}?",
-      "copyCheckbox": "Copiar datos de la temporada {{label}}",
-      "copyDescription": "Las superficies de cultivo, los bancales y las asignaciones de la rotación de cultivos se copiarán en la nueva temporada.",
+      "copyCheckbox": "Copiar los planes de cultivo",
+      "transitionPeriodChanged": "Los períodos de transición han cambiado. Comprueba los períodos actualizados antes de crear las temporadas.",
       "create": "Crear",
       "createError": "No se ha podido crear la temporada.",
       "outOfRangeError_one": "No se puede crear la temporada para {{period}} porque una serie existente queda fuera de ese periodo: {{examples}}. Ajusta el patrón de temporada en los ajustes del proyecto y vuelve a crear la temporada.",
@@ -130,9 +130,15 @@
           "gap": "Queda un hueco: {{period}}.",
           "overlap": "Queda un solapamiento: {{period}}."
         },
-        "copyPreviewAll": "Se copiarán las {{total}} series de {{label}}.",
-        "copyPreviewPartial": "Se copiarán {{copied}} de {{total}} series de {{label}}; {{skipped}} quedan fuera del periodo y no se copiarán.",
-        "copyPreviewFollowup": "Temporada siguiente {{label}}: se copiarán {{copied}} de {{total}} series."
+        "copyPreviewAll_one": "Se copiará la serie de «{{label}}».",
+        "copyPreviewAll_other": "Se copiarán las {{count}} series de {{label}}.",
+        "copyPreviewAll_many": "Se copiarán las {{count}} series de {{label}}.",
+        "copyPreviewPartial_one": "Se copiarán {{copied}} de {{count}} serie de «{{label}}». Fuera del período ({{skipped}}).",
+        "copyPreviewPartial_other": "Se copiarán {{copied}} de {{count}} series de {{label}}. {{skipped}} quedan fuera del periodo y no se copiarán.",
+        "copyPreviewPartial_many": "Se copiarán {{copied}} de {{count}} series de {{label}}. {{skipped}} quedan fuera del periodo y no se copiarán.",
+        "copyPreviewFollowup_one": "A la temporada siguiente «{{label}}» se copiará {{copied}} de {{count}} serie.",
+        "copyPreviewFollowup_other": "Temporada siguiente {{label}}: se copiarán {{copied}} de {{count}} series.",
+        "copyPreviewFollowup_many": "Temporada siguiente {{label}}: se copiarán {{copied}} de {{count}} series."
       },
       "createDisabledTooltip": "Selecciona primero una opción para la transición entre temporadas."
     },

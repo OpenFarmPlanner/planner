@@ -92,8 +92,8 @@
     "suggestion": {
       "title": "Criar época {{label}}",
       "confirmTitle": "Criar época {{label}}?",
-      "copyCheckbox": "Copiar dados da época {{label}}",
-      "copyDescription": "As áreas de cultivo, os canteiros e as atribuições de rotação de culturas serão copiados para a nova época.",
+      "copyCheckbox": "Copiar os planos de cultivo",
+      "transitionPeriodChanged": "Os períodos de transição mudaram. Verifica os períodos atualizados antes de criar as épocas.",
       "create": "Criar",
       "createError": "Não foi possível criar a época.",
       "outOfRangeError_one": "Não é possível criar a época de {{period}} porque uma série existente está fora desse período: {{examples}}. Ajuste o padrão de épocas nas definições do projeto e volte a criar a época.",
@@ -128,9 +128,15 @@
           "gap": "Permanece um intervalo: {{period}}.",
           "overlap": "Permanece uma sobreposição: {{period}}."
         },
-        "copyPreviewAll": "Serão copiadas todas as {{total}} séries de {{label}}.",
-        "copyPreviewPartial": "Serão copiadas {{copied}} de {{total}} séries de {{label}}. As {{skipped}} que ficam fora do período não serão copiadas.",
-        "copyPreviewFollowup": "Época seguinte {{label}}: serão copiadas {{copied}} de {{total}} séries."
+        "copyPreviewAll_one": "Será copiada a série de «{{label}}».",
+        "copyPreviewAll_other": "Serão copiadas todas as {{count}} séries de {{label}}.",
+        "copyPreviewAll_many": "Serão copiadas todas as {{count}} séries de {{label}}.",
+        "copyPreviewPartial_one": "Serão copiadas {{copied}} de {{count}} série de «{{label}}». Fora do período ({{skipped}}).",
+        "copyPreviewPartial_other": "Serão copiadas {{copied}} de {{count}} séries de {{label}}. As {{skipped}} que ficam fora do período não serão copiadas.",
+        "copyPreviewPartial_many": "Serão copiadas {{copied}} de {{count}} séries de {{label}}. As {{skipped}} que ficam fora do período não serão copiadas.",
+        "copyPreviewFollowup_one": "Para a época seguinte «{{label}}» serão copiadas {{copied}} de {{count}} série.",
+        "copyPreviewFollowup_other": "Época seguinte {{label}}: serão copiadas {{copied}} de {{count}} séries.",
+        "copyPreviewFollowup_many": "Época seguinte {{label}}: serão copiadas {{copied}} de {{count}} séries."
       },
       "createDisabledTooltip": "Selecione primeiro uma opção para a transição entre épocas.",
       "outOfRangeError_many": "Não é possível criar a época de {{period}} porque {{count}} séries existentes estão fora desse período: {{examples}}. Ajuste o padrão de épocas nas definições do projeto e volte a criar a época."

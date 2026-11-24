@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { seasonAPI } from '../api/api';
-import type { Season, SeasonCopyRotationMode, SeasonCreationOptions, SeasonDueSuggestion } from '../api/types';
+import type {
+  Season, SeasonCopyRotationMode, SeasonCreationOptions, SeasonDueSuggestion, SeasonTransitionPeriods,
+} from '../api/types';
 import { extractApiErrorMessage } from '../api/errors';
 import { useTranslation } from '../i18n';
 import { useAuth } from '../auth/useAuth';
@@ -147,9 +149,11 @@ export function useActiveSeason() {
     return response.data;
   }, [reload]);
 
-  const createTransitionSeasons = useCallback(async (copy: boolean, expectedSourceId?: number, useActualDates = false) => {
+  const createTransitionSeasons = useCallback(async (
+    copy: boolean, expectedSourceId?: number, useActualDates = false, expectedPeriods?: SeasonTransitionPeriods,
+  ) => {
     const response = await seasonAPI.createTransition({
-      copy,
+      copy, ...expectedPeriods,
       ...(expectedSourceId === undefined ? {} : { source_season_id: expectedSourceId }),
       ...(copy && useActualDates ? { use_actual_dates: true } : {}),
     });
