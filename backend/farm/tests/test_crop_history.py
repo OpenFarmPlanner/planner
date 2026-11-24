@@ -14,6 +14,7 @@ from farm.history.records import _serialize_instance
 from farm.models import (
     BatchOperation,
     Crop,
+    CropLibraryUsageDay,
     CropRevision,
     EntityRevision,
     Location,
@@ -665,6 +666,20 @@ class CropHistoryTests(TestCase):
 
         call_command("cleanup_history")
         self.assertFalse(CropRevision.objects.filter(id=old.id).exists())
+
+    def test_cleanup_history_expires_crop_library_usage_outside_window(self):
+        today = timezone.now().date()
+        kind = CropLibraryUsageDay.Kind.LINKED_UPDATE
+        CropLibraryUsageDay.objects.create(
+            project=self.crop.project, day=today - timedelta(days=31), kind=kind,
+        )
+        kept = CropLibraryUsageDay.objects.create(
+            project=self.crop.project, day=today - timedelta(days=28), kind=kind,
+        )
+
+        call_command("cleanup_history")
+
+        self.assertEqual(list(CropLibraryUsageDay.objects.all()), [kept])
 
     def test_cleanup_history_keeps_pre_cutoff_anchor_and_prunes_older_revisions(self):
         self.crop.name = "Carrot intermediate"

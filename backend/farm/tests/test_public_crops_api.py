@@ -1,12 +1,12 @@
 """API tests for the public crop library endpoints."""
 
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, time, timedelta
 from datetime import timezone as datetime_timezone
 from decimal import Decimal
 from uuid import uuid4
 
-from django.db import connection
+from django.db import connection, transaction
 from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
@@ -39,6 +39,9 @@ from farm.models import (
     SeedPackage,
 )
 from farm.services.crop_inheritance import get_general_crop
+from farm.services.crop_library_usage import OperationTotal, build_crop_library_operations
+from farm.services.demo_project import DEMO_PROJECT_DESCRIPTION
+from farm.services.engagement_dashboard import build_engagement_dashboard
 from farm.services.public_crops import (
     build_public_crop_payload,
     build_public_crop_snapshot,
@@ -125,6 +128,96 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             'request_id': str(request_id or uuid4()),
             'groups': groups,
         }, format='json')
+
+    def test_dashboard_counts_successful_batches_and_undos_independently(self) -> None:
+        parent, varieties = self.selection_fixture()
+        other = Project.objects.create(name='Another farm', slug='another-farm')
+        ProjectMembership.objects.create(user=self.user, project=other, role='admin')
+        demo = Project.objects.create(
+            name='Demo', slug='operation-demo', description=DEMO_PROJECT_DESCRIPTION,
+        )
+        ProjectMembership.objects.create(user=self.user, project=demo, role='admin')
+        qa_member = User.objects.create_superuser('qa-admin', 'qa@example.test', 'testpass')
+        qa = Project.objects.create(name='QA', slug='operation-qa')
+        ProjectMembership.objects.create(user=qa_member, project=qa, role='admin')
+
+        group = self.batch_group(parent, *varieties)
+        first_id = uuid4()
+        self.assertEqual(self.batch_import([group], request_id=first_id).status_code, 200)
+        self.assertEqual(self.batch_import([group], request_id=first_id).status_code, 200)
+        self.assertEqual(self.batch_import([group]).status_code, 200)  # Unchanged.
+        for project in (other, demo, qa):
+            user = qa_member if project == qa else self.user
+            self.client.force_authenticate(user=user)
+            self.client.defaults['HTTP_X_PROJECT_ID'] = str(project.pk)
+            self.assertEqual(self.batch_import([group], project_id=project.pk).status_code, 200)
+        self.client.force_authenticate(user=self.user)
+        self.client.defaults['HTTP_X_PROJECT_ID'] = str(self.project.pk)
+        standalone = PublicCrop.objects.create(name='Batch two', status='published')
+        self.assertEqual(self.batch_import([self.batch_group(standalone)]).status_code, 200)
+
+        now = timezone.now()
+        excluded = build_engagement_dashboard(now).excluded_project_ids
+        metrics = build_crop_library_operations(now, excluded_project_ids=excluded)
+        self.assertEqual(metrics.bulk_imports, OperationTotal(3, 2))
+        self.assertEqual(build_crop_library_operations(
+            now, excluded_project_ids=set(),
+        ).bulk_imports, OperationTotal(5, 4))
+
+        first = BatchOperation.objects.get(request_id=first_id)
+        endpoint = f'/openfarmplanner/api/history/batch/{first.pk}/revert/'
+        self.assertEqual(self.client.post(endpoint).status_code, 200)
+        self.assertEqual(self.client.post(endpoint).status_code, 409)
+        first.refresh_from_db()
+        undo = BatchOperation.objects.get(
+            project=first.project, operation_type=BatchOperation.TYPE_REVERTED,
+        )
+        self.assertEqual(undo.completed_at, first.reverted_at)
+        self.assertIsNotNone(undo.completed_at)
+        now = timezone.now()
+        metrics = build_crop_library_operations(now, excluded_project_ids=excluded)
+        self.assertEqual(metrics.bulk_imports, OperationTotal(3, 2))
+        self.assertEqual(metrics.import_undos, OperationTotal(1, 1))
+
+        cutoff = datetime.combine(metrics.start_day, time.min, tzinfo=UTC)
+        before_cutoff = cutoff - timedelta(microseconds=1)
+        BatchOperation.objects.filter(pk=undo.pk).update(
+            created_at=before_cutoff, completed_at=cutoff,
+        )
+        BatchOperation.objects.filter(pk=first.pk).update(
+            created_at=before_cutoff, completed_at=cutoff,
+        )
+        self.assertEqual(build_crop_library_operations(
+            now, excluded_project_ids=excluded,
+        ).bulk_imports, OperationTotal(3, 2))
+        BatchOperation.objects.filter(pk=first.pk).update(completed_at=before_cutoff)
+        metrics = build_crop_library_operations(now, excluded_project_ids=excluded)
+        self.assertEqual(metrics.bulk_imports, OperationTotal(2, 2))
+        self.assertEqual(metrics.import_undos, OperationTotal(1, 1))
+
+        BatchOperation.objects.filter(pk=undo.pk).update(completed_at=None)
+        self.assertEqual(build_crop_library_operations(
+            now, excluded_project_ids=excluded,
+        ).import_undos, OperationTotal(0, 0))
+        BatchOperation.objects.filter(pk=undo.pk).update(created_at=cutoff)
+        self.assertEqual(build_crop_library_operations(
+            now, excluded_project_ids=excluded,
+        ).import_undos, OperationTotal(1, 1))
+
+    def test_dashboard_counts_a_multi_item_selection_once_after_rollback_and_retry(self) -> None:
+        parent, varieties = self.selection_fixture()
+        entries = [parent, *varieties]
+        with transaction.atomic():
+            self.assertEqual(self.selection_import(parent, entries).status_code, 200)
+            transaction.set_rollback(True)
+
+        metrics = build_crop_library_operations(timezone.now(), excluded_project_ids=set())
+        self.assertEqual(metrics.bulk_imports, OperationTotal(0, 0))
+        self.assertEqual(self.selection_import(parent, entries).status_code, 200)
+        self.assertEqual(self.selection_import(parent, entries).status_code, 200)
+        metrics = build_crop_library_operations(timezone.now(), excluded_project_ids=set())
+        self.assertEqual(metrics.bulk_imports, OperationTotal(1, 1))
+        self.assertIsNotNone(metrics.coverage_started_at)
 
     def test_batch_import_groups_creates_links_and_selective_undo(self):
         parent, varieties = self.selection_fixture()
@@ -3471,6 +3564,14 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             EntityRevision.objects.filter(entity_type='crop', object_id=imported_id).count(),
             revision_count_after_first_import + 1,
         )
+
+        replay = self.client.post(
+            f'/openfarmplanner/api/public-crops/{public_crop.pk}/import/',
+            {'mode': 'update', 'base_version': public_crop.version}, format='json',
+        )
+        self.assertEqual(replay.status_code, 200, replay.data)
+        metrics = build_crop_library_operations(timezone.now(), excluded_project_ids=set())
+        self.assertEqual(metrics.linked_updates, OperationTotal(1, 1))
 
     def test_reimporting_after_version_bump_with_no_compared_change_is_a_no_op(self):
         """A library version bump that touches only a non-compared field (here
@@ -7486,6 +7587,11 @@ class PublicCropFieldSyncApiTest(DRFAPITestCase):
         self.kultur.refresh_from_db()
         self.assertEqual(self.kultur.notes, 'Public notes')
         self.assertEqual(response.data['crop']['public_publish_blocked_reason'], 'no_local_changes')
+
+        replay = self._sync(self.kultur, pull_fields=['growth_duration_days', 'notes'])
+        self.assertEqual(replay.status_code, 200, replay.data)
+        metrics = build_crop_library_operations(timezone.now(), excluded_project_ids=set())
+        self.assertEqual(metrics.linked_updates, OperationTotal(1, 1))
 
     def test_sync_preview_lists_differences_and_what_may_be_pushed(self):
         self._link(self.kultur, [])

@@ -38,6 +38,7 @@ from .models import (
     Supplier,
     Task,
 )
+from .services.crop_library_usage import build_crop_library_operations
 from .services.engagement_dashboard import (
     PROJECT_SORT_FIELDS,
     build_demo_usage_summary,
@@ -95,6 +96,9 @@ class ProjectAdmin(admin.ModelAdmin):
             'dashboard': dashboard,
             'project_rows': rows,
             'demo_usage': demo_usage,
+            'crop_library_operations': build_crop_library_operations(
+                now, excluded_project_ids=dashboard.excluded_project_ids,
+            ),
             'project_columns': self._project_column_headers(params),
             'activity_filter': [
                 (label, self._dashboard_url(params, activity=value), activity == value)

@@ -67,6 +67,7 @@ from .projects import (  # noqa: E402
 )
 from .seasons import ActiveSeasonManager, Season, SeasonPattern  # noqa: E402
 from .structure import Bed, BedLayout, Field, FieldLayout, Location  # noqa: E402
+from .usage import CropLibraryUsageDay  # noqa: E402
 
 __all__ = [
     'API_TOKEN_PREFIX',
@@ -79,6 +80,7 @@ __all__ = [
     'Crop',
     'CropCompanion',
     'CropImportDraft',
+    'CropLibraryUsageDay',
     'CropLoss',
     'CropRevision',
     'CropSupplierData',
