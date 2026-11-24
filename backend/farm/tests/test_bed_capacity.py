@@ -328,7 +328,9 @@ class BedOccupancyApiTest(ProjectApiTestCase):
         detail = self.client.get(f'/openfarmplanner/api/planting-plans/{predecessor.pk}/')
         self.assertEqual(detail.status_code, status.HTTP_200_OK)
         self.assertEqual(detail.data['harvest_overlaps'], rows[predecessor.pk]['harvest_overlaps'])
-        self.assertEqual(detail.data['actual_harvest_end_date'], rows[predecessor.pk]['actual_harvest_end_date'])
+        self.assertEqual(
+            detail.data['actual_harvest_end_date'], rows[predecessor.pk]['actual_harvest_end_date'],
+        )
 
         self.project.allow_succession_during_harvest = False
         self.project.save()
