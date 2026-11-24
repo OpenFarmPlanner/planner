@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppTooltip } from '../components/AppTooltip';
 import { GridTooltipScope } from '../components/data-grid/GridTooltipScope';
@@ -9,8 +10,8 @@ function Grid({ editing = false, firstRow = 'first' }: { editing?: boolean; firs
     <GridTooltipScope editing={editing}>
       <div role="grid">
         <div role="row" data-id={firstRow}>
-          <div role="gridcell" data-field="name">
-            <AppTooltip title="First preview" enterDelay={250} enterNextDelay={250}>
+          <div role="gridcell" data-field="name" tabIndex={-1} aria-label="First grid cell">
+            <AppTooltip title="First preview" cellHasFocus={false} enterDelay={250} enterNextDelay={250}>
               <button aria-label="First cell" />
             </AppTooltip>
           </div>
@@ -110,5 +111,38 @@ describe('grid tooltip lifecycle', () => {
     fireEvent.mouseOver(first, previousPoint);
     await finishDelays();
     expect(screen.getByRole('tooltip')).toHaveTextContent('First preview');
+  });
+
+  it('opens a preview when native focus moves to its grid cell', async () => {
+    render(<Grid />);
+    act(() => screen.getByRole('gridcell', { name: 'First grid cell' }).focus());
+    await finishDelays();
+    expect(screen.getByRole('tooltip')).toHaveTextContent('First preview');
+  });
+
+  it('resets controlled help on dismiss so the next hover keeps its explanatory delay', async () => {
+    const onDismiss = vi.fn();
+    function ControlledHelp() {
+      const [open, setOpen] = useState(false);
+      return (
+        <AppTooltip title="Delayed explanation" explanatory open={open} onOpen={() => setOpen(true)}
+          onClose={event => { onDismiss(event.type); setOpen(false); }}>
+          <button aria-label="Help" />
+        </AppTooltip>
+      );
+    }
+    render(<GridTooltipScope editing={false}><div role="grid"><ControlledHelp /></div></GridTooltipScope>);
+    hover('Help');
+    await act(async () => { await vi.advanceTimersByTimeAsync(650); });
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Delayed explanation');
+
+    fireEvent.scroll(screen.getByRole('grid'));
+    expect(onDismiss).toHaveBeenCalledOnce();
+    expect(onDismiss).toHaveBeenCalledWith('scroll');
+    hover('Help');
+    await finishDelays();
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Delayed explanation');
   });
 });

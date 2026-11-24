@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext, type SyntheticEvent } from 'react';
 import { isAnyContextMenuOpen, subscribeToContextMenuOpenState } from '../contextMenu/contextMenuOpenState';
 
 export function createGridTooltipScope(initialEditing: boolean) {
@@ -23,7 +23,7 @@ export function createGridTooltipScope(initialEditing: boolean) {
     },
     allowFocus() { suppressRestoredFocus = false; },
     dispose() {
-      if (active?.scope === scope) dismissGridTooltip();
+      if (active?.scope === scope) dismissGridTooltip(active.id, null);
     },
   };
   return scope;
@@ -31,6 +31,7 @@ export function createGridTooltipScope(initialEditing: boolean) {
 
 type Scope = ReturnType<typeof createGridTooltipScope>;
 type Point = { x: number; y: number };
+type TooltipDismissEvent = Event | SyntheticEvent | null;
 
 interface TooltipRequest {
   id: string;
@@ -38,7 +39,7 @@ interface TooltipRequest {
   anchor: HTMLElement;
   allowedDuringEdit: boolean;
   event?: Event;
-  dismiss: () => void;
+  dismiss: (event: TooltipDismissEvent) => void;
 }
 
 interface ActiveTooltip extends TooltipRequest {
@@ -52,6 +53,7 @@ const CELL = '[role="gridcell"], [role="columnheader"]';
 const EDITOR = '.MuiDataGrid-cell--editing, [data-grid-dedicated-editor]';
 const FLOATING_OVERLAY = '.MuiAutocomplete-popper [role="listbox"], .MuiPopper-root [role="menu"], dialog[open], [role="dialog"][aria-modal="true"]';
 const claimedEvents = new WeakSet<Event>();
+const gridCellPreviews = new WeakMap<Element, () => void>();
 let active: ActiveTooltip | null = null;
 let stopWatching: (() => void) | undefined;
 let pointer: Point | null = null;
@@ -63,17 +65,32 @@ function updatePointer(event: MouseEvent): void {
   }
 }
 
-export function trackGridTooltipPointer(doc: Document): () => void {
+function showFocusedCellPreview(event: FocusEvent): void {
+  if (event.target instanceof Element) gridCellPreviews.get(event.target)?.();
+}
+
+export function registerGridCellPreview(anchor: HTMLElement, show: () => void): () => void {
+  const cell = anchor.closest(CELL);
+  if (!cell) return () => {};
+  gridCellPreviews.set(cell, show);
+  return () => {
+    if (gridCellPreviews.get(cell) === show) gridCellPreviews.delete(cell);
+  };
+}
+
+export function trackGridTooltipInteractions(doc: Document): () => void {
   // Browsers can dispatch mouseover when a mounted editor changes the element
   // under a stationary pointer. A real move distinguishes a fresh hover.
   if (pointerTrackers++ === 0) {
     doc.addEventListener('mousemove', updatePointer, true);
     doc.addEventListener('mousedown', updatePointer, true);
+    doc.addEventListener('focusin', showFocusedCellPreview, true);
   }
   return () => {
     if (--pointerTrackers !== 0) return;
     doc.removeEventListener('mousemove', updatePointer, true);
     doc.removeEventListener('mousedown', updatePointer, true);
+    doc.removeEventListener('focusin', showFocusedCellPreview, true);
     pointer = null;
   };
 }
@@ -98,13 +115,13 @@ function canShowGridTooltip({ scope, anchor, allowedDuringEdit }: TooltipRequest
     || (!scope.isEditing() && !grid.querySelector('[data-grid-dedicated-editor]'));
 }
 
-export function dismissGridTooltip(id?: string): void {
+export function dismissGridTooltip(id?: string, event?: TooltipDismissEvent): void {
   if (!active || (id !== undefined && active.id !== id)) return;
   const dismissed = active;
   active = null;
   stopWatching?.();
   stopWatching = undefined;
-  dismissed.dismiss();
+  dismissed.dismiss(event === undefined ? new Event('gridtooltipdismiss') : event);
 }
 
 export function dismissGridTooltipForEdit(scope: Scope | null): void {
@@ -123,20 +140,20 @@ function watchTooltip(doc: Document): () => void {
     if (!active || !(event.target instanceof Node)) return;
     if (active.anchor.contains(event.target) || event.target === active.cell || isInsideTooltip(event.target, active)) return;
     if (hasForegroundOverlay(active.anchor)) active.scope.suppressRestoredInteraction();
-    dismissGridTooltip();
+    dismissGridTooltip(undefined, event);
   };
   const onPointerDown = (event: Event): void => {
     if (!active || !(event.target instanceof Node) || isInsideTooltip(event.target, active)) return;
-    active.scope.suppressRestoredInteraction();
-    dismissGridTooltip();
+    if (!(event.target instanceof Element) || !event.target.closest(CELL)) active.scope.suppressRestoredInteraction();
+    dismissGridTooltip(undefined, event);
   };
   const onScroll = (event: Event): void => {
     if (!active || (event.target instanceof Node && isInsideTooltip(event.target, active))) return;
     active.scope.suppressRestoredInteraction();
-    dismissGridTooltip();
+    dismissGridTooltip(undefined, event);
   };
   const onKeyDown = (event: KeyboardEvent): void => {
-    if (event.key === 'Escape') dismissGridTooltip();
+    if (event.key === 'Escape') dismissGridTooltip(undefined, event);
   };
   const onChange = (): void => {
     if (!active) return;
@@ -188,7 +205,9 @@ export function claimGridTooltip(request: TooltipRequest): boolean {
     row: cell?.closest('[role="row"]')?.getAttribute('data-id') ?? null,
     field: cell?.getAttribute('data-field') ?? null,
   };
-  if (previous?.id !== request.id) previous?.dismiss();
+  if (previous && previous.id !== request.id) {
+    previous.dismiss(request.event ?? new Event('gridtooltipdismiss'));
+  }
   stopWatching ??= watchTooltip(request.anchor.ownerDocument);
   return true;
 }

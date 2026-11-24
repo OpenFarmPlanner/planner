@@ -2,7 +2,7 @@ import { cloneElement, useId, useLayoutEffect, useRef, useState, type HTMLAttrib
 import { Tooltip, type TooltipProps } from '@mui/material';
 import useEventCallback from '@mui/utils/useEventCallback';
 import { useContextMenuOpenSnapshot } from './contextMenu/contextMenuOpenState';
-import { claimGridTooltip, dismissGridTooltip, isCurrentGridTooltipRequest, useGridTooltipScope } from './data-grid/gridTooltipState';
+import { claimGridTooltip, dismissGridTooltip, isCurrentGridTooltipRequest, registerGridCellPreview, useGridTooltipScope } from './data-grid/gridTooltipState';
 
 const EXPLANATORY_HOVER_DELAY = 600;
 
@@ -100,31 +100,49 @@ function GridAppTooltip({
   const wasControlledOpen = useRef(false);
   const [intent, setIntent] = useState<'idle' | 'pending' | 'open'>('idle');
   const child = children as ReactElement<HTMLAttributes<HTMLElement>>;
-  const openFromFocus = cellHasFocus || open === true;
+  const openFromFocus = open !== false && (cellHasFocus || open === true);
+  const previewsOnCellFocus = cellHasFocus !== undefined && !disableFocusListener;
 
+  const revoke = useEventCallback((event: SyntheticEvent | Event | null) => {
+    setIntent('idle');
+    if (event) onClose?.(event);
+  });
   const request = (anchor: HTMLElement, event?: Event) => (
     (isEligible ? isEligible(anchor) : Boolean(title) || title === 0)
-    && claimGridTooltip({ id, scope, anchor, allowedDuringEdit, event, dismiss: () => setIntent('idle') })
+    && claimGridTooltip({ id, scope, anchor, allowedDuringEdit, event, dismiss: revoke })
   );
-  const requestFromFocus = useEventCallback(() => {
+  const requestFromFocus = useEventCallback((fromCell = false) => {
     const anchor = anchorRef.current;
     const focused = anchor?.ownerDocument.activeElement;
-    if (!anchor || !focused || (scope.isRestoringFocus() && !allowedDuringEdit)) return;
+    if (!anchor || !focused || open === false || (scope.isRestoringFocus() && !allowedDuringEdit)) return false;
     const cell = anchor.closest('[role="gridcell"], [role="columnheader"]');
     if (focused === cell || anchor.contains(focused)) {
-      if ((allowedDuringEdit || focused.matches(':focus-visible')) && request(anchor)) {
+      if ((fromCell || cellHasFocus || allowedDuringEdit || focused.matches(':focus-visible')) && request(anchor)) {
         setIntent('open');
+        return true;
       }
     }
+    return false;
   });
   useLayoutEffect(() => {
-    if (openFromFocus && !disableFocusListener) requestFromFocus();
+    if (!openFromFocus || disableFocusListener || requestFromFocus()) return;
+    // The grid may focus the owning cell in its own layout effect.
+    let current = true;
+    queueMicrotask(() => { if (current) requestFromFocus(); });
+    return () => { current = false; };
   }, [disableFocusListener, openFromFocus, requestFromFocus]);
   useLayoutEffect(() => {
-    if (wasControlledOpen.current && open === false) dismissGridTooltip(id);
+    const anchor = anchorRef.current;
+    if (!previewsOnCellFocus || !anchor) return;
+    // Programmatic focus can move to a grid cell without changing the grid's
+    // logical focus model. The native focusin still identifies its preview.
+    return registerGridCellPreview(anchor, () => requestFromFocus(true));
+  }, [previewsOnCellFocus, requestFromFocus]);
+  useLayoutEffect(() => {
+    if (wasControlledOpen.current && open === false) dismissGridTooltip(id, null);
     wasControlledOpen.current = open === true;
   }, [id, open]);
-  useLayoutEffect(() => () => dismissGridTooltip(id), [id]);
+  useLayoutEffect(() => () => dismissGridTooltip(id, null), [id]);
 
   const reserve = (event: SyntheticEvent<HTMLElement>): void => {
     if (request(event.currentTarget, event.nativeEvent)) {
@@ -148,10 +166,7 @@ function GridAppTooltip({
         setIntent('open');
         onOpen?.(event);
       }}
-      onClose={event => {
-        dismissGridTooltip(id);
-        onClose?.(event);
-      }}
+      onClose={event => dismissGridTooltip(id, event)}
       slotProps={{
         ...slotProps,
         popper: ownerState => {
@@ -173,7 +188,7 @@ function GridAppTooltip({
           child.props.onMouseOver?.(event);
         },
         onMouseLeave: event => {
-          if (!effectiveOpen) dismissGridTooltip(id);
+          if (!effectiveOpen) dismissGridTooltip(id, event);
           child.props.onMouseLeave?.(event);
         },
         onFocus: event => {
@@ -182,7 +197,7 @@ function GridAppTooltip({
           child.props.onFocus?.(event);
         },
         onBlur: event => {
-          if (!effectiveOpen) dismissGridTooltip(id);
+          if (!effectiveOpen) dismissGridTooltip(id, event);
           child.props.onBlur?.(event);
         },
         onTouchStart: event => {
