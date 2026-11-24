@@ -254,7 +254,7 @@
     },
     "privacy": {
       "title": "Politique de confidentialité",
-      "version": "Dernière mise à jour : 29 septembre 2026",
+      "version": "Version au 23 novembre 2026",
       "sections": {
         "controller": {
           "title": "Responsable du traitement",
@@ -312,6 +312,11 @@
           "title": "Données de projet et d'application",
           "content": "Dans le cadre de vos projets, nous traitons les données relatives au projet saisies par vous et par les autres membres du projet. Il s'agit notamment des données de base du projet (p. ex. nom du projet, membres et sites), des données opérationnelles de planification et de gestion des fonctions utilisées (p. ex. concernant les parcelles, les cultures, la planification des cultures ou les tâches) ainsi que d'informations complémentaires telles que des notes, des fichiers téléversés et l'historique des modifications, y compris le nom d'affichage de la personne ayant effectué la modification. Ces données ne sont en principe visibles que par vous et par les autres membres du projet concerné.",
           "legalBasis": "Base juridique : art. 6(1)(b) RGPD (exécution du contrat d'utilisation : mise à disposition des fonctions de planification)."
+        },
+        "serviceUsage": {
+          "title": "Statistiques internes d’utilisation",
+          "content": "Pour améliorer OpenFarmPlanner, nous comptons les modifications enregistrées dans les projets par des personnes connectées, par jour et par fonctionnalité. Pour compter les utilisateurs actifs distincts, nous enregistrons l’identifiant interne du compte, l’identifiant du projet et le jour UTC une seule fois par projet et par jour. Seuls les superutilisateurs peuvent consulter le tableau de bord, qui affiche des chiffres agrégés. Ces statistiques ne recueillent ni les clics, ni les pages consultées, ni l’historique de navigation, ni le contenu des éléments modifiés. Les données journalières sont supprimées après 90 jours et les identifiants du compte sont effacés de ces statistiques à la suppression définitive du compte.",
+          "legalBasis": "La base juridique est l’art. 6(1)(f) du RGPD. Notre intérêt légitime est de comprendre comment les fonctions de planification sont utilisées pour améliorer l’application."
         },
         "publicLibrary": {
           "title": "Bibliothèque de cultures publique",

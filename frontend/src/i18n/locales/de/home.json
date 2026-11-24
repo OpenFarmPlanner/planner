@@ -250,7 +250,7 @@
     },
     "privacy": {
       "title": "Datenschutzerklärung",
-      "version": "Stand: 29. September 2026",
+      "version": "Stand: 23. November 2026",
       "sections": {
         "controller": {
           "title": "Verantwortlicher",
@@ -308,6 +308,11 @@
           "title": "Projekt- und Anwendungsdaten",
           "content": "Innerhalb Ihrer Projekte verarbeiten wir die von Ihnen und den übrigen Projektmitgliedern eingegebenen projektbezogenen Daten. Dazu zählen insbesondere Stammdaten des Projekts (z. B. Projektname, Mitgliedschaften und Standorte), fachliche Planungs- und Verwaltungsdaten der jeweils genutzten Funktionen (z. B. zu Flächen, Kulturen, Anbauplanung oder Aufgaben) sowie ergänzende Angaben wie Notizen, hochgeladene Dateien und der Änderungsverlauf einschließlich des Anzeigenamens der handelnden Person. Diese Daten sind grundsätzlich nur für Sie und die übrigen Mitglieder des jeweiligen Projekts sichtbar.",
           "legalBasis": "Rechtsgrundlage: Art. 6(1)(b) DSGVO (Erfüllung des Nutzungsvertrags: Bereitstellung der Planungsfunktionen)."
+        },
+        "serviceUsage": {
+          "title": "Interne Nutzungsstatistik",
+          "content": "Um OpenFarmPlanner zu verbessern, zählen wir abgeschlossene Änderungen in angemeldeten Projekten nach Tag und Arbeitsbereich. Für die Zahl der aktiven Nutzer speichern wir nur die interne Konto-ID, die Projekt-ID und den UTC-Tag, jeweils einmal pro Tag und Projekt. Die Nutzungsübersicht ist nur für Superuser zugänglich und zeigt zusammengefasste Zahlen. Die Statistik erfasst keine Klicks, Seitenaufrufe, Navigationsverläufe oder Inhalte der geänderten Objekte. Die Tagesdaten werden nach 90 Tagen gelöscht. Bei der endgültigen Löschung eines Kontos entfernen wir die zugehörigen Konto-IDs aus dieser Statistik.",
+          "legalBasis": "Rechtsgrundlage ist Art. 6(1)(f) DSGVO. Unser berechtigtes Interesse liegt darin, die Nutzung der Planungsfunktionen zu verstehen und die Anwendung gezielt zu verbessern."
         },
         "publicLibrary": {
           "title": "Öffentliche Kulturbibliothek",

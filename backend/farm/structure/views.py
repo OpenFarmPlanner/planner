@@ -224,16 +224,6 @@ class FieldViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewS
             status=status.HTTP_201_CREATED,
         )
 
-    def perform_destroy(self, instance):
-        instance_id = instance.pk
-        snapshot = _serialize_instance(instance)
-        name = instance.name
-        instance.delete()
-        self.record_revision(
-            instance, EntityRevision.ACTION_DELETED,
-            object_id=instance_id, snapshot=snapshot, display_name=name, changed_fields=[],
-        )
-
 
 class BedViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet):
     """ViewSet for Bed model providing CRUD operations.
@@ -298,14 +288,4 @@ class BedViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet
             raise DRFValidationError({'beds': [BED_NAME_DUPLICATE_MESSAGE]}) from exc
         return Response(
             BedSerializer(created, many=True).data, status=status.HTTP_201_CREATED
-        )
-
-    def perform_destroy(self, instance):
-        instance_id = instance.pk
-        snapshot = _serialize_instance(instance)
-        name = instance.name
-        instance.delete()
-        self.record_revision(
-            instance, EntityRevision.ACTION_DELETED,
-            object_id=instance_id, snapshot=snapshot, display_name=name, changed_fields=[],
         )

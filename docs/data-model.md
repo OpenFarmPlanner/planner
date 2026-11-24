@@ -466,6 +466,19 @@ now-deprecated, drain-only models, `CropRevision` and `ProjectRevision`
 [versioning-and-history.md](./versioning-and-history.md) for how this
 powers project history and restore.
 
+### Platform activity trends
+
+- **`ProjectActiveUserDay`** stores one row per UTC day, project and user
+  with a counted change. The unique key `(day, project, user)` supports date
+  filtering and distinct-user counts across projects. The row is deleted
+  with its project or user.
+- **`ProjectChangeDay`** stores counts of creations, updates, deletions and
+  restores by UTC day, project and workflow category. The unique key is
+  `(day, project, category)`. Project deletion removes its totals.
+
+The records support Django admin aggregates. They contain day-level activity
+metadata and counts. `cleanup_history` retains 90 UTC dates of activity.
+
 ## Unclear / needs check
 
 - The exact session lifecycle of `AgentLoginToken` (how `agent_mode` /

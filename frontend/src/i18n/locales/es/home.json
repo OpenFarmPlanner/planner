@@ -254,7 +254,7 @@
     },
     "privacy": {
       "title": "Política de privacidad",
-      "version": "Última actualización: 29 de septiembre de 2026",
+      "version": "Versión del 23 de noviembre de 2026",
       "sections": {
         "controller": {
           "title": "Responsable del tratamiento",
@@ -312,6 +312,11 @@
           "title": "Datos de proyecto y de la aplicación",
           "content": "Dentro de sus proyectos, tratamos los datos relacionados con el proyecto introducidos por usted y por los demás miembros del proyecto. Entre ellos se encuentran, en particular, los datos maestros del proyecto (p. ej., nombre del proyecto, miembros y ubicaciones), los datos operativos de planificación y gestión de las funciones utilizadas (p. ej., relativos a parcelas, cultivos, planificación de cultivos o tareas) e información complementaria como notas, archivos subidos y el historial de cambios, incluido el nombre visible de la persona que realizó el cambio. Por regla general, estos datos solo son visibles para usted y para los demás miembros del proyecto correspondiente.",
           "legalBasis": "Base jurídica: art. 6(1)(b) RGPD (ejecución del contrato de uso: puesta a disposición de las funciones de planificación)."
+        },
+        "serviceUsage": {
+          "title": "Estadísticas internas de uso",
+          "content": "Para mejorar OpenFarmPlanner, contamos por día y función los cambios completados en los proyectos por personas que han iniciado sesión. Para contar usuarios activos distintos, guardamos el identificador interno de la cuenta, el identificador del proyecto y el día UTC una sola vez por proyecto y día. Solo los superusuarios pueden acceder al panel, que muestra cifras agregadas. Estas estadísticas no registran clics, visitas a páginas, historiales de navegación ni el contenido de los elementos modificados. Borramos los datos diarios después de 90 días y retiramos de estas estadísticas los identificadores de las cuentas cuando finaliza su eliminación.",
+          "legalBasis": "La base jurídica es el art. 6(1)(f) del RGPD. Nuestro interés legítimo es comprender cómo se usan las funciones de planificación para mejorar la aplicación."
         },
         "publicLibrary": {
           "title": "Biblioteca de cultivos pública",

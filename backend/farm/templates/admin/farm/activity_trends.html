@@ -1,0 +1,79 @@
+{% load i18n l10n tz %}
+<section class="module usage-trends" aria-labelledby="usage-trends-title" id="activity-trends">
+  <h2 id="usage-trends-title">{% translate "Plattformaktivität" %}</h2>
+  <nav class="usage-filters" aria-label="{% translate 'Zeitraum der Aktivität' %}">
+    {% for days, url, selected in trend_periods %}
+    <a href="{{ url }}#activity-trends"{% if selected %} aria-current="true"{% endif %}>
+      {% blocktranslate %}{{ days }} Tage{% endblocktranslate %}
+    </a>
+    {% endfor %}
+  </nav>
+  {% translate "Keine Daten" as unknown %}
+  <dl class="usage-kpis">
+    <div><dt>{% translate "Aktive Nutzer" %}</dt><dd>{{ trends.active_users|default_if_none:unknown }}</dd></div>
+    <div><dt>{% translate "Aktive Projekte" %}</dt><dd>{{ trends.active_projects|default_if_none:unknown }}</dd></div>
+    <div><dt>{% translate "Objektänderungen" %}</dt><dd>{{ trends.object_changes|default_if_none:unknown }}</dd></div>
+    <div><dt>{% translate "Neue Registrierungen" %}</dt><dd>{{ trends.registrations }}</dd></div>
+    <div><dt>{% translate "Neue Projekte" %}</dt><dd>{{ trends.new_projects }}</dd></div>
+  </dl>
+  <p class="help">{% translate "UTC-Tage einschließlich heute. Als Aktivität zählt eine abgeschlossene Änderung in einer aufgeführten Kategorie durch eine angemeldete Person ohne Adminrechte. Nutzer und Projekte werden im gewählten Zeitraum jeweils einmal gezählt." %}</p>
+  {% if trends.coverage_started_at %}
+    {% with start=trends.coverage_started_at|utc|date:"SHORT_DATE_FORMAT" %}
+    <p class="help">
+      {% blocktranslate %}Die Erfassung der Aktivität begann am {{ start }} (UTC).{% endblocktranslate %}
+      {% if trends.partial_coverage %}{% translate "Die Aktivitätszahlen umfassen den erfassten Teil des Zeitraums." %}{% endif %}
+    </p>
+    {% endwith %}
+  {% else %}
+    <p class="help">{% translate "Für diesen Zeitraum liegen noch keine Aktivitätsdaten vor." %}</p>
+  {% endif %}
+  <nav class="usage-filters" aria-label="{% translate 'Verlauf anzeigen' %}">
+    {% for label, url, selected in trend_series %}
+    <a href="{{ url }}#activity-trends"{% if selected %} aria-current="true"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+  <figure class="usage-chart">
+    <figcaption>{{ trend_series_label }}</figcaption>
+    <ol>
+    {% for point in trends.trend %}
+      <li>
+        <span>
+          {{ point.start|date:"SHORT_DATE_FORMAT" }}{% if point.end != point.start %} – {{ point.end|date:"SHORT_DATE_FORMAT" }}{% endif %}
+        </span>
+        <span class="usage-track" aria-hidden="true"><span style="width: {{ point.percent|unlocalize }}%"></span></span>
+        <span>
+          {{ point.count|default_if_none:unknown }}{% if point.partial_coverage %} ({% translate "unvollständig" %}){% endif %}
+        </span>
+      </li>
+    {% endfor %}
+    </ol>
+  </figure>
+  {% if trends.categories %}
+  <div class="usage-workflows" role="region" aria-labelledby="usage-workflows-title" tabindex="0">
+    <table>
+      <caption id="usage-workflows-title">{% translate "Objektänderungen nach Arbeitsbereich" %}</caption>
+      <thead><tr>
+        <th scope="col">{% translate "Arbeitsbereich" %}</th>
+        <th scope="col">{% translate "Aktive Projekte" %}</th>
+        <th scope="col">{% translate "Angelegt" %}</th>
+        <th scope="col">{% translate "Geändert" %}</th>
+        <th scope="col">{% translate "Gelöscht" %}</th>
+        <th scope="col">{% translate "Wiederhergestellt" %}</th>
+      </tr></thead>
+      <tbody>
+        {% for category in trends.categories %}
+        <tr>
+          <th scope="row">{{ category.label }}</th>
+          <td>{{ category.projects }}</td>
+          <td>{{ category.created }}</td>
+          <td>{{ category.updated }}</td>
+          <td>{{ category.deleted }}</td>
+          <td>{{ category.restored }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="help">{% translate "Ein Sammelvorgang kann mehrere Objekte ändern. Die Tabelle zur Kulturen-Bibliothek zählt abgeschlossene Sammelvorgänge gesondert." %}</p>
+  {% endif %}
+</section>
