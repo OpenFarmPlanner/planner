@@ -874,6 +874,12 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   const isPlantsPartnerVisible = columnVisibilityModel.area_m2 !== false;
 
   const columns: GridColDef[] = useMemo(() => {
+    const formatPlannedGridDate = (params: GridRenderCellParams<PlantingPlanRow>, row: PlantingPlanRow) => {
+      const value = row === params.row
+        ? params.formattedValue
+        : params.api?.getRowFormattedValue?.(row, params.colDef) ?? params.formattedValue;
+      return typeof value === "string" ? value : "";
+    };
     const renderSowingDate = (params: GridRenderCellParams<PlantingPlanRow>) => renderDateCell(params, (comparison, row) => {
       const schedule = getRowSowingSchedule(row);
       if (!schedule?.sowingDate) {
@@ -894,7 +900,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           germinationFindings={row.germination_findings}
           cellHasFocus={params.hasFocus}
         >
-          <SearchHighlightedText text={formatDateForDisplay(schedule.sowingDate)} />
+          <SearchHighlightedText text={formatPlannedGridDate(params, row)} />
         </TimingWindowDateCell>
       );
     });
@@ -905,7 +911,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         tooltipContent={comparison}
         cellHasFocus={params.hasFocus}
       >
-        <SearchHighlightedText text={formatDateForDisplay(toIsoDateString(row.planting_date))} />
+        <SearchHighlightedText text={formatPlannedGridDate(params, row)} />
       </TimingWindowDateCell>
     ));
 
@@ -1379,7 +1385,6 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       getRowSowingSchedule,
       isActualDateEditor,
       displayDateMode,
-      formatDateForDisplay,
       getColumnDates,
       getDateReadOnlyReason,
       renderDateCell,
