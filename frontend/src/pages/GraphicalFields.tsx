@@ -111,6 +111,12 @@ const BED_AUTO_LAYOUT_GAP = DEFAULT_PLACEMENT_SPACING;
 /** Minimum spacing kept between a newly placed bed and existing beds. */
 const BED_PLACEMENT_SPACING = DEFAULT_PLACEMENT_SPACING;
 
+// A quick Graphic → List → Graphic switch must read after an in-flight drop.
+const pendingFieldSaves = new Map<number, Promise<void>>();
+
+const isCancelledDrag = (event: KonvaEventObject<Event>): boolean =>
+  !event.evt || event.evt.type === "touchcancel" || event.evt.type === "pointercancel";
+
 export default function GraphicalFields({
   showTitle = true,
   interactionMode: controlledInteractionMode,
@@ -138,6 +144,7 @@ export default function GraphicalFields({
   >({});
   const [layoutAttempt, setLayoutAttempt] = useState(0);
   const [layoutLoad, setLayoutLoad] = useState({ locationId: null as number | null, attempt: -1, error: false });
+  const [fieldSaveErrorLocation, setFieldSaveErrorLocation] = useState<number | null>(null);
   const layoutReady = activeLocationId === null || (layoutLoad.locationId === activeLocationId && layoutLoad.attempt === layoutAttempt);
   const layoutFailed = activeLocationId !== null && layoutReady && layoutLoad.error;
   const [activeGuides, setActiveGuides] = useState<GuideLine[]>([]);
@@ -208,7 +215,10 @@ export default function GraphicalFields({
 
       try {
         const results = await Promise.all(
-          locationIds.map((locationId) => layoutAPI.listByLocation(locationId)),
+          locationIds.map(async (locationId) => {
+            await pendingFieldSaves.get(locationId);
+            return layoutAPI.listByLocation(locationId);
+          }),
         );
         if (!active) return;
 
@@ -320,35 +330,39 @@ export default function GraphicalFields({
     }, 250);
   };
 
-  /** Fix a location's boundary at its current place the first time a plot moves. */
-  const saveBoundaryOrigin = (locationId: number, origin: LocationBoundaryOrigin): void => {
-    setBoundaryOriginByLocation((prev) => ({ ...prev, [locationId]: origin }));
-    layoutAPI
-      .saveByLocation(locationId, { bed_layouts: [], field_layouts: [], location_boundary: origin })
-      .catch((saveError: unknown) => {
-        console.error("Failed to save location boundary", saveError);
-      });
-  };
-
   const saveFieldLayout = (
     locationId: number,
     payload: FieldLayoutEntry,
+    boundaryOrigin: LocationBoundaryOrigin | null,
   ): void => {
-    const timerKey = `field-${payload.field}`;
-    if (saveTimers.current[timerKey]) {
-      window.clearTimeout(saveTimers.current[timerKey]);
+    const previousLayout = layoutsByField[payload.field];
+    setFieldSaveErrorLocation(null);
+    setLayoutsByField((prev) => ({ ...prev, [payload.field]: payload }));
+    if (boundaryOrigin) {
+      setBoundaryOriginByLocation((prev) => ({ ...prev, [locationId]: boundaryOrigin }));
     }
-
-    saveTimers.current[timerKey] = window.setTimeout(async () => {
-      try {
-        await layoutAPI.saveByLocation(locationId, {
-          bed_layouts: [],
-          field_layouts: [payload],
-        });
-      } catch (saveError) {
-        console.error("Failed to save field layout", saveError);
+    // The first drop sets the boundary origin and the parcel position in one
+    // request. Bed positions are already relative to the parcel.
+    const save = layoutAPI.saveByLocation(locationId, {
+      bed_layouts: [],
+      field_layouts: [payload],
+      ...(boundaryOrigin && { location_boundary: boundaryOrigin }),
+    }).then(() => undefined).catch((saveError: unknown) => {
+      setLayoutsByField((prev) => {
+        const restored = { ...prev };
+        if (previousLayout) restored[payload.field] = previousLayout;
+        else delete restored[payload.field];
+        return restored;
+      });
+      if (boundaryOrigin) {
+        setBoundaryOriginByLocation((prev) => ({ ...prev, [locationId]: null }));
       }
-    }, 250);
+      setFieldSaveErrorLocation(locationId);
+      console.error("Failed to save field layout", saveError);
+    }).finally(() => {
+      pendingFieldSaves.delete(locationId);
+    });
+    pendingFieldSaves.set(locationId, save);
   };
 
   const fieldsByLocation = new Map<number, typeof fields>();
@@ -724,12 +738,14 @@ export default function GraphicalFields({
     }
     if (touches.length === 2) {
       endPanSession(locationId);
+      stopKonvaDragging();
     }
   };
 
   const getFieldInteractionProps = (
     fieldId: number,
     baseRect: (typeof locationLayouts)[number]["defaultFieldRects"][number],
+    currentFieldRect: RectViewModel,
     contentBounds: { width: number; height: number },
     fieldViewModels: RectViewModel[],
     locationName: string,
@@ -773,6 +789,11 @@ export default function GraphicalFields({
     return {
       draggable: true,
       onDragMove: (event: KonvaEventObject<Event>) => {
+        if (event.target !== event.currentTarget) return;
+        if (pendingFieldSaves.has(locationId)) {
+          event.target.stopDrag();
+          return;
+        }
         const raw = { x: event.target.x(), y: event.target.y() };
         const clampedRaw = constrain(raw);
         const snapped = snapToNeighbors(
@@ -787,6 +808,12 @@ export default function GraphicalFields({
         setActiveGuides(snapped.guides);
       },
       onDragEnd: (event: KonvaEventObject<Event>) => {
+        if (event.target !== event.currentTarget) return;
+        setActiveGuides([]);
+        if (isCancelledDrag(event) || pendingFieldSaves.has(locationId)) {
+          event.target.position({ x: currentFieldRect.x, y: currentFieldRect.y });
+          return;
+        }
         const next = constrain({ x: event.target.x(), y: event.target.y() });
         const snapped = snapToNeighbors(
           fieldId,
@@ -805,12 +832,7 @@ export default function GraphicalFields({
           y: stored.y,
           version: 1,
         };
-        setActiveGuides([]);
-        if (unsavedBoundaryOrigin) {
-          saveBoundaryOrigin(locationId, unsavedBoundaryOrigin);
-        }
-        setLayoutsByField((prev) => ({ ...prev, [fieldId]: nextLayout }));
-        saveFieldLayout(locationId, nextLayout);
+        saveFieldLayout(locationId, nextLayout, unsavedBoundaryOrigin);
       },
     };
   };
@@ -856,8 +878,8 @@ export default function GraphicalFields({
       draggable: true,
       onDragMove: (event: KonvaEventObject<Event>) => {
         const raw = {
-          x: event.target.x() - (currentFieldRect.x + FIELD_INNER_OFFSET_X),
-          y: event.target.y() - (currentFieldRect.y + FIELD_INNER_OFFSET_Y),
+          x: event.target.x() - FIELD_INNER_OFFSET_X,
+          y: event.target.y() - FIELD_INNER_OFFSET_Y,
         };
         const clampedRaw = clampInsideParent(
           raw,
@@ -876,8 +898,8 @@ export default function GraphicalFields({
           fieldInnerSize,
         );
         event.target.position({
-          x: currentFieldRect.x + FIELD_INNER_OFFSET_X + finalClamped.x,
-          y: currentFieldRect.y + FIELD_INNER_OFFSET_Y + finalClamped.y,
+          x: FIELD_INNER_OFFSET_X + finalClamped.x,
+          y: FIELD_INNER_OFFSET_Y + finalClamped.y,
         });
         setActiveGuides(
           snapped.guides.map((guide) => ({
@@ -898,9 +920,14 @@ export default function GraphicalFields({
         );
       },
       onDragEnd: (event: KonvaEventObject<Event>) => {
+        setActiveGuides([]);
+        if (isCancelledDrag(event)) {
+          event.target.position({ x: FIELD_INNER_OFFSET_X + bedVm.x, y: FIELD_INNER_OFFSET_Y + bedVm.y });
+          return;
+        }
         const next = {
-          x: event.target.x() - (currentFieldRect.x + FIELD_INNER_OFFSET_X),
-          y: event.target.y() - (currentFieldRect.y + FIELD_INNER_OFFSET_Y),
+          x: event.target.x() - FIELD_INNER_OFFSET_X,
+          y: event.target.y() - FIELD_INNER_OFFSET_Y,
         };
         const clampedNext = clampInsideParent(
           next,
@@ -919,8 +946,8 @@ export default function GraphicalFields({
           fieldInnerSize,
         );
         event.target.position({
-          x: currentFieldRect.x + FIELD_INNER_OFFSET_X + finalClamped.x,
-          y: currentFieldRect.y + FIELD_INNER_OFFSET_Y + finalClamped.y,
+          x: FIELD_INNER_OFFSET_X + finalClamped.x,
+          y: FIELD_INNER_OFFSET_Y + finalClamped.y,
         });
         const stored = rotateRectBetweenSizes(
           { ...bedVm, ...finalClamped }, fieldInnerSize, storedFieldInnerSize,
@@ -933,7 +960,6 @@ export default function GraphicalFields({
           y: stored.y,
           version: 1,
         };
-        setActiveGuides([]);
         setLayoutsByBed((prev) => ({ ...prev, [bedVm.id]: nextLayout }));
         saveBedLayout(locationId, nextLayout);
       },
@@ -955,6 +981,13 @@ export default function GraphicalFields({
       }
       const step = event.shiftKey ? PAN_FAST_STEP : PAN_STEP;
       switch (event.key) {
+        case "Escape":
+          if (stageRefs.current[effectiveActivePanLocationId]?.find?.(".graphical-editable")
+            .some(node => node.isDragging())) {
+            event.preventDefault();
+            stopKonvaDragging();
+          }
+          break;
         case "ArrowUp":
           event.preventDefault();
           handlePanByOffset(effectiveActivePanLocationId, 0, step);
@@ -1066,6 +1099,9 @@ export default function GraphicalFields({
 
           return (
             <Box key={locationId} role="region" aria-label={t("fields:graphical.locationTitle", { name: location.name })}>
+                {fieldSaveErrorLocation === locationId ? (
+                  <Alert severity="error" sx={{ mb: 1.5 }}>{t("fields:errors.save")}</Alert>
+                ) : null}
                 {locationIsEditable ? (
                   <Alert severity="warning" sx={{ mb: 1.5 }}>
                     {t("fields:graphical.locationEditModeBanner")}
@@ -1484,15 +1520,23 @@ export default function GraphicalFields({
                           },
                         ).map(rect => rotateRectBetweenSizes(rect, storedFieldInnerSize, fieldInnerSize, rotation));
 
+                        const { onClick, onTap, ...fieldDragProps } = getFieldInteractionProps(
+                          fieldId, baseRect, currentFieldRect,
+                          { width: contentWidth, height: contentHeight },
+                          fieldViewModels, location.name, locationId, rotation, boundary, unsavedBoundaryOrigin,
+                        );
                         return (
-                          <Group key={fieldId}>
-                            {/* The light-grey band is kept free of beds (border
-                                and label strip); the white area is where beds
-                                can go. Both only paint: the outlined field
-                                rect above them keeps all the interaction. */}
+                          <Group
+                            key={fieldId}
+                            x={currentFieldRect.x}
+                            y={currentFieldRect.y}
+                            name="graphical-editable"
+                            data-testid={`field-group-${fieldId}`}
+                            {...fieldDragProps}
+                          >
+                            {/* The margin and usable area only paint; the
+                                outline and beds provide the hit targets. */}
                             <Rect
-                              x={currentFieldRect.x}
-                              y={currentFieldRect.y}
                               width={baseRect.width}
                               height={baseRect.height}
                               fill={theme.palette.grey[200]}
@@ -1501,8 +1545,8 @@ export default function GraphicalFields({
                               data-testid={`field-margin-${fieldId}`}
                             />
                             <Rect
-                              x={currentFieldRect.x + fieldUsableArea.x}
-                              y={currentFieldRect.y + fieldUsableArea.y}
+                              x={fieldUsableArea.x}
+                              y={fieldUsableArea.y}
                               width={fieldUsableArea.width}
                               height={fieldUsableArea.height}
                               fill={theme.palette.common.white}
@@ -1510,8 +1554,6 @@ export default function GraphicalFields({
                               data-testid={`field-usable-area-${fieldId}`}
                             />
                             <Rect
-                              x={currentFieldRect.x}
-                              y={currentFieldRect.y}
                               width={baseRect.width}
                               height={baseRect.height}
                               stroke={
@@ -1521,20 +1563,10 @@ export default function GraphicalFields({
                               }
                               strokeWidth={2}
                               cornerRadius={4}
-                              name="graphical-editable"
                               data-testid={`field-rect-${fieldId}`}
                               data-outside-location={fieldsOutsideBoundary.has(fieldId) || undefined}
-                              {...getFieldInteractionProps(
-                                fieldId,
-                                baseRect,
-                                { width: contentWidth, height: contentHeight },
-                                fieldViewModels,
-                                location.name,
-                                locationId,
-                                rotation,
-                                boundary,
-                                unsavedBoundaryOrigin,
-                              )}
+                              onClick={onClick}
+                              onTap={onTap}
                             />
                             {shouldShowFieldLabel(
                               {
@@ -1544,8 +1576,8 @@ export default function GraphicalFields({
                               viewport.scale,
                             ) ? (
                               <Text
-                                x={currentFieldRect.x + FIELD_LABEL_SCREEN_PADDING / viewport.scale}
-                                y={currentFieldRect.y + FIELD_LABEL_SCREEN_PADDING / viewport.scale}
+                                x={FIELD_LABEL_SCREEN_PADDING / viewport.scale}
+                                y={FIELD_LABEL_SCREEN_PADDING / viewport.scale}
                                 text={baseRect.field.name}
                                 width={getFieldLabelScreenWidth(baseRect, viewport.scale)}
                                 wrap="none"
@@ -1560,16 +1592,8 @@ export default function GraphicalFields({
                               ? bedViewModels.map((bedVm) => (
                                   <Group key={bedVm.id}>
                                     <Rect
-                                      x={
-                                        currentFieldRect.x +
-                                        FIELD_INNER_OFFSET_X +
-                                        bedVm.x
-                                      }
-                                      y={
-                                        currentFieldRect.y +
-                                        FIELD_INNER_OFFSET_Y +
-                                        bedVm.y
-                                      }
+                                      x={FIELD_INNER_OFFSET_X + bedVm.x}
+                                      y={FIELD_INNER_OFFSET_Y + bedVm.y}
                                       width={bedVm.width}
                                       height={bedVm.height}
                                       fill={theme.palette.info.light}
@@ -1599,18 +1623,8 @@ export default function GraphicalFields({
                                           : bedVm.name;
                                       return (
                                         <Text
-                                          x={
-                                            currentFieldRect.x +
-                                            FIELD_INNER_OFFSET_X +
-                                            label.x +
-                                            bedVm.x
-                                          }
-                                          y={
-                                            currentFieldRect.y +
-                                            FIELD_INNER_OFFSET_Y +
-                                            label.y +
-                                            bedVm.y
-                                          }
+                                          x={FIELD_INNER_OFFSET_X + label.x + bedVm.x}
+                                          y={FIELD_INNER_OFFSET_Y + label.y + bedVm.y}
                                           text={labelText}
                                           fontSize={label.fontSize}
                                           width={label.width}

@@ -141,7 +141,8 @@ erDiagram
   the `locations/<id>/layouts/` endpoint (`location_boundary: {x, y}`, null
   clears) and are read-only in the location API. While unset, the boundary
   starts at the top-left corner of the plots' bounding box; the first plot drop
-  saves that corner, so from then on the site stays fixed while plots move.
+  saves that corner together with the plot position, so from then on the site
+  stays fixed while plots move.
   Dragging a plot clamps it inside the boundary (`clampInsideBoundary`) during
   the drag and on drop; a plot larger than the site can only slide while it
   still covers the site on that axis. Overlap between plots stays allowed and
@@ -163,6 +164,10 @@ erDiagram
   The angle is local to the mounted view. Field title strips stay at the top;
   beds are projected between the stored and displayed usable areas, and dragging
   is inversely projected before saving so existing positions remain compatible.
+  Dragging a plot moves its canvas group, including the usable area, title and
+  all beds. Snapping and the site boundary constrain the plot as a whole.
+  A drop writes the plot position only, plus the site origin on the first drop
+  when needed. Escape, a canceled touch, or a failed save restores the group.
   Beds remain visible in the overview. Their single-line labels always stay
   horizontal, use an ellipsis within the bed and hide only when there is
   insufficient horizontal screen space; clicking opens the full details.

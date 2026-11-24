@@ -38,31 +38,21 @@ const mockStageApi = {
   },
 };
 
-const mockKonvaNodes: Record<
-  string,
-  {
-    getPosition: () => { x: number; y: number };
-    setPosition: (position: { x: number; y: number }) => void;
-    handlers: {
-      onDragMove?: (event: {
-        evt: Event;
-        target: {
-          position: ({ x, y }: { x: number; y: number }) => void;
-          x: () => number;
-          y: () => number;
-        };
-      }) => void;
-      onDragEnd?: (event: {
-        evt: Event;
-        target: {
-          position: ({ x, y }: { x: number; y: number }) => void;
-          x: () => number;
-          y: () => number;
-        };
-      }) => void;
-    };
-  }
-> = {};
+type MockDragTarget = {
+  position: (position: { x: number; y: number }) => void;
+  x: () => number;
+  y: () => number;
+};
+type MockDragEvent = { evt?: Event; target: MockDragTarget; currentTarget?: MockDragTarget };
+
+const mockKonvaNodes: Record<string, {
+  getPosition: () => { x: number; y: number };
+  setPosition: (position: { x: number; y: number }) => void;
+  handlers: {
+    onDragMove?: (event: MockDragEvent) => void;
+    onDragEnd?: (event: MockDragEvent) => void;
+  };
+}> = {};
 
 const createKonvaTarget = (positionRef: {
   current: { x: number; y: number };
@@ -157,10 +147,10 @@ vi.mock("react-konva", async () => {
             positionRef.current = position;
           },
           handlers: {
-            onDragMove:
-              onDragMove as (typeof mockKonvaNodes)[string]["handlers"]["onDragMove"],
-            onDragEnd:
-              onDragEnd as (typeof mockKonvaNodes)[string]["handlers"]["onDragEnd"],
+            onDragMove: typeof onDragMove === "function" ? ((event: MockDragEvent) =>
+              (onDragMove as (event: MockDragEvent) => void)({ currentTarget: event.target, ...event })) : undefined,
+            onDragEnd: typeof onDragEnd === "function" ? ((event: MockDragEvent) =>
+              (onDragEnd as (event: MockDragEvent) => void)({ currentTarget: event.target, ...event })) : undefined,
           },
         };
         return () => {
@@ -365,7 +355,7 @@ describe("GraphicalFields", async () => {
 
     const desktopField = await screen.findByTestId("field-rect-10");
     const desktopGeometry = {
-      x: desktopField.getAttribute("data-x"),
+      x: screen.getByTestId("field-group-10").getAttribute("data-x"),
       y: desktopField.getAttribute("data-y"),
       width: desktopField.getAttribute("width"),
       height: desktopField.getAttribute("height"),
@@ -377,7 +367,7 @@ describe("GraphicalFields", async () => {
 
     const mobileField = await screen.findByTestId("field-rect-10");
     const mobileGeometry = {
-      x: mobileField.getAttribute("data-x"),
+      x: screen.getByTestId("field-group-10").getAttribute("data-x"),
       y: mobileField.getAttribute("data-y"),
       width: mobileField.getAttribute("width"),
       height: mobileField.getAttribute("height"),
@@ -409,7 +399,7 @@ describe("GraphicalFields", async () => {
       bed_layouts: [{ bed: 100, location: 1, x: 100, y: 100, version: 1 }],
     } });
     await renderGraphic(<GraphicalFields />);
-    await waitFor(() => expect(mockKonvaNodes["field-rect-10"].getPosition().y).toBe(1200));
+    await waitFor(() => expect(mockKonvaNodes["field-group-10"].getPosition().y).toBe(1200));
     if (rotation === 0) fireEvent.click(screen.getByRole("button", { name: "Ansicht um 90° nach links drehen" }));
     for (let angle = 90; angle < rotation; angle += 90) {
       fireEvent.click(screen.getByRole("button", { name: "Ansicht um 90° nach rechts drehen" }));
@@ -423,7 +413,7 @@ describe("GraphicalFields", async () => {
         target: createKonvaTarget({ current: { x: start.x + 30, y: start.y + 10 } }),
       }));
     };
-    drag("field-rect-10");
+    drag("field-group-10");
     const [dx, dy] = ({ 0: [30, 10], 90: [10, -30], 180: [-30, -10], 270: [-10, 30] })[rotation]!;
     await waitFor(() => expect(saveByLocationMock).toHaveBeenCalledWith(1, {
       field_layouts: [expect.objectContaining({ field: 10, x: 1200 + dx, y: 800 + dy })], bed_layouts: [],
@@ -469,7 +459,7 @@ describe("GraphicalFields", async () => {
       fireEvent.click(screen.getByRole("button", { name: "Bearbeiten" }));
     });
     await screen.findByTestId("field-rect-10");
-    const node = mockKonvaNodes["field-rect-10"];
+    const node = mockKonvaNodes["field-group-10"];
     const start = node.getPosition();
     const target = { current: { x: start.x + 40, y: start.y + 25 } };
 
@@ -481,11 +471,91 @@ describe("GraphicalFields", async () => {
     await waitFor(() => {
       const field = screen.getByTestId("field-rect-10");
       const usable = screen.getByTestId("field-usable-area-10");
-      expect(Number(field.getAttribute("data-x"))).not.toBe(start.x);
+      expect(mockKonvaNodes["field-group-10"].getPosition().x).not.toBe(start.x);
+      expect(screen.getByTestId("field-group-10")).toContainElement(usable);
       expect(Number(usable.getAttribute("data-x"))).toBe(Number(field.getAttribute("data-x")) + FIELD_INNER_OFFSET_X);
       expect(Number(usable.getAttribute("data-y"))).toBe(Number(field.getAttribute("data-y")) + FIELD_INNER_OFFSET_Y);
     });
   }, 15000);
+
+  it("keeps beds at their local offsets during the drag and restores a rejected drop", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    let rejectSave!: (error: Error) => void;
+    saveByLocationMock.mockImplementationOnce(() => new Promise((_, reject) => { rejectSave = reject; }));
+    try {
+      await renderGraphic(<GraphicalFields />);
+      await screen.findByTestId("bed-rect-100");
+      fireEvent.click(screen.getByRole("button", { name: "Bearbeiten" }));
+      const node = mockKonvaNodes["field-group-10"];
+      const from = node.getPosition();
+      const bedOffset = mockKonvaNodes["bed-rect-100"].getPosition();
+      const target = { current: { ...from } };
+      const drag = createKonvaTarget(target);
+      for (const delta of [20, 40]) {
+        target.current = { x: from.x + delta, y: from.y + delta };
+        act(() => node.handlers.onDragMove?.({ evt: new Event("mousemove"), target: drag }));
+        expect(target.current).not.toEqual(from);
+        expect(mockKonvaNodes["bed-rect-100"].getPosition()).toEqual(bedOffset);
+        expect(screen.getByTestId("field-group-10")).toContainElement(screen.getByTestId("bed-rect-100"));
+        expect(saveByLocationMock).not.toHaveBeenCalled();
+      }
+      act(() => node.handlers.onDragEnd?.({ evt: new Event("mouseup"), target: drag }));
+      expect(mockKonvaNodes["field-group-10"].getPosition()).not.toEqual(from);
+      expect(saveByLocationMock).toHaveBeenCalledTimes(1);
+      expect(saveByLocationMock.mock.calls[0][1].bed_layouts).toEqual([]);
+
+      await act(async () => rejectSave(new Error("Save rejected")));
+      expect(mockKonvaNodes["field-group-10"].getPosition()).toEqual(from);
+      expect(mockKonvaNodes["bed-rect-100"].getPosition()).toEqual(bedOffset);
+      expect(screen.getByText("Fehler beim Speichern der Parzelle")).toBeInTheDocument();
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("handles cancellation and ignores a bed drag bubbling through its parcel", async () => {
+    await renderGraphic(<GraphicalFields />);
+    await screen.findByTestId("bed-rect-100");
+    fireEvent.click(screen.getByRole("button", { name: "Bearbeiten" }));
+    const { getPosition, handlers } = mockKonvaNodes["field-group-10"];
+    const from = getPosition();
+    const target = { current: { x: from.x + 40, y: from.y + 25 } };
+    const field = createKonvaTarget(target);
+    const bed = createKonvaTarget({ current: { x: 10, y: 40 } });
+    act(() => {
+      handlers.onDragEnd?.({ evt: new Event("mouseup"), target: bed, currentTarget: field });
+      handlers.onDragEnd?.({ evt: new Event("touchcancel"), target: field });
+    });
+    expect(target.current).toEqual(from);
+    expect(saveByLocationMock).not.toHaveBeenCalled();
+  });
+
+  it("waits for a dropped parcel to save when returning to the graphic", async () => {
+    let completeSave!: () => void;
+    saveByLocationMock.mockImplementationOnce((_, data) => new Promise((resolve) => {
+      completeSave = () => {
+        listByLocationMock.mockResolvedValueOnce({ data });
+        resolve({ data });
+      };
+    }));
+    const firstView = await renderGraphic(<GraphicalFields />);
+    await screen.findByTestId("field-group-10");
+    fireEvent.click(screen.getByRole("button", { name: "Bearbeiten" }));
+    const node = mockKonvaNodes["field-group-10"];
+    const from = node.getPosition();
+    const target = createKonvaTarget({ current: { x: from.x + 40, y: from.y + 25 } });
+    act(() => node.handlers.onDragEnd?.({ evt: new Event("mouseup"), target }));
+    const dropped = node.getPosition();
+    firstView.unmount();
+
+    await renderGraphic(<GraphicalFields />);
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
+    expect(listByLocationMock).toHaveBeenCalledTimes(1);
+    await act(async () => completeSave());
+    await screen.findByTestId("field-group-10");
+    expect(mockKonvaNodes["field-group-10"].getPosition()).toEqual(dropped);
+    expect(dropped).not.toEqual(from);
+  });
 
   it("renders the edit mode toggle and allows toggling it by click", async () => {
     await renderGraphic(<GraphicalFields />);
@@ -562,11 +632,11 @@ describe("GraphicalFields", async () => {
     await renderGraphic(<GraphicalFields />);
 
     expect(screen.getByRole("button", { name: "Bearbeiten" })).toHaveAttribute("aria-pressed", "false");
-    expect(await screen.findByTestId("field-rect-10")).toHaveAttribute(
+    expect(await screen.findByTestId("field-group-10")).toHaveAttribute(
       "draggable",
       "false",
     );
-    expect(screen.getByTestId("field-rect-10")).toHaveAttribute(
+    expect(screen.getByTestId("field-group-10")).toHaveAttribute(
       "data-strict-mode",
       "false",
     );
@@ -577,7 +647,7 @@ describe("GraphicalFields", async () => {
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Bearbeiten" })).toHaveAttribute("aria-pressed", "true");
-      expect(screen.getByTestId("field-rect-10")).toHaveAttribute(
+      expect(screen.getByTestId("field-group-10")).toHaveAttribute(
         "draggable",
         "true",
       );
@@ -592,12 +662,12 @@ describe("GraphicalFields", async () => {
       fields: [...data.fields, { ...data.fields[0], id: 20, name: 'Parzelle B', location: 2 }],
     });
     const view = await renderGraphic(<GraphicalFields showModeToggle={false} selectedLocationId={2} interactionMode="view" />);
-    expect(await screen.findByTestId('field-rect-20')).toHaveAttribute('draggable', 'false');
+    expect(await screen.findByTestId('field-group-20')).toHaveAttribute('draggable', 'false');
     expect(screen.queryByTestId('field-rect-10')).not.toBeInTheDocument();
     expect(screen.getAllByTestId('konva-stage')).toHaveLength(1);
     expect(view.container.querySelector('.MuiAccordion-root')).toBeNull();
     view.rerender(<GraphicalFields showModeToggle={false} selectedLocationId={2} interactionMode="edit" />);
-    expect(screen.getByTestId('field-rect-20')).toHaveAttribute('draggable', 'true');
+    expect(screen.getByTestId('field-group-20')).toHaveAttribute('draggable', 'true');
     expect(screen.getByRole('alert')).toHaveTextContent(LOCATION_EDIT_MODE_BANNER);
   });
 
@@ -739,7 +809,7 @@ describe("GraphicalFields", async () => {
     const stage = screen.getByTestId("konva-stage");
     const startX = Number(stage.getAttribute("data-x"));
     const startY = Number(stage.getAttribute("data-y"));
-    const fieldStartPosition = mockKonvaNodes["field-rect-10"].getPosition();
+    const fieldStartPosition = mockKonvaNodes["field-group-10"].getPosition();
 
     act(() => {
       mockStageApi.setPointer(120, 140);
@@ -760,7 +830,7 @@ describe("GraphicalFields", async () => {
 
     expect(Number(screen.getByTestId("konva-stage").getAttribute("data-x"))).toBeGreaterThanOrEqual(startX);
     expect(Number(screen.getByTestId("konva-stage").getAttribute("data-y"))).toBeGreaterThanOrEqual(startY);
-    expect(mockKonvaNodes["field-rect-10"].getPosition()).toEqual(fieldStartPosition);
+    expect(mockKonvaNodes["field-group-10"].getPosition()).toEqual(fieldStartPosition);
   }, 15000);
 
   it("does not start panning in edit mode when pointer down starts on an interactive object", async () => {
@@ -836,10 +906,10 @@ describe("GraphicalFields", async () => {
   it("prevents object dragging in view mode and keeps the object position unchanged", async () => {
     await renderGraphic(<GraphicalFields />);
 
-    const fieldRect = await screen.findByTestId("field-rect-10");
+    const fieldRect = await screen.findByTestId("field-group-10");
     expect(fieldRect).toHaveAttribute("draggable", "false");
 
-    const node = mockKonvaNodes["field-rect-10"];
+    const node = mockKonvaNodes["field-group-10"];
     const startPosition = node.getPosition();
     node.setPosition({ x: startPosition.x + 50, y: startPosition.y + 30 });
 
@@ -860,11 +930,11 @@ describe("GraphicalFields", async () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId("field-rect-10")).toHaveAttribute(
+      expect(screen.getByTestId("field-group-10")).toHaveAttribute(
         "data-x",
         String(startPosition.x),
       );
-      expect(screen.getByTestId("field-rect-10")).toHaveAttribute(
+      expect(screen.getByTestId("field-group-10")).toHaveAttribute(
         "data-y",
         String(startPosition.y),
       );
@@ -877,11 +947,11 @@ describe("GraphicalFields", async () => {
       fireEvent.click(screen.getByRole("button", { name: "Bearbeiten" }));
     });
 
-    const fieldRect = await screen.findByTestId("field-rect-10");
+    const fieldRect = await screen.findByTestId("field-group-10");
     expect(fieldRect).toHaveAttribute("draggable", "true");
     expect(fieldRect).toHaveAttribute("data-strict-mode", "false");
 
-    const node = mockKonvaNodes["field-rect-10"];
+    const node = mockKonvaNodes["field-group-10"];
     const startPosition = node.getPosition();
     const dragTargetRef = {
       current: { x: startPosition.x + 40, y: startPosition.y + 25 },
@@ -899,7 +969,7 @@ describe("GraphicalFields", async () => {
     });
 
     await waitFor(() => {
-      const moved = screen.getByTestId("field-rect-10");
+      const moved = screen.getByTestId("field-group-10");
       expect(Number(moved.getAttribute("data-x"))).not.toBe(startPosition.x);
       expect(Number(moved.getAttribute("data-y"))).not.toBe(startPosition.y);
     });
@@ -916,7 +986,7 @@ describe("GraphicalFields", async () => {
       });
     };
     const dragField = (dx: number, dy: number) => {
-      const node = mockKonvaNodes["field-rect-10"];
+      const node = mockKonvaNodes["field-group-10"];
       const start = node.getPosition();
       const target = { current: { x: start.x + dx, y: start.y + dy } };
       act(() => {
@@ -968,11 +1038,8 @@ describe("GraphicalFields", async () => {
       } });
       await renderGraphic(<GraphicalFields />);
       await screen.findByTestId("location-boundary-1");
-      const offset = () => {
-        const field = mockKonvaNodes["field-rect-10"].getPosition();
-        const bed = mockKonvaNodes["bed-rect-100"].getPosition();
-        return { x: bed.x - field.x, y: bed.y - field.y };
-      };
+      const offset = () => mockKonvaNodes["bed-rect-100"].getPosition();
+      expect(screen.getByTestId("field-group-10")).toContainElement(screen.getByTestId("bed-rect-100"));
       const before = offset();
       enterEditMode();
       dragField(5000, 5000);
@@ -994,7 +1061,9 @@ describe("GraphicalFields", async () => {
       // Without a saved origin the boundary starts at the plot (1100, 800).
       dragField(5000, 5000);
       await waitFor(() => expect(saveByLocationMock).toHaveBeenCalledWith(1, {
-        bed_layouts: [], field_layouts: [], location_boundary: { x: 1100, y: 800 },
+        bed_layouts: [],
+        field_layouts: [expect.objectContaining({ field: 10 })],
+        location_boundary: { x: 1100, y: 800 },
       }));
       // At the default quarter turn view +x/+y is stored -y/+x; boundary 540 × 1080.
       const saved = await lastSavedField();
@@ -1078,7 +1147,7 @@ describe("GraphicalFields", async () => {
       fireEvent.click(screen.getByRole("button", { name: "Bearbeiten" }));
     });
 
-    const node = mockKonvaNodes["field-rect-10"];
+    const node = mockKonvaNodes["field-group-10"];
     const dragTargetRef = {
       current: { x: 10000, y: 120 },
     };
@@ -1091,7 +1160,7 @@ describe("GraphicalFields", async () => {
     });
 
     await waitFor(() => {
-      const moved = screen.getByTestId("field-rect-10");
+      const moved = screen.getByTestId("field-group-10");
       expect(Number(moved.getAttribute("data-x"))).toBeGreaterThan(9000);
       expect(Number(moved.getAttribute("data-y"))).toBeLessThan(1000);
     });
@@ -1100,7 +1169,7 @@ describe("GraphicalFields", async () => {
   it("persists layout changes only in edit mode", async () => {
     await renderGraphic(<GraphicalFields />);
 
-    const viewNode = mockKonvaNodes["field-rect-10"];
+    const viewNode = mockKonvaNodes["field-group-10"];
     act(() => {
       viewNode.handlers.onDragEnd?.({
         evt: new Event("dragend"),
@@ -1121,7 +1190,7 @@ describe("GraphicalFields", async () => {
       fireEvent.click(screen.getByRole("button", { name: "Bearbeiten" }));
     });
 
-    const editNode = mockKonvaNodes["field-rect-10"];
+    const editNode = mockKonvaNodes["field-group-10"];
     act(() => {
       editNode.handlers.onDragEnd?.({
         evt: new Event("dragend"),
@@ -1145,7 +1214,7 @@ describe("GraphicalFields", async () => {
       fireEvent.click(screen.getByRole("button", { name: "Bearbeiten" }));
     });
 
-    const node = mockKonvaNodes["field-rect-10"];
+    const node = mockKonvaNodes["field-group-10"];
     const startPosition = node.getPosition();
     const dragTargetRef = {
       current: { x: startPosition.x + 35, y: startPosition.y + 20 },
@@ -1163,7 +1232,7 @@ describe("GraphicalFields", async () => {
     });
 
     await waitFor(() => {
-      const resetNode = screen.getByTestId("field-rect-10");
+      const resetNode = screen.getByTestId("field-group-10");
       expect(resetNode).toHaveAttribute("draggable", "false");
       expect(resetNode).toHaveAttribute("data-x", String(startPosition.x));
       expect(resetNode).toHaveAttribute("data-y", String(startPosition.y));
