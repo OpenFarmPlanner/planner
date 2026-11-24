@@ -308,6 +308,7 @@ class DemoProjectServiceTests(TestCase):
 
                 examples = (
                     ('hofgarten', 'salat-1', 'salat-2', 30, 75),
+                    ('hofgarten', 'salat-2', 'kraeuter', 30, 75),
                     ('bachacker', 'karotte-1', 'karotte-2', 45, 100),
                 )
                 text = DEMO_TEXT[resolve_demo_language(language)]
@@ -608,7 +609,7 @@ class DemoProjectServiceTests(TestCase):
         expected_positions = {
             'Salat 1': (12, 12),
             'Salat 2': (28.1, 12),
-            'Kr\u00e4uter & Mangold': (92, 12),
+            'Kr\u00e4uter & Mangold': (44.2, 12),
             'Tomatenreihe 1': (14, 18),
             'Tomatenreihe 2': (54, 18),
             'Gurkenreihe': (94, 18),

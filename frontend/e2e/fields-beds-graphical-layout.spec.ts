@@ -192,6 +192,7 @@ test.describe('location spacing in a touch-capable browser', () => {
     await page.goto('/app/fields-beds');
     await page.getByRole('button', { name: 'Grafik', exact: true }).click();
     await selectLocation(page, 'Hofgarten');
+    await expect(page.getByRole('button', { name: /^Layoutprüfung/ })).toHaveCount(0);
     const trigger = page.getByRole('button', { name: 'Abstände', exact: true });
     const dialog = page.getByRole('dialog', { name: 'Abstände (Wege)' });
     const bed = dialog.getByRole('textbox', { name: 'Zwischen Beeten (cm)' });
@@ -233,6 +234,7 @@ test.describe('location spacing in a touch-capable browser', () => {
     expect(await apiRequest(page, 'GET', layouts)).toEqual(originalGeometry);
 
     await selectLocation(page, 'Acker am Bach');
+    await expect(page.getByRole('button', { name: /^Layoutprüfung/ })).toHaveCount(0);
     await trigger.click();
     await expect(bed).toHaveValue('45');
     await expect(parcel).toHaveValue('100');

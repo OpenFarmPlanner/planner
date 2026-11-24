@@ -948,12 +948,14 @@ def _create_layouts(
         boundary_x=DEMO_BOUNDARY_ORIGIN, boundary_y=DEMO_BOUNDARY_ORIGIN,
     )
 
-    # The first pair at each demonstration site uses the configured path gap.
+    # Hofgarten's three early beds have two valid paths. A sideways move of
+    # the middle bed is enough to show a narrow path or an overlap warning.
+    # The first pair at Acker am Bach uses the custom gap.
     # Bed positions use the parcel's usable width, excluding the 10-unit borders.
     bed_positions = {
         'salat-1': (12, 12),
         'salat-2': (28.1, 12),
-        'kraeuter': (92, 12),
+        'kraeuter': (44.2, 12),
         'tomate-1': (14, 18),
         'tomate-2': (54, 18),
         'gurke': (94, 18),

@@ -29,6 +29,24 @@
     "graphical": "Graphique"
   },
   "graphical": {
+    "geometry": {
+      "title": "Vérification du schéma",
+      "open": "Vérification du schéma ({{count}})",
+      "focus": "Afficher {{name}} sur le schéma",
+      "parcelOutside": "{{name}} dépasse la limite du site.",
+      "bedOutside": "{{name}} dépasse la surface utilisable de {{parent}}.",
+      "overlap": "{{first}} chevauche {{second}}.",
+      "shortGap": "L’écart entre {{first}} et {{second}} est de {{actual}} cm. L’écart recommandé est de {{recommended}} cm.",
+      "noPathSpace": "Les planches occupent toute la surface de {{name}}. Il ne reste pas de place pour les allées recommandées.",
+      "unknownLocation": "Renseignez les dimensions du site dans la liste pour vérifier sa limite.",
+      "unknownParcels": "Une vérification précise de {{names}} est impossible, car les dimensions manquent ou les contours sont agrandis.",
+      "unknownBeds": "La surface occupée par {{names}} dans {{name}} ne peut pas être mesurée. Vérifiez les dimensions de la parcelle et des planches dans la liste.",
+      "grossArea": "Surface brute {{area}}",
+      "bedFootprint": "Surface des planches à l’intérieur de la parcelle {{area}}",
+      "remainingArea": "Surface restante {{area}}",
+      "remainingHelp": "La surface restante comprend les allées et les bordures.",
+      "areaUnknown": "Les dimensions de la parcelle et des planches sont nécessaires pour calculer les surfaces occupée et restante."
+    },
     "spacing": {
       "button": "Espacement",
       "title": "Espacement (allées)",

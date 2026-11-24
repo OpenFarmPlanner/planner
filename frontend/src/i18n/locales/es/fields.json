@@ -29,6 +29,24 @@
     "graphical": "Gráfico"
   },
   "graphical": {
+    "geometry": {
+      "title": "Comprobación del esquema",
+      "open": "Comprobación del esquema ({{count}})",
+      "focus": "Mostrar {{name}} en el gráfico",
+      "parcelOutside": "{{name}} rebasa el límite de la ubicación.",
+      "bedOutside": "{{name}} rebasa la superficie utilizable de {{parent}}.",
+      "overlap": "{{first}} se solapa con {{second}}.",
+      "shortGap": "Entre {{first}} y {{second}} hay {{actual}} cm. La separación recomendada es de {{recommended}} cm.",
+      "noPathSpace": "Los bancales ocupan todo el espacio de {{name}}. No queda sitio para los caminos recomendados.",
+      "unknownLocation": "Introduce las dimensiones de la ubicación en la lista para comprobar su límite.",
+      "unknownParcels": "No se puede comprobar con precisión {{names}} porque faltan las dimensiones o los contornos están ampliados.",
+      "unknownBeds": "No se puede medir la superficie que ocupa {{names}} en {{name}}. Comprueba las dimensiones de la parcela y de los bancales en la lista.",
+      "grossArea": "Superficie bruta {{area}}",
+      "bedFootprint": "Superficie ocupada por bancales dentro de la parcela {{area}}",
+      "remainingArea": "Superficie restante {{area}}",
+      "remainingHelp": "La superficie restante incluye caminos y márgenes.",
+      "areaUnknown": "Se necesitan las dimensiones de la parcela y de los bancales para calcular la superficie ocupada y la restante."
+    },
     "spacing": {
       "button": "Distancias",
       "title": "Distancias (caminos)",
