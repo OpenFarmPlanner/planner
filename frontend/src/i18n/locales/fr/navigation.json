@@ -93,7 +93,8 @@
     "suggestion": {
       "title": "Créer la saison {{label}}",
       "confirmTitle": "Créer la saison {{label}} ?",
-      "copyCheckbox": "Copier les données de la saison {{label}}",
+      "copyCheckbox": "Copier les plans de culture",
+      "transitionPeriodChanged": "Les périodes de transition ont changé. Vérifiez les nouvelles périodes avant de créer les saisons.",
       "copyDescription": "Les surfaces de culture, les planches et les affectations de la rotation des cultures seront copiées dans la nouvelle saison.",
       "create": "Créer",
       "createError": "Impossible de créer la saison.",

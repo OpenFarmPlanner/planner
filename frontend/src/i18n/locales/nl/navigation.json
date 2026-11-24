@@ -92,7 +92,8 @@
     "suggestion": {
       "title": "Seizoen {{label}} maken",
       "confirmTitle": "Seizoen {{label}} maken?",
-      "copyCheckbox": "Gegevens uit seizoen {{label}} kopiëren",
+      "copyCheckbox": "Teeltplannen kopiëren",
+      "transitionPeriodChanged": "De overgangsperioden zijn gewijzigd. Controleer de bijgewerkte perioden voordat je de seizoenen aanmaakt.",
       "copyDescription": "Teeltoppervlakken, bedden en vruchtwisselingstoewijzingen worden naar het nieuwe seizoen gekopieerd.",
       "create": "Maken",
       "createError": "Het seizoen kon niet worden gemaakt.",

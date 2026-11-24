@@ -439,13 +439,15 @@ class SeasonGapDecisionApiTest(ProjectApiTestCase):
             {'total': 3, 'copied': 3, 'skipped': 0},
         )
 
-        for start_date in ('2027-09-01', '2026-08-01'):
+        for start_date, eligible in (('2027-09-01', True), ('2026-08-01', False)):
             with self.subTest(start_date=start_date):
-                unavailable = self.client.get(
+                options = self.client.get(
                     '/openfarmplanner/api/seasons/creation-options/',
                     {'manual_start_date': start_date},
                 )
-                self.assertIsNone(unavailable.data['copy_preview']['manual'])
+                self.assertEqual(options.data['copy_preview']['manual'] is not None, eligible)
+                self.assertEqual(bool(options.data['copy_sources']['manual']), eligible)
+                self.assertFalse(options.data['copy_is_preceding_source']['manual'])
 
     def test_transition_actual_date_preview_matches_the_split_and_preserves_originals(self):
         self._set_pattern(1, 1)
@@ -497,22 +499,52 @@ class SeasonGapDecisionApiTest(ProjectApiTestCase):
         self.assertEqual(retry.status_code, 400, retry.data)
         self.assertEqual(PlantingPlan.objects.filter(project=self.project).count(), 4)
 
-    def test_transition_copy_rejects_a_stale_source_before_creating_either_season(self):
+    def test_transition_copies_the_selected_historical_source_once_across_both_periods(self):
         self._set_pattern(1, 1)
         older = Season.objects.create(
             project=self.project, start_date=date(2024, 9, 1), end_date=date(2025, 8, 31),
         )
-        Season.objects.create(
+        latest = Season.objects.create(
             project=self.project, start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
         )
-
-        response = self.client.post('/openfarmplanner/api/seasons/create-transition/', {
-            'copy': True, 'source_season_id': older.pk,
+        for season, planned, actual in (
+            (older, date(2024, 10, 1), date(2024, 10, 7)),
+            (older, date(2025, 4, 1), None),
+            (latest, date(2026, 6, 1), None),
+        ):
+            PlantingPlan.objects.create(
+                crop=self.crop, bed=self.bed, project=self.project, season=season,
+                cultivation_type='direct_sowing', planting_date=planned, actual_sowing_date=actual,
+            )
+        url = '/openfarmplanner/api/seasons/'
+        preview = self.client.get(f'{url}creation-options/', {
+            'copy_target': 'transition', 'source_season_id': older.pk, 'use_actual_dates': 'true',
         })
-
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data['code'], 'season_copy_source_not_preceding')
+        self.assertEqual(preview.status_code, 200, preview.data)
+        self.assertEqual(preview.data['copy_source_season_id'], older.pk)
+        self.assertFalse(preview.data['copy_is_preceding_source']['transition'])
+        copied = preview.data['copy_preview']
+        self.assertEqual(copied['transition']['copied'], 1)
+        self.assertEqual(copied['transition_followup']['copied'], 1)
+        payload = {'copy': True, 'source_season_id': older.pk, 'use_actual_dates': True}
+        stale_periods = self.client.post(f'{url}create-transition/', {
+            **payload, 'expected_followup': {'start_date': '2028-01-01', 'end_date': '2028-12-31'},
+        }, format='json')
+        self.assertEqual(stale_periods.status_code, 409, stale_periods.data)
+        self.assertEqual(stale_periods.data['code'], 'season_transition_period_changed')
         self.assertEqual(Season.objects.filter(project=self.project).count(), 2)
+
+        saved = self.client.post(f'{url}create-transition/', {
+            **payload, 'expected_transition': preview.data['seamless_period'],
+            'expected_followup': preview.data['due_period'],
+        }, format='json')
+        self.assertEqual(saved.status_code, 201, saved.data)
+        for key, planned in (('transition', date(2026, 10, 7)), ('followup', date(2027, 4, 1))):
+            plan = PlantingPlan.objects.get(season_id=saved.data[f'{key}_season']['id'])
+            self.assertEqual(plan.planting_date, planned)
+            self.assertIsNone(plan.actual_sowing_date)
+        self.assertEqual(PlantingPlan.objects.filter(season=older).count(), 2)
+        self.assertEqual(PlantingPlan.objects.get(season=latest).planting_date, date(2026, 6, 1))
 
 
 class SeasonCopyServiceTest(ProjectApiTestCase):
@@ -1343,15 +1375,19 @@ class SeasonApiTest(ProjectApiTestCase):
             planting_date=date(2026, 10, 1), cultivation_type='direct_sowing',
             actual_sowing_date=date(2026, 10, 9),
         )
-        revisions = EntityRevision.objects.filter(project=self.project).count()
         url = '/openfarmplanner/api/seasons/create-and-copy/'
         period = {'start_date': '2027-01-01', 'end_date': '2027-12-31'}
-
+        preview = self.client.get('/openfarmplanner/api/seasons/creation-options/', {
+            'source_season_id': earlier.pk, 'copy_target': 'adopt',
+        })
+        self.assertEqual(preview.status_code, 200, preview.data)
+        Season.objects.filter(pk=earlier.pk).update(deleted_at=timezone.now())
+        revisions = EntityRevision.objects.filter(project=self.project).count()
         rejected = self.client.post(url, {**period, 'source_season_id': earlier.pk})
 
-        self.assertEqual(rejected.status_code, 400)
-        self.assertEqual(rejected.data['code'], 'season_copy_source_not_preceding')
-        self.assertEqual(Season.objects.filter(project=self.project).count(), 2)
+        self.assertEqual(rejected.status_code, 404)
+        self.assertEqual(rejected.data['code'], 'source_season_not_found')
+        self.assertEqual(Season.objects.filter(project=self.project).count(), 1)
         self.assertEqual(PlantingPlan.objects.filter(project=self.project).count(), 1)
         self.assertFalse(BatchOperation.objects.filter(project=self.project).exists())
         self.assertEqual(EntityRevision.objects.filter(project=self.project).count(), revisions)
@@ -1370,6 +1406,103 @@ class SeasonApiTest(ProjectApiTestCase):
             .get().context['source_season_label'],
             interim.label,
         )
+
+    def test_creation_lists_historical_sources_and_defaults_to_latest_eligible_period(self):
+        seasons = [Season.objects.create(
+            project=self.project, start_date=date(year, 1, 1), end_date=date(year, 12, 31),
+            custom_label=f'Garden {year}',
+        ) for year in (2024, 2025, 2026)]
+        url = '/openfarmplanner/api/seasons/creation-options/'
+        options = self.client.get(url).data
+        self.assertEqual(options['due_period']['start_date'], '2027-01-01')
+        self.assertEqual(options['copy_sources']['adopt'], [
+            {'id': season.pk, 'label': season.label} for season in reversed(seasons)
+        ])
+        self.assertEqual(options['copy_source_season_id'], seasons[-1].pk)
+        self.assertTrue(options['copy_is_preceding_source']['adopt'])
+
+        Season.objects.filter(pk=seasons[-1].pk).update(deleted_at=timezone.now())
+        options = self.client.get(url, {'manual_start_date': '2027-01-01'}).data
+        self.assertEqual(options['copy_source_season_id'], seasons[1].pk)
+        self.assertEqual([source['id'] for source in options['copy_sources']['manual']], [
+            seasons[1].pk, seasons[0].pk,
+        ])
+        self.assertFalse(options['copy_is_preceding_source']['manual'])
+
+        empty = self.client.get(url, {'manual_start_date': '2023-01-01'}).data
+        self.assertEqual(empty['copy_sources']['manual'], [])
+        self.assertIsNone(empty['copy_preview']['manual'])
+        self.assertIsNone(empty['copy_source_season_id'])
+
+    def test_creation_rejects_foreign_or_non_historical_sources_without_writes(self):
+        foreign_project = Project.objects.create(name='Other season farm', slug='other-season-farm')
+        foreign = Season.objects.create(
+            project=foreign_project, start_date=date(2024, 1, 1), end_date=date(2024, 12, 31),
+        )
+        future = Season.objects.create(
+            project=self.project, start_date=date(2029, 1, 1), end_date=date(2029, 12, 31),
+        )
+        overlap = Season.objects.create(
+            project=self.project, start_date=date(2025, 9, 1), end_date=date(2026, 3, 31),
+        )
+        url = '/openfarmplanner/api/seasons/'
+        prior_state = (SeasonPattern.objects.count(), BatchOperation.objects.count(),
+                       EntityRevision.objects.count())
+        for source, expected_status in ((foreign, 404), (future, 400), (overlap, 400)):
+            with self.subTest(source=source.pk):
+                target = '2026-01-01' if source == overlap else '2027-01-01'
+                preview = self.client.get(f'{url}creation-options/', {
+                    'manual_start_date': target, 'source_season_id': source.pk,
+                    'copy_target': 'manual',
+                })
+                self.assertEqual(preview.status_code, expected_status, preview.data)
+                closing = '2026-12-31' if source == overlap else '2027-12-31'
+                saved = self.client.post(f'{url}create-and-copy/', {
+                    'start_date': target, 'end_date': closing, 'source_season_id': source.pk,
+                })
+                self.assertEqual(saved.status_code, expected_status, saved.data)
+        self.assertEqual(Season.objects.filter(project=self.project).count(), 2)
+        self.assertEqual((SeasonPattern.objects.count(), BatchOperation.objects.count(),
+                          EntityRevision.objects.count()), prior_state)
+
+    def test_historical_creation_preserves_leap_day_alignment_and_actual_date_fallback(self):
+        source = Season.objects.create(
+            project=self.project, start_date=date(2024, 1, 1), end_date=date(2024, 12, 31),
+        )
+        Season.objects.create(
+            project=self.project, start_date=date(2026, 1, 1), end_date=date(2026, 12, 31),
+        )
+        original = PlantingPlan.objects.create(
+            crop=self.crop, bed=self.bed, project=self.project, season=source,
+            cultivation_type='direct_sowing', planting_date=date(2024, 2, 29),
+            actual_sowing_date=date(2024, 3, 2), harvest_date=date(2024, 5, 5),
+            harvest_date_is_explicit=True,
+        )
+        url = '/openfarmplanner/api/seasons/'
+        for choice, start, actual, planting, harvest in (
+            ('adopt', None, False, date(2027, 2, 28), date(2027, 5, 5)),
+            ('manual', '2028-07-01', True, date(2029, 3, 2), date(2029, 5, 5)),
+        ):
+            with self.subTest(choice=choice, actual=actual):
+                preview = self.client.get(f'{url}creation-options/', {
+                    **({'manual_start_date': start} if start else {}), 'copy_target': choice,
+                    'source_season_id': source.pk, 'use_actual_dates': str(actual).lower(),
+                })
+                self.assertEqual(preview.status_code, 200, preview.data)
+                self.assertEqual(preview.data['copy_preview'][choice]['copied'], 1)
+                self.assertFalse(preview.data['copy_is_preceding_source'][choice])
+                period = preview.data['manual_period' if start else 'due_period']
+                created = self.client.post(f'{url}create-and-copy/', {
+                    **period,
+                    'source_season_id': source.pk, 'use_actual_dates': actual,
+                }, format='json')
+                self.assertEqual(created.status_code, 201, created.data)
+                copied = PlantingPlan.objects.get(season_id=created.data['id'])
+                self.assertEqual((copied.planting_date, copied.harvest_date), (planting, harvest))
+                self.assertIsNone(copied.actual_sowing_date)
+        original.refresh_from_db()
+        self.assertEqual(original.planting_date, date(2024, 2, 29))
+        self.assertEqual(original.actual_sowing_date, date(2024, 3, 2))
 
     def test_create_and_copy_can_use_actual_dates_with_planned_fallback(self):
         SeasonPattern.objects.update_or_create(

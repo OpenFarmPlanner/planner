@@ -92,7 +92,8 @@
     "suggestion": {
       "title": "Criar época {{label}}",
       "confirmTitle": "Criar época {{label}}?",
-      "copyCheckbox": "Copiar dados da época {{label}}",
+      "copyCheckbox": "Copiar os planos de cultivo",
+      "transitionPeriodChanged": "Os períodos de transição mudaram. Verifica os períodos atualizados antes de criar as épocas.",
       "copyDescription": "As áreas de cultivo, os canteiros e as atribuições de rotação de culturas serão copiados para a nova época.",
       "create": "Criar",
       "createError": "Não foi possível criar a época.",

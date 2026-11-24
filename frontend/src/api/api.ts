@@ -97,7 +97,9 @@ import type {
   SeasonPattern,
   SeasonPatternPreviewResponse,
   SeasonCreationOptions,
+  SeasonCreationCopyTarget,
   SeasonCreateTransitionResponse,
+  SeasonTransitionPeriods,
   SeasonDueSuggestion,
   SeasonCopyFromResponse,
   SeasonCopyPreview,
@@ -620,9 +622,15 @@ export const seasonAPI = {
       },
     }),
   dueSuggestion: () => http.get<SeasonDueSuggestion>('/seasons/due-suggestion/'),
-  creationOptions: (params?: { manual_start_date?: string; use_actual_dates?: boolean }) =>
+  creationOptions: (params?: {
+    manual_start_date?: string;
+    use_actual_dates?: boolean;
+    source_season_id?: number;
+    copy_target?: SeasonCreationCopyTarget;
+  }) =>
     http.get<SeasonCreationOptions>('/seasons/creation-options/', { params }),
-  createTransition: (data: { copy: boolean; source_season_id?: number; use_actual_dates?: boolean }) =>
+  createTransition: (data: { copy: boolean; source_season_id?: number; use_actual_dates?: boolean }
+    & Partial<SeasonTransitionPeriods>) =>
     http.post<SeasonCreateTransitionResponse>('/seasons/create-transition/', data),
 };
 

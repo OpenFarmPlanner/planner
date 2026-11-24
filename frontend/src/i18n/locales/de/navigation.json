@@ -92,7 +92,8 @@
     "suggestion": {
       "title": "Saison {{label}} anlegen",
       "confirmTitle": "Saison {{label}} anlegen?",
-      "copyCheckbox": "Daten aus Saison {{label}} übernehmen",
+      "copyCheckbox": "Anbaupläne übernehmen",
+      "transitionPeriodChanged": "Die Übergangszeiträume haben sich geändert. Prüfe die aktualisierten Zeiträume vor dem Anlegen.",
       "copyDescription": "Anbauflächen, Beete und Fruchtfolge-Zuordnungen werden in die neue Saison kopiert.",
       "create": "Anlegen",
       "createError": "Saison konnte nicht angelegt werden.",

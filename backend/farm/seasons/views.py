@@ -53,19 +53,23 @@ from farm.services.seasons import (
     find_soft_deleted_season,
     get_or_create_season_for_period,
     get_or_create_season_pattern,
+    is_historical_copy_period,
     latest_existing_season,
     preceding_season_copy_source,
     restore_season_contents,
     resurrect_season,
+    season_pattern_for_planning,
     serialize_period_transition,
     synchronize_season_harvest_tasks,
 )
 from farm.services.tasks import generate_tasks_for_plans
 
 from .serializers import (
+    CreateTransitionSeasonsSerializer,
     SeasonCopyDateBasisSerializer,
     SeasonCopyFromSerializer,
     SeasonCreateAndCopySerializer,
+    SeasonCreationOptionsSerializer,
     SeasonPatternSerializer,
     SeasonSerializer,
 )
@@ -262,13 +266,17 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
                 detail='Source and target season must be different.',
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        if source_season.end_date >= target_season.start_date:
-            return api_error_response(
-                code='season_copy_source_not_earlier',
-                detail='The source season must end before the target season starts.',
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
+        if not is_historical_copy_period(source_season, target_season.start_date):
+            return self._copy_source_not_earlier()
         return source_season
+
+    @staticmethod
+    def _copy_source_not_earlier() -> Response:
+        return api_error_response(
+            code='season_copy_source_not_earlier',
+            detail='The source season must end before the target season starts.',
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
 
     def _resolve_creation_copy_source(
         self, target_start: date, source_id: object,
@@ -276,16 +284,9 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
         source_season = self._get_copy_source(source_id)
         if isinstance(source_season, Response):
             return source_season
-        preceding = preceding_season_copy_source(
-            self.request.active_project, target_start,
-        )
-        if preceding is None or preceding.pk != source_season.pk:
-            return api_error_response(
-                code='season_copy_source_not_preceding',
-                detail='Season data can only be copied from the immediately preceding season.',
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
-        return preceding
+        if not is_historical_copy_period(source_season, target_start):
+            return self._copy_source_not_earlier()
+        return source_season
 
     @action(detail=True, methods=['get'], url_path='copy-preview')
     def copy_preview(self, request, pk=None):
@@ -437,29 +438,41 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
                     status_code=status.HTTP_400_BAD_REQUEST,
                 )
 
-        options = SeasonCopyDateBasisSerializer(data=request.query_params)
+        options = SeasonCreationOptionsSerializer(data=request.query_params)
         if not options.is_valid():
+            if 'source_season_id' in options.errors:
+                return self._invalid_copy_source_id()
             return self._invalid_copy_options(options.errors)
-        return Response(build_season_creation_options(
+        source = None
+        if 'source_season_id' in options.validated_data:
+            source = self._get_copy_source(options.validated_data['source_season_id'])
+            if isinstance(source, Response):
+                return source
+        result = build_season_creation_options(
             request.active_project, manual_start=manual_start,
             use_actual_dates=options.validated_data['use_actual_dates'],
-        ))
+            copy_source=source,
+            copy_target=options.validated_data.get('copy_target'),
+        )
+        return self._copy_source_not_earlier() if result is None else Response(result)
 
-    @action(detail=False, methods=['post'], url_path='create-transition')
+    @action(detail=False, methods=['post'], url_path='create-transition', history_read_only=True)
     @transaction.atomic
     def create_transition(self, request):
         """Create the gap-filling transition season AND the regular follow-up
-        season in one transaction, distributing the last season's plans across
+        season in one transaction, distributing the selected source's plans across
         both (each plan shifted once and routed to the season it lands in).
         """
-        options = SeasonCopyDateBasisSerializer(data=request.data)
+        options = CreateTransitionSeasonsSerializer(data=request.data)
         if not options.is_valid():
+            if 'source_season_id' in options.errors:
+                return self._invalid_copy_source_id()
             return self._invalid_copy_options(options.errors)
         project = request.active_project
         lock_crop_project(project.pk)
-        pattern = get_or_create_season_pattern(project)
+        pattern = season_pattern_for_planning(project)
         latest_season = latest_existing_season(project)
-        due_period = find_due_but_missing_season(project)
+        due_period = find_due_but_missing_season(project, pattern=pattern)
         if latest_season is None or due_period is None:
             return api_error_response(
                 code='season_transition_not_applicable',
@@ -476,14 +489,26 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
         seamless_start, seamless_end = compute_custom_season_period(
             pattern, latest_season.end_date + timedelta(days=1),
         )
-        copy_requested = bool(request.data.get('copy'))
-        if copy_requested and 'source_season_id' in request.data:
+        current_periods = {
+            'expected_transition': {'start_date': seamless_start, 'end_date': seamless_end},
+            'expected_followup': {'start_date': due_start, 'end_date': due_end},
+        }
+        if any(options.validated_data.get(key, period) != period
+               for key, period in current_periods.items()):
+            return api_error_response(
+                code='season_transition_period_changed',
+                detail='The transition periods have changed. Refresh the creation options.',
+                status_code=status.HTTP_409_CONFLICT,
+            )
+        source = None
+        if options.validated_data['copy']:
             source = self._resolve_creation_copy_source(
-                seamless_start, request.data['source_season_id'],
+                seamless_start, options.validated_data.get('source_season_id', latest_season.pk),
             )
             if isinstance(source, Response):
                 return source
         user = request.user if request.user.is_authenticated else None
+        ensure_project_checkpoint(project, user_name=_current_actor_label(request))
 
         transition_label = Season(start_date=seamless_start, end_date=seamless_end).computed_label
         batch = start_batch_operation(
@@ -499,9 +524,9 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             project, due_start, due_end, user, batch, user_name=actor_label,
         )
         distribution = {'transition': [], 'followup': [], 'skipped': 0}
-        if copy_requested:
+        if source is not None:
             distribution = distribute_planting_plans(
-                source_season=latest_season,
+                source_season=source,
                 transition_season=transition_season,
                 followup_season=followup_season,
                 use_actual_dates=options.validated_data['use_actual_dates'],

@@ -93,7 +93,8 @@
     "suggestion": {
       "title": "Crear la temporada {{label}}",
       "confirmTitle": "¿Crear la temporada {{label}}?",
-      "copyCheckbox": "Copiar datos de la temporada {{label}}",
+      "copyCheckbox": "Copiar los planes de cultivo",
+      "transitionPeriodChanged": "Los períodos de transición han cambiado. Comprueba los períodos actualizados antes de crear las temporadas.",
       "copyDescription": "Las superficies de cultivo, los bancales y las asignaciones de la rotación de cultivos se copiarán en la nueva temporada.",
       "create": "Crear",
       "createError": "No se ha podido crear la temporada.",

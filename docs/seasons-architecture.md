@@ -472,17 +472,16 @@ Anbaukalender Gantt):
 
 ## Copy-data action
 
-The source rules depend on how copying was opened. Both use the project's
-persisted periods, including custom season dates and labels.
-
-- The guided **Create season** dialog can copy only from the immediately
-  preceding season. The latest active period starting before the target must
-  also end before it. A shorter gap from a season-pattern change is allowed.
-  A gap of a full annual period makes the copy unavailable.
-- **Copy season data** in an existing season's three-dot menu lets the user
-  select any active season in the same project that ends before the target
-  begins. The dropdown defaults to the newest eligible source. Gaps and
-  intervening seasons do not prevent manual copying.
+**Create season** and **Copy season data** both list active seasons in the
+same project that end before the destination begins. The list uses persisted
+periods, displays custom labels, and defaults to the newest eligible source.
+An intervening season or a gap in the season history does not prevent copying.
+If there is no eligible source, the creation dialog offers creation without
+copying. [#1509](https://github.com/OpenFarmPlanner/planner/issues/1509)
+supersedes the creation-only source restriction from
+[#1404](https://github.com/OpenFarmPlanner/planner/issues/1404). Additive copy,
+actual-date rules and plan history from
+[#956](https://github.com/OpenFarmPlanner/planner/issues/956) apply to both flows.
 
 - `farm/services/seasons.py::copy_planting_plans(source_season, target_season)`
   copies a fixed tuple of `PlantingPlan` fields (`PLANTING_PLAN_COPY_FIELDS` —
@@ -509,18 +508,16 @@ persisted periods, including custom season dates and labels.
   is not a leap year (`add_months`). Plans with no `planting_date` fall back to
   the whole-year gap between the two seasons' start dates. The shift is always
   whole years, so it works for any season pattern, calendar-year or not.
-- The creation suggestion uses the eligible source returned by
-  `GET /seasons/creation-options/`, independent of the season currently open.
-  `POST /seasons/create-and-copy/` rechecks the source and saves the new season
-  and the copied plans in one transaction.
-  When creating a transition and follow-up together, the eligible source for
-  the transition is copied once across the pair. Create Season defaults to
-  planned dates. Enable **Use actual dates as planned dates** while copying to
-  use the predecessor's recorded dates, falling back activity by activity to
-  its planned dates. The dialog refreshes `creation-options` for the selected
-  basis before submission and sends the same `use_actual_dates` option to
-  `create-and-copy` or `create-transition`. The resulting dates are planned
-  dates in the new season. The new plans' actual fields start empty.
+- `GET /seasons/creation-options/` returns eligible sources for the proposed,
+  transition and manual start periods. The dialog previews the chosen
+  `source_season_id`, `copy_target` and `use_actual_dates` before submitting.
+  `POST /seasons/create-and-copy/` validates the same source under the project
+  lock and saves the new season and copied plans in one transaction. When
+  creating a transition and follow-up together, `create-transition` checks
+  the two confirmed periods and distributes each copied plan to one period.
+  The creation form defaults to planned dates. **Use actual dates as planned
+  dates** uses dates recorded in the selected season, with a planned-date
+  fallback for each activity. The new plans' actual fields start empty.
 
   For local QA, preview the command below, then repeat with `--apply` after
   confirming the target. In **Season creation dates (actual)**, create the
@@ -561,18 +558,20 @@ persisted periods, including custom season dates and labels.
   are built once by `build_planting_plan_copies`, shared by the preview and
   the copy. Details: [crop-rotation.md](./crop-rotation.md#season-copy).
 - Field-group rotation ([#1063](https://github.com/OpenFarmPlanner/planner/issues/1063))
-  is limited to immediate predecessor copies. The manual preview reports
-  `is_preceding_source` and explains why field-group rotation is unavailable
-  when an older source is selected. The crop-family conflict check still runs.
+  is limited to immediate predecessor copies. The existing-season preview
+  reports `is_preceding_source`. Creation options report this separately for
+  each copy target in `copy_is_preceding_source`. The crop-family conflict
+  check still applies when copying from a historical source.
 
 For local QA, preview the guarded fixture command, then repeat with `--apply`
-after confirming the database target. In **Historical season copy**, create
-2027 and confirm the guided copy offers only 2026. From 2027's three-dot menu,
-open **Copy season data**, choose **Historical garden** (2024), and select
-**Use actual dates as planned dates**. The preview explains when plans can
-rotate to the next field. Confirming adds lettuce to 2027 with February 28 planned
-sowing and an empty actual date. The original lettuce keeps February 26
-planned and February 29 actual. The carrot copied from 2026 stays in 2027.
+after confirming the database target. In **Historical season copy**, open
+**Create season** for 2027. The selector offers 2026, 2025 and **Historical
+garden** (2024), with 2026 selected initially. Choose **Historical garden**
+and enable **Use actual dates as planned dates**. Confirm that the copied
+lettuce in 2027 has February 28 planned sowing and an empty actual date.
+The original lettuce keeps February 26 planned and February 29 actual.
+From 2027's three-dot menu, use **Copy season data** to add the carrot from
+2026 alongside it.
 
 ```bash
 DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py seed_season_creation_dates_acceptance --historical-copy --username LOCAL_USER --database-name LOCAL_DATABASE

@@ -92,7 +92,8 @@
     "suggestion": {
       "title": "Create season {{label}}",
       "confirmTitle": "Create season {{label}}?",
-      "copyCheckbox": "Copy data from season {{label}}",
+      "copyCheckbox": "Copy planting plans",
+      "transitionPeriodChanged": "The transition periods have changed. Check the updated periods before creating the seasons.",
       "copyDescription": "Growing areas, beds, and crop rotation assignments will be copied to the new season.",
       "create": "Create",
       "createError": "Season could not be created.",

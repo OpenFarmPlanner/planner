@@ -92,7 +92,8 @@
     "suggestion": {
       "title": "Crea stagione {{label}}",
       "confirmTitle": "Creare la stagione {{label}}?",
-      "copyCheckbox": "Copia dati dalla stagione {{label}}",
+      "copyCheckbox": "Copia i piani colturali",
+      "transitionPeriodChanged": "I periodi di transizione sono cambiati. Controlla i periodi aggiornati prima di creare le stagioni.",
       "copyDescription": "Superfici coltivate, aiuole e assegnazioni di rotazione colturale verranno copiate nella nuova stagione.",
       "create": "Crea",
       "createError": "Impossibile creare la stagione.",

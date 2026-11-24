@@ -180,6 +180,23 @@ class SeasonCopyDateBasisSerializer(serializers.Serializer):
     use_actual_dates = serializers.BooleanField(default=False)
 
 
+class SeasonCreationOptionsSerializer(SeasonCopyDateBasisSerializer):
+    source_season_id = serializers.IntegerField(required=False)
+    copy_target = serializers.ChoiceField(choices=('adopt', 'transition', 'manual'), required=False)
+
+
+class SeasonPeriodRangeSerializer(serializers.Serializer):
+    start_date = serializers.DateField()
+    end_date = serializers.DateField()
+
+
+class CreateTransitionSeasonsSerializer(SeasonCopyDateBasisSerializer):
+    copy = serializers.BooleanField(default=False)
+    source_season_id = serializers.IntegerField(required=False)
+    expected_transition = SeasonPeriodRangeSerializer(required=False)
+    expected_followup = SeasonPeriodRangeSerializer(required=False)
+
+
 class SeasonCopyFromSerializer(SeasonCopyDateBasisSerializer):
     source_season_id = serializers.IntegerField()
     rotation_conflicts = serializers.ChoiceField(
