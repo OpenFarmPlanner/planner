@@ -87,7 +87,7 @@ async function expectOneRow(boxes: Array<{ y: number }>) {
   }
 }
 
-test('edits and reloads the perennial harvest window by keyboard on a phone', async ({ page, request }) => {
+test('edits and reloads the perennial harvest window by keyboard on a phone', async ({ page, request }, info) => {
   await page.setViewportSize({ width: 375, height: 800 });
   await loginWithDeterministicProject(page, request, 'perennial-crop-annual-harvest', { loginAsAdmin: true });
   const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
@@ -106,6 +106,21 @@ test('edits and reloads the perennial harvest window by keyboard on a phone', as
   const delay = dialog.getByRole('spinbutton', { name: 'Jahre bis zur ersten Ernte', exact: true });
   await expect(dialog.getByLabel('Wachstumszeit (Tage)', { exact: true })).toHaveCount(0);
   await expect(dialog.getByLabel('Erntezeit (Tage)', { exact: true })).toHaveCount(0);
+  const lifeCycle = dialog.getByRole('combobox', { name: 'Lebensdauer', exact: true });
+  const standingTime = dialog.getByRole('spinbutton', { name: 'Standzeit (Jahre)', exact: true });
+  await lifeCycle.click();
+  await page.getByRole('option', { name: 'Einjährig', exact: true }).click();
+  await expect(standingTime).toHaveCount(0);
+  await expect(start).toHaveCount(0);
+  await expect(dialog.getByLabel('Wachstumszeit (Tage)', { exact: true })).toHaveValue('760');
+  await lifeCycle.click();
+  await page.getByRole('option', { name: 'Mehrjährig', exact: true }).click();
+  await lifeCycle.focus();
+  await page.keyboard.press('Tab');
+  await expect(standingTime).toBeFocused();
+  await expect(standingTime).toHaveValue('20');
+  await lifeCycle.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: info.outputPath('phone-life-cycle-and-standing-time.png'), animations: 'disabled' });
   await start.focus();
   await page.keyboard.type('12-15');
   await page.keyboard.press('Tab');

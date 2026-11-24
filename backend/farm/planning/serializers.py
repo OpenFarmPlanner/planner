@@ -16,6 +16,7 @@ from farm.common.serializer_fields import (
 )
 from farm.models import Crop, PlantingPlan, Season, Task
 from farm.project_context import resolve_season_id_from_request
+from farm.services.actual_harvest import harvest_actual_occurrences, unscoped_harvest_actuals
 from farm.services.bed_capacity import (
     HarvestOverlap,
     HarvestOverlapIndex,
@@ -36,8 +37,13 @@ from farm.services.germination_check import check_germination
 from farm.services.harvests import HarvestTotals, plan_harvest_totals
 from farm.services.plant_count import compute_plan_plant_count
 from farm.services.seasonal_harvest import (
+    HarvestActualOccurrencePayload,
     HarvestOccurrencesPage,
+    RecurringHarvestSchedule,
     SeasonalHarvestPayload,
+    harvest_occurrence_page,
+    recorded_occurrence_dates,
+    recurring_harvest_actuals,
     recurring_harvest_schedule,
     recurring_plan_visible_in_season,
     seasonal_harvest_payload,
@@ -71,6 +77,9 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
     harvest_end_date = serializers.SerializerMethodField(read_only=True)
     seasonal_harvest = serializers.SerializerMethodField(
         help_text='Selected-season periods and recorded dates for a recurring perennial harvest.',
+    )
+    harvest_actual_occurrences = serializers.SerializerMethodField(
+        help_text='Harvest occurrences with actual dates in the selected season.',
     )
     plants_count = serializers.SerializerMethodField(read_only=True)
     note_attachment_count = serializers.IntegerField(read_only=True)
@@ -315,11 +324,28 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         season: Season | None = self.context.get('harvest_season')
         if season is None:
             return None
-        schedule = recurring_harvest_schedule(obj, self._general_crop_index(obj))
+        schedule = self._recurring_harvest_schedule(obj)
         if schedule is None:
             return None
 
         return seasonal_harvest_payload(obj, season, schedule)
+
+    def _recurring_harvest_schedule(self, obj: PlantingPlan) -> RecurringHarvestSchedule | None:
+        schedules = self.context.setdefault('_recurring_harvest_schedules', {})
+        key = obj.pk or id(obj)
+        if key not in schedules:
+            schedules[key] = recurring_harvest_schedule(obj, self._general_crop_index(obj))
+        return schedules[key]
+
+    def get_harvest_actual_occurrences(
+        self, obj: PlantingPlan,
+    ) -> list[HarvestActualOccurrencePayload] | None:
+        season = self.context.get('harvest_season')
+        if season is None:
+            return None
+        return harvest_actual_occurrences(
+            obj, season, self._recurring_harvest_schedule(obj), self._planned_harvest_dates(obj),
+        )
 
     def get_carried_over(self, obj: PlantingPlan) -> bool:
         return getattr(obj, 'carried_over', False)
@@ -377,7 +403,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PlantingPlan
-        exclude = ['copied_from_plan_id', 'harvest_window_overrides']
+        exclude = ['copied_from_plan_id', 'harvest_window_overrides', 'harvest_occurrence_actuals']
         read_only_fields = [
             'project', 'harvest_date', 'harvest_end_date', 'created_by', 'updated_by',
             'rotation_conflict_accepted_by', 'rotation_conflict_accepted_at',
@@ -708,15 +734,26 @@ class PlantingPlanDetailSerializer(PlantingPlanSerializer):
         tasks = obj.tasks.filter(
             project_id=obj.project_id, deleted_at__isnull=True, season__deleted_at__isnull=True,
         ).filter(Q(due_date__range=period) | Q(due_date__isnull=True, season_id=OuterRef('pk')))
-        return list(Season.objects.filter(project_id=obj.project_id).filter(
-            Exists(harvests) | Exists(losses) | Exists(tasks),
-        ).order_by().values_list('pk', flat=True))
+        records = Exists(harvests) | Exists(losses) | Exists(tasks)
+        schedule = self._recurring_harvest_schedule(obj)
+        actuals = recurring_harvest_actuals(obj, schedule).values() if schedule else (
+            *recorded_occurrence_dates(obj.harvest_occurrence_actuals).values(),
+            unscoped_harvest_actuals(obj),
+        )
+        for interval in actuals:
+            dates = [
+                value for value in (interval.start_date, interval.end_date) if value is not None
+            ]
+            if dates:
+                records |= Q(start_date__lte=max(dates), end_date__gte=min(dates))
+        return list(Season.objects.filter(records, project_id=obj.project_id)
+                    .order_by().values_list('pk', flat=True))
 
     def get_harvest_windows_by_year(
         self, obj: PlantingPlan,
     ) -> HarvestOccurrencesPage | None:
-        schedule = recurring_harvest_schedule(obj, self._general_crop_index(obj))
-        if schedule is None:
+        schedule = self._recurring_harvest_schedule(obj)
+        if schedule is None and not obj.harvest_occurrence_actuals:
             return None
         request = self.context.get('request')
         requested_year = request.query_params.get('harvest_year') if request else None
@@ -726,10 +763,11 @@ class PlantingPlanDetailSerializer(PlantingPlanSerializer):
             )
         else:
             season = self.context.get('harvest_season')
-            year = schedule.year_for_season(season) if season is not None else None
-            if season is None or obj.season_id == season.pk:
+            year = schedule.year_for_season(season) if schedule and season else None
+            if schedule and (season is None or obj.season_id == season.pk):
                 year = schedule.first_conflicting_year() or year
-        return schedule.occurrence_details(year)
+        page = harvest_occurrence_page(obj, schedule, year)
+        return page if schedule or page['occurrences'] else None
 
     def get_crop_available(self, obj: PlantingPlan) -> bool:
         return bool(obj.crop and obj.crop.deleted_at is None)
@@ -774,6 +812,34 @@ class PlantingPlanDetailSerializer(PlantingPlanSerializer):
 class HarvestDateRangeSerializer(serializers.Serializer):
     start_date = serializers.DateField()
     end_date = serializers.DateField()
+
+
+class HarvestActualDateUpdateSerializer(serializers.Serializer):
+    year = serializers.IntegerField(
+        min_value=1, max_value=date.max.year, allow_null=True, default=None,
+    )
+    start_date = serializers.DateField(required=False, allow_null=True)
+    end_date = serializers.DateField(required=False, allow_null=True)
+
+    def validate(self, attrs):
+        if not attrs.keys() & {'start_date', 'end_date'}:
+            raise serializers.ValidationError('Supply at least one actual harvest date.')
+        return attrs
+
+
+class HarvestActualOccurrenceSerializer(serializers.Serializer):
+    year = serializers.IntegerField(allow_null=True)
+    planned_start_date = serializers.DateField(allow_null=True)
+    planned_end_date = serializers.DateField(allow_null=True)
+    actual_start_date = serializers.DateField(allow_null=True)
+    actual_end_date = serializers.DateField(allow_null=True)
+
+
+class HarvestActualDateResultSerializer(serializers.Serializer):
+    actual_harvest_start_date = serializers.DateField(allow_null=True)
+    recorded_harvest_end_date = serializers.DateField(allow_null=True)
+    harvest_actual_occurrences = HarvestActualOccurrenceSerializer(many=True)
+    seasonal_harvest = serializers.JSONField(allow_null=True)
 
 
 class YieldComparisonQuerySerializer(serializers.Serializer):

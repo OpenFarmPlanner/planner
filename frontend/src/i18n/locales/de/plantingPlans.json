@@ -498,7 +498,20 @@
       "sqm": "Gib eine nicht negative Fläche mit bis zu drei Nachkommastellen ein."
     }
   },
+  "fields": {
+    "start_date": "Ist-Erntebeginn",
+    "end_date": "Ist-Ernteende",
+    "year": "Erntejahr"
+  },
   "actualDates": {
+    "harvestOccurrence": "Erntetermine {{year}}",
+    "harvestErrors": {
+      "order": "Das Ernteende muss am oder nach dem Erntebeginn liegen.",
+      "occupancy": "Gib ein Datum ein, an dem die Kultur auf dem Beet steht.",
+      "occurrence": "Gib ein Datum für diese Jahresernte ein.",
+      "overlap": "Die tatsächlichen Ernten müssen zeitlich aufeinanderfolgen und dürfen sich nicht überschneiden.",
+      "season": "Wähle eine Ernte in dieser Saison."
+    },
     "plannedCardLabels": {
       "sowing": "Geplanter Aussaattermin",
       "transplanting": "Geplanter Pflanztermin"

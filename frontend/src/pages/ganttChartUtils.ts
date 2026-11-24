@@ -270,6 +270,7 @@ export function getOccupancyCalendarRange(
       ? startOfSeason : occupancyStart;
     const visibleEnd = (plan.clearing_date || plan.seasonal_harvest) && endOfSeason && endOfSeason < rangeEnd
       ? endOfSeason : rangeEnd;
+    if (visibleEnd < visibleStart) return;
     range = extendRange(range, visibleStart, visibleEnd);
   });
   return range;

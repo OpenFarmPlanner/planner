@@ -5,7 +5,7 @@ import { plantingPlanAPI } from '../api/api';
 import type { HarvestWindowPage, HarvestWindowUpdate, Season, SeasonalHarvestPeriod } from '../api/types';
 import { DetailGrid, DetailRow, DetailSection } from '../components/layout/DetailPrimitives';
 import { useTranslation } from '../i18n';
-import { formatSeasonPeriod, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
+import { formatSeasonDate, formatSeasonPeriod, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import { ActualPlanDateField } from './PlantingPlanExecutionDates';
 
 interface Props {
@@ -33,7 +33,7 @@ export function PerennialHarvestWindows({ planId, page, season, editable, onSave
     occurrences.find(item => {
       const period = item.conflict ? item.default : item.override ?? item.default;
       return season && period && period.start_date <= season.end_date && period.end_date >= season.start_date;
-    }) ?? occurrences[0];
+    }) ?? occurrences.find(item => item.default) ?? occurrences[0];
 
   useEffect(() => {
     if (!draft && !saving && restoreFocus.current) {
@@ -104,6 +104,10 @@ export function PerennialHarvestWindows({ planId, page, season, editable, onSave
           <DetailRow label={t('harvestWindows.default')} value={selected.default
             ? formatPeriod(selected.default) : t('actualDates.missing')} />
           {selected.override && <DetailRow label={t('harvestWindows.override')} value={formatPeriod(selected.override)} />}
+          {selected.actual_start_date && <DetailRow label={t('actualDates.actualLabels.harvestStart')}
+            value={formatSeasonDate(selected.actual_start_date, locale)} />}
+          {selected.actual_end_date && <DetailRow label={t('actualDates.actualLabels.harvestEnd')}
+            value={formatSeasonDate(selected.actual_end_date, locale)} />}
         </DetailGrid>
         {selected.conflict && <Alert severity="warning">{t('harvestWindows.conflict')}</Alert>}
         {error && <Alert severity="error">{t(`harvestWindows.${error}`)}</Alert>}

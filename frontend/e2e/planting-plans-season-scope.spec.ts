@@ -252,7 +252,10 @@ test.describe('recurring harvest dates', () => {
       await selectMode('actual');
       await expect(harvestStart).toHaveText('—');
       await harvestStart.press('Enter');
-      await expect(harvestStart.getByRole('textbox')).toHaveCount(0);
+      const actualStart = harvestStart.getByRole('textbox', { name: 'Ist-Erntebeginn' });
+      await expect(actualStart).toHaveValue('01.09.2027');
+      await actualStart.press('Escape');
+      await expect(harvestStart).toHaveText('—');
       await selectMode('combined');
       await expect(harvestStart).toHaveText('1.9.2027');
       await expect(plantingDate).toHaveText('15.3.2025');
@@ -529,7 +532,7 @@ test('a first visit without a stored season only loads the active season', async
   await expect(page.getByRole('menuitem', { name: 'Bearbeiten' })).toBeVisible();
 });
 
-test('overwintering garlic is selectable in the later table and read-only in the calendar', async ({ page, request }) => {
+test('overwintering garlic is selectable in the later table and read-only in the calendar', async ({ page, request }, info) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await loginWithDeterministicProject(page, request, 'planting-plans-carry-over-calendar', {
     demoProject: true, loginAsAdmin: true,
@@ -561,6 +564,45 @@ test('overwintering garlic is selectable in the later table and read-only in the
   await expect(detail.getByRole('button', { name: 'Notiz oder Foto hinzufügen' })).toHaveCount(0);
   await page.keyboard.press('Escape');
 
+  const original = await apiRequest<Record<string, unknown>>(page, 'GET', `/planting-plans/${planId}/?across_seasons=true`);
+  const dateMode = page.getByRole('button', { name: /^Terminansicht / });
+  await dateMode.click();
+  await page.getByRole('menuitemradio', { name: 'Tatsächlich', exact: true }).click();
+  const harvestStart = carried.locator('[data-field="harvest_date"]');
+  await expect(harvestStart).toHaveText('—');
+  await expect(harvestStart).toHaveClass(/ofp-cell-calculated/);
+  await harvestStart.press('Enter');
+  const actualStart = harvestStart.getByRole('textbox', { name: 'Ist-Erntebeginn' });
+  await expect(actualStart).toBeFocused();
+  await actualStart.fill('11.07.2026');
+  await actualStart.press('Enter');
+  await expect(harvestStart).toHaveText('11.7.2026');
+  await expect(harvestStart).toHaveClass(/ofp-cell-calculated/);
+  await dateMode.focus();
+  await page.screenshot({ path: info.outputPath('carried-harvest-grid.png'), animations: 'disabled' });
+  await dateMode.click();
+  await page.getByRole('menuitemradio', { name: 'Geplant', exact: true }).click();
+  await harvestStart.press('Enter');
+  await expect(actualStart).toHaveCount(0);
+
+  await page.setViewportSize({ width: 375, height: 800 });
+  await expect(dateMode).toHaveCount(0);
+  const garlicCard = page.locator(`[data-mobile-card-id="${planId}"]`);
+  await garlicCard.getByRole('button', { name: /^Knoblauch/ }).click();
+  const harvestDates = page.getByRole('heading', { name: 'Erntetermine', exact: true }).locator('..');
+  await expect(harvestDates.getByText('11.7.2026', { exact: true })).toBeVisible();
+  await harvestDates.getByRole('button', { name: 'Ist-Termine erfassen' }).click();
+  await harvestDates.getByLabel('Ist-Ernteende', { exact: true }).fill('2026-07-21');
+  await harvestDates.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(harvestDates.getByText('21.7.2026', { exact: true })).toBeVisible();
+  await page.screenshot({ path: info.outputPath('carried-harvest-details.png'), animations: 'disabled' });
+  expect(await apiRequest(page, 'GET', `/planting-plans/${planId}/?across_seasons=true`)).toMatchObject({
+    season: original.season, bed: original.bed, planting_date: original.planting_date,
+    harvest_date: original.harvest_date, harvest_end_date: original.harvest_end_date,
+    actual_harvest_start_date: '2026-07-11', recorded_harvest_end_date: '2026-07-21',
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/app/planting-plans');
   await search.fill('Buschbohne');
   const bean = tableRows.filter({ hasText: 'Buschbohne' }).filter({ has: beanBed });
   const companionWarning = bean.getByRole('img', { name: 'Schlechte Nachbarn auf dem Beet' });

@@ -1805,7 +1805,7 @@
     "title": "Ausgewählte Kulturen löschen",
     "scopeSelected": "Prüfe die ausgewählten Kulturen und die einbezogenen Sorten.",
     "trashNotice": "Die Kulturen werden mit ihren Saatgutdaten in den Papierkorb verschoben. Einträge in der Kulturbibliothek bleiben erhalten.",
-    "deleteVarieties": "Sorten mitlöschen",
+    "deleteVarieties": "Weitere erforderliche Sorten mitlöschen",
     "showCrops": "Betroffene Kulturen anzeigen",
     "empty": "Diese Auswahl enthält keine aktiven Kulturen.",
     "missing": "Einige ausgewählte Kulturen sind nicht mehr verfügbar. Aktualisiere die Auswahl.",

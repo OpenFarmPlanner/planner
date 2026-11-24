@@ -15,6 +15,7 @@ import { SpecificPropertiesSection } from './sections/SpecificPropertiesSection'
  */
 
 import { GerminationSection } from './sections/GerminationSection';
+import { LifeCycleFields } from './sections/LifeCycleFields';
 import { SiteHealthSection } from './sections/SiteHealthSection';
 import { PlantHealthField } from './sections/PlantHealthField';
 import { collectLocalPlantHealth, mergeOfficialPlantHealth } from './plantHealth';
@@ -35,6 +36,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Divider,
   Alert,
   Box,
   Button,
@@ -1345,6 +1347,7 @@ export function CropForm({
     getFieldHighlightSx,
     getFieldPinProps,
   };
+  const isPerennial = (formData.life_cycle || inheritedLifeCycle) === 'perennial';
 
   return (
     <Dialog
@@ -1527,10 +1530,12 @@ export function CropForm({
               ) : null}
             />
             {/* Section order (the same for Kultur and Sorte): general, crop
-                rotation (both in BasicInfoSection), timing, spacing, yield,
+                rotation (both in BasicInfoSection), life cycle, timing, spacing, yield,
                 seed demand, time windows, germination, site and health,
                 companion planting, display colour, notes. */}
-            <TimingSection {...sectionProps} isPerennial={(formData.life_cycle || inheritedLifeCycle) === 'perennial'} />
+            <Divider aria-hidden />
+            <LifeCycleFields {...sectionProps} isPerennial={isPerennial} inheritedStandingTime={inheritedStandingTime} />
+            <TimingSection {...sectionProps} isPerennial={isPerennial} />
             <SpacingSection {...sectionProps} />
             <YieldSection {...sectionProps} showDefaultHarvestUnit={isProjectForm} />
             <SeedingSection
@@ -1550,8 +1555,6 @@ export function CropForm({
             <GerminationSection {...sectionProps} />
             <SiteHealthSection {...sectionProps}
               inheritedLight={inheritedLight}
-              inheritedLifeCycle={inheritedLifeCycle}
-              inheritedStandingTime={inheritedStandingTime}
               plantHealthField={<PlantHealthField contextualHelp
               showHelp={!isProjectForm}
               value={formData.plant_health ?? null}

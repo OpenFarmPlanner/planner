@@ -213,6 +213,9 @@ table of what is and isn't implemented.
   backend runs under xdist, and where the runtime actually goes, plus the
   Docker-based cross-browser suite (Chromium/Firefox/WebKit, desktop and
   mobile) with deterministic layout assertions and failure artifacts.
+- [`test-coverage-audit-2026-11-23.md`](./test-coverage-audit-2026-11-23.md) —
+  revision-pinned assertions for critical write workflows, required CI checks
+  and confirmed regression-test gaps.
 - [`frontend-hotspots.md`](./frontend-hotspots.md) — measured responsibilities
   and coupling of large React components, the pure crop-form draft extraction
   and deliberate state/Compiler boundaries.

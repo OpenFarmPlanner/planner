@@ -1852,7 +1852,7 @@
     "title": "Elimina le colture selezionate",
     "scopeSelected": "Controlla le colture selezionate e le varietà incluse.",
     "trashNotice": "Le colture e i dati delle sementi vengono spostati nel cestino. Le voci della biblioteca condivisa restano disponibili.",
-    "deleteVarieties": "Elimina anche le varietà",
+    "deleteVarieties": "Includi le altre varietà necessarie",
     "showCrops": "Mostra le colture interessate",
     "empty": "Questa selezione non contiene colture attive.",
     "missing": "Alcune colture selezionate non sono più disponibili. Aggiorna la selezione.",

@@ -242,6 +242,15 @@ describe('getOccupancyCalendarRange', () => {
     expect(getOccupancyCalendarRange([])).toBeNull();
     expect(getOccupancyCalendarRange([{ id: 1, bed: 100, planting_date: null }])).toBeNull();
   });
+
+  it('keeps a late recorded harvest out of the next season’s occupancy range', () => {
+    const range = getOccupancyCalendarRange([{
+      id: 1, bed: 100, carried_over: true,
+      planting_date: '2025-10-02', harvest_end_date: '2026-06-20', occupancy_end_date: '2026-06-20',
+      actual_harvest_start_date: '2026-06-25', recorded_harvest_end_date: '2026-07-05',
+    }], '2026-07-01', '2026-12-31');
+    expect(range).toBeNull();
+  });
 });
 
 describe('getSeedlingCalendarRange', () => {

@@ -65,6 +65,11 @@ const AREA_INPUT_SPACING_MISSING_MESSAGE =
   'crop spacing data is missing or invalid. cannot calculate area from plant count.';
 
 const backendMessageMap: Record<string, string> = {
+  'the harvest end must be on or after the harvest start.': 'plantingPlans:actualDates.harvestErrors.order',
+  'use a date within the crop’s occupancy.': 'plantingPlans:actualDates.harvestErrors.occupancy',
+  'use a date for the selected harvest occurrence.': 'plantingPlans:actualDates.harvestErrors.occurrence',
+  'recorded harvests must be ordered by occurrence and cannot overlap.': 'plantingPlans:actualDates.harvestErrors.overlap',
+  'select a harvest occurrence in this season.': 'plantingPlans:actualDates.harvestErrors.season',
   'this field is required.': 'validation.required',
   'a crop with this name already exists.': 'validation.cropNameUnique',
   'a crop with this name and variety already exists.': 'form.duplicateNameVariety',

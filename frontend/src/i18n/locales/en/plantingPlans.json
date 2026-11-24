@@ -498,7 +498,20 @@
       "sqm": "Enter a non-negative area with up to three decimal places."
     }
   },
+  "fields": {
+    "start_date": "Actual harvest start",
+    "end_date": "Actual harvest end",
+    "year": "Harvest year"
+  },
   "actualDates": {
+    "harvestOccurrence": "Harvest dates {{year}}",
+    "harvestErrors": {
+      "order": "Harvest must end on or after it starts.",
+      "occupancy": "Enter a date while the crop occupies the bed.",
+      "occurrence": "Enter a date for the selected harvest occurrence.",
+      "overlap": "Recorded harvests must be in order and cannot overlap.",
+      "season": "Select a harvest occurrence in this season."
+    },
     "plannedCardLabels": {
       "sowing": "Planned sowing date",
       "transplanting": "Planned transplanting date"

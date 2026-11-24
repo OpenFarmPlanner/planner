@@ -2,7 +2,8 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { Alert, Box, Button, IconButton, InputAdornment, Stack, TextField, Typography } from '@mui/material';
 import ClearIcon from '@mui/icons-material/Clear';
 import { plantingPlanAPI } from '../api/api';
-import type { PlantingPlan, PlantingPlanActualDates, Season } from '../api/types';
+import { extractApiErrorMessage } from '../api/errors';
+import type { HarvestActualOccurrence, PlantingPlan, PlantingPlanActualDates, Season } from '../api/types';
 import { DetailSection } from '../components/layout/DetailPrimitives';
 import { useTranslation } from '../i18n';
 import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
@@ -67,30 +68,36 @@ interface PlantingPlanExecutionDatesProps {
   plan: PlantingPlan & { id: number };
   group: 'planting' | 'harvest';
   season?: Season;
+  occurrence?: HarvestActualOccurrence;
+  showOccurrenceYear?: boolean;
   observedFirstHarvest?: string | null;
   editable: boolean;
-  onSaved: (dates: PlantingPlanActualDates & Pick<PlantingPlan, 'seasonal_harvest'>) => void;
+  onSaved: (dates: PlantingPlanActualDates & Pick<PlantingPlan, 'seasonal_harvest' | 'harvest_actual_occurrences'>) => void;
   onDirtyChange: (dirty: boolean) => void;
 }
 
 export function PlantingPlanExecutionDates({
-  plan, group, season, observedFirstHarvest, editable, onSaved, onDirtyChange,
+  plan, group, season, occurrence, showOccurrenceYear, observedFirstHarvest, editable, onSaved, onDirtyChange,
 }: PlantingPlanExecutionDatesProps) {
   const { t, i18n } = useTranslation(['plantingPlans', 'common']);
   const [draft, setDraft] = useState<PlantingPlanActualDates | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saveFailed, setSaveFailed] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const editButton = useRef<HTMLButtonElement>(null);
   const restoreFocus = useRef(false);
   const locale = resolveSeasonDateLocale(i18n);
   const isHarvest = group === 'harvest';
-  const dates = isHarvest ? getDetailHarvestDates(plan, season)
+  const dates = isHarvest ? getDetailHarvestDates(plan, season, occurrence)
     : getPlanActivityDates(plan).filter(({ activity }) => activity !== 'harvestStart' && activity !== 'harvestEnd');
+  const saved: PlantingPlanActualDates = occurrence ? {
+    actual_harvest_start_date: occurrence.actual_start_date,
+    recorded_harvest_end_date: occurrence.actual_end_date,
+  } : plan;
   const visibleDates = dates.filter(date => date.planned !== null || date.actual !== null);
   const firstEditActivity = (visibleDates[0] ?? dates[0]).activity;
   const showObserved = isHarvest && observedFirstHarvest && !dates.find(date => date.activity === 'harvestStart')?.actual;
   const hasChanges = (values: PlantingPlanActualDates) => Object.entries(values).some(([field, value]) =>
-    value !== (plan[field as keyof PlantingPlanActualDates] ?? null),
+    value !== (saved[field as keyof PlantingPlanActualDates] ?? null),
   );
 
   useEffect(() => {
@@ -103,7 +110,7 @@ export function PlantingPlanExecutionDates({
   const close = () => {
     restoreFocus.current = true;
     setDraft(null);
-    setSaveFailed(false);
+    setSaveError('');
     onDirtyChange(false);
   };
 
@@ -116,24 +123,34 @@ export function PlantingPlanExecutionDates({
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!draft || saving) return;
-    const changes = Object.fromEntries(Object.entries(draft).filter(([field, value]) =>
-      (plan[field as keyof PlantingPlanActualDates] ?? null) !== value,
+    const changes: PlantingPlanActualDates = Object.fromEntries(Object.entries(draft).filter(([field, value]) =>
+      (saved[field as keyof PlantingPlanActualDates] ?? null) !== value,
     ));
     if (!Object.keys(changes).length) {
       close();
       return;
     }
     setSaving(true);
-    setSaveFailed(false);
+    setSaveError('');
     try {
-      const { data } = await plantingPlanAPI.patch(plan.id, changes);
-      onSaved({
-        ...Object.fromEntries(Object.keys(changes).map(field => [field, data[field as keyof PlantingPlanActualDates]])),
-        seasonal_harvest: data.seasonal_harvest,
-      });
+      if (occurrence && season) {
+        const { data } = await plantingPlanAPI.saveHarvestActualDates(plan.id, season.id, {
+          year: occurrence.year,
+          start_date: changes.actual_harvest_start_date,
+          end_date: changes.recorded_harvest_end_date,
+        });
+        onSaved(data);
+      } else {
+        const { data } = await plantingPlanAPI.patch(plan.id, changes);
+        onSaved({
+          ...Object.fromEntries(Object.keys(changes).map(field => [field, data[field as keyof PlantingPlanActualDates]])),
+          seasonal_harvest: data.seasonal_harvest,
+          harvest_actual_occurrences: data.harvest_actual_occurrences,
+        });
+      }
       close();
-    } catch {
-      setSaveFailed(true);
+    } catch (failure) {
+      setSaveError(extractApiErrorMessage(failure, t, t('actualDates.saveError')));
     } finally {
       setSaving(false);
     }
@@ -141,7 +158,9 @@ export function PlantingPlanExecutionDates({
 
   if (!isHarvest && !editable && !visibleDates.length) return null;
   return (
-    <DetailSection title={t(isHarvest ? 'details.harvestDates' : 'details.plantingDates')} outlined={!isHarvest}>
+    <DetailSection title={showOccurrenceYear && occurrence?.year != null
+      ? t('actualDates.harvestOccurrence', { year: occurrence.year })
+      : t(isHarvest ? 'details.harvestDates' : 'details.plantingDates')} outlined={!isHarvest}>
       {draft ? (
         <Stack component="form" spacing={1.5} onSubmit={event => { void save(event); }}
           onKeyDown={event => { if (event.key === 'Escape' && !saving) { event.stopPropagation(); close(); } }}>
@@ -152,7 +171,7 @@ export function PlantingPlanExecutionDates({
                 <ActualPlanDateField
                   key={field}
                   label={t(`actualDates.actualLabels.${date.activity}`)}
-                  value={(field in draft ? draft[field] : plan[field]) ?? ''}
+                  value={(field in draft ? draft[field] : saved[field]) ?? ''}
                   onChange={value => updateDate(field, value || null)}
                   disabled={saving}
                   autoFocus={date.activity === firstEditActivity}
@@ -163,7 +182,7 @@ export function PlantingPlanExecutionDates({
               );
             })}
           </Box>
-          {saveFailed && <Alert severity="error">{t('actualDates.saveError')}</Alert>}
+          {saveError && <Alert severity="error">{saveError}</Alert>}
           <Stack direction="row" spacing={1.5}>
             <Button onClick={close} disabled={saving}>{t('common:actions.cancel')}</Button>
             <Button type="submit" variant="contained" disabled={saving || !hasChanges(draft)}>{t('common:actions.save')}</Button>

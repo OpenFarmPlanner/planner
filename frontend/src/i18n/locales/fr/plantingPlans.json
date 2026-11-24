@@ -510,7 +510,20 @@
       "sqm": "Saisis une surface positive ou nulle avec trois décimales au maximum."
     }
   },
+  "fields": {
+    "start_date": "Date réelle de début de récolte",
+    "end_date": "Date réelle de fin de récolte",
+    "year": "Année de récolte"
+  },
   "actualDates": {
+    "harvestOccurrence": "Dates de récolte {{year}}",
+    "harvestErrors": {
+      "order": "La fin de la récolte doit coïncider avec son début ou lui être postérieure.",
+      "occupancy": "Saisissez une date pendant laquelle la culture occupe la planche.",
+      "occurrence": "Saisissez une date pour la récolte sélectionnée.",
+      "overlap": "Les récoltes enregistrées doivent se suivre sans se chevaucher.",
+      "season": "Sélectionnez une récolte de cette saison."
+    },
     "plannedCardLabels": {
       "sowing": "Date de semis prévue",
       "transplanting": "Date de plantation prévue"

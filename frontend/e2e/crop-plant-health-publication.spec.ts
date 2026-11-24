@@ -273,9 +273,10 @@ test.describe('plant-health hierarchy, order and contextual help', () => {
       expect(headings).toEqual(expect.arrayContaining(sectionOrder.slice(0, 8)));
       expect(headings).toEqual([...headings].sort((a, b) => sectionOrder.indexOf(a) - sectionOrder.indexOf(b)));
       expect(headings).not.toContain(de.plantHealth.label);
-      await precedes(container, [de.form.cultivationType, de.form.growthDurationDays, de.form.harvestDurationDays]);
+      await precedes(container, [de.siteHealth.fields.life_cycle, de.form.sectionTiming, de.form.cultivationType,
+        de.form.growthDurationDays, de.form.harvestDurationDays]);
       await precedes(container, [de.siteHealth.fields.light_requirement, de.siteHealth.fields.water_requirement,
-        de.siteHealth.fields.life_cycle, de.siteHealth.fields.winter_hardiness, de.plantHealth.label, de.plantHealth.notes]);
+        de.siteHealth.fields.winter_hardiness, de.plantHealth.label, de.plantHealth.notes]);
       await expect(container.getByText(de.plantHealth.associationHint, { exact: true })).toHaveCount(0);
       await expect(container.getByText(de.plantHealth.relationshipsActionHint, { exact: true })).toHaveCount(0);
     };
