@@ -398,14 +398,19 @@ export function buildHierarchyRowsFromIndex(
   return hierarchyRows;
 }
 
-/**
- * Creates a reusable projector that materializes hierarchy rows while reusing row objects
- * for unchanged nodes. This reduces object churn on frequent expand/collapse toggles.
- */
-export function createHierarchyRowsProjector(hierarchyIndex: HierarchyIndex) {
-  const locationRows = new Map<string, HierarchyRow>();
-  const fieldRows = new Map<string, HierarchyRow>();
-  const bedRows = new Map<number, HierarchyRow>();
+export function createHierarchyRowCache() {
+  return {
+    locations: new WeakMap<Location, Map<string, HierarchyRow>>(),
+    fields: new WeakMap<Field, Map<string, { location?: Location; row: HierarchyRow }>>(),
+    beds: new WeakMap<Bed, { field?: Field; location?: Location; row: HierarchyRow }>(),
+  };
+}
+
+/** Keep row identity across expansion and saves while its entity and inherited values are unchanged. */
+export function createHierarchyRowsProjector(
+  hierarchyIndex: HierarchyIndex,
+  cache = createHierarchyRowCache(),
+) {
   const locationsById = new Map<number, Location>();
   hierarchyIndex.sortedLocations.forEach((location) => {
     if (location.id !== undefined) locationsById.set(location.id, location);
@@ -423,8 +428,9 @@ export function createHierarchyRowsProjector(hierarchyIndex: HierarchyIndex) {
     hasChildren: boolean,
     expanded: boolean,
   ): HierarchyRow => {
-    const key = `${location.id}:${expanded ? '1' : '0'}`;
-    const cached = locationRows.get(key);
+    const key = `${hasChildren}:${expanded}`;
+    const variants = cache.locations.get(location) ?? new Map<string, HierarchyRow>();
+    const cached = variants.get(key);
     if (cached) {
       return cached;
     }
@@ -443,7 +449,8 @@ export function createHierarchyRowsProjector(hierarchyIndex: HierarchyIndex) {
       ...ownSiteConditions(location),
       ...resolveRowSiteConditions(buildSiteConditionChain({ location })),
     };
-    locationRows.set(key, row);
+    variants.set(key, row);
+    cache.locations.set(location, variants);
     return row;
   };
 
@@ -455,11 +462,11 @@ export function createHierarchyRowsProjector(hierarchyIndex: HierarchyIndex) {
     hasChildren: boolean,
     expanded: boolean,
   ): HierarchyRow => {
-    const key = `${field.id}:${level}:${parentId ?? ''}:${locationId ?? ''}:${expanded ? '1' : '0'}`;
-    const cached = fieldRows.get(key);
-    if (cached) {
-      return cached;
-    }
+    const location = locationsById.get(field.location);
+    const key = `${level}:${parentId ?? ''}:${locationId ?? ''}:${hasChildren}:${expanded}`;
+    const variants = cache.fields.get(field) ?? new Map<string, { location?: Location; row: HierarchyRow }>();
+    const cached = variants.get(key);
+    if (cached && cached.location === location) return cached.row;
 
     const row: HierarchyRow = {
       id: `field-${field.id}`,
@@ -474,15 +481,13 @@ export function createHierarchyRowsProjector(hierarchyIndex: HierarchyIndex) {
       width_m: field.width_m,
       notes: field.notes,
       ...ownSiteConditions(field),
-      ...resolveRowSiteConditions(buildSiteConditionChain({
-        field,
-        location: locationsById.get(field.location),
-      })),
+      ...resolveRowSiteConditions(buildSiteConditionChain({ field, location })),
       isNew: field.id! < 0,
       ...(parentId ? { parentId } : {}),
       ...(locationId !== undefined ? { locationId } : {}),
     };
-    fieldRows.set(key, row);
+    variants.set(key, { location, row });
+    cache.fields.set(field, variants);
     return row;
   };
 
@@ -495,9 +500,12 @@ export function createHierarchyRowsProjector(hierarchyIndex: HierarchyIndex) {
     locationId: number | undefined,
   ): HierarchyRow => {
     const bedId = bed.id!;
-    const cached = bedRows.get(bedId);
-    if (cached) {
-      return cached;
+    const field = fieldsById.get(bed.field);
+    const location = field ? locationsById.get(field.location) : undefined;
+    const cached = cache.beds.get(bed);
+    if (cached && cached.field === field && cached.location === location
+      && cached.row.level === level && cached.row.parentId === parentId && cached.row.locationId === locationId) {
+      return cached.row;
     }
 
     const row: HierarchyRow = {
@@ -513,21 +521,14 @@ export function createHierarchyRowsProjector(hierarchyIndex: HierarchyIndex) {
       width_m: bed.width_m,
       notes: bed.notes,
       ...ownSiteConditions(bed),
-      ...(() => {
-        const parentField = fieldsById.get(bed.field);
-        return resolveRowSiteConditions(buildSiteConditionChain({
-          bed,
-          field: parentField,
-          location: parentField ? locationsById.get(parentField.location) : undefined,
-        }));
-      })(),
+      ...resolveRowSiteConditions(buildSiteConditionChain({ bed, field, location })),
       fieldId,
       bedId,
       hasChildren: false,
       isNew: bedId < 0,
       ...(locationId !== undefined ? { locationId } : {}),
     };
-    bedRows.set(bedId, row);
+    cache.beds.set(bed, { field, location, row });
     return row;
   };
 

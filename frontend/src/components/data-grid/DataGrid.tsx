@@ -27,8 +27,6 @@ import {
   GridCell,
   GridPagination,
   GridPreferencePanelsValue,
-  GridRow,
-  type GridRowProps,
   GridRowEditStopReasons,
   GridRowModes,
   useGridApiContext,
@@ -170,7 +168,8 @@ export type {
   NotesFieldConfig,
 } from './types';
 import { AppTooltip } from '../AppTooltip';
-import { createGridRowSaveStatus, GridRowSaveStatusContext, useGridRowSaving } from './GridRowSaveStatus';
+import { createGridRowSaveStatus, GridRowSaveStatusContext, gridRowSaveStatusSx } from './GridRowSaveStatus';
+import { GridRowWithSaveStatus } from './GridRowWithSaveStatus';
 import { TruncatedTextWithTooltip } from '../TruncatedTextWithTooltip';
 import {
   isSelectEditMenuCloseOutsideElement,
@@ -230,11 +229,6 @@ const GridCellWithReadOnlyReason = forwardRef<HTMLDivElement, GridCellProps & {
   const reason = resolveReadOnlyReason?.(row, field);
   return <GridCell {...props} ref={ref} aria-readonly={reason === undefined ? undefined : Boolean(reason)}
     aria-description={reason ?? undefined} />;
-});
-
-const GridRowWithSaveStatus = forwardRef<HTMLDivElement, GridRowProps>(function GridRowWithSaveStatus(props, ref) {
-  const saving = useGridRowSaving(String(props.rowId));
-  return <GridRow {...props} ref={ref} aria-busy={saving || undefined} />;
 });
 
 export function EditableDataGrid<T extends EditableRow>({
@@ -2371,9 +2365,7 @@ export function EditableDataGrid<T extends EditableRow>({
     '& .MuiDataGrid-row.ofp-row-long-press .MuiDataGrid-cell': {
       bgcolor: 'action.selected',
     },
-    '& .MuiDataGrid-row[aria-busy="true"], & .MuiDataGrid-row[aria-busy="true"] :is(.MuiDataGrid-cell, input)': {
-      cursor: 'progress',
-    },
+    ...gridRowSaveStatusSx,
     ...(shouldDisableTrailingFiller ? {
       '& .MuiDataGrid-filler': { display: 'none' },
       '& .MuiDataGrid-scrollbarFiller': { display: 'none' },

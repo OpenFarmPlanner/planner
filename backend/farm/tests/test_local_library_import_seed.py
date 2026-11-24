@@ -897,3 +897,46 @@ class PlantingPlanEditBenchmarkSeedTests(TestCase):
         )
         with self.assertRaises(CommandError):
             call_command("seed_planting_plan_edit_benchmark", apply=True, **self.arguments)
+
+
+@override_settings(DJANGO_ENV="development")
+class GrowingAreaEditBenchmarkSeedTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="growing-area-benchmark-owner")
+        self.arguments = {
+            "username": self.user.username,
+            "database_name": str(connection.settings_dict["NAME"]),
+            "beds": 24,
+            "stdout": StringIO(),
+        }
+        environment = patch.dict("os.environ", {"OFP_LOCAL_TEST_DATA": "1"})
+        environment.start()
+        self.addCleanup(environment.stop)
+
+    def test_previews_and_preserves_edits_when_reapplied(self):
+        slug = f"ofp-local-growing-area-edit-benchmark-24-{self.user.pk}"
+        call_command("seed_growing_area_edit_benchmark", **self.arguments)
+        self.assertFalse(Project.objects.filter(slug=slug).exists())
+
+        call_command("seed_growing_area_edit_benchmark", apply=True, **self.arguments)
+        project = Project.objects.get(slug=slug)
+        self.assertEqual(project.locations.count(), 2)
+        self.assertEqual(project.fields.count(), 4)
+        self.assertEqual(project.beds.count(), 24)
+        bed = project.beds.earliest("id")
+        bed.notes = "Keep local notes"
+        bed.save(update_fields=["notes"])
+
+        call_command("seed_growing_area_edit_benchmark", apply=True, **self.arguments)
+        self.assertEqual(project.beds.count(), 24)
+        bed.refresh_from_db()
+        self.assertEqual(bed.notes, "Keep local notes")
+
+    def test_refuses_an_existing_project_with_a_foreign_marker(self):
+        project = Project.objects.create(
+            slug=f"ofp-local-growing-area-edit-benchmark-24-{self.user.pk}",
+            name="Unrelated project",
+        )
+        with self.assertRaises(CommandError):
+            call_command("seed_growing_area_edit_benchmark", apply=True, **self.arguments)
+        self.assertFalse(project.beds.exists())

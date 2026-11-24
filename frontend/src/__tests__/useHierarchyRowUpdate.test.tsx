@@ -94,7 +94,6 @@ type Harness = {
   setRowModesModel: ReturnType<typeof vi.fn>;
   setError: ReturnType<typeof vi.fn>;
   setDraftValidationWarning: ReturnType<typeof vi.fn>;
-  fetchData: ReturnType<typeof vi.fn>;
   saveBed: ReturnType<typeof vi.fn>;
   onUnsavedMissingName: ReturnType<typeof vi.fn>;
 };
@@ -119,7 +118,6 @@ const setup = (overrides: Partial<Harness> = {}) => {
     setRowModesModel: vi.fn(),
     setError: vi.fn(),
     setDraftValidationWarning: vi.fn(),
-    fetchData: vi.fn().mockResolvedValue(undefined),
     saveBed: vi.fn(),
     onUnsavedMissingName: vi.fn(),
     ...overrides,
@@ -155,7 +153,6 @@ const setup = (overrides: Partial<Harness> = {}) => {
     setRowModesModel: harness.setRowModesModel as never,
     setError: harness.setError,
     setDraftValidationWarning: harness.setDraftValidationWarning,
-    fetchData: harness.fetchData,
     saveBed: harness.saveBed,
     onUnsavedMissingName: harness.onUnsavedMissingName,
     t,
@@ -231,6 +228,15 @@ describe('processRowUpdate — nameless rows', () => {
 });
 
 describe('processRowUpdate — bed rows', () => {
+  it('reuses a saved bed when localized dimensions and inherited values are unchanged', async () => {
+    const original = bedRow({ length_m: 8, width_m: 1.2, area_sqm: 9.6, light_condition: null });
+    const { result, harness } = setup({ rowsById: new Map([[String(original.id), original]]) });
+    const draft = { ...original, length_m: '8,0', width_m: '1,2', area_sqm: '9,6', light_condition: '' };
+    await expect(result.current.processRowUpdate(draft)).resolves.toBe(original);
+    expect(harness.saveBed).not.toHaveBeenCalled();
+    expect(harness.setBeds).not.toHaveBeenCalled();
+  });
+
   it('rejects a name another bed in the same field already uses', async () => {
     const { result, harness } = setup({
       beds: [bed({ id: 2, field: 1, name: 'Beet A' })],

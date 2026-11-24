@@ -22,7 +22,7 @@ export function useBedOperations(
   const isDuplicatingRef = useRef(false);
   const draftPrefillsRef = useRef(new Map<number, BedPrefill>());
 
-  const addBed = (fieldId: number, prefill?: BedPrefill): number => {
+  const addBed = useCallback((fieldId: number, prefill?: BedPrefill): number => {
     const newBedId = -Date.now();
     const newBed: Bed = {
       id: newBedId,
@@ -43,7 +43,7 @@ export function useBedOperations(
 
     // Return the ID for setting edit mode
     return newBedId;
-  };
+  }, [setBeds]);
 
   /** A prefilled new bed row the user has not changed yet (Escape drops it like an empty one). */
   const isUntouchedPrefilledDraft = useCallback((row: HierarchyRow): boolean => {
@@ -51,7 +51,7 @@ export function useBedOperations(
     return prefill !== undefined && matchesHierarchyRowPrefill(row, prefill);
   }, []);
 
-  const saveBed = async (bedData: Partial<Bed> & { id: number; field: number }): Promise<Bed> => {
+  const saveBed = useCallback(async (bedData: Partial<Bed> & { id: number; field: number }): Promise<Bed> => {
     const isNew = bedData.id < 0;
 
     try {
@@ -95,7 +95,7 @@ export function useBedOperations(
       console.error('Error saving bed:', err);
       throw err;
     }
-  };
+  }, [setBeds, setError, t]);
 
   /**
    * Creates a copy of `source` right away: only length, width and the

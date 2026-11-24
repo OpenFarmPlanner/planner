@@ -90,7 +90,7 @@ test.describe('growing areas site conditions', () => {
 
   test('keeps a value picked with the mouse in the inline select', async ({ page, request }) => {
     await loginWithDeterministicProject(page, request, 'fields-site-conditions-inline', { loginAsAdmin: true });
-    const { field, sunnyBed, shadyBed } = await seedConditions(page, 'SC Inline');
+    const { location, field, sunnyBed, shadyBed } = await seedConditions(page, 'SC Inline');
     await page.goto('/app/fields-beds');
     await expect(page.locator(`[role="row"][data-id="${shadyBed.id}"]`)).toBeVisible();
 
@@ -117,6 +117,12 @@ test.describe('growing areas site conditions', () => {
     await expect(shadyLight.getByTestId('site-condition-light_condition')).toHaveAttribute('data-inherited', 'true');
     await expect.poll(async () => (await apiRequest<{ light_condition: string | null }>(page, 'GET', `/beds/${shadyBed.id}/`)).light_condition)
       .toBeNull();
+
+    await pickWithMouse(page, `location-${location.id}`, 'light_condition', 'Schattig');
+    const locationLight = page.locator(`[role="row"][data-id="location-${location.id}"] [data-field="light_condition"]`);
+    await expect(locationLight).toHaveText('Schattig');
+    await expect(shadyLight).toHaveText('Schattig');
+    await expect(shadyLight.getByTestId('site-condition-light_condition')).toHaveAttribute('data-inherited', 'true');
   });
   test('opens the inline select on Enter without saving the row', async ({ page, request }) => {
     await loginWithDeterministicProject(page, request, 'fields-site-conditions-enter', { loginAsAdmin: true });
