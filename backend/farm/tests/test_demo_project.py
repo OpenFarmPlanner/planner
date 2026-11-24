@@ -313,8 +313,8 @@ class DemoProjectServiceTests(TestCase):
                 text = DEMO_TEXT[resolve_demo_language(language)]
                 for location_key, first, second, bed_gap, parcel_gap in examples:
                     location = project.locations.get(name=text['locations'][location_key][0])
-                    self.assertEqual(location.bed_path_spacing_cm, bed_gap)
-                    self.assertEqual(location.parcel_path_spacing_cm, parcel_gap)
+                    self.assertEqual(location.bed_path_spacing_m, bed_gap / 100)
+                    self.assertEqual(location.parcel_path_spacing_m, parcel_gap / 100)
                     self.assertTrue(location.snap_to_path_spacing)
                     left, right = FieldLayout.objects.filter(location=location).order_by('x')
                     self.assertAlmostEqual(

@@ -92,6 +92,8 @@ class StructureApiTest(ProjectApiTestCase):
         }
         initial = self.client.get(url).data
         self.assertEqual({key: initial[key] for key in defaults}, defaults)
+        self.assertNotIn('bed_path_spacing_m', initial)
+        self.assertNotIn('parcel_path_spacing_m', initial)
 
         settings = {
             'bed_path_spacing_cm': 0,
@@ -104,6 +106,9 @@ class StructureApiTest(ProjectApiTestCase):
         self.assertEqual({key: read[key] for key in settings}, settings)
         self.assertEqual((read['length_m'], read['width_m'], read['area_sqm']), (40, 25, 1000))
         self.assertEqual(self.client.get(layouts_url).data, before)
+        self.location.refresh_from_db()
+        self.assertEqual(self.location.bed_path_spacing_m, 0)
+        self.assertEqual(self.location.parcel_path_spacing_m, 0.625)
 
         reset = self.client.patch(url, defaults, format='json')
         self.assertEqual(reset.status_code, status.HTTP_200_OK, reset.data)
@@ -126,7 +131,7 @@ class StructureApiTest(ProjectApiTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         foreign.refresh_from_db()
-        self.assertEqual(foreign.bed_path_spacing_cm, 30)
+        self.assertEqual(foreign.bed_path_spacing_m, 0.30)
 
     def test_spacing_patch_preserves_a_boundary_saved_after_the_location_was_read(self):
         Location.objects.filter(pk=self.location.pk).update(boundary_x=20, boundary_y=40)
@@ -138,7 +143,7 @@ class StructureApiTest(ProjectApiTestCase):
 
         self.location.refresh_from_db()
         self.assertEqual((self.location.boundary_x, self.location.boundary_y), (20, 40))
-        self.assertEqual(self.location.bed_path_spacing_cm, 45)
+        self.assertEqual(self.location.bed_path_spacing_m, 0.45)
 
     def test_location_create_and_update_with_agronomic_fields(self):
         create_response = self.client.post(

@@ -838,8 +838,8 @@ def _create_area_hierarchy(
             irrigation='unavailable',
             length_m=50.0,
             width_m=20.0,
-            bed_path_spacing_cm=45,
-            parcel_path_spacing_cm=100,
+            bed_path_spacing_m=0.45,
+            parcel_path_spacing_m=1.0,
             project=project,
         ),
         'lindenhof': Location.objects.create(

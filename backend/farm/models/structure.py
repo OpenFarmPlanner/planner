@@ -72,8 +72,8 @@ class SiteConditionsMixin(models.Model):
 
 class Location(SiteConditionsMixin, TimestampedModel):
     """A physical farm location that can contain multiple fields."""
-    DEFAULT_BED_PATH_SPACING_CM = 30.0
-    DEFAULT_PARCEL_PATH_SPACING_CM = 75.0
+    DEFAULT_BED_PATH_SPACING_M = 0.30
+    DEFAULT_PARCEL_PATH_SPACING_M = 0.75
 
     SOIL_TYPE_SAND = 'sand'
     SOIL_TYPE_LOAM = 'loam'
@@ -119,13 +119,13 @@ class Location(SiteConditionsMixin, TimestampedModel):
         null=True, blank=True,
         help_text='Graphical view: y of the boundary top-left corner (canvas units, not metres).',
     )
-    bed_path_spacing_cm = models.FloatField(
-        default=DEFAULT_BED_PATH_SPACING_CM,
-        help_text='Recommended path between sibling beds in cm.',
+    bed_path_spacing_m = models.FloatField(
+        default=DEFAULT_BED_PATH_SPACING_M,
+        help_text='Recommended path between sibling beds in metres.',
     )
-    parcel_path_spacing_cm = models.FloatField(
-        default=DEFAULT_PARCEL_PATH_SPACING_CM,
-        help_text='Recommended path between sibling parcels in cm.',
+    parcel_path_spacing_m = models.FloatField(
+        default=DEFAULT_PARCEL_PATH_SPACING_M,
+        help_text='Recommended path between sibling parcels in metres.',
     )
     snap_to_path_spacing = models.BooleanField(
         default=True, help_text='Enable snapping while arranging areas in the graphical view.',

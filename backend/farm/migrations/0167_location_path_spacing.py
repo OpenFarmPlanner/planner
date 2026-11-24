@@ -12,16 +12,16 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddField(
             model_name='location',
-            name='bed_path_spacing_cm',
+            name='bed_path_spacing_m',
             field=models.FloatField(
-                default=30.0, help_text='Recommended path between sibling beds in cm.',
+                default=0.30, help_text='Recommended path between sibling beds in metres.',
             ),
         ),
         migrations.AddField(
             model_name='location',
-            name='parcel_path_spacing_cm',
+            name='parcel_path_spacing_m',
             field=models.FloatField(
-                default=75.0, help_text='Recommended path between sibling parcels in cm.',
+                default=0.75, help_text='Recommended path between sibling parcels in metres.',
             ),
         ),
         migrations.AddField(
