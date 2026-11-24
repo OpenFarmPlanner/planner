@@ -2624,8 +2624,8 @@ new request. Explicit field or mode decisions in a failed group need fresh
 review before being submitted again. It refreshes project link indicators
 while retaining search and filters. [Import history and receipt replay](versioning-and-history.md#grouped-operations-and-imports)
 
-The Django admin dashboard counts successful bulk imports by receipt completion
-time and successful import undos by the undo receipt's creation time. It adds
+The Django admin dashboard counts successful bulk imports and import undos by
+receipt completion time. Older undo receipts use their creation time. It adds
 selection imports and applied linked updates from `CropLibraryUsageDay`, which
 stores counts by project, UTC date and outcome. These counters omit identities
 of individual users and crop details. Project deletion removes its counters,

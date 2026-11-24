@@ -3,7 +3,7 @@ from datetime import UTC, date, datetime, time, timedelta
 
 from django.db import connection
 from django.db.migrations.recorder import MigrationRecorder
-from django.db.models import Count, F, Sum
+from django.db.models import Count, F, Q, Sum
 from django.utils import timezone
 
 from farm.models import BatchOperation, CropLibraryUsageDay
@@ -78,8 +78,9 @@ def build_crop_library_operations(
         operations=Sum('count', default=0), projects=Count('project_id', distinct=True),
     )
     undos = receipts.filter(
+        Q(completed_at__range=(since, now))
+        | Q(completed_at__isnull=True, created_at__range=(since, now)),
         operation_type=BatchOperation.TYPE_REVERTED,
-        created_at__range=(since, now),
         context___library_import=True,
     ).aggregate(operations=Count('pk'), projects=Count('project_id', distinct=True))
     return CropLibraryOperations(

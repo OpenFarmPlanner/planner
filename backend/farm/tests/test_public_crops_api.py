@@ -168,6 +168,12 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         endpoint = f'/openfarmplanner/api/history/batch/{first.pk}/revert/'
         self.assertEqual(self.client.post(endpoint).status_code, 200)
         self.assertEqual(self.client.post(endpoint).status_code, 409)
+        first.refresh_from_db()
+        undo = BatchOperation.objects.get(
+            project=first.project, operation_type=BatchOperation.TYPE_REVERTED,
+        )
+        self.assertEqual(undo.completed_at, first.reverted_at)
+        self.assertIsNotNone(undo.completed_at)
         now = timezone.now()
         metrics = build_crop_library_operations(now, excluded_project_ids=excluded)
         self.assertEqual(metrics.bulk_imports, OperationTotal(3, 2))
@@ -175,6 +181,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
 
         cutoff = datetime.combine(metrics.start_day, time.min, tzinfo=UTC)
         before_cutoff = cutoff - timedelta(microseconds=1)
+        BatchOperation.objects.filter(pk=undo.pk).update(
+            created_at=before_cutoff, completed_at=cutoff,
+        )
         BatchOperation.objects.filter(pk=first.pk).update(
             created_at=before_cutoff, completed_at=cutoff,
         )
@@ -185,6 +194,15 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         metrics = build_crop_library_operations(now, excluded_project_ids=excluded)
         self.assertEqual(metrics.bulk_imports, OperationTotal(2, 2))
         self.assertEqual(metrics.import_undos, OperationTotal(1, 1))
+
+        BatchOperation.objects.filter(pk=undo.pk).update(completed_at=None)
+        self.assertEqual(build_crop_library_operations(
+            now, excluded_project_ids=excluded,
+        ).import_undos, OperationTotal(0, 0))
+        BatchOperation.objects.filter(pk=undo.pk).update(created_at=cutoff)
+        self.assertEqual(build_crop_library_operations(
+            now, excluded_project_ids=excluded,
+        ).import_undos, OperationTotal(1, 1))
 
     def test_dashboard_counts_a_multi_item_selection_once_after_rollback_and_retry(self) -> None:
         parent, varieties = self.selection_fixture()

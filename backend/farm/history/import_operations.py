@@ -374,7 +374,9 @@ def undo_crop_import(project: Project, batch: BatchOperation, *, user_name: str)
         with revision_batch(revert):
             apply_project_state(project, target, current)
             record_project_checkpoint(project, capture_project_state(project))
-        batch.reverted_at = timezone.now()
+        revert.completed_at = timezone.now()
+        revert.save(update_fields=["completed_at"])
+        batch.reverted_at = revert.completed_at
         batch.completed_at = batch.completed_at or batch.reverted_at
         batch.save(update_fields=["reverted_at", "completed_at"])
         return preview
