@@ -9,6 +9,7 @@ import { isContextMenuDismissGestureInProgress } from '../../utils/contextMenu';
 import { AppTooltip } from '../AppTooltip';
 import { isAnyContextMenuOpen } from '../contextMenu/contextMenuOpenState';
 import { useDialogEditCellOpenRequest } from '../data-grid/DialogEditCellContext';
+import { dismissGridTooltipForEdit, useGridTooltipScope } from '../data-grid/gridTooltipState';
 import { BED_PATH_SEPARATOR, type BedPickerOption, type BedPickerResult } from './bedPickerOptions';
 import { InlineBedPicker } from './InlineBedPicker';
 import { RotationCheckPanel } from './rotation/RotationCheckPanel';
@@ -40,6 +41,7 @@ export function PlantingPlanBedCell({
   onSelect, onAccept, endAdornment,
 }: PlantingPlanBedCellProps) {
   const { t } = useTranslation('plantingPlans');
+  const tooltipScope = useGridTooltipScope();
   const cellRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
   const rotationButtonRef = useRef<HTMLButtonElement>(null);
@@ -47,8 +49,6 @@ export function PlantingPlanBedCell({
   const pendingSelectionRef = useRef(false);
   const [editor, setEditor] = useState<{ anchor: HTMLElement; initialQuery: string } | null>(null);
   const [conflictAnchor, setConflictAnchor] = useState<HTMLButtonElement | null>(null);
-  const [pathInteraction, setPathInteraction] = useState(false);
-  const [rotationInteraction, setRotationInteraction] = useState(false);
   const [savingBed, setSavingBed] = useState(false);
   const [pendingAcceptance, setPendingAcceptance] = useState<boolean | null>(null);
   const [saveError, setSaveError] = useState(false);
@@ -58,15 +58,15 @@ export function PlantingPlanBedCell({
     const anchor = cellRef.current;
     if (readOnly || !anchor || pendingSelectionRef.current
       || isAnyContextMenuOpen() || isContextMenuDismissGestureInProgress()) return;
-    setPathInteraction(false);
     setEditor((opened) => opened ?? { anchor, initialQuery });
   }, [readOnly]);
   useDialogEditCellOpenRequest(rowId, field, openEditor);
 
   const closeEditor = useCallback((restoreFocus: boolean): void => {
+    dismissGridTooltipForEdit(tooltipScope);
     restoreFocusRef.current = restoreFocus;
     setEditor(null);
-  }, []);
+  }, [tooltipScope]);
   useLayoutEffect(() => {
     if (!editor && restoreFocusRef.current) {
       restoreFocusRef.current = false;
@@ -124,9 +124,8 @@ export function PlantingPlanBedCell({
         <>
           <AppTooltip
             title={tooltip}
-            open={!conflictAnchor && !rotationInteraction && (hasFocus || pathInteraction)}
-            onOpen={() => setPathInteraction(true)}
-            onClose={() => setPathInteraction(false)}
+            open={conflictAnchor ? false : undefined}
+            cellHasFocus={hasFocus}
             describeChild
             disableInteractive
           >
@@ -159,11 +158,7 @@ export function PlantingPlanBedCell({
             <ReadOnlyRotationWarning status={status} findings={rotation.findings} cultureLabel={rotation.cultureLabel} tabIndex={hasFocus ? 0 : -1} />
           )}
           {showRotation && (
-            <AppTooltip
-              title={statusTooltip}
-              onOpen={() => setRotationInteraction(true)}
-              onClose={() => setRotationInteraction(false)}
-            >
+            <AppTooltip title={statusTooltip}>
               <IconButton
                 ref={rotationButtonRef}
                 aria-label={label}
@@ -202,7 +197,6 @@ export function PlantingPlanBedCell({
           onClose={() => {
             if (pendingAcceptance !== null) return;
             setConflictAnchor(null);
-            setRotationInteraction(false);
           }}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
           transformOrigin={{ vertical: 'top', horizontal: 'right' }}

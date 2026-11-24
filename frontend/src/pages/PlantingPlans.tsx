@@ -90,6 +90,7 @@ import {
 } from "../components/data-grid";
 import { getCoupledFieldHeaderClassName } from "../components/data-grid/coupledFieldHeader";
 import { DateEditCell } from "../components/data-grid/DateEditCell";
+import { GridTooltipScope } from "../components/data-grid/GridTooltipScope";
 import { formatCalendarDate, formatSeasonDate, resolveSeasonDateLocale } from "../seasons/formatSeasonDate";
 import { usePlantingPlanGridAPI } from "../planting-plans/usePlantingPlanGridAPI";
 import type { RootLayoutOutletContext } from "../navigation/topbarTypes";
@@ -2639,6 +2640,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           sx={isMobile ? { position: 'fixed', top: '-9999px', left: 0, width: '100vw', height: 1, overflow: 'hidden', pointerEvents: 'none', visibility: 'hidden' } : undefined}
         >
           {!isMobile && hasPlans ? (
+            <GridTooltipScope editing={false}>
             <PlantingPlanSearchToolbar
               search={search}
               searchInputRef={searchInputRef}
@@ -2650,6 +2652,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               columnsButtonRef={setColumnsAnchorEl}
               viewControls={<PlantingPlanDateModeSelect mode={dateMode} onChange={setDateMode} />}
             />
+            </GridTooltipScope>
           ) : null}
           {!isMobile && showDesktopSearchEmptyState ? <PlantingPlanSearchEmptyState search={search} /> : null}
           {/* Collapsed rather than unmounted while nothing matches, so the grid

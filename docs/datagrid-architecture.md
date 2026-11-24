@@ -758,6 +758,20 @@ leaves no stale tooltip behind, and the next hover/focus/long press works
 normally. This covers mouse, keyboard (`ContextMenu`/`Shift+F10`) and touch
 long-press alike, because all three go through the same open state.
 
+### Tooltip ownership in editable grids
+
+`EditableDataGrid` and the Growing Areas list give their `AppTooltip` triggers
+a `GridTooltipScope`. The most recent eligible hover, keyboard focus or touch
+owns the pending opening and the popup. A later trigger replaces that request,
+so an old enter delay or exit transition cannot produce a second visible popup.
+
+Row editing and dedicated inline editors revoke the previous request. View-cell
+previews stay closed while editing, and focus restoration after save or cancel
+leaves them closed until a fresh interaction. Editor validation and row save or
+cancel actions still have access to their tooltips. Scroll, overlay visibility,
+and removal or reuse of the anchor also clear the current request. Only the
+active or pending trigger needs those DOM listeners.
+
 Truly native browser context menus — the ones the app deliberately does not
 intercept over inputs/`contenteditable` (`shouldOpenCustomContextMenu`) — are
 out of this mechanism's reach by definition; there is no event that says when

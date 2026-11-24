@@ -8,6 +8,7 @@ import { extractApiErrorMessage } from '../api/errors';
 import { AppTooltip } from '../components/AppTooltip';
 import { DateEditCell } from '../components/data-grid/DateEditCell';
 import { buildDialogEditCellKey, useDialogEditCellOpenRequest } from '../components/data-grid/DialogEditCellContext';
+import { dismissGridTooltipForEdit, useGridTooltipScope } from '../components/data-grid/gridTooltipState';
 import { FullCellTooltip } from '../components/data-grid/FullCellTooltip';
 import { parseGermanDateText, toGridDateValue, toIsoDateString } from '../components/data-grid/dateEditCellUtils';
 import { useTranslation } from '../i18n';
@@ -103,6 +104,7 @@ interface ActualPlanDateCellProps {
 
 export function ActualPlanDateCell({ params, children, drafts, getEditDates, onSaveActual }: ActualPlanDateCellProps) {
   const { t } = useTranslation(['plantingPlans', 'common']);
+  const tooltipScope = useGridTooltipScope();
   const { api, id, field, hasFocus } = params;
   const cellKey = buildDialogEditCellKey(id, field);
   const [draft, setDraft] = useState(() => drafts.get(cellKey));
@@ -136,6 +138,7 @@ export function ActualPlanDateCell({ params, children, drafts, getEditDates, onS
   };
   const close = (returnFocus: boolean) => {
     closing.current = true;
+    dismissGridTooltipForEdit(tooltipScope);
     updateDraft();
     if (returnFocus) focusCell();
   };
@@ -184,7 +187,7 @@ export function ActualPlanDateCell({ params, children, drafts, getEditDates, onS
     }
   };
 
-  return <AppTooltip title={error} open={hasFocus && Boolean(error)}>
+  return <AppTooltip title={error} open={hasFocus && Boolean(error)} allowedDuringEdit>
     <Box data-grid-dedicated-editor sx={{ width: '100%', minWidth: 0 }}>
       <DateEditCell key={editDates.activity} {...params} value={toGridDateValue(editDates.actual ?? editDates.planned)}
         ariaLabel={t(`actualDates.actualLabels.${editDates.activity}`)}
