@@ -76,6 +76,14 @@ actions through their own scrolling control panel, and try Fit to contents
 before and after resizing/fullscreen. No demo-data migration or new seed is
 needed: the existing three-location fixture demonstrates the flow.
 
+### Default bed dimensions
+
+The demo proposes a length of 10 m and a width of 1.2 m when you add a bed or
+open the bulk-create dialog. Project settings → General shows both editable
+defaults. For example, Salat 1 in Hofgarten has its own dimensions. Open a
+new-bed draft beside it to see the project values, then duplicate Salat 1 to
+verify its dimensions are copied.
+
 ### Crop rotation story
 
 The previous seasons rotate the plant families across the beds so the

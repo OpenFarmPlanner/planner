@@ -31,6 +31,7 @@ import { compareHierarchyNames, type HierarchySortConfig } from "../components/h
 import { useFieldDuplication } from "../components/hierarchy/hooks/useFieldDuplication";
 import type { Bed, BulkBedCreatePayload } from "../api/api";
 import { BulkBedCreateDialog } from "../components/hierarchy/BulkBedCreateDialog";
+import type { BedDimensions } from "../components/hierarchy/utils/bedDimensions";
 import { showGlobalSnackbar } from "../utils/globalSnackbar";
 import { useGrowingAreaSearch } from "../components/hierarchy/hooks/useGrowingAreaSearch";
 import {
@@ -46,6 +47,7 @@ interface FieldsBedsHierarchyMobileProps {
   onPendingDeletionCountChange?: (count: number) => void;
   /** Scopes the session-kept search and filters; null keeps them in memory only. */
   projectId?: number | null;
+  bedDefaults?: BedDimensions;
 }
 
 type SheetState =
@@ -59,6 +61,7 @@ function FieldsBedsHierarchyMobile({
   hierarchyData,
   onPendingDeletionCountChange,
   projectId = null,
+  bedDefaults,
 }: FieldsBedsHierarchyMobileProps) {
   const { t } = useTranslation(["hierarchy", "common"]);
   const navigate = useNavigate();
@@ -278,6 +281,7 @@ function FieldsBedsHierarchyMobile({
       ? {
           nodeType: sheetState.nodeType,
           parentId: sheetState.parentId,
+          bedDefaults: sheetState.nodeType === "bed" ? bedDefaults : undefined,
           locationId:
             sheetState.nodeType === "bed"
               ? fields.find((field) => field.id === sheetState.parentId)?.location
@@ -376,6 +380,7 @@ function FieldsBedsHierarchyMobile({
           open
           field={bulkCreateField}
           fieldBeds={getFieldBedsByName(bulkCreateField.id)}
+          bedDefaults={bedDefaults}
           onClose={() => setBulkCreateFieldId(null)}
           onCreate={handleBulkCreateBeds}
         />

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Bed, Field } from '../api/types';
 import { BulkBedCreateDialog } from '../components/hierarchy/BulkBedCreateDialog';
+import type { BedDimensions } from '../components/hierarchy/utils/bedDimensions';
 
 vi.mock('../i18n', () => ({
   useTranslation: () => ({
@@ -14,9 +15,10 @@ vi.mock('../i18n', () => ({
 
 const FIELD: Field = { id: 10, name: 'Nordfeld', location: 1, length_m: 20, width_m: 10 };
 
-const renderDialog = (fieldBeds: Bed[] = [], field: Field = FIELD, onCreate = vi.fn().mockResolvedValue(undefined)) => {
+const renderDialog = (fieldBeds: Bed[] = [], field: Field = FIELD, bedDefaults?: BedDimensions) => {
+  const onCreate = vi.fn().mockResolvedValue(undefined);
   render(
-    <BulkBedCreateDialog open field={field} fieldBeds={fieldBeds} onClose={vi.fn()} onCreate={onCreate} />,
+    <BulkBedCreateDialog open field={field} fieldBeds={fieldBeds} bedDefaults={bedDefaults} onClose={vi.fn()} onCreate={onCreate} />,
   );
   return { dialog: screen.getByRole('dialog'), onCreate };
 };
@@ -89,6 +91,37 @@ describe('BulkBedCreateDialog', () => {
     setDecimal(dialog, /dialogs.bulkCreateBeds.length/, '7');
     fireEvent.click(within(dialog).getByRole('radio', { name: 'dialogs.bulkCreateBeds.orientationLength' }));
     expect(length).toHaveValue('7');
+  });
+
+  it('uses project values in the preview and submits edits without reapplying a cleared default', () => {
+    const { dialog, onCreate } = renderDialog(
+      [{ id: 1, name: 'A 1', field: 10, length_m: 5, width_m: 2 }],
+      FIELD,
+      { length_m: 10, width_m: 1.23456789 },
+    );
+    const length = within(dialog).getByRole('textbox', { name: /dialogs.bulkCreateBeds.length/ });
+    const width = within(dialog).getByRole('textbox', { name: /dialogs.bulkCreateBeds.width/ });
+    expect(length).toHaveValue('10');
+    expect(width).toHaveValue('1,23456789');
+    expect(countField(dialog)).toHaveValue(6);
+    expect(within(dialog).getByText('A 2')).toBeVisible();
+
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'dialogs.bulkCreateBeds.orientationWidth' }));
+    expect(length).toHaveValue('10');
+    setDecimal(dialog, /dialogs.bulkCreateBeds.length/, '');
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'dialogs.bulkCreateBeds.orientationLength' }));
+    expect(length).toHaveValue('');
+    expect(within(dialog).getByRole('button', { name: 'dialogs.bulkCreateBeds.submitCount:6' })).toBeDisabled();
+    setDecimal(dialog, /dialogs.bulkCreateBeds.length/, '8');
+    fireEvent.change(countField(dialog), { target: { value: '2' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'dialogs.bulkCreateBeds.submitCount:2' }));
+    expect(onCreate).toHaveBeenCalledWith({
+      field: 10,
+      beds: [
+        { name: 'A 2', length_m: 8, width_m: 1.23456789 },
+        { name: 'A 3', length_m: 8, width_m: 1.23456789 },
+      ],
+    });
   });
 
   it('says when no room is left', () => {

@@ -3,6 +3,10 @@
   "noActiveProject": "Aucun projet actif sélectionné.",
   "projectLabel": "Projet : {{name}}",
   "currentProjectLabel": "Nom du projet",
+  "bedDefaults": {
+    "title": "Dimensions des planches par défaut",
+    "description": "Ces dimensions sont proposées à la création de nouvelles planches."
+  },
   "general": {
     "title": "Général",
     "save": "Enregistrer",

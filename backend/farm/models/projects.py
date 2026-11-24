@@ -61,6 +61,12 @@ class Project(TimestampedModel):
         max_length=3, blank=True, default='', validators=[validate_currency_code],
         help_text='Currency to prefill for new supplier offers. Empty uses the regional currency.',
     )
+    default_bed_length_m = models.FloatField(
+        null=True, blank=True, help_text='Length in meters to prefill when creating beds.',
+    )
+    default_bed_width_m = models.FloatField(
+        null=True, blank=True, help_text='Width in meters to prefill when creating beds.',
+    )
     is_active = models.BooleanField(default=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
     demo_seeded_at = models.DateTimeField(

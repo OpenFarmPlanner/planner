@@ -3,6 +3,10 @@
   "noActiveProject": "No hay ningún proyecto activo seleccionado.",
   "projectLabel": "Proyecto: {{name}}",
   "currentProjectLabel": "Nombre del proyecto",
+  "bedDefaults": {
+    "title": "Medidas predeterminadas de bancales",
+    "description": "Estas medidas se proponen al crear bancales."
+  },
   "general": {
     "title": "General",
     "save": "Guardar",

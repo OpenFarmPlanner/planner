@@ -3,6 +3,8 @@ export interface ProjectMembershipInfo {
   project_name: string;
   project_region?: ProjectRegion;
   project_default_currency?: string;
+  project_default_bed_length_m?: number | null;
+  project_default_bed_width_m?: number | null;
   role: 'admin' | 'member';
   is_demo_project?: boolean;
 }

@@ -9,13 +9,14 @@ import {
 interface LocalizedDecimalInputOptions {
   value: number | string | null | undefined;
   onValueChange: (value: number | null) => void;
+  formatOptions?: Intl.NumberFormatOptions;
 }
 
 /**
  * The text, change and blur handling behind `LocalizedDecimalField`, for an
  * input that is not a whole `TextField` (e.g. one bound of `RangeField`).
  */
-export function useLocalizedDecimalInput({ value, onValueChange }: LocalizedDecimalInputOptions) {
+export function useLocalizedDecimalInput({ value, onValueChange, formatOptions }: LocalizedDecimalInputOptions) {
   const { i18n } = useTranslation();
   const locale = resolveLocaleFromLanguage(i18n.resolvedLanguage ?? i18n.language);
   // While the user types, their exact text is shown (e.g. "0," on the way to
@@ -24,7 +25,7 @@ export function useLocalizedDecimalInput({ value, onValueChange }: LocalizedDeci
 
   const numericValue = typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
   const formattedValue = typeof numericValue === 'number' && Number.isFinite(numericValue)
-    ? formatLocalizedNumberForInput(numericValue, locale)
+    ? formatLocalizedNumberForInput(numericValue, locale, formatOptions)
     : '';
 
   return {

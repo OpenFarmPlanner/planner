@@ -62,6 +62,7 @@ import { renderGroupedContextMenuActions } from "../components/contextMenu/conte
 import { ConfirmationDialog } from "../components/feedback/ConfirmationDialog";
 import { HierarchyAddIcon } from "../components/hierarchy/HierarchyAddIcon";
 import { BulkBedCreateDialog } from "../components/hierarchy/BulkBedCreateDialog";
+import { getNewBedDimensions, type BedDimensions } from "../components/hierarchy/utils/bedDimensions";
 import { useFieldDuplication } from "../components/hierarchy/hooks/useFieldDuplication";
 import { nextFreeName } from "../components/hierarchy/utils/bedNaming";
 import { showGlobalSnackbar } from "../utils/globalSnackbar";
@@ -157,6 +158,7 @@ interface FieldsBedsHierarchyProps {
   /** Scopes the session-kept search and filters; null keeps them in memory only. */
   projectId?: number | null;
   userId?: number | null;
+  bedDefaults?: BedDimensions;
 }
 
 interface HierarchyRowAction {
@@ -186,6 +188,7 @@ function FieldsBedsHierarchy({
   suppressContextMenuHint = false,
   projectId = null,
   userId,
+  bedDefaults,
 }: FieldsBedsHierarchyProps) {
   const LOCATION_ROW_HEIGHT = 46;
   const FIELD_ROW_HEIGHT = 42;
@@ -888,19 +891,18 @@ function FieldsBedsHierarchy({
       const fieldKey = `field-${fieldId}`;
       ensureExpanded(fieldKey);
 
-      // Prefill from the field's last bed in the current table order: its
-      // dimensions, and its name counted up to the next free one.
+      // The last saved bed supplies a name and dimensions missing from the project defaults.
       const fieldBeds = hierarchyIndex.bedsByField.get(fieldId) ?? [];
       const lastBed = [...fieldBeds].reverse().find((bed) => hasPersistedEntityId(bed.id));
-      const newBedId = addBed(fieldId, lastBed ? {
-        name: nextFreeName(lastBed.name, getFieldBedNames(fieldId)),
-        length_m: lastBed.length_m,
-        width_m: lastBed.width_m,
+      const dimensions = getNewBedDimensions(bedDefaults, lastBed);
+      const newBedId = addBed(fieldId, lastBed || dimensions.length_m !== null || dimensions.width_m !== null ? {
+        name: lastBed ? nextFreeName(lastBed.name, getFieldBedNames(fieldId)) : "",
+        ...dimensions,
       } : undefined);
 
       setPendingEditRow(newBedId); //will be applied after re-render
     },
-    [addBed, ensureExpanded, fields, getFieldBedNames, hierarchyIndex, setPendingEditRow],
+    [addBed, bedDefaults, ensureExpanded, fields, getFieldBedNames, hierarchyIndex, setPendingEditRow],
   );
 
   const handleDuplicateBed = useCallback(
@@ -2280,6 +2282,7 @@ function FieldsBedsHierarchy({
           open
           field={bulkCreateField}
           fieldBeds={bulkCreateFieldBeds}
+          bedDefaults={bedDefaults}
           onClose={() => setBulkCreateFieldId(null)}
           onCreate={handleBulkCreateBeds}
         />

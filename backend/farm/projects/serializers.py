@@ -1,5 +1,8 @@
 """DRF serializers for the projects domain (projects, memberships, invitations)."""
 
+import math
+from typing import Any
+
 from rest_framework import serializers
 
 from farm.models import Project, ProjectInvitation, ProjectMembership
@@ -24,8 +27,18 @@ class ProjectSerializer(serializers.ModelSerializer):
             'is_active', 'deleted_at',
             'created_at', 'updated_at',
             'allow_succession_during_harvest', 'succession_min_days_after_harvest_start',
+            'default_bed_length_m', 'default_bed_width_m',
         ]
         read_only_fields = ['id', 'slug', 'is_active', 'deleted_at', 'created_at', 'updated_at']
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        for field in ('default_bed_length_m', 'default_bed_width_m'):
+            value = attrs.get(field)
+            if value is not None and (not math.isfinite(value) or value <= 0):
+                raise serializers.ValidationError({
+                    field: 'The dimension must be finite and greater than 0.',
+                })
+        return super().validate(attrs)
 
 
 class ProjectMembershipSerializer(serializers.ModelSerializer):

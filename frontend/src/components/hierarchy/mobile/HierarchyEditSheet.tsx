@@ -18,6 +18,7 @@ import { CustomContextMenu } from "../../contextMenu/CustomContextMenu";
 import { ContextMenuActionItem } from "../../contextMenu/ContextMenuActionItem";
 import { renderGroupedContextMenuActions } from "../../contextMenu/contextMenuGroups";
 import { calculateAreaValue } from "../utils/dimensionCellState";
+import { bedDimensionInputFormat, getNewBedDimensions, type BedDimensions } from "../utils/bedDimensions";
 import {
   classifyHierarchyValidationError,
   validateAndSaveHierarchyRow,
@@ -40,6 +41,7 @@ export interface HierarchyEditSheetCreateContext {
   nodeType: "field" | "bed";
   parentId: number;
   locationId?: number;
+  bedDefaults?: BedDimensions;
 }
 
 export interface HierarchyEditSheetAncestor {
@@ -67,21 +69,22 @@ interface SheetFormValues {
   notes: string;
 }
 
-const EMPTY_VALUES: SheetFormValues = { name: "", length: "", width: "", notes: "" };
-
 function buildInitialValues(
   mode: "edit" | "create",
   row: MobileHierarchyRow | null,
   locale: string,
+  createContext?: HierarchyEditSheetCreateContext,
 ): SheetFormValues {
-  if (mode === "create" || !row) {
-    return EMPTY_VALUES;
-  }
+  const existing = mode === "edit" ? row : null;
+  const dimensions = existing ?? getNewBedDimensions(
+    mode === "create" && createContext?.nodeType === "bed" ? createContext.bedDefaults : undefined,
+  );
+  const format = (existing?.type ?? createContext?.nodeType) === "bed" ? bedDimensionInputFormat : undefined;
   return {
-    name: row.name ?? "",
-    length: typeof row.length_m === "number" ? formatLocalizedNumberForInput(row.length_m, locale) : "",
-    width: typeof row.width_m === "number" ? formatLocalizedNumberForInput(row.width_m, locale) : "",
-    notes: row.notes ?? "",
+    name: existing?.name ?? "",
+    length: typeof dimensions.length_m === "number" ? formatLocalizedNumberForInput(dimensions.length_m, locale, format) : "",
+    width: typeof dimensions.width_m === "number" ? formatLocalizedNumberForInput(dimensions.width_m, locale, format) : "",
+    notes: existing?.notes ?? "",
   };
 }
 
@@ -102,8 +105,8 @@ export function HierarchyEditSheet({
 
   const nodeType = mode === "create" ? createContext?.nodeType ?? "field" : row?.type ?? "field";
 
-  const [values, setValues] = useState<SheetFormValues>(() => buildInitialValues(mode, row, locale));
-  const [initialValues, setInitialValues] = useState<SheetFormValues>(() => buildInitialValues(mode, row, locale));
+  const [values, setValues] = useState<SheetFormValues>(() => buildInitialValues(mode, row, locale, createContext));
+  const [initialValues, setInitialValues] = useState<SheetFormValues>(() => buildInitialValues(mode, row, locale, createContext));
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<HierarchyValidationErrorField, string>>>({});
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
   const [pendingCloseAction, setPendingCloseAction] = useState<HierarchyRowAction | null>(null);
@@ -114,7 +117,7 @@ export function HierarchyEditSheet({
     if (!open) {
       return;
     }
-    const nextValues = buildInitialValues(mode, row, locale);
+    const nextValues = buildInitialValues(mode, row, locale, createContext);
     setValues(nextValues);
     setInitialValues(nextValues);
     setFieldErrors({});
@@ -123,7 +126,7 @@ export function HierarchyEditSheet({
     // Only re-derive when the sheet (re)opens for a given row/mode - not on
     // every keystroke, which would reset the form the user is typing into.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, mode, row?.id]);
+  }, [open, mode, row?.id, createContext?.parentId, createContext?.nodeType]);
 
   const isDirty = useMemo(
     () =>
@@ -193,6 +196,12 @@ export function HierarchyEditSheet({
   const buildRowForSave = (): HierarchyRow => {
     const parsedLength = parseLocalizedNumber(values.length, locale);
     const parsedWidth = parseLocalizedNumber(values.width, locale);
+    if (values.length.trim() !== "" && (parsedLength === null || !Number.isFinite(parsedLength))) {
+      throw new Error(t("validation.lengthNotANumber"));
+    }
+    if (values.width.trim() !== "" && (parsedWidth === null || !Number.isFinite(parsedWidth))) {
+      throw new Error(t("validation.widthNotANumber"));
+    }
 
     if (mode === "edit" && row) {
       return {

@@ -20,6 +20,7 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
+from accounts.models import UserProjectSettings
 from crops.models import (
     CropSpecies,
     CropSpeciesTranslation,
@@ -73,6 +74,38 @@ PAGE_SIZE = 100
 
 class ListEndpointQueryCountTest(ProjectApiTestCase):
     """Each list endpoint must cost the same number of queries for every row."""
+
+    def test_project_bed_defaults_are_loaded_without_per_membership_queries(self) -> None:
+        UserProjectSettings.objects.create(
+            user=self.user, default_project=self.project, last_project=self.project,
+        )
+        urls = ('/openfarmplanner/api/projects/', '/openfarmplanner/api/auth/me/')
+        counts = {}
+        for url in urls:
+            self.client.force_authenticate(user=User.objects.get(pk=self.user.pk))
+            with CaptureQueriesContext(connection) as queries:
+                response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            counts[url] = len(queries)
+
+        for index in range(ROW_COUNT):
+            project = Project.objects.create(
+                name=f'Bed defaults {index}', slug=f'bed-defaults-{index}', default_bed_width_m=1.2,
+            )
+            ProjectMembership.objects.create(user=self.user, project=project)
+
+        self.client.force_authenticate(user=User.objects.get(pk=self.user.pk))
+        with self.assertNumQueries(counts[urls[0]]):
+            projects = self.client.get(urls[0])
+        self.assertEqual(projects.data['count'], 1 + ROW_COUNT)
+        self.client.force_authenticate(user=User.objects.get(pk=self.user.pk))
+        with self.assertNumQueries(counts[urls[1]]):
+            me = self.client.get(urls[1])
+        self.assertEqual(len(me.data['memberships']), 1 + ROW_COUNT)
+        configured = [
+            row for row in me.data['memberships'] if row['project_default_bed_width_m'] == 1.2
+        ]
+        self.assertEqual(len(configured), ROW_COUNT)
 
     def test_crop_deletion_preview_returns_all_records_with_constant_queries(self):
         species = [

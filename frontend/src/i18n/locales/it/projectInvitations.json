@@ -3,6 +3,10 @@
   "noActiveProject": "Nessun progetto attivo selezionato.",
   "projectLabel": "Progetto: {{name}}",
   "currentProjectLabel": "Nome del progetto",
+  "bedDefaults": {
+    "title": "Dimensioni predefinite delle aiuole",
+    "description": "Queste dimensioni vengono proposte quando si creano nuove aiuole."
+  },
   "general": {
     "title": "Generale",
     "save": "Salva",
