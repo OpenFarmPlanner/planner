@@ -1,7 +1,7 @@
 import type { Bed, Field, Location } from '../api/types';
 import { defaultLocationPathSpacing } from '../components/hierarchy/utils/locationPathSpacing';
 import { analyzeGraphicalGeometry, getGraphicalBedLayout } from '../pages/graphicalAreaGeometry';
-import { rotateRect, type GraphicalRotation } from '../pages/graphicalLayoutUtils';
+import { fieldUsesWorldScale, getFieldRectSize, rotateRect, type GraphicalRotation } from '../pages/graphicalLayoutUtils';
 
 const location: Location = { id: 1, name: 'Farm', width_m: 30, length_m: 30 };
 const field: Field = { id: 1, name: 'Plot', location: 1, width_m: 10, length_m: 10 };
@@ -11,6 +11,24 @@ const parcel = { id: 1, x: 20, y: 20, width: 180, height: 180, supportsMetricSpa
 const boundary = { x: 0, y: 0, ...canvas };
 
 describe('graphical layout analysis', () => {
+  it.each<GraphicalRotation>([0, 90, 180, 270])('keeps fractional parcel gaps consistent with snapping at %s degrees', rotation => {
+    const first = { ...field, width_m: 10.02, length_m: 9.05 };
+    const second = { ...first, id: 2 };
+    const size = getFieldRectSize(first, 18);
+    expect(size.width).toBeCloseTo(180.36);
+    const supportsMetricSpacing = fieldUsesWorldScale(first, size, 18);
+    const parcels = [first, second].map((plot, index) => ({
+      field: plot,
+      rect: rotateRect({ id: index + 1, x: 20 + index * (size.width + 0.75 * 18), y: 20,
+        ...size, supportsMetricSpacing }, canvas, rotation),
+      layout: getGraphicalBedLayout(plot, size, [], {}, rotation),
+    }));
+    const result = analyzeGraphicalGeometry(location, rotateRect(boundary, canvas, rotation), parcels,
+      defaultLocationPathSpacing, rotation, null);
+    expect(result.locationReport.uncertainIds).toEqual([]);
+    expect(result.locationReport.issues).toEqual([]);
+  });
+
   it.each<GraphicalRotation>([0, 90, 180, 270])('keeps an overflowing saved bed visible and measures it at %s degrees', rotation => {
     const layout = getGraphicalBedLayout(field, parcel, beds, {
       2: { bed: 2, location: 1, x: 144, y: 0, version: 1 },

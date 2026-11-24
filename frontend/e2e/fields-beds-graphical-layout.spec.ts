@@ -467,7 +467,7 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
            rect.y + rect.height <= other.y + 1 || other.y + other.height <= rect.y + 1)));
     }).toBe(true);
     await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1)).toBe(true);
-    await expect.poll(async () => (await canvasRects(page, 'field-rect-'))[0].stage.height).toBeGreaterThan(96);
+    await expect.poll(async () => (await canvasRects(page, 'field-rect-'))[0]?.stage.height ?? 0).toBeGreaterThan(96);
     if (viewport.width === 1920) await expect(page.getByTestId('topbar-workspace-row')).toHaveCount(0);
     if (viewport.width <= 1024) await expect(page.getByTestId('topbar-workspace-row')).toBeVisible();
     await page.mouse.move(1, viewport.height - 1);
