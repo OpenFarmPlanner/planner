@@ -37,6 +37,60 @@ async function pickWithMouse(page: Page, rowId: string, field: string, option: s
   await expect(row).not.toHaveClass(/MuiDataGrid-row--editing/);
 }
 
+test.describe('related planting plans', () => {
+  test.use({ serviceWorkers: 'block' });
+
+  test('retries from the mobile detail with the keyboard and preserves an unsaved draft', async ({ page, request }, testInfo) => {
+    await loginWithDeterministicProject(page, request, 'growing-area-related-plans-retry', {
+      loginAsAdmin: true,
+      demoProject: true,
+    });
+    const { results } = await apiRequest<{ results: { id: number; bed: number | null }[] }>(page, 'GET', '/planting-plans/');
+    const plan = results.find(item => item.bed !== null);
+    expect(plan).toBeDefined();
+    const bed = await apiRequest<Entity>(page, 'GET', `/beds/${plan!.bed}/`);
+    await page.evaluate(() => localStorage.setItem('ui.language', 'fr'));
+    await page.setViewportSize({ width: 375, height: 800 });
+
+    let failPlans = true;
+    await page.route(url => url.pathname.endsWith('/planting-plans/') && url.searchParams.has('page_size'), route =>
+      failPlans ? route.fulfill({ status: 503, json: { detail: 'Temporary test failure' } }) : route.continue(),
+    );
+    const detailPath = `/app/fields-beds/beds/${bed.id}`;
+    await page.goto(detailPath);
+    await expect(page.getByRole('heading', { level: 1, name: bed.name })).toBeVisible();
+    const section = page.getByTestId('detail-section-plans');
+    const error = section.getByRole('alert');
+    const retry = error.getByRole('button', { name: 'Réessayer' });
+    await expect(error).toContainText('Impossible de charger les séries');
+    for (const viewport of [
+      { width: 1440, height: 900 }, { width: 800, height: 375 }, { width: 375, height: 800 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await retry.scrollIntoViewIfNeeded();
+      await expect(retry).toBeInViewport();
+      await expect.poll(async () => {
+        const bounds = await error.boundingBox();
+        return Boolean(bounds && bounds.x >= 0 && bounds.x + bounds.width <= viewport.width);
+      }).toBe(true);
+      await page.screenshot({ path: testInfo.outputPath(`plan-retry-fr-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
+    }
+
+    await page.getByRole('button', { name: 'Modifier', exact: true }).click();
+    const name = page.getByRole('textbox', { name: /^Nom\b/ });
+    await name.fill('Brouillon de planche');
+    await retry.focus();
+    await expect(retry).toBeFocused();
+    failPlans = false;
+    await page.keyboard.press('Enter');
+
+    await expect(section.locator(`a[href="/app/planting-plans?planId=${plan!.id}"]`)).toBeVisible();
+    await expect(error).toHaveCount(0);
+    await expect(name).toHaveValue('Brouillon de planche');
+    await expect(page).toHaveURL(new RegExp(`${detailPath}$`));
+  });
+});
+
 test.describe('growing areas site conditions', () => {
   test('filters on inherited light and shows the optional column', async ({ page, request }) => {
     await loginWithDeterministicProject(page, request, 'fields-site-conditions-filter', { loginAsAdmin: true });

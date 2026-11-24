@@ -140,6 +140,9 @@ click, double click or keyboard action in the grid does not navigate.
   the planting plans of the active season on the covered beds (linking to
   `/app/planting-plans?planId=`, to be pointed at the #1043 detail page once
   it exists), and notes. There is no "show all fields" toggle.
+- The planting-plan section indicates loading and offers Retry if the request
+  fails. A successful empty result hides the section. Retry stays available
+  while editing and preserves the draft and the selected area.
 - Edit mode shows every optional field, including empty ones, with "Reset to
   inherited" next to an own value of a field or bed. Leaving with unsaved
   changes is guarded by `useNavigationBlocker`.

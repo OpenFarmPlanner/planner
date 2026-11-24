@@ -517,7 +517,7 @@ interface CalendarHarvestPage {
 
 export const plantingPlanAPI = {
   list: () => http.get<PaginatedResponse<PlantingPlan>>('/planting-plans/'),
-  listAll: () => fetchAllPaginated<PlantingPlan>('/planting-plans/'),
+  listAll: (signal?: AbortSignal) => fetchAllPaginated<PlantingPlan>('/planting-plans/', signal),
   listForArea: (type: 'bed' | 'field', id: number, signal?: AbortSignal) =>
     fetchAllPaginated<PlantingPlan>(`/planting-plans/?${type}=${id}`, signal),
   get: (id: number) => http.get<PlantingPlan>(`/planting-plans/${id}/`),
