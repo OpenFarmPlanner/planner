@@ -1078,3 +1078,20 @@ retained in `.qa-review/runtime/backups/`. A failed build leaves the running ver
 cutover restores the previous release and its pre-migration database backup.
 Review decisions, screenshots and fixture data stay local. Automatic update
 output is in `.qa-review/logs/main-updates.log`.
+
+Run `ofp-qa refresh --agent codex` (or `--agent claude`) from an interactive
+terminal to review accepted work and then prepare newly implemented issues.
+The launcher first runs the existing `sync` assistant: it verifies Accepted
+decisions against the reviewed implementation and the live queue, previews the
+eligible removals, and asks for one explicit confirmation before editing #1058.
+Verified removals are archived locally with their decisions and evidence before
+their cards leave the dashboard. Separate follow-up issues remain in the queue.
+Exit the interactive assistant when finished to continue with the QA release
+update and refresh. An unsuccessful sync exit or Ctrl+C stops the combined run.
+The refresh then reads the updated dashboard and queue to build a new candidate
+list; the QA phase itself remains read-only on GitHub.
+
+`ofp-qa refresh --preview` shows both cleanup and refresh candidates without
+starting an assistant, updating services or changing GitHub or review state.
+Its refresh candidates reflect the current queue, before any cleanup.
+`ofp-qa sync --agent codex` remains available for cleanup alone.
