@@ -70,6 +70,7 @@ test('records without an assignment, keeps failed input, and explicitly splits t
   await expect(edit.getByText(/Übrig 1 Stück/)).toBeVisible();
   await edit.getByRole('button', { name: 'Speichern' }).click();
   await expect(edit).toBeHidden();
+  await page.reload();
   await expect(page.getByText('2 zugeordnete Anbaupläne')).toBeVisible();
   await expect(page.getByText('Erfasste Gesamtmenge · 12 Stück')).toBeVisible();
 });

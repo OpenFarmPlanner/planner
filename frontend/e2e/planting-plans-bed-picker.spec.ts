@@ -380,6 +380,8 @@ test('preserves the mobile bed assignment when creating a plan', async ({ page, 
   await form.getByRole('button', { name: 'Hinzufügen' }).click();
   const response = await created;
   expect(response.status()).toBe(201);
-  expect(await response.json()).toMatchObject({ bed: alternative });
+  const saved = await response.json();
+  expect(saved).toMatchObject({ bed: alternative });
+  expect(await apiRequest(page, 'GET', `/planting-plans/${saved.id}/`)).toMatchObject({ bed: alternative });
   await expect(form).toBeHidden();
 });
