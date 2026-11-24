@@ -161,7 +161,7 @@
       "nonNegativeNumber": "No puede ser negativo.",
       "wholeNumber": "Introduce un número entero de al menos {{min}}.",
       "tooMany": "Como máximo {{max}} bancales a la vez.",
-      "saveError": "No se han podido añadir los bancales. No se ha guardado ninguno.",
+      "saveError": "La aplicación no ha podido confirmar la creación de los bancales.",
       "submit": "Añadir bancales",
       "submitCount_one": "Añadir {{count}} bancal",
       "submitCount_many": "Añadir {{count}} bancales",

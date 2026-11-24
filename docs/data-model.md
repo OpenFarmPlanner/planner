@@ -166,7 +166,12 @@ erDiagram
   in. Without both dimensions nothing is drawn or clamped.
 - `BedLayout`/`FieldLayout` hold persisted x/y coordinates for the
   graphical/map layout view (`GraphicalFields.tsx`) — they're optional,
-  separate rows from `Bed`/`Field` themselves, not embedded fields. A field
+  separate rows from `Bed`/`Field` themselves, not embedded fields.
+  `BedLayout.runs_across_parcel` defaults to `false`, which places the bed's
+  length along the parcel's length. When `true`, the rendered footprint runs
+  across the parcel's width. The bed's physical `length_m` and `width_m` stay
+  as entered. The position is the top-left corner in the parcel's unrotated
+  usable canvas area. A field
   without a `FieldLayout` (e.g. just added in the list view) is drawn next to
   the location's positioned fields (`placeFieldRects`); only when none has a
   position do fields use compact schematic rows fitted to the viewport.

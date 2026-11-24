@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import type Konva from 'konva';
 import { VIEWPORTS, apiRequest, loginWithDeterministicProject, setViewportPreset } from './utils';
 
 type IdResponse = { id: number };
@@ -90,7 +91,7 @@ test('previews with the keyboard, retries a failed save and draws the saved orie
   await page.route('**/beds/bulk-create/', route => route.fulfill({ status: 500, json: {} }), { times: 1 });
   await submit.focus();
   await page.keyboard.press('Enter');
-  await expect(dialog.getByRole('alert').filter({ hasText: /konnten nicht angelegt/ })).toBeVisible();
+  await expect(dialog.getByRole('alert').filter({ hasText: /konnte nicht bestätigt werden/ })).toBeVisible();
   expect(await apiRequest(page, 'GET', path)).toEqual(before);
 
   await submit.click();
@@ -103,11 +104,12 @@ test('previews with the keyboard, retries a failed save and draws the saved orie
   await page.getByRole('combobox', { name: 'Standort', exact: true }).click();
   await page.getByRole('option', { name: 'Keyboard Bulk Standort', exact: true }).click();
   await expect.poll(() => page.evaluate(ids => {
-    const konva = (window as unknown as { Konva?: { stages: {
-      findOne: (selector: string) => { width: () => number; height: () => number } | undefined;
-    }[] } }).Konva;
-    return ids.map(id => konva?.stages.map(stage => stage.findOne(`#bed-rect-${id}`)).find(Boolean))
-      .filter(rect => rect && rect.width() > rect.height()).length;
+    const stage = (window as unknown as { Konva?: { stages: Konva.Stage[] } }).Konva?.stages
+      .find(item => item.container()?.isConnected);
+    if (!stage) return 0;
+    // The Graphic opens at a quarter turn, so crosswise beds run vertically on screen.
+    return stage.find('Rect').filter(rect => ids.some(id => rect.getAttr('data-testid') === `bed-rect-${id}`)
+      && rect.height() > rect.width()).length;
   }, newLayouts.map(layout => layout.bed))).toBe(3);
 });
 

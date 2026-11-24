@@ -155,7 +155,7 @@
       "nonNegativeNumber": "Must not be negative.",
       "wholeNumber": "Enter a whole number of at least {{min}}.",
       "tooMany": "At most {{max}} beds at once.",
-      "saveError": "The beds could not be added. No bed was saved.",
+      "saveError": "The app could not confirm that the beds were added.",
       "submit": "Add beds",
       "submitCount_one": "Add {{count}} bed",
       "submitCount_other": "Add {{count}} beds",

@@ -155,7 +155,7 @@
       "nonNegativeNumber": "Non può essere negativo.",
       "wholeNumber": "Inserisci un numero intero di almeno {{min}}.",
       "tooMany": "Al massimo {{max}} aiuole alla volta.",
-      "saveError": "Impossibile aggiungere le aiuole. Nessuna aiuola è stata salvata.",
+      "saveError": "Non è stato possibile confermare la creazione delle aiuole.",
       "submit": "Aggiungi aiuole",
       "submitCount_one": "Aggiungi {{count}} aiuola",
       "submitCount_other": "Aggiungi {{count}} aiuole",

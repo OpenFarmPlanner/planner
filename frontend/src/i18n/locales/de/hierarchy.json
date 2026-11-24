@@ -155,7 +155,7 @@
       "nonNegativeNumber": "Darf nicht negativ sein.",
       "wholeNumber": "Ganze Zahl ab {{min}} eingeben.",
       "tooMany": "Höchstens {{max}} Beete auf einmal.",
-      "saveError": "Die Beete konnten nicht angelegt werden. Es wurde kein Beet gespeichert.",
+      "saveError": "Die Anlage der Beete konnte nicht bestätigt werden.",
       "submit": "Beete anlegen",
       "submitCount_one": "{{count}} Beet anlegen",
       "submitCount_other": "{{count}} Beete anlegen",

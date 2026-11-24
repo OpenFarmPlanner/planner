@@ -155,7 +155,7 @@
       "nonNegativeNumber": "Não pode ser negativo.",
       "wholeNumber": "Introduza um número inteiro de pelo menos {{min}}.",
       "tooMany": "No máximo, {{max}} canteiros de cada vez.",
-      "saveError": "Não foi possível adicionar os canteiros. Nenhum canteiro foi guardado.",
+      "saveError": "Não foi possível confirmar a criação dos canteiros.",
       "submit": "Adicionar canteiros",
       "submitCount_one": "Adicionar {{count}} canteiro",
       "submitCount_other": "Adicionar {{count}} canteiros",

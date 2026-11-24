@@ -161,7 +161,7 @@
       "nonNegativeNumber": "Ne doit pas être négatif.",
       "wholeNumber": "Saisissez un nombre entier d'au moins {{min}}.",
       "tooMany": "{{max}} planches au maximum à la fois.",
-      "saveError": "Les planches n'ont pas pu être ajoutées. Aucune planche n'a été enregistrée.",
+      "saveError": "L’application n’a pas pu confirmer la création des planches.",
       "submit": "Ajouter les planches",
       "submitCount_one": "Ajouter {{count}} planche",
       "submitCount_many": "Ajouter {{count}} planches",

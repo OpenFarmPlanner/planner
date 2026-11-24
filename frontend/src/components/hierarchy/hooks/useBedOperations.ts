@@ -10,6 +10,7 @@ import { confirmAction } from '../../../utils/confirmAction';
 import { showGlobalSnackbar } from '../../../utils/globalSnackbar';
 import type { HierarchyRow } from '../utils/types';
 import { matchesHierarchyRowPrefill } from '../utils/hierarchyRowDraft';
+import { BULK_BEDS_UNDONE_EVENT } from './useHierarchyData';
 
 /** Values a new bed row starts with ("Beet hinzufügen" after an existing bed). */
 export type BedPrefill = Pick<Bed, 'name' | 'length_m' | 'width_m'>;
@@ -152,6 +153,7 @@ export function useBedOperations(
           try {
             await bedAPI.undoBulkCreate(token);
             setBeds(previous => previous.filter(bed => !createdIds.has(bed.id)));
+            window.dispatchEvent(new Event(BULK_BEDS_UNDONE_EVENT));
           } catch {
             showGlobalSnackbar({ message: t('dialogs.bulkCreateBeds.undoError'), severity: 'error' });
           }

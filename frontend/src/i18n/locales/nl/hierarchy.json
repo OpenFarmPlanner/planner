@@ -155,7 +155,7 @@
       "nonNegativeNumber": "Mag niet negatief zijn.",
       "wholeNumber": "Voer een geheel getal van minimaal {{min}} in.",
       "tooMany": "Maximaal {{max}} bedden tegelijk.",
-      "saveError": "De bedden konden niet worden toegevoegd. Er is geen enkel bed opgeslagen.",
+      "saveError": "De app kon niet bevestigen dat de bedden zijn aangemaakt.",
       "submit": "Bedden toevoegen",
       "submitCount_one": "{{count}} bed toevoegen",
       "submitCount_other": "{{count}} bedden toevoegen",
