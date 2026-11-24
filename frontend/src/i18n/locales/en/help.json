@@ -164,6 +164,13 @@
             "The crop family and rotation break under “Crop rotation properties” are used for the crop rotation check in planting plans.",
             "The planting calendar, seed demand and young plant demand use these data for timing and quantity planning."
           ]
+        },
+        {
+          "title": "Perennial crops",
+          "points": [
+            "If the end date comes before the start date, the harvest window continues into the following year. In non-leap years, February 29 falls on February 28.",
+            "The first-harvest delay counts from planting. Zero or a blank field allows harvest from the planting date. A variety with a blank field inherits the crop’s delay."
+          ]
         }
       ],
       "symbolsTitle": "Icons and controls",
@@ -199,6 +206,13 @@
             "Import useful crops as your own project copy into the current project.",
             "When an imported crop changes in the crop library, you see it on your crop and decide which values to take over.",
             "You can pin your own values locally. They are then not overwritten by updates from the crop library."
+          ]
+        },
+        {
+          "title": "Perennial crops",
+          "points": [
+            "If the end date comes before the start date, the harvest window continues into the following year. In non-leap years, February 29 falls on February 28.",
+            "The first-harvest delay counts from planting. Zero or a blank field allows harvest from the planting date. A variety with a blank field inherits the crop’s delay."
           ]
         }
       ]

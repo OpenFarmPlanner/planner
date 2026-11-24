@@ -14,7 +14,6 @@ const translations: Record<string, string> = {
   'form.propagationDurationDaysHelp': 'Zeit vom Beginn der Anzucht bis zum Pflanzdatum.',
   'form.directSowingPropagationDisabledHelp': 'Bei Direktsaat ist keine Anzuchtdauer erforderlich.',
   'form.harvestDurationDays': 'Erntezeit (Tage)',
-  'form.harvestDurationDaysHelp': 'Zeit vom Erntebeginn bis zum Ernteende.',
   'form.fieldInfoAriaLabel': 'Info zu {{field}}',
 };
 
@@ -48,14 +47,13 @@ describe('timing section', () => {
     expect(onChange).toHaveBeenCalledWith('harvest_duration_days', 0);
   });
 
-  it('explains each duration through an info button inside the field, not on hovering the field', async () => {
+  it('keeps the help for growth and propagation anchors available inside their fields', async () => {
     const user = userEvent.setup();
     render(<TimingSection formData={{ ...PRE_CULTIVATION }} errors={{}} onChange={vi.fn()} t={t} />);
 
     const assertions = [
       ['Anzuchtdauer (Tage)', 'Zeit vom Beginn der Anzucht bis zum Pflanzdatum.'],
       ['Wachstumszeit (Tage)', 'Zeit vom Pflanzdatum bis zum Erntebeginn.'],
-      ['Erntezeit (Tage)', 'Zeit vom Erntebeginn bis zum Ernteende.'],
     ] as const;
 
     for (const [label, explanation] of assertions) {
@@ -73,8 +71,8 @@ describe('timing section', () => {
       await user.keyboard('{Escape}');
       await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument());
     }
-    // The cultivation type has no help text of its own.
-    expect(screen.getAllByTestId('field-info-button')).toHaveLength(3);
+    expect(screen.queryByRole('button', { name: 'Info zu Erntezeit (Tage)' })).not.toBeInTheDocument();
+    expect(screen.getAllByTestId('field-info-button')).toHaveLength(2);
   });
 
   it('opens the info tooltip from the keyboard', async () => {
@@ -202,7 +200,7 @@ describe('timing section', () => {
     });
   });
 
-  it('shows the library pin of the harvest duration next to its info button', () => {
+  it('keeps the library pin on harvest duration without the explanatory button', () => {
     render(
       <TimingSection
         formData={{ ...PRE_CULTIVATION, harvest_duration_days: 14 }}
@@ -210,16 +208,33 @@ describe('timing section', () => {
         onChange={vi.fn()}
         t={t}
         getFieldPinProps={(field) => (field === 'harvest_duration_days'
-          ? { pinned: true, fieldSx: {}, endAdornment: null, button: <button type="button">pin</button> }
+          ? { pinned: true, fieldSx: {}, endAdornment: <button type="button">pin</button>, button: null }
           : null)}
       />
     );
 
     const fieldRoot = screen.getByLabelText('Erntezeit (Tage)').closest('.MuiInputBase-root');
-    const infoButton = screen.getByRole('button', { name: 'Info zu Erntezeit (Tage)' });
     const pinButton = screen.getByRole('button', { name: 'pin' });
-    expect(fieldRoot).toContainElement(infoButton);
     expect(fieldRoot).toContainElement(pinButton);
-    expect(infoButton.compareDocumentPosition(pinButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Info zu Erntezeit (Tage)' })).not.toBeInTheDocument();
+  });
+
+  it('keeps pins on the annual window and first-harvest delay without info icons', () => {
+    const windowPin = <button type="button">Window pin</button>;
+    const delayPin = <button type="button">Delay pin</button>;
+    render(<TimingSection formData={{ annual_harvest_window: '11-15/02-29', first_harvest_delay_years: 0 }}
+      errors={{}} onChange={vi.fn()} t={t} isPerennial
+      getFieldPinProps={(field) => {
+        const button = field === 'annual_harvest_window' ? windowPin
+          : field === 'first_harvest_delay_years' ? delayPin : null;
+        return button ? { pinned: true, fieldSx: {}, endAdornment: button, button } : null;
+      }} />);
+
+    const start = screen.getByRole('textbox', { name: 'annualHarvest.start' });
+    const delay = screen.getByRole('spinbutton', { name: 'annualHarvest.delay' });
+    expect(start.closest('.MuiInputBase-root')).toContainElement(screen.getByRole('button', { name: 'Window pin' }));
+    expect(delay.closest('.MuiInputBase-root')).toContainElement(screen.getByRole('button', { name: 'Delay pin' }));
+    expect(screen.queryAllByTestId('field-info-button')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Info zu Anzuchtdauer (Tage)' })).toBeEnabled();
   });
 });

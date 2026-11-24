@@ -43,8 +43,7 @@ describe('TimingWindowsSection', () => {
 
   it('explains the section with a focusable info icon instead of a paragraph', () => {
     render(<Harness initial={[]} />);
-    const help = 'Wann Anzucht, Direktsaat und Pflanzung üblich sind, in Monatsdritteln oder Kalenderwochen. '
-      + 'Die Anbauplanung weist auf Termine außerhalb dieser Zeiträume hin.';
+    const help = 'Die Anbauplanung weist auf Termine außerhalb dieser Zeiträume hin.';
     const icon = screen.getByRole('img', { name: help });
     expect(icon).toHaveAttribute('tabindex', '0');
     expect(screen.getByRole('heading', { name: 'Zeiträume' })).toBeInTheDocument();

@@ -1472,6 +1472,9 @@ choices as the parent stores an explicit override.
   `annual_harvest_window` (`MM-DD/MM-DD`) and share its inheritance and pin.
   The window supports February 29 and can cross the calendar-year boundary.
   Years until first harvest accepts a nonnegative whole number or a blank value.
+  Page help on Crops and Crop Library explains annual window rollover and
+  first-harvest eligibility. Standing time puts its calculation hint on the
+  field's info button and shows validation below the input.
 - **Inherited, not species-invariant.** They are in `CROP_INHERITABLE_FIELDS`
   (and the frontend's `VARIETY_INHERITABLE_FIELDS`): a Sorte shows its Kultur's
   value until it sets its own, because varieties can differ (a more

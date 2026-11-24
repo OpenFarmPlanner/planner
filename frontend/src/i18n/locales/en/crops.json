@@ -234,7 +234,7 @@
     "seedTypeF1Hybrid": "F1 hybrid",
     "seedTypeUnknown": "Unknown",
     "rotationBreakYears": "Rotation Break (Years)",
-    "rotationBreakYearsTooltip": "Years without this plant family on the same bed. “Every 4 years” means a break of 3 years.",
+    "rotationBreakYearsTooltip": "Full years without this plant family on the same bed.",
     "rotationBreakYearsFamilyDefault_one": "Default for {{family}}: {{count}} year.",
     "rotationBreakYearsFamilyDefault_other": "Default for {{family}}: {{count}} years.",
     "cultivationType": "Cultivation type",
@@ -255,7 +255,6 @@
     "growthDurationDaysError": "Growth duration must be ≥ 0",
     "harvestDurationDays": "Harvest duration (days)",
     "harvestDurationDaysPlaceholder": "e.g. 28",
-    "harvestDurationDaysHelp": "Time from the start of harvest to the end of harvest.",
     "harvestDurationDaysRequired": "Harvest duration is required",
     "harvestDurationDaysError": "Harvest duration must be ≥ 0",
     "propagationDurationDays": "Propagation duration (days)",
@@ -307,7 +306,7 @@
     "seedRateValueWholeNumberRequired": "The quantity must be a whole number for this unit.",
     "thousandKernelWeightLabel": "Thousand-kernel weight (g)",
     "seedPackagesLabel": "Package sizes at the supplier",
-    "thousandKernelWeightHelp": "Weight of 1,000 seeds in grams. Needed to convert between seeds and grams.",
+    "thousandKernelWeightHelp": "Used to convert between seed count and weight.",
     "fieldInfoAriaLabel": "Info about {{field}}",
     "thousandKernelWeightError": "Thousand-kernel weight must be > 0",
     "thousandKernelWeightInvalidNumber": "Please enter a valid number, e.g. 3.9",
@@ -1985,7 +1984,7 @@
   },
   "timingWindows": {
     "sectionTitle": "Time windows",
-    "sectionHelp": "When propagation, direct sowing and transplanting usually happen, in thirds of a month or calendar weeks. Crop planning points out dates outside these windows.",
+    "sectionHelp": "Planting plans flag dates outside these windows.",
     "categoryHeadings": {
       "pre_cultivation": "Propagation",
       "direct_sowing": "Direct sowing",
@@ -2094,8 +2093,6 @@
     "pickerMonth": "Month",
     "pickerDays": "Days",
     "delay": "Years until first harvest",
-    "windowHelp": "Choose a month and day in the calendar or type the date as shown in the field. If the end comes before the start, the window continues into the following year. In non-leap years, February 29 falls on February 28.",
-    "delayHelp": "The crop becomes eligible for harvest on the corresponding planting anniversary. Zero or a blank field uses the planting date. A variety with a blank field first inherits the crop value. In non-leap years, February 29 falls on February 28.",
     "invalidDate": "Enter a valid date as shown in the field.",
     "missingStart": "Enter the harvest start date.",
     "missingEnd": "Enter the harvest end date.",
@@ -2138,7 +2135,7 @@
     },
     "legacyLifeCycleOption": "{{value}} (existing value)",
     "legacyLifeCycleHint": "This saved value is kept unless you choose a different life cycle.",
-    "standingTimeHelp": "The usual productive lifespan of this perennial. It suggests a crop removal date.",
+    "standingTimeHelp": "Determines the suggested clearing date.",
     "standingTimeRequired": "Enter a whole number of at least 1."
   },
   "taskTemplates": {
@@ -2310,7 +2307,7 @@
     "validation": "Enter individual names of up to 200 characters each.",
     "unspecified": "Unspecified / inherit from culture",
     "emptySelection": "Explicitly empty selection",
-    "officialHelper": "Select entries from the catalogue. Your own names stay in the project and are not published.",
+    "officialHelper": "Only catalogue entries can be shared.",
     "officialSearchError": "Catalogue suggestions could not be loaded. Try again.",
     "publishSkipped": "Unpublished selections: {{number}}. They remain in the project.",
     "publication": {

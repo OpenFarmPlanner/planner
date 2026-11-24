@@ -164,6 +164,13 @@
             "La famiglia botanica e l'intervallo di rotazione in «Proprietà della rotazione colturale» vengono usati per verificare la rotazione nelle serie.",
             "Calendario colturale, fabbisogno di sementi e fabbisogno di piantine usano questi dati per pianificare tempi e quantità."
           ]
+        },
+        {
+          "title": "Colture perenni",
+          "points": [
+            "Se la data di fine precede quella di inizio, il periodo di raccolta prosegue nell’anno successivo. Negli anni non bisestili, il 29 febbraio corrisponde al 28 febbraio.",
+            "Gli anni fino al primo raccolto si contano dalla messa a dimora. Con 0 o il campo vuoto si può raccogliere dalla messa a dimora. Una varietà eredita il valore della coltura se il campo è vuoto."
+          ]
         }
       ],
       "symbolsTitle": "Icone e comandi",
@@ -199,6 +206,13 @@
             "Importa le colture utili come copia nel progetto attuale.",
             "Quando una coltura importata cambia nella biblioteca, lo vedi nella tua coltura e decidi quali valori applicare.",
             "Puoi fissare localmente i tuoi valori. Non verranno sovrascritti dagli aggiornamenti della biblioteca."
+          ]
+        },
+        {
+          "title": "Colture perenni",
+          "points": [
+            "Se la data di fine precede quella di inizio, il periodo di raccolta prosegue nell’anno successivo. Negli anni non bisestili, il 29 febbraio corrisponde al 28 febbraio.",
+            "Gli anni fino al primo raccolto si contano dalla messa a dimora. Con 0 o il campo vuoto si può raccogliere dalla messa a dimora. Una varietà eredita il valore della coltura se il campo è vuoto."
           ]
         }
       ]

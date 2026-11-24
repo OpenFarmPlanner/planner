@@ -164,6 +164,13 @@
             "La familia botánica y la pausa de rotación, en «Propiedades de rotación de cultivos», se usan para comprobar la rotación de cultivos en las series.",
             "El calendario de cultivos, la necesidad de semillas y la necesidad de plantel usan estos datos para planificar fechas y cantidades."
           ]
+        },
+        {
+          "title": "Cultivos perennes",
+          "points": [
+            "Si la fecha de fin es anterior a la de inicio, el periodo de cosecha continúa el año siguiente. En los años no bisiestos, el 29 de febrero pasa al 28 de febrero.",
+            "Los años hasta la primera cosecha se cuentan desde la plantación. Con 0 o el campo vacío, la cosecha es posible desde la plantación. Si el campo está vacío en una variedad, se aplica el valor del cultivo."
+          ]
         }
       ],
       "symbolsTitle": "Iconos y controles",
@@ -199,6 +206,13 @@
             "Importa cultivos útiles al proyecto actual como copia propia del proyecto.",
             "Cuando un cultivo importado cambia en la biblioteca de cultivos, lo ves en tu cultivo y decides qué valores adoptas.",
             "Puedes fijar localmente tus propios valores. Así no se sobrescriben con las actualizaciones de la biblioteca de cultivos."
+          ]
+        },
+        {
+          "title": "Cultivos perennes",
+          "points": [
+            "Si la fecha de fin es anterior a la de inicio, el periodo de cosecha continúa el año siguiente. En los años no bisiestos, el 29 de febrero pasa al 28 de febrero.",
+            "Los años hasta la primera cosecha se cuentan desde la plantación. Con 0 o el campo vacío, la cosecha es posible desde la plantación. Si el campo está vacío en una variedad, se aplica el valor del cultivo."
           ]
         }
       ]

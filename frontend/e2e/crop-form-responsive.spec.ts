@@ -129,6 +129,25 @@ test('edits and reloads the perennial harvest window by keyboard on a phone', as
   await page.keyboard.press('Tab');
   await expect(standingTime).toBeFocused();
   await expect(standingTime).toHaveValue('20');
+  await expect(standingTime).toHaveAccessibleDescription('');
+  for (const label of [de.annualHarvest.start, de.annualHarvest.end, de.annualHarvest.delay]) {
+    await expect(dialog.getByRole('button', {
+      name: de.form.fieldInfoAriaLabel.replace('{{field}}', label), exact: true,
+    })).toHaveCount(0);
+  }
+  const standingHelp = dialog.getByRole('button', {
+    name: de.form.fieldInfoAriaLabel.replace('{{field}}', de.siteHealth.fields.standing_time_years), exact: true,
+  });
+  await page.keyboard.press('Tab');
+  await expect(standingHelp).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('tooltip')).toHaveText(de.siteHealth.standingTimeHelp);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('tooltip')).toBeHidden();
+  await standingTime.fill('0');
+  await expect(standingTime).toHaveAccessibleDescription(de.siteHealth.standingTimeRequired);
+  await standingTime.fill('20');
+  await expect(standingTime).toHaveAccessibleDescription('');
   await lifeCycle.scrollIntoViewIfNeeded();
   await page.screenshot({ path: info.outputPath('phone-life-cycle-and-standing-time.png'), animations: 'disabled' });
   await start.focus();
@@ -198,6 +217,14 @@ test.describe('French perennial timing', () => {
         localStorage.setItem('ui.language.pendingChoice', 'fr');
       });
       await page.goto(`/app/crops?cropId=${crop.id}&action=edit`);
+      const standingHelp = page.getByRole('button', {
+        name: fr.form.fieldInfoAriaLabel.replace('{{field}}', fr.siteHealth.fields.standing_time_years), exact: true,
+      });
+      await standingHelp.tap();
+      await expect(page.getByRole('tooltip')).toHaveText(fr.siteHealth.standingTimeHelp);
+      await page.screenshot({ path: info.outputPath(`standing-time-help-fr-${viewport.width}.png`), animations: 'disabled' });
+      await standingHelp.tap();
+      await expect(page.getByRole('tooltip')).toBeHidden();
       const delay = page.getByRole('spinbutton', { name: fr.annualHarvest.delay });
       const start = page.getByRole('textbox', { name: fr.annualHarvest.start });
       const end = page.getByRole('textbox', { name: fr.annualHarvest.end });

@@ -234,7 +234,7 @@
     "seedTypeF1Hybrid": "F1-Hybrid",
     "seedTypeUnknown": "Unbekannt",
     "rotationBreakYears": "Anbaupause (Jahre)",
-    "rotationBreakYearsTooltip": "Jahre ohne diese Pflanzenfamilie auf demselben Beet. „Alle 4 Jahre“ entspricht einer Pause von 3 Jahren.",
+    "rotationBreakYearsTooltip": "Volle Jahre ohne diese Pflanzenfamilie auf demselben Beet.",
     "rotationBreakYearsFamilyDefault_one": "Standard für {{family}}: {{count}} Jahr.",
     "rotationBreakYearsFamilyDefault_other": "Standard für {{family}}: {{count}} Jahre.",
     "cultivationType": "Anbauart",
@@ -255,7 +255,6 @@
     "growthDurationDaysError": "Wachstumszeit muss ≥ 0 sein",
     "harvestDurationDays": "Erntezeit (Tage)",
     "harvestDurationDaysPlaceholder": "z.B. 28",
-    "harvestDurationDaysHelp": "Zeit vom Erntebeginn bis zum Ernteende.",
     "harvestDurationDaysRequired": "Erntezeit ist erforderlich",
     "harvestDurationDaysError": "Erntezeit muss ≥ 0 sein",
     "propagationDurationDays": "Anzuchtdauer (Tage)",
@@ -307,7 +306,7 @@
     "seedRateValueWholeNumberRequired": "Die Menge muss für diese Einheit eine ganze Zahl sein.",
     "thousandKernelWeightLabel": "1000-Korn-Gewicht (g)",
     "seedPackagesLabel": "Verpackungsgrößen beim Lieferanten",
-    "thousandKernelWeightHelp": "Gewicht von 1.000 Körnern in Gramm. Wird für die Umrechnung zwischen Korn und Gramm benötigt.",
+    "thousandKernelWeightHelp": "Dient zur Umrechnung zwischen Kornzahl und Gewicht.",
     "fieldInfoAriaLabel": "Info zu {{field}}",
     "thousandKernelWeightError": "Tausendkorngewicht muss > 0 sein",
     "thousandKernelWeightInvalidNumber": "Bitte gib einen gültigen Zahlenwert ein, z. B. 3,9",
@@ -1985,7 +1984,7 @@
   },
   "timingWindows": {
     "sectionTitle": "Zeiträume",
-    "sectionHelp": "Wann Anzucht, Direktsaat und Pflanzung üblich sind, in Monatsdritteln oder Kalenderwochen. Die Anbauplanung weist auf Termine außerhalb dieser Zeiträume hin.",
+    "sectionHelp": "Die Anbauplanung weist auf Termine außerhalb dieser Zeiträume hin.",
     "categoryHeadings": {
       "pre_cultivation": "Anzucht",
       "direct_sowing": "Direktsaat",
@@ -2094,8 +2093,6 @@
     "pickerMonth": "Monat",
     "pickerDays": "Tage",
     "delay": "Jahre bis zur ersten Ernte",
-    "windowHelp": "Wähle Monat und Tag im Kalender oder gib das Datum wie im Feldbeispiel ein. Liegt das Ende vor dem Beginn, reicht das Erntefenster ins nächste Jahr. In Jahren ohne Schalttag gilt für den 29. Februar der 28. Februar.",
-    "delayHelp": "Die erste Ernte ist ab dem entsprechenden Jahrestag der Pflanzung möglich. Bei 0 oder leerem Feld gilt das Pflanzdatum. Bei Sorten übernimmt ein leeres Feld zunächst den Wert der Kultur. Der 29. Februar fällt in Nichtschaltjahren auf den 28. Februar.",
     "invalidDate": "Gib ein gültiges Datum wie im Feldbeispiel ein.",
     "missingStart": "Ergänze den Erntebeginn.",
     "missingEnd": "Ergänze das Ernteende.",
@@ -2138,7 +2135,7 @@
     },
     "legacyLifeCycleOption": "{{value}} (Bestandswert)",
     "legacyLifeCycleHint": "Dieser vorhandene Wert bleibt erhalten, solange du keine andere Lebensdauer wählst.",
-    "standingTimeHelp": "Typische Nutzungsdauer dieser mehrjährigen Kultur. Sie bestimmt den Vorschlag für das Räumungsdatum.",
+    "standingTimeHelp": "Bestimmt das vorgeschlagene Räumungsdatum.",
     "standingTimeRequired": "Gib eine ganze Zahl ab 1 ein."
   },
   "taskTemplates": {
@@ -2310,7 +2307,7 @@
     "validation": "Gib einzelne Namen mit jeweils bis zu 200 Zeichen ein.",
     "unspecified": "Nicht gesetzt / von Kultur übernehmen",
     "emptySelection": "Leere eigene Auswahl",
-    "officialHelper": "Wähle Einträge aus dem Katalog. Eigene Namen bleiben im Projekt und werden nicht veröffentlicht.",
+    "officialHelper": "Nur Katalogeinträge können geteilt werden.",
     "officialSearchError": "Katalogvorschläge konnten nicht geladen werden. Versuche es erneut.",
     "publishSkipped": "Nicht veröffentlichte Einträge: {{number}}. Sie bleiben im Projekt erhalten.",
     "publication": {

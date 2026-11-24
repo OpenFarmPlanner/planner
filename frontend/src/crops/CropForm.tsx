@@ -1428,7 +1428,7 @@ export function CropForm({
             ) : null}
             <BasicInfoSection
               afterIdentityFields={<SpecificPropertiesSection
-                profile={formData.specific_property_profile} values={formData.specific_properties} variety={formData.variety || firstVarietyName}
+                profile={formData.specific_property_profile} values={formData.specific_properties}
                 onChange={(values) => handleChange('specific_properties', values)}
                 t={t} errors={displayErrors} getFieldPinProps={getFieldPinProps}
               />}

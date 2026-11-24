@@ -113,7 +113,7 @@ export function TimingSection({
               value={start === INVALID_HARVEST_DATE_DRAFT ? null : start}
               onChange={value => updateAnnualWindow(value ?? INVALID_HARVEST_DATE_DRAFT, end)}
               error={errors['annual_harvest_window.start']}
-              actions={<>{infoButton('annualHarvest.start', 'annualHarvest.windowHelp')}{annualWindowPin?.button}</>}
+              actions={annualWindowPin?.button}
             />
             <YearlessDateField
               {...yearlessDateProps}
@@ -134,7 +134,7 @@ export function TimingSection({
               slotProps={{
                 inputLabel: { shrink: true },
                 htmlInput: { min: 0, step: 1, inputMode: 'numeric' },
-                input: { endAdornment: buildFieldEndAdornment(infoButton('annualHarvest.delay', 'annualHarvest.delayHelp'), delayPin) },
+                input: { endAdornment: delayPin?.endAdornment },
               }}
             />
           </>
@@ -170,12 +170,7 @@ export function TimingSection({
               helperText={errors.harvest_duration_days}
               slotProps={{
                 htmlInput: { min: 0, step: 1, inputMode: 'numeric' },
-                input: {
-                  endAdornment: buildFieldEndAdornment(
-                    infoButton('form.harvestDurationDays', 'form.harvestDurationDaysHelp'),
-                    harvestDurationPin,
-                  ),
-                },
+                input: { endAdornment: harvestDurationPin?.endAdornment },
               }}
             />
           </>

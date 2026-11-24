@@ -1505,6 +1505,19 @@ describe('CropForm', () => {
     const start = screen.getByRole('textbox', { name: 'annualHarvest.start', exact: true });
     const end = screen.getByRole('textbox', { name: 'annualHarvest.end', exact: true });
     const delay = screen.getByRole('spinbutton', { name: 'annualHarvest.delay', exact: true });
+    for (const field of [start, end, delay]) {
+      expect(within(field.closest('.MuiInputBase-root')!).queryByTestId('field-info-button')).not.toBeInTheDocument();
+    }
+    expect(screen.getByRole('button', { name: 'annualHarvest.openStartPicker' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'annualHarvest.openEndPicker' })).toBeEnabled();
+    const standing = screen.getByRole('spinbutton', { name: 'siteHealth.fields.standing_time_years' });
+    expect(standing).not.toHaveAccessibleDescription();
+    expect(screen.queryByText('siteHealth.standingTimeHelp')).not.toBeInTheDocument();
+    fireEvent.click(within(standing.closest('.MuiInputBase-root')!).getByTestId('field-info-button'));
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('siteHealth.standingTimeHelp');
+    fireEvent.change(standing, { target: { value: '0' } });
+    expect(standing).toHaveAccessibleDescription('siteHealth.standingTimeRequired');
+    fireEvent.change(standing, { target: { value: '15' } });
     fireEvent.change(start, { target: { value: '12/15' } });
     expect(start).toHaveAttribute('aria-invalid', 'false');
     expect(end).toHaveAccessibleDescription('annualHarvest.missingEnd');
@@ -1584,6 +1597,8 @@ describe('CropForm', () => {
     const group = within(screen.getByRole('group', { name: 'form.generalInfoSectionTitle' }));
     const standing = group.getByRole('spinbutton', { name: 'siteHealth.fields.standing_time_years' });
     expect(standing).toHaveAttribute('placeholder', '15');
+    expect(within(standing.closest('.MuiInputBase-root')!).getByTestId('field-info-button')).toBeEnabled();
+    expect(standing).not.toHaveAccessibleDescription();
     expect(screen.getByRole('textbox', { name: 'annualHarvest.start' })).toBeVisible();
     expect(screen.queryByLabelText('form.growthDurationDays')).not.toBeInTheDocument();
   });
