@@ -1,5 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { apiRequest, loginWithDeterministicProject, waitForPageStable } from './utils';
+import de from '../src/i18n/locales/de/crops.json' with { type: 'json' };
+import fr from '../src/i18n/locales/fr/crops.json' with { type: 'json' };
 
 async function openCreateCropDialog(page: Page): Promise<Locator> {
   await page.goto('/app/crops');
@@ -25,6 +27,14 @@ async function inputBox(input: Locator) {
 /** The outlined field around an input: inputs of Autocomplete and TextField sit at different paddings. */
 async function fieldBox(input: Locator) {
   return inputBox(input.locator('xpath=ancestor::div[contains(@class, "MuiInputBase-root")][1]'));
+}
+
+async function expectFloatingLabel(input: Locator) {
+  const label = input.locator('xpath=ancestor::div[contains(@class, "MuiFormControl-root")][1]/label');
+  const labelBox = await inputBox(label);
+  const valueBox = await inputBox(input);
+  expect(labelBox.y + labelBox.height).toBeLessThan(valueBox.y + valueBox.height / 2);
+  expect(await label.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
 }
 
 test.describe('crop create dialog responsive identity row', () => {
@@ -122,19 +132,34 @@ test('edits and reloads the perennial harvest window by keyboard on a phone', as
   await lifeCycle.scrollIntoViewIfNeeded();
   await page.screenshot({ path: info.outputPath('phone-life-cycle-and-standing-time.png'), animations: 'disabled' });
   await start.focus();
-  await page.keyboard.type('12-15');
+  await page.keyboard.type('15.12.');
+  await expect(end).toHaveAccessibleDescription(de.annualHarvest.missingEnd);
+  await end.fill('30.02.');
+  await expect(end).toHaveAccessibleDescription(de.annualHarvest.invalidDate);
+  await expect(start).toHaveAttribute('aria-invalid', 'false');
+  const endPicker = dialog.getByRole('button', { name: de.annualHarvest.openEndPicker });
+  await endPicker.press('Enter');
+  const picker = page.getByRole('dialog', { name: de.annualHarvest.openEndPicker });
+  const month = picker.getByRole('combobox', { name: de.annualHarvest.pickerMonth });
+  await expect(month).toBeFocused();
+  await month.selectOption('2');
+  await page.screenshot({ path: info.outputPath('phone-yearless-harvest-picker.png'), animations: 'disabled' });
   await page.keyboard.press('Tab');
-  await page.keyboard.press('Tab');
-  await expect(end).toBeFocused();
-  await page.keyboard.type('02-30');
-  await expect(dialog.getByText('Gib für Beginn und Ende ein gültiges Datum im Format MM-TT ein.')).toBeVisible();
-  await end.fill('02-29');
-  await page.keyboard.press('Tab');
-  await expect(delay).toBeFocused();
+  await expect(picker.getByRole('button', { name: '1. Februar', exact: true })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(picker.getByRole('button', { name: '8. Februar', exact: true })).toBeFocused();
+  await page.keyboard.press('End');
+  await expect(picker.getByRole('button', { name: '29. Februar' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(picker).toBeHidden();
+  await expect(endPicker).toBeFocused();
+  await expect(end).toHaveValue('29.02.');
+  await delay.focus();
   await page.keyboard.type('-1');
   await expect(dialog.getByText('Gib eine ganze Zahl ab 0 ein.')).toBeVisible();
   await delay.clear();
   await page.keyboard.type('2');
+  await expectFloatingLabel(delay);
   await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
   await expect(dialog).toBeHidden();
 
@@ -144,16 +169,60 @@ test('edits and reloads the perennial harvest window by keyboard on a phone', as
   await expect(sections.getByText('Jährliches Erntefenster', { exact: true })).toBeVisible();
   await expect(sections.getByText('Wachstumszeit (Tage)', { exact: true })).toHaveCount(0);
   await page.goto(`${detailUrl}&action=edit`);
-  await expect(start).toHaveValue('12-15');
-  await expect(end).toHaveValue('02-29');
+  await expect(start).toHaveValue('15.12.');
+  await expect(end).toHaveValue('29.02.');
   await expect(delay).toHaveValue('2');
 
-  await start.fill('12-01');
+  await start.fill('01.12.');
   await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
   await expect(dialog).toBeHidden();
   expect(await apiRequest(page, 'GET', `/crops/${crop.id}/`)).toMatchObject({
     annual_harvest_window: '12-01/02-29', first_harvest_delay_years: 2,
   });
+});
+
+test.describe('French perennial timing', () => {
+  test.use({ hasTouch: true });
+
+  for (const viewport of [{ width: 375, height: 800 }, { width: 800, height: 375 }, { width: 1440, height: 900 }]) {
+    test(`keeps the labels and touch picker reachable at ${viewport.width}px`, async ({ page, request }, info) => {
+      await page.setViewportSize(viewport);
+      await loginWithDeterministicProject(page, request, `perennial-timing-fr-${viewport.width}`, { loginAsAdmin: true });
+      const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+        name: 'Pommier de test', life_cycle: 'perennial', standing_time_years: 20,
+        annual_harvest_window: '04-01/12-15', first_harvest_delay_years: 0,
+      });
+      await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'fr' });
+      await page.evaluate(() => {
+        localStorage.setItem('ui.language', 'fr');
+        localStorage.setItem('ui.language.pendingChoice', 'fr');
+      });
+      await page.goto(`/app/crops?cropId=${crop.id}&action=edit`);
+      const delay = page.getByRole('spinbutton', { name: fr.annualHarvest.delay });
+      const start = page.getByRole('textbox', { name: fr.annualHarvest.start });
+      const end = page.getByRole('textbox', { name: fr.annualHarvest.end });
+      await expect(start).toHaveValue('01/04');
+      await expect(end).toHaveValue('15/12');
+      await expect(delay).toHaveValue('0');
+      await expectFloatingLabel(delay);
+      await delay.clear();
+      await start.focus();
+      await expectFloatingLabel(delay);
+      await expectFloatingLabel(start);
+      await expectFloatingLabel(end);
+      await delay.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: info.outputPath(`perennial-timing-fr-${viewport.width}.png`), animations: 'disabled' });
+
+      await page.getByRole('button', { name: fr.annualHarvest.openStartPicker }).tap();
+      const picker = page.getByRole('dialog', { name: fr.annualHarvest.openStartPicker });
+      await expect(picker.getByRole('combobox', { name: fr.annualHarvest.pickerMonth })).toHaveValue('4');
+      const day = picker.getByRole('button', { name: '30 avril', exact: true });
+      await expect(day).toBeInViewport();
+      await page.screenshot({ path: info.outputPath(`harvest-picker-fr-${viewport.width}.png`), animations: 'disabled' });
+      await day.tap();
+      await expect(start).toHaveValue('30/04');
+    });
+  }
 });
 
 test.describe('crop edit dialog compact layout', () => {
