@@ -75,6 +75,7 @@ class LocationSerializer(serializers.ModelSerializer):
             for field, value in validated_data.items():
                 setattr(instance, field, value)
             instance.save(update_fields=[*validated_data, 'updated_at'])
+            instance.refresh_from_db()
             return instance
         return super().update(instance, validated_data)
 

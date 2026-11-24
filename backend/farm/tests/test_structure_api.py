@@ -133,7 +133,7 @@ class StructureApiTest(ProjectApiTestCase):
         foreign.refresh_from_db()
         self.assertEqual(foreign.bed_path_spacing_m, 0.30)
 
-    def test_spacing_patch_preserves_a_boundary_saved_after_the_location_was_read(self):
+    def test_spacing_patch_returns_a_boundary_saved_after_the_location_was_read(self):
         Location.objects.filter(pk=self.location.pk).update(boundary_x=20, boundary_y=40)
         serializer = LocationSerializer(
             self.location, data={'bed_path_spacing_cm': 45}, partial=True,
@@ -141,6 +141,8 @@ class StructureApiTest(ProjectApiTestCase):
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
+        self.assertEqual((serializer.data['boundary_x'], serializer.data['boundary_y']), (20, 40))
+        self.assertEqual(serializer.data['bed_path_spacing_cm'], 45)
         self.location.refresh_from_db()
         self.assertEqual((self.location.boundary_x, self.location.boundary_y), (20, 40))
         self.assertEqual(self.location.bed_path_spacing_m, 0.45)
