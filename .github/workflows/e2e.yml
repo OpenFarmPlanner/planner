@@ -64,7 +64,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: frontend/node_modules
-          key: smoke-cold-rehearsal-1502-node-modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('frontend/package-lock.json') }}
+          key: node-modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('frontend/package-lock.json') }}
 
       - name: Install frontend dependencies
         if: needs.changes.outputs.metadata_only != 'true' && (steps.node-modules-cache.outputs.cache-hit != 'true')
