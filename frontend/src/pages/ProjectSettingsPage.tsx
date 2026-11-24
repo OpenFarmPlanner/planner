@@ -19,6 +19,7 @@ import { SeasonPatternCard } from '../seasons/SeasonPatternCard';
 import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
 import { showGlobalSnackbar } from '../utils/globalSnackbar';
 import { currencyForRegion } from '../utils/currency';
+import { bedDimensionInputFormat } from '../components/hierarchy/utils/bedDimensions';
 import { formatLocalizedNumberForInput, getActiveFormattingLocale, parseLocalizedNumber } from '../utils/numberLocalization';
 import { ProjectSettingsMembersSection } from './projectSettingsMembersSection';
 import { ProjectSettingsSchedulingSection } from './projectSettingsSchedulingSection';
@@ -27,8 +28,8 @@ import type { MembersFeedback, ProjectRole } from './projectSettingsMembers';
 const showSuccess = (message: string): void => showGlobalSnackbar({ message, severity: 'success' });
 
 const bedDimensionsDraft = (length: number | null, width: number | null, locale: string) => ({
-  length: length === null ? '' : formatLocalizedNumberForInput(length, locale),
-  width: width === null ? '' : formatLocalizedNumberForInput(width, locale),
+  length: length === null ? '' : formatLocalizedNumberForInput(length, locale, bedDimensionInputFormat),
+  width: width === null ? '' : formatLocalizedNumberForInput(width, locale, bedDimensionInputFormat),
 });
 
 const isInvalidDimension = (draft: string, value: number | null): boolean =>

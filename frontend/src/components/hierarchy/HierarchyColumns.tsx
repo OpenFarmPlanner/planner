@@ -34,6 +34,7 @@ import { FullCellTooltip, FULL_CELL_TOOLTIP_CELL_CLASS } from '../data-grid/Full
 import { dataGridHeaderLabelSx } from '../data-grid/dataGridHeaderLabelSx';
 import { widthForHeaderTitles } from '../data-grid/columnHeaderWidth';
 import { formatLocalizedNumberForInput, getActiveFormattingLocale } from '../../utils/numberLocalization';
+import { bedDimensionInputFormat } from './utils/bedDimensions';
 
 export interface HierarchyColumnWidths {
   name: number;
@@ -96,7 +97,9 @@ const renderDecimalEditInputCell = (
   <GridEditInputCell
     {...params}
     value={typeof params.value === 'number'
-      ? formatLocalizedNumberForInput(params.value, getActiveFormattingLocale())
+      ? formatLocalizedNumberForInput(
+          params.value, getActiveFormattingLocale(), params.row.type === 'bed' ? bedDimensionInputFormat : undefined,
+        )
       : params.value}
     debounceMs={0}
     onFocus={selectPrefilledValueOnFocus(params)}

@@ -97,12 +97,12 @@ describe('BulkBedCreateDialog', () => {
     const { dialog, onCreate } = renderDialog(
       [{ id: 1, name: 'A 1', field: 10, length_m: 5, width_m: 2 }],
       FIELD,
-      { length_m: 10, width_m: 1.2 },
+      { length_m: 10, width_m: 1.23456789 },
     );
     const length = within(dialog).getByRole('textbox', { name: /dialogs.bulkCreateBeds.length/ });
     const width = within(dialog).getByRole('textbox', { name: /dialogs.bulkCreateBeds.width/ });
     expect(length).toHaveValue('10');
-    expect(width).toHaveValue('1,2');
+    expect(width).toHaveValue('1,23456789');
     expect(countField(dialog)).toHaveValue(6);
     expect(within(dialog).getByText('A 2')).toBeVisible();
 
@@ -118,8 +118,8 @@ describe('BulkBedCreateDialog', () => {
     expect(onCreate).toHaveBeenCalledWith({
       field: 10,
       beds: [
-        { name: 'A 2', length_m: 8, width_m: 1.2 },
-        { name: 'A 3', length_m: 8, width_m: 1.2 },
+        { name: 'A 2', length_m: 8, width_m: 1.23456789 },
+        { name: 'A 3', length_m: 8, width_m: 1.23456789 },
       ],
     });
   });

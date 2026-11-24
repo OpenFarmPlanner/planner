@@ -26,7 +26,7 @@ import { LocalizedDecimalField } from '../inputs/LocalizedDecimalField';
 import { DisabledActionTooltip } from '../DisabledActionTooltip';
 import { formatLocalizedNumber, getActiveFormattingLocale } from '../../utils/numberLocalization';
 import { abbreviateNameList } from './utils/bedNaming';
-import type { BedDimensions } from './utils/bedDimensions';
+import { bedDimensionInputFormat, type BedDimensions } from './utils/bedDimensions';
 import {
   changeBulkBedOrientation,
   evaluateBulkBedForm,
@@ -230,6 +230,7 @@ export function BulkBedCreateDialog({
                   margin="dense"
                   required
                   value={values.lengthM}
+                  formatOptions={bedDimensionInputFormat}
                   disabled={isSaving}
                   error={Boolean(plan.errors.lengthM)}
                   helperText={describeError(plan.errors.lengthM)}
@@ -243,6 +244,7 @@ export function BulkBedCreateDialog({
                   margin="dense"
                   required
                   value={values.widthM}
+                  formatOptions={bedDimensionInputFormat}
                   disabled={isSaving}
                   error={Boolean(plan.errors.widthM)}
                   helperText={describeError(plan.errors.widthM)}

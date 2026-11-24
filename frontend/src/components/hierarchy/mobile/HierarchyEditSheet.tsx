@@ -18,7 +18,7 @@ import { CustomContextMenu } from "../../contextMenu/CustomContextMenu";
 import { ContextMenuActionItem } from "../../contextMenu/ContextMenuActionItem";
 import { renderGroupedContextMenuActions } from "../../contextMenu/contextMenuGroups";
 import { calculateAreaValue } from "../utils/dimensionCellState";
-import { getNewBedDimensions, type BedDimensions } from "../utils/bedDimensions";
+import { bedDimensionInputFormat, getNewBedDimensions, type BedDimensions } from "../utils/bedDimensions";
 import {
   classifyHierarchyValidationError,
   validateAndSaveHierarchyRow,
@@ -79,10 +79,11 @@ function buildInitialValues(
   const dimensions = existing ?? getNewBedDimensions(
     mode === "create" && createContext?.nodeType === "bed" ? createContext.bedDefaults : undefined,
   );
+  const format = (existing?.type ?? createContext?.nodeType) === "bed" ? bedDimensionInputFormat : undefined;
   return {
     name: existing?.name ?? "",
-    length: typeof dimensions.length_m === "number" ? formatLocalizedNumberForInput(dimensions.length_m, locale) : "",
-    width: typeof dimensions.width_m === "number" ? formatLocalizedNumberForInput(dimensions.width_m, locale) : "",
+    length: typeof dimensions.length_m === "number" ? formatLocalizedNumberForInput(dimensions.length_m, locale, format) : "",
+    width: typeof dimensions.width_m === "number" ? formatLocalizedNumberForInput(dimensions.width_m, locale, format) : "",
     notes: existing?.notes ?? "",
   };
 }

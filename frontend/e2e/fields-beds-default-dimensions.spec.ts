@@ -26,7 +26,7 @@ test('desktop drafts use the configured side and preserve a cleared side and dup
   await page.setViewportSize({ width: 1440, height: 900 });
   await loginWithDeterministicProject(page, request, 'bed-defaults-desktop', { loginAsAdmin: true });
   const { projectId, field, source } = await seedBed(page);
-  await apiRequest(page, 'PATCH', `/projects/${projectId}/`, { default_bed_length_m: 10.5 });
+  await apiRequest(page, 'PATCH', `/projects/${projectId}/`, { default_bed_length_m: 10.12345678 });
   await page.goto('/app/fields-beds');
 
   const fieldRow = page.locator(`[role="row"][data-id="field-${field.id}"]`);
@@ -37,7 +37,7 @@ test('desktop drafts use the configured side and preserve a cleared side and dup
   const length = draft.locator('[data-field="length_m"] input');
   const width = draft.locator('[data-field="width_m"] input');
   await expect(name).toBeFocused();
-  await expect(length).toHaveValue('10,5');
+  await expect(length).toHaveValue('10,12345678');
   await expect(width).toHaveValue('0,8');
   await name.fill('Tastaturbeet');
   await name.press('Tab');
@@ -62,7 +62,7 @@ test.describe('mobile bed defaults', () => {
     await loginWithDeterministicProject(page, request, 'bed-defaults-mobile', { loginAsAdmin: true });
     const { projectId } = await seedBed(page);
     await apiRequest(page, 'PATCH', `/projects/${projectId}/`, {
-      default_bed_length_m: 10, default_bed_width_m: 1.2,
+      default_bed_length_m: 10, default_bed_width_m: 1.23456789,
     });
     await page.goto('/app/fields-beds?createBed=true');
 
@@ -70,7 +70,7 @@ test.describe('mobile bed defaults', () => {
     const length = sheet.getByRole('textbox', { name: 'Länge (m)' });
     const width = sheet.getByRole('textbox', { name: 'Breite (m)' });
     await expect(length).toHaveValue('10');
-    await expect(width).toHaveValue('1,2');
+    await expect(width).toHaveValue('1,23456789');
     await sheet.getByLabel('Name', { exact: true }).fill('Touchbeet');
     const save = sheet.getByRole('button', { name: 'Speichern' });
     await width.fill('keine Zahl');

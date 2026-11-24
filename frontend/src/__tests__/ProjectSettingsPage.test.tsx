@@ -518,6 +518,35 @@ describe('ProjectSettingsPage', () => {
     await waitFor(() => expect(refreshUserMock).toHaveBeenCalled());
   });
 
+  it('preserves precise dimensions when cancelling changes or saving the project name', async () => {
+    authState.user = {
+      id: 1,
+      memberships: [{
+        project_id: 1, project_name: 'Alpha', role: 'admin',
+        project_default_bed_length_m: 10.12345678, project_default_bed_width_m: 0.00000036,
+      }],
+    };
+    render(<MemoryRouter><ProjectSettingsPage /></MemoryRouter>);
+
+    const general = within(screen.getByRole('region', { name: 'Allgemein' }));
+    const length = general.getByRole('textbox', { name: 'Länge (m)' });
+    const width = general.getByRole('textbox', { name: 'Breite (m)' });
+    const save = general.getByRole('button', { name: 'Speichern' });
+    expect(length).toHaveValue('10,12345678');
+    expect(width).toHaveValue('0,00000036');
+    expect(save).toBeDisabled();
+
+    fireEvent.change(length, { target: { value: '20' } });
+    expect(save).toBeEnabled();
+    fireEvent.click(general.getByRole('button', { name: 'Abbrechen' }));
+    expect(length).toHaveValue('10,12345678');
+    expect(save).toBeDisabled();
+
+    fireEvent.change(general.getByRole('textbox', { name: 'Projektname' }), { target: { value: 'Beta' } });
+    fireEvent.click(save);
+    await waitFor(() => expect(updateProjectMock).toHaveBeenCalledWith(1, { name: 'Beta' }));
+  });
+
   it('saves a changed name and region together in one request', async () => {
     authState.user = {
       id: 1,
