@@ -95,7 +95,6 @@
       "confirmTitle": "Créer la saison {{label}} ?",
       "copyCheckbox": "Copier les plans de culture",
       "transitionPeriodChanged": "Les périodes de transition ont changé. Vérifiez les nouvelles périodes avant de créer les saisons.",
-      "copyDescription": "Les surfaces de culture, les planches et les affectations de la rotation des cultures seront copiées dans la nouvelle saison.",
       "create": "Créer",
       "createError": "Impossible de créer la saison.",
       "outOfRangeError_one": "La saison pour {{period}} ne peut pas être créée, car {{count}} série existante se situe en dehors de cette période : {{examples}}. Ajustez le modèle de saison dans les paramètres du projet, puis créez à nouveau la saison.",
@@ -131,9 +130,15 @@
           "gap": "Un intervalle subsiste : {{period}}.",
           "overlap": "Un chevauchement subsiste : {{period}}."
         },
-        "copyPreviewAll": "Les {{total}} séries de {{label}} seront copiées.",
-        "copyPreviewPartial": "{{copied}} séries sur {{total}} de {{label}} seront copiées – {{skipped}} se situent en dehors de la période et ne seront pas copiées.",
-        "copyPreviewFollowup": "Saison suivante {{label}} : {{copied}} séries sur {{total}} seront copiées."
+        "copyPreviewAll_one": "La série de « {{label}} » sera copiée.",
+        "copyPreviewAll_other": "Les {{count}} séries de {{label}} seront copiées.",
+        "copyPreviewAll_many": "Les {{count}} séries de {{label}} seront copiées.",
+        "copyPreviewPartial_one": "{{copied}} série sur {{count}} de « {{label}} » sera copiée. Hors de la période ({{skipped}}).",
+        "copyPreviewPartial_other": "{{copied}} séries sur {{count}} de {{label}} seront copiées – {{skipped}} se situent en dehors de la période et ne seront pas copiées.",
+        "copyPreviewPartial_many": "{{copied}} séries sur {{count}} de {{label}} seront copiées – {{skipped}} se situent en dehors de la période et ne seront pas copiées.",
+        "copyPreviewFollowup_one": "La saison suivante « {{label}} » reçoit {{copied}} série sur {{count}}.",
+        "copyPreviewFollowup_other": "Saison suivante {{label}} : {{copied}} séries sur {{count}} seront copiées.",
+        "copyPreviewFollowup_many": "Saison suivante {{label}} : {{copied}} séries sur {{count}} seront copiées."
       },
       "createDisabledTooltip": "Choisissez d'abord une option pour la transition entre saisons."
     },

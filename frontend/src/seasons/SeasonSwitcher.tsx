@@ -221,6 +221,8 @@ export function SeasonCreateSuggestionDialog({
   const continuingCopyCount = activeCopyPreview?.continuing_count ?? 0;
   const unconfiguredCopyCount = activeCopyPreview?.unconfigured_perennial_count ?? 0;
   const excludedFromCopyCount = continuingCopyCount + unconfiguredCopyCount;
+  const activePreviewTotal = (activeCopyPreview?.total ?? 0) - excludedFromCopyCount;
+  const followupPreviewTotal = (followupCopyPreview?.total ?? 0) - excludedFromCopyCount;
 
   const resetTransientState = () => {
     setCreateError(null);
@@ -497,14 +499,9 @@ export function SeasonCreateSuggestionDialog({
                   />
                 )}
                 label={(
-                  <Stack spacing={0.5}>
-                    <Typography variant="body2">
-                      {t('navigation:seasonSwitcher.suggestion.copyCheckbox')}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {t('navigation:seasonSwitcher.suggestion.copyDescription')}
-                    </Typography>
-                  </Stack>
+                  <Typography variant="body2">
+                    {t('navigation:seasonSwitcher.suggestion.copyCheckbox')}
+                  </Typography>
                 )}
               />
               {copyFromPrevious && (
@@ -552,7 +549,7 @@ export function SeasonCreateSuggestionDialog({
                   </Box>
                 </Stack>
               )}
-              {copyFromPrevious && activeCopyPreview && activeCopyPreview.total > excludedFromCopyCount ? (
+              {copyFromPrevious && activeCopyPreview && activePreviewTotal > 0 ? (
                 <Typography
                   variant="caption"
                   color={activeCopyPreview.skipped > 0 ? 'warning.dark' : 'text.secondary'}
@@ -564,7 +561,7 @@ export function SeasonCreateSuggestionDialog({
                       : 'navigation:seasonSwitcher.suggestion.gap.copyPreviewAll',
                     {
                       ...activeCopyPreview,
-                      total: activeCopyPreview.total - excludedFromCopyCount,
+                      count: activePreviewTotal,
                       label: copyFromLabel,
                     },
                   )}
@@ -580,8 +577,7 @@ export function SeasonCreateSuggestionDialog({
                   {t('navigation:seasonSwitcher.copyDialog.unconfiguredPerennials', { count: unconfiguredCopyCount })}
                 </Typography>
               ) : null}
-              {copyFromPrevious && isTransitionTwoSeason && followupCopyPreview
-                && followupCopyPreview.total > excludedFromCopyCount ? (
+              {copyFromPrevious && isTransitionTwoSeason && followupCopyPreview && followupPreviewTotal > 0 ? (
                 <Typography
                   variant="caption"
                   color={followupCopyPreview.skipped > 0 ? 'warning.dark' : 'text.secondary'}
@@ -589,7 +585,7 @@ export function SeasonCreateSuggestionDialog({
                 >
                   {t('navigation:seasonSwitcher.suggestion.gap.copyPreviewFollowup', {
                     ...followupCopyPreview,
-                    total: followupCopyPreview.total - excludedFromCopyCount,
+                    count: followupPreviewTotal,
                     label: followupLabel,
                   })}
                 </Typography>

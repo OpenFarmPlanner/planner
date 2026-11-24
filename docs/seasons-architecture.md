@@ -729,10 +729,10 @@ decides once, at the point the concrete season is actually created.
   section) and only drops one whose month the (possibly short) target period
   never covers — surfacing the `skipped` count in the dialog. For the
   transition pair, `distribute_planting_plans(source, transition, followup)`
-  instead shifts each plan **once** (by the whole-year gap to the transition
-  season) and routes it to whichever of the two new seasons its shifted
-  `planting_date` lands in — never both, never silently dropped. Harvest dates
-  are never range-checked (they legitimately run past a season's end).
+  uses the same month-and-day alignment for each plan. It tries the transition
+  period first and then the follow-up. Each plan is copied into the first
+  period it fits. Preview and execution use the same placement rule. Harvest
+  dates may run past a season's end.
 
 ## Editing a season's period
 

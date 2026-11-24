@@ -148,7 +148,7 @@ for (const basis of ['planned', 'actual'] as const) {
       ));
       await dateBasis.check();
       expect((await preview).ok()).toBe(true);
-      await expect(dialog.getByText(/Anbaupläne.*übernommen/)).toBeVisible();
+      await expect(dialog.getByText(/Der Anbauplan aus .*Historische Saison.* wird übernommen/)).toBeVisible();
     }
     expect(await dialog.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
     await test.info().attach(`create-season-${basis}`, {

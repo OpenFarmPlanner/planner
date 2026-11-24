@@ -502,14 +502,14 @@ class SeasonGapDecisionApiTest(ProjectApiTestCase):
     def test_transition_copies_the_selected_historical_source_once_across_both_periods(self):
         self._set_pattern(1, 1)
         older = Season.objects.create(
-            project=self.project, start_date=date(2024, 9, 1), end_date=date(2025, 8, 31),
+            project=self.project, start_date=date(2024, 1, 1), end_date=date(2024, 12, 31),
         )
         latest = Season.objects.create(
             project=self.project, start_date=date(2025, 9, 1), end_date=date(2026, 8, 31),
         )
         for season, planned, actual in (
             (older, date(2024, 10, 1), date(2024, 10, 7)),
-            (older, date(2025, 4, 1), None),
+            (older, date(2024, 4, 1), None),
             (latest, date(2026, 6, 1), None),
         ):
             PlantingPlan.objects.create(
@@ -517,15 +517,17 @@ class SeasonGapDecisionApiTest(ProjectApiTestCase):
                 cultivation_type='direct_sowing', planting_date=planned, actual_sowing_date=actual,
             )
         url = '/openfarmplanner/api/seasons/'
-        preview = self.client.get(f'{url}creation-options/', {
-            'copy_target': 'transition', 'source_season_id': older.pk, 'use_actual_dates': 'true',
-        })
-        self.assertEqual(preview.status_code, 200, preview.data)
-        self.assertEqual(preview.data['copy_source_season_id'], older.pk)
-        self.assertFalse(preview.data['copy_is_preceding_source']['transition'])
-        copied = preview.data['copy_preview']
-        self.assertEqual(copied['transition']['copied'], 1)
-        self.assertEqual(copied['transition_followup']['copied'], 1)
+        for basis in ('false', 'true'):
+            preview = self.client.get(f'{url}creation-options/', {
+                'copy_target': 'transition', 'source_season_id': older.pk,
+                'use_actual_dates': basis,
+            })
+            self.assertEqual(preview.status_code, 200, preview.data)
+            self.assertEqual(preview.data['copy_source_season_id'], older.pk)
+            self.assertFalse(preview.data['copy_is_preceding_source']['transition'])
+            copied = preview.data['copy_preview']
+            self.assertEqual(copied['transition']['copied'], 1)
+            self.assertEqual(copied['transition_followup']['copied'], 1)
         payload = {'copy': True, 'source_season_id': older.pk, 'use_actual_dates': True}
         stale_periods = self.client.post(f'{url}create-transition/', {
             **payload, 'expected_followup': {'start_date': '2028-01-01', 'end_date': '2028-12-31'},
