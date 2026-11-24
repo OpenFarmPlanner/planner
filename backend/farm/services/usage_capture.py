@@ -14,6 +14,8 @@ from django.http import HttpRequest, HttpResponse
 from django.utils import timezone
 
 from accounts.demo_access import is_active_guest_demo_user
+from crops.agent_api.authentication import header_carries_crop_library_token
+from farm.agent_api.authentication import header_carries_api_token
 from farm.models import EntityRevision, ProjectActiveUserDay, ProjectChangeDay
 
 ACTIVITY_RETENTION_DAYS = 90
@@ -206,7 +208,12 @@ class ProjectUsageMiddleware:
             return False
         if not request.path_info.startswith(self.prefixes):
             return False
-        if request.META.get('HTTP_AUTHORIZATION') or request.session.get('agent_mode'):
+        authorization = request.META.get('HTTP_AUTHORIZATION', '')
+        if (
+            request.session.get('agent_mode')
+            or header_carries_api_token(authorization)
+            or header_carries_crop_library_token(authorization)
+        ):
             return False
         user = request.user
         return user.is_authenticated and user.is_active and not (user.is_staff or user.is_superuser)

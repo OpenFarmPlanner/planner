@@ -1486,6 +1486,18 @@ class PlatformActivityTests(TestCase):
         self.assertEqual((row.created, row.updated, row.deleted, row.restored), (1, 1, 1, 1))
         self.assertEqual(ProjectActiveUserDay.objects.filter(user=self.user).count(), 1)
 
+    def test_session_writes_count_with_unrelated_authorization_headers(self) -> None:
+        for index, header in enumerate(('Basic irrelevant', 'Bearer unrelated')):
+            with self.subTest(header=header):
+                response = self.client.post(
+                    self.endpoint, {'name': f'Session crop {index}'},
+                    content_type='application/json', HTTP_AUTHORIZATION=header, **self.headers,
+                )
+                self.assertEqual(response.status_code, 201, response.content)
+
+        self.assertEqual(ProjectChangeDay.objects.get(project=self.project).created, 2)
+        self.assertEqual(ProjectActiveUserDay.objects.get(project=self.project).user, self.user)
+
     def test_bulk_import_receipt_and_undo_count_the_changed_objects_once(self) -> None:
         request_id = str(uuid4())
         public = [
