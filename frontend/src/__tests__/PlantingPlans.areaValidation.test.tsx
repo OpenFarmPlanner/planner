@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import PlantingPlans from "../pages/PlantingPlans";
-import { DialogEditCellContext, buildDialogEditCellKey } from "../components/data-grid/DialogEditCellContext";
+import { createDialogEditCellRequests, DialogEditCellContext } from "../components/data-grid/DialogEditCellContext";
 import type { EditableDataGridCommandApi } from "../components/data-grid";
 import { registerOpenContextMenu } from "../components/contextMenu/contextMenuOpenState";
 
@@ -409,11 +409,10 @@ describe("PlantingPlans save-time area validation", () => {
     const bedColumn = (latestProps?.columns ?? []).find(
       (column: { field: string }) => column.field === "bed",
     );
+    const requests = createDialogEditCellRequests();
+    requests.open(7, "bed");
     const cell = render(
-      <DialogEditCellContext.Provider value={{
-        request: { cellKey: buildDialogEditCellKey(7, "bed"), token: 1 },
-        consumeRequest: vi.fn(),
-      }}>
+      <DialogEditCellContext.Provider value={requests}>
         {bedColumn.renderCell({
           id: 7,
           field: "bed",
@@ -456,11 +455,10 @@ describe("PlantingPlans save-time area validation", () => {
       const bedColumn = (latestProps?.columns ?? []).find(
         (column: { field: string }) => column.field === "bed",
       );
+      const requests = createDialogEditCellRequests();
+      requests.open(7, "bed");
       const cell = render(
-        <DialogEditCellContext.Provider value={{
-          request: { cellKey: buildDialogEditCellKey(7, "bed"), token: 1 },
-          consumeRequest: vi.fn(),
-        }}>
+        <DialogEditCellContext.Provider value={requests}>
           {bedColumn.renderCell({
             id: 7,
             field: "bed",

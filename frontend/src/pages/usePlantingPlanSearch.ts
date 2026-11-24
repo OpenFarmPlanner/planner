@@ -168,6 +168,19 @@ export interface PlantingPlanSearchResult<Row extends SearchRow> {
  * and the mobile card list both read from this one hook, so there is exactly
  * one filter state and both views show the same plans for the same input.
  */
+function createSearchRecordReader<Row extends SearchRow>(toRecordInput: (row: Row) => PlantingPlanSearchRecordInput) {
+  // A grid save replaces the changed row. Reuse normalized search records
+  // for the other row objects until the projection itself changes.
+  const cache = new WeakMap<Row, PlantingPlanSearchRecord>();
+  return (row: Row): PlantingPlanSearchRecord => {
+    const cached = cache.get(row);
+    if (cached) return cached;
+    const record = createPlantingPlanSearchRecord(toRecordInput(row));
+    cache.set(row, record);
+    return record;
+  };
+}
+
 export function usePlantingPlanSearch<Row extends SearchRow>({
   rows,
   toRecordInput,
@@ -234,17 +247,12 @@ export function usePlantingPlanSearch<Row extends SearchRow>({
 
   const terms = useMemo(() => tokenizeSearchQuery(appliedQuery), [appliedQuery]);
 
+  const getRecord = useMemo(() => createSearchRecordReader(toRecordInput), [toRecordInput]);
   const records = useMemo(
     () => rows
       .filter((row) => !row.isNew)
-      .map((row) => ({ row, record: createPlantingPlanSearchRecord(toRecordInput(row)) })),
-    [rows, toRecordInput],
-  );
-  // The grid asks with its own row objects; they are normally the same ones
-  // the card list holds, and either way go through the same match function.
-  const recordByRow = useMemo(
-    () => new Map<Row, PlantingPlanSearchRecord>(records.map(({ row, record }) => [row, record])),
-    [records],
+      .map((row) => ({ row, record: getRecord(row) })),
+    [rows, getRecord],
   );
 
   const fieldLocationById = useMemo(
@@ -304,10 +312,9 @@ export function usePlantingPlanSearch<Row extends SearchRow>({
       if (row.isNew) {
         return true;
       }
-      const record = recordByRow.get(row) ?? createPlantingPlanSearchRecord(toRecordInput(row));
-      return matchPlantingPlan(record, terms, filters).matches;
+      return matchPlantingPlan(getRecord(row), terms, filters).matches;
     };
-  }, [filters, isActive, recordByRow, terms, toRecordInput]);
+  }, [filters, getRecord, isActive, terms]);
 
   return {
     query,

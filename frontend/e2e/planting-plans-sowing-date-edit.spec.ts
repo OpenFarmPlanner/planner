@@ -6,6 +6,7 @@ const apiBase = `http://127.0.0.1:${backendPort}/api`;
 
 interface SowingDateEditFixture {
   planId: number;
+  bedId: number;
   propagationDurationDays: number;
   api: <T>(path: string, data: Record<string, unknown>) => Promise<T>;
   getPlan: () => Promise<{ planting_date: string; planned_propagation_start_date: string | null }>;
@@ -68,7 +69,7 @@ async function createSowingDateEditFixture(
     return response.json();
   };
 
-  return { planId: plan.id, propagationDurationDays, api, getPlan };
+  return { planId: plan.id, bedId: bed.id, propagationDurationDays, api, getPlan };
 }
 
 async function selectPlannedDates(page: Page): Promise<void> {
@@ -77,6 +78,62 @@ async function selectPlannedDates(page: Page): Promise<void> {
 }
 
 test.describe('planting plans sowing date edit', () => {
+  test('a no-op edit makes no request and a changed date refreshes only its bed', async ({ page, request }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    const fixture = await createSowingDateEditFixture(page, request, 'planned-date-save-requests');
+    await page.goto('/app/planting-plans');
+    await selectPlannedDates(page);
+    const row = page.locator(`[role="row"][data-id="${fixture.planId}"]`);
+    const cell = row.locator('[data-field="planting_date"]');
+    const input = cell.getByRole('textbox');
+    await expect(cell).toHaveText('1.5.2026');
+
+    const requests: Array<{ method: string; pathname: string; bed: string | null }> = [];
+    page.on('request', request => {
+      const { pathname, searchParams } = new URL(request.url());
+      if (pathname.startsWith('/api/planting-plans/')) {
+        requests.push({ method: request.method(), pathname, bed: searchParams.get('bed') });
+      }
+    });
+    await cell.dblclick();
+    await expect(input).toBeFocused();
+    await input.press('Enter');
+    await expect(input).toHaveCount(0);
+    expect(requests).toEqual([]);
+
+    await cell.dblclick();
+    await expect(input).toBeFocused();
+    await input.fill('10.05.2026');
+    let releaseCapacity!: () => void;
+    const capacityGate = new Promise<void>(resolve => { releaseCapacity = resolve; });
+    await page.route(/\/api\/planting-plans\/remaining-area\//, async route => {
+      await capacityGate;
+      await route.continue();
+    }, { times: 1 });
+    const pendingCapacity = page.waitForRequest(request => new URL(request.url()).pathname.endsWith('/remaining-area/'));
+    const refreshed = page.waitForResponse(response =>
+      new URL(response.url()).searchParams.has('bed') && response.request().method() === 'GET',
+    );
+    try {
+      await input.press('Enter');
+      await pendingCapacity;
+      await expect(row).toHaveAttribute('aria-busy', 'true');
+    } finally {
+      releaseCapacity();
+    }
+    const scopedResponse = await refreshed;
+    expect(scopedResponse.ok()).toBe(true);
+    const refreshedBed = String(fixture.bedId);
+    await expect(cell).toHaveText('10.5.2026');
+    await expect(row).not.toHaveAttribute('aria-busy', 'true');
+    expect(requests).toEqual([
+      { method: 'GET', pathname: '/api/planting-plans/remaining-area/', bed: null },
+      { method: 'PUT', pathname: `/api/planting-plans/${fixture.planId}/`, bed: null },
+      { method: 'GET', pathname: '/api/planting-plans/', bed: refreshedBed },
+    ]);
+    expect(await fixture.getPlan()).toMatchObject({ planting_date: '2026-05-10' });
+  });
+
   test('editing Aussaattermin on an existing row persists the shifted Pflanztermin on save', async ({ page, request }) => {
     await page.setViewportSize({ width: 1400, height: 900 });
     const fixture = await createSowingDateEditFixture(page, request, 'planting-plans-sowing-date-edit');

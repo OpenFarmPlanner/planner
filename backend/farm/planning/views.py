@@ -472,6 +472,10 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
                     pk=season_id, project=self.request.active_project,
                 ).first()
         context['harvest_season'] = season
+        context['harvest_overlaps_for_bed'] = (
+            self.action in {'retrieve', 'create', 'update', 'partial_update'}
+            or (self.action == 'list' and self.request.query_params.get('bed') is not None)
+        )
         crop_index = getattr(self, '_harvest_crop_index', None)
         if crop_index is not None:
             context['_general_crop_index_by_project'] = {self.request.active_project.pk: crop_index}

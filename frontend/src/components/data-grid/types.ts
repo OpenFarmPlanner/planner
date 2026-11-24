@@ -140,6 +140,7 @@ export interface EditableDataGridProps<T extends EditableRow> {
   showAddAction?: boolean;
   showFooterEditControls?: boolean;
   showRowEditActions?: boolean;
+  showPendingRowSaves?: boolean;
   getRowActions?: (row: T, helpers: EditableDataGridRowActionHelpers<T>) => EditableDataGridRowAction<T>[];
   inlineRowActionField?: string;
   getInlineRowActions?: (row: T, helpers: EditableDataGridRowActionHelpers<T>) => EditableDataGridRowAction<T>[];
@@ -155,7 +156,9 @@ export interface EditableDataGridProps<T extends EditableRow> {
   clipboardColumns?: EditableDataGridClipboardColumn<T>[];
   onRowsStateChange?: (rows: T[]) => void;
   onLoadStateChange?: (state: { loading: boolean; dataFetched: boolean; error: string }) => void;
-  onBeforeSaveRow?: (row: T) => boolean | Partial<T> | Promise<boolean | Partial<T>>;
+  /** Return 'unchanged' to end editing without writing the original row. */
+  onBeforeSaveRow?: (row: T, original?: T) =>
+    boolean | 'unchanged' | Partial<T> | Promise<boolean | 'unchanged' | Partial<T>>;
   /**
    * Determines whether an unsaved new row can be discarded on blur without
    * running save validation.

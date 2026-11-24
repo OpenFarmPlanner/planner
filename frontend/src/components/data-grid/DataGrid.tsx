@@ -27,6 +27,8 @@ import {
   GridCell,
   GridPagination,
   GridPreferencePanelsValue,
+  GridRow,
+  type GridRowProps,
   GridRowEditStopReasons,
   GridRowModes,
   useGridApiContext,
@@ -45,6 +47,7 @@ import {
 } from './domEventTargets';
 import type { GridCellProps, GridValidRowModel, GridColDef, GridRowsProp, GridRowModesModel, GridRowId, GridSortModel, GridFilterModel, GridCellParams, GridRenderCellParams, GridRowParams, GridPaginationModel, GridEventListener } from '@mui/x-data-grid';
 import { Box, Alert, IconButton, Chip, Button, Divider, useMediaQuery } from '@mui/material';
+import useEventCallback from '@mui/utils/useEventCallback';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckIcon from '@mui/icons-material/Check';
@@ -91,10 +94,8 @@ import {
   type EditCellTabNavigationHandler,
 } from './EditCellNavigationContext';
 import {
-  buildDialogEditCellKey,
+  createDialogEditCellRequests,
   DialogEditCellContext,
-  type DialogEditCellContextValue,
-  type DialogEditCellRequest,
 } from './DialogEditCellContext';
 import {
   buildSelectEditCellKey,
@@ -169,6 +170,7 @@ export type {
   NotesFieldConfig,
 } from './types';
 import { AppTooltip } from '../AppTooltip';
+import { createGridRowSaveStatus, GridRowSaveStatusContext, useGridRowSaving } from './GridRowSaveStatus';
 import { TruncatedTextWithTooltip } from '../TruncatedTextWithTooltip';
 import {
   isSelectEditMenuCloseOutsideElement,
@@ -230,6 +232,11 @@ const GridCellWithReadOnlyReason = forwardRef<HTMLDivElement, GridCellProps & {
     aria-description={reason ?? undefined} />;
 });
 
+const GridRowWithSaveStatus = forwardRef<HTMLDivElement, GridRowProps>(function GridRowWithSaveStatus(props, ref) {
+  const saving = useGridRowSaving(String(props.rowId));
+  return <GridRow {...props} ref={ref} aria-busy={saving || undefined} />;
+});
+
 export function EditableDataGrid<T extends EditableRow>({
   columns,
   api,
@@ -263,6 +270,7 @@ export function EditableDataGrid<T extends EditableRow>({
   showAddAction = true,
   showFooterEditControls = true,
   showRowEditActions = false,
+  showPendingRowSaves = false,
   getRowActions,
   inlineRowActionField,
   getInlineRowActions,
@@ -353,6 +361,7 @@ export function EditableDataGrid<T extends EditableRow>({
   } = useRowEditTracking();
   const rowSnapshotRef = useRef<Map<string, T>>(new Map());
   const rowSavePromisesRef = useRef<Map<string, Promise<T>>>(new Map());
+  const [saveStatus] = useState(createGridRowSaveStatus);
   const canceledRowIdsRef = useRef<Set<string>>(new Set());
   const internalEditNavigationRowIdRef = useRef<string | null>(null);
   const activeEditCellRef = useRef<{ id: GridRowId; field: string } | null>(null);
@@ -606,6 +615,7 @@ export function EditableDataGrid<T extends EditableRow>({
       setError(extractedError);
     },
   });
+  const { handleOpen: openNotesEditor, isOpen: isNotesEditorOpen } = notesEditor;
   const notesPreview = useNotesPreview();
 
   const hasRowsInEditMode = Object.values(rowModesModel).some(
@@ -646,23 +656,8 @@ export function EditableDataGrid<T extends EditableRow>({
     return !getCellReadOnlyReason?.(current, field)
       && (isStandaloneEditCell?.(current, field) || (isDialogEditField(field) && !isReadOnlyRow?.(row)));
   };
-  const [dialogEditRequest, setDialogEditRequest] = useState<DialogEditCellRequest | null>(null);
-  const dialogEditTokenRef = useRef(0);
-  const requestDialogEditForCell = useCallback((rowId: GridRowId, field: string, initialQuery?: string): void => {
-    dialogEditTokenRef.current += 1;
-    setDialogEditRequest({
-      cellKey: buildDialogEditCellKey(rowId, field),
-      token: dialogEditTokenRef.current,
-      initialQuery,
-    });
-  }, []);
-  const consumeDialogEditRequest = useCallback((token: number): void => {
-    setDialogEditRequest((current) => (current?.token === token ? null : current));
-  }, []);
-  const dialogEditCellContextValue = useMemo<DialogEditCellContextValue>(() => ({
-    request: dialogEditRequest,
-    consumeRequest: consumeDialogEditRequest,
-  }), [consumeDialogEditRequest, dialogEditRequest]);
+  const [dialogEditCellContextValue] = useState(createDialogEditCellRequests);
+  const requestDialogEditForCell = dialogEditCellContextValue.open;
   const [selectEditOpenRequest, setSelectEditOpenRequest] = useState<SelectEditCellOpenRequest | null>(null);
   const selectEditOpenTokenRef = useRef(0);
   const requestSelectEditOpenForCell = useCallback((rowId: GridRowId, field: string): void => {
@@ -1119,11 +1114,12 @@ export function EditableDataGrid<T extends EditableRow>({
     markRowDirty(rowKey);
   }, [getRowValidationErrors, gridApiRef, isEditableCell, isReadOnlyRow, markRowDirty, rowModesModel, rowsById, setRowFieldErrors, toEditCellValue]);
 
-  const runBeforeSaveGate = useCallback(async (row: T): Promise<T | null> => {
+  const runBeforeSaveGate = useCallback(async (row: T, original?: T): Promise<T | 'unchanged' | null> => {
     if (!onBeforeSaveRow) {
       return row;
     }
-    const saveDecision = await onBeforeSaveRow(row);
+    const saveDecision = await onBeforeSaveRow(row, original);
+    if (saveDecision === 'unchanged') return saveDecision;
     if (saveDecision === false) {
       return null;
     }
@@ -1456,9 +1452,10 @@ export function EditableDataGrid<T extends EditableRow>({
     // Clear previous error before validating
     // This ensures dropdown selections and other changes trigger fresh validation
     setError('');
+    if (showPendingRowSaves) saveStatus.setSaving(rowKey, true);
 
     const savePromise = (async (): Promise<T> => {
-      const rowAfterSaveGate = await runBeforeSaveGate(newRow);
+      const rowAfterSaveGate = await runBeforeSaveGate(newRow, original);
       if (!rowAfterSaveGate) {
         setRowModesModel((oldModel) => ({
           ...oldModel,
@@ -1467,7 +1464,13 @@ export function EditableDataGrid<T extends EditableRow>({
         throw new SaveBlockedError();
       }
 
-      const savedRow = await saveResolvedRow(rowAfterSaveGate);
+      let savedRow: T;
+      if (rowAfterSaveGate === 'unchanged') {
+        savedRow = original ?? newRow;
+        clearSavedRowInteractionState(newRow.id);
+      } else {
+        savedRow = await saveResolvedRow(rowAfterSaveGate);
+      }
       setRowModesModel((oldModel) => ({
         ...oldModel,
         [newRow.id]: { mode: GridRowModes.View, ignoreModifications: true },
@@ -1479,13 +1482,17 @@ export function EditableDataGrid<T extends EditableRow>({
       return await savePromise;
     } finally {
       rowSavePromisesRef.current.delete(rowKey);
+      if (showPendingRowSaves) saveStatus.setSaving(rowKey, false);
     }
   }, [
+    clearSavedRowInteractionState,
     forgetRows,
     isReadOnlyRow,
     rowsById,
     runBeforeSaveGate,
     saveResolvedRow,
+    saveStatus,
+    showPendingRowSaves,
   ]);
 
   const handleProcessRowUpdateError = useCallback((error: unknown): void => {
@@ -2067,11 +2074,12 @@ export function EditableDataGrid<T extends EditableRow>({
     }));
   }, [columns, duplicateRow, isReadOnlyRow, markRowDirty]);
 
+  const deleteRowAction = useEventCallback((rowId: GridRowId) => handleDeleteClick(rowId)());
   const rowActionHelpers = useMemo<EditableDataGridRowActionHelpers<T>>(() => ({
     startEdit: handleStartRowEdit,
     duplicate: handleDuplicateRow,
-    delete: (rowId: GridRowId) => handleDeleteClick(rowId)(),
-  }), [handleDeleteClick, handleDuplicateRow, handleStartRowEdit]);
+    delete: deleteRowAction,
+  }), [deleteRowAction, handleDuplicateRow, handleStartRowEdit]);
 
   const defaultRowActions = useCallback((row: T): EditableDataGridRowAction<T>[] => {
     const actions: EditableDataGridRowAction<T>[] = [];
@@ -2281,17 +2289,18 @@ export function EditableDataGrid<T extends EditableRow>({
   const hasColumnSizing = Boolean(columnSizing);
   const gridSlots = useMemo(
     () => {
-      if (!shouldRenderGridFooter && !hasExternalFilter && !hasColumnSizing && !getCellReadOnlyReason) {
+      if (!shouldRenderGridFooter && !hasExternalFilter && !hasColumnSizing && !getCellReadOnlyReason && !showPendingRowSaves) {
         return undefined;
       }
       return {
         ...(getCellReadOnlyReason ? { cell: GridCellWithReadOnlyReason } : {}),
+        ...(showPendingRowSaves ? { row: GridRowWithSaveStatus } : {}),
         ...(shouldRenderGridFooter ? { footer: CustomFooter } : {}),
         ...(hasColumnSizing ? { columnsManagement: ResizableGridColumnsManagement, columnMenu: ResizableGridColumnMenu } : {}),
         ...(hasExternalFilter ? { columnMenu: ExternalFilterColumnMenu } : {}),
       };
     },
-    [CustomFooter, getCellReadOnlyReason, hasColumnSizing, hasExternalFilter, shouldRenderGridFooter],
+    [CustomFooter, getCellReadOnlyReason, hasColumnSizing, hasExternalFilter, shouldRenderGridFooter, showPendingRowSaves],
   );
   const externalFilterOpenPanel = externalFilter?.onOpenFilterPanel;
   const externalFilterNoteRowIds = externalFilter?.highlightedNoteRowIds;
@@ -2361,6 +2370,9 @@ export function EditableDataGrid<T extends EditableRow>({
     ),
     '& .MuiDataGrid-row.ofp-row-long-press .MuiDataGrid-cell': {
       bgcolor: 'action.selected',
+    },
+    '& .MuiDataGrid-row[aria-busy="true"], & .MuiDataGrid-row[aria-busy="true"] :is(.MuiDataGrid-cell, input)': {
+      cursor: 'progress',
     },
     ...(shouldDisableTrailingFiller ? {
       '& .MuiDataGrid-filler': { display: 'none' },
@@ -2446,26 +2458,27 @@ export function EditableDataGrid<T extends EditableRow>({
               compactIndicator={Boolean(fieldConfig?.compactIndicator)}
               onOpen={() => {
                 notesPreview.close();
-                notesEditor.handleOpen(params.id, col.field);
+                openNotesEditor(params.id, col.field);
               }}
               onOpenAttachments={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
                 notesPreview.close();
-                notesEditor.handleOpen(params.id, col.field, { focusAttachments: true });
+                openNotesEditor(params.id, col.field, { focusAttachments: true });
               }}
               hasFocus={params.hasFocus}
               isPreviewOpen={isPreviewOpen}
-              onPreviewOpen={notesEditor.isOpen ? undefined : (anchorEl, mode) => notesPreview.openPreview(anchorEl, params.id, col.field, mode)}
-              onPreviewClose={notesEditor.isOpen ? undefined : notesPreview.scheduleClose}
+              onPreviewOpen={isNotesEditorOpen ? undefined : (anchorEl, mode) => notesPreview.openPreview(anchorEl, params.id, col.field, mode)}
+              onPreviewClose={isNotesEditorOpen ? undefined : notesPreview.scheduleClose}
             />
           );
         },
       });
     });
-  }, [columns, getInlineRowActions, inlineRowActionField, notes, notesEditor, notesFieldNames, notesPreview, renderInlineActionCell, showInlineRowActionMenu]);
+  }, [columns, getInlineRowActions, inlineRowActionField, isNotesEditorOpen, notes, notesFieldNames, notesPreview, openNotesEditor, renderInlineActionCell, showInlineRowActionMenu]);
 
-  const columnsWithActions: GridColDef[] = useMemo(() => [
+  // Row-mode changes do not alter columns on grids with no actions column.
+  const columnsWithActions: GridColDef[] = useMemo(() => !showRowEditActions && !showDeleteAction ? processedColumns : [
     ...processedColumns,
     ...(showRowEditActions
       ? [
@@ -2854,6 +2867,7 @@ export function EditableDataGrid<T extends EditableRow>({
             <EditCellNavigationContext.Provider value={handleEditCellTabNavigation}>
               <SelectEditCellContext.Provider value={selectEditCellContextValue}>
               <DialogEditCellContext.Provider value={dialogEditCellContextValue}>
+              <GridRowSaveStatusContext.Provider value={showPendingRowSaves ? saveStatus : null}>
               <DataGrid
           rows={rowsForGrid}
           columns={columnsWithActions}
@@ -3113,6 +3127,7 @@ export function EditableDataGrid<T extends EditableRow>({
           localeText={gridLocaleText}
           apiRef={gridApiRef}
               />
+              </GridRowSaveStatusContext.Provider>
               </DialogEditCellContext.Provider>
               </SelectEditCellContext.Provider>
             </EditCellNavigationContext.Provider>

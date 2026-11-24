@@ -238,25 +238,30 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         return checkers[obj.project_id]
 
     def _harvest_overlaps(self, obj: PlantingPlan) -> list[HarvestOverlap]:
-        """The plan's harvest overlaps, from one project-wide index per request."""
+        """The plan's harvest overlaps, using the narrowest index for the response."""
+        if obj.bed_id is None or obj.planting_date is None:
+            return []
+        bed_ids = (obj.bed_id,) if self.context.get('harvest_overlaps_for_bed') else None
+        index_key = (obj.project_id, bed_ids)
         indexes = self.context.setdefault('_harvest_overlap_index_by_project', {})
-        if obj.project_id not in indexes:
+        if index_key not in indexes:
             language_code = self._request_language()
             region = self._request_region()
             request = self.context.get('request')
             active_project = getattr(request, 'active_project', None) if request is not None else None
-            indexes[obj.project_id] = HarvestOverlapIndex(
+            indexes[index_key] = HarvestOverlapIndex(
                 obj.project_id,
                 crop_label=lambda crop: format_crop_label(crop, language_code, region),
                 rule=(
                     SuccessionRule.for_project(active_project)
                     if active_project is not None and active_project.pk == obj.project_id else None
                 ),
+                bed_ids=bed_ids,
             )
         results = self.context.setdefault('_harvest_overlaps_by_plan', {})
         cache_key = obj.pk or id(obj)
         if cache_key not in results:
-            results[cache_key] = indexes[obj.project_id].plan_overlaps(obj)
+            results[cache_key] = indexes[index_key].plan_overlaps(obj)
         return results[cache_key]
 
     def get_harvest_overlaps(self, obj: PlantingPlan) -> list[dict[str, Any]]:

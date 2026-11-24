@@ -857,3 +857,43 @@ class SpeciesModerationLocalSeedTests(TestCase):
         project.refresh_from_db()
         self.assertEqual(project.description, 'Existing unrelated data')
         self.assertFalse(CropSpecies.objects.filter(proposed_by=self.user).exists())
+
+
+@override_settings(DJANGO_ENV="development")
+class PlantingPlanEditBenchmarkSeedTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="benchmark-owner")
+        self.arguments = {
+            "username": self.user.username,
+            "plans": 24,
+            "database_name": str(connection.settings_dict["NAME"]),
+            "stdout": StringIO(),
+        }
+        environment = patch.dict("os.environ", {"OFP_LOCAL_TEST_DATA": "1"})
+        environment.start()
+        self.addCleanup(environment.stop)
+
+    def test_previews_then_creates_once_and_preserves_existing_data(self):
+        slug = f"ofp-local-plan-edit-benchmark-24-{self.user.pk}"
+        call_command("seed_planting_plan_edit_benchmark", **self.arguments)
+        self.assertFalse(Project.objects.filter(slug=slug).exists())
+
+        call_command("seed_planting_plan_edit_benchmark", apply=True, **self.arguments)
+        project = Project.objects.get(slug=slug)
+        plans = PlantingPlan.objects.filter(project=project)
+        self.assertEqual(plans.count(), 25)
+        edited_plan = plans.earliest("id")
+        edited_plan.notes = "Local benchmark notes"
+        edited_plan.save(update_fields=["notes"])
+
+        call_command("seed_planting_plan_edit_benchmark", apply=True, **self.arguments)
+        self.assertEqual(plans.count(), 25)
+        edited_plan.refresh_from_db()
+        self.assertEqual(edited_plan.notes, "Local benchmark notes")
+
+    def test_refuses_foreign_project_with_same_slug(self):
+        Project.objects.create(
+            slug=f"ofp-local-plan-edit-benchmark-24-{self.user.pk}", name="Other",
+        )
+        with self.assertRaises(CommandError):
+            call_command("seed_planting_plan_edit_benchmark", apply=True, **self.arguments)

@@ -518,7 +518,8 @@ interface CalendarHarvestPage {
 export const plantingPlanAPI = {
   list: () => http.get<PaginatedResponse<PlantingPlan>>('/planting-plans/'),
   listAll: () => fetchAllPaginated<PlantingPlan>('/planting-plans/'),
-  listForArea: (type: 'bed' | 'field', id: number) => fetchAllPaginated<PlantingPlan>(`/planting-plans/?${type}=${id}`),
+  listForArea: (type: 'bed' | 'field', id: number, signal?: AbortSignal) =>
+    fetchAllPaginated<PlantingPlan>(`/planting-plans/?${type}=${id}`, signal),
   get: (id: number) => http.get<PlantingPlan>(`/planting-plans/${id}/`),
   getAcrossSeasons: (id: number, signal?: AbortSignal, harvestYear?: number, recordSeasonId?: number) =>
     http.get<import('./types').PlantingPlanDetail>(`/planting-plans/${id}/`, {

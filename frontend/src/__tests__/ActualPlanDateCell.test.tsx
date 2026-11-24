@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import i18n from '../i18n';
-import { DialogEditCellContext } from '../components/data-grid/DialogEditCellContext';
+import { createDialogEditCellRequests, DialogEditCellContext } from '../components/data-grid/DialogEditCellContext';
 import { ActualPlanDateCell, type ActualPlanDateDrafts } from '../planting-plans/PlantingPlanDateCells';
 import type { PlantingPlanActivity } from '../planting-plans/plantingPlanActualDates';
 
@@ -33,15 +33,12 @@ function Harness({ activity = 'transplanting', actual = null, suggested = planne
   suggested?: string | null;
   save: (value: string | null) => Promise<void>;
 }) {
-  const [token, setToken] = useState(0);
+  const [requests] = useState(createDialogEditCellRequests);
   const [drafts] = useState<ActualPlanDateDrafts>(() => new Map());
   const api = { setCellFocus: vi.fn(), getCellElement: () => null };
   const params = { id: 1, field: 'date', hasFocus: true, api } as unknown as GridRenderCellParams;
-  return <DialogEditCellContext.Provider value={{
-    request: token ? { cellKey: '1:date', token } : null,
-    consumeRequest: () => undefined,
-  }}>
-    <button onClick={() => setToken(previous => previous + 1)}>Edit cell</button>
+  return <DialogEditCellContext.Provider value={requests}>
+    <button onClick={() => requests.open(1, 'date')}>Edit cell</button>
     <div role="gridcell">
       <ActualPlanDateCell drafts={drafts} params={params} getEditDates={() => ({ activity, actual, planned: suggested })}
         onSaveActual={(_activity, value) => save(value)}>

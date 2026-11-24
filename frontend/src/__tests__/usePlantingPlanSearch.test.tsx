@@ -108,6 +108,20 @@ afterEach(() => {
  * new one with the current value. No fixture can make the two disagree.
  */
 describe('usePlantingPlanSearch', () => {
+  it('normalizes only a changed row when the date projection stays the same', () => {
+    const toInput = vi.fn(toRecordInput);
+    const { rerender } = renderHook(
+      ({ rows }) => usePlantingPlanSearch({ rows, toRecordInput: toInput, projectId: 1 }),
+      { initialProps: { rows: [CARROT, TOMATO] } },
+    );
+    expect(toInput).toHaveBeenCalledTimes(2);
+
+    toInput.mockClear();
+    const saved = { ...CARROT, plantingDate: '2026-05-01' };
+    rerender({ rows: [saved, TOMATO] });
+    expect(toInput).toHaveBeenCalledExactlyOnceWith(saved);
+  });
+
   describe('the debounce', () => {
     it('shows the typed text at once but waits before filtering on it', async () => {
       const { result } = setup();
