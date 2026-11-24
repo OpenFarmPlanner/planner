@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useSyncExternalStore } from 'react';
 import type { GridRowId } from '@mui/x-data-grid';
+import { dismissGridTooltipForEdit, useGridTooltipScope } from './gridTooltipState';
 
 /**
  * `EditableDataGrid` sends an explicit edit request to cells whose renderer
@@ -71,6 +72,7 @@ export function useDialogEditCellOpenRequest(
   onOpenRequested: (initialQuery?: string) => void,
 ): void {
   const context = useContext(DialogEditCellContext);
+  const tooltipScope = useGridTooltipScope();
   const onOpenRequestedRef = useRef(onOpenRequested);
   const handledTokenRef = useRef<number | null>(null);
 
@@ -95,6 +97,7 @@ export function useDialogEditCellOpenRequest(
     }
     handledTokenRef.current = request.token;
     context?.consumeRequest(request.token);
+    dismissGridTooltipForEdit(tooltipScope);
     onOpenRequestedRef.current(request.initialQuery);
-  }, [context, request]);
+  }, [context, request, tooltipScope]);
 }

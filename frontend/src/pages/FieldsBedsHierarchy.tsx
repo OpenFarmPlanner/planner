@@ -29,6 +29,7 @@ import {
 import { getDataGridLocaleText } from "../components/data-grid/localeText";
 import { createGridRowSaveStatus, GridRowSaveStatusContext, gridRowSaveStatusSx } from "../components/data-grid/GridRowSaveStatus";
 import { GridRowWithSaveStatus } from "../components/data-grid/GridRowWithSaveStatus";
+import { GridTooltipScope } from "../components/data-grid/GridTooltipScope";
 import useEventCallback from "@mui/utils/useEventCallback";
 import type {
   GridCellParams,
@@ -2059,6 +2060,7 @@ function FieldsBedsHierarchy({
   ], [getHierarchyRowClipboardValues, rows, t]);
 
   return (
+    <GridTooltipScope editing={Object.values(rowModesModel).some(mode => mode.mode === GridRowModes.Edit)}>
     <Box sx={showTitle ? PAGE_CONTAINER_SX.standardCenteredPage : undefined}>
       <Box ref={pageContentRef} sx={{ width: "100%", minWidth: 0 }}>
         {showTitle && <h1>{t("title")}</h1>}
@@ -2296,6 +2298,7 @@ function FieldsBedsHierarchy({
         disableBackdropClose
       />
     </Box>
+    </GridTooltipScope>
   );
 }
 

@@ -170,6 +170,7 @@ export type {
 import { AppTooltip } from '../AppTooltip';
 import { createGridRowSaveStatus, GridRowSaveStatusContext, gridRowSaveStatusSx } from './GridRowSaveStatus';
 import { GridRowWithSaveStatus } from './GridRowWithSaveStatus';
+import { GridTooltipScope } from './GridTooltipScope';
 import { TruncatedTextWithTooltip } from '../TruncatedTextWithTooltip';
 import {
   isSelectEditMenuCloseOutsideElement,
@@ -2492,12 +2493,12 @@ export function EditableDataGrid<T extends EditableRow>({
                 <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, width: '100%', justifyContent: 'flex-end' }}>
                   {(isEditing || hasLocalDraft) && (
                     <>
-                      <AppTooltip title={t('actions.saveRow')} arrow>
+                      <AppTooltip title={t('actions.saveRow')} arrow allowedDuringEdit>
                         <IconButton size="small" color="primary" aria-label={t('actions.save')} onClick={() => void handleSaveRow(rowId)}>
                           <CheckIcon fontSize="small" />
                         </IconButton>
                       </AppTooltip>
-                      <AppTooltip title={t('actions.cancelRowEdit')} arrow>
+                      <AppTooltip title={t('actions.cancelRowEdit')} arrow allowedDuringEdit>
                         <IconButton size="small" aria-label={t('actions.cancel')} onClick={() => handleDiscardRowChanges(rowId)}>
                           <CloseIcon fontSize="small" />
                         </IconButton>
@@ -2765,7 +2766,7 @@ export function EditableDataGrid<T extends EditableRow>({
   const showsLoadError = loadFailed && error === loadErrorMessage;
 
   return (
-    <>
+    <GridTooltipScope editing={hasRowsInEditMode}>
       {error && (
         <Alert
           severity="error"
@@ -3254,6 +3255,6 @@ export function EditableDataGrid<T extends EditableRow>({
           onMouseLeave={notesPreview.scheduleClose}
         />
       )}
-    </>
+    </GridTooltipScope>
   );
 }

@@ -98,6 +98,7 @@ export function OverflowTooltip({
     <AppTooltip
       open={open}
       title={open ? title : ''}
+      isEligible={element => Boolean(title) && isElementOverflowing(element)}
       arrow={arrow}
       placement={placement}
       enterDelay={enterDelay}
