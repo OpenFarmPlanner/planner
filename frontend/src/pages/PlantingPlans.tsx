@@ -797,7 +797,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
 
   const renderDateCell = useCallback((params: GridRenderCellParams<PlantingPlanRow>, renderPlanned: (comparison: ReactNode, row: PlantingPlanRow) => ReactNode) => {
     const field = params.field as PlantingPlanDateColumn;
-    const getCurrentRow = () => params.api?.getRowMode(params.id) === 'edit'
+    const getCurrentRow = () => params.api?.getRowMode?.(params.id) === 'edit'
       ? params.api.getRowWithUpdatedValues(params.id, field) as PlantingPlanRow : params.row;
     const row = getCurrentRow();
     const dates = getColumnDates(row, field);

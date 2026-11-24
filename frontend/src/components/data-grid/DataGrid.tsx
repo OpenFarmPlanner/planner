@@ -625,7 +625,7 @@ export function EditableDataGrid<T extends EditableRow>({
   );
   const getRowForCellEditability = useCallback((row: T, field: string): T => {
     const grid = gridApiRef.current;
-    if (getCellReadOnlyReason && grid?.getRowMode(row.id) === GridRowModes.Edit) {
+    if (getCellReadOnlyReason && grid?.getRowMode?.(row.id) === GridRowModes.Edit) {
       return grid.getRowWithUpdatedValues(row.id, field) as T;
     }
     return row;
