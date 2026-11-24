@@ -33,6 +33,11 @@ function Grid({ editing = false, firstRow = 'first' }: { editing?: boolean; firs
 
 const hover = (name: string) => fireEvent.mouseOver(screen.getByRole('button', { name }));
 const finishDelays = () => act(async () => { await vi.advanceTimersByTimeAsync(450); });
+const scrollGrid = () => {
+  const grid = screen.getByRole('grid');
+  grid.scrollTop += 20;
+  fireEvent.scroll(grid);
+};
 
 describe('grid tooltip lifecycle', () => {
   beforeEach(() => vi.useFakeTimers());
@@ -49,7 +54,7 @@ describe('grid tooltip lifecycle', () => {
     await finishDelays();
     expect(screen.getByRole('tooltip')).toHaveTextContent('First preview');
 
-    fireEvent.scroll(screen.getByRole('grid'));
+    scrollGrid();
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
 
     hover('First cell');
@@ -136,7 +141,7 @@ describe('grid tooltip lifecycle', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(650); });
     expect(screen.getByRole('tooltip')).toHaveTextContent('Delayed explanation');
 
-    fireEvent.scroll(screen.getByRole('grid'));
+    scrollGrid();
     expect(onDismiss).toHaveBeenCalledOnce();
     expect(onDismiss).toHaveBeenCalledWith('scroll');
     hover('Help');
@@ -144,5 +149,40 @@ describe('grid tooltip lifecycle', () => {
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
     await act(async () => { await vi.advanceTimersByTimeAsync(200); });
     expect(screen.getByRole('tooltip')).toHaveTextContent('Delayed explanation');
+  });
+
+  it('opens zero-delay controlled previews immediately on hover and focus', () => {
+    function ImmediatePreview() {
+      const [open, setOpen] = useState(false);
+      return (
+        <AppTooltip title="Previous season" open={open} onOpen={() => setOpen(true)} onClose={() => setOpen(false)}
+          enterDelay={0} enterNextDelay={0}>
+          <button aria-label="Season" />
+        </AppTooltip>
+      );
+    }
+    render(<GridTooltipScope editing={false}><div role="grid"><ImmediatePreview /></div></GridTooltipScope>);
+    const trigger = screen.getByRole('button', { name: 'Season' });
+    fireEvent.mouseOver(trigger);
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Previous season');
+
+    scrollGrid();
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    fireEvent.keyDown(document.body, { key: 'Tab' });
+    act(() => trigger.focus());
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Previous season');
+  });
+
+  it('keeps a new hover when an earlier scroll event arrives after it', async () => {
+    render(<Grid />);
+    const grid = screen.getByRole('grid');
+    grid.scrollTop = 20;
+    hover('First cell');
+    fireEvent.scroll(grid);
+    await finishDelays();
+    expect(screen.getByRole('tooltip')).toHaveTextContent('First preview');
+
+    scrollGrid();
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 });

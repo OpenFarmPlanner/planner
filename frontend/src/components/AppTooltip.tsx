@@ -144,8 +144,14 @@ function GridAppTooltip({
   }, [id, open]);
   useLayoutEffect(() => () => dismissGridTooltip(id, null), [id]);
 
+  const acceptsInteraction = (event: SyntheticEvent): boolean => {
+    if (event.type === 'mouseover' && event.nativeEvent instanceof MouseEvent) {
+      return !scope.isStationaryHover(event.nativeEvent);
+    }
+    return event.type !== 'focus' || !scope.isRestoringFocus() || allowedDuringEdit;
+  };
   const reserve = (event: SyntheticEvent<HTMLElement>): void => {
-    if (request(event.currentTarget, event.nativeEvent)) {
+    if (acceptsInteraction(event) && request(event.currentTarget, event.nativeEvent)) {
       setIntent(previous => previous === 'idle' ? 'pending' : previous);
     }
   };
@@ -162,7 +168,13 @@ function GridAppTooltip({
       disableFocusListener={disableFocusListener}
       disableTouchListener={disableTouchListener}
       onOpen={event => {
-        if (!isCurrentGridTooltipRequest(id, event.nativeEvent)) return;
+        const anchor = anchorRef.current;
+        if (!isCurrentGridTooltipRequest(id, event.nativeEvent)) {
+          // A synchronous opening can claim its live trigger event. Delayed
+          // callbacks have no currentTarget and need the original request.
+          if (!anchor || event.currentTarget !== anchor || !acceptsInteraction(event)
+              || !request(anchor, event.nativeEvent)) return;
+        }
         setIntent('open');
         onOpen?.(event);
       }}
@@ -184,7 +196,7 @@ function GridAppTooltip({
         // Managed tooltips use the MUI popup and its aria description.
         ...(props.describeChild && { title: undefined }),
         onMouseOver: event => {
-          if (!disableHoverListener && !scope.isStationaryHover(event.nativeEvent)) reserve(event);
+          if (!disableHoverListener) reserve(event);
           child.props.onMouseOver?.(event);
         },
         onMouseLeave: event => {
@@ -192,8 +204,7 @@ function GridAppTooltip({
           child.props.onMouseLeave?.(event);
         },
         onFocus: event => {
-          if (!disableFocusListener && (!scope.isRestoringFocus() || allowedDuringEdit)
-            && event.target.matches(':focus-visible')) reserve(event);
+          if (!disableFocusListener && event.target.matches(':focus-visible')) reserve(event);
           child.props.onFocus?.(event);
         },
         onBlur: event => {

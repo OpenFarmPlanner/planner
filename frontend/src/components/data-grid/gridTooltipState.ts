@@ -46,6 +46,7 @@ interface ActiveTooltip extends TooltipRequest {
   cell: Element | null;
   row: string | null;
   field: string | null;
+  scrollOffsets: ReadonlyMap<Element, Point>;
 }
 
 export const GridTooltipContext = createContext<Scope | null>(null);
@@ -149,6 +150,12 @@ function watchTooltip(doc: Document): () => void {
   };
   const onScroll = (event: Event): void => {
     if (!active || (event.target instanceof Node && isInsideTooltip(event.target, active))) return;
+    const scroller = event.target === doc ? doc.scrollingElement : event.target;
+    if (!(scroller instanceof Element)) return;
+    const previous = active.scrollOffsets.get(scroller);
+    // Scroll-into-view can move the anchor before hover and dispatch its
+    // scroll event afterward. Only a change since this request invalidates it.
+    if (!previous || (scroller.scrollLeft === previous.x && scroller.scrollTop === previous.y)) return;
     active.scope.suppressRestoredInteraction();
     dismissGridTooltip(undefined, event);
   };
@@ -199,11 +206,16 @@ export function claimGridTooltip(request: TooltipRequest): boolean {
   }
   const previous = active;
   const cell = request.anchor.closest(CELL);
+  const scrollOffsets = new Map<Element, Point>();
+  for (let node: Element | null = request.anchor; node; node = node.parentElement) {
+    scrollOffsets.set(node, { x: node.scrollLeft, y: node.scrollTop });
+  }
   active = {
     ...request,
     cell,
     row: cell?.closest('[role="row"]')?.getAttribute('data-id') ?? null,
     field: cell?.getAttribute('data-field') ?? null,
+    scrollOffsets,
   };
   if (previous && previous.id !== request.id) {
     previous.dismiss(request.event ?? new Event('gridtooltipdismiss'));
