@@ -7,11 +7,11 @@ test.use({ serviceWorkers: 'block' });
 
 async function canvasRects(page: Page, prefix: string) {
   return page.evaluate(prefix => {
-    const konva = (window as unknown as { Konva: { stages: Konva.Stage[] } }).Konva;
-    return konva.stages.filter(stage => stage.container()?.isConnected)
+    const konva = (window as unknown as { Konva?: { stages: Konva.Stage[] } }).Konva;
+    return (konva?.stages ?? []).filter(stage => stage.container()?.isConnected)
       .flatMap(stage => stage.find('Rect, Text').map(node => ({
         id: String(node.getAttr('data-testid') ?? ''),
-        x: node.x(), y: node.y(), width: node.width(), height: node.height(),
+        ...node.getAbsolutePosition(stage), width: node.width(), height: node.height(),
         rotation: node.rotation(), bounds: node.getClientRect(),
         screenSize: { width: node.width() * stage.scaleX(), height: node.height() * stage.scaleY() },
         stage: { width: stage.width(), height: stage.height() },
@@ -417,6 +417,115 @@ test('keeps a dragged plot inside the location boundary at any zoom and viewport
   expect([plotAfter.x - siteAfter.x, plotAfter.y - siteAfter.y]).toEqual([plotBefore.x - siteBefore.x, plotBefore.y - siteBefore.y]);
   await expectInside();
 });
+
+for (const input of ['mouse', 'touch'] as const) {
+  test.describe(`plot drag with ${input}`, () => {
+    test.use({ hasTouch: input === 'touch' });
+
+    test('moves the beds before release, cancels together and persists their exact offsets', async ({ page, request }, testInfo) => {
+      await page.setViewportSize(input === 'mouse' ? { width: 1440, height: 900 } : { width: 375, height: 800 });
+      await loginWithDeterministicProject(page, request, `graphical-group-drag-${input}`, { loginAsAdmin: true });
+      const { results: [location] } = await apiRequest<{ results: { id: number }[] }>(page, 'GET', '/locations/');
+      const field = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
+        name: 'Parzelle mit Beeten', location: location.id, width_m: 10, length_m: 12,
+      });
+      const bedIds = [];
+      for (const [index, width] of [[1, 2], [2, 3]]) {
+        const bed = await apiRequest<{ id: number }>(page, 'POST', '/beds/', {
+          name: `Beet ${index}`, field: field.id, width_m: width, length_m: 4,
+        });
+        bedIds.push(bed.id);
+      }
+      const layoutsPath = `/locations/${location.id}/layouts/`;
+      await apiRequest(page, 'PUT', layoutsPath, {
+        field_layouts: [{ field: field.id, x: 1000, y: 700, version: 1 }],
+        bed_layouts: bedIds.map((bed, index) => ({ bed, x: 20 + index * 55, y: 30 + index * 15, version: 1 })),
+      });
+      const initialLayouts = await apiRequest<{ bed_layouts: unknown[] }>(page, 'GET', layoutsPath);
+      const fieldPrefix = `field-rect-${field.id}`;
+      const plot = async () => (await canvasRects(page, fieldPrefix))[0];
+      const bedOffsets = async () => {
+        const parent = await plot();
+        if (!parent) return [];
+        return (await canvasRects(page, 'bed-rect-'))
+          .filter(rect => bedIds.some(id => rect.id === `bed-rect-${id}`))
+          .map(({ x, y, width, height }) => ({
+            x: Number((x - parent.x).toFixed(8)),
+            y: Number((y - parent.y).toFixed(8)),
+            width,
+            height,
+          }));
+      };
+
+      const activate = async (name: string) => {
+        const button = page.getByRole('button', { name, exact: true });
+        if (input === 'touch') await button.tap();
+        else await button.click();
+      };
+      await page.goto('/app/fields-beds');
+      await activate('Grafik');
+      await activate('Grafik bearbeiten');
+      await expect.poll(async () => (await bedOffsets()).length).toBe(2);
+      const before = await plot();
+      const offsets = await bedOffsets();
+      const touch = input === 'touch' ? await page.context().newCDPSession(page) : null;
+      const start = {
+        x: Math.round(before.container.x + before.bounds.x + before.bounds.width / 2),
+        y: Math.round(before.container.y + before.bounds.y + before.bounds.height * 0.12),
+      };
+      const beginDrag = async () => {
+        if (touch) {
+          await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+        } else {
+          await page.mouse.move(start.x, start.y);
+          await page.mouse.down();
+        }
+        for (const distance of [9, 20]) {
+          const point = { x: start.x + distance, y: start.y + distance };
+          if (touch) {
+            await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point] });
+          } else {
+            await page.mouse.move(point.x, point.y);
+          }
+          await expect.poll(async () => (await plot()).x).not.toBe(before.x);
+          expect(await bedOffsets()).toEqual(offsets);
+        }
+      };
+      await beginDrag();
+      if (touch) {
+        await touch.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+      } else {
+        await page.keyboard.press('Escape');
+        await page.mouse.up();
+      }
+      await expect.poll(async () => (await plot()).x).toBe(before.x);
+      expect(await bedOffsets()).toEqual(offsets);
+      expect(await apiRequest(page, 'GET', layoutsPath)).toEqual(initialLayouts);
+
+      await beginDrag();
+      const droppedX = (await plot()).x;
+      await page.screenshot({ path: testInfo.outputPath(`plot-drag-${input}.png`), animations: 'disabled' });
+      const save = page.waitForResponse(response => response.url().endsWith(layoutsPath) && response.request().method() === 'PUT');
+      if (touch) {
+        await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      } else {
+        await page.mouse.up();
+      }
+      const response = await save;
+      expect(response.ok()).toBe(true);
+      expect(response.request().postDataJSON().bed_layouts).toEqual([]);
+      const saved = await apiRequest<{ bed_layouts: unknown[] }>(page, 'GET', layoutsPath);
+      expect(saved.bed_layouts).toEqual(initialLayouts.bed_layouts);
+      await activate('Liste');
+      await activate('Grafik');
+      await expect.poll(async () => (await plot())?.x ?? NaN).toBeCloseTo(droppedX, 7);
+      await expect.poll(bedOffsets).toEqual(offsets);
+      await page.reload();
+      await expect.poll(async () => (await plot())?.x ?? NaN).toBeCloseTo(droppedX, 7);
+      await expect.poll(bedOffsets).toEqual(offsets);
+    });
+  });
+}
 
 test('shows the only location with its name and gross area in the list and the graphic', async ({ page, request }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });

@@ -50,6 +50,11 @@ shows their gross area (#1190). Each boundary origin is seeded 1 m above and
 left of the plots, so in Edit graphic every plot can be dragged within its site
 but not past the dashed line.
 
+For a parcel drag, choose Hofgarten and drag a parcel from its title strip.
+Watch its beds follow while the pointer is still down. Drop it, switch to List
+and back to Graphic, then reload to check that each bed kept its position
+within its parcel. Escape during another drag restores the whole parcel.
+
 Site conditions (#1075) are language-independent choices, so every demo
 language shows the same values. Hofgarten is sunny, normal moisture, irrigation
 available; Acker am Bach is sunny and moist without irrigation; Lindenhof
