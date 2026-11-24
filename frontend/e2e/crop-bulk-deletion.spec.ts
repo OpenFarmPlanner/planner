@@ -110,6 +110,7 @@ test('project bulk deletion retains filtered selections, blocks plans and recove
     expect(await activeCropIds(page)).toEqual(before.filter(id => id !== variety.id && id !== cherry.id));
     const undo = page.getByTestId('bulk-crop-undo-snackbar').getByRole('button', { name: common.actions.undo });
     await undo.click();
+    await expect(page.getByText(de.bulkDelete.recovered, { exact: true })).toBeVisible();
     await expect.poll(() => activeCropIds(page)).toEqual(before);
     await expect(toggle).toHaveAttribute('aria-pressed', 'false');
     await toggle.click();
