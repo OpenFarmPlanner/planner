@@ -20,11 +20,12 @@ import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
-import { Group, Layer, Rect, Stage, Text } from "react-konva";
+import { Group, Layer, Rect, Stage, Text, type KonvaNodeEvents } from "react-konva";
 import type Konva from "konva";
 import { alpha } from "@mui/material/styles";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { useHierarchyData } from "../components/hierarchy/hooks/useHierarchyData";
+import { getLocationPathSpacing } from "../components/hierarchy/utils/locationPathSpacing";
 import {
   layoutAPI,
   type BedLayoutEntry,
@@ -34,11 +35,13 @@ import {
 import { isTypingInEditableElement, useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useTranslation } from "../i18n";
 import { GraphicalFieldDetailsDialog } from "./GraphicalFieldDetailsDialog";
+import { GraphicalSnapGuides } from "./GraphicalSnapGuides";
 import ModeToggle from "../components/ModeToggle";
 import {
   clampInsideBoundary,
   clampInsideParent,
   DEFAULT_PLACEMENT_SPACING,
+  fieldUsesWorldScale,
   getBedRectSizeWithinField,
   getFieldRectSize,
   getLocationBoundaryRect,
@@ -86,12 +89,12 @@ import {
   LOCATION_LAYOUT_PADDING,
   PAN_FAST_STEP,
   PAN_STEP,
+  SNAP_THRESHOLD,
   WORKSPACE_MIN_HEIGHT,
   WORKSPACE_MIN_WIDTH,
   ZOOM_STEP,
   getFieldUsableArea,
   getFitViewportPadding,
-  snapToNeighbors,
   type BedViewModel,
   type GraphicalFieldsProps,
   type GraphicalCameraState,
@@ -101,6 +104,7 @@ import {
   type RectViewModel,
   type SelectedElement,
 } from "./graphicalFieldsGeometry";
+import { useAreaDrag, type AreaDragOptions, type DragSnapping } from "./graphicalAreaDrag";
 import { useGraphicalStageSize } from "./useGraphicalStageSize";
 import { formatLocalizedNumber, getActiveFormattingLocale } from "../utils/numberLocalization";
 import { AppTooltip } from '../components/AppTooltip';
@@ -114,8 +118,9 @@ const BED_PLACEMENT_SPACING = DEFAULT_PLACEMENT_SPACING;
 // A quick Graphic → List → Graphic switch must read after an in-flight drop.
 const pendingFieldSaves = new Map<number, Promise<void>>();
 
-const isCancelledDrag = (event: KonvaEventObject<Event>): boolean =>
-  !event.evt || event.evt.type === "touchcancel" || event.evt.type === "pointercancel";
+const hasMeasuredDimensions = (area: { length_m?: number | null; width_m?: number | null }): boolean =>
+  Number.isFinite(area.length_m) && (area.length_m ?? 0) > 0
+  && Number.isFinite(area.width_m) && (area.width_m ?? 0) > 0;
 
 export default function GraphicalFields({
   showTitle = true,
@@ -148,6 +153,7 @@ export default function GraphicalFields({
   const layoutReady = activeLocationId === null || (layoutLoad.locationId === activeLocationId && layoutLoad.attempt === layoutAttempt);
   const layoutFailed = activeLocationId !== null && layoutReady && layoutLoad.error;
   const [activeGuides, setActiveGuides] = useState<GuideLine[]>([]);
+  const areaDrag = useAreaDrag();
   const [localInteractionMode, setLocalInteractionMode] =
     useState<InteractionMode>("view");
   const [editableLocationId, setEditableLocationId] = useState<number | null>(null);
@@ -208,47 +214,27 @@ export default function GraphicalFields({
   useEffect(() => {
     let active = true;
     const loadLayouts = async (): Promise<void> => {
-      const locationIds = locations
-        .map((location) => location.id)
-        .filter((id): id is number => typeof id === "number" && id === activeLocationId);
-      if (locationIds.length === 0) return;
+      if (activeLocationId === null) return;
 
       try {
-        const results = await Promise.all(
-          locationIds.map(async (locationId) => {
-            await pendingFieldSaves.get(locationId);
-            return layoutAPI.listByLocation(locationId);
-          }),
-        );
+        await pendingFieldSaves.get(activeLocationId);
+        if (!active) return;
+        const { data } = await layoutAPI.listByLocation(activeLocationId);
         if (!active) return;
 
         setLayoutsByBed((prev) => {
           const next = { ...prev };
-          results.forEach((response) => {
-            response.data.bed_layouts.forEach((layout) => {
-              next[layout.bed] = layout;
-            });
-          });
+          data.bed_layouts.forEach((layout) => { next[layout.bed] = layout; });
           return next;
         });
 
         setLayoutsByField((prev) => {
           const next = { ...prev };
-          results.forEach((response) => {
-            response.data.field_layouts.forEach((layout) => {
-              next[layout.field] = layout;
-            });
-          });
+          data.field_layouts.forEach((layout) => { next[layout.field] = layout; });
           return next;
         });
 
-        setBoundaryOriginByLocation((prev) => {
-          const next = { ...prev };
-          results.forEach((response, index) => {
-            next[locationIds[index]] = response.data.location_boundary ?? null;
-          });
-          return next;
-        });
+        setBoundaryOriginByLocation(prev => ({ ...prev, [activeLocationId]: data.location_boundary ?? null }));
         setLayoutLoad({ locationId: activeLocationId, attempt: layoutAttempt, error: false });
       } catch (layoutError) {
         if (!active) return;
@@ -261,7 +247,7 @@ export default function GraphicalFields({
     return () => {
       active = false;
     };
-  }, [activeLocationId, layoutAttempt, locations]);
+  }, [activeLocationId, layoutAttempt]);
 
   useEffect(() => {
     const timers = saveTimers.current;
@@ -458,7 +444,13 @@ export default function GraphicalFields({
     const rotation = rotationByLocation[location.id] ?? DEFAULT_GRAPHICAL_ROTATION;
     const storedContentSize = { width: contentWidth, height: contentHeight };
     const rotatedContent = rotateRect({ x: 0, y: 0, ...storedContentSize }, storedContentSize, rotation);
-    const fieldViewModels = storedFieldRects.map(rect => rotateRect(rect, storedContentSize, rotation));
+    const metricFieldIds = new Set(sizedFields
+      .filter(rect => fieldUsesWorldScale(rect.field, rect, FIELD_WORLD_PX_PER_METER))
+      .map(rect => rect.field.id));
+    const fieldViewModels = storedFieldRects.map(rect => ({
+      ...rotateRect(rect, storedContentSize, rotation),
+      supportsMetricSpacing: metricFieldIds.has(rect.id),
+    }));
     const boundary = storedBoundary
       ? rotateRect(storedBoundary, storedContentSize, rotation)
       : null;
@@ -753,7 +745,8 @@ export default function GraphicalFields({
     rotation: GraphicalRotation,
     boundary: PlacementRect | null,
     unsavedBoundaryOrigin: LocationBoundaryOrigin | null,
-  ) => {
+    snapping: DragSnapping,
+  ): KonvaNodeEvents & { draggable: boolean } => {
     if (!isLocationEditMode(locationId)) {
       return {
         draggable: false,
@@ -786,54 +779,25 @@ export default function GraphicalFields({
       return boundary ? clampInsideBoundary(onWorkspace, fieldSize, boundary) : onWorkspace;
     };
 
+    const drag: AreaDragOptions = {
+      area: currentFieldRect,
+      neighbors: fieldViewModels,
+      snapping,
+      constrain,
+      blocked: () => pendingFieldSaves.has(locationId),
+      onGuides: setActiveGuides,
+      onDrop: position => {
+        const inverseRotation = ((360 - rotation) % 360) as GraphicalRotation;
+        const stored = rotateRect({ ...baseRect, ...position }, contentBounds, inverseRotation);
+        saveFieldLayout(locationId, {
+          field: fieldId, location: locationId, x: stored.x, y: stored.y, version: 1,
+        }, unsavedBoundaryOrigin);
+      },
+    };
     return {
       draggable: true,
-      onDragMove: (event: KonvaEventObject<Event>) => {
-        if (event.target !== event.currentTarget) return;
-        if (pendingFieldSaves.has(locationId)) {
-          event.target.stopDrag();
-          return;
-        }
-        const raw = { x: event.target.x(), y: event.target.y() };
-        const clampedRaw = constrain(raw);
-        const snapped = snapToNeighbors(
-          fieldId,
-          clampedRaw,
-          fieldSize,
-          fieldViewModels,
-          FIELD_SNAP_THRESHOLD,
-        );
-        const finalClamped = constrain(snapped);
-        event.target.position(finalClamped);
-        setActiveGuides(snapped.guides);
-      },
-      onDragEnd: (event: KonvaEventObject<Event>) => {
-        if (event.target !== event.currentTarget) return;
-        setActiveGuides([]);
-        if (isCancelledDrag(event) || pendingFieldSaves.has(locationId)) {
-          event.target.position({ x: currentFieldRect.x, y: currentFieldRect.y });
-          return;
-        }
-        const next = constrain({ x: event.target.x(), y: event.target.y() });
-        const snapped = snapToNeighbors(
-          fieldId,
-          next,
-          fieldSize,
-          fieldViewModels,
-          FIELD_SNAP_THRESHOLD,
-        );
-        const finalClamped = constrain(snapped);
-        event.target.position(finalClamped);
-        const stored = rotateRect({ ...baseRect, ...finalClamped }, contentBounds, ((360 - rotation) % 360) as GraphicalRotation);
-        const nextLayout: FieldLayoutEntry = {
-          field: fieldId,
-          location: locationId,
-          x: stored.x,
-          y: stored.y,
-          version: 1,
-        };
-        saveFieldLayout(locationId, nextLayout, unsavedBoundaryOrigin);
-      },
+      onDragMove: event => areaDrag.move(event, drag),
+      onDragEnd: event => areaDrag.end(event, drag),
     };
   };
 
@@ -847,7 +811,8 @@ export default function GraphicalFields({
     locationId: number,
     storedFieldInnerSize: RectSize,
     rotation: GraphicalRotation,
-  ) => {
+    snapping: DragSnapping,
+  ): KonvaNodeEvents & { draggable: boolean } => {
     if (!isLocationEditMode(locationId)) {
       return {
         draggable: false,
@@ -874,95 +839,35 @@ export default function GraphicalFields({
       };
     }
 
-    return {
-      draggable: true,
-      onDragMove: (event: KonvaEventObject<Event>) => {
-        const raw = {
-          x: event.target.x() - FIELD_INNER_OFFSET_X,
-          y: event.target.y() - FIELD_INNER_OFFSET_Y,
+    const drag: AreaDragOptions = {
+      area: bedVm,
+      neighbors: bedViewModels,
+      snapping,
+      constrain: position => clampInsideParent(position, bedVm, fieldInnerSize),
+      offset: { x: FIELD_INNER_OFFSET_X, y: FIELD_INNER_OFFSET_Y },
+      onGuides: guides => setActiveGuides(guides.map(guide => {
+        const x = currentFieldRect.x + FIELD_INNER_OFFSET_X;
+        const y = currentFieldRect.y + FIELD_INNER_OFFSET_Y;
+        const vertical = guide.orientation === "vertical";
+        return {
+          ...guide,
+          value: guide.value + (vertical ? x : y),
+          start: guide.start + (vertical ? y : x),
+          end: guide.end + (vertical ? y : x),
         };
-        const clampedRaw = clampInsideParent(
-          raw,
-          { width: bedVm.width, height: bedVm.height },
-          fieldInnerSize,
-        );
-        const snapped = snapToNeighbors(
-          bedVm.id,
-          clampedRaw,
-          { width: bedVm.width, height: bedVm.height },
-          bedViewModels,
-        );
-        const finalClamped = clampInsideParent(
-          { x: snapped.x, y: snapped.y },
-          { width: bedVm.width, height: bedVm.height },
-          fieldInnerSize,
-        );
-        event.target.position({
-          x: FIELD_INNER_OFFSET_X + finalClamped.x,
-          y: FIELD_INNER_OFFSET_Y + finalClamped.y,
-        });
-        setActiveGuides(
-          snapped.guides.map((guide) => ({
-            ...guide,
-            value:
-              guide.orientation === "vertical"
-                ? currentFieldRect.x + FIELD_INNER_OFFSET_X + guide.value
-                : currentFieldRect.y + FIELD_INNER_OFFSET_Y + guide.value,
-            start:
-              guide.orientation === "vertical"
-                ? currentFieldRect.y + FIELD_INNER_OFFSET_Y + guide.start
-                : currentFieldRect.x + FIELD_INNER_OFFSET_X + guide.start,
-            end:
-              guide.orientation === "vertical"
-                ? currentFieldRect.y + FIELD_INNER_OFFSET_Y + guide.end
-                : currentFieldRect.x + FIELD_INNER_OFFSET_X + guide.end,
-          })),
-        );
-      },
-      onDragEnd: (event: KonvaEventObject<Event>) => {
-        setActiveGuides([]);
-        if (isCancelledDrag(event)) {
-          event.target.position({ x: FIELD_INNER_OFFSET_X + bedVm.x, y: FIELD_INNER_OFFSET_Y + bedVm.y });
-          return;
-        }
-        const next = {
-          x: event.target.x() - FIELD_INNER_OFFSET_X,
-          y: event.target.y() - FIELD_INNER_OFFSET_Y,
-        };
-        const clampedNext = clampInsideParent(
-          next,
-          { width: bedVm.width, height: bedVm.height },
-          fieldInnerSize,
-        );
-        const snapped = snapToNeighbors(
-          bedVm.id,
-          clampedNext,
-          { width: bedVm.width, height: bedVm.height },
-          bedViewModels,
-        );
-        const finalClamped = clampInsideParent(
-          { x: snapped.x, y: snapped.y },
-          { width: bedVm.width, height: bedVm.height },
-          fieldInnerSize,
-        );
-        event.target.position({
-          x: FIELD_INNER_OFFSET_X + finalClamped.x,
-          y: FIELD_INNER_OFFSET_Y + finalClamped.y,
-        });
-        const stored = rotateRectBetweenSizes(
-          { ...bedVm, ...finalClamped }, fieldInnerSize, storedFieldInnerSize,
-          ((360 - rotation) % 360) as GraphicalRotation,
-        );
-        const nextLayout: BedLayoutEntry = {
-          bed: bedVm.id,
-          location: locationId,
-          x: stored.x,
-          y: stored.y,
-          version: 1,
-        };
-        setLayoutsByBed((prev) => ({ ...prev, [bedVm.id]: nextLayout }));
+      })),
+      onDrop: position => {
+        const inverseRotation = ((360 - rotation) % 360) as GraphicalRotation;
+        const stored = rotateRectBetweenSizes({ ...bedVm, ...position }, fieldInnerSize, storedFieldInnerSize, inverseRotation);
+        const nextLayout: BedLayoutEntry = { bed: bedVm.id, location: locationId, x: stored.x, y: stored.y, version: 1 };
+        setLayoutsByBed(prev => ({ ...prev, [bedVm.id]: nextLayout }));
         saveBedLayout(locationId, nextLayout);
       },
+    };
+    return {
+      draggable: true,
+      onDragMove: event => areaDrag.move(event, drag),
+      onDragEnd: event => areaDrag.end(event, drag),
     };
   };
 
@@ -981,6 +886,9 @@ export default function GraphicalFields({
       }
       const step = event.shiftKey ? PAN_FAST_STEP : PAN_STEP;
       switch (event.key) {
+        case "Shift":
+          areaDrag.preview(true);
+          break;
         case "Escape":
           if (stageRefs.current[effectiveActivePanLocationId]?.find?.(".graphical-editable")
             .some(node => node.isDragging())) {
@@ -1009,9 +917,16 @@ export default function GraphicalFields({
       }
     };
 
+    const handleKeyUp = (event: KeyboardEvent): void => {
+      if (event.key === "Shift" && !event.shiftKey) areaDrag.preview(false);
+    };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [effectiveActivePanLocationId, handlePanByOffset, layoutFailed, layoutReady]);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [areaDrag, effectiveActivePanLocationId, handlePanByOffset, layoutFailed, layoutReady]);
 
   if (loading || !layoutReady) {
     return (
@@ -1096,6 +1011,8 @@ export default function GraphicalFields({
               getFitViewportPadding(stageWidth, stageHeight),
             );
           const visibility = getVisibleElements(viewport.scale);
+          const pathSpacing = getLocationPathSpacing(location);
+          const snapping = { enabled: pathSpacing.snap_to_path_spacing, zoom: viewport.scale };
 
           return (
             <Box key={locationId} role="region" aria-label={t("fields:graphical.locationTitle", { name: location.name })}>
@@ -1104,7 +1021,8 @@ export default function GraphicalFields({
                 ) : null}
                 {locationIsEditable ? (
                   <Alert severity="warning" sx={{ mb: 1.5 }}>
-                    {t("fields:graphical.locationEditModeBanner")}
+                    <span>{t("fields:graphical.locationEditModeBanner")}</span>
+                    {snapping.enabled ? <> {t("fields:graphical.spacing.bypass")}</> : null}
                   </Alert>
                 ) : null}
                 <Box
@@ -1451,6 +1369,17 @@ export default function GraphicalFields({
                           height: fieldUsableArea.height,
                         };
                         const storedFieldInnerSize = getFieldUsableArea(storedBaseRect);
+                        const rotated = rotation === 90 || rotation === 270;
+                        const { length_m: fieldLength, width_m: fieldWidth } = baseRect.field;
+                        const bedSpacing = fieldLength && fieldWidth && hasMeasuredDimensions(baseRect.field)
+                          ? {
+                            centimeters: pathSpacing.bed_path_spacing_cm,
+                            pixelsPerMeter: {
+                              x: fieldInnerSize.width / (rotated ? fieldLength : fieldWidth),
+                              y: fieldInnerSize.height / (rotated ? fieldWidth : fieldLength),
+                            },
+                          }
+                          : undefined;
                         fieldBeds.forEach((bed) => {
                           bedSizeMap.set(
                             bed.id!,
@@ -1516,6 +1445,7 @@ export default function GraphicalFields({
                               y: clamped.y,
                               width: size.width,
                               height: size.height,
+                              supportsMetricSpacing: hasMeasuredDimensions(bed),
                             };
                           },
                         ).map(rect => rotateRectBetweenSizes(rect, storedFieldInnerSize, fieldInnerSize, rotation));
@@ -1524,6 +1454,10 @@ export default function GraphicalFields({
                           fieldId, baseRect, currentFieldRect,
                           { width: contentWidth, height: contentHeight },
                           fieldViewModels, location.name, locationId, rotation, boundary, unsavedBoundaryOrigin,
+                          { ...snapping, thresholdPx: FIELD_SNAP_THRESHOLD, spacing: {
+                            centimeters: pathSpacing.parcel_path_spacing_cm,
+                            pixelsPerMeter: { x: FIELD_WORLD_PX_PER_METER, y: FIELD_WORLD_PX_PER_METER },
+                          } },
                         );
                         return (
                           <Group
@@ -1611,6 +1545,7 @@ export default function GraphicalFields({
                                         locationId,
                                         storedFieldInnerSize,
                                         rotation,
+                                        { ...snapping, thresholdPx: SNAP_THRESHOLD, spacing: bedSpacing },
                                       )}
                                     />
                                     {(() => {
@@ -1647,33 +1582,7 @@ export default function GraphicalFields({
                         );
                       })}
 
-                      {activeGuides.map((guide, index) => (
-                        <Rect
-                          key={`${guide.orientation}-${guide.value}-${index}`}
-                          x={
-                            guide.orientation === "vertical"
-                              ? guide.value - 0.75
-                              : guide.start
-                          }
-                          y={
-                            guide.orientation === "vertical"
-                              ? guide.start
-                              : guide.value - 0.75
-                          }
-                          width={
-                            guide.orientation === "vertical"
-                              ? 1.5
-                              : Math.max(1, guide.end - guide.start)
-                          }
-                          height={
-                            guide.orientation === "vertical"
-                              ? Math.max(1, guide.end - guide.start)
-                              : 1.5
-                          }
-                          fill={theme.palette.error.main}
-                          opacity={0.8}
-                        />
-                      ))}
+                      <GraphicalSnapGuides guides={activeGuides} scale={viewport.scale} />
                     </Layer>
                   </Stage>
                 </Box>

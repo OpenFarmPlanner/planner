@@ -1228,7 +1228,13 @@ export interface SiteConditionFields {
   effective_site_conditions?: EffectiveSiteConditions;
 }
 
-export interface Location extends SiteConditionFields {
+export interface LocationPathSpacing {
+  bed_path_spacing_cm: number;
+  parcel_path_spacing_cm: number;
+  snap_to_path_spacing: boolean;
+}
+
+export interface Location extends SiteConditionFields, Partial<LocationPathSpacing> {
   id?: number;
   name: string;
   address?: string;

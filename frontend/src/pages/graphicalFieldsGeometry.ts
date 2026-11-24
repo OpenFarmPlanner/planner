@@ -24,6 +24,7 @@ export interface RectViewModel {
   y: number;
   width: number;
   height: number;
+  supportsMetricSpacing?: boolean;
 }
 
 export interface BedViewModel extends RectViewModel {
@@ -33,10 +34,12 @@ export interface BedViewModel extends RectViewModel {
 }
 
 export interface GuideLine {
+  target: string;
   orientation: "vertical" | "horizontal";
   value: number;
   start: number;
   end: number;
+  gapCm?: number;
 }
 
 export interface SnapResult {
@@ -128,98 +131,148 @@ export const getFitViewportPadding = (stageWidth: number, stageHeight = Number.P
   bottom: Math.min(48, stageHeight * 0.08),
   left: stageWidth < 600 ? MOBILE_VIEWPORT_PADDING : VIEWPORT_PADDING,
 });
-export const snapToNeighbors = (
+type SnapAxis = "x" | "y";
+
+interface NeighborSnapOptions {
+  thresholdPx?: number;
+  zoom?: number;
+  spacing?: { centimeters: number; pixelsPerMeter: Point };
+  previousTargets?: readonly string[];
+  constrain?: (point: Point) => Point;
+}
+
+interface SnapCandidate {
+  target: string;
+  neighbor: RectViewModel;
+  position: number;
+  edge: number;
+  gapSide?: "before" | "after";
+}
+
+const AXIS_SIZE = { x: "width", y: "height" } as const;
+const OTHER_AXIS = { x: "y", y: "x" } as const;
+const COORDINATE_EPSILON = 1e-7;
+const TARGET_HYSTERESIS_PX = 2;
+
+function overlapAlong(axis: SnapAxis, position: Point, size: SnapSize, neighbor: RectViewModel) {
+  const extent = AXIS_SIZE[axis];
+  return {
+    start: Math.max(position[axis], neighbor[axis]),
+    end: Math.min(position[axis] + size[extent], neighbor[axis] + neighbor[extent]),
+  };
+}
+
+function findSnapTarget(
+  axis: SnapAxis,
   currentId: number,
   position: Point,
   size: SnapSize,
-  neighbors: RectViewModel[],
-  threshold: number = SNAP_THRESHOLD,
-): SnapResult => {
-  let snappedX = position.x;
-  let snappedY = position.y;
-  let bestXDelta = threshold + 1;
-  let bestYDelta = threshold + 1;
-  const guides: GuideLine[] = [];
-
-  const currentXPoints = [
-    { value: position.x },
-    { value: position.x + size.width / 2 },
-    { value: position.x + size.width },
-  ];
-  const currentYPoints = [
-    { value: position.y },
-    { value: position.y + size.height / 2 },
-    { value: position.y + size.height },
-  ];
-
-  neighbors
-    .filter((neighbor) => neighbor.id !== currentId)
-    .forEach((neighbor) => {
-      const neighborXPoints = [
-        { value: neighbor.x },
-        { value: neighbor.x + neighbor.width / 2 },
-        { value: neighbor.x + neighbor.width },
-      ];
-      const neighborYPoints = [
-        { value: neighbor.y },
-        { value: neighbor.y + neighbor.height / 2 },
-        { value: neighbor.y + neighbor.height },
-      ];
-
-      currentXPoints.forEach((currentPoint) => {
-        neighborXPoints.forEach((neighborPoint) => {
-          const delta = neighborPoint.value - currentPoint.value;
-          const absDelta = Math.abs(delta);
-          if (absDelta <= threshold && absDelta < bestXDelta) {
-            bestXDelta = absDelta;
-            snappedX = position.x + delta;
-            guides.push({
-              orientation: "vertical",
-              value: neighborPoint.value,
-              start: Math.min(position.y, neighbor.y),
-              end: Math.max(
-                position.y + size.height,
-                neighbor.y + neighbor.height,
-              ),
-            });
-          }
-        });
-      });
-
-      currentYPoints.forEach((currentPoint) => {
-        neighborYPoints.forEach((neighborPoint) => {
-          const delta = neighborPoint.value - currentPoint.value;
-          const absDelta = Math.abs(delta);
-          if (absDelta <= threshold && absDelta < bestYDelta) {
-            bestYDelta = absDelta;
-            snappedY = position.y + delta;
-            guides.push({
-              orientation: "horizontal",
-              value: neighborPoint.value,
-              start: Math.min(position.x, neighbor.x),
-              end: Math.max(
-                position.x + size.width,
-                neighbor.x + neighbor.width,
-              ),
-            });
-          }
-        });
-      });
-    });
-
-  const latestVerticalGuide = [...guides]
-    .reverse()
-    .find((guide) => guide.orientation === "vertical");
-  const latestHorizontalGuide = [...guides]
-    .reverse()
-    .find((guide) => guide.orientation === "horizontal");
-
-  return {
-    x: snappedX,
-    y: snappedY,
-    guides: [
-      ...(latestVerticalGuide ? [latestVerticalGuide] : []),
-      ...(latestHorizontalGuide ? [latestHorizontalGuide] : []),
-    ],
+  neighbors: readonly RectViewModel[],
+  options: NeighborSnapOptions,
+): SnapCandidate | undefined {
+  const zoom = options.zoom ?? 1;
+  const threshold = (options.thresholdPx ?? SNAP_THRESHOLD) / zoom;
+  const extent = AXIS_SIZE[axis];
+  const candidates: SnapCandidate[] = [];
+  const add = (candidate: SnapCandidate): void => {
+    if (Math.abs(candidate.position - position[axis]) > threshold) return;
+    const constrained = options.constrain?.({ ...position, [axis]: candidate.position });
+    if (!constrained || Math.abs(constrained[axis] - candidate.position) <= COORDINATE_EPSILON) {
+      candidates.push(candidate);
+    }
   };
-};
+
+  for (const neighbor of neighbors) {
+    if (neighbor.id === currentId) continue;
+    const farEdge = neighbor[axis] + neighbor[extent];
+    const prefix = `${axis}:${neighbor.id}`;
+    const { spacing } = options;
+    const pixelsPerMeter = spacing?.pixelsPerMeter[axis] ?? 0;
+    const overlap = overlapAlong(OTHER_AXIS[axis], position, size, neighbor);
+    if (spacing && neighbor.supportsMetricSpacing && pixelsPerMeter > 0 && overlap.end > overlap.start) {
+      const gap = (spacing.centimeters / 100) * pixelsPerMeter;
+      add({ target: `${prefix}:before`, neighbor, position: neighbor[axis] - size[extent] - gap,
+        edge: neighbor[axis], gapSide: "before" });
+      add({ target: `${prefix}:after`, neighbor, position: farEdge + gap, edge: farEdge, gapSide: "after" });
+    }
+    const referenceEdges = [neighbor[axis], neighbor[axis] + neighbor[extent] / 2, farEdge];
+    for (const [movingIndex, offset] of [0, size[extent] / 2, size[extent]].entries()) {
+      for (const [referenceIndex, edge] of referenceEdges.entries()) {
+        add({ target: `${prefix}:${movingIndex}:${referenceIndex}`, neighbor, position: edge - offset, edge });
+      }
+    }
+  }
+
+  const distance = (candidate: SnapCandidate): number => Math.abs(candidate.position - position[axis]);
+  candidates.sort((a, b) => distance(a) - distance(b)
+    || Number(Boolean(b.gapSide)) - Number(Boolean(a.gapSide))
+    || a.neighbor.id - b.neighbor.id
+    || a.target.localeCompare(b.target));
+  const nearest = candidates[0];
+  const previous = candidates.find(candidate => options.previousTargets?.includes(candidate.target));
+  if (nearest && previous && distance(previous) - distance(nearest) <= TARGET_HYSTERESIS_PX / zoom) {
+    return previous;
+  }
+  return nearest;
+}
+
+function guideForTarget(
+  axis: SnapAxis,
+  candidate: SnapCandidate,
+  position: Point,
+  size: SnapSize,
+  spacing: NeighborSnapOptions["spacing"],
+): GuideLine {
+  const { neighbor, edge, gapSide, target } = candidate;
+  const orthogonal = OTHER_AXIS[axis];
+  if (gapSide && spacing) {
+    const { start, end } = overlapAlong(orthogonal, position, size, neighbor);
+    const movingEdge = position[axis] + (gapSide === "before" ? size[AXIS_SIZE[axis]] : 0);
+    return {
+      target,
+      orientation: axis === "x" ? "horizontal" : "vertical",
+      value: (start + end) / 2,
+      start: Math.min(edge, movingEdge),
+      end: Math.max(edge, movingEdge),
+      gapCm: (Math.abs(edge - movingEdge) / spacing.pixelsPerMeter[axis]) * 100,
+    };
+  }
+  return {
+    target,
+    orientation: axis === "x" ? "vertical" : "horizontal",
+    value: edge,
+    start: Math.min(position[orthogonal], neighbor[orthogonal]),
+    end: Math.max(position[orthogonal] + size[AXIS_SIZE[orthogonal]], neighbor[orthogonal] + neighbor[AXIS_SIZE[orthogonal]]),
+  };
+}
+
+export function snapToNeighbors(
+  currentId: number,
+  position: Point,
+  size: SnapSize,
+  neighbors: readonly RectViewModel[],
+  options: NeighborSnapOptions = {},
+): SnapResult {
+  const axes = ["x", "y"] as const;
+  const candidates = {
+    x: findSnapTarget("x", currentId, position, size, neighbors, options),
+    y: findSnapTarget("y", currentId, position, size, neighbors, options),
+  };
+  const result = { x: candidates.x?.position ?? position.x, y: candidates.y?.position ?? position.y };
+  for (const axis of axes) {
+    const candidate = candidates[axis];
+    if (!candidate?.gapSide) continue;
+    const overlap = overlapAlong(OTHER_AXIS[axis], result, size, candidate.neighbor);
+    if (overlap.end <= overlap.start) {
+      candidates[axis] = undefined;
+      result[axis] = position[axis];
+    }
+  }
+  return {
+    ...result,
+    guides: axes.flatMap(axis => {
+      const candidate = candidates[axis];
+      return candidate ? [guideForTarget(axis, candidate, result, size, options.spacing)] : [];
+    }),
+  };
+}

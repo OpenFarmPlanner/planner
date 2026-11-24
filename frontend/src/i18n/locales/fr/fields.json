@@ -29,6 +29,18 @@
     "graphical": "Graphique"
   },
   "graphical": {
+    "spacing": {
+      "button": "Espacement",
+      "title": "Espacement (allées)",
+      "bed": "Entre les planches (cm)",
+      "parcel": "Entre les parcelles (cm)",
+      "snap": "Ajuster aux espacements lors du déplacement",
+      "bypass": "Maintenez Maj enfoncée pendant le déplacement pour désactiver temporairement le magnétisme.",
+      "reset": "Rétablir les valeurs par défaut",
+      "apply": "Appliquer",
+      "invalid": "Saisissez un nombre supérieur ou égal à 0.",
+      "saveError": "Impossible d’enregistrer les espacements."
+    },
     "layoutLoadError": "Le graphique n’a pas pu être chargé. Veuillez réessayer.",
     "noFields": "Ce site ne contient pas encore de parcelles. Passez à la liste pour en ajouter.",
     "locationSelector": "Site",

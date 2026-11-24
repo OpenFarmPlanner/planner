@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
-from farm.common.serializer_fields import _resolve_active_project_from_serializer
+from farm.common.serializer_fields import CentimetersField, _resolve_active_project_from_serializer
 from farm.models import Bed, BedLayout, Field, FieldLayout, Location
 from farm.services.site_conditions import (
     EffectiveCondition,
@@ -15,6 +15,7 @@ from farm.services.site_conditions import (
 )
 
 MAX_LOCATION_DIMENSION_M = 100_000.0
+LOCATION_PATH_GAP_FIELDS = ('bed_path_spacing_m', 'parcel_path_spacing_m')
 
 FIELD_NAME_DUPLICATE_MESSAGE = 'Eine Parzelle mit diesem Namen existiert in diesem Standort bereits.'
 
@@ -33,6 +34,15 @@ def _serialize_effective(conditions: dict[str, EffectiveCondition]) -> dict[str,
 
 
 class LocationSerializer(serializers.ModelSerializer):
+    bed_path_spacing_cm = CentimetersField(
+        source='bed_path_spacing_m', required=False,
+        help_text='Recommended path between sibling beds in centimetres.',
+    )
+    parcel_path_spacing_cm = CentimetersField(
+        source='parcel_path_spacing_m', required=False,
+        help_text='Recommended path between sibling parcels in centimetres.',
+    )
+
     @staticmethod
     def _parse_coordinate(value, field_name: str):
         if value in (None, ''):
@@ -49,11 +59,25 @@ class LocationSerializer(serializers.ModelSerializer):
     def to_internal_value(self, data):
         payload = data.copy() if isinstance(data, dict) else data
         if isinstance(payload, dict):
+            for field in ('bed_path_spacing_cm', 'parcel_path_spacing_cm'):
+                if isinstance(payload.get(field), bool):
+                    raise serializers.ValidationError({field: 'The spacing must be a number.'})
             if 'latitude' in payload:
                 payload['latitude'] = self._parse_coordinate(payload.get('latitude'), 'latitude')
             if 'longitude' in payload:
                 payload['longitude'] = self._parse_coordinate(payload.get('longitude'), 'longitude')
         return super().to_internal_value(payload)
+
+    def update(self, instance, validated_data):
+        spacing_fields = {*LOCATION_PATH_GAP_FIELDS, 'snap_to_path_spacing'}
+        if validated_data and validated_data.keys() <= spacing_fields:
+            # Applying spacing must not overwrite a concurrently saved layout origin.
+            for field, value in validated_data.items():
+                setattr(instance, field, value)
+            instance.save(update_fields=[*validated_data, 'updated_at'])
+            instance.refresh_from_db()
+            return instance
+        return super().update(instance, validated_data)
 
     def validate_latitude(self, value):
         if value is None:
@@ -95,6 +119,18 @@ class LocationSerializer(serializers.ModelSerializer):
     def validate_width_m(self, value: float | None) -> float | None:
         return self._validate_positive_dimension(value, 'Width')
 
+    @staticmethod
+    def _validate_path_spacing(value: float) -> float:
+        if not math.isfinite(value) or value < 0:
+            raise serializers.ValidationError('The spacing must be a finite, non-negative number.')
+        return value
+
+    def validate_bed_path_spacing_cm(self, value: float) -> float:
+        return self._validate_path_spacing(value)
+
+    def validate_parcel_path_spacing_cm(self, value: float) -> float:
+        return self._validate_path_spacing(value)
+
     def get_image_file(self, obj):
         if not obj.image_file_id:
             return None
@@ -105,7 +141,7 @@ class LocationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Location
-        fields = '__all__'
+        exclude = LOCATION_PATH_GAP_FIELDS
         # Server-assigned from the active project on create; never client-settable
         # (prevents cross-tenant record reassignment via update).
         # The boundary origin is written only by the graphical layouts endpoint.

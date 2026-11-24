@@ -22,6 +22,7 @@ from farm.models import (
     ProjectMembership,
     Supplier,
 )
+from farm.structure.serializers import LocationSerializer
 from farm.tests.api_base import ProjectApiTestCase, User
 
 
@@ -71,6 +72,81 @@ class TenantScopeApiTest(ProjectApiTestCase):
 
 
 class StructureApiTest(ProjectApiTestCase):
+    def test_path_spacing_defaults_and_changes_do_not_modify_layout_or_measurements(self):
+        url = f'/openfarmplanner/api/locations/{self.location.id}/'
+        layouts_url = f'{url}layouts/'
+        self.location.length_m = 40
+        self.location.width_m = 25
+        self.location.save(update_fields=['length_m', 'width_m'])
+        FieldLayout.objects.create(
+            field=self.field, location=self.location, project=self.project, x=12, y=20,
+        )
+        BedLayout.objects.create(
+            bed=self.bed, location=self.location, project=self.project, x=3, y=5,
+        )
+        before = self.client.get(layouts_url).data
+        defaults = {
+            'bed_path_spacing_cm': 30,
+            'parcel_path_spacing_cm': 75,
+            'snap_to_path_spacing': True,
+        }
+        initial = self.client.get(url).data
+        self.assertEqual({key: initial[key] for key in defaults}, defaults)
+        self.assertNotIn('bed_path_spacing_m', initial)
+        self.assertNotIn('parcel_path_spacing_m', initial)
+
+        settings = {
+            'bed_path_spacing_cm': 0,
+            'parcel_path_spacing_cm': 62.5,
+            'snap_to_path_spacing': False,
+        }
+        response = self.client.patch(url, settings, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        read = self.client.get(url).data
+        self.assertEqual({key: read[key] for key in settings}, settings)
+        self.assertEqual((read['length_m'], read['width_m'], read['area_sqm']), (40, 25, 1000))
+        self.assertEqual(self.client.get(layouts_url).data, before)
+        self.location.refresh_from_db()
+        self.assertEqual(self.location.bed_path_spacing_m, 0)
+        self.assertEqual(self.location.parcel_path_spacing_m, 0.625)
+
+        reset = self.client.patch(url, defaults, format='json')
+        self.assertEqual(reset.status_code, status.HTTP_200_OK, reset.data)
+        self.assertEqual({key: reset.data[key] for key in defaults}, defaults)
+
+    def test_path_spacing_rejects_invalid_gaps_and_foreign_location_writes(self):
+        url = f'/openfarmplanner/api/locations/{self.location.id}/'
+        for field in ('bed_path_spacing_cm', 'parcel_path_spacing_cm'):
+            for invalid in (-1, None, True, 'nan', 'inf', 'unknown'):
+                with self.subTest(field=field, invalid=invalid):
+                    response = self.client.patch(url, {field: invalid}, format='json')
+                    self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                    self.assertIn(field, response.data)
+
+        foreign_project = Project.objects.create(name='Foreign site', slug='foreign-spacing-site')
+        foreign = Location.objects.create(name='Foreign location', project=foreign_project)
+        response = self.client.patch(
+            f'/openfarmplanner/api/locations/{foreign.id}/',
+            {'bed_path_spacing_cm': 10}, format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        foreign.refresh_from_db()
+        self.assertEqual(foreign.bed_path_spacing_m, 0.30)
+
+    def test_spacing_patch_returns_a_boundary_saved_after_the_location_was_read(self):
+        Location.objects.filter(pk=self.location.pk).update(boundary_x=20, boundary_y=40)
+        serializer = LocationSerializer(
+            self.location, data={'bed_path_spacing_cm': 45}, partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        self.assertEqual((serializer.data['boundary_x'], serializer.data['boundary_y']), (20, 40))
+        self.assertEqual(serializer.data['bed_path_spacing_cm'], 45)
+        self.location.refresh_from_db()
+        self.assertEqual((self.location.boundary_x, self.location.boundary_y), (20, 40))
+        self.assertEqual(self.location.bed_path_spacing_m, 0.45)
+
     def test_location_create_and_update_with_agronomic_fields(self):
         create_response = self.client.post(
             '/openfarmplanner/api/locations/',

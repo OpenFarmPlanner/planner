@@ -21,7 +21,7 @@ const snap = (
   position: { x: number; y: number },
   neighbors: RectViewModel[],
   threshold?: number,
-) => snapToNeighbors(1, position, { width: 100, height: 60 }, neighbors, threshold);
+) => snapToNeighbors(1, position, { width: 100, height: 60 }, neighbors, { thresholdPx: threshold });
 
 describe('getFitViewportPadding', () => {
   it('uses the desktop padding and control safe area on a wide stage', () => {
@@ -206,6 +206,60 @@ describe('snapToNeighbors', () => {
     const result = snap({ x: 200, y: 200 }, [rect(2, 200, 200)]);
 
     expect(result).toMatchObject({ x: 200, y: 200 });
+  });
+
+  it('snaps to the exact edge gap on each axis and reports the measured distance', () => {
+    const spacing = { centimeters: 30, pixelsPerMeter: { x: 20, y: 10 } };
+    const neighbor = { ...rect(2, 200, 500), supportsMetricSpacing: true };
+    const horizontally = snapToNeighbors(1, { x: 308, y: 505 }, { width: 100, height: 60 }, [neighbor], { spacing });
+    expect(horizontally.x).toBe(306);
+    expect(horizontally.guides).toContainEqual(expect.objectContaining({
+      start: 300, end: 306, gapCm: 30, orientation: 'horizontal',
+    }));
+    const vertically = snapToNeighbors(1, { x: 205, y: 564 }, { width: 100, height: 60 }, [neighbor], { spacing });
+    expect(vertically.y).toBe(563);
+    expect(vertically.guides).toContainEqual(expect.objectContaining({
+      start: 560, end: 563, gapCm: 30, orientation: 'vertical',
+    }));
+  });
+
+  it('captures the same screen offset at different zoom levels', () => {
+    const neighbor = { ...rect(2, 200, 500), supportsMetricSpacing: true };
+    const spacing = { centimeters: 100, pixelsPerMeter: { x: 20, y: 20 } };
+    for (const zoom of [0.5, 1, 2, 4]) {
+      const result = (screenDistance: number) => snapToNeighbors(
+        1, { x: 320 + screenDistance / zoom, y: 500 }, { width: 100, height: 60 }, [neighbor], { spacing, zoom },
+      );
+      expect(result(7).x).toBe(320);
+      expect(result(9).x).toBe(320 + 9 / zoom);
+    }
+  });
+
+  it('keeps a near-tie stable and chooses a reproducible target without prior selection', () => {
+    const options = { spacing: { centimeters: 100, pixelsPerMeter: { x: 20, y: 20 } } };
+    const neighbors = [rect(2, 200, 500), rect(3, 204, 500)]
+      .map(neighbor => ({ ...neighbor, supportsMetricSpacing: true }));
+    const size = { width: 100, height: 60 };
+    const first = snapToNeighbors(1, { x: 322, y: 500 }, size, neighbors.toReversed(), options);
+    expect(first.x).toBe(320);
+    const previousTargets = first.guides.map(guide => guide.target);
+    expect(snapToNeighbors(1, { x: 322.9, y: 500 }, size, neighbors, { ...options, previousTargets }).x).toBe(320);
+    expect(snapToNeighbors(1, { x: 324, y: 500 }, size, neighbors, { ...options, previousTargets }).x).toBe(324);
+  });
+
+  it('does not invent gaps for unknown or perpendicular geometry or out-of-bounds positions', () => {
+    const neighbor = { ...rect(2, 200, 500), supportsMetricSpacing: true };
+    const spacing = { centimeters: 100, pixelsPerMeter: { x: 20, y: 20 } };
+    const size = { width: 100, height: 60 };
+    const position = { x: 323, y: 500 };
+    expect(snapToNeighbors(1, position, size, [{ ...neighbor, supportsMetricSpacing: false }], { spacing }).x)
+      .toBe(323);
+    expect(snapToNeighbors(1, { ...position, y: 570 }, size, [neighbor], { spacing }).x).toBe(323);
+    const constrained = snapToNeighbors(1, position, size, [neighbor], {
+      spacing, constrain: point => ({ ...point, x: Math.max(322, point.x) }),
+    });
+    expect(constrained.x).toBe(323);
+    expect(constrained.guides.every(guide => guide.gapCm === undefined)).toBe(true);
   });
 });
 

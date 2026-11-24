@@ -29,6 +29,18 @@
     "graphical": "Grafisch"
   },
   "graphical": {
+    "spacing": {
+      "button": "Afstanden",
+      "title": "Afstanden (paden)",
+      "bed": "Tussen bedden (cm)",
+      "parcel": "Tussen percelen (cm)",
+      "snap": "Uitlijnen op afstanden tijdens het slepen",
+      "bypass": "Houd Shift ingedrukt tijdens het slepen om uitlijnen tijdelijk uit te schakelen.",
+      "reset": "Standaardwaarden herstellen",
+      "apply": "Toepassen",
+      "invalid": "Voer een getal groter dan of gelijk aan 0 in.",
+      "saveError": "De afstanden konden niet worden opgeslagen."
+    },
     "layoutLoadError": "De grafische weergave kon niet worden geladen. Probeer het opnieuw.",
     "noFields": "Deze locatie heeft nog geen percelen. Ga naar de lijst om percelen toe te voegen.",
     "locationSelector": "Locatie",

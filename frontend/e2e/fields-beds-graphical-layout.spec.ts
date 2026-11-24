@@ -179,6 +179,192 @@ async function selectLocation(page: Page, name: string) {
   await page.waitForLoadState('networkidle');
 }
 
+test.describe('location spacing in a touch-capable browser', () => {
+  test.use({ hasTouch: true });
+
+  test('edits and resets isolated location spacing with keyboard and localized touch controls', async ({ page, request }, testInfo) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await loginWithDeterministicProject(page, request, 'graphical-spacing-settings', { demoProject: true, loginAsAdmin: true });
+    const { results: locations } = await apiRequest<{ results: { id: number; name: string }[] }>(page, 'GET', '/locations/');
+    const hofgarten = locations.find(location => location.name === 'Hofgarten')!;
+    const layouts = `/locations/${hofgarten.id}/layouts/`;
+    const originalGeometry = await apiRequest(page, 'GET', layouts);
+    await page.goto('/app/fields-beds');
+    await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+    await selectLocation(page, 'Hofgarten');
+    const trigger = page.getByRole('button', { name: 'Abstände', exact: true });
+    const dialog = page.getByRole('dialog', { name: 'Abstände (Wege)' });
+    const bed = dialog.getByRole('textbox', { name: 'Zwischen Beeten (cm)' });
+    const parcel = dialog.getByRole('textbox', { name: 'Zwischen Parzellen (cm)' });
+    const checkbox = dialog.getByRole('checkbox', { name: 'Beim Verschieben an Abständen einrasten' });
+    const apply = dialog.getByRole('button', { name: 'Übernehmen' });
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+    await expect(bed).toBeFocused();
+    await expect(bed).toHaveValue('30');
+    await expect(parcel).toHaveValue('75');
+    await expect(checkbox).toBeChecked();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+
+    await page.keyboard.press('Enter');
+    await bed.fill('-1');
+    await expect(bed).toHaveAttribute('aria-invalid', 'true');
+    await expect(apply).toBeDisabled();
+    await bed.fill('0');
+    await parcel.fill('82,5');
+    await checkbox.uncheck();
+    await page.route(`**/locations/${hofgarten.id}/`, route => route.fulfill({ status: 503 }), { times: 1 });
+    await apply.click();
+    await expect(dialog.getByRole('alert')).toHaveText('Die Abstände konnten nicht gespeichert werden.');
+    await expect(parcel).toHaveValue('82,5');
+    await apply.click();
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await page.reload();
+    await trigger.click();
+    await expect(bed).toHaveValue('0');
+    await expect(parcel).toHaveValue('82,5');
+    await expect(checkbox).not.toBeChecked();
+    await dialog.getByRole('button', { name: 'Standardwerte' }).click();
+    await apply.click();
+    await expect(dialog).toHaveCount(0);
+    expect(await apiRequest(page, 'GET', layouts)).toEqual(originalGeometry);
+
+    await selectLocation(page, 'Acker am Bach');
+    await trigger.click();
+    await expect(bed).toHaveValue('45');
+    await expect(parcel).toHaveValue('100');
+    await page.keyboard.press('Escape');
+
+    // Account language is a persisted preference, so each reload renders the
+    // toolbar and the popover in the selected language.
+    for (const [locale, button, title, edit] of [
+      ['fr', 'Espacement', 'Espacement (allées)', 'Modifier le graphique'],
+      ['pt', 'Espaçamento', 'Espaçamento (caminhos)', 'Editar gráfico'],
+      ['nl', 'Afstanden', 'Afstanden (paden)', 'Grafische weergave bewerken'],
+    ]) {
+      await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: locale });
+      await page.setViewportSize({ width: 375, height: 800 });
+      await page.reload();
+      const spacingButton = page.getByRole('button', { name: button, exact: true });
+      const editButton = page.getByRole('button', { name: edit, exact: true });
+      await expect(editButton).toBeVisible();
+      await expect.poll(async () => {
+        const [editBox, spacingBox] = await Promise.all([editButton.boundingBox(), spacingButton.boundingBox()]);
+        return editBox && spacingBox && spacingBox.x >= editBox.x + editBox.width - 1
+          && spacingBox.y < editBox.y + editBox.height && spacingBox.x + spacingBox.width <= 375;
+      }).toBe(true);
+      await spacingButton.tap();
+      const translated = page.getByRole('dialog', { name: title });
+      await expect(translated).toBeVisible();
+      await expect(translated.getByRole('textbox').first()).toBeFocused();
+      const bounds = (await translated.boundingBox())!;
+      expect(bounds.x).toBeGreaterThanOrEqual(0);
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(375);
+      await page.screenshot({ path: testInfo.outputPath(`location-spacing-${locale}.png`), animations: 'disabled' });
+      await page.keyboard.press('Escape');
+    }
+  });
+});
+
+test('snaps real bed and parcel edges and permits closer placement with Shift or snapping off', async ({ page, request }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 950 });
+  await loginWithDeterministicProject(page, request, 'graphical-spacing-drag', { loginAsAdmin: true });
+  const { results: [location] } = await apiRequest<{ results: { id: number }[] }>(page, 'GET', '/locations/');
+  const locationPath = `/locations/${location.id}/`;
+  const layouts = `${locationPath}layouts/`;
+  await apiRequest(page, 'PATCH', locationPath, { width_m: 30, length_m: 24 });
+  const fields = [];
+  for (const name of ['Feste Parzelle', 'Bewegliche Parzelle']) {
+    fields.push(await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
+      name, location: location.id, width_m: 8, length_m: 10,
+    }));
+  }
+  const beds = [];
+  for (const name of ['Festes Beet', 'Bewegliches Beet']) {
+    beds.push(await apiRequest<{ id: number }>(page, 'POST', '/beds/', {
+      name, field: fields[0].id, width_m: 1.2, length_m: 4,
+    }));
+  }
+  await apiRequest(page, 'PUT', layouts, {
+    location_boundary: { x: 20, y: 20 },
+    field_layouts: fields.map((field, index) => ({ field: field.id, x: index === 0 ? 40 : 270, y: 40 })),
+    bed_layouts: beds.map((bed, index) => ({ bed: bed.id, x: index === 0 ? 12 : 70, y: 40 })),
+  });
+
+  await page.goto('/app/fields-beds');
+  await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+  await page.getByRole('button', { name: 'Ansicht um 90° nach links drehen', exact: true }).click();
+  await page.getByRole('button', { name: 'Grafik bearbeiten', exact: true }).click();
+  const findRect = async (id: string) => (await canvasRects(page, id)).find(rect => rect.id === id)!;
+  const fieldId = `field-rect-${fields[1].id}`;
+  const bedId = `bed-rect-${beds[1].id}`;
+  await expect.poll(async () => (await findRect(bedId))?.width).toBeCloseTo(18.6);
+  const startDrag = async (id: string, targetX: number, heightFraction: number) => {
+    const rect = await findRect(id);
+    const { scale } = await activeCamera(page);
+    const x = rect.container.x + rect.bounds.x + rect.bounds.width / 2;
+    const y = rect.container.y + rect.bounds.y + rect.bounds.height * heightFraction;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + (targetX - rect.x) * scale, y, { steps: 10 });
+  };
+  const finishDrag = async () => {
+    const saved = page.waitForResponse(response => response.url().endsWith(layouts) && response.request().method() === 'PUT');
+    await page.mouse.up();
+    expect((await saved).ok()).toBe(true);
+  };
+  const guideLabels = () => page.evaluate(() => {
+    const { stages } = (window as unknown as { Konva: { stages: Konva.Stage[] } }).Konva;
+    const stage = stages.find(item => item.container()?.isConnected)!;
+    return stage.find('Text').filter(node => node.getAttr('data-testid') === 'graphical-snap-gap')
+      .map(node => node.getAttr('text'));
+  });
+
+  const bedAnchor = await findRect(`bed-rect-${beds[0].id}`);
+  const bedTarget = bedAnchor.x + bedAnchor.width + (124 / 8) * 0.3;
+  await startDrag(bedId, bedTarget + 4, 0.5);
+  await expect.poll(async () => (await findRect(bedId)).x).toBeCloseTo(bedTarget);
+  await expect.poll(guideLabels).toContain('30 cm');
+  await finishDrag();
+
+  const fieldTarget = 40 + 8 * 18 + 0.75 * 18;
+  await startDrag(fieldId, fieldTarget + 5, 0.1);
+  await expect.poll(async () => (await findRect(fieldId)).x).toBeCloseTo(fieldTarget);
+  await expect.poll(guideLabels).toContain('75 cm');
+  await page.screenshot({ path: testInfo.outputPath('location-spacing-gap.png'), animations: 'disabled' });
+  await page.keyboard.down('Shift');
+  await expect.poll(guideLabels).toEqual([]);
+  await expect.poll(async () => (await findRect(fieldId)).x).toBeGreaterThan(fieldTarget + 2);
+  await page.keyboard.up('Shift');
+  await expect.poll(async () => (await findRect(fieldId)).x).toBeCloseTo(fieldTarget);
+  await finishDrag();
+
+  await startDrag(fieldId, fieldTarget + 8, 0.1);
+  await page.keyboard.down('Shift');
+  await expect.poll(async () => (await findRect(fieldId)).x).toBeGreaterThan(fieldTarget + 5);
+  await finishDrag();
+  await page.keyboard.up('Shift');
+  const storedAfterShift = await apiRequest<{ field_layouts: { field: number; x: number }[] }>(page, 'GET', layouts);
+  expect(storedAfterShift.field_layouts.find(layout => layout.field === fields[1].id)!.x).toBeGreaterThan(fieldTarget + 5);
+
+  await page.getByRole('button', { name: 'Abstände', exact: true }).click();
+  const spacing = page.getByRole('dialog', { name: 'Abstände (Wege)' });
+  await spacing.getByRole('checkbox').uncheck();
+  await spacing.getByRole('button', { name: 'Übernehmen' }).click();
+  await expect(page.locator('[role="dialog"][aria-modal="true"]')).toHaveCount(0);
+  await startDrag(fieldId, 188, 0.1);
+  await expect.poll(async () => (await findRect(fieldId)).x).toBeLessThan(fieldTarget - 5);
+  await expect.poll(guideLabels).toEqual([]);
+  await finishDrag();
+  const { field_layouts: saved } = await apiRequest<{ field_layouts: { field: number; x: number }[] }>(page, 'GET', layouts);
+  const moved = saved.find(layout => layout.field === fields[1].id)!;
+  expect(moved.x).toBeGreaterThan(184);
+  expect(moved.x).toBeLessThan(fieldTarget - 5);
+});
+
 test('retains selected location, camera and rotation through representation changes and fullscreen', async ({ page, request }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await loginWithDeterministicProject(page, request, 'graphical-workspace-camera', { demoProject: true, loginAsAdmin: true });
@@ -269,7 +455,7 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
     await expect.poll(async () => {
       const rects = await Promise.all([
         page.getByRole('banner').getByRole('heading', { level: 1 }),
-        ...['Liste', 'Grafik', 'Grafik bearbeiten'].map(name => page.getByRole('button', { name, exact: true })),
+        ...['Liste', 'Grafik', 'Grafik bearbeiten', 'Abstände'].map(name => page.getByRole('button', { name, exact: true })),
         page.getByRole('button', { name: /^Standort hinzufügen/ }),
         page.getByRole('combobox', { name: 'Standort', exact: true }),
       ].map(locator => locator.boundingBox()));
@@ -288,6 +474,7 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
     await page.getByRole('button', { name: 'Liste', exact: true }).click();
     await expect(page.getByRole('combobox', { name: 'Standort', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Grafik bearbeiten', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Abstände', exact: true })).toHaveCount(0);
     await expect.poll(async () => {
       const rects = await Promise.all([
         page.getByRole('banner').getByRole('heading', { level: 1 }),

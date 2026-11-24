@@ -120,6 +120,19 @@ export function getFieldRectSize(
   return areaToRectSize(Number(field.area_sqm ?? 1), options);
 }
 
+/** Metric parcel gaps require the shared location scale on both rectangles. */
+export function fieldUsesWorldScale(
+  field: Pick<Field, 'length_m' | 'width_m'>,
+  size: RectSize,
+  pxPerMeter: number,
+): boolean {
+  const { length_m: length, width_m: width } = field;
+  return typeof length === 'number' && Number.isFinite(length) && length > 0
+    && typeof width === 'number' && Number.isFinite(width) && width > 0
+    && size.width === Math.round(width * pxPerMeter)
+    && size.height === Math.round(length * pxPerMeter);
+}
+
 /** The location's outer boundary at the layout origin, or null unless both
  * optional dimensions are set (#1190). Width runs horizontally and length
  * vertically, like a field's rect. */
