@@ -548,7 +548,7 @@ describe("GraphicalFields", async () => {
     const dropped = node.getPosition();
     firstView.unmount();
 
-    await renderGraphic(<GraphicalFields />);
+    render(<GraphicalFields />);
     expect(screen.getByRole("progressbar")).toBeInTheDocument();
     expect(listByLocationMock).toHaveBeenCalledTimes(1);
     await act(async () => completeSave());
