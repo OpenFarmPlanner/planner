@@ -565,3 +565,34 @@ not certify concurrency, selective undo or the rest of the app.
 Local scripts, API receipts and screenshots are retained in `/tmp/ofp-1204/`;
 session credentials are local only and are not committed. The synthetic project
 remains available for the owner's manual inspection.
+
+## Project version restoration — 2026-11-24
+
+Tested release `v1.209.5` at `a2760428a9967980a3d0c2f6a19080501ef7e181`
+using synthetic projects, a disposable PostgreSQL 18 cluster and in-memory
+SQLite. The scope was project and crop version history. The full-sweep
+backlog above remains open.
+
+| Check | Evidence |
+| --- | --- |
+| Every historical step and its automatic backup | Extended the existing round-trip scenario locally with a final marker so all 41 earlier writes were selectable. Confirmed that each revision ID appeared in the project timeline. On PostgreSQL, fetched a fresh preview and submitted its token for each of the 41 restores and 41 backup restores. All 82 results matched the corresponding captured project state across all 20 registered data types using the repository's field and timestamp normalization. |
+| Deleted, edited and initially absent harvest data | Used the German project-history dialog to switch between versions of a harvest, its allocation and a crop loss. After each restore, reloaded the page and fetched the data again. Checked record and plan IDs, quantities, notes, loss extent and the set of active crop IDs against the values captured at each step. The automatic backup returned to the state after deletion. |
+| Imports and linked data | Chrome exercised selective import undo, preservation of later independent work, refusal on a later conflicting edit, full restore before spreadsheet and library imports, and recovery of a deleted location with its field and bed. The bulk-delete recovery, per-crop reference restore and separate public-library version restore were also exercised through their dialogs. |
+| Guarded failures | Incomplete history, missing stored media and stale previews were covered by the API tests. In Chrome, confirming a stale preview preserved a newer crop and required a refresh. An individual crop restore with a missing supplier preserved the current values and identified the missing reference. |
+
+The SQLite history/restore selection passed 127 tests and 88 subtests. The
+PostgreSQL crop-history and history-invariant suites passed 100 tests and
+88 subtests. These selections overlap. Five frontend unit-test files passed
+149 tests. The application bundle was built from the reviewed commit using
+the installed frontend dependencies. The browser runs used German Chrome
+and dedicated local servers. All 11 selected repository browser cases passed.
+The additional harvest/loss probe passed at 1440×900, 375×800 and 800×375.
+Its initial fixture needed a season for the planting plan. After that was
+corrected, the interrupted landscape run was repeated on a fresh project.
+
+The project timeline shows the last 30 days. Accounts, project memberships
+and the shared library have a separate lifecycle. A version that requires
+missing file content or lacks sufficient historical evidence can be refused.
+The run used synthetic histories and did not inspect any existing user
+project. Local probes, screenshots and run logs are in
+`/tmp/ofp-version-qa-dfFN6nQp/` on the test machine.
