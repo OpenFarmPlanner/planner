@@ -14,17 +14,13 @@ jobs:
     uses: ./.github/workflows/classify-changes.yml
 
   e2e:
-    # Balance whole files across three runners using measured E2E durations.
-    # Each runner is a fresh VM that starts its own Django backend against its own SQLite file
-    # (see the webServer block in playwright.config.ts), so the shards share no
-    # database and no fixture users - the isolation the suite needs comes from
-    # the split itself, and `workers: 1` still holds inside a shard.
-    # Keep the runner script's INDEX/TOTAL in step with the matrix.
+    # Keep the three app-bound required contexts. Each shard owns a reviewed
+    # smoke roster and starts its own production build and disposable Django DB.
     needs: changes
     if: ${{ !cancelled() }}
     name: e2e (shard ${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
-    # Include runner setup, the complete test partition, and artifact uploads.
+    # Include runner setup, the smoke journeys, and artifact uploads.
     timeout-minutes: 25
     strategy:
       fail-fast: false
@@ -91,9 +87,9 @@ jobs:
           PLAYWRIGHT_DOWNLOAD_HOST: https://cdn.playwright.dev
         run: "$GITHUB_WORKSPACE/scripts/ci/install-playwright-chrome.sh"
 
-      - name: Test E2E timing and partition tools
+      - name: Test E2E timing, partition and smoke roster checks
         if: needs.changes.outputs.metadata_only != 'true'
-        run: node --test tests/test_playwright_timings.cjs tests/test_e2e_sharding.cjs
+        run: node --test tests/test_playwright_timings.cjs tests/test_e2e_sharding.cjs tests/test_pr_smoke.cjs
 
       - name: Build frontend (production build)
         if: needs.changes.outputs.metadata_only != 'true'
@@ -102,9 +98,14 @@ jobs:
         env:
           VITE_WS_BASE_URL: ws://127.0.0.1:8000
 
-      - name: Run E2E tests against the production build
+      - name: Run PR smoke journeys against the production build
         if: needs.changes.outputs.metadata_only != 'true'
-        run: node scripts/ci/run_e2e_shard.cjs ${{ matrix.shard }}/3
+        working-directory: frontend
+        env:
+          E2E_PARTITION: ${{ matrix.shard }}/3
+        run: |
+          npx --no-install playwright test --project=chromium --forbid-only --test-list ../scripts/ci/pr-smoke/${{ matrix.shard }}.txt
+          node ../scripts/ci/verify_pr_smoke.cjs ${{ matrix.shard }}
 
       - name: Upload E2E timings
         if: always() && needs.changes.outputs.metadata_only != 'true'

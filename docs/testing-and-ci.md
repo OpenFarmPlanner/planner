@@ -22,8 +22,8 @@ from PR #703's first CI run (29 Sep 2026), which introduced the changes
 described under "Backend" below; the same job took 10m12s / 10m52s on the
 25 Sep run.
 
-`.github/workflows/e2e.yml` runs the Playwright suite against a production
-build on pull requests, split across three shards of its own. Failed tests
+`.github/workflows/e2e.yml` runs the required Chromium smoke journeys against a production
+build on application pull requests, split across three shards of its own. Failed tests
 keep a Playwright trace (`trace: 'retain-on-failure'`); a failing shard
 uploads it with its `playwright-report-shard-N` artifact. Open it with
 `npx playwright show-trace <trace.zip>` to see every request, cookie and
@@ -542,12 +542,62 @@ for states, actual completion evidence, manual commands and provider limitations
 Policy regression tests run in quality, not in the classifier before triage.
 There is no application/backend behavior change or schema migration.
 
+## Required PR smoke journeys
+
+Application PRs run seven existing journeys in three isolated production-build
+Chrome/Django jobs. Each numbered Playwright test list under
+[`scripts/ci/pr-smoke/`](../scripts/ci/pr-smoke) identifies a file and exact
+title path. Review a roster change together with the persistence assertion it
+protects. Each expected test must pass exactly once. A stale title, empty
+roster, skipped case, duplicate or unexpected result fails the shard.
+
+| Shard | Journeys | Evidence |
+|---|---|---|
+| 1 | Registration and public crop library writes | A newly registered account reaches the unconfirmed-login flow. The library journey imports into a project, edits the published entry and inspects its versions. |
+| 2 | First project and harvest recording | The newly created demo project supplies real records on multiple routes. A harvest save recovers after an interrupted request, splits allocations and survives reload. |
+| 3 | Planting plan, import/restore and export | Creating a mobile plan persists the selected bed. Restoring a project snapshot reverses spreadsheet and library imports. The downloaded JSON and database agree on localized companion notes. |
+
+Django and Vitest continue covering validation, permissions and moderation.
+The browser gaps for low-trust moderation (#1494), project trash/restore
+(#1495) and empty-project submission (#1496) remain tracked in the
+[coverage audit](test-coverage-audit-2026-11-23.md). The full release suite
+continues to exercise responsive layout, localization variants, batch limits,
+recovery paths and the other complete specs. The supplemental six-project
+cross-browser workflow retains its PR triggers and failure artifacts.
+
+Measured on the same application source and dependency lockfile during rollout:
+
+| Actual PR run | Dependency install / restore | Production build | Browser step | Shard job | E2E workflow wall time |
+|---|---|---|---|---|---|
+| [Full PR baseline](https://github.com/OpenFarmPlanner/planner/actions/runs/45340877728) | warm, 5–7s restore | 63–77s | 17m18s–19m43s | 18m50s–21m34s | 21m46s |
+| [Smoke with a fresh node_modules tree](https://github.com/OpenFarmPlanner/planner/actions/runs/45348181626) | 12–17s npm ci | 66–78s | 44–54s | 2m21s–3m04s | 3m18s |
+| [Smoke with the normal warm cache](https://github.com/OpenFarmPlanner/planner/actions/runs/45348686766) | 4–6s restore | 57–78s | 37–52s | 1m53s–2m41s | 2m51s |
+
+Ranges cover the three parallel jobs. The cold trial used a fresh dependency
+tree and the normal npm download cache. Workflow wall time includes runner
+queueing and classification. The other required checks run concurrently and may
+finish later. The [blocked harvest save](https://github.com/OpenFarmPlanner/planner/actions/runs/45347724020)
+failed required shard 2 during acceptance. The full release test on
+[v1.207.0](https://github.com/OpenFarmPlanner/planner/actions/runs/45344192608)
+passed all 475 tests in 21m56s.
+
+The existing protected `e2e (shard N/3)` contexts and metadata classifier
+remain in place. To roll back, restore the full partition command in
+`.github/workflows/e2e.yml` through a reviewed PR, retaining those names and
+the manual/nightly workflow. For local smoke verification, build the frontend,
+then from `frontend/` run, for example:
+
+```sh
+E2E_TIMINGS=1 E2E_PARTITION=1/3 npx --no-install playwright test --project=chromium --forbid-only --test-list ../scripts/ci/pr-smoke/1.txt
+node ../scripts/ci/verify_pr_smoke.cjs 1
+```
+
 ## Full release and nightly browser regressions
 
 `.github/workflows/release-e2e.yml` runs nightly at 02:17 UTC on main and on
 manual dispatch at a selected ref. Each shard checks out the immutable event SHA,
 verifies HEAD, builds the frontend and starts isolated local servers through
-the same Playwright configuration as the full PR suite. The duration-balanced
+the standard production-build Playwright configuration. The duration-balanced
 partitions cover both Chromium projects. Full verification checks discovery
 against the spec inventory and compares the completed tests with the discovered
 IDs and projects. Each test must pass once. Missing tests, skips, focused tests
@@ -661,8 +711,8 @@ compare cache conditions and retries, not estimates alone.
 
 ### Duration-aware file partitions
 
-`.github/workflows/e2e.yml` keeps the same three required job names and calls
-`node scripts/ci/run_e2e_shard.cjs INDEX/3` from the repository root. The runner
+`.github/workflows/release-e2e.yml` calls
+`node scripts/ci/run_e2e_shard.cjs INDEX/3 --verify-full` from the repository root. The runner
 first discovers all tests with Playwright's normal configuration and JSON list
 reporter, then assigns whole files longest-first to the currently lightest
 partition. `scripts/ci/e2e_timings.json` records the measured source run, file
@@ -908,8 +958,8 @@ they are not a general detector of arbitrary visual overlaps.
 ### CI
 
 `.github/workflows/e2e-cross-browser.yml` runs all six projects on pull
-requests to `main`, via `run-in-docker.sh`. Chrome functional and responsive
-tests continue in the three `e2e.yml` shards. Existing check names and branch
+requests to `main`, via `run-in-docker.sh`. The full Chromium functional and responsive
+suite runs nightly and at release, alongside the required Chromium PR smoke journeys. Existing check names and branch
 protection are unchanged. Both configs retain screenshots and traces on
 failure; failing jobs upload `playwright-report/` and `test-results/` as
 `playwright-cross-browser-<project>` or `playwright-report-shard-N`.

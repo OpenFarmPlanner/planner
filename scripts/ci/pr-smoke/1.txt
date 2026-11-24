@@ -1,0 +1,2 @@
+public-crop-library.spec.ts › public crop library supports quick import, direct edit, versions, discussion, and mobile layout
+registration-confirmation.spec.ts › login with an unconfirmed account offers the spam hint and resend

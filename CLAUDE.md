@@ -132,6 +132,11 @@ then the skill that applies it.
 
 ## Playwright Layout Tests and Visual Review
 
+- Application PRs run the reviewed real-Django smoke journeys in
+  `scripts/ci/pr-smoke/` under the three existing required E2E contexts.
+  Full production-build Chromium regression runs nightly and manually at each
+  release tag. Production preflight requires the exact commit's passing manual
+  run. See [testing and CI](docs/testing-and-ci.md#required-pr-smoke-journeys).
 - CI uses functional assertions and deterministic responsive/layout checks;
   screenshot pixel comparisons and rebaseline approval are not merge gates.
 - Preserve screenshots and traces on failure for debugging.

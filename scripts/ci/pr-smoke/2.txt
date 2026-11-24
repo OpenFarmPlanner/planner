@@ -1,0 +1,2 @@
+onboarding-demo-project.spec.ts › first-project onboarding › creates and opens a personal demo project from the onboarding screen
+harvest-recording.spec.ts › records without an assignment, keeps failed input, and explicitly splits the harvest later

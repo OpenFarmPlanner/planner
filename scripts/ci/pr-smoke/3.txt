@@ -1,0 +1,3 @@
+import-history.spec.ts › full restore before spreadsheet and library imports refreshes the crop grid
+planting-plans-bed-picker.spec.ts › preserves the mobile bed assignment when creating a plan
+localized-companion-notes.spec.ts › JSON keeps every companion note version when the UI language has no note

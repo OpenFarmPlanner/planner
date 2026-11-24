@@ -91,7 +91,9 @@ python3 -m unittest discover -s tests -p test_release_pr.py
 From a release tag containing the full workflow, dispatch `release-e2e.yml` at
 the tag. Wait for **Full release E2E result** and compare the run's head SHA
 with the local tag's peeled commit before using it as production evidence.
-The deploy verifier is tracked in [ops#41](https://github.com/OpenFarmPlanner/ops/issues/41).
+Production preflight checks the newest manual dispatch for the exact local
+commit, its current attempt and all required job steps. The staging marker and
+health checks still apply. See the [ops runbook](https://github.com/OpenFarmPlanner/ops/blob/main/docs/release-tests.md).
 
 ```bash
 tag=$(git describe --tags --exact-match HEAD)
@@ -99,7 +101,7 @@ git rev-parse "$tag^{commit}"
 gh workflow run release-e2e.yml --repo OpenFarmPlanner/planner --ref "$tag"
 gh run list --repo OpenFarmPlanner/planner --workflow release-e2e.yml \
   --event workflow_dispatch --commit "$(git rev-parse HEAD)" \
-  --json databaseId,attempt,headSha,status,conclusion,url
+  --json databaseId,headSha,status,conclusion,url
 ```
 
 For a failure, inspect the failing job and download its release-results artifact.
