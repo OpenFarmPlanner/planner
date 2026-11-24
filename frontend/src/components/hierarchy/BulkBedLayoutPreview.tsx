@@ -35,8 +35,8 @@ export function BulkBedLayoutPreview({ preview, formatNumber }: {
         ))}
         {beds.map((bed, index) => (
           <Box key={bed.id} title={bed.name} sx={{ ...offset(bed.rect),
-            bgcolor: index < insideCount ? 'primary.light' : 'error.light',
-            border: '1px solid', borderColor: index < insideCount ? 'primary.dark' : 'error.dark' }} />
+            bgcolor: index < insideCount ? 'info.light' : 'error.light',
+            border: '1px solid', borderColor: index < insideCount ? 'info.dark' : 'error.dark' }} />
         ))}
       </Box>
       <Typography variant="caption" color="text.secondary">
