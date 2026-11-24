@@ -542,6 +542,27 @@ for states, actual completion evidence, manual commands and provider limitations
 Policy regression tests run in quality, not in the classifier before triage.
 There is no application/backend behavior change or schema migration.
 
+## Full release and nightly browser regressions
+
+`.github/workflows/release-e2e.yml` runs nightly at 02:17 UTC on main and on
+manual dispatch at a selected ref. Each shard checks out the immutable event SHA,
+verifies HEAD, builds the frontend and starts isolated local servers through
+the same Playwright configuration as the full PR suite. The duration-balanced
+partitions cover both Chromium projects. Full verification checks discovery
+against the spec inventory and compares the completed tests with the discovered
+IDs and projects. Each test must pass once. Missing tests, skips, focused tests
+and empty partitions fail the run.
+
+Allow roughly 16–21 minutes per browser job based on the November 23 PR audit,
+plus queue and cold-install time. The release jobs allow 45 minutes for setup,
+the full build, tests and artifact upload. Each shard retains timings, failure
+screenshots and traces for seven days. The final job checks all three passing
+checkout records for its own run attempt. GitHub's workflow, event, run ID,
+attempt, head SHA, jobs and steps provide the machine-readable evidence.
+See [release instructions](releases.md#full-browser-regression-evidence) for
+tag dispatch and reruns. Supplemental cross-browser PR checks use their own
+workflow. The live-site smoke configuration targets a running environment.
+
 ## E2E: sharded across runners, serial inside one
 
 `frontend/playwright.config.ts` still pins `workers: 1` and

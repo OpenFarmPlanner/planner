@@ -1,0 +1,110 @@
+name: Full release E2E
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 2 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    name: Full Chromium (shard ${{ matrix.shard }}/3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - name: Checkout dispatch or scheduled commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Verify checked-out SHA
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          printf 'Testing %s at %s (attempt %s)\n' "$GITHUB_REF" "$GITHUB_SHA" "$GITHUB_RUN_ATTEMPT"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - run: python -m pip install --upgrade uv
+
+      - run: npm ci
+        working-directory: frontend
+
+      - name: Install Chrome
+        working-directory: frontend
+        timeout-minutes: 15
+        env:
+          PLAYWRIGHT_DOWNLOAD_HOST: https://cdn.playwright.dev
+        run: '"$GITHUB_WORKSPACE/scripts/ci/install-playwright-chrome.sh"'
+
+      - name: Test full-suite discovery and partitioning
+        run: node --test tests/test_e2e_sharding.cjs tests/test_playwright_timings.cjs
+
+      - name: Build production frontend
+        working-directory: frontend
+        env:
+          VITE_WS_BASE_URL: ws://127.0.0.1:8000
+        run: npm run build
+
+      - name: Run and verify full Playwright partition
+        run: node scripts/ci/run_e2e_shard.cjs ${{ matrix.shard }}/3 --verify-full
+
+      - name: Record passing checkout
+        run: git rev-parse HEAD > "shard-${{ matrix.shard }}.sha"
+
+      - name: Upload passing checkout
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-shard-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
+          path: shard-${{ matrix.shard }}.sha
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload timings and failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-results-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
+          path: frontend/test-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+  result:
+    name: Full release E2E result
+    needs: regression
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require successful regression matrix
+        env:
+          MATRIX_RESULT: ${{ needs.regression.result }}
+        run: test "$MATRIX_RESULT" = success
+
+      - name: Download passing checkouts for this attempt
+        uses: actions/download-artifact@v8
+        with:
+          pattern: release-shard-*-attempt-${{ github.run_attempt }}
+          path: receipts
+
+      - name: Require three passing checkouts at the run SHA
+        run: |
+          for shard in 1 2 3; do
+            printf '%s\n' "$GITHUB_SHA" | cmp - "receipts/release-shard-${shard}-attempt-${GITHUB_RUN_ATTEMPT}/shard-${shard}.sha"
+          done
+          printf 'All three full partitions passed for %s at %s (%s, run %s, attempt %s).\n' \
+            "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_EVENT_NAME" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" >> "$GITHUB_STEP_SUMMARY"

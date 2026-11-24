@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { parseShard, discoverFiles, partition, filePattern } = require('../scripts/ci/run_e2e_shard.cjs');
+const { parseShard, discoverFiles, partition, filePattern, verifyDiscovery, verifyResults } = require('../scripts/ci/run_e2e_shard.cjs');
 
 const profile = { schema: 1, files: {
   'e2e/a.spec.ts': { tests: 2, duration_ms: 200 },
@@ -80,4 +80,28 @@ test('the committed timing profile measures every current spec file', () => {
     + '{ tests, duration_ms } until the next refresh. Unmeasured files are balanced by the average only.');
   assert.deepEqual(Object.keys(measured.files).filter(file => !specs.includes(file)), [],
     'Remove deleted spec files from scripts/ci/e2e_timings.json.');
+});
+
+test('release discovery rejects missing, empty and unexpected spec files', () => {
+  const files = [group('a', 2), group('b', 1)];
+  verifyDiscovery(files, profile);
+  assert.throws(() => verifyDiscovery(files.slice(1), profile));
+  assert.throws(() => verifyDiscovery([group('a', 0), files[1]], profile));
+  assert.throws(() => verifyDiscovery([group('extra', 1), ...files], profile));
+});
+
+test('release success requires each discovered test to pass in the expected partition', () => {
+  const selected = { index: 1, files: [{ tests: ['a:chromium', 'b:chromium-scrollbars'] }] };
+  const first = { id: 'a', project: 'chromium', status: 'passed' };
+  const second = { id: 'b', project: 'chromium-scrollbars', status: 'passed' };
+  const report = { status: 'passed', partition: '1/3', tests: [second, first] };
+  verifyResults(selected, 3, report);
+  for (const change of [
+    { status: 'failed' }, { partition: '2/3' }, { tests: [] }, { tests: [first] },
+    { tests: [first, first] }, { tests: [first, second, first] },
+    { tests: [first, { ...second, project: 'chromium' }] },
+    { tests: [first, { ...second, status: 'skipped' }] },
+    { tests: [first, { ...second, status: 'failed' }] },
+  ]) assert.throws(() => verifyResults(selected, 3, { ...report, ...change }));
+  assert.throws(() => verifyResults({ index: 1, files: [] }, 3, { ...report, tests: [] }));
 });
