@@ -6,7 +6,7 @@ from uuid import uuid4
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 
-from crops.models import CropSpecies
+from crops.models import CropSpecies, CropSpeciesTranslation
 from farm.history.project_restore import capture_project_state
 from farm.history.records import revision_batch
 from farm.models import (
@@ -37,8 +37,8 @@ class CropBulkDeletionTests(HistoryInvariantTestCase):
             "delete_varieties": delete_varieties,
         }
 
-    def preview(self, selection):
-        response = self.client.post(f"{BULK_URL}preview/", selection, format="json")
+    def preview(self, selection, **headers):
+        response = self.client.post(f"{BULK_URL}preview/", selection, format="json", **headers)
         self.assertEqual(response.status_code, 200, response.json())
         return response.json()
 
@@ -55,6 +55,44 @@ class CropBulkDeletionTests(HistoryInvariantTestCase):
             "batch_id": batch_id, "expected_project_id": self.project.pk,
         }, format="json")
 
+    def test_preview_names_match_crop_list_language_and_region(self):
+        self.project.region = Project.REGION_AUSTRIA
+        self.project.save(update_fields=["region"])
+        species = CropSpecies.objects.create(
+            name="Test deletion species", status=CropSpecies.STATUS_PUBLISHED,
+        )
+        CropSpeciesTranslation.objects.create(
+            species=species, language_code="de", common_name="Deutscher Name",
+            regional_names={"austria": "Österreichischer Name"},
+        )
+        CropSpeciesTranslation.objects.create(
+            species=species, language_code="en", common_name="English name",
+        )
+        crop = Crop.objects.create(project=self.project, crop_species=species, name="Stored name")
+        variety = Crop.objects.create(
+            project=self.project, crop_species=species, name=crop.name, variety="Private variety",
+        )
+        selection = self.selection(variety.pk, delete_varieties=False)
+        localized = {}
+        for language, expected in (("de-AT", "Österreichischer Name"), ("en", "English name")):
+            detail = self.client.get(f"{API}/crops/{crop.pk}/", HTTP_ACCEPT_LANGUAGE=language)
+            self.assertEqual(detail.json()["crop_display_name"], expected)
+            localized[language] = self.preview(selection, HTTP_ACCEPT_LANGUAGE=language)
+            preview = localized[language]
+            self.assertEqual(preview["affected_records"], [{
+                "id": variety.pk, "name": expected, "variety": "Private variety",
+                "parent_id": crop.pk, "parent_name": expected,
+            }])
+            self.assertEqual(preview["samples"], [{
+                "id": variety.pk, "name": f"{expected} (Private variety)",
+            }])
+            required = self.preview(
+                self.selection(crop.pk, delete_varieties=False), HTTP_ACCEPT_LANGUAGE=language,
+            )["required_varieties"]
+            self.assertEqual(required, preview["affected_records"])
+        self.assertIsNotNone(localized["en"]["token"])
+        self.assertEqual(localized["en"]["token"], localized["de-AT"]["token"])
+
     def test_group_preview_then_atomic_archive_idempotent_retry_and_recovery(self):
         supplier = self.write("supplier", "post", "/suppliers/", {"name": "Seed shop"})
         general = self.crop("Tomato", seed_packages=[{"size_value": 5, "size_unit": "g"}])
@@ -66,6 +104,11 @@ class CropBulkDeletionTests(HistoryInvariantTestCase):
         excluded = self.preview(self.selection(general, delete_varieties=False))
         self.assertEqual(excluded["blocked_count"], 1)
         self.assertEqual(excluded["blockers"][0]["code"], "varieties_required")
+        self.assertEqual([record["id"] for record in excluded["affected_records"]], [general])
+        self.assertEqual(excluded["required_varieties"], [{
+            "id": variety, "name": "Tomato", "variety": "Roma",
+            "parent_id": general, "parent_name": "Tomato",
+        }])
         self.assertIsNone(excluded["token"])
         explicit = self.preview(self.selection(general, variety, variety, delete_varieties=False))
         self.assertEqual(explicit["selected_count"], 2)
@@ -82,6 +125,8 @@ class CropBulkDeletionTests(HistoryInvariantTestCase):
         self.assertEqual(plan["seed_package_count"], 1)
         self.assertEqual(plan["supplier_offer_count"], 1)
         self.assertEqual({sample["id"] for sample in plan["samples"]}, {general, variety})
+        self.assertEqual([record["id"] for record in plan["affected_records"]], [general, variety])
+        self.assertEqual(plan["required_varieties"], [])
         self.assertIsNotNone(plan["token"])
         self.assertEqual(capture_project_state(self.project), before)
         self.assertEqual(self.history_counts(), counts)

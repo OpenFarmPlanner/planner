@@ -202,6 +202,15 @@ It has no project writes. When any affected crop has a planting plan, when a
 group is ambiguous, or when excluding varieties would leave an incomplete
 group, the preview blocks the batch.
 
+The same preview returns all affected display names in the active language
+and project region, their culture and variety
+relationships, and the additional varieties that need consent. The dialog
+shows cultures and varieties in its title, nests affected varieties under an
+affected culture, and lets users expand long lists. If the additional IDs
+change after the checkbox is selected, the dialog requires fresh consent.
+Recovery is available through immediate Undo and, for project administrators,
+through selective recovery in project version history.
+
 Confirmation sends a signed proof of the selected state and a request ID.
 Under the project write lock the server rechecks the active crop identities,
 group membership, and dependencies before archiving the rows. The
@@ -227,8 +236,10 @@ DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py seed_crop_
 Open **Crop bulk selection acceptance** in **Cultures** and enter selection
 mode. Checking collapsed **Manual tomato** selects three records. Clear the
 group, expand it and check **File basil** and **File chard** individually.
-The mixed parent stays in the project when the preview shows zero cultures
-and two varieties. Confirm and undo. Enter selection mode again, filter by
+The dialog lists both varieties with their culture name and says that two
+varieties will be deleted. Confirm and undo. Select **Other chard** and
+**Manual tomato (File chard)** to check the mixed title and both names, then
+cancel. Enter selection mode again, filter by
 file import and choose **Select visible**. Clear the filter to verify that
 **Other chard** is still unchecked and the two varieties are still selected.
 

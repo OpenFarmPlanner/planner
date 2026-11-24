@@ -4,7 +4,8 @@ import {
   FormControlLabel, Stack, Typography,
 } from '@mui/material';
 import { cropAPI } from '../api/api';
-import type { CropBulkDeletePreview, CropBulkDeleteResult, CropBulkDeleteSample } from '../api/types';
+import type { CropBulkDeletePreview, CropBulkDeleteRecord, CropBulkDeleteResult, CropBulkDeleteSample } from '../api/types';
+import { CropAffectedList } from './CropAffectedList';
 import { useTranslation } from '../i18n';
 import type { CropDeletionTarget } from './useProjectCropSelection';
 
@@ -45,47 +46,39 @@ function CropSamples({ samples, total }: { samples: CropBulkDeleteSample[]; tota
 
 function CropBulkImpact({ impact }: { impact: CropBulkDeletePreview }) {
   const { t } = useTranslation('crops');
-  const counts = [
-    ['general', impact.general_count],
-    ['varieties', impact.variety_count],
-    ['selected', impact.selected_count],
-    ['affected', impact.affected_count],
-    ['additional', impact.additional_count],
-    ['plans', impact.planting_plan_count],
+  const retainedData = [
     ['packages', impact.seed_package_count],
     ['offers', impact.supplier_offer_count],
-    ['blocked', impact.blocked_count],
-    ['missing', impact.missing_count],
   ] as const;
   return (
-    <Stack spacing={1.25}>
-      <Box component="dl" sx={{
-        display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', columnGap: 2, rowGap: 0.25,
-        typography: 'body2', m: 0, '& dd': { m: 0, textAlign: 'right' },
-      }}>
-        {counts.map(([key, count]) => (
-          count > 0 || ['selected', 'affected', 'general', 'varieties', 'plans', 'packages', 'offers'].includes(key)
-            ? <Count key={key} label={t(`bulkDelete.counts.${key}`)} value={count} />
-            : null
-        ))}
-      </Box>
+    <>
       {impact.missing_count > 0 ? <Alert severity="warning">{t('bulkDelete.missing')}</Alert> : null}
       {impact.blockers.map(blocker => (
         <Alert key={blocker.code} severity="warning">
-          {t(`bulkDelete.blockers.${blocker.code}`)}
-          <CropSamples samples={blocker.samples} total={blocker.count} />
+          {blocker.code === 'planting_plans'
+            ? t('bulkDelete.plantingPlans', { count: impact.planting_plan_count })
+            : t(`bulkDelete.blockers.${blocker.code}`)}
+          {blocker.code !== 'varieties_required' ? (
+            <CropSamples samples={blocker.samples} total={blocker.count} />
+          ) : null}
         </Alert>
       ))}
-      {impact.samples.length ? (
-        <Box component="details" sx={{ typography: 'body2' }}>
-          <Box component="summary" sx={{ cursor: 'pointer' }}>{t('bulkDelete.showCrops')}</Box>
-          <CropSamples samples={impact.samples} total={impact.affected_count} />
+      {impact.affected_records.length ? (
+        <CropAffectedList records={impact.affected_records} label={t('bulkDelete.affectedList')} />
+      ) : (
+        <Typography variant="body2">{t('bulkDelete.empty')}</Typography>
+      )}
+      {retainedData.some(([, count]) => count > 0) ? (
+        <Box>
+          <Typography variant="body2">{t('bulkDelete.retainedData')}</Typography>
+          <Box component="ul" sx={{ my: 0, pl: 2.5, typography: 'body2' }}>
+            {retainedData.filter(([, count]) => count > 0).map(([key, count]) => (
+              <li key={key}>{t(`bulkDelete.retained.${key}`, { count })}</li>
+            ))}
+          </Box>
         </Box>
       ) : null}
-      {impact.affected_count === 0 ? (
-        <Typography variant="body2">{t('bulkDelete.empty')}</Typography>
-      ) : null}
-    </Stack>
+    </>
   );
 }
 
@@ -93,15 +86,18 @@ function Count({ label, value }: { label: string; value: number }) {
   return <><dt>{label}</dt><dd>{value}</dd></>;
 }
 
-export function CropBulkDeletionDialog({ target, onClose, onComplete }: {
+export function CropBulkDeletionDialog({ target, canRestoreFromHistory, onClose, onComplete }: {
   target: CropDeletionTarget;
+  canRestoreFromHistory: boolean;
   onClose: () => void;
   onComplete: (result: CropBulkDeleteResult) => void;
 }) {
   const { t } = useTranslation('crops');
   const titleId = useId();
   const [requestId] = useState(() => crypto.randomUUID());
-  const [request, setRequest] = useState({ deleteVarieties: false });
+  const [request, setRequest] = useState<{ deleteVarieties: boolean; required: CropBulkDeleteRecord[] }>({
+    deleteVarieties: false, required: [],
+  });
   const [preview, setPreview] = useState<CropBulkDeletePreview | null>(null);
   const [error, setError] = useState<PreviewError | null>(null);
   const [failureCounts, setFailureCounts] = useState<Pick<CropBulkDeleteResult,
@@ -113,17 +109,34 @@ export function CropBulkDeletionDialog({ target, onClose, onComplete }: {
   useEffect(() => {
     const controller = new AbortController();
     cropAPI.bulkDeletePreview({ ...target, delete_varieties: request.deleteVarieties }, controller.signal)
-      .then(({ data }) => { if (!controller.signal.aborted) setPreview(data); })
+      .then(({ data }) => {
+        if (controller.signal.aborted) return;
+        if (!Array.isArray(data.affected_records) || !Array.isArray(data.required_varieties)
+          || data.affected_records.length !== data.affected_count) {
+          setError('unavailable');
+          return;
+        }
+        if (request.deleteVarieties) {
+          const selectedIds = new Set(target.crop_ids);
+          const additional = data.affected_records.filter(record => !selectedIds.has(record.id));
+          const consentedIds = new Set(request.required.map(record => record.id));
+          if (additional.length !== consentedIds.size || additional.some(record => !consentedIds.has(record.id))) {
+            setError('changed');
+            return;
+          }
+        }
+        setPreview(data);
+      })
       .catch(error => { if (!controller.signal.aborted) setError(previewError(error)); });
     return () => controller.abort();
   }, [target, request]);
 
-  const refresh = (deleteVarieties: boolean) => {
+  const refresh = (deleteVarieties = false, required: CropBulkDeleteRecord[] = []) => {
     setPreview(null);
     setError(null);
     setFailureCounts(null);
     setUnknownResult(false);
-    setRequest({ deleteVarieties });
+    setRequest({ deleteVarieties, required });
   };
   const confirm = async () => {
     if (submitting.current || !preview?.token) return;
@@ -160,20 +173,21 @@ export function CropBulkDeletionDialog({ target, onClose, onComplete }: {
     }
   };
 
+  const cultures = preview?.general_count
+    ? t('bulkDelete.cultures', { count: preview.general_count }) : '';
+  const varieties = preview?.variety_count
+    ? t('bulkDelete.varieties', { count: preview.variety_count }) : '';
+  const scope = cultures && varieties ? t('bulkDelete.mixedScope', { cultures, varieties }) : cultures || varieties;
+  const required = request.deleteVarieties ? request.required : preview?.required_varieties ?? request.required;
+  const shouldRefresh = preview && !preview.token && (
+    preview.missing_count > 0 || preview.blockers.some(blocker => blocker.code !== 'varieties_required')
+  );
+
   return (
     <Dialog open fullWidth maxWidth="sm" aria-labelledby={titleId} onClose={busy ? undefined : onClose}>
-      <DialogTitle id={titleId}>{t('bulkDelete.title')}</DialogTitle>
+      <DialogTitle id={titleId}>{scope ? t('bulkDelete.scopeQuestion', { scope }) : t('bulkDelete.title')}</DialogTitle>
       <DialogContent>
         <Stack spacing={1.25}>
-          <Typography variant="body2">
-            {t('bulkDelete.scopeSelected')}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">{t('bulkDelete.trashNotice')}</Typography>
-          <FormControlLabel
-            label={t('bulkDelete.deleteVarieties')}
-            control={<Checkbox checked={request.deleteVarieties} disabled={busy || unknownResult}
-              onChange={(_, checked) => refresh(checked)} />}
-          />
           {error ? (
             <Box>
               <Alert severity="warning">{t(`bulkDelete.errors.${error}`)}</Alert>
@@ -186,7 +200,7 @@ export function CropBulkDeletionDialog({ target, onClose, onComplete }: {
                 </Box>
               ) : null}
               {error !== 'limit' ? (
-                <Button onClick={() => refresh(request.deleteVarieties)}>
+                <Button onClick={() => error === 'changed' ? refresh() : refresh(request.deleteVarieties, required)}>
                   {t('restoreDialog.preview.refresh')}
                 </Button>
               ) : null}
@@ -194,6 +208,29 @@ export function CropBulkDeletionDialog({ target, onClose, onComplete }: {
           ) : preview ? (
             <CropBulkImpact impact={preview} />
           ) : <Typography role="status" variant="body2">{t('restoreDialog.preview.loading')}</Typography>}
+          {!error && required.length > 0 ? (
+            <Box>
+              <FormControlLabel
+                label={t('bulkDelete.deleteVarieties')}
+                control={<Checkbox checked={request.deleteVarieties} disabled={busy || unknownResult}
+                  onChange={(_, checked) => refresh(checked, required)} />}
+              />
+              {!request.deleteVarieties ? (
+                <CropAffectedList records={required} label={t('bulkDelete.requiredList')} />
+              ) : null}
+            </Box>
+          ) : null}
+          {shouldRefresh ? (
+            <Button sx={{ alignSelf: 'flex-start' }} onClick={() => refresh(request.deleteVarieties, required)}>
+              {t('restoreDialog.preview.refresh')}
+            </Button>
+          ) : null}
+          {preview?.token && !unknownResult ? (
+            <Typography variant="body2" color="text.secondary">
+              {t(canRestoreFromHistory ? 'bulkDelete.recoveryHistory' : 'bulkDelete.recoveryUndo')}{' '}
+              {t('bulkDelete.libraryNotice')}
+            </Typography>
+          ) : null}
           {unknownResult ? <Alert severity="warning">{t('bulkDelete.outcomeUnknown')}</Alert> : null}
         </Stack>
       </DialogContent>
