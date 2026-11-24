@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { apiRequest, loginWithDeterministicProject } from './utils';
+import { apiRequest, loginWithDeterministicProject, startNewFieldFromLocationRow } from './utils';
 
 // The desktop spreadsheet edit model shared by the Anbauflächen and
 // Anbaupläne tables (docs/datagrid-architecture.md, "Spreadsheet edit model").
@@ -70,13 +70,69 @@ test.describe('spreadsheet edit model in the Anbauflächen table', () => {
     expect(await focusedRowText(page)).toContain('Tabellenbeet Zwei');
   });
 
-  test('Enter edits, and Enter again saves', async ({ page }) => {
+  test('Enter edits, and Enter again closes an unchanged editor without writing', async ({ page }) => {
+    const writes: string[] = [];
+    page.on('request', request => {
+      if (request.method() === 'PUT' && new URL(request.url()).pathname.startsWith('/api/beds/')) {
+        writes.push(request.url());
+      }
+    });
     await nameCell(page, 'Tabellenbeet Zwei').click();
     await page.keyboard.press('Enter');
     await expect(editingRows(page)).toHaveCount(1);
 
     await page.keyboard.press('Enter');
     await expect(editingRows(page)).toHaveCount(0);
+    expect(writes).toEqual([]);
+  });
+
+  test('acknowledges a bed save while the write is pending and shows the confirmed row', async ({ page }) => {
+    const cell = nameCell(page, 'Tabellenbeet Zwei');
+    const id = await cell.locator('..').getAttribute('data-id');
+    const row = page.locator(`[role="row"][data-id="${id}"]`);
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    await page.route(/\/api\/beds\/\d+\/$/, async route => {
+      await gate;
+      await route.continue();
+    }, { times: 1 });
+    await cell.dblclick();
+    const input = editingRows(page).locator('[data-field="name"] input');
+    await expect(input).toBeFocused();
+    await input.fill('Tabellenbeet Zwei gespeichert');
+    const requested = page.waitForRequest(request =>
+      request.method() === 'PUT' && new URL(request.url()).pathname === `/api/beds/${id}/`,
+    );
+    try {
+      await input.press('Enter');
+      await requested;
+      await expect(row).toHaveAttribute('aria-busy', 'true');
+    } finally {
+      release();
+    }
+    await expect(row).not.toHaveAttribute('aria-busy', 'true');
+    await expect(nameCell(page, 'Tabellenbeet Zwei gespeichert')).toBeVisible();
+    expect(await apiRequest<{ name: string }>(page, 'GET', `/beds/${id}/`))
+      .toMatchObject({ name: 'Tabellenbeet Zwei gespeichert' });
+  });
+
+  test('shows a newly saved parcel from the write response without reloading the hierarchy', async ({ page }) => {
+    const calls: string[] = [];
+    page.on('request', request => {
+      const { pathname } = new URL(request.url());
+      if (/^\/api\/(locations|fields|beds)\//.test(pathname)) {
+        calls.push(`${request.method()} ${pathname}`);
+      }
+    });
+    await startNewFieldFromLocationRow(page);
+    const input = editingRows(page).locator('[data-field="name"] input');
+    await expect(input).toBeFocused();
+    await input.fill('Neue Tabellenparzelle');
+    await input.press('Enter');
+    await expect(input).toHaveCount(0);
+    await expect(nameCell(page, 'Neue Tabellenparzelle')).toBeVisible();
+    expect(calls).toEqual(['POST /api/fields/']);
+    await expect(nameCell(page, 'Tabellenbeet Eins')).toBeVisible();
   });
 
   test('typing replaces the value', async ({ page }) => {

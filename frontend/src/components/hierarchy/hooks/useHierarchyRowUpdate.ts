@@ -1,4 +1,4 @@
-import { pickInlineSiteConditions } from "../utils/siteConditions";
+import { INLINE_SITE_CONDITION_FIELDS, pickInlineSiteConditions } from "../utils/siteConditions";
 import { useCallback } from "react";
 import type { GridRowId, GridRowModesModel } from "@mui/x-data-grid";
 import { GridRowModes } from "@mui/x-data-grid";
@@ -51,7 +51,6 @@ interface UseHierarchyRowUpdateParams {
   setRowModesModel: React.Dispatch<React.SetStateAction<GridRowModesModel>>;
   setError: (error: string) => void;
   setDraftValidationWarning: (warning: string) => void;
-  fetchData: (options?: { showLoading: boolean }) => Promise<void>;
   saveBed: (bed: Partial<Bed> & { id: number; field: number }) => Promise<Bed>;
   // A prefilled new bed the user hasn't changed counts as empty when its
   // edit is cancelled (Escape), so cancelling "Beet hinzufügen" leaves
@@ -63,6 +62,30 @@ interface UseHierarchyRowUpdateParams {
   // some field filled in but no name - opens the confirm dialog for that row.
   onUnsavedMissingName: (rowId: GridRowId) => void;
   t: TFunction;
+}
+
+function sameDimension(value: HierarchyRow["length_m"], stored: HierarchyRow["length_m"]): boolean {
+  if (value === stored) return true;
+  const parsed = parseDimensionValue(value);
+  return parsed !== undefined && parsed === parseDimensionValue(stored);
+}
+
+function isUnchangedRow(next: HierarchyRow, original: HierarchyRow): boolean {
+  const nextConditions = pickInlineSiteConditions(next);
+  const savedConditions = pickInlineSiteConditions(original);
+  return !next.isNew
+    && next.id === original.id
+    && next.type === original.type
+    && next.name === original.name
+    && next.field === original.field
+    && next.locationId === original.locationId
+    && (next.notes ?? "") === (original.notes ?? "")
+    && parseAreaValue(next.area_sqm) === parseAreaValue(original.area_sqm)
+    && sameDimension(next.length_m, original.length_m)
+    && sameDimension(next.width_m, original.width_m)
+    && INLINE_SITE_CONDITION_FIELDS.every(field => (
+      nextConditions[field] === undefined || nextConditions[field] === (savedConditions[field] ?? null)
+    ));
 }
 
 export function useHierarchyRowUpdate({
@@ -81,7 +104,6 @@ export function useHierarchyRowUpdate({
   onUnsavedMissingName,
   setError,
   setDraftValidationWarning,
-  fetchData,
   saveBed,
   isUntouchedPrefilledDraft,
   t,
@@ -271,7 +293,7 @@ export function useHierarchyRowUpdate({
   }, [discardRowEdit, rowModesModel, rowsById]);
 
   const processRowUpdate = useCallback(
-    async (newRow: HierarchyRow): Promise<HierarchyRow> => {
+    async (newRow: HierarchyRow, originalRow = rowsById.get(String(newRow.id))): Promise<HierarchyRow> => {
       if (!newRow.name || newRow.name.trim() === "") {
         if (isCompletelyEmptyNewHierarchyRow(newRow)) {
           // Nothing was entered - silently drop the draft instead of blocking
@@ -292,6 +314,10 @@ export function useHierarchyRowUpdate({
       }
 
       setDraftValidationWarning("");
+      if (originalRow && isUnchangedRow(newRow, originalRow)) {
+        setError("");
+        return originalRow;
+      }
 
       if (newRow.type === "bed") {
         if (hasDuplicateBedName(newRow)) {
@@ -419,7 +445,6 @@ export function useHierarchyRowUpdate({
               );
               return [{ ...created.data }, ...filteredFields];
             });
-            void fetchData({ showLoading: false });
             setError("");
             return {
               ...newRow,
@@ -563,13 +588,13 @@ export function useHierarchyRowUpdate({
     [
       discardRowEdit,
       exitToViewPreservingDraft,
-      fetchData,
       fields,
       getBedAreaSum,
       hasDuplicateBedName,
       hasDuplicateFieldName,
       locations,
       onUnsavedMissingName,
+      rowsById,
       saveBed,
       setDraftValidationWarning,
       setError,

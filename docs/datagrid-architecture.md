@@ -1273,6 +1273,43 @@ grid," that's new work, not exposing something that already half-exists.
   `focusable` when the tooltip trigger itself needs a keyboard stop. Do not
   use `focusable` inside DataGrid cells or around an already focusable link.
 
+## Growing Areas edit and save measurements
+
+Growing Areas uses MUI row editing directly. It shares the pending row
+indicator with `EditableDataGrid`. The indicator tracks its own row's save
+promise. An unchanged row exits edit mode without sending a write. New
+parcels use the saved row returned by the server, which keeps the existing
+folder expansion and order while avoiding a full reload. The row projector
+reuses unaffected entities. A changed location or parcel refreshes the
+descendant rows that depend on its inherited conditions.
+
+Use the [guarded local fixture procedure](work-execution-queue.md#local-test-data-handoff)
+and serve a production build with `npm run preview`. From `backend/`, preview
+the 24- and 640-bed fixtures before repeating each command with `--apply`.
+
+```sh
+DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py \
+  seed_growing_area_edit_benchmark --username LOCAL_USER --database-name LOCAL_DATABASE --beds 24
+DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py \
+  seed_growing_area_edit_benchmark --username LOCAL_USER --database-name LOCAL_DATABASE --beds 640
+```
+
+Open **Growing Areas → List** and expand the hierarchy. Measure the first
+location, parcel and bed name with a double-click or Enter. Alternate two
+names, change bed length and parcel width, and verify the calculated area.
+Enable the **Light** column and change the location and bed values, checking
+that the children pick up the location's value when they inherit it. Use
+Enter and click-away to save, Tab to move between inputs, and Escape to
+discard a draft. Try moving to another row while the previous one saves.
+
+Record the same browser, viewport, network settings and dataset size on both
+revisions. Warm each path once, then collect at least 12 timings. Measure
+the open action to a focused editor and the following paint. Measure the
+save action to pending feedback, server response, confirmed paint and the
+end of background requests. Capture the browser render profile, API
+request counts, server time and SQL metrics separately. Keep timing
+comparisons in the PR and deterministic behavior checks in CI.
+
 ## What to check before changing this layer
 
 - If you change *when/how* the row-action menu opens or keyboard-navigation

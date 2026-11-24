@@ -23,6 +23,11 @@ export function createGridRowSaveStatus() {
 }
 
 export const GridRowSaveStatusContext = createContext<ReturnType<typeof createGridRowSaveStatus> | null>(null);
+export const gridRowSaveStatusSx = {
+  '& .MuiDataGrid-row[aria-busy="true"], & .MuiDataGrid-row[aria-busy="true"] :is(.MuiDataGrid-cell, input)': {
+    cursor: 'progress',
+  },
+};
 const unsubscribeEmpty = () => {};
 const getServerSnapshot = () => false;
 

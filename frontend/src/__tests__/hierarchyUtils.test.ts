@@ -9,6 +9,7 @@ import {
   buildHierarchyRows,
   buildHierarchyRowsFromIndex,
   computeHierarchyOrderSnapshot,
+  createHierarchyRowCache,
   createHierarchyRowsProjector,
   placeDuplicatedFieldInSnapshot,
 } from '../components/hierarchy/utils/hierarchyUtils';
@@ -604,6 +605,31 @@ describe('buildHierarchyRows', () => {
     }
 
     expect(projectedReferences.size).toBeLessThan(directReferences.size);
+  });
+
+  it('reuses unaffected rows across a save and updates descendants of changed site conditions', () => {
+    const location: Location = { id: 1, name: 'Orchard', light_condition: 'sunny' };
+    const field: Field = { id: 2, location: 1, name: 'Parcel' };
+    const beds: Bed[] = [
+      { id: 3, field: 2, name: 'First bed' },
+      { id: 4, field: 2, name: 'Second bed' },
+    ];
+    const cache = createHierarchyRowCache();
+    const expanded = new Set(['location-1', 'field-2']);
+    const projectRows = (currentLocation: Location, currentBeds: Bed[]) =>
+      createHierarchyRowsProjector(buildHierarchyIndex([currentLocation], [field], currentBeds), cache)(expanded);
+    const initial = projectRows(location, beds);
+    const renamed = [{ ...beds[0], name: 'Renamed bed' }, beds[1]];
+    const edited = projectRows(location, renamed);
+
+    expect(edited[0]).toBe(initial[0]);
+    expect(edited[1]).toBe(initial[1]);
+    expect(edited[2]).toMatchObject({ name: 'Renamed bed' });
+    expect(edited[3]).toBe(initial[3]);
+
+    const shaded = projectRows({ ...location, light_condition: 'shade' }, renamed);
+    expect(shaded[3]).not.toBe(edited[3]);
+    expect(shaded[3].effectiveSiteConditions?.light_condition.value).toBe('shade');
   });
 });
 

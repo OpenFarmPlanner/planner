@@ -27,6 +27,9 @@ import {
   useGridApiRef,
 } from "@mui/x-data-grid";
 import { getDataGridLocaleText } from "../components/data-grid/localeText";
+import { createGridRowSaveStatus, GridRowSaveStatusContext, gridRowSaveStatusSx } from "../components/data-grid/GridRowSaveStatus";
+import { GridRowWithSaveStatus } from "../components/data-grid/GridRowWithSaveStatus";
+import useEventCallback from "@mui/utils/useEventCallback";
 import type {
   GridCellParams,
   GridEventListener,
@@ -34,6 +37,7 @@ import type {
   GridRowId,
   GridRowsProp,
   GridRowModesModel,
+  GridRowParams,
 } from "@mui/x-data-grid";
 import { Box, Alert, useMediaQuery } from "@mui/material";
 import AgricultureIcon from "@mui/icons-material/Agriculture";
@@ -111,6 +115,7 @@ import {
   applyHierarchyOrderSnapshot,
   buildHierarchyIndex,
   computeHierarchyOrderSnapshot,
+  createHierarchyRowCache,
   createHierarchyRowsProjector,
   placeDuplicatedFieldInSnapshot,
   type HierarchyOrderSnapshot,
@@ -164,6 +169,12 @@ interface HierarchyRowAction {
   shortcutHint?: string;
 }
 
+const hierarchyGridSlots = {
+  row: GridRowWithSaveStatus,
+  columnsManagement: ResizableGridColumnsManagement,
+  columnMenu: ResizableGridColumnMenu,
+};
+const ignoreGridPaginationChange = () => {};
 
 function FieldsBedsHierarchy({
   showTitle = true,
@@ -180,7 +191,14 @@ function FieldsBedsHierarchy({
   const BED_ROW_HEIGHT = 36;
   const HEADER_ROW_HEIGHT = 40;
 
-  const { t } = useTranslation(["hierarchy", "common"]);
+  const { t, i18n } = useTranslation(["hierarchy", "common"]);
+  const gridLocale = i18n?.resolvedLanguage ?? i18n?.language;
+  const gridLocaleText = useMemo(
+    () => getDataGridLocaleText(),
+    // getDataGridLocaleText reads the active language from i18next.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [gridLocale],
+  );
   const navigate = useNavigate();
   const location = useLocation();
   const gridApiRef = useGridApiRef();
@@ -190,6 +208,7 @@ function FieldsBedsHierarchy({
     typeof window === "undefined" ? 1024 : window.innerWidth
   ));
   const [rowModesModel, setRowModesModel] = useState<GridRowModesModel>({});
+  const [saveStatus] = useState(createGridRowSaveStatus);
   const rowModesModelRef = useRef(rowModesModel);
   useLayoutEffect(() => {
     rowModesModelRef.current = rowModesModel;
@@ -352,9 +371,10 @@ function FieldsBedsHierarchy({
     [orderedHierarchyEntities],
   );
 
+  const [hierarchyRowCache] = useState(createHierarchyRowCache);
   const projectRows = useMemo(
-    () => createHierarchyRowsProjector(hierarchyIndex),
-    [hierarchyIndex],
+    () => createHierarchyRowsProjector(hierarchyIndex, hierarchyRowCache),
+    [hierarchyIndex, hierarchyRowCache],
   );
 
   // Search/filter matches keep their parent rows (docs/search.md); unsaved
@@ -608,7 +628,6 @@ function FieldsBedsHierarchy({
     onUnsavedMissingName: openUnsavedRowDialog,
     setError,
     setDraftValidationWarning,
-    fetchData,
     saveBed,
     isUntouchedPrefilledDraft,
     t,
@@ -1242,7 +1261,7 @@ function FieldsBedsHierarchy({
   }, [activateFirstRowForKeyboard, beds, ensureExpanded, ensureRowVisibleOnPage, fields, gridApiRef, loading, location.pathname, location.search, navigate]);
 
   const handleHierarchyProcessRowUpdate = useCallback(
-    async (newRow: HierarchyRow): Promise<HierarchyRow> => {
+    async (newRow: HierarchyRow, originalRow?: HierarchyRow): Promise<HierarchyRow> => {
       const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       const preferredField = activeElement
         ?.closest('[role="gridcell"]')
@@ -1253,11 +1272,21 @@ function FieldsBedsHierarchy({
       queuePostEditFocus(getPostEnterSaveFocusTarget(newRow.id), preferredField, newRow.id);
 
       let savedRow: HierarchyRow;
+      const rowKey = String(newRow.id);
+      saveStatus.setSaving(rowKey, true);
       try {
-        savedRow = await processRowUpdate(newRow);
+        savedRow = await processRowUpdate(newRow, originalRow);
       } catch (err) {
         throw tagHierarchyRowUpdateError(err, newRow.id);
+      } finally {
+        saveStatus.setSaving(rowKey, false);
       }
+      // The rows prop projects conditions from the latest hierarchy. MUI merges
+      // this result into its current row, so keep the edit snapshot's derived
+      // conditions out of that merge even if the rows prop has already updated.
+      const rowUpdate = { ...savedRow };
+      delete rowUpdate.effectiveSiteConditions;
+      delete rowUpdate.inheritedSiteConditions;
       const savedRowIdChanged = String(savedRow.id) !== String(newRow.id);
       const pendingTarget = pendingSameRowEditTargetRef.current;
       if (pendingTarget && String(pendingTarget.rowId) === String(newRow.id)) {
@@ -1276,7 +1305,7 @@ function FieldsBedsHierarchy({
           return nextModel;
         });
         selectRow(savedRow.id);
-        return savedRow;
+        return rowUpdate;
       }
 
       // MUI's own onRowModesModelChange usually flips this row to View (and our
@@ -1296,7 +1325,7 @@ function FieldsBedsHierarchy({
       window.setTimeout(() => {
         applyOrReapplyPostEditFocus(newRow.id);
       }, 0);
-      return savedRow;
+      return rowUpdate;
     },
     [
       applyOrReapplyPostEditFocus,
@@ -1305,6 +1334,7 @@ function FieldsBedsHierarchy({
       processRowUpdate,
       queuePostEditFocus,
       rememberFocusedField,
+      saveStatus,
       selectRow,
     ],
   );
@@ -1706,14 +1736,27 @@ function FieldsBedsHierarchy({
   // user's preferred width for when the list has enough room again.
   const effectiveNameColumnWidth = Math.min(nameColumnWidth, nameColumnWidthLimit);
 
-  const handleContextMenuButtonOpen = useCallback((row: HierarchyRow, origin: HTMLElement): void => {
+  const handleContextMenuButtonOpen = useEventCallback((row: HierarchyRow, origin: HTMLElement): void => {
     const rect = origin.getBoundingClientRect();
     window.setTimeout(() => {
       openContextMenuForRow(row, rect.right - 8, rect.top + 12, origin, {
         markHint: false,
       });
     }, 0);
-  }, [openContextMenuForRow]);
+  });
+
+  const deleteVisibleRow = useEventCallback((rowId: GridRowId) => {
+    const row = rowsById.get(String(rowId));
+    if (row) void deleteHierarchyRowWithUndo(row);
+  });
+  const addBedFromColumn = useEventCallback(handleAddBed);
+  const addFieldFromColumn = useEventCallback((locationId?: number) => {
+    if (locationId !== undefined) handleAddField(locationId);
+  });
+  const openNotesFromColumn = useEventCallback(notesEditor.handleOpen);
+  const openNameCellMenu = useEventCallback(handleNameCellContextMenu);
+  const expandOneLevel = useEventCallback(hierarchyLevelToggle.expandOneLevel);
+  const collapseOneLevel = useEventCallback(hierarchyLevelToggle.collapseOneLevel);
 
   /**
    * Create columns with callbacks
@@ -1721,34 +1764,14 @@ function FieldsBedsHierarchy({
   const columns = useMemo(() => {
     const baseColumns = createHierarchyColumns(
       toggleExpand,
-      handleAddBed,
-      (bedId) => {
-        const row = rowsById.get(String(bedId));
-        if (row) {
-          void deleteHierarchyRowWithUndo(row);
-        }
-      },
-      (locationId) => {
-        if (locationId === undefined) {
-          return;
-        }
-        handleAddField(locationId);
-      },
-      (fieldId) => {
-        const row = rowsById.get(`field-${fieldId}`);
-        if (row) {
-          void deleteHierarchyRowWithUndo(row);
-        }
-      },
-      (locationId) => {
-        const row = rowsById.get(`location-${locationId}`);
-        if (row) {
-          void deleteHierarchyRowWithUndo(row);
-        }
-      },
+      addBedFromColumn,
+      deleteVisibleRow,
+      addFieldFromColumn,
+      (fieldId) => deleteVisibleRow(`field-${fieldId}`),
+      (locationId) => deleteVisibleRow(`location-${locationId}`),
       handleCreatePlantingPlan,
-      handleNameCellContextMenu,
-      notesEditor.handleOpen,
+      openNameCellMenu,
+      openNotesFromColumn,
       t,
       { name: effectiveNameColumnWidth },
       {
@@ -1761,8 +1784,8 @@ function FieldsBedsHierarchy({
         levelToggle: isMobileViewport ? undefined : {
           canExpand: hierarchyLevelToggle.canExpand,
           canCollapse: hierarchyLevelToggle.canCollapse,
-          onExpandOneLevel: hierarchyLevelToggle.expandOneLevel,
-          onCollapseOneLevel: hierarchyLevelToggle.collapseOneLevel,
+          onExpandOneLevel: expandOneLevel,
+          onCollapseOneLevel: collapseOneLevel,
         },
       },
     );
@@ -1778,14 +1801,13 @@ function FieldsBedsHierarchy({
       : column);
   }, [
     toggleExpand,
-    handleAddBed,
-    handleAddField,
-    deleteHierarchyRowWithUndo,
+    addBedFromColumn,
+    addFieldFromColumn,
+    deleteVisibleRow,
     handleCreatePlantingPlan,
-    handleNameCellContextMenu,
+    openNameCellMenu,
     handleContextMenuButtonOpen,
-    notesEditor.handleOpen,
-    rowsById,
+    openNotesFromColumn,
     t,
     effectiveNameColumnWidth,
     nameColumnWidthLimit,
@@ -1793,8 +1815,8 @@ function FieldsBedsHierarchy({
     isMobileViewport,
     hierarchyLevelToggle.canExpand,
     hierarchyLevelToggle.canCollapse,
-    hierarchyLevelToggle.expandOneLevel,
-    hierarchyLevelToggle.collapseOneLevel,
+    expandOneLevel,
+    collapseOneLevel,
   ]);
   const columnSizing = useGridColumnSizing(columns, "fieldsBedsHierarchy", userId, projectId);
 
@@ -1890,6 +1912,20 @@ function FieldsBedsHierarchy({
     stableScrollbarThumbRef,
     HEADER_ROW_HEIGHT,
   );
+  const { page: currentPage, pageSize } = hierarchyRowWindow;
+  const paginationModel = useMemo(() => ({ page: currentPage, pageSize }), [currentPage, pageSize]);
+  const { widthReset } = columnSizing;
+  const gridSlotProps = useMemo(() => ({
+    columnsManagement: { disableResetButton: true, widthReset },
+    ...(columnsAnchorEl
+      ? { panel: { target: columnsAnchorEl, placement: "bottom-start" as const } }
+      : {}),
+  }), [columnsAnchorEl, widthReset]);
+  const getRowClassName = useCallback((params: GridRowParams<HierarchyRow>) => (
+    params.id === highlightedRowId
+      ? `ofp-hierarchy-row-${params.row.type} ofp-hierarchy-row-highlighted`
+      : `ofp-hierarchy-row-${params.row.type}`
+  ), [highlightedRowId]);
 
   const shouldShowMissingDimensionsHint = useMemo(() => {
     const hasBeds = beds.length > 0;
@@ -1923,6 +1959,14 @@ function FieldsBedsHierarchy({
     tableWrapperRef,
     pageContentRef,
   });
+  const gridStyles = useMemo(() => ({
+    ...HIERARCHY_DATA_GRID_SX,
+    ...resizableGridHeaderSx,
+    ...gridRowSaveStatusSx,
+    ...(isMobileViewport ? {} : {
+      height: getHierarchyGridHeight(maxPageContentHeight, tableContentHeight, availableTableHeight),
+    }),
+  }), [availableTableHeight, isMobileViewport, maxPageContentHeight, tableContentHeight]);
 
   const hasUnsavedInvalidNewRows = useMemo(() => (
     beds.some((bed) => isPartiallyFilledNamelessNewHierarchyRow({
@@ -2101,20 +2145,16 @@ function FieldsBedsHierarchy({
             onTouchEnd={handleGridTouchEnd}
             onTouchCancel={handleGridTouchMove}
           >
+            <GridRowSaveStatusContext.Provider value={saveStatus}>
             <DataGrid
               rows={rows}
               columns={columnSizing.columns}
               onColumnWidthChange={columnSizing.onColumnWidthChange}
               autosizeOptions={columnAutosizeOptions}
-              slots={{ columnsManagement: ResizableGridColumnsManagement, columnMenu: ResizableGridColumnMenu }}
+              slots={hierarchyGridSlots}
               columnVisibilityModel={columnVisibilityModel}
               onColumnVisibilityModelChange={setColumnVisibilityModel}
-              slotProps={{
-                columnsManagement: { disableResetButton: true, widthReset: columnSizing.widthReset },
-                ...(columnsAnchorEl
-                  ? { panel: { target: columnsAnchorEl, placement: "bottom-start" as const } }
-                  : {}),
-              }}
+              slotProps={gridSlotProps}
               columnHeaderHeight={HEADER_ROW_HEIGHT}
               getRowHeight={getRowHeight}
               // Without this, MUI falls back to the density-default row
@@ -2125,11 +2165,7 @@ function FieldsBedsHierarchy({
               // far down you can actually scroll before ever reaching it —
               // our row height is exact (not a guess), so reuse it here too.
               getEstimatedRowHeight={getRowHeight}
-              getRowClassName={(params) => (
-                params.id === highlightedRowId
-                  ? `ofp-hierarchy-row-${params.row.type} ofp-hierarchy-row-highlighted`
-                  : `ofp-hierarchy-row-${params.row.type}`
-              )}
+              getRowClassName={getRowClassName}
               rowModesModel={rowModesModel}
               onRowModesModelChange={setRowModesModel}
               onRowEditStop={handleHierarchyRowEditStop}
@@ -2144,30 +2180,22 @@ function FieldsBedsHierarchy({
               // internally (no pager UI) instead of relying on a single
               // unbounded page. onPaginationModelChange is a no-op — our own
               // scroll-position logic is the only thing that changes pages.
-              paginationModel={{ page: hierarchyRowWindow.page, pageSize: hierarchyRowWindow.pageSize }}
-              onPaginationModelChange={() => {}}
+              paginationModel={paginationModel}
+              onPaginationModelChange={ignoreGridPaginationChange}
               sortingMode="server"
               sortModel={sortModel}
               onSortModelChange={handleHierarchySortModelChange}
-              isRowSelectable={() => true}
               isCellEditable={isCellEditable}
-              sx={
-                isMobileViewport
-                  ? { ...HIERARCHY_DATA_GRID_SX, ...resizableGridHeaderSx }
-                  : {
-                    ...HIERARCHY_DATA_GRID_SX,
-                    ...resizableGridHeaderSx,
-                    height: getHierarchyGridHeight(maxPageContentHeight, tableContentHeight, availableTableHeight),
-                  }
-              }
+              sx={gridStyles}
               disableRowSelectionOnClick
               onCellClick={handleHierarchyCellClick}
               onCellDoubleClick={hierarchyCellEditing.handleCellDoubleClick}
               getCellClassName={hierarchyCellEditing.getEditableCellClassName}
               onCellKeyDown={handleHierarchyCellKeyDown}
-              localeText={getDataGridLocaleText()}
+              localeText={gridLocaleText}
               apiRef={gridApiRef}
             />
+            </GridRowSaveStatusContext.Provider>
             {!isMobileViewport && (
               <StableScrollbarTrack
                 trackRef={stableScrollbarTrackRef}
