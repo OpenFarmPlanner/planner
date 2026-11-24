@@ -35,6 +35,7 @@ from farm.models import (
     Task,
     format_crop_display_name,
 )
+from farm.services.usage_capture import observe_entity_revision
 
 _internal_versions: ContextVar[bool] = ContextVar('internal_project_versions', default=False)
 PROMOTED_CROP_FIELD_CHANGES = '_promoted_crop_field_changes'
@@ -210,7 +211,8 @@ def record_entity_revision(
     changed_fields: list[str] | None = None,
     user_name: str = '',
     batch_operation: BatchOperation | None = None,
-) -> None:
+    measure_usage: bool = True,
+) -> EntityRevision:
     if batch_operation is None:
         candidate = _active_batch.get()
         if candidate is not None and candidate.project_id == project.pk:
@@ -218,7 +220,7 @@ def record_entity_revision(
             user_name = user_name or candidate.user_name
     if _internal_versions.get():
         snapshot = {**snapshot, "_project_version_internal": True}
-    EntityRevision.objects.create(
+    revision = EntityRevision.objects.create(
         project=project,
         entity_type=entity_type,
         object_id=object_id,
@@ -229,6 +231,8 @@ def record_entity_revision(
         user_name=user_name or _revision_actor.get(),
         batch_operation=batch_operation,
     )
+    observe_entity_revision(revision, measure_usage=measure_usage)
+    return revision
 
 
 def record_completed_crop_revision(
@@ -247,6 +251,7 @@ def record_completed_crop_revision(
     record_entity_revision(
         project=crop.project, entity_type='crop', object_id=crop.pk, action=action,
         snapshot=snapshot, display_name=_entity_display_name(crop), changed_fields=changed_fields,
+        measure_usage=before is None or bool(changed_fields),
     )
 
 

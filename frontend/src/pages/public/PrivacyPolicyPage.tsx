@@ -13,6 +13,7 @@ const privacySections = [
   'turnstile',
   'socialLogin',
   'projectData',
+  'serviceUsage',
   'publicLibrary',
   'emailCommunication',
   'cookies',

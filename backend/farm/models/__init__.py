@@ -54,7 +54,12 @@ from .crops import (  # noqa: E402
 )
 from .feedback import Feedback  # noqa: E402
 from .harvests import HarvestAllocation, HarvestRecord  # noqa: E402
-from .history import BatchOperation, CropRevision, EntityRevision, ProjectRevision  # noqa: E402
+from .history import (  # noqa: E402
+    BatchOperation,
+    CropRevision,
+    EntityRevision,
+    ProjectRevision,
+)
 from .notes import NoteAttachment  # noqa: E402
 from .planning import CropTaskTemplate, PlantingPlan, Task  # noqa: E402
 from .projects import (  # noqa: E402
@@ -67,7 +72,11 @@ from .projects import (  # noqa: E402
 )
 from .seasons import ActiveSeasonManager, Season, SeasonPattern  # noqa: E402
 from .structure import Bed, BedLayout, Field, FieldLayout, Location  # noqa: E402
-from .usage import CropLibraryUsageDay  # noqa: E402
+from .usage import (  # noqa: E402
+    CropLibraryUsageDay,
+    ProjectActiveUserDay,
+    ProjectChangeDay,
+)
 
 __all__ = [
     'API_TOKEN_PREFIX',
@@ -97,6 +106,8 @@ __all__ = [
     'NoteAttachment',
     'PlantingPlan',
     'Project',
+    'ProjectActiveUserDay',
+    'ProjectChangeDay',
     'ProjectApiToken',
     'ProjectInvitation',
     'ProjectMembership',

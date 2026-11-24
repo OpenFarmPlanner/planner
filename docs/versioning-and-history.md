@@ -459,6 +459,11 @@ cutoff per project. These anchors are required to reconstruct a recent target
 when an entity changes both before and after it. Timestamp ties use the ID.
 Keeping only the newest revision overall would discard the pre-target state.
 
+The same command expires daily crop-library counters beyond 30 UTC days and
+platform usage records beyond 90 UTC days. The usage dashboard reads
+daily totals and counts unique active accounts from per-project UTC-day keys.
+Those usage rows play no role in version restoration.
+
 Explicit note-attachment deletion retains its bytes instead of deleting storage
 immediately, allowing its pre-delete baseline to recover the original file.
 New crop uploads start with an orphan timestamp. Crop writes clear the marker

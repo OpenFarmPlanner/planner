@@ -10,9 +10,12 @@ from farm.models import (
     CropLibraryUsageDay,
     CropRevision,
     EntityRevision,
+    ProjectActiveUserDay,
+    ProjectChangeDay,
     ProjectRevision,
 )
 from farm.services.crop_library_usage import WINDOW_DAYS
+from farm.services.usage_capture import ACTIVITY_RETENTION_DAYS
 
 
 class Command(BaseCommand):
@@ -71,6 +74,11 @@ class Command(BaseCommand):
 
         first_usage_day = now.astimezone(UTC).date() - timedelta(days=WINDOW_DAYS - 1)
         CropLibraryUsageDay.objects.filter(day__lt=first_usage_day).delete()
+        first_activity_day = now.astimezone(UTC).date() - timedelta(
+            days=ACTIVITY_RETENTION_DAYS - 1,
+        )
+        ProjectActiveUserDay.objects.filter(day__lt=first_activity_day).delete()
+        ProjectChangeDay.objects.filter(day__lt=first_activity_day).delete()
 
         self.stdout.write(
             self.style.SUCCESS(

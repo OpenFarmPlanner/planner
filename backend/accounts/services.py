@@ -16,7 +16,7 @@ from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 
 from accounts.models import AccountDeletionRequest, PendingActivation, PublicProfile
-from farm.models import Project, ProjectMembership
+from farm.models import Project, ProjectActiveUserDay, ProjectMembership
 
 from .serializers import normalize_email_lower
 
@@ -173,6 +173,7 @@ def finalize_account_deletion(
         SocialAccount.objects.filter(user=user).delete()
         EmailAddress.objects.filter(user=user).delete()
 
+        ProjectActiveUserDay.objects.filter(user=user).delete()
         ProjectMembership.objects.filter(user=user).delete()
         _ensure_remaining_projects_have_admin(project_ids=project_ids)
 

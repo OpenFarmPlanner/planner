@@ -1,14 +1,21 @@
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from io import StringIO
+from unittest.mock import patch
+from uuid import uuid4
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
-from django.test import TestCase
+from django.core.management import call_command
+from django.db import transaction
+from django.http import HttpRequest, HttpResponse
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from accounts.models import GuestDemoSession, GuestDemoUsageDay
+from accounts.models import AccountDeletionRequest, GuestDemoSession, GuestDemoUsageDay
 from farm.models import (
+    BatchOperation,
     Bed,
     BedLayout,
     Crop,
@@ -20,6 +27,8 @@ from farm.models import (
     NoteAttachment,
     PlantingPlan,
     Project,
+    ProjectActiveUserDay,
+    ProjectChangeDay,
     ProjectMembership,
     PublicCrop,
     PublicCropDiscussionComment,
@@ -31,6 +40,7 @@ from farm.models import (
     Supplier,
     Task,
 )
+from farm.services.activity_trends import ActivityTrends, build_activity_trends
 from farm.services.demo_project import DEMO_PROJECT_DESCRIPTION, create_personal_demo_project
 from farm.services.engagement_dashboard import (
     ENGAGEMENT_MODELS,
@@ -41,6 +51,7 @@ from farm.services.engagement_dashboard import (
     build_engagement_dashboard,
     sort_project_rows,
 )
+from farm.services.usage_capture import ACTIVITY_RETENTION_DAYS, ProjectUsageMiddleware
 
 
 class EngagementDashboardTests(TestCase):
@@ -152,7 +163,10 @@ class EngagementDashboardTests(TestCase):
         response = self.client.get(reverse('admin:farm_project_engagement'), {'o': '-name'})
 
         content = response.content.decode()
-        self.assertLess(content.index('Empty'), content.index('Active'))
+        self.assertLess(
+            content.index(f'">{self.empty_project.name}</a>'),
+            content.index(f'">{self.active_project.name}</a>'),
+        )
 
     def test_an_unknown_sort_key_falls_back_to_the_default_order(self) -> None:
         self.client.force_login(self.superuser)
@@ -1431,3 +1445,208 @@ class DemoUsageSummaryTests(TestCase):
         show_all_table = self._account_demo_rows_html(show_all_response)
         self.assertIn('<td>0</td>', default_table)
         self.assertNotIn('<td>0</td>', show_all_table)
+
+
+class PlatformActivityTests(TestCase):
+    def setUp(self) -> None:
+        self.now = timezone.now()
+        self.user = get_user_model().objects.create_user(username='activity-member')
+        self.project = Project.objects.create(name='Activity test', slug='activity-test')
+        ProjectMembership.objects.create(user=self.user, project=self.project, role='admin')
+        self.client.force_login(self.user)
+        self.headers = {'HTTP_X_PROJECT_ID': str(self.project.pk)}
+        self.endpoint = '/openfarmplanner/api/crops/'
+
+    def _totals(self, *, days: int = 7, series: str = 'active_users') -> ActivityTrends:
+        return build_activity_trends(
+            self.now, days=days, series=series, include_hidden=False,
+            excluded_project_ids=build_engagement_dashboard(self.now).excluded_project_ids,
+        )
+
+    def test_authenticated_changes_deduplicate_retries_and_distinguish_lifecycle(self) -> None:
+        created = self.client.post(
+            self.endpoint, {'name': 'Usage crop'}, content_type='application/json', **self.headers,
+        )
+        self.assertEqual(created.status_code, 201, created.content)
+        crop_url = f'{self.endpoint}{created.json()["id"]}/'
+        payload = {'notes': 'A changed crop'}
+        for _ in range(2):
+            updated = self.client.patch(
+                crop_url, payload, content_type='application/json', **self.headers,
+            )
+            self.assertEqual(updated.status_code, 200, updated.content)
+        self.assertEqual(self.client.get(crop_url, **self.headers).status_code, 200)
+        self.assertEqual(self.client.delete(crop_url, **self.headers).status_code, 204)
+        restored = self.client.post(f'{crop_url}undelete/', **self.headers)
+        self.assertEqual(restored.status_code, 200, restored.content)
+        row = ProjectChangeDay.objects.get(project=self.project, category='crop')
+        self.assertEqual((row.created, row.updated, row.deleted, row.restored), (1, 1, 1, 1))
+        self.assertEqual(ProjectActiveUserDay.objects.filter(user=self.user).count(), 1)
+
+    def test_bulk_import_receipt_and_undo_count_the_changed_objects_once(self) -> None:
+        request_id = str(uuid4())
+        public = [
+            PublicCrop.objects.create(name=f'Usage library {i}', status='published')
+            for i in range(3)
+        ]
+        payload = {
+            'expected_project_id': self.project.pk,
+            'request_id': request_id,
+            'groups': [{
+                'parent_id': entry.pk,
+                'decisions': [{'public_crop_id': entry.pk, 'base_version': entry.version}],
+            } for entry in public],
+        }
+        for _ in range(2):
+            response = self.client.post(
+                '/openfarmplanner/api/public-crops/import-batch/',
+                payload, content_type='application/json', **self.headers,
+            )
+            self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(ProjectChangeDay.objects.get(project=self.project).created, 3)
+        batch = BatchOperation.objects.get(request_id=request_id)
+        undo = self.client.post(
+            f'/openfarmplanner/api/history/batch/{batch.pk}/revert/', **self.headers,
+        )
+        self.assertEqual(undo.status_code, 200, undo.content)
+        row = ProjectChangeDay.objects.get(project=self.project, category='crop')
+        self.assertEqual((row.created, row.updated, row.deleted, row.restored), (3, 0, 3, 0))
+
+    def test_rolled_back_savepoints_and_background_operations_leave_no_signals(self) -> None:
+        def synthetic_view(request: HttpRequest) -> HttpResponse:
+            with transaction.atomic():
+                Crop.objects.create(project=self.project, name='Rolled-back crop')
+                transaction.set_rollback(True)
+            return HttpResponse()
+
+        request = RequestFactory().post(self.endpoint)
+        request.user = self.user
+        request.session = {}
+        self.assertEqual(ProjectUsageMiddleware(synthetic_view)(request).status_code, 200)
+        Crop.objects.create(project=self.project, name='Background crop')
+        self.assertFalse(ProjectActiveUserDay.objects.exists())
+        self.assertFalse(ProjectChangeDay.objects.exists())
+
+    def test_guest_account_never_contributes_platform_activity(self) -> None:
+        guest_workspace = Project.objects.create(name='Guest workspace', slug='usage-guest')
+        GuestDemoSession.objects.create(
+            user=self.user, project=guest_workspace, expires_at=self.now + timedelta(hours=1),
+        )
+
+        def synthetic_view(request: HttpRequest) -> HttpResponse:
+            Crop.objects.create(project=self.project, name='Guest test crop')
+            return HttpResponse()
+
+        request = RequestFactory().post(self.endpoint)
+        request.user = self.user
+        request.session = {}
+        self.assertEqual(ProjectUsageMiddleware(synthetic_view)(request).status_code, 200)
+        self.assertFalse(ProjectActiveUserDay.objects.exists())
+        self.assertFalse(ProjectChangeDay.objects.exists())
+
+    def test_distinct_users_across_projects_and_days_with_constant_dashboard_queries(self) -> None:
+        today = self.now.astimezone(UTC).date()
+        other = Project.objects.create(name='Second farm', slug='activity-second')
+        scratch = Project.objects.create(name='Scratch', slug='activity-scratch')
+        admin = get_user_model().objects.create_superuser('activity-admin')
+        ProjectMembership.objects.create(user=admin, project=scratch, role='admin')
+        ProjectActiveUserDay.objects.bulk_create([
+            ProjectActiveUserDay(user=self.user, project=project, day=day)
+            for project in (self.project, other, scratch)
+            for day in (today, today - timedelta(days=1))
+        ])
+        ProjectChangeDay.objects.bulk_create([
+            ProjectChangeDay(project=project, day=today, category='crop', created=count)
+            for project, count in ((self.project, 2), (other, 1), (scratch, 25))
+        ])
+        coverage = self.now - timedelta(days=20)
+        with patch('farm.services.activity_trends.migration_applied_at', return_value=coverage):
+            totals = self._totals(days=30)
+            self.assertEqual((totals.active_users, totals.active_projects, totals.object_changes),
+                             (1, 2, 3))
+            self.assertTrue(totals.partial_coverage)
+            self.assertEqual(totals.trend[-1].count, 1)
+            self.assertIsNone(totals.trend[0].count)
+            crop = next(category for category in totals.categories if category.created)
+            self.assertEqual((crop.projects, crop.created), (2, 3))
+            with self.assertNumQueries(6):
+                build_activity_trends(
+                    self.now, days=90, series='active_users', include_hidden=False,
+                    excluded_project_ids={scratch.pk},
+                )
+            for extra in range(5):
+                extra_user = get_user_model().objects.create_user(username=f'extra-{extra}')
+                ProjectActiveUserDay.objects.create(
+                    user=extra_user, project=self.project, day=today,
+                )
+            with self.assertNumQueries(6):
+                monthly = build_activity_trends(
+                    self.now, days=90, series='active_users', include_hidden=False,
+                    excluded_project_ids={scratch.pk},
+                )
+            self.assertEqual(monthly.trend[-1].count, 6)
+
+    def test_unknown_history_differs_from_zero_and_registration_buckets_use_utc(self) -> None:
+        now = datetime(2026, 11, 23, 1, tzinfo=UTC)
+        start = now.replace(hour=0) - timedelta(days=6)
+        get_user_model().objects.filter(pk=self.user.pk).update(date_joined=start)
+        get_user_model().objects.create_user(
+            username='before-cutoff', date_joined=start - timedelta(microseconds=1),
+        )
+        with patch('farm.services.activity_trends.migration_applied_at', return_value=now):
+            self.now = now
+            trends = self._totals(series='active_projects')
+            self.assertIsNone(trends.trend[0].count)
+            self.assertEqual(trends.trend[-1].count, 0)
+            registrations = self._totals(series='registrations')
+            self.assertEqual(registrations.registrations, 1)
+            self.assertEqual(registrations.trend[0].count, 1)
+            self.assertEqual(registrations.trend[-1].count, 0)
+
+    def test_dashboard_renders_trends_and_preserves_series_period_and_population(self) -> None:
+        admin = get_user_model().objects.create_superuser('activity-view-admin')
+        self.client.force_login(admin)
+
+        response = self.client.get(reverse('admin:farm_project_engagement'), {
+            'show_all': '1', 'period': '90', 'series': 'registrations', 'o': '-parcel_area',
+        })
+
+        self.assertContains(response, 'Plattformaktivität')
+        self.assertContains(response, 'Objektänderungen nach Arbeitsbereich')
+        self.assertContains(response, 'period=7&amp;series=registrations#activity-trends')
+        self.assertContains(response, 'o=-parcel_area&amp;period=90&amp;series=registrations')
+        self.assertContains(response, 'Die Erfassung der Aktivität begann')
+
+    def test_cleanup_expires_only_days_outside_the_retention_window(self) -> None:
+        today = self.now.astimezone(UTC).date()
+        oldest = today - timedelta(days=ACTIVITY_RETENTION_DAYS - 1)
+        for day in (oldest, oldest - timedelta(days=1)):
+            ProjectActiveUserDay.objects.create(user=self.user, project=self.project, day=day)
+            ProjectChangeDay.objects.create(
+                project=self.project, day=day, category='crop', created=1,
+            )
+
+        call_command('cleanup_history', stdout=StringIO())
+
+        self.assertEqual(ProjectChangeDay.objects.get().day, oldest)
+        self.assertEqual(ProjectActiveUserDay.objects.get().day, oldest)
+
+    def test_finalizing_account_deletion_removes_active_keys_from_shared_projects(self) -> None:
+        today = self.now.astimezone(UTC).date()
+        remaining = get_user_model().objects.create_user(username='remaining-activity-member')
+        ProjectMembership.objects.create(user=remaining, project=self.project, role='member')
+        for user in (self.user, remaining):
+            ProjectActiveUserDay.objects.create(project=self.project, user=user, day=today)
+        ProjectChangeDay.objects.create(
+            project=self.project, category='crop', day=today, created=2,
+        )
+        AccountDeletionRequest.objects.create(
+            user=self.user,
+            deletion_requested_at=self.now - timedelta(days=20),
+            scheduled_deletion_at=self.now - timedelta(days=1),
+        )
+
+        call_command('purge_deleted_accounts', stdout=StringIO())
+
+        self.assertEqual(ProjectActiveUserDay.objects.get(project=self.project).user, remaining)
+        self.assertEqual(ProjectChangeDay.objects.get(project=self.project).created, 2)

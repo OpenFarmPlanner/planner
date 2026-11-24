@@ -174,10 +174,18 @@ describe('PrivacyPolicyPage', () => {
     expect(screen.getByText(/ist die englische Fassung maßgeblich/)).toBeInTheDocument();
   });
 
+  it('discloses the purpose and retention of internal usage statistics', () => {
+    renderPrivacyPolicyPage();
+
+    expect(screen.getByRole('heading', { name: /Interne Nutzungsstatistik/ })).toBeInTheDocument();
+    expect(screen.getByText(/Tagesdaten werden nach 90 Tagen gelöscht/)).toBeInTheDocument();
+    expect(screen.getByText(/Die Statistik erfasst keine Klicks, Seitenaufrufe/)).toBeInTheDocument();
+  });
+
   it('uses a concrete revision date instead of a generic month/year stamp', () => {
     renderPrivacyPolicyPage();
 
-    expect(screen.getByText(/Stand: 29\. September 2026/)).toBeInTheDocument();
+    expect(screen.getByText(/Stand: 23\. November 2026/)).toBeInTheDocument();
   });
 
   it('describes Google sign-in as an active recipient without claiming Microsoft is active', () => {

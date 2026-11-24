@@ -250,7 +250,7 @@
     },
     "privacy": {
       "title": "Privacy policy",
-      "version": "Status: September 29, 2026",
+      "version": "Status: November 23, 2026",
       "sections": {
         "controller": {
           "title": "Controller",
@@ -308,6 +308,11 @@
           "title": "Project and application data",
           "content": "Within your projects, we process the project-related data entered by you and other project members. This includes, in particular, master data of the project (e.g. project name, memberships and locations), operational planning and management data for the features in use (e.g. relating to fields, crops, cultivation planning or tasks), and supplementary information such as notes, uploaded files, and the change history, including the display name of the person who made the change. This data is generally visible only to you and the other members of the respective project.",
           "legalBasis": "Legal basis: Art. 6(1)(b) GDPR (performance of the contract of use: providing the planning features)."
+        },
+        "serviceUsage": {
+          "title": "Internal usage statistics",
+          "content": "To improve OpenFarmPlanner, we count changes completed by signed-in users by day and workflow. To count distinct active users, we store the internal account ID, project ID and UTC day once per project and day. The dashboard is restricted to superusers and displays aggregate figures. The statistics collect no clicks, page visits, navigation history or edited record contents. We delete the daily data after 90 days and remove the associated account IDs when an account deletion is finalized.",
+          "legalBasis": "The legal basis is Art. 6(1)(f) GDPR. Our legitimate interest is understanding how the planning features are used so we can improve the application."
         },
         "publicLibrary": {
           "title": "Public crop library",

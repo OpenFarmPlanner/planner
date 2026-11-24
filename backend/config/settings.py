@@ -277,6 +277,7 @@ MIDDLEWARE = [
     'crops.agent_api.middleware.CropLibraryTokenSurfaceMiddleware',
     # Required by django-allauth; must run after AuthenticationMiddleware.
     'allauth.account.middleware.AccountMiddleware',
+    'farm.services.usage_capture.ProjectUsageMiddleware',
 ]
 
 if DEBUG_TOOLBAR_ENABLED:

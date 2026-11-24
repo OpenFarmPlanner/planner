@@ -138,6 +138,7 @@ class ProjectScopedMixin:
                         snapshot=_serialize_instance(location),
                         display_name=location.name,
                         user_name=_current_actor_label(self.request),
+                        measure_usage=False,
                     )
                 return
             except OperationalError as exc:

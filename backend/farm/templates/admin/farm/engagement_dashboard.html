@@ -10,6 +10,34 @@
   #content-main .module { overflow-x: auto; }
   .usage-filters { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: baseline; }
   .usage-filters [aria-current="true"] { font-weight: 700; }
+  .usage-trends .usage-filters, .usage-chart { margin: .75rem 0; padding-inline: .75rem; }
+  .usage-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
+    gap: .5rem;
+    margin: .75rem;
+  }
+  .usage-kpis div { padding: .5rem; background: var(--darkened-bg); }
+  .usage-kpis dd { margin: .25rem 0 0; font-size: 1.2rem; font-weight: 700; }
+  .usage-chart figcaption { font-weight: 700; }
+  .usage-chart ol {
+    display: grid;
+    grid-template-columns: max-content minmax(1rem, 1fr) max-content;
+    gap: .35rem .5rem;
+    padding: 0;
+    margin: .5rem 0;
+  }
+  .usage-chart li {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    align-items: center;
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .usage-workflows { overflow-x: auto; }
+  .usage-track { background: var(--darkened-bg); height: .75rem; }
+  .usage-track span { display: block; height: 100%; background: var(--primary); }
 </style>
 {% endblock %}
 
@@ -23,6 +51,18 @@
 
 {% block content %}
 <div id="content-main">
+  <p class="help">
+    {% if dashboard.show_all %}
+      {% translate "Alle Projekte werden in den Projektkennzahlen berücksichtigt." %}
+      <a href="{{ show_all_toggle_url }}">{% translate "Filter wieder aktivieren" %}</a>
+    {% else %}
+      {% blocktranslate count counter=dashboard.hidden_projects_count %}{{ counter }} Gast-, Demo- oder Superuser-Projekt aus den Projektkennzahlen ausgeblendet.{% plural %}{{ counter }} Gast-, Demo- oder Superuser-Projekte aus den Projektkennzahlen ausgeblendet.{% endblocktranslate %}
+      <a href="{{ show_all_toggle_url }}">{% translate "Alle anzeigen" %}</a>
+    {% endif %}
+  </p>
+
+  {% include "admin/farm/activity_trends.html" %}
+
   <div class="module">
     <table>
       <caption>{% translate "Gesamtübersicht" %}</caption>
@@ -83,15 +123,6 @@
   </div>
 
   <div class="module">
-    <p class="help">
-      {% if dashboard.show_all %}
-        {% translate "Alle Projekte werden in den Projektkennzahlen berücksichtigt." %}
-        <a href="{{ show_all_toggle_url }}">{% translate "Filter wieder aktivieren" %}</a>
-      {% else %}
-        {% blocktranslate count counter=dashboard.hidden_projects_count %}{{ counter }} Gast-, Demo- oder Superuser-Projekt aus den Projektkennzahlen ausgeblendet.{% plural %}{{ counter }} Gast-, Demo- oder Superuser-Projekte aus den Projektkennzahlen ausgeblendet.{% endblocktranslate %}
-        <a href="{{ show_all_toggle_url }}">{% translate "Alle anzeigen" %}</a>
-      {% endif %}
-    </p>
     <nav class="usage-filters" aria-label="{% translate 'Projekte nach letzter Aktivität filtern' %}">
       {% for label, url, selected in activity_filter %}
         <a href="{{ url }}"{% if selected %} aria-current="true"{% endif %}>{{ label }}</a>

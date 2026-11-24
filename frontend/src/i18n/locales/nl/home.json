@@ -250,7 +250,7 @@
     },
     "privacy": {
       "title": "Privacyverklaring",
-      "version": "Laatst bijgewerkt: 29 september 2026",
+      "version": "Stand: 23 november 2026",
       "sections": {
         "controller": {
           "title": "Verwerkingsverantwoordelijke",
@@ -308,6 +308,11 @@
           "title": "Project- en toepassingsgegevens",
           "content": "Binnen uw projecten verwerken we de projectgegevens die u en andere projectleden invoeren. Dit omvat met name de stamgegevens van het project, zoals projectnaam, lidmaatschappen en locaties, operationele plannings- en beheergegevens voor de gebruikte functies, bijvoorbeeld over percelen, gewassen, teeltplanning of taken, en aanvullende informatie zoals notities, geüploade bestanden en de wijzigingsgeschiedenis, inclusief de weergavenaam van de persoon die de wijziging heeft aangebracht. Deze gegevens zijn in beginsel alleen zichtbaar voor u en de andere leden van het betreffende project.",
           "legalBasis": "Rechtsgrondslag: Art. 6(1)(b) AVG (uitvoering van de gebruiksovereenkomst: het aanbieden van de planningsfuncties)."
+        },
+        "serviceUsage": {
+          "title": "Interne gebruiksstatistieken",
+          "content": "Om OpenFarmPlanner te verbeteren, tellen we per dag en functie de voltooide wijzigingen in projecten van ingelogde gebruikers. Om unieke actieve gebruikers te tellen, bewaren we de interne account-ID, project-ID en UTC-dag één keer per project en dag. Het dashboard is alleen toegankelijk voor superbeheerders en toont samengevoegde cijfers. De statistieken verzamelen geen klikken, paginabezoeken, navigatiegeschiedenis of inhoud van gewijzigde gegevens. Na 90 dagen wissen we de daggegevens. Bij de definitieve verwijdering van een account verwijderen we de bijbehorende account-ID uit deze statistieken.",
+          "legalBasis": "De rechtsgrondslag is artikel 6, lid 1, onder f), AVG. Ons gerechtvaardigd belang is inzicht in het gebruik van de planningsfuncties, zodat we de toepassing kunnen verbeteren."
         },
         "publicLibrary": {
           "title": "Openbare gewassenbibliotheek",

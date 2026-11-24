@@ -38,6 +38,7 @@ from .models import (
     Supplier,
     Task,
 )
+from .services.activity_trends import DEFAULT_PERIOD, PERIODS, SERIES, build_activity_trends
 from .services.crop_library_usage import build_crop_library_operations
 from .services.engagement_dashboard import (
     PROJECT_SORT_FIELDS,
@@ -81,7 +82,16 @@ class ProjectAdmin(admin.ModelAdmin):
         activity = activity if activity in ('7', '30') else ''
         order = request.GET.get('o', '')
         order = order if order.removeprefix('-') in PROJECT_SORT_FIELDS else ''
-        params = {'o': order, 'activity': activity, 'show_all': '1' if show_all else ''}
+        period, series = self._trend_options(request)
+        params = {
+            'o': order, 'activity': activity, 'show_all': '1' if show_all else '',
+            'period': request.GET.get('period') if 'period' in request.GET else '',
+            'series': request.GET.get('series') if 'series' in request.GET else '',
+        }
+        if params['period']:
+            params['period'] = str(period)
+        if params['series']:
+            params['series'] = series
         rows = dashboard.projects
         if activity:
             cutoff = now - timedelta(days=int(activity))
@@ -95,6 +105,19 @@ class ProjectAdmin(admin.ModelAdmin):
             'title': _('Nutzungsübersicht'),
             'dashboard': dashboard,
             'project_rows': rows,
+            'trends': build_activity_trends(
+                now, days=period, series=series, include_hidden=show_all,
+                excluded_project_ids=dashboard.excluded_project_ids,
+            ),
+            'trend_series_label': SERIES[series],
+            'trend_periods': [
+                (days, self._dashboard_url(params, period=str(days)), days == period)
+                for days in PERIODS
+            ],
+            'trend_series': [
+                (label, self._dashboard_url(params, series=key), key == series)
+                for key, label in SERIES.items()
+            ],
             'demo_usage': demo_usage,
             'crop_library_operations': build_crop_library_operations(
                 now, excluded_project_ids=dashboard.excluded_project_ids,
@@ -112,6 +135,13 @@ class ProjectAdmin(admin.ModelAdmin):
             'opts': self.model._meta,
         }
         return TemplateResponse(request, 'admin/farm/engagement_dashboard.html', context)
+
+    @staticmethod
+    def _trend_options(request: HttpRequest) -> tuple[int, str]:
+        raw_period = request.GET.get('period', '')
+        period = {str(days): days for days in PERIODS}.get(raw_period, DEFAULT_PERIOD)
+        series = request.GET.get('series', '')
+        return period, series if series in SERIES else 'active_users'
 
     @staticmethod
     def _dashboard_url(params: dict[str, str], **updates: str) -> str:

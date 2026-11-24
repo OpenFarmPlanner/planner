@@ -37,13 +37,18 @@ from farm.services.timing_windows import (
     sort_windows,
     validate_timing_window,
 )
+from farm.services.usage_capture import observe_restored_state
 
 from .project_restore_impact import (
     restore_preview_token,
     summarize_restore,
     valid_preview_token_for_revision,
 )
-from .records import _RESTORABLE_ENTITY_TYPES, _canonical_entity_type, record_entity_revision
+from .records import (
+    _RESTORABLE_ENTITY_TYPES,
+    _canonical_entity_type,
+    record_entity_revision,
+)
 from .restore import (
     _model_manager,
     _restore_snapshot_children,
@@ -122,12 +127,13 @@ def record_project_checkpoint(
     batch_operation: Any = None,
     action: str = EntityRevision.ACTION_RESTORED,
     automatic_backup: bool = False,
+    restore_from: ProjectState | None = None,
 ) -> None:
     """A complete checkpoint makes a restore result and its backup selectable again."""
     snapshot = {CHECKPOINT_KEY: state}
     if automatic_backup:
         snapshot[AUTOMATIC_BACKUP_KEY] = True
-    record_entity_revision(
+    revision = record_entity_revision(
         project=project,
         entity_type="project",
         object_id=project.pk,
@@ -137,6 +143,8 @@ def record_project_checkpoint(
         user_name=user_name,
         batch_operation=batch_operation,
     )
+    if restore_from is not None:
+        observe_restored_state(revision, restore_from, state)
 
 
 def ensure_project_checkpoint(project: Project, *, user_name: str = "") -> None:
@@ -729,6 +737,8 @@ def restore_project_version(
                 action=EntityRevision.ACTION_UPDATED, automatic_backup=True,
             )
             apply_project_state(project, state, current, validated_target=target)
-            record_project_checkpoint(project, capture_project_state(project), user_name=user_name)
+            record_project_checkpoint(
+                project, capture_project_state(project), user_name=user_name, restore_from=current,
+            )
     except (IntegrityError, ValueError, TypeError, KeyError, AttributeError) as exc:
         raise ProjectRestoreConflict("incompatible historical state") from exc

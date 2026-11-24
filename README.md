@@ -120,11 +120,24 @@ import falls outside the window. Coverage for these additional outcomes starts
 with the crop-library usage migration. The existing history cleanup command
 expires daily counters outside the 30-day window.
 
-The dashboard does **not** collect clicks, sessions,
-time on page, navigation paths, or other individual behavioral data — including
-counters for how often a view such as the graphical Beet-/Flächen-Layout is
-opened. Adding such tracking would require a separate privacy review and an
-update to the privacy policy before implementation.
+The activity trends use the latest 7, 30 or 90 UTC calendar days, including
+today. The chart groups those days into days, Monday-based weeks or calendar
+months, respectively. A user or project counts at most once per bucket and
+once for the period summary. A session-authenticated write contributes when
+it commits a recorded creation, edit, deletion or restore in a listed
+workflow. Failed, unchanged or replayed writes and automated, staff, guest
+and external-token actions contribute no platform activity. The project
+population filter also applies to these trends. Registrations and project
+creations come from the existing `date_joined` and `created_at` fields.
+
+Platform activity collection starts with migration
+`0165_platform_usage_activity`. Earlier activity is unknown. On the first
+day of collection, activity totals cover the portion after rollout. The
+dashboard stores only daily project/category totals and one account/project
+key per active UTC day for distinct-user counts. Daily records expire through
+`cleanup_history` after the 90-day window. Finalizing account deletion
+removes its active-day keys. There are no page visit, click, navigation or
+record-content analytics, and the dashboard exposes aggregate totals.
 
 ## Repository Structure
 

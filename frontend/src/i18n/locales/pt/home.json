@@ -254,7 +254,7 @@
     },
     "privacy": {
       "title": "Política de privacidade",
-      "version": "Atualização: 29 de setembro de 2026",
+      "version": "Atualização de 23 de novembro de 2026",
       "sections": {
         "controller": {
           "title": "Responsável pelo tratamento",
@@ -312,6 +312,11 @@
           "title": "Dados dos projetos e da aplicação",
           "content": "Nos projetos, tratamos os dados relacionados com o projeto introduzidos pelo Utilizador e pelos restantes membros. Incluem-se, em particular, dados de base do projeto, por exemplo nome do projeto, membros e explorações, dados de planeamento operacional e gestão das funcionalidades utilizadas, por exemplo relativos a parcelas, culturas, planeamento de cultivo ou tarefas, e informações complementares, como notas, ficheiros enviados e histórico de alterações, incluindo o nome de apresentação da pessoa que efetuou a alteração. Em regra, estes dados apenas são visíveis ao Utilizador e aos restantes membros do respetivo projeto.",
           "legalBasis": "Fundamento jurídico: Art. 6(1)(b) RGPD (execução do contrato de utilização: disponibilização das funções de planeamento)."
+        },
+        "serviceUsage": {
+          "title": "Estatísticas internas de utilização",
+          "content": "Para melhorar o OpenFarmPlanner, contamos por dia e funcionalidade as alterações concluídas nos projetos por utilizadores com sessão iniciada. Para contar utilizadores ativos distintos, guardamos o identificador interno da conta, o identificador do projeto e o dia UTC uma única vez por projeto e dia. O painel está reservado a superutilizadores e apresenta números agregados. As estatísticas não recolhem cliques, visitas a páginas, históricos de navegação nem conteúdos dos registos alterados. Eliminamos os dados diários após 90 dias e retiramos os identificadores associados destas estatísticas quando a eliminação de uma conta é concluída.",
+          "legalBasis": "A base jurídica é o artigo 6.º, n.º 1, alínea f), do RGPD. O nosso interesse legítimo é compreender como são utilizadas as funcionalidades de planeamento para melhorar a aplicação."
         },
         "publicLibrary": {
           "title": "Biblioteca pública de culturas",
