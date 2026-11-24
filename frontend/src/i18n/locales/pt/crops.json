@@ -236,7 +236,7 @@
     "seedTypeF1Hybrid": "Híbrido F1",
     "seedTypeUnknown": "Desconhecido",
     "rotationBreakYears": "Intervalo de rotação (anos)",
-    "rotationBreakYearsTooltip": "Anos sem esta família botânica no mesmo canteiro. «De 4 em 4 anos» significa um intervalo de 3 anos.",
+    "rotationBreakYearsTooltip": "Anos completos sem esta família botânica no mesmo canteiro.",
     "rotationBreakYearsFamilyDefault_one": "Predefinição para {{family}}: {{count}} ano.",
     "rotationBreakYearsFamilyDefault_other": "Predefinição para {{family}}: {{count}} anos.",
     "cultivationType": "Tipo de cultivo",
@@ -257,7 +257,6 @@
     "growthDurationDaysError": "A duração da cultura tem de ser ≥ 0",
     "harvestDurationDays": "Duração da colheita (dias)",
     "harvestDurationDaysPlaceholder": "por exemplo 28",
-    "harvestDurationDaysHelp": "Tempo entre o início e o fim da colheita.",
     "harvestDurationDaysRequired": "A duração da colheita é obrigatória",
     "harvestDurationDaysError": "A duração da colheita tem de ser ≥ 0",
     "propagationDurationDays": "Duração em viveiro (dias)",
@@ -309,7 +308,7 @@
     "seedRateValueWholeNumberRequired": "A quantidade tem de ser um número inteiro para esta unidade.",
     "thousandKernelWeightLabel": "Peso de mil sementes (g)",
     "seedPackagesLabel": "Tamanhos de embalagem no fornecedor",
-    "thousandKernelWeightHelp": "Peso de 1.000 sementes em gramas. Necessário para converter entre sementes e gramas.",
+    "thousandKernelWeightHelp": "Serve para converter entre o número de sementes e o peso.",
     "fieldInfoAriaLabel": "Informações sobre {{field}}",
     "thousandKernelWeightError": "O peso de mil sementes tem de ser > 0",
     "thousandKernelWeightInvalidNumber": "Introduza um número válido, por exemplo 3,9",
@@ -2047,7 +2046,7 @@
   },
   "timingWindows": {
     "sectionTitle": "Períodos",
-    "sectionHelp": "Quando ocorrem habitualmente o viveiro, a sementeira direta e a transplantação, em decêndios ou semanas de calendário. O planeamento das culturas assinala datas fora destes períodos.",
+    "sectionHelp": "Os planos de cultivo assinalam datas fora destes períodos.",
     "categoryHeadings": {
       "pre_cultivation": "Viveiro",
       "direct_sowing": "Sementeira direta",
@@ -2156,8 +2155,6 @@
     "pickerMonth": "Mês",
     "pickerDays": "Dias",
     "delay": "Anos até à primeira colheita",
-    "windowHelp": "Escolha o mês e o dia no calendário ou introduza a data conforme o exemplo no campo. Se o fim anteceder o início, o período continua no ano seguinte. Nos anos não bissextos, 29 de fevereiro passa para 28 de fevereiro.",
-    "delayHelp": "A primeira colheita é possível a partir do aniversário correspondente da plantação. Com 0 ou o campo em branco, aplica-se a data de plantação. Numa variedade, um campo em branco herda primeiro o valor da cultura. Nos anos não bissextos, 29 de fevereiro passa para 28 de fevereiro.",
     "invalidDate": "Introduza uma data válida conforme o exemplo no campo.",
     "missingStart": "Introduza a data de início da colheita.",
     "missingEnd": "Introduza a data de fim da colheita.",
@@ -2200,7 +2197,7 @@
     },
     "legacyLifeCycleOption": "{{value}} (valor existente)",
     "legacyLifeCycleHint": "Este valor guardado é mantido, exceto se escolher outro ciclo de vida.",
-    "standingTimeHelp": "Duração produtiva habitual desta cultura perene. Serve para sugerir uma data de fim da cultura.",
+    "standingTimeHelp": "Determina a data de fim da cultura sugerida.",
     "standingTimeRequired": "Introduza um número inteiro igual ou superior a 1."
   },
   "taskTemplates": {
@@ -2375,7 +2372,7 @@
     "validation": "Introduza nomes individuais com até 200 caracteres cada.",
     "unspecified": "Não especificado / herdar da cultura",
     "emptySelection": "Seleção própria explicitamente vazia",
-    "officialHelper": "Selecione entradas do catálogo. Os nomes próprios ficam no projeto e não são publicados.",
+    "officialHelper": "Só é possível partilhar entradas do catálogo.",
     "officialSearchError": "Não foi possível carregar as sugestões do catálogo. Tenta novamente.",
     "publishSkipped": "Entradas não publicadas: {{number}}. São mantidas no projeto.",
     "publication": {

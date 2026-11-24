@@ -164,6 +164,13 @@
             "De plantenfamilie en rotatiepauze onder ‘Vruchtwisselingseigenschappen’ worden gebruikt voor de vruchtwisselingscontrole in het teeltplan.",
             "De teeltkalender, zaadbehoefte en plantgoedbehoefte gebruiken deze gegevens voor tijd- en hoeveelheidsplanning."
           ]
+        },
+        {
+          "title": "Meerjarige gewassen",
+          "points": [
+            "Valt de einddatum vóór de begindatum, dan loopt de oogstperiode door in het volgende jaar. In een gewoon jaar geldt 28 februari voor 29 februari.",
+            "De jaren tot de eerste oogst tellen vanaf de plantdatum. Bij 0 of een leeg veld is oogsten mogelijk vanaf de plantdatum. Een ras neemt bij een leeg veld de waarde van het gewas over."
+          ]
         }
       ],
       "symbolsTitle": "Pictogrammen en bediening",
@@ -199,6 +206,13 @@
             "Importeer bruikbare gewassen als je eigen projectkopie in het huidige project.",
             "Als een geïmporteerd gewas in de gewassenbibliotheek verandert, zie je dat bij je gewas en beslis je welke waarden je overneemt.",
             "Je kunt je eigen waarden lokaal vastzetten. Ze worden dan niet overschreven door updates uit de gewassenbibliotheek."
+          ]
+        },
+        {
+          "title": "Meerjarige gewassen",
+          "points": [
+            "Valt de einddatum vóór de begindatum, dan loopt de oogstperiode door in het volgende jaar. In een gewoon jaar geldt 28 februari voor 29 februari.",
+            "De jaren tot de eerste oogst tellen vanaf de plantdatum. Bij 0 of een leeg veld is oogsten mogelijk vanaf de plantdatum. Een ras neemt bij een leeg veld de waarde van het gewas over."
           ]
         }
       ]

@@ -24,6 +24,7 @@ describe('crop-specific properties', () => {
     const { rerender } = render(<SpecificPropertiesSection t={t} onChange={onChange} />);
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
     rerender(<SpecificPropertiesSection profile={profile} t={t} onChange={onChange} />);
+    expect(screen.queryByText('specificProperties.cropValues')).not.toBeInTheDocument();
     const cooking = screen.getByRole('combobox', { name: 'specificProperties.fields.cooking_type' });
     expect(screen.getByRole('combobox', { name: 'specificProperties.fields.maturity_group' })).toBeVisible();
     fireEvent.mouseDown(cooking);

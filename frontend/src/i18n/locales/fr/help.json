@@ -164,6 +164,13 @@
             "La famille botanique et le délai de retour, sous « Propriétés de rotation des cultures », servent à la vérification de la rotation des cultures dans les séries.",
             "Le calendrier de culture, le besoin en semences et le besoin en plants utilisent ces données pour planifier les dates et les quantités."
           ]
+        },
+        {
+          "title": "Cultures vivaces",
+          "points": [
+            "Si la date de fin précède la date de début, la période de récolte se poursuit l’année suivante. Les années non bissextiles, le 29 février est ramené au 28 février.",
+            "Le délai avant la première récolte commence à la plantation. Avec 0 ou un champ vide, la récolte est possible dès la plantation. Une variété hérite du délai de la culture si le champ est vide."
+          ]
         }
       ],
       "symbolsTitle": "Icônes et commandes",
@@ -199,6 +206,13 @@
             "Importez des cultures utiles dans le projet actuel sous forme de copie propre au projet.",
             "Lorsqu'une culture importée change dans la bibliothèque de cultures, vous le voyez sur votre culture et décidez quelles valeurs reprendre.",
             "Vous pouvez figer localement vos propres valeurs. Elles ne sont alors pas écrasées par les mises à jour de la bibliothèque de cultures."
+          ]
+        },
+        {
+          "title": "Cultures vivaces",
+          "points": [
+            "Si la date de fin précède la date de début, la période de récolte se poursuit l’année suivante. Les années non bissextiles, le 29 février est ramené au 28 février.",
+            "Le délai avant la première récolte commence à la plantation. Avec 0 ou un champ vide, la récolte est possible dès la plantation. Une variété hérite du délai de la culture si le champ est vide."
           ]
         }
       ]

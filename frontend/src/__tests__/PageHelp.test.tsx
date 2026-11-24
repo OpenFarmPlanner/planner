@@ -81,6 +81,15 @@ describe('PageHelp', () => {
     expect(screen.getByTestId('PushPinIcon')).toBeInTheDocument();
   });
 
+  it.each(['crops', 'cropLibrary'] as const)('describes perennial harvest timing in %s page help', async pageKey => {
+    render(<PageHelp pageKey={pageKey} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Hilfe anzeigen' }));
+
+    expect(await screen.findByText('Mehrjährige Kulturen')).toBeInTheDocument();
+    expect(screen.getByText(/reicht das Erntefenster ins nächste Jahr/)).toBeInTheDocument();
+    expect(screen.getByText(/Jahre bis zur ersten Ernte zählen ab dem Pflanzdatum/)).toBeInTheDocument();
+  });
+
   it('renders compact calendar help without controls or icon guidance', async () => {
     render(<PageHelp pageKey="calendar" />);
 

@@ -164,6 +164,13 @@
             "A família botânica e o intervalo de rotação em «Propriedades da rotação de culturas» são utilizados na verificação da rotação de culturas nas séries.",
             "O calendário de cultivo, as necessidades de sementes e as necessidades de plantas de viveiro utilizam estes dados no planeamento de períodos e quantidades."
           ]
+        },
+        {
+          "title": "Culturas perenes",
+          "points": [
+            "Se a data de fim anteceder a data de início, o período de colheita continua no ano seguinte. Nos anos não bissextos, 29 de fevereiro passa para 28 de fevereiro.",
+            "Os anos até à primeira colheita contam a partir da plantação. Com 0 ou o campo em branco, a colheita é possível desde a plantação. Se o campo de uma variedade estiver em branco, aplica-se o valor da cultura."
+          ]
         }
       ],
       "symbolsTitle": "Ícones e controlos",
@@ -199,6 +206,13 @@
             "Importe culturas úteis como cópia para o projeto atual.",
             "Quando uma cultura importada é alterada na biblioteca, a alteração é apresentada na cultura do projeto e é possível decidir quais os valores a aplicar.",
             "É possível fixar valores próprios localmente. Estes deixam de ser substituídos por atualizações da biblioteca de culturas."
+          ]
+        },
+        {
+          "title": "Culturas perenes",
+          "points": [
+            "Se a data de fim anteceder a data de início, o período de colheita continua no ano seguinte. Nos anos não bissextos, 29 de fevereiro passa para 28 de fevereiro.",
+            "Os anos até à primeira colheita contam a partir da plantação. Com 0 ou o campo em branco, a colheita é possível desde a plantação. Se o campo de uma variedade estiver em branco, aplica-se o valor da cultura."
           ]
         }
       ]

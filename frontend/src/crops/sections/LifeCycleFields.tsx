@@ -2,6 +2,8 @@ import { Box, FormControl, FormHelperText, InputLabel, MenuItem, TextField } fro
 import type { TFunction } from 'i18next';
 import type { Crop } from '../../api/types';
 import { TypeaheadSelect as Select } from '../../components/inputs/TypeaheadSelect';
+import { FieldInfoButton } from '../FieldInfoButton';
+import { buildFieldEndAdornment } from '../fieldEndAdornment';
 import { libraryPinSelectSx } from '../libraryFieldPin';
 import type { GetLibraryFieldPinProps } from '../libraryFieldPinProps';
 import { selectableSiteHealthChoices } from '../siteHealth';
@@ -61,12 +63,20 @@ export function LifeCycleFields({
           value={formData.standing_time_years ?? ''}
           placeholder={inheritedStandingTime == null ? undefined : String(inheritedStandingTime)}
           error={Boolean(standingTimeError)}
-          helperText={standingTimeError ?? t('siteHealth.standingTimeHelp')}
+          helperText={standingTimeError}
           onChange={event => onChange('standing_time_years', event.target.value === '' ? null : Number(event.target.value))}
           slotProps={{
             htmlInput: { min: 1, step: 1 },
             inputLabel: { shrink: true },
-            input: { endAdornment: standingTimePin?.endAdornment },
+            input: {
+              endAdornment: buildFieldEndAdornment(
+                <FieldInfoButton
+                  title={t('siteHealth.standingTimeHelp')}
+                  ariaLabel={t('form.fieldInfoAriaLabel', { field: t('siteHealth.fields.standing_time_years') })}
+                />,
+                standingTimePin,
+              ),
+            },
           }}
         />
       ) : null}

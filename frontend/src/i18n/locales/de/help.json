@@ -164,6 +164,13 @@
             "Pflanzenfamilie und Anbaupause unter „Fruchtfolge-Eigenschaften“ werden für die Fruchtfolge-Prüfung in den Anbauplänen verwendet.",
             "Anbaukalender, Saatgut- und Jungpflanzenbedarf nutzen diese Daten für Zeit- und Mengenplanung."
           ]
+        },
+        {
+          "title": "Mehrjährige Kulturen",
+          "points": [
+            "Liegt das Ende vor dem Beginn, reicht das Erntefenster ins nächste Jahr. In Jahren ohne Schalttag gilt für den 29. Februar der 28. Februar.",
+            "Die Jahre bis zur ersten Ernte zählen ab dem Pflanzdatum. Bei 0 oder leerem Feld ist die Ernte ab der Pflanzung möglich. Sorten übernehmen bei leerem Feld den Wert der Kultur."
+          ]
         }
       ],
       "symbolsTitle": "Symbole und Bedienelemente",
@@ -199,6 +206,13 @@
             "Importiere passende Kulturen als eigene Projektkopie in dein aktuelles Projekt.",
             "Ändert sich eine importierte Kultur in der Kulturbibliothek, siehst du das bei deiner Kultur und entscheidest, welche Werte du übernimmst.",
             "Eigene Werte kannst du lokal fixieren. Sie werden dann bei Updates aus der Kulturbibliothek nicht überschrieben."
+          ]
+        },
+        {
+          "title": "Mehrjährige Kulturen",
+          "points": [
+            "Liegt das Ende vor dem Beginn, reicht das Erntefenster ins nächste Jahr. In Jahren ohne Schalttag gilt für den 29. Februar der 28. Februar.",
+            "Die Jahre bis zur ersten Ernte zählen ab dem Pflanzdatum. Bei 0 oder leerem Feld ist die Ernte ab der Pflanzung möglich. Sorten übernehmen bei leerem Feld den Wert der Kultur."
           ]
         }
       ]

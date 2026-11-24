@@ -239,7 +239,7 @@
     "seedTypeF1Hybrid": "Híbrido F1",
     "seedTypeUnknown": "Desconocido",
     "rotationBreakYears": "Pausa de rotación (años)",
-    "rotationBreakYearsTooltip": "Años sin esta familia botánica en el mismo bancal. «Cada 4 años» corresponde a una pausa de 3 años.",
+    "rotationBreakYearsTooltip": "Años completos sin esta familia botánica en el mismo bancal.",
     "rotationBreakYearsFamilyDefault_one": "Valor predeterminado para {{family}}: {{count}} año.",
     "rotationBreakYearsFamilyDefault_other": "Valor predeterminado para {{family}}: {{count}} años.",
     "rotationBreakYearsFamilyDefault_many": "Valor predeterminado para {{family}}: {{count}} años.",
@@ -261,7 +261,6 @@
     "growthDurationDaysError": "La duración del cultivo debe ser ≥ 0",
     "harvestDurationDays": "Duración de la cosecha (días)",
     "harvestDurationDaysPlaceholder": "p. ej. 28",
-    "harvestDurationDaysHelp": "Tiempo desde el inicio hasta el fin de la cosecha.",
     "harvestDurationDaysRequired": "La duración de la cosecha es obligatoria",
     "harvestDurationDaysError": "La duración de la cosecha debe ser ≥ 0",
     "propagationDurationDays": "Duración en semillero (días)",
@@ -313,7 +312,7 @@
     "seedRateValueWholeNumberRequired": "Para esta unidad, la cantidad debe ser un número entero.",
     "thousandKernelWeightLabel": "Peso de mil semillas (g)",
     "seedPackagesLabel": "Tamaños de envase en el proveedor",
-    "thousandKernelWeightHelp": "Peso de 1000 semillas en gramos. Necesario para convertir entre semillas y gramos.",
+    "thousandKernelWeightHelp": "Sirve para convertir entre cantidad de semillas y peso.",
     "fieldInfoAriaLabel": "Información sobre {{field}}",
     "thousandKernelWeightError": "El peso de mil semillas debe ser > 0",
     "thousandKernelWeightInvalidNumber": "Introduce un número válido, p. ej. 3,9",
@@ -2048,7 +2047,7 @@
   },
   "timingWindows": {
     "sectionTitle": "Periodos",
-    "sectionHelp": "Cuándo se suelen hacer el semillero, la siembra directa y el trasplante, en decenas del mes o en semanas. La planificación señala las fechas fuera de estos periodos.",
+    "sectionHelp": "Los planes de cultivo señalan las fechas fuera de estos periodos.",
     "categoryHeadings": {
       "pre_cultivation": "Semillero",
       "direct_sowing": "Siembra directa",
@@ -2157,8 +2156,6 @@
     "pickerMonth": "Mes",
     "pickerDays": "Días",
     "delay": "Años hasta la primera cosecha",
-    "windowHelp": "Elige el mes y el día en el calendario o introduce la fecha siguiendo el ejemplo del campo. Si el fin precede al inicio, el periodo continúa el año siguiente. En los años no bisiestos, el 29 de febrero pasa al 28 de febrero.",
-    "delayHelp": "La primera cosecha es posible a partir del aniversario correspondiente de la plantación. Con 0 o el campo vacío, se usa la fecha de plantación. Una variedad con el campo vacío hereda primero el valor del cultivo. En los años no bisiestos, el 29 de febrero pasa al 28 de febrero.",
     "invalidDate": "Introduce una fecha válida siguiendo el ejemplo del campo.",
     "missingStart": "Introduce la fecha de inicio de la cosecha.",
     "missingEnd": "Introduce la fecha de fin de la cosecha.",
@@ -2201,7 +2198,7 @@
     },
     "legacyLifeCycleOption": "{{value}} (valor existente)",
     "legacyLifeCycleHint": "Este valor guardado se conserva hasta que elijas otro ciclo de vida.",
-    "standingTimeHelp": "Duración productiva habitual de este cultivo perenne. Sirve para proponer una fecha de fin del cultivo.",
+    "standingTimeHelp": "Determina la fecha de fin del cultivo sugerida.",
     "standingTimeRequired": "Introduce un número entero igual o superior a 1."
   },
   "taskTemplates": {
@@ -2375,7 +2372,7 @@
     "validation": "Introduce nombres individuales de hasta 200 caracteres cada uno.",
     "unspecified": "Sin especificar / heredar del cultivo",
     "emptySelection": "Selección propia explícitamente vacía",
-    "officialHelper": "Selecciona entradas del catálogo. Tus propios nombres se quedan en el proyecto y no se publican.",
+    "officialHelper": "Solo se pueden compartir entradas del catálogo.",
     "officialSearchError": "No se pudieron cargar las sugerencias del catálogo. Inténtalo de nuevo.",
     "publishSkipped": "Entradas sin publicar: {{number}}. Se conservan en el proyecto.",
     "publication": {

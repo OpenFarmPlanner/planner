@@ -236,7 +236,7 @@
     "seedTypeF1Hybrid": "Ibrido F1",
     "seedTypeUnknown": "Sconosciuto",
     "rotationBreakYears": "Intervallo di rotazione (anni)",
-    "rotationBreakYearsTooltip": "Anni senza questa famiglia botanica nella stessa aiuola. «Ogni 4 anni» significa un intervallo di 3 anni.",
+    "rotationBreakYearsTooltip": "Anni interi senza questa famiglia botanica sulla stessa aiuola.",
     "rotationBreakYearsFamilyDefault_one": "Predefinito per {{family}}: {{count}} anno.",
     "rotationBreakYearsFamilyDefault_other": "Predefinito per {{family}}: {{count}} anni.",
     "cultivationType": "Tipo di coltivazione",
@@ -257,7 +257,6 @@
     "growthDurationDaysError": "La durata della coltura deve essere ≥ 0",
     "harvestDurationDays": "Durata della raccolta (giorni)",
     "harvestDurationDaysPlaceholder": "es. 28",
-    "harvestDurationDaysHelp": "Tempo dall'inizio alla fine della raccolta.",
     "harvestDurationDaysRequired": "La durata della raccolta è obbligatoria",
     "harvestDurationDaysError": "La durata della raccolta deve essere ≥ 0",
     "propagationDurationDays": "Durata in vivaio (giorni)",
@@ -309,7 +308,7 @@
     "seedRateValueWholeNumberRequired": "La quantità deve essere un numero intero per questa unità.",
     "thousandKernelWeightLabel": "Peso di mille semi (g)",
     "seedPackagesLabel": "Formati delle confezioni presso il fornitore",
-    "thousandKernelWeightHelp": "Peso di 1.000 semi in grammi. Necessario per convertire tra semi e grammi.",
+    "thousandKernelWeightHelp": "Serve a convertire tra numero di semi e peso.",
     "fieldInfoAriaLabel": "Informazioni su {{field}}",
     "thousandKernelWeightError": "Il peso di mille semi deve essere > 0",
     "thousandKernelWeightInvalidNumber": "Inserisci un numero valido, es. 3,9",
@@ -2047,7 +2046,7 @@
   },
   "timingWindows": {
     "sectionTitle": "Periodi",
-    "sectionHelp": "Quando avvengono abitualmente vivaio, semina diretta e trapianto, in decadi del mese o settimane. La pianificazione colturale segnala le date fuori da questi periodi.",
+    "sectionHelp": "I piani colturali segnalano le date fuori da questi periodi.",
     "categoryHeadings": {
       "pre_cultivation": "Vivaio",
       "direct_sowing": "Semina diretta",
@@ -2156,8 +2155,6 @@
     "pickerMonth": "Mese",
     "pickerDays": "Giorni",
     "delay": "Anni fino al primo raccolto",
-    "windowHelp": "Scegli il mese e il giorno nel calendario o inserisci la data come nell’esempio del campo. Se la fine precede l’inizio, il periodo prosegue nell’anno successivo. Negli anni non bisestili, il 29 febbraio corrisponde al 28 febbraio.",
-    "delayHelp": "Il primo raccolto è possibile a partire dal corrispondente anniversario del trapianto. Con 0 o il campo vuoto vale la data di trapianto. Una varietà con il campo vuoto eredita prima il valore della coltura. Negli anni non bisestili, il 29 febbraio corrisponde al 28 febbraio.",
     "invalidDate": "Inserisci una data valida come nell’esempio del campo.",
     "missingStart": "Inserisci la data di inizio della raccolta.",
     "missingEnd": "Inserisci la data di fine della raccolta.",
@@ -2200,7 +2197,7 @@
     },
     "legacyLifeCycleOption": "{{value}} (valore esistente)",
     "legacyLifeCycleHint": "Questo valore salvato viene mantenuto se non scegli un altro ciclo di vita.",
-    "standingTimeHelp": "Durata produttiva tipica di questa coltura perenne. Serve a proporre una data di fine coltivazione.",
+    "standingTimeHelp": "Determina la data di fine coltivazione suggerita.",
     "standingTimeRequired": "Inserisci un numero intero maggiore o uguale a 1."
   },
   "taskTemplates": {
@@ -2375,7 +2372,7 @@
     "validation": "Inserisci nomi singoli di massimo 200 caratteri ciascuno.",
     "unspecified": "Non specificato / eredita dalla coltura",
     "emptySelection": "Selezione propria esplicitamente vuota",
-    "officialHelper": "Seleziona voci del catalogo. I nomi personalizzati restano nel progetto e non vengono pubblicati.",
+    "officialHelper": "Si possono condividere solo le voci del catalogo.",
     "officialSearchError": "Impossibile caricare i suggerimenti del catalogo. Riprova.",
     "publishSkipped": "Voci non pubblicate: {{number}}. Restano nel progetto.",
     "publication": {

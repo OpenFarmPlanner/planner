@@ -13,7 +13,6 @@ import { mergeVarietyFieldSx } from '../varietyValueAccent';
 
 interface Props {
   profile?: string;
-  variety?: string;
   values?: SpecificProperties;
   onChange: (values: SpecificProperties) => void;
   t: TFunction;
@@ -21,7 +20,7 @@ interface Props {
   getFieldPinProps?: GetLibraryFieldPinProps;
 }
 
-export function SpecificPropertiesSection({ profile, variety, values = {}, onChange, t, errors = {}, getFieldPinProps }: Props) {
+export function SpecificPropertiesSection({ profile, values = {}, onChange, t, errors = {}, getFieldPinProps }: Props) {
   const definitions = specificPropertyDefinitions(profile);
   const invalid = invalidSpecificPropertyKeys(profile, values);
   if (!Object.keys(definitions).length && !invalid.length) return null;
@@ -36,7 +35,6 @@ export function SpecificPropertiesSection({ profile, variety, values = {}, onCha
       <Typography variant="h6">{t('specificProperties.title')}</Typography>
       {getFieldPinProps?.('specific_properties')?.button}
     </Box>
-    <Typography variant="caption" color="text.secondary">{t(variety ? 'specificProperties.varietyValues' : 'specificProperties.cropValues')}</Typography>
     {invalid.length ? <Alert severity="warning" sx={{
       flexWrap: 'wrap',
       '& .MuiAlert-message': { minWidth: 0, flex: '1 1 180px' },

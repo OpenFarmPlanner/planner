@@ -239,7 +239,7 @@
     "seedTypeF1Hybrid": "Hybride F1",
     "seedTypeUnknown": "Inconnu",
     "rotationBreakYears": "Délai de retour (années)",
-    "rotationBreakYearsTooltip": "Années sans cette famille botanique sur la même planche. « Tous les 4 ans » correspond à un délai de retour de 3 ans.",
+    "rotationBreakYearsTooltip": "Années complètes sans cette famille botanique sur la même planche.",
     "rotationBreakYearsFamilyDefault_one": "Valeur par défaut pour {{family}} : {{count}} an.",
     "rotationBreakYearsFamilyDefault_other": "Valeur par défaut pour {{family}} : {{count}} ans.",
     "rotationBreakYearsFamilyDefault_many": "Valeur par défaut pour {{family}} : {{count}} ans.",
@@ -261,7 +261,6 @@
     "growthDurationDaysError": "La durée de culture doit être ≥ 0",
     "harvestDurationDays": "Durée de récolte (jours)",
     "harvestDurationDaysPlaceholder": "p. ex. 28",
-    "harvestDurationDaysHelp": "Temps entre le début et la fin de la récolte.",
     "harvestDurationDaysRequired": "La durée de récolte est obligatoire",
     "harvestDurationDaysError": "La durée de récolte doit être ≥ 0",
     "propagationDurationDays": "Durée en pépinière (jours)",
@@ -313,7 +312,7 @@
     "seedRateValueWholeNumberRequired": "Pour cette unité, la quantité doit être un nombre entier.",
     "thousandKernelWeightLabel": "Poids de mille grains (g)",
     "seedPackagesLabel": "Conditionnements chez le fournisseur",
-    "thousandKernelWeightHelp": "Poids de 1 000 graines en grammes. Nécessaire pour convertir entre graines et grammes.",
+    "thousandKernelWeightHelp": "Permet de convertir un nombre de graines en poids et inversement.",
     "fieldInfoAriaLabel": "Informations sur {{field}}",
     "thousandKernelWeightError": "Le poids de mille grains doit être > 0",
     "thousandKernelWeightInvalidNumber": "Veuillez saisir un nombre valide, p. ex. 3,9",
@@ -2048,7 +2047,7 @@
   },
   "timingWindows": {
     "sectionTitle": "Périodes",
-    "sectionHelp": "Quand la pépinière, le semis direct et la plantation ont lieu d’habitude, en décades ou en semaines. La planification signale les dates en dehors de ces périodes.",
+    "sectionHelp": "Les plans de culture signalent les dates en dehors de ces périodes.",
     "categoryHeadings": {
       "pre_cultivation": "Pépinière",
       "direct_sowing": "Semis direct",
@@ -2157,8 +2156,6 @@
     "pickerMonth": "Mois",
     "pickerDays": "Jours",
     "delay": "Années avant la première récolte",
-    "windowHelp": "Choisissez le mois et le jour dans le calendrier ou saisissez la date selon l’exemple du champ. Si la fin précède le début, la période se poursuit l’année suivante. Les années non bissextiles, le 29 février est ramené au 28 février.",
-    "delayHelp": "La récolte devient possible à la date anniversaire correspondante de la plantation. Avec 0 ou un champ vide, la date de plantation s’applique. Pour une variété, un champ vide hérite d’abord de la valeur de la culture. Les années non bissextiles, le 29 février est ramené au 28 février.",
     "invalidDate": "Saisissez une date valide selon l’exemple du champ.",
     "missingStart": "Indiquez la date de début de récolte.",
     "missingEnd": "Indiquez la date de fin de récolte.",
@@ -2201,7 +2198,7 @@
     },
     "legacyLifeCycleOption": "{{value}} (valeur existante)",
     "legacyLifeCycleHint": "Cette valeur enregistrée est conservée tant que vous ne choisissez pas un autre cycle de vie.",
-    "standingTimeHelp": "Durée habituelle de production de cette culture vivace. Elle sert à proposer une date de fin de culture.",
+    "standingTimeHelp": "Détermine la date de fin de culture proposée.",
     "standingTimeRequired": "Saisissez un nombre entier supérieur ou égal à 1."
   },
   "taskTemplates": {
@@ -2375,7 +2372,7 @@
     "validation": "Saisissez des noms individuels de 200 caractères maximum chacun.",
     "unspecified": "Non renseigné / hériter de la culture",
     "emptySelection": "Sélection personnelle explicitement vide",
-    "officialHelper": "Sélectionnez des entrées du catalogue. Vos propres noms restent dans le projet et ne sont pas publiés.",
+    "officialHelper": "Seules les entrées du catalogue peuvent être partagées.",
     "officialSearchError": "Les suggestions du catalogue n’ont pas pu être chargées. Réessayez.",
     "publishSkipped": "Entrées non publiées : {{number}}. Elles restent dans le projet.",
     "publication": {
