@@ -24,6 +24,8 @@ from farm.models import (
     Feedback,
     Field,
     FieldLayout,
+    HarvestAllocation,
+    HarvestRecord,
     Location,
     NoteAttachment,
     PlantingPlan,
@@ -1533,6 +1535,27 @@ class PlatformActivityTests(TestCase):
         self.assertEqual((changes.created, changes.updated, changes.deleted, changes.restored),
                          (0, 1, 0, 0))
         self.assertEqual(ProjectActiveUserDay.objects.get(project=self.project).user, self.user)
+
+    def test_deleting_a_harvest_counts_each_cascaded_allocation_once(self) -> None:
+        crop = Crop.objects.create(project=self.project, name='Harvested crop')
+        day = self.now.date()
+        harvest = HarvestRecord.objects.create(
+            project=self.project, crop=crop, date=day, quantity=5, unit='kg',
+        )
+        for offset in (1, 2):
+            plan = PlantingPlan.objects.create(
+                project=self.project, crop=crop, planting_date=day - timedelta(days=offset),
+            )
+            HarvestAllocation.objects.create(
+                project=self.project, planting_plan=plan, harvest=harvest, quantity=2,
+            )
+
+        url = f'/openfarmplanner/api/harvests/{harvest.pk}/'
+        self.assertEqual(self.client.delete(url, **self.headers).status_code, 204)
+        self.assertEqual(self.client.delete(url, **self.headers).status_code, 404)
+        self.assertFalse(HarvestAllocation.objects.filter(harvest=harvest).exists())
+        changes = ProjectChangeDay.objects.get(project=self.project, category='harvest')
+        self.assertEqual(changes.deleted, 3)
 
     def test_rolled_back_savepoints_and_background_operations_leave_no_signals(self) -> None:
         def synthetic_view(request: HttpRequest) -> HttpResponse:
