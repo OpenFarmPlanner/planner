@@ -64,7 +64,25 @@ function filePattern(file) {
   return `(^|/)${file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`;
 }
 
-function main(value) {
+function verifyDiscovery(files, profile) {
+  const discovered = new Set(files.filter(group => group.tests.length).map(group => group.file));
+  const profiled = Object.keys(profile.files);
+  if (discovered.size !== profiled.length || profiled.some(file => !discovered.has(file))) {
+    throw new Error('Full Playwright discovery differs from the suite file inventory.');
+  }
+}
+
+function verifyResults(selected, total, report) {
+  const expected = new Set(selected.files.flatMap(file => file.tests));
+  const passed = new Set(report.tests.map(test => `${test.id}:${test.project}`));
+  if (report.status !== 'passed' || report.partition !== `${selected.index}/${total}`
+    || !expected.size || report.tests.length !== expected.size || passed.size !== expected.size
+    || report.tests.some(test => test.status !== 'passed') || [...expected].some(id => !passed.has(id))) {
+    throw new Error('Full partition did not pass every discovered test exactly once.');
+  }
+}
+
+function main(value, verifyFull) {
   const { current, total } = parseShard(value);
   const frontend = path.resolve(__dirname, '../../frontend');
   const cli = path.join(frontend, 'node_modules/@playwright/test/cli.js');
@@ -77,6 +95,7 @@ function main(value) {
   }
   const files = discoverFiles(JSON.parse(listing.stdout), frontend);
   const profile = JSON.parse(fs.readFileSync(path.join(__dirname, 'e2e_timings.json'), 'utf8'));
+  if (verifyFull) verifyDiscovery(files, profile);
   const shards = partition(files, profile, total);
   const selected = shards[current - 1];
   console.log('E2E_PARTITION ' + JSON.stringify({
@@ -85,21 +104,30 @@ function main(value) {
     files: selected.files.map(file => file.file).sort(),
   }));
   // File filters preserve all project variants and serial ordering inside each file.
-  const result = spawnSync(process.execPath, [cli, 'test', ...selected.files.map(file => filePattern(file.file))], {
+  const timingPath = path.join(frontend, 'test-results/e2e-timings.json');
+  if (verifyFull) fs.rmSync(timingPath, { force: true });
+  const options = verifyFull ? ['--forbid-only'] : [];
+  const result = spawnSync(process.execPath, [cli, 'test', ...options, ...selected.files.map(file => filePattern(file.file))], {
     cwd: frontend, stdio: 'inherit',
-    env: { ...process.env, E2E_PARTITION: `${current}/${total}` },
+    env: { ...process.env, ...(verifyFull && { E2E_TIMINGS: '1' }), E2E_PARTITION: `${current}/${total}` },
   });
   if (result.error) console.error(result.error.message);
+  if (verifyFull && result.status === 0) {
+    verifyResults(selected, total, JSON.parse(fs.readFileSync(timingPath, 'utf8')));
+  }
   return result.status ?? 1;
 }
 
 if (require.main === module) {
   try {
-    if (process.argv.length !== 3) throw new Error('Usage: node scripts/ci/run_e2e_shard.cjs INDEX/TOTAL');
-    process.exitCode = main(process.argv[2]);
+    const verifyFull = process.argv.length === 4 && process.argv[3] === '--verify-full';
+    if (process.argv.length !== 3 && !verifyFull) {
+      throw new Error('Usage: node scripts/ci/run_e2e_shard.cjs INDEX/TOTAL [--verify-full]');
+    }
+    process.exitCode = main(process.argv[2], verifyFull);
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;
   }
 }
-module.exports = { parseShard, discoverFiles, partition, filePattern };
+module.exports = { parseShard, discoverFiles, partition, filePattern, verifyDiscovery, verifyResults };
