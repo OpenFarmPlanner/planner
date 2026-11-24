@@ -88,7 +88,16 @@ python3 -m unittest discover -s tests -p test_release_pr.py
 
 ## Full browser regression evidence
 
-From a release tag containing the full workflow, dispatch `release-e2e.yml` at
+From the planner checkout, run `make release-e2e` to start the full browser
+checks for the current tip of main on GitHub. The command looks up main and
+its release tags remotely, so your checked-out branch can stay as it is. If
+several release tags point to that commit, it uses the highest version.
+If main has no exact `vX.Y.Z` tag, it stops before dispatch. Check the **Release**
+workflow and its version PR, then retry after publication. The command prints
+the selected tag, commit and workflow link. It requires an authenticated
+`gh` CLI with workflow dispatch permission.
+
+To select a specific release instead, from a tag containing the workflow, dispatch `release-e2e.yml` at
 the tag. Wait for **Full release E2E result** and compare the run's head SHA
 with the local tag's peeled commit before using it as production evidence.
 Production preflight checks the newest manual dispatch for the exact local
