@@ -2,6 +2,7 @@ from datetime import date
 from decimal import Decimal
 from uuid import UUID, uuid4
 
+from crops.models import CropSpecies
 from farm.models import Bed, Crop, Field, Location, PlantingPlan, Project, Season
 from farm.services.harvests import eligible_harvest_plans
 from farm.services.parcel_rotation_copy import preview_parcel_rotation
@@ -10,6 +11,7 @@ from farm.services.seed_demand import compute_plan_requirement
 from farm.tests.api_base import ProjectApiTestCase
 
 URL = '/openfarmplanner/api/planting-plans/'
+CROP_URL = '/openfarmplanner/api/crops/'
 BOUGHT_IN = PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT
 
 
@@ -141,6 +143,56 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         detail = self.client.get(f"{URL}{orchard['id']}/").json()
         self.assertEqual(detail['field_name'], self.field.name)
         self.assertEqual(detail['location_name'], self.location.name)
+
+    def test_plot_suitability_uses_parcel_conditions_and_inherits_from_location(self):
+        self.apple.light_requirement, self.apple.water_requirement = ['full_sun'], 'high'
+        self.apple.save()
+        self.field.light_condition, self.field.soil_moisture = 'shade', 'dry'
+        self.field.save()
+        self.location.irrigation = 'unavailable'
+        self.location.save()
+
+        created = self.create_plan().json()
+        detail = self.client.get(f"{URL}{created['id']}/").json()
+        [listed] = self.client.get(URL, {'individual_location': self.location.pk}).json()['results']
+        light, water = detail['site_suitability_findings']
+        self.assertEqual((light['code'], light['light']['source']), ('light_mismatch', 'field'))
+        self.assertEqual((water['code'], water['irrigation']['source']), ('water_mismatch', 'location'))
+        self.assertEqual(water['soil_moisture']['source'], 'field')
+        self.assertEqual(detail['site_suitability_findings'], listed['site_suitability_findings'])
+
+    def test_crop_cannot_become_annual_while_used_by_an_individual_plan(self):
+        created = self.create_plan().json()
+        response = self.client.patch(f'{CROP_URL}{self.apple.pk}/', {'life_cycle': 'annual'}, format='json')
+        self.assertEqual(response.status_code, 409, response.data)
+        self.assertEqual(response.data['code'], 'individual_plant_lifecycle_conflict')
+        self.apple.refresh_from_db()
+        self.assertEqual(self.apple.life_cycle, 'perennial')
+        detail = self.client.get(f"{URL}{created['id']}/").json()
+        self.assertEqual(detail['individual_positions'], created['individual_positions'])
+        self.assertEqual(detail['clearing_date'], created['clearing_date'])
+        self.assertTrue(eligible_harvest_plans(self.project.id, self.apple.id, date(2027, 8, 29)).exists())
+
+    def test_general_crop_edit_respects_the_effective_lifecycle_of_used_varieties(self):
+        species = CropSpecies.objects.create(name='Orchard apple')
+        self.apple.crop_species = species
+        self.apple.save()
+        variety = Crop.objects.create(
+            project=self.project, name=self.apple.name, crop_species=species, variety='Topaz',
+        )
+        self.create_plan(crop=variety.pk)
+
+        url = f'{CROP_URL}{self.apple.pk}/'
+        result = self.client.patch(url, {'life_cycle': 'annual'}, format='json')
+        self.assertEqual(result.status_code, 409, result.data)
+        own_perennial = self.client.patch(f'{CROP_URL}{variety.pk}/', {
+            'life_cycle': 'perennial', 'standing_time_years': 10,
+        }, format='json')
+        self.assertEqual(own_perennial.status_code, 200, own_perennial.data)
+        allowed = self.client.patch(url, {'life_cycle': 'annual'}, format='json')
+        self.assertEqual(allowed.status_code, 200, allowed.data)
+        no_override = self.client.patch(f'{CROP_URL}{variety.pk}/', {'life_cycle': ''}, format='json')
+        self.assertEqual(no_override.status_code, 409, no_override.data)
 
     def test_carryover_is_the_same_planting_and_can_be_edited_in_the_visible_season(self):
         created = self.create_plan().json()

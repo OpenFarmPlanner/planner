@@ -279,6 +279,7 @@
   "siteSuitability": {
     "title": "Standortbedingungen",
     "lightMismatch": "Die Kultur eignet sich für {{crop}}. Für das Beet ist {{bed}} eingetragen.",
+    "parcelLightMismatch": "Die Kultur eignet sich für {{crop}}. Für die Parzelle ist {{bed}} eingetragen.",
     "waterMismatch": "Die Kultur hat einen hohen Wasserbedarf. Der Boden ist als {{moisture}} erfasst und die Bewässerung als {{irrigation}}."
   },
   "rotation": {

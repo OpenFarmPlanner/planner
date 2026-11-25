@@ -936,7 +936,6 @@ class Crop(TimestampedModel):
         previous = None
         if self.pk:
             previous = Crop.all_objects.filter(pk=self.pk).values().first()
-        previous_windows = self.timing_window_snapshot() if previous else []
 
         self.light_requirement = normalize_crop_light(self.light_requirement)
         germination_changes = sync_germination_requirements(self, previous, kwargs.get('update_fields'))
@@ -957,9 +956,21 @@ class Crop(TimestampedModel):
         self.name_normalized = normalize_text(self.name) or ''
         self.variety_normalized = normalize_text(self.variety)
 
+        lifecycle_fields = {'life_cycle', 'crop_species_id', 'variety_normalized'}
+        if previous and any(previous[field] != getattr(self, field) for field in lifecycle_fields):
+            from farm.services.crop_inheritance import lock_crop_project
+
+            lock_crop_project(self.project_id)
+            previous = Crop.all_objects.filter(pk=self.pk).values().get()
+
+        previous_windows = self.timing_window_snapshot() if previous else []
         super().save(*args, **kwargs)
 
         current = Crop.all_objects.filter(pk=self.pk).values().first() or {}
+        if previous and any(previous[field] != current[field] for field in lifecycle_fields):
+            from farm.services.crop_inheritance import validate_individual_plan_lifecycles
+
+            validate_individual_plan_lifecycles(previous, current)
         current['timing_windows'] = self._save_pending_timing_windows(previous_windows)
         if previous:
             previous['timing_windows'] = previous_windows

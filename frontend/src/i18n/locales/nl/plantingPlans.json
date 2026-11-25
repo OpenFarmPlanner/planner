@@ -279,6 +279,7 @@
   "siteSuitability": {
     "title": "Geschiktheid van de standplaats",
     "lightMismatch": "Het gewas is geschikt voor {{crop}}. Het licht op het bed staat geregistreerd als {{bed}}.",
+    "parcelLightMismatch": "Het gewas is geschikt voor {{crop}}. Voor het perceel is {{bed}} opgegeven.",
     "waterMismatch": "Het gewas heeft veel water nodig. Het bodemvocht staat geregistreerd als {{moisture}} en irrigatie als {{irrigation}}."
   },
   "rotation": {

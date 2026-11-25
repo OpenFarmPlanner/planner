@@ -286,6 +286,7 @@
   "siteSuitability": {
     "title": "Conditions de culture",
     "lightMismatch": "La culture convient à {{crop}}. L’exposition de la planche est indiquée comme {{bed}}.",
+    "parcelLightMismatch": "Cette culture est adaptée à {{crop}}. La parcelle est renseignée comme {{bed}}.",
     "waterMismatch": "La culture a des besoins élevés en eau. Le sol est indiqué comme {{moisture}} et l’irrigation comme {{irrigation}}."
   },
   "rotation": {

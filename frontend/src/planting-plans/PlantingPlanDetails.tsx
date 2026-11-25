@@ -14,6 +14,7 @@ import { DetailPageActions } from '../components/layout/DetailPageActions';
 import { DetailSection } from '../components/layout/DetailPrimitives';
 import { detailHeaderRowSx, detailHeaderTitleColumnSx, detailHeaderTitleTextSx } from '../components/layout/detailHeaderStyles';
 import LoadRetryButton from '../components/LoadRetryButton';
+import { SiteSuitabilityHints } from '../components/planting-plans/rotation/SiteSuitabilityHints';
 import ProjectRequiredState from '../components/project/ProjectRequiredState';
 import { formatCropDisplayName } from '../crops/cropDisplay';
 import { HarvestRecords } from '../harvests/HarvestRecords';
@@ -274,6 +275,7 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
                     count: loadedPlan.plants_count ?? 0,
                     formatted: formatLocalizedNumber(loadedPlan.plants_count ?? 0, locale),
                   })}</Typography>
+                  <SiteSuitabilityHints findings={loadedPlan.site_suitability_findings} scope="field" />
                   <Button component={RouterLink}
                     to={individualPlantGraphicPath(loadedPlan.id, loadedPlan.parcel_location_id)}>
                     {t('fields:individualPlants.openGraphic')}

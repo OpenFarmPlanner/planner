@@ -2198,7 +2198,8 @@
     "legacyLifeCycleOption": "{{value}} (valore esistente)",
     "legacyLifeCycleHint": "Questo valore salvato viene mantenuto se non scegli un altro ciclo di vita.",
     "standingTimeHelp": "Determina la data di fine coltivazione suggerita.",
-    "standingTimeRequired": "Inserisci un numero intero maggiore o uguale a 1."
+    "standingTimeRequired": "Inserisci un numero intero maggiore o uguale a 1.",
+    "individualPlantLifecycleConflict": "Le colture con piani di piante singole devono rimanere perenni."
   },
   "taskTemplates": {
     "title": "Modelli di attività",

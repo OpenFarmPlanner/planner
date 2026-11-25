@@ -2136,7 +2136,8 @@
     "legacyLifeCycleOption": "{{value}} (existing value)",
     "legacyLifeCycleHint": "This saved value is kept unless you choose a different life cycle.",
     "standingTimeHelp": "Determines the suggested clearing date.",
-    "standingTimeRequired": "Enter a whole number of at least 1."
+    "standingTimeRequired": "Enter a whole number of at least 1.",
+    "individualPlantLifecycleConflict": "Crops used by individual plant plans must stay perennial."
   },
   "taskTemplates": {
     "title": "Task templates",

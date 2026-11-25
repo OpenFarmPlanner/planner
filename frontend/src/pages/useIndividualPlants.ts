@@ -90,7 +90,7 @@ export function useIndividualPlants(
 
   const select = (planId: number | null, parcel: number | null, selectedKey: string | null = null) => {
     update(value => value.draft
-      ? (value.draft.planId === planId ? { selectedKey } : {})
+      ? ((value.draft.planId ?? null) === planId ? { selectedKey } : {})
       : { open: true, planId, parcel, selectedKey });
   };
 

@@ -230,6 +230,14 @@ class CropVarietyConflict(GeneralCropIdentityConflict):
     default_detail = 'A crop with this name and variety already exists.'
 
 
+class IndividualPlantLifecycleConflict(APIException):
+    status_code = 409
+    default_detail = {
+        'code': 'individual_plant_lifecycle_conflict',
+        'detail': 'Crops used by individual plant plans must stay perennial.',
+    }
+
+
 def raise_crop_identity_conflict(exc: IntegrityError) -> None:
     constraint = getattr(getattr(exc.__cause__, 'diag', None), 'constraint_name', None)
     message = str(exc)
@@ -719,6 +727,25 @@ def resolve_crop_field(
     if force_inherit:
         return None if is_unset_crop_value(general_value) else general_value
     return own_value if is_unset_crop_value(general_value) else general_value
+
+
+def validate_individual_plan_lifecycles(previous: dict, current: dict) -> None:
+    """Keep a crop edit from invalidating plans that use its effective life cycle."""
+    project_id = current['project_id']
+    general_species = {
+        row['crop_species_id'] for row in (previous, current)
+        if row['crop_species_id'] and not row['variety_normalized']
+    }
+    affected = Crop.objects.filter(
+        Q(pk=current['id']) | Q(crop_species_id__in=general_species, life_cycle=''),
+        project_id=project_id, planting_plans__project_id=project_id,
+        planting_plans__parcel__isnull=False,
+    ).distinct()
+    crops = list(affected)
+    if crops:
+        index = build_general_crop_index(project_id)
+        if any(resolve_crop_field(crop, 'life_cycle', index) != 'perennial' for crop in crops):
+            raise IndividualPlantLifecycleConflict()
 
 
 def plan_cultivation_type(

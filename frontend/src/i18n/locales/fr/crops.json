@@ -2199,7 +2199,8 @@
     "legacyLifeCycleOption": "{{value}} (valeur existante)",
     "legacyLifeCycleHint": "Cette valeur enregistrée est conservée tant que vous ne choisissez pas un autre cycle de vie.",
     "standingTimeHelp": "Détermine la date de fin de culture proposée.",
-    "standingTimeRequired": "Saisissez un nombre entier supérieur ou égal à 1."
+    "standingTimeRequired": "Saisissez un nombre entier supérieur ou égal à 1.",
+    "individualPlantLifecycleConflict": "Les cultures associées à des plans de plantes individuelles doivent rester vivaces."
   },
   "taskTemplates": {
     "title": "Modèles de tâches",

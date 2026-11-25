@@ -42,7 +42,7 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   await loginWithDeterministicProject(page, request, 'individual-plants-desktop', { loginAsAdmin: true });
   const { results: [location] } = await apiRequest<{ results: { id: number }[] }>(page, 'GET', '/locations/');
   const plot = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
-    location: location.id, name: 'Obstparzelle', width_m: 14, length_m: 20,
+    location: location.id, name: 'Obstparzelle', width_m: 14, length_m: 20, light_condition: 'shade',
   });
   const adjacentBed = await apiRequest<{ id: number }>(page, 'POST', '/beds/', {
     field: plot.id, name: 'Gemüsebeet', width_m: 1.2, length_m: 6,
@@ -51,7 +51,7 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   await apiRequest(page, 'POST', '/crops/', {
     name: 'Apfel', life_cycle: 'perennial', standing_time_years: 15,
     distance_within_row_cm: 400, estimated_canopy_diameter_m: 3.8,
-    cultivation_types: ['pre_cultivation'],
+    cultivation_types: ['pre_cultivation'], light_requirement: ['full_sun'],
   });
 
   await page.goto('/app/fields-beds');
@@ -74,8 +74,14 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   }
   await expect(panel.getByText(/kleinste Stammabstand beträgt 3,4 m/)).toBeVisible();
   await expect(panel.getByText('2 Einzelpflanzen', { exact: true })).toBeVisible();
+  const draftStem = await shape(page, 'individual-stem-new-0');
+  expect(draftStem).not.toBeNull();
+  const firstStem = draftStem!.screen;
+  await page.mouse.click(firstStem.x + firstStem.width / 2, firstStem.y + firstStem.height / 2);
+  await expect(panel.getByRole('combobox', { name: 'Stammposition' })).toContainText(/^Stamm 1 ·/);
   await panel.getByRole('button', { name: 'Speichern', exact: true }).click();
   await expect(panel.getByRole('button', { name: 'Positionen bearbeiten' })).toBeVisible();
+  await expect(panel.getByTestId('site-suitability-hints')).toContainText('Für die Parzelle');
   const [created] = await individualPlans(page, location.id);
   expect(created).toMatchObject({ parcel: plot.id, bed: null, plants_count: 2 });
   const [first, second] = created.individual_positions;
@@ -105,6 +111,7 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   const details = panel.getByRole('link', { name: 'Zum Anbauplan' });
   await details.click();
   await expect(page).toHaveURL(new RegExp(`/planting-plans/${saved.id}$`));
+  await expect(page.getByTestId('site-suitability-hints')).toContainText('Für die Parzelle');
   await page.getByRole('link', { name: 'In der Grafik öffnen' }).click();
   await expect(page).toHaveURL(new RegExp(`individualPlan=${saved.id}`));
   await expect(panel.getByText('1 Einzelpflanze', { exact: true })).toBeVisible();

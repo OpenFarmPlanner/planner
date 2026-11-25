@@ -8,14 +8,17 @@ import {
   type SiteConditionChoiceField,
 } from '../../hierarchy/siteConditionLabels';
 
-export function SiteSuitabilityHints({ findings }: { findings?: SiteSuitabilityFinding[] }) {
+export function SiteSuitabilityHints({ findings, scope = 'bed' }: {
+  findings?: SiteSuitabilityFinding[];
+  scope?: 'bed' | 'field';
+}) {
   const { t } = useTranslation(['plantingPlans', 'crops', 'hierarchy']);
   const { t: cropT } = useTranslation('crops');
   if (!findings?.length) return null;
 
   const conditionLabel = (field: SiteConditionChoiceField, condition: EffectiveSiteCondition) => {
     const value = getSiteConditionValueLabel(t, field, condition.value);
-    const source = getInheritedSourceLabel(t, condition, 'bed');
+    const source = getInheritedSourceLabel(t, condition, scope);
     return source ? `${value} (${source})` : value;
   };
 
@@ -26,7 +29,7 @@ export function SiteSuitabilityHints({ findings }: { findings?: SiteSuitabilityF
         {findings.map((finding) => (
           <Typography key={finding.code} variant="body2">
             {finding.code === 'light_mismatch'
-              ? t('siteSuitability.lightMismatch', {
+              ? t(scope === 'field' ? 'siteSuitability.parcelLightMismatch' : 'siteSuitability.lightMismatch', {
                 crop: formatSiteHealthValue('light_requirement', finding.crop_light, cropT),
                 bed: conditionLabel('light_condition', finding.light),
               })

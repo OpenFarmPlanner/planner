@@ -173,6 +173,19 @@ describe('extractApiErrorMessage', () => {
     },
   );
 
+  it.each(['de', 'en', 'fr', 'es', 'it', 'pt', 'nl'])(
+    'localizes the individual-plant lifecycle conflict in %s', async (language) => {
+      await loadLanguages([language]);
+      const t = i18n.getFixedT(language, 'common');
+      const key = 'siteHealth.individualPlantLifecycleConflict';
+      const expected = i18n.getFixedT(language, 'crops')(key);
+      expect(expected).not.toBe(key);
+      expect(extractApiErrorMessage(createAxiosError(409, {
+        code: 'individual_plant_lifecycle_conflict',
+      }), t, fallbackMessage)).toBe(expected);
+    },
+  );
+
   it('maps duplicate supplier-data backend codes to localized text', () => {
     const t = createT({
       'fields.supplier_id': 'Lieferant',

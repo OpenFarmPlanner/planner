@@ -2198,7 +2198,8 @@
     "legacyLifeCycleOption": "{{value}} (valor existente)",
     "legacyLifeCycleHint": "Este valor guardado é mantido, exceto se escolher outro ciclo de vida.",
     "standingTimeHelp": "Determina a data de fim da cultura sugerida.",
-    "standingTimeRequired": "Introduza um número inteiro igual ou superior a 1."
+    "standingTimeRequired": "Introduza um número inteiro igual ou superior a 1.",
+    "individualPlantLifecycleConflict": "As culturas com planos de plantas individuais têm de continuar a ser perenes."
   },
   "taskTemplates": {
     "title": "Modelos de tarefas",

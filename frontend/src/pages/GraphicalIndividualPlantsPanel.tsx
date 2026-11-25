@@ -8,6 +8,7 @@ import { cropAPI } from '../api/api';
 import type { Crop, Field, PlantingPlan, PlanCultivationType, Season, StemCoordinates } from '../api/types';
 import { LocalizedDecimalField } from '../components/inputs/LocalizedDecimalField';
 import LoadRetryButton from '../components/LoadRetryButton';
+import { SiteSuitabilityHints } from '../components/planting-plans/rotation/SiteSuitabilityHints';
 import { formatCropDisplayName } from '../crops/cropDisplay';
 import { getEffectiveCropValue } from '../crops/varietyValueSource';
 import { useTranslation } from '../i18n';
@@ -212,6 +213,7 @@ export function GraphicalIndividualPlantsPanel({
             }} onInvalidValue={() => setInvalidCanopy(true)} />
         )}
         {(plan || draft) && <>
+          <SiteSuitabilityHints findings={plan?.site_suitability_findings} scope="field" />
           <Typography role="status" variant="body2">
             {t('fields:individualPlants.count', { count: stems.length, formatted: number(stems.length, 0) })}
           </Typography>

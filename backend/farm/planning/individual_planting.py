@@ -8,7 +8,7 @@ from rest_framework.exceptions import APIException
 
 from farm.common.serializer_fields import _resolve_active_project_from_serializer
 from farm.models import Crop, Field, PlantingPlan
-from farm.services.crop_inheritance import get_general_crop, resolve_crop_field
+from farm.services.crop_inheritance import get_general_crop, lock_crop_project, resolve_crop_field
 
 MAX_INDIVIDUAL_POSITIONS = 1000
 
@@ -76,6 +76,15 @@ def _normalize_positions(positions, existing, parcel):
 def _require_perennial(crop: Crop) -> None:
     if resolve_crop_field(crop, 'life_cycle') != 'perennial':
         raise serializers.ValidationError({'crop': 'Choose a perennial crop.'})
+
+
+def lock_and_check_individual_crop(crop: Crop) -> None:
+    # The project lock also covers updates to a linked variety's general crop.
+    lock_crop_project(crop.project_id)
+    current = Crop.objects.filter(pk=crop.pk, project_id=crop.project_id).first()
+    if current is None:
+        raise serializers.ValidationError({'crop': 'Choose an active perennial crop.'})
+    _require_perennial(current)
 
 
 def _validate_arrangement(attrs: dict, plan: PlantingPlan | None) -> Crop:

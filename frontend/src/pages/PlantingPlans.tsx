@@ -2561,7 +2561,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               )}
               renderDetails={(item) => (
                 <Stack spacing={0.75}>
-                  <SiteSuitabilityHints findings={item.site_suitability_findings} />
+                  <SiteSuitabilityHints findings={item.site_suitability_findings} scope={item.parcel ? 'field' : 'bed'} />
                   <GerminationInfo
                     {...item}
                     sowingDate={item.planned_sowing_date ?? getRowSowingSchedule(item)?.sowingDate}
