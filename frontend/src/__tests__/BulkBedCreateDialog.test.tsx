@@ -81,12 +81,12 @@ describe('BulkBedCreateDialog', () => {
     expect(onCreate.mock.calls[0][0].beds[15]).toEqual({ name: 'E 2 18', length_m: 20, width_m: 1 });
   });
 
-  it('switches the length with the orientation until the user edits it', () => {
+  it('keeps both initial and edited dimensions when changing orientation', () => {
     const { dialog } = renderDialog();
     const length = within(dialog).getByRole('textbox', { name: /dialogs.bulkCreateBeds.length/ });
 
     fireEvent.click(within(dialog).getByRole('radio', { name: 'dialogs.bulkCreateBeds.orientationWidth' }));
-    expect(length).toHaveValue('10');
+    expect(length).toHaveValue('20');
 
     setDecimal(dialog, /dialogs.bulkCreateBeds.length/, '7');
     fireEvent.click(within(dialog).getByRole('radio', { name: 'dialogs.bulkCreateBeds.orientationLength' }));

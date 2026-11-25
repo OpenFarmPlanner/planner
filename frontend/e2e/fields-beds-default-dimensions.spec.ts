@@ -61,7 +61,7 @@ test('desktop drafts use the configured side and preserve a cleared side and dup
   await page.getByRole('menuitem', { name: 'Mehrere Beete anlegen' }).click();
   const bulk = page.getByRole('dialog', { name: /Mehrere Beete anlegen in/ });
   await expect(bulk.getByRole('textbox', { name: 'Länge (m)' })).toHaveValue('10,12345678');
-  await expect(bulk.getByRole('textbox', { name: 'Breite (m)' })).toHaveValue('0,8');
+  await expect(bulk.getByRole('textbox', { name: 'Breite (m)', exact: true })).toHaveValue('0,8');
   await page.keyboard.press('Escape');
   await expect(bulk).toHaveCount(0);
 

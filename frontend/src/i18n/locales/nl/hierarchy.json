@@ -143,7 +143,11 @@
     "bulkCreateBeds": {
       "layoutGraphic_one": "Perceelindeling met {{count}} voorgesteld bed",
       "layoutGraphic_other": "Perceelindeling met {{count}} voorgestelde bedden",
-      "layoutLegend": "Grijs geeft bestaande bedden aan, blauw nieuwe bedden en rood bedden buiten het perceel.",
+      "legend": {
+        "existing": "Bestaande bedden",
+        "new": "Nieuwe bedden",
+        "outside": "Buiten het perceel"
+      },
       "layoutFits_one": "Bed dat in deze indeling past ({{count}})",
       "layoutFits_other": "Bedden die in deze indeling passen ({{count}})",
       "occupiedAndRemaining": "Oppervlakte van bedden {{occupied}} m² · Vrije grondoppervlakte {{remaining}} m²",
@@ -164,8 +168,7 @@
       "orientationWidth": "Bedden lopen in de breedterichting",
       "length": "Lengte (m)",
       "width": "Breedte (m)",
-      "pathWidth": "Pad (m)",
-      "pathHelper": "Ruimte tussen de bedden",
+      "pathWidth": "Padbreedte (m)",
       "countSection": "Aantal",
       "count": "Aantal bedden",
       "suggestion_one": "Met een pad van {{path}} m past {{count}} bed over {{side}} m.",

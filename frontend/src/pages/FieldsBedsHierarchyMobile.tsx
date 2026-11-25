@@ -37,6 +37,7 @@ import {
   GrowingAreaSearchEmptyState,
   GrowingAreaSearchToolbar,
 } from "../components/hierarchy/search/GrowingAreaSearchToolbar";
+import type { GraphicalRotation } from "./graphicalLayoutUtils";
 
 interface FieldsBedsHierarchyMobileProps {
   showTitle?: boolean;
@@ -47,6 +48,7 @@ interface FieldsBedsHierarchyMobileProps {
   /** Scopes the session-kept search and filters; null keeps them in memory only. */
   projectId?: number | null;
   bedDefaults?: BedDimensions;
+  graphicalRotations?: Readonly<Record<number, GraphicalRotation>>;
 }
 
 type SheetState =
@@ -61,6 +63,7 @@ function FieldsBedsHierarchyMobile({
   onPendingDeletionCountChange,
   projectId = null,
   bedDefaults,
+  graphicalRotations,
 }: FieldsBedsHierarchyMobileProps) {
   const { t } = useTranslation(["hierarchy", "common"]);
   const navigate = useNavigate();
@@ -378,6 +381,7 @@ function FieldsBedsHierarchyMobile({
           fieldBeds={getFieldBedsByName(bulkCreateField.id)}
           layoutBeds={beds}
           location={locations.find(location => location.id === bulkCreateField.location)}
+          rotation={graphicalRotations?.[bulkCreateField.location]}
           bedDefaults={bedDefaults}
           onClose={() => setBulkCreateFieldId(null)}
           onCreate={handleBulkCreateBeds}

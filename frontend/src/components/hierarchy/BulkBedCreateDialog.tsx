@@ -21,6 +21,7 @@ import {
 import { layoutAPI } from '../../api/api';
 import type { Bed, BedLayoutEntry, BulkBedCreatePayload, Field, Location } from '../../api/types';
 import { useTranslation } from '../../i18n';
+import { DEFAULT_GRAPHICAL_ROTATION, type GraphicalRotation } from '../../pages/graphicalLayoutUtils';
 import { compactFieldSx, formRowSx, mediumFieldSx } from '../forms/formLayout';
 import { LocalizedDecimalField } from '../inputs/LocalizedDecimalField';
 import { DisabledActionTooltip } from '../DisabledActionTooltip';
@@ -31,7 +32,6 @@ import { BulkBedLayoutPreview } from './BulkBedLayoutPreview';
 import { buildBulkBedPreview, getBulkBedPreviewContext } from './utils/bulkBedPreview';
 import { getLocationPathSpacing } from './utils/locationPathSpacing';
 import {
-  changeBulkBedOrientation,
   evaluateBulkBedForm,
   getBulkBedAreaOverflow,
   getInitialBulkBedFormValues,
@@ -52,6 +52,7 @@ interface BulkBedCreateDialogProps {
   fieldBeds: readonly Bed[];
   layoutBeds?: readonly Bed[];
   location?: Location;
+  rotation?: GraphicalRotation;
   bedDefaults?: BedDimensions;
   onClose: () => void;
   onCreate: (payload: BulkBedCreatePayload) => Promise<void>;
@@ -78,6 +79,7 @@ export function BulkBedCreateDialog({
   fieldBeds,
   layoutBeds = fieldBeds,
   location,
+  rotation = DEFAULT_GRAPHICAL_ROTATION,
   bedDefaults,
   onClose,
   onCreate,
@@ -93,7 +95,6 @@ export function BulkBedCreateDialog({
       field, fieldBeds, t('dialogs.bulkCreateBeds.defaultFirstName'), bedDefaults, recommendedGapM,
     ),
   );
-  const [keepLength, setKeepLength] = useState(() => bedDefaults?.length_m != null);
   const [submitError, setSubmitError] = useState('');
   const [serverTakenNames, setServerTakenNames] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -141,11 +142,6 @@ export function BulkBedCreateDialog({
     setValues((previous) => ({ ...previous, ...patch }));
     setSubmitError('');
     setServerTakenNames([]);
-  };
-
-  const handleOrientationChange = (orientation: BedOrientation): void => {
-    setValues((previous) => changeBulkBedOrientation(previous, field, orientation, keepLength));
-    setSubmitError('');
   };
 
   const describeError = (error: BulkBedFieldError | undefined): string | undefined => {
@@ -249,7 +245,7 @@ export function BulkBedCreateDialog({
                   row
                   aria-label={t('dialogs.bulkCreateBeds.orientation')}
                   value={values.orientation}
-                  onChange={(event) => handleOrientationChange(event.target.value as BedOrientation)}
+                  onChange={(event) => updateValues({ orientation: event.target.value as BedOrientation })}
                 >
                   <FormControlLabel
                     value="length"
@@ -278,10 +274,7 @@ export function BulkBedCreateDialog({
                   disabled={isSaving}
                   error={Boolean(plan.errors.lengthM)}
                   helperText={describeError(plan.errors.lengthM)}
-                  onValueChange={(lengthM) => {
-                    setKeepLength(true);
-                    updateValues({ lengthM });
-                  }}
+                  onValueChange={(lengthM) => updateValues({ lengthM })}
                   onInvalidValue={() => updateValues({ lengthM: Number.NaN })}
                 />
                 <LocalizedDecimalField
@@ -303,7 +296,7 @@ export function BulkBedCreateDialog({
                   formatOptions={bedDimensionInputFormat}
                   disabled={isSaving}
                   error={Boolean(plan.errors.pathM)}
-                  helperText={describeError(plan.errors.pathM) ?? t('dialogs.bulkCreateBeds.pathHelper')}
+                  helperText={describeError(plan.errors.pathM)}
                   onValueChange={(pathM) => updateValues({ pathM })}
                   onInvalidValue={() => updateValues({ pathM: Number.NaN })}
                 />
@@ -429,7 +422,9 @@ export function BulkBedCreateDialog({
                   })}
                 </Alert>
               ) : null}
-              {preview && plan.isComplete ? <BulkBedLayoutPreview preview={preview} formatNumber={formatNumber} /> : null}
+              {preview && plan.isComplete ? (
+                <BulkBedLayoutPreview preview={preview} rotation={rotation} formatNumber={formatNumber} />
+              ) : null}
               {locationId !== undefined && currentLayout === undefined ? (
                 <Typography variant="body2" role="status" sx={{ mt: 1 }}>
                   {t('dialogs.bulkCreateBeds.loadingLayout')}

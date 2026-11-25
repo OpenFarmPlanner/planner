@@ -1,22 +1,29 @@
 import { Alert, Box, Typography } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import { useId } from 'react';
 import { useTranslation } from '../../i18n';
-import { getBulkPreviewFrame, type buildBulkBedPreview } from './utils/bulkBedPreview';
+import { rotateRect, type GraphicalRotation } from '../../pages/graphicalLayoutUtils';
+import type { buildBulkBedPreview } from './utils/bulkBedPreview';
 import type { MetricRect } from './utils/growingAreaGeometry';
 
 type Preview = NonNullable<ReturnType<typeof buildBulkBedPreview>>;
 
-export function BulkBedLayoutPreview({ preview, formatNumber }: {
+export function BulkBedLayoutPreview({ preview, rotation, formatNumber }: {
   preview: Preview;
+  rotation: GraphicalRotation;
   formatNumber: (value: number) => string;
 }) {
   const { t } = useTranslation('hierarchy');
+  const { palette } = useTheme();
+  const legendId = useId();
   const { bounds, existing, beds, geometry, insideCount } = preview;
-  const frame = getBulkPreviewFrame(bounds, [...existing, ...beds]);
-  const offset = (rect: MetricRect) => ({
-    position: 'absolute',
-    left: `${(rect.x - frame.x) / frame.width * 100}%`, top: `${(rect.y - frame.y) / frame.height * 100}%`,
-    width: `${rect.width / frame.width * 100}%`, height: `${rect.height / frame.height * 100}%`,
-  } as const);
+  const project = (rect: MetricRect) => rotateRect(rect, bounds, rotation);
+  const frame = project(preview.frame);
+  const styles = {
+    existing: { fill: palette.action.disabled, stroke: palette.divider },
+    new: { fill: palette.info.light, stroke: palette.info.dark },
+    outside: { fill: palette.error.light, stroke: palette.error.dark, strokeDasharray: '3 2' },
+  };
   const names = new Map([...existing, ...beds].map(bed => [bed.id, bed.name]));
   const overlap = geometry.issues.find(issue => issue.kind === 'overlap' && issue.ids[0] < 0);
   const shortGap = geometry.issues.find(issue => issue.kind === 'shortGap' && issue.ids[0] < 0);
@@ -25,23 +32,41 @@ export function BulkBedLayoutPreview({ preview, formatNumber }: {
   const { footprintArea, remainingArea } = geometry.coverage;
   return (
     <Box sx={{ mt: 1.5 }}>
-      <Box role="img" aria-label={t('dialogs.bulkCreateBeds.layoutGraphic', { count: beds.length })} sx={{
-        position: 'relative', width: '100%', height: { xs: 155, sm: 195 }, bgcolor: 'action.hover',
+      <Box sx={{ width: '100%', height: { xs: 155, sm: 195 }, p: 0.75, bgcolor: 'action.hover' }}>
+        <Box component="svg" role="img"
+          aria-label={t('dialogs.bulkCreateBeds.layoutGraphic', { count: beds.length })}
+          aria-describedby={legendId}
+          viewBox={`${frame.x} ${frame.y} ${frame.width} ${frame.height}`}
+          preserveAspectRatio="xMidYMid meet"
+          sx={{ display: 'block', width: '100%', height: '100%', overflow: 'visible' }}>
+          <rect {...project(bounds)} vectorEffect="non-scaling-stroke" data-testid="bulk-bed-parcel"
+            fill={palette.background.paper} stroke={palette.text.secondary} />
+          {existing.map(bed => (
+            <rect key={bed.id} {...project(bed.rect)} {...styles.existing} vectorEffect="non-scaling-stroke">
+              <title>{bed.name}</title>
+            </rect>
+          ))}
+          {beds.map((bed, index) => (
+            <rect key={bed.id} {...project(bed.rect)} {...(index < insideCount ? styles.new : styles.outside)}
+              vectorEffect="non-scaling-stroke">
+              <title>{bed.name}</title>
+            </rect>
+          ))}
+        </Box>
+      </Box>
+      <Box component="ul" id={legendId} role="list" sx={{
+        m: 0, mt: 0.5, p: 0, listStyle: 'none', display: 'flex', flexWrap: 'wrap', rowGap: 0.25, columnGap: 1.5,
       }}>
-        <Box sx={{ ...offset(bounds), border: 1, borderColor: 'text.secondary', bgcolor: 'background.paper' }} />
-        {existing.map(bed => (
-          <Box key={bed.id} title={bed.name} sx={{ ...offset(bed.rect), bgcolor: 'action.disabled',
-            border: '1px solid', borderColor: 'divider' }} />
-        ))}
-        {beds.map((bed, index) => (
-          <Box key={bed.id} title={bed.name} sx={{ ...offset(bed.rect),
-            bgcolor: index < insideCount ? 'info.light' : 'error.light',
-            border: '1px solid', borderColor: index < insideCount ? 'info.dark' : 'error.dark' }} />
+        {(Object.keys(styles) as Array<keyof typeof styles>).map(kind => (
+          <Typography key={kind} component="li" variant="caption" color="text.secondary"
+            sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+            <Box component="span" aria-hidden sx={{ width: 12, height: 8, flexShrink: 0,
+              bgcolor: styles[kind].fill, border: `1px ${kind === 'outside' ? 'dashed' : 'solid'}`,
+              borderColor: styles[kind].stroke }} />
+            {t(`dialogs.bulkCreateBeds.legend.${kind}`)}
+          </Typography>
         ))}
       </Box>
-      <Typography variant="caption" color="text.secondary">
-        {t('dialogs.bulkCreateBeds.layoutLegend')}
-      </Typography>
       <Typography variant="body2" sx={{ mt: 1 }}>
         {footprintArea !== null && remainingArea !== null
           ? t('dialogs.bulkCreateBeds.occupiedAndRemaining', {

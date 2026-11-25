@@ -627,7 +627,12 @@ test('snaps real bed and parcel edges and permits closer placement with Shift or
   const findRect = async (id: string) => (await canvasRects(page, id)).find(rect => rect.id === id)!;
   const fieldId = `field-rect-${fields[1].id}`;
   const bedId = `bed-rect-${beds[1].id}`;
-  await expect.poll(async () => (await findRect(bedId))?.width).toBeCloseTo(18.6);
+  const surfaceId = `field-usable-area-${fields[0].id}`;
+  await expect.poll(async () => (await findRect(surfaceId))?.width ?? 0).toBeGreaterThan(0);
+  const bedSurface = await findRect(surfaceId);
+  const bedScale = bedSurface.width / 8;
+  expect(bedSurface.height / 10).toBeCloseTo(bedScale);
+  await expect.poll(async () => (await findRect(bedId))?.width).toBeCloseTo(1.2 * bedScale);
   const startDrag = async (id: string, targetX: number, heightFraction: number) => {
     const rect = await findRect(id);
     const { scale } = await activeCamera(page);
@@ -650,7 +655,7 @@ test('snaps real bed and parcel edges and permits closer placement with Shift or
   });
 
   const bedAnchor = await findRect(`bed-rect-${beds[0].id}`);
-  const bedTarget = bedAnchor.x + bedAnchor.width + (124 / 8) * 0.3;
+  const bedTarget = bedAnchor.x + bedAnchor.width + bedScale * 0.3;
   await startDrag(bedId, bedTarget + 4, 0.5);
   await expect.poll(async () => (await findRect(bedId)).x).toBeCloseTo(bedTarget);
   await expect.poll(guideLabels).toContain('30 cm');

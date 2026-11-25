@@ -444,8 +444,15 @@ describe("GraphicalFields", async () => {
     const body = saveByLocationMock.mock.calls.findLast(([, body]) => body.bed_layouts.length > 0)![1];
     const saved = body.bed_layouts[0];
     const quarterTurn = rotation === 90 || rotation === 270;
-    expect(saved.x).toBeCloseTo(100 + dx * (quarterTurn ? 340 / 316 : 1));
-    expect(saved.y).toBeCloseTo(100 + dy * (quarterTurn ? 676 / 700 : 1));
+    const surface = screen.getByTestId("field-usable-area-10");
+    const width = Number(surface.getAttribute("width"));
+    const height = Number(surface.getAttribute("height"));
+    expect(width / height).toBeCloseTo(quarterTurn ? 2 : 0.5);
+    const displayStoredWidth = quarterTurn ? height : width;
+    const displayStoredHeight = quarterTurn ? width : height;
+    // Persisted coordinates still use the original 340 × 676 layout surface.
+    expect(saved.x).toBeCloseTo(100 + dx * 340 / displayStoredWidth);
+    expect(saved.y).toBeCloseTo(100 + dy * 676 / displayStoredHeight);
   });
 
   it("shades the margin beds cannot use and leaves the usable area white, also in view mode", async () => {
@@ -462,14 +469,16 @@ describe("GraphicalFields", async () => {
     });
     const fieldBox = geometry(field);
     const area = getFieldUsableArea(fieldBox);
+    const surface = geometry(usable);
 
     expect(geometry(margin)).toEqual(fieldBox);
-    expect(geometry(usable)).toEqual({
+    expect(surface).toMatchObject({
       x: fieldBox.x + area.x,
       y: fieldBox.y + area.y,
-      width: area.width,
       height: area.height,
     });
+    expect(surface.width).toBeLessThan(area.width);
+    expect(surface.width / surface.height).toBeCloseTo(2);
     expect(margin).toHaveAttribute("fill", "#eeeeee");
     expect(usable).toHaveAttribute("fill", "#fff");
   });

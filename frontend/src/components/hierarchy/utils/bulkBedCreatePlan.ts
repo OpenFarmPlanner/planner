@@ -128,24 +128,6 @@ export function getInitialBulkBedFormValues(
   return suggestion && suggestion.count > 0 ? { ...values, count: String(suggestion.count) } : values;
 }
 
-/**
- * Switches the orientation. The length follows to the other field side
- * unless the user has typed their own length (`lengthEdited`).
- */
-export function changeBulkBedOrientation(
-  values: BulkBedFormValues,
-  field: Field | null,
-  orientation: BedOrientation,
-  lengthEdited: boolean,
-): BulkBedFormValues {
-  const fieldSide = getFieldSide(field, orientation);
-  return {
-    ...values,
-    orientation,
-    lengthM: !lengthEdited && fieldSide !== null ? fieldSide : values.lengthM,
-  };
-}
-
 const parseCount = (value: string): number | null | 'invalid' => {
   const trimmed = value.trim();
   if (trimmed === '') {

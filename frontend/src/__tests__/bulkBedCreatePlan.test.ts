@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Bed, Field } from '../api/types';
 import {
-  changeBulkBedOrientation,
   evaluateBulkBedForm,
   getBulkBedAreaOverflow,
   getInitialBulkBedFormValues,
@@ -93,18 +92,6 @@ describe('getInitialBulkBedFormValues', () => {
     const field = { ...FIELD, length_m: null, width_m: null };
     expect(getInitialBulkBedFormValues(field, [bed(1, 'A', { length_m: 15, width_m: 1 })], 'Beet 1'))
       .toMatchObject({ lengthM: 15, widthM: 1, count: '', firstName: 'A 2' });
-  });
-});
-
-describe('changeBulkBedOrientation', () => {
-  it('moves an untouched length to the other field side', () => {
-    expect(changeBulkBedOrientation({ ...baseValues, lengthM: 20 }, FIELD, 'width', false))
-      .toMatchObject({ orientation: 'width', lengthM: 10 });
-  });
-
-  it('keeps a length the user typed', () => {
-    expect(changeBulkBedOrientation({ ...baseValues, lengthM: 7 }, FIELD, 'width', true))
-      .toMatchObject({ orientation: 'width', lengthM: 7 });
   });
 });
 
