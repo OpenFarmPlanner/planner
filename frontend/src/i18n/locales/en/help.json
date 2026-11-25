@@ -286,6 +286,7 @@
       ],
       "symbolsTitle": "Icons and controls",
       "symbols": {
+        "moreTools": "Open more canvas tools. On narrow canvases, find pan and rotation here too.",
         "panArrows": "Move view up, left, right, or down",
         "zoomIn": "Zoom in",
         "zoomOut": "Zoom out",

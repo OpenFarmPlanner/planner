@@ -4,6 +4,10 @@ const MIN_STAGE_SIZE = 1;
 const MIN_USABLE_STAGE_HEIGHT = 96;
 const FALLBACK_GUTTER = 8;
 
+export function getGraphicalPortalContainer(): HTMLElement {
+  return document.fullscreenElement instanceof HTMLElement ? document.fullscreenElement : document.body;
+}
+
 export interface GraphicalStageSize {
   stageWidth: number;
   stageHeight: number;

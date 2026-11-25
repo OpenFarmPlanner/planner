@@ -6,6 +6,7 @@ import type { TFunction } from 'i18next';
 import { AppTooltip } from '../components/AppTooltip';
 import type { GeometryIssue } from '../components/hierarchy/utils/growingAreaGeometry';
 import { formatLocalizedNumber, getActiveFormattingLocale } from '../utils/numberLocalization';
+import { getGraphicalPortalContainer } from './useGraphicalStageSize';
 import type { analyzeGraphicalGeometry, GraphicalParcel } from './graphicalAreaGeometry';
 import type { Rect } from './graphicalLayoutUtils';
 
@@ -122,7 +123,8 @@ export function GraphicalGeometryWarnings({ t, parcels, analysis, outsideParcels
     <>
       <Box role="status" sx={visuallyHidden}>{available ? label : ''}</Box>
       {available || anchor ? (
-        <AppTooltip title={label} placement="left" disableInteractive>
+        <AppTooltip title={label} placement="left" disableInteractive
+          slotProps={{ popper: { container: getGraphicalPortalContainer } }}>
           <IconButton
             size="small"
             aria-label={label}
@@ -130,7 +132,7 @@ export function GraphicalGeometryWarnings({ t, parcels, analysis, outsideParcels
             aria-expanded={Boolean(anchor)}
             aria-controls={anchor ? id : undefined}
             onClick={event => setAnchor(event.currentTarget)}
-            sx={{ borderRadius: 0, p: 1.25 }}
+            sx={{ borderRadius: 0, width: 44, height: 44 }}
           >
             <Badge color="warning" badgeContent={count}>
               <RuleIcon fontSize="small" />
@@ -141,7 +143,7 @@ export function GraphicalGeometryWarnings({ t, parcels, analysis, outsideParcels
       <Popover
         open={Boolean(anchor)}
         anchorEl={anchor}
-        container={() => document.fullscreenElement instanceof HTMLElement ? document.fullscreenElement : document.body}
+        container={getGraphicalPortalContainer()}
         onClose={() => setAnchor(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
@@ -161,7 +163,7 @@ export function GraphicalGeometryWarnings({ t, parcels, analysis, outsideParcels
                   <Typography variant="body2">{warning.text}</Typography>
                   <Stack direction="row" sx={{ flexWrap: 'wrap' }}>
                     {warning.subjects.map((subject, index) => (
-                      <Button key={index} size="small" onClick={() => {
+                      <Button key={index} size="small" sx={{ minHeight: 44 }} onClick={() => {
                         focusArea(subject.rect);
                         setAnchor(null);
                       }} aria-label={t('fields:graphical.geometry.focus', { name: subject.name })}>
@@ -174,7 +176,7 @@ export function GraphicalGeometryWarnings({ t, parcels, analysis, outsideParcels
             </Stack>
           ) : null}
           {uncertainty.map(text => <Typography key={text} variant="body2" color="text.secondary">{text}</Typography>)}
-          <Button onClick={() => setAnchor(null)} sx={{ alignSelf: 'flex-end' }}>{t('common:actions.close')}</Button>
+          <Button onClick={() => setAnchor(null)} sx={{ alignSelf: 'flex-end', minHeight: 44 }}>{t('common:actions.close')}</Button>
         </Stack>
       </Popover>
     </>

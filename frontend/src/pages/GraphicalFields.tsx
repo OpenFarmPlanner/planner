@@ -3,24 +3,10 @@ import {
   Alert,
   Box,
   CircularProgress,
-  IconButton,
-  Paper,
   Stack,
   Typography,
   useTheme,
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import RemoveIcon from "@mui/icons-material/Remove";
-import FitScreenIcon from "@mui/icons-material/FitScreen";
-import RotateLeftIcon from "@mui/icons-material/RotateLeft";
-import RotateRightIcon from "@mui/icons-material/RotateRight";
-import FullscreenIcon from "@mui/icons-material/Fullscreen";
-import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
-import ParkOutlinedIcon from "@mui/icons-material/ParkOutlined";
-import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
-import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { Group, Layer, Rect, Stage, Text, type KonvaNodeEvents } from "react-konva";
 import type Konva from "konva";
 import { alpha } from "@mui/material/styles";
@@ -38,6 +24,7 @@ import { useTranslation } from "../i18n";
 import { GraphicalFieldDetailsDialog } from "./GraphicalFieldDetailsDialog";
 import { GraphicalFreeRectangles } from "./GraphicalFreeAreas";
 import { GraphicalBedTasksControl } from "./GraphicalBedTasksControl";
+import { GraphicalCanvasTools } from "./GraphicalCanvasTools";
 import { bedTaskColors, BED_TASK_SYMBOLS } from "./graphicalBedTaskStyle";
 import { bedTaskDateBounds, summarizeBedTasks } from "../components/tasks/bedTaskUrgency";
 import { useBedTasks } from "../components/tasks/useBedTasks";
@@ -99,9 +86,12 @@ import {
 import { useAreaDrag, type AreaDragOptions, type DragSnapping } from "./graphicalAreaDrag";
 import { useGraphicalStageSize } from "./useGraphicalStageSize";
 import { formatLocalizedNumber, getActiveFormattingLocale } from "../utils/numberLocalization";
-import { AppTooltip } from '../components/AppTooltip';
 import LoadRetryButton from '../components/LoadRetryButton';
 import { hasPendingFieldLayout, saveTrackedBedLayout, saveTrackedFieldLayout, waitForLocationLayoutSaves } from './graphicalLayoutRequests';
+
+const canvasPanOffsets = {
+  up: [0, PAN_STEP], down: [0, -PAN_STEP], left: [PAN_STEP, 0], right: [-PAN_STEP, 0],
+} as const;
 
 const BED_ACTIVATION_SLOP = 8;
 const BED_TASK_BADGE_WIDTH = 19;
@@ -184,6 +174,7 @@ export default function GraphicalFields({
   const [selectedElement, setSelectedElement] =
     useState<SelectedElement | null>(null);
   const stageRefs = useRef<Record<number, Konva.Stage | null>>({});
+  const canvasToolsRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const panSessionRef = useRef<Record<number, PanSession | null>>({});
   const pinchStateRef = useRef<
     Record<number, { distance: number; center: Point } | null>
@@ -802,7 +793,9 @@ export default function GraphicalFields({
   useEffect(() => {
     if (!layoutReady || layoutFailed) return;
     const handleKeyDown = (event: KeyboardEvent): void => {
-      if (isTypingInEditableElement(event.target instanceof Element ? event.target : document.activeElement) || effectiveActivePanLocationId === null) {
+      const target = event.target instanceof Element ? event.target : document.activeElement;
+      if (event.defaultPrevented || target?.closest('[role="menu"], [role="listbox"], [aria-modal="true"]')
+        || isTypingInEditableElement(target) || effectiveActivePanLocationId === null) {
         return;
       }
       const step = event.shiftKey ? PAN_FAST_STEP : PAN_STEP;
@@ -976,223 +969,34 @@ export default function GraphicalFields({
                         : undefined,
                   }}
                 >
-                  <Paper
-                    elevation={3}
-                    sx={{
-                      position: "absolute",
-                      top: 12,
-                      right: 12,
-                      zIndex: 2,
-                      borderRadius: 3,
-                      overflow: "hidden",
-                      maxHeight: "calc(100% - 24px)",
-                      overflowY: "auto",
-                      bgcolor: "background.paper",
+                  <GraphicalCanvasTools key={activeSeasonId ?? 'no-season'}
+                    width={stageWidth} height={stageHeight} fullscreen={fullscreenLocationId === locationId}
+                    onTriggerChange={button => { canvasToolsRefs.current[locationId] = button; }}
+                    onZoom={direction => handleZoom(locationId, direction === 1 ? ZOOM_STEP : 1 / ZOOM_STEP)}
+                    onFit={() => resetViewport(locationId)}
+                    onFullscreen={() => { void toggleFullscreen(locationId); }}
+                    onRotate={direction => handleRotate(locationId, direction)}
+                    onPan={direction => {
+                      const [dx, dy] = canvasPanOffsets[direction];
+                      handlePanByOffset(locationId, dx, dy);
                     }}
-                  >
-                    <Stack spacing={0} sx={{ alignItems: "stretch", }} >
-                      <GraphicalGeometryWarnings t={t} parcels={parcels} analysis={geometry}
-                        outsideParcels={fieldsOutsideBoundary} focusArea={focusArea} />
-                      {activeSeasonId !== undefined && <GraphicalBedTasksControl key={locationId}
-                        enabled={showBedTasks} onToggle={setShowBedTasks}
+                    warnings={<GraphicalGeometryWarnings t={t} parcels={parcels} analysis={geometry}
+                      outsideParcels={fieldsOutsideBoundary} focusArea={focusArea} />}
+                    bedTasks={activeSeasonId === undefined ? undefined : {
+                      active: showBedTasks,
+                      render: (anchor, close) => <GraphicalBedTasksControl key={locationId}
+                        anchor={anchor} onClose={close} enabled={showBedTasks} onToggle={setShowBedTasks}
                         beds={parcels.flatMap(({ field, layout }) => layout.bedRects.map(bed => ({
                           id: bed.id, name: bed.name, parcel: field.name,
                         })))}
                         summaries={taskSummaries} loading={bedTasks.loading} failed={bedTasks.failed}
-                        onRetry={bedTasks.refresh} onOpenBed={onOpenBed} />}
-                      {individualSeason && !locationIsEditable && fullscreenLocationId !== locationId && (
-                        <AppTooltip title={t("fields:individualPlants.title")}>
-                          <IconButton aria-label={t("fields:individualPlants.title")}
-                            aria-expanded={Boolean(showIndividualPanel)}
-                            color={showIndividualPanel ? "primary" : "default"}
-                            onClick={() => individualPlants.update({ open: !showIndividualPanel, placing: null })}>
-                            <ParkOutlinedIcon />
-                          </IconButton>
-                        </AppTooltip>
-                      )}
-                      <Stack direction={{ xs: "column", sm: "row" }} spacing={0}>
-                        {([-1, 1] as const).map(direction => (
-                          <AppTooltip disableInteractive key={direction} title={t(direction === -1 ? "fields:graphical.rotateLeft" : "fields:graphical.rotateRight")} placement="left">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleRotate(locationId, direction)}
-                              aria-label={t(direction === -1 ? "fields:graphical.rotateLeft" : "fields:graphical.rotateRight")}
-                              sx={{ borderRadius: 0, p: 1.25 }}
-                            >
-                              {direction === -1 ? <RotateLeftIcon fontSize="small" /> : <RotateRightIcon fontSize="small" />}
-                            </IconButton>
-                          </AppTooltip>
-                        ))}
-                      </Stack>
-                      <Box sx={{ display: { xs: "none", sm: "block" } }}>
-                        <Box sx={{ display: "flex", justifyContent: "center" }}>
-                          <AppTooltip disableInteractive title={t("fields:graphical.panUp")} placement="left">
-                            <IconButton
-                              size="small"
-                              onClick={() => handlePanByOffset(locationId, 0, PAN_STEP)}
-                              aria-label={t("fields:graphical.panUp")}
-                              sx={{ borderRadius: 0, p: 1.25 }}
-                            >
-                              <KeyboardArrowUpIcon fontSize="small" />
-                            </IconButton>
-                          </AppTooltip>
-                        </Box>
-                        <Stack direction="row" spacing={0}>
-                          <AppTooltip
-                            disableInteractive
-                            title={t("fields:graphical.panLeft")}
-                            placement="left"
-                          >
-                            <IconButton
-                              size="small"
-                              onClick={() =>
-                                handlePanByOffset(locationId, PAN_STEP, 0)
-                              }
-                              aria-label={t("fields:graphical.panLeft")}
-                              sx={{
-                                borderRadius: 0,
-                                p: 1.25,
-                                borderTop: "1px solid",
-                                borderColor: "divider",
-                                borderRight: "1px solid",
-                              }}
-                            >
-                              <KeyboardArrowLeftIcon fontSize="small" />
-                            </IconButton>
-                          </AppTooltip>
-                          <AppTooltip
-                            disableInteractive
-                            title={t("fields:graphical.panRight")}
-                            placement="left"
-                          >
-                            <IconButton
-                              size="small"
-                              onClick={() =>
-                                handlePanByOffset(locationId, -PAN_STEP, 0)
-                              }
-                              aria-label={t("fields:graphical.panRight")}
-                              sx={{
-                                borderRadius: 0,
-                                p: 1.25,
-                                borderTop: "1px solid",
-                                borderColor: "divider",
-                              }}
-                            >
-                              <KeyboardArrowRightIcon fontSize="small" />
-                            </IconButton>
-                          </AppTooltip>
-                        </Stack>
-                        <Box sx={{ display: "flex", justifyContent: "center" }}>
-                          <AppTooltip
-                            disableInteractive
-                            title={t("fields:graphical.panDown")}
-                            placement="left"
-                          >
-                            <IconButton
-                              size="small"
-                              onClick={() => handlePanByOffset(locationId, 0, -PAN_STEP)}
-                              aria-label={t("fields:graphical.panDown")}
-                              sx={{
-                                borderRadius: 0,
-                                p: 1.25,
-                                borderTop: "1px solid",
-                                borderColor: "divider",
-                              }}
-                            >
-                              <KeyboardArrowDownIcon fontSize="small" />
-                            </IconButton>
-                          </AppTooltip>
-                        </Box>
-                      </Box>
-                      <Stack direction={{ xs: "column", sm: "row" }} spacing={0}>
-                        <AppTooltip
-                          disableInteractive
-                          title={t("fields:graphical.zoomIn")}
-                          placement="left"
-                        >
-                          <IconButton
-                            size="small"
-                            onClick={() => handleZoom(locationId, ZOOM_STEP)}
-                            aria-label={t("fields:graphical.zoomIn")}
-                            sx={{ borderRadius: 0, p: 1.25 }}
-                          >
-                            <AddIcon fontSize="small" />
-                          </IconButton>
-                        </AppTooltip>
-                        <AppTooltip
-                          disableInteractive
-                          title={t("fields:graphical.zoomOut")}
-                          placement="left"
-                        >
-                          <IconButton
-                            size="small"
-                            onClick={() => handleZoom(locationId, 1 / ZOOM_STEP)}
-                            aria-label={t("fields:graphical.zoomOut")}
-                            sx={{
-                              borderRadius: 0,
-                              p: 1.25,
-                              borderTop: "1px solid",
-                              borderColor: "divider",
-                            }}
-                          >
-                            <RemoveIcon fontSize="small" />
-                          </IconButton>
-                        </AppTooltip>
-                      </Stack>
-                      <AppTooltip
-                        disableInteractive
-                        title={t("fields:graphical.fitToView")}
-                        placement="left"
-                      >
-                        <IconButton
-                          size="small"
-                          onClick={() => resetViewport(locationId)}
-                          aria-label={t("fields:graphical.fitToView")}
-                          sx={{
-                            borderRadius: 0,
-                            p: 1.25,
-                            borderTop: "1px solid",
-                            borderColor: "divider",
-                          }}
-                        >
-                          <FitScreenIcon fontSize="small" />
-                        </IconButton>
-                      </AppTooltip>
-                      <AppTooltip
-                        disableInteractive
-                        title={
-                          fullscreenLocationId === locationId
-                            ? t("fields:graphical.exitFullscreen")
-                            : t("fields:graphical.enterFullscreen")
-                        }
-                        placement="left"
-                      >
-                        <IconButton
-                          size="small"
-                          onClick={() => {
-                            void toggleFullscreen(locationId);
-                          }}
-                          aria-label={
-                            fullscreenLocationId === locationId
-                              ? t("fields:graphical.exitFullscreen")
-                              : t("fields:graphical.enterFullscreen")
-                          }
-                          sx={{
-                            borderRadius: 0,
-                            p: 1.25,
-                            borderTop: "1px solid",
-                            borderColor: "divider",
-                          }}
-                        >
-                          {fullscreenLocationId === locationId ? (
-                            <FullscreenExitIcon fontSize="small" />
-                          ) : (
-                            <FullscreenIcon fontSize="small" />
-                          )}
-                        </IconButton>
-                      </AppTooltip>
-                    </Stack>
-                  </Paper>
+                        onRetry={bedTasks.refresh} onOpenBed={onOpenBed} />,
+                    }}
+                    individualPlants={individualSeason && !locationIsEditable && fullscreenLocationId !== locationId ? {
+                      active: Boolean(showIndividualPanel),
+                      toggle: () => individualPlants.update({ open: !showIndividualPanel, placing: null }),
+                    } : undefined}
+                  />
                   <Typography
                     variant="caption"
                     color="text.secondary"
@@ -1494,6 +1298,7 @@ export default function GraphicalFields({
                 {showIndividualPanel && (
                   <GraphicalIndividualPlantsPanel fields={parcels.map(({ field }) => field)}
                     season={individualSeason} controller={individualPlants}
+                    onClose={() => canvasToolsRefs.current[locationId]?.focus({ preventScroll: true })}
                     onFocusParcel={fieldId => {
                       const field = fieldRectsById.get(fieldId);
                       const bounds = field ? getContentBoundsFromRects([field]) : null;

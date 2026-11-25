@@ -152,6 +152,7 @@ const PAGE_SYMBOL_DEFINITIONS: Partial<Record<HelpPageKey, SymbolDefinition[]>> 
     { key: 'delete', icon: <DeleteIcon fontSize="small" sx={{ color: 'error.main' }} /> },
   ],
   graphical: [
+    { key: 'moreTools', icon: <MoreVertIcon fontSize="small" /> },
     {
       key: 'panArrows',
       icon: (

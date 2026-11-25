@@ -286,6 +286,7 @@
       ],
       "symbolsTitle": "Icônes et commandes",
       "symbols": {
+        "moreTools": "Ouvrir les autres outils du plan. Dans un espace réduit, ce menu permet aussi de déplacer et de faire pivoter la vue.",
         "panArrows": "Déplacer la vue vers le haut, la gauche, la droite ou le bas",
         "zoomIn": "Zoomer",
         "zoomOut": "Dézoomer",

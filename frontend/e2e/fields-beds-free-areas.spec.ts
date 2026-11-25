@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type Konva from 'konva';
-import { apiRequest, loginWithDeterministicProject } from './utils';
+import { activateCanvasTool, apiRequest, loginWithDeterministicProject } from './utils';
 
 async function rectangles(page: Page, prefix: string) {
   return page.evaluate(prefix => {
@@ -76,7 +76,7 @@ test('shows free shapes and the matching area figures without changing bed fills
   await closePopover(page);
 
   await page.getByRole('button', { name: 'Hineinzoomen', exact: true }).first().click();
-  await page.getByRole('button', { name: 'Ansicht nach links verschieben', exact: true }).click();
+  await activateCanvasTool(page, 'Ansicht nach links verschieben');
   expect(await free(page, 'parcel')).toEqual(parcelShapes);
   await selectLocation(page, 'Acker am Bach');
   await expect.poll(async () => (await free(page, 'site')).length).toBeGreaterThan(0);

@@ -90,12 +90,13 @@ function CoordinateEditor({
 }
 
 export function GraphicalIndividualPlantsPanel({
-  fields, season, controller, onFocusParcel,
+  fields, season, controller, onFocusParcel, onClose,
 }: {
   fields: Field[];
   season: Season;
   controller: IndividualPlantsController;
   onFocusParcel: (fieldId: number) => void;
+  onClose: () => void;
 }) {
   const { t, i18n } = useTranslation(['fields', 'plantingPlans', 'common']);
   const tr = (key: string) => t(`fields:individualPlants.${key}`);
@@ -151,6 +152,7 @@ export function GraphicalIndividualPlantsPanel({
   const closeEditor = () => {
     setInvalidCanopy(false);
     update({ open: false, draft: null, error: null, placing: null });
+    onClose();
   };
   const armPlacement = (action: 'add' | 'move') => {
     update({ placing: action });
@@ -163,7 +165,8 @@ export function GraphicalIndividualPlantsPanel({
       <Stack spacing={1.5}>
         <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
           <Typography id={titleId} variant="h6" component="h2">{tr('title')}</Typography>
-          <IconButton aria-label={t('common:actions.close')} onClick={closeEditor} disabled={saving}><CloseIcon /></IconButton>
+          <IconButton aria-label={t('common:actions.close')} onClick={closeEditor} disabled={saving}
+            sx={{ width: 44, height: 44 }}><CloseIcon /></IconButton>
         </Stack>
         <Typography variant="body2" color="text.secondary">{tr('legend')}</Typography>
         {controller.failed && <Alert severity="error" action={<LoadRetryButton onClick={controller.refresh} />}>{tr('loadFailed')}</Alert>}

@@ -286,6 +286,7 @@
       ],
       "symbolsTitle": "Pictogrammen en bediening",
       "symbols": {
+        "moreTools": "Open meer tekengereedschap. Bij weinig ruimte kun je hier ook de weergave verschuiven en draaien.",
         "panArrows": "Weergave omhoog, naar links, naar rechts of omlaag verplaatsen",
         "zoomIn": "Inzoomen",
         "zoomOut": "Uitzoomen",

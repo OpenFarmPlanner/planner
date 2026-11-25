@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type Konva from 'konva';
-import { apiRequest, loginWithDeterministicProject } from './utils';
+import { activateCanvasTool, apiRequest, loginWithDeterministicProject } from './utils';
 
 async function findShape(page: Page, testId: string) {
   return page.evaluate(testId => {
@@ -90,12 +90,12 @@ for (const mobile of [false, true]) {
       await page.getByRole('button', { name: 'Grafik', exact: true }).click();
       const getBed = () => findShape(page, `bed-rect-${bedId}`);
       const getNeighbor = () => findShape(page, `bed-rect-${neighborId}`);
-      const taskControl = page.getByRole('button', { name: 'Aufgaben im Beet', exact: true });
-      await expect(taskControl).toBeVisible();
+      const moreTools = page.getByRole('button', { name: 'Weitere Grafikwerkzeuge' });
+      await expect(moreTools).toBeVisible();
       await expect.poll(async () => (await getBed())?.issue).toBe('shortGap');
       const ordinaryFill = (await getBed())?.fill;
       await expect.poll(() => findShape(page, 'graphical-free-area-site')).not.toBeNull();
-      await taskControl.click();
+      await activateCanvasTool(page, 'Aufgaben im Beet', mobile ? 'touch' : 'mouse');
       let panel = page.getByRole('dialog', { name: 'Aufgaben im Beet' });
       await expect(panel.getByRole('switch', { name: 'Aufgaben anzeigen' })).not.toBeChecked();
       await panel.getByRole('switch', { name: 'Aufgaben anzeigen' }).check();
@@ -121,8 +121,10 @@ for (const mobile of [false, true]) {
         await page.getByRole('button', { name: 'Herauszoomen', exact: true }).click();
       }
       await expect.poll(getBed).toMatchObject({ urgency: 'overdue', fill: colored?.fill, hasTaskIcon: false });
-      await taskControl.focus();
-      await page.keyboard.press('Enter');
+      await moreTools.press('Enter');
+      const activeTask = page.getByRole('menuitem', { name: 'Aufgaben im Beet' });
+      await expect(activeTask).toHaveAttribute('aria-description', 'Aktiv');
+      await activeTask.press('Enter');
       panel = page.getByRole('dialog', { name: 'Aufgaben im Beet' });
       await panel.getByRole('combobox', { name: 'Beet auswählen' }).click();
       await page.getByRole('option', { name: /Südbeet · Lernparzelle/ }).click();
@@ -159,7 +161,7 @@ for (const mobile of [false, true]) {
       expect(saved.status).toBe('completed');
       await page.getByRole('button', { name: 'Zurück zu den Anbauflächen' }).click();
       await page.getByRole('button', { name: 'Grafik', exact: true }).click();
-      await taskControl.click();
+      await activateCanvasTool(page, 'Aufgaben im Beet', mobile ? 'touch' : 'mouse');
       await expect.poll(async () => (await getBed())?.fill).toBe(ordinaryFill);
       await page.getByRole('switch', { name: 'Aufgaben anzeigen' }).check();
       await page.keyboard.press('Escape');
@@ -192,7 +194,7 @@ for (const input of ['mouse', 'touch'] as const) {
       };
       await page.goto('/app/fields-beds');
       await activate('Grafik');
-      await activate('Ansicht um 90° nach links drehen');
+      await activateCanvasTool(page, 'Ansicht um 90° nach links drehen', input);
       const review = page.getByRole('button', { name: /^Layoutprüfung \(/ });
       if (input === 'touch') await review.tap();
       else {

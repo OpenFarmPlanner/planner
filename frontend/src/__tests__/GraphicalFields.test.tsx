@@ -3,6 +3,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { act, useState, type ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from 'react-router';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { GraphicalCanvasTools } from '../pages/GraphicalCanvasTools';
 import GraphicalFields from "../pages/GraphicalFields";
 import type { BedLayoutEntry, FieldLayoutEntry, LocationBoundaryOrigin } from "../api/api";
 import type { GraphicalCameraState } from "../pages/graphicalFieldsGeometry";
@@ -285,6 +287,21 @@ async function renderGraphic(element: ReactElement) {
   await screen.findByTestId('konva-stage');
   return view;
 }
+
+it.each(['light', 'dark'] as const)('keeps compact canvas tools and their active state available in the %s theme', mode => {
+  const theme = createTheme({ palette: { mode, background: { paper: mode === 'light' ? '#fafafa' : '#121212' } } });
+  const action = vi.fn();
+  render(<ThemeProvider theme={theme}>
+    <GraphicalCanvasTools width={375} height={600} fullscreen={false} onZoom={action} onFit={action}
+      onFullscreen={action} onRotate={action} onPan={action} onTriggerChange={action} warnings={null}
+      individualPlants={{ active: true, toggle: action }} />
+  </ThemeProvider>);
+  const toolbar = screen.getByTestId('graphical-canvas-tools');
+  expect(toolbar).toHaveStyle({ backgroundColor: theme.palette.background.paper });
+  fireEvent.click(screen.getByRole('button', { name: 'Weitere Grafikwerkzeuge' }));
+  expect(screen.getByRole('menuitem', { name: 'Einzelpflanzen' })).toHaveAttribute('aria-description', 'Aktiv');
+  expect(screen.getByRole('menuitem', { name: 'Ansicht um 90° nach rechts drehen' })).toBeVisible();
+});
 
 describe("GraphicalFields", async () => {
   const setViewportSize = (width: number, height: number): void => {

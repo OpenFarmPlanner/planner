@@ -286,6 +286,7 @@
       ],
       "symbolsTitle": "Iconos y controles",
       "symbols": {
+        "moreTools": "Abre más herramientas del plano. Si hay poco espacio, aquí también puedes desplazar y girar la vista.",
         "panArrows": "Mover la vista hacia arriba, la izquierda, la derecha o abajo",
         "zoomIn": "Ampliar",
         "zoomOut": "Reducir",
