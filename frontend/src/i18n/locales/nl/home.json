@@ -125,44 +125,96 @@
       "yourCropsTitle": "Je gewassen"
     }
   },
+  "graphicalPlanning": {
+    "eyebrow": "Grafische perceelplanning",
+    "title": "Plan je teeltgrond zoals die er in het veld bij ligt.",
+    "description": "Teken locaties, percelen en bedden als plattegrond op schaal, niet als kaart. Afmetingen, afstanden en ligging blijven gekoppeld aan je teelten.",
+    "points": {
+      "layout": "Bedden op een perceel verschuiven, draaien en in rijen aanleggen",
+      "paths": "Rekening houden met padbreedtes en de vrije ruimte in één oogopslag zien",
+      "individualPlants": "Bomen en struiken als losse planten met hun kroondiameter plaatsen"
+    },
+    "illustration": {
+      "ariaLabel": "Schematische plattegrond: een locatie met een perceel, vier bedden met paden ertussen en een fruitboom als losse plant.",
+      "location": "Locatie",
+      "parcel": "Perceel",
+      "bed": "Bed {{number}}",
+      "path": "Pad",
+      "tree": "Fruitboom"
+    }
+  },
   "seasonFeatures": {
     "title": "Alles voor je seizoen",
+    "groups": {
+      "plan": "Teelt plannen",
+      "crops": "Gewassen en zaad",
+      "track": "Teelt opvolgen en evalueren",
+      "collaborate": "Flexibel en samen werken"
+    },
     "items": {
       "calendar": {
         "title": "Teeltkalender",
         "description": "Zie in één oogopslag welk gewas wanneer welk bed bezet en herken overlappingen vroeg."
       },
-      "rolloverSeason": {
-        "title": "Overgaan naar het volgende seizoen",
-        "description": "Neem beproefde teelten in één stap mee naar het nieuwe seizoen en pas alleen aan wat verandert."
+      "graphicalPlanning": {
+        "title": "Grafische perceelplanning",
+        "description": "Locaties, percelen en bedden met padbreedtes als schematische plattegrond."
+      },
+      "seasonsRotation": {
+        "title": "Seizoenen en vruchtwisseling",
+        "description": "Teelten uit eerdere seizoenen overnemen, de vruchtwisseling controleren en percelen roteren."
+      },
+      "perennials": {
+        "title": "Meerjarige gewassen",
+        "description": "Meerjarige gewassen over meerdere seizoenen plannen, met bomen en struiken als losse planten."
+      },
+      "cropsVarieties": {
+        "title": "Gewassen en rassen",
+        "description": "Beheer je eigen gewassen en rassen, met plantafstanden, teeltduur en opbrengsten."
       },
       "seedDemand": {
         "title": "Zaadbehoefte berekenen",
         "description": "Hoeveelheden en passende verpakkingsgroottes worden uit teelten, gewasgegevens en leveranciers afgeleid."
       },
-      "yieldDistribution": {
-        "title": "Opbrengstverdeling",
-        "description": "Verwachte oogsthoeveelheden per week en gewas maken gaten en pieken vooraf zichtbaar."
+      "companionHealth": {
+        "title": "Combinatieteelt en plantgezondheid",
+        "description": "Goede en slechte buren op het bed herkennen en uitval door plagen of ziekten vastleggen."
       },
-      "fieldMap": {
-        "title": "Grafische perceelweergave",
-        "description": "Rangschik bedden op je percelen zoals ze werkelijk op het land liggen."
+      "suppliers": {
+        "title": "Leveranciers en zaadaanbiedingen",
+        "description": "Leveranciers met verpakkingen en prijzen vastleggen en vergelijken."
+      },
+      "tasks": {
+        "title": "Taakplanning",
+        "description": "Zaaien, planten en oogsten worden taken die je kunt afvinken."
+      },
+      "plannedActual": {
+        "title": "Geplande en werkelijke data",
+        "description": "Werkelijke data naast de planning vastleggen en daarvan leren voor het volgende seizoen."
+      },
+      "yieldPlanning": {
+        "title": "Opbrengstplanning en oogstregistratie",
+        "description": "Verwachte oogsten plannen, werkelijke oogsten vastleggen en seizoenen vergelijken."
+      },
+      "notesPhotos": {
+        "title": "Notities en foto’s",
+        "description": "Waarnemingen met foto’s direct bij de teelt vastleggen."
       },
       "collaboration": {
-        "title": "Samen plannen",
-        "description": "Nodig je teeltteam uit en werk aan hetzelfde actuele plan."
+        "title": "Samenwerken",
+        "description": "Nodig je team uit en werk samen aan één of meer projecten."
       },
       "history": {
         "title": "Versiegeschiedenis en prullenbak",
         "description": "Elke wijziging is te volgen en eerdere toestanden kunnen worden hersteld."
       },
       "importExport": {
-        "title": "Importeren en exporteren",
-        "description": "Neem je gewasgegevens uit spreadsheets over en neem ze op elk moment weer mee."
+        "title": "Import en export",
+        "description": "Gewasgegevens uit spreadsheets importeren en op elk moment weer exporteren."
       },
-      "installApp": {
-        "title": "Als app installeren",
-        "description": "Werkt in de browser en kan als een app op je telefoon of tablet worden geïnstalleerd."
+      "mobileLanguages": {
+        "title": "Mobiel en meertalig",
+        "description": "Werkt in de browser, is als app te installeren en spreekt zeven talen."
       }
     }
   },

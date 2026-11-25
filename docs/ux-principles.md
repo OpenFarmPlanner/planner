@@ -47,6 +47,7 @@ When creating or revising a user-facing issue, review the **whole flow** rather 
 - Check defaults, use of UI language, import/export round trips, consistency of labels/actions, empty and error states, undo and data preservation.
 - Check mobile/touch/keyboard behavior, multilingual text lengths and accessibility. Consider new-user discoverability **and** efficient repeat use.
 - Specify the minimum necessary acceptance criteria and relevant tests. Avoid deciding domain ambiguities through a generic UX rule.
+- For a material user-facing feature (a new capability or a substantial change to one), check whether the public homepage feature overview (`frontend/src/pages/public/HomePage.tsx`, `home.json`) still describes the product correctly; if not, add a homepage-update acceptance criterion. Bug fixes, small refinements and internal changes need no homepage check ([#1583](https://github.com/OpenFarmPlanner/planner/issues/1583)).
 
 **Review outcomes:** `Pass` (already coherent), `Refine` (precise, low-risk issue edit with rationale), or `Needs owner decision` (specific alternatives and trade-offs). Don't add a vague `needs-decision` for normal implementation judgment.
 

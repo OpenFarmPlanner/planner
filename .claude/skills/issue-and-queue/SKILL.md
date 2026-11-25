@@ -54,7 +54,8 @@ the native parent, without replacing an unrelated parent. Keep one issue per
 coherent change; creating an issue does not authorize implementing it.
 For UI/UX-facing issue creation or backlog refinement, apply the lightweight
 [product UX preflight](../../../docs/ux-principles.md#ux-issue-preflight),
-checking existing defaults, cross-issue consistency and unnecessary controls.
+checking existing defaults, cross-issue consistency, unnecessary controls and,
+for material user-facing features, whether the public homepage needs updating.
 Only refine confirmed decisions; escalate true product ambiguity rather than
 inventing settings or changing an in-flight implementation contract.
 

@@ -125,32 +125,84 @@
       "yourCropsTitle": "Your crops"
     }
   },
+  "graphicalPlanning": {
+    "eyebrow": "Graphical area planning",
+    "title": "Plan your growing areas the way they lie on the ground.",
+    "description": "Draw locations, parcels and beds as a plan to scale, not as a map. Dimensions, spacing and position stay linked to your planting plans.",
+    "points": {
+      "layout": "Move and rotate beds on a parcel and lay them out in rows",
+      "paths": "Account for path widths and see the free area at a glance",
+      "individualPlants": "Place trees and shrubs as individual plants with their canopy diameter"
+    },
+    "illustration": {
+      "ariaLabel": "Schematic area plan: a location with one parcel, four beds with paths between them and a fruit tree as an individual plant.",
+      "location": "Location",
+      "parcel": "Parcel",
+      "bed": "Bed {{number}}",
+      "path": "Path",
+      "tree": "Fruit tree"
+    }
+  },
   "seasonFeatures": {
     "title": "Everything for your season",
+    "groups": {
+      "plan": "Plan your crops",
+      "crops": "Crops and seed",
+      "track": "Track and evaluate",
+      "collaborate": "Work flexibly and together"
+    },
     "items": {
       "calendar": {
         "title": "Cultivation calendar",
         "description": "See at a glance which crop occupies which bed and when, and spot overlaps early."
       },
-      "rolloverSeason": {
-        "title": "Roll over to the next season",
-        "description": "Carry proven planting plans forward into the new season in one step, and adjust only what changes."
+      "graphicalPlanning": {
+        "title": "Graphical area planning",
+        "description": "Locations, parcels and beds with path widths as a schematic plan."
+      },
+      "seasonsRotation": {
+        "title": "Seasons and crop rotation",
+        "description": "Copy planting plans from earlier seasons, check the crop rotation and rotate parcels."
+      },
+      "perennials": {
+        "title": "Perennial crops",
+        "description": "Plan perennial crops across several seasons, with trees and shrubs as individual plants."
+      },
+      "cropsVarieties": {
+        "title": "Crops and varieties",
+        "description": "Keep your own crops and varieties, with spacing, crop duration and yields."
       },
       "seedDemand": {
         "title": "Calculate seed demand",
         "description": "Quantity and matching package sizes are derived from plans, crop data, and suppliers."
       },
-      "yieldDistribution": {
-        "title": "Yield distribution",
-        "description": "Expected harvest quantities by week and crop reveal gaps and peaks before they happen."
+      "companionHealth": {
+        "title": "Companion planting and plant health",
+        "description": "See good and bad neighbours on a bed and record losses from pests or diseases."
       },
-      "fieldMap": {
-        "title": "Graphical field view",
-        "description": "Arrange beds on your fields the way they actually lie on the ground."
+      "suppliers": {
+        "title": "Suppliers and seed offers",
+        "description": "Store suppliers with packet sizes and prices and compare them."
+      },
+      "tasks": {
+        "title": "Task planning",
+        "description": "Sowing, planting and harvest become tasks you can tick off."
+      },
+      "plannedActual": {
+        "title": "Planned and actual dates",
+        "description": "Record actual dates alongside the plan and learn from them for next season."
+      },
+      "yieldPlanning": {
+        "title": "Yield planning and harvest records",
+        "description": "Plan expected harvests, record actual ones and compare seasons."
+      },
+      "notesPhotos": {
+        "title": "Notes and photos",
+        "description": "Keep observations with photos right on the planting plan."
       },
       "collaboration": {
-        "title": "Plan together",
-        "description": "Invite your growing team and work on the same up-to-date plan."
+        "title": "Teamwork",
+        "description": "Invite your team and work together on one or more projects."
       },
       "history": {
         "title": "Version history and trash",
@@ -158,11 +210,11 @@
       },
       "importExport": {
         "title": "Import and export",
-        "description": "Bring your crop data in from spreadsheets and take it with you again at any time."
+        "description": "Import crop data from spreadsheets and export it again at any time."
       },
-      "installApp": {
-        "title": "Install as an app",
-        "description": "Runs in the browser and can be installed on your phone or tablet like an app."
+      "mobileLanguages": {
+        "title": "Mobile and multilingual",
+        "description": "Runs in the browser, installs as an app and speaks seven languages."
       }
     }
   },

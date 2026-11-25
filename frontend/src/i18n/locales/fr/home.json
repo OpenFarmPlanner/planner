@@ -129,32 +129,84 @@
       "yourCropsTitle": "Vos cultures"
     }
   },
+  "graphicalPlanning": {
+    "eyebrow": "Plan graphique des surfaces",
+    "title": "Planifiez vos surfaces telles qu’elles sont sur le terrain.",
+    "description": "Dessinez sites, parcelles et planches sous forme de plan à l’échelle, et non de carte. Dimensions, espacements et position restent liés à vos séries.",
+    "points": {
+      "layout": "Déplacer et faire pivoter les planches sur une parcelle et les disposer en rangées",
+      "paths": "Tenir compte de la largeur des allées et voir la surface libre d’un coup d’œil",
+      "individualPlants": "Placer arbres et arbustes comme plantes individuelles avec le diamètre du houppier"
+    },
+    "illustration": {
+      "ariaLabel": "Plan schématique : un site avec une parcelle, quatre planches séparées par des allées et un arbre fruitier en plante individuelle.",
+      "location": "Site",
+      "parcel": "Parcelle",
+      "bed": "Planche {{number}}",
+      "path": "Allée",
+      "tree": "Arbre fruitier"
+    }
+  },
   "seasonFeatures": {
     "title": "Tout pour votre saison",
+    "groups": {
+      "plan": "Planifier les cultures",
+      "crops": "Cultures et semences",
+      "track": "Suivre et analyser",
+      "collaborate": "Travailler avec souplesse et ensemble"
+    },
     "items": {
       "calendar": {
         "title": "Calendrier de culture",
         "description": "Voyez d'un coup d'œil quelle culture occupe quelle planche, et quand, et repérez tôt les chevauchements."
       },
-      "rolloverSeason": {
-        "title": "Passer à la saison suivante",
-        "description": "Reportez en une seule étape les plans de culture éprouvés dans la nouvelle saison et n'ajustez que ce qui change."
+      "graphicalPlanning": {
+        "title": "Plan graphique des surfaces",
+        "description": "Sites, parcelles et planches avec la largeur des allées, sous forme de plan schématique."
+      },
+      "seasonsRotation": {
+        "title": "Saisons et rotation des cultures",
+        "description": "Reprendre les séries des saisons précédentes, vérifier la rotation des cultures et faire tourner les parcelles."
+      },
+      "perennials": {
+        "title": "Cultures pérennes",
+        "description": "Planifier les cultures pérennes sur plusieurs saisons, arbres et arbustes en plantes individuelles."
+      },
+      "cropsVarieties": {
+        "title": "Cultures et variétés",
+        "description": "Gérer vos propres cultures et variétés, avec espacements, durée de culture et rendements."
       },
       "seedDemand": {
         "title": "Calculer le besoin en semences",
         "description": "La quantité et les conditionnements adaptés sont déduits des plans, des données de culture et des fournisseurs."
       },
-      "yieldDistribution": {
-        "title": "Répartition des rendements",
-        "description": "Les quantités récoltées attendues par semaine et par culture révèlent les creux et les pics avant qu'ils ne surviennent."
+      "companionHealth": {
+        "title": "Associations et santé des plantes",
+        "description": "Repérer les bons et mauvais voisins sur la planche et noter les pertes dues aux ravageurs ou aux maladies."
       },
-      "fieldMap": {
-        "title": "Vue graphique des parcelles",
-        "description": "Disposez les planches sur vos parcelles telles qu'elles sont réellement sur le terrain."
+      "suppliers": {
+        "title": "Fournisseurs et offres de semences",
+        "description": "Enregistrer les fournisseurs avec conditionnements et prix, et les comparer."
+      },
+      "tasks": {
+        "title": "Planification des tâches",
+        "description": "Semis, plantation et récolte deviennent des tâches à cocher."
+      },
+      "plannedActual": {
+        "title": "Dates prévues et réelles",
+        "description": "Noter les dates réelles à côté du plan et en tirer des leçons pour la saison suivante."
+      },
+      "yieldPlanning": {
+        "title": "Prévision des rendements et suivi des récoltes",
+        "description": "Prévoir les récoltes attendues, enregistrer les récoltes réelles et comparer les saisons."
+      },
+      "notesPhotos": {
+        "title": "Notes et photos",
+        "description": "Consigner vos observations avec photos directement sur la série."
       },
       "collaboration": {
-        "title": "Planifier ensemble",
-        "description": "Invitez votre équipe de culture et travaillez sur le même plan à jour."
+        "title": "Travail en équipe",
+        "description": "Invitez votre équipe et travaillez ensemble sur un ou plusieurs projets."
       },
       "history": {
         "title": "Historique des versions et corbeille",
@@ -162,11 +214,11 @@
       },
       "importExport": {
         "title": "Import et export",
-        "description": "Importez vos données de culture depuis des tableurs et récupérez-les à tout moment."
+        "description": "Importer les données de culture depuis des tableurs et les exporter à tout moment."
       },
-      "installApp": {
-        "title": "Installer comme application",
-        "description": "Fonctionne dans le navigateur et peut être installé sur votre téléphone ou votre tablette comme une application."
+      "mobileLanguages": {
+        "title": "Mobile et multilingue",
+        "description": "Fonctionne dans le navigateur, s’installe comme une application et parle sept langues."
       }
     }
   },

@@ -9,6 +9,13 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import HistoryIcon from '@mui/icons-material/History';
 import ImportExportIcon from '@mui/icons-material/ImportExport';
 import InstallMobileIcon from '@mui/icons-material/InstallMobile';
+import ParkIcon from '@mui/icons-material/Park';
+import LocalFloristIcon from '@mui/icons-material/LocalFlorist';
+import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
+import StorefrontIcon from '@mui/icons-material/Storefront';
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import {
   Alert,
@@ -39,6 +46,7 @@ import {
 } from './homePageStyles';
 import { InstallAppButton } from '../../pwa/InstallAppButton';
 import EditableTableIllustration from './homeIllustrations/EditableTableIllustration';
+import GrowingAreaPlanIllustration from './homeIllustrations/GrowingAreaPlanIllustration';
 import CropLibraryIllustration from './homeIllustrations/CropLibraryIllustration';
 import { AREA_LABEL_SEPARATOR } from '../plantingPlansUtils';
 import { formatLocalizedNumber, resolveLocaleFromLanguage } from '../../utils/numberLocalization';
@@ -138,7 +146,7 @@ function SeasonFeatureCardItem({ icon, title, description }: SeasonFeatureCard) 
       >
         {icon}
       </Box>
-      <Typography variant="h6" component="h3" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+      <Typography variant="h6" component="h4" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
         {title}
       </Typography>
       <Typography color="text.secondary" sx={{ lineHeight: 1.55 }}>
@@ -288,18 +296,39 @@ export default function HomePage() {
     { text: t('features.points.validation') },
   ];
 
-  const seasonFeatureIcons: Record<string, ReactNode> = {
-    calendar: <CalendarMonthIcon />,
-    rolloverSeason: <RestartAltIcon />,
-    seedDemand: <GrassIcon />,
-    yieldDistribution: <TrendingUpIcon />,
-    fieldMap: <MapIcon />,
-    collaboration: <GroupsIcon />,
-    history: <HistoryIcon />,
-    importExport: <ImportExportIcon />,
-    installApp: <InstallMobileIcon />,
-  };
-  const seasonFeatureKeys = Object.keys(seasonFeatureIcons);
+  // The overview is grouped (#1583); every card must describe shipped behavior.
+  const seasonFeatureGroups: { key: string; items: { key: string; icon: ReactNode }[] }[] = [
+    { key: 'plan', items: [
+      { key: 'calendar', icon: <CalendarMonthIcon /> },
+      { key: 'graphicalPlanning', icon: <MapIcon /> },
+      { key: 'seasonsRotation', icon: <RestartAltIcon /> },
+      { key: 'perennials', icon: <ParkIcon /> },
+    ] },
+    { key: 'crops', items: [
+      { key: 'cropsVarieties', icon: <LocalFloristIcon /> },
+      { key: 'seedDemand', icon: <GrassIcon /> },
+      { key: 'companionHealth', icon: <HealthAndSafetyIcon /> },
+      { key: 'suppliers', icon: <StorefrontIcon /> },
+    ] },
+    { key: 'track', items: [
+      { key: 'tasks', icon: <TaskAltIcon /> },
+      { key: 'plannedActual', icon: <EventAvailableIcon /> },
+      { key: 'yieldPlanning', icon: <TrendingUpIcon /> },
+      { key: 'notesPhotos', icon: <PhotoCameraIcon /> },
+    ] },
+    { key: 'collaborate', items: [
+      { key: 'collaboration', icon: <GroupsIcon /> },
+      { key: 'history', icon: <HistoryIcon /> },
+      { key: 'importExport', icon: <ImportExportIcon /> },
+      { key: 'mobileLanguages', icon: <InstallMobileIcon /> },
+    ] },
+  ];
+
+  const graphicalPlanningPoints: FeaturePoint[] = [
+    { text: t('graphicalPlanning.points.layout') },
+    { text: t('graphicalPlanning.points.paths') },
+    { text: t('graphicalPlanning.points.individualPlants') },
+  ];
 
   const openSourceBoxes: (OpenSourceBox & { key: string })[] = [
     { key: 'agpl', title: t('openSource.boxes.agpl.title'), description: t('openSource.boxes.agpl.description') },
@@ -595,8 +624,40 @@ export default function HomePage() {
               </Box>
             </Box>
 
+            <Box id="flaechenplanung" component="section" aria-labelledby="graphical-planning-title" sx={SECTION_ANCHOR_SX}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) minmax(0, 1fr)' },
+                  gap: { xs: 4, md: 6 },
+                  alignItems: 'center',
+                }}
+              >
+                <Stack spacing={2}>
+                  <Typography variant="overline" color="primary" sx={{ fontWeight: 700 }}>
+                    {t('graphicalPlanning.eyebrow')}
+                  </Typography>
+                  <Typography id="graphical-planning-title" variant="h4" component="h2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+                    {t('graphicalPlanning.title')}
+                  </Typography>
+                  <Typography color="text.secondary" sx={{ lineHeight: 1.65 }}>
+                    {t('graphicalPlanning.description')}
+                  </Typography>
+                  <FeatureCheckList points={graphicalPlanningPoints} />
+                </Stack>
+                <GrowingAreaPlanIllustration
+                  ariaLabel={t('graphicalPlanning.illustration.ariaLabel')}
+                  locationLabel={t('graphicalPlanning.illustration.location')}
+                  parcelLabel={t('graphicalPlanning.illustration.parcel')}
+                  bedLabels={[1, 2, 3, 4].map(number => t('graphicalPlanning.illustration.bed', { number }))}
+                  pathLabel={t('graphicalPlanning.illustration.path')}
+                  treeLabel={t('graphicalPlanning.illustration.tree')}
+                />
+              </Box>
+            </Box>
+
             <Box component="section" aria-labelledby="season-features-title">
-              <Stack spacing={{ xs: 3, md: 4 }}>
+              <Stack spacing={{ xs: 4, md: 5 }}>
                 <Typography
                   id="season-features-title"
                   variant="h4"
@@ -605,22 +666,30 @@ export default function HomePage() {
                 >
                   {t('seasonFeatures.title')}
                 </Typography>
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
-                    gap: 3,
-                  }}
-                >
-                  {seasonFeatureKeys.map((key) => (
-                    <SeasonFeatureCardItem
-                      key={key}
-                      icon={seasonFeatureIcons[key]}
-                      title={t(`seasonFeatures.items.${key}.title`)}
-                      description={t(`seasonFeatures.items.${key}.description`)}
-                    />
-                  ))}
-                </Box>
+                {seasonFeatureGroups.map((group) => (
+                  <Stack key={group.key} component="section" spacing={2} aria-labelledby={`season-features-${group.key}`}
+                    data-testid={`season-feature-group-${group.key}`}>
+                    <Typography id={`season-features-${group.key}`} variant="h5" component="h3" sx={{ fontWeight: 600 }}>
+                      {t(`seasonFeatures.groups.${group.key}`)}
+                    </Typography>
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' },
+                        gap: 3,
+                      }}
+                    >
+                      {group.items.map((item) => (
+                        <SeasonFeatureCardItem
+                          key={item.key}
+                          icon={item.icon}
+                          title={t(`seasonFeatures.items.${item.key}.title`)}
+                          description={t(`seasonFeatures.items.${item.key}.description`)}
+                        />
+                      ))}
+                    </Box>
+                  </Stack>
+                ))}
               </Stack>
             </Box>
           </Stack>
