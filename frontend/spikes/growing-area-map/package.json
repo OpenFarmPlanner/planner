@@ -1,0 +1,14 @@
+{
+  "name": "openfarmplanner-growing-area-map-spike",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -p tsconfig.json && vite build",
+    "test": "playwright test"
+  },
+  "dependencies": {
+    "ol": "10.11.0"
+  }
+}
