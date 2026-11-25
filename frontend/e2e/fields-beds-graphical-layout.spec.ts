@@ -1106,3 +1106,19 @@ test('shows the only location with its name and gross area in the list and the g
   await expect(page.getByTestId('location-boundary-overflow-hint')).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('single-location-graphic-1440.png'), animations: 'disabled' });
 });
+
+test('keeps an empty unmeasured location selectable with a single guidance message', async ({ page, request }, testInfo) => {
+  await loginWithDeterministicProject(page, request, `empty-graphic-${testInfo.workerIndex}`, { loginAsAdmin: true });
+  const { results: [location] } = await apiRequest<{ results: { id: number; name: string }[] }>(page, 'GET', '/locations/');
+  await page.goto('/app/fields-beds');
+  await expect(page.getByRole('heading', { name: 'Parzelle fehlt', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+  await expect(page.getByText(/Dieser Standort hat noch keine Parzellen/)).toHaveCount(1);
+  await expect(page.getByRole('heading', { name: 'Parzelle fehlt', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: `Standort · ${location.name}`, exact: true }).click();
+  const preview = page.getByTestId('graphical-object-preview');
+  await expect(preview).toHaveAccessibleName(location.name);
+  await expect(preview).not.toContainText('m²');
+  await preview.getByRole('button', { name: 'Details anzeigen' }).click();
+  await expect(page).toHaveURL(new RegExp(`/fields-beds/locations/${location.id}$`));
+});

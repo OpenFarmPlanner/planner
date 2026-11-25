@@ -39,7 +39,6 @@ import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import LoadRetryButton from '../components/LoadRetryButton';
 import { useTopbarWorkspaceControls } from '../hooks/useTopbarWorkspaceControls';
 import type { GraphicalCameraState } from './graphicalFieldsGeometry';
-import { getMeasuredArea } from './graphicalAreaGeometry';
 import { TruncatedTextWithTooltip } from '../components/TruncatedTextWithTooltip';
 
 const VIEW_MODE_STORAGE_KEY = 'fieldsBedsViewMode';
@@ -357,8 +356,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   const shouldShowMissingFieldsState = hasLocations
     && (effectiveViewMode === 'graphical' ? !hasSelectedGraphicalFields : !hasFields)
     && !hasUnsavedFields && createFieldRequest <= 0;
-  const showMeasuredEmptyLocation = shouldShowMissingFieldsState && effectiveViewMode === 'graphical'
-    && Boolean(selectedLocation && getMeasuredArea(selectedLocation) !== null);
+  const showEmptyGraphicalLocation = shouldShowMissingFieldsState && effectiveViewMode === 'graphical'
+    && Boolean(selectedLocation);
   const shouldShowMissingBedsHint = hasFields && !hasBeds && !hasUnsavedBeds;
   const shouldRenderHierarchy = hasHierarchyRows || createFieldRequest > 0 || effectivePendingHierarchyDeletionCount > 0;
   const createBedAction = getProjectSetupAction('beds');
@@ -545,11 +544,11 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             containerSx={CONTENT_ALIGNED_EMPTY_STATE_SX}
           />
         ) : null}
-        {!shouldShowProjectRequiredState && !isAreaDataLoading && showMeasuredEmptyLocation ? (
+        {!shouldShowProjectRequiredState && !isAreaDataLoading && showEmptyGraphicalLocation ? (
           <Alert severity="info" sx={{ mb: 1 }}>{t('fields:graphical.noFields')}</Alert>
         ) : null}
         {!shouldShowProjectRequiredState && !isAreaDataLoading
-          && (shouldShowAreasEmptyState || (shouldShowMissingFieldsState && !showMeasuredEmptyLocation)) ? (
+          && (shouldShowAreasEmptyState || (shouldShowMissingFieldsState && !showEmptyGraphicalLocation)) ? (
           <EmptyStateCard
             title={shouldShowMissingFieldsState ? t('hierarchy:emptyAreas.missingFieldTitle') : t('hierarchy:emptyAreas.missingLocationTitle')}
             description={effectiveViewMode === 'graphical' && hasLocations ? t('fields:graphical.noFields') : emptyAreasDescription}
