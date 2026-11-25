@@ -808,7 +808,9 @@ class CropLayoutApiTest(DRFAPITestCase):
         first = Location.objects.create(name='Old location', project=self.project)
         second = Location.objects.create(name='New location', project=self.project)
         field = Field.objects.create(name='Moving parcel', location=first, project=self.project)
-        bed = Bed.objects.create(name='Positioned bed', field=field, area_sqm=6, project=self.project)
+        bed = Bed.objects.create(
+            name='Positioned bed', field=field, area_sqm=6, project=self.project,
+        )
         layout = BedLayout.objects.create(
             bed=bed, location=first, project=self.project, x=144, y=12,
             version=2, runs_across_parcel=True,
@@ -833,7 +835,32 @@ class CropLayoutApiTest(DRFAPITestCase):
         }
         self.assertEqual({key: saved[key] for key in expected}, expected)
         layout.refresh_from_db()
-        self.assertEqual(layout.location_id, first.id)
+        self.assertEqual(layout.location_id, second.id)
+        removed = self.client.delete(f'/openfarmplanner/api/locations/{first.id}/')
+        self.assertEqual(removed.status_code, status.HTTP_204_NO_CONTENT)
+        layout.refresh_from_db()
+        self.assertEqual((layout.x, layout.y, layout.runs_across_parcel), (144, 12, True))
+
+    def test_layout_read_uses_current_parcel_for_a_legacy_location_reference(self):
+        former = Location.objects.create(name='Former location', project=self.project)
+        current = Location.objects.create(name='Current location', project=self.project)
+        field = Field.objects.create(
+            name='Previously moved parcel', location=current, project=self.project,
+        )
+        bed = Bed.objects.create(
+            name='Positioned bed', field=field, area_sqm=6, project=self.project,
+        )
+        layout = BedLayout.objects.create(
+            bed=bed, location=former, project=self.project, x=144, y=12,
+        )
+
+        response = self.client.get(f'/openfarmplanner/api/locations/{current.id}/layouts/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['bed_layouts']), 1)
+        saved = response.data['bed_layouts'][0]
+        self.assertEqual((saved['location'], saved['x'], saved['y']), (current.id, 144, 12))
+        layout.refresh_from_db()
+        self.assertEqual(layout.location_id, former.id)
 
     def test_layouts_reject_bed_from_other_location(self):
         location = Location.objects.create(name='Layout test source location', project=self.project)

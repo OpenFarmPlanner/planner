@@ -25,6 +25,7 @@ from farm.project_context import get_active_project_or_400
 from farm.services.bed_layouts import (
     create_bed_layout,
     extract_layout_payloads,
+    move_parcel_bed_layouts,
     parse_location_boundary,
     save_location_boundary,
     save_location_layouts,
@@ -178,10 +179,13 @@ class FieldViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewS
         serializer.instance = lock_individual_parcel(serializer.instance)
         validate_individual_parcel_dimensions(serializer.instance, serializer.validated_data)
         previous_snapshot = _serialize_instance(serializer.instance)
+        previous_location_id = serializer.instance.location_id
         try:
             instance = serializer.save()
         except IntegrityError as exc:
             raise DRFValidationError({'name': [FIELD_NAME_DUPLICATE_MESSAGE]}) from exc
+        if instance.location_id != previous_location_id:
+            move_parcel_bed_layouts(instance, user_name=_current_actor_label(self.request))
         self.record_revision(instance, EntityRevision.ACTION_UPDATED, previous_snapshot=previous_snapshot)
 
     @action(detail=True, methods=['post'], url_path='duplicate')

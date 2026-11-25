@@ -56,6 +56,18 @@ def create_bed_layout(bed: Bed, placement: dict, *, user_name: str) -> BedLayout
     return layout
 
 
+def move_parcel_bed_layouts(parcel: Field, *, user_name: str) -> None:
+    """Keep parcel-relative layouts attached to the parcel's new location."""
+    layouts = BedLayout.objects.filter(project_id=parcel.project_id, bed__field=parcel).exclude(
+        location_id=parcel.location_id,
+    ).select_related('project')
+    for layout in layouts:
+        previous = _serialize_instance(layout)
+        layout.location_id = parcel.location_id
+        layout.save(update_fields=['location', 'updated_at'])
+        _record_layout_revision(layout, previous, user_name=user_name)
+
+
 def parse_location_boundary(data: object) -> tuple[bool, dict[str, float] | None, str | None]:
     """Read the optional `location_boundary` entry of a layouts PUT body.
 
@@ -109,16 +121,17 @@ def save_location_layouts(
     location: Location, bed_payload: list, field_payload: list, *, user_name: str = ''
 ) -> LayoutSaveOutcome:
     """Upsert the graphical layout entries for all beds/fields of a location."""
-    bed_ids = [item.get('bed') for item in bed_payload if isinstance(item, dict) and item.get('bed') is not None]
-    beds = {bed.id: bed for bed in Bed.objects.select_related('field__location').filter(id__in=bed_ids)}
+    bed_ids = [
+        item['bed'] for item in bed_payload
+        if isinstance(item, dict) and item.get('bed') is not None
+    ]
+    beds = {bed.id: bed for bed in Bed.objects.filter(id__in=bed_ids)}
 
-    field_ids = [item.get('field') for item in field_payload if isinstance(item, dict) and item.get('field') is not None]
+    field_ids = [
+        item['field'] for item in field_payload
+        if isinstance(item, dict) and item.get('field') is not None
+    ]
     fields = {f.id: f for f in Field.objects.select_related('location').filter(id__in=field_ids)}
-    previous_beds = {
-        row['bed_id']: row for row in BedLayout.objects.filter(
-            project=location.project, bed_id__in=bed_ids,
-        ).values()
-    }
     previous_fields = {
         row['field_id']: row for row in FieldLayout.objects.filter(
             project=location.project, field_id__in=field_ids,
@@ -130,8 +143,18 @@ def save_location_layouts(
     changed_count = 0
 
     with transaction.atomic():
+        # A parcel move holds the same lock while repointing its bed layouts.
+        # Resolve its current location after locking, before writing the offsets.
+        parcel_locations = dict(Field.objects.select_for_update(no_key=True).filter(
+            project_id=location.project_id, pk__in={bed.field_id for bed in beds.values()},
+        ).order_by('pk').values_list('pk', 'location_id'))
+        previous_beds = {
+            row['bed_id']: row for row in BedLayout.objects.filter(
+                project=location.project, bed_id__in=bed_ids,
+            ).values()
+        }
         for item in bed_payload:
-            error_detail = _bed_entry_error(location, beds, item)
+            error_detail = _bed_entry_error(location, beds, parcel_locations, item)
             if error_detail:
                 return LayoutSaveOutcome(error_detail=error_detail, changed_count=changed_count)
             bed = beds[item['bed']]
@@ -194,14 +217,16 @@ def _layout_defaults(location: Location, item: dict) -> dict:
     }
 
 
-def _bed_entry_error(location: Location, beds: dict[int, Bed], item: object) -> str | None:
+def _bed_entry_error(
+    location: Location, beds: dict[int, Bed], parcel_locations: dict[int, int], item: object,
+) -> str | None:
     if not isinstance(item, dict):
         return 'Each bed layout entry must be an object.'
     bed_id = item.get('bed')
     bed = beds.get(bed_id)
     if bed is None:
         return f'Bed {bed_id} does not exist.'
-    if bed.field.location_id != location.id:
+    if parcel_locations.get(bed.field_id) != location.id:
         return f'Bed {bed_id} does not belong to location {location.id}.'
     return None
 

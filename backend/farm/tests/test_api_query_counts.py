@@ -35,6 +35,7 @@ from crops.plant_health_models import (
 )
 from farm.models import (
     Bed,
+    BedLayout,
     Crop,
     CropCompanion,
     CropLoss,
@@ -75,6 +76,27 @@ PAGE_SIZE = 100
 
 class ListEndpointQueryCountTest(ProjectApiTestCase):
     """Each list endpoint must cost the same number of queries for every row."""
+
+    def test_location_bed_layouts_load_with_constant_queries(self):
+        def create_layout(index):
+            parcel = Field.objects.create(
+                project=self.project, location=self.location, name=f'Layout parcel {index}',
+            )
+            bed = Bed.objects.create(project=self.project, field=parcel, name=f'Layout bed {index}')
+            BedLayout.objects.create(project=self.project, location=self.location, bed=bed)
+
+        create_layout(0)
+        url = f'/openfarmplanner/api/locations/{self.location.pk}/layouts/'
+        with CaptureQueriesContext(connection) as baseline:
+            first = self.client.get(url)
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(len(first.data['bed_layouts']), 1)
+        for index in range(1, ROW_COUNT + 1):
+            create_layout(index)
+        with self.assertNumQueries(len(baseline)):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['bed_layouts']), ROW_COUNT + 1)
 
     def test_parcel_rotation_orders_load_with_constant_queries(self):
         def create_group(index):
