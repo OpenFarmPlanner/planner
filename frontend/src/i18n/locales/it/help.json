@@ -286,6 +286,7 @@
       ],
       "symbolsTitle": "Icone e comandi",
       "symbols": {
+        "moreTools": "Apri gli altri strumenti della mappa. Se lo spazio è ridotto, qui puoi anche spostare e ruotare la vista.",
         "panArrows": "Sposta la vista in alto, a sinistra, a destra o in basso",
         "zoomIn": "Ingrandisci",
         "zoomOut": "Riduci",

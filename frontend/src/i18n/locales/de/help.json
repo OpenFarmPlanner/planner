@@ -286,6 +286,7 @@
       ],
       "symbolsTitle": "Symbole und Bedienelemente",
       "symbols": {
+        "moreTools": "Weitere Grafikwerkzeuge öffnen. Bei wenig Platz findest du hier auch Verschieben und Drehen.",
         "panArrows": "Ansicht nach oben, links, rechts oder unten verschieben",
         "zoomIn": "Hineinzoomen",
         "zoomOut": "Herauszoomen",

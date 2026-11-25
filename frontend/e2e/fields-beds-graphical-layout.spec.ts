@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type Konva from 'konva';
-import { apiRequest, loginWithDeterministicProject } from './utils';
+import { activateCanvasTool, apiRequest, loginWithDeterministicProject } from './utils';
 
 // Layout failure/delay fixtures must intercept the browser's requests directly.
 test.use({ serviceWorkers: 'block' });
@@ -125,7 +125,7 @@ test('fits unsaved plots together and shows readable beds in the schematic view'
   expect(zoomedLabel.bounds.y).toBeGreaterThanOrEqual(0);
   expect(zoomedLabel.bounds.x + zoomedLabel.bounds.width).toBeLessThanOrEqual(zoomedLabel.stage.width);
   await page.screenshot({ path: testInfo.outputPath('graphical-mobile-zoomed.png'), animations: 'disabled' });
-  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.setViewportSize({ width: 1600, height: 900 });
   await card.getByRole('button', { name: 'Alles einpassen', exact: true }).click();
   await page.getByRole('region', { name: 'Standort: Grafik913', exact: true }).scrollIntoViewIfNeeded();
   const original = (await canvasRects(page, `field-rect-${fieldIds[0]}`))[0];
@@ -157,11 +157,11 @@ test('fits unsaved plots together and shows readable beds in the schematic view'
   await page.evaluate(() => localStorage.setItem('ui.language', 'fr'));
   await page.setViewportSize({ width: 375, height: 800 });
   await page.reload();
-  const rotateRight = page.getByRole('button', { name: 'Tourner la vue de 90° vers la droite', exact: true }).first();
-  await rotateRight.scrollIntoViewIfNeeded();
-  await rotateRight.click();
+  await page.getByRole('button', { name: 'Autres outils du plan', exact: true }).click();
+  const rotateRight = page.getByRole('menuitem', { name: 'Tourner la vue de 90° vers la droite', exact: true });
   await rotateRight.hover();
   await page.screenshot({ path: testInfo.outputPath('graphical-mobile-fr.png'), animations: 'disabled' });
+  await rotateRight.click();
 });
 
 async function activeCamera(page: Page) {
@@ -178,6 +178,106 @@ async function selectLocation(page: Page, name: string) {
   await expect(page.getByRole('region', { name: `Standort: ${name}`, exact: true })).toBeVisible();
   await page.waitForLoadState('networkidle');
 }
+
+test.describe('responsive canvas tools', () => {
+  test.use({ hasTouch: true });
+
+  test('keeps core tools reachable and moves navigation to the menu only on a narrow canvas', async ({ page, request }, testInfo) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await loginWithDeterministicProject(page, request, 'responsive-canvas-tools', { demoProject: true, loginAsAdmin: true });
+    await page.goto('/app/fields-beds');
+    await page.getByRole('button', { name: 'Grafik', exact: true }).tap();
+    await selectLocation(page, 'Hofgarten');
+    const toolbar = page.getByTestId('graphical-canvas-tools');
+    const trigger = toolbar.getByRole('button', { name: 'Weitere Grafikwerkzeuge' });
+    const menu = page.getByRole('menu', { name: 'Weitere Grafikwerkzeuge' });
+    const rotate = 'Ansicht um 90° nach rechts drehen';
+    const directRotation = toolbar.getByRole('button', { name: rotate, exact: true });
+
+    for (const viewport of [
+      { width: 375, height: 800 }, { width: 768, height: 1024 },
+      { width: 1024, height: 768 }, { width: 800, height: 375 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await expect(toolbar.getByRole('button')).toHaveCount(5);
+      await expect(directRotation).toHaveCount(0);
+      const buttons = await toolbar.getByRole('button').all();
+      for (const button of buttons) {
+        const bounds = (await button.boundingBox())!;
+        expect(bounds.width).toBeGreaterThanOrEqual(44);
+        expect(bounds.height).toBeGreaterThanOrEqual(44);
+      }
+      expect(await toolbar.evaluate(element => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(1);
+      if (viewport.height === 375) {
+        await trigger.tap();
+        await expect(menu).toBeVisible();
+        for (const item of await menu.getByRole('menuitem').all()) {
+          expect(await item.evaluate(element => element.offsetHeight)).toBeGreaterThanOrEqual(44);
+        }
+        await page.screenshot({ path: testInfo.outputPath('canvas-tools-landscape.png'), animations: 'disabled' });
+        await page.keyboard.press('Escape');
+        await expect(menu).toHaveCount(0);
+      }
+    }
+
+    await page.setViewportSize({ width: 768, height: 1024 });
+    const initial = await activeCamera(page);
+    await trigger.press('Enter');
+    await expect(menu.getByRole('menuitem', { name: rotate })).toBeVisible();
+    await expect(menu.getByRole('menuitem', { name: /Freiflächen/ })).toHaveCount(0);
+    await page.keyboard.press('ArrowDown');
+    expect(await activeCamera(page)).toEqual(initial);
+    await page.keyboard.press('Escape');
+    await expect(trigger).toBeFocused();
+    await activateCanvasTool(page, 'Ansicht nach links verschieben', 'touch');
+    await expect.poll(() => activeCamera(page)).toMatchObject({ x: initial.x + 80 });
+    await activateCanvasTool(page, 'Ansicht nach rechts verschieben', 'touch');
+    await activateCanvasTool(page, 'Ansicht nach oben verschieben', 'touch');
+    await expect.poll(() => activeCamera(page)).toMatchObject({ y: initial.y + 80 });
+    await activateCanvasTool(page, 'Ansicht nach unten verschieben', 'touch');
+    await expect.poll(() => activeCamera(page)).toEqual(initial);
+    const originalWidth = (await canvasRects(page, 'field-rect-'))[0].width;
+    await activateCanvasTool(page, rotate, 'touch');
+    await expect.poll(async () => (await canvasRects(page, 'field-rect-'))[0].width).not.toBe(originalWidth);
+    await activateCanvasTool(page, 'Ansicht um 90° nach links drehen', 'touch');
+    await expect.poll(async () => (await canvasRects(page, 'field-rect-'))[0].width).toBe(originalWidth);
+
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await expect(directRotation).toBeVisible();
+    await trigger.tap();
+    await expect(menu.getByRole('menuitem', { name: rotate })).toHaveCount(0);
+    await menu.getByRole('menuitem', { name: 'Einzelpflanzen' }).tap();
+    const plants = page.getByRole('region', { name: 'Einzelpflanzen' });
+    await expect(plants).toBeVisible();
+    await expect(directRotation).toHaveCount(0);
+    await plants.getByRole('button', { name: 'Schließen' }).tap();
+    await expect(trigger).toBeFocused();
+    await expect(directRotation).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('canvas-tools-wide.png'), animations: 'disabled' });
+
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await toolbar.getByRole('button', { name: 'Vollbild öffnen' }).tap();
+    await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true);
+    await trigger.tap();
+    await expect(menu).toBeVisible();
+    expect(await menu.evaluate(element => document.fullscreenElement?.contains(element))).toBe(true);
+    await expect(menu.getByRole('menuitem', { name: 'Einzelpflanzen' })).toHaveCount(0);
+    await menu.getByRole('menuitem', { name: 'Aufgaben im Beet' }).tap();
+    const tasks = page.getByRole('dialog', { name: 'Aufgaben im Beet' });
+    await expect(tasks).toBeVisible();
+    expect(await tasks.evaluate(element => document.fullscreenElement?.contains(element))).toBe(true);
+    await tasks.getByRole('combobox', { name: 'Beet auswählen' }).tap();
+    const beds = page.getByRole('listbox', { name: 'Beet auswählen' });
+    await expect(beds).toBeVisible();
+    expect(await beds.evaluate(element => document.fullscreenElement?.contains(element))).toBe(true);
+    await beds.getByRole('option').first().tap();
+    await page.keyboard.press('Escape');
+    await expect(tasks).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await toolbar.getByRole('button', { name: 'Vollbild schließen' }).tap();
+    await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(false);
+  });
+});
 
 test.describe('location spacing in a touch-capable browser', () => {
   test.use({ hasTouch: true });
@@ -308,7 +408,7 @@ test('snaps real bed and parcel edges and permits closer placement with Shift or
 
   await page.goto('/app/fields-beds');
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
-  await page.getByRole('button', { name: 'Ansicht um 90° nach links drehen', exact: true }).click();
+  await activateCanvasTool(page, 'Ansicht um 90° nach links drehen');
   await page.getByRole('button', { name: 'Grafik bearbeiten', exact: true }).click();
   const findRect = async (id: string) => (await canvasRects(page, id)).find(rect => rect.id === id)!;
   const fieldId = `field-rect-${fields[1].id}`;
@@ -385,9 +485,9 @@ test('retains selected location, camera and rotation through representation chan
   await selectLocation(page, 'Hofgarten');
   await expect(page.locator('.konvajs-content')).toHaveCount(1);
   await expect(page.locator('.MuiAccordion-root')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Ansicht um 90° nach rechts drehen', exact: true }).click();
+  await activateCanvasTool(page, 'Ansicht um 90° nach rechts drehen');
   for (let count = 0; count < 5; count++) await page.getByRole('button', { name: 'Hineinzoomen', exact: true }).click();
-  await page.getByRole('button', { name: 'Ansicht nach links verschieben', exact: true }).click();
+  await activateCanvasTool(page, 'Ansicht nach links verschieben');
   const camera = await activeCamera(page);
   await page.getByRole('combobox', { name: 'Standort', exact: true }).focus();
   await page.keyboard.press('ArrowDown');

@@ -286,6 +286,7 @@
       ],
       "symbolsTitle": "Ícones e controlos",
       "symbols": {
+        "moreTools": "Abre mais ferramentas do esquema. Se houver pouco espaço, também podes deslocar e rodar a vista neste menu.",
         "panArrows": "Deslocar a vista para cima, para a esquerda, para a direita ou para baixo",
         "zoomIn": "Ampliar",
         "zoomOut": "Reduzir",

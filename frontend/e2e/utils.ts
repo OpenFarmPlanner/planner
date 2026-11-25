@@ -8,6 +8,21 @@ const defaultBackendPort = process.env.BACKEND_PORT ?? '8000';
 const e2eApiBase = process.env.PLAYWRIGHT_E2E_API_BASE ?? `http://127.0.0.1:${defaultBackendPort}/api/__e2e__/invite-flow/`;
 const e2eToken = process.env.E2E_TEST_TOKEN || 'openfarmplanner-e2e-token';
 
+export async function activateCanvasTool(page: Page, name: string, input: 'mouse' | 'touch' = 'mouse') {
+  const toolbar = page.getByTestId('graphical-canvas-tools');
+  await expect(toolbar).toBeVisible();
+  const direct = toolbar.getByRole('button', { name, exact: true });
+  const tapOrClick = input === 'touch' ? 'tap' : 'click';
+  if (await direct.isVisible()) {
+    await direct[tapOrClick]();
+    return;
+  }
+  const trigger = toolbar.getByRole('button', { name: 'Weitere Grafikwerkzeuge' });
+  await trigger[tapOrClick]();
+  const menu = page.getByRole('menu', { name: 'Weitere Grafikwerkzeuge' });
+  await menu.getByRole('menuitem', { name, exact: true })[tapOrClick]();
+}
+
 export const VIEWPORTS = [
   { key: 'mobile', width: 375, height: 800 },
   { key: 'tablet', width: 768, height: 900 },

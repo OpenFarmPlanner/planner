@@ -56,9 +56,9 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
 
   await page.goto('/app/fields-beds');
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
-  const control = page.getByRole('button', { name: 'Einzelpflanzen', exact: true });
-  await control.focus();
-  await page.keyboard.press('Enter');
+  const control = page.getByRole('button', { name: 'Weitere Grafikwerkzeuge' });
+  await control.press('Enter');
+  await page.getByRole('menuitem', { name: 'Einzelpflanzen', exact: true }).press('Enter');
   const panel = page.getByRole('region', { name: 'Einzelpflanzen', exact: true });
   await panel.getByRole('button', { name: 'Neuer Einzelpflanzenplan' }).click();
   await panel.getByRole('combobox', { name: 'Kultur (Sorte)', exact: true }).click();
@@ -116,6 +116,7 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   await expect(page).toHaveURL(new RegExp(`individualPlan=${saved.id}`));
   await expect(panel.getByText('1 Einzelpflanze', { exact: true })).toBeVisible();
   await panel.getByRole('button', { name: 'Schließen', exact: true }).click();
+  await expect(control).toBeFocused();
 
   await page.getByRole('button', { name: 'Grafik bearbeiten', exact: true }).click();
   const root = await shape(page, `field-rect-${plot.id}`);

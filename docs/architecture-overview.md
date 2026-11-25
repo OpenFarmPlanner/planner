@@ -220,6 +220,11 @@ Edit graphic and Spacing stay directly available with 44 px buttons. They
 show labels from `lg` when the topbar itself has enough width. The edit button
 shows the active state, and Spacing shows the Shift hint for keyboard users.
 
+The floating canvas tools use the measured canvas width, including in
+fullscreen and when the individual-plants panel narrows the canvas. Zoom, fit,
+fullscreen, and layout warnings stay directly reachable. Pan and rotation move
+into More canvas tools below the `lg` breakpoint, alongside the secondary tools.
+
 Graphic shades reliable unoccupied location and parcel geometry by default.
 The footprint sweep clips children to the parent and counts their union once.
 It supplies the same calculation to the location and parcel details, which
