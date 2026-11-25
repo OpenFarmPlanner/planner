@@ -8,6 +8,23 @@ const defaultBackendPort = process.env.BACKEND_PORT ?? '8000';
 const e2eApiBase = process.env.PLAYWRIGHT_E2E_API_BASE ?? `http://127.0.0.1:${defaultBackendPort}/api/__e2e__/invite-flow/`;
 const e2eToken = process.env.E2E_TEST_TOKEN || 'openfarmplanner-e2e-token';
 
+export const graphicDisplayButton = (page: Page) => page.getByRole('button', { name: /^Darstellung der Grafik · / });
+
+export async function selectGraphicDisplay(page: Page, mode: string) {
+  await graphicDisplayButton(page).press('Enter');
+  const item = page.getByRole('menuitemradio', { name: mode, exact: true });
+  await item.press('Enter');
+  await expect(graphicDisplayButton(page)).toHaveAccessibleName(`Darstellung der Grafik · ${mode}`);
+}
+
+export async function openGraphicLegend(page: Page) {
+  await graphicDisplayButton(page).press('Enter');
+  await page.getByRole('menuitem', { name: 'Legende der Grafik', exact: true }).press('Enter');
+  const legend = page.getByRole('dialog', { name: 'Legende der Grafik' });
+  await expect(legend).toBeVisible();
+  return legend;
+}
+
 export async function activateCanvasTool(page: Page, name: string, input: 'mouse' | 'touch' = 'mouse') {
   const toolbar = page.getByTestId('graphical-canvas-tools');
   await expect(toolbar).toBeVisible();

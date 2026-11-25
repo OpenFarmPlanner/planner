@@ -16,6 +16,7 @@ const { locationListMock, locationCreateMock, fieldListMock, bedListMock, addFie
 }));
 const projectRequirementState = vi.hoisted(() => ({
   activeProjectId: 1 as number | null,
+  userId: 71,
   shouldShowProjectRequiredState: false,
   missingProjectReason: null as null | 'no_projects' | 'no_active_project',
 }));
@@ -128,6 +129,7 @@ describe('FieldsBedsPage', () => {
     fieldListMock.mockReset();
     bedListMock.mockReset();
     projectRequirementState.activeProjectId = 1;
+    projectRequirementState.userId = 71;
     projectRequirementState.shouldShowProjectRequiredState = false;
     projectRequirementState.missingProjectReason = null;
     locationListMock.mockResolvedValue({
@@ -322,6 +324,22 @@ describe('FieldsBedsPage', () => {
   const workspace = () => <MemoryRouter><Routes><Route element={<WorkspaceShell />}>
     <Route index element={<FieldsBedsPage />} />
   </Route></Routes></MemoryRouter>;
+
+  it('retains a geometry-only display preference for the account that chose it', async () => {
+    window.localStorage.setItem('fieldsBedsViewMode', 'graphical');
+    const user = userEvent.setup();
+    const view = render(workspace());
+    await user.click(await screen.findByRole('button', { name: 'Darstellung der Grafik · Kulturen & Aufgaben' }));
+    await user.click(screen.getByRole('menuitemradio', { name: 'Anbauflächen' }));
+    expect(window.localStorage.getItem('growingAreas.graphic.displayMode:user:71')).toBe('areas');
+
+    projectRequirementState.userId = 72;
+    view.rerender(workspace());
+    expect(await screen.findByRole('button', { name: 'Darstellung der Grafik · Kulturen & Aufgaben' })).toBeInTheDocument();
+    projectRequirementState.userId = 71;
+    view.rerender(workspace());
+    expect(await screen.findByRole('button', { name: 'Darstellung der Grafik · Anbauflächen' })).toBeInTheDocument();
+  });
 
   it('keeps location selection across representations and falls back safely after removal', async () => {
     locationListMock.mockResolvedValue({ data: { results: [{ id: 1, name: 'Hof Nord' }, { id: 2, name: 'Hof Süd' }] } });

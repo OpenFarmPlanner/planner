@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type Konva from 'konva';
-import { activateCanvasTool, apiRequest, loginWithDeterministicProject } from './utils';
+import { activateCanvasTool, apiRequest, graphicDisplayButton, loginWithDeterministicProject, openGraphicLegend, selectGraphicDisplay } from './utils';
 
 // Layout failure/delay fixtures must intercept the browser's requests directly.
 test.use({ serviceWorkers: 'block' });
@@ -458,8 +458,11 @@ test.describe('responsive canvas tools', () => {
     await expect(menu).toBeVisible();
     expect(await menu.evaluate(element => document.fullscreenElement?.contains(element))).toBe(true);
     await expect(menu.getByRole('menuitem', { name: 'Einzelpflanzen' })).toHaveCount(0);
-    await menu.getByRole('menuitem', { name: 'Aufgaben im Beet' }).tap();
-    const tasks = page.getByRole('dialog', { name: 'Aufgaben im Beet' });
+    await expect(menu.getByRole('menuitem', { name: 'Aufgaben im Beet' })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    const display = graphicDisplayButton(page);
+    expect(await display.evaluate(element => document.fullscreenElement?.contains(element))).toBe(true);
+    const tasks = await openGraphicLegend(page);
     await expect(tasks).toBeVisible();
     expect(await tasks.evaluate(element => document.fullscreenElement?.contains(element))).toBe(true);
     await tasks.getByRole('combobox', { name: 'Beet auswählen' }).tap();
@@ -469,7 +472,7 @@ test.describe('responsive canvas tools', () => {
     await beds.getByRole('option').first().tap();
     await page.keyboard.press('Escape');
     await expect(tasks).toHaveCount(0);
-    await expect(trigger).toBeFocused();
+    await expect(display).toBeFocused();
     await toolbar.getByRole('button', { name: 'Vollbild schließen' }).tap();
     await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(false);
   });
@@ -539,14 +542,14 @@ test.describe('location spacing in a touch-capable browser', () => {
 
     // Account language is a persisted preference, so each reload renders the
     // toolbar and the popover in the selected language.
-    for (const [locale, button, title, edit, shift, details] of [
-      ['de', 'Abstände', 'Abstände (Wege)', 'Grafik bearbeiten', /Umschalttaste/, 'Details anzeigen'],
-      ['en', 'Spacing', 'Spacing (paths)', 'Edit graphic', /Hold Shift/, 'View details'],
-      ['fr', 'Espacement', 'Espacement (allées)', 'Modifier le graphique', /Maintenez Maj/, 'Voir les détails'],
-      ['es', 'Distancias', 'Distancias (caminos)', 'Editar gráfico', /tecla Mayús/, 'Ver detalles'],
-      ['it', 'Distanze', 'Distanze (passaggi)', 'Modifica grafica', /premuto Maiusc/, 'Visualizza dettagli'],
-      ['pt', 'Espaçamento', 'Espaçamento (caminhos)', 'Editar gráfico', /tecla Shift/, 'Ver detalhes'],
-      ['nl', 'Afstanden', 'Afstanden (paden)', 'Grafische weergave bewerken', /Houd Shift/, 'Details bekijken'],
+    for (const [locale, button, title, edit, shift, details, displayLabel] of [
+      ['de', 'Abstände', 'Abstände (Wege)', 'Grafik bearbeiten', /Umschalttaste/, 'Details anzeigen', 'Darstellung der Grafik · Kulturen & Aufgaben'],
+      ['en', 'Spacing', 'Spacing (paths)', 'Edit graphic', /Hold Shift/, 'View details', 'Graphic display · Crops & tasks'],
+      ['fr', 'Espacement', 'Espacement (allées)', 'Modifier le graphique', /Maintenez Maj/, 'Voir les détails', 'Affichage du graphique · Cultures et tâches'],
+      ['es', 'Distancias', 'Distancias (caminos)', 'Editar gráfico', /tecla Mayús/, 'Ver detalles', 'Vista del gráfico · Cultivos y tareas'],
+      ['it', 'Distanze', 'Distanze (passaggi)', 'Modifica grafica', /premuto Maiusc/, 'Visualizza dettagli', 'Visualizzazione del grafico · Colture e attività'],
+      ['pt', 'Espaçamento', 'Espaçamento (caminhos)', 'Editar gráfico', /tecla Shift/, 'Ver detalhes', 'Modo de visualização · Culturas e tarefas'],
+      ['nl', 'Afstanden', 'Afstanden (paden)', 'Grafische weergave bewerken', /Houd Shift/, 'Details bekijken', 'Grafiekweergave · Gewassen en taken'],
     ] as const) {
       await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: locale });
       await page.setViewportSize({ width: 375, height: 800 });
@@ -580,6 +583,13 @@ test.describe('location spacing in a touch-capable browser', () => {
       await page.keyboard.press('Escape');
       await locationTarget.press('Shift+F10');
       await expect(page.getByRole('menuitem', { name: details })).toBeVisible();
+      await page.keyboard.press('Escape');
+      const mode = page.getByRole('button', { name: displayLabel, exact: true });
+      await expect(mode).toBeVisible();
+      expect((await mode.boundingBox())?.width).toBeGreaterThanOrEqual(44);
+      await mode.tap();
+      await expect(page.getByRole('menuitemradio')).toHaveCount(4);
+      await expect(page.getByRole('menuitemradio', { checked: true })).toHaveCount(1);
       await page.keyboard.press('Escape');
     }
   });
@@ -768,7 +778,8 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
   await selectLocation(page, longLocationName);
   for (const viewport of [
-    { width: 1920, height: 1080 }, { width: 1440, height: 900 }, { width: 1200, height: 900 },
+    { width: 2240, height: 1080 }, { width: 1920, height: 1080 }, { width: 1440, height: 900 },
+    { width: 1200, height: 900 },
     { width: 1199, height: 900 }, { width: 1024, height: 768 }, { width: 768, height: 1024 },
     { width: 375, height: 800 }, { width: 800, height: 375 },
     { width: 1024, height: 500 },
@@ -788,9 +799,10 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
       const label = button.locator('[data-graphical-action-label]');
       if (viewport.width >= 1440) await expect(label).toBeVisible();
       if (viewport.width < 1200) await expect(label).toBeHidden();
-      const target = (await button.boundingBox())!;
-      expect(target.width).toBeGreaterThanOrEqual(44);
-      expect(target.height).toBeGreaterThanOrEqual(44);
+      await expect.poll(async () => {
+        const target = await button.boundingBox();
+        return Boolean(target && target.width >= 44 && target.height >= 44);
+      }).toBe(true);
     }
     await expect.poll(async () => {
       const rects = await Promise.all([
@@ -806,7 +818,8 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
     }).toBe(true);
     await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1)).toBe(true);
     await expect.poll(async () => (await canvasRects(page, 'field-rect-'))[0]?.stage.height ?? 0).toBeGreaterThan(96);
-    if (viewport.width === 1920) await expect(page.getByTestId('topbar-workspace-row')).toHaveCount(0);
+    // The mode and date controls can use the wrapped workspace row on a large desktop as well.
+    if (viewport.width === 2240) await expect(page.getByTestId('topbar-workspace-row')).toHaveCount(0);
     if (viewport.width <= 1024) await expect(page.getByTestId('topbar-workspace-row')).toBeVisible();
     await page.mouse.move(1, viewport.height - 1);
     await expect(page.getByRole('tooltip')).toHaveCount(0);
@@ -1121,4 +1134,92 @@ test('keeps an empty unmeasured location selectable with a single guidance messa
   await expect(preview).not.toContainText('m²');
   await preview.getByRole('button', { name: 'Details anzeigen' }).click();
   await expect(page).toHaveURL(new RegExp(`/fields-beds/locations/${location.id}$`));
+});
+
+test('projects demo crops by date, preserves real task urgency and remembers the display mode', async ({ page, request }, testInfo) => {
+  await page.clock.setFixedTime(new Date(2026, 4, 15, 12));
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await loginWithDeterministicProject(page, request, `graphic-display-${testInfo.workerIndex}`, { demoProject: true, demoYear: 2026, loginAsAdmin: true });
+  const { results: locations } = await apiRequest<{ results: { id: number; name: string }[] }>(page, 'GET', '/locations/');
+  const site = locations.find(location => location.name === 'Pachtacker Lindenhof')!;
+  const { results: beds } = await apiRequest<{ results: { id: number; name: string }[] }>(page, 'GET', '/beds/');
+  const id = (name: string) => beds.find(bed => bed.name === name)!.id;
+  const growth = id('Wachstumsbeet');
+  const harvest = id('Erntebeet');
+  const mixed = id('Misch- und Folgebeet');
+  const free = id('Freies Beispielbeet');
+  const reads: URL[] = [];
+  const writes: string[] = [];
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (request.method() === 'GET' && url.pathname.endsWith('/planting-plans/')) reads.push(url);
+    if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(request.method()) &&
+      /\/(planting-plans|seasons|tasks)\//.test(url.pathname)) writes.push(url.pathname);
+  });
+  await page.goto('/app/fields-beds');
+  await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+  await selectLocation(page, site.name);
+  const display = graphicDisplayButton(page);
+  await expect(display).toHaveAccessibleName('Darstellung der Grafik · Kulturen & Aufgaben');
+  const dateButton = page.getByRole('button', { name: /^Stichtag für Kulturen · / });
+  await expect(dateButton).toHaveAccessibleName('Stichtag für Kulturen · Heute');
+
+  const shape = (id: number) => page.evaluate(id => {
+    const stage = (window as unknown as { Konva: { stages: Konva.Stage[] } }).Konva.stages
+      .find(item => item.container()?.isConnected);
+    const bed = stage?.find('Rect').find(rect => rect.getAttr('data-testid') === `bed-rect-${id}`);
+    return { phase: bed?.getAttr('data-crop-phase') ?? null, urgency: bed?.getAttr('data-task-urgency') ?? null };
+  }, id);
+  await expect.poll(async () => (await shape(growth)).phase).toBe('growth');
+  await expect.poll(async () => (await shape(harvest)).phase).toBe('harvest');
+  await expect.poll(async () => (await shape(mixed)).phase).toBe('mixed');
+  await expect.poll(async () => (await shape(free)).phase).toBeNull();
+  const harvestUrgency = (await shape(harvest)).urgency;
+  expect(harvestUrgency).toBeTruthy();
+
+  const preview = page.getByTestId('graphical-object-preview');
+  const target = (id: number) => page.locator(`[data-graphical-object-target="bed:${id}"]`);
+  await target(mixed).press('Enter');
+  await expect(preview).toHaveAccessibleName('Misch- und Folgebeet');
+  await expect(preview).toContainText('Geplantes Wachstum');
+  await expect(preview).toContainText('Geplante Ernte');
+  await expect.poll(async () => {
+    const [sheet, canvas] = await Promise.all([preview.boundingBox(), page.locator('.konvajs-content').boundingBox()]);
+    return Boolean(sheet && canvas && sheet.y + sheet.height <= canvas.y + canvas.height + 1);
+  }).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath('graphic-display-combined.png') });
+  await page.keyboard.press('Escape');
+
+  await dateButton.click();
+  const dateDialog = page.getByRole('dialog', { name: 'Stichtag für Kulturen' });
+  await dateDialog.locator('input[type="date"]').fill('2026-04-15');
+  await expect(dateDialog.getByText(/heutige Datum/)).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dateButton).not.toHaveAccessibleName('Stichtag für Kulturen · Heute');
+  await expect.poll(async () => (await shape(mixed)).phase).toBe('growth');
+  await expect.poll(async () => (await shape(harvest)).urgency).toBe(harvestUrgency);
+  await dateButton.click();
+  await dateDialog.getByRole('button', { name: 'Ganze Saison' }).click();
+  await target(mixed).press('Enter');
+  await expect(preview.getByRole('region', { name: 'Kulturen' }).getByRole('listitem')).toHaveCount(3);
+  await expect(preview).not.toContainText('Geplantes Wachstum');
+  await page.keyboard.press('Escape');
+  expect(reads.filter(url => url.searchParams.get('location') === String(site.id))).toHaveLength(1);
+  expect(reads.filter(url => url.searchParams.has('bed'))).toHaveLength(0);
+
+  await selectGraphicDisplay(page, 'Kulturen');
+  await expect(dateButton).toBeVisible();
+  expect((await shape(harvest)).urgency).toBeNull();
+  await selectGraphicDisplay(page, 'Aufgaben');
+  await expect(dateButton).toHaveCount(0);
+  expect((await shape(harvest)).phase).toBeNull();
+  await selectGraphicDisplay(page, 'Anbauflächen');
+  await page.reload();
+  await expect(display).toHaveAccessibleName('Darstellung der Grafik · Anbauflächen');
+  await expect(dateButton).toHaveCount(0);
+  await target(harvest).press('Enter');
+  await expect(preview).toContainText('Geplante Ernte');
+  await expect(preview.getByText(/offene Aufgaben?/)).toBeVisible();
+  expect(writes).toEqual([]);
+  await page.keyboard.press('Escape');
 });

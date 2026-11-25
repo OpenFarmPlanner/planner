@@ -1,7 +1,6 @@
 import { useId, useState, type ReactNode } from 'react';
 import { Box, Divider, IconButton, ListItemIcon, ListItemText, Menu, MenuItem, Paper, Stack, useTheme } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
 import CheckIcon from '@mui/icons-material/Check';
 import FitScreenIcon from '@mui/icons-material/FitScreen';
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
@@ -34,10 +33,6 @@ interface CanvasToolsProps {
   onPan: (direction: 'up' | 'down' | 'left' | 'right') => void;
   onTriggerChange: (button: HTMLButtonElement | null) => void;
   warnings: ReactNode;
-  bedTasks?: {
-    active: boolean;
-    render: (anchor: HTMLButtonElement | null, close: () => void) => ReactNode;
-  };
   individualPlants?: { active: boolean; toggle: () => void };
 }
 
@@ -60,7 +55,7 @@ function CanvasToolButton({ tool }: { tool: Tool }) {
 
 export function GraphicalCanvasTools({
   width, height, fullscreen, onZoom, onFit, onFullscreen, onRotate, onPan, onTriggerChange,
-  warnings, bedTasks, individualPlants,
+  warnings, individualPlants,
 }: CanvasToolsProps) {
   const { t } = useTranslation('fields');
   const theme = useTheme();
@@ -70,8 +65,7 @@ export function GraphicalCanvasTools({
   const [nextAction, setNextAction] = useState<(() => void) | null>(null);
   const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [tasksOpen, setTasksOpen] = useState(false);
-  useContextMenuOpenRegistration(menuOpen || tasksOpen);
+  useContextMenuOpenRegistration(menuOpen);
   const title = t('graphical.moreTools');
 
   const rotation: Tool[] = [
@@ -92,8 +86,6 @@ export function GraphicalCanvasTools({
       icon: fullscreen ? <FullscreenExitIcon fontSize="small" /> : <FullscreenIcon fontSize="small" />, action: onFullscreen },
   ];
   const additional: Tool[] = [];
-  if (bedTasks) additional.push({ label: t('graphical.taskLayer.title'), icon: <AssignmentOutlinedIcon fontSize="small" />,
-    active: bedTasks.active, opensPanel: true, action: () => setTasksOpen(true) });
   if (individualPlants) additional.push({ label: t('individualPlants.title'), icon: <ParkOutlinedIcon fontSize="small" />,
     active: individualPlants.active, opensPanel: true, action: individualPlants.toggle });
   const hasMenu = compact || additional.length > 0;
@@ -156,7 +148,6 @@ export function GraphicalCanvasTools({
         {compact && additional.length > 0 && <Divider />}
         {additional.map(menuItem)}
       </Menu>
-      {bedTasks?.render(tasksOpen ? anchor : null, () => setTasksOpen(false))}
     </>
   );
 }

@@ -5,9 +5,10 @@
 
 import type { HierarchyDataState } from "../components/hierarchy/hooks/useHierarchyData";
 import type { ViewportPadding, ViewportState } from "./graphicalViewport";
-import type { Dispatch, SetStateAction } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 import type { GraphicalRotation } from "./graphicalLayoutUtils";
 import type { Season } from "../api/types";
+import type { CropReference, GraphicalDisplayMode } from "./graphicalCultivation";
 import type { HierarchyEntityType } from "../components/hierarchy/details/hierarchyDetailRoutes";
 
 export interface Point {
@@ -56,6 +57,12 @@ export interface GraphicalFieldsProps {
   onInteractionModeChange?: (mode: InteractionMode) => void;
   showModeToggle?: boolean;
   activeSeasonId?: number;
+  displayMode?: GraphicalDisplayMode;
+  cropReference?: CropReference;
+  fullscreenDisplayControls?: ReactNode;
+  onFullscreenChange?: (fullscreen: boolean) => void;
+  displayLegendAnchor?: HTMLButtonElement | null;
+  closeDisplayLegend?: () => void;
   individualSeason?: Season;
   canEditIndividualPlants?: boolean;
   requestedIndividualPlan?: number;
