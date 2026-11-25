@@ -1086,13 +1086,17 @@ Run `ofp-qa refresh --agent codex` (or `--agent claude`) from an interactive
 terminal to review accepted work and then prepare newly implemented issues.
 The launcher first runs the existing `sync` assistant: it verifies Accepted
 decisions against the reviewed implementation and the live queue, previews the
-eligible removals, and applies them directly under the standing owner
-authorization in [CLAUDE.md](../CLAUDE.md#qa--exploratory-testing) — closure,
-matching Accepted revision, merged reviewed PR, no open implementation-PR gate
-re-checked immediately before each write — without asking for a chat
-confirmation each run. Verified removals are archived locally with their
-decisions and evidence before their cards leave the dashboard. Separate
-follow-up issues remain in the queue.
+eligible removals, and applies them directly, without asking for a chat
+confirmation each run. The owner standingly pre-authorizes this as long as the
+assistant verifies, for every removed row: the issue is closed; its
+`decisions.json` status is Accepted at the current revision; its reviewed
+implementation PR/commit is actually merged into `main`; and no open or
+closed-unmerged implementation PR still gates it. Re-verify all of this (and
+the live queue body) immediately before writing, narrow the batch if a row
+became ineligible since the last read, and stop and report instead of writing
+if anything does not check out cleanly. Verified removals are archived locally
+with their decisions and evidence before their cards leave the dashboard.
+Separate follow-up issues remain in the queue.
 Exit the interactive assistant when finished to continue with the QA release
 update and refresh. An unsuccessful sync exit or Ctrl+C stops the combined run.
 The refresh then reads the updated dashboard and queue to build a new candidate

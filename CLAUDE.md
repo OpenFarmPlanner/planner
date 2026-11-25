@@ -528,18 +528,9 @@ build a throwaway local integration branch; never a shared branch:
 
 ## QA / Exploratory Testing
 The owner's local `ofp-qa refresh` workflow includes acceptance cleanup before
-the QA refresh. The owner standingly authorizes the sync assistant to remove
-Accepted entries from #1058 and archive their dashboard cards directly,
-without asking for a chat confirmation each run, once it has verified for
-every removed row: the issue is closed; its `decisions.json` status is
-Accepted at the current revision; its reviewed implementation PR/commit is
-actually merged into `main`; and no open or closed-unmerged implementation PR
-still gates it. Re-verify all of this (and the live queue body) immediately
-before writing, narrow the batch if a row became ineligible since the last
-read, and stop and report instead of writing if anything does not check out
-cleanly. The subsequent QA phase stays read-only on GitHub. Codex sync
-sessions use the workspace-write sandbox with network access and no
-per-command approval prompts. See `docs/testing-and-ci.md`.
+the QA refresh. Follow the standing verification and pre-authorization for
+that cleanup in [`docs/testing-and-ci.md`](docs/testing-and-ci.md#keeping-a-local-acceptance-dashboard-on-main);
+the subsequent QA phase stays read-only on GitHub.
 
 When asked to search for bugs, run exploratory tests, or do a QA sweep:
 1. Read `docs/qa-strategy.md` first — it defines when to do a full vs. targeted sweep and contains Playwright setup details.
