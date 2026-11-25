@@ -1,0 +1,110 @@
+body {
+  background: #f8faf6;
+  color: #1b2a1c;
+}
+
+main {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: clamp(12px, 2.4vw, 32px);
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+h1 {
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  margin: 0;
+}
+
+p {
+  margin: 4px 0 0;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(300px, 1.4fr);
+  gap: 16px;
+}
+
+.canvas {
+  width: 100%;
+  height: clamp(250px, 64vh, 640px);
+  background-color: #e7eee4;
+  background-image: linear-gradient(#54725317 1px, transparent 1px), linear-gradient(90deg, #54725317 1px, transparent 1px);
+  background-size: 24px 24px;
+  border: 1px solid #a6bba7;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.controls {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  border: 1px solid #d2ded3;
+  border-radius: 8px;
+  background: white;
+  padding: 12px;
+}
+
+.controls select,
+.controls button,
+header button {
+  min-height: 44px;
+}
+
+.controls select {
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  padding-inline: 10px;
+  border: 1px solid #849587;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.vertices {
+  white-space: pre;
+  max-height: 6.5rem;
+  overflow: auto;
+  border: 1px solid #d2ded3;
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dimensions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+fieldset {
+  min-width: 0;
+  margin: 0;
+  border: 1px solid #d2ded3;
+  border-radius: 6px;
+}
+
+:focus-visible {
+  outline: 2px solid #245ea3;
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
