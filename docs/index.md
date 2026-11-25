@@ -58,6 +58,9 @@ for step-by-step procedures of recurring tasks, see the skills in
   inherited light/soil moisture/irrigation/soil type of locations, fields and
   beds, the Growing Areas Search/Filter/Columns toolbar, and the location,
   field and bed detail pages.
+- **[Season-effective growing-area geometry](./growing-area-geometry-history.md)** —
+  decision record for dated geometry versions of locations, parcels and beds,
+  the resolver, preview/confirm writes and the delivery order.
 - **[Occupancy Tree / Gantt Hierarchy](./occupancy-tree-hierarchy.md)** —
   the Standort → Parzelle → Beet tree in the bed-occupancy calendar, plus
   the Gantt calendar's context menu, drag-and-drop, and row-height model.
