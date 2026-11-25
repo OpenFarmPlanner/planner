@@ -1,6 +1,6 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { build } from 'vite';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { bundleBudgetPlugin, PRECACHE_ASSET_LIMIT_BYTES } from './bundleBudget.ts';
@@ -44,5 +44,16 @@ describe('production bundle budget', () => {
     await expect(buildFixture()).rejects.toThrow(
       `Precache asset ${icon} is ${PRECACHE_ASSET_LIMIT_BYTES + 1} bytes and exceeds the ${PRECACHE_ASSET_LIMIT_BYTES}-byte limit.`,
     );
+  });
+
+  it('fails the production build for an oversized asset matched by the Workbox globs', async () => {
+    mkdirSync(join(root, 'public/assets'), { recursive: true });
+    writeFileSync(join(root, 'public/assets/oversized.css'), Buffer.alloc(PRECACHE_ASSET_LIMIT_BYTES + 1));
+
+    await expect(build({
+      root,
+      configFile: resolve('vite.config.ts'),
+      logLevel: 'silent',
+    })).rejects.toThrow(/maximumFileSizeToCacheInBytes[\s\S]*assets\/oversized\.css/);
   });
 });

@@ -69,7 +69,6 @@ function pwaPlugin() {
     // explicit in the entry point rather than injected into index.html.
     injectRegister: null,
     manifestFilename: pwaManifestFilename,
-    showMaximumFileSizeToCacheInBytesWarning: false,
     manifest: {
       name: 'OpenFarmPlanner',
       short_name: 'OFP',
@@ -90,6 +89,7 @@ function pwaPlugin() {
       // (`includeManifestIcons`), so this only has to name the build output
       // and the favicon.
       globPatterns: ['assets/**/*.{js,css,woff,woff2}', 'favicon.png'],
+      // vite-plugin-pwa treats files that exceed this limit as build errors.
       maximumFileSizeToCacheInBytes: PRECACHE_ASSET_LIMIT_BYTES,
       // Overrides the plugin's 'index.html' default: no HTML is precached, so
       // there is nothing to fall back to and navigations stay on the network.
