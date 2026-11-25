@@ -118,6 +118,11 @@ export function createEditor(target: HTMLElement, onChange: (state: EditorState)
     emit();
   }
 
+  function fit() {
+    const extent = source.getExtent();
+    if (extent) view.fit(extent, { padding: [20, 20, 20, 20] });
+  }
+
   function descendants(id: string) {
     const group = new Set([id]);
     const queue = [id];
@@ -206,7 +211,7 @@ export function createEditor(target: HTMLElement, onChange: (state: EditorState)
   });
 
   restore(demoShapes());
-  view.fit([0, 0, 100, 76], { padding: [20, 20, 20, 20] });
+  fit();
   emit();
 
   return {
@@ -232,7 +237,7 @@ export function createEditor(target: HTMLElement, onChange: (state: EditorState)
       if (before) restore(before);
       setMode(mode);
     },
-    fit() { view.fit([0, 0, 100, 76], { padding: [20, 20, 20, 20] }); },
+    fit,
     transform({ east, north, degrees, scale }: Transform) {
       const anchorShape = source.getFeatureById(selected)?.getGeometry();
       if (!session || !anchorShape) return;

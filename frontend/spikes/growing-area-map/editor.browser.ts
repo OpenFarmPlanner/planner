@@ -110,6 +110,17 @@ test('applies pointer and numeric transforms to a parent and its 54 beds', async
   await page.getByRole('button', { name: 'Cancel editing' }).click();
   await selected(page).selectOption('bed-1');
   await expect(coordinates(page)).toHaveText(original);
+
+  await page.getByRole('button', { name: 'Edit shapes' }).click();
+  await selected(page).selectOption('site');
+  await page.getByRole('spinbutton', { name: 'Rotation (°)' }).fill('0');
+  await page.getByRole('spinbutton', { name: 'Scale factor' }).fill('1');
+  await page.getByRole('spinbutton', { name: 'East (m)' }).fill('400');
+  await page.getByRole('button', { name: 'Apply transform' }).click();
+  await page.getByRole('button', { name: 'Fit location' }).click();
+  await clickPoint(page, 16, 14);
+  await expect(selected(page)).toHaveValue('bed-1');
+  await expect(coordinates(page)).toContainText('415, 13');
 });
 
 test('offers touch selection, keyboard geometry and responsive controls', async ({ browser }, testInfo) => {
