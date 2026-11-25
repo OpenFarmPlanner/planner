@@ -96,6 +96,7 @@ export interface BedCultivationEntry {
   phase: CropPhase | null;
   recordedHarvest: boolean;
   harvest?: SeasonalHarvestPeriod;
+  recordedPeriods?: readonly SeasonalHarvestPeriod[];
 }
 
 function periodIncludes(period: SeasonalHarvestPeriod, date: string): boolean {
@@ -107,14 +108,17 @@ export function projectBedCultivation(
   reference: CropReference,
   season: SeasonBounds,
 ): BedCultivationEntry[] {
+  const range = reference.kind === 'date'
+    ? { start_date: reference.date, end_date: reference.date } : season;
   return plans.flatMap<BedCultivationEntry>(plan => {
-    const range = reference.kind === 'date'
-      ? { start_date: reference.date, end_date: reference.date } : season;
+    const recordedPeriods = plan.recordedHarvest.filter(period =>
+      period.start_date <= range.end_date && period.end_date >= range.start_date,
+    );
     const isOutside = (plan.start !== null && plan.start > range.end_date)
       || (plan.end !== null && plan.end < range.start_date);
-    if (isOutside) return [];
-    if (reference.kind === 'season') return [{ plan, phase: null, recordedHarvest: false }];
-    const recorded = plan.recordedHarvest.find(period => periodIncludes(period, reference.date));
+    if (isOutside && recordedPeriods.length === 0) return [];
+    if (reference.kind === 'season') return [{ plan, phase: null, recordedHarvest: false, recordedPeriods }];
+    const recorded = recordedPeriods[0];
     if (recorded) return [{ plan, phase: 'harvest', recordedHarvest: true, harvest: recorded }];
     if (plan.start === null || plan.end === null || plan.crop === null) {
       return [{ plan, phase: null, recordedHarvest: false }];

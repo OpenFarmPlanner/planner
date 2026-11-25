@@ -50,7 +50,7 @@
       "phase": {
         "growth": "Verwachte groei",
         "harvest": "Verwachte oogst",
-        "occupancy": "Bezet bed"
+        "occupancy": "Verwachte bezetting"
       },
       "recordedHarvest": "Geregistreerde oogst",
       "recordedPlanting": "Zaaien of planten geregistreerd op {{date}}",

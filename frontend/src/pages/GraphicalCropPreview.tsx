@@ -30,7 +30,7 @@ export function GraphicalCropPreview({ reference, entries, loading, failed, refr
         {t('graphical.display.cropLoadError')}
       </Alert> : null}
       {!loading && !failed && (entries.length ? <Box component="ul" sx={{ m: 0, pl: 2.25 }}>
-        {entries.map(({ plan, phase, recordedHarvest, harvest }) => {
+        {entries.map(({ plan, phase, recordedHarvest, harvest, recordedPeriods }) => {
           const name = plan.name || t('ganttChart:taskNames.unknownCrop', { id: plan.crop ?? '' });
           const period = interval(plan.start, plan.end);
           return <Box component="li" key={plan.id} sx={{ mb: 0.5, overflowWrap: 'anywhere' }}>
@@ -43,8 +43,12 @@ export function GraphicalCropPreview({ reference, entries, loading, failed, refr
               {t('graphical.display.recordedPlanting', { date: dateText(plan.planted) })}
             </Typography>}
             {reference.kind === 'season' && period && <Typography component="div" variant="caption" color="text.secondary">
-              {period}
+              {t('graphical.display.phase.occupancy')} · {period}
             </Typography>}
+            {recordedPeriods?.map(actual => <Typography key={`${actual.start_date}:${actual.end_date}`}
+              component="div" variant="caption" color="text.secondary">
+              {t('graphical.display.recordedHarvest')} · {interval(actual.start_date, actual.end_date)}
+            </Typography>)}
             {(!plan.start || !plan.end || !plan.crop) && <Typography component="div" variant="caption" color="text.secondary">
               {t('graphical.display.incompletePlan')}
             </Typography>}

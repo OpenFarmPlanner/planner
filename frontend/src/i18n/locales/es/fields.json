@@ -50,7 +50,7 @@
       "phase": {
         "growth": "Crecimiento previsto",
         "harvest": "Cosecha prevista",
-        "occupancy": "Bancal ocupado"
+        "occupancy": "Ocupación prevista"
       },
       "recordedHarvest": "Cosecha registrada",
       "recordedPlanting": "Siembra o plantación registrada el {{date}}",

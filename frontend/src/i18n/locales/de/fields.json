@@ -50,7 +50,7 @@
       "phase": {
         "growth": "Geplantes Wachstum",
         "harvest": "Geplante Ernte",
-        "occupancy": "Belegte Fläche"
+        "occupancy": "Geplante Belegung"
       },
       "recordedHarvest": "Erfasste Ernte",
       "recordedPlanting": "Pflanzung oder Aussaat am {{date}} erfasst",

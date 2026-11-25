@@ -66,6 +66,21 @@ describe('bed cultivation projection', () => {
     expect(project([plan({ crop: null })], '2026-03-10')).toMatchObject([{ phase: null }]);
   });
 
+  it('keeps recorded harvests visible beyond the forecast without inventing occupancy in the gap', () => {
+    const harvested = plan({
+      planting_date: '2025-06-01', harvest_date: '2025-07-01',
+      harvest_end_date: '2025-08-12', occupancy_end_date: '2025-08-12',
+      harvest_actual_occurrences: [{
+        year: null, planned_start_date: null, planned_end_date: null,
+        actual_start_date: '2025-10-04', actual_end_date: '2025-10-06',
+      }],
+    });
+    expect(project([harvested], '2025-10-03')).toEqual([]);
+    expect(project([harvested], '2025-10-05')).toMatchObject([{ phase: 'harvest', recordedHarvest: true }]);
+    expect(projectBedCultivation(indexBedCultivations([harvested]).get(20)!, { kind: 'season' }, season))
+      .toMatchObject([{ phase: null, recordedPeriods: [{ start_date: '2025-10-04', end_date: '2025-10-06' }] }]);
+  });
+
   it('uses supplied recurring windows and recorded harvests, keeping the perennial until clearing', () => {
     const perennial = plan({ planting_date: '2022-09-10', clearing_date: '2026-07-18',
       occupancy_end_date: '2026-07-18', crop_life_cycle: 'perennial',
