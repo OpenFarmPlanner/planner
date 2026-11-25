@@ -4,7 +4,7 @@ import { apiRequest, expectNoHorizontalPageOverflow, loginWithDeterministicProje
 const languages = [
   {
     code: 'it', name: 'Italian', label: 'Italiano', browserLocale: 'it-IT', accountLabel: 'Lingua',
-    menuLabel: 'Apri menu', dialogTitle: 'Modifica traduzione', saveLabel: 'Salva',
+    menuLabel: 'Apri menu', cropSelectorLabel: 'Seleziona coltura', dialogTitle: 'Modifica traduzione', saveLabel: 'Salva',
     translationAction: /Aggiungi traduzione in italiano/i, editorLabel: /italiano – Traduzione/i,
     description: 'Note colturali italiane di esempio.',
     languageClause: 'tedesco, inglese, francese, spagnolo, italiano, portoghese e olandese',
@@ -19,7 +19,7 @@ const languages = [
   },
   {
     code: 'pt', name: 'Portuguese', label: 'Português', browserLocale: 'pt-BR', accountLabel: 'Idioma',
-    menuLabel: 'Abrir menu', dialogTitle: 'Editar tradução', saveLabel: 'Guardar',
+    menuLabel: 'Abrir menu', cropSelectorLabel: 'Selecionar cultura', dialogTitle: 'Editar tradução', saveLabel: 'Guardar',
     translationAction: /Adicionar tradução em português/i, editorLabel: /português – Tradução/i,
     description: 'Notas de cultivo portuguesas de exemplo.',
     languageClause: 'alemão, inglês, francês, espanhol, italiano, português e neerlandês',
@@ -34,7 +34,7 @@ const languages = [
   },
   {
     code: 'nl', name: 'Dutch', label: 'Nederlands', browserLocale: 'nl-BE', accountLabel: 'Taal',
-    menuLabel: 'Menu openen', dialogTitle: 'Vertaling bewerken', saveLabel: 'Opslaan',
+    menuLabel: 'Menu openen', cropSelectorLabel: 'Gewas kiezen', dialogTitle: 'Vertaling bewerken', saveLabel: 'Opslaan',
     translationAction: /Vertaling in het Nederlands toevoegen/i, editorLabel: /Nederlands – Vertaling/i,
     description: 'Nederlandse voorbeeldnotities over de teelt.',
     languageClause: 'Duits, Engels, Frans, Spaans, Italiaans, Portugees en Nederlands',
@@ -78,7 +78,16 @@ for (const language of languages) {
         await expect(page.locator('html')).toHaveAttribute('lang', language.code);
         await expectNoHorizontalPageOverflow(page);
         await expect(page.locator('main').getByRole('progressbar')).toHaveCount(0);
-        if (path === '/app/crops') await expect(page.getByText('Beetroot', { exact: true }).first()).toBeVisible();
+        if (path === '/app/crops') {
+          if (width === 375) {
+            const selector = page.getByRole('button', { name: language.cropSelectorLabel });
+            await selector.click();
+            await page.getByRole('option', { name: 'Beetroot', exact: true }).click();
+            await expect(selector).toHaveText('Beetroot');
+          } else {
+            await expect(page.getByText('Beetroot', { exact: true }).first()).toBeVisible();
+          }
+        }
         if (path === '/app/gantt-chart') {
           const title = page.getByRole('banner').getByRole('heading', { level: 1 });
           expect(await title.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);

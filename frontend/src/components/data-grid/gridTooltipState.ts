@@ -5,6 +5,7 @@ export function createGridTooltipScope(initialEditing: boolean) {
   let editing = initialEditing;
   let suppressRestoredFocus = false;
   let previousPointer: Point | null = null;
+  let lastHover: { point: Point; pointer: Point | null; offsets: ReadonlyMap<Element, Point> } | null = null;
   const scope = {
     isEditing: () => editing,
     isRestoringFocus: () => suppressRestoredFocus,
@@ -17,9 +18,20 @@ export function createGridTooltipScope(initialEditing: boolean) {
       suppressRestoredFocus = true;
       previousPointer = pointer;
     },
-    isStationaryHover(event: MouseEvent) {
-      return Boolean(previousPointer && previousPointer === pointer
-        && event.clientX === previousPointer.x && event.clientY === previousPointer.y);
+    isStationaryHover(event: MouseEvent, anchor: HTMLElement) {
+      const point = { x: event.clientX, y: event.clientY };
+      if (previousPointer && previousPointer === pointer && point.x === previousPointer.x && point.y === previousPointer.y) {
+        return true;
+      }
+      // Recycled cells can emit a hover before the browser dispatches the
+      // scroll event, including after the old tooltip has already unmounted.
+      if (lastHover?.pointer === pointer && lastHover.point.x === point.x && lastHover.point.y === point.y
+        && [...lastHover.offsets].some(([element, offset]) => didScroll(element, offset))) {
+        scope.suppressRestoredInteraction();
+        return true;
+      }
+      lastHover = { point, pointer, offsets: getScrollOffsets(anchor) };
+      return false;
     },
     allowFocus() { suppressRestoredFocus = false; },
     dispose() {
@@ -60,6 +72,18 @@ let stopWatching: (() => void) | undefined;
 let pointer: Point | null = null;
 let pointerTrackers = 0;
 
+function getScrollOffsets(anchor: Element): ReadonlyMap<Element, Point> {
+  const offsets = new Map<Element, Point>();
+  for (let element: Element | null = anchor; element; element = element.parentElement) {
+    offsets.set(element, { x: element.scrollLeft, y: element.scrollTop });
+  }
+  return offsets;
+}
+
+function didScroll(element: Element, offset: Point): boolean {
+  return element.scrollLeft !== offset.x || element.scrollTop !== offset.y;
+}
+
 function updatePointer(event: MouseEvent): void {
   if (pointer?.x !== event.clientX || pointer?.y !== event.clientY) {
     pointer = { x: event.clientX, y: event.clientY };
@@ -81,14 +105,17 @@ export function registerGridCellPreview(anchor: HTMLElement, show: () => void): 
 
 export function trackGridTooltipInteractions(doc: Document): () => void {
   // Browsers can dispatch mouseover when a mounted editor changes the element
-  // under a stationary pointer. A real move distinguishes a fresh hover.
+  // under a stationary pointer. Record new coordinates before handling the
+  // hover because a real mousemove may arrive after that mouseover.
   if (pointerTrackers++ === 0) {
+    doc.addEventListener('mouseover', updatePointer, true);
     doc.addEventListener('mousemove', updatePointer, true);
     doc.addEventListener('mousedown', updatePointer, true);
     doc.addEventListener('focusin', showFocusedCellPreview, true);
   }
   return () => {
     if (--pointerTrackers !== 0) return;
+    doc.removeEventListener('mouseover', updatePointer, true);
     doc.removeEventListener('mousemove', updatePointer, true);
     doc.removeEventListener('mousedown', updatePointer, true);
     doc.removeEventListener('focusin', showFocusedCellPreview, true);
@@ -155,7 +182,7 @@ function watchTooltip(doc: Document): () => void {
     const previous = active.scrollOffsets.get(scroller);
     // Scroll-into-view can move the anchor before hover and dispatch its
     // scroll event afterward. Only a change since this request invalidates it.
-    if (!previous || (scroller.scrollLeft === previous.x && scroller.scrollTop === previous.y)) return;
+    if (!previous || !didScroll(scroller, previous)) return;
     active.scope.suppressRestoredInteraction();
     dismissGridTooltip(undefined, event);
   };
@@ -206,16 +233,12 @@ export function claimGridTooltip(request: TooltipRequest): boolean {
   }
   const previous = active;
   const cell = request.anchor.closest(CELL);
-  const scrollOffsets = new Map<Element, Point>();
-  for (let node: Element | null = request.anchor; node; node = node.parentElement) {
-    scrollOffsets.set(node, { x: node.scrollLeft, y: node.scrollTop });
-  }
   active = {
     ...request,
     cell,
     row: cell?.closest('[role="row"]')?.getAttribute('data-id') ?? null,
     field: cell?.getAttribute('data-field') ?? null,
-    scrollOffsets,
+    scrollOffsets: getScrollOffsets(request.anchor),
   };
   if (previous && previous.id !== request.id) {
     previous.dismiss(request.event ?? new Event('gridtooltipdismiss'));

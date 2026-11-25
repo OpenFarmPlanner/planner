@@ -134,7 +134,12 @@ export function ActualPlanDateCell({ params, children, drafts, getEditDates, onS
 
   const focusCell = () => {
     api.setCellFocus(id, field);
-    window.requestAnimationFrame(() => api.getCellElement(id, field)?.focus({ preventScroll: true }));
+    window.requestAnimationFrame(() => {
+      const cell = api.getCellElement(id, field);
+      if (closing.current && !cell?.querySelector('[data-grid-dedicated-editor]')) {
+        cell?.focus({ preventScroll: true });
+      }
+    });
   };
   const close = (returnFocus: boolean) => {
     closing.current = true;
