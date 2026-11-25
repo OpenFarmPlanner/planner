@@ -20,11 +20,13 @@ export function bedTaskDateBounds(today: Date) {
   return { today: formatDateToAPI(today), upcomingEnd: formatDateToAPI(addDays(today, 7)) };
 }
 
-export function linkTasksToBeds(tasks: readonly Task[], plans: readonly Pick<PlantingPlan, 'id' | 'bed'>[]) {
+export function linkTasksToBeds(
+  tasks: readonly Task[], plans: readonly Pick<PlantingPlan, 'id' | 'bed'>[], includeCancelled = false,
+) {
   const bedByPlan = new Map(plans.map(plan => [plan.id, plan.bed]));
   const byBed = new Map<number, Task[]>();
   for (const task of tasks) {
-    if (task.planting_plan === null || task.status === 'cancelled') continue;
+    if (task.planting_plan === null || (!includeCancelled && task.status === 'cancelled')) continue;
     const bed = bedByPlan.get(task.planting_plan);
     if (bed == null) continue;
     const current = byBed.get(bed);
@@ -49,4 +51,13 @@ export function summarizeBedTasks(tasks: readonly Task[], bounds: ReturnType<typ
     outstanding: counts.overdue + counts.upcoming + counts.later + counts.undated,
     undated: counts.undated,
   };
+}
+
+export function orderBedTasks(tasks: readonly Task[]): Task[] {
+  return [...tasks].sort((a, b) => {
+    if (a.due_date === b.due_date) return a.id - b.id;
+    if (a.due_date === null) return 1;
+    if (b.due_date === null) return -1;
+    return a.due_date.localeCompare(b.due_date);
+  });
 }

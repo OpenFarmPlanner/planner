@@ -7,7 +7,7 @@ import { useBedTasks } from './useBedTasks';
 
 export function BedTaskSection({ bedId, seasonId }: { bedId: number; seasonId?: number }) {
   const { t } = useTranslation(['fields', 'dashboard']);
-  const { tasksByBed, loading, failed, refresh } = useBedTasks('bed', bedId, seasonId);
+  const { tasksByBed, loading, failed, refresh } = useBedTasks('bed', bedId, seasonId, { includeCancelled: true });
   return (
     <DetailSection title={t('dashboard:board.title')}>
       <BedTaskList key={`${bedId}:${seasonId}`} tasks={tasksByBed.get(bedId) ?? []}
