@@ -161,6 +161,13 @@ export function GraphicalObjectOverlays({
   const previewLeft = narrow ? 8 : Math.max(8, Math.min(stageWidth - previewWidth - 110, cx - previewWidth / 2));
   const rightOfObject = selectedRect ? selectedRect.x + selectedRect.width + 8 : 12;
   const beside = !narrow && selectedRect && rightOfObject + previewWidth + 105 < stageWidth;
+  const previewMaxHeight = Math.min(stageHeight * 0.55, 360);
+  const previewPlacement = narrow ? { bottom: 8 }
+    : beside ? { top: Math.max(8, Math.min(stageHeight - previewMaxHeight - 8, selectedRect.y)) }
+      : below < stageHeight / 2 ? { top: Math.max(48, below) }
+        : { bottom: Math.max(8, Math.min(stageHeight * 0.45, stageHeight - (selectedRect?.y ?? stageHeight) + 8)) };
+  const previewOffset = previewPlacement.top ?? previewPlacement.bottom ?? 0;
+  const previewHeight = Math.max(0, Math.min(previewMaxHeight, stageHeight - previewOffset - 8));
   const pointer = interaction.hover?.point;
   const canvas = pointer && hovered ? root.current?.getBoundingClientRect() : undefined;
 
@@ -254,10 +261,8 @@ export function GraphicalObjectOverlays({
         <Paper ref={preview} tabIndex={-1} role="region" aria-labelledby={titleId} data-testid="graphical-object-preview"
           elevation={6} sx={{
             position: 'absolute', zIndex: 3, width: previewWidth, left: beside ? rightOfObject : previewLeft, p: 1.5,
-            maxHeight: 'min(55%, 360px)', overflowY: 'auto', touchAction: 'pan-y', overscrollBehavior: 'contain',
-            ...(narrow ? { bottom: 8 } : beside ? { top: Math.max(48, Math.min(stageHeight - 132, selectedRect.y)) }
-              : below < stageHeight / 2 ? { top: Math.max(48, below) }
-                : { bottom: Math.max(8, Math.min(stageHeight * 0.45, stageHeight - (selectedRect?.y ?? stageHeight) + 8)) }),
+            maxHeight: previewHeight, overflowY: 'auto', touchAction: 'pan-y', overscrollBehavior: 'contain',
+            ...previewPlacement,
           }}>
           <Stack spacing={0.5}>
             <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>

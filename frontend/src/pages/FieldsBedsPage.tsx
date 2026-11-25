@@ -450,7 +450,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
         <TextField select label={t('fields:graphical.locationSelector')} value={selectedLocation.id}
           onChange={event => selectLocation(Number(event.target.value))}
           slotProps={{ select: { renderValue: () => <TruncatedTextWithTooltip text={selectedLocation.name} /> } }}
-          sx={{ width: { xs: 220, sm: 168 }, maxWidth: '100%', flexShrink: 0 }}>
+          sx={{ width: { xs: 220, sm: 180, md: 220 }, maxWidth: '100%', flexShrink: 0 }}>
           {graphicalLocations.map(item => (
             <MenuItem key={item.id} value={item.id} sx={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{item.name}</MenuItem>
           ))}

@@ -778,7 +778,8 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
   await selectLocation(page, longLocationName);
   for (const viewport of [
-    { width: 1920, height: 1080 }, { width: 1440, height: 900 }, { width: 1200, height: 900 },
+    { width: 2240, height: 1080 }, { width: 1920, height: 1080 }, { width: 1440, height: 900 },
+    { width: 1200, height: 900 },
     { width: 1199, height: 900 }, { width: 1024, height: 768 }, { width: 768, height: 1024 },
     { width: 375, height: 800 }, { width: 800, height: 375 },
     { width: 1024, height: 500 },
@@ -816,7 +817,8 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
     }).toBe(true);
     await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1)).toBe(true);
     await expect.poll(async () => (await canvasRects(page, 'field-rect-'))[0]?.stage.height ?? 0).toBeGreaterThan(96);
-    if (viewport.width === 1920) await expect(page.getByTestId('topbar-workspace-row')).toHaveCount(0);
+    // The mode and date controls can use the wrapped workspace row on a large desktop as well.
+    if (viewport.width === 2240) await expect(page.getByTestId('topbar-workspace-row')).toHaveCount(0);
     if (viewport.width <= 1024) await expect(page.getByTestId('topbar-workspace-row')).toBeVisible();
     await page.mouse.move(1, viewport.height - 1);
     await expect(page.getByRole('tooltip')).toHaveCount(0);
@@ -1180,6 +1182,10 @@ test('projects demo crops by date, preserves real task urgency and remembers the
   await expect(preview).toHaveAccessibleName('Misch- und Folgebeet');
   await expect(preview).toContainText('Geplantes Wachstum');
   await expect(preview).toContainText('Geplante Ernte');
+  await expect.poll(async () => {
+    const [sheet, canvas] = await Promise.all([preview.boundingBox(), page.locator('.konvajs-content').boundingBox()]);
+    return Boolean(sheet && canvas && sheet.y + sheet.height <= canvas.y + canvas.height + 1);
+  }).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('graphic-display-combined.png') });
   await page.keyboard.press('Escape');
 
