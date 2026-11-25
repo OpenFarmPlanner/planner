@@ -168,6 +168,29 @@ class HistoryInvariantTestCase(APITestCase):
 
 
 class CompositeMutationHistoryTests(HistoryInvariantTestCase):
+    def test_rotation_group_names_can_swap_during_project_restore(self) -> None:
+        location = self.write('create location', 'post', '/locations/', {'name': 'North'})
+        groups = []
+        for name in ('Market', 'Kitchen'):
+            field = self.write(f'create {name} parcel', 'post', '/fields/', {
+                'name': name, 'location': location['id'],
+            })
+            groups.append(self.write(
+                f'create {name} rotation', 'post', '/parcel-rotation-groups/',
+                {'name': name, 'parcels': [{'id': field['id']}]},
+            ))
+        before = self.versions[-1]
+        renames = ((groups[0], 'Temporary'), (groups[1], 'Market'), (groups[0], 'Kitchen'))
+        for group, name in renames:
+            self.write(f'rename to {name}', 'patch', f"/parcel-rotation-groups/{group['id']}/", {
+                'name': name,
+            })
+        after = self.versions[-1]
+        self.assertEqual(self.restore(before.revision), 200)
+        self.assert_state(before.state, 'restore original rotation names')
+        self.assertEqual(self.restore(self.latest_backup()), 200)
+        self.assert_state(after.state, 'restore swapped rotation names')
+
     def assert_completed_action(
         self, previous: EntityRevision, parent: str, children: list[str],
     ) -> None:

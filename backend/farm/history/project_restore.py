@@ -22,6 +22,7 @@ from farm.models import (
     CropTaskTemplate,
     EntityRevision,
     MediaFile,
+    ParcelRotationGroup,
     ParcelRotationMember,
     Project,
     RetainedUpload,
@@ -488,6 +489,10 @@ def apply_project_state(
     for pk in crop_rows.keys() & set(map(int, current["crop"])):
         if state["crop"][str(pk)] != current["crop"][str(pk)]:
             Crop.all_objects.filter(project=project, pk=pk).update(name_normalized=f"{prefix}{pk}")
+    for pk, row in target[ParcelRotationGroup].items():
+        old = current["parcel_rotation_group"].get(str(pk))
+        if old is not None and old["name"] != row["name"]:
+            ParcelRotationGroup.objects.filter(project=project, pk=pk).update(name=f"{prefix}{pk}")
     _write_target_rows(project, target, state, current)
     reconcile_media_orphans(project.pk)
 

@@ -331,6 +331,7 @@ test('guided creation refreshes the rotated preview before accepting changed dat
     body: await dialog.screenshot({ animations: 'disabled' }), contentType: 'image/png',
   });
   const copying = page.waitForResponse(response => response.url().endsWith('/seasons/create-and-copy/'));
+  const activated = page.waitForEvent('load');
   await dialog.getByRole('button', { name: 'Anlegen', exact: true }).click();
   const response = await copying;
   expect(response.request().postDataJSON()).toMatchObject({
@@ -339,6 +340,8 @@ test('guided creation refreshes the rotated preview before accepting changed dat
   });
   expect(response.status()).toBe(201);
   const target = await response.json();
+  await activated;
+  await expect(switcher).toContainText('26/27');
   const { results } = await apiRequest<{ results: Array<{ season: number }> }>(page, 'GET', '/planting-plans/');
   expect(results.filter(plan => plan.season === target.id)).toMatchObject([{
     bed: south.beds[0].id, area_usage_sqm: '4.00', quantity: 25, planting_date: '2027-04-06',
