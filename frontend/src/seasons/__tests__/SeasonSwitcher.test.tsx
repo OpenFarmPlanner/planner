@@ -230,7 +230,7 @@ describe('SeasonSwitcher', () => {
 
     const basis = screen.getByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' });
     const submit = screen.getByRole('button', { name: 'Anlegen' });
-    expect(basis).toHaveAccessibleDescription(/ausgewählten Saison.*Plantermin/);
+    expect(screen.getByRole('img', { name: /ausgewählten Saison.*Plantermin/ })).toBeVisible();
     await user.click(basis);
     expect(submit).toBeDisabled();
     await user.click(basis);
@@ -586,6 +586,10 @@ describe('SeasonSwitcher', () => {
       />,
     );
 
+    expect(screen.queryByRole('button', { name: 'Projekteinstellungen' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Hinweis zum Saisonzeitraum' }));
+    expect(await screen.findByRole('dialog', { name: 'Hinweis zum Saisonzeitraum' }))
+      .toHaveTextContent('Zeitraum stimmt nicht? Das Saison-Muster kannst du in den Projekteinstellungen anpassen');
     await user.click(screen.getByRole('button', { name: 'Projekteinstellungen' }));
 
     expect(onEditSeasonPattern).toHaveBeenCalledTimes(1);

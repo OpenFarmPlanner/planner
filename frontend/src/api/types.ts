@@ -1766,6 +1766,8 @@ export interface ParcelRotationSummary {
   enabled: boolean;
   fingerprint: string | null;
   continuing_count: number;
+  /** Rotated copies that keep a bed and stay on their source bed (outside every group). */
+  unchanged_count?: number;
   issues: ParcelRotationIssue[];
   mappings: {
     group: string;

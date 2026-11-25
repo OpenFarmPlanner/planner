@@ -75,7 +75,11 @@ test.describe('season copy on a French phone', () => {
 
     const dateBasis = dialog.getByRole('checkbox', { name: 'Utiliser les dates réelles pour la planification' });
     await expect(dateBasis).not.toBeChecked();
-    await expect(dateBasis).toHaveAccessibleDescription(/saison sélectionnée.*date prévue/);
+    await dateBasis.focus();
+    await page.keyboard.press('Tab');
+    await expect(dialog.getByRole('img', { name: /saison sélectionnée.*date prévue/ })).toBeFocused();
+    await expect(page.getByRole('tooltip')).toContainText(/saison sélectionnée.*date prévue/);
+    await expect(dateBasis).not.toBeChecked();
     const freshPreview = page.waitForResponse(response => (
       response.url().includes(`/seasons/${target.id}/copy-preview/`) && response.url().includes('use_actual_dates=true')
     ));
@@ -83,11 +87,12 @@ test.describe('season copy on a French phone', () => {
     const preview = await freshPreview;
     expect(preview.ok()).toBeTruthy();
     expect(new URL(preview.url()).searchParams.get('source_season_id')).toBe(String(source.id));
-    await expect(dialog.getByRole('button', { name: 'Copier', exact: true })).toBeEnabled();
+    await expect(dialog.getByRole('button', { name: 'Copier 1 série', exact: true })).toBeEnabled();
+    await expect(dialog.getByTestId('season-copy-totals')).toContainText('0 existante(s) + 1 nouvelle(s) = 1 série');
     const copying = page.waitForResponse(response => (
       response.url().endsWith(`/seasons/${target.id}/copy-from/`) && response.request().method() === 'POST'
     ));
-    await dialog.getByRole('button', { name: 'Copier', exact: true }).focus();
+    await dialog.getByRole('button', { name: 'Copier 1 série', exact: true }).focus();
     await page.keyboard.press('Enter');
     const response = await copying;
     expect(response.request().postDataJSON()).toEqual({ source_season_id: source.id, use_actual_dates: true });
@@ -133,7 +138,17 @@ for (const basis of ['planned', 'actual'] as const) {
 
     const dateBasis = dialog.getByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' });
     await expect(dateBasis).not.toBeChecked();
-    await expect(dateBasis).toHaveAccessibleDescription(/ausgewählten Saison.*Plantermin/);
+    await dialog.getByRole('img', { name: /ausgewählten Saison.*Plantermin/ }).hover();
+    await expect(page.getByRole('tooltip')).toContainText(/ausgewählten Saison.*Plantermin/);
+    await page.mouse.move(0, 0);
+    const patternHint = dialog.getByRole('button', { name: 'Hinweis zum Saisonzeitraum' });
+    await patternHint.focus();
+    await page.keyboard.press('Enter');
+    const patternPopover = page.getByRole('dialog', { name: 'Hinweis zum Saisonzeitraum' });
+    await expect(patternPopover.getByRole('button', { name: 'Projekteinstellungen' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(patternPopover).toHaveCount(0);
+    await expect(dialog).toBeVisible();
     if (basis === 'actual') {
       await sourceSelect.focus();
       await page.keyboard.press('Enter');
@@ -250,10 +265,16 @@ test('a phone configures parcel and bed order and copies a reviewed rotation', a
     .getByRole('button', { name: 'Saison-Aktionen öffnen' }).click();
   await page.getByRole('menuitem', { name: 'Daten übernehmen', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Daten übernehmen' });
-  const rotate = dialog.getByRole('checkbox', { name: 'Anbaupläne zur nächsten Parzelle verschieben' });
+  const rotate = dialog.getByRole('checkbox', { name: 'Parzellenrotation anwenden' });
   const actual = dialog.getByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' });
   await expect(rotate).toBeChecked();
-  await expect(dialog.getByText('Nord → Süd', { exact: true })).toBeVisible();
+  const preview = dialog.getByRole('region', { name: 'Vorschau' });
+  await expect(preview.getByText('Nord → Süd', { exact: true })).toBeVisible();
+  const moveDetails = preview.getByRole('button', { name: 'Details zu 1 verschobenen Anbauplan' });
+  await expect(moveDetails).toHaveAttribute('aria-expanded', 'false');
+  await expect(dialog.getByText('Belegte Fläche 5 → 4 m²')).toBeHidden();
+  await moveDetails.focus();
+  await page.keyboard.press('Enter');
   await expect(dialog.getByText('Belegte Fläche 5 → 4 m²')).toBeVisible();
   await expect(dialog.getByText('Berechnete Pflanzenzahl 50 → 40')).toBeVisible();
   await expect(dialog.getByText('Saatgutbedarf 10 g')).toBeVisible();
@@ -264,13 +285,15 @@ test('a phone configures parcel and bed order and copies a reviewed rotation', a
   await expect(rotate).not.toBeChecked();
   await expect(dialog.getByText('Belegte Fläche 5 → 4 m²')).toHaveCount(0);
   await rotate.check();
+  await preview.getByRole('button', { name: 'Details zu 1 verschobenen Anbauplan' }).click();
   await expect(dialog.getByText('Belegte Fläche 5 → 4 m²')).toBeVisible();
+  await expect(preview.getByTestId('season-copy-totals')).toContainText('0 bestehend + 1 neu = 1 Anbauplan');
   expect(await dialog.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
   await test.info().attach('rotation-copy-phone', {
     body: await dialog.screenshot({ animations: 'disabled' }), contentType: 'image/png',
   });
   const copying = page.waitForResponse(response => response.url().endsWith(`/seasons/${target.id}/copy-from/`));
-  await dialog.getByRole('button', { name: 'Übernehmen', exact: true }).click();
+  await dialog.getByRole('button', { name: '1 Anbauplan übernehmen', exact: true }).click();
   const response = await copying;
   expect(response.request().postDataJSON()).toMatchObject({
     source_season_id: source.id, use_actual_dates: true, rotate_parcels: true,
@@ -312,10 +335,12 @@ test('guided creation refreshes the rotated preview before accepting changed dat
   await page.getByRole('menuitem').filter({ hasText: 'Saison 26/27 anlegen' }).click();
   const dialog = page.getByRole('dialog', { name: 'Saison 26/27 anlegen?' });
   const select = dialog.getByRole('combobox', { name: 'Ausgangssaison' });
-  const rotate = dialog.getByRole('checkbox', { name: 'Anbaupläne zur nächsten Parzelle verschieben' });
+  const rotate = dialog.getByRole('checkbox', { name: 'Parzellenrotation anwenden' });
   const actual = dialog.getByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' });
   await expect(select).toHaveText('Letzte Saison');
   await expect(rotate).toBeChecked();
+  const creationDetails = dialog.getByRole('button', { name: 'Details zu 1 verschobenen Anbauplan' });
+  await creationDetails.click();
   await expect(dialog.getByText('Belegte Fläche 5 → 4 m²')).toBeVisible();
   await actual.check();
   await select.click();
@@ -326,6 +351,7 @@ test('guided creation refreshes the rotated preview before accepting changed dat
   await select.click();
   await page.getByRole('option', { name: 'Letzte Saison' }).click();
   await expect(rotate).toBeChecked();
+  await creationDetails.click();
   await expect(dialog.getByText('Belegte Fläche 5 → 4 m²')).toBeVisible();
   await test.info().attach('rotation-creation-desktop', {
     body: await dialog.screenshot({ animations: 'disabled' }), contentType: 'image/png',

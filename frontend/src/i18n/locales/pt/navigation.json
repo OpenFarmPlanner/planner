@@ -100,6 +100,7 @@
       "outOfRangeError_other": "Não é possível criar a época de {{period}} porque {{count}} séries existentes estão fora desse período: {{examples}}. Ajuste o padrão de épocas nas definições do projeto e volte a criar a época.",
       "outOfRangeFallbackExamples": "séries existentes",
       "patternHint": {
+        "button": "Sobre o período da época",
         "prefix": "O período não é adequado? É possível ajustar o padrão de épocas nas",
         "link": "definições do projeto",
         "suffix": ". A alteração aplica-se às épocas futuras."
@@ -160,11 +161,26 @@
       "skippedPlans_one": "{{count}} plano de cultivo fica fora da época de destino.",
       "skippedPlans_other": "{{count}} planos de cultivo ficam fora da época de destino.",
       "skippedPlans_many": "{{count}} planos de cultivo ficam fora da época de destino.",
-      "warning_one": "A época {{target}} já contém 1 série. A cópia adiciona as séries da época {{source}}. As séries existentes em {{target}} não são alteradas nem substituídas.",
-      "warning_other": "A época {{target}} já contém {{count}} séries. A cópia adiciona as séries da época {{source}}. As séries existentes em {{target}} não são alteradas nem substituídas.",
-      "summary_one": "Será adicionado {{count}} plano de cultivo. A época ficará com {{total}} no total.",
-      "summary_other": "Serão adicionados {{count}} planos de cultivo. A época ficará com {{total}} no total.",
       "confirm": "Copiar",
+      "confirmCount_one": "Copiar {{count}} série",
+      "confirmCount_many": "Copiar {{count}} séries",
+      "confirmCount_other": "Copiar {{count}} séries",
+      "nothingToCopy": "Não há séries para copiar.",
+      "preview": "Pré-visualização",
+      "totals": {
+        "result_one": "{{existing}} existentes + {{added}} novas = {{count}} série",
+        "result_many": "{{existing}} existentes + {{added}} novas = {{count}} séries",
+        "result_other": "{{existing}} existentes + {{added}} novas = {{count}} séries",
+        "withoutBed_one": "{{count}} das quais sem canteiro",
+        "withoutBed_many": "{{count}} das quais sem canteiro",
+        "withoutBed_other": "{{count}} das quais sem canteiro",
+        "skippedConflicts_one": "{{count}} conflito não é copiado",
+        "skippedConflicts_many": "{{count}} conflitos não são copiados",
+        "skippedConflicts_other": "{{count}} conflitos não são copiados",
+        "existingKept_one": "A série existente mantém-se inalterada.",
+        "existingKept_many": "As {{count}} séries existentes mantêm-se inalteradas.",
+        "existingKept_other": "As {{count}} séries existentes mantêm-se inalteradas."
+      },
       "error": "Não foi possível copiar os dados.",
       "noPrecedingSource": "Não existe uma época imediatamente anterior. Cria primeiro a época em falta para copiar os seus dados.",
       "sourceChanged": "A época anterior mudou. Volta a abrir a janela para atualizar a pré-visualização.",
@@ -174,22 +190,23 @@
       "rotation": {
         "checking": "A verificar a rotação de culturas na época de destino…",
         "checkError": "Não foi possível verificar a rotação de culturas. Continua a ser possível copiar.",
-        "summary_one": "Será copiada 1 série da época {{source}} para os mesmos canteiros.",
-        "summary_other": "Serão copiadas {{count}} séries da época {{source}} para os mesmos canteiros.",
-        "warningConflicts": "{{conflicts}} violam a rotação de culturas porque a mesma família voltaria ao mesmo canteiro na época de destino.",
-        "warningConflictsAndHints": "{{conflicts}} violam a rotação de culturas porque a mesma família voltaria ao mesmo canteiro na época de destino. Mais {{hints}} têm uma sugestão sobre a sequência de necessidades nutritivas.",
-        "hintsOnly": "{{hints}} têm uma sugestão sobre a sequência de necessidades nutritivas.",
-        "showAll": "Mostrar todos os {{conflicts}} conflitos",
-        "showAllItems": "Mostrar todos os {{count}} registos",
-        "showLess": "Mostrar menos",
+        "conflictCount_one": "{{count}} conflito de rotação de culturas",
+        "conflictCount_many": "{{count}} conflitos de rotação de culturas",
+        "conflictCount_other": "{{count}} conflitos de rotação de culturas",
+        "hintCount_one": "{{count}} aviso sobre a sucessão de culturas exigentes",
+        "hintCount_many": "{{count}} avisos sobre a sucessão de culturas exigentes",
+        "hintCount_other": "{{count}} avisos sobre a sucessão de culturas exigentes",
+        "showMore_one": "Mostrar mais {{count}}",
+        "showMore_many": "Mostrar mais {{count}}",
+        "showMore_other": "Mostrar mais {{count}}",
         "item": "{{culture}} · {{bed}}",
-        "reasonConflict": "Última {{family}} em {{year}}; o primeiro ano possível é {{earliestYear}}",
+        "reasonConflict": "{{family}} · Última vez {{year}} · Novamente a partir de {{earliestYear}}",
         "reasonHint": "Cultura muito exigente após {{previousCulture}} ({{year}})",
         "modeLabel": "Como proceder com os {{conflicts}} conflitos?",
         "modes": {
           "without_bed": {
             "label": "Copiar sem canteiro",
-            "description": "As {{conflicts}} séries são criadas sem canteiro atribuído. Depois é possível escolher o canteiro com sugestões."
+            "description": "São criadas sem canteiro atribuído; depois é possível escolher o canteiro com sugestões."
           },
           "keep": {
             "label": "Copiar para os mesmos canteiros mesmo assim",
@@ -199,11 +216,8 @@
             "label": "Não copiar",
             "description": "Apenas são copiadas as {{ok}} séries sem conflitos."
           }
-        },
-        "summary_many": "Serão copiadas {{count}} séries da época {{source}} para os mesmos canteiros."
+        }
       },
-      "warning_many": "A época {{target}} já contém {{count}} séries. A cópia adiciona as séries da época {{source}}. As séries existentes em {{target}} não são alteradas nem substituídas.",
-      "summary_many": "Serão adicionados {{count}} planos de cultivo. A época ficará com {{total}} no total.",
       "continuingPlans_one": "{{count}} série continua e permanece na sua época de origem.",
       "continuingPlans_other": "{{count}} séries continuam e permanecem nas respetivas épocas de origem.",
       "continuingPlans_many": "{{count}} séries continuam e permanecem nas respetivas épocas de origem.",

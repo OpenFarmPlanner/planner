@@ -57,6 +57,7 @@ const olderSeason: Season = {
   start_date: '2023-09-01', end_date: '2024-08-31',
 };
 const eligibleSeasons = [sourceSeason, targetSeason];
+const confirmName = /übernehmen$/i;
 
 describe('SeasonCopyDataDialog', () => {
   beforeEach(() => {
@@ -76,7 +77,7 @@ describe('SeasonCopyDataDialog', () => {
     expect(await screen.findByText(message)).toBeVisible();
     await user.click(screen.getByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' }));
     expect(await screen.findByText(message)).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
+    await user.click(screen.getByRole('button', { name: confirmName }));
     expect(onConfirm).toHaveBeenCalledWith(2, 1, undefined, true);
   });
 
@@ -90,7 +91,7 @@ describe('SeasonCopyDataDialog', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: confirmName })).toBeDisabled();
     expect(screen.getByRole('alert')).toHaveTextContent('Es gibt keine frühere Saison');
     expect(screen.getByText('Zielsaison')).toBeVisible();
     expect(screen.getByText('2026')).toBeVisible();
@@ -110,8 +111,8 @@ describe('SeasonCopyDataDialog', () => {
       />,
     );
 
-    await screen.findByText(/3 Anbaupläne werden übernommen/);
-    await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
+    await screen.findByText(/\+ 3 neu = /);
+    await user.click(screen.getByRole('button', { name: confirmName }));
 
     const cancelButton = screen.getByRole('button', { name: 'Abbrechen' });
     await user.hover(cancelButton.parentElement as HTMLElement);
@@ -151,17 +152,20 @@ describe('SeasonCopyDataDialog', () => {
       />,
     );
 
-    expect(await screen.findByText('3 Anbaupläne aus Saison 2025 werden auf dieselben Beete übernommen.')).toBeInTheDocument();
-    expect(screen.getByText(
-      '2 davon verletzen die Fruchtfolge, weil dieselbe Familie in der Zielsaison wieder auf demselben Beet stehen würde. 1 weitere haben einen Hinweis zur Nährstofffolge.',
-    )).toBeInTheDocument();
+    expect(await screen.findByText('2 Fruchtfolgeverstöße · 1 Hinweis zur Nährstofffolge')).toBeVisible();
+    expect(screen.getAllByText('Kreuzblütler · Zuletzt 2025 · Frühestens wieder 2030')).toHaveLength(2);
+    expect(screen.getByText('Brokkoli · Beet 5')).toBeVisible();
     expect(screen.getByText('Was soll mit den 2 Konflikten passieren?')).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: /Ohne Beet übernehmen/ })).toBeChecked();
     expect(screen.getByText('Nur die 1 konfliktfreien Anbaupläne werden übernommen.')).toBeInTheDocument();
+    expect(screen.getByTestId('season-copy-totals')).toHaveTextContent('0 bestehend + 3 neu = 3 Anbaupläne2 davon ohne Beet');
+    expect(screen.getByRole('button', { name: '3 Anbaupläne übernehmen' })).toBeEnabled();
 
     await user.click(screen.getByRole('radio', { name: /Nicht übernehmen/ }));
-    expect(screen.getByText('1 Anbauplan wird übernommen. Danach sind es insgesamt 1.')).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
+    expect(await screen.findByText('0 bestehend + 1 neu = 1 Anbauplan')).toBeVisible();
+    expect(screen.getByText('2 Konflikte werden nicht übernommen')).toBeVisible();
+    expect(copyPreviewMock).toHaveBeenLastCalledWith(2, 1, false, true, 'skip');
+    await user.click(screen.getByRole('button', { name: '1 Anbauplan übernehmen' }));
 
     expect(onConfirm).toHaveBeenCalledWith(2, 1, 'skip', false);
   });
@@ -178,9 +182,9 @@ describe('SeasonCopyDataDialog', () => {
       />,
     );
 
-    await screen.findByText(/3 Anbaupläne werden übernommen/);
-    expect(copyPreviewMock).toHaveBeenCalledWith(2, 1, false, true);
-    await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
+    await screen.findByText(/\+ 3 neu = /);
+    expect(copyPreviewMock).toHaveBeenCalledWith(2, 1, false, true, 'without_bed');
+    await user.click(screen.getByRole('button', { name: confirmName }));
 
     expect(screen.queryByTestId('season-copy-rotation-summary')).not.toBeInTheDocument();
     expect(onConfirm).toHaveBeenCalledWith(2, 1, undefined, false);
@@ -208,8 +212,8 @@ describe('SeasonCopyDataDialog', () => {
     const { rerender } = render(
       <SeasonCopyDataDialog seasons={seasons} targetSeason={targetSeason} onClose={vi.fn()} onConfirm={onConfirm} />,
     );
-    await screen.findByText(/3 Anbaupläne werden übernommen/);
-    const confirm = screen.getByRole('button', { name: 'Übernehmen' });
+    await screen.findByText(/\+ 3 neu = /);
+    const confirm = screen.getByRole('button', { name: confirmName });
     const dateBasis = screen.getByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' });
     await user.click(dateBasis);
     expect(confirm).toBeDisabled();
@@ -219,16 +223,16 @@ describe('SeasonCopyDataDialog', () => {
     expect(choices.map(choice => choice.textContent)).toEqual(['2025', olderSeason.label]);
     await user.click(choices[1]!);
     expect(dateBasis).toBeChecked();
-    expect(copyPreviewMock).toHaveBeenLastCalledWith(targetSeason.id, olderSeason.id, true, true);
+    expect(copyPreviewMock).toHaveBeenLastCalledWith(targetSeason.id, olderSeason.id, true, true, 'without_bed');
     expect(await screen.findByText(/Parzellenrotation ist nur/)).toBeVisible();
     expect(confirm).toBeEnabled();
 
     await act(async () => respondToActual({ data: { ...emptyPreview, total: 12 } }));
-    expect(screen.queryByText(/12 Anbaupläne werden übernommen/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\+ 12 neu = /)).not.toBeInTheDocument();
     rerender(<SeasonCopyDataDialog seasons={seasons} targetSeason={future} onClose={vi.fn()} onConfirm={onConfirm} />);
     expect(screen.queryByText(/Parzellenrotation ist nur/)).not.toBeInTheDocument();
     expect(confirm).toBeDisabled();
-    expect(copyPreviewMock).toHaveBeenLastCalledWith(future.id, olderSeason.id, true, true);
+    expect(copyPreviewMock).toHaveBeenLastCalledWith(future.id, olderSeason.id, true, true, 'without_bed');
     await act(async () => respondToNewTarget({ data: historicalPreview }));
     await user.click(confirm);
     expect(onConfirm).toHaveBeenCalledExactlyOnceWith(future.id, olderSeason.id, undefined, true);
@@ -243,11 +247,11 @@ describe('SeasonCopyDataDialog', () => {
     render(<SeasonCopyDataDialog seasons={eligibleSeasons} targetSeason={targetSeason}
       onClose={vi.fn()} onConfirm={onConfirm} />);
 
-    await screen.findByText(/3 Anbaupläne werden übernommen/);
+    await screen.findByText(/\+ 3 neu = /);
     expect(screen.getByRole('combobox', { name: 'Ausgangssaison' })).toHaveTextContent('2025');
-    await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
+    await user.click(screen.getByRole('button', { name: confirmName }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Diese Saison ist als Quelle nicht mehr verfügbar.');
-    expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: confirmName })).toBeDisabled();
   });
 
   it('requires an explicit choice when the reviewed group becomes invalid', async () => {
@@ -274,9 +278,9 @@ describe('SeasonCopyDataDialog', () => {
     render(<SeasonCopyDataDialog seasons={eligibleSeasons} targetSeason={targetSeason}
       onClose={vi.fn()} onConfirm={onConfirm} />);
 
-    const checkbox = { name: 'Anbaupläne zur nächsten Parzelle verschieben' };
+    const checkbox = { name: 'Parzellenrotation anwenden' };
     expect(await screen.findByRole('checkbox', checkbox)).toBeChecked();
-    const button = screen.getByRole('button', { name: 'Übernehmen' });
+    const button = screen.getByRole('button', { name: confirmName });
     await user.click(button);
     expect(await screen.findByText(/brauchen gleich viele Beete/)).toBeVisible();
     expect(button).toBeDisabled();
@@ -298,18 +302,18 @@ describe('SeasonCopyDataDialog', () => {
 
     const checkbox = await screen.findByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' });
     expect(checkbox).not.toBeChecked();
-    expect(checkbox).toHaveAccessibleDescription(/ausgewählten Saison.*bisherige Plantermin/);
+    expect(screen.getByRole('img', { name: /ausgewählten Saison.*bisherige Plantermin/ })).toBeVisible();
     await user.click(checkbox);
-    expect(copyPreviewMock).toHaveBeenLastCalledWith(2, 1, true, true);
-    expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeDisabled();
-    expect(screen.queryByText(/3 Anbaupläne werden übernommen/)).not.toBeInTheDocument();
+    expect(copyPreviewMock).toHaveBeenLastCalledWith(2, 1, true, true, 'without_bed');
+    expect(screen.getByRole('button', { name: confirmName })).toBeDisabled();
+    expect(screen.queryByText(/\+ 3 neu = /)).not.toBeInTheDocument();
     await user.click(checkbox);
-    expect(await screen.findByText(/5 Anbaupläne werden übernommen/)).toBeVisible();
+    expect(await screen.findByText(/\+ 5 neu = /)).toBeVisible();
 
     await act(async () => respondToActual({ data: { ...emptyPreview, total: 2, skipped_count: 1 } }));
-    expect(screen.queryByText(/2 Anbaupläne werden übernommen/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\+ 2 neu = /)).not.toBeInTheDocument();
     expect(screen.queryByText(/passt zeitlich nicht/)).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
+    await user.click(screen.getByRole('button', { name: confirmName }));
     expect(onConfirm).toHaveBeenCalledOnce();
     expect(onConfirm).toHaveBeenCalledWith(2, 1, undefined, false);
   });
@@ -327,11 +331,11 @@ describe('SeasonCopyDataDialog', () => {
     expect(await screen.findByRole('alert')).toBeVisible();
     expect(checkbox).toBeChecked();
     expect(screen.getByRole('combobox', { name: 'Ausgangssaison' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: confirmName })).toBeDisabled();
     await user.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
-    expect(copyPreviewMock).toHaveBeenLastCalledWith(2, 1, true, true);
+    expect(copyPreviewMock).toHaveBeenLastCalledWith(2, 1, true, true, 'without_bed');
     expect(await screen.findByText(/1 Anbauplan passt zeitlich nicht/)).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
+    await user.click(screen.getByRole('button', { name: confirmName }));
     expect(onConfirm).toHaveBeenCalledWith(2, 1, undefined, true);
   });
 
@@ -345,8 +349,66 @@ describe('SeasonCopyDataDialog', () => {
     render(<SeasonCopyDataDialog seasons={eligibleSeasons} targetSeason={targetSeason} onClose={vi.fn()} onConfirm={vi.fn()} />);
 
     await user.click(await screen.findByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' }));
-    expect(copyPreviewMock).toHaveBeenLastCalledWith(2, 1, true, true);
+    expect(copyPreviewMock).toHaveBeenLastCalledWith(2, 1, true, true, 'without_bed');
     expect(await screen.findByRole('alert')).toHaveTextContent('Diese Saison ist als Quelle nicht mehr verfügbar.');
+    expect(screen.getByRole('button', { name: confirmName })).toBeDisabled();
+  });
+
+  it('derives totals, capacity warnings and the confirmation from the effective treatment (#1573)', async () => {
+    const user = userEvent.setup();
+    const items = Array.from({ length: 17 }, (_, index) => ({
+      source_plan_id: index + 1, crop_label: `Kohl ${index + 1}`, bed_id: index + 1, bed_name: `Beet ${index + 1}`,
+      status: 'conflict' as const, findings: [conflictFinding],
+    }));
+    const findings = { ...emptyPreview, total: 17, conflict_count: 17, conflict_free_count: 0, items } as SeasonCopyPreview;
+    const rotation: ParcelRotationSummary = {
+      available: true, eligible: true, enabled: true, fingerprint: 'b'.repeat(64), continuing_count: 0,
+      unchanged_count: 0, issues: [], moves: [], mappings: [{
+        group: 'Nord–Süd', source_parcel_id: 10, source_parcel: 'Nord', target_parcel_id: 11, target_parcel: 'Süd',
+      }],
+    };
+    const blocked: ParcelRotationSummary = {
+      ...rotation, available: false, enabled: false, fingerprint: null,
+      issues: [1, 2, 3, 4, 5].map(number => ({ code: 'bed_capacity' as const, bed: `Beet ${number}`, parcel: 'Süd' })),
+    };
+    let respondToKeep: (value: { data: SeasonCopyPreview }) => void = () => undefined;
+    copyPreviewMock.mockImplementation((_target, _source, _actual, _rotate, mode) => (mode === 'keep'
+      ? new Promise(resolve => { respondToKeep = resolve; })
+      : Promise.resolve({ data: { ...findings, parcel_rotation: rotation } })));
+    const onConfirm = vi.fn().mockResolvedValue({ copied_count: 17, target_planting_plan_count: 37 });
+    render(<SeasonCopyDataDialog seasons={eligibleSeasons} targetSeason={{ ...targetSeason, planting_plan_count: 20 }}
+      onClose={vi.fn()} onConfirm={onConfirm} />);
+
+    expect(await screen.findByText('17 Fruchtfolgeverstöße')).toBeVisible();
+    const totals = screen.getByTestId('season-copy-totals');
+    expect(totals).toHaveTextContent('20 bestehend + 17 neu = 37 Anbaupläne');
+    expect(totals).toHaveTextContent('17 davon ohne Beet');
+    expect(totals).toHaveTextContent('Die 20 bestehenden Anbaupläne bleiben unverändert.');
+    expect(screen.queryByTestId('parcel-rotation-issues')).not.toBeInTheDocument();
+    expect(screen.getByText('Kohl 3 · Beet 3')).toBeVisible();
+    expect(screen.getByText('Kohl 4 · Beet 4')).not.toBeVisible();
+    expect(screen.getByText('Kohl 17 · Beet 17')).not.toBeVisible();
+    await user.click(screen.getByRole('button', { name: '14 weitere anzeigen' }));
+    expect(screen.getByText('Kohl 17 · Beet 17')).toBeVisible();
+
+    await user.click(screen.getByRole('radio', { name: /Vorgeschlagene Beete beibehalten/ }));
+    expect(screen.getByText('17 Fruchtfolgeverstöße')).toBeVisible();
+    expect(screen.getByRole('radio', { name: /Vorgeschlagene Beete beibehalten/ })).toBeChecked();
+    expect(screen.queryByTestId('season-copy-totals')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: confirmName })).toBeDisabled();
+    await act(async () => respondToKeep({ data: { ...findings, parcel_rotation: blocked } }));
+    expect(screen.getByTestId('parcel-rotation-issues')).toHaveTextContent('Parzellenrotation nicht möglich: 5 Probleme');
+    expect(screen.getByTestId('season-copy-totals')).toHaveTextContent('20 bestehend + 17 neu = 37 Anbaupläne');
+
+    await user.click(screen.getByRole('radio', { name: /Nicht übernehmen/ }));
+    expect(await screen.findByText('20 bestehend + 0 neu = 20 Anbaupläne')).toBeVisible();
+    expect(screen.queryByTestId('parcel-rotation-issues')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeDisabled();
+
+    await user.click(screen.getByRole('radio', { name: /Ohne Beet übernehmen/ }));
+    await user.click(await screen.findByRole('button', { name: '17 Anbaupläne übernehmen' }));
+    expect(onConfirm).toHaveBeenCalledExactlyOnceWith(2, 1, 'without_bed', false, {
+      rotate_parcels: true, parcel_rotation_fingerprint: 'b'.repeat(64),
+    });
   });
 });

@@ -13,7 +13,6 @@ import {
   FormControlLabel,
   FormLabel,
   IconButton,
-  Link,
   Menu,
   MenuItem,
   Radio,
@@ -28,7 +27,6 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import CheckIcon from '@mui/icons-material/Check';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import type { ParcelRotationConfirmation, Season, SeasonCreationOptions } from '../api/types';
 import { seasonAPI } from '../api/api';
 import { useTranslation } from '../i18n';
@@ -37,7 +35,9 @@ import { SeasonRowActionsMenu } from './SeasonRowActionsMenu';
 import { SeasonRenameDialog } from './SeasonRenameDialog';
 import { SeasonPeriodEditDialog } from './SeasonPeriodEditDialog';
 import { SeasonCopyDataDialog } from './SeasonCopyDataDialog';
-import { ParcelRotationCopyPreview } from './ParcelRotationCopyPreview';
+import { ParcelRotationCopyPreview, ParcelRotationCopyToggle } from './ParcelRotationCopyPreview';
+import { SeasonCopyCheckbox, SeasonCopyPreviewSection } from './SeasonCopyPreviewSection';
+import { SeasonPatternHintButton } from './SeasonPatternHintButton';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import { computeSeasonLabel, formatSeasonPeriod, resolveSeasonDateLocale } from './formatSeasonDate';
 import { addDaysIso, analyzePeriodTransition, computeManualSeasonEnd } from './seasonPeriodMath';
@@ -126,7 +126,6 @@ export function SeasonCreateSuggestionDialog({
   const [rotateParcelsChoice, setRotateParcelsChoice] = useState<boolean | null>(null);
   const [useActualDates, setUseActualDates] = useState(false);
   const [copyPreviewRevision, setCopyPreviewRevision] = useState(0);
-  const dateBasisHelpId = useId();
   const sourceInputId = useId();
   const [creatingSuggested, setCreatingSuggested] = useState(false);
   const creatingSuggestedRef = useRef(false);
@@ -370,13 +369,16 @@ export function SeasonCreateSuggestionDialog({
   };
 
   return (
-    <Dialog open={open && showSuggestion} onClose={handleClose} fullWidth maxWidth="xs">
+    <Dialog open={open && showSuggestion} onClose={handleClose} fullWidth maxWidth="sm">
       <DialogTitle>{t('navigation:seasonSwitcher.suggestion.confirmTitle', { label: suggestedLabel })}</DialogTitle>
       <DialogContent>
         <Stack spacing={2}>
-          <Typography variant="body2" color="text.secondary">
-            {suggestedPeriod}
-          </Typography>
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              {suggestedPeriod}
+            </Typography>
+            <SeasonPatternHintButton onEditSeasonPattern={handleEditSeasonPattern} />
+          </Stack>
           {createError ? <Alert severity="error">{createError}</Alert> : null}
 
           {needsGapDecision && transition && lastSeason ? (
@@ -559,27 +561,14 @@ export function SeasonCreateSuggestionDialog({
                       </MenuItem>
                     ))}
                   </TextField>
-                  <Box>
-                    <FormControlLabel
-                      sx={{ alignItems: 'flex-start', m: 0 }}
-                      control={<Checkbox checked={useActualDates} disabled={creatingSuggested || copySourceChanged}
-                        slotProps={{ input: { 'aria-describedby': dateBasisHelpId } }}
-                        onChange={event => {
-                          setUseActualDates(event.target.checked);
-                          setCopyPreviewRevision(current => current + 1);
-                        }}
-                        sx={{ pt: 0 }}
-                      />}
-                      label={<Typography variant="body2">
-                        {t('navigation:seasonSwitcher.copyDialog.useActualDates')}
-                      </Typography>}
-                    />
-                    <Typography id={dateBasisHelpId} variant="caption" color="text.secondary" sx={{ display: 'block', pl: 4 }}>
-                      {t('navigation:seasonSwitcher.copyDialog.selectedSourceDatesHelp')}
-                    </Typography>
-                  </Box>
-                  <ParcelRotationCopyPreview report={parcelRotation} checked={rotateParcels}
-                    sourceSeasonLabel={copyFromLabel}
+                  <SeasonCopyCheckbox label={t('navigation:seasonSwitcher.copyDialog.useActualDates')}
+                    help={t('navigation:seasonSwitcher.copyDialog.selectedSourceDatesHelp')}
+                    checked={useActualDates} disabled={creatingSuggested || copySourceChanged}
+                    onChange={checked => {
+                      setUseActualDates(checked);
+                      setCopyPreviewRevision(current => current + 1);
+                    }} />
+                  <ParcelRotationCopyToggle report={parcelRotation} checked={rotateParcels}
                     disabled={creatingSuggested || checkingCopyOptions} onChange={checked => {
                       setCreateError(null);
                       setRotateParcelsChoice(checked);
@@ -587,11 +576,28 @@ export function SeasonCreateSuggestionDialog({
                     }} />
                 </Stack>
               )}
-              {copyFromPrevious && activeCopyPreview && activePreviewTotal > 0 ? (
+            </Stack>
+          ) : !checkingCopyOptions && choosingCopy && copyOptions ? (
+            <Alert severity="info">{t('navigation:seasonSwitcher.copyDialog.noEarlierSource')}</Alert>
+          ) : null}
+          {copyFromPrevious && selectedSource && choosingCopy ? (
+            <SeasonCopyPreviewSection>
+              {checkingCopyOptions && (
+                <Typography role="status" variant="body2">{t('common:messages.loading')}</Typography>
+              )}
+              {copyPreviewError && (
+                <Alert severity="error" action={
+                  <Button color="inherit" onClick={() => setCopyPreviewRevision(current => current + 1)}>
+                    {t('common:runtime.retryAction')}
+                  </Button>
+                }>
+                  {t('navigation:seasonSwitcher.copyDialog.previewError')}
+                </Alert>
+              )}
+              {activeCopyPreview && activePreviewTotal > 0 ? (
                 <Typography
-                  variant="caption"
+                  variant="body2"
                   color={activeCopyPreview.skipped > 0 ? 'warning.dark' : 'text.secondary'}
-                  sx={{ pl: 4 }}
                 >
                   {t(
                     activeCopyPreview.skipped > 0
@@ -605,21 +611,20 @@ export function SeasonCreateSuggestionDialog({
                   )}
                 </Typography>
               ) : null}
-              {copyFromPrevious && continuingCopyCount > 0 ? (
-                <Typography variant="caption" color="text.secondary" sx={{ pl: 4 }}>
+              {continuingCopyCount > 0 ? (
+                <Typography variant="body2" color="text.secondary">
                   {t('navigation:seasonSwitcher.copyDialog.continuingPlans', { count: continuingCopyCount })}
                 </Typography>
               ) : null}
-              {copyFromPrevious && unconfiguredCopyCount > 0 ? (
+              {unconfiguredCopyCount > 0 ? (
                 <Typography variant="body2" color="text.secondary">
                   {t('navigation:seasonSwitcher.copyDialog.unconfiguredPerennials', { count: unconfiguredCopyCount })}
                 </Typography>
               ) : null}
-              {copyFromPrevious && isTransitionTwoSeason && followupCopyPreview && followupPreviewTotal > 0 ? (
+              {isTransitionTwoSeason && followupCopyPreview && followupPreviewTotal > 0 ? (
                 <Typography
-                  variant="caption"
+                  variant="body2"
                   color={followupCopyPreview.skipped > 0 ? 'warning.dark' : 'text.secondary'}
-                  sx={{ pl: 4 }}
                 >
                   {t('navigation:seasonSwitcher.suggestion.gap.copyPreviewFollowup', {
                     ...followupCopyPreview,
@@ -628,56 +633,25 @@ export function SeasonCreateSuggestionDialog({
                   })}
                 </Typography>
               ) : null}
-            </Stack>
-          ) : !checkingCopyOptions && choosingCopy && copyOptions ? (
-            <Alert severity="info">{t('navigation:seasonSwitcher.copyDialog.noEarlierSource')}</Alert>
-          ) : null}
-          {checkingCopyOptions && (
-            <Typography role="status" variant="body2">{t('common:messages.loading')}</Typography>
+              <ParcelRotationCopyPreview report={parcelRotation} checked={rotateParcels}
+                sourceSeasonLabel={copyFromLabel} />
+            </SeasonCopyPreviewSection>
+          ) : (
+            <>
+              {checkingCopyOptions && (
+                <Typography role="status" variant="body2">{t('common:messages.loading')}</Typography>
+              )}
+              {copyPreviewError && (
+                <Alert severity="error" action={
+                  <Button color="inherit" onClick={() => setCopyPreviewRevision(current => current + 1)}>
+                    {t('common:runtime.retryAction')}
+                  </Button>
+                }>
+                  {t('navigation:seasonSwitcher.copyDialog.previewError')}
+                </Alert>
+              )}
+            </>
           )}
-          {copyPreviewError && (
-            <Alert severity="error" action={
-              <Button color="inherit" onClick={() => setCopyPreviewRevision(current => current + 1)}>
-                {t('common:runtime.retryAction')}
-              </Button>
-            }>
-              {t('navigation:seasonSwitcher.copyDialog.previewError')}
-            </Alert>
-          )}
-          <Box
-            sx={{
-              display: 'flex',
-              gap: 1,
-              p: 1.5,
-              borderRadius: 1,
-              border: '1px solid',
-              borderColor: 'divider',
-              bgcolor: 'action.hover',
-            }}
-          >
-            <InfoOutlinedIcon fontSize="small" sx={{ color: 'text.secondary', mt: 0.375, flexShrink: 0 }} />
-            <Typography variant="body2" color="text.secondary">
-              {t('navigation:seasonSwitcher.suggestion.patternHint.prefix')}
-              {' '}
-              <Link
-                component="button"
-                type="button"
-                onClick={handleEditSeasonPattern}
-                sx={{
-                  fontWeight: 700,
-                  fontSize: 'inherit',
-                  color: 'primary.main',
-                  textDecoration: 'none',
-                  verticalAlign: 'baseline',
-                  '&:hover': { textDecoration: 'underline' },
-                }}
-              >
-                {t('navigation:seasonSwitcher.suggestion.patternHint.link')}
-              </Link>
-              {' '}
-              {t('navigation:seasonSwitcher.suggestion.patternHint.suffix')}
-            </Typography>
-          </Box>
         </Stack>
       </DialogContent>
       <DialogActions>

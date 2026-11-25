@@ -627,12 +627,15 @@ export const seasonAPI = {
       ...(useActualDates ? { use_actual_dates: true } : {}),
       ...parcelRotation,
     }),
-  copyPreview: (targetId: number, sourceSeasonId: number, useActualDates = false, rotateParcels?: boolean) =>
+  copyPreview: (targetId: number, sourceSeasonId: number, useActualDates = false, rotateParcels?: boolean,
+    rotationConflicts?: SeasonCopyRotationMode) =>
     http.get<SeasonCopyPreview>(`/seasons/${targetId}/copy-preview/`, {
       params: {
         source_season_id: sourceSeasonId,
         ...(useActualDates ? { use_actual_dates: 'true' } : {}),
         rotate_parcels: rotateParcels,
+        // The treatment decides which rotated copies need area on their bed (#1573).
+        ...(rotationConflicts ? { rotation_conflicts: rotationConflicts } : {}),
       },
     }),
   dueSuggestion: () => http.get<SeasonDueSuggestion>('/seasons/due-suggestion/'),

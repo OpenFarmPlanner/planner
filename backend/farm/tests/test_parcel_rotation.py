@@ -386,6 +386,65 @@ class ParcelRotationApiTest(ProjectApiTestCase):
         self.assertEqual(PlantingPlan.objects.values().get(pk=winter.pk), previous)
         self.assertTrue(self.client.get(f'{GROUPS_URL}{rotation["id"]}/').data['valid'])
 
+    def test_conflict_treatment_decides_which_copies_need_rotated_capacity(self):
+        """#1573: copies without a bed or skipped take no area on their rotated bed."""
+        self._create_group()
+        previous, source, target = [self._season(year) for year in (2025, 2026, 2027)]
+        self.crop.crop_family_id = 'Brassicaceae'
+        self.crop.rotation_break_years = 4
+        self.crop.save()
+        lettuce = Crop.objects.create(project=self.project, name='Lettuce')
+        conflicting = self._plan(source, self.rotation_beds[0][0], '5', notes='Conflict')
+        self._plan(previous, self.rotation_beds[1][0], '1')
+        fitting = self._plan(source, self.rotation_beds[0][1], '2', notes='Fits')
+        outside = self._plan(source, self.bed, '1', notes='Outside the group')
+        occupied = self._plan(target, self.rotation_beds[1][0], '7')
+        PlantingPlan.objects.filter(pk__in=(occupied.pk, outside.pk)).update(crop=lettuce)
+        record_project_checkpoint(self.project, capture_project_state(self.project))
+        path = f'{SEASONS_URL}{target.pk}/'
+        params = {'source_season_id': source.pk, 'rotate_parcels': True}
+
+        def preview(mode):
+            response = self.client.get(
+                f'{path}copy-preview/', {**params, 'rotation_conflicts': mode},
+            )
+            self.assertEqual(response.status_code, 200, response.data)
+            return response.data
+
+        keep = preview('keep')
+        self.assertFalse(keep['parcel_rotation']['available'])
+        self.assertEqual(
+            [issue['code'] for issue in keep['parcel_rotation']['issues']], ['bed_capacity'],
+        )
+        for mode, expected_beds in (
+            ('without_bed', {None, self.rotation_beds[1][1].pk, self.bed.pk}),
+            ('skip', {self.rotation_beds[1][1].pk, self.bed.pk}),
+        ):
+            with self.subTest(mode=mode):
+                data = preview(mode)
+                rotation = data['parcel_rotation']
+                self.assertTrue(rotation['enabled'])
+                self.assertEqual(rotation['issues'], [])
+                self.assertEqual(
+                    [move['source_plan_id'] for move in rotation['moves']], [fitting.pk],
+                )
+                self.assertEqual(rotation['unchanged_count'], 1)
+                self.assertEqual(data['conflict_count'], 1)
+                self.assertEqual(data['items'][0]['source_plan_id'], conflicting.pk)
+                confirmed = self.client.post(
+                    f'{path}copy-from/',
+                    {
+                        **params,
+                        'rotation_conflicts': mode,
+                        'parcel_rotation_fingerprint': rotation['fingerprint'],
+                    },
+                    format='json',
+                )
+                self.assertEqual(confirmed.status_code, 200, confirmed.data)
+                copies = target.planting_plans.exclude(pk=occupied.pk)
+                self.assertEqual(set(copies.values_list('bed_id', flat=True)), expected_beds)
+                copies.delete()
+
     def test_transition_preview_matches_rotation_in_both_created_seasons(self):
         self._create_group()
         source = Season.objects.create(

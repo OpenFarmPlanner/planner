@@ -233,6 +233,16 @@ when there is at least one conflict or hint. For conflicts the user chooses:
   marked in the table.
 - **Nicht übernehmen** (`skip`) — only conflict-free plans are copied.
 
+The dialog shows the conflict and hint counts at all times, with the affected
+crop, bed, family, last year and earliest return year of the first three
+findings; any further ones stay behind **N weitere anzeigen**. Below them, one
+summary line derives existing + new = total plans from the same preview and
+treatment that the confirmation sends; the confirm button names the number of
+new plans and stays disabled when there is none to copy. With parcel rotation,
+the treatment is part of the preview request, because copies without a bed or
+skipped need no area on their rotated bed
+([#1573](https://github.com/OpenFarmPlanner/planner/issues/1573)).
+
 The API default stays `keep`, so existing callers (the "Daten aus Saison X
 übernehmen" checkbox when creating a suggested season, external scripts) copy
 exactly as before. That creation path does not show the rotation summary yet,

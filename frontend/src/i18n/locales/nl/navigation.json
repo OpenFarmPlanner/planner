@@ -100,6 +100,7 @@
       "outOfRangeError_other": "Het seizoen voor {{period}} kan niet worden gemaakt omdat {{count}} bestaande teelten buiten die periode vallen: {{examples}}. Pas het seizoenspatroon in de projectinstellingen aan en maak het seizoen daarna opnieuw.",
       "outOfRangeFallbackExamples": "bestaande teelten",
       "patternHint": {
+        "button": "Over de seizoensperiode",
         "prefix": "Past de periode niet? Je kunt het seizoenspatroon aanpassen in de",
         "link": "projectinstellingen",
         "suffix": ". De wijziging geldt dan voor toekomstige seizoenen."
@@ -155,11 +156,21 @@
       "useActualDatesHelp": "Gebruik de vastgelegde datums uit het vorige seizoen. Als een werkelijke datum ontbreekt, gebruik dan de geplande datum van dat seizoen.",
       "skippedPlans_one": "{{count}} teeltplan valt buiten het doelseizoen.",
       "skippedPlans_other": "{{count}} teeltplannen vallen buiten het doelseizoen.",
-      "warning_one": "Seizoen {{target}} bevat al 1 teelt. Bij het kopiëren worden de teelten uit seizoen {{source}} extra toegevoegd. Bestaande teelten in {{target}} worden niet gewijzigd of vervangen.",
-      "warning_other": "Seizoen {{target}} bevat al {{count}} teelten. Bij het kopiëren worden de teelten uit seizoen {{source}} extra toegevoegd. Bestaande teelten in {{target}} worden niet gewijzigd of vervangen.",
-      "summary_one": "Er wordt {{count}} teeltplan toegevoegd. Daarna zijn het er {{total}} in totaal.",
-      "summary_other": "Er worden {{count}} teeltplannen toegevoegd. Daarna zijn het er {{total}} in totaal.",
       "confirm": "Kopiëren",
+      "confirmCount_one": "{{count}} teelt kopiëren",
+      "confirmCount_other": "{{count}} teelten kopiëren",
+      "nothingToCopy": "Er zijn geen teelten om te kopiëren.",
+      "preview": "Voorbeeld",
+      "totals": {
+        "result_one": "{{existing}} bestaand + {{added}} nieuw = {{count}} teelt",
+        "result_other": "{{existing}} bestaand + {{added}} nieuw = {{count}} teelten",
+        "withoutBed_one": "waarvan {{count}} zonder bed",
+        "withoutBed_other": "waarvan {{count}} zonder bed",
+        "skippedConflicts_one": "{{count}} conflict wordt niet gekopieerd",
+        "skippedConflicts_other": "{{count}} conflicten worden niet gekopieerd",
+        "existingKept_one": "De bestaande teelt blijft ongewijzigd.",
+        "existingKept_other": "De {{count}} bestaande teelten blijven ongewijzigd."
+      },
       "error": "De gegevens konden niet worden gekopieerd.",
       "noPrecedingSource": "Er is geen direct voorafgaand seizoen. Maak eerst het ontbrekende seizoen aan om de gegevens te kopiëren.",
       "sourceChanged": "Het voorafgaande seizoen is gewijzigd. Open het venster opnieuw om het voorbeeld te vernieuwen.",
@@ -169,22 +180,20 @@
       "rotation": {
         "checking": "Vruchtwisseling in het doelseizoen controleren…",
         "checkError": "De vruchtwisseling kon niet worden gecontroleerd. Je kunt toch kopiëren.",
-        "summary_one": "1 teelt uit seizoen {{source}} wordt naar dezelfde bedden gekopieerd.",
-        "summary_other": "{{count}} teelten uit seizoen {{source}} worden naar dezelfde bedden gekopieerd.",
-        "warningConflicts": "Daarvan schenden {{conflicts}} de vruchtwisseling, omdat dezelfde familie in het doelseizoen opnieuw op hetzelfde bed zou staan.",
-        "warningConflictsAndHints": "Daarvan schenden {{conflicts}} de vruchtwisseling, omdat dezelfde familie in het doelseizoen opnieuw op hetzelfde bed zou staan. Bij nog {{hints}} is er een tip over de opeenvolging van voedingsbehoefte.",
-        "hintsOnly": "Bij {{hints}} is er een tip over de opeenvolging van voedingsbehoefte.",
-        "showAll": "Alle {{conflicts}} conflicten tonen",
-        "showAllItems": "Alle {{count}} items tonen",
-        "showLess": "Minder tonen",
+        "conflictCount_one": "{{count}} vruchtwisselingsconflict",
+        "conflictCount_other": "{{count}} vruchtwisselingsconflicten",
+        "hintCount_one": "{{count}} hint over de voedingsvolgorde",
+        "hintCount_other": "{{count}} hints over de voedingsvolgorde",
+        "showMore_one": "Nog {{count}} tonen",
+        "showMore_other": "Nog {{count}} tonen",
         "item": "{{culture}} · {{bed}}",
-        "reasonConflict": "{{family}} voor het laatst in {{year}}, op zijn vroegst weer in {{earliestYear}}",
+        "reasonConflict": "{{family}} · Laatst {{year}} · Op zijn vroegst weer {{earliestYear}}",
         "reasonHint": "Hoge voedingsbehoefte na {{previousCulture}} ({{year}})",
         "modeLabel": "Wat moet er met de {{conflicts}} conflicten gebeuren?",
         "modes": {
           "without_bed": {
             "label": "Zonder bed kopiëren",
-            "description": "De {{conflicts}} teelten worden als open toewijzingen gemaakt. Je kiest daarna het bed aan de hand van suggesties."
+            "description": "Als open toewijzingen maken; je kiest het bed daarna aan de hand van suggesties."
           },
           "keep": {
             "label": "Toch naar dezelfde bedden kopiëren",

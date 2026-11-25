@@ -100,6 +100,7 @@
       "outOfRangeError_other": "The season for {{period}} cannot be created because {{count}} existing planting plans lie outside that period: {{examples}}. Adjust the season pattern in project settings, then create the season again.",
       "outOfRangeFallbackExamples": "existing planting plans",
       "patternHint": {
+        "button": "About the season period",
         "prefix": "Period doesn't fit? You can adjust the season pattern in",
         "link": "project settings",
         "suffix": "— the change then applies to future seasons."
@@ -155,11 +156,21 @@
       "useActualDatesHelp": "Use recorded dates from the previous season. Where an actual date is missing, use that season’s planned date.",
       "skippedPlans_one": "{{count}} planting plan falls outside the target season.",
       "skippedPlans_other": "{{count}} planting plans fall outside the target season.",
-      "warning_one": "Season {{target}} already contains 1 planting plan. Copying will additionally add the planting plans from season {{source}} — existing planting plans in {{target}} will not be changed or replaced.",
-      "warning_other": "Season {{target}} already contains {{count}} planting plans. Copying will additionally add the planting plans from season {{source}} — existing planting plans in {{target}} will not be changed or replaced.",
-      "summary_one": "{{count}} planting plan will be added, bringing the total to {{total}}.",
-      "summary_other": "{{count}} planting plans will be added, bringing the total to {{total}}.",
       "confirm": "Copy",
+      "confirmCount_one": "Copy {{count}} planting plan",
+      "confirmCount_other": "Copy {{count}} planting plans",
+      "nothingToCopy": "There are no planting plans to copy.",
+      "preview": "Preview",
+      "totals": {
+        "result_one": "{{existing}} existing + {{added}} new = {{count}} planting plan",
+        "result_other": "{{existing}} existing + {{added}} new = {{count}} planting plans",
+        "withoutBed_one": "{{count}} of them without a bed",
+        "withoutBed_other": "{{count}} of them without a bed",
+        "skippedConflicts_one": "{{count}} conflict is not copied",
+        "skippedConflicts_other": "{{count}} conflicts are not copied",
+        "existingKept_one": "The existing planting plan stays unchanged.",
+        "existingKept_other": "The {{count}} existing planting plans stay unchanged."
+      },
       "error": "Data could not be copied.",
       "noPrecedingSource": "There is no immediately preceding season. Create the missing season first to copy its data.",
       "sourceChanged": "The preceding season has changed. Reopen the dialog to refresh the preview.",
@@ -169,22 +180,20 @@
       "rotation": {
         "checking": "Checking the crop rotation in the target season …",
         "checkError": "The crop rotation could not be checked. You can still copy.",
-        "summary_one": "1 planting plan from season {{source}} will be copied onto the same beds.",
-        "summary_other": "{{count}} planting plans from season {{source}} will be copied onto the same beds.",
-        "warningConflicts": "{{conflicts}} of them break the crop rotation because the same family would be on the same bed again in the target season.",
-        "warningConflictsAndHints": "{{conflicts}} of them break the crop rotation because the same family would be on the same bed again in the target season. {{hints}} more have a nutrient-sequence hint.",
-        "hintsOnly": "{{hints}} of them have a nutrient-sequence hint.",
-        "showAll": "Show all {{conflicts}} conflicts",
-        "showAllItems": "Show all {{count}} entries",
-        "showLess": "Show less",
+        "conflictCount_one": "{{count}} crop rotation conflict",
+        "conflictCount_other": "{{count}} crop rotation conflicts",
+        "hintCount_one": "{{count}} nutrient sequence hint",
+        "hintCount_other": "{{count}} nutrient sequence hints",
+        "showMore_one": "Show {{count}} more",
+        "showMore_other": "Show {{count}} more",
         "item": "{{culture}} · {{bed}}",
-        "reasonConflict": "{{family}} last in {{year}}, earliest again in {{earliestYear}}",
+        "reasonConflict": "{{family}} · Last {{year}} · Earliest again {{earliestYear}}",
         "reasonHint": "Heavy feeder after {{previousCulture}} ({{year}})",
         "modeLabel": "What should happen to the {{conflicts}} conflicts?",
         "modes": {
           "without_bed": {
             "label": "Copy without a bed",
-            "description": "The {{conflicts}} planting plans are created as open assignments and you choose the bed afterwards with suggestions."
+            "description": "Create them as open assignments; choose the bed afterwards with suggestions."
           },
           "keep": {
             "label": "Copy onto the same beds anyway",

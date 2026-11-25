@@ -459,7 +459,7 @@ def copy_planting_plans(
         pairs = apply_confirmed_parcel_rotation(
             source_season, target_season, pairs, preceding=source_season == predecessor,
             continuing_count=continuing_count, fingerprint=parcel_rotation_fingerprint,
-            language_code=language_code,
+            language_code=language_code, rotation_conflicts=rotation_conflicts,
         )
     if source_season == predecessor:
         for source, copy in pairs:
