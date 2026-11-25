@@ -385,8 +385,10 @@ describe('SeasonCopyDataDialog', () => {
     expect(totals).toHaveTextContent('17 davon ohne Beet');
     expect(totals).toHaveTextContent('Die 20 bestehenden Anbaupläne bleiben unverändert.');
     expect(screen.queryByTestId('parcel-rotation-issues')).not.toBeInTheDocument();
+    expect(screen.getByText('Kohl 3 · Beet 3')).toBeVisible();
+    expect(screen.getByText('Kohl 4 · Beet 4')).not.toBeVisible();
     expect(screen.getByText('Kohl 17 · Beet 17')).not.toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Details anzeigen' }));
+    await user.click(screen.getByRole('button', { name: '14 weitere anzeigen' }));
     expect(screen.getByText('Kohl 17 · Beet 17')).toBeVisible();
 
     await user.click(screen.getByRole('radio', { name: /Vorgeschlagene Beete beibehalten/ }));

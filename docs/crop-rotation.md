@@ -234,8 +234,8 @@ when there is at least one conflict or hint. For conflicts the user chooses:
 - **Nicht übernehmen** (`skip`) — only conflict-free plans are copied.
 
 The dialog shows the conflict and hint counts at all times, with the affected
-crop, bed, family, last year and earliest return year listed right away for up
-to three findings and behind **Details anzeigen** for more. Below them, one
+crop, bed, family, last year and earliest return year of the first three
+findings; any further ones stay behind **N weitere anzeigen**. Below them, one
 summary line derives existing + new = total plans from the same preview and
 treatment that the confirmation sends; the confirm button names the number of
 new plans and stays disabled when there is none to copy. With parcel rotation,

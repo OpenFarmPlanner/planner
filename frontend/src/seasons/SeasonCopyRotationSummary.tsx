@@ -16,7 +16,7 @@ import { useFamilyNameResolver } from '../components/planting-plans/rotation/use
 import { useTranslation } from '../i18n';
 
 const MODE_ORDER: readonly SeasonCopyRotationMode[] = ['without_bed', 'keep', 'skip'];
-/** Up to this many findings are listed right away; more stay behind a disclosure. */
+/** This many findings are always listed; the rest stay behind a disclosure. */
 const INLINE_ITEM_COUNT = 3;
 
 interface SeasonCopyRotationSummaryProps {
@@ -66,9 +66,9 @@ export function SeasonCopyRotationSummary({
     conflicts > 0 ? t('seasonSwitcher.copyDialog.rotation.conflictCount', { count: conflicts }) : null,
     hints > 0 ? t('seasonSwitcher.copyDialog.rotation.hintCount', { count: hints }) : null,
   ].filter(Boolean).join(' · ');
-  const list = (
+  const renderList = (items: readonly SeasonCopyPreviewItem[]) => (
     <Stack component="ul" spacing={0.75} sx={{ m: 0, mt: 0.5, pl: 2.5 }}>
-      {preview.items.map((item) => (
+      {items.map((item) => (
         <Box component="li" key={item.source_plan_id}>
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
             {t('seasonSwitcher.copyDialog.rotation.item', { culture: item.crop_label, bed: item.bed_name })}
@@ -78,14 +78,18 @@ export function SeasonCopyRotationSummary({
       ))}
     </Stack>
   );
+  const more = preview.items.slice(INLINE_ITEM_COUNT);
 
   return (
     <Box data-testid="season-copy-rotation-summary">
       <Alert severity={conflicts > 0 ? 'warning' : 'info'} sx={{ boxShadow: 'none', overflowWrap: 'anywhere' }}>
         <Typography variant="body2" sx={{ fontWeight: 600 }}>{counts}</Typography>
-        {preview.items.length > INLINE_ITEM_COUNT ? (
-          <Disclosure label={t('seasonSwitcher.copyDialog.rotation.showDetails')}>{list}</Disclosure>
-        ) : list}
+        {renderList(preview.items.slice(0, INLINE_ITEM_COUNT))}
+        {more.length > 0 && (
+          <Disclosure label={t('seasonSwitcher.copyDialog.rotation.showMore', { count: more.length })}>
+            {renderList(more)}
+          </Disclosure>
+        )}
       </Alert>
 
       {conflicts > 0 && mode && onModeChange ? (
