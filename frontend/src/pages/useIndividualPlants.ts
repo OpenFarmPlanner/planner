@@ -48,7 +48,10 @@ export function useIndividualPlants(
   const [state, setState] = useState({ scope, editor: initialEditor });
   const nextStemId = useRef(0);
   const revealedPlan = useRef<number | undefined>(undefined);
+  // Bumped on every completed load: a direct move only writes into the load it started from.
+  const loadGeneration = useRef(0);
   const saving = useRef(false);
+  const [movingPlans, setMovingPlans] = useState<ReadonlySet<number>>(new Set());
   if (state.scope !== scope) setState({ scope, editor: initialEditor });
   const editor = state.scope === scope ? state.editor : initialEditor;
   const current = result?.key === key ? result : null;
@@ -59,6 +62,7 @@ export function useIndividualPlants(
     const abort = new AbortController();
     void plantingPlanAPI.listIndividualAtLocation(location, abort.signal).then(({ results }) => {
       if (abort.signal.aborted) return;
+      loadGeneration.current += 1;
       setResult({ key, plans: results, failed: false });
       const requested = requestedPlan !== revealedPlan.current
         ? results.find(plan => plan.id === requestedPlan) : undefined;
@@ -95,7 +99,8 @@ export function useIndividualPlants(
   };
 
   const startDraft = (parcel: number, plan?: PlantingPlan) => {
-    if (!canEdit || !season || saving.current) return;
+    // A direct move of this plan is still saving: a draft would start from a version about to change.
+    if (!canEdit || !season || saving.current || (plan?.id && movingPlans.has(plan.id))) return;
     const today = formatDateToAPI(new Date());
     const defaultDate = today < season.start_date ? season.start_date
       : today > season.end_date ? season.end_date : today;
@@ -167,11 +172,63 @@ export function useIndividualPlants(
     }
   };
 
+  // Graphic edit mode moves an already saved stem directly (#1579): the position is
+  // saved on drop like a bed or parcel, and restored when the save fails.
+  const [moveErrorScope, setMoveErrorScope] = useState<string | null>(null);
+  const moveSavedStem = async (planId: number, stemId: string, point: StemCoordinates) => {
+    const plan = plans.find(item => item.id === planId);
+    if (!canEdit || !plan?.updated_at || movingPlans.has(planId)) return;
+    const positions = (plan.individual_positions ?? []).map(stem => (
+      stem.id === stemId ? { ...stem, ...point } : stem));
+    const generation = loadGeneration.current;
+    const replacePlan = (next: PlantingPlan) => setResult(value => (
+      value?.key === key && loadGeneration.current === generation) ? {
+      ...value, plans: value.plans.map(item => item.id === planId ? next : item),
+    } : value);
+    setMoveErrorScope(null);
+    setMovingPlans(value => new Set(value).add(planId));
+    replacePlan({ ...plan, individual_positions: positions });
+    try {
+      const { data } = await plantingPlanAPI.saveIndividualPlacement(planId, plan.updated_at, {
+        individual_positions: positions.map(({ id, x_m, y_m }) => ({ id, x_m, y_m })),
+      });
+      replacePlan(data);
+    } catch (error) {
+      // A failure from a load the user has since left neither reports nor refreshes anything.
+      if (loadGeneration.current !== generation) return;
+      replacePlan(plan);
+      setMoveErrorScope(scope);
+      // The plan changed elsewhere: reload it so the next drag uses its current version.
+      if (isAxiosError(error) && error.response?.status === 409) setAttempt(value => value + 1);
+    } finally {
+      setMovingPlans(value => {
+        const next = new Set(value);
+        next.delete(planId);
+        return next;
+      });
+    }
+  };
+
   return {
     plans, editor, canEdit, update, updateDraft, select, startDraft, addStem, changeStem, save,
+    moveSavedStem, movingPlans, moveError: Boolean(scope) && moveErrorScope === scope,
     loading: Boolean(scope) && !current, failed: current?.failed ?? false,
     refresh: () => setAttempt(value => value + 1),
   };
 }
 
 export type IndividualPlantsController = ReturnType<typeof useIndividualPlants>;
+
+/**
+ * Saved plans whose stems graphic edit mode may drag and save directly (#1579): not while a
+ * move of that plan is saving, and not for a plan with an open (possibly hidden) panel draft,
+ * whose edits stay in that draft.
+ */
+export function getDirectlyDraggableStemPlans(
+  controller: Pick<IndividualPlantsController, 'canEdit' | 'plans' | 'movingPlans' | 'editor'>,
+): ReadonlySet<number> {
+  if (!controller.canEdit) return new Set();
+  return new Set(controller.plans.flatMap(plan => (
+    plan.id && !controller.movingPlans.has(plan.id) && plan.id !== controller.editor.draft?.planId
+      ? [plan.id] : [])));
+}

@@ -15,8 +15,13 @@ export interface CanvasStem extends StemCoordinates {
 
 type Press = KonvaEventObject<MouseEvent | TouchEvent>;
 
+const setCursor = (event: KonvaEventObject<MouseEvent>, cursor: string) => {
+  const container = event.target.getStage()?.container();
+  if (container) container.style.cursor = cursor;
+};
+
 export function GraphicalIndividualPlantsLayer({
-  field, surface, pixelsPerMeter, rotation, stems, zoom, placing, editablePlanId, onAdd, onSelect, onMove,
+  field, surface, pixelsPerMeter, rotation, stems, zoom, placing, editablePlanId, draggablePlanIds, captureStems, onAdd, onSelect, onMove,
 }: {
   field: Field;
   surface: CanvasRect;
@@ -26,6 +31,13 @@ export function GraphicalIndividualPlantsLayer({
   zoom: number;
   placing: boolean;
   editablePlanId?: number | null;
+  /** Saved plans whose stems can be dragged directly, in graphic edit mode (#1579). */
+  draggablePlanIds?: ReadonlySet<number>;
+  /**
+   * Every stem takes its own pointer gestures, even while it cannot be dragged (a move is
+   * saving or the plan has a panel draft), so they never reach the bed or parcel below.
+   */
+  captureStems?: boolean;
   onAdd: (position: StemCoordinates) => void;
   onSelect?: (stem: CanvasStem) => void;
   onMove: (key: string, position: StemCoordinates) => void;
@@ -63,7 +75,8 @@ export function GraphicalIndividualPlantsLayer({
       {stems.map(stem => {
         const point = stemToCanvas(stem, field, surface, rotation);
         if (!point) return null;
-        const canDrag = editablePlanId !== undefined && editablePlanId === stem.planId;
+        const canDrag = (editablePlanId !== undefined && editablePlanId === stem.planId)
+          || (stem.planId !== null && Boolean(draggablePlanIds?.has(stem.planId)));
         const ink = stem.selected ? theme.palette.primary.dark : theme.palette.text.primary;
         return <Group key={stem.key}>
           {stem.canopy > 0 && <Ellipse {...point} listening={false}
@@ -73,10 +86,16 @@ export function GraphicalIndividualPlantsLayer({
             strokeWidth={1} strokeScaleEnabled={false} />}
           <Circle {...point} radius={(stem.selected ? 6 : 4.5) / zoom} fill={ink}
             stroke={theme.palette.common.white} strokeWidth={2} strokeScaleEnabled={false}
-            listening={Boolean(onSelect) || canDrag} hitStrokeWidth={canDrag ? 26 / zoom : 10 / zoom}
+            listening={Boolean(onSelect) || canDrag || Boolean(captureStems)} hitStrokeWidth={canDrag ? 26 / zoom : 10 / zoom}
             data-testid={`individual-stem-${stem.key}`} data-x-m={stem.x_m} data-y-m={stem.y_m}
             draggable={canDrag} dragDistance={8}
-            onMouseDown={beginPress} onTouchStart={beginPress} onTouchMove={touchMove}
+            // Enrolls the stem in the graphic's Escape cancellation, like beds and parcels.
+            name={canDrag ? 'graphical-editable' : undefined}
+            onMouseDown={event => { if (captureStems && !canDrag) event.cancelBubble = true; beginPress(event); }}
+            onTouchStart={event => { if (captureStems && !canDrag) event.cancelBubble = true; beginPress(event); }}
+            onTouchMove={touchMove}
+            onMouseEnter={event => { if (canDrag) setCursor(event, 'move'); }}
+            onMouseLeave={event => { if (canDrag) setCursor(event, ''); }}
             onClick={event => click(event, () => onSelect?.(stem))}
             onTap={event => click(event, () => onSelect?.(stem))}
             onDragStart={event => { event.cancelBubble = true; press.current = null; }}
@@ -93,7 +112,9 @@ export function GraphicalIndividualPlantsLayer({
               const position = canvasToStem(event.target.position(), field, surface, rotation);
               // Reset Konva's transient drag position. React then applies the confirmed rounded value.
               event.target.position(point);
-              if (position) onMove(stem.key, position);
+              // Escape (stopDrag without an event) and an interrupted touch cancel the move.
+              const canceled = !event.evt || ['touchcancel', 'pointercancel'].includes(event.evt.type);
+              if (position && !canceled) onMove(stem.key, position);
             }} />
         </Group>;
       })}

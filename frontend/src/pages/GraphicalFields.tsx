@@ -35,7 +35,7 @@ import { bedTaskColors } from "./graphicalBedTaskStyle";
 import { bedTaskDateBounds, orderBedTasks, summarizeBedTasks } from "../components/tasks/bedTaskUrgency";
 import { useAreaPlantingPlans, useBedTasks } from "../components/tasks/useBedTasks";
 import { isOpenTask } from "../components/tasks/taskBoard";
-import { useIndividualPlants } from "./useIndividualPlants";
+import { getDirectlyDraggableStemPlans, useIndividualPlants } from "./useIndividualPlants";
 import { GraphicalIndividualPlantsLayer, type CanvasStem } from "./GraphicalIndividualPlantsLayer";
 import { GraphicalIndividualPlantsPanel } from "./GraphicalIndividualPlantsPanel";
 import { GraphicalGeometryWarnings } from "./GraphicalGeometryWarnings";
@@ -970,6 +970,8 @@ export default function GraphicalFields({
           const showIndividualPanel = individualSeason && individualPlants.editor.open && !locationIsEditable
             && fullscreenLocationId !== locationId;
           const stemDraft = showIndividualPanel ? individualPlants.editor.draft : null;
+          // In graphic edit mode a placed stem is its own drag target, above beds and parcels (#1579).
+          const draggableStemPlans = locationIsEditable ? getDirectlyDraggableStemPlans(individualPlants) : undefined;
           const viewport =
             viewportByLocation[locationId] ??
             fitBoundsToStage(
@@ -996,6 +998,9 @@ export default function GraphicalFields({
 
           return (
             <Box key={locationId} role="region" aria-label={t("fields:graphical.locationTitle", { name: location.name })}>
+                {locationIsEditable && individualPlants.moveError ? (
+                  <Alert severity="error" sx={{ mb: 1.5 }}>{t("fields:individualPlants.saveFailed")}</Alert>
+                ) : null}
                 {fieldSaveErrorLocation === locationId ? (
                   <Alert severity="error" sx={{ mb: 1.5 }}>{t("fields:errors.save")}</Alert>
                 ) : null}
@@ -1365,7 +1370,17 @@ export default function GraphicalFields({
                                   panel?.focus({ preventScroll: true });
                                   panel?.scrollIntoView({ block: "nearest" });
                                 }}
-                                onMove={individualPlants.changeStem}
+                                draggablePlanIds={draggableStemPlans}
+                                captureStems={locationIsEditable && individualPlants.canEdit}
+                                onMove={(key, position) => {
+                                  if (stemDraft?.parcel === fieldId) {
+                                    individualPlants.changeStem(key, position);
+                                    return;
+                                  }
+                                  const plan = individualPlants.plans.find(item => (
+                                    item.individual_positions?.some(stem => stem.id === key)));
+                                  if (plan?.id) void individualPlants.moveSavedStem(plan.id, key, position);
+                                }}
                                 onSelect={!locationIsEditable && fullscreenLocationId !== locationId
                                   ? stem => individualPlants.select(stem.planId, fieldId, stem.key)
                                   : undefined} />

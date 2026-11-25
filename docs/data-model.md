@@ -349,6 +349,11 @@ erDiagram
   A project crop may supply the initial estimate, which can be overridden or
   cleared on the plan. The canopy projection does not reserve bed capacity.
   Geometry edits use the plan's `updated_at` to reject a stale replacement.
+  In the graphic's edit mode a saved stem is its own drag target above beds
+  and parcels: dropping it saves that plan's positions at once, like a bed
+  or parcel move, and a failed save restores the previous position. The
+  canopy is not a drag target
+  ([#1579](https://github.com/OpenFarmPlanner/planner/issues/1579)).
   Its internal `parcel_rotation_basis` retains the original occupied area and
   bed area as decimal strings after a rotating copy. Subsequent copies derive
   areas from that fraction while the current bed and area match the last
