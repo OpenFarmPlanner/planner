@@ -56,8 +56,6 @@ from farm.services.crop_rotation import (
 )
 from farm.services.demo_features import FEATURE_TEXT
 from farm.services.demo_project import (
-    GRAPHIC_DEMO_BEDS,
-    GRAPHIC_DEMO_TASKS,
     DEMO_ORCHARD_CROP_NAMES,
     DEMO_PROJECT_DESCRIPTION,
     DEMO_PROJECT_NAME,
@@ -65,6 +63,8 @@ from farm.services.demo_project import (
     DEMO_PROJECT_SLUG,
     DEMO_ROTATION_GROUP_NAMES,
     DEMO_TEXT,
+    GRAPHIC_DEMO_BEDS,
+    GRAPHIC_DEMO_TASKS,
     DemoProjectResult,
     create_or_reset_demo_project,
     create_personal_demo_project,
@@ -334,7 +334,8 @@ class DemoProjectServiceTests(TestCase):
                     planting_plan__isnull=True, field__isnull=False,
                 ).exists())
                 self.assertEqual(
-                    Bed.objects.filter(project=project, name__in=GRAPHIC_DEMO_BEDS[lang]).count(), 4,
+                    Bed.objects.filter(project=project, name__in=GRAPHIC_DEMO_BEDS[lang]).count(),
+                    4,
                 )
                 self.assertEqual(
                     set(tasks.filter(
@@ -575,9 +576,12 @@ class DemoProjectServiceTests(TestCase):
         )
         self.assertFalse(PlantingPlan.objects.filter(project=result.project, season__isnull=True).exists())
 
-        graphic_plans = PlantingPlan.objects.filter(project=result.project, bed__name__in=GRAPHIC_DEMO_BEDS['de'])
-        other_plans = PlantingPlan.objects.filter(project=result.project).exclude(pk__in=graphic_plans)
-        self.assertEqual([other_plans.filter(season=season).count() for season in seasons], [1, 21, 23, 24, 0])
+        plans = PlantingPlan.objects.filter(project=result.project)
+        graphic_plans = plans.filter(bed__name__in=GRAPHIC_DEMO_BEDS['de'])
+        other_plans = plans.exclude(pk__in=graphic_plans)
+        self.assertEqual(
+            [other_plans.filter(season=season).count() for season in seasons], [1, 21, 23, 24, 0],
+        )
         self.assertEqual(graphic_plans.count(), 5)
         for plan in graphic_plans.select_related('season'):
             self.assertLessEqual(plan.season.start_date, plan.planting_date)
@@ -648,7 +652,8 @@ class DemoProjectServiceTests(TestCase):
         result = create_or_reset_demo_project()
         current_year = demo_current_year()
 
-        for bed in Bed.objects.filter(project=result.project).exclude(name__in=GRAPHIC_DEMO_BEDS['de']):
+        beds = Bed.objects.filter(project=result.project).exclude(name__in=GRAPHIC_DEMO_BEDS['de'])
+        for bed in beds:
             history_years = set(
                 PlantingPlan.objects.filter(bed=bed, planting_date__year__lt=current_year)
                 .values_list('planting_date__year', flat=True)
@@ -678,10 +683,12 @@ class DemoProjectServiceTests(TestCase):
         self.assertGreaterEqual(harvesting.harvest_end_date, today)
         sequence = plans.filter(bed__name=mixed)
         self.assertEqual(sequence.count(), 3)
-        self.assertEqual(sequence.filter(planting_date__lte=today, harvest_end_date__gte=today).count(), 2)
+        concurrent = sequence.filter(planting_date__lte=today, harvest_end_date__gte=today)
+        self.assertEqual(concurrent.count(), 2)
         self.assertFalse(plans.filter(bed__name=free).exists())
         work = Task.objects.filter(
-            project=result.project, season__start_date__year=today.year, planting_plan__bed__name=harvest,
+            project=result.project, season__start_date__year=today.year,
+            planting_plan__bed__name=harvest,
         )
         self.assertTrue(work.filter(status='pending').exists())
         self.assertTrue(work.filter(status='completed').exists())
@@ -696,7 +703,9 @@ class DemoProjectServiceTests(TestCase):
         visible = {row['id']: row for row in response.data['results']}
         self.assertTrue(visible[growing.pk]['carried_over'])
         self.assertEqual(visible[growing.pk]['bed'], growing.bed_id)
-        self.assertEqual(visible[harvesting.pk]['occupancy_end_date'], harvesting.harvest_end_date.isoformat())
+        self.assertEqual(
+            visible[harvesting.pk]['occupancy_end_date'], harvesting.harvest_end_date.isoformat(),
+        )
         self.assertNotIn(None, {row['bed'] for row in visible.values()})
 
     def test_same_bed_neighbours_show_bad_and_good_findings_in_every_language(self) -> None:

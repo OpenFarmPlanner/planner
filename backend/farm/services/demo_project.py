@@ -542,10 +542,21 @@ def find_demo_crop_species(name: str | None) -> CropSpecies | None:
 GRAPHIC_DEMO_BEDS = {
     'de': ('Wachstumsbeet', 'Erntebeet', 'Misch- und Folgebeet', 'Freies Beispielbeet'),
     'en': ('Growing bed', 'Harvest bed', 'Mixed and succession bed', 'Free example bed'),
-    'fr': ('Planche en croissance', 'Planche en récolte', 'Planche mixte et successive', 'Planche libre'),
-    'es': ('Bancal en crecimiento', 'Bancal en cosecha', 'Bancal mixto y de sucesión', 'Bancal libre'),
-    'it': ('Aiuola in crescita', 'Aiuola in raccolta', 'Aiuola mista e in successione', 'Aiuola libera'),
-    'pt': ('Canteiro em crescimento', 'Canteiro em colheita', 'Canteiro misto e de sucessão', 'Canteiro livre'),
+    'fr': (
+        'Planche en croissance', 'Planche en récolte',
+        'Planche mixte et successive', 'Planche libre',
+    ),
+    'es': (
+        'Bancal en crecimiento', 'Bancal en cosecha', 'Bancal mixto y de sucesión', 'Bancal libre',
+    ),
+    'it': (
+        'Aiuola in crescita', 'Aiuola in raccolta',
+        'Aiuola mista e in successione', 'Aiuola libera',
+    ),
+    'pt': (
+        'Canteiro em crescimento', 'Canteiro em colheita', 'Canteiro misto e de sucessão',
+        'Canteiro livre',
+    ),
     'nl': ('Groeibed', 'Oogstbed', 'Meng- en opvolgbed', 'Vrij voorbeeldbed'),
 }
 GRAPHIC_DEMO_BED_KEYS = ('graphic-growth', 'graphic-harvest', 'graphic-mixed', 'graphic-free')
@@ -649,7 +660,9 @@ def _create_graphic_demo_tasks(
 ) -> None:
     plan = PlantingPlan.objects.get(project=project, bed=bed)
     season = get_or_create_season_for_date(project, today, created_by=owner)
-    for title, status, offset in zip(GRAPHIC_DEMO_TASKS[language], ('pending', 'completed'), (2, -1), strict=True):
+    for title, status, offset in zip(
+        GRAPHIC_DEMO_TASKS[language], ('pending', 'completed'), (2, -1), strict=True,
+    ):
         Task.objects.create(
             project=project, season=season, planting_plan=plan, field=bed.field, crop=plan.crop,
             title=title, status=status, due_date=today + timedelta(days=offset),
@@ -729,7 +742,9 @@ def populate_demo_project(
             project, owner=owner, fields=fields, beds=beds, language_code=language,
             today=reference_date,
         )
-        _create_graphic_demo_tasks(project, beds['graphic-harvest'], owner, reference_date, language)
+        _create_graphic_demo_tasks(
+            project, beds['graphic-harvest'], owner, reference_date, language,
+        )
         project.demo_seeded_at = timezone.now()
         project.default_bed_length_m = 10
         project.default_bed_width_m = 1.2
