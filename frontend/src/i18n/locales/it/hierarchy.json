@@ -1,7 +1,10 @@
 {
   "parcelRotation": {
-    "configure": "Configura la rotazione tra appezzamenti",
     "manage": "Gestisci i gruppi di rotazione",
+    "assign": "Aggiungi a un gruppo di rotazione",
+    "section": "Rotazione tra appezzamenti",
+    "position": "Appezzamento {{position}} di {{size}}",
+    "unassigned": "Questo appezzamento non appartiene a nessun gruppo di rotazione.",
     "name": "Nome del gruppo",
     "group": "Gruppo di rotazione",
     "newGroup": "Nuovo gruppo",

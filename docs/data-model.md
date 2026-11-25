@@ -169,6 +169,12 @@ erDiagram
   ordered bed IDs. Current bed counts are checked when configuring a group
   and when copying. Existing beds keep the saved order after renaming or
   sorting. Newly added beds join at the end until the grower reorders them.
+  Groups are managed in one project-level dialog, opened from **Manage
+  rotation groups** in the Growing Areas List toolbar or from a parcel's
+  details, which also show its group and position. The List shows membership
+  only in the optional, initially hidden **Rotation group** column; parcel
+  row menus and names carry no rotation entry or badge
+  ([#1576](https://github.com/OpenFarmPlanner/planner/issues/1576)).
 - `BedLayout`/`FieldLayout` hold persisted x/y coordinates for the
   graphical/map layout view (`GraphicalFields.tsx`) — they're optional,
   separate rows from `Bed`/`Field` themselves, not embedded fields.

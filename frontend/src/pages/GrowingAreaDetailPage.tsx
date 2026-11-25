@@ -60,6 +60,7 @@ import {
   type GrowingAreaDetailDraft,
 } from '../components/hierarchy/details/GrowingAreaDetailForm';
 import { INHERITED_SITE_CONDITION_FIELDS } from '../components/hierarchy/utils/siteConditions';
+import { ParcelRotationDetailSection } from '../components/hierarchy/rotation/ParcelRotationDetailSection';
 import {
   getInheritedSourceLabel,
   getSiteConditionFieldHelp,
@@ -113,6 +114,7 @@ export default function GrowingAreaDetailPage() {
 }
 
 function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined; id: number | null }) {
+  const { activeProjectMembership } = useProjectRequirement();
   const { t, i18n } = useTranslation(['hierarchy', 'locations', 'common', 'fields']);
   const locale = resolveSeasonDateLocale(i18n);
   const navigate = useNavigate();
@@ -307,6 +309,9 @@ function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined
           ) : (
             <GrowingAreaReadView resolved={resolved} locale={locale} refreshHierarchy={refreshHierarchy} />
           )}
+          {!isEditing && type === 'field' && id !== null ? (
+            <ParcelRotationDetailSection fieldId={id} fields={fields} beds={beds} canManage={Boolean(activeProjectMembership)} />
+          ) : null}
           <GrowingAreaRelatedPlans bedIds={resolved.bedIds} showBed={type !== 'bed'} />
           {type === 'bed' && id !== null && <BedTaskSection bedId={id} seasonId={seasonId} />}
           {!isEditing && resolved.entity.notes?.trim() ? (

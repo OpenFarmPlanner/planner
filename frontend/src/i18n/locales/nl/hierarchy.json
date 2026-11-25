@@ -1,7 +1,10 @@
 {
   "parcelRotation": {
-    "configure": "Perceelrotatie instellen",
     "manage": "Rotatiegroepen beheren",
+    "assign": "Aan een rotatiegroep toevoegen",
+    "section": "Perceelrotatie",
+    "position": "Perceel {{position}} van {{size}}",
+    "unassigned": "Dit perceel hoort bij geen rotatiegroep.",
     "name": "Groepsnaam",
     "group": "Rotatiegroep",
     "newGroup": "Nieuwe groep",

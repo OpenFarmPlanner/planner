@@ -4,7 +4,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import type { TFunction } from 'i18next';
 import type { HierarchyRow } from './utils/types';
-import { contextMenuActionsOverlaySx } from '../contextMenu/contextMenuIndicatorStyles';
+import { contextMenuActionsSlotSx } from '../contextMenu/contextMenuIndicatorStyles';
 import { renderInlineActions, renderMoreActionsButton } from './hierarchyRowActions';
 import {
   NON_BLOCKING_TOOLTIP_PROPS,
@@ -13,12 +13,16 @@ import {
 } from './hierarchyColumnShared';
 import { AppTooltip } from '../AppTooltip';
 import { TruncatedTextWithTooltip } from '../TruncatedTextWithTooltip';
-import { ParcelRotationBadge } from './rotation/ParcelRotationGroupsDialog';
 
 const EXPAND_ICON_SLOT_SIZE = 32;
 const LEVEL_INDENT_PX = 24;
 // The expand slot's right margin (`mr: 1`).
 const EXPAND_ICON_SLOT_GAP_PX = 8;
+/**
+ * Width kept free for the hover actions (add/plan, delete, more) at the end
+ * of the name, so the name column's content width includes them (#1576).
+ */
+export const HIERARCHY_ROW_ACTIONS_SLOT_PX = 96;
 
 /** Where the name text starts inside the cell, so the edit input can line up with it. */
 export const getHierarchyNameTextOffsetPx = (level: number): number =>
@@ -127,14 +131,13 @@ export function renderNameCell(
           }}
         />
 
-        {row.type === 'field' && row.fieldId ? <ParcelRotationBadge fieldId={row.fieldId} /> : null}
         {persistentContextMenuButton}
 
         {inlineActions ? (
           <Box
             data-testid="hierarchy-name-actions-overlay"
             sx={{
-              ...contextMenuActionsOverlaySx('.MuiDataGrid-row:hover &'),
+              ...contextMenuActionsSlotSx('.MuiDataGrid-row:hover &'),
               ...(isStandaloneRender ? { opacity: 1, pointerEvents: 'auto' } : {}),
               '.MuiDataGrid-row--editing:hover &': { opacity: 0, pointerEvents: 'none' },
             }}

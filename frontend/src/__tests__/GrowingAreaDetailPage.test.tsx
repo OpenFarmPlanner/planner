@@ -15,11 +15,14 @@ const apiMocks = vi.hoisted(() => ({
   plans: vi.fn(),
   layouts: vi.fn(),
   bedUpdate: vi.fn(),
+  rotationGroups: vi.fn(),
+  membership: undefined as { project_id: number } | undefined,
 }));
 
 vi.mock('../hooks/useProjectRequirement', () => ({
   useProjectRequirement: () => ({
     activeProjectId: apiMocks.projectId,
+    activeProjectMembership: apiMocks.membership,
     shouldShowProjectRequiredState: false,
     missingProjectReason: null,
   }),
@@ -36,6 +39,7 @@ vi.mock('../api/api', async () => {
     bedAPI: { ...actual.bedAPI, listAll: apiMocks.beds, update: apiMocks.bedUpdate },
     layoutAPI: { ...actual.layoutAPI, listByLocation: apiMocks.layouts },
     plantingPlanAPI: { ...actual.plantingPlanAPI, listAll: apiMocks.plans },
+    parcelRotationAPI: { ...actual.parcelRotationAPI, list: apiMocks.rotationGroups },
   };
 });
 
@@ -55,6 +59,8 @@ describe('GrowingAreaDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     apiMocks.projectId = 1;
+    apiMocks.membership = { project_id: 1 };
+    apiMocks.rotationGroups.mockResolvedValue({ data: [] });
     apiMocks.layouts.mockResolvedValue({ data: { field_layouts: [], bed_layouts: [] } });
     apiMocks.locations.mockResolvedValue(page([
       { id: 1, name: 'Hofgarten', light_condition: 'sunny', irrigation: 'unavailable', length_m: 40, width_m: 20 },
@@ -236,6 +242,56 @@ describe('GrowingAreaDetailPage', () => {
     expect(await screen.findByTestId('detail-cultivation_environment')).toHaveTextContent('Folientunnel');
     const children = screen.getByTestId('detail-section-children');
     expect(within(children).getByRole('link', { name: 'Tomate 1' })).toHaveAttribute('href', '/app/fields-beds/beds/100');
+  });
+
+  it('shows the parcel rotation group and position and opens the shared group dialog (#1576)', async () => {
+    apiMocks.rotationGroups.mockResolvedValue({ data: [{
+      id: 5, name: 'Nord–Süd', parcels: [
+        { id: 11, name: 'Freiland', beds: [] },
+        { id: 10, name: 'Tunnel', beds: [{ id: 100, name: 'Tomate 1' }] },
+      ],
+    }] });
+    const user = userEvent.setup();
+    renderDetail('/app/fields-beds/fields/10');
+
+    const section = await screen.findByTestId('detail-section-rotation');
+    expect(within(section).getByRole('heading', { name: 'Parzellenrotation' })).toBeInTheDocument();
+    expect(await within(section).findByTestId('detail-rotation-group')).toHaveTextContent('Nord–Süd');
+    expect(within(section).getByTestId('detail-rotation-group')).toHaveTextContent('Parzelle 2 von 2');
+
+    await user.click(within(section).getByRole('button', { name: 'Rotationsgruppen verwalten' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Rotationsgruppen verwalten' });
+    expect(within(dialog).getByRole('textbox', { name: 'Gruppenname' })).toHaveValue('Nord–Süd');
+  });
+
+  it('offers assigning an unassigned parcel through the same dialog', async () => {
+    const user = userEvent.setup();
+    renderDetail('/app/fields-beds/fields/10');
+
+    const section = await screen.findByTestId('detail-section-rotation');
+    expect(within(section).getByText('Diese Parzelle gehört zu keiner Rotationsgruppe.')).toBeInTheDocument();
+    await user.click(within(section).getByRole('button', { name: 'Einer Rotationsgruppe zuordnen' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Rotationsgruppen verwalten' });
+    expect(within(within(dialog).getByRole('list', { name: 'Parzellenreihenfolge' })).getByText('1. Tunnel'))
+      .toBeInTheDocument();
+  });
+
+  it('shows rotation membership without a management action to users outside the project', async () => {
+    apiMocks.membership = undefined;
+    renderDetail('/app/fields-beds/fields/10');
+
+    const section = await screen.findByTestId('detail-section-rotation');
+    expect(within(section).getByText('Diese Parzelle gehört zu keiner Rotationsgruppe.')).toBeInTheDocument();
+    expect(within(section).queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it.each(['locations/1', 'beds/100'])('shows no rotation section on %s', async (path) => {
+    renderDetail(`/app/fields-beds/${path}`);
+
+    await screen.findByRole('heading', { level: 1 });
+    expect(screen.queryByTestId('detail-section-rotation')).not.toBeInTheDocument();
+    expect(apiMocks.rotationGroups).not.toHaveBeenCalled();
   });
 
   it.each([

@@ -1,7 +1,10 @@
 {
   "parcelRotation": {
-    "configure": "Parzellenrotation konfigurieren",
     "manage": "Rotationsgruppen verwalten",
+    "assign": "Einer Rotationsgruppe zuordnen",
+    "section": "Parzellenrotation",
+    "position": "Parzelle {{position}} von {{size}}",
+    "unassigned": "Diese Parzelle gehört zu keiner Rotationsgruppe.",
     "name": "Gruppenname",
     "group": "Rotationsgruppe",
     "newGroup": "Neue Gruppe",

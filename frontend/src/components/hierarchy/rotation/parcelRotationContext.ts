@@ -8,5 +8,11 @@ export interface ParcelRotationMembership {
 
 export const ParcelRotationContext = createContext<{
   memberships: ReadonlyMap<number, ParcelRotationMembership>;
-  configure?: (fieldId: number) => void;
+  /** Opens the project-wide rotation-group management; absent for users who cannot change it. */
+  manage?: () => void;
 }>({ memberships: new Map() });
+
+/** Compact "Group · position/size" label shared by the list column and the mobile list. */
+export function formatParcelRotationMembership(membership: ParcelRotationMembership): string {
+  return `${membership.group} · ${membership.position}/${membership.size}`;
+}

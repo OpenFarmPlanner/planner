@@ -22,6 +22,8 @@ interface ContextMenuIndicatorProps {
    * data-grid-row case, which already sits on its own opaque overlay panel.
    */
   withBackdrop?: boolean;
+  /** Off where an action row already identifies its icons (Growing Areas list, #1576); the aria-label stays. */
+  showTooltip?: boolean;
 }
 
 /**
@@ -47,6 +49,7 @@ export function ContextMenuIndicator({
   tabIndex,
   sx,
   withBackdrop,
+  showTooltip = true,
 }: ContextMenuIndicatorProps) {
   const handledPointerTapRef = useRef(false);
   const activateFromTouch = (
@@ -64,69 +67,73 @@ export function ContextMenuIndicator({
     }, 350);
   };
 
+  const button = (
+    <IconButton
+      className={CONTEXT_MENU_INDICATOR_CLASS}
+      size="small"
+      aria-label={label}
+      tabIndex={tabIndex}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') event.stopPropagation();
+      }}
+      onMouseDown={(event) => {
+        event.stopPropagation();
+      }}
+      onPointerDown={(event) => {
+        event.stopPropagation();
+        if (event.pointerType === 'pen') {
+          activateFromTouch(event);
+        }
+      }}
+      onPointerUp={(event) => {
+        event.stopPropagation();
+        if (event.pointerType !== 'pen') {
+          return;
+        }
+        activateFromTouch(event);
+      }}
+      onTouchStart={(event) => {
+        event.stopPropagation();
+      }}
+      onTouchEnd={(event) => {
+        event.stopPropagation();
+        activateFromTouch(event);
+      }}
+      onClick={(event) => {
+        if (handledPointerTapRef.current) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        onClick(event);
+      }}
+      sx={{
+        opacity: 0,
+        pointerEvents: 'none',
+        transition: 'opacity 120ms ease-in-out, background-color 120ms ease-in-out',
+        ...(withBackdrop
+          ? {
+              color: 'common.white',
+              bgcolor: (theme) => alpha(theme.palette.common.black, 0.32),
+              '&:hover': { bgcolor: (theme) => alpha(theme.palette.common.black, 0.48) },
+            }
+          : undefined),
+        ...sx,
+      }}
+    >
+      <MoreVertIcon fontSize="small" />
+    </IconButton>
+  );
+  if (!showTooltip) return button;
   return (
     <AppTooltip
       title={label}
       disableInteractive
       slotProps={{ popper: { style: { pointerEvents: 'none' } } }}
     >
-      <IconButton
-        className={CONTEXT_MENU_INDICATOR_CLASS}
-        size="small"
-        aria-label={label}
-        tabIndex={tabIndex}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') event.stopPropagation();
-        }}
-        onMouseDown={(event) => {
-          event.stopPropagation();
-        }}
-        onPointerDown={(event) => {
-          event.stopPropagation();
-          if (event.pointerType === 'pen') {
-            activateFromTouch(event);
-          }
-        }}
-        onPointerUp={(event) => {
-          event.stopPropagation();
-          if (event.pointerType !== 'pen') {
-            return;
-          }
-          activateFromTouch(event);
-        }}
-        onTouchStart={(event) => {
-          event.stopPropagation();
-        }}
-        onTouchEnd={(event) => {
-          event.stopPropagation();
-          activateFromTouch(event);
-        }}
-        onClick={(event) => {
-          if (handledPointerTapRef.current) {
-            event.preventDefault();
-            event.stopPropagation();
-            return;
-          }
-          event.preventDefault();
-          event.stopPropagation();
-          onClick(event);
-        }}
-        sx={{
-          opacity: 0,
-          pointerEvents: 'none',
-          transition: 'opacity 120ms ease-in-out, background-color 120ms ease-in-out',
-          ...(withBackdrop
-            ? {
-                color: 'common.white',
-                bgcolor: (theme) => alpha(theme.palette.common.black, 0.32),
-                '&:hover': { bgcolor: (theme) => alpha(theme.palette.common.black, 0.48) },
-              }
-            : undefined),
-          ...sx,
-        }}
-      >
-        <MoreVertIcon fontSize="small" />
-      </IconButton>
+      {button}
     </AppTooltip>
   );
 }

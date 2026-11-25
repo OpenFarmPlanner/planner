@@ -1,7 +1,10 @@
 {
   "parcelRotation": {
-    "configure": "Configurer la rotation entre parcelles",
     "manage": "Gérer les groupes de rotation",
+    "assign": "Ajouter à un groupe de rotation",
+    "section": "Rotation entre parcelles",
+    "position": "Parcelle {{position}} sur {{size}}",
+    "unassigned": "Cette parcelle n’appartient à aucun groupe de rotation.",
     "name": "Nom du groupe",
     "group": "Groupe de rotation",
     "newGroup": "Nouveau groupe",
