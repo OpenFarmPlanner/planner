@@ -629,6 +629,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
               onPendingDeletionCountChange={setPendingHierarchyDeletionCount}
               projectId={projectId}
               bedDefaults={bedDefaults}
+              graphicalRotations={cameraState.rotations}
             />
           ) : (
             <FieldsBedsHierarchy
@@ -640,6 +641,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
               suppressContextMenuHint={shouldShowMissingBedsHint}
               projectId={projectId}
               bedDefaults={bedDefaults}
+              graphicalRotations={cameraState.rotations}
               userId={userId}
             />
           )}</PageContainer>

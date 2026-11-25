@@ -51,8 +51,20 @@ export function getGraphicalBedLayout(
   rotation: GraphicalRotation,
 ) {
   const fieldSize = rotation % 180 ? { width: storedField.height, height: storedField.width } : storedField;
-  const usableArea = getFieldUsableArea(fieldSize);
+  const available = getFieldUsableArea(fieldSize);
   const storedUsableArea = getFieldUsableArea(storedField);
+  const storedMeters = measuredSize(field, 0);
+  const storedPixelsPerMeter = storedMeters
+    ? { x: storedUsableArea.width / storedMeters.width, y: storedUsableArea.height / storedMeters.height }
+    : null;
+  const fieldMeters = measuredSize(field, rotation);
+  const scale = fieldMeters ? Math.min(available.width / fieldMeters.width, available.height / fieldMeters.height) : null;
+  const pixelsPerMeter = scale === null ? null : { x: scale, y: scale };
+  // Keep the saved coordinate system while fitting the measured parcel into
+  // the display area with the same metric scale on both axes.
+  const usableArea = fieldMeters && scale !== null
+    ? { ...available, width: fieldMeters.width * scale, height: fieldMeters.height * scale }
+    : available;
   const sizes = new Map<number, RectSize>();
   const missing: number[] = [];
   const occupied: Rect[] = [];
@@ -82,11 +94,7 @@ export function getGraphicalBedLayout(
     return [{ ...rect, id: bed.id, name: bed.name, area: Number(bed.area_sqm ?? 0),
       supportsMetricSpacing: measuredSize(bed, rotation) !== null }];
   });
-  const fieldMeters = measuredSize(field, rotation);
-  const pixelsPerMeter = fieldMeters
-    ? { x: usableArea.width / fieldMeters.width, y: usableArea.height / fieldMeters.height }
-    : null;
-  return { fieldSize, usableArea, storedUsableArea, fieldMeters, pixelsPerMeter, bedRects };
+  return { fieldSize, usableArea, storedUsableArea, fieldMeters, pixelsPerMeter, storedPixelsPerMeter, bedRects };
 }
 
 type GraphicalBedLayout = ReturnType<typeof getGraphicalBedLayout>;

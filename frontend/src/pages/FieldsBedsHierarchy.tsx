@@ -148,6 +148,7 @@ import {
 import { HIGHLIGHT_FLASH_DURATION_MS } from "../components/feedback/highlightFlashStyles";
 import type { CommandSpec } from "../commands/types";
 import { ParcelRotationContext } from "../components/hierarchy/rotation/parcelRotationContext";
+import type { GraphicalRotation } from "./graphicalLayoutUtils";
 
 interface FieldsBedsHierarchyProps {
   showTitle?: boolean;
@@ -160,6 +161,7 @@ interface FieldsBedsHierarchyProps {
   projectId?: number | null;
   userId?: number | null;
   bedDefaults?: BedDimensions;
+  graphicalRotations?: Readonly<Record<number, GraphicalRotation>>;
 }
 
 interface HierarchyRowAction {
@@ -190,6 +192,7 @@ function FieldsBedsHierarchy({
   projectId = null,
   userId,
   bedDefaults,
+  graphicalRotations,
 }: FieldsBedsHierarchyProps) {
   const LOCATION_ROW_HEIGHT = 46;
   const FIELD_ROW_HEIGHT = 42;
@@ -2287,6 +2290,7 @@ function FieldsBedsHierarchy({
           fieldBeds={bulkCreateFieldBeds}
           layoutBeds={beds}
           location={locations.find(location => location.id === bulkCreateField.location)}
+          rotation={graphicalRotations?.[bulkCreateField.location]}
           bedDefaults={bedDefaults}
           onClose={() => setBulkCreateFieldId(null)}
           onCreate={handleBulkCreateBeds}

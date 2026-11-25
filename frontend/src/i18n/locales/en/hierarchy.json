@@ -143,7 +143,11 @@
     "bulkCreateBeds": {
       "layoutGraphic_one": "Parcel layout with {{count}} proposed bed",
       "layoutGraphic_other": "Parcel layout with {{count}} proposed beds",
-      "layoutLegend": "Grey marks existing beds, blue marks new beds and red marks beds outside the parcel.",
+      "legend": {
+        "existing": "Existing beds",
+        "new": "New beds",
+        "outside": "Outside parcel"
+      },
       "layoutFits_one": "Bed that fits in this arrangement ({{count}})",
       "layoutFits_other": "Beds that fit in this arrangement ({{count}})",
       "occupiedAndRemaining": "Bed footprint {{occupied}} m² · Free physical space {{remaining}} m²",
@@ -164,8 +168,7 @@
       "orientationWidth": "Beds run along the width",
       "length": "Length (m)",
       "width": "Width (m)",
-      "pathWidth": "Path (m)",
-      "pathHelper": "Space between the beds",
+      "pathWidth": "Path width (m)",
       "countSection": "Number",
       "count": "Number of beds",
       "suggestion_one": "With a {{path}} m path, {{count}} bed fits across {{side}} m.",

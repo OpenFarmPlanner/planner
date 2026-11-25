@@ -3,6 +3,7 @@ import type Konva from 'konva';
 import { VIEWPORTS, apiRequest, loginWithDeterministicProject, setViewportPreset } from './utils';
 
 type IdResponse = { id: number };
+type Rect = { x: number; y: number; width: number; height: number };
 
 /**
  * "Mehrere Beete anlegen" and "Parzelle duplizieren" at the standard
@@ -56,6 +57,132 @@ async function openFieldMenu(page: Page, fieldId: number): Promise<void> {
   await fieldRow.click({ button: 'right' });
 }
 
+function relativeBed(bed: Rect, parcel: Rect): Rect {
+  return {
+    x: (bed.x - parcel.x) / parcel.width, y: (bed.y - parcel.y) / parcel.height,
+    width: bed.width / parcel.width, height: bed.height / parcel.height,
+  };
+}
+
+async function readPreview(figure: Locator, names: string[]) {
+  return figure.evaluate((svg, names) => {
+    const parcel = svg.querySelector('[data-testid="bulk-bed-parcel"]')!.getBoundingClientRect();
+    const beds = names.map(name => Array.from(svg.querySelectorAll('rect'))
+      .find(rect => rect.querySelector('title')?.textContent === name)!.getBoundingClientRect().toJSON() as Rect);
+    return { parcel: parcel.toJSON() as Rect, beds, frame: svg.getBoundingClientRect().toJSON() as Rect };
+  }, names);
+}
+
+for (const mobile of [false, true]) {
+  const device = mobile ? 'mobile' : 'desktop';
+  test.describe(`bulk layout geometry on ${device}`, () => {
+    test.use(mobile ? { hasTouch: true, isMobile: true, viewport: { width: 375, height: 800 } }
+      : { viewport: { width: 1440, height: 900 } });
+
+    test('keeps both preview orientations proportional and draws the saved layout after reload', async ({ page, request }) => {
+      await loginWithDeterministicProject(page, request, `bulk-bed-geometry-${device}`, { loginAsAdmin: true });
+      const locationName = 'Teststandort';
+      const location = await apiRequest<IdResponse>(page, 'POST', '/locations/', { name: locationName });
+      const testParcels = [];
+      for (const [width, length] of [[8, 18], [18, 8], [12, 12]]) {
+        const fieldName = `Parzelle ${width} × ${length}`;
+        const field = await apiRequest<IdResponse>(page, 'POST', '/fields/', {
+          name: fieldName, location: location.id, width_m: width, length_m: length,
+        });
+        const bed = await apiRequest<IdResponse>(page, 'POST', '/beds/', {
+          name: 'Bestand', field: field.id, length_m: 3, width_m: 1.2,
+        });
+        testParcels.push({ fieldId: field.id, fieldName, width, length, existingId: bed.id });
+      }
+      await apiRequest(page, 'PUT', `/locations/${location.id}/layouts/`, {
+        bed_layouts: testParcels.map(({ existingId }) => ({ bed: existingId, x: 22, y: 10 })), field_layouts: [],
+      });
+      await page.goto('/app/fields-beds');
+
+      const names = ['Bestand', 'Neuanlage 1', 'Neuanlage 2'];
+      const expected = [];
+      for (const { fieldId, fieldName, width, length, existingId } of testParcels) {
+        if (mobile) {
+          const row = page.locator(`[data-hierarchy-mobile-row-id="field-${fieldId}"]`);
+          if (!(await row.isVisible())) await page.getByRole('button', { name: `Aufklappen: ${locationName}` }).click();
+          await row.getByRole('button', { name: new RegExp(`^${fieldName}`) }).click();
+          await page.getByRole('dialog').getByRole('button', { name: 'Weitere Aktionen' }).click();
+        } else {
+          await openFieldMenu(page, fieldId);
+        }
+        await page.getByRole('menuitem', { name: 'Mehrere Beete anlegen' }).click();
+        const dialog = page.getByRole('dialog', { name: `Mehrere Beete anlegen in ${fieldName}` });
+        const lengthField = dialog.getByRole('textbox', { name: 'Länge (m)' });
+        const widthField = dialog.getByRole('textbox', { name: 'Breite (m)', exact: true });
+        const gap = dialog.getByRole('textbox', { name: 'Wegbreite (m)' });
+        await lengthField.fill('3');
+        await widthField.fill('1,2');
+        await gap.fill('0,45');
+        await dialog.getByRole('spinbutton', { name: 'Anzahl Beete' }).fill('2');
+        await dialog.getByRole('textbox', { name: 'Name des ersten Beets' }).fill(names[1]);
+        await expect(dialog.getByText('Abstand zwischen den Beeten', { exact: true })).toHaveCount(0);
+        const preview = dialog.getByRole('img', { name: 'Parzellenlayout mit 2 vorgeschlagenen Beeten' });
+        await expect(preview).toHaveAccessibleDescription(/Vorhandene Beete.*Neue Beete.*Außerhalb der Parzelle/);
+        const alongLength = await readPreview(preview, names);
+        // The main Graphic starts at 90°. The displayed parcel width is its physical length.
+        expect(alongLength.parcel.width / alongLength.parcel.height).toBeCloseTo(length / width);
+        expect(alongLength.parcel.width).toBeLessThanOrEqual(alongLength.frame.width);
+        expect(alongLength.parcel.height).toBeLessThanOrEqual(alongLength.frame.height);
+        expect(relativeBed(alongLength.beds[0], alongLength.parcel).x).toBeGreaterThan(0.5);
+        expect(alongLength.beds[1].width / alongLength.beds[1].height).toBeCloseTo(2.5);
+
+        await dialog.getByRole('radio', { name: 'Beete verlaufen entlang der Breite' }).check();
+        await expect(lengthField).toHaveValue('3');
+        await expect(widthField).toHaveValue('1,2');
+        await expect(gap).toHaveValue('0,45');
+        const alongWidth = await readPreview(preview, names);
+        expect(alongWidth.parcel.width).toBeCloseTo(alongLength.parcel.width);
+        expect(alongWidth.parcel.height).toBeCloseTo(alongLength.parcel.height);
+        expect(relativeBed(alongWidth.beds[0], alongWidth.parcel)).toEqual(relativeBed(alongLength.beds[0], alongLength.parcel));
+        expect(alongWidth.beds[1].width / alongWidth.beds[1].height).toBeCloseTo(0.4);
+
+        if (!mobile) await dialog.getByRole('radio', { name: 'Beete verlaufen entlang der Länge' }).check();
+        const selected = mobile ? alongWidth : alongLength;
+        await dialog.getByRole('button', { name: '2 Beete anlegen' }).click();
+        await expect(dialog).not.toBeVisible();
+        const { results } = await apiRequest<{ results: (IdResponse & { name: string; field: number; length_m: number; width_m: number })[] }>(page, 'GET', '/beds/');
+        const created = names.slice(1).map(name => results.find(bed => bed.field === fieldId && bed.name === name)!);
+        for (const bed of created) expect(bed).toMatchObject({ length_m: 3, width_m: 1.2 });
+        expected.push({ fieldId, ids: [existingId, ...created.map(bed => bed.id)],
+          beds: selected.beds.map(rect => relativeBed(rect, selected.parcel)) });
+      }
+
+      await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+      await page.getByRole('combobox', { name: 'Standort', exact: true }).click();
+      await page.getByRole('option', { name: locationName, exact: true }).click();
+      await page.reload();
+      const shapes = () => page.evaluate(fields => {
+        const stage = (window as unknown as { Konva?: { stages: Konva.Stage[] } }).Konva?.stages
+          .find(item => item.container()?.isConnected);
+        if (!stage) return [];
+        const rects = stage.find('Rect');
+        const read = (testId: string): Rect | undefined => {
+          const shape = rects.find(rect => rect.getAttr('data-testid') === testId) as Konva.Rect | undefined;
+          return shape && { x: shape.x(), y: shape.y(), width: shape.width(), height: shape.height() };
+        };
+        return fields.map(({ fieldId, ids }) => ({ parcel: read(`field-usable-area-${fieldId}`),
+          beds: ids.map(id => read(`bed-rect-${id}`)) }));
+      }, expected);
+      await expect.poll(async () => (await shapes()).filter(row => row.parcel && row.beds.every(Boolean)).length)
+        .toBe(expected.length);
+      (await shapes()).forEach(({ parcel, beds }, index) => {
+        beds.forEach((bed, bedIndex) => {
+          const relative = relativeBed(bed!, parcel!);
+          for (const key of ['x', 'y', 'width', 'height'] as const) {
+            expect(relative[key]).toBeCloseTo(expected[index].beds[bedIndex][key], 4);
+          }
+          expect(bed!.width / bed!.height).toBeCloseTo(mobile && bedIndex > 0 ? 0.4 : 2.5);
+        });
+      });
+    });
+  });
+}
+
 test('previews with the keyboard, retries a failed save and draws the saved orientation', async ({ page, request }) => {
   await setViewportPreset(page, VIEWPORTS.find(preset => preset.key === 'desktop')!);
   await loginWithDeterministicProject(page, request, 'bed-dialogs-positioned-keyboard', { loginAsAdmin: true });
@@ -69,14 +196,14 @@ test('previews with the keyboard, retries a failed save and draws the saved orie
     return page.getByRole('dialog', { name: `Mehrere Beete anlegen in ${fieldName}` });
   };
   let dialog = await open();
-  await dialog.getByRole('textbox', { name: 'Weg (m)' }).fill('0');
+  await dialog.getByRole('textbox', { name: 'Wegbreite (m)' }).fill('0');
   await expect(dialog.getByRole('img')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(dialog).not.toBeVisible();
   expect(await apiRequest(page, 'GET', path)).toEqual(before);
 
   dialog = await open();
-  await expect(dialog.getByRole('textbox', { name: 'Weg (m)' })).toHaveValue('0,3');
+  await expect(dialog.getByRole('textbox', { name: 'Wegbreite (m)' })).toHaveValue('0,3');
   const length = dialog.getByRole('textbox', { name: 'Länge (m)' });
   const submit = dialog.getByRole('button', { name: '3 Beete anlegen' });
   await dialog.getByRole('spinbutton', { name: 'Anzahl Beete' }).fill('3');
@@ -132,11 +259,11 @@ for (const viewport of VIEWPORTS.filter((preset) => preset.key !== 'mobile')) {
       const length = dialog.getByRole('textbox', { name: 'Länge (m)' });
       await expect(length).toBeFocused();
       await expect(length).toHaveValue('20');
-      await expect(dialog.getByRole('textbox', { name: 'Breite (m)' })).toHaveValue('1,2');
+      await expect(dialog.getByRole('textbox', { name: 'Breite (m)', exact: true })).toHaveValue('1,2');
       await expect(dialog.getByRole('radio', { name: 'Beete verlaufen entlang der Länge' })).toBeChecked();
       const count = dialog.getByRole('spinbutton', { name: 'Anzahl Beete' });
       await expect(count).toHaveValue('4');
-      const gap = dialog.getByRole('textbox', { name: 'Weg (m)' });
+      const gap = dialog.getByRole('textbox', { name: 'Wegbreite (m)' });
       await expect(gap).toHaveValue('0,3');
       await expect(dialog.getByRole('img', { name: 'Parzellenlayout mit 4 vorgeschlagenen Beeten' })).toBeVisible();
       await expect(dialog.getByText('Beetfläche 144 m² · Freie Bodenfläche 56 m²')).toBeVisible();

@@ -145,7 +145,11 @@
       "layoutGraphic_one": "Plan de la parcelle avec {{count}} planche proposée",
       "layoutGraphic_other": "Plan de la parcelle avec {{count}} planches proposées",
       "layoutGraphic_many": "Plan de la parcelle avec {{count}} planches proposées",
-      "layoutLegend": "En gris, les planches existantes, en bleu, les nouvelles, en rouge, celles hors de la parcelle.",
+      "legend": {
+        "existing": "Planches existantes",
+        "new": "Nouvelles planches",
+        "outside": "Hors de la parcelle"
+      },
       "layoutFits_one": "Planche qui tient dans cette disposition ({{count}})",
       "layoutFits_other": "Planches qui tiennent dans cette disposition ({{count}})",
       "layoutFits_many": "Planches qui tiennent dans cette disposition ({{count}})",
@@ -168,8 +172,7 @@
       "orientationWidth": "Les planches suivent la largeur",
       "length": "Longueur (m)",
       "width": "Largeur (m)",
-      "pathWidth": "Passe-pied (m)",
-      "pathHelper": "Espace entre les planches",
+      "pathWidth": "Largeur du passe-pied (m)",
       "countSection": "Nombre",
       "count": "Nombre de planches",
       "suggestion_one": "Avec un passe-pied de {{path}} m, {{count}} planche tient sur {{side}} m.",

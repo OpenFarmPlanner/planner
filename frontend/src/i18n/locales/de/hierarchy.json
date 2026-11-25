@@ -143,7 +143,11 @@
     "bulkCreateBeds": {
       "layoutGraphic_one": "Parzellenlayout mit {{count}} vorgeschlagenen Beet",
       "layoutGraphic_other": "Parzellenlayout mit {{count}} vorgeschlagenen Beeten",
-      "layoutLegend": "Grau zeigt vorhandene Beete, Blau neue Beete und Rot Beete außerhalb der Parzelle.",
+      "legend": {
+        "existing": "Vorhandene Beete",
+        "new": "Neue Beete",
+        "outside": "Außerhalb der Parzelle"
+      },
       "layoutFits_one": "Passendes Beet in dieser Anordnung ({{count}})",
       "layoutFits_other": "Passende Beete in dieser Anordnung ({{count}})",
       "occupiedAndRemaining": "Beetfläche {{occupied}} m² · Freie Bodenfläche {{remaining}} m²",
@@ -164,8 +168,7 @@
       "orientationWidth": "Beete verlaufen entlang der Breite",
       "length": "Länge (m)",
       "width": "Breite (m)",
-      "pathWidth": "Weg (m)",
-      "pathHelper": "Abstand zwischen den Beeten",
+      "pathWidth": "Wegbreite (m)",
       "countSection": "Anzahl",
       "count": "Anzahl Beete",
       "suggestion_one": "Bei {{path}} m Weg passt {{count}} Beet auf {{side}} m.",

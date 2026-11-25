@@ -52,7 +52,8 @@ describe('graphical layout analysis', () => {
       defaultLocationPathSpacing, 0, { type: 'bed', id: 2, locationId: 1, position: { x: 20, y: 0 } });
     expect(graph.parcelReports.get(1)?.issues).toEqual([]);
     expect(graph.parcelReports.get(1)?.coverage.remainingArea).toBeCloseTo(94);
-    expect(layout.bedRects[0].x).toBe(144);
+    expect(layout.bedRects[0].x / layout.pixelsPerMeter!.x)
+      .toBeCloseTo(layouts[2].x / layout.storedPixelsPerMeter!.x);
     expect(layouts[2].x).toBe(144);
   });
 });

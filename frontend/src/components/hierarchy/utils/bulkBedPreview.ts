@@ -1,7 +1,6 @@
 import type { Bed, BedLayoutEntry, BulkBedPlacement, Field } from '../../../api/types';
-import { getGraphicalBedLayout } from '../../../pages/graphicalAreaGeometry';
-import { FIELD_WORLD_PX_PER_METER } from '../../../pages/graphicalFieldsGeometry';
-import { DEFAULT_PLACEMENT_SPACING, getFieldRectSize } from '../../../pages/graphicalLayoutUtils';
+import { getGraphicalBedLayout, getSchematicFieldSize } from '../../../pages/graphicalAreaGeometry';
+import { DEFAULT_PLACEMENT_SPACING } from '../../../pages/graphicalLayoutUtils';
 import { MAX_BULK_BED_COUNT } from './bedNaming';
 import type { BulkBedFormValues } from './bulkBedCreatePlan';
 import { validateAreaGeometry, type MetricRect } from './growingAreaGeometry';
@@ -10,13 +9,14 @@ import { placeRegularBeds } from './regularBedPlacement';
 export function getBulkBedPreviewContext(
   field: Field, beds: readonly Bed[], layouts: Readonly<Record<number, BedLayoutEntry>>,
 ) {
-  const graphical = getGraphicalBedLayout(field, getFieldRectSize(field, FIELD_WORLD_PX_PER_METER), beds, layouts, 0);
-  const { fieldMeters, pixelsPerMeter: scale } = graphical;
-  if (!fieldMeters || !scale || scale.x <= 0 || scale.y <= 0) return null;
+  const graphical = getGraphicalBedLayout(field, getSchematicFieldSize(field), beds, layouts, 0);
+  const { fieldMeters, pixelsPerMeter: displayScale, storedPixelsPerMeter: scale } = graphical;
+  if (!fieldMeters || !displayScale || displayScale.x <= 0 || displayScale.y <= 0 || !scale) return null;
   const bounds = { x: 0, y: 0, ...fieldMeters };
   const existing = graphical.bedRects.map(bed => ({
     id: bed.id, name: bed.name, measured: bed.supportsMetricSpacing,
-    rect: { x: bed.x / scale.x, y: bed.y / scale.y, width: bed.width / scale.x, height: bed.height / scale.y },
+    rect: { x: bed.x / displayScale.x, y: bed.y / displayScale.y,
+      width: bed.width / displayScale.x, height: bed.height / displayScale.y },
     // Keep all new positions clear of the Graphic's inferred positions by its
     // automatic layout margin, so adding saved positions cannot displace them.
     clearanceX: layouts[bed.id] ? 0 : (DEFAULT_PLACEMENT_SPACING + 0.00001) / scale.x,
@@ -43,17 +43,24 @@ export function buildBulkBedPreview(
   const beds = proposal.rectangles.slice(0, names.length).map((rect, index) => ({
     id: -1 - index, name: names[index], rect,
   }));
+  // Include the extent of either orientation so the reference parcel and its
+  // existing beds stay still even when switching exposes overflowing beds.
+  const alternate = placeRegularBeds(bounds, { width: size.height, height: size.width },
+    names.length, pathM ?? 0, existing, !across);
+  const frame = getBulkPreviewFrame(bounds, [
+    ...existing.map(bed => bed.rect), ...beds.map(bed => bed.rect), ...alternate.rectangles,
+  ]);
   const geometry = validateAreaGeometry(bounds, [
     ...existing.map(bed => ({ id: bed.id, rect: bed.measured ? bed.rect : null })), ...beds,
   ], recommendedGapM);
   const placements: BulkBedPlacement[] = beds.map(({ rect }) => ({
     x: rect.x * scale.x, y: rect.y * scale.y, runs_across_parcel: across,
   }));
-  return { bounds, existing, beds, placements, insideCount: proposal.insideCount, geometry };
+  return { bounds, existing, beds, placements, frame, insideCount: proposal.insideCount, geometry };
 }
 
-export function getBulkPreviewFrame(bounds: MetricRect, beds: readonly { rect: MetricRect }[]): MetricRect {
-  return beds.reduce((frame, { rect }) => {
+function getBulkPreviewFrame(bounds: MetricRect, beds: readonly MetricRect[]): MetricRect {
+  return beds.reduce((frame, rect) => {
     const x = Math.min(frame.x, rect.x);
     const y = Math.min(frame.y, rect.y);
     return { x, y, width: Math.max(frame.x + frame.width, rect.x + rect.width) - x,

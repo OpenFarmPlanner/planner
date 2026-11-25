@@ -145,7 +145,11 @@
       "layoutGraphic_one": "Planta da parcela com {{count}} canteiro proposto",
       "layoutGraphic_other": "Planta da parcela com {{count}} canteiros propostos",
       "layoutGraphic_many": "Planta da parcela com {{count}} canteiros propostos",
-      "layoutLegend": "O cinzento indica canteiros existentes, o azul indica canteiros novos e o vermelho indica canteiros fora da parcela.",
+      "legend": {
+        "existing": "Canteiros existentes",
+        "new": "Canteiros novos",
+        "outside": "Fora da parcela"
+      },
       "layoutFits_one": "Canteiro que cabe nesta disposição ({{count}})",
       "layoutFits_other": "Canteiros que cabem nesta disposição ({{count}})",
       "layoutFits_many": "Canteiros que cabem nesta disposição ({{count}})",
@@ -168,8 +172,7 @@
       "orientationWidth": "Canteiros ao longo da largura",
       "length": "Comprimento (m)",
       "width": "Largura (m)",
-      "pathWidth": "Caminho (m)",
-      "pathHelper": "Espaço entre os canteiros",
+      "pathWidth": "Largura do caminho (m)",
       "countSection": "Número",
       "count": "Número de canteiros",
       "suggestion_one": "Com um caminho de {{path}} m, cabe {{count}} canteiro em {{side}} m.",

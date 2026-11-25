@@ -2,9 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { Bed, BedLayoutEntry, Field } from '../api/types';
 import { buildBulkBedPreview, getBulkBedPreviewContext } from '../components/hierarchy/utils/bulkBedPreview';
 import type { BulkBedFormValues } from '../components/hierarchy/utils/bulkBedCreatePlan';
-import { getGraphicalBedLayout } from '../pages/graphicalAreaGeometry';
-import { FIELD_WORLD_PX_PER_METER } from '../pages/graphicalFieldsGeometry';
-import { getFieldRectSize } from '../pages/graphicalLayoutUtils';
+import { getGraphicalBedLayout, getSchematicFieldSize } from '../pages/graphicalAreaGeometry';
+import { rotateRect, type GraphicalRotation } from '../pages/graphicalLayoutUtils';
 
 const field: Field = { id: 1, location: 1, name: 'Parcel', length_m: 75, width_m: 85 };
 const existing: Bed[] = [
@@ -31,12 +30,40 @@ describe('bulk bed geometry shared with the Graphic', () => {
     const newBeds = names.map((name, index) => ({ id: 100 + index, name, field: 1, width_m: 1.2, length_m: 10 }));
     const newLayouts = Object.fromEntries(preview.placements.map((placement, index) => [100 + index,
       { ...placement, bed: 100 + index, location: 1 }]));
-    const rendered = getGraphicalBedLayout(field, getFieldRectSize(field, FIELD_WORLD_PX_PER_METER),
+    const rendered = getGraphicalBedLayout(field, getSchematicFieldSize(field),
       [...existing, ...newBeds], { ...saved, ...newLayouts }, 0);
     for (const bed of context.existing) {
       const after = rendered.bedRects.find(rect => rect.id === bed.id)!;
-      expect(after.x / context.scale.x).toBeCloseTo(bed.rect.x);
-      expect(after.y / context.scale.y).toBeCloseTo(bed.rect.y);
+      expect(after.x / rendered.pixelsPerMeter!.x).toBeCloseTo(bed.rect.x);
+      expect(after.y / rendered.pixelsPerMeter!.y).toBeCloseTo(bed.rect.y);
+    }
+  });
+
+  it.each([[20, 8], [8, 20], [12, 12]])('fills a %s × %s m parcel with uniform metrics in every rotation', (width, length) => {
+    const parcel = { ...field, width_m: width, length_m: length };
+    const oldBed = { ...existing[0], width_m: 1.2, length_m: 3 };
+    const stored = { 2: { ...saved[2], x: 24, y: 12 } };
+    const context = getBulkBedPreviewContext(parcel, [oldBed], stored)!;
+    const orientations = ['length', 'width'] as const;
+    for (const orientation of orientations) {
+      const preview = buildBulkBedPreview(context, { ...values, lengthM: 3, orientation }, ['New bed'], 0.45)!;
+      const placement = preview.placements[0];
+      const newBed = { ...oldBed, id: 11, name: 'New bed' };
+      const layouts = { ...stored, 11: { ...placement, bed: 11, location: 1 } };
+      for (const rotation of [0, 90, 180, 270] satisfies GraphicalRotation[]) {
+        const view = getGraphicalBedLayout(parcel, getSchematicFieldSize(parcel), [oldBed, newBed], layouts, rotation);
+        const scale = view.pixelsPerMeter!.x;
+        expect(view.pixelsPerMeter!.y).toBe(scale);
+        [preview.existing[0].rect, preview.beds[0].rect].forEach((rect, index) => {
+          const expected = rotateRect(rect, preview.bounds, rotation);
+          const actual = view.bedRects[index];
+          expect(actual.x / scale).toBeCloseTo(expected.x);
+          expect(actual.y / scale).toBeCloseTo(expected.y);
+          expect(actual.width / scale).toBeCloseTo(expected.width);
+          expect(actual.height / scale).toBeCloseTo(expected.height);
+          expect(actual.width / actual.height).toBeCloseTo(expected.width / expected.height);
+        });
+      }
     }
   });
 
@@ -52,6 +79,8 @@ describe('bulk bed geometry shared with the Graphic', () => {
     expect(preview.geometry.issues).toContainEqual({ kind: 'outside', id: -3 });
     expect(preview.geometry.issues).toContainEqual({ kind: 'shortGap', ids: [-2, -1], gapM: 0, recommendedM: 0.45 });
     expect(preview.geometry.coverage).toMatchObject({ footprintArea: 24, remainingArea: 6 });
+    const lengthwise = buildBulkBedPreview(context, { ...values, pathM: 0 }, names.slice(0, 3), 0.45)!;
+    expect(lengthwise.frame).toEqual(preview.frame);
   });
 
   it('reports incomplete geometry without inventing physical footprint and rejects invalid inputs', () => {

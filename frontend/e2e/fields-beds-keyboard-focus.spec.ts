@@ -322,7 +322,7 @@ test.describe('fields-beds fast bed creation', () => {
     // The field has no dimensions: no orientation choice, the last bed's size.
     await expect(dialog.getByRole('textbox', { name: 'Länge (m)' })).toBeFocused();
     await expect(dialog.getByRole('textbox', { name: 'Länge (m)' })).toHaveValue('10');
-    await expect(dialog.getByRole('textbox', { name: 'Breite (m)' })).toHaveValue('1');
+    await expect(dialog.getByRole('textbox', { name: 'Breite (m)', exact: true })).toHaveValue('1');
     await expect(dialog.getByRole('radio')).toHaveCount(0);
     await expect(dialog.getByLabel('Name des ersten Beets')).toHaveValue('Keyboard Focus Beet D 2');
 

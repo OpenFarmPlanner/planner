@@ -145,7 +145,11 @@
       "layoutGraphic_one": "Pianta dell’appezzamento con {{count}} aiuola proposta",
       "layoutGraphic_other": "Pianta dell’appezzamento con {{count}} aiuole proposte",
       "layoutGraphic_many": "Pianta dell’appezzamento con {{count}} aiuole proposte",
-      "layoutLegend": "Il grigio indica le aiuole esistenti, il blu quelle nuove e il rosso quelle fuori dall’appezzamento.",
+      "legend": {
+        "existing": "Aiuole esistenti",
+        "new": "Nuove aiuole",
+        "outside": "Fuori dall’appezzamento"
+      },
       "layoutFits_one": "Aiuola che entra in questa disposizione ({{count}})",
       "layoutFits_other": "Aiuole che entrano in questa disposizione ({{count}})",
       "layoutFits_many": "Aiuole che entrano in questa disposizione ({{count}})",
@@ -168,8 +172,7 @@
       "orientationWidth": "Aiuole lungo la larghezza",
       "length": "Lunghezza (m)",
       "width": "Larghezza (m)",
-      "pathWidth": "Passaggio (m)",
-      "pathHelper": "Spazio tra le aiuole",
+      "pathWidth": "Larghezza del passaggio (m)",
       "countSection": "Numero",
       "count": "Numero di aiuole",
       "suggestion_one": "Con un passaggio di {{path}} m, {{count}} aiuola entra in {{side}} m.",

@@ -145,7 +145,11 @@
       "layoutGraphic_one": "Plano de la parcela con {{count}} bancal propuesto",
       "layoutGraphic_other": "Plano de la parcela con {{count}} bancales propuestos",
       "layoutGraphic_many": "Plano de la parcela con {{count}} bancales propuestos",
-      "layoutLegend": "El gris indica bancales existentes, el azul, nuevos, y el rojo, fuera de la parcela.",
+      "legend": {
+        "existing": "Bancales existentes",
+        "new": "Bancales nuevos",
+        "outside": "Fuera de la parcela"
+      },
       "layoutFits_one": "Bancal que cabe en esta disposición ({{count}})",
       "layoutFits_other": "Bancales que caben en esta disposición ({{count}})",
       "layoutFits_many": "Bancales que caben en esta disposición ({{count}})",
@@ -168,8 +172,7 @@
       "orientationWidth": "Los bancales siguen la anchura",
       "length": "Longitud (m)",
       "width": "Anchura (m)",
-      "pathWidth": "Pasillo (m)",
-      "pathHelper": "Espacio entre los bancales",
+      "pathWidth": "Anchura del pasillo (m)",
       "countSection": "Cantidad",
       "count": "Número de bancales",
       "suggestion_one": "Con un pasillo de {{path}} m, cabe {{count}} bancal en {{side}} m.",
