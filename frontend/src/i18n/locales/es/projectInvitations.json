@@ -5,7 +5,7 @@
   "currentProjectLabel": "Nombre del proyecto",
   "bedDefaults": {
     "title": "Medidas predeterminadas de bancales",
-    "description": "Estas medidas se proponen al crear bancales."
+    "description": "Deja un campo vacío para usar la medida que se sugiere habitualmente al crear bancales."
   },
   "general": {
     "title": "General",

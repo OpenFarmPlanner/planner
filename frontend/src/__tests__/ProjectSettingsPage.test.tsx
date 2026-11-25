@@ -518,6 +518,30 @@ describe('ProjectSettingsPage', () => {
     await waitFor(() => expect(refreshUserMock).toHaveBeenCalled());
   });
 
+  it.each([
+    [['Länge (m)'], { default_bed_length_m: null }],
+    [['Breite (m)'], { default_bed_width_m: null }],
+    [['Länge (m)', 'Breite (m)'], { default_bed_length_m: null, default_bed_width_m: null }],
+  ])('clears %j without sending untouched dimensions', async (labels, payload) => {
+    authState.user = {
+      id: 1,
+      memberships: [{
+        project_id: 1, project_name: 'Alpha', role: 'admin',
+        project_default_bed_length_m: 10, project_default_bed_width_m: 1.2,
+      }],
+    };
+    const user = userEvent.setup();
+    render(<MemoryRouter><ProjectSettingsPage /></MemoryRouter>);
+
+    const general = within(screen.getByRole('region', { name: 'Allgemein' }));
+    for (const label of labels) {
+      await user.clear(general.getByRole('textbox', { name: label }));
+    }
+    await user.click(general.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => expect(updateProjectMock).toHaveBeenCalledExactlyOnceWith(1, payload));
+  });
+
   it('preserves precise dimensions when cancelling changes or saving the project name', async () => {
     authState.user = {
       id: 1,

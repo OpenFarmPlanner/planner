@@ -26,7 +26,17 @@ test('desktop drafts use the configured side and preserve a cleared side and dup
   await page.setViewportSize({ width: 1440, height: 900 });
   await loginWithDeterministicProject(page, request, 'bed-defaults-desktop', { loginAsAdmin: true });
   const { projectId, field, source } = await seedBed(page);
-  await apiRequest(page, 'PATCH', `/projects/${projectId}/`, { default_bed_length_m: 10.12345678 });
+  await apiRequest(page, 'PATCH', `/projects/${projectId}/`, {
+    default_bed_length_m: 10.12345678, default_bed_width_m: 1.2,
+  });
+  await page.goto('/app/project-settings');
+  const general = page.getByRole('region', { name: 'Allgemein' });
+  const widthSetting = general.getByRole('textbox', { name: 'Breite (m)' });
+  await expect(widthSetting).toHaveValue('1,2');
+  await widthSetting.press('ControlOrMeta+a');
+  await widthSetting.press('Backspace');
+  await general.getByRole('button', { name: 'Speichern' }).press('Enter');
+  await expect(page.getByText('Projekteinstellungen gespeichert.')).toBeVisible();
   await page.goto('/app/fields-beds');
 
   const fieldRow = page.locator(`[role="row"][data-id="field-${field.id}"]`);
@@ -46,6 +56,14 @@ test('desktop drafts use the configured side and preserve a cleared side and dup
   const created = nextBedCreate(page);
   await length.press('Enter');
   expect(await (await created).json()).toMatchObject({ length_m: null, width_m: 0.8, area_sqm: null });
+
+  await fieldRow.click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Mehrere Beete anlegen' }).click();
+  const bulk = page.getByRole('dialog', { name: /Mehrere Beete anlegen in/ });
+  await expect(bulk.getByRole('textbox', { name: 'Länge (m)' })).toHaveValue('10,12345678');
+  await expect(bulk.getByRole('textbox', { name: 'Breite (m)' })).toHaveValue('0,8');
+  await page.keyboard.press('Escape');
+  await expect(bulk).toHaveCount(0);
 
   const sourceRow = page.locator(`[role="row"][data-id="${source.id}"]`);
   await sourceRow.click({ button: 'right' });
@@ -82,10 +100,22 @@ test.describe('mobile bed defaults', () => {
     const bed = await (await created).json() as SavedBed;
     expect([bed.length_m, bed.width_m, Number(bed.area_sqm)]).toEqual([10, 1.4, 14]);
     await expect(sheet).toHaveCount(0);
+
+    await page.goto('/app/project-settings');
+    const general = page.getByRole('region', { name: 'Allgemein' });
+    const lengthSetting = general.getByRole('textbox', { name: 'Länge (m)' });
+    await expect(lengthSetting).toHaveValue('10');
+    await lengthSetting.tap();
+    await lengthSetting.fill('');
+    await general.getByRole('button', { name: 'Speichern' }).tap();
+    await expect(page.getByText('Projekteinstellungen gespeichert.')).toBeVisible();
+    await page.goto('/app/fields-beds?createBed=true');
+    await expect(length).toHaveValue('');
+    await expect(width).toHaveValue('1,23456789');
   });
 });
 
-test('settings wrap French and Portuguese labels and save Dutch decimal values', async ({ page, request }, testInfo) => {
+test('localized settings fit and retain cleared values after reload', async ({ page, request }, testInfo) => {
   await loginWithDeterministicProject(page, request, 'bed-defaults-settings', { loginAsAdmin: true });
   const { projectId, source } = await seedBed(page);
   await apiRequest(page, 'PATCH', `/projects/${projectId}/`, {
@@ -94,7 +124,11 @@ test('settings wrap French and Portuguese labels and save Dutch decimal values',
 
   await page.setViewportSize({ width: 375, height: 800 });
   for (const [locale, title] of [
+    ['de', 'Standardmaße für Beete'],
+    ['en', 'Default bed dimensions'],
     ['fr', 'Dimensions des planches par défaut'],
+    ['es', 'Medidas predeterminadas de bancales'],
+    ['it', 'Dimensioni predefinite delle aiuole'],
     ['pt', 'Dimensões predefinidas dos canteiros'],
     ['nl', 'Standaardafmetingen van bedden'],
   ]) {
@@ -103,7 +137,10 @@ test('settings wrap French and Portuguese labels and save Dutch decimal values',
     const defaults = page.getByRole('group', { name: title });
     await expect(defaults).toBeVisible();
     await defaults.scrollIntoViewIfNeeded();
-    await expect(defaults.getByRole('textbox')).toHaveCount(2);
+    const dimensions = defaults.getByRole('textbox');
+    await expect(dimensions).toHaveCount(2);
+    await expect(dimensions.nth(0)).toHaveValue('10');
+    await expect(dimensions.nth(1)).toHaveValue(locale === 'en' ? '1.2' : '1,2');
     const bounds = await defaults.boundingBox();
     expect(bounds!.x).toBeGreaterThanOrEqual(0);
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(375);
@@ -119,14 +156,34 @@ test('settings wrap French and Portuguese labels and save Dutch decimal values',
   }
   const length = defaults.getByRole('textbox', { name: 'Lengte (m)' });
   const width = defaults.getByRole('textbox', { name: 'Breedte (m)' });
+  const general = page.getByRole('region', { name: 'Algemeen' });
+  const save = general.getByRole('button', { name: 'Opslaan' });
+  const saveAndReadProject = async () => {
+    const updated = page.waitForResponse(response =>
+      response.url().endsWith(`/projects/${projectId}/`) && response.request().method() === 'PATCH',
+    );
+    await save.click();
+    const response = await updated;
+    expect(response.ok()).toBe(true);
+    return response.json();
+  };
   await expect(length).toHaveValue('10');
   await expect(width).toHaveValue('1,2');
   await length.fill('11,5');
   await width.fill('');
-  const updated = page.waitForResponse(response =>
-    response.url().endsWith(`/projects/${projectId}/`) && response.request().method() === 'PATCH',
-  );
-  await page.getByRole('region', { name: 'Algemeen' }).getByRole('button', { name: 'Opslaan' }).click();
-  expect(await (await updated).json()).toMatchObject({ default_bed_length_m: 11.5, default_bed_width_m: null });
+  expect(await saveAndReadProject()).toMatchObject({ default_bed_length_m: 11.5, default_bed_width_m: null });
+  await expect(save).toBeDisabled();
+  await page.reload();
+  await expect(length).toHaveValue('11,5');
+  await expect(width).toHaveValue('');
+  await length.fill('');
+  await general.getByRole('button', { name: 'Annuleren' }).click();
+  await expect(length).toHaveValue('11,5');
+  await length.fill('');
+  expect(await saveAndReadProject()).toMatchObject({ default_bed_length_m: null, default_bed_width_m: null });
+  await expect(save).toBeDisabled();
+  await page.reload();
+  await expect(length).toHaveValue('');
+  await expect(width).toHaveValue('');
   expect(await apiRequest(page, 'GET', `/beds/${source.id}/`)).toMatchObject({ length_m: 5, width_m: 0.8 });
 });

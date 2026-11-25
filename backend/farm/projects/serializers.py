@@ -40,6 +40,14 @@ class ProjectSerializer(serializers.ModelSerializer):
                 })
         return super().validate(attrs)
 
+    def update(self, instance: Project, validated_data: dict[str, Any]) -> Project:
+        # A stale project instance must not restore a default cleared by another save.
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        instance.save(update_fields=[*validated_data, 'updated_at'])
+        instance.refresh_from_db()
+        return instance
+
 
 class ProjectMembershipSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source='user.email', read_only=True)

@@ -124,8 +124,10 @@ logic stays separate: `components/hierarchy/utils/growingAreaSearch.ts` here,
 ## Default bed dimensions
 
 Under Project settings → General, project admins can set either or both
-default bed dimensions. The desktop draft, mobile create sheet and bulk dialog
-prefill the configured sides when opened. Sides without a default still use
+default bed dimensions. Clear either field and save to unset that side. The
+project API stores an explicit `null` and leaves omitted settings untouched.
+The desktop draft, mobile create sheet and bulk dialog prefill the configured
+sides when opened. Sides without a default still use
 the form's existing suggestions. User edits and cleared inputs persist in the
 draft. Duplication, imports and existing beds retain their own dimensions.
 
