@@ -15,6 +15,9 @@ interface Options {
 
 export interface ParcelRotationGroupsState {
   memberships: ReadonlyMap<number, ParcelRotationMembership>;
+  /** Whether `memberships` reflects the server yet; an unloaded or failed list is not "unassigned". */
+  status: 'loading' | 'ready' | 'error';
+  reload: () => void;
   /** Opens the shared rotation-group dialog, preselecting the parcel's group (or a new one) when given. */
   open: (fieldId?: number) => void;
   dialog: ReactNode;
@@ -27,6 +30,7 @@ export function useParcelRotationGroups({ enabled, fields, beds, onChanged }: Op
   const [dialogState, setDialogState] = useState<{ fieldId?: number } | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!enabled) return;
@@ -34,6 +38,7 @@ export function useParcelRotationGroups({ enabled, fields, beds, onChanged }: Op
       const { data } = await parcelRotationAPI.list();
       setGroups(data);
       setLoadError(false);
+      setHasLoaded(true);
     } catch {
       setLoadError(true);
     }
@@ -52,6 +57,12 @@ export function useParcelRotationGroups({ enabled, fields, beds, onChanged }: Op
     }])
   ))), [groups]);
 
+  const reload = useCallback(() => {
+    setLoadError(false);
+    void refresh();
+  }, [refresh]);
+  const status = hasLoaded ? 'ready' : loadError ? 'error' : 'loading';
+
   const close = () => setDialogState(null);
   const dialog = !dialogState ? null : loading || loadError ? (
     <Dialog open fullWidth maxWidth="xs" onClose={close}>
@@ -68,5 +79,5 @@ export function useParcelRotationGroups({ enabled, fields, beds, onChanged }: Op
       onChanged={() => { void refresh(); onChanged?.(); }} onClose={close} />
   );
 
-  return { memberships, open, dialog };
+  return { memberships, status, reload, open, dialog };
 }

@@ -1,8 +1,9 @@
-import { Box, Button, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, CircularProgress, Stack, Typography } from '@mui/material';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import type { Bed, Field } from '../../../api/types';
 import { useTranslation } from '../../../i18n';
 import { DetailRow, DetailSection } from '../../layout/DetailPrimitives';
+import LoadRetryButton from '../../LoadRetryButton';
 import { useParcelRotationGroups } from './useParcelRotationGroups';
 
 interface Props {
@@ -14,9 +15,20 @@ interface Props {
 
 /** Rotation group and position of a parcel on its detail page, with access to the shared group dialog (#1576). */
 export function ParcelRotationDetailSection({ fieldId, fields, beds, canManage }: Props) {
-  const { t } = useTranslation('hierarchy');
-  const { memberships, open, dialog } = useParcelRotationGroups({ enabled: true, fields, beds });
+  const { t } = useTranslation(['hierarchy', 'common']);
+  const { memberships, status, reload, open, dialog } = useParcelRotationGroups({ enabled: true, fields, beds });
   const membership = memberships.get(fieldId);
+  if (status !== 'ready') {
+    return (
+      <Box data-testid="detail-section-rotation">
+        <DetailSection title={t('parcelRotation.section')}>
+          {status === 'loading' ? <CircularProgress size={20} aria-label={t('common:messages.loading')} /> : (
+            <Alert severity="error" action={<LoadRetryButton onClick={reload} />}>{t('parcelRotation.loadError')}</Alert>
+          )}
+        </DetailSection>
+      </Box>
+    );
+  }
   return (
     <Box data-testid="detail-section-rotation">
       <DetailSection title={t('parcelRotation.section')}>

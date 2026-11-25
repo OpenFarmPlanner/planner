@@ -277,6 +277,24 @@ describe('GrowingAreaDetailPage', () => {
       .toBeInTheDocument();
   });
 
+  it('does not present a failed rotation-group load as unassigned and retries it', async () => {
+    apiMocks.rotationGroups.mockRejectedValueOnce(new Error('Unavailable'));
+    apiMocks.rotationGroups.mockResolvedValueOnce({ data: [{
+      id: 5, name: 'Nord–Süd', parcels: [{ id: 10, name: 'Tunnel', beds: [] }],
+    }] });
+    const user = userEvent.setup();
+    renderDetail('/app/fields-beds/fields/10');
+
+    const section = await screen.findByTestId('detail-section-rotation');
+    expect(await within(section).findByRole('alert')).toHaveTextContent('Die Rotationsgruppen konnten nicht geladen werden.');
+    expect(within(section).queryByText('Diese Parzelle gehört zu keiner Rotationsgruppe.')).not.toBeInTheDocument();
+    expect(within(section).queryByRole('button', { name: 'Einer Rotationsgruppe zuordnen' })).not.toBeInTheDocument();
+
+    await user.click(within(section).getByRole('button', { name: 'Erneut versuchen' }));
+    expect(await within(section).findByTestId('detail-rotation-group')).toHaveTextContent('Nord–Süd');
+    expect(within(section).queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('shows rotation membership without a management action to users outside the project', async () => {
     apiMocks.membership = undefined;
     renderDetail('/app/fields-beds/fields/10');
