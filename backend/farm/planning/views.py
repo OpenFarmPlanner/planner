@@ -499,7 +499,11 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         elif across_seasons:
             queryset = queryset.filter(season__deleted_at__isnull=True)
         if self.action == 'list':
-            for name, lookup in (('bed', 'bed_id'), ('field', 'bed__field_id')):
+            for name, lookup in (
+                ('bed', 'bed_id'),
+                ('field', 'bed__field_id'),
+                ('location', 'bed__field__location_id'),
+            ):
                 value = self.request.query_params.get(name)
                 if value is not None:
                     try:

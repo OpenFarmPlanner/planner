@@ -29,6 +29,28 @@
     "graphical": "Graphic"
   },
   "graphical": {
+    "taskLayer": {
+      "title": "Bed tasks",
+      "show": "Show tasks",
+      "urgency": {
+        "upcoming": "Today or in the next 7 days",
+        "later": "Due later",
+        "undated": "Open with no due date",
+        "completed": "All done"
+      },
+      "noFill": "Beds without a marker have no tasks in this season.",
+      "none": "This bed has no tasks in this season.",
+      "chooseBed": "Select bed",
+      "loadError": "The bed tasks could not be loaded.",
+      "saveError": "The task status could not be saved.",
+      "outstanding_one": "{{count}} open task",
+      "outstanding_other": "{{count}} open tasks",
+      "undatedCount_one": "{{count}} with no due date",
+      "undatedCount_other": "{{count}} with no due date",
+      "complete": "Complete",
+      "completeNamed": "Mark “{{title}}” done",
+      "allTasks": "All tasks"
+    },
     "freeArea": {
       "toggle": "Show free areas and paths",
       "title": "Free areas",

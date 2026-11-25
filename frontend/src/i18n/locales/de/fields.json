@@ -29,6 +29,28 @@
     "graphical": "Grafik"
   },
   "graphical": {
+    "taskLayer": {
+      "title": "Aufgaben im Beet",
+      "show": "Aufgaben anzeigen",
+      "urgency": {
+        "upcoming": "Heute oder in den nächsten 7 Tagen",
+        "later": "Später fällig",
+        "undated": "Offen ohne Termin",
+        "completed": "Alles erledigt"
+      },
+      "noFill": "Beete ohne Markierung haben keine Aufgaben in dieser Saison.",
+      "none": "In dieser Saison gibt es für dieses Beet keine Aufgaben.",
+      "chooseBed": "Beet auswählen",
+      "loadError": "Die Beetaufgaben konnten nicht geladen werden.",
+      "saveError": "Der Aufgabenstatus konnte nicht gespeichert werden.",
+      "outstanding_one": "{{count}} offene Aufgabe",
+      "outstanding_other": "{{count}} offene Aufgaben",
+      "undatedCount_one": "{{count}} ohne Termin",
+      "undatedCount_other": "{{count}} ohne Termin",
+      "complete": "Erledigen",
+      "completeNamed": "„{{title}}“ als erledigt markieren",
+      "allTasks": "Alle Aufgaben"
+    },
     "freeArea": {
       "toggle": "Freiflächen und Wege anzeigen",
       "title": "Freiflächen",

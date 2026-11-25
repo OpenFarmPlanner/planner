@@ -29,6 +29,30 @@
     "graphical": "Gráfico"
   },
   "graphical": {
+    "taskLayer": {
+      "title": "Tareas del bancal",
+      "show": "Mostrar tareas",
+      "urgency": {
+        "upcoming": "Hoy o en los próximos 7 días",
+        "later": "Para más adelante",
+        "undated": "Pendiente sin fecha",
+        "completed": "Todas terminadas"
+      },
+      "noFill": "Los bancales sin indicador no tienen tareas en esta temporada.",
+      "none": "Este bancal no tiene tareas en esta temporada.",
+      "chooseBed": "Seleccionar bancal",
+      "loadError": "No se pudieron cargar las tareas de los bancales.",
+      "saveError": "No se pudo guardar el estado de la tarea.",
+      "outstanding_one": "{{count}} tarea abierta",
+      "outstanding_other": "{{count}} tareas abiertas",
+      "undatedCount_one": "{{count}} sin fecha",
+      "undatedCount_other": "{{count}} sin fecha",
+      "complete": "Completar",
+      "completeNamed": "Marcar «{{title}}» como terminada",
+      "allTasks": "Todas las tareas",
+      "outstanding_many": "{{count}} tareas abiertas",
+      "undatedCount_many": "{{count}} sin fecha"
+    },
     "freeArea": {
       "toggle": "Mostrar espacios libres y caminos",
       "title": "Espacios libres",

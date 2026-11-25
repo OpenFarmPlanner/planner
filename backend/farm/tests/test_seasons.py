@@ -1823,12 +1823,24 @@ class SeasonApiTest(ProjectApiTestCase):
         self.assertEqual(later_plans[1]['season'], source.pk)
         self.assertEqual(later_plans[1]['origin_season_label'], 'Overwintering 25/26')
         self.assertEqual(later_plans[1]['occupancy_end_date'], target.start_date.isoformat())
-
         fallback = add_plan(source, date(2026, 8, 3), target.start_date, None)
         with self.assertNumQueries(len(queries)):
             extra_rows = self.client.get(url, **later).json()['results']
         self.assertEqual({row['id'] for row in extra_rows}, {own.pk, carried.pk, fallback.pk})
         self.assertTrue(next(row for row in extra_rows if row['id'] == fallback.pk)['carried_over'])
+        location_plans = self.client.get(url, {'location': self.location.pk}, **later)
+        listed_ids = {row['id'] for row in location_plans.data['results']}
+        self.assertEqual(listed_ids, {own.pk, carried.pk, fallback.pk})
+        invalid_location = self.client.get(url, {'location': 'invalid'}, **later)
+        self.assertEqual(invalid_location.data['results'], [])
+        Task.objects.create(
+            project=self.project, season=source, planting_plan=carried, title='Autumn care',
+        )
+        current_task = Task.objects.create(
+            project=self.project, season=target, planting_plan=carried, title='Winter care',
+        )
+        tasks = self.client.get('/openfarmplanner/api/tasks/', **later).data['results']
+        self.assertEqual([row['id'] for row in tasks], [current_task.pk])
         self.assertEqual(self.client.get(f'{url}{outside.pk}/', **later).status_code, 404)
         self.assertEqual(self.client.get(f'{url}{draft.pk}/', **later).status_code, 404)
         draft_details = self.client.get(f'{url}{draft.pk}/', {'across_seasons': 'true'}, **later)

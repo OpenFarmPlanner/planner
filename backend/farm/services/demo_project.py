@@ -622,7 +622,7 @@ def populate_demo_project(
         _create_demo_crop_losses(project, crops, beds, language, year)
         _create_demo_previous_season_reference(project, crops, beds, year)
         populate_demo_tasks(
-            project, owner=owner, fields=fields, crops=crops, language_code=language,
+            project, owner=owner, fields=fields, beds=beds, language_code=language,
             today=reference_date,
         )
         project.demo_seeded_at = timezone.now()

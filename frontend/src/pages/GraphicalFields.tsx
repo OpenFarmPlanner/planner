@@ -36,6 +36,10 @@ import { isTypingInEditableElement, useKeyboardShortcuts } from "../hooks/useKey
 import { useTranslation } from "../i18n";
 import { GraphicalFieldDetailsDialog } from "./GraphicalFieldDetailsDialog";
 import { GraphicalFreeAreaInfo, GraphicalFreeRectangles } from "./GraphicalFreeAreas";
+import { GraphicalBedTasksControl } from "./GraphicalBedTasksControl";
+import { bedTaskColors, BED_TASK_SYMBOLS } from "./graphicalBedTaskStyle";
+import { bedTaskDateBounds, summarizeBedTasks } from "../components/tasks/bedTaskUrgency";
+import { useBedTasks } from "../components/tasks/useBedTasks";
 import { GraphicalGeometryWarnings } from "./GraphicalGeometryWarnings";
 import { GraphicalSnapGuides } from "./GraphicalSnapGuides";
 import { analyzeGraphicalGeometry, getGeometryOutlines, getGraphicalBedLayout, type GeometryPreview, type GraphicalParcel, type OutlineKind } from "./graphicalAreaGeometry";
@@ -112,6 +116,8 @@ import LoadRetryButton from '../components/LoadRetryButton';
 
 // A quick Graphic → List → Graphic switch must read after an in-flight drop.
 const pendingFieldSaves = new Map<number, Promise<void>>();
+const BED_ACTIVATION_SLOP = 8;
+const BED_TASK_BADGE_WIDTH = 19;
 
 export default function GraphicalFields({
   showTitle = true,
@@ -119,6 +125,8 @@ export default function GraphicalFields({
   onInteractionModeChange,
   showModeToggle = true,
   showFreeAreas = false,
+  activeSeasonId,
+  onOpenBed,
   hierarchyData,
   selectedLocationId,
   cameraState: controlledCameraState,
@@ -138,6 +146,11 @@ export default function GraphicalFields({
   const { loading, error, locations, fields, beds } = hierarchyData ?? internalHierarchyData;
   const activeLocationId = locations.find(location => location.id === selectedLocationId)?.id
     ?? locations.find(location => typeof location.id === 'number' && location.id > 0)?.id ?? null;
+  const [showBedTasks, setShowBedTasks] = useState(false);
+  const bedTasks = useBedTasks('location', showBedTasks ? activeLocationId : null, activeSeasonId);
+  const bounds = bedTaskDateBounds(new Date());
+  const taskSummaries = new Map(Array.from(bedTasks.tasksByBed, ([id, tasks]) => [id, summarizeBedTasks(tasks, bounds)]));
+  const pendingBedActivation = useRef<{ id: number; origin: Point } | null>(null);
   const [layoutsByBed, setLayoutsByBed] = useState<
     Record<number, BedLayoutEntry>
   >({});
@@ -713,6 +726,7 @@ export default function GraphicalFields({
     locationId: number,
     event: KonvaEventObject<MouseEvent>,
   ): void => {
+    cancelMovedBedActivation(locationId);
     continuePanSession(locationId, event);
   };
 
@@ -731,8 +745,17 @@ export default function GraphicalFields({
       return;
     }
     if (touches.length === 2) {
+      pendingBedActivation.current = null;
       endPanSession(locationId);
       stopKonvaDragging();
+    }
+  };
+
+  const cancelMovedBedActivation = (locationId: number): void => {
+    const activation = pendingBedActivation.current;
+    const point = stageRefs.current[locationId]?.getPointerPosition();
+    if (activation && point && Math.hypot(point.x - activation.origin.x, point.y - activation.origin.y) > BED_ACTIVATION_SLOP) {
+      pendingBedActivation.current = null;
     }
   };
 
@@ -806,6 +829,20 @@ export default function GraphicalFields({
     snapping: DragSnapping,
   ): KonvaNodeEvents & { draggable: boolean } => {
     if (!isLocationEditMode(locationId)) {
+      if (onOpenBed) {
+        const begin = (event: KonvaEventObject<MouseEvent | TouchEvent>) => {
+          const pointer = stageRefs.current[locationId]?.getPointerPosition();
+          const primary = 'button' in event.evt ? event.evt.button === 0 : event.evt.touches.length === 1;
+          pendingBedActivation.current = primary && pointer ? { id: bedVm.id, origin: { ...pointer } } : null;
+        };
+        const open = () => {
+          cancelMovedBedActivation(locationId);
+          const activation = pendingBedActivation.current;
+          pendingBedActivation.current = null;
+          if (activation?.id === bedVm.id) onOpenBed(bedVm.id);
+        };
+        return { draggable: false, onMouseDown: begin, onTouchStart: begin, onClick: open, onTap: open };
+      }
       return {
         draggable: false,
         onClick: () => {
@@ -1084,6 +1121,13 @@ export default function GraphicalFields({
                         outsideParcels={fieldsOutsideBoundary} focusArea={focusArea} />
                       {showFreeAreas ? <GraphicalFreeAreaInfo coverage={locationCoverage}
                         missingParcelDimensions={missingParcelDimensions} missingBedDimensions={missingBedDimensions} t={t} /> : null}
+                      {activeSeasonId !== undefined && <GraphicalBedTasksControl key={locationId}
+                        enabled={showBedTasks} onToggle={setShowBedTasks}
+                        beds={parcels.flatMap(({ field, layout }) => layout.bedRects.map(bed => ({
+                          id: bed.id, name: bed.name, parcel: field.name,
+                        })))}
+                        summaries={taskSummaries} loading={bedTasks.loading} failed={bedTasks.failed}
+                        onRetry={bedTasks.refresh} onOpenBed={onOpenBed} />}
                       <Stack direction={{ xs: "column", sm: "row" }} spacing={0}>
                         {([-1, 1] as const).map(direction => (
                           <AppTooltip disableInteractive key={direction} title={t(direction === -1 ? "fields:graphical.rotateLeft" : "fields:graphical.rotateRight")} placement="left">
@@ -1332,9 +1376,10 @@ export default function GraphicalFields({
                     onTouchStart={(event) =>
                       handleStageTouchStart(locationId, viewport, event)
                     }
-                    onTouchMove={(event) =>
-                      handleStageTouchMove(locationId, event)
-                    }
+                    onTouchMove={(event) => {
+                      cancelMovedBedActivation(locationId);
+                      handleStageTouchMove(locationId, event);
+                    }}
                     onTouchEnd={() => handleStageTouchEnd(locationId)}
                     ref={(node) => {
                       stageRefs.current[locationId] = node;
@@ -1453,16 +1498,23 @@ export default function GraphicalFields({
                               />
                             ) : null}
                             {visibility.showBeds
-                              ? bedRects.map((bedVm) => (
+                              ? bedRects.map((bedVm) => {
+                                const urgency = taskSummaries.get(bedVm.id)?.urgency;
+                                const taskColors = urgency ? bedTaskColors(theme, urgency) : null;
+                                const badge = urgency && bedVm.width * viewport.scale >= 44
+                                  && bedVm.height * viewport.scale >= 20 ? BED_TASK_SYMBOLS[urgency] : null;
+                                const badgeWidth = badge ? BED_TASK_BADGE_WIDTH / viewport.scale : 0;
+                                return (
                                   <Group key={bedVm.id}>
                                     <Rect
                                       x={FIELD_INNER_OFFSET_X + bedVm.x}
                                       y={FIELD_INNER_OFFSET_Y + bedVm.y}
                                       width={bedVm.width}
                                       height={bedVm.height}
-                                      fill={theme.palette.info.light}
+                                      fill={taskColors?.fill ?? theme.palette.info.light}
                                       {...getOutlineProps(bedWarnings.get(bedVm.id), theme.palette.info.main, 1)}
                                       data-geometry-issue={bedWarnings.get(bedVm.id)}
+                                      data-task-urgency={urgency}
                                       name="graphical-editable"
                                       data-testid={`bed-rect-${bedVm.id}`}
                                       {...getBedInteractionProps(
@@ -1478,8 +1530,14 @@ export default function GraphicalFields({
                                         { ...snapping, thresholdPx: SNAP_THRESHOLD, spacing: bedSpacing },
                                       )}
                                     />
+                                    {badge && <Text x={FIELD_INNER_OFFSET_X + bedVm.x + bedVm.width - badgeWidth}
+                                      y={FIELD_INNER_OFFSET_Y + bedVm.y + 3 / viewport.scale}
+                                      text={badge} width={BED_TASK_BADGE_WIDTH} align="center"
+                                      fontSize={14} fontStyle="bold" fill={taskColors?.glyph}
+                                      listening={false} scaleX={1 / viewport.scale} scaleY={1 / viewport.scale}
+                                      data-testid={`bed-task-icon-${bedVm.id}`} />}
                                     {(() => {
-                                      const label = getBedLabelLayout(bedVm, viewport.scale);
+                                      const label = getBedLabelLayout({ ...bedVm, width: bedVm.width - badgeWidth }, viewport.scale);
                                       if (!visibility.showBedLabels || !label) return null;
                                       const labelText =
                                         visibility.showDetailedBedLabels &&
@@ -1506,7 +1564,8 @@ export default function GraphicalFields({
                                       );
                                       })()}
                                   </Group>
-                                ))
+                                );
+                              })
                               : null}
                           </Group>
                         );

@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import Any
 
 from farm.models import (
+    Bed,
     Crop,
     CropCompanion,
     CropSupplierData,
@@ -42,6 +43,7 @@ FEATURE_TEXT = {
             "Kompostlieferung abstimmen",
             "Zusätzliche Saatgutbestellung",
             "Abdeckvlies kontrollieren",
+            "Tropfschläuche spülen",
         ],
         "task_description": "Beispielaufgabe für die gemeinsame Arbeitsplanung im Demo-Projekt.",
     },
@@ -67,6 +69,7 @@ FEATURE_TEXT = {
             "Arrange the compost delivery",
             "Additional seed order",
             "Check the covering fleece",
+            "Flush the drip lines",
         ],
         "task_description": "Sample task for shared work planning in the demo project.",
     },
@@ -92,6 +95,7 @@ FEATURE_TEXT = {
             "Organiser la livraison de compost",
             "Commande supplémentaire de semences",
             "Vérifier le voile de protection",
+            "Rincer les lignes de goutte-à-goutte",
         ],
         "task_description": (
             "Exemple de tâche pour le travail collectif dans le projet de démonstration."
@@ -122,6 +126,7 @@ FEATURE_TEXT = {
             "Organizar la entrega de compost",
             "Pedido adicional de semillas",
             "Revisar la manta de protección",
+            "Purgar las líneas de goteo",
         ],
         "task_description": (
             "Tarea de ejemplo para el trabajo compartido en el proyecto de demostración."
@@ -333,7 +338,7 @@ def populate_demo_tasks(
     owner: Any | None,
     today: date,
     fields: dict[str, Field],
-    crops: dict[str, Crop],
+    beds: dict[str, Bed],
     language_code: str,
 ) -> None:
     generate_tasks_for_plans(project.planting_plans.select_related("crop", "season").order_by("pk"))
@@ -341,15 +346,22 @@ def populate_demo_tasks(
     season = Season.objects.get(project=project, start_date__year=today.year)
     text = FEATURE_TEXT[language_code]
     assignee = owner if owner and getattr(owner, "pk", None) else None
-    for index, status, offset, field_key, crop_key in [
-        (0, "pending", 6, "schlag-nord", None),
-        (1, "in_progress", 0, "wurzel", "karotte"),
-        (2, "completed", -1, None, None),
-        (3, "pending", 2, "tunnel", "tomate"),
-        (4, "pending", None, None, None),
-        (5, "cancelled", -3, None, None),
-        (6, "pending", -2, "fruehbeete", "salat"),
-    ]:
+    examples = [
+        ("pending", 6, "schlag-nord", None),  # A parcel-wide task.
+        ("in_progress", 0, "wurzel", "karotte-1"),
+        ("completed", -1, "tunnel", "gurke"),
+        ("pending", 2, "tunnel", "tomate-1"),
+        ("pending", None, "fruehbeete", "kraeuter"),
+        ("cancelled", -3, None, None),
+        ("pending", -2, "fruehbeete", "salat-1"),
+        ("pending", 10, "fruehbeete", "salat-2"),
+    ]
+    _set_bed_task_example_statuses(project, season, beds)
+    plans_by_bed = {}
+    for plan in season.planting_plans.select_related('crop').order_by('planting_date', 'pk'):
+        plans_by_bed.setdefault(plan.bed_id, plan)
+    for index, (status, offset, field_key, bed_key) in enumerate(examples):
+        plan = plans_by_bed[beds[bed_key].pk] if bed_key is not None else None
         Task.objects.create(
             project=project,
             season=season,
@@ -358,7 +370,8 @@ def populate_demo_tasks(
             status=status,
             due_date=today + timedelta(days=offset) if offset is not None else None,
             field=fields[field_key] if field_key is not None else None,
-            crop=crops[crop_key] if crop_key is not None else None,
+            crop=plan.crop if plan is not None else None,
+            planting_plan=plan,
             assigned_to=assignee if offset is not None else None,
         )
     adjusted = (
@@ -375,3 +388,12 @@ def populate_demo_tasks(
         adjusted.due_date = adjusted.calculated_due_date + timedelta(days=2)
         adjusted.due_date_overridden = True
         adjusted.save(update_fields=["due_date", "due_date_overridden"])
+
+
+def _set_bed_task_example_statuses(project: Project, season: Season, beds: dict[str, Bed]) -> None:
+    tasks = Task.objects.filter(project=project, season=season)
+    # Keep the examples distinguishable even when the demo is seeded before sowing.
+    tasks.filter(planting_plan__bed_id__in=[beds[key].pk for key in (
+        'gurke', 'kraeuter', 'salat-2',
+    )]).update(status='completed')
+    tasks.filter(planting_plan__bed=beds['tomate-2']).update(status='cancelled')

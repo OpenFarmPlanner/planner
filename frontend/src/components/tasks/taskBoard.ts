@@ -20,6 +20,10 @@ export function isBoardStatus(value: unknown): value is BoardStatus {
   return BOARD_STATUSES.some((status) => status === value);
 }
 
+export function isOpenTask(task: Pick<Task, 'status'>): boolean {
+  return task.status === 'pending' || task.status === 'in_progress';
+}
+
 export function taskDateBounds(today: Date) {
   return {
     today: format(today, 'yyyy-MM-dd'),
@@ -52,7 +56,7 @@ export function taskMatchesFilters(
 }
 
 export function taskMetrics(tasks: Task[], bounds: ReturnType<typeof taskDateBounds>) {
-  const open = tasks.filter((task) => task.status === 'pending' || task.status === 'in_progress');
+  const open = tasks.filter(isOpenTask);
   return {
     overdue: open.filter((task) => task.due_date && task.due_date < bounds.today).length,
     today: open.filter((task) => task.due_date === bounds.today).length,

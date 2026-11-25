@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Link as RouterLink, useNavigate, useParams } from 'react-router';
+import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 'react-router';
 import {
   Alert,
   Box,
@@ -38,6 +38,8 @@ import type { Bed, Field, Location, PlantingPlan } from '../api/types';
 import { extractApiErrorMessage } from '../api/errors';
 import { resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import { GrowingAreaPlanLinks } from '../planting-plans/GrowingAreaPlanLinks';
+import { BedTaskSection } from '../components/tasks/BedTaskSection';
+import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
 import { parseDimensionValue } from '../components/hierarchy/utils/hierarchyAreaParsing';
 import {
   DETAIL_ROUTE_SEGMENTS,
@@ -111,6 +113,7 @@ function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined
   const { t, i18n } = useTranslation(['hierarchy', 'locations', 'common']);
   const locale = resolveSeasonDateLocale(i18n);
   const navigate = useNavigate();
+  const seasonId = useOutletContext<RootLayoutOutletContext | null>()?.activeSeason?.id;
   const hierarchy = useHierarchyData(true);
   const { locations, fields, beds, setLocations, setFields, setBeds, loading, hasLoaded, error } = hierarchy;
   const [isEditing, setIsEditing] = useState(false);
@@ -299,6 +302,7 @@ function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined
             <GrowingAreaReadView resolved={resolved} locale={locale} />
           )}
           <GrowingAreaRelatedPlans bedIds={resolved.bedIds} showBed={type !== 'bed'} />
+          {type === 'bed' && id !== null && <BedTaskSection bedId={id} seasonId={seasonId} />}
           {!isEditing && resolved.entity.notes?.trim() ? (
             <Box data-testid="detail-section-notes">
               <DetailSection title={t('common:fields.notes')}>
