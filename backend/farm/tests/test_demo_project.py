@@ -59,6 +59,7 @@ from farm.services.demo_project import (
     DEMO_PROJECT_NAME,
     DEMO_PROJECT_NAME_EN,
     DEMO_PROJECT_SLUG,
+    DEMO_ORCHARD_CROP_NAMES,
     DEMO_ROTATION_GROUP_NAMES,
     DEMO_TEXT,
     DemoProjectResult,
@@ -1043,6 +1044,7 @@ class DemoRequestLanguageTests(TestCase):
         blank_task['tasks'][0] = '  '
         for bundle, value in (
             (DEMO_TEXT, partial), (FEATURE_TEXT, {}), (FEATURE_TEXT, blank_task),
+            (DEMO_ORCHARD_CROP_NAMES, ''),
         ):
             with self.subTest(bundle=bundle is DEMO_TEXT), patch.dict(bundle, {'fr': value}):
                 self.assertEqual(resolve_demo_language('fr'), 'en')

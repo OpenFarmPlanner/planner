@@ -112,6 +112,16 @@ DEMO_ROTATION_GROUP_NAMES = {
     'nl': 'Boerderijtuin Noord–Zuid',
 }
 
+DEMO_ORCHARD_CROP_NAMES = {
+    'de': 'Apfel',
+    'en': 'Apple',
+    'fr': 'Pommier',
+    'es': 'Manzano',
+    'it': 'Melo',
+    'pt': 'Macieira',
+    'nl': 'Appelboom',
+}
+
 DEMO_TEXT = {
     'de': {
         'locations': {
@@ -557,7 +567,7 @@ def resolve_demo_language(language_code: str | None) -> str:
     bundles = (
         DEMO_TEXT, FEATURE_TEXT, DEMO_PROJECT_NAMES,
         DEMO_PERSONAL_PROJECT_DESCRIPTIONS, DEMO_SCREENSHOT_PROJECT_DESCRIPTIONS,
-        BULK_BED_EXAMPLE_NOTES, DEMO_ROTATION_GROUP_NAMES,
+        BULK_BED_EXAMPLE_NOTES, DEMO_ROTATION_GROUP_NAMES, DEMO_ORCHARD_CROP_NAMES,
     )
     complete = all(
         _has_complete_translation(bundle[DEMO_LANGUAGE_FALLBACK], bundle.get(language))
@@ -587,9 +597,8 @@ def get_demo_project_description(language_code: str | None, *, screenshot: bool 
 def _create_demo_orchard(
     project: Project, parcel: Field, owner: Any, language: str, year: int,
 ) -> None:
-    name = {'de': 'Apfel', 'en': 'Apple', 'fr': 'Pommier', 'es': 'Manzano'}[language]
     crop = Crop.objects.create(
-        project=project, name=name, variety='Topaz',
+        project=project, name=DEMO_ORCHARD_CROP_NAMES[language], variety='Topaz',
         crop_species=find_demo_crop_species('Apple') or find_demo_crop_species('Apfel'),
         life_cycle='perennial', standing_time_years=18, cultivation_types=['pre_cultivation'],
         row_spacing_m=4.5, distance_within_row_m=4,
