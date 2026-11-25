@@ -302,6 +302,7 @@ def _with_legacy_snapshot_fields(model: type, snapshot: dict) -> dict:
         snapshot.setdefault('plant_health', None)
         snapshot.setdefault('specific_properties', {})
         snapshot.setdefault('first_harvest_delay_years', None)
+        snapshot.setdefault('estimated_canopy_diameter_m', None)
         for field in (
             'seed_type', 'life_cycle', 'pests_diseases', 'water_requirement', 'winter_hardiness',
             'annual_harvest_window',
@@ -315,7 +316,8 @@ def _with_legacy_snapshot_fields(model: type, snapshot: dict) -> dict:
     if model is PlantingPlan:
         return {
             'copied_from_plan_id': None, 'harvest_window_overrides': {},
-            'harvest_occurrence_actuals': {}, **snapshot,
+            'harvest_occurrence_actuals': {}, 'parcel_id': None,
+            'individual_positions': [], 'estimated_canopy_diameter_m': None, **snapshot,
         }
     if model is Task:
         return {'suppressed_by_harvest_configuration': False, **snapshot}

@@ -631,9 +631,9 @@
       "ends": "Termina"
     },
     "descriptions": {
-      "only": "Ocupa o canteiro apenas nesta época.",
-      "starts": "Começa nesta época e ocupa o canteiro para além dela.",
-      "continues": "Ocupa o canteiro antes, durante e depois desta época.",
+      "only": "Cresce aqui apenas nesta época.",
+      "starts": "Começa nesta época e continua a crescer depois.",
+      "continues": "Cresce antes, durante e depois desta época.",
       "ends": "Começou antes desta época e termina durante a época."
     }
   }

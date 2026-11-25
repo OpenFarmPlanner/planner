@@ -316,6 +316,7 @@ erDiagram
     PlantingPlan ||--o{ HarvestAllocation : "assigned share"
     PlantingPlan ||--o{ CropLoss : "dated incident"
     Bed ||--o{ PlantingPlan : "scheduled on"
+    Field |o--o{ PlantingPlan : "direct individual placement"
     Season ||--o{ PlantingPlan : "scoped to (nullable)"
     PlantingPlan |o--o{ PlantingPlan : "copied from plan"
     Project ||--o| SeasonPattern : "1:1 start day/month"
@@ -328,7 +329,17 @@ erDiagram
     PlantingPlan ||--o{ NoteAttachment : "photo notes"
 ```
 
-- **`PlantingPlan`** is the central operational record for one crop on one bed.
+- **`PlantingPlan`** is the operational record for one crop or variety. It can
+  describe an area on a bed or individual plants directly on a parcel.
+  In the individual mode the `parcel` foreign key identifies the parent.
+  Each `individual_positions` entry has a stable UUID and two coordinates in
+  metres from the parcel's unrotated origin, to centimetre precision. A
+  position edit preserves the existing UUID. The plant count is the number
+  of confirmed stems and feeds the young-plant calculation and per-plant
+  seed rates. Estimated canopy diameter is a separate optional value in metres.
+  A project crop may supply the initial estimate, which can be overridden or
+  cleared on the plan. The canopy projection does not reserve bed capacity.
+  Geometry edits use the plan's `updated_at` to reject a stale replacement.
   Its internal `parcel_rotation_basis` retains the original occupied area and
   bed area as decimal strings after a rotating copy. Subsequent copies derive
   areas from that fraction while the current bed and area match the last

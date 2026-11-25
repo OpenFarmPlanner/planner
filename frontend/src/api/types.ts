@@ -262,6 +262,7 @@ export interface Crop {
   water_requirement?: WaterRequirement | '';
   life_cycle?: LifeCycle | '';
   standing_time_years?: number | null;
+  estimated_canopy_diameter_m?: number | string | null;
   default_harvest_unit?: HarvestUnit | '';
   average_harvest_piece_weight_g?: number | string | null;
   average_harvest_bunch_weight_g?: number | string | null;
@@ -1409,6 +1410,20 @@ export interface HarvestActualDateUpdate {
 export type HarvestActualDateResult = Pick<PlantingPlan,
   'actual_harvest_start_date' | 'recorded_harvest_end_date' | 'harvest_actual_occurrences' | 'seasonal_harvest'>;
 
+export interface StemCoordinates {
+  x_m: number;
+  y_m: number;
+}
+
+export interface IndividualPlantPosition extends StemCoordinates {
+  id: string;
+}
+
+export interface IndividualPlacementInput {
+  individual_positions: (StemCoordinates & { id?: string })[];
+  estimated_canopy_diameter_m?: number | string | null;
+}
+
 export interface PlantingPlan extends PlantingPlanActualDates {
   id?: number;
   carried_over?: boolean;
@@ -1432,6 +1447,12 @@ export interface PlantingPlan extends PlantingPlanActualDates {
   crop_loss_count?: number;
   bed: number | null;
   bed_name?: string | null;
+  parcel?: number | null;
+  parcel_name?: string | null;
+  parcel_location_id?: number | null;
+  individual_positions?: IndividualPlantPosition[];
+  estimated_canopy_diameter_m?: number | string | null;
+  recommended_plant_spacing_m?: number | null;
   season?: number | null;
   planting_date: string | null;
   clearing_date?: string | null;

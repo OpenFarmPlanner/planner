@@ -606,6 +606,11 @@ class Crop(TimestampedModel):
         null=True, blank=True, validators=[MinValueValidator(1)],
         help_text='Typical productive lifespan of a perennial crop, in whole years.',
     )
+    estimated_canopy_diameter_m = models.DecimalField(
+        max_digits=7, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(Decimal('0.01'))],
+        help_text='Optional suggested canopy diameter for individual plantings, in metres.',
+    )
     winter_hardiness = models.CharField(
         max_length=20, choices=WINTER_HARDINESS_CHOICES, blank=True,
         help_text='Whether the crop survives winter outdoors. Blank means unknown.',

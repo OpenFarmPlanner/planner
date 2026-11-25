@@ -20,6 +20,7 @@ import { HarvestRecords } from '../harvests/HarvestRecords';
 import { useNavigationBlocker } from '../hooks/useNavigationBlocker';
 import { useProjectRequirement } from '../hooks/useProjectRequirement';
 import { useTranslation } from '../i18n';
+import { individualPlantGraphicPath } from './individualPlantRoutes';
 import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
 import {
   DIRECT_SOWING, getPlanPropagationInfo, PRE_CULTIVATION, PURCHASED_TRANSPLANT,
@@ -45,7 +46,7 @@ type PlanLoad = { plan: PlantingPlanDetail; recordSeasonId: number | undefined }
 type HarvestWindowSelection = { seasonId: number | undefined; year?: number; dirty: boolean };
 
 export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: PlantingPlanDetailsProps) {
-  const { t, i18n } = useTranslation(['plantingPlans', 'common', 'harvests']);
+  const { t, i18n } = useTranslation(['plantingPlans', 'common', 'harvests', 'fields']);
   const { activeProjectId, isAuthLoading, missingProjectReason } = useProjectRequirement();
   const context = useOutletContext<RootLayoutOutletContext | null>();
   const activeSeasonId = context?.activeSeason?.id;
@@ -266,6 +267,20 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
                 </Box>)}
               </Box>
             </DetailSection>}
+            {loadedPlan.parcel && loadedPlan.parcel_location_id && (
+              <DetailSection title={t('fields:individualPlants.title')} outlined>
+                <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
+                  <Typography>{t('fields:individualPlants.count', {
+                    count: loadedPlan.plants_count ?? 0,
+                    formatted: formatLocalizedNumber(loadedPlan.plants_count ?? 0, locale),
+                  })}</Typography>
+                  <Button component={RouterLink}
+                    to={individualPlantGraphicPath(loadedPlan.id, loadedPlan.parcel_location_id)}>
+                    {t('fields:individualPlants.openGraphic')}
+                  </Button>
+                </Stack>
+              </DetailSection>
+            )}
             {loadedPlan.previous_season_reference && <PreviousSeasonReference
               reference={loadedPlan.previous_season_reference} activeSeasonId={context?.activeSeason?.id}
               switchSeason={context?.switchActiveSeason} />}

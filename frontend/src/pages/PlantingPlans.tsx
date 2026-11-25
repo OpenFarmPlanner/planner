@@ -146,6 +146,7 @@ import { CropSpacingEditAction } from "../components/planting-plans/CropSpacingE
 import { MobilePlanActionsMenu, type PlanMenuNavigationAction } from "../components/planting-plans/MobilePlanActionsMenu";
 import { getEntityDetailPath } from "../components/hierarchy/details/hierarchyDetailRoutes";
 import { isPlantingPlanDetailPath, plantingPlanDetailPath, PLANTING_PLANS_PATH } from "../planting-plans/plantingPlanDetailRoutes";
+import { individualPlantGraphicPath } from "../planting-plans/individualPlantRoutes";
 import {
   ACTUAL_DATE_FIELDS, displayedPlanDate, displayedPlanDates, getPlanColumnDates, PLANTING_PLAN_DATE_COLUMNS,
   getPlanDateReadOnlyReason, type PlantingPlanDateColumn, type PlantingPlanDateComparison,
@@ -254,7 +255,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   detailRevision?: number;
   restoredView?: PlantingPlanSearchSnapshot;
 } = {}) {
-  const { t, i18n } = useTranslation(["plantingPlans", "common"]);
+  const { t, i18n } = useTranslation(["plantingPlans", "common", "fields"]);
   const { t: tHarvest } = useTranslation("harvests");
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
   const activeSeason = outletContext?.activeSeason ?? null;
@@ -1055,6 +1056,9 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         },
         renderCell: (params) => {
           const row = params.row as PlantingPlanRow;
+          if (row.parcel) {
+            return <Typography variant="inherit" noWrap>{getGridBedLabel(row)}</Typography>;
+          }
           const bedId = resolveBedCellValue(params.value, row);
           const isEditing = params.api?.getRowMode?.(params.id) === "edit";
           const hasDraft = row.isNew || isEditing;
@@ -1299,8 +1303,9 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             }}
           />
         ),
-        valueFormatter: (value) => {
+        valueFormatter: (value, row) => {
           if (typeof value === "number" && !isNaN(value)) {
+            if ((row as PlantingPlanRow).parcel) return formatLocalizedNumber(value, numberLocale);
             return `≈ ${Math.round(value)}`;
           }
           return "—";
@@ -1316,7 +1321,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         valueGetter: (_value, row: PlantingPlanRow) => {
           const start = row.seasonal_harvest?.occupancy_start_date ?? toPlanIsoDate(row.planting_date);
           const end = row.occupancy_end_date ?? getPlanOccupancyEndIso(row) ?? start;
-          return seasonBounds && row.bed && start && end
+          return seasonBounds && (row.bed || row.parcel) && start && end
             ? getSeasonOccupancyStatus(start, end, seasonBounds) : null;
         },
         valueFormatter: (value: SeasonOccupancyStatus | null) => (
@@ -1611,6 +1616,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   };
 
   const getDisplayArea = (row: PlantingPlanRow): string => {
+    if (row.parcel) return "—";
     const explicitArea = toNumericValue(row.area_m2);
     if (explicitArea !== null) {
       return formatAreaM2(explicitArea, numberLocale);
@@ -1887,11 +1893,14 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         disabledReason: cropId ? undefined : t('plantingPlans:details.missingCrop'),
         activate: () => { if (cropId) void navigate(`/app/crops?cropId=${cropId}`); },
       },
-      {
+      ...(planId && row.parcel && row.parcel_location_id ? [{
+        id: 'plan-placement', label: t('fields:individualPlants.openGraphic'), icon: <GridViewOutlinedIcon fontSize="small" />,
+        activate: () => { if (row.parcel_location_id) void navigate(individualPlantGraphicPath(planId, row.parcel_location_id)); },
+      }] : [{
         id: 'plan-bed', label: t('plantingPlans:details.openBed'), icon: <GridViewOutlinedIcon fontSize="small" />,
         disabledReason: bedId ? undefined : t('plantingPlans:details.missingBed'),
         activate: () => { if (bedId) void navigate(getEntityDetailPath('bed', bedId)); },
-      },
+      }]),
       ...(planId && originSeasonId && outletContext?.switchActiveSeason ? [{
         id: 'plan-origin-season', label: t('plantingPlans:carriedOver.openOrigin'),
         icon: <ArticleOutlinedIcon fontSize="small" />,
@@ -1903,6 +1912,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   };
 
   const getDerivedAreaFromRow = (row: PlantingPlanRow): number | null => {
+    if (row.parcel) return null;
     const explicitArea = toNumericValue(row.area_m2);
     if (explicitArea !== null) {
       return explicitArea;
@@ -2180,7 +2190,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   };
 
   const openMobileEditDialog = (row: PlantingPlanRow): void => {
-    if (row.carried_over) return;
+    if (row.carried_over || row.parcel) return;
     const derivedArea = getDerivedAreaFromRow(row);
     setMobileCreateError("");
     setMobileEditId(row.id);
@@ -2264,7 +2274,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   }, [isMobile, isPlansLoading, mobileRows, replacePlantingPlanSearchParams, searchParams]);
 
   const openMobileDuplicateDialog = (row: PlantingPlanRow): void => {
-    if (row.carried_over) return;
+    if (row.carried_over || row.parcel) return;
     const derivedArea = getDerivedAreaFromRow(row);
     setMobileCreateError("");
     setMobileEditId(null);
@@ -2672,7 +2682,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             api={plantingPlanGridAPI}
             dialogEditFields={PLANTING_PLAN_DIALOG_EDIT_FIELDS}
             isStandaloneEditCell={isActualDateEditor}
-            getCellReadOnlyReason={getDateReadOnlyReason}
+            getCellReadOnlyReason={(row, field) => row.parcel && ['bed', 'area_m2', 'plants_count'].includes(field)
+              ? t('fields:individualPlants.editInGraphic') : getDateReadOnlyReason(row, field)}
             focusableReadOnlyFields={FOCUSABLE_SUMMARY_FIELDS}
             commandApiRef={gridCommandApiRef}
             onSelectedRowChange={setSelectedPlan}
@@ -2713,7 +2724,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           mapToRow={(plan) => {
             const areaFromApi = toNumericValue(plan.area_usage_sqm);
             const linkedBed = plan.bed ? bedById.get(plan.bed) : undefined;
-            const linkedField = linkedBed ? fieldById.get(linkedBed.field) : undefined;
+            const linkedFieldId = linkedBed?.field ?? plan.parcel ?? undefined;
+            const linkedField = linkedFieldId === undefined ? undefined : fieldById.get(linkedFieldId);
             return {
               ...plan,
               id: plan.id!,
@@ -2722,8 +2734,10 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               crop_name: plan.crop_name || "",
               bed: plan.bed,
               bed_name: plan.bed_name || "",
-              field_id: linkedBed?.field,
+              field_id: linkedFieldId,
+              field_name: linkedField?.name ?? plan.parcel_name ?? undefined,
               location_id: linkedField?.location,
+              location_name: linkedField ? locationById.get(linkedField.location)?.name : undefined,
               planting_date: plan.planting_date,
               harvest_date: plan.harvest_date,
               harvest_end_date: plan.harvest_end_date,
@@ -2801,6 +2815,10 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               notes: row.notes || "",
               cultivation_type: row.cultivation_type ?? "",
             };
+            if (row.parcel) {
+              lastEditedFieldRef.current = null;
+              return apiData;
+            }
             // Determine which field to send based on last edit
             const source = lastEditedFieldRef.current || "area_m2";
             const autoAreaDraft = source === "area_m2" && isAutoAreaRequest(row.area_m2, t("plantingPlans:placeholders.maxKeyword"))
@@ -2854,7 +2872,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             if (!row.crop || row.crop === 0) {
               errors.crop = t("plantingPlans:validation.cropRequired");
             }
-            if (!row.bed || row.bed === 0) {
+            if (!row.parcel && (!row.bed || row.bed === 0)) {
               errors.bed = t("plantingPlans:validation.bedRequired");
             }
             if (!row.cultivation_type) {
@@ -2983,13 +3001,13 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               color: "primary",
               onClick: () => handleCreatePlan(),
             },
-            ...(!row.carried_over ? [{
+            ...(!row.carried_over && !row.parcel ? [{
               id: "duplicate",
               label: t("common:actions.duplicate"),
               icon: <ContentCopyIcon fontSize="small" />,
               onClick: (row: PlantingPlanRow, helpers: EditableDataGridRowActionHelpers<PlantingPlanRow>) => helpers.duplicate(row),
-            },
-            {
+            }] : []),
+            ...(!row.carried_over ? [{
               id: "delete",
               label: t("common:actions.delete"),
               icon: <DeleteIcon fontSize="small" />,

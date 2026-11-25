@@ -146,7 +146,7 @@ class PublishedSurfaceTests(APITestCase):
             if parameter['in'] == 'query'
         }
 
-        for name in ('bed', 'field', 'location'):
+        for name in ('bed', 'field', 'location', 'individual_location'):
             self.assertEqual(filters[name], 'integer', name)
 
     def test_inherited_crop_fields_are_marked_as_raw_values(self):

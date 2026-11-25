@@ -631,9 +631,9 @@
       "ends": "Termina"
     },
     "descriptions": {
-      "only": "Occupa l’aiuola solo in questa stagione.",
-      "starts": "Inizia in questa stagione e occupa l’aiuola anche oltre.",
-      "continues": "Occupa l’aiuola prima, durante e dopo questa stagione.",
+      "only": "Cresce qui solo in questa stagione.",
+      "starts": "Inizia in questa stagione e continua a crescere dopo.",
+      "continues": "Cresce prima, durante e dopo questa stagione.",
       "ends": "È iniziata prima di questa stagione e termina durante la stagione."
     }
   }

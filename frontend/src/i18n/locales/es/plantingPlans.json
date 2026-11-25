@@ -631,9 +631,9 @@
       "ends": "Termina"
     },
     "descriptions": {
-      "only": "Ocupa el bancal solo durante esta temporada.",
-      "starts": "Empieza esta temporada y ocupa el bancal después de que termine.",
-      "continues": "Ocupa el bancal antes, durante y después de esta temporada.",
+      "only": "Crece aquí solo durante esta temporada.",
+      "starts": "Empieza esta temporada y sigue creciendo después.",
+      "continues": "Crece antes, durante y después de esta temporada.",
       "ends": "Empezó antes de esta temporada y termina durante ella."
     }
   }

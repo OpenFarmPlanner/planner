@@ -1,6 +1,7 @@
 """DRF serializers for the planning domain (planting plans and tasks)."""
 
 from datetime import date
+from math import isfinite
 from typing import Any
 
 from django.core.exceptions import ValidationError
@@ -15,6 +16,12 @@ from farm.common.serializer_fields import (
     _resolve_active_project_from_serializer,
 )
 from farm.models import Crop, PlantingPlan, Season, Task
+from farm.planning.individual_planting import (
+    MAX_INDIVIDUAL_POSITIONS,
+    IndividualPlantParcelField,
+    IndividualPlantPositionSerializer,
+    validate_individual_planting,
+)
 from farm.project_context import resolve_season_id_from_request
 from farm.services.actual_harvest import harvest_actual_occurrences, unscoped_harvest_actuals
 from farm.services.bed_capacity import (
@@ -73,6 +80,22 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
     actual_harvest = serializers.SerializerMethodField()
     crop_loss_count = serializers.SerializerMethodField()
     bed_name = serializers.SerializerMethodField(read_only=True)
+    parcel = IndividualPlantParcelField(
+        required=False, allow_null=True,
+        help_text='Direct parcel assignment for individual plants.',
+    )
+    parcel_name = serializers.CharField(source='parcel.name', read_only=True, allow_null=True)
+    parcel_location_id = serializers.IntegerField(
+        source='parcel.location_id', read_only=True, allow_null=True,
+    )
+    individual_positions = IndividualPlantPositionSerializer(
+        many=True, required=False, max_length=MAX_INDIVIDUAL_POSITIONS,
+    )
+    placement_updated_at = serializers.DateTimeField(
+        write_only=True, required=False,
+        help_text='Current updated_at value required when changing individual positions or canopy.',
+    )
+    recommended_plant_spacing_m = serializers.SerializerMethodField()
     harvest_date = serializers.SerializerMethodField(read_only=True)
     harvest_end_date = serializers.SerializerMethodField(read_only=True)
     seasonal_harvest = serializers.SerializerMethodField(
@@ -158,6 +181,15 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
 
     def get_bed_name(self, obj: PlantingPlan) -> str | None:
         return obj.bed.name if obj.bed else None
+
+    def get_recommended_plant_spacing_m(self, obj: PlantingPlan) -> float | None:
+        if obj.parcel_id is None or obj.crop_id is None:
+            return None
+        for field in ('distance_within_row_m', 'row_spacing_m'):
+            value = self._effective_crop_value(obj, field)
+            if value and isfinite(value) and value > 0:
+                return value
+        return None
 
     def _general_crop_index(self, obj: PlantingPlan) -> dict[int, Crop]:
         """The project's general Kulturen, built once per request (not per row)."""
@@ -427,6 +459,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         self._validate_project_scope(attrs)
         if actual_dates_only:
             return attrs
+        validate_individual_planting(attrs, self.instance)
         self._validate_create_has_active_season(attrs)
         self._validate_planting_date_within_season(attrs)
         self._resolve_clearing_date(attrs)
@@ -618,15 +651,20 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
             })
 
     def _validate_project_scope(self, attrs):
-        """Crop, bed, and season must belong to the active project."""
+        """Crop, bed, parcel, and season must belong to the active project."""
         project = _resolve_active_project_from_serializer(self)
         crop = attrs.get('crop') or (self.instance.crop if self.instance else None)
         bed = attrs.get('bed') or (self.instance.bed if self.instance else None)
+        parcel = attrs.get('parcel') or (self.instance.parcel if self.instance else None)
         season = attrs.get('season') or (self.instance.season if self.instance else None)
         if project is not None and crop is not None and crop.project_id != project.id:
             raise serializers.ValidationError({'crop': 'Crop does not belong to the active project.'})
         if project is not None and bed is not None and bed.project_id != project.id:
             raise serializers.ValidationError({'bed': 'Bed does not belong to the active project.'})
+        if project is not None and parcel is not None and parcel.project_id != project.id:
+            raise serializers.ValidationError({
+                'parcel': 'Parcel does not belong to the active project.',
+            })
         if project is not None and season is not None and season.project_id != project.id:
             raise serializers.ValidationError({'season': 'Season does not belong to the active project.'})
 
@@ -710,16 +748,22 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
 
 
 class PlantingPlanDetailSerializer(PlantingPlanSerializer):
-    field_name = serializers.CharField(source='bed.field.name', read_only=True, allow_null=True)
-    location_name = serializers.CharField(
-        source='bed.field.location.name', read_only=True, allow_null=True,
-    )
+    field_name = serializers.SerializerMethodField()
+    location_name = serializers.SerializerMethodField()
     crop_available = serializers.SerializerMethodField()
     bed_area_sqm = serializers.SerializerMethodField()
     previous_season_reference = serializers.SerializerMethodField()
     harvest_windows_by_year = serializers.SerializerMethodField()
     observed_first_harvest_date = serializers.SerializerMethodField()
     record_season_ids = serializers.SerializerMethodField()
+
+    def get_field_name(self, obj: PlantingPlan) -> str | None:
+        parcel = obj.parcel or (obj.bed.field if obj.bed else None)
+        return parcel.name if parcel else None
+
+    def get_location_name(self, obj: PlantingPlan) -> str | None:
+        parcel = obj.parcel or (obj.bed.field if obj.bed else None)
+        return parcel.location.name if parcel else None
 
     def get_bed_area_sqm(self, obj: PlantingPlan) -> float | None:
         return float(obj.bed.area_sqm) if obj.bed and obj.bed.area_sqm is not None else None

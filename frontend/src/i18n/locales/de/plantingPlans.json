@@ -615,9 +615,9 @@
       "ends": "Endet"
     },
     "descriptions": {
-      "only": "Belegt das Beet nur in dieser Saison.",
-      "starts": "Beginnt in dieser Saison und belegt das Beet darüber hinaus.",
-      "continues": "Belegt das Beet vor, während und nach dieser Saison.",
+      "only": "Wächst nur in dieser Saison an diesem Ort.",
+      "starts": "Beginnt in dieser Saison und wächst darüber hinaus weiter.",
+      "continues": "Wächst vor, während und nach dieser Saison.",
       "ends": "Begann vor dieser Saison und endet in dieser Saison."
     }
   }

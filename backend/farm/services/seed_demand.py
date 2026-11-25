@@ -332,7 +332,7 @@ def compute_plan_requirement(
         )
 
     area = Decimal(str(plan.area_usage_sqm or 0))
-    quantity = Decimal(str(plan.quantity or 0))
+    quantity = Decimal(len(plan.individual_positions) if plan.parcel_id else plan.quantity or 0)
     row_spacing = Decimal(str(crop.row_spacing_m or 0))
 
     if unit in {SEED_RATE_UNIT_G_PER_M2, SEED_RATE_UNIT_SEEDS_PER_M2}:
@@ -342,7 +342,7 @@ def compute_plan_requirement(
         return _lfm_based_requirement(unit, value, area, row_spacing)
 
     if unit == SEED_RATE_UNIT_SEEDS_PER_PLANT:
-        if quantity <= 0:
+        if quantity <= 0 and not plan.parcel_id:
             return PlanRequirementResult(
                 value=None,
                 unit=None,
