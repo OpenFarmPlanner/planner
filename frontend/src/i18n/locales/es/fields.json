@@ -57,6 +57,10 @@
       "range": "Del {{start}} al {{end}}",
       "incompletePlan": "Faltan fechas o el cultivo",
       "noPlans": "No hay planes para esta fecha o este periodo.",
+      "cancelledStatus": "Cancelada",
+      "cancelledTasks_one": "{{count}} tarea cancelada",
+      "cancelledTasks_other": "{{count}} tareas canceladas",
+      "cancelledTasks_many": "{{count}} tareas canceladas",
       "completedTasks_one": "{{count}} tarea completada",
       "completedTasks_other": "{{count}} tareas completadas",
       "completedTasks_many": "{{count}} tareas completadas"

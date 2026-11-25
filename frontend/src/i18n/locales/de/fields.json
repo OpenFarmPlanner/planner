@@ -57,6 +57,9 @@
       "range": "{{start}} bis {{end}}",
       "incompletePlan": "Datumsangaben oder Kultur fehlen",
       "noPlans": "Für dieses Datum oder diesen Zeitraum gibt es keinen Plan.",
+      "cancelledStatus": "Abgebrochen",
+      "cancelledTasks_one": "{{count}} abgebrochene Aufgabe",
+      "cancelledTasks_other": "{{count}} abgebrochene Aufgaben",
       "completedTasks_one": "{{count}} erledigte Aufgabe",
       "completedTasks_other": "{{count}} erledigte Aufgaben"
     },

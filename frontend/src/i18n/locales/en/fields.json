@@ -57,6 +57,9 @@
       "range": "{{start}} to {{end}}",
       "incompletePlan": "Dates or crop incomplete",
       "noPlans": "No plan for this date or period.",
+      "cancelledStatus": "Cancelled",
+      "cancelledTasks_one": "{{count}} cancelled task",
+      "cancelledTasks_other": "{{count}} cancelled tasks",
       "completedTasks_one": "{{count}} completed task",
       "completedTasks_other": "{{count}} completed tasks"
     },

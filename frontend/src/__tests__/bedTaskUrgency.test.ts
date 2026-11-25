@@ -49,5 +49,6 @@ describe('bed task urgency', () => {
     expect(linkTasksToBeds(
       [first, succession, neighboringBed, unassignedPlan, orphan, parcelOnly, canceled], plans,
     )).toEqual(new Map([[27, [first, succession]], [28, [neighboringBed]]]));
+    expect(linkTasksToBeds([canceled, orphan, parcelOnly], plans, true)).toEqual(new Map([[27, [canceled]]]));
   });
 });

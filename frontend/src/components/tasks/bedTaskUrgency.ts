@@ -20,11 +20,13 @@ export function bedTaskDateBounds(today: Date) {
   return { today: formatDateToAPI(today), upcomingEnd: formatDateToAPI(addDays(today, 7)) };
 }
 
-export function linkTasksToBeds(tasks: readonly Task[], plans: readonly Pick<PlantingPlan, 'id' | 'bed'>[]) {
+export function linkTasksToBeds(
+  tasks: readonly Task[], plans: readonly Pick<PlantingPlan, 'id' | 'bed'>[], includeCancelled = false,
+) {
   const bedByPlan = new Map(plans.map(plan => [plan.id, plan.bed]));
   const byBed = new Map<number, Task[]>();
   for (const task of tasks) {
-    if (task.planting_plan === null || task.status === 'cancelled') continue;
+    if (task.planting_plan === null || (!includeCancelled && task.status === 'cancelled')) continue;
     const bed = bedByPlan.get(task.planting_plan);
     if (bed == null) continue;
     const current = byBed.get(bed);

@@ -31,7 +31,10 @@ export function BedTaskList({
   const compact = onOpenDetails !== undefined;
   const ordered = orderBedTasks(tasks);
   const open = ordered.filter(isOpenTask);
-  const completed = ordered.filter(task => task.status === 'completed');
+  const history = {
+    completed: ordered.filter(task => task.status === 'completed'),
+    cancelled: ordered.filter(task => task.status === 'cancelled'),
+  };
   const { urgency, outstanding, undated } = summarizeBedTasks(compact ? open : ordered, bedTaskDateBounds(new Date()));
   const visible = compact ? open.slice(0, 3) : open;
   const more = open.length - visible.length;
@@ -64,7 +67,7 @@ export function BedTaskList({
           <Typography variant={compact ? 'body2' : 'body1'}>{title}</Typography>
           <Typography variant={compact ? 'caption' : 'body2'} color="text.secondary">
             {task.due_date ? formatSeasonDate(task.due_date, locale) : t('dashboard:board.noDate')}
-            {' · '}{task.status !== 'cancelled' && t(`dashboard:board.status.${task.status}`)}
+            {' · '}{t(task.status === 'cancelled' ? 'graphical.display.cancelledStatus' : `dashboard:board.status.${task.status}`)}
           </Typography>
         </Stack>
         {canComplete && isOpenTask(task) && <Button size="small" startIcon={<CheckIcon fontSize="small" />}
@@ -100,14 +103,14 @@ export function BedTaskList({
         </Typography>
       )}
       {visible.length > 0 && <List dense disablePadding>{visible.map(renderTask)}</List>}
-      {!compact && completed.length > 0 && (
-        <Box component="details">
+      {!compact && (['completed', 'cancelled'] as const).map(status => history[status].length > 0 && (
+        <Box component="details" key={status}>
           <Box component="summary" sx={{ cursor: 'pointer', typography: 'body2', py: 1.25, minHeight: 44 }}>
-            {t('graphical.display.completedTasks', { count: completed.length })}
+            {t(`graphical.display.${status}Tasks`, { count: history[status].length })}
           </Box>
-          <List dense disablePadding>{completed.map(renderTask)}</List>
+          <List dense disablePadding>{history[status].map(renderTask)}</List>
         </Box>
-      )}
+      ))}
       {more > 0 && <Button size="small" onClick={onOpenDetails} sx={{ minHeight: 44 }}>
         {t('graphical.objects.moreTasks', { count: more })}
       </Button>}

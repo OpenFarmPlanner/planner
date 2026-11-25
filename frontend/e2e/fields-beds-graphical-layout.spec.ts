@@ -799,9 +799,10 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
       const label = button.locator('[data-graphical-action-label]');
       if (viewport.width >= 1440) await expect(label).toBeVisible();
       if (viewport.width < 1200) await expect(label).toBeHidden();
-      const target = (await button.boundingBox())!;
-      expect(target.width).toBeGreaterThanOrEqual(44);
-      expect(target.height).toBeGreaterThanOrEqual(44);
+      await expect.poll(async () => {
+        const target = await button.boundingBox();
+        return Boolean(target && target.width >= 44 && target.height >= 44);
+      }).toBe(true);
     }
     await expect.poll(async () => {
       const rects = await Promise.all([

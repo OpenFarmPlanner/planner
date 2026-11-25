@@ -74,7 +74,7 @@ export function indexBedCultivations(plans: readonly PlantingPlan[]): Map<number
     const estimatedHarvest = recurring?.periods ?? harvestInterval(plan.harvest_date, plan.harvest_end_date);
     // A plan with only a planting date has no reliable end. The serialized
     // occupancy end falls back to that same date for older incomplete plans.
-    const explicitEnd = plan.clearing_date ?? plan.harvest_end_date;
+    const explicitEnd = plan.clearing_date ?? plan.harvest_end_date ?? plan.harvest_date;
     const end = explicitEnd ? plan.occupancy_end_date ?? explicitEnd : null;
     const entry: BedCultivationPlan = {
       id: plan.id, crop: plan.crop, name: plan.crop_display_name || plan.crop_name || null,

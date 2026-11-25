@@ -59,6 +59,12 @@ describe('bed cultivation projection', () => {
     expect(wholeSeason.map(item => [item.plan.id, item.phase])).toEqual([[2, null], [1, null], [3, null]]);
   });
 
+  it('uses the calendar’s harvest date as the last day when no harvest duration is supplied', () => {
+    const shortHarvest = plan({ harvest_end_date: null, occupancy_end_date: '2026-04-07' });
+    expect(project([shortHarvest], '2026-04-07')).toMatchObject([{ phase: 'harvest' }]);
+    expect(project([shortHarvest], '2026-04-08')).toEqual([]);
+  });
+
   it('keeps an incomplete bed allocation uncertain after its planned start', () => {
     const unreliable = plan({ id: 5, harvest_date: null, harvest_end_date: null, occupancy_end_date: '2026-02-15' });
     expect(project([unreliable], '2026-08-01')).toMatchObject([{ phase: null, plan: { end: null } }]);

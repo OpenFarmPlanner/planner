@@ -187,8 +187,8 @@ export default function GraphicalFields({
   const locationPlans = useAreaPlantingPlans('location', loadLocationPlans ? activeLocationId : null, activeSeasonId);
   const selectedPlans = useAreaPlantingPlans('bed', loadLocationPlans ? null : selectedBedId, activeSeasonId);
   const bedTasks = useBedTasks('location', showTasks || (showCrops && selectedBedId !== null) ? activeLocationId : null,
-    activeSeasonId, locationPlans);
-  const selectedBedTasks = useBedTasks('bed', loadLocationPlans ? null : selectedBedId, activeSeasonId, selectedPlans);
+    activeSeasonId, { sharedPlans: locationPlans });
+  const selectedBedTasks = useBedTasks('bed', loadLocationPlans ? null : selectedBedId, activeSeasonId, { sharedPlans: selectedPlans });
   const previewTasks = loadLocationPlans ? bedTasks : selectedBedTasks;
   const planRequest = loadLocationPlans ? locationPlans : selectedPlans;
   const plansByBed = useMemo(() => indexBedCultivations(planRequest.plans), [planRequest.plans]);

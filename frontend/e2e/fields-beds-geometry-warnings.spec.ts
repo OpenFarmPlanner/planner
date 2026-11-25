@@ -77,6 +77,9 @@ for (const mobile of [false, true]) {
         title: 'Material besorgen', season: season.id, planting_plan: plan.id, due_date: null,
       });
       await apiRequest(page, 'POST', '/tasks/', {
+        title: 'Bewässerung abgebrochen', season: season.id, planting_plan: plan.id, status: 'cancelled',
+      });
+      await apiRequest(page, 'POST', '/tasks/', {
         title: 'Parzellenzaun prüfen', season: season.id, field: fieldId, due_date: '2026-05-14',
       });
       const taskWrites: string[] = [];
@@ -104,6 +107,7 @@ for (const mobile of [false, true]) {
       await expect(preview.getByText('Überfällige Kontrolle')).toBeVisible();
       await expect(preview.getByText('Material besorgen')).toBeVisible();
       await expect(preview.getByText('Parzellenzaun prüfen')).toHaveCount(0);
+      await expect(preview.getByText('Bewässerung abgebrochen')).toHaveCount(0);
       await expect(preview.getByRole('button', { name: '„Überfällige Kontrolle“ als erledigt markieren' })).toBeVisible();
       await expect.poll(async () => (await getBed())?.fill).toBe(ordinaryFill);
       await page.keyboard.press('Escape');
@@ -202,6 +206,10 @@ for (const mobile of [false, true]) {
       await expect(page.getByText('Material besorgen')).toBeHidden();
       await page.getByText(/^\d+ erledigte Aufgaben$/).click();
       await expect(page.getByText('Material besorgen')).toBeVisible();
+      await expect(page.getByText('Bewässerung abgebrochen')).toBeHidden();
+      await page.getByText('1 abgebrochene Aufgabe', { exact: true }).click();
+      await expect(page.getByText('Bewässerung abgebrochen')).toBeVisible();
+      await expect(page.getByRole('button', { name: /„Bewässerung abgebrochen“ als erledigt markieren/ })).toHaveCount(0);
     });
   });
 }

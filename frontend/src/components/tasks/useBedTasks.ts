@@ -51,15 +51,18 @@ export function useAreaPlantingPlans(area: GrowingArea, areaId: number | null, s
 
 export function useBedTasks(
   area: GrowingArea, areaId: number | null, seasonId: number | undefined,
-  sharedPlans?: ReturnType<typeof useAreaPlantingPlans>,
+  { sharedPlans, includeCancelled = false }: {
+    sharedPlans?: ReturnType<typeof useAreaPlantingPlans>;
+    includeCancelled?: boolean;
+  } = {},
 ) {
   const internalPlans = useAreaPlantingPlans(area, sharedPlans ? null : areaId, seasonId);
   const plans = sharedPlans ?? internalPlans;
   const scope = areaId === null || seasonId === undefined ? null : `${area}:${areaId}:${seasonId}`;
   const taskRequest = useScopedRead(scope, taskAPI.listAll);
   const rows = taskRequest.rows;
-  const tasksByBed = useMemo(() => rows && plans.rows ? linkTasksToBeds(rows, plans.rows) : NO_BED_TASKS,
-    [plans.rows, rows]);
+  const tasksByBed = useMemo(() => rows && plans.rows ? linkTasksToBeds(rows, plans.rows, includeCancelled) : NO_BED_TASKS,
+    [includeCancelled, plans.rows, rows]);
   return {
     tasksByBed,
     loading: scope !== null && (plans.loading || taskRequest.loading),

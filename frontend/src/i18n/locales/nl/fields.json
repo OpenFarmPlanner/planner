@@ -57,6 +57,9 @@
       "range": "Van {{start}} tot {{end}}",
       "incompletePlan": "Datums of gewas ontbreken",
       "noPlans": "Geen plan voor deze datum of periode.",
+      "cancelledStatus": "Geannuleerd",
+      "cancelledTasks_one": "{{count}} geannuleerde taak",
+      "cancelledTasks_other": "{{count}} geannuleerde taken",
       "completedTasks_one": "{{count}} voltooide taak",
       "completedTasks_other": "{{count}} voltooide taken"
     },
