@@ -124,8 +124,11 @@ test('localized settings fit and retain cleared values after reload', async ({ p
 
   await page.setViewportSize({ width: 375, height: 800 });
   for (const [locale, title] of [
+    ['de', 'Standardmaße für Beete'],
+    ['en', 'Default bed dimensions'],
     ['fr', 'Dimensions des planches par défaut'],
     ['es', 'Medidas predeterminadas de bancales'],
+    ['it', 'Dimensioni predefinite delle aiuole'],
     ['pt', 'Dimensões predefinidas dos canteiros'],
     ['nl', 'Standaardafmetingen van bedden'],
   ]) {
@@ -134,7 +137,10 @@ test('localized settings fit and retain cleared values after reload', async ({ p
     const defaults = page.getByRole('group', { name: title });
     await expect(defaults).toBeVisible();
     await defaults.scrollIntoViewIfNeeded();
-    await expect(defaults.getByRole('textbox')).toHaveCount(2);
+    const dimensions = defaults.getByRole('textbox');
+    await expect(dimensions).toHaveCount(2);
+    await expect(dimensions.nth(0)).toHaveValue('10');
+    await expect(dimensions.nth(1)).toHaveValue(locale === 'en' ? '1.2' : '1,2');
     const bounds = await defaults.boundingBox();
     expect(bounds!.x).toBeGreaterThanOrEqual(0);
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(375);
@@ -152,15 +158,20 @@ test('localized settings fit and retain cleared values after reload', async ({ p
   const width = defaults.getByRole('textbox', { name: 'Breedte (m)' });
   const general = page.getByRole('region', { name: 'Algemeen' });
   const save = general.getByRole('button', { name: 'Opslaan' });
+  const saveAndReadProject = async () => {
+    const updated = page.waitForResponse(response =>
+      response.url().endsWith(`/projects/${projectId}/`) && response.request().method() === 'PATCH',
+    );
+    await save.click();
+    const response = await updated;
+    expect(response.ok()).toBe(true);
+    return response.json();
+  };
   await expect(length).toHaveValue('10');
   await expect(width).toHaveValue('1,2');
   await length.fill('11,5');
   await width.fill('');
-  const updated = page.waitForResponse(response =>
-    response.url().endsWith(`/projects/${projectId}/`) && response.request().method() === 'PATCH',
-  );
-  await save.click();
-  expect(await (await updated).json()).toMatchObject({ default_bed_length_m: 11.5, default_bed_width_m: null });
+  expect(await saveAndReadProject()).toMatchObject({ default_bed_length_m: 11.5, default_bed_width_m: null });
   await expect(save).toBeDisabled();
   await page.reload();
   await expect(length).toHaveValue('11,5');
@@ -169,7 +180,7 @@ test('localized settings fit and retain cleared values after reload', async ({ p
   await general.getByRole('button', { name: 'Annuleren' }).click();
   await expect(length).toHaveValue('11,5');
   await length.fill('');
-  await save.click();
+  expect(await saveAndReadProject()).toMatchObject({ default_bed_length_m: null, default_bed_width_m: null });
   await expect(save).toBeDisabled();
   await page.reload();
   await expect(length).toHaveValue('');
