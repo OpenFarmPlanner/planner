@@ -104,6 +104,7 @@ for (const mobile of [false, true]) {
       await panel.getByRole('switch', { name: 'Aufgaben anzeigen' }).check();
       await expect(panel.getByText('Offen ohne Termin')).toBeVisible();
       await page.keyboard.press('Escape');
+      await expect(panel).toHaveCount(0);
       await expect.poll(async () => (await getBed())?.urgency).toBe('overdue');
       const colored = await getBed();
       expect(colored?.fill).not.toBe(ordinaryFill);
@@ -165,11 +166,13 @@ for (const mobile of [false, true]) {
       await expect.poll(async () => (await getBed())?.fill).toBe(ordinaryFill);
       await page.getByRole('switch', { name: 'Aufgaben anzeigen' }).check();
       await page.keyboard.press('Escape');
+      await expect(panel).toHaveCount(0);
       await expect.poll(async () => (await getBed())?.urgency).toBe('undated');
       expect(taskWrites).toHaveLength(1);
       expect(taskWrites[0]).toMatch(new RegExp(`/tasks/${overdue.id}/$`));
       const { screen } = (await getBed())!;
       const point = { x: Math.round(screen.x + screen.width / 2), y: Math.round(screen.y + screen.height / 2) };
+      await expect.poll(() => page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.tagName, point)).toBe('CANVAS');
       if (mobile) await page.touchscreen.tap(point.x, point.y);
       else await page.mouse.click(point.x, point.y);
       await expect(page).toHaveURL(new RegExp(`/fields-beds/beds/${bedId}$`));
