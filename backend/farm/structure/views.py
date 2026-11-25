@@ -17,6 +17,10 @@ from farm.history import _current_actor_label, _serialize_instance, record_entit
 from farm.history.project_restore import ensure_project_checkpoint
 from farm.history.records import internal_project_versions
 from farm.models import Bed, BedLayout, EntityRevision, Field, FieldLayout, Location, PlantingPlan
+from farm.planning.individual_planting import (
+    lock_individual_parcel,
+    validate_individual_parcel_dimensions,
+)
 from farm.project_context import get_active_project_or_400
 from farm.services.bed_layouts import (
     create_bed_layout,
@@ -165,7 +169,10 @@ class FieldViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewS
             raise DRFValidationError({'name': [FIELD_NAME_DUPLICATE_MESSAGE]}) from exc
         self.record_revision(instance, EntityRevision.ACTION_CREATED)
 
+    @transaction.atomic
     def perform_update(self, serializer):
+        serializer.instance = lock_individual_parcel(serializer.instance)
+        validate_individual_parcel_dimensions(serializer.instance, serializer.validated_data)
         previous_snapshot = _serialize_instance(serializer.instance)
         try:
             instance = serializer.save()

@@ -9,6 +9,7 @@ start day/month, never about calendar-year boundaries.
 import calendar
 from datetime import date, timedelta
 from typing import Any
+from uuid import uuid4
 
 from django.db import transaction
 from django.db.models import Q
@@ -36,6 +37,8 @@ from farm.services.tasks import (
 PLANTING_PLAN_COPY_FIELDS = (
     'crop_id',
     'bed_id',
+    'parcel_id',
+    'estimated_canopy_diameter_m',
     'cultivation_type',
     'planting_date',
     'planned_propagation_start_date',
@@ -246,11 +249,11 @@ def planting_date_fits_period(planting_date: date | None, start_date: date, end_
 
 
 def plan_continues_into_period(
-    bed_id: int | None, planting_date: date | None, occupancy_end: date | None, period_start: date,
+    area_assigned: bool, planting_date: date | None, occupancy_end: date | None, period_start: date,
 ) -> bool:
-    """An older planting still occupies its bed on the first day of the period."""
+    """An older planting remains on its growing area on the first day of the period."""
     return (
-        bed_id is not None and planting_date is not None and occupancy_end is not None
+        area_assigned and planting_date is not None and occupancy_end is not None
         and planting_date < period_start <= occupancy_end
     )
 
@@ -281,6 +284,10 @@ def whole_year_offset_into_period(reference: date, start_date: date, end_date: d
 
 def _season_copy_fields(plan: PlantingPlan, crop_index: GeneralCropIndex | None) -> dict[str, Any]:
     fields = {field: getattr(plan, field) for field in PLANTING_PLAN_COPY_FIELDS}
+    if plan.parcel_id is not None:
+        fields['individual_positions'] = [
+            {**position, 'id': str(uuid4())} for position in plan.individual_positions
+        ]
     if crop_index is None:
         return fields
 
@@ -360,7 +367,8 @@ def build_planting_plan_copies(
     crop_index = build_general_crop_index(source_season.project_id)
     for plan in source_plans:
         if plan_continues_into_period(
-            plan.bed_id, plan.planting_date, plan.occupancy_end_date, target_season.start_date,
+            plan.growing_area_assigned, plan.planting_date, plan.occupancy_end_date,
+            target_season.start_date,
         ):
             continuing_count += 1
             continue
@@ -493,7 +501,7 @@ def _season_copy_count_summary(
 
 def preview_copy_counts(
     *,
-    source_periods: list[tuple[int | None, date | None, date | None, bool]],
+    source_periods: list[tuple[bool, date | None, date | None, bool]],
     target_start: date,
     target_end: date,
 ) -> dict:
@@ -501,8 +509,8 @@ def preview_copy_counts(
     copied = 0
     continuing = 0
     unconfigured = 0
-    for bed_id, planting_date, occupancy_end, ready in source_periods:
-        if plan_continues_into_period(bed_id, planting_date, occupancy_end, target_start):
+    for area_assigned, planting_date, occupancy_end, ready in source_periods:
+        if plan_continues_into_period(area_assigned, planting_date, occupancy_end, target_start):
             continuing += 1
             continue
         if not ready:
@@ -539,7 +547,7 @@ def _transition_copy_placement(
 
 def preview_bridged_copy_counts(
     *,
-    source_periods: list[tuple[int | None, date | None, date | None, bool]],
+    source_periods: list[tuple[bool, date | None, date | None, bool]],
     source_start_year: int,
     transition_start: date, transition_end: date,
     followup_start: date, followup_end: date,
@@ -553,14 +561,14 @@ def preview_bridged_copy_counts(
         'transition': (transition_start, transition_end),
         'followup': (followup_start, followup_end),
     }
-    for bed_id, planting_date, occupancy_end, ready in source_periods:
+    for area_assigned, planting_date, occupancy_end, ready in source_periods:
         placement = _transition_copy_placement(planting_date, source_start_year, periods)
         if placement is None:
             counts['skipped'] += 1
             continue
         key, _ = placement
         start, _ = periods[key]
-        if plan_continues_into_period(bed_id, planting_date, occupancy_end, start):
+        if plan_continues_into_period(area_assigned, planting_date, occupancy_end, start):
             counts['continuing_count'] += 1
         elif not ready:
             counts['unconfigured_perennial_count'] += 1
@@ -602,7 +610,8 @@ def _build_distributed_plan_copies(
         route, month_offset = placement
         season = target_season[route]
         if plan_continues_into_period(
-            plan.bed_id, plan.planting_date, plan.occupancy_end_date, season.start_date,
+            plan.growing_area_assigned, plan.planting_date, plan.occupancy_end_date,
+            season.start_date,
         ):
             continuing_count += 1
             continue
@@ -817,7 +826,7 @@ def serialize_period_transition(raw_transition: dict) -> dict:
 def _preview_creation_copy(
     source: Season,
     target: Season,
-    source_periods: list[tuple[int | None, date | None, date | None, bool]],
+    source_periods: list[tuple[bool, date | None, date | None, bool]],
     use_actual_dates: bool,
 ) -> dict[str, int]:
     if not use_actual_dates:
@@ -838,7 +847,7 @@ def _preview_creation_transition(
     source: Season,
     transition: Season,
     followup: Season,
-    source_periods: list[tuple[int | None, date | None, date | None, bool]],
+    source_periods: list[tuple[bool, date | None, date | None, bool]],
     use_actual_dates: bool,
 ) -> dict[str, dict[str, int]]:
     if use_actual_dates:
@@ -867,12 +876,12 @@ def _preview_creation_transition(
 
 def _planned_copy_periods(
     source: Season | None, use_actual_dates: bool,
-) -> list[tuple[int | None, date | None, date | None, bool]]:
+) -> list[tuple[bool, date | None, date | None, bool]]:
     if source is None or use_actual_dates:
         return []
     crop_index = build_general_crop_index(source.project_id)
     return [
-        (plan.bed_id, plan.planting_date, plan.occupancy_end_date,
+        (plan.growing_area_assigned, plan.planting_date, plan.occupancy_end_date,
          _has_perennial_copy_defaults(plan, crop_index))
         for plan in PlantingPlan.objects.filter(season=source).select_related('crop')
     ]

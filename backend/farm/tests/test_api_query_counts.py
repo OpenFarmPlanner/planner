@@ -758,6 +758,24 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             '/openfarmplanner/api/planting-plans/', 14, expected_rows=2 * ROW_COUNT,
         )
 
+    def test_individual_plant_plans_load_without_per_plan_parcel_queries(self):
+        url = f'/openfarmplanner/api/planting-plans/?individual_location={self.location.pk}'
+        for index in range(ROW_COUNT):
+            plan = PlantingPlan.objects.create(
+                project=self.project, crop=self.crops[index], parcel=self.field,
+                season=self.seasons[index], planting_date=date(2027, 4, 1),
+            )
+            if index == 0:
+                with CaptureQueriesContext(connection) as baseline:
+                    response = self.client.get(url)
+                self.assertEqual(response.data['results'][0]['id'], plan.id)
+        with self.assertNumQueries(len(baseline)):
+            response = self.client.get(url)
+        self.assertEqual(response.data['count'], ROW_COUNT)
+        for plan in response.data['results']:
+            self.assertEqual(plan['parcel_location_id'], self.location.pk)
+            self.assertEqual(plan['parcel_name'], self.field.name)
+
     def test_planting_plans_list_query_count_with_carried_over_plans(self):
         """Carried-over plans resolve their origin season label from the joined
         `season`, so their count must not grow the queries."""
@@ -908,7 +926,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         flagged = [row for row in response.data['results'] if row['timing_window_findings']]
         self.assertEqual(len(flagged), ROW_COUNT)
 
-    def test_planting_plan_site_suitability_uses_the_joined_bed_ancestry(self) -> None:
+    def test_planting_plan_site_suitability_uses_joined_bed_and_parcel_ancestry(self) -> None:
         Crop.objects.filter(project=self.project).update(light_requirement=['full_sun'])
         Location.objects.filter(project=self.project).update(light_condition='shade')
         url = '/openfarmplanner/api/planting-plans/'
@@ -921,9 +939,9 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             if size == ROW_COUNT:
                 for index in range(ROW_COUNT):
                     PlantingPlan.objects.create(
-                        crop=self.crops[index], bed=self.beds[index],
-                        planting_date=date(2027, 8, 1),
-                        area_usage_sqm=5, project=self.project, season=self.seasons[index],
+                        crop=self.crops[index], parcel=self.beds[index].field,
+                        planting_date=date(2027, 8, 1), project=self.project,
+                        season=self.seasons[index],
                     )
 
     def test_planting_plans_list_query_count_with_harvest_overlaps(self):
@@ -1062,7 +1080,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
 
     def test_tasks_list_query_count(self):
         """`planting_plan_name` renders `PlantingPlan.__str__`, which reads the
-        plan's crop and bed."""
+        plan's crop and bed or direct parcel."""
         self.assert_list_query_count('/openfarmplanner/api/tasks/', 5)
         Task.objects.bulk_create([
             Task(title=f'Extra task {index}', project=self.project,
@@ -1071,13 +1089,23 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             for index, task in enumerate(Task.objects.filter(project=self.project))
         ])
         self.assert_list_query_count('/openfarmplanner/api/tasks/', 5, 2 * ROW_COUNT)
+        for index in range(ROW_COUNT):
+            orchard = PlantingPlan.objects.create(
+                project=self.project, crop=self.crops[index], parcel=self.field,
+                season=self.seasons[index],
+            )
+            Task.objects.create(
+                title=f'Orchard task {index}', project=self.project,
+                planting_plan=orchard, season=self.seasons[index],
+            )
+        self.assert_list_query_count('/openfarmplanner/api/tasks/', 5, 3 * ROW_COUNT)
         from django.utils import timezone
 
         Task.objects.create(
             project=self.project, title='Hidden generated identity',
             source_key='plan:999:event:sowing', origin='automatic', deleted_at=timezone.now(),
         )
-        self.assert_list_query_count('/openfarmplanner/api/tasks/', 5, 2 * ROW_COUNT)
+        self.assert_list_query_count('/openfarmplanner/api/tasks/', 5, 3 * ROW_COUNT)
 
 
     def test_task_templates_list_query_count(self) -> None:

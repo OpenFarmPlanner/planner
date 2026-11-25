@@ -26,7 +26,7 @@ HARVEST_DATE_FIELDS = ('actual_harvest_start_date', 'recorded_harvest_end_date')
 def recorded_harvest_plan_ids(plans: QuerySet[PlantingPlan], season: Season) -> list[int]:
     """Find plans with a saved occurrence after their planned occupancy ended."""
     recorded = plans.filter(
-        bed__isnull=False, planting_date__lte=season.end_date,
+        PlantingPlan.assigned_growing_area(), planting_date__lte=season.end_date,
         harvest_occurrence_actuals__has_key='occurrences',
     ).values_list('pk', 'harvest_occurrence_actuals').order_by()
     return [
@@ -46,7 +46,7 @@ def harvest_actual_occurrences(
     planned_start, planned_end = planned
     planned_here = HarvestActualDates(planned_start, planned_end).intersects(season)
     if plan.season_id != season.pk and not (
-        plan.bed_id and plan.planting_date and plan.planting_date <= season.end_date
+        plan.growing_area_assigned and plan.planting_date and plan.planting_date <= season.end_date
         and (planned_here or actual.intersects(season))
     ):
         return history

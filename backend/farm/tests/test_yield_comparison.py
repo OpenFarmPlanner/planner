@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal
+from uuid import uuid4
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -452,6 +453,66 @@ class YieldComparisonTest(TestCase):
         self.assertEqual(row['assigned_forecast_plan_count'], 1)
         self.assertEqual(row['expected_plan_count'], 2)
         self.assertFalse(row['comparable'])
+
+    def add_individual_orchard(self, *, clearing_date=date(2038, 4, 1)):
+        field = Field.objects.create(
+            project=self.project,
+            location=Location.objects.create(project=self.project, name='Farm'),
+            name='Orchard', width_m=10, length_m=18,
+        )
+        crop = Crop.objects.create(
+            project=self.project, name='Apple', life_cycle='perennial', standing_time_years=12,
+            expected_yield=2, harvest_method='per_plant', annual_harvest_window='07-01/07-10',
+        )
+        return PlantingPlan.objects.create(
+            project=self.project, season=self.previous, crop=crop, parcel=field,
+            planting_date=date(2026, 4, 1), clearing_date=clearing_date,
+            individual_positions=[
+                {'id': str(uuid4()), 'x_m': 2, 'y_m': offset} for offset in (5, 10)
+            ],
+        )
+
+    def test_scoped_individual_forecast_harvest_and_losses_use_the_parcel(self):
+        orchard = self.add_individual_orchard()
+        day = date(2027, 7, 5)
+        self.add_harvest(day, 3, 'kg', [(orchard, 3, None)], crop=orchard.crop)
+        loss = CropLoss.objects.create(
+            project=self.project, planting_plan=orchard, date=day, loss_type='partial',
+            cause='frost', extent_unit='plants', extent_value=1,
+        )
+        filters = {'crop_id': orchard.crop_id, 'season_window': '3'}
+        for scope in ({'field_id': orchard.parcel_id}, {'location_id': orchard.parcel.location_id}):
+            with self.subTest(scope=scope):
+                response = self.client.get(self.url, {**filters, **scope})
+                self.assertEqual(response.status_code, 200, response.data)
+                rows = response.json()['seasons']
+                row = next(item for item in rows if item['id'] == self.current.id)
+                self.assertEqual(row['forecast_kg'], '4')
+                self.assertEqual(row['recorded']['measured_kg'], '3')
+                self.assertEqual(row['excluded_unassigned_records'], 0)
+                self.assertIn((loss.id, 'Orchard'), [
+                    (item['id'], item['parcel_name']) for item in row['losses']
+                ])
+        bed = Bed.objects.create(project=self.project, field=orchard.parcel, name='Vegetables')
+        only_bed = self.client.get(self.url, {**filters, 'bed_id': bed.id}).json()['seasons']
+        row = next(item for item in only_bed if item['id'] == self.current.id)
+        self.assertIsNone(row['forecast_kg'])
+        self.assertIsNone(row['recorded']['measured_kg'])
+
+    def test_repeated_individual_forecasts_distinguish_a_changed_stem_count(self):
+        orchard = self.add_individual_orchard(clearing_date=self.previous.end_date)
+        copies = [
+            copy_planting_plans(source_season=self.previous, target_season=self.current)[0][0]
+            for _ in range(2)
+        ]
+        row = self.rows(orchard.crop)[self.current.id]
+        self.assertEqual(row['forecast_kg'], '4')
+        self.assertEqual(row['forecast_plan_count'], 1)
+        copies[1].individual_positions.append({'id': str(uuid4()), 'x_m': 5, 'y_m': 10})
+        copies[1].save(update_fields=['individual_positions'])
+        grown = self.rows(orchard.crop)[self.current.id]
+        self.assertEqual(grown['forecast_kg'], '10')
+        self.assertEqual(grown['forecast_plan_count'], 2)
 
     def test_chart_catalog_and_details_are_project_scoped_and_exclude_deleted_seasons(self):
         foreign = Project.objects.create(name='Foreign garden', slug='foreign-garden')

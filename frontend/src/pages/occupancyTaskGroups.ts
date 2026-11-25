@@ -34,7 +34,7 @@ export function buildOccupancyTaskGroups({
   expandedIds: expandedHierarchyIds,
   t,
 }: BuildOccupancyTaskGroupsOptions): GanttTaskGroup[] {
-  // Structural filter: "only occupied beds" removes empty beds (and any
+  // The empty-bed filter removes empty beds (and any
   // now-childless field/location ancestors) from the tree entirely,
   // independent of expand/collapse state.
   const structurallyVisibleIds = onlyOccupiedBeds
@@ -42,7 +42,7 @@ export function buildOccupancyTaskGroups({
       occupancyHierarchyNodes,
       new Set(
         occupancyHierarchyNodes
-          .filter((node) => node.type === 'bed' && node.occupiedBedCount > 0)
+          .filter((node) => node.type === 'individual' || (node.type === 'bed' && node.occupiedBedCount > 0))
           .map((node) => node.id),
       ),
     )
@@ -67,10 +67,10 @@ export function buildOccupancyTaskGroups({
 
   let visibleIds: Set<string | number> | null = null;
   if (isActivelyFiltering) {
-    const matchedBedIds = new Set(
+    const matchedPlanGroupIds = new Set(
       prunedNodes
         .filter((node) => {
-          if (node.type !== 'bed') {
+          if (node.type !== 'bed' && node.type !== 'individual') {
             return false;
           }
           if (occupancyLocationFilter !== 'all' && node.locationId !== occupancyLocationFilter) {
@@ -95,7 +95,7 @@ export function buildOccupancyTaskGroups({
         })
         .map((node) => node.id),
     );
-    visibleIds = collectVisibleIdsWithAncestors(prunedNodes, matchedBedIds);
+    visibleIds = collectVisibleIdsWithAncestors(prunedNodes, matchedPlanGroupIds);
   }
 
   // Summaries come from the filtered node set (structural "nur belegte
@@ -133,10 +133,8 @@ export function buildOccupancyTaskGroups({
       // rendered in the timeline area instead (see TaskRow's
       // `emptyRowLabel` handling), not as a second line in the left column.
       emptyRowLabel,
-      // Standort/Parzelle rows have no bars of their own, so they don't
-      // need a full task-row height — Beet rows keep the normal,
-      // task-count-based height (rowHeightOverride left unset).
-      rowHeightOverride: node.type === 'bed' ? undefined : OCCUPANCY_COMPACT_ROW_HEIGHT,
+      // Rows with their own bars keep the task-count-based height.
+      rowHeightOverride: node.type === 'bed' || node.type === 'individual' ? undefined : OCCUPANCY_COMPACT_ROW_HEIGHT,
       locationId: node.locationId,
       fieldId: node.fieldId,
       bedId: node.bedId,

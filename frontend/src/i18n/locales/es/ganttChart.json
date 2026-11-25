@@ -217,7 +217,7 @@
     "searchPlaceholderSeedlings": "Buscar por cultivo…",
     "allLocations": "Todas las ubicaciones",
     "allFields": "Todas las parcelas",
-    "onlyOccupiedBeds": "Solo bancales ocupados",
+    "onlyOccupiedBeds": "Ocultar los bancales vacíos",
     "filterButton": "Filtrar",
     "filterButtonWithCount": "Filtrar ({{count}})",
     "locationLabel": "Ubicación",

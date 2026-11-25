@@ -14,12 +14,13 @@ The service has two persistent-data entry points:
   the `seed_demo_project` management command.
 
 The template currently creates the `Solawi Sonnenacker` / `Sunny Acre CSA`
-project with three locations, six fields, twenty beds, three suppliers, thirty
+project with three locations, six fields, twenty beds, three suppliers, thirty-two
 crop-library rows, seed package data for the planned varieties, and
-sixty-eight planting plans across four seasons. The current season and the
-preceding season each contain twenty-three plans, with twenty-one two seasons
-back and one three seasons back. The following season starts with no plans
-and is available as a copy destination. The season years are derived from today's date
+sixty-nine planting plans across four seasons. The current season contains
+twenty-four plans and the preceding season contains twenty-three, with
+twenty-one two seasons back and one three seasons back. The following season
+starts with no plans of its own and is available as a copy destination.
+The season years are derived from today's date
 (`demo_current_year()`), never hardcoded, so the history stays inside the
 crop rotation check window in every year. `populate_demo_project` takes an
 optional `current_year` for time-pinned specs; the E2E fixture endpoint
@@ -233,6 +234,13 @@ Lettuce 1 is overdue, Tomato Row 1 is due soon, Lettuce 2 is due later,
 Herbs & Chard has open work without a date, and Cucumber Row is complete.
 Tomato Row 2 has no applicable tasks. The fence task on the leased North Plot
 stays on the task board. Open a bed's details to complete one of its tasks.
+
+In Farm Garden, open **Individual plants** in the graphical view and select
+the North Early Beds plot. Its three Topaz apple trees share one plan, with
+an estimated canopy diameter of 3.8 m. Their stems retain their IDs as the
+planting continues into the following season. Select a stem to inspect its
+coordinates or edit them with the map or the keyboard. The nearby lettuce
+beds retain their ordinary capacity.
 
 The explicit command-line public-library fixture also copies botanical names,
 germination fields and shareable general-crop companions. Project-only tags,

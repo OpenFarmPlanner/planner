@@ -286,6 +286,7 @@
   "siteSuitability": {
     "title": "Condizioni di coltivazione",
     "lightMismatch": "La coltura è adatta a {{crop}}. L’esposizione dell’aiuola è registrata come {{bed}}.",
+    "parcelLightMismatch": "La coltura è adatta a {{crop}}. Per la parcella è indicato {{bed}}.",
     "waterMismatch": "La coltura ha un fabbisogno idrico elevato. L’umidità del suolo risulta {{moisture}} e l’irrigazione {{irrigation}}."
   },
   "rotation": {
@@ -631,9 +632,9 @@
       "ends": "Termina"
     },
     "descriptions": {
-      "only": "Occupa l’aiuola solo in questa stagione.",
-      "starts": "Inizia in questa stagione e occupa l’aiuola anche oltre.",
-      "continues": "Occupa l’aiuola prima, durante e dopo questa stagione.",
+      "only": "Cresce qui solo in questa stagione.",
+      "starts": "Inizia in questa stagione e continua a crescere dopo.",
+      "continues": "Cresce prima, durante e dopo questa stagione.",
       "ends": "È iniziata prima di questa stagione e termina durante la stagione."
     }
   }

@@ -490,8 +490,8 @@ def recurring_harvest_schedule(
 
 def early_recorded_planting_candidates(start: date, end: date) -> Q:
     """Select possible early carry-ins before resolving crop inheritance in bulk."""
-    return Q(
-        bed__isnull=False, crop__isnull=False, planting_date__gte=start,
+    return PlantingPlan.assigned_growing_area() & Q(
+        crop__isnull=False, planting_date__gte=start,
         occupied_until__gte=start,
     ) & (
         Q(actual_sowing_date__lte=end, actual_sowing_date__lt=F('planting_date'))
@@ -522,11 +522,11 @@ def early_recorded_perennial_plan_ids(
 def recurring_plan_visible_in_season(
     plan: PlantingPlan, season: Season, schedule: RecurringHarvestSchedule,
 ) -> bool:
-    """Keep the owning plan and any assigned bed occupancy intersecting the season."""
+    """Keep the owning plan and assignments that intersect the season."""
     if plan.season_id == season.pk:
         return True
     return bool(
-        plan.bed_id is not None
+        plan.growing_area_assigned
         and plan.planting_date is not None
         and schedule.occupied_from is not None and schedule.occupied_from <= season.end_date
         and schedule.occupied_until is not None and schedule.occupied_until >= season.start_date

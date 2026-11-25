@@ -242,32 +242,32 @@ describe('OccupancyFilterRow', () => {
   describe('the only-occupied-beds switch', () => {
     it('reflects the current setting', () => {
       renderRow({ onlyOccupiedBeds: true });
-      expect(screen.getByRole('checkbox', { name: 'Nur belegte Beete' })).toBeChecked();
+      expect(screen.getByRole('checkbox', { name: 'Leere Beete ausblenden' })).toBeChecked();
     });
 
     it('starts unchecked when the page says so', () => {
       renderRow({ onlyOccupiedBeds: false });
-      expect(screen.getByRole('checkbox', { name: 'Nur belegte Beete' })).not.toBeChecked();
+      expect(screen.getByRole('checkbox', { name: 'Leere Beete ausblenden' })).not.toBeChecked();
     });
 
     it('reports being switched on', async () => {
       const user = userEvent.setup();
       const { onOnlyOccupiedBedsChange } = renderRow({ onlyOccupiedBeds: false });
-      await user.click(screen.getByRole('checkbox', { name: 'Nur belegte Beete' }));
+      await user.click(screen.getByRole('checkbox', { name: 'Leere Beete ausblenden' }));
       expect(onOnlyOccupiedBedsChange).toHaveBeenCalledExactlyOnceWith(true);
     });
 
     it('reports being switched off', async () => {
       const user = userEvent.setup();
       const { onOnlyOccupiedBedsChange } = renderRow({ onlyOccupiedBeds: true });
-      await user.click(screen.getByRole('checkbox', { name: 'Nur belegte Beete' }));
+      await user.click(screen.getByRole('checkbox', { name: 'Leere Beete ausblenden' }));
       expect(onOnlyOccupiedBedsChange).toHaveBeenCalledExactlyOnceWith(false);
     });
 
     it('is reachable by its visible label', async () => {
       const user = userEvent.setup();
       const { onOnlyOccupiedBedsChange } = renderRow();
-      await user.click(screen.getByText('Nur belegte Beete'));
+      await user.click(screen.getByText('Leere Beete ausblenden'));
       expect(onOnlyOccupiedBedsChange).toHaveBeenCalledExactlyOnceWith(true);
     });
   });

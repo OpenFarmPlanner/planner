@@ -90,6 +90,9 @@ const backendMessageMap: Record<string, string> = {
   'selected supplier does not belong to the active project.': 'errors.selectedSupplierProjectMismatch',
   'crop_project_mismatch': 'errors.cropProjectMismatch',
   'crop does not belong to the active project.': 'errors.cropProjectMismatch',
+  'crop_variety_conflict': 'crops:form.duplicateNameVariety',
+  'individual_plant_lifecycle_conflict': 'crops:siteHealth.individualPlantLifecycleConflict',
+  'parcel_contains_individual_positions': 'fields:individualPlants.dimensionsConflict',
   'season_copy_no_preceding_source': 'navigation:seasonSwitcher.copyDialog.noPrecedingSource',
   'season_copy_source_not_preceding': 'navigation:seasonSwitcher.copyDialog.sourceChanged',
   'this crop species already exists or has already been proposed.': 'library.publishWizard.speciesAlreadyExists',
@@ -233,11 +236,9 @@ export function extractApiErrorMessage(
       );
     }
 
-    if (
-      status === 409 && data && typeof data === 'object'
-      && 'code' in data && data.code === 'crop_variety_conflict'
-    ) {
-      return translatedOrFallback(t, 'crops:form.duplicateNameVariety', fallbackMessage);
+    if (status === 409 && data && typeof data === 'object' && isErrorEnvelope(data)
+      && typeof data.code === 'string' && Object.hasOwn(backendMessageMap, data.code)) {
+      return translatedOrFallback(t, backendMessageMap[data.code], fallbackMessage);
     }
 
     // Check if it's a 400 validation error

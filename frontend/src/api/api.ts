@@ -527,6 +527,8 @@ export const plantingPlanAPI = {
   listAll: (signal?: AbortSignal) => fetchAllPaginated<PlantingPlan>('/planting-plans/', signal),
   listForArea: (type: 'bed' | 'field' | 'location', id: number, signal?: AbortSignal) =>
     fetchAllPaginated<PlantingPlan>(`/planting-plans/?${type}=${id}`, signal),
+  listIndividualAtLocation: (id: number, signal?: AbortSignal) =>
+    fetchAllPaginated<PlantingPlan>(`/planting-plans/?individual_location=${id}`, signal),
   get: (id: number) => http.get<PlantingPlan>(`/planting-plans/${id}/`),
   getAcrossSeasons: (id: number, signal?: AbortSignal, harvestYear?: number, recordSeasonId?: number) =>
     http.get<import('./types').PlantingPlanDetail>(`/planting-plans/${id}/`, {
@@ -536,6 +538,11 @@ export const plantingPlanAPI = {
       }, signal,
     }),
   create: (data: PlantingPlan) => http.post<PlantingPlan>('/planting-plans/', withActiveProject(data)),
+  createIndividual: (data: Pick<PlantingPlan, 'crop' | 'parcel' | 'planting_date' | 'cultivation_type'>
+    & import('./types').IndividualPlacementInput) =>
+    http.post<PlantingPlan>('/planting-plans/', data),
+  saveIndividualPlacement: (id: number, placement_updated_at: string, data: import('./types').IndividualPlacementInput) =>
+    http.patch<PlantingPlan>(`/planting-plans/${id}/individual-placement/`, { ...data, placement_updated_at }),
   update: (id: number, data: PlantingPlan) => http.put<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),
   patch: (id: number, data: Partial<PlantingPlan>) => http.patch<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),
   saveHarvestActualDates: (id: number, recordSeasonId: number, data: HarvestActualDateUpdate) =>

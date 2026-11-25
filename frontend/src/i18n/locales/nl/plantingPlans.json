@@ -279,6 +279,7 @@
   "siteSuitability": {
     "title": "Geschiktheid van de standplaats",
     "lightMismatch": "Het gewas is geschikt voor {{crop}}. Het licht op het bed staat geregistreerd als {{bed}}.",
+    "parcelLightMismatch": "Het gewas is geschikt voor {{crop}}. Voor het perceel is {{bed}} opgegeven.",
     "waterMismatch": "Het gewas heeft veel water nodig. Het bodemvocht staat geregistreerd als {{moisture}} en irrigatie als {{irrigation}}."
   },
   "rotation": {
@@ -615,9 +616,9 @@
       "ends": "Eindigt"
     },
     "descriptions": {
-      "only": "Bezet het bed alleen in dit seizoen.",
-      "starts": "Begint dit seizoen en bezet het bed daarna ook.",
-      "continues": "Bezet het bed vóór, tijdens en na dit seizoen.",
+      "only": "Groeit hier alleen in dit seizoen.",
+      "starts": "Begint dit seizoen en groeit daarna door.",
+      "continues": "Groeit vóór, tijdens en na dit seizoen.",
       "ends": "Begon vóór dit seizoen en eindigt tijdens dit seizoen."
     }
   }

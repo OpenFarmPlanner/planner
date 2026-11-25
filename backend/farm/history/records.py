@@ -162,8 +162,8 @@ def _entity_display_name(instance) -> str:
         return format_crop_display_name(instance.name, instance.variety) or ''
     if isinstance(instance, PlantingPlan):
         crop_label = format_crop_display_name(instance.crop.name, instance.crop.variety) if instance.crop_id else None
-        bed_label = instance.bed.name if instance.bed_id else None
-        return ' / '.join(part for part in (crop_label, bed_label) if part)
+        area = instance.bed or instance.parcel
+        return ' / '.join(part for part in (crop_label, area.name if area else None) if part)
     if isinstance(instance, (CropSupplierData, SeedPackage)):
         return format_crop_display_name(instance.crop.name, instance.crop.variety) if instance.crop_id else ''
     if isinstance(instance, CropCompanion):

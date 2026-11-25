@@ -71,7 +71,8 @@ export function HarvestDialog({ record, plan, initialDate, onClose, onSaved }: H
   const [suggestionState, setSuggestionState] = useState({ key: '', error: false });
   const [allocations, setAllocations] = useState<AllocationDraft[]>(() => record
     ? record.allocations.map((row, key) => ({
-      key, planId: row.planting_plan, label: [row.bed_name, row.season_label].filter(Boolean).join(' · '),
+      key, planId: row.planting_plan,
+      label: [row.bed_name || row.parcel_name, row.season_label].filter(Boolean).join(' · '),
       quantity: inputNumber(row.quantity), area: inputNumber(row.harvested_area_sqm),
     }))
     : plan ? [{ key: 0, planId: plan.id, label: plan.label, quantity: '', area: '', useTotal: true }] : []);

@@ -279,6 +279,7 @@
   "siteSuitability": {
     "title": "Site suitability",
     "lightMismatch": "The crop is suited to {{crop}}. The bed’s light is recorded as {{bed}}.",
+    "parcelLightMismatch": "This crop is suited to {{crop}}. The parcel is recorded as {{bed}}.",
     "waterMismatch": "The crop has high water needs. Soil moisture is recorded as {{moisture}}, and irrigation as {{irrigation}}."
   },
   "rotation": {
@@ -615,9 +616,9 @@
       "ends": "Ends"
     },
     "descriptions": {
-      "only": "Occupies the bed only in this season.",
-      "starts": "Starts this season and occupies the bed beyond it.",
-      "continues": "Occupies the bed before, during and after this season.",
+      "only": "Grows here only during this season.",
+      "starts": "Starts this season and keeps growing after it.",
+      "continues": "Grows before, during and after this season.",
       "ends": "Started before this season and ends in this season."
     }
   }

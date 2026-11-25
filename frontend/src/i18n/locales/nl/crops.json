@@ -2136,7 +2136,8 @@
     "legacyLifeCycleOption": "{{value}} (bestaande waarde)",
     "legacyLifeCycleHint": "Deze opgeslagen waarde blijft behouden, tenzij je een andere levenscyclus kiest.",
     "standingTimeHelp": "Bepaalt de voorgestelde einddatum van de teelt.",
-    "standingTimeRequired": "Voer een geheel getal van minstens 1 in."
+    "standingTimeRequired": "Voer een geheel getal van minstens 1 in.",
+    "individualPlantLifecycleConflict": "Gewassen met plannen voor individuele planten moeten meerjarig blijven."
   },
   "taskTemplates": {
     "title": "Taaksjablonen",

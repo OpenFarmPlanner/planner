@@ -1,0 +1,177 @@
+import { useEffect, useRef, useState } from 'react';
+import { isAxiosError } from 'axios';
+import { plantingPlanAPI } from '../api/api';
+import type {
+  IndividualPlacementInput, PlantingPlan, PlanCultivationType, Season, StemCoordinates,
+} from '../api/types';
+import { formatDateToAPI } from '../utils/isoDate';
+
+export const MAX_INDIVIDUAL_POSITIONS = 1000;
+export type DraftStem = StemCoordinates & { id?: string; key: string };
+
+interface Draft {
+  planId?: number;
+  expectedUpdatedAt?: string;
+  parcel: number;
+  crop: number | null;
+  date: string;
+  cultivation: PlanCultivationType | '';
+  canopy: number | string | null | undefined;
+  stems: DraftStem[];
+}
+
+interface Editor {
+  open: boolean;
+  parcel: number | null;
+  planId: number | null;
+  selectedKey: string | null;
+  draft: Draft | null;
+  placing: 'add' | 'move' | null;
+  saving: boolean;
+  error: 'saveFailed' | 'changedElsewhere' | null;
+}
+
+const initialEditor: Editor = {
+  open: false, parcel: null, planId: null, selectedKey: null,
+  draft: null, placing: null, saving: false, error: null,
+};
+
+type PlanResult = { key: string; plans: PlantingPlan[]; failed: boolean };
+
+export function useIndividualPlants(
+  location: number | null, season: Season | undefined, canEdit: boolean, requestedPlan?: number,
+) {
+  const scope = location && season?.id ? `${location}:${season.id}` : '';
+  const [attempt, setAttempt] = useState(0);
+  const key = `${scope}:${attempt}`;
+  const [result, setResult] = useState<PlanResult | null>(null);
+  const [state, setState] = useState({ scope, editor: initialEditor });
+  const nextStemId = useRef(0);
+  const revealedPlan = useRef<number | undefined>(undefined);
+  const saving = useRef(false);
+  if (state.scope !== scope) setState({ scope, editor: initialEditor });
+  const editor = state.scope === scope ? state.editor : initialEditor;
+  const current = result?.key === key ? result : null;
+  const plans = current?.plans ?? [];
+
+  useEffect(() => {
+    if (!location || !scope) return;
+    const abort = new AbortController();
+    void plantingPlanAPI.listIndividualAtLocation(location, abort.signal).then(({ results }) => {
+      if (abort.signal.aborted) return;
+      setResult({ key, plans: results, failed: false });
+      const requested = requestedPlan !== revealedPlan.current
+        ? results.find(plan => plan.id === requestedPlan) : undefined;
+      if (!requested?.id || !requested.parcel) return;
+      revealedPlan.current = requested.id;
+      setState(value => value.scope === scope ? {
+        scope, editor: {
+          ...initialEditor, open: true, planId: requested.id ?? null, parcel: requested.parcel ?? null,
+          selectedKey: requested.individual_positions?.[0]?.id ?? null,
+        },
+      } : value);
+    }).catch(() => {
+      if (!abort.signal.aborted) setResult({ key, plans: [], failed: true });
+    });
+    return () => abort.abort();
+  }, [location, scope, key, requestedPlan]);
+
+  const update = (changes: Partial<Editor> | ((source: Editor) => Partial<Editor>)) => {
+    setState(value => {
+      if (value.scope !== scope) return value;
+      const next = typeof changes === 'function' ? changes(value.editor) : changes;
+      return { scope, editor: { ...value.editor, ...next } };
+    });
+  };
+
+  const updateDraft = (changes: Partial<Draft>) => update(value => ({
+    draft: value.draft ? { ...value.draft, ...changes } : null, error: null,
+  }));
+
+  const select = (planId: number | null, parcel: number | null, selectedKey: string | null = null) => {
+    update(value => value.draft
+      ? ((value.draft.planId ?? null) === planId ? { selectedKey } : {})
+      : { open: true, planId, parcel, selectedKey });
+  };
+
+  const startDraft = (parcel: number, plan?: PlantingPlan) => {
+    if (!canEdit || !season || saving.current) return;
+    const today = formatDateToAPI(new Date());
+    const defaultDate = today < season.start_date ? season.start_date
+      : today > season.end_date ? season.end_date : today;
+    update({
+      open: true, placing: null, error: null, parcel, planId: plan?.id ?? null,
+      selectedKey: plan?.individual_positions?.[0]?.id ?? null,
+      draft: {
+        planId: plan?.id, expectedUpdatedAt: plan?.updated_at, parcel,
+        crop: plan?.crop ?? null, date: plan?.planting_date ?? defaultDate,
+        cultivation: plan?.cultivation_type ?? '',
+        canopy: plan?.estimated_canopy_diameter_m,
+        stems: plan?.individual_positions?.map(stem => ({ ...stem, key: stem.id })) ?? [],
+      },
+    });
+  };
+
+  const addStem = (point: StemCoordinates) => {
+    const stem = { ...point, key: `new-${nextStemId.current++}` };
+    update(value => {
+      if (!value.draft || value.draft.stems.length >= MAX_INDIVIDUAL_POSITIONS) return {};
+      return {
+        draft: { ...value.draft, stems: [...value.draft.stems, stem] },
+        placing: null, selectedKey: stem.key, error: null,
+      };
+    });
+  };
+
+  const changeStem = (stemKey: string, point: StemCoordinates | null) => update(value => {
+    if (!value.draft) return {};
+    const stems = point
+      ? value.draft.stems.map(stem => stem.key === stemKey ? { ...stem, ...point } : stem)
+      : value.draft.stems.filter(stem => stem.key !== stemKey);
+    return {
+      draft: { ...value.draft, stems }, error: null, placing: null,
+      selectedKey: point ? stemKey : stems[0]?.key ?? null,
+    };
+  });
+
+  const save = async () => {
+    const draft = editor.draft;
+    if (!canEdit || !draft || saving.current) return;
+    saving.current = true;
+    update({ saving: true, error: null, placing: null });
+    const data: IndividualPlacementInput = {
+      individual_positions: draft.stems.map(({ id, x_m, y_m }) => ({ id, x_m, y_m })),
+      ...(draft.canopy === undefined ? {} : { estimated_canopy_diameter_m: draft.canopy }),
+    };
+    try {
+      const { data: plan } = draft.planId && draft.expectedUpdatedAt
+        ? await plantingPlanAPI.saveIndividualPlacement(draft.planId, draft.expectedUpdatedAt, data)
+        : await plantingPlanAPI.createIndividual({
+          ...data, parcel: draft.parcel, crop: draft.crop, planting_date: draft.date,
+          cultivation_type: draft.cultivation,
+        });
+      setResult(value => value?.key === key ? {
+        ...value, plans: [...value.plans.filter(item => item.id !== plan.id), plan],
+      } : value);
+      update({
+        draft: null, saving: false, planId: plan.id ?? null,
+        selectedKey: plan.individual_positions?.[0]?.id ?? null,
+      });
+    } catch (error) {
+      update({
+        saving: false,
+        error: isAxiosError(error) && error.response?.status === 409 ? 'changedElsewhere' : 'saveFailed',
+      });
+    } finally {
+      saving.current = false;
+    }
+  };
+
+  return {
+    plans, editor, canEdit, update, updateDraft, select, startDraft, addStem, changeStem, save,
+    loading: Boolean(scope) && !current, failed: current?.failed ?? false,
+    refresh: () => setAttempt(value => value + 1),
+  };
+}
+
+export type IndividualPlantsController = ReturnType<typeof useIndividualPlants>;

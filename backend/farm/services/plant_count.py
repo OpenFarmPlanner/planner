@@ -1,4 +1,4 @@
-"""Plant count of a planting plan from its area and the crop's spacing.
+"""Plant count of a planting plan from its positions or area and crop spacing.
 
 One implementation for every consumer: the ``plants_count`` column of the
 planting-plans API and the young-plant demand
@@ -29,7 +29,9 @@ def compute_plan_plant_count(
     plan: PlantingPlan,
     general_crop_index: GeneralCropIndex | None = None,
 ) -> PlantCountResult:
-    """Plants on ``plan.area_usage_sqm`` (m²) at the crop's effective spacing, rounded."""
+    """Count confirmed stems, or derive the count for an area-based plan."""
+    if plan.parcel_id is not None:
+        return PlantCountResult(count=len(plan.individual_positions))
     blockers: list[str] = []
     area = Decimal(str(plan.area_usage_sqm)) if plan.area_usage_sqm else Decimal('0')
     if not area.is_finite() or area <= 0:

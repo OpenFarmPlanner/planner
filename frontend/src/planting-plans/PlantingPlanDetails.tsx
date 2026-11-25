@@ -14,12 +14,14 @@ import { DetailPageActions } from '../components/layout/DetailPageActions';
 import { DetailSection } from '../components/layout/DetailPrimitives';
 import { detailHeaderRowSx, detailHeaderTitleColumnSx, detailHeaderTitleTextSx } from '../components/layout/detailHeaderStyles';
 import LoadRetryButton from '../components/LoadRetryButton';
+import { SiteSuitabilityHints } from '../components/planting-plans/rotation/SiteSuitabilityHints';
 import ProjectRequiredState from '../components/project/ProjectRequiredState';
 import { formatCropDisplayName } from '../crops/cropDisplay';
 import { HarvestRecords } from '../harvests/HarvestRecords';
 import { useNavigationBlocker } from '../hooks/useNavigationBlocker';
 import { useProjectRequirement } from '../hooks/useProjectRequirement';
 import { useTranslation } from '../i18n';
+import { individualPlantGraphicPath } from './individualPlantRoutes';
 import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
 import {
   DIRECT_SOWING, getPlanPropagationInfo, PRE_CULTIVATION, PURCHASED_TRANSPLANT,
@@ -45,7 +47,7 @@ type PlanLoad = { plan: PlantingPlanDetail; recordSeasonId: number | undefined }
 type HarvestWindowSelection = { seasonId: number | undefined; year?: number; dirty: boolean };
 
 export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: PlantingPlanDetailsProps) {
-  const { t, i18n } = useTranslation(['plantingPlans', 'common', 'harvests']);
+  const { t, i18n } = useTranslation(['plantingPlans', 'common', 'harvests', 'fields']);
   const { activeProjectId, isAuthLoading, missingProjectReason } = useProjectRequirement();
   const context = useOutletContext<RootLayoutOutletContext | null>();
   const activeSeasonId = context?.activeSeason?.id;
@@ -266,6 +268,21 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
                 </Box>)}
               </Box>
             </DetailSection>}
+            {loadedPlan.parcel && loadedPlan.parcel_location_id && (
+              <DetailSection title={t('fields:individualPlants.title')} outlined>
+                <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
+                  <Typography>{t('fields:individualPlants.count', {
+                    count: loadedPlan.plants_count ?? 0,
+                    formatted: formatLocalizedNumber(loadedPlan.plants_count ?? 0, locale),
+                  })}</Typography>
+                  <SiteSuitabilityHints findings={loadedPlan.site_suitability_findings} scope="field" />
+                  <Button component={RouterLink}
+                    to={individualPlantGraphicPath(loadedPlan.id, loadedPlan.parcel_location_id)}>
+                    {t('fields:individualPlants.openGraphic')}
+                  </Button>
+                </Stack>
+              </DetailSection>
+            )}
             {loadedPlan.previous_season_reference && <PreviousSeasonReference
               reference={loadedPlan.previous_season_reference} activeSeasonId={context?.activeSeason?.id}
               switchSeason={context?.switchActiveSeason} />}
@@ -365,7 +382,7 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
                       plan={loadedPlan.crop_available && loadedPlan.crop !== null
                         && (!loadedPlan.carried_over || recordSeasonHasOccupancy) ? {
                         id: loadedPlan.id, crop: loadedPlan.crop, cropLabel: cropName,
-                        label: [loadedPlan.bed_name, season?.label, date(loadedPlan.planting_date)].filter(Boolean).join(' · '),
+                        label: [loadedPlan.bed_name || loadedPlan.parcel_name, season?.label, date(loadedPlan.planting_date)].filter(Boolean).join(' · '),
                       } : undefined}
                       onChanged={() => { setAttempt(value => value + 1); onChanged(); }} />
                   </DetailSection>

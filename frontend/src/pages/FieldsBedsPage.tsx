@@ -65,9 +65,11 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   const { t } = useTranslation(['fields', 'hierarchy', 'common']);
   const navigate = useNavigate();
   const location = useLocation();
+  const query = new URLSearchParams(location.search);
+  const requestedIndividualPlan = Number(query.get('individualPlan')) || undefined;
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const stored = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY);
-    return stored === 'graphical' ? 'graphical' : 'table';
+    return requestedIndividualPlan || stored === 'graphical' ? 'graphical' : 'table';
   });
   // A `?highlight=` deep link (e.g. "Beet/Parzelle/Standort öffnen" from the
   // Gantt calendar) only has scroll-to/flash support in the table view
@@ -149,8 +151,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   const setTopbarContextActions = outletContext?.setTopbarContextActions;
   const setTopbarTitleActions = outletContext?.setTopbarTitleActions;
   const [locationSelection, setLocationSelection] = useState(() => {
-    let id: number | null = null;
-    try { const stored = Number(sessionStorage.getItem(`graphicalLocation.${projectId}`)); id = stored > 0 ? stored : null; }
+    let id: number | null = requestedIndividualPlan ? Number(query.get('locationId')) || null : null;
+    try { const stored = Number(sessionStorage.getItem(`graphicalLocation.${projectId}`)); id ??= stored > 0 ? stored : null; }
     catch { /* Storage may be disabled. */ }
     return { locations, id };
   });
@@ -556,6 +558,9 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             showModeToggle={false}
             showFreeAreas={showFreeAreas}
             activeSeasonId={outletContext?.activeSeason?.id}
+            individualSeason={outletContext?.activeSeason ?? undefined}
+            canEditIndividualPlants={Boolean(activeProjectMembership)}
+            requestedIndividualPlan={requestedIndividualPlan}
             onOpenBed={id => navigate(getEntityDetailPath('bed', id))}
             hierarchyData={hierarchyData}
           />

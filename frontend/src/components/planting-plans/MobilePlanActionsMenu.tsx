@@ -57,7 +57,7 @@ export function MobilePlanActionsMenu({
         icon={action.icon} disabled={Boolean(action.disabledReason)} disabledReason={action.disabledReason}
         onClick={() => { onClose(); action.activate(anchorEl); }} />)}
       {navigationActions.length > 0 && <Divider role="separator" />}
-      {!row?.carried_over && <ContextMenuActionItem
+      {!row?.carried_over && !row?.parcel && <ContextMenuActionItem
         label={t("common:actions.edit")}
         icon={<EditIcon fontSize="small" />}
         onClick={() => {
@@ -67,7 +67,7 @@ export function MobilePlanActionsMenu({
           onClose();
         }}
       />}
-      {!row?.carried_over && <ContextMenuActionItem
+      {!row?.carried_over && !row?.parcel && <ContextMenuActionItem
         label={t("common:actions.duplicate")}
         icon={<ContentCopyIcon fontSize="small" />}
         onClick={() => {

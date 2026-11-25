@@ -200,6 +200,9 @@ FR/ES/IT: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Erntebeginn | Harvest start | Début de récolte | Inicio de cosecha | inizio della raccolta | início da colheita | begin oogst |
 | Ernteende | Harvest end | Fin de récolte | Fin de cosecha | fine della raccolta | fim da colheita | einde oogst |
 | Räumungsdatum † | Crop removal date | Date de fin de culture | Fecha de fin del cultivo | Data di fine coltivazione | Data de fim da cultura | Einddatum teelt |
+| Einzelpflanze | Individual plant | Plante individuelle | Planta individual | Pianta singola | Planta individual | Individuele plant |
+| Stammposition | Stem position | Position du tronc | Posición del tronco | Posizione del tronco | Posição do tronco | Stampositie |
+| Kronendurchmesser (geschätzt) | Estimated canopy diameter | Diamètre estimé du houppier | Diámetro estimado de copa | Diametro stimato della chioma | Diâmetro estimado da copa | Geschatte kroondiameter |
 | Saisonstatus | Season status | Statut dans la saison | Estado en la temporada | Stato nella stagione | Estado na época | Seizoensstatus |
 | Weiterlaufende Kulturen | Continued crops | Cultures en cours depuis une autre saison | Cultivos que continúan | Colture che proseguono | Culturas que continuam | Doorlopende teelten |
 | Termine (Terminanzeige) | Dates | Dates | Fechas | Date | Datas | Datums |
@@ -214,6 +217,12 @@ FR/ES/IT: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Anbauplanung (Einstellungen) | Crop planning | Planification des cultures | Planificación de cultivos | pianificazione colturale | planeamento de culturas | teeltplanning |
 | Pflanzen (Anzahl) | Plants | Plants | Plantas | piante | plantas | planten |
 | Aufgabe | Task | Tâche | Tarea | attività | tarefa | taak |
+
+The stem position is a point. Estimated canopy diameter describes the crown
+projection. French horticultural guidance uses *diamètre du houppier*, and
+Portuguese agricultural guidance uses *diâmetro da copa*.
+[CAUE measurement guide](https://www.baremedelarbre.fr/wp-content/uploads/2020/07/Fiche-mesurer-les-arbres-CAUE77.pdf)
+[IFAP land delineation guide](https://www.ifap.pt/portal/documents/182/6687838/Conceitos_Regras%2Bde%2BDelimita%C3%A7%C3%A3oOut%2B2023.pdf/6fb2ea5b-3a19-52cd-afe1-c68dfd4ab6bc?t=1701687827805)
 
 ## Community and moderation
 

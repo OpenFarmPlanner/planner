@@ -129,21 +129,21 @@ class YieldComparisonScope:
     def includes_plan(self, plan: PlantingPlan) -> bool:
         if not self.has_area_filter:
             return True
-        bed = _assigned_bed(plan)
-        return bool(bed and (
-            (self.location_id is None or bed.field.location_id == self.location_id)
-            and (self.field_id is None or bed.field_id == self.field_id)
-            and (self.bed_id is None or bed.pk == self.bed_id)
+        parcel = _assigned_parcel(plan)
+        return bool(parcel and (
+            (self.location_id is None or parcel.location_id == self.location_id)
+            and (self.field_id is None or parcel.pk == self.field_id)
+            and (self.bed_id is None or plan.bed_id == self.bed_id)
         ))
 
 
-def _assigned_bed(plan: PlantingPlan) -> Bed | None:
-    bed = plan.bed
-    if bed is None or bed.project_id != plan.project_id:
+def _assigned_parcel(plan: PlantingPlan) -> Field | None:
+    if plan.bed_id is not None and plan.bed.project_id != plan.project_id:
         return None
-    if bed.field.project_id != plan.project_id or bed.field.location.project_id != plan.project_id:
+    parcel = plan.growing_area_parcel
+    if parcel is None or parcel.project_id != plan.project_id:
         return None
-    return bed
+    return parcel if parcel.location.project_id == plan.project_id else None
 
 
 def _comparison_crops(project: Project) -> QuerySet[Crop]:
@@ -284,6 +284,7 @@ def _activity_dates(
 ) -> dict:
     return {
         'id': plan.pk, 'bed_name': plan.bed.name if plan.bed_id else '',
+        'parcel_name': plan.parcel.name if plan.parcel_id else '',
         'cultivation_type': plan.cultivation_type,
         'crop_label': format_crop_label(plan.crop, language_code, plan.crop.project.region),
         **_crop_timing(plan.crop, crop_index),
@@ -362,7 +363,7 @@ def _record_harvest(
             continue
         remainder -= allocation.quantity
         if plan.pk not in scoped_plans:
-            missing_area |= _assigned_bed(plan) is None
+            missing_area |= _assigned_parcel(plan) is None
             continue
         _record_harvest_allocation(row, harvest, allocation, plan)
         if has_area_filter:
@@ -391,6 +392,7 @@ def _record_harvest_allocation(
     row.harvested_areas.append({
         'id': allocation.pk, 'date': harvest.date, 'plan_id': plan.pk,
         'bed_name': plan.bed.name if plan.bed_id else '',
+        'parcel_name': plan.parcel.name if plan.parcel_id else '',
         'area_sqm': harvest_number(area),
         'kg_per_sqm': harvest_number(weight / area) if weight is not None else None,
         'estimated': estimated is not None,
@@ -545,6 +547,7 @@ def _record_window_losses(
                 **loss,
                 'extent_value': harvest_number(loss['extent_value']),
                 'bed_name': plan.bed.name if plan.bed_id else '',
+                'parcel_name': plan.parcel.name if plan.parcel_id else '',
             })
 
 
@@ -578,7 +581,9 @@ def build_yield_comparison(
             project=project, crop_id__in=crop_ids,
         ).filter(
             Q(season__project=project, season__deleted_at__isnull=True) | Q(season__isnull=True),
-        ).select_related('bed__field__location', 'crop__project', 'crop__crop_species')
+        ).select_related(
+            'bed__field__location', 'parcel__location', 'crop__project', 'crop__crop_species',
+        )
         .prefetch_related('crop__crop_species__translations').order_by('pk')
     }
     scoped_plans = {pk: plan for pk, plan in plans.items() if scope.includes_plan(plan)}

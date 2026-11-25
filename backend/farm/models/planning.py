@@ -1,10 +1,13 @@
 """Planning: planting plans and tasks."""
 
 from datetime import date, timedelta
+from decimal import Decimal
 from typing import Any
 
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import Q
 from django.db.models.functions import Coalesce
 
 from .base import TimestampedModel
@@ -15,7 +18,7 @@ from .structure import Bed, Field
 
 
 class PlantingPlan(TimestampedModel):
-    """A planting schedule linking a crop to a bed with dates."""
+    """A planting schedule for a bed area or individual plants on a parcel."""
     ACTUAL_DATE_FIELDS = frozenset({
         'actual_propagation_start_date', 'actual_sowing_date', 'actual_transplanting_date',
         'actual_harvest_start_date', 'recorded_harvest_end_date',
@@ -46,6 +49,20 @@ class PlantingPlan(TimestampedModel):
         null=True,
         blank=True,
         help_text="Optional until the plan is fully filled in — a plan can be saved as a draft before a bed is chosen.",
+    )
+    parcel = models.ForeignKey(
+        Field, on_delete=models.CASCADE, related_name='individual_planting_plans',
+        null=True, blank=True,
+        help_text='Direct parcel assignment for individual plants.',
+    )
+    individual_positions = models.JSONField(
+        default=list, blank=True,
+        help_text='Individual IDs and stem coordinates in metres relative to the parcel.',
+    )
+    estimated_canopy_diameter_m = models.DecimalField(
+        max_digits=7, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(Decimal('0.01'))],
+        help_text='Optional estimated canopy diameter in metres for each plant in this plan.',
     )
     cultivation_type = models.CharField(
         max_length=30,
@@ -231,6 +248,20 @@ class PlantingPlan(TimestampedModel):
         """The inclusive last day of a plan's occupancy for queryset filtering."""
         return Coalesce('clearing_date', 'harvest_end_date', 'harvest_date', 'planting_date')
 
+    @staticmethod
+    def assigned_growing_area() -> Q:
+        return Q(bed__isnull=False) | Q(parcel__isnull=False)
+
+    @property
+    def growing_area_assigned(self) -> bool:
+        return self.bed_id is not None or self.parcel_id is not None
+
+    @property
+    def growing_area_parcel(self) -> Field | None:
+        if self.parcel_id is not None:
+            return self.parcel
+        return self.bed.field if self.bed_id is not None else None
+
     @property
     def occupancy_end_date(self) -> date | None:
         return (
@@ -335,12 +366,22 @@ class PlantingPlan(TimestampedModel):
     def __str__(self) -> str:
         """Return a string combining crop, bed, and planting date."""
         crop_label = self.crop.name if self.crop else '–'
-        bed_label = self.bed.name if self.bed else '–'
+        area = self.bed or self.parcel
+        area_label = area.name if area else '–'
         date_label = self.planting_date or '–'
-        return f"{crop_label} in {bed_label} - {date_label}"
+        return f"{crop_label} in {area_label} - {date_label}"
 
     class Meta:
         ordering = ['-planting_date']
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(parcel__isnull=True) | Q(
+                    bed__isnull=True, crop__isnull=False, area_usage_sqm__isnull=True,
+                    quantity__isnull=True,
+                ),
+                name='individual_plant_plan_has_crop_without_bed_area_or_quantity',
+            ),
+        ]
         indexes = [
             models.Index(fields=['project', '-planting_date']),
             models.Index(fields=['project', 'bed', 'planting_date', 'harvest_end_date']),

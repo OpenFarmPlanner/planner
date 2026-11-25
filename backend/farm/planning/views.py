@@ -43,6 +43,10 @@ from farm.models import (
     Season,
     Task,
 )
+from farm.planning.individual_planting import (
+    check_placement_on_current_parcel,
+    lock_and_check_individual_crop,
+)
 from farm.project_context import get_active_project_or_400, resolve_season_id_from_request
 from farm.services.actual_harvest import (
     HARVEST_DATE_FIELDS,
@@ -425,6 +429,10 @@ class YieldComparisonView(generics.GenericAPIView):
         OpenApiParameter(
             'location', int, description='Limit plans assigned to beds at this location.',
         ),
+        OpenApiParameter(
+            'individual_location', int,
+            description='Limit to individual plant plans at this location.',
+        ),
     ]),
     retrieve=extend_schema(parameters=[SEASON_HEADER_PARAMETER, OpenApiParameter(
         'across_seasons', bool,
@@ -450,7 +458,8 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
     queryset = (
         PlantingPlan.objects
         .select_related(
-            'crop', 'crop__crop_species', 'crop__project', 'bed__field__location',
+            'crop', 'crop__crop_species', 'crop__project',
+            'bed__field__location', 'parcel__location',
             'created_by', 'updated_by',
             'rotation_conflict_accepted_by', 'season',
         )
@@ -493,7 +502,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         record_season = resolve_record_season(self.request) if across_seasons else None
         season_id = record_season.pk if record_season is not None else season_id
         if season_id is not None:
-            if self.action in {'list', 'retrieve'}:
+            if self.action in {'list', 'retrieve', 'individual_placement'}:
                 queryset = self._read_season_plans(
                     queryset, season_id, across_seasons, record_season=record_season,
                 )
@@ -501,19 +510,13 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
                 queryset = queryset.filter(season_id=season_id)
         elif across_seasons:
             queryset = queryset.filter(season__deleted_at__isnull=True)
+        if self.action == 'individual_placement':
+            if season_id is None:
+                return queryset.none()
+            queryset = queryset.filter(parcel__isnull=False)
         if self.action == 'list':
-            for name, lookup in (
-                ('bed', 'bed_id'),
-                ('field', 'bed__field_id'),
-                ('location', 'bed__field__location_id'),
-            ):
-                value = self.request.query_params.get(name)
-                if value is not None:
-                    try:
-                        queryset = queryset.filter(**{lookup: int(value)})
-                    except ValueError:
-                        return queryset.none()
-        if self.action in {'list', 'retrieve'}:
+            queryset = self._filter_by_growing_area(queryset)
+        if self.action in {'list', 'retrieve', 'individual_placement'}:
             allocations = HarvestAllocation.objects.filter(
                 project=self.request.active_project,
             ).select_related('harvest').only(
@@ -529,6 +532,26 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
                 'harvest_allocations', queryset=allocations, to_attr='visible_harvest_allocations',
             ))
             queryset = self._with_crop_loss_count(queryset, season)
+        return queryset
+
+    def _filter_by_growing_area(self, queryset: QuerySet[PlantingPlan]) -> QuerySet[PlantingPlan]:
+        for name, lookup in (
+            ('bed', 'bed_id'),
+            ('field', 'bed__field_id'),
+            ('location', 'bed__field__location_id'),
+            ('individual_location', 'parcel__location_id'),
+        ):
+            value = self.request.query_params.get(name)
+            if value is None:
+                continue
+            try:
+                area_id = int(value)
+            except ValueError:
+                return queryset.none()
+            area_filter = Q(**{lookup: area_id})
+            if name == 'field':
+                area_filter |= Q(parcel_id=area_id)
+            queryset = queryset.filter(area_filter)
         return queryset
 
     def _with_crop_loss_count(
@@ -556,14 +579,14 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             return queryset if across_seasons else queryset.none()
         self._harvest_season = active_season
         queryset = queryset.alias(occupied_until=PlantingPlan.occupancy_end_expression())
-        starts_before = Q(
-            bed__isnull=False,
+        assigned = PlantingPlan.assigned_growing_area()
+        starts_before = assigned & Q(
             planting_date__lt=active_season.start_date,
             occupied_until__gte=active_season.start_date,
         )
         bounds = (active_season.start_date, active_season.end_date)
-        recorded_harvest_overlap = Q(
-            bed__isnull=False, planting_date__lte=active_season.end_date,
+        recorded_harvest_overlap = assigned & Q(
+            planting_date__lte=active_season.end_date,
         ) & (
             Q(actual_harvest_start_date__range=bounds) | Q(recorded_harvest_end_date__range=bounds)
             | Q(actual_harvest_start_date__lt=active_season.start_date,
@@ -577,7 +600,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             candidates, project_id, active_season.start_date, active_season.end_date,
         )
         carries = starts_before | Q(pk__in=early_plans) | recorded_harvest_overlap
-        if self.action in {'list', 'retrieve'}:
+        if self.action in {'list', 'retrieve', 'individual_placement'}:
             after_occupancy = candidates.alias(
                 occupied_until=PlantingPlan.occupancy_end_expression(),
             ).exclude(carries)
@@ -591,6 +614,10 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
 
     @transaction.atomic
     def perform_create(self, serializer: PlantingPlanSerializer) -> None:
+        data = serializer.validated_data
+        if data.get('parcel') is not None:
+            lock_and_check_individual_crop(data['crop'])
+            check_placement_on_current_parcel(data['parcel'], data['individual_positions'])
         current_user = self.request.user if self.request.user.is_authenticated else None
         extra_fields = {}
         if 'season' not in serializer.validated_data:
@@ -609,6 +636,25 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         self._lock_plan()
         return super().update(request, *args, **kwargs)
 
+    @action(detail=True, methods=['patch'], url_path='individual-placement')
+    @transaction.atomic
+    def individual_placement(self, request, pk: str | None = None) -> Response:
+        """Edit geometry on an individual plan visible in the selected season."""
+        self._lock_plan()
+        plan = self.get_object()
+        fields = {'individual_positions', 'estimated_canopy_diameter_m'}
+        if not isinstance(request.data, dict) or (
+            not request.data.keys() & fields
+            or request.data.keys() - fields - {'placement_updated_at'}
+        ):
+            raise serializers.ValidationError(
+                'Only individual placement fields can be edited here.',
+            )
+        serializer = self.get_serializer(plan, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
     def _lock_plan(self) -> PlantingPlan:
         return generics.get_object_or_404(
             PlantingPlan.objects.select_for_update().filter(project=self.request.active_project),
@@ -617,6 +663,13 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
 
     @transaction.atomic
     def perform_update(self, serializer: PlantingPlanSerializer) -> None:
+        data = serializer.validated_data
+        crop = data.get('crop')
+        plan = serializer.instance
+        if plan.parcel_id and crop is not None and crop.pk != plan.crop_id:
+            lock_and_check_individual_crop(crop)
+        if plan.parcel_id and 'individual_positions' in data:
+            check_placement_on_current_parcel(plan.parcel, data['individual_positions'])
         current_user = self.request.user if self.request.user.is_authenticated else None
         previous_snapshot = _serialize_instance(serializer.instance)
         actual_dates_only = serializer.is_actual_date_update(serializer.validated_data)
@@ -744,7 +797,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
 
         project_id = request.active_project.pk
         candidates = PlantingPlan.objects.filter(
-            project_id=project_id, bed__isnull=False, crop__isnull=False,
+            PlantingPlan.assigned_growing_area(), project_id=project_id, crop__isnull=False,
             planting_date__isnull=False,
         )
         plans = self._read_season_plans(candidates, season_id, across_seasons=False)
@@ -1150,7 +1203,9 @@ class TaskViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSe
     # resolve references, but changing them stays session-only in this
     # version (see farm/agent_api/permissions.py).
     api_token_actions = {'list', 'retrieve'}
-    queryset = Task.objects.select_related('planting_plan', 'planting_plan__crop', 'planting_plan__bed').all()
+    queryset = Task.objects.select_related(
+        'planting_plan__crop', 'planting_plan__bed', 'planting_plan__parcel',
+    )
     serializer_class = TaskSerializer
 
     def get_queryset(self) -> QuerySet[Task]:
@@ -1180,7 +1235,8 @@ class TaskViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSe
         if field_id is not None:
             queryset = queryset.filter(
                 Q(planting_plan__isnull=True, field_id=field_id)
-                | Q(planting_plan__bed__field_id=field_id),
+                | Q(planting_plan__bed__field_id=field_id)
+                | Q(planting_plan__parcel_id=field_id),
             )
         return queryset.filter(**filters.validated_data)
 

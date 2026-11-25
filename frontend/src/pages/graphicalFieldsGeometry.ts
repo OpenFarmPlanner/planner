@@ -8,6 +8,7 @@ import type { ViewportPadding, ViewportState } from "./graphicalViewport";
 import type { Dispatch, SetStateAction } from "react";
 import type { GraphicalRotation } from "./graphicalLayoutUtils";
 import type { MetricCoverage } from "../components/hierarchy/utils/growingAreaGeometry";
+import type { Season } from "../api/types";
 
 export interface Point {
   x: number;
@@ -66,6 +67,9 @@ export interface GraphicalFieldsProps {
   showModeToggle?: boolean;
   showFreeAreas?: boolean;
   activeSeasonId?: number;
+  individualSeason?: Season;
+  canEditIndividualPlants?: boolean;
+  requestedIndividualPlan?: number;
   onOpenBed?: (id: number) => void;
   hierarchyData?: HierarchyDataState;
   selectedLocationId?: number | null;

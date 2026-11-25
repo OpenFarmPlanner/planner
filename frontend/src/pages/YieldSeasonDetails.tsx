@@ -19,7 +19,10 @@ const perArea = (value: string, locale: string) => `${number(value, locale)} kg/
 
 function SeasonObservations({ row, plans, locale }: {
   row: YieldComparisonSeason;
-  plans: { id: number; bed_name: string; crop_label?: string; activities: PlantingPlanDateComparison[] }[];
+  plans: {
+    id: number; bed_name: string; parcel_name?: string; crop_label?: string;
+    activities: PlantingPlanDateComparison[];
+  }[];
   locale: string;
 }) {
   const { t } = useTranslation('yieldOverview');
@@ -31,7 +34,7 @@ function SeasonObservations({ row, plans, locale }: {
       {plans.map(plan => <Box key={plan.id} sx={{ pt: 1 }}>
         <Link component={RouterLink} to={plantingPlanDetailPath(plan.id)}
           sx={{ display: 'inline-flex', alignItems: 'center', minHeight: 44 }}>
-          {[plan.crop_label, plan.bed_name].filter(Boolean).join(' · ') || t('comparison.openPlan')}
+          {[plan.crop_label, plan.bed_name || plan.parcel_name].filter(Boolean).join(' · ') || t('comparison.openPlan')}
         </Link>
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr))', gap: 1 }}>
           {plan.activities.map(dates => <PlanDateComparisonText key={dates.activity} dates={dates} />)}
@@ -44,7 +47,7 @@ function SeasonObservations({ row, plans, locale }: {
         {row.harvested_areas.map(area => <Box component="li" key={area.id} sx={{ mb: 0.5 }}>
           {[
             formatSeasonDate(area.date, locale),
-            area.bed_name,
+            area.bed_name || area.parcel_name,
             `${number(area.area_sqm, locale)} m²`,
             area.kg_per_sqm === null ? t('comparison.noMass') : area.estimated
               ? t('comparison.estimated', { value: perArea(area.kg_per_sqm, locale) })
@@ -58,7 +61,7 @@ function SeasonObservations({ row, plans, locale }: {
       <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5 }}>
         {row.losses.map(loss => <Box component="li" key={loss.id} sx={{ mb: 0.5 }}>
           {[
-            formatSeasonDate(loss.date, locale), loss.bed_name,
+            formatSeasonDate(loss.date, locale), loss.bed_name || loss.parcel_name,
             planting(`cropLosses.types.${loss.loss_type}`),
             planting(`cropLosses.causes.${loss.cause}`),
             formatCropLossExtent(loss, locale, planting),
@@ -76,7 +79,7 @@ function SeasonSummary({ row, timing, locale }: {
   const { t: harvest } = useTranslation('harvests');
   const totals = row.recorded.quantities;
   const activityPlans = row.plan_dates.map(plan => ({
-    id: plan.id, bed_name: plan.bed_name, crop_label: plan.crop_label,
+    id: plan.id, bed_name: plan.bed_name, parcel_name: plan.parcel_name, crop_label: plan.crop_label,
     activities: getPlanActivityDates({ ...timing, ...plan }).filter(date => date.planned || date.actual),
   })).filter(plan => plan.activities.length > 0);
   const hasDetails = activityPlans.length > 0 || row.harvested_areas.length > 0 || row.losses.length > 0;

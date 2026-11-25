@@ -62,7 +62,8 @@ not inheritable and stay the Sorte's own.
    rate is expressed in:
    - `g_per_m2` / `seeds_per_m2` → `plan.area_usage_sqm × rate`
    - `g_per_lfm` / `seeds_per_lfm` → `(area_usage_sqm / crop.row_spacing_m) × rate`
-   - `seeds_per_plant` → `plan.quantity × rate`
+   - `seeds_per_plant` → `plan.quantity × rate` for an area-based plan or
+     confirmed stem count × rate for an individual plant plan
 
    If the plan's `cultivation_type` is set but isn't (or is no longer) one of
    the crop's enabled `cultivation_types`, the plan is silently excluded

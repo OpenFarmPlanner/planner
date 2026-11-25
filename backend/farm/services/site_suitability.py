@@ -1,13 +1,16 @@
-"""Advisory crop and bed checks based on explicit, effective site values."""
+"""Advisory crop checks based on the effective conditions of a bed or parcel."""
 
 from typing import Any
 
 from farm.crop_light import normalize_crop_light
-from farm.models import Bed, Crop
+from farm.models import Bed, Crop, Field
 from farm.services.crop_inheritance import GeneralCropIndex, resolve_crop_field
-from farm.services.site_conditions import effective_conditions_for_bed
+from farm.services.site_conditions import (
+    effective_conditions_for_bed,
+    effective_conditions_for_field,
+)
 
-CROP_LIGHT_BY_BED_LIGHT = {
+CROP_LIGHT_BY_SITE_LIGHT = {
     'sunny': 'full_sun',
     'partial_shade': 'partial_shade',
     'shade': 'shade',
@@ -15,19 +18,23 @@ CROP_LIGHT_BY_BED_LIGHT = {
 
 
 def check_site_suitability(
-    crop: Crop | None, bed: Bed | None, index: GeneralCropIndex,
+    crop: Crop | None, site: Bed | Field | None, index: GeneralCropIndex,
 ) -> list[dict[str, Any]]:
-    if crop is None or bed is None or crop.project_id != bed.project_id:
+    if crop is None or site is None or crop.project_id != site.project_id:
         return []
-    if bed.field.project_id != bed.project_id or bed.field.location.project_id != bed.project_id:
+    parcel = site.field if isinstance(site, Bed) else site
+    if parcel.project_id != crop.project_id or parcel.location.project_id != crop.project_id:
         return []
 
-    conditions = effective_conditions_for_bed(bed)
+    conditions = (
+        effective_conditions_for_bed(site) if isinstance(site, Bed)
+        else effective_conditions_for_field(parcel)
+    )
     findings: list[dict[str, Any]] = []
     allowed = normalize_crop_light(resolve_crop_field(crop, 'light_requirement', index))
     light = conditions['light_condition']
-    bed_light = CROP_LIGHT_BY_BED_LIGHT.get(light.value or '')
-    if allowed and bed_light and bed_light not in allowed:
+    site_light = CROP_LIGHT_BY_SITE_LIGHT.get(light.value or '')
+    if allowed and site_light and site_light not in allowed:
         findings.append({
             'code': 'light_mismatch',
             'crop_light': allowed,

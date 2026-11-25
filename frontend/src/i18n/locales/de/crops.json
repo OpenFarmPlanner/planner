@@ -2136,7 +2136,8 @@
     "legacyLifeCycleOption": "{{value}} (Bestandswert)",
     "legacyLifeCycleHint": "Dieser vorhandene Wert bleibt erhalten, solange du keine andere Lebensdauer wählst.",
     "standingTimeHelp": "Bestimmt das vorgeschlagene Räumungsdatum.",
-    "standingTimeRequired": "Gib eine ganze Zahl ab 1 ein."
+    "standingTimeRequired": "Gib eine ganze Zahl ab 1 ein.",
+    "individualPlantLifecycleConflict": "Kulturen mit Einzelpflanzenplänen müssen mehrjährig bleiben."
   },
   "taskTemplates": {
     "title": "Aufgabenvorlagen",

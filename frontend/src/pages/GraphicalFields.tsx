@@ -16,6 +16,7 @@ import RotateLeftIcon from "@mui/icons-material/RotateLeft";
 import RotateRightIcon from "@mui/icons-material/RotateRight";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
 import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
+import ParkOutlinedIcon from "@mui/icons-material/ParkOutlined";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
@@ -40,6 +41,9 @@ import { GraphicalBedTasksControl } from "./GraphicalBedTasksControl";
 import { bedTaskColors, BED_TASK_SYMBOLS } from "./graphicalBedTaskStyle";
 import { bedTaskDateBounds, summarizeBedTasks } from "../components/tasks/bedTaskUrgency";
 import { useBedTasks } from "../components/tasks/useBedTasks";
+import { useIndividualPlants } from "./useIndividualPlants";
+import { GraphicalIndividualPlantsLayer, type CanvasStem } from "./GraphicalIndividualPlantsLayer";
+import { GraphicalIndividualPlantsPanel } from "./GraphicalIndividualPlantsPanel";
 import { GraphicalGeometryWarnings } from "./GraphicalGeometryWarnings";
 import { GraphicalSnapGuides } from "./GraphicalSnapGuides";
 import { analyzeGraphicalGeometry, getGeometryOutlines, getGraphicalBedLayout, type GeometryPreview, type GraphicalParcel, type OutlineKind } from "./graphicalAreaGeometry";
@@ -126,6 +130,9 @@ export default function GraphicalFields({
   showModeToggle = true,
   showFreeAreas = false,
   activeSeasonId,
+  individualSeason,
+  canEditIndividualPlants = false,
+  requestedIndividualPlan,
   onOpenBed,
   hierarchyData,
   selectedLocationId,
@@ -146,6 +153,9 @@ export default function GraphicalFields({
   const { loading, error, locations, fields, beds } = hierarchyData ?? internalHierarchyData;
   const activeLocationId = locations.find(location => location.id === selectedLocationId)?.id
     ?? locations.find(location => typeof location.id === 'number' && location.id > 0)?.id ?? null;
+  const individualPlants = useIndividualPlants(
+    activeLocationId, individualSeason, canEditIndividualPlants, requestedIndividualPlan,
+  );
   const [showBedTasks, setShowBedTasks] = useState(false);
   const bedTasks = useBedTasks('location', showBedTasks ? activeLocationId : null, activeSeasonId);
   const bounds = bedTaskDateBounds(new Date());
@@ -1055,6 +1065,9 @@ export default function GraphicalFields({
           }
           const contentBounds = getContentBoundsForLocation(locationId);
           const locationIsEditable = isLocationEditMode(locationId);
+          const showIndividualPanel = individualSeason && individualPlants.editor.open && !locationIsEditable
+            && fullscreenLocationId !== locationId;
+          const stemDraft = showIndividualPanel ? individualPlants.editor.draft : null;
           const viewport =
             viewportByLocation[locationId] ??
             fitBoundsToStage(
@@ -1083,6 +1096,10 @@ export default function GraphicalFields({
                     {snapping.enabled ? <> {t("fields:graphical.spacing.bypass")}</> : null}
                   </Alert>
                 ) : null}
+                <Box sx={{
+                  display: "grid", alignItems: "start", gap: showIndividualPanel ? 1.5 : 0,
+                  gridTemplateColumns: { xs: "minmax(0, 1fr)", md: showIndividualPanel ? "minmax(0, 1fr) 324px" : "minmax(0, 1fr)" },
+                }}>
                 <Box
                   ref={(node: HTMLDivElement | null) => {
                     locationCanvasRefs.current[locationId] = node;
@@ -1128,6 +1145,16 @@ export default function GraphicalFields({
                         })))}
                         summaries={taskSummaries} loading={bedTasks.loading} failed={bedTasks.failed}
                         onRetry={bedTasks.refresh} onOpenBed={onOpenBed} />}
+                      {individualSeason && !locationIsEditable && fullscreenLocationId !== locationId && (
+                        <AppTooltip title={t("fields:individualPlants.title")}>
+                          <IconButton aria-label={t("fields:individualPlants.title")}
+                            aria-expanded={Boolean(showIndividualPanel)}
+                            color={showIndividualPanel ? "primary" : "default"}
+                            onClick={() => individualPlants.update({ open: !showIndividualPanel, placing: null })}>
+                            <ParkOutlinedIcon />
+                          </IconButton>
+                        </AppTooltip>
+                      )}
                       <Stack direction={{ xs: "column", sm: "row" }} spacing={0}>
                         {([-1, 1] as const).map(direction => (
                           <AppTooltip disableInteractive key={direction} title={t(direction === -1 ? "fields:graphical.rotateLeft" : "fields:graphical.rotateRight")} placement="left">
@@ -1421,6 +1448,21 @@ export default function GraphicalFields({
                         const baseRect = { field, width: fieldSize.width, height: fieldSize.height };
                         const parcelReport = geometry.parcelReports.get(fieldId);
                         const bedWarnings = getGeometryOutlines(parcelReport?.issues ?? []);
+                        const canvasStems: CanvasStem[] = individualPlants.plans.flatMap(plan => (
+                          plan.parcel === fieldId && plan.id !== stemDraft?.planId
+                            ? (plan.individual_positions ?? []).map(stem => ({
+                              ...stem, key: stem.id, planId: plan.id ?? null,
+                              canopy: Number(plan.estimated_canopy_diameter_m ?? 0),
+                              selected: Boolean(showIndividualPanel) && stem.id === individualPlants.editor.selectedKey,
+                            })) : []
+                        ));
+                        if (stemDraft?.parcel === fieldId) {
+                          canvasStems.push(...stemDraft.stems.map(stem => ({
+                            ...stem, planId: stemDraft.planId ?? null,
+                            canopy: Number(stemDraft.canopy ?? 0),
+                            selected: stem.key === individualPlants.editor.selectedKey,
+                          })));
+                        }
                         const bedSpacing = pixelsPerMeter
                           ? { centimeters: pathSpacing.bed_path_spacing_cm, pixelsPerMeter }
                           : undefined;
@@ -1567,6 +1609,26 @@ export default function GraphicalFields({
                                 );
                               })
                               : null}
+                            {pixelsPerMeter && (
+                              <GraphicalIndividualPlantsLayer field={field} surface={fieldUsableArea}
+                                pixelsPerMeter={pixelsPerMeter} rotation={rotation} zoom={viewport.scale}
+                                stems={canvasStems}
+                                placing={stemDraft?.parcel === fieldId && Boolean(individualPlants.editor.placing)}
+                                editablePlanId={stemDraft?.parcel === fieldId && !individualPlants.editor.saving
+                                  ? stemDraft.planId ?? null : undefined}
+                                onAdd={position => {
+                                  const { placing, selectedKey } = individualPlants.editor;
+                                  if (placing === "move" && selectedKey) individualPlants.changeStem(selectedKey, position);
+                                  if (placing === "add") individualPlants.addStem(position);
+                                  const panel = containerRef.current?.querySelector<HTMLElement>("[data-individual-plants-panel]");
+                                  panel?.focus({ preventScroll: true });
+                                  panel?.scrollIntoView({ block: "nearest" });
+                                }}
+                                onMove={individualPlants.changeStem}
+                                onSelect={!locationIsEditable && fullscreenLocationId !== locationId
+                                  ? stem => individualPlants.select(stem.planId, fieldId, stem.key)
+                                  : undefined} />
+                            )}
                           </Group>
                         );
                       })}
@@ -1574,6 +1636,20 @@ export default function GraphicalFields({
                       <GraphicalSnapGuides guides={activeGuides} scale={viewport.scale} />
                     </Layer>
                   </Stage>
+                </Box>
+                {showIndividualPanel && (
+                  <GraphicalIndividualPlantsPanel fields={parcels.map(({ field }) => field)}
+                    season={individualSeason} controller={individualPlants}
+                    onFocusParcel={fieldId => {
+                      const field = fieldRectsById.get(fieldId);
+                      const bounds = field ? getContentBoundsFromRects([field]) : null;
+                      if (!bounds) return;
+                      const next = fitBoundsToStage(bounds, { width: stageWidth, height: stageHeight },
+                        getFitViewportPadding(stageWidth, stageHeight));
+                      setViewportByLocation(previous => ({ ...previous, [locationId]: next }));
+                      locationCanvasRefs.current[locationId]?.scrollIntoView({ block: "nearest" });
+                    }} />
+                )}
                 </Box>
             </Box>
           );

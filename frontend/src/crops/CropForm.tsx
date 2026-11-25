@@ -287,7 +287,7 @@ export function CropForm({
   publicIdentityReadOnly = false,
   saveErrorOverride,
 }: CropFormProps) {
-  const { t, i18n } = useTranslation('crops');
+  const { t, i18n } = useTranslation(['crops', 'fields']);
   const isEdit = Boolean(crop);
   const isProjectForm = variant === 'project';
   // Groups are the project's own labels; the library form has none.
@@ -604,6 +604,11 @@ export function CropForm({
       return true;
     }
     const result = validateCrop(draft, t, mode, requireVariety, seedRateUnitConstraints);
+    const canopy = draft.estimated_canopy_diameter_m;
+    if (canopy != null && !(Number(canopy) >= 0.01 && Number(canopy) <= 99999.99)) {
+      result.errors.estimated_canopy_diameter_m = t('fields:individualPlants.canopyInvalid');
+      result.isValid = false;
+    }
     const lifeCycle = draft.life_cycle || inheritedLifeCycle;
     const standingTime = draft.standing_time_years ?? inheritedStandingTime;
     const previousCycle = crop?.effective_values?.life_cycle ?? crop?.life_cycle;
@@ -1535,6 +1540,17 @@ export function CropForm({
                 companion planting, display colour, notes. */}
             <Divider aria-hidden />
             <LifeCycleFields {...sectionProps} isPerennial={isPerennial} inheritedStandingTime={inheritedStandingTime} />
+            {isProjectForm && isPerennial && (
+              <LocalizedDecimalField
+                sx={mediumStackedFieldSx}
+                label={t('fields:individualPlants.canopy')}
+                value={formData.estimated_canopy_diameter_m}
+                onValueChange={value => handleChange('estimated_canopy_diameter_m',
+                  value === null ? null : Number(value.toFixed(2)))}
+                error={Boolean(errors.estimated_canopy_diameter_m)}
+                helperText={errors.estimated_canopy_diameter_m}
+              />
+            )}
             <TimingSection {...sectionProps} isPerennial={isPerennial} language={i18n?.resolvedLanguage ?? i18n?.language} />
             <SpacingSection {...sectionProps} />
             <YieldSection {...sectionProps} showDefaultHarvestUnit={isProjectForm} />

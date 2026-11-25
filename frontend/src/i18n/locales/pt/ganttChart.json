@@ -217,7 +217,7 @@
     "searchPlaceholderSeedlings": "Pesquisar por cultura…",
     "allLocations": "Todas as explorações",
     "allFields": "Todas as parcelas",
-    "onlyOccupiedBeds": "Apenas canteiros ocupados",
+    "onlyOccupiedBeds": "Ocultar canteiros vazios",
     "filterButton": "Filtrar",
     "filterButtonWithCount": "Filtros ({{count}})",
     "locationLabel": "Exploração",

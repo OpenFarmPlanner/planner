@@ -490,13 +490,19 @@ actual-date rules and plan history from
   excludes the PK, timestamps, and audit fields) and `bulk_create`s the
   copies against the target season. It is always additive: existing plans in
   the target season are never touched, matched, or replaced.
-- Before shifting a source plan, preview and execution skip it if it still
-  occupies its bed on the first day of its destination. The response reports
+- Before shifting a source plan, preview and execution skip it if it is still
+  growing on its bed or directly on a parcel on the first day of its
+  destination. The response reports
   these plans in `continuing_count`, independent of date basis or rotation
   choices. The copy dialog and season creation suggestion explain the skip.
-  Drafts without an assigned bed remain eligible for copying.
+  Drafts without an assigned growing area remain eligible for copying.
   A perennial copy also needs a valid planting date and effective productive
   lifespan. A legacy perennial that cannot be copied is counted separately.
+  A continuing individual planting retains its original plan and stem IDs.
+  A copy of an ended planting creates new stem IDs at the same coordinates
+  on the original parcel. Parcel rotation only remaps bed assignments.
+  The crop calendar lists individual plantings under their own parcel row
+  and shows their recurring harvest windows. Bed capacity uses bed plans.
 - `planting_date`, `harvest_date` and `harvest_end_date`
   (`PLANTING_PLAN_SHIFTED_DATE_FIELDS`) are shifted by a **whole number of
   years, chosen per plan** so the `planting_date` keeps its month and day but

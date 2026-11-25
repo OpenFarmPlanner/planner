@@ -34,6 +34,9 @@ class HarvestAllocationSerializer(serializers.Serializer):
     bed_name = serializers.CharField(
         source="planting_plan.bed.name", allow_null=True, read_only=True
     )
+    parcel_name = serializers.CharField(
+        source="planting_plan.parcel.name", allow_null=True, read_only=True
+    )
     season_label = serializers.CharField(
         source="planting_plan.season.label", allow_null=True, read_only=True
     )

@@ -325,6 +325,10 @@ def preview_parcel_rotation(
         'copies': [
             (a.pk, b.bed_id, b.area_usage_sqm, plan_event_dates(b, crop_index)) for a, b in rotated
         ],
+        'individual_copies': [
+            (a.pk, a.parcel_id, a.individual_positions, a.estimated_canopy_diameter_m)
+            for a, _ in rotated if a.parcel_id is not None
+        ],
         'crop_rotation': crop_rotation,
     }
     summary['fingerprint'] = sha256(

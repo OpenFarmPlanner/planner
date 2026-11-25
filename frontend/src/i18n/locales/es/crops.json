@@ -2199,7 +2199,8 @@
     "legacyLifeCycleOption": "{{value}} (valor existente)",
     "legacyLifeCycleHint": "Este valor guardado se conserva hasta que elijas otro ciclo de vida.",
     "standingTimeHelp": "Determina la fecha de fin del cultivo sugerida.",
-    "standingTimeRequired": "Introduce un número entero igual o superior a 1."
+    "standingTimeRequired": "Introduce un número entero igual o superior a 1.",
+    "individualPlantLifecycleConflict": "Los cultivos con planes de plantas individuales deben seguir siendo perennes."
   },
   "taskTemplates": {
     "title": "Plantillas de tareas",

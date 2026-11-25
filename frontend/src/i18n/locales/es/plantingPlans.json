@@ -286,6 +286,7 @@
   "siteSuitability": {
     "title": "Condiciones de cultivo",
     "lightMismatch": "El cultivo se adapta a {{crop}}. La exposición del bancal figura como {{bed}}.",
+    "parcelLightMismatch": "El cultivo se adapta a {{crop}}. La parcela está registrada como {{bed}}.",
     "waterMismatch": "El cultivo necesita mucha agua. La humedad del suelo figura como {{moisture}} y el riego como {{irrigation}}."
   },
   "rotation": {
@@ -631,9 +632,9 @@
       "ends": "Termina"
     },
     "descriptions": {
-      "only": "Ocupa el bancal solo durante esta temporada.",
-      "starts": "Empieza esta temporada y ocupa el bancal después de que termine.",
-      "continues": "Ocupa el bancal antes, durante y después de esta temporada.",
+      "only": "Crece aquí solo durante esta temporada.",
+      "starts": "Empieza esta temporada y sigue creciendo después.",
+      "continues": "Crece antes, durante y después de esta temporada.",
       "ends": "Empezó antes de esta temporada y termina durante ella."
     }
   }

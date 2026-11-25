@@ -58,6 +58,7 @@ const numberFields = [
 
   'rotation_break_years',
   'standing_time_years',
+  'estimated_canopy_diameter_m',
   'expected_yield',
   'average_harvest_piece_weight_g',
   'average_harvest_bunch_weight_g',

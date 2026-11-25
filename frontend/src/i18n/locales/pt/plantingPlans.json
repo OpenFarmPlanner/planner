@@ -286,6 +286,7 @@
   "siteSuitability": {
     "title": "Condições de cultivo",
     "lightMismatch": "A cultura adapta-se a {{crop}}. A exposição do canteiro está registada como {{bed}}.",
+    "parcelLightMismatch": "A cultura é adequada a {{crop}}. A parcela está registada como {{bed}}.",
     "waterMismatch": "A cultura tem necessidades de água elevadas. A humidade do solo está registada como {{moisture}} e a rega como {{irrigation}}."
   },
   "rotation": {
@@ -631,9 +632,9 @@
       "ends": "Termina"
     },
     "descriptions": {
-      "only": "Ocupa o canteiro apenas nesta época.",
-      "starts": "Começa nesta época e ocupa o canteiro para além dela.",
-      "continues": "Ocupa o canteiro antes, durante e depois desta época.",
+      "only": "Cresce aqui apenas nesta época.",
+      "starts": "Começa nesta época e continua a crescer depois.",
+      "continues": "Cresce antes, durante e depois desta época.",
       "ends": "Começou antes desta época e termina durante a época."
     }
   }

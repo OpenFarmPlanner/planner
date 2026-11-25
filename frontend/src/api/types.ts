@@ -262,6 +262,7 @@ export interface Crop {
   water_requirement?: WaterRequirement | '';
   life_cycle?: LifeCycle | '';
   standing_time_years?: number | null;
+  estimated_canopy_diameter_m?: number | string | null;
   default_harvest_unit?: HarvestUnit | '';
   average_harvest_piece_weight_g?: number | string | null;
   average_harvest_bunch_weight_g?: number | string | null;
@@ -1409,6 +1410,20 @@ export interface HarvestActualDateUpdate {
 export type HarvestActualDateResult = Pick<PlantingPlan,
   'actual_harvest_start_date' | 'recorded_harvest_end_date' | 'harvest_actual_occurrences' | 'seasonal_harvest'>;
 
+export interface StemCoordinates {
+  x_m: number;
+  y_m: number;
+}
+
+export interface IndividualPlantPosition extends StemCoordinates {
+  id: string;
+}
+
+export interface IndividualPlacementInput {
+  individual_positions: (StemCoordinates & { id?: string })[];
+  estimated_canopy_diameter_m?: number | string | null;
+}
+
 export interface PlantingPlan extends PlantingPlanActualDates {
   id?: number;
   carried_over?: boolean;
@@ -1432,6 +1447,12 @@ export interface PlantingPlan extends PlantingPlanActualDates {
   crop_loss_count?: number;
   bed: number | null;
   bed_name?: string | null;
+  parcel?: number | null;
+  parcel_name?: string | null;
+  parcel_location_id?: number | null;
+  individual_positions?: IndividualPlantPosition[];
+  estimated_canopy_diameter_m?: number | string | null;
+  recommended_plant_spacing_m?: number | null;
   season?: number | null;
   planting_date: string | null;
   clearing_date?: string | null;
@@ -1985,6 +2006,7 @@ export interface HarvestAllocationWrite {
 export interface HarvestAllocation extends HarvestAllocationWrite {
   id: number;
   bed_name: string | null;
+  parcel_name?: string | null;
   season_label: string | null;
   planting_date: string | null;
   kilograms_per_harvested_sqm: string | null;
@@ -2079,6 +2101,7 @@ export interface IncompleteYieldPlan {
   crop_display_language_code: string;
   crop_variety: string | null;
   bed_name: string;
+  parcel_name?: string;
   planting_date: string | null;
   calculation_blockers: (
     | 'missing_crop'
@@ -2104,6 +2127,7 @@ export type YieldComparisonPlanDates = PlantingPlanActualDates & Pick<PlantingPl
   | 'harvest_date' | 'harvest_end_date' | 'seasonal_harvest' | 'harvest_actual_occurrences' | 'carried_over'> & YieldComparisonCropTiming & {
     id: number;
     bed_name: string;
+    parcel_name?: string;
     crop_label?: string;
   };
 
@@ -2153,6 +2177,7 @@ export interface YieldComparisonSeason {
     date: string;
     plan_id: number;
     bed_name: string;
+    parcel_name?: string;
     area_sqm: string;
     kg_per_sqm: string | null;
     estimated: boolean;
@@ -2160,6 +2185,7 @@ export interface YieldComparisonSeason {
   losses: (Pick<CropLoss, 'id' | 'date' | 'loss_type' | 'cause' | 'extent_value' | 'extent_unit'> & {
     planting_plan_id: number;
     bed_name: string;
+    parcel_name?: string;
   })[];
   plan_dates: YieldComparisonPlanDates[];
 }

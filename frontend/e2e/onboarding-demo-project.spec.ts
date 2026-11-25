@@ -31,7 +31,7 @@ test.describe('first-project onboarding', () => {
 
     await page.goto('/app/crops');
     await waitForPageStable(page, /Kulturbibliothek/);
-    await expect(page.getByRole('heading', { name: 'Brokkoli' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Apfel/ })).toBeVisible();
 
     await page.goto('/app/dashboard');
     await expect(page.getByRole('heading', { name: 'Aufgaben', exact: true })).toBeVisible();

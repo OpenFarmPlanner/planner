@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
+from uuid import NAMESPACE_URL, uuid5
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -109,6 +110,16 @@ DEMO_ROTATION_GROUP_NAMES = {
     'it': 'Orto della fattoria Nord–Sud',
     'pt': 'Horta da quinta Norte–Sul',
     'nl': 'Boerderijtuin Noord–Zuid',
+}
+
+DEMO_ORCHARD_CROP_NAMES = {
+    'de': 'Apfel',
+    'en': 'Apple',
+    'fr': 'Pommier',
+    'es': 'Manzano',
+    'it': 'Melo',
+    'pt': 'Macieira',
+    'nl': 'Appelboom',
 }
 
 DEMO_TEXT = {
@@ -556,7 +567,7 @@ def resolve_demo_language(language_code: str | None) -> str:
     bundles = (
         DEMO_TEXT, FEATURE_TEXT, DEMO_PROJECT_NAMES,
         DEMO_PERSONAL_PROJECT_DESCRIPTIONS, DEMO_SCREENSHOT_PROJECT_DESCRIPTIONS,
-        BULK_BED_EXAMPLE_NOTES, DEMO_ROTATION_GROUP_NAMES,
+        BULK_BED_EXAMPLE_NOTES, DEMO_ROTATION_GROUP_NAMES, DEMO_ORCHARD_CROP_NAMES,
     )
     complete = all(
         _has_complete_translation(bundle[DEMO_LANGUAGE_FALLBACK], bundle.get(language))
@@ -581,6 +592,35 @@ def get_demo_project_description(language_code: str | None, *, screenshot: bool 
     language = resolve_demo_language(language_code)
     descriptions = DEMO_SCREENSHOT_PROJECT_DESCRIPTIONS if screenshot else DEMO_PERSONAL_PROJECT_DESCRIPTIONS
     return descriptions[language]
+
+
+def _create_demo_orchard(
+    project: Project, parcel: Field, owner: Any, language: str, year: int,
+) -> None:
+    crop = Crop.objects.create(
+        project=project, name=DEMO_ORCHARD_CROP_NAMES[language], variety='Topaz',
+        crop_species=find_demo_crop_species('Apple') or find_demo_crop_species('Apfel'),
+        life_cycle='perennial', standing_time_years=18, cultivation_types=['pre_cultivation'],
+        row_spacing_m=4.5, distance_within_row_m=4,
+        estimated_canopy_diameter_m=Decimal('3.80'),
+        annual_harvest_window='09-10/10-10', first_harvest_delay_years=2,
+    )
+    planted = date(year, 4, 18)
+    season = get_or_create_season_for_date(project, planted, created_by=owner)
+    PlantingPlan.objects.create(
+        project=project, season=season, crop=crop, parcel=parcel, planting_date=planted,
+        clearing_date=date(year + 18, 4, 18),
+        cultivation_type=PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT,
+        estimated_canopy_diameter_m=crop.estimated_canopy_diameter_m,
+        individual_positions=[
+            {
+                'id': str(uuid5(NAMESPACE_URL, f'openfarmplanner:demo:{project.pk}:apple:{index}')),
+                'x_m': x_m, 'y_m': y_m,
+            }
+            for index, (x_m, y_m) in enumerate(((1.5, 4), (2, 8.5), (2, 13)), start=1)
+        ],
+        created_by=owner, updated_by=owner,
+    )
 
 
 def populate_demo_project(
@@ -617,6 +657,7 @@ def populate_demo_project(
             current_year=year,
         )
         assign_unassigned_planting_plans(project, owner=owner)
+        _create_demo_orchard(project, fields['fruehbeete'], owner, language, year)
         get_or_create_season_for_date(project, date(year + 1, 1, 1), created_by=owner)
         _create_demo_harvests(project, crops, beds, language, year)
         _create_demo_crop_losses(project, crops, beds, language, year)

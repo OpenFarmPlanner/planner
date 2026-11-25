@@ -606,6 +606,11 @@ class Crop(TimestampedModel):
         null=True, blank=True, validators=[MinValueValidator(1)],
         help_text='Typical productive lifespan of a perennial crop, in whole years.',
     )
+    estimated_canopy_diameter_m = models.DecimalField(
+        max_digits=7, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(Decimal('0.01'))],
+        help_text='Optional suggested canopy diameter for individual plantings, in metres.',
+    )
     winter_hardiness = models.CharField(
         max_length=20, choices=WINTER_HARDINESS_CHOICES, blank=True,
         help_text='Whether the crop survives winter outdoors. Blank means unknown.',
@@ -931,7 +936,6 @@ class Crop(TimestampedModel):
         previous = None
         if self.pk:
             previous = Crop.all_objects.filter(pk=self.pk).values().first()
-        previous_windows = self.timing_window_snapshot() if previous else []
 
         self.light_requirement = normalize_crop_light(self.light_requirement)
         germination_changes = sync_germination_requirements(self, previous, kwargs.get('update_fields'))
@@ -952,12 +956,7 @@ class Crop(TimestampedModel):
         self.name_normalized = normalize_text(self.name) or ''
         self.variety_normalized = normalize_text(self.variety)
 
-        super().save(*args, **kwargs)
-
-        current = Crop.all_objects.filter(pk=self.pk).values().first() or {}
-        current['timing_windows'] = self._save_pending_timing_windows(previous_windows)
-        if previous:
-            previous['timing_windows'] = previous_windows
+        previous, current = self._save_crop_row(previous, *args, **kwargs)
         changed_fields = self._compute_changed_fields(previous, current)
         previous_image = (
             previous.get('image_file_id') if previous and previous['deleted_at'] is None else None
@@ -979,6 +978,29 @@ class Crop(TimestampedModel):
         self._synchronize_harvest_tasks(previous, current, changed_fields)
         if record_history:
             self._record_save_revision(current, previous, changed_fields)
+
+    def _save_crop_row(
+        self, previous: dict[str, Any] | None, *args: Any, **kwargs: Any,
+    ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+        lifecycle_fields = {'life_cycle', 'crop_species_id', 'variety_normalized', 'deleted_at'}
+        if previous and any(previous[field] != getattr(self, field) for field in lifecycle_fields):
+            from farm.services.crop_inheritance import lock_crop_project
+
+            lock_crop_project(self.project_id)
+            previous = Crop.all_objects.filter(pk=self.pk).values().get()
+
+        previous_windows = self.timing_window_snapshot() if previous else []
+        super().save(*args, **kwargs)
+
+        current = Crop.all_objects.filter(pk=self.pk).values().first() or {}
+        if previous and any(previous[field] != current[field] for field in lifecycle_fields):
+            from farm.services.crop_inheritance import validate_individual_plan_lifecycles
+
+            validate_individual_plan_lifecycles(previous, current)
+        current['timing_windows'] = self._save_pending_timing_windows(previous_windows)
+        if previous:
+            previous['timing_windows'] = previous_windows
+        return previous, current
 
     def _synchronize_harvest_tasks(
         self, previous: dict[str, Any] | None, current: dict[str, Any], changed_fields: list[str],
