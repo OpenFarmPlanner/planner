@@ -120,6 +120,23 @@ describe('useIndividualPlants direct stem moves (#1579)', () => {
     expect(result.current.moveError).toBe(false);
   });
 
+  it('does not start a panel draft for a plan whose direct move is still saving', async () => {
+    let finishSave: (value: { data: PlantingPlan }) => void = () => undefined;
+    listMock.mockResolvedValue({ results: [plan()] });
+    saveMock.mockReturnValueOnce(new Promise((resolve) => { finishSave = resolve; }));
+    const { result } = renderHook(() => useIndividualPlants(5, season, true));
+    await waitFor(() => expect(result.current.plans).toHaveLength(1));
+
+    let move: Promise<void> = Promise.resolve();
+    act(() => { move = result.current.moveSavedStem(7, 'b', { x_m: 4, y_m: 5 }); });
+    act(() => { result.current.startDraft(11, result.current.plans[0]); });
+    expect(result.current.editor.draft).toBeNull();
+
+    await act(async () => { finishSave({ data: plan({ updated_at: 'v2' }) }); await move; });
+    act(() => { result.current.startDraft(11, result.current.plans[0]); });
+    expect(result.current.editor.draft).toMatchObject({ planId: 7, expectedUpdatedAt: 'v2' });
+  });
+
   it('keeps plans with an open panel draft, a pending move or no edit right out of direct dragging', () => {
     const plans = [plan({ id: 7 }), plan({ id: 8 }), plan({ id: 9 })];
     const base = { canEdit: true, plans, movingPlans: new Set([8]), editor: { draft: { planId: 9 } } };

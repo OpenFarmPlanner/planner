@@ -183,7 +183,8 @@ export function GraphicalIndividualPlantsPanel({
         )}
         {!draft && plan && (
           <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
-            {canEdit && parcelId && <Button variant="outlined" onClick={() => startDraft(parcelId, plan)}>{tr('edit')}</Button>}
+            {canEdit && parcelId && <Button variant="outlined" disabled={Boolean(plan.id && controller.movingPlans.has(plan.id))}
+              onClick={() => startDraft(parcelId, plan)}>{tr('edit')}</Button>}
             {plan.id && <Button component={Link} to={plantingPlanDetailPath(plan.id)}>{tr('details')}</Button>}
           </Stack>
         )}

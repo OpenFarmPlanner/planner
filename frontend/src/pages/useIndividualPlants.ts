@@ -51,6 +51,7 @@ export function useIndividualPlants(
   // Bumped on every completed load: a direct move only writes into the load it started from.
   const loadGeneration = useRef(0);
   const saving = useRef(false);
+  const [movingPlans, setMovingPlans] = useState<ReadonlySet<number>>(new Set());
   if (state.scope !== scope) setState({ scope, editor: initialEditor });
   const editor = state.scope === scope ? state.editor : initialEditor;
   const current = result?.key === key ? result : null;
@@ -98,7 +99,8 @@ export function useIndividualPlants(
   };
 
   const startDraft = (parcel: number, plan?: PlantingPlan) => {
-    if (!canEdit || !season || saving.current) return;
+    // A direct move of this plan is still saving: a draft would start from a version about to change.
+    if (!canEdit || !season || saving.current || (plan?.id && movingPlans.has(plan.id))) return;
     const today = formatDateToAPI(new Date());
     const defaultDate = today < season.start_date ? season.start_date
       : today > season.end_date ? season.end_date : today;
@@ -172,7 +174,6 @@ export function useIndividualPlants(
 
   // Graphic edit mode moves an already saved stem directly (#1579): the position is
   // saved on drop like a bed or parcel, and restored when the save fails.
-  const [movingPlans, setMovingPlans] = useState<ReadonlySet<number>>(new Set());
   const [moveErrorScope, setMoveErrorScope] = useState<string | null>(null);
   const moveSavedStem = async (planId: number, stemId: string, point: StemCoordinates) => {
     const plan = plans.find(item => item.id === planId);
