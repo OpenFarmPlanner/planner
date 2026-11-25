@@ -84,6 +84,8 @@ export function GraphicalIndividualPlantsLayer({
             listening={Boolean(onSelect) || canDrag} hitStrokeWidth={canDrag ? 26 / zoom : 10 / zoom}
             data-testid={`individual-stem-${stem.key}`} data-x-m={stem.x_m} data-y-m={stem.y_m}
             draggable={canDrag} dragDistance={8}
+            // Enrolls the stem in the graphic's Escape cancellation, like beds and parcels.
+            name={canDrag ? 'graphical-editable' : undefined}
             onMouseDown={beginPress} onTouchStart={beginPress} onTouchMove={touchMove}
             onMouseEnter={event => { if (canDrag) setCursor(event, 'move'); }}
             onMouseLeave={event => { if (canDrag) setCursor(event, ''); }}
@@ -103,7 +105,9 @@ export function GraphicalIndividualPlantsLayer({
               const position = canvasToStem(event.target.position(), field, surface, rotation);
               // Reset Konva's transient drag position. React then applies the confirmed rounded value.
               event.target.position(point);
-              if (position) onMove(stem.key, position);
+              // Escape (stopDrag without an event) and an interrupted touch cancel the move.
+              const canceled = !event.evt || ['touchcancel', 'pointercancel'].includes(event.evt.type);
+              if (position && !canceled) onMove(stem.key, position);
             }} />
         </Group>;
       })}

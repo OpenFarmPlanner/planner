@@ -259,6 +259,22 @@ test('drags a placed stem in graphic edit mode without moving the bed or parcel 
   await expect.poll(async () => (await shape(page, `bed-rect-${bed.id}`))?.world).not.toEqual(bedBefore);
   expect((await individualPlans(page, location.id))[0].individual_positions).toEqual(afterStemDrags);
 
+  // Escape during a stem drag cancels it without saving (#1579).
+  let placementWrites = 0;
+  page.on('request', request => {
+    if (request.method() === 'PATCH' && request.url().includes('/individual-placement/')) placementWrites += 1;
+  });
+  const beforeEscape = (await shape(page, `individual-stem-${free.id}`))!;
+  const escapeFrom = centre(beforeEscape.screen);
+  await page.mouse.move(escapeFrom.x, escapeFrom.y);
+  await page.mouse.down();
+  await page.mouse.move(escapeFrom.x + 40, escapeFrom.y + 20, { steps: 6 });
+  await page.keyboard.press('Escape');
+  await page.mouse.up();
+  await expect.poll(async () => (await shape(page, `individual-stem-${free.id}`))?.world).toEqual(beforeEscape.world);
+  expect(placementWrites).toBe(0);
+  expect((await individualPlans(page, location.id))[0].individual_positions).toEqual(afterStemDrags);
+
   // A failed save restores the stem and reports the error.
   await page.route(url => url.pathname.endsWith('/individual-placement/'), route => route.fulfill({ status: 500, json: {} }));
   const beforeFailure = (await shape(page, `individual-stem-${free.id}`))!;
