@@ -59,7 +59,11 @@ class BedLayoutByLocationView(APIView):
     def get(self, request, location_id: int):
         active_project = get_active_project_or_400(request)
         location = get_object_or_404(Location, pk=location_id, project=active_project)
-        bed_layouts = BedLayout.objects.filter(location=location).select_related('bed__field')
+        # Bed offsets are relative to their parcel and survive a parcel move.
+        bed_layouts = BedLayout.objects.filter(
+            project=active_project, bed__project=active_project,
+            bed__field__project=active_project, bed__field__location=location,
+        ).select_related('bed__field')
         field_layouts = FieldLayout.objects.filter(location=location).select_related('field')
         return Response(
             {

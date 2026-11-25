@@ -226,7 +226,8 @@ erDiagram
   show gross area, the union of child footprints clipped to the parent, and
   the remaining area and percentage. The remaining parcel area includes paths,
   margins, and other uses. Exact figures require measured outlines and
-  unambiguous positioning.
+  unambiguous positioning. Layout reads use a bed's current parcel and location
+  so moving a parcel to another location preserves its relative bed offsets.
 - `Field`, `Bed`, and most other project-scoped models below also carry a
   **direct, denormalized `project` FK** in addition to their natural parent
   (e.g. `Bed.project` in addition to `Bed.field`). This is deliberate — it's
