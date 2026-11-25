@@ -464,6 +464,10 @@ class HarvestOverlapIndex:
         others = [item for item in occupancies if item is not candidate]
         return find_harvest_overlaps(candidate, others, self._bed_areas.get(plan.bed_id))
 
+    def occupancies_for_bed(self, bed_id: int) -> tuple[BedOccupancy, ...]:
+        """Existing and continuing plantings used to check proposed copies."""
+        return tuple(self._load().get(bed_id, ()))
+
     def candidate_overlaps(
         self,
         bed: Bed,

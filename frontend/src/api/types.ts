@@ -1717,6 +1717,60 @@ export interface SeasonCopyPreviewItem {
   findings: RotationFinding[];
 }
 
+export interface ParcelRotationGroup {
+  id: number;
+  name: string;
+  valid: boolean;
+  parcels: { id: number; name: string; beds: { id: number; name: string }[] }[];
+}
+
+export interface ParcelRotationConfiguration {
+  name: string;
+  parcels: { id: number; bed_ids: number[] }[];
+}
+
+export interface ParcelRotationConfirmation {
+  rotate_parcels: true;
+  parcel_rotation_fingerprint: string;
+}
+
+export type ParcelRotationIssue =
+  | { code: 'unequal_bed_counts'; group: string; parcels: { name: string; count: number }[] }
+  | { code: 'missing_bed_area'; bed: string; source_bed: string }
+  | { code: 'bed_capacity'; bed: string; parcel: string };
+
+export interface ParcelRotationSummary {
+  eligible: boolean;
+  available: boolean;
+  enabled: boolean;
+  fingerprint: string | null;
+  continuing_count: number;
+  issues: ParcelRotationIssue[];
+  mappings: {
+    group: string;
+    source_parcel_id: number;
+    source_parcel: string;
+    target_parcel_id: number;
+    target_parcel: string;
+  }[];
+  moves: {
+    source_plan_id: number;
+    crop: string;
+    source_bed: string;
+    target_bed: string;
+    old_area_sqm: number | null;
+    new_area_sqm: number | null;
+    old_plant_count: number | null;
+    new_plant_count: number | null;
+    quantity_override: number | null;
+    seed_requirement: number | null;
+    seed_unit: string | null;
+    planting_date: string | null;
+    planned_sowing_date: string | null;
+  }[];
+  crop_rotation?: Pick<SeasonCopyPreview, 'total' | 'conflict_count' | 'hint_count' | 'conflict_free_count' | 'items'>;
+}
+
 export interface SeasonCopyPreview {
   total: number;
   conflict_count: number;
@@ -1728,6 +1782,7 @@ export interface SeasonCopyPreview {
   source_season_id: number;
   source_season_label: string;
   is_preceding_source: boolean;
+  parcel_rotation?: ParcelRotationSummary;
   items: SeasonCopyPreviewItem[];
 }
 
@@ -1808,6 +1863,8 @@ export interface SeasonCreationOptions {
   copy_source_label: string | null;
   copy_sources: Record<SeasonCreationCopyTarget, { id: number; label: string }[]>;
   copy_is_preceding_source: Record<SeasonCreationCopyTarget, boolean>;
+  preferred_active_season_id?: number | null;
+  parcel_rotation?: Record<SeasonCreationCopyTarget, ParcelRotationSummary | null>;
   copy_preview: {
     adopt: SeasonCopyCounts | null;
     transition: SeasonCopyCounts | null;

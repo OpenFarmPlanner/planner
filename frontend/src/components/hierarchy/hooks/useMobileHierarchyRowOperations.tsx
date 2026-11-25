@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useContext } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { TFunction } from "i18next";
 import { useNavigate } from "react-router";
@@ -12,6 +12,7 @@ import type { Bed, Field, Location } from "../../../api/api";
 import { showGlobalSnackbar } from "../../../utils/globalSnackbar";
 import { HierarchyAddIcon } from "../HierarchyAddIcon";
 import { nextFreeName } from "../utils/bedNaming";
+import { ParcelRotationContext } from "../rotation/parcelRotationContext";
 import { useBedOperations } from "./useBedOperations";
 import { useHierarchyDelete } from "./useHierarchyDelete";
 import type { HierarchyRow } from "../utils/types";
@@ -139,6 +140,7 @@ export function useMobileHierarchyRowOperations({
     [beds, duplicateBed, t],
   );
 
+  const { configure: configureRotation } = useContext(ParcelRotationContext);
   const getHierarchyRowActions = useCallback(
     (
       row: HierarchyRow | MobileHierarchyRow,
@@ -167,6 +169,10 @@ export function useMobileHierarchyRowOperations({
       }
 
       if (row.type === "field" && row.fieldId) {
+        if (configureRotation && !row.isNew) detailActions.push({
+          id: "configure-rotation", label: t("parcelRotation.configure"), group: "details",
+          onClick: () => configureRotation(row.fieldId!),
+        });
         createActions.push({
           id: "add-bed",
           label: t("actions.addBed"),
@@ -227,7 +233,8 @@ export function useMobileHierarchyRowOperations({
 
       return [...detailActions, ...createActions, ...destructiveActions];
     },
-    [deleteHierarchyRowWithUndo, handleCreatePlantingPlan, handleDuplicateBed, navigate, onBulkCreateBeds, onDuplicateField, t],
+    [configureRotation, deleteHierarchyRowWithUndo, handleCreatePlantingPlan, handleDuplicateBed,
+      navigate, onBulkCreateBeds, onDuplicateField, t],
   );
 
   return {

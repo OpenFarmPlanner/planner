@@ -2077,15 +2077,18 @@ class SeededProjectSeasonTest(ProjectApiTestCase):
         current_year = demo_current_year()
         self.assertEqual(seasons, {
             (date(year, 1, 1), date(year, 12, 31))
-            for year in range(current_year - 3, current_year + 1)
+            for year in range(current_year - 3, current_year + 2)
         })
+        options = self.client.get('/openfarmplanner/api/seasons/creation-options/')
+        current = self.project.seasons.get(start_date__year=current_year)
+        self.assertEqual(options.data['preferred_active_season_id'], current.pk)
         self._assert_no_setup_needed()
 
     def test_repopulating_the_demo_project_does_not_accumulate_seasons(self):
         populate_demo_project(self.project, owner=self.user)
         populate_demo_project(self.project, owner=self.user)
 
-        self.assertEqual(Season.objects.filter(project=self.project).count(), 4)
+        self.assertEqual(Season.objects.filter(project=self.project).count(), 5)
         self._assert_no_setup_needed()
 
     def test_hint_test_project_plans_are_assigned_to_a_season(self):

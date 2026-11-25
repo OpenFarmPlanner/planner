@@ -175,6 +175,10 @@ FR/ES/IT: `_one`, `_many`, `_other`. French treats **0 as singular**
 | Beerntete Fläche | Harvested area | Surface récoltée | Superficie cosechada | Superficie raccolta | Área colhida | Geoogst oppervlak |
 | Ertragsübersicht | Yield overview | Aperçu des rendements | Resumen de rendimientos | panoramica delle rese | visão geral dos rendimentos | opbrengstoverzicht |
 | Fruchtfolge | Crop rotation | Rotation des cultures | Rotación de cultivos | rotazione colturale | rotação de culturas | vruchtwisseling |
+| Parzellenrotation | Parcel rotation | Rotation entre parcelles | Rotación entre parcelas | Rotazione tra appezzamenti | Rotação entre parcelas | Perceelrotatie |
+| Rotationsgruppe | Rotation group | Groupe de rotation | Grupo de rotación | Gruppo di rotazione | Grupo de rotação | Rotatiegroep |
+| Parzellenreihenfolge | Parcel order | Ordre des parcelles | Orden de las parcelas | Ordine degli appezzamenti | Ordem das parcelas | Perceelvolgorde |
+| Beetreihenfolge | Bed order | Ordre des planches | Orden de los bancales | Ordine delle aiuole | Ordem dos canteiros | Bedvolgorde |
 | Anbaupause / Familienpause | Rotation break | Délai de retour | Pausa de rotación † | intervallo di rotazione | intervalo de rotação | rotatiepauze |
 | Mischkultur | Companion planting | Association de cultures | Asociación de cultivos | consociazione | consociação | combinatieteelt |
 | Guter / schlechter Nachbar | Good / bad neighbor | Bon / mauvais voisin | Buen / mal vecino | buon / cattivo vicino | bom / mau vizinho | goede / slechte buur |

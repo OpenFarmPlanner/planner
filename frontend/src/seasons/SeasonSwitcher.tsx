@@ -29,7 +29,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import type { Season, SeasonCreationOptions } from '../api/types';
+import type { ParcelRotationConfirmation, Season, SeasonCreationOptions } from '../api/types';
 import { seasonAPI } from '../api/api';
 import { useTranslation } from '../i18n';
 import type { UseActiveSeasonReturn } from './useActiveSeason';
@@ -37,6 +37,7 @@ import { SeasonRowActionsMenu } from './SeasonRowActionsMenu';
 import { SeasonRenameDialog } from './SeasonRenameDialog';
 import { SeasonPeriodEditDialog } from './SeasonPeriodEditDialog';
 import { SeasonCopyDataDialog } from './SeasonCopyDataDialog';
+import { ParcelRotationCopyPreview } from './ParcelRotationCopyPreview';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import { computeSeasonLabel, formatSeasonPeriod, resolveSeasonDateLocale } from './formatSeasonDate';
 import { addDaysIso, analyzePeriodTransition, computeManualSeasonEnd } from './seasonPeriodMath';
@@ -87,6 +88,9 @@ function getSeasonCreateErrorMessage(
     if (code === 'season_transition_period_changed') {
       return t('navigation:seasonSwitcher.suggestion.transitionPeriodChanged');
     }
+    if (code === 'parcel_rotation_preview_changed') {
+      return t('hierarchy:parcelRotation.previewChanged');
+    }
     if (data && code === 'season_unassigned_data_outside_period') {
       const examples = data.conflicts
         ?.map((conflict) => conflict.label)
@@ -111,7 +115,7 @@ export function SeasonCreateSuggestionDialog({
   onClose,
   onEditSeasonPattern,
 }: SeasonCreateSuggestionDialogProps) {
-  const { t, i18n } = useTranslation(['navigation', 'common']);
+  const { t, i18n } = useTranslation(['navigation', 'common', 'hierarchy']);
   const locale = resolveSeasonDateLocale(i18n);
   const {
     dueSuggestion, seasonCreationOptions,
@@ -119,6 +123,7 @@ export function SeasonCreateSuggestionDialog({
   } = controller;
   const [copyFromPrevious, setCopyFromPrevious] = useState(true);
   const [selectedSourceId, setSelectedSourceId] = useState<number | null>(null);
+  const [rotateParcelsChoice, setRotateParcelsChoice] = useState<boolean | null>(null);
   const [useActualDates, setUseActualDates] = useState(false);
   const [copyPreviewRevision, setCopyPreviewRevision] = useState(0);
   const dateBasisHelpId = useId();
@@ -181,12 +186,18 @@ export function SeasonCreateSuggestionDialog({
   const selectedSource = selectedSourceId === null ? availableSources[0]
     : availableSources.find(source => source.id === selectedSourceId);
   const copySourceChanged = availableSources.length > 0 && !selectedSource;
-  const explicitSourceId = copyFromPrevious && (actualDateBasis || selectedSourceId !== null)
+  const groupOptions = previewChoice ? eligibilityOptions?.parcel_rotation?.[previewChoice] : null;
+  const rotateParcels = Boolean(copyFromPrevious && selectedSource && selectedSource === availableSources[0]
+    && groupOptions?.eligible && groupOptions.mappings.length > 0
+    && !groupOptions.issues.some(issue => issue.code === 'unequal_bed_counts')
+    && (rotateParcelsChoice ?? true));
+  const explicitSourceId = copyFromPrevious && (actualDateBasis || rotateParcels || selectedSourceId !== null)
     ? selectedSource?.id : undefined;
   // A new revision also distinguishes on → off → on before the first response settles.
   const requestKey = open && choosingCopy && previewChoice && (previewStart || explicitSourceId !== undefined)
     ? [previewChoice, previewStart || duePeriod?.start_date, manualEndDate || duePeriod?.end_date,
-      seamlessPeriod?.start_date, seamlessPeriod?.end_date, explicitSourceId, actualDateBasis, copyPreviewRevision].join(':')
+      seamlessPeriod?.start_date, seamlessPeriod?.end_date, explicitSourceId, actualDateBasis,
+      rotateParcels, copyPreviewRevision].join(':')
     : null;
 
   useEffect(() => {
@@ -202,18 +213,26 @@ export function SeasonCreateSuggestionDialog({
     seasonAPI.creationOptions({
       ...(previewStart ? { manual_start_date: previewStart } : {}),
       ...(actualDateBasis ? { use_actual_dates: true } : {}),
+      ...(rotateParcels ? { rotate_parcels: true } : {}),
       ...(explicitSourceId === undefined ? {} : { source_season_id: explicitSourceId, copy_target: previewChoice }),
     })
       .then(({ data }) => accept(explicitSourceId === undefined || data.copy_source_season_id === explicitSourceId
         ? data : null))
       .catch(() => accept(null));
     return () => { cancelled = true; };
-  }, [requestKey, previewChoice, previewStart, actualDateBasis, explicitSourceId]);
+  }, [requestKey, previewChoice, previewStart, actualDateBasis, explicitSourceId, rotateParcels]);
 
   const remoteResult = remoteCopyOptions?.key === requestKey ? remoteCopyOptions : null;
   const copyOptions = requestKey ? remoteResult?.options : seasonCreationOptions;
   const activeCopyPreview = previewChoice && selectedSource
     ? copyOptions?.copy_preview?.[previewChoice] ?? null : null;
+  const pendingRotation = groupOptions && {
+    ...groupOptions, enabled: false, fingerprint: null, moves: [], crop_rotation: undefined,
+    issues: groupOptions.issues.filter(issue => issue.code === 'unequal_bed_counts'),
+  };
+  const parcelRotation = previewChoice
+    ? copyOptions?.parcel_rotation?.[previewChoice] ?? pendingRotation : null;
+  const rotationFingerprint = rotateParcels ? parcelRotation?.fingerprint : null;
   const copyFromLabel = selectedSource?.label ?? '';
   const followupCopyPreview = activeCopyPreview ? copyOptions?.copy_preview?.transition_followup : null;
   const checkingCopyOptions = Boolean(requestKey && !remoteResult);
@@ -228,6 +247,7 @@ export function SeasonCreateSuggestionDialog({
     setCreateError(null);
     setCopyFromPrevious(true);
     setSelectedSourceId(null);
+    setRotateParcelsChoice(null);
     setUseActualDates(false);
     setGapChoice('');
     setManualStartDate('');
@@ -277,7 +297,7 @@ export function SeasonCreateSuggestionDialog({
   // season plus the regular follow-up season the pattern computes next.
   const isTransitionTwoSeason = needsGapDecision && gapChoice === 'transition';
   const copyPreviewPending = copyFromPrevious && (checkingCopyOptions || copyPreviewError || copySourceChanged
-    || Boolean(selectedSource && !activeCopyPreview));
+    || Boolean(selectedSource && !activeCopyPreview) || (rotateParcels && !rotationFingerprint));
   const canSubmit = !creatingSuggested && !copyPreviewPending && (
     isTransitionTwoSeason
       ? Boolean(seamlessPeriod && duePeriod)
@@ -291,14 +311,19 @@ export function SeasonCreateSuggestionDialog({
     setCreateError(null);
     try {
       const copySourceId = copyFromPrevious && activeCopyPreview ? selectedSource?.id : undefined;
+      const rotation: ParcelRotationConfirmation | undefined = rotationFingerprint
+        ? { rotate_parcels: true, parcel_rotation_fingerprint: rotationFingerprint } : undefined;
       let seasonToActivate: Season;
       if (isTransitionTwoSeason && seamlessPeriod && duePeriod) {
         // One server call creates both seasons and distributes the selected
         // source's plans across them (each plan routed to the season its
         // shifted planting date lands in).
-        const result = await createTransitionSeasons(copySourceId !== undefined, copySourceId, actualDateBasis, {
+        const periods = {
           expected_transition: seamlessPeriod, expected_followup: duePeriod,
-        });
+        };
+        const result = rotation
+          ? await createTransitionSeasons(copySourceId !== undefined, copySourceId, actualDateBasis, periods, rotation)
+          : await createTransitionSeasons(copySourceId !== undefined, copySourceId, actualDateBasis, periods);
         seasonToActivate = result.followup_season;
       } else {
         const period = resolveCreatePeriod();
@@ -306,7 +331,9 @@ export function SeasonCreateSuggestionDialog({
           setCreatingSuggested(false);
           return;
         }
-        seasonToActivate = actualDateBasis && copySourceId !== undefined
+        seasonToActivate = rotation && copySourceId !== undefined
+          ? await createSeason(period.start, period.end, copySourceId, actualDateBasis, rotation)
+          : actualDateBasis && copySourceId !== undefined
           ? await createSeason(period.start, period.end, copySourceId, true)
           : await createSeason(period.start, period.end, copySourceId);
       }
@@ -325,6 +352,10 @@ export function SeasonCreateSuggestionDialog({
         setGapChoice('');
         setRemoteCopyOptions(null);
         void reload();
+      }
+      if (code === 'parcel_rotation_preview_changed') {
+        setRemoteCopyOptions(null);
+        setCopyPreviewRevision(current => current + 1);
       }
       setCreateError(getSeasonCreateErrorMessage(
         error,
@@ -547,6 +578,13 @@ export function SeasonCreateSuggestionDialog({
                       {t('navigation:seasonSwitcher.copyDialog.selectedSourceDatesHelp')}
                     </Typography>
                   </Box>
+                  <ParcelRotationCopyPreview report={parcelRotation} checked={rotateParcels}
+                    sourceSeasonLabel={copyFromLabel}
+                    disabled={creatingSuggested || checkingCopyOptions} onChange={checked => {
+                      setCreateError(null);
+                      setRotateParcelsChoice(checked);
+                      setCopyPreviewRevision(current => current + 1);
+                    }} />
                 </Stack>
               )}
               {copyFromPrevious && activeCopyPreview && activePreviewTotal > 0 ? (

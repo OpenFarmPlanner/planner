@@ -432,10 +432,9 @@ def _aggregate_requirements_by_crop(
             continue
         if entry['warning'] or result.value is None or not result.unit:
             continue
-        margin_factor = Decimal('1') + (
-            select_safety_margin_percent(effective_crop, plan.cultivation_type) / Decimal('100')
+        entry['required_amount_by_unit'][result.unit] += _with_safety_margin(
+            result.value, effective_crop, plan.cultivation_type,
         )
-        entry['required_amount_by_unit'][result.unit] += result.value * margin_factor
     return grouped
 
 
@@ -497,6 +496,38 @@ def _supplier_options_by_crop(
     for supplier_row in supplier_rows:
         suppliers_map[supplier_row.crop_id].append(supplier_row)
     return suppliers_map
+
+
+def _with_safety_margin(amount: Decimal, crop: EffectiveCrop, cultivation_type: str) -> Decimal:
+    return amount * (1 + select_safety_margin_percent(crop, cultivation_type) / Decimal('100'))
+
+
+def preview_plan_seed_demand(
+    project: Project, plans: list[PlantingPlan], crop_index: GeneralCropIndex,
+) -> list[tuple[Decimal | None, str | None]]:
+    """Calculate individual demand in the original rate unit for unsaved plans."""
+    options = _supplier_options_by_crop(project, list({p.crop_id for p in plans if p.crop_id}))
+    amounts = []
+    for plan in plans:
+        bought_in = plan.cultivation_type == PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT
+        if plan.crop is None or bought_in:
+            amounts.append((None, None))
+            continue
+        crop = EffectiveCrop(plan.crop, crop_index)
+        result = compute_plan_requirement(plan, crop)
+        if result.value is None or result.unit is None:
+            amounts.append((None, None))
+            continue
+        supplier = _resolve_selected_supplier(
+            crop=plan.crop, supplier_options=options.get(plan.crop_id, []),
+            requested_supplier_id=None,
+        )
+        adjusted = apply_germination_rate(
+            {result.unit: _with_safety_margin(result.value, crop, plan.cultivation_type)},
+            supplier.germination_rate if supplier else None,
+        )
+        amounts.append((adjusted[result.unit], result.unit))
+    return amounts
 
 
 def _base_row(

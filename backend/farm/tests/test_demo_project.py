@@ -58,6 +58,7 @@ from farm.services.demo_project import (
     DEMO_PROJECT_NAME,
     DEMO_PROJECT_NAME_EN,
     DEMO_PROJECT_SLUG,
+    DEMO_ROTATION_GROUP_NAMES,
     DEMO_TEXT,
     DemoProjectResult,
     create_or_reset_demo_project,
@@ -71,6 +72,7 @@ from farm.services.demo_project import (
     resolve_demo_request_language,
 )
 from farm.services.germination_check import check_germination
+from farm.services.parcel_rotation_copy import preview_parcel_rotation
 from farm.services.seasons import build_planting_plan_copies
 from farm.services.seed_demand import build_seed_demand_rows
 from farm.services.tasks import generate_tasks_for_plans
@@ -135,7 +137,7 @@ class DemoFeatureCoverageTests(TestCase):
                 patch("farm.services.demo_project.timezone.localdate", return_value=today),
             ):
                 project = create_or_reset_demo_project().project
-                season = Season.objects.filter(project=project).order_by("-start_date").first()
+                season = project.seasons.get(start_date__year=today.year)
                 manual = Task.objects.filter(project=project, season=season, origin="manual")
                 self.assertEqual(manual.count(), 7)
                 self.assertTrue(manual.filter(due_date=today, status="in_progress").exists())
@@ -293,6 +295,33 @@ class DemoFeatureCoverageTests(TestCase):
 
 
 class DemoProjectServiceTests(TestCase):
+    def test_rotation_example_can_be_previewed_in_every_demo_language(self) -> None:
+        for language in SUPPORTED_LANGUAGE_CODES:
+            with self.subTest(language=language):
+                project = create_or_reset_demo_project(language_code=language).project
+                lang = resolve_demo_language(language)
+                group = project.parcel_rotation_groups.get(name=DEMO_ROTATION_GROUP_NAMES[lang])
+                parcels = list(group.members.all())
+                self.assertEqual([parcel.field.name for parcel in parcels], [
+                    DEMO_TEXT[lang]['fields'][key] for key in ('fruehbeete', 'tunnel')
+                ])
+                self.assertEqual([len(parcel.bed_order) for parcel in parcels], [3, 3])
+                year = demo_current_year()
+                source = project.seasons.get(start_date__year=year)
+                target = project.seasons.get(start_date__year=year + 1)
+                pairs, _, continuing, _ = build_planting_plan_copies(
+                    source_season=source, target_season=target,
+                )
+                report = preview_parcel_rotation(
+                    source, target, pairs, preceding=True, requested=True,
+                    continuing_count=continuing,
+                ).summary
+                self.assertTrue(report['enabled'], report)
+                self.assertGreater(report['continuing_count'], 0)
+                self.assertTrue(any(move['new_area_sqm'] != move['old_area_sqm']
+                                    for move in report['moves']))
+                self.assertFalse(target.planting_plans.exists())
+
     def test_bed_defaults_and_path_spacing_examples_exist_in_every_demo_language(self) -> None:
         for language in SUPPORTED_LANGUAGE_CODES:
             with self.subTest(language=language):
@@ -492,13 +521,13 @@ class DemoProjectServiceTests(TestCase):
         seasons = Season.objects.filter(project=result.project).order_by('start_date')
         self.assertEqual(
             list(seasons.values_list('start_date__year', 'end_date__year')),
-            [(year, year) for year in range(current_year - 3, current_year + 1)],
+            [(year, year) for year in range(current_year - 3, current_year + 2)],
         )
         self.assertFalse(PlantingPlan.objects.filter(project=result.project, season__isnull=True).exists())
 
         self.assertEqual(
             [PlantingPlan.objects.filter(project=result.project, season=season).count() for season in seasons],
-            [1, 21, 23, 23],
+            [1, 21, 23, 23, 0],
         )
         perennial = PlantingPlan.objects.get(project=result.project, crop__life_cycle='perennial')
         self.assertEqual(perennial.crop.standing_time_years, 6)
@@ -543,7 +572,7 @@ class DemoProjectServiceTests(TestCase):
 
         self.assertEqual(
             sorted(Season.objects.filter(project=result.project).values_list('start_date__year', flat=True)),
-            [2028, 2029, 2030, 2031],
+            [2028, 2029, 2030, 2031, 2032],
         )
         plans = PlantingPlan.objects.filter(project=result.project)
         self.assertTrue(plans.filter(
@@ -1168,9 +1197,7 @@ class DemoRotationCasesTests(TestCase):
 
     def test_copying_the_season_shows_conflicts_and_a_hint(self) -> None:
         source = Season.objects.get(project=self.project, start_date__year=self.year)
-        target = Season.objects.create(
-            project=self.project, start_date=date(self.year + 1, 1, 1), end_date=date(self.year + 1, 12, 31),
-        )
+        target = self.project.seasons.get(start_date__year=self.year + 1)
         pairs, _, _, _ = build_planting_plan_copies(source_season=source, target_season=target)
 
         preview = preview_season_copy(self.service, pairs)

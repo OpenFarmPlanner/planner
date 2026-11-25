@@ -20,9 +20,11 @@ const VISIBLE_ITEM_COUNT = 3;
 const MODE_ORDER: readonly SeasonCopyRotationMode[] = ['without_bed', 'keep', 'skip'];
 
 interface SeasonCopyRotationSummaryProps {
-  preview: SeasonCopyPreview;
-  mode: SeasonCopyRotationMode;
-  onModeChange: (mode: SeasonCopyRotationMode) => void;
+  preview: Pick<SeasonCopyPreview, 'total' | 'conflict_count' | 'hint_count'
+    | 'conflict_free_count' | 'items' | 'source_season_label'>;
+  mode?: SeasonCopyRotationMode;
+  parcelRotation?: boolean;
+  onModeChange?: (mode: SeasonCopyRotationMode) => void;
 }
 
 function useItemReason() {
@@ -52,8 +54,8 @@ function useItemReason() {
  * the rotation on their bed in the target season, which ones, and what to do
  * with them. Rendered only when there is at least one conflict or hint.
  */
-export function SeasonCopyRotationSummary({ preview, mode, onModeChange }: SeasonCopyRotationSummaryProps) {
-  const { t } = useTranslation('navigation');
+export function SeasonCopyRotationSummary({ preview, mode, parcelRotation, onModeChange }: SeasonCopyRotationSummaryProps) {
+  const { t } = useTranslation(['navigation', 'hierarchy']);
   const getReason = useItemReason();
   const [showAll, setShowAll] = useState(false);
   const conflicts = preview.conflict_count;
@@ -97,7 +99,7 @@ export function SeasonCopyRotationSummary({ preview, mode, onModeChange }: Seaso
         </Link>
       ) : null}
 
-      {conflicts > 0 ? (
+      {conflicts > 0 && mode && onModeChange ? (
         <FormControl sx={{ mt: 2 }}>
           <FormLabel id="season-copy-rotation-mode-label">
             {t('seasonSwitcher.copyDialog.rotation.modeLabel', values)}
@@ -107,7 +109,7 @@ export function SeasonCopyRotationSummary({ preview, mode, onModeChange }: Seaso
             value={mode}
             onChange={(event) => onModeChange(event.target.value as SeasonCopyRotationMode)}
           >
-            {MODE_ORDER.map((option) => (
+            {MODE_ORDER.filter(option => !parcelRotation || option !== 'without_bed').map((option) => (
               <FormControlLabel
                 key={option}
                 value={option}
@@ -115,10 +117,12 @@ export function SeasonCopyRotationSummary({ preview, mode, onModeChange }: Seaso
                 sx={{ alignItems: 'flex-start', mt: 0.5 }}
                 label={(
                   <Box sx={{ pt: 0.75 }}>
-                    <Typography variant="body2">{t(`seasonSwitcher.copyDialog.rotation.modes.${option}.label`)}</Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2">{parcelRotation && option === 'keep'
+                      ? t('hierarchy:parcelRotation.keepProposedBeds')
+                      : t(`seasonSwitcher.copyDialog.rotation.modes.${option}.label`)}</Typography>
+                    {(!parcelRotation || option !== 'keep') && <Typography variant="body2" color="text.secondary">
                       {t(`seasonSwitcher.copyDialog.rotation.modes.${option}.description`, values)}
-                    </Typography>
+                    </Typography>}
                   </Box>
                 )}
               />

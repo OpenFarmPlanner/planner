@@ -45,6 +45,7 @@ from farm.models import (
     HarvestAllocation,
     HarvestRecord,
     Location,
+    ParcelRotationGroup,
     PlantingPlan,
     Project,
     ProjectApiToken,
@@ -74,6 +75,33 @@ PAGE_SIZE = 100
 
 class ListEndpointQueryCountTest(ProjectApiTestCase):
     """Each list endpoint must cost the same number of queries for every row."""
+
+    def test_parcel_rotation_orders_load_with_constant_queries(self):
+        def create_group(index):
+            group = ParcelRotationGroup.objects.create(
+                project=self.project, name=f'Rotation {index}',
+            )
+            for position in (1, 2):
+                field = Field.objects.create(
+                    project=self.project, location=self.location, name=f'Parcel {index}-{position}',
+                )
+                bed = Bed.objects.create(project=self.project, field=field, name='First bed')
+                group.members.create(
+                    project=self.project, field=field, position=position, bed_order=[bed.pk],
+                )
+
+        url = '/openfarmplanner/api/parcel-rotation-groups/'
+        create_group(0)
+        with CaptureQueriesContext(connection) as baseline:
+            first = self.client.get(url)
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(len(first.data), 1)
+        for index in range(1, ROW_COUNT + 1):
+            create_group(index)
+        with self.assertNumQueries(len(baseline)):
+            response = self.client.get(url)
+        self.assertEqual(len(response.data), ROW_COUNT + 1)
+        self.assertTrue(all(len(group['parcels']) == 2 for group in response.data))
 
     def test_project_bed_defaults_are_loaded_without_per_membership_queries(self) -> None:
         UserProjectSettings.objects.create(

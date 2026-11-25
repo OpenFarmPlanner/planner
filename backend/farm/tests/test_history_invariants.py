@@ -168,6 +168,29 @@ class HistoryInvariantTestCase(APITestCase):
 
 
 class CompositeMutationHistoryTests(HistoryInvariantTestCase):
+    def test_rotation_group_names_can_swap_during_project_restore(self) -> None:
+        location = self.write('create location', 'post', '/locations/', {'name': 'North'})
+        groups = []
+        for name in ('Market', 'Kitchen'):
+            field = self.write(f'create {name} parcel', 'post', '/fields/', {
+                'name': name, 'location': location['id'],
+            })
+            groups.append(self.write(
+                f'create {name} rotation', 'post', '/parcel-rotation-groups/',
+                {'name': name, 'parcels': [{'id': field['id']}]},
+            ))
+        before = self.versions[-1]
+        renames = ((groups[0], 'Temporary'), (groups[1], 'Market'), (groups[0], 'Kitchen'))
+        for group, name in renames:
+            self.write(f'rename to {name}', 'patch', f"/parcel-rotation-groups/{group['id']}/", {
+                'name': name,
+            })
+        after = self.versions[-1]
+        self.assertEqual(self.restore(before.revision), 200)
+        self.assert_state(before.state, 'restore original rotation names')
+        self.assertEqual(self.restore(self.latest_backup()), 200)
+        self.assert_state(after.state, 'restore swapped rotation names')
+
     def assert_completed_action(
         self, previous: EntityRevision, parent: str, children: list[str],
     ) -> None:
@@ -642,6 +665,20 @@ class HistoryRoundTripScenarioTests(HistoryInvariantTestCase):
                 'area_sqm': 8,
             },
         )['id']
+        ids['rotating_field'] = self.write('create second parcel', 'post', '/fields/', {
+            'name': 'Field B', 'location': ids['location'],
+        })['id']
+        for name in ('Bed 3', 'Bed 4'):
+            self.write(f'create {name}', 'post', '/beds/', {
+                'name': name, 'field': ids['rotating_field'], 'area_sqm': 10,
+            })
+        parcels = [{'id': ids['field']}, {'id': ids['rotating_field']}]
+        ids['rotation'] = self.write('create rotation', 'post', '/parcel-rotation-groups/', {
+            'name': 'North rotation', 'parcels': parcels,
+        })['id']
+        self.write('reorder rotation', 'put', f"/parcel-rotation-groups/{ids['rotation']}/", {
+            'name': 'Garden rotation', 'parcels': list(reversed(parcels)),
+        })
         self.write(
             'place beds and fields',
             'put',
@@ -848,6 +885,7 @@ class HistoryRoundTripScenarioTests(HistoryInvariantTestCase):
         )
         self.write('delete planting plan', 'delete', f"/planting-plans/{ids['plan']}/")
         self.write('delete unassigned harvest', 'delete', f"/harvests/{ids['harvest']}/")
+        self.write('delete rotation', 'delete', f"/parcel-rotation-groups/{ids['rotation']}/")
         self.write('delete spare bed', 'delete', f"/beds/{ids['spare_bed']}/")
         self.write('delete supplier', 'delete', f"/suppliers/{ids['supplier']}/")
         self.write('delete variety', 'delete', f"/crops/{ids['variety']}/")

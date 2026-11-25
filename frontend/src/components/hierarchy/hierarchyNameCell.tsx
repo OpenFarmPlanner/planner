@@ -13,6 +13,7 @@ import {
 } from './hierarchyColumnShared';
 import { AppTooltip } from '../AppTooltip';
 import { TruncatedTextWithTooltip } from '../TruncatedTextWithTooltip';
+import { ParcelRotationBadge } from './rotation/ParcelRotationGroupsDialog';
 
 const EXPAND_ICON_SLOT_SIZE = 32;
 const LEVEL_INDENT_PX = 24;
@@ -126,6 +127,7 @@ export function renderNameCell(
           }}
         />
 
+        {row.type === 'field' && row.fieldId ? <ParcelRotationBadge fieldId={row.fieldId} /> : null}
         {persistentContextMenuButton}
 
         {inlineActions ? (

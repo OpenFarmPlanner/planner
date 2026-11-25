@@ -3,7 +3,11 @@
 from rest_framework import serializers
 
 from farm.models import PlantingPlan, Season, SeasonPattern
-from farm.services.crop_rotation import COPY_CONFLICT_MODES, COPY_CONFLICTS_KEEP
+from farm.services.crop_rotation import (
+    COPY_CONFLICT_MODES,
+    COPY_CONFLICTS_KEEP,
+    COPY_CONFLICTS_WITHOUT_BED,
+)
 
 
 class SeasonSerializer(serializers.ModelSerializer):
@@ -166,18 +170,27 @@ class SeasonPatternSerializer(serializers.ModelSerializer):
 class SeasonCreateAndCopySerializer(SeasonSerializer):
     source_season_id = serializers.IntegerField(write_only=True)
     use_actual_dates = serializers.BooleanField(write_only=True, default=False)
+    rotate_parcels = serializers.BooleanField(write_only=True, required=False)
+    parcel_rotation_fingerprint = serializers.RegexField(
+        r'^[0-9a-f]{64}$', write_only=True, required=False,
+    )
 
     class Meta(SeasonSerializer.Meta):
-        fields = [*SeasonSerializer.Meta.fields, 'source_season_id', 'use_actual_dates']
+        fields = [*SeasonSerializer.Meta.fields, 'source_season_id', 'use_actual_dates',
+                  'rotate_parcels', 'parcel_rotation_fingerprint']
 
     def create(self, validated_data):
         validated_data.pop('source_season_id')
         validated_data.pop('use_actual_dates')
+        validated_data.pop('rotate_parcels', None)
+        validated_data.pop('parcel_rotation_fingerprint', None)
         return super().create(validated_data)
 
 
 class SeasonCopyDateBasisSerializer(serializers.Serializer):
     use_actual_dates = serializers.BooleanField(default=False)
+    rotate_parcels = serializers.BooleanField(required=False)
+    parcel_rotation_fingerprint = serializers.RegexField(r'^[0-9a-f]{64}$', required=False)
 
 
 class SeasonCreationOptionsSerializer(SeasonCopyDateBasisSerializer):
@@ -208,3 +221,11 @@ class SeasonCopyFromSerializer(SeasonCopyDateBasisSerializer):
             'or "skip" (not copied).'
         ),
     )
+
+    def validate(self, attrs):
+        removes_beds = attrs['rotation_conflicts'] == COPY_CONFLICTS_WITHOUT_BED
+        if attrs.get('rotate_parcels') and removes_beds:
+            raise serializers.ValidationError({
+                'rotation_conflicts': 'Choose keep or skip when rotating parcels.',
+            })
+        return attrs
