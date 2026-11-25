@@ -228,6 +228,12 @@ May 15 of that year. This keeps fixture data independent of the day tests run.
 Stored example text follows the selected German, English, French or Spanish
 demo template.
 
+Open Farm Garden in the graphical Growing areas view and enable **Show tasks**.
+Lettuce 1 is overdue, Tomato Row 1 is due soon, Lettuce 2 is due later,
+Herbs & Chard has open work without a date, and Cucumber Row is complete.
+Tomato Row 2 has no applicable tasks. The fence task on the leased North Plot
+stays on the task board. Open a bed's details to complete one of its tasks.
+
 The explicit command-line public-library fixture also copies botanical names,
 germination fields and shareable general-crop companions. Project-only tags,
 timing windows, supplier statuses and tasks stay private. Guest and personal

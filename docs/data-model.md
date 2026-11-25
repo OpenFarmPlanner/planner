@@ -195,7 +195,15 @@ erDiagram
   Beds remain visible in the overview. Their single-line labels always stay
   horizontal, use an ellipsis within the bed and hide only when there is
   insufficient horizontal screen space; clicking opens the full details.
-  Task indicators and quick actions are separate work (#975).
+  **Show tasks** optionally shades the beds by the highest urgency among
+  their open tasks. It combines the active season's task list with its visible
+  planting plans, including eligible carry-over plans. A task belongs to a bed
+  through its planting plan. Parcel-wide and cancelled tasks are excluded.
+  Due dates before today count as overdue, and the upcoming window includes
+  today and the next seven days. Undated work has its own category and count.
+  The legend provides a keyboard-accessible bed picker and status description.
+  The bed detail route lists its tasks in due date order and uses the existing
+  task status update to mark them complete.
   For local acceptance, `seed_graphical_layout_acceptance --username USER
   --database-name LOCAL_DATABASE` previews an isolated project with three plots
   and long bed names (from `backend/` via `pdm run python manage.py`). After

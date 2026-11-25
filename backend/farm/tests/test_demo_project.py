@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from copy import deepcopy
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -109,7 +109,7 @@ class DemoFeatureCoverageTests(TestCase):
             set(tasks.values_list("origin", flat=True)), {"manual", "automatic", "template"}
         )
         manual = tasks.filter(origin="manual")
-        self.assertEqual(manual.count(), 7)
+        self.assertEqual(manual.count(), 8)
         self.assertEqual(
             set(manual.values_list("status", flat=True)),
             {
@@ -139,7 +139,7 @@ class DemoFeatureCoverageTests(TestCase):
                 project = create_or_reset_demo_project().project
                 season = project.seasons.get(start_date__year=today.year)
                 manual = Task.objects.filter(project=project, season=season, origin="manual")
-                self.assertEqual(manual.count(), 7)
+                self.assertEqual(manual.count(), 8)
                 self.assertTrue(manual.filter(due_date=today, status="in_progress").exists())
                 self.assertTrue(manual.filter(due_date__lt=today, status="pending").exists())
                 self.assertTrue(manual.filter(due_date__gt=today, status="pending").exists())
@@ -246,7 +246,7 @@ class DemoFeatureCoverageTests(TestCase):
         self.assertFalse(CropTaskTemplate.objects.filter(pk__in=template_ids).exists())
         self.assertFalse(Task.objects.filter(pk=legacy.pk).exists())
         self.assertTrue(Task.objects.filter(pk=other_task.pk).exists())
-        self.assertEqual(Task.objects.filter(project=self.project, origin="manual").count(), 7)
+        self.assertEqual(Task.objects.filter(project=self.project, origin="manual").count(), 8)
         self.assertEqual(CropTaskTemplate.objects.filter(project=self.project).count(), 3)
 
     def test_failed_feature_seeding_rolls_back_the_entire_reset(self) -> None:
@@ -295,6 +295,39 @@ class DemoFeatureCoverageTests(TestCase):
 
 
 class DemoProjectServiceTests(TestCase):
+    def test_bed_task_examples_cover_all_statuses_in_every_demo_language(self) -> None:
+        today = date(2031, 5, 15)
+        for language in SUPPORTED_LANGUAGE_CODES:
+            with self.subTest(language=language), patch(
+                'farm.services.demo_project.timezone.localdate', return_value=today,
+            ):
+                project = create_or_reset_demo_project(language_code=language).project
+                lang = resolve_demo_language(language)
+                season = project.seasons.get(start_date__year=today.year)
+                tasks = Task.objects.filter(project=project, season=season).exclude(
+                    status='cancelled',
+                )
+                bed_names = DEMO_TEXT[lang]['beds']
+                for bed, index, status, offset in (
+                    ('salat-1', 6, 'pending', -2), ('tomate-1', 3, 'pending', 2),
+                    ('salat-2', 7, 'pending', 10), ('kraeuter', 4, 'pending', None),
+                    ('gurke', 2, 'completed', -1),
+                ):
+                    example = tasks.get(
+                        planting_plan__bed__name=bed_names[bed],
+                        title=FEATURE_TEXT[lang]['tasks'][index],
+                    )
+                    self.assertEqual(example.status, status)
+                    self.assertEqual(example.field_id, example.planting_plan.bed.field_id)
+                    self.assertEqual(example.due_date, None if offset is None
+                                     else today + timedelta(days=offset))
+                self.assertFalse(tasks.filter(planting_plan__bed__name=bed_names['tomate-2']).exists())
+                self.assertFalse(tasks.filter(planting_plan__bed__name=bed_names['gurke'])
+                                 .exclude(status='completed').exists())
+                self.assertTrue(tasks.filter(
+                    planting_plan__isnull=True, field__isnull=False,
+                ).exists())
+
     def test_rotation_example_can_be_previewed_in_every_demo_language(self) -> None:
         for language in SUPPORTED_LANGUAGE_CODES:
             with self.subTest(language=language):

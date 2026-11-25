@@ -29,6 +29,28 @@
     "graphical": "Grafisch"
   },
   "graphical": {
+    "taskLayer": {
+      "title": "Taken per bed",
+      "show": "Taken tonen",
+      "urgency": {
+        "upcoming": "Vandaag of in de komende 7 dagen",
+        "later": "Later gepland",
+        "undated": "Open zonder datum",
+        "completed": "Alles klaar"
+      },
+      "noFill": "Bedden zonder aanduiding hebben dit seizoen geen taken.",
+      "none": "Dit bed heeft dit seizoen geen taken.",
+      "chooseBed": "Bed kiezen",
+      "loadError": "De bedtaken konden niet worden geladen.",
+      "saveError": "De taakstatus kon niet worden opgeslagen.",
+      "outstanding_one": "{{count}} open taak",
+      "outstanding_other": "{{count}} open taken",
+      "undatedCount_one": "{{count}} zonder datum",
+      "undatedCount_other": "{{count}} zonder datum",
+      "complete": "Afronden",
+      "completeNamed": "‘{{title}}’ als klaar markeren",
+      "allTasks": "Alle taken"
+    },
     "freeArea": {
       "toggle": "Vrije ruimte en paden tonen",
       "title": "Vrije ruimte",

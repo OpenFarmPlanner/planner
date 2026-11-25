@@ -525,7 +525,7 @@ interface CalendarHarvestPage {
 export const plantingPlanAPI = {
   list: () => http.get<PaginatedResponse<PlantingPlan>>('/planting-plans/'),
   listAll: (signal?: AbortSignal) => fetchAllPaginated<PlantingPlan>('/planting-plans/', signal),
-  listForArea: (type: 'bed' | 'field', id: number, signal?: AbortSignal) =>
+  listForArea: (type: 'bed' | 'field' | 'location', id: number, signal?: AbortSignal) =>
     fetchAllPaginated<PlantingPlan>(`/planting-plans/?${type}=${id}`, signal),
   get: (id: number) => http.get<PlantingPlan>(`/planting-plans/${id}/`),
   getAcrossSeasons: (id: number, signal?: AbortSignal, harvestYear?: number, recordSeasonId?: number) =>
@@ -999,7 +999,7 @@ export default {
 
 
 export const taskAPI = {
-  listAll: () => fetchAllPaginated<Task>('/tasks/'),
+  listAll: (signal?: AbortSignal) => fetchAllPaginated<Task>('/tasks/', signal),
   listForPlan: (planId: number, signal?: AbortSignal, recordSeasonId?: number) => fetchAllPaginated<Task>(
     `/tasks/?planting_plan=${planId}&across_seasons=true${recordSeasonId === undefined ? '' : `&record_season=${recordSeasonId}`}`,
     signal,

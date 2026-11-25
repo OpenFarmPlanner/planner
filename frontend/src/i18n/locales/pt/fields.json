@@ -29,6 +29,30 @@
     "graphical": "Gráfico"
   },
   "graphical": {
+    "taskLayer": {
+      "title": "Tarefas dos canteiros",
+      "show": "Mostrar tarefas",
+      "urgency": {
+        "upcoming": "Hoje ou nos próximos 7 dias",
+        "later": "Para mais tarde",
+        "undated": "Em aberto sem data",
+        "completed": "Todas concluídas"
+      },
+      "noFill": "Os canteiros sem indicador não têm tarefas nesta campanha.",
+      "none": "Este canteiro não tem tarefas nesta campanha.",
+      "chooseBed": "Selecionar canteiro",
+      "loadError": "Não foi possível carregar as tarefas dos canteiros.",
+      "saveError": "Não foi possível guardar o estado da tarefa.",
+      "outstanding_one": "{{count}} tarefa em aberto",
+      "outstanding_other": "{{count}} tarefas em aberto",
+      "undatedCount_one": "{{count}} sem data",
+      "undatedCount_other": "{{count}} sem data",
+      "complete": "Concluir",
+      "completeNamed": "Marcar «{{title}}» como concluída",
+      "allTasks": "Todas as tarefas",
+      "outstanding_many": "{{count}} tarefas em aberto",
+      "undatedCount_many": "{{count}} sem data"
+    },
     "freeArea": {
       "toggle": "Mostrar espaços livres e caminhos",
       "title": "Espaços livres",

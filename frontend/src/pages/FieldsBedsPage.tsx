@@ -15,6 +15,7 @@ import { DetailPageActions } from '../components/layout/DetailPageActions';
 import { locationAPI, parcelRotationAPI } from '../api/api';
 import type { LocationPathSpacing, ParcelRotationGroup } from '../api/types';
 import { ParcelRotationGroupsDialog } from '../components/hierarchy/rotation/ParcelRotationGroupsDialog';
+import { getEntityDetailPath } from '../components/hierarchy/details/hierarchyDetailRoutes';
 import {
   ParcelRotationContext, type ParcelRotationMembership,
 } from '../components/hierarchy/rotation/parcelRotationContext';
@@ -70,16 +71,16 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   });
   // A `?highlight=` deep link (e.g. "Beet/Parzelle/Standort öffnen" from the
   // Gantt calendar) only has scroll-to/flash support in the table view
-  // (FieldsBedsHierarchy). Force that view for the rest of this page visit
-  // when we arrive with the param, without touching/persisting the user's
-  // actual `viewMode` preference. Captured once at mount (not derived from
-  // the live URL) because FieldsBedsHierarchy strips the param right after
-  // starting the highlight/flash — deriving this live would flip back to
-  // the user's real (possibly graphical) view mid-flash and unmount it.
-  const [forceTableViewForDeepLink] = useState(
+  // (FieldsBedsHierarchy). Keep the list visible until the user explicitly
+  // changes view. The hierarchy removes the parameter as the highlight starts.
+  const [forceTableViewForDeepLink, setForceTableViewForDeepLink] = useState(
     () => new URLSearchParams(window.location.search).has('highlight'),
   );
   const effectiveViewMode: ViewMode = forceTableViewForDeepLink ? 'table' : viewMode;
+  const showGraphicalView = useCallback(() => {
+    setForceTableViewForDeepLink(false);
+    setViewMode('graphical');
+  }, []);
   const [globalActionError, setGlobalActionError] = useState<string>('');
   const [globalActionSuccess, setGlobalActionSuccess] = useState<string>('');
   const [createFieldRequest, setCreateFieldRequest] = useState(0);
@@ -194,7 +195,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
       shortcutHint: 'L',
       keys: { key: 'l' },
       contextTags: ['areas'],
-      isEnabled: () => viewMode !== 'table',
+      isEnabled: () => effectiveViewMode !== 'table',
       action: () => {
         setIsEditingGraphic(false);
         setViewMode('table');
@@ -208,12 +209,10 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
       shortcutHint: 'G',
       keys: { key: 'g' },
       contextTags: ['areas'],
-      isEnabled: () => viewMode !== 'graphical',
-      action: () => {
-        setViewMode('graphical');
-      },
+      isEnabled: () => effectiveViewMode !== 'graphical',
+      action: showGraphicalView,
     },
-  ], [t, viewMode]);
+  ], [t, effectiveViewMode, showGraphicalView]);
 
   useRegisterCommands('areas-view-switch', commands);
 
@@ -381,11 +380,11 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
     {
       id: 'fields-view-mode-graphical',
       label: t('fields:representation.graphical'),
-      onClick: () => setViewMode('graphical'),
+      onClick: showGraphicalView,
       active: effectiveViewMode === 'graphical',
       groupId: 'fields-view-mode',
     },
-  ]), [effectiveViewMode, t]);
+  ]), [effectiveViewMode, showGraphicalView, t]);
 
   const contextActions = useMemo<TopbarContextAction[]>(() => (
     shouldShowProjectRequiredState
@@ -556,6 +555,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             showTitle={false}
             showModeToggle={false}
             showFreeAreas={showFreeAreas}
+            activeSeasonId={outletContext?.activeSeason?.id}
+            onOpenBed={id => navigate(getEntityDetailPath('bed', id))}
             hierarchyData={hierarchyData}
           />
         ) : null}

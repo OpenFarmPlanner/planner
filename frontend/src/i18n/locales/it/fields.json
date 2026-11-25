@@ -29,6 +29,30 @@
     "graphical": "Grafica"
   },
   "graphical": {
+    "taskLayer": {
+      "title": "Attività delle aiuole",
+      "show": "Mostra attività",
+      "urgency": {
+        "upcoming": "Oggi o nei prossimi 7 giorni",
+        "later": "In scadenza più avanti",
+        "undated": "Aperte senza data",
+        "completed": "Tutte completate"
+      },
+      "noFill": "Le aiuole senza indicatore non hanno attività in questa stagione.",
+      "none": "Questa aiuola non ha attività in questa stagione.",
+      "chooseBed": "Seleziona aiuola",
+      "loadError": "Impossibile caricare le attività delle aiuole.",
+      "saveError": "Impossibile salvare lo stato dell’attività.",
+      "outstanding_one": "{{count}} attività aperta",
+      "outstanding_other": "{{count}} attività aperte",
+      "undatedCount_one": "{{count}} senza data",
+      "undatedCount_other": "{{count}} senza data",
+      "complete": "Completa",
+      "completeNamed": "Segna «{{title}}» come completata",
+      "allTasks": "Tutte le attività",
+      "outstanding_many": "{{count}} attività aperte",
+      "undatedCount_many": "{{count}} senza data"
+    },
     "freeArea": {
       "toggle": "Mostra spazi liberi e passaggi",
       "title": "Spazi liberi",

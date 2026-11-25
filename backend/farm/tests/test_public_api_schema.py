@@ -138,6 +138,17 @@ class PublishedSurfaceTests(APITestCase):
         self.assertIn('X-Season-Id', _header_names(paths['/api/planting-plans/']['get']))
         self.assertNotIn('X-Season-Id', _header_names(paths['/api/crops/']['get']))
 
+    def test_planting_plan_area_filters_are_documented(self):
+        parameters = self.schema['paths']['/api/planting-plans/']['get']['parameters']
+        filters = {
+            parameter['name']: parameter['schema']['type']
+            for parameter in parameters
+            if parameter['in'] == 'query'
+        }
+
+        for name in ('bed', 'field', 'location'):
+            self.assertEqual(filters[name], 'integer', name)
+
     def test_inherited_crop_fields_are_marked_as_raw_values(self):
         crop = self.schema['components']['schemas']['Crop']['properties']
 

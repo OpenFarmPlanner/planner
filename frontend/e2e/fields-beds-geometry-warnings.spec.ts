@@ -12,6 +12,9 @@ async function findShape(page: Page, testId: string) {
     const bounds = node.getClientRect();
     return {
       issue: node.getAttr('data-geometry-issue') as string | undefined,
+      urgency: node.getAttr('data-task-urgency') as string | undefined,
+      fill: node.getAttr('fill') as string,
+      hasTaskIcon: stage.find('Text').some(text => text.getAttr('data-testid') === testId.replace('bed-rect-', 'bed-task-icon-')),
       world: node.getAbsolutePosition(stage),
       screen: { x: canvas.x + bounds.x, y: canvas.y + bounds.y, width: bounds.width, height: bounds.height },
       zoom: stage.scaleX(),
@@ -47,7 +50,134 @@ async function seedGeometry(page: Page) {
     field_layouts: fields.map((field, index) => ({ field: field.id, x: [40, 240, 490][index], y: 40 })),
     bed_layouts: beds.map((bed, index) => ({ bed: bed.id, x: [16, 52, 150, 0, 12][index], y: [12, 12, 80, 0, 12][index] })),
   });
-  return { bedId: beds[1].id, fieldId: fields[0].id, fullFieldId: fields[1].id, path };
+  return { bedId: beds[1].id, neighborId: beds[0].id, fieldId: fields[0].id, fullFieldId: fields[1].id, path };
+}
+
+for (const mobile of [false, true]) {
+  test.describe(`bed tasks on ${mobile ? 'a phone' : 'desktop'}`, () => {
+    test.use({ hasTouch: mobile, serviceWorkers: 'block' });
+
+    test('explains urgency independently of zoom and updates it after completing a task', async ({ page, request }, testInfo) => {
+      await page.setViewportSize(mobile ? { width: 375, height: 800 } : { width: 1440, height: 900 });
+      await page.clock.setFixedTime(new Date(2026, 4, 15, 12));
+      await loginWithDeterministicProject(page, request, `graphical-bed-tasks-${mobile}`, { loginAsAdmin: true });
+      const { bedId, neighborId, fieldId } = await seedGeometry(page);
+      const season = await apiRequest<{ id: number }>(page, 'POST', '/seasons/', {
+        start_date: '2026-01-01', end_date: '2026-12-31',
+      });
+      const plan = await apiRequest<{ id: number }>(page, 'POST', '/planting-plans/', {
+        bed: bedId, season: season.id, planting_date: '2026-05-10',
+      });
+      const generated = await apiRequest<{ results: { id: number }[] }>(page, 'GET', `/tasks/?planting_plan=${plan.id}`);
+      for (const task of generated.results) await apiRequest(page, 'PATCH', `/tasks/${task.id}/`, { status: 'completed' });
+      const overdue = await apiRequest<{ id: number }>(page, 'POST', '/tasks/', {
+        title: 'Überfällige Kontrolle', season: season.id, planting_plan: plan.id, due_date: '2026-05-14',
+      });
+      await apiRequest(page, 'POST', '/tasks/', {
+        title: 'Material besorgen', season: season.id, planting_plan: plan.id, due_date: null,
+      });
+      await apiRequest(page, 'POST', '/tasks/', {
+        title: 'Parzellenzaun prüfen', season: season.id, field: fieldId, due_date: '2026-05-14',
+      });
+      const taskWrites: string[] = [];
+      page.on('request', request => {
+        if (request.method() !== 'GET' && /\/tasks\//.test(new URL(request.url()).pathname)) {
+          taskWrites.push(new URL(request.url()).pathname);
+        }
+      });
+
+      await page.goto('/app/fields-beds');
+      await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+      const getBed = () => findShape(page, `bed-rect-${bedId}`);
+      const getNeighbor = () => findShape(page, `bed-rect-${neighborId}`);
+      const taskControl = page.getByRole('button', { name: 'Aufgaben im Beet', exact: true });
+      await expect(taskControl).toBeVisible();
+      await expect.poll(async () => (await getBed())?.issue).toBe('shortGap');
+      const ordinaryFill = (await getBed())?.fill;
+      await page.getByRole('button', { name: 'Abstände', exact: true }).click();
+      await page.getByRole('checkbox', { name: 'Freiflächen und Wege anzeigen' }).check();
+      await page.keyboard.press('Escape');
+      await page.getByRole('button', { name: /Flächenbilanz|Freiflächen/ }).waitFor();
+      await taskControl.click();
+      let panel = page.getByRole('dialog', { name: 'Aufgaben im Beet' });
+      await expect(panel.getByRole('switch', { name: 'Aufgaben anzeigen' })).not.toBeChecked();
+      await panel.getByRole('switch', { name: 'Aufgaben anzeigen' }).check();
+      await expect(panel.getByText('Offen ohne Termin')).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(panel).toHaveCount(0);
+      await expect.poll(async () => (await getBed())?.urgency).toBe('overdue');
+      const colored = await getBed();
+      expect(colored?.fill).not.toBe(ordinaryFill);
+      expect(colored?.issue).toBe('shortGap');
+      expect((await getNeighbor())?.urgency).toBeUndefined();
+      if (!mobile) {
+        const screen = colored!.screen;
+        const x = screen.x + screen.width / 2;
+        const y = screen.y + screen.height / 2;
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+        await page.mouse.move(x + 15, y, { steps: 4 });
+        await page.mouse.up();
+        await expect(page).toHaveURL(/fields-beds$/);
+      }
+      for (let step = 0; step < 5; step += 1) {
+        await page.getByRole('button', { name: 'Herauszoomen', exact: true }).click();
+      }
+      await expect.poll(getBed).toMatchObject({ urgency: 'overdue', fill: colored?.fill, hasTaskIcon: false });
+      await taskControl.focus();
+      await page.keyboard.press('Enter');
+      panel = page.getByRole('dialog', { name: 'Aufgaben im Beet' });
+      await panel.getByRole('combobox', { name: 'Beet auswählen' }).click();
+      await page.getByRole('option', { name: /Südbeet · Lernparzelle/ }).click();
+      await expect(panel.getByText(/Südbeet · Lernparzelle · Überfällig/)).toBeVisible();
+      await expect(panel.getByText(/2 offene Aufgaben.*1 ohne Termin/)).toBeVisible();
+      expect(await panel.evaluate(node => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(0);
+      await testInfo.attach(`bed-tasks-${mobile ? 'phone' : 'desktop'}`, {
+        body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png',
+      });
+      if (mobile) {
+        await page.setViewportSize({ width: 800, height: 375 });
+        await expect(panel.getByText(/Südbeet · Lernparzelle · Überfällig/)).toBeVisible();
+        expect(await panel.evaluate(node => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(0);
+        await testInfo.attach('bed-tasks-phone-landscape', {
+          body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png',
+        });
+        await page.setViewportSize({ width: 375, height: 800 });
+      }
+      const details = panel.getByRole('button', { name: 'Beetdetails' });
+      if (mobile) await details.tap();
+      else {
+        await details.focus();
+        await page.keyboard.press('Enter');
+      }
+      await expect(page).toHaveURL(new RegExp(`/fields-beds/beds/${bedId}$`));
+      await expect(page.getByRole('heading', { name: 'Südbeet', level: 1 })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Alle Aufgaben' })).toHaveAttribute('href', /dashboard$/);
+      await expect(page.getByText('Material besorgen')).toBeVisible();
+      await expect(page.getByText(/Überfällig · 2 offene Aufgaben/)).toBeVisible();
+      await expect(page.getByText('Parzellenzaun prüfen')).toHaveCount(0);
+      await page.getByRole('button', { name: '„Überfällige Kontrolle“ als erledigt markieren' }).click();
+      await expect(page.getByRole('button', { name: '„Überfällige Kontrolle“ als erledigt markieren' })).toHaveCount(0);
+      const saved = await apiRequest<{ status: string }>(page, 'GET', `/tasks/${overdue.id}/`);
+      expect(saved.status).toBe('completed');
+      await page.getByRole('button', { name: 'Zurück zu den Anbauflächen' }).click();
+      await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+      await taskControl.click();
+      await expect.poll(async () => (await getBed())?.fill).toBe(ordinaryFill);
+      await page.getByRole('switch', { name: 'Aufgaben anzeigen' }).check();
+      await page.keyboard.press('Escape');
+      await expect(panel).toHaveCount(0);
+      await expect.poll(async () => (await getBed())?.urgency).toBe('undated');
+      expect(taskWrites).toHaveLength(1);
+      expect(taskWrites[0]).toMatch(new RegExp(`/tasks/${overdue.id}/$`));
+      const { screen } = (await getBed())!;
+      const point = { x: Math.round(screen.x + screen.width / 2), y: Math.round(screen.y + screen.height / 2) };
+      await expect.poll(() => page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.tagName, point)).toBe('CANVAS');
+      if (mobile) await page.touchscreen.tap(point.x, point.y);
+      else await page.mouse.click(point.x, point.y);
+      await expect(page).toHaveURL(new RegExp(`/fields-beds/beds/${bedId}$`));
+    });
+  });
 }
 
 for (const input of ['mouse', 'touch'] as const) {
