@@ -515,7 +515,9 @@ class ProjectsApiTests(APITestCase):
         self.assertIsNone(response.data['width_m'])
 
     def test_partial_project_update_preserves_a_concurrently_cleared_bed_default(self) -> None:
-        Project.objects.filter(pk=self.project.pk).update(default_bed_length_m=10, default_bed_width_m=1.2)
+        Project.objects.filter(pk=self.project.pk).update(
+            default_bed_length_m=10, default_bed_width_m=1.2,
+        )
         original_update = ProjectSerializer.update
 
         def update_after_clear(serializer, instance, validated_data):
