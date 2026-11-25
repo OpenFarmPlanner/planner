@@ -30,6 +30,7 @@ export function ParcelRotationDetailSection({ fieldId, fields, beds, canManage, 
             <Alert severity="error" action={<LoadRetryButton onClick={reload} />}>{t('parcelRotation.loadError')}</Alert>
           )}
         </DetailSection>
+        {dialog}
       </Box>
     );
   }
