@@ -332,5 +332,19 @@ describe('renderNameCell', () => {
       expect(value(row({ type: 'location', locationId: 7 }))).toBe('');
       expect(value(row({ type: 'bed', bedId: 7, fieldId: 7 }))).toBe('');
     });
+
+    it.each(['loading', 'error'] as const)('never shows a parcel as unassigned while the groups are %s', (status) => {
+      const column = createParcelRotationColumn(t, memberships, status);
+      const parcel = row({ id: 'field-7', type: 'field', fieldId: 7 });
+      const value = (column.valueGetter as (v: unknown, r: HierarchyRow) => string)(undefined, parcel);
+      render(<div>{column.renderCell?.({ row: parcel, value } as never)}</div>);
+
+      if (status === 'loading') {
+        expect(screen.getByRole('progressbar', { name: 'Lädt...' })).toBeInTheDocument();
+      } else {
+        expect(screen.getByRole('img', { name: 'Die Rotationsgruppen konnten nicht geladen werden.' })).toBeInTheDocument();
+      }
+      expect(screen.queryByTestId('parcel-rotation-cell')).not.toBeInTheDocument();
+    });
   });
 });

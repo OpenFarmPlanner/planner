@@ -1775,7 +1775,9 @@ function FieldsBedsHierarchy({
   /**
    * Create columns with callbacks
    */
-  const { memberships: rotationMemberships, manage: manageRotationGroups } = useContext(ParcelRotationContext);
+  const {
+    memberships: rotationMemberships, status: rotationStatus, manage: manageRotationGroups,
+  } = useContext(ParcelRotationContext);
   const columns = useMemo(() => {
     const baseColumns = createHierarchyColumns(
       toggleExpand,
@@ -1808,7 +1810,7 @@ function FieldsBedsHierarchy({
     const notesIndex = baseColumns.findIndex((column) => column.field === "notes");
     const orderedColumns = [
       ...baseColumns.slice(0, notesIndex),
-      createParcelRotationColumn(t, rotationMemberships),
+      createParcelRotationColumn(t, rotationMemberships, rotationStatus),
       ...createSiteConditionColumns(t),
       ...baseColumns.slice(notesIndex),
     ];
@@ -1834,6 +1836,7 @@ function FieldsBedsHierarchy({
     expandOneLevel,
     collapseOneLevel,
     rotationMemberships,
+    rotationStatus,
   ]);
   const columnSizing = useGridColumnSizing(columns, "fieldsBedsHierarchy", userId, projectId);
 

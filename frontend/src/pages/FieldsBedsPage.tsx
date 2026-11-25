@@ -148,11 +148,14 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   const rotation = useParcelRotationGroups({
     enabled: projectId != null, fields, beds, onChanged: () => { void reloadActiveSeason?.(); },
   });
-  const { memberships: rotationMemberships, open: openRotationGroups, dialog: rotationDialog } = rotation;
+  const {
+    memberships: rotationMemberships, status: rotationStatus, open: openRotationGroups, dialog: rotationDialog,
+  } = rotation;
   const rotationControls = useMemo(() => ({
     memberships: rotationMemberships,
+    status: rotationStatus,
     manage: activeProjectMembership ? () => openRotationGroups() : undefined,
-  }), [activeProjectMembership, openRotationGroups, rotationMemberships]);
+  }), [activeProjectMembership, openRotationGroups, rotationMemberships, rotationStatus]);
   const setTopbarContextActions = outletContext?.setTopbarContextActions;
   const setTopbarTitleActions = outletContext?.setTopbarTitleActions;
   const [locationSelection, setLocationSelection] = useState(() => {

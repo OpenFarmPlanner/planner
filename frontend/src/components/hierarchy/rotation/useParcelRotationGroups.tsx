@@ -4,7 +4,7 @@ import { parcelRotationAPI } from '../../../api/api';
 import type { Bed, Field, ParcelRotationGroup } from '../../../api/types';
 import { useTranslation } from '../../../i18n';
 import { ParcelRotationGroupsDialog } from './ParcelRotationGroupsDialog';
-import type { ParcelRotationMembership } from './parcelRotationContext';
+import type { ParcelRotationLoadStatus, ParcelRotationMembership } from './parcelRotationContext';
 
 interface Options {
   enabled: boolean;
@@ -16,7 +16,7 @@ interface Options {
 export interface ParcelRotationGroupsState {
   memberships: ReadonlyMap<number, ParcelRotationMembership>;
   /** Whether `memberships` reflects the server yet; an unloaded or failed list is not "unassigned". */
-  status: 'loading' | 'ready' | 'error';
+  status: ParcelRotationLoadStatus;
   reload: () => void;
   /** Opens the shared rotation-group dialog, preselecting the parcel's group (or a new one) when given. */
   open: (fieldId?: number) => void;
@@ -61,7 +61,7 @@ export function useParcelRotationGroups({ enabled, fields, beds, onChanged }: Op
     setLoadError(false);
     void refresh();
   }, [refresh]);
-  const status = hasLoaded ? 'ready' : loadError ? 'error' : 'loading';
+  const status: ParcelRotationLoadStatus = hasLoaded ? 'ready' : loadError ? 'error' : 'loading';
 
   const close = () => setDialogState(null);
   const dialog = !dialogState ? null : loading || loadError ? (
