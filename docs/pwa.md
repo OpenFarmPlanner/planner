@@ -35,6 +35,15 @@ are content-hashed and therefore immutable, which is what makes precaching
 them safe: a new deploy emits new filenames, and `cleanupOutdatedCaches`
 drops the previous generation.
 
+The production build limits each minified entry chunk to 1,500,000 bytes
+(1.5 MB), leaving room below Workbox's per-file ceiling of 2,097,152 bytes
+(2 MiB). Workbox fails the build when a file matched by its precache globs
+exceeds that ceiling. The build also checks the web manifest and its icons,
+which the PWA plugin adds separately. Both checks count uncompressed bytes.
+
+MUI X DataGrid and its internal packages share a vendor chunk. Table routes
+load it when needed. The service worker precaches it with the other chunks.
+
 ## What is deliberately *not* cached
 
 ### API responses — and the rule any future change must follow

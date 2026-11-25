@@ -9,7 +9,7 @@ import { useTranslation } from '../i18n';
 import { useAuth } from '../auth/useAuth';
 import { appRouteUrl } from '../utils/appRouteUrl';
 import { createTransientId } from '../utils/transientId';
-import { DELETE_UNDO_DURATION_MS } from '../components/data-grid';
+import { DELETE_UNDO_DURATION_MS } from '../components/data-grid/DeleteUndoSnackbar';
 import { stashSeasonSwitchState } from './seasonSwitchState';
 import {
   clearStoredActiveSeasonId,

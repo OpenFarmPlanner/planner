@@ -43,7 +43,7 @@ import { computeSeasonLabel, formatSeasonPeriod, resolveSeasonDateLocale } from 
 import { addDaysIso, analyzePeriodTransition, computeManualSeasonEnd } from './seasonPeriodMath';
 import { SEASON_SWITCHER_EMOJI } from '../navigation/navigationIconEmoji';
 import { NavEmojiIcon } from '../navigation/NavEmojiIcon';
-import { DeleteUndoSnackbar } from '../components/data-grid';
+import { DeleteUndoSnackbar } from '../components/data-grid/DeleteUndoSnackbar';
 import { extractApiErrorCode, extractApiErrorMessage } from '../api/errors';
 import { TruncatedTextWithTooltip } from '../components/TruncatedTextWithTooltip';
 

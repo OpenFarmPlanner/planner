@@ -73,6 +73,7 @@ test.describe('progressive web app', () => {
     });
 
     expect(cachedUrls.some((url) => url.startsWith('/assets/') && url.endsWith('.js'))).toBeTruthy();
+    expect(cachedUrls).toEqual(expect.arrayContaining([expect.stringMatching(/^\/assets\/muiDataGrid-[\w-]+\.js$/)]));
     expect(cachedUrls.filter((url) => url.startsWith('/api/'))).toEqual([]);
     expect(cachedUrls.filter((url) => url.endsWith('.html'))).toEqual([]);
     // The SPA shell is served for every app route; a cached "/" would pin a

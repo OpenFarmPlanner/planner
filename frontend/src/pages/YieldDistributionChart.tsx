@@ -4,7 +4,7 @@ import { Box, Button, Card, CardContent, Divider, MenuItem, Typography } from "@
 import { type YieldCalendarWeek } from "../api/api";
 import { type Season } from "../api/types";
 import { YieldYearBoundaryMarker } from "./YieldYearBoundaryMarker";
-import { copyTextToClipboardSilently } from "../components/data-grid";
+import { copyTextToClipboardSilently } from "../components/data-grid/tableClipboard";
 import { CustomContextMenu } from "../components/contextMenu/CustomContextMenu";
 import { useContextMenuPositionState } from "../components/contextMenu/useContextMenuPositionState";
 import {
