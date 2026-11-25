@@ -5,17 +5,17 @@ import { AppTooltip } from '../components/AppTooltip';
 import { GridTooltipScope } from '../components/data-grid/GridTooltipScope';
 import { registerOpenContextMenu } from '../components/contextMenu/contextMenuOpenState';
 
-function Grid({ editing = false, firstRow = 'first' }: { editing?: boolean; firstRow?: string }) {
+function Grid({ editing = false, firstRow = 'first' }: { editing?: boolean; firstRow?: string | null }) {
   return (
     <GridTooltipScope editing={editing}>
       <div role="grid">
-        <div role="row" data-id={firstRow}>
+        {firstRow && <div role="row" data-id={firstRow}>
           <div role="gridcell" data-field="name" tabIndex={-1} aria-label="First grid cell">
             <AppTooltip title="First preview" cellHasFocus={false} enterDelay={250} enterNextDelay={250}>
               <button aria-label="First cell" />
             </AppTooltip>
           </div>
-        </div>
+        </div>}
         <div role="row" data-id="second">
           <div role="gridcell" data-field="name">
             <AppTooltip title="Second preview" enterDelay={250} enterNextDelay={250}>
@@ -31,7 +31,13 @@ function Grid({ editing = false, firstRow = 'first' }: { editing?: boolean; firs
   );
 }
 
-const hover = (name: string) => fireEvent.mouseOver(screen.getByRole('button', { name }));
+let hoverX = 0;
+const hover = (name: string) => {
+  const button = screen.getByRole('button', { name });
+  const point = { clientX: ++hoverX, clientY: 20 };
+  fireEvent.mouseMove(button, point);
+  fireEvent.mouseOver(button, point);
+};
 const finishDelays = () => act(async () => { await vi.advanceTimersByTimeAsync(450); });
 const scrollGrid = () => {
   const grid = screen.getByRole('grid');
@@ -184,5 +190,26 @@ describe('grid tooltip lifecycle', () => {
 
     scrollGrid();
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  });
+
+  it('suppresses a new tooltip when scrolling swaps the cell under a stationary pointer', async () => {
+    const { rerender } = render(<Grid />);
+    const first = screen.getByRole('button', { name: 'First cell' });
+    const point = { clientX: 30, clientY: 40 };
+    fireEvent.mouseMove(document.body, { clientX: 10, clientY: 15 });
+    fireEvent.mouseOver(first, point);
+    fireEvent.mouseMove(first, point);
+    await finishDelays();
+    expect(screen.getByRole('tooltip')).toHaveTextContent('First preview');
+
+    screen.getByRole('grid').scrollTop += 40;
+    rerender(<Grid firstRow={null} />);
+    fireEvent.mouseOver(screen.getByRole('button', { name: 'Second cell' }), point);
+    await finishDelays();
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+
+    hover('Second cell');
+    await finishDelays();
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Second preview');
   });
 });

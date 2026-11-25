@@ -144,14 +144,14 @@ function GridAppTooltip({
   }, [id, open]);
   useLayoutEffect(() => () => dismissGridTooltip(id, null), [id]);
 
-  const acceptsInteraction = (event: SyntheticEvent): boolean => {
+  const acceptsInteraction = (event: SyntheticEvent, anchor: HTMLElement): boolean => {
     if (event.type === 'mouseover' && event.nativeEvent instanceof MouseEvent) {
-      return !scope.isStationaryHover(event.nativeEvent);
+      return !scope.isStationaryHover(event.nativeEvent, anchor);
     }
     return event.type !== 'focus' || !scope.isRestoringFocus() || allowedDuringEdit;
   };
   const reserve = (event: SyntheticEvent<HTMLElement>): void => {
-    if (acceptsInteraction(event) && request(event.currentTarget, event.nativeEvent)) {
+    if (acceptsInteraction(event, event.currentTarget) && request(event.currentTarget, event.nativeEvent)) {
       setIntent(previous => previous === 'idle' ? 'pending' : previous);
     }
   };
@@ -172,7 +172,7 @@ function GridAppTooltip({
         if (!isCurrentGridTooltipRequest(id, event.nativeEvent)) {
           // A synchronous opening can claim its live trigger event. Delayed
           // callbacks have no currentTarget and need the original request.
-          if (!anchor || event.currentTarget !== anchor || !acceptsInteraction(event)
+          if (!anchor || event.currentTarget !== anchor || !acceptsInteraction(event, anchor)
               || !request(anchor, event.nativeEvent)) return;
         }
         setIntent('open');

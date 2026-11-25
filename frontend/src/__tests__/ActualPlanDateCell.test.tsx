@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { GridRenderCellParams } from '@mui/x-data-grid';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import i18n from '../i18n';
@@ -35,11 +35,12 @@ function Harness({ activity = 'transplanting', actual = null, suggested = planne
 }) {
   const [requests] = useState(createDialogEditCellRequests);
   const [drafts] = useState<ActualPlanDateDrafts>(() => new Map());
-  const api = { setCellFocus: vi.fn(), getCellElement: () => null };
+  const cell = useRef<HTMLDivElement>(null);
+  const api = { setCellFocus: vi.fn(), getCellElement: () => cell.current };
   const params = { id: 1, field: 'date', hasFocus: true, api } as unknown as GridRenderCellParams;
   return <DialogEditCellContext.Provider value={requests}>
     <button onClick={() => requests.open(1, 'date')}>Edit cell</button>
-    <div role="gridcell">
+    <div ref={cell} role="gridcell" tabIndex={-1}>
       <ActualPlanDateCell drafts={drafts} params={params} getEditDates={() => ({ activity, actual, planned: suggested })}
         onSaveActual={(_activity, value) => save(value)}>
         {actual ?? '—'}
@@ -120,6 +121,28 @@ describe('inline actual date editor', () => {
     const picker = screen.getByRole('gridcell').querySelector<HTMLInputElement>('input[type="date"]')!;
     fireEvent.change(picker, { target: { value: '2026-07-15' } });
     expect(save).toHaveBeenCalledExactlyOnceWith('2026-07-15');
+  });
+
+  it('keeps focus in an editor reopened before the previous focus restoration runs', () => {
+    const frames: FrameRequestCallback[] = [];
+    const requestFrame = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => frames.push(callback));
+    const save = vi.fn();
+    try {
+      render(<Harness save={save} />);
+      const edit = screen.getByRole('button', { name: 'Edit cell' });
+      fireEvent.click(edit);
+      fireEvent.keyDown(screen.getByRole('textbox', { name: transplantLabel }), { key: 'Escape' });
+      expect(screen.queryByRole('textbox', { name: transplantLabel })).not.toBeInTheDocument();
+
+      fireEvent.click(edit);
+      const input = screen.getByRole('textbox', { name: transplantLabel });
+      expect(input).toHaveFocus();
+      act(() => frames.forEach(frame => frame(0)));
+      expect(input).toHaveFocus();
+      expect(save).not.toHaveBeenCalled();
+    } finally {
+      requestFrame.mockRestore();
+    }
   });
 
   it.each(localizedLabels)('labels the actual input in %s', async (language, label) => {
