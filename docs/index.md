@@ -58,6 +58,9 @@ for step-by-step procedures of recurring tasks, see the skills in
   inherited light/soil moisture/irrigation/soil type of locations, fields and
   beds, the Growing Areas Search/Filter/Columns toolbar, and the location,
   field and bed detail pages.
+- **[Season-effective growing-area geometry](./growing-area-geometry-history.md)** —
+  planned architecture for dated geometry versions of locations, parcels and
+  beds, the resolver, preview/confirm writes and the delivery order.
 - **[Occupancy Tree / Gantt Hierarchy](./occupancy-tree-hierarchy.md)** —
   the Standort → Parzelle → Beet tree in the bed-occupancy calendar, plus
   the Gantt calendar's context menu, drag-and-drop, and row-height model.
@@ -180,16 +183,15 @@ for step-by-step procedures of recurring tasks, see the skills in
 
 ## Geplant / in Arbeit — noch nicht implementiert
 
-Everything linked above describes code that exists. This section is the
-opposite: features that are **planned only** and have **no counterpart in the
-codebase**. There is deliberately no deep-dive doc for them — writing one
-before the design exists would produce exactly the confusion this section is
-here to prevent. If you are advising on architecture or scoping work, treat
-these as green field.
+The features in this section are **planned**. A linked decision record gives
+the approved design for future work. An explicitly labeled prototype only
+demonstrates the behavior described in its test evidence.
 
 | Planned feature | Current state in the code |
 |---|---|
 | **Fruchtfolge at Parzelle (`Field`) level** — rotation planning across a whole Parzelle rather than per bed | Nothing. The implemented rotation check works per bed only — see [crop-rotation.md](./crop-rotation.md). |
+| **[Season-effective growing-area geometry](./growing-area-geometry-history.md)** | The current app stores present measurements and separate schematic positions. The durable geometry timeline and its write path are planned. |
+| **[Growing Areas Map](./growing-area-map-design.md)** | The standalone OpenLayers prototype demonstrates geometry editing on synthetic data. The app view, regional provider adapters and history-aware writes are planned. |
 
 Seasons and the bed-level crop rotation check were in this table until they
 were implemented — see [seasons-architecture.md](./seasons-architecture.md)
