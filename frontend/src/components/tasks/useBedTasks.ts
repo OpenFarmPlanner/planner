@@ -1,46 +1,72 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { plantingPlanAPI, taskAPI } from '../../api/api';
-import type { Task } from '../../api/types';
+import type { PlantingPlan, Task } from '../../api/types';
 import { linkTasksToBeds } from './bedTaskUrgency';
 
+type GrowingArea = 'bed' | 'location';
 const NO_BED_TASKS: ReadonlyMap<number, readonly Task[]> = new Map();
+const NO_PLANS: readonly PlantingPlan[] = [];
 
-export function useBedTasks(
-  area: 'bed' | 'location', areaId: number | null, seasonId: number | undefined,
+function useScopedRead<T>(
+  scope: string | null, load: (signal: AbortSignal) => Promise<{ results: T[] }>,
 ) {
   const [attempt, setAttempt] = useState(0);
-  const [result, setResult] = useState<{
-    key: string;
-    byBed: ReadonlyMap<number, readonly Task[]>;
-    failed: boolean;
-  } | null>(null);
-  const key = areaId === null || seasonId === undefined ? null : `${area}:${areaId}:${seasonId}:${attempt}`;
+  const query = useMemo(() => scope === null ? null : { scope, attempt }, [scope, attempt]);
+  const [result, setResult] = useState<{ query: NonNullable<typeof query>; rows: readonly T[] | null } | null>(null);
   const refresh = useCallback(() => setAttempt(value => value + 1), []);
 
   useEffect(() => {
-    if (key === null || areaId === null) return;
+    if (query === null) return;
     const request = new AbortController();
     const { signal } = request;
-    void Promise.all([plantingPlanAPI.listForArea(area, areaId, signal), taskAPI.listAll(signal)])
-      .then(([plans, tasks]) => {
-        if (!signal.aborted) setResult({ key, byBed: linkTasksToBeds(tasks.results, plans.results), failed: false });
-      }).catch(() => {
-        if (!signal.aborted) setResult({ key, byBed: NO_BED_TASKS, failed: true });
-      });
+    void load(signal).then(({ results }) => {
+      if (!signal.aborted) setResult({ query, rows: results });
+    }).catch(() => {
+      if (!signal.aborted) setResult({ query, rows: null });
+    });
     return () => request.abort();
-  }, [area, areaId, key]);
+  }, [query, load]);
 
   useEffect(() => {
-    if (areaId === null || seasonId === undefined) return;
+    if (scope === null) return;
     window.addEventListener('focus', refresh);
     return () => window.removeEventListener('focus', refresh);
-  }, [areaId, seasonId, refresh]);
+  }, [scope, refresh]);
 
-  const current = result?.key === key ? result : null;
+  const current = result?.query === query ? result : null;
   return {
-    tasksByBed: current?.byBed ?? NO_BED_TASKS,
-    loading: key !== null && current === null,
-    failed: current?.failed ?? false,
+    rows: current?.rows ?? null,
+    loading: query !== null && current === null,
+    failed: current?.rows === null,
     refresh,
+  };
+}
+
+export function useAreaPlantingPlans(area: GrowingArea, areaId: number | null, seasonId?: number) {
+  const load = useCallback((signal: AbortSignal) => plantingPlanAPI.listForArea(area, areaId!, signal), [area, areaId]);
+  const scope = areaId === null || seasonId === undefined ? null : `${area}:${areaId}:${seasonId}`;
+  const result = useScopedRead(scope, load);
+  return { ...result, plans: result.rows ?? NO_PLANS };
+}
+
+export function useBedTasks(
+  area: GrowingArea, areaId: number | null, seasonId: number | undefined,
+  sharedPlans?: ReturnType<typeof useAreaPlantingPlans>,
+) {
+  const internalPlans = useAreaPlantingPlans(area, sharedPlans ? null : areaId, seasonId);
+  const plans = sharedPlans ?? internalPlans;
+  const scope = areaId === null || seasonId === undefined ? null : `${area}:${areaId}:${seasonId}`;
+  const taskRequest = useScopedRead(scope, taskAPI.listAll);
+  const rows = taskRequest.rows;
+  const tasksByBed = useMemo(() => rows && plans.rows ? linkTasksToBeds(rows, plans.rows) : NO_BED_TASKS,
+    [plans.rows, rows]);
+  return {
+    tasksByBed,
+    loading: scope !== null && (plans.loading || taskRequest.loading),
+    failed: scope !== null && (plans.failed || taskRequest.failed),
+    refresh: () => {
+      if (plans.failed) plans.refresh();
+      taskRequest.refresh();
+    },
   };
 }

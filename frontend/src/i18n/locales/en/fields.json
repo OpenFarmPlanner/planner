@@ -29,6 +29,37 @@
     "graphical": "Graphic"
   },
   "graphical": {
+    "display": {
+      "title": "Graphic display",
+      "mode": {
+        "areas": "Growing areas",
+        "crops": "Crops",
+        "tasks": "Tasks",
+        "cropsAndTasks": "Crops & tasks"
+      },
+      "date": "Crop reference date",
+      "today": "Today",
+      "entireSeason": "Entire season",
+      "previousDay": "Previous day",
+      "nextDay": "Next day",
+      "taskDateNote": "Task due dates and urgency use today.",
+      "legend": "Graphic legend",
+      "cropLegend": "Crop colors show projected growth or harvest. Perennials remain on the bed outside harvest. A neutral fill shows mixed or uncertain plans.",
+      "taskLegend": "Markers show open tasks. A bed without a marker can have completed tasks.",
+      "cropLoadError": "Cultivation plans could not be loaded.",
+      "phase": {
+        "growth": "Projected growth",
+        "harvest": "Projected harvest",
+        "occupancy": "Occupied bed"
+      },
+      "recordedHarvest": "Recorded harvest",
+      "recordedPlanting": "Planting recorded on {{date}}",
+      "range": "{{start}} to {{end}}",
+      "incompletePlan": "Dates or crop incomplete",
+      "noPlans": "No plan for this date or period.",
+      "completedTasks_one": "{{count}} completed task",
+      "completedTasks_other": "{{count}} completed tasks"
+    },
     "objects": {
       "dimensions": "{{width}} × {{length}} m",
       "viewDetails": "View details",

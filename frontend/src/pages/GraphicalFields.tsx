@@ -26,11 +26,15 @@ import { GraphicalObjectHint, GraphicalObjectOverlays, type GraphicalObject } fr
 import { graphicalObjectKey, useGraphicalObjectInteraction } from "./useGraphicalObjectInteraction";
 import { useContextMenuHint } from "../components/data-grid/useContextMenuHint";
 import { GraphicalFreeRectangles } from "./GraphicalFreeAreas";
-import { GraphicalBedTasksControl } from "./GraphicalBedTasksControl";
+import { GraphicalDisplayLegend } from "./GraphicalDisplayLegend";
+import { GraphicalBedLabels } from "./GraphicalBedLabels";
+import { getGanttPhaseColors } from "../utils/colorContrast";
+import { includesCrops, includesTasks, indexBedCultivations, projectBedCultivation } from "./graphicalCultivation";
 import { GraphicalCanvasTools } from "./GraphicalCanvasTools";
-import { bedTaskColors, BED_TASK_SYMBOLS } from "./graphicalBedTaskStyle";
-import { bedTaskDateBounds, summarizeBedTasks } from "../components/tasks/bedTaskUrgency";
-import { useBedTasks } from "../components/tasks/useBedTasks";
+import { bedTaskColors } from "./graphicalBedTaskStyle";
+import { bedTaskDateBounds, orderBedTasks, summarizeBedTasks } from "../components/tasks/bedTaskUrgency";
+import { useAreaPlantingPlans, useBedTasks } from "../components/tasks/useBedTasks";
+import { isOpenTask } from "../components/tasks/taskBoard";
 import { useIndividualPlants } from "./useIndividualPlants";
 import { GraphicalIndividualPlantsLayer, type CanvasStem } from "./GraphicalIndividualPlantsLayer";
 import { GraphicalIndividualPlantsPanel } from "./GraphicalIndividualPlantsPanel";
@@ -56,7 +60,6 @@ import {
   getContentBoundsFromRects,
   getVisibleElements,
   panViewport,
-  getBedLabelLayout,
   shouldShowFieldLabel,
   getFieldLabelScreenWidth,
   FIELD_LABEL_SCREEN_PADDING,
@@ -95,7 +98,6 @@ const canvasPanOffsets = {
   up: [0, PAN_STEP], down: [0, -PAN_STEP], left: [PAN_STEP, 0], right: [-PAN_STEP, 0],
 } as const;
 
-const BED_TASK_BADGE_WIDTH = 19;
 
 export default function GraphicalFields({
   showTitle = true,
@@ -103,6 +105,12 @@ export default function GraphicalFields({
   onInteractionModeChange,
   showModeToggle = true,
   activeSeasonId,
+  displayMode = 'areas',
+  cropReference,
+  fullscreenDisplayControls,
+  onFullscreenChange,
+  displayLegendAnchor,
+  closeDisplayLegend,
   individualSeason,
   canEditIndividualPlants = false,
   requestedIndividualPlan,
@@ -131,10 +139,6 @@ export default function GraphicalFields({
   const individualPlants = useIndividualPlants(
     activeLocationId, individualSeason, canEditIndividualPlants, requestedIndividualPlan,
   );
-  const [showBedTasks, setShowBedTasks] = useState(false);
-  const bedTasks = useBedTasks('location', showBedTasks ? activeLocationId : null, activeSeasonId);
-  const bounds = bedTaskDateBounds(new Date());
-  const taskSummaries = new Map(Array.from(bedTasks.tasksByBed, ([id, tasks]) => [id, summarizeBedTasks(tasks, bounds)]));
   const [layoutsByBed, setLayoutsByBed] = useState<
     Record<number, BedLayoutEntry>
   >({});
@@ -177,11 +181,34 @@ export default function GraphicalFields({
     && !globalEditMode && editableLocationId !== activeLocationId && !individualPlants.editor.placing);
   const objects = useGraphicalObjectInteraction(objectInteractionEnabled, activeLocationId);
   const selectedBedId = objects.selection?.startsWith('bed:') ? Number(objects.selection.slice(4)) : null;
-  const selectedBedTasks = useBedTasks('bed', showBedTasks ? null : selectedBedId, activeSeasonId);
-  const previewTasks = {
-    ...(showBedTasks ? bedTasks : selectedBedTasks),
-    refresh: () => { bedTasks.refresh(); selectedBedTasks.refresh(); },
-  };
+  const showCrops = includesCrops(displayMode);
+  const showTasks = includesTasks(displayMode);
+  const loadLocationPlans = showCrops || showTasks;
+  const locationPlans = useAreaPlantingPlans('location', loadLocationPlans ? activeLocationId : null, activeSeasonId);
+  const selectedPlans = useAreaPlantingPlans('bed', loadLocationPlans ? null : selectedBedId, activeSeasonId);
+  const bedTasks = useBedTasks('location', showTasks || (showCrops && selectedBedId !== null) ? activeLocationId : null,
+    activeSeasonId, locationPlans);
+  const selectedBedTasks = useBedTasks('bed', loadLocationPlans ? null : selectedBedId, activeSeasonId, selectedPlans);
+  const previewTasks = loadLocationPlans ? bedTasks : selectedBedTasks;
+  const planRequest = loadLocationPlans ? locationPlans : selectedPlans;
+  const plansByBed = useMemo(() => indexBedCultivations(planRequest.plans), [planRequest.plans]);
+  const cropsByBed = useMemo(() => {
+    if (!cropReference || !individualSeason) return new Map();
+    return new Map(Array.from(plansByBed, ([id, plans]) => [id, projectBedCultivation(plans, cropReference, individualSeason)]));
+  }, [cropReference, individualSeason, plansByBed]);
+  const openTasksByBed = useMemo(() => new Map(Array.from(bedTasks.tasksByBed,
+    ([id, tasks]) => [id, orderBedTasks(tasks.filter(isOpenTask))])), [bedTasks.tasksByBed]);
+  const taskSummaries = useMemo(() => {
+    const bounds = bedTaskDateBounds(new Date());
+    return new Map(Array.from(bedTasks.tasksByBed, ([id, tasks]) => [id, summarizeBedTasks(tasks, bounds)]));
+  }, [bedTasks.tasksByBed]);
+  const cropPreview = cropReference && selectedBedId !== null ? {
+    reference: cropReference,
+    entries: cropsByBed.get(selectedBedId) ?? [],
+    loading: planRequest.loading,
+    failed: planRequest.failed,
+    refresh: planRequest.refresh,
+  } : undefined;
   const coarsePointer = useMediaQuery('(pointer: coarse)');
   const finePointer = useMediaQuery('(pointer: fine)');
   const device = objects.device ?? (coarsePointer ? 'touch' : finePointer ? 'desktop' : null);
@@ -228,6 +255,9 @@ export default function GraphicalFields({
     locationCanvasRefs,
     toggleFullscreen,
   } = useGraphicalStageSize(activeLocationId, !loading && layoutReady && !layoutFailed);
+  useEffect(() => {
+    onFullscreenChange?.(fullscreenLocationId !== null);
+  }, [fullscreenLocationId, onFullscreenChange]);
   const resetTransientInteractionState = (): void => {
     setActiveGuides([]);
     setGeometryPreview(null);
@@ -995,11 +1025,11 @@ export default function GraphicalFields({
                 >
                   {!objects.selection && device === 'touch' && showTouchContextMenuHint && (
                     <GraphicalObjectHint device="touch" onClose={closeTouchContextMenuHint}
-                      width={stageWidth} hasWarning={fieldsOutsideBoundary.size > 0} />
+                      hasWarning={fieldsOutsideBoundary.size > 0} />
                   )}
                   {!objects.selection && device === 'desktop' && showContextMenuHint && (
                     <GraphicalObjectHint device="desktop" onClose={closeContextMenuHint}
-                      width={stageWidth} hasWarning={fieldsOutsideBoundary.size > 0} />
+                      hasWarning={fieldsOutsideBoundary.size > 0} />
                   )}
                   <GraphicalCanvasTools key={activeSeasonId ?? 'no-season'}
                     width={stageWidth} height={stageHeight} fullscreen={fullscreenLocationId === locationId}
@@ -1014,21 +1044,45 @@ export default function GraphicalFields({
                     }}
                     warnings={<GraphicalGeometryWarnings t={t} parcels={parcels} analysis={geometry}
                       outsideParcels={fieldsOutsideBoundary} focusArea={focusArea} />}
-                    bedTasks={activeSeasonId === undefined ? undefined : {
-                      active: showBedTasks,
-                      render: (anchor, close) => <GraphicalBedTasksControl key={locationId}
-                        anchor={anchor} onClose={close} enabled={showBedTasks} onToggle={setShowBedTasks}
-                        beds={parcels.flatMap(({ field, layout }) => layout.bedRects.map(bed => ({
-                          id: bed.id, name: bed.name, parcel: field.name,
-                        })))}
-                        summaries={taskSummaries} loading={bedTasks.loading} failed={bedTasks.failed}
-                        onRetry={bedTasks.refresh} onOpenBed={onOpenBed} />,
-                    }}
                     individualPlants={individualSeason && !locationIsEditable && fullscreenLocationId !== locationId ? {
                       active: Boolean(showIndividualPanel),
                       toggle: () => individualPlants.update({ open: !showIndividualPanel, placing: null }),
                     } : undefined}
                   />
+                  {fullscreenLocationId === locationId && fullscreenDisplayControls && (
+                    <Box sx={{ position: 'absolute', zIndex: 2, top: 12, left: 105,
+                      right: 110, width: 'fit-content', bgcolor: 'background.paper' }}>
+                      {fullscreenDisplayControls}
+                    </Box>
+                  )}
+                  {displayLegendAnchor && closeDisplayLegend && (
+                    <GraphicalDisplayLegend anchor={displayLegendAnchor} onClose={closeDisplayLegend}
+                      showCrops={showCrops} showTasks={showTasks}
+                      cropLoading={locationPlans.loading} cropFailed={locationPlans.failed} onRetryCrops={locationPlans.refresh}
+                      beds={parcels.flatMap(({ field, layout }) => layout.bedRects.map(bed => ({
+                        id: bed.id, name: bed.name, parcel: field.name,
+                      })))}
+                      summaries={taskSummaries} loading={bedTasks.loading} failed={bedTasks.failed && (!showCrops || !locationPlans.failed)}
+                      onRetry={bedTasks.refresh} onOpenBed={onOpenBed} />
+                  )}
+                  {!locationIsEditable && ((showCrops && (locationPlans.loading || locationPlans.failed))
+                    || (showTasks && (bedTasks.loading || bedTasks.failed))) && (
+                    <Stack sx={{ position: 'absolute', zIndex: 2, left: 12, right: 110, top: 54,
+                      width: 'fit-content', maxWidth: 'calc(100% - 122px)' }}>
+                      {showCrops && locationPlans.failed && <Alert severity="error"
+                        action={<LoadRetryButton onClick={locationPlans.refresh} />}>
+                        {t('fields:graphical.display.cropLoadError')}
+                      </Alert>}
+                      {showTasks && bedTasks.failed && (!showCrops || !locationPlans.failed) && <Alert severity="error" action={<LoadRetryButton onClick={bedTasks.refresh} />}>
+                        {t('fields:graphical.taskLayer.loadError')}
+                      </Alert>}
+                      {((showCrops && locationPlans.loading) || (showTasks && bedTasks.loading)) && (
+                        <Typography role="status" variant="caption" sx={{ bgcolor: 'background.paper', p: 0.5 }}>
+                          {t('common:messages.loading')}
+                        </Typography>
+                      )}
+                    </Stack>
+                  )}
                   <Typography
                     variant="caption"
                     color="text.secondary"
@@ -1251,11 +1305,18 @@ export default function GraphicalFields({
                             ) : null}
                             {visibility.showBeds
                               ? bedRects.map((bedVm) => {
-                                const urgency = taskSummaries.get(bedVm.id)?.urgency;
+                                const shownMode = locationIsEditable ? 'areas' : displayMode;
+                                const entries = showCrops && !locationIsEditable ? cropsByBed.get(bedVm.id) ?? [] : [];
+                                const tasks = showTasks && !locationIsEditable ? openTasksByBed.get(bedVm.id) ?? [] : [];
+                                const urgency = tasks.length ? taskSummaries.get(bedVm.id)?.urgency : undefined;
                                 const taskColors = urgency ? bedTaskColors(theme, urgency) : null;
-                                const badge = urgency && bedVm.width * viewport.scale >= 44
-                                  && bedVm.height * viewport.scale >= 20 ? BED_TASK_SYMBOLS[urgency] : null;
-                                const badgeWidth = badge ? BED_TASK_BADGE_WIDTH / viewport.scale : 0;
+                                const phase = entries.length === 1 ? entries[0].phase : null;
+                                const color = entries[0]?.plan.color;
+                                const phaseColors = phase
+                                  ? getGanttPhaseColors(color && /^#[\da-f]{6}$/i.test(color) ? color : theme.palette.success.main) : null;
+                                const cropFill = phaseColors ? alpha(phaseColors[phase === 'harvest' ? 'harvest' : 'growth'], 0.45)
+                                  : entries.length ? alpha(theme.palette.grey[700], 0.22) : undefined;
+                                const fill = shownMode === 'tasks' ? taskColors?.fill : cropFill;
                                 return (
                                   <Group key={bedVm.id}>
                                     <Rect
@@ -1263,10 +1324,11 @@ export default function GraphicalFields({
                                       y={FIELD_INNER_OFFSET_Y + bedVm.y}
                                       width={bedVm.width}
                                       height={bedVm.height}
-                                      fill={taskColors?.fill ?? theme.palette.info.light}
+                                      fill={fill ?? theme.palette.info.light}
                                       {...getOutlineProps(bedWarnings.get(bedVm.id), theme.palette.info.main, 1)}
                                       data-geometry-issue={bedWarnings.get(bedVm.id)}
                                       data-task-urgency={urgency}
+                                      data-crop-phase={phase ?? (entries.length > 1 ? 'mixed' : undefined)}
                                       name="graphical-editable"
                                       data-testid={`bed-rect-${bedVm.id}`}
                                       data-graphical-object-key={graphicalObjectKey('bed', bedVm.id)}
@@ -1281,39 +1343,9 @@ export default function GraphicalFields({
                                         { ...snapping, thresholdPx: SNAP_THRESHOLD, spacing: bedSpacing },
                                       )}
                                     />
-                                    {badge && <Text x={FIELD_INNER_OFFSET_X + bedVm.x + bedVm.width - badgeWidth}
-                                      y={FIELD_INNER_OFFSET_Y + bedVm.y + 3 / viewport.scale}
-                                      text={badge} width={BED_TASK_BADGE_WIDTH} align="center"
-                                      fontSize={14} fontStyle="bold" fill={taskColors?.glyph}
-                                      listening={false} scaleX={1 / viewport.scale} scaleY={1 / viewport.scale}
-                                      data-testid={`bed-task-icon-${bedVm.id}`} />}
-                                    {(() => {
-                                      const label = getBedLabelLayout({ ...bedVm, width: bedVm.width - badgeWidth }, viewport.scale);
-                                      if (!visibility.showBedLabels || !label) return null;
-                                      const labelText =
-                                        visibility.showDetailedBedLabels &&
-                                        !label.compact
-                                          ? `${bedVm.name} (${bedVm.area || "-"} m²)`
-                                          : bedVm.name;
-                                      return (
-                                        <Text
-                                          x={FIELD_INNER_OFFSET_X + label.x + bedVm.x}
-                                          y={FIELD_INNER_OFFSET_Y + label.y + bedVm.y}
-                                          text={labelText}
-                                          fontSize={label.fontSize}
-                                          width={label.width}
-                                          height={label.height}
-                                          rotation={label.rotation}
-                                          lineHeight={1}
-                                          wrap="none"
-                                          ellipsis
-                                          data-testid={`bed-label-${bedVm.id}`}
-                                          listening={false}
-                                          scaleX={1 / viewport.scale}
-                                          scaleY={1 / viewport.scale}
-                                        />
-                                      );
-                                      })()}
+                                    {visibility.showBedLabels && <GraphicalBedLabels bed={bedVm} scale={viewport.scale}
+                                      mode={shownMode} detailedArea={visibility.showDetailedBedLabels}
+                                      crops={entries} tasks={tasks} urgency={urgency} />}
                                   </Group>
                                 );
                               })
@@ -1350,7 +1382,7 @@ export default function GraphicalFields({
                   </Stage>
                   {objectInteractionEnabled && <GraphicalObjectOverlays interaction={objects} objects={objectModel}
                     viewport={viewport} stageWidth={stageWidth} stageHeight={stageHeight} root={activeCanvasRef}
-                    openDetails={details} onFocusObject={focusArea} bedTasks={previewTasks}
+                    openDetails={details} onFocusObject={focusArea} bedTasks={previewTasks} cropPreview={cropPreview}
                     seasonId={activeSeasonId} canComplete={canCompleteTasks} showLocationLabel={showFallbackLocationLabel} />}
                 </Box>
                 {showIndividualPanel && (

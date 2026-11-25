@@ -6,6 +6,10 @@ import FieldsBedsHierarchyMobile from './FieldsBedsHierarchyMobile';
 import GraphicalFields from './GraphicalFields';
 import { GraphicalSpacingControl } from './GraphicalSpacingControl';
 import { GraphicalWorkspaceAction } from './GraphicalWorkspaceAction';
+import { GraphicalDisplayControls } from './GraphicalDisplayControls';
+import {
+  GRAPHICAL_DISPLAY_MODES, getCropReference, type CropDateSelection, type GraphicalDisplayMode,
+} from './graphicalCultivation';
 import { AddBedIcon } from '../components/hierarchy/AddBedIcon';
 import { HierarchyAddIcon } from '../components/hierarchy/HierarchyAddIcon';
 import { useCommandContextTag, useRegisterCommands, useRegisterCreateActions } from '../commands/useCommandContext';
@@ -43,6 +47,16 @@ import { TruncatedTextWithTooltip } from '../components/TruncatedTextWithTooltip
 
 const VIEW_MODE_STORAGE_KEY = 'fieldsBedsViewMode';
 const ADD_PARCEL_ACTION = 'add-parcel';
+
+function savedDisplayMode(key: string): GraphicalDisplayMode {
+  try {
+    const value = localStorage.getItem(key);
+    return GRAPHICAL_DISPLAY_MODES.find(mode => mode === value) ?? 'cropsAndTasks';
+  } catch {
+    return 'cropsAndTasks';
+  }
+}
+
 const CONTENT_ALIGNED_EMPTY_STATE_SX: SxProps<Theme> = {
   maxWidth: 560,
   my: { xs: 3, md: 5 },
@@ -145,6 +159,24 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   }), [activeProjectMembership, openRotationGroups, rotationGroups]);
 
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
+  const activeSeason = outletContext?.activeSeason ?? undefined;
+  const preferenceKey = `growingAreas.graphic.displayMode:user:${userId ?? 'guest'}`;
+  const [displayPreference, setDisplayPreference] = useState(() => ({
+    key: preferenceKey, mode: savedDisplayMode(preferenceKey),
+  }));
+  const displayMode = displayPreference.key === preferenceKey ? displayPreference.mode : savedDisplayMode(preferenceKey);
+  const setDisplayMode = useCallback((mode: GraphicalDisplayMode) => {
+    setDisplayPreference({ key: preferenceKey, mode });
+    try { localStorage.setItem(preferenceKey, mode); } catch { /* Storage may be disabled. */ }
+  }, [preferenceKey]);
+  const [cropDate, setCropDate] = useState<CropDateSelection | null>(null);
+  const cropReference = useMemo(() => activeSeason ? getCropReference(cropDate, activeSeason) : undefined,
+    [activeSeason, cropDate]);
+  const [graphicFullscreen, setGraphicFullscreen] = useState(false);
+  const [displayLegendAnchor, setDisplayLegendAnchor] = useState<HTMLButtonElement | null>(null);
+  const displayControls = useMemo(() => <GraphicalDisplayControls mode={displayMode} onMode={setDisplayMode}
+    season={activeSeason} reference={cropReference} onDate={setCropDate} onOpenLegend={setDisplayLegendAnchor} />,
+  [activeSeason, cropReference, displayMode, setDisplayMode]);
   const reloadActiveSeason = outletContext?.reloadActiveSeason;
   const onRotationChanged = () => {
     void refreshRotationGroups();
@@ -418,7 +450,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
         <TextField select label={t('fields:graphical.locationSelector')} value={selectedLocation.id}
           onChange={event => selectLocation(Number(event.target.value))}
           slotProps={{ select: { renderValue: () => <TruncatedTextWithTooltip text={selectedLocation.name} /> } }}
-          sx={{ width: { xs: 220, sm: 180, md: 220 }, maxWidth: '100%', flexShrink: 0 }}>
+          sx={{ width: { xs: 220, sm: 168 }, maxWidth: '100%', flexShrink: 0 }}>
           {graphicalLocations.map(item => (
             <MenuItem key={item.id} value={item.id} sx={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{item.name}</MenuItem>
           ))}
@@ -428,6 +460,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
           <TruncatedTextWithTooltip text={t('fields:graphical.locationTitle', { name: selectedLocation.name })} focusable />
         </Box>
       )}
+      {!graphicFullscreen && displayControls}
       <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, maxWidth: '100%' }}>
         <GraphicalWorkspaceAction
           label={t('fields:graphical.locationEditModeAction')}
@@ -451,7 +484,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
       )}
     </>
   ) : null, [activeProjectMembership, effectiveViewMode, isEditingGraphic, hasSelectedGraphicalFields,
-    graphicalLocations, saveLocationPathSpacing, selectLocation, selectedLocation, shouldShowProjectRequiredState, t]);
+    displayControls, graphicFullscreen, graphicalLocations, saveLocationPathSpacing, selectLocation, selectedLocation, shouldShowProjectRequiredState, t]);
   useTopbarWorkspaceControls(outletContext?.setTopbarWorkspaceControls, workspaceControls);
 
 
@@ -570,8 +603,14 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             onInteractionModeChange={mode => setIsEditingGraphic(mode === 'edit')}
             showTitle={false}
             showModeToggle={false}
-            activeSeasonId={outletContext?.activeSeason?.id}
-            individualSeason={outletContext?.activeSeason ?? undefined}
+            activeSeasonId={activeSeason?.id}
+            individualSeason={activeSeason}
+            displayMode={displayMode}
+            cropReference={cropReference}
+            fullscreenDisplayControls={displayControls}
+            onFullscreenChange={setGraphicFullscreen}
+            displayLegendAnchor={displayLegendAnchor}
+            closeDisplayLegend={() => setDisplayLegendAnchor(null)}
             canEditIndividualPlants={Boolean(activeProjectMembership)}
             requestedIndividualPlan={requestedIndividualPlan}
             onOpenBed={id => navigate(getEntityDetailPath('bed', id))}

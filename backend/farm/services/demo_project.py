@@ -539,6 +539,28 @@ def find_demo_crop_species(name: str | None) -> CropSpecies | None:
     return None
 
 
+GRAPHIC_DEMO_BEDS = {
+    'de': ('Wachstumsbeet', 'Erntebeet', 'Misch- und Folgebeet', 'Freies Beispielbeet'),
+    'en': ('Growing bed', 'Harvest bed', 'Mixed and succession bed', 'Free example bed'),
+    'fr': ('Planche en croissance', 'Planche en récolte', 'Planche mixte et successive', 'Planche libre'),
+    'es': ('Bancal en crecimiento', 'Bancal en cosecha', 'Bancal mixto y de sucesión', 'Bancal libre'),
+    'it': ('Aiuola in crescita', 'Aiuola in raccolta', 'Aiuola mista e in successione', 'Aiuola libera'),
+    'pt': ('Canteiro em crescimento', 'Canteiro em colheita', 'Canteiro misto e de sucessão', 'Canteiro livre'),
+    'nl': ('Groeibed', 'Oogstbed', 'Meng- en opvolgbed', 'Vrij voorbeeldbed'),
+}
+GRAPHIC_DEMO_BED_KEYS = ('graphic-growth', 'graphic-harvest', 'graphic-mixed', 'graphic-free')
+GRAPHIC_DEMO_TASKS = {
+    'de': ('Erntereife prüfen', 'Erntewerkzeug vorbereiten'),
+    'en': ('Check harvest readiness', 'Prepare harvest tools'),
+    'fr': ('Vérifier la maturité', 'Préparer les outils de récolte'),
+    'es': ('Comprobar la madurez', 'Preparar las herramientas de cosecha'),
+    'it': ('Controllare la maturazione', 'Preparare gli attrezzi per la raccolta'),
+    'pt': ('Verificar o ponto de colheita', 'Preparar as ferramentas de colheita'),
+    'nl': ('Oogstrijpheid controleren', 'Oogstgereedschap voorbereiden'),
+}
+
+
+
 def _has_complete_translation(reference: Any, translated: Any) -> bool:
     if isinstance(reference, dict):
         return isinstance(translated, dict) and all(
@@ -568,6 +590,7 @@ def resolve_demo_language(language_code: str | None) -> str:
         DEMO_TEXT, FEATURE_TEXT, DEMO_PROJECT_NAMES,
         DEMO_PERSONAL_PROJECT_DESCRIPTIONS, DEMO_SCREENSHOT_PROJECT_DESCRIPTIONS,
         BULK_BED_EXAMPLE_NOTES, DEMO_ROTATION_GROUP_NAMES, DEMO_ORCHARD_CROP_NAMES,
+        GRAPHIC_DEMO_BEDS, GRAPHIC_DEMO_TASKS,
     )
     complete = all(
         _has_complete_translation(bundle[DEMO_LANGUAGE_FALLBACK], bundle.get(language))
@@ -592,6 +615,45 @@ def get_demo_project_description(language_code: str | None, *, screenshot: bool 
     language = resolve_demo_language(language_code)
     descriptions = DEMO_SCREENSHOT_PROJECT_DESCRIPTIONS if screenshot else DEMO_PERSONAL_PROJECT_DESCRIPTIONS
     return descriptions[language]
+
+
+def _create_graphic_demo_plans(
+    project: Project, crops: dict[str, Crop], beds: dict[str, Bed], owner: Any | None, today: date,
+) -> None:
+    # Each date is relative to the same local reference used for demo tasks.
+    # Shared beds use partial area allocations and have no saved crop positions.
+    examples = (
+        ('graphic-growth', 'karotte', -14, 20, 40),
+        ('graphic-harvest', 'mangold', -45, -5, 13),
+        ('graphic-mixed', 'salat-maikoenig', -38, -14, -3),
+        ('graphic-mixed', 'rote-bete', -12, 25, 40),
+        ('graphic-mixed', 'mangold', -18, -2, 20),
+    )
+    for bed_key, crop_key, plant_offset, harvest_offset, end_offset in examples:
+        planted = today + timedelta(days=plant_offset)
+        PlantingPlan.objects.create(
+            project=project, crop=crops[crop_key], bed=beds[bed_key],
+            season=get_or_create_season_for_date(project, planted, created_by=owner),
+            cultivation_type='direct_sowing',
+            planting_date=planted,
+            harvest_date=today + timedelta(days=harvest_offset),
+            harvest_end_date=today + timedelta(days=end_offset),
+            harvest_date_is_explicit=True, harvest_end_date_is_explicit=True,
+            area_usage_sqm=Decimal('4.0'),
+            created_by=owner, updated_by=owner,
+        )
+
+
+def _create_graphic_demo_tasks(
+    project: Project, bed: Bed, owner: Any | None, today: date, language: str,
+) -> None:
+    plan = PlantingPlan.objects.get(project=project, bed=bed)
+    season = get_or_create_season_for_date(project, today, created_by=owner)
+    for title, status, offset in zip(GRAPHIC_DEMO_TASKS[language], ('pending', 'completed'), (2, -1), strict=True):
+        Task.objects.create(
+            project=project, season=season, planting_plan=plan, field=bed.field, crop=plan.crop,
+            title=title, status=status, due_date=today + timedelta(days=offset),
+        )
 
 
 def _create_demo_orchard(
@@ -656,6 +718,7 @@ def populate_demo_project(
             language_code=language,
             current_year=year,
         )
+        _create_graphic_demo_plans(project, crops, beds, owner, reference_date)
         assign_unassigned_planting_plans(project, owner=owner)
         _create_demo_orchard(project, fields['fruehbeete'], owner, language, year)
         get_or_create_season_for_date(project, date(year + 1, 1, 1), created_by=owner)
@@ -666,6 +729,7 @@ def populate_demo_project(
             project, owner=owner, fields=fields, beds=beds, language_code=language,
             today=reference_date,
         )
+        _create_graphic_demo_tasks(project, beds['graphic-harvest'], owner, reference_date, language)
         project.demo_seeded_at = timezone.now()
         project.default_bed_length_m = 10
         project.default_bed_width_m = 1.2
@@ -970,6 +1034,9 @@ def _create_area_hierarchy(
         ('lauch', text['beds']['lauch'], 'schlag-sued', 20.0, 1.20),
         ('mais', text['beds']['mais'], 'schlag-sued', 20.0, 1.20),
         ('kuerbis', text['beds']['kuerbis'], 'schlag-sued', 20.0, 1.20),
+        *[(key, name, 'schlag-sued', 12.0, 1.20) for key, name in zip(
+            GRAPHIC_DEMO_BED_KEYS, GRAPHIC_DEMO_BEDS[language_code], strict=True,
+        )],
     ]
     # One explicit bed override: the herb bed lies in the hedge's shadow.
     bed_conditions: dict[str, dict[str, str]] = {'kraeuter': {'light_condition': 'partial_shade'}}
@@ -1057,6 +1124,7 @@ def _create_layouts(
         'lauch': (36, 24),
         'mais': (64, 24),
         'kuerbis': (92, 24),
+        **{key: (8 + index * 28, 432) for index, key in enumerate(GRAPHIC_DEMO_BED_KEYS)},
     }
     for key, bed in beds.items():
         x, y = bed_positions[key]

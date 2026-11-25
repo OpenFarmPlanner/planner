@@ -50,3 +50,12 @@ export function summarizeBedTasks(tasks: readonly Task[], bounds: ReturnType<typ
     undated: counts.undated,
   };
 }
+
+export function orderBedTasks(tasks: readonly Task[]): Task[] {
+  return [...tasks].sort((a, b) => {
+    if (a.due_date === b.due_date) return a.id - b.id;
+    if (a.due_date === null) return 1;
+    if (b.due_date === null) return -1;
+    return a.due_date.localeCompare(b.due_date);
+  });
+}

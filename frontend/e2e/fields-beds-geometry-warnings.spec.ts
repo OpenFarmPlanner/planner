@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type Konva from 'konva';
-import { activateCanvasTool, apiRequest, loginWithDeterministicProject } from './utils';
+import { activateCanvasTool, apiRequest, graphicDisplayButton, loginWithDeterministicProject, openGraphicLegend, selectGraphicDisplay } from './utils';
 
 async function findShape(page: Page, testId: string) {
   return page.evaluate(testId => {
@@ -90,8 +90,9 @@ for (const mobile of [false, true]) {
       await page.getByRole('button', { name: 'Grafik', exact: true }).click();
       const getBed = () => findShape(page, `bed-rect-${bedId}`);
       const getNeighbor = () => findShape(page, `bed-rect-${neighborId}`);
-      const moreTools = page.getByRole('button', { name: 'Weitere Grafikwerkzeuge' });
-      await expect(moreTools).toBeVisible();
+      const display = graphicDisplayButton(page);
+      await expect(display).toHaveAccessibleName('Darstellung der Grafik · Kulturen & Aufgaben');
+      await selectGraphicDisplay(page, 'Anbauflächen');
       await expect.poll(async () => (await getBed())?.issue).toBe('shortGap');
       const ordinaryFill = (await getBed())?.fill;
       await expect.poll(() => findShape(page, 'graphical-free-area-site')).not.toBeNull();
@@ -107,11 +108,10 @@ for (const mobile of [false, true]) {
       await expect.poll(async () => (await getBed())?.fill).toBe(ordinaryFill);
       await page.keyboard.press('Escape');
       await expect(preview).toHaveCount(0);
-      await activateCanvasTool(page, 'Aufgaben im Beet', mobile ? 'touch' : 'mouse');
-      let panel = page.getByRole('dialog', { name: 'Aufgaben im Beet' });
-      await expect(panel.getByRole('switch', { name: 'Aufgaben anzeigen' })).not.toBeChecked();
-      await panel.getByRole('switch', { name: 'Aufgaben anzeigen' }).check();
-      await expect(panel.getByText('Offen ohne Termin')).toBeVisible();
+      await selectGraphicDisplay(page, 'Aufgaben');
+      let panel = await openGraphicLegend(page);
+      await expect(panel.getByRole('switch')).toHaveCount(0);
+      await expect(panel.getByText('Offen ohne Termin', { exact: true })).toBeVisible();
       await page.keyboard.press('Escape');
       await expect(panel).toHaveCount(0);
       await expect.poll(async () => (await getBed())?.urgency).toBe('overdue');
@@ -133,11 +133,10 @@ for (const mobile of [false, true]) {
         await page.getByRole('button', { name: 'Herauszoomen', exact: true }).click();
       }
       await expect.poll(getBed).toMatchObject({ urgency: 'overdue', fill: colored?.fill, hasTaskIcon: false });
-      await moreTools.press('Enter');
-      const activeTask = page.getByRole('menuitem', { name: 'Aufgaben im Beet' });
-      await expect(activeTask).toHaveAttribute('aria-description', 'Aktiv');
-      await activeTask.press('Enter');
-      panel = page.getByRole('dialog', { name: 'Aufgaben im Beet' });
+      await display.press('Enter');
+      await expect(page.getByRole('menuitemradio', { name: 'Aufgaben', exact: true })).toHaveAttribute('aria-checked', 'true');
+      await page.getByRole('menuitem', { name: 'Legende der Grafik' }).press('Enter');
+      panel = page.getByRole('dialog', { name: 'Legende der Grafik' });
       await panel.getByRole('combobox', { name: 'Beet auswählen' }).click();
       await page.getByRole('option', { name: /Südbeet · Lernparzelle/ }).click();
       await expect(panel.getByText(/Südbeet · Lernparzelle · Überfällig/)).toBeVisible();
@@ -173,11 +172,7 @@ for (const mobile of [false, true]) {
       expect(saved.status).toBe('completed');
       await page.getByRole('button', { name: 'Zurück zu den Anbauflächen' }).click();
       await page.getByRole('button', { name: 'Grafik', exact: true }).click();
-      await activateCanvasTool(page, 'Aufgaben im Beet', mobile ? 'touch' : 'mouse');
-      await expect.poll(async () => (await getBed())?.fill).toBe(ordinaryFill);
-      await page.getByRole('switch', { name: 'Aufgaben anzeigen' }).check();
-      await page.keyboard.press('Escape');
-      await expect(panel).toHaveCount(0);
+      await expect(display).toHaveAccessibleName('Darstellung der Grafik · Aufgaben');
       await expect.poll(async () => (await getBed())?.urgency).toBe('undated');
       expect(taskWrites).toHaveLength(1);
       expect(taskWrites[0]).toMatch(new RegExp(`/tasks/${overdue.id}/$`));
@@ -200,9 +195,12 @@ for (const mobile of [false, true]) {
       await page.unroute(`**/api/tasks/${undated.id}/`);
       await error.getByRole('button').click();
       await expect(preview.getByText('Keine offenen Aufgaben für dieses Beet.')).toBeVisible();
-      await expect.poll(async () => (await getBed())?.urgency).toBe('completed');
+      await expect.poll(getBed).toMatchObject({ fill: ordinaryFill, hasTaskIcon: false });
+      expect((await getBed())?.urgency).toBeUndefined();
       await preview.getByRole('button', { name: 'Details anzeigen' }).click();
       await expect(page).toHaveURL(new RegExp(`/fields-beds/beds/${bedId}$`));
+      await expect(page.getByText('Material besorgen')).toBeHidden();
+      await page.getByText(/^\d+ erledigte Aufgaben$/).click();
       await expect(page.getByText('Material besorgen')).toBeVisible();
     });
   });

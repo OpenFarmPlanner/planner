@@ -29,6 +29,38 @@
     "graphical": "Gráfico"
   },
   "graphical": {
+    "display": {
+      "title": "Modo de visualização",
+      "mode": {
+        "areas": "Áreas de cultivo",
+        "crops": "Culturas",
+        "tasks": "Tarefas",
+        "cropsAndTasks": "Culturas e tarefas"
+      },
+      "date": "Data de referência das culturas",
+      "today": "Hoje",
+      "entireSeason": "Época completa",
+      "previousDay": "Dia anterior",
+      "nextDay": "Dia seguinte",
+      "taskDateNote": "Os prazos e a urgência das tarefas são calculados a partir de hoje.",
+      "legend": "Legenda do gráfico",
+      "cropLegend": "As cores indicam o crescimento ou a colheita prevista. As culturas perenes ocupam o canteiro fora da colheita. Uma cor neutra indica planos mistos ou incertos.",
+      "taskLegend": "Os símbolos indicam tarefas em aberto. Um canteiro sem símbolo pode ter tarefas concluídas.",
+      "cropLoadError": "Não foi possível carregar os planos de cultivo.",
+      "phase": {
+        "growth": "Crescimento previsto",
+        "harvest": "Colheita prevista",
+        "occupancy": "Canteiro ocupado"
+      },
+      "recordedHarvest": "Colheita registada",
+      "recordedPlanting": "Sementeira ou plantação registada em {{date}}",
+      "range": "De {{start}} a {{end}}",
+      "incompletePlan": "Faltam datas ou a cultura",
+      "noPlans": "Não há planos para esta data ou período.",
+      "completedTasks_one": "{{count}} tarefa concluída",
+      "completedTasks_other": "{{count}} tarefas concluídas",
+      "completedTasks_many": "{{count}} tarefas concluídas"
+    },
     "objects": {
       "dimensions": "{{width}} × {{length}} m",
       "viewDetails": "Ver detalhes",

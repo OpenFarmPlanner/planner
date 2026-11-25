@@ -29,6 +29,38 @@
     "graphical": "Grafica"
   },
   "graphical": {
+    "display": {
+      "title": "Visualizzazione del grafico",
+      "mode": {
+        "areas": "Aree di coltivazione",
+        "crops": "Colture",
+        "tasks": "Attività",
+        "cropsAndTasks": "Colture e attività"
+      },
+      "date": "Data di riferimento delle colture",
+      "today": "Oggi",
+      "entireSeason": "Intera stagione",
+      "previousDay": "Giorno precedente",
+      "nextDay": "Giorno successivo",
+      "taskDateNote": "Le scadenze e l’urgenza delle attività si calcolano a partire da oggi.",
+      "legend": "Legenda del grafico",
+      "cropLegend": "I colori indicano la crescita o la raccolta prevista. Le colture perenni occupano l’aiuola anche fuori dal raccolto. Un colore neutro indica piani misti o incerti.",
+      "taskLegend": "I simboli indicano le attività aperte. Un’aiuola senza simboli può avere attività completate.",
+      "cropLoadError": "Impossibile caricare i piani di coltivazione.",
+      "phase": {
+        "growth": "Crescita prevista",
+        "harvest": "Raccolta prevista",
+        "occupancy": "Aiuola occupata"
+      },
+      "recordedHarvest": "Raccolta registrata",
+      "recordedPlanting": "Semina o messa a dimora registrata il {{date}}",
+      "range": "Dal {{start}} al {{end}}",
+      "incompletePlan": "Date o coltura mancanti",
+      "noPlans": "Nessun piano per questa data o periodo.",
+      "completedTasks_one": "{{count}} attività completata",
+      "completedTasks_other": "{{count}} attività completate",
+      "completedTasks_many": "{{count}} attività completate"
+    },
     "objects": {
       "dimensions": "{{width}} × {{length}} m",
       "viewDetails": "Visualizza dettagli",

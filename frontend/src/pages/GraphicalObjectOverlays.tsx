@@ -5,10 +5,12 @@ import { ContextMenuHint } from '../components/data-grid/ContextMenuHint';
 import { CustomContextMenu } from '../components/contextMenu/CustomContextMenu';
 import { useContextMenuOpenRegistration } from '../components/contextMenu/contextMenuOpenState';
 import { useCloseCustomContextMenuOnNativeContextMenu } from '../utils/contextMenu';
+import { GraphicalCropPreview, type CropPreviewData } from './GraphicalCropPreview';
 import { BedTaskList } from '../components/tasks/BedTaskList';
 import type { HierarchyEntityType } from '../components/hierarchy/details/hierarchyDetailRoutes';
 import type { MetricCoverage } from '../components/hierarchy/utils/growingAreaGeometry';
 import { useTranslation } from '../i18n';
+import { formatDateToAPI } from '../utils/isoDate';
 import { formatLocalizedNumber, getActiveFormattingLocale } from '../utils/numberLocalization';
 import type { useBedTasks } from '../components/tasks/useBedTasks';
 import type { Rect } from './graphicalLayoutUtils';
@@ -81,6 +83,7 @@ interface OverlayProps {
   openDetails: (object: GraphicalObject) => void;
   onFocusObject: (rect: Rect) => void;
   bedTasks: ReturnType<typeof useBedTasks>;
+  cropPreview?: CropPreviewData;
   seasonId?: number;
   canComplete: boolean;
   showLocationLabel: boolean;
@@ -91,7 +94,7 @@ const isGraphicalMenu = (target: EventTarget | null) => target instanceof Elemen
 
 export function GraphicalObjectOverlays({
   interaction, objects, viewport, stageWidth, stageHeight, root, openDetails, onFocusObject,
-  bedTasks, seasonId, canComplete, showLocationLabel,
+  bedTasks, cropPreview, seasonId, canComplete, showLocationLabel,
 }: OverlayProps) {
   const { t } = useTranslation(['fields', 'hierarchy', 'common']);
   const titleId = useId();
@@ -150,6 +153,8 @@ export function GraphicalObjectOverlays({
   const detailsLabel = t('graphical.objects.viewDetails');
   const selectedRect = selection?.rect ? screenRect(selection.rect, viewport) : null;
   const narrow = stageWidth < 650 || interaction.device === 'touch';
+  const cropDateDiffers = cropPreview && (cropPreview.reference.kind === 'season'
+    || cropPreview.reference.date !== formatDateToAPI(new Date()));
   const previewWidth = Math.min(320, Math.max(124, stageWidth - 120));
   const cx = selectedRect ? selectedRect.x + selectedRect.width / 2 : 12;
   const below = selectedRect ? selectedRect.y + selectedRect.height + 8 : 50;
@@ -264,10 +269,16 @@ export function GraphicalObjectOverlays({
               }} sx={{ width: 36, height: 36 }}><CloseIcon fontSize="small" /></IconButton>
             </Stack>
             <ObjectFacts object={selection} />
+            {selection.type === 'bed' && cropPreview && <GraphicalCropPreview {...cropPreview} />}
             {selection.type === 'bed' && seasonId !== undefined && (
-              <BedTaskList key={`${selection.id}:${seasonId}`} tasks={bedTasks.tasksByBed.get(selection.id) ?? []}
-                loading={bedTasks.loading} failed={bedTasks.failed} refresh={bedTasks.refresh}
-                canComplete={canComplete} onOpenDetails={() => openDetails(selection)} />
+              <>
+                {cropDateDiffers && <Typography variant="caption" color="text.secondary">
+                  {t('graphical.display.taskDateNote')}
+                </Typography>}
+                <BedTaskList key={`${selection.id}:${seasonId}`} tasks={bedTasks.tasksByBed.get(selection.id) ?? []}
+                  loading={bedTasks.loading} failed={bedTasks.failed} refresh={bedTasks.refresh}
+                  canComplete={canComplete} onOpenDetails={() => openDetails(selection)} />
+              </>
             )}
             <Button size="small" onClick={() => openDetails(selection)}
               sx={{ alignSelf: 'flex-start', minHeight: 44 }}>{detailsLabel}</Button>
@@ -283,19 +294,16 @@ export function GraphicalObjectOverlays({
   );
 }
 
-export function GraphicalObjectHint({ device, onClose, width, hasWarning }: {
+export function GraphicalObjectHint({ device, onClose, hasWarning }: {
   device: 'touch' | 'desktop';
   onClose: () => void;
-  width: number;
   hasWarning: boolean;
 }) {
   const { t } = useTranslation('fields');
-  const roomy = width >= 850;
   return <ContextMenuHint compact variant={device} ignorePointerAndViewport
     message={t(device === 'touch' ? 'graphical.objects.touchHint' : 'graphical.objects.desktopHint')}
     onClose={onClose} sx={{
-      position: 'absolute', zIndex: 2,
-      ...(roomy ? { top: 12, left: 110, maxWidth: 'calc(100% - 224px)' }
-        : { bottom: hasWarning ? 60 : 12, left: 12, maxWidth: 'calc(100% - 112px)' }),
+      position: 'absolute', zIndex: 2, bottom: hasWarning ? 60 : 12, left: 12,
+      maxWidth: 'min(680px, calc(100% - 112px))',
     }} />;
 }

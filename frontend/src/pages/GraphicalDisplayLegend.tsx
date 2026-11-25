@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import {
-  Alert, Box, Button, FormControlLabel, MenuItem, Popover, Stack, Switch,
+  Alert, Box, Button, MenuItem, Popover, Stack,
   TextField, Typography, useTheme,
 } from '@mui/material';
 import LoadRetryButton from '../components/LoadRetryButton';
@@ -12,8 +12,11 @@ import { getGraphicalPortalContainer } from './useGraphicalStageSize';
 interface Props {
   anchor: HTMLButtonElement | null;
   onClose: () => void;
-  enabled: boolean;
-  onToggle: (enabled: boolean) => void;
+  showCrops: boolean;
+  showTasks: boolean;
+  cropLoading: boolean;
+  cropFailed: boolean;
+  onRetryCrops: () => void;
   beds: readonly { id: number; name: string; parcel: string }[];
   summaries: ReadonlyMap<number, BedTaskSummary>;
   loading: boolean;
@@ -22,7 +25,10 @@ interface Props {
   onOpenBed?: (id: number) => void;
 }
 
-export function GraphicalBedTasksControl({ anchor, onClose, enabled, onToggle, beds, summaries, loading, failed, onRetry, onOpenBed }: Props) {
+export function GraphicalDisplayLegend({
+  anchor, onClose, showCrops, showTasks, cropLoading, cropFailed, onRetryCrops,
+  beds, summaries, loading, failed, onRetry, onOpenBed,
+}: Props) {
   const { t } = useTranslation(['fields', 'dashboard', 'common', 'hierarchy']);
   const theme = useTheme();
   const id = useId();
@@ -30,7 +36,7 @@ export function GraphicalBedTasksControl({ anchor, onClose, enabled, onToggle, b
   const bed = beds.find(item => item.id === bedId);
   const selected = bed ? summaries.get(bed.id) : undefined;
   const name = bed ? `${bed.name} · ${bed.parcel}` : '';
-  const title = t('graphical.taskLayer.title');
+  const title = t('graphical.display.legend');
   const container = getGraphicalPortalContainer();
 
   return (
@@ -44,13 +50,19 @@ export function GraphicalBedTasksControl({ anchor, onClose, enabled, onToggle, b
       } }}>
       <Stack spacing={1.25} sx={{ p: 2, overflowWrap: 'anywhere' }}>
         <Typography id={`${id}-title`} component="h2" variant="subtitle1" sx={{ fontWeight: 600 }}>{title}</Typography>
-        <FormControlLabel sx={{ m: 0, minHeight: 44 }}
-          control={<Switch checked={enabled} onChange={(_, checked) => onToggle(checked)} />}
-          label={t('graphical.taskLayer.show')} />
-        {enabled && (
+        {showCrops && <Stack spacing={0.5}>
+          <Typography variant="subtitle2">{t('graphical.display.mode.crops')}</Typography>
+          <Typography variant="body2">{t('graphical.display.cropLegend')}</Typography>
+          {cropLoading && <Typography role="status" variant="caption">{t('common:messages.loading')}</Typography>}
+          {cropFailed && <Alert severity="error" action={<LoadRetryButton onClick={onRetryCrops} />}>
+            {t('graphical.display.cropLoadError')}
+          </Alert>}
+        </Stack>}
+        {showTasks && (
           <>
-            <Stack component="ul" spacing={0.5} sx={{ p: 0, m: 0, listStyle: 'none' }}>
-              {BED_TASK_URGENCIES.map(urgency => {
+            <Typography variant="subtitle2">{t('graphical.taskLayer.title')}</Typography>
+            <Stack component="ul"  spacing={0.5} sx={{ p: 0, m: 0, listStyle: 'none' }}>
+              {BED_TASK_URGENCIES.filter(urgency => urgency !== 'completed').map(urgency => {
                 const colors = bedTaskColors(theme, urgency);
                 return (
                   <Stack component="li" key={urgency} direction="row" spacing={1} sx={{ alignItems: 'center' }}>
@@ -63,7 +75,7 @@ export function GraphicalBedTasksControl({ anchor, onClose, enabled, onToggle, b
                 );
               })}
             </Stack>
-            <Typography variant="caption" color="text.secondary">{t('graphical.taskLayer.noFill')}</Typography>
+            <Typography variant="caption" color="text.secondary">{t('graphical.display.taskLegend')}</Typography>
             {loading && <Typography role="status" variant="body2">{t('common:messages.loading')}</Typography>}
             {failed && <Alert severity="error" action={<LoadRetryButton onClick={onRetry} />}>
               {t('graphical.taskLayer.loadError')}
@@ -80,7 +92,7 @@ export function GraphicalBedTasksControl({ anchor, onClose, enabled, onToggle, b
                 {item.name} · {item.parcel}
               </MenuItem>)}
             </TextField>
-            {bed && enabled && !loading && !failed && (
+            {bed && showTasks && !loading && !failed && (
               <Stack aria-live="polite" spacing={0.25}>
                 <Typography variant="body2">
                   {name} · {selected?.urgency ? bedTaskUrgencyLabel(selected.urgency, t) : t('graphical.taskLayer.none')}

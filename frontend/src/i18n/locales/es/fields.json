@@ -29,6 +29,38 @@
     "graphical": "Gráfico"
   },
   "graphical": {
+    "display": {
+      "title": "Vista del gráfico",
+      "mode": {
+        "areas": "Zonas de cultivo",
+        "crops": "Cultivos",
+        "tasks": "Tareas",
+        "cropsAndTasks": "Cultivos y tareas"
+      },
+      "date": "Fecha de referencia de los cultivos",
+      "today": "Hoy",
+      "entireSeason": "Toda la temporada",
+      "previousDay": "Día anterior",
+      "nextDay": "Día siguiente",
+      "taskDateNote": "Los vencimientos y la urgencia de las tareas se calculan desde hoy.",
+      "legend": "Leyenda del gráfico",
+      "cropLegend": "Los colores indican el crecimiento o la cosecha prevista. Los cultivos perennes ocupan el bancal fuera de la cosecha. Un color neutro indica planes mixtos o inciertos.",
+      "taskLegend": "Los símbolos indican tareas abiertas. Un bancal sin símbolo puede tener tareas completadas.",
+      "cropLoadError": "No se pudieron cargar los planes de cultivo.",
+      "phase": {
+        "growth": "Crecimiento previsto",
+        "harvest": "Cosecha prevista",
+        "occupancy": "Bancal ocupado"
+      },
+      "recordedHarvest": "Cosecha registrada",
+      "recordedPlanting": "Siembra o plantación registrada el {{date}}",
+      "range": "Del {{start}} al {{end}}",
+      "incompletePlan": "Faltan fechas o el cultivo",
+      "noPlans": "No hay planes para esta fecha o este periodo.",
+      "completedTasks_one": "{{count}} tarea completada",
+      "completedTasks_other": "{{count}} tareas completadas",
+      "completedTasks_many": "{{count}} tareas completadas"
+    },
     "objects": {
       "dimensions": "{{width}} × {{length}} m",
       "viewDetails": "Ver detalles",
