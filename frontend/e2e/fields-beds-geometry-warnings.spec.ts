@@ -73,7 +73,7 @@ for (const mobile of [false, true]) {
       const overdue = await apiRequest<{ id: number }>(page, 'POST', '/tasks/', {
         title: 'Überfällige Kontrolle', season: season.id, planting_plan: plan.id, due_date: '2026-05-14',
       });
-      await apiRequest(page, 'POST', '/tasks/', {
+      const undated = await apiRequest<{ id: number }>(page, 'POST', '/tasks/', {
         title: 'Material besorgen', season: season.id, planting_plan: plan.id, due_date: null,
       });
       await apiRequest(page, 'POST', '/tasks/', {
@@ -95,6 +95,18 @@ for (const mobile of [false, true]) {
       await expect.poll(async () => (await getBed())?.issue).toBe('shortGap');
       const ordinaryFill = (await getBed())?.fill;
       await expect.poll(() => findShape(page, 'graphical-free-area-site')).not.toBeNull();
+      const preview = page.getByTestId('graphical-object-preview');
+      const bedTarget = page.locator(`[data-graphical-object-target="bed:${bedId}"]`);
+      await bedTarget.press('Enter');
+      await expect(preview).toHaveAccessibleName('Südbeet');
+      await expect(preview.getByText(/2 offene Aufgaben.*1 ohne Termin/)).toBeVisible();
+      await expect(preview.getByText('Überfällige Kontrolle')).toBeVisible();
+      await expect(preview.getByText('Material besorgen')).toBeVisible();
+      await expect(preview.getByText('Parzellenzaun prüfen')).toHaveCount(0);
+      await expect(preview.getByRole('button', { name: '„Überfällige Kontrolle“ als erledigt markieren' })).toBeVisible();
+      await expect.poll(async () => (await getBed())?.fill).toBe(ordinaryFill);
+      await page.keyboard.press('Escape');
+      await expect(preview).toHaveCount(0);
       await activateCanvasTool(page, 'Aufgaben im Beet', mobile ? 'touch' : 'mouse');
       let panel = page.getByRole('dialog', { name: 'Aufgaben im Beet' });
       await expect(panel.getByRole('switch', { name: 'Aufgaben anzeigen' })).not.toBeChecked();
@@ -172,9 +184,26 @@ for (const mobile of [false, true]) {
       const { screen } = (await getBed())!;
       const point = { x: Math.round(screen.x + screen.width / 2), y: Math.round(screen.y + screen.height / 2) };
       await expect.poll(() => page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.tagName, point)).toBe('CANVAS');
+      const graphicUrl = page.url();
       if (mobile) await page.touchscreen.tap(point.x, point.y);
       else await page.mouse.click(point.x, point.y);
+      await expect(preview).toHaveAccessibleName('Südbeet');
+      await expect(preview.getByText('Material besorgen')).toBeVisible();
+      await expect(page).toHaveURL(graphicUrl);
+      await page.route(`**/api/tasks/${undated.id}/`, async route => {
+        if (route.request().method() === 'PATCH') await route.fulfill({ status: 500, body: 'Unavailable' });
+        else await route.continue();
+      });
+      await preview.getByRole('button', { name: '„Material besorgen“ als erledigt markieren' }).click();
+      const error = preview.getByRole('alert');
+      await expect(error).toBeVisible();
+      await page.unroute(`**/api/tasks/${undated.id}/`);
+      await error.getByRole('button').click();
+      await expect(preview.getByText('Keine offenen Aufgaben für dieses Beet.')).toBeVisible();
+      await expect.poll(async () => (await getBed())?.urgency).toBe('completed');
+      await preview.getByRole('button', { name: 'Details anzeigen' }).click();
       await expect(page).toHaveURL(new RegExp(`/fields-beds/beds/${bedId}$`));
+      await expect(page.getByText('Material besorgen')).toBeVisible();
     });
   });
 }
@@ -257,9 +286,11 @@ for (const input of ['mouse', 'touch'] as const) {
         await activate('Alles einpassen');
         const full = (await findShape(page, `field-rect-${fullFieldId}`))!;
         await page.mouse.click(full.screen.x + full.screen.width / 2, full.screen.y + 8);
-        const details = page.getByRole('dialog', { name: 'Parzellendetails' });
-        await expect(details.getByText(/Volle Parzelle/)).toBeVisible();
-        await page.goto(`/app/fields-beds/fields/${fullFieldId}`);
+        const details = page.getByRole('region', { name: 'Volle Parzelle', exact: true });
+        await expect(details).toBeVisible();
+        await expect(details).toContainText('100 m²');
+        await details.getByRole('button', { name: 'Details anzeigen' }).click();
+        await expect(page).toHaveURL(new RegExp(`/app/fields-beds/fields/${fullFieldId}$`));
         await expect(page.getByTestId('detail-area')).toContainText('100 m²');
         await expect(page.getByTestId('detail-covered-area')).toContainText('100 m²');
         await expect(page.getByTestId('detail-remaining-area')).toContainText(/0 m² \(0\s?%\)/);

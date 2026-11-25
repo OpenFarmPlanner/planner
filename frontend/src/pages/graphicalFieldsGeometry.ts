@@ -8,6 +8,7 @@ import type { ViewportPadding, ViewportState } from "./graphicalViewport";
 import type { Dispatch, SetStateAction } from "react";
 import type { GraphicalRotation } from "./graphicalLayoutUtils";
 import type { Season } from "../api/types";
+import type { HierarchyEntityType } from "../components/hierarchy/details/hierarchyDetailRoutes";
 
 export interface Point {
   x: number;
@@ -49,15 +50,6 @@ export interface SnapResult {
   guides: GuideLine[];
 }
 
-export interface SelectedElement {
-  id: number;
-  type: "field" | "bed";
-  name: string;
-  area: number | null;
-  locationName: string;
-  parentName?: string;
-}
-
 export interface GraphicalFieldsProps {
   showTitle?: boolean;
   interactionMode?: InteractionMode;
@@ -68,6 +60,8 @@ export interface GraphicalFieldsProps {
   canEditIndividualPlants?: boolean;
   requestedIndividualPlan?: number;
   onOpenBed?: (id: number) => void;
+  onOpenDetails?: (type: HierarchyEntityType, id: number) => void;
+  canCompleteTasks?: boolean;
   hierarchyData?: HierarchyDataState;
   selectedLocationId?: number | null;
   cameraState?: GraphicalCameraState;
@@ -127,8 +121,8 @@ export const FIELD_WORLD_MIN_HEIGHT = 220;
 export const FIELD_WORLD_SCALE_FACTOR = 12;
 
 export const getFitViewportPadding = (stageWidth: number, stageHeight = Number.POSITIVE_INFINITY): ViewportPadding => ({
-  // Leave the top-left zoom readout clear of field names in fit-to-view.
-  top: 48,
+  // Keep the location label above the boundary clear of the zoom readout.
+  top: stageHeight < 200 ? 48 : 62,
   right:
     (stageWidth < 600 ? MOBILE_VIEWPORT_PADDING : VIEWPORT_PADDING) +
     (stageWidth < 600

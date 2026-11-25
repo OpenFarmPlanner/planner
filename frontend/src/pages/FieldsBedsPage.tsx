@@ -16,7 +16,7 @@ import { DetailPageActions } from '../components/layout/DetailPageActions';
 import { locationAPI, parcelRotationAPI } from '../api/api';
 import type { LocationPathSpacing, ParcelRotationGroup } from '../api/types';
 import { ParcelRotationGroupsDialog } from '../components/hierarchy/rotation/ParcelRotationGroupsDialog';
-import { getEntityDetailPath } from '../components/hierarchy/details/hierarchyDetailRoutes';
+import { getEntityDetailPath, type HierarchyEntityType } from '../components/hierarchy/details/hierarchyDetailRoutes';
 import {
   ParcelRotationContext, type ParcelRotationMembership,
 } from '../components/hierarchy/rotation/parcelRotationContext';
@@ -39,7 +39,6 @@ import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import LoadRetryButton from '../components/LoadRetryButton';
 import { useTopbarWorkspaceControls } from '../hooks/useTopbarWorkspaceControls';
 import type { GraphicalCameraState } from './graphicalFieldsGeometry';
-import { getMeasuredArea } from './graphicalAreaGeometry';
 import { TruncatedTextWithTooltip } from '../components/TruncatedTextWithTooltip';
 
 const VIEW_MODE_STORAGE_KEY = 'fieldsBedsViewMode';
@@ -159,7 +158,18 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
     catch { /* Storage may be disabled. */ }
     return { locations, id };
   });
-  const [cameraState, setCameraState] = useState<GraphicalCameraState>({ viewports: {}, rotations: {} });
+  const cameraKey = `graphicalCamera.${projectId}`;
+  const [cameraState, setCameraState] = useState<GraphicalCameraState>(() => {
+    try {
+      const stored = JSON.parse(sessionStorage.getItem(cameraKey) ?? 'null') as GraphicalCameraState | null;
+      if (stored?.viewports && stored.rotations) return stored;
+    } catch { /* Storage may be disabled. */ }
+    return { viewports: {}, rotations: {} };
+  });
+  const openGraphicalDetails = (type: HierarchyEntityType, id: number): void => {
+    try { sessionStorage.setItem(cameraKey, JSON.stringify(cameraState)); } catch { /* Storage may be disabled. */ }
+    void navigate(getEntityDetailPath(type, id), { state: { fromGrowingAreaGraphic: true } });
+  };
   const [isEditingGraphic, setIsEditingGraphic] = useState(false);
   const graphicalLocations = useMemo(() => locations.filter(item => typeof item.id === 'number' && item.id > 0), [locations]);
   const selectedLocation = graphicalLocations.find(item => item.id === locationSelection.id) ?? graphicalLocations[0];
@@ -346,8 +356,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   const shouldShowMissingFieldsState = hasLocations
     && (effectiveViewMode === 'graphical' ? !hasSelectedGraphicalFields : !hasFields)
     && !hasUnsavedFields && createFieldRequest <= 0;
-  const showMeasuredEmptyLocation = shouldShowMissingFieldsState && effectiveViewMode === 'graphical'
-    && Boolean(selectedLocation && getMeasuredArea(selectedLocation) !== null);
+  const showEmptyGraphicalLocation = shouldShowMissingFieldsState && effectiveViewMode === 'graphical'
+    && Boolean(selectedLocation);
   const shouldShowMissingBedsHint = hasFields && !hasBeds && !hasUnsavedBeds;
   const shouldRenderHierarchy = hasHierarchyRows || createFieldRequest > 0 || effectivePendingHierarchyDeletionCount > 0;
   const createBedAction = getProjectSetupAction('beds');
@@ -534,11 +544,11 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             containerSx={CONTENT_ALIGNED_EMPTY_STATE_SX}
           />
         ) : null}
-        {!shouldShowProjectRequiredState && !isAreaDataLoading && showMeasuredEmptyLocation ? (
+        {!shouldShowProjectRequiredState && !isAreaDataLoading && showEmptyGraphicalLocation ? (
           <Alert severity="info" sx={{ mb: 1 }}>{t('fields:graphical.noFields')}</Alert>
         ) : null}
         {!shouldShowProjectRequiredState && !isAreaDataLoading
-          && (shouldShowAreasEmptyState || (shouldShowMissingFieldsState && !showMeasuredEmptyLocation)) ? (
+          && (shouldShowAreasEmptyState || (shouldShowMissingFieldsState && !showEmptyGraphicalLocation)) ? (
           <EmptyStateCard
             title={shouldShowMissingFieldsState ? t('hierarchy:emptyAreas.missingFieldTitle') : t('hierarchy:emptyAreas.missingLocationTitle')}
             description={effectiveViewMode === 'graphical' && hasLocations ? t('fields:graphical.noFields') : emptyAreasDescription}
@@ -551,7 +561,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
 
       <Box>
         {!shouldShowProjectRequiredState && !isAreaDataLoading && shouldRenderHierarchy
-          && (!shouldShowMissingFieldsState || showMeasuredEmptyLocation) && effectiveViewMode === 'graphical' ? (
+          && selectedLocation && effectiveViewMode === 'graphical' ? (
           <GraphicalFields
             selectedLocationId={selectedLocation?.id}
             cameraState={cameraState}
@@ -565,6 +575,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             canEditIndividualPlants={Boolean(activeProjectMembership)}
             requestedIndividualPlan={requestedIndividualPlan}
             onOpenBed={id => navigate(getEntityDetailPath('bed', id))}
+            onOpenDetails={openGraphicalDetails}
+            canCompleteTasks={Boolean(activeProjectMembership)}
             hierarchyData={hierarchyData}
           />
         ) : null}
