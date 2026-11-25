@@ -422,6 +422,7 @@ class YieldComparisonView(generics.GenericAPIView):
         SEASON_HEADER_PARAMETER,
         OpenApiParameter('bed', int, description='Limit plans to this bed.'),
         OpenApiParameter('field', int, description='Limit plans to this field.'),
+        OpenApiParameter('location', int, description='Limit plans assigned to beds at this location.'),
     ]),
     retrieve=extend_schema(parameters=[SEASON_HEADER_PARAMETER, OpenApiParameter(
         'across_seasons', bool,
