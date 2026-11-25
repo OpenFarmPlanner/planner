@@ -315,6 +315,31 @@ describe('GrowingAreaDetailPage', () => {
     expect(within(section).queryByTestId('detail-rotation-group')).not.toBeInTheDocument();
   });
 
+  it('keeps a retry after a failed refresh in the loading state until it settles', async () => {
+    const group = { id: 5, name: 'Nord–Süd', parcels: [{ id: 10, name: 'Tunnel', beds: [] }] };
+    let resolveRetry: (value: { data: typeof group[] }) => void = () => undefined;
+    apiMocks.rotationGroups.mockResolvedValueOnce({ data: [group] }).mockResolvedValueOnce({ data: [group] })
+      .mockRejectedValueOnce(new Error('Unavailable'))
+      .mockReturnValueOnce(new Promise((resolve) => { resolveRetry = resolve; }));
+    apiMocks.rotationUpdate.mockResolvedValue({ data: group });
+    const user = userEvent.setup();
+    renderDetail('/app/fields-beds/fields/10');
+
+    const section = await screen.findByTestId('detail-section-rotation');
+    await within(section).findByTestId('detail-rotation-group');
+    await user.click(within(section).getByRole('button', { name: 'Rotationsgruppen verwalten' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Rotationsgruppen verwalten' });
+    await user.click(await within(dialog).findByRole('button', { name: 'Speichern' }));
+    await within(section).findByRole('alert');
+
+    await user.click(within(section).getByRole('button', { name: 'Erneut versuchen' }));
+    expect(within(section).getByRole('progressbar')).toBeInTheDocument();
+    expect(within(section).queryByTestId('detail-rotation-group')).not.toBeInTheDocument();
+
+    resolveRetry({ data: [group] });
+    expect(await within(section).findByTestId('detail-rotation-group')).toHaveTextContent('Nord–Süd');
+  });
+
   it('refreshes season options after a rotation group is saved from parcel details', async () => {
     const group = { id: 5, name: 'Nord–Süd', parcels: [{ id: 10, name: 'Tunnel', beds: [] }] };
     apiMocks.rotationGroups.mockResolvedValue({ data: [group] });

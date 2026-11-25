@@ -58,7 +58,9 @@ export function useParcelRotationGroups({ enabled, fields, beds, onChanged }: Op
   ))), [groups]);
 
   const reload = useCallback(() => {
+    // Until the retry settles the earlier memberships are of unknown validity: show it as loading.
     setLoadError(false);
+    setHasLoaded(false);
     void refresh();
   }, [refresh]);
   // A failed refresh (e.g. after saving a group) must not leave older memberships presented as current.
