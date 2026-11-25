@@ -1086,9 +1086,25 @@ Run `ofp-qa refresh --agent codex` (or `--agent claude`) from an interactive
 terminal to review accepted work and then prepare newly implemented issues.
 The launcher first runs the existing `sync` assistant: it verifies Accepted
 decisions against the reviewed implementation and the live queue, previews the
-eligible removals, and asks for one explicit confirmation before editing #1058.
-Verified removals are archived locally with their decisions and evidence before
-their cards leave the dashboard. Separate follow-up issues remain in the queue.
+eligible removals, and applies them directly, without asking for a chat
+confirmation each run. The owner standingly pre-authorizes this as long as the
+assistant verifies, for every removed row: the issue is closed; its
+`decisions.json` status is Accepted at the current revision; its reviewed
+implementation PR/commit is actually merged into `main`; and no open or
+closed-unmerged implementation PR still gates it. Re-verify all of this (and
+the live queue body) immediately before writing, narrow the batch if a row
+became ineligible since the last read, and stop and report instead of writing
+if anything does not check out cleanly. Verified removals are archived locally
+with their decisions and evidence before their cards leave the dashboard.
+Separate follow-up issues remain in the queue.
+
+A dashboard Accepted decision is the owner's acceptance for this workflow,
+recorded locally instead of on the GitHub issue; removing the row does not
+additionally require checking that row's `#1058` box. The box stays reserved
+for [personal acceptance outside the dashboard](work-execution-queue.md#personal-acceptance-and-queue-cleanup)
+(manually testing a merged change in the app without going through `ofp-qa`);
+an unchecked row is expected and normal here, not a sign the owner has not
+accepted it.
 Exit the interactive assistant when finished to continue with the QA release
 update and refresh. An unsuccessful sync exit or Ctrl+C stops the combined run.
 The refresh then reads the updated dashboard and queue to build a new candidate
@@ -1103,8 +1119,9 @@ Codex sync sessions explicitly use `--ask-for-approval never` with the
 `workspace-write` sandbox and network access enabled. This avoids individual
 command approval prompts during GitHub relationship reads. The same policy
 applies when `refresh` starts its sync phase and when automatic agent selection
-chooses Codex. It applies to all commands in that session, including approved
-queue writes; the existing sync task still requires an explicit confirmation of
-the exact batch before remote changes. This is an assistant instruction, not a
-network write filter. Global Codex settings are unchanged. Preview mode starts
-no assistant; Claude's startup options are unchanged.
+chooses Codex. It applies to all commands in that session, including the
+verified queue-row removals it writes directly under the standing owner
+authorization described above, without an additional chat confirmation. This
+is an assistant instruction, not a network write filter. Global Codex settings
+are unchanged. Preview mode starts no assistant; Claude's startup options are
+unchanged.
