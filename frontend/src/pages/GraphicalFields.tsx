@@ -970,6 +970,11 @@ export default function GraphicalFields({
           const showIndividualPanel = individualSeason && individualPlants.editor.open && !locationIsEditable
             && fullscreenLocationId !== locationId;
           const stemDraft = showIndividualPanel ? individualPlants.editor.draft : null;
+          // In graphic edit mode a placed stem is its own drag target, above beds and parcels (#1579).
+          const draggableStemPlans = locationIsEditable && individualPlants.canEdit
+            ? new Set(individualPlants.plans.flatMap(plan => (
+              plan.id && !individualPlants.movingPlans.has(plan.id) ? [plan.id] : [])))
+            : undefined;
           const viewport =
             viewportByLocation[locationId] ??
             fitBoundsToStage(
@@ -996,6 +1001,9 @@ export default function GraphicalFields({
 
           return (
             <Box key={locationId} role="region" aria-label={t("fields:graphical.locationTitle", { name: location.name })}>
+                {locationIsEditable && individualPlants.moveError ? (
+                  <Alert severity="error" sx={{ mb: 1.5 }}>{t("fields:individualPlants.saveFailed")}</Alert>
+                ) : null}
                 {fieldSaveErrorLocation === locationId ? (
                   <Alert severity="error" sx={{ mb: 1.5 }}>{t("fields:errors.save")}</Alert>
                 ) : null}
@@ -1365,7 +1373,16 @@ export default function GraphicalFields({
                                   panel?.focus({ preventScroll: true });
                                   panel?.scrollIntoView({ block: "nearest" });
                                 }}
-                                onMove={individualPlants.changeStem}
+                                draggablePlanIds={draggableStemPlans}
+                                onMove={(key, position) => {
+                                  if (stemDraft?.parcel === fieldId) {
+                                    individualPlants.changeStem(key, position);
+                                    return;
+                                  }
+                                  const plan = individualPlants.plans.find(item => (
+                                    item.individual_positions?.some(stem => stem.id === key)));
+                                  if (plan?.id) void individualPlants.moveSavedStem(plan.id, key, position);
+                                }}
                                 onSelect={!locationIsEditable && fullscreenLocationId !== locationId
                                   ? stem => individualPlants.select(stem.planId, fieldId, stem.key)
                                   : undefined} />

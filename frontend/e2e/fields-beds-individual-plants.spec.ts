@@ -142,6 +142,132 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   await expect(page.locator(`[data-task-id="plan-${saved.id}-occupancy"]`)).toBeVisible();
 });
 
+async function worldBox(page: Page, testId: string) {
+  return page.evaluate(testId => {
+    const { stages } = (window as unknown as { Konva: { stages: Konva.Stage[] } }).Konva;
+    const stage = stages.find(item => item.container()?.isConnected);
+    const node = stage?.find('Circle, Rect').find(item => item.getAttr('data-testid') === testId);
+    return stage && node ? node.getClientRect({ relativeTo: stage }) : null;
+  }, testId);
+}
+
+async function dragScreen(page: Page, from: { x: number; y: number }, by: { x: number; y: number }) {
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x + by.x, from.y + by.y, { steps: 6 });
+  await page.mouse.up();
+}
+
+const centre = (box: { x: number; y: number; width: number; height: number }) => (
+  { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+
+test('drags a placed stem in graphic edit mode without moving the bed or parcel below it (#1579)', async ({ page, request }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.clock.setFixedTime(new Date(2026, 4, 15, 12));
+  await loginWithDeterministicProject(page, request, 'individual-plants-stem-drag', { loginAsAdmin: true });
+  const { results: [location] } = await apiRequest<{ results: { id: number }[] }>(page, 'GET', '/locations/');
+  const plot = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
+    location: location.id, name: 'Obstparzelle', width_m: 14, length_m: 20,
+  });
+  const bed = await apiRequest<{ id: number }>(page, 'POST', '/beds/', {
+    field: plot.id, name: 'Gemüsebeet', width_m: 1.2, length_m: 6,
+  });
+  const season = await apiRequest<{ id: number }>(page, 'POST', '/seasons/', { start_date: '2026-01-01', end_date: '2026-12-31' });
+  const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+    name: 'Apfel', life_cycle: 'perennial', standing_time_years: 15,
+    distance_within_row_cm: 400, estimated_canopy_diameter_m: 3.8, cultivation_types: ['pre_cultivation'],
+  });
+  const created = await apiRequest<Plan & { updated_at: string }>(page, 'POST', '/planting-plans/', {
+    season: season.id, crop: crop.id, parcel: plot.id, planting_date: '2026-05-01', cultivation_type: 'pre_cultivation',
+    estimated_canopy_diameter_m: 3.8, individual_positions: [{ x_m: 1, y_m: 1 }, { x_m: 2, y_m: 3 }],
+  });
+  const [free, overBed] = created.individual_positions;
+
+  // Calibrate metres to canvas units from the two stems, then put the second one on the bed's centre.
+  await page.goto('/app/fields-beds');
+  await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+  await expect.poll(() => worldBox(page, `individual-stem-${overBed.id}`)).not.toBeNull();
+  const a = centre((await worldBox(page, `individual-stem-${free.id}`))!);
+  const b = centre((await worldBox(page, `individual-stem-${overBed.id}`))!);
+  const perMetre = { x: (b.x - a.x) / 1, y: (b.y - a.y) / 2 };
+  const bedCentre = centre((await worldBox(page, `bed-rect-${bed.id}`))!);
+  // The placement endpoint reads plans of the active season, which apiRequest does not send.
+  const placed = await page.evaluate(async ({ planId, seasonId, body }) => {
+    const csrf = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] ?? '';
+    const response = await fetch(`/api/planting-plans/${planId}/individual-placement/`, {
+      method: 'PATCH', credentials: 'include', body: JSON.stringify(body),
+      headers: {
+        'Content-Type': 'application/json', 'X-CSRFToken': csrf, 'X-Season-Id': String(seasonId),
+        'X-Project-Id': String(window.localStorage.getItem('activeProjectId')),
+      },
+    });
+    return response.ok ? true : `${response.status} ${await response.text()}`;
+  }, {
+    planId: created.id, seasonId: season.id, body: {
+      placement_updated_at: created.updated_at,
+      individual_positions: [
+        { id: free.id, x_m: free.x_m, y_m: free.y_m },
+        {
+          id: overBed.id,
+          x_m: Number((1 + (bedCentre.x - a.x) / perMetre.x).toFixed(2)),
+          y_m: Number((1 + (bedCentre.y - a.y) / perMetre.y).toFixed(2)),
+        },
+      ],
+    },
+  });
+  expect(placed).toBe(true);
+  await page.reload();
+  await page.getByRole('button', { name: 'Grafik bearbeiten', exact: true }).click();
+  await expect.poll(() => shape(page, `individual-stem-${overBed.id}`)).toMatchObject({ listened: true });
+  const [placedPlan] = await individualPlans(page, location.id);
+  const parcelBefore = (await shape(page, `field-rect-${plot.id}`))!.world;
+  const bedBefore = (await shape(page, `bed-rect-${bed.id}`))!.world;
+
+  // A stem over a bed: the stem moves, the bed and parcel stay.
+  const stemOnBed = (await shape(page, `individual-stem-${overBed.id}`))!.screen;
+  await dragScreen(page, centre(stemOnBed), { x: 36, y: 24 });
+  await expect.poll(async () => (await individualPlans(page, location.id))[0].individual_positions[1].x_m)
+    .not.toBe(placedPlan.individual_positions[1].x_m);
+  expect((await shape(page, `bed-rect-${bed.id}`))!.world).toEqual(bedBefore);
+  expect((await shape(page, `field-rect-${plot.id}`))!.world).toEqual(parcelBefore);
+
+  // A stem over empty parcel space.
+  const stemFree = (await shape(page, `individual-stem-${free.id}`))!.screen;
+  await dragScreen(page, centre(stemFree), { x: 30, y: 30 });
+  await expect.poll(async () => (await individualPlans(page, location.id))[0].individual_positions[0].x_m)
+    .not.toBe(free.x_m);
+  expect((await shape(page, `field-rect-${plot.id}`))!.world).toEqual(parcelBefore);
+  const afterStemDrags = (await individualPlans(page, location.id))[0].individual_positions;
+  await testInfo.attach('individual-stem-drag-edit-mode', { body: await page.screenshot(), contentType: 'image/png' });
+
+  // After a reload the saved positions are shown and the bed is where it was.
+  await page.reload();
+  await page.getByRole('button', { name: 'Grafik bearbeiten', exact: true }).click();
+  await expect.poll(async () => (await shape(page, `individual-stem-${overBed.id}`))?.x_m)
+    .toBe(afterStemDrags[1].x_m);
+  expect((await shape(page, `bed-rect-${bed.id}`))!.world).toEqual(bedBefore);
+
+  // Inside the canopy but outside the stem, the bed below keeps its own drag.
+  const bedBox = (await shape(page, `bed-rect-${bed.id}`))!.screen;
+  const stemBox = (await shape(page, `individual-stem-${overBed.id}`))!.screen;
+  const stemPoint = centre(stemBox);
+  const vertical = bedBox.height >= bedBox.width;
+  const canopyPoint = vertical
+    ? { x: centre(bedBox).x, y: stemPoint.y < centre(bedBox).y ? stemPoint.y + 26 : stemPoint.y - 26 }
+    : { x: stemPoint.x < centre(bedBox).x ? stemPoint.x + 26 : stemPoint.x - 26, y: centre(bedBox).y };
+  await dragScreen(page, canopyPoint, { x: 20, y: 20 });
+  await expect.poll(async () => (await shape(page, `bed-rect-${bed.id}`))?.world).not.toEqual(bedBefore);
+  expect((await individualPlans(page, location.id))[0].individual_positions).toEqual(afterStemDrags);
+
+  // A failed save restores the stem and reports the error.
+  await page.route(url => url.pathname.endsWith('/individual-placement/'), route => route.fulfill({ status: 500, json: {} }));
+  const beforeFailure = (await shape(page, `individual-stem-${free.id}`))!;
+  await dragScreen(page, centre(beforeFailure.screen), { x: 30, y: -20 });
+  await expect(page.getByText('Die Einzelpflanzen konnten nicht gespeichert werden.')).toBeVisible();
+  await expect.poll(async () => (await shape(page, `individual-stem-${free.id}`))?.x_m).toBe(beforeFailure.x_m);
+  expect((await individualPlans(page, location.id))[0].individual_positions).toEqual(afterStemDrags);
+});
+
 test.describe('individual plants on a phone', () => {
   test.use({ viewport: { width: 375, height: 800 }, hasTouch: true });
 

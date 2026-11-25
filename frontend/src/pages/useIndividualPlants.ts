@@ -167,8 +167,41 @@ export function useIndividualPlants(
     }
   };
 
+  // Graphic edit mode moves an already saved stem directly (#1579): the position is
+  // saved on drop like a bed or parcel, and restored when the save fails.
+  const [movingPlans, setMovingPlans] = useState<ReadonlySet<number>>(new Set());
+  const [moveErrorScope, setMoveErrorScope] = useState<string | null>(null);
+  const moveSavedStem = async (planId: number, stemId: string, point: StemCoordinates) => {
+    const plan = plans.find(item => item.id === planId);
+    if (!canEdit || !plan?.updated_at || movingPlans.has(planId)) return;
+    const positions = (plan.individual_positions ?? []).map(stem => (
+      stem.id === stemId ? { ...stem, ...point } : stem));
+    const replacePlan = (next: PlantingPlan) => setResult(value => value?.key === key ? {
+      ...value, plans: value.plans.map(item => item.id === planId ? next : item),
+    } : value);
+    setMoveErrorScope(null);
+    setMovingPlans(value => new Set(value).add(planId));
+    replacePlan({ ...plan, individual_positions: positions });
+    try {
+      const { data } = await plantingPlanAPI.saveIndividualPlacement(planId, plan.updated_at, {
+        individual_positions: positions.map(({ id, x_m, y_m }) => ({ id, x_m, y_m })),
+      });
+      replacePlan(data);
+    } catch {
+      replacePlan(plan);
+      setMoveErrorScope(scope);
+    } finally {
+      setMovingPlans(value => {
+        const next = new Set(value);
+        next.delete(planId);
+        return next;
+      });
+    }
+  };
+
   return {
     plans, editor, canEdit, update, updateDraft, select, startDraft, addStem, changeStem, save,
+    moveSavedStem, movingPlans, moveError: Boolean(scope) && moveErrorScope === scope,
     loading: Boolean(scope) && !current, failed: current?.failed ?? false,
     refresh: () => setAttempt(value => value + 1),
   };

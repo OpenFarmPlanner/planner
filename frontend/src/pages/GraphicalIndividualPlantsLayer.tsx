@@ -15,8 +15,13 @@ export interface CanvasStem extends StemCoordinates {
 
 type Press = KonvaEventObject<MouseEvent | TouchEvent>;
 
+const setCursor = (event: KonvaEventObject<MouseEvent>, cursor: string) => {
+  const container = event.target.getStage()?.container();
+  if (container) container.style.cursor = cursor;
+};
+
 export function GraphicalIndividualPlantsLayer({
-  field, surface, pixelsPerMeter, rotation, stems, zoom, placing, editablePlanId, onAdd, onSelect, onMove,
+  field, surface, pixelsPerMeter, rotation, stems, zoom, placing, editablePlanId, draggablePlanIds, onAdd, onSelect, onMove,
 }: {
   field: Field;
   surface: CanvasRect;
@@ -26,6 +31,8 @@ export function GraphicalIndividualPlantsLayer({
   zoom: number;
   placing: boolean;
   editablePlanId?: number | null;
+  /** Saved plans whose stems can be dragged directly, in graphic edit mode (#1579). */
+  draggablePlanIds?: ReadonlySet<number>;
   onAdd: (position: StemCoordinates) => void;
   onSelect?: (stem: CanvasStem) => void;
   onMove: (key: string, position: StemCoordinates) => void;
@@ -63,7 +70,8 @@ export function GraphicalIndividualPlantsLayer({
       {stems.map(stem => {
         const point = stemToCanvas(stem, field, surface, rotation);
         if (!point) return null;
-        const canDrag = editablePlanId !== undefined && editablePlanId === stem.planId;
+        const canDrag = (editablePlanId !== undefined && editablePlanId === stem.planId)
+          || (stem.planId !== null && Boolean(draggablePlanIds?.has(stem.planId)));
         const ink = stem.selected ? theme.palette.primary.dark : theme.palette.text.primary;
         return <Group key={stem.key}>
           {stem.canopy > 0 && <Ellipse {...point} listening={false}
@@ -77,6 +85,8 @@ export function GraphicalIndividualPlantsLayer({
             data-testid={`individual-stem-${stem.key}`} data-x-m={stem.x_m} data-y-m={stem.y_m}
             draggable={canDrag} dragDistance={8}
             onMouseDown={beginPress} onTouchStart={beginPress} onTouchMove={touchMove}
+            onMouseEnter={event => { if (canDrag) setCursor(event, 'move'); }}
+            onMouseLeave={event => { if (canDrag) setCursor(event, ''); }}
             onClick={event => click(event, () => onSelect?.(stem))}
             onTap={event => click(event, () => onSelect?.(stem))}
             onDragStart={event => { event.cancelBubble = true; press.current = null; }}
