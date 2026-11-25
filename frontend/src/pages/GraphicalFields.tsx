@@ -101,7 +101,7 @@ import { useGraphicalStageSize } from "./useGraphicalStageSize";
 import { formatLocalizedNumber, getActiveFormattingLocale } from "../utils/numberLocalization";
 import { AppTooltip } from '../components/AppTooltip';
 import LoadRetryButton from '../components/LoadRetryButton';
-import { pendingFieldSaves, trackBedLayoutSave, waitForLocationLayoutSaves } from './graphicalLayoutRequests';
+import { pendingFieldSaves, saveTrackedBedLayout, waitForLocationLayoutSaves } from './graphicalLayoutRequests';
 
 const BED_ACTIVATION_SLOP = 8;
 const BED_TASK_BADGE_WIDTH = 19;
@@ -184,7 +184,6 @@ export default function GraphicalFields({
   const [selectedElement, setSelectedElement] =
     useState<SelectedElement | null>(null);
   const stageRefs = useRef<Record<number, Konva.Stage | null>>({});
-  const saveTimers = useRef<Record<string, number>>({});
   const panSessionRef = useRef<Record<number, PanSession | null>>({});
   const pinchStateRef = useRef<
     Record<number, { distance: number; center: Point } | null>
@@ -257,15 +256,6 @@ export default function GraphicalFields({
   }, [activeLocationId, layoutAttempt]);
 
   useEffect(() => {
-    const timers = saveTimers.current;
-    return () => {
-      Object.values(timers).forEach((timer) => {
-        window.clearTimeout(timer);
-      });
-    };
-  }, []);
-
-  useEffect(() => {
     queueMicrotask(() => {
       resetTransientInteractionState();
       stopKonvaDragging();
@@ -306,21 +296,12 @@ export default function GraphicalFields({
   );
 
   const saveBedLayout = (locationId: number, payload: BedLayoutEntry): void => {
-    const timerKey = `bed-${payload.bed}`;
-    if (saveTimers.current[timerKey]) {
-      window.clearTimeout(saveTimers.current[timerKey]);
-    }
-
-    saveTimers.current[timerKey] = window.setTimeout(async () => {
-      try {
-        await trackBedLayoutSave(locationId, layoutAPI.saveByLocation(locationId, {
-          bed_layouts: [payload],
-          field_layouts: [],
-        }));
-      } catch (saveError) {
-        console.error("Failed to save bed layout", saveError);
-      }
-    }, 250);
+    void saveTrackedBedLayout(locationId, payload.bed, () => layoutAPI.saveByLocation(locationId, {
+      bed_layouts: [payload],
+      field_layouts: [],
+    })).catch((saveError: unknown) => {
+      console.error("Failed to save bed layout", saveError);
+    });
   };
 
   const saveFieldLayout = (

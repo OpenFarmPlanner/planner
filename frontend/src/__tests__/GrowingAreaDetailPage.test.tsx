@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import GrowingAreaDetailPage from '../pages/GrowingAreaDetailPage';
-import { trackBedLayoutSave } from '../pages/graphicalLayoutRequests';
+import { saveTrackedBedLayout } from '../pages/graphicalLayoutRequests';
 
 const apiMocks = vi.hoisted(() => ({
   projectId: 1,
@@ -112,21 +112,27 @@ describe('GrowingAreaDetailPage', () => {
     expect(geometry.queryByTestId('detail-remaining-area')).not.toBeInTheDocument();
   });
 
-  it('waits for a bed move already being saved before reading the parcel layout', async () => {
+  it('waits for consecutive bed drops to save in order before reading the parcel layout', async () => {
     apiMocks.fields.mockResolvedValue(page([
       { id: 10, name: 'Tunnel', location: 1, width_m: 10, length_m: 10 },
     ]).data);
     let finishSave!: () => void;
-    const save = trackBedLayoutSave(1, new Promise<void>(resolve => { finishSave = resolve; }));
+    const firstWrite = vi.fn(() => new Promise<void>(resolve => { finishSave = resolve; }));
+    const lastWrite = vi.fn().mockResolvedValue(undefined);
+    const firstSave = saveTrackedBedLayout(1, 100, firstWrite);
+    const lastSave = saveTrackedBedLayout(1, 100, lastWrite);
     renderDetail('/app/fields-beds/fields/10');
 
     const geometry = within(await screen.findByTestId('detail-section-geometry'));
     expect(geometry.getByRole('status')).toBeVisible();
     expect(apiMocks.layouts).not.toHaveBeenCalled();
+    expect(firstWrite).toHaveBeenCalledOnce();
+    expect(lastWrite).not.toHaveBeenCalled();
     await act(async () => {
       finishSave();
-      await save;
+      await Promise.all([firstSave, lastSave]);
     });
+    expect(lastWrite).toHaveBeenCalledOnce();
     expect(geometry.getByTestId('detail-covered-area')).toBeVisible();
   });
 
