@@ -29,6 +29,53 @@
     "graphical": "Graphique"
   },
   "graphical": {
+    "display": {
+      "title": "Affichage du graphique",
+      "mode": {
+        "areas": "Surfaces de culture",
+        "crops": "Cultures",
+        "tasks": "Tâches",
+        "cropsAndTasks": "Cultures et tâches"
+      },
+      "date": "Date de référence des cultures",
+      "today": "Aujourd’hui",
+      "entireSeason": "Toute la saison",
+      "previousDay": "Jour précédent",
+      "nextDay": "Jour suivant",
+      "taskDateNote": "Les échéances et l’urgence des tâches se calculent à partir d’aujourd’hui.",
+      "legend": "Légende du graphique",
+      "cropLegend": "Les couleurs indiquent la croissance ou la récolte prévue. Les cultures pérennes occupent la planche en dehors de la récolte. Une couleur neutre indique des plans mixtes ou incertains.",
+      "taskLegend": "Les symboles indiquent les tâches ouvertes. Une planche sans symbole peut avoir des tâches terminées.",
+      "cropLoadError": "Impossible de charger les plans de culture.",
+      "phase": {
+        "growth": "Croissance prévue",
+        "harvest": "Récolte prévue",
+        "occupancy": "Occupation prévue"
+      },
+      "recordedHarvest": "Récolte enregistrée",
+      "recordedPlanting": "Semis ou plantation enregistré le {{date}}",
+      "range": "Du {{start}} au {{end}}",
+      "incompletePlan": "Dates ou culture manquantes",
+      "noPlans": "Aucun plan pour cette date ou cette période.",
+      "cancelledStatus": "Annulée",
+      "cancelledTasks_one": "{{count}} tâche annulée",
+      "cancelledTasks_other": "{{count}} tâches annulées",
+      "cancelledTasks_many": "{{count}} tâches annulées",
+      "completedTasks_one": "{{count}} tâche terminée",
+      "completedTasks_other": "{{count}} tâches terminées",
+      "completedTasks_many": "{{count}} tâches terminées"
+    },
+    "objects": {
+      "dimensions": "{{width}} × {{length}} m",
+      "viewDetails": "Voir les détails",
+      "backToGraphic": "Retour au graphique",
+      "desktopHint": "Cliquez avec le bouton droit sur un site, une parcelle ou une planche pour ouvrir son menu contextuel.",
+      "touchHint": "Appuyez longuement sur un site, une parcelle ou une planche pour ouvrir son menu contextuel.",
+      "noOpenTasks": "Aucune tâche ouverte pour cette planche.",
+      "moreTasks_one": "+{{count}} autre tâche",
+      "moreTasks_other": "+{{count}} autres tâches",
+      "moreTasks_many": "+{{count}} autres tâches"
+    },
     "taskLayer": {
       "title": "Tâches des planches",
       "show": "Afficher les tâches",

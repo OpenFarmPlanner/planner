@@ -6,6 +6,7 @@ import {
   Stack,
   Typography,
   useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import { Group, Layer, Rect, Stage, Text, type KonvaNodeEvents } from "react-konva";
 import type Konva from "konva";
@@ -21,13 +22,19 @@ import {
 } from "../api/api";
 import { isTypingInEditableElement, useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useTranslation } from "../i18n";
-import { GraphicalFieldDetailsDialog } from "./GraphicalFieldDetailsDialog";
+import { GraphicalObjectHint, GraphicalObjectOverlays, type GraphicalObject } from "./GraphicalObjectOverlays";
+import { graphicalObjectKey, useGraphicalObjectInteraction } from "./useGraphicalObjectInteraction";
+import { useContextMenuHint } from "../components/data-grid/useContextMenuHint";
 import { GraphicalFreeRectangles } from "./GraphicalFreeAreas";
-import { GraphicalBedTasksControl } from "./GraphicalBedTasksControl";
+import { GraphicalDisplayLegend } from "./GraphicalDisplayLegend";
+import { GraphicalBedLabels } from "./GraphicalBedLabels";
+import { getGanttPhaseColors } from "../utils/colorContrast";
+import { includesCrops, includesTasks, indexBedCultivations, projectBedCultivation } from "./graphicalCultivation";
 import { GraphicalCanvasTools } from "./GraphicalCanvasTools";
-import { bedTaskColors, BED_TASK_SYMBOLS } from "./graphicalBedTaskStyle";
-import { bedTaskDateBounds, summarizeBedTasks } from "../components/tasks/bedTaskUrgency";
-import { useBedTasks } from "../components/tasks/useBedTasks";
+import { bedTaskColors } from "./graphicalBedTaskStyle";
+import { bedTaskDateBounds, orderBedTasks, summarizeBedTasks } from "../components/tasks/bedTaskUrgency";
+import { useAreaPlantingPlans, useBedTasks } from "../components/tasks/useBedTasks";
+import { isOpenTask } from "../components/tasks/taskBoard";
 import { useIndividualPlants } from "./useIndividualPlants";
 import { GraphicalIndividualPlantsLayer, type CanvasStem } from "./GraphicalIndividualPlantsLayer";
 import { GraphicalIndividualPlantsPanel } from "./GraphicalIndividualPlantsPanel";
@@ -53,7 +60,6 @@ import {
   getContentBoundsFromRects,
   getVisibleElements,
   panViewport,
-  getBedLabelLayout,
   shouldShowFieldLabel,
   getFieldLabelScreenWidth,
   FIELD_LABEL_SCREEN_PADDING,
@@ -81,7 +87,6 @@ import {
   type InteractionMode,
   type Point,
   type RectViewModel,
-  type SelectedElement,
 } from "./graphicalFieldsGeometry";
 import { useAreaDrag, type AreaDragOptions, type DragSnapping } from "./graphicalAreaDrag";
 import { useGraphicalStageSize } from "./useGraphicalStageSize";
@@ -93,8 +98,6 @@ const canvasPanOffsets = {
   up: [0, PAN_STEP], down: [0, -PAN_STEP], left: [PAN_STEP, 0], right: [-PAN_STEP, 0],
 } as const;
 
-const BED_ACTIVATION_SLOP = 8;
-const BED_TASK_BADGE_WIDTH = 19;
 
 export default function GraphicalFields({
   showTitle = true,
@@ -102,10 +105,18 @@ export default function GraphicalFields({
   onInteractionModeChange,
   showModeToggle = true,
   activeSeasonId,
+  displayMode = 'areas',
+  cropReference,
+  fullscreenDisplayControls,
+  onFullscreenChange,
+  displayLegendAnchor,
+  closeDisplayLegend,
   individualSeason,
   canEditIndividualPlants = false,
   requestedIndividualPlan,
   onOpenBed,
+  onOpenDetails,
+  canCompleteTasks = false,
   hierarchyData,
   selectedLocationId,
   cameraState: controlledCameraState,
@@ -128,11 +139,6 @@ export default function GraphicalFields({
   const individualPlants = useIndividualPlants(
     activeLocationId, individualSeason, canEditIndividualPlants, requestedIndividualPlan,
   );
-  const [showBedTasks, setShowBedTasks] = useState(false);
-  const bedTasks = useBedTasks('location', showBedTasks ? activeLocationId : null, activeSeasonId);
-  const bounds = bedTaskDateBounds(new Date());
-  const taskSummaries = new Map(Array.from(bedTasks.tasksByBed, ([id, tasks]) => [id, summarizeBedTasks(tasks, bounds)]));
-  const pendingBedActivation = useRef<{ id: number; origin: Point } | null>(null);
   const [layoutsByBed, setLayoutsByBed] = useState<
     Record<number, BedLayoutEntry>
   >({});
@@ -171,8 +177,70 @@ export default function GraphicalFields({
   const setRotationByLocation = (update: (current: Record<number, GraphicalRotation>) => Record<number, GraphicalRotation>): void => {
     setCameraState(current => ({ ...current, rotations: update(current.rotations) }));
   };
-  const [selectedElement, setSelectedElement] =
-    useState<SelectedElement | null>(null);
+  const objectInteractionEnabled = Boolean(activeLocationId && !loading && !error && layoutReady && !layoutFailed
+    && !globalEditMode && editableLocationId !== activeLocationId && !individualPlants.editor.placing);
+  const objects = useGraphicalObjectInteraction(objectInteractionEnabled, activeLocationId);
+  const selectedBedId = objects.selection?.startsWith('bed:') ? Number(objects.selection.slice(4)) : null;
+  const showCrops = includesCrops(displayMode);
+  const showTasks = includesTasks(displayMode);
+  const loadLocationPlans = showCrops || showTasks;
+  const locationPlans = useAreaPlantingPlans('location', loadLocationPlans ? activeLocationId : null, activeSeasonId);
+  const selectedPlans = useAreaPlantingPlans('bed', loadLocationPlans ? null : selectedBedId, activeSeasonId);
+  const bedTasks = useBedTasks('location', showTasks || (showCrops && selectedBedId !== null) ? activeLocationId : null,
+    activeSeasonId, { sharedPlans: locationPlans });
+  const selectedBedTasks = useBedTasks('bed', loadLocationPlans ? null : selectedBedId, activeSeasonId, { sharedPlans: selectedPlans });
+  const previewTasks = loadLocationPlans ? bedTasks : selectedBedTasks;
+  const planRequest = loadLocationPlans ? locationPlans : selectedPlans;
+  const plansByBed = useMemo(() => indexBedCultivations(planRequest.plans), [planRequest.plans]);
+  const cropsByBed = useMemo(() => {
+    if (!cropReference || !individualSeason) return new Map();
+    return new Map(Array.from(plansByBed, ([id, plans]) => [id, projectBedCultivation(plans, cropReference, individualSeason)]));
+  }, [cropReference, individualSeason, plansByBed]);
+  const openTasksByBed = useMemo(() => new Map(Array.from(bedTasks.tasksByBed,
+    ([id, tasks]) => [id, orderBedTasks(tasks.filter(isOpenTask))])), [bedTasks.tasksByBed]);
+  const taskSummaries = useMemo(() => {
+    const bounds = bedTaskDateBounds(new Date());
+    return new Map(Array.from(bedTasks.tasksByBed, ([id, tasks]) => [id, summarizeBedTasks(tasks, bounds)]));
+  }, [bedTasks.tasksByBed]);
+  const cropPreview = cropReference && selectedBedId !== null ? {
+    reference: cropReference,
+    entries: cropsByBed.get(selectedBedId) ?? [],
+    loading: planRequest.loading,
+    failed: planRequest.failed,
+    refresh: planRequest.refresh,
+  } : undefined;
+  const coarsePointer = useMediaQuery('(pointer: coarse)');
+  const finePointer = useMediaQuery('(pointer: fine)');
+  const device = objects.device ?? (coarsePointer ? 'touch' : finePointer ? 'desktop' : null);
+  const {
+    showContextMenuHint, showTouchContextMenuHint, closeContextMenuHint, closeTouchContextMenuHint,
+    markContextMenuHintUsed, markTouchContextMenuHintUsed,
+  } = useContextMenuHint({
+    contextKey: 'growing-areas-graphic',
+    enabled: objectInteractionEnabled,
+    isDesktop: device === 'desktop',
+    isTouch: device === 'touch',
+  });
+  const usedHintGestures = useRef(new Set<'desktop' | 'touch'>());
+  const menuGesture = objects.menu?.gesture;
+  const objectMenuOpen = Boolean(objects.menu);
+  useEffect(() => {
+    if (menuGesture === 'touch') {
+      markTouchContextMenuHintUsed();
+      usedHintGestures.current.add(menuGesture);
+    }
+    if (menuGesture === 'desktop') {
+      markContextMenuHintUsed();
+      usedHintGestures.current.add(menuGesture);
+    }
+    if (!objectMenuOpen) {
+      if (usedHintGestures.current.has('touch')) closeTouchContextMenuHint();
+      if (usedHintGestures.current.has('desktop')) closeContextMenuHint();
+      usedHintGestures.current.clear();
+    }
+  }, [menuGesture, objectMenuOpen, closeContextMenuHint, closeTouchContextMenuHint,
+    markContextMenuHintUsed, markTouchContextMenuHintUsed]);
+  const activeCanvasRef = useRef<HTMLDivElement>(null);
   const stageRefs = useRef<Record<number, Konva.Stage | null>>({});
   const canvasToolsRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const panSessionRef = useRef<Record<number, PanSession | null>>({});
@@ -187,6 +255,9 @@ export default function GraphicalFields({
     locationCanvasRefs,
     toggleFullscreen,
   } = useGraphicalStageSize(activeLocationId, !loading && layoutReady && !layoutFailed);
+  useEffect(() => {
+    onFullscreenChange?.(fullscreenLocationId !== null);
+  }, [fullscreenLocationId, onFullscreenChange]);
   const resetTransientInteractionState = (): void => {
     setActiveGuides([]);
     setGeometryPreview(null);
@@ -342,6 +413,7 @@ export default function GraphicalFields({
     )];
   }), [locations, fields, layoutsByField, boundaryOriginByLocation, rotationByLocation, stageWidth, stageHeight]);
 
+  const bedsById = useMemo(() => new Map(beds.map(bed => [bed.id, bed])), [beds]);
   const activeLayout = locationLayouts.find(layout => layout.location.id === activeLocationId);
   const activeScene = useMemo(() => {
     if (!activeLayout) return null;
@@ -368,6 +440,30 @@ export default function GraphicalFields({
     );
   }, [activeLayout, activeScene, geometryPreview]);
 
+  const objectModel = useMemo(() => {
+    if (!activeLayout || !activeScene || !geometry || activeLocationId === null) return new Map<string, GraphicalObject>();
+    const { location, boundary } = activeLayout;
+    const { parcels } = activeScene;
+    const locationId = activeLocationId;
+    const locationKey = graphicalObjectKey('location', locationId);
+    const model = new Map<string, GraphicalObject>([[locationKey, {
+      key: locationKey, type: 'location', id: locationId, name: location.name,
+      metrics: location, rect: boundary, coverage: geometry.locationReport.coverage,
+    }]]);
+    for (const { field, rect, layout } of parcels) {
+      const fieldKey = graphicalObjectKey('field', rect.id);
+      model.set(fieldKey, { key: fieldKey, id: rect.id, type: 'field', name: field.name,
+        parent: location.name, metrics: field, rect, coverage: geometry.parcelReports.get(rect.id)?.coverage });
+      for (const bed of layout.bedRects) {
+        const key = graphicalObjectKey('bed', bed.id);
+        const entity = bedsById.get(bed.id);
+        if (entity) model.set(key, { key, id: bed.id, type: 'bed', name: bed.name, parent: field.name,
+          metrics: entity, rect: { ...bed, x: rect.x + FIELD_INNER_OFFSET_X + bed.x, y: rect.y + FIELD_INNER_OFFSET_Y + bed.y } });
+      }
+    }
+    return model;
+  }, [activeLayout, activeScene, activeLocationId, bedsById, geometry]);
+
   const getContentBoundsForLocation = (locationId: number): ContentBounds => {
     const layout = locationLayouts.find((item) => item.location.id === locationId);
     if (!layout) {
@@ -387,6 +483,7 @@ export default function GraphicalFields({
   };
 
   const resetViewport = (locationId: number): void => {
+    objects.close();
     setViewportByLocation((prev) => {
       const contentBounds = getContentBoundsForLocation(locationId);
       const fitPadding = getFitViewportPadding(stageWidth, stageHeight);
@@ -426,6 +523,7 @@ export default function GraphicalFields({
   };
 
   const handleZoom = (locationId: number, factor: number): void => {
+    objects.close();
     updateViewport(locationId, (current) =>
       zoomAroundPoint(current, current.scale * factor, {
         x: stageWidth / 2,
@@ -435,6 +533,7 @@ export default function GraphicalFields({
   };
 
   const handleRotate = (locationId: number, direction: -1 | 1): void => {
+    objects.close();
     stopKonvaDragging();
     resetTransientInteractionState();
     setRotationByLocation(prev => ({
@@ -453,6 +552,7 @@ export default function GraphicalFields({
     deltaX: number,
     deltaY: number,
   ): void => {
+    objects.clearHover();
     updateViewport(locationId, (current) => ({
       ...current,
       x: current.x + deltaX,
@@ -465,6 +565,7 @@ export default function GraphicalFields({
     event: KonvaEventObject<WheelEvent>,
   ): void => {
     event.evt.preventDefault();
+    objects.close();
     const pointer = stageRefs.current[locationId]?.getPointerPosition();
     if (!pointer) {
       return;
@@ -484,7 +585,7 @@ export default function GraphicalFields({
   ): boolean => {
     const target = event.target;
     const stage = target?.getStage?.();
-    if (!stage || target !== stage) {
+    if (!stage || (target !== stage && !objects.isObjectTarget(event))) {
       return false;
     }
     if ("button" in event.evt && event.evt.button !== 0) {
@@ -524,6 +625,8 @@ export default function GraphicalFields({
     if (!pointer) {
       return;
     }
+    if (Math.hypot(pointer.x - session.startPointerX, pointer.y - session.startPointerY) <= 8) return;
+    objects.clearHover();
     if ("touches" in event.evt) {
       event.evt.preventDefault();
     }
@@ -600,6 +703,7 @@ export default function GraphicalFields({
     viewport: ViewportState,
     event: KonvaEventObject<MouseEvent>,
   ): void => {
+    objects.beginStage(event);
     beginPanSession(locationId, viewport, event);
   };
 
@@ -607,7 +711,7 @@ export default function GraphicalFields({
     locationId: number,
     event: KonvaEventObject<MouseEvent>,
   ): void => {
-    cancelMovedBedActivation(locationId);
+    objects.moveStage(event);
     continuePanSession(locationId, event);
   };
 
@@ -621,22 +725,15 @@ export default function GraphicalFields({
     event: KonvaEventObject<TouchEvent>,
   ): void => {
     const touches = event.evt.touches;
+    objects.beginStage(event);
     if (touches.length === 1) {
       beginPanSession(locationId, viewport, event);
       return;
     }
     if (touches.length === 2) {
-      pendingBedActivation.current = null;
+      objects.close();
       endPanSession(locationId);
       stopKonvaDragging();
-    }
-  };
-
-  const cancelMovedBedActivation = (locationId: number): void => {
-    const activation = pendingBedActivation.current;
-    const point = stageRefs.current[locationId]?.getPointerPosition();
-    if (activation && point && Math.hypot(point.x - activation.origin.x, point.y - activation.origin.y) > BED_ACTIVATION_SLOP) {
-      pendingBedActivation.current = null;
     }
   };
 
@@ -646,24 +743,13 @@ export default function GraphicalFields({
     currentFieldRect: RectViewModel,
     contentBounds: { width: number; height: number },
     fieldViewModels: RectViewModel[],
-    locationName: string,
     locationId: number,
     rotation: GraphicalRotation,
     boundary: PlacementRect | null,
     unsavedBoundaryOrigin: LocationBoundaryOrigin | null,
     snapping: DragSnapping,
   ): KonvaNodeEvents & { draggable: boolean } => {
-    if (!isLocationEditMode(locationId)) {
-      const select = () => setSelectedElement({
-        type: "field", id: fieldId, name: baseRect.field.name,
-        area: Number(baseRect.field.area_sqm ?? 0), locationName,
-      });
-      return {
-        draggable: false,
-        onClick: select,
-        onTap: select,
-      };
-    }
+    if (!isLocationEditMode(locationId)) return { draggable: false };
 
     const fieldSize = { width: baseRect.width, height: baseRect.height };
     // Plots stay on the workspace and, when the location has a boundary,
@@ -701,52 +787,12 @@ export default function GraphicalFields({
     currentFieldRect: RectViewModel,
     fieldInnerSize: { width: number; height: number },
     bedViewModels: BedViewModel[],
-    locationName: string,
-    fieldName: string,
     locationId: number,
     storedFieldInnerSize: RectSize,
     rotation: GraphicalRotation,
     snapping: DragSnapping,
   ): KonvaNodeEvents & { draggable: boolean } => {
-    if (!isLocationEditMode(locationId)) {
-      if (onOpenBed) {
-        const begin = (event: KonvaEventObject<MouseEvent | TouchEvent>) => {
-          const pointer = stageRefs.current[locationId]?.getPointerPosition();
-          const primary = 'button' in event.evt ? event.evt.button === 0 : event.evt.touches.length === 1;
-          pendingBedActivation.current = primary && pointer ? { id: bedVm.id, origin: { ...pointer } } : null;
-        };
-        const open = () => {
-          cancelMovedBedActivation(locationId);
-          const activation = pendingBedActivation.current;
-          pendingBedActivation.current = null;
-          if (activation?.id === bedVm.id) onOpenBed(bedVm.id);
-        };
-        return { draggable: false, onMouseDown: begin, onTouchStart: begin, onClick: open, onTap: open };
-      }
-      return {
-        draggable: false,
-        onClick: () => {
-          setSelectedElement({
-            type: "bed",
-            id: bedVm.id,
-            name: bedVm.name,
-            area: bedVm.area,
-            locationName,
-            parentName: fieldName,
-          });
-        },
-        onTap: () => {
-          setSelectedElement({
-            type: "bed",
-            id: bedVm.id,
-            name: bedVm.name,
-            area: bedVm.area,
-            locationName,
-            parentName: fieldName,
-          });
-        },
-      };
-    }
+    if (!isLocationEditMode(locationId)) return { draggable: false };
 
     const drag: AreaDragOptions = {
       area: bedVm,
@@ -932,6 +978,13 @@ export default function GraphicalFields({
               getFitViewportPadding(stageWidth, stageHeight),
             );
           const visibility = getVisibleElements(viewport.scale);
+          const locationKey = graphicalObjectKey('location', locationId);
+          const details = (object: GraphicalObject) => onOpenDetails?.(object.type, object.id);
+          const overlayKey = objects.menu?.key ?? objects.selection;
+          const highlight = overlayKey ? objectModel.get(overlayKey)?.rect : null;
+          const showFallbackLocationLabel = !boundary || viewport.x + (boundary.x + boundary.width) * viewport.scale < 0
+            || viewport.x + boundary.x * viewport.scale > stageWidth - 100
+            || viewport.y + boundary.y * viewport.scale < 60 || viewport.y + boundary.y * viewport.scale > stageHeight;
           const snapping = { enabled: pathSpacing.snap_to_path_spacing, zoom: viewport.scale };
           const focusArea = (rect: PlacementRect): void => {
             setViewportByLocation(previous => ({ ...previous, [locationId]: {
@@ -953,6 +1006,7 @@ export default function GraphicalFields({
                 <Box
                   ref={(node: HTMLDivElement | null) => {
                     locationCanvasRefs.current[locationId] = node;
+                    activeCanvasRef.current = node;
                   }}
                   sx={{
                     width: "100%",
@@ -969,12 +1023,20 @@ export default function GraphicalFields({
                         : undefined,
                   }}
                 >
+                  {!objects.selection && device === 'touch' && showTouchContextMenuHint && (
+                    <GraphicalObjectHint device="touch" onClose={closeTouchContextMenuHint}
+                      hasWarning={fieldsOutsideBoundary.size > 0} />
+                  )}
+                  {!objects.selection && device === 'desktop' && showContextMenuHint && (
+                    <GraphicalObjectHint device="desktop" onClose={closeContextMenuHint}
+                      hasWarning={fieldsOutsideBoundary.size > 0} />
+                  )}
                   <GraphicalCanvasTools key={activeSeasonId ?? 'no-season'}
                     width={stageWidth} height={stageHeight} fullscreen={fullscreenLocationId === locationId}
                     onTriggerChange={button => { canvasToolsRefs.current[locationId] = button; }}
                     onZoom={direction => handleZoom(locationId, direction === 1 ? ZOOM_STEP : 1 / ZOOM_STEP)}
                     onFit={() => resetViewport(locationId)}
-                    onFullscreen={() => { void toggleFullscreen(locationId); }}
+                    onFullscreen={() => { objects.close(); void toggleFullscreen(locationId); }}
                     onRotate={direction => handleRotate(locationId, direction)}
                     onPan={direction => {
                       const [dx, dy] = canvasPanOffsets[direction];
@@ -982,21 +1044,45 @@ export default function GraphicalFields({
                     }}
                     warnings={<GraphicalGeometryWarnings t={t} parcels={parcels} analysis={geometry}
                       outsideParcels={fieldsOutsideBoundary} focusArea={focusArea} />}
-                    bedTasks={activeSeasonId === undefined ? undefined : {
-                      active: showBedTasks,
-                      render: (anchor, close) => <GraphicalBedTasksControl key={locationId}
-                        anchor={anchor} onClose={close} enabled={showBedTasks} onToggle={setShowBedTasks}
-                        beds={parcels.flatMap(({ field, layout }) => layout.bedRects.map(bed => ({
-                          id: bed.id, name: bed.name, parcel: field.name,
-                        })))}
-                        summaries={taskSummaries} loading={bedTasks.loading} failed={bedTasks.failed}
-                        onRetry={bedTasks.refresh} onOpenBed={onOpenBed} />,
-                    }}
                     individualPlants={individualSeason && !locationIsEditable && fullscreenLocationId !== locationId ? {
                       active: Boolean(showIndividualPanel),
                       toggle: () => individualPlants.update({ open: !showIndividualPanel, placing: null }),
                     } : undefined}
                   />
+                  {fullscreenLocationId === locationId && fullscreenDisplayControls && (
+                    <Box sx={{ position: 'absolute', zIndex: 2, top: 12, left: 105,
+                      right: 110, width: 'fit-content', bgcolor: 'background.paper' }}>
+                      {fullscreenDisplayControls}
+                    </Box>
+                  )}
+                  {displayLegendAnchor && closeDisplayLegend && (
+                    <GraphicalDisplayLegend anchor={displayLegendAnchor} onClose={closeDisplayLegend}
+                      showCrops={showCrops} showTasks={showTasks}
+                      cropLoading={locationPlans.loading} cropFailed={locationPlans.failed} onRetryCrops={locationPlans.refresh}
+                      beds={parcels.flatMap(({ field, layout }) => layout.bedRects.map(bed => ({
+                        id: bed.id, name: bed.name, parcel: field.name,
+                      })))}
+                      summaries={taskSummaries} loading={bedTasks.loading} failed={bedTasks.failed && (!showCrops || !locationPlans.failed)}
+                      onRetry={bedTasks.refresh} onOpenBed={onOpenBed} />
+                  )}
+                  {!locationIsEditable && ((showCrops && (locationPlans.loading || locationPlans.failed))
+                    || (showTasks && (bedTasks.loading || bedTasks.failed))) && (
+                    <Stack sx={{ position: 'absolute', zIndex: 2, left: 12, right: 110, top: 54,
+                      width: 'fit-content', maxWidth: 'calc(100% - 122px)' }}>
+                      {showCrops && locationPlans.failed && <Alert severity="error"
+                        action={<LoadRetryButton onClick={locationPlans.refresh} />}>
+                        {t('fields:graphical.display.cropLoadError')}
+                      </Alert>}
+                      {showTasks && bedTasks.failed && (!showCrops || !locationPlans.failed) && <Alert severity="error" action={<LoadRetryButton onClick={bedTasks.refresh} />}>
+                        {t('fields:graphical.taskLayer.loadError')}
+                      </Alert>}
+                      {((showCrops && locationPlans.loading) || (showTasks && bedTasks.loading)) && (
+                        <Typography role="status" variant="caption" sx={{ bgcolor: 'background.paper', p: 0.5 }}>
+                          {t('common:messages.loading')}
+                        </Typography>
+                      )}
+                    </Stack>
+                  )}
                   <Typography
                     variant="caption"
                     color="text.secondary"
@@ -1055,7 +1141,14 @@ export default function GraphicalFields({
                       handleStageMouseMove(locationId, event)
                     }
                     onMouseUp={() => handleStageMouseUp(locationId)}
-                    onMouseLeave={() => handleStageMouseUp(locationId)}
+                    onMouseLeave={() => {
+                      handleStageMouseUp(locationId);
+                      objects.cancelPress();
+                      objects.clearHover();
+                    }}
+                    onClick={objects.releaseStage}
+                    onTap={objects.releaseStage}
+                    onContextMenu={objects.contextStage}
                     onWheel={(event) => handleStageWheel(locationId, event)}
                     onDblTap={() => handleStageDoubleTap(locationId)}
                     onDblClick={() => handleStageDoubleTap(locationId)}
@@ -1063,19 +1156,28 @@ export default function GraphicalFields({
                       handleStageTouchStart(locationId, viewport, event)
                     }
                     onTouchMove={(event) => {
-                      cancelMovedBedActivation(locationId);
+                      objects.moveStage(event);
                       handleStageTouchMove(locationId, event);
                     }}
-                    onTouchEnd={() => handleStageTouchEnd(locationId)}
+                    onTouchEnd={event => {
+                      objects.endTouch(event.evt);
+                      handleStageTouchEnd(locationId);
+                    }}
+                    onTouchCancel={event => {
+                      objects.endTouch(event.evt);
+                      objects.cancelPress();
+                      handleStageTouchEnd(locationId);
+                    }}
                     ref={(node) => {
                       stageRefs.current[locationId] = node;
                     }}
                   >
                     <Layer>
                       {boundary ? (
-                        <Group listening={false}>
+                        <Group>
                           <GraphicalFreeRectangles coverage={locationCoverage} origin={boundary}
-                            scale={{ x: FIELD_WORLD_PX_PER_METER, y: FIELD_WORLD_PX_PER_METER }} kind="site" />
+                            scale={{ x: FIELD_WORLD_PX_PER_METER, y: FIELD_WORLD_PX_PER_METER }} kind="site"
+                            objectKey={objectInteractionEnabled ? locationKey : undefined} />
                           <Rect
                             {...boundary}
                             stroke={theme.palette.text.secondary}
@@ -1083,6 +1185,7 @@ export default function GraphicalFields({
                             strokeScaleEnabled={false}
                             dash={[8, 6]}
                             cornerRadius={4}
+                            listening={false}
                             data-testid={`location-boundary-${locationId}`}
                           />
                           <Text
@@ -1097,6 +1200,9 @@ export default function GraphicalFields({
                             wrap="none"
                             scaleX={1 / viewport.scale}
                             scaleY={1 / viewport.scale}
+                            visible={!showFallbackLocationLabel || !objectInteractionEnabled}
+                            listening={objectInteractionEnabled && !showFallbackLocationLabel}
+                            data-graphical-object-key={locationKey}
                             data-testid={`location-boundary-label-${locationId}`}
                           />
                         </Group>
@@ -1127,10 +1233,10 @@ export default function GraphicalFields({
                           : undefined;
                         const fieldWarning = parcelWarnings.get(fieldId)
                           ?? (parcelReport?.issues.some(issue => issue.kind === "noPathSpace") ? "shortGap" : undefined);
-                        const { onClick, onTap, ...fieldDragProps } = getFieldInteractionProps(
+                        const fieldDragProps = getFieldInteractionProps(
                           fieldId, baseRect, currentFieldRect,
                           { width: contentWidth, height: contentHeight },
-                          fieldViewModels, location.name, locationId, rotation, boundary, unsavedBoundaryOrigin,
+                          fieldViewModels, locationId, rotation, boundary, unsavedBoundaryOrigin,
                           { ...snapping, thresholdPx: FIELD_SNAP_THRESHOLD, spacing: {
                             centimeters: pathSpacing.parcel_path_spacing_cm,
                             pixelsPerMeter: { x: FIELD_WORLD_PX_PER_METER, y: FIELD_WORLD_PX_PER_METER },
@@ -1145,14 +1251,15 @@ export default function GraphicalFields({
                             data-testid={`field-group-${fieldId}`}
                             {...fieldDragProps}
                           >
-                            {/* The margin and usable area only paint; the
-                                outline and beds provide the hit targets. */}
+                            {/* The full parcel is a view-mode hit target. In edit mode
+                                only the original outline and bed handles start a drag. */}
                             <Rect
                               width={baseRect.width}
                               height={baseRect.height}
                               fill={theme.palette.grey[200]}
                               cornerRadius={4}
-                              listening={false}
+                              listening={objectInteractionEnabled}
+                              data-graphical-object-key={graphicalObjectKey('field', fieldId)}
                               data-testid={`field-margin-${fieldId}`}
                             />
                             <Rect
@@ -1174,8 +1281,7 @@ export default function GraphicalFields({
                               cornerRadius={4}
                               data-testid={`field-rect-${fieldId}`}
                               data-outside-location={fieldsOutsideBoundary.has(fieldId) || undefined}
-                              onClick={onClick}
-                              onTap={onTap}
+                              data-graphical-object-key={graphicalObjectKey('field', fieldId)}
                             />
                             {shouldShowFieldLabel(
                               {
@@ -1199,11 +1305,18 @@ export default function GraphicalFields({
                             ) : null}
                             {visibility.showBeds
                               ? bedRects.map((bedVm) => {
-                                const urgency = taskSummaries.get(bedVm.id)?.urgency;
+                                const shownMode = locationIsEditable ? 'areas' : displayMode;
+                                const entries = showCrops && !locationIsEditable ? cropsByBed.get(bedVm.id) ?? [] : [];
+                                const tasks = showTasks && !locationIsEditable ? openTasksByBed.get(bedVm.id) ?? [] : [];
+                                const urgency = tasks.length ? taskSummaries.get(bedVm.id)?.urgency : undefined;
                                 const taskColors = urgency ? bedTaskColors(theme, urgency) : null;
-                                const badge = urgency && bedVm.width * viewport.scale >= 44
-                                  && bedVm.height * viewport.scale >= 20 ? BED_TASK_SYMBOLS[urgency] : null;
-                                const badgeWidth = badge ? BED_TASK_BADGE_WIDTH / viewport.scale : 0;
+                                const phase = entries.length === 1 ? entries[0].phase : null;
+                                const color = entries[0]?.plan.color;
+                                const phaseColors = phase
+                                  ? getGanttPhaseColors(color && /^#[\da-f]{6}$/i.test(color) ? color : theme.palette.success.main) : null;
+                                const cropFill = phaseColors ? alpha(phaseColors[phase === 'harvest' ? 'harvest' : 'growth'], 0.45)
+                                  : entries.length ? alpha(theme.palette.grey[700], 0.22) : undefined;
+                                const fill = shownMode === 'tasks' ? taskColors?.fill : cropFill;
                                 return (
                                   <Group key={bedVm.id}>
                                     <Rect
@@ -1211,58 +1324,28 @@ export default function GraphicalFields({
                                       y={FIELD_INNER_OFFSET_Y + bedVm.y}
                                       width={bedVm.width}
                                       height={bedVm.height}
-                                      fill={taskColors?.fill ?? theme.palette.info.light}
+                                      fill={fill ?? theme.palette.info.light}
                                       {...getOutlineProps(bedWarnings.get(bedVm.id), theme.palette.info.main, 1)}
                                       data-geometry-issue={bedWarnings.get(bedVm.id)}
                                       data-task-urgency={urgency}
+                                      data-crop-phase={phase ?? (entries.length > 1 ? 'mixed' : undefined)}
                                       name="graphical-editable"
                                       data-testid={`bed-rect-${bedVm.id}`}
+                                      data-graphical-object-key={graphicalObjectKey('bed', bedVm.id)}
                                       {...getBedInteractionProps(
                                         bedVm,
                                         currentFieldRect,
                                         fieldUsableArea,
                                         bedRects,
-                                        location.name,
-                                        baseRect.field.name,
                                         locationId,
                                         storedUsableArea,
                                         rotation,
                                         { ...snapping, thresholdPx: SNAP_THRESHOLD, spacing: bedSpacing },
                                       )}
                                     />
-                                    {badge && <Text x={FIELD_INNER_OFFSET_X + bedVm.x + bedVm.width - badgeWidth}
-                                      y={FIELD_INNER_OFFSET_Y + bedVm.y + 3 / viewport.scale}
-                                      text={badge} width={BED_TASK_BADGE_WIDTH} align="center"
-                                      fontSize={14} fontStyle="bold" fill={taskColors?.glyph}
-                                      listening={false} scaleX={1 / viewport.scale} scaleY={1 / viewport.scale}
-                                      data-testid={`bed-task-icon-${bedVm.id}`} />}
-                                    {(() => {
-                                      const label = getBedLabelLayout({ ...bedVm, width: bedVm.width - badgeWidth }, viewport.scale);
-                                      if (!visibility.showBedLabels || !label) return null;
-                                      const labelText =
-                                        visibility.showDetailedBedLabels &&
-                                        !label.compact
-                                          ? `${bedVm.name} (${bedVm.area || "-"} m²)`
-                                          : bedVm.name;
-                                      return (
-                                        <Text
-                                          x={FIELD_INNER_OFFSET_X + label.x + bedVm.x}
-                                          y={FIELD_INNER_OFFSET_Y + label.y + bedVm.y}
-                                          text={labelText}
-                                          fontSize={label.fontSize}
-                                          width={label.width}
-                                          height={label.height}
-                                          rotation={label.rotation}
-                                          lineHeight={1}
-                                          wrap="none"
-                                          ellipsis
-                                          data-testid={`bed-label-${bedVm.id}`}
-                                          listening={false}
-                                          scaleX={1 / viewport.scale}
-                                          scaleY={1 / viewport.scale}
-                                        />
-                                      );
-                                      })()}
+                                    {visibility.showBedLabels && <GraphicalBedLabels bed={bedVm} scale={viewport.scale}
+                                      mode={shownMode} detailedArea={visibility.showDetailedBedLabels}
+                                      crops={entries} tasks={tasks} urgency={urgency} />}
                                   </Group>
                                 );
                               })
@@ -1291,9 +1374,16 @@ export default function GraphicalFields({
                         );
                       })}
 
+                      {highlight && <Rect {...highlight} listening={false} cornerRadius={3} strokeWidth={3}
+                        strokeScaleEnabled={false} stroke={theme.palette.success.dark}
+                        data-testid="graphical-object-highlight" />}
                       <GraphicalSnapGuides guides={activeGuides} scale={viewport.scale} />
                     </Layer>
                   </Stage>
+                  {objectInteractionEnabled && <GraphicalObjectOverlays interaction={objects} objects={objectModel}
+                    viewport={viewport} stageWidth={stageWidth} stageHeight={stageHeight} root={activeCanvasRef}
+                    openDetails={details} onFocusObject={focusArea} bedTasks={previewTasks} cropPreview={cropPreview}
+                    seasonId={activeSeasonId} canComplete={canCompleteTasks} showLocationLabel={showFallbackLocationLabel} />}
                 </Box>
                 {showIndividualPanel && (
                   <GraphicalIndividualPlantsPanel fields={parcels.map(({ field }) => field)}
@@ -1315,11 +1405,6 @@ export default function GraphicalFields({
         },
       )}
 
-      <GraphicalFieldDetailsDialog
-        element={selectedElement}
-        onClose={() => setSelectedElement(null)}
-        t={t}
-      />
     </Box>
   );
 }

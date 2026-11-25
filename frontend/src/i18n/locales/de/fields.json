@@ -29,6 +29,50 @@
     "graphical": "Grafik"
   },
   "graphical": {
+    "display": {
+      "title": "Darstellung der Grafik",
+      "mode": {
+        "areas": "Anbauflächen",
+        "crops": "Kulturen",
+        "tasks": "Aufgaben",
+        "cropsAndTasks": "Kulturen & Aufgaben"
+      },
+      "date": "Stichtag für Kulturen",
+      "today": "Heute",
+      "entireSeason": "Ganze Saison",
+      "previousDay": "Vorheriger Tag",
+      "nextDay": "Nächster Tag",
+      "taskDateNote": "Für die Fälligkeit und Dringlichkeit der Aufgaben gilt das heutige Datum.",
+      "legend": "Legende der Grafik",
+      "cropLegend": "Die Kulturfarben zeigen das geplante Wachstum oder die geplante Ernte. Mehrjährige Kulturen belegen das Beet auch außerhalb der Ernte. Eine neutrale Farbe steht für gemischte oder unklare Pläne.",
+      "taskLegend": "Die Symbole zeigen offene Aufgaben. Auch in Beeten ohne Symbol kann es bereits erledigte Aufgaben geben.",
+      "cropLoadError": "Die Anbaupläne konnten nicht geladen werden.",
+      "phase": {
+        "growth": "Geplantes Wachstum",
+        "harvest": "Geplante Ernte",
+        "occupancy": "Geplante Belegung"
+      },
+      "recordedHarvest": "Erfasste Ernte",
+      "recordedPlanting": "Pflanzung oder Aussaat am {{date}} erfasst",
+      "range": "{{start}} bis {{end}}",
+      "incompletePlan": "Datumsangaben oder Kultur fehlen",
+      "noPlans": "Für dieses Datum oder diesen Zeitraum gibt es keinen Plan.",
+      "cancelledStatus": "Abgebrochen",
+      "cancelledTasks_one": "{{count}} abgebrochene Aufgabe",
+      "cancelledTasks_other": "{{count}} abgebrochene Aufgaben",
+      "completedTasks_one": "{{count}} erledigte Aufgabe",
+      "completedTasks_other": "{{count}} erledigte Aufgaben"
+    },
+    "objects": {
+      "dimensions": "{{width}} × {{length}} m",
+      "viewDetails": "Details anzeigen",
+      "backToGraphic": "Zurück zur Grafik",
+      "desktopHint": "Rechtsklick auf einen Standort, eine Parzelle oder ein Beet öffnet das Kontextmenü.",
+      "touchHint": "Standort, Parzelle oder Beet gedrückt halten, um das Kontextmenü zu öffnen.",
+      "noOpenTasks": "Keine offenen Aufgaben für dieses Beet.",
+      "moreTasks_one": "+{{count}} weitere Aufgabe",
+      "moreTasks_other": "+{{count}} weitere Aufgaben"
+    },
     "taskLayer": {
       "title": "Aufgaben im Beet",
       "show": "Aufgaben anzeigen",

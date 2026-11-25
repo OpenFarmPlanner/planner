@@ -6,6 +6,10 @@ import FieldsBedsHierarchyMobile from './FieldsBedsHierarchyMobile';
 import GraphicalFields from './GraphicalFields';
 import { GraphicalSpacingControl } from './GraphicalSpacingControl';
 import { GraphicalWorkspaceAction } from './GraphicalWorkspaceAction';
+import { GraphicalDisplayControls } from './GraphicalDisplayControls';
+import {
+  GRAPHICAL_DISPLAY_MODES, getCropReference, type CropDateSelection, type GraphicalDisplayMode,
+} from './graphicalCultivation';
 import { AddBedIcon } from '../components/hierarchy/AddBedIcon';
 import { HierarchyAddIcon } from '../components/hierarchy/HierarchyAddIcon';
 import { useCommandContextTag, useRegisterCommands, useRegisterCreateActions } from '../commands/useCommandContext';
@@ -16,7 +20,7 @@ import { DetailPageActions } from '../components/layout/DetailPageActions';
 import { locationAPI, parcelRotationAPI } from '../api/api';
 import type { LocationPathSpacing, ParcelRotationGroup } from '../api/types';
 import { ParcelRotationGroupsDialog } from '../components/hierarchy/rotation/ParcelRotationGroupsDialog';
-import { getEntityDetailPath } from '../components/hierarchy/details/hierarchyDetailRoutes';
+import { getEntityDetailPath, type HierarchyEntityType } from '../components/hierarchy/details/hierarchyDetailRoutes';
 import {
   ParcelRotationContext, type ParcelRotationMembership,
 } from '../components/hierarchy/rotation/parcelRotationContext';
@@ -39,11 +43,20 @@ import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import LoadRetryButton from '../components/LoadRetryButton';
 import { useTopbarWorkspaceControls } from '../hooks/useTopbarWorkspaceControls';
 import type { GraphicalCameraState } from './graphicalFieldsGeometry';
-import { getMeasuredArea } from './graphicalAreaGeometry';
 import { TruncatedTextWithTooltip } from '../components/TruncatedTextWithTooltip';
 
 const VIEW_MODE_STORAGE_KEY = 'fieldsBedsViewMode';
 const ADD_PARCEL_ACTION = 'add-parcel';
+
+function savedDisplayMode(key: string): GraphicalDisplayMode {
+  try {
+    const value = localStorage.getItem(key);
+    return GRAPHICAL_DISPLAY_MODES.find(mode => mode === value) ?? 'cropsAndTasks';
+  } catch {
+    return 'cropsAndTasks';
+  }
+}
+
 const CONTENT_ALIGNED_EMPTY_STATE_SX: SxProps<Theme> = {
   maxWidth: 560,
   my: { xs: 3, md: 5 },
@@ -146,6 +159,24 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   }), [activeProjectMembership, openRotationGroups, rotationGroups]);
 
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
+  const activeSeason = outletContext?.activeSeason ?? undefined;
+  const preferenceKey = `growingAreas.graphic.displayMode:user:${userId ?? 'guest'}`;
+  const [displayPreference, setDisplayPreference] = useState(() => ({
+    key: preferenceKey, mode: savedDisplayMode(preferenceKey),
+  }));
+  const displayMode = displayPreference.key === preferenceKey ? displayPreference.mode : savedDisplayMode(preferenceKey);
+  const setDisplayMode = useCallback((mode: GraphicalDisplayMode) => {
+    setDisplayPreference({ key: preferenceKey, mode });
+    try { localStorage.setItem(preferenceKey, mode); } catch { /* Storage may be disabled. */ }
+  }, [preferenceKey]);
+  const [cropDate, setCropDate] = useState<CropDateSelection | null>(null);
+  const cropReference = useMemo(() => activeSeason ? getCropReference(cropDate, activeSeason) : undefined,
+    [activeSeason, cropDate]);
+  const [graphicFullscreen, setGraphicFullscreen] = useState(false);
+  const [displayLegendAnchor, setDisplayLegendAnchor] = useState<HTMLButtonElement | null>(null);
+  const displayControls = useMemo(() => <GraphicalDisplayControls mode={displayMode} onMode={setDisplayMode}
+    season={activeSeason} reference={cropReference} onDate={setCropDate} onOpenLegend={setDisplayLegendAnchor} />,
+  [activeSeason, cropReference, displayMode, setDisplayMode]);
   const reloadActiveSeason = outletContext?.reloadActiveSeason;
   const onRotationChanged = () => {
     void refreshRotationGroups();
@@ -159,7 +190,18 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
     catch { /* Storage may be disabled. */ }
     return { locations, id };
   });
-  const [cameraState, setCameraState] = useState<GraphicalCameraState>({ viewports: {}, rotations: {} });
+  const cameraKey = `graphicalCamera.${projectId}`;
+  const [cameraState, setCameraState] = useState<GraphicalCameraState>(() => {
+    try {
+      const stored = JSON.parse(sessionStorage.getItem(cameraKey) ?? 'null') as GraphicalCameraState | null;
+      if (stored?.viewports && stored.rotations) return stored;
+    } catch { /* Storage may be disabled. */ }
+    return { viewports: {}, rotations: {} };
+  });
+  const openGraphicalDetails = (type: HierarchyEntityType, id: number): void => {
+    try { sessionStorage.setItem(cameraKey, JSON.stringify(cameraState)); } catch { /* Storage may be disabled. */ }
+    void navigate(getEntityDetailPath(type, id), { state: { fromGrowingAreaGraphic: true } });
+  };
   const [isEditingGraphic, setIsEditingGraphic] = useState(false);
   const graphicalLocations = useMemo(() => locations.filter(item => typeof item.id === 'number' && item.id > 0), [locations]);
   const selectedLocation = graphicalLocations.find(item => item.id === locationSelection.id) ?? graphicalLocations[0];
@@ -346,8 +388,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   const shouldShowMissingFieldsState = hasLocations
     && (effectiveViewMode === 'graphical' ? !hasSelectedGraphicalFields : !hasFields)
     && !hasUnsavedFields && createFieldRequest <= 0;
-  const showMeasuredEmptyLocation = shouldShowMissingFieldsState && effectiveViewMode === 'graphical'
-    && Boolean(selectedLocation && getMeasuredArea(selectedLocation) !== null);
+  const showEmptyGraphicalLocation = shouldShowMissingFieldsState && effectiveViewMode === 'graphical'
+    && Boolean(selectedLocation);
   const shouldShowMissingBedsHint = hasFields && !hasBeds && !hasUnsavedBeds;
   const shouldRenderHierarchy = hasHierarchyRows || createFieldRequest > 0 || effectivePendingHierarchyDeletionCount > 0;
   const createBedAction = getProjectSetupAction('beds');
@@ -418,6 +460,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
           <TruncatedTextWithTooltip text={t('fields:graphical.locationTitle', { name: selectedLocation.name })} focusable />
         </Box>
       )}
+      {!graphicFullscreen && displayControls}
       <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, maxWidth: '100%' }}>
         <GraphicalWorkspaceAction
           label={t('fields:graphical.locationEditModeAction')}
@@ -441,7 +484,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
       )}
     </>
   ) : null, [activeProjectMembership, effectiveViewMode, isEditingGraphic, hasSelectedGraphicalFields,
-    graphicalLocations, saveLocationPathSpacing, selectLocation, selectedLocation, shouldShowProjectRequiredState, t]);
+    displayControls, graphicFullscreen, graphicalLocations, saveLocationPathSpacing, selectLocation, selectedLocation, shouldShowProjectRequiredState, t]);
   useTopbarWorkspaceControls(outletContext?.setTopbarWorkspaceControls, workspaceControls);
 
 
@@ -534,11 +577,11 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             containerSx={CONTENT_ALIGNED_EMPTY_STATE_SX}
           />
         ) : null}
-        {!shouldShowProjectRequiredState && !isAreaDataLoading && showMeasuredEmptyLocation ? (
+        {!shouldShowProjectRequiredState && !isAreaDataLoading && showEmptyGraphicalLocation ? (
           <Alert severity="info" sx={{ mb: 1 }}>{t('fields:graphical.noFields')}</Alert>
         ) : null}
         {!shouldShowProjectRequiredState && !isAreaDataLoading
-          && (shouldShowAreasEmptyState || (shouldShowMissingFieldsState && !showMeasuredEmptyLocation)) ? (
+          && (shouldShowAreasEmptyState || (shouldShowMissingFieldsState && !showEmptyGraphicalLocation)) ? (
           <EmptyStateCard
             title={shouldShowMissingFieldsState ? t('hierarchy:emptyAreas.missingFieldTitle') : t('hierarchy:emptyAreas.missingLocationTitle')}
             description={effectiveViewMode === 'graphical' && hasLocations ? t('fields:graphical.noFields') : emptyAreasDescription}
@@ -551,7 +594,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
 
       <Box>
         {!shouldShowProjectRequiredState && !isAreaDataLoading && shouldRenderHierarchy
-          && (!shouldShowMissingFieldsState || showMeasuredEmptyLocation) && effectiveViewMode === 'graphical' ? (
+          && selectedLocation && effectiveViewMode === 'graphical' ? (
           <GraphicalFields
             selectedLocationId={selectedLocation?.id}
             cameraState={cameraState}
@@ -560,11 +603,19 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             onInteractionModeChange={mode => setIsEditingGraphic(mode === 'edit')}
             showTitle={false}
             showModeToggle={false}
-            activeSeasonId={outletContext?.activeSeason?.id}
-            individualSeason={outletContext?.activeSeason ?? undefined}
+            activeSeasonId={activeSeason?.id}
+            individualSeason={activeSeason}
+            displayMode={displayMode}
+            cropReference={cropReference}
+            fullscreenDisplayControls={displayControls}
+            onFullscreenChange={setGraphicFullscreen}
+            displayLegendAnchor={displayLegendAnchor}
+            closeDisplayLegend={() => setDisplayLegendAnchor(null)}
             canEditIndividualPlants={Boolean(activeProjectMembership)}
             requestedIndividualPlan={requestedIndividualPlan}
             onOpenBed={id => navigate(getEntityDetailPath('bed', id))}
+            onOpenDetails={openGraphicalDetails}
+            canCompleteTasks={Boolean(activeProjectMembership)}
             hierarchyData={hierarchyData}
           />
         ) : null}
