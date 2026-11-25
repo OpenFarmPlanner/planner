@@ -34,15 +34,18 @@ export interface PendingSeasonDeletion {
 
 /**
  * Points the stored id at the season that resolves as active (the stored one
- * while it still exists, otherwise the newest), so the `X-Season-Id` header
+ * while it still exists, otherwise the usual project fallback), so the `X-Season-Id` header
  * that httpClient reads from localStorage is in place before any page fetches
  * planting plans. Written synchronously while loading rather than from an
  * effect: the routed page's effects run before this hook's would.
  */
-function persistResolvedActiveSeasonId(projectId: number, seasons: readonly Season[]): void {
+function persistResolvedActiveSeasonId(
+  projectId: number, seasons: readonly Season[], preferredSeasonId?: number | null,
+): void {
   const storedId = getStoredActiveSeasonId(projectId);
-  if (seasons.length > 0 && !seasons.some((season) => season.id === storedId)) {
-    setStoredActiveSeasonId(projectId, seasons[0].id);
+  const fallback = seasons.find(season => season.id === preferredSeasonId) ?? seasons[0];
+  if (fallback && !seasons.some((season) => season.id === storedId)) {
+    setStoredActiveSeasonId(projectId, fallback.id);
   }
 }
 
@@ -65,13 +68,8 @@ export function useActiveSeason() {
   const activeSeasonId = activeProjectId ? getStoredActiveSeasonId(activeProjectId) : null;
 
   const activeSeason = useMemo<Season | null>(() => {
-    if (seasons.length === 0) {
-      return null;
-    }
     const stored = seasons.find((season) => season.id === activeSeasonId);
-    // Newest season (seasons are ordered start_date desc) if the stored id is
-    // missing, stale, or has never been set.
-    return stored ?? seasons[0];
+    return stored ?? seasons[0] ?? null;
   }, [seasons, activeSeasonId]);
 
   // Until the first season load settles, a missing stored id means no
@@ -102,7 +100,9 @@ export function useActiveSeason() {
         seasonAPI.creationOptions(),
       ]);
       const loadedSeasons = seasonsResponse.data.results;
-      persistResolvedActiveSeasonId(activeProjectId, loadedSeasons);
+      persistResolvedActiveSeasonId(
+        activeProjectId, loadedSeasons, creationOptionsResponse.data.preferred_active_season_id,
+      );
       setSeasons(loadedSeasons);
       setDueSuggestion(dueResponse.data);
       setSeasonCreationOptions(creationOptionsResponse.data);

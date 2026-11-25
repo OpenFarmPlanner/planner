@@ -202,6 +202,25 @@ class ParcelRotationApiTest(ProjectApiTestCase):
         self.assertEqual(copied.bed_id, original.bed_id)
         self.assertEqual(copied.area_usage_sqm, original.area_usage_sqm)
 
+    def test_rotated_bought_in_plants_have_no_seed_demand(self):
+        self._create_group()
+        source, target = self._season(2026), self._season(2027)
+        self.crop.seed_rate_value = 2
+        self.crop.seed_rate_unit = 'g_per_m2'
+        self.crop.save()
+        original = self._plan(source, self.rotation_beds[0][0], '4', quantity=25)
+        PlantingPlan.objects.filter(pk=original.pk).update(
+            cultivation_type=PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT,
+        )
+        preview = self.client.get(f'{SEASONS_URL}{target.pk}/copy-preview/', {
+            'source_season_id': source.pk, 'rotate_parcels': True,
+        })
+        self.assertEqual(preview.status_code, 200, preview.data)
+        move = preview.data['parcel_rotation']['moves'][0]
+        self.assertEqual(move['quantity_override'], 25)
+        self.assertIsNone(move['seed_requirement'])
+        self.assertIsNone(move['seed_unit'])
+
     def test_partial_coverage_and_date_basis_match_guided_copy(self):
         self._create_group()
         source = self._season(2026)

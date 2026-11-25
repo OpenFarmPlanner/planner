@@ -1863,6 +1863,7 @@ export interface SeasonCreationOptions {
   copy_source_label: string | null;
   copy_sources: Record<SeasonCreationCopyTarget, { id: number; label: string }[]>;
   copy_is_preceding_source: Record<SeasonCreationCopyTarget, boolean>;
+  preferred_active_season_id?: number | null;
   parcel_rotation?: Record<SeasonCreationCopyTarget, ParcelRotationSummary | null>;
   copy_preview: {
     adopt: SeasonCopyCounts | null;

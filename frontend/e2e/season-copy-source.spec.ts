@@ -283,18 +283,30 @@ test('a phone configures parcel and bed order and copies a reviewed rotation', a
 });
 
 test('guided creation refreshes the rotated preview before accepting changed dates', async ({ page, request }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await loginWithDeterministicProject(page, request, 'parcel-rotation-creation', { loginAsAdmin: true });
   const { north, south } = await seedRotationParcels(page);
   const source = await createSeason(page, '2025-09-01', '2026-08-31', 'Letzte Saison');
   const older = await createSeason(page, '2024-09-01', '2025-08-31', 'Frühere Saison');
   await apiRequest(page, 'PATCH', '/season-pattern/', { start_day: 1, start_month: 9 });
-  await apiRequest(page, 'POST', '/parcel-rotation-groups/', {
-    name: 'Nord–Süd', parcels: [{ id: north.id }, { id: south.id }],
-  });
   await seedRotationSourcePlan(page, source.id, north.beds[0].id, 2026);
   await seedRotationSourcePlan(page, older.id, north.beds[1].id, 2025);
 
-  await page.goto(plansPage);
+  await page.goto('/app/fields-beds');
+  await page.getByRole('button', { name: 'Weitere Aktionen', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Rotationsgruppen verwalten' }).click();
+  const groups = page.getByRole('dialog', { name: 'Rotationsgruppen verwalten' });
+  await groups.getByRole('textbox', { name: 'Gruppenname' }).fill('Nord–Süd');
+  for (const name of ['Süd', 'Nord']) {
+    await groups.getByRole('combobox', { name: 'Parzelle hinzufügen' }).click();
+    await page.getByRole('option', { name, exact: true }).click();
+  }
+  const order = groups.getByRole('list', { name: 'Parzellenreihenfolge' });
+  await order.locator('[draggable="true"]').nth(1).dragTo(order.getByText('1. Süd', { exact: true }));
+  await expect(order.getByText('1. Nord', { exact: true })).toBeVisible();
+  await groups.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(groups).toHaveCount(0);
+  await page.getByRole('link', { name: 'Anbaupläne', exact: true }).first().click();
   const switcher = page.getByRole('button', { name: 'Aktive Saison wechseln' });
   await switcher.click();
   await page.getByRole('menuitem').filter({ hasText: 'Saison 26/27 anlegen' }).click();

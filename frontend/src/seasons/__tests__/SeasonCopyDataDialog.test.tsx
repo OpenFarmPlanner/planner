@@ -2,7 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Season, SeasonCopyPreview } from '../../api/types';
+import type { ParcelRotationSummary, Season, SeasonCopyPreview } from '../../api/types';
 import { SeasonCopyDataDialog } from '../SeasonCopyDataDialog';
 
 const { copyPreviewMock } = vi.hoisted(() => ({ copyPreviewMock: vi.fn() }));
@@ -248,6 +248,43 @@ describe('SeasonCopyDataDialog', () => {
     await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Diese Saison ist als Quelle nicht mehr verfügbar.');
     expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeDisabled();
+  });
+
+  it('requires an explicit choice when the reviewed group becomes invalid', async () => {
+    const user = userEvent.setup();
+    const report: ParcelRotationSummary = {
+      available: true, eligible: true, enabled: true, fingerprint: 'a'.repeat(64),
+      continuing_count: 0, issues: [], moves: [], mappings: [{
+        group: 'Nord–Süd', source_parcel_id: 10, source_parcel: 'Nord',
+        target_parcel_id: 11, target_parcel: 'Süd',
+      }],
+    };
+    const invalid: ParcelRotationSummary = {
+      ...report, available: false, enabled: false, fingerprint: null, mappings: [],
+      issues: [{ code: 'unequal_bed_counts', group: 'Nord–Süd', parcels: [
+        { name: 'Nord', count: 1 }, { name: 'Süd', count: 2 },
+      ] }],
+    };
+    copyPreviewMock.mockResolvedValueOnce({ data: { ...emptyPreview, parcel_rotation: report } });
+    copyPreviewMock.mockResolvedValue({ data: { ...emptyPreview, parcel_rotation: invalid } });
+    const onConfirm = vi.fn().mockRejectedValueOnce({
+      isAxiosError: true,
+      response: { status: 409, data: { code: 'parcel_rotation_preview_changed' } },
+    }).mockResolvedValue({ copied_count: 3, target_planting_plan_count: 3 });
+    render(<SeasonCopyDataDialog seasons={eligibleSeasons} targetSeason={targetSeason}
+      onClose={vi.fn()} onConfirm={onConfirm} />);
+
+    const checkbox = { name: 'Anbaupläne zur nächsten Parzelle verschieben' };
+    expect(await screen.findByRole('checkbox', checkbox)).toBeChecked();
+    const button = screen.getByRole('button', { name: 'Übernehmen' });
+    await user.click(button);
+    expect(await screen.findByText(/brauchen gleich viele Beete/)).toBeVisible();
+    expect(button).toBeDisabled();
+    expect(screen.getByRole('checkbox', checkbox)).toBeChecked();
+    await user.click(screen.getByRole('checkbox', checkbox));
+    expect(button).toBeEnabled();
+    await user.click(button);
+    expect(onConfirm).toHaveBeenLastCalledWith(2, 1, undefined, false);
   });
 
   it('loads only the latest date basis when the option changes quickly', async () => {

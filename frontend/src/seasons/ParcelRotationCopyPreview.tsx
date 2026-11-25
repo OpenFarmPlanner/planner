@@ -18,7 +18,7 @@ export function ParcelRotationCopyPreview({
 }: ParcelRotationCopyPreviewProps) {
   const { t } = useTranslation(['hierarchy', 'navigation', 'plantingPlans']);
   const helpId = useId();
-  if (!report || (report.mappings.length === 0 && report.issues.length === 0)) return null;
+  if (!report || (!checked && report.mappings.length === 0 && report.issues.length === 0)) return null;
   const configurationInvalid = report.issues.some(issue => issue.code === 'unequal_bed_counts');
   const locale = getActiveFormattingLocale();
   const number = (value: number | null) => value === null
@@ -31,7 +31,7 @@ export function ParcelRotationCopyPreview({
     <Stack spacing={0.75} sx={{ mb: 1.5, overflowWrap: 'anywhere' }}>
       <FormControlLabel sx={{ m: 0, alignItems: 'flex-start' }}
         control={<Checkbox checked={report.eligible && checked} onChange={(_, value) => onChange(value)}
-          disabled={disabled || !report.eligible || configurationInvalid}
+          disabled={disabled || !report.eligible || (configurationInvalid && !checked)}
           slotProps={{ input: { 'aria-describedby': helpId } }} />}
         label={<Typography sx={{ pt: 1 }} variant="body2">
           {t('parcelRotation.copyToggle')}

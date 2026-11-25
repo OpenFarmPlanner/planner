@@ -1,4 +1,4 @@
-import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField, useMediaQuery } from '@mui/material';
+import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Menu, MenuItem, TextField, useMediaQuery } from '@mui/material';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useOutletContext } from 'react-router';
 import FieldsBedsHierarchy from './FieldsBedsHierarchy';
@@ -11,6 +11,7 @@ import { useCommandContextTag, useRegisterCommands, useRegisterCreateActions } f
 import type { CommandSpec } from '../commands/types';
 import { useTranslation } from '../i18n';
 import PageContainer from '../components/layout/PageContainer';
+import { DetailPageActions } from '../components/layout/DetailPageActions';
 import { locationAPI, parcelRotationAPI } from '../api/api';
 import type { LocationPathSpacing, ParcelRotationGroup } from '../api/types';
 import { ParcelRotationGroupsDialog } from '../components/hierarchy/rotation/ParcelRotationGroupsDialog';
@@ -110,6 +111,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   } = hierarchyData;
   const [rotationGroups, setRotationGroups] = useState<ParcelRotationGroup[]>([]);
   const [rotationDialog, setRotationDialog] = useState<{ fieldId?: number } | null>(null);
+  const [areaMenuAnchor, setAreaMenuAnchor] = useState<HTMLElement | null>(null);
   const [rotationLoadError, setRotationLoadError] = useState(false);
   const [rotationLoading, setRotationLoading] = useState(false);
   const refreshRotationGroups = useCallback(async () => {
@@ -138,6 +140,11 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   }), [activeProjectMembership, openRotationGroups, rotationGroups]);
 
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
+  const reloadActiveSeason = outletContext?.reloadActiveSeason;
+  const onRotationChanged = () => {
+    void refreshRotationGroups();
+    void reloadActiveSeason?.();
+  };
   const setTopbarContextActions = outletContext?.setTopbarContextActions;
   const setTopbarTitleActions = outletContext?.setTopbarTitleActions;
   const [locationSelection, setLocationSelection] = useState(() => {
@@ -380,8 +387,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
     },
   ]), [effectiveViewMode, t]);
 
-  const contextActions = useMemo<TopbarContextAction[]>(() => {
-    const globalActions: TopbarContextAction[] = shouldShowProjectRequiredState
+  const contextActions = useMemo<TopbarContextAction[]>(() => (
+    shouldShowProjectRequiredState
       ? []
       : [
         // Plots are added from their location's row, so the topbar only
@@ -392,19 +399,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
           onClick: openAddLocationDialog,
           ariaLabel: t('hierarchy:actions.createLocation'),
         },
-      ];
-    if (activeProjectMembership && !shouldShowProjectRequiredState) globalActions.push({
-      id: 'fields-rotation-groups', label: t('hierarchy:parcelRotation.manage'),
-      onClick: () => openRotationGroups(),
-    });
-    return globalActions;
-  }, [
-    activeProjectMembership,
-    openRotationGroups,
-    openAddLocationDialog,
-    shouldShowProjectRequiredState,
-    t,
-  ]);
+      ]
+  ), [openAddLocationDialog, shouldShowProjectRequiredState, t]);
 
   useTopbarContextActions(setTopbarContextActions, contextActions);
   useTopbarTitleActions(setTopbarTitleActions, viewModeActions);
@@ -438,7 +434,12 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             showFreeAreas={showFreeAreas} onFreeAreasChange={changeFreeAreas} />
         ) : null}
       </Box>
-    </> : null}</>
+    </> : null}
+      {activeProjectMembership && (
+        <DetailPageActions primaryActions={[]} compact overflowLabel={t('common:actions.moreActions')}
+          onOpenOverflow={event => setAreaMenuAnchor(event.currentTarget)} />
+      )}
+    </>
   ) : null, [activeProjectMembership, changeFreeAreas, effectiveViewMode, isEditingGraphic, hasSelectedGraphicalFields,
     graphicalLocations, saveLocationPathSpacing, selectLocation, selectedLocation, showFreeAreas, shouldShowProjectRequiredState, t]);
   useTopbarWorkspaceControls(outletContext?.setTopbarWorkspaceControls, workspaceControls);
@@ -610,6 +611,14 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
           </DialogActions>
         </Box>
       </Dialog>
+      <Menu anchorEl={areaMenuAnchor} open={Boolean(areaMenuAnchor)} onClose={() => setAreaMenuAnchor(null)}>
+        <MenuItem sx={{ whiteSpace: 'normal' }} onClick={() => {
+          setAreaMenuAnchor(null);
+          openRotationGroups();
+        }}>
+          {t('hierarchy:parcelRotation.manage')}
+        </MenuItem>
+      </Menu>
       {rotationDialog && (rotationLoading || rotationLoadError ? (
         <Dialog open fullWidth maxWidth="xs" onClose={() => setRotationDialog(null)}>
           <DialogTitle>{t('hierarchy:parcelRotation.manage')}</DialogTitle>
@@ -623,7 +632,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
           </DialogActions>
         </Dialog>
       ) : <ParcelRotationGroupsDialog groups={rotationGroups} fields={fields} beds={beds}
-        parcelId={rotationDialog.fieldId} onChanged={refreshRotationGroups} onClose={() => setRotationDialog(null)} />)}
+        parcelId={rotationDialog.fieldId} onChanged={onRotationChanged} onClose={() => setRotationDialog(null)} />)}
     </ParcelRotationContext.Provider>
   );
 }

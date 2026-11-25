@@ -490,7 +490,14 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             rotate_parcels=options.validated_data.get('rotate_parcels', False),
             language_code=resolve_request_language(request),
         )
-        return self._copy_source_not_earlier() if result is None else Response(result)
+        if result is None:
+            return self._copy_source_not_earlier()
+        if request.active_project.demo_seeded_at:
+            result['preferred_active_season_id'] = (
+                Season.objects.filter(project=request.active_project, planting_plans__isnull=False)
+                .order_by('-start_date').values_list('pk', flat=True).first()
+            )
+        return Response(result)
 
     @action(detail=False, methods=['post'], url_path='create-transition', history_read_only=True)
     @transaction.atomic

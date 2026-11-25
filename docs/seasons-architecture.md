@@ -314,6 +314,8 @@ description), one level down:
 There is no server-persisted "last active season" (unlike
 `UserProjectSettings.last_project`); it is a client-only, per-project
 convenience that defaults to the newest season when unset or stale.
+The demo opens on its newest season with planting plans so its empty copy
+destination remains available without hiding the sample plans on first visit.
 
 Because the header comes from `localStorage`, a browser that has no stored id
 for the project yet (first visit, new device, cleared storage, a deep link)

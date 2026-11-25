@@ -509,7 +509,8 @@ def preview_plan_seed_demand(
     options = _supplier_options_by_crop(project, list({p.crop_id for p in plans if p.crop_id}))
     amounts = []
     for plan in plans:
-        if plan.crop is None:
+        bought_in = plan.cultivation_type == PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT
+        if plan.crop is None or bought_in:
             amounts.append((None, None))
             continue
         crop = EffectiveCrop(plan.crop, crop_index)

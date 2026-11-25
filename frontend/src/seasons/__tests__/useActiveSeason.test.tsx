@@ -92,6 +92,13 @@ describe('useActiveSeason', () => {
     expect(window.localStorage.getItem('activeSeasonId:1')).toBe('3');
   });
 
+  it('opens a fresh demo on its newest planned season when the following season is empty', async () => {
+    creationOptionsMock.mockResolvedValue({ data: { transition: null, preferred_active_season_id: 2 } });
+    const { result } = renderHook(() => useActiveSeason());
+    await waitFor(() => expect(result.current.activeSeason?.id).toBe(2));
+    expect(window.localStorage.getItem('activeSeasonId:1')).toBe('2');
+  });
+
   it('opens the selected plan under the app base path after storing its originating season', async () => {
     vi.stubEnv('BASE_URL', '/openfarmplanner/');
     assignMock.mockImplementationOnce(() => {

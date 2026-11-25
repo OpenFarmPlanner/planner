@@ -157,7 +157,7 @@ export function SeasonCopyDataDialog({ targetSeason, seasons, onClose, onConfirm
       if (isStaleSourceError(code)) {
         setPreviewState({ request, error: confirmError });
       } else if (code === 'parcel_rotation_preview_changed') {
-        refreshPreview(request.source.id, request.useActualDates);
+        refreshPreview(request.source.id, request.useActualDates, rotateParcels);
         setError(t('hierarchy:parcelRotation.previewChanged'));
       } else {
         setError(extractApiErrorMessage(confirmError, t, t('navigation:seasonSwitcher.copyDialog.error')));
