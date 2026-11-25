@@ -862,6 +862,27 @@ class CropLayoutApiTest(DRFAPITestCase):
         layout.refresh_from_db()
         self.assertEqual(layout.location_id, former.id)
 
+    def test_bed_layout_follows_reassignment_to_another_locations_parcel(self):
+        former, _, bed = self._location_with_bed('Former bed location')
+        current, parcel, _ = self._location_with_bed('Current bed location')
+        layout = BedLayout.objects.create(
+            bed=bed, location=former, project=self.project, x=22, y=17, runs_across_parcel=True,
+        )
+        moved = self.client.patch(
+            f'/openfarmplanner/api/beds/{bed.id}/', {'field': parcel.id}, format='json',
+        )
+        self.assertEqual(moved.status_code, status.HTTP_200_OK)
+        rejected = self._put_layouts(former, {
+            'bed_layouts': [{'bed': bed.id, 'x': 2, 'y': 3}], 'field_layouts': [],
+        })
+        self.assertEqual(rejected.status_code, status.HTTP_400_BAD_REQUEST)
+        removed = self.client.delete(f'/openfarmplanner/api/locations/{former.id}/')
+        self.assertEqual(removed.status_code, status.HTTP_204_NO_CONTENT)
+
+        layout.refresh_from_db()
+        self.assertEqual(layout.location_id, current.id)
+        self.assertEqual((layout.x, layout.y, layout.runs_across_parcel), (22, 17, True))
+
     def test_layouts_reject_bed_from_other_location(self):
         location = Location.objects.create(name='Layout test source location', project=self.project)
         other_location = Location.objects.create(name='Secondary location', project=self.project)

@@ -25,7 +25,8 @@ from farm.project_context import get_active_project_or_400
 from farm.services.bed_layouts import (
     create_bed_layout,
     extract_layout_payloads,
-    move_parcel_bed_layouts,
+    lock_layout_parcels,
+    move_bed_layouts,
     parse_location_boundary,
     save_location_boundary,
     save_location_layouts,
@@ -185,7 +186,10 @@ class FieldViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewS
         except IntegrityError as exc:
             raise DRFValidationError({'name': [FIELD_NAME_DUPLICATE_MESSAGE]}) from exc
         if instance.location_id != previous_location_id:
-            move_parcel_bed_layouts(instance, user_name=_current_actor_label(self.request))
+            move_bed_layouts(
+                BedLayout.objects.filter(project_id=instance.project_id, bed__field=instance),
+                instance.location_id, user_name=_current_actor_label(self.request),
+            )
         self.record_revision(instance, EntityRevision.ACTION_UPDATED, previous_snapshot=previous_snapshot)
 
     @action(detail=True, methods=['post'], url_path='duplicate')
@@ -269,13 +273,39 @@ class BedViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet
             raise DRFValidationError({'name': [BED_NAME_DUPLICATE_MESSAGE]}) from exc
         self.record_revision(instance, EntityRevision.ACTION_CREATED)
 
+    @transaction.atomic
     def perform_update(self, serializer):
-        previous_snapshot = _serialize_instance(serializer.instance)
+        bed = get_object_or_404(
+            Bed.objects.select_for_update(no_key=True),
+            pk=serializer.instance.pk, project_id=self.request.active_project.pk,
+        )
+        serializer.instance = bed
+        previous_snapshot = _serialize_instance(bed)
+        destination = serializer.validated_data.get('field')
+        if destination is not None and destination.pk != bed.field_id:
+            parcels = {parcel.pk: parcel for parcel in lock_layout_parcels(
+                bed.project_id, {bed.field_id, destination.pk},
+            )}
+            destination = parcels.get(destination.pk)
+            if destination is None:
+                raise DRFValidationError({
+                    'field': ['The destination parcel is no longer available.'],
+                })
+            serializer.validated_data['field'] = destination
+        else:
+            destination = None
         try:
             instance = serializer.save()
         except IntegrityError as exc:
             raise DRFValidationError({'name': [BED_NAME_DUPLICATE_MESSAGE]}) from exc
-        self.record_revision(instance, EntityRevision.ACTION_UPDATED, previous_snapshot=previous_snapshot)
+        if destination is not None:
+            move_bed_layouts(
+                BedLayout.objects.filter(project_id=instance.project_id, bed=instance),
+                destination.location_id, user_name=_current_actor_label(self.request),
+            )
+        self.record_revision(
+            instance, EntityRevision.ACTION_UPDATED, previous_snapshot=previous_snapshot,
+        )
 
     @action(detail=False, methods=['post'], url_path='bulk-create')
     def bulk_create(self, request) -> Response:
@@ -295,6 +325,7 @@ class BedViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet
         user_name = _current_actor_label(request)
         try:
             with transaction.atomic():
+                field = lock_individual_parcel(field)
                 for entry in serializer.validated_data['beds']:
                     bed = Bed.objects.create(
                         project=request.active_project,

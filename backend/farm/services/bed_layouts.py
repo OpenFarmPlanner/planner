@@ -12,6 +12,7 @@ import math
 from dataclasses import dataclass, field
 
 from django.db import transaction
+from django.db.models import QuerySet
 
 from farm.history import (
     _diff_changed_fields,
@@ -56,14 +57,18 @@ def create_bed_layout(bed: Bed, placement: dict, *, user_name: str) -> BedLayout
     return layout
 
 
-def move_parcel_bed_layouts(parcel: Field, *, user_name: str) -> None:
-    """Keep parcel-relative layouts attached to the parcel's new location."""
-    layouts = BedLayout.objects.filter(project_id=parcel.project_id, bed__field=parcel).exclude(
-        location_id=parcel.location_id,
-    ).select_related('project')
-    for layout in layouts:
+def lock_layout_parcels(project_id: int, parcel_ids: set[int]) -> QuerySet[Field]:
+    """Lock parcels in a consistent order before validating or moving layouts."""
+    return Field.objects.select_for_update(no_key=True).filter(
+        project_id=project_id, pk__in=parcel_ids,
+    ).order_by('pk')
+
+
+def move_bed_layouts(layouts: QuerySet[BedLayout], location_id: int, *, user_name: str) -> None:
+    """Keep bed offsets and orientation when their current location changes."""
+    for layout in layouts.exclude(location_id=location_id).select_related('project'):
         previous = _serialize_instance(layout)
-        layout.location_id = parcel.location_id
+        layout.location_id = location_id
         layout.save(update_fields=['location', 'updated_at'])
         _record_layout_revision(layout, previous, user_name=user_name)
 
@@ -125,43 +130,47 @@ def save_location_layouts(
         item['bed'] for item in bed_payload
         if isinstance(item, dict) and item.get('bed') is not None
     ]
-    beds = {bed.id: bed for bed in Bed.objects.filter(id__in=bed_ids)}
-
     field_ids = [
         item['field'] for item in field_payload
         if isinstance(item, dict) and item.get('field') is not None
     ]
-    fields = {f.id: f for f in Field.objects.select_related('location').filter(id__in=field_ids)}
-    previous_fields = {
-        row['field_id']: row for row in FieldLayout.objects.filter(
-            project=location.project, field_id__in=field_ids,
-        ).values()
-    }
-
     saved_bed_layouts: list[BedLayout] = []
     saved_field_layouts: list[FieldLayout] = []
     changed_count = 0
 
     with transaction.atomic():
-        # A parcel move holds the same lock while repointing its bed layouts.
-        # Resolve its current location after locking, before writing the offsets.
-        parcel_locations = dict(Field.objects.select_for_update(no_key=True).filter(
-            project_id=location.project_id, pk__in={bed.field_id for bed in beds.values()},
-        ).order_by('pk').values_list('pk', 'location_id'))
+        # Parent changes take the same locks before repointing bed layouts.
+        beds = {
+            bed.pk: bed for bed in Bed.objects.select_for_update(no_key=True).filter(
+                project_id=location.project_id, pk__in=bed_ids,
+            ).order_by('pk')
+        }
+        fields = {
+            field.pk: field for field in lock_layout_parcels(
+                location.project_id, set(field_ids) | {bed.field_id for bed in beds.values()},
+            )
+        }
         previous_beds = {
             row['bed_id']: row for row in BedLayout.objects.filter(
-                project=location.project, bed_id__in=bed_ids,
+                project_id=location.project_id, bed_id__in=bed_ids,
+            ).values()
+        }
+        previous_fields = {
+            row['field_id']: row for row in FieldLayout.objects.filter(
+                project_id=location.project_id, field_id__in=field_ids,
             ).values()
         }
         for item in bed_payload:
-            error_detail = _bed_entry_error(location, beds, parcel_locations, item)
+            error_detail = _bed_entry_error(location, beds, fields, item)
             if error_detail:
                 return LayoutSaveOutcome(error_detail=error_detail, changed_count=changed_count)
             bed = beds[item['bed']]
+            bed.field = fields[bed.field_id]
             layout, _ = BedLayout.objects.update_or_create(
                 bed=bed,
                 defaults=_layout_defaults(location, item),
             )
+            layout.bed = bed
             previous_beds[bed.pk], changed = _record_layout_revision(
                 layout, previous_beds.get(bed.pk), user_name=user_name
             )
@@ -218,7 +227,7 @@ def _layout_defaults(location: Location, item: dict) -> dict:
 
 
 def _bed_entry_error(
-    location: Location, beds: dict[int, Bed], parcel_locations: dict[int, int], item: object,
+    location: Location, beds: dict[int, Bed], fields: dict[int, Field], item: object,
 ) -> str | None:
     if not isinstance(item, dict):
         return 'Each bed layout entry must be an object.'
@@ -226,7 +235,8 @@ def _bed_entry_error(
     bed = beds.get(bed_id)
     if bed is None:
         return f'Bed {bed_id} does not exist.'
-    if parcel_locations.get(bed.field_id) != location.id:
+    field = fields.get(bed.field_id)
+    if field is None or field.location_id != location.id:
         return f'Bed {bed_id} does not belong to location {location.id}.'
     return None
 
