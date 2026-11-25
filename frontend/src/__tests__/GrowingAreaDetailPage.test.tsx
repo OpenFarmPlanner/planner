@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resolveGrowingAreaEntity } from '../components/hierarchy/details/growingAreaEntity';
 import { GrowingAreaCoverageRows } from '../pages/GrowingAreaCoverageRows';
 import GrowingAreaDetailPage from '../pages/GrowingAreaDetailPage';
-import { saveTrackedBedLayout } from '../pages/graphicalLayoutRequests';
+import { hasPendingFieldLayout, saveTrackedBedLayout, saveTrackedFieldLayout } from '../pages/graphicalLayoutRequests';
 
 const apiMocks = vi.hoisted(() => ({
   projectId: 1,
@@ -136,6 +136,28 @@ describe('GrowingAreaDetailPage', () => {
     });
     expect(lastWrite).toHaveBeenCalledOnce();
     expect(geometry.getByTestId('detail-covered-area')).toBeVisible();
+  });
+
+  it('waits for another parcel drop queued during a location detail read', async () => {
+    apiMocks.fields.mockResolvedValueOnce(page([]).data);
+    let finishFirst!: () => void;
+    let finishSecond!: () => void;
+    const first = saveTrackedFieldLayout(1, () => new Promise<void>(resolve => { finishFirst = resolve; }));
+    renderDetail('/app/fields-beds/locations/1');
+
+    const geometry = within(await screen.findByTestId('detail-section-geometry'));
+    expect(geometry.getByRole('status')).toBeVisible();
+    const writeSecond = vi.fn(() => new Promise<void>(resolve => { finishSecond = resolve; }));
+    const second = saveTrackedFieldLayout(1, writeSecond);
+    expect(writeSecond).not.toHaveBeenCalled();
+    await act(async () => { finishFirst(); await first; });
+    expect(writeSecond).toHaveBeenCalledOnce();
+    expect(hasPendingFieldLayout(1)).toBe(true);
+    expect(apiMocks.layouts).not.toHaveBeenCalled();
+
+    await act(async () => { finishSecond(); await second; });
+    expect(hasPendingFieldLayout(1)).toBe(false);
+    expect(geometry.getByTestId('detail-covered-area')).toHaveTextContent('0 m²');
   });
 
   it('clears coverage while loading layouts after the parcel moves to another location', async () => {

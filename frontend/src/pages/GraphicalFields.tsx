@@ -101,7 +101,7 @@ import { useGraphicalStageSize } from "./useGraphicalStageSize";
 import { formatLocalizedNumber, getActiveFormattingLocale } from "../utils/numberLocalization";
 import { AppTooltip } from '../components/AppTooltip';
 import LoadRetryButton from '../components/LoadRetryButton';
-import { pendingFieldSaves, saveTrackedBedLayout, waitForLocationLayoutSaves } from './graphicalLayoutRequests';
+import { hasPendingFieldLayout, saveTrackedBedLayout, saveTrackedFieldLayout, waitForLocationLayoutSaves } from './graphicalLayoutRequests';
 
 const BED_ACTIVATION_SLOP = 8;
 const BED_TASK_BADGE_WIDTH = 19;
@@ -317,26 +317,25 @@ export default function GraphicalFields({
     }
     // The first drop sets the boundary origin and the parcel position in one
     // request. Bed positions are already relative to the parcel.
-    const save = layoutAPI.saveByLocation(locationId, {
+    void saveTrackedFieldLayout(locationId, () => layoutAPI.saveByLocation(locationId, {
       bed_layouts: [],
       field_layouts: [payload],
       ...(boundaryOrigin && { location_boundary: boundaryOrigin }),
-    }).then(() => undefined).catch((saveError: unknown) => {
+    })).catch((saveError: unknown) => {
       setLayoutsByField((prev) => {
+        if (prev[payload.field] !== payload) return prev;
         const restored = { ...prev };
         if (previousLayout) restored[payload.field] = previousLayout;
         else delete restored[payload.field];
         return restored;
       });
       if (boundaryOrigin) {
-        setBoundaryOriginByLocation((prev) => ({ ...prev, [locationId]: null }));
+        setBoundaryOriginByLocation((prev) => prev[locationId] === boundaryOrigin
+          ? { ...prev, [locationId]: null } : prev);
       }
       setFieldSaveErrorLocation(locationId);
       console.error("Failed to save field layout", saveError);
-    }).finally(() => {
-      pendingFieldSaves.delete(locationId);
     });
-    pendingFieldSaves.set(locationId, save);
   };
 
   const locationLayouts = useMemo(() => locations.flatMap(location => {
@@ -688,7 +687,7 @@ export default function GraphicalFields({
       neighbors: fieldViewModels,
       snapping,
       constrain,
-      blocked: () => pendingFieldSaves.has(locationId),
+      blocked: () => hasPendingFieldLayout(locationId),
       onGuides: setActiveGuides,
       onPreview: position => setGeometryPreview(position && { type: "field", id: fieldId, locationId, position }),
       onDrop: position => {

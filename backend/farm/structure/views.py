@@ -28,6 +28,7 @@ from farm.services.bed_layouts import (
     lock_layout_parcels,
     move_bed_layouts,
     parse_location_boundary,
+    preserve_relocated_bed_layouts,
     save_location_boundary,
     save_location_layouts,
     serialize_location_boundary,
@@ -148,6 +149,11 @@ class LocationViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelVi
     def perform_create(self, serializer):
         instance = serializer.save(project=self.request.active_project)
         self.record_revision(instance, EntityRevision.ACTION_CREATED)
+
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        preserve_relocated_bed_layouts(instance, user_name=_current_actor_label(self.request))
+        super().perform_destroy(instance)
 
 
 class FieldViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet):

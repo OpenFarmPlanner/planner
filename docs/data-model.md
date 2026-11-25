@@ -229,7 +229,8 @@ erDiagram
   unambiguous positioning. Moving a parcel or reassigning a bed updates the
   affected bed layout locations in the same transaction and keeps their relative
   offsets. Reads resolve the bed's current parcel so they can also use layouts
-  saved before this change.
+  saved before this change. Deleting a location through the API repoints those
+  older layouts when their beds already belong to another location.
 - `Field`, `Bed`, and most other project-scoped models below also carry a
   **direct, denormalized `project` FK** in addition to their natural parent
   (e.g. `Bed.project` in addition to `Bed.field`). This is deliberate — it's

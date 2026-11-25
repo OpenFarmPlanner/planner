@@ -9,6 +9,7 @@ so entries upserted before the invalid one stay committed.
 """
 
 import math
+from collections import defaultdict
 from dataclasses import dataclass, field
 
 from django.db import transaction
@@ -71,6 +72,28 @@ def move_bed_layouts(layouts: QuerySet[BedLayout], location_id: int, *, user_nam
         layout.location_id = location_id
         layout.save(update_fields=['location', 'updated_at'])
         _record_layout_revision(layout, previous, user_name=user_name)
+
+
+def preserve_relocated_bed_layouts(location: Location, *, user_name: str) -> None:
+    """Before deleting a location, repoint legacy layouts for beds that moved away."""
+    project_id = location.project_id
+    beds = list(Bed.objects.select_for_update(of=('self',), no_key=True).filter(
+        project_id=project_id, layout__project_id=project_id, layout__location=location,
+        field__project_id=project_id, field__location__project_id=project_id,
+    ).exclude(field__location=location).order_by('pk'))
+    fields = {
+        field.pk: field for field in lock_layout_parcels(project_id, {bed.field_id for bed in beds})
+    }
+    beds_by_location: dict[int, list[int]] = defaultdict(list)
+    for bed in beds:
+        field = fields[bed.field_id]
+        if field.location_id != location.pk:
+            beds_by_location[field.location_id].append(bed.pk)
+    for destination, bed_ids in beds_by_location.items():
+        layouts = BedLayout.objects.filter(
+            project_id=project_id, location=location, bed_id__in=bed_ids,
+        )
+        move_bed_layouts(layouts, destination, user_name=user_name)
 
 
 def parse_location_boundary(data: object) -> tuple[bool, dict[str, float] | None, str | None]:

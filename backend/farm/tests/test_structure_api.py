@@ -841,7 +841,7 @@ class CropLayoutApiTest(DRFAPITestCase):
         layout.refresh_from_db()
         self.assertEqual((layout.x, layout.y, layout.runs_across_parcel), (144, 12, True))
 
-    def test_layout_read_uses_current_parcel_for_a_legacy_location_reference(self):
+    def test_legacy_layout_reads_and_survives_deletion_of_the_former_location(self):
         former = Location.objects.create(name='Former location', project=self.project)
         current = Location.objects.create(name='Current location', project=self.project)
         field = Field.objects.create(
@@ -861,6 +861,13 @@ class CropLayoutApiTest(DRFAPITestCase):
         self.assertEqual((saved['location'], saved['x'], saved['y']), (current.id, 144, 12))
         layout.refresh_from_db()
         self.assertEqual(layout.location_id, former.id)
+        deleted = self.client.delete(f'/openfarmplanner/api/locations/{former.id}/')
+        self.assertEqual(deleted.status_code, status.HTTP_204_NO_CONTENT)
+        layout.refresh_from_db()
+        self.assertEqual((layout.location_id, layout.x, layout.y), (current.id, 144, 12))
+        deleted = self.client.delete(f'/openfarmplanner/api/beds/{bed.id}/')
+        self.assertEqual(deleted.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(BedLayout.objects.filter(pk=layout.pk).exists())
 
     def test_bed_layout_follows_reassignment_to_another_locations_parcel(self):
         former, _, bed = self._location_with_bed('Former bed location')
