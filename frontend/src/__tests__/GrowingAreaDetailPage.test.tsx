@@ -2,6 +2,8 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { resolveGrowingAreaEntity } from '../components/hierarchy/details/growingAreaEntity';
+import { GrowingAreaCoverageRows } from '../pages/GrowingAreaCoverageRows';
 import GrowingAreaDetailPage from '../pages/GrowingAreaDetailPage';
 import { saveTrackedBedLayout } from '../pages/graphicalLayoutRequests';
 
@@ -134,6 +136,30 @@ describe('GrowingAreaDetailPage', () => {
     });
     expect(lastWrite).toHaveBeenCalledOnce();
     expect(geometry.getByTestId('detail-covered-area')).toBeVisible();
+  });
+
+  it('clears coverage while loading layouts after the parcel moves to another location', async () => {
+    const locations = [{ id: 1, name: 'Hofgarten' }, { id: 2, name: 'Neuer Standort' }];
+    const resolveParcel = (location: number) => resolveGrowingAreaEntity('field', 10, {
+      locations,
+      fields: [{ id: 10, name: 'Tunnel', location, width_m: 10, length_m: 10 }],
+      beds: [{ id: 100, name: 'Beet', field: 10, width_m: 2, length_m: 3 }],
+    })!;
+    let finishLayouts!: (data: unknown) => void;
+    apiMocks.layouts.mockResolvedValueOnce({
+      data: { field_layouts: [], bed_layouts: [{ bed: 100, location: 1, x: 144, y: 0 }] },
+    }).mockReturnValueOnce(new Promise(resolve => { finishLayouts = resolve; }));
+    const refreshHierarchy = vi.fn().mockResolvedValue(undefined);
+    const { rerender } = render(<GrowingAreaCoverageRows resolved={resolveParcel(1)} locale="de" refreshHierarchy={refreshHierarchy} />);
+    expect(await screen.findByTestId('detail-covered-area')).toHaveTextContent('3 m²');
+
+    rerender(<GrowingAreaCoverageRows resolved={resolveParcel(2)} locale="de" refreshHierarchy={refreshHierarchy} />);
+    expect(screen.getByRole('status')).toBeVisible();
+    expect(screen.queryByTestId('detail-covered-area')).not.toBeInTheDocument();
+    await act(async () => finishLayouts({
+      data: { field_layouts: [], bed_layouts: [{ bed: 100, location: 2, x: 0, y: 0 }] },
+    }));
+    expect(screen.getByTestId('detail-covered-area')).toHaveTextContent('6 m²');
   });
 
   it('shows own and inherited conditions with their source and hides empty sections', async () => {
